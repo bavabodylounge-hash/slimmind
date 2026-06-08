@@ -1160,24 +1160,145 @@ function renderCh4(){
     forbWrap.innerHTML = html;
   }
 
-  // 유산소 분기
+  // 유산소 분기 + 주간 스케줄
   const aerobic = bc.aerobic_restriction;
   const schedWrap = document.getElementById('p4Schedule');
   schedWrap.innerHTML = '';
-  if(aerobic && aerobic !== 'null'){
-    const aerobicMap = {
-      'warm_only': '⚠️ 유산소는 온수 수영(28도+)만 허용. 러닝·저녁 유산소 지금은 맞지 않습니다.',
-      'morning_walk_only': '⚠️ 오전 30분 걷기만 권장. 저녁 유산소는 지금 이 체형에 맞지 않습니다.',
-      'upper_body_swim_only': '⚠️ 상체 위주 수영만. 자전거·스피닝·계단은 지금 단계에 맞지 않습니다.',
-      'full_rest': '🛑 모든 유산소 중단 권고. 1~2주 완전 휴식 처방. 회복 후 재진단.',
-      'conditional': '✓ 식후 Zone2 유산소 허용. 공복 유산소는 지금 이 체형에 맞지 않습니다.',
-    };
-    if(aerobicMap[aerobic]){
-      schedWrap.innerHTML = `<div class="hook-box">
-        <div class="hook-title">유산소 처방 — 당신 체질 맞춤 분기</div>
-        <div class="hook-body">${aerobicMap[aerobic]}<br><br>Zone2 유지 심박: <strong>${bc.zone2_bpm_v2 || bc.zone2_bpm || 135}bpm 이하</strong> / HIIT 도입 가능 시점: <strong>${esc(bc.hiit_available_week_v2 || bc.hiit_available_week || '재진단 후')}</strong></div>
-      </div>`;
-    }
+
+  const zone2bpm = bc.zone2_bpm_v2 || bc.zone2_bpm || 135;
+  const hiitWeek = bc.hiit_available_week_v2 || bc.hiit_available_week || '8주 이후';
+  const bcCode4s = (res.bc_primary || '').toUpperCase();
+
+  // aerobic_restriction 값이 있으면 맞춤 메시지
+  const aerobicMap = {
+    'warm_only': '⚠️ 유산소는 온수 수영(28도+)만 허용. 러닝·저녁 유산소 지금은 맞지 않습니다.',
+    'morning_walk_only': '⚠️ 오전 30분 걷기만 권장. 저녁 유산소는 지금 이 체형에 맞지 않습니다.',
+    'upper_body_swim_only': '⚠️ 상체 위주 수영만. 자전거·스피닝·계단은 지금 단계에 맞지 않습니다.',
+    'full_rest': '🛑 모든 유산소 중단 권고. 1~2주 완전 휴식 처방. 회복 후 재진단.',
+    'conditional': '✓ 식후 Zone2 유산소 허용. 공복 유산소는 지금 이 체형에 맞지 않습니다.',
+  };
+
+  if(aerobic && aerobic !== 'null' && aerobicMap[aerobic]){
+    schedWrap.innerHTML = `<div class="hook-box">
+      <div class="hook-title">유산소 처방 — 당신 체질 맞춤 분기</div>
+      <div class="hook-body">${aerobicMap[aerobic]}<br><br>Zone2 유지 심박: <strong>${zone2bpm}bpm 이하</strong> / HIIT 도입 가능 시점: <strong>${esc(hiitWeek)}</strong></div>
+    </div>`;
+  }
+
+  // BC별 기본 주간 운동 스케줄 (aerobic_restriction 없을 때 표시)
+  const defaultScheduleMap = {
+    'BC-01': [
+      { day:'월', type:'Zone2 걷기', detail:'식후 15~30분 평지 걷기. 심박 ' + zone2bpm + 'bpm 이하 유지' },
+      { day:'화', type:'코어 안정화', detail:'드로인 10회 × 3세트 + 플랭크 30초 × 3' },
+      { day:'수', type:'Zone2 걷기', detail:'식후 30분 경사 없는 평지. 땀 약간 날 정도' },
+      { day:'목', type:'휴식·스트레칭', detail:'전신 스트레칭 10분. 폼롤러 복부 이완' },
+      { day:'금', type:'Zone2 걷기', detail:'오전 공복 직후 X → 식후 30분 이내 권장' },
+      { day:'토', type:'가벼운 수영', detail:'평영 위주 30분. 강도 낮게 유지' },
+      { day:'일', type:'완전 휴식', detail:'회복 최우선. HIIT 도입은 ' + esc(hiitWeek) + '부터' },
+    ],
+    'BC-02': [
+      { day:'월', type:'Zone2 걷기', detail:'오전 30분 평지. 간 해독 활성화 목적' },
+      { day:'화', type:'가벼운 요가', detail:'간·소화기 자극 트위스트 포즈 20분' },
+      { day:'수', type:'Zone2 걷기', detail:'식후 20~30분. 혈당 안정 + 간문맥 혈류 개선' },
+      { day:'목', type:'근력(상체)', detail:'저중량 고반복. 덤벨 로우·숄더프레스 각 15회' },
+      { day:'금', type:'Zone2 걷기', detail:'30분 이내. 주 3회 이상 Zone2 필수' },
+      { day:'토', type:'수영·필라테스', detail:'상체 림프 활성. 강도 낮게' },
+      { day:'일', type:'완전 휴식', detail:'음주 X. HIIT 도입은 ' + esc(hiitWeek) + '부터' },
+    ],
+    'BC-03': [
+      { day:'월', type:'수영(배영)', detail:'상지 림프 펌핑. 30분. 승모근 부하 없이' },
+      { day:'화', type:'경추 스트레칭', detail:'목 원 그리기·어깨 원 그리기 각 10회 × 3세트' },
+      { day:'수', type:'Zone2 걷기', detail:'30분. 팔 swing 크게. 상지 림프 순환' },
+      { day:'목', type:'하체 근력', detail:'레그프레스·루마니안 데드리프트 각 12회 × 3세트' },
+      { day:'금', type:'수영·림프 마사지', detail:'배영·자유형 30분 + 겨드랑이 림프 셀프 마사지' },
+      { day:'토', type:'필라테스', detail:'코어·어깨 안정화. 상체 하중 최소화' },
+      { day:'일', type:'완전 휴식', detail:'HIIT·고중량 어깨 운동 금지. ' + esc(hiitWeek) + '부터' },
+    ],
+    'BC-04': [
+      { day:'월', type:'드로인+호흡', detail:'복횡근 활성화. 드로인 10회 × 5세트. 복압 조절 훈련' },
+      { day:'화', type:'Zone2 걷기', detail:'20~30분. 복부 압력 주는 자세 금지' },
+      { day:'수', type:'코어 안정화', detail:'버드독 10회 × 3 + 데드버그 10회 × 3' },
+      { day:'목', type:'가벼운 수영', detail:'평영·자유형 20분. 과호흡 주의' },
+      { day:'금', type:'Zone2 걷기', detail:'식후 30분. 크런치·싯업 절대 금지' },
+      { day:'토', type:'요가(복압형)', detail:'트위스트·굴곡 동작 제한. 호흡 집중 요가' },
+      { day:'일', type:'완전 휴식', detail:'HIIT 도입은 ' + esc(hiitWeek) + '부터' },
+    ],
+    'BC-05': [
+      { day:'월', type:'상체 수영', detail:'배영·자유형 위주 30분. 하체 부하 없이 전신 혈류' },
+      { day:'화', type:'족욕+스트레칭', detail:'40도 족욕 20분. 하체 림프 순환 선행' },
+      { day:'수', type:'Zone2 걷기', detail:'30분 평지. 스쿼트·런지 금지' },
+      { day:'목', type:'상체 근력', detail:'숄더프레스·덤벨 로우 각 15회. 하체 고중량 X' },
+      { day:'금', type:'수영+림프 마사지', detail:'수영 30분 + 서혜부(사타구니) 림프 마사지' },
+      { day:'토', type:'필라테스', detail:'코어·골반 정렬 집중. 하체 비대 자극 운동 제외' },
+      { day:'일', type:'완전 휴식', detail:'스쿼트·레그프레스 금지. HIIT ' + esc(hiitWeek) + '부터' },
+    ],
+    'BC-06': [
+      { day:'월', type:'온수 수영', detail:'28도+ 온수 30분. 찬물 수영 절대 금지' },
+      { day:'화', type:'족욕+걷기', detail:'족욕 20분 후 따뜻한 실내 걷기 20분' },
+      { day:'수', type:'Zone2 걷기', detail:'30분. 땀 약간 날 정도. 냉방 강한 곳 피하기' },
+      { day:'목', type:'온열 요가', detail:'따뜻한 환경 요가 30분. 하체 혈관 확장' },
+      { day:'금', type:'온수 수영', detail:'30분. 심박 ' + zone2bpm + 'bpm 이하' },
+      { day:'토', type:'림프 마사지', detail:'하체 셀프 드레나쥐 20분 + 족욕' },
+      { day:'일', type:'완전 휴식', detail:'냉수욕·아이스배스 금지. HIIT ' + esc(hiitWeek) + '부터' },
+    ],
+    'BC-07': [
+      { day:'월', type:'근력(상체)', detail:'벤치프레스·덤벨 로우 각 10회 × 4세트' },
+      { day:'화', type:'Zone2 걷기', detail:'30~40분. 근육 회복 + 지방 산화' },
+      { day:'수', type:'근력(하체)', detail:'스쿼트·레그프레스 각 10회 × 4세트' },
+      { day:'목', type:'Zone2 + 코어', detail:'걷기 30분 + 플랭크 1분 × 3' },
+      { day:'금', type:'근력(전신)', detail:'데드리프트·복합 동작 위주. 저중량 X' },
+      { day:'토', type:'Zone2 걷기/수영', detail:'40분. 심박 ' + zone2bpm + 'bpm 유지' },
+      { day:'일', type:'완전 휴식', detail:'단백질 보충 필수. HIIT ' + esc(hiitWeek) + '부터' },
+    ],
+    'BC-08': [
+      { day:'월', type:'공복 20분 걷기', detail:'간헐적 단식 중 가벼운 산책. 강도 낮게' },
+      { day:'화', type:'Zone2 걷기', detail:'식후 30분. 이 이상 강도 높이지 않기' },
+      { day:'수', type:'가벼운 수영', detail:'20분. 과호흡 X. 2주간 적응 후 강도 상향' },
+      { day:'목', type:'스트레칭·요가', detail:'소화·대사 자극 트위스트 요가 20분' },
+      { day:'금', type:'Zone2 걷기', detail:'30분. 대사 회복이 목적. 운동 후 단백질 보충' },
+      { day:'토', type:'가벼운 근력', detail:'2주 이후부터. 처음 2주는 Zone2만' },
+      { day:'일', type:'완전 휴식', detail:'HIIT 도입은 ' + esc(hiitWeek) + '부터. 서두르지 않기' },
+    ],
+    'BC-09': [
+      { day:'월', type:'오전 Zone2 걷기', detail:'오전 햇볕 맞으며 30분. 저녁 고강도 금지' },
+      { day:'화', type:'요가·명상', detail:'이완·부교감 신경 활성화. 저녁 요가 20분' },
+      { day:'수', type:'오전 Zone2 걷기', detail:'30~40분. 코르티솔 리듬 활용' },
+      { day:'목', type:'근력(가벼운)', detail:'덤벨 전신 30분. 강도 60% 이하. 저녁 X' },
+      { day:'금', type:'오전 Zone2 걷기', detail:'30분. 스트레스 받은 날은 요가로 대체' },
+      { day:'토', type:'수영·필라테스', detail:'이완 목적. 심박 ' + zone2bpm + 'bpm 유지' },
+      { day:'일', type:'완전 휴식', detail:'HIIT 도입은 ' + esc(hiitWeek) + '부터. 저녁 고강도 금지' },
+    ],
+    'BC-10': [
+      { day:'월', type:'Zone2 걷기', detail:'30분 평지. 즐길 수 있는 강도로. 무리 금지' },
+      { day:'화', type:'요가·필라테스', detail:'장 운동 촉진 트위스트·복부 마사지 포즈 20분' },
+      { day:'수', type:'Zone2 걷기', detail:'30~40분. 이번엔 음악 들으며. 지속성이 핵심' },
+      { day:'목', type:'가벼운 근력', detail:'바디웨이트 스쿼트·푸쉬업 각 15회 × 3세트' },
+      { day:'금', type:'Zone2 걷기/수영', detail:'30~40분. 좋아하는 활동 선택 가능' },
+      { day:'토', type:'취미 활동', detail:'등산·자전거·댄스 등 좋아하는 것. 즐거움이 요요 방지' },
+      { day:'일', type:'완전 휴식', detail:'HIIT 도입은 ' + esc(hiitWeek) + '부터' },
+    ],
+  };
+
+  const defaultSched = defaultScheduleMap[bcCode4s] || [];
+  if(defaultSched.length > 0){
+    let schedHtml = `<div class="presc-card">
+      <div class="pc-head" style="background:#EFF6FF;border-color:#BFDBFE">
+        <span class="pc-icon">📅</span>
+        <span class="pc-title" style="color:#1D4ED8">1주차 운동 스케줄 — ${esc(bcCode4s)} 맞춤</span>
+      </div>
+      <div class="pc-body">
+        <table class="meal-table">
+          <tr><th>요일</th><th>종목</th><th>세부 내용</th></tr>
+          ${defaultSched.map(s => `<tr>
+            <td><strong>${esc(s.day)}</strong></td>
+            <td>${esc(s.type)}</td>
+            <td style="font-size:12px;color:#475569">${esc(s.detail)}</td>
+          </tr>`).join('')}
+        </table>
+        <div class="meal-note">❤️ <strong>Zone2 기준:</strong> 심박 <strong>${zone2bpm}bpm 이하</strong> / HIIT 도입 가능 시점: <strong>${esc(hiitWeek)}주차 이후</strong></div>
+      </div>
+    </div>`;
+    schedWrap.innerHTML += schedHtml;
   }
 
   // MBTI × 혈액형 동기 언어

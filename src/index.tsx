@@ -563,10 +563,13 @@ app.get('/result/:id', async (c) => {
     .bind(result.bc_primary).first<any>()
 
   // 오행 DB 조회
+  // ohaeng_type이 "수(水)" 형태로 저장된 경우 괄호 제거 → "수" 로 정규화
   let ohaeng = null
   if (result.ohaeng_type) {
-    ohaeng = await db.prepare('SELECT * FROM ohaeng_db WHERE ohaeng_type=?')
-      .bind(result.ohaeng_type).first<any>()
+    const rawOhaeng = result.ohaeng_type as string
+    const normalizedOhaeng = rawOhaeng.replace(/\([^)]*\)/g, '').trim()
+    ohaeng = await db.prepare('SELECT * FROM ohaeng_db WHERE ohaeng_type=? OR ohaeng_type=?')
+      .bind(normalizedOhaeng, rawOhaeng).first<any>()
   }
 
   // 사주 DB 조회 (한글 일간으로 찾기)
