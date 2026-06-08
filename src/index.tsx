@@ -242,8 +242,10 @@ app.post('/api/survey/submit', async (c) => {
     emotional_state || null, main_goal || null, priority_value || null,
     JSON.stringify(answers || {}), JSON.stringify(survey_summary || {}),
     aerobic_response || null, massage_swells ? 1 : 0, sauna_response || null,
-    current_facility || null, context_type || null, current_medications || null,
-    target_body_part || null, psych_state || null, monthly_budget || null, muscle_soreness_level || null,
+    current_facility || null, context_type || null,
+    Array.isArray(current_medications) ? current_medications.join(',') : (current_medications || null),
+    Array.isArray(target_body_part) ? target_body_part.join(',') : (target_body_part || null),
+    psych_state || null, monthly_budget || null, muscle_soreness_level || null,
     'v2.0'
   ).run()
 
