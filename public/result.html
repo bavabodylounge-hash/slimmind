@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>슬림마인드 결과지 — {{USER_NAME}}님의 바디코드</title>
+<title>슬림마인드 결과지 — 바디코드 분석</title>
 <style>
 /* ═══════════════════════════════════════════
    RESET & BASE
@@ -37,7 +37,6 @@
   --text:#1C2833;
   --font:'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif;
 }
-
 html{scroll-behavior:smooth}
 body{
   font-family:var(--font);
@@ -51,7 +50,7 @@ body{
    A4 레이아웃 — 웹 + 인쇄 공용
 ═══════════════════════════════════════════ */
 .a4-wrap{
-  max-width:794px; /* A4 96dpi */
+  max-width:794px;
   margin:0 auto;
   padding:20px 16px 40px;
 }
@@ -60,7 +59,7 @@ body{
 .chapter{
   background:#fff;
   width:100%;
-  min-height:1123px; /* A4 96dpi 높이 */
+  min-height:1123px;
   padding:40px 48px;
   margin-bottom:0;
   display:none;
@@ -70,6 +69,13 @@ body{
   box-shadow:0 4px 24px rgba(0,0,0,.12);
 }
 .chapter.active{display:flex}
+
+/* 챕터 내용 영역이 꽉 차도록 */
+.chapter-content{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+}
 
 /* 인쇄 시 페이지 나누기 */
 @media print{
@@ -89,15 +95,10 @@ body{
   .chapter:last-child{page-break-after:avoid}
   .chapter-nav,.progress-bar-wrap,.page-counter-wrap{display:none!important}
 }
-
-/* 페이지 여백 설정 (인쇄) */
-@page{
-  size:A4;
-  margin:15mm 20mm;
-}
+@page{size:A4;margin:15mm 20mm;}
 
 /* ═══════════════════════════════════════════
-   헤더 (로고 + 진행 바)
+   헤더
 ═══════════════════════════════════════════ */
 .top-bar{
   background:var(--navy);
@@ -105,45 +106,15 @@ body{
   display:flex;
   align-items:center;
   justify-content:space-between;
-  position:sticky;
-  top:0;
-  z-index:100;
+  position:sticky;top:0;z-index:100;
 }
-.logo{
-  font-size:15px;
-  font-weight:800;
-  color:#fff;
-  letter-spacing:.14em;
-}
+.logo{font-size:15px;font-weight:800;color:#fff;letter-spacing:.14em;}
 .logo span{color:#60A5FA;font-size:11px;font-weight:400;margin-left:8px;letter-spacing:.04em}
-.page-counter-wrap{
-  font-size:12px;
-  color:rgba(255,255,255,.6);
-  font-weight:500;
-}
+.page-counter-wrap{font-size:12px;color:rgba(255,255,255,.6);font-weight:500;}
 .page-counter-wrap strong{color:#fff}
-
-/* 진행 바 */
-.progress-bar-wrap{
-  background:var(--navy);
-  padding:0 24px 10px;
-  position:sticky;
-  top:49px;
-  z-index:99;
-}
-.progress-dots{
-  display:flex;
-  gap:6px;
-  align-items:center;
-}
-.pdot{
-  width:8px;height:8px;
-  border-radius:50%;
-  background:rgba(255,255,255,.2);
-  cursor:pointer;
-  transition:all .2s;
-  flex-shrink:0;
-}
+.progress-bar-wrap{background:var(--navy);padding:0 24px 10px;position:sticky;top:49px;z-index:99;}
+.progress-dots{display:flex;gap:6px;align-items:center;}
+.pdot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.2);cursor:pointer;transition:all .2s;flex-shrink:0;}
 .pdot.done{background:rgba(255,255,255,.5)}
 .pdot.current{background:#60A5FA;width:24px;border-radius:4px}
 .pdot.premium{background:#F59E0B}
@@ -151,568 +122,253 @@ body{
 /* ═══════════════════════════════════════════
    챕터 내부 공통 요소
 ═══════════════════════════════════════════ */
-/* 챕터 헤더 라인 */
 .ch-header{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  margin-bottom:28px;
-  padding-bottom:16px;
-  border-bottom:2px solid var(--gray-100);
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:22px;padding-bottom:14px;border-bottom:2px solid var(--gray-100);
+  flex-shrink:0;
 }
-.ch-label{
-  font-size:10px;
-  font-weight:700;
-  letter-spacing:.12em;
-  color:var(--gray-400);
-  text-transform:uppercase;
-}
-.ch-page-num{
-  font-size:11px;
-  color:var(--gray-400);
-  font-weight:500;
-}
+.ch-label{font-size:10px;font-weight:700;letter-spacing:.12em;color:var(--gray-400);text-transform:uppercase;}
+.ch-page-num{font-size:11px;color:var(--gray-400);font-weight:500;}
 
-/* ─ 인용박스 */
+/* ─ 오프닝 인용박스 */
 .quote-box{
   border-left:4px solid var(--blue);
-  padding:18px 22px;
-  margin:0 0 24px;
-  background:var(--light-blue);
-  border-radius:0 12px 12px 0;
+  padding:18px 22px;margin:0 0 20px;
+  background:var(--light-blue);border-radius:0 12px 12px 0;
+  flex-shrink:0;
 }
-.quote-text{
-  font-size:16px;
-  color:var(--navy);
-  line-height:2;
-  font-style:italic;
-  font-weight:500;
-}
+.quote-text{font-size:16px;color:var(--navy);line-height:2;font-style:italic;font-weight:500;}
 
-/* ─ 바디코드 크게 */
-.bc-display{
-  text-align:center;
-  padding:24px 0 20px;
+/* ─ 감정 분기 오프닝 (emotional state) */
+.emotional-quote{
+  border-left:4px solid var(--blue);
+  padding:20px 24px;margin:0 0 20px;
+  background:linear-gradient(135deg,#EBF4FD,#F0F7FF);
+  border-radius:0 14px 14px 0;
+  flex-shrink:0;
 }
-.bc-num-label{
-  font-size:12px;
-  font-weight:700;
-  color:var(--gray-400);
-  letter-spacing:.1em;
-  margin-bottom:8px;
+.emotional-badge{
+  font-size:10px;font-weight:700;letter-spacing:.08em;
+  color:var(--blue);margin-bottom:10px;
+  display:flex;align-items:center;gap:6px;
 }
-.bc-code{
-  font-size:52px;
-  font-weight:800;
-  color:var(--navy);
-  line-height:1;
-  margin-bottom:6px;
-  letter-spacing:-.02em;
+.emotional-badge-dot{
+  width:6px;height:6px;border-radius:50%;background:var(--blue);
 }
-.bc-brand-name{
-  font-size:20px;
-  color:var(--blue);
-  font-weight:600;
-  margin-bottom:20px;
+.emotional-text{
+  font-size:16px;color:var(--navy);line-height:2.1;font-weight:500;
 }
-.badge-row{
-  display:flex;
-  gap:8px;
-  flex-wrap:wrap;
-  justify-content:center;
-}
-.badge{
-  font-size:12px;
-  padding:5px 14px;
-  border-radius:20px;
-  background:var(--gray-50);
-  color:var(--gray-600);
-  border:1px solid var(--gray-200);
-  font-weight:500;
-}
+.emotional-name{color:var(--blue);font-weight:800;}
+
+/* ─ 바디코드 표시 */
+.bc-display{text-align:center;padding:18px 0 16px;}
+.bc-num-label{font-size:12px;font-weight:700;color:var(--gray-400);letter-spacing:.1em;margin-bottom:8px;}
+.bc-code{font-size:52px;font-weight:800;color:var(--navy);line-height:1;margin-bottom:6px;letter-spacing:-.02em;}
+.bc-brand-name{font-size:20px;color:var(--blue);font-weight:600;margin-bottom:16px;}
+.badge-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
+.badge{font-size:12px;padding:5px 14px;border-radius:20px;background:var(--gray-50);color:var(--gray-600);border:1px solid var(--gray-200);font-weight:500;}
 
 /* ─ 체크리스트 */
-.section-label{
-  font-size:11px;
-  font-weight:700;
-  color:var(--gray-500);
-  letter-spacing:.08em;
-  text-transform:uppercase;
-  margin-bottom:12px;
-}
-.check-list{margin:0 0 20px}
-.ci{
-  display:flex;
-  gap:12px;
-  padding:10px 0;
-  border-bottom:1px solid var(--gray-100);
-  align-items:flex-start;
-  font-size:14px;
-  color:var(--text);
-  line-height:1.7;
-}
+.section-label{font-size:11px;font-weight:700;color:var(--gray-500);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+.check-list{margin:0 0 16px}
+.ci{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid var(--gray-100);align-items:flex-start;font-size:13.5px;color:var(--text);line-height:1.65;}
 .ci:last-child{border-bottom:none}
-.ci-mark{
-  color:var(--blue);
-  font-weight:700;
-  flex-shrink:0;
-  margin-top:2px;
-  font-size:16px;
-  width:20px;
-  text-align:center;
-}
+.ci-mark{color:var(--blue);font-weight:700;flex-shrink:0;margin-top:2px;font-size:16px;width:20px;text-align:center;}
 .ci-mark.red{color:#DC2626}
 .ci-mark.green{color:#059669}
 
 /* ─ 훅박스 */
 .hook-box{
-  background:var(--light-blue);
-  border-radius:14px;
-  padding:16px 20px;
-  margin:16px 0;
-  border:1px solid var(--border-blue);
+  background:var(--light-blue);border-radius:14px;
+  padding:14px 18px;margin:14px 0;border:1px solid var(--border-blue);
 }
-.hook-title{
-  font-size:12px;
-  font-weight:700;
-  color:var(--blue);
-  margin-bottom:6px;
-  letter-spacing:.04em;
+.hook-title{font-size:11px;font-weight:700;color:var(--blue);margin-bottom:5px;letter-spacing:.04em;}
+.hook-body{font-size:14.5px;color:var(--blue);line-height:1.85;font-weight:500;}
+
+/* ─ 오늘 딱 하나만 (Action Item) */
+.action-box{
+  background:linear-gradient(135deg,#FFFBEB,#FEF3C7);
+  border:2px solid #F59E0B;
+  border-radius:14px;padding:16px 20px;
+  margin-top:auto;flex-shrink:0;
 }
-.hook-body{
-  font-size:15px;
-  color:var(--blue);
-  line-height:1.85;
-  font-weight:500;
+.action-icon{font-size:16px;margin-bottom:6px;}
+.action-title{font-size:12px;font-weight:800;color:#92400E;letter-spacing:.08em;margin-bottom:6px;text-transform:uppercase;}
+.action-body{font-size:14px;color:#451A03;line-height:1.8;font-weight:500;}
+
+/* ─ 생활 장면 (Scene) */
+.scene-box{
+  background:#FFF8F5;border-left:4px solid #F97316;
+  border-radius:0 12px 12px 0;padding:16px 20px;margin:14px 0;
 }
+.scene-text{font-size:15px;color:#431407;line-height:2.1;font-style:italic;}
+.scene-resolve{font-size:14px;color:var(--navy);font-weight:600;margin-top:10px;line-height:1.7;}
 
 /* ─ 스토리 단락 */
-.story-p{
-  font-size:15px;
-  color:var(--text);
-  line-height:2;
-  margin-bottom:18px;
-}
+.story-p{font-size:14.5px;color:var(--text);line-height:2;margin-bottom:14px;}
 .hl-yellow{background:#FEF3C7;color:#92400E;padding:1px 6px;border-radius:4px;font-weight:700}
 .hl-blue{color:var(--blue);font-weight:700}
 .hl-red{color:#DC2626;font-weight:700}
 .hl-bold{font-weight:700}
 
 /* ─ 위험박스 */
-.reveal-box{
-  border:2px solid #FCA5A5;
-  border-radius:14px;
-  padding:16px 20px;
-  margin:16px 0;
-  background:#FFF1F2;
-}
-.reveal-title{
-  font-size:12px;
-  font-weight:700;
-  color:#DC2626;
-  margin-bottom:8px;
-}
-.reveal-body{
-  font-size:14px;
-  color:#9F1239;
-  line-height:1.85;
-}
+.reveal-box{border:2px solid #FCA5A5;border-radius:14px;padding:14px 18px;margin:14px 0;background:#FFF1F2;}
+.reveal-title{font-size:12px;font-weight:700;color:#DC2626;margin-bottom:8px;}
+.reveal-body{font-size:13.5px;color:#9F1239;line-height:1.85;}
 
 /* ─ 처방 카드 */
-.presc-card{
-  border:1px solid var(--gray-200);
-  border-radius:16px;
-  overflow:hidden;
-  margin-bottom:16px;
-}
-.pc-head{
-  padding:14px 18px;
-  display:flex;
-  align-items:center;
-  gap:10px;
-}
+.presc-card{border:1px solid var(--gray-200);border-radius:16px;overflow:hidden;margin-bottom:14px;}
+.pc-head{padding:12px 16px;display:flex;align-items:center;gap:10px;}
 .pc-head.green{background:var(--light-green)}
 .pc-head.red{background:var(--light-red)}
 .pc-head.gray{background:var(--gray-50)}
 .pc-head.blue{background:var(--light-blue)}
 .pc-head.orange{background:var(--light-orange)}
 .pc-head.purple{background:var(--light-purple)}
-.pc-icon{font-size:20px;flex-shrink:0}
-.pc-title{font-size:15px;font-weight:700;color:var(--text)}
+.pc-icon{font-size:18px;flex-shrink:0}
+.pc-title{font-size:14px;font-weight:700;color:var(--text)}
 .pc-title.green-t{color:var(--green)}
 .pc-title.red-t{color:var(--red)}
 .pc-title.blue-t{color:var(--blue)}
-.pc-body{padding:14px 18px}
-.pc-item{
-  display:flex;
-  gap:12px;
-  padding:10px 0;
-  border-bottom:1px solid var(--gray-50);
-  align-items:flex-start;
-}
+.pc-body{padding:12px 16px}
+.pc-item{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--gray-50);align-items:flex-start;}
 .pc-item:last-child{border-bottom:none}
-.pc-dot{
-  width:8px;height:8px;
-  border-radius:50%;
-  flex-shrink:0;
-  margin-top:6px;
-}
-.pc-text{font-size:14px;color:var(--text);line-height:1.7;flex:1}
-.pc-reason{font-size:12px;color:var(--gray-500);margin-top:4px;line-height:1.6}
+.pc-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:6px;}
+.pc-text{font-size:13.5px;color:var(--text);line-height:1.7;flex:1}
+.pc-reason{font-size:12px;color:var(--gray-500);margin-top:3px;line-height:1.55}
 
-/* ─ 영양소 비율 시각화 */
-.macro-wrap{margin:16px 0}
-.macro-item{
-  display:flex;
-  align-items:center;
-  gap:12px;
-  margin-bottom:12px;
-}
-.macro-label{
-  font-size:13px;
-  font-weight:600;
-  color:var(--gray-700);
-  width:80px;
-  flex-shrink:0;
-}
-.macro-bar-bg{
-  flex:1;
-  height:10px;
-  background:var(--gray-100);
-  border-radius:5px;
-  overflow:hidden;
-}
-.macro-bar{
-  height:100%;
-  border-radius:5px;
-  transition:width .6s ease;
-}
-.macro-pct{
-  font-size:12px;
-  font-weight:700;
-  color:var(--gray-600);
-  width:36px;
-  text-align:right;
-}
+/* ─ 영양소 비율 */
+.macro-wrap{margin:12px 0}
+.macro-item{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.macro-label{font-size:13px;font-weight:600;color:var(--gray-700);width:76px;flex-shrink:0;}
+.macro-bar-bg{flex:1;height:10px;background:var(--gray-100);border-radius:5px;overflow:hidden;}
+.macro-bar{height:100%;border-radius:5px;transition:width .6s ease;}
+.macro-pct{font-size:12px;font-weight:700;color:var(--gray-600);width:36px;text-align:right;}
 
 /* ─ 영양제 카드 */
-.supp-grid{
-  display:grid;
-  grid-template-columns:1fr 1fr 1fr;
-  gap:12px;
-  margin:12px 0;
-}
-.supp-card{
-  background:var(--gray-50);
-  border-radius:12px;
-  padding:14px 12px;
-  text-align:center;
-  border:1px solid var(--gray-200);
-}
-.supp-name{font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px}
+.supp-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:10px 0;}
+.supp-card{background:var(--gray-50);border-radius:12px;padding:12px 10px;text-align:center;border:1px solid var(--gray-200);}
+.supp-name{font-size:13.5px;font-weight:700;color:var(--text);margin-bottom:4px}
 .supp-dose{font-size:11px;color:var(--blue);font-weight:500;line-height:1.5}
-.supp-why{font-size:11px;color:var(--gray-500);margin-top:6px;line-height:1.5}
+.supp-why{font-size:11px;color:var(--gray-500);margin-top:5px;line-height:1.5}
 
 /* ─ 식단표 */
-.meal-table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}
-.meal-table th{
-  padding:9px 10px;
-  background:var(--gray-100);
-  color:var(--gray-600);
-  font-weight:600;
-  border-bottom:1px solid var(--gray-200);
-  text-align:left;
-}
-.meal-table td{
-  padding:9px 10px;
-  border-bottom:1px solid var(--gray-50);
-  color:var(--text);
-  vertical-align:top;
-  line-height:1.5;
-}
+.meal-table{width:100%;border-collapse:collapse;font-size:12px;margin:8px 0}
+.meal-table th{padding:8px 9px;background:var(--gray-100);color:var(--gray-600);font-weight:600;border-bottom:1px solid var(--gray-200);text-align:left;}
+.meal-table td{padding:8px 9px;border-bottom:1px solid var(--gray-50);color:var(--text);vertical-align:top;line-height:1.45;}
 .meal-table tr:last-child td{border-bottom:none}
-.meal-note{
-  font-size:11px;
-  color:var(--blue);
-  margin-top:10px;
-  padding:10px 12px;
-  background:var(--light-blue);
-  border-radius:10px;
-  line-height:1.7;
-}
+.meal-note{font-size:11px;color:var(--blue);margin-top:8px;padding:8px 12px;background:var(--light-blue);border-radius:10px;line-height:1.7;}
 
 /* ─ 사주박스 */
-.saju-box{
-  background:#FFFBEB;
-  border-radius:14px;
-  padding:16px 20px;
-  margin:16px 0;
-  border:1px solid #FDE68A;
+.saju-box{background:#FFFBEB;border-radius:14px;padding:14px 18px;margin:14px 0;border:1px solid #FDE68A;}
+.saju-title{font-size:12px;font-weight:700;color:#92400E;margin-bottom:7px}
+.saju-body{font-size:13.5px;color:#451A03;line-height:1.9}
+
+/* ─ 타임라인 (변화 순서) */
+.timeline-wrap{margin:14px 0;}
+.timeline-title{font-size:11px;font-weight:700;color:var(--navy);letter-spacing:.08em;margin-bottom:12px;text-transform:uppercase;}
+.timeline-item{
+  display:flex;gap:14px;padding:10px 0;
+  border-bottom:1px solid var(--gray-100);
+  align-items:flex-start;
 }
-.saju-title{font-size:12px;font-weight:700;color:#92400E;margin-bottom:8px}
-.saju-body{font-size:14px;color:#451A03;line-height:1.9}
+.timeline-item:last-child{border-bottom:none}
+.tl-week{
+  font-size:11px;font-weight:800;color:var(--blue);
+  background:var(--light-blue);border-radius:8px;
+  padding:4px 8px;white-space:nowrap;flex-shrink:0;line-height:1.4;
+  text-align:center;min-width:50px;
+}
+.tl-body{flex:1;}
+.tl-change{font-size:13.5px;font-weight:700;color:var(--navy);margin-bottom:3px;}
+.tl-detail{font-size:12px;color:var(--gray-500);line-height:1.55;}
+
+/* ─ 업셀 박스 (자연스러운) */
+.upsell-box{
+  background:linear-gradient(135deg,#F0F9FF,#E0F2FE);
+  border:1px solid #BAE6FD;border-radius:14px;
+  padding:14px 18px;margin:14px 0;
+  display:flex;gap:14px;align-items:flex-start;
+}
+.upsell-icon{font-size:22px;flex-shrink:0;}
+.upsell-text{flex:1;}
+.upsell-title{font-size:13px;font-weight:700;color:#0C4A6E;margin-bottom:4px;}
+.upsell-body{font-size:12.5px;color:#075985;line-height:1.7;}
 
 /* ─ B2B 파트너 박스 */
-.b2b-wrap{
-  background:#F0FDF4;
-  border:2px solid #86EFAC;
-  border-radius:16px;
-  padding:20px;
-  margin-top:16px;
-}
-.b2b-header{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  margin-bottom:16px;
-  padding-bottom:12px;
-  border-bottom:1px solid #BBF7D0;
-}
-.b2b-badge{
-  background:#16A34A;
-  color:#fff;
-  font-size:10px;
-  font-weight:700;
-  padding:3px 10px;
-  border-radius:20px;
-  letter-spacing:.06em;
-}
-.b2b-title{font-size:15px;font-weight:700;color:#14532D}
-.b2b-section{margin-bottom:14px}
-.b2b-section-title{
-  font-size:11px;
-  font-weight:700;
-  color:#166534;
-  letter-spacing:.06em;
-  margin-bottom:8px;
-}
-.b2b-item{
-  display:flex;
-  gap:8px;
-  padding:7px 0;
-  border-bottom:1px solid #DCFCE7;
-  align-items:flex-start;
-  font-size:13px;
-  color:#14532D;
-}
+.b2b-wrap{background:#F0FDF4;border:2px solid #86EFAC;border-radius:16px;padding:18px;margin-top:14px;}
+.b2b-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #BBF7D0;}
+.b2b-badge{background:#16A34A;color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:.06em;}
+.b2b-title{font-size:14px;font-weight:700;color:#14532D}
+.b2b-section{margin-bottom:12px;}
+.b2b-section-title{font-size:11px;font-weight:700;color:#166534;letter-spacing:.06em;margin-bottom:7px;}
+.b2b-item{display:flex;gap:8px;padding:6px 0;border-bottom:1px solid #DCFCE7;align-items:flex-start;font-size:12.5px;color:#14532D;}
 .b2b-item:last-child{border-bottom:none}
-.b2b-urgency{
-  font-size:10px;
-  padding:2px 7px;
-  border-radius:10px;
-  font-weight:600;
-  flex-shrink:0;
-  margin-top:1px;
-}
+.b2b-urgency{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600;flex-shrink:0;margin-top:1px;}
 .b2b-urgency.high{background:#FEE2E2;color:#991B1B}
 .b2b-urgency.medium{background:#FEF3C7;color:#92400E}
 .b2b-urgency.low{background:var(--gray-100);color:var(--gray-600)}
-.hint-box{
-  background:#EFF6FF;
-  border-radius:10px;
-  padding:12px 14px;
-  margin-top:8px;
-}
-.hint-item{
-  font-size:12px;
-  color:#1E40AF;
-  padding:4px 0;
-  line-height:1.6;
-  display:flex;
-  gap:6px;
-}
+.hint-box{background:#EFF6FF;border-radius:10px;padding:10px 12px;margin-top:7px;}
+.hint-item{font-size:12px;color:#1E40AF;padding:3px 0;line-height:1.6;display:flex;gap:6px;}
 
-/* ─ 회복 처방 박스 */
-.recovery-grid{
-  display:grid;
-  grid-template-columns:1fr 1fr 1fr;
-  gap:12px;
-  margin:12px 0;
-}
-.rec-card{
-  background:var(--gray-50);
-  border:1px solid var(--gray-200);
-  border-radius:12px;
-  padding:14px 12px;
-  text-align:center;
-}
-.rec-priority{
-  font-size:10px;
-  font-weight:700;
-  color:var(--blue);
-  letter-spacing:.06em;
-  margin-bottom:6px;
-}
-.rec-method{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:6px;line-height:1.4}
+/* ─ 회복 처방 */
+.recovery-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:10px 0;}
+.rec-card{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:12px;padding:12px 10px;text-align:center;}
+.rec-priority{font-size:10px;font-weight:700;color:var(--blue);letter-spacing:.06em;margin-bottom:5px;}
+.rec-method{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:5px;line-height:1.4}
 .rec-reason{font-size:11px;color:var(--gray-500);line-height:1.5}
 
 /* ─ 마무리 */
-.closing-wrap{text-align:center;padding:16px 0 24px}
-.closing-main{font-size:28px;font-weight:800;color:var(--navy);line-height:1.5;margin-bottom:16px}
-.closing-sub{font-size:15px;color:var(--gray-600);line-height:1.95;margin-bottom:20px}
-.closing-promise{
-  font-size:16px;
-  font-weight:600;
-  color:var(--blue);
-  line-height:1.9;
-  padding:20px 24px;
-  background:var(--light-blue);
-  border-radius:16px;
-  margin-bottom:20px;
-  border:1px solid var(--border-blue);
-  text-align:left;
-}
-.checkpoint-row{
-  display:flex;
-  gap:10px;
-  margin:16px 0;
-}
-.checkpoint{
-  flex:1;
-  background:var(--gray-50);
-  border:1px solid var(--gray-200);
-  border-radius:12px;
-  padding:14px 12px;
-  text-align:center;
-}
+.closing-wrap{text-align:center;padding:10px 0 20px;flex:1;display:flex;flex-direction:column;justify-content:center;}
+.closing-main{font-size:26px;font-weight:800;color:var(--navy);line-height:1.5;margin-bottom:14px}
+.closing-sub{font-size:14.5px;color:var(--gray-600);line-height:1.9;margin-bottom:16px}
+.closing-promise{font-size:15px;font-weight:600;color:var(--blue);line-height:1.9;padding:16px 20px;background:var(--light-blue);border-radius:14px;margin-bottom:14px;border:1px solid var(--border-blue);text-align:left;}
+
+/* ─ 변화 체크포인트 */
+.checkpoint-row{display:flex;gap:8px;margin:12px 0;}
+.checkpoint{flex:1;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:12px;padding:12px 10px;text-align:center;}
 .cp-week{font-size:11px;font-weight:700;color:var(--blue);margin-bottom:4px}
-.cp-desc{font-size:12px;color:var(--gray-600);line-height:1.5}
+.cp-desc{font-size:11.5px;color:var(--gray-600);line-height:1.5}
 
 /* ─ 프리미엄 업셀 */
-.premium-box{
-  border:2px dashed var(--gray-300);
-  border-radius:16px;
-  padding:20px;
-  text-align:center;
-  margin-top:20px;
-}
-.pm-title{font-size:18px;font-weight:700;color:var(--navy);margin-bottom:8px}
-.pm-desc{font-size:13px;color:var(--gray-500);line-height:1.8;margin-bottom:16px}
-.pm-list{
-  text-align:left;
-  font-size:13px;
-  color:var(--gray-600);
-  background:var(--gray-50);
-  border-radius:10px;
-  padding:14px 16px;
-  margin-bottom:16px;
-  line-height:2.2;
-}
-.cta-btn{
-  width:100%;
-  padding:16px;
-  border-radius:14px;
-  border:none;
-  background:var(--blue);
-  color:#fff;
-  font-size:16px;
-  font-weight:700;
-  cursor:pointer;
-  font-family:var(--font);
-  letter-spacing:.02em;
-  transition:opacity .2s;
-}
+.premium-box{border:2px dashed var(--gray-300);border-radius:16px;padding:18px;text-align:center;margin-top:16px;}
+.pm-title{font-size:17px;font-weight:700;color:var(--navy);margin-bottom:7px}
+.pm-desc{font-size:13px;color:var(--gray-500);line-height:1.75;margin-bottom:14px}
+.pm-list{text-align:left;font-size:13px;color:var(--gray-600);background:var(--gray-50);border-radius:10px;padding:12px 14px;margin-bottom:14px;line-height:2.1;}
+.cta-btn{width:100%;padding:15px;border-radius:14px;border:none;background:var(--blue);color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:var(--font);letter-spacing:.02em;transition:opacity .2s;}
 .cta-btn:hover{opacity:.88}
 
+/* ─ 최후 캡처용 문장 */
+.capture-quote{
+  background:var(--navy);border-radius:16px;
+  padding:24px 28px;margin:16px 0;text-align:center;
+}
+.capture-text{
+  font-size:17px;font-weight:700;color:#fff;line-height:1.9;
+  letter-spacing:.01em;
+}
+.capture-text em{color:#60A5FA;font-style:normal;}
+.capture-share{font-size:11px;color:rgba(255,255,255,.5);margin-top:8px;}
+
 /* ─ SNS 공유 */
-.share-row{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:12px;
-  margin:16px 0;
-}
-.share-btn{
-  padding:14px;
-  border-radius:12px;
-  border:1px solid var(--gray-200);
-  background:#fff;
-  font-size:13px;
-  font-weight:600;
-  color:var(--gray-700);
-  cursor:pointer;
-  font-family:var(--font);
-  transition:background .15s;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:6px;
-}
+.share-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0;}
+.share-btn{padding:12px;border-radius:12px;border:1px solid var(--gray-200);background:#fff;font-size:13px;font-weight:600;color:var(--gray-700);cursor:pointer;font-family:var(--font);transition:background .15s;display:flex;align-items:center;justify-content:center;gap:6px;}
 .share-btn:hover{background:var(--gray-50)}
 
 /* ─ 다음 버튼 */
-.chapter-nav{
-  display:flex;
-  align-items:center;
-  gap:12px;
-  margin-top:auto;
-  padding-top:28px;
-  border-top:1px solid var(--gray-100);
-}
-.btn-prev{
-  padding:13px 18px;
-  border-radius:12px;
-  border:1px solid var(--gray-200);
-  background:#fff;
-  font-size:14px;
-  font-weight:500;
-  color:var(--gray-500);
-  cursor:pointer;
-  font-family:var(--font);
-  flex-shrink:0;
-}
-.btn-next{
-  flex:1;
-  padding:15px;
-  border-radius:14px;
-  border:none;
-  background:var(--navy);
-  color:#fff;
-  font-size:15px;
-  font-weight:700;
-  cursor:pointer;
-  font-family:var(--font);
-  letter-spacing:.02em;
-  transition:all .2s;
-  line-height:1.4;
-}
+.chapter-nav{display:flex;align-items:center;gap:10px;padding-top:20px;border-top:1px solid var(--gray-100);flex-shrink:0;}
+.btn-prev{padding:12px 16px;border-radius:12px;border:1px solid var(--gray-200);background:#fff;font-size:14px;font-weight:500;color:var(--gray-500);cursor:pointer;font-family:var(--font);flex-shrink:0;}
+.btn-next{flex:1;padding:14px;border-radius:14px;border:none;background:var(--navy);color:#fff;font-size:14.5px;font-weight:700;cursor:pointer;font-family:var(--font);letter-spacing:.02em;transition:all .2s;line-height:1.4;}
 .btn-next:hover{background:var(--blue);transform:translateY(-1px);box-shadow:0 4px 16px rgba(26,82,118,.35)}
-.btn-next small{
-  display:block;
-  font-size:11px;
-  font-weight:400;
-  opacity:.75;
-  margin-top:2px;
-  letter-spacing:.01em;
-}
-
-/* ─ 구분선 */
-.divider{height:1px;background:var(--gray-100);margin:18px 0}
+.btn-next small{display:block;font-size:11px;font-weight:400;opacity:.75;margin-top:2px;letter-spacing:.01em;}
+.divider{height:1px;background:var(--gray-100);margin:14px 0}
 
 /* ─ 로딩 */
-.loading-wrap{
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  min-height:60vh;
-  gap:16px;
-}
-.loading-spinner{
-  width:44px;height:44px;
-  border:4px solid var(--gray-200);
-  border-top-color:var(--blue);
-  border-radius:50%;
-  animation:spin .8s linear infinite;
-}
+.loading-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:16px;}
+.loading-spinner{width:44px;height:44px;border:4px solid var(--gray-200);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg)}}
 .loading-text{font-size:14px;color:var(--gray-500)}
-
-/* ─ 에러 */
-.error-wrap{
-  text-align:center;
-  padding:60px 20px;
-  color:var(--gray-500);
-}
+.error-wrap{text-align:center;padding:60px 20px;color:var(--gray-500);}
 .error-wrap h2{font-size:20px;color:var(--navy);margin-bottom:10px}
 
 /* ═══════════════════════════════════════════
@@ -760,31 +416,39 @@ body{
       <span class="ch-page-num">1 / <span class="total-pages">9</span></span>
     </div>
 
-    <!-- 오프닝 인용 -->
-    <div class="quote-box">
-      <div class="quote-text" id="p1Opening">
-        "당신의 잘못이 아닙니다."
+    <div class="chapter-content">
+      <!-- 감정 분기 오프닝 -->
+      <div class="emotional-quote" id="p1EmotionalQuote">
+        <div class="emotional-badge"><span class="emotional-badge-dot"></span>당신만을 위한 첫 문장</div>
+        <div class="emotional-text" id="p1OpeningText">"당신의 잘못이 아닙니다."</div>
       </div>
-    </div>
 
-    <!-- 바디코드 큰 표시 -->
-    <div class="bc-display">
-      <div class="bc-num-label">당신의 바디코드</div>
-      <div class="bc-code" id="p1BcCode">BC-01</div>
-      <div class="bc-brand-name" id="p1BcBrand">A-CORE형 · 복부내장 코어형</div>
-      <div class="badge-row" id="p1Badges"></div>
-    </div>
+      <!-- 바디코드 큰 표시 -->
+      <div class="bc-display">
+        <div class="bc-num-label">당신의 바디코드</div>
+        <div class="bc-code" id="p1BcCode">BC-01</div>
+        <div class="bc-brand-name" id="p1BcBrand">A-CORE형 · 복부내장 코어형</div>
+        <div class="badge-row" id="p1Badges"></div>
+      </div>
 
-    <div class="divider"></div>
+      <div class="divider"></div>
 
-    <!-- 공감 체크리스트 -->
-    <div class="section-label">이 중 해당하는 것 확인해보세요</div>
-    <div class="check-list" id="p1Checklist"></div>
+      <!-- 공감 체크리스트 -->
+      <div class="section-label">이 중 해당하는 것 확인해보세요</div>
+      <div class="check-list" id="p1Checklist"></div>
 
-    <!-- 훅박스 -->
-    <div class="hook-box" id="p1HookBox">
-      <div class="hook-title">왜 이 부위만 절대 안 빠질까요?</div>
-      <div class="hook-body">지금부터 당신의 몸이 겪어온 이야기를 들려드립니다. 읽다 보면 소름이 돋을 수 있습니다.</div>
+      <!-- 훅박스 -->
+      <div class="hook-box" id="p1HookBox">
+        <div class="hook-title">왜 이 부위만 절대 안 빠질까요?</div>
+        <div class="hook-body" id="p1HookBody">지금부터 당신의 몸이 겪어온 이야기를 들려드립니다. 읽다 보면 소름이 돋을 수 있습니다.</div>
+      </div>
+
+      <!-- 오늘 딱 하나만 #1 -->
+      <div class="action-box" id="p1ActionBox">
+        <div class="action-icon">✦</div>
+        <div class="action-title">오늘 딱 하나만</div>
+        <div class="action-body" id="p1ActionText">이 페이지를 닫기 전에 — 배꼽 주변을 손으로 꾹 눌러보세요. 딱딱하게 막히는 느낌이 드시나요? 그게 내장지방입니다. 다음 페이지에서 이게 왜 생겼는지 알게 됩니다.</div>
+      </div>
     </div>
 
     <div class="chapter-nav">
@@ -804,8 +468,30 @@ body{
       <span class="ch-page-num">2 / <span class="total-pages">9</span></span>
     </div>
 
-    <div id="p2Story">
-      <!-- 동적 삽입 -->
+    <div class="chapter-content">
+      <!-- 생활 장면 (scene) -->
+      <div class="scene-box" id="p2Scene">
+        <div class="scene-text" id="p2SceneText">"그 여름을 기억하시나요.<br><br>수영장에 가고 싶었는데 수영복 대신 래쉬가드를 고른 그 날.<br>단체 사진을 찍을 때 자연스럽게 뒤로 물러섰던 그 순간.<br>옷을 입다가 거울을 잠깐 피했던 그 아침."</div>
+        <div class="scene-resolve" id="p2SceneResolve">그 모든 순간들이 당신 잘못이 아니었습니다.</div>
+      </div>
+
+      <div id="p2Story"><!-- 동적 삽입 --></div>
+
+      <!-- 첫 번째 자연스러운 업셀 -->
+      <div class="upsell-box" id="p2Upsell">
+        <div class="upsell-icon">💡</div>
+        <div class="upsell-text">
+          <div class="upsell-title">이걸 선생님과 함께 보면 정보가 처방이 됩니다</div>
+          <div class="upsell-body">지금 읽고 있는 내용이 당신 몸에 어떻게 적용되는지, 컨설턴트 선생님이 한 줄 한 줄 함께 보면 3배로 살아납니다.</div>
+        </div>
+      </div>
+
+      <!-- 오늘 딱 하나만 #2 -->
+      <div class="action-box" id="p2ActionBox">
+        <div class="action-icon">✦</div>
+        <div class="action-title">오늘 딱 하나만</div>
+        <div class="action-body" id="p2ActionText">이 페이지를 닫기 전에 — 지금 이 순간 느끼는 감정을 한 단어로 생각해보세요. 억울함인가요, 안도감인가요. 어느 쪽이든 맞습니다. 다음 페이지에서 그 억울함의 정확한 이유를 보게 됩니다.</div>
+      </div>
     </div>
 
     <div class="chapter-nav">
@@ -826,12 +512,21 @@ body{
       <span class="ch-page-num">3 / <span class="total-pages">9</span></span>
     </div>
 
-    <div class="quote-box">
-      <div class="quote-text" id="p3Quote">"당신이 살을 빼려고 했던 바로 그 방법들이, 오히려 역효과를 내고 있었습니다."</div>
-    </div>
+    <div class="chapter-content">
+      <div class="quote-box">
+        <div class="quote-text" id="p3Quote">"당신이 살을 빼려고 했던 바로 그 방법들이,<br>사실 살이 안 빠지는 직접적인 원인이었습니다."</div>
+      </div>
 
-    <div id="p3WrongMethods"></div>
-    <div id="p3CorrectPrinciples"></div>
+      <div id="p3WrongMethods"></div>
+      <div id="p3CorrectPrinciples"></div>
+
+      <!-- 오늘 딱 하나만 #3 -->
+      <div class="action-box" id="p3ActionBox">
+        <div class="action-icon">✦</div>
+        <div class="action-title">오늘 딱 하나만</div>
+        <div class="action-body" id="p3ActionText">이 페이지를 닫기 전에 — 지금까지 했던 운동 중 가장 열심히 했던 것을 떠올려보세요. 그게 효과가 없었던 게 이제 이해가 되시나요. 다음 페이지에 맞는 방법이 나옵니다.</div>
+      </div>
+    </div>
 
     <div class="chapter-nav">
       <button class="btn-prev" onclick="prevChapter()">←</button>
@@ -851,10 +546,28 @@ body{
       <span class="ch-page-num">4 / <span class="total-pages">9</span></span>
     </div>
 
-    <div id="p4Sports"></div>
-    <div id="p4ForbiddenSports"></div>
-    <div id="p4Schedule"></div>
-    <div id="p4MotivationLang"></div>
+    <div class="chapter-content">
+      <div id="p4Sports"></div>
+      <div id="p4ForbiddenSports"></div>
+      <div id="p4Schedule"></div>
+      <div id="p4MotivationLang"></div>
+
+      <!-- 두 번째 자연스러운 업셀 -->
+      <div class="upsell-box" id="p4Upsell">
+        <div class="upsell-icon">🏃</div>
+        <div class="upsell-text">
+          <div class="upsell-title">운동 처방을 선생님과 함께 보면</div>
+          <div class="upsell-body">지금 읽은 운동 목록이 내 현실 스케줄에 어떻게 맞는지 — 컨설턴트 선생님이 148,000원 처방지에서 주차별로 함께 설계해드립니다.</div>
+        </div>
+      </div>
+
+      <!-- 오늘 딱 하나만 #4 -->
+      <div class="action-box" id="p4ActionBox">
+        <div class="action-icon">✦</div>
+        <div class="action-title">오늘 딱 하나만</div>
+        <div class="action-body" id="p4ActionText">이 페이지를 닫기 전에 — 오늘 저녁 밥을 먹고 나서 딱 15분만 걸어보세요. 처음부터 헬스장 갈 필요 없습니다. 밥 먹고 15분 걷기. 이것이 첫 번째 처방입니다.</div>
+      </div>
+    </div>
 
     <div class="chapter-nav">
       <button class="btn-prev" onclick="prevChapter()">←</button>
@@ -866,21 +579,35 @@ body{
   </div>
 
   <!-- ══════════════════════════════════════
-       CHAPTER 4.5 · 회복 처방 (신설)
+       CHAPTER 4.5 · 회복 처방 + 변화 타임라인
   ══════════════════════════════════════ -->
   <div class="chapter" data-ch="45" id="ch45">
     <div class="ch-header">
-      <span class="ch-label">CHAPTER 04.5 · 회복 처방 — 신설</span>
+      <span class="ch-label">CHAPTER 04.5 · 회복 처방 + 변화 타임라인</span>
       <span class="ch-page-num">5 / <span class="total-pages">9</span></span>
     </div>
 
-    <div class="quote-box">
-      <div class="quote-text">"운동만큼 중요한 것이 있습니다. 바로 <strong>회복</strong>입니다. 회복 없이는 운동과 식단이 아무리 좋아도 몸이 변하지 않습니다."</div>
-    </div>
+    <div class="chapter-content">
+      <div class="quote-box">
+        <div class="quote-text">"운동만큼 중요한 것이 있습니다. 바로 <strong>회복</strong>입니다.<br>그리고 변화는 생각보다 빠르게 옵니다."</div>
+      </div>
 
-    <div id="p45Recovery"></div>
-    <div id="p45SaunaInfo"></div>
-    <div id="p45MassageWarning"></div>
+      <div id="p45Recovery"></div>
+      <div id="p45SaunaInfo"></div>
+      <div id="p45MassageWarning"></div>
+
+      <!-- 변화 타임라인 -->
+      <div class="timeline-wrap" id="p45Timeline">
+        <!-- 동적 삽입 -->
+      </div>
+
+      <!-- 오늘 딱 하나만 #45 -->
+      <div class="action-box" id="p45ActionBox">
+        <div class="action-icon">✦</div>
+        <div class="action-title">오늘 딱 하나만</div>
+        <div class="action-body" id="p45ActionText">오늘 밤 — 핸드폰을 내려놓고, 정해진 시간에 눈을 감아보세요. 회복은 잠에서 시작됩니다. 7시간이 모든 처방보다 먼저입니다.</div>
+      </div>
+    </div>
 
     <div class="chapter-nav">
       <button class="btn-prev" onclick="prevChapter()">←</button>
@@ -900,9 +627,18 @@ body{
       <span class="ch-page-num">6 / <span class="total-pages">9</span></span>
     </div>
 
-    <div id="p5MacroRatio"></div>
-    <div id="p5Foods"></div>
-    <div id="p5MealPlan"></div>
+    <div class="chapter-content">
+      <div id="p5MacroRatio"></div>
+      <div id="p5Foods"></div>
+      <div id="p5MealPlan"></div>
+
+      <!-- 오늘 딱 하나만 #5 -->
+      <div class="action-box" id="p5ActionBox">
+        <div class="action-icon">✦</div>
+        <div class="action-title">오늘 딱 하나만</div>
+        <div class="action-body" id="p5ActionText">식사 순서 하나만 바꿔보세요. 오늘 저녁 밥을 마지막에 먹어보세요. 국 먼저, 반찬 먹고, 밥 마지막. 그것 하나입니다. 내일 아침 배가 달라져 있을 수 있습니다.</div>
+      </div>
+    </div>
 
     <div class="chapter-nav">
       <button class="btn-prev" onclick="prevChapter()">←</button>
@@ -922,10 +658,28 @@ body{
       <span class="ch-page-num">7 / <span class="total-pages">9</span></span>
     </div>
 
-    <div id="p6Supplements"></div>
-    <div class="divider"></div>
-    <div id="p6Lifestyle"></div>
-    <div id="p6SajuSeason"></div>
+    <div class="chapter-content">
+      <div id="p6Supplements"></div>
+      <div class="divider"></div>
+      <div id="p6Lifestyle"></div>
+      <div id="p6SajuSeason"></div>
+
+      <!-- 세 번째 자연스러운 업셀 -->
+      <div class="upsell-box" id="p6Upsell">
+        <div class="upsell-icon">📋</div>
+        <div class="upsell-text">
+          <div class="upsell-title">프리미엄 결과지에서는 이 처방이 달라집니다</div>
+          <div class="upsell-body">14일 전체 식단 + 외식 OK/NG 목록 + 편의점 선택 가이드. 컨설턴트 선생님과 함께 오늘 뭐 먹을지 고민이 사라집니다.</div>
+        </div>
+      </div>
+
+      <!-- 오늘 딱 하나만 #6 -->
+      <div class="action-box" id="p6ActionBox">
+        <div class="action-icon">✦</div>
+        <div class="action-title">오늘 딱 하나만</div>
+        <div class="action-body" id="p6ActionText">오늘 취침 전에 영양제 목록을 메모해두세요. 내일 약국에 가서 딱 하나만 사오세요. 첫 번째 영양제부터 시작합니다.</div>
+      </div>
+    </div>
 
     <div class="chapter-nav">
       <button class="btn-prev" onclick="prevChapter()">←</button>
@@ -945,14 +699,24 @@ body{
       <span class="ch-page-num">8 / <span class="total-pages">9</span></span>
     </div>
 
-    <div class="closing-wrap" id="p7Closing"></div>
+    <div class="chapter-content">
+      <div class="closing-wrap" id="p7Closing"></div>
 
-    <div class="share-row">
-      <button class="share-btn" onclick="shareKakao()">💬 카카오 공유</button>
-      <button class="share-btn" onclick="shareInstagram()">📸 인스타 공유</button>
+      <!-- 캡처하고 싶은 마지막 문장 -->
+      <div class="capture-quote" id="p7CaptureQuote">
+        <div class="capture-text">
+          "당신이 다이어트에 실패한 게 아닙니다.<br><em>다이어트가 당신을 실패시킨 겁니다.</em>"
+        </div>
+        <div class="capture-share">📸 저장하고 싶은 문장</div>
+      </div>
+
+      <div class="share-row">
+        <button class="share-btn" onclick="shareKakao()">💬 카카오 공유</button>
+        <button class="share-btn" onclick="shareInstagram()">📸 인스타 공유</button>
+      </div>
+
+      <div class="premium-box" id="p7Premium"></div>
     </div>
-
-    <div class="premium-box" id="p7Premium"></div>
 
     <div class="chapter-nav">
       <button class="btn-prev" onclick="prevChapter()">←</button>
@@ -961,7 +725,7 @@ body{
   </div>
 
   <!-- ══════════════════════════════════════
-       CHAPTER 7.5 · B2B 파트너 전용 (서버사이드 조건 처리)
+       CHAPTER 7.5 · B2B 파트너 전용
   ══════════════════════════════════════ -->
   <div class="chapter" data-ch="75" id="ch75" style="display:none">
     <div class="ch-header">
@@ -969,8 +733,10 @@ body{
       <span class="ch-page-num" id="ch75PageNum">9 / 9</span>
     </div>
 
-    <div class="b2b-wrap" id="p75B2b">
-      <!-- 서버사이드에서 삽입 -->
+    <div class="chapter-content">
+      <div class="b2b-wrap" id="p75B2b">
+        <!-- 서버사이드에서 삽입 -->
+      </div>
     </div>
 
     <div class="chapter-nav">
@@ -982,12 +748,16 @@ body{
 
 <script>
 /* ═══════════════════════════════════════════════════════
-   슬림마인드 결과지 v2.0 렌더러
-   - 서버에서 window.__RESULT__ 주입
-   - 동적 텍스트 조합 엔진 포함
+   슬림마인드 결과지 v3.0 렌더러
+   - 감정 분기 오프닝 카피 (3버전)
+   - 생활 장면 구체적 묘사
+   - 매 챕터 끝 "오늘 딱 하나만" 액션 아이템
+   - 변화 타임라인 (주차별 예상 변화)
+   - 자연스러운 업셀 3회
+   - 캡처용 마지막 문장
+   - 챕터 내 콘텐츠 꽉 채우기
 ═══════════════════════════════════════════════════════ */
 
-// 서버에서 주입되는 결과 데이터
 const R = window.__RESULT__ || null;
 
 /* ─── 챕터 관리 ─── */
@@ -996,24 +766,19 @@ let currentIdx = 0;
 let hasB2b = false;
 
 function initChapters(){
-  // B2B 섹션 표시 여부
   if(R && R.is_b2b_partner && R.b2b_institution_types && R.b2b_institution_types.length > 0){
     hasB2b = true;
     document.getElementById('ch75').style.display = '';
     CHAPTERS.push('ch75');
   }
-  // 총 페이지 수
   document.getElementById('pageNumTotal').textContent = CHAPTERS.length;
   document.querySelectorAll('.total-pages').forEach(el => el.textContent = CHAPTERS.length);
   document.getElementById('ch75PageNum').textContent = CHAPTERS.length + ' / ' + CHAPTERS.length;
-
-  // 마지막 버튼 처리
   const lastNextBtn = document.getElementById('btnLastNext');
   if(hasB2b){
     lastNextBtn.style.display = '';
     lastNextBtn.innerHTML = '파트너 전용 정보 보기 →<small>재방문 설계 · 추천 서비스 · 상담 힌트</small>';
   }
-
   buildProgressDots();
   showChapter(0);
   document.getElementById('loadingState').style.display = 'none';
@@ -1044,7 +809,6 @@ function showChapter(idx){
       else el.classList.remove('active');
     }
   });
-  // 진행 dots
   document.querySelectorAll('.pdot').forEach((dot, i) => {
     dot.className = 'pdot'
       + (i < idx ? ' done' : '')
@@ -1060,36 +824,56 @@ function prevChapter(){ showChapter(currentIdx - 1) }
 
 /* ─── 데이터 파싱 헬퍼 ─── */
 function jp(s){ try{ return typeof s === 'string' ? JSON.parse(s) : s }catch(e){ return null }}
-function esc(s){ return (s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
 function safe(s, fallback){ return (s && s.trim()) ? s : (fallback||'') }
 
 /* ═══════════════════════════════════════════════════════
-   CHAPTER 1 렌더링
+   CHAPTER 1 · 감정 분기 오프닝 + 바디코드 공개
 ═══════════════════════════════════════════════════════ */
 function renderCh1(){
   if(!R || !R.bc) return;
   const bc = R.bc;
   const res = R.result;
+  const userName = res.user_name || '';
 
-  // 오프닝
-  const opening = bc.bc_primary_oneline_reason || '지금까지 아무도 알려주지 않은 이유가 있습니다.';
-  document.getElementById('p1Opening').textContent = opening;
+  /* ── 감정 분기 오프닝 3버전 ── */
+  const emotionalState = (res.emotional_state || '').trim();
+  let openingText = '';
+  let actionText = '';
+
+  if(emotionalState === '지쳐있어요'){
+    openingText = `<span class="emotional-name">${esc(userName)}님, 충분히 힘드셨습니다.</span><br><br>더 이상 의지력 탓을 하지 않아도 됩니다.<br>배가 유독 안 빠지는 건 당신이 약해서가 아닙니다.<br>오늘, 진짜 이유를 처음으로 알게 됩니다.`;
+    actionText = '이 페이지를 닫기 전에 — 배꼽 주변을 손으로 꾹 눌러보세요. 딱딱하게 막히는 느낌이 드시나요? 그게 내장지방입니다. 당신이 약해서가 아니라, 호르몬 스위치 때문입니다. 다음 페이지에서 이유를 알게 됩니다.';
+  } else if(emotionalState === '불안해요'){
+    openingText = `<span class="emotional-name">${esc(userName)}님, 이대로 가도 괜찮습니다.</span><br><br>지금 이 결과지를 받는 순간부터 달라집니다.<br>당신 몸에 무슨 일이 일어나고 있었는지,<br>지금부터 처음으로 알게 됩니다.`;
+    actionText = '이 페이지를 닫기 전에 — 지금 느끼는 불안이 사실은 몸이 변화를 원한다는 신호입니다. 불안한 마음 그대로 다음 페이지를 읽어보세요. 이유를 알면 불안이 방향이 됩니다.';
+  } else if(emotionalState === '결심했어요'){
+    openingText = `<span class="emotional-name">${esc(userName)}님, 이번엔 다릅니다.</span><br><br>이제까지는 방법이 틀렸을 뿐입니다.<br>당신 몸에 맞는 방법이 드디어 생겼습니다.<br>지금부터 읽어보세요.`;
+    actionText = '이 페이지를 닫기 전에 — 결심은 3시간이 지나면 50%가 사라집니다. 지금 당장, 오늘 저녁 밥 먹은 후 15분 걷겠다는 것 하나만 달력에 적어보세요. 그 하나가 시작입니다.';
+  } else {
+    // 기본값 (감정 상태 없음)
+    const oneline = bc.bc_primary_oneline_reason || '지금까지 아무도 알려주지 않은 이유가 있습니다.';
+    openingText = `<span class="emotional-name">${esc(userName || '고객')}님,</span><br><br>${esc(oneline)}`;
+    actionText = '이 페이지를 닫기 전에 — 배꼽 주변을 손으로 꾹 눌러보세요. 딱딱하게 막히는 느낌이 드시나요? 그게 내장지방입니다. 다음 페이지에서 이게 왜 생겼는지 알게 됩니다.';
+  }
+
+  document.getElementById('p1OpeningText').innerHTML = openingText;
+  document.getElementById('p1ActionText').textContent = actionText;
 
   // BC 코드
   document.getElementById('p1BcCode').textContent = res.bc_primary || 'BC-??';
   document.getElementById('p1BcBrand').textContent =
-    (bc.brand_name || '') + ' · ' + (bc.tagline || '');
+    (bc.brand_name || '') + (bc.tagline ? ' · ' + bc.tagline : '');
 
-  // 뱃지 4개 (사주 일간 / MBTI / 혈액형 / 오행)
+  // 뱃지 4개
   const badges = document.getElementById('p1Badges');
   badges.innerHTML = '';
-  const badgeData = [
-    {icon:'⚔️', val: res.saju_il_gan ? (res.saju_il_gan + '일간') : null},
+  [
+    {icon:'⚔️', val: res.saju_il_gan ? (res.saju_il_gan + ' 일간') : null},
     {icon:'🧠', val: res.mbti},
     {icon:'🩸', val: res.blood_type ? (res.blood_type + '형') : null},
     {icon:'🌿', val: res.ohaeng_type ? (res.ohaeng_type + ' 체질') : null},
-  ];
-  badgeData.filter(b => b.val).forEach(b => {
+  ].filter(b => b.val).forEach(b => {
     const span = document.createElement('span');
     span.className = 'badge';
     span.textContent = b.icon + ' ' + b.val;
@@ -1103,29 +887,62 @@ function renderCh1(){
   symptoms.slice(0, 5).forEach(s => {
     cl.innerHTML += `<div class="ci"><span class="ci-mark">✦</span>${esc(s)}</div>`;
   });
+  // 체크리스트 없으면 기본
+  if(symptoms.length === 0){
+    const defSym = ['팔다리는 그렇게 굵지 않은데, 특정 부위만 유독 볼록하다',
+      '열심히 했는데, 그 부위만은 절대 안 빠졌다',
+      '스트레스를 받으면 식욕이 폭발하거나 특정 음식이 당긴다',
+      '나름 열심히 관리했지만 결과가 기대보다 훨씬 적었다',
+      '밥을 먹고 나면 유독 기운이 빠지거나 졸린 느낌이 든다'];
+    defSym.forEach(s => {
+      cl.innerHTML += `<div class="ci"><span class="ci-mark">✦</span>${esc(s)}</div>`;
+    });
+  }
 
   // 훅박스
+  const hookBody = document.getElementById('p1HookBody');
   const hookArea = bc.fat_area || '이 부위';
-  document.getElementById('p1HookBox').querySelector('.hook-body').textContent =
-    hookArea + '에 지방이 쌓이는 진짜 이유. 지금부터 당신의 몸 이야기가 시작됩니다.';
+  hookBody.textContent = hookArea + '에 지방이 쌓이는 진짜 이유. 지금부터 당신의 몸 이야기가 시작됩니다.';
 }
 
 /* ═══════════════════════════════════════════════════════
-   CHAPTER 2 렌더링 (스토리 레이어 조합)
+   CHAPTER 2 · 생활 장면 + 스토리 레이어
 ═══════════════════════════════════════════════════════ */
 function renderCh2(){
   if(!R) return;
-  const bc = R.bc;
-  const res = R.result;
+  const bc = R.bc || {};
+  const res = R.result || {};
   const ohaeng = R.ohaeng || {};
   const saju = R.saju || {};
   const mbtiBlood = R.mbti_blood || {};
 
+  // 생활 장면 (bc 코드별 특화 또는 범용)
+  const bcCode = (res.bc_primary || 'BC-01').toUpperCase();
+  const sceneMap = {
+    'BC-01': { text: '"그 여름을 기억하시나요.\n\n수영장에 가고 싶었는데 수영복 대신 래쉬가드를 고른 그 날.\n단체 사진을 찍을 때 자연스럽게 뒤로 물러섰던 그 순간.\n옷을 입다가 거울을 잠깐 피했던 그 아침."',
+      resolve: '그 모든 순간들이 당신 잘못이 아니었습니다. 인슐린이라는 호르몬이 배에 지방을 가두고 있었을 뿐입니다.' },
+    'BC-02': { text: '"술자리 다음 날 아침을 기억하시나요.\n\n거울 앞에 서면 어제보다 배가 더 나온 것 같아서.\n운동을 안 해서가 아니라, 어디서부터 잘못됐는지 몰라서.\n어제도 오늘도, 시작은 내일로 미뤄졌던 그 아침."',
+      resolve: '그 악순환이 당신 의지의 문제가 아닌 알코올이 간에서 지방을 만드는 경로 때문이었습니다.' },
+    'BC-03': { text: '"옷을 고를 때 어깨 라인이 신경 쓰였던 날.\n\n목이 짧아 보이는 것 같아 목 라인이 드러나는 옷을 피했던 기억.\n헬스장에서 어깨 운동을 열심히 했는데 오히려 더 두꺼워진 느낌.\n그때 왜 그런지 아무도 말해주지 않았습니다."',
+      resolve: '그게 근육이 커진 게 아닙니다. 림프가 막혀서 쌓인 것입니다.' },
+    'BC-05': { text: '"수영장에서 하의 실종 수영복 입기가 무서웠던 날.\n\n하체가 유독 크다는 말에 스쿼트를 열심히 했는데 허벅지만 더 굵어진 느낌.\n단체 사진에서 전신이 나오는 걸 피했던 그 순간.\n그때는 왜인지 몰랐습니다."',
+      resolve: '스쿼트가 이 체형에 효과가 없는 데는 이유가 있습니다. 에스트로겐이 하체 지방세포를 붙잡고 있었던 겁니다.' },
+    'BC-09': { text: '"스트레스 받은 날 밤을 기억하시나요.\n\n먹지 않으려고 했는데 어느새 냉장고 앞에 서 있던 그 순간.\n먹고 나서 후회했고, 그 죄책감이 다음 날 더 힘들게 만들었던 기억.\n그게 의지력이 약해서가 아니었습니다."',
+      resolve: '코르티솔이 뇌에 단것을 원하라는 신호를 보낸 것입니다. 당신의 잘못이 아닙니다.' },
+  };
+  const scene = sceneMap[bcCode] || {
+    text: '"그 날을 기억하시나요.\n\n거울 앞에서 오늘도 별로 달라지지 않았다는 걸 확인했던 그 아침.\n열심히 했는데 왜 내 몸만 이런지 모르겠다는 생각.\n그게 당신 잘못이 아니었습니다."',
+    resolve: '지금부터 그 이유를 처음으로 알게 됩니다.'
+  };
+
+  document.getElementById('p2SceneText').innerHTML = scene.text.replace(/\n/g, '<br>');
+  document.getElementById('p2SceneResolve').textContent = scene.resolve;
+
+  // 스토리 본문
   const wrap = document.getElementById('p2Story');
   wrap.innerHTML = '';
 
-  // 기본 스토리 (BC 처방 DB)
-  const causeStory = bc ? bc.bc_cause_story : '';
+  const causeStory = bc.bc_cause_story || '';
   if(causeStory){
     causeStory.split('\n').filter(p => p.trim()).forEach(para => {
       wrap.innerHTML += `<p class="story-p">${esc(para)}</p>`;
@@ -1145,7 +962,7 @@ function renderCh2(){
 
   // 사주 일간 레이어
   if(saju.personality_hint){
-    wrap.innerHTML += `<p class="story-p"><span class="hl-blue">${esc(saju.il_gan_ko || '')}${esc(saju.il_gan || '')} 일간</span>으로 태어난 당신은 ${esc(saju.personality_hint)}. ${esc(saju.organ || '')}이 ${esc(saju.weak_season || '')}에 취약해지는 패턴이 있습니다.</p>`;
+    wrap.innerHTML += `<p class="story-p"><span class="hl-blue">${esc(saju.il_gan_ko || '')}${esc(saju.il_gan || '')} 일간</span>으로 태어난 당신은 ${esc(saju.personality_hint)}. <span class="hl-yellow">${esc(saju.weak_season || '')}에 특히 주의</span>해야 합니다.</p>`;
   }
 
   // MBTI × 혈액형 레이어
@@ -1154,33 +971,30 @@ function renderCh2(){
       <p class="story-p"><span class="hl-yellow">${esc(res.mbti || '')}+${esc(res.blood_type || '')}형</span> 조합: ${esc(mbtiBlood.story_insert)}</p>`;
   }
 
-  wrap.innerHTML += `<p class="story-p">지금까지 실패했던 건 당신이 약해서가 아닙니다. <span class="hl-bold">당신 몸에 맞지 않는 방법을 써왔기 때문입니다.</span></p>`;
+  wrap.innerHTML += `<p class="story-p" style="font-weight:600;color:var(--navy);">지금까지 실패했던 건 당신이 약해서가 아닙니다. <span class="hl-bold">당신 몸에 맞지 않는 방법을 써왔기 때문입니다.</span> 이제, 맞는 방법이 생겼습니다.</p>`;
 }
 
 /* ═══════════════════════════════════════════════════════
-   CHAPTER 3 렌더링
+   CHAPTER 3 · 왜 안됐나 + 올바른 원리
 ═══════════════════════════════════════════════════════ */
 function renderCh3(){
   if(!R || !R.bc) return;
   const bc = R.bc;
   const res = R.result;
 
-  // 반전 훅 카피
   const worsen = bc.bc_worsen_word || '지금 하고 있는 방법';
   document.getElementById('p3Quote').innerHTML =
-    `"<span class="hl-red">${esc(worsen)}</span>이 살이 안 빠지는 직접적인 원인이었습니다."`;
+    `"${esc(res.user_name || '')}님이 <span class="hl-red">${esc(worsen)}</span>을 열심히 하면 할수록,<br>사실 이 체형의 지방은 더 단단하게 자리를 지키고 있었습니다."`;
 
   // 틀린 방법들
   const wrongWrap = document.getElementById('p3WrongMethods');
   wrongWrap.innerHTML = '';
   const wrongMethods = jp(bc.wrong_methods_json) || [];
-
   if(wrongMethods.length > 0){
     let html = `<div class="presc-card">
       <div class="pc-head red"><span class="pc-icon">❌</span><span class="pc-title red-t">지금까지 하던 방법 — 왜 역효과였나</span></div>
       <div class="pc-body">`;
     wrongMethods.forEach(m => {
-      // 실제로 했던 운동인지 표시 (survey 교차)
       const pastEx = jp(res.survey_summary_json)?.past_exercises || [];
       const didThis = pastEx.some(ex =>
         (m.method || m.name || '').includes(ex) || ex.includes(m.method || m.name || '')
@@ -1188,7 +1002,7 @@ function renderCh3(){
       html += `<div class="pc-item">
         <div class="pc-dot" style="background:#DC2626"></div>
         <div>
-          <div class="pc-text"><strong>${esc(m.method || m.name || '')}${didThis ? ' ← <span style="color:#DC2626;font-size:11px">당신이 해왔던 것</span>' : ''}</strong></div>
+          <div class="pc-text"><strong>${esc(m.method || m.name || '')}${didThis ? ' <span style="color:#DC2626;font-size:11px;background:#FEE2E2;padding:1px 6px;border-radius:6px">직접 해보셨던 것</span>' : ''}</strong></div>
           <div class="pc-reason">${esc(m.reason || '')}</div>
         </div>
       </div>`;
@@ -1206,18 +1020,38 @@ function renderCh3(){
       <div class="pc-head green"><span class="pc-icon">✓</span><span class="pc-title green-t">실제로 작동하는 원리</span></div>
       <div class="pc-body">`;
     correct.forEach(c => {
+      const principle = typeof c === 'string' ? c : (c.principle || c.name || JSON.stringify(c));
+      const detail = typeof c === 'object' ? (c.detail || c.description || '') : '';
       html += `<div class="pc-item">
         <div class="pc-dot" style="background:#059669"></div>
-        <div class="pc-text">${esc(c.principle || c)}</div>
+        <div>
+          <div class="pc-text"><strong>${esc(principle)}</strong></div>
+          ${detail ? `<div class="pc-reason">${esc(detail)}</div>` : ''}
+        </div>
       </div>`;
     });
     html += `</div></div>`;
     correctWrap.innerHTML = html;
   }
+
+  // 챕터 액션 아이템 (bc코드별)
+  const p3Action = document.getElementById('p3ActionText');
+  const bcCode = (res.bc_primary || '').toUpperCase();
+  const actionMap = {
+    'BC-01': '크런치를 하고 있다면 오늘부터 잠깐 멈춰보세요. 대신 밥 먹은 후 15분 걷기 하나만. 이 체형에게는 그게 100배 효과적입니다.',
+    'BC-02': '오늘 음주 계획이 있다면, 한 잔 줄여보세요. 딱 한 잔. 4주 후 배 사이즈 변화를 확인해보세요.',
+    'BC-03': '오늘 1시간마다 알람을 맞추고, 알람이 울리면 어깨를 10번 돌려보세요. 경추 하중이 줄어들기 시작합니다.',
+    'BC-05': '오늘부터 스쿼트를 잠깐 멈춰보세요. 대신 수영장 예약을 해보세요. 허벅지 사이즈가 줄어드는 게 느껴질 겁니다.',
+    'BC-06': '오늘 밤 족욕을 해보세요. 따뜻한 물에 20분. 취침 전 이것 하나가 셀룰라이트 처방의 시작입니다.',
+    'BC-08': '오늘 다이어트를 2주 중단해보세요. 그게 가장 강력한 처방입니다. 역설이지만 사실입니다.',
+    'BC-09': '오늘 취침 2시간 전에 스마트폰을 내려놓아보세요. 그 하나가 코르티솔 회복의 시작입니다.',
+    'BC-10': '오늘부터 숫자 대신 습관을 기록해보세요. 오늘 채소를 먹었는지, 7000보를 걸었는지. 그 기록이 요요를 막는 진짜 방법입니다.',
+  };
+  p3Action.textContent = actionMap[bcCode] || '지금까지 했던 운동 중 가장 열심히 했던 것을 떠올려보세요. 그게 효과가 없었던 게 이제 이해가 되시나요. 다음 페이지에 맞는 방법이 나옵니다.';
 }
 
 /* ═══════════════════════════════════════════════════════
-   CHAPTER 4 렌더링 (v2.0 — 한국 8종목 + 유산소 분기)
+   CHAPTER 4 · 운동 처방
 ═══════════════════════════════════════════════════════ */
 function renderCh4(){
   if(!R || !R.bc) return;
@@ -1233,16 +1067,17 @@ function renderCh4(){
     let html = `<div class="presc-card">
       <div class="pc-head green"><span class="pc-icon">🏃</span><span class="pc-title">추천 운동 — 이유와 함께</span></div>
       <div class="pc-body">`;
-    sports.forEach((s, i) => {
+    sports.slice(0,3).forEach((s, i) => {
       const label = s.sport || s.exercise || s.name || s;
-      const cond = s.condition ? ` <span style="color:var(--gray-400);font-size:11px">(${s.condition})</span>` : '';
-      const freq = s.frequency ? `<br><span style="color:var(--blue);font-size:11px">📅 ${s.frequency}</span>` : '';
+      const freq = s.frequency ? `<span style="color:var(--blue);font-size:11px"> 📅 ${s.frequency}</span>` : '';
       const reason = s.reason_bc || s.reason || '';
+      const mbtiTip = s.mbti_tip || '';
       html += `<div class="pc-item">
         <div class="pc-dot" style="background:#059669"></div>
         <div>
-          <div class="pc-text"><strong>① ${label}</strong>${cond}${freq}</div>
+          <div class="pc-text"><strong>${i+1}. ${esc(label)}</strong>${freq}</div>
           ${reason ? `<div class="pc-reason">${esc(reason)}</div>` : ''}
+          ${mbtiTip ? `<div class="pc-reason" style="color:var(--blue)">💡 ${esc(mbtiTip)}</div>` : ''}
         </div>
       </div>`;
     });
@@ -1256,9 +1091,9 @@ function renderCh4(){
   const forbidden = jp(bc.forbidden_sports_json) || jp(bc.forbidden_exercises_json) || [];
   if(forbidden.length > 0){
     let html = `<div class="presc-card">
-      <div class="pc-head red"><span class="pc-icon">🚫</span><span class="pc-title red-t">절대 금지 — 이유와 함께</span></div>
+      <div class="pc-head red"><span class="pc-icon">🚫</span><span class="pc-title red-t">지금 이 체형에 맞지 않는 운동</span></div>
       <div class="pc-body">`;
-    forbidden.forEach(f => {
+    forbidden.slice(0,3).forEach(f => {
       const label = f.sport || f.exercise || f.name || f;
       const reason = f.reason || '';
       html += `<div class="pc-item">
@@ -1273,17 +1108,17 @@ function renderCh4(){
     forbWrap.innerHTML = html;
   }
 
-  // 유산소 분기 처방 (v2.0)
+  // 유산소 분기
   const aerobic = bc.aerobic_restriction;
   const schedWrap = document.getElementById('p4Schedule');
   schedWrap.innerHTML = '';
   if(aerobic && aerobic !== 'null'){
     const aerobicMap = {
-      'warm_only': '⚠️ 유산소는 온수 수영(28도+)만 허용. 러닝·저녁 유산소 전면 금지.',
-      'morning_walk_only': '⚠️ 오전 30분 걷기만 허용. 저녁 유산소 전면 금지. Zone2 심박 115bpm 이하.',
-      'upper_body_swim_only': '⚠️ 상체 위주 수영만. 자전거·스피닝·계단 금지.',
+      'warm_only': '⚠️ 유산소는 온수 수영(28도+)만 허용. 러닝·저녁 유산소 지금은 맞지 않습니다.',
+      'morning_walk_only': '⚠️ 오전 30분 걷기만 권장. 저녁 유산소는 지금 이 체형에 맞지 않습니다.',
+      'upper_body_swim_only': '⚠️ 상체 위주 수영만. 자전거·스피닝·계단은 지금 단계에 맞지 않습니다.',
       'full_rest': '🛑 모든 유산소 중단 권고. 1~2주 완전 휴식 처방. 회복 후 재진단.',
-      'conditional': '✓ 식후 Zone2 유산소 허용. 공복 유산소 금지.',
+      'conditional': '✓ 식후 Zone2 유산소 허용. 공복 유산소는 지금 이 체형에 맞지 않습니다.',
     };
     if(aerobicMap[aerobic]){
       schedWrap.innerHTML = `<div class="hook-box">
@@ -1291,20 +1126,6 @@ function renderCh4(){
         <div class="hook-body">${aerobicMap[aerobic]}<br><br>Zone2 유지 심박: <strong>${bc.zone2_bpm_v2 || bc.zone2_bpm || 135}bpm 이하</strong> / HIIT 도입 가능 시점: <strong>${esc(bc.hiit_available_week_v2 || bc.hiit_available_week || '재진단 후')}</strong></div>
       </div>`;
     }
-  }
-
-  // 주간 스케줄
-  const weekly = jp(bc.weekly_schedule_json);
-  if(weekly){
-    schedWrap.innerHTML += `<div class="presc-card">
-      <div class="pc-head gray"><span class="pc-icon">📅</span><span class="pc-title">주간 스케줄 — ${esc(res.mbti||'')} ${esc(res.blood_type||'')}형 맞춤</span></div>
-      <div class="pc-body">
-        <table class="meal-table">
-          <tr><th>요일</th><th>운동</th><th>시간</th></tr>
-          ${weekly.map(w => `<tr><td>${esc(w.day||'')}</td><td>${esc(w.exercise||'')}</td><td>${esc(w.duration||'')}</td></tr>`).join('')}
-        </table>
-      </div>
-    </div>`;
   }
 
   // MBTI × 혈액형 동기 언어
@@ -1316,73 +1137,129 @@ function renderCh4(){
       <div class="hook-body">"${esc(mbtiBlood.motivation_lang)}"</div>
     </div>`;
   }
+
+  // 액션 아이템 (운동처방 챕터)
+  const p4Action = document.getElementById('p4ActionText');
+  const bcCode4 = (res.bc_primary || '').toUpperCase();
+  const actionMap4 = {
+    'BC-01': '오늘 저녁 밥을 먹고 나서 딱 15분만 걸어보세요. 처음부터 헬스장 갈 필요 없습니다. 밥 먹고 15분 걷기. 이것이 첫 번째 처방입니다.',
+    'BC-02': '오늘 음주 다음날 고강도 운동 계획이 있다면 가벼운 산책으로 바꿔보세요. 간이 먼저 회복해야 지방이 빠집니다.',
+    'BC-03': '오늘 어깨 원 그리기 10회를 해보세요. 지금 바로, 앉은 자리에서. 경추 하중이 줄어들기 시작합니다.',
+    'BC-04': '오늘 드로인 운동을 찾아보고 10회 해보세요. 배꼽을 척추 쪽으로 당기는 것. 이것이 허리 라인의 시작입니다.',
+    'BC-05': '오늘 족욕을 해보세요. 40도 따뜻한 물에 20분. 하체 운동보다 림프 순환이 먼저입니다.',
+    'BC-06': '오늘 밤 따뜻한 물을 한 잔 마시면서 족욕을 준비해보세요. 냉증 처방의 첫 번째 단계입니다.',
+    'BC-07': '오늘 단백질을 한 끼에 의식적으로 추가해보세요. 달걀 1개, 두부 반모, 닭가슴살 100g 중 하나. 근육 합성의 시작입니다.',
+    'BC-08': '오늘 다이어트 계획을 일단 멈춰보세요. 2주. 그것이 가장 강력한 처방입니다.',
+    'BC-09': '오늘 저녁 고강도 운동 대신 요가 영상 하나를 찾아보세요. 20분. 코르티솔이 줄어들기 시작합니다.',
+    'BC-10': '오늘 내가 즐길 수 있는 운동 하나를 생각해보세요. 다이어트용이 아니라 즐거운 것. 그게 요요를 막는 유일한 방법입니다.',
+  };
+  p4Action.textContent = actionMap4[bcCode4] || '오늘 저녁 밥을 먹고 나서 딱 15분만 걸어보세요. 처음부터 헬스장 갈 필요 없습니다. 밥 먹고 15분 걷기. 이것이 첫 번째 처방입니다.';
 }
 
 /* ═══════════════════════════════════════════════════════
-   CHAPTER 4.5 렌더링 (회복 처방 — 신설)
+   CHAPTER 4.5 · 회복 처방 + 변화 타임라인
 ═══════════════════════════════════════════════════════ */
 function renderCh45(){
   if(!R || !R.bc) return;
   const bc = R.bc;
   const res = R.result;
 
-  // 회복 우선순위 3가지
+  // 회복 우선순위
   const recWrap = document.getElementById('p45Recovery');
   recWrap.innerHTML = '';
   const recovery = jp(bc.recovery_priority_json) || [];
   if(recovery.length > 0){
     recWrap.innerHTML = `<div class="section-label">회복 우선순위 처방 — ${esc(res.bc_primary||'')} 맞춤</div>
     <div class="recovery-grid">
-      ${recovery.map(r => `<div class="rec-card">
-        <div class="rec-priority">PRIORITY ${r.priority}</div>
+      ${recovery.slice(0,3).map(r => `<div class="rec-card">
+        <div class="rec-priority">PRIORITY ${r.priority||1}</div>
         <div class="rec-method">${esc(r.method||'')}</div>
         <div class="rec-reason">${esc(r.reason||'')}</div>
       </div>`).join('')}
     </div>`;
   }
 
-  // 사우나·크라이오 정보
+  // 사우나·크라이오
   const saunaWrap = document.getElementById('p45SaunaInfo');
   saunaWrap.innerHTML = '';
   const saunaOk = bc.sauna_ok;
   const cryoOk = bc.cryo_ok;
-  const saunaText = saunaOk === 'true' ? '✓ 권장' : (saunaOk === 'conditional' ? '△ 조건부' : '✕ 금지');
-  const cryoText = cryoOk === 'true' ? '✓ 권장' : '✕ 금지 (냉증 악화 위험)';
+  const saunaText = saunaOk === 'true' ? '✓ 권장 (주 2회, 15~20분)' : (saunaOk === 'conditional' ? '△ 조건부 — 선생님 확인 후' : '지금 단계에서는 온수 족욕으로 대체');
+  const cryoText = cryoOk === 'true' ? '✓ 권장' : '지금 이 체형에는 맞지 않음 (냉증 악화 위험)';
   saunaWrap.innerHTML = `<div class="presc-card">
     <div class="pc-head blue"><span class="pc-icon">♨️</span><span class="pc-title blue-t">온열 · 냉각 처방</span></div>
     <div class="pc-body">
-      <div class="pc-item">
-        <div class="pc-dot" style="background:var(--blue)"></div>
-        <div><div class="pc-text"><strong>사우나·온열 테라피</strong> — ${saunaText}</div></div>
-      </div>
-      <div class="pc-item">
-        <div class="pc-dot" style="background:var(--blue)"></div>
-        <div><div class="pc-text"><strong>크라이오테라피 (냉동 치료)</strong> — ${cryoText}</div></div>
-      </div>
+      <div class="pc-item"><div class="pc-dot" style="background:var(--blue)"></div>
+        <div><div class="pc-text"><strong>사우나·온열 테라피</strong> — ${saunaText}</div></div></div>
+      <div class="pc-item"><div class="pc-dot" style="background:var(--blue)"></div>
+        <div><div class="pc-text"><strong>크라이오테라피 (냉동 치료)</strong> — ${cryoText}</div></div></div>
     </div>
   </div>`;
 
-  // 마사지 붓는 체질 대응 (설문 A+2)
+  // 마사지 붓는 체질
   const massageWrap = document.getElementById('p45MassageWarning');
   massageWrap.innerHTML = '';
-  const massageSwells = res && res.massage_swells;
-  if(massageSwells){
+  if(res && res.massage_swells){
     const protocol = jp(bc.lymph_massage_protocol_json) || {};
     massageWrap.innerHTML = `<div class="reveal-box">
       <div class="reveal-title">⚠️ 당신은 마사지 후 더 붓는 체질입니다</div>
       <div class="reveal-body">
-        림프관이 이미 막혀있는 상태에서 강한 마사지를 받으면 조직액이 방출되는데 배출 경로가 없어서 일시적으로 더 붓습니다. <strong>순서의 문제입니다.</strong><br><br>
+        림프관이 막혀있는 상태에서 강한 마사지를 받으면 조직액이 방출되는데 배출 경로가 없어서 일시적으로 더 붓습니다.<br><br>
         ① 마사지 전 겨드랑이·사타구니 10회 가볍게 압박 선행<br>
         ② 마사지 강도 첫 2주간 ${protocol.intensity_pct||50}%로 제한<br>
-        ③ 마사지 후 미지근한 물 ${protocol.post_water_ml||500}ml 즉시 음용<br>
-        ④ 마사지 후 30분 이상 다리 심장보다 높이 올리기
+        ③ 마사지 후 미지근한 물 ${protocol.post_water_ml||500}ml 즉시 음용
       </div>
     </div>`;
   }
+
+  // 변화 타임라인 (bc코드별 특화)
+  const timelineWrap = document.getElementById('p45Timeline');
+  const bcCode45 = (res.bc_primary || 'BC-01').toUpperCase();
+
+  const timelineData = {
+    'BC-01': [
+      {week:'1~2주', change:'식곤증이 먼저 줄어듭니다', detail:'식사 순서를 바꾸고 식후 걷기를 시작하면, 밥 먹은 후 졸리던 증상이 줄어들기 시작합니다.'},
+      {week:'3~4주', change:'벨트 구멍이 달라집니다', detail:'인슐린 스파이크가 줄어들면서 복부 내장지방이 에너지로 쓰이기 시작합니다. 손으로 배를 만지면 조금 달라진 느낌이 납니다.'},
+      {week:'6~8주', change:'체중계보다 몸이 먼저 바뀝니다', detail:'숫자는 느리게 바뀌지만 옷 맵시가 달라지기 시작합니다. 허리 라인이 생기기 시작합니다.'},
+      {week:'12주', change:'지속 가능한 몸이 됩니다', detail:'대사가 안정화되고 인슐린 저항성이 개선됩니다. 같은 것을 먹어도 살이 덜 찌는 몸으로 바뀝니다.'},
+    ],
+    'BC-02': [
+      {week:'1~2주', change:'절주 시작, 간이 호흡하기 시작합니다', detail:'술을 줄이면 간이 지방 대사를 다시 시작합니다. 아침 얼굴 붓기가 줄어들기 시작합니다.'},
+      {week:'3~4주', change:'배가 들어가기 시작합니다', detail:'절주 4주 후부터 간지방이 줄기 시작합니다. 이 체형에서 변화가 가장 빠른 타이밍입니다.'},
+      {week:'6~8주', change:'에너지 레벨이 달라집니다', detail:'간 기능이 회복되면서 하루 종일 피로감이 줄어들고 에너지가 올라갑니다.'},
+    ],
+    'BC-05': [
+      {week:'1~2주', change:'하체 붓기가 먼저 줄어듭니다', detail:'족욕과 림프 마사지를 시작하면 아침에 일어났을 때 하체 붓기가 줄어들기 시작합니다.'},
+      {week:'4~6주', change:'허벅지 질감이 달라집니다', detail:'에스트로겐 대사가 개선되면서 허벅지 외측의 질감이 부드러워지기 시작합니다.'},
+      {week:'8~12주', change:'상하체 비율이 달라집니다', detail:'상체 근육이 늘면서 전신 기초대사가 올라갑니다. 하체와 상체의 비율이 균형을 잡기 시작합니다.'},
+    ],
+  };
+
+  const tl = timelineData[bcCode45] || [
+    {week:'1~2주', change:'첫 번째 변화', detail:'처방을 시작하면 2주 안에 몸이 반응하기 시작합니다. 에너지 레벨이나 수면 질이 먼저 달라집니다.'},
+    {week:'4~6주', change:'눈에 보이는 변화', detail:'꾸준히 지속하면 체형과 몸무게에 변화가 오기 시작합니다.'},
+    {week:'12주', change:'지속 가능한 몸', detail:'3개월이 지나면 새로운 몸 상태가 자리를 잡습니다.'},
+  ];
+
+  let tlHtml = `<div class="timeline-title">📅 변화가 오는 순서 — 미리 알면 포기하지 않습니다</div>`;
+  tl.forEach(t => {
+    tlHtml += `<div class="timeline-item">
+      <div class="tl-week">${esc(t.week)}</div>
+      <div class="tl-body">
+        <div class="tl-change">${esc(t.change)}</div>
+        <div class="tl-detail">${esc(t.detail)}</div>
+      </div>
+    </div>`;
+  });
+  timelineWrap.innerHTML = tlHtml;
+
+  // 타임라인 챕터 액션
+  const p45Action = document.getElementById('p45ActionText');
+  p45Action.textContent = '오늘 밤 — 핸드폰을 내려놓고, 정해진 시간에 눈을 감아보세요. 회복은 잠에서 시작됩니다. 7시간이 모든 처방보다 먼저입니다.';
 }
 
 /* ═══════════════════════════════════════════════════════
-   CHAPTER 5 렌더링 (6대 영양소 + 식단)
+   CHAPTER 5 · 식단 처방
 ═══════════════════════════════════════════════════════ */
 function renderCh5(){
   if(!R || !R.bc) return;
@@ -1395,28 +1272,23 @@ function renderCh5(){
   macroWrap.innerHTML = '';
   const macro = jp(bc.macro_ratio_json) || {};
   const macroStory = bc.macro_story || '';
-  const barColors = {
-    protein:'#3B82F6', fat:'#F59E0B', carb:'#10B981', fiber:'#8B5CF6', water:'#06B6D4'
-  };
+  const barColors = {protein:'#3B82F6', fat:'#F59E0B', carb:'#10B981', fiber:'#8B5CF6', water:'#06B6D4'};
   if(Object.keys(macro).length > 0){
     let html = `<div class="presc-card">
       <div class="pc-head blue"><span class="pc-icon">⚖️</span><span class="pc-title blue-t">6대 영양소 처방 비율</span></div>
-      <div class="pc-body">
-        <div class="macro-wrap">`;
+      <div class="pc-body"><div class="macro-wrap">`;
     if(macro.protein_pct) html += `<div class="macro-item"><span class="macro-label">단백질</span><div class="macro-bar-bg"><div class="macro-bar" style="width:${macro.protein_pct}%;background:${barColors.protein}"></div></div><span class="macro-pct">${macro.protein_pct}%</span></div>`;
     if(macro.fat_pct) html += `<div class="macro-item"><span class="macro-label">지방</span><div class="macro-bar-bg"><div class="macro-bar" style="width:${macro.fat_pct}%;background:${barColors.fat}"></div></div><span class="macro-pct">${macro.fat_pct}%</span></div>`;
     if(macro.carb_pct) html += `<div class="macro-item"><span class="macro-label">탄수화물</span><div class="macro-bar-bg"><div class="macro-bar" style="width:${macro.carb_pct}%;background:${barColors.carb}"></div></div><span class="macro-pct">${macro.carb_pct}%</span></div>`;
     if(macro.fiber_g) html += `<div class="macro-item"><span class="macro-label">식이섬유</span><div class="macro-bar-bg"><div class="macro-bar" style="width:${Math.min(macro.fiber_g*1.5,80)}%;background:${barColors.fiber}"></div></div><span class="macro-pct">${macro.fiber_g}g</span></div>`;
     if(macro.water_L) html += `<div class="macro-item"><span class="macro-label">수분</span><div class="macro-bar-bg"><div class="macro-bar" style="width:70%;background:${barColors.water}"></div></div><span class="macro-pct">${macro.water_L}L+</span></div>`;
     html += `</div>`;
-    if(macroStory){
-      html += `<div class="meal-note">${esc(macroStory)}</div>`;
-    }
+    if(macroStory) html += `<div class="meal-note">${esc(macroStory)}</div>`;
     html += `</div></div>`;
     macroWrap.innerHTML = html;
   }
 
-  // 식품 처방 (권장 + 금지)
+  // 식품 처방
   const foodsWrap = document.getElementById('p5Foods');
   foodsWrap.innerHTML = '';
   const recFoods = jp(bc.recommended_foods_json) || [];
@@ -1426,7 +1298,7 @@ function renderCh5(){
     let html = `<div class="presc-card">
       <div class="pc-head green"><span class="pc-icon">🥦</span><span class="pc-title">적극 권장 식품 (${esc(ohaeng.ohaeng_type||res.ohaeng_type||'')} 체질 + ${esc(res.bc_primary||'')})</span></div>
       <div class="pc-body">`;
-    recFoods.forEach(f => {
+    recFoods.slice(0,4).forEach(f => {
       const name = f.name || f.food || f;
       const reason = f.reason || '';
       html += `<div class="pc-item"><div class="pc-dot" style="background:#059669"></div><div class="pc-text"><strong>${esc(name)}</strong>${reason ? ` — <span style="color:var(--gray-500);font-size:12px">${esc(reason)}</span>` : ''}</div></div>`;
@@ -1437,9 +1309,9 @@ function renderCh5(){
 
   if(forbFoodsReason.length > 0){
     let html = `<div class="presc-card">
-      <div class="pc-head red"><span class="pc-icon">🚫</span><span class="pc-title red-t">절대 금지 식품 — 이유와 함께</span></div>
+      <div class="pc-head red"><span class="pc-icon">🚫</span><span class="pc-title red-t">지금 이 체형에 맞지 않는 식품</span></div>
       <div class="pc-body">`;
-    forbFoodsReason.forEach(f => {
+    forbFoodsReason.slice(0,4).forEach(f => {
       const name = f.food || f.name || f;
       const reason = f.reason || '';
       const urgency = f.urgency || '';
@@ -1461,22 +1333,35 @@ function renderCh5(){
           <tr><th></th><th>아침</th><th>점심</th><th>저녁</th></tr>
           ${meal1.map(m => `<tr><td>${esc(m.day||'')}</td><td>${esc(m.breakfast||'')}</td><td>${esc(m.lunch||'')}</td><td>${esc(m.dinner||'')}</td></tr>`).join('')}
         </table>`;
-    const timingStory = bc.timing_story;
     const timingRule = jp(bc.meal_timing_rule_json) || {};
     if(timingRule.carb_last){
       html += `<div class="meal-note">
         식사 순서 필수: 국·채소 먼저 → 단백질 → 밥 마지막<br>
-        식후 ${timingRule.post_meal_walk_min||15}분 이내 걷기 시작 / 식간 간격 최소 ${timingRule.meal_interval_min||240}분 유지
-        ${timingStory ? '<br>' + esc(timingStory) : ''}
+        식후 ${timingRule.post_meal_walk_min||15}분 이내 걷기 시작 / 식간 간격 최소 ${timingRule.meal_interval_min||240}분
       </div>`;
     }
     html += `</div></div>`;
     mealWrap.innerHTML = html;
   }
+
+  // 식단 챕터 액션
+  const p5Action = document.getElementById('p5ActionText');
+  const bcCode5 = (res.bc_primary || '').toUpperCase();
+  const actionMap5 = {
+    'BC-01': '오늘 저녁 식사 순서를 바꿔보세요. 국 먼저, 나물·반찬 먹고, 밥 마지막. 내일 아침 배가 달라져 있을 수 있습니다.',
+    'BC-02': '오늘 아침 강황 가루 1/4티스푼을 따뜻한 물에 타서 마셔보세요. 간 해독의 시작입니다.',
+    'BC-03': '오늘 물 한 잔을 커피 대신 마셔보세요. 따뜻한 물. 상체 림프 순환이 시작됩니다.',
+    'BC-05': '오늘 식단에서 두유나 두부를 잠깐 피해보세요. 에스트로겐 수용체를 덜 자극하는 것이 시작입니다.',
+    'BC-06': '오늘 차가운 음료 대신 따뜻한 생강차 한 잔을 마셔보세요. 체온이 올라가기 시작합니다.',
+    'BC-07': '오늘 단백질을 의식적으로 한 끼에 추가해보세요. 달걀 1개, 두부 반모, 닭가슴살 100g 중 하나.',
+    'BC-09': '오늘 스트레스를 받았을 때 단것 대신 5분 걷기를 해보세요. 코르티솔이 줄어들기 시작합니다.',
+    'BC-10': '오늘 발효식품을 한 가지 먹어보세요. 김치, 된장, 요거트. 장내 미생물이 변하기 시작합니다.',
+  };
+  p5Action.textContent = actionMap5[bcCode5] || '식사 순서 하나만 바꿔보세요. 오늘 저녁 밥을 마지막에 먹어보세요. 국 먼저, 반찬 먹고, 밥 마지막. 그것 하나입니다.';
 }
 
 /* ═══════════════════════════════════════════════════════
-   CHAPTER 6 렌더링
+   CHAPTER 6 · 영양제 + 생활 루틴 + 사주 계절
 ═══════════════════════════════════════════════════════ */
 function renderCh6(){
   if(!R || !R.bc) return;
@@ -1489,7 +1374,7 @@ function renderCh6(){
   suppWrap.innerHTML = '';
   const supps = jp(bc.supplement_list_json) || [];
   if(supps.length > 0){
-    suppWrap.innerHTML = `<div class="section-label">영양제 처방</div>
+    suppWrap.innerHTML = `<div class="section-label">영양제 처방 — 딱 3가지만 (많으면 안 합니다)</div>
     <div class="supp-grid">
       ${supps.slice(0,3).map(s => `<div class="supp-card">
         <div class="supp-name">${esc(s.name||s)}</div>
@@ -1523,15 +1408,19 @@ function renderCh6(){
     sajuWrap.innerHTML = `<div class="saju-box">
       <div class="saju-title">${esc(saju.il_gan_ko||'')}${esc(saju.il_gan||'')} 일간 — 계절 주의사항</div>
       <div class="saju-body">${esc(saju.season_warning)}<br><br>
-      <strong>이 계절에 특히 피해야 할 것:</strong> ${esc((jp(saju.warning_foods_json)||[]).join(', '))}<br>
+      <strong>이 계절에 특히 주의할 것:</strong> ${esc((jp(saju.warning_foods_json)||[]).join(', '))}<br>
       <strong>이 계절에 보충할 것:</strong> ${esc((jp(saju.boost_foods_json)||[]).join(', '))}
       </div>
     </div>`;
   }
+
+  // 영양제 챕터 액션
+  const p6Action = document.getElementById('p6ActionText');
+  p6Action.textContent = '오늘 취침 전에 영양제 목록을 메모해두세요. 내일 약국에 가서 딱 하나만 사오세요. 첫 번째 영양제부터 시작합니다. 많으면 아무것도 안 하게 됩니다.';
 }
 
 /* ═══════════════════════════════════════════════════════
-   CHAPTER 7 렌더링
+   CHAPTER 7 · 클로징 + 캡처용 문장
 ═══════════════════════════════════════════════════════ */
 function renderCh7(){
   if(!R) return;
@@ -1540,29 +1429,44 @@ function renderCh7(){
   const sched = jp(bc.reassessment_schedule_json) || {};
 
   const closingWrap = document.getElementById('p7Closing');
-  const closingCopy = bc.closing_copy || '당신의 몸은 고장난 게 아닙니다.';
+  const closingCopy = bc.closing_copy || '';
   const userName = res.user_name ? res.user_name + '님의 ' : '';
+  const bcCode7 = (res.bc_primary || 'BC-01').toUpperCase();
+
+  // BC 코드별 클로징 카피 (문서 기반)
+  const closingMap = {
+    'BC-01': '식후 15분 걷기. 복부 진공 호흡. 과일 끊기. 이 세 가지만 4주. 배가 들어가기 시작합니다.',
+    'BC-02': '절주 4주면 간지방이 줄기 시작하고, 배가 들어가기 시작합니다. 첫 4주의 목표는 하나입니다. 주 2회 이하 음주.',
+    'BC-03': '6주. 목이 길어 보이기 시작합니다. 경추를 바로 세우고, 수영으로 림프를 움직이기 시작하면 어깨 라인이 달라집니다.',
+    'BC-04': '필라테스 8주. 드로인 매일. 허리 곡선이 시작됩니다.',
+    'BC-05': '8주. 상하체 비율이 달라집니다. DIM 식품으로 에스트로겐 경로를 열고, 수영으로 림프를 흐르게 하면 하체가 달라집니다.',
+    'BC-06': '족욕 매일. 온수 수영. 따뜻한 물 2.5L. 12주. 허벅지 질감이 달라지기 시작합니다.',
+    'BC-07': '저항 운동 주 4회. 단백질 충분히. 인바디 4주마다. 몸이 바뀌고 있다는 걸 느끼게 됩니다.',
+    'BC-08': '완전 휴식 2주. 유지 칼로리 2주. 몸이 다시 움직이기 시작합니다. 멈추는 것도 전략입니다.',
+    'BC-09': '저녁 운동 대신 요가. 카페인 대신 마그네슘. 4주 후 배가 달라지기 시작합니다.',
+    'BC-10': '더 강하게가 아니라 더 지속 가능하게. 3개월. 이번엔 다릅니다.',
+  };
+  const finalClosing = closingCopy || closingMap[bcCode7] || '당신의 몸은 고장난 게 아닙니다. 잘못된 스위치를 건드려왔을 뿐입니다.';
 
   closingWrap.innerHTML = `
     <div class="closing-main">당신의 몸은<br>고장난 게 아닙니다.</div>
-    <div class="closing-sub">지금까지 잘못된 스위치를 건드려왔을 뿐입니다.<br><br>${esc(closingCopy)}</div>
-    <div class="closing-promise" id="p7Promise">로딩 중...</div>`;
+    <div class="closing-sub">지금까지 잘못된 스위치를 건드려왔을 뿐입니다.<br><br>${esc(finalClosing)}</div>
+    <div class="closing-promise" id="p7Promise">지금부터 시작합니다.</div>
+    <div class="checkpoint-row" id="p7Checkpoints"></div>`;
 
-  // 처방 약속 (월별 계획에서 요약)
+  // 처방 약속
   const monthly = jp(bc.monthly_goals_json) || [];
   const promiseText = monthly.length > 0
     ? monthly.slice(0,2).map(m => m.goal || m).join('\n')
-    : '첫 4주, 지금 드린 처방만 지켜보세요.\n몸이 먼저 반응하기 시작합니다.';
+    : (closingMap[bcCode7] || '첫 4주, 지금 드린 처방만 지켜보세요.\n몸이 먼저 반응하기 시작합니다.');
   document.getElementById('p7Promise').textContent = promiseText;
 
-  // 4주 체크포인트
+  // 체크포인트
   const cpHtml = `
-    <div class="checkpoint-row">
-      <div class="checkpoint"><div class="cp-week">4주</div><div class="cp-desc">${esc(sched.week4||'기본 처방 효과 확인')}</div></div>
-      <div class="checkpoint"><div class="cp-week">8주</div><div class="cp-desc">${esc(sched.week8||'BC 코드 전환 여부')}</div></div>
-      <div class="checkpoint"><div class="cp-week">12주</div><div class="cp-desc">${esc(sched.week12||'유지 시스템 구축')}</div></div>
-    </div>`;
-  closingWrap.innerHTML += cpHtml;
+    <div class="checkpoint"><div class="cp-week">1~2주</div><div class="cp-desc">${esc(sched.week2||'첫 번째 변화 — 에너지 레벨')}</div></div>
+    <div class="checkpoint"><div class="cp-week">4~6주</div><div class="cp-desc">${esc(sched.week6||sched.week4||'눈에 보이는 체형 변화')}</div></div>
+    <div class="checkpoint"><div class="cp-week">12주</div><div class="cp-desc">${esc(sched.week12||'지속 가능한 몸 완성')}</div></div>`;
+  document.getElementById('p7Checkpoints').innerHTML = cpHtml;
 
   // 프리미엄 업셀
   const premWrap = document.getElementById('p7Premium');
@@ -1571,19 +1475,20 @@ function renderCh7(){
   } else {
     premWrap.innerHTML = `
       <div class="pm-title">더 깊이 알고 싶으신가요?</div>
-      <div class="pm-desc">프리미엄 결과지(11페이지)에는 더 많은 것이 담겨있습니다.</div>
+      <div class="pm-desc">이걸 선생님과 함께 보면, 정보가 처방이 됩니다.</div>
       <div class="pm-list">
         📋 14일 상세 식단표 (아침·점심·저녁·간식 전부)<br>
         🎬 추천 운동 영상 QR 연결<br>
         🏥 ${esc(res.bc_primary||'')}형에게 효과적인 병원 치료 옵션<br>
-        🗓️ 3개월 목표 로드맵 (월별 단계별)
+        🗓️ 3개월 목표 로드맵 (주차별 단계별)<br>
+        💬 컨설턴트 선생님 1:1 해석 상담
       </div>
-      <button class="cta-btn" onclick="upgradePremium()">프리미엄 결과지 보기 →</button>`;
+      <button class="cta-btn" onclick="upgradePremium()">선생님과 함께 보기 →</button>`;
   }
 }
 
 /* ═══════════════════════════════════════════════════════
-   CHAPTER 7.5 렌더링 (B2B 파트너 전용)
+   CHAPTER 7.5 · B2B 파트너 전용
 ═══════════════════════════════════════════════════════ */
 function renderCh75(){
   if(!R || !R.is_b2b_partner || !R.bc) return;
@@ -1602,18 +1507,15 @@ function renderCh75(){
       <span class="b2b-badge">PARTNER ONLY</span>
       <span class="b2b-title">${esc(res.user_name||'')}님 — 재방문 설계 정보</span>
     </div>
-
-    <!-- 재방문 주기 -->
     <div class="b2b-section">
       <div class="b2b-section-title">📅 재방문 권장 주기</div>
-      ${['week4','week8','week12'].map(w => `
+      ${['week4','week8','week12'].filter(w => sched[w]).map(w => `
         <div class="b2b-item">
           <span>${w.replace('week','')+'주 후'}</span>
-          <span>${esc(sched[w]||'')}</span>
+          <span>${esc(sched[w])}</span>
         </div>`).join('')}
     </div>`;
 
-  // 선택된 기관 유형별 처방
   selectedTypes.forEach(type => {
     const treatments = b2bTreatments[type] || [];
     if(treatments.length === 0) return;
@@ -1629,7 +1531,6 @@ function renderCh75(){
     </div>`;
   });
 
-  // 병원 검사 권고 (병원 체크한 경우만)
   if(selectedTypes.includes('병원') && hospTests.length > 0){
     html += `<div class="b2b-section">
       <div class="b2b-section-title">🔬 권장 검사 항목</div>
@@ -1640,7 +1541,6 @@ function renderCh75(){
     </div>`;
   }
 
-  // 상담 힌트
   if(hints.length > 0){
     html += `<div class="b2b-section">
       <div class="b2b-section-title">💡 상담 핵심 포인트</div>
@@ -1657,14 +1557,14 @@ function renderCh75(){
    공유 기능
 ═══════════════════════════════════════════════════════ */
 function shareKakao(){
-  if(window.Kakao && window.Kakao.isInitialized()){
-    // 카카오 SDK 공유
-  } else {
-    navigator.clipboard.writeText(location.href).then(()=>alert('링크가 복사됐습니다! 카카오톡에 붙여넣기 하세요.'));
-  }
+  navigator.clipboard.writeText(location.href)
+    .then(()=>alert('링크가 복사됐습니다! 카카오톡에 붙여넣기 하세요.'))
+    .catch(()=>prompt('링크를 복사하세요:', location.href));
 }
 function shareInstagram(){
-  navigator.clipboard.writeText(location.href).then(()=>alert('링크가 복사됐습니다! 인스타그램 스토리에 붙여넣기 하세요.'));
+  navigator.clipboard.writeText(location.href)
+    .then(()=>alert('링크가 복사됐습니다! 인스타그램 스토리에 붙여넣기 하세요.'))
+    .catch(()=>prompt('링크를 복사하세요:', location.href));
 }
 function upgradePremium(){
   const rid = R?.result?.id || '';
