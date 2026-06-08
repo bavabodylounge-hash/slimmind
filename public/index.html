@@ -192,8 +192,8 @@
     <div class="intro-desc">정답은 없습니다.<br>가장 솔직한 답이 가장 정확한 결과를 만듭니다.</div>
     <div class="intro-badges">
       <span class="intro-badge">⏱ 7~10분</span>
-      <span class="intro-badge">📋 50문항</span>
-      <span class="intro-badge">🔬 5축 교차 분석</span>
+      <span class="intro-badge">📋 80문항</span>
+      <span class="intro-badge">🔬 6축 교차 분석</span>
     </div>
     <button id="start-btn">지금 시작하기 →</button>
   </section>
@@ -915,10 +915,17 @@ function showCompleteScreen() {
 //  이벤트 바인딩
 // ════════════════════════════════════════
 document.getElementById('start-btn').onclick = () => {
+  // ── 매 시작 시 항상 완전 초기화 (이전 응답 잔류 방지) ────
+  Object.keys(state.answers).forEach(k => delete state.answers[k]);
+  Object.assign(state.userData, { height:160, weight:60, targetWeight:55, age:30, gender:'female', bmi:0, bfr:0, fatKg:0, muscleKg:0 });
+  state.currentQ = 0;
+  state.resultId = null;
+  try { localStorage.removeItem('sm_answers'); } catch(e) {}
+  document.querySelectorAll('.loading-step').forEach(el => el.classList.remove('active','done'));
+  // ──────────────────────────────────────────────────────────
   applySection('A');
   showScreen('question-screen');
   document.getElementById('progress-bar-wrap').style.display = 'block';
-  state.currentQ = 0;
   renderQuestion(0);
 };
 
@@ -942,17 +949,7 @@ setInterval(() => {
   try { localStorage.setItem('sm_answers', JSON.stringify(state.answers)); } catch(e) {}
 }, 3000);
 
-// 이어하기
-try {
-  const saved = localStorage.getItem('sm_answers');
-  if (saved) {
-    const parsed = JSON.parse(saved);
-    if (parsed['Q01']) {
-      Object.assign(state.answers, parsed);
-      // 자동으로 인트로에서 대기 (사용자가 이어하기 선택 가능)
-    }
-  }
-} catch(e) {}
+// 이어하기 기능 제거 — 시작 버튼 클릭 시 항상 새로 초기화됨 (이전 응답 잔류 방지)
 </script>
 </body>
 </html>
