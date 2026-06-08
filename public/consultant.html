@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SlimMind 컨설턴트</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #2563EB; --primary-dark: #1D4ED8; --accent: #10B981;
+      --danger: #EF4444; --warn: #F59E0B; --bg: #F8FAFF;
+      --card: #fff; --text: #1E293B; --muted: #64748B; --border: #E2E8F0;
+    }
+    body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ── 로그인 ─── */
+    #login-page { display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 24px; }
+    .login-card { background: var(--card); border-radius: 20px; padding: 48px 40px; width: 100%; max-width: 400px; box-shadow: 0 4px 32px rgba(37,99,235,.12); }
+    .login-logo { text-align: center; margin-bottom: 32px; }
+    .login-brand { font-size: 26px; font-weight: 700; color: var(--primary); }
+    .login-brand-sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    .field { margin-bottom: 16px; }
+    .field label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+    .field input { width: 100%; border: 1.5px solid var(--border); border-radius: 10px; padding: 12px 16px; font-size: 15px; font-family: inherit; outline: none; transition: border-color .2s; }
+    .field input:focus { border-color: var(--primary); }
+    .login-btn { width: 100%; background: var(--primary); color: #fff; border: none; border-radius: 10px; padding: 14px; font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit; margin-top: 8px; }
+    .login-btn:hover { background: var(--primary-dark); }
+    .login-err { color: var(--danger); font-size: 13px; text-align: center; margin-top: 8px; display: none; }
+
+    /* ── 메인 레이아웃 ─── */
+    #main-page { display: none; }
+    .topbar { background: var(--card); border-bottom: 1px solid var(--border); padding: 0 24px; height: 60px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+    .topbar-logo { font-size: 18px; font-weight: 700; color: var(--primary); }
+    .topbar-right { display: flex; align-items: center; gap: 16px; font-size: 14px; }
+    .topbar-code { background: #EFF6FF; color: var(--primary); border-radius: 8px; padding: 4px 12px; font-weight: 700; font-size: 13px; }
+    .logout-btn { color: var(--muted); cursor: pointer; font-size: 13px; }
+    .logout-btn:hover { color: var(--danger); }
+
+    /* ── 탭 네비 ─── */
+    .tab-nav { background: var(--card); border-bottom: 1px solid var(--border); display: flex; padding: 0 24px; gap: 4px; }
+    .tab-item { padding: 14px 20px; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--muted); border-bottom: 2px solid transparent; transition: all .15s; }
+    .tab-item:hover { color: var(--text); }
+    .tab-item.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+    /* ── 콘텐츠 ─── */
+    .content { padding: 24px; max-width: 1100px; margin: 0 auto; }
+    .page-tab { display: none; }
+    .page-tab.active { display: block; }
+
+    /* ── 카드 ─── */
+    .card { background: var(--card); border-radius: 14px; border: 1px solid var(--border); padding: 20px; margin-bottom: 16px; }
+    .card-title { font-size: 15px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+
+    /* ── 내 정보 ─── */
+    .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .profile-item { font-size: 13px; }
+    .profile-label { color: var(--muted); font-size: 12px; margin-bottom: 3px; }
+    .profile-val { font-weight: 600; }
+
+    /* ── 고객 목록 ─── */
+    .filter-row { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+    .filter-row input, .filter-row select { border: 1.5px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 13px; font-family: inherit; outline: none; }
+    .filter-row input:focus, .filter-row select:focus { border-color: var(--primary); }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background: #F8FAFC; padding: 10px 14px; text-align: left; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--border); }
+    td { padding: 12px 14px; border-bottom: 1px solid #F1F5F9; vertical-align: middle; }
+    tr:hover td { background: #F8FAFC; }
+    .tbl-wrap { overflow-x: auto; }
+    .badge { display: inline-block; border-radius: 6px; padding: 3px 10px; font-size: 11px; font-weight: 600; }
+    .badge-bc { color: #fff; border-radius: 6px; padding: 3px 10px; font-size: 11px; font-weight: 700; }
+    .empty-state { text-align: center; padding: 48px; color: var(--muted); }
+    .empty-state i { font-size: 36px; opacity: .4; display: block; margin-bottom: 10px; }
+
+    /* ── 버튼 ─── */
+    .btn { border: none; border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: opacity .15s; }
+    .btn:hover { opacity: .85; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-success { background: var(--accent); color: #fff; }
+    .btn-ghost { background: transparent; color: var(--primary); border: 1.5px solid var(--border); }
+    .btn-kakao { background: #FEE500; color: #3C1E1E; }
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
+
+    /* ── 초대 링크 ─── */
+    .invite-link-box { background: #EFF6FF; border: 1px dashed #93C5FD; border-radius: 12px; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .invite-link-url { font-family: monospace; font-size: 13px; color: var(--primary); word-break: break-all; flex: 1; }
+
+    /* ── 토스트 ─── */
+    #toast { position: fixed; bottom: 24px; right: 24px; background: #1E293B; color: #fff; padding: 12px 20px; border-radius: 10px; font-size: 14px; display: none; z-index: 9999; }
+    #toast.show { display: block; animation: fadeUp .3s ease; }
+    @keyframes fadeUp { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform: translateY(0); } }
+
+    /* ── 스피너 ─── */
+    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<!-- 로그인 -->
+<div id="login-page">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-brand">SlimMind</div>
+      <div class="login-brand-sub">컨설턴트 포털</div>
+    </div>
+    <div class="field">
+      <label>컨설턴트 코드</label>
+      <input type="text" id="l-code" placeholder="SC-0001">
+    </div>
+    <div class="field">
+      <label>비밀번호</label>
+      <input type="password" id="l-pw" placeholder="비밀번호">
+    </div>
+    <button class="login-btn" id="login-btn">로그인</button>
+    <div class="login-err" id="login-err"></div>
+  </div>
+</div>
+
+<!-- 메인 -->
+<div id="main-page">
+  <div class="topbar">
+    <div class="topbar-logo">SlimMind</div>
+    <div class="topbar-right">
+      <span class="topbar-code" id="topbar-code"></span>
+      <span id="topbar-name"></span>
+      <span class="logout-btn" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i> 로그아웃</span>
+    </div>
+  </div>
+  <div class="tab-nav">
+    <div class="tab-item active" data-tab="customers"><i class="fas fa-users"></i> 내 고객 목록</div>
+    <div class="tab-item" data-tab="invite"><i class="fas fa-link"></i> 초대 링크</div>
+    <div class="tab-item" data-tab="profile"><i class="fas fa-user"></i> 내 정보</div>
+  </div>
+  <div class="content">
+    <!-- 내 고객 목록 -->
+    <div class="page-tab active" id="tab-customers">
+      <div class="filter-row">
+        <input type="text" id="cust-search" placeholder="이름, 결과ID 검색..." style="width:220px"
+          onkeydown="if(event.key==='Enter') loadMyResults()">
+        <select id="cust-bc" onchange="loadMyResults()">
+          <option value="">전체 BC코드</option>
+        </select>
+        <button class="btn btn-ghost" onclick="loadMyResults()"><i class="fas fa-sync"></i> 새로고침</button>
+      </div>
+      <div class="card" style="padding:0" id="customers-table"></div>
+    </div>
+
+    <!-- 초대 링크 -->
+    <div class="page-tab" id="tab-invite">
+      <div class="card">
+        <div class="card-title"><i class="fas fa-link"></i> 나의 고유 설문 링크</div>
+        <p style="font-size:14px;color:var(--muted);margin-bottom:16px;line-height:1.7">
+          아래 링크를 고객에게 공유하세요. 고객이 이 링크로 설문을 완료하면 내 고객 목록에 자동으로 등록됩니다.
+        </p>
+        <div class="invite-link-box">
+          <div class="invite-link-url" id="invite-url"></div>
+          <button class="btn btn-primary" onclick="copyInviteLink()"><i class="fas fa-copy"></i> 복사</button>
+        </div>
+        <div style="margin-top:20px">
+          <h4 style="font-size:14px;margin-bottom:12px">공유 방법</h4>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-kakao" onclick="shareKakao()"><i class="fas fa-comment"></i> 카카오톡으로 링크 공유</button>
+            <button class="btn btn-ghost" onclick="copyInviteLink()"><i class="fas fa-copy"></i> 링크 복사</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 내 정보 -->
+    <div class="page-tab" id="tab-profile">
+      <div class="card" id="profile-card">
+        <div class="card-title"><i class="fas fa-user"></i> 내 계정 정보</div>
+        <div class="profile-grid" id="profile-grid"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ═════════════════════════════════════════════
+//  상태 & 유틸
+// ═════════════════════════════════════════════
+let TOKEN = localStorage.getItem('cons_token') || '';
+let ME = null;
+
+const BC_COLORS = {
+  'BC-01':'#E74C3C','BC-02':'#E67E22','BC-03':'#F39C12','BC-04':'#27AE60',
+  'BC-05':'#8E44AD','BC-06':'#3498DB','BC-07':'#1ABC9C','BC-08':'#E91E63',
+  'BC-09':'#FF5722','BC-10':'#795548'
+};
+const BC_LABELS = {
+  'BC-01':'내장지방형','BC-02':'피하지방형','BC-03':'근육감소형','BC-04':'수분부종형',
+  'BC-05':'하체지방형','BC-06':'냉증셀룰라이트형','BC-07':'상체비만형','BC-08':'호르몬불균형형',
+  'BC-09':'코르티솔형','BC-10':'요요반복형'
+};
+
+const api = async (method, path, body) => {
+  const res = await fetch('/api' + path, {
+    method,
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (res.status === 401) { doLogout(); return null; }
+  return res.json();
+};
+
+function toast(msg, type = 'default') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.background = type === 'error' ? '#EF4444' : type === 'success' ? '#10B981' : '#1E293B';
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+function fmtDate(d) {
+  if (!d) return '-';
+  return d.replace('T', ' ').slice(0, 16);
+}
+
+// ═════════════════════════════════════════════
+//  로그인
+// ═════════════════════════════════════════════
+async function doLogin() {
+  const code = document.getElementById('l-code').value.trim().toUpperCase();
+  const pw = document.getElementById('l-pw').value;
+  if (!code || !pw) { showErr('코드와 비밀번호를 입력하세요.'); return; }
+
+  const btn = document.getElementById('login-btn');
+  btn.innerHTML = '<span class="spinner"></span>';
+  btn.disabled = true;
+
+  const data = await fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code, password: pw })
+  }).then(r => r.json()).catch(() => null);
+
+  btn.innerHTML = '로그인';
+  btn.disabled = false;
+
+  if (!data?.token) { showErr(data?.error || '로그인 실패'); return; }
+  if (data.role === 'MASTER') {
+    showErr('관리자 계정은 /admin 페이지를 이용하세요.');
+    return;
+  }
+
+  TOKEN = data.token;
+  localStorage.setItem('cons_token', TOKEN);
+  ME = { code: data.code, name: data.name, role: data.role };
+  initApp();
+}
+
+function showErr(msg) {
+  const el = document.getElementById('login-err');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function doLogout() {
+  localStorage.removeItem('cons_token');
+  TOKEN = '';
+  ME = null;
+  document.getElementById('main-page').style.display = 'none';
+  document.getElementById('login-page').style.display = 'flex';
+}
+
+// ═════════════════════════════════════════════
+//  앱 초기화
+// ═════════════════════════════════════════════
+async function initApp() {
+  document.getElementById('login-page').style.display = 'none';
+  document.getElementById('main-page').style.display = 'block';
+  document.getElementById('topbar-code').textContent = ME.code;
+  document.getElementById('topbar-name').textContent = ME.name;
+  document.getElementById('invite-url').textContent = `${location.origin}/?ref=${ME.code}`;
+
+  // BC 옵션 채우기
+  const sel = document.getElementById('cust-bc');
+  Object.entries(BC_LABELS).forEach(([k, v]) => {
+    const opt = document.createElement('option');
+    opt.value = k; opt.textContent = `${k} ${v}`;
+    sel.appendChild(opt);
+  });
+
+  loadMyResults();
+  loadProfile();
+}
+
+// ═════════════════════════════════════════════
+//  고객 목록
+// ═════════════════════════════════════════════
+async function loadMyResults() {
+  const search = document.getElementById('cust-search')?.value || '';
+  const bc = document.getElementById('cust-bc')?.value || '';
+  let url = '/consultant/results?';
+  if (search) url += `search=${encodeURIComponent(search)}&`;
+  if (bc) url += `bc=${bc}`;
+
+  document.getElementById('customers-table').innerHTML =
+    '<div style="padding:32px;text-align:center;color:var(--muted)"><i class="fas fa-spinner fa-spin fa-2x"></i></div>';
+
+  const data = await api('GET', url);
+  if (!data) return;
+
+  if (!data.results?.length) {
+    document.getElementById('customers-table').innerHTML = `
+      <div class="empty-state">
+        <i class="fas fa-users"></i>
+        <p>아직 고객이 없습니다.<br>내 링크를 공유해 첫 고객을 등록해보세요!</p>
+      </div>`;
+    return;
+  }
+
+  const rows = data.results.map(r => {
+    const bcCol = BC_COLORS[r.bc_primary] || '#888';
+    return `<tr>
+      <td>
+        <div style="font-weight:600">${r.user_name || '익명'}</div>
+        <div style="font-size:11px;color:var(--muted)">${r.id}</div>
+      </td>
+      <td>
+        <span style="background:${bcCol};color:#fff;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:700">
+          ${r.bc_primary}
+        </span>
+        ${r.bc_secondary ? `<span style="background:#F1F5F9;color:var(--muted);border-radius:6px;padding:3px 8px;font-size:11px;margin-left:4px">${r.bc_secondary}</span>` : ''}
+      </td>
+      <td style="font-size:12px;color:var(--muted)">${r.gender||'-'} ${r.height?r.height+'cm':''} ${r.weight?r.weight+'kg':''}</td>
+      <td style="font-size:12px">${r.mbti||'-'} ${r.blood_type||''}</td>
+      <td style="color:var(--muted);font-size:12px">${fmtDate(r.created_at)}</td>
+      <td style="white-space:nowrap">
+        <a href="/result/${r.id}" target="_blank" class="btn btn-primary btn-sm"><i class="fas fa-eye"></i> 결과지</a>
+        <button class="btn btn-kakao btn-sm" style="margin-left:4px" onclick="shareResultKakao('${r.id}', '${(r.user_name||'고객').replace(/'/g, '')}')">
+          <i class="fas fa-comment"></i> 카카오톡
+        </button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('customers-table').innerHTML = `
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>고객명</th><th>BC 코드</th><th>신체정보</th><th>MBTI/혈액형</th><th>설문일</th><th></th></tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+// ═════════════════════════════════════════════
+//  카카오톡 공유
+// ═════════════════════════════════════════════
+function shareResultKakao(resultId, userName) {
+  const resultUrl = `${location.origin}/result/${resultId}`;
+  // 카카오 SDK 미설정 시 fallback: URL 복사
+  if (typeof Kakao !== 'undefined' && Kakao.isInitialized()) {
+    Kakao.Share.sendDefault({
+      objectType: 'feed',
+      content: {
+        title: `${userName}님의 바디코드 진단 결과`,
+        description: 'SlimMind 바디코드 체형 진단 결과지',
+        imageUrl: `${location.origin}/static/og-image.png`,
+        link: { mobileWebUrl: resultUrl, webUrl: resultUrl }
+      },
+      buttons: [{ title: '결과지 보기', link: { mobileWebUrl: resultUrl, webUrl: resultUrl } }]
+    });
+  } else {
+    // 카카오 SDK 없을 시 URL 복사 + 안내
+    navigator.clipboard.writeText(resultUrl).then(() => {
+      toast(`결과지 링크 복사 완료!\n카카오톡에 붙여넣기 하세요.`, 'success');
+    });
+  }
+}
+
+function shareKakao() {
+  const url = `${location.origin}/?ref=${ME.code}`;
+  navigator.clipboard.writeText(url).then(() => {
+    toast('설문 링크 복사 완료! 카카오톡에 붙여넣기 하세요.', 'success');
+  });
+}
+
+function copyInviteLink() {
+  const url = `${location.origin}/?ref=${ME.code}`;
+  navigator.clipboard.writeText(url).then(() => toast('링크 복사 완료!', 'success'));
+}
+
+// ═════════════════════════════════════════════
+//  내 정보
+// ═════════════════════════════════════════════
+async function loadProfile() {
+  const data = await api('GET', '/consultant/me');
+  if (!data?.consultant) return;
+  const c = data.consultant;
+
+  const statusMap = { active:'활성', pending:'대기', expired:'만료', suspended:'정지' };
+  const items = [
+    ['컨설턴트 코드', c.code],
+    ['이름', c.name],
+    ['이메일', c.email || '-'],
+    ['전화번호', c.phone || '-'],
+    ['직종', c.job_type || '-'],
+    ['등급', c.grade || '-'],
+    ['구독 상태', statusMap[c.subscription_status] || c.subscription_status],
+    ['구독 만료일', c.subscription_end?.slice(0,10) || '-'],
+    ['강의 진도', `${c.lecture_progress||0}/12강`],
+    ['인증 여부', c.is_certified ? '✅ 인증 완료' : '⏳ 미인증'],
+    ['가입일', fmtDate(c.created_at)],
+  ];
+
+  document.getElementById('profile-grid').innerHTML = items.map(([label, val]) => `
+    <div class="profile-item">
+      <div class="profile-label">${label}</div>
+      <div class="profile-val">${val}</div>
+    </div>
+  `).join('');
+}
+
+// ═════════════════════════════════════════════
+//  탭 네비
+// ═════════════════════════════════════════════
+document.querySelectorAll('.tab-item').forEach(tab => {
+  tab.onclick = () => {
+    const t = tab.dataset.tab;
+    document.querySelectorAll('.tab-item').forEach(x => x.classList.toggle('active', x.dataset.tab === t));
+    document.querySelectorAll('.page-tab').forEach(x => x.classList.toggle('active', x.id === `tab-${t}`));
+  };
+});
+
+// ═════════════════════════════════════════════
+//  자동 로그인 확인
+// ═════════════════════════════════════════════
+if (TOKEN) {
+  fetch('/api/auth/me', { headers: { 'Authorization': `Bearer ${TOKEN}` } })
+    .then(r => r.json())
+    .then(d => {
+      if (d.code && d.role !== 'MASTER') {
+        ME = d;
+        initApp();
+      } else {
+        localStorage.removeItem('cons_token');
+        TOKEN = '';
+      }
+    })
+    .catch(() => { localStorage.removeItem('cons_token'); TOKEN = ''; });
+}
+
+document.getElementById('login-btn').onclick = doLogin;
+document.getElementById('l-pw').onkeydown = e => { if (e.key === 'Enter') doLogin(); };
+</script>
+</body>
+</html>

@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>바디코드 진단 결과지 | SlimMind</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --bc-color: #E74C3C; --bc-light: #FDECEA; }
+    body { font-family: 'Noto Sans KR', sans-serif; background: #F5F7FA; color: #1E293B; }
+
+    /* ── 인증 게이트 ─── */
+    #auth-gate { display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 24px; background: #F5F7FA; }
+    .auth-card { background: #fff; border-radius: 20px; padding: 48px 40px; width: 100%; max-width: 380px; box-shadow: 0 4px 32px rgba(0,0,0,.10); text-align: center; }
+    .auth-icon { font-size: 48px; margin-bottom: 16px; }
+    .auth-title { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+    .auth-sub { font-size: 13px; color: #64748B; margin-bottom: 24px; line-height: 1.7; }
+    .auth-field { margin-bottom: 12px; text-align: left; }
+    .auth-field label { display: block; font-size: 12px; font-weight: 600; color: #64748B; margin-bottom: 4px; }
+    .auth-field input { width: 100%; border: 1.5px solid #E2E8F0; border-radius: 8px; padding: 10px 14px; font-size: 14px; font-family: inherit; outline: none; }
+    .auth-field input:focus { border-color: #2563EB; }
+    .auth-btn { width: 100%; background: #2563EB; color: #fff; border: none; border-radius: 10px; padding: 13px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .auth-err { color: #EF4444; font-size: 12px; margin-top: 8px; display: none; }
+
+    /* ── 툴바 (화면 전용, 프린트 숨김) ─── */
+    .result-toolbar { background: #1E293B; color: #fff; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+    .toolbar-left { display: flex; align-items: center; gap: 16px; }
+    .toolbar-logo { font-size: 16px; font-weight: 700; }
+    .toolbar-id { font-size: 11px; color: rgba(255,255,255,.5); font-family: monospace; }
+    .toolbar-right { display: flex; gap: 8px; }
+    .tb-btn { border: none; border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 6px; transition: opacity .15s; }
+    .tb-btn:hover { opacity: .85; }
+    .tb-kakao { background: #FEE500; color: #3C1E1E; }
+    .tb-print { background: #fff; color: #1E293B; }
+    .tb-back { background: rgba(255,255,255,.12); color: #fff; }
+
+    /* ── 결과지 컨테이너 ─── */
+    #result-page { display: none; }
+    .result-doc { max-width: 800px; margin: 0 auto; padding: 24px 24px 80px; }
+
+    /* ── 페이지 1: 헤더 ─── */
+    .page-header { background: linear-gradient(135deg, var(--bc-color), #C0392B); border-radius: 20px; padding: 36px; color: #fff; margin-bottom: 20px; position: relative; overflow: hidden; }
+    .page-header::before { content: ''; position: absolute; right: -30px; top: -30px; width: 200px; height: 200px; background: rgba(255,255,255,.08); border-radius: 50%; }
+    .ph-label { font-size: 12px; opacity: .8; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
+    .ph-name { font-size: 24px; font-weight: 800; margin-bottom: 4px; }
+    .ph-date { font-size: 12px; opacity: .7; margin-bottom: 20px; }
+    .bc-reveal { display: flex; align-items: center; gap: 16px; }
+    .bc-emoji-big { font-size: 52px; }
+    .bc-code-big { font-size: 28px; font-weight: 800; }
+    .bc-name-big { font-size: 16px; opacity: .9; margin-top: 2px; }
+    .bc-tagline { font-size: 13px; opacity: .75; margin-top: 6px; font-style: italic; }
+    .meta-badges { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+    .meta-badge { background: rgba(255,255,255,.18); border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 600; }
+    .body-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-top: 20px; }
+    .stat-item { background: rgba(255,255,255,.12); border-radius: 10px; padding: 10px 14px; text-align: center; }
+    .stat-val { font-size: 20px; font-weight: 700; }
+    .stat-label { font-size: 11px; opacity: .8; margin-top: 3px; }
+
+    /* ── 섹션 카드 ─── */
+    .section-card { background: #fff; border-radius: 16px; border: 1px solid #E2E8F0; padding: 22px; margin-bottom: 16px; }
+    .section-title { font-size: 15px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; color: #1E293B; padding-bottom: 10px; border-bottom: 2px solid var(--bc-light); }
+    .section-title .title-icon { color: var(--bc-color); }
+
+    /* ── BC 분포 바 ─── */
+    .bc-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .bc-bar-code { width: 56px; font-size: 12px; font-weight: 700; }
+    .bc-bar-track { flex: 1; height: 8px; background: #F1F5F9; border-radius: 4px; overflow: hidden; }
+    .bc-bar-fill { height: 100%; border-radius: 4px; transition: width 1s ease; }
+    .bc-bar-val { width: 32px; font-size: 12px; font-weight: 700; text-align: right; }
+
+    /* ── 오행 ─── */
+    .ohaeng-row { display: flex; gap: 10px; margin-bottom: 6px; align-items: center; }
+    .oh-label { width: 40px; font-size: 13px; font-weight: 600; }
+    .oh-track { flex: 1; height: 8px; background: #F1F5F9; border-radius: 4px; overflow: hidden; }
+    .oh-fill { height: 100%; border-radius: 4px; }
+    .oh-score { width: 36px; font-size: 12px; font-weight: 700; text-align: right; }
+
+    /* ── 5축 분석 ─── */
+    .axis-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .axis-item { background: #F8FAFC; border-radius: 10px; padding: 12px; }
+    .axis-label { font-size: 11px; color: #64748B; font-weight: 600; margin-bottom: 6px; }
+    .axis-val { font-size: 16px; font-weight: 700; }
+    .axis-sub { font-size: 12px; color: #64748B; margin-top: 3px; }
+
+    /* ── 처방 섹션 ─── */
+    .prescription-section { background: var(--bc-light); border-radius: 10px; padding: 14px; margin-bottom: 10px; }
+    .prescription-title { font-size: 13px; font-weight: 700; color: var(--bc-color); margin-bottom: 8px; }
+    .prescription-list { list-style: none; }
+    .prescription-list li { font-size: 13px; padding: 4px 0; padding-left: 16px; position: relative; line-height: 1.6; color: #334155; }
+    .prescription-list li::before { content: '•'; position: absolute; left: 0; color: var(--bc-color); font-weight: 700; }
+
+    /* ── 운동 카드 ─── */
+    .exercise-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .exercise-card { background: #F8FAFC; border-radius: 10px; padding: 12px; }
+    .exercise-name { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+    .exercise-meta { font-size: 12px; color: #64748B; }
+    .exercise-reason { font-size: 12px; color: var(--bc-color); margin-top: 4px; font-style: italic; }
+
+    /* ── 식품 배지 ─── */
+    .food-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .food-chip { border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 600; }
+    .chip-rec { background: #DCFCE7; color: #16A34A; }
+    .chip-forb { background: #FEE2E2; color: #DC2626; }
+
+    /* ── 보충제 ─── */
+    .suppl-item { display: flex; gap: 12px; padding: 10px; background: #F8FAFC; border-radius: 8px; margin-bottom: 6px; align-items: flex-start; }
+    .suppl-name { font-size: 13px; font-weight: 700; }
+    .suppl-meta { font-size: 12px; color: #64748B; }
+    .suppl-reason { font-size: 12px; color: var(--bc-color); }
+
+    /* ── 생활 규칙 ─── */
+    .rule-item { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid #F1F5F9; align-items: flex-start; font-size: 13px; }
+    .rule-item:last-child { border-bottom: none; }
+    .rule-icon { flex-shrink: 0; width: 20px; }
+
+    /* ── 월별 목표 ─── */
+    .monthly-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .monthly-card { background: #F8FAFC; border-radius: 10px; padding: 12px; }
+    .monthly-month { font-size: 11px; font-weight: 700; color: var(--bc-color); margin-bottom: 6px; text-transform: uppercase; }
+    .monthly-goal { font-size: 13px; color: #334155; line-height: 1.5; }
+
+    /* ── 메모 ─── */
+    .memo-section { background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+    .memo-label { font-size: 12px; font-weight: 700; color: #92400E; margin-bottom: 8px; }
+    .memo-text { font-size: 14px; color: #451A03; line-height: 1.7; }
+    .memo-edit { width: 100%; border: 1px solid #FDE68A; border-radius: 8px; padding: 10px; font-size: 14px; font-family: inherit; min-height: 80px; outline: none; background: rgba(255,255,255,.7); resize: vertical; }
+
+    /* ── 푸터 ─── */
+    .result-footer { text-align: center; padding: 24px; color: #94A3B8; font-size: 12px; }
+
+    /* ── 토스트 ─── */
+    #toast { position: fixed; bottom: 24px; right: 24px; background: #1E293B; color: #fff; padding: 12px 20px; border-radius: 10px; font-size: 14px; display: none; z-index: 9999; }
+    #toast.show { display: block; animation: fadeUp .3s ease; }
+    @keyframes fadeUp { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform: translateY(0); } }
+
+    /* ════ 프린트 CSS ════ */
+    @media print {
+      body { background: #fff; }
+      .result-toolbar, #auth-gate { display: none !important; }
+      #result-page { display: block !important; }
+      .result-doc { padding: 0; max-width: 100%; }
+      .section-card { break-inside: avoid; border: 1px solid #ddd; box-shadow: none; }
+      .page-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .bc-bar-fill, .oh-fill { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .prescription-section { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .result-footer { display: none; }
+      .memo-section button { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- 인증 게이트 -->
+<div id="auth-gate">
+  <div class="auth-card">
+    <div class="auth-icon">🔐</div>
+    <div class="auth-title">결과지 접근 인증</div>
+    <div class="auth-sub">이 결과지는 담당 컨설턴트 또는 관리자만 열람할 수 있습니다.</div>
+    <div class="auth-field">
+      <label>컨설턴트/관리자 코드</label>
+      <input type="text" id="g-code" placeholder="SC-0001 또는 MASTER">
+    </div>
+    <div class="auth-field">
+      <label>비밀번호</label>
+      <input type="password" id="g-pw" placeholder="비밀번호">
+    </div>
+    <button class="auth-btn" id="auth-btn" onclick="doAuth()">열람하기</button>
+    <div class="auth-err" id="auth-err"></div>
+  </div>
+</div>
+
+<!-- 결과지 -->
+<div id="result-page">
+  <!-- 툴바 -->
+  <div class="result-toolbar">
+    <div class="toolbar-left">
+      <div class="toolbar-logo">SlimMind</div>
+      <div class="toolbar-id" id="tb-id"></div>
+    </div>
+    <div class="toolbar-right">
+      <button class="tb-btn tb-back" onclick="history.back()"><i class="fas fa-arrow-left"></i> 목록</button>
+      <button class="tb-btn tb-kakao" onclick="shareKakao()"><i class="fas fa-comment"></i> 카카오톡 공유</button>
+      <button class="tb-btn tb-print" onclick="window.print()"><i class="fas fa-print"></i> 프린트</button>
+    </div>
+  </div>
+
+  <!-- 결과 문서 -->
+  <div class="result-doc" id="result-doc">
+    <!-- 동적 렌더링 -->
+  </div>
+
+  <!-- 메모 영역 -->
+  <div style="max-width:800px;margin:0 auto;padding:0 24px 80px">
+    <div class="memo-section" id="memo-section">
+      <div class="memo-label">📝 컨설턴트 메모</div>
+      <textarea class="memo-edit" id="memo-text" placeholder="이 고객에 대한 메모를 입력하세요..."></textarea>
+      <div style="text-align:right;margin-top:8px">
+        <button class="tb-btn tb-print" style="border:1px solid #FDE68A" onclick="saveMemo()">메모 저장</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ─── 상태 ───────────────────────────────────────────────────
+const resultId = location.pathname.split('/result/')[1]?.split('?')[0] || '';
+let TOKEN = localStorage.getItem('result_token') || localStorage.getItem('admin_token') || localStorage.getItem('cons_token') || '';
+let RESULT_DATA = null;
+
+const BC_COLORS = {
+  'BC-01':'#E74C3C','BC-02':'#E67E22','BC-03':'#F39C12','BC-04':'#27AE60',
+  'BC-05':'#8E44AD','BC-06':'#3498DB','BC-07':'#1ABC9C','BC-08':'#E91E63',
+  'BC-09':'#FF5722','BC-10':'#795548'
+};
+const BC_EMOJIS = {
+  'BC-01':'🔴','BC-02':'🟠','BC-03':'🟡','BC-04':'🟢',
+  'BC-05':'🟣','BC-06':'🔵','BC-07':'🩵','BC-08':'🩷',
+  'BC-09':'🔶','BC-10':'🟤'
+};
+const OHAENG_COLORS = { '목':'#2ECC71','화':'#E74C3C','토':'#F39C12','금':'#BDC3C7','수':'#3498DB' };
+
+function toast(msg, type = 'default') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.background = type === 'error' ? '#EF4444' : type === 'success' ? '#10B981' : '#1E293B';
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+function parseJ(s, fb = []) { try { return s ? JSON.parse(s) : fb; } catch { return fb; } }
+
+// ─── 인증 ────────────────────────────────────────────────────
+async function doAuth() {
+  const code = document.getElementById('g-code').value.trim().toUpperCase();
+  const pw = document.getElementById('g-pw').value;
+  if (!code || !pw) { showAuthErr('코드와 비밀번호를 입력하세요.'); return; }
+
+  const btn = document.getElementById('auth-btn');
+  btn.textContent = '확인 중...';
+  btn.disabled = true;
+
+  const data = await fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code, password: pw })
+  }).then(r => r.json()).catch(() => null);
+
+  btn.textContent = '열람하기';
+  btn.disabled = false;
+
+  if (!data?.token) { showAuthErr(data?.error || '인증 실패'); return; }
+  TOKEN = data.token;
+  localStorage.setItem('result_token', TOKEN);
+  loadResult();
+}
+
+function showAuthErr(msg) {
+  const el = document.getElementById('auth-err');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+// ─── 결과 로드 ───────────────────────────────────────────────
+async function loadResult() {
+  const res = await fetch(`/api/results/${resultId}`, {
+    headers: { 'Authorization': `Bearer ${TOKEN}` }
+  });
+  if (res.status === 401) {
+    localStorage.removeItem('result_token');
+    TOKEN = '';
+    document.getElementById('auth-gate').style.display = 'flex';
+    document.getElementById('result-page').style.display = 'none';
+    showAuthErr('세션이 만료되었습니다. 다시 로그인하세요.');
+    return;
+  }
+  if (res.status === 403) {
+    document.getElementById('auth-gate').innerHTML = `
+      <div class="auth-card">
+        <div class="auth-icon">🚫</div>
+        <div class="auth-title">접근 권한 없음</div>
+        <div class="auth-sub">이 결과지는 담당 컨설턴트만 열람할 수 있습니다.</div>
+        <button class="auth-btn" onclick="history.back()">돌아가기</button>
+      </div>`;
+    return;
+  }
+  const data = await res.json();
+  if (!data.result) { alert('결과를 찾을 수 없습니다.'); return; }
+
+  RESULT_DATA = data;
+  renderResult(data);
+  document.getElementById('auth-gate').style.display = 'none';
+  document.getElementById('result-page').style.display = 'block';
+  document.getElementById('tb-id').textContent = resultId;
+  document.getElementById('memo-text').value = data.result.admin_memo || '';
+}
+
+// ─── 결과지 렌더링 ───────────────────────────────────────────
+function renderResult({ result, prescription, secondary_prescription }) {
+  const r = result;
+  const p = prescription || {};
+  const bcCol = BC_COLORS[r.bc_primary] || '#E74C3C';
+  const bcEmoji = BC_EMOJIS[r.bc_primary] || '🔴';
+
+  // CSS 변수 설정
+  document.documentElement.style.setProperty('--bc-color', bcCol);
+  document.documentElement.style.setProperty('--bc-light', hexToLight(bcCol));
+
+  // ─ 헤더
+  const bodyStats = [
+    r.height ? { val: r.height + 'cm', label: '키' } : null,
+    r.weight ? { val: r.weight + 'kg', label: '현재 체중' } : null,
+    r.target_weight ? { val: r.target_weight + 'kg', label: '목표 체중' } : null,
+    r.bmi ? { val: r.bmi.toFixed(1), label: 'BMI' } : null,
+    r.bfr ? { val: r.bfr.toFixed(1) + '%', label: '체지방률' } : null,
+    r.top_size ? { val: r.top_size, label: '상의' } : null,
+  ].filter(Boolean);
+
+  const metaBadges = [
+    r.ohaeng_type ? `오행 ${r.ohaeng_type}` : null,
+    r.mbti ? `MBTI ${r.mbti}` : null,
+    r.blood_type ? `혈액형 ${r.blood_type}` : null,
+    r.saju_il_gan ? `일간 ${r.saju_il_gan}` : null,
+    r.bc_secondary ? `Secondary ${r.bc_secondary}` : null,
+  ].filter(Boolean);
+
+  // ─ BC 분포
+  const bcScores = r.bc_scores || {};
+  const maxBc = Math.max(...Object.values(bcScores), 1);
+  const bcBars = Object.entries(bcScores)
+    .sort((a, b) => b[1] - a[1])
+    .map(([code, score]) => {
+      const col = BC_COLORS[code] || '#888';
+      const isPrimary = code === r.bc_primary;
+      return `<div class="bc-bar-row">
+        <div class="bc-bar-code" style="color:${col};${isPrimary ? 'font-size:13px' : ''}">${code}${isPrimary ? ' ★' : ''}</div>
+        <div class="bc-bar-track"><div class="bc-bar-fill" style="width:${Math.round(score/maxBc*100)}%;background:${col}"></div></div>
+        <div class="bc-bar-val" style="color:${col}">${score}</div>
+      </div>`;
+    }).join('');
+
+  // ─ 오행 분포
+  const ohaengScores = r.ohaeng_scores || {};
+  const maxOh = Math.max(...Object.values(ohaengScores), 1);
+  const ohaengBars = Object.entries(ohaengScores)
+    .sort((a, b) => b[1] - a[1])
+    .map(([type, score]) => {
+      const col = OHAENG_COLORS[type] || '#888';
+      return `<div class="ohaeng-row">
+        <div class="oh-label" style="color:${col}">${type}(木)</div>
+        <div class="oh-track"><div class="oh-fill" style="width:${Math.round(score/maxOh*100)}%;background:${col}"></div></div>
+        <div class="oh-score" style="color:${col}">${score}점</div>
+      </div>`;
+    }).join('');
+
+  // ─ 증상 체크리스트
+  const symptoms = parseJ(p.symptom_checklist_json, []);
+  const symptomHtml = symptoms.length
+    ? `<ul class="prescription-list">${symptoms.map(s => `<li>${s}</li>`).join('')}</ul>`
+    : '<p style="color:#94A3B8;font-size:13px">데이터 없음</p>';
+
+  // ─ 올바른 원칙
+  const principles = parseJ(p.correct_principles_json, []);
+  const principlesHtml = principles.length
+    ? principles.map(pr => `<div style="background:#F0FFF4;border-left:3px solid #10B981;border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:8px">
+        <div style="font-size:13px;font-weight:600;color:#065F46">${pr.principle || pr}</div>
+        ${pr.expected_result ? `<div style="font-size:12px;color:#047857;margin-top:3px">→ ${pr.expected_result}</div>` : ''}
+      </div>`).join('')
+    : '<p style="color:#94A3B8;font-size:13px">데이터 없음</p>';
+
+  // ─ 잘못된 방법
+  const wrongs = parseJ(p.wrong_methods_json, []);
+  const wrongsHtml = wrongs.length
+    ? wrongs.map(w => `<div style="background:#FFF1F2;border-left:3px solid #EF4444;border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:8px">
+        <div style="font-size:13px;font-weight:600;color:#9F1239">❌ ${w.method || w}</div>
+        ${w.reason_physiology ? `<div style="font-size:12px;color:#BE123C;margin-top:3px">${w.reason_physiology}</div>` : ''}
+      </div>`).join('')
+    : '<p style="color:#94A3B8;font-size:13px">데이터 없음</p>';
+
+  // ─ 추천 운동
+  const exercises = parseJ(p.recommended_exercises_json, []);
+  const exerciseHtml = exercises.length
+    ? `<div class="exercise-grid">${exercises.map(e => `
+        <div class="exercise-card">
+          <div class="exercise-name">💪 ${e.name || e}</div>
+          <div class="exercise-meta">${e.frequency || ''} ${e.duration ? '/ ' + e.duration : ''}</div>
+          ${e.reason_bc ? `<div class="exercise-reason">${e.reason_bc}</div>` : ''}
+        </div>`).join('')}</div>`
+    : '<p style="color:#94A3B8;font-size:13px">데이터 없음</p>';
+
+  // ─ 금지 운동
+  const forbExercises = parseJ(p.forbidden_exercises_json, []);
+  const forbExHtml = forbExercises.length
+    ? `<ul class="prescription-list">${forbExercises.map(e =>
+        `<li><b>${e.name || e}</b>${e.reason_physiology ? ` — ${e.reason_physiology}` : ''}</li>`
+      ).join('')}</ul>`
+    : '<p style="color:#94A3B8;font-size:13px">데이터 없음</p>';
+
+  // ─ 추천 식품
+  const recFoods = parseJ(p.recommended_foods_json, []);
+  const forbFoods = parseJ(p.forbidden_foods_json, []);
+
+  // ─ 보충제
+  const suppls = parseJ(p.supplement_list_json, []);
+  const supplHtml = suppls.length
+    ? suppls.map(s => `<div class="suppl-item">
+        <div style="font-size:20px">💊</div>
+        <div>
+          <div class="suppl-name">${s.name || s}</div>
+          <div class="suppl-meta">${s.dosage || ''} ${s.timing ? '| ' + s.timing : ''}</div>
+          ${s.reason_bc ? `<div class="suppl-reason">${s.reason_bc}</div>` : ''}
+        </div>
+      </div>`).join('')
+    : '<p style="color:#94A3B8;font-size:13px">데이터 없음</p>';
+
+  // ─ 생활 규칙
+  const rules = parseJ(p.lifestyle_rules_json, []);
+  const rulesHtml = rules.length
+    ? rules.map(r => `<div class="rule-item">
+        <span class="rule-icon">${r.type === 'forbidden' ? '🚫' : '✅'}</span>
+        <span style="color:${r.type === 'forbidden' ? '#EF4444' : '#334155'}">${r.rule || r}</span>
+      </div>`).join('')
+    : '<p style="color:#94A3B8;font-size:13px">데이터 없음</p>';
+
+  // ─ 월별 목표
+  const monthly = parseJ(p.monthly_goals_json || '{}', {});
+  const monthlyHtml = Object.entries(monthly).length
+    ? `<div class="monthly-grid">${Object.entries(monthly).map(([m, g]) => `
+        <div class="monthly-card">
+          <div class="monthly-month">${m}</div>
+          <div class="monthly-goal">${g}</div>
+        </div>`).join('')}</div>`
+    : '<p style="color:#94A3B8;font-size:13px">데이터 없음</p>';
+
+  // ─ 원인 스토리
+  const causeHtml = p.bc_cause_story
+    ? `<div style="background:var(--bc-light);border-radius:10px;padding:16px;font-size:14px;line-height:1.8;color:#334155">${p.bc_cause_story}</div>`
+    : '';
+  const closingHtml = p.closing_copy
+    ? `<div style="background:linear-gradient(135deg,${bcCol},${bcCol}cc);color:#fff;border-radius:10px;padding:14px 18px;font-size:14px;font-weight:600;line-height:1.7;margin-top:10px">${p.closing_copy}</div>`
+    : '';
+
+  // ─ Zone2 심박수
+  const heartRateHtml = (p.zone2_bpm || p.forbidden_bpm)
+    ? `<div style="display:flex;gap:12px;margin-bottom:12px">
+        ${p.zone2_bpm ? `<div style="background:#EFF6FF;border-radius:10px;padding:12px 16px;flex:1;text-align:center"><div style="font-size:20px;font-weight:700;color:#2563EB">${p.zone2_bpm}~${p.forbidden_bpm-5} BPM</div><div style="font-size:12px;color:#64748B;margin-top:3px">Zone2 목표 심박수</div></div>` : ''}
+        ${p.forbidden_bpm ? `<div style="background:#FEF2F2;border-radius:10px;padding:12px 16px;flex:1;text-align:center"><div style="font-size:20px;font-weight:700;color:#EF4444">${p.forbidden_bpm}+ BPM</div><div style="font-size:12px;color:#64748B;margin-top:3px">금지 심박수 이상</div></div>` : ''}
+        ${p.hiit_available_week ? `<div style="background:#F0FFF4;border-radius:10px;padding:12px 16px;flex:1;text-align:center"><div style="font-size:14px;font-weight:700;color:#10B981">${p.hiit_available_week}</div><div style="font-size:12px;color:#64748B;margin-top:3px">HIIT 시작 가능</div></div>` : ''}
+      </div>`
+    : '';
+
+  document.getElementById('result-doc').innerHTML = `
+    <!-- 페이지 1: 헤더 -->
+    <div class="page-header" style="background:linear-gradient(135deg,${bcCol},${bcCol}aa)">
+      <div class="ph-label">바디코드 진단 결과지</div>
+      <div class="ph-name">${r.user_name || '익명'}님</div>
+      <div class="ph-date">${fmtDate(r.created_at)} | ${resultId}</div>
+      <div class="bc-reveal">
+        <div class="bc-emoji-big">${bcEmoji}</div>
+        <div>
+          <div class="bc-code-big">${r.bc_primary}</div>
+          <div class="bc-name-big">${p.brand_name || r.bc_primary}</div>
+          ${r.bc_secondary ? `<div style="font-size:12px;opacity:.8;margin-top:4px">Secondary: ${r.bc_secondary}</div>` : ''}
+        </div>
+      </div>
+      ${p.tagline ? `<div class="bc-tagline" style="margin-top:12px">"${p.tagline}"</div>` : ''}
+      <div class="meta-badges">${metaBadges.map(b => `<span class="meta-badge">${b}</span>`).join('')}</div>
+      ${bodyStats.length ? `<div class="body-stats">${bodyStats.map(s => `<div class="stat-item"><div class="stat-val">${s.val}</div><div class="stat-label">${s.label}</div></div>`).join('')}</div>` : ''}
+    </div>
+
+    <!-- 페이지 2: 5축 분석 + BC 분포 -->
+    <div class="section-card">
+      <div class="section-title"><span class="title-icon">📊</span> 5축 교차 분석</div>
+      <div class="axis-grid">
+        <div class="axis-item" style="background:${hexToLight(bcCol)}">
+          <div class="axis-label">BC 체형 코드</div>
+          <div class="axis-val" style="color:${bcCol}">${r.bc_primary}</div>
+          <div class="axis-sub">${p.brand_name || ''} / 점수 ${r.bc_primary_score||'?'}점</div>
+        </div>
+        <div class="axis-item" style="background:${OHAENG_COLORS[r.ohaeng_type?.charAt(0)]||'#F0F4F8'}22">
+          <div class="axis-label">오행 체질</div>
+          <div class="axis-val">${r.ohaeng_type || '-'}</div>
+          <div class="axis-sub">주요 오행</div>
+        </div>
+        <div class="axis-item">
+          <div class="axis-label">MBTI 유형</div>
+          <div class="axis-val">${r.mbti || '-'}</div>
+          <div class="axis-sub">성격 유형</div>
+        </div>
+        <div class="axis-item">
+          <div class="axis-label">혈액형</div>
+          <div class="axis-val">${r.blood_type ? r.blood_type + '형' : '-'}</div>
+          <div class="axis-sub">혈액형 체질</div>
+        </div>
+        <div class="axis-item" style="grid-column:1/-1">
+          <div class="axis-label">사주 일간</div>
+          <div class="axis-val">${r.saju_il_gan || '-'} ${r.saju_ohaeng ? '— ' + r.saju_ohaeng : ''}</div>
+          <div class="axis-sub">일간 오행 특성</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div class="section-card" style="margin-bottom:0">
+        <div class="section-title"><span class="title-icon">📊</span> BC코드 분포</div>
+        ${bcBars}
+      </div>
+      <div class="section-card" style="margin-bottom:0">
+        <div class="section-title"><span class="title-icon">🌿</span> 오행 체질 분포</div>
+        ${ohaengBars}
+      </div>
+    </div>
+
+    <!-- 페이지 3: 원인 + 증상 -->
+    <div class="section-card">
+      <div class="section-title"><span class="title-icon">🔍</span> ${r.bc_primary} 원인 분석</div>
+      ${p.bc_primary_oneline_reason ? `<div style="font-size:14px;font-weight:600;color:${bcCol};margin-bottom:12px">📌 ${p.bc_primary_oneline_reason}</div>` : ''}
+      ${causeHtml}
+      ${closingHtml}
+    </div>
+
+    <div class="section-card">
+      <div class="section-title"><span class="title-icon">✅</span> 해당되는 증상 체크리스트</div>
+      <div class="prescription-section">${symptomHtml}</div>
+    </div>
+
+    <!-- 페이지 4: 올바른 원칙 + 잘못된 방법 -->
+    <div class="section-card">
+      <div class="section-title"><span class="title-icon">💚</span> 올바른 접근 원칙</div>
+      ${principlesHtml}
+    </div>
+    <div class="section-card">
+      <div class="section-title"><span class="title-icon">❌</span> 하면 안 되는 잘못된 방법</div>
+      ${wrongsHtml}
+    </div>
+
+    <!-- 페이지 5: 운동 처방 -->
+    <div class="section-card">
+      <div class="section-title"><span class="title-icon">🏋️</span> 운동 처방</div>
+      ${heartRateHtml}
+      <div style="margin-bottom:12px">
+        <div style="font-size:13px;font-weight:700;color:var(--bc-color);margin-bottom:8px">추천 운동</div>
+        ${exerciseHtml}
+      </div>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:#EF4444;margin-bottom:8px">금지 운동</div>
+        ${forbExHtml}
+      </div>
+    </div>
+
+    <!-- 페이지 6: 식단 처방 -->
+    <div class="section-card">
+      <div class="section-title"><span class="title-icon">🥗</span> 식단 처방</div>
+      <div style="margin-bottom:14px">
+        <div style="font-size:13px;font-weight:700;color:#16A34A;margin-bottom:8px">✅ 추천 식품</div>
+        <div class="food-chips">
+          ${recFoods.map(f => `<span class="food-chip chip-rec">${f}</span>`).join('')}
+        </div>
+      </div>
+      <div style="margin-bottom:14px">
+        <div style="font-size:13px;font-weight:700;color:#DC2626;margin-bottom:8px">🚫 금지 식품</div>
+        <div class="food-chips">
+          ${forbFoods.map(f => {
+            const text = typeof f === 'string' ? f : f.food;
+            const reason = typeof f === 'object' ? f.reason : null;
+            return `<span class="food-chip chip-forb" title="${reason||''}">${text}</span>`;
+          }).join('')}
+        </div>
+      </div>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--bc-color);margin-bottom:8px">💊 추천 영양제</div>
+        ${supplHtml}
+      </div>
+    </div>
+
+    <!-- 페이지 7: 생활 규칙 + 월별 목표 -->
+    <div class="section-card">
+      <div class="section-title"><span class="title-icon">📋</span> 생활 습관 규칙</div>
+      ${rulesHtml}
+    </div>
+    <div class="section-card">
+      <div class="section-title"><span class="title-icon">📅</span> 월별 목표</div>
+      ${monthlyHtml}
+    </div>
+
+    <div class="result-footer">SlimMind © 2026 | 바디코드 체형 진단 서비스</div>
+  `;
+}
+
+// ─── 카카오톡 공유 ───────────────────────────────────────────
+function shareKakao() {
+  const r = RESULT_DATA?.result;
+  const resultUrl = location.href;
+  if (typeof Kakao !== 'undefined' && Kakao.isInitialized()) {
+    Kakao.Share.sendDefault({
+      objectType: 'feed',
+      content: {
+        title: `${r?.user_name || ''}님의 바디코드 진단 결과`,
+        description: `${r?.bc_primary} ${RESULT_DATA?.prescription?.brand_name || ''} — SlimMind 바디코드 체형 진단`,
+        imageUrl: `${location.origin}/static/og-image.png`,
+        link: { mobileWebUrl: resultUrl, webUrl: resultUrl }
+      },
+      buttons: [{ title: '결과지 보기', link: { mobileWebUrl: resultUrl, webUrl: resultUrl } }]
+    });
+  } else {
+    navigator.clipboard.writeText(resultUrl).then(() => {
+      toast('결과지 링크 복사 완료! 카카오톡에 붙여넣기 하세요.', 'success');
+    });
+  }
+}
+
+// ─── 메모 저장 ───────────────────────────────────────────────
+async function saveMemo() {
+  const memo = document.getElementById('memo-text').value;
+  const res = await fetch(`/api/results/${resultId}/memo`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` },
+    body: JSON.stringify({ memo })
+  });
+  const data = await res.json();
+  if (data.success) toast('메모 저장 완료', 'success');
+  else toast('저장 실패', 'error');
+}
+
+// ─── 유틸 ────────────────────────────────────────────────────
+function hexToLight(hex) {
+  try {
+    const r = parseInt(hex.slice(1,3), 16);
+    const g = parseInt(hex.slice(3,5), 16);
+    const b = parseInt(hex.slice(5,7), 16);
+    return `rgba(${r},${g},${b},0.08)`;
+  } catch { return '#F8FAFC'; }
+}
+function fmtDate(d) {
+  if (!d) return '-';
+  return d.replace('T',' ').slice(0,16);
+}
+
+// ─── 초기화 ──────────────────────────────────────────────────
+if (!resultId) {
+  document.getElementById('auth-gate').innerHTML = `<div class="auth-card"><div class="auth-icon">⚠️</div><div class="auth-title">잘못된 URL</div><button class="auth-btn" onclick="history.back()">돌아가기</button></div>`;
+} else if (TOKEN) {
+  // 저장된 토큰으로 자동 시도
+  loadResult().catch(() => { TOKEN = ''; });
+}
+
+document.getElementById('g-pw').onkeydown = e => { if (e.key === 'Enter') doAuth(); };
+</script>
+</body>
+</html>
