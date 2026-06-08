@@ -720,8 +720,10 @@ app.get('/result/:id', async (c) => {
 // ═══════════════════════════════════════════════════════════════
 app.get('/', (c) => c.html(indexHtml))
 app.get('/admin', (c) => c.html(adminHtml))
+app.get('/admin.html', (c) => c.html(adminHtml))
 app.get('/admin/*', (c) => c.html(adminHtml))
 app.get('/consultant', (c) => c.html(consultantHtml))
+app.get('/consultant.html', (c) => c.html(consultantHtml))
 app.get('/consultant/*', (c) => c.html(consultantHtml))
 
 export default app
