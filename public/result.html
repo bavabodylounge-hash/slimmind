@@ -1426,24 +1426,112 @@ function renderCh5(){
   if((!meal1 || meal1.length === 0)){
     const bcCode5meal = (res.bc_primary || '').toUpperCase();
     const defaultMealMap = {
+      // BC-01: 내장지방형 - 저GI, 식이섬유, 식사 순서 조절
+      'BC-01': [
+        {day:'월', breakfast:'달걀 2개 스크램블 + 방울토마토', lunch:'잡곡밥 소량 + 된장찌개(두부) + 나물 3종', dinner:'고등어구이 + 미역국 + 잡곡밥 소량'},
+        {day:'화', breakfast:'무가당 그릭요거트 + 견과류', lunch:'현미밥 + 닭가슴살볶음 + 채소샐러드', dinner:'두부조림 + 시금치된장국 + 잡곡밥'},
+        {day:'수', breakfast:'삶은달걀 2개 + 오이', lunch:'쌈밥(상추·깻잎) + 된장 + 불고기 소량', dinner:'갈치조림 + 콩나물국 + 현미밥'},
+        {day:'목', breakfast:'오트밀 + 블루베리', lunch:'비빔밥(나물 위주, 밥 반공기) + 된장국', dinner:'닭가슴살찜 + 버섯볶음 + 잡곡밥 소량'},
+        {day:'금', breakfast:'달걀후라이 + 채소볶음', lunch:'잡곡밥 + 청국장 + 구운두부', dinner:'연어구이 + 브로콜리 + 잡곡밥'},
+      ],
+      // BC-02: 복부비만형 - 간 해독, 항염, 복부 내장지방 집중
+      'BC-02': [
+        {day:'월', breakfast:'따뜻한 레몬물 + 달걀 2개 + 채소', lunch:'현미밥 + 닭가슴살 + 강황나물', dinner:'연어구이 + 브로콜리찜 + 잡곡밥 소량'},
+        {day:'화', breakfast:'그릭요거트 + 아마씨 1스푼', lunch:'쌈밥 + 불고기 소량 + 된장국', dinner:'두부찌개 + 나물 2종 + 현미밥'},
+        {day:'수', breakfast:'오트밀 + 강황 1/4티스푼 + 견과류', lunch:'비빔밥(나물 위주) + 미역국', dinner:'고등어구이 + 시금치볶음 + 잡곡밥'},
+        {day:'목', breakfast:'달걀스크램블 + 아보카도 1/4개', lunch:'잡곡밥 + 청국장 + 야채볶음', dinner:'닭가슴살구이 + 새우볶음 + 현미밥'},
+        {day:'금', breakfast:'따뜻한 생강차 + 통밀빵 + 달걀', lunch:'샐러드(닭가슴살) + 현미밥 소량', dinner:'갈치조림 + 무나물 + 잡곡밥'},
+      ],
+      // BC-03: 상체비대형 - 림프 순환, 저염, 수분 보충
+      'BC-03': [
+        {day:'월', breakfast:'따뜻한 물 500ml 공복 + 달걀 2개', lunch:'현미밥 소량 + 닭가슴살 + 저염나물', dinner:'흰살생선찜 + 시금치 + 잡곡밥'},
+        {day:'화', breakfast:'오트밀(무가당) + 블루베리', lunch:'쌈밥(저염장) + 두부구이 + 미역국', dinner:'닭가슴살샐러드 + 견과류 + 현미밥 소량'},
+        {day:'수', breakfast:'그릭요거트 + 아마씨', lunch:'비빔밥(나물, 고추장 소량) + 된장국', dinner:'연어구이 + 아스파라거스 + 잡곡밥'},
+        {day:'목', breakfast:'달걀스크램블 + 오이슬라이스', lunch:'잡곡밥 + 청국장(저염) + 콩나물', dinner:'고등어구이 + 무나물 + 현미밥 소량'},
+        {day:'금', breakfast:'따뜻한 보리차 + 달걀 + 채소', lunch:'채소쌈 + 된장 소량 + 두부', dinner:'흰살생선구이 + 브로콜리찜 + 잡곡밥'},
+      ],
+      // BC-04: 복압형 - 저FODMAP, 가스·팽만 최소화, 소화 부담 감소
+      'BC-04': [
+        {day:'월', breakfast:'달걀 2개 + 쌀밥 소량(흰쌀)', lunch:'흰쌀밥 소량 + 닭가슴살구이 + 호박나물', dinner:'연어구이 + 당근볶음 + 흰쌀밥'},
+        {day:'화', breakfast:'쌀오트밀 + 딸기(적량)', lunch:'닭가슴살볶음 + 주키니호박 + 흰쌀밥', dinner:'흰살생선찜 + 감자(삶은) + 흰쌀밥 소량'},
+        {day:'수', breakfast:'달걀스크램블 + 시금치(소량)', lunch:'쌈밥(상추) + 닭가슴살 + 된장 소량', dinner:'고등어구이 + 당근·주키니 + 흰쌀밥'},
+        {day:'목', breakfast:'달걀 2개 + 오이(껍질 제거)', lunch:'흰쌀밥 + 두부구이 + 호박나물', dinner:'닭안심찜 + 당근나물 + 흰쌀밥'},
+        {day:'금', breakfast:'쌀오트밀 + 블루베리', lunch:'닭가슴살샐러드(드레싱 올리브오일+소금만)', dinner:'흰살생선구이 + 삶은감자 + 흰쌀밥 소량'},
+      ],
+      // BC-05: 하체지방형 - 에스트로겐 대사, 두부·콩 제한, 하체 순환
+      'BC-05': [
+        {day:'월', breakfast:'달걀 2개 + 채소볶음', lunch:'현미밥 + 닭가슴살구이 + 브로콜리', dinner:'고등어구이 + 나물 2종 + 잡곡밥 소량'},
+        {day:'화', breakfast:'그릭요거트(무가당) + 견과류', lunch:'쌈밥(두부 제외) + 불고기 소량 + 미역국', dinner:'닭안심구이 + 아스파라거스 + 현미밥'},
+        {day:'수', breakfast:'오트밀(두유 말고 물로) + 블루베리', lunch:'비빔밥(나물, 고추장 소량) + 된장국', dinner:'연어구이 + 브로콜리 + 잡곡밥'},
+        {day:'목', breakfast:'달걀스크램블 + 시금치볶음', lunch:'잡곡밥 + 청국장(두부 빼고) + 나물', dinner:'흰살생선찜 + 당근나물 + 현미밥 소량'},
+        {day:'금', breakfast:'달걀 2개 + 아보카도 1/4', lunch:'닭가슴살샐러드 + 현미밥 소량', dinner:'고등어구이 + 무나물 + 잡곡밥'},
+      ],
+      // BC-06: 냉증셀룰라이트형 - 체온 상승, 따뜻한 음식, 혈액순환
       'BC-06': [
         {day:'월', breakfast:'따뜻한 오트밀 + 삶은달걀 1개', lunch:'잡곡밥 소량 + 두부된장국 + 나물', dinner:'생선구이 + 브로콜리찜 + 잡곡밥 소량'},
-        {day:'화', breakfast:'귀리죽 + 견과류', lunch:'닭가슴살 샐러드 + 현미밥', dinner:'삼겹살 X → 돼지 앞다리 수육 + 채소'},
+        {day:'화', breakfast:'귀리죽 + 견과류', lunch:'닭가슴살 샐러드 + 현미밥', dinner:'돼지 앞다리 수육 + 채소'},
         {day:'수', breakfast:'따뜻한 두유 + 통밀빵', lunch:'연어샐러드 + 잡곡밥', dinner:'청국장 + 나물 + 잡곡밥'},
-        {day:'목', breakfast:'달걀스크램블 + 채소 볶음', lunch:'비빔밥(나물 위주) 소량', dinner:'닭가슴살구이 + 버섯볶음'},
+        {day:'목', breakfast:'달걀스크램블 + 채소볶음', lunch:'비빔밥(나물 위주) 소량', dinner:'닭가슴살구이 + 버섯볶음'},
         {day:'금', breakfast:'따뜻한 오트밀 + 베리류', lunch:'잡곡밥 + 된장찌개 + 구운두부', dinner:'갈치조림 + 시금치나물 + 잡곡밥'},
+      ],
+      // BC-07: 마른비만형 - 근육 단백질 강화, 고단백 저탄수
+      'BC-07': [
+        {day:'월', breakfast:'달걀 3개 스크램블 + 아보카도 1/2', lunch:'닭가슴살 150g + 현미밥 + 채소', dinner:'소고기 안심구이 80g + 잡곡밥 소량'},
+        {day:'화', breakfast:'그릭요거트 200g + 견과류 + 단백질파우더', lunch:'연어구이 + 샐러드 + 현미밥', dinner:'닭안심찜 + 브로콜리 + 잡곡밥'},
+        {day:'수', breakfast:'달걀 3개 + 닭가슴살 50g', lunch:'비빔밥(단백질 추가) + 된장국', dinner:'고등어구이 + 두부조림 + 현미밥'},
+        {day:'목', breakfast:'오트밀 + 단백질파우더 + 견과류', lunch:'쌈밥 + 불고기(소고기) + 미역국', dinner:'새우볶음 + 나물 + 잡곡밥'},
+        {day:'금', breakfast:'달걀 2개 + 그릭요거트', lunch:'닭가슴살샐러드 + 현미밥', dinner:'연어구이 + 버섯볶음 + 잡곡밥'},
+      ],
+      // BC-08: 대사정체형 - 간헐적 단식 유도, 대사 활성화, 단계적 칼로리
+      'BC-08': [
+        {day:'월', breakfast:'공복 유지 or 달걀 2개(12시 이후)', lunch:'현미밥 소량 + 닭가슴살 + 나물', dinner:'고등어구이 + 시금치볶음 + 잡곡밥'},
+        {day:'화', breakfast:'블랙커피 or 차(무가당)', lunch:'비빔밥(나물 위주) + 된장국', dinner:'닭안심찜 + 버섯볶음 + 현미밥 소량'},
+        {day:'수', breakfast:'공복 유지 or 견과류 소량', lunch:'쌈밥 + 두부구이 + 미역국', dinner:'연어구이 + 브로콜리 + 잡곡밥'},
+        {day:'목', breakfast:'달걀 2개(간헐적 단식 후 첫 식사)', lunch:'잡곡밥 + 청국장 + 나물', dinner:'갈치조림 + 무나물 + 현미밥'},
+        {day:'금', breakfast:'공복 유지 or 그릭요거트', lunch:'닭가슴살샐러드 + 현미밥', dinner:'고등어구이 + 채소볶음 + 잡곡밥'},
+      ],
+      // BC-09: 코르티솔형 - 혈당 안정, 마그네슘, 스트레스 식품 조절
+      'BC-09': [
+        {day:'월', breakfast:'달걀 2개 + 귀리(혈당 완만)', lunch:'현미밥 + 닭가슴살 + 채소', dinner:'연어구이 + 아스파라거스 + 잡곡밥'},
+        {day:'화', breakfast:'그릭요거트 + 바나나(小)', lunch:'쌈밥 + 두부구이 + 된장국', dinner:'고등어구이 + 시금치볶음 + 현미밥'},
+        {day:'수', breakfast:'오트밀 + 견과류 + 달걀', lunch:'비빔밥(나물) + 미역국', dinner:'닭가슴살구이 + 버섯볶음 + 잡곡밥'},
+        {day:'목', breakfast:'달걀스크램블 + 견과류', lunch:'잡곡밥 + 청국장 + 나물', dinner:'흰살생선찜 + 채소 + 현미밥'},
+        {day:'금', breakfast:'따뜻한 카카오차 + 달걀 2개', lunch:'닭가슴살샐러드 + 현미밥', dinner:'두부조림 + 나물 + 잡곡밥'},
+      ],
+      // BC-10: 요요반복형 - 장 마이크로바이옴, 발효식품, 천천히 먹기
+      'BC-10': [
+        {day:'월', breakfast:'김치(소량) + 달걀 2개 + 잡곡밥', lunch:'된장찌개 + 나물 3종 + 현미밥', dinner:'고등어구이 + 콩나물국 + 잡곡밥'},
+        {day:'화', breakfast:'무가당 그릭요거트 + 견과류', lunch:'쌈밥 + 불고기 소량 + 청국장', dinner:'닭가슴살구이 + 김치볶음(기름 少) + 현미밥'},
+        {day:'수', breakfast:'오트밀 + 블루베리', lunch:'비빔밥(나물) + 된장국', dinner:'흰살생선찜 + 시금치나물 + 잡곡밥'},
+        {day:'목', breakfast:'달걀스크램블 + 김치(소량)', lunch:'잡곡밥 + 청국장 + 두부조림', dinner:'연어구이 + 아스파라거스 + 현미밥'},
+        {day:'금', breakfast:'따뜻한 보리차 + 달걀 + 낫토(있으면)', lunch:'닭가슴살샐러드 + 잡곡밥 소량', dinner:'갈치조림 + 나물 2종 + 잡곡밥'},
       ],
     };
     const defaultMeal = defaultMealMap[bcCode5meal] || [];
+    // BC별 맞춤 식단 안내 메시지
+    const mealNoteMap = {
+      'BC-01': '🥢 <strong>식사 순서 처방:</strong> 국물 → 나물·채소 → 단백질 → 밥 순으로. 밥은 반공기만. 식후 10분 걷기 권장.',
+      'BC-02': '🌿 <strong>간 해독 처방:</strong> 공복에 따뜻한 레몬수 or 강황물. 튀김·가공식품·알코올 금지. 식사 간격 4~5시간 유지.',
+      'BC-03': '💧 <strong>림프 순환 처방:</strong> 저염 식단 유지. 국물은 건더기만, 국물 자체는 최소화. 하루 수분 2L 이상.',
+      'BC-04': '🫁 <strong>복압 완화 처방:</strong> 가스 유발 식품(양파·마늘·콩류·밀가루) 제한. 소량씩 천천히. 식후 바로 눕지 않기.',
+      'BC-05': '🌸 <strong>호르몬 처방:</strong> 두부·두유·콩류 잠시 제한(에스트로겐 수용체 자극 감소). 식이섬유·십자화채소 증량.',
+      'BC-06': '🌡️ <strong>체온 처방:</strong> 차가운 음료·음식 금지. 모든 식사는 따뜻하게. 식후 따뜻한 생강차 또는 루이보스티 1잔.',
+      'BC-07': '💪 <strong>근육 처방:</strong> 매 끼니 단백질 25~30g 목표. 운동 30분 전 단백질 소량. 저녁 탄수화물 최소화.',
+      'BC-08': '⏰ <strong>대사 활성 처방:</strong> 첫 끼니를 12~14시로 지연(간헐적 단식). 식사 창 6~8시간 유지. 야식 엄금.',
+      'BC-09': '🧘 <strong>혈당 안정 처방:</strong> GI 낮은 탄수화물만. 단것·카페인 제한. 스트레스 시 먹기 전 5분 복식호흡.',
+      'BC-10': '🦠 <strong>장 마이크로바이옴 처방:</strong> 발효식품(김치·된장·그릭요거트) 매일 1가지. 천천히 씹기(한 입 20회). 식이섬유 30g 목표.',
+    };
+    const mealNote = mealNoteMap[bcCode5meal] || '🥗 <strong>공통 처방:</strong> 식사 순서(채소→단백질→탄수화물). 천천히 씹고, 스마트폰 보며 먹지 않기.';
     if(defaultMeal.length > 0){
+      const bcLabel = (R.bc && R.bc.bc_name) ? R.bc.bc_name : bcCode5meal;
       let html = `<div class="presc-card">
-        <div class="pc-head gray"><span class="pc-icon">🍱</span><span class="pc-title">1주차 샘플 식단 (${esc(bcCode5meal)} 맞춤)</span></div>
+        <div class="pc-head gray"><span class="pc-icon">🍱</span><span class="pc-title">1주차 샘플 식단 (${esc(bcLabel)} 맞춤)</span></div>
         <div class="pc-body">
           <table class="meal-table">
             <tr><th></th><th>아침</th><th>점심</th><th>저녁</th></tr>
             ${defaultMeal.map(m => `<tr><td><strong>${esc(m.day)}</strong></td><td>${esc(m.breakfast)}</td><td>${esc(m.lunch)}</td><td>${esc(m.dinner)}</td></tr>`).join('')}
           </table>
-          <div class="meal-note">🌡️ <strong>체온 처방:</strong> 차가운 음료·음식 금지. 모든 식사는 따뜻하게. 식후 따뜻한 생강차 또는 루이보스티 1잔.</div>
+          <div class="meal-note">${mealNote}</div>
         </div>
       </div>`;
       mealWrap.innerHTML = html;
