@@ -1161,13 +1161,22 @@ function calculateBCScores(answers) {
     }
   });
 
-  // 100점 상한 정규화
+  // ── 개선된 2단계 정규화 ────────────────────────────────
+  // BC-09(코르티솔형)는 기여 질문이 22개로 다른 코드(평균 15개)보다 많아
+  // 원점수가 구조적으로 과잉 산출됨. 이를 보정하기 위해:
+  // 1단계: 각 BC코드를 [0~1] 비율로 먼저 정규화 (최고점=1)
+  // 2단계: [0~1] 비율에 sqrt를 적용해 중·하위 코드를 위로 올림
+  //        (BC-09가 1.0이어도 다른 코드가 0.3→0.55로 상향, 변별력 유지)
+  // 3단계: 결과를 0~100으로 환산
   const maxBC = Math.max(...Object.values(bcScores));
   if (maxBC > 0) {
     Object.keys(bcScores).forEach(k => {
-      bcScores[k] = Math.min(100, Math.round((bcScores[k] / maxBC) * 100));
+      const ratio = bcScores[k] / maxBC;           // 0~1
+      const boosted = Math.sqrt(ratio);             // sqrt 적용으로 중위권 부스트
+      bcScores[k] = Math.min(100, Math.round(boosted * 100));
     });
   }
+
   const maxOH = Math.max(...Object.values(ohaengScores));
   if (maxOH > 0) {
     Object.keys(ohaengScores).forEach(k => {
@@ -1178,7 +1187,9 @@ function calculateBCScores(answers) {
   // Primary / Secondary
   const sortedBC = Object.entries(bcScores).sort((a, b) => b[1] - a[1]);
   const bcPrimary = sortedBC[0][0];
-  const bcSecondary = sortedBC[1][1] >= 60 ? sortedBC[1][0] : null;
+  // Secondary: 1위와 차이 20점 이내 + 최소 55점 이상 (sqrt 환산 기준)
+  const bcSecondary = (sortedBC[1][1] >= 55 && (sortedBC[0][1] - sortedBC[1][1]) <= 20)
+    ? sortedBC[1][0] : null;
   const ohaengType = Object.entries(ohaengScores).sort((a, b) => b[1] - a[1])[0][0];
 
   return { bcScores, ohaengScores, bcPrimary, bcSecondary, ohaengType };
