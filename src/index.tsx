@@ -591,6 +591,139 @@ app.get('/result/:id', async (c) => {
   const b2bTypes: string[] = parseJson(result.b2b_institution_types, []) || []
   const hasB2B = b2bTypes.length > 0
 
+  // ─────────────────────────────────────────────────────────────────
+  // PHASE 1-A: 인바디 역계산 엔진 (Deurenberg 공식)
+  // 실측값(bfr/fat_kg/muscle_kg)이 없을 때 설문 데이터로 자동 추정
+  // ─────────────────────────────────────────────────────────────────
+
+  // 1. 만 나이 계산 (birth_date 없으면 35세 기본값 → 역계산 시 추정 표시됨)
+  let ageYears: number | null = null
+  let ageIsEstimated = false
+  if (result.birth_date) {
+    const birth = new Date(result.birth_date as string)
+    const today = new Date()
+    let age = today.getFullYear() - birth.getFullYear()
+    const mDiff = today.getMonth() - birth.getMonth()
+    if (mDiff < 0 || (mDiff === 0 && today.getDate() < birth.getDate())) age--
+    ageYears = age > 0 ? age : null
+  } else {
+    // birth_date 없어도 weight/height 있으면 추정 나이 35세로 역계산 진행
+    if (result.weight && result.height) {
+      ageYears = 35
+      ageIsEstimated = true
+    }
+  }
+
+  // 2. BMI 계산 (없을 때 height/weight 기반)
+  let bmi: number | null = result.bmi ? Number(result.bmi) : null
+  const w = result.weight ? Number(result.weight) : null
+  const h = result.height ? Number(result.height) : null
+  if (!bmi && w && h && h > 0) {
+    bmi = parseFloat((w / ((h / 100) ** 2)).toFixed(1))
+  }
+
+  // 3. Deurenberg 체지방률 추정 (실측 bfr 없을 때)
+  let bfr: number | null = result.bfr ? Number(result.bfr) : null
+  let bodyDataSource: 'measured' | 'estimated' = 'measured'
+  if (ageIsEstimated) bodyDataSource = 'estimated'  // 나이 추정 → 전체 추정
+  if (!bfr && bmi && ageYears) {
+    const isMale = (result.gender as string)?.toLowerCase() === 'male' ||
+                   (result.gender as string) === '남성' ||
+                   (result.gender as string) === '남'
+    const rawBfr = isMale
+      ? (1.20 * bmi) + (0.23 * ageYears) - 16.2
+      : (1.20 * bmi) + (0.23 * ageYears) - 5.4
+    bfr = parseFloat(Math.max(5, Math.min(60, rawBfr)).toFixed(1))
+    bodyDataSource = 'estimated'
+  }
+
+  // 4. 체지방량 / 제지방량 / 근육량 역계산
+  let fat_kg: number | null = result.fat_kg ? Number(result.fat_kg) : null
+  let lean_kg: number | null = null
+  let muscle_kg: number | null = result.muscle_kg ? Number(result.muscle_kg) : null
+
+  if (w && bfr) {
+    if (!fat_kg) {
+      fat_kg = parseFloat((w * (bfr / 100)).toFixed(1))
+      if (bodyDataSource === 'measured') bodyDataSource = 'estimated' // fat_kg도 추정됨
+    }
+    lean_kg = parseFloat((w - fat_kg).toFixed(1))
+    if (!muscle_kg) {
+      muscle_kg = parseFloat((lean_kg * 0.75).toFixed(1))
+    }
+  }
+
+  // 5. 탄단지 비율 자동 계산
+  // 목표 칼로리: 기초대사량(Mifflin-St Jeor) × 활동계수 - 적자
+  let macroRatio: {
+    protein_g: number, fat_g: number, carb_g: number,
+    protein_pct: number, fat_pct: number, carb_pct: number,
+    total_kcal: number, bmr: number
+  } | null = null
+
+  if (w && h && ageYears) {
+    const isMale = (result.gender as string)?.toLowerCase() === 'male' ||
+                   (result.gender as string) === '남성' ||
+                   (result.gender as string) === '남'
+    // Mifflin-St Jeor BMR
+    const bmr = isMale
+      ? Math.round(10 * w + 6.25 * h - 5 * ageYears + 5)
+      : Math.round(10 * w + 6.25 * h - 5 * ageYears - 161)
+
+    // 활동계수 1.375 (가벼운 운동 주 1-3회) → 목표 칼로리는 500kcal 적자
+    const tdee = Math.round(bmr * 1.375)
+    const targetKcal = Math.max(1200, tdee - 500)
+
+    // 단백질: 제지방량 × 2.2g (유지) or muscle_kg 없으면 체중 × 1.8g
+    const protein_g = Math.round(lean_kg ? lean_kg * 2.2 : w * 1.8)
+    // 지방: 목표칼로리의 25%
+    const fat_g = Math.round((targetKcal * 0.25) / 9)
+    // 탄수화물: 나머지
+    const protein_kcal = protein_g * 4
+    const fat_kcal = fat_g * 9
+    const carb_kcal = Math.max(0, targetKcal - protein_kcal - fat_kcal)
+    const carb_g = Math.round(carb_kcal / 4)
+
+    const total = protein_kcal + fat_kcal + carb_kcal
+    macroRatio = {
+      protein_g, fat_g, carb_g,
+      protein_pct: Math.round((protein_kcal / total) * 100),
+      fat_pct: Math.round((fat_kcal / total) * 100),
+      carb_pct: Math.round((carb_kcal / total) * 100),
+      total_kcal: targetKcal,
+      bmr,
+    }
+  }
+
+  // 6. 감량 목표 계산
+  let bodyGoal: {
+    total_loss_kg: number, fat_loss_kg: number,
+    target_fat_kg: number, muscle_target_kg: number,
+    weeks_to_goal: number, weekly_deficit_kcal: number
+  } | null = null
+
+  const tw = result.target_weight ? Number(result.target_weight) : null
+  if (w && tw && fat_kg && muscle_kg) {
+    const total_loss_kg = parseFloat((w - tw).toFixed(1))
+    // 목표 체지방량: 목표 체중 × 현재 체지방률 × 0.8 (체지방 우선 감량 가정)
+    const target_fat_pct = bfr ? Math.max(10, bfr * 0.75) : null
+    const target_fat_kg = target_fat_pct
+      ? parseFloat((tw * (target_fat_pct / 100)).toFixed(1))
+      : parseFloat((fat_kg - total_loss_kg * 0.8).toFixed(1))
+    const fat_loss_kg = parseFloat((fat_kg - target_fat_kg).toFixed(1))
+    // 근육 유지 목표: 현재 근육량 × 0.95 (약 5% 감소 허용)
+    const muscle_target_kg = parseFloat((muscle_kg * 0.95).toFixed(1))
+    // 주간 적자: 지방 1kg = 7700kcal, 주당 0.5kg 목표
+    const weekly_deficit_kcal = 500 * 7
+    const weeks_to_goal = Math.ceil((fat_loss_kg * 7700) / weekly_deficit_kcal)
+
+    bodyGoal = {
+      total_loss_kg, fat_loss_kg, target_fat_kg,
+      muscle_target_kg, weeks_to_goal, weekly_deficit_kcal,
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────
+
   // window.__RESULT__ 데이터 구조 구성
   const resultData = {
     result: {
@@ -612,10 +745,20 @@ app.get('/result/:id', async (c) => {
       height: result.height,
       weight: result.weight,
       target_weight: result.target_weight,
-      bmi: result.bmi,
-      bfr: result.bfr,
-      fat_kg: result.fat_kg,
-      muscle_kg: result.muscle_kg,
+      bmi: bmi,
+      bfr: result.bfr ? Number(result.bfr) : null,
+      fat_kg: result.fat_kg ? Number(result.fat_kg) : null,
+      muscle_kg: result.muscle_kg ? Number(result.muscle_kg) : null,
+      // 역계산 필드 (실측값 없을 때 Deurenberg 추정)
+      age: ageYears,
+      age_is_estimated: ageIsEstimated,
+      body_data_source: bodyDataSource,
+      estimated_bfr: (!result.bfr && bodyDataSource === 'estimated') ? bfr : null,
+      estimated_fat_kg: (!result.fat_kg && fat_kg) ? fat_kg : null,
+      estimated_lean_kg: lean_kg,
+      estimated_muscle_kg: (!result.muscle_kg && muscle_kg) ? muscle_kg : null,
+      macro_ratio: macroRatio,
+      body_goal: bodyGoal,
       top_size: result.top_size,
       bottom_size: result.bottom_size,
       target_top_size: result.target_top_size,

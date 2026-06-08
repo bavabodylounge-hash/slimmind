@@ -924,28 +924,110 @@ function renderCh1(){
   const hookArea = bc.fat_area || '이 부위';
   hookBody.textContent = hookArea + '에 지방이 쌓이는 진짜 이유. 지금부터 당신의 몸 이야기가 시작됩니다.';
 
-  // 신체 수치 카드
+  // ── 신체 수치 카드 (역계산 포함) ──────────────────────────────
   const statsWrap = document.getElementById('p1BodyStats');
   const statsGrid = document.getElementById('p1StatsGrid');
+
+  // 실측/추정 통합: 실측값 우선, 없으면 estimated_* 사용
+  const displayBfr    = res.bfr    ?? res.estimated_bfr;
+  const displayFatKg  = res.fat_kg ?? res.estimated_fat_kg;
+  const displayMusKg  = res.muscle_kg ?? res.estimated_muscle_kg;
+  const isEstimated   = res.body_data_source === 'estimated';
+
+  // 수치 라벨에 "(추정)" 표시
+  const est = isEstimated ? '<sup style="font-size:8px;color:#F59E0B;vertical-align:super">추정</sup>' : '';
+
   const statItems = [
-    { label:'현재 체중', val: res.weight ? res.weight + 'kg' : null },
-    { label:'목표 체중', val: res.target_weight ? res.target_weight + 'kg' : null },
-    { label:'키', val: res.height ? res.height + 'cm' : null },
-    { label:'BMI', val: res.bmi ? Number(res.bmi).toFixed(1) : null },
-    { label:'체지방률', val: res.bfr ? Number(res.bfr).toFixed(1) + '%' : null },
-    { label:'체지방량', val: res.fat_kg ? Number(res.fat_kg).toFixed(1) + 'kg' : null },
-    { label:'근육량', val: res.muscle_kg ? Number(res.muscle_kg).toFixed(1) + 'kg' : null },
-    { label:'현재 사이즈', val: (res.top_size || res.bottom_size) ? ((res.top_size||'-') + ' / ' + (res.bottom_size||'-')) : null },
-    { label:'목표 사이즈', val: (res.target_top_size || res.target_bottom_size) ? ((res.target_top_size||'-') + ' / ' + (res.target_bottom_size||'-')) : null },
+    { label:'현재 체중',  val: res.weight      ? res.weight + 'kg'                        : null, tag:'' },
+    { label:'목표 체중',  val: res.target_weight ? res.target_weight + 'kg'                : null, tag:'' },
+    { label:'키',         val: res.height       ? res.height + 'cm'                        : null, tag:'' },
+    { label:'BMI',        val: res.bmi          ? Number(res.bmi).toFixed(1)               : null, tag:'' },
+    { label:'체지방률',   val: displayBfr       ? Number(displayBfr).toFixed(1) + '%'      : null, tag: isEstimated ? est : '' },
+    { label:'체지방량',   val: displayFatKg     ? Number(displayFatKg).toFixed(1) + 'kg'   : null, tag: isEstimated ? est : '' },
+    { label:'근육량',     val: displayMusKg     ? Number(displayMusKg).toFixed(1) + 'kg'   : null, tag: isEstimated ? est : '' },
+    { label:'제지방량',   val: res.estimated_lean_kg ? Number(res.estimated_lean_kg).toFixed(1) + 'kg' : null, tag: est },
+    { label:'현재 사이즈',val: (res.top_size||res.bottom_size) ? ((res.top_size||'-')+' / '+(res.bottom_size||'-')) : null, tag:'' },
+    { label:'목표 사이즈',val: (res.target_top_size||res.target_bottom_size) ? ((res.target_top_size||'-')+' / '+(res.target_bottom_size||'-')) : null, tag:'' },
   ].filter(s => s.val);
+
   if(statItems.length > 0){
     statsWrap.style.display = 'block';
+
+    // 추정값 사용 시 안내 문구
+    const estNote = isEstimated
+      ? `<div style="font-size:10px;color:#F59E0B;margin-bottom:8px;background:#FFFBEB;padding:6px 10px;border-radius:8px;border:1px solid #FDE68A">
+           <sup>추정</sup> 표시 수치는 Deurenberg 공식으로 산출된 추정값입니다.
+           인바디 실측 시 자동으로 갱신됩니다.
+         </div>`
+      : '';
+
+    statsGrid.parentElement.insertAdjacentHTML('afterbegin', estNote);
     statsGrid.innerHTML = statItems.map(s =>
       `<div style="text-align:center;background:#fff;border-radius:10px;padding:10px 6px;border:1px solid #E2E8F0">
         <div style="font-size:10px;color:#94A3B8;margin-bottom:4px">${esc(s.label)}</div>
-        <div style="font-size:16px;font-weight:700;color:#0B2545">${esc(s.val)}</div>
+        <div style="font-size:16px;font-weight:700;color:#0B2545">${esc(s.val)}${s.tag}</div>
       </div>`
     ).join('');
+  }
+
+  // ── 감량 목표 카드 ────────────────────────────────────────────
+  const bg = res.body_goal;
+  if(bg && bg.total_loss_kg > 0){
+    const goalHtml = `
+      <div id="p1BodyGoal" style="background:linear-gradient(135deg,#0B2545 0%,#1e4080 100%);border-radius:14px;padding:16px 18px;margin:12px 0;color:#fff">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;opacity:.7;margin-bottom:10px">🎯 맞춤 감량 목표</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center">
+          <div>
+            <div style="font-size:22px;font-weight:800;color:#60A5FA">${bg.total_loss_kg}<span style="font-size:13px">kg</span></div>
+            <div style="font-size:10px;opacity:.7;margin-top:2px">총 감량 목표</div>
+          </div>
+          <div>
+            <div style="font-size:22px;font-weight:800;color:#34D399">${bg.fat_loss_kg}<span style="font-size:13px">kg</span></div>
+            <div style="font-size:10px;opacity:.7;margin-top:2px">체지방 감량</div>
+          </div>
+          <div>
+            <div style="font-size:22px;font-weight:800;color:#F472B6">${bg.weeks_to_goal}<span style="font-size:13px">주</span></div>
+            <div style="font-size:10px;opacity:.7;margin-top:2px">예상 달성 기간</div>
+          </div>
+        </div>
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.15);font-size:11px;opacity:.7;text-align:center">
+          근육 보호 목표 ${bg.muscle_target_kg}kg 유지 · 주간 적자 ${bg.weekly_deficit_kcal.toLocaleString()}kcal
+        </div>
+      </div>`;
+    statsWrap.insertAdjacentHTML('afterend', goalHtml);
+  }
+
+  // ── 탄단지 비율 카드 (Ch1 하단) ──────────────────────────────
+  const mr = res.macro_ratio;
+  if(mr){
+    const macroHtml = `
+      <div id="p1MacroRatio" style="background:#F0FDF4;border-radius:14px;padding:16px 18px;margin:12px 0;border:1px solid #BBF7D0">
+        <div style="font-size:11px;font-weight:700;color:#15803D;letter-spacing:.08em;margin-bottom:10px">🥗 맞춤 탄단지 처방 (하루 기준)</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;margin-bottom:10px">
+          <div style="background:#fff;border-radius:10px;padding:10px 6px;border:1px solid #D1FAE5">
+            <div style="font-size:10px;color:#6B7280;margin-bottom:2px">탄수화물</div>
+            <div style="font-size:20px;font-weight:800;color:#059669">${mr.carb_g}<span style="font-size:11px">g</span></div>
+            <div style="font-size:10px;color:#10B981;margin-top:1px">${mr.carb_pct}%</div>
+          </div>
+          <div style="background:#fff;border-radius:10px;padding:10px 6px;border:1px solid #D1FAE5">
+            <div style="font-size:10px;color:#6B7280;margin-bottom:2px">단백질</div>
+            <div style="font-size:20px;font-weight:800;color:#2563EB">${mr.protein_g}<span style="font-size:11px">g</span></div>
+            <div style="font-size:10px;color:#3B82F6;margin-top:1px">${mr.protein_pct}%</div>
+          </div>
+          <div style="background:#fff;border-radius:10px;padding:10px 6px;border:1px solid #D1FAE5">
+            <div style="font-size:10px;color:#6B7280;margin-bottom:2px">지방</div>
+            <div style="font-size:20px;font-weight:800;color:#D97706">${mr.fat_g}<span style="font-size:11px">g</span></div>
+            <div style="font-size:10px;color:#F59E0B;margin-top:1px">${mr.fat_pct}%</div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:#64748B;padding:6px 0;border-top:1px solid #D1FAE5">
+          <span>🔥 목표 칼로리: <strong style="color:#0B2545">${mr.total_kcal.toLocaleString()}kcal/일</strong></span>
+          <span>BMR: <strong>${mr.bmr.toLocaleString()}kcal</strong></span>
+        </div>
+      </div>`;
+    const goalEl = document.getElementById('p1BodyGoal');
+    if(goalEl) goalEl.insertAdjacentHTML('afterend', macroHtml);
+    else statsWrap.insertAdjacentHTML('afterend', macroHtml);
   }
 }
 
@@ -1446,9 +1528,14 @@ function renderCh5(){
   // 6대 영양소 비율
   const macroWrap = document.getElementById('p5MacroRatio');
   macroWrap.innerHTML = '';
-  const macro = jp(bc.macro_ratio) || {};
+  // BC DB macro_ratio 없으면 역계산된 res.macro_ratio 폴백
+  const bcMacro  = jp(bc.macro_ratio) || {};
+  const resMacro = res.macro_ratio || null;   // 역계산 탄단지 비율
+  const macro    = Object.keys(bcMacro).length > 0 ? bcMacro : {};
   const macroStory = bc.macro_story || '';
   const barColors = {protein:'#3B82F6', fat:'#F59E0B', carb:'#10B981', fiber:'#8B5CF6', water:'#06B6D4'};
+
+  // (A) BC 처방 비율 바 차트 (기존)
   if(Object.keys(macro).length > 0){
     let html = `<div class="presc-card">
       <div class="pc-head blue"><span class="pc-icon">⚖️</span><span class="pc-title blue-t">6대 영양소 처방 비율</span></div>
@@ -1465,6 +1552,49 @@ function renderCh5(){
     if(macroStory) html += `<div class="meal-note">${esc(macroStory)}</div>`;
     html += `</div></div>`;
     macroWrap.innerHTML = html;
+  }
+
+  // (B) 역계산 탄단지 그램 처방 카드 (resMacro가 있을 때 항상 표시)
+  if(resMacro){
+    const rmHtml = `
+      <div class="presc-card" id="p5PersonalMacro">
+        <div class="pc-head blue">
+          <span class="pc-icon">🧮</span>
+          <span class="pc-title blue-t">
+            ${res.user_name||'회원'}님 맞춤 하루 영양소 처방
+            ${res.body_data_source==='estimated'
+              ? '<span style="font-size:10px;color:#F59E0B;margin-left:6px">(추정 기반)</span>'
+              : ''}
+          </span>
+        </div>
+        <div class="pc-body">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;margin-bottom:10px">
+            <div style="background:#EFF6FF;border-radius:10px;padding:10px 6px">
+              <div style="font-size:10px;color:#6B7280;margin-bottom:2px">탄수화물</div>
+              <div style="font-size:22px;font-weight:800;color:#059669">${resMacro.carb_g}<span style="font-size:11px">g</span></div>
+              <div style="font-size:10px;color:#10B981">${resMacro.carb_pct}%</div>
+            </div>
+            <div style="background:#EFF6FF;border-radius:10px;padding:10px 6px">
+              <div style="font-size:10px;color:#6B7280;margin-bottom:2px">단백질</div>
+              <div style="font-size:22px;font-weight:800;color:#2563EB">${resMacro.protein_g}<span style="font-size:11px">g</span></div>
+              <div style="font-size:10px;color:#3B82F6">${resMacro.protein_pct}%</div>
+            </div>
+            <div style="background:#EFF6FF;border-radius:10px;padding:10px 6px">
+              <div style="font-size:10px;color:#6B7280;margin-bottom:2px">지방</div>
+              <div style="font-size:22px;font-weight:800;color:#D97706">${resMacro.fat_g}<span style="font-size:11px">g</span></div>
+              <div style="font-size:10px;color:#F59E0B">${resMacro.fat_pct}%</div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:#64748B;padding:8px 4px;border-top:1px solid #E2E8F0">
+            <span>🔥 목표 칼로리 <strong style="color:#0B2545">${resMacro.total_kcal.toLocaleString()}kcal</strong></span>
+            <span>기초대사량 <strong>${resMacro.bmr.toLocaleString()}kcal</strong></span>
+          </div>
+          <div style="font-size:11px;color:#94A3B8;margin-top:6px;line-height:1.5">
+            Mifflin-St Jeor 공식 기반 · 활동계수 1.375 적용 · 일일 500kcal 적자 목표
+          </div>
+        </div>
+      </div>`;
+    macroWrap.insertAdjacentHTML('afterend', rmHtml);
   }
 
   // 식품 처방
