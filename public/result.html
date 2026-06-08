@@ -431,7 +431,13 @@ body{
         <div class="badge-row" id="p1Badges"></div>
       </div>
 
+      <!-- 복합체형 BC 점수 바 -->
+      <div id="p1BcScoreBar" style="display:none;margin:10px 0 4px"></div>
+
       <div class="divider"></div>
+
+      <!-- 수치 인포그래픽 (BMI 바 + 체지방 도넛 + 근육량 게이지) -->
+      <div id="p1Infographic" style="display:none;margin:12px 0"></div>
 
       <!-- 신체 수치 카드 -->
       <div id="p1BodyStats" style="display:none;background:#F8FAFC;border-radius:14px;padding:14px 16px;margin:12px 0;border:1px solid #E2E8F0">
@@ -901,10 +907,73 @@ function renderCh1(){
   document.getElementById('p1OpeningText').innerHTML = openingText;
   document.getElementById('p1ActionText').textContent = actionText;
 
+  // BC 이름 매핑 (복합체형 표시용)
+  const BC_NAMES = {
+    'BC-01':'내장지방형','BC-02':'복부비만형','BC-03':'상체비대형','BC-04':'복압형',
+    'BC-05':'하체지방형','BC-06':'냉증셀룰라이트형','BC-07':'마른비만형','BC-08':'대사정체형',
+    'BC-09':'코르티솔형','BC-10':'요요반복형'
+  };
+
   // BC 코드
   document.getElementById('p1BcCode').textContent = res.bc_primary || 'BC-??';
   document.getElementById('p1BcBrand').textContent =
     (bc.brand_name || '') + (bc.tagline ? ' · ' + bc.tagline : '');
+
+  // ── 복합체형 BC 점수 바 ──────────────────────────────────────
+  const scoreBarWrap = document.getElementById('p1BcScoreBar');
+  const bcScores = res.bc_scores || {};
+  const bcPrimary = (res.bc_primary || '').toUpperCase();
+  const bcSecondary = (res.bc_secondary || '').toUpperCase();
+  const primaryScore = res.bc_primary_score || bcScores[bcPrimary] || 0;
+  const secondaryScore = res.bc_secondary_score || bcScores[bcSecondary] || 0;
+
+  if(bcPrimary && primaryScore > 0){
+    scoreBarWrap.style.display = 'block';
+    // 상위 3개 BC 추출
+    const sortedScores = Object.entries(bcScores)
+      .filter(([k,v]) => v > 0)
+      .sort((a,b) => b[1]-a[1])
+      .slice(0,3);
+    const maxScore = sortedScores[0]?.[1] || primaryScore;
+
+    const barColors = ['#0B2545','#3B82F6','#93C5FD'];
+    const labels = ['주 체형','부 체형','3위 체형'];
+
+    let sbHtml = `<div style="background:#F8FAFC;border-radius:14px;padding:14px 16px;border:1px solid #E2E8F0">
+      <div style="font-size:11px;font-weight:700;color:#64748B;letter-spacing:.08em;margin-bottom:10px">
+        📊 바디코드 점수 분포
+        ${bcSecondary ? `<span style="font-size:10px;font-weight:400;color:#94A3B8;margin-left:6px">— 복합 체형 감지됨</span>` : ''}
+      </div>`;
+
+    sortedScores.forEach(([code, score], i) => {
+      const pct = Math.round((score / maxScore) * 100);
+      const name = BC_NAMES[code] || code;
+      const isMain = code === bcPrimary;
+      sbHtml += `<div style="margin-bottom:${i < sortedScores.length-1 ? '8px' : '0'}">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+          <div style="display:flex;align-items:center;gap:6px">
+            ${isMain ? `<span style="background:#0B2545;color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px">주</span>` : `<span style="background:#E2E8F0;color:#64748B;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px">${labels[i]}</span>`}
+            <span style="font-size:12px;font-weight:${isMain?'700':'500'};color:${isMain?'#0B2545':'#475569'}">${esc(code)} ${esc(name)}</span>
+          </div>
+          <span style="font-size:12px;font-weight:700;color:${barColors[i]}">${score}점</span>
+        </div>
+        <div style="height:8px;background:#E2E8F0;border-radius:4px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:${barColors[i]};border-radius:4px;transition:width .6s ease"></div>
+        </div>
+      </div>`;
+    });
+
+    // 복합체형 설명
+    if(bcSecondary && secondaryScore > 0){
+      const ratio = Math.round((secondaryScore / primaryScore) * 100);
+      sbHtml += `<div style="margin-top:10px;padding:8px 10px;background:#EFF6FF;border-radius:8px;font-size:11px;color:#1E40AF;line-height:1.5">
+        💡 <strong>복합 체형 감지:</strong> ${esc(bcPrimary)} + ${esc(bcSecondary)} 혼재 (부 체형 영향도 ${ratio}%).<br>
+        주 체형 처방을 기본으로 하되, ${esc(BC_NAMES[bcSecondary]||bcSecondary)} 특성도 함께 고려합니다.
+      </div>`;
+    }
+    sbHtml += `</div>`;
+    scoreBarWrap.innerHTML = sbHtml;
+  }
 
   // 뱃지 4개
   const badges = document.getElementById('p1Badges');
@@ -990,6 +1059,132 @@ function renderCh1(){
         <div style="font-size:16px;font-weight:700;color:#0B2545">${esc(s.val)}${s.tag}</div>
       </div>`
     ).join('');
+  }
+
+  // ── 수치 인포그래픽 ──────────────────────────────────────────
+  const infographicWrap = document.getElementById('p1Infographic');
+  const infoBmi    = res.bmi;
+  const infoBfr    = res.bfr ?? res.estimated_bfr;
+  const infoMusKg  = res.muscle_kg ?? res.estimated_muscle_kg;
+  const infoFatKg  = res.fat_kg ?? res.estimated_fat_kg;
+  const infoLeanKg = res.estimated_lean_kg;
+  const infoW      = res.weight;
+
+  if(infoBmi || infoBfr || infoMusKg){
+    infographicWrap.style.display = 'block';
+    let iHtml = `<div style="font-size:11px;font-weight:700;color:#64748B;letter-spacing:.08em;margin-bottom:10px">📈 신체 지표 인포그래픽</div>`;
+
+    // ① BMI 스펙트럼 바
+    if(infoBmi){
+      const bmi = Number(infoBmi);
+      // BMI 구간: 저체중<18.5, 정상18.5~24.9, 과체중25~29.9, 비만≥30
+      const bmiSegments = [
+        { label:'저체중', max:18.5, color:'#93C5FD' },
+        { label:'정상',   max:24.9, color:'#34D399' },
+        { label:'과체중', max:29.9, color:'#FCD34D' },
+        { label:'비만',   max:40,   color:'#F87171' },
+      ];
+      // 바 내 위치: 15~40 범위로 정규화
+      const bmiMin=15, bmiMax=40;
+      const bmiPct = Math.max(0, Math.min(100, ((bmi - bmiMin) / (bmiMax - bmiMin)) * 100));
+      const seg = bmiSegments.find(s => bmi < s.max) || bmiSegments[3];
+
+      iHtml += `<div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:12px 14px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+          <span style="font-size:12px;font-weight:700;color:#374151">BMI</span>
+          <span style="font-size:20px;font-weight:800;color:${seg.color === '#34D399' ? '#059669' : '#DC2626'}">${bmi.toFixed(1)}
+            <span style="font-size:11px;font-weight:600;color:#9CA3AF"> · ${esc(seg.label)}</span>
+          </span>
+        </div>
+        <div style="position:relative;height:12px;border-radius:6px;overflow:hidden;display:flex">
+          <div style="width:${(3.5/(bmiMax-bmiMin))*100}%;background:#93C5FD"></div>
+          <div style="width:${(6.4/(bmiMax-bmiMin))*100}%;background:#34D399"></div>
+          <div style="width:${(5/(bmiMax-bmiMin))*100}%;background:#FCD34D"></div>
+          <div style="flex:1;background:#F87171"></div>
+        </div>
+        <div style="position:relative;margin-top:2px">
+          <div style="position:absolute;left:${bmiPct}%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:7px solid #0B2545"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:#94A3B8;margin-top:10px">
+          <span>15</span><span style="color:#93C5FD">저체중 ↑18.5</span><span style="color:#34D399">정상 ↑25</span><span style="color:#FCD34D">과체중 ↑30</span><span style="color:#F87171">비만</span><span>40+</span>
+        </div>
+      </div>`;
+    }
+
+    // ② 체지방 도넛 (SVG) + 근육량 게이지 — 2열 배치
+    if(infoBfr || infoMusKg){
+      iHtml += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">`;
+
+      // 체지방 도넛
+      if(infoBfr){
+        const bfr = Number(infoBfr);
+        const fatPct = Math.min(70, Math.max(3, bfr));
+        const leanPct = 100 - fatPct;
+        // SVG 도넛: r=36, 둘레=2πr≈226
+        const circ = 2 * Math.PI * 36;
+        const fatDash  = (fatPct  / 100) * circ;
+        const leanDash = (leanPct / 100) * circ;
+        const isEstBfr = res.estimated_bfr !== null && res.estimated_bfr !== undefined;
+
+        iHtml += `<div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:12px 10px;text-align:center">
+          <div style="font-size:10px;font-weight:700;color:#64748B;margin-bottom:8px">
+            체지방 구성${isEstBfr ? ' <span style="color:#F59E0B;font-size:9px">추정</span>' : ''}
+          </div>
+          <svg width="90" height="90" viewBox="0 0 90 90" style="transform:rotate(-90deg)">
+            <circle cx="45" cy="45" r="36" fill="none" stroke="#F1F5F9" stroke-width="12"/>
+            <circle cx="45" cy="45" r="36" fill="none" stroke="#F87171" stroke-width="12"
+              stroke-dasharray="${fatDash.toFixed(1)} ${(circ-fatDash).toFixed(1)}"
+              stroke-linecap="round"/>
+            <circle cx="45" cy="45" r="36" fill="none" stroke="#34D399" stroke-width="12"
+              stroke-dasharray="${leanDash.toFixed(1)} ${(circ-leanDash).toFixed(1)}"
+              stroke-dashoffset="-${fatDash.toFixed(1)}"
+              stroke-linecap="round"/>
+          </svg>
+          <div style="margin-top:-74px;font-size:18px;font-weight:800;color:#0B2545;line-height:1">${bfr.toFixed(1)}<span style="font-size:11px">%</span></div>
+          <div style="margin-top:58px;display:flex;justify-content:center;gap:10px;font-size:10px">
+            <span><span style="display:inline-block;width:8px;height:8px;background:#F87171;border-radius:50%;margin-right:3px"></span>지방 ${bfr.toFixed(1)}%</span>
+            <span><span style="display:inline-block;width:8px;height:8px;background:#34D399;border-radius:50%;margin-right:3px"></span>제지방 ${leanPct.toFixed(1)}%</span>
+          </div>
+        </div>`;
+      }
+
+      // 근육량 게이지
+      if(infoMusKg && infoW){
+        const musKg = Number(infoMusKg);
+        const w = Number(infoW);
+        // 이상적 근육량 기준: 체중의 40%(여성 기준)
+        const idealMus = w * 0.40;
+        const gaugeRatio = Math.min(1, musKg / idealMus);
+        const gaugePct = Math.round(gaugeRatio * 100);
+        const gaugeColor = gaugePct >= 90 ? '#34D399' : gaugePct >= 70 ? '#FCD34D' : '#F87171';
+        // 반원 게이지: 반지름 32, 둘레 절반 ≈100.5
+        const semiCirc = Math.PI * 32; // ≈100.5
+        const fillLen = gaugeRatio * semiCirc;
+        const isEstMus = res.estimated_muscle_kg !== null && res.estimated_muscle_kg !== undefined;
+
+        iHtml += `<div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:12px 10px;text-align:center">
+          <div style="font-size:10px;font-weight:700;color:#64748B;margin-bottom:8px">
+            근육량 수준${isEstMus ? ' <span style="color:#F59E0B;font-size:9px">추정</span>' : ''}
+          </div>
+          <svg width="90" height="50" viewBox="0 0 90 50">
+            <path d="M 10 48 A 35 35 0 0 1 80 48" fill="none" stroke="#F1F5F9" stroke-width="10" stroke-linecap="round"/>
+            <path d="M 10 48 A 35 35 0 0 1 80 48" fill="none" stroke="${gaugeColor}" stroke-width="10"
+              stroke-linecap="round"
+              stroke-dasharray="${(gaugeRatio * 109.9).toFixed(1)} 110"
+              />
+          </svg>
+          <div style="margin-top:-12px;font-size:18px;font-weight:800;color:#0B2545">${musKg.toFixed(1)}<span style="font-size:11px">kg</span></div>
+          <div style="font-size:10px;color:#9CA3AF;margin-top:2px">목표 ${idealMus.toFixed(1)}kg 대비 ${gaugePct}%</div>
+          <div style="margin-top:6px;height:4px;background:#F1F5F9;border-radius:2px;overflow:hidden">
+            <div style="height:100%;width:${gaugePct}%;background:${gaugeColor};border-radius:2px"></div>
+          </div>
+        </div>`;
+      }
+
+      iHtml += `</div>`; // 2열 그리드 종료
+    }
+
+    infographicWrap.innerHTML = iHtml;
   }
 
   // ── 감량 목표 카드 ────────────────────────────────────────────
