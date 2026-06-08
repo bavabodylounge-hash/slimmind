@@ -136,6 +136,16 @@
     #toast.show { display: block; animation: fadeInUp .3s ease; }
     @keyframes fadeInUp { from { opacity:0; transform: translateY(12px); } to { opacity:1; transform: translateY(0); } }
 
+    /* ── 등록완료 팝업 ─── */
+    #modal-registered .modal { max-width: 480px; }
+    .reg-code-box { background: #EFF6FF; border: 2px solid #BFDBFE; border-radius: 12px; padding: 20px 24px; margin-bottom: 16px; }
+    .reg-code-label { font-size: 11px; font-weight: 700; color: #3B82F6; letter-spacing: .5px; text-transform: uppercase; margin-bottom: 4px; }
+    .reg-code-val { font-size: 22px; font-weight: 800; color: #1A3C6B; font-family: monospace; }
+    .reg-pw-box { background: #FFF7ED; border: 1.5px solid #FED7AA; border-radius: 10px; padding: 14px 18px; margin-bottom: 16px; display:flex; align-items:center; gap:10px; }
+    .reg-link-row { display:flex; gap:8px; margin-bottom:10px; align-items:center; }
+    .reg-link-row .link-label { font-size:12px; font-weight:700; color:var(--muted); width:80px; flex-shrink:0; }
+    .reg-link-row .link-val { font-size:12px; color:var(--primary-light); background:#F0F9FF; border-radius:8px; padding:8px 10px; flex:1; word-break:break-all; }
+    .reg-link-row .copy-btn { flex-shrink:0; }
     /* ── 반응형 ─── */
     @media (max-width: 900px) {
       .sidebar { transform: translateX(-100%); transition: transform .3s; }
@@ -260,6 +270,50 @@
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="closeModal('modal-consultant')">취소</button>
       <button class="btn btn-primary" id="modal-cons-save" onclick="saveConsultant()">등록</button>
+    </div>
+  </div>
+</div>
+
+<!-- 컨설턴트 등록 완료 팝업 -->
+<div class="modal-overlay" id="modal-registered">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 style="color:var(--accent)"><i class="fas fa-check-circle"></i> 컨설턴트 등록 완료</h3>
+      <button class="modal-close" onclick="closeModal('modal-registered')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="reg-code-box">
+        <div class="reg-code-label">컨설턴트 코드</div>
+        <div class="reg-code-val" id="reg-code-val">SC-0000</div>
+      </div>
+      <div class="reg-pw-box">
+        <i class="fas fa-key" style="color:#F59E0B;font-size:18px"></i>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#92400E;margin-bottom:2px">초기 비밀번호 (컨설턴트에게 전달)</div>
+          <div id="reg-pw-val" style="font-size:16px;font-weight:700;font-family:monospace;color:#1A3C6B">pass0000</div>
+        </div>
+        <button class="btn btn-warn btn-sm" style="margin-left:auto" onclick="copyRegPw()"><i class="fas fa-copy"></i></button>
+      </div>
+      <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">공유 링크</div>
+      <div class="reg-link-row">
+        <span class="link-label">📋 설문 링크</span>
+        <span class="link-val" id="reg-survey-url"></span>
+        <button class="btn btn-ghost btn-sm copy-btn" onclick="copyRegLink('survey')"><i class="fas fa-copy"></i></button>
+      </div>
+      <div class="reg-link-row">
+        <span class="link-label">🖥️ 대시보드</span>
+        <span class="link-val" id="reg-dash-url"></span>
+        <button class="btn btn-primary btn-sm copy-btn" onclick="copyRegLink('dash')"><i class="fas fa-copy"></i></button>
+      </div>
+      <div style="background:#F0FDF4;border-radius:8px;padding:12px;font-size:12px;color:#065F46;margin-top:12px;line-height:1.7">
+        <i class="fas fa-info-circle"></i>
+        컨설턴트에게 <strong>초기 비밀번호</strong>와 <strong>대시보드 링크</strong>를 전달하세요.<br>
+        설문 링크는 고객이 설문을 시작할 때 사용하는 링크입니다.
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-registered')">닫기</button>
+      <button class="btn btn-primary" onclick="copyAllRegInfo()"><i class="fas fa-copy"></i> 전체 복사</button>
     </div>
   </div>
 </div>
@@ -544,14 +598,24 @@ async function loadConsultants(search = '', status = '') {
       <td>${c.subscription_end ? c.subscription_end.slice(0,10) : '-'}</td>
       <td style="text-align:center">${c.lecture_progress || 0}/12강</td>
       <td><span class="badge ${c.is_certified ? 'badge-green' : 'badge-gray'}">${c.is_certified ? '인증' : '미인증'}</span></td>
+      <td style="text-align:center">
+        <button class="btn btn-ghost btn-sm" title="설문 링크 복사" onclick="copySurveyLink('${c.code}')" style="padding:5px 8px">
+          <i class="fas fa-share-alt" style="color:#2563EB"></i>
+        </button>
+        <button class="btn btn-ghost btn-sm" title="대시보드 링크 복사" onclick="copyDashLink('${c.code}')" style="padding:5px 8px;margin-left:2px">
+          <i class="fas fa-desktop" style="color:#10B981"></i>
+        </button>
+        <button class="btn btn-ghost btn-sm" title="이 컨설턴트 결과지만 보기" onclick="viewConsultantResults('${c.code}')" style="padding:5px 8px;margin-left:2px">
+          <i class="fas fa-file-medical" style="color:#F59E0B"></i>
+          <span style="font-size:11px;margin-left:2px">${c.result_count||0}</span>
+        </button>
+      </td>
       <td style="text-align:right;white-space:nowrap">
-        <span style="font-size:12px;color:var(--muted)">${c.result_count||0}건 &nbsp;</span>
         <button class="btn btn-ghost btn-sm" onclick="openEditConsultant('${c.code}')">수정</button>
         ${c.subscription_status !== 'suspended'
           ? `<button class="btn btn-danger btn-sm" style="margin-left:4px" onclick="suspendConsultant('${c.code}')">정지</button>`
           : `<button class="btn btn-success btn-sm" style="margin-left:4px" onclick="activateConsultant('${c.code}')">활성화</button>`
         }
-        <button class="btn btn-ghost btn-sm" style="margin-left:4px" onclick="copyInviteLink('${c.code}')"><i class="fas fa-link"></i></button>
       </td>
     </tr>
   `).join('');
@@ -572,7 +636,7 @@ async function loadConsultants(search = '', status = '') {
     <div class="card" style="padding:0">
       <div class="tbl-wrap">
         <table>
-          <thead><tr><th>코드</th><th>이름</th><th>직종</th><th>등급</th><th>상태</th><th>만료일</th><th>강의</th><th>인증</th><th style="text-align:right">관리</th></tr></thead>
+          <thead><tr><th>코드</th><th>이름</th><th>직종</th><th>등급</th><th>상태</th><th>만료일</th><th>강의</th><th>인증</th><th style="text-align:center">링크</th><th style="text-align:right">관리</th></tr></thead>
           <tbody>${rows || '<tr><td colspan="9"><div class="empty-state"><i class="fas fa-users"></i><p>컨설턴트 없음</p></div></td></tr>'}</tbody>
         </table>
       </div>
@@ -626,13 +690,55 @@ async function saveConsultant() {
   if (code) {
     await api('PUT', `/admin/consultants/${code}`, body);
     toast(`${code} 정보 수정 완료`, 'success');
+    closeModal('modal-consultant');
+    loadConsultants();
   } else {
     const res = await api('POST', '/admin/consultants', body);
-    toast(res?.message || '등록 완료', 'success');
+    if (res?.success) {
+      closeModal('modal-consultant');
+      showRegisteredPopup(res.code, res.initialPassword || res.message);
+      loadConsultants();
+    } else {
+      toast(res?.message || '등록 실패', 'error');
+    }
   }
-  closeModal('modal-consultant');
-  loadConsultants();
 }
+
+function showRegisteredPopup(code, pwHint) {
+  // 초기 비밀번호: pass + 코드 번호
+  const num = code.replace('SC-', '');
+  const pw = `pass${num}`;
+  const surveyUrl = `${location.origin}/?ref=${code}`;
+  const dashUrl = `${location.origin}/consultant.html`;
+
+  document.getElementById('reg-code-val').textContent = code;
+  document.getElementById('reg-pw-val').textContent = pw;
+  document.getElementById('reg-survey-url').textContent = surveyUrl;
+  document.getElementById('reg-dash-url').textContent = dashUrl;
+  openModal('modal-registered');
+}
+
+function copyRegPw() {
+  const pw = document.getElementById('reg-pw-val').textContent;
+  navigator.clipboard.writeText(pw).then(() => toast('비밀번호 복사 완료', 'success'));
+}
+
+function copyRegLink(type) {
+  const id = type === 'survey' ? 'reg-survey-url' : 'reg-dash-url';
+  const url = document.getElementById(id).textContent;
+  navigator.clipboard.writeText(url).then(() => toast(type === 'survey' ? '설문 링크 복사 완료' : '대시보드 링크 복사 완료', 'success'));
+}
+
+function copyAllRegInfo() {
+  const code = document.getElementById('reg-code-val').textContent;
+  const pw = document.getElementById('reg-pw-val').textContent;
+  const surveyUrl = document.getElementById('reg-survey-url').textContent;
+  const dashUrl = document.getElementById('reg-dash-url').textContent;
+  const text = `[SlimMind 컨설턴트 정보]\n코드: ${code}\n초기 비밀번호: ${pw}\n\n설문 링크 (고객 공유용):\n${surveyUrl}\n\n대시보드 링크 (컨설턴트 전용):\n${dashUrl}`;
+  navigator.clipboard.writeText(text).then(() => toast('전체 정보 복사 완료', 'success'));
+}
+
+function _saveConsultantDone() {}
 
 async function suspendConsultant(code) {
   if (!confirm(`${code} 계정을 정지하시겠습니까?`)) return;
@@ -647,9 +753,28 @@ async function activateConsultant(code) {
   loadConsultants();
 }
 
-function copyInviteLink(code) {
+function copySurveyLink(code) {
   const url = `${location.origin}/?ref=${code}`;
-  navigator.clipboard.writeText(url).then(() => toast(`초대 링크 복사 완료: ${url}`, 'success'));
+  navigator.clipboard.writeText(url).then(() => toast(`📋 ${code} 설문 링크 복사 완료`, 'success'));
+}
+
+function copyDashLink(code) {
+  const url = `${location.origin}/consultant.html`;
+  const text = `[${code} 대시보드]\nURL: ${url}\n코드: ${code}`;
+  navigator.clipboard.writeText(text).then(() => toast(`🖥️ ${code} 대시보드 정보 복사 완료`, 'success'));
+}
+
+function viewConsultantResults(code) {
+  navigateTo('results');
+  // 페이지 로드 후 필터 적용
+  setTimeout(() => {
+    const el = document.getElementById('res-consultant');
+    if (el) { el.value = code; loadResults('', '', code); }
+  }, 400);
+}
+
+function copyInviteLink(code) {
+  copySurveyLink(code);
 }
 
 function exportCsv() {
@@ -659,23 +784,28 @@ function exportCsv() {
 // ═════════════════════════════════════════════
 //  고객 결과 관리
 // ═════════════════════════════════════════════
-async function loadResults(search = '', bc = '') {
+async function loadResults(search = '', bc = '', consultant = '') {
   let url = '/admin/results?';
   if (search) url += `search=${encodeURIComponent(search)}&`;
-  if (bc) url += `bc=${bc}`;
+  if (bc) url += `bc=${bc}&`;
+  if (consultant) url += `consultant=${encodeURIComponent(consultant)}&`;
   const data = await api('GET', url);
   if (!data) return;
 
   const rows = data.results.map(r => `
     <tr>
-      <td><code style="font-size:11px">${r.id}</code></td>
+      <td><code style="font-size:11px">${r.id.slice(0,12)}…</code></td>
       <td>${r.user_name || '익명'}</td>
       <td><span style="color:${BC_COLORS[r.bc_primary]||'#888'};font-weight:700">${r.bc_primary}</span></td>
       <td style="font-size:12px;color:var(--muted)">${r.bc_secondary || '-'}</td>
-      <td>${r.consultant_code ? `<code style="font-size:12px">${r.consultant_code}</code>` : '<span style="color:var(--muted)">미배정</span>'}</td>
+      <td>
+        ${r.consultant_code
+          ? `<code style="font-size:12px;background:#EFF6FF;color:#1D4ED8;padding:2px 6px;border-radius:4px">${r.consultant_code}</code><br><span style="font-size:11px;color:var(--muted)">${r.consultant_name||''}</span>`
+          : '<span style="color:var(--muted);font-size:12px">미배정</span>'}
+      </td>
       <td style="font-size:12px">${r.gender || '-'} ${r.height ? r.height+'cm' : ''} ${r.weight ? r.weight+'kg' : ''}</td>
       <td style="color:var(--muted);font-size:12px">${fmtDate(r.created_at)}</td>
-      <td>
+      <td style="white-space:nowrap">
         <a href="/result/${r.id}" target="_blank" class="btn btn-primary btn-sm">결과지</a>
       </td>
     </tr>
@@ -685,15 +815,23 @@ async function loadResults(search = '', bc = '') {
 
   document.getElementById('page-body').innerHTML = `
     <div class="filter-row">
-      <input type="text" id="res-search" placeholder="이름, ID 검색..." style="width:220px"
-        onkeydown="if(event.key==='Enter') loadResults(this.value, document.getElementById('res-bc').value)">
-      <select id="res-bc" onchange="loadResults(document.getElementById('res-search').value, this.value)">
+      <input type="text" id="res-search" placeholder="이름, ID 검색..." style="width:180px"
+        onkeydown="if(event.key==='Enter') loadResults(this.value, document.getElementById('res-bc').value, document.getElementById('res-consultant').value)">
+      <select id="res-bc" onchange="loadResults(document.getElementById('res-search').value, this.value, document.getElementById('res-consultant').value)">
         <option value="">전체 BC코드</option>
         ${bcOptions}
       </select>
-      <button class="btn btn-ghost" onclick="loadResults(document.getElementById('res-search').value, document.getElementById('res-bc').value)">
-        <i class="fas fa-sync"></i> 새로고침
+      <input type="text" id="res-consultant" placeholder="컨설턴트 코드 (예: SC-0001)" style="width:200px"
+        value="${consultant}"
+        onkeydown="if(event.key==='Enter') loadResults(document.getElementById('res-search').value, document.getElementById('res-bc').value, this.value)">
+      <button class="btn btn-ghost" onclick="loadResults(document.getElementById('res-search').value, document.getElementById('res-bc').value, document.getElementById('res-consultant').value)">
+        <i class="fas fa-sync"></i> 조회
       </button>
+      ${consultant ? `<button class="btn btn-warn btn-sm" onclick="loadResults()"><i class="fas fa-times"></i> 필터 초기화</button>` : ''}
+    </div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:12px">
+      총 <strong style="color:var(--text)">${data.results.length}건</strong>
+      ${consultant ? `<span style="margin-left:8px;background:#EFF6FF;color:#1D4ED8;padding:2px 8px;border-radius:4px;font-weight:600">${consultant} 필터 적용 중</span>` : ''}
     </div>
     <div class="card" style="padding:0">
       <div class="tbl-wrap">
@@ -704,6 +842,8 @@ async function loadResults(search = '', bc = '') {
       </div>
     </div>
   `;
+  // 필터 복원
+  if (consultant) { const el = document.getElementById('res-consultant'); if(el) el.value = consultant; }
 }
 
 // ═════════════════════════════════════════════

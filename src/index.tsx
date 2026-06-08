@@ -309,7 +309,8 @@ app.post('/api/admin/consultants', requireRole('MASTER'), async (c) => {
     VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)
   `).bind(code, name, email || null, phone || null, job_type || null, grade || '일반', subscription_end || null, memo || null, `pass${String(nextNum).padStart(4,'0')}`).run()
 
-  return c.json({ success: true, code, message: `컨설턴트 ${code} 생성 완료. 초기 비밀번호: pass${String(nextNum).padStart(4,'0')}` })
+  const initialPassword = `pass${String(nextNum).padStart(4,'0')}`
+  return c.json({ success: true, code, initialPassword, message: `컨설턴트 ${code} 생성 완료. 초기 비밀번호: ${initialPassword}` })
 })
 
 // PUT /api/admin/consultants/:code — 수정

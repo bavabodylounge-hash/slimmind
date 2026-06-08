@@ -126,6 +126,9 @@
     <div class="topbar-right">
       <span class="topbar-code" id="topbar-code"></span>
       <span id="topbar-name"></span>
+      <button class="btn btn-ghost btn-sm" id="topbar-survey-btn" onclick="copyTopbarSurveyLink()" title="나의 고객 설문 링크 복사" style="font-size:12px;padding:5px 10px;display:none">
+        <i class="fas fa-share-alt" style="color:#2563EB"></i> 설문링크 복사
+      </button>
       <span class="logout-btn" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i> 로그아웃</span>
     </div>
   </div>
@@ -151,19 +154,21 @@
     <!-- 초대 링크 -->
     <div class="page-tab" id="tab-invite">
       <div class="card">
-        <div class="card-title"><i class="fas fa-link"></i> 나의 고유 설문 링크</div>
-        <p style="font-size:14px;color:var(--muted);margin-bottom:16px;line-height:1.7">
-          아래 링크를 고객에게 공유하세요. 고객이 이 링크로 설문을 완료하면 내 고객 목록에 자동으로 등록됩니다.
-        </p>
-        <div class="invite-link-box">
-          <div class="invite-link-url" id="invite-url"></div>
-          <button class="btn btn-primary" onclick="copyInviteLink()"><i class="fas fa-copy"></i> 복사</button>
+        <div class="card-title"><i class="fas fa-share-alt"></i> 나의 고유 설문 링크</div>
+        <div style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:12px;padding:16px 20px;margin-bottom:16px">
+          <div style="font-size:11px;font-weight:700;color:#2563EB;letter-spacing:.5px;margin-bottom:6px">고객이 설문을 시작할 때 이 링크를 공유하세요</div>
+          <div class="invite-link-url" id="invite-url" style="font-size:14px;font-weight:600;word-break:break-all"></div>
         </div>
-        <div style="margin-top:20px">
-          <h4 style="font-size:14px;margin-bottom:12px">공유 방법</h4>
-          <div style="display:flex;gap:10px;flex-wrap:wrap">
-            <button class="btn btn-kakao" onclick="shareKakao()"><i class="fas fa-comment"></i> 카카오톡으로 링크 공유</button>
-            <button class="btn btn-ghost" onclick="copyInviteLink()"><i class="fas fa-copy"></i> 링크 복사</button>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px">
+          <button class="btn btn-primary" onclick="copyInviteLink()"><i class="fas fa-copy"></i> 링크 복사</button>
+          <button class="btn btn-kakao" onclick="shareKakao()"><i class="fas fa-comment"></i> 카카오톡 공유</button>
+        </div>
+        <div style="border-top:1px solid var(--border);padding-top:16px">
+          <div style="font-size:13px;font-weight:700;color:var(--muted);margin-bottom:10px">📊 이 링크로 어떻게 작동하나요?</div>
+          <div style="font-size:13px;color:var(--muted);line-height:2">
+            <div>① 고객이 링크 접속 → 설문 시작</div>
+            <div>② 설문 제출 완료 → <strong>'내 고객 목록'</strong>에 자동 등록</div>
+            <div>③ 고객 클릭 → 결과지 확인 및 B2B 처방 추가 가능</div>
           </div>
         </div>
       </div>
@@ -277,7 +282,12 @@ async function initApp() {
   document.getElementById('main-page').style.display = 'block';
   document.getElementById('topbar-code').textContent = ME.code;
   document.getElementById('topbar-name').textContent = ME.name;
-  document.getElementById('invite-url').textContent = `${location.origin}/?ref=${ME.code}`;
+  const surveyUrl = `${location.origin}/?ref=${ME.code}`;
+  document.getElementById('invite-url').textContent = surveyUrl;
+
+  // topbar 설문링크 버튼 표시
+  const topbarBtn = document.getElementById('topbar-survey-btn');
+  if (topbarBtn) topbarBtn.style.display = 'inline-flex';
 
   // BC 옵션 채우기
   const sel = document.getElementById('cust-bc');
@@ -391,6 +401,12 @@ function shareKakao() {
   navigator.clipboard.writeText(url).then(() => {
     toast('설문 링크 복사 완료! 카카오톡에 붙여넣기 하세요.', 'success');
   });
+}
+
+function copyTopbarSurveyLink() {
+  if (!ME?.code) return;
+  const url = `${location.origin}/?ref=${ME.code}`;
+  navigator.clipboard.writeText(url).then(() => toast('📋 설문 링크 복사 완료!', 'success'));
 }
 
 function copyInviteLink() {
