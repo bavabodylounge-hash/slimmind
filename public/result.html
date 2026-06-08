@@ -104,6 +104,7 @@ body{
 @media print{
   body{background:#fff;padding:0}
   .a4-wrap{padding:0;max-width:100%}
+  .top-bar,.progress-bar-wrap,.chapter-nav,.print-btn{display:none!important}
   .chapter{
     display:flex !important;
     min-height:0;
@@ -115,10 +116,14 @@ body{
     margin:0;
     overflow:hidden;
   }
+  /* 커버는 풀페이지 */
+  .chapter[data-ch="0"]{
+    padding:0 !important;
+    height:297mm;
+  }
   .chapter:last-child{page-break-after:avoid}
-  .chapter-nav,.progress-bar-wrap,.page-counter-wrap{display:none!important}
 }
-@page{size:A4;margin:15mm 20mm;}
+@page{size:A4;margin:0;}
 
 /* ═══════════════════════════════════════════
    헤더 (SlimMind 브랜드)
@@ -498,6 +503,24 @@ body{
 .btn-next small{display:block;font-size:11px;font-weight:400;opacity:.75;margin-top:2px;letter-spacing:.01em;}
 .divider{height:1px;background:var(--gray-100);margin:14px 0}
 
+/* ─ 인쇄 버튼 */
+.print-btn{
+  display:flex;align-items:center;gap:5px;
+  padding:6px 12px;border-radius:20px;
+  border:1px solid rgba(62,203,165,.4);
+  background:rgba(62,203,165,.12);
+  color:var(--sm-teal);font-size:12px;font-weight:600;
+  cursor:pointer;font-family:var(--font);
+  transition:all .2s;white-space:nowrap;
+  letter-spacing:.02em;
+}
+.print-btn:hover{
+  background:rgba(62,203,165,.25);
+  border-color:var(--sm-teal);
+  transform:translateY(-1px);
+}
+.print-btn svg{width:14px;height:14px;flex-shrink:0;}
+
 /* ─ 로딩 */
 .loading-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:16px;}
 .loading-spinner{width:44px;height:44px;border:4px solid var(--sm-teal-mid);border-top-color:var(--sm-teal);border-radius:50%;animation:spin .8s linear infinite;}
@@ -544,8 +567,18 @@ body{
       <span class="logo-sub">바디코드 분석 결과지</span>
     </div>
   </div>
-  <div class="page-counter-wrap">
-    <strong id="pageNumCurrent">1</strong> / <span id="pageNumTotal">9</span>
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="print-btn" onclick="printAll()" title="전체 결과지 인쇄/PDF 저장">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="6 9 6 2 18 2 18 9"/>
+        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+        <rect x="6" y="14" width="12" height="8"/>
+      </svg>
+      인쇄
+    </button>
+    <div class="page-counter-wrap">
+      <strong id="pageNumCurrent">1</strong> / <span id="pageNumTotal">9</span>
+    </div>
   </div>
 </div>
 <div class="progress-bar-wrap">
@@ -559,6 +592,97 @@ body{
   <div class="loading-wrap" id="loadingState">
     <div class="loading-spinner"></div>
     <div class="loading-text">결과지를 불러오는 중입니다...</div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       CHAPTER 0 · 커버 (책 표지)
+  ══════════════════════════════════════ -->
+  <div class="chapter" data-ch="0" id="ch0" style="padding:0;min-height:1123px;overflow:hidden;position:relative;background:#0D1F35;">
+
+    <!-- 배경 장식 레이어 -->
+    <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none">
+      <!-- 큰 틸 원형 블러 (우상단) -->
+      <div style="position:absolute;top:-120px;right:-80px;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,rgba(62,203,165,.18) 0%,transparent 70%)"></div>
+      <!-- 작은 틸 원형 (좌하단) -->
+      <div style="position:absolute;bottom:-60px;left:-40px;width:280px;height:280px;border-radius:50%;background:radial-gradient(circle,rgba(62,203,165,.12) 0%,transparent 70%)"></div>
+      <!-- 중앙 미세 격자 느낌 — 수평선 3개 -->
+      <div style="position:absolute;top:38%;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(62,203,165,.12),transparent)"></div>
+      <div style="position:absolute;top:62%;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(62,203,165,.08),transparent)"></div>
+      <!-- 우측 수직 장식선 -->
+      <div style="position:absolute;top:15%;bottom:15%;right:48px;width:1px;background:linear-gradient(180deg,transparent,rgba(62,203,165,.2),rgba(62,203,165,.2),transparent)"></div>
+    </div>
+
+    <!-- 커버 본문 -->
+    <div style="position:relative;z-index:1;display:flex;flex-direction:column;height:100%;padding:52px 56px 44px;">
+
+      <!-- ① 상단 브랜드 로고 -->
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:auto">
+        <img src="https://www.genspark.ai/api/files/s/GYJi6Ooi" alt="SlimMind"
+             style="height:28px;width:auto;filter:brightness(0) invert(1);opacity:.85" />
+        <div style="width:1px;height:20px;background:rgba(255,255,255,.2)"></div>
+        <span style="font-size:11px;font-weight:500;color:rgba(255,255,255,.5);letter-spacing:.14em;text-transform:uppercase">바디코드 진단 보고서</span>
+      </div>
+
+      <!-- ② 중앙 메인 콘텐츠 -->
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:40px 0 30px">
+
+        <!-- 바디코드 레이블 + 코드 -->
+        <div style="margin-bottom:28px">
+          <div style="font-size:10px;font-weight:700;color:var(--sm-teal);letter-spacing:.2em;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px">
+            <div style="width:24px;height:1px;background:var(--sm-teal)"></div>
+            바디코드 분석 결과
+            <div style="width:24px;height:1px;background:var(--sm-teal)"></div>
+          </div>
+          <div id="coverBcCode" style="font-size:72px;font-weight:900;color:#fff;letter-spacing:-.03em;line-height:1;margin-bottom:10px">BC-01</div>
+          <div id="coverBcName" style="font-size:22px;font-weight:600;color:var(--sm-teal);letter-spacing:.02em;line-height:1.3">A-CORE형 · 복부내장 코어형</div>
+        </div>
+
+        <!-- 구분선 -->
+        <div style="width:48px;height:3px;background:linear-gradient(90deg,var(--sm-teal),transparent);border-radius:2px;margin-bottom:28px"></div>
+
+        <!-- 이름 + 진단 문장 -->
+        <div style="margin-bottom:32px">
+          <div id="coverName" style="font-size:16px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:.04em;margin-bottom:18px">
+            — 회원님 진단 결과
+          </div>
+          <!-- 심리 후크 문장 (3줄, JS에서 BC별 삽입) -->
+          <div id="coverHook" style="font-size:19px;font-weight:500;color:#fff;line-height:2.05;letter-spacing:.01em">
+            "지금까지 살이 안 빠진 건<br>당신 의지의 문제가 아닙니다.<br><span style="color:var(--sm-teal);font-weight:700">몸의 회로가 다른 것입니다.</span>"
+          </div>
+        </div>
+
+        <!-- BC 설명 한 줄 배지 -->
+        <div id="coverBadges" style="display:flex;gap:8px;flex-wrap:wrap">
+          <span style="font-size:11px;padding:5px 14px;border-radius:20px;background:rgba(62,203,165,.12);color:var(--sm-teal);border:1px solid rgba(62,203,165,.3);font-weight:600;letter-spacing:.04em">분석 완료</span>
+        </div>
+      </div>
+
+      <!-- ③ 하단 날짜 + 안내 -->
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;border-top:1px solid rgba(255,255,255,.08);padding-top:20px">
+        <div>
+          <div id="coverDate" style="font-size:11px;color:rgba(255,255,255,.35);letter-spacing:.06em;margin-bottom:4px">2026.06</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.2);letter-spacing:.04em">CONFIDENTIAL · PERSONAL USE ONLY</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:10px;color:rgba(62,203,165,.5);letter-spacing:.08em;margin-bottom:3px">TOTAL</div>
+          <div style="font-size:22px;font-weight:800;color:rgba(255,255,255,.2);letter-spacing:.02em"><span id="coverPageTotal">9</span> CHAPTERS</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 커버에는 chapter-nav 없음 — 클릭 시 ch1로 이동 -->
+    <div style="position:absolute;bottom:0;left:0;right:0;padding:0 56px 44px;z-index:2;">
+      <button onclick="nextChapter()" style="
+        width:100%;padding:16px;border-radius:14px;border:1px solid rgba(62,203,165,.35);
+        background:rgba(62,203,165,.1);color:var(--sm-teal);
+        font-size:15px;font-weight:700;cursor:pointer;font-family:var(--font);
+        letter-spacing:.04em;transition:all .2s;
+        backdrop-filter:blur(4px);
+      " onmouseover="this.style.background='rgba(62,203,165,.2)'"
+         onmouseout="this.style.background='rgba(62,203,165,.1)'">
+        결과 확인하기 →
+      </button>
+    </div>
   </div>
 
   <!-- ══════════════════════════════════════
@@ -937,7 +1061,7 @@ body{
 const R = window.__RESULT__ || null;
 
 /* ─── 챕터 관리 ─── */
-const CHAPTERS = ['ch1','ch2','ch3','ch4','ch45','ch5','ch6','ch7'];
+const CHAPTERS = ['ch0','ch1','ch2','ch3','ch4','ch45','ch5','ch6','ch7'];
 let currentIdx = 0;
 let hasB2b = false;
 
@@ -947,9 +1071,12 @@ function initChapters(){
     document.getElementById('ch75').style.display = '';
     CHAPTERS.push('ch75');
   }
-  document.getElementById('pageNumTotal').textContent = CHAPTERS.length;
-  document.querySelectorAll('.total-pages').forEach(el => el.textContent = CHAPTERS.length);
-  document.getElementById('ch75PageNum').textContent = CHAPTERS.length + ' / ' + CHAPTERS.length;
+  const total = CHAPTERS.length;
+  document.getElementById('pageNumTotal').textContent = total;
+  document.querySelectorAll('.total-pages').forEach(el => el.textContent = total);
+  document.getElementById('ch75PageNum').textContent = total + ' / ' + total;
+  const coverTotal = document.getElementById('coverPageTotal');
+  if(coverTotal) coverTotal.textContent = total;
   const lastNextBtn = document.getElementById('btnLastNext');
   if(hasB2b){
     lastNextBtn.style.display = '';
@@ -985,6 +1112,13 @@ function showChapter(idx){
       else el.classList.remove('active');
     }
   });
+  // 커버(ch0)일 때 top-bar / progress-bar 숨기기
+  const isCover = CHAPTERS[idx] === 'ch0';
+  const topBar = document.getElementById('topBar');
+  const progBar = document.querySelector('.progress-bar-wrap');
+  if(topBar)  topBar.style.display  = isCover ? 'none' : '';
+  if(progBar) progBar.style.display = isCover ? 'none' : '';
+
   document.querySelectorAll('.pdot').forEach((dot, i) => {
     dot.className = 'pdot'
       + (i < idx ? ' done' : '')
@@ -998,10 +1132,107 @@ function showChapter(idx){
 function nextChapter(){ showChapter(currentIdx + 1) }
 function prevChapter(){ showChapter(currentIdx - 1) }
 
+/* ─── 인쇄 / PDF 저장 ─── */
+function printAll(){
+  // 모든 챕터 표시
+  CHAPTERS.forEach(id => {
+    const el = document.getElementById(id);
+    if(el){ el.style.display = 'flex'; el.classList.add('active'); }
+  });
+  const topBar = document.getElementById('topBar');
+  const progBar = document.querySelector('.progress-bar-wrap');
+  if(topBar)  topBar.style.display  = 'none';
+  if(progBar) progBar.style.display = 'none';
+
+  window.print();
+
+  // 인쇄 완료 후 복원
+  setTimeout(() => {
+    CHAPTERS.forEach((id, i) => {
+      const el = document.getElementById(id);
+      if(el){
+        const show = (i === currentIdx);
+        el.style.display = show ? 'flex' : 'none';
+        show ? el.classList.add('active') : el.classList.remove('active');
+      }
+    });
+    const isCover = CHAPTERS[currentIdx] === 'ch0';
+    if(topBar)  topBar.style.display  = isCover ? 'none' : '';
+    if(progBar) progBar.style.display = isCover ? 'none' : '';
+  }, 800);
+}
+
 /* ─── 데이터 파싱 헬퍼 ─── */
 function jp(s){ try{ return typeof s === 'string' ? JSON.parse(s) : s }catch(e){ return null }}
 function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
 function safe(s, fallback){ return (s && s.trim()) ? s : (fallback||'') }
+
+/* ═══════════════════════════════════════════════════════
+   CHAPTER 0 · 커버(책 표지) 렌더링
+═══════════════════════════════════════════════════════ */
+function renderCover(){
+  if(!R || !R.result) return;
+  const res  = R.result;
+  const bc   = R.bc || {};
+  const userName  = res.user_name || '회원';
+  const bcCode    = (res.bc_primary || 'BC-01').toUpperCase();
+  const bcName    = bc.bc_name || bcCode;
+
+  /* BC별 커버 후크 문장 — 심리적 압도감 + 과학적 근거 */
+  const hookMap = {
+    'BC-01': `"먹는 양을 줄여도 배가 안 들어간다면,<br>그건 의지 문제가 아닙니다.<br><em style='color:var(--sm-teal);font-style:normal;font-weight:700'>인슐린이 지방을 잠가놓은 겁니다.</em>"`,
+    'BC-02': `"술을 끊어도 배가 안 빠진다면,<br>간이 아직 지방을 태울 준비가 안 된 겁니다.<br><em style='color:var(--sm-teal);font-style:normal;font-weight:700'>간지방이 먼저입니다.</em>"`,
+    'BC-03': `"살이 아니라 몸의 순환이 막혀 있는 겁니다.<br>어깨가 무겁고 팔뚝이 두껍다면,<br><em style='color:var(--sm-teal);font-style:normal;font-weight:700'>림프가 정체된 신호입니다.</em>"`,
+    'BC-04': `"배도 나오고 하체도 굵다면<br>두 가지 호르몬이 동시에 문제입니다.<br><em style='color:var(--sm-teal);font-style:normal;font-weight:700'>지금부터 두 경로를 함께 엽니다.</em>"`,
+    'BC-05': `"하체만 유독 안 빠진다면,<br>에스트로겐이 지방을 허벅지에 묶어둔 겁니다.<br><em style='color:var(--sm-teal);font-style:normal;font-weight:700'>운동이 아니라 호르몬 경로가 먼저입니다.</em>"`,
+    'BC-06': `"다리가 항상 차고 저녁마다 붓는다면,<br>혈액이 아래까지 내려가지 못하는 겁니다.<br><em style='color:var(--sm-teal);font-style:normal;font-weight:700'>순환을 열면 하체가 달라집니다.</em>"`,
+    'BC-07': `"운동을 많이 해도 체지방이 그대로라면,<br>근육 아래 지방층이 숨어 있는 겁니다.<br><em style='color:var(--sm-teal);font-style:normal;font-weight:700'>방향을 바꾸면 몸이 조각됩니다.</em>"`,
+    'BC-08': `"다이어트를 할수록 살이 더 찐다면,<br>몸이 기아 경보를 보내고 있는 겁니다.<br><em style='color:var(--sm-teal);font-style:normal;font-weight:700'>먼저 회복해야 감량이 시작됩니다.</em>"`,
+    'BC-09': `"스트레스를 받으면 배가 나온다면,<br>코르티솔이 지방을 복부에 쌓는 겁니다.<br><em style='color:var(--sm-teal);font-style:normal;font-weight:700'>식단보다 신경계가 먼저입니다.</em>"`,
+    'BC-10': `"열심히 해도 몸이 예전 같지 않다면,<br>근육이 조용히 줄어들고 있는 겁니다.<br><em style='color:var(--sm-teal);font-style:normal;font-weight:700'>지금 시작하면 아직 늦지 않았습니다.</em>"`,
+  };
+
+  /* 감정 상태 기반 첫 줄 프리픽스 */
+  const emotPrefix = {
+    'tired':      '"더 이상 혼자 버티지 않아도 됩니다.<br>',
+    'anxious':    '"불안한 게 당연합니다. 지금까지 답이 없었으니까요.<br>',
+    'determined': '"이번엔 방향이 맞습니다.<br>',
+    'excited':    '"기대하셔도 됩니다. 처음으로 제대로 된 답입니다.<br>',
+    'curious':    '"궁금했던 이유, 지금 처음으로 알게 됩니다.<br>',
+  };
+  const rawHook = hookMap[bcCode] || hookMap['BC-01'];
+  const pfx     = emotPrefix[(res.emotional_state||'').trim()];
+  /* 감정 프리픽스가 있으면 첫 따옴표+줄 교체 */
+  const finalHook = pfx ? rawHook.replace(/^"[^<]*<br>/, pfx) : rawHook;
+
+  /* 날짜 */
+  const now = new Date();
+  const dateStr = `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}`;
+
+  /* DOM 채우기 */
+  const ge = id => document.getElementById(id);
+  if(ge('coverBcCode')) ge('coverBcCode').textContent = bcCode;
+  if(ge('coverBcName')) ge('coverBcName').textContent = bcName;
+  if(ge('coverName'))   ge('coverName').innerHTML = `— <strong>${esc(userName)}</strong>님 진단 결과`;
+  if(ge('coverHook'))   ge('coverHook').innerHTML  = finalHook;
+  if(ge('coverDate'))   ge('coverDate').textContent = dateStr;
+
+  /* 배지 (BC코드 + MBTI + 사주 + 시설) */
+  const facilLabel = {gym:'헬스장',home:'홈트',pool:'수영',pilates:'필라테스'};
+  const badges = [
+    bcCode,
+    res.mbti || null,
+    res.il_gan ? res.il_gan + ' 일간' : null,
+    res.current_facility && res.current_facility !== 'none'
+      ? (facilLabel[res.current_facility] || null) : null,
+  ].filter(Boolean);
+  const badgeEl = ge('coverBadges');
+  if(badgeEl){
+    badgeEl.innerHTML = badges.map(b =>
+      `<span style="font-size:11px;padding:5px 14px;border-radius:20px;background:rgba(62,203,165,.12);color:var(--sm-teal);border:1px solid rgba(62,203,165,.3);font-weight:600;letter-spacing:.04em">${esc(b)}</span>`
+    ).join('');
+  }
+}
 
 /* ═══════════════════════════════════════════════════════
    CHAPTER 1 · 감정 분기 오프닝 + 바디코드 공개
@@ -2967,6 +3198,7 @@ function init(){
     return;
   }
   applyBcColorTheme();
+  renderCover();
   renderCh1();
   renderCh2();
   renderCh3();
