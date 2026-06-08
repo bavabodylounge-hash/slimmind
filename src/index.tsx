@@ -207,6 +207,14 @@ app.post('/api/survey/submit', async (c) => {
   const result_id = resultIdGen()
   const db = c.env.DB
 
+  // 배열/객체 필드 안전 변환 (D1은 primitive 타입만 허용)
+  const toStr = (v: any) => {
+    if (v === null || v === undefined) return null
+    if (Array.isArray(v)) return v.join(',')
+    if (typeof v === 'object') return JSON.stringify(v)
+    return String(v)
+  }
+
   let validConsultantCode = null
   if (consultant_code) {
     const cons = await db.prepare('SELECT code FROM consultants WHERE code = ?').bind(consultant_code).first<any>()
@@ -233,19 +241,17 @@ app.post('/api/survey/submit', async (c) => {
     result_id, user_name || '익명', validConsultantCode,
     bc_primary, bc_secondary || null, bc_primary_score || 0, bc_secondary_score || 0,
     JSON.stringify(bc_scores || {}), ohaeng_type || null, JSON.stringify(ohaeng_scores || {}),
-    mbti || null, blood_type || null, saju_il_gan || null, saju_ohaeng || null,
-    gender || null, birth_date || null,
+    toStr(mbti), toStr(blood_type), toStr(saju_il_gan), toStr(saju_ohaeng),
+    toStr(gender), toStr(birth_date),
     height ? Number(height) : null, weight ? Number(weight) : null, target_weight ? Number(target_weight) : null,
     bmi ? Number(bmi) : null, bfr ? Number(bfr) : null,
     fat_kg ? Number(fat_kg) : null, muscle_kg ? Number(muscle_kg) : null,
-    top_size || null, bottom_size || null, target_top_size || null, target_bottom_size || null,
-    emotional_state || null, main_goal || null, priority_value || null,
+    toStr(top_size), toStr(bottom_size), toStr(target_top_size), toStr(target_bottom_size),
+    toStr(emotional_state), toStr(main_goal), toStr(priority_value),
     JSON.stringify(answers || {}), JSON.stringify(survey_summary || {}),
-    aerobic_response || null, massage_swells ? 1 : 0, sauna_response || null,
-    current_facility || null, context_type || null,
-    Array.isArray(current_medications) ? current_medications.join(',') : (current_medications || null),
-    Array.isArray(target_body_part) ? target_body_part.join(',') : (target_body_part || null),
-    psych_state || null, monthly_budget || null, muscle_soreness_level || null,
+    toStr(aerobic_response), massage_swells ? 1 : 0, toStr(sauna_response),
+    toStr(current_facility), toStr(context_type), toStr(current_medications),
+    toStr(target_body_part), toStr(psych_state), toStr(monthly_budget), toStr(muscle_soreness_level),
     'v2.0'
   ).run()
 
