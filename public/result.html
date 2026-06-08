@@ -3,24 +3,30 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>슬림마인드 결과지 — 바디코드 분석</title>
+<title>SlimMind 결과지 — 바디코드 분석</title>
 <style>
 /* ═══════════════════════════════════════════
    RESET & BASE
 ═══════════════════════════════════════════ */
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --navy:#0B2545;
-  --blue:#1A5276;
-  --light-blue:#EBF4FD;
-  --border-blue:#B3D4F0;
-  --green:#065F46;
+  /* ── SlimMind Brand Colors ── */
+  --sm-teal:#3ECBA5;       /* 로고 틸그린 */
+  --sm-teal-dark:#2BA888;  /* 틸그린 다크 */
+  --sm-teal-light:#E8FAF5; /* 틸그린 연 */
+  --sm-teal-mid:#C5F0E4;   /* 틸그린 중간 */
+  --navy:#1E3A5F;          /* 로고 네이비 (기존 #0B2545 → 브랜드) */
+  --navy-light:#264D7A;    /* 네이비 밝게 */
+  --blue:#1A5276;          /* 기존 유지 */
+  --light-blue:#E8F4FD;
+  --border-blue:#A8D4F5;
+  --green:#059669;
   --light-green:#D1FAE5;
-  --red:#991B1B;
+  --red:#DC2626;
   --light-red:#FEE2E2;
-  --orange:#92400E;
+  --orange:#D97706;
   --light-orange:#FEF3C7;
-  --purple:#4C1D95;
+  --purple:#7C3AED;
   --light-purple:#EDE9FE;
   --teal:#0F766E;
   --light-teal:#CCFBF1;
@@ -36,7 +42,24 @@
   --gray-900:#0F172A;
   --text:#1C2833;
   --font:'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif;
+  /* BC별 컬러 테마 변수 (JS에서 동적 주입) */
+  --bc-accent:#3ECBA5;
+  --bc-light:#E8FAF5;
+  --bc-mid:#C5F0E4;
 }
+
+/* ─ BC별 컬러 테마 오버라이드 (body에 클래스로 적용) */
+.bc-theme-BC-01 { --bc-accent:#3B82F6; --bc-light:#EFF6FF; --bc-mid:#BFDBFE; }
+.bc-theme-BC-02 { --bc-accent:#F97316; --bc-light:#FFF7ED; --bc-mid:#FED7AA; }
+.bc-theme-BC-03 { --bc-accent:#8B5CF6; --bc-light:#EDE9FE; --bc-mid:#DDD6FE; }
+.bc-theme-BC-04 { --bc-accent:#059669; --bc-light:#D1FAE5; --bc-mid:#A7F3D0; }
+.bc-theme-BC-05 { --bc-accent:#EC4899; --bc-light:#FDF2F8; --bc-mid:#FBCFE8; }
+.bc-theme-BC-06 { --bc-accent:#0891B2; --bc-light:#E0F7FA; --bc-mid:#A5F3FC; }
+.bc-theme-BC-07 { --bc-accent:#7C3AED; --bc-light:#EDE9FE; --bc-mid:#C4B5FD; }
+.bc-theme-BC-08 { --bc-accent:#D97706; --bc-light:#FEF3C7; --bc-mid:#FDE68A; }
+.bc-theme-BC-09 { --bc-accent:#DC2626; --bc-light:#FEE2E2; --bc-mid:#FECACA; }
+.bc-theme-BC-10 { --bc-accent:#2563EB; --bc-light:#EFF6FF; --bc-mid:#BFDBFE; }
+
 html{scroll-behavior:smooth}
 body{
   font-family:var(--font);
@@ -365,7 +388,7 @@ body{
 
 /* ─ 로딩 */
 .loading-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:16px;}
-.loading-spinner{width:44px;height:44px;border:4px solid var(--gray-200);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;}
+.loading-spinner{width:44px;height:44px;border:4px solid var(--sm-teal-mid);border-top-color:var(--sm-teal);border-radius:50%;animation:spin .8s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg)}}
 .loading-text{font-size:14px;color:var(--gray-500)}
 .error-wrap{text-align:center;padding:60px 20px;color:var(--gray-500);}
@@ -389,7 +412,13 @@ body{
 
 <!-- ─── 상단 고정 바 ─── -->
 <div class="top-bar" id="topBar">
-  <div class="logo">SLIMMIND <span>바디MBTI 결과지</span></div>
+  <div class="logo-wrap">
+    <img src="https://www.genspark.ai/api/files/s/GYJi6Ooi" alt="SlimMind" class="logo-img" />
+    <div class="logo-text">
+      <span class="logo-name">SlimMind</span>
+      <span class="logo-sub">바디코드 분석 결과지</span>
+    </div>
+  </div>
   <div class="page-counter-wrap">
     <strong id="pageNumCurrent">1</strong> / <span id="pageNumTotal">9</span>
   </div>
@@ -559,6 +588,7 @@ body{
     </div>
 
     <div class="chapter-content">
+      <div id="p4FacilityAdapt"></div>
       <div id="p4Sports"></div>
       <div id="p4ForbiddenSports"></div>
       <div id="p4Schedule"></div>
@@ -712,6 +742,12 @@ body{
     </div>
 
     <div class="chapter-content">
+      <!-- BC×사주×MBTI 삼각 연결 카드 -->
+      <div id="p7TriangleConnect"></div>
+
+      <!-- 변화 로드맵 (PHASE 6) -->
+      <div id="p7RoadMap"></div>
+
       <div class="closing-wrap" id="p7Closing"></div>
 
       <!-- 캡처하고 싶은 마지막 문장 -->
@@ -726,6 +762,9 @@ body{
         <button class="share-btn" onclick="shareKakao()">💬 카카오 공유</button>
         <button class="share-btn" onclick="shareInstagram()">📸 인스타 공유</button>
       </div>
+
+      <!-- 상담 CTA (PHASE 6) -->
+      <div id="p7ConsultCta"></div>
 
       <div class="premium-box" id="p7Premium"></div>
     </div>
@@ -1580,6 +1619,54 @@ function renderCh4(){
   const res = R.result;
   const mbtiBlood = R.mbti_blood || {};
 
+  // ── current_facility 기반 운동 환경 안내 ─────────────────────
+  const facilityWrap = document.getElementById('p4FacilityAdapt');
+  const facility = (res.current_facility || '').trim();
+  const facilityMap = {
+    'gym': {
+      icon: '🏋️',
+      label: '헬스장 이용 가능',
+      color: '#EFF6FF', accent: '#2563EB',
+      tips: ['머신 + 프리웨이트 병행 가능 — BC 맞춤 근력 운동 집중', 'Zone2 심박 유산소는 트레드밀/사이클 선택', 'PT 상담 시 "이 체형에 금지 운동"을 먼저 전달하세요']
+    },
+    'home': {
+      icon: '🏠',
+      label: '홈트레이닝 환경',
+      color: '#F0FDF4', accent: '#059669',
+      tips: ['맨몸 운동(버피·스쿼트·푸쉬업) + 저항밴드 활용', '유산소는 제자리 걷기·줄넘기·댄스 영상 활용', '운동 공간 최소 2×2m 확보 권장']
+    },
+    'pool': {
+      icon: '🏊',
+      label: '수영장 이용 가능',
+      color: '#E0F7FA', accent: '#0891B2',
+      tips: ['이 체형에 수영은 최적 처방 — 주 3회 이상 권장', '온수 수영장(28°C+) 여부 확인 (BC-06 필수)', '수영 후 단백질 보충 30분 이내']
+    },
+    'pilates': {
+      icon: '🧘',
+      label: '필라테스/요가 등록',
+      color: '#FDF2F8', accent: '#BE185D',
+      tips: ['주 2~3회 이상이면 이 체형 처방과 가장 궁합이 좋습니다', '코어·골반 정렬 집중 클래스 선택 추천', '강사에게 체형 코드 전달 시 맞춤 지도 가능']
+    },
+    'none': {
+      icon: '🚶',
+      label: '별도 시설 없음 (걷기 기반)',
+      color: '#FFFBEB', accent: '#D97706',
+      tips: ['걷기만으로도 첫 4주 충분 — 식후 15~30분 평지 걷기', '계단 이용, 대중교통 한 정거장 걷기 등 생활 운동 활용', '2주 후 저항밴드 구매(1~2만원)로 근력 추가 추천']
+    }
+  };
+  const fData = facilityMap[facility];
+  if(fData){
+    facilityWrap.innerHTML = `<div class="presc-card" style="margin-bottom:12px">
+      <div class="pc-head" style="background:${fData.color};border-bottom:1px solid ${fData.accent}20">
+        <span class="pc-icon">${fData.icon}</span>
+        <span class="pc-title" style="color:${fData.accent}">${esc(fData.label)} — 환경 맞춤 처방</span>
+      </div>
+      <div class="pc-body">
+        ${fData.tips.map(t=>`<div class="pc-item"><div class="pc-dot" style="background:${fData.accent}"></div><div class="pc-text">${esc(t)}</div></div>`).join('')}
+      </div>
+    </div>`;
+  }
+
   // 추천 종목
   const sportsWrap = document.getElementById('p4Sports');
   sportsWrap.innerHTML = '';
@@ -1956,24 +2043,24 @@ function renderCh5(){
         </div>
         <div class="pc-body">
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;margin-bottom:10px">
-            <div style="background:#EFF6FF;border-radius:10px;padding:10px 6px">
+            <div style="background:linear-gradient(160deg,#D1FAE5,#E8FAF5);border-radius:10px;padding:10px 6px;border:1px solid #A7F3D0">
               <div style="font-size:10px;color:#6B7280;margin-bottom:2px">탄수화물</div>
               <div style="font-size:22px;font-weight:800;color:#059669">${resMacro.carb_g}<span style="font-size:11px">g</span></div>
               <div style="font-size:10px;color:#10B981">${resMacro.carb_pct}%</div>
             </div>
-            <div style="background:#EFF6FF;border-radius:10px;padding:10px 6px">
+            <div style="background:linear-gradient(160deg,var(--sm-teal-light),#EBF4FD);border-radius:10px;padding:10px 6px;border:1px solid var(--sm-teal-mid)">
               <div style="font-size:10px;color:#6B7280;margin-bottom:2px">단백질</div>
-              <div style="font-size:22px;font-weight:800;color:#2563EB">${resMacro.protein_g}<span style="font-size:11px">g</span></div>
-              <div style="font-size:10px;color:#3B82F6">${resMacro.protein_pct}%</div>
+              <div style="font-size:22px;font-weight:800;color:var(--navy)">${resMacro.protein_g}<span style="font-size:11px">g</span></div>
+              <div style="font-size:10px;color:var(--sm-teal-dark)">${resMacro.protein_pct}%</div>
             </div>
-            <div style="background:#EFF6FF;border-radius:10px;padding:10px 6px">
+            <div style="background:linear-gradient(160deg,#FEF3C7,#FFFBEB);border-radius:10px;padding:10px 6px;border:1px solid #FDE68A">
               <div style="font-size:10px;color:#6B7280;margin-bottom:2px">지방</div>
               <div style="font-size:22px;font-weight:800;color:#D97706">${resMacro.fat_g}<span style="font-size:11px">g</span></div>
               <div style="font-size:10px;color:#F59E0B">${resMacro.fat_pct}%</div>
             </div>
           </div>
-          <div style="display:flex;justify-content:space-between;font-size:12px;color:#64748B;padding:8px 4px;border-top:1px solid #E2E8F0">
-            <span>🔥 목표 칼로리 <strong style="color:#0B2545">${resMacro.total_kcal.toLocaleString()}kcal</strong></span>
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:#64748B;padding:8px 4px;border-top:1px solid var(--sm-teal-mid)">
+            <span>🔥 목표 칼로리 <strong style="color:var(--navy)">${resMacro.total_kcal.toLocaleString()}kcal</strong></span>
             <span>기초대사량 <strong>${resMacro.bmr.toLocaleString()}kcal</strong></span>
           </div>
           <div style="font-size:11px;color:#94A3B8;margin-top:6px;line-height:1.5">
@@ -2273,6 +2360,97 @@ function renderCh7(){
   if(!R) return;
   const bc = R.bc || {};
   const res = R.result || {};
+  const saju = R.saju || {};
+
+  // ═══ PHASE 5: BC × 사주 × MBTI 삼각 연결 ══════════════════
+  const triWrap = document.getElementById('p7TriangleConnect');
+  if(triWrap){
+    const bcCode7 = (res.bc_primary || '').toUpperCase();
+    const mbti7   = (res.mbti || '').toUpperCase();
+    const ilGan   = res.saju_il_gan || '';
+
+    // 사주 오행 × BC 상관관계 맵
+    const sajuBcMap = {
+      '甲木': { bc_hint: 'BC-01,BC-02,BC-03', msg: '갑목(甲木) 일간은 성장 에너지가 강해 단기 목표에 집중하면 폭발적 성과가 나옵니다. 단, 과잉 활동으로 코르티솔이 치솟기 쉬운 구조이므로 회복 루틴이 핵심입니다.' },
+      '乙木': { bc_hint: 'BC-05,BC-06', msg: '을목(乙木) 일간은 유연성과 지속력이 강점입니다. 하체 혈류 개선과 꾸준한 저강도 운동이 이 체형에 최적입니다.' },
+      '丙火': { bc_hint: 'BC-09,BC-08', msg: '병화(丙火) 일간은 열정과 충동성이 공존합니다. 스트레스 시 폭식 패턴에 주의하고, 저녁 루틴 안정화가 가장 중요합니다.' },
+      '丁火': { bc_hint: 'BC-09', msg: '정화(丁火) 일간은 감성이 예민해 정서 안정이 체중 조절의 핵심입니다. 코르티솔 억제 루틴(마그네슘, 저녁 요가)을 우선시하세요.' },
+      '戊土': { bc_hint: 'BC-01,BC-04', msg: '무토(戊土) 일간은 안정 지향형으로 규칙적 식사와 꾸준한 Zone2 걷기가 가장 잘 맞습니다. 급격한 다이어트보다 장기 유지 전략이 효과적입니다.' },
+      '己土': { bc_hint: 'BC-04,BC-08', msg: '기토(己土) 일간은 소화기 계통이 약한 경우가 많습니다. 식사 속도 조절과 소화 부담 없는 식단이 체중 관리의 첫걸음입니다.' },
+      '庚金': { bc_hint: 'BC-03,BC-07', msg: '경금(庚金) 일간은 추진력과 실행력이 강합니다. 근력 운동과 궁합이 좋지만, 상체 과부하에 주의해야 합니다.' },
+      '辛金': { bc_hint: 'BC-03,BC-06', msg: '신금(辛金) 일간은 완벽주의 성향으로 식단 제한을 극단적으로 실행하다 번아웃이 옵니다. 80% 원칙(8할만 지키기)을 적용하세요.' },
+      '壬水': { bc_hint: 'BC-09,BC-10', msg: '임수(壬水) 일간은 적응력이 뛰어나 다양한 식단에 반응하지만 스트레스에 취약합니다. 안정적 루틴 구축이 요요 방지의 핵심입니다.' },
+      '癸水': { bc_hint: 'BC-08,BC-10', msg: '계수(癸水) 일간은 대사 변동이 크고 환경 민감도가 높습니다. 계절·수면·스트레스 관리가 다이어트 성패를 결정합니다.' },
+    };
+
+    // MBTI × BC 상호작용 맵
+    const mbtiBcMap = {
+      'INTJ': '장기 전략을 세우는 데 강하지만, 완벽한 계획이 없으면 시작을 미루는 경향. 처방의 70%만 지켜도 성공입니다.',
+      'INTP': '분석적 이해가 선행되어야 움직입니다. 이 결과지를 완전히 이해하신 건 이미 절반 성공입니다.',
+      'ENTJ': '실행력이 강하지만 과부하가 위험합니다. 운동 강도 60% 규칙을 반드시 지키세요.',
+      'ENTP': '지루함을 느끼면 포기합니다. 처방 안에서 다양성을 주는 것이 핵심 — 같은 Zone2도 장소를 바꿔보세요.',
+      'INFJ': '의미를 찾아야 행동합니다. 이 처방이 당신 체형의 근본 원인을 해결한다는 믿음이 지속력의 원천입니다.',
+      'INFP': '감정이 동기부여의 핵심입니다. 결과보다 과정의 작은 성취(체중 말고 에너지 변화)에 집중하세요.',
+      'ENFJ': '타인 의식이 강해 "남들 보기"에 집착하다 번아웃이 옵니다. 처방은 나 자신을 위한 것입니다.',
+      'ENFP': '열정적 시작 후 지속이 약합니다. 처방을 습관화하는 첫 21일이 가장 중요합니다.',
+      'ISTJ': '규칙적 루틴에 강합니다. 이 처방의 주간 스케줄을 달력에 입력하면 90% 실행됩니다.',
+      'ISFJ': '타인을 돌보느라 자신을 소홀히 하는 경향. 이 처방 실행이 가족을 위한 투자임을 기억하세요.',
+      'ESTJ': '체계적 실행에 강합니다. 체중 측정·식단 기록 등 수치화된 트래킹이 동기부여가 됩니다.',
+      'ESFJ': '사회적 지지가 동기부여입니다. 컨설턴트 선생님과 정기 체크인을 가지면 실행율이 2배입니다.',
+      'ISTP': '몸으로 배우는 스타일입니다. 처방을 그대로 2주 실험해보세요. 데이터가 쌓이면 확신이 생깁니다.',
+      'ISFP': '강요에 반발합니다. 처방 중 지금 당장 가능한 것 1가지만 선택해서 시작하세요.',
+      'ESTP': '즉각적 결과를 원합니다. 1주차 체중 변화보다 에너지·수면 질 변화를 먼저 확인하세요.',
+      'ESFP': '즐거움이 지속력의 원천입니다. 운동은 반드시 즐길 수 있는 것으로만 선택하세요.',
+    };
+
+    const sajuData  = sajuBcMap[ilGan] || null;
+    const mbtiMsg   = mbtiBcMap[mbti7] || null;
+    const hasSaju   = ilGan && sajuData;
+    const hasMbti   = mbti7 && mbtiMsg;
+
+    if(hasSaju || hasMbti){
+      let html = `<div class="presc-card" style="margin-bottom:14px;border-color:var(--sm-teal-mid)">
+        <div class="pc-head" style="background:linear-gradient(135deg,var(--sm-teal-light),#EBF4FD);border-bottom:1px solid var(--sm-teal-mid)">
+          <span class="pc-icon">🔺</span>
+          <span class="pc-title" style="color:var(--navy)">바디코드 × 사주 × MBTI — 삼각 연결 분석</span>
+        </div>
+        <div class="pc-body">`;
+
+      if(hasSaju){
+        html += `<div class="pc-item">
+          <div class="pc-dot" style="background:#D97706"></div>
+          <div>
+            <div class="pc-text"><strong>사주 ${esc(ilGan)} 일간</strong> × <strong>${esc(bcCode7)}</strong></div>
+            <div class="pc-reason" style="color:#451A03;line-height:1.65">${esc(sajuData.msg)}</div>
+          </div>
+        </div>`;
+      }
+
+      if(hasMbti){
+        html += `<div class="pc-item">
+          <div class="pc-dot" style="background:var(--sm-teal)"></div>
+          <div>
+            <div class="pc-text"><strong>MBTI ${esc(mbti7)}</strong> 유형의 다이어트 패턴</div>
+            <div class="pc-reason" style="color:var(--navy);line-height:1.65">${esc(mbtiMsg)}</div>
+          </div>
+        </div>`;
+      }
+
+      // BC × 사주 × MBTI 종합 결론 문장
+      if(hasSaju && hasMbti){
+        html += `<div style="background:linear-gradient(135deg,var(--sm-teal-light),#EBF4FD);border-radius:10px;padding:10px 14px;margin-top:8px;border:1px solid var(--sm-teal-mid)">
+          <div style="font-size:11px;font-weight:700;color:var(--sm-teal-dark);margin-bottom:4px;letter-spacing:.04em">⭐ 종합 진단</div>
+          <div style="font-size:13px;color:var(--navy);line-height:1.7">
+            ${esc(ilGan)} 일간의 <strong>${esc(mbti7)}</strong> 유형이 <strong>${esc(bcCode7)}</strong> 체형과 만났을 때 — 
+            가장 효과적인 전략은 <strong>무리한 변화 대신 ${hasSaju ? sajuData.bc_hint.split(',')[0] : bcCode7} 특화 루틴의 꾸준한 반복</strong>입니다.
+          </div>
+        </div>`;
+      }
+
+      html += `</div></div>`;
+      triWrap.innerHTML = html;
+    }
+  }
   const sched = jp(bc.reassessment_schedule) || {};
 
   const closingWrap = document.getElementById('p7Closing');
@@ -2376,6 +2554,115 @@ function renderCh7(){
   if(emotCh7 && captureQuote){
     captureQuote.querySelector('.capture-text').innerHTML =
       `${emotCh7}<br><br><em style="font-size:13px;color:#94A3B8">"다이어트가 당신을 실패시킨 겁니다."</em>`;
+  }
+
+  // ═══ PHASE 6: 변화 로드맵 ══════════════════════════════════
+  const roadMapWrap = document.getElementById('p7RoadMap');
+  if(roadMapWrap){
+    const bcCode7r = (res.bc_primary || '').toUpperCase();
+    const bodyGoal = res.body_goal || null;
+
+    // BC별 주차별 변화 예고
+    const changeTimelineMap = {
+      'BC-01': [
+        { week:'1~2주', icon:'⚡', change:'식후 에너지 개선', detail:'식후 졸음·더부룩함 감소 시작. Zone2 걷기 후 복부 가스 배출 느껴짐' },
+        { week:'4주', icon:'📏', change:'허리 둘레 -1~2cm', detail:'내장지방 연소 시작. 바지 허리 라인 여유 생기기 시작' },
+        { week:'8주', icon:'🔥', change:'복부 선명화 시작', detail:'아침 공복 시 배가 들어간 느낌. 체중계보다 거울이 먼저 변화 반응' },
+        { week:'12주', icon:'✅', change:'기초대사량 회복', detail:'같은 양 먹어도 예전보다 덜 찌는 몸 구조 완성' },
+      ],
+      'BC-05': [
+        { week:'1~2주', icon:'💧', change:'하체 부종 감소', detail:'저녁 발목 붓기가 줄기 시작. 족욕·림프 마사지 효과 체감' },
+        { week:'4주', icon:'🌡️', change:'하체 온도 개선', detail:'허벅지 냉감 완화. 샤워 후 하체 냉각 속도 느려짐' },
+        { week:'8주', icon:'📐', change:'하체 라인 변화', detail:'허벅지 안쪽 처짐 감소. 바지 허벅지 라인 여유' },
+        { week:'12주', icon:'✨', change:'상하체 비율 개선', detail:'어깨-허리-허벅지 비율 시각적 변화. 에스트로겐 균형 유지' },
+      ],
+      'BC-09': [
+        { week:'1~2주', icon:'😴', change:'수면 질 개선', detail:'저녁 고강도 운동 대신 요가 전환 후 숙면 시간 증가' },
+        { week:'4주', icon:'🧘', change:'스트레스 폭식 감소', detail:'코르티솔 패턴 안정화. 야식 욕구 감소 체감' },
+        { week:'8주', icon:'🍽️', change:'식욕 조절력 회복', detail:'배가 고프면 먹고 배부르면 멈추는 신호가 살아남' },
+        { week:'12주', icon:'🪞', change:'복부 지방 연소', detail:'스트레스성 복부 지방 감소. 카페인 없이도 에너지 유지' },
+      ],
+    };
+
+    // 기본 타임라인 (BC별 맵에 없는 경우)
+    const defaultTimeline = [
+      { week:'1~2주', icon:'⚡', change:'에너지 · 수면 변화', detail:'처방 시작 시 에너지 레벨과 수면 질이 먼저 개선됩니다' },
+      { week:'4~6주', icon:'📏', change:'체형 윤곽 변화', detail:'체중계 숫자보다 거울이 먼저 반응합니다. 옷 핏이 달라지기 시작합니다' },
+      { week:'8주', icon:'🔥', change:'지방 연소 가속화', detail:'근육이 붙고 기초대사량이 올라가면서 지방 연소 효율이 높아집니다' },
+      { week:'12주', icon:'✅', change:'지속 가능한 몸 완성', detail:'다이어트가 아니라 라이프스타일이 됩니다. 요요 없는 구조 완성' },
+    ];
+
+    const timeline = changeTimelineMap[bcCode7r] || defaultTimeline;
+
+    // body_goal 기반 목표 기간 표시
+    let goalNote = '';
+    if(bodyGoal && bodyGoal.weeks_to_goal){
+      const wk = Math.round(bodyGoal.weeks_to_goal);
+      const fatLoss = bodyGoal.fat_loss_kg ? ` (체지방 ${bodyGoal.fat_loss_kg.toFixed(1)}kg 목표)` : '';
+      goalNote = `<div style="background:var(--sm-teal-light);border-radius:10px;padding:9px 14px;margin-bottom:10px;border:1px solid var(--sm-teal-mid);font-size:12px;color:var(--navy)">
+        🎯 <strong>${esc(res.user_name||'회원')}님 개인 목표 기간:</strong> 약 <strong style="color:var(--sm-teal-dark)">${wk}주</strong>${goalNote}${fatLoss}
+        <span style="color:var(--gray-500);margin-left:4px">(주 500kcal 적자 기준)</span>
+      </div>`;
+    }
+
+    roadMapWrap.innerHTML = `<div class="presc-card" style="margin-bottom:14px;border-color:var(--sm-teal-mid)">
+      <div class="pc-head" style="background:linear-gradient(135deg,var(--navy),var(--navy-light));border-bottom:none">
+        <span class="pc-icon" style="filter:grayscale(0)">🗺️</span>
+        <span class="pc-title" style="color:#fff">변화 로드맵 — ${esc(bcCode7r)} 체형 예상 타임라인</span>
+      </div>
+      <div class="pc-body">
+        ${goalNote}
+        <div class="timeline-wrap" style="margin:0">
+          ${timeline.map(t=>`<div class="timeline-item">
+            <div class="tl-week">${esc(t.week)}<br>${t.icon}</div>
+            <div class="tl-body">
+              <div class="tl-change">${esc(t.change)}</div>
+              <div class="tl-detail">${esc(t.detail)}</div>
+            </div>
+          </div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // ═══ PHASE 6: 상담 CTA ══════════════════════════════════════
+  const ctaWrap = document.getElementById('p7ConsultCta');
+  if(ctaWrap && !res.is_premium){
+    const bcCode7c = (res.bc_primary || '').toUpperCase();
+    const priorityValCta = (res.priority_value || '').trim();
+
+    const ctaHeadlineMap = {
+      'fast': '2주 안에 변화를 느끼고 싶다면',
+      'sustainable': '요요 없는 몸을 만들고 싶다면',
+      'healthy': '건강하게, 오래 유지하고 싶다면',
+      'confidence': '거울 앞에서 자신감을 되찾고 싶다면',
+    };
+    const ctaHeadline = ctaHeadlineMap[priorityValCta] || '이 처방을 선생님과 함께 보면';
+
+    ctaWrap.innerHTML = `<div style="
+      background:linear-gradient(135deg,#1E3A5F 0%,#14425A 70%,#0D3D35 100%);
+      border-radius:18px;padding:22px 20px;margin:14px 0;text-align:center;
+      position:relative;overflow:hidden;
+    ">
+      <div style="position:absolute;top:-30px;right:-30px;width:150px;height:150px;
+        background:radial-gradient(circle,rgba(62,203,165,.25) 0%,transparent 70%);pointer-events:none"></div>
+      <img src="https://www.genspark.ai/api/files/s/YTGVUP08" alt="SlimMind"
+        style="height:44px;width:auto;margin:0 auto 12px;display:block;filter:brightness(1.1)" />
+      <div style="font-size:13px;font-weight:700;color:var(--sm-teal);letter-spacing:.04em;margin-bottom:6px">${esc(ctaHeadline)}</div>
+      <div style="font-size:15px;font-weight:800;color:#fff;margin-bottom:10px;line-height:1.5">
+        컨설턴트 선생님과 함께<br>이 결과지를 해석하면 달라집니다
+      </div>
+      <div style="font-size:12px;color:rgba(255,255,255,.7);line-height:1.8;margin-bottom:16px">
+        📋 14일 맞춤 식단표 (매끼 구체적으로)<br>
+        🏃 운동 영상 QR + 주간 스케줄 설계<br>
+        🏥 ${esc(bcCode7c)}형 특화 병원 치료 옵션<br>
+        💬 1:1 컨설턴트 상담 (30~60분)
+      </div>
+      <button class="cta-btn" onclick="upgradePremium()" style="max-width:280px;margin:0 auto;display:block">
+        SlimMind 선생님과 시작하기 →
+      </button>
+      <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:10px">지금 예약 시 결과지 기반 맞춤 상담 제공</div>
+    </div>`;
   }
 
   // 프리미엄 업셀
@@ -2484,12 +2771,25 @@ function upgradePremium(){
 /* ═══════════════════════════════════════════════════════
    메인 초기화
 ═══════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════
+   BC별 컬러 테마 동적 적용
+═══════════════════════════════════════════════════════ */
+function applyBcColorTheme(){
+  if(!R || !R.result) return;
+  const bcCode = (R.result.bc_primary || '').toUpperCase().replace(/^BC(\d)$/,'BC-0$1').replace(/^BC(\d{2})$/,'BC-$1');
+  const validBc = ['BC-01','BC-02','BC-03','BC-04','BC-05','BC-06','BC-07','BC-08','BC-09','BC-10'];
+  if(validBc.includes(bcCode)){
+    document.body.classList.add(`bc-theme-${bcCode}`);
+  }
+}
+
 function init(){
   if(!R){
     document.getElementById('loadingState').innerHTML =
       `<div class="error-wrap"><h2>결과지를 불러올 수 없습니다</h2><p>링크가 만료되었거나 올바르지 않습니다.</p></div>`;
     return;
   }
+  applyBcColorTheme();
   renderCh1();
   renderCh2();
   renderCh3();
