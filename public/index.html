@@ -43,6 +43,8 @@
     .trans-label { font-size: 13px; font-weight: 600; color: rgba(255,255,255,.7); margin-bottom: 16px; letter-spacing: 1px; text-transform: uppercase; }
     .trans-title { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 20px; }
     .trans-msg { font-size: 16px; color: rgba(255,255,255,.85); line-height: 1.7; }
+    .trans-continue { margin-top: 40px; font-size: 14px; color: rgba(255,255,255,.6); animation: pulse 1.5s ease-in-out infinite; cursor: pointer; }
+    @keyframes pulse { 0%,100% { opacity:.4; } 50% { opacity:1; } }
 
     /* ── 질문 화면 ─────────────────────── */
     #question-screen { flex-direction: column; }
@@ -209,6 +211,7 @@
       <div class="trans-label" id="trans-from"></div>
       <div class="trans-title" id="trans-to"></div>
       <div class="trans-msg" id="trans-msg"></div>
+      <div class="trans-continue" id="trans-continue">화면을 탭하여 계속 →</div>
     </div>
   </section>
 
@@ -362,7 +365,19 @@ function showTransition(fromSec, toSec, msg, cb) {
   document.getElementById('trans-to').textContent = `${to?.id}부 — ${to?.name}`;
   document.getElementById('trans-msg').textContent = msg;
   showScreen('transition-screen');
-  setTimeout(() => { applySection(toSec); cb(); }, 1400);
+
+  // 탭하면 바로 넘어가기
+  let proceeded = false;
+  const proceed = () => {
+    if (proceeded) return;
+    proceeded = true;
+    ts.removeEventListener('click', proceed);
+    applySection(toSec);
+    cb();
+  };
+  ts.addEventListener('click', proceed);
+  // 5초 후 자동으로 넘어가기
+  setTimeout(proceed, 5000);
 }
 
 // ════════════════════════════════════════
@@ -910,9 +925,13 @@ document.getElementById('start-btn').onclick = () => {
 document.getElementById('btn-next').onclick = goNext;
 document.getElementById('btn-prev').onclick = goPrev;
 document.getElementById('restart-btn').onclick = () => {
+  // 답변 초기화
   Object.keys(state.answers).forEach(k => delete state.answers[k]);
   Object.assign(state.userData, { height:160, weight:60, targetWeight:55, age:30, gender:'female', bmi:0, bfr:0, fatKg:0, muscleKg:0 });
   state.currentQ = 0;
+  state.resultId = null;
+  // 로컬스토리지 완전 삭제
+  try { localStorage.removeItem('sm_answers'); } catch(e) {}
   // 로딩 step 초기화
   document.querySelectorAll('.loading-step').forEach(el => el.classList.remove('active','done'));
   showScreen('intro-screen');
