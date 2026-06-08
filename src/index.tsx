@@ -34,7 +34,6 @@ app.use('/api/*', cors({
 // ═══════════════════════════════════════════════════════════════
 async function signJwt(payload: JwtPayload, secret: string): Promise<string> {
   const header = { alg: 'HS256', typ: 'JWT' }
-  // 한글 포함 안전한 Base64URL 인코딩
   const enc = (obj: unknown) => {
     const str = JSON.stringify(obj)
     const bytes = new TextEncoder().encode(str)
@@ -84,8 +83,10 @@ async function verifyJwt(token: string, secret: string): Promise<JwtPayload | nu
 }
 
 async function getAuthUser(c: any): Promise<JwtPayload | null> {
+  // Authorization 헤더 또는 쿼리 파라미터 token 둘 다 지원
   const auth = c.req.header('Authorization') || ''
-  const token = auth.startsWith('Bearer ') ? auth.slice(7) : null
+  let token = auth.startsWith('Bearer ') ? auth.slice(7) : null
+  if (!token) token = c.req.query('token') || null
   if (!token) return null
   return verifyJwt(token, c.env.JWT_SECRET || 'slimmind-jwt-secret-change-in-production')
 }
@@ -100,7 +101,12 @@ function requireRole(role: 'MASTER' | 'CONSULTANT' | 'ANY') {
   }
 }
 
-// ─── BC 점수 계산 로직 (서버 사이드) ──────────────────────────
+// ─── JSON 파싱 유틸 ────────────────────────────────────────────
+const parseJson = (s: string | null, fallback: any = null) => {
+  try { return s ? JSON.parse(s) : fallback } catch { return fallback }
+}
+
+// ─── 결과 ID 생성 ─────────────────────────────────────────────
 function resultIdGen() {
   const d = new Date()
   const date = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`
@@ -134,14 +140,12 @@ app.post('/api/auth/login', async (c) => {
 
     if (!consultant) return c.json({ error: '존재하지 않는 계정입니다.' }, 401)
 
-    // 개발 단계 비밀번호 검증
     let pwOk = false
     if (consultant.code === 'MASTER' && password === 'admin1234') {
       pwOk = true
     } else if (consultant.password_hash && consultant.password_hash === password) {
       pwOk = true
     } else {
-      // 초기 비밀번호 패턴: passNNNN
       const num = consultant.code.replace('SC-', '')
       const defaultPw = `pass${num}`
       if (password === defaultPw) pwOk = true
@@ -193,13 +197,16 @@ app.post('/api/survey/submit', async (c) => {
     bmi, bfr, fat_kg, muscle_kg,
     top_size, bottom_size, target_top_size, target_bottom_size,
     emotional_state, main_goal, priority_value,
-    survey_summary
+    survey_summary,
+    // v2.0 추가 필드
+    aerobic_response, massage_swells, sauna_response,
+    current_facility, context_type, current_medications,
+    target_body_part, psych_state, monthly_budget, muscle_soreness_level
   } = body
 
   const result_id = resultIdGen()
   const db = c.env.DB
 
-  // 컨설턴트 코드 유효성 확인 (없으면 null 허용)
   let validConsultantCode = null
   if (consultant_code) {
     const cons = await db.prepare('SELECT code FROM consultants WHERE code = ?').bind(consultant_code).first<any>()
@@ -216,8 +223,12 @@ app.post('/api/survey/submit', async (c) => {
       bmi, bfr, fat_kg, muscle_kg,
       top_size, bottom_size, target_top_size, target_bottom_size,
       emotional_state, main_goal, priority_value,
-      survey_answers_json, survey_summary_json
-    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      survey_answers_json, survey_summary_json,
+      aerobic_response, massage_swells, sauna_response,
+      current_facility, context_type, current_medications,
+      target_body_part, psych_state, monthly_budget, muscle_soreness_level,
+      prescription_version
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
   `).bind(
     result_id, user_name || '익명', validConsultantCode,
     bc_primary, bc_secondary || null, bc_primary_score || 0, bc_secondary_score || 0,
@@ -229,7 +240,11 @@ app.post('/api/survey/submit', async (c) => {
     fat_kg ? Number(fat_kg) : null, muscle_kg ? Number(muscle_kg) : null,
     top_size || null, bottom_size || null, target_top_size || null, target_bottom_size || null,
     emotional_state || null, main_goal || null, priority_value || null,
-    JSON.stringify(answers || {}), JSON.stringify(survey_summary || {})
+    JSON.stringify(answers || {}), JSON.stringify(survey_summary || {}),
+    aerobic_response || null, massage_swells ? 1 : 0, sauna_response || null,
+    current_facility || null, context_type || null, current_medications || null,
+    target_body_part || null, psych_state || null, monthly_budget || null, muscle_soreness_level || null,
+    'v2.0'
   ).run()
 
   return c.json({ success: true, result_id, message: '설문이 제출되었습니다.' })
@@ -281,7 +296,6 @@ app.post('/api/admin/consultants', requireRole('MASTER'), async (c) => {
   const body = await c.req.json()
   const { name, email, phone, job_type, grade, subscription_end, memo } = body
 
-  // 다음 SC 코드 자동 생성
   const last = await db.prepare("SELECT code FROM consultants WHERE code LIKE 'SC-%' ORDER BY code DESC LIMIT 1").first<any>()
   let nextNum = 1
   if (last?.code) {
@@ -358,7 +372,6 @@ app.put('/api/admin/bc-codes/:code', requireRole('MASTER'), async (c) => {
   const body = await c.req.json()
   const user = c.get('user') as JwtPayload
 
-  // 현재 버전 스냅샷 저장
   const current = await db.prepare('SELECT * FROM bc_prescriptions WHERE bc_code=?').bind(bcCode).first<any>()
   if (current) {
     await db.prepare(`
@@ -420,7 +433,7 @@ app.get('/api/consultant/results', requireRole('ANY'), async (c) => {
   return c.json({ results: result.results })
 })
 
-// GET /api/results/:id — 결과 상세 (컨설턴트 본인 또는 MASTER)
+// GET /api/results/:id — 결과 상세 JSON (컨설턴트 본인 또는 MASTER)
 app.get('/api/results/:id', async (c) => {
   const user = await getAuthUser(c)
   if (!user) return c.json({ error: '인증이 필요합니다.' }, 401)
@@ -430,22 +443,11 @@ app.get('/api/results/:id', async (c) => {
   const result = await db.prepare('SELECT * FROM results WHERE id=?').bind(id).first<any>()
   if (!result) return c.json({ error: '결과를 찾을 수 없습니다.' }, 404)
 
-  // 권한 확인: MASTER는 전체 조회, CONSULTANT는 본인 고객만
   if (user.role !== 'MASTER' && result.consultant_code !== user.code) {
     return c.json({ error: '접근 권한이 없습니다.' }, 403)
   }
 
-  // BC 처방 데이터 포함
   const prescription = await db.prepare('SELECT * FROM bc_prescriptions WHERE bc_code=?').bind(result.bc_primary).first<any>()
-  let secondaryPrescription = null
-  if (result.bc_secondary) {
-    secondaryPrescription = await db.prepare('SELECT * FROM bc_prescriptions WHERE bc_code=?').bind(result.bc_secondary).first<any>()
-  }
-
-  // JSON 파싱
-  const parseJson = (s: string | null, fallback: any = {}) => {
-    try { return s ? JSON.parse(s) : fallback } catch { return fallback }
-  }
 
   return c.json({
     result: {
@@ -454,6 +456,7 @@ app.get('/api/results/:id', async (c) => {
       ohaeng_scores: parseJson(result.ohaeng_scores_json, {}),
       survey_answers: parseJson(result.survey_answers_json, {}),
       survey_summary: parseJson(result.survey_summary_json, {}),
+      b2b_institution_types: parseJson(result.b2b_institution_types, []),
     },
     prescription: prescription ? {
       ...prescription,
@@ -468,8 +471,17 @@ app.get('/api/results/:id', async (c) => {
       lifestyle_rules: parseJson(prescription.lifestyle_rules_json, []),
       monthly_goals: parseJson(prescription.monthly_goals_json, {}),
       weekly_schedule: parseJson(prescription.weekly_schedule_json, {}),
+      recommended_sports: parseJson(prescription.recommended_sports_json, []),
+      forbidden_sports: parseJson(prescription.forbidden_sports_json, []),
+      recovery_priority: parseJson(prescription.recovery_priority_json, []),
+      macro_ratio: parseJson(prescription.macro_ratio_json, {}),
+      meal_timing_rule: parseJson(prescription.meal_timing_rule_json, {}),
+      forbidden_foods_reason: parseJson(prescription.forbidden_foods_reason_json, []),
+      b2b_treatments: parseJson(prescription.b2b_treatments_json, {}),
+      hospital_tests: parseJson(prescription.hospital_tests_json, []),
+      reassessment_schedule: parseJson(prescription.reassessment_schedule_json, {}),
+      partner_hints: parseJson(prescription.partner_hints_json, []),
     } : null,
-    secondary_prescription: secondaryPrescription,
   })
 })
 
@@ -487,6 +499,221 @@ app.put('/api/results/:id/memo', async (c) => {
   return c.json({ success: true })
 })
 
+// ─── NEW: PUT /api/results/:id/b2b — B2B 기관유형 저장 (컨설턴트 전용) ───
+app.put('/api/results/:id/b2b', async (c) => {
+  const user = await getAuthUser(c)
+  if (!user) return c.json({ error: '인증이 필요합니다.' }, 401)
+
+  const db = c.env.DB
+  const id = c.req.param('id')
+  const body = await c.req.json()
+  const { institution_types } = body // string[]
+
+  // 허용 기관 유형만 필터
+  const allowed = ['병원', '에스테틱', '헬스장', '필라테스']
+  const filtered = (institution_types || []).filter((t: string) => allowed.includes(t))
+
+  const result = await db.prepare('SELECT consultant_code FROM results WHERE id=?').bind(id).first<any>()
+  if (!result) return c.json({ error: '결과를 찾을 수 없습니다.' }, 404)
+  if (user.role !== 'MASTER' && result.consultant_code !== user.code) {
+    return c.json({ error: '권한이 없습니다.' }, 403)
+  }
+
+  await db.prepare(
+    'UPDATE results SET b2b_institution_types=? WHERE id=?'
+  ).bind(JSON.stringify(filtered), id).run()
+
+  return c.json({ success: true, institution_types: filtered })
+})
+
+// ═══════════════════════════════════════════════════════════════
+//  결과지 페이지 라우트 — window.__RESULT__ 서버사이드 주입
+// ═══════════════════════════════════════════════════════════════
+app.get('/result/:id', async (c) => {
+  const db = c.env.DB
+  const id = c.req.param('id')
+
+  // 결과 조회 (공개 접근 가능 — URL 알면 볼 수 있음)
+  const result = await db.prepare('SELECT * FROM results WHERE id=?').bind(id).first<any>()
+  if (!result) {
+    return c.html(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>결과 없음</title></head>
+<body style="font-family:sans-serif;text-align:center;padding:60px">
+<h2>결과지를 찾을 수 없습니다</h2>
+<p style="color:#666">링크가 만료되었거나 잘못된 주소입니다.</p>
+<a href="/" style="color:#1A5276">홈으로 돌아가기</a>
+</body></html>`, 404)
+  }
+
+  // JWT 확인 (컨설턴트 여부 판별)
+  const authUser = await getAuthUser(c)
+  const isConsultant = authUser !== null
+  const isOwner = authUser && (authUser.role === 'MASTER' || authUser.code === result.consultant_code)
+
+  // bc_prescriptions JOIN
+  const bc = await db.prepare('SELECT * FROM bc_prescriptions WHERE bc_code=?')
+    .bind(result.bc_primary).first<any>()
+
+  // 오행 DB 조회
+  let ohaeng = null
+  if (result.ohaeng_type) {
+    ohaeng = await db.prepare('SELECT * FROM ohaeng_db WHERE ohaeng_type=?')
+      .bind(result.ohaeng_type).first<any>()
+  }
+
+  // 사주 DB 조회 (한글 일간으로 찾기)
+  let saju = null
+  if (result.saju_il_gan) {
+    // saju_il_gan은 한자(甲~癸) 또는 한글(갑~계) 둘 다 가능
+    saju = await db.prepare('SELECT * FROM saju_db WHERE il_gan=? OR il_gan_ko=?')
+      .bind(result.saju_il_gan, result.saju_il_gan).first<any>()
+  }
+
+  // MBTI × 혈액형 조합 조회
+  let mbtiBlood = null
+  if (result.mbti && result.blood_type) {
+    mbtiBlood = await db.prepare('SELECT * FROM mbti_blood_db WHERE mbti=? AND blood_type=?')
+      .bind(result.mbti, result.blood_type).first<any>()
+  }
+
+  // B2B 기관유형 파싱
+  const b2bTypes: string[] = parseJson(result.b2b_institution_types, []) || []
+  const hasB2B = b2bTypes.length > 0
+
+  // window.__RESULT__ 데이터 구조 구성
+  const resultData = {
+    result: {
+      id: result.id,
+      user_name: result.user_name,
+      consultant_code: result.consultant_code,
+      bc_primary: result.bc_primary,
+      bc_secondary: result.bc_secondary,
+      bc_primary_score: result.bc_primary_score,
+      bc_secondary_score: result.bc_secondary_score,
+      bc_scores: parseJson(result.bc_scores_json, {}),
+      ohaeng_type: result.ohaeng_type,
+      mbti: result.mbti,
+      blood_type: result.blood_type,
+      saju_il_gan: result.saju_il_gan,
+      saju_ohaeng: result.saju_ohaeng,
+      gender: result.gender,
+      birth_date: result.birth_date,
+      height: result.height,
+      weight: result.weight,
+      target_weight: result.target_weight,
+      bmi: result.bmi,
+      bfr: result.bfr,
+      fat_kg: result.fat_kg,
+      muscle_kg: result.muscle_kg,
+      top_size: result.top_size,
+      bottom_size: result.bottom_size,
+      target_top_size: result.target_top_size,
+      target_bottom_size: result.target_bottom_size,
+      emotional_state: result.emotional_state,
+      main_goal: result.main_goal,
+      priority_value: result.priority_value,
+      survey_summary: parseJson(result.survey_summary_json, {}),
+      aerobic_response: result.aerobic_response,
+      sauna_response: result.sauna_response,
+      massage_swells: result.massage_swells,
+      muscle_soreness_level: result.muscle_soreness_level,
+      created_at: result.created_at,
+    },
+    bc: bc ? {
+      bc_code: bc.bc_code,
+      brand_name: bc.brand_name,
+      tagline: bc.tagline,
+      fat_area: bc.fat_area,
+      bc_primary_oneline_reason: bc.bc_primary_oneline_reason,
+      bc_cause_story: bc.bc_cause_story,
+      bc_worsen_word: bc.bc_worsen_word,
+      closing_copy: bc.closing_copy,
+      symptom_checklist: parseJson(bc.symptom_checklist_json, []),
+      wrong_methods: parseJson(bc.wrong_methods_json, []),
+      correct_principles: parseJson(bc.correct_principles_json, []),
+      recommended_exercises: parseJson(bc.recommended_exercises_json, []),
+      forbidden_exercises: parseJson(bc.forbidden_exercises_json, []),
+      recommended_foods: parseJson(bc.recommended_foods_json, []),
+      forbidden_foods: parseJson(bc.forbidden_foods_json, []),
+      supplement_list: parseJson(bc.supplement_list_json, []),
+      lifestyle_rules: parseJson(bc.lifestyle_rules_json, []),
+      monthly_goals: parseJson(bc.monthly_goals_json, {}),
+      weekly_schedule: parseJson(bc.weekly_schedule_json, {}),
+      zone2_bpm: bc.zone2_bpm_v2 || bc.zone2_bpm,
+      hiit_available_week: bc.hiit_available_week_v2 || bc.hiit_available_week,
+      aerobic_restriction: bc.aerobic_restriction,
+      recommended_sports: parseJson(bc.recommended_sports_json, []),
+      forbidden_sports: parseJson(bc.forbidden_sports_json, []),
+      rest_prescription: parseJson(bc.rest_prescription_json, {}),
+      muscle_soreness_protocol: parseJson(bc.muscle_soreness_protocol_json, {}),
+      recovery_priority: parseJson(bc.recovery_priority_json, []),
+      sauna_ok: bc.sauna_ok,
+      cryo_ok: bc.cryo_ok,
+      lymph_massage_protocol: parseJson(bc.lymph_massage_protocol_json, {}),
+      sleep_protocol: parseJson(bc.sleep_protocol_json, {}),
+      aromatherapy: parseJson(bc.aromatherapy_json, {}),
+      macro_ratio: parseJson(bc.macro_ratio_json, {}),
+      macro_story: bc.macro_story,
+      meal_timing_rule: parseJson(bc.meal_timing_rule_json, {}),
+      forbidden_foods_reason: parseJson(bc.forbidden_foods_reason_json, []),
+      timing_story: bc.timing_story,
+      // B2B 데이터: 컨설턴트 접근 시에만 포함
+      b2b_treatments: (isOwner && hasB2B) ? parseJson(bc.b2b_treatments_json, {}) : null,
+      hospital_tests: (isOwner && hasB2B) ? parseJson(bc.hospital_tests_json, []) : null,
+      reassessment_schedule: (isOwner && hasB2B) ? parseJson(bc.reassessment_schedule_json, {}) : null,
+      partner_hints: (isOwner && hasB2B) ? parseJson(bc.partner_hints_json, []) : null,
+    } : null,
+    ohaeng: ohaeng ? {
+      ohaeng_type: ohaeng.ohaeng_type,
+      organ_primary: ohaeng.organ_primary,
+      organ_secondary: ohaeng.organ_secondary,
+      weak_season: ohaeng.weak_season,
+      strong_season: ohaeng.strong_season,
+      good_foods: parseJson(ohaeng.good_foods_json, []),
+      bad_foods: parseJson(ohaeng.bad_foods_json, []),
+      good_taste: ohaeng.good_taste,
+      supplement_addon: parseJson(ohaeng.supplement_addon_json, []),
+      story_layer: ohaeng.story_layer,
+      personality_trait: ohaeng.personality_trait,
+      exercise_affinity: ohaeng.exercise_affinity,
+    } : null,
+    saju: saju ? {
+      il_gan: saju.il_gan,
+      il_gan_ko: saju.il_gan_ko,
+      ohaeng: saju.ohaeng,
+      yin_yang: saju.yin_yang,
+      organ: saju.organ,
+      weak_season: saju.weak_season,
+      warning_foods: parseJson(saju.warning_foods_json, []),
+      boost_foods: parseJson(saju.boost_foods_json, []),
+      season_warning: saju.season_warning,
+      personality_hint: saju.personality_hint,
+    } : null,
+    mbti_blood: mbtiBlood ? {
+      mbti: mbtiBlood.mbti,
+      blood_type: mbtiBlood.blood_type,
+      motivation_lang: mbtiBlood.motivation_lang,
+      diet_pattern: mbtiBlood.diet_pattern,
+      exercise_pattern: mbtiBlood.exercise_pattern,
+      fail_pattern: mbtiBlood.fail_pattern,
+      story_insert: mbtiBlood.story_insert,
+    } : null,
+    // 메타 정보
+    is_consultant: isConsultant,
+    is_owner: !!isOwner,
+    is_b2b_partner: hasB2B,
+    b2b_institution_types: hasB2B ? b2bTypes : [],
+    consultant_name: isOwner ? (authUser?.name || null) : null,
+  }
+
+  // result.html에 window.__RESULT__ 주입
+  const injectedHtml = resultHtml.replace(
+    '</head>',
+    `<script>window.__RESULT__ = ${JSON.stringify(resultData)};</script>\n</head>`
+  )
+
+  return c.html(injectedHtml)
+})
+
 // ═══════════════════════════════════════════════════════════════
 //  페이지 라우트
 // ═══════════════════════════════════════════════════════════════
@@ -495,6 +722,5 @@ app.get('/admin', (c) => c.html(adminHtml))
 app.get('/admin/*', (c) => c.html(adminHtml))
 app.get('/consultant', (c) => c.html(consultantHtml))
 app.get('/consultant/*', (c) => c.html(consultantHtml))
-app.get('/result/:id', (c) => c.html(resultHtml))
 
 export default app

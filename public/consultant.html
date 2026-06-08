@@ -332,8 +332,17 @@ async function loadMyResults() {
       <td style="font-size:12px;color:var(--muted)">${r.gender||'-'} ${r.height?r.height+'cm':''} ${r.weight?r.weight+'kg':''}</td>
       <td style="font-size:12px">${r.mbti||'-'} ${r.blood_type||''}</td>
       <td style="color:var(--muted);font-size:12px">${fmtDate(r.created_at)}</td>
+      <td style="font-size:11px">
+        ${(() => {
+          const types = JSON.parse(r.b2b_institution_types || '[]');
+          if (!types.length) return '<span style="color:#94A3B8">-</span>';
+          const colors = {'병원':'#1A5276','에스테틱':'#7C3AED','헬스장':'#065F46','필라테스':'#C2410C'};
+          return types.map(t => `<span style="background:${colors[t]||'#888'};color:#fff;border-radius:4px;padding:2px 6px;margin:1px;display:inline-block">${t}</span>`).join('');
+        })()}
+      </td>
       <td style="white-space:nowrap">
-        <a href="/result/${r.id}" target="_blank" class="btn btn-primary btn-sm"><i class="fas fa-eye"></i> 결과지</a>
+        <a href="/result/${r.id}?token=${TOKEN}" target="_blank" class="btn btn-primary btn-sm"><i class="fas fa-eye"></i> 결과지</a>
+        <button class="btn btn-sm" style="margin-left:4px;background:#F0FDF4;color:#065F46;border:1px solid #6EE7B7" onclick="openB2bModal('${r.id}', '${(r.user_name||'고객').replace(/'/g, '')}', '${r.bc_primary}', ${JSON.stringify(JSON.parse(r.b2b_institution_types||'[]'))})"><i class="fas fa-hospital"></i> B2B</button>
         <button class="btn btn-kakao btn-sm" style="margin-left:4px" onclick="shareResultKakao('${r.id}', '${(r.user_name||'고객').replace(/'/g, '')}')">
           <i class="fas fa-comment"></i> 카카오톡
         </button>
@@ -345,7 +354,7 @@ async function loadMyResults() {
     <div class="tbl-wrap">
       <table>
         <thead>
-          <tr><th>고객명</th><th>BC 코드</th><th>신체정보</th><th>MBTI/혈액형</th><th>설문일</th><th></th></tr>
+          <tr><th>고객명</th><th>BC 코드</th><th>신체정보</th><th>MBTI/혈액형</th><th>설문일</th><th>B2B</th><th></th></tr>
         </thead>
         <tbody>${rows}</tbody>
       </table>
@@ -451,6 +460,109 @@ if (TOKEN) {
 
 document.getElementById('login-btn').onclick = doLogin;
 document.getElementById('l-pw').onkeydown = e => { if (e.key === 'Enter') doLogin(); };
+
+// ═════════════════════════════════════════════
+//  B2B 기관유형 모달
+// ═════════════════════════════════════════════
+let _b2bCurrentId = null;
+
+function openB2bModal(resultId, userName, bcCode, currentTypes) {
+  _b2bCurrentId = resultId;
+  document.getElementById('b2b-modal-title').textContent = `${userName}님 B2B 파트너 설정 (${bcCode})`;
+  const types = ['병원', '에스테틱', '헬스장', '필라테스'];
+  types.forEach(t => {
+    const cb = document.getElementById(`b2b-chk-${t}`);
+    if (cb) cb.checked = (currentTypes || []).includes(t);
+  });
+  document.getElementById('b2b-modal-overlay').style.display = 'flex';
+}
+
+function closeB2bModal() {
+  document.getElementById('b2b-modal-overlay').style.display = 'none';
+  _b2bCurrentId = null;
+}
+
+async function saveB2bTypes() {
+  if (!_b2bCurrentId) return;
+  const types = ['병원', '에스테틱', '헬스장', '필라테스'];
+  const selected = types.filter(t => document.getElementById(`b2b-chk-${t}`)?.checked);
+  const data = await api('PUT', `/results/${_b2bCurrentId}/b2b`, { institution_types: selected });
+  if (data?.success) {
+    toast(`B2B 설정 저장 완료 (${selected.length > 0 ? selected.join(', ') : '없음'})`, 'success');
+    closeB2bModal();
+    loadMyResults();
+  } else {
+    toast('저장 실패: ' + (data?.error || '알 수 없는 오류'), 'error');
+  }
+}
+
+// 모달 외부 클릭 닫기
+document.getElementById('b2b-modal-overlay')?.addEventListener('click', function(e) {
+  if (e.target === this) closeB2bModal();
+});
+</script>
+<!-- B2B 기관유형 설정 모달 -->
+<div id="b2b-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;padding:24px">
+  <div style="background:#fff;border-radius:20px;padding:36px;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,.2)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+      <h3 id="b2b-modal-title" style="font-size:16px;font-weight:700;color:#0B2545">B2B 파트너 설정</h3>
+      <button onclick="closeB2bModal()" style="background:none;border:none;cursor:pointer;font-size:20px;color:#94A3B8">&times;</button>
+    </div>
+    <p style="font-size:13px;color:#64748B;margin-bottom:20px;line-height:1.6">
+      이 고객의 결과지에 표시할 <strong>B2B 파트너 기관 처방</strong>을 선택하세요.<br>
+      체크된 기관 유형의 맞춤 처방이 결과지 마지막 페이지에 표시됩니다.
+    </p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:28px">
+      <label style="display:flex;align-items:center;gap:12px;padding:16px;border:2px solid #E2E8F0;border-radius:12px;cursor:pointer;transition:all .15s" id="b2b-lbl-병원">
+        <input type="checkbox" id="b2b-chk-병원" style="width:18px;height:18px;accent-color:#1A5276" onchange="toggleB2bLabel('병원')">
+        <div>
+          <div style="font-weight:700;font-size:14px">🏥 병원</div>
+          <div style="font-size:11px;color:#64748B">검사·수액·약물</div>
+        </div>
+      </label>
+      <label style="display:flex;align-items:center;gap:12px;padding:16px;border:2px solid #E2E8F0;border-radius:12px;cursor:pointer;transition:all .15s" id="b2b-lbl-에스테틱">
+        <input type="checkbox" id="b2b-chk-에스테틱" style="width:18px;height:18px;accent-color:#7C3AED" onchange="toggleB2bLabel('에스테틱')">
+        <div>
+          <div style="font-weight:700;font-size:14px">✨ 에스테틱</div>
+          <div style="font-size:11px;color:#64748B">EMS·림프 관리</div>
+        </div>
+      </label>
+      <label style="display:flex;align-items:center;gap:12px;padding:16px;border:2px solid #E2E8F0;border-radius:12px;cursor:pointer;transition:all .15s" id="b2b-lbl-헬스장">
+        <input type="checkbox" id="b2b-chk-헬스장" style="width:18px;height:18px;accent-color:#065F46" onchange="toggleB2bLabel('헬스장')">
+        <div>
+          <div style="font-weight:700;font-size:14px">💪 헬스장</div>
+          <div style="font-size:11px;color:#64748B">PT·운동 프로그램</div>
+        </div>
+      </label>
+      <label style="display:flex;align-items:center;gap:12px;padding:16px;border:2px solid #E2E8F0;border-radius:12px;cursor:pointer;transition:all .15s" id="b2b-lbl-필라테스">
+        <input type="checkbox" id="b2b-chk-필라테스" style="width:18px;height:18px;accent-color:#C2410C" onchange="toggleB2bLabel('필라테스')">
+        <div>
+          <div style="font-weight:700;font-size:14px">🧘 필라테스</div>
+          <div style="font-size:11px;color:#64748B">코어·체형 교정</div>
+        </div>
+      </label>
+    </div>
+    <div style="background:#FEF3C7;border-radius:10px;padding:12px 16px;margin-bottom:24px;font-size:12px;color:#92400E">
+      <i class="fas fa-info-circle"></i> B2B 처방 내용은 <strong>컨설턴트 전용</strong>입니다. 고객이 토큰 없이 결과지를 열면 이 섹션은 표시되지 않습니다.
+    </div>
+    <div style="display:flex;gap:12px">
+      <button onclick="closeB2bModal()" style="flex:1;padding:14px;border:2px solid #E2E8F0;border-radius:10px;background:#fff;color:#64748B;font-weight:600;cursor:pointer;font-family:inherit">취소</button>
+      <button onclick="saveB2bTypes()" style="flex:2;padding:14px;border:none;border-radius:10px;background:#0B2545;color:#fff;font-weight:700;cursor:pointer;font-family:inherit;font-size:15px">
+        <i class="fas fa-save"></i> 저장 및 결과지 업데이트
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleB2bLabel(type) {
+  const lbl = document.getElementById(`b2b-lbl-${type}`);
+  const cb = document.getElementById(`b2b-chk-${type}`);
+  if (!lbl || !cb) return;
+  const colors = { '병원':'#1A5276', '에스테틱':'#7C3AED', '헬스장':'#065F46', '필라테스':'#C2410C' };
+  lbl.style.borderColor = cb.checked ? (colors[type] || '#1A5276') : '#E2E8F0';
+  lbl.style.background = cb.checked ? '#F0F9FF' : '#fff';
+}
 </script>
 </body>
 </html>
