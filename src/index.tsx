@@ -5,6 +5,7 @@ import surveyDataJs from '../public/survey-data.js?raw'
 import adminHtml from '../public/admin.html?raw'
 import consultantHtml from '../public/consultant.html?raw'
 import resultHtml from '../public/result.html?raw'
+import bodymapPreviewHtml from '../public/bodymap_preview.html?raw'
 
 // ─── 타입 정의 ───────────────────────────────────────────────
 type Bindings = {
@@ -879,5 +880,8 @@ app.get('/admin/*', (c) => c.html(adminHtml))
 app.get('/consultant', (c) => c.html(consultantHtml))
 app.get('/consultant.html', (c) => c.html(consultantHtml))
 app.get('/consultant/*', (c) => c.html(consultantHtml))
+
+// ─── 임시: 바디맵 미리보기 (개발용) ────────────────────────────
+app.get('/bodymap-preview', (c) => c.html(bodymapPreviewHtml))
 
 export default app
