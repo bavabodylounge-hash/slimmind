@@ -1872,6 +1872,80 @@ function generateBodyMap(res, bcCode) {
 }
 
 /* ═══════════════════════════════════════════════════════
+   CHAPTER 0 · 커버 렌더링
+═══════════════════════════════════════════════════════ */
+function renderCover(){
+  if(!R) return;
+  const bc  = R.bc  || {};
+  const res = R.result || {};
+
+  /* BC 코드 & 이름 */
+  const bcCode = (res.bc_primary || 'BC-07');
+  const bcNameMap = {
+    'BC-01':'A-CORE형 · 복부내장 코어형',
+    'BC-02':'E-SLOW형 · 대사저하 에너지형',
+    'BC-03':'W-BLOAT형 · 수분독소 부종형',
+    'BC-04':'S-SNAP형 · 교감과활성 스냅형',
+    'BC-05':'H-CYCLE형 · 호르몬사이클형',
+    'BC-06':'C-COLD형 · 냉증순환저하형',
+    'BC-07':'F-FAST형 · 식욕혈당급등형',
+    'BC-08':'M-FIBER형 · 근육섬유대사형',
+    'BC-09':'R-STRESS형 · 코르티솔과부하형',
+    'BC-10':'G-GUT형 · 장건강기반형',
+  };
+  const el = (id) => document.getElementById(id);
+  if(el('coverBcCode')) el('coverBcCode').textContent = bcCode;
+  if(el('coverBcName')) el('coverBcName').textContent = bcNameMap[bcCode] || bc.brand_name || '';
+
+  /* 회원명 */
+  const name = res.user_name || '';
+  if(el('coverName')) el('coverName').textContent = name ? `— ${name}님 진단 결과` : '— 진단 결과';
+
+  /* 날짜 */
+  if(el('coverDate')){
+    const d = res.created_at ? new Date(res.created_at) : new Date();
+    el('coverDate').textContent = `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}`;
+  }
+
+  /* BC별 심리 후크 문장 */
+  const hookMap = {
+    'BC-01':'"뱃살은 의지의 문제가 아닙니다.<br>코어 회로가 꺼진 것입니다."',
+    'BC-02':'"운동해도 안 빠지는 건,<br>대사 스위치가 꺼졌기 때문입니다."',
+    'BC-03':'"붓는 게 아니라 독소가 갇힌 겁니다.<br><span style=\"color:var(--sm-teal);font-weight:700\">몸이 버티고 있는 겁니다.</span>"',
+    'BC-04':'"예민한 게 아닙니다.<br><span style=\"color:var(--sm-teal);font-weight:700\">교감신경이 과열된 몸입니다.</span>"',
+    'BC-05':'"살이 찌는 게 아니라<br><span style=\"color:var(--sm-teal);font-weight:700\">호르몬이 흔들리는 겁니다.</span>"',
+    'BC-06':'"냉한 게 아니라<br><span style=\"color:var(--sm-teal);font-weight:700\">순환이 막힌 몸입니다.</span>"',
+    'BC-07':'"참지 못하는 게 아닙니다.<br><span style=\"color:var(--sm-teal);font-weight:700\">혈당 회로가 다른 겁니다.</span>"',
+    'BC-08':'"근육이 없는 게 아닙니다.<br><span style=\"color:var(--sm-teal);font-weight:700\">근섬유가 다른 타입인 겁니다.</span>"',
+    'BC-09':'"의지가 약한 게 아닙니다.<br><span style=\"color:var(--sm-teal);font-weight:700\">코르티솔이 몸을 조종하는 겁니다.</span>"',
+    'BC-10':'"소화가 문제가 아닙니다.<br><span style=\"color:var(--sm-teal);font-weight:700\">장내 생태계가 흔들린 겁니다.</span>"',
+  };
+  if(el('coverHook')) el('coverHook').innerHTML = hookMap[bcCode] || '"지금까지 살이 안 빠진 건<br>당신 의지의 문제가 아닙니다.<br><span style=\"color:var(--sm-teal);font-weight:700\">몸의 회로가 다른 것입니다.</span>"';
+
+  /* BC 배지 */
+  const fatArea = bc.fat_area || '';
+  const tagline = bc.tagline || '';
+  if(el('coverBadges') && (fatArea || tagline)){
+    let badges = `<span style="font-size:11px;padding:5px 14px;border-radius:20px;background:rgba(62,203,165,.1);color:var(--sm-teal);border:1px solid rgba(62,203,165,.25);font-weight:700;letter-spacing:.05em">분석 완료</span>`;
+    if(fatArea) badges += `<span style="font-size:11px;padding:5px 14px;border-radius:20px;background:rgba(30,58,95,.07);color:#475569;border:1px solid rgba(30,58,95,.12);font-weight:600">${esc(fatArea)}</span>`;
+    el('coverBadges').innerHTML = badges;
+  }
+
+  /* 바디맵 SVG */
+  const bodyMapContainer = el('coverBodyMap');
+  if(bodyMapContainer){
+    try{
+      const svgResult = generateBodyMap(res, bcCode);
+      const svgStr = (typeof svgResult === 'object' && svgResult && svgResult.svg) ? svgResult.svg : (svgResult || '');
+      bodyMapContainer.innerHTML = svgStr;
+    } catch(e){
+      console.warn('바디맵 생성 오류:', e);
+      bodyMapContainer.innerHTML = '';
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
    CHAPTER 1 · 감정 분기 오프닝 + 바디코드 공개
 ═══════════════════════════════════════════════════════ */
 function renderCh1(){
