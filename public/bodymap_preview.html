@@ -88,24 +88,41 @@ function generateBodyMap(res, bcCode) {
   const activityLvl   = (ss.daily_activity || 'moderate');
   const dreamAction   = (ss.dream_action || '');
 
-  // ── BC코드별 컬러 팔레트 ────────────────────────────────
+  // ── BC별 캐릭터 개성 정의 ─────────────────────────────
+  const bcPersonality = {
+    'BC-01': { mood:'angry',    cheekSize:16, eyeStyle:'squint',  hairStyleF:'wavy',  hairStyleM:'messy',  bodyTrait:'belly',    accessory:'🔥', accessoryPos:'head' },
+    'BC-02': { mood:'tired',    cheekSize:8,  eyeStyle:'half',    hairStyleF:'flat',  hairStyleM:'neat',   bodyTrait:'belly',    accessory:'😑', accessoryPos:'face' },
+    'BC-03': { mood:'flex',     cheekSize:10, eyeStyle:'star',    hairStyleF:'short', hairStyleM:'mohawk', bodyTrait:'shoulder', accessory:'💪', accessoryPos:'arm'  },
+    'BC-04': { mood:'shy',      cheekSize:18, eyeStyle:'sparkle', hairStyleF:'twin',  hairStyleM:'side',   bodyTrait:'waist',    accessory:'🎀', accessoryPos:'hair' },
+    'BC-05': { mood:'happy',    cheekSize:14, eyeStyle:'wide',    hairStyleF:'long',  hairStyleM:'neat',   bodyTrait:'hip',      accessory:'🍑', accessoryPos:'hip'  },
+    'BC-06': { mood:'cold',     cheekSize:6,  eyeStyle:'worried', hairStyleF:'bob',   hairStyleM:'buzz',   bodyTrait:'slim',     accessory:'🧊', accessoryPos:'hand' },
+    'BC-07': { mood:'neutral',  cheekSize:10, eyeStyle:'normal',  hairStyleF:'wavy',  hairStyleM:'side',   bodyTrait:'balanced', accessory:'⚖️', accessoryPos:'side' },
+    'BC-08': { mood:'shocked',  cheekSize:8,  eyeStyle:'big',     hairStyleF:'flat',  hairStyleM:'messy',  bodyTrait:'slim',     accessory:'🐢', accessoryPos:'side' },
+    'BC-09': { mood:'stressed', cheekSize:12, eyeStyle:'sweat',   hairStyleF:'wavy',  hairStyleM:'messy',  bodyTrait:'puffy',    accessory:'😓', accessoryPos:'head' },
+    'BC-10': { mood:'sleepy',   cheekSize:10, eyeStyle:'droop',   hairStyleF:'flat',  hairStyleM:'bald',   bodyTrait:'slim',     accessory:'🔄', accessoryPos:'side' },
+  };
+  const bcP = bcPersonality[bcCode] || bcPersonality['BC-07'];
+
+  // ── BC코드별 컬러 팔레트 (피부색도 BC별로 다름) ──────────
   const bcPalette = {
-    'BC-01': { primary:'#E74C3C', secondary:'#FADBD8', accent:'#C0392B', hair:'#C0392B', cheek:'rgba(231,76,60,0.22)', glow:'rgba(231,76,60,.15)' },
-    'BC-02': { primary:'#E67E22', secondary:'#FEF0E3', accent:'#CA6F1E', hair:'#CA6F1E', cheek:'rgba(230,126,34,0.20)', glow:'rgba(230,126,34,.15)' },
-    'BC-03': { primary:'#D4AC0D', secondary:'#FFFDE7', accent:'#B7950B', hair:'#F39C12', cheek:'rgba(243,156,18,0.20)', glow:'rgba(243,156,18,.15)' },
-    'BC-04': { primary:'#6D4C41', secondary:'#EFEBE9', accent:'#4E342E', hair:'#795548', cheek:'rgba(121,85,72,0.20)',  glow:'rgba(121,85,72,.15)'  },
-    'BC-05': { primary:'#8E44AD', secondary:'#F3E5F5', accent:'#6C3483', hair:'#9B59B6', cheek:'rgba(155,89,182,0.22)', glow:'rgba(155,89,182,.15)' },
-    'BC-06': { primary:'#1976D2', secondary:'#E3F2FD', accent:'#0D47A1', hair:'#2980B9', cheek:'rgba(41,128,185,0.20)', glow:'rgba(41,128,185,.15)' },
-    'BC-07': { primary:'#00897B', secondary:'#E0F2F1', accent:'#00695C', hair:'#1ABC9C', cheek:'rgba(26,188,156,0.20)', glow:'rgba(26,188,156,.15)' },
-    'BC-08': { primary:'#546E7A', secondary:'#ECEFF1', accent:'#37474F', hair:'#78909C', cheek:'rgba(84,110,122,0.20)', glow:'rgba(84,110,122,.15)' },
-    'BC-09': { primary:'#37474F', secondary:'#ECEFF1', accent:'#263238', hair:'#546E7A', cheek:'rgba(55,71,79,0.22)',   glow:'rgba(55,71,79,.18)'   },
-    'BC-10': { primary:'#7B1FA2', secondary:'#F3E5F5', accent:'#4A148C', hair:'#8E44AD', cheek:'rgba(142,68,173,0.22)', glow:'rgba(142,68,173,.15)' },
+    'BC-01': { primary:'#E74C3C', secondary:'#FADBD8', accent:'#C0392B', hair:'#8B2020', cheek:'rgba(231,76,60,0.35)',   glow:'rgba(231,76,60,.18)',  skin:'#FFD5C8', skinD:'#E8A090' },
+    'BC-02': { primary:'#E67E22', secondary:'#FEF0E3', accent:'#CA6F1E', hair:'#6B4C1E', cheek:'rgba(200,160,80,0.20)',  glow:'rgba(230,126,34,.15)', skin:'#FEEBD0', skinD:'#D4A870' },
+    'BC-03': { primary:'#F39C12', secondary:'#FFFDE7', accent:'#B7950B', hair:'#5D4037', cheek:'rgba(243,156,18,0.22)',  glow:'rgba(243,156,18,.18)', skin:'#FDDBB4', skinD:'#E0A060' },
+    'BC-04': { primary:'#E91E8C', secondary:'#FCE4EC', accent:'#C2185B', hair:'#880E4F', cheek:'rgba(233,30,140,0.28)',  glow:'rgba(233,30,140,.18)', skin:'#FFE0F0', skinD:'#F0A0C0' },
+    'BC-05': { primary:'#8E44AD', secondary:'#F3E5F5', accent:'#6C3483', hair:'#6A1B9A', cheek:'rgba(233,30,99,0.28)',   glow:'rgba(142,68,173,.18)', skin:'#FFD6E8', skinD:'#E8A0C0' },
+    'BC-06': { primary:'#1976D2', secondary:'#E3F2FD', accent:'#0D47A1', hair:'#1A237E', cheek:'rgba(100,181,246,0.35)', glow:'rgba(41,128,185,.20)', skin:'#D6EEFF', skinD:'#90C0E8' },
+    'BC-07': { primary:'#00897B', secondary:'#E0F2F1', accent:'#00695C', hair:'#00695C', cheek:'rgba(26,188,156,0.22)',  glow:'rgba(0,137,123,.18)',  skin:'#FEEBD0', skinD:'#E8B88A' },
+    'BC-08': { primary:'#78909C', secondary:'#ECEFF1', accent:'#37474F', hair:'#455A64', cheek:'rgba(120,144,156,0.18)', glow:'rgba(84,110,122,.15)', skin:'#EEE8E0', skinD:'#BDB0A0' },
+    'BC-09': { primary:'#D32F2F', secondary:'#FFEBEE', accent:'#B71C1C', hair:'#4A148C', cheek:'rgba(255,100,100,0.30)', glow:'rgba(211,47,47,.20)',  skin:'#FFD0C8', skinD:'#E8A090' },
+    'BC-10': { primary:'#7B1FA2', secondary:'#F3E5F5', accent:'#4A148C', hair:'#4A148C', cheek:'rgba(142,68,173,0.18)',  glow:'rgba(123,31,162,.15)', skin:'#EDE0F0', skinD:'#C0A0D0' },
   };
   const pal = bcPalette[bcCode] || bcPalette['BC-07'];
 
   // ── BMI → 체형 두께 ──────────────────────────────────
   const bmiTier = bmi < 18.5 ? 0 : bmi < 23 ? 1 : bmi < 27 ? 2 : 3;
-  const w = [0.84, 1.0, 1.15, 1.28][bmiTier];
+  const bmiBase = [0.82, 1.0, 1.16, 1.30][bmiTier];
+  const bodyBoost = (bcP.bodyTrait==='belly'||bcP.bodyTrait==='puffy') ? 0.06 : (bcP.bodyTrait==='slim') ? -0.06 : 0;
+  const w = bmiBase + bodyBoost;
 
   // ── 성별 기반 파라미터 ───────────────────────────────
   const isFemale = (gender === 'female');
@@ -134,12 +151,8 @@ function generateBodyMap(res, bcCode) {
     'BC-07':['belly','thigh'], 'BC-08':['belly'], 'BC-09':['belly'], 'BC-10':['belly','thigh'],
   };
   const highlight = [...new Set([...(zoneMap[fatGainOrder]||['belly']), ...(bcZone[bcCode]||[])])];
-
-  // 냉증 부위
   const coldZoneKey = { hands:'arm', feet:'leg', knee:'knee', thigh:'thigh', lower_back:'waist' };
   const coldZones = (Array.isArray(coldParts)?coldParts:[]).map(p=>coldZoneKey[p]).filter(Boolean);
-
-  // 감각저하 부위
   const numbZoneKey = { glute:'hip', hamstring:'thigh', core:'belly', back:'waist', shoulder:'shoulder' };
   const numbZones = (Array.isArray(numbParts)?numbParts:[]).map(p=>numbZoneKey[p]).filter(Boolean);
 
@@ -149,40 +162,33 @@ function generateBodyMap(res, bcCode) {
   // ════════════════════════════════════════════════════
   const cx = 100 + spinalLean;
 
-  // ── Y 좌표 (진짜 2.5등신 치비 비율) ────────────────────
-  // 머리 : 몸+다리 = 1 : 1.5 비율이 치비의 핵심
-  const H_HEAD_CY  = 50;    // 머리 중심
-  const H_HEAD_RY  = 40;    // 머리 세로반경 (크게! — 치비 핵심)
-  const H_HEAD_RX  = isFemale ? 34 : 36;  // 머리 가로반경 (동글동글)
-  const H_NECK_TOP = H_HEAD_CY + H_HEAD_RY - 6;  // 목 시작 (짧게)
-  const H_NECK_BOT = H_NECK_TOP + 12;   // 목 끝 (아주 짧은 목)
-  const H_SHOU     = H_NECK_BOT + 2;    // 어깨
-  const H_CHEST    = H_SHOU + 28;       // 가슴 (짧게)
-  const H_WAIST    = H_SHOU + 48;       // 허리 (짧게)
-  const H_HIP      = H_SHOU + 66;       // 엉덩이 (짧게)
-  const H_KNEE     = H_HIP + 44;        // 무릎 (짧은 다리)
-  const H_ANKLE    = H_HIP + 76;        // 발목
-  const H_FOOT     = H_HIP + 88;        // 발끝 (짧은 다리)
+  const H_HEAD_CY  = 50;
+  const H_HEAD_RY  = 40;
+  const H_HEAD_RX  = isFemale ? 34 : 36;
+  const H_NECK_TOP = H_HEAD_CY + H_HEAD_RY - 6;
+  const H_NECK_BOT = H_NECK_TOP + 12;
+  const H_SHOU     = H_NECK_BOT + 2;
+  const H_CHEST    = H_SHOU + 28;
+  const H_WAIST    = H_SHOU + 48;
+  const H_HIP      = H_SHOU + 66;
+  const H_KNEE     = H_HIP + 44;
+  const H_ANKLE    = H_HIP + 76;
+  const H_FOOT     = H_HIP + 88;
 
-  // ── 너비 (w 배율 적용) — 치비는 몸통도 통통하게 ─────
-  const SW  = (isFemale ? 38 : 44) * w;    // 어깨 반폭 (넓게)
-  const CW  = (isFemale ? 32 : 38) * w;    // 가슴 반폭 (통통)
-  const WW  = (isFemale ? 26 : 32) * w;    // 허리 반폭 (통통)
-  const HW  = (isFemale ? 38 : 35) * w;    // 엉덩이 반폭
-  const TW  = (isFemale ? 22 : 20) * w;    // 허벅지 반폭
-  const KW  = (isFemale ? 16 : 15) * w;    // 무릎 반폭
-  const LW  = (isFemale ? 14 : 13) * w;    // 종아리 반폭
+  const SW  = (isFemale ? 38 : 44) * w;
+  const CW  = (isFemale ? 32 : 38) * w;
+  const WW  = (isFemale ? 26 : 32) * w;
+  const HW  = (isFemale ? 38 : 35) * w;
+  const TW  = (isFemale ? 22 : 20) * w;
+  const KW  = (isFemale ? 16 : 15) * w;
+  const LW  = (isFemale ? 14 : 13) * w;
 
-  // ── 팔 좌표 (짧고 통통한 팔) ─────────────────────────
-  const ARM_SX = cx - SW + 4;   // 팔 어깨 x (몸통 가까이)
-  const ARM_EX = cx - SW - 10;  // 팔 손 x (살짝만 벌림)
+  const ARM_SX = cx - SW + 4;
+  const ARM_EX = cx - SW - 10;
   const ARM_SY = H_SHOU + 4;
-  const ARM_EY = H_WAIST + 2;   // 팔 길이 = 허리까지
-  const ARM_W  = (isFemale ? 13 : 15) * w;  // 팔 반폭 (통통)
+  const ARM_EY = H_WAIST + 2;
+  const ARM_W  = (isFemale ? 13 : 15) * w;
 
-  // ── 몸통 path (둥글둥글 치비 실루엣) ───────────────────
-  // 몸통을 양쪽으로 나눠 각각 그림 → 심플하게 ellipse 기반
-  // 상체(어깨~허리): 약간 사다리꼴, 하체(허리~발): 두 다리 분리
   const bodyPath = `
     M ${cx} ${H_NECK_BOT}
     C ${cx-SW*0.3} ${H_NECK_BOT+4}, ${cx-SW} ${H_SHOU+2}, ${cx-SW} ${H_SHOU+8}
@@ -206,8 +212,6 @@ function generateBodyMap(res, bcCode) {
     C ${cx+SW} ${H_SHOU+2}, ${cx+SW*0.3} ${H_NECK_BOT+4}, ${cx} ${H_NECK_BOT}
     Z`;
 
-  // ── 팔 path (둥글하고 귀여운 팔) ─────────────────────
-  // 팔은 단순한 타원 형태로 — 치비는 팔도 통통
   const armLcx = ARM_SX - ARM_W*0.2;
   const armRcx = cx*2 - armLcx;
   const armCy  = (ARM_SY + ARM_EY) / 2;
@@ -216,7 +220,6 @@ function generateBodyMap(res, bcCode) {
   const armPathL = `M ${ARM_SX} ${ARM_SY} C ${ARM_SX-ARM_W*0.2} ${ARM_SY+8}, ${ARM_EX-ARM_W*0.4} ${ARM_EY-14}, ${ARM_EX} ${ARM_EY} C ${ARM_EX+ARM_W*0.9} ${ARM_EY+8}, ${ARM_SX+ARM_W*0.7} ${ARM_SY+14}, ${ARM_SX+ARM_W*0.9} ${ARM_SY} Z`;
   const armPathR = `M ${cx*2-ARM_SX} ${ARM_SY} C ${cx*2-ARM_SX+ARM_W*0.2} ${ARM_SY+8}, ${cx*2-ARM_EX+ARM_W*0.4} ${ARM_EY-14}, ${cx*2-ARM_EX} ${ARM_EY} C ${cx*2-ARM_EX-ARM_W*0.9} ${ARM_EY+8}, ${cx*2-ARM_SX-ARM_W*0.7} ${ARM_SY+14}, ${cx*2-ARM_SX-ARM_W*0.9} ${ARM_SY} Z`;
 
-  // ── 손 (동글동글 — 크게!) ────────────────────────────
   const handLcx = ARM_EX - ARM_W*0.2;
   const handRcx = cx*2 - handLcx;
   const handCy  = ARM_EY + 12;
@@ -225,279 +228,392 @@ function generateBodyMap(res, bcCode) {
   const handL = `<ellipse cx="${handLcx}" cy="${handCy}" rx="${handRxS}" ry="${handRyS}" fill="${pal.secondary}" stroke="${pal.primary}" stroke-width="1.2"/>`;
   const handR = `<ellipse cx="${handRcx}" cy="${handCy}" rx="${handRxS}" ry="${handRyS}" fill="${pal.secondary}" stroke="${pal.primary}" stroke-width="1.2"/>`;
 
-  // ── 발 (통통한 타원, 발끝 방향) ──────────────────────
   const footAngle = footOut ? 20 : footIn ? -20 : 0;
   const footLcx = cx - LW*1.1;
   const footRcx = cx + LW*1.1;
   const footY2  = H_FOOT + 7;
-  const footRxF = LW * 2.0;  // 발 가로 (넓게)
-  const footRyF = LW * 1.0;  // 발 세로 (통통)
+  const footRxF = LW * 2.0;
+  const footRyF = LW * 1.0;
   const footL = `<g transform="rotate(${-footAngle} ${footLcx} ${footY2})"><ellipse cx="${footLcx}" cy="${footY2}" rx="${footRxF}" ry="${footRyF}" fill="${pal.secondary}" stroke="${pal.primary}" stroke-width="1.2"/></g>`;
   const footR = `<g transform="rotate(${footAngle} ${footRcx} ${footY2})"><ellipse cx="${footRcx}" cy="${footY2}" rx="${footRxF}" ry="${footRyF}" fill="${pal.secondary}" stroke="${pal.primary}" stroke-width="1.2"/></g>`;
 
-  // ── 머리카락 (귀여운 치비 스타일) ──────────────────────
+  // ── BC별 머리카락 (여성/남성 완전 분리) ─────────────────────────
   let hairSVG = '';
+  const hCy = H_HEAD_CY, hRx = H_HEAD_RX, hRy = H_HEAD_RY, hCol = pal.hair;
+
   if(isFemale) {
-    // 여성: 귀여운 단발/긴머리 (양 옆에 볼록하게)
-    hairSVG = `
-      <!-- 뒷머리 (얼굴보다 큰 타원) -->
-      <ellipse cx="${cx}" cy="${H_HEAD_CY - 4}" rx="${H_HEAD_RX + 6}" ry="${H_HEAD_RY + 8}" fill="${pal.hair}" opacity="0.9"/>
-      <!-- 옆머리 (아래로 내려오는 볼록한 사이드) -->
-      <ellipse cx="${cx - H_HEAD_RX + 2}" cy="${H_HEAD_CY + 14}" rx="11" ry="22" fill="${pal.hair}" opacity="0.88"/>
-      <ellipse cx="${cx + H_HEAD_RX - 2}" cy="${H_HEAD_CY + 14}" rx="11" ry="22" fill="${pal.hair}" opacity="0.88"/>
-      <!-- 앞머리 흘림 -->
-      <ellipse cx="${cx - H_HEAD_RX*0.3}" cy="${H_HEAD_CY - H_HEAD_RY + 6}" rx="${H_HEAD_RX*0.45}" ry="8" fill="${pal.hair}" opacity="0.7"/>
-    `;
+    const fs2 = bcP.hairStyleF;
+    if(fs2 === 'long') {
+      // BC-05: 긴 생머리, 풍성하게 양옆으로
+      hairSVG = `<ellipse cx="${cx}" cy="${hCy-5}" rx="${hRx+7}" ry="${hRy+9}" fill="${hCol}" opacity="0.9"/>
+        <ellipse cx="${cx-hRx+2}" cy="${hCy+22}" rx="13" ry="35" fill="${hCol}" opacity="0.85"/>
+        <ellipse cx="${cx+hRx-2}" cy="${hCy+22}" rx="13" ry="35" fill="${hCol}" opacity="0.85"/>
+        <ellipse cx="${cx}" cy="${hCy-hRy+4}" rx="${hRx*0.6}" ry="9" fill="${hCol}" opacity="0.6"/>`;
+    } else if(fs2 === 'twin') {
+      // BC-04: 양갈래 땋기 + 포인트 볼
+      hairSVG = `<ellipse cx="${cx}" cy="${hCy-4}" rx="${hRx+5}" ry="${hRy+7}" fill="${hCol}" opacity="0.9"/>
+        <ellipse cx="${cx-hRx-8}" cy="${hCy+12}" rx="9" ry="26" fill="${hCol}" opacity="0.88"/>
+        <ellipse cx="${cx+hRx+8}" cy="${hCy+12}" rx="9" ry="26" fill="${hCol}" opacity="0.88"/>
+        <ellipse cx="${cx-hRx*0.4}" cy="${hCy-hRy+5}" rx="${hRx*0.5}" ry="8" fill="${hCol}" opacity="0.65"/>
+        <circle cx="${cx-hRx-8}" cy="${hCy-18}" r="7" fill="${pal.primary}" opacity="0.8"/>
+        <circle cx="${cx+hRx+8}" cy="${hCy-18}" r="7" fill="${pal.primary}" opacity="0.8"/>`;
+    } else if(fs2 === 'wavy') {
+      // BC-01/07/09: 웨이브 중간 길이
+      hairSVG = `<ellipse cx="${cx}" cy="${hCy-5}" rx="${hRx+6}" ry="${hRy+8}" fill="${hCol}" opacity="0.9"/>
+        <ellipse cx="${cx-hRx+1}" cy="${hCy+14}" rx="13" ry="22" fill="${hCol}" opacity="0.87"/>
+        <ellipse cx="${cx+hRx-1}" cy="${hCy+14}" rx="13" ry="22" fill="${hCol}" opacity="0.87"/>
+        <ellipse cx="${cx-hRx*0.3}" cy="${hCy-hRy+5}" rx="${hRx*0.48}" ry="8" fill="${hCol}" opacity="0.68"/>
+        <ellipse cx="${cx-hRx-2}" cy="${hCy+28}" rx="8" ry="10" fill="${hCol}" opacity="0.6"/>
+        <ellipse cx="${cx+hRx+2}" cy="${hCy+28}" rx="8" ry="10" fill="${hCol}" opacity="0.6"/>`;
+    } else if(fs2 === 'bob') {
+      // BC-06: 단발 밥컷 (차갑고 단정)
+      hairSVG = `<ellipse cx="${cx}" cy="${hCy-4}" rx="${hRx+5}" ry="${hRy+7}" fill="${hCol}" opacity="0.9"/>
+        <ellipse cx="${cx-hRx+2}" cy="${hCy+6}" rx="11" ry="13" fill="${hCol}" opacity="0.88"/>
+        <ellipse cx="${cx+hRx-2}" cy="${hCy+6}" rx="11" ry="13" fill="${hCol}" opacity="0.88"/>
+        <rect x="${cx-hRx-2}" y="${hCy+6}" width="${(hRx+2)*2}" height="6" rx="3" fill="${hCol}" opacity="0.7"/>
+        <ellipse cx="${cx-hRx*0.4}" cy="${hCy-hRy+6}" rx="${hRx*0.55}" ry="8" fill="${hCol}" opacity="0.6"/>`;
+    } else if(fs2 === 'short') {
+      // BC-03: 짧은 활동적 헤어
+      hairSVG = `<ellipse cx="${cx}" cy="${hCy-6}" rx="${hRx+4}" ry="${hRy+6}" fill="${hCol}" opacity="0.9"/>
+        <ellipse cx="${cx-hRx+3}" cy="${hCy+2}" rx="9" ry="10" fill="${hCol}" opacity="0.82"/>
+        <ellipse cx="${cx+hRx-3}" cy="${hCy+2}" rx="9" ry="10" fill="${hCol}" opacity="0.82"/>
+        <ellipse cx="${cx-hRx*0.2}" cy="${hCy-hRy+5}" rx="${hRx*0.7}" ry="9" fill="${hCol}" opacity="0.72"/>
+        <ellipse cx="${cx+hRx*0.3}" cy="${hCy-hRy-4}" rx="7" ry="6" fill="${hCol}" opacity="0.65"/>`;
+    } else {
+      // flat: BC-02/08/10: 납작한 단발
+      hairSVG = `<ellipse cx="${cx}" cy="${hCy-6}" rx="${hRx+5}" ry="${hRy+7}" fill="${hCol}" opacity="0.88"/>
+        <ellipse cx="${cx-hRx+3}" cy="${hCy+6}" rx="9" ry="16" fill="${hCol}" opacity="0.82"/>
+        <ellipse cx="${cx+hRx-3}" cy="${hCy+6}" rx="9" ry="16" fill="${hCol}" opacity="0.82"/>
+        <ellipse cx="${cx}" cy="${hCy-hRy+4}" rx="${hRx*0.75}" ry="7" fill="${hCol}" opacity="0.55"/>`;
+    }
   } else {
-    // 남성: 짧은 정수리 머리 + 옆머리
-    hairSVG = `
-      <!-- 정수리 -->
-      <ellipse cx="${cx}" cy="${H_HEAD_CY - H_HEAD_RY*0.5}" rx="${H_HEAD_RX + 2}" ry="${H_HEAD_RY * 0.6}" fill="${pal.hair}" opacity="0.9"/>
-      <!-- 가르마 느낌 앞머리 -->
-      <ellipse cx="${cx - 6}" cy="${H_HEAD_CY - H_HEAD_RY + 8}" rx="${H_HEAD_RX*0.55}" ry="10" fill="${pal.hair}" opacity="0.75"/>
-      <!-- 옆머리 -->
-      <ellipse cx="${cx - H_HEAD_RX + 4}" cy="${H_HEAD_CY - 8}" rx="9" ry="14" fill="${pal.hair}" opacity="0.8"/>
-      <ellipse cx="${cx + H_HEAD_RX - 4}" cy="${H_HEAD_CY - 8}" rx="9" ry="14" fill="${pal.hair}" opacity="0.8"/>
-    `;
+    const ms = bcP.hairStyleM;
+    if(ms === 'buzz') {
+      // BC-06남: 버즈컷 (짧고 깔끔)
+      hairSVG = `<ellipse cx="${cx}" cy="${hCy-hRy*0.45}" rx="${hRx+1}" ry="${hRy*0.5}" fill="${hCol}" opacity="0.85"/>
+        <rect x="${cx-hRx}" y="${hCy-hRy-2}" width="${hRx*2}" height="12" rx="4" fill="${hCol}" opacity="0.75"/>`;
+    } else if(ms === 'mohawk') {
+      // BC-03남: 모히칸 (중앙 솟음)
+      hairSVG = `<ellipse cx="${cx}" cy="${hCy-hRy*0.42}" rx="${hRx*0.88}" ry="${hRy*0.48}" fill="${hCol}" opacity="0.82"/>
+        <ellipse cx="${cx}" cy="${hCy-hRy-12}" rx="7" ry="20" fill="${hCol}" opacity="0.95"/>
+        <ellipse cx="${cx}" cy="${hCy-hRy-18}" rx="5" ry="8" fill="${pal.accent}" opacity="0.8"/>
+        <ellipse cx="${cx-hRx+5}" cy="${hCy-6}" rx="7" ry="11" fill="${hCol}" opacity="0.75"/>
+        <ellipse cx="${cx+hRx-5}" cy="${hCy-6}" rx="7" ry="11" fill="${hCol}" opacity="0.75"/>`;
+    } else if(ms === 'side') {
+      // BC-05/07남: 사이드파트 (단정)
+      hairSVG = `<ellipse cx="${cx}" cy="${hCy-hRy*0.44}" rx="${hRx+2}" ry="${hRy*0.56}" fill="${hCol}" opacity="0.9"/>
+        <ellipse cx="${cx-hRx*0.6}" cy="${hCy-hRy+8}" rx="${hRx*0.7}" ry="10" fill="${hCol}" opacity="0.78"/>
+        <ellipse cx="${cx-hRx+4}" cy="${hCy-6}" rx="8" ry="13" fill="${hCol}" opacity="0.82"/>
+        <ellipse cx="${cx+hRx-4}" cy="${hCy-6}" rx="7" ry="11" fill="${hCol}" opacity="0.72"/>`;
+    } else if(ms === 'messy') {
+      // BC-01/08/09남: 헝클어진 머리
+      hairSVG = `<ellipse cx="${cx}" cy="${hCy-hRy*0.40}" rx="${hRx+4}" ry="${hRy*0.56}" fill="${hCol}" opacity="0.88"/>
+        <ellipse cx="${cx-hRx*0.7}" cy="${hCy-hRy-6}" rx="12" ry="9" fill="${hCol}" opacity="0.80"/>
+        <ellipse cx="${cx+hRx*0.5}" cy="${hCy-hRy-8}" rx="10" ry="8" fill="${hCol}" opacity="0.74"/>
+        <ellipse cx="${cx+hRx*0.1}" cy="${hCy-hRy-10}" rx="8" ry="6" fill="${hCol}" opacity="0.68"/>
+        <ellipse cx="${cx-hRx+4}" cy="${hCy-5}" rx="9" ry="13" fill="${hCol}" opacity="0.82"/>
+        <ellipse cx="${cx+hRx-4}" cy="${hCy-5}" rx="8" ry="12" fill="${hCol}" opacity="0.78"/>`;
+    } else if(ms === 'bald') {
+      // BC-10남: 대머리 (광택 표현)
+      hairSVG = `<ellipse cx="${cx}" cy="${hCy-hRy*0.5}" rx="${hRx}" ry="${hRy*0.38}" fill="${hCol}" opacity="0.35"/>
+        <ellipse cx="${cx+hRx*0.3}" cy="${hCy-hRy*0.3}" rx="8" ry="5" fill="white" opacity="0.25"/>`;
+    } else {
+      // neat: BC-02남: 단정하게 정돈
+      hairSVG = `<ellipse cx="${cx}" cy="${hCy-hRy*0.42}" rx="${hRx+2}" ry="${hRy*0.54}" fill="${hCol}" opacity="0.9"/>
+        <ellipse cx="${cx+hRx*0.4}" cy="${hCy-hRy+6}" rx="${hRx*0.5}" ry="9" fill="${hCol}" opacity="0.72"/>
+        <ellipse cx="${cx-hRx+5}" cy="${hCy-5}" rx="7" ry="12" fill="${hCol}" opacity="0.82"/>
+        <ellipse cx="${cx+hRx-5}" cy="${hCy-5}" rx="7" ry="12" fill="${hCol}" opacity="0.82"/>`;
+    }
   }
 
-  // ── 머리 (얼굴 베이스) ───────────────────────────────
-  // 피부색 = 따뜻한 크림색
-  const skinColor = '#FEEBD0';
-  const skinDark  = '#E8B88A';
-
-  const headBase = `
-    <!-- 머리 베이스 (약간 아래로 볼록한 달걀형) -->
-    <ellipse cx="${cx}" cy="${H_HEAD_CY + 2}" rx="${H_HEAD_RX}" ry="${H_HEAD_RY}" fill="${skinColor}" stroke="${skinDark}" stroke-width="1.5"/>
-    <!-- 볼 터치 (귀엽게 크게) -->
-    <ellipse cx="${cx - H_HEAD_RX*0.58}" cy="${H_HEAD_CY + 12}" rx="12" ry="8" fill="${pal.cheek}"/>
-    <ellipse cx="${cx + H_HEAD_RX*0.58}" cy="${H_HEAD_CY + 12}" rx="12" ry="8" fill="${pal.cheek}"/>
-  `;
-
-  // ── 눈 (반짝이는 큰 눈) ─────────────────────────────
-  const eyeRx  = sleepBad ? 5.5 : 7.5;   // 더 크게
-  const eyeRy  = sleepBad ? 4   : 7;     // 더 크게
-  const eyeLx  = cx - H_HEAD_RX*0.36;
-  const eyeRx2 = cx + H_HEAD_RX*0.36;
-  const eyeY   = H_HEAD_CY - 2;   // 눈 위치를 살짝 올림
-
-  const eyeSVG = `
-    <!-- 눈 흰자 -->
-    <ellipse cx="${eyeLx}" cy="${eyeY}" rx="${eyeRx}" ry="${eyeRy}" fill="white" stroke="${skinDark}" stroke-width="0.8"/>
-    <ellipse cx="${eyeRx2}" cy="${eyeY}" rx="${eyeRx}" ry="${eyeRy}" fill="white" stroke="${skinDark}" stroke-width="0.8"/>
-    <!-- 눈동자 -->
-    <ellipse cx="${eyeLx + 0.5}" cy="${eyeY + 0.5}" rx="${eyeRx*0.62}" ry="${eyeRy*0.75}" fill="${pal.accent}"/>
-    <ellipse cx="${eyeRx2 + 0.5}" cy="${eyeY + 0.5}" rx="${eyeRx*0.62}" ry="${eyeRy*0.75}" fill="${pal.accent}"/>
-    <!-- 동공 -->
-    <ellipse cx="${eyeLx + 0.8}" cy="${eyeY + 0.8}" rx="${eyeRx*0.32}" ry="${eyeRy*0.4}" fill="#1a1a1a"/>
-    <ellipse cx="${eyeRx2 + 0.8}" cy="${eyeY + 0.8}" rx="${eyeRx*0.32}" ry="${eyeRy*0.4}" fill="#1a1a1a"/>
-    <!-- 눈 하이라이트 -->
-    <ellipse cx="${eyeLx - eyeRx*0.2}" cy="${eyeY - eyeRy*0.25}" rx="${eyeRx*0.22}" ry="${eyeRy*0.22}" fill="white" opacity="0.95"/>
-    <ellipse cx="${eyeRx2 - eyeRx*0.2}" cy="${eyeY - eyeRy*0.25}" rx="${eyeRx*0.22}" ry="${eyeRy*0.22}" fill="white" opacity="0.95"/>
-    <!-- 속눈썹 (위) -->
-    <path d="M ${eyeLx-eyeRx} ${eyeY-eyeRy*0.85} Q ${eyeLx} ${eyeY-eyeRy*1.3} ${eyeLx+eyeRx} ${eyeY-eyeRy*0.85}" fill="none" stroke="#2a1a0a" stroke-width="1.5" stroke-linecap="round"/>
-    <path d="M ${eyeRx2-eyeRx} ${eyeY-eyeRy*0.85} Q ${eyeRx2} ${eyeY-eyeRy*1.3} ${eyeRx2+eyeRx} ${eyeY-eyeRy*0.85}" fill="none" stroke="#2a1a0a" stroke-width="1.5" stroke-linecap="round"/>
-    ${sleepBad ? `
-    <!-- 다크서클 -->
-    <ellipse cx="${eyeLx}" cy="${eyeY+eyeRy+2}" rx="${eyeRx*0.9}" ry="3" fill="#9DA3AE" opacity="0.35"/>
-    <ellipse cx="${eyeRx2}" cy="${eyeY+eyeRy+2}" rx="${eyeRx*0.9}" ry="3" fill="#9DA3AE" opacity="0.35"/>
-    ` : ''}
-  `;
-
-  // ── 코 (작고 귀여운 동그라미 코) ───────────────────────
-  const noseSVG = `
-    <ellipse cx="${cx}" cy="${H_HEAD_CY + 13}" rx="4" ry="3" fill="${skinDark}" opacity="0.3"/>
-  `;
-
-  // ── 입 (더 크고 표정 풍부하게) ─────────────────────────
-  const mouthY = H_HEAD_CY + 22;
-  const mouthSVG = stressed
-    ? `<!-- 걱정 입 (U 반전) -->
-       <path d="M ${cx-10} ${mouthY+4} Q ${cx} ${mouthY-1} ${cx+10} ${mouthY+4}" fill="none" stroke="${skinDark}" stroke-width="2" stroke-linecap="round"/>`
-    : `<!-- 활짝 웃는 입 -->
-       <path d="M ${cx-11} ${mouthY-1} Q ${cx} ${mouthY+10} ${cx+11} ${mouthY-1}" fill="none" stroke="${skinDark}" stroke-width="2" stroke-linecap="round"/>
-       <!-- 치아 (반짝이) -->
-       <path d="M ${cx-8} ${mouthY-1} Q ${cx} ${mouthY+7} ${cx+8} ${mouthY-1}" fill="white" opacity="0.7"/>`;
-
-  // ── 귀 (작고 귀엽게) ─────────────────────────────────
-  const earY   = H_HEAD_CY + 6;
+  // ── 귀 ────────────────────────────────────────────
+  const earY   = H_HEAD_CY + 4;
+  const earRxE = isFemale ? 7 : 8;
+  const earRyE = isFemale ? 9 : 11;
+  const earLx  = cx - H_HEAD_RX + 3;
+  const earRx2 = cx + H_HEAD_RX - 3;
   const earSVG = `
-    <ellipse cx="${cx - H_HEAD_RX + 2}" cy="${earY}" rx="7" ry="9" fill="${skinColor}" stroke="${skinDark}" stroke-width="1.2"/>
-    <ellipse cx="${cx - H_HEAD_RX + 3}" cy="${earY}" rx="3.5" ry="5" fill="${pal.cheek}" opacity="0.5"/>
-    <ellipse cx="${cx + H_HEAD_RX - 2}" cy="${earY}" rx="7" ry="9" fill="${skinColor}" stroke="${skinDark}" stroke-width="1.2"/>
-    <ellipse cx="${cx + H_HEAD_RX - 3}" cy="${earY}" rx="3.5" ry="5" fill="${pal.cheek}" opacity="0.5"/>
-  `;
+    <ellipse cx="${earLx}" cy="${earY}" rx="${earRxE}" ry="${earRyE}" fill="${pal.skin}" stroke="${pal.primary}" stroke-width="1"/>
+    <ellipse cx="${earLx}" cy="${earY}" rx="${earRxE-3}" ry="${earRyE-4}" fill="${pal.skinD}" opacity="0.4"/>
+    <ellipse cx="${earRx2}" cy="${earY}" rx="${earRxE}" ry="${earRyE}" fill="${pal.skin}" stroke="${pal.primary}" stroke-width="1"/>
+    <ellipse cx="${earRx2}" cy="${earY}" rx="${earRxE-3}" ry="${earRyE-4}" fill="${pal.skinD}" opacity="0.4"/>`;
 
-  // ── 목 (짧고 귀엽게) ─────────────────────────────────
-  const neckW   = (isFemale ? 13 : 16) * w;
-  const neckSVG = `<rect x="${cx-neckW}" y="${H_NECK_TOP}" width="${neckW*2}" height="${H_NECK_BOT-H_NECK_TOP+2}" rx="${neckW*0.8}" fill="${skinColor}" stroke="${skinDark}" stroke-width="1"/>`;
-
-  // ── 부위 강조 오버레이 (귀여운 원 계열) ──────────────
-  const overlaySVG_zones = {
-    belly:    `<ellipse cx="${cx}" cy="${(H_CHEST+H_WAIST)/2}" rx="${CW*0.85}" ry="${(H_WAIST-H_CHEST)*0.4}"/>`,
-    hip:      `<ellipse cx="${cx}" cy="${H_HIP+8}" rx="${HW*0.85}" ry="14"/>`,
-    thigh:    `<ellipse cx="${cx-TW*0.7}" cy="${(H_HIP+H_KNEE)/2}" rx="${TW*0.8}" ry="22"/><ellipse cx="${cx+TW*0.7}" cy="${(H_HIP+H_KNEE)/2}" rx="${TW*0.8}" ry="22"/>`,
-    shoulder: `<ellipse cx="${cx-SW*0.75}" cy="${H_SHOU+8}" rx="12" ry="9"/><ellipse cx="${cx+SW*0.75}" cy="${H_SHOU+8}" rx="12" ry="9"/>`,
-    arm:      `<ellipse cx="${ARM_EX}" cy="${(ARM_SY+ARM_EY)/2}" rx="${ARM_W*0.85}" ry="${(ARM_EY-ARM_SY)*0.4}"/><ellipse cx="${cx*2-ARM_EX}" cy="${(ARM_SY+ARM_EY)/2}" rx="${ARM_W*0.85}" ry="${(ARM_EY-ARM_SY)*0.4}"/>`,
-    waist:    `<ellipse cx="${cx}" cy="${H_WAIST}" rx="${WW*1.05}" ry="12"/>`,
-    leg:      `<ellipse cx="${cx-TW*0.7}" cy="${(H_KNEE+H_ANKLE)/2}" rx="${KW*0.85}" ry="18"/><ellipse cx="${cx+TW*0.7}" cy="${(H_KNEE+H_ANKLE)/2}" rx="${KW*0.85}" ry="18"/>`,
-    knee:     `<ellipse cx="${cx-KW*0.9}" cy="${H_KNEE+2}" rx="9" ry="8"/><ellipse cx="${cx+KW*0.9}" cy="${H_KNEE+2}" rx="9" ry="8"/>`,
-    face:     `<ellipse cx="${cx}" cy="${H_HEAD_CY}" rx="${H_HEAD_RX*0.7}" ry="${H_HEAD_RY*0.6}"/>`,
+  // ── 눈 (BC별 eyeStyle 10종) ───────────────────────
+  const eyeY   = H_HEAD_CY + 2;
+  const eyeLx  = cx - 13;
+  const eyeRx2 = cx + 13;
+  const eyeStyles = {
+    normal:  { rx:7,   ry:6.5, lidH:0.55, pupilR:3.5 },
+    wide:    { rx:8,   ry:7.5, lidH:0.5,  pupilR:4   },
+    sparkle: { rx:7.5, ry:7,   lidH:0.5,  pupilR:3.8 },
+    squint:  { rx:7.5, ry:3.8, lidH:0.8,  pupilR:2.8 },
+    half:    { rx:7,   ry:3.2, lidH:0.75, pupilR:2.5 },
+    worried: { rx:6.5, ry:5.5, lidH:0.6,  pupilR:3.2 },
+    big:     { rx:8.5, ry:8,   lidH:0.45, pupilR:4.5 },
+    droop:   { rx:7,   ry:4.5, lidH:0.65, pupilR:2.8 },
+    sweat:   { rx:7,   ry:5.5, lidH:0.6,  pupilR:3.2 },
+    star:    { rx:8,   ry:7.5, lidH:0.48, pupilR:4   },
   };
+  const es = eyeStyles[bcP.eyeStyle] || eyeStyles.normal;
 
-  const highlightSVG = highlight.map(z => {
-    const s = overlaySVG_zones[z]; if(!s) return '';
-    return `<g fill="${pal.primary}" opacity="0.20">${s}</g>`;
-  }).join('');
-
-  const coldSVG = coldZones.map(z => {
-    const s = overlaySVG_zones[z]; if(!s) return '';
-    return `<g fill="#64B5F6" opacity="0.30">${s}</g>`;
-  }).join('');
-
-  const numbSVG = numbZones.map(z => {
-    const s = overlaySVG_zones[z]; if(!s) return '';
-    return `<g fill="none" stroke="#90A4AE" stroke-width="1.8" stroke-dasharray="3,3" opacity="0.65">${s}</g>`;
-  }).join('');
-
-  // ── BC코드별 특수 뱃지/이펙트 ───────────────────────
-  let specialSVG = '';
-  const bCx = cx + HW + 12;
-  const bCy = (H_CHEST + H_WAIST) / 2;
-  if(bcCode === 'BC-09') {
-    // 코르티솔형: 복부에 귀여운 파동
-    specialSVG = `
-      <circle cx="${cx}" cy="${bCy}" r="16" fill="none" stroke="${pal.primary}" stroke-width="1.2" opacity="0.25" stroke-dasharray="4,3"/>
-      <circle cx="${cx}" cy="${bCy}" r="25" fill="none" stroke="${pal.primary}" stroke-width="0.8" opacity="0.12" stroke-dasharray="4,4"/>
-      <text x="${bCx}" y="${bCy+4}" font-size="13" text-anchor="middle" opacity="0.7">😓</text>
-    `;
-  } else if(bcCode === 'BC-06') {
-    // 냉증형: 파란 물결
-    specialSVG = `
-      <path d="M ${cx-TW} ${H_HIP+30} Q ${cx} ${H_HIP+38} ${cx+TW} ${H_HIP+30}" fill="none" stroke="#64B5F6" stroke-width="1.5" opacity="0.5"/>
-      <path d="M ${cx-KW*1.2} ${H_KNEE+6} Q ${cx} ${H_KNEE+14} ${cx+KW*1.2} ${H_KNEE+6}" fill="none" stroke="#64B5F6" stroke-width="1.2" opacity="0.4"/>
-      <text x="${bCx}" y="${H_KNEE+6}" font-size="13" text-anchor="middle" opacity="0.7">🧊</text>
-    `;
-  } else if(bcCode === 'BC-10') {
-    // 요요형: 업다운 화살표
-    specialSVG = `
-      <text x="${bCx}" y="${bCy-6}" font-size="10" text-anchor="middle" fill="${pal.primary}" opacity="0.5" font-weight="bold">↑</text>
-      <text x="${bCx}" y="${bCy+8}" font-size="10" text-anchor="middle" fill="${pal.primary}" opacity="0.5" font-weight="bold">↓</text>
-      <text x="${bCx}" y="${H_KNEE-4}" font-size="13" text-anchor="middle" opacity="0.7">🔄</text>
-    `;
-  } else if(bcCode === 'BC-04') {
-    // 복압형: 허리 강조 리본
-    specialSVG = `
-      <rect x="${cx-WW*1.1}" y="${H_WAIST-7}" width="${WW*2.2}" height="12" rx="6" fill="none" stroke="${pal.primary}" stroke-width="1.5" opacity="0.35"/>
-      <text x="${bCx}" y="${H_WAIST+4}" font-size="13" text-anchor="middle" opacity="0.7">🎀</text>
-    `;
-  } else if(bcCode === 'BC-03') {
-    // 상체형: 어깨 강조
-    specialSVG = `
-      <path d="M ${cx-SW*1.1} ${H_SHOU+6} Q ${cx} ${H_SHOU-4} ${cx+SW*1.1} ${H_SHOU+6}" fill="none" stroke="${pal.primary}" stroke-width="2" opacity="0.28"/>
-      <text x="${bCx}" y="${H_SHOU+10}" font-size="13" text-anchor="middle" opacity="0.7">💪</text>
-    `;
-  } else if(bcCode === 'BC-07') {
-    specialSVG = `<text x="${bCx}" y="${bCy+4}" font-size="13" text-anchor="middle" opacity="0.7">⚖️</text>`;
-  } else if(bcCode === 'BC-05') {
-    specialSVG = `<text x="${bCx}" y="${(H_HIP+H_KNEE)/2+4}" font-size="13" text-anchor="middle" opacity="0.7">🍑</text>`;
-  } else if(bcCode === 'BC-01') {
-    specialSVG = `<text x="${bCx}" y="${bCy+4}" font-size="13" text-anchor="middle" opacity="0.7">🔥</text>`;
-  } else if(bcCode === 'BC-02') {
-    specialSVG = `<text x="${bCx}" y="${bCy+4}" font-size="13" text-anchor="middle" opacity="0.7">📊</text>`;
-  } else if(bcCode === 'BC-08') {
-    specialSVG = `<text x="${bCx}" y="${bCy+4}" font-size="13" text-anchor="middle" opacity="0.7">🐢</text>`;
+  function drawEye(ex, ey, flip) {
+    const irisCol = pal.primary;
+    const pupilCol = '#1A0A00';
+    const flipSign = flip ? 1 : -1;
+    // 흰자
+    const white = `<ellipse cx="${ex}" cy="${ey}" rx="${es.rx}" ry="${es.ry}" fill="white" stroke="#555" stroke-width="0.8"/>`;
+    // 홍채+동공
+    const iris  = `<ellipse cx="${ex}" cy="${ey+es.ry*0.1}" rx="${es.rx*0.72}" ry="${es.ry*0.75}" fill="${irisCol}" opacity="0.88"/>`;
+    const pupil = `<ellipse cx="${ex}" cy="${ey+es.ry*0.12}" rx="${es.pupilR*0.9}" ry="${es.pupilR}" fill="${pupilCol}"/>`;
+    // 하이라이트
+    const hi1   = `<circle cx="${ex-es.rx*0.28}" cy="${ey-es.ry*0.25}" r="${es.pupilR*0.5}" fill="white" opacity="0.9"/>`;
+    const hi2   = `<circle cx="${ex+es.rx*0.18}" cy="${ey+es.ry*0.05}" r="${es.pupilR*0.28}" fill="white" opacity="0.65"/>`;
+    // 눈꺼풀 (위) - BC mood에 따라 다름
+    let lid = '';
+    const lidY = ey - es.ry * es.lidH;
+    if(bcP.eyeStyle === 'squint' || bcP.eyeStyle === 'half') {
+      // 힘없이 처진 눈꺼풀 - 강하게 덮음
+      lid = `<ellipse cx="${ex}" cy="${lidY}" rx="${es.rx+0.5}" ry="${es.ry*0.65}" fill="${pal.skin}" opacity="0.95"/>`;
+    } else if(bcP.eyeStyle === 'droop') {
+      // 처진 눈 - 한쪽이 더 처짐
+      const droopOff = flip ? 1.5 : -1.5;
+      lid = `<ellipse cx="${ex+droopOff}" cy="${lidY+2}" rx="${es.rx}" ry="${es.ry*0.5}" fill="${pal.skin}" opacity="0.92"/>`;
+    } else if(bcP.eyeStyle === 'worried') {
+      // 걱정 눈썹 (안쪽이 올라감)
+      lid = `<ellipse cx="${ex}" cy="${lidY}" rx="${es.rx}" ry="${es.ry*0.42}" fill="${pal.skin}" opacity="0.9"/>`;
+    } else {
+      lid = `<ellipse cx="${ex}" cy="${lidY}" rx="${es.rx+0.3}" ry="${es.ry*0.38}" fill="${pal.skin}" opacity="0.88"/>`;
+    }
+    // 속눈썹 (여성만)
+    let lash = '';
+    if(isFemale) {
+      lash = `<line x1="${ex-es.rx*0.7}" y1="${ey-es.ry*0.85}" x2="${ex-es.rx*1.0}" y2="${ey-es.ry*1.35}" stroke="#333" stroke-width="1.2" stroke-linecap="round"/>
+        <line x1="${ex-es.rx*0.2}" y1="${ey-es.ry*1.0}" x2="${ex-es.rx*0.2}" y2="${ey-es.ry*1.55}" stroke="#333" stroke-width="1.2" stroke-linecap="round"/>
+        <line x1="${ex+es.rx*0.4}" y1="${ey-es.ry*0.9}" x2="${ex+es.rx*0.6}" y2="${ey-es.ry*1.4}" stroke="#333" stroke-width="1.1" stroke-linecap="round"/>`;
+    }
+    // star 눈 특수처리 - 반짝이 추가
+    let extra = '';
+    if(bcP.eyeStyle === 'star' || bcP.eyeStyle === 'sparkle') {
+      extra = `<text x="${ex}" y="${ey+es.ry*0.3}" font-size="8" text-anchor="middle" fill="white" opacity="0.9">✦</text>`;
+    }
+    return white + iris + pupil + hi1 + hi2 + lid + lash + extra;
   }
 
-  // ── 흉식호흡 표시 ───────────────────────────────────
-  const breathSVG = chestBreather ? `
-    <ellipse cx="${cx}" cy="${H_CHEST - 4}" rx="${CW*0.65}" ry="10"
-             fill="none" stroke="${pal.primary}" stroke-width="1" opacity="0.3" stroke-dasharray="3,3"/>
-  ` : '';
+  // 눈썹 (BC mood별 다름)
+  function drawBrow(ex, ey) {
+    const browY = ey - es.ry - 5;
+    const mood = bcP.mood;
+    if(mood === 'angry') {
+      // 찌푸린 눈썹 (안쪽이 내려감)
+      return `<line x1="${ex-es.rx*1.1}" y1="${browY}" x2="${ex+es.rx*0.8}" y2="${browY+5}" stroke="${pal.hair}" stroke-width="2.8" stroke-linecap="round"/>`;
+    } else if(mood === 'worried' || mood === 'stressed') {
+      // 걱정/스트레스 눈썹 (안쪽이 올라감)
+      return `<line x1="${ex-es.rx*1.0}" y1="${browY+4}" x2="${ex+es.rx*0.8}" y2="${browY}" stroke="${pal.hair}" stroke-width="2.5" stroke-linecap="round"/>`;
+    } else if(mood === 'happy' || mood === 'flex') {
+      // 올라간 눈썹 (기쁨)
+      return `<path d="M${ex-es.rx*1.0} ${browY+2} Q${ex} ${browY-5} ${ex+es.rx*0.9} ${browY+2}" stroke="${pal.hair}" stroke-width="2.5" fill="none" stroke-linecap="round"/>`;
+    } else if(mood === 'sleepy' || mood === 'tired') {
+      // 처진 눈썹
+      return `<line x1="${ex-es.rx*1.0}" y1="${browY+2}" x2="${ex+es.rx*0.8}" y2="${browY+4}" stroke="${pal.hair}" stroke-width="2.3" stroke-linecap="round"/>`;
+    } else {
+      return `<path d="M${ex-es.rx*1.0} ${browY+1} Q${ex} ${browY-3} ${ex+es.rx*0.9} ${browY+1}" stroke="${pal.hair}" stroke-width="2.3" fill="none" stroke-linecap="round"/>`;
+    }
+  }
 
-  // ── 활동량 → 파워업 이펙트 (근육) ─────────────────
-  const powerSVG = muscleDef >= 1.5 ? `
-    <text x="${cx - SW - 18}" y="${ARM_SY + 4}" font-size="10" opacity="0.55">✦</text>
-    <text x="${cx + SW + 10}" y="${ARM_SY + 4}" font-size="10" opacity="0.55">✦</text>
-  ` : '';
+  const eyeSVG = drawEye(eyeLx, eyeY, false) + drawEye(eyeRx2, eyeY, true);
+  const browSVG = drawBrow(eyeLx, eyeY) + drawBrow(eyeRx2, eyeY);
 
-  // ── 스트레스 → 머리 위 땀/찌증 이펙트 ─────────────
-  const stressSVG = stressed ? `
-    <text x="${cx + H_HEAD_RX + 4}" y="${H_HEAD_CY - H_HEAD_RY + 2}" font-size="11" opacity="0.7">💦</text>
-  ` : '';
+  // ── 코 (성별 분기) ───────────────────────────────
+  const noseY = H_HEAD_CY + 14;
+  const noseSVG = isFemale
+    ? `<ellipse cx="${cx}" cy="${noseY}" rx="3.5" ry="2.5" fill="${pal.skinD}" opacity="0.3"/>`
+    : `<ellipse cx="${cx-4}" cy="${noseY}" rx="3" ry="2.2" fill="${pal.skinD}" opacity="0.35"/>
+       <ellipse cx="${cx+4}" cy="${noseY}" rx="3" ry="2.2" fill="${pal.skinD}" opacity="0.35"/>
+       <ellipse cx="${cx}" cy="${noseY-1}" rx="5" ry="3.5" fill="${pal.skinD}" opacity="0.15"/>`;
 
-  // ── 꿈 아이콘 (발 아래) ──────────────────────────────
-  const dreamSVG = `<text x="${cx}" y="${H_FOOT+22}" text-anchor="middle" font-size="14">${dreamIcon}</text>`;
+  // ── 입 (mood별 10종) ───────────────────────────
+  const mouthY  = H_HEAD_CY + 24;
+  const mouthCx = cx;
+  let mouthSVG = '';
+  switch(bcP.mood) {
+    case 'angry':
+      // 일자 입 (화남)
+      mouthSVG = `<line x1="${mouthCx-9}" y1="${mouthY}" x2="${mouthCx+9}" y2="${mouthY+1}" stroke="#C0392B" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="${mouthCx-9}" y1="${mouthY}" x2="${mouthCx-7}" y2="${mouthY+3}" stroke="#C0392B" stroke-width="2" stroke-linecap="round"/>
+        <line x1="${mouthCx+9}" y1="${mouthY+1}" x2="${mouthCx+7}" y2="${mouthY+3}" stroke="#C0392B" stroke-width="2" stroke-linecap="round"/>`;
+      break;
+    case 'tired':
+      // 힘없는 미소 (피곤)
+      mouthSVG = `<path d="M${mouthCx-7} ${mouthY} Q${mouthCx} ${mouthY+5} ${mouthCx+7} ${mouthY}" stroke="#B07050" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+      break;
+    case 'flex':
+      // 활짝 웃음 + 이빨
+      mouthSVG = `<path d="M${mouthCx-11} ${mouthY-3} Q${mouthCx} ${mouthY+11} ${mouthCx+11} ${mouthY-3}" fill="#E8453C" stroke="#C0392B" stroke-width="1"/>
+        <path d="M${mouthCx-11} ${mouthY-3} L${mouthCx+11} ${mouthY-3}" fill="white"/>
+        <ellipse cx="${mouthCx}" cy="${mouthY-1}" rx="9" ry="3.5" fill="white" opacity="0.9"/>`;
+      break;
+    case 'shy':
+      // 수줍은 작은 미소
+      mouthSVG = `<path d="M${mouthCx-6} ${mouthY+1} Q${mouthCx} ${mouthY+7} ${mouthCx+6} ${mouthY+1}" stroke="${pal.accent}" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <ellipse cx="${mouthCx}" cy="${mouthY+5}" rx="5" ry="3" fill="${pal.accent}" opacity="0.3"/>`;
+      break;
+    case 'happy':
+      // 크고 행복한 웃음 + 이빨
+      mouthSVG = `<path d="M${mouthCx-12} ${mouthY-2} Q${mouthCx} ${mouthY+13} ${mouthCx+12} ${mouthY-2}" fill="#E8453C" stroke="#C0392B" stroke-width="1.2"/>
+        <ellipse cx="${mouthCx}" cy="${mouthY}" rx="10" ry="4" fill="white" opacity="0.95"/>
+        <ellipse cx="${mouthCx}" cy="${mouthY+10}" rx="8" ry="3" fill="${pal.skinD}" opacity="0.3"/>`;
+      break;
+    case 'cold':
+      // 일자 입 (냉정, 살짝 아래로)
+      mouthSVG = `<path d="M${mouthCx-8} ${mouthY+1} L${mouthCx+8} ${mouthY+1}" stroke="#1565C0" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M${mouthCx-8} ${mouthY+1} L${mouthCx-6} ${mouthY+4}" stroke="#1565C0" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M${mouthCx+8} ${mouthY+1} L${mouthCx+6} ${mouthY+4}" stroke="#1565C0" stroke-width="1.8" stroke-linecap="round"/>`;
+      break;
+    case 'shocked':
+      // O형 타원 (놀람)
+      mouthSVG = `<ellipse cx="${mouthCx}" cy="${mouthY+4}" rx="7" ry="8" fill="#333" stroke="#222" stroke-width="1"/>
+        <ellipse cx="${mouthCx}" cy="${mouthY+4}" rx="5" ry="6" fill="#1A0A00"/>`;
+      break;
+    case 'stressed':
+      // 역U 형 (긴장, 다물어짐)
+      mouthSVG = `<path d="M${mouthCx-9} ${mouthY+5} Q${mouthCx} ${mouthY-1} ${mouthCx+9} ${mouthY+5}" stroke="#8B2020" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;
+      break;
+    case 'sleepy':
+      // 비대칭 처진 입
+      mouthSVG = `<path d="M${mouthCx-7} ${mouthY+2} Q${mouthCx+2} ${mouthY+8} ${mouthCx+8} ${mouthY+5}" stroke="#9B59B6" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <ellipse cx="${mouthCx+2}" cy="${mouthY+7}" rx="4" ry="2.5" fill="${pal.skinD}" opacity="0.4"/>`;
+      break;
+    default:
+      // neutral
+      mouthSVG = `<path d="M${mouthCx-8} ${mouthY+1} Q${mouthCx} ${mouthY+7} ${mouthCx+8} ${mouthY+1}" stroke="${pal.accent}" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+  }
 
-  // ── 배경 글로우 원 ────────────────────────────────────
-  const bgCy = H_HEAD_CY + (H_FOOT - H_HEAD_CY) * 0.55;  // 몸통 중심
-  const bgCircle = `<circle cx="${cx}" cy="${bgCy}" r="112" fill="${pal.glow}" opacity="0.65"/>`;
+  // ── 볼터치 (BC별 cheekSize) ──────────────────────
+  const cheekSz = bcP.cheekSize;
+  const cheekY  = H_HEAD_CY + 14;
+  const cheekLx = cx - H_HEAD_RX*0.55;
+  const cheekRx2= cx + H_HEAD_RX*0.55;
+  const cheekSVG = `
+    <ellipse cx="${cheekLx}" cy="${cheekY}" rx="${cheekSz}" ry="${cheekSz*0.7}" fill="${pal.cheek}"/>
+    <ellipse cx="${cheekRx2}" cy="${cheekY}" rx="${cheekSz}" ry="${cheekSz*0.7}" fill="${pal.cheek}"/>`;
 
-  // ── SVG 조립 ─────────────────────────────────────────
-  const totalH = H_FOOT + 36;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 ${totalH}" width="200" height="${totalH}"
-     style="display:block;margin:0 auto;filter:drop-shadow(0 6px 20px ${pal.glow})">
-  <defs>
-    <radialGradient id="bG${bcCode.replace('-','')}" cx="50%" cy="35%" r="60%">
-      <stop offset="0%" stop-color="${pal.secondary}" stop-opacity="1"/>
-      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.6"/>
-    </radialGradient>
-    <radialGradient id="skinG" cx="40%" cy="35%" r="65%">
-      <stop offset="0%" stop-color="#FEEAC8"/>
-      <stop offset="100%" stop-color="#FDDBB4"/>
-    </radialGradient>
-    <marker id="arw${bcCode.replace('-','')}" markerWidth="5" markerHeight="5" refX="2.5" refY="2.5" orient="auto">
-      <path d="M0,0 L5,2.5 L0,5 Z" fill="#64B5F6" opacity="0.6"/>
-    </marker>
-  </defs>
+  // ── 하이라이트 점 (코 옆) ───────────────────────
+  const faceHighlight = `
+    <circle cx="${cx-8}" cy="${noseY-2}" r="2.5" fill="white" opacity="0.4"/>
+    <circle cx="${cx+8}" cy="${noseY-2}" r="2.5" fill="white" opacity="0.4"/>`;
 
+  // ── 부위별 강조 색상 계산 ───────────────────────
+  function zoneColor(zone) {
+    if(highlight.includes(zone)) return pal.secondary;
+    if(coldZones.includes(zone))  return '#D6EEFF';
+    if(numbZones.includes(zone))  return '#F0F0F0';
+    return pal.secondary;
+  }
+  function zoneOpacity(zone) {
+    if(highlight.includes(zone)) return 0.85;
+    if(coldZones.includes(zone))  return 0.65;
+    if(numbZones.includes(zone))  return 0.45;
+    return 0.7;
+  }
+  function zoneStroke(zone) {
+    if(highlight.includes(zone)) return pal.primary;
+    if(coldZones.includes(zone))  return '#5B9BD5';
+    return pal.accent;
+  }
+
+  // ── 근육선 (활동량 많으면) ─────────────────────
+  const muscleSVG = muscleDef >= 1.5 ? `
+    <line x1="${cx}" y1="${H_CHEST-5}" x2="${cx}" y2="${H_WAIST-8}" stroke="${pal.accent}" stroke-width="1.2" opacity="0.3"/>
+    <ellipse cx="${cx-CW*0.5}" cy="${H_CHEST+4}" rx="8" ry="5" fill="${pal.accent}" opacity="0.12"/>
+    <ellipse cx="${cx+CW*0.5}" cy="${H_CHEST+4}" rx="8" ry="5" fill="${pal.accent}" opacity="0.12"/>` : '';
+
+  // ── 여성 가슴 (isFemale) ─────────────────────────
+  const bustSVG = isFemale ? `
+    <ellipse cx="${cx-CW*0.45}" cy="${H_CHEST+4}" rx="${CW*0.45}" ry="${CW*0.32}" fill="${zoneColor('bust')}" stroke="${pal.primary}" stroke-width="0.8" opacity="0.5"/>
+    <ellipse cx="${cx+CW*0.45}" cy="${H_CHEST+4}" rx="${CW*0.45}" ry="${CW*0.32}" fill="${zoneColor('bust')}" stroke="${pal.primary}" stroke-width="0.8" opacity="0.5"/>` : '';
+
+  // ── 장식 (액세서리 이모지) ──────────────────────
+  const accessory = bcP.accessory;
+  const accPos = bcP.accessoryPos;
+  let accSVG = '';
+  if(accessory) {
+    let ax = cx, ay = H_HEAD_CY - H_HEAD_RY - 8;
+    if(accPos === 'arm')  { ax = cx - SW - 16; ay = H_CHEST + 4; }
+    if(accPos === 'hip')  { ax = cx + HW + 14; ay = H_HIP + 4; }
+    if(accPos === 'hand') { ax = handLcx - 8;  ay = handCy; }
+    if(accPos === 'side') { ax = cx + HW + 18; ay = H_WAIST + 4; }
+    if(accPos === 'face') { ax = cx + H_HEAD_RX + 10; ay = H_HEAD_CY; }
+    accSVG = `<text x="${ax}" y="${ay}" font-size="14" text-anchor="middle" dominant-baseline="middle">${accessory}</text>`;
+  }
+
+  // ── 꿈 아이콘 ────────────────────────────────────
+  const dreamSVG = `<text x="${cx}" y="380" font-size="16" text-anchor="middle" dominant-baseline="middle" opacity="0.7">${dreamIcon}</text>`;
+
+  // ── 수면 부족 ZZZ ─────────────────────────────────
+  const sleepSVG = sleepBad ? `
+    <text x="${cx+H_HEAD_RX+12}" y="${H_HEAD_CY-20}" font-size="11" fill="#7B68EE" opacity="0.8">z</text>
+    <text x="${cx+H_HEAD_RX+20}" y="${H_HEAD_CY-30}" font-size="9" fill="#7B68EE" opacity="0.6">z</text>
+    <text x="${cx+H_HEAD_RX+26}" y="${H_HEAD_CY-38}" font-size="7" fill="#7B68EE" opacity="0.45">z</text>` : '';
+
+  // ── 스트레스 땀방울 ───────────────────────────────
+  const sweatSVG = stressed ? `
+    <ellipse cx="${cx-H_HEAD_RX-8}" cy="${H_HEAD_CY-10}" rx="5" ry="7" fill="#AED6F1" opacity="0.7"/>
+    <path d="M${cx-H_HEAD_RX-8} ${H_HEAD_CY-17} L${cx-H_HEAD_RX-5} ${H_HEAD_CY-10}" stroke="#AED6F1" stroke-width="1.2" opacity="0.7"/>` : '';
+
+  // ── 글로우 (BC 컬러 배경 빛) ─────────────────────
+  const glowSVG = `<ellipse cx="${cx}" cy="${H_HEAD_CY+60}" rx="72" ry="58" fill="${pal.glow}"/>`;
+
+  // ════════════════════════════════════════════════════
+  // SVG 조립
+  // ════════════════════════════════════════════════════
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -12 200 402" width="200" height="390">
   <!-- 배경 글로우 -->
-  ${bgCircle}
+  ${glowSVG}
 
-  <!-- 팔 (몸통 뒤) -->
-  <path d="${armPathL}" fill="url(#bG${bcCode.replace('-','')})" stroke="${pal.primary}" stroke-width="1.2" opacity="0.92"/>
-  <path d="${armPathR}" fill="url(#bG${bcCode.replace('-','')})" stroke="${pal.primary}" stroke-width="1.2" opacity="0.92"/>
+  <!-- 발 (다리 뒤) -->
+  ${footL}${footR}
 
-  <!-- 몸통 + 다리 -->
-  <path d="${bodyPath}" fill="url(#bG${bcCode.replace('-','')})" stroke="${pal.primary}" stroke-width="1.5" opacity="0.95"/>
+  <!-- 팔 뒤쪽 (몸 뒤) -->
+  <path d="${armPathR}" fill="${zoneColor('arm')}" stroke="${zoneStroke('arm')}" stroke-width="1.2" opacity="${zoneOpacity('arm')}"/>
 
-  <!-- 활동량 파워 이펙트 -->
-  ${powerSVG}
+  <!-- 몸통 -->
+  <path d="${bodyPath}" fill="${zoneColor('belly')}" stroke="${zoneStroke('belly')}" stroke-width="1.5" opacity="${zoneOpacity('belly')}"/>
 
-  <!-- 부위 강조 레이어 -->
-  ${highlightSVG}
+  <!-- 여성 가슴 -->
+  ${bustSVG}
 
-  <!-- 냉증 레이어 -->
-  ${coldSVG}
+  <!-- 엉덩이 강조 -->
+  ${highlight.includes('hip') ? `<ellipse cx="${cx-HW*0.4}" cy="${H_HIP+14}" rx="${HW*0.6}" ry="16" fill="${pal.secondary}" stroke="${pal.primary}" stroke-width="1" opacity="0.6"/><ellipse cx="${cx+HW*0.4}" cy="${H_HIP+14}" rx="${HW*0.6}" ry="16" fill="${pal.secondary}" stroke="${pal.primary}" stroke-width="1" opacity="0.6"/>` : ''}
 
-  <!-- 감각저하 점선 레이어 -->
-  ${numbSVG}
+  <!-- 허벅지 강조 -->
+  ${highlight.includes('thigh') ? `<ellipse cx="${cx-TW*0.6}" cy="${H_KNEE-18}" rx="${TW*0.9}" ry="14" fill="${pal.secondary}" stroke="${pal.primary}" stroke-width="0.8" opacity="0.55"/><ellipse cx="${cx+TW*0.6}" cy="${H_KNEE-18}" rx="${TW*0.9}" ry="14" fill="${pal.secondary}" stroke="${pal.primary}" stroke-width="0.8" opacity="0.55"/>` : ''}
 
-  <!-- 흉식호흡 표시 -->
-  ${breathSVG}
+  <!-- 근육선 -->
+  ${muscleSVG}
 
-  <!-- BC코드별 특수 이펙트 -->
-  ${specialSVG}
+  <!-- 팔 앞쪽 -->
+  <path d="${armPathL}" fill="${zoneColor('arm')}" stroke="${zoneStroke('arm')}" stroke-width="1.2" opacity="${zoneOpacity('arm')}"/>
 
   <!-- 손 -->
-  ${handL}
-  ${handR}
+  ${handL}${handR}
 
-  <!-- 발 -->
-  ${footL}
-  ${footR}
+  <!-- 머리카락 (뒷면) -->
+  ${hairSVG}
 
   <!-- 목 -->
-  ${neckSVG}
+  <rect x="${cx-8}" y="${H_NECK_TOP}" width="16" height="${H_NECK_BOT-H_NECK_TOP}" rx="6" fill="${pal.skin}" stroke="${pal.primary}" stroke-width="1"/>
 
-  <!-- 머리카락 (얼굴 뒤) -->
-  ${hairSVG}
+  <!-- 얼굴 (메인) -->
+  <ellipse cx="${cx}" cy="${H_HEAD_CY}" rx="${H_HEAD_RX}" ry="${H_HEAD_RY}" fill="${pal.skin}" stroke="${pal.primary}" stroke-width="1.5"/>
 
   <!-- 귀 -->
   ${earSVG}
 
-  <!-- 머리 얼굴 베이스 -->
-  ${headBase}
+  <!-- 볼터치 -->
+  ${cheekSVG}
+
+  <!-- 눈썹 -->
+  ${browSVG}
 
   <!-- 눈 -->
   ${eyeSVG}
@@ -508,28 +624,23 @@ function generateBodyMap(res, bcCode) {
   <!-- 입 -->
   ${mouthSVG}
 
-  <!-- 스트레스 이펙트 -->
-  ${stressSVG}
+  <!-- 얼굴 하이라이트 -->
+  ${faceHighlight}
+
+  <!-- 수면부족 ZZZ -->
+  ${sleepSVG}
+
+  <!-- 스트레스 땀방울 -->
+  ${sweatSVG}
+
+  <!-- 액세서리 -->
+  ${accSVG}
 
   <!-- 꿈 아이콘 -->
   ${dreamSVG}
-
-  <!-- BC코드 워터마크 -->
-  <text x="${cx}" y="${totalH - 2}" text-anchor="middle"
-        font-size="7" fill="${pal.primary}" opacity="0.3"
-        font-family="system-ui,sans-serif" font-weight="700" letter-spacing="0.12em">${bcCode}</text>
 </svg>`;
 
-  // ── 범례 ─────────────────────────────────────────────
-  const legendItems = [];
-  if(highlight.length)   legendItems.push(`<span style="color:${pal.primary}">●</span> 집중부위`);
-  if(coldZones.length)   legendItems.push(`<span style="color:#64B5F6">●</span> 냉증`);
-  if(numbZones.length)   legendItems.push(`<span style="color:#90A4AE">◌</span> 감각저하`);
-  if(sleepBad)           legendItems.push(`<span style="color:#9DA3AE">●</span> 수면부족`);
-  if(chestBreather)      legendItems.push(`<span style="color:${pal.accent}">◎</span> 흉식호흡`);
-  const legendHTML = legendItems.join('&nbsp;&nbsp;');
-
-  return { svg, legendHTML };
+  return svg;
 }
 
 // ──────── 미리보기 로직 ────────
@@ -572,7 +683,9 @@ function renderAll() {
   const res  = getRes();
   grid.innerHTML = BC_LIST.map(bc => {
     try {
-      const { svg, legendHTML } = generateBodyMap(res, bc.code);
+      const svgResult = generateBodyMap(res, bc.code);
+      const svg = (typeof svgResult === 'object' && svgResult.svg) ? svgResult.svg : svgResult;
+      const legendHTML = (typeof svgResult === 'object') ? svgResult.legendHTML : '';
       return `<div class="card">
         <div class="card-title">${bc.emoji} ${bc.code}</div>
         <div class="card-sub">${bc.name}</div>
