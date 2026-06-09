@@ -9,55 +9,201 @@
   <style>
     /* ── 기본 리셋 ─────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; font-family: 'Noto Sans KR', sans-serif; background: #F8FBFF; color: #1a1a2e; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; font-family: 'Noto Sans KR', sans-serif; background: #F0F4F8; color: #1a1a2e; -webkit-tap-highlight-color: transparent; }
 
     /* ── 앱 컨테이너 ─────────────────────── */
-    #app { min-height: 100vh; display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; background: #fff; position: relative; overflow: hidden; }
+    #app {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      max-width: 520px;
+      margin: 0 auto;
+      background: #fff;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 0 40px rgba(0,0,0,.08);
+    }
+    /* 데스크탑: 좌우 여백 + 카드 느낌 */
+    @media (min-width: 640px) {
+      body { padding: 20px 0; }
+      #app { min-height: calc(100vh - 40px); border-radius: 20px; }
+    }
 
     /* ── 진행 바 ─────────────────────── */
-    #progress-bar-wrap { position: sticky; top: 0; z-index: 100; background: #fff; padding: 14px 20px 10px; box-shadow: 0 1px 8px rgba(0,0,0,.06); }
-    #section-label { font-size: 12px; font-weight: 600; color: var(--section-color, #1A5276); background: var(--section-bg, #E8F4FD); border-radius: 20px; padding: 4px 12px; display: inline-block; margin-bottom: 8px; letter-spacing: 0.3px; }
-    #progress-track { width: 100%; height: 4px; background: #E8EDF2; border-radius: 2px; overflow: hidden; }
+    #progress-bar-wrap {
+      position: sticky; top: 0; z-index: 100; background: #fff;
+      padding: 12px 20px 10px;
+      box-shadow: 0 1px 8px rgba(0,0,0,.06);
+    }
+    #section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    #section-label {
+      font-size: 11px; font-weight: 700; color: var(--section-color, #1A5276);
+      background: var(--section-bg, #E8F4FD); border-radius: 20px;
+      padding: 3px 10px; display: inline-block; letter-spacing: 0.4px;
+    }
+    /* 섹션 도트 진행 표시 */
+    #section-dots { display: flex; gap: 4px; margin-left: auto; }
+    .sec-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: #E0E0E0; transition: all .3s ease;
+    }
+    .sec-dot.done { background: var(--section-color, #1A5276); opacity: 0.5; }
+    .sec-dot.active { background: var(--section-color, #1A5276); width: 14px; border-radius: 3px; }
+    #progress-track { width: 100%; height: 3px; background: #E8EDF2; border-radius: 2px; overflow: hidden; }
     #progress-fill { height: 100%; background: var(--section-color, #1A5276); border-radius: 2px; transition: width 0.5s cubic-bezier(.4,0,.2,1); }
-    #progress-pct { font-size: 13px; font-weight: 700; color: var(--section-color, #1A5276); margin-top: 6px; text-align: right; }
+    #progress-pct { font-size: 11px; font-weight: 700; color: #aaa; margin-top: 5px; text-align: right; }
 
     /* ── 화면 전환 ─────────────────────── */
     .screen { display: none; flex-direction: column; flex: 1; }
-    .screen.active { display: flex; animation: fadeInUp 0.35s ease; }
-    @keyframes fadeInUp { from { opacity:0; transform: translateY(18px); } to { opacity:1; transform: translateY(0); } }
+    .screen.active { display: flex; animation: fadeInUp 0.32s ease; }
+    @keyframes fadeInUp { from { opacity:0; transform: translateY(16px); } to { opacity:1; transform: translateY(0); } }
 
     /* ── 인트로 화면 ─────────────────────── */
-    #intro-screen { background: linear-gradient(160deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); justify-content: center; align-items: center; text-align: center; padding: 40px 24px; }
+    #intro-screen {
+      background: linear-gradient(160deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      justify-content: center; align-items: center; text-align: center; padding: 40px 24px;
+    }
     .intro-logo { font-size: 28px; font-weight: 700; color: #fff; letter-spacing: -0.5px; margin-bottom: 6px; }
-    .intro-sub { font-size: 13px; color: rgba(255,255,255,.6); margin-bottom: 48px; }
+    .intro-sub { font-size: 13px; color: rgba(255,255,255,.55); margin-bottom: 44px; }
     .intro-title { font-size: 22px; font-weight: 600; color: #fff; line-height: 1.6; margin-bottom: 12px; }
-    .intro-desc { font-size: 14px; color: rgba(255,255,255,.75); line-height: 1.8; margin-bottom: 48px; }
-    .intro-badges { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-bottom: 48px; }
+    .intro-desc { font-size: 14px; color: rgba(255,255,255,.72); line-height: 1.85; margin-bottom: 44px; }
+    .intro-badges { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-bottom: 44px; }
     .intro-badge { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2); color: #fff; border-radius: 20px; padding: 6px 14px; font-size: 12px; }
-    #start-btn { background: #fff; color: #1a1a2e; border: none; border-radius: 14px; padding: 16px 48px; font-size: 16px; font-weight: 700; cursor: pointer; transition: transform .15s, box-shadow .15s; font-family: inherit; }
+    #start-btn {
+      background: #fff; color: #1a1a2e; border: none; border-radius: 14px;
+      padding: 16px 48px; font-size: 16px; font-weight: 700; cursor: pointer;
+      transition: transform .15s, box-shadow .15s; font-family: inherit;
+    }
     #start-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.25); }
 
-    /* ── 섹션 전환 카드 ─────────────────────── */
-    #transition-screen { position: fixed; inset: 0; z-index: 200; justify-content: center; align-items: center; text-align: center; padding: 40px 28px; }
-    #transition-screen.active { display: flex; }
-    .trans-label { font-size: 13px; font-weight: 600; color: rgba(255,255,255,.7); margin-bottom: 16px; letter-spacing: 1px; text-transform: uppercase; }
-    .trans-title { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 20px; }
-    .trans-msg { font-size: 16px; color: rgba(255,255,255,.85); line-height: 1.7; }
-    .trans-continue { margin-top: 40px; font-size: 14px; color: rgba(255,255,255,.6); animation: pulse 1.5s ease-in-out infinite; cursor: pointer; }
-    @keyframes pulse { 0%,100% { opacity:.4; } 50% { opacity:1; } }
+    /* ── 섹션 인터럽트 카드 ─────────────────────── */
+    #hook-screen {
+      position: fixed; inset: 0; z-index: 250;
+      justify-content: center; align-items: center;
+      text-align: center; padding: 40px 32px;
+      background: var(--hook-bg, #1a1a2e);
+      animation: hookIn 0.4s cubic-bezier(.2,0,.2,1);
+    }
+    @keyframes hookIn { from { opacity:0; transform: scale(.95); } to { opacity:1; transform: scale(1); } }
+    #hook-screen.active { display: flex; }
+    .hook-section-badge {
+      font-size: 11px; font-weight: 700; color: rgba(255,255,255,.6);
+      letter-spacing: 2px; text-transform: uppercase; margin-bottom: 20px;
+    }
+    .hook-title {
+      font-size: 13px; font-weight: 600; color: rgba(255,255,255,.7);
+      margin-bottom: 8px; letter-spacing: 0.5px;
+    }
+    .hook-msg {
+      font-size: 20px; font-weight: 600; color: #fff;
+      line-height: 1.6; margin-bottom: 40px; max-width: 320px;
+    }
+    .hook-continue {
+      font-size: 13px; color: rgba(255,255,255,.5);
+      animation: pulse 1.6s ease-in-out infinite; cursor: pointer;
+    }
+    @keyframes pulse { 0%,100%{ opacity:.35; } 50%{ opacity:1; } }
 
-    /* ── 질문 화면 ─────────────────────── */
-    #question-screen { flex-direction: column; }
-    .q-content { flex: 1; padding: 24px 20px; overflow-y: auto; }
-    .q-num { font-size: 13px; font-weight: 600; color: var(--section-color, #1A5276); margin-bottom: 10px; }
-    .q-text { font-size: 21px; font-weight: 600; line-height: 1.45; color: #1a1a2e; margin-bottom: 10px; }
-    .q-hint { background: #F0F7FF; border-left: 3px solid var(--section-color, #1A5276); border-radius: 0 8px 8px 0; padding: 10px 14px; font-size: 13px; color: #555; line-height: 1.6; margin-bottom: 24px; }
+    /* ── 섹션 전환 카드 ─────────────────────── */
+    #transition-screen {
+      position: fixed; inset: 0; z-index: 200;
+      justify-content: center; align-items: center;
+      text-align: center; padding: 40px 28px;
+    }
+    #transition-screen.active { display: flex; }
+    .trans-label { font-size: 12px; font-weight: 600; color: rgba(255,255,255,.65); margin-bottom: 14px; letter-spacing: 1px; text-transform: uppercase; }
+    .trans-title { font-size: 24px; font-weight: 700; color: #fff; margin-bottom: 18px; }
+    .trans-msg { font-size: 15px; color: rgba(255,255,255,.82); line-height: 1.75; }
+    .trans-continue { margin-top: 36px; font-size: 13px; color: rgba(255,255,255,.55); animation: pulse 1.5s ease-in-out infinite; cursor: pointer; }
+
+    /* ── 질문 화면 레이아웃 ─────────────────────── */
+    #question-screen { flex-direction: column; position: relative; }
+
+    /* 게이지 패널 (우측 고정 — 데스크탑 only) */
+    #gauge-panel {
+      display: none;
+      position: fixed;
+      right: calc(50% - 520px - 200px);
+      top: 50%;
+      transform: translateY(-50%);
+      width: 180px;
+      background: rgba(255,255,255,.96);
+      border: 1px solid #E8EDF2;
+      border-radius: 16px;
+      padding: 16px 14px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.1);
+      z-index: 50;
+    }
+    @media (min-width: 960px) { #gauge-panel { display: block; } }
+    .gauge-title { font-size: 10px; font-weight: 700; color: #aaa; letter-spacing: 1px; margin-bottom: 12px; text-transform: uppercase; }
+    .gauge-row { margin-bottom: 10px; }
+    .gauge-row-label { display: flex; justify-content: space-between; margin-bottom: 4px; }
+    .gauge-row-name { font-size: 11px; font-weight: 600; color: #555; }
+    .gauge-row-val { font-size: 11px; font-weight: 700; color: var(--section-color, #1A5276); }
+    .gauge-track { height: 5px; background: #F0F0F0; border-radius: 3px; overflow: hidden; }
+    .gauge-fill { height: 100%; border-radius: 3px; transition: width .8s cubic-bezier(.4,0,.2,1); }
+
+    /* 모바일 게이지 미니바 (질문 하단) */
+    #gauge-mini {
+      display: flex; gap: 6px; padding: 8px 20px;
+      border-top: 1px solid #F0F0F0; background: #fff;
+    }
+    @media (min-width: 960px) { #gauge-mini { display: none; } }
+    .gauge-mini-item { flex: 1; }
+    .gauge-mini-label { font-size: 9px; color: #aaa; text-align: center; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .gauge-mini-track { height: 3px; background: #F0F0F0; border-radius: 2px; overflow: hidden; }
+    .gauge-mini-fill { height: 100%; border-radius: 2px; transition: width .8s ease; }
+
+    /* ── 토스트 피드백 ─────────────────────── */
+    #feedback-toast {
+      position: fixed;
+      bottom: 100px;
+      left: 50%; transform: translateX(-50%);
+      max-width: 360px; width: calc(100% - 48px);
+      background: #1a1a2e;
+      color: #fff;
+      border-radius: 14px;
+      padding: 14px 18px;
+      font-size: 13px;
+      line-height: 1.6;
+      font-weight: 500;
+      z-index: 400;
+      box-shadow: 0 8px 32px rgba(0,0,0,.25);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .3s ease, transform .3s ease;
+      transform: translateX(-50%) translateY(12px);
+    }
+    #feedback-toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    @media (min-width: 960px) {
+      #feedback-toast {
+        left: calc(50% - 520px/2);
+        transform: translateX(-50%);
+        bottom: 120px;
+      }
+      #feedback-toast.show { transform: translateX(-50%) translateY(0); }
+    }
+
+    /* ── 질문 콘텐츠 ─────────────────────── */
+    .q-content { flex: 1; padding: 22px 20px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    .q-num { font-size: 12px; font-weight: 700; color: var(--section-color, #1A5276); margin-bottom: 10px; }
+    .q-text { font-size: 20px; font-weight: 600; line-height: 1.48; color: #1a1a2e; margin-bottom: 10px; }
+    .q-hint { background: var(--section-bg, #F0F7FF); border-left: 3px solid var(--section-color, #1A5276); border-radius: 0 8px 8px 0; padding: 10px 14px; font-size: 13px; color: #555; line-height: 1.65; margin-bottom: 22px; }
     .q-hint::before { content: '💡 '; }
 
     /* ── 선택지 카드 ─────────────────────── */
     .options-grid { display: flex; flex-direction: column; gap: 10px; }
     .options-grid.col2 { display: grid; grid-template-columns: 1fr 1fr; }
-    .option-card { border: 1.5px solid #E8EDF2; border-radius: 14px; padding: 14px 16px; cursor: pointer; transition: all .18s ease; background: #fff; display: flex; align-items: flex-start; gap: 12px; min-height: 64px; user-select: none; }
+    .option-card {
+      border: 1.5px solid #E8EDF2; border-radius: 14px; padding: 14px 16px;
+      cursor: pointer; transition: all .18s ease; background: #fff;
+      display: flex; align-items: flex-start; gap: 12px; min-height: 62px;
+      user-select: none;
+    }
+    .option-card:active { transform: scale(.98); }
     .option-card:hover { border-color: var(--section-color, #1A5276); background: #F8FBFF; transform: translateY(-1px); }
     .option-card.selected { border-color: var(--section-color, #1A5276); background: color-mix(in srgb, var(--section-color, #1A5276) 8%, white); }
     .option-card.selected .opt-label { color: var(--section-color, #1A5276); font-weight: 600; }
@@ -67,12 +213,19 @@
     .opt-text { display: flex; flex-direction: column; gap: 2px; }
     .opt-label { font-size: 14px; font-weight: 500; color: #1a1a2e; }
     .opt-desc { font-size: 12px; color: #888; line-height: 1.4; }
-    .option-card.multi-check .opt-label::before { content: ''; display: inline-block; width: 18px; height: 18px; border: 2px solid #ccc; border-radius: 5px; margin-right: 8px; vertical-align: middle; transition: all .15s; }
-    .option-card.multi-check.selected .opt-label::before { background: var(--section-color); border-color: var(--section-color); content: '✓'; color: #fff; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; }
+    /* 멀티 체크박스 */
+    .option-card.multi-check .opt-check {
+      width: 20px; height: 20px; border: 2px solid #ccc; border-radius: 6px;
+      flex-shrink: 0; transition: all .15s; display: flex; align-items: center; justify-content: center;
+    }
+    .option-card.multi-check.selected .opt-check {
+      background: var(--section-color); border-color: var(--section-color); color: #fff; font-size: 12px;
+    }
+    .multi-select-hint { font-size: 12px; color: #888; margin-bottom: 10px; font-weight: 500; }
 
     /* ── 슬라이더 ─────────────────────── */
     .slider-wrap { padding: 10px 0 30px; }
-    .slider-value-display { text-align: center; margin-bottom: 24px; }
+    .slider-value-display { text-align: center; margin-bottom: 22px; }
     .slider-big-val { font-size: 52px; font-weight: 700; color: var(--section-color, #1A5276); line-height: 1; }
     .slider-unit { font-size: 20px; font-weight: 400; color: #888; margin-left: 4px; }
     .slider-sentence { font-size: 14px; color: #666; margin-top: 8px; }
@@ -84,6 +237,58 @@
     .calc-item { text-align: center; }
     .calc-label { font-size: 11px; color: #888; margin-bottom: 4px; }
     .calc-value { font-size: 18px; font-weight: 700; color: var(--section-color, #1A5276); }
+
+    /* ── subQuestion (Q14 측정 방식) ─────────────────────── */
+    .sub-question-wrap {
+      margin-top: 24px; padding: 16px; background: var(--section-bg, #F0F7FF);
+      border-radius: 14px; animation: fadeInUp .3s ease;
+    }
+    .sub-question-label { font-size: 13px; font-weight: 600; color: var(--section-color); margin-bottom: 14px; }
+    .sub-options { display: flex; flex-direction: column; gap: 8px; }
+    .sub-option {
+      border: 1.5px solid #E8EDF2; border-radius: 10px; padding: 12px 14px;
+      cursor: pointer; transition: all .15s; background: #fff;
+      display: flex; gap: 10px; align-items: center; font-size: 13px;
+    }
+    .sub-option:hover { border-color: var(--section-color); }
+    .sub-option.selected { border-color: var(--section-color); background: color-mix(in srgb, var(--section-color) 8%, white); font-weight: 600; color: var(--section-color); }
+
+    /* ── INBODY_RANGE 타입 ─────────────────────── */
+    .inbody-range-wrap { display: flex; flex-direction: column; gap: 28px; }
+    .inbody-range-item {}
+    .inbody-range-label { font-size: 14px; font-weight: 600; color: #444; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; }
+    .inbody-range-label .ib-current { font-size: 20px; font-weight: 700; color: var(--section-color); }
+    .range-track-wrap { position: relative; height: 40px; margin: 0 14px; }
+    .range-dual-track { position: absolute; top: 17px; left: 0; right: 0; height: 6px; background: #E8EDF2; border-radius: 3px; }
+    .range-dual-fill { position: absolute; top: 0; height: 100%; background: var(--section-color); border-radius: 3px; transition: all .2s; }
+    .range-dual-input {
+      position: absolute; width: 100%; top: 0; height: 40px; pointer-events: none;
+      -webkit-appearance: none; background: transparent; outline: none;
+    }
+    .range-dual-input::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%; background: var(--section-color); cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.2); pointer-events: auto; margin-top: -9px; }
+    .range-dual-input::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; background: var(--section-color); cursor: pointer; border: none; box-shadow: 0 2px 8px rgba(0,0,0,.2); pointer-events: auto; }
+    .range-minmax { display: flex; justify-content: space-between; font-size: 11px; color: #aaa; margin-top: 8px; }
+    .range-display { text-align: center; font-size: 13px; color: #666; margin-top: 6px; }
+    .range-display span { font-weight: 700; color: var(--section-color); }
+
+    /* ── MBTI 추론 질문 ─────────────────────── */
+    .mbti-infer-wrap { display: flex; flex-direction: column; gap: 16px; }
+    .mbti-infer-q {
+      background: #F8F9FF; border-radius: 14px; padding: 16px;
+      border: 1.5px solid transparent; transition: border-color .2s;
+    }
+    .mbti-infer-q.answered { border-color: var(--section-color); }
+    .mbti-infer-title { font-size: 14px; font-weight: 600; color: #1a1a2e; margin-bottom: 12px; line-height: 1.5; }
+    .mbti-infer-opts { display: flex; gap: 8px; }
+    .mbti-infer-btn {
+      flex: 1; border: 1.5px solid #E8EDF2; border-radius: 10px;
+      padding: 12px 8px; font-size: 13px; font-weight: 500; cursor: pointer;
+      background: #fff; font-family: inherit; text-align: center;
+      transition: all .15s; line-height: 1.4; color: #444;
+    }
+    .mbti-infer-btn:hover { border-color: var(--section-color); }
+    .mbti-infer-btn.selected { border-color: var(--section-color); background: color-mix(in srgb, var(--section-color) 12%, white); color: var(--section-color); font-weight: 700; }
+    .mbti-infer-result { text-align: center; padding: 14px; background: color-mix(in srgb, var(--section-color) 10%, white); border-radius: 12px; margin-top: 8px; font-size: 15px; font-weight: 700; color: var(--section-color); display: none; animation: fadeInUp .3s ease; }
 
     /* ── 사이즈 그리드 ─────────────────────── */
     .size-grid { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -97,6 +302,7 @@
     .mbti-btn:hover { border-color: var(--section-color); }
     .mbti-btn.selected { border-color: var(--section-color); background: color-mix(in srgb, var(--section-color) 12%, white); color: var(--section-color); }
     .mbti-btn.unknown-btn { grid-column: 1 / -1; font-size: 14px; padding: 14px; color: #666; }
+    .mbti-divider { grid-column: 1/-1; border: none; border-top: 1px solid #F0F0F0; margin: 4px 0; }
 
     /* ── Date Picker ─────────────────────── */
     .date-picker-wrap { display: flex; gap: 10px; }
@@ -117,7 +323,7 @@
     .text-count { position: absolute; right: 16px; bottom: 14px; font-size: 12px; color: #aaa; }
 
     /* ── 하단 버튼 영역 ─────────────────────── */
-    .q-footer { padding: 16px 20px 24px; display: flex; gap: 10px; align-items: center; background: #fff; border-top: 1px solid #F0F0F0; }
+    .q-footer { padding: 14px 20px 20px; display: flex; gap: 10px; align-items: center; background: #fff; border-top: 1px solid #F0F0F0; }
     .btn-prev { border: none; background: none; color: #888; font-size: 15px; padding: 12px 16px; cursor: pointer; font-family: inherit; border-radius: 10px; flex-shrink: 0; }
     .btn-prev:hover { background: #F0F0F0; }
     .btn-next { flex: 1; background: var(--section-color, #1A5276); color: #fff; border: none; border-radius: 14px; padding: 16px; font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit; transition: transform .15s, box-shadow .15s; }
@@ -138,32 +344,6 @@
     .loading-step.active .step-dot { background: #4CAF50; box-shadow: 0 0 8px #4CAF50; }
     .loading-step.done .step-dot { background: rgba(255,255,255,.4); }
 
-    /* ── 결과 화면 ─────────────────────── */
-    #result-screen { flex-direction: column; }
-    .result-hero { background: linear-gradient(160deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%); padding: 48px 28px 40px; text-align: center; color: #fff; }
-    .result-hero-sub { font-size: 13px; color: rgba(255,255,255,.6); margin-bottom: 12px; letter-spacing: 1px; }
-    .result-hero-name { font-size: 18px; color: rgba(255,255,255,.9); margin-bottom: 24px; }
-    .bc-code-reveal { display: inline-flex; flex-direction: column; align-items: center; gap: 6px; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2); border-radius: 20px; padding: 24px 36px; margin-bottom: 24px; }
-    .bc-code-main { font-size: 20px; font-weight: 700; color: rgba(255,255,255,.7); }
-    .bc-brand { font-size: 32px; font-weight: 800; color: #fff; }
-    .bc-emoji { font-size: 40px; }
-    .bc-badges { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
-    .bc-badge { background: rgba(255,255,255,.15); color: #fff; border-radius: 20px; padding: 5px 12px; font-size: 12px; font-weight: 500; }
-    .result-body { padding: 28px 20px; display: flex; flex-direction: column; gap: 20px; }
-    .result-card { background: #fff; border: 1px solid #EEF0F5; border-radius: 16px; padding: 20px; box-shadow: 0 2px 12px rgba(0,0,0,.04); }
-    .result-card-title { font-size: 14px; font-weight: 600; color: #888; margin-bottom: 14px; }
-    .bc-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-    .bc-bar-label { font-size: 13px; font-weight: 600; width: 70px; flex-shrink: 0; color: #555; }
-    .bc-bar-track { flex: 1; height: 8px; background: #F0F0F0; border-radius: 4px; overflow: hidden; }
-    .bc-bar-fill { height: 100%; border-radius: 4px; transition: width 1s ease; }
-    .bc-bar-val { font-size: 12px; font-weight: 700; width: 32px; text-align: right; flex-shrink: 0; }
-    .ohaeng-grid { display: flex; gap: 8px; }
-    .ohaeng-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; }
-    .ohaeng-circle { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #fff; }
-    .ohaeng-name { font-size: 12px; color: #666; }
-    .ohaeng-score { font-size: 13px; font-weight: 700; color: #1a1a2e; }
-    .restart-btn { display: block; width: 100%; margin: 8px 0 0; background: #F0F4F8; color: #555; border: none; border-radius: 14px; padding: 16px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; }
-
     /* ── 설문 완료 안내 화면 ─────────────────────── */
     #result-screen { justify-content: center; align-items: center; padding: 32px 24px; }
     .complete-wrap { width: 100%; max-width: 400px; display: flex; flex-direction: column; align-items: center; gap: 16px; text-align: center; }
@@ -174,6 +354,7 @@
     .complete-card { width: 100%; background: #F0FFF4; border: 1px solid #A8EABF; border-radius: 14px; padding: 16px; display: flex; gap: 12px; align-items: flex-start; text-align: left; }
     .complete-card-icon { font-size: 24px; flex-shrink: 0; }
     .complete-card-text { font-size: 13px; line-height: 1.7; color: #333; }
+    .restart-btn { display: block; width: 100%; margin: 8px 0 0; background: #F0F4F8; color: #555; border: none; border-radius: 14px; padding: 16px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; }
 
     /* ── 기타 ─────────────────────── */
     .goal-warning { background: #FFF8E1; border: 1px solid #FFD54F; border-radius: 10px; padding: 12px; font-size: 13px; color: #F57C00; margin-top: 12px; line-height: 1.6; display: none; }
@@ -198,12 +379,23 @@
     <button id="start-btn">지금 시작하기 →</button>
   </section>
 
-  <!-- 진행 바 (인트로·로딩·결과 외 화면에 표시) -->
+  <!-- 진행 바 -->
   <div id="progress-bar-wrap" style="display:none">
-    <div id="section-label"></div>
+    <div id="section-header">
+      <div id="section-label"></div>
+      <div id="section-dots"></div>
+    </div>
     <div id="progress-track"><div id="progress-fill" style="width:0%"></div></div>
     <div id="progress-pct">0%</div>
   </div>
+
+  <!-- 섹션 훅 인터럽트 카드 -->
+  <section id="hook-screen" class="screen">
+    <div class="hook-section-badge" id="hook-section-badge">SECTION A</div>
+    <div class="hook-title" id="hook-title">A부 — 몸의 기억</div>
+    <div class="hook-msg" id="hook-msg"></div>
+    <div class="hook-continue" id="hook-continue">화면을 탭하여 시작 →</div>
+  </section>
 
   <!-- 섹션 전환 카드 -->
   <section id="transition-screen" class="screen">
@@ -222,6 +414,33 @@
       <div class="q-text" id="q-text"></div>
       <div class="q-hint" id="q-hint"></div>
       <div id="q-input-area"></div>
+    </div>
+    <!-- 모바일 게이지 미니바 -->
+    <div id="gauge-mini">
+      <div class="gauge-mini-item" data-key="visceral">
+        <div class="gauge-mini-label">내장지방</div>
+        <div class="gauge-mini-track"><div class="gauge-mini-fill" style="width:0%;background:#E74C3C"></div></div>
+      </div>
+      <div class="gauge-mini-item" data-key="subcutaneous">
+        <div class="gauge-mini-label">피하지방</div>
+        <div class="gauge-mini-track"><div class="gauge-mini-fill" style="width:0%;background:#F39C12"></div></div>
+      </div>
+      <div class="gauge-mini-item" data-key="cortisol">
+        <div class="gauge-mini-label">코르티솔</div>
+        <div class="gauge-mini-track"><div class="gauge-mini-fill" style="width:0%;background:#9B59B6"></div></div>
+      </div>
+      <div class="gauge-mini-item" data-key="circulation">
+        <div class="gauge-mini-label">순환</div>
+        <div class="gauge-mini-track"><div class="gauge-mini-fill" style="width:0%;background:#3498DB"></div></div>
+      </div>
+      <div class="gauge-mini-item" data-key="hormone">
+        <div class="gauge-mini-label">호르몬</div>
+        <div class="gauge-mini-track"><div class="gauge-mini-fill" style="width:0%;background:#E91E63"></div></div>
+      </div>
+      <div class="gauge-mini-item" data-key="metabolism">
+        <div class="gauge-mini-label">대사</div>
+        <div class="gauge-mini-track"><div class="gauge-mini-fill" style="width:0%;background:#27AE60"></div></div>
+      </div>
     </div>
     <div class="q-footer">
       <button class="btn-prev" id="btn-prev">← 이전</button>
@@ -243,7 +462,7 @@
     </div>
   </section>
 
-  <!-- 설문 완료 안내 화면 (결과 미표시) -->
+  <!-- 설문 완료 안내 화면 -->
   <section id="result-screen" class="screen">
     <div class="complete-wrap">
       <div class="complete-icon">✅</div>
@@ -272,29 +491,71 @@
 
 </div>
 
+<!-- 데스크탑 게이지 패널 -->
+<div id="gauge-panel">
+  <div class="gauge-title">실시간 분석</div>
+  <div class="gauge-row" data-key="visceral">
+    <div class="gauge-row-label"><span class="gauge-row-name">🔴 내장지방</span><span class="gauge-row-val">0%</span></div>
+    <div class="gauge-track"><div class="gauge-fill" style="width:0%;background:#E74C3C"></div></div>
+  </div>
+  <div class="gauge-row" data-key="subcutaneous">
+    <div class="gauge-row-label"><span class="gauge-row-name">🟠 피하지방</span><span class="gauge-row-val">0%</span></div>
+    <div class="gauge-track"><div class="gauge-fill" style="width:0%;background:#F39C12"></div></div>
+  </div>
+  <div class="gauge-row" data-key="cortisol">
+    <div class="gauge-row-label"><span class="gauge-row-name">🟣 코르티솔</span><span class="gauge-row-val">0%</span></div>
+    <div class="gauge-track"><div class="gauge-fill" style="width:0%;background:#9B59B6"></div></div>
+  </div>
+  <div class="gauge-row" data-key="circulation">
+    <div class="gauge-row-label"><span class="gauge-row-name">🔵 순환</span><span class="gauge-row-val">0%</span></div>
+    <div class="gauge-track"><div class="gauge-fill" style="width:0%;background:#3498DB"></div></div>
+  </div>
+  <div class="gauge-row" data-key="hormone">
+    <div class="gauge-row-label"><span class="gauge-row-name">🩷 호르몬</span><span class="gauge-row-val">0%</span></div>
+    <div class="gauge-track"><div class="gauge-fill" style="width:0%;background:#E91E63"></div></div>
+  </div>
+  <div class="gauge-row" data-key="metabolism">
+    <div class="gauge-row-label"><span class="gauge-row-name">🟢 대사</span><span class="gauge-row-val">0%</span></div>
+    <div class="gauge-track"><div class="gauge-fill" style="width:0%;background:#27AE60"></div></div>
+  </div>
+</div>
+
+<!-- 피드백 토스트 -->
+<div id="feedback-toast"></div>
+
 <script src="survey-data.js"></script>
 <script>
 // ════════════════════════════════════════
 //  상태 관리
 // ════════════════════════════════════════
-// URL에서 ?ref= 컨설턴트 코드 파싱
 const _urlRef = new URLSearchParams(window.location.search).get('ref') || '';
 const CONSULTANT_CODE = _urlRef.toUpperCase() || null;
 
 const state = {
-  currentQ: 0,       // 현재 문항 인덱스
-  answers: {},       // { Q01: value, ... }
-  userData: {        // 계산된 데이터
+  currentQ: 0,
+  answers: {},
+  userData: {
     height: 160, weight: 60, targetWeight: 55,
     age: 30, gender: 'female',
     bmi: 0, bfr: 0, fatKg: 0, muscleKg: 0
   },
-  sectionTransition: false,
   activeSection: 'A',
-  resultId: null
+  resultId: null,
+  // MBTI 추론 상태
+  mbtiInfer: {},
+  // 인터럽트 카드 표시 여부
+  shownHooks: new Set()
 };
 
-// 활성 문항 목록 (조건부 Q46 처리)
+// 게이지 상태 (0~100)
+const gaugeState = {
+  visceral: 0, subcutaneous: 0, cortisol: 0,
+  circulation: 0, hormone: 0, metabolism: 0
+};
+
+// ════════════════════════════════════════
+//  활성 문항 목록
+// ════════════════════════════════════════
 function getActiveQuestions() {
   return QUESTIONS.filter(q => {
     if (q.conditional) {
@@ -306,13 +567,13 @@ function getActiveQuestions() {
 }
 
 // ════════════════════════════════════════
-//  유틸
+//  섹션 컬러
 // ════════════════════════════════════════
 function getSectionColor(sectionId) {
   return SECTIONS.find(s => s.id === sectionId)?.color || '#1A5276';
 }
 function getSectionBg(sectionId) {
-  const colors = { A:'#E8F4FD', B:'#FDEBD0', C:'#D5F5E3', D:'#E8DAEF', E:'#FCE4EC', F:'#D5F5E3', G:'#E8EAF6', H:'#FDECEA' };
+  const colors = { A:'#E8F4FD', B:'#FDEBD0', C:'#D5F5E3', D:'#E8DAEF', E:'#FCE4EC', F:'#D5F5E3', G:'#E8EAF6', H:'#FDECEA', I:'#FFF8F0', J:'#F1FFF3', K:'#F0FFFE' };
   return colors[sectionId] || '#E8F4FD';
 }
 function applySection(sectionId) {
@@ -324,11 +585,11 @@ function applySection(sectionId) {
 }
 function replaceName(text) {
   const name = state.answers['Q01'] || '당신';
-  return text.replace(/{name}/g, name);
+  return (text || '').replace(/{name}/g, name);
 }
 
 // ════════════════════════════════════════
-//  진행률 업데이트
+//  진행률 + 섹션 도트
 // ════════════════════════════════════════
 function updateProgress(qIdx) {
   const active = getActiveQuestions();
@@ -338,7 +599,71 @@ function updateProgress(qIdx) {
   document.getElementById('progress-pct').textContent = pct + '%';
   const q = active[qIdx] || active[total-1];
   const sec = SECTIONS.find(s => s.id === q?.section);
-  document.getElementById('section-label').textContent = (sec ? `${sec.id}부 — ${sec.name}` : '');
+  document.getElementById('section-label').textContent = sec ? `${sec.id}부 — ${sec.name}` : '';
+
+  // 섹션 도트 업데이트
+  const dotsEl = document.getElementById('section-dots');
+  dotsEl.innerHTML = '';
+  SECTIONS.forEach(s => {
+    const dot = document.createElement('div');
+    dot.className = 'sec-dot';
+    const secQs = active.filter(aq => aq.section === s.id);
+    if (secQs.length === 0) return;
+    const secStart = active.indexOf(secQs[0]);
+    const secEnd = active.indexOf(secQs[secQs.length-1]);
+    if (qIdx > secEnd) dot.classList.add('done');
+    else if (qIdx >= secStart) dot.classList.add('active');
+    dotsEl.appendChild(dot);
+  });
+}
+
+// ════════════════════════════════════════
+//  게이지 업데이트
+// ════════════════════════════════════════
+function updateGauge(key, delta) {
+  if (!(key in gaugeState)) return;
+  gaugeState[key] = Math.min(100, gaugeState[key] + delta);
+  const pct = gaugeState[key];
+
+  // 데스크탑 패널
+  const row = document.querySelector(`#gauge-panel .gauge-row[data-key="${key}"]`);
+  if (row) {
+    row.querySelector('.gauge-fill').style.width = pct + '%';
+    row.querySelector('.gauge-row-val').textContent = pct + '%';
+  }
+  // 모바일 미니바
+  const mini = document.querySelector(`#gauge-mini .gauge-mini-item[data-key="${key}"] .gauge-mini-fill`);
+  if (mini) mini.style.width = pct + '%';
+}
+
+// 게이지 키 → delta 매핑
+const GAUGE_DELTA = {
+  visceral: 15, subcutaneous: 12, cortisol: 18,
+  circulation: 14, hormone: 16, metabolism: 13,
+  core: 14, lymph: 12, type_mismatch: 10
+};
+
+// ════════════════════════════════════════
+//  피드백 토스트 (B)
+// ════════════════════════════════════════
+let _toastTimer = null;
+function showFeedbackToast(feedbackKey) {
+  if (!FEEDBACK_MESSAGES || !FEEDBACK_MESSAGES[feedbackKey]) return;
+  const fb = FEEDBACK_MESSAGES[feedbackKey];
+
+  const toast = document.getElementById('feedback-toast');
+  toast.textContent = fb.msg;
+
+  // 게이지 업데이트 (C)
+  if (fb.gauge) {
+    const delta = GAUGE_DELTA[fb.gauge] || 12;
+    updateGauge(fb.gauge, delta);
+  }
+
+  // 토스트 표시
+  toast.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => toast.classList.remove('show'), 3200);
 }
 
 // ════════════════════════════════════════
@@ -347,9 +672,41 @@ function updateProgress(qIdx) {
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-
-  const showProgress = !['intro-screen','transition-screen','loading-screen','result-screen'].includes(id);
+  const showProgress = !['intro-screen','hook-screen','transition-screen','loading-screen','result-screen'].includes(id);
   document.getElementById('progress-bar-wrap').style.display = showProgress ? 'block' : 'none';
+  // 게이지 패널 / 미니바 노출 여부
+  const showGauge = id === 'question-screen';
+  document.getElementById('gauge-panel').style.display = showGauge ? '' : 'none';
+}
+
+// ════════════════════════════════════════
+//  섹션 훅 인터럽트 카드
+// ════════════════════════════════════════
+function showHookCard(sectionId, cb) {
+  const sec = SECTIONS.find(s => s.id === sectionId);
+  if (!sec || !sec.hook) { cb(); return; }
+
+  const color = getSectionColor(sectionId);
+  const hookEl = document.getElementById('hook-screen');
+  hookEl.style.setProperty('--hook-bg', color);
+  hookEl.style.background = `linear-gradient(160deg, ${color}EE 0%, ${color} 100%)`;
+
+  document.getElementById('hook-section-badge').textContent = `SECTION ${sectionId}`;
+  document.getElementById('hook-title').textContent = `${sectionId}부 — ${sec.name}`;
+  document.getElementById('hook-msg').textContent = sec.hook;
+
+  showScreen('hook-screen');
+
+  let proceeded = false;
+  const proceed = () => {
+    if (proceeded) return;
+    proceeded = true;
+    hookEl.removeEventListener('click', proceed);
+    applySection(sectionId);
+    cb();
+  };
+  hookEl.addEventListener('click', proceed);
+  setTimeout(proceed, 5000);
 }
 
 // ════════════════════════════════════════
@@ -366,22 +723,26 @@ function showTransition(fromSec, toSec, msg, cb) {
   document.getElementById('trans-msg').textContent = msg;
   showScreen('transition-screen');
 
-  // 탭하면 바로 넘어가기
   let proceeded = false;
   const proceed = () => {
     if (proceeded) return;
     proceeded = true;
     ts.removeEventListener('click', proceed);
-    applySection(toSec);
-    cb();
+    // 새 섹션 진입 훅 카드 표시
+    if (!state.shownHooks.has(toSec)) {
+      state.shownHooks.add(toSec);
+      showHookCard(toSec, () => { applySection(toSec); cb(); });
+    } else {
+      applySection(toSec);
+      cb();
+    }
   };
   ts.addEventListener('click', proceed);
-  // 5초 후 자동으로 넘어가기
   setTimeout(proceed, 5000);
 }
 
 // ════════════════════════════════════════
-//  자동 계산 함수들
+//  자동 계산
 // ════════════════════════════════════════
 function calcBodyComposition() {
   const { height, weight, gender, age } = state.userData;
@@ -399,11 +760,9 @@ function calcBodyComposition() {
   return { bmi: bmi.toFixed(1), bfr: bfr.toFixed(1), fatKg: fatKg.toFixed(1), muscleKg: muscleKg.toFixed(1) };
 }
 
-// 사주 일간 간단 계산 (천간 기반)
 function calcSaju(dateStr) {
   if (!dateStr) return null;
   const [y, m, d] = dateStr.split('-').map(Number);
-  // 간단 공식: 일간 천간 (60갑자 기반 근사치)
   const base = new Date(1900, 0, 31);
   const target = new Date(y, m-1, d);
   const diff = Math.floor((target - base) / 86400000);
@@ -411,6 +770,16 @@ function calcSaju(dateStr) {
   const ohaengs = ['목(木)','목(木)','화(火)','화(火)','토(土)','토(土)','금(金)','금(金)','수(水)','수(水)'];
   const idx = ((diff % 10) + 10) % 10;
   return { il_gan: stems[idx], ohaeng: ohaengs[idx], display: stems[idx] + '(' + ohaengs[idx].split('(')[0] + ')' };
+}
+
+// ════════════════════════════════════════
+//  MBTI 추론 계산
+// ════════════════════════════════════════
+function inferMbtiFromAnswers(infer) {
+  // infer: { axis_TF: 'T'|'F', axis_JP: 'J'|'P', axis_IE: 'I'|'E', axis_SN: 'S'|'N' }
+  const keys = ['axis_IE','axis_SN','axis_TF','axis_JP'];
+  for (const k of keys) { if (!infer[k]) return null; }
+  return infer.axis_IE + infer.axis_SN + infer.axis_TF + infer.axis_JP;
 }
 
 // ════════════════════════════════════════
@@ -426,27 +795,33 @@ function renderQuestion(qIdx) {
 
   document.getElementById('q-num').textContent = `Q${String(q.num).padStart(2, '0')}`;
   document.getElementById('q-text').textContent = replaceName(q.question);
-  document.getElementById('q-hint').textContent = q.hint;
+
+  const hintEl = document.getElementById('q-hint');
+  if (q.hint) {
+    hintEl.textContent = q.hint;
+    hintEl.style.display = 'block';
+  } else {
+    hintEl.style.display = 'none';
+  }
 
   const area = document.getElementById('q-input-area');
   area.innerHTML = '';
 
-  // 뒤로가기 버튼
   document.getElementById('btn-prev').style.display = qIdx === 0 ? 'none' : 'inline-block';
 
   switch (q.type) {
-    case 'TEXT_INPUT': renderTextInput(q, area); break;
+    case 'TEXT_INPUT':    renderTextInput(q, area); break;
     case 'SINGLE_SELECT': renderSingleSelect(q, area); break;
-    case 'MULTI_SELECT': renderMultiSelect(q, area); break;
-    case 'SLIDER': renderSlider(q, area); break;
-    case 'SIZE_GRID': renderSizeGrid(q, area); break;
-    case 'MBTI_GRID': renderMbtiGrid(q, area); break;
-    case 'DATE_PICKER': renderDatePicker(q, area); break;
-    case 'INBODY_INPUT': renderInbodyInput(q, area); break;
+    case 'MULTI_SELECT':  renderMultiSelect(q, area); break;
+    case 'SLIDER':        renderSlider(q, area); break;
+    case 'SIZE_GRID':     renderSizeGrid(q, area); break;
+    case 'MBTI_GRID':     renderMbtiGrid(q, area); break;
+    case 'DATE_PICKER':   renderDatePicker(q, area); break;
+    case 'INBODY_INPUT':  renderInbodyInput(q, area); break;
+    case 'INBODY_RANGE':  renderInbodyRange(q, area); break;
     default: break;
   }
 
-  // 다음 버튼 상태
   updateNextBtn(q);
   document.getElementById('q-content').scrollTop = 0;
 }
@@ -454,9 +829,9 @@ function renderQuestion(qIdx) {
 function updateNextBtn(q) {
   const btn = document.getElementById('btn-next');
   const val = state.answers[q.id];
-  const autoTypes = ['SINGLE_SELECT'];
-  // SINGLE_SELECT는 자동으로 넘어가므로 버튼 숨김
-  if (autoTypes.includes(q.type) && !q.forceButton) {
+  if (q.type === 'SINGLE_SELECT' && !q.forceButton) {
+    btn.style.display = 'none';
+  } else if (q.type === 'MBTI_GRID' && !q.forceButton) {
     btn.style.display = 'none';
   } else {
     btn.style.display = 'block';
@@ -468,7 +843,7 @@ function updateNextBtn(q) {
 function renderTextInput(q, area) {
   area.innerHTML = `
     <div class="text-input-wrap">
-      <input class="text-input" id="text-inp" type="text" maxlength="${q.maxLength||20}" 
+      <input class="text-input" id="text-inp" type="text" maxlength="${q.maxLength||20}"
         placeholder="${q.placeholder||''}" value="${state.answers[q.id]||''}" autocomplete="off">
       <span class="text-count" id="text-cnt">0/${q.maxLength||20}</span>
     </div>`;
@@ -482,12 +857,12 @@ function renderTextInput(q, area) {
   cnt.textContent = `${inp.value.length}/${q.maxLength||20}`;
   document.getElementById('btn-next').style.display = 'block';
   document.getElementById('btn-next').disabled = !inp.value.trim();
-  inp.focus();
+  setTimeout(() => inp.focus(), 100);
 }
 
 // ── SINGLE_SELECT ──
 function renderSingleSelect(q, area) {
-  const useCol2 = q.options.length >= 4 && q.options.length <= 6 && !q.options.some(o => o.label.length > 10);
+  const useCol2 = q.options.length >= 4 && q.options.length <= 6 && !q.options.some(o => (o.label||'').length > 10);
   const grid = document.createElement('div');
   grid.className = 'options-grid' + (useCol2 ? ' col2' : '');
 
@@ -502,10 +877,11 @@ function renderSingleSelect(q, area) {
       </div>`;
     card.onclick = () => {
       state.answers[q.id] = opt.value;
-      // 성별 / 키 / 몸무게 저장
       if (q.id === 'Q02') state.userData.gender = opt.value;
       if (q.saveAs) state.answers['_' + q.saveAs] = opt.value;
-      // 0.3초 후 다음
+      // feedbackKey 처리
+      if (opt.feedbackKey) showFeedbackToast(opt.feedbackKey);
+      grid.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
       card.classList.add('selected');
       setTimeout(() => goNext(), 300);
     };
@@ -517,6 +893,14 @@ function renderSingleSelect(q, area) {
 // ── MULTI_SELECT ──
 function renderMultiSelect(q, area) {
   if (!state.answers[q.id]) state.answers[q.id] = [];
+
+  if (q.maxSelect) {
+    const hint = document.createElement('div');
+    hint.className = 'multi-select-hint';
+    hint.textContent = `최대 ${q.maxSelect}개 선택`;
+    area.appendChild(hint);
+  }
+
   const grid = document.createElement('div');
   grid.className = 'options-grid';
 
@@ -524,33 +908,36 @@ function renderMultiSelect(q, area) {
     const card = document.createElement('div');
     card.className = 'option-card multi-check';
     if (state.answers[q.id].includes(opt.value)) card.classList.add('selected');
-    card.innerHTML = `<div class="opt-emoji">${opt.emoji||'•'}</div>
+    card.innerHTML = `<div class="opt-check">${state.answers[q.id].includes(opt.value) ? '✓' : ''}</div>
+      <div class="opt-emoji">${opt.emoji||'•'}</div>
       <div class="opt-text">
         <div class="opt-label">${opt.label}</div>
         ${opt.desc ? `<div class="opt-desc">${opt.desc}</div>` : ''}
       </div>`;
     card.onclick = () => {
       let arr = state.answers[q.id] || [];
-      // exclusive 처리 (없어요)
       if (opt.exclusive) {
-        arr = [opt.value];
+        arr = arr.includes(opt.value) ? [] : [opt.value];
         grid.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
+        grid.querySelectorAll('.option-card .opt-check').forEach(c => c.textContent = '');
       } else {
         arr = arr.filter(v => {
           const exOpt = q.options.find(o => o.value === v);
           return !exOpt?.exclusive;
         });
-        grid.querySelector('.option-card.selected[data-exclusive]')?.classList.remove('selected');
         if (arr.includes(opt.value)) {
           arr = arr.filter(v => v !== opt.value);
         } else if (!q.maxSelect || arr.length < q.maxSelect) {
           arr.push(opt.value);
+          if (opt.feedbackKey) showFeedbackToast(opt.feedbackKey);
         }
       }
       state.answers[q.id] = arr;
       if (q.saveAs) state.answers['_' + q.saveAs] = arr;
       grid.querySelectorAll('.option-card').forEach((c, i) => {
-        c.classList.toggle('selected', arr.includes(q.options[i].value));
+        const selected = arr.includes(q.options[i].value);
+        c.classList.toggle('selected', selected);
+        c.querySelector('.opt-check').textContent = selected ? '✓' : '';
       });
       document.getElementById('btn-next').disabled = arr.length === 0;
     };
@@ -574,9 +961,10 @@ function renderSlider(q, area) {
         <span class="slider-unit">${q.unit}</span>
         <div class="slider-sentence" id="sl-sentence"></div>
       </div>
-      <input type="range" id="sl-inp" min="${q.min}" max="${q.max}" step="${q.step}" value="${defVal}">
+      <input type="range" id="sl-inp" min="${q.min}" max="${q.max}" step="${q.step||1}" value="${defVal}">
       <div class="slider-minmax"><span>${q.min}${q.unit}</span><span>${q.max}${q.unit}</span></div>
       <div id="calc-display"></div>
+      <div id="sub-question-area"></div>
     </div>`;
 
   const inp = document.getElementById('sl-inp');
@@ -591,7 +979,6 @@ function renderSlider(q, area) {
     if (q.saveAs === 'weight') state.userData.weight = parseFloat(v);
     if (q.saveAs === 'target_weight') state.userData.targetWeight = parseFloat(v);
 
-    // 자동 계산 표시
     if (q.autoCalc === 'bmi_preview') {
       sentEl.textContent = `내 키는 ${v}cm입니다`;
     } else if (q.autoCalc === 'body_composition') {
@@ -610,26 +997,114 @@ function renderSlider(q, area) {
       const diff = state.userData.weight - parseFloat(v);
       const weeks = Math.ceil(diff / 0.5);
       sentEl.textContent = `목표 감량: ${diff.toFixed(1)}kg / 건강 감량 예상: ${weeks}주`;
-      const warn = calcDiv.querySelector('.goal-warning') || (() => {
-        const el = document.createElement('div');
-        el.className = 'goal-warning';
-        calcDiv.appendChild(el);
-        return el;
-      })();
+      let warn = calcDiv.querySelector('.goal-warning');
+      if (!warn) { warn = document.createElement('div'); warn.className = 'goal-warning'; calcDiv.appendChild(warn); }
       if (diff > 15) {
         warn.textContent = '무리한 목표는 요요로 돌아옵니다. 바디코드가 올바른 속도를 알려드립니다.';
         warn.style.display = 'block';
-        state.answers['Q15'] = parseFloat(v); // BC-10 보정
-      } else {
-        warn.style.display = 'none';
-      }
+        state.answers['Q15'] = parseFloat(v);
+      } else { warn.style.display = 'none'; }
     }
     document.getElementById('btn-next').disabled = false;
+
+    // Q14: 체중 슬라이더 후 subQuestion (측정 방식) 표시
+    if (q.subQuestion) renderSubQuestion(q.subQuestion, document.getElementById('sub-question-area'));
   }
 
   inp.oninput = e => updateSlider(e.target.value);
   updateSlider(defVal);
   document.getElementById('btn-next').style.display = 'block';
+}
+
+// ── subQuestion 렌더링 (Q14 측정 방식) ──
+function renderSubQuestion(subQ, container) {
+  if (!container) return;
+  // 이미 렌더링됐으면 스킵
+  if (container.dataset.rendered) return;
+  container.dataset.rendered = '1';
+
+  const wrap = document.createElement('div');
+  wrap.className = 'sub-question-wrap';
+  wrap.innerHTML = `<div class="sub-question-label">💬 ${subQ.question}</div>`;
+
+  const opts = document.createElement('div');
+  opts.className = 'sub-options';
+
+  subQ.options.forEach(opt => {
+    const el = document.createElement('div');
+    el.className = 'sub-option';
+    if (state.answers[subQ.id] === opt.value) el.classList.add('selected');
+    el.innerHTML = `<span>${opt.emoji||'•'}</span><span>${opt.label}</span>`;
+    el.onclick = () => {
+      state.answers[subQ.id] = opt.value;
+      opts.querySelectorAll('.sub-option').forEach(o => o.classList.remove('selected'));
+      el.classList.add('selected');
+    };
+    opts.appendChild(el);
+  });
+  wrap.appendChild(opts);
+  container.appendChild(wrap);
+}
+
+// ── INBODY_RANGE ──
+function renderInbodyRange(q, area) {
+  const saved = state.answers[q.id] || {};
+  const items = q.items || [
+    { id: 'bfr', label: '체지방률', unit: '%', min: 5, max: 60, defLow: 18, defHigh: 28 },
+    { id: 'muscle', label: '골격근량', unit: 'kg', min: 10, max: 55, defLow: 18, defHigh: 28 }
+  ];
+
+  area.innerHTML = `<div class="inbody-range-wrap" id="ibr-wrap"></div>`;
+  const wrap = document.getElementById('ibr-wrap');
+
+  items.forEach(item => {
+    const savedItem = saved[item.id] || {};
+    const low = savedItem.low ?? item.defLow;
+    const high = savedItem.high ?? item.defHigh;
+
+    const row = document.createElement('div');
+    row.className = 'inbody-range-item';
+    row.innerHTML = `
+      <div class="inbody-range-label">
+        <span>${item.label}</span>
+        <span class="ib-current" id="ibr-display-${item.id}"><span id="ibr-lo-${item.id}">${low}</span>~<span id="ibr-hi-${item.id}">${high}</span>${item.unit}</span>
+      </div>
+      <div class="range-track-wrap">
+        <div class="range-dual-track"><div class="range-dual-fill" id="ibr-fill-${item.id}"></div></div>
+        <input type="range" class="range-dual-input" id="ibr-min-${item.id}" min="${item.min}" max="${item.max}" step="0.1" value="${low}">
+        <input type="range" class="range-dual-input" id="ibr-max-${item.id}" min="${item.min}" max="${item.max}" step="0.1" value="${high}">
+      </div>
+      <div class="range-minmax"><span>${item.min}${item.unit}</span><span>${item.max}${item.unit}</span></div>
+    `;
+    wrap.appendChild(row);
+
+    if (!state.answers[q.id]) state.answers[q.id] = {};
+
+    function updateFill() {
+      const minV = parseFloat(document.getElementById(`ibr-min-${item.id}`).value);
+      const maxV = parseFloat(document.getElementById(`ibr-max-${item.id}`).value);
+      const lo = Math.min(minV, maxV);
+      const hi = Math.max(minV, maxV);
+      document.getElementById(`ibr-lo-${item.id}`).textContent = lo.toFixed(1);
+      document.getElementById(`ibr-hi-${item.id}`).textContent = hi.toFixed(1);
+      const fillEl = document.getElementById(`ibr-fill-${item.id}`);
+      const range = item.max - item.min;
+      fillEl.style.left = ((lo - item.min) / range * 100) + '%';
+      fillEl.style.width = ((hi - lo) / range * 100) + '%';
+      state.answers[q.id][item.id] = { low: lo, high: hi };
+      // 체지방률 override
+      if (item.id === 'bfr') { state.userData.bfr = (lo + hi) / 2; }
+      if (item.id === 'muscle') { state.userData.muscleKg = (lo + hi) / 2; }
+      document.getElementById('btn-next').disabled = false;
+    }
+
+    document.getElementById(`ibr-min-${item.id}`).oninput = updateFill;
+    document.getElementById(`ibr-max-${item.id}`).oninput = updateFill;
+    updateFill();
+  });
+
+  document.getElementById('btn-next').style.display = 'block';
+  document.getElementById('btn-next').disabled = false;
 }
 
 // ── SIZE_GRID ──
@@ -645,17 +1120,12 @@ function renderSizeGrid(q, area) {
       if (q.saveAs) state.answers['_' + q.saveAs] = opt;
       wrap.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
-      // 사이즈 비교 표시
       if (q.id === 'Q18' && state.answers['Q17']) {
-        const comp = area.querySelector('.size-compare') || (() => {
-          const el = document.createElement('div'); el.className = 'size-compare'; area.appendChild(el); return el;
-        })();
+        const comp = area.querySelector('.size-compare') || (() => { const el = document.createElement('div'); el.className = 'size-compare'; area.appendChild(el); return el; })();
         comp.innerHTML = `목표: <span>${state.answers['Q17']}</span> → <span>${opt}</span>`;
       }
       if (q.id === 'Q47' && state.answers['Q16']) {
-        const comp = area.querySelector('.size-compare') || (() => {
-          const el = document.createElement('div'); el.className = 'size-compare'; area.appendChild(el); return el;
-        })();
+        const comp = area.querySelector('.size-compare') || (() => { const el = document.createElement('div'); el.className = 'size-compare'; area.appendChild(el); return el; })();
         comp.innerHTML = `목표: <span>${state.answers['Q16']}</span> → <span>${opt}</span>`;
       }
       document.getElementById('btn-next').disabled = false;
@@ -669,22 +1139,100 @@ function renderSizeGrid(q, area) {
 
 // ── MBTI_GRID ──
 function renderMbtiGrid(q, area) {
+  // Q42 — inferIfUnknown 처리
+  const hasInfer = q.inferIfUnknown && q.mbtiInferQuestions;
+
   const wrap = document.createElement('div');
   wrap.className = 'mbti-grid';
+
   q.options.forEach(opt => {
     const btn = document.createElement('button');
-    btn.className = 'mbti-btn' + (opt === '잘 모르겠어요' ? ' unknown-btn' : '') + (state.answers[q.id] === opt ? ' selected' : '');
+    const isUnknown = (opt === '유추해드릴게요' || opt === '잘 모르겠어요');
+    btn.className = 'mbti-btn' + (isUnknown ? ' unknown-btn' : '') + (state.answers[q.id] === opt ? ' selected' : '');
     btn.textContent = opt;
     btn.onclick = () => {
       state.answers[q.id] = opt;
-      if (q.saveAs) state.answers['_' + q.saveAs] = opt;
       wrap.querySelectorAll('.mbti-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
-      setTimeout(() => goNext(), 300);
+      if (q.saveAs) state.answers['_' + q.saveAs] = opt;
+
+      if (isUnknown && hasInfer) {
+        // 유추 모드: mbtiInferQuestions 렌더링
+        setTimeout(() => renderMbtiInfer(q, area), 300);
+      } else {
+        setTimeout(() => goNext(), 300);
+      }
     };
     wrap.appendChild(btn);
   });
+
+  // 구분선 있으면 추가
+  if (hasInfer) {
+    const hr = document.createElement('hr');
+    hr.className = 'mbti-divider';
+    // '유추해드릴게요' 버튼 앞에 삽입
+    const unknownBtns = wrap.querySelectorAll('.unknown-btn');
+    if (unknownBtns.length > 0) wrap.insertBefore(hr, unknownBtns[0]);
+  }
+
   area.appendChild(wrap);
+
+  // 이미 유추 모드였으면 다시 렌더
+  if (state.mbtiInfer && Object.keys(state.mbtiInfer).length > 0 && !inferMbtiFromAnswers(state.mbtiInfer)) {
+    renderMbtiInfer(q, area);
+  }
+}
+
+function renderMbtiInfer(q, area) {
+  // 기존 infer wrap 제거
+  const existing = area.querySelector('.mbti-infer-wrap');
+  if (existing) existing.remove();
+
+  const inferQs = q.mbtiInferQuestions;
+  if (!inferQs) return;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'mbti-infer-wrap';
+  wrap.style.marginTop = '20px';
+
+  inferQs.forEach(iq => {
+    const block = document.createElement('div');
+    block.className = 'mbti-infer-q' + (state.mbtiInfer[iq.axis] ? ' answered' : '');
+    block.innerHTML = `<div class="mbti-infer-title">${iq.question}</div>`;
+    const opts = document.createElement('div');
+    opts.className = 'mbti-infer-opts';
+    iq.options.forEach(opt => {
+      const btn = document.createElement('button');
+      btn.className = 'mbti-infer-btn' + (state.mbtiInfer[iq.axis] === opt.value ? ' selected' : '');
+      btn.innerHTML = `${opt.emoji ? opt.emoji + ' ' : ''}${opt.label}`;
+      btn.onclick = () => {
+        state.mbtiInfer[iq.axis] = opt.value;
+        opts.querySelectorAll('.mbti-infer-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        block.classList.add('answered');
+        // 4개 모두 선택되면 MBTI 추론
+        const inferred = inferMbtiFromAnswers(state.mbtiInfer);
+        if (inferred) {
+          state.answers[q.id] = inferred;
+          // 결과 표시
+          let resEl = wrap.querySelector('.mbti-infer-result');
+          if (!resEl) { resEl = document.createElement('div'); resEl.className = 'mbti-infer-result'; wrap.appendChild(resEl); }
+          resEl.textContent = `🎯 추론 결과: ${inferred}`;
+          resEl.style.display = 'block';
+          document.getElementById('btn-next').style.display = 'block';
+          document.getElementById('btn-next').disabled = false;
+        }
+      };
+      opts.appendChild(btn);
+    });
+    block.appendChild(opts);
+    wrap.appendChild(block);
+  });
+
+  area.appendChild(wrap);
+  document.getElementById('btn-next').style.display = 'block';
+  const inferred = inferMbtiFromAnswers(state.mbtiInfer);
+  document.getElementById('btn-next').disabled = !inferred && !state.answers[q.id];
 }
 
 // ── DATE_PICKER ──
@@ -751,25 +1299,21 @@ function renderInbodyInput(q, area) {
       </div>
     </div>
   </div>`;
-
-  const bfrInp = document.getElementById('ib-bfr');
-  const muscleInp = document.getElementById('ib-muscle');
-  bfrInp.oninput = e => {
+  document.getElementById('ib-bfr').oninput = e => {
     document.getElementById('ib-bfr-val').textContent = e.target.value;
     if (!state.answers[q.id]) state.answers[q.id] = {};
     state.answers[q.id].bfr = parseFloat(e.target.value);
-    // override 체지방률
     state.userData.bfr = parseFloat(e.target.value);
     document.getElementById('btn-next').disabled = false;
   };
-  muscleInp.oninput = e => {
+  document.getElementById('ib-muscle').oninput = e => {
     document.getElementById('ib-muscle-val').textContent = e.target.value;
     if (!state.answers[q.id]) state.answers[q.id] = {};
     state.answers[q.id].muscle = parseFloat(e.target.value);
     state.userData.muscleKg = parseFloat(e.target.value);
   };
   document.getElementById('btn-next').style.display = 'block';
-  document.getElementById('btn-next').disabled = false; // 건너뛰기 가능
+  document.getElementById('btn-next').disabled = false;
 }
 
 // ════════════════════════════════════════
@@ -784,7 +1328,6 @@ function goNext() {
 
   const nextQ = active[nextIdx];
 
-  // 섹션 전환 감지
   if (nextQ.section !== q.section) {
     const sec = SECTIONS.find(s => s.id === q.section);
     showTransition(q.section, nextQ.section, replaceName(sec?.transition || ''), () => {
@@ -855,8 +1398,8 @@ async function submitSurveyAndShow() {
     blood_type: state.answers['Q44'] || null,
     saju_il_gan: state.answers['_saju_il_gan'] || null,
     saju_ohaeng: state.answers['_saju_ohaeng'] || null,
-    gender: ud.gender || state.answers['Q02'] || null,          // Q02에서 설정된 성별
-    birth_date: state.answers['Q43'] || null,                    // Q43 DATE_PICKER
+    gender: ud.gender || state.answers['Q02'] || null,
+    birth_date: state.answers['Q43'] || null,
     height: state.answers['Q13'] || null,
     weight: state.answers['Q14'] || null,
     target_weight: state.answers['Q15'] || null,
@@ -870,12 +1413,12 @@ async function submitSurveyAndShow() {
     target_bottom_size: state.answers['Q18'] || null,
     emotional_state: state.answers['Q41'] || null,
     main_goal: state.answers['Q48'] || null,
-    priority_value: state.answers['Q50'] || null,                // Q50이 priority_value
+    priority_value: state.answers['Q50'] || null,
     survey_summary: {
-      diet_attempts: state.answers['Q04'] || 0,           // Q04: 다이어트 횟수
+      diet_attempts: state.answers['Q04'] || 0,
       past_exercises: state.answers['Q23'] || [],
       past_diets: state.answers['Q24'] || [],
-      yoyo_count: state.answers['Q22'] || state.answers['Q04'] || 0,  // Q22: 스트레스 반응, Q04: 횟수
+      yoyo_count: state.answers['Q22'] || state.answers['Q04'] || 0,
     }
   };
 
@@ -898,7 +1441,6 @@ async function submitSurveyAndShow() {
 }
 
 function showCompleteScreen() {
-  const name = state.answers['Q01'] || '고객';
   const sub = document.getElementById('complete-sub');
   if (CONSULTANT_CODE) {
     sub.textContent = `담당 컨설턴트(${CONSULTANT_CODE})가 분석 결과를 곧 카카오톡으로 전달드립니다.`;
@@ -915,31 +1457,42 @@ function showCompleteScreen() {
 //  이벤트 바인딩
 // ════════════════════════════════════════
 document.getElementById('start-btn').onclick = () => {
-  // ── 매 시작 시 항상 완전 초기화 (이전 응답 잔류 방지) ────
   Object.keys(state.answers).forEach(k => delete state.answers[k]);
   Object.assign(state.userData, { height:160, weight:60, targetWeight:55, age:30, gender:'female', bmi:0, bfr:0, fatKg:0, muscleKg:0 });
   state.currentQ = 0;
   state.resultId = null;
+  state.mbtiInfer = {};
+  state.shownHooks = new Set();
+  // 게이지 리셋
+  Object.keys(gaugeState).forEach(k => gaugeState[k] = 0);
+  document.querySelectorAll('.gauge-fill, .gauge-mini-fill').forEach(el => el.style.width = '0%');
+  document.querySelectorAll('.gauge-row-val').forEach(el => el.textContent = '0%');
   try { localStorage.removeItem('sm_answers'); } catch(e) {}
   document.querySelectorAll('.loading-step').forEach(el => el.classList.remove('active','done'));
-  // ──────────────────────────────────────────────────────────
+
+  // 첫 섹션 훅 카드 표시
+  state.shownHooks.add('A');
   applySection('A');
-  showScreen('question-screen');
-  document.getElementById('progress-bar-wrap').style.display = 'block';
-  renderQuestion(0);
+  showHookCard('A', () => {
+    showScreen('question-screen');
+    document.getElementById('progress-bar-wrap').style.display = 'block';
+    renderQuestion(0);
+  });
 };
 
 document.getElementById('btn-next').onclick = goNext;
 document.getElementById('btn-prev').onclick = goPrev;
 document.getElementById('restart-btn').onclick = () => {
-  // 답변 초기화
   Object.keys(state.answers).forEach(k => delete state.answers[k]);
   Object.assign(state.userData, { height:160, weight:60, targetWeight:55, age:30, gender:'female', bmi:0, bfr:0, fatKg:0, muscleKg:0 });
   state.currentQ = 0;
   state.resultId = null;
-  // 로컬스토리지 완전 삭제
+  state.mbtiInfer = {};
+  state.shownHooks = new Set();
+  Object.keys(gaugeState).forEach(k => gaugeState[k] = 0);
+  document.querySelectorAll('.gauge-fill, .gauge-mini-fill').forEach(el => el.style.width = '0%');
+  document.querySelectorAll('.gauge-row-val').forEach(el => el.textContent = '0%');
   try { localStorage.removeItem('sm_answers'); } catch(e) {}
-  // 로딩 step 초기화
   document.querySelectorAll('.loading-step').forEach(el => el.classList.remove('active','done'));
   showScreen('intro-screen');
 };
@@ -948,8 +1501,6 @@ document.getElementById('restart-btn').onclick = () => {
 setInterval(() => {
   try { localStorage.setItem('sm_answers', JSON.stringify(state.answers)); } catch(e) {}
 }, 3000);
-
-// 이어하기 기능 제거 — 시작 버튼 클릭 시 항상 새로 초기화됨 (이전 응답 잔류 방지)
 </script>
 </body>
 </html>
