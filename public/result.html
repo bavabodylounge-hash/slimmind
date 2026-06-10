@@ -3914,7 +3914,35 @@ function renderCh5(){
   // 식품 처방
   const foodsWrap = document.getElementById('p5Foods');
   foodsWrap.innerHTML = '';
-  const recFoods = jp(bc.recommended_foods) || [];
+
+  // ── allergy_exclude 필터 ──────────────────────────────────────
+  const allergyExclude = res.allergy_exclude || [];
+  // 알레르기 키 → 식품명 키워드 매핑 (한국어 + 영문 포함)
+  const ALLERGY_KEYWORDS = {
+    chicken : ['닭','chicken'],
+    egg     : ['달걀','계란','egg'],
+    dairy   : ['유제품','우유','치즈','요거트','버터','크림','dairy'],
+    nuts    : ['견과','아몬드','호두','캐슈','피스타치오','땅콩','nuts'],
+    seafood : ['해산물','생선','연어','고등어','참치','오징어','새우','조개','굴','멸치','seafood'],
+    gluten  : ['글루텐','밀','빵','파스타','라면','면','gluten'],
+    legume  : ['콩','두부','렌틸','완두','병아리콩','legume'],
+    spicy   : ['매운','고추','spicy'],
+  };
+  // 식품 이름이 제외 알레르기 키워드를 포함하는지 검사
+  function isAllergyFood(foodName) {
+    if (!allergyExclude.length) return false;
+    const nm = String(foodName).toLowerCase();
+    return allergyExclude.some(key =>
+      (ALLERGY_KEYWORDS[key] || []).some(kw => nm.includes(kw.toLowerCase()))
+    );
+  }
+  // ──────────────────────────────────────────────────────────────
+
+  const recFoodsRaw = jp(bc.recommended_foods) || [];
+  // 알레르기 제외 적용
+  const recFoods = recFoodsRaw.filter(f => !isAllergyFood(f.name || f.food || f));
+  const allergyFilteredCount = recFoodsRaw.length - recFoods.length;
+
   // forbidden_foods_reason이 비어있으면 forbidden_foods 사용, 그것도 없으면 기본값
   let forbFoodsReason = jp(bc.forbidden_foods_reason) || [];
   if(forbFoodsReason.length === 0){
@@ -3926,8 +3954,12 @@ function renderCh5(){
   }
 
   if(recFoods.length > 0){
+    // 알레르기로 제외된 항목이 있으면 안내 배지 표시
+    const allergyBadge = allergyFilteredCount > 0
+      ? ` <span style="background:#FEF3C7;color:#92400E;font-size:10px;padding:2px 7px;border-radius:8px;font-weight:600;vertical-align:middle">⚠️ 알레르기 ${allergyFilteredCount}종 제외됨</span>`
+      : '';
     let html = `<div class="presc-card">
-      <div class="pc-head green"><span class="pc-icon">🥦</span><span class="pc-title">적극 권장 식품 (${esc(ohaeng.ohaeng_type||res.ohaeng_type||'')} 체질 + ${esc(res.bc_primary||'')})</span></div>
+      <div class="pc-head green"><span class="pc-icon">🥦</span><span class="pc-title">적극 권장 식품 (${esc(ohaeng.ohaeng_type||res.ohaeng_type||'')} 체질 + ${esc(res.bc_primary||'')})${allergyBadge}</span></div>
       <div class="pc-body">`;
     recFoods.slice(0,4).forEach(f => {
       const name = f.name || f.food || f;
