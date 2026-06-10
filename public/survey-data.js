@@ -285,7 +285,16 @@ const QUESTIONS = [
     }
   },
   {
-    id: 'Q15', section: 'C', num: 15,
+    id: 'Q14b', section: 'C', num: 15,
+    question: '허리와 엉덩이 사이즈를 알고 계신가요?',
+    hint: '줄자로 배꼽 위 2~3cm 허리 가장 잘록한 곳, 엉덩이 가장 넓은 곳을 재주세요. 모르시면 건너뛰어도 됩니다.',
+    type: 'WAIST_HIP_INPUT',
+    optional: true,
+    saveAs: 'waist_hip',
+    autoCalc: 'body_composition_navy'
+  },
+  {
+    id: 'Q15', section: 'C', num: 16,
     question: '6개월 후 {name}님이 목표로 하는 체중은요?',
     hint: '숫자가 목표가 아니라, 그 숫자일 때 입고 싶은 옷이 진짜 목표입니다.',
     type: 'SLIDER',
@@ -363,20 +372,6 @@ const QUESTIONS = [
       { emoji: '🌋', label: '극심해요', desc: '지금 정말 힘든 시기예요', value: 4, bcEffect: { 'BC-09': 40 }, feedbackKey: 'stress_high' }
     ],
     saveAs: 'stress_level'
-  },
-  {
-    id: 'Q22', section: 'D', num: 22,
-    question: '스트레스를 받으면 {name}님의 몸과 식욕이 어떻게 반응하나요?',
-    hint: '이 반응 패턴이 처방 식이 타이밍을 결정합니다.',
-    type: 'SINGLE_SELECT',
-    weight: 1.8,
-    options: [
-      { emoji: '🍕', label: '배가 고파지고 폭식하게 돼요', desc: '', value: 'binge', bcEffect: { 'BC-09': 20 } },
-      { emoji: '🫥', label: '오히려 입맛이 뚝 떨어져요', desc: '', value: 'no_appetite', bcEffect: {} },
-      { emoji: '🌙', label: '밤이 되면 야식을 찾게 돼요', desc: '', value: 'night_eating', bcEffect: { 'BC-09': 20 } },
-      { emoji: '🍫', label: '특히 단것·탄수화물이 자꾸 당겨요', desc: '', value: 'sweets', bcEffect: { 'BC-09': 20 } }
-    ],
-    saveAs: 'stress_type'
   },
   {
     id: 'Q23', section: 'D', num: 23,
@@ -1458,6 +1453,33 @@ function calculateBCScores(answers) {
     // BC-09(코르티솔형), BC-08(대사정체형) 강화
     bcScores['BC-09'] = Math.round((bcScores['BC-09'] || 0) * factor);
     bcScores['BC-08'] = Math.round((bcScores['BC-08'] || 0) * factor);
+  }
+
+  // ── BC-09 스트레스 무관 응답자 보호 로직 ──────────────────────────
+  // 스트레스 강도가 낮거나 스트레스-식욕 연관이 없다고 응답한 경우
+  // BC-09 점수를 적극적으로 감소시켜 억울한 "스트레스형" 배정 방지
+  {
+    const stressLevel = answers['Q21'];    // 스트레스 강도 (1=별로없음 ~ 4=극심)
+    const stressAppetite = answers['stress_appetite'] || answers['Q54'];  // 스트레스→식욕
+    const stressType = answers['stress_type'];  // Q22 삭제됐지만 혹시 남은 경우
+
+    // 스트레스 거의 없는 응답 (1점) → BC-09 30% 감소
+    if (stressLevel === 1 || stressLevel === '1') {
+      bcScores['BC-09'] = Math.round((bcScores['BC-09'] || 0) * 0.70);
+    }
+    // 스트레스 중간 (2점) → BC-09 15% 감소
+    else if (stressLevel === 2 || stressLevel === '2') {
+      bcScores['BC-09'] = Math.round((bcScores['BC-09'] || 0) * 0.85);
+    }
+
+    // 스트레스와 식욕 연관 없음 선택 → BC-09 추가 25% 감소
+    if (stressAppetite === 'no_change' || stressType === 'no_appetite') {
+      bcScores['BC-09'] = Math.round((bcScores['BC-09'] || 0) * 0.75);
+    }
+    // 스트레스→식욕 감소 응답 → BC-09 추가 20% 감소
+    if (stressAppetite === 'less') {
+      bcScores['BC-09'] = Math.round((bcScores['BC-09'] || 0) * 0.80);
+    }
   }
 
   // BC-09 과다 배정 보정: 나머지 BC 평균의 1.5배를 초과하면 캡 적용

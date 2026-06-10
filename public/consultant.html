@@ -353,7 +353,7 @@ async function loadMyResults() {
       <td style="white-space:nowrap">
         <a href="/result/${r.id}?token=${TOKEN}" target="_blank" class="btn btn-primary btn-sm"><i class="fas fa-eye"></i> 결과지</a>
         <button class="btn btn-sm" style="margin-left:4px;background:#F0FDF4;color:#065F46;border:1px solid #6EE7B7" onclick="openB2bModal('${r.id}', '${(r.user_name||'고객').replace(/'/g, '')}', '${r.bc_primary}', ${JSON.stringify(JSON.parse(r.b2b_institution_types||'[]'))})"><i class="fas fa-hospital"></i> B2B</button>
-        <button class="btn btn-kakao btn-sm" style="margin-left:4px" onclick="shareResultKakao('${r.id}', '${(r.user_name||'고객').replace(/'/g, '')}')">
+        <button class="btn btn-kakao btn-sm" style="margin-left:4px" onclick="shareResultKakao('${r.id}', '${(r.user_name||'고객').replace(/'/g, '')}', '${r.bc_primary||''}', '${(r.bc_secondary||'')}')">
           <i class="fas fa-comment"></i> 카카오톡
         </button>
       </td>
@@ -374,26 +374,83 @@ async function loadMyResults() {
 // ═════════════════════════════════════════════
 //  카카오톡 공유
 // ═════════════════════════════════════════════
-function shareResultKakao(resultId, userName) {
+const BC_FULL_NAMES = {
+  'BC-01':'A-CORE형 (복부내장 코어형)',
+  'BC-02':'A-OVAL형 (복부순환 비만형)',
+  'BC-03':'U-BACK형 (상체·등 비대형)',
+  'BC-04':'P-CORE형 (복압 코어 불균형형)',
+  'BC-05':'L-CURVE형 (하체 림프 순환형)',
+  'BC-06':'W-BALANCE형 (전신 수분 밸런스형)',
+  'BC-07':'H-SIGNAL형 (호르몬 신호 교란형)',
+  'BC-08':'M-ENGINE형 (근육 엔진 저하형)',
+  'BC-09':'R-RESET형 (수면·부신 회복형)',
+  'BC-10':'G-RESET형 (장·소화 리셋형)',
+};
+
+function shareResultKakao(resultId, userName, bcPrimary, bcSecondary) {
   const resultUrl = `${location.origin}/result/${resultId}`;
-  // 카카오 SDK 미설정 시 fallback: URL 복사
-  if (typeof Kakao !== 'undefined' && Kakao.isInitialized()) {
-    Kakao.Share.sendDefault({
-      objectType: 'feed',
-      content: {
-        title: `${userName}님의 바디코드 진단 결과`,
-        description: 'SlimMind 바디코드 체형 진단 결과지',
-        imageUrl: `${location.origin}/static/og-image.png`,
-        link: { mobileWebUrl: resultUrl, webUrl: resultUrl }
-      },
-      buttons: [{ title: '결과지 보기', link: { mobileWebUrl: resultUrl, webUrl: resultUrl } }]
-    });
-  } else {
-    // 카카오 SDK 없을 시 URL 복사 + 안내
-    navigator.clipboard.writeText(resultUrl).then(() => {
-      toast(`결과지 링크 복사 완료!\n카카오톡에 붙여넣기 하세요.`, 'success');
-    });
-  }
+  const bcName = BC_FULL_NAMES[bcPrimary] || bcPrimary || '분석완료';
+  const bcSecName = bcSecondary ? (BC_FULL_NAMES[bcSecondary] || bcSecondary) : '';
+
+  // 메시지 템플릿 생성
+  const lines = [
+    `[슬림마인드 바디코드 분석 결과] 🌿`,
+    ``,
+    `안녕하세요, ${userName}님!`,
+    `바디코드 정밀 분석이 완료되었습니다.`,
+    ``,
+    `──────────────────────`,
+    `📊 주요 체형: ${bcName}`,
+    bcSecName ? `📌 보조 체형: ${bcSecName}` : null,
+    `──────────────────────`,
+    ``,
+    `👇 전체 결과 보러가기`,
+    resultUrl,
+    ``,
+    `궁금한 점은 언제든지 문의해 주세요 😊`,
+  ].filter(l => l !== null).join('\n');
+
+  navigator.clipboard.writeText(lines).then(() => {
+    // 복사 완료 후 미리보기 모달 표시
+    showKakaoPreview(lines, resultUrl, userName, bcName);
+  }).catch(() => {
+    showKakaoPreview(lines, resultUrl, userName, bcName);
+  });
+}
+
+function showKakaoPreview(message, resultUrl, userName, bcName) {
+  // 기존 모달 제거
+  document.getElementById('kakao-preview-modal')?.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'kakao-preview-modal';
+  modal.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px`;
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:16px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);overflow:hidden">
+      <div style="background:#FEE500;padding:14px 20px;display:flex;align-items:center;gap:10px">
+        <i class="fas fa-comment" style="font-size:20px;color:#3C1E1E"></i>
+        <span style="font-weight:700;color:#3C1E1E;font-size:15px">카카오톡 메시지 복사 완료!</span>
+        <button onclick="document.getElementById('kakao-preview-modal').remove()" style="margin-left:auto;background:none;border:none;font-size:18px;cursor:pointer;color:#3C1E1E">✕</button>
+      </div>
+      <div style="padding:16px 20px">
+        <p style="font-size:12px;color:#666;margin-bottom:10px">아래 메시지가 클립보드에 복사되었습니다.<br>카카오톡에 붙여넣기(Ctrl+V / 길게 누르기) 하세요.</p>
+        <div style="background:#F8F9FA;border:1px solid #E9ECEF;border-radius:10px;padding:14px;white-space:pre-wrap;font-size:13px;line-height:1.7;color:#333;max-height:280px;overflow-y:auto">${message.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+      </div>
+      <div style="padding:12px 20px;border-top:1px solid #F0F0F0;display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="navigator.clipboard.writeText(document.getElementById('kakao-preview-modal').dataset.msg);toast('다시 복사했습니다!','success')"
+          style="background:#F0F0F0;border:none;border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer">
+          📋 다시 복사
+        </button>
+        <button onclick="document.getElementById('kakao-preview-modal').remove()"
+          style="background:#FEE500;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;color:#3C1E1E">
+          확인
+        </button>
+      </div>
+    </div>
+  `;
+  modal.dataset.msg = message;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if(e.target===modal) modal.remove(); });
 }
 
 function shareKakao() {

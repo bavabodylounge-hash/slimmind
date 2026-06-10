@@ -694,17 +694,40 @@ app.get('/result/:id', async (c) => {
     const tdee = Math.round(bmr * 1.375)
     const targetKcal = Math.max(1200, tdee - 500)
 
-    // 단백질: 제지방량 × 2.2g (유지) or muscle_kg 없으면 체중 × 1.8g
-    const protein_g = Math.round(lean_kg ? lean_kg * 2.2 : w * 1.8)
-    // 지방: 목표칼로리의 25%
-    const fat_g = Math.round((targetKcal * 0.25) / 9)
-    // 탄수화물: 나머지
+    // ── 체지방률·근육량 기반 탄단지 비율 조정 ──────────────────
+    // 체지방률 구간 분류 (bfr: Deurenberg 추정 or Navy 실측)
+    const effectiveBfr = (result as any).bfr ? Number((result as any).bfr) : bfr
+    // 근육량 부족 여부: 표준 골격근량(체중×0.36 남 / 체중×0.30 여) 대비
+    const stdMuscleRatio = isMale ? 0.36 : 0.30
+    const stdMuscleKg = w * stdMuscleRatio
+    const isLowMuscle = muscle_kg ? (muscle_kg < stdMuscleKg * 0.90) : false
+    const isHighFat = effectiveBfr ? (isMale ? effectiveBfr > 25 : effectiveBfr > 33) : false
+
+    // 단백질: 제지방량 × 2.2g (기본) → 근육 부족 시 × 2.5g으로 상향
+    const proteinMultiplier = isLowMuscle ? 2.5 : 2.2
+    const protein_g = Math.round(lean_kg ? lean_kg * proteinMultiplier : w * (isLowMuscle ? 2.0 : 1.8))
+
+    // 지방: 기본 25% → 체지방 높으면 20%로 하향
+    const fatPct = isHighFat ? 0.20 : 0.25
+    const fat_g = Math.round((targetKcal * fatPct) / 9)
+
+    // 탄수화물: 나머지 (체지방 높은 경우 자연스럽게 감소)
     const protein_kcal = protein_g * 4
     const fat_kcal = fat_g * 9
     const carb_kcal = Math.max(0, targetKcal - protein_kcal - fat_kcal)
     const carb_g = Math.round(carb_kcal / 4)
 
     const total = protein_kcal + fat_kcal + carb_kcal
+
+    // 조정 근거 메모 (결과지 표시용)
+    const macroAdjustNote = isHighFat && isLowMuscle
+      ? '체지방↑·근육↓: 저탄수+고단백 처방'
+      : isHighFat
+      ? '체지방 과다: 지방 감소 + 탄수 제한 처방'
+      : isLowMuscle
+      ? '근육 부족: 고단백 처방으로 근손실 방지'
+      : '표준 체성분: 균형 탄단지 처방'
+
     macroRatio = {
       protein_g, fat_g, carb_g,
       protein_pct: Math.round((protein_kcal / total) * 100),
@@ -712,7 +735,8 @@ app.get('/result/:id', async (c) => {
       carb_pct: Math.round((carb_kcal / total) * 100),
       total_kcal: targetKcal,
       bmr,
-    }
+      ...(macroAdjustNote ? { adjust_note: macroAdjustNote } : {}),
+    } as any
   }
 
   // 6. 감량 목표 계산
