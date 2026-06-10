@@ -2647,11 +2647,11 @@ function renderCh48() {
   const bcCode = (res.bc_primary || 'BC-01').toUpperCase();
 
   // ── 솔루션 우선순위 로드맵 ──
-  renderRoadmap(bcCode, res);
+  try { renderRoadmap(bcCode, res); } catch(e) { console.warn('renderRoadmap error:', e); }
   // ── 납품처 솔루션 카드 ──
-  renderSolutionCards(bcCode);
+  try { renderSolutionCards(bcCode); } catch(e) { console.warn('renderSolutionCards error:', e); }
   // ── 섹션 L 안전 배너 ──
-  renderSafetyBanner(res);
+  try { renderSafetyBanner(res); } catch(e) { console.warn('renderSafetyBanner error:', e); }
 }
 
 function renderRoadmap(bcCode, res) {
@@ -2771,30 +2771,37 @@ function renderSolutionCards(bcCode) {
     `<button class="sc-tab${i === 0 ? ' active' : ''}" onclick="switchSolTab(this,'sol-${t.id}')">${t.label}</button>`
   ).join('');
 
+  // 배열 또는 문자열 모두 처리하는 헬퍼
+  const fmtVal = (v) => {
+    if (!v) return '';
+    if (Array.isArray(v)) return v.map(item => `<span style="display:block;padding:2px 0">• ${esc(String(item))}</span>`).join('');
+    return esc(String(v));
+  };
+
   const panelsHtml = tabs.map((t, i) => {
     const d = t.data;
     let rows = '';
     if (t.id === 'clinic') {
       rows = `
         <div class="sc-row">
-          <div class="sc-item"><div class="sc-item-label">핵심 처방</div><div class="sc-item-content">${esc(d.prescription || '')}</div></div>
-          <div class="sc-item"><div class="sc-item-label">식이 가이드</div><div class="sc-item-content">${esc(d.diet || '')}</div></div>
+          <div class="sc-item"><div class="sc-item-label">핵심 처방</div><div class="sc-item-content">${fmtVal(d.prescription)}</div></div>
+          <div class="sc-item"><div class="sc-item-label">식이 가이드</div><div class="sc-item-content">${fmtVal(d.diet)}</div></div>
         </div>
-        <div class="sc-item" style="margin-top:8px"><div class="sc-item-label">주의사항</div><div class="sc-item-content">${esc(d.caution || '')}</div></div>`;
+        <div class="sc-item" style="margin-top:8px"><div class="sc-item-label">주의사항</div><div class="sc-item-content">${fmtVal(d.caution)}</div></div>`;
     } else if (t.id === 'fitness') {
       rows = `
         <div class="sc-row">
-          <div class="sc-item"><div class="sc-item-label">트레이너 포인트</div><div class="sc-item-content">${esc(d.trainer_point || '')}</div></div>
-          <div class="sc-item"><div class="sc-item-label">추천 운동</div><div class="sc-item-content">${(d.recommend||[]).slice(0,3).map(r=>esc(r)).join(' · ')}</div></div>
+          <div class="sc-item"><div class="sc-item-label">트레이너 포인트</div><div class="sc-item-content">${fmtVal(d.trainer_point)}</div></div>
+          <div class="sc-item"><div class="sc-item-label">추천 운동</div><div class="sc-item-content">${fmtVal(d.recommend)}</div></div>
         </div>
-        <div class="sc-item" style="margin-top:8px"><div class="sc-item-label">회원 메시지</div><div class="sc-item-content">${esc(d.member_msg || '')}</div></div>`;
+        <div class="sc-item" style="margin-top:8px"><div class="sc-item-label">회원 메시지</div><div class="sc-item-content">${fmtVal(d.member_msg)}</div></div>`;
     } else if (t.id === 'hanbang') {
       rows = `
         <div class="sc-row">
-          <div class="sc-item"><div class="sc-item-label">오행 분류</div><div class="sc-item-content">${esc(d.ohaeng || '')}</div></div>
-          <div class="sc-item"><div class="sc-item-label">장부 포인트</div><div class="sc-item-content">${esc(d.jangbu || '')}</div></div>
+          <div class="sc-item"><div class="sc-item-label">오행 분류</div><div class="sc-item-content">${fmtVal(d.ohaeng)}</div></div>
+          <div class="sc-item"><div class="sc-item-label">장부 포인트</div><div class="sc-item-content">${fmtVal(d.jangbu)}</div></div>
         </div>
-        <div class="sc-item" style="margin-top:8px"><div class="sc-item-label">생활 관리</div><div class="sc-item-content">${esc(d.lifestyle || '')}</div></div>`;
+        <div class="sc-item" style="margin-top:8px"><div class="sc-item-label">생활 관리</div><div class="sc-item-content">${fmtVal(d.lifestyle)}</div></div>`;
     }
     return `<div class="sc-panel${i === 0 ? ' active' : ''}" id="sol-${t.id}">
       <div class="sc-card">
@@ -5006,17 +5013,11 @@ function init(){
     return;
   }
   applyBcColorTheme();
-  renderCover();
-  renderCh1();
-  renderCh2();
-  renderCh3();
-  renderCh4();
-  renderCh45();
-  renderCh48();
-  renderCh5();
-  renderCh6();
-  renderCh7();
-  renderCh75();
+  const renders = [renderCover, renderCh1, renderCh2, renderCh3, renderCh4,
+                   renderCh45, renderCh48, renderCh5, renderCh6, renderCh7, renderCh75];
+  renders.forEach(fn => {
+    try { fn(); } catch(e) { console.warn(`[init] ${fn.name} failed:`, e.message); }
+  });
   initChapters();
 }
 
