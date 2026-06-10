@@ -107,21 +107,43 @@ body{
   .top-bar,.progress-bar-wrap,.chapter-nav,.print-btn{display:none!important}
   .chapter{
     display:flex !important;
-    min-height:0;
-    height:297mm;
-    padding:15mm 20mm;
+    min-height:297mm;
+    /* height 고정 제거 — 내용이 넘치면 다음 페이지로 자연스럽게 이어짐 */
+    padding:12mm 18mm;
     page-break-after:always;
+    page-break-inside:avoid;
     box-shadow:none;
     border-radius:0;
     margin:0;
-    overflow:hidden;
+    overflow:visible;       /* hidden → visible: 내용 짤림 방지 */
   }
   /* 커버는 풀페이지 */
   .chapter[data-ch="0"]{
     padding:0 !important;
-    height:297mm;
+    min-height:297mm;
+    height:297mm;            /* 커버만 고정 높이 유지 */
+    overflow:hidden;         /* 커버는 고정 레이아웃이므로 hidden 유지 */
   }
   .chapter:last-child{page-break-after:avoid}
+
+  /* 카드·섹션 안에서 내용 짤림 방지 */
+  .presc-card, .bc-display, .hook-box, .scene-box,
+  .timeline-wrap, .upsell-box, #p1BodySilhouette,
+  #p1BodyGoal, #p1MacroRatio, .supplement-grid {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* 테이블 행 분리 방지 */
+  .meal-table tr { page-break-inside: avoid; break-inside: avoid; }
+
+  /* 차트 캔버스: 인쇄 시 크기 고정 */
+  canvas { max-width: 100% !important; }
+
+  /* 모바일 미디어쿼리 오버라이드: 인쇄는 항상 데스크탑 레이아웃 */
+  #ch0 .cover-main-row { flex-direction: row !important; }
+  #ch0 .cover-body-col { display: flex !important; }
+  #coverBodyMap, #coverBodyMapLegend { display: block !important; }
 }
 @page{size:A4;margin:0;}
 
@@ -618,6 +640,48 @@ body{
 /* 처방 카드 헤더 — teal 변형 */
 .pc-head.teal{background:var(--sm-teal-light)}
 .pc-title.teal-t{color:var(--sm-teal-dark)}
+
+/* ═══════════════════════════════════════════
+   모바일 반응형 (max-width: 600px)
+═══════════════════════════════════════════ */
+@media (max-width: 600px) {
+  /* 챕터 패딩 축소 */
+  .chapter { padding: 24px 18px; min-height: auto; }
+
+  /* ── 커버 페이지: 모바일 세로 레이아웃 ── */
+  #ch0 .cover-main-row {
+    flex-direction: column !important;
+    gap: 16px !important;
+    padding: 20px 0 16px !important;
+    align-items: center !important;
+  }
+  /* 커버 텍스트 영역: 풀 너비 */
+  #ch0 .cover-text-col {
+    width: 100% !important;
+    flex: unset !important;
+    min-width: 0 !important;
+  }
+  /* SVG 바디맵: 모바일에서 숨김 (텍스트 공간 확보) */
+  #coverBodyMap, #coverBodyMapLegend, #ch0 .cover-body-col {
+    display: none !important;
+  }
+  /* BC 코드 폰트 축소 */
+  #coverBcCode { font-size: 52px !important; }
+  #coverBcName { font-size: 14px !important; margin-bottom: 16px !important; }
+  /* 후크 문장 폰트 축소 */
+  #coverHook { font-size: 13px !important; line-height: 1.7 !important; }
+  /* 커버 하단 버튼 패딩 축소 */
+  #ch0 > div[style*="position:absolute"] { padding: 0 20px 28px !important; }
+
+  /* ── 공통: 그리드 2→1열 ── */
+  .meal-table th, .meal-table td { font-size: 10px; padding: 4px 3px; }
+
+  /* 탄단지 카드 모바일 */
+  #p5PersonalMacro .pc-body > div[style*="grid-template-columns:repeat(3"] {
+    grid-template-columns: 1fr !important;
+    gap: 6px !important;
+  }
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="/bc-definitions.js"></script>
@@ -692,10 +756,10 @@ body{
       </div>
 
       <!-- ② 중앙 메인 콘텐츠 — 좌우 2단 레이아웃 -->
-      <div style="flex:1;display:flex;gap:32px;align-items:center;padding:32px 0 28px">
+      <div class="cover-main-row" style="flex:1;display:flex;gap:32px;align-items:center;padding:32px 0 28px">
 
         <!-- ── 좌측: 텍스트 영역 ── -->
-        <div style="flex:1;display:flex;flex-direction:column;justify-content:center;min-width:0">
+        <div class="cover-text-col" style="flex:1;display:flex;flex-direction:column;justify-content:center;min-width:0">
 
           <!-- 바디코드 레이블 -->
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
@@ -731,7 +795,7 @@ body{
         </div>
 
         <!-- ── 우측: 파라메트릭 SVG 바디맵 ── -->
-        <div style="flex-shrink:0;width:200px;display:flex;flex-direction:column;align-items:center;gap:10px">
+        <div class="cover-body-col" style="flex-shrink:0;width:200px;display:flex;flex-direction:column;align-items:center;gap:10px">
           <!-- SVG 바디맵 컨테이너 -->
           <div id="coverBodyMap" style="width:200px;height:380px;position:relative"></div>
           <!-- 범례 레이블 -->
@@ -942,14 +1006,15 @@ body{
 
       <div class="divider"></div>
 
-      <!-- 수치 인포그래픽 (BMI 바 + 체지방 도넛 + 근육량 게이지) -->
-      <div id="p1Infographic" style="display:none;margin:12px 0"></div>
+      <!-- 수치 인포그래픽 → 비포/애프터 실루엣 시각화 -->
+      <div id="p1BodySilhouette" style="display:none;margin:12px 0"></div>
 
-      <!-- 신체 수치 카드 -->
-      <div id="p1BodyStats" style="display:none;background:#F8FAFC;border-radius:14px;padding:14px 16px;margin:12px 0;border:1px solid #E2E8F0">
-        <div style="font-size:11px;font-weight:700;color:#64748B;letter-spacing:.08em;margin-bottom:10px">📊 측정 수치 요약</div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px" id="p1StatsGrid"></div>
+      <!-- 신체 수치 카드 (hidden — 데이터 보존용, UI 표시 안 함) -->
+      <div id="p1BodyStats" style="display:none">
+        <div id="p1StatsGrid"></div>
       </div>
+      <!-- p1Infographic도 숨김 처리 (하위호환) -->
+      <div id="p1Infographic" style="display:none"></div>
 
       <!-- 공감 체크리스트 -->
       <div class="section-label">이 중 해당하는 것 확인해보세요</div>
@@ -2234,176 +2299,249 @@ function renderCh1(){
   const hookArea = bc.fat_area || '이 부위';
   hookBody.textContent = hookArea + '에 지방이 쌓이는 진짜 이유. 지금부터 당신의 몸 이야기가 시작됩니다.';
 
-  // ── 신체 수치 카드 (역계산 포함) ──────────────────────────────
-  const statsWrap = document.getElementById('p1BodyStats');
-  const statsGrid = document.getElementById('p1StatsGrid');
+  // ── 비포/애프터 실루엣 시각화 ─────────────────────────────────
+  // (기존 수치 그리드 + 인포그래픽 대체)
+  const silhouetteWrap = document.getElementById('p1BodySilhouette');
 
-  // 실측/추정 통합: 실측값 우선, 없으면 estimated_* 사용
-  const displayBfr    = res.bfr    ?? res.estimated_bfr;
-  const displayFatKg  = res.fat_kg ?? res.estimated_fat_kg;
-  const displayMusKg  = res.muscle_kg ?? res.estimated_muscle_kg;
-  const isEstimated   = res.body_data_source === 'estimated';
+  // 데이터 수집
+  const displayBfr   = res.bfr    ?? res.estimated_bfr;
+  const displayFatKg = res.fat_kg ?? res.estimated_fat_kg;
+  const displayMusKg = res.muscle_kg ?? res.estimated_muscle_kg;
+  const isEstimated  = res.body_data_source === 'estimated';
 
-  // 수치 라벨에 "(추정)" 표시
-  const est = isEstimated ? '<sup style="font-size:8px;color:#F59E0B;vertical-align:super">추정</sup>' : '';
+  const curW   = res.weight        ? Number(res.weight)        : null;
+  const goalW  = res.target_weight ? Number(res.target_weight) : null;
+  const curH   = res.height        ? Number(res.height)        : null;
+  const curBfr = displayBfr        ? Number(displayBfr)        : null;
+  const curMus = displayMusKg      ? Number(displayMusKg)      : null;
+  const curFat = displayFatKg      ? Number(displayFatKg)      : null;
 
-  const statItems = [
-    { label:'현재 체중',  val: res.weight      ? res.weight + 'kg'                        : null, tag:'' },
-    { label:'목표 체중',  val: res.target_weight ? res.target_weight + 'kg'                : null, tag:'' },
-    { label:'키',         val: res.height       ? res.height + 'cm'                        : null, tag:'' },
-    { label:'BMI',        val: res.bmi          ? Number(res.bmi).toFixed(1)               : null, tag:'' },
-    { label:'체지방률',   val: displayBfr       ? Number(displayBfr).toFixed(1) + '%'      : null, tag: isEstimated ? est : '' },
-    { label:'체지방량',   val: displayFatKg     ? Number(displayFatKg).toFixed(1) + 'kg'   : null, tag: isEstimated ? est : '' },
-    { label:'근육량',     val: displayMusKg     ? Number(displayMusKg).toFixed(1) + 'kg'   : null, tag: isEstimated ? est : '' },
-    { label:'제지방량',   val: res.estimated_lean_kg ? Number(res.estimated_lean_kg).toFixed(1) + 'kg' : null, tag: est },
-    { label:'현재 사이즈',val: (res.top_size||res.bottom_size) ? ((res.top_size||'-')+' / '+(res.bottom_size||'-')) : null, tag:'' },
-    { label:'목표 사이즈',val: (res.target_top_size||res.target_bottom_size) ? ((res.target_top_size||'-')+' / '+(res.target_bottom_size||'-')) : null, tag:'' },
-  ].filter(s => s.val);
+  if(curW && curH){
+    silhouetteWrap.style.display = 'block';
 
-  if(statItems.length > 0){
-    statsWrap.style.display = 'block';
+    const isMaleDisp = (res.gender||'').toLowerCase().includes('male') || res.gender === '남성' || res.gender === '남';
 
-    // 추정값 사용 시 안내 문구
-    const estNote = isEstimated
-      ? `<div style="font-size:10px;color:#F59E0B;margin-bottom:8px;background:#FFFBEB;padding:6px 10px;border-radius:8px;border:1px solid #FDE68A">
-           <sup>추정</sup> 표시 수치는 Deurenberg 공식으로 산출된 추정값입니다.
-           인바디 실측 시 자동으로 갱신됩니다.
+    // ─────────────────────────────────────────────
+    // SVG 파라메트릭 실루엣 생성 함수
+    // params: { w(체중kg), h(키cm), bfr(%), muscleKg, label, isCurrent }
+    // ─────────────────────────────────────────────
+    function buildBodySVG({ w, h, bfr, muscleKg, label, isCurrent, isMale }) {
+      // BMI 기반 실루엣 파라미터 계산
+      const bmi = w / ((h / 100) ** 2);
+      // 어깨너비: BMI에 따라 확장
+      const shoulderW = Math.min(62, Math.max(38, 38 + (bmi - 18) * 1.6));
+      // 허리너비: 체지방률 기반 (없으면 BMI로 추정)
+      const fatRatio  = bfr ? bfr / 100 : Math.max(0.15, (bmi - 16) * 0.022);
+      const waistW    = Math.min(60, Math.max(26, 26 + fatRatio * 80));
+      // 엉덩이: 여성은 넓게
+      const hipMult   = isMale ? 1.0 : 1.12;
+      const hipW      = Math.min(68, Math.max(36, (waistW + shoulderW) / 2 * hipMult));
+      // 허벅지: 체지방 비례
+      const thighW    = Math.min(32, Math.max(16, 16 + fatRatio * 28));
+      // 목표 체형은 체지방 감소 반영
+      const accentColor = isCurrent ? '#F87171' : '#34D399';
+      const fillColor   = isCurrent ? '#FFF1F1' : '#F0FDF4';
+      const strokeColor = isCurrent ? '#EF4444' : '#10B981';
+      const headColor   = isCurrent ? '#FDDCDC' : '#D1FAE5';
+
+      // 키 비례 스케일 (160cm 기준 = 160px 높이)
+      const svgH = 180;
+      const scale = svgH / 200;  // 전체 인체 200단위 기준
+
+      // SVG 좌표 (cx=50 중심)
+      const cx = 50;
+      // 머리: 반지름 12
+      const headR  = 11 * scale;
+      const headCY = 16 * scale;
+      // 목
+      const neckW  = 9 * scale;
+      const neckT  = 24 * scale;
+      const neckB  = 32 * scale;
+      // 어깨-가슴-허리-엉덩이 몸통 (하나의 경로)
+      const shW2   = (shoulderW / 2) * scale;  // 어깨 반너비
+      const waW2   = (waistW   / 2) * scale;
+      const hipW2  = (hipW     / 2) * scale;
+      const bodyT  = 32 * scale;   // 어깨 상단
+      const chestY = 58 * scale;   // 가슴 수직 중간
+      const waistY = 78 * scale;   // 허리
+      const hipY   = 100 * scale;  // 엉덩이
+      // 다리
+      const thW2   = (thighW   / 2) * scale;
+      const calfW2 = thW2 * 0.65;
+      const legT   = 100 * scale;
+      const kneeY  = 138 * scale;
+      const ankleY = 170 * scale;
+      const footY  = 176 * scale;
+      // 팔
+      const armTX  = cx + shW2 + 1 * scale;
+      const armBX  = cx + shW2 - 2 * scale;
+      const armW2  = 6 * scale;
+
+      const bodyPath = `
+        M ${cx - shW2} ${bodyT}
+        C ${cx - shW2 - 4*scale} ${chestY}, ${cx - waW2 - 2*scale} ${chestY}, ${cx - waW2} ${waistY}
+        C ${cx - waW2 - 2*scale} ${waistY + 10*scale}, ${cx - hipW2} ${hipY - 6*scale}, ${cx - hipW2} ${hipY}
+        L ${cx + hipW2} ${hipY}
+        C ${cx + hipW2} ${hipY - 6*scale}, ${cx + waW2 + 2*scale} ${waistY + 10*scale}, ${cx + waW2} ${waistY}
+        C ${cx + waW2 + 2*scale} ${chestY}, ${cx + shW2 + 4*scale} ${chestY}, ${cx + shW2} ${bodyT}
+        Z
+      `;
+
+      const leftLeg = `
+        M ${cx - hipW2 + 2*scale} ${legT}
+        C ${cx - hipW2 + 2*scale} ${legT + 10*scale}, ${cx - thW2 - 1*scale} ${kneeY - 10*scale}, ${cx - thW2 - 1*scale} ${kneeY}
+        C ${cx - thW2 - 1*scale} ${kneeY + 8*scale}, ${cx - calfW2} ${kneeY + 20*scale}, ${cx - calfW2} ${ankleY}
+        L ${cx - 2*scale} ${footY}
+        L ${cx - calfW2 + 4*scale} ${ankleY}
+        C ${cx - calfW2 + 4*scale} ${kneeY + 20*scale}, ${cx - thW2 + 5*scale} ${kneeY + 8*scale}, ${cx - thW2 + 5*scale} ${kneeY}
+        C ${cx - thW2 + 5*scale} ${kneeY - 10*scale}, ${cx - hipW2 + hipW2*0.6 - thW2 + 5*scale} ${legT + 10*scale}, ${cx - hipW2*0.5} ${legT}
+        Z
+      `;
+      const rightLeg = `
+        M ${cx + hipW2*0.5} ${legT}
+        C ${cx + thW2 - 5*scale} ${legT + 10*scale}, ${cx + thW2 - 5*scale} ${kneeY - 10*scale}, ${cx + thW2 - 5*scale} ${kneeY}
+        C ${cx + thW2 - 5*scale} ${kneeY + 8*scale}, ${cx + calfW2 - 4*scale} ${kneeY + 20*scale}, ${cx + calfW2 - 4*scale} ${ankleY}
+        L ${cx + 2*scale} ${footY}
+        L ${cx + calfW2} ${ankleY}
+        C ${cx + calfW2} ${kneeY + 20*scale}, ${cx + thW2 + 1*scale} ${kneeY + 8*scale}, ${cx + thW2 + 1*scale} ${kneeY}
+        C ${cx + thW2 + 1*scale} ${kneeY - 10*scale}, ${cx + hipW2 - 2*scale} ${legT + 10*scale}, ${cx + hipW2 - 2*scale} ${legT}
+        Z
+      `;
+      // 팔 (단순 타원)
+      const armPath = (side) => {
+        const sx = side === 'L' ? cx - shW2 - 2*scale : cx + shW2 + 2*scale;
+        const ex = side === 'L' ? cx - shW2 + 4*scale : cx + shW2 - 4*scale;
+        return `
+          <ellipse cx="${side==='L' ? sx-armW2 : sx+armW2}" cy="${bodyT + 22*scale}"
+                   rx="${armW2*0.75}" ry="${14*scale}"
+                   fill="${fillColor}" stroke="${strokeColor}" stroke-width="1.2"
+                   transform="rotate(${side==='L'?'-12':'12'}, ${side==='L'?sx-armW2:sx+armW2}, ${bodyT+22*scale})"/>
+        `;
+      };
+
+      // 사이즈 라벨 (현재 or 목표)
+      const sizeLabel = isCurrent
+        ? `${w}kg · BF ${bfr ? bfr.toFixed(1) : '—'}%`
+        : `목표 ${w}kg · 예상 BF ${bfr ? bfr.toFixed(1) : '—'}%`;
+      const musLabel  = muscleKg ? `근육 ${muscleKg.toFixed(1)}kg` : '';
+
+      return `
+        <svg viewBox="0 0 100 ${svgH}" width="100%" style="max-width:120px;display:block;margin:0 auto">
+          <defs>
+            <filter id="sf${isCurrent?'c':'g'}" x="-10%" y="-10%" width="120%" height="120%">
+              <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="${strokeColor}" flood-opacity="0.18"/>
+            </filter>
+          </defs>
+          <!-- 팔 -->
+          ${armPath('L')}${armPath('R')}
+          <!-- 목 -->
+          <path d="M ${cx-neckW/2} ${neckT} L ${cx+neckW/2} ${neckT} L ${cx+neckW/2*1.1} ${neckB} L ${cx-neckW/2*1.1} ${neckB} Z"
+                fill="${fillColor}" stroke="${strokeColor}" stroke-width="1.2"/>
+          <!-- 몸통 -->
+          <path d="${bodyPath}" fill="${fillColor}" stroke="${strokeColor}" stroke-width="1.6" filter="url(#sf${isCurrent?'c':'g'})"/>
+          <!-- 다리 -->
+          <path d="${leftLeg}"  fill="${fillColor}" stroke="${strokeColor}" stroke-width="1.2"/>
+          <path d="${rightLeg}" fill="${fillColor}" stroke="${strokeColor}" stroke-width="1.2"/>
+          <!-- 머리 -->
+          <circle cx="${cx}" cy="${headCY}" r="${headR}"
+                  fill="${headColor}" stroke="${strokeColor}" stroke-width="1.6"/>
+          <!-- 얼굴 표정 -->
+          <circle cx="${cx-3*scale}" cy="${headCY-1*scale}" r="${1.5*scale}" fill="${strokeColor}" opacity="0.7"/>
+          <circle cx="${cx+3*scale}" cy="${headCY-1*scale}" r="${1.5*scale}" fill="${strokeColor}" opacity="0.7"/>
+          ${isCurrent
+            ? `<path d="M ${cx-4*scale} ${headCY+3.5*scale} Q ${cx} ${headCY+1.5*scale} ${cx+4*scale} ${headCY+3.5*scale}"
+                     fill="none" stroke="${strokeColor}" stroke-width="1.2" stroke-linecap="round" opacity="0.7"/>`
+            : `<path d="M ${cx-4*scale} ${headCY+2*scale} Q ${cx} ${headCY+5*scale} ${cx+4*scale} ${headCY+2*scale}"
+                     fill="none" stroke="${strokeColor}" stroke-width="1.2" stroke-linecap="round" opacity="0.7"/>`
+          }
+          <!-- 라벨 텍스트 -->
+          <text x="${cx}" y="${svgH - 3}" text-anchor="middle"
+                font-size="7" fill="${strokeColor}" font-weight="700" font-family="sans-serif">
+            ${w}kg
+          </text>
+        </svg>
+        <div style="margin-top:4px;font-size:10px;color:${strokeColor};font-weight:600;text-align:center;line-height:1.5">
+          ${sizeLabel}<br>
+          ${musLabel ? `<span style="color:#64748B;font-weight:400">${musLabel}</span>` : ''}
+        </div>
+      `;
+    }
+
+    // ── 목표 체지방률 추정 ────────────────────────────────────────
+    // 목표 체중 기준 이상적 BFR: 현재 BFR × 0.72 (약 28% 개선 목표)
+    const goalBfr = curBfr ? Math.max(isMaleDisp ? 10 : 18, curBfr * 0.72) : null;
+    const goalFat = (goalW && goalBfr) ? parseFloat((goalW * goalBfr / 100).toFixed(1)) : null;
+    // 목표 근육량: 현재 × 0.97 (소량 감소 허용) or 체중 기준 표준
+    const goalMus = goalW ? parseFloat((goalW * (isMaleDisp ? 0.38 : 0.32)).toFixed(1)) : null;
+
+    const lossKg = (curW && goalW && goalW < curW) ? (curW - goalW).toFixed(1) : null;
+
+    const svgBefore = buildBodySVG({
+      w: curW, h: curH, bfr: curBfr,
+      muscleKg: curMus, isCurrent: true, isMale: isMaleDisp
+    });
+    const svgAfter = goalW ? buildBodySVG({
+      w: goalW, h: curH, bfr: goalBfr,
+      muscleKg: goalMus, isCurrent: false, isMale: isMaleDisp
+    }) : null;
+
+    const estimBadge = isEstimated
+      ? `<div style="font-size:10px;color:#F59E0B;background:#FFFBEB;padding:5px 10px;border-radius:8px;border:1px solid #FDE68A;margin-bottom:10px">
+           ⚠️ 체지방률은 Deurenberg 공식 추정값 · 인바디 실측 시 자동 갱신
          </div>`
       : '';
 
-    statsGrid.parentElement.insertAdjacentHTML('afterbegin', estNote);
-    statsGrid.innerHTML = statItems.map(s =>
-      `<div style="text-align:center;background:#fff;border-radius:10px;padding:10px 6px;border:1px solid #E2E8F0">
-        <div style="font-size:10px;color:#94A3B8;margin-bottom:4px">${esc(s.label)}</div>
-        <div style="font-size:16px;font-weight:700;color:#0B2545">${esc(s.val)}${s.tag}</div>
-      </div>`
-    ).join('');
-  }
+    const afterPanel = svgAfter
+      ? `<div style="flex:1;min-width:0;text-align:center">
+           <div style="font-size:11px;font-weight:700;color:#10B981;letter-spacing:.06em;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:5px">
+             <span style="background:#D1FAE5;color:#065F46;padding:2px 8px;border-radius:10px;font-size:10px">✨ 목표 체형</span>
+           </div>
+           ${svgAfter}
+         </div>`
+      : `<div style="flex:1;min-width:0;display:flex;align-items:center;justify-content:center">
+           <div style="text-align:center;color:#94A3B8;font-size:12px;line-height:1.8;padding:20px">
+             목표 체중을<br>입력하면<br>이상 체형을<br>확인할 수 있어요
+           </div>
+         </div>`;
 
-  // ── 수치 인포그래픽 ──────────────────────────────────────────
-  const infographicWrap = document.getElementById('p1Infographic');
-  const infoBmi    = res.bmi;
-  const infoBfr    = res.bfr ?? res.estimated_bfr;
-  const infoMusKg  = res.muscle_kg ?? res.estimated_muscle_kg;
-  const infoFatKg  = res.fat_kg ?? res.estimated_fat_kg;
-  const infoLeanKg = res.estimated_lean_kg;
-  const infoW      = res.weight;
-
-  if(infoBmi || infoBfr || infoMusKg){
-    infographicWrap.style.display = 'block';
-    let iHtml = `<div style="font-size:11px;font-weight:700;color:#64748B;letter-spacing:.08em;margin-bottom:10px">📈 신체 지표 인포그래픽</div>`;
-
-    // ① BMI 스펙트럼 바
-    if(infoBmi){
-      const bmi = Number(infoBmi);
-      // BMI 구간: 저체중<18.5, 정상18.5~24.9, 과체중25~29.9, 비만≥30
-      const bmiSegments = [
-        { label:'저체중', max:18.5, color:'#93C5FD' },
-        { label:'정상',   max:24.9, color:'#34D399' },
-        { label:'과체중', max:29.9, color:'#FCD34D' },
-        { label:'비만',   max:40,   color:'#F87171' },
-      ];
-      // 바 내 위치: 15~40 범위로 정규화
-      const bmiMin=15, bmiMax=40;
-      const bmiPct = Math.max(0, Math.min(100, ((bmi - bmiMin) / (bmiMax - bmiMin)) * 100));
-      const seg = bmiSegments.find(s => bmi < s.max) || bmiSegments[3];
-
-      iHtml += `<div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:12px 14px;margin-bottom:10px">
-        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
-          <span style="font-size:12px;font-weight:700;color:#374151">BMI</span>
-          <span style="font-size:20px;font-weight:800;color:${seg.color === '#34D399' ? '#059669' : '#DC2626'}">${bmi.toFixed(1)}
-            <span style="font-size:11px;font-weight:600;color:#9CA3AF"> · ${esc(seg.label)}</span>
-          </span>
+    silhouetteWrap.innerHTML = `
+      <div style="background:linear-gradient(135deg,#F0FDF4 0%,#EFF6FF 100%);border-radius:16px;padding:16px 18px;border:1px solid #D1FAE5">
+        <div style="font-size:12px;font-weight:700;color:#0B2545;letter-spacing:.06em;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
+          <span>🪞 나의 체형 변화 시뮬레이션</span>
+          ${lossKg ? `<span style="font-size:11px;background:#0B2545;color:#fff;padding:3px 10px;border-radius:10px;font-weight:600">−${lossKg}kg 목표</span>` : ''}
         </div>
-        <div style="position:relative;height:12px;border-radius:6px;overflow:hidden;display:flex">
-          <div style="width:${(3.5/(bmiMax-bmiMin))*100}%;background:#93C5FD"></div>
-          <div style="width:${(6.4/(bmiMax-bmiMin))*100}%;background:#34D399"></div>
-          <div style="width:${(5/(bmiMax-bmiMin))*100}%;background:#FCD34D"></div>
-          <div style="flex:1;background:#F87171"></div>
+        ${estimBadge}
+        <div style="display:flex;gap:12px;align-items:flex-start">
+          <!-- 화살표 변환 아이콘 (중앙) -->
+          <div style="flex:1;min-width:0;text-align:center">
+            <div style="font-size:11px;font-weight:700;color:#EF4444;letter-spacing:.06em;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:5px">
+              <span style="background:#FEE2E2;color:#991B1B;padding:2px 8px;border-radius:10px;font-size:10px">📍 현재 체형</span>
+            </div>
+            ${svgBefore}
+          </div>
+          <div style="flex:0 0 28px;display:flex;align-items:center;justify-content:center;padding-top:60px">
+            <svg width="28" height="28" viewBox="0 0 28 28">
+              <path d="M4 14 L20 14 M14 8 L20 14 L14 20" stroke="#0B2545" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            </svg>
+          </div>
+          ${afterPanel}
         </div>
-        <div style="position:relative;margin-top:2px">
-          <div style="position:absolute;left:${bmiPct}%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:7px solid #0B2545"></div>
-        </div>
-        <div style="display:flex;justify-content:space-between;font-size:9px;color:#94A3B8;margin-top:10px">
-          <span>15</span><span style="color:#93C5FD">저체중 ↑18.5</span><span style="color:#34D399">정상 ↑25</span><span style="color:#FCD34D">과체중 ↑30</span><span style="color:#F87171">비만</span><span>40+</span>
-        </div>
+        ${lossKg ? `
+        <div style="margin-top:12px;padding-top:10px;border-top:1px solid #D1FAE5;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;text-align:center">
+          <div>
+            <div style="font-size:9px;color:#94A3B8;margin-bottom:2px">목표 감량</div>
+            <div style="font-size:15px;font-weight:800;color:#EF4444">${lossKg}<span style="font-size:10px">kg</span></div>
+          </div>
+          <div>
+            <div style="font-size:9px;color:#94A3B8;margin-bottom:2px">예상 체지방↓</div>
+            <div style="font-size:15px;font-weight:800;color:#F59E0B">${curBfr && goalBfr ? (curBfr - goalBfr).toFixed(1) + '%' : '—'}</div>
+          </div>
+          <div>
+            <div style="font-size:9px;color:#94A3B8;margin-bottom:2px">목표 근육</div>
+            <div style="font-size:15px;font-weight:800;color:#10B981">${goalMus ? goalMus + 'kg' : '—'}</div>
+          </div>
+        </div>` : ''}
       </div>`;
-    }
-
-    // ② 체지방 도넛 (SVG) + 근육량 게이지 — 2열 배치
-    if(infoBfr || infoMusKg){
-      iHtml += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">`;
-
-      // 체지방 도넛
-      if(infoBfr){
-        const bfr = Number(infoBfr);
-        const fatPct = Math.min(70, Math.max(3, bfr));
-        const leanPct = 100 - fatPct;
-        // SVG 도넛: r=36, 둘레=2πr≈226
-        const circ = 2 * Math.PI * 36;
-        const fatDash  = (fatPct  / 100) * circ;
-        const leanDash = (leanPct / 100) * circ;
-        const isEstBfr = res.estimated_bfr !== null && res.estimated_bfr !== undefined;
-
-        iHtml += `<div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:12px 10px;text-align:center">
-          <div style="font-size:10px;font-weight:700;color:#64748B;margin-bottom:8px">
-            체지방 구성${isEstBfr ? ' <span style="color:#F59E0B;font-size:9px">추정</span>' : ''}
-          </div>
-          <svg width="90" height="90" viewBox="0 0 90 90" style="transform:rotate(-90deg)">
-            <circle cx="45" cy="45" r="36" fill="none" stroke="#F1F5F9" stroke-width="12"/>
-            <circle cx="45" cy="45" r="36" fill="none" stroke="#F87171" stroke-width="12"
-              stroke-dasharray="${fatDash.toFixed(1)} ${(circ-fatDash).toFixed(1)}"
-              stroke-linecap="round"/>
-            <circle cx="45" cy="45" r="36" fill="none" stroke="#34D399" stroke-width="12"
-              stroke-dasharray="${leanDash.toFixed(1)} ${(circ-leanDash).toFixed(1)}"
-              stroke-dashoffset="-${fatDash.toFixed(1)}"
-              stroke-linecap="round"/>
-          </svg>
-          <div style="margin-top:-74px;font-size:18px;font-weight:800;color:#0B2545;line-height:1">${bfr.toFixed(1)}<span style="font-size:11px">%</span></div>
-          <div style="margin-top:58px;display:flex;justify-content:center;gap:10px;font-size:10px">
-            <span><span style="display:inline-block;width:8px;height:8px;background:#F87171;border-radius:50%;margin-right:3px"></span>지방 ${bfr.toFixed(1)}%</span>
-            <span><span style="display:inline-block;width:8px;height:8px;background:#34D399;border-radius:50%;margin-right:3px"></span>제지방 ${leanPct.toFixed(1)}%</span>
-          </div>
-        </div>`;
-      }
-
-      // 근육량 게이지
-      if(infoMusKg && infoW){
-        const musKg = Number(infoMusKg);
-        const w = Number(infoW);
-        // 이상적 근육량 기준: 체중의 40%(여성 기준)
-        const idealMus = w * 0.40;
-        const gaugeRatio = Math.min(1, musKg / idealMus);
-        const gaugePct = Math.round(gaugeRatio * 100);
-        const gaugeColor = gaugePct >= 90 ? '#34D399' : gaugePct >= 70 ? '#FCD34D' : '#F87171';
-        // 반원 게이지: 반지름 32, 둘레 절반 ≈100.5
-        const semiCirc = Math.PI * 32; // ≈100.5
-        const fillLen = gaugeRatio * semiCirc;
-        const isEstMus = res.estimated_muscle_kg !== null && res.estimated_muscle_kg !== undefined;
-
-        iHtml += `<div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:12px 10px;text-align:center">
-          <div style="font-size:10px;font-weight:700;color:#64748B;margin-bottom:8px">
-            근육량 수준${isEstMus ? ' <span style="color:#F59E0B;font-size:9px">추정</span>' : ''}
-          </div>
-          <svg width="90" height="50" viewBox="0 0 90 50">
-            <path d="M 10 48 A 35 35 0 0 1 80 48" fill="none" stroke="#F1F5F9" stroke-width="10" stroke-linecap="round"/>
-            <path d="M 10 48 A 35 35 0 0 1 80 48" fill="none" stroke="${gaugeColor}" stroke-width="10"
-              stroke-linecap="round"
-              stroke-dasharray="${(gaugeRatio * 109.9).toFixed(1)} 110"
-              />
-          </svg>
-          <div style="margin-top:-12px;font-size:18px;font-weight:800;color:#0B2545">${musKg.toFixed(1)}<span style="font-size:11px">kg</span></div>
-          <div style="font-size:10px;color:#9CA3AF;margin-top:2px">목표 ${idealMus.toFixed(1)}kg 대비 ${gaugePct}%</div>
-          <div style="margin-top:6px;height:4px;background:#F1F5F9;border-radius:2px;overflow:hidden">
-            <div style="height:100%;width:${gaugePct}%;background:${gaugeColor};border-radius:2px"></div>
-          </div>
-        </div>`;
-      }
-
-      iHtml += `</div>`; // 2열 그리드 종료
-    }
-
-    infographicWrap.innerHTML = iHtml;
   }
 
   // ── 감량 목표 카드 ────────────────────────────────────────────
@@ -3971,23 +4109,50 @@ function renderCh5(){
 
   // (B) 역계산 탄단지 그램 처방 카드 (resMacro가 있을 때 항상 표시)
   if(resMacro){
+    // 감량 강도 배지
+    const li = resMacro.loss_intensity || 'moderate';
+    const tlKg = resMacro.total_loss_kg || 0;
+    const intensityBadge = li === 'heavy'
+      ? `<span style="background:#FEE2E2;color:#991B1B;font-size:10px;padding:2px 9px;border-radius:10px;font-weight:700;margin-left:6px">🔥 고강도 ${tlKg}kg 감량</span>`
+      : li === 'moderate'
+      ? `<span style="background:#DBEAFE;color:#1D4ED8;font-size:10px;padding:2px 9px;border-radius:10px;font-weight:700;margin-left:6px">💪 중등도 ${tlKg}kg 감량</span>`
+      : tlKg > 0
+      ? `<span style="background:#D1FAE5;color:#065F46;font-size:10px;padding:2px 9px;border-radius:10px;font-weight:700;margin-left:6px">🌿 소량 ${tlKg}kg 감량</span>`
+      : '';
+    // 칼로리 적자 안내 문구
+    const deficitNote = li === 'heavy'
+      ? 'Mifflin-St Jeor 기반 · 활동계수 1.375 · 일일 600kcal 적자 (집중 감량 모드)'
+      : li === 'light'
+      ? 'Mifflin-St Jeor 기반 · 활동계수 1.375 · 일일 300kcal 적자 (유지 관리 모드)'
+      : 'Mifflin-St Jeor 기반 · 활동계수 1.375 · 일일 500kcal 적자 (점진 감량 모드)';
+    // 탄수화물 카드 색상: heavy → 붉은계열(저탄수 강조), moderate → 기본 초록, light → 하늘
+    const carbCardStyle = li === 'heavy'
+      ? 'background:linear-gradient(160deg,#FEF2F2,#FFF5F5);border:1px solid #FECACA'
+      : li === 'light'
+      ? 'background:linear-gradient(160deg,#EFF6FF,#F0F9FF);border:1px solid #BFDBFE'
+      : 'background:linear-gradient(160deg,#D1FAE5,#E8FAF5);border:1px solid #A7F3D0';
+    const carbTextColor = li === 'heavy' ? '#B91C1C' : li === 'light' ? '#1D4ED8' : '#059669';
+    const carbPctColor  = li === 'heavy' ? '#EF4444' : li === 'light' ? '#3B82F6' : '#10B981';
+
     const rmHtml = `
       <div class="presc-card" id="p5PersonalMacro">
         <div class="pc-head blue">
           <span class="pc-icon">🧮</span>
-          <span class="pc-title blue-t">
-            ${res.user_name||'회원'}님 맞춤 하루 영양소 처방
+          <span class="pc-title blue-t" style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">
+            ${esc(res.user_name||'회원')}님 맞춤 하루 영양소 처방
+            ${intensityBadge}
             ${res.body_data_source==='estimated'
               ? '<span style="font-size:10px;color:#F59E0B;margin-left:6px">(추정 기반)</span>'
               : ''}
           </span>
         </div>
         <div class="pc-body">
+          ${resMacro.adjust_note ? `<div style="font-size:11px;color:#15803D;background:#DCFCE7;border-radius:8px;padding:7px 12px;margin-bottom:10px;border:1px solid #BBF7D0">💡 ${esc(resMacro.adjust_note)}</div>` : ''}
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;margin-bottom:10px">
-            <div style="background:linear-gradient(160deg,#D1FAE5,#E8FAF5);border-radius:10px;padding:10px 6px;border:1px solid #A7F3D0">
+            <div style="${carbCardStyle};border-radius:10px;padding:10px 6px">
               <div style="font-size:10px;color:#6B7280;margin-bottom:2px">탄수화물</div>
-              <div style="font-size:22px;font-weight:800;color:#059669">${resMacro.carb_g}<span style="font-size:11px">g</span></div>
-              <div style="font-size:10px;color:#10B981">${resMacro.carb_pct}%</div>
+              <div style="font-size:22px;font-weight:800;color:${carbTextColor}">${resMacro.carb_g}<span style="font-size:11px">g</span></div>
+              <div style="font-size:10px;color:${carbPctColor}">${resMacro.carb_pct}%</div>
             </div>
             <div style="background:linear-gradient(160deg,var(--sm-teal-light),#EBF4FD);border-radius:10px;padding:10px 6px;border:1px solid var(--sm-teal-mid)">
               <div style="font-size:10px;color:#6B7280;margin-bottom:2px">단백질</div>
@@ -4005,7 +4170,7 @@ function renderCh5(){
             <span>기초대사량 <strong>${resMacro.bmr.toLocaleString()}kcal</strong></span>
           </div>
           <div style="font-size:11px;color:#94A3B8;margin-top:6px;line-height:1.5">
-            Mifflin-St Jeor 공식 기반 · 활동계수 1.375 적용 · 일일 500kcal 적자 목표
+            ${deficitNote}
           </div>
         </div>
       </div>`;
@@ -4205,9 +4370,62 @@ function renderCh5(){
         {day:'금', breakfast:'따뜻한 보리차 + 달걀 + 낫토(있으면)', lunch:'닭가슴살샐러드 + 잡곡밥 소량', dinner:'갈치조림 + 나물 2종 + 잡곡밥'},
       ],
     };
-    const defaultMeal = defaultMealMap[bcCode5meal] || [];
-    // BC별 맞춤 식단 안내 메시지
-    const mealNoteMap = {
+    // 감량 강도 파악 (macro_ratio에 저장됨)
+    const mealLossIntensity = (res.macro_ratio && res.macro_ratio.loss_intensity) || 'moderate';
+    const mealTotalLossKg   = (res.macro_ratio && res.macro_ratio.total_loss_kg)  || 0;
+
+    // ── heavy(10kg+) 전용 식단: 저탄수·고단백 집중 감량 식단 ──────
+    // 밥량 대폭 축소, 단백질 소스 강화, 간식 단백질바/견과류 위주
+    const heavyMealMap = {
+      'BC-01': [
+        {day:'월', breakfast:'달걀 3개 스크램블(기름 無) + 오이', lunch:'닭가슴살 140g + 나물 3종 (밥 없음)', dinner:'고등어구이 + 미역국 + 현미밥 ¼공기'},
+        {day:'화', breakfast:'그릭요거트 150g + 아몬드 10알', lunch:'연어샐러드(올리브오일) + 잡곡밥 ¼공기', dinner:'두부조림 + 시금치볶음 (밥 없음)'},
+        {day:'수', breakfast:'삶은달걀 2개 + 방울토마토', lunch:'닭안심찜 130g + 브로콜리 + 현미밥 ¼공기', dinner:'흰살생선구이 + 콩나물국 (밥 없음)'},
+        {day:'목', breakfast:'단백질파우더 쉐이크 + 견과류 소량', lunch:'두부구이 + 나물 2종 + 잡곡밥 ¼공기', dinner:'닭가슴살 + 버섯볶음 (밥 없음)'},
+        {day:'금', breakfast:'달걀 2개 + 채소볶음(저염)', lunch:'쌈밥(상추10장) + 닭가슴살 + 된장 소량(밥 最少)', dinner:'연어구이 + 아스파라거스 (밥 없음)'},
+      ],
+      'BC-02': [
+        {day:'월', breakfast:'따뜻한 레몬물 + 달걀 3개', lunch:'닭가슴살 140g + 강황나물 (밥 없음)', dinner:'연어구이 + 브로콜리찜 + 현미밥 ¼공기'},
+        {day:'화', breakfast:'그릭요거트 150g + 아마씨', lunch:'쌈밥(밥 最少) + 불고기 소량 + 미역국', dinner:'두부찌개 + 나물 2종 (밥 없음)'},
+        {day:'수', breakfast:'달걀스크램블 + 강황 1/4티스푼 + 채소', lunch:'닭안심구이 + 채소볶음 (밥 없음)', dinner:'고등어구이 + 시금치볶음 + 잡곡밥 ¼공기'},
+        {day:'목', breakfast:'달걀 2개 + 아보카도 ¼개', lunch:'새우볶음 + 야채볶음 (밥 없음)', dinner:'닭가슴살구이 + 브로콜리 (밥 없음)'},
+        {day:'금', breakfast:'따뜻한 생강차 + 달걀 2개', lunch:'샐러드(닭가슴살 130g) + 현미밥 最少', dinner:'갈치조림 + 무나물 (밥 없음)'},
+      ],
+      'BC-03': [
+        {day:'월', breakfast:'공복 수분 500ml + 달걀 3개', lunch:'닭가슴살 130g + 저염나물 (밥 없음)', dinner:'흰살생선찜 + 시금치 + 현미밥 ¼공기'},
+        {day:'화', breakfast:'그릭요거트 150g + 블루베리', lunch:'쌈밥(밥 最少,저염) + 두부구이 + 미역국', dinner:'닭가슴살샐러드 130g (밥 없음)'},
+        {day:'수', breakfast:'달걀 2개 + 아마씨 1스푼', lunch:'닭안심구이 + 나물 (밥 없음)', dinner:'연어구이 + 아스파라거스 + 잡곡밥 ¼공기'},
+        {day:'목', breakfast:'달걀스크램블 + 오이슬라이스', lunch:'새우볶음 + 청국장(저염) + 잡곡밥 最少', dinner:'고등어구이 + 무나물 (밥 없음)'},
+        {day:'금', breakfast:'따뜻한 보리차 + 달걀 2개', lunch:'닭가슴살 + 채소쌈 (밥 없음)', dinner:'흰살생선구이 + 브로콜리찜 (밥 없음)'},
+      ],
+      'BC-07': [
+        {day:'월', breakfast:'달걀 4개 스크램블 + 아보카도 ½', lunch:'닭가슴살 160g + 채소 (밥 없음)', dinner:'소고기 안심구이 100g + 잡곡밥 ¼공기'},
+        {day:'화', breakfast:'그릭요거트 200g + 단백질파우더', lunch:'연어구이 150g + 샐러드 (밥 없음)', dinner:'닭안심찜 + 브로콜리 (밥 없음)'},
+        {day:'수', breakfast:'달걀 3개 + 닭가슴살 80g', lunch:'닭가슴살볶음 + 된장국 (밥 없음)', dinner:'고등어구이 + 두부조림 + 현미밥 ¼공기'},
+        {day:'목', breakfast:'단백질파우더 쉐이크 + 견과류', lunch:'쌈밥(밥 最少) + 불고기(소고기) 소량 + 미역국', dinner:'새우볶음 + 나물 (밥 없음)'},
+        {day:'금', breakfast:'달걀 3개 + 그릭요거트', lunch:'닭가슴살샐러드 160g (밥 없음)', dinner:'연어구이 + 버섯볶음 (밥 없음)'},
+      ],
+    };
+
+    // heavy 식단 없는 BC는 defaultMealMap 기반으로 밥량 축소 버전 사용
+    function makeHeavyMeal(baseMeal){
+      return baseMeal.map(m => ({
+        day: m.day,
+        breakfast: m.breakfast.replace(/잡곡밥|현미밥/g, '').replace(/\+\s*$/, '').trim() || m.breakfast,
+        lunch: m.lunch.replace(/잡곡밥|현미밥/g,'밥 ¼공기'),
+        dinner: m.dinner.replace(/잡곡밥|현미밥/g,'밥 없음'),
+      }));
+    }
+
+    let defaultMeal;
+    if(mealLossIntensity === 'heavy'){
+      defaultMeal = heavyMealMap[bcCode5meal] || makeHeavyMeal(defaultMealMap[bcCode5meal] || []);
+    } else {
+      defaultMeal = defaultMealMap[bcCode5meal] || [];
+    }
+
+    // BC별 맞춤 식단 안내 메시지 (감량 강도별 추가 안내 포함)
+    const mealNoteBase = {
       'BC-01': '🥢 <strong>식사 순서 처방:</strong> 국물 → 나물·채소 → 단백질 → 밥 순으로. 밥은 반공기만. 식후 10분 걷기 권장.',
       'BC-02': '🌿 <strong>간 해독 처방:</strong> 공복에 따뜻한 레몬수 or 강황물. 튀김·가공식품·알코올 금지. 식사 간격 4~5시간 유지.',
       'BC-03': '💧 <strong>림프 순환 처방:</strong> 저염 식단 유지. 국물은 건더기만, 국물 자체는 최소화. 하루 수분 2L 이상.',
@@ -4219,11 +4437,26 @@ function renderCh5(){
       'BC-09': '🧘 <strong>혈당 안정 처방:</strong> GI 낮은 탄수화물만. 단것·카페인 제한. 스트레스 시 먹기 전 5분 복식호흡.',
       'BC-10': '🦠 <strong>장 마이크로바이옴 처방:</strong> 발효식품(김치·된장·그릭요거트) 매일 1가지. 천천히 씹기(한 입 20회). 식이섬유 30g 목표.',
     };
-    const mealNote = mealNoteMap[bcCode5meal] || '🥗 <strong>공통 처방:</strong> 식사 순서(채소→단백질→탄수화물). 천천히 씹고, 스마트폰 보며 먹지 않기.';
+    const intensityExtra = mealLossIntensity === 'heavy'
+      ? ` | 🔥 <strong>${mealTotalLossKg}kg 집중 감량:</strong> 저녁 밥 배제·단백질 강화 모드. 매 끼니 단백질 30g+ 목표.`
+      : mealLossIntensity === 'light'
+      ? ` | 🌿 <strong>${mealTotalLossKg}kg 유지 관리:</strong> 균형 잡힌 식단으로 요요 없는 체중 유지.`
+      : mealTotalLossKg > 0
+      ? ` | 💪 <strong>${mealTotalLossKg}kg 점진 감량:</strong> 주당 0.5kg 목표. 지속 가능한 식단 습관 형성.`
+      : '';
+    const mealNote = (mealNoteBase[bcCode5meal] || '🥗 <strong>공통 처방:</strong> 식사 순서(채소→단백질→탄수화물). 천천히 씹고, 스마트폰 보며 먹지 않기.') + intensityExtra;
+
+    // 감량 강도 헤더 배지
+    const mealIntensityTag = mealLossIntensity === 'heavy'
+      ? ' <span style="background:#FEE2E2;color:#991B1B;font-size:10px;padding:1px 8px;border-radius:8px;font-weight:700">🔥 집중 감량식</span>'
+      : mealLossIntensity === 'light'
+      ? ' <span style="background:#D1FAE5;color:#065F46;font-size:10px;padding:1px 8px;border-radius:8px;font-weight:700">🌿 유지 관리식</span>'
+      : ' <span style="background:#DBEAFE;color:#1D4ED8;font-size:10px;padding:1px 8px;border-radius:8px;font-weight:700">💪 점진 감량식</span>';
+
     if(defaultMeal.length > 0){
       const bcLabel = (R.bc && R.bc.bc_name) ? R.bc.bc_name : bcCode5meal;
       let html = `<div class="presc-card">
-        <div class="pc-head gray"><span class="pc-icon">🍱</span><span class="pc-title">1주차 샘플 식단 (${esc(bcLabel)} 맞춤)</span></div>
+        <div class="pc-head gray"><span class="pc-icon">🍱</span><span class="pc-title">1주차 샘플 식단 (${esc(bcLabel)} 맞춤)${mealIntensityTag}</span></div>
         <div class="pc-body">
           <table class="meal-table">
             <tr><th></th><th>아침</th><th>점심</th><th>저녁</th></tr>

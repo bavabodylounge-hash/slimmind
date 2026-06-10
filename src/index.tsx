@@ -703,38 +703,79 @@ app.get('/result/:id', async (c) => {
     const isLowMuscle = muscle_kg ? (muscle_kg < stdMuscleKg * 0.90) : false
     const isHighFat = effectiveBfr ? (isMale ? effectiveBfr > 25 : effectiveBfr > 33) : false
 
-    // 단백질: 제지방량 × 2.2g (기본) → 근육 부족 시 × 2.5g으로 상향
-    const proteinMultiplier = isLowMuscle ? 2.5 : 2.2
-    const protein_g = Math.round(lean_kg ? lean_kg * proteinMultiplier : w * (isLowMuscle ? 2.0 : 1.8))
+    // ── 목표 감량 수치 기반 식단 강도 분류 ──────────────────────
+    // total_loss_kg 사전 계산: 결과지에서 body_goal 계산 전이므로 직접 계산
+    const tw = result.target_weight ? Number(result.target_weight) : null
+    const totalLossKg = (w && tw && tw < w) ? parseFloat((w - tw).toFixed(1)) : 0
+    // 감량 강도: heavy(10kg+) / moderate(5~10kg) / light(<5kg)
+    const lossIntensity = totalLossKg >= 10 ? 'heavy'
+      : totalLossKg >= 5 ? 'moderate'
+      : 'light'
 
-    // 지방: 기본 25% → 체지방 높으면 20%로 하향
-    const fatPct = isHighFat ? 0.20 : 0.25
-    const fat_g = Math.round((targetKcal * fatPct) / 9)
+    // ── 목표감량 + 체성분 통합 탄단지 비율 결정 ─────────────────
+    // heavy(10kg+): 저탄수 고단백 - 탄수 40%, 단백 35%, 지방 25% 방향
+    //               → 칼로리 적자도 더 크게: TDEE - 600kcal
+    // moderate(5~10kg): 중간 - 탄수 45%, 단백 30%, 지방 25%
+    //               → 칼로리 적자: TDEE - 500kcal (기본)
+    // light(<5kg): 균형 유지 - 탄수 50%, 단백 25%, 지방 25%
+    //               → 칼로리 적자: TDEE - 300kcal
 
-    // 탄수화물: 나머지 (체지방 높은 경우 자연스럽게 감소)
+    const targetKcalAdj = lossIntensity === 'heavy'
+      ? Math.max(1200, Math.round(bmr * 1.375) - 600)
+      : lossIntensity === 'light'
+      ? Math.max(1400, Math.round(bmr * 1.375) - 300)
+      : targetKcal  // moderate: 기본 500kcal 적자 유지
+
+    // 단백질: 감량 강도별 multiplier + 체성분 보정
+    const baseProteinMultiplier = lossIntensity === 'heavy' ? 2.6
+      : lossIntensity === 'moderate' ? 2.3
+      : 2.0
+    const proteinMultiplier = isLowMuscle
+      ? baseProteinMultiplier + 0.2  // 근육 부족 시 추가 상향
+      : baseProteinMultiplier
+    const protein_g = Math.round(lean_kg ? lean_kg * proteinMultiplier : w * (proteinMultiplier * 0.78))
+
+    // 지방: heavy→18%, moderate→22%, light→25%; 체지방 높으면 2%p 추가 감소
+    const baseFatPct = lossIntensity === 'heavy' ? 0.18
+      : lossIntensity === 'moderate' ? 0.22
+      : 0.25
+    const fatPct = isHighFat ? Math.max(0.15, baseFatPct - 0.02) : baseFatPct
+    const fat_g = Math.round((targetKcalAdj * fatPct) / 9)
+
+    // 탄수화물: 나머지 칼로리 (감량 강도 높을수록 자연감소)
     const protein_kcal = protein_g * 4
     const fat_kcal = fat_g * 9
-    const carb_kcal = Math.max(0, targetKcal - protein_kcal - fat_kcal)
+    const carb_kcal = Math.max(0, targetKcalAdj - protein_kcal - fat_kcal)
     const carb_g = Math.round(carb_kcal / 4)
 
     const total = protein_kcal + fat_kcal + carb_kcal
 
-    // 조정 근거 메모 (결과지 표시용)
+    // 조정 근거 메모 (결과지 표시용) — 감량 강도 + 체성분 통합
+    const lossLabel = lossIntensity === 'heavy' ? `${totalLossKg}kg 대량 감량`
+      : lossIntensity === 'moderate' ? `${totalLossKg}kg 중등도 감량`
+      : totalLossKg > 0 ? `${totalLossKg}kg 소량 감량` : '체중 유지'
+
     const macroAdjustNote = isHighFat && isLowMuscle
-      ? '체지방↑·근육↓: 저탄수+고단백 처방'
+      ? `체지방↑·근육↓ + ${lossLabel}: 저탄수+고단백 집중 처방`
       : isHighFat
-      ? '체지방 과다: 지방 감소 + 탄수 제한 처방'
+      ? `체지방 과다 + ${lossLabel}: 탄수 제한·지방 감소 처방`
       : isLowMuscle
-      ? '근육 부족: 고단백 처방으로 근손실 방지'
-      : '표준 체성분: 균형 탄단지 처방'
+      ? `근육 부족 + ${lossLabel}: 고단백 근손실 방지 처방`
+      : lossIntensity === 'heavy'
+      ? `${lossLabel}: 저탄수 고단백 감량 식단 처방`
+      : lossIntensity === 'moderate'
+      ? `${lossLabel}: 균형 탄단지 점진적 감량 처방`
+      : `${lossLabel}: 표준 체성분 유지·관리 처방`
 
     macroRatio = {
       protein_g, fat_g, carb_g,
       protein_pct: Math.round((protein_kcal / total) * 100),
       fat_pct: Math.round((fat_kcal / total) * 100),
       carb_pct: Math.round((carb_kcal / total) * 100),
-      total_kcal: targetKcal,
+      total_kcal: targetKcalAdj,
       bmr,
+      loss_intensity: lossIntensity,
+      total_loss_kg: totalLossKg,
       ...(macroAdjustNote ? { adjust_note: macroAdjustNote } : {}),
     } as any
   }
