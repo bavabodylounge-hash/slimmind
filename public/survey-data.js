@@ -1460,6 +1460,19 @@ function calculateBCScores(answers) {
     bcScores['BC-08'] = Math.round((bcScores['BC-08'] || 0) * factor);
   }
 
+  // BC-09 과다 배정 보정: 나머지 BC 평균의 1.5배를 초과하면 캡 적용
+  // (스트레스/수면 질문이 BC-09에 집중되어 실제 코르티솔형이 아닌 사람도 BC-09가 나오는 구조 방지)
+  {
+    const otherSum = Object.entries(bcScores)
+      .filter(([k]) => k !== 'BC-09')
+      .reduce((sum, [, v]) => sum + v, 0);
+    const otherAvg = otherSum / 9;
+    const cap = Math.round(otherAvg * 1.5);
+    if (bcScores['BC-09'] > cap) {
+      bcScores['BC-09'] = cap;
+    }
+  }
+
   // 2단계 정규화
   const maxBC = Math.max(...Object.values(bcScores));
   if (maxBC > 0) {
