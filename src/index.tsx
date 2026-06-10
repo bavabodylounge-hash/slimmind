@@ -202,7 +202,11 @@ app.post('/api/survey/submit', async (c) => {
     // v2.0 추가 필드
     aerobic_response, massage_swells, sauna_response,
     current_facility, context_type, current_medications,
-    target_body_part, psych_state, monthly_budget, muscle_soreness_level
+    target_body_part, psych_state, monthly_budget, muscle_soreness_level,
+    // v3.0 섹션 L 필드 (알레르기/피부반응/갱년기/병적요소)
+    food_allergy, allergy_exclude, skin_reaction,
+    menopause_status, is_menopause,
+    medical_conditions, has_medical_conditions
   } = body
 
   const result_id = resultIdGen()
@@ -236,8 +240,11 @@ app.post('/api/survey/submit', async (c) => {
       aerobic_response, massage_swells, sauna_response,
       current_facility, context_type, current_medications,
       target_body_part, psych_state, monthly_budget, muscle_soreness_level,
-      prescription_version
-    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      prescription_version,
+      food_allergy_json, allergy_exclude_json, skin_reaction,
+      menopause_status, is_menopause,
+      medical_conditions_json, has_medical_conditions
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
   `).bind(
     result_id, user_name || '익명', validConsultantCode,
     bc_primary, bc_secondary || null, bc_primary_score || 0, bc_secondary_score || 0,
@@ -253,7 +260,15 @@ app.post('/api/survey/submit', async (c) => {
     toStr(aerobic_response), massage_swells ? 1 : 0, toStr(sauna_response),
     toStr(current_facility), toStr(context_type), toStr(current_medications),
     toStr(target_body_part), toStr(psych_state), toStr(monthly_budget), toStr(muscle_soreness_level),
-    'v2.0'
+    'v3.0',
+    // v3.0 섹션 L
+    JSON.stringify(Array.isArray(food_allergy) ? food_allergy : []),
+    JSON.stringify(Array.isArray(allergy_exclude) ? allergy_exclude : []),
+    toStr(skin_reaction),
+    toStr(menopause_status),
+    is_menopause ? 1 : 0,
+    JSON.stringify(Array.isArray(medical_conditions) ? medical_conditions : []),
+    has_medical_conditions ? 1 : 0
   ).run()
 
   return c.json({ success: true, result_id, message: '설문이 제출되었습니다.' })
@@ -772,6 +787,14 @@ app.get('/result/:id', async (c) => {
       sauna_response: result.sauna_response,
       massage_swells: result.massage_swells,
       muscle_soreness_level: result.muscle_soreness_level,
+      // v3.0 섹션 L 필드
+      food_allergy: parseJson(result.food_allergy_json, []),
+      allergy_exclude: parseJson(result.allergy_exclude_json, []),
+      skin_reaction: result.skin_reaction,
+      menopause_status: result.menopause_status,
+      is_menopause: !!result.is_menopause,
+      medical_conditions: parseJson(result.medical_conditions_json, []),
+      has_medical_conditions: !!result.has_medical_conditions,
       created_at: result.created_at,
     },
     bc: bc ? {

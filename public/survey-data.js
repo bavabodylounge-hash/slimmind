@@ -35,6 +35,9 @@ const SECTIONS = [
     transition: '몸의 신호를 다 읽었어요! 마지막으로 움직임 습관을 확인할게요.' },
   { id: 'K', name: '움직임의 습관', color: '#00695C', bg: '#F0FFFE',
     hook: '걸음걸이·앉는 자세·폰 보는 방식. 이것들이 체형을 매일 조금씩 바꿉니다.',
+    transition: '움직임 패턴까지 파악했어요. 마지막으로 내 몸의 안전 조건을 확인할게요.' },
+  { id: 'L', name: '내 몸의 안전 조건', color: '#AD1457', bg: '#FFF0F8',
+    hook: '이 섹션은 당신의 결과지를 더 안전하고 정확하게 만들기 위한 마지막 퍼즐입니다.',
     transition: '' }
 ];
 
@@ -51,6 +54,32 @@ const FEEDBACK_MESSAGES = {
   belly_fat:   { msg: '🫃 복부 집중 패턴이에요. 식단보다 코어 회로 복구가 우선입니다.', gauge: 'core' },
   puffy:       { msg: '💧 부종과 지방은 다릅니다. 지금 감지되는 건 림프 정체 신호예요.', gauge: 'lymph' },
   hormone:     { msg: '🌸 호르몬 사이클이 다이어트 결과를 좌우하고 있을 수 있습니다.', gauge: 'hormone' },
+
+  // 알레르기·피부 반응
+  allergy_detected: { msg: '⚠️ 해당 식품이 결과지 식단 가이드에서 자동 제외됩니다.', gauge: null },
+  skin_acne:        { msg: '🔴 여드름 패턴 — 인슐린·안드로겐 과잉 신호입니다.', gauge: 'visceral' },
+  skin_puffy:       { msg: '💧 얼굴 부종 — 림프 순환 정체 패턴이에요.', gauge: 'circulation' },
+  skin_rash:        { msg: '🔥 피부 발진 반응 — 음식 과민 가능성, 전문 검사를 권장드려요.', gauge: null },
+  skin_reaction:    { msg: '🧴 피부 신호가 내 몸 상태를 말해줍니다.', gauge: null },
+
+  // 갱년기
+  menopause_detected: { msg: '🌸 갱년기 모드 활성화 — 일반 공식 대신 맞춤 프로토콜이 적용됩니다.', gauge: 'hormone' },
+  menopause_peri:     { msg: '🌸 갱년기 전기 — 지금이 개입 골든타임입니다.', gauge: 'hormone' },
+  menopause_meno:     { msg: '🍂 갱년기 중기 — 극저칼로리 대신 소식다회 + 근력 우선 전략이 필요합니다.', gauge: 'hormone' },
+  menopause_post:     { msg: '❄️ 폐경 완료 — 대사 시스템 전면 재설계가 필요한 시기입니다.', gauge: 'metabolism' },
+  menopause_hrt:      { msg: '💊 HRT 중 — 의료진과 협의된 식이·운동 계획이 결과지에 반영됩니다.', gauge: 'hormone' },
+
+  // 병적요소
+  medical_detected:    { msg: '🩺 건강 상태가 결과지 주의사항에 자동 반영됩니다.', gauge: null },
+  medical_diabetes:    { msg: '🩸 혈당 조절 최우선 — 저GI·단백질 분산 섭취 전략이 적용됩니다.', gauge: 'visceral' },
+  medical_hypertension:{ msg: '💓 고혈압 — 나트륨 제한·마그네슘 보충 전략이 추가됩니다.', gauge: 'visceral' },
+  medical_hypothyroid: { msg: '🦋 갑상선 저하 — 기초대사량 저하 반영, 강도 조절이 중요합니다.', gauge: 'metabolism' },
+  medical_disc:        { msg: '🦴 디스크 보유 — 충격 없는 운동 + 코어 안정화 전략으로 바뀝니다.', gauge: null },
+  medical_cancer:      { msg: '🎗️ 암 완치 후 — 면역 보호 식단 + 점진적 운동 복귀 전략이 적용됩니다.', gauge: 'metabolism' },
+  medical_rheumatoid:  { msg: '🔥 만성 염증 — 항염 식품 우선, 고강도 운동 제한이 적용됩니다.', gauge: 'circulation' },
+  medical_pcos:        { msg: '🌸 PCOS — 인슐린 저항성 집중 관리 전략이 적용됩니다.', gauge: 'hormone' },
+  medical_fattyliver:  { msg: '🫀 지방간 — 내장지방 우선 감소 전략 + 알코올 완전 제한이 적용됩니다.', gauge: 'visceral' },
+  medical_steroid:     { msg: '💊 약물 부작용 고려 — 의료진 협진 하에 안전한 식단 설계가 필요합니다.', gauge: 'metabolism' },
 };
 
 const QUESTIONS = [
@@ -1235,6 +1264,118 @@ const QUESTIONS = [
     ],
     saveAs: 'yoyo_magnitude'
   },
+  // ══════════════════════════════════════════════════════
+  //  섹션 L · 내 몸의 안전 조건 (알레르기 / 피부 / 갱년기 / 병적요소)
+  // ══════════════════════════════════════════════════════
+  {
+    id: 'Q_ALLERGY', section: 'L', num: 81,
+    question: '특정 음식을 먹었을 때 피부 트러블·두드러기·소화 불편이 생긴 적 있나요?',
+    hint: '결과지 식단 가이드에서 해당 식품이 자동으로 제외됩니다. 선택하지 않아도 됩니다.',
+    type: 'MULTI_SELECT',
+    maxSelect: 8,
+    weight: 0,
+    feedbackKey: 'allergy_detected',
+    options: [
+      { emoji: '🍗', label: '닭가슴살·가금류', desc: '고단백 식품', value: 'chicken',
+        bcEffect: {} },
+      { emoji: '🥚', label: '달걀', desc: '흰자·노른자 포함', value: 'egg',
+        bcEffect: {} },
+      { emoji: '🥛', label: '유제품', desc: '우유·치즈·요거트', value: 'dairy',
+        bcEffect: {} },
+      { emoji: '🥜', label: '견과류', desc: '아몬드·땅콩·호두 등', value: 'nuts',
+        bcEffect: {} },
+      { emoji: '🦐', label: '해산물·생선', desc: '새우·고등어·조개 등', value: 'seafood',
+        bcEffect: {} },
+      { emoji: '🌾', label: '밀·글루텐', desc: '빵·파스타·밀가루', value: 'gluten',
+        bcEffect: {} },
+      { emoji: '🫘', label: '콩류', desc: '두부·두유·콩단백', value: 'legume',
+        bcEffect: {} },
+      { emoji: '🌶️', label: '자극적인 음식', desc: '맵고 짠 음식 과민 반응', value: 'spicy',
+        bcEffect: {} },
+      { emoji: '✅', label: '반응 없어요', desc: '해당 없음', value: 'none',
+        exclusive: true, bcEffect: {} }
+    ],
+    saveAs: 'food_allergy'
+  },
+  {
+    id: 'Q_SKIN', section: 'L', num: 82,
+    question: '식단을 갑자기 바꾸거나 단백질을 많이 먹을 때 피부에 어떤 변화가 생기나요?',
+    hint: '피부 반응은 장 건강·호르몬 상태와 직결됩니다.',
+    type: 'SINGLE_SELECT',
+    weight: 0.5,
+    feedbackKey: 'skin_reaction',
+    options: [
+      { emoji: '😊', label: '피부 변화가 거의 없어요', desc: '', value: 'no_reaction',
+        bcEffect: {} },
+      { emoji: '🔴', label: '여드름·뾰루지가 올라와요', desc: '안드로겐·인슐린 과잉 신호',
+        value: 'acne', bcEffect: { 'BC-02': 8, 'BC-09': 6 }, feedbackKey: 'skin_acne' },
+      { emoji: '🌊', label: '얼굴·눈 주변이 붓고 칙칙해져요', desc: '림프·순환 정체',
+        value: 'puffiness', bcEffect: { 'BC-06': 12 }, feedbackKey: 'skin_puffy' },
+      { emoji: '🔥', label: '피부가 가렵거나 발진이 생겨요', desc: '음식 과민 반응 가능성',
+        value: 'rash', bcEffect: {}, feedbackKey: 'skin_rash' },
+      { emoji: '🏜️', label: '피부가 건조해지고 각질이 생겨요', desc: '필수지방산·수분 부족',
+        value: 'dry', bcEffect: { 'BC-08': 5 } }
+    ],
+    saveAs: 'skin_reaction'
+  },
+  {
+    id: 'Q_MENOPAUSE', section: 'L', num: 83,
+    question: '갱년기 증상이 있거나 갱년기 시기에 해당하시나요?',
+    hint: '갱년기에는 일반 다이어트 공식이 맞지 않습니다. 맞춤 프로토콜이 별도로 적용됩니다.',
+    type: 'SINGLE_SELECT',
+    showIf: { field: 'gender', value: 'female' },
+    weight: 1.5,
+    feedbackKey: 'menopause_detected',
+    options: [
+      { emoji: '🌱', label: '해당 없어요 (남성 또는 40대 이전)', desc: '',
+        value: 'not_applicable', bcEffect: {} },
+      { emoji: '🌸', label: '갱년기 전기 (40대 중반~50초 / 생리 불규칙)', desc: '호르몬 변화 시작',
+        value: 'peri', bcEffect: { 'BC-09': 15, 'BC-08': 10 }, feedbackKey: 'menopause_peri' },
+      { emoji: '🍂', label: '갱년기 중기 (폐경 전후 / 홍조·수면 장애)', desc: '에스트로겐 급감기',
+        value: 'meno', bcEffect: { 'BC-09': 20, 'BC-08': 15, 'BC-05': 10 }, feedbackKey: 'menopause_meno' },
+      { emoji: '❄️', label: '폐경 완료 (2년 이상 / 생리 완전 중단)', desc: '대사 재설계 필요',
+        value: 'post', bcEffect: { 'BC-09': 25, 'BC-08': 20, 'BC-05': 15 }, feedbackKey: 'menopause_post' },
+      { emoji: '💊', label: '호르몬 치료(HRT) 중이에요', desc: '의료진 협진 권고',
+        value: 'hrt', bcEffect: { 'BC-09': 18, 'BC-08': 12 }, feedbackKey: 'menopause_hrt' }
+    ],
+    saveAs: 'menopause_status'
+  },
+  {
+    id: 'Q_MEDICAL', section: 'L', num: 84,
+    question: '현재 진단받았거나 관리 중인 건강 상태가 있나요?',
+    hint: '해당 건강 상태에 맞는 주의사항이 결과지에 자동으로 반영됩니다.',
+    type: 'MULTI_SELECT',
+    maxSelect: 10,
+    weight: 1.0,
+    feedbackKey: 'medical_detected',
+    options: [
+      { emoji: '🩸', label: '당뇨 / 혈당 조절 이상', desc: '공복혈당 100 이상 포함', value: 'diabetes',
+        bcEffect: { 'BC-02': 20, 'BC-01': 15 }, feedbackKey: 'medical_diabetes' },
+      { emoji: '💓', label: '고혈압', desc: '수축기 140 이상 또는 약 복용 중', value: 'hypertension',
+        bcEffect: { 'BC-01': 15, 'BC-09': 12 }, feedbackKey: 'medical_hypertension' },
+      { emoji: '🦋', label: '갑상선 저하증', desc: '갑상선 기능 저하 / 약 복용 중', value: 'hypothyroid',
+        bcEffect: { 'BC-08': 25, 'BC-06': 15 }, feedbackKey: 'medical_hypothyroid' },
+      { emoji: '🦴', label: '디스크 / 척추 질환', desc: '요추·경추 디스크 포함', value: 'disc',
+        bcEffect: { 'BC-04': 18 }, feedbackKey: 'medical_disc' },
+      { emoji: '🎗️', label: '암 완치 후 관리 중', desc: '치료 종료 후 회복기', value: 'cancer_recovery',
+        bcEffect: { 'BC-08': 20, 'BC-07': 15 }, feedbackKey: 'medical_cancer' },
+      { emoji: '🔥', label: '류마티스 / 자가면역 질환', desc: '만성 염증 상태', value: 'rheumatoid',
+        bcEffect: { 'BC-06': 20, 'BC-09': 15 }, feedbackKey: 'medical_rheumatoid' },
+      { emoji: '🌸', label: 'PCOS (다낭성 난소 증후군)', desc: '인슐린 저항성 연관', value: 'pcos',
+        bcEffect: { 'BC-02': 22, 'BC-09': 18, 'BC-05': 12 }, feedbackKey: 'medical_pcos' },
+      { emoji: '🫀', label: '지방간', desc: '비알코올성 지방간 포함', value: 'fatty_liver',
+        bcEffect: { 'BC-01': 20, 'BC-02': 15 }, feedbackKey: 'medical_fattyliver' },
+      { emoji: '💊', label: '스테로이드 / 항우울제 장기 복용', desc: '체중 증가 부작용 있는 약물',
+        value: 'steroid', bcEffect: { 'BC-02': 15, 'BC-08': 12 }, feedbackKey: 'medical_steroid' },
+      { emoji: '✅', label: '해당 없어요', desc: '', value: 'none',
+        exclusive: true, bcEffect: {} }
+    ],
+    saveAs: 'medical_conditions'
+  },
+
+  // ══════════════════════════════════════════════════════
+  //  섹션 H · 마무리 드림 질문
+  // ══════════════════════════════════════════════════════
   {
     id: 'Q80', section: 'H', num: 80,
     question: '마지막으로 딱 하나만요. 6개월 후 {name}님이 가장 하고 싶은 것은?',
@@ -1296,6 +1437,29 @@ function calculateBCScores(answers) {
     }
   });
 
+  // 병적요소(Q_MEDICAL) bc_effect 가중치 추가 반영
+  // bc-definitions.js MEDICAL_CONDITIONS 참조
+  const medicalAnswer = answers['Q_MEDICAL'];
+  if (Array.isArray(medicalAnswer) && medicalAnswer.length > 0 && typeof MEDICAL_CONDITIONS !== 'undefined') {
+    medicalAnswer.forEach(condKey => {
+      const cond = MEDICAL_CONDITIONS[condKey];
+      if (!cond || !cond.bc_effect) return;
+      Object.entries(cond.bc_effect).forEach(([code, pts]) => {
+        bcScores[code] = (bcScores[code] || 0) + pts;
+      });
+    });
+  }
+
+  // 갱년기(Q_MENOPAUSE) 추가 가중치
+  const menoAnswer = answers['Q_MENOPAUSE'];
+  if (menoAnswer && menoAnswer !== 'not_applicable' && menoAnswer !== 'none') {
+    const menoBoost = { meno: 1.2, post: 1.3, peri: 1.1, hrt: 1.1 };
+    const factor = menoBoost[menoAnswer] || 1.0;
+    // BC-09(코르티솔형), BC-08(대사정체형) 강화
+    bcScores['BC-09'] = Math.round((bcScores['BC-09'] || 0) * factor);
+    bcScores['BC-08'] = Math.round((bcScores['BC-08'] || 0) * factor);
+  }
+
   // 2단계 정규화
   const maxBC = Math.max(...Object.values(bcScores));
   if (maxBC > 0) {
@@ -1319,7 +1483,31 @@ function calculateBCScores(answers) {
     ? sortedBC[1][0] : null;
   const ohaengType = Object.entries(ohaengScores).sort((a, b) => b[1] - a[1])[0][0];
 
-  return { bcScores, ohaengScores, bcPrimary, bcSecondary, ohaengType };
+  // 특수 필드 추출
+  const foodAllergy = answers['Q_ALLERGY'] || [];
+  const skinReaction = answers['Q_SKIN'] || null;
+  const menopauseStatus = answers['Q_MENOPAUSE'] || null;
+  const medicalConditions = answers['Q_MEDICAL'] || [];
+
+  // 알레르기 제외 식품 목록 (결과지 식단 가이드에서 사용)
+  const allergyExclude = foodAllergy.filter(v => v !== 'none');
+
+  // 갱년기 여부 플래그
+  const isMenopause = menopauseStatus && !['not_applicable', 'none', null].includes(menopauseStatus);
+
+  // 병적요소 존재 여부 플래그
+  const hasMedicalConditions = medicalConditions.length > 0 && !medicalConditions.includes('none');
+
+  return {
+    bcScores, ohaengScores, bcPrimary, bcSecondary, ohaengType,
+    // 섹션 L 결과
+    allergyExclude,
+    skinReaction,
+    menopauseStatus,
+    isMenopause,
+    medicalConditions: hasMedicalConditions ? medicalConditions.filter(v => v !== 'none') : [],
+    hasMedicalConditions
+  };
 }
 
 // BC 코드 정보

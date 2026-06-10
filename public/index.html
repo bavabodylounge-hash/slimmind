@@ -1380,8 +1380,14 @@ function startLoading() {
 
 async function submitSurveyAndShow() {
   const result = calculateBCScores(state.answers);
-  const { bcPrimary, bcSecondary, bcPrimaryScore, bcSecondaryScore, bcScores, ohaengScores, ohaengType } = result;
+  const {
+    bcPrimary, bcSecondary, bcPrimaryScore, bcSecondaryScore, bcScores, ohaengScores, ohaengType,
+    allergyExclude, skinReaction, menopauseStatus, isMenopause, medicalConditions, hasMedicalConditions
+  } = result;
   const ud = state.userData;
+
+  // 알레르기 원본 답변
+  const foodAllergyRaw = state.answers['Q_ALLERGY'] || [];
 
   const payload = {
     consultant_code: CONSULTANT_CODE,
@@ -1419,7 +1425,15 @@ async function submitSurveyAndShow() {
       past_exercises: state.answers['Q23'] || [],
       past_diets: state.answers['Q24'] || [],
       yoyo_count: state.answers['Q22'] || state.answers['Q04'] || 0,
-    }
+    },
+    // v3.0 섹션 L 필드
+    food_allergy: foodAllergyRaw,
+    allergy_exclude: allergyExclude || [],
+    skin_reaction: skinReaction || null,
+    menopause_status: menopauseStatus || null,
+    is_menopause: isMenopause || false,
+    medical_conditions: medicalConditions || [],
+    has_medical_conditions: hasMedicalConditions || false,
   };
 
   try {
