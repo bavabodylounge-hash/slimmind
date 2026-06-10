@@ -76,6 +76,91 @@
     }
     #start-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.25); }
 
+    /* ── 개인정보 동의 화면 ─────────────────────── */
+    #consent-screen {
+      background: #F8FAFC;
+      justify-content: flex-start; align-items: stretch;
+      padding: 0; overflow-y: auto;
+    }
+    .consent-header {
+      background: linear-gradient(135deg, #1E3A5F 0%, #0F2744 100%);
+      padding: 28px 24px 24px;
+      text-align: center;
+    }
+    .consent-header-logo { font-size: 20px; font-weight: 800; color: #3ECBA5; letter-spacing: -0.5px; margin-bottom: 6px; }
+    .consent-header-title { font-size: 17px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+    .consent-header-sub { font-size: 12px; color: rgba(255,255,255,.6); line-height: 1.6; }
+    .consent-body { padding: 20px 20px 0; }
+    .consent-reason {
+      background: #EFF6FF; border: 1px solid #BFDBFE;
+      border-radius: 10px; padding: 14px 16px; margin-bottom: 16px;
+    }
+    .consent-reason-text { font-size: 12.5px; color: #1D4ED8; line-height: 1.7; }
+    .consent-all-row {
+      display: flex; align-items: center; gap: 10px;
+      background: #1E3A5F; border-radius: 10px; padding: 14px 16px;
+      margin-bottom: 12px; cursor: pointer;
+    }
+    .consent-all-check {
+      width: 22px; height: 22px; border-radius: 6px;
+      border: 2px solid rgba(255,255,255,.4); background: transparent;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      transition: background .15s, border-color .15s;
+    }
+    .consent-all-check.checked { background: #3ECBA5; border-color: #3ECBA5; }
+    .consent-all-check.checked::after { content: '✓'; color: #fff; font-size: 13px; font-weight: 700; }
+    .consent-all-label { font-size: 15px; font-weight: 700; color: #fff; flex: 1; }
+    .consent-all-sub { font-size: 11px; color: rgba(255,255,255,.5); }
+    .consent-divider { height: 1px; background: #E2E8F0; margin: 4px 0 12px; }
+    .consent-item {
+      background: #fff; border: 1.5px solid #E2E8F0; border-radius: 10px;
+      margin-bottom: 8px; overflow: hidden; transition: border-color .15s;
+    }
+    .consent-item.checked { border-color: #3ECBA5; }
+    .consent-item-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 16px; cursor: pointer;
+    }
+    .consent-item-check {
+      width: 20px; height: 20px; border-radius: 5px;
+      border: 2px solid #CBD5E1; background: transparent;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      transition: background .15s, border-color .15s;
+    }
+    .consent-item-check.checked { background: #3ECBA5; border-color: #3ECBA5; }
+    .consent-item-check.checked::after { content: '✓'; color: #fff; font-size: 11px; font-weight: 700; }
+    .consent-item-info { flex: 1; min-width: 0; }
+    .consent-item-label { font-size: 14px; font-weight: 600; color: #1E293B; }
+    .consent-item-badge {
+      display: inline-block; font-size: 10px; font-weight: 700;
+      padding: 2px 7px; border-radius: 10px; margin-left: 5px; vertical-align: middle;
+    }
+    .consent-item-badge.required { background: #FEE2E2; color: #DC2626; }
+    .consent-item-badge.optional { background: #F0FDF4; color: #16A34A; }
+    .consent-item-detail { font-size: 11.5px; color: #64748B; margin-top: 2px; }
+    .consent-item-expand {
+      font-size: 11px; color: #94A3B8; padding: 0 16px 12px;
+      border-top: 1px solid #F1F5F9; margin-top: 0; display: none;
+      line-height: 1.7;
+    }
+    .consent-item-expand.open { display: block; }
+    .consent-view-btn {
+      font-size: 11px; color: #3ECBA5; text-decoration: underline;
+      background: none; border: none; cursor: pointer; font-family: inherit; padding: 0;
+    }
+    .consent-retention {
+      font-size: 11.5px; color: #94A3B8; text-align: center;
+      padding: 12px 20px; line-height: 1.6;
+    }
+    .consent-footer { padding: 12px 20px 32px; }
+    #consent-agree-btn {
+      width: 100%; background: #3ECBA5; color: #fff; border: none;
+      border-radius: 14px; padding: 16px; font-size: 16px; font-weight: 700;
+      cursor: pointer; font-family: inherit; transition: background .15s, opacity .15s;
+    }
+    #consent-agree-btn:disabled { background: #CBD5E1; color: #94A3B8; cursor: not-allowed; }
+    #consent-agree-btn:not(:disabled):hover { background: #2BA888; }
+
     /* ── 섹션 인터럽트 카드 ─────────────────────── */
     #hook-screen {
       position: fixed; inset: 0; z-index: 250;
@@ -379,6 +464,121 @@
     <button id="start-btn">지금 시작하기 →</button>
   </section>
 
+  <!-- 개인정보 동의 화면 -->
+  <section id="consent-screen" class="screen">
+    <div class="consent-header">
+      <div class="consent-header-logo">SlimMind</div>
+      <div class="consent-header-title">개인정보 수집·이용 동의</div>
+      <div class="consent-header-sub">정확한 바디코드 분석을 위해<br>아래 동의가 필요합니다</div>
+    </div>
+    <div class="consent-body">
+      <div class="consent-reason">
+        <div class="consent-reason-text">
+          ℹ️ 이 설문은 체중·키·건강 상태 등 건강 관련 민감정보를 수집합니다.<br>
+          개인정보보호법 제23조에 따라 별도 동의가 필요합니다.
+        </div>
+      </div>
+
+      <!-- 전체 동의 -->
+      <div class="consent-all-row" onclick="toggleConsentAll()">
+        <div class="consent-all-check" id="check-all"></div>
+        <div>
+          <div class="consent-all-label">전체 동의</div>
+          <div class="consent-all-sub">필수·선택 항목 모두 동의합니다</div>
+        </div>
+      </div>
+      <div class="consent-divider"></div>
+
+      <!-- 필수 1: 개인정보 -->
+      <div class="consent-item" id="ci-personal">
+        <div class="consent-item-row" onclick="toggleConsent('personal')">
+          <div class="consent-item-check" id="check-personal"></div>
+          <div class="consent-item-info">
+            <div class="consent-item-label">개인정보 수집·이용 동의
+              <span class="consent-item-badge required">필수</span>
+            </div>
+            <div class="consent-item-detail">이름, 나이, 성별</div>
+          </div>
+          <button class="consent-view-btn" onclick="event.stopPropagation();toggleExpand('expand-personal')">상세보기</button>
+        </div>
+        <div class="consent-item-expand" id="expand-personal">
+          <strong>수집 항목:</strong> 이름, 나이, 성별<br>
+          <strong>수집 목적:</strong> 바디코드 분석 결과 생성 및 제공<br>
+          <strong>보유 기간:</strong> 수집일로부터 1년간 보관 후 파기
+        </div>
+      </div>
+
+      <!-- 필수 2: 민감정보 -->
+      <div class="consent-item" id="ci-sensitive">
+        <div class="consent-item-row" onclick="toggleConsent('sensitive')">
+          <div class="consent-item-check" id="check-sensitive"></div>
+          <div class="consent-item-info">
+            <div class="consent-item-label">민감정보(건강정보) 수집·이용 동의
+              <span class="consent-item-badge required">필수</span>
+            </div>
+            <div class="consent-item-detail">체중, 키, 건강 상태, 질환 정보</div>
+          </div>
+          <button class="consent-view-btn" onclick="event.stopPropagation();toggleExpand('expand-sensitive')">상세보기</button>
+        </div>
+        <div class="consent-item-expand" id="expand-sensitive">
+          <strong>수집 항목:</strong> 체중, 키, BMI, 건강 상태, 질환·약물 복용 정보, 생활 습관<br>
+          <strong>수집 목적:</strong> 개인 맞춤형 바디코드 분석 및 솔루션 처방<br>
+          <strong>보유 기간:</strong> 수집일로부터 1년간 보관 후 파기<br>
+          <strong>거부 시 불이익:</strong> 정확한 분석 결과 제공 불가
+        </div>
+      </div>
+
+      <!-- 선택 1: 제3자 제공 -->
+      <div class="consent-item" id="ci-third_party">
+        <div class="consent-item-row" onclick="toggleConsent('third_party')">
+          <div class="consent-item-check" id="check-third_party"></div>
+          <div class="consent-item-info">
+            <div class="consent-item-label">개인정보 제3자 제공 동의
+              <span class="consent-item-badge optional">선택</span>
+            </div>
+            <div class="consent-item-detail">담당 컨설턴트에게 결과 공유</div>
+          </div>
+          <button class="consent-view-btn" onclick="event.stopPropagation();toggleExpand('expand-third_party')">상세보기</button>
+        </div>
+        <div class="consent-item-expand" id="expand-third_party">
+          <strong>제공 대상:</strong> 담당 컨설턴트 (트레이너·한의사·영양사)<br>
+          <strong>제공 목적:</strong> 맞춤형 건강 관리 서비스 제공<br>
+          <strong>제공 항목:</strong> 바디코드 분석 결과, 체성분 데이터<br>
+          <strong>거부 시 불이익:</strong> 없음 (선택 사항)
+        </div>
+      </div>
+
+      <!-- 선택 2: 마케팅 -->
+      <div class="consent-item" id="ci-marketing">
+        <div class="consent-item-row" onclick="toggleConsent('marketing')">
+          <div class="consent-item-check" id="check-marketing"></div>
+          <div class="consent-item-info">
+            <div class="consent-item-label">마케팅 활용 동의
+              <span class="consent-item-badge optional">선택</span>
+            </div>
+            <div class="consent-item-detail">맞춤 건강 정보 안내</div>
+          </div>
+          <button class="consent-view-btn" onclick="event.stopPropagation();toggleExpand('expand-marketing')">상세보기</button>
+        </div>
+        <div class="consent-item-expand" id="expand-marketing">
+          <strong>활용 목적:</strong> 개인 맞춤 건강 프로그램 안내, 이벤트 정보 제공<br>
+          <strong>채널:</strong> 문자, 앱 알림<br>
+          <strong>거부 시 불이익:</strong> 없음 (선택 사항)
+        </div>
+      </div>
+
+      <div class="consent-retention">
+        개인정보 보호책임자: SlimMind 개인정보보호팀<br>
+        수집 정보는 1년 보관 후 안전하게 파기됩니다
+      </div>
+    </div>
+    <div class="consent-footer">
+      <button id="consent-agree-btn" disabled onclick="doConsentAgree()">
+        필수 항목에 동의하고 시작하기
+      </button>
+    </div>
+  </section>
+
   <!-- 진행 바 -->
   <div id="progress-bar-wrap" style="display:none">
     <div id="section-header">
@@ -672,7 +872,7 @@ function showFeedbackToast(feedbackKey) {
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  const showProgress = !['intro-screen','hook-screen','transition-screen','loading-screen','result-screen'].includes(id);
+  const showProgress = !['intro-screen','consent-screen','hook-screen','transition-screen','loading-screen','result-screen'].includes(id);
   document.getElementById('progress-bar-wrap').style.display = showProgress ? 'block' : 'none';
   // 게이지 패널 / 미니바 노출 여부
   const showGauge = id === 'question-screen';
@@ -1470,7 +1670,76 @@ function showCompleteScreen() {
 // ════════════════════════════════════════
 //  이벤트 바인딩
 // ════════════════════════════════════════
-document.getElementById('start-btn').onclick = () => {
+// ════════════════════════════════════════
+//  개인정보 동의 화면
+// ════════════════════════════════════════
+const consentState = { personal: false, sensitive: false, third_party: false, marketing: false };
+const CONSENT_REQUIRED = ['personal', 'sensitive'];
+
+function toggleConsent(key) {
+  consentState[key] = !consentState[key];
+  const check = document.getElementById(`check-${key}`);
+  const item  = document.getElementById(`ci-${key}`);
+  if (consentState[key]) {
+    check.classList.add('checked');
+    item.classList.add('checked');
+  } else {
+    check.classList.remove('checked');
+    item.classList.remove('checked');
+  }
+  updateConsentAllCheck();
+  updateConsentBtn();
+}
+
+function toggleConsentAll() {
+  const allChecked = Object.values(consentState).every(v => v);
+  const newVal = !allChecked;
+  Object.keys(consentState).forEach(k => {
+    consentState[k] = newVal;
+    const check = document.getElementById(`check-${k}`);
+    const item  = document.getElementById(`ci-${k}`);
+    if (newVal) { check.classList.add('checked'); item.classList.add('checked'); }
+    else        { check.classList.remove('checked'); item.classList.remove('checked'); }
+  });
+  updateConsentAllCheck();
+  updateConsentBtn();
+}
+
+function updateConsentAllCheck() {
+  const allChecked = Object.values(consentState).every(v => v);
+  const el = document.getElementById('check-all');
+  if (allChecked) el.classList.add('checked'); else el.classList.remove('checked');
+}
+
+function updateConsentBtn() {
+  const requiredOk = CONSENT_REQUIRED.every(k => consentState[k]);
+  const btn = document.getElementById('consent-agree-btn');
+  btn.disabled = !requiredOk;
+  btn.textContent = requiredOk ? '필수 항목에 동의하고 시작하기' : '필수 동의 후 시작 가능';
+}
+
+function toggleExpand(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.toggle('open');
+}
+
+function doConsentAgree() {
+  if (!CONSENT_REQUIRED.every(k => consentState[k])) return;
+  // 동의 정보 저장 (선택 포함)
+  try {
+    localStorage.setItem('sm_consent', JSON.stringify({
+      personal: consentState.personal,
+      sensitive: consentState.sensitive,
+      third_party: consentState.third_party,
+      marketing: consentState.marketing,
+      ts: Date.now(),
+    }));
+  } catch(e) {}
+  // 설문 시작
+  doStartSurvey();
+}
+
+function doStartSurvey() {
   Object.keys(state.answers).forEach(k => delete state.answers[k]);
   Object.assign(state.userData, { height:160, weight:60, targetWeight:55, age:30, gender:'female', bmi:0, bfr:0, fatKg:0, muscleKg:0 });
   state.currentQ = 0;
@@ -1492,6 +1761,19 @@ document.getElementById('start-btn').onclick = () => {
     document.getElementById('progress-bar-wrap').style.display = 'block';
     renderQuestion(0);
   });
+}
+
+document.getElementById('start-btn').onclick = () => {
+  // 이미 동의한 경우 skip
+  try {
+    const saved = JSON.parse(localStorage.getItem('sm_consent') || 'null');
+    if (saved && saved.personal && saved.sensitive) {
+      doStartSurvey();
+      return;
+    }
+  } catch(e) {}
+  // 동의 화면 표시
+  showScreen('consent-screen');
 };
 
 document.getElementById('btn-next').onclick = goNext;
