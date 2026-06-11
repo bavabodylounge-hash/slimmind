@@ -2322,147 +2322,242 @@ function renderCh1(){
     const isMaleDisp = (res.gender||'').toLowerCase().includes('male') || res.gender === '남성' || res.gender === '남';
 
     // ─────────────────────────────────────────────
-    // SVG 파라메트릭 실루엣 생성 함수
-    // params: { w(체중kg), h(키cm), bfr(%), muscleKg, label, isCurrent }
-    // ─────────────────────────────────────────────
-    function buildBodySVG({ w, h, bfr, muscleKg, label, isCurrent, isMale }) {
-      // BMI 기반 실루엣 파라미터 계산
-      const bmi = w / ((h / 100) ** 2);
-      // 어깨너비: BMI에 따라 확장
-      const shoulderW = Math.min(62, Math.max(38, 38 + (bmi - 18) * 1.6));
-      // 허리너비: 체지방률 기반 (없으면 BMI로 추정)
-      const fatRatio  = bfr ? bfr / 100 : Math.max(0.15, (bmi - 16) * 0.022);
-      const waistW    = Math.min(60, Math.max(26, 26 + fatRatio * 80));
-      // 엉덩이: 여성은 넓게
-      const hipMult   = isMale ? 1.0 : 1.12;
-      const hipW      = Math.min(68, Math.max(36, (waistW + shoulderW) / 2 * hipMult));
-      // 허벅지: 체지방 비례
-      const thighW    = Math.min(32, Math.max(16, 16 + fatRatio * 28));
-      // 목표 체형은 체지방 감소 반영
-      const accentColor = isCurrent ? '#F87171' : '#34D399';
-      const fillColor   = isCurrent ? '#FFF1F1' : '#F0FDF4';
-      const strokeColor = isCurrent ? '#EF4444' : '#10B981';
-      const headColor   = isCurrent ? '#FDDCDC' : '#D1FAE5';
+    // ─────────────────────────────────────────────────────────────
+    // 귀여운 캐릭터 SVG 실루엣 생성 함수
+    // viewBox: 0 0 120 svgH  (cx=60 중심, 팔 공간 충분히 확보)
+    // fatness: 0(BMI18) ~ 1(BMI35) 정규화  →  몸통/다리 두께 조절
+    // ─────────────────────────────────────────────────────────────
+    function buildBodySVG({ w, h, bfr, muscleKg, isCurrent, isMale }) {
+      const bmi     = w / ((h / 100) ** 2);
+      // 0=BMI18, 1=BMI35
+      const fatness = Math.max(0, Math.min(1, (bmi - 18) / 17));
+      // 여성은 엉덩이·허벅지 살짝 넓게
+      const femMult = isMale ? 1.0 : 1.1;
 
-      // 키 비례 스케일 (160cm 기준 = 160px 높이)
-      const svgH = 180;
-      const scale = svgH / 200;  // 전체 인체 200단위 기준
+      // ── 색상 ──────────────────────────────────────────────────
+      const skin     = isCurrent ? '#FDDCDC' : '#D1FAE5';
+      const bodyFill = isCurrent ? '#FFE4E4' : '#DCFCE7';
+      const stroke   = isCurrent ? '#F87171' : '#34D399';
+      const cheekC   = isCurrent ? '#FCA5A5' : '#6EE7B7';
+      const hairFill = isCurrent ? '#FDA4AF' : '#A7F3D0';
+      const eyeColor = '#1E293B';
+      const legFill  = isCurrent ? '#FECACA' : '#BBF7D0';
+      const footFill = isCurrent ? '#FCA5A5' : '#6EE7B7';
 
-      // SVG 좌표 (cx=50 중심)
-      const cx = 50;
-      // 머리: 반지름 12
-      const headR  = 11 * scale;
-      const headCY = 16 * scale;
+      // ── 좌표 중심: cx=60 ───────────────────────────────────────
+      const CX = 60;
+
+      // 머리
+      const headR  = 17;
+      const headCY = 20;
+
       // 목
-      const neckW  = 9 * scale;
-      const neckT  = 24 * scale;
-      const neckB  = 32 * scale;
-      // 어깨-가슴-허리-엉덩이 몸통 (하나의 경로)
-      const shW2   = (shoulderW / 2) * scale;  // 어깨 반너비
-      const waW2   = (waistW   / 2) * scale;
-      const hipW2  = (hipW     / 2) * scale;
-      const bodyT  = 32 * scale;   // 어깨 상단
-      const chestY = 58 * scale;   // 가슴 수직 중간
-      const waistY = 78 * scale;   // 허리
-      const hipY   = 100 * scale;  // 엉덩이
-      // 다리
-      const thW2   = (thighW   / 2) * scale;
-      const calfW2 = thW2 * 0.65;
-      const legT   = 100 * scale;
-      const kneeY  = 138 * scale;
-      const ankleY = 170 * scale;
-      const footY  = 176 * scale;
-      // 팔
-      const armTX  = cx + shW2 + 1 * scale;
-      const armBX  = cx + shW2 - 2 * scale;
-      const armW2  = 6 * scale;
+      const neckW   = 7 + fatness * 3;
+      const neckTop = headCY + headR - 3;
+      const neckBot = headCY + headR + 7;
 
-      const bodyPath = `
-        M ${cx - shW2} ${bodyT}
-        C ${cx - shW2 - 4*scale} ${chestY}, ${cx - waW2 - 2*scale} ${chestY}, ${cx - waW2} ${waistY}
-        C ${cx - waW2 - 2*scale} ${waistY + 10*scale}, ${cx - hipW2} ${hipY - 6*scale}, ${cx - hipW2} ${hipY}
-        L ${cx + hipW2} ${hipY}
-        C ${cx + hipW2} ${hipY - 6*scale}, ${cx + waW2 + 2*scale} ${waistY + 10*scale}, ${cx + waW2} ${waistY}
-        C ${cx + waW2 + 2*scale} ${chestY}, ${cx + shW2 + 4*scale} ${chestY}, ${cx + shW2} ${bodyT}
+      // 몸통
+      const shW    = 20 + fatness * 13;   // 어깨 반너비
+      const waW    = 12 + fatness * 14;   // 허리 반너비
+      const hipW   = (16 + fatness * 15) * femMult;  // 엉덩이 반너비
+      const bodyTop = neckBot - 1;
+      const bodyH   = 50 + fatness * 10;  // 몸통 높이
+      const bodyBot = bodyTop + bodyH;
+
+      // ── 다리 (타원 3단: 허벅지 + 종아리 + 발) ─────────────────
+      // 허벅지: 엉덩이 너비의 40%에 중심, 충분히 두껍게
+      const thighRX  = (10 + fatness * 8) * femMult;
+      const thighRY  = 18 + fatness * 3;
+      // 종아리: 허벅지보다 얇고 살짝 안쪽
+      const calfRX   = (7 + fatness * 5) * femMult;
+      const calfRY   = 15 + fatness * 2;
+      // 발: 납작한 타원
+      const footRX   = 10 + fatness * 3;
+      const footRY   = 5;
+
+      // 다리 중심 x (좌우 대칭)
+      const legCX    = hipW * 0.42;
+      const thighCY  = bodyBot + thighRY;
+      const calfCY   = thighCY + thighRY + calfRY - 6;
+      const footCY   = calfCY + calfRY + footRY - 2;
+
+      // ── 팔 (타원, 몸통 옆에 붙임) ─────────────────────────────
+      // 팔 타원 세로로 길게, 몸통 옆에서 약간 기울임
+      const armRX   = 5 + fatness * 3;    // 비만시 과도한 팔 방지
+      const armRY   = 17 + fatness * 2;
+      // 팔 중심 x = 어깨 끝 + 팔 반너비 - overlap (비만시 overlap 더 크게)
+      const armOvlp = 5 + fatness * 2;   // overlap: 날씬=5, 비만=7
+      const armCX_L = CX - shW - armRX + armOvlp;
+      const armCX_R = CX + shW + armRX - armOvlp;
+      const armCY   = bodyTop + 15;
+
+      // ── 전체 높이 ──────────────────────────────────────────────
+      const svgH = Math.round(footCY + footRY + 16);
+
+      // ── 몸통 Path (귀여운 볼록 실루엣) ───────────────────────
+      const L  = CX - neckW,  R  = CX + neckW;
+      const LS = CX - shW,    RS = CX + shW;
+      const LW = CX - waW,    RW = CX + waW;
+      const LH = CX - hipW,   RH = CX + hipW;
+      const bT = bodyTop, bB = bodyBot;
+
+      const bodyPath = [
+        `M ${L} ${bT}`,
+        // 왼쪽: 목→어깨→허리→엉덩이
+        `C ${LS - 6} ${bT + 3},  ${LS - 8} ${bT + 14}, ${LS} ${bT + 16}`,
+        `C ${LS + 3} ${bT + 22}, ${LW - 2} ${bT + 30}, ${LW} ${bT + 38}`,
+        `C ${LW - 2} ${bT + 45}, ${LH - 2} ${bB - 8},  ${LH} ${bB}`,
+        // 엉덩이 아래 부드러운 곡선
+        `Q ${CX} ${bB + 8},  ${RH} ${bB}`,
+        // 오른쪽: 엉덩이→허리→어깨→목
+        `C ${RH + 2} ${bB - 8},  ${RW + 2} ${bT + 45}, ${RW} ${bT + 38}`,
+        `C ${RW + 2} ${bT + 30}, ${RS - 3} ${bT + 22}, ${RS} ${bT + 16}`,
+        `C ${RS + 8} ${bT + 14}, ${RS + 6} ${bT + 3},  ${R} ${bT}`,
+        `Z`
+      ].join(' ');
+
+      // ── 머리카락 (둥근 헬멧형) ─────────────────────────────────
+      const hR = headR + 2;
+      const hairPath = `
+        M ${CX - headR + 1} ${headCY + 4}
+        C ${CX - hR - 2} ${headCY + 1},
+          ${CX - hR - 3} ${headCY - hR + 2},
+          ${CX - hR + 1} ${headCY - hR - 2}
+        C ${CX - 4}      ${headCY - hR - 6},
+          ${CX + 4}      ${headCY - hR - 6},
+          ${CX + hR - 1} ${headCY - hR - 2}
+        C ${CX + hR + 3} ${headCY - hR + 2},
+          ${CX + hR + 2} ${headCY + 1},
+          ${CX + headR - 1} ${headCY + 4}
         Z
       `;
 
-      const leftLeg = `
-        M ${cx - hipW2 + 2*scale} ${legT}
-        C ${cx - hipW2 + 2*scale} ${legT + 10*scale}, ${cx - thW2 - 1*scale} ${kneeY - 10*scale}, ${cx - thW2 - 1*scale} ${kneeY}
-        C ${cx - thW2 - 1*scale} ${kneeY + 8*scale}, ${cx - calfW2} ${kneeY + 20*scale}, ${cx - calfW2} ${ankleY}
-        L ${cx - 2*scale} ${footY}
-        L ${cx - calfW2 + 4*scale} ${ankleY}
-        C ${cx - calfW2 + 4*scale} ${kneeY + 20*scale}, ${cx - thW2 + 5*scale} ${kneeY + 8*scale}, ${cx - thW2 + 5*scale} ${kneeY}
-        C ${cx - thW2 + 5*scale} ${kneeY - 10*scale}, ${cx - hipW2 + hipW2*0.6 - thW2 + 5*scale} ${legT + 10*scale}, ${cx - hipW2*0.5} ${legT}
-        Z
-      `;
-      const rightLeg = `
-        M ${cx + hipW2*0.5} ${legT}
-        C ${cx + thW2 - 5*scale} ${legT + 10*scale}, ${cx + thW2 - 5*scale} ${kneeY - 10*scale}, ${cx + thW2 - 5*scale} ${kneeY}
-        C ${cx + thW2 - 5*scale} ${kneeY + 8*scale}, ${cx + calfW2 - 4*scale} ${kneeY + 20*scale}, ${cx + calfW2 - 4*scale} ${ankleY}
-        L ${cx + 2*scale} ${footY}
-        L ${cx + calfW2} ${ankleY}
-        C ${cx + calfW2} ${kneeY + 20*scale}, ${cx + thW2 + 1*scale} ${kneeY + 8*scale}, ${cx + thW2 + 1*scale} ${kneeY}
-        C ${cx + thW2 + 1*scale} ${kneeY - 10*scale}, ${cx + hipW2 - 2*scale} ${legT + 10*scale}, ${cx + hipW2 - 2*scale} ${legT}
-        Z
-      `;
-      // 팔 (단순 타원)
-      const armPath = (side) => {
-        const sx = side === 'L' ? cx - shW2 - 2*scale : cx + shW2 + 2*scale;
-        const ex = side === 'L' ? cx - shW2 + 4*scale : cx + shW2 - 4*scale;
-        return `
-          <ellipse cx="${side==='L' ? sx-armW2 : sx+armW2}" cy="${bodyT + 22*scale}"
-                   rx="${armW2*0.75}" ry="${14*scale}"
-                   fill="${fillColor}" stroke="${strokeColor}" stroke-width="1.2"
-                   transform="rotate(${side==='L'?'-12':'12'}, ${side==='L'?sx-armW2:sx+armW2}, ${bodyT+22*scale})"/>
-        `;
-      };
-
-      // 사이즈 라벨 (현재 or 목표)
+      // ── 라벨 ────────────────────────────────────────────────────
+      const bfrTxt   = bfr ? bfr.toFixed(1) + '%' : '—';
+      const musTxt   = muscleKg ? muscleKg.toFixed(1) + 'kg' : '';
       const sizeLabel = isCurrent
-        ? `${w}kg · BF ${bfr ? bfr.toFixed(1) : '—'}%`
-        : `목표 ${w}kg · 예상 BF ${bfr ? bfr.toFixed(1) : '—'}%`;
-      const musLabel  = muscleKg ? `근육 ${muscleKg.toFixed(1)}kg` : '';
+        ? `${w}kg · 체지방 ${bfrTxt}`
+        : `목표 ${w}kg · 체지방 ${bfrTxt}`;
 
       return `
-        <svg viewBox="0 0 100 ${svgH}" width="100%" style="max-width:120px;display:block;margin:0 auto">
+        <svg viewBox="0 0 120 ${svgH}" width="100%"
+             style="max-width:120px;display:block;margin:0 auto;overflow:visible">
           <defs>
-            <filter id="sf${isCurrent?'c':'g'}" x="-10%" y="-10%" width="120%" height="120%">
-              <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="${strokeColor}" flood-opacity="0.18"/>
+            <filter id="bsf${isCurrent?'A':'B'}" x="-20%" y="-5%" width="140%" height="115%">
+              <feDropShadow dx="0" dy="3" stdDeviation="3"
+                flood-color="${stroke}" flood-opacity="0.2"/>
             </filter>
+            <radialGradient id="bgr${isCurrent?'A':'B'}" cx="50%" cy="35%" r="60%">
+              <stop offset="0%" stop-color="${isCurrent?'#FFF0F0':'#F0FFF4'}"/>
+              <stop offset="100%" stop-color="${isCurrent?'#FECACA':'#A7F3D0'}"/>
+            </radialGradient>
+            <radialGradient id="hgr${isCurrent?'A':'B'}" cx="50%" cy="30%" r="55%">
+              <stop offset="0%" stop-color="${skin}"/>
+              <stop offset="100%" stop-color="${isCurrent?'#FECDD3':'#B7F5D8'}"/>
+            </radialGradient>
+            <radialGradient id="lgr${isCurrent?'A':'B'}" cx="50%" cy="30%" r="65%">
+              <stop offset="0%" stop-color="${isCurrent?'#FFE4E4':'#DCFCE7'}"/>
+              <stop offset="100%" stop-color="${isCurrent?'#FECACA':'#A7F3D0'}"/>
+            </radialGradient>
           </defs>
-          <!-- 팔 -->
-          ${armPath('L')}${armPath('R')}
-          <!-- 목 -->
-          <path d="M ${cx-neckW/2} ${neckT} L ${cx+neckW/2} ${neckT} L ${cx+neckW/2*1.1} ${neckB} L ${cx-neckW/2*1.1} ${neckB} Z"
-                fill="${fillColor}" stroke="${strokeColor}" stroke-width="1.2"/>
-          <!-- 몸통 -->
-          <path d="${bodyPath}" fill="${fillColor}" stroke="${strokeColor}" stroke-width="1.6" filter="url(#sf${isCurrent?'c':'g'})"/>
-          <!-- 다리 -->
-          <path d="${leftLeg}"  fill="${fillColor}" stroke="${strokeColor}" stroke-width="1.2"/>
-          <path d="${rightLeg}" fill="${fillColor}" stroke="${strokeColor}" stroke-width="1.2"/>
-          <!-- 머리 -->
-          <circle cx="${cx}" cy="${headCY}" r="${headR}"
-                  fill="${headColor}" stroke="${strokeColor}" stroke-width="1.6"/>
-          <!-- 얼굴 표정 -->
-          <circle cx="${cx-3*scale}" cy="${headCY-1*scale}" r="${1.5*scale}" fill="${strokeColor}" opacity="0.7"/>
-          <circle cx="${cx+3*scale}" cy="${headCY-1*scale}" r="${1.5*scale}" fill="${strokeColor}" opacity="0.7"/>
+
+          <!-- ── 왼쪽 팔 (뒤레이어) ── -->
+          <ellipse cx="${armCX_L}" cy="${armCY}" rx="${armRX}" ry="${armRY}"
+                   fill="url(#bgr${isCurrent?'A':'B'})" stroke="${stroke}" stroke-width="1.3"
+                   transform="rotate(-10 ${armCX_L} ${armCY})"/>
+          <!-- ── 오른쪽 팔 (뒤레이어) ── -->
+          <ellipse cx="${armCX_R}" cy="${armCY}" rx="${armRX}" ry="${armRY}"
+                   fill="url(#bgr${isCurrent?'A':'B'})" stroke="${stroke}" stroke-width="1.3"
+                   transform="rotate(10 ${armCX_R} ${armCY})"/>
+
+          <!-- ── 왼쪽 허벅지 ── -->
+          <ellipse cx="${CX - legCX}" cy="${thighCY}" rx="${thighRX}" ry="${thighRY}"
+                   fill="url(#lgr${isCurrent?'A':'B'})" stroke="${stroke}" stroke-width="1.4"/>
+          <!-- ── 오른쪽 허벅지 ── -->
+          <ellipse cx="${CX + legCX}" cy="${thighCY}" rx="${thighRX}" ry="${thighRY}"
+                   fill="url(#lgr${isCurrent?'A':'B'})" stroke="${stroke}" stroke-width="1.4"/>
+
+          <!-- ── 왼쪽 종아리 ── -->
+          <ellipse cx="${CX - legCX * 0.85}" cy="${calfCY}" rx="${calfRX}" ry="${calfRY}"
+                   fill="url(#lgr${isCurrent?'A':'B'})" stroke="${stroke}" stroke-width="1.3"/>
+          <!-- ── 오른쪽 종아리 ── -->
+          <ellipse cx="${CX + legCX * 0.85}" cy="${calfCY}" rx="${calfRX}" ry="${calfRY}"
+                   fill="url(#lgr${isCurrent?'A':'B'})" stroke="${stroke}" stroke-width="1.3"/>
+
+          <!-- ── 왼쪽 발 ── -->
+          <ellipse cx="${CX - legCX * 0.88 - 1}" cy="${footCY}" rx="${footRX}" ry="${footRY}"
+                   fill="${footFill}" stroke="${stroke}" stroke-width="1.2"/>
+          <!-- ── 오른쪽 발 ── -->
+          <ellipse cx="${CX + legCX * 0.88 + 1}" cy="${footCY}" rx="${footRX}" ry="${footRY}"
+                   fill="${footFill}" stroke="${stroke}" stroke-width="1.2"/>
+
+          <!-- ── 목 ── -->
+          <rect x="${CX - neckW}" y="${neckTop}" width="${neckW * 2}"
+                height="${neckBot - neckTop + 2}" rx="${neckW * 0.75}"
+                fill="url(#hgr${isCurrent?'A':'B'})" stroke="${stroke}" stroke-width="1.1"/>
+
+          <!-- ── 몸통 ── -->
+          <path d="${bodyPath}"
+                fill="url(#bgr${isCurrent?'A':'B'})" stroke="${stroke}" stroke-width="1.6"
+                filter="url(#bsf${isCurrent?'A':'B'})"/>
+
+          <!-- ── 머리 ── -->
+          <circle cx="${CX}" cy="${headCY}" r="${headR}"
+                  fill="url(#hgr${isCurrent?'A':'B'})" stroke="${stroke}" stroke-width="1.6"/>
+
+          <!-- ── 머리카락 ── -->
+          <path d="${hairPath}" fill="${hairFill}" stroke="${stroke}" stroke-width="1"/>
+
+          <!-- ── 눈 (큰 동그란 귀여운 눈) ── -->
+          <!-- 왼쪽 눈 흰자 -->
+          <circle cx="${CX - 6}" cy="${headCY - 1}" r="3.5" fill="#fff" stroke="${eyeColor}" stroke-width="0.8"/>
+          <!-- 오른쪽 눈 흰자 -->
+          <circle cx="${CX + 6}" cy="${headCY - 1}" r="3.5" fill="#fff" stroke="${eyeColor}" stroke-width="0.8"/>
+          <!-- 눈동자 -->
+          <circle cx="${CX - 5.3}" cy="${headCY - 0.5}" r="2" fill="${eyeColor}"/>
+          <circle cx="${CX + 6.7}" cy="${headCY - 0.5}" r="2" fill="${eyeColor}"/>
+          <!-- 눈 하이라이트 -->
+          <circle cx="${CX - 4.4}" cy="${headCY - 1.5}" r="0.85" fill="#fff"/>
+          <circle cx="${CX + 7.6}" cy="${headCY - 1.5}" r="0.85" fill="#fff"/>
+
+          <!-- ── 볼터치 (타원형으로 더 귀엽게) ── -->
+          <ellipse cx="${CX - 10}" cy="${headCY + 4}" rx="4" ry="2.5"
+                   fill="${cheekC}" opacity="0.6"/>
+          <ellipse cx="${CX + 10}" cy="${headCY + 4}" rx="4" ry="2.5"
+                   fill="${cheekC}" opacity="0.6"/>
+
+          <!-- ── 입 ── -->
           ${isCurrent
-            ? `<path d="M ${cx-4*scale} ${headCY+3.5*scale} Q ${cx} ${headCY+1.5*scale} ${cx+4*scale} ${headCY+3.5*scale}"
-                     fill="none" stroke="${strokeColor}" stroke-width="1.2" stroke-linecap="round" opacity="0.7"/>`
-            : `<path d="M ${cx-4*scale} ${headCY+2*scale} Q ${cx} ${headCY+5*scale} ${cx+4*scale} ${headCY+2*scale}"
-                     fill="none" stroke="${strokeColor}" stroke-width="1.2" stroke-linecap="round" opacity="0.7"/>`
+            ? `<!-- 슬픈 입: 살짝 처진 곡선 -->
+               <path d="M ${CX-4} ${headCY+8} Q ${CX} ${headCY+7} ${CX+4} ${headCY+8}"
+                     fill="none" stroke="${eyeColor}" stroke-width="1.3"
+                     stroke-linecap="round" opacity="0.8"/>
+               <!-- 슬픈 눈썹 -->
+               <path d="M ${CX-7} ${headCY-6} Q ${CX-4} ${headCY-7.5} ${CX-1} ${headCY-6}"
+                     fill="none" stroke="${eyeColor}" stroke-width="1" opacity="0.6"/>
+               <path d="M ${CX+1} ${headCY-6} Q ${CX+4} ${headCY-7.5} ${CX+7} ${headCY-6}"
+                     fill="none" stroke="${eyeColor}" stroke-width="1" opacity="0.6"/>`
+            : `<!-- 웃는 입: 넓고 활짝 -->
+               <path d="M ${CX-5} ${headCY+7} Q ${CX} ${headCY+12} ${CX+5} ${headCY+7}"
+                     fill="none" stroke="${eyeColor}" stroke-width="1.4"
+                     stroke-linecap="round" opacity="0.85"/>
+               <!-- 웃는 눈썹 (올라감) -->
+               <path d="M ${CX-7} ${headCY-6.5} Q ${CX-4} ${headCY-8} ${CX-1} ${headCY-6.5}"
+                     fill="none" stroke="${eyeColor}" stroke-width="1" opacity="0.6"/>
+               <path d="M ${CX+1} ${headCY-6.5} Q ${CX+4} ${headCY-8} ${CX+7} ${headCY-6.5}"
+                     fill="none" stroke="${eyeColor}" stroke-width="1" opacity="0.6"/>
+               <!-- 반짝이 ✨ -->
+               <g opacity="0.85">
+                 <circle cx="${CX+17}" cy="${headCY-14}" r="2" fill="#FCD34D"/>
+                 <circle cx="${CX+21}" cy="${headCY-9}"  r="1.3" fill="#FCD34D"/>
+                 <circle cx="${CX+19}" cy="${headCY-19}" r="1.2" fill="#FCD34D"/>
+               </g>`
           }
-          <!-- 라벨 텍스트 -->
-          <text x="${cx}" y="${svgH - 3}" text-anchor="middle"
-                font-size="7" fill="${strokeColor}" font-weight="700" font-family="sans-serif">
-            ${w}kg
-          </text>
         </svg>
-        <div style="margin-top:4px;font-size:10px;color:${strokeColor};font-weight:600;text-align:center;line-height:1.5">
-          ${sizeLabel}<br>
-          ${musLabel ? `<span style="color:#64748B;font-weight:400">${musLabel}</span>` : ''}
+        <div style="margin-top:6px;font-size:10px;color:${stroke};font-weight:700;
+                    text-align:center;line-height:1.6;letter-spacing:-0.2px">
+          ${sizeLabel}
+          ${musTxt ? `<br><span style="color:#64748B;font-size:9px;font-weight:400">근육 ${musTxt}</span>` : ''}
         </div>
       `;
     }
