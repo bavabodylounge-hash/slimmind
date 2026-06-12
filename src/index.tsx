@@ -210,7 +210,9 @@ app.post('/api/survey/submit', async (c) => {
     // v3.0 섹션 L 필드 (알레르기/피부반응/갱년기/병적요소)
     food_allergy, allergy_exclude, skin_reaction,
     menopause_status, is_menopause,
-    medical_conditions, has_medical_conditions
+    medical_conditions, has_medical_conditions,
+    // v4.0 10축 분석 결과
+    axis_scores, top_axes
   } = body
 
   const result_id = resultIdGen()
@@ -247,8 +249,9 @@ app.post('/api/survey/submit', async (c) => {
       prescription_version,
       food_allergy_json, allergy_exclude_json, skin_reaction,
       menopause_status, is_menopause,
-      medical_conditions_json, has_medical_conditions
-    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      medical_conditions_json, has_medical_conditions,
+      axis_scores_json, top_axes_json
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
   `).bind(
     result_id, user_name || '익명', validConsultantCode,
     bc_primary, bc_secondary || null, bc_primary_score || 0, bc_secondary_score || 0,
@@ -264,7 +267,7 @@ app.post('/api/survey/submit', async (c) => {
     toStr(aerobic_response), massage_swells ? 1 : 0, toStr(sauna_response),
     toStr(current_facility), toStr(context_type), toStr(current_medications),
     toStr(target_body_part), toStr(psych_state), toStr(monthly_budget), toStr(muscle_soreness_level),
-    'v3.0',
+    'v4.0',
     // v3.0 섹션 L
     JSON.stringify(Array.isArray(food_allergy) ? food_allergy : []),
     JSON.stringify(Array.isArray(allergy_exclude) ? allergy_exclude : []),
@@ -272,7 +275,10 @@ app.post('/api/survey/submit', async (c) => {
     toStr(menopause_status),
     is_menopause ? 1 : 0,
     JSON.stringify(Array.isArray(medical_conditions) ? medical_conditions : []),
-    has_medical_conditions ? 1 : 0
+    has_medical_conditions ? 1 : 0,
+    // v4.0 10축 분석
+    JSON.stringify(axis_scores || {}),
+    JSON.stringify(Array.isArray(top_axes) ? top_axes : [])
   ).run()
 
   return c.json({ success: true, result_id, message: '설문이 제출되었습니다.' })
@@ -864,6 +870,9 @@ app.get('/result/:id', async (c) => {
       is_menopause: !!result.is_menopause,
       medical_conditions: parseJson(result.medical_conditions_json, []),
       has_medical_conditions: !!result.has_medical_conditions,
+      // v4.0 10축 분석 결과
+      axis_scores: parseJson(result.axis_scores_json, {}),
+      top_axes: parseJson(result.top_axes_json, []),
       created_at: result.created_at,
     },
     bc: bc ? {

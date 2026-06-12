@@ -1050,6 +1050,18 @@ body{
 
     <div class="chapter-content">
 
+      <!-- ── 10축 근거 분석 (Plan A — 왜 이 BC가 나왔는가) ── -->
+      <div id="p2AxisWrap" style="margin-bottom:22px">
+        <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:4px;display:flex;align-items:center;gap:6px">
+          <span style="width:3px;height:16px;background:var(--bc-accent);border-radius:2px;display:inline-block"></span>
+          왜 이 바디코드가 나왔는가 — 10축 근거 분석
+        </div>
+        <div style="font-size:11px;color:#64748B;margin-bottom:12px">설문 응답에서 도출된 10개 축별 신호 강도</div>
+        <div id="p2AxisBars" style="display:flex;flex-direction:column;gap:7px"></div>
+        <!-- 상위 3축 해설 -->
+        <div id="p2TopAxesDetail" style="margin-top:14px;display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+
       <!-- ── 6축 레이더 차트 ── -->
       <div id="p2RadarWrap" style="margin-bottom:18px">
         <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:10px;display:flex;align-items:center;gap:6px">
@@ -3309,6 +3321,100 @@ function renderConsultantSummary() {
     </div>`;
 }
 
+function renderAxisBars(axisScores, topAxes) {
+  // 10축 바 차트 렌더링
+  const axisMeta = {
+    A01: { name: '지방 저장',      icon: '🔥', color: '#E8631A', bg: '#FFE3D3',
+           desc: '지방이 어디에, 어떻게 쌓이는 패턴을 측정합니다.' },
+    A02: { name: '순환·붓기',      icon: '💧', color: '#1A7FC1', bg: '#E3F1FB',
+           desc: '림프 및 혈액 순환 상태 — 붓기 vs 지방 판별 지표입니다.' },
+    A03: { name: '호르몬·대사',    icon: '🌸', color: '#C0397A', bg: '#FCE4EE',
+           desc: '갑상선·인슐린·성호르몬 등 대사 시스템 신호입니다.' },
+    A04: { name: '근육·활동',      icon: '💪', color: '#4A8C1C', bg: '#E8F3DC',
+           desc: '근육량과 하체 근력 — 기초대사량의 핵심 인자입니다.' },
+    A05: { name: '소화·흡수·염증', icon: '🌿', color: '#1A8C5B', bg: '#DEF3EA',
+           desc: '장내 환경과 음식 불내증 — 영양 흡수 효율 지표입니다.' },
+    A06: { name: '체형 정렬',      icon: '🦴', color: '#6B4EAA', bg: '#EEEAF7',
+           desc: '자세·골반 정렬 — 운동 효율과 부위별 지방 분포에 영향합니다.' },
+    A07: { name: '스트레스·회복',  icon: '🌙', color: '#3F51B5', bg: '#E8EAF6',
+           desc: '코르티솔·수면·만성피로 — 지방 분해 호르몬을 차단하는 요인입니다.' },
+    A08: { name: '심리·식이 행동', icon: '🧠', color: '#7B1FA2', bg: '#EDE7F6',
+           desc: '식욕 조절·감정 식이·다이어트 행동 패턴입니다.' },
+    A09: { name: '성인병 리스크',  icon: '🩺', color: '#C0392B', bg: '#FCE4E0',
+           desc: '혈당·혈압·갑상선 등 의학적 위험 신호입니다.' },
+    A10: { name: '기질·해석',      icon: '🔮', color: '#E67E22', bg: '#FFF0DA',
+           desc: '체질·성향·MBTI 기반 개인 맞춤 기질 분석입니다.' }
+  };
+
+  const barsWrap = document.getElementById('p2AxisBars');
+  if (!barsWrap) return;
+
+  const scores = axisScores || {};
+  const hasData = Object.values(scores).some(v => v > 0);
+
+  if (!hasData) {
+    barsWrap.innerHTML = '<div style="font-size:12px;color:#94A3B8;text-align:center;padding:12px">10축 데이터는 v4.0 이후 제출된 결과에서 표시됩니다.</div>';
+    return;
+  }
+
+  // 정렬: 점수 높은 순
+  const sorted = Object.entries(axisMeta)
+    .map(([axId, meta]) => ({ axId, meta, score: scores[axId] || 0 }))
+    .sort((a, b) => b.score - a.score);
+
+  barsWrap.innerHTML = sorted.map(({ axId, meta, score }) => {
+    const isTop = topAxes && topAxes.some(t => t.axis === axId);
+    const badgeHtml = isTop
+      ? `<span style="font-size:9px;font-weight:700;color:#fff;background:${meta.color};border-radius:4px;padding:1px 5px;margin-left:4px">핵심</span>`
+      : '';
+    return `
+      <div style="background:${isTop ? meta.bg : '#F8FAFC'};border-radius:8px;padding:7px 10px;${isTop ? `border-left:3px solid ${meta.color}` : ''}">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <div style="font-size:11px;font-weight:700;color:#1E293B;display:flex;align-items:center;gap:4px">
+            <span>${meta.icon}</span>
+            <span>${esc(meta.name)}</span>
+            ${badgeHtml}
+          </div>
+          <span style="font-size:12px;font-weight:800;color:${meta.color}">${score}</span>
+        </div>
+        <div style="height:5px;background:#E2E8F0;border-radius:3px;overflow:hidden">
+          <div style="width:${score}%;height:5px;background:${meta.color};border-radius:3px;transition:width 0.6s ease"></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // 상위 3축 해설
+  const detailWrap = document.getElementById('p2TopAxesDetail');
+  if (!detailWrap) return;
+  if (!topAxes || topAxes.length === 0) {
+    detailWrap.style.display = 'none';
+    return;
+  }
+
+  detailWrap.innerHTML = `
+    <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:8px;display:flex;align-items:center;gap:5px">
+      <span>📊</span> 당신의 상위 3축 — 이것이 ${esc((R.result||{}).bc_primary||'')} 판정 근거입니다
+    </div>
+  ` + topAxes.slice(0, 3).map((t, i) => {
+    const meta = axisMeta[t.axis];
+    if (!meta) return '';
+    return `
+      <div style="background:${meta.bg};border-radius:10px;padding:10px 12px;border-left:3px solid ${meta.color}">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+          <span style="font-size:16px">${meta.icon}</span>
+          <div>
+            <span style="font-size:10px;font-weight:700;color:${meta.color};text-transform:uppercase">#${i+1} 주요 신호</span>
+            <div style="font-size:13px;font-weight:800;color:#1E293B">${esc(meta.name)}</div>
+          </div>
+          <span style="margin-left:auto;font-size:20px;font-weight:900;color:${meta.color}">${t.score}</span>
+        </div>
+        <div style="font-size:11px;color:#475569;line-height:1.5">${esc(meta.desc)}</div>
+      </div>
+    `;
+  }).join('');
+}
+
 function renderCh2(){
   if(!R) return;
   const bc = R.bc || {};
@@ -3316,6 +3422,11 @@ function renderCh2(){
   const ohaeng = R.ohaeng || {};
   const saju = R.saju || {};
   const mbtiBlood = R.mbti_blood || {};
+
+  // ── 10축 근거 바 차트 렌더 (Plan A) ──
+  const axisScores = res.axis_scores || {};
+  const topAxes = res.top_axes || [];
+  renderAxisBars(axisScores, topAxes);
 
   // ── 6축 레이더 차트 렌더 ──
   const bcCode2 = (res.bc_primary || 'BC-01').toUpperCase();

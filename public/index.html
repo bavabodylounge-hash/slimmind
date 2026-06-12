@@ -591,10 +591,11 @@
 
   <!-- 섹션 훅 인터럽트 카드 -->
   <section id="hook-screen" class="screen">
+    <div id="hook-axis-icon" style="font-size:3rem;margin-bottom:12px;line-height:1;"></div>
     <div class="hook-section-badge" id="hook-section-badge">SECTION A</div>
     <div class="hook-title" id="hook-title">A부 — 몸의 기억</div>
     <div class="hook-msg" id="hook-msg"></div>
-    <div class="hook-continue" id="hook-continue">화면을 탭하여 시작 →</div>
+    <div class="hook-continue" id="hook-continue">화면을 탭하여 계속 →</div>
   </section>
 
   <!-- 섹션 전환 카드 -->
@@ -877,6 +878,49 @@ function showScreen(id) {
   // 게이지 패널 / 미니바 노출 여부
   const showGauge = id === 'question-screen';
   document.getElementById('gauge-panel').style.display = showGauge ? '' : 'none';
+}
+
+// ════════════════════════════════════════
+//  10축 axhook 카드 (axis 전환 시 표시)
+// ════════════════════════════════════════
+
+// 섹션 → 대표 axis 매핑 (첫 진입 시 axhook 표시용)
+const SECTION_TO_AXIS = {
+  'A': 'A01', 'B': 'A01', 'C': null,
+  'D': 'A07', 'E': 'A03', 'F': 'A08',
+  'G': 'A10', 'H': 'A08', 'I': 'A08',
+  'J': 'A02', 'K': 'A06', 'L': 'A09'
+};
+
+function showAxisHook(axisId, cb) {
+  if (!axisId || typeof AXIS_META === 'undefined' || !AXIS_META[axisId]) { cb(); return; }
+  const ax = AXIS_META[axisId];
+
+  const hookEl = document.getElementById('hook-screen');
+  hookEl.style.background = `linear-gradient(160deg, ${ax.bg}EE 0%, ${ax.bg} 100%)`;
+
+  // 축 배지 & 제목 & 훅 메시지 표시
+  document.getElementById('hook-section-badge').textContent = `${axisId} · ${ax.name}`;
+  document.getElementById('hook-section-badge').style.background = ax.color + '22';
+  document.getElementById('hook-section-badge').style.color = ax.color;
+
+  const iconEl = document.getElementById('hook-axis-icon');
+  if (iconEl) iconEl.textContent = ax.icon;
+
+  document.getElementById('hook-title').textContent = ax.hook;
+  document.getElementById('hook-msg').textContent = '';
+
+  showScreen('hook-screen');
+
+  let proceeded = false;
+  const proceed = () => {
+    if (proceeded) return;
+    proceeded = true;
+    hookEl.removeEventListener('click', proceed);
+    cb();
+  };
+  hookEl.addEventListener('click', proceed);
+  setTimeout(proceed, 4000);
 }
 
 // ════════════════════════════════════════
@@ -1654,9 +1698,35 @@ function goNext() {
 
   const nextQ = active[nextIdx];
 
+  // axis 전환 감지 — 새 축 진입 시 axhook 표시
+  const prevAxis = q.axis || null;
+  const nextAxis = nextQ.axis || null;
+  const axisChanged = nextAxis && prevAxis !== nextAxis;
+  const axisHookNeeded = axisChanged && !state.shownAxisHooks?.has(nextAxis);
+
   if (nextQ.section !== q.section) {
     const sec = SECTIONS.find(s => s.id === q.section);
     showTransition(q.section, nextQ.section, replaceName(sec?.transition || ''), () => {
+      // 새 섹션의 axis hook 표시 (axisHookNeeded 조건에서 axisHookNeeded가 true면)
+      if (axisHookNeeded && typeof AXIS_META !== 'undefined') {
+        state.shownAxisHooks = state.shownAxisHooks || new Set();
+        state.shownAxisHooks.add(nextAxis);
+        showAxisHook(nextAxis, () => {
+          state.currentQ = nextIdx;
+          showScreen('question-screen');
+          renderQuestion(nextIdx);
+        });
+      } else {
+        state.currentQ = nextIdx;
+        showScreen('question-screen');
+        renderQuestion(nextIdx);
+      }
+    });
+  } else if (axisHookNeeded && typeof AXIS_META !== 'undefined') {
+    // 같은 섹션 내에서 axis가 바뀌는 경우 (예: 섹션 L의 A03→A04 전환)
+    state.shownAxisHooks = state.shownAxisHooks || new Set();
+    state.shownAxisHooks.add(nextAxis);
+    showAxisHook(nextAxis, () => {
       state.currentQ = nextIdx;
       showScreen('question-screen');
       renderQuestion(nextIdx);
@@ -1708,7 +1778,9 @@ async function submitSurveyAndShow() {
   const result = calculateBCScores(state.answers);
   const {
     bcPrimary, bcSecondary, bcPrimaryScore, bcSecondaryScore, bcScores, ohaengScores, ohaengType,
-    allergyExclude, skinReaction, menopauseStatus, isMenopause, medicalConditions, hasMedicalConditions
+    allergyExclude, skinReaction, menopauseStatus, isMenopause, medicalConditions, hasMedicalConditions,
+    // v4.0 10축
+    axisScores, topAxes
   } = result;
   const ud = state.userData;
 
@@ -1760,6 +1832,9 @@ async function submitSurveyAndShow() {
     is_menopause: isMenopause || false,
     medical_conditions: medicalConditions || [],
     has_medical_conditions: hasMedicalConditions || false,
+    // v4.0 10축 분석
+    axis_scores: axisScores || {},
+    top_axes: topAxes || [],
   };
 
   try {
@@ -1872,6 +1947,7 @@ function doStartSurvey() {
   state.resultId = null;
   state.mbtiInfer = {};
   state.shownHooks = new Set();
+  state.shownAxisHooks = new Set();
   // 게이지 리셋
   Object.keys(gaugeState).forEach(k => gaugeState[k] = 0);
   document.querySelectorAll('.gauge-fill, .gauge-mini-fill').forEach(el => el.style.width = '0%');
@@ -1911,6 +1987,7 @@ document.getElementById('restart-btn').onclick = () => {
   state.resultId = null;
   state.mbtiInfer = {};
   state.shownHooks = new Set();
+  state.shownAxisHooks = new Set();
   Object.keys(gaugeState).forEach(k => gaugeState[k] = 0);
   document.querySelectorAll('.gauge-fill, .gauge-mini-fill').forEach(el => el.style.width = '0%');
   document.querySelectorAll('.gauge-row-val').forEach(el => el.textContent = '0%');
