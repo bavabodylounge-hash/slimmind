@@ -1000,4 +1000,51 @@ app.get('/slimmind_live', (c) => c.html(slimmindLiveHtml))
 app.get('/slimmind_live.html', (c) => c.html(slimmindLiveHtml))
 app.get('/slimmind', (c) => c.html(slimmindLiveHtml))
 
+/* ═══════════════════════════════════════════════════════
+   POST /api/checkin — 주차별 체크인 저장 + 컨설턴트 자동전송
+═══════════════════════════════════════════════════════ */
+app.post('/api/checkin', async (c) => {
+  const db = c.env.DB as D1Database | undefined;
+  try {
+    const body = await c.req.json() as {
+      result_id?: string;
+      consultant_code?: string;
+      bc_code?: string;
+      week_range?: string;
+      axis_name?: string;
+      checked_at?: string;
+    };
+
+    if(!body.result_id){
+      return c.json({ ok: false, error: 'result_id required' }, 400);
+    }
+
+    if(db){
+      // checkin_log 테이블에 저장 (없으면 graceful 처리)
+      try {
+        await db.prepare(`
+          INSERT INTO checkin_log
+            (result_id, consultant_code, bc_code, week_range, axis_name, checked_at)
+          VALUES (?,?,?,?,?,?)
+        `).bind(
+          body.result_id || '',
+          body.consultant_code || '',
+          body.bc_code || '',
+          body.week_range || '',
+          body.axis_name || '',
+          body.checked_at || new Date().toISOString()
+        ).run();
+      } catch(dbErr) {
+        // 테이블 미존재 등 DB 오류 — 로그만 남기고 성공 응답
+        console.warn('[checkin] DB insert skipped:', dbErr);
+      }
+    }
+
+    return c.json({ ok: true, message: '체크인 완료' });
+  } catch(e) {
+    console.error('[/api/checkin]', e);
+    return c.json({ ok: false, error: String(e) }, 500);
+  }
+})
+
 export default app

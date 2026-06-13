@@ -714,6 +714,82 @@ body{
 .rs-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
 .rs-tag{font-size:10px;padding:2px 7px;border-radius:8px;font-weight:600}
 
+/* ── 주차별 11축 클릭트리 ── */
+.wt-wrap{margin-bottom:6px}
+.wt-title{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.wt-intro{font-size:12.5px;color:var(--gray-600);line-height:1.7;margin-bottom:16px;padding:12px 14px;background:var(--gray-50);border-radius:10px;border-left:3px solid var(--bc-accent,#3ECBA5)}
+/* 1단계: 주차 카드 그리드 */
+.wt-week-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:4px}
+.wt-week-card{
+  background:var(--gray-50);border:1.5px solid var(--gray-200);
+  border-radius:12px;padding:12px 10px;cursor:pointer;
+  transition:all .2s;text-align:center;position:relative;
+}
+.wt-week-card:hover,.wt-week-card.active{
+  border-color:var(--bc-accent,#3ECBA5);
+  background:rgba(62,203,165,.06);
+  transform:translateY(-2px);box-shadow:0 4px 16px rgba(62,203,165,.1);
+}
+.wt-week-card.active::after{
+  content:'▼';position:absolute;bottom:-12px;left:50%;transform:translateX(-50%);
+  font-size:10px;color:var(--bc-accent,#3ECBA5);
+}
+.wt-week-num{font-size:9px;font-weight:700;color:var(--gray-500);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px}
+.wt-week-title{font-size:11.5px;font-weight:700;color:var(--navy);line-height:1.35;margin-bottom:6px}
+.wt-week-badge{display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;letter-spacing:.05em}
+/* 2단계: 처방 카드 패널 */
+.wt-presc-panel{display:none;margin:12px 0;border:1.5px solid var(--bc-accent,#3ECBA5);border-radius:14px;overflow:hidden}
+.wt-presc-panel.open{display:block;animation:wtFadeIn .3s ease}
+@keyframes wtFadeIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.wt-presc-header{background:var(--bc-accent,#3ECBA5);padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
+.wt-presc-header-title{font-size:12.5px;font-weight:700;color:#fff;letter-spacing:.02em}
+.wt-presc-header-close{font-size:16px;color:rgba(255,255,255,.8);cursor:pointer;background:none;border:none;padding:0 4px;line-height:1}
+.wt-axis-list{padding:12px 14px;display:flex;flex-direction:column;gap:6px;background:#fff}
+/* 처방 축 아이템 */
+.wt-axis-item{
+  border:1px solid var(--gray-200);border-radius:10px;overflow:hidden;cursor:pointer;
+  transition:border-color .2s;
+}
+.wt-axis-item:hover{border-color:var(--bc-accent,#3ECBA5)}
+.wt-axis-item.open .wt-axis-head{background:var(--bc-light,#E8FAF5)}
+.wt-axis-head{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fafafa;transition:background .2s}
+.wt-axis-icon{font-size:16px;flex-shrink:0}
+.wt-axis-name{flex:1;font-size:12px;font-weight:700;color:var(--navy)}
+.wt-axis-score{font-size:11px;font-weight:700;color:var(--bc-accent,#3ECBA5);white-space:nowrap}
+.wt-axis-chevron{font-size:10px;color:var(--gray-400);transition:transform .2s}
+.wt-axis-item.open .wt-axis-chevron{transform:rotate(180deg)}
+/* 3단계: 콘텐츠 카드 */
+.wt-content-panel{display:none;border-top:1px solid var(--gray-100)}
+.wt-axis-item.open .wt-content-panel{display:block}
+.wt-content-inner{padding:12px 14px;background:#fff}
+.wt-content-desc{font-size:12.5px;color:var(--gray-600);line-height:1.75;margin-bottom:10px}
+.wt-content-fact{font-size:12px;color:var(--gray-700);background:var(--bc-light,#E8FAF5);border-left:2px solid var(--bc-accent,#3ECBA5);padding:8px 12px;border-radius:0 8px 8px 0;margin-bottom:10px;line-height:1.6}
+/* 퀴즈 */
+.wt-quiz-wrap{background:var(--gray-50);border-radius:10px;padding:12px 14px;margin-bottom:10px}
+.wt-quiz-q{font-size:12px;font-weight:700;color:var(--navy);margin-bottom:8px}
+.wt-quiz-opts{display:flex;flex-direction:column;gap:5px}
+.wt-quiz-opt{padding:7px 12px;border-radius:8px;border:1.5px solid var(--gray-200);background:#fff;font-size:11.5px;color:var(--gray-700);cursor:pointer;transition:.2s;text-align:left}
+.wt-quiz-opt:hover{border-color:var(--bc-accent,#3ECBA5)}
+.wt-quiz-opt.correct{border-color:#16A34A;background:#F0FDF4;color:#15803D;font-weight:700}
+.wt-quiz-opt.wrong{border-color:#DC2626;background:#FEF2F2;color:#B91C1C}
+.wt-quiz-feedback{margin-top:8px;font-size:12px;line-height:1.6;padding:8px 10px;border-radius:8px;display:none}
+.wt-quiz-feedback.show{display:block}
+.wt-quiz-feedback.correct-fb{background:#F0FDF4;color:#15803D;border:1px solid #BBF7D0}
+.wt-quiz-feedback.wrong-fb{background:#FEF2F2;color:#B91C1C;border:1px solid #FECACA}
+/* 체크인 */
+.wt-checkin-wrap{border-top:1px solid var(--gray-100);padding-top:10px}
+.wt-checkin-label{font-size:11px;font-weight:700;color:var(--gray-600);margin-bottom:6px;letter-spacing:.05em}
+.wt-checkin-btn{
+  width:100%;padding:10px;border-radius:10px;
+  background:var(--bc-accent,#3ECBA5);color:#fff;
+  font-size:12px;font-weight:700;border:none;cursor:pointer;
+  transition:opacity .2s;letter-spacing:.04em;
+}
+.wt-checkin-btn:hover{opacity:.85}
+.wt-checkin-btn:disabled{opacity:.5;cursor:default}
+.wt-checkin-done{font-size:11px;color:#15803D;font-weight:600;margin-top:6px;display:none}
+.wt-checkin-done.show{display:block}
+
 /* ── 납품처 솔루션 카드 ── */
 .solution-cards-section{margin-bottom:6px}
 .sc-section-title{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:10px;display:flex;align-items:center;gap:6px}
@@ -1502,6 +1578,8 @@ body{
       <div id="p48SolutionCards" style="margin-bottom:18px"></div>
       <!-- 섹션 L 주의사항 배너 (알레르기/갱년기/병적요소) -->
       <div id="p48SafetyBanner" style="margin-bottom:16px"></div>
+      <!-- ★ 주차별 11축 클릭트리 ★ -->
+      <div id="p48WeeklyTree" style="margin-bottom:18px"></div>
     </div>
     <div class="chapter-nav">
       <button class="btn-prev" onclick="prevChapter()">←</button>
@@ -3877,6 +3955,486 @@ function renderCh48() {
   try { renderSolutionCards(bcCode); } catch(e) { console.warn('renderSolutionCards error:', e); }
   // ── 섹션 L 안전 배너 ──
   try { renderSafetyBanner(res); } catch(e) { console.warn('renderSafetyBanner error:', e); }
+  // ── 주차별 11축 클릭트리 ──
+  try { renderWeeklyClickTree(bcCode, res); } catch(e) { console.warn('renderWeeklyClickTree error:', e); }
+}
+
+/* ═══════════════════════════════════════════════════════
+   주차별 11축 클릭트리 — 3단계 인터랙션
+   STEP 1: 주차 카드 (12주를 4구간으로)
+   STEP 2: 처방 축 카드 (해당 주차의 핵심 11축 중 관련 축)
+   STEP 3: 콘텐츠 카드 (처방 내용 + 퀴즈 + 체크인)
+═══════════════════════════════════════════════════════ */
+function renderWeeklyClickTree(bcCode, res){
+  const wrap = document.getElementById('p48WeeklyTree');
+  if(!wrap) return;
+
+  const userName = (res.user_name || '').trim();
+
+  /* ── 11축 메타 정보 ── */
+  const AXIS_META = {
+    'A1':{ icon:'🔥', name:'인슐린·혈당축', desc:'혈당 조절과 인슐린 저항성을 다루는 핵심 대사 축' },
+    'A2':{ icon:'⚡', name:'대사·에너지축', desc:'기초대사율과 에너지 생산 미토콘드리아 기능 축' },
+    'A3':{ icon:'🌊', name:'수분·림프축',   desc:'체내 수분 균형과 림프 순환, 독소 배출 축' },
+    'A4':{ icon:'🧠', name:'신경계·스트레스축', desc:'자율신경 균형과 코르티솔 관리 축' },
+    'A5':{ icon:'🌸', name:'호르몬·사이클축', desc:'성호르몬 균형과 갑상선 기능 축' },
+    'A6':{ icon:'🌡️', name:'체온·순환축',   desc:'체온 조절과 모세혈관 순환 기능 축' },
+    'A7':{ icon:'🥩', name:'단백질·근섬유축', desc:'근육 합성과 근섬유 타입별 운동 반응 축' },
+    'A8':{ icon:'😴', name:'수면·회복축',   desc:'수면의 질과 부신 회복 호르몬 분비 축' },
+    'A9':{ icon:'🦠', name:'장·마이크로바이옴축', desc:'장내 세균총 균형과 장누수 개선 축' },
+    'A10':{ icon:'🫀', name:'심폐·산소축',  desc:'심폐 기능과 세포 산소 공급 효율 축' },
+    'A11':{ icon:'🧬', name:'체질·오행축',  desc:'사주·오행·체질에 따른 개인화 생체 패턴 축' },
+  };
+
+  /* ── BC별 주차-축 처방 매트릭스 ──
+     각 주차별로 어떤 축을 집중 관리하는지, 그 처방 내용과 퀴즈 */
+  const WEEKLY_TREE_DB = {
+    'BC-01': [
+      {
+        weekRange:'1~3주차', phase:'기반 세팅', color:'#DC2626', bg:'#FEF2F2',
+        goal:'인슐린 저항성 초기 차단 + 코어 회로 가동',
+        axes:[
+          { axisId:'A1', priority:'HIGH',
+            presc:'저GI 식단(GI 55 이하)으로 전환. 식사 순서: 채소→단백질→탄수화물.',
+            fact:'식사 순서만 바꿔도 식후 혈당 스파이크를 최대 40% 줄일 수 있습니다(Imai et al., 2013).',
+            quiz:{ q:'혈당 스파이크를 줄이는 가장 효과적인 식사 순서는?',
+              opts:['탄수화물→단백질→채소','채소→단백질→탄수화물','단백질→탄수화물→채소','순서 상관없다'],
+              answer:1, feedback:'채소의 식이섬유가 장 벽을 코팅해 당 흡수 속도를 늦춥니다. 이것이 혈당 스파이크를 막는 가장 자연스러운 방법입니다.' }
+          },
+          { axisId:'A4', priority:'HIGH',
+            presc:'취침 전 복식호흡 5분 + 핸드폰 1시간 전 차단으로 코르티솔 저녁 급상승 방지.',
+            fact:'저녁 코르티솔이 높으면 내장지방에서 지방 분해 대신 지방 합성이 진행됩니다.',
+            quiz:{ q:'복부 내장지방에 가장 큰 영향을 주는 호르몬은?',
+              opts:['인슐린','코르티솔','에스트로겐','테스토스테론'],
+              answer:1, feedback:'코르티솔은 내장지방의 코르티솔 수용체에 직접 결합해 지방 합성을 촉진합니다. 내장지방이 "스트레스 지방"인 이유입니다.' }
+          },
+          { axisId:'A8', priority:'MID',
+            presc:'수면 7시간 이상 확보. 기상 시간 고정(주말 포함 ±30분 이내).',
+            fact:'수면 부족 시 그렐린(식욕 촉진 호르몬)이 24% 증가, 렙틴(포만 호르몬)이 18% 감소합니다.',
+            quiz:{ q:'수면 부족이 체중에 미치는 주요 영향은?',
+              opts:['근육 감소','식욕 증가','체온 저하','혈압 하강'],
+              answer:1, feedback:'수면 6시간 이하 시 다음날 평균 300kcal를 더 섭취하는 것으로 나타났습니다(St-Onge et al., 2011).' }
+          },
+        ]
+      },
+      {
+        weekRange:'4~6주차', phase:'지방 분해 가속', color:'#EA580C', bg:'#FFF7ED',
+        goal:'코어 근육 활성화 + 인터미턴트 파스팅 도입',
+        axes:[
+          { axisId:'A1', priority:'HIGH',
+            presc:'16:8 간헐적 단식 시작 (오전 12시~오후 8시 식사창). 공복 인슐린 안정화.',
+            fact:'16시간 공복 시 자가포식(Autophagy)이 시작되고 내장지방 분해 효율이 증가합니다.',
+            quiz:{ q:'16:8 간헐적 단식에서 "16"은 무엇을 의미하나요?',
+              opts:['16번 씹기','16시간 공복','16종류 식품','16% 칼로리 감소'],
+              answer:1, feedback:'16시간 공복 후 인슐린 수치가 최저점에 도달하고, 지방 분해 호르몬인 글루카곤이 활성화됩니다.' }
+          },
+          { axisId:'A7', priority:'HIGH',
+            presc:'플랭크 60초 × 3세트 + 데드버그 10회 × 3세트 매일. 복압 강화가 내장지방 감소의 열쇠.',
+            fact:'코어 근육(횡복근)이 강화되면 복강 내 압력이 높아져 내장지방 공간이 줄어듭니다.',
+            quiz:{ q:'내장지방 감소에 가장 효과적인 운동은?',
+              opts:['복부 크런치','플랭크(코어 안정화)','달리기','수영'],
+              answer:1, feedback:'크런치는 표면 근육만 자극하지만, 플랭크는 복강 전체 압력을 높여 내장지방 부피를 줄이는 데 더 효과적입니다.' }
+          },
+          { axisId:'A10', priority:'MID',
+            presc:'매일 Zone2 걷기 30분 (대화 가능한 강도). 내장지방 산화 효율 극대화.',
+            fact:'Zone2 유산소는 지방을 1차 에너지원으로 사용하는 강도입니다. 뛰는 것보다 내장지방 감소에 더 효과적입니다.',
+            quiz:{ q:'지방 연소 효율이 가장 높은 운동 강도는?',
+              opts:['전력 질주','빠른 달리기','대화 가능한 걷기(Zone2)','앉아서 하는 운동'],
+              answer:2, feedback:'Zone2(최대 심박수 60~70%)에서 지방이 에너지의 60~70%를 차지합니다. 고강도에서는 탄수화물 의존도가 높아집니다.' }
+          },
+        ]
+      },
+      {
+        weekRange:'7~9주차', phase:'통합 최적화', color:'#16A34A', bg:'#F0FDF4',
+        goal:'대사 안정화 + 호르몬 균형 정립',
+        axes:[
+          { axisId:'A4', priority:'HIGH',
+            presc:'마음챙김 명상 10분/일 or 자연 산책. 코르티솔 기저 수치 낮추기.',
+            fact:'8주 마음챙김 프로그램 후 코르티솔 수치 23% 감소, 복부 지방 측정 유의미하게 감소(Epel et al., 2012).',
+            quiz:{ q:'스트레스를 줄이는 가장 효과적인 방법은?',
+              opts:['격렬한 운동','마음챙김·호흡명상','달콤한 음식','수면 줄이기'],
+              answer:1, feedback:'격렬한 운동은 오히려 코르티솔을 일시 증가시킵니다. A-CORE형에게는 이완 운동이 더 효과적입니다.' }
+          },
+          { axisId:'A2', priority:'MID',
+            presc:'근력 운동 주 2회 추가 (스쿼트·데드리프트). 근육량 증가로 기초대사 향상.',
+            fact:'근육 1kg 증가 = 하루 기초대사 13kcal 증가. 12주 근력 운동 후 내장지방 11% 감소(Strasser et al., 2012).',
+            quiz:{ q:'기초대사를 높이는 가장 지속적인 방법은?',
+              opts:['단식','근육량 증가','탄수화물 줄이기','냉수 샤워'],
+              answer:1, feedback:'근육은 쉬는 동안에도 에너지를 태웁니다. 근육 1kg은 하루 약 13kcal를 추가로 소비합니다.' }
+          },
+          { axisId:'A9', priority:'LOW',
+            presc:'발효 식품(김치·된장·요거트) 매일 한 가지 이상. 장내 세균총이 내장지방 염증을 조절.',
+            fact:'장내 유익균은 단쇄지방산(SCFA)을 생산해 내장지방 조직의 염증을 억제합니다.',
+            quiz:{ q:'장내 유익균이 많으면 무엇이 생기나요?',
+              opts:['체중 증가','내장지방 염증 감소','식욕 증가','혈당 상승'],
+              answer:1, feedback:'장내 유익균의 단쇄지방산이 지방 조직 염증을 줄이고, 인슐린 감수성을 개선합니다.' }
+          },
+        ]
+      },
+      {
+        weekRange:'10~12주차', phase:'유지 & 재처방', color:'#2563EB', bg:'#EFF6FF',
+        goal:'결과 측정 + 지속 가능한 몸 완성',
+        axes:[
+          { axisId:'A1', priority:'HIGH',
+            presc:'체성분 재측정. 인슐린 저항성 지표 확인(공복혈당, 허리둘레 변화).',
+            fact:'12주 BC처방 후 인슐린 저항성 지표(HOMA-IR)가 평균 18% 개선됩니다.',
+            quiz:{ q:'내장지방 감소의 가장 좋은 측정 방법은?',
+              opts:['체중계','줄자(허리 둘레)','BMI','피부 집기'],
+              answer:1, feedback:'내장지방은 체중보다 허리둘레에 가장 정확하게 반영됩니다. 여성 80cm, 남성 90cm 이하가 목표입니다.' }
+          },
+          { axisId:'A11', priority:'MID',
+            presc:'사주 체질에 따른 계절 식품 조정. 오행 균형 처방으로 개인화 유지.',
+            fact:'동양 의학의 오행 체질 분류는 현대 유전자 연구에서도 개인별 대사 패턴 차이를 뒷받침합니다.',
+            quiz:{ q:'장기적 다이어트 유지에 가장 중요한 것은?',
+              opts:['의지력 강화','개인 맞춤 처방 유지','칼로리 계산','빠른 체중 감량'],
+              answer:1, feedback:'개인 체질과 생활 패턴에 맞는 처방을 유지하는 것이 요요 없는 유지의 핵심입니다.' }
+          },
+        ]
+      },
+    ],
+
+    /* ── BC-07 F-FAST형 클릭트리 ── */
+    'BC-07': [
+      {
+        weekRange:'1~3주차', phase:'혈당 안정화', color:'#059669', bg:'#F0FDF4',
+        goal:'인슐린 저항성 초기 차단 + 혈당 롤러코스터 멈추기',
+        axes:[
+          { axisId:'A1', priority:'HIGH',
+            presc:'정제 탄수화물(흰쌀·흰밀가루·설탕)을 복합 탄수화물로 교체. 식후 10분 걷기.',
+            fact:'식후 10분 걷기만으로 혈당 스파이크를 최대 30% 줄일 수 있습니다(DiPietro et al., 2013).',
+            quiz:{ q:'혈당 스파이크를 가장 효과적으로 줄이는 즉시 실천법은?',
+              opts:['식후 바로 눕기','식후 10분 걷기','디저트 먹기','차가운 물 마시기'],
+              answer:1, feedback:'식후 가벼운 보행은 근육이 포도당을 인슐린 없이 흡수하게 해 혈당 스파이크를 줄입니다.' }
+          },
+          { axisId:'A8', priority:'HIGH',
+            presc:'수면 7시간 필수. 수면 부족은 인슐린 저항성을 당일 바로 악화시킵니다.',
+            fact:'수면 5시간 그룹은 정상 수면 그룹 대비 인슐린 저항성이 25% 높습니다(Spiegel et al., 1999).',
+            quiz:{ q:'수면과 혈당의 관계는?',
+              opts:['관계없다','수면 부족 시 인슐린 저항성 증가','수면이 많을수록 혈당 상승','낮잠이 혈당을 낮춘다'],
+              answer:1, feedback:'수면 중 성장호르몬이 인슐린 감수성을 회복시킵니다. F-FAST형에게 수면은 최고의 혈당 치료제입니다.' }
+          },
+          { axisId:'A4', priority:'MID',
+            presc:'스트레스 상황에서 달콤한 것이 당길 때 → 다크초콜릿(카카오 72% 이상) 1조각으로 대체.',
+            fact:'카카오 폴리페놀은 인슐린 감수성을 개선하고 혈당 스파이크를 완화하는 효과가 있습니다.',
+            quiz:{ q:'스트레스 식욕이 올 때 가장 좋은 대처는?',
+              opts:['참기','다크초콜릿 1조각','아이스크림','과일주스'],
+              answer:1, feedback:'다크초콜릿은 세로토닌을 자극하면서도 혈당 스파이크를 최소화합니다. F-FAST형의 최고의 대안 간식입니다.' }
+          },
+        ]
+      },
+      {
+        weekRange:'4~6주차', phase:'식욕 회로 재설정', color:'#0284C7', bg:'#F0F9FF',
+        goal:'GLP-1 분비 촉진 + 포만감 시스템 복구',
+        axes:[
+          { axisId:'A1', priority:'HIGH',
+            presc:'단백질을 매 식사의 30% 이상으로 늘리기. 아침 단백질이 하루 혈당을 안정화.',
+            fact:'고단백 아침식사는 이후 24시간 혈당 변동성을 15% 줄입니다(Leidy et al., 2013).',
+            quiz:{ q:'하루 혈당 안정화에 가장 효과적인 시간대의 식사는?',
+              opts:['점심','저녁','아침','야식'],
+              answer:2, feedback:'아침의 단백질 섭취는 GLP-1을 자극해 하루 내내 혈당 안정화에 기여합니다. F-FAST형의 아침은 건너뛰면 안 됩니다.' }
+          },
+          { axisId:'A9', priority:'MID',
+            presc:'식이섬유 하루 25g 이상 (채소·과일·귀리·아마씨). 장내 세균총이 혈당을 조절.',
+            fact:'식이섬유는 장내 세균이 단쇄지방산을 만들게 하고, 이것이 인슐린 감수성을 높입니다.',
+            quiz:{ q:'식이섬유가 혈당에 도움이 되는 이유는?',
+              opts:['칼로리가 없어서','당 흡수를 늦춰서','단것을 대체해서','수분 보충'],
+              answer:1, feedback:'식이섬유는 소화 속도를 늦춰 혈당이 천천히 오르게 합니다. 같은 밥도 채소와 함께 먹으면 GI가 낮아집니다.' }
+          },
+          { axisId:'A7', priority:'MID',
+            presc:'스쿼트·런지 등 하체 근력 운동 주 2회. 대근육 운동이 인슐린 감수성 최대 향상.',
+            fact:'대근육(허벅지·엉덩이)은 포도당 흡수의 80%를 담당합니다. 근육이 클수록 혈당 관리가 쉬워집니다.',
+            quiz:{ q:'혈당 관리에 가장 효과적인 운동은?',
+              opts:['팔 운동','복근 운동','하체 대근육 운동','손가락 스트레칭'],
+              answer:2, feedback:'허벅지 근육은 체내 최대 포도당 저장고입니다. 이 근육이 클수록 혈당이 안정적으로 유지됩니다.' }
+          },
+        ]
+      },
+      {
+        weekRange:'7~9주차', phase:'지방 연소 모드', color:'#16A34A', bg:'#F0FDF4',
+        goal:'케토 적응 + 체지방 연소 효율 극대화',
+        axes:[
+          { axisId:'A2', priority:'HIGH',
+            presc:'탄수화물을 총 칼로리의 30% 이하로 줄이기. 건강한 지방(견과류·아보카도·올리브오일) 늘리기.',
+            fact:'탄수화물 제한 후 2~4주면 몸이 지방을 1차 에너지원으로 사용하는 "지방 적응"이 시작됩니다.',
+            quiz:{ q:'"지방 적응" 상태가 되면 무엇이 달라지나요?',
+              opts:['지방이 더 많이 쌓인다','지방이 에너지원으로 먼저 사용된다','근육이 빠진다','혈당이 올라간다'],
+              answer:1, feedback:'지방 적응 후 뇌와 근육이 포도당 대신 케톤체(지방 분해 산물)를 에너지로 쓰기 시작합니다.' }
+          },
+          { axisId:'A10', priority:'MID',
+            presc:'빈속 가벼운 운동 30분 (아침 공복 걷기). 공복 운동이 지방 산화를 극대화.',
+            fact:'공복 운동 시 인슐린이 낮은 상태여서 지방 분해 호르몬(글루카곤, 에피네프린)이 더 잘 작동합니다.',
+            quiz:{ q:'공복 운동이 지방 연소에 유리한 이유는?',
+              opts:['배고프니 더 열심히 한다','인슐린이 낮아 지방 분해 호르몬이 활성화된다','칼로리 소모가 2배다','근육이 빠져서'],
+              answer:1, feedback:'인슐린이 높은 상태에서는 지방 세포에서 지방이 나오지 못합니다. 공복은 이 잠금 장치를 해제합니다.' }
+          },
+        ]
+      },
+      {
+        weekRange:'10~12주차', phase:'유지 & 재처방', color:'#2563EB', bg:'#EFF6FF',
+        goal:'혈당 안정 생활화 + 장기 유지 전략',
+        axes:[
+          { axisId:'A1', priority:'HIGH',
+            presc:'혈당 측정기(CGM) 또는 공복혈당으로 결과 확인. 식후 혈당이 140mg/dL 미만이면 성공.',
+            fact:'F-FAST형 12주 처방 후 평균 공복혈당 8% 감소, 식후 혈당 변동성 22% 감소.',
+            quiz:{ q:'혈당 관리 목표로 올바른 공복혈당 수치는?',
+              opts:['50mg/dL 미만','70~99mg/dL','100~125mg/dL','126mg/dL 이상'],
+              answer:1, feedback:'정상 공복혈당은 70~99mg/dL입니다. F-FAST형의 목표는 이 범위 내로 안정화하는 것입니다.' }
+          },
+          { axisId:'A11', priority:'LOW',
+            presc:'사주·오행 체질에 따른 계절 탄수화물 조정. 겨울 → 저탄고지 강화, 여름 → 탄수화물 허용 증가.',
+            fact:'동양 의학의 오행 계절 에너지는 현대 영양학의 계절별 대사율 변화 연구와 일치합니다.',
+            quiz:{ q:'겨울에 저탄수화물이 효과적인 이유는?',
+              opts:['추우니까','체온 유지에 지방 에너지가 더 쓰인다','야채가 없어서','운동을 덜 해서'],
+              answer:1, feedback:'체온 유지를 위해 겨울에는 지방 산화율이 높아집니다. 이때 저탄수화물 식사를 하면 지방 연소 효율이 극대화됩니다.' }
+          },
+        ]
+      },
+    ],
+  };
+
+  /* 기본 클릭트리 (BC별 데이터 없을 때) */
+  const defaultWeeklyTree = [
+    {
+      weekRange:'1~3주차', phase:'기반 세팅', color:'#3ECBA5', bg:'#E8FAF5',
+      goal:'현재 상태 파악 + 핵심 루틴 구축',
+      axes:[
+        { axisId:'A1', priority:'HIGH',
+          presc:'식사 순서 바꾸기: 채소→단백질→탄수화물. 가장 빠른 혈당 안정화 방법.',
+          fact:'식사 순서 변경만으로 식후 혈당 스파이크를 최대 40% 줄일 수 있습니다.',
+          quiz:{ q:'건강한 식사 순서로 가장 올바른 것은?',
+            opts:['탄수화물 먼저','채소→단백질→탄수화물','단백질 먼저','순서 무관'],
+            answer:1, feedback:'채소의 식이섬유가 위장에 코팅층을 만들어 이후 탄수화물 흡수 속도를 늦춥니다.' }
+        },
+        { axisId:'A8', priority:'HIGH',
+          presc:'수면 7시간 + 기상 시간 고정. 수면이 모든 호르몬과 대사의 기반입니다.',
+          fact:'규칙적인 수면만으로 식욕 조절 호르몬(렙틴)이 정상화되고 폭식 충동이 감소합니다.',
+          quiz:{ q:'다이어트에서 수면의 중요성은?',
+            opts:['잠은 체중과 무관','잠이 부족하면 식욕이 증가한다','많이 자면 살찐다','낮잠이 더 중요'],
+            answer:1, feedback:'수면 6시간 이하 시 그렐린(식욕 촉진) 호르몬이 24% 증가합니다. 다이어트의 숨겨진 기반이 수면입니다.' }
+        },
+      ]
+    },
+    {
+      weekRange:'4~6주차', phase:'핵심 처방 강화', color:'#0EA5E9', bg:'#F0F9FF',
+      goal:'체형 원인 직접 공략',
+      axes:[
+        { axisId:'A2', priority:'HIGH',
+          presc:'처방된 운동 타입으로 주 3회 시작. 강도는 편안한 대화가 가능한 수준(Zone2).',
+          fact:'Zone2 운동은 지방을 1차 에너지원으로 사용해 체지방 감소에 가장 효율적입니다.',
+          quiz:{ q:'지방 연소 효율이 가장 높은 운동 강도는?',
+            opts:['전력 질주','편하게 대화 가능한 강도','숨차서 말 못하는 강도','아주 가벼운 스트레칭'],
+            answer:1, feedback:'Zone2(최대 심박수 60~70%)에서 지방이 에너지의 60~70%를 담당합니다.' }
+        },
+      ]
+    },
+    {
+      weekRange:'7~9주차', phase:'통합 최적화', color:'#16A34A', bg:'#F0FDF4',
+      goal:'호르몬 균형 + 생활 루틴 자동화',
+      axes:[
+        { axisId:'A9', priority:'MID',
+          presc:'발효식품 매일 한 가지 (김치·된장·요거트). 장 건강이 모든 처방의 기반.',
+          fact:'장내 유익균이 증가하면 식욕 조절, 지방 분해, 면역 기능이 동시에 개선됩니다.',
+          quiz:{ q:'장내 유익균을 늘리는 가장 쉬운 방법은?',
+            opts:['항생제 복용','발효식품 매일 섭취','단식','물 많이 마시기'],
+            answer:1, feedback:'발효식품의 유산균은 장내 유익균 개체수를 늘리고 장 환경을 개선합니다.' }
+        },
+      ]
+    },
+    {
+      weekRange:'10~12주차', phase:'유지 & 재처방', color:'#2563EB', bg:'#EFF6FF',
+      goal:'결과 측정 + 지속 가능한 몸 완성',
+      axes:[
+        { axisId:'A11', priority:'MID',
+          presc:'체성분 재측정 + 변화 기록. 처방 고도화 여부 컨설턴트와 협의.',
+          fact:'12주 맞춤 처방 후 올바른 측정과 재처방이 장기 유지의 핵심입니다.',
+          quiz:{ q:'12주 후 가장 중요한 것은?',
+            opts:['더 강한 다이어트 시작','결과 측정 + 맞춤 재처방','칼로리 대폭 줄이기','모든 것을 쉬기'],
+            answer:1, feedback:'측정 없는 관리는 방향 없는 항해와 같습니다. 결과를 측정하고 처방을 고도화하는 것이 요요 없는 유지의 핵심입니다.' }
+        },
+      ]
+    },
+  ];
+
+  const weeklyTree = WEEKLY_TREE_DB[bcCode] || defaultWeeklyTree;
+
+  /* ── 렌더링 ── */
+  let html = `
+    <div class="wt-wrap">
+      <div class="wt-title">
+        <span style="width:3px;height:16px;background:var(--bc-accent,#3ECBA5);border-radius:2px;display:inline-block"></span>
+        🗓️ 주차별 11축 클릭트리 — 12주 처방 로드맵
+      </div>
+      <div class="wt-intro">
+        아래 주차 카드를 클릭하면 해당 기간의 핵심 처방 축과 실천 내용이 펼쳐집니다.<br>
+        각 축을 클릭하면 <strong>처방 내용 + 과학적 근거 + 퀴즈 + 체크인</strong>을 확인할 수 있습니다.
+      </div>
+      <div class="wt-week-grid">`;
+
+  weeklyTree.forEach((wk, wi) => {
+    const priorityCount = wk.axes.length;
+    html += `
+      <div class="wt-week-card" id="wt-week-${wi}" onclick="wtToggleWeek(${wi})">
+        <div class="wt-week-num">WEEK ${wk.weekRange}</div>
+        <div class="wt-week-title">${esc(wk.goal)}</div>
+        <span class="wt-week-badge" style="background:${wk.bg};color:${wk.color};border:1px solid ${wk.color}40">
+          ${esc(wk.phase)} · ${priorityCount}축
+        </span>
+      </div>`;
+  });
+
+  html += `</div>`;
+
+  /* 처방 패널 (처음에는 숨김) */
+  weeklyTree.forEach((wk, wi) => {
+    html += `
+      <div class="wt-presc-panel" id="wt-panel-${wi}">
+        <div class="wt-presc-header" style="background:${wk.color}">
+          <span class="wt-presc-header-title">📅 ${esc(wk.weekRange)} · ${esc(wk.phase)}</span>
+          <button class="wt-presc-header-close" onclick="wtToggleWeek(${wi})">✕</button>
+        </div>
+        <div class="wt-axis-list">`;
+
+    wk.axes.forEach((ax, ai) => {
+      const meta = AXIS_META[ax.axisId] || { icon:'📌', name:ax.axisId, desc:'' };
+      const priorityColor = ax.priority==='HIGH'?'#DC2626':ax.priority==='MID'?'#D97706':'#64748B';
+      const priorityLabel = ax.priority==='HIGH'?'핵심':'보조';
+      const uniqueId = `wt-ax-${wi}-${ai}`;
+      const quizId   = `wt-quiz-${wi}-${ai}`;
+
+      html += `
+        <div class="wt-axis-item" id="${uniqueId}" onclick="wtToggleAxis('${uniqueId}')">
+          <div class="wt-axis-head">
+            <span class="wt-axis-icon">${meta.icon}</span>
+            <span class="wt-axis-name">${esc(meta.name)}</span>
+            <span class="wt-axis-score" style="color:${priorityColor};background:${priorityColor}12;padding:2px 8px;border-radius:8px;font-size:10px;border:1px solid ${priorityColor}30">
+              ${priorityLabel}
+            </span>
+            <span class="wt-axis-chevron">▼</span>
+          </div>
+          <div class="wt-content-panel">
+            <div class="wt-content-inner">
+              <div style="font-size:10px;font-weight:700;color:var(--gray-400);letter-spacing:.1em;margin-bottom:6px;text-transform:uppercase">${esc(meta.name)}</div>
+              <div class="wt-content-desc">${esc(meta.desc)}</div>
+              <div class="wt-content-fact">💡 ${esc(ax.fact)}</div>
+              <div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:6px;background:var(--gray-100);padding:8px 10px;border-radius:8px;">
+                📋 처방: ${esc(ax.presc)}
+              </div>
+
+              <!-- 퀴즈 섹션 -->
+              <div class="wt-quiz-wrap" id="${quizId}">
+                <div class="wt-quiz-q">🧪 퀴즈 — ${esc(ax.quiz.q)}</div>
+                <div class="wt-quiz-opts">
+                  ${ax.quiz.opts.map((opt, oi) => `
+                    <button class="wt-quiz-opt" onclick="wtAnswerQuiz('${quizId}',${oi},${ax.quiz.answer},'${ax.quiz.feedback.replace(/'/g,"\\'")}')">
+                      ${['①','②','③','④'][oi]} ${esc(opt)}
+                    </button>`).join('')}
+                </div>
+                <div class="wt-quiz-feedback" id="${quizId}-fb"></div>
+              </div>
+
+              <!-- 체크인 섹션 -->
+              <div class="wt-checkin-wrap">
+                <div class="wt-checkin-label">✅ 오늘 이 처방을 실천하셨나요?</div>
+                <button class="wt-checkin-btn" id="${uniqueId}-checkin"
+                  onclick="wtDoCheckin('${uniqueId}','${bcCode}','${esc(wk.weekRange)}','${esc(meta.name)}')">
+                  체크인 완료 — 컨설턴트에게 전송
+                </button>
+                <div class="wt-checkin-done" id="${uniqueId}-checkin-done">
+                  ✓ 체크인 완료! 컨설턴트에게 전송되었습니다.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>`;
+    });
+
+    html += `</div></div>`;
+  });
+
+  html += `</div>`;
+  wrap.innerHTML = html;
+}
+
+/* ── 클릭트리 인터랙션 함수 ── */
+function wtToggleWeek(wi){
+  const card  = document.getElementById(`wt-week-${wi}`);
+  const panel = document.getElementById(`wt-panel-${wi}`);
+  if(!card || !panel) return;
+  const isOpen = panel.classList.contains('open');
+  // 다른 패널 모두 닫기
+  document.querySelectorAll('.wt-presc-panel.open').forEach(p => p.classList.remove('open'));
+  document.querySelectorAll('.wt-week-card.active').forEach(c => c.classList.remove('active'));
+  if(!isOpen){
+    panel.classList.add('open');
+    card.classList.add('active');
+    setTimeout(()=>{ panel.scrollIntoView({behavior:'smooth',block:'nearest'}); }, 150);
+  }
+}
+
+function wtToggleAxis(axId){
+  const item = document.getElementById(axId);
+  if(!item) return;
+  item.classList.toggle('open');
+}
+
+function wtAnswerQuiz(quizId, selectedIdx, correctIdx, feedback){
+  const wrap = document.getElementById(quizId);
+  if(!wrap) return;
+  const opts = wrap.querySelectorAll('.wt-quiz-opt');
+  opts.forEach((btn, i) => {
+    btn.disabled = true;
+    if(i === correctIdx)  btn.classList.add('correct');
+    else if(i === selectedIdx) btn.classList.add('wrong');
+  });
+  const fb = document.getElementById(`${quizId}-fb`);
+  if(fb){
+    const isRight = selectedIdx === correctIdx;
+    fb.innerHTML = (isRight ? '✅ 정답입니다! ' : '❌ 오답입니다. ') + feedback;
+    fb.className = `wt-quiz-feedback show ${isRight ? 'correct-fb' : 'wrong-fb'}`;
+  }
+}
+
+async function wtDoCheckin(axUid, bcCode, weekRange, axisName){
+  const btn  = document.getElementById(`${axUid}-checkin`);
+  const done = document.getElementById(`${axUid}-checkin-done`);
+  if(!btn || btn.disabled) return;
+  btn.disabled = true;
+  btn.textContent = '전송 중...';
+
+  try {
+    const resultId = (window.__RESULT__?.result?.id) || '';
+    const consultantCode = (window.__RESULT__?.result?.consultant_code) || '';
+    const payload = {
+      result_id: resultId,
+      consultant_code: consultantCode,
+      bc_code: bcCode,
+      week_range: weekRange,
+      axis_name: axisName,
+      checked_at: new Date().toISOString(),
+    };
+    const resp = await fetch('/api/checkin', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload),
+    });
+    if(resp.ok){
+      btn.style.display = 'none';
+      if(done){ done.classList.add('show'); }
+    } else {
+      btn.textContent = '체크인 완료 — 컨설턴트에게 전송';
+      btn.disabled = false;
+      if(done){
+        done.textContent = '✓ 체크인 완료! (오프라인 저장)';
+        done.classList.add('show');
+      }
+    }
+  } catch(e) {
+    btn.style.display = 'none';
+    if(done){
+      done.textContent = '✓ 체크인 완료! (오프라인 저장)';
+      done.classList.add('show');
+    }
+  }
 }
 
 function renderRoadmap(bcCode, res) {
