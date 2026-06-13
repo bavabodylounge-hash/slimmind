@@ -975,7 +975,15 @@ app.get('/result/:id', async (c) => {
 // ═══════════════════════════════════════════════════════════════
 //  페이지 라우트
 // ═══════════════════════════════════════════════════════════════
-app.get('/', (c) => c.html(indexHtml))
+
+// ─── 대표 주소(루트) — 항상 최신 설문지(slimmind_live)로 리다이렉트 ──
+// ?ref= 등 쿼리파라미터를 그대로 전달해 컨설턴트 코드가 유실되지 않도록 함
+app.get('/', (c) => {
+  const qs = c.req.raw.url.split('?')[1]
+  const target = qs ? `/slimmind_live?${qs}` : '/slimmind_live'
+  return c.redirect(target, 301)
+})
+
 app.get('/admin', (c) => c.html(adminHtml))
 app.get('/admin.html', (c) => c.html(adminHtml))
 app.get('/admin/*', (c) => c.html(adminHtml))
@@ -986,7 +994,8 @@ app.get('/consultant/*', (c) => c.html(consultantHtml))
 // ─── 임시: 바디맵 미리보기 (개발용) ────────────────────────────
 app.get('/bodymap-preview', (c) => c.html(bodymapPreviewHtml))
 
-// ─── 슬림마인드 라이브 설문지 (v3 — prescEffect + 결과지 1차) ──
+// ─── 슬림마인드 라이브 설문지 — 유일한 최신 설문지 ────────────
+// 대표 URL: /slimmind_live  (루트 / 도 여기로 리다이렉트됨)
 app.get('/slimmind_live', (c) => c.html(slimmindLiveHtml))
 app.get('/slimmind_live.html', (c) => c.html(slimmindLiveHtml))
 app.get('/slimmind', (c) => c.html(slimmindLiveHtml))
