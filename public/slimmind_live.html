@@ -2286,35 +2286,52 @@ function calculatePrescScores() {
 // ── 감정 프로파일 추출 ─────────────────────────────────
 // ══════════════════════════════════════════════════════
 function calcEmotionProfile() {
+  // ── 실제 saveAs 키 기준으로 시그널 읽기 ──
+  // Q_CORTISOL → saveAs: cortisol_sign  |  Q_INSULIN → saveAs: postmeal
+  // Q04 → saveAs: yoyo_count            |  Q69 → saveAs: recovery
+  // Q35 → saveAs: exercise_streak       |  Q73 → saveAs: daily_activity
+  // Q25 → saveAs: quit_reason           |  Q57 → saveAs: binge_trigger
+  // Q54 → saveAs: stress_appetite       |  Q38 → saveAs: motivation
+
+  var cortisol   = answers.cortisol_sign  || answers.Q_CORTISOL || '';
+  var postmeal   = answers.postmeal       || '';   // Q_INSULIN saveAs
+  var binge_trg  = answers.binge_trigger  || '';   // Q57 saveAs
+  var stress_app = answers.stress_appetite|| '';   // Q54 saveAs
+  var recovery   = answers.recovery       || '';   // Q69 saveAs
+  var activity   = answers.daily_activity || '';   // Q73 saveAs
+  var streak     = answers.exercise_streak|| '';   // Q35 saveAs
+  var quit_rsn   = answers.quit_reason    || '';   // Q25 saveAs
+  var motivation = answers.motivation     || '';   // Q38 saveAs
+  var yoyo_cnt   = answers.yoyo_count     || answers.Q04 || '0'; // Q04 saveAs
+
   // 폭식형 신호
   var binge = 0;
-  if (answers.Q_CORTISOL === 'craving') binge += 30;
-  if (answers.postmeal === 'crave' || answers.postmeal === 'shaky') binge += 20;
-  if (answers.cortisol_sign === 'craving') binge += 15;
-  var eatTrigger = answers.eat_trigger || answers.Q_EATTRIGGER || '';
-  if (['stress','bored','emotion'].indexOf(eatTrigger) >= 0) binge += 20;
+  if (cortisol === 'craving')                        binge += 30;
+  if (postmeal === 'crave' || postmeal === 'shaky')  binge += 20;
+  if (binge_trg === 'stress' || binge_trg === 'emotion' || binge_trg === 'bored') binge += 20;
+  if (stress_app === 'more')                         binge += 15;
 
-  // 고립형 신호 (아무도 몰라주는)
+  // 고립형 신호 (혼자버티형)
   var isolation = 0;
-  if (answers.support === 'none' || answers.social_diet === 'alone') isolation += 25;
-  if (answers.prev_reason === 'gave_up' || answers.yoyo === '10') isolation += 20;
-  if (answers.motivation === 'pressure' || answers.self_image === 'shame') isolation += 20;
+  if (motivation === 'pressure' || motivation === 'shame') isolation += 25;
+  if (yoyo_cnt === '10')  isolation += 20;
+  if (quit_rsn === 'gave_up' || quit_rsn === 'alone') isolation += 20;
+  if (yoyo_cnt === '5')   isolation += 10;
 
   // 번아웃형 신호 (스트레스·피로)
   var burnout = 0;
-  if (answers.Q_CORTISOL === 'fatigue') burnout += 30;
-  if (answers.recovery === 'fatigue') burnout += 20;
-  if (answers.sleep === 'bad' || answers.Q_SLEEP === 'insomnia') burnout += 15;
-  if (answers.daily_activity === 'sedentary') burnout += 15;
-  if (answers.Q_CORTISOL === 'insomnia') burnout += 15;
+  if (cortisol === 'fatigue')       burnout += 30;
+  if (recovery === 'fatigue')       burnout += 20;
+  if (cortisol === 'insomnia')      burnout += 15;
+  if (activity === 'sedentary')     burnout += 15;
+  if (recovery === 'long')          burnout += 10;
 
   // 반복실패형 신호
   var repeat = 0;
-  var yoyo = answers.Q04 || answers.yoyo || '0';
-  if (yoyo === '5') repeat += 20;
-  if (yoyo === '10') repeat += 35;
-  if (answers.exercise_streak === 'week') repeat += 15;
-  if (answers.Q25 || answers.quit_reason) repeat += 15;
+  if (yoyo_cnt === '10')   repeat += 35;
+  if (yoyo_cnt === '5')    repeat += 20;
+  if (streak === 'week')   repeat += 15;
+  if (quit_rsn)            repeat += 10;
 
   // 가장 높은 유형 결정
   var scores = {binge:binge, isolation:isolation, burnout:burnout, repeat:repeat};
