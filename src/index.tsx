@@ -7,6 +7,7 @@ import adminHtml from '../public/admin.html?raw'
 import consultantHtml from '../public/consultant.html?raw'
 import resultHtml from '../public/result.html?raw'
 import bodymapPreviewHtml from '../public/bodymap_preview.html?raw'
+import slimmindLiveHtml from '../public/slimmind_live.html?raw'
 
 // ─── 타입 정의 ───────────────────────────────────────────────
 type Bindings = {
@@ -984,5 +985,10 @@ app.get('/consultant/*', (c) => c.html(consultantHtml))
 
 // ─── 임시: 바디맵 미리보기 (개발용) ────────────────────────────
 app.get('/bodymap-preview', (c) => c.html(bodymapPreviewHtml))
+
+// ─── 슬림마인드 라이브 설문지 (v3 — prescEffect + 결과지 1차) ──
+app.get('/slimmind_live', (c) => c.html(slimmindLiveHtml))
+app.get('/slimmind_live.html', (c) => c.html(slimmindLiveHtml))
+app.get('/slimmind', (c) => c.html(slimmindLiveHtml))
 
 export default app
