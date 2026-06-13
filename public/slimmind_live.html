@@ -471,6 +471,8 @@ const D={"seq":[{"t":"intro"},{"t":"hook_main"},{"t":"consent"},{"t":"basic","q"
 
 const LOGO="<svg width=\"58\" height=\"58\" viewBox=\"0 0 120 120\" xmlns=\"http://www.w3.org/2000/svg\" aria-label=\"SlimMind 나비\"><g><path d=\"M60 96 C54 70 48 52 34 40 C20 28 14 44 20 58 C26 72 44 78 60 96 Z\" fill=\"#FF9EC2\"/><path d=\"M60 96 C56 66 52 48 44 34 C38 24 28 26 30 38 C32 52 48 70 60 96 Z\" fill=\"#FFC2D8\"/><path d=\"M60 96 C66 70 72 52 86 40 C100 28 106 44 100 58 C94 72 76 78 60 96 Z\" fill=\"#E84C8A\"/><path d=\"M60 96 C64 66 68 48 76 34 C82 24 92 26 90 38 C88 52 72 70 60 96 Z\" fill=\"#F06FA0\"/></g></svg>";
 let idx=0, answers={}, measureVals={h:171,w:93,t:75,topSz:'',botSz:'',targetTopSz:'',targetBotSz:''};
+// URL ?ref= 파라미터로 컨설턴트 코드 수신
+(function(){var _ref=new URLSearchParams(location.search).get('ref');if(_ref)answers._consultant_code=_ref;})();
 const axList=['A01','A02','A03','A04','A05','A06','A07','A08','A09','A10'];
 function curAxIndex(ax){return axList.indexOf(ax);}
 function backBtn(){return idx>0?'<div style="text-align:center;margin-top:14px"><span class="prev" onclick="go(-1)">← 이전</span></div>':'';}
@@ -2797,6 +2799,40 @@ function renderResult1st() {
   var ansData = calcANSType();   // Phase 2 신규
   var axisData = calcAxisScores();
   var meta = calcMetabolics();
+
+  // ── 설문 결과 DB 저장 (최초 1회만) ──
+  if (!answers._submitted) {
+    answers._submitted = true;
+    (function() {
+      var topBC  = bc.top[0] || {k:'BC-01', v:0};
+      var topBC2 = bc.top[1] || null;
+      var axScores = {};
+      axisData.list && axisData.list.forEach(function(a){ axScores[a.id] = a.pct; });
+      var topAxes = axisData.list ? axisData.list.slice(0,3).map(function(a){ return a.id; }) : [];
+      var payload = {
+        consultant_code: answers._consultant_code || null,
+        user_name:       answers.Q01 || null,
+        gender:          answers.Q02 || null,
+        birth_date:      answers.Q03 ? (answers.Q03+'T00:00:00') : null,
+        height:          measureVals.h || null,
+        weight:          measureVals.w || null,
+        bc_primary:      topBC.k,
+        bc_primary_score: topBC.v,
+        bc_secondary:    topBC2 ? topBC2.k : null,
+        bc_secondary_score: topBC2 ? topBC2.v : 0,
+        bc_scores:       (function(){ var o={}; bc.top.forEach(function(x){ o[x.k]=x.v; }); return o; })(),
+        axis_scores:     axScores,
+        top_axes:        topAxes,
+        answers:         answers,
+        survey_summary:  { ans_type: ansData.dominant, emotion_profile: emotion.top }
+      };
+      fetch('/api/survey/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).catch(function(e){ console.warn('[survey/submit]', e); });
+    })();
+  }
   var topBC = bc.top[0] || {k:'BC-01', v:0};
   var topBC2 = bc.top[1] || null;
   var topBC3 = bc.top[2] || null;
