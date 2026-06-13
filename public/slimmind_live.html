@@ -4140,10 +4140,87 @@ function renderResult5th() {
       }).join('')
     + '</div>'
 
+    // ── MBTI 성격·식이 분석 레이어 ───────────────────────────────
+    + (function(){
+        var mbti = (answers.Q43_mbti || answers.mbti || '').toUpperCase().trim();
+        if (!mbti || mbti.length < 2) return '';
+        // MBTI 4축 분해
+        var ie  = mbti.indexOf('I') >= 0 ? 'I' : 'E';
+        var sn  = mbti.indexOf('N') >= 0 ? 'N' : 'S';
+        var tf  = mbti.indexOf('F') >= 0 ? 'F' : 'T';
+        var jp  = mbti.indexOf('P') >= 0 ? 'P' : 'J';
+        // 다이어트 실패 패턴 (고유 메시지)
+        var failMap = {
+          'I':'조용히 혼자 포기하는 패턴 — 아무도 모르게 그만두기 쉬워요.',
+          'E':'주변 시선에 민감해 단기 성과에 집착 → 요요가 오면 자책이 커요.',
+          'N':'새 방법에 끌려 자꾸 바꾸다 루틴이 무너지는 타입이에요.',
+          'S':'검증된 방법만 고집하다 정체기에서 오래 멈추는 경향이 있어요.',
+          'F':'감정 기복에 따라 폭식·굶기가 반복되는 패턴이에요.',
+          'T':'분석·계획은 완벽한데 실행 중 완벽주의 함정에 빠지기 쉬워요.',
+          'J':'계획이 조금이라도 어긋나면 "다 망했다"고 포기하는 타입이에요.',
+          'P':'즉흥적으로 잘 먹다가도 구조가 없으면 흐지부지돼요.'
+        };
+        var motivMap = {
+          'I':'혼자서도 꾸준히 — 기록과 데이터로 동기를 유지하는 루틴을 만드세요.',
+          'E':'파트너 or 공개 선언 — 누군가에게 공유할수록 지속력이 올라가요.',
+          'N':'의미 부여 — "왜 하는가"를 자주 떠올리면 포기 확률이 줄어요.',
+          'S':'작은 성과 누적 — 측정 가능한 단기 목표를 설정하고 하나씩 달성하세요.',
+          'F':'공감과 위로 — 스스로를 다독이는 시간을 의도적으로 만드세요.',
+          'T':'데이터 추적 — 체중·식단·운동량을 수치로 기록하면 동기가 유지돼요.',
+          'J':'유연한 플랜B — 계획이 어긋날 때를 대비한 대안을 미리 정해두세요.',
+          'P':'미니 루틴 — 아주 작은 고정 습관 1~2개만 먼저 정착시키세요.'
+        };
+        var comfortMap = {
+          'INTJ':'완벽하게 준비된 다음에 시작하려 했던 거 알아요. 근데 몸은 완벽한 타이밍을 기다려주지 않아요. 지금 이 순간이 바로 그 타이밍이에요.',
+          'INFJ':'남을 위해 에너지를 쏟느라 정작 자신을 돌보지 못했을 거예요. 이제 그 헌신의 10%만 자신에게 써도 돼요.',
+          'ISFJ':'가족과 주변을 챙기느라 자신은 뒤로 밀어왔을 거예요. 건강한 내가 있어야 더 오래 곁에 있을 수 있어요.',
+          'ISTJ':'규칙적으로 살아왔는데 왜 이렇게 됐을까 답답했을 거예요. 방법이 잘못됐던 거예요. 이제 맞는 규칙을 시작해요.',
+          'ENTP':'수백 가지 방법을 시도해봤을 거예요. 근데 내 몸 코드를 모른 채 실험만 했던 거예요. 이제 데이터가 생겼어요.',
+          'ENFP':'열정으로 시작했다가 현실에 치여 포기한 적 많죠? 그게 의지 부족이 아니에요. 맞는 방법이 아니었던 거예요.',
+          'ESFJ':'주변 눈치 보며 "나중에 해야지"만 반복했을 거예요. 지금 이 결과지가 나중을 오늘로 당기는 신호예요.',
+          'ESTJ':'계획 세우고 열심히 했는데 결과가 안 나왔을 거예요. 노력이 잘못된 게 아니라 방향이 달랐던 거예요.'
+        };
+        var comfort = comfortMap[mbti] || (
+          tf==='F'
+          ? name+'님이 얼마나 열심히 노력해왔는지 이 결과지가 다 알고 있어요. 그 노력이 이제 맞는 방향을 만났어요.'
+          : '지금까지 쌓아온 데이터가 충분해요. 이제 변수를 줄이고 일관된 방법을 실행할 차례예요.'
+        );
+        var failMsg = (failMap[ie]||'') + ' ' + (failMap[tf]||'');
+        var motivMsg = (motivMap[ie]||'') + ' ' + (motivMap[jp]||'');
+        return '<div style="background:linear-gradient(135deg,#f5f0ff,#fff8f5);border-radius:18px;padding:20px 18px;margin-bottom:16px;border:1.5px solid #e0d5ff">'
+          + '<div style="font-size:12px;font-weight:800;color:#7C3AED;margin-bottom:14px">🧠 MBTI '+mbti+' — 성격 기반 분석</div>'
+          + '<div style="background:#fff;border-radius:12px;padding:14px;margin-bottom:10px">'
+          + '<div style="font-size:11px;font-weight:700;color:#E8734D;margin-bottom:6px">⚠️ 다이어트 실패 패턴</div>'
+          + '<div style="font-size:12.5px;color:#444;line-height:1.8">'+failMsg+'</div>'
+          + '</div>'
+          + '<div style="background:#fff;border-radius:12px;padding:14px;margin-bottom:10px">'
+          + '<div style="font-size:11px;font-weight:700;color:#43B89C;margin-bottom:6px">✅ '+name+'님 맞춤 동기 유지법</div>'
+          + '<div style="font-size:12.5px;color:#444;line-height:1.8">'+motivMsg+'</div>'
+          + '</div>'
+          + '<div style="background:linear-gradient(135deg,#7C3AED11,#E8734D11);border-radius:12px;padding:14px;border:1px solid #7C3AED22">'
+          + '<div style="font-size:11px;font-weight:700;color:#7C3AED;margin-bottom:6px">💌 '+name+'님께 드리는 말</div>'
+          + '<div style="font-size:13px;color:#2D2420;line-height:1.9;font-style:italic">"'+comfort+'"</div>'
+          + '</div>'
+          + '</div>';
+      })()
+
     // 최종 처방 요약
     + '<div style="background:#fff;border-radius:18px;padding:18px 16px;margin-bottom:16px;box-shadow:0 2px 12px rgba(0,0,0,.06)">'
     + '<div style="font-size:12px;font-weight:800;color:#888780;margin-bottom:14px">📋 '+name+'님 최종 처방 요약</div>'
     + finalPrescHtml
+    + '</div>'
+
+    // 공유 + 프린트 버튼
+    + '<div style="background:#fff;border-radius:18px;padding:18px 16px;margin-bottom:16px;box-shadow:0 2px 12px rgba(0,0,0,.06)">'
+    + '<div style="font-size:12px;font-weight:800;color:#888780;margin-bottom:12px">📤 결과지 공유하기</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    + '<button onclick="shareKakaoResult5()" style="background:linear-gradient(135deg,#FEE500,#FFEB3B);color:#3C1E1E;border:none;'
+    + 'border-radius:14px;padding:14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">'
+    + '<span style="font-size:18px">💬</span> 카카오 공유</button>'
+    + '<button onclick="printResult5()" style="background:linear-gradient(135deg,#4A6FE3,#5B9BD5);color:#fff;border:none;'
+    + 'border-radius:14px;padding:14px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">'
+    + '<span style="font-size:18px">🖨️</span> 결과 저장/인쇄</button>'
+    + '</div>'
     + '</div>'
 
     // 최종 CTA — 1:1 관리 연결
@@ -4168,6 +4245,105 @@ function renderResult5th() {
 
   var container = document.getElementById('app');
   if (container) { container.innerHTML = html; window.scrollTo(0,0); }
+}
+
+// ── 결과지 카카오톡 공유 (5차) ──
+function shareKakaoResult5() {
+  var name = answers.Q01 || '○○';
+  var bc   = calcTopBC();
+  var topBC = bc.top[0] || {k:'BC-01', v:0};
+  var shareUrl = window.location.origin + '/slimmind_live';
+  var msg = name + '님의 바디코드 진단 결과: ' + topBC.k + '\n'
+    + '슬림마인드 무료 체형 분석 → ' + shareUrl;
+
+  // 카카오 SDK 있으면 SDK로, 없으면 클립보드 복사
+  if (window.Kakao && window.Kakao.isInitialized && window.Kakao.isInitialized()) {
+    try {
+      window.Kakao.Share.sendDefault({
+        objectType: 'feed',
+        content: {
+          title: name + '님의 바디코드 진단 완료!',
+          description: '나의 체형 유형: ' + topBC.k + '\n오행 + MBTI + ANS 3중 분석 결과가 나왔어요.',
+          imageUrl: 'https://slimmind.com/og-image.jpg',
+          link: { mobileWebUrl: shareUrl, webUrl: shareUrl }
+        },
+        buttons: [{ title: '내 결과 보러가기', link: { mobileWebUrl: shareUrl, webUrl: shareUrl } }]
+      });
+      return;
+    } catch(e) {}
+  }
+  // fallback: 클립보드 복사 후 안내
+  if (navigator.share) {
+    navigator.share({ title: name + '님의 슬림마인드 바디코드 진단', text: msg, url: shareUrl }).catch(function(){});
+  } else {
+    navigator.clipboard && navigator.clipboard.writeText(msg).then(function(){
+      alert('📋 링크가 복사됐어요!\n카카오톡을 열고 붙여넣기 해주세요. 😊');
+    }).catch(function(){ prompt('아래 링크를 복사해 카카오톡에 공유해주세요:', shareUrl); });
+  }
+}
+
+// ── 결과지 인쇄/저장 (5차) ──
+function printResult5() {
+  var name = answers.Q01 || '○○';
+  var bc   = calcTopBC();
+  var topBC = bc.top[0] || {k:'BC-01', v:0};
+  var ansData = calcANSType();
+  var emotion = calcEmotionProfile();
+  var presc   = calculatePrescScores();
+  var ohaengEl = document.querySelector('#result5th-screen');
+
+  // 인쇄용 팝업 생성
+  var printWin = window.open('', '_blank', 'width=800,height=900');
+  if (!printWin) { alert('팝업이 차단되어 있어요. 팝업 허용 후 다시 시도해주세요.'); return; }
+
+  var prescLabels = {presc_약:'약물·보조제',presc_식단:'식단 교정',presc_운동:'운동 처방',presc_회복:'회복·수면',presc_한방:'한방·체온',presc_심리:'심리 관리',presc_체형:'체형 교정',presc_호르몬:'호르몬 조절'};
+  var prescRows = presc.top.slice(0,5).map(function(p,i){
+    return '<tr><td style="padding:6px 10px;border-bottom:1px solid #f0ede8;font-weight:700;color:#E8734D">'+(i+1)+'순위</td>'
+      + '<td style="padding:6px 10px;border-bottom:1px solid #f0ede8">'+(prescLabels[p.k]||p.k)+'</td>'
+      + '<td style="padding:6px 10px;border-bottom:1px solid #f0ede8;font-weight:700;color:#E8734D;text-align:right">'+p.v+'%</td></tr>';
+  }).join('');
+
+  var mbti = (answers.Q43_mbti || answers.mbti || '');
+  var mbtiRow = mbti ? '<p><strong>MBTI:</strong> '+mbti+'</p>' : '';
+
+  printWin.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8">'
+    + '<title>슬림마인드 바디코드 결과지 — '+name+'</title>'
+    + '<style>'
+    + 'body{font-family:"Noto Sans KR",sans-serif;max-width:720px;margin:0 auto;padding:32px;color:#2D2420;line-height:1.7}'
+    + 'h1{font-size:22px;font-weight:900;color:#E8734D;margin-bottom:4px}'
+    + 'h2{font-size:15px;font-weight:800;color:#888780;border-bottom:2px solid #F0EDE8;padding-bottom:6px;margin:20px 0 10px}'
+    + '.tag{display:inline-block;background:#FFF0E8;color:#E8734D;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;margin:2px}'
+    + 'table{width:100%;border-collapse:collapse}'
+    + '@media print{@page{margin:20mm} button{display:none}}'
+    + '</style>'
+    + '<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">'
+    + '</head><body>'
+    + '<div style="text-align:center;margin-bottom:24px">'
+    + '<div style="font-size:13px;color:#aaa;margin-bottom:6px">슬림마인드 바디코드 진단 결과지</div>'
+    + '<h1>'+name+'님의 맞춤 분석 리포트</h1>'
+    + '<div style="font-size:12px;color:#888">발행일: '+new Date().toLocaleDateString('ko-KR')+'</div>'
+    + '</div>'
+
+    + '<h2>📊 핵심 지표</h2>'
+    + '<p><strong>바디코드:</strong> <span style="color:#E8734D;font-weight:900">'+topBC.k+'</span></p>'
+    + '<p><strong>자율신경 유형:</strong> '+ansData.profile.label+'</p>'
+    + '<p><strong>감정 프로파일:</strong> '+emotion.top+'</p>'
+    + mbtiRow
+
+    + '<h2>📋 처방 우선순위</h2>'
+    + '<table>'+prescRows+'</table>'
+
+    + '<h2>🌿 오행 체질 처방</h2>'
+    + (ohaengEl ? '<p style="font-size:12px;color:#666">※ 오행 분석 결과는 위 화면에서 확인하세요.</p>' : '')
+
+    + '<h2>💬 컨설턴트 메모란</h2>'
+    + '<div style="border:1px dashed #ccc;min-height:80px;border-radius:8px;padding:12px;font-size:12px;color:#bbb">메모를 입력하세요...</div>'
+
+    + '<div style="margin-top:32px;text-align:center;font-size:11px;color:#ccc">본 결과지는 슬림마인드 바디코드 진단 시스템으로 생성되었습니다.</div>'
+    + '<button onclick="window.print()" style="margin:16px auto;display:block;background:#E8734D;color:#fff;border:none;border-radius:10px;padding:12px 28px;font-size:14px;font-weight:700;cursor:pointer">🖨️ 인쇄 / PDF 저장</button>'
+    + '</body></html>');
+  printWin.document.close();
+  setTimeout(function(){ printWin.focus(); }, 300);
 }
 
 // ══════════════════════════════════════════════
