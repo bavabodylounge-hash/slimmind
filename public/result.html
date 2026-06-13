@@ -102,50 +102,117 @@ body{
 
 /* 인쇄 시 페이지 나누기 */
 @media print{
-  body{background:#fff;padding:0}
-  .a4-wrap{padding:0;max-width:100%}
-  .top-bar,.progress-bar-wrap,.chapter-nav,.print-btn{display:none!important}
+  /* ── 기본 리셋 ── */
+  body{background:#fff;padding:0;margin:0}
+  .a4-wrap{padding:0;max-width:100%;margin:0}
+
+  /* ── 웹 UI 요소 숨김 ── */
+  .top-bar,.progress-bar-wrap,.chapter-nav,.print-btn,
+  .chapter-nav-btn,.nav-dot,.share-btn{display:none!important}
+
+  /* ── 챕터 = A4 한 페이지 단위 ── */
   .chapter{
-    display:flex !important;
-    min-height:297mm;
-    /* height 고정 제거 — 내용이 넘치면 다음 페이지로 자연스럽게 이어짐 */
-    padding:12mm 18mm;
-    page-break-after:always;
-    page-break-inside:avoid;
+    display:block !important;
+    width:210mm;
+    min-height:auto;
+    padding:14mm 20mm 12mm;
+    page-break-before: always;
+    break-before: page;
+    page-break-after: always;
+    break-after: page;
+    page-break-inside: avoid;
+    break-inside: avoid;
     box-shadow:none;
     border-radius:0;
     margin:0;
-    overflow:visible;       /* hidden → visible: 내용 짤림 방지 */
+    overflow:visible;
+    position:relative;
   }
-  /* 커버는 풀페이지 */
+  /* 첫 챕터(커버)는 page-break-before 없음 */
+  .chapter:first-child,
+  .chapter[data-ch="0"]{
+    page-break-before: avoid !important;
+    break-before: avoid !important;
+  }
+  /* 커버는 풀페이지 고정 */
   .chapter[data-ch="0"]{
     padding:0 !important;
-    min-height:297mm;
-    height:297mm;            /* 커버만 고정 높이 유지 */
-    overflow:hidden;         /* 커버는 고정 레이아웃이므로 hidden 유지 */
+    height:297mm;
+    overflow:hidden;
   }
-  .chapter:last-child{page-break-after:avoid}
+  /* 마지막 챕터 뒤 빈 페이지 방지 */
+  .chapter:last-child{
+    page-break-after:avoid;
+    break-after:avoid;
+  }
 
-  /* 카드·섹션 안에서 내용 짤림 방지 */
+  /* ── 내용 잘림 방지: 카드·박스 단위로 통째로 이동 ── */
   .presc-card, .bc-display, .hook-box, .scene-box,
-  .timeline-wrap, .upsell-box, #p1BodySilhouette,
-  #p1BodyGoal, #p1MacroRatio, .supplement-grid {
+  .timeline-wrap, .upsell-box, .supplement-grid,
+  #p1BodySilhouette, #p1BodyGoal, #p1MacroRatio,
+  .wrong-card, .correct-card, .sport-card, .food-card,
+  .reveal-block, .unique-point-card, .axis-row,
+  .recovery-item, .lifestyle-item, .meal-row,
+  [class*="card"], [class*="-item"],
+  .hook-box, .scene-box {
     page-break-inside: avoid;
     break-inside: avoid;
   }
 
-  /* 테이블 행 분리 방지 */
-  .meal-table tr { page-break-inside: avoid; break-inside: avoid; }
+  /* ── 텍스트 단락 잘림 방지 ── */
+  p, li, .reveal-body, .bc-cause-story, .hook-text,
+  .scene-text, .quote-text, .story-text {
+    orphans: 3;
+    widows: 3;
+  }
 
-  /* 차트 캔버스: 인쇄 시 크기 고정 */
-  canvas { max-width: 100% !important; }
+  /* ── 테이블 행 분리 방지 ── */
+  .meal-table tr, table tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
 
-  /* 모바일 미디어쿼리 오버라이드: 인쇄는 항상 데스크탑 레이아웃 */
+  /* ── 차트 캔버스 ── */
+  canvas { max-width: 100% !important; height: auto !important; }
+
+  /* ── 모바일 오버라이드: 인쇄는 항상 가로 레이아웃 ── */
   #ch0 .cover-main-row { flex-direction: row !important; }
   #ch0 .cover-body-col { display: flex !important; }
   #coverBodyMap, #coverBodyMapLegend { display: block !important; }
+
+  /* ── 색상 배경 강제 출력 ── */
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+  /* ── 챕터 내 서브섹션 간격 정리 ── */
+  .chapter > *:first-child { margin-top: 0; }
+  .chapter > *:last-child  { margin-bottom: 0; }
+
+  /* ── 긴 챕터 내에서 주요 블록 앞에 페이지 브레이크 힌트 ── */
+  /* ch2: 10축 차트 / 레이더 / 3대 특이점 / 스토리 구분 */
+  #p2Story       { page-break-before: auto; }
+  /* ch3: 처방 원칙 섹션 */
+  #p3CorrectPrinciples { page-break-before: auto; break-before: auto; }
+  /* ch4: 운동 섹션, 스케줄 */
+  #p4Schedule    { page-break-before: auto; }
+  /* ch5: 식단 계획표 */
+  #p5MealPlan    { page-break-before: auto; }
+  /* ch6: 라이프스타일 섹션 */
+  #p6Lifestyle   { page-break-before: auto; }
+
+  /* ── 섹션 헤더 직후 내용 잘림 방지 (孤行 방지) ── */
+  h2, h3, h4, .section-title, .ch-label {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+  h2 + *, h3 + *, h4 + *, .section-title + * {
+    page-break-before: avoid;
+    break-before: avoid;
+  }
 }
-@page{size:A4;margin:0;}
+@page{
+  size: A4 portrait;
+  margin: 0;
+}
 
 /* ═══════════════════════════════════════════
    헤더 (SlimMind 브랜드)
@@ -1452,19 +1519,26 @@ function showChapterById(id){ const i = CHAPTERS.indexOf(id); if(i >= 0) showCha
 
 /* ─── 인쇄 / PDF 저장 ─── */
 function printAll(){
-  // 모든 챕터 표시
+  // 모든 챕터 block으로 표시 (flex → 인쇄CSS에서 block 처리)
   CHAPTERS.forEach(id => {
     const el = document.getElementById(id);
-    if(el){ el.style.display = 'flex'; el.classList.add('active'); }
+    if(el){ el.style.display = 'block'; el.classList.add('active'); }
   });
+  // 커버는 기존 스타일 유지
+  const cover = document.getElementById('ch0');
+  if(cover) cover.style.display = 'block';
+
   const topBar = document.getElementById('topBar');
   const progBar = document.querySelector('.progress-bar-wrap');
   if(topBar)  topBar.style.display  = 'none';
   if(progBar) progBar.style.display = 'none';
 
-  window.print();
+  // 렌더링 완료 후 인쇄
+  setTimeout(() => {
+    window.print();
+  }, 300);
 
-  // 인쇄 완료 후 복원
+  // 인쇄 다이얼로그 닫힌 후 복원
   setTimeout(() => {
     CHAPTERS.forEach((id, i) => {
       const el = document.getElementById(id);
@@ -1477,7 +1551,7 @@ function printAll(){
     const isCoverOrTocR = (CHAPTERS[currentIdx] === 'ch0' || CHAPTERS[currentIdx] === 'ch-toc');
     if(topBar)  topBar.style.display  = isCoverOrTocR ? 'none' : '';
     if(progBar) progBar.style.display = isCoverOrTocR ? 'none' : '';
-  }, 800);
+  }, 1500);
 }
 
 /* ─── 데이터 파싱 헬퍼 ─── */
