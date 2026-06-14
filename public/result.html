@@ -862,6 +862,52 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 .meta-item-val{font-size:13px;font-weight:800;color:var(--bc-main,#0B2545)}
 .meta-arrow{color:var(--bc-accent,#3ECBA5);margin-right:6px}
 
+/* ── 서브타입 카드 ── */
+.subtype-card{
+  border-radius:16px;overflow:hidden;
+  border:2px solid rgba(0,0,0,.06);
+  background:#fff;
+  box-shadow:0 2px 12px rgba(0,0,0,.06);
+}
+.subtype-card-head{
+  display:flex;align-items:center;gap:12px;
+  padding:14px 16px 12px;
+  background:linear-gradient(135deg,var(--bc-main,#0B2545),var(--bc-accent,#3ECBA5));
+  color:#fff;
+}
+.subtype-badge{
+  font-size:10px;font-weight:900;letter-spacing:.08em;
+  background:rgba(255,255,255,.2);border-radius:6px;
+  padding:3px 8px;flex-shrink:0;
+}
+.subtype-label{font-size:15px;font-weight:800;flex:1}
+.subtype-tag{font-size:11px;opacity:.8;font-weight:500}
+.subtype-body{padding:14px 16px}
+.subtype-why{
+  font-size:12.5px;color:#334155;line-height:1.7;
+  margin-bottom:12px;padding-bottom:12px;
+  border-bottom:1px solid rgba(0,0,0,.06);
+}
+.subtype-do-list{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.subtype-do-item{
+  display:flex;align-items:flex-start;gap:8px;
+  font-size:12px;color:#0B2545;line-height:1.55;
+}
+.subtype-do-icon{font-size:16px;flex-shrink:0;margin-top:-1px}
+.subtype-dont{
+  font-size:11.5px;color:#ef4444;
+  background:#fef2f2;border-radius:8px;padding:8px 10px;
+  border-left:3px solid #ef4444;line-height:1.55;
+  margin-bottom:10px;
+}
+.subtype-dont::before{content:'🚫 하면 안되는 것: ';font-weight:700}
+.subtype-ref{
+  font-size:10.5px;color:#94a3b8;line-height:1.5;
+  font-style:italic;border-top:1px solid rgba(0,0,0,.04);
+  padding-top:8px;margin-top:4px;
+}
+.subtype-ref::before{content:'📌 근거: '}
+
 /* 오행 정보 */
 .ohaeng-info-box{
   background:linear-gradient(135deg,var(--bc-main,#0B2545),rgba(11,37,69,.88));
@@ -1221,6 +1267,15 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
       <span style="color:var(--bc-accent,#3ECBA5);font-weight:700">★ 표시</span>는 당신의 BC 코드에서 가장 시급한 핵심축입니다.
     </div>
     <div id="ch1AxisBars" style="display:flex;flex-direction:column;gap:4px"></div>
+
+    <!-- 서브타입 진단 -->
+    <div class="sec-divider"></div>
+    <div class="sec-kicker">당신은 어떤 세부 유형인가요?</div>
+    <div style="font-size:12px;color:#64748B;margin-bottom:14px;line-height:1.75">
+      같은 BC 코드라도 <strong style="color:#0B2545">서브타입</strong>에 따라 처방이 완전히 달라집니다.<br>
+      내 모습에 더 가까운 쪽을 확인하세요.
+    </div>
+    <div id="ch1SubtypeCards" style="display:flex;flex-direction:column;gap:14px"></div>
 
   </div><!-- /chapter-content -->
 
@@ -2346,6 +2401,273 @@ const TEMP_TYPE_DB = {
 };
 
 /* ══════════════════════════════════════════════════════
+   2-A. BC_SUBTYPE_DB — BC코드별 서브타입 A/B
+        각 서브타입: { label, tag, why, do, dont, ref }
+══════════════════════════════════════════════════════ */
+const BC_SUBTYPE_DB = {
+  'BC-01': {
+    A: {
+      label: '거미형',
+      tag: '팔다리 가늘고 배만 나온',
+      why: '팔다리 근육량이 부족한 상태에서 코르티솔 과잉 → 내장 주변에만 지방 축적. 팔다리가 가늘어서 "살이 찐 게 아니다"고 착각하는 경우가 많습니다.',
+      do: [
+        { icon:'🧱', text:'플랭크·브릿지로 코어 안정화 (복압 운동 대신)' },
+        { icon:'🍚', text:'정제탄수화물 차단 — 내장지방은 당 민감도 문제가 먼저' },
+        { icon:'😴', text:'수면 7h 확보 — 공복 스트레스가 코르티솔 더 올림' }
+      ],
+      dont: '크런치·레그레이즈 같은 복압 운동 → 내장지방 역효과. 굶기 → 코르티솔 상승으로 내장지방 더 쌓임.',
+      ref: 'Tchernof & Després (2013) — 내장지방은 피하지방과 대사 경로가 다름. 인슐린 저항성 개선이 유산소보다 선행 필요. Diabetologia.'
+    },
+    B: {
+      label: '표준체형 착각형',
+      tag: 'BMI 정상인데 내장지방 높은',
+      why: '근육량이 평균이고 체중도 정상인데 내장지방만 높은 상태. 인바디 없이는 본인도 모름. 마른비만과 혼동되는 케이스.',
+      do: [
+        { icon:'🏃', text:'중강도 유산소 주 5회 — 지방산화 최대 구간 유지' },
+        { icon:'💪', text:'근력 운동 병행 — 유산소 단독은 근육 손실 위험' },
+        { icon:'📏', text:'허리둘레 측정 — 체중계 숫자 말고 이게 진짜 지표' }
+      ],
+      dont: '알코올 완전 차단 (내장지방 직결). 액상과당 제거 (음료·주스·단맛 요거트).',
+      ref: 'Kuk et al. (2011) — 정상 BMI에서 높은 내장지방은 대사 위험 독립 예측 인자. Obesity.'
+    }
+  },
+  'BC-02': {
+    A: {
+      label: '간 과부하형',
+      tag: '과음·야식 반복으로 간 손상된',
+      why: '알코올·가공식품·야식이 간 해독 경로를 포화 상태로 만듦 → 지질 대사 저하 → 내장지방 축적. 피로가 만성화되어 있어 운동 의지가 안 생기는 악순환.',
+      do: [
+        { icon:'🥦', text:'십자화과 채소 매일 — 글루타티온 합성으로 간 해독 지원' },
+        { icon:'🚫', text:'주 4회 이상 음주 → 즉시 주 1회 이하로 감축' },
+        { icon:'🌙', text:'야식 금지 4주 — 간 회복 골든타임 확보' }
+      ],
+      dont: '고강도 운동 초기 도입 금지 — 간 기능 저하 시 암모니아 처리 불가. 간 회복 4주 후 운동 강도 올리세요.',
+      ref: 'Fabbrini et al. (2010) — 비알코올성 지방간(NAFLD) 80%에서 인슐린 저항성 동반. Hepatology.'
+    },
+    B: {
+      label: '만성피로 누적형',
+      tag: '피로가 먼저 쌓이고 살이 찐',
+      why: '부신 피로 + 코르티솔 만성 상승 → 에너지 대신 지방 저장 모드 고착. 체중보다 피로가 먼저 해결돼야 체중이 반응.',
+      do: [
+        { icon:'😴', text:'수면 최우선 — 6시간 이하라면 모든 처방 효과 없음' },
+        { icon:'🌿', text:'마그네슘 300mg + 비타민B군 — 부신 회복 핵심' },
+        { icon:'🧘', text:'저강도 운동만 — 고강도는 코르티솔 추가 상승' }
+      ],
+      dont: '고강도 인터벌, 식단 급격한 제한 — 피로 악화 즉시 발생.',
+      ref: 'Epel et al. (2000) — 코르티솔 반응성이 높은 여성은 복부 지방 우선 축적. Psychosomatic Medicine.'
+    }
+  },
+  'BC-03': {
+    A: {
+      label: '수분 부종형',
+      tag: '하체·발목에 물이 차는',
+      why: '신장 기능 저하 + 나트륨 과잉 + 림프 순환 저하. 하루 중 체중 1~2kg 이상 변동이 특징. 지방이 아닌 간질액(interstitial fluid) 축적.',
+      do: [
+        { icon:'🧂', text:'나트륨 하루 2g 이하 — 국물 음식 횟수부터 줄이기' },
+        { icon:'💧', text:'물 충분히 — 역설적으로 부족하면 몸이 물 저장' },
+        { icon:'🧦', text:'의료용 압박스타킹 착용 (15-20mmHg)' }
+      ],
+      dont: '이뇨제 남용 — 전해질 불균형 위험. 무턱대고 굶기 — 알부민 저하로 부종 악화.',
+      ref: 'Mortimer & Rockson (2014) — 종아리 근육 펌프 활성화가 림프부종 약물치료와 동등 효과. Lymphatic Research and Biology.'
+    },
+    B: {
+      label: '전신순환 저하형',
+      tag: '말초 혈액순환이 막힌',
+      why: '심박출량 저하 + 말초혈관 수축 → 산소 공급 부족 → 지방 연소 저하. 손발이 차고 저릿한 것이 특징.',
+      do: [
+        { icon:'🏊', text:'수영·수중 운동 — 정수압이 순환 펌프 역할' },
+        { icon:'🔥', text:'냉온 샤워 교대 — 혈관 수축·이완 반복으로 탄성 회복' },
+        { icon:'🐟', text:'오메가-3 2g — 혈관벽 유연성 개선' }
+      ],
+      dont: '카페인 과잉 — 말초 혈관 수축 악화. 장시간 정적 좌식 — 2시간마다 5분 이상 움직이기.',
+      ref: 'Nishiwaki et al. (2007) — 냉온 교대 수욕이 말초 혈류량 48% 향상. Journal of Human Hypertension.'
+    }
+  },
+  'BC-04': {
+    A: {
+      label: '코르티솔 내장형',
+      tag: '스트레스받으면 배부터 나오는',
+      why: '코르티솔 수용체가 복부 내장지방세포에 집중 → 스트레스 받을 때마다 복부에 우선 저장. 스트레스 해소가 식단·운동보다 먼저입니다.',
+      do: [
+        { icon:'🧘', text:'명상·호흡법 10분/일 — 코르티솔 피드백 루프 차단' },
+        { icon:'🚶', text:'식후 30분 걷기 — 혈당+코르티솔 동시 조절' },
+        { icon:'🛌', text:'수면 일정 고정 — 불규칙 수면이 코르티솔 만성 상승 유발' }
+      ],
+      dont: '고강도 운동 → 코르티솔 추가 상승. 무리한 굶기 → 스트레스 반응으로 역효과.',
+      ref: 'Epel et al. (2000) — 코르티솔 반응성이 높은 여성에서 스트레스 후 복부 지방 축적 유의미하게 높음. Psychosomatic Medicine.'
+    },
+    B: {
+      label: '수면박탈 비만형',
+      tag: '잠이 부족해서 살찌는',
+      why: '수면 6시간 이하 → 렙틴 감소·그렐린 증가 → 다음날 평균 300kcal 추가 섭취. 수면 부족이 비만의 원인이지 결과가 아닌 경우.',
+      do: [
+        { icon:'📵', text:'스마트폰 취침 1시간 전 금지 — 블루라이트가 멜라토닌 차단' },
+        { icon:'🌡️', text:'침실 온도 18-20°C — 수면 품질 직결' },
+        { icon:'🥛', text:'저녁 트립토판 식품 (달걀·두부·바나나) — 세로토닌→멜라토닌 경로' }
+      ],
+      dont: '수면제 남용 — REM 수면 억제로 체중 조절 호르몬 회복 안됨. 낮잠 30분 이상 — 야간 수면 방해.',
+      ref: 'Spiegel et al. (2004) — 수면 제한 시 렙틴 18% 감소·그렐린 28% 증가·식욕 24% 상승. Annals of Internal Medicine.'
+    }
+  },
+  'BC-05': {
+    A: {
+      label: '갑상선 저하형',
+      tag: '기초대사가 낮아 조금 먹어도 찌는',
+      why: '갑상선 호르몬(T3/T4) 분비 저하 → 기초대사율 15-30% 감소 → 같은 칼로리로도 체중 증가. 쉽게 피로하고 추위를 탑니다.',
+      do: [
+        { icon:'🦪', text:'셀레늄 200mcg + 아이오딘 식품 (미역·김) — T4→T3 전환 효소 보조' },
+        { icon:'💪', text:'근력 운동 주 3회 — 근육이 갑상선 의존적 열생성 대안' },
+        { icon:'🌡️', text:'체온 올리기 — 족욕·생강차·고강도 짧은 운동' }
+      ],
+      dont: '글루텐·대두 과잉 — 갑상선 자가항체와 교차 반응 가능. 극단적 저칼로리 — T3 전환 추가 저하.',
+      ref: 'Bianco & Kim (2006) — 셀레늄 결핍 시 T4→T3 전환 효소(탈요오드화효소) 활성 저하. Endocrinology.'
+    },
+    B: {
+      label: '근감소 대사저하형',
+      tag: '나이 들면서 근육이 빠져 살찌는',
+      why: '30대 이후 매년 근육 0.5~1% 소실 → 기초대사율 감소 → 체중 유지하려면 점점 덜 먹어야 하는 악순환. 체중 변화 없이 체형이 변한 것이 특징.',
+      do: [
+        { icon:'🏋️', text:'저항운동 주 3회 이상 — 근합성이 유일한 해결책' },
+        { icon:'🥩', text:'단백질 체중 × 1.8g — 끼니마다 분산 섭취 (25~30g 한계)' },
+        { icon:'☀️', text:'비타민D 2000IU — 근육 단백질 합성 경로에 필수' }
+      ],
+      dont: '유산소만 — 근육 추가 손실. 한 끼 단백질 몰아먹기 — 근합성 효율 급락.',
+      ref: 'Paddon-Jones & Rasmussen (2009) — 단백질 분산 섭취가 근합성 효율 40% 향상. American Journal of Clinical Nutrition.'
+    }
+  },
+  'BC-06': {
+    A: {
+      label: '마른비만 복부형',
+      tag: '체중 정상인데 뱃살+근감소 동시인',
+      why: '근육량 감소로 기초대사량 저하 → 같은 칼로리로도 지방 축적. 체중계는 정상이라 본인도 모르다가 인바디에서 충격받는 유형.',
+      do: [
+        { icon:'💪', text:'근력 운동 전환 — 유산소만 하면 근육 더 잃음' },
+        { icon:'🥩', text:'단백질 체중 × 1.8g 이상 — 근합성 우선' },
+        { icon:'📏', text:'인바디 정기 측정 — 체중 말고 체지방률로 모니터링' }
+      ],
+      dont: '추가 식단 제한 — 근육 소실 가속. 유산소 운동만 지속 — 근육 줄고 지방 비율 오름.',
+      ref: 'Villareal et al. (2011) — 마른비만에서 근력운동+단백질이 유산소 단독보다 체성분 개선 효과 3배. NEJM.'
+    },
+    B: {
+      label: '체중 정상 하체지방형',
+      tag: '겉보기엔 날씬한데 하체만 물렁물렁한',
+      why: '에스트로겐 우세 + 림프순환 저하 → 하체 피하지방 축적. 여성 하체지방은 에너지 저장 목적으로 호르몬이 지키는 구조라 일반 다이어트로 잘 안 빠짐.',
+      do: [
+        { icon:'🏋️', text:'하체 근력 운동 — 근육이 림프 펌프 역할' },
+        { icon:'🥦', text:'십자화과 채소 매일 — 에스트로겐 대사 경로 지원' },
+        { icon:'🪥', text:'드라이브러싱 + 냉온 샤워 — 림프 순환 촉진' }
+      ],
+      dont: '유산소만으로 하체 지방 공략 — 에스트로겐 수용체가 저항. 극단적 저칼로리 — 에스트로겐 추가 상승.',
+      ref: 'Lim & Davies (2009) — 하체 피하지방은 에스트로겐 수용체 밀도 높아 지방분해 저항성 존재. International Journal of Obesity.'
+    }
+  },
+  'BC-07': {
+    A: {
+      label: '힙 없는 일자형',
+      tag: '마른데 허리-힙 비율이 안 나오는',
+      why: '대둔근·중둔근 미발달 + 골반 전방경사. 허리가 가늘어도 힙이 없으면 비율이 안 나옴. WHR(허리-힙 비율) 0.7~0.75가 목표.',
+      do: [
+        { icon:'🍑', text:'힙 집중 프로그램 — 힙쓰러스트·클램쉘·힙어브덕션 주 4회' },
+        { icon:'🦵', text:'골반 전방경사 교정 — 장요근 스트레칭 + 복횡근 활성화' },
+        { icon:'🥩', text:'칼로리 서플러스 + 단백질 체중 × 2.0g — 근육 만들어야 하므로' }
+      ],
+      dont: '칼로리 결핍 다이어트 — 힙 근육 합성 불가. 유산소 위주 — 힙 모양 변화 없음.',
+      ref: 'Singh (1993) — WHR 0.7이 전 문화권에서 여성 매력도 최고점, 힙 발달이 결정적 변수. Ethology and Sociobiology.'
+    },
+    B: {
+      label: '마른데 배나온 형',
+      tag: '저체중인데 복부지방만 있는',
+      why: '극단적 저칼로리 식이 + 근육 없음 → 코르티솔 상승 → 내장지방 축적. 가장 위험한 체형 중 하나. 추가 식단 제한이 역효과.',
+      do: [
+        { icon:'🍽️', text:'칼로리 서서히 증가 — 급격한 증가 X, 주당 100kcal씩' },
+        { icon:'🏋️', text:'저강도 근력운동부터 — 피로 회복 능력 낮음' },
+        { icon:'🥩', text:'단백질 체중 × 1.6g — 근육 기반 만들기 최우선' }
+      ],
+      dont: '추가 식단 제한 절대 금지 — 코르티솔 추가 상승. 고강도 운동 — 회복 불가.',
+      ref: 'Dulloo et al. (1997) — 급격한 감량 후 지방 재축적은 복부 우선, 근육 회복은 마지막. American Journal of Clinical Nutrition.'
+    }
+  },
+  'BC-08': {
+    A: {
+      label: '물렁 탄력저하형',
+      tag: '체중 정상인데 탄력 없고 처지는',
+      why: '근육량 부족 + 콜라겐 감소. 체중은 유지됐지만 근육 비율이 낮아서 같은 무게인데 더 커 보이고 처져 보임. (근육 1kg = 지방 1kg보다 부피 1/3)',
+      do: [
+        { icon:'💪', text:'근력 운동이 전부 — 유산소로는 탄력 절대 안 생김' },
+        { icon:'💊', text:'콜라겐 + 비타민C 조합 — 콜라겐 합성에 비타민C 필수' },
+        { icon:'🥩', text:'단백질 충분 확보 — 근육 교체가 목표이므로' }
+      ],
+      dont: '체중 줄이려 하기 — 목표가 아님. 근육으로 교체하는 게 목표. 유산소만 — 탄력 변화 없음.',
+      ref: 'Timmerman et al. (2012) — 체중 동일 조건에서 근육 비율 증가 시 외형 개선도 유의미. Journal of Aging Research.'
+    },
+    B: {
+      label: '상하체 비율불균형형',
+      tag: '상체는 괜찮은데 하체(또는 반대)만 문제인',
+      why: '근육 발달의 비대칭. 생활 패턴(좌식·특정 운동 편중)으로 한쪽만 과발달 또는 미발달. 체중 목표가 아닌 둘레 비율 목표가 필요.',
+      do: [
+        { icon:'🎯', text:'약한 부위 집중 운동 — 우선순위 재설정' },
+        { icon:'📏', text:'어깨-허리-힙 둘레 목표 설정 — 체중 목표 X' },
+        { icon:'🔄', text:'강한 부위는 유지, 약한 부위는 증가 — 2:1 볼륨 배분' }
+      ],
+      dont: '전신 균일 운동 고집 — 비율 개선 효과 미미. 체중계 의존 — 비율 변화 못 잡음.',
+      ref: 'Reeves et al. (2004) — 신장성 스트레칭 지속 시 근섬유 길이 증가, 과발달 근육 부피 감소 효과. Journal of Anatomy.'
+    }
+  },
+  'BC-09': {
+    A: {
+      label: '요요 복부 잔류형',
+      tag: '다이어트마다 배만 다시 쌓이는',
+      why: '요요 반복 → 근육은 안 돌아오고 지방만 복부 집중 재축적. 매번 다이어트할수록 복부 비율이 높아지는 악순환.',
+      do: [
+        { icon:'💪', text:'근력운동 먼저 — 근육 회복 없이 식단만 하면 또 요요' },
+        { icon:'📉', text:'식단 적자 최소화 –300kcal 이하 — 급격한 감량이 요요 원인' },
+        { icon:'🔄', text:'12주 이상 지속 — 근육 회복은 지방 축적보다 느림' }
+      ],
+      dont: '급격한 식단 제한 → 요요 사이클 반복. 유산소 위주 → 근육 손실로 다음 요요 더 악화.',
+      ref: 'Dulloo et al. (1997) — 급격한 감량 후 지방 재축적은 복부 우선, 근육 회복 마지막. American Journal of Clinical Nutrition.'
+    },
+    B: {
+      label: '얼굴·목 집중 축적형',
+      tag: '스트레스받으면 얼굴·목부터 부는',
+      why: '상부 림프 정체 + 코르티솔 → 얼굴·목·쇄골 주변 지방 우선 축적. 스트레스 받으면 얼굴부터 붓는 유형.',
+      do: [
+        { icon:'💆', text:'목·어깨 스트레칭 + 림프 마사지 — 귀 뒤→쇄골 방향 쓸어내리기' },
+        { icon:'🧂', text:'나트륨 제한 + 알코올 금지 — 얼굴 붓기 직결' },
+        { icon:'😴', text:'수면 우선 — 수면 부족이 얼굴 지방에 가장 크게 영향' }
+      ],
+      dont: '얼굴 살만 먼저 빠지기를 기대 — 마지막에 빠짐. 알코올 — 얼굴 붓기 즉각 악화.',
+      ref: 'Spiegel et al. (2004) — 수면 제한 시 코르티솔 상승→안면 지방 증가 경향. Annals of Internal Medicine.'
+    }
+  },
+  'BC-10': {
+    A: {
+      label: '폭식 트리거형',
+      tag: '스트레스 폭식 후 복부 집중형',
+      why: '코르티솔 급등 → 복부 지방세포 코르티솔 수용체 밀도 높음 → 스트레스받을 때 복부에 우선 저장. 폭식은 도파민 보상 회로 문제.',
+      do: [
+        { icon:'🚶', text:'폭식 직후 30분 걷기 — 혈당 스파이크 완화 + 코르티솔 감소' },
+        { icon:'🍽️', text:'규칙적 식사 — 공복이 폭식 유발. 혈당 안정화가 예방책' },
+        { icon:'📝', text:'폭식 트리거 기록 — 상황-감정-행동 패턴 파악' }
+      ],
+      dont: '폭식 후 굶기 → 다음 폭식 더 심해짐. 죄책감 → 코르티솔 추가 상승.',
+      ref: 'Epel et al. (2000) — 코르티솔 반응성이 높은 여성은 스트레스 후 복부 지방 축적 유의미하게 높음. Psychosomatic Medicine.'
+    },
+    B: {
+      label: '감정적 식욕형',
+      tag: '배고프지 않아도 먹는',
+      why: '신체적 허기와 감정적 허기 구분 불가. 도파민 결핍을 음식으로 보충하는 패턴.',
+      do: [
+        { icon:'⏱️', text:'식사 전 10분 대기 룰 — 진짜 배고픔인지 감정인지 구분' },
+        { icon:'🎵', text:'도파민 대체재 찾기 — 산책·음악으로 음식 없이 보상 경험' },
+        { icon:'🥚', text:'고단백 식사 — 트립토판 풍부 식품으로 세로토닌 안정화' }
+      ],
+      dont: '식욕 억제제 단독 의존 — 행동 패턴이 바뀌지 않으면 재발. 다이어트 음식으로 폭식 — 칼로리는 줄지만 패턴 강화.',
+      ref: 'Macht & Dettmer (2006) — 감정적 식욕은 신체 허기와 신경 경로 다름, 행동 대체가 가장 효과적. Appetite.'
+    }
+  }
+};
+
+/* ══════════════════════════════════════════════════════
    체형 SVG 시각화 DB (BC코드별)
 ══════════════════════════════════════════════════════ */
 const BODY_SVG_DB = {
@@ -2648,6 +2970,38 @@ function renderCh1(res, bc) {
         el.style.width = el.dataset.pct + '%';
       });
     }, 600);
+  }
+
+  /* ── 서브타입 카드 ── */
+  const stEl = document.getElementById('ch1SubtypeCards');
+  const stData = BC_SUBTYPE_DB[bc.id];
+  if (stEl && stData) {
+    stEl.innerHTML = ['A', 'B'].map(key => {
+      const st = stData[key];
+      if (!st) return '';
+      const doItems = (st.do || []).map(d =>
+        `<div class="subtype-do-item">
+          <span class="subtype-do-icon">${d.icon}</span>
+          <span>${d.text}</span>
+        </div>`
+      ).join('');
+      return `
+        <div class="subtype-card">
+          <div class="subtype-card-head">
+            <span class="subtype-badge">서브타입 ${key}</span>
+            <div style="flex:1">
+              <div class="subtype-label">${st.label}</div>
+              <div class="subtype-tag">${st.tag}</div>
+            </div>
+          </div>
+          <div class="subtype-body">
+            <div class="subtype-why">${st.why}</div>
+            <div class="subtype-do-list">${doItems}</div>
+            ${st.dont ? `<div class="subtype-dont">${st.dont}</div>` : ''}
+            ${st.ref  ? `<div class="subtype-ref">${st.ref}</div>`  : ''}
+          </div>
+        </div>`;
+    }).join('');
   }
 }
 
