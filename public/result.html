@@ -424,11 +424,86 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 .em-where{ font-size:11px;color:#64748B;margin-top:2px }
 .em-intro{ margin:12px 20px;padding:12px 14px;background:#F0F9FF;border-radius:10px;font-size:13px;font-weight:700;color:#0B2545;line-height:1.7 }
 .em-items{ padding:0 16px }
-.em-item{ padding:12px;margin-bottom:8px;background:#F8FAFC;border-radius:10px;border-left:3px solid var(--em-color,#3ECBA5) }
-.em-item-name{ font-size:13px;font-weight:800;color:#0B2545;margin-bottom:4px }
-.em-item-desc{ font-size:12px;color:#475569;line-height:1.7;margin-bottom:4px }
-.em-item-where{ font-size:11px;color:#94A3B8 }
-.em-item-how{ font-size:11.5px;color:#16A34A;font-weight:700;margin-top:4px;padding:4px 8px;background:#F0FDF4;border-radius:6px }
+/* em-item — 클릭 가능 아코디언 */
+.em-item{
+  margin-bottom:8px;border-radius:12px;
+  border:1.5px solid rgba(0,0,0,.06);
+  background:#F8FAFC;
+  border-left:3px solid var(--em-color,#3ECBA5);
+  overflow:hidden;
+  transition:box-shadow .2s;
+}
+.em-item:hover{ box-shadow:0 4px 16px rgba(0,0,0,.08) }
+.em-item-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 14px;cursor:pointer;
+  user-select:none;
+}
+.em-item-header:active{ background:rgba(0,0,0,.03) }
+.em-item-left{ display:flex;align-items:center;gap:8px;flex:1 }
+.em-item-icon{ font-size:18px;flex-shrink:0 }
+.em-item-name{ font-size:13px;font-weight:800;color:#0B2545 }
+.em-item-where-inline{ font-size:10px;color:#94A3B8;margin-top:2px }
+.em-item-toggle-btn{
+  font-size:11px;color:var(--em-color,#3ECBA5);font-weight:800;
+  background:rgba(62,203,165,.1);border-radius:99px;
+  padding:3px 10px;white-space:nowrap;flex-shrink:0;
+  transition:transform .25s;
+}
+.em-item.open .em-item-toggle-btn{ transform:rotate(180deg) }
+
+/* 아코디언 바디 */
+.em-item-body{
+  display:none;
+  padding:0 14px 14px;
+  border-top:1px solid rgba(0,0,0,.06);
+  animation:slideDown .25s ease;
+}
+.em-item.open .em-item-body{ display:block }
+
+.em-item-desc-full{
+  font-size:12px;color:#475569;line-height:1.75;
+  margin:10px 0 8px;
+}
+.em-item-how-label{
+  font-size:10px;font-weight:800;color:var(--em-color,#3ECBA5);
+  letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px;
+}
+/* 실천 스텝 카드 */
+.em-step-list{ display:flex;flex-direction:column;gap:6px;margin-bottom:10px }
+.em-step{
+  display:flex;align-items:flex-start;gap:8px;
+  background:#fff;border-radius:8px;padding:9px 10px;
+  border:1px solid rgba(0,0,0,.07);
+}
+.em-step-num{
+  min-width:20px;height:20px;border-radius:50%;
+  background:var(--em-color,#3ECBA5);color:#fff;
+  font-size:10px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;margin-top:1px;
+}
+.em-step-text{ font-size:12px;color:#334155;line-height:1.65 }
+
+/* 아이템 체크인 버튼 */
+.em-item-checkin{
+  width:100%;padding:10px;border-radius:10px;border:none;
+  background:var(--em-color,#3ECBA5);color:#fff;
+  font-size:12.5px;font-weight:800;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  transition:all .2s;margin-top:4px;
+}
+.em-item-checkin:hover{ opacity:.88;transform:translateY(-1px) }
+.em-item-checkin.done{
+  background:#E2E8F0;color:#94A3B8;cursor:default;
+  pointer-events:none;transform:none;
+}
+.em-item-checkin-done-text{
+  display:none;text-align:center;padding:8px;
+  font-size:12px;color:#16A34A;font-weight:700;
+}
+
+@keyframes slideDown{ from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)} }
 .em-quiz{ margin:12px 16px 4px;padding:14px;background:#0B2545;border-radius:12px }
 .em-quiz-q{ font-size:13px;font-weight:700;color:#fff;margin-bottom:10px }
 .em-quiz-opts{ display:grid;grid-template-columns:1fr 1fr;gap:6px }
@@ -3926,6 +4001,16 @@ function openExpertDetail(expertId) {
 
   const d = ex.detail;
   inner.style.setProperty('--em-color', ex.color);
+
+  // 실천법 문자열 → 번호 스텝 파싱 ('. ' 또는 '. ' 기준 분리, 또는 단일 텍스트)
+  function parseHowSteps(howStr) {
+    // '→' 또는 ', ' 구분자로 스텝 분리 시도
+    const parts = howStr.split(/→|;/).map(s => s.trim()).filter(Boolean);
+    if (parts.length > 1) return parts;
+    // 단일 문장이면 그대로 1개
+    return [howStr];
+  }
+
   inner.innerHTML = `
     <div class="em-header">
       <div class="em-icon">${ex.icon}</div>
@@ -3936,13 +4021,40 @@ function openExpertDetail(expertId) {
     </div>
     <div class="em-intro">${d.intro}</div>
     <div class="em-items">
-      ${d.items.map((item, ii) => `
-        <div class="em-item">
-          <div class="em-item-name">${item.icon} ${item.name}</div>
-          <div class="em-item-desc">${item.desc}</div>
-          <div class="em-item-where">📍 ${item.where}</div>
-          <div class="em-item-how">✅ 실천법: ${item.how}</div>
-        </div>`).join('')}
+      ${d.items.map((item, ii) => {
+        const steps = parseHowSteps(item.how);
+        const itemKey = `${expertId}_item_${ii}`;
+        return `
+        <div class="em-item" id="emItem_${itemKey}">
+          <div class="em-item-header" onclick="emToggleItem('${itemKey}')">
+            <div class="em-item-left">
+              <span class="em-item-icon">${item.icon}</span>
+              <div>
+                <div class="em-item-name">${item.name}</div>
+                <div class="em-item-where-inline">📍 ${item.where}</div>
+              </div>
+            </div>
+            <div class="em-item-toggle-btn" id="emToggleBtn_${itemKey}">▼ 보기</div>
+          </div>
+          <div class="em-item-body" id="emItemBody_${itemKey}">
+            <div class="em-item-desc-full">${item.desc}</div>
+            <div class="em-item-how-label">실천 방법</div>
+            <div class="em-step-list">
+              ${steps.map((step, si) => `
+                <div class="em-step">
+                  <div class="em-step-num">${si + 1}</div>
+                  <div class="em-step-text">${step}</div>
+                </div>`).join('')}
+            </div>
+            <button class="em-item-checkin" id="emCheckin_${itemKey}"
+              onclick="emItemCheckin('${expertId}','${item.name}','${itemKey}')">
+              ✅ 실천 체크인
+            </button>
+            <div class="em-item-checkin-done-text" id="emCheckinDone_${itemKey}">
+              🎉 체크인 완료! 컨설턴트에게 전달됐어요.
+            </div>
+          </div>
+        </div>`}).join('')}
     </div>
     <div class="em-quiz">
       <div class="em-quiz-q">🧠 ${d.quiz.q}</div>
@@ -3963,6 +4075,48 @@ function closeExpertDetail() {
   const modal = document.getElementById('expertDetailModal');
   if (modal) modal.style.display = 'none';
   document.body.style.overflow = '';
+}
+
+/* ── 전문가 아이템 아코디언 토글 ── */
+function emToggleItem(itemKey) {
+  const item = document.getElementById('emItem_' + itemKey);
+  const body = document.getElementById('emItemBody_' + itemKey);
+  const btn  = document.getElementById('emToggleBtn_' + itemKey);
+  if (!item || !body) return;
+  const isOpen = item.classList.toggle('open');
+  if (btn) btn.textContent = isOpen ? '▲ 닫기' : '▼ 보기';
+}
+
+/* ── 전문가 아이템 체크인 ── */
+function emItemCheckin(expertId, itemName, itemKey) {
+  const btn      = document.getElementById('emCheckin_' + itemKey);
+  const doneText = document.getElementById('emCheckinDone_' + itemKey);
+  if (!btn) return;
+
+  // 버튼 완료 상태
+  btn.classList.add('done');
+  btn.textContent = '✅ 체크인 완료';
+
+  if (doneText) {
+    doneText.style.display = 'block';
+  }
+
+  // 컨설턴트 자동 전송 (doFirstCheckin 패턴 재사용)
+  const res = window.__RESULT__ || {};
+  const payload = {
+    name:        res.name    || '익명',
+    bodyCode:    res.bodyCode || '-',
+    checkinType: 'expert_item',
+    expertId:    expertId,
+    itemName:    itemName,
+    timestamp:   new Date().toISOString()
+  };
+  // fetch 전송 (실패해도 UI는 완료 표시)
+  fetch('/api/checkin', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  }).catch(() => {}); // silent fail — 오프라인이어도 UI는 완료
 }
 
 function emAnswer(expertId, chosen, correct) {
