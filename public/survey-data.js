@@ -785,7 +785,7 @@ const QUESTIONS = [
     id: 'Q43', section: 'G', num: 43,
     axis: 'A10', weight: 1.0, role: 'score',
     question: '생년월일을 알려주세요.',
-    hint: '사주 일간 오행이 자동으로 계산됩니다. 타고난 에너지의 취약점을 알게 됩니다.',
+    hint: '사주 일간(日干) 오행이 자동으로 계산됩니다. 태어난 시간까지 알면 시주(時柱)도 확인할 수 있어요.',
     type: 'DATE_PICKER',
     saveAs: 'birth_date',
     autoCalc: 'saju'
@@ -1899,9 +1899,11 @@ function calculateBCScores(answers) {
   }
 
   const sortedBC = Object.entries(bcScores).sort((a, b) => b[1] - a[1]);
-  const bcPrimary = sortedBC[0][0];
+  const bcPrimary      = sortedBC[0][0];
+  const bcPrimaryScore = sortedBC[0][1];
   const bcSecondary = (sortedBC[1][1] >= 55 && (sortedBC[0][1] - sortedBC[1][1]) <= 20)
     ? sortedBC[1][0] : null;
+  const bcSecondaryScore = bcSecondary ? sortedBC[1][1] : 0;
   const ohaengType = Object.entries(ohaengScores).sort((a, b) => b[1] - a[1])[0][0];
 
   // 특수 필드 추출
@@ -1967,7 +1969,7 @@ function calculateBCScores(answers) {
     .map(([ax, score]) => ({ axis: ax, score }));
 
   return {
-    bcScores, ohaengScores, bcPrimary, bcSecondary, ohaengType,
+    bcScores, ohaengScores, bcPrimary, bcPrimaryScore, bcSecondary, bcSecondaryScore, ohaengType,
     // 섹션 L 결과
     allergyExclude,
     skinReaction,

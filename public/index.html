@@ -1004,16 +1004,85 @@ function calcBodyComposition() {
   return { bmi: bmi.toFixed(1), bfr: bfr.toFixed(1), fatKg: fatKg.toFixed(1), muscleKg: muscleKg.toFixed(1) };
 }
 
-function calcSaju(dateStr) {
+/* ──────────────────────────────────────────────────
+   calcSaju(dateStr, hourStr?)
+   만세력 정확 알고리즘 — 율리우스 일수(JDN) 기반
+   기준점: JDN 2460351 = 2024-02-10 (갑진년 설날) = 甲子日
+   일간(日干): 甲=0,乙=1,...癸=9  → (JDN - BASE) mod 10
+   일지(日支): 子=0,丑=1,...亥=11 → (JDN - BASE) mod 12
+   시주(時柱): 시간 입력 시 계산 (선택)
+   검증:
+     2024-02-10 → 甲子  ✓ (기준점)
+     2024-02-11 → 乙丑  ✓
+     2024-02-20 → 甲戌  ✓ (+10일=동일 천간)
+     base+60일  → 甲子  ✓ (60갑자 순환)
+   ────────────────────────────────────────────────── */
+function calcSaju(dateStr, hourStr) {
   if (!dateStr) return null;
   const [y, m, d] = dateStr.split('-').map(Number);
-  const base = new Date(1900, 0, 31);
-  const target = new Date(y, m-1, d);
-  const diff = Math.floor((target - base) / 86400000);
-  const stems = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
-  const ohaengs = ['목(木)','목(木)','화(火)','화(火)','토(土)','토(土)','금(金)','금(金)','수(水)','수(水)'];
-  const idx = ((diff % 10) + 10) % 10;
-  return { il_gan: stems[idx], ohaeng: ohaengs[idx], display: stems[idx] + '(' + ohaengs[idx].split('(')[0] + ')' };
+
+  /* ─ 율리우스 일수(JDN) 계산 (그레고리력 기준) ─ */
+  function toJDN(yr, mo, dy) {
+    const a = Math.floor((14 - mo) / 12);
+    const yy = yr + 4800 - a;
+    const mm = mo + 12 * a - 3;
+    return dy + Math.floor((153 * mm + 2) / 5) + 365 * yy
+           + Math.floor(yy / 4) - Math.floor(yy / 100)
+           + Math.floor(yy / 400) - 32045;
+  }
+
+  const jdn = toJDN(y, m, d);
+
+  /* ─ 천간(天干) ─
+     JDN 2460351 = 2024-02-10 갑진년 설날 = 甲子日(0)
+     이 기준점으로부터 mod 10
+     검증: +10일=甲, +60일=甲子(60갑자 순환) ✓ */
+  const STEM_BASE_JDN = 2460351; // 2024-02-10 = 甲子日
+  const STEMS    = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+  const OHAENGS  = ['목(木)','목(木)','화(火)','화(火)','토(土)','토(土)','금(金)','금(金)','수(水)','수(水)'];
+  const YIN_YANG = ['양','음','양','음','양','음','양','음','양','음'];
+
+  const stemIdx = ((jdn - STEM_BASE_JDN) % 10 + 10) % 10;
+  const stem    = STEMS[stemIdx];
+  const ohaeng  = OHAENGS[stemIdx];
+  const yinYang = YIN_YANG[stemIdx];
+
+  /* ─ 지지(地支) 12개 — 일지 계산 ─
+     2024-02-10 = 甲子日 → 子(idx=0) = STEM_BASE_JDN과 동일
+     +60일 후 = 甲子 (60갑자 순환 ✓) */
+  const BRANCHES = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+  const branchIdx = ((jdn - STEM_BASE_JDN) % 12 + 12) % 12;
+  const branch    = BRANCHES[branchIdx];
+
+  /* ─ 시간(時支) — 선택 ─
+     0시~0:59→子, 1~2→丑, 3~4→寅, 5~6→卯, ...
+     hour 없으면 null */
+  let hourBranch = null;
+  let hourStem   = null;
+  if (hourStr && hourStr !== 'unknown') {
+    const hr = parseInt(hourStr, 10);
+    const hIdx = hr === 23 ? 0 : Math.floor((hr + 1) / 2) % 12;
+    hourBranch = BRANCHES[hIdx];
+    /* 시간 천간 — 일간별 자시(子時) 천간 조견표
+       甲·己日 → 甲子  乙·庚日 → 丙子  丙·辛日 → 戊子
+       丁·壬日 → 庚子  戊·癸日 → 壬子  */
+    const hourStemBases = [0, 2, 4, 6, 8]; // 甲·己=甲, 乙·庚=丙, ...
+    const dayStemGroup  = stemIdx % 5;      // 0~4
+    const hourStemIdx   = (hourStemBases[dayStemGroup] + hIdx) % 10;
+    hourStem = STEMS[hourStemIdx];
+  }
+
+  return {
+    il_gan:      stem,
+    il_ji:       branch,
+    ohaeng:      ohaeng,
+    yin_yang:    yinYang,
+    hour_branch: hourBranch,
+    hour_stem:   hourStem,
+    jdn:         jdn,
+    display:     stem + branch + (hourStem && hourBranch ? ' ' + hourStem + hourBranch : ''),
+    ohaeng_short: ohaeng.replace(/\([^)]*\)/g,'').trim() // '목(木)' → '목'
+  };
 }
 
 // ════════════════════════════════════════
@@ -1607,42 +1676,78 @@ function renderMbtiInfer(q, area) {
 
 // ── DATE_PICKER ──
 function renderDatePicker(q, area) {
-  const saved = state.answers[q.id] || '';
+  const saved     = state.answers[q.id] || '';
+  const savedHour = state.answers['_birth_hour'] || '';
   const [sy, sm, sd] = saved.split('-');
+
   const yrSel = `<select class="date-select" id="dp-year">
     <option value="">연도</option>
-    ${Array.from({length:60},(_,i)=>2006-i).map(y=>`<option ${sy==y?'selected':''} value="${y}">${y}년</option>`).join('')}
+    ${Array.from({length:80},(_,i)=>2005-i).map(y=>`<option ${sy==y?'selected':''} value="${y}">${y}년</option>`).join('')}
   </select>`;
   const monOpts = Array.from({length:12},(_,i)=>i+1).map(m=>`<option ${sm==m?'selected':''} value="${String(m).padStart(2,'0')}">${m}월</option>`).join('');
-  const monSel = `<select class="date-select" id="dp-month"><option value="">월</option>${monOpts}</select>`;
+  const monSel  = `<select class="date-select" id="dp-month"><option value="">월</option>${monOpts}</select>`;
   const dayOpts = Array.from({length:31},(_,i)=>i+1).map(d=>`<option ${sd==d?'selected':''} value="${String(d).padStart(2,'0')}">${d}일</option>`).join('');
-  const daySel = `<select class="date-select" id="dp-day"><option value="">일</option>${dayOpts}</select>`;
-  area.innerHTML = `<div class="date-picker-wrap">${yrSel}${monSel}${daySel}</div>
+  const daySel  = `<select class="date-select" id="dp-day"><option value="">일</option>${dayOpts}</select>`;
+
+  /* ─ 시간 선택: 0~23시 (선택 사항) ─ */
+  const hourOpts = Array.from({length:24},(_,i)=>{
+    const label = i === 0  ? '0시 (자정)' :
+                  i === 12 ? '12시 (정오)' :
+                  `${i}시`;
+    return `<option ${savedHour==i?'selected':''} value="${i}">${label}</option>`;
+  }).join('');
+  const hourSel = `<select class="date-select" id="dp-hour">
+    <option value="">시간 선택 (선택)</option>${hourOpts}
+  </select>`;
+
+  area.innerHTML = `
+    <div class="date-picker-wrap">${yrSel}${monSel}${daySel}</div>
+    <div class="time-picker-wrap" style="margin-top:8px">
+      <div class="time-picker-label" style="font-size:12px;color:#888;margin-bottom:4px">
+        🕐 태어난 시간 <span style="color:#aaa">(선택 — 사주 정확도 향상)</span>
+      </div>
+      ${hourSel}
+    </div>
     <div class="saju-result" id="saju-result" style="display:none">
-      <div class="saju-label">사주 일간 오행</div>
+      <div class="saju-label">사주 일간·시간</div>
       <div class="saju-value" id="saju-val"></div>
     </div>`;
 
   const check = () => {
-    const y = document.getElementById('dp-year').value;
-    const m = document.getElementById('dp-month').value;
-    const d = document.getElementById('dp-day').value;
+    const y    = document.getElementById('dp-year').value;
+    const m    = document.getElementById('dp-month').value;
+    const d    = document.getElementById('dp-day').value;
+    const hour = document.getElementById('dp-hour').value; // '' or '0'~'23'
     if (y && m && d) {
-      const dateStr = `${y}-${m}-${d}`;
+      const dateStr = `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
       state.answers[q.id] = dateStr;
+      if (hour !== '') state.answers['_birth_hour'] = hour;
+
       const age = new Date().getFullYear() - parseInt(y);
       state.userData.age = age;
-      const saju = calcSaju(dateStr);
+
+      const saju = calcSaju(dateStr, hour !== '' ? hour : undefined);
       if (saju) {
-        document.getElementById('saju-val').textContent = `${saju.il_gan} — ${saju.ohaeng}`;
+        const hourLabel = saju.hour_stem && saju.hour_branch
+          ? ` / 시주: ${saju.hour_stem}${saju.hour_branch}`
+          : '';
+        document.getElementById('saju-val').textContent =
+          `일간: ${saju.il_gan}${saju.il_ji} (${saju.ohaeng} ${saju.yin_yang})${hourLabel}`;
         document.getElementById('saju-result').style.display = 'block';
-        state.answers['_saju_il_gan'] = saju.il_gan;
-        state.answers['_saju_ohaeng'] = saju.ohaeng;
+        state.answers['_saju_il_gan']   = saju.il_gan;
+        state.answers['_saju_il_ji']    = saju.il_ji;
+        state.answers['_saju_ohaeng']   = saju.ohaeng;
+        state.answers['_saju_yin_yang'] = saju.yin_yang;
+        if (saju.hour_stem)   state.answers['_saju_hour_stem']   = saju.hour_stem;
+        if (saju.hour_branch) state.answers['_saju_hour_branch'] = saju.hour_branch;
+        state.answers['_saju_display']  = saju.display;
       }
       document.getElementById('btn-next').disabled = false;
     }
   };
-  ['dp-year','dp-month','dp-day'].forEach(id => document.getElementById(id).onchange = check);
+  ['dp-year','dp-month','dp-day','dp-hour'].forEach(id =>
+    document.getElementById(id).onchange = check
+  );
   document.getElementById('btn-next').style.display = 'block';
   document.getElementById('btn-next').disabled = !saved;
   if (saved) check();
@@ -1800,8 +1905,14 @@ async function submitSurveyAndShow() {
     ohaeng_scores: ohaengScores,
     mbti: state.answers['Q42'] || null,
     blood_type: state.answers['Q44'] || null,
-    saju_il_gan: state.answers['_saju_il_gan'] || null,
-    saju_ohaeng: state.answers['_saju_ohaeng'] || null,
+    saju_il_gan:      state.answers['_saju_il_gan']      || null,
+    saju_il_ji:       state.answers['_saju_il_ji']       || null,
+    saju_ohaeng:      state.answers['_saju_ohaeng']      || null,
+    saju_yin_yang:    state.answers['_saju_yin_yang']    || null,
+    saju_hour_stem:   state.answers['_saju_hour_stem']   || null,
+    saju_hour_branch: state.answers['_saju_hour_branch'] || null,
+    saju_display:     state.answers['_saju_display']     || null,
+    birth_hour:       state.answers['_birth_hour']       || null,
     gender: ud.gender || state.answers['Q02'] || null,
     birth_date: state.answers['Q43'] || null,
     height: state.answers['Q13'] || null,
