@@ -420,6 +420,34 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 .er-arrow{ font-size:13px;color:var(--bc-accent,#3ECBA5);opacity:.7;transition:opacity .2s,transform .2s }
 .er-row:hover .er-arrow{ opacity:1;transform:translateX(3px) }
 .er-click-hint{ font-size:9px;color:var(--bc-accent,#3ECBA5);font-weight:700;background:rgba(62,203,165,.12);border-radius:99px;padding:2px 7px;white-space:nowrap }
+/* ── 전문가 상세보기 버튼 강화 ── */
+.er-detail-btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  border:none;border-radius:99px;cursor:pointer;
+  font-weight:800;white-space:nowrap;
+  transition:all .2s;flex-shrink:0;
+  font-size:10px;color:#475569;
+  background:#E2E8F0;
+  padding:4px 8px;min-width:28px;
+}
+.er-detail-btn--top{
+  font-size:11px;color:#fff;
+  background:linear-gradient(135deg,#3ECBA5,#059669);
+  padding:6px 12px;
+  box-shadow:0 2px 8px rgba(62,203,165,.4);
+  animation:erBtnPulse 2s ease-in-out infinite;
+}
+.er-detail-btn--top:hover{
+  transform:scale(1.08);
+  box-shadow:0 4px 14px rgba(62,203,165,.6);
+}
+.er-detail-btn:hover{
+  background:#CBD5E1;color:#0B2545;transform:scale(1.05);
+}
+@keyframes erBtnPulse{
+  0%,100%{ box-shadow:0 2px 8px rgba(62,203,165,.4); }
+  50%{ box-shadow:0 4px 16px rgba(62,203,165,.7); }
+}
 
 /* ── 전문가 모달 ── */
 .em-header{ padding:20px 20px 0;display:flex;align-items:center;gap:12px }
@@ -3986,20 +4014,55 @@ const AXIS_DEFS = [
 ══════════════════════════════════════════════════════ */
 function classifyEmotionType(res) {
   if (!res || typeof res !== 'object') return 'E-07';
-  const s = (k) => Number(res[k] || 0);
-  const stress = s('stress_score') || s('q_stress') || 0;
-  const sleep  = s('sleep_score')  || s('q_sleep')  || 0;
-  const binge  = s('binge_score')  || s('q_binge')  || 0;
-  const fatigue= s('fatigue_score')|| s('q_fatigue')|| 0;
-  const craving= s('craving_score')|| s('q_craving')|| 0;
-  const social = s('social_score') || s('q_social') || 0;
-  const anxiety= s('anxiety_score')|| s('q_anxiety')|| 0;
-  if (stress >= 4 && sleep <= 2) return 'E-01';
-  if (binge >= 4) return 'E-02';
-  if (fatigue >= 4) return 'E-03';
-  if (craving >= 4) return 'E-04';
-  if (social >= 4) return 'E-05';
-  if (anxiety >= 4) return 'E-06';
+  const r = (k) => String(res[k] || '');
+
+  /* ── 스트레스+수면 부족형 (E-01) ──
+     Q_CORTISOL='fatigue'|'stress', Q_WAKE='always'|'often', Q06='stress' */
+  const stressHigh = ['fatigue','stress','tired'].includes(r('Q_CORTISOL'))
+    || ['always','often'].includes(r('Q_WAKE'))
+    || r('Q06') === 'stress';
+  const sleepBad   = ['always','often'].includes(r('Q_WAKE'))
+    || r('Q32') === 'irritable'
+    || r('Q_FATIGUE') === 'always';
+  if (stressHigh && sleepBad) return 'E-01';
+
+  /* ── 폭식·자책 반복형 (E-02) ──
+     Q_INSULIN='always'|'often' + Q11='resistant' or 혈당 관련 */
+  const bingeSignal = ['always','often'].includes(r('Q_INSULIN'))
+    || r('Q11') === 'resistant'
+    || r('Q_GLUCOSE') === 'sugar_craving';
+  if (bingeSignal && (r('Q_CORTISOL')==='binge' || r('Q_INSULIN')==='always')) return 'E-02';
+
+  /* ── 만성 피로 누적형 (E-03) ──
+     Q_CORTISOL='fatigue', Q_FATIGUE='always'|'often', Q60='fatigue' */
+  const fatigueHigh = r('Q_CORTISOL') === 'fatigue'
+    || r('Q60') === 'fatigue'
+    || ['always','often'].includes(r('Q_FATIGUE'))
+    || r('Q32') === 'tired';
+  if (fatigueHigh) return 'E-03';
+
+  /* ── 당·탄수 갈망형 (E-04) ──
+     Q_INSULIN='often'|'sometimes' + Q29='sleepy_after' */
+  const cravingHigh = ['often','sometimes','always'].includes(r('Q_INSULIN'))
+    || r('Q29') === 'sleepy_after';
+  if (cravingHigh) return 'E-04';
+
+  /* ── 사회적 섭식 패턴형 (E-05) ──
+     Q06='spring'|'stress' + 생리/호르몬 안정 */
+  const socialPattern = r('Q06') === 'stress'
+    || r('Q_CYCLE') === 'regular'
+    || ['slightly_irregular','regular'].includes(r('Q_CYCLE'));
+  const hormoneOk = !['absent','irregular'].includes(r('Q_CYCLE'));
+  if (socialPattern && hormoneOk && !fatigueHigh) return 'E-05';
+
+  /* ── 불안·감정 섭식형 (E-06) ──
+     Q_CYCLE='pms'|'irregular', Q32='irritable', 호르몬 불균형 */
+  const anxietyHigh = r('Q_CYCLE') === 'pms'
+    || ['absent','irregular'].includes(r('Q_CYCLE'))
+    || r('Q32') === 'irritable'
+    || r('Q_META') === 'gained_3plus';
+  if (anxietyHigh) return 'E-06';
+
   return 'E-07';
 }
 
@@ -4398,15 +4461,26 @@ function calcExpertRatio(axisSignals) {
     });
   });
   // 합산 → 비율
-  const grandTotal = Object.values(totals).reduce((a, b) => a + b, 0) || 1;
+  let grandTotal = Object.values(totals).reduce((a, b) => a + b, 0);
+
+  // grandTotal=0 방어: 모든 축 신호가 0이면 균등 분배
+  if (grandTotal === 0) {
+    const keys = Object.keys(totals);
+    keys.forEach(k => { totals[k] = 1; });
+    grandTotal = keys.length;
+  }
+
   const ratios = Object.keys(totals).map(id => ({
     ...EXPERT_AXIS_DB[id],
     raw: totals[id],
     pct: Math.round((totals[id] / grandTotal) * 100)
   }));
-  // 반올림 오차 보정
+  // 반올림 오차 보정 (마지막 항목 기준)
   const sumPct = ratios.reduce((a, r) => a + r.pct, 0);
-  if (sumPct !== 100) ratios[0].pct += (100 - sumPct);
+  if (sumPct !== 100) {
+    const sorted = [...ratios].sort((a,b)=>b.pct-a.pct);
+    sorted[sorted.length-1].pct += (100 - sumPct);
+  }
   return ratios.sort((a, b) => b.pct - a.pct);
 }
 
@@ -4439,11 +4513,16 @@ function calcWeeklyExpertRatio(axisSignals, weekIndex) {
       totals[ex] += (map[ex] || 0) * sig * (boost[ex] || 1.0);
     });
   });
-  const grandTotal = Object.values(totals).reduce((a, b) => a + b, 0) || 1;
+  let grandTotal2 = Object.values(totals).reduce((a, b) => a + b, 0);
+  if (grandTotal2 === 0) {
+    const keys = Object.keys(totals);
+    keys.forEach(k => { totals[k] = 1; });
+    grandTotal2 = keys.length;
+  }
   const ratios = Object.keys(totals).map(id => ({
     ...EXPERT_AXIS_DB[id],
     raw: totals[id],
-    pct: Math.round((totals[id] / grandTotal) * 100)
+    pct: Math.round((totals[id] / grandTotal2) * 100)
   })).sort((a, b) => b.pct - a.pct);
   // 상위 3개만 반환 + 합산 100% 조정
   const top3 = ratios.slice(0, 3);
@@ -4456,70 +4535,118 @@ function calcWeeklyExpertRatio(axisSignals, weekIndex) {
 /* ══════════════════════════════════════════════════════
    scoreEngine — 90% 알고리즘 + 10% AI 보정
 ══════════════════════════════════════════════════════ */
+/* ──────────────────────────────────────────────────────
+   설문 응답값(문자열) → 0~10 수치 변환 헬퍼
+   각 키의 선택지 심각도를 정의해 실제 신호 강도로 변환
+────────────────────────────────────────────────────── */
+const SURVEY_SIGNAL_MAP = {
+  /* A1: 인슐린·혈당 */
+  Q_INSULIN:  { always:10, often:7, sometimes:4, rarely:1, fine:1 },
+  Q75:        { thin:9, medium:5, thick:2 },         // 배꼽살 두께 (내장지방↑)
+  Q11:        { resistant:9, gas:6, soft:3, unknown:2 }, // 아랫배 촉감
+  /* A2: 장내미생물 */
+  Q_GAS:      { always:10, often:7, sometimes:4, rarely:1 },
+  Q_INTOL:    { yes_clear:10, maybe:5, no:1, gut:7 },
+  Q29:        { bloated:9, bloat:9, sleepy_after:6, sensitive:4, good:1 },
+  Q77:        { alternating:9, ibs:7, constipated:6, regular:1 },
+  /* A3: 염증·항산화 */
+  Q07:        { hard:7, bumpy:9, pitting:8, soft:4 },   // 지방 촉감
+  Q09:        { very_diff:9, slightly:5, same:1, face:8 }, // 부종 변화
+  Q78:        { face_first:9, hip_first:5, belly_first:6, upper_first:4, all_over:3 },
+  /* A4: 수면·코르티솔 */
+  Q_CORTISOL: { fatigue:9, stress:8, binge:6, tired:7, normal:2 }, // Q60이 cortisol 신호로
+  Q_WAKE:     { always:10, often:7, sometimes:4, rarely:1 },
+  Q76:        { very_high:10, high:7, moderate:3, none:1 }, // 카페인
+  /* A5: 갑상선·기초대사 */
+  Q_THYROID:  { always_cold:10, cold:7, very:8, normal:3, warm:1 },
+  Q_META:     { gained_3plus:10, gained_1to3:6, same_gain:4, stable:2, decreased:1 },
+  Q31:        { cold:9, mixed:7, normal:3, warm:2 },    // 체온
+  /* A6: 수분·전해질 */
+  Q05:        { puffy:9, soft:6, mixed:4, hard:2 },
+  Q08:        { cold:8, mixed:7, normal:3, warm:2 },    // 피부온도
+  Q33:        { less1:9, caffeine:7, normal:3, plenty:1 }, // 수분섭취
+  /* A7: 심혈관·순환 */
+  Q10:        { waves:8, bumpy_wave:9, solid:3, unknown:3 }, // 허벅지
+  Q12:        { straight:8, whole_belly:7, lower_only:5, slim:2 },
+  /* A8: 성호르몬·부신 */
+  Q_CYCLE:    { absent:10, irregular:8, pms:7, slightly_irregular:5, regular:2, not_applicable:2 },
+  Q_SKINNYFAT:{ yes:8, somewhat:5, no:1 },
+  Q_LEGPOWER: { weak:8, somewhat_weak:5, normal:2, strong:1 },
+  /* A9: 감정·심리 */
+  Q06:        { stress:9, spring:6, autumn:6, winter:5, summer:4, none:3 },
+  Q32:        { irritable:9, puffy:7, tired:6, fresh:1 }, // 기상상태
+  /* A10: 체질·오행 */
+  Q_MUSCLE:   { poor:8, unknown:5, average:3, good:1, easy:2 },
+  Q_LEGPOWER_B: {},
+  /* A11: 체성분·골격근 */
+  Q05_B:      {},
+};
+
+/* 단일 축 신호 강도 계산 (0~10) */
+function calcAxisSignalV2(res, keyWeightPairs) {
+  let weightedSum = 0, totalWeight = 0;
+  keyWeightPairs.forEach(([k, w]) => {
+    const valStr = String(res[k] || '');
+    const map = SURVEY_SIGNAL_MAP[k];
+    if (!map) return;
+    const score = map[valStr] !== undefined ? map[valStr] : 0;
+    if (score > 0) { weightedSum += score * w; totalWeight += w; }
+  });
+  if (totalWeight === 0) return 0;
+  return Math.min(Math.round((weightedSum / totalWeight) * 10) / 10, 10);
+}
+
 function scoreEngine(res) {
-  // 각 문진 항목별 점수 정의 (0~10점 척도)
-  const Q_WEIGHTS = {
-    q1:  {key:'q1',  name:'현재 체중 불만족도',   maxPt:8},
-    q2:  {key:'q2',  name:'식욕/폭식 경향',       maxPt:9},
-    q3:  {key:'q3',  name:'스트레스 수준',         maxPt:8},
-    q4:  {key:'q4',  name:'수면 품질',             maxPt:7},
-    q5:  {key:'q5',  name:'운동 빈도',             maxPt:6},
-    q6:  {key:'q6',  name:'다이어트 시도 횟수',   maxPt:8},
-    q7:  {key:'q7',  name:'감정 섭식 경향',        maxPt:9},
-    q8:  {key:'q8',  name:'부종/순환 문제',        maxPt:7},
-    q9:  {key:'q9',  name:'소화/장 문제',          maxPt:7},
-    q10: {key:'q10', name:'피로도/에너지 수준',    maxPt:8}
-  };
-  const AXIS_WEIGHTS = {
-    alcohol: {key:'alcohol', name:'음주 습관',    maxPt:6},
-    alone:   {key:'alone',   name:'고립 경향',    maxPt:5},
-    money:   {key:'money',   name:'경제적 스트레스', maxPt:4},
-    pain:    {key:'pain',    name:'신체 통증',    maxPt:6},
-    social:  {key:'social',  name:'사회적 압박',  maxPt:5}
-  };
+  if (!res || typeof res !== 'object') {
+    const axisSignals = {A1:5,A2:5,A3:5,A4:5,A5:5,A6:5,A7:5,A8:5,A9:5,A10:5,A11:5};
+    return { totalScore: 68, algoScore: 60, aiBonus: 8, axisSignals, eType: 'E-07' };
+  }
 
-  // 90% 알고리즘 점수 계산
-  let algoRaw = 0;
-  let algoMax = 0;
-  Object.values(Q_WEIGHTS).forEach(w => {
-    const v = parseInt(res[w.key] || '0');
-    algoRaw += Math.min(v, w.maxPt);
-    algoMax += w.maxPt;
-  });
-  // 감정/생활 축 추가 점수
-  Object.values(AXIS_WEIGHTS).forEach(w => {
-    const v = parseInt(res[w.key] || '0');
-    algoRaw += Math.min(v, w.maxPt);
-    algoMax += w.maxPt;
-  });
-  const algoScore = algoMax > 0 ? Math.round((algoRaw / algoMax) * 90) : 45;
-
-  // 10% AI 보정: 감정유형 + BC 코드 기반 보정
-  let aiBonus = 0;
-  const eType = classifyEmotionType(res);
-  const emotionBonusMap = {'E-01':8,'E-02':7,'E-03':6,'E-04':7,'E-05':5,'E-06':8,'E-07':9};
-  aiBonus = emotionBonusMap[eType] || 7;
-
-  const totalScore = Math.max(50, Math.min(algoScore + aiBonus, 100));
-
-  // 11축 신호 강도 계산 (0~10)
+  /* ── 11축 신호 강도 계산 (실제 설문 키 기반) ── */
   const axisSignals = {
-    A1:  calcAxisSignal(res, ['q1','q2'], 0.9),
-    A2:  calcAxisSignal(res, ['q9'], 1.1),
-    A3:  calcAxisSignal(res, ['q3','pain'], 0.95),
-    A4:  calcAxisSignal(res, ['q3','q4'], 1.0),
-    A5:  calcAxisSignal(res, ['q5','q10'], 0.85),
-    A6:  calcAxisSignal(res, ['q8'], 1.1),
-    A7:  calcAxisSignal(res, ['q5','q7'], 0.9),
-    A8:  calcAxisSignal(res, ['q6','q7'], 1.0),
-    A9:  calcAxisSignal(res, ['q7','q3'], 1.05),
-    A10: calcAxisSignal(res, ['q10','q4'], 0.9),
-    A11: calcAxisSignal(res, ['q1','q9'], 0.8)
+    // A1: 인슐린·혈당 — 식후졸음, 배꼽지방, 아랫배촉감
+    A1:  calcAxisSignalV2(res, [['Q_INSULIN',2.0],['Q75',1.5],['Q11',1.5]]),
+    // A2: 장내미생물 — 가스팽만, 음식불내증, 소화, 장건강
+    A2:  calcAxisSignalV2(res, [['Q_GAS',2.0],['Q_INTOL',1.5],['Q29',1.5],['Q77',1.0]]),
+    // A3: 염증·항산화 — 지방촉감(딱딱/울퉁), 부종변화, 지방축적순서
+    A3:  calcAxisSignalV2(res, [['Q07',2.0],['Q09',1.5],['Q78',1.0]]),
+    // A4: 수면·코르티솔 — 피로(Q_CORTISOL/Q60), 수면각성, 카페인
+    A4:  calcAxisSignalV2(res, [['Q_CORTISOL',2.5],['Q60',1.5],['Q_WAKE',2.0],['Q76',1.0]]),
+    // A5: 갑상선·기초대사 — 추위/손발냉, 대사변화, 체온
+    A5:  calcAxisSignalV2(res, [['Q_THYROID',2.5],['Q_META',2.0],['Q31',1.5]]),
+    // A6: 수분·전해질 — 부종상태, 피부온도, 수분섭취
+    A6:  calcAxisSignalV2(res, [['Q05',2.0],['Q08',1.5],['Q33',1.0]]),
+    // A7: 심혈관·순환 — 허벅지지방, 허리실루엣
+    A7:  calcAxisSignalV2(res, [['Q10',2.0],['Q12',1.5]]),
+    // A8: 성호르몬·부신 — 생리주기, 마른비만, 하체근력
+    A8:  calcAxisSignalV2(res, [['Q_CYCLE',2.5],['Q_SKINNYFAT',1.5],['Q_LEGPOWER',1.0]]),
+    // A9: 감정·심리 — 스트레스 계절, 기상상태
+    A9:  calcAxisSignalV2(res, [['Q06',2.0],['Q32',1.5]]),
+    // A10: 체질·오행 — 근육반응, 체형감각
+    A10: calcAxisSignalV2(res, [['Q_MUSCLE',2.0],['Q05',1.0]]),
+    // A11: 체성분·골격근 — 허벅지+하체근력 복합
+    A11: calcAxisSignalV2(res, [['Q_LEGPOWER',2.0],['Q10',1.5],['Q_SKINNYFAT',1.0]])
   };
+
+  // 모든 축이 0인 경우 기본값 설정 (데이터 부족)
+  const totalSig = Object.values(axisSignals).reduce((a,b)=>a+b,0);
+  if (totalSig === 0) {
+    Object.keys(axisSignals).forEach(k => { axisSignals[k] = 3 + Math.random() * 2; });
+  }
+
+  // 총점 계산 (축 신호 기반)
+  const eType = classifyEmotionType(res);
+  const sigMax = Math.max(...Object.values(axisSignals));
+  const sigAvg = totalSig / 11;
+  const algoScore = Math.round(Math.min(90, 40 + sigAvg * 6 + sigMax * 1.5));
+  const emotionBonusMap = {'E-01':8,'E-02':7,'E-03':6,'E-04':7,'E-05':5,'E-06':8,'E-07':9};
+  const aiBonus = emotionBonusMap[eType] || 7;
+  const totalScore = Math.max(50, Math.min(algoScore + aiBonus, 100));
 
   return { totalScore, algoScore, aiBonus, axisSignals, eType };
 }
 
+/* 구버전 호환용 (하위 호환 유지) */
 function calcAxisSignal(res, keys, factor) {
   let sum = 0;
   keys.forEach(k => { sum += parseInt(res[k] || '0'); });
@@ -5094,13 +5221,32 @@ function showToast(msg) {
 }
 
 function printAll() {
+  // 모든 챕터 펼치기
   const chapters = document.querySelectorAll('.chapter');
   chapters.forEach(ch => ch.classList.add('active'));
-  window.print();
+  // 아코디언 전부 열기
+  document.querySelectorAll('.em-item:not(.pw-locked)').forEach(item => {
+    item.classList.add('open');
+    const btn = item.querySelector('.em-item-toggle-btn');
+    if (btn) btn.textContent = '▲ 닫기';
+  });
+  // 잠긴 항목 fade
+  document.querySelectorAll('.pw-locked').forEach(el => { el.style.opacity = '0.4'; });
+  // 약간 지연 후 인쇄 (렌더링 완료 대기)
   setTimeout(() => {
-    chapters.forEach(ch => ch.classList.remove('active'));
-    document.querySelector(`.chapter[data-ch="${currentChapter}"]`).classList.add('active');
-  }, 1000);
+    window.print();
+    setTimeout(() => {
+      chapters.forEach(ch => ch.classList.remove('active'));
+      const cur = document.querySelector(`.chapter[data-ch="${currentChapter}"]`);
+      if (cur) cur.classList.add('active');
+      document.querySelectorAll('.em-item.open').forEach(item => {
+        item.classList.remove('open');
+        const btn = item.querySelector('.em-item-toggle-btn');
+        if (btn) btn.textContent = '▼ 보기';
+      });
+      document.querySelectorAll('.pw-locked').forEach(el => { el.style.opacity = ''; });
+    }, 1200);
+  }, 300);
 }
 
 
@@ -5818,14 +5964,20 @@ function renderColorBars(axisSignals, bc) {
   // 점수 내림차순 정렬
   rows.sort((a, b) => b.score - a.score);
 
+  // 최대값 기준 정규화 (0~10 스케일 → 0~100% 바 너비)
+  const maxScore = Math.max(...rows.map(r => r.score), 1);
+
   const RANK_EMOJI = ['🥇','🥈','🥉'];
 
   el.innerHTML = rows.map((r, i) => {
     const rankClass = i < 3 ? ` cb-rank--${i+1}` : '';
     const rankLabel = i < 3 ? RANK_EMOJI[i] : (i+1);
-    const pct = Math.min(100, Math.max(0, r.score));
+    // 바 너비: 최대값 기준 상대 %
+    const pct = Math.round((r.score / maxScore) * 100);
     const grad = `linear-gradient(90deg,${r.colors[0]},${r.colors[1]})`;
     const topClass = i < 3 ? ' cb-row--top' : '';
+    // 표시점수: 10점 만점 표기
+    const displayScore = r.score.toFixed(1);
     return `
       <div class="cb-row${topClass}" style="animation-delay:${i*0.05}s">
         <div class="cb-rank${rankClass}">${rankLabel}</div>
@@ -5834,7 +5986,7 @@ function renderColorBars(axisSignals, bc) {
         <div class="cb-track">
           <div class="cb-fill" data-pct="${pct}" style="background:${grad}"></div>
         </div>
-        <div class="cb-val" style="color:${r.colors[0]}">${pct}<span style="font-size:9px;font-weight:400">점</span></div>
+        <div class="cb-val" style="color:${r.colors[0]}">${displayScore}<span style="font-size:9px;font-weight:400">점</span></div>
       </div>`;
   }).join('');
 
@@ -5855,12 +6007,26 @@ function renderCh2(res, bc) {
   if (canvas && window.Chart) {
     const labels = AXIS_DEFS.map(a => a.icon + ' ' + a.name);
     const data   = AXIS_DEFS.map(a => {
-      // DB axis_scores 우선, 없으면 scoreEngine 계산값 (axisSignals는 객체: {A1:45, ...})
+      // DB axis_scores 우선, 없으면 scoreEngine 계산값
       if (res.axis_scores && res.axis_scores[a.id] !== undefined) {
         return Number(res.axis_scores[a.id]);
       }
-      return axisSignals[a.id] !== undefined ? Number(axisSignals[a.id]) : 30;
+      return axisSignals[a.id] !== undefined ? Number(axisSignals[a.id]) : 0;
     });
+
+    /* ── 상위 3축 강조 색상 계산 ── */
+    const dataWithIdx = data.map((v,i) => ({v,i})).sort((a,b)=>b.v-a.v);
+    const top3idx = new Set(dataWithIdx.slice(0,3).map(x=>x.i));
+    const pointBgColors = data.map((_,i) =>
+      top3idx.has(i) ? '#ef4444' : 'rgba(139,92,246,0.7)'
+    );
+    const pointBorderColors = data.map((_,i) =>
+      top3idx.has(i) ? '#b91c1c' : 'rgba(139,92,246,1)'
+    );
+    const pointRadii = data.map((_,i) => top3idx.has(i) ? 7 : 4);
+    const pointHoverRadii = data.map((_,i) => top3idx.has(i) ? 9 : 6);
+    const labelColors = AXIS_DEFS.map((_,i) => top3idx.has(i) ? '#b91c1c' : '#334155');
+    const labelWeights = AXIS_DEFS.map((_,i) => top3idx.has(i) ? '800' : '600');
 
     /* 기존 차트 파괴 후 재생성 */
     if (canvas._chartInstance) canvas._chartInstance.destroy();
@@ -5871,11 +6037,14 @@ function renderCh2(res, bc) {
         datasets: [{
           label: '나의 축 신호',
           data,
-          backgroundColor: 'rgba(139,92,246,0.2)',
-          borderColor:     'rgba(139,92,246,0.9)',
+          backgroundColor: 'rgba(139,92,246,0.15)',
+          borderColor:     'rgba(139,92,246,0.85)',
           borderWidth:      2,
-          pointBackgroundColor: 'rgba(139,92,246,1)',
-          pointRadius: 4
+          pointBackgroundColor: pointBgColors,
+          pointBorderColor:     pointBorderColors,
+          pointBorderWidth:     data.map((_,i)=>top3idx.has(i)?2:1),
+          pointRadius:          pointRadii,
+          pointHoverRadius:     pointHoverRadii
         }]
       },
       options: {
@@ -5883,16 +6052,49 @@ function renderCh2(res, bc) {
         animation: { duration: 1200, easing: 'easeInOutQuart' },
         scales: {
           r: {
-            min: 0, max: 100,
-            ticks: { stepSize: 20, color: '#555', font: { size: 10 }, backdropColor: 'transparent' },
+            min: 0, max: 10,
+            ticks: { stepSize: 2, color: '#888', font: { size: 10 }, backdropColor: 'transparent' },
             grid:       { color: 'rgba(100,100,150,0.25)' },
             angleLines: { color: 'rgba(100,100,150,0.35)' },
-            pointLabels:{ color: '#334155', font: { size: 11, weight: '600' } }
+            pointLabels:{
+              color: labelColors,
+              font: { size: 11 },
+              callback: (label, index) => label
+            }
           }
         },
-        plugins: { legend: { display: false } }
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => {
+                const isTop = top3idx.has(ctx.dataIndex);
+                return (isTop ? '🔴 ' : '') + '신호강도: ' + ctx.raw.toFixed(1) + '/10';
+              }
+            }
+          }
+        }
       }
     });
+
+    // pointLabels 색상 강조는 afterDraw로 처리
+    const origAfterDraw = canvas._chartInstance.options.animation?.onComplete;
+    canvas._chartInstance.options.plugins.afterDatasetsDraw = {
+      id: 'topAxisHighlight',
+      afterDatasetsDraw(chart) {
+        const { ctx, scales: { r } } = chart;
+        if (!r) return;
+        r._pointLabelItems && r._pointLabelItems.forEach((item, i) => {
+          if (top3idx.has(i)) {
+            ctx.save();
+            ctx.font = 'bold 11px sans-serif';
+            ctx.fillStyle = '#b91c1c';
+            ctx.fillText('●', item.x - 20, item.y + 4);
+            ctx.restore();
+          }
+        });
+      }
+    };
   }
 
   /* 11축 컬러바 차트 렌더 */
@@ -5974,8 +6176,12 @@ function renderCh2(res, bc) {
       <div class="expert-ratio-list">
         ${expertRatios.map((ex, i) => {
           const rankEmoji = i===0 ? '🥇' : i===1 ? '🥈' : i===2 ? '🥉' : (i+1);
+          const isTop3 = i < 3;
+          const btnHtml = isTop3
+            ? `<button class="er-detail-btn er-detail-btn--top" onclick="event.stopPropagation();openExpertDetail('${ex.id}')">상세보기 →</button>`
+            : `<button class="er-detail-btn" onclick="event.stopPropagation();openExpertDetail('${ex.id}')">▶</button>`;
           return `
-          <div class="er-row ${i < 3 ? 'er-top' : ''}" onclick="openExpertDetail('${ex.id}')">
+          <div class="er-row ${isTop3 ? 'er-top' : ''}" onclick="openExpertDetail('${ex.id}')">
             <div class="er-rank">${rankEmoji}</div>
             <div class="er-icon">${ex.icon}</div>
             <div class="er-info">
@@ -5986,7 +6192,7 @@ function renderCh2(res, bc) {
               <div class="er-bar" data-pct="${ex.pct}" style="width:0%;background:${ex.color}"></div>
             </div>
             <div class="er-pct" style="color:${ex.color}">${ex.pct}%</div>
-            ${i < 3 ? '<span class="er-click-hint">상세보기 ▶</span>' : '<div class="er-arrow">▶</div>'}
+            ${btnHtml}
           </div>`;
         }).join('')}
       </div>`;
@@ -6339,7 +6545,7 @@ function journeyNodeClick(wi) {
           <div class="jd-ec-where">${ex.where}</div>
         </div>
         <div class="jd-ec-pct" style="color:${ex.color}">${ex.pct}%</div>
-        <div style="font-size:10px;color:#CBD5E1">▶</div>
+        <div style="font-size:13px;font-weight:900;color:#3ECBA5;padding:2px 6px;background:rgba(62,203,165,.12);border-radius:6px">▶</div>
       </div>`).join('');
 
     expertHtml = `
@@ -7121,7 +7327,7 @@ function wtToggleWeek(wi) {
           <div class="jd-ec-where">${ex.where}</div>
         </div>
         <div class="jd-ec-pct" style="color:${ex.color}">${ex.pct}%</div>
-        <div style="font-size:10px;color:#CBD5E1">▶</div>
+        <div style="font-size:13px;font-weight:900;color:#3ECBA5;padding:2px 6px;background:rgba(62,203,165,.12);border-radius:6px">▶</div>
       </div>`).join('');
     expertBannerHtml = `
       <div style="background:#F0F9FF;border-radius:10px;padding:12px;margin-bottom:14px">
