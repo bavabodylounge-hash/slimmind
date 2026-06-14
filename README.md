@@ -1,6 +1,6 @@
 # SlimMind — 바디코드 체형 진단 서비스
 
-> **최종 검증**: 2026-06-14 (세션 3) — 전체 앱 Playwright 검증 완료, PDF 인쇄 12페이지 정상, BC_DB 동기화 확인
+> **최종 검증**: 2026-06-14 (세션 4) — ch5 인쇄 레이아웃 수정(13→12페이지), BC_DB 동기화 확인, 관리자/컨설턴트 탭 전수 검증, 업데이트 정책 README 완성
 
 ## 프로젝트 개요
 - **서비스명**: SlimMind (슬림마인드)
@@ -159,7 +159,7 @@ pm2 start ecosystem.config.cjs
 ## 배포 상태
 - **플랫폼**: Cloudflare Pages + D1
 - **상태**: 🟡 로컬 개발 완료 (프로덕션 배포 미완)
-- **최종 업데이트**: 2026-06-14 (세션 3)
+- **최종 업데이트**: 2026-06-14 (세션 4)
 
 ---
 
@@ -211,7 +211,7 @@ BC 코드(BC-01~BC-10)를 추가/수정할 때는 두 파일을 반드시 동기
 ### PDF 인쇄(@media print) 관리 원칙
 
 ```
-현재 상태: 12페이지 (BC-01 기준, 2026-06-14 세션 3 확인)
+현재 상태: 12페이지 (BC-01 기준, 2026-06-14 세션 4 확인)
 
 페이지 구성:
   p01: 커버 (SlimMind 리포트)
@@ -254,8 +254,35 @@ DB 확인:   npx wrangler d1 execute slimmind-production --local \
 ### Playwright 검증 스크립트 위치
 
 ```
-/tmp/pdf_recheck.py    — PDF 페이지별 이미지 변환 (pymupdf)
-/tmp/admin_tabs2.py    — 관리자 전 탭 스크린샷
-/tmp/admin_modal.py    — BC코드 편집 모달 캡처
-/tmp/consultant_tabs.py — 컨설턴트 포털 전 탭 캡처
+# 세션 3
+/tmp/pdf_recheck.py         — PDF 페이지별 이미지 변환 (pymupdf)
+/tmp/admin_tabs2.py         — 관리자 전 탭 스크린샷
+/tmp/admin_modal.py         — BC코드 편집 모달 캡처
+/tmp/consultant_tabs.py     — 컨설턴트 포털 전 탭 캡처
+
+# 세션 4 (최신)
+/tmp/pdf_verify2.py         — PDF 재생성 + pymupdf 페이지 분석 (BC-01 기준, /tmp/pdf2/ 출력)
+/tmp/admin_consultant_verify.py — 관리자+컨설턴트 통합 검증 (17개 스크린샷, /tmp/screens_v3/)
 ```
+
+---
+
+### 🗂 세션별 주요 변경 이력
+
+| 세션 | 날짜 | 주요 변경 |
+|------|------|-----------|
+| 세션 1 | 2026-06-08 | 프로젝트 초기화, D1 스키마, JWT 인증, 설문 50문항 |
+| 세션 2 | 2026-06-09 | result.html 7챕터 결과지 UI, BC_DB/BC_SUBTYPE_DB 구현 |
+| 세션 3 | 2026-06-12 | 서브타입 인터랙션, timing 뱃지, print CSS 최적화 |
+| 세션 4 | 2026-06-14 | ch5 인쇄 레이아웃 수정(13→12페이지), BC_DB 동기화 검증, 관리자/컨설턴트 탭 전수 검증, 업데이트 정책 README 완성 |
+
+---
+
+### 📌 알려진 취약점 / 다음 세션 필수 처리
+
+| 항목 | 내용 | 우선순위 |
+|------|------|----------|
+| 비밀번호 평문 저장 | `consultants.password_hash`가 현재 평문 | 🔴 프로덕션 배포 전 필수 |
+| 카카오 SDK 미연동 | `kakaoInit` 실제 앱 키 미입력 | 🟡 |
+| BC-02~04, 07~08 처방 데이터 | 처방 내용 미입력 (빈 카드) | 🟡 |
+| 프로덕션 D1 미생성 | 로컬 `--local` 모드만 사용 중 | 🟠 배포 시 필수 |
