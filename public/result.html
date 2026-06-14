@@ -5956,7 +5956,7 @@ function renderColorBars(axisSignals, bc) {
     id: a.id,
     icon: a.icon,
     name: a.name,
-    score: axisSignals[a.id] !== undefined ? Number(axisSignals[a.id]) : 30,
+    score: axisSignals[a.id] !== undefined ? Number(axisSignals[a.id]) : 0,
     colors: AXIS_COLORS[i] || ['#6b7280','#9ca3af'],
     isTop: bc.topAxes && bc.topAxes.includes(a.id)
   }));
@@ -7691,64 +7691,24 @@ function normalizeRes(serverResult, params) {
       bc: params.get('bc') || params.get('bcCode') || '',
     };
   }
+  /* ── survey_answers 전체를 먼저 spread해서 Q_CORTISOL 등 실제 키 전달 ── */
+  const sa = serverResult.survey_answers || {};
   return {
+    /* ── survey_answers 전체 키 우선 spread (Q_CORTISOL, Q_THYROID, Q60 등) ── */
+    ...sa,
+    /* ── 메타 정보 (덮어쓰기) ── */
     name:           serverResult.user_name    || '고객님',
     consultant:     serverResult.consultant_code || '담당 컨설턴트',
     result_id:      serverResult.id           || '',
-    /* scoreEngine이 읽는 q1~q10 — survey_answers 에서 추출 */
-    q1: String(serverResult.survey_answers?.q1  || ''),
-    q2: String(serverResult.survey_answers?.q2  || ''),
-    q3: String(serverResult.survey_answers?.q3  || ''),
-    q4: String(serverResult.survey_answers?.q4  || ''),
-    q5: String(serverResult.survey_answers?.q5  || ''),
-    q6: String(serverResult.survey_answers?.q6  || ''),
-    q7: String(serverResult.survey_answers?.q7  || ''),
-    q8: String(serverResult.survey_answers?.q8  || ''),
-    q9: String(serverResult.survey_answers?.q9  || ''),
-    q10: String(serverResult.survey_answers?.q10 || ''),
     e1: '', e2: '', e3: '', e4: '',
     emotional_state: serverResult.emotional_state || '',
     bc: serverResult.bc_primary || '',
     /* 신체 정보 */
-    gender: serverResult.gender || '',
+    gender: serverResult.gender || sa.Q02 || '',
     age:    serverResult.age    || null,
     bmi:    serverResult.bmi    || null,
     weight: serverResult.weight || null,
     height: serverResult.height || null,
-    /* ── classifyEmotionType이 읽는 점수 키 ──────────────────────
-       survey_answers에 직접 저장된 경우 우선, 없으면 실제 설문 응답 키로 파생.
-       cortisol_sign: craving→binge↑ fatigue→fatigue↑ insomnia→stress↑
-       puffiness/body_awareness: heavy→fatigue↑  cold→anxiety↑
-       postmeal: crave/shaky→craving↑  sleepy→fatigue↑
-    ─────────────────────────────────────────────────────────────── */
-    ...(function() {
-      const sa = serverResult.survey_answers || {};
-      // 직접 저장된 점수 키가 있으면 그대로 사용
-      if (sa.stress_score !== undefined) return {
-        stress_score: Number(sa.stress_score),
-        sleep_score:  Number(sa.sleep_score  || 0),
-        binge_score:  Number(sa.binge_score  || 0),
-        fatigue_score:Number(sa.fatigue_score|| 0),
-        craving_score:Number(sa.craving_score|| 0),
-        social_score: Number(sa.social_score || 0),
-        anxiety_score:Number(sa.anxiety_score|| 0),
-      };
-      // 설문 응답 키 → 감정유형 점수 파생
-      const cortisol   = sa.cortisol_sign  || '';
-      const awareness  = sa.body_awareness || '';
-      const postmeal   = sa.postmeal       || '';
-      const puffiness  = sa.puffiness      || '';
-      const bodyNow    = sa.body_now       || '';
-      return {
-        stress_score:  cortisol === 'insomnia' ? 5 : cortisol === 'craving' ? 3 : 1,
-        sleep_score:   cortisol === 'insomnia' ? 2 : puffiness === 'whole' ? 2 : 4,
-        binge_score:   cortisol === 'craving'  ? 5 : 1,
-        fatigue_score: cortisol === 'fatigue' || awareness === 'fatigue' || bodyNow === 'heavy' ? 5 : 1,
-        craving_score: postmeal === 'crave' || postmeal === 'shaky' ? 5 : postmeal === 'sleepy' ? 3 : 1,
-        social_score:  1,
-        anxiety_score: awareness === 'cold' || cortisol === 'insomnia' ? 5 : 1,
-      };
-    })(),
   };
 }
 
