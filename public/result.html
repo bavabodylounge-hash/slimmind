@@ -1458,6 +1458,26 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
       </div>
     </div>
 
+    <!-- 금지 식품 -->
+    <div class="presc-section" id="ch6ForbidSection" style="display:none">
+      <div class="presc-section-title">
+        <span style="font-size:22px">⛔</span> 피해야 할 식품
+      </div>
+      <div class="forbid-tag-list" id="ch6ForbidFoods">
+        <!-- JS에서 렌더 -->
+      </div>
+    </div>
+
+    <!-- 생활 수칙 -->
+    <div class="presc-section" id="ch6LifeSection" style="display:none">
+      <div class="presc-section-title">
+        <span style="font-size:22px">📋</span> 생활 수칙
+      </div>
+      <div class="life-rules-list" id="ch6LifeRules">
+        <!-- JS에서 렌더 -->
+      </div>
+    </div>
+
     <!-- 처방 원칙 인사이트 -->
     <div class="insight-dark">
       <div class="id-kicker">처방의 원칙</div>
@@ -2451,8 +2471,11 @@ function renderCh2(res, bc) {
   if (canvas && window.Chart) {
     const labels = AXIS_DEFS.map(a => a.icon + ' ' + a.name);
     const data   = AXIS_DEFS.map(a => {
-      const sig = axisSignals.find(s => s.id === a.id);
-      return sig ? sig.score : 30;
+      // DB axis_scores 우선, 없으면 scoreEngine 계산값 (axisSignals는 객체: {A1:45, ...})
+      if (res.axis_scores && res.axis_scores[a.id] !== undefined) {
+        return Number(res.axis_scores[a.id]);
+      }
+      return axisSignals[a.id] !== undefined ? Number(axisSignals[a.id]) : 30;
     });
 
     /* 기존 차트 파괴 후 재생성 */
@@ -2759,43 +2782,105 @@ function renderCh5(bc) {
 ══════════════════════════════════════════════════════ */
 function renderCh6(bc) {
 
-  /* 식단 카드 */
+  /* ─ 식단 카드 ─ */
   const dietEl = document.getElementById('ch6DietCards');
-  const diet   = bc.diet || [];
+  // recommended_foods (DB 상세) 또는 diet (정규화된 문자열 배열) 사용
+  const foodsRaw = bc.recommended_foods || [];
+  const diet     = foodsRaw.length > 0 ? foodsRaw : (bc.diet || []);
   if (dietEl && diet.length > 0) {
-    dietEl.innerHTML = diet.map((item, i) => `
-      <div class="rx-card rx-card--diet">
-        <div class="rx-num">${i+1}</div>
-        <div class="rx-icon">🥗</div>
-        <div class="rx-text">${item}</div>
-      </div>`
-    ).join('');
+    dietEl.innerHTML = diet.map((item, i) => {
+      const name   = item.name   || item;
+      const reason = item.reason || '';
+      const emoji  = item.emoji  || '🥗';
+      return `
+        <div class="rx-card rx-card--diet">
+          <div class="rx-num">${i+1}</div>
+          <div class="rx-icon">${emoji}</div>
+          <div class="rx-text">
+            <strong>${name}</strong>
+            ${reason ? `<span class="rx-reason">${reason}</span>` : ''}
+          </div>
+        </div>`;
+    }).join('');
   }
 
-  /* 운동 카드 */
+  /* ─ 금지 식품 (있으면 표시) ─ */
+  const forbidEl = document.getElementById('ch6ForbidFoods');
+  const forbidFoods = bc.forbidden_foods || [];
+  if (forbidEl && forbidFoods.length > 0) {
+    forbidEl.innerHTML = forbidFoods.map(item => {
+      const name  = item.name  || item;
+      const emoji = item.emoji || '⛔';
+      return `<span class="forbid-tag">${emoji} ${name}</span>`;
+    }).join('');
+    const sec = document.getElementById('ch6ForbidSection');
+    if (sec) sec.style.display = 'block';
+  }
+
+  /* ─ 운동 카드 ─ */
   const exEl   = document.getElementById('ch6ExerciseCards');
-  const exer   = bc.exercise || [];
+  const sportsRaw = bc.recommended_exercises || bc.recommended_foods && [] || [];
+  // recommended_exercises = normalizeBC에서 recommended_sports 매핑
+  const exer = sportsRaw.length > 0 ? sportsRaw : (bc.exercise || []);
   if (exEl && exer.length > 0) {
-    exEl.innerHTML = exer.map((item, i) => `
-      <div class="rx-card rx-card--exercise">
-        <div class="rx-num">${i+1}</div>
-        <div class="rx-icon">🏋️</div>
-        <div class="rx-text">${item}</div>
-      </div>`
-    ).join('');
+    exEl.innerHTML = exer.map((item, i) => {
+      const name     = item.sport    || item.name || item;
+      const reason   = item.reason   || item.detail || '';
+      const schedule = item.schedule || '';
+      return `
+        <div class="rx-card rx-card--exercise">
+          <div class="rx-num">${i+1}</div>
+          <div class="rx-icon">🏋️</div>
+          <div class="rx-text">
+            <strong>${name}</strong>
+            ${reason   ? `<span class="rx-reason">${reason}</span>` : ''}
+            ${schedule ? `<span class="rx-schedule">📅 ${schedule}</span>` : ''}
+          </div>
+        </div>`;
+    }).join('');
   }
 
-  /* 영양제 카드 */
-  const splEl  = document.getElementById('ch6SupplCards');
-  const suppl  = bc.suppl || [];
+  /* ─ 영양제 카드 ─ */
+  const splEl = document.getElementById('ch6SupplCards');
+  const supplRaw = bc.supplement_list || [];
+  const suppl = supplRaw.length > 0 ? supplRaw : (bc.suppl || []);
   if (splEl && suppl.length > 0) {
-    splEl.innerHTML = suppl.map((item, i) => `
-      <div class="rx-card rx-card--suppl">
-        <div class="rx-num">${i+1}</div>
-        <div class="rx-icon">💊</div>
-        <div class="rx-text">${item}</div>
-      </div>`
-    ).join('');
+    splEl.innerHTML = suppl.map((item, i) => {
+      const name   = item.name   || item;
+      const timing = item.timing || '';
+      const reason = item.reason || '';
+      return `
+        <div class="rx-card rx-card--suppl">
+          <div class="rx-num">${i+1}</div>
+          <div class="rx-icon">💊</div>
+          <div class="rx-text">
+            <strong>${name}</strong>
+            ${timing ? `<span class="rx-timing">⏰ ${timing}</span>` : ''}
+            ${reason ? `<span class="rx-reason">${reason}</span>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  /* ─ 생활 수칙 (있으면) ─ */
+  const lifeEl = document.getElementById('ch6LifeRules');
+  const lifeRules = bc.lifestyle_rules || [];
+  if (lifeEl && lifeRules.length > 0) {
+    lifeEl.innerHTML = lifeRules.map(r => {
+      const rule   = r.rule   || r;
+      const detail = r.detail || '';
+      const isDo   = r.do !== false;
+      return `
+        <div class="life-rule life-rule--${isDo ? 'do' : 'dont'}">
+          <span class="lr-icon">${isDo ? '✅' : '❌'}</span>
+          <div class="lr-text">
+            <strong>${rule}</strong>
+            ${detail ? `<span>${detail}</span>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+    const sec = document.getElementById('ch6LifeSection');
+    if (sec) sec.style.display = 'block';
   }
 }
 
@@ -3138,70 +3223,184 @@ async function doFirstCheckin() {
 /* ══════════════════════════════════════════════════════
    autoClassifyBc(res)  — 설문 응답 기반 BC 자동 분류
 ══════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════
+   autoClassifyBc(res)  — URL 파라미터 기반 BC 자동 분류
+   (window.__RESULT__ 없을 때 폴백용)
+══════════════════════════════════════════════════════ */
 function autoClassifyBc(res) {
   const answers = [res.q1, res.q2, res.q3, res.q4, res.q5,
                    res.q6, res.q7, res.q8, res.q9, res.q10];
   const filledCount = answers.filter(a => a !== '').length;
   if (filledCount === 0) return 'BC-01';
-
   let score = 0;
-  answers.forEach(a => {
-    const n = parseInt(a);
-    if (!isNaN(n)) score += n;
-  });
-
+  answers.forEach(a => { const n = parseInt(a); if (!isNaN(n)) score += n; });
   const bcCodes = ['BC-01','BC-02','BC-03','BC-04','BC-05',
                    'BC-06','BC-07','BC-08','BC-09','BC-10'];
-  const idx = Math.min(Math.floor(score / 10) % 10, 9);
-  return bcCodes[idx];
+  return bcCodes[Math.min(Math.floor(score / 10) % 10, 9)];
 }
 
 /* ══════════════════════════════════════════════════════
-   init()  — 전체 초기화
+   extractOhaeng(raw)  — '土 토(土)' → '토(土)' 정규화
+══════════════════════════════════════════════════════ */
+function extractOhaeng(raw) {
+  if (!raw) return '';
+  // '土 토(土)' → '토(土)', '토(土)' → '토(土)', '토' → '토(土)' 후보
+  const m = raw.match(/[목화토금수]\([木火土金水]\)/);
+  if (m) return m[0];
+  // DB 값이 '토' 단독이면 매핑
+  const MAP = { '목':'목(木)','화':'화(火)','토':'토(土)','금':'금(金)','수':'수(水)',
+                '木':'목(木)','火':'화(火)','土':'토(土)','金':'금(金)','水':'수(水)' };
+  const trimmed = raw.trim().replace(/\s+.*/, ''); // 앞 한자만
+  return MAP[trimmed] || raw;
+}
+
+/* ══════════════════════════════════════════════════════
+   normalizeBC(serverBc, bcCode)
+   — window.__RESULT__.bc (DB 필드명) → render 함수가
+     기대하는 BC_DB 호환 구조로 변환
+══════════════════════════════════════════════════════ */
+function normalizeBC(serverBc, bcCode) {
+  if (!serverBc) {
+    // DB 없으면 JS 내장 BC_DB 그대로 사용
+    return BC_DB[bcCode] || BC_DB['BC-01'];
+  }
+  const localBc = BC_DB[bcCode] || BC_DB['BC-01'];
+  return {
+    /* 공통 식별자 */
+    id:             serverBc.bc_code || bcCode,
+    /* 이름/설명 */
+    name:           serverBc.brand_name  || localBc.name,
+    short:          serverBc.tagline     || localBc.short,
+    /* 오행 */
+    ohaeng:         extractOhaeng(localBc.ohaeng || ''),
+    /* traits */
+    traits:         localBc.traits || [],
+    /* 컨설턴트 노트 */
+    consultantNote: serverBc.bc_primary_oneline_reason || localBc.consultantNote || '',
+    /* topAxes: DB top_axes > 로컬 fallback */
+    topAxes:        localBc.topAxes || [],
+    /* metaProfile */
+    metaProfile:    localBc.metaProfile || [],
+    /* 식단/운동/영양제 — DB 키명으로 폴백 처리 */
+    diet:           serverBc.recommended_foods
+                      ? serverBc.recommended_foods.map((f) => f.name || f)
+                      : (localBc.diet || []),
+    exercise:       serverBc.recommended_sports
+                      ? serverBc.recommended_sports.map((s) => s.sport || s)
+                      : (localBc.exercise || []),
+    suppl:          serverBc.supplement_list
+                      ? serverBc.supplement_list.map((s) => s.name || s)
+                      : (localBc.suppl || []),
+    /* 상세 처방 (원본 유지) */
+    recommended_foods:    serverBc.recommended_foods    || [],
+    forbidden_foods:      serverBc.forbidden_foods      || [],
+    recommended_exercises: serverBc.recommended_sports  || [],
+    forbidden_exercises:   serverBc.forbidden_sports    || [],
+    supplement_list:       serverBc.supplement_list     || [],
+    lifestyle_rules:       serverBc.lifestyle_rules     || [],
+    closing_copy:          serverBc.closing_copy        || '',
+    bc_cause_story:        serverBc.bc_cause_story      || '',
+    fat_area:              serverBc.fat_area            || '',
+  };
+}
+
+/* ══════════════════════════════════════════════════════
+   normalizeRes(serverResult, params)
+   — window.__RESULT__.result (DB) → scoreEngine 호환 구조
+══════════════════════════════════════════════════════ */
+function normalizeRes(serverResult, params) {
+  if (!serverResult) {
+    // URL 파라미터 모드 (독립 접근)
+    return {
+      name:       params.get('name') || params.get('n') || '고객님',
+      consultant: params.get('c')    || params.get('consultant') || '담당 컨설턴트',
+      result_id:  params.get('id')   || params.get('result_id') || '',
+      q1: params.get('q1') || '', q2: params.get('q2') || '',
+      q3: params.get('q3') || '', q4: params.get('q4') || '',
+      q5: params.get('q5') || '', q6: params.get('q6') || '',
+      q7: params.get('q7') || '', q8: params.get('q8') || '',
+      q9: params.get('q9') || '', q10: params.get('q10') || '',
+      e1: params.get('e1') || '', e2: params.get('e2') || '',
+      e3: params.get('e3') || '', e4: params.get('e4') || '',
+      emotional_state: params.get('emotional_state') || '',
+      bc: params.get('bc') || params.get('bcCode') || '',
+    };
+  }
+  return {
+    name:           serverResult.user_name    || '고객님',
+    consultant:     serverResult.consultant_code || '담당 컨설턴트',
+    result_id:      serverResult.id           || '',
+    /* scoreEngine이 읽는 q1~q10 — survey_answers 에서 추출 */
+    q1: String(serverResult.survey_answers?.q1  || ''),
+    q2: String(serverResult.survey_answers?.q2  || ''),
+    q3: String(serverResult.survey_answers?.q3  || ''),
+    q4: String(serverResult.survey_answers?.q4  || ''),
+    q5: String(serverResult.survey_answers?.q5  || ''),
+    q6: String(serverResult.survey_answers?.q6  || ''),
+    q7: String(serverResult.survey_answers?.q7  || ''),
+    q8: String(serverResult.survey_answers?.q8  || ''),
+    q9: String(serverResult.survey_answers?.q9  || ''),
+    q10: String(serverResult.survey_answers?.q10 || ''),
+    e1: '', e2: '', e3: '', e4: '',
+    emotional_state: serverResult.emotional_state || '',
+    bc: serverResult.bc_primary || '',
+    /* 신체 정보 */
+    gender: serverResult.gender || '',
+    age:    serverResult.age    || null,
+    bmi:    serverResult.bmi    || null,
+    weight: serverResult.weight || null,
+    height: serverResult.height || null,
+  };
+}
+
+/* ══════════════════════════════════════════════════════
+   init()  — 전체 초기화 (window.__RESULT__ 우선)
 ══════════════════════════════════════════════════════ */
 async function init() {
-  /* 로딩 표시 */
   const loadingEl = document.getElementById('loadingState');
   if (loadingEl) loadingEl.style.display = 'flex';
 
   const params = new URLSearchParams(window.location.search);
 
-  const res = {
-    name:       params.get('name') || params.get('n') || '고객님',
-    consultant: params.get('c')    || params.get('consultant') || '담당 컨설턴트',
-    result_id:  params.get('id')   || params.get('result_id') || '',
-    q1:  params.get('q1')  || '',
-    q2:  params.get('q2')  || '',
-    q3:  params.get('q3')  || '',
-    q4:  params.get('q4')  || '',
-    q5:  params.get('q5')  || '',
-    q6:  params.get('q6')  || '',
-    q7:  params.get('q7')  || '',
-    q8:  params.get('q8')  || '',
-    q9:  params.get('q9')  || '',
-    q10: params.get('q10') || '',
-    e1:  params.get('e1')  || '',
-    e2:  params.get('e2')  || '',
-    e3:  params.get('e3')  || '',
-    e4:  params.get('e4')  || '',
-    bc:  params.get('bc')  || params.get('bcCode') || ''
-  };
+  /* ── 데이터 소스 결정 ── */
+  const injected = window.__RESULT__ || null; // 서버 주입 데이터
+  const res = normalizeRes(injected ? injected.result : null, params);
 
-  /* BC 코드 결정 */
+  /* ── BC 코드 결정 ── */
   let bcCode = res.bc;
-  if (!bcCode || !BC_DB[bcCode]) {
-    bcCode = autoClassifyBc(res);
+  if (!bcCode) {
+    bcCode = injected?.result?.bc_primary || autoClassifyBc(res);
   }
-  const bc = BC_DB[bcCode] || BC_DB['BC-01'];
+  if (!bcCode) bcCode = 'BC-01';
 
-  /* BC 컬러 테마 */
+  /* ── BC 오브젝트 정규화 ── */
+  const bc = normalizeBC(injected ? injected.bc : null, bcCode);
+
+  /* ── res에 top_axes 추가 (scoreEngine axisSignals 보완) ── */
+  if (injected?.result?.top_axes?.length) {
+    bc.topAxes = injected.result.top_axes;
+  }
+  if (injected?.result?.axis_scores) {
+    res.axis_scores = injected.result.axis_scores;
+  }
+
+  /* ── 오행 DB 주입 (서버에서 왔으면 덮어씀) ── */
+  if (injected?.ohaeng?.ohaeng_type) {
+    const oh = injected.ohaeng;
+    // normalizeBC의 ohaeng은 '토(土)' 형태가 아닌 로컬 BC_DB 값임
+    // 서버 ohaeng_type은 '토' 형태이므로 res.ohaeng_type 설정
+    res.ohaeng_full = injected.result.ohaeng_type || '';
+    bc.ohaeng = extractOhaeng(injected.result.ohaeng_type || bc.ohaeng);
+  }
+
+  /* ── BC 컬러 테마 적용 ── */
   applyBcColorTheme(bcCode);
 
-  /* 로딩 애니메이션 (0.8s) */
+  /* ── 로딩 애니메이션 ── */
   await new Promise(r => setTimeout(r, 800));
   if (loadingEl) loadingEl.style.display = 'none';
 
-  /* 전체 렌더 */
+  /* ── 전체 렌더 ── */
   renderCover(res, bc);
   renderCh1(res, bc);
   renderCh2(res, bc);
@@ -3213,10 +3412,9 @@ async function init() {
   renderCh8(res, bc);
   renderWeeklyClickTree(res, bc);
 
-  /* 첫 챕터 (COVER) */
   gotoChapter(0);
-
-  console.log('[SlimMind Result] 초기화 완료:', bcCode, bc.name);
+  console.log('[SlimMind Result] 초기화 완료 ▶', bcCode, bc.name,
+    '| 소스:', injected ? 'DB(서버주입)' : 'URL파라미터');
 }
 
 /* ── DOMContentLoaded ── */

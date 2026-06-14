@@ -1004,6 +1004,15 @@ app.get('/slimmind', (c) => c.html(slimmindLiveHtml))
 app.get('/result.html', (c) => c.html(resultHtml))
 app.get('/result', (c) => c.html(resultHtml))
 
+// ─── favicon ───────────────────────────────────────────────────────────────
+app.get('/favicon.ico', async (c) => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="8" fill="#6d28d9"/>
+  <text x="16" y="23" text-anchor="middle" font-size="20" font-family="sans-serif" fill="white">S</text>
+</svg>`
+  return c.body(svg, 200, { 'Content-Type': 'image/svg+xml' })
+})
+
 /* ═══════════════════════════════════════════════════════
    POST /api/checkin — 주차별 체크인 저장 + 컨설턴트 자동전송
 ═══════════════════════════════════════════════════════ */

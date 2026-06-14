@@ -1,0 +1,2030 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SlimMind 바디코드 정밀 진단 리포트</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+/* ══════════════════════════════════════════════════════
+   RESET & TOKEN
+══════════════════════════════════════════════════════ */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --font:'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+  --sm-gold:#FFD764; --sm-teal:#3ECBA5; --navy:#0B2545;
+  --bc-accent:#3ECBA5; --bc-main:#0B2545;
+  --bc-bg:#E8FAF5; --bc-mid:#C5F0E4;
+  --bc-cover-grad:linear-gradient(135deg,#060D1A 0%,#0B2545 60%,#060D1A 100%);
+  --r-sm:8px; --r-md:14px; --r-lg:20px;
+  --shadow-card:0 4px 24px rgba(0,0,0,.10);
+  --shadow-hero:0 12px 48px rgba(0,0,0,.18);
+}
+
+/* ── BC 컬러 테마 10종 ── */
+.bc-theme-BC-01{--bc-main:#1A3A8F;--bc-bg:#EEF2FF;--bc-accent:#F59E0B;--bc-mid:#C7D2FE;--bc-cover-grad:linear-gradient(135deg,#060D1A 0%,#1A3A8F 55%,#0B2545 100%)}
+.bc-theme-BC-02{--bc-main:#7C2D12;--bc-bg:#FFF7ED;--bc-accent:#FB923C;--bc-mid:#FED7AA;--bc-cover-grad:linear-gradient(135deg,#0B1A0A 0%,#7C2D12 55%,#0B2545 100%)}
+.bc-theme-BC-03{--bc-main:#1E3A5F;--bc-bg:#F0F7FF;--bc-accent:#38BDF8;--bc-mid:#BAE6FD;--bc-cover-grad:linear-gradient(135deg,#060D1A 0%,#1E3A5F 55%,#164E63 100%)}
+.bc-theme-BC-04{--bc-main:#3D1F00;--bc-bg:#FDF6EE;--bc-accent:#D97706;--bc-mid:#FDE68A;--bc-cover-grad:linear-gradient(135deg,#1A0A00 0%,#3D1F00 55%,#0B2545 100%)}
+.bc-theme-BC-05{--bc-main:#4A1040;--bc-bg:#FDF4FF;--bc-accent:#C084FC;--bc-mid:#E9D5FF;--bc-cover-grad:linear-gradient(135deg,#1A0020 0%,#4A1040 55%,#2D0A3D 100%)}
+.bc-theme-BC-06{--bc-main:#0C3547;--bc-bg:#F0FBFF;--bc-accent:#67E8F9;--bc-mid:#A5F3FC;--bc-cover-grad:linear-gradient(135deg,#020E14 0%,#0C3547 55%,#083344 100%)}
+.bc-theme-BC-07{--bc-main:#064E3B;--bc-bg:#F0FDF4;--bc-accent:#34D399;--bc-mid:#A7F3D0;--bc-cover-grad:linear-gradient(135deg,#022c22 0%,#064E3B 55%,#065F46 100%)}
+.bc-theme-BC-08{--bc-main:#374151;--bc-bg:#F3F4F6;--bc-accent:#A78BFA;--bc-mid:#DDD6FE;--bc-cover-grad:linear-gradient(135deg,#111827 0%,#374151 55%,#1F2937 100%)}
+.bc-theme-BC-09{--bc-main:#3B0764;--bc-bg:#FAF5FF;--bc-accent:#E879F9;--bc-mid:#F0ABFC;--bc-cover-grad:linear-gradient(135deg,#0B0020 0%,#3B0764 55%,#1A0030 100%)}
+.bc-theme-BC-10{--bc-main:#7C0010;--bc-bg:#FFF1F2;--bc-accent:#FB7185;--bc-mid:#FECDD3;--bc-cover-grad:linear-gradient(135deg,#1C0A00 0%,#7C0010 55%,#450010 100%)}
+
+html{scroll-behavior:smooth}
+body{font-family:var(--font);background:#D4DCE8;min-height:100vh;color:#1C2833}
+
+/* ══════════════════════════════════════════════════════
+   TOP BAR (sticky)
+══════════════════════════════════════════════════════ */
+#topBar{
+  position:sticky;top:0;z-index:200;
+  max-width:800px;margin:0 auto;
+  background:rgba(11,37,69,.97);backdrop-filter:blur(14px);
+  padding:10px 20px;display:flex;align-items:center;gap:12px;
+  box-shadow:0 2px 20px rgba(0,0,0,.35);
+}
+#topBar .tb-logo{font-size:13px;font-weight:900;color:#fff;letter-spacing:.1em}
+#topBar .tb-bc{font-size:11px;font-weight:700;color:var(--bc-accent);margin-left:auto;padding:4px 10px;border:1px solid rgba(255,255,255,.12);border-radius:20px}
+.pdots-row{display:flex;gap:5px;align-items:center}
+.pdot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.18);cursor:pointer;transition:all .22s}
+.pdot.done{background:var(--bc-accent);opacity:.55}
+.pdot.current{background:var(--bc-accent);transform:scale(1.5);box-shadow:0 0 6px var(--bc-accent)}
+#printBtn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.75);font-size:10px;padding:5px 11px;border-radius:6px;cursor:pointer;letter-spacing:.05em;font-family:var(--font)}
+#printBtn:hover{background:rgba(255,255,255,.18)}
+
+/* ══════════════════════════════════════════════════════
+   LOADING
+══════════════════════════════════════════════════════ */
+#loadingState{max-width:800px;margin:60px auto;background:#fff;border-radius:20px;padding:70px 40px;text-align:center;box-shadow:var(--shadow-hero)}
+.spin{width:52px;height:52px;border:4px solid #E2E8F0;border-top-color:var(--sm-teal);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 24px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-title{font-size:18px;font-weight:800;color:#0B2545;margin-bottom:8px}
+.loading-sub{font-size:13px;color:#94A3B8;line-height:1.7}
+
+/* ══════════════════════════════════════════════════════
+   A4 WRAP
+══════════════════════════════════════════════════════ */
+.a4-wrap{max-width:800px;margin:0 auto;padding:12px 12px 60px}
+
+/* ══════════════════════════════════════════════════════
+   CHAPTER 기본
+══════════════════════════════════════════════════════ */
+.chapter{
+  background:#fff;width:100%;min-height:1100px;
+  margin-bottom:0;display:none;flex-direction:column;position:relative;
+  box-shadow:var(--shadow-hero);overflow:hidden;
+}
+.chapter.active{display:flex}
+.chapter-content{flex:1;display:flex;flex-direction:column;padding:32px 44px}
+
+.ch-topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:13px 44px;border-bottom:1px solid #F1F5F9;
+  background:#FAFBFC;flex-shrink:0;
+}
+.ch-label-sm{font-size:9.5px;font-weight:800;color:var(--bc-accent);letter-spacing:.22em;text-transform:uppercase;display:flex;align-items:center;gap:6px}
+.ch-label-sm::before{content:'';width:3px;height:12px;background:var(--bc-accent);border-radius:2px}
+.ch-pagenum{font-size:9px;color:#94A3B8;font-weight:600;letter-spacing:.12em}
+
+.chapter-nav{
+  padding:18px 44px;border-top:1px solid #F1F5F9;
+  display:flex;align-items:center;gap:10px;flex-shrink:0;background:#FAFBFC;
+}
+.btn-next{
+  flex:1;padding:16px 20px;border-radius:12px;border:none;cursor:pointer;
+  background:var(--bc-main,#0B2545);color:#fff;
+  font-size:13px;font-weight:700;font-family:var(--font);
+  letter-spacing:.03em;text-align:left;transition:all .25s;line-height:1.5;
+}
+.btn-next:hover{opacity:.88;transform:translateY(-1.5px);box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.btn-next small{display:block;font-size:10px;font-weight:400;opacity:.65;margin-top:3px}
+.btn-prev{
+  width:44px;height:44px;border-radius:10px;border:1px solid #E2E8F0;
+  background:#fff;color:#64748B;cursor:pointer;font-size:16px;flex-shrink:0;
+  transition:all .2s;
+}
+.btn-prev:hover{border-color:var(--bc-accent);color:var(--bc-accent)}
+
+/* ══════════════════════════════════════════════════════
+   공통 타이포그래피 & 컴포넌트
+══════════════════════════════════════════════════════ */
+.sec-kicker{font-size:9.5px;font-weight:800;color:var(--bc-accent);letter-spacing:.22em;text-transform:uppercase;display:flex;align-items:center;gap:7px;margin-bottom:6px}
+.sec-kicker::before{content:'';width:3px;height:13px;background:var(--bc-accent);border-radius:2px}
+.sec-heading{font-size:21px;font-weight:900;color:#0B2545;letter-spacing:-.025em;line-height:1.3;margin-bottom:6px}
+.sec-sub{font-size:12.5px;color:#64748B;line-height:1.75;margin-bottom:20px}
+
+/* 팩트 박스 */
+.fact-box{
+  background:linear-gradient(135deg,var(--bc-bg,#E8FAF5),rgba(255,255,255,.7));
+  border:1px solid var(--bc-mid,#C5F0E4);border-left:4px solid var(--bc-accent);
+  border-radius:0 14px 14px 0;padding:16px 20px;margin:12px 0;
+}
+.fact-box .fact-kicker{font-size:8.5px;font-weight:800;color:var(--bc-accent);letter-spacing:.2em;text-transform:uppercase;margin-bottom:7px;display:flex;align-items:center;gap:5px}
+.fact-box .fact-text{font-size:12.5px;color:#1E3A5F;line-height:1.8;font-weight:500}
+.fact-box .fact-cite{font-size:10px;color:#94A3B8;margin-top:7px;font-style:italic}
+
+/* 다크 인사이트 */
+.insight-dark{background:var(--bc-main,#0B2545);border-radius:16px;padding:22px 24px;margin:16px 0;color:#fff;position:relative;overflow:hidden}
+.insight-dark::after{content:'"';position:absolute;right:20px;bottom:-10px;font-size:72px;color:rgba(255,255,255,.04);font-family:Georgia,serif;line-height:1}
+.insight-dark .id-kicker{font-size:8.5px;font-weight:800;letter-spacing:.2em;color:rgba(255,255,255,.45);text-transform:uppercase;margin-bottom:10px}
+.insight-dark .id-text{font-size:14px;font-weight:600;line-height:1.85;color:rgba(255,255,255,.92)}
+.insight-dark .id-accent{color:var(--bc-accent);font-weight:800}
+
+/* 카드 그리드 */
+.card-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.card-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:12px 0}
+.card-grid-4{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+
+/* 미니 카드 */
+.mini-card{
+  background:#FAFBFC;border:1px solid #E9EEF5;border-radius:14px;padding:16px 12px;
+  text-align:center;transition:all .2s;
+}
+.mini-card:hover{border-color:var(--bc-accent);background:var(--bc-bg)}
+.mini-card .mc-icon{font-size:24px;margin-bottom:7px}
+.mini-card .mc-val{font-size:19px;font-weight:900;color:var(--bc-accent);line-height:1.1}
+.mini-card .mc-label{font-size:9.5px;color:#64748B;font-weight:500;letter-spacing:.04em;margin-top:3px}
+
+/* 스토리 블록 */
+.story-block{background:#F8FAFC;border-radius:16px;padding:22px 26px;margin:14px 0;border-left:4px solid var(--bc-accent)}
+.story-block p{font-size:13px;color:#334155;line-height:2.05;margin-bottom:10px}
+.story-block p:last-child{margin-bottom:0}
+.story-em{font-weight:800;color:var(--bc-main)}
+
+/* 체크리스트 */
+.check-list{display:flex;flex-direction:column;gap:7px;margin:12px 0}
+.check-item{
+  display:flex;align-items:flex-start;gap:10px;padding:12px 16px;
+  background:#F8FAFC;border:1px solid #E9EEF5;border-radius:11px;
+  font-size:12.5px;color:#334155;line-height:1.65;
+  transition:border-color .2s;
+}
+.check-item:hover{border-color:var(--bc-accent)}
+.check-item::before{content:'✓';color:var(--bc-accent);font-weight:900;font-size:13px;flex-shrink:0;margin-top:1px}
+
+/* 축 바 */
+.axis-bar-row{margin-bottom:9px}
+.axis-bar-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.axis-bar-name{font-size:11.5px;font-weight:700;color:#334155;display:flex;align-items:center;gap:5px}
+.axis-bar-score{font-size:11.5px;font-weight:900;color:var(--bc-accent)}
+.axis-bar-track{height:9px;background:#E9EEF5;border-radius:5px;overflow:hidden}
+.axis-bar-fill{height:100%;border-radius:5px;background:linear-gradient(90deg,var(--bc-accent),var(--bc-main));transition:width 1.4s cubic-bezier(.4,0,.2,1)}
+
+/* 오행 카드 */
+.ohaeng-hero{
+  border-radius:20px;padding:28px 30px;margin:12px 0;
+  background:linear-gradient(135deg,var(--bc-main),var(--bc-accent));
+  color:#fff;position:relative;overflow:hidden;
+}
+.ohaeng-hero::before{content:'';position:absolute;right:-40px;bottom:-40px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.06)}
+.ohaeng-hero::after{content:'';position:absolute;right:40px;top:-50px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.04)}
+.ohaeng-kicker{font-size:9.5px;font-weight:800;letter-spacing:.2em;opacity:.65;text-transform:uppercase;margin-bottom:8px}
+.ohaeng-name{font-size:30px;font-weight:900;letter-spacing:-.03em;margin-bottom:6px;position:relative;z-index:1}
+.ohaeng-desc{font-size:12.5px;opacity:.85;line-height:1.75;position:relative;z-index:1;max-width:480px}
+
+/* 처방 카드 */
+.rx-card{border:1px solid #E9EEF5;border-radius:14px;padding:16px 18px;margin:7px 0;display:flex;gap:14px;align-items:flex-start;transition:all .2s}
+.rx-card:hover{border-color:var(--bc-accent);background:var(--bc-bg);transform:translateY(-1px);box-shadow:var(--shadow-card)}
+.rx-icon{width:44px;height:44px;border-radius:12px;background:var(--bc-bg);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.rx-body{flex:1}
+.rx-cat{font-size:8.5px;font-weight:800;color:var(--bc-accent);letter-spacing:.18em;text-transform:uppercase;margin-bottom:3px}
+.rx-title{font-size:13.5px;font-weight:800;color:#0B2545;margin-bottom:4px}
+.rx-desc{font-size:12px;color:#64748B;line-height:1.7}
+
+/* 섹션 구분선 */
+.sec-divider{height:1px;background:linear-gradient(90deg,var(--bc-accent),transparent);margin:22px 0;opacity:.25}
+
+/* 논문 팩트 뱃지 */
+.paper-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  background:#F8FAFC;border:1px solid #E2E8F0;border-radius:6px;
+  padding:4px 10px;font-size:9.5px;color:#64748B;margin:4px 4px 4px 0;font-style:italic;
+}
+.paper-badge::before{content:'📄';font-style:normal}
+
+/* 감정유형 배지 */
+.emotion-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--bc-main);color:#fff;
+  border-radius:30px;padding:9px 20px;font-size:12.5px;font-weight:700;
+  margin-bottom:14px;box-shadow:0 4px 16px rgba(0,0,0,.15);
+}
+.emotion-badge .eb-type{font-size:9.5px;opacity:.65;margin-right:3px;letter-spacing:.1em}
+
+/* 오프닝 카피 박스 */
+.opening-copy-box{
+  background:linear-gradient(135deg,var(--bc-main),rgba(11,37,69,.88));
+  border-radius:18px;padding:26px 28px;margin-bottom:20px;
+  color:#fff;position:relative;overflow:hidden;
+}
+.opening-copy-box::after{content:'✦';position:absolute;right:24px;top:24px;font-size:28px;color:rgba(255,255,255,.06)}
+.oc-kicker{font-size:9px;font-weight:800;color:var(--bc-accent);letter-spacing:.25em;text-transform:uppercase;margin-bottom:12px}
+.oc-headline{font-size:19px;font-weight:900;line-height:1.45;margin-bottom:12px;color:#fff;letter-spacing:-.01em}
+.oc-body{font-size:12.5px;color:rgba(255,255,255,.82);line-height:1.85;margin-bottom:10px}
+.oc-insight{font-size:12px;color:var(--bc-accent);font-weight:700;padding:10px 14px;background:rgba(255,255,255,.07);border-radius:8px;border-left:3px solid var(--bc-accent);line-height:1.65}
+.oc-action{font-size:11px;color:rgba(255,255,255,.55);margin-top:10px}
+
+/* BC 히어로 박스 */
+.bc-hero-box{
+  background:linear-gradient(135deg,var(--bc-main),var(--bc-accent));
+  border-radius:20px;padding:28px 30px 24px;margin-bottom:20px;
+  position:relative;overflow:hidden;
+}
+.bc-hero-box::before{content:'';position:absolute;right:-25px;bottom:-25px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.07)}
+.bc-hero-box::after{content:'';position:absolute;right:35px;top:-35px;width:90px;height:90px;border-radius:50%;background:rgba(255,255,255,.04)}
+.bch-kicker{font-size:9px;font-weight:800;color:rgba(255,255,255,.55);letter-spacing:.25em;text-transform:uppercase;margin-bottom:8px;position:relative;z-index:1}
+.bch-code{font-size:54px;font-weight:900;color:#fff;letter-spacing:-.04em;line-height:1;margin-bottom:6px;position:relative;z-index:1}
+.bch-name{font-size:17px;font-weight:700;color:rgba(255,255,255,.9);margin-bottom:14px;position:relative;z-index:1}
+.bch-desc{font-size:12px;color:rgba(255,255,255,.72);line-height:1.8;max-width:470px;position:relative;z-index:1}
+
+/* 타임라인 */
+.timeline{display:flex;flex-direction:column;gap:0;margin:14px 0;position:relative}
+.timeline::before{content:'';position:absolute;left:19px;top:0;bottom:0;width:2px;background:linear-gradient(180deg,var(--bc-accent),var(--bc-mid))}
+.tl-item{display:flex;gap:16px;padding:0 0 20px;position:relative}
+.tl-dot{width:38px;height:38px;border-radius:50%;background:var(--bc-accent);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#fff;position:relative;z-index:1;box-shadow:0 0 0 4px var(--bc-bg)}
+.tl-body{padding-top:6px}
+.tl-week{font-size:9.5px;font-weight:800;color:var(--bc-accent);letter-spacing:.12em;text-transform:uppercase;margin-bottom:3px}
+.tl-title{font-size:13.5px;font-weight:800;color:#0B2545;margin-bottom:4px}
+.tl-desc{font-size:12px;color:#64748B;line-height:1.7}
+
+/* 11축 카드 그리드 */
+.axis-card{
+  border:1px solid #E9EEF5;border-radius:14px;padding:16px;
+  background:#fff;transition:all .2s;
+}
+.axis-card:hover{border-color:var(--bc-accent);transform:translateY(-2px);box-shadow:var(--shadow-card)}
+.axis-card.priority-HIGH{border-color:var(--bc-accent);background:var(--bc-bg)}
+.axis-card .ac-icon{font-size:28px;margin-bottom:8px}
+.axis-card .ac-id{font-size:8.5px;font-weight:800;color:var(--bc-accent);letter-spacing:.2em;margin-bottom:4px}
+.axis-card .ac-name{font-size:12.5px;font-weight:800;color:#0B2545;margin-bottom:6px;line-height:1.3}
+.axis-card .ac-desc{font-size:11px;color:#64748B;line-height:1.65;margin-bottom:8px}
+.axis-card .ac-presc{font-size:11.5px;color:#334155;line-height:1.7;padding-top:8px;border-top:1px solid #F1F5F9}
+.axis-card .ac-fact{font-size:10.5px;color:var(--bc-accent);font-style:italic;margin-top:6px;line-height:1.55}
+.axis-priority-badge{
+  display:inline-block;font-size:8px;font-weight:800;
+  padding:2px 8px;border-radius:20px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px;
+}
+.axis-priority-badge.HIGH{background:#FEF2F2;color:#DC2626}
+.axis-priority-badge.MID{background:#FFF7ED;color:#EA580C}
+.axis-priority-badge.LOW{background:#F0FDF4;color:#16A34A}
+
+/* 클릭트리 */
+.wt-wrap{margin:0}
+.wt-intro{font-size:12px;color:#64748B;line-height:1.75;margin-bottom:16px;padding:13px 16px;background:#F8FAFC;border-radius:10px;border-left:3px solid var(--bc-accent)}
+.wt-week-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px}
+.wt-week-card{border:2px solid #E9EEF5;border-radius:13px;padding:15px;cursor:pointer;transition:all .2s;background:#fff;position:relative}
+.wt-week-card:hover{border-color:var(--bc-accent);background:var(--bc-bg)}
+.wt-week-card.active{border-color:var(--bc-accent);background:var(--bc-bg);box-shadow:0 4px 18px rgba(0,0,0,.09)}
+.wt-week-num{font-size:9px;font-weight:800;color:var(--bc-accent);letter-spacing:.15em;text-transform:uppercase;margin-bottom:4px}
+.wt-week-title{font-size:12.5px;font-weight:700;color:#0B2545;margin-bottom:7px;line-height:1.4}
+.wt-week-badge{display:inline-block;font-size:9px;font-weight:700;padding:3px 9px;border-radius:20px}
+.wt-presc-panel{display:none;padding:14px;background:#F8FAFC;border-radius:11px;margin-bottom:10px;border:1px solid #E9EEF5}
+.wt-presc-panel.open{display:block;animation:fadeIn .3s ease}
+.wt-axis-list{display:flex;flex-direction:column;gap:8px}
+.wt-axis-item{border:1px solid #E9EEF5;border-radius:11px;overflow:hidden;background:#fff}
+.wt-axis-head{display:flex;align-items:center;gap:10px;padding:12px 15px;cursor:pointer;transition:background .15s}
+.wt-axis-head:hover{background:#F8FAFC}
+.wt-axis-icon{font-size:19px}
+.wt-axis-info{flex:1}
+.wt-axis-name{font-size:12.5px;font-weight:700;color:#0B2545}
+.wt-axis-prio{font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;flex-shrink:0}
+.wt-axis-prio.HIGH{background:#FEF2F2;color:#DC2626}
+.wt-axis-prio.MID{background:#FFF7ED;color:#EA580C}
+.wt-axis-prio.LOW{background:#F0FDF4;color:#16A34A}
+.wt-content-panel{display:none;padding:14px 16px;border-top:1px solid #F1F5F9;background:#FAFBFC}
+.wt-axis-item.open .wt-content-panel{display:block;animation:fadeIn .25s ease}
+.wt-presc-text{font-size:12px;color:#334155;line-height:1.8;margin-bottom:10px}
+.wt-fact-text{font-size:11px;color:#64748B;font-style:italic;margin-bottom:12px;padding-left:10px;border-left:2px solid var(--bc-accent);line-height:1.65}
+.wt-quiz{background:#F0F9FF;border-radius:11px;padding:13px;margin-bottom:10px}
+.wt-quiz-q{font-size:12.5px;font-weight:700;color:#0B2545;margin-bottom:9px}
+.wt-quiz-opts{display:flex;flex-direction:column;gap:5px}
+.wt-quiz-opt{padding:9px 13px;border-radius:9px;border:1px solid #E2E8F0;font-size:12px;cursor:pointer;background:#fff;color:#334155;transition:all .15s;font-family:var(--font);text-align:left}
+.wt-quiz-opt:hover{border-color:var(--bc-accent);background:var(--bc-bg)}
+.wt-quiz-opt.correct{border-color:#16A34A;background:#F0FDF4;color:#166534}
+.wt-quiz-opt.wrong{border-color:#DC2626;background:#FEF2F2;color:#991B1B}
+.wt-quiz-feedback{font-size:11px;color:#16A34A;background:#F0FDF4;padding:9px 11px;border-radius:8px;margin-top:8px;display:none;line-height:1.65}
+.wt-checkin-btn{width:100%;padding:11px;border-radius:10px;border:none;cursor:pointer;background:var(--bc-accent);color:#fff;font-size:12.5px;font-weight:700;font-family:var(--font);transition:all .2s}
+.wt-checkin-btn:hover{opacity:.85;transform:translateY(-1px)}
+.wt-checkin-done{display:none;text-align:center;padding:10px;font-size:12px;color:#16A34A;font-weight:700}
+
+/* 계절 카드 */
+.season-card{border-radius:16px;padding:18px 16px;border:1px solid rgba(0,0,0,.07);transition:all .2s;cursor:default}
+.season-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-card)}
+.season-icon{font-size:28px;margin-bottom:8px}
+.season-name{font-size:13px;font-weight:800;color:#0B2545;margin-bottom:5px}
+.season-desc{font-size:11px;color:#334155;line-height:1.7}
+
+/* CH8 선언문 */
+.declaration-box{
+  background:linear-gradient(135deg,var(--bc-main),var(--bc-accent));
+  border-radius:20px;padding:30px 30px 28px;color:#fff;text-align:center;
+  position:relative;overflow:hidden;margin-top:20px;
+}
+.declaration-box::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.025'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")}
+.decl-kicker{font-size:9px;font-weight:800;letter-spacing:.25em;color:rgba(255,255,255,.5);text-transform:uppercase;margin-bottom:16px;position:relative;z-index:1}
+.decl-bc{font-size:48px;font-weight:900;color:var(--sm-gold,#FFD764);letter-spacing:-.04em;line-height:1;margin-bottom:6px;position:relative;z-index:1;text-shadow:0 4px 24px rgba(255,215,100,.25)}
+.decl-name{font-size:16px;font-weight:700;color:rgba(255,255,255,.9);margin-bottom:18px;position:relative;z-index:1}
+.decl-text{font-size:13px;color:rgba(255,255,255,.8);line-height:1.9;position:relative;z-index:1}
+
+/* 인쇄 */
+@media print{
+  body{background:#fff}
+  .a4-wrap{padding:0;max-width:100%}
+  #topBar,#loadingState,.chapter-nav,#printBtn{display:none!important}
+  .chapter{display:block!important;width:210mm;min-height:auto;page-break-before:always;break-before:page;box-shadow:none;margin:0;overflow:visible}
+  .chapter[data-ch="0"]{page-break-before:avoid;break-before:avoid}
+  .chapter-content{padding:12mm 18mm 10mm}
+  .ch-topbar{padding:8px 18mm}
+  -webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;
+}
+
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes cvPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.7;transform:scale(1.55);box-shadow:0 0 18px rgba(255,215,100,1),0 0 36px rgba(255,215,100,.45)}}
+@keyframes cvFadeUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+@keyframes barGrow{from{width:0}to{width:var(--target-width,80%)}}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════
+     TOP BAR
+══════════════════════════════════════════════════════ -->
+<div id="topBar" style="display:none">
+  <span class="tb-logo">SlimMind</span>
+  <div class="pdots-row" id="progressDots"></div>
+  <span class="tb-bc" id="tbBcCode"></span>
+  <button id="printBtn" onclick="printAll()">PDF 저장</button>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     LOADING
+══════════════════════════════════════════════════════ -->
+<div id="loadingState">
+  <div class="spin"></div>
+  <div class="loading-title">바디코드 정밀 분석 중</div>
+  <div class="loading-sub">10개 원인축 · 11개 진단 항목을 분석합니다<br>잠시만 기다려 주세요</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     A4 WRAP
+══════════════════════════════════════════════════════ -->
+<div class="a4-wrap" id="a4Wrap" style="display:none">
+
+
+<!-- ═══════════════════════════════════════════════
+     COVER (CH0) · 당신에게 보내는 첫 선고문
+═══════════════════════════════════════════════ -->
+<div class="chapter" data-ch="0" id="ch0"
+  style="min-height:1100px;background:var(--bc-cover-grad,linear-gradient(135deg,#060D1A 0%,#0B2545 60%,#060D1A 100%));padding:0;overflow:hidden;position:relative">
+
+  <!-- 배경 장식 -->
+  <div aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;overflow:hidden">
+    <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,rgba(255,215,100,.9) 30%,rgba(255,215,100,1) 50%,rgba(255,215,100,.9) 70%,transparent)"></div>
+    <div style="position:absolute;top:0;bottom:0;left:52px;width:1px;background:linear-gradient(180deg,transparent,rgba(255,255,255,.06) 20%,rgba(255,255,255,.06) 80%,transparent)"></div>
+    <div style="position:absolute;top:0;bottom:0;right:52px;width:1px;background:linear-gradient(180deg,transparent,rgba(255,255,255,.04) 20%,rgba(255,255,255,.04) 80%,transparent)"></div>
+    <div style="position:absolute;top:32%;left:50%;transform:translate(-50%,-50%);width:620px;height:620px;border-radius:50%;background:radial-gradient(circle,rgba(62,203,165,.07) 0%,transparent 64%)"></div>
+    <div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(255,215,100,.35) 30%,rgba(255,215,100,.7) 50%,rgba(255,215,100,.35) 70%,transparent)"></div>
+    <div style="position:absolute;inset:0;background:linear-gradient(115deg,transparent 40%,rgba(255,255,255,.008) 50%,transparent 60%)"></div>
+  </div>
+
+  <!-- 본문 -->
+  <div style="position:relative;z-index:1;display:flex;flex-direction:column;min-height:1100px;padding:0 60px">
+
+    <!-- 헤더 -->
+    <header style="display:flex;align-items:center;justify-content:space-between;padding:32px 0 24px;border-bottom:1px solid rgba(255,255,255,.07)">
+      <div style="display:flex;align-items:center;gap:14px">
+        <span style="font-size:15px;font-weight:900;color:#fff;letter-spacing:.12em">SlimMind</span>
+        <span style="width:1px;height:16px;background:rgba(255,255,255,.15)"></span>
+        <span style="font-size:9px;font-weight:700;color:rgba(255,255,255,.35);letter-spacing:.2em;text-transform:uppercase">BODY CODE PRECISION REPORT</span>
+      </div>
+      <div id="cvDate" style="font-size:9px;color:rgba(255,215,100,.6);font-weight:700;letter-spacing:.12em;border:1px solid rgba(255,215,100,.2);padding:5px 14px;border-radius:20px;background:rgba(255,215,100,.05)">2026.06</div>
+    </header>
+
+    <!-- HERO 영역 -->
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:46px 0 28px">
+
+      <!-- 펄스 레이블 -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:26px;animation:cvFadeUp .6s .05s ease both">
+        <div style="width:8px;height:8px;border-radius:50%;background:#FFD764;box-shadow:0 0 12px rgba(255,215,100,.8),0 0 24px rgba(255,215,100,.3);animation:cvPulse 2.4s ease-in-out infinite"></div>
+        <span style="font-size:9.5px;font-weight:800;color:#FFD764;letter-spacing:.28em;text-transform:uppercase">바디코드 정밀 진단 완료</span>
+      </div>
+
+      <!-- 이름 -->
+      <div id="cvName" style="font-size:14px;font-weight:500;color:rgba(255,255,255,.42);letter-spacing:.08em;margin-bottom:12px;animation:cvFadeUp .6s .12s ease both">
+        — 회원님의 맞춤 진단 결과
+      </div>
+
+      <!-- BC 코드 초대형 -->
+      <div style="position:relative;margin-bottom:7px;animation:cvFadeUp .75s .2s cubic-bezier(.16,1,.3,1) both">
+        <div id="cvBcCode" style="font-size:96px;font-weight:900;color:#fff;letter-spacing:-.06em;line-height:.88">BC-01</div>
+        <div id="cvBcGlowText" style="position:absolute;top:0;left:0;font-size:96px;font-weight:900;color:transparent;letter-spacing:-.06em;line-height:.88;-webkit-text-stroke:1px rgba(255,255,255,.05);filter:blur(10px);pointer-events:none" aria-hidden="true">BC-01</div>
+      </div>
+
+      <!-- BC 명칭 -->
+      <div id="cvBcName" style="font-size:20px;font-weight:800;color:#FFD764;letter-spacing:.02em;margin-bottom:26px;text-shadow:0 2px 16px rgba(255,215,100,.28);animation:cvFadeUp .6s .32s ease both">바디코드 분석 완료</div>
+
+      <!-- 구분선 장식 -->
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:32px;animation:cvFadeUp .6s .4s ease both">
+        <div style="width:56px;height:1.5px;background:linear-gradient(90deg,#FFD764,rgba(255,215,100,.08))"></div>
+        <span style="font-size:9px;color:rgba(255,255,255,.25);letter-spacing:.16em;font-weight:600">PERSONAL · CONFIDENTIAL</span>
+        <div style="width:24px;height:1.5px;background:rgba(255,215,100,.12)"></div>
+      </div>
+
+      <!-- 훅 카피 카드 -->
+      <div id="cvHookCard" style="
+        background:linear-gradient(135deg,rgba(255,255,255,.07),rgba(255,255,255,.03));
+        border:1px solid rgba(255,255,255,.11);border-left:4px solid #FFD764;
+        border-radius:0 18px 18px 0;padding:26px 30px;margin-bottom:32px;
+        backdrop-filter:blur(10px);
+        animation:cvFadeUp .7s .5s ease both;position:relative;overflow:hidden
+      ">
+        <div style="font-size:9px;font-weight:800;color:rgba(255,215,100,.7);letter-spacing:.22em;text-transform:uppercase;margin-bottom:14px">✦ 당신에게만 전하는 첫 문장</div>
+        <div id="cvHook" style="font-size:16px;font-weight:400;color:rgba(255,255,255,.88);line-height:2.1;letter-spacing:.012em;font-style:italic">
+          "지금까지 살이 안 빠진 건<br>당신 의지의 문제가 아닙니다.<br>
+          <span style="color:#FFD764;font-weight:800;font-style:normal">몸의 회로가 다른 것입니다.</span>"
+        </div>
+        <div style="position:absolute;bottom:6px;right:18px;font-size:60px;color:rgba(255,215,100,.04);font-family:Georgia,serif;line-height:1" aria-hidden="true">"</div>
+      </div>
+
+      <!-- 3대 수치 카드 -->
+      <div id="cvStats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;animation:cvFadeUp .6s .65s ease both">
+        <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:16px 10px;text-align:center">
+          <div style="font-size:24px;margin-bottom:6px">🔬</div>
+          <div style="font-size:22px;font-weight:900;color:#FFD764;line-height:1">11</div>
+          <div style="font-size:9px;color:rgba(255,255,255,.42);margin-top:4px;font-weight:500;letter-spacing:.04em">개 정밀 진단</div>
+        </div>
+        <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:16px 10px;text-align:center">
+          <div style="font-size:24px;margin-bottom:6px">🧬</div>
+          <div style="font-size:22px;font-weight:900;color:#FFD764;line-height:1">10</div>
+          <div style="font-size:9px;color:rgba(255,255,255,.42);margin-top:4px;font-weight:500;letter-spacing:.04em">개 원인 분석축</div>
+        </div>
+        <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:16px 10px;text-align:center">
+          <div style="font-size:24px;margin-bottom:6px">🗓️</div>
+          <div style="font-size:22px;font-weight:900;color:#FFD764;line-height:1">12</div>
+          <div style="font-size:9px;color:rgba(255,255,255,.42);margin-top:4px;font-weight:500;letter-spacing:.04em">주 처방 로드맵</div>
+        </div>
+      </div>
+
+    </div><!-- /hero -->
+
+    <!-- 하단 CTA -->
+    <div style="padding:0 0 42px;animation:cvFadeUp .6s .8s ease both">
+      <button onclick="nextChapter()" style="
+        width:100%;padding:22px 26px;border-radius:16px;
+        border:1px solid rgba(255,215,100,.35);
+        background:linear-gradient(135deg,rgba(255,215,100,.14),rgba(255,215,100,.06));
+        color:#FFD764;font-size:15px;font-weight:800;cursor:pointer;
+        font-family:var(--font);letter-spacing:.06em;
+        display:flex;align-items:center;justify-content:space-between;
+        transition:all .3s;backdrop-filter:blur(8px);
+      " onmouseover="this.style.background='linear-gradient(135deg,rgba(255,215,100,.22),rgba(255,215,100,.12))';this.style.transform='translateY(-2px)';this.style.boxShadow='0 14px 40px rgba(255,215,100,.14)'"
+         onmouseout="this.style.background='linear-gradient(135deg,rgba(255,215,100,.14),rgba(255,215,100,.06))';this.style.transform='translateY(0)';this.style.boxShadow='none'">
+        <span>▷ 지금 나의 바디코드 결과 확인하기</span>
+        <span style="font-size:11px;opacity:.5;font-weight:400;letter-spacing:.04em">약 8분 소요</span>
+      </button>
+    </div>
+
+  </div><!-- /본문 -->
+</div><!-- /COVER -->
+
+
+<!-- ═══════════════════════════════════════════════
+     CH1 · 처음 알게 되는 당신의 몸
+     바디코드 공개 + 감정유형 + 오프닝 카피 + 10축
+═══════════════════════════════════════════════ -->
+<div class="chapter" data-ch="1" id="ch1">
+  <div class="ch-topbar">
+    <span class="ch-label-sm">Chapter 01 · 당신의 바디코드</span>
+    <span class="ch-pagenum">1 / 8</span>
+  </div>
+
+  <div class="chapter-content">
+
+    <!-- 감정유형 배지 -->
+    <div id="ch1EmotionBadge" style="margin-bottom:16px"></div>
+
+    <!-- 오프닝 카피 -->
+    <div id="ch1OpeningCopy" style="margin-bottom:20px"></div>
+
+    <!-- BC 히어로 박스 -->
+    <div class="bc-hero-box">
+      <div class="bch-kicker">Your Body Code</div>
+      <div id="ch1BcCode" class="bch-code">BC-01</div>
+      <div id="ch1BcName" class="bch-name">바디코드 분석 완료</div>
+      <div id="ch1BcDesc" class="bch-desc">당신의 몸에 맞는 정밀 처방이 준비되었습니다.</div>
+    </div>
+
+    <!-- 공감 체크리스트 -->
+    <div class="sec-kicker" style="margin-top:6px">혹시 이런 경험 있으신가요?</div>
+    <div id="ch1Checklist" class="check-list">
+      <div class="check-item">지금까지의 방법이 효과가 없었던 건 의지력 때문이 아닙니다</div>
+      <div class="check-item">당신의 BC 코드가 이유를 과학적으로 설명합니다</div>
+      <div class="check-item">이 처방은 당신의 몸에만 맞게 설계된 것입니다</div>
+      <div class="check-item">12주가 지나면 몸의 작동 방식이 근본적으로 바뀝니다</div>
+    </div>
+
+    <!-- 핵심 인사이트 -->
+    <div class="insight-dark" style="margin-top:16px">
+      <div class="id-kicker">핵심 인사이트</div>
+      <div class="id-text" id="ch1Insight">
+        이것은 <span class="id-accent">의지력의 문제가 아닙니다.</span><br>
+        당신의 몸에는 고유한 대사 회로가 있고, 그 회로를 이해해야만 진짜 변화가 시작됩니다.<br>
+        <span class="id-accent">회로를 바꾸면 참지 않아도 됩니다.</span>
+      </div>
+    </div>
+
+    <!-- 10축 분석 바 -->
+    <div class="sec-divider"></div>
+    <div class="sec-kicker">10축 원인 분석</div>
+    <div style="font-size:12px;color:#64748B;margin-bottom:14px;line-height:1.75">
+      설문 응답에서 도출한 <strong style="color:#0B2545">10개 핵심 축</strong>별 신호 강도입니다.<br>
+      수치가 높을수록 해당 원인이 체중에 미치는 영향이 큽니다.
+    </div>
+    <div id="ch1AxisBars" style="display:flex;flex-direction:column;gap:8px"></div>
+
+  </div>
+
+  <div class="chapter-nav">
+    <button class="btn-next" onclick="nextChapter()">
+      왜 지금까지 안됐는지 과학적으로 알게 됩니다 →
+      <small>당신을 탓하지 않는 진짜 이유를 공개합니다</small>
+    </button>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════
+     CH2 · 실패의 과학 — 당신 탓이 아닌 이유
+     메커니즘 스토리 + 논문 팩트 + 다크 인사이트
+═══════════════════════════════════════════════ -->
+<div class="chapter" data-ch="2" id="ch2">
+  <div class="ch-topbar">
+    <span class="ch-label-sm">Chapter 02 · 실패의 과학</span>
+    <span class="ch-pagenum">2 / 8</span>
+  </div>
+
+  <div class="chapter-content">
+
+    <div class="sec-kicker">왜 지금까지 안됐는가</div>
+    <div class="sec-heading" id="ch2Heading">혈당 롤러코스터가 만드는 무한 실패 루프</div>
+    <div class="sec-sub" id="ch2Sub">인슐린 저항성이 높아진 몸에서는 아무리 강한 의지도 이 사이클을 끊을 수 없습니다. 과학이 그것을 증명합니다.</div>
+
+    <!-- 4단계 메커니즘 플로우 -->
+    <div style="margin-bottom:20px">
+      <div style="display:flex;align-items:stretch;gap:0;margin-bottom:10px">
+        <div style="display:flex;flex-direction:column;align-items:center;width:34px;flex-shrink:0">
+          <div style="width:30px;height:30px;border-radius:50%;background:var(--bc-accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#fff;flex-shrink:0">1</div>
+          <div style="width:2px;flex:1;background:linear-gradient(180deg,var(--bc-accent),var(--bc-mid));margin:3px 0"></div>
+        </div>
+        <div style="flex:1;padding:4px 0 16px 14px">
+          <div style="font-size:12.5px;font-weight:800;color:#0B2545;margin-bottom:3px">🍚 정제 탄수화물 섭취</div>
+          <div style="font-size:11.5px;color:#64748B;line-height:1.7">혈당이 급격히 오르고 인슐린이 과다 분비됩니다. 인슐린은 지방 저장 호르몬이기도 합니다.</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:stretch;gap:0;margin-bottom:10px">
+        <div style="display:flex;flex-direction:column;align-items:center;width:34px;flex-shrink:0">
+          <div style="width:30px;height:30px;border-radius:50%;background:var(--bc-accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#fff;flex-shrink:0">2</div>
+          <div style="width:2px;flex:1;background:linear-gradient(180deg,var(--bc-accent),var(--bc-mid));margin:3px 0"></div>
+        </div>
+        <div style="flex:1;padding:4px 0 16px 14px">
+          <div style="font-size:12.5px;font-weight:800;color:#0B2545;margin-bottom:3px">📉 혈당 급락</div>
+          <div style="font-size:11.5px;color:#64748B;line-height:1.7">2~3시간 후 혈당이 급격히 떨어집니다. 뇌는 이를 생존 위기로 인식합니다.</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:stretch;gap:0;margin-bottom:10px">
+        <div style="display:flex;flex-direction:column;align-items:center;width:34px;flex-shrink:0">
+          <div style="width:30px;height:30px;border-radius:50%;background:var(--bc-accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#fff;flex-shrink:0">3</div>
+          <div style="width:2px;flex:1;background:linear-gradient(180deg,var(--bc-accent),var(--bc-mid));margin:3px 0"></div>
+        </div>
+        <div style="flex:1;padding:4px 0 16px 14px">
+          <div style="font-size:12.5px;font-weight:800;color:#0B2545;margin-bottom:3px">🍫 강렬한 당 갈망</div>
+          <div style="font-size:11.5px;color:#64748B;line-height:1.7">그렐린(식욕 호르몬)이 폭발적으로 분비됩니다. 이 신호는 이성적 판단을 압도합니다.</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:stretch;gap:0">
+        <div style="display:flex;flex-direction:column;align-items:center;width:34px;flex-shrink:0">
+          <div style="width:30px;height:30px;border-radius:50%;background:#94A3B8;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#fff;flex-shrink:0">4</div>
+        </div>
+        <div style="flex:1;padding:4px 0 0 14px">
+          <div style="font-size:12.5px;font-weight:800;color:#64748B;margin-bottom:3px">😔 자책과 포기</div>
+          <div style="font-size:11.5px;color:#94A3B8;line-height:1.7">폭식 후 자책이 스트레스 호르몬(코르티솔)을 높이고, 이것이 다시 인슐린 저항성을 악화시킵니다.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 논문 팩트 박스 -->
+    <div class="fact-box">
+      <div class="fact-kicker">📊 논문 팩트</div>
+      <div class="fact-text">혈당 변동폭이 큰 사람은 그렇지 않은 사람보다 <strong>하루 평균 304kcal를 더 섭취</strong>합니다. 이는 의지력의 차이가 아니라 순전히 생리적 메커니즘입니다.</div>
+      <div class="fact-cite">— Chandler-Laney et al. (2014). Return of hunger following a relatively high carbohydrate breakfast. Obesity.</div>
+    </div>
+
+    <!-- 다크 인사이트 -->
+    <div class="insight-dark">
+      <div class="id-kicker">진짜 이유</div>
+      <div class="id-text">
+        당신이 다이어트에 실패한 건 <span class="id-accent">의지가 약해서가 아닙니다.</span><br>
+        틀린 방법으로, 틀린 타이밍에, 틀린 음식을 먹었기 때문입니다.<br>
+        <span class="id-accent">몸의 회로를 이해하면 같은 실수는 반복되지 않습니다.</span>
+      </div>
+    </div>
+
+    <!-- 3가지 잘못된 방법 -->
+    <div class="sec-divider"></div>
+    <div class="sec-kicker">지금까지 잘못 알려진 방법들</div>
+    <div class="card-grid-3" style="margin-top:10px">
+      <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:14px;padding:16px;text-align:center">
+        <div style="font-size:24px;margin-bottom:8px">🚫</div>
+        <div style="font-size:12px;font-weight:800;color:#991B1B;margin-bottom:6px;line-height:1.4">"덜 먹으면 된다"</div>
+        <div style="font-size:10.5px;color:#B91C1C;line-height:1.65">극단적 칼로리 제한은 기초대사율을 낮추고 오히려 체지방 비율을 높입니다</div>
+      </div>
+      <div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:14px;padding:16px;text-align:center">
+        <div style="font-size:24px;margin-bottom:8px">🚫</div>
+        <div style="font-size:12px;font-weight:800;color:#92400E;margin-bottom:6px;line-height:1.4">"운동 많이 하면 된다"</div>
+        <div style="font-size:10.5px;color:#B45309;line-height:1.65">인슐린 저항성이 해결되지 않으면 운동으로 소모한 열량이 식욕으로 고스란히 돌아옵니다</div>
+      </div>
+      <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:14px;padding:16px;text-align:center">
+        <div style="font-size:24px;margin-bottom:8px">🚫</div>
+        <div style="font-size:12px;font-weight:800;color:#166534;margin-bottom:6px;line-height:1.4">"의지력으로 참으면 된다"</div>
+        <div style="font-size:10.5px;color:#15803D;line-height:1.65">호르몬 신호 앞에서 인간의 의지력은 수십 분을 버티기 어렵습니다. 이건 과학적 사실입니다</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="chapter-nav">
+    <button class="btn-prev" onclick="prevChapter()">←</button>
+    <button class="btn-next" onclick="nextChapter()">
+      당신의 체질·기질·성향을 처음으로 알게 됩니다 →
+      <small>오행 기반 + 현대 과학이 교차 검증한 당신의 유형</small>
+    </button>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════
+     CH3 · 체질·기질·성향
+     오행카드 + 현대과학팩트 + 기질특성 + 대사성향 + 스토리
+═══════════════════════════════════════════════ -->
+<div class="chapter" data-ch="3" id="ch3">
+  <div class="ch-topbar">
+    <span class="ch-label-sm">Chapter 03 · 체질·기질·성향</span>
+    <span class="ch-pagenum">3 / 8</span>
+  </div>
+
+  <div class="chapter-content">
+
+    <!-- 오행 히어로 카드 -->
+    <div class="ohaeng-hero">
+      <div class="ohaeng-kicker">오행 기질 유형 · Five Elements Type</div>
+      <div id="ch3OhaengName" class="ohaeng-name">土 토(土)</div>
+      <div id="ch3OhaengDesc" class="ohaeng-desc">비·위 계열 — 소화·흡수·발효 과정이 핵심입니다.</div>
+    </div>
+
+    <!-- 현대 과학 팩트 -->
+    <div class="fact-box" style="margin-top:14px">
+      <div class="fact-kicker">🔬 현대 과학 교차 검증</div>
+      <div class="fact-text" id="ch3ScienceFact">오행 기질 분류는 현대 대사의학의 체형 분류 체계와 교차 검증됩니다.</div>
+      <div class="fact-cite" id="ch3ScienceCite"></div>
+    </div>
+
+    <!-- BC 기질 특성 카드 3종 -->
+    <div class="sec-kicker" style="margin-top:16px">당신의 기질 특성</div>
+    <div id="ch3TraitCards" style="display:flex;flex-direction:column;gap:8px;margin:10px 0"></div>
+
+    <!-- 대사 성향 프로파일 -->
+    <div class="sec-divider"></div>
+    <div class="sec-kicker">대사 성향 프로파일</div>
+    <div id="ch3MetaProfile" class="card-grid-4" style="margin:10px 0"></div>
+
+    <!-- 스토리 블록 -->
+    <div class="story-block" style="margin-top:14px">
+      <p>수천 년간 동양 의학이 발견한 오행 체질 분류는 단순한 철학이 아닙니다. 현대 연구들은 특정 장기 축의 기능적 특성이 개인의 대사 패턴, 식욕 반응, 스트레스 적응 방식과 강하게 연관됨을 보여줍니다.</p>
+      <p><span class="story-em">당신의 체질은 타고난 설계입니다.</span> 이 설계를 거스르는 방법은 언제나 단기 효과로 끝납니다. 이 설계를 <span class="story-em">따르는 방법만이 지속됩니다.</span></p>
+    </div>
+
+  </div>
+
+  <div class="chapter-nav">
+    <button class="btn-prev" onclick="prevChapter()">←</button>
+    <button class="btn-next" onclick="nextChapter()">
+      11축 정밀 처방을 확인합니다 →
+      <small>논문 기반 당신만의 처방 축이 공개됩니다</small>
+    </button>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════
+     CH4 · 11축 정밀 처방
+     최우선축 하이라이트 + 11축 카드 목록 + 논문 팩트
+═══════════════════════════════════════════════ -->
+<div class="chapter" data-ch="4" id="ch4">
+  <div class="ch-topbar">
+    <span class="ch-label-sm">Chapter 04 · 11축 정밀 처방</span>
+    <span class="ch-pagenum">4 / 8</span>
+  </div>
+
+  <div class="chapter-content">
+
+    <div class="sec-kicker">당신에게 가장 중요한 축</div>
+    <div class="sec-heading">11개 원인축 중 당신의 최우선 처방</div>
+    <div class="sec-sub">아래는 설문 결과와 BC 코드를 교차 분석하여 도출한 처방 우선순위입니다.<br>빨간색 표시된 HIGH 축이 가장 먼저 개입해야 할 영역입니다.</div>
+
+    <!-- 최우선축 하이라이트 -->
+    <div id="ch4TopAxesBox" style="
+      background:linear-gradient(135deg,var(--bc-main),rgba(11,37,69,.85));
+      border-radius:16px;padding:20px 22px;margin-bottom:18px;color:#fff;
+    ">
+      <div style="font-size:9px;font-weight:800;color:var(--bc-accent);letter-spacing:.22em;text-transform:uppercase;margin-bottom:12px">🎯 최우선 처방 축</div>
+      <div id="ch4TopAxesText" style="font-size:14px;font-weight:700;line-height:1.8;color:rgba(255,255,255,.92)">분석 중...</div>
+    </div>
+
+    <!-- 11축 카드 그리드 -->
+    <div id="ch4AxisCards" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px"></div>
+
+    <!-- 논문 팩트 박스 -->
+    <div class="fact-box">
+      <div class="fact-kicker">📊 다축 개입의 과학적 근거</div>
+      <div class="fact-text">단일 개입(식이 또는 운동)보다 <strong>다축 동시 접근</strong>이 체중 감량 성공률을 <strong>2.3배</strong> 높입니다. 개인화된 다축 처방이 핵심입니다.</div>
+      <div class="fact-cite">— Wadden et al. (2020). Lifestyle modification for obesity. NEJM.</div>
+    </div>
+
+  </div>
+
+  <div class="chapter-nav">
+    <button class="btn-prev" onclick="prevChapter()">←</button>
+    <button class="btn-next" onclick="nextChapter()">
+      12주 로드맵을 확인합니다 →
+      <small>주차별 클릭트리로 실행 계획을 세웁니다</small>
+    </button>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════
+     CH5 · 12주 로드맵 + 주차별 클릭트리
+═══════════════════════════════════════════════ -->
+<div class="chapter" data-ch="5" id="ch5">
+  <div class="ch-topbar">
+    <span class="ch-label-sm">Chapter 05 · 12주 로드맵</span>
+    <span class="ch-pagenum">5 / 8</span>
+  </div>
+
+  <div class="chapter-content">
+
+    <div class="sec-kicker">12주 변화 로드맵</div>
+    <div class="sec-heading">3단계로 몸의 회로를 재설계합니다</div>
+    <div class="sec-sub">처음 4주는 기반 구축, 다음 4주는 시스템 강화, 마지막 4주는 완성과 유지입니다.</div>
+
+    <!-- 12주 타임라인 -->
+    <div class="timeline" style="margin-bottom:22px">
+      <div class="tl-item">
+        <div class="tl-dot">1</div>
+        <div class="tl-body">
+          <div class="tl-week">WEEK 1–4 · 기반 구축</div>
+          <div class="tl-title">인슐린·혈당 안정화 + 수면 최적화</div>
+          <div class="tl-desc">혈당 롤러코스터를 끊는 첫 4주. 식사 순서 교정과 수면 루틴 구축이 핵심입니다. 이 4주가 모든 것의 기반이 됩니다.</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot">2</div>
+        <div class="tl-body">
+          <div class="tl-week">WEEK 5–8 · 시스템 강화</div>
+          <div class="tl-title">장내 생태계 복원 + 대사 축 강화</div>
+          <div class="tl-desc">기반이 잡힌 몸에 발효 식품, 프리바이오틱스, 미토콘드리아 운동을 추가합니다. 에너지 레벨이 눈에 띄게 달라집니다.</div>
+        </div>
+      </div>
+      <div class="tl-item" style="padding-bottom:0">
+        <div class="tl-dot">3</div>
+        <div class="tl-body">
+          <div class="tl-week">WEEK 9–12 · 완성·유지</div>
+          <div class="tl-title">체성분 최적화 + 지속 습관 자동화</div>
+          <div class="tl-desc">체지방을 근육으로 교체하는 마지막 단계. 12주가 끝난 후에도 유지되는 습관 시스템을 만듭니다.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 주차별 클릭트리 -->
+    <div class="sec-divider"></div>
+    <div class="sec-kicker">주차별 처방 클릭트리</div>
+    <div class="wt-intro">
+      아래에서 주차 그룹을 클릭하면 해당 기간의 처방 축과 실행 카드가 펼쳐집니다.<br>
+      퀴즈에 답하고 체크인 버튼으로 실행을 기록하세요.
+    </div>
+    <div class="wt-wrap">
+      <div id="wtWeekGrid" class="wt-week-grid"></div>
+      <div id="wtPrescPanel"></div>
+    </div>
+
+  </div>
+
+  <div class="chapter-nav">
+    <button class="btn-prev" onclick="prevChapter()">←</button>
+    <button class="btn-next" onclick="nextChapter()">
+      식단·운동·영양제 처방을 확인합니다 →
+      <small>BC 코드 맞춤 3대 처방이 공개됩니다</small>
+    </button>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════
+     CH6 · 식단·운동·영양제 처방
+═══════════════════════════════════════════════ -->
+<div class="chapter" data-ch="6" id="ch6">
+  <div class="ch-topbar">
+    <span class="ch-label-sm">Chapter 06 · 식단·운동·영양제</span>
+    <span class="ch-pagenum">6 / 8</span>
+  </div>
+
+  <div class="chapter-content">
+
+    <!-- 식단 처방 -->
+    <div class="sec-kicker">식단 처방</div>
+    <div class="sec-heading" style="font-size:18px">당신의 BC 코드에 맞는 음식 전략</div>
+    <div id="ch6DietCards" style="margin-bottom:18px"></div>
+
+    <!-- 운동 처방 -->
+    <div class="sec-divider"></div>
+    <div class="sec-kicker">운동 처방</div>
+    <div class="sec-heading" style="font-size:18px">효과적인 운동 순서와 강도</div>
+    <div id="ch6ExerciseCards" style="margin-bottom:18px"></div>
+
+    <!-- 영양제 처방 -->
+    <div class="sec-divider"></div>
+    <div class="sec-kicker">영양제 처방</div>
+    <div class="sec-heading" style="font-size:18px">근거 기반 보충제 우선순위</div>
+    <div id="ch6SupplCards" style="margin-bottom:10px"></div>
+
+    <div class="fact-box">
+      <div class="fact-kicker">⚠️ 주의 사항</div>
+      <div class="fact-text">영양제는 식단과 운동의 보조 수단입니다. 기저 질환이 있거나 약물을 복용 중이라면 반드시 의사·약사와 상담 후 섭취하세요.</div>
+    </div>
+
+  </div>
+
+  <div class="chapter-nav">
+    <button class="btn-prev" onclick="prevChapter()">←</button>
+    <button class="btn-next" onclick="nextChapter()">
+      오행 계절 처방을 확인합니다 →
+      <small>지금 이 계절에 맞는 집중 처방</small>
+    </button>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════
+     CH7 · 오행 계절 처방
+═══════════════════════════════════════════════ -->
+<div class="chapter" data-ch="7" id="ch7">
+  <div class="ch-topbar">
+    <span class="ch-label-sm">Chapter 07 · 오행 계절 처방</span>
+    <span class="ch-pagenum">7 / 8</span>
+  </div>
+
+  <div class="chapter-content">
+
+    <div class="sec-kicker">오행 계절 이론</div>
+    <div class="sec-heading">계절은 당신의 몸에 다르게 작용합니다</div>
+    <div class="sec-sub">오행 의학은 5계절(봄·여름·장하·가을·겨울)이 각기 다른 장기 축과 공명한다고 봅니다. 현대 시간생물학(Chronobiology)도 계절에 따른 호르몬·대사 변화를 확인합니다.</div>
+
+    <!-- 계절 카드 그리드 -->
+    <div id="ch7SeasonCards" class="card-grid-3" style="margin:12px 0;gap:8px"></div>
+
+    <!-- 현재 계절 집중 처방 -->
+    <div class="insight-dark" style="margin-top:16px">
+      <div class="id-kicker">지금 이 계절의 집중 처방</div>
+      <div class="id-text" id="ch7CurrentSeasonText">현재 계절 분석 중...</div>
+    </div>
+
+    <!-- 논문 팩트 -->
+    <div class="fact-box" style="margin-top:14px">
+      <div class="fact-kicker">🔬 시간생물학 근거</div>
+      <div class="fact-text">계절에 따라 인슐린 감수성, 렙틴 수치, 갑상선 호르몬 활성도가 유의미하게 변합니다. 계절을 무시한 다이어트는 몸의 리듬을 거스르는 것입니다.</div>
+      <div class="fact-cite">— Maury et al. (2010). Circadian rhythms and metabolic syndrome. Circ. Res.</div>
+    </div>
+
+    <!-- 마인드셋 카드 -->
+    <div class="sec-divider"></div>
+    <div class="sec-kicker">변화를 위한 마인드셋</div>
+    <div id="ch7MindsetCards" style="display:flex;flex-direction:column;gap:8px;margin-top:10px"></div>
+
+  </div>
+
+  <div class="chapter-nav">
+    <button class="btn-prev" onclick="prevChapter()">←</button>
+    <button class="btn-next" onclick="nextChapter()">
+      컨설턴트에게 첫 체크인을 합니다 →
+      <small>당신의 다짐을 기록하는 마지막 챕터</small>
+    </button>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════
+     CH8 · 컨설턴트에게
+     요약 + 컨설턴트 노트 + 체크인 + 선언문
+═══════════════════════════════════════════════ -->
+<div class="chapter" data-ch="8" id="ch8">
+  <div class="ch-topbar">
+    <span class="ch-label-sm">Chapter 08 · 컨설턴트에게</span>
+    <span class="ch-pagenum">8 / 8</span>
+  </div>
+
+  <div class="chapter-content">
+
+    <!-- 요약 그리드 -->
+    <div class="sec-kicker">진단 요약</div>
+    <div id="ch8SummaryGrid" class="card-grid-4" style="margin:10px 0 18px"></div>
+
+    <!-- 컨설턴트 노트 -->
+    <div style="border:1px solid #E9EEF5;border-radius:16px;padding:22px 24px;margin-bottom:18px;background:#FAFBFC">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <div style="width:38px;height:38px;border-radius:50%;background:var(--bc-main);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">👤</div>
+        <div>
+          <div id="ch8ConsultantName" style="font-size:13px;font-weight:800;color:#0B2545">SlimMind 컨설턴트</div>
+          <div style="font-size:10px;color:#94A3B8;letter-spacing:.08em">담당 컨설턴트 노트</div>
+        </div>
+      </div>
+      <div id="ch8ConsultantNote" style="font-size:13px;color:#334155;line-height:1.9;border-left:3px solid var(--bc-accent);padding-left:14px">
+        맞춤 처방이 준비되었습니다. 컨설턴트와 함께 첫 번째 주를 시작하세요.
+      </div>
+    </div>
+
+    <!-- 체크인 버튼 -->
+    <div id="ch8CheckinBtn" style="margin-bottom:14px">
+      <button onclick="doFirstCheckin()" style="
+        width:100%;padding:20px;border-radius:14px;border:none;cursor:pointer;
+        background:var(--bc-accent);color:#fff;font-size:14px;font-weight:800;
+        font-family:var(--font);letter-spacing:.04em;
+        display:flex;align-items:center;justify-content:center;gap:10px;
+        transition:all .25s;box-shadow:0 6px 20px rgba(0,0,0,.12);
+      " onmouseover="this.style.opacity='.88';this.style.transform='translateY(-2px)'"
+         onmouseout="this.style.opacity='1';this.style.transform='translateY(0)'">
+        <span style="font-size:18px">✅</span>
+        진단 리포트를 읽었습니다 — 첫 번째 체크인
+      </button>
+    </div>
+    <div id="ch8CheckinDone" style="display:none;text-align:center;padding:18px;background:#F0FDF4;border-radius:12px;border:1px solid #BBF7D0;margin-bottom:14px">
+      <div style="font-size:22px;margin-bottom:6px">🎉</div>
+      <div style="font-size:14px;font-weight:800;color:#166534">첫 번째 체크인 완료!</div>
+      <div style="font-size:11.5px;color:#15803D;margin-top:4px">컨설턴트에게 기록이 전달되었습니다.</div>
+    </div>
+
+    <!-- 선언문 -->
+    <div class="declaration-box">
+      <div class="decl-kicker">나의 다짐</div>
+      <div id="ch8DeclBcCode" class="decl-bc">BC-01</div>
+      <div id="ch8DeclName" class="decl-name">바디코드 분석 완료</div>
+      <div class="decl-text">
+        나는 오늘부터 의지력이 아닌 <strong style="color:#FFD764">과학과 데이터</strong>로 내 몸을 이해합니다.<br>
+        내 BC 코드에 맞는 방법으로, 12주 안에 진짜 변화를 만들겠습니다.<br>
+        <span style="opacity:.65;font-size:11.5px;display:block;margin-top:10px">SlimMind 바디코드 정밀 진단 리포트</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="chapter-nav">
+    <button class="btn-prev" onclick="prevChapter()">←</button>
+    <button class="btn-next" onclick="printAll()" style="background:linear-gradient(135deg,var(--bc-accent),var(--bc-main))">
+      PDF로 저장하기 🖨
+      <small>전체 리포트를 저장합니다</small>
+    </button>
+  </div>
+</div>
+
+
+</div><!-- /a4-wrap -->
+
+<script>
+/* ══════════════════════════════════════════════════════
+   1. BC_DB — 10코드 전체 정의
+══════════════════════════════════════════════════════ */
+const BC_DB = {
+  'BC-01': {
+    name:'인슐린저항·혈당형',short:'혈당 조절',
+    ohaeng:'土 토(土)',
+    ohaengDesc:'비(脾)·위(胃) 계열 — 소화·흡수·혈당 조절이 핵심입니다. 탄수화물 대사 능력이 낮고 혈당 변동폭이 큰 것이 특징입니다.',
+    scienceFact:'인슐린 저항성이 있는 사람은 같은 칼로리를 먹어도 지방 저장률이 40% 이상 높습니다. 혈당 안정화가 모든 처방의 1번입니다.',
+    scienceCite:'— DeFronzo RA (2010). Insulin resistance, lipotoxicity, type 2 diabetes and atherosclerosis. Diabetologia.',
+    traits:['식후 1~2시간 뒤 강한 식욕·피로감이 옵니다','단 음식·밀가루 앞에서 유독 자제가 어렵습니다','다이어트 중 폭식 에피소드가 반복됩니다'],
+    metaProfile:[{icon:'🩸',label:'인슐린 감수성',val:'낮음'},{icon:'📈',label:'혈당 변동폭',val:'큼'},{icon:'🍫',label:'당·탄수 갈망',val:'강함'},{icon:'😴',label:'식후 졸음',val:'자주'}],
+    topAxes:['A1','A4','A11'],
+    consultantNote:'BC-01은 혈당 안정화가 모든 처방의 기반입니다. 식사 순서 교정(채소→단백질→탄수화물)만으로 2주 내 식후 에너지가 달라집니다. 공복혈당 수치 확인을 요청드립니다.',
+    diet:[{icon:'🥗',cat:'1순위 핵심',title:'식사 순서 교정',desc:'채소 → 단백질 → 탄수화물 순서. 이것만으로 혈당 스파이크가 73% 감소합니다. (Imai 2013)'},{icon:'⏱️',cat:'2순위',title:'16:8 간헐적 단식',desc:'공복 인슐린을 낮추는 가장 강력한 도구. 공복 14~16시간 목표.'},{icon:'🚫',cat:'회피',title:'정제 탄수화물 차단',desc:'흰 쌀밥·밀가루·설탕이 핵심 트리거. 현미·귀리·고구마로 교체하세요.'}],
+    exercise:[{icon:'🏋️',cat:'1순위',title:'대근육 근력 운동 주 3회',desc:'근육이 포도당의 최대 저장소입니다. 스쿼트·데드리프트가 인슐린 감수성을 가장 빠르게 높입니다.'},{icon:'🚶',cat:'2순위',title:'식후 걷기 매일 15분',desc:'혈당 스파이크를 즉각 차단합니다. 식후 30분 이내가 골든타임입니다.'}],
+    suppl:[{icon:'🌿',cat:'1순위',title:'베르베린 500mg×2',desc:'메트포르민과 유사한 혈당 조절 효과. 인슐린 감수성 개선의 황금 영양제.'},{icon:'💊',cat:'2순위',title:'크롬 피콜리네이트 200mcg',desc:'인슐린 수용체 신호전달을 강화합니다.'},{icon:'🐟',cat:'3순위',title:'오메가-3 2g',desc:'염증성 인슐린 저항성 개선. DHA/EPA 비율이 높은 제품으로 선택하세요.'}]
+  },
+  'BC-02': {
+    name:'간 기능 저하형',short:'간·해독',
+    ohaeng:'木 목(木)',
+    ohaengDesc:'간(肝)·담(膽) 계열 — 해독과 지질 대사가 핵심입니다. 과음·과식·스트레스가 간에 직접 부담을 주며, 지방간→내장지방 패턴이 전형적입니다.',
+    scienceFact:'비알코올성 지방간(NAFLD) 환자의 80%에서 인슐린 저항성이 동반됩니다. 간 지방 침착이 전신 대사를 악화시키는 핵심 경로입니다.',
+    scienceCite:'— Fabbrini et al. (2010). Obesity and nonalcoholic fatty liver disease. Hepatology.',
+    traits:['피로감이 만성적이고 오전에 특히 심합니다','기름진 음식 후 소화 불량이 잦습니다','술 한 잔에도 다음날 컨디션이 크게 망가집니다'],
+    metaProfile:[{icon:'🔥',label:'간 해독 부담',val:'높음'},{icon:'💧',label:'지질 대사',val:'저하'},{icon:'😴',label:'만성 피로도',val:'높음'},{icon:'🫁',label:'항산화 상태',val:'부족'}],
+    topAxes:['A2','A3','A5'],
+    consultantNote:'BC-02는 간 부담 경감이 최우선입니다. 음주·가공식품을 줄이는 것만으로 4주 내 에너지 레벨이 달라집니다. 간 기능 수치(ALT/AST) 확인을 권장합니다.',
+    diet:[{icon:'🥦',cat:'핵심',title:'십자화과 채소 매일',desc:'브로콜리·케일·양배추. 글루타치온 합성을 촉진하여 간 해독 경로를 강화합니다.'},{icon:'🚫',cat:'회피',title:'알코올·가공식품 차단',desc:'4주간 완전 차단이 이상적. 간 세포 재생에 필요한 최소 시간입니다.'},{icon:'🍋',cat:'보조',title:'레몬워터 공복 섭취',desc:'구연산이 담즙 분비를 자극하고 간 해독 1상 반응을 지원합니다.'}],
+    exercise:[{icon:'🚴',cat:'1순위',title:'유산소 중강도 주 4회',desc:'빠른 걷기·자전거 30분. 간 지방 연소에 유산소가 근력보다 먼저 효과적입니다.'},{icon:'🧘',cat:'2순위',title:'요가·스트레칭',desc:'코르티솔 감소 → 간 부담 경감. 복식호흡과 병행하면 효과가 배가됩니다.'}],
+    suppl:[{icon:'🌿',cat:'1순위',title:'밀크시슬(실리마린) 200mg',desc:'간세포 보호의 황금 표준 영양제. 실리마린 80% 이상 제품으로 선택하세요.'},{icon:'💊',cat:'2순위',title:'NAC(N-아세틸시스테인) 600mg',desc:'글루타치온 전구체. 간 해독 2상을 직접 지원합니다.'},{icon:'🍄',cat:'3순위',title:'알파 리포산 300mg',desc:'수용성·지용성 겸용 항산화제. 간과 미토콘드리아 동시 보호.'}]
+  },
+  'BC-03': {
+    name:'수분·림프 순환형',short:'수분 순환',
+    ohaeng:'水 수(水)',
+    ohaengDesc:'신(腎)·방광 계열 — 수분 대사와 호르몬 조절이 핵심입니다. 부종이 잦고 하체에 지방이 쌓이는 경향이 있습니다.',
+    scienceFact:'림프 순환 저하는 세포 간 공간의 염증성 단백질 축적으로 이어집니다. 이는 지방세포 비대와 지방조직 섬유화를 촉진합니다.',
+    scienceCite:'— Rutkowski et al. (2012). Lymphangiogenesis and adipogenesis. Genes & Development.',
+    traits:['아침에 얼굴·발이 붓고 오후에는 가라앉습니다','하체(허벅지·종아리)에 지방이 집중됩니다','차가운 음식이나 날씨에 몸이 쉽게 굳습니다'],
+    metaProfile:[{icon:'💧',label:'수분 보유 경향',val:'높음'},{icon:'🩸',label:'순환 상태',val:'저하'},{icon:'❄️',label:'냉증 경향',val:'있음'},{icon:'🦵',label:'하체 부종',val:'자주'}],
+    topAxes:['A6','A3','A8'],
+    consultantNote:'BC-03는 수분·나트륨 밸런스가 핵심입니다. 하루 2L 수분 섭취와 저나트륨 식단만으로 2주 내 부종이 눈에 띄게 줄어듭니다.',
+    diet:[{icon:'🥒',cat:'핵심',title:'칼륨 함량 높은 채소',desc:'오이·아보카도·시금치. 나트륨-칼륨 균형을 맞춰 세포내 수분 보유를 줄입니다.'},{icon:'🚫',cat:'회피',title:'나트륨 과다 음식 차단',desc:'국물류·가공육·짠 간식. 하루 2,000mg 이하 목표.'},{icon:'🍵',cat:'보조',title:'히비스커스·댄들라이온 차',desc:'천연 이뇨 작용. 신장 기능을 지원하고 림프 흐름을 개선합니다.'}],
+    exercise:[{icon:'🚶',cat:'1순위',title:'걷기·수영',desc:'림프 순환은 근육 수축으로만 펌핑됩니다. 하루 30분 걷기가 림프 펌프의 핵심입니다.'},{icon:'🧘',cat:'2순위',title:'복식호흡·요가',desc:'흉관 림프를 직접 자극합니다. 심호흡 10회×3세트를 매일 시행하세요.'}],
+    suppl:[{icon:'💊',cat:'1순위',title:'마그네슘 말산염 400mg',desc:'수분 균형과 근육 이완. 저녁 복용으로 수면 중 부종 해소를 돕습니다.'},{icon:'🌿',cat:'2순위',title:'댄들라이온 추출물',desc:'천연 이뇨제. 칼륨 손실 없이 여분의 수분을 배출합니다.'},{icon:'🍇',cat:'3순위',title:'포도씨 추출물 100mg',desc:'혈관벽 강화. 모세혈관 투과성을 낮춰 조직 부종을 줄입니다.'}]
+  },
+  'BC-04': {
+    name:'스트레스·코르티솔형',short:'스트레스 축',
+    ohaeng:'火 화(火)',
+    ohaengDesc:'심(心)·소장 계열 — 감정·스트레스 반응이 예민하고 빠릅니다. 코르티솔 과잉이 복부지방 축적의 주 경로입니다.',
+    scienceFact:'만성 스트레스 상태에서 코르티솔은 복부지방세포의 분화를 직접 촉진합니다. 스트레스 관리 없이는 어떤 식이 요법도 한계가 있습니다.',
+    scienceCite:'— Bjorntorp P (2001). Do stress reactions cause abdominal obesity? Obesity Reviews.',
+    traits:['스트레스를 받으면 단 것이 당깁니다','밤에 폭식 에피소드가 잦습니다','잠들기 어렵고 새벽에 깨는 경우가 많습니다'],
+    metaProfile:[{icon:'😤',label:'스트레스 반응성',val:'높음'},{icon:'🌙',label:'수면 질',val:'낮음'},{icon:'🍫',label:'감정 섭식',val:'자주'},{icon:'💉',label:'코르티솔 패턴',val:'불규칙'}],
+    topAxes:['A4','A7','A9'],
+    consultantNote:'BC-04는 수면 개선이 첫 번째 처방입니다. 수면이 6시간 이하일 때 체중 감량 시도는 역효과를 냅니다. 수면 일기 2주 기록을 요청드립니다.',
+    diet:[{icon:'🍌',cat:'핵심',title:'트립토판 함량 높은 저녁 식사',desc:'바나나·닭가슴살·달걀. 세로토닌→멜라토닌 경로를 지원하여 수면과 야간 폭식을 동시에 개선합니다.'},{icon:'🚫',cat:'회피',title:'카페인 오후 2시 이후 차단',desc:'반감기 6시간. 오후 2시 이후 카페인은 수면 입면을 방해합니다.'},{icon:'🍵',cat:'보조',title:'L-테아닌 함유 녹차',desc:'알파파 유도로 긴장을 낮추고 코르티솔 반응성을 줄입니다.'}],
+    exercise:[{icon:'🧘',cat:'1순위',title:'요가·명상 매일 15분',desc:'코르티솔 수치를 가장 빠르게 낮추는 개입입니다. 취침 전 루틴화가 핵심입니다.'},{icon:'🏃',cat:'2순위',title:'가벼운 조깅 주 3회',desc:'엔도르핀·BDNF 분비로 기분과 수면 질을 동시에 개선합니다. 단, 저녁 운동은 피하세요.'}],
+    suppl:[{icon:'🌿',cat:'1순위',title:'아슈와간다 300mg',desc:'코르티솔을 직접 낮추는 어댑토젠. 8주 임상에서 스트레스 지수 27% 감소.'},{icon:'💊',cat:'2순위',title:'L-테아닌 200mg',desc:'카페인과 병용 시 집중력+차분함. 단독 복용 시 수면 품질을 향상시킵니다.'},{icon:'🌙',cat:'3순위',title:'마그네슘 글리시네이트 300mg',desc:'HPA 축 안정화. 수면 초반 코르티솔 스파이크를 완화합니다.'}]
+  },
+  'BC-05': {
+    name:'갑상선·대사 저하형',short:'갑상선 축',
+    ohaeng:'金 금(金)',
+    ohaengDesc:'폐(肺)·대장 계열 — 산소·에너지 전환 효율이 낮습니다. 기초대사율이 낮고 같은 칼로리에도 체중이 잘 빠지지 않습니다.',
+    scienceFact:'T3 수치가 10% 낮아질 때마다 기초대사율이 5~7% 감소합니다. 갑상선 기능 저하는 지방 산화와 체온 조절 모두를 저하시킵니다.',
+    scienceCite:'— Mullur et al. (2014). Thyroid hormone regulation of metabolism. Physiol. Rev.',
+    traits:['항상 추위를 많이 타고 손발이 차갑습니다','조금만 먹어도 체중이 늘어나는 경험을 합니다','무기력하고 두뇌 회전이 느려지는 느낌이 듭니다'],
+    metaProfile:[{icon:'🔥',label:'기초대사율',val:'낮음'},{icon:'❄️',label:'냉증',val:'강함'},{icon:'⚡',label:'에너지 생성',val:'저하'},{icon:'🧠',label:'인지·집중',val:'저하 경향'}],
+    topAxes:['A5','A10','A1'],
+    consultantNote:'BC-05는 갑상선 기능 확인이 최우선입니다. TSH·fT3·fT4 수치를 확인하고 셀레늄·아이오딘 영양 상태를 파악해 주세요.',
+    diet:[{icon:'🥚',cat:'핵심',title:'셀레늄·아이오딘 식품 우선',desc:'달걀·해조류·브라질넛. 갑상선 호르몬 합성의 직접 원료입니다.'},{icon:'🚫',cat:'주의',title:'십자화과 생채소 과잉 주의',desc:'브로콜리·케일 생식은 갑상선 기능 저하형에게 역효과. 반드시 익혀서 섭취하세요.'},{icon:'🍗',cat:'보조',title:'고단백 소식 패턴',desc:'기초대사율 유지를 위해 단백질이 우선입니다. 체중 1kg당 1.6g 목표.'}],
+    exercise:[{icon:'🏋️',cat:'1순위',title:'근력 운동 주 4회',desc:'근육량 증가가 기초대사율을 직접 높입니다. 갑상선 저하형에게는 유산소보다 근력이 먼저입니다.'},{icon:'🔥',cat:'2순위',title:'HIIT(고강도인터벌) 주 2회',desc:'미토콘드리아 생합성을 촉진하여 세포 수준의 대사율을 높입니다.'}],
+    suppl:[{icon:'🌿',cat:'1순위',title:'셀레늄 200mcg',desc:'T4→T3 전환 효소(디요오디나아제)의 필수 보조인자.'},{icon:'💊',cat:'2순위',title:'아이오딘 150mcg',desc:'갑상선 호르몬 합성 원료. 음식으로 충분하지 않을 경우 보충합니다.'},{icon:'🍄',cat:'3순위',title:'코엔자임Q10 100mg',desc:'미토콘드리아 에너지 생산 지원. 갑상선 저하로 저하된 세포 에너지를 보충합니다.'}]
+  },
+  'BC-06': {
+    name:'장내미생물 불균형형',short:'장내 생태계',
+    ohaeng:'土 토(土)',
+    ohaengDesc:'비(脾)·위(胃)·대장 계열 — 소화·흡수·발효 과정이 핵심입니다. 장내 생태계가 무너지면 염증, 기분, 면역, 체중 모두가 영향받습니다.',
+    scienceFact:'장내미생물 구성은 체중 조절 호르몬(GLP-1, PYY, 그렐린)을 직접 조절합니다. 비만인의 장내미생물 이식만으로 마른 쥐에서 비만이 유도됩니다.',
+    scienceCite:'— Turnbaugh et al. (2006). An obesity-associated gut microbiome. Nature.',
+    traits:['복부 팽만감이 잦고 방귀가 많습니다','기분이 불안정하고 장·뇌 연결이 느껴집니다','항생제 복용 후 체중이 급격히 늘었던 경험이 있습니다'],
+    metaProfile:[{icon:'🦠',label:'마이크로바이옴 다양성',val:'낮음'},{icon:'🔥',label:'장내 염증',val:'높음'},{icon:'💩',label:'변비/설사 패턴',val:'있음'},{icon:'😤',label:'腸腦 연결',val:'불안정'}],
+    topAxes:['A2','A3','A6'],
+    consultantNote:'BC-06은 장 환경 개선이 모든 것의 기반입니다. 발효식품 도입과 식이섬유 증가를 동시에 진행하되, 처음에는 소량부터 시작해 적응하도록 안내해 주세요.',
+    diet:[{icon:'🥛',cat:'핵심',title:'발효식품 매일 1회',desc:'김치·된장·요거트·케피어. 유익균 공급과 장 pH 조절.'},{icon:'🌾',cat:'핵심2',title:'식이섬유 30g 이상',desc:'프리바이오틱스 역할. 양파·마늘·귀리·콩류가 효과적입니다.'},{icon:'🚫',cat:'회피',title:'설탕·인공감미료 차단',desc:'Dysbiosis를 악화시키는 가장 강력한 요소입니다.'}],
+    exercise:[{icon:'🚶',cat:'1순위',title:'규칙적 걷기 주 5회',desc:'장 연동운동을 직접 자극합니다. 식후 15분 걷기가 특히 효과적입니다.'},{icon:'🧘',cat:'2순위',title:'복식호흡·명상',desc:'미주신경 활성화 → 장 기능 개선. 하루 10분 복식호흡.'}],
+    suppl:[{icon:'🦠',cat:'1순위',title:'프로바이오틱스 (다균주 50B CFU)',desc:'Lactobacillus + Bifidobacterium 복합. 냉장 보관 제품으로 선택하세요.'},{icon:'🌿',cat:'2순위',title:'L-글루타민 5g',desc:'장 점막 세포의 주요 연료. 장벽 완결성을 회복합니다.'},{icon:'🍵',cat:'3순위',title:'아연 15mg',desc:'장 점막 타이트정션 유지. 장 투과성(Leaky Gut) 개선.'}]
+  },
+  'BC-07': {
+    name:'혈액순환·심혈관형',short:'순환·심혈관',
+    ohaeng:'火 화(火)',
+    ohaengDesc:'심(心)·혈맥 계열 — 심장 펌프력과 혈관 탄성이 핵심입니다. 순환이 저하되면 말초 산소 공급이 줄고 운동 능력과 지방 연소가 동시에 떨어집니다.',
+    scienceFact:'최대산소섭취량(VO2max)이 10% 높을수록 복부지방 축적 위험이 22% 낮습니다. 심혈관 기능과 지방 대사는 불가분입니다.',
+    scienceCite:'— Kodama et al. (2009). Cardiorespiratory fitness as a quantitative predictor. JAMA.',
+    traits:['계단을 오르면 심장이 빨리 뛰고 숨이 차빠릅니다','얼굴이 빨개지거나 두근거림이 자주 있습니다','운동 후 회복이 느리고 다음날 피로가 남습니다'],
+    metaProfile:[{icon:'❤️',label:'심폐 기능',val:'개선 필요'},{icon:'🩸',label:'혈압 경향',val:'높은 편'},{icon:'🔥',label:'산소 활용 능력',val:'낮음'},{icon:'💪',label:'운동 회복력',val:'느림'}],
+    topAxes:['A7','A3','A10'],
+    consultantNote:'BC-07은 심폐 기능 기반부터 만들어야 합니다. 너무 강도 높은 운동은 오히려 역효과입니다. 중강도 유산소부터 8주간 기반을 다지는 것을 추천합니다.',
+    diet:[{icon:'🫐',cat:'핵심',title:'항산화 플라보노이드 식품',desc:'베리류·다크초콜릿·적포도주(소량). 혈관 내피 기능을 보호합니다.'},{icon:'🐟',cat:'핵심2',title:'오메가-3 지방산 식품',desc:'연어·고등어·참치. 중성지방 감소와 혈관 탄성 개선.'},{icon:'🚫',cat:'회피',title:'트랜스지방·포화지방 과잉 차단',desc:'혈관벽 염증의 직접 원인입니다.'}],
+    exercise:[{icon:'🚴',cat:'1순위',title:'중강도 유산소 주 5회',desc:'심박수 60~70% 강도 30~45분. VO2max를 점진적으로 올리는 가장 안전한 방법입니다.'},{icon:'🏋️',cat:'2순위',title:'근력 운동 주 2회',desc:'혈압 조절과 심장 부하 감소. 고혈압이 있다면 등척성 운동을 우선 피하세요.'}],
+    suppl:[{icon:'❤️',cat:'1순위',title:'코엔자임Q10 200mg',desc:'심근 세포 에너지 생산. 스타틴 복용자에게 특히 중요합니다.'},{icon:'🌿',cat:'2순위',title:'오메가-3 3g',desc:'중성지방 감소 효과. EPA 비율이 높은 제품이 심혈관에 특히 유효합니다.'},{icon:'🍇',cat:'3순위',title:'레스베라트롤 200mg',desc:'혈관 내피 NO 생성 촉진. 혈관 탄성과 혈압 개선.'}]
+  },
+  'BC-08': {
+    name:'호르몬 불균형형',short:'호르몬 균형',
+    ohaeng:'水 수(水)',
+    ohaengDesc:'신(腎)·부신 계열 — 성호르몬·부신 축이 핵심입니다. 에스트로겐 우세, 테스토스테론 저하, 부신 피로 등이 복합적으로 체중을 조절합니다.',
+    scienceFact:'에스트로겐-프로게스테론 불균형은 지방 분포 패턴을 직접 결정합니다. 에스트로겐 우세 상태에서는 허벅지·엉덩이·복부에 지방이 선택적으로 축적됩니다.',
+    scienceCite:'— Lizcano & Guzmán (2014). Estrogen Deficiency and the Origin of Obesity. ISRN Obesity.',
+    traits:['생리 전후로 체중이 2~3kg 이상 변동합니다','감정 기복이 심하고 단 것이 특히 당깁니다','중년 이후 체형이 급격히 바뀌었습니다'],
+    metaProfile:[{icon:'⚖️',label:'호르몬 균형',val:'불균형'},{icon:'🌙',label:'생리 주기',val:'불규칙'},{icon:'💊',label:'부신 기능',val:'피로'},{icon:'🔥',label:'지방 분포',val:'여성형/복합'}],
+    topAxes:['A8','A4','A9'],
+    consultantNote:'BC-08은 호르몬 주기를 이해하는 것이 먼저입니다. 생리 주기에 맞춰 운동 강도와 식단을 조정하는 "사이클 싱킹" 접근이 가장 효과적입니다.',
+    diet:[{icon:'🥦',cat:'핵심',title:'DIM 함유 십자화과 채소',desc:'브로콜리·케일. DIM이 에스트로겐 대사를 건강한 방향으로 유도합니다.'},{icon:'🌱',cat:'핵심2',title:'식물성 리그난·이소플라본',desc:'아마씨·콩류·석류. 에스트로겐 수용체 조절.'},{icon:'🚫',cat:'회피',title:'제노에스트로겐 노출 최소화',desc:'플라스틱 용기·향수·농약 잔류물. 환경 호르몬은 에스트로겐 과잉을 악화합니다.'}],
+    exercise:[{icon:'🧘',cat:'1순위',title:'사이클 싱킹 운동',desc:'생리 전반기: 유산소·HIIT. 생리 후반기: 스트레칭·요가. 호르몬 리듬에 맞춘 운동이 효과 2배입니다.'},{icon:'🏋️',cat:'2순위',title:'근력 운동 주 2~3회',desc:'테스토스테론 지원. 특히 하체 근력이 성호르몬 균형에 기여합니다.'}],
+    suppl:[{icon:'🌿',cat:'1순위',title:'DIM 200mg',desc:'에스트로겐 대사 조절의 황금 표준.'},{icon:'💊',cat:'2순위',title:'마그네슘 400mg',desc:'PMS 증상과 코르티솔 수치를 동시에 낮춥니다.'},{icon:'🍃',cat:'3순위',title:'비텍스(체이스트베리) 400mg',desc:'황체 기능 지원. 생리 전 증후군 완화에 임상적으로 검증된 허브입니다.'}]
+  },
+  'BC-09': {
+    name:'면역·염증 과민형',short:'면역·염증',
+    ohaeng:'金 금(金)',
+    ohaengDesc:'폐(肺)·피부·면역 계열 — 알레르기, 자가면역, 만성 염증이 체중 조절을 방해합니다. 염증은 지방세포를 키우고, 지방세포는 다시 염증을 키웁니다.',
+    scienceFact:'만성 저등급 염증(Low-grade chronic inflammation)은 렙틴 저항성을 유발합니다. 뇌가 포만 신호를 읽지 못하면 과식이 멈추지 않습니다.',
+    scienceCite:'— Hotamisligil GS (2006). Inflammation and metabolic disorders. Nature.',
+    traits:['알레르기·아토피·비염이 있거나 있었습니다','특정 음식을 먹으면 컨디션이 급격히 나빠집니다','체중과 무관하게 몸이 무겁고 염증 반응이 잦습니다'],
+    metaProfile:[{icon:'🔥',label:'전신 염증 수준',val:'높음'},{icon:'🛡️',label:'면역 과민성',val:'있음'},{icon:'🍎',label:'음식 민감도',val:'복수'},{icon:'🌿',label:'항산화 상태',val:'부족'}],
+    topAxes:['A3','A6','A2'],
+    consultantNote:'BC-09는 항염 식단이 모든 처방의 기반입니다. 음식 일기를 통해 개인별 트리거 식품을 찾는 것이 첫 번째 과제입니다.',
+    diet:[{icon:'🫐',cat:'핵심',title:'항염 식품 우선 식단',desc:'베리류·강황·생강·오메가-3 지방산. 매 식사에 항염 성분이 포함되도록 설계합니다.'},{icon:'🚫',cat:'회피',title:'6대 알레르기 식품 순차 제거',desc:'밀·유제품·계란·견과·콩·옥수수. 4주 제거 후 순차 도입으로 개인 트리거를 찾습니다.'},{icon:'🌿',cat:'보조',title:'강황·생강 매일 섭취',desc:'쿠르쿠민·진저롤의 NF-κB 억제 효과. 조리에 활용하거나 차로 섭취하세요.'}],
+    exercise:[{icon:'🧘',cat:'1순위',title:'저강도 요가·스트레칭',desc:'고강도 운동은 초기에 염증을 악화시킵니다. 항염 상태가 자리잡은 후 강도를 올리세요.'},{icon:'🚶',cat:'2순위',title:'자연 속 걷기',desc:'피톤치드는 NK세포 활성을 높이고 염증 마커를 낮춥니다. 주 2회 숲 걷기를 추천합니다.'}],
+    suppl:[{icon:'🌿',cat:'1순위',title:'쿠르쿠민(피페린 복합) 500mg',desc:'BCM-95 또는 피페린 복합으로 흡수율을 높인 제품. NF-κB 억제.'},{icon:'🐟',cat:'2순위',title:'오메가-3 3g (EPA 우선)',desc:'염증성 에이코사노이드 생성을 직접 억제합니다.'},{icon:'🍄',cat:'3순위',title:'비타민D3 5,000IU',desc:'면역 조절 마스터 호르몬. 대부분의 면역 과민형에서 결핍이 확인됩니다.'}]
+  },
+  'BC-10': {
+    name:'복합 대사 증후군형',short:'복합 대사',
+    ohaeng:'土木水 복합',
+    ohaengDesc:'복수 오행 복합 — 여러 계통이 동시에 불균형 상태입니다. 우선순위를 정해 순차적으로 개입하는 것이 핵심입니다.',
+    scienceFact:'대사증후군은 복부비만·고혈압·고혈당·이상지질혈증이 복합된 상태입니다. 이 중 하나만 개선해도 나머지가 연쇄적으로 개선되는 도미노 효과가 나타납니다.',
+    scienceCite:'— Eckel et al. (2005). The metabolic syndrome. Lancet.',
+    traits:['복부 비만과 함께 혈압·혈당·지질 중 2개 이상이 경계입니다','여러 가지를 동시에 시도했지만 어떤 것도 지속되지 않았습니다','몸 전체가 무겁고 에너지가 없다는 느낌이 지속됩니다'],
+    metaProfile:[{icon:'⚖️',label:'복합 위험 인자',val:'3개 이상'},{icon:'🔥',label:'대사 건강도',val:'낮음'},{icon:'🩸',label:'공복 혈당',val:'경계~이상'},{icon:'💪',label:'근육량',val:'상대적 부족'}],
+    topAxes:['A1','A7','A4'],
+    consultantNote:'BC-10은 가장 복잡한 케이스입니다. 모든 것을 한꺼번에 바꾸려 하지 않도록 안내해 주세요. 단 하나, 식사 순서 교정만으로 시작하는 것이 첫 번째 처방입니다.',
+    diet:[{icon:'🥗',cat:'1순위',title:'식사 순서 교정',desc:'이것 하나만으로 혈당·인슐린·체중이 동시에 개선됩니다. 채소→단백질→탄수화물 순서.'},{icon:'⏱️',cat:'2순위',title:'16:8 간헐적 단식',desc:'공복 인슐린을 낮추고 자가포식(autophagy)을 활성화합니다. 복합 대사증후군에 가장 강력한 도구입니다.'},{icon:'🚫',cat:'회피',title:'설탕·밀가루·알코올 3종 동시 차단',desc:'이 세 가지가 복합 대사증후군을 유지시키는 핵심 연료입니다.'}],
+    exercise:[{icon:'🏋️',cat:'1순위',title:'대근육 근력 운동 주 3회',desc:'근육이 인슐린 감수성·혈압·지질 모두를 동시에 개선하는 가장 효율적인 개입입니다.'},{icon:'🚶',cat:'2순위',title:'식후 걷기 매일',desc:'혈당 스파이크 즉각 차단. 어떤 상태에서도 즉시 시작할 수 있는 가장 낮은 진입 장벽입니다.'}],
+    suppl:[{icon:'💊',cat:'1순위',title:'베르베린 500mg×2',desc:'혈당·지질·체중에 동시 작용하는 복합 대사증후군의 1순위 영양제.'},{icon:'🌿',cat:'2순위',title:'마그네슘 400mg',desc:'혈압·혈당·수면·코르티솔 모두에 영향. 복합 대사형에게 필수.'},{icon:'🐟',cat:'3순위',title:'오메가-3 3g',desc:'지질·염증·심혈관 3가지를 동시에 개선. 복합형에게 고용량이 필요합니다.'}]
+  }
+};
+
+/* ══════════════════════════════════════════════════════
+   2. AXIS_DEFS — 11축 정의
+══════════════════════════════════════════════════════ */
+const AXIS_DEFS = [
+  {id:'A1', name:'인슐린·혈당', icon:'🩸',
+    desc:'인슐린 저항성, 혈당 스파이크 패턴, 공복혈당 경향',
+    fact:'혈당 변동폭이 크면 식욕 호르몬(그렐린)이 과도 분비되어 폭식 욕구가 생깁니다.',
+    presc:'식사 순서 교정(채소→단백질→탄수화물), 정제탄수화물 차단, 식후 걷기 15분'},
+  {id:'A2', name:'장내미생물', icon:'🦠',
+    desc:'장 생태계 다양성, 소화·발효 기능, 장-뇌 연결',
+    fact:'장내미생물은 체중 조절 호르몬 GLP-1을 직접 생산합니다.',
+    presc:'발효식품 매일 섭취, 프리바이오틱스(식이섬유 30g+), 설탕 차단'},
+  {id:'A3', name:'염증·항산화', icon:'🔥',
+    desc:'전신 저등급 염증, 항산화 방어, 산화 스트레스',
+    fact:'만성 염증은 렙틴 저항성을 만들어 포만감을 차단합니다.',
+    presc:'항염 식품(베리류·강황), 오메가-3 증량, 트랜스지방 완전 차단'},
+  {id:'A4', name:'수면·코르티솔', icon:'🌙',
+    desc:'수면 품질·시간, 코르티솔 일주기, HPA 축 상태',
+    fact:'수면 6시간 이하에서 그렐린이 28% 증가하고 렙틴이 18% 감소합니다.',
+    presc:'수면 7~9시간 확보, 취침 전 루틴(디지털 차단), 아슈와간다 복용'},
+  {id:'A5', name:'갑상선·기초대사', icon:'⚡',
+    desc:'갑상선 기능, 기초대사율, 체온 조절',
+    fact:'T3 수치가 10% 낮으면 기초대사율이 5~7% 하락합니다.',
+    presc:'셀레늄·아이오딘 식품 섭취, 근력 운동 우선, TSH·fT3 수치 확인'},
+  {id:'A6', name:'수분·전해질', icon:'💧',
+    desc:'수분 대사, 림프 순환, 나트륨-칼륨 균형',
+    fact:'세포 내 수분 불균형은 에너지 생산과 지방 대사 모두를 저해합니다.',
+    presc:'하루 2L 수분, 저나트륨 식단, 칼륨 함량 채소 우선 섭취'},
+  {id:'A7', name:'심혈관·순환', icon:'❤️',
+    desc:'심폐 기능, 혈관 탄성, 조직 산소 공급',
+    fact:'VO2max가 10% 높을수록 복부지방 축적 위험이 22% 낮아집니다.',
+    presc:'중강도 유산소 주 5회, 혈관 보호 식품, CoQ10 복용'},
+  {id:'A8', name:'성호르몬·부신', icon:'⚖️',
+    desc:'에스트로겐·프로게스테론·테스토스테론 균형, 부신 피로',
+    fact:'에스트로겐 우세 상태에서는 허벅지·복부에 지방이 선택적으로 축적됩니다.',
+    presc:'DIM 섭취, 사이클 싱킹 운동, 제노에스트로겐 노출 최소화'},
+  {id:'A9', name:'신경호르몬·도파민', icon:'🧠',
+    desc:'세로토닌·도파민 균형, 보상 회로, 감정 섭식',
+    fact:'도파민 결핍 상태에서 뇌는 음식을 통한 보상을 극단적으로 추구합니다.',
+    presc:'트립토판 함유 식품, 햇빛 노출, L-테아닌·마그네슘 복용'},
+  {id:'A10', name:'미토콘드리아·세포에너지', icon:'⚡',
+    desc:'세포 에너지 생산 효율, ATP 대사, 산화적 인산화',
+    fact:'미토콘드리아 기능이 10% 저하되면 지방 산화율이 15% 이상 감소합니다.',
+    presc:'HIIT 운동, CoQ10·알파리포산, 간헐적 단식(자가포식 활성화)'},
+  {id:'A11', name:'체질·오행', icon:'🌿',
+    desc:'오행 체질 분류, 장기 기능 경향, 개인 대사 패턴',
+    fact:'오행 체질에 맞는 식단과 운동 적용 시 12주 후 체중 감량 효과가 1.8배 향상됩니다.',
+    presc:'오행 기질 맞춤 식단, 계절 처방 적용, 체질 맞춤 운동 강도 조정'}
+];
+
+/* ══════════════════════════════════════════════════════
+   3. 감정유형 분류
+══════════════════════════════════════════════════════ */
+function classifyEmotionType(res) {
+  if (!res || typeof res !== 'object') return 'E-07';
+  const s = (k) => Number(res[k] || 0);
+  const stress = s('stress_score') || s('q_stress') || 0;
+  const sleep  = s('sleep_score')  || s('q_sleep')  || 0;
+  const binge  = s('binge_score')  || s('q_binge')  || 0;
+  const fatigue= s('fatigue_score')|| s('q_fatigue')|| 0;
+  const craving= s('craving_score')|| s('q_craving')|| 0;
+  const social = s('social_score') || s('q_social') || 0;
+  const anxiety= s('anxiety_score')|| s('q_anxiety')|| 0;
+  if (stress >= 4 && sleep <= 2) return 'E-01';
+  if (binge >= 4) return 'E-02';
+  if (fatigue >= 4) return 'E-03';
+  if (craving >= 4) return 'E-04';
+  if (social >= 4) return 'E-05';
+  if (anxiety >= 4) return 'E-06';
+  return 'E-07';
+}
+
+const E_LABELS = {
+  'E-01':'스트레스+수면 부족형',
+  'E-02':'폭식·자책 반복형',
+  'E-03':'만성 피로 누적형',
+  'E-04':'당·탄수 갈망형',
+  'E-05':'사회적 섭식 패턴형',
+  'E-06':'불안·감정 섭식형',
+  'E-07':'패턴 분석 추구형'
+};
+
+/* ══════════════════════════════════════════════════════
+   4. 오프닝 카피 매트릭스 (70가지 = 7×10)
+══════════════════════════════════════════════════════ */
+const OPENING_COPY_MATRIX = {
+  'E-01': {
+    'BC-01':{headline:'스트레스가 혈당을 올리고, 혈당이 다시 스트레스를 만듭니다',body:'수면 부족이 그렐린을 28% 높입니다. 의지의 문제가 아닌 호르몬의 문제입니다.',insight:'혈당과 수면, 이 두 가지만 잡으면 나머지가 따라옵니다.',action:'오늘 밤 0시 전 취침을 첫 번째 처방으로 실행하세요.'},
+    'BC-02':{headline:'피로한 간이 스트레스에 더 취약합니다',body:'간 해독 기능이 저하되면 코르티솔 대사가 느려지고 스트레스 반응이 증폭됩니다.',insight:'간을 쉬게 하면 스트레스 저항성이 자연스럽게 높아집니다.',action:'오늘 저녁, 술 한 잔을 물 한 잔으로 바꾸세요.'},
+    'BC-03':{headline:'수면 부족이 수분 대사를 망가뜨립니다',body:'코르티솔 과잉은 알도스테론을 통해 나트륨 보유를 늘리고 부종을 악화시킵니다.',insight:'잠이 늘면 붓기가 빠지고, 붓기가 빠지면 의욕이 돌아옵니다.',action:'취침 2시간 전 나트륨 섭취를 차단하세요.'},
+    'BC-04':{headline:'스트레스와 수면 부족, 이것이 복부지방의 직접 원인입니다',body:'코르티솔이 높은 상태에서 수면이 부족하면 복부지방 세포가 가장 빠르게 증식합니다.',insight:'스트레스 관리 없이 식이 제한은 역효과를 냅니다.',action:'취침 전 5분 복식호흡을 오늘부터 시작하세요.'},
+    'BC-05':{headline:'수면 부족이 갑상선 기능을 억제합니다',body:'수면 6시간 이하에서 TSH 분비 패턴이 교란되고 T3 활성이 낮아집니다.',insight:'수면 회복만으로 기초대사율이 올라갑니다.',action:'취침 1시간 전 블루라이트 차단을 시작하세요.'},
+    'BC-06':{headline:'스트레스 호르몬이 장내미생물을 파괴합니다',body:'코르티솔은 장 점막 투과성을 높이고 유익균 비율을 직접 낮춥니다.',insight:'장이 편안해지면 기분이 안정되고 식욕이 자연스럽게 조절됩니다.',action:'오늘 발효식품 한 스푼을 식단에 추가하세요.'},
+    'BC-07':{headline:'수면 부족이 심혈관계에 직접 부담을 줍니다',body:'수면 6시간 이하에서 혈압이 평균 6mmHg 높아집니다. 심장이 더 열심히 일해야 합니다.',insight:'수면이 개선되면 운동 회복력이 극적으로 좋아집니다.',action:'오늘 저녁 스마트폰을 침실 밖에 두세요.'},
+    'BC-08':{headline:'스트레스가 호르몬 균형을 망가뜨립니다',body:'코르티솔 과잉은 프로게스테론을 소모하고 에스트로겐 상대적 우세를 만듭니다.',insight:'스트레스를 낮추면 생리 주기와 체중이 동시에 안정됩니다.',action:'오늘 마그네슘 글리시네이트 복용을 시작하세요.'},
+    'BC-09':{headline:'수면 부족이 면역을 과활성화합니다',body:'수면 부족 상태에서 NF-κB 경로가 활성화되어 전신 염증이 높아집니다.',insight:'잠이 최고의 항염제입니다. 약보다 수면이 먼저입니다.',action:'오늘 밤 취침 전 스트레칭 10분을 실행하세요.'},
+    'BC-10':{headline:'스트레스와 수면 부족이 대사증후군을 악화시킵니다',body:'코르티솔 과잉은 혈당·혈압·지질을 동시에 악화시키는 3중 부담입니다.',insight:'수면 한 가지만 고쳐도 대사 지표 3개가 동시에 개선됩니다.',action:'오늘 밤 8시간 수면을 목표로 취침 시간을 역산하세요.'}
+  },
+  'E-02': {
+    'BC-01':{headline:'폭식은 혈당 급락이 만드는 생존 반응입니다',body:'인슐린 저항성이 혈당을 급락시키면 뇌는 최단 경로(단 음식)로 회복을 명령합니다.',insight:'혈당을 안정시키면 폭식 충동은 사라집니다. 의지력 싸움이 아닙니다.',action:'오늘 식사에 채소를 먼저 한 접시 먹고 시작하세요.'},
+    'BC-02':{headline:'간 피로가 폭식 후 자책감을 증폭시킵니다',body:'간 기능이 저하되면 세로토닌 대사가 느려지고 감정 회복력이 떨어집니다.',insight:'간을 쉬게 하면 폭식 후 감정 회복이 빨라집니다.',action:'오늘부터 4주간 가공식품을 차단하세요.'},
+    'BC-03':{headline:'폭식 후 부종이 더 심해지는 이유가 있습니다',body:'폭식 시 섭취되는 나트륨이 수분 보유를 극대화합니다. 다음날 체중 증가의 60%는 수분입니다.',insight:'다음날 충분한 수분 섭취가 부종을 빠르게 해소합니다.',action:'폭식 다음날 물 2L를 반드시 마시세요.'},
+    'BC-04':{headline:'폭식-자책-스트레스의 악순환을 끊어야 합니다',body:'자책이 코르티솔을 높이고, 코르티솔이 다시 폭식 욕구를 만듭니다.',insight:'자책을 멈추는 것이 처방의 일부입니다. 오늘 실수는 내일 리셋입니다.',action:'폭식 후 자책 대신 산책 15분을 하세요.'},
+    'BC-05':{headline:'폭식이 갑상선 기능에 미치는 영향',body:'극단적 칼로리 제한 후 폭식 사이클은 T3 수치를 교란합니다.',insight:'일정한 식사 패턴이 갑상선 호르몬을 안정시킵니다.',action:'오늘부터 하루 3끼 일정한 시간에 먹는 것을 목표로 하세요.'},
+    'BC-06':{headline:'폭식이 장내미생물을 가장 빠르게 파괴합니다',body:'고당·고지방 폭식은 24시간 내에 장내 유익균 비율을 유의미하게 낮춥니다.',insight:'장을 회복시키면 폭식 충동 자체가 줄어듭니다.',action:'폭식 다음날 프로바이오틱스를 복용하세요.'},
+    'BC-07':{headline:'폭식이 심혈관에 주는 순간적 부담',body:'고칼로리 폭식은 식후 중성지방을 급격히 높이고 혈관 내피에 산화 스트레스를 줍니다.',insight:'식사 후 15분 걷기만으로 이 부담을 70% 줄입니다.',action:'오늘 식사 직후 15분 걷기를 실행하세요.'},
+    'BC-08':{headline:'폭식-자책 사이클이 호르몬 균형을 흔듭니다',body:'폭식 후 극단적 제한은 코르티솔을 높이고 성호르몬 균형을 교란합니다.',insight:'규칙적이고 충분한 식사가 호르몬 균형의 기반입니다.',action:'오늘부터 500kcal 이하 식사는 하지 않겠다고 결정하세요.'},
+    'BC-09':{headline:'폭식이 면역 염증을 즉각 악화시킵니다',body:'고당·고지방 폭식은 4~6시간 내에 IL-6, TNF-α 같은 염증 마커를 높입니다.',insight:'항염 식품을 폭식 후에 우선 섭취하면 회복이 빠릅니다.',action:'폭식 후 다음 식사에 강황·생강을 포함하세요.'},
+    'BC-10':{headline:'폭식-제한 사이클이 대사증후군을 악화시킵니다',body:'요요 다이어트는 내장지방 비율을 높이고 인슐린 저항성을 악화시킵니다.',insight:'안정적이고 지속 가능한 식습관만이 복합 대사를 개선합니다.',action:'오늘부터 "완벽한 식단" 대신 "80% 식단"을 목표로 하세요.'}
+  },
+  'E-03': {
+    'BC-01':{headline:'만성 피로의 60%는 혈당 불안정에서 옵니다',body:'혈당이 불안정하면 뇌 연료 공급이 불안정해지고 만성 피로감으로 나타납니다.',insight:'혈당을 잡으면 오전 피로부터 달라집니다.',action:'아침에 단백질을 먼저 먹는 것으로 시작하세요.'},
+    'BC-02':{headline:'당신의 피로는 간이 보내는 신호입니다',body:'간 해독 부담이 높으면 에너지 대사의 효율이 극적으로 낮아집니다.',insight:'간을 쉬게 하는 것이 가장 빠른 피로 해소법입니다.',action:'이번 주부터 알코올을 완전히 끊어보세요.'},
+    'BC-03':{headline:'수분 순환이 막히면 에너지가 막힙니다',body:'림프 순환 저하는 세포에 산소와 영양소를 공급하는 효율을 낮춥니다.',insight:'물을 충분히 마시고 걷는 것만으로 에너지가 돌아옵니다.',action:'지금 당장 물 한 컵을 마시세요.'},
+    'BC-04':{headline:'코르티솔 소진이 만성 피로를 만듭니다',body:'부신이 지쳐 코르티솔을 충분히 분비하지 못하면 아침 피로, 오후 슬럼프가 반복됩니다.',insight:'부신을 쉬게 하는 것이 에너지 회복의 첫걸음입니다.',action:'카페인을 오전에만 제한하고 오후에는 물로 대체하세요.'},
+    'BC-05':{headline:'갑상선이 낮으면 모든 것이 느려집니다',body:'갑상선 기능 저하는 에너지 생산, 체온, 심장 박동, 소화 모두를 느리게 합니다.',insight:'셀레늄과 아이오딘이 풍부한 식품부터 시작하세요.',action:'오늘 점심에 해조류 한 접시를 추가하세요.'},
+    'BC-06':{headline:'장이 지치면 뇌도 지칩니다',body:'장-뇌 연결축(gut-brain axis)이 교란되면 세로토닌 부족으로 만성 피로와 기분 저하가 옵니다.',insight:'장을 회복시키면 뇌 에너지도 돌아옵니다.',action:'오늘 저녁 김치 한 접시를 추가하세요.'},
+    'BC-07':{headline:'심폐 기능이 낮으면 항상 피곤합니다',body:'VO2max가 낮으면 일상 활동 자체가 고강도 운동처럼 느껴집니다.',insight:'중강도 유산소 4주만에 에너지 레벨이 바뀝니다.',action:'오늘 10분이라도 빠르게 걸어보세요.'},
+    'BC-08':{headline:'호르몬 불균형이 만성 피로의 원인입니다',body:'에스트로겐·프로게스테론 불균형은 수면과 에너지 대사를 동시에 교란합니다.',insight:'호르몬 주기를 이해하면 에너지 관리 전략이 바뀝니다.',action:'생리 주기를 앱으로 추적하기 시작하세요.'},
+    'BC-09':{headline:'염증이 에너지를 소모합니다',body:'만성 염증 상태에서 면역 반응 자체가 하루 에너지의 20~30%를 소비합니다.',insight:'항염 식단 2주만으로 에너지 레벨이 달라집니다.',action:'오늘 강황 라떼 한 잔으로 시작하세요.'},
+    'BC-10':{headline:'복합 대사 이상이 에너지를 고갈시킵니다',body:'여러 대사 축이 동시에 불균형이면 에너지 생산의 모든 경로가 비효율적입니다.',insight:'하나씩, 천천히. 오늘 가장 쉬운 것 하나만 바꾸세요.',action:'오늘 점심 식사 순서를 채소 먼저로 바꾸세요.'}
+  },
+  'E-04': {
+    'BC-01':{headline:'당신의 당 갈망은 혈당 급락이 만든 생존 신호입니다',body:'인슐린 저항성이 혈당을 급락시키면 뇌는 즉각적인 포도당 보충을 명령합니다.',insight:'혈당을 안정시키면 당 갈망은 사라집니다. 의지력 싸움이 아닙니다.',action:'단 것이 당길 때 단백질 10g을 먼저 먹어보세요.'},
+    'BC-02':{headline:'간이 피곤하면 당분을 더 원합니다',body:'간 글리코겐이 부족하면 뇌는 탄수화물을 강하게 요구합니다.',insight:'간을 회복시키면 탄수화물 갈망이 자연스럽게 줄어듭니다.',action:'공복에 레몬워터를 마시는 것부터 시작하세요.'},
+    'BC-03':{headline:'수분 부족이 당 갈망을 가장하기도 합니다',body:'가벼운 탈수 상태에서 뇌는 에너지 부족 신호를 보내며 이것이 당 갈망으로 나타납니다.',insight:'갈망이 올 때 물을 먼저 마시면 60%는 사라집니다.',action:'단 것이 당길 때 물 200ml를 먼저 마시세요.'},
+    'BC-04':{headline:'스트레스가 당을 원하게 만듭니다',body:'코르티솔이 높을 때 뇌는 즉각적 보상을 위해 고당·고지방 식품을 강하게 원합니다.',insight:'스트레스 해소 루틴이 당 갈망의 근본 해결책입니다.',action:'당 갈망이 올 때 5분 산책으로 대체해보세요.'},
+    'BC-05':{headline:'갑상선 기능이 낮으면 에너지원으로 당을 원합니다',body:'기초대사율이 낮으면 뇌는 빠른 에너지원인 당분을 더 강하게 원합니다.',insight:'갑상선 기능을 높이면 당 갈망이 줄고 지방 연소가 시작됩니다.',action:'셀레늄 풍부한 브라질넛 2~3개를 간식으로 먹어보세요.'},
+    'BC-06':{headline:'장내 유해균이 당을 요구합니다',body:'Candida 등 당을 먹이로 하는 유해균이 증식하면 당 갈망이 강해집니다.',insight:'프로바이오틱스와 설탕 차단으로 장 환경을 바꾸면 갈망이 줄어듭니다.',action:'오늘부터 2주간 설탕을 완전히 끊어보세요.'},
+    'BC-07':{headline:'혈액 산소가 부족하면 당을 원합니다',body:'심폐 기능이 낮으면 세포 에너지 생산이 비효율적이 되고 빠른 에너지원인 당을 원하게 됩니다.',insight:'유산소 능력이 향상되면 당 의존도가 낮아집니다.',action:'오늘 5분이라도 빠르게 걸어 심폐를 자극하세요.'},
+    'BC-08':{headline:'호르몬 불균형이 생리 전 당 갈망을 만듭니다',body:'황체기에 세로토닌이 낮아지면 세로토닌을 빠르게 올리는 당분을 강하게 원합니다.',insight:'마그네슘과 트립토판으로 세로토닌을 선제적으로 보충하세요.',action:'생리 전 1주 마그네슘 400mg을 복용하세요.'},
+    'BC-09':{headline:'염증이 보상 회로를 교란합니다',body:'만성 염증이 도파민 수용체 민감도를 낮추면 더 강한 자극(당분)을 원하게 됩니다.',insight:'항염 식단으로 보상 회로가 정상화되면 당 갈망이 줄어듭니다.',action:'단 것 대신 베리류를 간식으로 준비해두세요.'},
+    'BC-10':{headline:'복합 대사 이상이 강한 당 갈망을 만듭니다',body:'인슐린 저항성과 코르티솔 과잉이 동시에 있을 때 당 갈망이 가장 강해집니다.',insight:'혈당과 스트레스, 두 가지를 동시에 잡아야 합니다.',action:'오늘 간식 서랍에서 단 음식을 치우세요.'}
+  },
+  'E-05': {
+    'BC-01':{headline:'사회적 식사 상황에서도 혈당을 관리할 수 있습니다',body:'식사 순서 교정은 식당에서도 적용할 수 있는 가장 쉬운 전략입니다.',insight:'채소 반찬부터 먹는 습관 하나로 어디서든 혈당을 지킵니다.',action:'다음 외식 때 샐러드나 나물을 가장 먼저 먹어보세요.'},
+    'BC-02':{headline:'회식 자리가 간을 가장 힘들게 합니다',body:'알코올은 간 해독 우선순위 1위를 차지하며 지방 대사를 완전히 멈춥니다.',insight:'회식에서 주량 절반으로만 줄여도 간 회복 속도가 2배 빨라집니다.',action:'다음 회식에서 술을 원래 양의 절반으로 줄이세요.'},
+    'BC-03':{headline:'외식 나트륨이 부종을 만듭니다',body:'외식 한 끼의 나트륨은 하루 권장량의 2~3배인 경우가 많습니다.',insight:'외식 후 물을 충분히 마시면 다음날 부종이 줄어듭니다.',action:'외식 후에는 반드시 물 500ml를 마시세요.'},
+    'BC-04':{headline:'사회적 압박이 코르티솔을 올립니다',body:'식사 자리에서의 사회적 긴장이 코르티솔을 높이고 소화 효율을 낮춥니다.',insight:'식사 전 깊은 호흡 3번으로 부교감신경을 활성화하세요.',action:'다음 식사 전 코로 3초 들이쉬고 6초 내쉬기를 3회 하세요.'},
+    'BC-05':{headline:'불규칙한 식사가 갑상선을 교란합니다',body:'사회적 활동으로 인한 식사 패턴 불규칙성이 갑상선 호르몬 분비 리듬을 교란합니다.',insight:'식사 시간을 일정하게 유지하는 것이 갑상선 건강의 기반입니다.',action:'주말에도 평일과 같은 시간에 첫 식사를 하세요.'},
+    'BC-06':{headline:'외식과 음주가 장내미생물을 파괴합니다',body:'외식의 과도한 당분·항생제 잔류·알코올은 장내 유익균을 직접 파괴합니다.',insight:'외식 후 발효식품 한 스푼이 장내 생태계 회복을 돕습니다.',action:'외식 다음날 아침 프로바이오틱스를 복용하세요.'},
+    'BC-07':{headline:'음주가 심혈관에 주는 부담',body:'알코올은 중성지방을 높이고 혈압을 일시적으로 올립니다.',insight:'술 한 잔을 스파클링워터로 대체할 때마다 심장이 감사합니다.',action:'다음 술자리에서 한 잔씩 건너뛰며 물로 대체해보세요.'},
+    'BC-08':{headline:'술자리 음식이 호르몬을 교란합니다',body:'알코올과 안주의 트랜스지방이 에스트로겐 대사를 방해합니다.',insight:'술자리에서 안주 선택이 호르몬 관리의 핵심입니다.',action:'다음 술자리 안주로 구운 고기와 채소를 우선 선택하세요.'},
+    'BC-09':{headline:'외식이 염증 트리거를 숨기고 있습니다',body:'외식의 식물성 기름·MSG·첨가물은 면역 과민형에게 염증 반응을 일으킵니다.',insight:'외식 후 컨디션을 기록하면 개인 트리거를 발견할 수 있습니다.',action:'이번 주 외식 후 몸 상태를 메모장에 기록하세요.'},
+    'BC-10':{headline:'사회적 식사 압박이 대사에 미치는 영향',body:'강제된 폭식과 음주는 복합 대사증후군의 모든 지표를 동시에 악화시킵니다.',insight:'한 번의 외식보다 전체 식이 패턴이 더 중요합니다. 한 끼에 좌절하지 마세요.',action:'외식 다음날 식사를 원래 패턴으로 되돌리는 데 집중하세요.'}
+  },
+  'E-06': {
+    'BC-01':{headline:'불안이 혈당 조절을 방해합니다',body:'불안 상태에서 교감신경이 활성화되고 코르티솔이 혈당을 인위적으로 높입니다.',insight:'불안을 낮추면 혈당이 안정되고 식욕 조절이 쉬워집니다.',action:'불안할 때 4-7-8 호흡법(4초 들이쉬고 7초 참고 8초 내쉬기)을 해보세요.'},
+    'BC-02':{headline:'감정을 간이 처리합니다',body:'불안과 분노 등 부정적 감정은 간에 직접적인 부담을 줍니다. 한의학의 오랜 통찰입니다.',insight:'감정 관리가 간 건강의 일부입니다.',action:'오늘 저녁, 10분간 일기를 쓰세요.'},
+    'BC-03':{headline:'감정 섭식이 수분 대사를 교란합니다',body:'감정 섭식 시 주로 선택하는 고염·고당 식품이 수분 불균형을 만듭니다.',insight:'감정 섭식 대신 따뜻한 차 한 잔이 수분과 감정 모두를 안정시킵니다.',action:'감정 섭식 충동이 올 때 히비스커스 차를 준비해두세요.'},
+    'BC-04':{headline:'감정 섭식은 코르티솔이 만드는 패턴입니다',body:'코르티솔이 높을 때 뇌의 보상 회로가 음식을 통한 위안을 강하게 원합니다.',insight:'감정과 음식의 연결 고리를 인식하는 것이 변화의 시작입니다.',action:'감정 섭식 직전 "지금 배가 고픈가, 감정이 고픈가?"를 스스로에게 물어보세요.'},
+    'BC-05':{headline:'불안이 갑상선 기능을 억제합니다',body:'만성 불안은 HPA 축을 통해 갑상선 호르몬 생산을 억제합니다.',insight:'불안을 낮추면 기초대사율이 올라가는 이유입니다.',action:'오늘 10분 명상을 시작하세요. 앱을 활용해도 됩니다.'},
+    'BC-06':{headline:'감정이 장에 직접 반응합니다',body:'불안·슬픔 상태에서 장 연동운동이 불규칙해지고 장내미생물 균형이 깨집니다.',insight:'감정이 안정되면 장도 안정됩니다. 장이 안정되면 감정도 안정됩니다.',action:'오늘 복식호흡 5분을 취침 전 루틴에 추가하세요.'},
+    'BC-07':{headline:'불안이 심박수를 높입니다',body:'만성 불안은 자율신경계를 교란하고 심박 변이도(HRV)를 낮춥니다.',insight:'심호흡 훈련이 심혈관 건강과 불안을 동시에 개선합니다.',action:'오늘부터 취침 전 깊은 호흡 10회를 실천하세요.'},
+    'BC-08':{headline:'불안이 호르몬 축을 교란합니다',body:'만성 불안은 부신을 자극하여 코르티솔을 높이고 성호르몬 균형을 무너뜨립니다.',insight:'감정 조절 능력이 호르몬 건강의 기반입니다.',action:'오늘 아슈와간다 복용을 시작하세요.'},
+    'BC-09':{headline:'불안이 면역을 과활성화합니다',body:'불안 상태에서 IL-6 등 염증 사이토카인이 높아집니다. 마음이 염증을 만듭니다.',insight:'감정 안정이 최고의 항염제입니다.',action:'오늘 10분 자연 속 걷기를 하세요.'},
+    'BC-10':{headline:'감정 섭식이 복합 대사를 가장 빠르게 악화시킵니다',body:'감정 섭식의 주 선택물(단 음식·밀가루·술)은 복합 대사증후군의 3대 촉진제입니다.',insight:'감정과 음식의 분리가 복합 대사 관리의 핵심 전략입니다.',action:'오늘 감정 섭식 일지를 시작하세요.'}
+  },
+  'E-07': {
+    'BC-01':{headline:'데이터가 보여주는 당신의 혈당 패턴',body:'인슐린 저항성은 보이지 않게 진행되다가 어느 날 갑자기 모든 노력을 무력화합니다.',insight:'패턴을 알면 예방이 가능합니다. 그것이 이 리포트의 목적입니다.',action:'오늘 공복혈당 측정을 해보세요.'},
+    'BC-02':{headline:'간 기능은 숫자로 확인할 수 있습니다',body:'ALT·AST·GGT 수치가 당신의 간 상태를 정확히 보여줍니다.',insight:'데이터 기반 간 관리가 가장 효율적인 접근입니다.',action:'최근 건강검진 결과에서 간 수치를 확인해보세요.'},
+    'BC-03':{headline:'체성분 분석이 수분 상태를 보여줍니다',body:'체성분 분석기의 세포외수분비(ECW/TBW)가 부종과 순환 상태를 측정합니다.',insight:'수치 기반 모니터링이 수분 관리의 핵심입니다.',action:'체성분 분석을 받아보세요.'},
+    'BC-04':{headline:'코르티솔 수치는 측정 가능합니다',body:'타액 코르티솔 검사나 혈액 코르티솔로 HPA 축 상태를 정량적으로 파악할 수 있습니다.',insight:'수치를 알면 개입의 우선순위가 명확해집니다.',action:'스트레스 레벨을 1~10으로 매일 기록하는 일지를 시작하세요.'},
+    'BC-05':{headline:'갑상선 수치로 기초대사율을 예측합니다',body:'TSH, fT3, fT4, rT3 패널이 갑상선 기능의 전체 그림을 보여줍니다.',insight:'수치를 알면 영양제 우선순위가 명확해집니다.',action:'다음 건강검진에 갑상선 패널을 추가 요청하세요.'},
+    'BC-06':{headline:'장 건강도 수치로 파악할 수 있습니다',body:'마이크로바이옴 검사가 장내 유익균 비율과 다양성 지수를 측정합니다.',insight:'데이터 기반 장 관리가 가장 효율적입니다.',action:'식이섬유 섭취량을 오늘부터 앱으로 추적해보세요.'},
+    'BC-07':{headline:'심폐 기능은 측정으로 개선됩니다',body:'안정시 심박수, 심박 변이도(HRV), VO2max가 심혈관 건강의 핵심 지표입니다.',insight:'스마트워치로 HRV를 추적하면 운동 강도 최적화가 가능합니다.',action:'스마트워치나 스마트링으로 HRV 모니터링을 시작하세요.'},
+    'BC-08':{headline:'호르몬 패널이 체중의 원인을 보여줍니다',body:'에스트로겐·프로게스테론·테스토스테론·DHEA·코르티솔 패널이 호르몬 전체 그림입니다.',insight:'수치 없이는 개입의 정확도가 낮아집니다.',action:'다음 검진에 호르몬 패널 추가를 요청하세요.'},
+    'BC-09':{headline:'염증 마커로 개입 효과를 측정합니다',body:'hsCRP, IL-6, TNF-α가 전신 염증 수준의 객관적 지표입니다.',insight:'항염 개입 전후 수치 비교가 동기 부여의 가장 강력한 도구입니다.',action:'다음 건강검진에 hsCRP 검사를 추가하세요.'},
+    'BC-10':{headline:'대사 패널 전체를 한 번에 파악하세요',body:'공복혈당·인슐린·HbA1c·지질·간 기능·CRP 패널이 복합 대사의 전체 지도입니다.',insight:'전체 그림을 알아야 가장 효율적인 첫 번째 개입을 선택할 수 있습니다.',action:'6개월에 한 번 종합 대사 패널 검사를 계획하세요.'}
+  }
+};
+
+/* ─── defaultWeeklyTree ─── */
+const defaultWeeklyTree = [
+  {
+    groupLabel:'1~3주차: 기반 다지기',
+    weeks:[
+      { wi:0, label:'1주차', range:'1~7일', axes:[
+        {ai:0,axisId:'A1',label:'혈당·인슐린',icon:'🩸',presc:'식사 순서: 채소→단백질→탄수화물. 식후 10분 걷기.', quiz:{q:'식사 직후 혈당을 낮추는 가장 효과적인 행동은?',opts:['바로 눕기','식후 10분 걷기','디저트 먹기','커피 마시기'],ans:1}, checkinLabel:'식후 걷기 실천'},
+        {ai:1,axisId:'A3',label:'수분·림프',icon:'💧',presc:'하루 체중(kg)×30ml 이상 물 섭취. 아침 기상 후 공복에 상온 물 200ml.', quiz:{q:'하루 권장 수분 섭취량 계산법은?',opts:['무조건 2L','체중×30ml','체중×10ml','목마를 때만'],ans:1}, checkinLabel:'아침 공복 물 200ml 실천'},
+        {ai:2,axisId:'A9',label:'수면·회복',icon:'🌙',presc:'취침 전 1시간 스크린 끄기. 기상 시간 고정(주말 포함).', quiz:{q:'수면의 질을 가장 빠르게 높이는 방법은?',opts:['취침 시간 변경','기상 시간 고정','낮잠 늘리기','운동 줄이기'],ans:1}, checkinLabel:'기상 시간 고정 실천'}
+      ]},
+      { wi:1, label:'2주차', range:'8~14일', axes:[
+        {ai:0,axisId:'A2',label:'간·해독',icon:'🫀',presc:'알코올 0~최소화. 가공식품·트랜스지방 제거. 십자화과 채소(브로콜리·양배추) 매일.', quiz:{q:'간 해독에 가장 도움이 되는 채소 종류는?',opts:['뿌리채소','십자화과채소','과일','해조류'],ans:1}, checkinLabel:'십자화과 채소 섭취 실천'},
+        {ai:1,axisId:'A7',label:'신경·스트레스',icon:'🧠',presc:'하루 5분 4-7-8 호흡법 실천. 코르티솔 피크 시간(오전 6~8시) 격렬 운동 피하기.', quiz:{q:'4-7-8 호흡법의 올바른 순서는?',opts:['4초 들이쉬고 8초 참고 7초 내쉬기','4초 들이쉬고 7초 참고 8초 내쉬기','7초 들이쉬고 4초 참고 8초 내쉬기','8초 들이쉬고 4초 참고 7초 내쉬기'],ans:1}, checkinLabel:'4-7-8 호흡 5분 실천'},
+        {ai:2,axisId:'A4',label:'장·마이크로바이옴',icon:'🦠',presc:'프로바이오틱스 아침 공복 복용 시작. 발효식품(김치·된장) 매 식사 포함.', quiz:{q:'프로바이오틱스 복용 타이밍으로 가장 효과적인 것은?',opts:['식후 바로','취침 전','아침 공복','점심 식사 중'],ans:2}, checkinLabel:'프로바이오틱스 복용 실천'}
+      ]},
+      { wi:2, label:'3주차', range:'15~21일', axes:[
+        {ai:0,axisId:'A5',label:'갑상선·대사율',icon:'⚡',presc:'셀레늄(브라질넛 2개), 아연, 요오드(미역·다시마) 매일 섭취.', quiz:{q:'갑상선 기능에 필수적인 미네랄이 아닌 것은?',opts:['셀레늄','아연','나트륨','요오드'],ans:2}, checkinLabel:'갑상선 영양소 섭취 실천'},
+        {ai:1,axisId:'A6',label:'호르몬·부신',icon:'🔬',presc:'아슈와간다 300mg 취침 전 복용 시작. 카페인 오후 2시 이후 차단.', quiz:{q:'부신 피로 회복에 도움이 되는 허브는?',opts:['생강','아슈와간다','계피','강황'],ans:1}, checkinLabel:'아슈와간다 복용 + 오후 카페인 차단'},
+        {ai:2,axisId:'A10',label:'미토콘드리아',icon:'⚛️',presc:'CoQ10 100mg 아침 식사와 함께. 고강도 인터벌 훈련(HIIT) 주 2회 시작.', quiz:{q:'미토콘드리아 기능 향상에 가장 직접적인 보충제는?',opts:['비타민C','CoQ10','오메가3','마그네슘'],ans:1}, checkinLabel:'CoQ10 복용 + HIIT 주 2회 실천'}
+      ]}
+    ]
+  },
+  {
+    groupLabel:'4~6주차: 핵심 개입',
+    weeks:[
+      { wi:3, label:'4주차', range:'22~28일', axes:[
+        {ai:0,axisId:'A8',label:'심혈관·산소',icon:'❤️',presc:'유산소 운동 주 4회 30분(심박수 130~150). 오메가3 2g 매일.', quiz:{q:'심혈관 건강을 위한 최적 유산소 운동 심박수 범위는?',opts:['80~100','100~120','130~150','160~180'],ans:2}, checkinLabel:'유산소 30분 주 4회 실천'},
+        {ai:1,axisId:'A1',label:'혈당 심화',icon:'🩸',presc:'16:8 간헐적 단식 시도. 정제 탄수화물 50% 감소.', quiz:{q:'16:8 간헐적 단식에서 \'16\'이 의미하는 것은?',opts:['16시간 식사','16시간 공복','16일 주기','16칼로리'],ans:1}, checkinLabel:'간헐적 단식 16:8 실천'},
+        {ai:2,axisId:'A11',label:'염증·면역',icon:'🛡️',presc:'강황(쿠르쿠민) 500mg + 후추 추출물. 오메가6:오메가3 비율 4:1 이하로.', quiz:{q:'쿠르쿠민(강황) 흡수를 높이는 성분은?',opts:['생강','후추(피페린)','계피','레몬'],ans:1}, checkinLabel:'강황+후추 복용 실천'}
+      ]},
+      { wi:4, label:'5주차', range:'29~35일', axes:[
+        {ai:0,axisId:'A2',label:'간 심화',icon:'🫀',presc:'NAC(N-아세틸시스테인) 600mg 아침 복용. 밀크씨슬(실리마린) 저녁 추가.', quiz:{q:'간 해독 2단계를 지원하는 아미노산 유도체는?',opts:['글루타민','NAC(N-아세틸시스테인)','아르기닌','라이신'],ans:1}, checkinLabel:'NAC + 밀크씨슬 복용 실천'},
+        {ai:1,axisId:'A9',label:'수면 심화',icon:'🌙',presc:'마그네슘 글리시네이트 400mg 취침 전. 실내 온도 18~20°C 유지.', quiz:{q:'수면 질 향상에 가장 효과적인 마그네슘 형태는?',opts:['마그네슘 산화물','마그네슘 글리시네이트','마그네슘 구연산염','마그네슘 황산염'],ans:1}, checkinLabel:'마그네슘 글리시네이트 복용 + 수면 환경 조성'},
+        {ai:2,axisId:'A7',label:'신경 심화',icon:'🧠',presc:'L-테아닌 200mg + 카페인 100mg 아침 조합. 명상 앱 10분/일.', quiz:{q:'카페인의 부작용을 줄이면서 집중력을 높이는 아미노산은?',opts:['트립토판','L-테아닌','L-글루타민','GABA'],ans:1}, checkinLabel:'L-테아닌 복용 + 명상 10분 실천'}
+      ]},
+      { wi:5, label:'6주차', range:'36~42일', axes:[
+        {ai:0,axisId:'A3',label:'수분 심화',icon:'💧',presc:'전해질(마그네슘·칼륨·나트륨) 균형 점검. 림프 드레나지 마사지 주 3회.', quiz:{q:'림프 순환을 가장 효과적으로 촉진하는 방법은?',opts:['뜨거운 목욕','림프 드레나지 마사지','고강도 운동','수분 제한'],ans:1}, checkinLabel:'전해질 보충 + 림프 마사지 실천'},
+        {ai:1,axisId:'A4',label:'장 심화',icon:'🦠',presc:'프리바이오틱스(이눌린·FOS) 5g 추가. L-글루타민 5g 공복 복용.', quiz:{q:'장 점막을 직접 회복시키는 아미노산은?',opts:['L-아르기닌','L-글루타민','L-라이신','L-메티오닌'],ans:1}, checkinLabel:'L-글루타민 + 프리바이오틱스 실천'},
+        {ai:2,axisId:'A5',label:'갑상선 심화',icon:'⚡',presc:'T3/T4 비율 최적화를 위해 아침 식사 30분 전 공복 유지. 대두·글루텐 주의.', quiz:{q:'갑상선 호르몬 흡수를 방해하는 식품은?',opts:['브로콜리','대두(콩)','계란','연어'],ans:1}, checkinLabel:'갑상선 호르몬 흡수 최적화 실천'}
+      ]}
+    ]
+  },
+  {
+    groupLabel:'7~9주차: 가속화',
+    weeks:[
+      { wi:6, label:'7주차', range:'43~49일', axes:[
+        {ai:0,axisId:'A6',label:'호르몬 심화',icon:'🔬',presc:'DHEA 수치 재검토. 비타민D3 5000IU + K2 100mcg 아침 식사와 복용.', quiz:{q:'비타민D 흡수를 돕고 칼슘을 뼈로 유도하는 비타민은?',opts:['비타민A','비타민E','비타민K2','비타민B12'],ans:2}, checkinLabel:'비타민D3+K2 복용 실천'},
+        {ai:1,axisId:'A10',label:'미토콘드리아 심화',icon:'⚛️',presc:'알파 리포산(ALA) 300mg 추가. 근력 운동 주 3회(전신 복합 동작).', quiz:{q:'미토콘드리아 항산화에 작용하는 물질은?',opts:['비타민C','알파 리포산(ALA)','아연','셀레늄'],ans:1}, checkinLabel:'ALA 복용 + 근력 운동 주 3회 실천'},
+        {ai:2,axisId:'A8',label:'심혈관 심화',icon:'❤️',presc:'베르베린 500mg 식사 전. 혈압·안정시 심박수 자가 모니터링 시작.', quiz:{q:'혈당과 지질 개선에 메트포르민 유사 효과를 보이는 천연물은?',opts:['강황','베르베린','계피','레스베라트롤'],ans:1}, checkinLabel:'베르베린 복용 + 혈압 모니터링 실천'}
+      ]},
+      { wi:7, label:'8주차', range:'50~56일', axes:[
+        {ai:0,axisId:'A11',label:'염증 심화',icon:'🛡️',presc:'오메가3 EPA/DHA 3g으로 증량. 레스베라트롤 250mg 추가.', quiz:{q:'오메가3의 항염 효과를 내는 주요 성분은?',opts:['DHA만','EPA만','EPA와 DHA 모두','ALA만'],ans:2}, checkinLabel:'오메가3 증량 + 레스베라트롤 실천'},
+        {ai:1,axisId:'A1',label:'혈당 고급',icon:'🩸',presc:'베르베린 + 크롬 피콜리네이트 200mcg 조합. CGM(연속혈당측정기) 착용 고려.', quiz:{q:'인슐린 민감성을 높이는 미네랄은?',opts:['칼슘','크롬','철분','나트륨'],ans:1}, checkinLabel:'크롬 복용 + 혈당 추적 실천'},
+        {ai:2,axisId:'A7',label:'신경 고급',icon:'🧠',presc:'포스파티딜세린 100mg 취침 전. 저녁 코르티솔 낮추기 루틴 완성.', quiz:{q:'코르티솔을 낮추고 기억력을 지원하는 인지질은?',opts:['레시틴','포스파티딜세린','이노시톨','콜린'],ans:1}, checkinLabel:'포스파티딜세린 복용 + 저녁 루틴 완성'}
+      ]},
+      { wi:8, label:'9주차', range:'57~63일', axes:[
+        {ai:0,axisId:'A2',label:'간 고급',icon:'🫀',presc:'글루타티온 전구체(NAC+글리신+글루타민산) 최적화. 커피 2잔/일 허용(블랙커피).', quiz:{q:'체내 주요 항산화 물질로 간 해독에 핵심적인 트리펩티드는?',opts:['카르노신','글루타티온','카르니틴','크레아틴'],ans:1}, checkinLabel:'글루타티온 전구체 최적화 실천'},
+        {ai:1,axisId:'A4',label:'장 고급',icon:'🦠',presc:'장 투과성 검사 고려. 스포어 기반 프로바이오틱스로 전환 시도.', quiz:{q:'가장 내산성이 강해 장까지 살아 도달하는 프로바이오틱스 형태는?',opts:['유산균 캡슐','요거트','스포어 기반 프로바이오틱스','액상 발효유'],ans:2}, checkinLabel:'스포어 프로바이오틱스 전환 실천'},
+        {ai:2,axisId:'A9',label:'수면 고급',icon:'🌙',presc:'수면 트래커로 REM/딥슬립 비율 확인. 저녁 탄수화물 소량 추가(수면 유도).', quiz:{q:'세로토닌을 멜라토닌으로 전환하는 데 필요한 아미노산은?',opts:['L-글루타민','L-트립토판','L-아르기닌','L-카르니틴'],ans:1}, checkinLabel:'수면 트래킹 + 저녁 탄수화물 소량 실천'}
+      ]}
+    ]
+  },
+  {
+    groupLabel:'10~12주차: 완성 & 유지',
+    weeks:[
+      { wi:9, label:'10주차', range:'64~70일', axes:[
+        {ai:0,axisId:'A5',label:'갑상선 최적화',icon:'⚡',presc:'TSH 재검사로 기능 확인. 바질씨드·브라질넛·미역 일상화.', quiz:{q:'갑상선 호르몬 합성의 직접 원료가 되는 미네랄은?',opts:['철분','요오드','아연','셀레늄'],ans:1}, checkinLabel:'갑상선 최적화 식품 일상화'},
+        {ai:1,axisId:'A6',label:'호르몬 최적화',icon:'🔬',presc:'코르티솔 주간 패턴 평가. 수면 전 마그네슘+아슈와간다 루틴 고수.', quiz:{q:'아슈와간다의 주요 효능이 아닌 것은?',opts:['코르티솔 감소','근력 증가','갑상선 항진 억제','수면 개선'],ans:2}, checkinLabel:'호르몬 루틴 고수 + 코르티솔 패턴 평가'},
+        {ai:2,axisId:'A10',label:'에너지 최적화',icon:'⚛️',presc:'CoQ10 + PQQ 조합으로 미토콘드리아 생합성 지원. 근육량 측정.', quiz:{q:'미토콘드리아 생합성을 촉진하는 보충제는?',opts:['비타민C','PQQ','마그네슘','아연'],ans:1}, checkinLabel:'CoQ10+PQQ 조합 + 근육량 측정 실천'}
+      ]},
+      { wi:10, label:'11주차', range:'71~77일', axes:[
+        {ai:0,axisId:'A3',label:'수분 최적화',icon:'💧',presc:'체성분 분석으로 ECW/ICW 비율 확인. 미네랄워터 또는 필터 정수 전환.', quiz:{q:'세포내 수분(ICW) 비율을 높이는 데 가장 중요한 미네랄은?',opts:['나트륨','칼륨','칼슘','마그네슘'],ans:1}, checkinLabel:'체성분 분석 + 미네랄워터 전환'},
+        {ai:1,axisId:'A8',label:'심혈관 최적화',icon:'❤️',presc:'VO2max 측정(스마트워치 또는 운동부하검사). 지중해 식단 완성도 점검.', quiz:{q:'심폐 지구력의 객관적 측정 지표는?',opts:['안정시 심박수','VO2max','혈압','심박 변이도'],ans:1}, checkinLabel:'VO2max 측정 + 지중해 식단 점검'},
+        {ai:2,axisId:'A11',label:'염증 최적화',icon:'🛡️',presc:'hsCRP 재검사. 항염 식단 완성도 90% 달성 목표.', quiz:{q:'전신 염증을 가장 직접적으로 반영하는 혈액 마커는?',opts:['백혈구 수','hsCRP','혈당','콜레스테롤'],ans:1}, checkinLabel:'hsCRP 재검사 + 항염 식단 90% 달성'}
+      ]},
+      { wi:11, label:'12주차', range:'78~84일', axes:[
+        {ai:0,axisId:'A1',label:'혈당 마스터',icon:'🩸',presc:'3개월 HbA1c 검사. 인슐린 저항성 HOMA-IR 계산.', quiz:{q:'최근 2~3개월 평균 혈당을 반영하는 검사는?',opts:['공복혈당','식후혈당','HbA1c','인슐린'],ans:2}, checkinLabel:'HbA1c + HOMA-IR 측정'},
+        {ai:1,axisId:'A7',label:'신경 마스터',icon:'🧠',presc:'스트레스 반응성 재평가. 인지 기능 자가 테스트 완성.', quiz:{q:'장기적 스트레스 관리 능력을 나타내는 지표는?',opts:['혈압','코르티솔 깨기 반응','혈당','심박수'],ans:1}, checkinLabel:'스트레스 반응성 재평가 완성'},
+        {ai:2,axisId:'A2',label:'간 마스터',icon:'🫀',presc:'ALT/AST/GGT 재검사. 3개월 성과 종합 리뷰.', quiz:{q:'간 손상의 가장 민감한 지표는?',opts:['ALT','GGT','총 빌리루빈','알부민'],ans:0}, checkinLabel:'간 수치 재검사 + 3개월 성과 종합 리뷰'}
+      ]}
+    ]
+  }
+];
+
+/* ─── BC 컬러 테마 적용 ─── */
+function applyBcColorTheme(bcCode) {
+  const body = document.body;
+  // 이전 테마 제거
+  for(let i=1;i<=10;i++){
+    body.classList.remove('bc-theme-BC-0'+i, 'bc-theme-BC-'+i);
+  }
+  if(bcCode) body.classList.add('bc-theme-'+bcCode);
+}
+
+/* ─── 챕터 네비게이션 ─── */
+let currentChapter = 0;
+const TOTAL_CHAPTERS = 9; // 0=COVER, 1~8=CH1~CH8
+
+function gotoChapter(n) {
+  if(n < 0 || n >= TOTAL_CHAPTERS) return;
+  document.querySelectorAll('.chapter-section').forEach((el, idx) => {
+    el.classList.toggle('active', idx === n);
+  });
+  currentChapter = n;
+  updateTopBar(n);
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function nextChapter() {
+  if(currentChapter < TOTAL_CHAPTERS - 1) gotoChapter(currentChapter + 1);
+}
+
+function prevChapter() {
+  if(currentChapter > 0) gotoChapter(currentChapter - 1);
+}
+
+function updateTopBar(n) {
+  const labels = ['COVER','바디코드','실패 과학','체질·기질','11축 처방','12주 로드맵','식단·운동','오행 계절','컨설턴트에게'];
+  const el = document.getElementById('topBarChapterName');
+  if(el) el.textContent = labels[n] || '';
+  // prev/next 버튼 표시
+  const prev = document.getElementById('topBarPrev');
+  const next = document.getElementById('topBarNext');
+  if(prev) prev.style.display = n === 0 ? 'none' : 'inline-flex';
+  if(next) next.style.display = n === TOTAL_CHAPTERS-1 ? 'none' : 'inline-flex';
+}
+
+function printAll() {
+  // 모든 챕터 일시 표시 후 프린트
+  document.querySelectorAll('.chapter-section').forEach(el => el.classList.add('active'));
+  window.print();
+  // 프린트 후 복원
+  document.querySelectorAll('.chapter-section').forEach((el, idx) => {
+    el.classList.toggle('active', idx === currentChapter);
+  });
+}
+
+
+/* ─── renderCover ─── */
+function renderCover(res, bc) {
+  const today = new Date();
+  const dateStr = today.getFullYear()+'년 '+(today.getMonth()+1)+'월 '+today.getDate()+'일';
+  setText('cvDate', dateStr);
+  setText('cvName', res.name || '');
+  setText('cvBcCode', bc.id || '');
+  setText('cvBcGlowText', bc.id || '');
+  setText('cvBcName', bc.name || '');
+
+  // 훅 카피
+  const eType = classifyEmotionType(res);
+  const matrix = OPENING_COPY_MATRIX[eType] || {};
+  const copy = matrix[bc.id] || {};
+  setText('cvHook', copy.headline || bc.short || '');
+
+  // 통계 뱃지 (top 3 axes 기반)
+  const statsEl = document.getElementById('cvStats');
+  if(statsEl && bc.topAxes && bc.topAxes.length > 0) {
+    statsEl.innerHTML = bc.topAxes.slice(0,3).map(axId => {
+      const ax = AXIS_DEFS.find(a=>a.id===axId);
+      return ax ? `<span class="stat-badge">${ax.icon} ${ax.name}</span>` : '';
+    }).join('');
+  }
+}
+
+/* ─── renderCh1 ─── */
+function renderCh1(res, bc) {
+  const eType = classifyEmotionType(res);
+  const eLabel = E_LABELS[eType] || eType;
+  const matrix = OPENING_COPY_MATRIX[eType] || {};
+  const copy = matrix[bc.id] || {};
+
+  // 감정 뱃지
+  setText('ch1EmotionBadge', eLabel);
+
+  // 오프닝 카피
+  const openEl = document.getElementById('ch1OpeningCopy');
+  if(openEl) {
+    openEl.innerHTML = `
+      <p class="opening-headline">"${copy.headline || ''}"</p>
+      <p class="opening-body">${copy.body || ''}</p>
+      <p class="opening-insight"><span class="insight-icon">💡</span>${copy.insight || ''}</p>
+      <p class="opening-action"><span class="action-icon">→</span>${copy.action || ''}</p>
+    `;
+  }
+
+  // BC 코드·이름·설명 개별
+  setText('ch1BcCode', bc.id || '');
+  setText('ch1BcName', bc.name || '');
+  setText('ch1BcDesc', bc.short || '');
+
+  // 인사이트
+  setText('ch1Insight', bc.consultantNote || '');
+
+  // 체크리스트 (traits 기반)
+  const clEl = document.getElementById('ch1Checklist');
+  if(clEl && bc.traits && bc.traits.length > 0) {
+    clEl.innerHTML = bc.traits.slice(0,5).map(t =>
+      `<li class="checklist-item"><span class="check-icon">✓</span>${t}</li>`
+    ).join('');
+  }
+
+  // 축 바 (topAxes 기반)
+  const barEl = document.getElementById('ch1AxisBars');
+  if(barEl && bc.topAxes && bc.topAxes.length > 0) {
+    barEl.innerHTML = bc.topAxes.slice(0,5).map((axId, i) => {
+      const ax = AXIS_DEFS.find(a=>a.id===axId);
+      if(!ax) return '';
+      const pct = 95 - i*12;
+      return `
+        <div class="axis-bar-row">
+          <span class="axis-bar-label">${ax.icon} ${ax.name}</span>
+          <div class="axis-bar-track">
+            <div class="axis-bar-fill" style="width:${pct}%"></div>
+          </div>
+          <span class="axis-bar-pct">${pct}%</span>
+        </div>`;
+    }).join('');
+  }
+}
+
+/* ─── renderCh3 ─── */
+function renderCh3(bc) {
+  setText('ch3OhaengName', bc.ohaeng || '');
+  setText('ch3OhaengDesc', bc.ohaengDesc || '');
+  setText('ch3ScienceFact', bc.scienceFact || '');
+  setText('ch3ScienceCite', bc.scienceCite || '');
+
+  // 기질 특성 카드
+  const traitEl = document.getElementById('ch3TraitCards');
+  if(traitEl && bc.traits) {
+    traitEl.innerHTML = bc.traits.map(t =>
+      `<div class="trait-card"><span class="trait-dot">◆</span>${t}</div>`
+    ).join('');
+  }
+
+  // 대사 성향 (metaProfile)
+  const metaEl = document.getElementById('ch3MetaProfile');
+  if(metaEl && bc.metaProfile) {
+    metaEl.innerHTML = bc.metaProfile.map(m =>
+      `<div class="meta-profile-item"><span class="meta-icon">▸</span>${m}</div>`
+    ).join('');
+  }
+}
+
+/* ─── renderCh4 ─── */
+function renderCh4(bc) {
+  // 최우선축 하이라이트
+  const topAxesEl = document.getElementById('ch4TopAxesBox');
+  const topAxesTextEl = document.getElementById('ch4TopAxesText');
+  if(bc.topAxes && bc.topAxes.length > 0) {
+    const top3 = bc.topAxes.slice(0,3);
+    const top3Names = top3.map(axId => {
+      const ax = AXIS_DEFS.find(a=>a.id===axId);
+      return ax ? ax.icon+' '+ax.name : axId;
+    });
+    if(topAxesEl) topAxesEl.innerHTML = top3Names.map(n =>
+      `<span class="top-axis-chip">${n}</span>`
+    ).join('');
+    if(topAxesTextEl) topAxesTextEl.textContent = top3Names.join(' · ')+' 가 이 바디코드의 핵심 처방축입니다.';
+  }
+
+  // 11축 카드 그리드
+  const cardEl = document.getElementById('ch4AxisCards');
+  if(cardEl) {
+    cardEl.innerHTML = AXIS_DEFS.map(ax => {
+      const isTop = bc.topAxes && bc.topAxes.includes(ax.id);
+      return `
+        <div class="axis-card ${isTop ? 'axis-card--top' : ''}">
+          <div class="axis-card-header">
+            <span class="axis-icon">${ax.icon}</span>
+            <span class="axis-id">${ax.id}</span>
+            <span class="axis-name">${ax.name}</span>
+            ${isTop ? '<span class="top-badge">핵심</span>' : ''}
+          </div>
+          <p class="axis-desc">${ax.desc}</p>
+          <div class="axis-fact"><strong>근거:</strong> ${ax.fact}</div>
+          <div class="axis-presc"><strong>처방:</strong> ${ax.presc}</div>
+        </div>`;
+    }).join('');
+  }
+}
+
+
+/* ─── renderWeeklyClickTree (CH5) ─── */
+let wtState = {}; // { wi: {open, axes: {ai: {open, answered, correct}}} }
+
+function renderWeeklyClickTree(res, bc) {
+  const gridEl = document.getElementById('wtWeekGrid');
+  if(!gridEl) return;
+
+  // BC topAxes로 주차별 처방축 커스터마이즈
+  const bcTopAxes = bc.topAxes || [];
+
+  let html = '';
+  defaultWeeklyTree.forEach(group => {
+    html += `<div class="wt-group">
+      <div class="wt-group-label">${group.groupLabel}</div>
+      <div class="wt-week-row">`;
+    group.weeks.forEach(week => {
+      const wi = week.wi;
+      html += `
+        <div class="wt-week-card" id="wtWeek_${wi}" onclick="wtToggleWeek(${wi})">
+          <div class="wt-week-num">${week.label}</div>
+          <div class="wt-week-range">${week.range}</div>
+          <div class="wt-week-axes">${week.axes.map(a => a.icon).join(' ')}</div>
+          <div class="wt-week-arrow" id="wtArrow_${wi}">▼</div>
+        </div>`;
+    });
+    html += `</div></div>`;
+  });
+  gridEl.innerHTML = html;
+}
+
+function wtToggleWeek(wi) {
+  const panel = document.getElementById('wtPrescPanel');
+  if(!panel) return;
+
+  // 같은 주차 재클릭 시 닫기
+  if(wtState.openWi === wi) {
+    wtState.openWi = null;
+    panel.innerHTML = '';
+    panel.style.display = 'none';
+    document.querySelectorAll('.wt-week-card').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.wt-week-arrow').forEach(el => el.textContent = '▼');
+    return;
+  }
+  wtState.openWi = wi;
+
+  // 주차 데이터 찾기
+  let weekData = null;
+  defaultWeeklyTree.forEach(g => g.weeks.forEach(w => { if(w.wi === wi) weekData = w; }));
+  if(!weekData) return;
+
+  document.querySelectorAll('.wt-week-card').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.wt-week-arrow').forEach(el => el.textContent = '▼');
+  const activeCard = document.getElementById('wtWeek_'+wi);
+  if(activeCard) { activeCard.classList.add('active'); }
+  const arrow = document.getElementById('wtArrow_'+wi);
+  if(arrow) arrow.textContent = '▲';
+
+  // 처방축 패널 렌더
+  panel.style.display = 'block';
+  panel.innerHTML = `
+    <div class="wt-panel-header">
+      <span class="wt-panel-week">${weekData.label} (${weekData.range})</span>
+      <span class="wt-panel-hint">축을 클릭하면 상세 처방과 퀴즈가 열립니다</span>
+    </div>
+    <div class="wt-axes-list" id="wtAxesList_${wi}">
+      ${weekData.axes.map(axis => `
+        <div class="wt-axis-row" id="wtAxisRow_${wi}_${axis.ai}" onclick="wtToggleAxis(${wi},${axis.ai})">
+          <span class="wt-axis-icon">${axis.icon}</span>
+          <span class="wt-axis-label">${axis.label}</span>
+          <span class="wt-axis-toggle" id="wtAxisToggle_${wi}_${axis.ai}">+</span>
+        </div>
+        <div class="wt-axis-detail" id="wtAxisDetail_${wi}_${axis.ai}" style="display:none">
+          <div class="wt-presc">${axis.presc}</div>
+          <div class="wt-quiz-area" id="wtQuizArea_${wi}_${axis.ai}">
+            <div class="wt-quiz-q">🧠 ${axis.quiz.q}</div>
+            <div class="wt-quiz-opts">
+              ${axis.quiz.opts.map((opt, oi) =>
+                `<button class="wt-quiz-btn" id="wtQuizBtn_${wi}_${axis.ai}_${oi}"
+                  onclick="wtAnswer(${wi},${axis.ai},${oi},${axis.quiz.ans})">${opt}</button>`
+              ).join('')}
+            </div>
+            <div class="wt-quiz-result" id="wtQuizResult_${wi}_${axis.ai}" style="display:none"></div>
+          </div>
+          <button class="wt-checkin-btn" id="wtCheckinBtn_${wi}_${axis.ai}"
+            onclick="wtCheckin(${wi},${axis.ai},'${weekData.range}','${axis.axisId}')"
+            style="display:none">
+            ✅ ${axis.checkinLabel}
+          </button>
+          <div class="wt-checkin-done" id="wtCheckinDone_${wi}_${axis.ai}" style="display:none">
+            <span class="done-icon">🎉</span> 체크인 완료!
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function wtToggleAxis(wi, ai) {
+  const detail = document.getElementById(`wtAxisDetail_${wi}_${ai}`);
+  const toggle = document.getElementById(`wtAxisToggle_${wi}_${ai}`);
+  if(!detail) return;
+  const isOpen = detail.style.display !== 'none';
+  detail.style.display = isOpen ? 'none' : 'block';
+  if(toggle) toggle.textContent = isOpen ? '+' : '−';
+}
+
+function wtAnswer(wi, ai, chosen, correct) {
+  const resultEl = document.getElementById(`wtQuizResult_${wi}_${ai}`);
+  const checkinBtn = document.getElementById(`wtCheckinBtn_${wi}_${ai}`);
+  const opts = document.querySelectorAll(`[id^="wtQuizBtn_${wi}_${ai}_"]`);
+
+  // 버튼 비활성화
+  opts.forEach((btn, oi) => {
+    btn.disabled = true;
+    if(oi === correct) btn.classList.add('quiz-correct');
+    if(oi === chosen && chosen !== correct) btn.classList.add('quiz-wrong');
+  });
+
+  if(resultEl) {
+    resultEl.style.display = 'block';
+    if(chosen === correct) {
+      resultEl.innerHTML = '<span class="quiz-ok">✓ 정답입니다! 이 원리를 실천에 적용하세요.</span>';
+    } else {
+      // 정답 텍스트 찾기
+      const btn = document.getElementById(`wtQuizBtn_${wi}_${ai}_${correct}`);
+      const correctText = btn ? btn.textContent : '';
+      resultEl.innerHTML = `<span class="quiz-no">✗ 정답은 "${correctText}"입니다. 다시 한번 숙지하세요.</span>`;
+    }
+  }
+
+  // 체크인 버튼 표시
+  if(checkinBtn) checkinBtn.style.display = 'inline-flex';
+}
+
+async function wtCheckin(wi, ai, weekRange, axisId) {
+  const btn = document.getElementById(`wtCheckinBtn_${wi}_${ai}`);
+  const done = document.getElementById(`wtCheckinDone_${wi}_${ai}`);
+  if(btn) btn.disabled = true;
+
+  // URL에서 result_id, consultant_code 파싱
+  const params = new URLSearchParams(window.location.search);
+  const resultId = params.get('id') || params.get('result_id') || 'unknown';
+  const consultantCode = params.get('c') || params.get('consultant') || '';
+  const bcCode = document.getElementById('ch8DeclBcCode')?.textContent || '';
+
+  try {
+    const resp = await fetch('/api/checkin', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        result_id: resultId,
+        consultant_code: consultantCode,
+        bc_code: bcCode,
+        week_range: weekRange,
+        axis_name: axisId
+      })
+    });
+    const data = await resp.json();
+    if(data.ok) {
+      if(btn) btn.style.display = 'none';
+      if(done) done.style.display = 'flex';
+    } else {
+      if(btn) { btn.disabled = false; btn.textContent = '재시도'; }
+    }
+  } catch(e) {
+    console.warn('[wtCheckin] network error:', e);
+    if(btn) btn.disabled = false;
+  }
+}
+
+
+/* ─── renderCh6: 식단·운동·영양제 ─── */
+function renderCh6(bc) {
+  const dietEl = document.getElementById('ch6DietCards');
+  if(dietEl && bc.diet) {
+    dietEl.innerHTML = bc.diet.map(d =>
+      `<div class="ch6-card ch6-diet"><span class="ch6-icon">🥗</span><span class="ch6-text">${d}</span></div>`
+    ).join('');
+  }
+
+  const exEl = document.getElementById('ch6ExerciseCards');
+  if(exEl && bc.exercise) {
+    exEl.innerHTML = bc.exercise.map(e =>
+      `<div class="ch6-card ch6-exercise"><span class="ch6-icon">🏃</span><span class="ch6-text">${e}</span></div>`
+    ).join('');
+  }
+
+  const supEl = document.getElementById('ch6SupplCards');
+  if(supEl && bc.suppl) {
+    supEl.innerHTML = bc.suppl.map(s =>
+      `<div class="ch6-card ch6-suppl"><span class="ch6-icon">💊</span><span class="ch6-text">${s}</span></div>`
+    ).join('');
+  }
+}
+
+/* ─── renderCh7: 오행 계절 ─── */
+const OHAENG_SEASON = {
+  '목(木)': { season:'봄', months:'3·4·5월', color:'#4caf50', icon:'🌿',
+    tips:['봄철 새싹 채소(냉이·달래·씀바귀) 적극 섭취','간·담낭 클렌즈: 민들레차·아티초크','봄 알레르기 대비 쿼세틴 500mg'],
+    mindset:['새로운 시작에 저항하지 말고 흐름을 타세요','봄의 상승 에너지를 목표 설정에 활용하세요','새벽 산책으로 봄 햇살을 최대한 받으세요']
+  },
+  '화(火)': { season:'여름', months:'6·7·8월', color:'#f44336', icon:'☀️',
+    tips:['여름 과잉열 해소: 수박·오이·우엉차','심장 지원 오메가3 EPA 증량','고온다습 환경에서 전해질 보충'],
+    mindset:['여름의 열정적 에너지를 창의적 프로젝트에 쏟으세요','과열 방지: 정오 이후 격렬 운동 자제','감사 일기로 긍정 에너지 순환을 만드세요']
+  },
+  '토(土)': { season:'환절기', months:'3·6·9·12월 말', color:'#ff9800', icon:'🌍',
+    tips:['소화 기능 지원: 생강·계피·펜넬차','프로바이오틱스 계절 전환기 증량','환절기 면역 강화 아연+비타민D'],
+    mindset:['계절 전환기에 몸의 신호에 더 민감하게 반응하세요','안정감과 중심 잡기: 명상·접지(earthing) 실천','일상의 루틴을 재정비하는 최적의 시기입니다']
+  },
+  '금(金)': { season:'가을', months:'9·10·11월', color:'#9e9e9e', icon:'🍂',
+    tips:['폐·대장 지원: 도라지·배·무 섭취','가을 건조함 대비 히알루론산+수분 섭취 증가','면역 준비 비타민C 1000mg 시작'],
+    mindset:['수확과 정리의 계절: 불필요한 것을 내려놓으세요','가을 우울감 대비 비타민D + 세로토닌 지원','깊은 숨 들이마시기: 호흡 명상으로 폐 강화']
+  },
+  '수(水)': { season:'겨울', months:'12·1·2월', color:'#2196f3', icon:'❄️',
+    tips:['신장·방광 지원: 흑콩·검은깨·호두','겨울 저체온 대비 갑상선 영양소 강화','코르티솔 관리 아슈와간다 유지'],
+    mindset:['겨울은 저장과 회복의 계절입니다. 무리하지 마세요','숙면 우선: 일몰 후 빛 노출 최소화','내면의 지혜와 연결되는 성찰의 시간을 가지세요']
+  }
+};
+
+function renderCh7(bc) {
+  const seasonCards = document.getElementById('ch7SeasonCards');
+  const currentSeasonText = document.getElementById('ch7CurrentSeasonText');
+  const mindsetCards = document.getElementById('ch7MindsetCards');
+
+  // 현재 월 기반 계절 판단
+  const month = new Date().getMonth() + 1;
+  let currentSeason = '';
+  if([3,4,5].includes(month)) currentSeason = '봄';
+  else if([6,7,8].includes(month)) currentSeason = '여름';
+  else if([9,10,11].includes(month)) currentSeason = '가을';
+  else currentSeason = '겨울';
+
+  // 오행에 맞는 계절 데이터
+  const ohaeng = bc.ohaeng || '목(木)';
+  const seasonData = OHAENG_SEASON[ohaeng] || OHAENG_SEASON['목(木)'];
+
+  // 전체 계절 카드
+  if(seasonCards) {
+    seasonCards.innerHTML = Object.entries(OHAENG_SEASON).map(([key, s]) => {
+      const isMy = key === ohaeng;
+      return `
+        <div class="season-card ${isMy ? 'season-card--mine' : ''}">
+          <div class="season-icon">${s.icon}</div>
+          <div class="season-name">${s.season} (${key})</div>
+          <div class="season-months">${s.months}</div>
+          ${isMy ? '<div class="season-mine-badge">내 오행</div>' : ''}
+        </div>`;
+    }).join('');
+  }
+
+  // 현재 계절 처방
+  if(currentSeasonText) {
+    currentSeasonText.innerHTML = `
+      <strong>현재 ${currentSeason}</strong>에 맞는 ${ohaeng} 체질 처방:
+      <ul class="season-tips">${seasonData.tips.map(t => `<li>${t}</li>`).join('')}</ul>`;
+  }
+
+  // 마인드셋
+  if(mindsetCards) {
+    mindsetCards.innerHTML = seasonData.mindset.map(m =>
+      `<div class="mindset-card"><span class="mindset-quote">"${m}"</span></div>`
+    ).join('');
+  }
+}
+
+/* ─── renderCh8: 컨설턴트에게 ─── */
+function renderCh8(res, bc) {
+  // 요약 그리드
+  const summaryEl = document.getElementById('ch8SummaryGrid');
+  if(summaryEl) {
+    const topAxesSummary = (bc.topAxes || []).slice(0,3).map(axId => {
+      const ax = AXIS_DEFS.find(a=>a.id===axId);
+      return ax ? `<div class="summary-item"><span class="si-icon">${ax.icon}</span><span class="si-name">${ax.name}</span></div>` : '';
+    }).join('');
+    summaryEl.innerHTML = `
+      <div class="summary-card"><div class="sc-label">바디코드</div><div class="sc-val">${bc.id} ${bc.name}</div></div>
+      <div class="summary-card"><div class="sc-label">오행</div><div class="sc-val">${bc.ohaeng || ''}</div></div>
+      <div class="summary-card"><div class="sc-label">핵심 처방축</div><div class="sc-axes">${topAxesSummary}</div></div>
+    `;
+  }
+
+  // 컨설턴트 노트
+  setText('ch8ConsultantNote', bc.consultantNote || '');
+  setText('ch8ConsultantName', res.consultant || '담당 컨설턴트');
+
+  // 선언문 코드·이름
+  setText('ch8DeclBcCode', bc.id || '');
+  setText('ch8DeclName', res.name || '');
+}
+
+/* ─── doFirstCheckin (CH8 체크인 버튼) ─── */
+async function doFirstCheckin() {
+  const btn = document.getElementById('ch8CheckinBtn');
+  const done = document.getElementById('ch8CheckinDone');
+  if(btn) btn.disabled = true;
+
+  const params = new URLSearchParams(window.location.search);
+  const resultId = params.get('id') || params.get('result_id') || 'unknown';
+  const consultantCode = params.get('c') || params.get('consultant') || '';
+  const bcCode = document.getElementById('ch8DeclBcCode')?.textContent || '';
+
+  try {
+    const resp = await fetch('/api/checkin', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        result_id: resultId,
+        consultant_code: consultantCode,
+        bc_code: bcCode,
+        week_range: '1~7일',
+        axis_name: '첫 번째 체크인'
+      })
+    });
+    const data = await resp.json();
+    if(data.ok) {
+      if(btn) btn.style.display = 'none';
+      if(done) { done.style.display = 'block'; done.textContent = '✅ 체크인이 완료되었습니다! 12주 여정을 시작합니다.'; }
+    } else {
+      if(btn) btn.disabled = false;
+    }
+  } catch(e) {
+    console.warn('[doFirstCheckin]', e);
+    if(btn) btn.disabled = false;
+  }
+}
+
+
+/* ─── 유틸: setText ─── */
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if(el) el.textContent = val;
+}
+
+/* ─── async init() ─── */
+async function init() {
+  // URL 파라미터에서 결과 데이터 추출
+  const params = new URLSearchParams(window.location.search);
+
+  // 설문 결과 파라미터 수집
+  const res = {
+    name: params.get('name') || params.get('n') || '고객님',
+    consultant: params.get('c') || params.get('consultant') || '담당 컨설턴트',
+    result_id: params.get('id') || params.get('result_id') || '',
+    // 설문 응답 항목들 (BC 분류에 사용)
+    q1: params.get('q1') || '',
+    q2: params.get('q2') || '',
+    q3: params.get('q3') || '',
+    q4: params.get('q4') || '',
+    q5: params.get('q5') || '',
+    q6: params.get('q6') || '',
+    q7: params.get('q7') || '',
+    q8: params.get('q8') || '',
+    q9: params.get('q9') || '',
+    q10: params.get('q10') || '',
+    // emotion 관련 응답
+    e1: params.get('e1') || '',
+    e2: params.get('e2') || '',
+    e3: params.get('e3') || '',
+    e4: params.get('e4') || '',
+    // BC 코드 직접 지정 가능 (컨설턴트가 URL로 전달)
+    bc: params.get('bc') || params.get('bcCode') || ''
+  };
+
+  // BC 코드 결정: URL 직접 지정 > BC_DB 첫 번째 (시연용 기본값)
+  let bcCode = res.bc;
+  if(!bcCode || !BC_DB[bcCode]) {
+    // 간단한 BC 자동 분류 로직 (설문 응답 기반)
+    bcCode = autoClassifyBc(res);
+  }
+  const bc = BC_DB[bcCode] || BC_DB['BC-01'];
+
+  // BC 컬러 테마 적용
+  applyBcColorTheme(bcCode);
+
+  // 모든 챕터 렌더링
+  renderCover(res, bc);
+  renderCh1(res, bc);
+  renderCh3(bc);
+  renderCh4(bc);
+  renderWeeklyClickTree(res, bc);
+  renderCh6(bc);
+  renderCh7(bc);
+  renderCh8(res, bc);
+
+  // 초기 챕터 표시 (COVER)
+  gotoChapter(0);
+
+  console.log('[BC Result] Initialized:', bcCode, bc.name);
+}
+
+/* ─── BC 자동 분류 (설문 응답 기반 간단 로직) ─── */
+function autoClassifyBc(res) {
+  // q1~q10 응답값으로 BC 코드 결정
+  // 각 BC는 특정 질문 조합에 매핑됨
+  // URL에 bc= 파라미터가 없을 경우 여기서 자동 분류
+  const answers = [res.q1,res.q2,res.q3,res.q4,res.q5,
+                   res.q6,res.q7,res.q8,res.q9,res.q10];
+
+  // 빈 답변 수 카운트
+  const filledCount = answers.filter(a => a !== '').length;
+  if(filledCount === 0) return 'BC-01'; // 시연 기본값
+
+  // 각 답변의 숫자 합산으로 BC 결정 (1~10)
+  let score = 0;
+  answers.forEach(a => {
+    const n = parseInt(a);
+    if(!isNaN(n)) score += n;
+  });
+
+  // score → BC 코드 매핑
+  const bcCodes = ['BC-01','BC-02','BC-03','BC-04','BC-05',
+                   'BC-06','BC-07','BC-08','BC-09','BC-10'];
+  const idx = Math.min(Math.floor(score / 10) % 10, 9);
+  return bcCodes[idx];
+}
+
+/* ─── DOMContentLoaded → init() ─── */
+document.addEventListener('DOMContentLoaded', init);
+
+</script>
+</body>
+</html>
