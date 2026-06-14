@@ -276,39 +276,55 @@
 
 <!-- 컨설턴트 등록 완료 팝업 -->
 <div class="modal-overlay" id="modal-registered">
-  <div class="modal">
+  <div class="modal" style="max-width:520px">
     <div class="modal-head">
       <h3 style="color:var(--accent)"><i class="fas fa-check-circle"></i> 컨설턴트 등록 완료</h3>
       <button class="modal-close" onclick="closeModal('modal-registered')">×</button>
     </div>
-    <div class="modal-body">
-      <div class="reg-code-box">
-        <div class="reg-code-label">컨설턴트 코드</div>
-        <div class="reg-code-val" id="reg-code-val">SC-0000</div>
-      </div>
-      <div class="reg-pw-box">
-        <i class="fas fa-key" style="color:#F59E0B;font-size:18px"></i>
-        <div>
-          <div style="font-size:11px;font-weight:700;color:#92400E;margin-bottom:2px">초기 비밀번호 (컨설턴트에게 전달)</div>
-          <div id="reg-pw-val" style="font-size:16px;font-weight:700;font-family:monospace;color:#1A3C6B">pass0000</div>
+    <div class="modal-body" style="max-height:70vh;overflow-y:auto">
+      <!-- 코드 + 비밀번호 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+        <div class="reg-code-box" style="margin-bottom:0">
+          <div class="reg-code-label">컨설턴트 코드</div>
+          <div class="reg-code-val" id="reg-code-val">SC-0000</div>
         </div>
-        <button class="btn btn-warn btn-sm" style="margin-left:auto" onclick="copyRegPw()"><i class="fas fa-copy"></i></button>
+        <div style="background:#FFFBEB;border:1.5px solid #FCD34D;border-radius:10px;padding:12px;display:flex;flex-direction:column;justify-content:center">
+          <div style="font-size:10px;font-weight:700;color:#92400E;margin-bottom:4px">🔑 초기 비밀번호</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div id="reg-pw-val" style="font-size:16px;font-weight:700;font-family:monospace;color:#1A3C6B;flex:1">pass0000</div>
+            <button class="btn btn-warn btn-sm" onclick="copyRegPw()" style="padding:4px 8px"><i class="fas fa-copy"></i></button>
+          </div>
+        </div>
       </div>
-      <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">공유 링크</div>
+
+      <!-- 링크 -->
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">공유 링크</div>
       <div class="reg-link-row">
         <span class="link-label">📋 설문 링크</span>
-        <span class="link-val" id="reg-survey-url"></span>
+        <span class="link-val" id="reg-survey-url" style="font-size:10px"></span>
         <button class="btn btn-ghost btn-sm copy-btn" onclick="copyRegLink('survey')"><i class="fas fa-copy"></i></button>
       </div>
-      <div class="reg-link-row">
+      <div class="reg-link-row" style="margin-bottom:14px">
         <span class="link-label">🖥️ 대시보드</span>
-        <span class="link-val" id="reg-dash-url"></span>
+        <span class="link-val" id="reg-dash-url" style="font-size:10px"></span>
         <button class="btn btn-primary btn-sm copy-btn" onclick="copyRegLink('dash')"><i class="fas fa-copy"></i></button>
       </div>
-      <div style="background:#F0FDF4;border-radius:8px;padding:12px;font-size:12px;color:#065F46;margin-top:12px;line-height:1.7">
-        <i class="fas fa-info-circle"></i>
-        컨설턴트에게 <strong>초기 비밀번호</strong>와 <strong>대시보드 링크</strong>를 전달하세요.<br>
-        설문 링크는 고객이 설문을 시작할 때 사용하는 링크입니다.
+
+      <!-- 슬림마인드 이용 안내문 (복사 가능 텍스트 박스) -->
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">📌 컨설턴트 전달 안내문</div>
+      <div style="position:relative">
+        <textarea id="reg-guide-text" readonly
+          style="width:100%;box-sizing:border-box;min-height:220px;background:#F8FAFC;border:1.5px solid #CBD5E1;border-radius:8px;padding:12px;font-size:12px;line-height:1.8;font-family:inherit;color:#1E293B;resize:none;cursor:text"
+          onclick="this.select()"
+        ></textarea>
+        <button onclick="copyAllRegInfo()" 
+          style="position:absolute;top:8px;right:8px;background:var(--accent);color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px">
+          <i class="fas fa-copy"></i> 전체 복사
+        </button>
+      </div>
+      <div style="font-size:11px;color:#64748B;margin-top:6px;line-height:1.5">
+        <i class="fas fa-lightbulb" style="color:#F59E0B"></i>
+        텍스트 박스를 클릭하면 전체 선택됩니다. <strong>전체 복사</strong> 버튼을 눌러 바로 붙여넣기 하세요.
       </div>
     </div>
     <div class="modal-foot">
@@ -616,6 +632,7 @@ async function loadConsultants(search = '', status = '') {
           ? `<button class="btn btn-danger btn-sm" style="margin-left:4px" onclick="suspendConsultant('${c.code}')">정지</button>`
           : `<button class="btn btn-success btn-sm" style="margin-left:4px" onclick="activateConsultant('${c.code}')">활성화</button>`
         }
+        <button class="btn btn-sm" style="margin-left:4px;background:#7F1D1D;color:#fff;border-color:#7F1D1D" onclick="deleteConsultant('${c.code}', '${c.name}')">삭제</button>
       </td>
     </tr>
   `).join('');
@@ -715,7 +732,47 @@ function showRegisteredPopup(code, pwHint) {
   document.getElementById('reg-pw-val').textContent = pw;
   document.getElementById('reg-survey-url').textContent = surveyUrl;
   document.getElementById('reg-dash-url').textContent = dashUrl;
+
+  // 안내문 텍스트 생성
+  const guideText = buildGuideText(code, pw, surveyUrl, dashUrl);
+  const ta = document.getElementById('reg-guide-text');
+  if (ta) ta.value = guideText;
+
   openModal('modal-registered');
+}
+
+function buildGuideText(code, pw, surveyUrl, dashUrl) {
+  return `안녕하세요! 슬림마인드(SlimMind) 컨설턴트로 등록되셨습니다. 🎉
+
+━━━━━━━━━━━━━━━━━━━━
+✅ 컨설턴트 코드: ${code}
+🔑 초기 비밀번호: ${pw}
+━━━━━━━━━━━━━━━━━━━━
+
+📋 고객 설문 링크 (고객에게 공유):
+${surveyUrl}
+
+🖥️ 컨설턴트 대시보드 (로그인 전용):
+${dashUrl}
+
+━━━━━━━━━━━━━━━━━━━━
+📌 슬림마인드 이용 방법
+
+1. 대시보드 링크로 접속하세요.
+   👉 ${dashUrl}
+
+2. 컨설턴트 코드(${code})와 초기 비밀번호(${pw})로 로그인하세요.
+   ※ 최초 로그인 후 비밀번호를 변경하시길 권장합니다.
+
+3. 고객에게 설문 링크를 공유하세요.
+   👉 ${surveyUrl}
+
+4. 고객이 설문을 완료하면 대시보드에서 BC 진단 결과를 확인할 수 있습니다.
+
+5. 결과지를 바탕으로 맞춤 다이어트 컨설팅을 진행하세요.
+
+━━━━━━━━━━━━━━━━━━━━
+문의사항은 SlimMind 관리자에게 연락해 주세요.`;
 }
 
 function copyRegPw() {
@@ -730,21 +787,44 @@ function copyRegLink(type) {
 }
 
 function copyAllRegInfo() {
-  const code = document.getElementById('reg-code-val').textContent;
-  const pw = document.getElementById('reg-pw-val').textContent;
-  const surveyUrl = document.getElementById('reg-survey-url').textContent;
-  const dashUrl = document.getElementById('reg-dash-url').textContent;
-  const text = `[SlimMind 컨설턴트 정보]\n코드: ${code}\n초기 비밀번호: ${pw}\n\n설문 링크 (고객 공유용):\n${surveyUrl}\n\n대시보드 링크 (컨설턴트 전용):\n${dashUrl}`;
-  navigator.clipboard.writeText(text).then(() => toast('전체 정보 복사 완료', 'success'));
+  const ta = document.getElementById('reg-guide-text');
+  const text = ta ? ta.value : '';
+  if (!text) { toast('복사할 내용이 없습니다.', 'error'); return; }
+  navigator.clipboard.writeText(text).then(() => {
+    toast('✅ 전체 안내문 복사 완료! 붙여넣기(Ctrl+V)하세요.', 'success');
+  }).catch(() => {
+    // 클립보드 API 실패 시 선택 방식으로 폴백
+    ta.select();
+    document.execCommand('copy');
+    toast('✅ 전체 안내문 복사 완료!', 'success');
+  });
 }
 
 function _saveConsultantDone() {}
 
 async function suspendConsultant(code) {
-  if (!confirm(`${code} 계정을 정지하시겠습니까?`)) return;
+  if (!confirm(`${code} 계정을 정지하시겠습니까?\n\n정지된 컨설턴트는 로그인이 차단됩니다.`)) return;
   await api('DELETE', `/admin/consultants/${code}`);
   toast(`${code} 정지 완료`, 'success');
   loadConsultants();
+}
+
+async function deleteConsultant(code, name) {
+  const confirmMsg = `⚠️ 컨설턴트 영구 삭제\n\n코드: ${code}\n이름: ${name || '-'}\n\n삭제하면 복구할 수 없습니다.\n정말 삭제하시겠습니까?`;
+  if (!confirm(confirmMsg)) return;
+  // 2차 확인
+  const confirmCode = prompt(`확인을 위해 컨설턴트 코드(${code})를 입력하세요:`);
+  if (confirmCode !== code) {
+    toast('코드가 일치하지 않아 삭제를 취소했습니다.', 'error');
+    return;
+  }
+  try {
+    await api('DELETE', `/admin/consultants/${code}/hard`);
+    toast(`${code} (${name}) 삭제 완료`, 'success');
+    loadConsultants();
+  } catch(e) {
+    toast('삭제 중 오류가 발생했습니다.', 'error');
+  }
 }
 
 async function activateConsultant(code) {

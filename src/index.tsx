@@ -403,6 +403,20 @@ app.delete('/api/admin/consultants/:code', requireRole('MASTER'), async (c) => {
   return c.json({ success: true, message: '계정이 정지되었습니다.' })
 })
 
+// DELETE /api/admin/consultants/:code/hard — 영구 삭제(하드)
+app.delete('/api/admin/consultants/:code/hard', requireRole('MASTER'), async (c) => {
+  const db = c.env.DB
+  const code = c.req.param('code')
+  // 컨설턴트 존재 확인
+  const existing = await db.prepare("SELECT code, name FROM consultants WHERE code=?").bind(code).first()
+  if (!existing) {
+    return c.json({ success: false, message: '존재하지 않는 컨설턴트입니다.' }, 404)
+  }
+  // 영구 삭제
+  await db.prepare("DELETE FROM consultants WHERE code=?").bind(code).run()
+  return c.json({ success: true, message: `${code} 컨설턴트가 영구 삭제되었습니다.` })
+})
+
 // GET /api/admin/results
 app.get('/api/admin/results', requireRole('MASTER'), async (c) => {
   const db = c.env.DB
