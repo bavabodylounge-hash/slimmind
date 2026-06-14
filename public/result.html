@@ -394,28 +394,32 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
   border-left:3px solid var(--bc-accent,#3ECBA5);
   line-height:1.7;font-style:italic;
 }
-.t3c-fact-cite{font-size:9.5px;color:#94A3B8;margin-top:4px;display:block}
+.t3c-fact-cite{font-size:9.5px;color:#475569;margin-top:4px;display:block}
 
 /* ── 전문가 방향 비율 리스트 ── */
 .expert-ratio-list{ display:flex;flex-direction:column;gap:8px }
 .er-row{
   display:flex;align-items:center;gap:8px;
-  padding:10px 12px;border-radius:12px;
+  padding:11px 14px;border-radius:12px;
   background:#F8FAFC;border:1.5px solid #E2E8F0;
   cursor:pointer;transition:all .2s;
+  position:relative;
 }
-.er-row:hover,.er-row.er-top{ background:#fff;box-shadow:0 3px 12px rgba(0,0,0,.1);border-color:rgba(0,0,0,.15) }
-.er-top{ border-left:4px solid var(--bc-accent,#3ECBA5) }
-.er-rank{ font-size:11px;font-weight:900;color:#94A3B8;min-width:18px;text-align:center }
+.er-row:hover{ background:#fff;box-shadow:0 3px 12px rgba(0,0,0,.1);border-color:rgba(0,0,0,.15);transform:translateX(3px) }
+.er-top{ border-left:4px solid var(--bc-accent,#3ECBA5);background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.07) }
+.er-top:hover{transform:translateX(3px)}
+.er-rank{ font-size:11px;font-weight:900;color:#475569;min-width:18px;text-align:center }
 .er-top .er-rank{ color:#0B2545 }
-.er-icon{ font-size:18px;min-width:24px;text-align:center }
+.er-icon{ font-size:20px;min-width:26px;text-align:center }
 .er-info{ flex:1;min-width:0 }
 .er-label{ font-size:13px;font-weight:800;color:#0B2545 }
-.er-where{ font-size:10px;color:#94A3B8;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis }
-.er-bar-wrap{ width:80px;height:6px;background:#E2E8F0;border-radius:99px;overflow:hidden }
+.er-where{ font-size:10px;color:#475569;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis }
+.er-bar-wrap{ width:80px;height:7px;background:#E2E8F0;border-radius:99px;overflow:hidden }
 .er-bar{ height:100%;border-radius:99px;transition:width .8s cubic-bezier(.16,1,.3,1) }
 .er-pct{ font-size:13px;font-weight:900;min-width:38px;text-align:right }
-.er-arrow{ font-size:10px;color:#CBD5E1 }
+.er-arrow{ font-size:13px;color:var(--bc-accent,#3ECBA5);opacity:.7;transition:opacity .2s,transform .2s }
+.er-row:hover .er-arrow{ opacity:1;transform:translateX(3px) }
+.er-click-hint{ font-size:9px;color:var(--bc-accent,#3ECBA5);font-weight:700;background:rgba(62,203,165,.12);border-radius:99px;padding:2px 7px;white-space:nowrap }
 
 /* ── 전문가 모달 ── */
 .em-header{ padding:20px 20px 0;display:flex;align-items:center;gap:12px }
@@ -443,14 +447,29 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 .em-item-left{ display:flex;align-items:center;gap:8px;flex:1 }
 .em-item-icon{ font-size:18px;flex-shrink:0 }
 .em-item-name{ font-size:13px;font-weight:800;color:#0B2545 }
-.em-item-where-inline{ font-size:10px;color:#94A3B8;margin-top:2px }
+.em-item-where-inline{ font-size:10px;color:#475569;margin-top:2px }
 .em-item-toggle-btn{
-  font-size:11px;color:var(--em-color,#3ECBA5);font-weight:800;
-  background:rgba(62,203,165,.1);border-radius:99px;
-  padding:3px 10px;white-space:nowrap;flex-shrink:0;
-  transition:transform .25s;
+  font-size:12px;color:var(--em-color,#3ECBA5);font-weight:900;
+  background:rgba(62,203,165,.15);border-radius:99px;
+  padding:4px 12px;white-space:nowrap;flex-shrink:0;
+  border:1.5px solid rgba(62,203,165,.35);
+  transition:transform .25s, background .2s, box-shadow .2s;
+  animation:toggleBtnPulse 2.5s ease-in-out infinite;
+  cursor:pointer;
 }
-.em-item.open .em-item-toggle-btn{ transform:rotate(180deg) }
+@keyframes toggleBtnPulse{
+  0%,100%{ box-shadow:0 0 0 0 rgba(62,203,165,.35); }
+  50%{ box-shadow:0 0 0 5px rgba(62,203,165,.0); }
+}
+.em-item.open .em-item-toggle-btn{
+  transform:rotate(180deg);
+  animation:none;
+  background:rgba(62,203,165,.22);
+}
+.em-item-toggle-btn:hover{
+  background:rgba(62,203,165,.28);
+  box-shadow:0 2px 8px rgba(62,203,165,.3);
+}
 
 /* 아코디언 바디 */
 .em-item-body{
@@ -495,7 +514,7 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 }
 .em-item-checkin:hover{ opacity:.88;transform:translateY(-1px) }
 .em-item-checkin.done{
-  background:#E2E8F0;color:#94A3B8;cursor:default;
+  background:#E2E8F0;color:#475569;cursor:default;
   pointer-events:none;transform:none;
 }
 .em-item-checkin-done-text{
@@ -527,19 +546,29 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 .colorbar-wrap{display:flex;flex-direction:column;gap:6px}
 .cb-row{
   display:flex;align-items:center;gap:8px;
+  padding:5px 8px;border-radius:10px;
   animation:cbSlideIn .5s ease both;
+  transition:background .15s;
 }
+.cb-row--top{
+  background:linear-gradient(90deg,rgba(62,203,165,.08),transparent);
+  border-left:3px solid var(--bc-accent,#3ECBA5);
+  padding-left:10px;
+}
+.cb-row--top .cb-name{ font-weight:900;color:#0B2545 }
+.cb-row--top .cb-track{ height:12px }
+.cb-row--top .cb-fill{ box-shadow:0 2px 6px rgba(0,0,0,.15) }
 @keyframes cbSlideIn{from{opacity:0;transform:translateX(-16px)}to{opacity:1;transform:translateX(0)}}
 .cb-rank{
-  width:22px;height:22px;flex-shrink:0;
+  width:24px;height:24px;flex-shrink:0;
   border-radius:50%;display:flex;align-items:center;justify-content:center;
   font-size:11px;font-weight:800;
-  background:#f1f5f9;color:#94a3b8;
+  background:#f1f5f9;color:#475569;
 }
-.cb-rank--1{background:linear-gradient(135deg,#ffd700,#f59e0b);color:#fff;box-shadow:0 2px 8px rgba(245,158,11,.4)}
-.cb-rank--2{background:linear-gradient(135deg,#c0c0c0,#9ca3af);color:#fff}
-.cb-rank--3{background:linear-gradient(135deg,#cd7f32,#92400e);color:#fff}
-.cb-icon{font-size:16px;flex-shrink:0;width:22px;text-align:center}
+.cb-rank--1{background:linear-gradient(135deg,#ffd700,#f59e0b);color:#fff;box-shadow:0 2px 8px rgba(245,158,11,.4);font-size:13px}
+.cb-rank--2{background:linear-gradient(135deg,#c0c0c0,#9ca3af);color:#fff;font-size:13px}
+.cb-rank--3{background:linear-gradient(135deg,#cd7f32,#92400e);color:#fff;font-size:13px}
+.cb-icon{font-size:17px;flex-shrink:0;width:22px;text-align:center}
 .cb-name{
   font-size:11.5px;font-weight:600;color:#374151;
   width:80px;flex-shrink:0;
@@ -654,8 +683,8 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 .macro-bmr-box--tdee{background:#f0fdf4}
 .macro-bmr-label{font-size:10px;color:#64748b;margin-bottom:3px}
 .macro-bmr-val{font-size:22px;font-weight:800;color:var(--bc-main,#0B2545)}
-.macro-bmr-unit{font-size:10px;color:#94a3b8}
-.macro-bmr-arrow{font-size:18px;color:#94a3b8;flex-shrink:0}
+.macro-bmr-unit{font-size:10px;color:#475569}
+.macro-bmr-arrow{font-size:18px;color:#475569;flex-shrink:0}
 .macro-chart-wrap{
   display:flex;align-items:center;gap:20px;
   flex-wrap:wrap;
@@ -677,7 +706,7 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 .macro-leg-name{font-size:12px;font-weight:700;color:#374151;flex:1}
 .macro-leg-pct{font-size:12px;color:#64748b;font-weight:600;margin-right:4px}
 .macro-leg-gram{font-size:13px;font-weight:800;color:var(--bc-main,#0B2545)}
-.macro-leg-unit{font-size:10px;color:#94a3b8}
+.macro-leg-unit{font-size:10px;color:#475569}
 @media print{
   .macro-input-row{display:none!important}
   .macro-chart-wrap{break-inside:avoid}
@@ -726,7 +755,7 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 }
 .sym-count-label{font-size:12px;color:#64748b;flex:1}
 .sym-count-num{font-size:20px;font-weight:800;color:var(--bc-main,#0B2545)}
-.sym-count-suffix{font-size:11px;color:#94a3b8}
+.sym-count-suffix{font-size:11px;color:#475569}
 .sym-match-msg{
   font-size:12px;font-weight:700;padding:8px 12px;
   border-radius:8px;margin-top:6px;text-align:center;
@@ -967,7 +996,7 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 /* ── journeyNodeClick 상세 패널 내부 스타일 ── */
 .jd-header{ display:flex;align-items:center;justify-content:space-between;margin-bottom:12px }
 .jd-week{ font-size:15px;font-weight:900;color:#0B2545 }
-.jd-range{ font-size:11px;color:#94A3B8 }
+.jd-range{ font-size:11px;color:#475569 }
 .jd-expert-section{ background:#F0F9FF;border-radius:10px;padding:12px;margin-bottom:12px }
 .jd-expert-title{ font-size:12px;font-weight:800;color:#0B2545;margin-bottom:6px }
 .jd-expert-cards{ display:flex;flex-direction:column;gap:6px;margin-top:8px }
@@ -977,7 +1006,7 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 .jd-ec-icon{ font-size:16px }
 .jd-ec-info{ flex:1;min-width:0 }
 .jd-ec-label{ font-size:12px;font-weight:800;color:#0B2545 }
-.jd-ec-where{ font-size:10px;color:#94A3B8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis }
+.jd-ec-where{ font-size:10px;color:#475569;white-space:nowrap;overflow:hidden;text-overflow:ellipsis }
 .jd-ec-pct{ font-size:14px;font-weight:900 }
 .jd-axis-section{ margin-top:4px }
 .jd-axis-title{ font-size:11px;font-weight:800;color:#64748B;margin-bottom:8px }
@@ -1225,16 +1254,20 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 .wt-week-card{
   border:2px solid #E9EEF5;border-radius:13px;padding:12px 10px;
   cursor:pointer;transition:all .2s;background:#fff;
-  text-align:center;
+  text-align:center;position:relative;
 }
 .wt-week-card:hover,.wt-week-card.active{border-color:var(--bc-accent,#3ECBA5);background:var(--bc-bg,#E8FAF5);box-shadow:0 4px 18px rgba(0,0,0,.08)}
-.wt-week-num{font-size:8px;font-weight:800;color:var(--bc-accent,#3ECBA5);letter-spacing:.12em;text-transform:uppercase;margin-bottom:3px}
-.wt-week-range{font-size:9.5px;color:#64748B;margin-bottom:5px}
-.wt-week-axes{font-size:16px;margin-bottom:4px}
-.wt-week-arrow{font-size:10px;color:var(--bc-accent,#3ECBA5)}
+/* 잠금 안된 무료 카드 pulse 애니메이션 */
+@keyframes cardPulse{0%,100%{box-shadow:0 0 0 0 rgba(62,203,165,.3)}50%{box-shadow:0 0 0 5px rgba(62,203,165,.0)}}
+.wt-week-card:not(.pw-locked){animation:cardPulse 3s ease-in-out infinite}
+.wt-week-card.active{animation:none}
+.wt-week-num{font-size:9px;font-weight:900;color:var(--bc-accent,#3ECBA5);letter-spacing:.12em;text-transform:uppercase;margin-bottom:3px}
+.wt-week-range{font-size:9.5px;color:#475569;margin-bottom:5px}
+.wt-week-axes{font-size:18px;margin-bottom:6px}
+.wt-week-arrow{font-size:11px;font-weight:900;color:var(--bc-accent,#3ECBA5);background:rgba(62,203,165,.12);border-radius:99px;padding:2px 8px;display:inline-block}
 .wt-panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #E9EEF5}
 .wt-panel-week{font-size:13px;font-weight:800;color:#0B2545}
-.wt-panel-hint{font-size:10px;color:#94A3B8;font-style:italic}
+.wt-panel-hint{font-size:10px;color:#475569;font-style:italic}
 .wt-axis-row{
   display:flex;align-items:center;gap:10px;padding:12px 14px;
   border:1px solid #E9EEF5;border-radius:11px;cursor:pointer;
@@ -1385,7 +1418,7 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 }
 .subtype-dont::before{content:'🚫 하면 안되는 것: ';font-weight:700}
 .subtype-ref{
-  font-size:10.5px;color:#94a3b8;line-height:1.5;
+  font-size:10.5px;color:#475569;line-height:1.5;
   font-style:italic;border-top:1px solid rgba(0,0,0,.04);
   padding-top:8px;margin-top:4px;
 }
@@ -1528,7 +1561,7 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 .occ-sub{font-size:10px;opacity:.7}
 .occ-divider{
   display:flex;align-items:center;justify-content:center;
-  width:28px;flex-shrink:0;font-size:18px;color:#94a3b8
+  width:28px;flex-shrink:0;font-size:18px;color:#475569
 }
 .occ-insight{
   font-size:11.5px;color:#334155;line-height:1.75;
@@ -2341,7 +2374,7 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 .pw-cta-btn:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(11,37,69,0.4)}
 .pw-later-btn{
   width:100%;padding:11px;
-  background:transparent;color:#94A3B8;
+  background:transparent;color:#475569;
   font-size:12.5px;font-weight:600;
   border:1.5px solid #E2E8F0;border-radius:12px;
   cursor:pointer;transition:all .2s;
@@ -2352,7 +2385,7 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
   width:28px;height:28px;
   background:#F1F5F9;border-radius:50%;
   border:none;cursor:pointer;
-  font-size:15px;color:#94A3B8;
+  font-size:15px;color:#475569;
   display:flex;align-items:center;justify-content:center;
   transition:background .2s;
 }
@@ -2405,12 +2438,12 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
   font-size:17px;font-weight:900;color:#0B2545;
   line-height:1.2;margin-bottom:2px;
 }
-.hk-metric-unit{ font-size:9px;color:#94A3B8;margin-bottom:2px }
+.hk-metric-unit{ font-size:9px;color:#475569;margin-bottom:2px }
 .hk-metric-label{ font-size:10px;color:#64748B;font-weight:700 }
 .hk-metric-trend{ font-size:10px;margin-top:3px }
 .hk-trend-up{ color:#16A34A }
 .hk-trend-dn{ color:#DC2626 }
-.hk-trend-eq{ color:#94A3B8 }
+.hk-trend-eq{ color:#475569 }
 
 /* 차트 카드 */
 .hk-chart-card{
@@ -2418,7 +2451,7 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
   border:1.5px solid rgba(0,0,0,.07);
 }
 .hk-chart-title{ font-size:13px;font-weight:800;color:#0B2545;margin-bottom:2px }
-.hk-chart-sub{ font-size:10px;color:#94A3B8;margin-bottom:10px }
+.hk-chart-sub{ font-size:10px;color:#475569;margin-bottom:10px }
 
 /* 걸음수 바차트 */
 .hk-bar-chart{
@@ -2442,7 +2475,7 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
   display:flex;gap:4px;padding:0 2px;
 }
 .hk-day-labels span{
-  flex:1;text-align:center;font-size:9.5px;color:#94A3B8;font-weight:700;
+  flex:1;text-align:center;font-size:9.5px;color:#475569;font-weight:700;
 }
 
 /* 심박수 행 */
@@ -2505,7 +2538,7 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 }
 .hk-checkin-btn:hover{ transform:translateY(-2px);box-shadow:0 10px 28px rgba(11,37,69,.35) }
 .hk-checkin-btn.done{
-  background:#E2E8F0;color:#94A3B8;cursor:default;
+  background:#E2E8F0;color:#475569;cursor:default;
   transform:none;box-shadow:none;pointer-events:none;
 }
 </style>
@@ -2951,7 +2984,7 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
       <div style="display:flex;align-items:center;gap:6px;background:#F1F5F9;border:1.5px solid #CBD5E1;border-radius:99px;padding:5px 14px">
         <span style="font-size:13px">🔒</span>
         <span style="font-size:11.5px;font-weight:800;color:#0B2545">4~12주</span>
-        <span style="font-size:11px;color:#94A3B8;font-weight:700">프리미엄 전용</span>
+        <span style="font-size:11px;color:#475569;font-weight:700">프리미엄 전용</span>
       </div>
     </div>
 
@@ -3336,8 +3369,8 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
     <!-- 탄단지 파이차트 + BMR -->
     <div class="sec-divider"></div>
     <div class="sec-kicker">내 몸에 맞는 탄·단·지 비율</div>
-    <div style="font-size:12px;color:#64748B;margin-bottom:14px;line-height:1.75">
-      신체 정보를 입력하면 <strong style="color:#0B2545">BMR 기반 정확한 그램 수</strong>를 자동 계산합니다.
+    <div style="font-size:12px;color:#475569;margin-bottom:14px;line-height:1.75">
+      목표 감량과 기간을 입력하면 <strong style="color:#0B2545">맞춤 탄·단·지 비율과 칼로리</strong>가 자동 계산됩니다.
     </div>
 
     <!-- 신체정보 입력 -->
@@ -3372,7 +3405,23 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
       </div>
     </div>
 
-    <!-- BMR + TDEE 결과 -->
+    <!-- 목표 감량 + 기간 입력 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;background:#F0FDF4;border-radius:12px;padding:12px 14px;border:1.5px solid #BBF7D0">
+      <div>
+        <div style="font-size:10px;font-weight:800;color:#15803D;margin-bottom:5px">🎯 목표 감량 (kg)</div>
+        <input class="macro-input-num" id="macroGoalKg" type="number" value="5" min="1" max="40" oninput="calcMacro()"
+          style="border-color:#BBF7D0;width:100%;box-sizing:border-box">
+        <div style="font-size:9px;color:#475569;margin-top:3px">현재 체중에서 몇 kg 감량?</div>
+      </div>
+      <div>
+        <div style="font-size:10px;font-weight:800;color:#15803D;margin-bottom:5px">📅 목표 기간 (주)</div>
+        <input class="macro-input-num" id="macroGoalWeeks" type="number" value="12" min="4" max="52" oninput="calcMacro()"
+          style="border-color:#BBF7D0;width:100%;box-sizing:border-box">
+        <div style="font-size:9px;color:#475569;margin-top:3px">몇 주 안에 달성할 건가요?</div>
+      </div>
+    </div>
+
+    <!-- BMR + 목표 칼로리 결과 -->
     <div class="macro-bmr-row" id="macroBmrRow">
       <div class="macro-bmr-box">
         <div class="macro-bmr-label">기초대사량(BMR)</div>
@@ -3381,7 +3430,7 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
       </div>
       <div class="macro-bmr-arrow">→</div>
       <div class="macro-bmr-box macro-bmr-box--tdee">
-        <div class="macro-bmr-label">목표 칼로리(TDEE×0.85)</div>
+        <div class="macro-bmr-label" id="macroTdeeLabel">목표 칼로리</div>
         <div class="macro-bmr-val" id="macroTdeeVal">—</div>
         <div class="macro-bmr-unit">kcal/일</div>
       </div>
@@ -3644,7 +3693,7 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
           <span style="font-size:16px">✅</span>
           <span style="font-size:12px;font-weight:800;color:#0B2545" id="ch9ConnectLabel">Apple Health 연동됨</span>
         </div>
-        <button style="font-size:10px;color:#94A3B8;background:transparent;border:none;cursor:pointer" onclick="disconnectHealth()">연동 해제</button>
+        <button style="font-size:10px;color:#475569;background:transparent;border:none;cursor:pointer" onclick="disconnectHealth()">연동 해제</button>
       </div>
 
       <!-- 주간 네비게이션 -->
@@ -3652,7 +3701,7 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
         <button class="hk-week-nav" onclick="hkWeekNav(-1)">← 이전 주</button>
         <div style="text-align:center">
           <div style="font-size:13px;font-weight:900;color:#0B2545" id="ch9WeekLabel">이번 주</div>
-          <div style="font-size:10px;color:#94A3B8" id="ch9WeekRange"></div>
+          <div style="font-size:10px;color:#475569" id="ch9WeekRange"></div>
         </div>
         <button class="hk-week-nav" onclick="hkWeekNav(1)" id="hkBtnNextWeek">다음 주 →</button>
       </div>
@@ -3718,7 +3767,7 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
   <div class="chapter-nav">
     <div class="nav-row">
       <button class="btn-prev" onclick="prevChapter()" title="이전">←</button>
-      <div style="font-size:11px;color:#94A3B8;text-align:center;padding:0 8px">슬림마인드와 함께<br>건강한 몸을 만들어가요 💚</div>
+      <div style="font-size:11px;color:#475569;text-align:center;padding:0 8px">슬림마인드와 함께<br>건강한 몸을 만들어가요 💚</div>
     </div>
   </div>
 
@@ -5163,18 +5212,70 @@ function calcMacro() {
   const heightCm = parseFloat(document.getElementById('macroHeight')?.value) || 163;
   const weightKg = parseFloat(document.getElementById('macroWeight')?.value) || 65;
   const activity = parseFloat(document.getElementById('macroActivity')?.value) || 1.375;
+  const goalKg    = parseFloat(document.getElementById('macroGoalKg')?.value)    || 5;
+  const goalWeeks = parseFloat(document.getElementById('macroGoalWeeks')?.value) || 12;
 
   // Mifflin-St Jeor BMR
   const bmr = gender === 'M'
     ? 10 * weightKg + 6.25 * heightCm - 5 * age + 5
     : 10 * weightKg + 6.25 * heightCm - 5 * age - 161;
-  const tdee   = bmr * activity;
-  const target = Math.round(tdee * 0.85); // 감량 목표: TDEE의 85%
+  const tdee = bmr * activity;
+
+  // 목표감량/기간 기반 일일 칼로리 적자 계산 (7700kcal = 지방 1kg)
+  const dailyDeficit = Math.round((goalKg * 7700) / (goalWeeks * 7));
+  // BMR × 1.05 이하로 내려가지 않도록 안전장치
+  const target = Math.max(Math.round(tdee - dailyDeficit), Math.round(bmr * 1.05));
+
+  // 실제 적자 (안전장치 적용 후 재계산)
+  const actualDeficit = Math.round(tdee - target);
 
   setText('macroBmrVal',  Math.round(bmr));
   setText('macroTdeeVal', target);
 
-  const ratio = MACRO_RATIO_DB[_macroBcId] || MACRO_RATIO_DB['BC-01'];
+  // 동적 레이블: 칼로리 적자 표시
+  const labelEl = document.getElementById('macroTdeeLabel');
+  if (labelEl) {
+    const deficitText = actualDeficit > 0 ? `−${actualDeficit}kcal 적자/일` : '유지 칼로리';
+    labelEl.innerHTML = `목표 칼로리<br><span style="font-size:9px;color:#15803D;font-weight:700">${deficitText}</span>`;
+  }
+
+  // 감량 속도에 따른 탄단지 비율 동적 조정
+  // BC별 기본 비율을 베이스로, 감량 속도에 따라 단백질 강화
+  const baseRatio = MACRO_RATIO_DB[_macroBcId] || MACRO_RATIO_DB['BC-01'];
+  let ratio;
+  let speedLabel;
+  if (actualDeficit >= 500) {
+    // 빠른 감량(500kcal+ 적자): 단백질↑, 탄수화물↓
+    ratio = { carb: Math.max(baseRatio.carb - 8, 30), prot: Math.min(baseRatio.prot + 5, 40), fat: baseRatio.fat + 3 };
+    // 합이 100이 되도록 보정
+    const total = ratio.carb + ratio.prot + ratio.fat;
+    ratio.carb = Math.round(ratio.carb / total * 100);
+    ratio.prot = Math.round(ratio.prot / total * 100);
+    ratio.fat  = 100 - ratio.carb - ratio.prot;
+    speedLabel = `⚡ 빠른 감량 모드 — 근손실 방지 단백질 강화 (${goalKg}kg / ${goalWeeks}주)`;
+  } else if (actualDeficit >= 250) {
+    // 완만한 감량(250~499 적자): BC 기본 비율 그대로
+    ratio = { carb: baseRatio.carb, prot: baseRatio.prot, fat: baseRatio.fat };
+    speedLabel = `🌿 완만한 감량 모드 — BC 최적 비율 (${goalKg}kg / ${goalWeeks}주)`;
+  } else if (actualDeficit > 0) {
+    // 소폭 적자(1~249): 탄수화물 소폭 증가 (에너지 유지)
+    ratio = { carb: Math.min(baseRatio.carb + 5, 50), prot: baseRatio.prot, fat: baseRatio.fat };
+    const total = ratio.carb + ratio.prot + ratio.fat;
+    ratio.carb = Math.round(ratio.carb / total * 100);
+    ratio.prot = Math.round(ratio.prot / total * 100);
+    ratio.fat  = 100 - ratio.carb - ratio.prot;
+    speedLabel = `🔄 유지·소폭 감량 모드 — 에너지 균형 (${goalKg}kg / ${goalWeeks}주)`;
+  } else {
+    // 안전장치 발동 (목표가 너무 공격적): BMR 보호
+    ratio = { carb: baseRatio.carb, prot: Math.min(baseRatio.prot + 5, 40), fat: baseRatio.fat };
+    const total = ratio.carb + ratio.prot + ratio.fat;
+    ratio.carb = Math.round(ratio.carb / total * 100);
+    ratio.prot = Math.round(ratio.prot / total * 100);
+    ratio.fat  = 100 - ratio.carb - ratio.prot;
+    speedLabel = `⚠️ 목표가 너무 빠릅니다 — 기초대사량 보호 모드로 조정됨`;
+  }
+  ratio.note = speedLabel;
+
   const carbG = Math.round(target * ratio.carb / 100 / 4);
   const protG = Math.round(target * ratio.prot / 100 / 4);
   const fatG  = Math.round(target * ratio.fat  / 100 / 9);
@@ -5198,7 +5299,7 @@ function calcMacro() {
         <div class="macro-leg-gram">${m.g}</div>
         <div class="macro-leg-unit">g</div>
       </div>`).join('') +
-      `<div style="font-size:10px;color:#94a3b8;margin-top:6px;line-height:1.5">${ratio.note}</div>`;
+      `<div style="font-size:10px;color:#475569;margin-top:6px;line-height:1.5">${ratio.note}</div>`;
   }
 
   // Chart.js 파이차트
@@ -5496,7 +5597,7 @@ function renderBodyMap(bc) {
       <!-- 핫스팟 오버레이 -->
       ${hotspotsHTML}
       <!-- 안내 텍스트 -->
-      <text x="100" y="293" text-anchor="middle" font-size="8" fill="#94a3b8">탭하여 자세히 보기</text>
+      <text x="100" y="293" text-anchor="middle" font-size="8" fill="#475569">탭하여 자세히 보기</text>
     </svg>`;
 }
 
@@ -5741,8 +5842,9 @@ function renderColorBars(axisSignals, bc) {
     const rankLabel = i < 3 ? RANK_EMOJI[i] : (i+1);
     const pct = Math.min(100, Math.max(0, r.score));
     const grad = `linear-gradient(90deg,${r.colors[0]},${r.colors[1]})`;
+    const topClass = i < 3 ? ' cb-row--top' : '';
     return `
-      <div class="cb-row" style="animation-delay:${i*0.05}s">
+      <div class="cb-row${topClass}" style="animation-delay:${i*0.05}s">
         <div class="cb-rank${rankClass}">${rankLabel}</div>
         <div class="cb-icon">${r.icon}</div>
         <div class="cb-name">${r.name}</div>
@@ -5822,18 +5924,43 @@ function renderCh2(res, bc) {
       '당신 탓이 아니에요. 몸이 그렇게 설계된 거예요.',
       '이걸 알면 절반은 해결된 거나 다름없어요.'
     ];
+    const rankColors = ['#E84545','#F59E0B','#3B82F6'];
+    const rankLabels = ['1st','2nd','3rd'];
+    const rankEmojis = ['🥇','🥈','🥉'];
     top3El.innerHTML = top3.map((axId, i) => {
       const ax = AXIS_DEFS.find(a => a.id === axId);
       if (!ax) return '';
+      const col = rankColors[i];
       return `
-        <div class="cause-card cause-card--${i+1}">
-          <div class="cause-rank">${['1st','2nd','3rd'][i]}</div>
-          <div class="cause-icon-lg">${ax.icon}</div>
-          <div class="cause-name">${ax.name}</div>
-          <p class="cause-talk">"${talks[i]}"</p>
-          <p class="cause-desc">${ax.desc}</p>
-          <div class="cause-fact">📌 ${ax.fact}</div>
-          <div class="cause-presc">💊 ${ax.presc}</div>
+        <div class="t3c-card" style="margin-bottom:14px">
+          <!-- 헤더: 순위 + 아이콘 + 이름 -->
+          <div class="t3c-header" style="background:linear-gradient(135deg,${col}dd,${col}99);padding:14px 18px">
+            <div class="t3c-rank" style="background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.6);font-size:18px">${rankEmojis[i]}</div>
+            <div style="flex:1">
+              <div class="t3c-axis-name" style="font-size:16px">${ax.icon} ${ax.name}</div>
+              <div class="t3c-axis-sub">${rankLabels[i]} 핵심 원인축</div>
+            </div>
+            <div style="font-size:28px;opacity:.4">${ax.icon}</div>
+          </div>
+          <!-- 바디: 설명 + 팩트 + 처방 -->
+          <div class="t3c-body" style="padding:14px 18px">
+            <!-- 공감 멘트 -->
+            <div class="t3c-talk" style="border-left-color:${col};font-size:14px;font-weight:700;color:#0B2545;line-height:1.75;margin-bottom:10px">
+              "${talks[i]}"
+            </div>
+            <!-- 메커니즘 설명 -->
+            <div style="font-size:12px;color:#334155;line-height:1.85;margin-bottom:10px">${ax.desc}</div>
+            <!-- 과학적 근거 배지 -->
+            <div style="display:flex;align-items:flex-start;gap:8px;background:#F8FAFC;border-radius:8px;padding:10px 12px;margin-bottom:8px;border-left:3px solid ${col}">
+              <span style="font-size:14px;flex-shrink:0">🔬</span>
+              <span style="font-size:11px;color:#475569;line-height:1.7">${ax.fact}</span>
+            </div>
+            <!-- 즉시 실천 처방 -->
+            <div style="display:flex;align-items:flex-start;gap:8px;background:linear-gradient(90deg,rgba(62,203,165,.08),transparent);border-radius:8px;padding:10px 12px;border-left:3px solid #3ECBA5">
+              <span style="font-size:14px;flex-shrink:0">→</span>
+              <span style="font-size:11.5px;font-weight:700;color:#0B2545;line-height:1.7">${ax.presc}</span>
+            </div>
+          </div>
         </div>`;
     }).join('');
   }
@@ -5857,26 +5984,41 @@ function renderCh2(res, bc) {
         원인축 데이터를 11개 전문가 방향으로 환산했습니다.<br>
         <strong style="color:#0B2545">비율이 높을수록 그 전문가 영역의 개입이 시급합니다.</strong>
       </div>
+      <div style="font-size:11.5px;color:#475569;margin-bottom:12px;display:flex;align-items:center;gap:6px;padding:8px 12px;background:#F0FDF4;border-radius:8px;border:1px solid #BBF7D0">
+        <span style="font-size:15px">👆</span>
+        <span><strong style="color:#15803D">항목을 탭하면</strong> 세부 방법·추천 장소·퀴즈가 열립니다</span>
+      </div>
       <div class="expert-ratio-list">
-        ${expertRatios.map((ex, i) => `
+        ${expertRatios.map((ex, i) => {
+          const rankEmoji = i===0 ? '🥇' : i===1 ? '🥈' : i===2 ? '🥉' : (i+1);
+          return `
           <div class="er-row ${i < 3 ? 'er-top' : ''}" onclick="openExpertDetail('${ex.id}')">
-            <div class="er-rank">${i + 1}</div>
+            <div class="er-rank">${rankEmoji}</div>
             <div class="er-icon">${ex.icon}</div>
             <div class="er-info">
               <div class="er-label">${ex.label}</div>
               <div class="er-where">${ex.where}</div>
             </div>
             <div class="er-bar-wrap">
-              <div class="er-bar" style="width:${ex.pct}%;background:${ex.color}"></div>
+              <div class="er-bar" data-pct="${ex.pct}" style="width:0%;background:${ex.color}"></div>
             </div>
             <div class="er-pct" style="color:${ex.color}">${ex.pct}%</div>
-            <div class="er-arrow">▶</div>
-          </div>`).join('')}
-      </div>
-      <div style="font-size:11px;color:#94A3B8;margin-top:10px;text-align:center">
-        항목을 클릭하면 세부 방법·추천 장소·퀴즈를 볼 수 있어요
+            ${i < 3 ? '<span class="er-click-hint">상세보기 ▶</span>' : '<div class="er-arrow">▶</div>'}
+          </div>`;
+        }).join('')}
       </div>`;
   }
+
+  /* ── 전문가 비율 바 애니메이션 ── */
+  setTimeout(() => {
+    const expertEl2 = document.getElementById('ch2ExpertRatio');
+    if (expertEl2) {
+      expertEl2.querySelectorAll('.er-bar[data-pct]').forEach(bar => {
+        bar.style.transition = 'width 0.9s cubic-bezier(.16,1,.3,1)';
+        bar.style.width = bar.dataset.pct + '%';
+      });
+    }
+  }, 400);
 
   /* ── 역효과 빨간카드 렌더 ── */
   renderBadCards(bc);
@@ -6090,102 +6232,90 @@ function emAnswer(expertId, chosen, correct) {
    renderCh3(res, bc)  — Duolingo 12주 지도형 여정 노드
 ══════════════════════════════════════════════════════ */
 function renderCh3(res, bc) {
-  _journeyRes = res; // journeyNodeClick에서 전문가 비율 계산용
+  _journeyRes = res;
   const mapEl  = document.getElementById('ch3JourneyMap');
   const pathEl = document.getElementById('ch3JourneyPath');
   if (!mapEl || !pathEl) return;
 
-  const PHASE_LABELS = ['🌱 기초 세팅', '🔥 적응 가속', '💫 습관 고착', '🏆 완성 유지'];
-  const phaseColors  = ['#a78bfa','#f59e0b','#10b981','#3b82f6'];
+  const PHASES = [
+    { label:'🌱 기반 다지기', weeks:'1~3주',  color:'#a78bfa', bg:'rgba(167,139,250,.12)', desc:'혈당·수분·수면 기초 확립' },
+    { label:'🔥 핵심 개입',   weeks:'4~6주',  color:'#f59e0b', bg:'rgba(245,158,11,.12)',  desc:'원인축 집중 처방 시작' },
+    { label:'💫 가속화',      weeks:'7~9주',  color:'#10b981', bg:'rgba(16,185,129,.12)',  desc:'습관 고착·심화 루틴' },
+    { label:'🏆 완성·유지',   weeks:'10~12주',color:'#3b82f6', bg:'rgba(59,130,246,.12)',  desc:'자동화·유지 시스템화' }
+  ];
 
-  /* 주차별 SVG 지그재그 경로 + 노드 */
-  const TOTAL_WEEKS = 12;
-  const NODE_R = 28;
-  const COL_W  = 80;
-  const ROW_H  = 100;
-  const COLS   = 4; // 지그재그: 4열
-  const svgW   = COL_W * COLS + 40;
-  const svgH   = ROW_H * 3 + 80;
+  /* ── 4단계 페이즈 바 (지도 상단) ── */
+  const phaseBarHtml = `
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:16px">
+      ${PHASES.map((ph,i) => `
+        <div style="background:${ph.bg};border:1.5px solid ${ph.color}33;border-radius:12px;padding:10px 8px;text-align:center">
+          <div style="font-size:14px;margin-bottom:3px">${ph.label.split(' ')[0]}</div>
+          <div style="font-size:9px;font-weight:900;color:${ph.color};letter-spacing:.05em">${ph.label.split(' ').slice(1).join(' ')}</div>
+          <div style="font-size:10px;font-weight:700;color:#0B2545;margin:3px 0">${ph.weeks}</div>
+          <div style="font-size:9px;color:#475569;line-height:1.4">${ph.desc}</div>
+        </div>`).join('')}
+    </div>`;
 
-  /* 노드 좌표 계산 (지그재그) */
-  function nodePos(wi) { // wi: 1~12
-    const idx  = wi - 1;
-    const row  = Math.floor(idx / COLS);
-    const col  = row % 2 === 0 ? idx % COLS : COLS - 1 - (idx % COLS);
-    return { x: col * COL_W + COL_W / 2 + 20, y: row * ROW_H + 60 };
-  }
+  /* ── 수평 타임라인 (4단계 × 3주) ── */
+  let timelineHtml = '';
+  PHASES.forEach((ph, phIdx) => {
+    const group = defaultWeeklyTree[phIdx];
+    if (!group) return;
+    timelineHtml += `
+      <div style="margin-bottom:16px">
+        <!-- 단계 라벨 -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <div style="height:2px;flex:0 0 16px;background:${ph.color};border-radius:2px"></div>
+          <span style="font-size:10px;font-weight:800;color:${ph.color};letter-spacing:.1em;text-transform:uppercase">${ph.label}</span>
+          <div style="height:2px;flex:1;background:${ph.color}33;border-radius:2px"></div>
+        </div>
+        <!-- 3개 주차 노드 행 -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+          ${group.weeks.map(wk => {
+            const locked = wk.wi > FREE_WEEKS;
+            const axIcons = wk.axes.map(a => a.icon).join(' ');
+            if (locked) {
+              return `
+                <div onclick="journeyNodeClick(${wk.wi})"
+                  style="border:2px dashed ${ph.color}44;border-radius:14px;padding:12px 8px;
+                    text-align:center;cursor:pointer;background:${ph.bg.replace('.12','.04')};opacity:.55">
+                  <div style="font-size:10px;font-weight:800;color:${ph.color}88;margin-bottom:4px">${wk.label}</div>
+                  <div style="font-size:11px;color:#475569;margin-bottom:4px">${wk.range}</div>
+                  <div style="font-size:18px">🔒</div>
+                </div>`;
+            } else {
+              return `
+                <div id="wtWeekNode_${wk.wi}" onclick="journeyNodeClick(${wk.wi})"
+                  style="border:2px solid ${ph.color};border-radius:14px;padding:12px 8px;
+                    text-align:center;cursor:pointer;background:${ph.bg};
+                    transition:all .2s;position:relative">
+                  <div style="font-size:10px;font-weight:800;color:${ph.color};margin-bottom:4px">${wk.label}</div>
+                  <div style="font-size:10px;color:#64748B;margin-bottom:6px">${wk.range}</div>
+                  <div style="font-size:16px;margin-bottom:4px">${axIcons}</div>
+                  <div style="font-size:9px;font-weight:700;color:${ph.color};background:rgba(255,255,255,.8);
+                    border-radius:99px;padding:2px 8px;display:inline-block">탭하여 열기 ▾</div>
+                </div>`;
+            }
+          }).join('')}
+        </div>
+      </div>`;
+  });
 
-  /* SVG 경로 선 */
-  let pathD = '';
-  for (let w = 1; w <= TOTAL_WEEKS; w++) {
-    const p = nodePos(w);
-    pathD += w === 1 ? `M ${p.x} ${p.y} ` : `L ${p.x} ${p.y} `;
-  }
+  pathEl.innerHTML = phaseBarHtml + timelineHtml;
 
-  /* 노드 SVG */
-  let nodesHtml = '';
-  for (let w = 1; w <= TOTAL_WEEKS; w++) {
-    const p     = nodePos(w);
-    const phase = Math.floor((w - 1) / 3); // 0~3
-    const color = phaseColors[phase];
-    const group = defaultWeeklyTree[phase];
-    const week  = group ? group.weeks.find(wk => wk.wi === w) : null;
-    const icons = week ? week.axes.map(a => a.icon).join('') : '';
-
-    const locked = w > FREE_WEEKS;
-    if (locked) {
-      // 잠금 노드: 흐릿하게 + 🔒 표시
-      nodesHtml += `
-        <g class="journey-node pw-node-locked" onclick="journeyNodeClick(${w})" style="cursor:pointer">
-          <circle cx="${p.x}" cy="${p.y}" r="${NODE_R}"
-            fill="${color}" fill-opacity="0.06"
-            stroke="${color}" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.4"/>
-          <text x="${p.x}" y="${p.y - 6}" text-anchor="middle"
-            font-size="10" fill="${color}" font-weight="700" opacity="0.35">${w}주</text>
-          <text x="${p.x}" y="${p.y + 9}" text-anchor="middle"
-            font-size="14" opacity="0.6">🔒</text>
-        </g>`;
-    } else {
-      // 무료 노드: 기본
-      nodesHtml += `
-        <g class="journey-node" onclick="journeyNodeClick(${w})" style="cursor:pointer">
-          <circle cx="${p.x}" cy="${p.y}" r="${NODE_R}"
-            fill="${color}" fill-opacity="0.15"
-            stroke="${color}" stroke-width="2.5"/>
-          <text x="${p.x}" y="${p.y - 8}" text-anchor="middle"
-            font-size="11" fill="${color}" font-weight="700">${w}주</text>
-          <text x="${p.x}" y="${p.y + 10}" text-anchor="middle"
-            font-size="13">${icons}</text>
-        </g>`;
-    }
-  }
-
-  pathEl.innerHTML = `
-    <svg width="${svgW}" height="${svgH}" style="overflow:visible">
-      <path d="${pathD}" fill="none" stroke="rgba(139,92,246,0.3)"
-        stroke-width="3" stroke-dasharray="6,4"/>
-      ${nodesHtml}
-    </svg>`;
-
-  /* 페이즈 그리드 */
+  /* 페이즈 그리드 — 이미 위에 통합했으므로 숨김 처리 */
   const phaseEl = document.getElementById('ch3PhaseGrid');
-  if (phaseEl) {
-    phaseEl.innerHTML = PHASE_LABELS.map((label, i) => {
-      const group = defaultWeeklyTree[i];
-      const weekNums = group ? group.weeks.map(w => w.wi + '주').join(', ') : '';
-      return `
-        <div class="phase-card" style="border-color:${phaseColors[i]}">
-          <div class="phase-label" style="color:${phaseColors[i]}">${label}</div>
-          <div class="phase-weeks">${weekNums}</div>
-          <div class="phase-groupLabel">${group ? group.groupLabel : ''}</div>
-        </div>`;
-    }).join('');
-  }
+  if (phaseEl) phaseEl.style.display = 'none';
 
   /* 주차 상세 패널 초기화 */
   const detailEl = document.getElementById('ch3WeekDetail');
   if (detailEl) {
-    detailEl.innerHTML = '<p class="journey-hint">위 주차 노드를 클릭하면 해당 주 처방이 나타납니다 ✨</p>';
+    detailEl.innerHTML = `
+      <div style="text-align:center;padding:20px 16px;background:linear-gradient(135deg,#F0F9FF,#EEF7F5);border-radius:14px;border:2px dashed #CBD5E1">
+        <div style="font-size:28px;margin-bottom:8px">👆</div>
+        <div style="font-size:14px;font-weight:800;color:#0B2545;margin-bottom:6px">위 주차를 탭하면 처방이 열립니다</div>
+        <div style="font-size:11px;color:#64748B;line-height:1.7">1주차·2주차·3주차 중 하나를 선택하세요<br>처방 내용과 전문가 방향을 함께 확인할 수 있어요</div>
+      </div>`;
   }
 }
 
@@ -6235,7 +6365,7 @@ function journeyNodeClick(wi) {
         <div class="week-expert-bar">${barSegs}</div>
         <div class="week-expert-legend">${legendItems}</div>
         <div class="jd-expert-cards">${top3Cards}</div>
-        <div style="font-size:10.5px;color:#94A3B8;margin-top:6px;text-align:center">항목 클릭 → 세부 방법·퀴즈</div>
+        <div style="font-size:10.5px;color:#475569;margin-top:6px;text-align:center">항목 클릭 → 세부 방법·퀴즈</div>
       </div>`;
   }
 
@@ -6930,6 +7060,9 @@ function renderWeeklyClickTree(res, bc) {
     html += `</div></div>`;
   });
   gridEl.innerHTML = html;
+
+  /* 1주차 자동 열기 — 처음 접속 시 빈 화면 방지 */
+  setTimeout(() => wtToggleWeek(1), 500);
 }
 
 function wtToggleWeek(wi) {
@@ -7759,6 +7892,55 @@ function hkCheckin() {
 
 /* ── DOMContentLoaded ── */
 document.addEventListener('DOMContentLoaded', init);
+
+/* ── 인쇄 전: 무료 주차(1~3주) 아코디언 자동 펼침 ── */
+window.addEventListener('beforeprint', function () {
+  // 1) wt-week-card: 무료 주차 1~3주 자동 열기
+  for (let wi = 1; wi <= 3; wi++) {
+    const card = document.getElementById('wtWeek_' + wi);
+    if (card && !card.classList.contains('pw-locked')) {
+      // 아직 열리지 않은 경우만 클릭 시뮬레이션
+      if (wtState.openWi !== wi) {
+        const panel = document.getElementById('wtPrescPanel');
+        if (panel) {
+          wtState.openWi = wi;
+          let weekData = null;
+          defaultWeeklyTree.forEach(g => g.weeks.forEach(w => { if (w.wi === wi) weekData = w; }));
+          if (weekData) {
+            document.querySelectorAll('.wt-week-card').forEach(el => el.classList.remove('active'));
+            card.classList.add('active');
+            const arrow = document.getElementById('wtArrow_' + wi);
+            if (arrow) arrow.textContent = '▲';
+          }
+        }
+      }
+    }
+  }
+
+  // 2) em-item: 무료 처방 아이템 모두 열기
+  document.querySelectorAll('.em-item:not(.pw-locked)').forEach(item => {
+    if (!item.classList.contains('open')) {
+      item.classList.add('open');
+      const btn = item.querySelector('.em-item-toggle-btn');
+      if (btn) btn.textContent = '▲ 닫기';
+    }
+  });
+
+  // 3) subtype-card: 선택된 서브타입 카드 표시
+  document.querySelectorAll('.subtype-card.selected').forEach(card => {
+    card.style.display = '';
+  });
+});
+
+/* ── 인쇄 후: 상태 복원 ── */
+window.addEventListener('afterprint', function () {
+  // em-item 원래대로 닫기
+  document.querySelectorAll('.em-item.open').forEach(item => {
+    item.classList.remove('open');
+    const btn = item.querySelector('.em-item-toggle-btn');
+    if (btn) btn.textContent = '▼ 보기';
+  });
+});
 
 </script>
 </body>

@@ -230,6 +230,25 @@ app.post('/api/survey/submit', async (c) => {
     return String(v)
   }
 
+  // birth_date 오염 방지: "T00:00:00", "shoulderT..." 등 비정상 값 차단
+  // YYYY-MM-DD 형식만 허용, 범위 1920-01-01 ~ 오늘
+  const sanitizeBirthDate = (raw: any): string | null => {
+    if (!raw) return null
+    const s = String(raw).trim()
+    // "T00:00:00" suffix가 붙은 경우 날짜 부분만 추출
+    const dateOnly = s.split('T')[0]
+    // YYYY-MM-DD 형식 검증
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) return null
+    const d = new Date(dateOnly)
+    if (isNaN(d.getTime())) return null
+    const year = d.getFullYear()
+    // 1920~현재 연도 범위 검증
+    const thisYear = new Date().getFullYear()
+    if (year < 1920 || year > thisYear) return null
+    return dateOnly
+  }
+  const cleanBirthDate = sanitizeBirthDate(birth_date)
+
   let validConsultantCode = null
   if (consultant_code) {
     const cons = await db.prepare('SELECT code FROM consultants WHERE code = ?').bind(consultant_code).first<any>()
@@ -265,7 +284,7 @@ app.post('/api/survey/submit', async (c) => {
     toStr(mbti), toStr(blood_type), toStr(saju_il_gan), toStr(saju_ohaeng),
     toStr(saju_il_ji) || null, toStr(saju_yin_yang) || null, toStr(birth_hour) || null,
     toStr(saju_hour_stem) || null, toStr(saju_hour_branch) || null, toStr(saju_display) || null,
-    toStr(gender), toStr(birth_date),
+    toStr(gender), cleanBirthDate,
     height ? Number(height) : null, weight ? Number(weight) : null, target_weight ? Number(target_weight) : null,
     bmi ? Number(bmi) : null, bfr ? Number(bfr) : null,
     fat_kg ? Number(fat_kg) : null, muscle_kg ? Number(muscle_kg) : null,
