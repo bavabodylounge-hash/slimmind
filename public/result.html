@@ -1239,6 +1239,137 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 @keyframes activeNodePulse{0%,100%{box-shadow:0 6px 24px rgba(255,215,100,.5)}50%{box-shadow:0 6px 36px rgba(255,215,100,.8),0 0 0 8px rgba(255,215,100,.15)}}
 @keyframes barGrow{from{width:0}to{width:var(--target-w,80%)}}
 @keyframes radarReveal{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}
+
+/* ══════════════════════════════════════════════
+   PAYWALL — 3주차 이후 잠금 스타일
+══════════════════════════════════════════════ */
+/* SVG 노드 잠금 오버레이 */
+.pw-node-locked{
+  cursor:pointer !important;
+}
+.pw-node-locked circle{
+  fill-opacity:0.06 !important;
+  stroke-dasharray:4 3 !important;
+  stroke-width:1.5 !important;
+}
+.pw-node-locked text{
+  opacity:0.35 !important;
+}
+
+/* wt-week-card 잠금 */
+.wt-week-card.pw-locked{
+  position:relative;
+  opacity:0.45;
+  filter:blur(0.4px);
+  pointer-events:auto;
+  cursor:pointer;
+}
+.wt-week-card.pw-locked::after{
+  content:'🔒';
+  position:absolute;
+  top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  font-size:18px;
+  background:rgba(255,255,255,0.85);
+  border-radius:50%;
+  width:34px;height:34px;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 2px 8px rgba(0,0,0,0.15);
+  line-height:34px;
+  text-align:center;
+}
+
+/* 잠금 모달 */
+.pw-modal-bg{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,0.6);
+  backdrop-filter:blur(6px);
+  z-index:9999;
+  display:flex;align-items:center;justify-content:center;
+  padding:24px;
+  animation:fadeIn .25s ease;
+}
+.pw-modal-box{
+  background:#fff;
+  border-radius:24px;
+  padding:32px 28px 28px;
+  max-width:380px;
+  width:100%;
+  text-align:center;
+  box-shadow:0 24px 80px rgba(0,0,0,0.25);
+  position:relative;
+}
+.pw-lock-icon{
+  font-size:52px;
+  margin-bottom:12px;
+  display:block;
+  animation:pwBounce .6s cubic-bezier(.34,1.56,.64,1);
+}
+.pw-modal-title{
+  font-size:20px;font-weight:900;color:#0B2545;
+  margin-bottom:8px;line-height:1.35;
+}
+.pw-modal-sub{
+  font-size:13px;color:#64748B;line-height:1.7;
+  margin-bottom:20px;
+}
+.pw-week-badge{
+  display:inline-block;
+  background:linear-gradient(135deg,#0B2545,#1e40af);
+  color:#fff;font-size:12px;font-weight:800;
+  padding:4px 14px;border-radius:99px;
+  margin-bottom:16px;letter-spacing:.05em;
+}
+.pw-benefits{
+  background:#F0F9FF;border-radius:14px;
+  padding:14px 16px;margin-bottom:20px;
+  text-align:left;
+}
+.pw-benefit-item{
+  font-size:12.5px;color:#334155;
+  padding:5px 0;
+  display:flex;align-items:flex-start;gap:8px;
+  border-bottom:1px solid #E0F2FE;
+}
+.pw-benefit-item:last-child{border-bottom:none}
+.pw-benefit-icon{font-size:15px;flex-shrink:0;margin-top:1px}
+.pw-cta-btn{
+  width:100%;padding:15px;
+  background:linear-gradient(135deg,#0B2545,#1e40af);
+  color:#fff;font-size:15px;font-weight:900;
+  border:none;border-radius:14px;cursor:pointer;
+  letter-spacing:.03em;
+  box-shadow:0 8px 24px rgba(11,37,69,0.35);
+  transition:all .2s;
+  margin-bottom:10px;
+}
+.pw-cta-btn:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(11,37,69,0.4)}
+.pw-later-btn{
+  width:100%;padding:11px;
+  background:transparent;color:#94A3B8;
+  font-size:12.5px;font-weight:600;
+  border:1.5px solid #E2E8F0;border-radius:12px;
+  cursor:pointer;transition:all .2s;
+}
+.pw-later-btn:hover{background:#F8FAFC;color:#64748B}
+.pw-close-x{
+  position:absolute;top:14px;right:16px;
+  width:28px;height:28px;
+  background:#F1F5F9;border-radius:50%;
+  border:none;cursor:pointer;
+  font-size:15px;color:#94A3B8;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .2s;
+}
+.pw-close-x:hover{background:#E2E8F0}
+.pw-free-badge{
+  display:inline-block;
+  background:linear-gradient(135deg,#3ECBA5,#10b981);
+  color:#fff;font-size:10px;font-weight:800;
+  padding:2px 10px;border-radius:99px;
+  letter-spacing:.08em;margin-left:6px;
+}
+@keyframes pwBounce{0%{transform:scale(0.3)}80%{transform:scale(1.15)}100%{transform:scale(1)}}
 </style>
 </head>
 <body>
@@ -1563,6 +1694,37 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
   </div>
 </div><!-- /CH2 -->
 
+<!-- ══ PAYWALL 잠금 모달 ══ -->
+<div id="paywallModal" style="display:none" class="pw-modal-bg" onclick="if(event.target===this)closePaywall()">
+  <div class="pw-modal-box">
+    <button class="pw-close-x" onclick="closePaywall()">✕</button>
+    <span class="pw-lock-icon">🔒</span>
+    <div class="pw-week-badge" id="pwWeekBadge">4주차부터</div>
+    <div class="pw-modal-title">3주차까지는<br>무료로 확인했어요 <span class="pw-free-badge">FREE</span></div>
+    <div class="pw-modal-sub">4주차부터 12주차 상세 여정은<br><strong>슬림마인드 프리미엄</strong>에서 확인할 수 있어요.<br>지금 시작하면 남은 9주를 함께 할게요.</div>
+    <div class="pw-benefits">
+      <div class="pw-benefit-item">
+        <span class="pw-benefit-icon">🗺️</span>
+        <span>4~12주 맞춤 여정 상세 로드맵 전체 공개</span>
+      </div>
+      <div class="pw-benefit-item">
+        <span class="pw-benefit-icon">🎯</span>
+        <span>매주 전문가 방향 TOP3 + 세부 실천 가이드</span>
+      </div>
+      <div class="pw-benefit-item">
+        <span class="pw-benefit-icon">📊</span>
+        <span>걸음수·심박수·수면 헬스킷 연동 대시보드</span>
+      </div>
+      <div class="pw-benefit-item">
+        <span class="pw-benefit-icon">👩‍⚕️</span>
+        <span>담당 컨설턴트 1:1 자동 매칭·체크인</span>
+      </div>
+    </div>
+    <button class="pw-cta-btn" onclick="goPremium()">지금 프리미엄 시작하기 →</button>
+    <button class="pw-later-btn" onclick="closePaywall()">나중에 결정할게요</button>
+  </div>
+</div>
+
 <!-- 전문가 상세 모달 -->
 <div id="expertDetailModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);overflow-y:auto" onclick="if(event.target===this)closeExpertDetail()">
   <div style="max-width:420px;margin:40px auto 40px;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.4)">
@@ -1588,6 +1750,19 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
     <div class="sec-sub" id="ch3MapSub">
       다이어트가 아닙니다. <strong style="color:#0B2545">몸의 시스템을 바꾸는 12주 여행</strong>입니다.<br>
       각 주차 노드를 눌러 그 주의 처방을 확인하세요.
+    </div>
+    <!-- 무료/잠금 안내 배너 -->
+    <div style="display:flex;align-items:center;justify-content:center;gap:16px;margin:12px 0 4px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:6px;background:#E8FAF5;border:1.5px solid #3ECBA5;border-radius:99px;padding:5px 14px">
+        <span style="font-size:13px">✅</span>
+        <span style="font-size:11.5px;font-weight:800;color:#0B2545">1~3주</span>
+        <span style="font-size:11px;color:#3ECBA5;font-weight:700">무료 공개</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;background:#F1F5F9;border:1.5px solid #CBD5E1;border-radius:99px;padding:5px 14px">
+        <span style="font-size:13px">🔒</span>
+        <span style="font-size:11.5px;font-weight:800;color:#0B2545">4~12주</span>
+        <span style="font-size:11px;color:#94A3B8;font-weight:700">프리미엄 전용</span>
+      </div>
     </div>
 
     <!-- 여정 지도 -->
@@ -3700,6 +3875,46 @@ function renderCh2(res, bc) {
 
 
 /* ══════════════════════════════════════════════════════
+   PAYWALL — 3주차 이후 잠금 로직
+   FREE_WEEKS: 무료 제공 주차 수 (1~FREE_WEEKS 까지 무료)
+══════════════════════════════════════════════════════ */
+const FREE_WEEKS = 3; // 무료 공개 주차 수 (1~3주)
+
+// wi는 0-indexed (0=1주차, 1=2주차 ... 11=12주차)
+// ch3 journeyNodeClick의 wi는 1-indexed이므로 별도 처리
+function isWeekLocked(wi) {
+  // wi가 1~12 범위면 1-indexed (ch3 노드), 0~11이면 0-indexed (ch8 카드)
+  // journeyNodeClick에서는 1~12로 호출, wtToggleWeek에서는 wi값 그대로 사용
+  return wi > FREE_WEEKS;
+}
+
+// 0-indexed wi용 잠금 판별 (ch8 카드 렌더링)
+function isWeekLockedByIndex(wiIndex) {
+  return wiIndex >= FREE_WEEKS; // 0,1,2 → 무료, 3+ → 잠금
+}
+
+function openPaywall(wi) {
+  const modal = document.getElementById('paywallModal');
+  if (!modal) return;
+  const badge = document.getElementById('pwWeekBadge');
+  if (badge) badge.textContent = wi + '주차';
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closePaywall() {
+  const modal = document.getElementById('paywallModal');
+  if (modal) modal.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function goPremium() {
+  // TODO: 실제 결제 페이지 URL로 교체
+  alert('🚀 슬림마인드 프리미엄 결제 페이지로 이동합니다.\n(결제 연동 준비 중)');
+  closePaywall();
+}
+
+/* ══════════════════════════════════════════════════════
    openExpertDetail / closeExpertDetail — 전문가 상세 모달
 ══════════════════════════════════════════════════════ */
 function openExpertDetail(expertId) {
@@ -3811,16 +4026,32 @@ function renderCh3(res, bc) {
     const week  = group ? group.weeks.find(wk => wk.wi === w) : null;
     const icons = week ? week.axes.map(a => a.icon).join('') : '';
 
-    nodesHtml += `
-      <g class="journey-node" onclick="journeyNodeClick(${w})" style="cursor:pointer">
-        <circle cx="${p.x}" cy="${p.y}" r="${NODE_R}"
-          fill="${color}" fill-opacity="0.15"
-          stroke="${color}" stroke-width="2.5"/>
-        <text x="${p.x}" y="${p.y - 8}" text-anchor="middle"
-          font-size="11" fill="${color}" font-weight="700">${w}주</text>
-        <text x="${p.x}" y="${p.y + 10}" text-anchor="middle"
-          font-size="13">${icons}</text>
-      </g>`;
+    const locked = w > FREE_WEEKS;
+    if (locked) {
+      // 잠금 노드: 흐릿하게 + 🔒 표시
+      nodesHtml += `
+        <g class="journey-node pw-node-locked" onclick="journeyNodeClick(${w})" style="cursor:pointer">
+          <circle cx="${p.x}" cy="${p.y}" r="${NODE_R}"
+            fill="${color}" fill-opacity="0.06"
+            stroke="${color}" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.4"/>
+          <text x="${p.x}" y="${p.y - 6}" text-anchor="middle"
+            font-size="10" fill="${color}" font-weight="700" opacity="0.35">${w}주</text>
+          <text x="${p.x}" y="${p.y + 9}" text-anchor="middle"
+            font-size="14" opacity="0.6">🔒</text>
+        </g>`;
+    } else {
+      // 무료 노드: 기본
+      nodesHtml += `
+        <g class="journey-node" onclick="journeyNodeClick(${w})" style="cursor:pointer">
+          <circle cx="${p.x}" cy="${p.y}" r="${NODE_R}"
+            fill="${color}" fill-opacity="0.15"
+            stroke="${color}" stroke-width="2.5"/>
+          <text x="${p.x}" y="${p.y - 8}" text-anchor="middle"
+            font-size="11" fill="${color}" font-weight="700">${w}주</text>
+          <text x="${p.x}" y="${p.y + 10}" text-anchor="middle"
+            font-size="13">${icons}</text>
+        </g>`;
+    }
   }
 
   pathEl.innerHTML = `
@@ -3855,6 +4086,12 @@ function renderCh3(res, bc) {
 /* 노드 클릭 → 주차 상세 + 전문가 비율 표시 */
 let _journeyRes = null; // renderCh3 호출 시 res 저장용
 function journeyNodeClick(wi) {
+  // ── PAYWALL: 3주차 초과 시 잠금 모달 ──
+  if (isWeekLocked(wi)) {
+    openPaywall(wi);
+    return;
+  }
+
   let weekData = null;
   defaultWeeklyTree.forEach(g => g.weeks.forEach(w => { if (w.wi === wi) weekData = w; }));
   if (!weekData) return;
@@ -4331,12 +4568,13 @@ function renderWeeklyClickTree(res, bc) {
       <div class="wt-week-row">`;
     group.weeks.forEach(week => {
       const wi = week.wi;
+      const wLocked = isWeekLockedByIndex(wi); // wi는 0-indexed (0=1주차)
       html += `
-        <div class="wt-week-card" id="wtWeek_${wi}" onclick="wtToggleWeek(${wi})">
+        <div class="wt-week-card${wLocked ? ' pw-locked' : ''}" id="wtWeek_${wi}" onclick="wtToggleWeek(${wi})">
           <div class="wt-week-num">${week.label}</div>
           <div class="wt-week-range">${week.range}</div>
-          <div class="wt-week-axes">${week.axes.map(a => a.icon).join(' ')}</div>
-          <div class="wt-week-arrow" id="wtArrow_${wi}">▼</div>
+          <div class="wt-week-axes">${wLocked ? '🔒' : week.axes.map(a => a.icon).join(' ')}</div>
+          <div class="wt-week-arrow" id="wtArrow_${wi}">${wLocked ? '' : '▼'}</div>
         </div>`;
     });
     html += `</div></div>`;
@@ -4345,6 +4583,12 @@ function renderWeeklyClickTree(res, bc) {
 }
 
 function wtToggleWeek(wi) {
+  // ── PAYWALL: 3주차 초과 시 잠금 모달 ──
+  if (isWeekLocked(wi)) {
+    openPaywall(wi);
+    return;
+  }
+
   const panel = document.getElementById('wtPrescPanel');
   if (!panel) return;
 
