@@ -875,6 +875,8 @@ app.get('/result/:id', async (c) => {
       axis_scores: parseJson(result.axis_scores_json, {}),
       top_axes: parseJson(result.top_axes_json, []),
       created_at: result.created_at,
+      // 감정유형 분류 (classifyEmotionType) 용 설문 응답
+      survey_answers: parseJson(result.survey_answers_json, {}),
     },
     bc: bc ? {
       bc_code: bc.bc_code,

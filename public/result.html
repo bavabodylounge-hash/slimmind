@@ -96,7 +96,7 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
   position:relative;
 }
 .chapter.active{display:block;animation:chapIn .45s cubic-bezier(.16,1,.3,1) both}
-.chapter-content{padding:28px 32px 24px}
+.chapter-content{padding:28px 32px 32px}
 
 /* 챕터 상단 바 */
 .ch-topbar{
@@ -109,8 +109,22 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 .ch-pagenum{font-size:10px;font-weight:700;color:var(--bc-accent,#3ECBA5)}
 
 /* 챕터 하단 내비 */
+/* ch3 스크롤 인디케이터 */
+.ch3-scroll-hint{
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  padding:10px 20px;
+  font-size:11px;font-weight:700;color:rgba(11,37,69,.4);
+  letter-spacing:.02em;
+  animation:scrollBounce 2s ease-in-out infinite;
+  border-top:1px dashed rgba(0,0,0,.07);
+}
+@keyframes scrollBounce{
+  0%,100%{transform:translateY(0);opacity:.5}
+  50%{transform:translateY(3px);opacity:1}
+}
+
 .chapter-nav{
-  padding:16px 32px 24px;
+  padding:16px 32px 28px;
   border-top:1px solid rgba(0,0,0,.04);
   display:flex;flex-direction:column;gap:10px;
 }
@@ -1546,9 +1560,14 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
       </div>
     </div>
 
+  </div><!-- /chapter-content -->
+
+  <!-- 스크롤 인디케이터 — 아래 내용 있음 안내 -->
+  <div class="ch3-scroll-hint" id="ch3ScrollHint" aria-hidden="true">
+    <span>↓</span> 아래로 스크롤하면 다음 단계로 이동할 수 있어요
   </div>
 
-  <div class="chapter-nav">
+  <div class="chapter-nav" id="ch3Nav">
     <div class="nav-row">
       <button class="btn-prev" onclick="prevChapter()" title="이전 페이지">←</button>
       <button class="btn-next" onclick="nextChapter()">
@@ -1556,7 +1575,6 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
         <small>우리가 이제 곁에서 함께 걷겠습니다</small>
       </button>
     </div>
-    </button>
   </div>
 </div><!-- /CH3 -->
 
@@ -1664,8 +1682,8 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
     <div class="sec-kicker">당신은 어떤 사람인가요</div>
     <div class="sec-heading">기질·체질 통합 프로파일</div>
     <div class="sec-sub">
-      MBTI나 혈액형 같은 형식적 분류가 아닙니다.<br>
-      <strong style="color:#0B2545">당신의 설문 응답에서 직접 읽어낸</strong> 진짜 당신입니다.
+      성격검사나 일반 체형 분류와 다릅니다.<br>
+      <strong style="color:#0B2545">당신의 설문 응답 패턴에서 직접 읽어낸</strong> 몸의 기질입니다.
     </div>
 
     <!-- 기질 유형 카드 -->
@@ -2165,7 +2183,7 @@ const AXIS_DEFS = [
     presc:'HIIT 운동, CoQ10·알파리포산, 간헐적 단식(자가포식 활성화)'},
   {id:'A11', name:'체질·오행', icon:'🌿',
     desc:'오행 체질 분류, 장기 기능 경향, 개인 대사 패턴',
-    fact:'오행 체질에 맞는 식단과 운동 적용 시 12주 후 체중 감량 효과가 1.8배 향상됩니다.',
+    fact:'개인 체질·오행에 맞춘 맞춤형 접근법은 일반 표준 식단 대비 지속률이 높고 장기 효과가 뚜렷합니다.',
     presc:'오행 기질 맞춤 식단, 계절 처방 적용, 체질 맞춤 운동 강도 조정'}
 ];
 
@@ -2424,7 +2442,7 @@ function scoreEngine(res) {
   const emotionBonusMap = {'E-01':8,'E-02':7,'E-03':6,'E-04':7,'E-05':5,'E-06':8,'E-07':9};
   aiBonus = emotionBonusMap[eType] || 7;
 
-  const totalScore = Math.min(algoScore + aiBonus, 100);
+  const totalScore = Math.max(50, Math.min(algoScore + aiBonus, 100));
 
   // 11축 신호 강도 계산 (0~10)
   const axisSignals = {
@@ -4140,6 +4158,40 @@ function normalizeRes(serverResult, params) {
     bmi:    serverResult.bmi    || null,
     weight: serverResult.weight || null,
     height: serverResult.height || null,
+    /* ── classifyEmotionType이 읽는 점수 키 ──────────────────────
+       survey_answers에 직접 저장된 경우 우선, 없으면 실제 설문 응답 키로 파생.
+       cortisol_sign: craving→binge↑ fatigue→fatigue↑ insomnia→stress↑
+       puffiness/body_awareness: heavy→fatigue↑  cold→anxiety↑
+       postmeal: crave/shaky→craving↑  sleepy→fatigue↑
+    ─────────────────────────────────────────────────────────────── */
+    ...(function() {
+      const sa = serverResult.survey_answers || {};
+      // 직접 저장된 점수 키가 있으면 그대로 사용
+      if (sa.stress_score !== undefined) return {
+        stress_score: Number(sa.stress_score),
+        sleep_score:  Number(sa.sleep_score  || 0),
+        binge_score:  Number(sa.binge_score  || 0),
+        fatigue_score:Number(sa.fatigue_score|| 0),
+        craving_score:Number(sa.craving_score|| 0),
+        social_score: Number(sa.social_score || 0),
+        anxiety_score:Number(sa.anxiety_score|| 0),
+      };
+      // 설문 응답 키 → 감정유형 점수 파생
+      const cortisol   = sa.cortisol_sign  || '';
+      const awareness  = sa.body_awareness || '';
+      const postmeal   = sa.postmeal       || '';
+      const puffiness  = sa.puffiness      || '';
+      const bodyNow    = sa.body_now       || '';
+      return {
+        stress_score:  cortisol === 'insomnia' ? 5 : cortisol === 'craving' ? 3 : 1,
+        sleep_score:   cortisol === 'insomnia' ? 2 : puffiness === 'whole' ? 2 : 4,
+        binge_score:   cortisol === 'craving'  ? 5 : 1,
+        fatigue_score: cortisol === 'fatigue' || awareness === 'fatigue' || bodyNow === 'heavy' ? 5 : 1,
+        craving_score: postmeal === 'crave' || postmeal === 'shaky' ? 5 : postmeal === 'sleepy' ? 3 : 1,
+        social_score:  1,
+        anxiety_score: awareness === 'cold' || cortisol === 'insomnia' ? 5 : 1,
+      };
+    })(),
   };
 }
 
