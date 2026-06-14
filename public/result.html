@@ -523,6 +523,38 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 .wel-dot{ width:8px;height:8px;border-radius:50% }
 .wel-pct{ font-weight:700 }
 
+/* ── 표지 고급감 개선 ── */
+/* 4개 프리미엄 뱃지 */
+.cv-badges{
+  display:flex;flex-wrap:wrap;gap:8px;
+  margin-top:16px;
+  animation:cvFadeUp .8s .6s cubic-bezier(.16,1,.3,1) both;
+}
+.cv-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:5px 12px;border-radius:20px;
+  border:1px solid rgba(255,215,100,.3);
+  background:rgba(255,255,255,.06);
+  backdrop-filter:blur(6px);
+}
+.cv-badge-icon{font-size:12px}
+.cv-badge-text{
+  font-size:10.5px;font-weight:700;
+  color:rgba(255,255,255,.85);letter-spacing:.03em;
+}
+.cv-badge--type{border-color:var(--bc-accent,#3ECBA5);background:rgba(62,203,165,.12)}
+.cv-badge--grade{border-color:rgba(255,215,100,.5);background:rgba(255,215,100,.08)}
+/* BC별 태그라인 */
+.cv-tagline{
+  margin-top:18px;
+  font-size:13px;font-weight:600;
+  color:rgba(255,255,255,.55);
+  letter-spacing:.08em;
+  text-align:center;
+  font-style:italic;
+  animation:cvFadeUp .8s .75s cubic-bezier(.16,1,.3,1) both;
+}
+
 /* ── 오행 추천 식품 카드 ── */
 .ohaeng-foods-wrap{display:flex;flex-direction:column;gap:10px}
 .ohaeng-food-card{
@@ -2362,6 +2394,29 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
           <div class="cv-stat-label">주 처방 로드맵</div>
         </div>
       </div>
+
+      <!-- 4개 프리미엄 뱃지 -->
+      <div class="cv-badges" id="cvBadges">
+        <div class="cv-badge cv-badge--type">
+          <span class="cv-badge-icon">🧬</span>
+          <span class="cv-badge-text" id="cvBadgeType">BC-01</span>
+        </div>
+        <div class="cv-badge cv-badge--date">
+          <span class="cv-badge-icon">📅</span>
+          <span class="cv-badge-text" id="cvBadgeDate">2026.06</span>
+        </div>
+        <div class="cv-badge cv-badge--grade">
+          <span class="cv-badge-icon">⭐</span>
+          <span class="cv-badge-text">정밀 맞춤 처방</span>
+        </div>
+        <div class="cv-badge cv-badge--pages">
+          <span class="cv-badge-icon">📋</span>
+          <span class="cv-badge-text">10챕터 완전 분석</span>
+        </div>
+      </div>
+
+      <!-- BC별 태그라인 -->
+      <div class="cv-tagline" id="cvTagline">당신의 몸에는 고유한 회로가 있습니다</div>
 
     </div><!-- /cv-hero -->
 
@@ -4734,6 +4789,34 @@ function renderCover(res, bc) {
   const matrix = OPENING_COPY_MATRIX[eType] || {};
   const copy = matrix[bc.id] || {};
   setText('cvHook', copy.headline || bc.short || '');
+
+  /* ─ 표지 뱃지 업데이트 ─ */
+  setText('cvBadgeType', bc.id || '');
+  const dateShort = today.getFullYear() + '.' + String(today.getMonth()+1).padStart(2,'0');
+  setText('cvBadgeDate', dateShort);
+
+  /* ─ BC별 태그라인 ─ */
+  const TAGLINES = {
+    'BC-01':'혈당을 잡으면, 체중이 따라옵니다',
+    'BC-02':'간이 깨끗해지면, 대사가 살아납니다',
+    'BC-03':'순환을 되찾으면, 몸이 가벼워집니다',
+    'BC-04':'스트레스를 끊으면, 복부지방이 녹습니다',
+    'BC-05':'갑상선이 깨어나면, 대사가 불붙습니다',
+    'BC-06':'장이 건강해지면, 모든 것이 달라집니다',
+    'BC-07':'심폐를 키우면, 지방이 연료가 됩니다',
+    'BC-08':'호르몬 리듬을 맞추면, 몸이 협력합니다',
+    'BC-09':'염증을 끄면, 포만감이 돌아옵니다',
+    'BC-10':'하나씩 바꾸면, 도미노처럼 따라옵니다'
+  };
+  setText('cvTagline', TAGLINES[bc.id] || '당신의 몸에는 고유한 회로가 있습니다');
+
+  /* ─ BC 테마 그라데이션 배경 적용 ─ */
+  const cvEl = document.getElementById('ch0');
+  if (cvEl) {
+    const grad = getComputedStyle(document.documentElement)
+      .getPropertyValue('--bc-cover-grad').trim();
+    if (grad) cvEl.style.background = grad;
+  }
 }
 
 
