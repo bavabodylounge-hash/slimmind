@@ -5610,22 +5610,115 @@ async function doFirstCheckin() {
 }
 
 /* ══════════════════════════════════════════════════════
-   autoClassifyBc(res)  — 설문 응답 기반 BC 자동 분류
-══════════════════════════════════════════════════════ */
-/* ══════════════════════════════════════════════════════
-   autoClassifyBc(res)  — URL 파라미터 기반 BC 자동 분류
-   (window.__RESULT__ 없을 때 폴백용)
+   autoClassifyBc(res)  — 설문 응답 기반 BC 자동 분류 v2
+   ─────────────────────────────────────────────────────
+   [설문 → 도메인 매핑]
+   q1  : 체질/체형 선택 (1=마른비만, 2=상체비만, 3=하체비만, 4=전신비만, 5=복부비만)
+   q2  : 식욕/배고픔 패턴 (1~5, 높을수록 혈당형)
+   q3  : 스트레스 수준 (1~5, 높을수록 코르티솔형)
+   q4  : 수면 질 (1~5, 높을수록 수면불량 → 코르티솔/호르몬형)
+   q5  : 운동 빈도 (1~5, 낮을수록 심혈관 위험)
+   q6  : 다이어트 시도 횟수 (1~5, 높을수록 복합형)
+   q7  : 감정 섭식 정도 (1~5, 높을수록 신경호르몬형)
+   q8  : 부종/붓기 정도 (1~5, 높을수록 수분순환형)
+   q9  : 소화 불편 정도 (1~5, 높을수록 장미생물형)
+   q10 : 만성 피로 정도 (1~5, 높을수록 갑상선/미토형)
+
+   [도메인별 가중 점수]
+   D_INSULIN   : 혈당/인슐린   = q2*1.5 + (q1===2||q1===5 ? 2:0)
+   D_LIVER     : 간 기능        = q6*1.2 + (q1===2 ? 2:0)  // 반복 다이어트 → 간부담
+   D_LYMPH     : 수분/림프      = q8*1.8 + (q1===3 ? 3:0)  // 하체비만 → 림프
+   D_STRESS    : 스트레스/코르티솔 = q3*1.6 + q4*1.2
+   D_THYROID   : 갑상선/대사    = q10*1.5 + (q5===1||q5===2 ? 2:0)
+   D_GUT       : 장내미생물     = q9*1.8
+   D_CARDIO    : 심혈관         = (5-q5)*1.5 + q10*0.8
+   D_HORMONE   : 호르몬         = q4*1.3 + q7*1.2
+   D_NEURO     : 신경/감정      = q7*1.6 + q3*1.0
+   D_COMPLEX   : 복합대사       = q6*1.0 (5회 이상이면 보너스)
+
+   [패턴 매핑 → BC 결정]
+   상위 도메인 조합 기준으로 BC 결정, 동점이면 tie-breaker 적용
 ══════════════════════════════════════════════════════ */
 function autoClassifyBc(res) {
-  const answers = [res.q1, res.q2, res.q3, res.q4, res.q5,
-                   res.q6, res.q7, res.q8, res.q9, res.q10];
-  const filledCount = answers.filter(a => a !== '').length;
-  if (filledCount === 0) return 'BC-01';
-  let score = 0;
-  answers.forEach(a => { const n = parseInt(a); if (!isNaN(n)) score += n; });
-  const bcCodes = ['BC-01','BC-02','BC-03','BC-04','BC-05',
-                   'BC-06','BC-07','BC-08','BC-09','BC-10'];
-  return bcCodes[Math.min(Math.floor(score / 10) % 10, 9)];
+  const s = (k) => { const n = parseInt(res[k] || '0'); return isNaN(n) ? 0 : Math.min(5, Math.max(0, n)); };
+
+  // 빈 설문 체크
+  const filled = ['q1','q2','q3','q4','q5','q6','q7','q8','q9','q10']
+    .filter(k => res[k] !== '' && res[k] !== undefined && res[k] !== null).length;
+  if (filled === 0) return 'BC-01';
+
+  const q1=s('q1'), q2=s('q2'), q3=s('q3'), q4=s('q4'), q5=s('q5');
+  const q6=s('q6'), q7=s('q7'), q8=s('q8'), q9=s('q9'), q10=s('q10');
+
+  // ── 도메인별 가중 점수 계산 ────────────────────────────
+  const D = {
+    // BC-01: 인슐린·혈당형 — 식욕패턴(q2) + 복부비만/마른비만 체형
+    INSULIN:  q2 * 1.5 + (q1===2||q1===5 ? 2.0 : 0) + (q6>=3 ? 1.0 : 0),
+
+    // BC-02: 간 기능 저하형 — 반복 다이어트(q6) + 만성피로(q10) + 상체비만
+    LIVER:    q6 * 1.3 + q10 * 0.8 + (q1===2 ? 2.0 : 0) + (q9>=3 ? 0.5 : 0),
+
+    // BC-03: 수분·림프형 — 부종(q8) + 하체비만 체형
+    LYMPH:    q8 * 1.8 + (q1===3 ? 3.0 : 0) + (q8>=4 ? 1.5 : 0),
+
+    // BC-04: 스트레스·코르티솔형 — 스트레스(q3) + 수면불량(q4) + 감정섭식(q7)
+    STRESS:   q3 * 1.6 + q4 * 1.2 + q7 * 0.8,
+
+    // BC-05: 갑상선·대사저하형 — 만성피로(q10) + 운동안함(q5 낮음)
+    THYROID:  q10 * 1.6 + (q5<=2 ? (3-q5)*1.0 : 0) + (q10>=4 ? 1.5 : 0),
+
+    // BC-06: 장내미생물 불균형형 — 소화불편(q9) 압도적 가중
+    GUT:      q9 * 2.0 + (q9>=4 ? 2.0 : 0) + q7 * 0.5,
+
+    // BC-07: 심혈관·순환형 — 운동부족(q5 낮음) + 만성피로(q10) + 심폐
+    CARDIO:   (6-q5) * 1.4 + q10 * 0.7 + (q1===4 ? 1.5 : 0),
+
+    // BC-08: 호르몬 불균형형 — 수면(q4) + 감정섭식(q7) + 하복부/여성형 체형
+    HORMONE:  q4 * 1.4 + q7 * 1.3 + (q1===3||q1===4 ? 1.0 : 0) + q3 * 0.5,
+
+    // BC-09: 면역·염증형 — 스트레스(q3) + 소화(q9) + 피로(q10) 복합
+    IMMUNE:   q3 * 1.0 + q9 * 1.0 + q10 * 1.0 + (q6>=4 ? 1.5 : 0),
+
+    // BC-10: 복합 대사증후군 — 다이어트 반복(q6) + 전신비만 + 여러 축 동시 높음
+    COMPLEX:  q6 * 1.5 + (q1===4 ? 2.5 : 0) +
+              (q2>=3?0.5:0) + (q3>=3?0.5:0) + (q4>=3?0.5:0) + (q10>=3?0.5:0)
+  };
+
+  // ── 도메인 → BC 매핑 ────────────────────────────────
+  const BC_MAP = [
+    { bc:'BC-01', domain:'INSULIN' },
+    { bc:'BC-02', domain:'LIVER'   },
+    { bc:'BC-03', domain:'LYMPH'   },
+    { bc:'BC-04', domain:'STRESS'  },
+    { bc:'BC-05', domain:'THYROID' },
+    { bc:'BC-06', domain:'GUT'     },
+    { bc:'BC-07', domain:'CARDIO'  },
+    { bc:'BC-08', domain:'HORMONE' },
+    { bc:'BC-09', domain:'IMMUNE'  },
+    { bc:'BC-10', domain:'COMPLEX' }
+  ];
+
+  // 1순위: 최고 점수 도메인
+  let best = BC_MAP[0];
+  BC_MAP.forEach(m => { if (D[m.domain] > D[best.domain]) best = m; });
+
+  // 타이브레이커: 동점 시 tie-break 로직 (q1 체형 → 추가 신호)
+  const topScore = D[best.domain];
+  const tied = BC_MAP.filter(m => Math.abs(D[m.domain] - topScore) < 0.5);
+  if (tied.length > 1) {
+    // q1 체형 힌트로 tie-break
+    const shapeHint = {
+      1: 'BC-01',  // 마른비만 → 혈당
+      2: 'BC-02',  // 상체비만 → 간
+      3: 'BC-03',  // 하체비만 → 림프
+      4: 'BC-10',  // 전신비만 → 복합
+      5: 'BC-04',  // 복부비만 → 스트레스
+    }[q1];
+    const hinted = tied.find(m => m.bc === shapeHint);
+    if (hinted) return hinted.bc;
+  }
+
+  return best.bc;
 }
 
 /* ══════════════════════════════════════════════════════
