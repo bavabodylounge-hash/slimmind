@@ -110,11 +110,21 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 
 /* 챕터 하단 내비 */
 .chapter-nav{
-  padding:20px 32px 28px;
+  padding:16px 32px 24px;
   border-top:1px solid rgba(0,0,0,.04);
+  display:flex;flex-direction:column;gap:10px;
 }
+.nav-row{display:flex;gap:10px;align-items:stretch}
+.btn-prev{
+  flex-shrink:0;width:52px;padding:0;border-radius:14px;
+  border:2px solid rgba(0,0,0,.1);cursor:pointer;font-family:var(--font);
+  background:#F1F5F9;color:#64748B;font-size:18px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .2s;
+}
+.btn-prev:hover{background:#E2E8F0;color:#0B2545;border-color:#CBD5E1;transform:translateX(-2px)}
 .btn-next{
-  width:100%;padding:18px 24px;border-radius:14px;
+  flex:1;padding:18px 24px;border-radius:14px;
   border:none;cursor:pointer;font-family:var(--font);
   background:linear-gradient(135deg,var(--bc-main,#0B2545),var(--bc-accent,#3ECBA5));
   color:#fff;font-size:14px;font-weight:800;
@@ -621,36 +631,71 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 }
 
 /* ══════════════════════════════════════════════════════
-   CH6 — 식단/운동/영양제
+   CH6 — 식단/운동/영양제 처방 (카드형 비주얼)
 ══════════════════════════════════════════════════════ */
-.presc-section{margin-bottom:28px}
+.presc-section{margin-bottom:32px}
 .presc-section-title{
-  display:flex;align-items:center;gap:10px;
-  font-size:15px;font-weight:900;color:#0B2545;
-  margin-bottom:14px;padding-bottom:10px;
-  border-bottom:2px solid var(--bc-accent,#3ECBA5);
+  display:flex;align-items:center;gap:12px;
+  font-size:16px;font-weight:900;color:#0B2545;
+  margin-bottom:16px;padding:14px 18px;
+  background:linear-gradient(135deg,var(--bc-bg,#E8FAF5),rgba(255,255,255,.5));
+  border-radius:var(--r-md);
+  border-left:4px solid var(--bc-accent,#3ECBA5);
 }
-.presc-cards{display:flex;flex-direction:column;gap:10px}
+.presc-section-icon{font-size:24px}
+.presc-section-label{flex:1}
+.presc-section-label .ps-sub{font-size:10px;font-weight:500;color:#64748B;margin-top:2px}
+
+.presc-cards{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:12px;
+}
+@media(max-width:500px){.presc-cards{grid-template-columns:1fr}}
+
 .presc-card{
   border-radius:var(--r-md);overflow:hidden;
-  border:1px solid rgba(0,0,0,.06);
-  display:flex;gap:0;
+  border:1.5px solid rgba(0,0,0,.07);
+  background:#fff;
+  display:flex;flex-direction:column;
   transition:all .2s;
+  box-shadow:0 2px 10px rgba(0,0,0,.06);
+  position:relative;
 }
-.presc-card:hover{box-shadow:var(--shadow-float);transform:translateY(-1px)}
+.presc-card:hover{
+  box-shadow:0 8px 28px rgba(0,0,0,.12);
+  transform:translateY(-3px);
+  border-color:var(--bc-accent,#3ECBA5);
+}
+/* 순위 배지 — 카드 상단 전체 폭 */
 .presc-card-rank{
-  width:44px;flex-shrink:0;
-  background:linear-gradient(180deg,var(--bc-main,#0B2545),var(--bc-accent,#3ECBA5));
-  display:flex;align-items:center;justify-content:center;
-  font-size:11px;font-weight:900;color:#fff;
-  writing-mode:vertical-lr;text-orientation:mixed;
-  letter-spacing:.05em;
+  padding:6px 14px;
+  background:linear-gradient(90deg,var(--bc-main,#0B2545),var(--bc-accent,#3ECBA5));
+  font-size:9px;font-weight:900;color:rgba(255,255,255,.85);
+  letter-spacing:.18em;text-transform:uppercase;
 }
-.presc-card-inner{flex:1;padding:14px 16px;background:#fff}
-.presc-card-icon{font-size:22px;margin-bottom:6px}
-.presc-cat{font-size:8.5px;font-weight:800;color:var(--bc-accent,#3ECBA5);letter-spacing:.15em;text-transform:uppercase;margin-bottom:4px}
-.presc-title{font-size:13.5px;font-weight:800;color:#0B2545;margin-bottom:5px}
-.presc-desc{font-size:11.5px;color:#64748B;line-height:1.75}
+.presc-card-inner{
+  flex:1;padding:16px;
+  display:flex;flex-direction:column;gap:6px;
+}
+.presc-card-icon{
+  font-size:28px;margin-bottom:4px;
+  filter:drop-shadow(0 2px 6px rgba(0,0,0,.1));
+}
+.presc-cat{
+  font-size:8px;font-weight:800;color:var(--bc-accent,#3ECBA5);
+  letter-spacing:.18em;text-transform:uppercase;
+}
+.presc-title{
+  font-size:13px;font-weight:900;color:#0B2545;
+  line-height:1.4;
+}
+.presc-desc{
+  font-size:11px;color:#64748B;line-height:1.75;
+  margin-top:2px;
+  border-top:1px solid rgba(0,0,0,.05);
+  padding-top:8px;
+}
 
 /* ══════════════════════════════════════════════════════
    CH7 — 오행 계절 처방
@@ -799,11 +844,23 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 .id-accent{color:var(--bc-accent,#3ECBA5);font-weight:700}
 
 /* 메타 프로파일 그리드 */
-.meta-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:14px 0}
+.meta-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:14px 0}
 .meta-card{background:var(--bc-bg,#E8FAF5);border-radius:12px;padding:12px 14px;border:1px solid rgba(0,0,0,.05)}
 .meta-icon{font-size:18px;margin-bottom:5px}
 .meta-label{font-size:9px;font-weight:700;color:#64748B;letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px}
 .meta-val{font-size:13px;font-weight:800;color:var(--bc-main,#0B2545)}
+/* meta-item (renderCh5 메타프로파일 객체 렌더링) */
+.meta-item{
+  display:flex;align-items:center;gap:10px;
+  background:var(--bc-bg,#F0F7FF);
+  border-radius:12px;padding:12px 14px;
+  border:1px solid rgba(0,0,0,.06);
+}
+.meta-item-icon{font-size:22px;flex-shrink:0}
+.meta-item-body{display:flex;flex-direction:column;gap:2px}
+.meta-item-label{font-size:9px;font-weight:800;color:var(--bc-accent,#3ECBA5);letter-spacing:.08em;text-transform:uppercase}
+.meta-item-val{font-size:13px;font-weight:800;color:var(--bc-main,#0B2545)}
+.meta-arrow{color:var(--bc-accent,#3ECBA5);margin-right:6px}
 
 /* 오행 정보 */
 .ohaeng-info-box{
@@ -822,28 +879,99 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 .sum-val{font-size:13px;font-weight:800;color:var(--bc-main,#0B2545);line-height:1.4}
 
 /* ══════════════════════════════════════════════════════
-   인쇄 (A4)
+   인쇄 (A4) — 완전 재설계
+   · 각 챕터 = 새 페이지 시작
+   · 카드/블록은 페이지 중간 잘림 방지
+   · A4 여백 10mm, 배경색 강제 출력
 ══════════════════════════════════════════════════════ */
-@media print{
-  body{background:#fff}
-  .a4-wrap{padding:0;max-width:100%}
-  #topBar,#loadingState,.chapter-nav,#printBtn{display:none!important}
-  .chapter{
-    display:block!important;
-    width:210mm;min-height:auto;
-    page-break-before:always;break-before:page;
-    box-shadow:none;margin:0;overflow:visible;
-    border-radius:0;
+@media print {
+
+  @page { size: A4 portrait; margin: 10mm 12mm 10mm 12mm; }
+
+  /* 배경/색상 강제 출력 */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
   }
-  .chapter[data-ch="0"]{page-break-before:avoid;break-before:avoid}
-  .chapter-content{padding:12mm 18mm 10mm}
-  .ch-topbar{padding:8px 18mm}
-  -webkit-print-color-adjust:exact;
-  print-color-adjust:exact;
-  color-adjust:exact;
-  /* 섹션 내부 page-break 회피 */
-  .body-type-anim-card,.top3-cause-list,.empathy-hero,.temperament-hero,
-  .presc-card,.week-node,.t3c-card{page-break-inside:avoid;break-inside:avoid}
+
+  html, body {
+    width: 210mm;
+    background: #fff !important;
+    font-size: 11px !important;
+  }
+
+  .a4-wrap { padding: 0 !important; max-width: 100% !important; }
+
+  /* UI 요소 숨김 */
+  #topBar, #loadingState,
+  .chapter-nav, .nav-row,
+  .btn-next, .btn-prev,
+  #printBtn { display: none !important; }
+
+  /* 모든 챕터 표시 */
+  .chapter {
+    display: block !important;
+    width: 100% !important;
+    page-break-before: always !important;
+    break-before: page !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    border: none !important;
+    overflow: visible !important;
+    page-break-inside: auto;
+    break-inside: auto;
+  }
+
+  /* 커버 — 첫 페이지 */
+  .chapter[data-ch="0"] {
+    page-break-before: avoid !important;
+    break-before: avoid !important;
+  }
+  #ch0 { min-height: 0 !important; }
+  .cv-inner { min-height: 0 !important; }
+
+  /* 챕터 내부 여백 */
+  .chapter-content { padding: 6mm 10mm 6mm !important; }
+  .ch-topbar { padding: 3mm 10mm !important; }
+
+  /* 중요 섹션 — 페이지 내에서 통째로 유지 */
+  .score-reveal-wrap,
+  .body-type-anim-card,
+  .empathy-hero,
+  .presc-section,
+  .ohaeng-info-box,
+  .insight-dark,
+  .consultant-box,
+  .declaration-box,
+  .temperament-hero { page-break-inside: avoid; break-inside: avoid; }
+
+  /* 개별 카드 */
+  .presc-card,
+  .meta-item,
+  .trait-chip,
+  .t3c-card,
+  .season-card,
+  .mindset-card,
+  .cv-hook-card { page-break-inside: avoid; break-inside: avoid; }
+
+  /* 제목 직후 잘림 방지 */
+  h1, h2, h3,
+  .sec-kicker, .sec-heading,
+  .presc-section-title {
+    page-break-after: avoid; break-after: avoid;
+  }
+
+  /* 인쇄 시 2열 그리드 유지 */
+  .presc-cards { grid-template-columns: repeat(2, 1fr) !important; }
+
+  /* 레이더 차트 축소 */
+  canvas { max-width: 180px !important; max-height: 180px !important; }
+
+  /* 폰트 약간 축소 */
+  .sec-heading { font-size: 15px !important; }
+  .cv-bc-code { font-size: 60px !important; }
 }
 
 /* ══════════════════════════════════════════════════════
@@ -1097,10 +1225,13 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
   </div><!-- /chapter-content -->
 
   <div class="chapter-nav">
-    <button class="btn-next" onclick="nextChapter()">
-      왜 지금까지 안됐는지, 11축 데이터로 확인합니다 →
-      <small>3대 원인을 감성 대화 형식으로 공개합니다</small>
-    </button>
+    <div class="nav-row">
+      <button class="btn-prev" onclick="prevChapter()" title="이전 페이지">←</button>
+      <button class="btn-next" onclick="nextChapter()">
+        왜 지금까지 안됐는지, 11축 데이터로 확인합니다 →
+        <small>3대 원인을 감성 대화 형식으로 공개합니다</small>
+      </button>
+    </div>
   </div>
 </div><!-- /CH1 -->
 
@@ -1163,10 +1294,13 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
   </div>
 
   <div class="chapter-nav">
-    <button class="btn-next" onclick="nextChapter()">
-      12주 여정 지도를 확인합니다 →
-      <small>Duolingo처럼 단계별로 설계된 나만의 로드맵</small>
-    </button>
+    <div class="nav-row">
+      <button class="btn-prev" onclick="prevChapter()" title="이전 페이지">←</button>
+      <button class="btn-next" onclick="nextChapter()">
+        12주 여정 지도를 확인합니다 →
+        <small>Duolingo처럼 단계별로 설계된 나만의 로드맵</small>
+      </button>
+    </div>
   </div>
 </div><!-- /CH2 -->
 
@@ -1249,9 +1383,13 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
   </div>
 
   <div class="chapter-nav">
-    <button class="btn-next" onclick="nextChapter()">
-      지금까지 고생 많았습니다 →
-      <small>우리가 이제 곁에서 함께 걷겠습니다</small>
+    <div class="nav-row">
+      <button class="btn-prev" onclick="prevChapter()" title="이전 페이지">←</button>
+      <button class="btn-next" onclick="nextChapter()">
+        지금까지 고생 많았습니다 →
+        <small>우리가 이제 곁에서 함께 걷겠습니다</small>
+      </button>
+    </div>
     </button>
   </div>
 </div><!-- /CH3 -->
@@ -1335,10 +1473,13 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
   </div>
 
   <div class="chapter-nav">
-    <button class="btn-next" onclick="nextChapter()">
-      당신이 어떤 사람인지 더 깊이 알아봅니다 →
-      <small>기질·체질 통합 분석 결과 공개</small>
-    </button>
+    <div class="nav-row">
+      <button class="btn-prev" onclick="prevChapter()" title="이전 페이지">←</button>
+      <button class="btn-next" onclick="nextChapter()">
+        당신이 어떤 사람인지 더 깊이 알아봅니다 →
+        <small>기질·체질 통합 분석 결과 공개</small>
+      </button>
+    </div>
   </div>
 </div><!-- /CH4 -->
 
@@ -1411,10 +1552,13 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
   </div>
 
   <div class="chapter-nav">
-    <button class="btn-next" onclick="nextChapter()">
-      당신에게 맞는 식단·운동·영양제를 확인합니다 →
-      <small>BC 코드 맞춤 3대 처방 공개</small>
-    </button>
+    <div class="nav-row">
+      <button class="btn-prev" onclick="prevChapter()" title="이전 페이지">←</button>
+      <button class="btn-next" onclick="nextChapter()">
+        당신에게 맞는 식단·운동·영양제를 확인합니다 →
+        <small>BC 코드 맞춤 3대 처방 공개</small>
+      </button>
+    </div>
   </div>
 </div><!-- /CH5 -->
 
@@ -1441,7 +1585,11 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
     <!-- 식단 -->
     <div class="presc-section" id="ch6DietSection">
       <div class="presc-section-title">
-        <span style="font-size:22px">🥗</span> 식단 처방
+        <span class="presc-section-icon">🥗</span>
+        <div class="presc-section-label">
+          식단 처방
+          <div class="ps-sub">우선순위 순서 · 1가지씩 적용하세요</div>
+        </div>
       </div>
       <div class="presc-cards" id="ch6DietCards">
         <!-- JS에서 렌더 -->
@@ -1451,7 +1599,11 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
     <!-- 운동 -->
     <div class="presc-section" id="ch6ExSection">
       <div class="presc-section-title">
-        <span style="font-size:22px">🏋️</span> 운동 처방
+        <span class="presc-section-icon">🏋️</span>
+        <div class="presc-section-label">
+          운동 처방
+          <div class="ps-sub">주 2~3회부터 시작 · 강도 점진적 증가</div>
+        </div>
       </div>
       <div class="presc-cards" id="ch6ExerciseCards">
         <!-- JS에서 렌더 -->
@@ -1461,7 +1613,11 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
     <!-- 영양제 -->
     <div class="presc-section" id="ch6SupplSection">
       <div class="presc-section-title">
-        <span style="font-size:22px">💊</span> 영양제 처방
+        <span class="presc-section-icon">💊</span>
+        <div class="presc-section-label">
+          영양제 처방
+          <div class="ps-sub">식사와 함께 복용 · 공복 주의</div>
+        </div>
       </div>
       <div class="presc-cards" id="ch6SupplCards">
         <!-- JS에서 렌더 -->
@@ -1502,10 +1658,13 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
   </div>
 
   <div class="chapter-nav">
-    <button class="btn-next" onclick="nextChapter()">
-      계절별 맞춤 전략을 확인합니다 →
-      <small>오행 기질에 맞는 계절별 처방</small>
-    </button>
+    <div class="nav-row">
+      <button class="btn-prev" onclick="prevChapter()" title="이전 페이지">←</button>
+      <button class="btn-next" onclick="nextChapter()">
+        계절별 맞춤 전략을 확인합니다 →
+        <small>오행 기질에 맞는 계절별 처방</small>
+      </button>
+    </div>
   </div>
 </div><!-- /CH6 -->
 
@@ -1560,10 +1719,13 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
   </div>
 
   <div class="chapter-nav">
-    <button class="btn-next" onclick="nextChapter()">
-      12주 여정을 시작합니다 →
-      <small>컨설턴트 노트와 첫 번째 체크인</small>
-    </button>
+    <div class="nav-row">
+      <button class="btn-prev" onclick="prevChapter()" title="이전 페이지">←</button>
+      <button class="btn-next" onclick="nextChapter()">
+        12주 여정을 시작합니다 →
+        <small>컨설턴트 노트와 첫 번째 체크인</small>
+      </button>
+    </div>
   </div>
 </div><!-- /CH7 -->
 
@@ -2309,6 +2471,18 @@ function gotoChapter(n) {
     if (i < n) dot.classList.add('done');
     if (i === n) dot.classList.add('active');
   });
+
+  // ch2 레이더차트: display:none → block 전환 후 Canvas 크기가 0이어서
+  // 직접 그린 차트가 안 보임 → ch2 진입 시 resize 강제 발생
+  if (n === 2) {
+    const canvas = document.getElementById('ch2RadarChart');
+    if (canvas && canvas._chartInstance) {
+      requestAnimationFrame(() => {
+        canvas._chartInstance.resize();
+        canvas._chartInstance.update('none');
+      });
+    }
+  }
 }
 
 function nextChapter() {
@@ -2755,7 +2929,8 @@ function renderCh5(bc) {
   setText('ch5TempIcon', temp.icon || '🧬');
   setText('ch5TempType', temp.type || bc.id || '');
   setText('ch5TempName', temp.name || bc.name || '');
-  setText('ch5TempDesc', temp.desc || bc.short || '');
+  // desc에 <strong> HTML 태그 포함 가능 → setHTML 사용
+  setHTML('ch5TempDesc', temp.desc || bc.short || '');
 
   /* 기질 트레잇 그리드
      TEMP_TYPE_DB.traits = [{icon, label, val}, ...] 객체 배열
@@ -2793,16 +2968,26 @@ function renderCh5(bc) {
   setText('ch5OhaengDesc', ohData.desc);
   setText('ch5OhaengFact', ohData.fact);
 
-  /* 처방 방향 */
-  setText('ch5PrescDirection', temp.prescDir || '');
+  /* 처방 방향 — prescDir 없으면 bc.short 폴백 */
+  setHTML('ch5PrescDirection', temp.prescDir || bc.short || '');
 
   /* 메타프로파일 그리드 */
   const metaEl = document.getElementById('ch5MetaGrid');
   const meta   = bc.metaProfile || [];
   if (metaEl && meta.length > 0) {
-    metaEl.innerHTML = meta.map(m =>
-      `<div class="meta-item"><span class="meta-arrow">▸</span>${m}</div>`
-    ).join('');
+    metaEl.innerHTML = meta.map(m => {
+      // metaProfile = [{icon, label, val}, ...] 객체 배열
+      if (typeof m === 'object' && m !== null) {
+        return `<div class="meta-item">
+          <div class="meta-item-icon">${m.icon || '▸'}</div>
+          <div class="meta-item-body">
+            <div class="meta-item-label">${m.label || ''}</div>
+            <div class="meta-item-val">${m.val || ''}</div>
+          </div>
+        </div>`;
+      }
+      return `<div class="meta-item"><span class="meta-arrow">▸</span>${m}</div>`;
+    }).join('');
   }
 }
 
@@ -2819,16 +3004,19 @@ function renderCh6(bc) {
   const diet     = foodsRaw.length > 0 ? foodsRaw : (bc.diet || []);
   if (dietEl && diet.length > 0) {
     dietEl.innerHTML = diet.map((item, i) => {
-      const name   = item.name   || item;
-      const reason = item.reason || '';
-      const emoji  = item.emoji  || '🥗';
+      const isObj  = typeof item === 'object' && item !== null;
+      const icon   = isObj ? (item.icon || item.emoji || '🥗') : '🥗';
+      const cat    = isObj ? (item.cat  || `${i+1}순위`) : `${i+1}순위`;
+      const title  = isObj ? (item.title || item.name || item) : item;
+      const desc   = isObj ? (item.desc  || item.reason || '') : '';
       return `
-        <div class="rx-card rx-card--diet">
-          <div class="rx-num">${i+1}</div>
-          <div class="rx-icon">${emoji}</div>
-          <div class="rx-text">
-            <strong>${name}</strong>
-            ${reason ? `<span class="rx-reason">${reason}</span>` : ''}
+        <div class="presc-card">
+          <div class="presc-card-rank">${cat}</div>
+          <div class="presc-card-inner">
+            <div class="presc-card-icon">${icon}</div>
+            <div class="presc-cat">${cat.includes('회피') ? '⛔ 피해야 할 것' : '✅ 추천'}</div>
+            <div class="presc-title">${title}</div>
+            ${desc ? `<div class="presc-desc">${desc}</div>` : ''}
           </div>
         </div>`;
     }).join('');
@@ -2854,17 +3042,19 @@ function renderCh6(bc) {
   const exer = sportsRaw.length > 0 ? sportsRaw : (bc.exercise || []);
   if (exEl && exer.length > 0) {
     exEl.innerHTML = exer.map((item, i) => {
-      const name     = item.sport    || item.name || item;
-      const reason   = item.reason   || item.detail || '';
-      const schedule = item.schedule || '';
+      const isObj = typeof item === 'object' && item !== null;
+      const icon  = isObj ? (item.icon || '🏋️') : '🏋️';
+      const cat   = isObj ? (item.cat  || `${i+1}순위`) : `${i+1}순위`;
+      const title = isObj ? (item.title || item.sport || item.name || item) : item;
+      const desc  = isObj ? (item.desc  || item.reason || item.detail || '') : '';
       return `
-        <div class="rx-card rx-card--exercise">
-          <div class="rx-num">${i+1}</div>
-          <div class="rx-icon">🏋️</div>
-          <div class="rx-text">
-            <strong>${name}</strong>
-            ${reason   ? `<span class="rx-reason">${reason}</span>` : ''}
-            ${schedule ? `<span class="rx-schedule">📅 ${schedule}</span>` : ''}
+        <div class="presc-card">
+          <div class="presc-card-rank">${cat}</div>
+          <div class="presc-card-inner">
+            <div class="presc-card-icon">${icon}</div>
+            <div class="presc-cat">💪 운동 처방</div>
+            <div class="presc-title">${title}</div>
+            ${desc ? `<div class="presc-desc">${desc}</div>` : ''}
           </div>
         </div>`;
     }).join('');
@@ -2876,17 +3066,21 @@ function renderCh6(bc) {
   const suppl = supplRaw.length > 0 ? supplRaw : (bc.suppl || []);
   if (splEl && suppl.length > 0) {
     splEl.innerHTML = suppl.map((item, i) => {
-      const name   = item.name   || item;
-      const timing = item.timing || '';
-      const reason = item.reason || '';
+      const isObj  = typeof item === 'object' && item !== null;
+      const icon   = isObj ? (item.icon || '🌿') : '🌿';
+      const cat    = isObj ? (item.cat  || `${i+1}순위`) : `${i+1}순위`;
+      const title  = isObj ? (item.title || item.name || item) : item;
+      const desc   = isObj ? (item.desc  || item.reason || '') : '';
+      const timing = isObj ? (item.timing || '') : '';
       return `
-        <div class="rx-card rx-card--suppl">
-          <div class="rx-num">${i+1}</div>
-          <div class="rx-icon">💊</div>
-          <div class="rx-text">
-            <strong>${name}</strong>
-            ${timing ? `<span class="rx-timing">⏰ ${timing}</span>` : ''}
-            ${reason ? `<span class="rx-reason">${reason}</span>` : ''}
+        <div class="presc-card">
+          <div class="presc-card-rank">${cat}</div>
+          <div class="presc-card-inner">
+            <div class="presc-card-icon">${icon}</div>
+            <div class="presc-cat">💊 영양제 처방</div>
+            <div class="presc-title">${title}</div>
+            ${desc   ? `<div class="presc-desc">${desc}</div>` : ''}
+            ${timing ? `<div class="presc-desc" style="color:#3ECBA5;font-weight:700">⏰ 복용 타이밍: ${timing}</div>` : ''}
           </div>
         </div>`;
     }).join('');
@@ -3292,7 +3486,12 @@ function extractOhaeng(raw) {
 function normalizeBC(serverBc, bcCode) {
   if (!serverBc) {
     // DB 없으면 JS 내장 BC_DB 그대로 사용
-    return BC_DB[bcCode] || BC_DB['BC-01'];
+    const localOnly = BC_DB[bcCode] || BC_DB['BC-01'];
+    // id 필드가 없으면 주입
+    if (!localOnly.id) localOnly.id = bcCode;
+    // ohaeng 정규화: '土 토(土)' → '토(土)'
+    if (localOnly.ohaeng) localOnly.ohaeng = extractOhaeng(localOnly.ohaeng);
+    return localOnly;
   }
   const localBc = BC_DB[bcCode] || BC_DB['BC-01'];
   return {
