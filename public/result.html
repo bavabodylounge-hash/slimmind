@@ -1445,6 +1445,149 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
   letter-spacing:.08em;margin-left:6px;
 }
 @keyframes pwBounce{0%{transform:scale(0.3)}80%{transform:scale(1.15)}100%{transform:scale(1)}}
+
+/* ══════════════════════════════════════════════════════
+   CH9 — 헬스킷 연동 대시보드
+══════════════════════════════════════════════════════ */
+.hk-connect-btn{
+  display:flex;align-items:center;gap:6px;
+  background:rgba(255,255,255,.15);
+  border:1.5px solid rgba(255,255,255,.4);
+  color:#fff;font-size:13px;font-weight:800;
+  padding:10px 20px;border-radius:12px;cursor:pointer;
+  transition:all .2s;
+}
+.hk-connect-btn:hover{ background:rgba(255,255,255,.25);transform:translateY(-1px) }
+.hk-connect-btn.hk-android{ background:rgba(52,211,153,.2);border-color:rgba(52,211,153,.5) }
+.hk-connect-btn.connected{
+  background:rgba(62,203,165,.3);border-color:#3ECBA5;
+  cursor:default;pointer-events:none;
+}
+
+.hk-week-nav{
+  background:#F1F5F9;border:1.5px solid #E2E8F0;
+  color:#64748B;font-size:11.5px;font-weight:700;
+  padding:7px 14px;border-radius:99px;cursor:pointer;
+  transition:all .15s;
+}
+.hk-week-nav:hover{ background:#E2E8F0 }
+.hk-week-nav:disabled{ opacity:.3;cursor:default }
+
+/* 지표 카드 */
+.hk-metric-card{
+  background:#F8FAFC;border-radius:14px;padding:12px 10px;
+  text-align:center;border:1.5px solid rgba(0,0,0,.06);
+  transition:transform .2s;
+}
+.hk-metric-card:hover{ transform:translateY(-2px) }
+.hk-metric-icon{ font-size:20px;margin-bottom:4px }
+.hk-metric-val{
+  font-size:17px;font-weight:900;color:#0B2545;
+  line-height:1.2;margin-bottom:2px;
+}
+.hk-metric-unit{ font-size:9px;color:#94A3B8;margin-bottom:2px }
+.hk-metric-label{ font-size:10px;color:#64748B;font-weight:700 }
+.hk-metric-trend{ font-size:10px;margin-top:3px }
+.hk-trend-up{ color:#16A34A }
+.hk-trend-dn{ color:#DC2626 }
+.hk-trend-eq{ color:#94A3B8 }
+
+/* 차트 카드 */
+.hk-chart-card{
+  background:#fff;border-radius:14px;padding:14px;
+  border:1.5px solid rgba(0,0,0,.07);
+}
+.hk-chart-title{ font-size:13px;font-weight:800;color:#0B2545;margin-bottom:2px }
+.hk-chart-sub{ font-size:10px;color:#94A3B8;margin-bottom:10px }
+
+/* 걸음수 바차트 */
+.hk-bar-chart{
+  display:flex;align-items:flex-end;gap:4px;
+  height:80px;padding:0 2px;margin-bottom:4px;
+}
+.hk-bar-wrap{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  height:100%;justify-content:flex-end;gap:2px;
+}
+.hk-bar{
+  width:100%;border-radius:4px 4px 0 0;
+  background:var(--bar-color,#3ECBA5);
+  transition:height .6s cubic-bezier(.16,1,.3,1);
+  min-height:3px;position:relative;
+}
+.hk-bar.goal-met{ background:linear-gradient(180deg,#3ECBA5,#10b981) }
+.hk-bar.goal-miss{ background:#CBD5E1 }
+.hk-bar-val{ font-size:8.5px;color:#64748B;text-align:center;white-space:nowrap }
+.hk-day-labels{
+  display:flex;gap:4px;padding:0 2px;
+}
+.hk-day-labels span{
+  flex:1;text-align:center;font-size:9.5px;color:#94A3B8;font-weight:700;
+}
+
+/* 심박수 행 */
+.hk-hr-row{
+  display:flex;gap:4px;align-items:flex-end;
+  height:60px;margin-bottom:4px;padding:0 2px;
+}
+.hk-hr-bar{
+  flex:1;border-radius:4px 4px 0 0;
+  background:linear-gradient(180deg,#f87171,#fca5a5);
+  transition:height .6s cubic-bezier(.16,1,.3,1);
+  min-height:3px;position:relative;
+}
+.hk-hr-label{
+  flex:1;text-align:center;font-size:8.5px;color:#64748B;
+  position:absolute;top:-14px;left:0;right:0;
+}
+
+/* 수면 행 */
+.hk-sleep-row{
+  display:flex;gap:4px;align-items:flex-end;
+  height:70px;margin-bottom:4px;padding:0 2px;
+}
+.hk-sleep-bar{
+  flex:1;border-radius:4px 4px 0 0;
+  background:linear-gradient(180deg,#818cf8,#a5b4fc);
+  transition:height .6s cubic-bezier(.16,1,.3,1);
+  min-height:3px;
+}
+.hk-sleep-val{
+  font-size:8.5px;color:#64748B;text-align:center;margin-top:2px;
+}
+
+/* 인사이트 카드 */
+.hk-insight-card{
+  background:linear-gradient(135deg,#F0F9FF,#E0F2FE);
+  border-radius:14px;padding:14px;
+  border-left:4px solid #0284C7;
+}
+.hk-insight-title{
+  font-size:12px;font-weight:800;color:#0B2545;margin-bottom:8px;
+}
+.hk-insight-item{
+  display:flex;align-items:flex-start;gap:8px;
+  font-size:12px;color:#334155;line-height:1.65;
+  margin-bottom:6px;
+}
+.hk-insight-dot{
+  width:6px;height:6px;border-radius:50%;
+  background:#0284C7;flex-shrink:0;margin-top:5px;
+}
+
+.hk-checkin-btn{
+  width:100%;padding:14px;margin-top:14px;
+  background:linear-gradient(135deg,#0B2545,#1e40af);
+  color:#fff;font-size:14px;font-weight:800;
+  border:none;border-radius:14px;cursor:pointer;
+  box-shadow:0 6px 20px rgba(11,37,69,.3);
+  transition:all .2s;
+}
+.hk-checkin-btn:hover{ transform:translateY(-2px);box-shadow:0 10px 28px rgba(11,37,69,.35) }
+.hk-checkin-btn.done{
+  background:#E2E8F0;color:#94A3B8;cursor:default;
+  transform:none;box-shadow:none;pointer-events:none;
+}
 </style>
 </head>
 <body>
@@ -2320,8 +2463,150 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
       </div>
     </div>
 
+    <!-- ch8 → ch9 네비게이션 -->
+    <div class="chapter-nav">
+      <div class="nav-row">
+        <button class="btn-prev" onclick="prevChapter()" title="이전">←</button>
+        <button class="btn-next" onclick="nextChapter()">
+          헬스 데이터 연동 →
+        </button>
+      </div>
+    </div>
+
   </div>
 </div><!-- /CH8 -->
+
+
+<!-- ══════════════════════════════════════════════════════
+     CH9 · 헬스킷 연동 대시보드
+══════════════════════════════════════════════════════ -->
+<div class="chapter" data-ch="9" id="ch9">
+  <div class="ch-topbar">
+    <span class="ch-label-sm">Chapter 09 · 헬스 데이터 연동</span>
+    <span class="ch-pagenum">9 / 9</span>
+  </div>
+
+  <div class="chapter-content">
+
+    <div class="sec-kicker">내 몸 데이터 센터</div>
+    <div class="sec-heading">걸음수 · 심박수 · 수면</div>
+    <div class="sec-sub" style="margin-bottom:18px">
+      아이폰·안드로이드 헬스 앱과 연동해<br>
+      <strong style="color:#0B2545">주간 데이터를 자동 수집</strong>하고 슬림마인드 목표와 연결합니다.
+    </div>
+
+    <!-- 연동 상태 카드 -->
+    <div id="ch9ConnectPanel">
+      <div style="background:linear-gradient(135deg,#0B2545,#1e3a5f);border-radius:18px;padding:22px 20px;margin-bottom:16px;color:#fff;text-align:center">
+        <div style="font-size:36px;margin-bottom:10px">📱</div>
+        <div style="font-size:16px;font-weight:900;margin-bottom:6px">헬스 앱 연동</div>
+        <div style="font-size:12px;opacity:.75;margin-bottom:18px;line-height:1.6">
+          아이폰(Apple Health) 또는<br>안드로이드(Health Connect)와 연결하세요
+        </div>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+          <button class="hk-connect-btn" id="hkBtnApple" onclick="connectHealthKit('apple')">
+            <span style="font-size:16px"> </span> Apple Health
+          </button>
+          <button class="hk-connect-btn hk-android" id="hkBtnAndroid" onclick="connectHealthKit('android')">
+            <span style="font-size:16px">🤖</span> Health Connect
+          </button>
+        </div>
+        <div style="margin-top:14px">
+          <button style="background:transparent;border:1.5px solid rgba(255,255,255,.3);color:rgba(255,255,255,.7);border-radius:99px;padding:6px 18px;font-size:11px;cursor:pointer;font-weight:700" onclick="loadDemoData()">
+            🔍 데모 데이터로 미리보기
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 주간 요약 대시보드 (연동 후 표시) -->
+    <div id="ch9Dashboard" style="display:none">
+
+      <!-- 연결 상태 배너 -->
+      <div id="ch9ConnectBanner" style="display:flex;align-items:center;justify-content:space-between;background:#E8FAF5;border:1.5px solid #3ECBA5;border-radius:12px;padding:10px 14px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:16px">✅</span>
+          <span style="font-size:12px;font-weight:800;color:#0B2545" id="ch9ConnectLabel">Apple Health 연동됨</span>
+        </div>
+        <button style="font-size:10px;color:#94A3B8;background:transparent;border:none;cursor:pointer" onclick="disconnectHealth()">연동 해제</button>
+      </div>
+
+      <!-- 주간 네비게이션 -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <button class="hk-week-nav" onclick="hkWeekNav(-1)">← 이전 주</button>
+        <div style="text-align:center">
+          <div style="font-size:13px;font-weight:900;color:#0B2545" id="ch9WeekLabel">이번 주</div>
+          <div style="font-size:10px;color:#94A3B8" id="ch9WeekRange"></div>
+        </div>
+        <button class="hk-week-nav" onclick="hkWeekNav(1)" id="hkBtnNextWeek">다음 주 →</button>
+      </div>
+
+      <!-- 3가지 지표 카드 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px" id="ch9MetricCards">
+        <!-- JS 렌더 -->
+      </div>
+
+      <!-- 걸음수 주간 바차트 -->
+      <div class="hk-chart-card" id="ch9StepsChart">
+        <div class="hk-chart-title">🚶 걸음수 주간 추이</div>
+        <div class="hk-chart-sub" id="ch9StepsGoalLabel">일 목표: 8,000보</div>
+        <div class="hk-bar-chart" id="ch9StepsBars">
+          <!-- JS 렌더 -->
+        </div>
+        <div class="hk-day-labels">
+          <span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span><span>일</span>
+        </div>
+      </div>
+
+      <!-- 심박수 주간 차트 -->
+      <div class="hk-chart-card" id="ch9HRChart" style="margin-top:12px">
+        <div class="hk-chart-title">❤️ 심박수 주간 평균</div>
+        <div class="hk-chart-sub">안정시 심박수 (bpm)</div>
+        <div class="hk-hr-row" id="ch9HRBars">
+          <!-- JS 렌더 -->
+        </div>
+        <div class="hk-day-labels">
+          <span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span><span>일</span>
+        </div>
+      </div>
+
+      <!-- 수면 주간 차트 -->
+      <div class="hk-chart-card" id="ch9SleepChart" style="margin-top:12px">
+        <div class="hk-chart-title">🌙 수면 시간 주간 추이</div>
+        <div class="hk-chart-sub">취침 시간 (시간)</div>
+        <div class="hk-sleep-row" id="ch9SleepBars">
+          <!-- JS 렌더 -->
+        </div>
+        <div class="hk-day-labels">
+          <span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span><span>일</span>
+        </div>
+      </div>
+
+      <!-- 주간 인사이트 -->
+      <div class="hk-insight-card" id="ch9Insight" style="margin-top:14px">
+        <!-- JS 렌더 -->
+      </div>
+
+      <!-- 체크인 -->
+      <button class="hk-checkin-btn" id="ch9CheckinBtn" onclick="hkCheckin()">
+        📊 주간 데이터 체크인 — 컨설턴트 전송
+      </button>
+      <div id="ch9CheckinDone" style="display:none;text-align:center;padding:10px;font-size:12px;color:#16A34A;font-weight:700">
+        🎉 주간 데이터가 컨설턴트에게 전달됐어요!
+      </div>
+
+    </div><!-- /ch9Dashboard -->
+
+  </div><!-- /chapter-content -->
+
+  <div class="chapter-nav">
+    <div class="nav-row">
+      <button class="btn-prev" onclick="prevChapter()" title="이전">←</button>
+      <div style="font-size:11px;color:#94A3B8;text-align:center;padding:0 8px">슬림마인드와 함께<br>건강한 몸을 만들어가요 💚</div>
+    </div>
+  </div>
+
+</div><!-- /CH9 -->
 
 
 </div><!-- /a4-wrap -->
@@ -3499,7 +3784,7 @@ function getBodySvgType(bcCode) {
    챕터 네비게이션
 ══════════════════════════════════════════════════════ */
 let currentChapter = 0;
-const TOTAL_CHAPTERS = 9; // 0~8
+const TOTAL_CHAPTERS = 10; // 0~9
 
 function applyBcColorTheme(bcCode) {
   document.body.className = document.body.className.replace(/bc-theme-BC-\d+/g,'');
@@ -5185,6 +5470,287 @@ async function init() {
   gotoChapter(0);
   console.log('[SlimMind Result] 초기화 완료 ▶', bcCode, bc.name,
     '| 소스:', injected ? 'DB(서버주입)' : 'URL파라미터');
+}
+
+/* ══════════════════════════════════════════════════════
+   CH9 — 헬스킷 연동 로직
+   실제 HealthKit/Health Connect API는 딥링크 + PWA 방식.
+   현재: 데모 데이터 + 실연동 준비 구조
+══════════════════════════════════════════════════════ */
+let hkState = {
+  connected: false,
+  platform: null,     // 'apple' | 'android' | 'demo'
+  weekOffset: 0,      // 0=이번 주, -1=지난 주, ...
+  data: null          // { steps:[7], hr:[7], sleep:[7] }
+};
+
+/* ── 주간 날짜 범위 계산 ── */
+function hkGetWeekDates(offset) {
+  const now = new Date();
+  const dow = now.getDay(); // 0=일 1=월...
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - ((dow + 6) % 7) + offset * 7);
+  const dates = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    dates.push(d);
+  }
+  return dates;
+}
+
+function hkFormatDate(d) {
+  return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+/* ── 데모 데이터 생성 ── */
+function hkGenerateDemoData(offset) {
+  const seed = Math.abs(offset) + 1;
+  // 걸음수: 5000~12000
+  const steps = [7800, 9200, 6100, 10500, 8300, 5400, 7200].map(
+    (v, i) => Math.round(v * (0.85 + Math.random() * 0.3) * (1 - Math.abs(offset) * 0.05))
+  );
+  // 심박수: 58~78 bpm
+  const hr = [62, 65, 68, 64, 70, 72, 66].map(
+    v => Math.round(v + (Math.random() - 0.5) * 8)
+  );
+  // 수면: 5.5~8.5시간
+  const sleep = [7.2, 6.8, 7.5, 6.2, 7.8, 8.1, 7.4].map(
+    v => Math.round((v + (Math.random() - 0.5) * 1.2) * 10) / 10
+  );
+  return { steps, hr, sleep };
+}
+
+/* ── 연동 버튼 클릭 ── */
+function connectHealthKit(platform) {
+  hkState.platform = platform;
+
+  if (platform === 'apple') {
+    // iOS Safari에서 실제 HealthKit 연동 시도
+    // 실제 앱에서는 Swift WebKit Bridge 사용
+    // 웹 기반 딥링크: x-apple-health://
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    if (isIOS) {
+      // iOS: Apple Health 앱 열기 시도 후 데모 데이터로 폴백
+      window.location.href = 'x-apple-health://';
+      setTimeout(() => {
+        // 딥링크 실패 (앱 미설치 등) → 데모 데이터
+        hkActivateDemo('Apple Health');
+      }, 1500);
+    } else {
+      // 비iOS: 데모 데이터
+      hkActivateDemo('Apple Health (데모)');
+    }
+  } else if (platform === 'android') {
+    const isAndroid = /Android/.test(navigator.userAgent);
+    if (isAndroid) {
+      // Android: Health Connect 인텐트
+      window.location.href = 'intent://healthconnect#Intent;scheme=https;package=com.google.android.apps.healthdata;end';
+      setTimeout(() => hkActivateDemo('Health Connect'), 1500);
+    } else {
+      hkActivateDemo('Health Connect (데모)');
+    }
+  }
+}
+
+function loadDemoData() {
+  hkActivateDemo('데모 데이터');
+}
+
+function hkActivateDemo(label) {
+  hkState.connected = true;
+  hkState.weekOffset = 0;
+  hkState.data = hkGenerateDemoData(0);
+
+  document.getElementById('ch9ConnectPanel').style.display = 'none';
+  document.getElementById('ch9Dashboard').style.display = 'block';
+  document.getElementById('ch9ConnectLabel').textContent = label + ' 연동됨';
+  hkRenderDashboard();
+}
+
+function disconnectHealth() {
+  hkState.connected = false;
+  hkState.data = null;
+  document.getElementById('ch9ConnectPanel').style.display = 'block';
+  document.getElementById('ch9Dashboard').style.display = 'none';
+  // 버튼 리셋
+  ['hkBtnApple','hkBtnAndroid'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('connected');
+  });
+}
+
+/* ── 주 네비게이션 ── */
+function hkWeekNav(dir) {
+  const newOffset = hkState.weekOffset + dir;
+  if (newOffset > 0) return; // 미래 주 불가
+  hkState.weekOffset = newOffset;
+  hkState.data = hkGenerateDemoData(newOffset);
+  hkRenderDashboard();
+}
+
+/* ── 대시보드 렌더링 ── */
+function hkRenderDashboard() {
+  const { weekOffset, data } = hkState;
+  const dates = hkGetWeekDates(weekOffset);
+
+  // 주 라벨
+  const weekLabelEl = document.getElementById('ch9WeekLabel');
+  const weekRangeEl = document.getElementById('ch9WeekRange');
+  if (weekLabelEl) weekLabelEl.textContent = weekOffset === 0 ? '이번 주' : `${Math.abs(weekOffset)}주 전`;
+  if (weekRangeEl) weekRangeEl.textContent = `${hkFormatDate(dates[0])} ~ ${hkFormatDate(dates[6])}`;
+
+  // 다음 주 버튼 비활성화
+  const nextBtn = document.getElementById('hkBtnNextWeek');
+  if (nextBtn) nextBtn.disabled = weekOffset >= 0;
+
+  // 주간 합산
+  const totalSteps  = data.steps.reduce((a,b)=>a+b,0);
+  const avgHR       = Math.round(data.hr.reduce((a,b)=>a+b,0) / 7);
+  const avgSleep    = Math.round(data.sleep.reduce((a,b)=>a+b,0) / 7 * 10) / 10;
+  const stepsGoal   = 8000;
+  const goalDays    = data.steps.filter(s => s >= stepsGoal).length;
+
+  // 지표 카드
+  const cardsEl = document.getElementById('ch9MetricCards');
+  if (cardsEl) {
+    const stepsTrend = totalSteps >= 56000 ? '↑ 목표 달성' : `↓ ${Math.round((totalSteps/56000*100))}% 달성`;
+    const hrTrend    = avgHR < 70 ? '↓ 안정적' : avgHR < 75 ? '→ 보통' : '↑ 주의';
+    const sleepTrend = avgSleep >= 7 ? '↑ 충분' : avgSleep >= 6 ? '→ 보통' : '↓ 부족';
+
+    cardsEl.innerHTML = [
+      { icon:'🚶', val: Math.round(totalSteps/1000*10)/10 + 'k', unit:'주간 총 걸음수', label:'걸음수', trend: stepsTrend, cls: totalSteps>=56000?'hk-trend-up':'hk-trend-dn' },
+      { icon:'❤️', val: avgHR, unit:'bpm', label:'평균 심박수', trend: hrTrend, cls: avgHR<70?'hk-trend-up':avgHR<75?'hk-trend-eq':'hk-trend-dn' },
+      { icon:'🌙', val: avgSleep + 'h', unit:'시간/일', label:'평균 수면', trend: sleepTrend, cls: avgSleep>=7?'hk-trend-up':avgSleep>=6?'hk-trend-eq':'hk-trend-dn' }
+    ].map(m => `
+      <div class="hk-metric-card">
+        <div class="hk-metric-icon">${m.icon}</div>
+        <div class="hk-metric-val">${m.val}</div>
+        <div class="hk-metric-unit">${m.unit}</div>
+        <div class="hk-metric-label">${m.label}</div>
+        <div class="hk-metric-trend ${m.cls}">${m.trend}</div>
+      </div>`).join('');
+  }
+
+  // 걸음수 바차트
+  const maxSteps = Math.max(...data.steps, stepsGoal);
+  const stepsEl = document.getElementById('ch9StepsBars');
+  if (stepsEl) {
+    const goalLabelEl = document.getElementById('ch9StepsGoalLabel');
+    if (goalLabelEl) goalLabelEl.textContent = `일 목표: ${stepsGoal.toLocaleString()}보 · 달성일: ${goalDays}/7일`;
+    stepsEl.innerHTML = data.steps.map((s, i) => {
+      const pct = Math.round(s / maxSteps * 100);
+      const met = s >= stepsGoal;
+      return `<div class="hk-bar-wrap">
+        <div class="hk-bar-val">${s >= 1000 ? Math.round(s/100)/10+'k' : s}</div>
+        <div class="hk-bar ${met?'goal-met':'goal-miss'}"
+          style="height:${pct}%;--bar-color:${met?'#3ECBA5':'#CBD5E1'}">
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // 심박수 차트
+  const minHR = Math.min(...data.hr) - 5;
+  const maxHR = Math.max(...data.hr) + 5;
+  const hrEl = document.getElementById('ch9HRBars');
+  if (hrEl) {
+    hrEl.innerHTML = data.hr.map((h, i) => {
+      const pct = Math.round((h - minHR) / (maxHR - minHR) * 100);
+      const color = h < 70 ? '#4ade80' : h < 75 ? '#fbbf24' : '#f87171';
+      return `<div class="hk-bar-wrap" style="position:relative">
+        <div class="hk-bar-val">${h}</div>
+        <div class="hk-hr-bar" style="height:${Math.max(pct,8)}%;background:linear-gradient(180deg,${color},${color}88)"></div>
+      </div>`;
+    }).join('');
+  }
+
+  // 수면 차트
+  const maxSleep = Math.max(...data.sleep, 8);
+  const sleepEl = document.getElementById('ch9SleepBars');
+  if (sleepEl) {
+    sleepEl.innerHTML = data.sleep.map((s, i) => {
+      const pct = Math.round(s / maxSleep * 100);
+      const color = s >= 7 ? '#818cf8' : s >= 6 ? '#a5b4fc' : '#fca5a5';
+      return `<div class="hk-bar-wrap">
+        <div class="hk-bar-val">${s}h</div>
+        <div class="hk-sleep-bar" style="height:${pct}%;background:linear-gradient(180deg,${color},${color}88)"></div>
+      </div>`;
+    }).join('');
+  }
+
+  // 주간 인사이트 생성
+  hkRenderInsight(data, avgHR, avgSleep, totalSteps, goalDays);
+}
+
+/* ── 인사이트 렌더 ── */
+function hkRenderInsight(data, avgHR, avgSleep, totalSteps, goalDays) {
+  const el = document.getElementById('ch9Insight');
+  if (!el) return;
+
+  const insights = [];
+
+  // 걸음수 인사이트
+  if (goalDays >= 5) {
+    insights.push('🌟 이번 주 걸음수 목표를 ' + goalDays + '일 달성했어요! 림프 순환과 지방 연소에 탁월한 한 주입니다.');
+  } else if (goalDays >= 3) {
+    insights.push('🚶 걸음수 목표 달성일이 ' + goalDays + '일이에요. 식후 15분 걷기로 달성률을 높여보세요.');
+  } else {
+    insights.push('💡 이번 주 걸음수가 목표에 미치지 못했어요. 엘리베이터 대신 계단부터 시작해보세요.');
+  }
+
+  // 수면 인사이트
+  if (avgSleep >= 7) {
+    insights.push('😴 평균 수면 ' + avgSleep + '시간으로 충분해요. 그렐린·렙틴 호르몬 균형이 잡혀 있을 가능성이 높습니다.');
+  } else if (avgSleep >= 6) {
+    insights.push('🌙 수면이 ' + avgSleep + '시간으로 약간 부족해요. 취침 1시간 전 블루라이트 차단을 시도하세요.');
+  } else {
+    insights.push('⚠️ 수면 ' + avgSleep + '시간은 그렐린을 28% 높이고 렙틴을 18% 낮춥니다. 수면이 지금 가장 중요한 처방입니다.');
+  }
+
+  // 심박수 인사이트
+  if (avgHR < 65) {
+    insights.push('❤️ 안정시 심박수 ' + avgHR + 'bpm은 우수한 심폐 기능을 나타냅니다. 운동이 효과적으로 작용하고 있어요.');
+  } else if (avgHR >= 75) {
+    insights.push('💓 심박수 ' + avgHR + 'bpm은 약간 높아요. 요가·호흡법으로 자율신경을 안정시켜 보세요.');
+  }
+
+  el.innerHTML = `
+    <div class="hk-insight-title">📊 이번 주 AI 인사이트</div>
+    ${insights.map(txt => `
+      <div class="hk-insight-item">
+        <div class="hk-insight-dot"></div>
+        <span>${txt}</span>
+      </div>`).join('')}`;
+}
+
+/* ── 주간 체크인 ── */
+function hkCheckin() {
+  const btn = document.getElementById('ch9CheckinBtn');
+  const done = document.getElementById('ch9CheckinDone');
+  if (!btn || btn.classList.contains('done')) return;
+
+  btn.classList.add('done');
+  btn.textContent = '✅ 체크인 완료';
+  if (done) done.style.display = 'block';
+
+  const res = window.__RESULT__ || {};
+  const { weekOffset, data } = hkState;
+  const payload = {
+    name:      res.name    || '익명',
+    bodyCode:  res.bodyCode || '-',
+    type:      'healthkit_weekly',
+    weekOffset,
+    avgSteps:  data ? Math.round(data.steps.reduce((a,b)=>a+b,0)/7) : 0,
+    avgHR:     data ? Math.round(data.hr.reduce((a,b)=>a+b,0)/7) : 0,
+    avgSleep:  data ? Math.round(data.sleep.reduce((a,b)=>a+b,0)/7*10)/10 : 0,
+    timestamp: new Date().toISOString()
+  };
+  fetch('/api/checkin', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  }).catch(()=>{});
 }
 
 /* ── DOMContentLoaded ── */
