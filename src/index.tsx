@@ -1000,6 +1000,10 @@ app.get('/slimmind_live', (c) => c.html(slimmindLiveHtml))
 app.get('/slimmind_live.html', (c) => c.html(slimmindLiveHtml))
 app.get('/slimmind', (c) => c.html(slimmindLiveHtml))
 
+// ─── result.html 직접 접근 (bc=BC-01&name=... 파라미터 방식) ──────────────
+app.get('/result.html', (c) => c.html(resultHtml))
+app.get('/result', (c) => c.html(resultHtml))
+
 /* ═══════════════════════════════════════════════════════
    POST /api/checkin — 주차별 체크인 저장 + 컨설턴트 자동전송
 ═══════════════════════════════════════════════════════ */
