@@ -523,6 +523,37 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 .wel-dot{ width:8px;height:8px;border-radius:50% }
 .wel-pct{ font-weight:700 }
 
+/* ── 오행 추천 식품 카드 ── */
+.ohaeng-foods-wrap{display:flex;flex-direction:column;gap:10px}
+.ohaeng-food-card{
+  border-radius:12px;overflow:hidden;
+  border:1.5px solid;
+}
+.ohaeng-food-header{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;
+}
+.ohaeng-food-char{font-size:22px;font-weight:900;line-height:1}
+.ohaeng-food-organ{font-size:10px;opacity:.8;font-weight:600}
+.ohaeng-food-name{font-size:13px;font-weight:700}
+.ohaeng-food-body{
+  padding:10px 14px;background:rgba(255,255,255,.85);
+}
+.ohaeng-food-list{
+  display:flex;flex-wrap:wrap;gap:6px;
+}
+.ohaeng-food-tag{
+  font-size:11.5px;font-weight:600;
+  padding:4px 10px;border-radius:20px;
+  border:1px solid currentColor;
+}
+.ohaeng-food-tip{
+  font-size:11px;color:#64748b;
+  margin-top:7px;line-height:1.6;
+  padding-top:7px;border-top:1px dashed #e2e8f0;
+}
+@media print{.ohaeng-foods-wrap{break-inside:avoid}.ohaeng-food-card{break-inside:avoid}}
+
 /* ── 탄단지 파이차트 + BMR ── */
 .macro-input-row{
   display:flex;flex-wrap:wrap;gap:8px;
@@ -3089,6 +3120,14 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
     <div class="mindset-cards" id="ch7MindsetCards">
       <!-- JS에서 렌더 -->
     </div>
+
+    <!-- 오행 추천 식품 카드 -->
+    <div class="sec-divider"></div>
+    <div class="sec-kicker">오행 추천 식품</div>
+    <div style="font-size:12px;color:#64748B;margin-bottom:12px;line-height:1.75">
+      내 오행 기질에 맞는 <strong style="color:#0B2545">자연 식품을 자주 먹으면</strong> 장기 기능이 살아납니다.
+    </div>
+    <div id="ch7OhaengFoods" class="ohaeng-foods-wrap"></div>
 
   </div>
 
@@ -6095,6 +6134,129 @@ function renderCh7(bc) {
       </div>`
     ).join('');
   }
+
+  /* 오행 추천 식품 카드 */
+  renderOhaengFoods(bc);
+}
+
+/* ─── 오행 추천 식품 데이터 & 렌더 ─── */
+const OHAENG_FOOD_DB = {
+  '木 목(木)': {
+    char:'木', color:'#16a34a', bg:'#f0fdf4', border:'#86efac',
+    organ:'간·담낭', name:'목(木) — 봄·해독',
+    foods:[
+      {tag:'브로콜리', tip:'DIM 함유, 간 해독 효소 활성'},
+      {tag:'시금치', tip:'엽산·마그네슘으로 간 기능 지원'},
+      {tag:'케일', tip:'설포라판으로 NF-κB 억제'},
+      {tag:'미나리', tip:'간 열 내리기, 독소 배출'},
+      {tag:'식초', tip:'초산이 지방 합성 억제'},
+      {tag:'레몬', tip:'비타민C + 리모넨 간 효소 활성화'}
+    ],
+    tip:'매 식사 시작을 녹색 채소 한 접시로 시작하세요. 간이 하루 1,500번 이상 해독 반응을 수행합니다.'
+  },
+  '火 화(火)': {
+    char:'火', color:'#dc2626', bg:'#fff5f5', border:'#fca5a5',
+    organ:'심장·소장', name:'화(火) — 여름·순환',
+    foods:[
+      {tag:'토마토', tip:'리코펜으로 심혈관 보호'},
+      {tag:'딸기', tip:'안토시아닌으로 혈관 탄성 강화'},
+      {tag:'비트', tip:'산화질소(NO) 생성으로 혈압 저하'},
+      {tag:'고추', tip:'캡사이신으로 열 생성·지방 연소'},
+      {tag:'석류', tip:'퓨니칼라긴으로 심혈관 항산화'},
+      {tag:'홍삼', tip:'진세노사이드로 심박 안정 + 피로 해소'}
+    ],
+    tip:'빨간 식품의 리코펜은 조리 시(가열·기름과 함께) 흡수율이 4배 높아집니다.'
+  },
+  '土 토(土)': {
+    char:'土', color:'#d97706', bg:'#fffbeb', border:'#fde68a',
+    organ:'비장·위', name:'토(土) — 환절기·소화',
+    foods:[
+      {tag:'호박', tip:'베타카로틴 + 소화 효소 자극'},
+      {tag:'고구마', tip:'장 운동 활성화, 혈당 완만한 상승'},
+      {tag:'대추', tip:'비장 강화, 소화 기능 지원'},
+      {tag:'단호박', tip:'식이섬유 + 비타민B1 소화 촉진'},
+      {tag:'생강', tip:'진저롤로 위장 운동 활성화'},
+      {tag:'꿀', tip:'프리바이오틱스 효과, 소화 효소 보조'}
+    ],
+    tip:'소화 기능이 약한 날에는 따뜻한 음식을 먼저 드세요. 차가운 음식은 비장 기능을 억제합니다.'
+  },
+  '金 금(金)': {
+    char:'金', color:'#6b7280', bg:'#f9fafb', border:'#d1d5db',
+    organ:'폐·대장', name:'금(金) — 가을·정화',
+    foods:[
+      {tag:'배', tip:'루테올린으로 폐 점막 보호'},
+      {tag:'무', tip:'소화 효소 디아스타제, 장 청소'},
+      {tag:'마늘', tip:'알리신 항균·항염, 대장 균형'},
+      {tag:'도라지', tip:'사포닌으로 폐 기능 강화'},
+      {tag:'생강', tip:'진저롤로 폐 염증 억제'},
+      {tag:'연근', tip:'뮤신으로 장 점막 보호'}
+    ],
+    tip:'매운 음식(마늘·생강)은 폐와 대장의 청소 기능을 활성화합니다. 주 3회 이상 섭취하세요.'
+  },
+  '水 수(水)': {
+    char:'水', color:'#2563eb', bg:'#eff6ff', border:'#93c5fd',
+    organ:'신장·방광', name:'수(水) — 겨울·저장',
+    foods:[
+      {tag:'검은콩', tip:'안토시아닌으로 신장 항산화'},
+      {tag:'미역', tip:'요오드·칼슘으로 갑상선·신장 지원'},
+      {tag:'굴', tip:'아연으로 신장 호르몬 분비 촉진'},
+      {tag:'블루베리', tip:'프로안토시아닌으로 요로 감염 예방'},
+      {tag:'흑깨', tip:'세사민으로 신장 항산화 + 호르몬 지원'},
+      {tag:'검은쌀', tip:'안토시아닌 풍부, 신장 에너지 저장'}
+    ],
+    tip:'검은색 식품이 수(水) 오행을 보강합니다. 매일 검은콩·흑깨 한 스푼이 신장 건강의 투자입니다.'
+  }
+};
+
+function renderOhaengFoods(bc) {
+  const el = document.getElementById('ch7OhaengFoods');
+  if (!el) return;
+
+  // BC의 ohaeng 키워드 추출
+  const ohaeng = bc.ohaeng || '';
+  // 복합형(BC-10) 처리: ' 복합' 포함 시 여러 오행 표시
+  let keys = [];
+  if (ohaeng.includes('복합') || ohaeng.includes('複')) {
+    keys = ['土 토(土)', '木 목(木)', '水 수(水)'];
+  } else {
+    // 오행 키 매핑
+    const map = {
+      '목':'木 목(木)','木':'木 목(木)',
+      '화':'火 화(火)','火':'火 화(火)',
+      '토':'土 토(土)','土':'土 토(土)',
+      '금':'金 금(金)','金':'金 금(金)',
+      '수':'水 수(水)','水':'水 수(水)'
+    };
+    for (const [k, v] of Object.entries(map)) {
+      if (ohaeng.includes(k) && !keys.includes(v)) keys.push(v);
+    }
+    if (!keys.length) keys = ['土 토(土)']; // fallback
+  }
+
+  el.innerHTML = keys.map(key => {
+    const d = OHAENG_FOOD_DB[key];
+    if (!d) return '';
+    return `
+      <div class="ohaeng-food-card" style="border-color:${d.border};background:${d.bg}">
+        <div class="ohaeng-food-header" style="background:${d.color}20">
+          <div class="ohaeng-food-char" style="color:${d.color}">${d.char}</div>
+          <div>
+            <div class="ohaeng-food-name" style="color:${d.color}">${d.name}</div>
+            <div class="ohaeng-food-organ" style="color:${d.color}">장기: ${d.organ}</div>
+          </div>
+        </div>
+        <div class="ohaeng-food-body">
+          <div class="ohaeng-food-list">
+            ${d.foods.map(f => `
+              <span class="ohaeng-food-tag" style="color:${d.color};background:${d.color}15;border-color:${d.color}40"
+                    title="${f.tip}">
+                ${f.tag}
+              </span>`).join('')}
+          </div>
+          <div class="ohaeng-food-tip">💡 ${d.tip}</div>
+        </div>
+      </div>`;
+  }).join('');
 }
 
 
