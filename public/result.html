@@ -523,6 +523,64 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 .wel-dot{ width:8px;height:8px;border-radius:50% }
 .wel-pct{ font-weight:700 }
 
+/* ── 탄단지 파이차트 + BMR ── */
+.macro-input-row{
+  display:flex;flex-wrap:wrap;gap:8px;
+  margin-bottom:14px;
+}
+.macro-input-group{display:flex;flex-direction:column;gap:4px;min-width:60px;flex:1}
+.macro-input-label{font-size:10px;font-weight:700;color:#64748b;letter-spacing:.5px}
+.macro-input-num,.macro-input-select{
+  border:1.5px solid #e2e8f0;border-radius:8px;
+  padding:7px 8px;font-size:13px;
+  color:#0B2545;background:#f8fafc;
+  width:100%;box-sizing:border-box;
+}
+.macro-input-num:focus,.macro-input-select:focus{
+  outline:none;border-color:var(--bc-accent,#3ECBA5);
+  box-shadow:0 0 0 3px rgba(62,203,165,.15);
+}
+.macro-bmr-row{
+  display:flex;align-items:center;gap:10px;
+  margin-bottom:16px;
+}
+.macro-bmr-box{
+  flex:1;background:#f1f5f9;border-radius:12px;
+  padding:12px;text-align:center;
+}
+.macro-bmr-box--tdee{background:#f0fdf4}
+.macro-bmr-label{font-size:10px;color:#64748b;margin-bottom:3px}
+.macro-bmr-val{font-size:22px;font-weight:800;color:var(--bc-main,#0B2545)}
+.macro-bmr-unit{font-size:10px;color:#94a3b8}
+.macro-bmr-arrow{font-size:18px;color:#94a3b8;flex-shrink:0}
+.macro-chart-wrap{
+  display:flex;align-items:center;gap:20px;
+  flex-wrap:wrap;
+}
+.macro-chart-canvas-wrap{
+  position:relative;width:160px;height:160px;flex-shrink:0;
+}
+.macro-chart-canvas-wrap canvas{width:160px!important;height:160px!important}
+.macro-chart-center{
+  position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  text-align:center;
+  font-size:11px;color:#64748b;line-height:1.4;
+  pointer-events:none;
+}
+.macro-legend{flex:1;display:flex;flex-direction:column;gap:9px;min-width:150px}
+.macro-leg-item{display:flex;align-items:center;gap:8px}
+.macro-leg-dot{width:14px;height:14px;border-radius:4px;flex-shrink:0}
+.macro-leg-name{font-size:12px;font-weight:700;color:#374151;flex:1}
+.macro-leg-pct{font-size:12px;color:#64748b;font-weight:600;margin-right:4px}
+.macro-leg-gram{font-size:13px;font-weight:800;color:var(--bc-main,#0B2545)}
+.macro-leg-unit{font-size:10px;color:#94a3b8}
+@media print{
+  .macro-input-row{display:none!important}
+  .macro-chart-wrap{break-inside:avoid}
+  .macro-chart-canvas-wrap{width:120px!important;height:120px!important}
+}
+
 /* ── 증상 체크리스트 ── */
 .symptom-checklist{display:flex;flex-direction:column;gap:7px}
 .sym-item{
@@ -2908,6 +2966,69 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
       </div>
     </div>
 
+    <!-- 탄단지 파이차트 + BMR -->
+    <div class="sec-divider"></div>
+    <div class="sec-kicker">내 몸에 맞는 탄·단·지 비율</div>
+    <div style="font-size:12px;color:#64748B;margin-bottom:14px;line-height:1.75">
+      신체 정보를 입력하면 <strong style="color:#0B2545">BMR 기반 정확한 그램 수</strong>를 자동 계산합니다.
+    </div>
+
+    <!-- 신체정보 입력 -->
+    <div class="macro-input-row" id="macroInputRow">
+      <div class="macro-input-group">
+        <label class="macro-input-label">성별</label>
+        <select class="macro-input-select" id="macroGender" onchange="calcMacro()">
+          <option value="F">여성</option>
+          <option value="M">남성</option>
+        </select>
+      </div>
+      <div class="macro-input-group">
+        <label class="macro-input-label">나이</label>
+        <input class="macro-input-num" id="macroAge" type="number" value="35" min="15" max="80" oninput="calcMacro()">
+      </div>
+      <div class="macro-input-group">
+        <label class="macro-input-label">키(cm)</label>
+        <input class="macro-input-num" id="macroHeight" type="number" value="163" min="140" max="200" oninput="calcMacro()">
+      </div>
+      <div class="macro-input-group">
+        <label class="macro-input-label">체중(kg)</label>
+        <input class="macro-input-num" id="macroWeight" type="number" value="65" min="30" max="180" oninput="calcMacro()">
+      </div>
+      <div class="macro-input-group">
+        <label class="macro-input-label">활동량</label>
+        <select class="macro-input-select" id="macroActivity" onchange="calcMacro()">
+          <option value="1.2">거의 없음</option>
+          <option value="1.375" selected>가벼운 운동</option>
+          <option value="1.55">주 3~5회</option>
+          <option value="1.725">매일 운동</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- BMR + TDEE 결과 -->
+    <div class="macro-bmr-row" id="macroBmrRow">
+      <div class="macro-bmr-box">
+        <div class="macro-bmr-label">기초대사량(BMR)</div>
+        <div class="macro-bmr-val" id="macroBmrVal">—</div>
+        <div class="macro-bmr-unit">kcal/일</div>
+      </div>
+      <div class="macro-bmr-arrow">→</div>
+      <div class="macro-bmr-box macro-bmr-box--tdee">
+        <div class="macro-bmr-label">목표 칼로리(TDEE×0.85)</div>
+        <div class="macro-bmr-val" id="macroTdeeVal">—</div>
+        <div class="macro-bmr-unit">kcal/일</div>
+      </div>
+    </div>
+
+    <!-- 파이차트 + 그램 수 -->
+    <div class="macro-chart-wrap">
+      <div class="macro-chart-canvas-wrap">
+        <canvas id="ch6MacroChart" width="180" height="180"></canvas>
+        <div class="macro-chart-center" id="macroChartCenter">—</div>
+      </div>
+      <div class="macro-legend" id="macroLegend"></div>
+    </div>
+
   </div>
 
   <div class="chapter-nav">
@@ -4580,6 +4701,102 @@ function renderCover(res, bc) {
 /* ══════════════════════════════════════════════════════
    renderCh1(res, bc)  — 점수 공개 + SVG체형 + 오프닝카피 + 축바
 ══════════════════════════════════════════════════════ */
+/* ─── 탄단지 파이차트 + BMR 함수 ─── */
+// BC별 탄단지 최적 비율 (%)
+const MACRO_RATIO_DB = {
+  'BC-01': {carb:35, prot:35, fat:30, note:'인슐린 저항성 → 저탄수·고단백 전략'},
+  'BC-02': {carb:40, prot:30, fat:30, note:'간 부담 최소화 → 균형 + 양질 지방'},
+  'BC-03': {carb:45, prot:30, fat:25, note:'림프 순환 → 항염 지방산 강화'},
+  'BC-04': {carb:40, prot:30, fat:30, note:'코르티솔 → 복합탄수화물 + 마그네슘'},
+  'BC-05': {carb:40, prot:35, fat:25, note:'갑상선 → 고단백 소식, 요오드 식품'},
+  'BC-06': {carb:45, prot:30, fat:25, note:'장 건강 → 식이섬유 중심 복합탄수'},
+  'BC-07': {carb:40, prot:30, fat:30, note:'심혈관 → 오메가-3 불포화지방 강화'},
+  'BC-08': {carb:40, prot:30, fat:30, note:'호르몬 → DIM 식품 + 건강한 지방'},
+  'BC-09': {carb:40, prot:30, fat:30, note:'항염 → 오메가-3 + 항산화 식품 위주'},
+  'BC-10': {carb:35, prot:35, fat:30, note:'복합 대사 → 저탄수·고단백 + 베르베린'}
+};
+
+let _macroBcId = 'BC-01';
+let _macroChartInst = null;
+
+function initMacroChart(bcId) {
+  _macroBcId = bcId;
+  calcMacro();
+}
+
+function calcMacro() {
+  const gender   = (document.getElementById('macroGender')?.value)   || 'F';
+  const age      = parseFloat(document.getElementById('macroAge')?.value)    || 35;
+  const heightCm = parseFloat(document.getElementById('macroHeight')?.value) || 163;
+  const weightKg = parseFloat(document.getElementById('macroWeight')?.value) || 65;
+  const activity = parseFloat(document.getElementById('macroActivity')?.value) || 1.375;
+
+  // Mifflin-St Jeor BMR
+  const bmr = gender === 'M'
+    ? 10 * weightKg + 6.25 * heightCm - 5 * age + 5
+    : 10 * weightKg + 6.25 * heightCm - 5 * age - 161;
+  const tdee   = bmr * activity;
+  const target = Math.round(tdee * 0.85); // 감량 목표: TDEE의 85%
+
+  setText('macroBmrVal',  Math.round(bmr));
+  setText('macroTdeeVal', target);
+
+  const ratio = MACRO_RATIO_DB[_macroBcId] || MACRO_RATIO_DB['BC-01'];
+  const carbG = Math.round(target * ratio.carb / 100 / 4);
+  const protG = Math.round(target * ratio.prot / 100 / 4);
+  const fatG  = Math.round(target * ratio.fat  / 100 / 9);
+
+  // 차트 센터 텍스트
+  const centerEl = document.getElementById('macroChartCenter');
+  if (centerEl) centerEl.innerHTML = `${target}<br><span style="font-size:9px">kcal</span>`;
+
+  // 범례 업데이트
+  const legend = document.getElementById('macroLegend');
+  if (legend) {
+    legend.innerHTML = [
+      {name:'탄수화물', pct:ratio.carb, g:carbG, color:'#f59e0b'},
+      {name:'단백질',   pct:ratio.prot, g:protG, color:'#3b82f6'},
+      {name:'지방',     pct:ratio.fat,  g:fatG,  color:'#10b981'}
+    ].map(m => `
+      <div class="macro-leg-item">
+        <div class="macro-leg-dot" style="background:${m.color}"></div>
+        <div class="macro-leg-name">${m.name}</div>
+        <div class="macro-leg-pct">${m.pct}%</div>
+        <div class="macro-leg-gram">${m.g}</div>
+        <div class="macro-leg-unit">g</div>
+      </div>`).join('') +
+      `<div style="font-size:10px;color:#94a3b8;margin-top:6px;line-height:1.5">${ratio.note}</div>`;
+  }
+
+  // Chart.js 파이차트
+  const canvas = document.getElementById('ch6MacroChart');
+  if (!canvas || !window.Chart) return;
+  if (_macroChartInst) _macroChartInst.destroy();
+  _macroChartInst = new Chart(canvas, {
+    type: 'doughnut',
+    data: {
+      labels: ['탄수화물', '단백질', '지방'],
+      datasets: [{
+        data: [ratio.carb, ratio.prot, ratio.fat],
+        backgroundColor: ['#f59e0b', '#3b82f6', '#10b981'],
+        borderWidth: 2,
+        borderColor: '#fff',
+        hoverOffset: 8
+      }]
+    },
+    options: {
+      cutout: '62%',
+      responsive: false,
+      animation: {duration: 800, easing: 'easeInOutQuart'},
+      plugins: {legend: {display: false}, tooltip: {
+        callbacks: {
+          label: ctx => ` ${ctx.label}: ${ctx.parsed}%`
+        }
+      }}
+    }
+  });
+}
+
 /* ─── 증상 체크리스트 렌더 함수 ─── */
 function renderSymptomList(bc, res) {
   const el = document.getElementById('ch1SymptomList');
@@ -5806,6 +6023,9 @@ function renderCh6(bc) {
     const sec = document.getElementById('ch6LifeSection');
     if (sec) sec.style.display = 'block';
   }
+
+  /* ─ 탄단지 파이차트 초기화 ─ */
+  setTimeout(() => initMacroChart(bc.id), 100);
 }
 
 
