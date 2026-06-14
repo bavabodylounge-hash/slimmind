@@ -1034,17 +1034,63 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
   .ohaeng-info-box,
   .insight-dark,
   .consultant-box,
-  .declaration-box,
-  .temperament-hero { page-break-inside: avoid; break-inside: avoid; }
+  .declaration-box { page-break-inside: avoid; break-inside: avoid; }
+
+  /* temperament-hero: break-inside auto (내부가 너무 커서 전체 avoid 시 meta-grid가 밀림) */
+  .temperament-hero { break-inside: auto; page-break-inside: auto; }
 
   /* 개별 카드 */
   .presc-card,
-  .meta-item,
   .trait-chip,
   .t3c-card,
   .season-card,
   .mindset-card,
   .cv-hook-card { page-break-inside: avoid; break-inside: avoid; }
+
+  /* meta-grid 인쇄:
+     - 2열 유지, 간격/여백 축소 → 4개 카드 모두 ch5 페이지 안에 수용
+     - 컨테이너는 break-inside: auto (통째 피하기 어려우면 분리 허용)
+     - 개별 카드(meta-item)만 avoid → 카드 내부 잘림 방지
+     - break-before: avoid → 이전 요소(insight-dark)와 같은 페이지 유지
+  */
+  .meta-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 5px !important;
+    margin: 5px 0 !important;
+    break-inside: auto;
+    page-break-inside: auto;
+    break-before: avoid;
+    page-break-before: avoid;
+  }
+  .meta-item {
+    padding: 7px 10px !important;
+    gap: 7px !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .meta-item-icon { font-size: 16px !important; }
+  .meta-item-val  { font-size: 11px !important; }
+
+  /* ch5 ohaeng-info-box · insight-dark 패딩 축소 → meta-grid 공간 확보 */
+  #ch5 .ohaeng-info-box { padding: 10px 14px !important; margin: 6px 0 !important; }
+  #ch5 .oib-desc        { font-size: 11px !important; line-height: 1.6 !important; }
+  #ch5 .oib-fact        { font-size: 10px !important; margin-top: 5px !important; padding-top: 5px !important; }
+  #ch5 .insight-dark    {
+    padding: 10px 14px !important; margin: 6px 0 !important;
+    /* ch5에서 insight-dark 직후 meta-grid가 이어지도록 break 허용 */
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+    break-after: avoid !important;
+    page-break-after: avoid !important;
+  }
+  #ch5 .id-text         { font-size: 11px !important; line-height: 1.65 !important; }
+
+  /* trait-chip 패딩 축소 → ch5 핵심특성 그리드 높이 줄이기 */
+  #ch5 .trait-grid { gap: 6px !important; margin: 10px 0 !important; }
+  #ch5 .trait-chip,
+  #ch5 .trait-item { padding: 8px 10px !important; }
+  #ch5 .trait-icon { font-size: 16px !important; margin-bottom: 3px !important; }
+  #ch5 .trait-val  { font-size: 11px !important; }
 
   /* 제목 직후 잘림 방지 */
   h1, h2, h3,
