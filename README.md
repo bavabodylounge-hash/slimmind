@@ -1,5 +1,7 @@
 # SlimMind — 바디코드 체형 진단 서비스
 
+> **최종 검증**: 2026-06-14 (세션 3) — 전체 앱 Playwright 검증 완료, PDF 인쇄 12페이지 정상, BC_DB 동기화 확인
+
 ## 프로젝트 개요
 - **서비스명**: SlimMind (슬림마인드)
 - **목적**: BC코드 기반 체형 진단 + 컨설턴트 관리 플랫폼
@@ -157,4 +159,103 @@ pm2 start ecosystem.config.cjs
 ## 배포 상태
 - **플랫폼**: Cloudflare Pages + D1
 - **상태**: 🟡 로컬 개발 완료 (프로덕션 배포 미완)
-- **최종 업데이트**: 2026-06-08
+- **최종 업데이트**: 2026-06-14 (세션 3)
+
+---
+
+## 전체 앱 업데이트 정책 (매 수정 시 필수 체크리스트)
+
+> **원칙**: 매 업데이트마다 설문지 + 컨설턴트 코드 부여 + 결과지를 **전부 함께** 검증한다.
+
+### BC_DB 변경 시 체크리스트
+
+BC 코드(BC-01~BC-10)를 추가/수정할 때는 두 파일을 반드시 동기화해야 한다.
+
+| 체크 | 파일 | 역할 | BC 코드 사용 방식 |
+|------|------|------|-------------------|
+| ☐ | `public/slimmind_live.html` | 설문 점수 계산 → BC 배정 | `D.BC_DB['BC-XX']` — 고객 친화적 분류명 |
+| ☐ | `public/result.html` | 결과지 렌더링 | `BC_DB['BC-XX']` — 의학적 전문 명칭 |
+
+**BC_DB 두 파일 명칭 매핑 현황** (2026-06-14 기준):
+
+| BC 코드 | slimmind_live (설문 분류명) | result.html (결과지 전문 명칭) |
+|---------|---------------------------|-------------------------------|
+| BC-01 | 복부 내장지방형 | 인슐린저항·혈당형 |
+| BC-02 | 대사 저하형 | 간 기능 저하형 |
+| BC-03 | 상체 비만형 | 수분·림프 순환형 |
+| BC-04 | 복부 팽만형 | 스트레스·코르티솔형 |
+| BC-05 | 하체 피하지방형 | 갑상선·대사 저하형 |
+| BC-06 | 부종·순환형 | 장내미생물 불균형형 |
+| BC-07 | 마른비만형 | 혈액순환·심혈관형 |
+| BC-08 | 계절·대사 민감형 | 호르몬 불균형형 |
+| BC-09 | 성인병 리스크형 | 면역·염증 과민형 |
+| BC-10 | 요요·의지 반복형 | 복합 대사 증후군형 |
+
+> ⚠️ 두 파일의 명칭이 다른 것은 **의도적 설계** (레이어 분리):
+> - `slimmind_live`: 고객이 공감하는 증상 표현
+> - `result.html`: 전문적 대사 원인 표현
+> - BC 번호 자체(01~10)는 동일하게 대응 → 연결 문제 없음
+> - 신규 BC 코드 추가 시 두 파일 모두에 동일 번호로 추가 필요
+
+### 결과지(result.html) 수정 시 체크리스트
+
+```
+☐ 1. slimmind_live.html — 해당 BC 코드 점수 계산 로직과 일치 여부 확인
+☐ 2. result.html BC_DB — name/short/metaProfile/diet/exercise/suppl 필드 완성도 확인
+☐ 3. @media print CSS — 새 컴포넌트 추가 시 break-inside/break-before 정책 적용
+☐ 4. npm run build → pm2 restart slimmind → curl localhost:3000/result?bc=BC-01 확인
+☐ 5. python /tmp/pdf_recheck.py → 총 페이지 수 및 공백 페이지 없음 확인
+☐ 6. git add & git commit (의미있는 메시지 필수)
+```
+
+### PDF 인쇄(@media print) 관리 원칙
+
+```
+현재 상태: 12페이지 (BC-01 기준, 2026-06-14 세션 3 확인)
+
+페이지 구성:
+  p01: 커버 (SlimMind 리포트)
+  p02: ch1 진단 결과 (BC 코드 + 서브타입)
+  p03: 11축 신호 강도 차트
+  p04: ch2 11축 정밀 분석
+  p05: ch3 12주 여정 지도
+  p06: ch4 우리의 약속
+  p07: ch5 기질·체질 통합 분석 + 대사 프로파일 ← 핵심 (이전 페이지 8 공백 버그 수정 완료)
+  p08: ch6 3대 맞춤 처방 (식단/운동)
+  p09: 영양제 처방
+  p10: ch7 오행 계절 처방
+  p11: ch8 시작하기
+  p12: 선언 카드
+
+@media print 핵심 규칙:
+  - 챕터당 새 페이지: chapter { break-before: page }
+  - meta-grid (대사 프로파일): break-inside: auto + break-before: avoid
+  - meta-item: break-inside: avoid (카드 단위 보호)
+  - #ch5 내부 요소들: padding 축소로 대사 프로파일 4개 카드가 ch5 페이지에 수용
+
+PDF 재검증 방법:
+  cd /tmp && python pdf_recheck.py
+  → /tmp/pdf_recheck/page_01~12.png 생성
+```
+
+### 컨설턴트 계정 비밀번호 체계
+
+```
+기본 패턴: pass{NNNN} (SC-0001 → pass0001, SC-0002 → pass0002 ...)
+DB 확인:   npx wrangler d1 execute slimmind-production --local \
+             --command="SELECT code, name, password_hash FROM consultants"
+
+로그인 API 우선순위 (src/index.tsx):
+  1. code === 'MASTER' && password === 'admin1234'
+  2. consultant.password_hash === password (DB 직접 비교)
+  3. password === 'pass' + code.replace('SC-', '')  (기본값 fallback)
+```
+
+### Playwright 검증 스크립트 위치
+
+```
+/tmp/pdf_recheck.py    — PDF 페이지별 이미지 변환 (pymupdf)
+/tmp/admin_tabs2.py    — 관리자 전 탭 스크린샷
+/tmp/admin_modal.py    — BC코드 편집 모달 캡처
+/tmp/consultant_tabs.py — 컨설턴트 포털 전 탭 캡처
+```
