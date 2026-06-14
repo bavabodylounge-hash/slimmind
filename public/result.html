@@ -1294,6 +1294,386 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
     page-break-inside: avoid; break-inside: avoid;
   }
   .subtype-card { page-break-inside: avoid; break-inside: avoid; }
+
+  /* ══════════════════════════════════════════
+     PDF 브로슈어 출력 최적화 (세션6 추가)
+     각 챕터를 A4 페이지에 최대한 맞게 조정
+  ══════════════════════════════════════════ */
+
+  /* ── 공통: 네비게이션 UI 완전 숨김 ── */
+  .chapter-nav, .nav-row, .btn-prev, .btn-next,
+  #topBar, .pw-modal-bg, #paywallModal,
+  .hk-checkin-btn, #ch9CheckinBtn { display: none !important; }
+
+  /* ── 공통: chapter-content 상하 패딩 축소 ── */
+  .chapter-content { padding: 8mm 8mm 4mm !important; }
+  .ch-topbar { padding: 2mm 8mm !important; font-size: 10px !important; }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ch1 설문응답 — 3페이지 → 최적화
+     서브타입 카드 잘림 방지
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  #ch1 .chapter-content { padding: 4mm 8mm 4mm !important; }
+  /* 11축 바차트 높이 축소 */
+  #ch1 .axis-bar-row { padding: 3px 0 !important; }
+  #ch1 .axis-bar-fill { height: 8px !important; }
+  #ch1 .axis-bar-label { font-size: 10px !important; }
+  #ch1 .axis-bar-val { font-size: 10px !important; }
+  /* 서브타입 카드 — 선택된 카드 위로, 2열 → 1열 full */
+  #ch1SubtypeCards { gap: 6px !important; }
+  .subtype-card {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  /* 축 강도 섹션 묶기 */
+  #ch1 .axis-signal-section {
+    page-break-inside: avoid; break-inside: avoid;
+  }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ch2 전문가비율 — 2.5페이지 → 최적화
+     전문가 리스트 11개 잘림 방지
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  #ch2 .chapter-content { padding: 4mm 8mm 4mm !important; }
+  /* 레이더 차트 크기 축소 */
+  #ch2 canvas { max-width: 150px !important; max-height: 150px !important; }
+  /* 전문가 비율 아이템 — 각각 잘림 방지 */
+  .expert-ratio-item {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    padding: 6px 10px !important;
+    margin-bottom: 4px !important;
+  }
+  .expert-ratio-bar { height: 6px !important; }
+  .expert-ratio-name { font-size: 11px !important; }
+  .expert-ratio-pct  { font-size: 11px !important; }
+  /* 전문가 리스트 컨테이너 — 5번 이후 새 페이지 */
+  .expert-ratio-item:nth-child(6) {
+    page-break-before: auto;
+    break-before: auto;
+  }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ch3 여정맵 — 1.2페이지 → 1페이지
+     여백 축소로 A4 1장에 맞춤
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  #ch3 .chapter-content { padding: 4mm 8mm 4mm !important; }
+  /* 여정 SVG 높이 축소 */
+  #journeySvg { height: 220px !important; max-height: 220px !important; }
+  /* 4단계 카드 패딩 축소 */
+  .journey-phase-card {
+    padding: 8px 10px !important;
+    margin-bottom: 4px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  .journey-phase-cards { gap: 6px !important; }
+  /* 잠금 안내 배너 */
+  .journey-lock-notice { padding: 6px 10px !important; font-size: 10px !important; }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ch5 실천법 — 1.5페이지 → 최적화
+     오행 카드 + 처방 블록 잘림 방지
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  #ch5 .chapter-content { padding: 4mm 8mm 4mm !important; }
+  /* em-item 아코디언 — 닫힌 상태로 출력 */
+  .em-item-body { display: none !important; }
+  /* em-item 헤더 잘림 방지 */
+  .em-item {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    margin-bottom: 4px !important;
+    padding: 0 !important;
+  }
+  .em-item-header { padding: 8px 12px !important; }
+  /* expert-category 블록 묶기 */
+  .expert-category-block {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  /* 전문가 모달 숨김 */
+  #expertDetailModal { display: none !important; }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ch6 식단/운동/영양제 — 3페이지 → 섹션별 페이지 분리
+     각 처방 섹션 앞에서 새 페이지 시작
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  #ch6 .chapter-content { padding: 4mm 8mm 4mm !important; }
+  /* 처방 섹션 — 2번째부터 새 페이지 */
+  #ch6 .presc-section:nth-child(n+2) {
+    page-break-before: always !important;
+    break-before: page !important;
+  }
+  /* 처방 섹션 타이틀 잘림 방지 */
+  #ch6 .presc-section-title {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+  /* 처방 카드 잘림 방지 */
+  .presc-card {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  /* 처방 카드 패딩 축소 */
+  #ch6 .presc-card { padding: 10px 12px !important; }
+  #ch6 .presc-card-title { font-size: 12px !important; }
+  #ch6 .presc-card-desc  { font-size: 10px !important; line-height: 1.5 !important; }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ch7 운동 — 1.3페이지 → 1페이지
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  #ch7 .chapter-content { padding: 4mm 8mm 4mm !important; }
+  .season-card {
+    padding: 10px 12px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  .mindset-card {
+    padding: 8px 10px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  .mindset-cards { gap: 6px !important; }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ch8 주차별 — 2페이지 → 최적화
+     wt-week-card 그리드 잘림 방지
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  #ch8 .chapter-content { padding: 4mm 8mm 4mm !important; }
+  /* wt-grid: 4열 유지, 카드 패딩 축소 */
+  .wt-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 6px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  .wt-week-card {
+    padding: 8px 6px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  .wt-week-label { font-size: 10px !important; }
+  .wt-week-axes  { font-size: 12px !important; }
+  /* 주차별 상세 패널 숨김 (인쇄 시 닫힌 상태) */
+  .wt-week-detail { display: none !important; }
+  /* 컨설턴트 박스 + 선언 박스 묶기 */
+  .consultant-box, .declaration-box {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  /* wt-grid 전체 블록 — 새 페이지 허용 안 함 */
+  #wtGridWrap {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ch9 헬스킷 — 1페이지 안정
+     Connect 패널만 표시, 대시보드 숨김
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  #ch9 .chapter-content { padding: 6mm 8mm 6mm !important; }
+  #ch9Dashboard { display: none !important; }
+  #ch9ConnectPanel { display: block !important; }
+  /* 연결 버튼 패딩 축소 */
+  .hk-connect-btn { padding: 12px 20px !important; font-size: 13px !important; }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ch1 설문응답 — 심화 최적화 (1.78→1페이지)
+     불필요한 섹션 숨기고 핵심만 유지
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  /* 인쇄 시 ch1 공감히어로/감정배지 숨김 (ch1 전용 — ch4는 유지) */
+  #ch1 .empathy-hero,
+  #ch1EmotionBadge,
+  .sr-gauge-wrap,
+  #ch1FirstLine { display: none !important; }
+  /* ch4 empathy-hero는 인쇄에서도 표시 */
+  #ch4 .empathy-hero { display: block !important; }
+
+  /* 점수 섹션 최소화 */
+  .score-reveal-wrap {
+    padding: 8px 12px !important;
+    margin-bottom: 5px !important;
+  }
+  .sr-kicker { margin-bottom: 4px !important; font-size: 8px !important; }
+  .sr-score-num { font-size: 38px !important; }
+  .sr-score-row { margin-bottom: 3px !important; gap: 6px !important; }
+  .sr-score-max { font-size: 10px !important; }
+  .sr-score-label { font-size: 9px !important; }
+
+  /* 바디타입 카드 최소화 */
+  .body-type-anim-card {
+    padding: 8px 10px !important;
+    margin-bottom: 5px !important;
+  }
+  .bta-title { font-size: 12px !important; }
+  .bta-sub   { font-size: 9px !important; }
+
+  /* 11축 바차트 — 최소화 */
+  #ch1 .axis-bar-row   { padding: 2px 0 !important; gap: 5px !important; }
+  #ch1 .axis-bar-track { height: 5px !important; }
+  #ch1 .axis-bar-fill  { height: 5px !important; }
+  #ch1 .axis-bar-name  { font-size: 9px !important; width: 76px !important; }
+  #ch1 .axis-bar-val   { font-size: 9px !important; }
+  #ch1 .axis-bar-icon  { font-size: 12px !important; width: 16px !important; }
+  /* 11축 바차트 2열 배치 + 추가 숨김 */
+  #ch1AxisBars {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 0 8px !important;
+  }
+  /* ch1 score 섹션 숨김 (바디타입 카드로 대체) */
+  #ch1ScoreReveal { display: none !important; }
+
+  /* 서브타입 카드 최소화 */
+  .subtype-card {
+    padding: 7px 9px !important;
+    margin-bottom: 3px !important;
+  }
+  .subtype-card .st-title { font-size: 11px !important; }
+  .subtype-card .st-desc  { font-size: 8.5px !important; line-height: 1.3 !important; }
+  .subtype-card-head { gap: 5px !important; padding-bottom: 3px !important; margin-bottom: 3px !important; }
+  /* 선택된(selected) 서브타입만 표시, 나머지 숨김 */
+  .subtype-card:not(.selected) { display: none !important; }
+  /* selected 카드는 full-width */
+  .subtype-card.selected { width: 100% !important; grid-column: 1 / -1 !important; }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ch2 전문가비율 — 심화 최적화 (1.86→1페이지)
+     2열 배치 + 차트 축소 + 전체 패딩 압축
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  #ch2 .chapter-content { padding: 3mm 8mm 3mm !important; }
+  /* 레이더 차트 + 안내문구 + 3대 원인 섹션 숨김 (전문가 비율만 표시) */
+  #ch2 .radar-wrap { display: none !important; }
+  #ch2 .sec-divider { display: none !important; }
+  #ch2 .top3-cause-list { display: none !important; }
+  #ch2 .next-tease-box { display: none !important; }
+  /* 섹션 설명 텍스트 숨김 */
+  #ch2 .sec-sub { display: none !important; }
+  /* 인라인 style 텍스트 블록 숨김 (레이더 아래 안내, 3대 원인 설명) */
+  #ch2 div[style*="font-size:12.5px"],
+  #ch2 div[style*="font-size:10.5px"] { display: none !important; }
+  #ch2 #ch2Top3Heading { display: none !important; }
+  /* 전문가 비율 리스트 2열 배치 */
+  .expert-ratio-list {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 3px 10px !important;
+  }
+  /* 전문가 비율 아이템 압축 */
+  .expert-ratio-item {
+    padding: 2px 5px !important;
+    margin-bottom: 1px !important;
+  }
+  .expert-ratio-bar  { height: 3px !important; border-radius: 2px !important; margin: 2px 0 !important; }
+  .expert-ratio-name { font-size: 8.5px !important; }
+  .expert-ratio-pct  { font-size: 8.5px !important; min-width: 26px !important; }
+  .expert-ratio-icon { font-size: 11px !important; }
+  /* 상단 요약 섹션 압축 */
+  #ch2 .sec-heading  { font-size: 12px !important; margin-bottom: 3px !important; }
+  #ch2 .sec-kicker   { font-size: 8.5px !important; margin-bottom: 2px !important; }
+  /* 상위 3 전문가 강조 카드 숨김 (리스트로 충분) */
+  #ch2 .top3-expert-wrap { display: none !important; }
+  /* 3대 원인 설명 텍스트 압축 */
+  #ch2 .cause-desc { font-size: 9px !important; line-height: 1.4 !important; margin: 3px 0 !important; }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ch5 실천법 — 미세 조정 (1.06→1페이지)
+     70px만 줄이면 됨
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  #ch5 .chapter-content { padding: 3mm 8mm 3mm !important; }
+  #ch5 .ohaeng-info-box { padding: 8px 12px !important; margin: 4px 0 !important; }
+  #ch5 .oib-title  { font-size: 12px !important; }
+  #ch5 .oib-desc   { font-size: 10px !important; line-height: 1.4 !important; }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ch6 식단처방 — 심화 최적화 (1.12→1페이지)
+     3열 배치 + 전체 압축
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  #ch6 .chapter-content { padding: 2mm 8mm 2mm !important; }
+  /* 처방 카드 3열 배치 */
+  #ch6 .presc-cards {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 5px !important;
+  }
+  #ch6 .presc-card {
+    padding: 7px 8px !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+  #ch6 .presc-card-inner  { gap: 4px !important; }
+  #ch6 .presc-card-title  { font-size: 10px !important; margin-bottom: 3px !important; line-height: 1.3 !important; }
+  #ch6 .presc-card-desc   { font-size: 8px  !important; line-height: 1.3 !important; }
+  #ch6 .presc-card-rank   { font-size: 8px  !important; padding: 2px 5px !important; }
+  #ch6 .presc-card-icon   { font-size: 16px !important; }
+  /* 처방 섹션 타이틀 압축 */
+  #ch6 .presc-section     { margin-bottom: 8px !important; }
+  #ch6 .presc-section-title { padding: 6px 10px !important; margin-bottom: 5px !important; }
+  #ch6 .presc-section-label { font-size: 12px !important; }
+  #ch6 .presc-section-icon  { font-size: 18px !important; }
+  /* 섹션 구분 새 페이지 해제 */
+  #ch6 .presc-section:nth-child(n+2) {
+    page-break-before: avoid !important;
+    break-before: avoid !important;
+  }
+  /* 서브타입 배너 압축 */
+  #ch6SubtypeBanner { padding: 6px 10px !important; margin-bottom: 4px !important; }
+  #ch6SubtypeExtra  { margin-top: 4px !important; }
+  /* ch6 전체 패딩 추가 압축 */
+  #ch6 .chapter-content { padding: 1mm 8mm 1mm !important; }
+  #ch6 .ch-topbar { padding: 1mm 8mm !important; }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     ch8 주차별 — 심화 최적화 (1.19→1페이지)
+     wt-grid 4열 + consultant/declaration 압축
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  #ch8 .chapter-content { padding: 2mm 8mm 2mm !important; }
+  /* wt-grid 더 압축 */
+  .wt-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 3px !important;
+    margin-bottom: 6px !important;
+  }
+  .wt-week-card  { padding: 5px 3px !important; min-height: 0 !important; }
+  .wt-week-label { font-size: 8px  !important; }
+  .wt-week-axes  { font-size: 9px  !important; }
+  .wt-week-num   { font-size: 10px !important; }
+  .wt-week-arrow { font-size: 8px  !important; }
+  /* consultant-box 압축 */
+  .consultant-box {
+    padding: 10px 14px !important;
+    margin-bottom: 6px !important;
+    font-size: 11px !important;
+  }
+  .consultant-box p { font-size: 10px !important; line-height: 1.5 !important; }
+  /* declaration-box 압축 */
+  .declaration-box {
+    padding: 8px 12px !important;
+    margin-top: 5px !important;
+  }
+  .declaration-box .decl-code { font-size: 24px !important; }
+  .declaration-box .decl-text { font-size: 9px !important; }
+  /* 상단 섹션 타이틀 압축 */
+  #ch8 .sec-heading { font-size: 11px !important; margin-bottom: 3px !important; }
+  #ch8 .sec-kicker  { font-size: 8.5px !important; margin-bottom: 2px !important; }
+  /* ch8 전체 패딩 추가 압축 */
+  #ch8 .chapter-content { padding: 1mm 8mm 1mm !important; }
+  #ch8 .ch-topbar { padding: 1mm 8mm !important; }
+  /* ch8 consultant-box 내 불필요 요소 숨김 */
+  .consultant-box .cons-signature { display: none !important; }
+  .consultant-box .cons-avatar    { display: none !important; }
+  /* wt-grid wrapper 마진 0 */
+  #wtGridWrap { margin: 0 !important; padding: 0 !important; }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     공통: 페이지 번호 표시
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  @page {
+    @bottom-center {
+      content: counter(page) " / " counter(pages);
+      font-size: 9px;
+      color: #999;
+    }
+  }
 }
 
 /* ══════════════════════════════════════════════════════
