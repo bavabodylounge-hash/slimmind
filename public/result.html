@@ -523,6 +523,69 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 .wel-dot{ width:8px;height:8px;border-radius:50% }
 .wel-pct{ font-weight:700 }
 
+/* ── 바디맵 SVG ── */
+.bodymap-wrap{
+  position:relative;display:flex;justify-content:center;
+  margin:0 auto 6px;max-width:320px;
+}
+.bodymap-wrap svg{width:100%;height:auto;max-height:280px}
+.bm-zone{cursor:pointer;transition:opacity .2s}
+.bm-zone:hover .bm-hotspot{opacity:1 !important}
+.bm-hotspot{
+  fill:rgba(239,68,68,.55);
+  transition:opacity .3s,r .3s;
+  filter:url(#bmBlur);
+}
+.bm-hotspot-ring{
+  fill:none;stroke:rgba(239,68,68,.8);stroke-width:1.5;
+  animation:hotRing 2s infinite;
+}
+@keyframes hotRing{
+  0%,100%{stroke-opacity:.8;r:14}
+  50%{stroke-opacity:.3;r:18}
+}
+.bm-label{
+  font-size:9px;font-weight:700;fill:#fff;
+  text-anchor:middle;dominant-baseline:middle;
+  pointer-events:none;
+  text-shadow:0 1px 3px rgba(0,0,0,.6);
+}
+/* 바디맵 팝업 */
+.bm-popup{
+  position:fixed;z-index:9999;
+  background:#fff;border-radius:14px;
+  box-shadow:0 8px 32px rgba(0,0,0,.18);
+  padding:16px 18px;width:260px;
+  border-top:4px solid #ef4444;
+  animation:fadeIn .2s ease;
+}
+.bm-popup-close{
+  position:absolute;top:10px;right:12px;
+  background:none;border:none;font-size:18px;
+  color:#9ca3af;cursor:pointer;line-height:1;
+}
+.bm-popup-zone{
+  font-size:10px;font-weight:700;
+  color:#ef4444;letter-spacing:.5px;margin-bottom:5px;
+}
+.bm-popup-title{
+  font-size:15px;font-weight:800;
+  color:#0B2545;margin-bottom:7px;
+}
+.bm-popup-why{
+  font-size:12px;color:#475569;
+  line-height:1.65;margin-bottom:9px;
+}
+.bm-popup-presc{
+  font-size:11.5px;color:#059669;
+  font-weight:600;line-height:1.6;
+  background:#f0fdf4;border-radius:8px;
+  padding:8px 10px;
+  display:flex;align-items:flex-start;gap:5px;
+}
+.bm-popup-presc::before{content:'💊';flex-shrink:0}
+@media print{.bodymap-wrap{max-width:220px}.bm-popup{display:none!important}}
+
 /* ── 역효과 빨간카드 섹션 ── */
 .bad-cards-section{margin-top:26px}
 .bad-cards-header{
@@ -2262,6 +2325,15 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
         <span class="id-accent">회로를 바꾸면 참지 않아도 됩니다.</span>
       </div>
     </div>
+
+    <!-- 바디맵 SVG -->
+    <div class="sec-divider"></div>
+    <div class="sec-kicker">내 몸의 지방 축적 지도</div>
+    <div style="font-size:12px;color:#64748B;margin-bottom:12px;line-height:1.75">
+      BC 코드별로 <strong style="color:#0B2545">지방이 쌓이는 위치가 다릅니다.</strong><br>
+      부위를 탭하면 그 이유와 맞춤 처방을 볼 수 있어요.
+    </div>
+    <div id="ch1BodyMap" class="bodymap-wrap"></div>
 
     <!-- 10축 신호 강도 바 -->
     <div class="sec-divider"></div>
@@ -4447,6 +4519,167 @@ function renderCover(res, bc) {
 /* ══════════════════════════════════════════════════════
    renderCh1(res, bc)  — 점수 공개 + SVG체형 + 오프닝카피 + 축바
 ══════════════════════════════════════════════════════ */
+/* ─── 바디맵 데이터 & 렌더 함수 ─── */
+const BODYMAP_DB = {
+  'BC-01': {
+    zones:[
+      {id:'abdomen', cx:100, cy:148, r:22, label:'복부', title:'인슐린 저항성 복부지방', why:'인슐린 과잉 분비가 지속되면 혈중 포도당이 복부 지방세포로 직접 저장됩니다. 특히 내장지방이 축적됩니다.', presc:'식사 순서 교정(채소→단백질→탄수화물)으로 혈당 스파이크를 낮추면 복부 지방 감소 속도가 3배 빨라집니다.'},
+      {id:'lovehandle', cx:72, cy:158, r:13, label:'옆구리', title:'옆구리 지방 축적', why:'인슐린 저항성과 코르티솔이 함께 높을 때 복부+옆구리에 지방이 집중됩니다.', presc:'간헐적 단식(16:8)으로 공복 인슐린을 낮추면 옆구리 지방이 빠르게 반응합니다.'},
+      {id:'lovehandle2', cx:128, cy:158, r:13, label:'', title:'옆구리 지방 축적', why:'인슐린 저항성과 코르티솔이 함께 높을 때 복부+옆구리에 지방이 집중됩니다.', presc:'간헐적 단식(16:8)으로 공복 인슐린을 낮추면 옆구리 지방이 빠르게 반응합니다.'}
+    ]
+  },
+  'BC-02': {
+    zones:[
+      {id:'liver',   cx:115, cy:140, r:16, label:'간 주변', title:'간 주변·내장지방', why:'간 기능 저하 시 지방산 대사가 느려져 내장지방과 간 주변 지방이 쌓입니다.', presc:'밀크씨슬+NAC 복용, 기름진 음식·알코올 2주 차단으로 간 지방이 빠르게 줄어듭니다.'},
+      {id:'abdomen2', cx:95, cy:155, r:18, label:'복부', title:'복부 내장지방', why:'간의 지방 처리 능력이 저하되면 혈중 중성지방이 높아져 복부에 집중 저장됩니다.', presc:'오메가-3 3g + 식후 20분 걷기가 간 지방과 복부 지방을 동시에 줄입니다.'}
+    ]
+  },
+  'BC-03': {
+    zones:[
+      {id:'thigh',  cx:82, cy:210, r:18, label:'허벅지', title:'허벅지 림프 지방', why:'림프 순환이 저하되면 하체(허벅지·종아리)에 수분과 지방이 뭉쳐 셀룰라이트가 생깁니다.', presc:'종아리 마사지·압박 스타킹·점프 로프로 림프 펌핑을 활성화하면 허벅지 둘레가 줄어듭니다.'},
+      {id:'calf',   cx:82, cy:258, r:13, label:'종아리', title:'종아리 부종·지방', why:'림프 정체로 하지 정맥압이 높아지면 종아리에 부종+지방이 중첩됩니다.', presc:'취침 전 다리를 심장보다 높게 올려두고 10분 유지하세요. 다음 날 차이를 느낍니다.'},
+      {id:'thigh2', cx:118, cy:210, r:18, label:'', title:'허벅지 림프 지방', why:'림프 순환이 저하되면 하체(허벅지·종아리)에 수분과 지방이 뭉쳐 셀룰라이트가 생깁니다.', presc:'종아리 마사지·압박 스타킹·점프 로프로 림프 펌핑을 활성화하면 허벅지 둘레가 줄어듭니다.'}
+    ]
+  },
+  'BC-04': {
+    zones:[
+      {id:'abdomen3', cx:100, cy:148, r:22, label:'복부', title:'코르티솔 복부지방', why:'코르티솔(스트레스 호르몬) 과잉은 복부 지방세포의 코르티솔 수용체를 자극해 내장지방을 만듭니다.', presc:'취침 전 복식호흡 5분만으로 코르티솔이 낮아지고 복부 지방 감소가 시작됩니다.'},
+      {id:'upperback', cx:100, cy:110, r:14, label:'등', title:'등·목 지방 축적', why:'코르티솔 과잉은 목·등 상부에 지방을 축적시키는 경향이 있습니다(쿠싱 양상).', presc:'아슈와간다 300mg + 수면 7시간 이상 확보로 코르티솔 일주기를 정상화하세요.'}
+    ]
+  },
+  'BC-05': {
+    zones:[
+      {id:'wholebody', cx:100, cy:155, r:26, label:'전신', title:'갑상선 저하 전신 대사 저하', why:'갑상선 호르몬이 낮으면 기초대사율이 5~7% 하락해 전신에 골고루 지방이 증가합니다.', presc:'셀레늄 200mcg + 아이오딘 식품(미역·해조류)으로 갑상선 기능을 지원하세요. TSH 수치 확인이 우선입니다.'},
+      {id:'face',      cx:100, cy:60,  r:10, label:'얼굴 부기', title:'안면 부종·지방', why:'갑상선 기능 저하 시 점액수종성 부종이 얼굴·손에 나타납니다.', presc:'수분 제한보다 갑상선 기능 회복이 먼저입니다. 수분이 원인이 아닙니다.'}
+    ]
+  },
+  'BC-06': {
+    zones:[
+      {id:'abdomen4', cx:100, cy:148, r:20, label:'복부', title:'장내 가스·복부 팽만', why:'장내 미생물 불균형(dysbiosis)이 메탄·수소 생성을 증가시켜 복부 팽만과 지방이 공존합니다.', presc:'발효식품(김치·요거트) 매일 + 프로바이오틱스 100억 CFU 이상 복용으로 장 생태계를 회복하세요.'},
+      {id:'bloat',    cx:100, cy:162, r:14, label:'팽만', title:'하복부 팽만', why:'장 투과성(Leaky Gut) 증가로 내독소가 혈류로 유입되면 하복부에 만성 염증+지방이 생깁니다.', presc:'4주간 글루텐·유제품 제거 식이로 장 점막을 회복하세요.'}
+    ]
+  },
+  'BC-07': {
+    zones:[
+      {id:'chest',    cx:100, cy:118, r:16, label:'가슴', title:'심폐 연관 상체 지방', why:'심폐 기능 저하로 산소 공급이 줄면 지방 연소 효율이 낮아져 상체에 지방이 쌓입니다.', presc:'중강도 유산소(숨이 약간 차는 수준) 주 4회가 심폐 지방 연소의 핵심입니다.'},
+      {id:'abdomen5', cx:100, cy:150, r:18, label:'복부', title:'심혈관 위험 복부지방', why:'내장지방은 심혈관 질환의 직접 위험 인자입니다. 심폐 기능 저하형에서 내장지방이 높습니다.', presc:'CoQ10 200mg + 오메가-3 3g으로 심근 세포 에너지와 혈관 탄성을 동시에 개선하세요.'}
+    ]
+  },
+  'BC-08': {
+    zones:[
+      {id:'hip',      cx:100, cy:185, r:19, label:'엉덩이', title:'에스트로겐 둔부 지방', why:'에스트로겐 과잉은 엉덩이·허벅지 내측에 피하지방을 저장하는 것이 호르몬 설계입니다.', presc:'DIM 200mg으로 에스트로겐 대사를 건강한 방향으로 유도하면 둔부 지방이 반응합니다.'},
+      {id:'thigh3',   cx:82, cy:215, r:15, label:'허벅지', title:'여성 호르몬 허벅지 지방', why:'황체기에 프로게스테론이 낮아지면 에스트로겐 우세로 허벅지 지방이 증가합니다.', presc:'생리 주기에 맞는 사이클 싱킹 운동(전반기 유산소, 후반기 스트레칭)을 실천하세요.'},
+      {id:'thigh4',   cx:118, cy:215, r:15, label:'', title:'여성 호르몬 허벅지 지방', why:'황체기에 프로게스테론이 낮아지면 에스트로겐 우세로 허벅지 지방이 증가합니다.', presc:'생리 주기에 맞는 사이클 싱킹 운동(전반기 유산소, 후반기 스트레칭)을 실천하세요.'}
+    ]
+  },
+  'BC-09': {
+    zones:[
+      {id:'inflam',   cx:100, cy:148, r:22, label:'전신 염증', title:'만성 염증 지방 (복부+상체)', why:'만성 염증이 렙틴 저항성을 유발하면 포만 신호가 차단되어 복부와 상체에 지방이 쌓입니다.', presc:'쿠르쿠민 500mg(피페린 복합) + 오메가-3 3g을 동시에 시작하면 2주 내 체감 변화가 있습니다.'},
+      {id:'arm',      cx:62, cy:138, r:11, label:'팔뚝', title:'상체·팔뚝 염증 지방', why:'전신 염증 상태에서 상체(팔뚝·어깨)에도 지방이 축적되는 패턴이 나타납니다.', presc:'항염 식품(베리류·생강·강황)을 매 식사에 포함하면 염증 지방이 서서히 줄어듭니다.'},
+      {id:'arm2',     cx:138, cy:138, r:11, label:'', title:'상체·팔뚝 염증 지방', why:'전신 염증 상태에서 상체(팔뚝·어깨)에도 지방이 축적되는 패턴이 나타납니다.', presc:'항염 식품(베리류·생강·강황)을 매 식사에 포함하면 염증 지방이 서서히 줄어듭니다.'}
+    ]
+  },
+  'BC-10': {
+    zones:[
+      {id:'metro',    cx:100, cy:148, r:24, label:'복부', title:'복합 대사 복부 비만', why:'인슐린 저항성·코르티솔·지질 이상이 동시에 있을 때 복부 내장지방이 가장 빠르게 증가합니다.', presc:'식사 순서 교정(채소→단백질→탄수화물) 하나만으로 혈당·인슐린·체중이 동시에 반응합니다.'},
+      {id:'flank',    cx:70, cy:160, r:13, label:'옆구리', title:'복합형 옆구리 지방', why:'복합 대사증후군에서 옆구리 지방은 내장지방의 외부 표현입니다.', presc:'베르베린 500mg×2 + 마그네슘 400mg이 복합 대사증후군 4개 지표에 동시 작용합니다.'},
+      {id:'flank2',   cx:130, cy:160, r:13, label:'', title:'복합형 옆구리 지방', why:'복합 대사증후군에서 옆구리 지방은 내장지방의 외부 표현입니다.', presc:'베르베린 500mg×2 + 마그네슘 400mg이 복합 대사증후군 4개 지표에 동시 작용합니다.'},
+      {id:'thigh5',   cx:82, cy:215, r:14, label:'허벅지', title:'하체 지방 동반', why:'복합 대사증후군에서 하체 지방도 동반되는 경우가 많습니다.', presc:'대근육 근력 운동(스쿼트·데드리프트) 주 3회가 가장 효율적인 하체 지방 감소 전략입니다.'}
+    ]
+  }
+};
+
+function renderBodyMap(bc) {
+  const el = document.getElementById('ch1BodyMap');
+  if (!el) return;
+  const data = BODYMAP_DB[bc.id];
+  if (!data) { el.innerHTML = ''; return; }
+
+  // 인체 실루엣 SVG (간단한 stick figure 스타일)
+  const zones = data.zones;
+  const hotspotsHTML = zones.map((z, i) => `
+    <g class="bm-zone" onclick="openBmPopup(event,'${bc.id}',${i})" tabindex="0" role="button" aria-label="${z.label}">
+      <circle class="bm-hotspot" cx="${z.cx}" cy="${z.cy}" r="${z.r}" opacity="${z.label ? '.7' : '.5'}"/>
+      ${z.label ? `<circle class="bm-hotspot-ring" cx="${z.cx}" cy="${z.cy}" r="${z.r + 3}"/>` : ''}
+      ${z.label ? `<text class="bm-label" x="${z.cx}" y="${z.cy}">${z.label}</text>` : ''}
+    </g>`).join('');
+
+  el.innerHTML = `
+    <svg viewBox="0 0 200 300" xmlns="http://www.w3.org/2000/svg" aria-label="바디맵">
+      <defs>
+        <filter id="bmBlur"><feGaussianBlur in="SourceGraphic" stdDeviation="3"/></filter>
+        <linearGradient id="skinGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#f5d0a9"/>
+          <stop offset="100%" stop-color="#e8b88a"/>
+        </linearGradient>
+      </defs>
+      <!-- 머리 -->
+      <ellipse cx="100" cy="48" rx="22" ry="26" fill="url(#skinGrad)" stroke="#d4a574" stroke-width="1.2"/>
+      <!-- 목 -->
+      <rect x="92" y="73" width="16" height="14" rx="4" fill="url(#skinGrad)" stroke="#d4a574" stroke-width="1"/>
+      <!-- 몸통 -->
+      <path d="M62,87 Q58,100 60,140 Q70,172 100,174 Q130,172 140,140 Q142,100 138,87 Q120,82 100,82 Q80,82 62,87 Z"
+            fill="url(#skinGrad)" stroke="#d4a574" stroke-width="1.2"/>
+      <!-- 왼팔 -->
+      <path d="M64,90 Q48,105 45,140 Q48,152 55,155 Q62,148 68,130 Q72,108 70,90 Z"
+            fill="url(#skinGrad)" stroke="#d4a574" stroke-width="1"/>
+      <!-- 오른팔 -->
+      <path d="M136,90 Q152,105 155,140 Q152,152 145,155 Q138,148 132,130 Q128,108 130,90 Z"
+            fill="url(#skinGrad)" stroke="#d4a574" stroke-width="1"/>
+      <!-- 왼다리 -->
+      <path d="M72,172 Q66,200 65,240 Q66,265 75,268 Q85,265 88,240 Q92,205 96,175 Z"
+            fill="url(#skinGrad)" stroke="#d4a574" stroke-width="1"/>
+      <!-- 오른다리 -->
+      <path d="M128,172 Q134,200 135,240 Q134,265 125,268 Q115,265 112,240 Q108,205 104,175 Z"
+            fill="url(#skinGrad)" stroke="#d4a574" stroke-width="1"/>
+      <!-- 핫스팟 오버레이 -->
+      ${hotspotsHTML}
+      <!-- 안내 텍스트 -->
+      <text x="100" y="293" text-anchor="middle" font-size="8" fill="#94a3b8">탭하여 자세히 보기</text>
+    </svg>`;
+}
+
+function openBmPopup(e, bcId, zoneIdx) {
+  e.stopPropagation();
+  // 기존 팝업 제거
+  const old = document.getElementById('_bmPopup');
+  if (old) old.remove();
+
+  const data = BODYMAP_DB[bcId];
+  if (!data) return;
+  const z = data.zones[zoneIdx];
+  if (!z || !z.label) return; // 레이블 없는 미러 존 클릭 무시
+
+  const popup = document.createElement('div');
+  popup.id = '_bmPopup';
+  popup.className = 'bm-popup';
+  popup.innerHTML = `
+    <button class="bm-popup-close" onclick="document.getElementById('_bmPopup').remove()">×</button>
+    <div class="bm-popup-zone">📍 ${z.label}</div>
+    <div class="bm-popup-title">${z.title}</div>
+    <div class="bm-popup-why">${z.why}</div>
+    <div class="bm-popup-presc">${z.presc}</div>`;
+
+  // 위치 계산 (뷰포트 기준)
+  const rect = e.currentTarget.closest('svg').getBoundingClientRect();
+  const svgW = rect.width;
+  const scale = svgW / 200;
+  let left = rect.left + z.cx * scale - 130;
+  let top  = rect.top + z.cy * scale - 20 + window.scrollY;
+  // 화면 경계 보정
+  if (left < 8) left = 8;
+  if (left + 268 > window.innerWidth) left = window.innerWidth - 272;
+  popup.style.cssText = `left:${left}px;top:${top}px`;
+  document.body.appendChild(popup);
+
+  // 외부 클릭 시 닫기
+  setTimeout(() => {
+    document.addEventListener('click', function _c(ev){
+      if (!popup.contains(ev.target)) { popup.remove(); document.removeEventListener('click',_c); }
+    });
+  }, 50);
+}
+
 function renderCh1(res, bc) {
   const { totalScore, algoScore, aiBonus, axisSignals, eType } = scoreEngine(res);
   const eLabel = E_LABELS[eType] || eType;
@@ -4534,6 +4767,9 @@ function renderCh1(res, bc) {
 
   /* 인사이트 — consultantNote HTML 마크업 허용 */
   setHTML('ch1Insight', bc.consultantNote || '');
+
+  /* 바디맵 렌더 */
+  renderBodyMap(bc);
 
   /* 축 바 (topAxes 상위 5개) */
   const barEl = document.getElementById('ch1AxisBars');
