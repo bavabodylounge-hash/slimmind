@@ -523,6 +523,48 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 .wel-dot{ width:8px;height:8px;border-radius:50% }
 .wel-pct{ font-weight:700 }
 
+/* ── 역효과 빨간카드 섹션 ── */
+.bad-cards-section{margin-top:26px}
+.bad-cards-header{
+  display:flex;align-items:center;gap:8px;
+  font-size:12px;font-weight:800;color:#dc2626;
+  letter-spacing:.8px;text-transform:uppercase;
+  margin-bottom:12px;
+}
+.bad-cards-header::before{
+  content:'🚨';font-size:16px;
+}
+.bad-card{
+  background:#fff5f5;
+  border:1.5px solid #fca5a5;
+  border-left:4px solid #dc2626;
+  border-radius:10px;
+  padding:13px 15px;
+  margin-bottom:9px;
+}
+.bad-card:last-child{margin-bottom:0}
+.bad-card-action{
+  font-weight:700;color:#dc2626;
+  font-size:13px;margin-bottom:5px;
+  display:flex;align-items:center;gap:5px;
+}
+.bad-card-action::before{content:'🚫';font-size:14px}
+.bad-card-why{
+  font-size:11.5px;color:#6b7280;
+  margin-bottom:6px;line-height:1.65;
+}
+.bad-card-alt{
+  font-size:11.5px;color:#059669;
+  font-weight:600;line-height:1.65;
+  display:flex;align-items:flex-start;gap:5px;
+}
+.bad-card-alt::before{content:'✅';flex-shrink:0}
+@media print{
+  .bad-cards-section{break-inside:avoid}
+  .bad-card{break-inside:avoid;margin-bottom:6px;padding:10px 12px}
+  .bad-card-why,.bad-card-alt{font-size:10.5px}
+}
+
 /* 다음 장 기대 문장 */
 .next-tease-box{
   background:linear-gradient(135deg,var(--bc-accent,#3ECBA5),var(--bc-main,#0B2545));
@@ -4639,6 +4681,27 @@ function renderCh2(res, bc) {
         항목을 클릭하면 세부 방법·추천 장소·퀴즈를 볼 수 있어요
       </div>`;
   }
+
+  /* ── 역효과 빨간카드 렌더 ── */
+  renderBadCards(bc);
+}
+
+/* ─── 역효과 빨간카드 렌더 함수 ─── */
+function renderBadCards(bc) {
+  const el = document.getElementById('ch2BadCards');
+  if (!el) return;
+  const cards = (bc && bc.badCards) ? bc.badCards : [];
+  if (!cards.length) { el.innerHTML = ''; return; }
+  el.innerHTML = `
+    <div class="bad-cards-section">
+      <div class="bad-cards-header">지금 당장 멈춰야 할 3가지 행동</div>
+      ${cards.map(c => `
+        <div class="bad-card">
+          <div class="bad-card-action">${c.action}</div>
+          <div class="bad-card-why">${c.why}</div>
+          <div class="bad-card-alt">${c.alt}</div>
+        </div>`).join('')}
+    </div>`;
 }
 
 
