@@ -207,6 +207,40 @@ body{font-family:Pretendard,-apple-system,BlinkMacSystemFont,sans-serif;backgrou
   opacity: 0;
   transition: right 0.35s ease-in, opacity 0.35s ease-in;
 }
+
+/* ── 모바일 전용: fb-hook-card 하단 고정 ── */
+@media (max-width: 520px) {
+  .fb-hook-card {
+    top: auto;
+    right: auto;
+    bottom: -200px;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: 100%;
+    border-radius: 20px 20px 0 0;
+    transform: none;
+    transition: bottom 0.42s cubic-bezier(.22,1,.36,1);
+    box-shadow: 0 -6px 32px rgba(255,100,80,.18), 0 -2px 8px rgba(0,0,0,.06);
+    padding: 16px 20px 28px;
+  }
+  .fb-hook-card.show {
+    right: auto;
+    bottom: 0;
+  }
+  .fb-hook-card.fly-out {
+    right: auto;
+    bottom: -220px !important;
+    opacity: 0;
+    transition: bottom 0.32s ease-in, opacity 0.32s ease-in;
+  }
+  .fb-hook-card.swiping {
+    transition: none;
+  }
+  .fh-close-hint {
+    display: none;
+  }
+}
 .fh-close-hint {
   font-size: 10px;
   color: rgba(0,0,0,.28);
@@ -561,7 +595,7 @@ function renderQ(q){
   let dots='';
   if(q.diagNo){
     const ci=curAxIndex(ax);
-    axList.forEach(function(a,i){var isDone=(i<ci);var isActive=(a===ax);dots+='<div class="axd '+(isActive?'active':(isDone?'done':''))+'" style="--c:'+D.axColor[a]+';'+(isDone?'cursor:pointer':'')+';position:relative" '+(isDone?'onclick="jumpToAxis(\''+a+'\')" title="'+D.axNames[a]+' 다시 답하기"':'')+' ><span class="ad-ic">'+D.axIcon[a]+'</span><span class="ad-bar"><span class="ad-fill" style="background:'+D.axColor[a]+'"></span></span>'+(isDone?'<span style="position:absolute;top:-4px;right:-4px;font-size:8px;background:'+D.axColor[a]+';color:#fff;border-radius:50%;width:14px;height:14px;display:flex;align-items:center;justify-content:center;line-height:1;opacity:.85">↩</span>':'')+'</div>';});
+    axList.forEach(function(a,i){var isDone=(i<ci);var isActive=(a===ax);var isClickable=isDone;dots+='<div class="axd '+(isActive?'active':(isDone?'done':''))+'" style="--c:'+D.axColor[a]+';'+(isClickable?'cursor:pointer':'')+';position:relative" '+(isClickable?'onclick="jumpToAxis(\''+a+'\')" title="'+D.axNames[a]+' 다시 답하기"':'')+' ><span class="ad-ic">'+D.axIcon[a]+'</span><span class="ad-bar"><span class="ad-fill" style="background:'+D.axColor[a]+'"></span></span>'+(isDone?'<span style="position:absolute;top:-4px;right:-4px;font-size:8px;background:'+D.axColor[a]+';color:#fff;border-radius:50%;width:14px;height:14px;display:flex;align-items:center;justify-content:center;line-height:1;opacity:.85">↩</span>':'')+'</div>';});
   }
   const cur=answers[q.id];
   const multi=q.maxSelect>1;
@@ -1390,10 +1424,10 @@ var _speedTracker = {
       this.lastMs = this.times[n-1].t - this.times[n-2].t; // 직전 답변 속도
     }
 
-    // ── 최근 3문항 연속 1초 이내 → 경고 (5문항 간격으로 재발동)
+    // ── 최근 3문항 연속 2초 이내 → 경고 (5문항 간격으로 재발동)
     if (n >= 3) {
       var r = this.times.slice(-3);
-      var allFast = (r[1].t - r[0].t < 1000) && (r[2].t - r[1].t < 1000);
+      var allFast = (r[1].t - r[0].t < 2000) && (r[2].t - r[1].t < 2000);
       if (allFast) {
         this.fastCount++;
         // 5문항 이상 지나서 다시 빠름 감지되면 재경고
@@ -1860,6 +1894,28 @@ let fbHookTimer = null;
 let lastFbKey = null;
 let stageCallback = null;
 
+// ── 실시간 동시 응시자 시뮬레이션 ──────────────────────────
+var _liveCount = {
+  base: 17 + Math.floor(Math.random() * 22), // 17~38 사이 시작
+  current: 0,
+  timer: null,
+  init: function() {
+    this.current = this.base;
+    this._tick();
+    this.timer = setInterval(function(){ _liveCount._tick(); }, 22000);
+  },
+  _tick: function() {
+    // -3 ~ +5 사이 랜덤 변화 (점점 증가하는 느낌)
+    var delta = Math.floor(Math.random() * 9) - 3;
+    this.current = Math.max(12, Math.min(58, this.current + delta));
+    // DOM에 반영
+    var els = document.querySelectorAll('.live-cnt');
+    els.forEach(function(el){ el.textContent = _liveCount.current; });
+  },
+  get: function() { return this.current || this.base; }
+};
+_liveCount.init();
+
 // ── 피드백 훅 카드 표시 (v3: 스와이프 닫기 + 옵션별 텍스트 + 코드 제거) ──
 function showFbHook(key, emotionText) {
   const data = FB_HOOKS[key];
@@ -1909,7 +1965,7 @@ function showBuildupPopup(type) {
     social: {
       icon:'📡',
       title:'지금 이 순간',
-      body:'전국에서 <b style="color:#E8734D">26명</b>의 유저가<br>슬림마인드 바디코드 진단을 동시에 진행 중입니다.<br><br>슬림마인드는 누적되는 모든 진단 수치를<br>실시간으로 통합 학습(Federated Learning)하며,<br>이 빅데이터가 <b style="color:#E8734D">업계 최고 수준의 진단 정밀도</b>를 만들어갑니다.'
+      body:'전국에서 <b style="color:#E8734D"><span class="live-cnt">' + (_liveCount.get()) + '</span>명</b>의 유저가<br>슬림마인드 바디코드 진단을 동시에 진행 중입니다.<br><br>슬림마인드는 누적되는 모든 진단 수치를<br>실시간으로 통합 학습(Federated Learning)하며,<br>이 빅데이터가 <b style="color:#E8734D">업계 최고 수준의 진단 정밀도</b>를 만들어갑니다.'
     },
     hormone: {
       icon:'⚡',
@@ -1942,6 +1998,7 @@ function showBuildupPopup(type) {
 function _dismissFbCard(card) {
   if (!card) return;
   card.style.right = '';
+  card.style.bottom = '';
   card.style.opacity = '';
   card.classList.add('fly-out');
   setTimeout(function(){
@@ -1952,10 +2009,14 @@ function _dismissFbCard(card) {
 }
 
 function _initFbCardSwipe(card) {
-  var startX = 0, curX = 0, dragging = false;
+  var startX = 0, startY = 0, curX = 0, curY = 0, dragging = false;
+  var _isMobile = window.innerWidth <= 520;
+
   function onTouchStart(e) {
+    _isMobile = window.innerWidth <= 520;
     startX = e.touches[0].clientX;
-    curX = 0;
+    startY = e.touches[0].clientY;
+    curX = 0; curY = 0;
     dragging = true;
     card.classList.add('swiping');
     clearTimeout(fbHookTimer);
@@ -1963,31 +2024,52 @@ function _initFbCardSwipe(card) {
   function onTouchMove(e) {
     if (!dragging) return;
     curX = e.touches[0].clientX - startX;
-    if (curX > 0) {
-      e.preventDefault(); // 스크롤 차단 — passive:false 필수
-      card.style.right = (10 - curX) + 'px';
-      card.style.opacity = String(Math.max(0.15, 1 - curX / 120));
+    curY = e.touches[0].clientY - startY;
+    if (_isMobile) {
+      // 모바일: 아래로 스와이프
+      if (curY > 0) {
+        e.preventDefault();
+        card.style.bottom = (-curY) + 'px';
+        card.style.opacity = String(Math.max(0.15, 1 - curY / 120));
+      }
+    } else {
+      // 데스크탑: 오른쪽으로 스와이프
+      if (curX > 0) {
+        e.preventDefault();
+        card.style.right = (10 - curX) + 'px';
+        card.style.opacity = String(Math.max(0.15, 1 - curX / 120));
+      }
     }
   }
   function onTouchEnd() {
     if (!dragging) return;
     dragging = false;
     card.classList.remove('swiping');
-    if (curX > 60) {
-      // 오른쪽으로 날려버리기
-      card.style.right = '';
-      card.style.opacity = '';
-      _dismissFbCard(card);
+    if (_isMobile) {
+      if (curY > 60) {
+        card.style.bottom = '';
+        card.style.opacity = '';
+        _dismissFbCard(card);
+      } else {
+        card.style.bottom = '0';
+        card.style.opacity = '1';
+        fbHookTimer = setTimeout(function(){ _dismissFbCard(card); }, 5000);
+      }
     } else {
-      // 제자리 복귀
-      card.style.right = '10px';
-      card.style.opacity = '1';
-      fbHookTimer = setTimeout(function(){ _dismissFbCard(card); }, 5000);
+      if (curX > 60) {
+        card.style.right = '';
+        card.style.opacity = '';
+        _dismissFbCard(card);
+      } else {
+        card.style.right = '10px';
+        card.style.opacity = '1';
+        fbHookTimer = setTimeout(function(){ _dismissFbCard(card); }, 5000);
+      }
     }
-    curX = 0;
+    curX = 0; curY = 0;
   }
   card.addEventListener('touchstart', onTouchStart, {passive: true});
-  card.addEventListener('touchmove', onTouchMove, {passive: false}); // preventDefault 위해 반드시 false
+  card.addEventListener('touchmove', onTouchMove, {passive: false});
   card.addEventListener('touchend', onTouchEnd, {passive: true});
   card.addEventListener('click', function(){ _dismissFbCard(card); });
 }
@@ -5257,6 +5339,126 @@ function getSpeedMetaHtml() {
    + '</div>';
 }
 
+// ══════════════════════════════════════════════════════
+//  임시저장 + 재개 기능 (LocalStorage Draft)
+// ══════════════════════════════════════════════════════
+var SAVE_KEY = 'sm_survey_draft_v2';
+var _autoSaveTimer = null;
+
+function autoSaveState() {
+  clearTimeout(_autoSaveTimer);
+  _autoSaveTimer = setTimeout(function() {
+    if (idx < 3) return; // 초반 동의/기본정보 이전엔 저장 안 함
+    try {
+      var draft = {
+        idx: idx,
+        answers: JSON.parse(JSON.stringify(answers)),
+        measureVals: JSON.parse(JSON.stringify(measureVals)),
+        savedAt: Date.now(),
+        totalQ: D.total || 0
+      };
+      localStorage.setItem(SAVE_KEY, JSON.stringify(draft));
+    } catch(e) {}
+  }, 800);
+}
+
+function loadDraft() {
+  try {
+    var raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return null;
+    var d = JSON.parse(raw);
+    // 24시간 이내 저장된 것만 유효
+    if (!d || !d.savedAt || (Date.now() - d.savedAt) > 86400000) return null;
+    if (!d.idx || d.idx < 3) return null;
+    return d;
+  } catch(e) { return null; }
+}
+
+function clearDraft() {
+  try { localStorage.removeItem(SAVE_KEY); } catch(e) {}
+}
+
+function showResumePopup(draft) {
+  var old = document.getElementById('resume-overlay');
+  if (old) old.remove();
+
+  var pct = Math.round(draft.idx / D.seq.length * 100);
+  var savedTime = new Date(draft.savedAt);
+  var timeStr = savedTime.getHours() + ':' + String(savedTime.getMinutes()).padStart(2,'0');
+  var dateStr = (savedTime.getMonth()+1) + '/' + savedTime.getDate() + ' ' + timeStr;
+
+  var el = document.createElement('div');
+  el.id = 'resume-overlay';
+  el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:19999;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .3s';
+  el.innerHTML = '<div style="background:#fff;border-radius:24px;max-width:340px;width:100%;padding:28px 22px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35);animation:slideUp .35s cubic-bezier(.22,1,.36,1)">'
+    + '<div style="font-size:44px;margin-bottom:10px">💾</div>'
+    + '<div style="font-size:18px;font-weight:900;color:#1A1210;margin-bottom:8px">이어서 하시겠어요?</div>'
+    + '<div style="font-size:13px;color:#7A6355;line-height:1.75;margin-bottom:16px">'
+      + '<b style="color:#E8734D">' + dateStr + '</b>에 저장된<br>진단이 있어요.<br>'
+      + '<span style="font-size:12px;color:#B0A090">진행률 약 <b style="color:#E8734D">' + pct + '%</b> 완료</span>'
+    + '</div>'
+    + '<div style="background:#FFF5F0;border-radius:14px;padding:12px 16px;margin-bottom:18px;text-align:left">'
+      + '<div style="font-size:11px;color:#C09070;margin-bottom:4px">저장 시점</div>'
+      + '<div style="font-size:13px;font-weight:700;color:#E8734D">' + (draft.idx) + '번째 화면 (총 ' + D.seq.length + '단계)</div>'
+    + '</div>'
+    + '<div onclick="_doResumeSurvey()" style="background:linear-gradient(135deg,#FF9A76,#E8734D);color:#fff;border-radius:14px;padding:15px;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 6px 18px rgba(232,115,77,.35);margin-bottom:10px">📍 이어서 하기</div>'
+    + '<div onclick="_doFreshStart()" style="background:rgba(0,0,0,.06);color:#888;border-radius:14px;padding:13px;font-size:13px;cursor:pointer;">처음부터 새로 시작</div>'
+    + '</div>';
+
+  document.body.appendChild(el);
+}
+
+function _doResumeSurvey() {
+  var draft = loadDraft();
+  if (!draft) return;
+  try {
+    idx = draft.idx;
+    answers = draft.answers || {};
+    if (draft.measureVals) {
+      Object.assign(measureVals, draft.measureVals);
+    }
+  } catch(e) { idx = 0; }
+  var el = document.getElementById('resume-overlay');
+  if (el) el.remove();
+  renderApp();
+}
+
+function _doFreshStart() {
+  clearDraft();
+  idx = 0;
+  answers = {};
+  var _ref = new URLSearchParams(location.search).get('ref');
+  if (_ref) answers._consultant_code = _ref;
+  var el = document.getElementById('resume-overlay');
+  if (el) el.remove();
+  renderApp();
+}
+
+// ── autoSave를 pick / go 후에 자동 실행하도록 패치
+(function(){
+  var _origPick = pick;
+  var _origGo = go;
+  // pick에 autoSave 추가
+  var _pickOrig2 = pick;
+  // go에 autoSave 추가  
+  var _goOrig2 = go;
+  // 직접 patch
+  var _patchAutoSave = function() {
+    var __pick = pick;
+    pick = function(qid, val, multi, maxSel) {
+      __pick(qid, val, multi, maxSel);
+      autoSaveState();
+    };
+    var __go = go;
+    go = function(d) {
+      __go(d);
+      autoSaveState();
+    };
+  };
+  // renderApp이 정의된 후 패치
+  setTimeout(_patchAutoSave, 100);
+})();
+
 function jumpToAxis(ax) {
   // 이미 모든 문항에 답했는지 확인 (마지막 문항 이후)
   var isCompleted = false;
@@ -5374,7 +5576,17 @@ toggleConsent = function(n) {
 // ── 최종 초기화 ──
 (function(){
   idx = 0;
-  renderApp();
+  var _ref2 = new URLSearchParams(location.search).get('ref');
+  if (_ref2) answers._consultant_code = _ref2;
+  
+  // 임시저장 확인 → 재개 팝업
+  var draft = loadDraft();
+  if (draft && draft.idx >= 3) {
+    renderApp(); // 인트로 먼저 렌더
+    setTimeout(function(){ showResumePopup(draft); }, 400);
+  } else {
+    renderApp();
+  }
 })();
 </script>
 </body>
