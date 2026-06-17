@@ -3296,8 +3296,8 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
     <div class="nav-row">
       <button class="btn-prev" onclick="prevChapter()" title="이전 페이지">←</button>
       <button class="btn-next" onclick="nextChapter()">
-        왜 지금까지 안됐는지, 11축 데이터로 확인합니다 →
-        <small>3대 원인을 감성 대화 형식으로 공개합니다</small>
+        내 진단 결과를 확인합니다 →
+        <small>점수·체형·3대 원인 공개</small>
       </button>
     </div>
   </div>
@@ -3389,8 +3389,8 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
     <div class="nav-row">
       <button class="btn-prev" onclick="prevChapter()" title="이전 페이지">←</button>
       <button class="btn-next" onclick="nextChapter()">
-        12주 여정 지도를 확인합니다 →
-        <small>주차별 전문가 비율 + 세부 처방 클릭트리</small>
+        내 기질·성격 분석을 확인합니다 →
+        <small>BC코드 공감 + 가이드 선언</small>
       </button>
     </div>
   </div>
@@ -3683,8 +3683,8 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
       background:linear-gradient(90deg,#EFF6FF,#F0FDF4);border-radius:10px;
       border:1px solid #e2e8f0;font-size:11px;color:#475569;line-height:1.7">
       <span style="font-size:18px">🗂️</span>
-      <span><strong style="color:#0B2545">이 챕터는 BC코드 1차 처방입니다.</strong>
-      다음 챕터(Ch.07 오행 계절)에서 <strong>사주·오행 2차 보완 처방</strong>이 이어집니다.</span>
+      <span><strong style="color:#0B2545">BC코드 처방 + 오행 체질 통합 처방입니다.</strong>
+      아래에서 <strong>BC코드 × 오행 계절 맞춤 통합 전략</strong>을 함께 확인하세요.</span>
     </div>
 
     <!-- 식단 -->
@@ -7467,7 +7467,7 @@ function renderCh3(res, bc) {
     // 3주 노드 행 — S자 방향
     sRoadHtml += `<div style="display:flex;flex-direction:${isReverse?'row-reverse':'row'};gap:6px;margin-bottom:4px;align-items:stretch">`;
     weeks.forEach((wk, wkIdx) => {
-      const locked = wk.wi > FREE_WEEKS;
+      const locked = isWeekLockedByIndex(wk.wi); // 0-indexed wi로 정확한 잠금 판별
       // mission 인덱스: reverse일 때 반전
       const mIdx = isReverse ? (2 - wkIdx) : wkIdx;
       const missionName = ph.mission[mIdx] || wk.axes[0]?.label || '';
@@ -7578,9 +7578,9 @@ function _renderCh3GuideBar(bc) {
 /* 노드 클릭 → 주차 상세 + 전문가 비율 표시 */
 let _journeyRes = null; // renderCh3 호출 시 res 저장용
 function journeyNodeClick(wi) {
-  // ── PAYWALL: 3주차 초과 시 잠금 모달 ──
-  if (isWeekLocked(wi)) {
-    openPaywall(wi);
+  // ── PAYWALL: wi는 0-indexed → isWeekLockedByIndex 사용 ──
+  if (isWeekLockedByIndex(wi)) {
+    openPaywall(wi + 1); // openPaywall은 1-indexed로 호출
     return;
   }
 
@@ -9595,7 +9595,7 @@ async function init() {
   renderCh4(res, bc);
   renderCh5(bc);
   renderCh6(bc);
-  renderCh7(bc);
+  // renderCh7(bc);  // CH7 오행 계절 챕터 — BC×오행 통합처방으로 CH6에 흡수됨. HTML도 display:none
   renderCh8(res, bc);
   renderWeeklyClickTree(res, bc);
   renderCh9(res, bc);
