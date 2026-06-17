@@ -414,7 +414,14 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
   display:flex;align-items:center;gap:14px;
   padding:16px 20px;
   background:linear-gradient(135deg,var(--bc-main,#0B2545),rgba(11,37,69,.9));
+  cursor:pointer;user-select:none;position:relative;
 }
+.t3c-acc-arrow{
+  font-size:13px;color:rgba(255,255,255,.6);
+  transition:transform .28s cubic-bezier(.16,1,.3,1);
+  flex-shrink:0;
+}
+.t3c-card.acc-open .t3c-acc-arrow{transform:rotate(180deg)}
 .t3c-rank{
   width:36px;height:36px;border-radius:50%;
   background:rgba(255,215,100,.2);border:2px solid #FFD764;
@@ -423,7 +430,17 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 }
 .t3c-axis-name{font-size:14px;font-weight:900;color:#fff}
 .t3c-axis-sub{font-size:10.5px;color:rgba(255,255,255,.55);margin-top:2px}
-.t3c-body{padding:18px 20px;background:#fff}
+/* 아코디언 body */
+.t3c-body{
+  padding:0;background:#fff;
+  max-height:0;overflow:hidden;
+  transition:max-height .38s cubic-bezier(.16,1,.3,1);
+}
+.t3c-card.acc-open .t3c-body{
+  max-height:500px;padding:14px 18px;
+}
+/* 1위 카드는 기본 열림 */
+.t3c-card.t3c-first{border-left:3px solid #E84545}
 .t3c-talk{
   font-size:13px;color:#334155;line-height:2;
   border-left:3px solid var(--bc-accent,#3ECBA5);
@@ -462,6 +479,16 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 .er-arrow{ font-size:13px;color:var(--bc-accent,#3ECBA5);opacity:.7;transition:opacity .2s,transform .2s }
 .er-row:hover .er-arrow{ opacity:1;transform:translateX(3px) }
 .er-click-hint{ font-size:9px;color:var(--bc-accent,#3ECBA5);font-weight:700;background:rgba(62,203,165,.12);border-radius:99px;padding:2px 7px;white-space:nowrap }
+/* 전문가비율 4번부터 접기 */
+.er-row.er-hidden{display:none}
+.er-show-more-btn{
+  width:100%;margin-top:8px;padding:10px;
+  border:1.5px dashed rgba(62,203,165,.4);border-radius:10px;
+  background:rgba(62,203,165,.04);color:var(--bc-accent,#3ECBA5);
+  font-size:12px;font-weight:700;cursor:pointer;
+  font-family:var(--font);transition:all .2s;
+}
+.er-show-more-btn:hover{background:rgba(62,203,165,.1);border-style:solid}
 /* ── 전문가 상세보기 버튼 강화 ── */
 .er-detail-btn{
   display:inline-flex;align-items:center;justify-content:center;
@@ -1610,6 +1637,37 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 }
 .subtype-ref::before{content:'📌 근거: '}
 
+/* ── 서브타입 아코디언 ── */
+.subtype-card-head{cursor:pointer;user-select:none;position:relative}
+.subtype-acc-arrow{
+  position:absolute;right:14px;top:50%;transform:translateY(-50%);
+  font-size:14px;color:rgba(255,255,255,.7);
+  transition:transform .28s cubic-bezier(.16,1,.3,1);
+  pointer-events:none;
+}
+.subtype-card.acc-open .subtype-acc-arrow{transform:translateY(-50%) rotate(180deg)}
+.subtype-body{
+  padding:0 16px;
+  max-height:0;overflow:hidden;
+  transition:max-height .38s cubic-bezier(.16,1,.3,1), padding .28s;
+}
+.subtype-card.acc-open .subtype-body{
+  max-height:600px;padding:14px 16px;
+}
+/* 핵심 요약 한 줄 — 헤더 아래 항상 보이는 미리보기 */
+.subtype-preview{
+  padding:8px 16px;
+  font-size:11.5px;color:rgba(255,255,255,.72);
+  line-height:1.5;border-top:1px solid rgba(255,255,255,.1);
+  background:rgba(0,0,0,.12);
+}
+.subtype-card.acc-open .subtype-preview{display:none}
+/* 선택된 카드는 항상 열린 상태 표시 */
+.subtype-card.selected{
+  border-color:var(--bc-accent,#3ECBA5);
+  box-shadow:0 4px 24px rgba(62,203,165,.22);
+}
+
 /* 서브타입 선택 버튼 + 선택 상태 */
 .subtype-select-btn{
   display:flex;align-items:center;justify-content:center;gap:8px;
@@ -1622,10 +1680,6 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 .subtype-select-btn:hover{
   background:var(--bc-accent,#3ECBA5);color:#fff;
   transform:translateY(-1px);box-shadow:0 6px 20px rgba(62,203,165,.25);
-}
-.subtype-card.selected{
-  border-color:var(--bc-accent,#3ECBA5);
-  box-shadow:0 4px 24px rgba(62,203,165,.22);
 }
 .subtype-card.selected .subtype-select-btn{
   background:var(--bc-accent,#3ECBA5);color:#fff;
@@ -1840,6 +1894,16 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
   .season-card,
   .mindset-card,
   .cv-hook-card { page-break-inside: avoid; break-inside: avoid; }
+  /* 아코디언 인쇄 시 강제 열기 */
+  .t3c-card .t3c-body { max-height:none !important; padding:14px 18px !important; }
+  .subtype-card .subtype-body { max-height:none !important; }
+  .er-row.er-hidden { display:flex !important; }
+  .er-show-more-btn { display:none !important; }
+  /* CH7 S자 로드맵 인쇄 최적화 */
+  #ch3GuideBar { display:none !important; }
+  /* CH9 변화준비도 배지 인쇄 시 표시 */
+  #ch9ReadinessBadge { page-break-inside:avoid; break-inside:avoid; }
+  #ch9PromiseBox { page-break-inside:avoid; break-inside:avoid; }
 
   /* meta-grid 인쇄:
      - 2열 유지, 간격/여백 축소 → 4개 카드 모두 ch5 페이지 안에 수용
@@ -2218,8 +2282,10 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
   .subtype-card-head { gap: 5px !important; padding-bottom: 3px !important; margin-bottom: 3px !important; }
   /* 선택된(selected) 서브타입만 표시, 나머지 숨김 */
   .subtype-card:not(.selected) { display: none !important; }
-  /* selected 카드는 full-width */
+  /* selected 카드는 full-width + body 강제 열기 */
   .subtype-card.selected { width: 100% !important; grid-column: 1 / -1 !important; }
+  .subtype-card.selected .subtype-body { max-height:none !important; padding:14px 16px !important; }
+  .subtype-card .subtype-preview { display:none !important; }
 
   /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
      ch2 전문가비율 — 심화 최적화 (1.86→1페이지)
@@ -3105,7 +3171,6 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
         원인을 알았다면, 이제 <strong>12주 여정 지도</strong>를 펼칩니다.<br>
         주차마다 어떤 전문가의 도움이 필요한지 비율로 보여드립니다.
       </div>
-      <div class="next-tease-cta">두근거리는 마음으로 넘겨보세요 →</div>
     </div>
 
   </div>
@@ -3861,8 +3926,12 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 
   <div class="chapter-content">
 
-    <div class="sec-kicker">최종 진단 & 위로</div>
+    <div class="sec-kicker">최종 진단 & 당신의 다음 걸음</div>
     <div class="sec-heading" id="ch9Heading">당신이 걸어온 길</div>
+
+    <!-- 변화준비도% 배지 (JS renderCh9에서 채움) -->
+    <div id="ch9ReadinessBadge" style="margin-bottom:10px"></div>
+
     <div class="sec-sub" id="ch9Sub">
       지금까지의 고생은 의지가 부족해서가 아닙니다.<br>
       <strong style="color:#0B2545">몸의 구조를 몰랐을 뿐</strong>입니다.
@@ -3880,6 +3949,9 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
     <!-- 앞으로 할 일 3가지 (JS renderCh9에서 채움) -->
     <div id="ch9NextSteps"></div>
 
+    <!-- 슬림마인드 약속박스 (JS renderCh9에서 채움) -->
+    <div id="ch9PromiseBox"></div>
+
     <!-- 마무리 선언 -->
     <div style="background:linear-gradient(135deg,#0B2545 0%,#1A3A8F 100%);border-radius:20px;padding:28px 20px;margin-top:20px;text-align:center;color:#fff">
       <div style="font-size:32px;margin-bottom:12px">🌱</div>
@@ -3894,10 +3966,10 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
       </div>
       <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
         <button onclick="window.print()" style="background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.4);color:#fff;border-radius:99px;padding:10px 20px;font-size:12px;font-weight:800;cursor:pointer">
-          🖨️ PDF 저장
+          🖨️ PDF로 저장하기
         </button>
-        <button onclick="window.location.href='/'" style="background:var(--bc-accent,#3ECBA5);border:none;color:#0B2545;border-radius:99px;padding:10px 20px;font-size:12px;font-weight:900;cursor:pointer">
-          ✅ 완료 — 슬림마인드 시작
+        <button onclick="window.location.href='/'" style="background:var(--bc-accent,#3ECBA5);border:none;color:#0B2545;border-radius:99px;padding:12px 24px;font-size:13px;font-weight:900;cursor:pointer;box-shadow:0 4px 16px rgba(62,203,165,.4)" id="ch9FinalBtn">
+          지금 바로 시작하기 →
         </button>
       </div>
     </div>
@@ -3907,7 +3979,7 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
   <div class="chapter-nav">
     <div class="nav-row">
       <button class="btn-prev" onclick="prevChapter()" title="이전">←</button>
-      <div style="font-size:11px;color:#475569;text-align:center;padding:0 8px">슬림마인드와 함께<br>건강한 몸을 만들어가요 💚</div>
+      <div style="font-size:11px;color:#475569;text-align:center;padding:0 8px">슬림마인드와 함께<br>12주 후, 완전히 다른 몸 💚</div>
     </div>
   </div>
 
@@ -5263,12 +5335,58 @@ function prevChapter() {
 let _selectedSubtype = null;   // 'A' | 'B' | null
 let _currentBcForSubtype = null; // 현재 bc 객체 (init에서 저장)
 
+/* ── 3대원인 카드 아코디언 토글 ── */
+function toggleT3cAcc(cardId) {
+  const card = document.getElementById(cardId);
+  if (!card) return;
+  card.classList.toggle('acc-open');
+}
+
+/* ── 전문가비율 더보기 토글 ── */
+function toggleExpertMore() {
+  const list = document.getElementById('expertRatioList');
+  const btn = document.getElementById('erShowMoreBtn');
+  if (!list || !btn) return;
+  const hidden = list.querySelectorAll('.er-row.er-hidden');
+  const showing = list.querySelectorAll('.er-row:not(.er-hidden)').length;
+  if (hidden.length > 0) {
+    hidden.forEach(r => r.classList.remove('er-hidden'));
+    btn.textContent = '▴ 접기';
+    // 새로 보인 바 애니메이션
+    setTimeout(() => {
+      hidden.forEach(r => {
+        const bar = r.querySelector('.er-bar[data-pct]');
+        if (bar) { bar.style.transition='width .8s cubic-bezier(.16,1,.3,1)'; bar.style.width = bar.dataset.pct + '%'; }
+      });
+    }, 50);
+  } else {
+    list.querySelectorAll('.er-row').forEach((r, i) => {
+      if (i >= 3) r.classList.add('er-hidden');
+    });
+    const total = list.querySelectorAll('.er-row').length;
+    btn.textContent = `▾ 나머지 ${total - 3}개 전문가 방향 더보기`;
+  }
+}
+
+/* ── 서브타입 아코디언 토글 ── */
+function toggleSubtypeAcc(cardId) {
+  const card = document.getElementById(cardId);
+  if (!card) return;
+  const isOpen = card.classList.contains('acc-open');
+  // 모두 닫기
+  document.querySelectorAll('.subtype-card').forEach(c => c.classList.remove('acc-open'));
+  // 클릭한 카드만 토글
+  if (!isOpen) card.classList.add('acc-open');
+}
+
 function selectSubtype(key) {
   _selectedSubtype = key;
 
-  // 카드 선택 시각화
+  // 카드 선택 시각화 + 선택된 카드 자동 열기
   document.querySelectorAll('.subtype-card').forEach(card => {
-    card.classList.toggle('selected', card.dataset.subtype === key);
+    const isSelected = card.dataset.subtype === key;
+    card.classList.toggle('selected', isSelected);
+    if (isSelected) card.classList.add('acc-open');
   });
 
   // ch6 처방 오버레이 — 서브타입의 do 리스트를 처방 카드에 반영
@@ -6156,30 +6274,38 @@ function renderCh1(res, bc) {
   const stEl = document.getElementById('ch1SubtypeCards');
   const stData = BC_SUBTYPE_DB[bc.id];
   if (stEl && stData) {
-    stEl.innerHTML = ['A', 'B'].map(key => {
+    stEl.innerHTML = ['A', 'B'].map((key, idx) => {
       const st = stData[key];
       if (!st) return '';
+      // 핵심 요약: why 앞 40자
+      const preview = (st.why || '').slice(0, 48) + (st.why && st.why.length > 48 ? '…' : '');
+      // 첫 do 항목 하나만 미리보기
+      const firstDo = st.do && st.do[0] ? `${st.do[0].icon} ${st.do[0].text}` : '';
       const doItems = (st.do || []).map(d =>
         `<div class="subtype-do-item">
           <span class="subtype-do-icon">${d.icon}</span>
           <span>${d.text}</span>
         </div>`
       ).join('');
+      // A(첫번째)는 기본 열림, B는 닫힘
+      const isOpenDefault = idx === 0;
       return `
-        <div class="subtype-card" id="subtypeCard${key}" data-subtype="${key}">
-          <div class="subtype-card-head">
+        <div class="subtype-card${isOpenDefault ? ' acc-open' : ''}" id="subtypeCard${key}" data-subtype="${key}">
+          <div class="subtype-card-head" onclick="toggleSubtypeAcc('subtypeCard${key}')">
             <span class="subtype-badge">서브타입 ${key}</span>
             <div style="flex:1">
               <div class="subtype-label">${st.label}</div>
               <div class="subtype-tag">${st.tag}</div>
             </div>
+            <span class="subtype-acc-arrow">▾</span>
           </div>
+          <div class="subtype-preview">💡 ${preview}</div>
           <div class="subtype-body">
             <div class="subtype-why">${st.why}</div>
             <div class="subtype-do-list">${doItems}</div>
             ${st.dont ? `<div class="subtype-dont">${st.dont}</div>` : ''}
             ${st.ref  ? `<div class="subtype-ref">${st.ref}</div>`  : ''}
-            <div class="subtype-selected-banner">이 유형으로 ch6 처방이 업데이트됐습니다 →</div>
+            <div class="subtype-selected-banner">✅ 이 유형으로 처방이 업데이트됩니다 →</div>
             <button class="subtype-select-btn" onclick="selectSubtype('${key}')">
               이게 나예요 — 이 유형으로 처방받기
             </button>
@@ -6394,31 +6520,30 @@ function renderCh2(res, bc) {
       const ax = AXIS_DEFS.find(a => a.id === axId);
       if (!ax) return '';
       const col = rankColors[i];
+      // 1위 카드(i===0)는 기본 열림
+      const isFirstOpen = i === 0;
       return `
-        <div class="t3c-card" style="margin-bottom:14px">
-          <!-- 헤더: 순위 + 아이콘 + 이름 -->
-          <div class="t3c-header" style="background:linear-gradient(135deg,${col}dd,${col}99);padding:14px 18px">
-            <div class="t3c-rank" style="background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.6);font-size:18px">${rankEmojis[i]}</div>
+        <div class="t3c-card${isFirstOpen ? ' acc-open t3c-first' : ''}" id="t3cCard${i}" style="margin-bottom:12px">
+          <!-- 헤더 (클릭 → 아코디언) -->
+          <div class="t3c-header" style="background:linear-gradient(135deg,${col}dd,${col}88);padding:13px 16px"
+               onclick="toggleT3cAcc('t3cCard${i}')">
+            <div class="t3c-rank" style="background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.6);font-size:17px">${rankEmojis[i]}</div>
             <div style="flex:1">
-              <div class="t3c-axis-name" style="font-size:16px">${ax.icon} ${ax.name}</div>
-              <div class="t3c-axis-sub">${rankLabels[i]} 핵심 원인축</div>
+              <div class="t3c-axis-name" style="font-size:15px">${ax.icon} ${ax.name}</div>
+              <div class="t3c-axis-sub">${rankLabels[i]} 핵심 원인축 · 탭하여 상세보기</div>
             </div>
-            <div style="font-size:28px;opacity:.4">${ax.icon}</div>
+            <span class="t3c-acc-arrow">▾</span>
           </div>
-          <!-- 바디: 설명 + 팩트 + 처방 -->
-          <div class="t3c-body" style="padding:14px 18px">
-            <!-- 공감 멘트 -->
-            <div class="t3c-talk" style="border-left-color:${col};font-size:14px;font-weight:700;color:#0B2545;line-height:1.75;margin-bottom:10px">
+          <!-- 바디: 접혔다 펼쳐짐 -->
+          <div class="t3c-body">
+            <div class="t3c-talk" style="border-left-color:${col};font-size:13.5px;font-weight:700;color:#0B2545;line-height:1.75;margin-bottom:10px">
               "${talks[i]}"
             </div>
-            <!-- 메커니즘 설명 -->
             <div style="font-size:12px;color:#334155;line-height:1.85;margin-bottom:10px">${ax.desc}</div>
-            <!-- 과학적 근거 배지 -->
             <div style="display:flex;align-items:flex-start;gap:8px;background:#F8FAFC;border-radius:8px;padding:10px 12px;margin-bottom:8px;border-left:3px solid ${col}">
               <span style="font-size:14px;flex-shrink:0">🔬</span>
               <span style="font-size:11px;color:#475569;line-height:1.7">${ax.fact}</span>
             </div>
-            <!-- 즉시 실천 처방 -->
             <div style="display:flex;align-items:flex-start;gap:8px;background:linear-gradient(90deg,rgba(62,203,165,.08),transparent);border-radius:8px;padding:10px 12px;border-left:3px solid #3ECBA5">
               <span style="font-size:14px;flex-shrink:0">→</span>
               <span style="font-size:11.5px;font-weight:700;color:#0B2545;line-height:1.7">${ax.presc}</span>
@@ -6451,15 +6576,16 @@ function renderCh2(res, bc) {
         <span style="font-size:15px">👆</span>
         <span><strong style="color:#15803D">항목을 탭하면</strong> 세부 방법·추천 장소·퀴즈가 열립니다</span>
       </div>
-      <div class="expert-ratio-list">
+      <div class="expert-ratio-list" id="expertRatioList">
         ${expertRatios.map((ex, i) => {
           const rankEmoji = i===0 ? '🥇' : i===1 ? '🥈' : i===2 ? '🥉' : (i+1);
           const isTop3 = i < 3;
+          const isHidden = i >= 3; // 4번부터 숨김
           const btnHtml = isTop3
             ? `<button class="er-detail-btn er-detail-btn--top" onclick="event.stopPropagation();openExpertDetail('${ex.id}')">상세보기 →</button>`
             : `<button class="er-detail-btn" onclick="event.stopPropagation();openExpertDetail('${ex.id}')">▶</button>`;
           return `
-          <div class="er-row ${isTop3 ? 'er-top' : ''}" onclick="openExpertDetail('${ex.id}')">
+          <div class="er-row ${isTop3 ? 'er-top' : ''}${isHidden ? ' er-hidden' : ''}" onclick="openExpertDetail('${ex.id}')">
             <div class="er-rank">${rankEmoji}</div>
             <div class="er-icon">${ex.icon}</div>
             <div class="er-info">
@@ -6473,7 +6599,10 @@ function renderCh2(res, bc) {
             ${btnHtml}
           </div>`;
         }).join('')}
-      </div>`;
+      </div>
+      <button class="er-show-more-btn" id="erShowMoreBtn" onclick="toggleExpertMore()">
+        ▾ 나머지 ${expertRatios.length - 3}개 전문가 방향 더보기
+      </button>`;
   }
 
   /* ── 전문가 비율 바 애니메이션 ── */
@@ -6704,87 +6833,179 @@ function renderCh3(res, bc) {
   const pathEl = document.getElementById('ch3JourneyPath');
   if (!mapEl || !pathEl) return;
 
+  const accentColor = getComputedStyle(document.documentElement)
+    .getPropertyValue('--bc-accent').trim() || '#3ECBA5';
+
   const PHASES = [
-    { label:'🌱 기반 다지기', weeks:'1~3주',  color:'#a78bfa', bg:'rgba(167,139,250,.12)', desc:'혈당·수분·수면 기초 확립' },
-    { label:'🔥 핵심 개입',   weeks:'4~6주',  color:'#f59e0b', bg:'rgba(245,158,11,.12)',  desc:'원인축 집중 처방 시작' },
-    { label:'💫 가속화',      weeks:'7~9주',  color:'#10b981', bg:'rgba(16,185,129,.12)',  desc:'습관 고착·심화 루틴' },
-    { label:'🏆 완성·유지',   weeks:'10~12주',color:'#3b82f6', bg:'rgba(59,130,246,.12)',  desc:'자동화·유지 시스템화' }
+    { label:'🌱 기반 다지기', phLabel:'Phase 1', weeks:'1~3주',  color:'#3ECBA5', bg:'rgba(62,203,165,.12)',   desc:'혈당·수분·수면 기초 확립',   mission:['혈당 안정화','수분 기초','수면 리듬'] },
+    { label:'🔥 핵심 개입',   phLabel:'Phase 2', weeks:'4~6주',  color:'#F59E0B', bg:'rgba(245,158,11,.12)',   desc:'원인축 집중 처방 시작',      mission:['심혈관·혈당','간·수면','수분·장'] },
+    { label:'💫 가속화',      phLabel:'Phase 3', weeks:'7~9주',  color:'#A855F7', bg:'rgba(168,85,247,.12)',   desc:'습관 고착·심화 루틴',        mission:['호르몬·에너지','염증·혈당','신경·수면'] },
+    { label:'🏆 완성·유지',   phLabel:'Phase 4', weeks:'10~12주',color:'#3B82F6', bg:'rgba(59,130,246,.12)',   desc:'자동화·유지 시스템화',       mission:['갑상선·에너지','수분·심혈관','혈당 마스터'] }
   ];
 
-  /* ── 4단계 페이즈 바 (지도 상단) ── */
-  const phaseBarHtml = `
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:16px">
-      ${PHASES.map((ph,i) => `
-        <div style="background:${ph.bg};border:1.5px solid ${ph.color}33;border-radius:12px;padding:10px 8px;text-align:center">
-          <div style="font-size:14px;margin-bottom:3px">${ph.label.split(' ')[0]}</div>
-          <div style="font-size:9px;font-weight:900;color:${ph.color};letter-spacing:.05em">${ph.label.split(' ').slice(1).join(' ')}</div>
-          <div style="font-size:10px;font-weight:700;color:#0B2545;margin:3px 0">${ph.weeks}</div>
-          <div style="font-size:9px;color:#475569;line-height:1.4">${ph.desc}</div>
-        </div>`).join('')}
+  /* ── 진척률 미니 대시보드 ── */
+  const FREE_WK = FREE_WEEKS; // 3
+  const TOTAL_WK = 12;
+  const freePct = Math.round((FREE_WK / TOTAL_WK) * 100); // 25%
+  const miniDashHtml = `
+    <div style="background:linear-gradient(135deg,#0B2545,#1A3A8F);border-radius:16px;padding:14px 16px;margin-bottom:14px;color:#fff">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div>
+          <div style="font-size:9px;font-weight:800;letter-spacing:.18em;color:rgba(255,255,255,.55);text-transform:uppercase;margin-bottom:3px">12주 여정 진척률</div>
+          <div style="font-size:15px;font-weight:900">
+            <span style="color:#FFD764">${FREE_WK}주</span>
+            <span style="font-size:11px;color:rgba(255,255,255,.6);font-weight:500"> / 총 ${TOTAL_WK}주차</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+          <div style="display:flex;align-items:center;gap:5px;background:rgba(62,203,165,.2);border:1px solid rgba(62,203,165,.4);border-radius:99px;padding:3px 10px">
+            <span style="font-size:11px">✅</span>
+            <span style="font-size:10px;font-weight:800;color:#3ECBA5">1~3주 무료 공개</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:99px;padding:3px 10px">
+            <span style="font-size:11px">🔒</span>
+            <span style="font-size:10px;font-weight:700;color:rgba(255,255,255,.55)">4~12주 프리미엄</span>
+          </div>
+        </div>
+      </div>
+      <!-- 진행 바 -->
+      <div style="background:rgba(255,255,255,.12);border-radius:99px;height:8px;overflow:hidden;position:relative">
+        <div style="position:absolute;inset:0;display:flex">
+          <div style="width:${freePct}%;background:linear-gradient(90deg,#3ECBA5,#22D3EE);border-radius:99px;box-shadow:0 0 8px rgba(62,203,165,.5);transition:width .8s ease"></div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:5px">
+        <span style="font-size:9px;color:#3ECBA5;font-weight:700">시작</span>
+        <span style="font-size:9px;color:rgba(255,255,255,.35)">3주 완료 → 프리미엄으로 계속</span>
+        <span style="font-size:9px;color:rgba(255,255,255,.35)">12주</span>
+      </div>
     </div>`;
 
-  /* ── 수평 타임라인 (4단계 × 3주) ── */
-  let timelineHtml = '';
+  /* ── S자 로드맵 노드 렌더 ── */
+  // S자 흐름: 짝수 Phase (0,2) → 왼→오른 / 홀수 Phase (1,3) → 오른→왼
+  // 각 Phase 내 3주는 순서대로, Phase간 방향 전환
+  let sRoadHtml = '';
+
   PHASES.forEach((ph, phIdx) => {
     const group = defaultWeeklyTree[phIdx];
     if (!group) return;
-    timelineHtml += `
-      <div style="margin-bottom:16px">
-        <!-- 단계 라벨 -->
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-          <div style="height:2px;flex:0 0 16px;background:${ph.color};border-radius:2px"></div>
-          <span style="font-size:10px;font-weight:800;color:${ph.color};letter-spacing:.1em;text-transform:uppercase">${ph.label}</span>
-          <div style="height:2px;flex:1;background:${ph.color}33;border-radius:2px"></div>
+    const isReverse = phIdx % 2 === 1; // 홀수 Phase = 오른쪽에서 왼쪽
+    const weeks = isReverse ? [...group.weeks].reverse() : group.weeks;
+
+    // Phase 라벨 행 (S자 방향 맞춤)
+    sRoadHtml += `
+      <div style="display:flex;align-items:center;gap:8px;margin:${phIdx===0?'0':'6px'} 0 8px;justify-content:${isReverse?'flex-end':'flex-start'}">
+        ${isReverse ? `<div style="height:1.5px;flex:1;background:${ph.color}30"></div>` : ''}
+        <div style="display:inline-flex;align-items:center;gap:6px;background:${ph.bg};border:1.5px solid ${ph.color}55;border-radius:99px;padding:5px 14px">
+          <span style="font-size:12px">${ph.label.split(' ')[0]}</span>
+          <span style="font-size:9.5px;font-weight:900;color:${ph.color};letter-spacing:.06em">${ph.phLabel} · ${ph.weeks}</span>
         </div>
-        <!-- 3개 주차 노드 행 -->
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
-          ${group.weeks.map(wk => {
-            const locked = wk.wi > FREE_WEEKS;
-            const axIcons = wk.axes.map(a => a.icon).join(' ');
-            if (locked) {
-              return `
-                <div onclick="journeyNodeClick(${wk.wi})"
-                  style="border:2px dashed ${ph.color}44;border-radius:14px;padding:12px 8px;
-                    text-align:center;cursor:pointer;background:${ph.bg.replace('.12','.04')};opacity:.55">
-                  <div style="font-size:10px;font-weight:800;color:${ph.color}88;margin-bottom:4px">${wk.label}</div>
-                  <div style="font-size:11px;color:#475569;margin-bottom:4px">${wk.range}</div>
-                  <div style="font-size:18px">🔒</div>
-                </div>`;
-            } else {
-              return `
-                <div id="wtWeekNode_${wk.wi}" onclick="journeyNodeClick(${wk.wi})"
-                  style="border:2px solid ${ph.color};border-radius:14px;padding:12px 8px;
-                    text-align:center;cursor:pointer;background:${ph.bg};
-                    transition:all .2s;position:relative">
-                  <div style="font-size:10px;font-weight:800;color:${ph.color};margin-bottom:4px">${wk.label}</div>
-                  <div style="font-size:10px;color:#64748B;margin-bottom:6px">${wk.range}</div>
-                  <div style="font-size:16px;margin-bottom:4px">${axIcons}</div>
-                  <div style="font-size:9px;font-weight:700;color:${ph.color};background:rgba(255,255,255,.8);
-                    border-radius:99px;padding:2px 8px;display:inline-block">탭하여 열기 ▾</div>
-                </div>`;
-            }
-          }).join('')}
-        </div>
+        ${!isReverse ? `<div style="height:1.5px;flex:1;background:${ph.color}30"></div>` : ''}
       </div>`;
+
+    // 3주 노드 행 — S자 방향
+    sRoadHtml += `<div style="display:flex;flex-direction:${isReverse?'row-reverse':'row'};gap:6px;margin-bottom:4px;align-items:stretch">`;
+    weeks.forEach((wk, wkIdx) => {
+      const locked = wk.wi > FREE_WEEKS;
+      // 원래 wi 기준 wiOrig (reverse 시 역방향이므로)
+      const missionName = ph.mission[isReverse ? (2 - wkIdx) : wkIdx] || wk.axes[0]?.label || '';
+      const axIcons = wk.axes.slice(0,2).map(a => a.icon).join('');
+
+      if (locked) {
+        sRoadHtml += `
+          <div onclick="journeyNodeClick(${wk.wi})" style="flex:1;border:1.5px dashed ${ph.color}33;border-radius:14px;padding:12px 8px;
+            text-align:center;cursor:pointer;background:rgba(248,250,252,.6);opacity:.6;transition:opacity .2s"
+            onmouseenter="this.style.opacity='.85'" onmouseleave="this.style.opacity='.6'">
+            <div style="font-size:9px;font-weight:800;color:${ph.color}77;letter-spacing:.08em;margin-bottom:3px">${wk.label}</div>
+            <div style="font-size:20px;margin-bottom:4px">🔒</div>
+            <div style="font-size:9px;color:#94A3B8;font-weight:600;line-height:1.3">${missionName}</div>
+            <div style="font-size:8px;color:#CBD5E1;margin-top:3px">${wk.range}</div>
+          </div>`;
+      } else {
+        sRoadHtml += `
+          <div id="wtWeekNode_${wk.wi}" onclick="journeyNodeClick(${wk.wi})"
+            style="flex:1;border:2px solid ${ph.color};border-radius:14px;padding:12px 8px;
+              text-align:center;cursor:pointer;background:${ph.bg};
+              box-shadow:0 2px 10px ${ph.color}22;transition:all .2s;position:relative"
+            onmouseenter="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 18px ${ph.color}33'"
+            onmouseleave="this.style.transform='';this.style.boxShadow='0 2px 10px ${ph.color}22'">
+            <div style="font-size:9px;font-weight:900;color:${ph.color};letter-spacing:.08em;margin-bottom:3px">${wk.label}</div>
+            <div style="font-size:18px;margin-bottom:4px">${axIcons}</div>
+            <div style="font-size:9.5px;font-weight:800;color:#0B2545;line-height:1.3;margin-bottom:4px">${missionName}</div>
+            <div style="font-size:8px;color:#64748B;margin-bottom:5px">${wk.range}</div>
+            <div style="font-size:8px;font-weight:700;color:${ph.color};background:rgba(255,255,255,.85);
+              border-radius:99px;padding:2px 7px;display:inline-block;border:1px solid ${ph.color}44">탭 ▾</div>
+          </div>`;
+      }
+    });
+    sRoadHtml += '</div>';
+
+    // Phase 전환 화살표 (마지막 Phase 제외)
+    if (phIdx < PHASES.length - 1) {
+      const nextPh = PHASES[phIdx + 1];
+      const arrowDir = isReverse ? '←' : '→';
+      sRoadHtml += `
+        <div style="display:flex;align-items:center;justify-content:${isReverse?'flex-start':'flex-end'};margin:4px 0 6px;padding:0 8px">
+          <div style="display:flex;align-items:center;gap:4px;opacity:.5">
+            <div style="height:1.5px;width:32px;background:linear-gradient(${isReverse?'to left':'to right'},${ph.color},${nextPh.color})"></div>
+            <span style="font-size:11px;color:${nextPh.color}">${arrowDir}</span>
+            <div style="height:1.5px;width:32px;background:linear-gradient(${isReverse?'to left':'to right'},${nextPh.color},${nextPh.color}44)"></div>
+          </div>
+        </div>`;
+    }
   });
 
-  pathEl.innerHTML = phaseBarHtml + timelineHtml;
+  pathEl.innerHTML = miniDashHtml + sRoadHtml;
 
   /* 페이즈 그리드 — 이미 위에 통합했으므로 숨김 처리 */
   const phaseEl = document.getElementById('ch3PhaseGrid');
   if (phaseEl) phaseEl.style.display = 'none';
 
-  /* 주차 상세 패널 초기화 — 항상 보이게 */
+  /* 주차 상세 패널 초기화 */
   const detailEl = document.getElementById('ch3WeekDetail');
   if (detailEl) {
     detailEl.style.display = 'block';
     detailEl.innerHTML = `
       <div style="text-align:center;padding:20px 16px;background:linear-gradient(135deg,#F0F9FF,#EEF7F5);border-radius:14px;border:2px dashed #CBD5E1">
         <div style="font-size:28px;margin-bottom:8px">👆</div>
-        <div style="font-size:14px;font-weight:800;color:#0B2545;margin-bottom:6px">위 주차를 탭하면 처방이 열립니다</div>
+        <div style="font-size:14px;font-weight:800;color:#0B2545;margin-bottom:6px">주차 노드를 탭하면 처방이 열립니다</div>
         <div style="font-size:11px;color:#64748B;line-height:1.7">1주차·2주차·3주차 중 하나를 선택하세요<br>처방 내용과 전문가 방향을 함께 확인할 수 있어요</div>
       </div>`;
   }
+
+  /* ── 하단 안내바 렌더 ── */
+  _renderCh3GuideBar(bc);
+}
+
+/* CH7 하단 안내바 렌더 */
+function _renderCh3GuideBar(bc) {
+  const barId = 'ch3GuideBar';
+  let bar = document.getElementById(barId);
+  if (!bar) {
+    // ch3Nav 바로 앞에 삽입
+    const nav = document.getElementById('ch3Nav');
+    if (!nav) return;
+    bar = document.createElement('div');
+    bar.id = barId;
+    nav.parentNode.insertBefore(bar, nav);
+  }
+  const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--bc-accent').trim() || '#3ECBA5';
+  bar.innerHTML = `
+    <div style="background:linear-gradient(135deg,rgba(62,203,165,.08),rgba(62,203,165,.02));
+      border:1.5px solid rgba(62,203,165,.25);border-radius:16px;padding:14px 16px;margin:12px 0 4px;
+      display:flex;align-items:center;gap:12px">
+      <div style="font-size:26px;flex-shrink:0">🗺️</div>
+      <div style="flex:1">
+        <div style="font-size:11.5px;font-weight:900;color:#0B2545;margin-bottom:3px">1~3주차 처방, 지금 바로 확인하세요</div>
+        <div style="font-size:10.5px;color:#475569;line-height:1.55">위 노드를 탭하면 주차별 처방·퀴즈·전문가 방향을 볼 수 있습니다.<br>4~12주는 프리미엄에서 전체 공개됩니다.</div>
+      </div>
+      <button onclick="nextChapter()" style="flex-shrink:0;background:var(--bc-accent,#3ECBA5);border:none;color:#0B2545;
+        border-radius:10px;padding:9px 14px;font-size:11px;font-weight:900;cursor:pointer;white-space:nowrap;
+        box-shadow:0 2px 8px rgba(62,203,165,.35)">
+        다음 →
+      </button>
+    </div>`
+;
 }
 
 /* 노드 클릭 → 주차 상세 + 전문가 비율 표시 */
@@ -7771,6 +7992,119 @@ function renderCh9(res, bc) {
     참는 것이 아니라 바꾸는 것,<br>
     싸우는 것이 아니라 이해하는 것.<br>
     <strong style="color:#3ECBA5">${bc.id} 코드로, 오늘부터 시작됩니다.</strong>`;
+
+  /* ── 0. 변화준비도% 배지 (섹션 맨 앞 삽입) ── */
+  const readinessEl = document.getElementById('ch9ReadinessBadge');
+  if (readinessEl) {
+    // 변화준비도 계산: totalScore + 스트레스/수면/요요 보정
+    const baseReadiness = Math.min(98, Math.round(totalScore * 1.05));
+    const sleepBonus    = sleepHours >= 7 ? 3 : sleepHours >= 6 ? 1 : 0;
+    const stressBonus   = stressLv <= 2 ? 2 : stressLv >= 4 ? -2 : 0;
+    const yoyoBonus     = yoyoCount >= 2 ? 3 : 0; // 여러번 시도 = 의지 높음
+    const readiness     = Math.min(98, Math.max(55, baseReadiness + sleepBonus + stressBonus + yoyoBonus));
+
+    // 준비도 레벨 결정
+    const rdLevel = readiness >= 85 ? { label:'매우 높음', color:'#3ECBA5', bg:'rgba(62,203,165,.12)', border:'rgba(62,203,165,.4)', icon:'🔥' }
+      : readiness >= 70 ? { label:'높음',   color:'#F59E0B', bg:'rgba(245,158,11,.12)',  border:'rgba(245,158,11,.4)',  icon:'⚡' }
+      : { label:'보통',   color:'#3B82F6', bg:'rgba(59,130,246,.12)', border:'rgba(59,130,246,.4)', icon:'💪' };
+
+    readinessEl.innerHTML = `
+      <div style="background:${rdLevel.bg};border:1.5px solid ${rdLevel.border};border-radius:14px;padding:14px 16px;
+        display:flex;align-items:center;gap:12px">
+        <div style="font-size:28px;flex-shrink:0">${rdLevel.icon}</div>
+        <div style="flex:1">
+          <div style="font-size:9.5px;font-weight:800;color:${rdLevel.color};letter-spacing:.15em;text-transform:uppercase;margin-bottom:3px">변화 준비도</div>
+          <div style="display:flex;align-items:baseline;gap:6px">
+            <span style="font-size:28px;font-weight:900;color:${rdLevel.color}">${readiness}%</span>
+            <span style="font-size:11px;font-weight:700;color:#475569">${rdLevel.label}</span>
+          </div>
+          <div style="background:rgba(255,255,255,.5);border-radius:99px;height:5px;margin-top:6px;overflow:hidden">
+            <div style="width:${readiness}%;height:100%;background:${rdLevel.color};border-radius:99px;transition:width 1s ease"></div>
+          </div>
+        </div>
+        <div style="text-align:center;padding:8px 12px;background:rgba(255,255,255,.7);border-radius:10px;flex-shrink:0">
+          <div style="font-size:9px;color:#64748B;font-weight:600;margin-bottom:2px">지금 시작하면</div>
+          <div style="font-size:11.5px;font-weight:900;color:#0B2545">성공 가능성</div>
+          <div style="font-size:16px;font-weight:900;color:${rdLevel.color}">${readiness}%</div>
+        </div>
+      </div>`;
+  }
+
+  /* ── 6. 슬림마인드 약속박스 ── */
+  const promiseEl = document.getElementById('ch9PromiseBox');
+  if (promiseEl) {
+    const PROMISE_BY_BC = {
+      'BC-01': '혈당 스파이크 없는 식사 순서를 1주 안에 몸에 익히도록 돕겠습니다.',
+      'BC-02': '호르몬 리셋을 위한 수면·스트레스 루틴을 함께 설계합니다.',
+      'BC-03': '장내 유익균이 회복되면 식욕 자체가 바뀝니다. 그 과정을 지원합니다.',
+      'BC-04': '간 해독 4주 프로그램으로 에너지와 체중을 동시에 잡습니다.',
+      'BC-05': '갑상선·기초대사 회복을 위한 영양 처방을 주차별로 안내합니다.',
+      'BC-06': '염증 제로 식단으로 몸의 기본 세팅을 바꿉니다.',
+      'BC-07': '수분·림프 순환 개선으로 부종을 빼고 에너지를 되찾습니다.',
+      'BC-08': '심혈관·산소 공급 개선으로 운동 효율을 2배로 높입니다.',
+      'BC-09': '미토콘드리아 에너지 회복으로 만성 피로를 근원부터 해결합니다.',
+      'BC-10': '신경·코르티솔 조절로 감정 폭식의 악순환을 끊습니다.',
+    };
+    const promiseText = PROMISE_BY_BC[bc.id] || '당신의 바디코드에 맞는 처방으로 12주 변화를 함께 만들겠습니다.';
+
+    promiseEl.innerHTML = `
+      <div style="background:linear-gradient(135deg,rgba(255,215,100,.12),rgba(255,215,100,.04));
+        border:2px solid rgba(255,215,100,.35);border-radius:18px;padding:20px 18px;margin:16px 0">
+        <div style="font-size:9.5px;font-weight:800;color:#92400E;letter-spacing:.2em;text-transform:uppercase;margin-bottom:12px">
+          ✦ 슬림마인드의 약속
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <span style="font-size:18px;flex-shrink:0">🔬</span>
+            <div style="font-size:12.5px;color:#0B2545;line-height:1.75;font-weight:600">${promiseText}</div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <span style="font-size:18px;flex-shrink:0">📋</span>
+            <div style="font-size:12px;color:#334155;line-height:1.75">설문 데이터를 기반으로 설계된 <strong style="color:#0B2545">${bc.id} 맞춤 12주 처방</strong>은 오직 ${name}님을 위한 것입니다.</div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <span style="font-size:18px;flex-shrink:0">💚</span>
+            <div style="font-size:12px;color:#334155;line-height:1.75">의지력이 아닌 <strong style="color:#0B2545">시스템</strong>으로. 참는 것이 아닌 <strong style="color:#0B2545">이해</strong>로 접근합니다.</div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  /* ── 7. 최종 버튼 개인화 ── */
+  const finalBtn = document.getElementById('ch9FinalBtn');
+  if (finalBtn) {
+    const btnTexts = {
+      'BC-01':'혈당 처방 지금 시작하기 →',
+      'BC-02':'호르몬 리셋 지금 시작하기 →',
+      'BC-03':'장 건강 회복 시작하기 →',
+      'BC-04':'간 해독 프로그램 시작하기 →',
+      'BC-05':'대사 회복 지금 시작하기 →',
+      'BC-06':'항염 처방 지금 시작하기 →',
+      'BC-07':'수분·림프 개선 시작하기 →',
+      'BC-08':'심혈관 강화 시작하기 →',
+      'BC-09':'에너지 회복 지금 시작하기 →',
+      'BC-10':'스트레스 해소 루틴 시작하기 →',
+    };
+    finalBtn.textContent = btnTexts[bc.id] || '지금 바로 시작하기 →';
+  }
+
+  /* 닫는 타이틀도 개인화 */
+  const closingTitleEl = document.getElementById('ch9ClosingTitle');
+  if (closingTitleEl) {
+    const titles = {
+      'BC-01':`${name}님, 이제 혈당의 비밀을 압니다`,
+      'BC-02':`${name}님, 이제 호르몬의 언어를 압니다`,
+      'BC-03':`${name}님, 이제 장이 말하는 걸 압니다`,
+      'BC-04':`${name}님, 이제 간이 보내는 신호를 압니다`,
+      'BC-05':`${name}님, 이제 대사의 구조를 압니다`,
+      'BC-06':`${name}님, 이제 염증의 원인을 압니다`,
+      'BC-07':`${name}님, 이제 수분이 왜 중요한지 압니다`,
+      'BC-08':`${name}님, 이제 심혈관의 신호를 압니다`,
+      'BC-09':`${name}님, 이제 에너지의 근원을 압니다`,
+      'BC-10':`${name}님, 이제 스트레스와 식욕의 연결을 압니다`,
+    };
+    closingTitleEl.textContent = titles[bc.id] || `${name}님, 이제 자신의 몸을 압니다`;
+  }
 }
 
 
