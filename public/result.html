@@ -780,6 +780,18 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
   /* ── 로딩 ── */
   .loading-title { font-size: 14px; }
   .loading-bar-wrap { width: 200px; }
+
+  /* ── 텍스트 줄바꿈 개선 ── */
+  .sec-sub { word-break: keep-all; overflow-wrap: break-word; }
+  .sec-heading { word-break: keep-all; }
+  p, .presc-desc, .presc-title, .wt-presc { word-break: keep-all; overflow-wrap: break-word; }
+
+  /* ── 인라인 스타일 flex 레이아웃 모바일 조정 ── */
+  .jd-expert-card { flex-wrap: wrap; }
+  .jd-ec-where { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+
+  /* ── 레이더 차트 여백 ── */
+  .radar-canvas-wrap { padding: 0 8px; }
 }
 
 @media (max-width: 420px) {
@@ -3323,7 +3335,7 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
     <!-- 레이더 차트 -->
     <div class="radar-wrap">
       <div class="radar-canvas-wrap" style="animation:radarReveal .8s .2s ease both">
-        <canvas id="ch2RadarChart" width="340" height="360"></canvas>
+        <canvas id="ch2RadarChart" width="340" height="380"></canvas>
       </div>
       <div style="font-size:10.5px;color:#64748B;text-align:center;margin-top:8px;line-height:1.7">
         ※ 설문 응답과 AI 분석을 종합한 결과입니다<br>
@@ -3825,14 +3837,17 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
       <div class="macro-legend" id="macroLegend"></div>
     </div>
 
+    <!-- BC코드 × 오행 통합 처방 (JS renderBcOhaengIntegrated에서 채움) -->
+    <div id="ch6OhaengIntegrated"></div>
+
   </div>
 
   <div class="chapter-nav">
     <div class="nav-row">
       <button class="btn-prev" onclick="prevChapter()" title="이전 페이지">←</button>
       <button class="btn-next" onclick="nextChapter()">
-        계절별 맞춤 전략을 확인합니다 →
-        <small>오행 기질에 맞는 계절별 처방</small>
+        12주 여정 지도를 확인합니다 →
+        <small>주차별 전문가 비율 + 세부 처방 클릭트리</small>
       </button>
     </div>
   </div>
@@ -6880,13 +6895,8 @@ function renderCh2(res, bc) {
   /* Chart.js 레이더차트 */
   const canvas = document.getElementById('ch2RadarChart');
   if (canvas && window.Chart) {
-    // 라벨: 긴 이름은 두 줄로 분리해 잘림 방지 (Chart.js는 배열을 개행으로 처리)
-    const labels = AXIS_DEFS.map(a => {
-      const fullName = a.icon + ' ' + a.name;
-      // 7자 초과 시 아이콘/이름 분리 → 2줄 렌더
-      if (a.name.length > 6) return [a.icon, a.name];
-      return fullName;
-    });
+    // 라벨: 아이콘 + 이름 항상 2줄 렌더 (겹침/잘림 완전 방지)
+    const labels = AXIS_DEFS.map(a => [a.icon, a.name]);
     const data   = AXIS_DEFS.map(a => {
       // DB axis_scores 우선, 없으면 scoreEngine 계산값
       if (res.axis_scores && res.axis_scores[a.id] !== undefined) {
@@ -6946,11 +6956,11 @@ function renderCh2(res, bc) {
             pointLabels:{
               color: (ctx) => labelColors[ctx.index] || '#334155',
               font: (ctx) => ({
-                size: 10,
+                size: 9,
                 weight: labelWeights[ctx.index] || '600'
               }),
-              padding: 10,
-              callback: (label) => label  // 배열이면 그대로 (Chart.js가 개행 처리)
+              padding: 14,
+              callback: (label) => label  // 배열이면 2줄로 처리됨
             }
           }
         },
@@ -7954,8 +7964,156 @@ function renderCh6(bc) {
 
   /* ─ 탄단지 파이차트 초기화 ─ */
   setTimeout(() => initMacroChart(bc.id), 100);
+
+  /* ══ BC코드 × 오행 통합 처방 블록 (CH6 하단 삽입) ══ */
+  renderBcOhaengIntegrated(bc);
 }
 
+/* ══════════════════════════════════════════════════════
+   renderBcOhaengIntegrated(bc)
+   — BC코드 + 오행 만세력 합산 → 통합 맞춤 처방 (식단/운동/회복)
+   — CH6 하단에 삽입. 별도 오행 챕터 대체.
+══════════════════════════════════════════════════════ */
+function renderBcOhaengIntegrated(bc) {
+  const el = document.getElementById('ch6OhaengIntegrated');
+  if (!el) return;
+
+  // 오행 키 추출
+  const ohaeng = bc.ohaeng || '';
+  const oKey = ohaeng.includes('木') || ohaeng.includes('목') ? '木 목(木)'
+             : ohaeng.includes('火') || ohaeng.includes('화') ? '火 화(火)'
+             : ohaeng.includes('土') || ohaeng.includes('토') ? '土 토(土)'
+             : ohaeng.includes('金') || ohaeng.includes('금') ? '金 금(金)'
+             : ohaeng.includes('水') || ohaeng.includes('수') ? '水 수(水)'
+             : null;
+  const ohData = oKey ? OHAENG_FOOD_DB[oKey] : null;
+
+  // 현재 계절
+  const month  = new Date().getMonth() + 1;
+  const season = (month <= 2 || month === 12) ? '겨울'
+               : month <= 5 ? '봄'
+               : month <= 8 ? '여름' : '가을';
+
+  // 계절 × 오행 교차 처방
+  const SEASON_OHANG_PRESC = {
+    '木 목(木)': {
+      봄:   { diet:'간 해독 식품 집중 (브로콜리·케일·미나리)', exer:'야외 30분 걷기 + 스트레칭', recovery:'충분한 수면으로 간 재생 지원' },
+      여름:  { diet:'수분 많은 채소 + 항산화 식품', exer:'중강도 유산소', recovery:'수분 2L+ 보충' },
+      가을:  { diet:'십자화과 채소 + 식이섬유 강화', exer:'실내 근력 운동', recovery:'규칙적 취침 시간 고정' },
+      겨울:  { diet:'따뜻한 채소스프 + 간 보강 식품', exer:'실내 요가·스트레칭', recovery:'8시간 수면 최우선' }
+    },
+    '火 화(火)': {
+      봄:   { diet:'베리류·토마토 항산화 식품', exer:'가벼운 유산소 시작', recovery:'충분한 수분 + 스트레칭' },
+      여름:  { diet:'수분 2L+ + 전해질 보충 (수박·오이)', exer:'아침·저녁 저강도 운동', recovery:'한낮 야외활동 최소화' },
+      가을:  { diet:'홍삼·석류 등 심혈관 강화', exer:'중강도 유산소 주 4회', recovery:'수면 전 마음챙김 10분' },
+      겨울:  { diet:'고추·생강으로 체온 유지', exer:'실내 HIIT 주 2회', recovery:'따뜻한 입욕 + 수면 7h' }
+    },
+    '土 토(土)': {
+      봄:   { diet:'소화 효소 식품 (파파야·파인애플)', exer:'식후 15분 걷기', recovery:'식사 후 즉시 눕지 않기' },
+      여름:  { diet:'단호박·호박·대추로 소화 강화', exer:'저강도 수영·걷기', recovery:'과식 주의, 소식 다식' },
+      가을:  { diet:'생강·꿀로 소화 지원 + 귀리', exer:'규칙적 걷기 주 5회', recovery:'스트레스 관리 (명상 5분)' },
+      겨울:  { diet:'따뜻한 죽·스프로 소화 부담 감소', exer:'실내 요가 주 3회', recovery:'충분한 수면 + 수면 전 스트레칭' }
+    },
+    '金 금(金)': {
+      봄:   { diet:'무·도라지·배로 폐 기능 강화', exer:'복식호흡 운동 + 걷기', recovery:'환기 충분히, 미세먼지 주의' },
+      여름:  { diet:'연근·마늘·생강 섭취', exer:'수중 유산소 + 저강도 운동', recovery:'과호흡 피하고 충분한 수분' },
+      가을:  { diet:'배·감·모과로 폐 윤택', exer:'야외 걷기 주 5회', recovery:'건조함 주의, 실내 습도 50~60%' },
+      겨울:  { diet:'도라지차·배즙으로 폐 강화', exer:'실내 근력 + 호흡 운동', recovery:'따뜻한 음료로 폐 보호' }
+    },
+    '水 수(水)': {
+      봄:   { diet:'검은콩·미역으로 신장 강화', exer:'수영·저강도 유산소', recovery:'수분 충분 + 7시간 수면' },
+      여름:  { diet:'수분 2L+ + 전해질 (수박·오이·블루베리)', exer:'아침 저강도 운동 + 냉각 회복', recovery:'전해질 균형 관리' },
+      가을:  { diet:'검은쌀·흑깨·굴로 신장 에너지 저장', exer:'규칙적 걷기 + 근력', recovery:'수면 8시간 확보' },
+      겨울:  { diet:'검은콩·미역·블루베리 집중', exer:'실내 요가·스트레칭', recovery:'따뜻하게 유지, 신장·방광 보호' }
+    }
+  };
+
+  const presc = (SEASON_OHANG_PRESC[oKey] || {})[season] || {
+    diet: 'BC코드 식단 처방을 기본으로 유지하세요',
+    exer: '규칙적인 운동 루틴 유지',
+    recovery: '충분한 수면과 스트레스 관리'
+  };
+
+  // 오행 음식 태그 (ohData에서)
+  const foodTags = ohData
+    ? ohData.foods.slice(0, 4).map(f =>
+        `<span style="display:inline-flex;align-items:center;gap:4px;background:${ohData.bg};
+         border:1px solid ${ohData.border};border-radius:20px;padding:4px 10px;
+         font-size:11px;font-weight:700;color:${ohData.color};margin:3px 2px;
+         cursor:pointer" title="${f.tip}">${f.tag}<span style="font-size:9px;color:${ohData.color}88">ℹ</span></span>`
+      ).join('')
+    : '';
+
+  el.innerHTML = `
+    <div style="margin-top:20px;padding:16px;background:linear-gradient(135deg,#EFF6FF 0%,#F0FDF4 100%);
+      border-radius:14px;border:1.5px solid #C7D2FE">
+
+      <!-- 헤더 -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <div style="font-size:20px">${ohData ? ohData.char : '🌿'}</div>
+        <div>
+          <div style="font-size:13px;font-weight:900;color:#1E3A5F">
+            ${bc.short || bc.name} × ${oKey ? oKey.split(' ')[1] : '오행'} 통합 처방
+          </div>
+          <div style="font-size:10.5px;color:#64748B">BC코드 + 오행 체질 합산 맞춤 전략</div>
+        </div>
+        <div style="margin-left:auto;background:#1E3A5F;color:#fff;font-size:9px;font-weight:900;
+          border-radius:99px;padding:3px 9px">지금 계절: ${season}</div>
+      </div>
+
+      <!-- 3행 처방 -->
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+        <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;
+          background:#fff;border-radius:10px;border:1px solid #E0E7FF">
+          <span style="font-size:18px;flex-shrink:0">🥗</span>
+          <div>
+            <div style="font-size:11px;font-weight:800;color:#1E3A5F;margin-bottom:2px">
+              식단 — ${season} 맞춤 + ${oKey ? oKey.split(' ')[1] : ''} 체질
+            </div>
+            <div style="font-size:11px;color:#334155;line-height:1.7">${presc.diet}</div>
+            ${foodTags ? `<div style="margin-top:6px">${foodTags}</div>` : ''}
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;
+          background:#fff;border-radius:10px;border:1px solid #D1FAE5">
+          <span style="font-size:18px;flex-shrink:0">🏃</span>
+          <div>
+            <div style="font-size:11px;font-weight:800;color:#065F46;margin-bottom:2px">
+              운동 — ${season} 최적 강도
+            </div>
+            <div style="font-size:11px;color:#334155;line-height:1.7">${presc.exer}</div>
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;
+          background:#fff;border-radius:10px;border:1px solid #FEE2E2">
+          <span style="font-size:18px;flex-shrink:0">💤</span>
+          <div>
+            <div style="font-size:11px;font-weight:800;color:#991B1B;margin-bottom:2px">
+              회복 — 체질 맞춤 회복법
+            </div>
+            <div style="font-size:11px;color:#334155;line-height:1.7">${presc.recovery}</div>
+          </div>
+        </div>
+      </div>
+
+      ${ohData ? `
+      <div style="background:${ohData.bg};border:1px solid ${ohData.border};border-radius:10px;padding:10px 12px">
+        <div style="font-size:10px;font-weight:800;color:${ohData.color};margin-bottom:5px">
+          ${ohData.char} ${ohData.name} — 추천 식품
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:5px">
+          ${ohData.foods.map(f =>
+            `<span style="background:#fff;border:1px solid ${ohData.border};border-radius:12px;
+             padding:3px 8px;font-size:10px;font-weight:600;color:${ohData.color}" title="${f.tip}">${f.tag}</span>`
+          ).join('')}
+        </div>
+        <div style="font-size:10px;color:${ohData.color};line-height:1.6;opacity:.85">${ohData.tip}</div>
+      </div>` : ''}
+
+    </div>`;
+}
 
 /* ══════════════════════════════════════════════════════
    renderCh7(bc)  — 오행계절 카드 + 사주 계절 처방 + 마음가짐
@@ -8633,75 +8791,118 @@ function renderWeeklyClickTree(res, bc) {
   const gridEl = document.getElementById('wtWeekGrid');
   if (!gridEl) return;
 
-  // ── BC별 맞춤 처방: topAxes 기반으로 1~3주차 첫 번째 축(ai:0) 동적 생성 ──
-  // bc.topAxes = ['A3','A6','A2'] 형태로 3개 핵심축이 주어짐
-  // 1주차→topAxes[0], 2주차→topAxes[1], 3주차→topAxes[2] 중심 처방으로 교체
-  function buildBcAxis(axisId, ai) {
-    const axDef = AXIS_DEFS.find(a => a.id === axisId);
-    if (!axDef) return null;
-    // 축별 퀴즈 맵 (topAxes 교체용 기본 퀴즈)
-    const quizMap = {
-      'A1': { q:'인슐린 저항성을 개선하는 가장 즉각적인 식후 습관은?',
-               opts:['바로 눕기','식후 10~15분 걷기','디저트 먹기','커피 마시기'], ans:1,
-               checkin:'식사 순서 교정(채소→단백질→탄수화물) + 식후 걷기 실천' },
-      'A2': { q:'장내미생물 다양성을 높이는 데 가장 효과적인 식품은?',
-               opts:['흰밥','발효식품(김치·된장)','탄산음료','정제 밀가루'], ans:1,
-               checkin:'발효식품 매일 1회 + 식이섬유 30g 이상 실천' },
-      'A3': { q:'만성 염증을 낮추는 식품 중 가장 근거가 강한 것은?',
-               opts:['트랜스지방','베리류·강황','정제 설탕','흰 빵'], ans:1,
-               checkin:'항염 식품(베리·강황) 섭취 + 트랜스지방 차단 실천' },
-      'A4': { q:'코르티솔 분비를 안정시키는 가장 효과적인 습관은?',
-               opts:['취침 전 스마트폰','기상 시간 고정 + 수면 루틴','야식 먹기','카페인 밤에 마시기'], ans:1,
-               checkin:'수면 7~9시간 확보 + 취침 전 디지털 차단 실천' },
-      'A5': { q:'갑상선 기능에 필수적인 미네랄 조합은?',
-               opts:['칼슘+철분','셀레늄+요오드','나트륨+칼륨','마그네슘+아연'], ans:1,
-               checkin:'셀레늄·요오드 함유 식품(브라질넛·미역) 매일 섭취 실천' },
-      'A6': { q:'세포 수분 균형과 림프 순환을 동시에 개선하는 방법은?',
-               opts:['나트륨 과잉 섭취','하루 2L 수분 + 칼륨 채소 우선','수분 제한','카페인 과다'], ans:1,
-               checkin:'하루 2L 수분 섭취 + 저나트륨 식단 실천' },
-      'A7': { q:'심폐 지구력과 복부지방 감소를 동시에 얻는 운동은?',
-               opts:['스트레칭만','중강도 유산소 주 5회(심박 130~150)','고강도 웨이트만','산책 주 1회'], ans:1,
-               checkin:'중강도 유산소 30분 주 5회 실천' },
-      'A8': { q:'에스트로겐 우세를 조절하는 데 효과적인 영양소는?',
-               opts:['정제 탄수화물','DIM(십자화과 추출)','포화지방','알코올'], ans:1,
-               checkin:'DIM 섭취 + 사이클 싱킹 운동 + 환경호르몬 노출 최소화 실천' },
-      'A9': { q:'도파민 결핍으로 인한 음식 보상 욕구를 줄이는 방법은?',
-               opts:['더 많이 먹기','햇빛 노출 + 트립토판 식품 + 마그네슘','카페인 증량','야간 운동'], ans:1,
-               checkin:'햇빛 20분 노출 + L-테아닌·마그네슘 복용 실천' },
-      'A10': { q:'미토콘드리아 에너지 생산 효율을 높이는 가장 직접적인 방법은?',
-               opts:['좌식 생활','HIIT + CoQ10 복용','수면 줄이기','정제 탄수화물 위주 식사'], ans:1,
-               checkin:'HIIT 주 2회 + CoQ10 복용 실천' },
-      'A11': { q:'체질·오행에 맞춘 맞춤형 접근법의 핵심 이점은?',
-               opts:['단기간 극적 효과','장기 지속률·개인 맞춤 대사 최적화','빠른 체중 감소','칼로리 제한'], ans:1,
-               checkin:'오행 체질 맞춤 식단 + 계절 처방 적용 실천' }
-    };
-    const qd = quizMap[axisId] || { q:`${axDef.name} 핵심 원리를 실천하셨나요?`, opts:['예','아니오'], ans:0, checkin:`${axDef.name} 처방 실천` };
-    return {
-      ai, axisId, label: axDef.name, icon: axDef.icon,
-      presc: axDef.presc,
-      quiz: { q: qd.q, opts: qd.opts, ans: qd.ans },
-      checkinLabel: qd.checkin
-    };
+  // ══ BC × 오행 합산 주차별 고유 처방 빌더 ══
+  // 각 주차마다 완전히 다른 BC코드 처방 + 오행 체질 기반 처방을 생성
+
+  const topAxes = (bc && bc.topAxes && bc.topAxes.length >= 3) ? bc.topAxes : ['A1','A3','A9'];
+
+  // 오행 키 추출
+  const ohaengStr = bc.ohaeng || '';
+  const oKey = ohaengStr.includes('木') || ohaengStr.includes('목') ? '木 목(木)'
+             : ohaengStr.includes('火') || ohaengStr.includes('화') ? '火 화(火)'
+             : ohaengStr.includes('土') || ohaengStr.includes('토') ? '土 토(土)'
+             : ohaengStr.includes('金') || ohaengStr.includes('금') ? '金 금(金)'
+             : ohaengStr.includes('水') || ohaengStr.includes('수') ? '水 수(水)'
+             : '土 토(土)';
+  const ohFoods = OHAENG_FOOD_DB[oKey];
+  const ohFoodStr = ohFoods ? ohFoods.foods.slice(0,3).map(f=>f.tag).join('·') : '';
+  const ohOrgStr  = ohFoods ? ohFoods.organ : '';
+
+  // BC 처방 단축 추출
+  const bcDiet1   = bc.diet  && bc.diet[0]  ? (bc.diet[0].title  || bc.diet[0])  : bc.short || '';
+  const bcDiet2   = bc.diet  && bc.diet[1]  ? (bc.diet[1].title  || bc.diet[1])  : '';
+  const bcExer1   = bc.exercise && bc.exercise[0] ? (bc.exercise[0].title || bc.exercise[0]) : '';
+  const bcSuppl1  = bc.suppl && bc.suppl[0] ? (bc.suppl[0].title || bc.suppl[0]) : '';
+
+  // 주차별 완전 차별화 처방 (1·2·3주차 각자 다른 포커스)
+  // wi는 0-indexed (wi:0=1주차, wi:1=2주차, wi:2=3주차)
+  function buildWeekPrescs(wi) {
+    const axId = topAxes[wi] || topAxes[0];
+    const axDef = AXIS_DEFS.find(a => a.id === axId) || AXIS_DEFS[0];
+
+    if (wi === 0) {
+      // 1주차: BC코드 핵심 증상 진단 + 오행 체질 확인 → 기초 처방 1가지만
+      return {
+        mainPresc: `[${bc.short}] ${bcDiet1} — 오늘부터 바로 시작할 수 있는 1가지입니다.`,
+        ohaengPresc: `${oKey.split(' ')[1]} 체질(${ohOrgStr})에 맞는 식품: ${ohFoodStr}`,
+        goal: '몸이 신호를 보내는 이유를 이해하고, 식사 순서 하나를 바꾸는 주입니다.',
+        quiz: { q:`${axDef.name} 개선을 위한 첫 번째 식단 습관은?`,
+          opts:['가장 먹고 싶은 것 먼저','채소→단백질→탄수화물 순서','탄수화물을 완전히 끊기','하루 1식으로 줄이기'], ans:1 },
+        checkin:`${axDef.icon} ${axDef.name} 기초 처방 실천 확인`
+      };
+    } else if (wi === 1) {
+      // 2주차: BC코드 식단 처방 + 오행 추천 식품 통합 식단
+      const bcD2str = bcDiet2 || bcDiet1;
+      return {
+        mainPresc: `[${bc.short}] ${bcD2str} — 1주차 식사 순서에 이것을 추가하세요.`,
+        ohaengPresc: `${oKey.split(' ')[1]} 체질 추천 식품(${ohFoodStr})을 매끼 1가지씩 포함하세요.`,
+        goal: 'BC코드 식단과 오행 체질 식품을 통합하여 대사 변화가 시작됩니다.',
+        quiz: { q:`${oKey.split(' ')[1]} 체질에 맞는 식품군은?`,
+          opts:[ohFoods ? ohFoods.foods[0].tag : '채소', '인스턴트 식품', '정제 탄수화물', '트랜스지방'], ans:0 },
+        checkin:`🥗 오행 맞춤 식품 + ${bc.short} 식단 2주차 통합 실천`
+      };
+    } else {
+      // 3주차: BC코드 운동+회복 처방 + 오행 계절 처방
+      return {
+        mainPresc: `[${bc.short}] 운동: ${bcExer1 || '규칙적 운동 시작'} — 이번 주 처음으로 시작합니다.`,
+        ohaengPresc: `${oKey.split(' ')[1]} 체질 회복법: ${ohFoods ? ohFoods.tip.substring(0,40) + '...' : '규칙적 수면 우선'}`,
+        goal: '식단 기반 위에 운동과 회복을 추가하는 주입니다. 보충제는 이번 주부터.',
+        quiz: { q:`${bc.short}에서 운동보다 먼저 해결해야 할 것은?`,
+          opts:['고강도 운동 바로 시작','식단 기반 먼저 2주 이상 유지 후 운동 추가','운동만 집중','보충제만 복용'], ans:1 },
+        checkin:`💪 ${bc.short} 운동 처방 + 오행 회복법 3주차 실천`
+      };
+    }
   }
 
-  // 1~3주차 처방 오버라이드: bc.topAxes[0/1/2]를 각 주차 ai:0 축으로 교체
-  const topAxes = (bc && bc.topAxes && bc.topAxes.length >= 3) ? bc.topAxes : ['A1','A3','A9'];
-  // defaultWeeklyTree를 딥카피하여 수정 (원본 보존)
+  // BC 처방을 축 형태로 변환 (ai:0=BC핵심, ai:1=오행통합, ai:2=보충제)
+  function buildBcOhaengAxes(wi) {
+    const axId  = topAxes[Math.min(wi, topAxes.length-1)] || 'A1';
+    const axDef = AXIS_DEFS.find(a => a.id === axId) || AXIS_DEFS[0];
+    const wp    = buildWeekPrescs(wi);
+
+    // ai:0 — BC코드 핵심 처방
+    const ax0 = {
+      ai:0, axisId: axId, label: `${bc.short} 핵심 처방`, icon: '🎯',
+      presc: wp.mainPresc,
+      quiz: wp.quiz,
+      checkinLabel: wp.checkin
+    };
+
+    // ai:1 — 오행 통합 처방
+    const ax1 = {
+      ai:1, axisId: 'A11', label: `${oKey.split(' ')[1]} 체질 처방`, icon: ohFoods ? ohFoods.char : '🌿',
+      presc: wp.ohaengPresc,
+      quiz: { q:`${oKey.split(' ')[1]} 체질에서 특히 강화해야 할 장기는?`,
+        opts:[ohOrgStr || '신장', '심장만', '폐만', '위장만'], ans:0 },
+      checkinLabel: `${oKey.split(' ')[1]} 오행 체질 처방 실천`
+    };
+
+    // ai:2 — 주차별 보충제/생활습관
+    const ax2key = wi === 0 ? axDef : (wi === 1 ? (AXIS_DEFS.find(a=>a.id===topAxes[1]) || axDef) : (AXIS_DEFS.find(a=>a.id===topAxes[2]) || axDef));
+    const ax2 = {
+      ai:2, axisId: ax2key.id, label: `${wi+1}주차 생활 습관`, icon: '📋',
+      presc: wp.goal,
+      quiz: { q:`${wi+1}주차 목표 달성의 핵심은?`,
+        opts:['완벽한 식단', '꾸준한 1가지 실천', '모두 동시에 시작', '빠른 결과'], ans:1 },
+      checkinLabel: `${wi+1}주차 목표 체크인 완료`
+    };
+
+    return [ax0, ax1, ax2];
+  }
+
+  // defaultWeeklyTree를 딥카피하여 1~3주차 axes를 BC+오행 처방으로 완전 교체
   const weeklyTree = defaultWeeklyTree.map((group, gi) => ({
     ...group,
     weeks: group.weeks.map(week => {
       if (week.wi >= 0 && week.wi <= 2) {
-        // 1~3주차: topAxes 기반으로 첫 번째 축(ai:0) 교체
-        const axisOverride = buildBcAxis(topAxes[week.wi], 0);
-        if (axisOverride) {
-          const newAxes = [axisOverride, ...week.axes.slice(1)];
-          return { ...week, axes: newAxes };
-        }
+        // 1~3주차: BC+오행 합산 완전 교체
+        return { ...week, axes: buildBcOhaengAxes(week.wi) };
       }
       return week;
     })
   }));
-  // 전역 저장: wtToggleWeek에서도 BC별 맞춤 처방 참조 가능
+
+  // 전역 저장
   _currentWeeklyTree = weeklyTree;
 
   // 완료 주차 판별 (localStorage에서 체크인 완료 목록 읽기)
@@ -8841,7 +9042,9 @@ function renderWeeklyClickTree(res, bc) {
 }
 
 function wtToggleWeek(wi) {
-  // ── PAYWALL: 3주차 초과 시 잠금 모달 ──
+  // ── PAYWALL: 4주차 이후 잠금 ──
+  // wi는 1-indexed (1주차=1, 2주차=2, ...)
+  // 내부 tree의 wi는 0-indexed (1주차=0, 2주차=1, ...)
   if (isWeekLocked(wi)) {
     openPaywall(wi);
     return;
@@ -8860,24 +9063,28 @@ function wtToggleWeek(wi) {
   }
   wtState.openWi = wi;
 
+  // ── 핵심 버그 수정: wi(1-indexed) → 0-indexed로 변환하여 tree 검색 ──
+  const wiIndex = wi - 1;  // 1주차→0, 2주차→1, 3주차→2
   let weekData = null;
-  // BC별 맞춤 처방 트리 우선 참조 (renderWeeklyClickTree에서 생성됨)
   const activeTree = _currentWeeklyTree || defaultWeeklyTree;
-  activeTree.forEach(g => g.weeks.forEach(w => { if (w.wi === wi) weekData = w; }));
+  activeTree.forEach(g => g.weeks.forEach(w => {
+    if (w.wi === wiIndex) weekData = w;
+  }));
   if (!weekData) return;
 
   document.querySelectorAll('.wt-week-card').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.wt-week-arrow').forEach(el => el.textContent = '▼');
-  const activeCard = document.getElementById('wtWeek_' + wi);
+  // 카드 id는 0-indexed(wiIndex), wi는 1-indexed → wiIndex로 찾기
+  const activeCard = document.getElementById('wtWeek_' + wiIndex);
   if (activeCard) activeCard.classList.add('active');
-  const arrow = document.getElementById('wtArrow_' + wi);
+  const arrow = document.getElementById('wtArrow_' + wiIndex);
   if (arrow) arrow.textContent = '▲';
 
   // 전문가 비율 계산
   let expertBannerHtml = '';
   if (_journeyRes) {
     const { axisSignals } = scoreEngine(_journeyRes);
-    const { top3 } = calcWeeklyExpertRatio(axisSignals, wi - 1);
+    const { top3 } = calcWeeklyExpertRatio(axisSignals, wiIndex);
     const barSegs = top3.map(ex =>
       `<div class="web-seg" style="width:${ex.pct}%;background:${ex.color}"></div>`
     ).join('');
@@ -8901,12 +9108,25 @@ function wtToggleWeek(wi) {
       </div>`;
   }
 
+  // 주차별 포커스 문구
+  const weekFocusMap = {
+    1: '🎯 1주차 — 내 몸 신호 읽기 + 핵심 1가지 시작',
+    2: '🥗 2주차 — BC×오행 통합 식단 본격 적용',
+    3: '💪 3주차 — 운동·회복 루틴 추가 + 보충제 시작'
+  };
+  const weekFocusHtml = weekFocusMap[wi]
+    ? `<div style="background:linear-gradient(90deg,#7C3AED18,#A855F718);border-radius:10px;
+        padding:9px 12px;margin-bottom:10px;font-size:11.5px;font-weight:800;color:#5B21B6;
+        border:1px solid #DDD6FE">${weekFocusMap[wi]}</div>`
+    : '';
+
   panel.style.display = 'block';
   panel.innerHTML = `
     <div class="wt-panel-header">
       <span class="wt-panel-week">${weekData.label} (${weekData.range})</span>
       <span class="wt-panel-hint">처방 확인 후 퀴즈 → 체크인</span>
     </div>
+    ${weekFocusHtml}
     ${expertBannerHtml}
     <div style="font-size:12px;font-weight:800;color:#64748B;margin-bottom:8px">📋 처방 항목 (클릭하면 열림)</div>
     <div class="wt-axes-list" id="wtAxesList_${wi}">
@@ -9352,7 +9572,7 @@ async function init() {
   renderCover(res, bc);
   renderCh1(res, bc);
   renderDnaCard(res, bc);   // CH1 직후 — 오행×MBTI×사주×BC DNA 카드
-  renderChLens(res, bc);    // 각 챕터 도입부 개인화 렌즈 일괄 삽입
+  // renderChLens(res, bc);    // 각 챕터 도입부 개인화 렌즈 — 반복 중복으로 비활성화
   renderCh2(res, bc);
   renderCh3(res, bc);
   renderCh4(res, bc);
