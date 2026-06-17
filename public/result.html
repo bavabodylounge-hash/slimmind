@@ -401,7 +401,7 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
   background:var(--bc-bg,#E8FAF5);border-radius:var(--r-xl);
   padding:24px;margin-bottom:24px;display:flex;flex-direction:column;align-items:center;
 }
-.radar-canvas-wrap{width:100%;max-width:340px;margin:0 auto 16px}
+.radar-canvas-wrap{width:100%;max-width:360px;margin:0 auto 16px;padding:0 4px}
 
 /* 3대 원인 카드 (감성 대화체) */
 .top3-cause-list{display:flex;flex-direction:column;gap:16px;margin:16px 0}
@@ -735,7 +735,7 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
   .bta-body { padding: 14px 14px; }
 
   /* ── CH2 레이더 ── */
-  .radar-canvas-wrap { max-width: 260px; }
+  .radar-canvas-wrap { max-width: 310px; }
 
   /* ── CH5 오행 ── */
   .ohaeng-food-card { padding: 10px; }
@@ -3136,7 +3136,7 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
     <!-- 레이더 차트 -->
     <div class="radar-wrap">
       <div class="radar-canvas-wrap" style="animation:radarReveal .8s .2s ease both">
-        <canvas id="ch2RadarChart" width="320" height="320"></canvas>
+        <canvas id="ch2RadarChart" width="340" height="360"></canvas>
       </div>
       <div style="font-size:10.5px;color:#64748B;text-align:center;margin-top:8px;line-height:1.7">
         ※ 설문 응답과 AI 분석을 종합한 결과입니다<br>
@@ -6423,7 +6423,13 @@ function renderCh2(res, bc) {
   /* Chart.js 레이더차트 */
   const canvas = document.getElementById('ch2RadarChart');
   if (canvas && window.Chart) {
-    const labels = AXIS_DEFS.map(a => a.icon + ' ' + a.name);
+    // 라벨: 긴 이름은 두 줄로 분리해 잘림 방지 (Chart.js는 배열을 개행으로 처리)
+    const labels = AXIS_DEFS.map(a => {
+      const fullName = a.icon + ' ' + a.name;
+      // 7자 초과 시 아이콘/이름 분리 → 2줄 렌더
+      if (a.name.length > 6) return [a.icon, a.name];
+      return fullName;
+    });
     const data   = AXIS_DEFS.map(a => {
       // DB axis_scores 우선, 없으면 scoreEngine 계산값
       if (res.axis_scores && res.axis_scores[a.id] !== undefined) {
@@ -6481,9 +6487,13 @@ function renderCh2(res, bc) {
             grid:       { color: 'rgba(100,100,150,0.25)' },
             angleLines: { color: 'rgba(100,100,150,0.35)' },
             pointLabels:{
-              color: labelColors,
-              font: { size: 11 },
-              callback: (label, index) => label
+              color: (ctx) => labelColors[ctx.index] || '#334155',
+              font: (ctx) => ({
+                size: 10,
+                weight: labelWeights[ctx.index] || '600'
+              }),
+              padding: 10,
+              callback: (label) => label  // 배열이면 그대로 (Chart.js가 개행 처리)
             }
           }
         },
@@ -6868,11 +6878,29 @@ function renderCh3(res, bc) {
   const accentColor = getComputedStyle(document.documentElement)
     .getPropertyValue('--bc-accent').trim() || '#3ECBA5';
 
+  // bc.topAxes 기반으로 Phase 1 미션(1~3주) 동적 생성
+  // AXIS_DEFS의 shortMission: 로드맵 노드에서 보여줄 간결한 처방 키워드
+  const AXIS_ROAD_LABEL = {
+    A1:  '혈당 안정',   A2:  '장 환경',    A3:  '항염·회복',
+    A4:  '수면 최적화', A5:  '갑상선 활성', A6:  '수분·전해질',
+    A7:  '심혈관 강화', A8:  '호르몬 균형', A9:  '신경·도파민',
+    A10: '미토 에너지', A11: '체질 조율'
+  };
+  // topAxes 3개 → Phase1 미션 텍스트 (BC 맞춤)
+  const topAxes = (bc && bc.topAxes) ? bc.topAxes.slice(0,3) : ['A1','A3','A9'];
+  const ph1Mission = topAxes.map(id => AXIS_ROAD_LABEL[id] || id);
+
+  // Phase 2~4: topAxes 확장 → 같은 BC지만 심화 단계 표현
+  // Phase2: 동일 축 "집중", Phase3: "심화+루틴", Phase4: "마스터"
+  const ph2Mission = topAxes.map(id => (AXIS_ROAD_LABEL[id] || id) + ' 집중');
+  const ph3Mission = topAxes.map(id => (AXIS_ROAD_LABEL[id] || id) + ' 심화');
+  const ph4Mission = [ph1Mission[0]+' 마스터', ph1Mission[1]+' 자동화', ph1Mission[2]+' 유지'];
+
   const PHASES = [
-    { label:'🌱 기반 다지기', phLabel:'Phase 1', weeks:'1~3주',  color:'#3ECBA5', bg:'rgba(62,203,165,.12)',   desc:'혈당·수분·수면 기초 확립',   mission:['혈당 안정화','수분 기초','수면 리듬'] },
-    { label:'🔥 핵심 개입',   phLabel:'Phase 2', weeks:'4~6주',  color:'#F59E0B', bg:'rgba(245,158,11,.12)',   desc:'원인축 집중 처방 시작',      mission:['심혈관·혈당','간·수면','수분·장'] },
-    { label:'💫 가속화',      phLabel:'Phase 3', weeks:'7~9주',  color:'#A855F7', bg:'rgba(168,85,247,.12)',   desc:'습관 고착·심화 루틴',        mission:['호르몬·에너지','염증·혈당','신경·수면'] },
-    { label:'🏆 완성·유지',   phLabel:'Phase 4', weeks:'10~12주',color:'#3B82F6', bg:'rgba(59,130,246,.12)',   desc:'자동화·유지 시스템화',       mission:['갑상선·에너지','수분·심혈관','혈당 마스터'] }
+    { label:'🌱 기반 다지기', phLabel:'Phase 1', weeks:'1~3주',  color:'#3ECBA5', bg:'rgba(62,203,165,.12)',   desc:'핵심 3축 기초 확립',   mission: ph1Mission },
+    { label:'🔥 핵심 개입',   phLabel:'Phase 2', weeks:'4~6주',  color:'#F59E0B', bg:'rgba(245,158,11,.12)',   desc:'원인축 집중 처방',      mission: ph2Mission },
+    { label:'💫 가속화',      phLabel:'Phase 3', weeks:'7~9주',  color:'#A855F7', bg:'rgba(168,85,247,.12)',   desc:'습관 고착·심화 루틴',   mission: ph3Mission },
+    { label:'🏆 완성·유지',   phLabel:'Phase 4', weeks:'10~12주',color:'#3B82F6', bg:'rgba(59,130,246,.12)',   desc:'자동화·유지 시스템화',  mission: ph4Mission }
   ];
 
   /* ── 진척률 미니 대시보드 ── */
@@ -6916,10 +6944,27 @@ function renderCh3(res, bc) {
   /* ── S자 로드맵 노드 렌더 ── */
   // S자 흐름: 짝수 Phase (0,2) → 왼→오른 / 홀수 Phase (1,3) → 오른→왼
   // 각 Phase 내 3주는 순서대로, Phase간 방향 전환
-  let sRoadHtml = '';
+  const roadmapTree = _currentWeeklyTree || defaultWeeklyTree; // BC별 처방 연동
+
+  // BC 처방 연결 안내 배너
+  const axisIconsStr = topAxes.map(id => {
+    const ax = AXIS_DEFS.find(a => a.id === id);
+    return ax ? ax.icon + ' ' + ax.name : id;
+  }).join(' → ');
+  const bcRoadBanner = `
+    <div style="background:linear-gradient(90deg,#0f172a,#1e3a5f);border-radius:12px;padding:10px 14px;
+      margin-bottom:12px;display:flex;align-items:center;gap:10px;border:1px solid rgba(62,203,165,.3)">
+      <div style="font-size:20px;flex-shrink:0">🎯</div>
+      <div style="flex:1">
+        <div style="font-size:10px;font-weight:900;color:#3ECBA5;letter-spacing:.06em;margin-bottom:2px">당신의 3대 처방축이 로드맵에 반영됩니다</div>
+        <div style="font-size:9.5px;color:rgba(255,255,255,.7);line-height:1.5">${axisIconsStr}</div>
+      </div>
+    </div>`;
+
+  let sRoadHtml = bcRoadBanner;
 
   PHASES.forEach((ph, phIdx) => {
-    const group = defaultWeeklyTree[phIdx];
+    const group = roadmapTree[phIdx];
     if (!group) return;
     const isReverse = phIdx % 2 === 1; // 홀수 Phase = 오른쪽에서 왼쪽
     const weeks = isReverse ? [...group.weeks].reverse() : group.weeks;
@@ -6939,9 +6984,15 @@ function renderCh3(res, bc) {
     sRoadHtml += `<div style="display:flex;flex-direction:${isReverse?'row-reverse':'row'};gap:6px;margin-bottom:4px;align-items:stretch">`;
     weeks.forEach((wk, wkIdx) => {
       const locked = wk.wi > FREE_WEEKS;
-      // 원래 wi 기준 wiOrig (reverse 시 역방향이므로)
-      const missionName = ph.mission[isReverse ? (2 - wkIdx) : wkIdx] || wk.axes[0]?.label || '';
-      const axIcons = wk.axes.slice(0,2).map(a => a.icon).join('');
+      // mission 인덱스: reverse일 때 반전
+      const mIdx = isReverse ? (2 - wkIdx) : wkIdx;
+      const missionName = ph.mission[mIdx] || wk.axes[0]?.label || '';
+      // Phase1(1~3주)는 bc.topAxes 순서대로 해당 주차의 핵심 축 아이콘 표시
+      const bcAxisId = (phIdx === 0) ? topAxes[mIdx] : null;
+      const bcAxisDef = bcAxisId ? AXIS_DEFS.find(a => a.id === bcAxisId) : null;
+      const axIcons = bcAxisDef
+        ? bcAxisDef.icon + (wk.axes[1] ? wk.axes[1].icon : '')
+        : wk.axes.slice(0,2).map(a => a.icon).join('');
 
       if (locked) {
         sRoadHtml += `
@@ -7050,7 +7101,8 @@ function journeyNodeClick(wi) {
   }
 
   let weekData = null;
-  defaultWeeklyTree.forEach(g => g.weeks.forEach(w => { if (w.wi === wi) weekData = w; }));
+  const activeTree = _currentWeeklyTree || defaultWeeklyTree;
+  activeTree.forEach(g => g.weeks.forEach(w => { if (w.wi === wi) weekData = w; }));
   if (!weekData) return;
 
   const detailEl = document.getElementById('ch3WeekDetail');
@@ -8240,14 +8292,15 @@ function renderWeeklyClickTree(res, bc) {
       arrowHtml = '<div class="wt-week-arrow" style="opacity:.5">▼</div>';
     } else if (isCurrent) {
       stateClass = ' wt-current';
-      stateStyle = 'border-color:#7C3AED;box-shadow:0 0 0 2px rgba(124,58,237,.25);background:#FAF5FF';
+      stateStyle = 'border-color:#7C3AED;box-shadow:0 0 0 3px rgba(124,58,237,.3);background:#FAF5FF;transform:translateY(-2px)';
       statusBadge = '<div style="position:absolute;top:6px;right:6px;background:#7C3AED;color:#fff;font-size:8.5px;font-weight:900;border-radius:99px;padding:2px 7px;animation:cardPulse 2s ease-in-out infinite">진행중</div>';
       axesHtml = `<div style="font-size:18px;margin-bottom:3px">${week.axes.map(a=>a.icon).join(' ')}</div>`;
-      arrowHtml = `<div class="wt-week-arrow" id="wtArrow_${wi}" style="color:#7C3AED;background:rgba(124,58,237,.12)">▼</div>`;
+      // 강한 CTA 버튼으로 교체
+      arrowHtml = `<div id="wtArrow_${wi}" style="background:#7C3AED;color:#fff;font-size:9.5px;font-weight:900;border-radius:8px;padding:5px 0;width:100%;text-align:center;margin-top:2px;animation:cardPulse 2s ease-in-out infinite;box-sizing:border-box">👆 처방 확인</div>`;
     } else {
       // 무료이지만 아직 시작 전
       axesHtml = `<div style="font-size:18px;margin-bottom:3px">${week.axes.map(a=>a.icon).join(' ')}</div>`;
-      arrowHtml = `<div class="wt-week-arrow" id="wtArrow_${wi}">▼</div>`;
+      arrowHtml = `<div class="wt-week-arrow" id="wtArrow_${wi}" style="background:#F1F5F9;color:#475569;border-radius:6px;padding:3px 8px">탭 ▾</div>`;
     }
 
     return `
@@ -8264,9 +8317,24 @@ function renderWeeklyClickTree(res, bc) {
 
   let html = '';
 
-  // ── 섹션 1: 무료 주차 (1~3주차) ──
+  // ── 섹션 1: 무료 주차 (1~3주차) — 클릭 유도 배너 포함 ──
+  const currentLabel = (freeWeeks.find(w => w.wi === currentWi) || freeWeeks[0])?.label || '1주차';
+  const firstAxis = (freeWeeks.find(w => w.wi === currentWi) || freeWeeks[0])?.axes[0];
   html += `<div class="wt-group">
     <div class="wt-group-label" style="color:#16A34A">🔓 무료 · 1~3주차: 기반 다지기</div>
+    <!-- 클릭 유도 배너 -->
+    <div style="background:linear-gradient(90deg,#7C3AED,#A855F7);border-radius:10px;padding:11px 14px;
+      margin-bottom:10px;display:flex;align-items:center;gap:10px;cursor:pointer;
+      box-shadow:0 4px 14px rgba(124,58,237,.3)"
+      onclick="wtToggleWeek(${currentWi + 1})">
+      <div style="font-size:22px;flex-shrink:0;animation:cardPulse 1.5s ease-in-out infinite">👇</div>
+      <div style="flex:1">
+        <div style="font-size:12px;font-weight:900;color:#fff">${currentLabel} 처방 — ${firstAxis ? firstAxis.icon + ' ' + firstAxis.label : ''}</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.8);margin-top:2px">카드를 탭하면 처방·퀴즈가 아래에 펼쳐집니다</div>
+      </div>
+      <div style="font-size:11px;font-weight:900;color:#fff;background:rgba(255,255,255,.2);
+        border-radius:8px;padding:6px 10px;white-space:nowrap">지금 보기 ▼</div>
+    </div>
     <div class="wt-week-row">`;
   freeWeeks.forEach(week => { html += buildCard(week); });
   html += `</div></div>`;
