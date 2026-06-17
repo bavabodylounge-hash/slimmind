@@ -2561,6 +2561,15 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
   text-align:center;
 }
 
+/* 완료 주차 카드 */
+.wt-week-card.wt-done{
+  animation:none !important;
+}
+/* 진행중 주차 카드 */
+.wt-week-card.wt-current{
+  animation:none !important;
+}
+
 /* 잠금 모달 */
 .pw-modal-bg{
   position:fixed;inset:0;
@@ -3857,6 +3866,7 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 
     <div class="sec-kicker">컨설턴트의 말</div>
     <div class="sec-heading">처음 시작을 위한 안내</div>
+    <div class="sec-sub" style="margin-bottom:16px">이 페이지는 분석이 아니라 <strong style="color:var(--bc-main,#0B2545)">앞으로 12주간 무엇을 할지</strong> 알려주는 가이드입니다.</div>
 
     <!-- 진단 완료 스토리 카드 (JS renderCh8에서 채움) -->
     <div id="ch8SummaryGrid" style="margin-bottom:16px"></div>
@@ -7666,26 +7676,13 @@ function renderCh8(res, bc) {
   /* 진단 완료 스토리 카드 */
   const gridEl = document.getElementById('ch8SummaryGrid');
   if (gridEl) {
-    const { totalScore, algoScore, aiBonus } = scoreEngine(res);
-    const uType  = classifyUserType(res);
-    const temp   = TEMP_TYPE_DB[bc.id] || {};
-    const accent = getComputedStyle(document.documentElement)
-                     .getPropertyValue('--bc-accent').trim() || '#3ECBA5';
-
-    // 핵심 처방축 아이콘 + 이름
-    const topAxesHtml = (bc.topAxes || []).slice(0,3).map((axId, i) => {
-      const ax = AXIS_DEFS.find(a => a.id === axId);
-      const rankColors = ['#E84545','#F59E0B','#3B82F6'];
-      return ax ? `<span style="display:inline-flex;align-items:center;gap:4px;
-        background:${rankColors[i]}18;border:1px solid ${rankColors[i]}40;
-        border-radius:99px;padding:3px 10px;font-size:11px;font-weight:800;color:${rankColors[i]}">
-        ${ax.icon} ${axId}</span>` : '';
-    }).join('');
+    const { totalScore } = scoreEngine(res);
+    const name = res.name || '고객';
 
     gridEl.innerHTML = `
-      <!-- ① BC 정체성 배너 -->
+      <!-- ① BC 정체성 배너 (유지) -->
       <div style="background:linear-gradient(135deg,var(--bc-main,#0B2545) 0%,#1e3a5f 100%);
-        border-radius:16px;padding:18px 20px;color:#fff;margin-bottom:12px;
+        border-radius:16px;padding:18px 20px;color:#fff;margin-bottom:16px;
         display:flex;align-items:center;gap:16px">
         <div style="font-size:42px;flex-shrink:0">${bc.icon || '🧬'}</div>
         <div style="flex:1;min-width:0">
@@ -7700,114 +7697,100 @@ function renderCh8(res, bc) {
         </div>
       </div>
 
-      <!-- ② 3개 핵심 지표 카드 -->
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">
-        <div style="background:#F0FDF4;border:1.5px solid #BBF7D0;border-radius:14px;padding:12px;text-align:center">
-          <div style="font-size:9px;font-weight:700;color:#15803D;letter-spacing:.1em;margin-bottom:5px">오행 기운</div>
-          <div style="font-size:20px;margin-bottom:3px">${bc.ohaeng || '-'}</div>
-          <div style="font-size:10px;color:#475569">체질 에너지</div>
-        </div>
-        <div style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:14px;padding:12px;text-align:center">
-          <div style="font-size:9px;font-weight:700;color:#1D4ED8;letter-spacing:.1em;margin-bottom:5px">기질 유형</div>
-          <div style="font-size:13px;font-weight:800;color:#0B2545;margin-bottom:3px;line-height:1.2">${temp.name || bc.name}</div>
-          <div style="font-size:10px;color:#475569">${uType.label}</div>
-        </div>
-        <div style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:14px;padding:12px;text-align:center">
-          <div style="font-size:9px;font-weight:700;color:#C2410C;letter-spacing:.1em;margin-bottom:5px">분석 정확도</div>
-          <div style="font-size:13px;font-weight:900;color:#0B2545;margin-bottom:3px">알고 ${algoScore}<span style="font-size:10px;font-weight:600"> + AI ${aiBonus}</span></div>
-          <div style="font-size:10px;color:#475569">점수 합산</div>
-        </div>
+      <!-- ② 12주 3단계 안내 -->
+      <div style="font-size:13px;font-weight:700;color:#334155;margin-bottom:12px;padding:0 4px">
+        <span style="color:var(--bc-main,#0B2545);font-weight:900">${name}</span> 님, 앞으로 <strong style="color:var(--bc-accent,#3ECBA5)">12주</strong>간 매주 이 세 단계가 반복됩니다.
       </div>
 
-      <!-- ③ 핵심 처방축 -->
-      <div style="background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:14px;padding:14px">
-        <div style="font-size:10px;font-weight:800;color:#475569;letter-spacing:.12em;margin-bottom:10px">🎯 핵심 처방축 TOP 3</div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px">${topAxesHtml}</div>
-        <div style="margin-top:10px;padding-top:10px;border-top:1px dashed #E2E8F0;
-          font-size:11px;color:#475569;line-height:1.7">
-          ${bc.consultantNote ? `<span style="font-size:18px">💬</span> <em>${(bc.consultantNote||'').replace(/<[^>]*>/g,'').substring(0,80)}${(bc.consultantNote||'').length>80?'…':''}</em>` : ''}
+      <!-- ③ 3단계 카드 -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+        <!-- STEP 1 -->
+        <div style="background:#F0FDF4;border:2px solid #86EFAC;border-radius:14px;padding:14px 10px;text-align:center">
+          <div style="width:32px;height:32px;background:#16A34A;border-radius:50%;color:#fff;font-size:15px;font-weight:900;display:flex;align-items:center;justify-content:center;margin:0 auto 8px">1</div>
+          <div style="font-size:11px;font-weight:800;color:#15803D;margin-bottom:5px">이번 주 처방 확인</div>
+          <div style="font-size:10px;color:#475569;line-height:1.6">아래 주차 카드를 눌러 오늘의 처방을 확인하세요</div>
+        </div>
+        <!-- STEP 2 -->
+        <div style="background:#EFF6FF;border:2px solid #93C5FD;border-radius:14px;padding:14px 10px;text-align:center">
+          <div style="width:32px;height:32px;background:#2563EB;border-radius:50%;color:#fff;font-size:15px;font-weight:900;display:flex;align-items:center;justify-content:center;margin:0 auto 8px">2</div>
+          <div style="font-size:11px;font-weight:800;color:#1D4ED8;margin-bottom:5px">퀴즈 풀기</div>
+          <div style="font-size:10px;color:#475569;line-height:1.6">처방 내용을 이해했는지 짧은 퀴즈로 확인합니다</div>
+        </div>
+        <!-- STEP 3 -->
+        <div style="background:#FFF7ED;border:2px solid #FCA5A5;border-radius:14px;padding:14px 10px;text-align:center">
+          <div style="width:32px;height:32px;background:#DC2626;border-radius:50%;color:#fff;font-size:15px;font-weight:900;display:flex;align-items:center;justify-content:center;margin:0 auto 8px">3</div>
+          <div style="font-size:11px;font-weight:800;color:#DC2626;margin-bottom:5px">체크인하면 완료</div>
+          <div style="font-size:10px;color:#475569;line-height:1.6">실천했다면 체크인! 주차가 완료로 표시됩니다</div>
         </div>
       </div>
     `;
   }
 
-  /* ── MBTI·기질·성향 기반 개인화 메시지 박스 ── */
+  /* ── 기질 맞춤 처방 방식 박스 (3칸 카드 그리드) ── */
   const mbtiEl = document.getElementById('ch8PersonalityBox');
   if (mbtiEl) {
     const mbti    = (res.mbti || '').toUpperCase();
-    const exSocial = res.exercise_social_type || '';   // alone/together/coaching/video
-    const motiv   = res.motivation_type || '';         // numbers/appearance/achievement/external/health_scare
-    const motivTrig = res.motivation_trigger || '';
+    const exSocial = res.exercise_social_type || '';
+    const motiv   = res.motivation_type || '';
     const bingeTrig = res.binge_trigger || '';
-    const bestRoutine = res.best_routine || '';
-
-    // I/E 판단
     const isIntro = mbti.includes('I') || exSocial === 'alone' || exSocial === 'video';
-    // J/P 판단
-    const isJ = mbti.includes('J') || (res.diet_plan_style === 'strict');
-    // T/F 판단
     const isT = mbti.includes('T') || motiv === 'numbers' || motiv === 'achievement';
 
-    // 운동 방식 개인화
-    const exerciseStyle = isIntro
-      ? '혼자서 집에서 할 수 있는 루틴 중심으로 처방을 구성했습니다. 유튜브 영상이나 앱을 활용하세요.'
-      : '그룹 운동·PT·클래스가 당신에게 훨씬 효과적입니다. 혼자 하면 작심삼일이 되기 쉬운 유형입니다.';
+    // 운동 방식 카드
+    const exerciseCard = isIntro
+      ? { icon:'🏠', title:'혼자·홈트 중심', desc:'집에서 유튜브·앱을 활용한 루틴이 가장 잘 맞습니다' }
+      : { icon:'🤝', title:'그룹·PT 중심', desc:'클래스·PT가 당신에게 훨씬 효과적입니다' };
 
-    // 동기부여 방식 개인화
-    const motivStyle = motiv === 'numbers'
-      ? '체중계 숫자, 체지방률, 혈당 수치 — 숫자로 추적하면 됩니다. 매주 같은 조건에서 재세요.'
+    // 동기 유지 카드
+    const motivCard = motiv === 'numbers'
+      ? { icon:'📊', title:'숫자 추적', desc:'체중·체지방·혈당 수치를 매주 같은 조건에서 기록' }
       : motiv === 'appearance'
-      ? '거울을 매일 보세요. 사진을 찍어두세요. 눈에 보이는 변화가 당신의 엔진입니다.'
+      ? { icon:'🪞', title:'거울·사진', desc:'매일 사진을 찍어두세요. 눈에 보이는 변화가 엔진' }
       : motiv === 'health_scare'
-      ? '건강 위기감이 당신을 움직입니다. 검사 수치를 확인하고 기록하는 것이 최고의 동기 도구입니다.'
-      : '작은 목표를 매주 하나씩 달성하세요. 체크리스트가 당신에게 가장 강력한 도구입니다.';
+      ? { icon:'🏥', title:'건강 수치', desc:'검사 수치를 확인·기록하는 것이 최고의 동기 도구' }
+      : { icon:'✅', title:'작은 목표', desc:'매주 하나씩 작은 목표를 달성하며 체크리스트 완성' };
 
-    // 처방 전달 방식 개인화
-    const prescStyle = isT
-      ? '근거와 메커니즘을 이해하고 실행하는 유형입니다. 왜 해야 하는지 알면 훨씬 잘 지킵니다.'
-      : '감정적 공감과 응원이 먼저입니다. 처방을 강요가 아닌 선택으로 느낄 때 오래 지속됩니다.';
+    // 처방 받는 법 카드
+    const prescCard = isT
+      ? { icon:'🔬', title:'근거 기반', desc:'왜 해야 하는지 메커니즘을 이해하면 훨씬 잘 지킵니다' }
+      : { icon:'💬', title:'선택의 느낌', desc:'처방을 강요가 아닌 선택으로 느낄 때 오래 지속됩니다' };
 
-    // 폭식·이탈 예방
-    const bingeMsg = bingeTrig
-      ? `⚠️ <strong>이탈 트리거 주의</strong>: "${bingeTrig}"가 이탈 신호입니다. 이 상황이 오면 처방 대신 "<strong>오늘 하루만 리셋</strong>" 룰을 적용하세요.`
+    const bingeHtml = bingeTrig
+      ? `<div style="background:#FFF0F0;border-radius:12px;padding:12px 14px;border-left:3px solid #EF4444;margin-top:10px;font-size:11.5px;color:#334155;line-height:1.65">
+          ⚠️ <strong>이탈 트리거 주의</strong>: "${bingeTrig}"가 이탈 신호입니다. 이 상황엔 "<strong>오늘 하루만 리셋</strong>" 룰을 적용하세요.
+        </div>`
       : '';
 
-    // MBTI 이모지
-    const mbtiEmoji = {'INTJ':'🎯','INTP':'🔬','ENTJ':'⚡','ENTP':'💡',
-      'INFJ':'🌙','INFP':'🌸','ENFJ':'🤝','ENFP':'🌈',
-      'ISTJ':'📋','ISFJ':'🛡️','ESTJ':'🏆','ESFJ':'💛',
-      'ISTP':'🔧','ISFP':'🎨','ESTP':'🚀','ESFP':'🎉'}[mbti] || '🧬';
-
     mbtiEl.innerHTML = `
-      <div style="background:linear-gradient(135deg,#F0F4FF,#EEF7F5);border-radius:16px;padding:18px 16px;margin-bottom:16px;border:1.5px solid #C7D2FE">
-        <div style="font-size:10px;font-weight:800;color:#4338CA;letter-spacing:.15em;margin-bottom:10px">🧠 당신의 기질·성향 맞춤 처방 방식</div>
-
-        ${mbti && mbti !== '유추해드릴게요' ? `
-        <div style="display:flex;align-items:center;gap:10px;background:#fff;border-radius:10px;padding:10px 12px;margin-bottom:10px">
-          <div style="font-size:24px">${mbtiEmoji}</div>
-          <div>
-            <div style="font-size:15px;font-weight:900;color:#0B2545">${mbti}</div>
-            <div style="font-size:10px;color:#64748B">${isIntro?'내향형 · 혼자만의 시간에서 에너지를 얻는':'외향형 · 사람들과 함께할 때 에너지가 오르는'} ${isJ?'· 계획형 · 구조와 루틴이 안정감을 주는':'· 즉흥형 · 유연하게 적응하며 나아가는'} 유형</div>
+      <div style="background:linear-gradient(135deg,#F0F4FF,#EEF7F5);border-radius:16px;padding:18px 14px;margin-bottom:16px;border:1.5px solid #C7D2FE">
+        <div style="font-size:10px;font-weight:800;color:#4338CA;letter-spacing:.15em;margin-bottom:12px">🧠 당신의 기질·성향 맞춤 처방 방식</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+          <!-- 운동 방식 -->
+          <div style="background:#fff;border-radius:12px;padding:14px 10px;text-align:center;border-top:3px solid #6366F1">
+            <div style="font-size:26px;margin-bottom:6px">${exerciseCard.icon}</div>
+            <div style="font-size:10px;font-weight:800;color:#6366F1;margin-bottom:5px">운동 방식</div>
+            <div style="font-size:11px;font-weight:700;color:#0B2545;margin-bottom:4px">${exerciseCard.title}</div>
+            <div style="font-size:10px;color:#64748B;line-height:1.55">${exerciseCard.desc}</div>
           </div>
-        </div>` : ''}
-
-        <div style="display:flex;flex-direction:column;gap:8px">
-          <div style="background:#fff;border-radius:10px;padding:10px 12px;border-left:3px solid #6366F1">
-            <div style="font-size:10px;font-weight:800;color:#6366F1;margin-bottom:4px">🏋️ 운동 방식</div>
-            <div style="font-size:11.5px;color:#334155;line-height:1.65">${exerciseStyle}</div>
+          <!-- 동기 유지 -->
+          <div style="background:#fff;border-radius:12px;padding:14px 10px;text-align:center;border-top:3px solid #10B981">
+            <div style="font-size:26px;margin-bottom:6px">${motivCard.icon}</div>
+            <div style="font-size:10px;font-weight:800;color:#10B981;margin-bottom:5px">동기 유지</div>
+            <div style="font-size:11px;font-weight:700;color:#0B2545;margin-bottom:4px">${motivCard.title}</div>
+            <div style="font-size:10px;color:#64748B;line-height:1.55">${motivCard.desc}</div>
           </div>
-          <div style="background:#fff;border-radius:10px;padding:10px 12px;border-left:3px solid #10B981">
-            <div style="font-size:10px;font-weight:800;color:#10B981;margin-bottom:4px">🎯 동기 유지법</div>
-            <div style="font-size:11.5px;color:#334155;line-height:1.65">${motivStyle}</div>
+          <!-- 처방 받는 법 -->
+          <div style="background:#fff;border-radius:12px;padding:14px 10px;text-align:center;border-top:3px solid #F59E0B">
+            <div style="font-size:26px;margin-bottom:6px">${prescCard.icon}</div>
+            <div style="font-size:10px;font-weight:800;color:#F59E0B;margin-bottom:5px">처방 받는 법</div>
+            <div style="font-size:11px;font-weight:700;color:#0B2545;margin-bottom:4px">${prescCard.title}</div>
+            <div style="font-size:10px;color:#64748B;line-height:1.55">${prescCard.desc}</div>
           </div>
-          <div style="background:#fff;border-radius:10px;padding:10px 12px;border-left:3px solid #F59E0B">
-            <div style="font-size:10px;font-weight:800;color:#F59E0B;margin-bottom:4px">📋 처방 받는 방식</div>
-            <div style="font-size:11.5px;color:#334155;line-height:1.65">${prescStyle}</div>
-          </div>
-          ${bingeMsg ? `<div style="background:#FFF0F0;border-radius:10px;padding:10px 12px;border-left:3px solid #EF4444;font-size:11.5px;color:#334155;line-height:1.65">${bingeMsg}</div>` : ''}
         </div>
+        ${bingeHtml}
       </div>`;
   }
+
 
   /* 선언문 ID 채우기 */
   setText('ch8DeclBcCode',  bc.id || '');
@@ -8114,32 +8097,100 @@ function renderCh9(res, bc) {
 let wtState = {};
 
 function renderWeeklyClickTree(res, bc) {
-  _journeyRes = _journeyRes || res; // ch3에서 이미 저장됐으면 유지
+  _journeyRes = _journeyRes || res;
   const gridEl = document.getElementById('wtWeekGrid');
   if (!gridEl) return;
 
-  let html = '';
+  // 완료 주차 판별 (localStorage에서 체크인 완료 목록 읽기)
+  let completedWeeks = [];
+  try {
+    completedWeeks = JSON.parse(localStorage.getItem('wt_completed') || '[]');
+  } catch(e) {}
+  // 현재 진행 중 주차: 완료 주차 다음 무료 주차 (기본 1주차)
+  const lastDone = completedWeeks.length > 0 ? Math.max(...completedWeeks) : -1;
+  const currentWi = Math.min(lastDone + 1, 2); // 최대 2(3주차)까지만 진행중 가능
+
+  // ── 2섹션으로 분류 ──
+  // 무료: wi 0,1,2 (1~3주차) / 프리미엄: wi 3~11 (4~12주차)
+  const freeWeeks = [];
+  const premWeeks = [];
   defaultWeeklyTree.forEach(group => {
-    html += `<div class="wt-group">
-      <div class="wt-group-label">${group.groupLabel}</div>
-      <div class="wt-week-row">`;
     group.weeks.forEach(week => {
-      const wi = week.wi;
-      const wLocked = isWeekLockedByIndex(wi); // wi는 0-indexed (0=1주차)
-      html += `
-        <div class="wt-week-card${wLocked ? ' pw-locked' : ''}" id="wtWeek_${wi}" onclick="wtToggleWeek(${wi})">
-          <div class="wt-week-num">${week.label}</div>
-          <div class="wt-week-range">${week.range}</div>
-          <div class="wt-week-axes">${wLocked ? '🔒' : week.axes.map(a => a.icon).join(' ')}</div>
-          <div class="wt-week-arrow" id="wtArrow_${wi}">${wLocked ? '' : '▼'}</div>
-        </div>`;
+      if (week.wi < 3) freeWeeks.push(week);
+      else premWeeks.push(week);
     });
-    html += `</div></div>`;
   });
+
+  function buildCard(week) {
+    const wi = week.wi;
+    const isLocked = isWeekLockedByIndex(wi);
+    const isDone   = completedWeeks.includes(wi);
+    const isCurrent = !isLocked && !isDone && wi === currentWi;
+
+    let stateClass = '';
+    let stateStyle = '';
+    let statusBadge = '';
+    let axesHtml = '';
+    let arrowHtml = '';
+
+    if (isLocked) {
+      stateClass = ' pw-locked';
+      stateStyle = 'filter:blur(0px);opacity:.55;cursor:default';
+      axesHtml = '<div style="font-size:18px">🔒</div>';
+      arrowHtml = '';
+    } else if (isDone) {
+      stateClass = ' wt-done';
+      stateStyle = 'opacity:.65;background:#F8FAFC;border-color:#CBD5E1';
+      statusBadge = '<div style="position:absolute;top:6px;right:6px;background:#10B981;color:#fff;font-size:8.5px;font-weight:900;border-radius:99px;padding:2px 7px">✓ 완료</div>';
+      axesHtml = `<div style="font-size:15px;margin-bottom:3px">${week.axes.map(a=>a.icon).join(' ')}</div>`;
+      arrowHtml = '<div class="wt-week-arrow" style="opacity:.5">▼</div>';
+    } else if (isCurrent) {
+      stateClass = ' wt-current';
+      stateStyle = 'border-color:#7C3AED;box-shadow:0 0 0 2px rgba(124,58,237,.25);background:#FAF5FF';
+      statusBadge = '<div style="position:absolute;top:6px;right:6px;background:#7C3AED;color:#fff;font-size:8.5px;font-weight:900;border-radius:99px;padding:2px 7px;animation:cardPulse 2s ease-in-out infinite">진행중</div>';
+      axesHtml = `<div style="font-size:18px;margin-bottom:3px">${week.axes.map(a=>a.icon).join(' ')}</div>`;
+      arrowHtml = `<div class="wt-week-arrow" id="wtArrow_${wi}" style="color:#7C3AED;background:rgba(124,58,237,.12)">▼</div>`;
+    } else {
+      // 무료이지만 아직 시작 전
+      axesHtml = `<div style="font-size:18px;margin-bottom:3px">${week.axes.map(a=>a.icon).join(' ')}</div>`;
+      arrowHtml = `<div class="wt-week-arrow" id="wtArrow_${wi}">▼</div>`;
+    }
+
+    return `
+      <div class="wt-week-card${stateClass}" id="wtWeek_${wi}"
+           style="position:relative;${stateStyle}"
+           onclick="${isLocked ? `openPaywall(${wi+1})` : `wtToggleWeek(${wi+1})`}">
+        ${statusBadge}
+        <div class="wt-week-num">${week.label}</div>
+        <div class="wt-week-range">${week.range}</div>
+        ${axesHtml}
+        ${arrowHtml}
+      </div>`;
+  }
+
+  let html = '';
+
+  // ── 섹션 1: 무료 주차 (1~3주차) ──
+  html += `<div class="wt-group">
+    <div class="wt-group-label" style="color:#16A34A">🔓 무료 · 1~3주차: 기반 다지기</div>
+    <div class="wt-week-row">`;
+  freeWeeks.forEach(week => { html += buildCard(week); });
+  html += `</div></div>`;
+
+  // ── 섹션 2: 프리미엄 주차 (4~12주차) ──
+  html += `<div class="wt-group">
+    <div class="wt-group-label" style="color:#7C3AED">🔒 프리미엄 · 4~12주차: 심화 처방</div>
+    <div class="wt-week-row">`;
+  premWeeks.forEach(week => { html += buildCard(week); });
+  html += `</div></div>`;
+
   gridEl.innerHTML = html;
 
-  /* 1주차 자동 열기 — 처음 접속 시 빈 화면 방지 */
-  setTimeout(() => wtToggleWeek(1), 500);
+  /* 현재 주차 자동 열기 */
+  setTimeout(() => {
+    const openWi = completedWeeks.length > 0 ? Math.min(lastDone + 2, 3) : 1;
+    wtToggleWeek(openWi);
+  }, 500);
 }
 
 function wtToggleWeek(wi) {
@@ -8302,6 +8353,25 @@ async function wtCheckin(wi, ai, weekRange, axisId) {
     if (data.ok) {
       if (btn)  btn.style.display  = 'none';
       if (done) done.style.display = 'flex';
+      // ── 주차 완료 → localStorage 저장 후 카드 상태 갱신 ──
+      try {
+        const wiIndex = wi - 1; // wtCheckin은 1-indexed wi 사용
+        const completed = JSON.parse(localStorage.getItem('wt_completed') || '[]');
+        if (!completed.includes(wiIndex)) {
+          completed.push(wiIndex);
+          localStorage.setItem('wt_completed', JSON.stringify(completed));
+        }
+        // 해당 카드 즉시 완료 상태로 갱신
+        const card = document.getElementById(`wtWeek_${wiIndex}`);
+        if (card) {
+          card.classList.add('wt-done');
+          card.style.opacity = '.65';
+          card.style.background = '#F8FAFC';
+          card.style.borderColor = '#CBD5E1';
+          const badge = card.querySelector('[style*="진행중"]');
+          if (badge) { badge.textContent = '✓ 완료'; badge.style.background = '#10B981'; badge.style.animation = 'none'; }
+        }
+      } catch(e2) {}
     } else {
       if (btn) { btn.disabled = false; btn.textContent = '재시도'; }
     }
