@@ -3113,6 +3113,12 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 
 
 <!-- ═══════════════════════════════════════════════════════
+     DNA 인사이트 카드 — CH1 직후 삽입 (JS renderDnaCard에서 채움)
+     오행 × 사주 × MBTI/혈액형 × BC 교차 해석
+═══════════════════════════════════════════════════════ -->
+<div id="dnaInsightCard" style="padding:0 16px;margin:0 0 0;display:none"></div>
+
+<!-- ═══════════════════════════════════════════════════════
      CH2 — 2차: 11축 데이터 시각화 + 3대 원인 감성 대화체
 ═══════════════════════════════════════════════════════ -->
 <div class="chapter" data-ch="2" id="ch2">
@@ -3129,6 +3135,8 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
       11개 원인축의 신호 강도를 레이더 차트로 시각화했습니다.<br>
       수치가 클수록 그 축이 체중 조절에 미치는 영향이 큽니다.
     </div>
+    <!-- CH2 개인화 렌즈 (JS renderChLens에서 채움) -->
+    <div id="ch2DnaLens"></div>
 
     <!-- TOP3 요약 뱃지 -->
     <div id="ch2Top3Badges" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"></div>
@@ -3266,6 +3274,8 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 
     <!-- 사용자 유형 배지 -->
     <div id="ch4UserTypeBadge"></div>
+    <!-- CH4 개인화 렌즈 (JS renderChLens에서 채움) -->
+    <div id="ch4DnaLens"></div>
 
     <!-- 공감 히어로 -->
     <div class="empathy-hero">
@@ -3473,6 +3483,8 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
       BC 코드가 분석한 <strong style="color:#0B2545">현재 몸 상태 기반 우선 처방</strong>입니다.<br>
       식단·운동·영양제 중 <em>하나씩</em> 적용하는 것부터 시작하세요.
     </div>
+    <!-- CH6 개인화 렌즈 (JS renderChLens에서 채움) -->
+    <div id="ch6DnaLens"></div>
     <!-- 처방 레이어 안내 -->
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;padding:10px 14px;
       background:linear-gradient(90deg,#EFF6FF,#F0FDF4);border-radius:10px;
@@ -3880,6 +3892,8 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
     <div class="sec-heading">지금 당장 시작하세요</div>
     <div class="sec-sub" style="margin-bottom:16px">이전 페이지의 12주 로드맵 <strong style="color:var(--bc-main,#0B2545)">조감도</strong>를 확인했다면,<br>
     이제 <strong style="color:var(--bc-main,#0B2545)">이번 주 1가지만 실천</strong>하는 실행 가이드입니다.</div>
+    <!-- CH8 개인화 렌즈 (JS renderChLens에서 채움) -->
+    <div id="ch8DnaLens"></div>
 
     <!-- 진단 완료 스토리 카드 (JS renderCh8에서 채움) -->
     <div id="ch8SummaryGrid" style="margin-bottom:16px"></div>
@@ -4821,6 +4835,126 @@ function calcAxisSignalV2(res, keyWeightPairs) {
   });
   if (totalWeight === 0) return 0;
   return Math.min(Math.round((weightedSum / totalWeight) * 10) / 10, 10);
+}
+
+/* ══════════════════════════════════════════════════════
+   buildPersonaDNA(res, bc)
+   — 오행 × 사주 × MBTI/혈액형 × BC 교차 해석 엔진
+   — 결과지 전체에서 공유되는 "개인 DNA 문장" 생성
+══════════════════════════════════════════════════════ */
+function buildPersonaDNA(res, bc) {
+  const R = window.__RESULT__ || {};
+  const ohaeng   = R.ohaeng  || {};
+  const saju     = R.saju    || {};
+  const mbtiBlood = R.mbti_blood || {};
+
+  // ── 오행 기질 해석 ──
+  const ohType = bc.ohaeng || ohaeng.ohaeng_type || '';
+  const OHAENG_PERSONA = {
+    '목(木)': { core:'성장과 도전 에너지', weak:'간·담낭 피로 누적', diet:'쓴맛·신맛 채소 우선',
+      personality:'결단력이 강하지만 완벽주의 스트레스가 몸을 갉아먹는 유형입니다.',
+      why:'목(木) 체질은 스트레스→간 과부하→지방 대사 저하 경로가 가장 먼저 열립니다.' },
+    '화(火)': { core:'순환과 열의 에너지', weak:'심장·소장 과부하', diet:'쓴맛·붉은 채소 우선',
+      personality:'열정적이고 빠른 결정을 즐기지만 소진 후 폭식 패턴이 있습니다.',
+      why:'화(火) 체질은 열 과잉→수면 방해→코르티솔 상승→복부지방 경로가 나타납니다.' },
+    '토(土)': { core:'중심과 소화 에너지', weak:'비위·췌장 약함', diet:'단맛·황색 채소 우선',
+      personality:'공감 능력이 높고 타인을 챙기다 자신의 식사를 놓치는 패턴입니다.',
+      why:'토(土) 체질은 소화 효소 부족→혈당 스파이크→인슐린 과잉 분비가 핵심 경로입니다.' },
+    '금(金)': { core:'수렴과 정화 에너지', weak:'폐·대장 민감', diet:'매운맛·백색 채소 우선',
+      personality:'원칙과 규율을 중시하지만 완벽하지 않으면 포기하는 올-오어-낫싱 패턴입니다.',
+      why:'금(金) 체질은 장 민감도→장내미생물 불균형→전신 염증→포만감 신호 차단 경로입니다.' },
+    '수(水)': { core:'저장과 회복 에너지', weak:'신장·방광 수분 순환', diet:'짠맛 절제·검은 식품 우선',
+      personality:'깊은 내면과 지구력을 가졌지만 회복 없이 밀어붙이다 번아웃되는 유형입니다.',
+      why:'수(水) 체질은 신장 부담→수분 정체→림프 순환 저하→하체 지방 축적 경로가 특징입니다.' }
+  };
+  // ohType이 "토" 형태도 대응
+  const ohKey = Object.keys(OHAENG_PERSONA).find(k => ohType && k.includes(ohType.replace(/\(.*\)/,''))) || '';
+  const ohPersona = OHAENG_PERSONA[ohKey] || {};
+
+  // ── 사주 일간 기질 ──
+  const sajuPersonality = saju.personality_hint || '';
+  const sajuOh = saju.ohaeng || '';
+  const ilGanKo = saju.il_gan_ko || '';
+
+  // ── MBTI × 혈액형 기질 ──
+  const mbti = (res.mbti || mbtiBlood.mbti || '').toUpperCase();
+  const blood = res.blood_type || mbtiBlood.blood_type || '';
+  const motivLang  = mbtiBlood.motivation_lang  || '';
+  const dietPattern = mbtiBlood.diet_pattern    || '';
+  const exPattern   = mbtiBlood.exercise_pattern || '';
+  const failPattern = mbtiBlood.fail_pattern     || '';
+  const storyInsert = mbtiBlood.story_insert     || '';
+
+  // MBTI 4축 해석
+  const isI = mbti.includes('I');
+  const isN = mbti.includes('N');
+  const isT = mbti.includes('T');
+  const isJ = mbti.includes('J');
+
+  const MBTI_SHORT = {
+    diet:   isJ ? '규칙 기반 식단 플랜이 잘 맞습니다' : '유연한 식품 선택 범위 안에서 실천합니다',
+    exercise: isI ? '혼자 하는 루틴 기반 운동이 지속성이 높습니다' : '그룹·파트너와 함께할 때 동기가 올라갑니다',
+    motivation: isT ? '수치와 메커니즘을 이해하면 훨씬 잘 지킵니다' : '감정적 공감과 스토리가 행동을 이끕니다',
+    fail: isJ ? '계획이 무너진 하루에 전부 포기하는 패턴을 주의하세요' : '즉흥 식욕에 무방비로 노출되는 패턴을 주의하세요'
+  };
+
+  // ── BC × 오행 교차 WHY 문장 ──
+  const BC_OHAENG_CROSS = {
+    'BC-01': { '목(木)':'간 과부하로 인슐린 처리 효소가 부족해진 상태입니다', '화(火)':'열 과잉이 췌장 베타세포에 부담을 주고 있습니다', '토(土)':'비위 기능 저하가 혈당 조절 능력을 직접 약화시킵니다', '금(金)':'장 민감도가 인슐린 신호 전달을 방해합니다', '수(水)':'신장 부담이 포도당 재흡수 메커니즘에 영향을 줍니다' },
+    'BC-02': { '목(木)':'목(木) 체질의 간 약점이 BC-02와 정확히 겹칩니다. 이중 부담입니다', '화(火)':'과열된 심장이 간 혈류를 줄여 해독 능력을 떨어뜨립니다', '토(土)':'소화 효소 부족이 간에 미처리 독소를 쌓아갑니다', '금(金)':'장 독소가 간문맥을 통해 직접 간에 부담을 줍니다', '수(水)':'수분 정체가 간 세포 주변 노폐물 배출을 막습니다' },
+    'BC-03': { '목(木)':'간 기능 저하가 림프 순환 압력을 높입니다', '화(火)':'혈액 과열이 모세혈관 투과성을 높여 부종을 키웁니다', '토(土)':'비위 약함이 수분 흡수·배출 균형을 무너뜨립니다', '금(金)':'폐 기능 저하가 림프 흐름의 원동력인 호흡을 약화시킵니다', '수(水)':'수(水) 체질의 신장 약점이 수분 조절 실패와 직결됩니다' },
+    'BC-04': { '목(木)':'완벽주의 스트레스가 코르티솔을 만성적으로 높입니다', '화(火)':'열정과 과활성화가 부신 소진을 앞당깁니다', '토(土)':'감정 억제가 코르티솔 분비를 자극합니다', '금(金)':'완전주의적 압박감이 HPA 축을 지속 활성화합니다', '수(水)':'번아웃 패턴이 코르티솔 저항성을 만들어냅니다' },
+    'BC-05': { '목(木)':'간 대사 저하가 T4→T3 전환을 방해합니다', '화(火)':'심장 과부하가 갑상선 혈류를 줄입니다', '토(土)':'비위 약함이 갑상선 지원 영양소(셀레늄·아이오딘) 흡수를 막습니다', '금(金)':'폐·대장 민감이 면역 과활성화→갑상선 자가면역 위험을 높입니다', '수(水)':'신장 부담이 요오드 재흡수에 직접 영향을 줍니다' },
+    'BC-06': { '목(木)':'간 담즙 분비 부족이 장내 유해균 증식을 촉진합니다', '화(火)':'소장 과열이 장벽 투과성을 높여 장누수를 유발합니다', '토(土)':'비위 기운 저하가 유익균 서식 환경을 악화시킵니다', '금(金)':'금(金) 체질의 대장 약점이 BC-06와 정확히 겹칩니다', '수(水)':'냉증이 소화 효소 활성도를 떨어뜨려 유해균이 증식합니다' },
+    'BC-07': { '목(木)':'간 혈류 저하가 심장으로 가는 혈액의 질을 낮춥니다', '화(火)':'화(火) 체질 심장 과부하가 BC-07와 겹쳐 심박출량이 줄었습니다', '토(土)':'소화 기운이 심장으로 갈 혈액을 분산시킵니다', '금(金)':'폐 기능 저하가 산소 공급 효율을 직접 낮춥니다', '수(水)':'차가운 혈액이 심폐 능력 향상을 방해합니다' },
+    'BC-08': { '목(木)':'간 기능 저하가 에스트로겐 대사·분해를 막습니다', '화(火)':'열 과잉이 황체호르몬을 빠르게 소모합니다', '토(土)':'췌장 부담이 인슐린·성호르몬 균형을 동시에 무너뜨립니다', '금(金)':'장 불균형이 에스트로겐 재흡수(장-간 순환)를 높입니다', '수(水)':'신장 부담이 부신 호르몬 분비에 직접 영향을 줍니다' },
+    'BC-09': { '목(木)':'간 스트레스가 전신 염증 매개물질 분해를 늦춥니다', '화(火)':'과열이 염증성 사이토카인 생성을 가속합니다', '토(土)':'소화 불량이 장 염증을 만성화시킵니다', '금(金)':'금(金) 체질 면역 과민이 BC-09 만성 염증과 정확히 겹칩니다', '수(水)':'냉증이 말초 조직의 염증 해소를 방해합니다' },
+    'BC-10': { '목(木)':'간·호르몬·혈당 세 경로가 동시에 취약합니다', '화(火)':'순환·열·스트레스 세 경로가 동시에 과부하됩니다', '토(土)':'소화·혈당·감정 세 경로가 서로 악순환을 일으킵니다', '금(金)':'면역·장·폐 세 경로가 복합적으로 연결되어 있습니다', '수(水)':'수분·신장·에너지 세 경로가 체계적으로 무너져 있습니다' }
+  };
+  const crossKey = Object.keys(BC_OHAENG_CROSS[bc.id] || {}).find(k => ohType && k.includes(ohType.replace(/\(.*\)/,''))) || '';
+  const crossWhy = (BC_OHAENG_CROSS[bc.id] || {})[crossKey] || '';
+
+  // ── 이탈 패턴 (mbti_blood 우선, MBTI 폴백) ──
+  const failMsg = failPattern || MBTI_SHORT.fail;
+
+  // ── 동기 언어 (mbti_blood 우선) ──
+  const motivMsg = motivLang || MBTI_SHORT.motivation;
+
+  // ── 식단 패턴 (mbti_blood 우선) ──
+  const dietMsg = dietPattern || MBTI_SHORT.diet;
+
+  // ── 운동 패턴 (mbti_blood 우선) ──
+  const exMsg = exPattern || MBTI_SHORT.exercise;
+
+  return {
+    // 원형 데이터
+    ohPersona, sajuPersonality, ilGanKo, sajuOh,
+    mbti, blood, motivMsg, dietMsg, exMsg, failMsg, storyInsert, crossWhy,
+    ohType, ohKey,
+    // 렌더용 요약 문장들
+    whyStuck: crossWhy || ohPersona.why || '',
+    corePersonality: ohPersona.personality || sajuPersonality || '',
+    dietLens: dietMsg,
+    exLens: exMsg,
+    motivLens: motivMsg,
+    failLens: failMsg,
+    // 챕터별 렌즈 문장 (2줄씩)
+    lens: {
+      ch1: ohPersona.personality
+           ? `${ohKey} 체질의 기질이 이 바디코드를 만든 핵심 경로입니다.`
+           : '',
+      ch2: crossWhy
+           ? `${ohKey} 체질 + ${bc.id} = ${crossWhy}`
+           : '',
+      ch4: (storyInsert || (mbti ? `${mbti} 유형인 당신에게 — ${MBTI_SHORT.motivation}` : '')),
+      ch6: dietMsg
+           ? `${mbti ? mbti + ' 유형 · ' : ''}${dietMsg}`
+           : '',
+      ch8: failMsg
+           ? `⚠️ 당신의 이탈 패턴: ${failMsg}`
+           : ''
+    }
+  };
 }
 
 function scoreEngine(res) {
@@ -6343,6 +6477,119 @@ function renderCh1(res, bc) {
 
 
 /* ══════════════════════════════════════════════════════
+   renderDnaCard(res, bc)
+   — CH1 끝~CH2 시작 사이 삽입되는 "당신이 이런 몸이 된 이유" 커든 카드
+   — 오행 × 사주 × MBTI/혈액형 × BC가 교차하는 단 하나의 이유를 공개
+══════════════════════════════════════════════════════ */
+function renderDnaCard(res, bc) {
+  const dna = buildPersonaDNA(res, bc);
+  const el = document.getElementById('dnaInsightCard');
+  if (!el) return;
+
+  // 필수 데이터가 하나도 없으면 숨김
+  const hasData = dna.ohType || dna.mbti || dna.sajuPersonality || dna.crossWhy;
+  if (!hasData) { el.style.display = 'none'; return; }
+
+  const R = window.__RESULT__ || {};
+  const name = res.name || '고객';
+
+  // ── 태그 뱃지 빌드 ──
+  const tags = [];
+  if (dna.ohType)  tags.push({ icon:'☯️', label: dna.ohType + ' 체질', color:'#059669' });
+  if (dna.mbti)    tags.push({ icon:'🧠', label: dna.mbti + (dna.blood ? ' · ' + dna.blood + '형' : ''), color:'#7C3AED' });
+  if (dna.ilGanKo) tags.push({ icon:'🌿', label: dna.ilGanKo + ' 일간', color:'#B45309' });
+  tags.push({ icon:'🧬', label: bc.id, color: 'var(--bc-main,#0B2545)' });
+
+  const tagsHtml = tags.map(t =>
+    `<span style="display:inline-flex;align-items:center;gap:4px;background:${t.color}18;
+      border:1px solid ${t.color}44;border-radius:99px;padding:3px 10px;
+      font-size:10px;font-weight:800;color:${t.color}">${t.icon} ${t.label}</span>`
+  ).join('');
+
+  // ── 핵심 WHY 문장 ──
+  const whyText = dna.crossWhy
+    ? dna.crossWhy
+    : dna.ohPersona?.why || `${bc.name} 바디코드는 당신의 체질·기질과 정확히 연결됩니다.`;
+
+  // ── 성격 기질 한 줄 ──
+  const personalityText = dna.corePersonality || dna.sajuPersonality || '';
+
+  // ── MBTI/혈액형 story ──
+  const storyText = dna.storyInsert
+    || (dna.mbti ? `${dna.mbti} 유형은 ${dna.dietLens}` : '');
+
+  // ── 이탈 패턴 경고 (있을 때만) ──
+  const failHtml = dna.failLens ? `
+    <div style="display:flex;gap:8px;align-items:flex-start;padding:10px 12px;
+      background:#FEF2F2;border-radius:10px;border-left:3px solid #EF4444;margin-top:8px">
+      <span style="font-size:16px;flex-shrink:0">⚠️</span>
+      <div>
+        <div style="font-size:10px;font-weight:800;color:#DC2626;margin-bottom:2px">지금까지 실패한 패턴</div>
+        <div style="font-size:11.5px;color:#334155;line-height:1.65">${dna.failLens}</div>
+      </div>
+    </div>` : '';
+
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div style="background:linear-gradient(135deg,#0B2545 0%,#1A3A6A 50%,#0B2545 100%);
+      border-radius:18px;padding:20px 18px;color:#fff;position:relative;overflow:hidden;
+      box-shadow:0 8px 32px rgba(11,37,69,.35)">
+
+      <!-- 배경 장식 -->
+      <div style="position:absolute;top:-20px;right:-20px;width:120px;height:120px;
+        background:radial-gradient(circle,rgba(62,203,165,.15),transparent 70%);
+        border-radius:50%;pointer-events:none"></div>
+
+      <!-- 헤더 -->
+      <div style="font-size:9.5px;font-weight:800;letter-spacing:.2em;color:rgba(255,255,255,.5);
+        text-transform:uppercase;margin-bottom:10px">🔬 당신의 몸이 이렇게 된 이유</div>
+
+      <!-- 이름 + 태그 -->
+      <div style="font-size:16px;font-weight:900;margin-bottom:10px;line-height:1.3">
+        <span style="color:#FFD764">${name}</span>님의 체질·기질 DNA
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:14px">${tagsHtml}</div>
+
+      <!-- 핵심 WHY 박스 -->
+      <div style="background:rgba(62,203,165,.12);border:1px solid rgba(62,203,165,.3);
+        border-radius:12px;padding:12px 14px;margin-bottom:10px">
+        <div style="font-size:9.5px;font-weight:800;color:#3ECBA5;letter-spacing:.1em;margin-bottom:5px">
+          ✦ 왜 기존 방법이 안 됐는가
+        </div>
+        <div style="font-size:12.5px;color:rgba(255,255,255,.9);line-height:1.75;font-weight:500">
+          ${whyText}
+        </div>
+      </div>
+
+      <!-- 기질 성격 (있을 때만) -->
+      ${personalityText ? `
+      <div style="background:rgba(124,58,237,.15);border:1px solid rgba(124,58,237,.3);
+        border-radius:12px;padding:11px 13px;margin-bottom:10px">
+        <div style="font-size:9.5px;font-weight:800;color:#A78BFA;letter-spacing:.1em;margin-bottom:4px">
+          🧠 당신의 기질 원형
+        </div>
+        <div style="font-size:12px;color:rgba(255,255,255,.85);line-height:1.7">${personalityText}</div>
+      </div>` : ''}
+
+      <!-- MBTI 식단/행동 패턴 (있을 때만) -->
+      ${storyText ? `
+      <div style="font-size:11.5px;color:rgba(255,255,255,.65);line-height:1.7;
+        padding:8px 12px;background:rgba(255,255,255,.06);border-radius:10px;margin-bottom:8px">
+        💬 ${storyText}
+      </div>` : ''}
+
+      <!-- 이탈 패턴 경고 -->
+      ${failHtml}
+
+      <!-- 하단 연결 안내 -->
+      <div style="margin-top:14px;font-size:10.5px;color:rgba(255,255,255,.45);text-align:center;line-height:1.6">
+        아래 챕터들은 모두 이 DNA를 렌즈로 해석됩니다
+        <div style="font-size:18px;margin-top:4px;animation:cardPulse 2s ease-in-out infinite">↓</div>
+      </div>
+    </div>`;
+}
+
+/* ══════════════════════════════════════════════════════
    renderCh2(res, bc)  — 11축 레이더차트 + 3대 원인 감성대화체
 ══════════════════════════════════════════════════════ */
 /* ─── 11축 컬러바 차트 렌더 함수 ─── */
@@ -6415,6 +6662,58 @@ function renderColorBars(axisSignals, bc) {
       setTimeout(() => { bar.style.width = pct + '%'; }, 50);
     });
   });
+}
+
+/* ══════════════════════════════════════════════════════
+   renderChLens(res, bc)
+   — CH2/CH4/CH6/CH8 도입부에 개인화 렌즈 2줄 일괄 삽입
+   — buildPersonaDNA()의 lens 객체 사용
+══════════════════════════════════════════════════════ */
+function renderChLens(res, bc) {
+  const dna = buildPersonaDNA(res, bc);
+  const R = window.__RESULT__ || {};
+
+  // 렌즈 박스 공통 렌더 헬퍼
+  function makeLens(text, icon, color) {
+    if (!text) return '';
+    return `<div style="display:flex;align-items:flex-start;gap:9px;padding:10px 13px;
+      background:${color}0D;border-left:3px solid ${color};border-radius:0 10px 10px 0;
+      margin:0 0 14px;font-size:11.5px;color:#334155;line-height:1.7">
+      <span style="font-size:15px;flex-shrink:0;margin-top:1px">${icon}</span>
+      <span>${text}</span>
+    </div>`;
+  }
+
+  // ── CH2: 오행×BC 교차 해석 ──
+  const ch2El = document.getElementById('ch2DnaLens');
+  if (ch2El && dna.lens.ch2) {
+    ch2El.innerHTML = makeLens(dna.lens.ch2, '☯️', '#059669');
+  }
+
+  // ── CH4: MBTI/혈액형 공감 렌즈 ──
+  const ch4El = document.getElementById('ch4DnaLens');
+  if (ch4El && dna.lens.ch4) {
+    ch4El.innerHTML = makeLens(dna.lens.ch4, '🧠', '#7C3AED');
+  }
+
+  // ── CH6: 식단/운동 패턴 렌즈 ──
+  const ch6El = document.getElementById('ch6DnaLens');
+  if (ch6El) {
+    // 오행 체질 diet + MBTI 식단 패턴 조합
+    const R2 = window.__RESULT__ || {};
+    const ohaeng = R2.ohaeng || {};
+    const ohDiet = ohaeng.good_taste
+      ? `${dna.ohType} 체질은 <strong>${ohaeng.good_taste}</strong> 맛 식품이 대사를 지원합니다.`
+      : '';
+    const combined = [ohDiet, dna.lens.ch6].filter(Boolean).join('  ·  ');
+    if (combined) ch6El.innerHTML = makeLens(combined, '🥗', '#D97706');
+  }
+
+  // ── CH8: 이탈 패턴 경고 렌즈 ──
+  const ch8El = document.getElementById('ch8DnaLens');
+  if (ch8El && dna.lens.ch8) {
+    ch8El.innerHTML = makeLens(dna.lens.ch8, '⚠️', '#EF4444');
+  }
 }
 
 function renderCh2(res, bc) {
@@ -8894,6 +9193,8 @@ async function init() {
   _currentBcForSubtype = bc;   // 서브타입 선택 시 참조용
   renderCover(res, bc);
   renderCh1(res, bc);
+  renderDnaCard(res, bc);   // CH1 직후 — 오행×MBTI×사주×BC DNA 카드
+  renderChLens(res, bc);    // 각 챕터 도입부 개인화 렌즈 일괄 삽입
   renderCh2(res, bc);
   renderCh3(res, bc);
   renderCh4(res, bc);
