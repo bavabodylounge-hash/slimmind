@@ -402,6 +402,7 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
   padding:24px;margin-bottom:24px;display:flex;flex-direction:column;align-items:center;
 }
 .radar-canvas-wrap{width:100%;max-width:360px;margin:0 auto 16px;padding:0 4px}
+.radar-canvas-wrap canvas{width:100%!important;height:auto!important}
 
 /* 3대 원인 카드 (감성 대화체) */
 .top3-cause-list{display:flex;flex-direction:column;gap:16px;margin:16px 0}
@@ -774,7 +775,8 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
   .decl-bc { font-size: 36px !important; }
 
   /* ── 네비 버튼 ── */
-  .btn-next { font-size: 12px; padding: 14px 16px; }
+  .btn-next { font-size: 12px; padding: 12px 14px; flex-direction: column; align-items: flex-start; gap: 2px; }
+  .btn-next small { display: block; font-size: 9.5px; }
   .btn-prev { width: 44px; font-size: 16px; }
 
   /* ── 로딩 ── */
@@ -3335,7 +3337,7 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
     <!-- 레이더 차트 -->
     <div class="radar-wrap">
       <div class="radar-canvas-wrap" style="animation:radarReveal .8s .2s ease both">
-        <canvas id="ch2RadarChart" width="340" height="380"></canvas>
+        <canvas id="ch2RadarChart" width="340" height="380" style="width:100%;height:auto"></canvas>
       </div>
       <div style="font-size:10.5px;color:#64748B;text-align:center;margin-top:8px;line-height:1.7">
         ※ 설문 응답과 AI 분석을 종합한 결과입니다<br>
@@ -3857,7 +3859,7 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 <!-- ═══════════════════════════════════════════════════════
      CH7 — 오행 계절 처방 + 마음가짐
 ═══════════════════════════════════════════════════════ -->
-<div class="chapter" data-ch="6" id="ch7">
+<div class="chapter" data-ch="6" id="ch7" style="display:none!important">
   <div class="ch-topbar">
     <span class="ch-label-sm">Chapter 06 · 오행 계절 처방</span>
     <span class="ch-pagenum">7 / 9</span>
@@ -5640,6 +5642,7 @@ function getBodySvgType(bcCode) {
 ══════════════════════════════════════════════════════ */
 let currentChapter = 0;
 const TOTAL_CHAPTERS = 10; // 0~9
+const SKIP_CHAPTERS = new Set([6]); // data-ch="6" = 오행 계절(CH7) — BC×오행 통합으로 CH6에 흡수
 
 function applyBcColorTheme(bcCode) {
   document.body.className = document.body.className.replace(/bc-theme-BC-\d+/g,'');
@@ -5664,23 +5667,35 @@ function gotoChapter(n) {
   });
 
   // ch2 레이더차트: display:none → block 전환 후 Canvas 크기가 0이어서
-  // 직접 그린 차트가 안 보임 → ch2 진입 시 resize 강제 발생
+  // 직접 그린 차트가 안 보임 → ch2 진입 시 resize 강제 발생 (2단계로 보장)
   if (n === 2) {
     const canvas = document.getElementById('ch2RadarChart');
     if (canvas && canvas._chartInstance) {
+      // 1차: 즉시 resize
       requestAnimationFrame(() => {
         canvas._chartInstance.resize();
         canvas._chartInstance.update('none');
+        // 2차: 레이아웃 완성 후 한 번 더 (라벨 위치 재계산)
+        setTimeout(() => {
+          if (canvas._chartInstance) {
+            canvas._chartInstance.resize();
+            canvas._chartInstance.update('none');
+          }
+        }, 120);
       });
     }
   }
 }
 
 function nextChapter() {
-  if (currentChapter < TOTAL_CHAPTERS - 1) gotoChapter(currentChapter + 1);
+  let next = currentChapter + 1;
+  while (next < TOTAL_CHAPTERS && SKIP_CHAPTERS.has(next)) next++;
+  if (next < TOTAL_CHAPTERS) gotoChapter(next);
 }
 function prevChapter() {
-  if (currentChapter > 0) gotoChapter(currentChapter - 1);
+  let prev = currentChapter - 1;
+  while (prev >= 0 && SKIP_CHAPTERS.has(prev)) prev--;
+  if (prev >= 0) gotoChapter(prev);
 }
 
 /* ══════════════════════════════════════════════════════
@@ -6955,11 +6970,13 @@ function renderCh2(res, bc) {
             angleLines: { color: 'rgba(100,100,150,0.35)' },
             pointLabels:{
               color: (ctx) => labelColors[ctx.index] || '#334155',
-              font: (ctx) => ({
-                size: 9,
-                weight: labelWeights[ctx.index] || '600'
-              }),
-              padding: 14,
+              font: (ctx) => {
+                // 모바일 화면 너비에 따라 동적 폰트 크기
+                const w = canvas.parentElement ? canvas.parentElement.offsetWidth : 320;
+                const sz = w < 300 ? 7 : w < 340 ? 8 : 9;
+                return { size: sz, weight: labelWeights[ctx.index] || '600' };
+              },
+              padding: 10,
               callback: (label) => label  // 배열이면 2줄로 처리됨
             }
           }
