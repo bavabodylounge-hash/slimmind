@@ -3758,11 +3758,11 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 
   <div class="chapter-content">
 
-    <div class="sec-kicker">당신만의 로드맵</div>
-    <div class="sec-heading">12주 여정 지도</div>
+    <div class="sec-kicker">전체 여정 조감도</div>
+    <div class="sec-heading">12주 로드맵</div>
     <div class="sec-sub" id="ch3MapSub">
       다이어트가 아닙니다. <strong style="color:#0B2545">몸의 시스템을 바꾸는 12주 여행</strong>입니다.<br>
-      각 주차 노드를 눌러 그 주의 처방을 확인하세요.
+      노드를 눌러 각 주차 처방 미리보기 · 다음 페이지에서 이번 주 실천을 시작합니다.
     </div>
     <!-- 무료/잠금 안내 배너 -->
     <div style="display:flex;align-items:center;justify-content:center;gap:16px;margin:12px 0 4px;flex-wrap:wrap">
@@ -3804,8 +3804,20 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
       <!-- JS에서 렌더 -->
     </div>
 
+    <!-- 인용구 타이포 시각요소 -->
+    <div style="margin:24px 0 8px;padding:20px 20px 20px 24px;
+      background:linear-gradient(135deg,var(--bc-main,#0B2545),rgba(11,37,69,.88));
+      border-radius:16px;position:relative;overflow:hidden">
+      <div style="position:absolute;top:-8px;left:12px;font-size:64px;line-height:1;color:var(--bc-accent,#3ECBA5);opacity:.18;font-family:Georgia,serif;font-weight:900">"</div>
+      <div style="font-size:14px;font-weight:800;color:#fff;line-height:1.7;position:relative;z-index:1" id="ch3QuoteText">
+        몸의 변화는 의지가 아니라 순서의 문제입니다.<br>
+        <span style="color:var(--bc-accent,#3ECBA5)">올바른 순서로 12주를 걷는 사람</span>은 달라집니다.
+      </div>
+      <div style="font-size:10px;color:rgba(255,255,255,.5);margin-top:10px;position:relative;z-index:1">— 바디코드 프로토콜 원칙 01</div>
+    </div>
+
     <!-- 전체 타임라인 요약 -->
-    <div class="sec-divider" style="margin-top:24px"></div>
+    <div class="sec-divider" style="margin-top:16px"></div>
     <div class="sec-kicker">4단계 변화 프로세스</div>
     <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px" id="ch3PhaseGrid">
       <div style="background:linear-gradient(135deg,rgba(62,203,165,.15),rgba(62,203,165,.05));border:1.5px solid rgba(62,203,165,.3);border-radius:14px;padding:16px">
@@ -3864,9 +3876,10 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
 
   <div class="chapter-content">
 
-    <div class="sec-kicker">컨설턴트의 말</div>
-    <div class="sec-heading">처음 시작을 위한 안내</div>
-    <div class="sec-sub" style="margin-bottom:16px">이 페이지는 분석이 아니라 <strong style="color:var(--bc-main,#0B2545)">앞으로 12주간 무엇을 할지</strong> 알려주는 가이드입니다.</div>
+    <div class="sec-kicker">이번 주 실행 가이드</div>
+    <div class="sec-heading">지금 당장 시작하세요</div>
+    <div class="sec-sub" style="margin-bottom:16px">이전 페이지의 12주 로드맵 <strong style="color:var(--bc-main,#0B2545)">조감도</strong>를 확인했다면,<br>
+    이제 <strong style="color:var(--bc-main,#0B2545)">이번 주 1가지만 실천</strong>하는 실행 가이드입니다.</div>
 
     <!-- 진단 완료 스토리 카드 (JS renderCh8에서 채움) -->
     <div id="ch8SummaryGrid" style="margin-bottom:16px"></div>
@@ -3983,6 +3996,9 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
         </button>
       </div>
     </div>
+
+    <!-- CH9 하단 여백 확보 (마지막 챕터) -->
+    <div style="height:40px"></div>
 
   </div><!-- /chapter-content -->
 
@@ -6416,9 +6432,15 @@ function renderCh2(res, bc) {
       return axisSignals[a.id] !== undefined ? Number(axisSignals[a.id]) : 0;
     });
 
-    /* ── 상위 3축 강조 색상 계산 ── */
-    const dataWithIdx = data.map((v,i) => ({v,i})).sort((a,b)=>b.v-a.v);
-    const top3idx = new Set(dataWithIdx.slice(0,3).map(x=>x.i));
+    /* ── 상위 3축 강조 색상 계산: bc.topAxes 기반으로 CH1과 통일 ── */
+    // bc.topAxes 기반 top3 인덱스 (CH1 원인태그와 동일 소스)
+    const topAxesIds = (bc && bc.topAxes) ? bc.topAxes.slice(0,3) : [];
+    const top3idx = new Set(AXIS_DEFS.map((a,i)=>({a,i})).filter(({a})=>topAxesIds.includes(a.id)).map(({i})=>i));
+    // fallback: topAxes가 없으면 axisSignals 기반으로
+    if (top3idx.size === 0) {
+      const dataWithIdx = data.map((v,i) => ({v,i})).sort((a,b)=>b.v-a.v);
+      dataWithIdx.slice(0,3).forEach(({i}) => top3idx.add(i));
+    }
     const pointBgColors = data.map((_,i) =>
       top3idx.has(i) ? '#ef4444' : 'rgba(139,92,246,0.7)'
     );
@@ -8095,11 +8117,83 @@ function renderCh9(res, bc) {
    renderWeeklyClickTree(res, bc)  — CH8 클릭 트리
 ══════════════════════════════════════════════════════ */
 let wtState = {};
+let _currentWeeklyTree = null; // BC별 맞춤 처방 트리 (renderWeeklyClickTree에서 갱신)
 
 function renderWeeklyClickTree(res, bc) {
   _journeyRes = _journeyRes || res;
   const gridEl = document.getElementById('wtWeekGrid');
   if (!gridEl) return;
+
+  // ── BC별 맞춤 처방: topAxes 기반으로 1~3주차 첫 번째 축(ai:0) 동적 생성 ──
+  // bc.topAxes = ['A3','A6','A2'] 형태로 3개 핵심축이 주어짐
+  // 1주차→topAxes[0], 2주차→topAxes[1], 3주차→topAxes[2] 중심 처방으로 교체
+  function buildBcAxis(axisId, ai) {
+    const axDef = AXIS_DEFS.find(a => a.id === axisId);
+    if (!axDef) return null;
+    // 축별 퀴즈 맵 (topAxes 교체용 기본 퀴즈)
+    const quizMap = {
+      'A1': { q:'인슐린 저항성을 개선하는 가장 즉각적인 식후 습관은?',
+               opts:['바로 눕기','식후 10~15분 걷기','디저트 먹기','커피 마시기'], ans:1,
+               checkin:'식사 순서 교정(채소→단백질→탄수화물) + 식후 걷기 실천' },
+      'A2': { q:'장내미생물 다양성을 높이는 데 가장 효과적인 식품은?',
+               opts:['흰밥','발효식품(김치·된장)','탄산음료','정제 밀가루'], ans:1,
+               checkin:'발효식품 매일 1회 + 식이섬유 30g 이상 실천' },
+      'A3': { q:'만성 염증을 낮추는 식품 중 가장 근거가 강한 것은?',
+               opts:['트랜스지방','베리류·강황','정제 설탕','흰 빵'], ans:1,
+               checkin:'항염 식품(베리·강황) 섭취 + 트랜스지방 차단 실천' },
+      'A4': { q:'코르티솔 분비를 안정시키는 가장 효과적인 습관은?',
+               opts:['취침 전 스마트폰','기상 시간 고정 + 수면 루틴','야식 먹기','카페인 밤에 마시기'], ans:1,
+               checkin:'수면 7~9시간 확보 + 취침 전 디지털 차단 실천' },
+      'A5': { q:'갑상선 기능에 필수적인 미네랄 조합은?',
+               opts:['칼슘+철분','셀레늄+요오드','나트륨+칼륨','마그네슘+아연'], ans:1,
+               checkin:'셀레늄·요오드 함유 식품(브라질넛·미역) 매일 섭취 실천' },
+      'A6': { q:'세포 수분 균형과 림프 순환을 동시에 개선하는 방법은?',
+               opts:['나트륨 과잉 섭취','하루 2L 수분 + 칼륨 채소 우선','수분 제한','카페인 과다'], ans:1,
+               checkin:'하루 2L 수분 섭취 + 저나트륨 식단 실천' },
+      'A7': { q:'심폐 지구력과 복부지방 감소를 동시에 얻는 운동은?',
+               opts:['스트레칭만','중강도 유산소 주 5회(심박 130~150)','고강도 웨이트만','산책 주 1회'], ans:1,
+               checkin:'중강도 유산소 30분 주 5회 실천' },
+      'A8': { q:'에스트로겐 우세를 조절하는 데 효과적인 영양소는?',
+               opts:['정제 탄수화물','DIM(십자화과 추출)','포화지방','알코올'], ans:1,
+               checkin:'DIM 섭취 + 사이클 싱킹 운동 + 환경호르몬 노출 최소화 실천' },
+      'A9': { q:'도파민 결핍으로 인한 음식 보상 욕구를 줄이는 방법은?',
+               opts:['더 많이 먹기','햇빛 노출 + 트립토판 식품 + 마그네슘','카페인 증량','야간 운동'], ans:1,
+               checkin:'햇빛 20분 노출 + L-테아닌·마그네슘 복용 실천' },
+      'A10': { q:'미토콘드리아 에너지 생산 효율을 높이는 가장 직접적인 방법은?',
+               opts:['좌식 생활','HIIT + CoQ10 복용','수면 줄이기','정제 탄수화물 위주 식사'], ans:1,
+               checkin:'HIIT 주 2회 + CoQ10 복용 실천' },
+      'A11': { q:'체질·오행에 맞춘 맞춤형 접근법의 핵심 이점은?',
+               opts:['단기간 극적 효과','장기 지속률·개인 맞춤 대사 최적화','빠른 체중 감소','칼로리 제한'], ans:1,
+               checkin:'오행 체질 맞춤 식단 + 계절 처방 적용 실천' }
+    };
+    const qd = quizMap[axisId] || { q:`${axDef.name} 핵심 원리를 실천하셨나요?`, opts:['예','아니오'], ans:0, checkin:`${axDef.name} 처방 실천` };
+    return {
+      ai, axisId, label: axDef.name, icon: axDef.icon,
+      presc: axDef.presc,
+      quiz: { q: qd.q, opts: qd.opts, ans: qd.ans },
+      checkinLabel: qd.checkin
+    };
+  }
+
+  // 1~3주차 처방 오버라이드: bc.topAxes[0/1/2]를 각 주차 ai:0 축으로 교체
+  const topAxes = (bc && bc.topAxes && bc.topAxes.length >= 3) ? bc.topAxes : ['A1','A3','A9'];
+  // defaultWeeklyTree를 딥카피하여 수정 (원본 보존)
+  const weeklyTree = defaultWeeklyTree.map((group, gi) => ({
+    ...group,
+    weeks: group.weeks.map(week => {
+      if (week.wi >= 0 && week.wi <= 2) {
+        // 1~3주차: topAxes 기반으로 첫 번째 축(ai:0) 교체
+        const axisOverride = buildBcAxis(topAxes[week.wi], 0);
+        if (axisOverride) {
+          const newAxes = [axisOverride, ...week.axes.slice(1)];
+          return { ...week, axes: newAxes };
+        }
+      }
+      return week;
+    })
+  }));
+  // 전역 저장: wtToggleWeek에서도 BC별 맞춤 처방 참조 가능
+  _currentWeeklyTree = weeklyTree;
 
   // 완료 주차 판별 (localStorage에서 체크인 완료 목록 읽기)
   let completedWeeks = [];
@@ -8114,7 +8208,7 @@ function renderWeeklyClickTree(res, bc) {
   // 무료: wi 0,1,2 (1~3주차) / 프리미엄: wi 3~11 (4~12주차)
   const freeWeeks = [];
   const premWeeks = [];
-  defaultWeeklyTree.forEach(group => {
+  weeklyTree.forEach(group => {
     group.weeks.forEach(week => {
       if (week.wi < 3) freeWeeks.push(week);
       else premWeeks.push(week);
@@ -8177,12 +8271,40 @@ function renderWeeklyClickTree(res, bc) {
   freeWeeks.forEach(week => { html += buildCard(week); });
   html += `</div></div>`;
 
-  // ── 섹션 2: 프리미엄 주차 (4~12주차) ──
-  html += `<div class="wt-group">
-    <div class="wt-group-label" style="color:#7C3AED">🔒 프리미엄 · 4~12주차: 심화 처방</div>
-    <div class="wt-week-row">`;
-  premWeeks.forEach(week => { html += buildCard(week); });
-  html += `</div></div>`;
+  // ── 섹션 2: 프리미엄 주차 (4~12주차) — 3×3 압축 그리드 + CTA ──
+  // 9개 잠금카드를 개별 나열 대신 압축 그리드로 표시
+  const premLockGrid = premWeeks.map(week => {
+    const ax = week.axes[0];
+    return `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
+      background:#F3F4F6;border-radius:10px;padding:8px 4px;text-align:center;gap:2px;
+      border:1.5px solid #E5E7EB;cursor:pointer;opacity:.7;transition:opacity .2s"
+      onclick="openPaywall(${week.wi+1})"
+      onmouseover="this.style.opacity='.9'" onmouseout="this.style.opacity='.7'">
+      <div style="font-size:13px;color:#7C3AED">🔒</div>
+      <div style="font-size:10px;font-weight:800;color:#4B5563">${week.label}</div>
+      <div style="font-size:9px;color:#94A3B8">${ax ? ax.icon : ''}</div>
+    </div>`;
+  }).join('');
+
+  html += `<div class="wt-group" style="background:linear-gradient(135deg,#FAF5FF 0%,#EDE9FE 100%);border-radius:14px;padding:14px;border:1.5px solid #DDD6FE">
+    <div class="wt-group-label" style="color:#7C3AED;margin-bottom:10px">🔒 프리미엄 · 4~12주차: 심화 처방</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:14px">
+      ${premLockGrid}
+    </div>
+    <div style="background:linear-gradient(135deg,#7C3AED,#A855F7);border-radius:12px;padding:14px 16px;text-align:center;cursor:pointer"
+         onclick="openPaywall(4)">
+      <div style="font-size:13px;font-weight:900;color:#fff;margin-bottom:4px">🚀 9주 심화 처방 전체 해제</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.85);margin-bottom:10px">매주 BC별 맞춤 처방 · 퀴즈 · 체크인이 이어집니다</div>
+      <div style="display:flex;justify-content:center;gap:12px;margin-bottom:10px">
+        <span style="font-size:10px;color:#DDD6FE">✓ ${topAxes[0] ? (AXIS_DEFS.find(a=>a.id===topAxes[0])||{}).name||'' : ''} 심화</span>
+        <span style="font-size:10px;color:#DDD6FE">✓ ${topAxes[1] ? (AXIS_DEFS.find(a=>a.id===topAxes[1])||{}).name||'' : ''} 최적화</span>
+        <span style="font-size:10px;color:#DDD6FE">✓ 전문가 커넥션</span>
+      </div>
+      <div style="background:rgba(255,255,255,.2);border-radius:8px;padding:8px 14px;display:inline-block">
+        <span style="font-size:14px;font-weight:900;color:#fff">프리미엄 시작하기 →</span>
+      </div>
+    </div>
+  </div>`;
 
   gridEl.innerHTML = html;
 
@@ -8214,7 +8336,9 @@ function wtToggleWeek(wi) {
   wtState.openWi = wi;
 
   let weekData = null;
-  defaultWeeklyTree.forEach(g => g.weeks.forEach(w => { if (w.wi === wi) weekData = w; }));
+  // BC별 맞춤 처방 트리 우선 참조 (renderWeeklyClickTree에서 생성됨)
+  const activeTree = _currentWeeklyTree || defaultWeeklyTree;
+  activeTree.forEach(g => g.weeks.forEach(w => { if (w.wi === wi) weekData = w; }));
   if (!weekData) return;
 
   document.querySelectorAll('.wt-week-card').forEach(el => el.classList.remove('active'));
