@@ -4062,9 +4062,9 @@ body{font-family:var(--font);background:#CBD5E1;min-height:100vh;color:#1C2833}
   <div class="chapter-nav" id="ch3Nav">
     <div class="nav-row">
       <button class="btn-prev" onclick="prevChapter()" title="이전 페이지">←</button>
-      <button class="btn-next" onclick="nextChapter()">
-        이번 주 실행 가이드를 확인합니다 →
-        <small>지금 당장 시작할 1가지 처방</small>
+      <button class="btn-next" onclick="gotoChapter(9)">
+        1주차 상세 처방 시작하기 →
+        <small>식단 · 운동 · 회복 루틴 전체 공개</small>
       </button>
     </div>
   </div>
@@ -5698,7 +5698,7 @@ function getBodySvgType(bcCode) {
 ══════════════════════════════════════════════════════ */
 let currentChapter = 0;
 const TOTAL_CHAPTERS = 13; // 0~12 (CH10=1주차, CH11=2주차, CH12=3주차 추가)
-const SKIP_CHAPTERS = new Set([6]); // data-ch="6" = 오행 계절(CH7) — BC×오행 통합으로 CH6에 흡수
+const SKIP_CHAPTERS = new Set([6, 8]); // data-ch="6" = 오행 계절(CH7) 스킵, data-ch="8" = CH8 시작하기 스킵(1주차로 바로 이동)
 
 function applyBcColorTheme(bcCode) {
   document.body.className = document.body.className.replace(/bc-theme-BC-\d+/g,'');
@@ -9506,7 +9506,24 @@ function renderWeekPage(wi, res, bc, containerId) {
       </button>`}
     </div>
 
-  </div>`;
+  </div>
+
+  <!-- 하단 네비게이션 -->
+  <div class="chapter-nav">
+    <div class="nav-row">
+      <button class="btn-prev" onclick="prevChapter()" title="이전 페이지">←</button>
+      ${wi < 2 ? `
+      <button class="btn-next" onclick="gotoChapter(${9 + wi + 1})">
+        ${wi + 2}주차 처방 보기 →
+        <small>${wi === 0 ? '2주차 집중 처방으로' : '3주차 마무리 처방으로'}</small>
+      </button>` : `
+      <button class="btn-next" onclick="gotoChapter(12)">
+        🏁 종합 요약 보기 →
+        <small>당신의 이야기 · Epilogue</small>
+      </button>`}
+    </div>
+  </div>
+  `;
 }
 
 /* ══════════════════════════════════════════════════════
