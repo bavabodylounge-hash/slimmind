@@ -9051,9 +9051,10 @@ function renderWeeklyClickTree(res, bc) {
 
   gridEl.innerHTML = html;
 
-  /* 현재 주차 자동 열기 */
+  /* 현재 주차 자동 열기 — wtState.autoOpened 플래그로 이중 닫힘 방지 */
   setTimeout(() => {
     const openWi = completedWeeks.length > 0 ? Math.min(lastDone + 2, 3) : 1;
+    wtState.autoOpened = true;  // 자동 열기 표시
     wtToggleWeek(openWi);
   }, 500);
 }
@@ -9071,12 +9072,25 @@ function wtToggleWeek(wi) {
   if (!panel) return;
 
   if (wtState.openWi === wi) {
-    wtState.openWi = null;
-    panel.innerHTML = '';
-    panel.style.display = 'none';
-    document.querySelectorAll('.wt-week-card').forEach(el => el.classList.remove('active'));
-    document.querySelectorAll('.wt-week-arrow').forEach(el => el.textContent = '▼');
-    return;
+    /* 자동 열기 후 첫 수동 클릭:
+       - 패널이 실제로 보이고 내용이 있으면 → scroll만 (닫지 않음)
+       - 패널이 비어있거나 숨겨져 있으면 → 아래 렌더링 로직으로 진행 */
+    if (wtState.autoOpened) {
+      wtState.autoOpened = false; // 이후 클릭부터 정상 토글
+      if (panel.style.display !== 'none' && panel.innerHTML.trim().length > 0) {
+        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        return;
+      }
+      // 패널이 비어있으면 아래 렌더링 로직으로 fall-through
+    } else {
+      /* 정상 토글: 닫기 */
+      wtState.openWi = null;
+      panel.innerHTML = '';
+      panel.style.display = 'none';
+      document.querySelectorAll('.wt-week-card').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.wt-week-arrow').forEach(el => el.textContent = '▼');
+      return;
+    }
   }
   wtState.openWi = wi;
 
@@ -9560,6 +9574,13 @@ async function init() {
   }
   if (injected?.result?.axis_scores) {
     res.axis_scores = injected.result.axis_scores;
+  }
+
+  /* ── 오행 URL 파라미터 오버라이드 (URL 파라미터 모드에서 ohaeng 직접 지정 가능) ── */
+  const urlOhaeng = params.get('ohaeng') || params.get('oh') || '';
+  if (urlOhaeng && !injected) {
+    // URL ?ohaeng=木목 또는 ?ohaeng=木 등 형태 지원
+    bc.ohaeng = extractOhaeng(urlOhaeng);
   }
 
   /* ── 오행 DB 주입 (서버에서 왔으면 덮어씀) ── */
