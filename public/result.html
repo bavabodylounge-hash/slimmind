@@ -6769,11 +6769,16 @@ function renderDnaCard(res, bc) {
       <!-- 이탈 패턴 경고 -->
       ${failHtml}
 
-      <!-- 하단 연결 안내 -->
-      <div style="margin-top:14px;font-size:10.5px;color:rgba(255,255,255,.45);text-align:center;line-height:1.6">
-        아래 챕터들은 모두 이 DNA를 렌즈로 해석됩니다
-        <div style="font-size:18px;margin-top:4px;animation:cardPulse 2s ease-in-out infinite">↓</div>
-      </div>
+      <!-- 하단 행동 처방 요약 -->
+      ${dna.dietLens || dna.exLens ? `
+      <div style="margin-top:10px;padding:10px 12px;background:rgba(255,215,100,.08);
+        border:1px solid rgba(255,215,100,.2);border-radius:10px">
+        <div style="font-size:9px;font-weight:800;color:#FFD764;letter-spacing:.1em;margin-bottom:5px">
+          🎯 ${name}님 맞춤 실천 방향
+        </div>
+        ${dna.dietLens ? `<div style="font-size:11px;color:rgba(255,255,255,.8);line-height:1.65;margin-bottom:4px">🥗 ${dna.dietLens}</div>` : ''}
+        ${dna.exLens   ? `<div style="font-size:11px;color:rgba(255,255,255,.8);line-height:1.65">💪 ${dna.exLens}</div>` : ''}
+      </div>` : ''}
     </div>`;
 }
 
@@ -6858,50 +6863,12 @@ function renderColorBars(axisSignals, bc) {
    — buildPersonaDNA()의 lens 객체 사용
 ══════════════════════════════════════════════════════ */
 function renderChLens(res, bc) {
-  const dna = buildPersonaDNA(res, bc);
-  const R = window.__RESULT__ || {};
-
-  // 렌즈 박스 공통 렌더 헬퍼
-  function makeLens(text, icon, color) {
-    if (!text) return '';
-    return `<div style="display:flex;align-items:flex-start;gap:9px;padding:10px 13px;
-      background:${color}0D;border-left:3px solid ${color};border-radius:0 10px 10px 0;
-      margin:0 0 14px;font-size:11.5px;color:#334155;line-height:1.7">
-      <span style="font-size:15px;flex-shrink:0;margin-top:1px">${icon}</span>
-      <span>${text}</span>
-    </div>`;
-  }
-
-  // ── CH2: 오행×BC 교차 해석 ──
-  const ch2El = document.getElementById('ch2DnaLens');
-  if (ch2El && dna.lens.ch2) {
-    ch2El.innerHTML = makeLens(dna.lens.ch2, '☯️', '#059669');
-  }
-
-  // ── CH4: MBTI/혈액형 공감 렌즈 ──
-  const ch4El = document.getElementById('ch4DnaLens');
-  if (ch4El && dna.lens.ch4) {
-    ch4El.innerHTML = makeLens(dna.lens.ch4, '🧠', '#7C3AED');
-  }
-
-  // ── CH6: 식단/운동 패턴 렌즈 ──
-  const ch6El = document.getElementById('ch6DnaLens');
-  if (ch6El) {
-    // 오행 체질 diet + MBTI 식단 패턴 조합
-    const R2 = window.__RESULT__ || {};
-    const ohaeng = R2.ohaeng || {};
-    const ohDiet = ohaeng.good_taste
-      ? `${dna.ohType} 체질은 <strong>${ohaeng.good_taste}</strong> 맛 식품이 대사를 지원합니다.`
-      : '';
-    const combined = [ohDiet, dna.lens.ch6].filter(Boolean).join('  ·  ');
-    if (combined) ch6El.innerHTML = makeLens(combined, '🥗', '#D97706');
-  }
-
-  // ── CH8: 이탈 패턴 경고 렌즈 ──
-  const ch8El = document.getElementById('ch8DnaLens');
-  if (ch8El && dna.lens.ch8) {
-    ch8El.innerHTML = makeLens(dna.lens.ch8, '⚠️', '#EF4444');
-  }
+  // 챕터별 반복 렌즈 완전 비활성화 — DNA 카드는 CH1 직후 1회만 표시
+  // ch2DnaLens, ch4DnaLens, ch6DnaLens, ch8DnaLens 모두 비워둠
+  ['ch2DnaLens','ch4DnaLens','ch6DnaLens','ch8DnaLens'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.innerHTML = ''; el.style.display = 'none'; }
+  });
 }
 
 function renderCh2(res, bc) {
@@ -7655,6 +7622,11 @@ function journeyNodeClick(wi) {
 ══════════════════════════════════════════════════════ */
 function renderCh4(res, bc) {
   const userType = classifyUserType(res);
+  const dna = buildPersonaDNA(res, bc);
+  const name = res.name || '고객';
+  const ohType = dna.ohType || '';
+  const mbti = dna.mbti || '';
+  const blood = dna.blood || '';
 
   /* 사용자 유형 배지 */
   const badgeEl = document.getElementById('ch4UserTypeBadge');
@@ -7663,37 +7635,100 @@ function renderCh4(res, bc) {
     badgeEl.className    = 'user-type-badge ' + (userType.cls || '');
   }
 
-  /* 공감 헤드라인 */
-  const empHead = {
-    alcohol: '매일 밤 술 한 잔으로 버텨온 당신께',
-    alone:   '혼자서 다 감당하며 지쳐온 당신께',
-    money:   '돈 걱정에 잠 못 이루며 버텨온 당신께',
-    pain:    '아픔을 꾹 참고 버텨온 당신께',
-    social:  '사람들 사이에서 소진되어온 당신께'
+  /* ── BC코드 × 오행 × MBTI 기반 완전 개인화 공감 헤드라인 ── */
+  // BC코드별 핵심 감정 키워드 매핑
+  const BC_EMPATHY_HEAD = {
+    'BC-01': { core:'혈당이 롤러코스터처럼 오르내리며', verb:'지쳐온' },
+    'BC-02': { core:'간이 쉬지 못하고 과부하가 쌓이며', verb:'버텨온' },
+    'BC-03': { core:'몸이 붓고 순환이 안 되는 느낌으로', verb:'견뎌온' },
+    'BC-04': { core:'스트레스가 쌓일수록 살이 찌는 몸으로', verb:'싸워온' },
+    'BC-05': { core:'에너지가 바닥난 것처럼 무기력하게', verb:'버텨온' },
+    'BC-06': { core:'장이 예민하고 소화가 불편하게', verb:'견뎌온' },
+    'BC-07': { core:'숨이 차고 체력이 바닥난 느낌으로', verb:'이어온' },
+    'BC-08': { core:'호르몬이 들쑥날쑥하며 몸이 낯설게', verb:'살아온' },
+    'BC-09': { core:'염증과 피로가 몸속 깊이 쌓이며', verb:'버텨온' },
+    'BC-10': { core:'여러 증상이 한꺼번에 몰려드는 몸으로', verb:'이어온' }
   };
-  setText('ch4EmpathyHeading', empHead[userType.type] || '어찌저찌 버텨온 당신께');
+  const bcEmpathy = BC_EMPATHY_HEAD[bc.id] || { core:'몸이 말을 듣지 않는 상황에서', verb:'버텨온' };
 
-  /* 공감 본문 */
+  // 오행별 추가 공감 레이어
+  const ohEmpathy = {
+    '목(木)': `${ohType} 체질 특유의 스트레스 민감함이 더해져`,
+    '화(火)': `${ohType} 체질의 열정이 소진되며`,
+    '토(土)': `${ohType} 체질의 예민한 소화 시스템이 흔들리며`,
+    '금(金)': `${ohType} 체질 면역·호흡계가 쉬지 못하며`,
+    '수(水)': `${ohType} 체질의 깊은 피로가 쌓이며`
+  };
+  const ohLayer = Object.keys(ohEmpathy).find(k => ohType && ohType.includes(k.split('(')[0]));
+  const ohEmpStr = ohLayer ? ohEmpathy[ohLayer] : '';
+
+  // MBTI별 행동 패턴 공감
+  const mbtiEmpathy = mbti
+    ? (mbti.includes('J') ? `계획대로 안 되면 스스로를 탓하며` :
+       mbti.includes('P') ? `즉흥적인 식욕을 조절하려 애쓰며` : '')
+    : '';
+
+  // 최종 헤드라인 조합
+  const headline = ohEmpStr
+    ? `${ohEmpStr} ${bcEmpathy.core} ${bcEmpathy.verb} ${name}님께`
+    : `${bcEmpathy.core} ${bcEmpathy.verb} ${name}님께`;
+
+  const headEl = document.getElementById('ch4EmpathyHeading');
+  if (headEl) headEl.textContent = headline;
+
+  /* 공감 본문 — BC코드별 + 오행별 완전 개인화 */
   const empBody = document.getElementById('ch4EmpathyBody');
   if (empBody) {
+    // BC코드별 핵심 공감 문장
+    const BC_BODY = {
+      'BC-01': `혈당이 오를 때마다 의지력 문제라고 자책하셨을 거예요. 하지만 그건 의지의 문제가 아닙니다. ${bc.name} 바디코드는 인슐린 신호 자체가 제대로 작동하지 않는 체질입니다.`,
+      'BC-02': `기름진 음식을 조금만 먹어도 몸이 무거워지고, 해독이 안 되는 느낌을 받으셨을 거예요. 간이 쉬지 못하고 있는 것, 의지의 문제가 아닙니다.`,
+      'BC-03': `아침에 일어나면 얼굴과 몸이 붓고, 다이어트를 해도 하체가 안 빠지는 경험을 반복하셨겠죠. 수분 순환이 막힌 체질이기 때문입니다.`,
+      'BC-04': `스트레스를 받으면 더 먹게 되고, 먹고 나서 후회하는 패턴이 반복됐을 거예요. 코르티솔이 지방 저장 스위치를 켜는 체질입니다.`,
+      'BC-05': `운동해도 살이 안 빠지고, 항상 피곤하고 무기력한 느낌. 갑상선과 대사 기능이 느려진 체질이라 같은 노력으로 다른 사람보다 결과가 적게 나옵니다.`,
+      'BC-06': `배가 자주 불편하고, 먹는 것에 따라 몸 상태가 극단적으로 달라지셨을 거예요. 장내 환경이 무너진 체질은 모든 영양 흡수가 비효율적으로 작동합니다.`,
+      'BC-07': `조금만 움직여도 숨이 차고, 체력이 금방 바닥나는 경험을 하셨겠죠. 심폐 기능과 순환이 막혀있으면 지방 연소 자체가 어렵습니다.`,
+      'BC-08': `다이어트 결과가 들쑥날쑥하고, 몸 상태가 사이클처럼 변하는 느낌. 호르몬 균형이 무너진 체질에서 나타나는 패턴입니다.`,
+      'BC-09': `항상 몸 어딘가가 무겁고 불편하며, 피로가 기본값이 된 것 같은 느낌. 만성 염증이 쌓이면 신체 회복 속도 자체가 줄어듭니다.`,
+      'BC-10': `여러 가지 문제가 동시에 나타나고, 어디서부터 시작해야 할지 모르는 막막함. 복합 체질은 우선순위 없이 접근하면 더 어렵습니다.`
+    };
+    const bodyTxt = BC_BODY[bc.id] || `${bc.name} 체질은 일반적인 다이어트가 효과를 내기 어려운 이유가 있습니다.`;
+
+    // 오행 추가 공감
+    const OH_BODY = {
+      '목(木)': `특히 ${ohType} 체질은 스트레스가 쌓일수록 간 기능이 떨어지고, 지방 대사가 더 느려집니다.`,
+      '화(火)': `특히 ${ohType} 체질은 열이 쉽게 오르고, 그 열이 수면을 방해해 회복이 더딥니다.`,
+      '토(土)': `특히 ${ohType} 체질은 소화 효율이 낮아 같은 음식을 먹어도 혈당 반응이 더 크게 나타납니다.`,
+      '금(金)': `특히 ${ohType} 체질은 면역 반응이 예민해, 장내 미생물 균형이 무너지면 더 빠르게 영향을 받습니다.`,
+      '수(水)': `특히 ${ohType} 체질은 피로가 쌓이면 회복이 더딘 경향이 있어, 쉬어도 쉰 것 같지 않은 느낌을 자주 받습니다.`
+    };
+    const ohBodyKey = Object.keys(OH_BODY).find(k => ohType && ohType.includes(k.split('(')[0]));
+    const ohBodyTxt = ohBodyKey ? OH_BODY[ohBodyKey] : '';
+
     empBody.innerHTML = `
-      <p>정말 고생 많으셨어요.</p>
-      <p>${userType.msg || '당신이 지금까지 버텨온 방식, 그것 자체가 이미 용기였습니다.'}</p>
-      <p>이제 더 이상 혼자 싸우지 않아도 됩니다.<br>
-         <strong>${bc.name}</strong> 바디코드를 가진 당신을 위한 맞춤 처방을 준비했어요.</p>
+      <p>정말 고생 많으셨어요, ${name}님.</p>
+      <p>${bodyTxt}</p>
+      ${ohBodyTxt ? `<p>${ohBodyTxt}</p>` : ''}
+      ${mbtiEmpathy ? `<p style="font-size:12px;opacity:.85">${mbtiEmpathy} 스스로를 탓하셨다면, 이제 그럴 필요 없습니다.</p>` : ''}
+      <p>이제 <strong>${bc.name}</strong> 바디코드를 정확히 알고, 당신의 몸에 맞는 방법으로만 접근합니다.</p>
     `;
   }
 
-  /* 공감 포인트 리스트 */
+  /* 공감 포인트 리스트 — BC코드별 3가지 핵심 포인트 */
   const pointsEl = document.getElementById('ch4EmpathyPoints');
-  const empPoints = {
-    alcohol: ['야식과 음주가 코르티솔을 높였어요', '간 해독 부담이 지방 축적을 부릅니다', '내일부터가 아닌 오늘 밤부터 시작해요'],
-    alone:   ['만성 스트레스가 내장지방을 키웁니다', '수면 부족이 식욕 호르몬을 망가뜨렸어요', '혼자가 아닌 시스템의 도움을 받을 때예요'],
-    money:   ['재정 스트레스는 코르티솔 과잉을 유발해요', '비싼 방법 없이 저비용 루틴으로 충분합니다', '작은 습관이 큰 변화를 만들어요'],
-    pain:    ['통증은 몸의 신호, 무시하면 더 커집니다', '항염 식이가 진짜 해결책이에요', '움직임을 줄이는 대신 스마트하게 바꿔요'],
-    social:  ['사회적 소진이 폭식 트리거가 됩니다', '경계 설정이 식습관보다 먼저예요', '에너지를 채우는 방식을 재설계할 때예요']
+  const BC_POINTS = {
+    'BC-01': ['식사 순서 하나가 혈당 반응을 완전히 바꿉니다', '인슐린 민감도를 올리는 것이 모든 처방의 시작', '당질 제한보다 식사 타이밍이 먼저입니다'],
+    'BC-02': ['간이 회복될 때 지방 대사가 자동으로 개선됩니다', '과음·과식·수면 부족 중 하나만 잡아도 효과가 나타납니다', '해독 식품이 영양제보다 먼저입니다'],
+    'BC-03': ['수분 순환을 여는 것이 체중 감량의 첫 단계', '부종은 소금 문제가 아닌 림프 순환 문제입니다', '유산소 10분이 하루 수분 정체를 해소합니다'],
+    'BC-04': ['스트레스 관리가 식단보다 먼저입니다', '코르티솔을 낮추는 식품 3가지면 변화가 시작됩니다', '수면 1시간이 다이어트 1주일 효과와 같습니다'],
+    'BC-05': ['대사를 깨우는 것이 운동보다 먼저입니다', '체온 0.5도 올리기가 모든 처방의 기반', '영양소 결핍을 먼저 채워야 운동이 의미 있습니다'],
+    'BC-06': ['장내 유익균을 늘리면 식욕이 자연스럽게 조절됩니다', '프로바이오틱스가 보충제 1순위입니다', '장이 편안해지면 영양 흡수 효율이 올라갑니다'],
+    'BC-07': ['유산소 기반이 없으면 어떤 다이어트도 어렵습니다', '심폐 기능이 올라가면 같은 운동으로 2배 연소됩니다', '호흡 개선이 수면의 질을 바꿉니다'],
+    'BC-08': ['호르몬 균형이 잡히면 식욕 신호가 정상화됩니다', '에스트로겐 대사를 돕는 식품이 핵심 처방', '생리 주기에 맞춘 식단 조정이 효과를 2배 높입니다'],
+    'BC-09': ['항염 식이가 모든 처방 위에 있습니다', '염증을 키우는 식품 5가지를 먼저 제거합니다', '회복 수면이 운동보다 먼저입니다'],
+    'BC-10': ['우선순위 없이 동시에 시작하면 실패합니다', `${bc.name}의 가장 높은 축 하나만 먼저 잡습니다`, '3주 단위 집중 개입이 가장 효과적입니다']
   };
-  const points = empPoints[userType.type] || ['지금 이 순간이 시작점입니다', '작은 것 하나부터 바꾸면 돼요', '당신은 이미 충분히 잘하고 있어요'];
+  const points = BC_POINTS[bc.id] || ['지금 이 순간이 시작점입니다', `${bc.name} 처방에만 집중하세요`, '작은 습관이 체질을 바꿉니다'];
   if (pointsEl) {
     pointsEl.innerHTML = points.map(p =>
       `<li class="empathy-point"><span class="ep-bullet">✦</span>${p}</li>`
@@ -7703,10 +7738,11 @@ function renderCh4(res, bc) {
   /* 가이드 선언 */
   const guideEl = document.getElementById('ch4GuideText');
   if (guideEl) {
+    const ohGuide = ohType ? `${ohType} 체질에 맞게 조정된 ` : '';
     guideEl.innerHTML = `
       앞으로 <strong>${bc.name}</strong> 바디코드에 맞는
-      12주 로드맵으로 함께 가겠습니다.<br>
-      오늘부터 <em>슬림마인드</em>가 당신의 전담 가이드가 될게요.
+      ${ohGuide}12주 로드맵으로 함께 가겠습니다.<br>
+      오늘부터 <em>슬림마인드</em>가 ${name}님의 전담 가이드가 될게요.
     `;
   }
 }
@@ -8829,93 +8865,272 @@ function renderWeeklyClickTree(res, bc) {
   const bcDiet1   = bc.diet  && bc.diet[0]  ? (bc.diet[0].title  || bc.diet[0])  : bc.short || '';
   const bcDiet2   = bc.diet  && bc.diet[1]  ? (bc.diet[1].title  || bc.diet[1])  : '';
   const bcExer1   = bc.exercise && bc.exercise[0] ? (bc.exercise[0].title || bc.exercise[0]) : '';
+  const bcExer2   = bc.exercise && bc.exercise[1] ? (bc.exercise[1].title || bc.exercise[1]) : '';
   const bcSuppl1  = bc.suppl && bc.suppl[0] ? (bc.suppl[0].title || bc.suppl[0]) : '';
+  const bcSuppl2  = bc.suppl && bc.suppl[1] ? (bc.suppl[1].title || bc.suppl[1]) : '';
 
-  // 주차별 완전 차별화 처방 (1·2·3주차 각자 다른 포커스)
-  // wi는 0-indexed (wi:0=1주차, wi:1=2주차, wi:2=3주차)
+  // ── 목표체중 기반 탄단지 비율 계산 ──
+  const R0 = window.__RESULT__ || {};
+  const macroR = (R0.result && R0.result.macro_ratio) ? R0.result.macro_ratio : null;
+  const bodyG  = (R0.result && R0.result.body_goal)   ? R0.result.body_goal   : null;
+  const cw     = R0.result && R0.result.weight   ? Number(R0.result.weight)        : null;
+  const tw     = R0.result && R0.result.target_weight ? Number(R0.result.target_weight) : null;
+  const totalLossKg = (cw && tw && tw < cw) ? parseFloat((cw - tw).toFixed(1)) : 0;
+  const lossIntensity = totalLossKg >= 10 ? 'heavy' : totalLossKg >= 5 ? 'moderate' : 'light';
+
+  // 탄단지 비율 텍스트 (서버 계산값 우선, 없으면 감량 강도 기반 추정)
+  const carbPct = macroR ? macroR.carb_pct  : (lossIntensity === 'heavy' ? 40 : lossIntensity === 'moderate' ? 45 : 50);
+  const protPct = macroR ? macroR.protein_pct : (lossIntensity === 'heavy' ? 35 : lossIntensity === 'moderate' ? 30 : 25);
+  const fatPct2 = macroR ? macroR.fat_pct   : 25;
+  const totalKcal = macroR ? macroR.total_kcal : (cw ? Math.round(cw * 22) : 1500);
+  const carbG  = macroR ? macroR.carb_g    : Math.round(totalKcal * (carbPct/100) / 4);
+  const protG  = macroR ? macroR.protein_g : Math.round(totalKcal * (protPct/100) / 4);
+  const fatG   = macroR ? macroR.fat_g     : Math.round(totalKcal * (fatPct2/100) / 9);
+
+  // 상황별 식단 강도 설명
+  const lossLabel = totalLossKg > 0 ? `${totalLossKg}kg 감량 목표` : '체중 관리';
+  const macroLabel = lossIntensity === 'heavy'
+    ? `저탄수·고단백 집중 감량 (탄:단:지 = ${carbPct}:${protPct}:${fatPct2})`
+    : lossIntensity === 'moderate'
+    ? `균형 감량 식단 (탄:단:지 = ${carbPct}:${protPct}:${fatPct2})`
+    : `유지·관리 식단 (탄:단:지 = ${carbPct}:${protPct}:${fatPct2})`;
+
+  // 오행별 추천 회복 식품 / 운동
+  const ohName = oKey.split(' ')[1] || '체질';
+  const ohTip = ohFoods ? ohFoods.tip : '규칙적인 수면과 스트레스 관리 우선';
+  const ohFoodList = ohFoods ? ohFoods.foods.slice(0,4).map(f=>f.tag).join(', ') : ohFoodStr;
+
+  // BC별 핵심 3대 처방 요약
+  const BC_3PRESC = {
+    'BC-01': { d:'채소→단백→탄수 식사순서 + 혈당스파이크 차단', e:'식후 15분 걷기 → 4주차부터 인터벌', s:'크롬·마그네슘·베르베린' },
+    'BC-02': { d:'십자화과채소 + 알코올·가공식품 완전 차단', e:'간 해독 요가 → 4주차부터 유산소', s:'NAC·밀크씨슬·비타민C' },
+    'BC-03': { d:'저FODMAP 식단 + 발효식품(김치·된장) 매일', e:'가벼운 걷기 → 장 연동 자극 요가', s:'프로바이오틱스·L-글루타민' },
+    'BC-04': { d:'저GI 탄수+셀레늄·요오드 식품 강화', e:'햇볕 아침 걷기 → 4주차 근력', s:'셀레늄·아연·요오드·비타민D' },
+    'BC-05': { d:'항염 식단(오메가3강화) + 설탕·트랜스지방 제거', e:'주 3회 유산소 → 4주차 근력 추가', s:'오메가3·강황·쿠르쿠민' },
+    'BC-06': { d:'균형 탄단지 + 스트레스 식사 차단 루틴', e:'4-7-8 호흡 + 주 3회 요가/필라테스', s:'아슈와간다·마그네슘·L-테아닌' },
+    'BC-07': { d:'수분+전해질 충분 + 림프 순환 음식(생강·파인애플)', e:'림프 드레나지 마사지 → 수중 운동', s:'마그네슘·칼륨·코엔자임Q10' },
+    'BC-08': { d:'저나트륨·고칼륨 식단 + 심혈관 강화 오메가3', e:'심박 130~150 유산소 주 4회', s:'오메가3·코엔자임Q10·비타민K2' },
+    'BC-09': { d:'면역 강화식(아연·비타민C·D 풍부) + 당분 완전 차단', e:'면역 자극 중강도 운동 주 3회', s:'아연·비타민D·비타민C·NAC' },
+    'BC-10': { d:'소식다찬 + 미토콘드리아 활성 식품(코코넛오일·블루베리)', e:'HIIT 주 2회 + 근력 복합 동작', s:'CoQ10·알파리포산·PQQ' },
+  };
+  const p3 = BC_3PRESC[bc.id] || BC_3PRESC['BC-01'];
+
+  // ── 12주 완전 차별화 처방 빌더 ──
+  // wi는 0-indexed: wi=0(1주차) ~ wi=11(12주차)
   function buildWeekPrescs(wi) {
-    const axId = topAxes[wi] || topAxes[0];
-    const axDef = AXIS_DEFS.find(a => a.id === axId) || AXIS_DEFS[0];
+    // 주차별 탄수화물 비율 점진 조정 (1주차: 기준, 4~6주차: 최저, 10~12주차: 안정화)
+    const weekCarbAdj = wi < 3 ? 0 : wi < 6 ? -5 : wi < 9 ? -3 : -2;
+    const wCarbPct = Math.max(30, carbPct + weekCarbAdj);
+    const wProtPct = Math.min(45, protPct + Math.abs(weekCarbAdj) * 0.5);
+    const wFatPct  = 100 - wCarbPct - Math.round(wProtPct);
+    const wKcal    = wi < 3 ? totalKcal : wi < 6 ? Math.round(totalKcal * 0.95) : wi < 9 ? Math.round(totalKcal * 0.93) : Math.round(totalKcal * 0.95);
+    const wCarbG   = Math.round(wKcal * (wCarbPct/100) / 4);
+    const wProtG   = Math.round(wKcal * (wProtPct/100) / 4);
+    const wFatG    = Math.round(wKcal * (wFatPct/100)  / 9);
+    const macroStr = `탄수 ${wCarbG}g(${wCarbPct}%) · 단백 ${wProtG}g(${Math.round(wProtPct)}%) · 지방 ${wFatG}g(${wFatPct}%) / 목표 ${wKcal}kcal`;
 
-    if (wi === 0) {
-      // 1주차: BC코드 핵심 증상 진단 + 오행 체질 확인 → 기초 처방 1가지만
-      return {
-        mainPresc: `[${bc.short}] ${bcDiet1} — 오늘부터 바로 시작할 수 있는 1가지입니다.`,
-        ohaengPresc: `${oKey.split(' ')[1]} 체질(${ohOrgStr})에 맞는 식품: ${ohFoodStr}`,
-        goal: '몸이 신호를 보내는 이유를 이해하고, 식사 순서 하나를 바꾸는 주입니다.',
-        quiz: { q:`${axDef.name} 개선을 위한 첫 번째 식단 습관은?`,
-          opts:['가장 먹고 싶은 것 먼저','채소→단백질→탄수화물 순서','탄수화물을 완전히 끊기','하루 1식으로 줄이기'], ans:1 },
-        checkin:`${axDef.icon} ${axDef.name} 기초 처방 실천 확인`
+    const wk = wi + 1; // 1-indexed 주차
+    switch(wi) {
+      case 0: return { // 1주차: 식사 순서 + BC 핵심 식단 시작
+        phase:'📌 Phase 1: 기반 다지기',
+        focus:'식사 순서 교정 + 몸 신호 읽기',
+        diet: `채소→단백질→탄수화물 순서로 식사. ${p3.d}. 오늘부터 딱 1가지만 바꿉니다.`,
+        macro: macroStr,
+        exercise: `식후 15분 가벼운 걷기. 격렬한 운동 금지 — 몸이 적응하는 주입니다.`,
+        recovery: `수면 시간 7시간 확보. 취침 전 스마트폰 1시간 전 차단. ${ohName} 체질 회복: ${ohTip.substring(0,40)}`,
+        ohaeng: `${ohName} 체질 맞춤 식품 시작: ${ohFoodList}. 이번 주 1가지 식품 매일 섭취.`,
+        goal: `${lossLabel}: 첫 주 목표는 완벽한 식단이 아닌 식사 순서 1가지 습관화`,
+        quiz: {q:'식사 혈당 스파이크를 가장 효과적으로 줄이는 식사 방법은?', opts:['밥 먼저 먹기','채소→단백질→탄수화물 순서','굶다가 한 번에 먹기','저녁 안 먹기'], ans:1},
+        checkin:'🥗 채소→단백→탄수 식사 순서 1주차 실천 확인'
       };
-    } else if (wi === 1) {
-      // 2주차: BC코드 식단 처방 + 오행 추천 식품 통합 식단
-      const bcD2str = bcDiet2 || bcDiet1;
-      return {
-        mainPresc: `[${bc.short}] ${bcD2str} — 1주차 식사 순서에 이것을 추가하세요.`,
-        ohaengPresc: `${oKey.split(' ')[1]} 체질 추천 식품(${ohFoodStr})을 매끼 1가지씩 포함하세요.`,
-        goal: 'BC코드 식단과 오행 체질 식품을 통합하여 대사 변화가 시작됩니다.',
-        quiz: { q:`${oKey.split(' ')[1]} 체질에 맞는 식품군은?`,
-          opts:[ohFoods ? ohFoods.foods[0].tag : '채소', '인스턴트 식품', '정제 탄수화물', '트랜스지방'], ans:0 },
-        checkin:`🥗 오행 맞춤 식품 + ${bc.short} 식단 2주차 통합 실천`
+      case 1: return { // 2주차: 탄단지 비율 적용 + 오행 식품 통합
+        phase:'📌 Phase 1: 기반 다지기',
+        focus:'탄단지 비율 맞춤 식단 + 오행 식품 통합',
+        diet: `${macroStr}. 탄수화물은 현미·귀리·고구마로만. ${p3.d}.`,
+        macro: macroStr,
+        exercise: `걷기 주 5회 20분. 4주차 본격 운동을 위한 관절·근육 준비 스트레칭 10분/일.`,
+        recovery: `단백질 보충: 매끼 손바닥 크기 단백질(닭·생선·두부·달걀). ${ohName} 체질 회복식: ${ohFoodList}.`,
+        ohaeng: `${ohName} 체질 식품 확장: 매끼 ${ohFoodList} 중 1가지 포함. 오행 기반 간식 교체(과일→견과류).`,
+        goal: `${lossLabel}: 식단 비율(탄:단:지=${carbPct}:${protPct}:${fatPct2}) 몸에 익히기`,
+        quiz: {q:${JSON.stringify(`${ohName} 체질 식품으로 가장 적합한 것은?`)}, opts:[ohFoods ? ohFoods.foods[0].tag : '녹색채소', '인스턴트라면', '흰쌀밥', '설탕음료'], ans:0},
+        checkin:`🥗 탄단지 비율(${carbPct}:${protPct}:${fatPct2}) 식단 2주차 실천 확인`
       };
-    } else {
-      // 3주차: BC코드 운동+회복 처방 + 오행 계절 처방
-      return {
-        mainPresc: `[${bc.short}] 운동: ${bcExer1 || '규칙적 운동 시작'} — 이번 주 처음으로 시작합니다.`,
-        ohaengPresc: `${oKey.split(' ')[1]} 체질 회복법: ${ohFoods ? ohFoods.tip.substring(0,40) + '...' : '규칙적 수면 우선'}`,
-        goal: '식단 기반 위에 운동과 회복을 추가하는 주입니다. 보충제는 이번 주부터.',
-        quiz: { q:`${bc.short}에서 운동보다 먼저 해결해야 할 것은?`,
-          opts:['고강도 운동 바로 시작','식단 기반 먼저 2주 이상 유지 후 운동 추가','운동만 집중','보충제만 복용'], ans:1 },
-        checkin:`💪 ${bc.short} 운동 처방 + 오행 회복법 3주차 실천`
+      case 2: return { // 3주차: 운동 추가 + 회복 루틴 구축
+        phase:'📌 Phase 1: 기반 다지기',
+        focus:'운동 루틴 추가 + 보충제 시작',
+        diet: `${macroStr}. 식전 단백질 30g 선 섭취(포만감+근육). ${p3.d}.`,
+        macro: macroStr,
+        exercise: `${bcExer1 || '근력 운동'} 주 3회 시작. 운동 직후 30분 내 단백질 섭취(유청·두부·닭가슴살).`,
+        recovery: `수면 전 마그네슘 200mg 복용. ${ohName} 체질 회복: ${ohTip.substring(0,50)}.`,
+        ohaeng: `${ohName} 체질 보충제 시작: ${p3.s}. 공복 또는 식사와 함께 복용.`,
+        goal: `${lossLabel}: 식단+운동+수면 3가지 동시 루틴화`,
+        quiz: {q:'운동 효과를 최대화하는 단백질 섭취 타이밍은?', opts:['운동 3시간 전','운동 직후 30분 내','운동 다음 날 아침','상관없음'], ans:1},
+        checkin:`💪 ${bcExer1 || '운동'} 주 3회 + 단백질 보충 3주차 실천 확인`
       };
+      case 3: return { // 4주차: 칼로리 5% 추가 감소 + 간헐적 단식 도전
+        phase:'⚡ Phase 2: 핵심 개입',
+        focus:'간헐적 단식 도전 + 칼로리 조정',
+        diet: `${macroStr}. 16:8 간헐적 단식 시도(11시~19시 식사). 정제 탄수화물 50% 추가 제거.`,
+        macro: macroStr,
+        exercise: `유산소 주 4회 30분(심박 130~150). ${bcExer1 || '저강도 근력'} 병행.`,
+        recovery: `프로바이오틱스 아침 공복 복용 시작. 식후 10분 걷기 반드시 실천.`,
+        ohaeng: `${ohName} 체질 심화: ${ohFoods ? ohFoods.foods.slice(1,4).map(f=>f.tag).join('·') : ohFoodStr} 집중 섭취. 음식 색깔 다양화(5색 채소).`,
+        goal: `${lossLabel}: 4주차부터 실질 지방 감소 시작. 간헐적 단식으로 인슐린 리셋`,
+        quiz: {q:'16:8 간헐적 단식의 핵심 효과는?', opts:['근육 증가','인슐린 수치 저하·지방 연소 전환','수면 개선','소화 개선'], ans:1},
+        checkin:'⏱️ 16:8 간헐적 단식 + 유산소 주 4회 4주차 실천 확인'
+      };
+      case 4: return { // 5주차: BC 맞춤 보충제 심화 + 근력 강화
+        phase:'⚡ Phase 2: 핵심 개입',
+        focus:'보충제 심화 + 근력 운동 강화',
+        diet: `${macroStr}. 단백질 매끼 최소 ${Math.round(wProtG/3)}g 이상 확보. ${p3.d}.`,
+        macro: macroStr,
+        exercise: `${bcExer1 || '근력'} + ${bcExer2 || '유산소'} 교대. 주 5회(근력 3회·유산소 2회). 운동 강도 20% 상향.`,
+        recovery: `${p3.s} 복용 루틴 안정화. 수면 7~8시간 유지. 주 1회 스트레칭 30분.`,
+        ohaeng: `${ohName} 체질 오행 처방 심화: ${ohTip}. 계절 제철 식품 적극 활용.`,
+        goal: `${lossLabel}: 5주차 목표 체중 변화 측정. 근육량 유지하며 지방만 감소`,
+        quiz: {q:'근육량을 유지하며 지방을 감소시키는 핵심 전략은?', opts:['굶기','단백질 충분 섭취+근력 운동 병행','유산소만','탄수화물 완전 제거'], ans:1},
+        checkin:`💊 ${p3.s} 복용 + 근력 주 3회 5주차 실천 확인`
+      };
+      case 5: return { // 6주차: 식단 완성도 점검 + 장 건강 심화
+        phase:'⚡ Phase 2: 핵심 개입',
+        focus:'중간 점검 + 장 건강 심화',
+        diet: `${macroStr}. 발효식품(김치·된장·청국장) 매끼 포함. L-글루타민 5g 공복 복용 시작.`,
+        macro: macroStr,
+        exercise: `6주 체성분 측정 후 운동 계획 재조정. 목표 대비 진행률 확인.`,
+        recovery: `마그네슘 글리시네이트 400mg 취침 전. 장 투과성 회복 집중(글루텐·유제품 일시 제한).`,
+        ohaeng: `${ohName} 체질 6주차 심화: 전해질(마그네슘·칼륨·나트륨) 균형. 오행 계절 처방 적용.`,
+        goal: `${lossLabel}: 6주 중간 점검. 지금까지 식단 습관 몇 개나 유지되고 있는지 체크`,
+        quiz: {q:'장 건강이 다이어트에 미치는 영향으로 맞는 것은?', opts:['관계없음','장내 세균이 에너지 흡수·식욕 호르몬 조절에 직결','운동에만 영향','수면에만 영향'], ans:1},
+        checkin:'🦠 발효식품 매끼 + L-글루타민 6주차 실천 확인'
+      };
+      case 6: return { // 7주차: 지방 연소 가속화
+        phase:'🔥 Phase 3: 가속화',
+        focus:'지방 연소 가속화 + 호르몬 최적화',
+        diet: `${macroStr}. 지방 섭취는 오메가3·올리브오일·아보카도 위주. ${p3.d}.`,
+        macro: macroStr,
+        exercise: `HIIT(고강도인터벌) 주 2회 추가. 총 운동: 주 5~6회(근력3·HIIT2·유산소1).`,
+        recovery: `비타민D3 5000IU + K2 100mcg 아침 복용 시작. ${ohName} 체질 회복: ${ohTip.substring(0,50)}.`,
+        ohaeng: `${ohName} 체질 호르몬 최적화: 아슈와간다 300mg 취침 전. 코르티솔 관리 루틴 완성.`,
+        goal: `${lossLabel}: 7주차부터 지방 연소 최대화 구간. 체중 감소 속도 가장 빠른 시기`,
+        quiz: {q:'HIIT 운동의 지방 연소 효과가 일반 유산소보다 뛰어난 이유는?', opts:['시간이 짧아서','운동 후 산소 소비 증가(EPOC)로 더 오래 지방 연소','근육이 덜 쓰여서','칼로리가 낮아서'], ans:1},
+        checkin:'🔥 HIIT 주 2회 + 비타민D 복용 7주차 실천 확인'
+      };
+      case 7: return { // 8주차: 염증 제거 + 대사 최적화
+        phase:'🔥 Phase 3: 가속화',
+        focus:'항염 심화 + 대사 최적화',
+        diet: `${macroStr}. 오메가3 3g/일로 증량. 강황(쿠르쿠민) 500mg + 후추 추출물 매일.`,
+        macro: macroStr,
+        exercise: `${bcExer1 || '복합 근력'} 무게 15% 증가. 운동 볼륨 최대 구간.`,
+        recovery: `포스파티딜세린 100mg 취침 전(코르티솔 억제). 수면 트래커로 REM 비율 확인.`,
+        ohaeng: `${ohName} 체질 항염: ${ohFoodList} + 생강·강황 매일. 염증 유발 식품(가공육·트랜스지방) 완전 제거.`,
+        goal: `${lossLabel}: 8주차 항염 집중으로 지방 연소 저항 제거. 체중 정체기 돌파`,
+        quiz: {q:'만성 염증이 체중 감량을 방해하는 주요 원인은?', opts:['식욕 증가','인슐린 저항성 악화로 지방 연소 억제','운동 효율 감소','수면 방해'], ans:1},
+        checkin:'🛡️ 오메가3 3g + 강황 복용 8주차 실천 확인'
+      };
+      case 8: return { // 9주차: 미토콘드리아 + 지구력 강화
+        phase:'🔥 Phase 3: 가속화',
+        focus:'미토콘드리아 활성 + 지구력 강화',
+        diet: `${macroStr}. CoQ10 100mg 아침 식사와 복용. 블루베리·아보카도·연어 주 3회 이상.`,
+        macro: macroStr,
+        exercise: `장거리 유산소 주 1회(60분). 복합 근력 운동 + 폼롤러 회복 30분.`,
+        recovery: `CoQ10·알파리포산 복용으로 세포 에너지 생산 최대화. 수면 8시간 목표.`,
+        ohaeng: `${ohName} 체질 에너지 최적화: ${ohFoodList}. 오행 기반 영양 밸런스 완성.`,
+        goal: `${lossLabel}: 9주차 체력 최고조. 에너지 충만하며 지방 연소 지속`,
+        quiz: {q:'미토콘드리아 기능을 직접 지원하는 보충제는?', opts:['비타민C','CoQ10(코엔자임Q10)','마그네슘','아연'], ans:1},
+        checkin:'⚛️ CoQ10 복용 + 유산소 60분 9주차 실천 확인'
+      };
+      case 9: return { // 10주차: 갑상선 최적화 + 안정화
+        phase:'🏆 Phase 4: 완성 & 유지',
+        focus:'갑상선·호르몬 최적화',
+        diet: `${macroStr}. 셀레늄(브라질넛 2개)·아연·요오드(미역·다시마) 매일. 탄수화물 타이밍: 운동 후에만 집중 섭취.`,
+        macro: macroStr,
+        exercise: `근력 운동 강도 유지 + VO2max 향상 중강도 유산소. 주 5회.`,
+        recovery: `아슈와간다·마그네슘 수면 루틴 고수. ${ohName} 체질 계절 처방 최적화.`,
+        ohaeng: `${ohName} 체질 완성: ${ohFoodList} 완전 일상화. 오행 식품 루틴 완성.`,
+        goal: `${lossLabel}: 10주차 목표체중 ${tw || '목표'} 달성 여부 중간 확인. 호르몬 밸런스 최적 상태`,
+        quiz: {q:'갑상선 기능에 필수인 미네랄 조합은?', opts:['철분+칼슘','셀레늄+아연+요오드','나트륨+칼륨','마그네슘+인'], ans:1},
+        checkin:'⚡ 갑상선 영양소 + 체중 중간 측정 10주차 실천 확인'
+      };
+      case 10: return { // 11주차: 심혈관 + 체성분 점검
+        phase:'🏆 Phase 4: 완성 & 유지',
+        focus:'심혈관 최적화 + 체성분 최종 점검',
+        diet: `${macroStr}. 지중해 식단 완성(올리브오일·연어·견과·채소·통곡물). 정제 식품 0%.`,
+        macro: macroStr,
+        exercise: `VO2max 측정(스마트워치). 심박수 130~150 유산소 주 4회 + 근력 주 3회.`,
+        recovery: `체성분 분석으로 ECW/ICW 비율 확인. 미네랄워터 또는 필터 정수 전환. hsCRP 수치 재확인.`,
+        ohaeng: `${ohName} 체질 11주차: 오행 전체 밸런스 점검. 부족한 오행 식품 보강.`,
+        goal: `${lossLabel}: 11주차 체성분 측정. 근육량 유지하며 체지방률 목표 달성 확인`,
+        quiz: {q:'심폐 지구력을 수치로 측정하는 가장 객관적인 지표는?', opts:['안정시 심박수','VO2max','혈압','호흡수'], ans:1},
+        checkin:'❤️ VO2max 측정 + 체성분 분석 11주차 실천 확인'
+      };
+      case 11: return { // 12주차: 완성 + 유지 전략
+        phase:'🏆 Phase 4: 완성 & 유지',
+        focus:'12주 완성 + 유지 전략 확립',
+        diet: `${macroStr} — 이 식단이 이제 평생 식단입니다. ${p3.d}. HbA1c 검사로 3개월 혈당 평균 확인.`,
+        macro: macroStr,
+        exercise: `3개월 성과 종합 측정(체중·체성분·혈액검사). 향후 유지 운동 계획 수립.`,
+        recovery: `12주 완성 후 유지기 루틴 확립. ${p3.s} 복용 지속. ${ohName} 체질 식품 완전 일상화.`,
+        ohaeng: `${ohName} 체질 12주 완성: ${ohFoodList} 매일 + ${ohTip}. 이제 몸이 바뀌었습니다.`,
+        goal: `${lossLabel}: 12주 최종 목표 달성 확인. 감량 ${tw && cw ? (cw - tw).toFixed(1) : '?'}kg 목표 vs 실제 비교`,
+        quiz: {q:'12주 감량 성과를 유지하는 가장 중요한 전략은?', opts:['극단적 식이 제한 유지','습관화된 식단+운동 루틴 지속','감량 후 원래 식단 복귀','보충제만 지속'], ans:1},
+        checkin:'🏆 12주 완성 + HbA1c 검사 + 3개월 성과 종합 리뷰 완료'
+      };
+      default: {
+        const axId = topAxes[wi % topAxes.length] || 'A1';
+        const axDef = AXIS_DEFS.find(a => a.id === axId) || AXIS_DEFS[0];
+        return {
+          phase: `${wk}주차`, focus: `${axDef.name} 집중`,
+          diet: `${macroStr}. ${p3.d}.`, macro: macroStr,
+          exercise: `${bcExer1 || '운동'} 주 3회`, recovery: `${ohTip}`,
+          ohaeng: `${ohName} 체질 처방: ${ohFoodList}`,
+          goal: `${lossLabel}: ${wk}주차 목표 달성`,
+          quiz: {q:`${wk}주차 핵심 목표는?`, opts:['완벽한 식단','1가지 습관 지속','모두 동시에','빠른 결과'], ans:1},
+          checkin:`${wk}주차 실천 확인`
+        };
+      }
     }
   }
 
-  // BC 처방을 축 형태로 변환 (ai:0=BC핵심, ai:1=오행통합, ai:2=보충제)
+  // BC 처방을 축 형태로 변환 (ai:0=식단, ai:1=운동, ai:2=회복)
   function buildBcOhaengAxes(wi) {
-    const axId  = topAxes[Math.min(wi, topAxes.length-1)] || 'A1';
-    const axDef = AXIS_DEFS.find(a => a.id === axId) || AXIS_DEFS[0];
-    const wp    = buildWeekPrescs(wi);
+    const wp = buildWeekPrescs(wi);
+    const wk = wi + 1;
 
-    // ai:0 — BC코드 핵심 처방
+    // ai:0 — 식단 처방
     const ax0 = {
-      ai:0, axisId: axId, label: `${bc.short} 핵심 처방`, icon: '🎯',
-      presc: wp.mainPresc,
+      ai:0, axisId: topAxes[0] || 'A1', label: `${wk}주차 식단 처방`, icon: '🥗',
+      presc: `${wp.diet}\n\n📊 맞춤 탄단지: ${wp.macro}`,
       quiz: wp.quiz,
       checkinLabel: wp.checkin
     };
 
-    // ai:1 — 오행 통합 처방
+    // ai:1 — 운동 처방
     const ax1 = {
-      ai:1, axisId: 'A11', label: `${oKey.split(' ')[1]} 체질 처방`, icon: ohFoods ? ohFoods.char : '🌿',
-      presc: wp.ohaengPresc,
-      quiz: { q:`${oKey.split(' ')[1]} 체질에서 특히 강화해야 할 장기는?`,
-        opts:[ohOrgStr || '신장', '심장만', '폐만', '위장만'], ans:0 },
-      checkinLabel: `${oKey.split(' ')[1]} 오행 체질 처방 실천`
+      ai:1, axisId: topAxes[1] || 'A3', label: `${wk}주차 운동 처방`, icon: '💪',
+      presc: wp.exercise,
+      quiz: {q:`${wk}주차 운동에서 가장 중요한 것은?`,
+        opts:['최대 강도로','꾸준히 루틴 유지','한 번에 몰아서','통증 참고 계속'], ans:1},
+      checkinLabel: `${wk}주차 운동 처방 실천 확인`
     };
 
-    // ai:2 — 주차별 보충제/생활습관
-    const ax2key = wi === 0 ? axDef : (wi === 1 ? (AXIS_DEFS.find(a=>a.id===topAxes[1]) || axDef) : (AXIS_DEFS.find(a=>a.id===topAxes[2]) || axDef));
+    // ai:2 — 회복 + 오행 처방
     const ax2 = {
-      ai:2, axisId: ax2key.id, label: `${wi+1}주차 생활 습관`, icon: '📋',
-      presc: wp.goal,
-      quiz: { q:`${wi+1}주차 목표 달성의 핵심은?`,
-        opts:['완벽한 식단', '꾸준한 1가지 실천', '모두 동시에 시작', '빠른 결과'], ans:1 },
-      checkinLabel: `${wi+1}주차 목표 체크인 완료`
+      ai:2, axisId: topAxes[2] || 'A9', label: `${wk}주차 회복·오행 처방`, icon: '🌿',
+      presc: `${wp.recovery}\n\n☯️ ${ohName} 체질: ${wp.ohaeng}`,
+      quiz: {q:`${ohName} 체질 회복에 가장 중요한 것은?`,
+        opts:[ohFoods ? ohFoods.foods[0].tag : '제철 채소', '인스턴트', '설탕', '알코올'], ans:0},
+      checkinLabel: `${ohName} 체질 처방 + 회복 ${wk}주차 확인`
     };
 
     return [ax0, ax1, ax2];
   }
 
-  // defaultWeeklyTree를 딥카피하여 1~3주차 axes를 BC+오행 처방으로 완전 교체
+  // defaultWeeklyTree를 딥카피하여 1~12주차 전체를 BC+오행+탄단지 처방으로 완전 교체
   const weeklyTree = defaultWeeklyTree.map((group, gi) => ({
     ...group,
     weeks: group.weeks.map(week => {
-      if (week.wi >= 0 && week.wi <= 2) {
-        // 1~3주차: BC+오행 합산 완전 교체
-        return { ...week, axes: buildBcOhaengAxes(week.wi) };
-      }
-      return week;
+      // 모든 주차(wi 0~11) BC+오행 맞춤 처방으로 완전 교체
+      return { ...week, axes: buildBcOhaengAxes(week.wi) };
     })
   }));
 
@@ -9139,17 +9354,22 @@ function wtToggleWeek(wi) {
       </div>`;
   }
 
-  // 주차별 포커스 문구
-  const weekFocusMap = {
-    1: '🎯 1주차 — 내 몸 신호 읽기 + 핵심 1가지 시작',
-    2: '🥗 2주차 — BC×오행 통합 식단 본격 적용',
-    3: '💪 3주차 — 운동·회복 루틴 추가 + 보충제 시작'
+  // 주차별 처방 요약 빌드
+  const wp0 = buildWeekPrescs(wiIndex); // wiIndex = wi-1
+  const phaseColors = {
+    '📌 Phase 1: 기반 다지기': '#16A34A',
+    '⚡ Phase 2: 핵심 개입':   '#D97706',
+    '🔥 Phase 3: 가속화':      '#DC2626',
+    '🏆 Phase 4: 완성 & 유지': '#7C3AED',
   };
-  const weekFocusHtml = weekFocusMap[wi]
-    ? `<div style="background:linear-gradient(90deg,#7C3AED18,#A855F718);border-radius:10px;
-        padding:9px 12px;margin-bottom:10px;font-size:11.5px;font-weight:800;color:#5B21B6;
-        border:1px solid #DDD6FE">${weekFocusMap[wi]}</div>`
-    : '';
+  const phaseColor = phaseColors[wp0.phase] || '#0B2545';
+  const weekFocusHtml = `
+    <div style="background:${phaseColor}12;border:1px solid ${phaseColor}30;border-radius:10px;
+      padding:10px 14px;margin-bottom:12px">
+      <div style="font-size:9px;font-weight:800;color:${phaseColor};letter-spacing:.1em;margin-bottom:3px">${wp0.phase || ''}</div>
+      <div style="font-size:12.5px;font-weight:900;color:#0B2545">${wp0.focus || ''}</div>
+      ${wp0.macro ? `<div style="font-size:10.5px;color:#475569;margin-top:5px;line-height:1.6">📊 ${wp0.macro}</div>` : ''}
+    </div>`;
 
   panel.style.display = 'block';
   panel.innerHTML = `
@@ -9169,7 +9389,7 @@ function wtToggleWeek(wi) {
           <span class="wt-axis-toggle" id="wtAxisToggle_${wi}_${axis.ai}">+</span>
         </div>
         <div class="wt-axis-detail" id="wtAxisDetail_${wi}_${axis.ai}" style="display:none">
-          <div class="wt-presc">${axis.presc}</div>
+          <div class="wt-presc" style="white-space:pre-line">${axis.presc}</div>
           <div class="wt-quiz-area">
             <div class="wt-quiz-q">🧠 ${axis.quiz.q}</div>
             <div class="wt-quiz-opts">
