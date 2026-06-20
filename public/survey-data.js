@@ -1,4 +1,7 @@
-// SlimMind 설문 데이터 v3.0 — 문구 전면 개선 + 항목 수정
+// SlimMind 설문 데이터 v4.0 — axisEffect 직접 채점 방식 전환
+// BC코드 완전 제거 (BC-01~BC-10 → A01~A10 원인축 직접 채점)
+// Q00(기대값) 추가 / Q36·Q37·Q41·Q44·Q67·Q68·Q70·Q71 삭제 / Q_WAIST 추가
+// calculateAxisScores() 신규 / TYPE_NAME_TABLE 16개 유형명 / generateTypeName() fallback
 // Q2/Q3/Q8/Q14/Q23/Q34/Q37/Q38/Q42/Q45/Q58/Q62/Q63 수정
 // 실시간 피드백 후킹 메시지 포함
 
@@ -111,6 +114,27 @@ const AXIS_META = {
 
 const QUESTIONS = [
   // ══════════════════════════════════════════════════════
+  //  Q00 · 기대값 설정 (점수 미포함 — 완주율 향상용)
+  // ══════════════════════════════════════════════════════
+  {
+    id: 'Q00', section: 'A', num: 0,
+    axis: null, role: 'gate', weight: 0,
+    question: '{name}님, 이 분석을 통해 가장 얻고 싶은 것은 무엇인가요?',
+    hint: '솔직하게 선택해주세요. 이 답변이 결과지의 첫 문장 방향을 결정합니다.',
+    type: 'SINGLE_SELECT',
+    options: [
+      { emoji: '🔍', label: '내 몸이 왜 안 빠지는지 이유를 알고 싶어요',
+        desc: '원인 파악이 우선이에요', value: 'why', axisEffect: {} },
+      { emoji: '📋', label: '나에게 맞는 구체적인 방법을 알고 싶어요',
+        desc: '지금 당장 실천 가능한 플랜', value: 'plan', axisEffect: {} },
+      { emoji: '🏥', label: '건강 문제가 체중과 연결된 건지 확인하고 싶어요',
+        desc: '건강이 걱정돼요', value: 'health', axisEffect: {} },
+      { emoji: '💪', label: '마지막으로 한 번 제대로 해보고 싶어요',
+        desc: '이번엔 진짜로', value: 'final', axisEffect: {} },
+    ],
+    saveAs: 'expectation'
+  },
+  // ══════════════════════════════════════════════════════
   //  섹션 A · 몸의 기억
   // ══════════════════════════════════════════════════════
   {
@@ -121,7 +145,7 @@ const QUESTIONS = [
     type: 'TEXT_INPUT',
     placeholder: '예: 지연, 혜진, 민수...',
     maxLength: 10,
-    bcEffect: []
+    axisEffect: []
   },
   {
     id: 'Q02', section: 'A', num: 2,
@@ -131,9 +155,9 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 2.0,
     options: [
-      { emoji: '🌸', label: '여성', desc: '', value: 'female', bcEffect: { 'BC-05': 15, 'BC-06': 10, 'BC-07': 10 } },
-      { emoji: '⚡', label: '남성', desc: '', value: 'male', bcEffect: { 'BC-01': 15, 'BC-02': 10 } },
-      { emoji: '🌀', label: '기타', desc: '', value: 'other', bcEffect: {} }
+      { emoji: '🌸', label: '여성', desc: '', value: 'female', axisEffect: { A02: 25, A04: 10 } },
+      { emoji: '⚡', label: '남성', desc: '', value: 'male', axisEffect: { A01: 25 } },
+      { emoji: '🌀', label: '기타', desc: '', value: 'other', axisEffect: {} }
     ]
   },
   {
@@ -145,12 +169,12 @@ const QUESTIONS = [
     maxSelect: 2,
     weight: 2.5,
     options: [
-      { emoji: '🫃', label: '윗배·복부', desc: '만지면 딱딱하거나 볼록함', value: 'upper_belly', bcEffect: { 'BC-01': 25, 'BC-02': 20 } },
-      { emoji: '🔻', label: '아랫배·하복부', desc: '물렁하게 늘어진 느낌', value: 'lower_belly', bcEffect: { 'BC-05': 20, 'BC-07': 15 } },
-      { emoji: '🍑', label: '허벅지·엉덩이', desc: '앉으면 더 넓어지는 느낌', value: 'thigh', bcEffect: { 'BC-05': 25, 'BC-06': 20 } },
-      { emoji: '💪', label: '어깨·팔뚝·등', desc: '목이 짧아 보이는 느낌', value: 'shoulder', bcEffect: { 'BC-03': 25 } },
-      { emoji: '〰️', label: '옆구리·허리', desc: '정면에서 허리 곡선이 없음', value: 'waist', bcEffect: { 'BC-04': 25 } },
-      { emoji: '🌊', label: '전체적으로', desc: '특정 부위 없이 전반적으로', value: 'whole', bcEffect: { 'BC-07': 15, 'BC-08': 15, 'BC-09': 10 } }
+      { emoji: '🫃', label: '윗배·복부', desc: '만지면 딱딱하거나 볼록함', value: 'upper_belly', axisEffect: { A01: 45 } },
+      { emoji: '🔻', label: '아랫배·하복부', desc: '물렁하게 늘어진 느낌', value: 'lower_belly', axisEffect: { A02: 20, A04: 15 } },
+      { emoji: '🍑', label: '허벅지·엉덩이', desc: '앉으면 더 넓어지는 느낌', value: 'thigh', axisEffect: { A02: 45 } },
+      { emoji: '💪', label: '어깨·팔뚝·등', desc: '목이 짧아 보이는 느낌', value: 'shoulder', axisEffect: { A06: 25 } },
+      { emoji: '〰️', label: '옆구리·허리', desc: '정면에서 허리 곡선이 없음', value: 'waist', axisEffect: { A06: 25 } },
+      { emoji: '🌊', label: '전체적으로', desc: '특정 부위 없이 전반적으로', value: 'whole', axisEffect: { A03: 15, A04: 15, A07: 10 } }
     ],
     feedback: { any: '🎯 가장 신경 쓰이는 부위가 바디코드의 출발점이 됩니다.' }
   },
@@ -162,10 +186,10 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 1.5,
     options: [
-      { emoji: '🌱', label: '처음 도전이에요', desc: '아직 한 번도 제대로 안 해봤어요', value: 0, bcEffect: {} },
-      { emoji: '🔄', label: '2~3번 해봤어요', desc: '조금 빠지다가 다시 돌아왔어요', value: 2, bcEffect: {} },
-      { emoji: '🌀', label: '5번 이상이에요', desc: '이제는 뭘 해야 할지 모르겠어요', value: 5, bcEffect: { 'BC-10': 20 }, feedbackKey: 'yoyo' },
-      { emoji: '💫', label: '셀 수도 없어요', desc: '다이어트가 일상이 된 지 오래됐어요', value: 10, bcEffect: { 'BC-10': 30 }, feedbackKey: 'yoyo' }
+      { emoji: '🌱', label: '처음 도전이에요', desc: '아직 한 번도 제대로 안 해봤어요', value: 0, axisEffect: {} },
+      { emoji: '🔄', label: '2~3번 해봤어요', desc: '조금 빠지다가 다시 돌아왔어요', value: 2, axisEffect: {} },
+      { emoji: '🌀', label: '5번 이상이에요', desc: '이제는 뭘 해야 할지 모르겠어요', value: 5, axisEffect: { A08: 20 }, feedbackKey: 'yoyo' },
+      { emoji: '💫', label: '셀 수도 없어요', desc: '다이어트가 일상이 된 지 오래됐어요', value: 10, axisEffect: { A08: 30 }, feedbackKey: 'yoyo' }
     ],
     saveAs: 'yoyo_count'
   },
@@ -177,10 +201,10 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 1.8,
     options: [
-      { emoji: '🪨', label: '단단하고 탄탄한 편이에요', desc: '근육질은 아닌데 탄탄한 느낌', value: 'hard', bcEffect: { 'BC-01': 15, 'BC-03': 15 } },
-      { emoji: '🍮', label: '전체적으로 말랑말랑해요', desc: '탄력이 없어진 느낌', value: 'soft', bcEffect: { 'BC-07': 15, 'BC-08': 10 }, feedbackKey: 'soft_fat' },
-      { emoji: '💧', label: '붓는 편이에요', desc: '아침저녁 차이가 꽤 큰 편', value: 'puffy', bcEffect: { 'BC-06': 15, 'BC-09': 10 }, feedbackKey: 'puffy' },
-      { emoji: '🎭', label: '부위마다 달라요', desc: '어딘 단단하고 어딘 말랑해요', value: 'mixed', bcEffect: {} }
+      { emoji: '🪨', label: '단단하고 탄탄한 편이에요', desc: '근육질은 아닌데 탄탄한 느낌', value: 'hard', axisEffect: { A01: 15, A06: 15 } },
+      { emoji: '🍮', label: '전체적으로 말랑말랑해요', desc: '탄력이 없어진 느낌', value: 'soft', axisEffect: { A03: 10, A04: 15 }, feedbackKey: 'soft_fat' },
+      { emoji: '💧', label: '붓는 편이에요', desc: '아침저녁 차이가 꽤 큰 편', value: 'puffy', axisEffect: { A02: 15, A07: 10 }, feedbackKey: 'puffy' },
+      { emoji: '🎭', label: '부위마다 달라요', desc: '어딘 단단하고 어딘 말랑해요', value: 'mixed', axisEffect: {} }
     ]
   },
   {
@@ -195,8 +219,8 @@ const QUESTIONS = [
       { emoji: '☀️', label: '여름, 더운 시기', desc: '여름에 오히려 더 먹게 돼요', value: 'summer', ohaengEffect: { '화': 15 } },
       { emoji: '🍂', label: '가을, 환절기', desc: '기분이 가라앉으면서 쪄요', value: 'autumn', ohaengEffect: { '금': 15 } },
       { emoji: '❄️', label: '겨울, 추운 시기', desc: '움츠러들고 활동이 줄어요', value: 'winter', ohaengEffect: { '수': 15 } },
-      { emoji: '😤', label: '스트레스 받을 때마다', desc: '계절 상관없이 스트레스가 문제예요', value: 'stress', bcEffect: { 'BC-09': 15 }, feedbackKey: 'stress_high' },
-      { emoji: '📅', label: '딱히 없어요', desc: '꾸준히 조금씩 쪄왔어요', value: 'none', bcEffect: {} }
+      { emoji: '😤', label: '스트레스 받을 때마다', desc: '계절 상관없이 스트레스가 문제예요', value: 'stress', axisEffect: { A07: 15 }, feedbackKey: 'stress_high' },
+      { emoji: '📅', label: '딱히 없어요', desc: '꾸준히 조금씩 쪄왔어요', value: 'none', axisEffect: {} }
     ],
     saveAs: 'worst_season'
   },
@@ -212,10 +236,10 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 2.5,
     options: [
-      { emoji: '🪨', label: '딱딱하고 손가락이 잘 안 들어가요', desc: '내장지방 또는 코어 긴장형', value: 'hard', bcEffect: { 'BC-01': 25, 'BC-02': 20, 'BC-03': 15 }, feedbackKey: 'hard_fat' },
-      { emoji: '🍮', label: '말랑말랑, 손가락이 쑥 들어가요', desc: '피하지방 우세형', value: 'soft', bcEffect: { 'BC-05': 25, 'BC-07': 15 }, feedbackKey: 'soft_fat' },
-      { emoji: '🫧', label: '울퉁불퉁, 알갱이 같은 게 느껴져요', desc: '귤껍질 같은 오돌토돌한 느낌', value: 'bumpy', bcEffect: { 'BC-06': 25 } },
-      { emoji: '💧', label: '누르면 들어갔다가 천천히 올라와요', desc: '부기처럼 눌린 자국이 남아요', value: 'pitting', bcEffect: { 'BC-09': 20, 'BC-06': 15 }, feedbackKey: 'puffy' }
+      { emoji: '🪨', label: '딱딱하고 손가락이 잘 안 들어가요', desc: '내장지방 또는 코어 긴장형', value: 'hard', axisEffect: { A01: 45, A06: 15 }, feedbackKey: 'hard_fat' },
+      { emoji: '🍮', label: '말랑말랑, 손가락이 쑥 들어가요', desc: '피하지방 우세형', value: 'soft', axisEffect: { A02: 25, A04: 15 }, feedbackKey: 'soft_fat' },
+      { emoji: '🫧', label: '울퉁불퉁, 알갱이 같은 게 느껴져요', desc: '귤껍질 같은 오돌토돌한 느낌', value: 'bumpy', axisEffect: { A02: 25 } },
+      { emoji: '💧', label: '누르면 들어갔다가 천천히 올라와요', desc: '부기처럼 눌린 자국이 남아요', value: 'pitting', axisEffect: { A02: 15, A07: 20 }, feedbackKey: 'puffy' }
     ]
   },
   {
@@ -226,10 +250,10 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 1.8,
     options: [
-      { emoji: '🧊', label: '차갑습니다', desc: '항상 손발이 냉한 편이에요', value: 'cold', bcEffect: { 'BC-06': 15, 'BC-08': 10 }, ohaengEffect: { '수': 10 }, feedbackKey: 'cold_body' },
-      { emoji: '☀️', label: '보통이에요', desc: '딱히 차갑거나 뜨겁지 않아요', value: 'normal', bcEffect: {} },
-      { emoji: '🔥', label: '따뜻하거나 열감이 있어요', desc: '오히려 몸이 잘 달아올라요', value: 'warm', bcEffect: { 'BC-01': 10, 'BC-02': 10 }, ohaengEffect: { '화': 10 } },
-      { emoji: '🌓', label: '부위마다 달라요', desc: '상체는 뜨겁고 하체는 차가워요', value: 'mixed', bcEffect: { 'BC-06': 20 }, feedbackKey: 'cold_body' }
+      { emoji: '🧊', label: '차갑습니다', desc: '항상 손발이 냉한 편이에요', value: 'cold', axisEffect: { A02: 15, A03: 10 }, ohaengEffect: { '수': 10 }, feedbackKey: 'cold_body' },
+      { emoji: '☀️', label: '보통이에요', desc: '딱히 차갑거나 뜨겁지 않아요', value: 'normal', axisEffect: {} },
+      { emoji: '🔥', label: '따뜻하거나 열감이 있어요', desc: '오히려 몸이 잘 달아올라요', value: 'warm', axisEffect: { A01: 20 }, ohaengEffect: { '화': 10 } },
+      { emoji: '🌓', label: '부위마다 달라요', desc: '상체는 뜨겁고 하체는 차가워요', value: 'mixed', axisEffect: { A02: 20 }, feedbackKey: 'cold_body' }
     ]
   },
   {
@@ -240,9 +264,9 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 1.5,
     options: [
-      { emoji: '🌅', label: '아침이랑 저녁이 완전히 달라요', desc: '저녁엔 반지도 안 껴질 정도', value: 'very_diff', bcEffect: { 'BC-06': 20, 'BC-09': 15 }, feedbackKey: 'puffy' },
-      { emoji: '🌤️', label: '조금 다른 것 같아요', desc: '발이나 얼굴 정도는 붓는 편', value: 'slightly', bcEffect: { 'BC-06': 10 } },
-      { emoji: '➡️', label: '거의 똑같아요', desc: '아침저녁 차이가 거의 없어요', value: 'same', bcEffect: {} }
+      { emoji: '🌅', label: '아침이랑 저녁이 완전히 달라요', desc: '저녁엔 반지도 안 껴질 정도', value: 'very_diff', axisEffect: { A02: 20, A07: 15 }, feedbackKey: 'puffy' },
+      { emoji: '🌤️', label: '조금 다른 것 같아요', desc: '발이나 얼굴 정도는 붓는 편', value: 'slightly', axisEffect: { A02: 10 } },
+      { emoji: '➡️', label: '거의 똑같아요', desc: '아침저녁 차이가 거의 없어요', value: 'same', axisEffect: {} }
     ],
     saveAs: 'morning_evening_diff'
   },
@@ -254,10 +278,10 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 2.0,
     options: [
-      { emoji: '🫨', label: '흔들리고 파도치는 느낌이에요', desc: '잡히는 살이 많아요', value: 'waves', bcEffect: { 'BC-05': 20 } },
-      { emoji: '🪨', label: '별로 안 흔들려요', desc: '단단한 편이에요', value: 'solid', bcEffect: { 'BC-07': 20 } },
-      { emoji: '🌊', label: '흔들리면서 울퉁불퉁해요', desc: '표면이 매끄럽지 않아요', value: 'bumpy_wave', bcEffect: { 'BC-06': 25 }, feedbackKey: 'puffy' },
-      { emoji: '🤷', label: '잘 모르겠어요', desc: '별로 신경 써본 적 없어요', value: 'unknown', bcEffect: {} }
+      { emoji: '🫨', label: '흔들리고 파도치는 느낌이에요', desc: '잡히는 살이 많아요', value: 'waves', axisEffect: { A02: 20 } },
+      { emoji: '🪨', label: '별로 안 흔들려요', desc: '단단한 편이에요', value: 'solid', axisEffect: { A04: 20 } },
+      { emoji: '🌊', label: '흔들리면서 울퉁불퉁해요', desc: '표면이 매끄럽지 않아요', value: 'bumpy_wave', axisEffect: { A02: 25 }, feedbackKey: 'puffy' },
+      { emoji: '🤷', label: '잘 모르겠어요', desc: '별로 신경 써본 적 없어요', value: 'unknown', axisEffect: {} }
     ]
   },
   {
@@ -268,10 +292,10 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 2.0,
     options: [
-      { emoji: '🛡️', label: '눌러도 잘 안 들어가요', desc: '안에서 뭔가 막는 느낌', value: 'resistant', bcEffect: { 'BC-01': 20, 'BC-02': 20 }, feedbackKey: 'hard_fat' },
-      { emoji: '🍮', label: '부드럽게 쑥 눌려요', desc: '', value: 'soft', bcEffect: { 'BC-05': 20 }, feedbackKey: 'soft_fat' },
-      { emoji: '💨', label: '가스가 찬 것처럼 빵빵해요', desc: '', value: 'gassy', bcEffect: { 'BC-04': 20 } },
-      { emoji: '😶', label: '잘 모르겠어요', desc: '', value: 'unknown', bcEffect: {} }
+      { emoji: '🛡️', label: '눌러도 잘 안 들어가요', desc: '안에서 뭔가 막는 느낌', value: 'resistant', axisEffect: { A01: 40 }, feedbackKey: 'hard_fat' },
+      { emoji: '🍮', label: '부드럽게 쑥 눌려요', desc: '', value: 'soft', axisEffect: { A02: 20 }, feedbackKey: 'soft_fat' },
+      { emoji: '💨', label: '가스가 찬 것처럼 빵빵해요', desc: '', value: 'gassy', axisEffect: { A06: 20 } },
+      { emoji: '😶', label: '잘 모르겠어요', desc: '', value: 'unknown', axisEffect: {} }
     ]
   },
   {
@@ -282,10 +306,10 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 1.8,
     options: [
-      { emoji: '⌛', label: '잘록한 편이에요', desc: '허리 라인이 보여요', value: 'slim', bcEffect: {} },
-      { emoji: '🪣', label: '통짜 일자예요', desc: '정면에서 허리 곡선이 거의 없어요', value: 'straight', bcEffect: { 'BC-04': 20 } },
-      { emoji: '🫃', label: '허리는 얇은데 아랫배만 튀어나와요', desc: '', value: 'lower_only', bcEffect: { 'BC-05': 20 } },
-      { emoji: '🍎', label: '상복부부터 하복부까지 전체가 넓어요', desc: '', value: 'whole_belly', bcEffect: { 'BC-01': 20, 'BC-02': 15 }, feedbackKey: 'belly_fat' }
+      { emoji: '⌛', label: '잘록한 편이에요', desc: '허리 라인이 보여요', value: 'slim', axisEffect: {} },
+      { emoji: '🪣', label: '통짜 일자예요', desc: '정면에서 허리 곡선이 거의 없어요', value: 'straight', axisEffect: { A06: 20 } },
+      { emoji: '🫃', label: '허리는 얇은데 아랫배만 튀어나와요', desc: '', value: 'lower_only', axisEffect: { A02: 20 } },
+      { emoji: '🍎', label: '상복부부터 하복부까지 전체가 넓어요', desc: '', value: 'whole_belly', axisEffect: { A01: 35 }, feedbackKey: 'belly_fat' }
     ]
   },
 
@@ -385,10 +409,10 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 1.8,
     options: [
-      { emoji: '🌙', label: '11시 이전', desc: '규칙적인 수면 패턴', value: 'before11', bcEffect: {} },
-      { emoji: '🌚', label: '자정~새벽 1시', desc: '약간 늦은 편', value: 'midnight', bcEffect: { 'BC-09': 10 } },
-      { emoji: '🌑', label: '새벽 2~3시', desc: '야행성에 가까워요', value: 'late', bcEffect: { 'BC-09': 20 }, feedbackKey: 'sleep_late' },
-      { emoji: '☀️', label: '새벽 4시 이후', desc: '거의 밤을 새우는 수준', value: 'dawn', bcEffect: { 'BC-09': 25 }, feedbackKey: 'sleep_late' }
+      { emoji: '🌙', label: '11시 이전', desc: '규칙적인 수면 패턴', value: 'before11', axisEffect: {} },
+      { emoji: '🌚', label: '자정~새벽 1시', desc: '약간 늦은 편', value: 'midnight', axisEffect: { A07: 10 } },
+      { emoji: '🌑', label: '새벽 2~3시', desc: '야행성에 가까워요', value: 'late', axisEffect: { A07: 20 }, feedbackKey: 'sleep_late' },
+      { emoji: '☀️', label: '새벽 4시 이후', desc: '거의 밤을 새우는 수준', value: 'dawn', axisEffect: { A07: 25 }, feedbackKey: 'sleep_late' }
     ],
     saveAs: 'sleep_time'
   },
@@ -400,10 +424,10 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 1.8,
     options: [
-      { emoji: '😴', label: '7~8시간', desc: '충분한 수면', value: 7.5, bcEffect: {} },
-      { emoji: '😪', label: '6시간 전후', desc: '약간 부족한 편', value: 6, bcEffect: { 'BC-09': 10 } },
-      { emoji: '😵', label: '5시간 이하', desc: '만성 수면 부족', value: 4.5, bcEffect: { 'BC-09': 30 }, feedbackKey: 'sleep_late' },
-      { emoji: '🦉', label: '매일 달라요', desc: '불규칙한 수면', value: 0, bcEffect: { 'BC-09': 15, 'BC-10': 15 } }
+      { emoji: '😴', label: '7~8시간', desc: '충분한 수면', value: 7.5, axisEffect: {} },
+      { emoji: '😪', label: '6시간 전후', desc: '약간 부족한 편', value: 6, axisEffect: { A07: 10 } },
+      { emoji: '😵', label: '5시간 이하', desc: '만성 수면 부족', value: 4.5, axisEffect: { A07: 30 }, feedbackKey: 'sleep_late' },
+      { emoji: '🦉', label: '매일 달라요', desc: '불규칙한 수면', value: 0, axisEffect: { A07: 15, A08: 15 } }
     ],
     saveAs: 'sleep_hours'
   },
@@ -415,10 +439,10 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 2.0,
     options: [
-      { emoji: '😊', label: '별로 없어요', desc: '평온한 편이에요', value: 1, bcEffect: {} },
-      { emoji: '😤', label: '중간 정도요', desc: '가끔 힘들어요', value: 2, bcEffect: { 'BC-09': 10 } },
-      { emoji: '😰', label: '꽤 심한 편이에요', desc: '거의 매일 스트레스를 받아요', value: 3, bcEffect: { 'BC-09': 25 }, feedbackKey: 'stress_high' },
-      { emoji: '🌋', label: '극심해요', desc: '지금 정말 힘든 시기예요', value: 4, bcEffect: { 'BC-09': 40 }, feedbackKey: 'stress_high' }
+      { emoji: '😊', label: '별로 없어요', desc: '평온한 편이에요', value: 1, axisEffect: {} },
+      { emoji: '😤', label: '중간 정도요', desc: '가끔 힘들어요', value: 2, axisEffect: { A07: 10 } },
+      { emoji: '😰', label: '꽤 심한 편이에요', desc: '거의 매일 스트레스를 받아요', value: 3, axisEffect: { A07: 25 }, feedbackKey: 'stress_high' },
+      { emoji: '🌋', label: '극심해요', desc: '지금 정말 힘든 시기예요', value: 4, axisEffect: { A07: 40 }, feedbackKey: 'stress_high' }
     ],
     saveAs: 'stress_level'
   },
@@ -431,15 +455,15 @@ const QUESTIONS = [
     maxSelect: 2,
     weight: 2.0,
     options: [
-      { emoji: '🏋️', label: '웨이트·근력 위주', desc: '스쿼트 런지 숄더프레스 랫풀다운 등', value: 'weight', bcEffect: { 'BC-08': 10 } },
-      { emoji: '🏃', label: '유산소 위주', desc: '런닝 산책 자전거 등', value: 'cardio', bcEffect: {} },
-      { emoji: '🧘', label: '코어·스트레칭 위주', desc: '요가 필라테스 등', value: 'core', bcEffect: {} },
-      { emoji: '🏊', label: '부력 운동 위주', desc: '수영 아쿠아로빅 등', value: 'swim', bcEffect: { 'BC-06': 8 } },
-      { emoji: '📱', label: '홈트레이닝 위주', desc: '집에서 유튜브 운동 등', value: 'home', bcEffect: {} },
-      { emoji: '⚡', label: '고강도 심폐·근력 위주', desc: '크로스핏 하이록스 HIIT 등', value: 'hiit', bcEffect: { 'BC-09': 8 } },
-      { emoji: '🥊', label: '투기 운동 위주', desc: '복싱 태권도 유도 MMA 등', value: 'martial', bcEffect: {} },
-      { emoji: '⚽', label: '구기 종목 위주', desc: '축구 농구 배구 야구 등', value: 'ball', bcEffect: {} },
-      { emoji: '💤', label: '운동을 거의 안 했어요', desc: '', value: 'none', bcEffect: { 'BC-08': 15 } }
+      { emoji: '🏋️', label: '웨이트·근력 위주', desc: '스쿼트 런지 숄더프레스 랫풀다운 등', value: 'weight', axisEffect: { A03: 10 } },
+      { emoji: '🏃', label: '유산소 위주', desc: '런닝 산책 자전거 등', value: 'cardio', axisEffect: {} },
+      { emoji: '🧘', label: '코어·스트레칭 위주', desc: '요가 필라테스 등', value: 'core', axisEffect: {} },
+      { emoji: '🏊', label: '부력 운동 위주', desc: '수영 아쿠아로빅 등', value: 'swim', axisEffect: { A02: 8 } },
+      { emoji: '📱', label: '홈트레이닝 위주', desc: '집에서 유튜브 운동 등', value: 'home', axisEffect: {} },
+      { emoji: '⚡', label: '고강도 심폐·근력 위주', desc: '크로스핏 하이록스 HIIT 등', value: 'hiit', axisEffect: { A07: 8 } },
+      { emoji: '🥊', label: '투기 운동 위주', desc: '복싱 태권도 유도 MMA 등', value: 'martial', axisEffect: {} },
+      { emoji: '⚽', label: '구기 종목 위주', desc: '축구 농구 배구 야구 등', value: 'ball', axisEffect: {} },
+      { emoji: '💤', label: '운동을 거의 안 했어요', desc: '', value: 'none', axisEffect: { A03: 15 } }
     ],
     saveAs: 'past_exercises'
   },
@@ -470,11 +494,11 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 1.5,
     options: [
-      { emoji: '😤', label: '의지력이 부족해서', desc: '', value: 'willpower', bcEffect: {} },
-      { emoji: '😔', label: '열심히 했는데 효과가 없어서', desc: '', value: 'no_effect', bcEffect: { 'BC-08': 15 }, feedbackKey: 'no_effect' },
-      { emoji: '🤯', label: '너무 힘들어서 지속이 안 돼서', desc: '', value: 'too_hard', bcEffect: {} },
-      { emoji: '😕', label: '뭘 해야 할지 몰라서', desc: '', value: 'no_idea', bcEffect: {} },
-      { emoji: '🌀', label: '살 빠져도 요요가 와서', desc: '', value: 'yoyo', bcEffect: { 'BC-10': 20 }, feedbackKey: 'yoyo' }
+      { emoji: '😤', label: '의지력이 부족해서', desc: '', value: 'willpower', axisEffect: {} },
+      { emoji: '😔', label: '열심히 했는데 효과가 없어서', desc: '', value: 'no_effect', axisEffect: { A03: 15 }, feedbackKey: 'no_effect' },
+      { emoji: '🤯', label: '너무 힘들어서 지속이 안 돼서', desc: '', value: 'too_hard', axisEffect: {} },
+      { emoji: '😕', label: '뭘 해야 할지 몰라서', desc: '', value: 'no_idea', axisEffect: {} },
+      { emoji: '🌀', label: '살 빠져도 요요가 와서', desc: '', value: 'yoyo', axisEffect: { A08: 20 }, feedbackKey: 'yoyo' }
     ],
     saveAs: 'quit_reason'
   },
@@ -538,10 +562,10 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 1.5,
     options: [
-      { emoji: '✅', label: '잘 먹고 잘 소화해요', desc: '', value: 'good', bcEffect: {}, ohaengEffect: {} },
-      { emoji: '🌀', label: '자주 더부룩하고 가스가 차요', desc: '', value: 'bloated', bcEffect: { 'BC-04': 15 }, ohaengEffect: { '토': 15 } },
-      { emoji: '😵', label: '먹으면 바로 피곤해지는 식곤증이 심해요', desc: '', value: 'sleepy_after', bcEffect: { 'BC-01': 10 }, ohaengEffect: { '토': 10 } },
-      { emoji: '🤢', label: '소화가 예민해서 뭘 먹어도 조심해요', desc: '', value: 'sensitive', bcEffect: {}, ohaengEffect: { '토': 10 } }
+      { emoji: '✅', label: '잘 먹고 잘 소화해요', desc: '', value: 'good', axisEffect: {}, ohaengEffect: {} },
+      { emoji: '🌀', label: '자주 더부룩하고 가스가 차요', desc: '', value: 'bloated', axisEffect: { A06: 15 }, ohaengEffect: { '토': 15 } },
+      { emoji: '😵', label: '먹으면 바로 피곤해지는 식곤증이 심해요', desc: '', value: 'sleepy_after', axisEffect: { A01: 10 }, ohaengEffect: { '토': 10 } },
+      { emoji: '🤢', label: '소화가 예민해서 뭘 먹어도 조심해요', desc: '', value: 'sensitive', axisEffect: {}, ohaengEffect: { '토': 10 } }
     ]
   },
   {
@@ -566,10 +590,10 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 1.8,
     options: [
-      { emoji: '🧊', label: '항상 차가운 편이에요', desc: '손발이 냉하고 기초체온이 낮아요', value: 'cold', bcEffect: { 'BC-06': 15, 'BC-08': 10 }, ohaengEffect: { '수': 18 }, feedbackKey: 'cold_body' },
+      { emoji: '🧊', label: '항상 차가운 편이에요', desc: '손발이 냉하고 기초체온이 낮아요', value: 'cold', axisEffect: { A02: 15, A03: 10 }, ohaengEffect: { '수': 18 }, feedbackKey: 'cold_body' },
       { emoji: '☀️', label: '따뜻한 편이에요', desc: '더위를 잘 타고 쉽게 달아올라요', value: 'warm', ohaengEffect: { '화': 15 } },
       { emoji: '🌡️', label: '36.5도 정도, 평균적이에요', desc: '', value: 'normal', ohaengEffect: {} },
-      { emoji: '🌓', label: '상체는 뜨겁고 하체는 차가워요', desc: '', value: 'mixed', bcEffect: { 'BC-06': 20 }, feedbackKey: 'cold_body' }
+      { emoji: '🌓', label: '상체는 뜨겁고 하체는 차가워요', desc: '', value: 'mixed', axisEffect: { A02: 20 }, feedbackKey: 'cold_body' }
     ],
     saveAs: 'body_temp_type'
   },
@@ -581,10 +605,10 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 1.5,
     options: [
-      { emoji: '😊', label: '개운하게 잘 일어나요', desc: '', value: 'fresh', bcEffect: {} },
-      { emoji: '😪', label: '피곤해서 일어나기 힘들어요', desc: '', value: 'tired', bcEffect: { 'BC-09': 10 } },
-      { emoji: '🥴', label: '얼굴이 퉁퉁 부어서 일어나요', desc: '', value: 'puffy', bcEffect: { 'BC-09': 15, 'BC-06': 10 }, feedbackKey: 'puffy' },
-      { emoji: '😤', label: '아침에 유독 예민하고 짜증이 나요', desc: '', value: 'irritable', bcEffect: { 'BC-09': 15 }, feedbackKey: 'stress_high' }
+      { emoji: '😊', label: '개운하게 잘 일어나요', desc: '', value: 'fresh', axisEffect: {} },
+      { emoji: '😪', label: '피곤해서 일어나기 힘들어요', desc: '', value: 'tired', axisEffect: { A07: 10 } },
+      { emoji: '🥴', label: '얼굴이 퉁퉁 부어서 일어나요', desc: '', value: 'puffy', axisEffect: { A02: 10, A07: 15 }, feedbackKey: 'puffy' },
+      { emoji: '😤', label: '아침에 유독 예민하고 짜증이 나요', desc: '', value: 'irritable', axisEffect: { A07: 15 }, feedbackKey: 'stress_high' }
     ]
   },
   {
@@ -595,10 +619,10 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 1.2,
     options: [
-      { emoji: '💧', label: '1L 미만', desc: '물을 잘 안 마셔요', value: 'less1', bcEffect: { 'BC-06': 12 } },
-      { emoji: '🥤', label: '1~1.5L 정도', desc: '', value: 'normal', bcEffect: {} },
-      { emoji: '🌊', label: '2L 이상', desc: '물을 많이 마시는 편이에요', value: 'plenty', bcEffect: {} },
-      { emoji: '☕', label: '커피·음료로 대체해요', desc: '물 대신 카페인으로', value: 'caffeine', bcEffect: { 'BC-09': 12 } }
+      { emoji: '💧', label: '1L 미만', desc: '물을 잘 안 마셔요', value: 'less1', axisEffect: { A02: 12 } },
+      { emoji: '🥤', label: '1~1.5L 정도', desc: '', value: 'normal', axisEffect: {} },
+      { emoji: '🌊', label: '2L 이상', desc: '물을 많이 마시는 편이에요', value: 'plenty', axisEffect: {} },
+      { emoji: '☕', label: '커피·음료로 대체해요', desc: '물 대신 카페인으로', value: 'caffeine', axisEffect: { A07: 12 } }
     ]
   },
   {
@@ -611,11 +635,11 @@ const QUESTIONS = [
     weight: 1.3,
     options: [
       { emoji: '🦒', label: '목', desc: '', value: 'neck', ohaengEffect: { '금': 6 } },
-      { emoji: '💪', label: '어깨', desc: '', value: 'shoulder', bcEffect: { 'BC-03': 8 } },
+      { emoji: '💪', label: '어깨', desc: '', value: 'shoulder', axisEffect: { A06: 8 } },
       { emoji: '🦾', label: '팔꿈치', desc: '', value: 'elbow', ohaengEffect: { '금': 6 } },
       { emoji: '🖐️', label: '손목', desc: '', value: 'wrist', ohaengEffect: { '금': 5 } },
       { emoji: '🔙', label: '허리', desc: '', value: 'back', ohaengEffect: { '수': 13 } },
-      { emoji: '🍑', label: '골반', desc: '', value: 'pelvis', bcEffect: { 'BC-04': 10 } },
+      { emoji: '🍑', label: '골반', desc: '', value: 'pelvis', axisEffect: { A06: 10 } },
       { emoji: '🦵', label: '무릎', desc: '', value: 'knee', ohaengEffect: { '수': 13 } },
       { emoji: '🦶', label: '발목', desc: '', value: 'ankle', ohaengEffect: { '수': 8 } },
       { emoji: '✅', label: '딱히 불편한 곳 없어요', desc: '', value: 'none', exclusive: true, ohaengEffect: {} }
@@ -634,42 +658,12 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 1.3,
     options: [
-      { emoji: '🏃', label: '3개월 이상 꾸준히 했어요', desc: '', value: '3months', bcEffect: {} },
-      { emoji: '📅', label: '한 달 정도는 했어요', desc: '', value: '1month', bcEffect: {} },
-      { emoji: '🌱', label: '2주를 못 넘겨요', desc: '', value: '2weeks', bcEffect: { 'BC-10': 13 } },
-      { emoji: '💤', label: '시작 자체가 힘들어요', desc: '', value: 'cant_start', bcEffect: { 'BC-10': 13 } }
+      { emoji: '🏃', label: '3개월 이상 꾸준히 했어요', desc: '', value: '3months', axisEffect: {} },
+      { emoji: '📅', label: '한 달 정도는 했어요', desc: '', value: '1month', axisEffect: {} },
+      { emoji: '🌱', label: '2주를 못 넘겨요', desc: '', value: '2weeks', axisEffect: { A08: 13 } },
+      { emoji: '💤', label: '시작 자체가 힘들어요', desc: '', value: 'cant_start', axisEffect: { A08: 13 } }
     ],
     saveAs: 'max_exercise_duration'
-  },
-  {
-    id: 'Q36', section: 'F', num: 36,
-    axis: 'A04', weight: 1.3, role: 'score',
-    question: '운동할 때 더 잘 되는 환경은 어느 쪽인가요?',
-    hint: '이 성향이 처방 운동의 형태를 결정합니다.',
-    type: 'SINGLE_SELECT',
-    weight: 0.8,
-    options: [
-      { emoji: '🙋', label: '혼자 하면 더 집중이 잘 돼요', desc: '', value: 'alone', mbtiHint: 'I' },
-      { emoji: '👥', label: '같이 해야 더 힘이 나요', desc: '', value: 'together', mbtiHint: 'E' },
-      { emoji: '🤝', label: 'PT·코칭이 있어야 돼요', desc: '', value: 'coaching', mbtiHint: 'E' },
-      { emoji: '💻', label: '영상 보면서 혼자 해요', desc: '', value: 'video', mbtiHint: 'I' }
-    ],
-    saveAs: 'exercise_social_type'
-  },
-  {
-    id: 'Q37', section: 'F', num: 37,
-    axis: 'A10', weight: 1.3, role: 'score',
-    question: '식단 계획을 세웠을 때 {name}님은 어떻게 되나요?',
-    hint: '이 패턴이 식단 처방의 자유도와 설계 방식을 결정합니다.',
-    type: 'SINGLE_SELECT',
-    weight: 0.8,
-    options: [
-      { emoji: '📋', label: '계획대로 정확히 지켜요', desc: '루틴이 있어야 안심이 돼요', value: 'strict', mbtiHint: 'J' },
-      { emoji: '🌊', label: '대략적으로는 지키는 편이에요', desc: '큰 틀만 지키고 세부는 유연하게', value: 'roughly', mbtiHint: null },
-      { emoji: '🎲', label: '그날그날 즉흥적으로 먹어요', desc: '계획 자체를 잘 못 세워요', value: 'impulsive', mbtiHint: 'P' },
-      { emoji: '😤', label: '계획은 세우지만 항상 무너져요', desc: '의도와 실행이 달라요', value: 'fails', mbtiHint: 'P' }
-    ],
-    saveAs: 'diet_compliance'
   },
   {
     id: 'Q38', section: 'F', num: 38,
@@ -710,28 +704,12 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 2.0,
     options: [
-      { emoji: '✅', label: '거의 안 먹어요', desc: '주 1회 미만', value: 0, bcEffect: {} },
-      { emoji: '🌙', label: '주 2~3회 정도 먹어요', desc: '', value: 2, bcEffect: { 'BC-09': 10 } },
-      { emoji: '😔', label: '거의 매일 야식을 먹어요', desc: '', value: 7, bcEffect: { 'BC-09': 30 }, feedbackKey: 'sleep_late' },
-      { emoji: '🌑', label: '밤이 되면 도저히 참을 수가 없어요', desc: '', value: 10, bcEffect: { 'BC-09': 30 }, feedbackKey: 'stress_high' }
+      { emoji: '✅', label: '거의 안 먹어요', desc: '주 1회 미만', value: 0, axisEffect: {} },
+      { emoji: '🌙', label: '주 2~3회 정도 먹어요', desc: '', value: 2, axisEffect: { A07: 10 } },
+      { emoji: '😔', label: '거의 매일 야식을 먹어요', desc: '', value: 7, axisEffect: { A07: 30 }, feedbackKey: 'sleep_late' },
+      { emoji: '🌑', label: '밤이 되면 도저히 참을 수가 없어요', desc: '', value: 10, axisEffect: { A07: 30 }, feedbackKey: 'stress_high' }
     ],
     saveAs: 'late_night_eating'
-  },
-  {
-    id: 'Q41', section: 'F', num: 41,
-    axis: 'A08', weight: 1.5, role: 'score',
-    question: '지금 이 순간 {name}님의 가장 솔직한 감정은?',
-    hint: '이 감정이 결과지 오프닝 카피의 톤을 결정합니다. 완전히 솔직해도 됩니다.',
-    type: 'SINGLE_SELECT',
-    weight: 0,
-    options: [
-      { emoji: '😤', label: '지쳐있어요', desc: '열심히 해도 안 돼서 지쳤어요', value: 'tired' },
-      { emoji: '😰', label: '불안해요', desc: '이대로 가면 안 될 것 같아요', value: 'anxious' },
-      { emoji: '🤔', label: '궁금해요', desc: '내 체형이 뭔지 정말 궁금해요', value: 'curious' },
-      { emoji: '💪', label: '결심했어요', desc: '이번엔 진짜 바꿀 거예요', value: 'determined' },
-      { emoji: '😊', label: '기대돼요', desc: '결과가 궁금하고 설레요', value: 'excited' }
-    ],
-    saveAs: 'emotional_state'
   },
 
   // ══════════════════════════════════════════════════════
@@ -789,22 +767,6 @@ const QUESTIONS = [
     type: 'DATE_PICKER',
     saveAs: 'birth_date',
     autoCalc: 'saju'
-  },
-  {
-    id: 'Q44', section: 'G', num: 44,
-    axis: 'A10', weight: 1.0, role: 'score',
-    question: '혈액형은요?',
-    hint: '같은 처방도 혈액형에 따라 전달하는 언어의 톤과 방식이 달라집니다.',
-    type: 'SINGLE_SELECT',
-    weight: 0,
-    options: [
-      { emoji: '🔴', label: 'A형', desc: '안정적인 루틴을 좋아해요', value: 'A' },
-      { emoji: '🟡', label: 'B형', desc: '자유롭고 즉흥적인 편이에요', value: 'B' },
-      { emoji: '🟢', label: 'O형', desc: '목표를 향해 강하게 달려요', value: 'O' },
-      { emoji: '🔵', label: 'AB형', desc: '분석하고 이해해야 움직여요', value: 'AB' },
-      { emoji: '⬜', label: '모르겠어요', desc: '추정으로 진행할게요', value: 'unknown' }
-    ],
-    saveAs: 'blood_type'
   },
   {
     id: 'Q45', section: 'G', num: 45,
@@ -906,11 +868,11 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 2.0,
     options: [
-      { emoji: '⚡', label: '시작 1~3일 안에 무너져요', desc: '작심삼일', value: 'day3', bcEffect: { 'BC-10': 20 } },
-      { emoji: '📅', label: '2주~1달 사이, 변화가 없으면', desc: '결과가 안 보이면 포기해요', value: 'week2', bcEffect: { 'BC-08': 15 }, feedbackKey: 'no_effect' },
-      { emoji: '🎉', label: '목표를 달성한 직후', desc: '빠지고 나면 다시 먹게 돼요', value: 'after_goal', bcEffect: { 'BC-10': 25 }, feedbackKey: 'yoyo' },
-      { emoji: '😫', label: '스트레스나 힘든 일이 생기면', desc: '마음이 무너지면 식단도 무너져요', value: 'stress_trigger', bcEffect: { 'BC-09': 20 }, feedbackKey: 'stress_high' },
-      { emoji: '🤔', label: '딱히 정해진 시점 없이 흐지부지', desc: '', value: 'fade_out', bcEffect: { 'BC-10': 15 } }
+      { emoji: '⚡', label: '시작 1~3일 안에 무너져요', desc: '작심삼일', value: 'day3', axisEffect: { A08: 20 } },
+      { emoji: '📅', label: '2주~1달 사이, 변화가 없으면', desc: '결과가 안 보이면 포기해요', value: 'week2', axisEffect: { A03: 15 }, feedbackKey: 'no_effect' },
+      { emoji: '🎉', label: '목표를 달성한 직후', desc: '빠지고 나면 다시 먹게 돼요', value: 'after_goal', axisEffect: { A08: 25 }, feedbackKey: 'yoyo' },
+      { emoji: '😫', label: '스트레스나 힘든 일이 생기면', desc: '마음이 무너지면 식단도 무너져요', value: 'stress_trigger', axisEffect: { A07: 20 }, feedbackKey: 'stress_high' },
+      { emoji: '🤔', label: '딱히 정해진 시점 없이 흐지부지', desc: '', value: 'fade_out', axisEffect: { A08: 15 } }
     ],
     saveAs: 'quit_timing'
   },
@@ -922,11 +884,11 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 2.0,
     options: [
-      { emoji: '🤔', label: '"내 방법이 잘못됐나봐"', desc: '방법을 바꾸려고 해요', value: 'method_wrong', bcEffect: {} },
-      { emoji: '😤', label: '"내 의지력이 부족한 거야"', desc: '스스로를 탓하게 돼요', value: 'self_blame', bcEffect: { 'BC-10': 15 } },
-      { emoji: '😶', label: '"나는 원래 안 되는 체질인가봐"', desc: '포기하고 싶어져요', value: 'helpless', bcEffect: { 'BC-10': 30 } },
-      { emoji: '⚡', label: '"더 극단적으로 해야겠다"', desc: '더 빡세게 하려고 해요', value: 'extreme', bcEffect: { 'BC-08': 20 } },
-      { emoji: '💬', label: '"누군가의 도움이 필요해"', desc: '조언을 찾아요', value: 'seek_help', bcEffect: {} }
+      { emoji: '🤔', label: '"내 방법이 잘못됐나봐"', desc: '방법을 바꾸려고 해요', value: 'method_wrong', axisEffect: {} },
+      { emoji: '😤', label: '"내 의지력이 부족한 거야"', desc: '스스로를 탓하게 돼요', value: 'self_blame', axisEffect: { A08: 15 } },
+      { emoji: '😶', label: '"나는 원래 안 되는 체질인가봐"', desc: '포기하고 싶어져요', value: 'helpless', axisEffect: { A08: 30 } },
+      { emoji: '⚡', label: '"더 극단적으로 해야겠다"', desc: '더 빡세게 하려고 해요', value: 'extreme', axisEffect: { A03: 20 } },
+      { emoji: '💬', label: '"누군가의 도움이 필요해"', desc: '조언을 찾아요', value: 'seek_help', axisEffect: {} }
     ],
     saveAs: 'failure_attribution'
   },
@@ -938,11 +900,11 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 1.2,
     options: [
-      { emoji: '☕', label: '규칙적인 기상·취침 시간', desc: '생활 리듬 루틴형', value: 'sleep_routine', bcEffect: {} },
-      { emoji: '🏃', label: '특정 운동이나 활동', desc: '몸으로 하는 루틴형', value: 'exercise_routine', bcEffect: {} },
-      { emoji: '📝', label: '기록하기 (일기·가계부·메모 등)', desc: '기록 루틴형', value: 'record_routine', bcEffect: {} },
-      { emoji: '🎵', label: '취미 생활 (음악·독서·그림 등)', desc: '즐거움 루틴형', value: 'hobby_routine', bcEffect: {} },
-      { emoji: '🙅', label: '딱히 없어요', desc: '루틴 형성이 어려운 편이에요', value: 'no_routine', bcEffect: { 'BC-10': 10 } }
+      { emoji: '☕', label: '규칙적인 기상·취침 시간', desc: '생활 리듬 루틴형', value: 'sleep_routine', axisEffect: {} },
+      { emoji: '🏃', label: '특정 운동이나 활동', desc: '몸으로 하는 루틴형', value: 'exercise_routine', axisEffect: {} },
+      { emoji: '📝', label: '기록하기 (일기·가계부·메모 등)', desc: '기록 루틴형', value: 'record_routine', axisEffect: {} },
+      { emoji: '🎵', label: '취미 생활 (음악·독서·그림 등)', desc: '즐거움 루틴형', value: 'hobby_routine', axisEffect: {} },
+      { emoji: '🙅', label: '딱히 없어요', desc: '루틴 형성이 어려운 편이에요', value: 'no_routine', axisEffect: { A08: 10 } }
     ],
     saveAs: 'best_routine'
   },
@@ -954,11 +916,11 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 2.0,
     options: [
-      { emoji: '🍕', label: '더 많이, 더 자주 먹게 돼요', desc: '폭식 경향', value: 'more', bcEffect: { 'BC-09': 25 }, feedbackKey: 'stress_high' },
-      { emoji: '🚫', label: '오히려 입맛이 뚝 떨어져요', desc: '거식 경향', value: 'less', bcEffect: {} },
-      { emoji: '🌙', label: '낮엔 괜찮다가 밤에 폭발해요', desc: '야간 폭식 경향', value: 'night', bcEffect: { 'BC-09': 30 }, feedbackKey: 'stress_high' },
-      { emoji: '🍫', label: '단것·탄수화물만 엄청 당겨요', desc: '당 갈망 경향', value: 'sweets', bcEffect: { 'BC-09': 20 }, feedbackKey: 'stress_high' },
-      { emoji: '😐', label: '스트레스와 식욕이 별로 연관 없어요', desc: '', value: 'no_change', bcEffect: {} }
+      { emoji: '🍕', label: '더 많이, 더 자주 먹게 돼요', desc: '폭식 경향', value: 'more', axisEffect: { A07: 25 }, feedbackKey: 'stress_high' },
+      { emoji: '🚫', label: '오히려 입맛이 뚝 떨어져요', desc: '거식 경향', value: 'less', axisEffect: {} },
+      { emoji: '🌙', label: '낮엔 괜찮다가 밤에 폭발해요', desc: '야간 폭식 경향', value: 'night', axisEffect: { A07: 30 }, feedbackKey: 'stress_high' },
+      { emoji: '🍫', label: '단것·탄수화물만 엄청 당겨요', desc: '당 갈망 경향', value: 'sweets', axisEffect: { A07: 20 }, feedbackKey: 'stress_high' },
+      { emoji: '😐', label: '스트레스와 식욕이 별로 연관 없어요', desc: '', value: 'no_change', axisEffect: {} }
     ],
     saveAs: 'stress_appetite'
   },
@@ -970,12 +932,12 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 1.0,
     options: [
-      { emoji: '📸', label: '사진 속 내 모습을 보고', desc: '', value: 'photo', bcEffect: {} },
-      { emoji: '👗', label: '옷이 안 맞을 때', desc: '', value: 'clothes', bcEffect: {} },
-      { emoji: '❤️', label: '건강 수치나 의사 말을 듣고', desc: '', value: 'health_warning', bcEffect: {} },
-      { emoji: '🏖️', label: '여행·행사·특별한 날이 생겼을 때', desc: '', value: 'event', bcEffect: {} },
-      { emoji: '💬', label: '누군가의 말 한마디에', desc: '', value: 'someone_said', bcEffect: {} },
-      { emoji: '✨', label: '그냥 갑자기 마음이 생겨요', desc: '', value: 'spontaneous', bcEffect: {} }
+      { emoji: '📸', label: '사진 속 내 모습을 보고', desc: '', value: 'photo', axisEffect: {} },
+      { emoji: '👗', label: '옷이 안 맞을 때', desc: '', value: 'clothes', axisEffect: {} },
+      { emoji: '❤️', label: '건강 수치나 의사 말을 듣고', desc: '', value: 'health_warning', axisEffect: {} },
+      { emoji: '🏖️', label: '여행·행사·특별한 날이 생겼을 때', desc: '', value: 'event', axisEffect: {} },
+      { emoji: '💬', label: '누군가의 말 한마디에', desc: '', value: 'someone_said', axisEffect: {} },
+      { emoji: '✨', label: '그냥 갑자기 마음이 생겨요', desc: '', value: 'spontaneous', axisEffect: {} }
     ],
     saveAs: 'motivation_trigger'
   },
@@ -991,10 +953,10 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 2.0,
     options: [
-      { emoji: '🍽️', label: '먹는 중에 자연스럽게 느껴요', desc: '포만감 신호 정상', value: 'during', bcEffect: {} },
-      { emoji: '⏰', label: '다 먹고 10~20분 뒤에야 느껴요', desc: '포만감 약간 지연', value: 'delayed_20', bcEffect: { 'BC-09': 10 } },
-      { emoji: '😔', label: '배가 터질 듯 먹어야 부른 느낌이 와요', desc: '포만감 크게 지연', value: 'overfull', bcEffect: { 'BC-09': 20, 'BC-01': 10 } },
-      { emoji: '🤷', label: '배가 부른 느낌을 잘 모르겠어요', desc: '포만감 감각 저하', value: 'no_signal', bcEffect: { 'BC-09': 25 } }
+      { emoji: '🍽️', label: '먹는 중에 자연스럽게 느껴요', desc: '포만감 신호 정상', value: 'during', axisEffect: {} },
+      { emoji: '⏰', label: '다 먹고 10~20분 뒤에야 느껴요', desc: '포만감 약간 지연', value: 'delayed_20', axisEffect: { A07: 10 } },
+      { emoji: '😔', label: '배가 터질 듯 먹어야 부른 느낌이 와요', desc: '포만감 크게 지연', value: 'overfull', axisEffect: { A01: 10, A07: 20 } },
+      { emoji: '🤷', label: '배가 부른 느낌을 잘 모르겠어요', desc: '포만감 감각 저하', value: 'no_signal', axisEffect: { A07: 25 } }
     ],
     saveAs: 'fullness_timing'
   },
@@ -1006,12 +968,12 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 2.0,
     options: [
-      { emoji: '📺', label: 'TV·유튜브·스마트폰을 보다가', desc: '자극 기반 식욕', value: 'screen', bcEffect: { 'BC-09': 15 } },
-      { emoji: '😤', label: '짜증나거나 힘든 일이 있었을 때', desc: '감정 기반 식욕', value: 'emotion', bcEffect: { 'BC-09': 25 }, feedbackKey: 'stress_high' },
-      { emoji: '🌙', label: '밤 10시 이후면 조건반사처럼', desc: '시간 기반 식욕', value: 'time', bcEffect: { 'BC-09': 20 } },
-      { emoji: '😴', label: '졸리거나 피곤할 때', desc: '에너지 고갈 기반', value: 'tired', bcEffect: { 'BC-09': 15 } },
-      { emoji: '🏠', label: '집에 혼자 있을 때', desc: '환경 기반 식욕', value: 'alone', bcEffect: { 'BC-09': 10 } },
-      { emoji: '✅', label: '야식·폭식을 거의 안 해요', desc: '', value: 'rarely', bcEffect: {} }
+      { emoji: '📺', label: 'TV·유튜브·스마트폰을 보다가', desc: '자극 기반 식욕', value: 'screen', axisEffect: { A07: 15 } },
+      { emoji: '😤', label: '짜증나거나 힘든 일이 있었을 때', desc: '감정 기반 식욕', value: 'emotion', axisEffect: { A07: 25 }, feedbackKey: 'stress_high' },
+      { emoji: '🌙', label: '밤 10시 이후면 조건반사처럼', desc: '시간 기반 식욕', value: 'time', axisEffect: { A07: 20 } },
+      { emoji: '😴', label: '졸리거나 피곤할 때', desc: '에너지 고갈 기반', value: 'tired', axisEffect: { A07: 15 } },
+      { emoji: '🏠', label: '집에 혼자 있을 때', desc: '환경 기반 식욕', value: 'alone', axisEffect: { A07: 10 } },
+      { emoji: '✅', label: '야식·폭식을 거의 안 해요', desc: '', value: 'rarely', axisEffect: {} }
     ],
     saveAs: 'binge_trigger'
   },
@@ -1024,14 +986,14 @@ const QUESTIONS = [
     maxSelect: 5,
     weight: 1.8,
     options: [
-      { emoji: '🍑', label: '엉덩이', desc: '스쿼트해도 엉덩이가 뭉치지 않아요', value: 'glute', bcEffect: { 'BC-05': 15 } },
-      { emoji: '🦵', label: '허벅지 뒤쪽 (햄스트링)', desc: '', value: 'hamstring', bcEffect: { 'BC-05': 12 } },
-      { emoji: '🤸', label: '복부·코어', desc: '배에 힘이 잘 안 들어가요', value: 'core', bcEffect: { 'BC-04': 15 } },
-      { emoji: '🔙', label: '등', desc: '등 운동을 해도 등이 뭉치는 느낌이 없어요', value: 'back', bcEffect: { 'BC-03': 12 } },
-      { emoji: '💪', label: '어깨 바깥쪽', desc: '', value: 'shoulder', bcEffect: { 'BC-03': 10 } },
-      { emoji: '🦶', label: '종아리', desc: '유산소를 해도 종아리가 안 뭉쳐요', value: 'calf', bcEffect: { 'BC-06': 8 } },
-      { emoji: '🫁', label: '가슴 (대흉근)', desc: '가슴 운동을 해도 가슴이 안 뭉쳐요', value: 'chest', bcEffect: { 'BC-03': 8 } },
-      { emoji: '✅', label: '전체적으로 잘 느껴져요', desc: '', value: 'all_fine', bcEffect: {}, exclusive: true }
+      { emoji: '🍑', label: '엉덩이', desc: '스쿼트해도 엉덩이가 뭉치지 않아요', value: 'glute', axisEffect: { A02: 15 } },
+      { emoji: '🦵', label: '허벅지 뒤쪽 (햄스트링)', desc: '', value: 'hamstring', axisEffect: { A02: 12 } },
+      { emoji: '🤸', label: '복부·코어', desc: '배에 힘이 잘 안 들어가요', value: 'core', axisEffect: { A06: 15 } },
+      { emoji: '🔙', label: '등', desc: '등 운동을 해도 등이 뭉치는 느낌이 없어요', value: 'back', axisEffect: { A06: 12 } },
+      { emoji: '💪', label: '어깨 바깥쪽', desc: '', value: 'shoulder', axisEffect: { A06: 10 } },
+      { emoji: '🦶', label: '종아리', desc: '유산소를 해도 종아리가 안 뭉쳐요', value: 'calf', axisEffect: { A02: 8 } },
+      { emoji: '🫁', label: '가슴 (대흉근)', desc: '가슴 운동을 해도 가슴이 안 뭉쳐요', value: 'chest', axisEffect: { A06: 8 } },
+      { emoji: '✅', label: '전체적으로 잘 느껴져요', desc: '', value: 'all_fine', axisEffect: {}, exclusive: true }
     ],
     saveAs: 'numb_body_parts'
   },
@@ -1045,11 +1007,11 @@ const QUESTIONS = [
     weight: 1.5,
     options: [
       { emoji: '🦵', label: '무릎이 찌릿하거나 아파요', desc: '', value: 'knee', ohaengEffect: { '수': 12 } },
-      { emoji: '🔙', label: '허리가 뻣뻣하게 굳어있어요', desc: '', value: 'lower_back', bcEffect: { 'BC-04': 12 } },
-      { emoji: '🍑', label: '엉덩이가 저리거나 눌린 느낌이에요', desc: '', value: 'hip', bcEffect: { 'BC-05': 10 } },
-      { emoji: '🦶', label: '발목이나 종아리가 부어있어요', desc: '', value: 'ankle', bcEffect: { 'BC-06': 12 } },
-      { emoji: '🤸', label: '어깨·목이 굳어있어요', desc: '', value: 'neck', bcEffect: { 'BC-03': 10 } },
-      { emoji: '😊', label: '딱히 없어요', desc: '', value: 'none', bcEffect: {} }
+      { emoji: '🔙', label: '허리가 뻣뻣하게 굳어있어요', desc: '', value: 'lower_back', axisEffect: { A06: 12 } },
+      { emoji: '🍑', label: '엉덩이가 저리거나 눌린 느낌이에요', desc: '', value: 'hip', axisEffect: { A02: 10 } },
+      { emoji: '🦶', label: '발목이나 종아리가 부어있어요', desc: '', value: 'ankle', axisEffect: { A02: 12 } },
+      { emoji: '🤸', label: '어깨·목이 굳어있어요', desc: '', value: 'neck', axisEffect: { A06: 10 } },
+      { emoji: '😊', label: '딱히 없어요', desc: '', value: 'none', axisEffect: {} }
     ],
     saveAs: 'sit_rise_pain'
   },
@@ -1061,11 +1023,11 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 1.5,
     options: [
-      { emoji: '⚖️', label: '긴장되거나 뭉친 부위가 느껴져요', desc: '몸 감각 예민형', value: 'tension', bcEffect: {} },
-      { emoji: '💧', label: '어딘가 붓거나 무거운 느낌이에요', desc: '순환 감각형', value: 'heavy', bcEffect: { 'BC-06': 12 } },
+      { emoji: '⚖️', label: '긴장되거나 뭉친 부위가 느껴져요', desc: '몸 감각 예민형', value: 'tension', axisEffect: {} },
+      { emoji: '💧', label: '어딘가 붓거나 무거운 느낌이에요', desc: '순환 감각형', value: 'heavy', axisEffect: { A02: 12 } },
       { emoji: '🔥', label: '따뜻하거나 열감이 있는 곳이에요', desc: '열 감각형', value: 'heat', ohaengEffect: { '화': 10 } },
-      { emoji: '🧊', label: '차갑거나 시린 곳이 있어요', desc: '냉 감각형', value: 'cold', bcEffect: { 'BC-06': 12 }, ohaengEffect: { '수': 10 }, feedbackKey: 'cold_body' },
-      { emoji: '😶', label: '잘 모르겠어요, 별로 느껴지는 게 없어요', desc: '몸 감각 둔감형', value: 'numb', bcEffect: { 'BC-08': 15 } }
+      { emoji: '🧊', label: '차갑거나 시린 곳이 있어요', desc: '냉 감각형', value: 'cold', axisEffect: { A02: 12 }, ohaengEffect: { '수': 10 }, feedbackKey: 'cold_body' },
+      { emoji: '😶', label: '잘 모르겠어요, 별로 느껴지는 게 없어요', desc: '몸 감각 둔감형', value: 'numb', axisEffect: { A03: 15 } }
     ],
     saveAs: 'body_awareness'
   },
@@ -1077,9 +1039,9 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 1.5,
     options: [
-      { emoji: '🫃', label: '배가 먼저 나와요 (복식호흡)', desc: '코어 활성화, 이상적인 호흡', value: 'belly', bcEffect: {} },
-      { emoji: '🫁', label: '가슴만 올라가요 (흉식호흡)', desc: '코어 약화, 코르티솔 상승과 연관', value: 'chest', bcEffect: { 'BC-09': 15, 'BC-04': 10 }, feedbackKey: 'stress_high' },
-      { emoji: '🤷', label: '잘 모르겠어요', desc: '호흡 인식 저하', value: 'unknown', bcEffect: { 'BC-04': 8 } }
+      { emoji: '🫃', label: '배가 먼저 나와요 (복식호흡)', desc: '코어 활성화, 이상적인 호흡', value: 'belly', axisEffect: {} },
+      { emoji: '🫁', label: '가슴만 올라가요 (흉식호흡)', desc: '코어 약화, 코르티솔 상승과 연관', value: 'chest', axisEffect: { A06: 10, A07: 15 }, feedbackKey: 'stress_high' },
+      { emoji: '🤷', label: '잘 모르겠어요', desc: '호흡 인식 저하', value: 'unknown', axisEffect: { A06: 8 } }
     ],
     saveAs: 'breathing_type'
   },
@@ -1092,13 +1054,13 @@ const QUESTIONS = [
     maxSelect: 4,
     weight: 1.5,
     options: [
-      { emoji: '🖐️', label: '손·손가락', desc: '', value: 'hands', bcEffect: { 'BC-06': 12 }, ohaengEffect: { '수': 8 } },
-      { emoji: '🦶', label: '발·발가락', desc: '', value: 'feet', bcEffect: { 'BC-06': 15 }, ohaengEffect: { '수': 10 } },
-      { emoji: '🦵', label: '무릎 주변', desc: '', value: 'knee', bcEffect: { 'BC-06': 10 }, ohaengEffect: { '수': 8 } },
-      { emoji: '🍑', label: '허벅지·엉덩이 바깥', desc: '', value: 'thigh', bcEffect: { 'BC-06': 15 } },
+      { emoji: '🖐️', label: '손·손가락', desc: '', value: 'hands', axisEffect: { A02: 12 }, ohaengEffect: { '수': 8 } },
+      { emoji: '🦶', label: '발·발가락', desc: '', value: 'feet', axisEffect: { A02: 15 }, ohaengEffect: { '수': 10 } },
+      { emoji: '🦵', label: '무릎 주변', desc: '', value: 'knee', axisEffect: { A02: 10 }, ohaengEffect: { '수': 8 } },
+      { emoji: '🍑', label: '허벅지·엉덩이 바깥', desc: '', value: 'thigh', axisEffect: { A02: 15 } },
       { emoji: '🔙', label: '허리·골반', desc: '', value: 'lower_back', ohaengEffect: { '수': 10 } },
-      { emoji: '🫃', label: '아랫배', desc: '', value: 'lower_belly', bcEffect: { 'BC-06': 10 } },
-      { emoji: '😊', label: '유독 차가운 곳이 없어요', desc: '', value: 'none', bcEffect: {}, exclusive: true }
+      { emoji: '🫃', label: '아랫배', desc: '', value: 'lower_belly', axisEffect: { A02: 10 } },
+      { emoji: '😊', label: '유독 차가운 곳이 없어요', desc: '', value: 'none', axisEffect: {}, exclusive: true }
     ],
     saveAs: 'cold_body_parts'
   },
@@ -1114,9 +1076,9 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 1.8,
     options: [
-      { emoji: '⬆️', label: '발끝이 정면을 향해요 (11자)', desc: '자세 정렬 양호', value: 'straight', bcEffect: {} },
-      { emoji: '↗️', label: '발끝이 바깥으로 벌어져요 (팔자)', desc: '고관절·골반 외회전 경향', value: 'out', bcEffect: { 'BC-05': 15, 'BC-04': 10 } },
-      { emoji: '↖️', label: '발끝이 안쪽으로 모여요 (안짱)', desc: '무릎·고관절 내회전 경향', value: 'in', bcEffect: { 'BC-05': 12 } }
+      { emoji: '⬆️', label: '발끝이 정면을 향해요 (11자)', desc: '자세 정렬 양호', value: 'straight', axisEffect: {} },
+      { emoji: '↗️', label: '발끝이 바깥으로 벌어져요 (팔자)', desc: '고관절·골반 외회전 경향', value: 'out', axisEffect: { A02: 15, A06: 10 } },
+      { emoji: '↖️', label: '발끝이 안쪽으로 모여요 (안짱)', desc: '무릎·고관절 내회전 경향', value: 'in', axisEffect: { A02: 12 } }
     ],
     saveAs: 'walking_foot_angle'
   },
@@ -1128,10 +1090,10 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 1.8,
     options: [
-      { emoji: '🦶', label: '발앞쪽·엄지 방향에 더 실려요', desc: '전방 무게중심, 코어 약화와 연관', value: 'forefoot', bcEffect: { 'BC-04': 15 } },
-      { emoji: '🔙', label: '발뒤꿈치에 더 실려요', desc: '후방 무게중심, 엉덩이 처짐 경향', value: 'heel', bcEffect: { 'BC-05': 12 } },
-      { emoji: '➡️', label: '한쪽 발에만 더 실려요 (짝다리)', desc: '골반 틀어짐 경향', value: 'one_side', bcEffect: { 'BC-04': 18 } },
-      { emoji: '⚖️', label: '양발에 균등하게 실려요', desc: '균형 양호', value: 'balanced', bcEffect: {} }
+      { emoji: '🦶', label: '발앞쪽·엄지 방향에 더 실려요', desc: '전방 무게중심, 코어 약화와 연관', value: 'forefoot', axisEffect: { A06: 15 } },
+      { emoji: '🔙', label: '발뒤꿈치에 더 실려요', desc: '후방 무게중심, 엉덩이 처짐 경향', value: 'heel', axisEffect: { A02: 12 } },
+      { emoji: '➡️', label: '한쪽 발에만 더 실려요 (짝다리)', desc: '골반 틀어짐 경향', value: 'one_side', axisEffect: { A06: 18 } },
+      { emoji: '⚖️', label: '양발에 균등하게 실려요', desc: '균형 양호', value: 'balanced', axisEffect: {} }
     ],
     saveAs: 'weight_distribution'
   },
@@ -1143,10 +1105,10 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 1.5,
     options: [
-      { emoji: '🤳', label: '폰을 눈 높이로 들어서 봐요', desc: '목·척추 부담 최소', value: 'eye_level', bcEffect: {} },
-      { emoji: '⬇️', label: '고개를 숙여서 내려다봐요', desc: '거북목·일자목 경향', value: 'head_down', bcEffect: { 'BC-03': 15 } },
-      { emoji: '🛋️', label: '누워서 한쪽으로 기대서 봐요', desc: '척추 측만 경향', value: 'lying', bcEffect: { 'BC-03': 12, 'BC-04': 10 } },
-      { emoji: '🦒', label: '턱을 내밀고 앞으로 빼서 봐요', desc: '목 앞쪽 근육 약화', value: 'chin_forward', bcEffect: { 'BC-03': 18 } }
+      { emoji: '🤳', label: '폰을 눈 높이로 들어서 봐요', desc: '목·척추 부담 최소', value: 'eye_level', axisEffect: {} },
+      { emoji: '⬇️', label: '고개를 숙여서 내려다봐요', desc: '거북목·일자목 경향', value: 'head_down', axisEffect: { A06: 15 } },
+      { emoji: '🛋️', label: '누워서 한쪽으로 기대서 봐요', desc: '척추 측만 경향', value: 'lying', axisEffect: { A06: 22 } },
+      { emoji: '🦒', label: '턱을 내밀고 앞으로 빼서 봐요', desc: '목 앞쪽 근육 약화', value: 'chin_forward', axisEffect: { A06: 18 } }
     ],
     saveAs: 'phone_posture'
   },
@@ -1158,42 +1120,12 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 1.5,
     options: [
-      { emoji: '🐢', label: '천천히 꼭꼭 씹어 먹어요', desc: '20분 이상', value: 'slow', bcEffect: {} },
-      { emoji: '🚶', label: '보통 정도예요', desc: '10~20분', value: 'normal', bcEffect: {} },
-      { emoji: '🏃', label: '빠른 편이에요', desc: '10분 미만', value: 'fast', bcEffect: { 'BC-09': 12, 'BC-01': 8 } },
-      { emoji: '⚡', label: '거의 씹지 않고 삼키는 편이에요', desc: '5분 미만, 위장 부담', value: 'very_fast', bcEffect: { 'BC-09': 20, 'BC-01': 15 } }
+      { emoji: '🐢', label: '천천히 꼭꼭 씹어 먹어요', desc: '20분 이상', value: 'slow', axisEffect: {} },
+      { emoji: '🚶', label: '보통 정도예요', desc: '10~20분', value: 'normal', axisEffect: {} },
+      { emoji: '🏃', label: '빠른 편이에요', desc: '10분 미만', value: 'fast', axisEffect: { A01: 8, A07: 12 } },
+      { emoji: '⚡', label: '거의 씹지 않고 삼키는 편이에요', desc: '5분 미만, 위장 부담', value: 'very_fast', axisEffect: { A01: 15, A07: 20 } }
     ],
     saveAs: 'eating_speed'
-  },
-  {
-    id: 'Q67', section: 'I', num: 67,
-    axis: 'A06', weight: 1.2, role: 'score',
-    question: '하루 중 식욕이 가장 강해지는 시간대는?',
-    hint: '이 시간대에 맞춰 미리 건강한 간식을 준비해두는 것이 핵심 전략이 됩니다.',
-    type: 'SINGLE_SELECT',
-    weight: 1.5,
-    options: [
-      { emoji: '🌅', label: '오전 (아침~점심 사이)', desc: '', value: 'morning', bcEffect: {} },
-      { emoji: '🌤️', label: '오후 3~5시 사이', desc: '혈당 저하 시간대', value: 'afternoon', bcEffect: { 'BC-01': 10 } },
-      { emoji: '🌆', label: '저녁 식사 직후', desc: '디저트 욕구', value: 'after_dinner', bcEffect: { 'BC-09': 10 } },
-      { emoji: '🌙', label: '밤 10시 이후', desc: '야식 욕구', value: 'late_night', bcEffect: { 'BC-09': 20 }, feedbackKey: 'sleep_late' },
-      { emoji: '😐', label: '딱히 정해진 시간이 없어요', desc: '', value: 'no_pattern', bcEffect: {} }
-    ],
-    saveAs: 'peak_appetite_time'
-  },
-  {
-    id: 'Q68', section: 'I', num: 68,
-    axis: 'A10', weight: 1.0, role: 'score',
-    question: '음식 사진을 보거나 음식 얘기를 들으면 어떻게 되나요?',
-    hint: '시각·청각 자극에 의한 식욕 반응이 처방 식단 설계를 결정합니다.',
-    type: 'SINGLE_SELECT',
-    weight: 1.3,
-    options: [
-      { emoji: '😋', label: '바로 먹고 싶어져요', desc: '자극 반응성 높음', value: 'instant', bcEffect: { 'BC-09': 15 } },
-      { emoji: '🤔', label: '조금 당기긴 해도 참을 수 있어요', desc: '자극 반응성 보통', value: 'mild', bcEffect: {} },
-      { emoji: '😐', label: '별로 영향을 안 받아요', desc: '자극 반응성 낮음', value: 'not_affected', bcEffect: {} }
-    ],
-    saveAs: 'visual_food_response'
   },
   {
     id: 'Q69', section: 'J', num: 69,
@@ -1203,43 +1135,13 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 1.5,
     options: [
-      { emoji: '💪', label: '뭉근한 근육통이 오고 개운해요', desc: '정상적 회복 반응', value: 'good_sore', bcEffect: {} },
-      { emoji: '😫', label: '너무 아파서 이틀 이상 힘들어요', desc: '회복 속도 저하', value: 'too_sore', bcEffect: { 'BC-08': 12 } },
-      { emoji: '😴', label: '운동 후 극도로 피곤해요', desc: '부신 기능 저하 가능성', value: 'exhausted', bcEffect: { 'BC-09': 15 }, feedbackKey: 'stress_high' },
-      { emoji: '⚡', label: '거의 안 아파요, 금방 회복돼요', desc: '회복력 우수', value: 'fast_recovery', bcEffect: {} },
-      { emoji: '🤷', label: '운동을 거의 안 해봐서 모르겠어요', desc: '', value: 'no_experience', bcEffect: {} }
+      { emoji: '💪', label: '뭉근한 근육통이 오고 개운해요', desc: '정상적 회복 반응', value: 'good_sore', axisEffect: {} },
+      { emoji: '😫', label: '너무 아파서 이틀 이상 힘들어요', desc: '회복 속도 저하', value: 'too_sore', axisEffect: { A03: 12 } },
+      { emoji: '😴', label: '운동 후 극도로 피곤해요', desc: '부신 기능 저하 가능성', value: 'exhausted', axisEffect: { A07: 15 }, feedbackKey: 'stress_high' },
+      { emoji: '⚡', label: '거의 안 아파요, 금방 회복돼요', desc: '회복력 우수', value: 'fast_recovery', axisEffect: {} },
+      { emoji: '🤷', label: '운동을 거의 안 해봐서 모르겠어요', desc: '', value: 'no_experience', axisEffect: {} }
     ],
     saveAs: 'exercise_recovery'
-  },
-  {
-    id: 'Q70', section: 'J', num: 70,
-    axis: 'A07', weight: 1.3, role: 'score',
-    question: '피부를 꼬집거나 눌렀을 때 어떤 느낌인가요?',
-    hint: '피부 감각 민감도는 신경계와 림프 상태를 반영합니다.',
-    type: 'SINGLE_SELECT',
-    weight: 1.2,
-    options: [
-      { emoji: '😖', label: '약간만 닿아도 꽤 아파요', desc: '감각 과민형', value: 'hypersensitive', bcEffect: { 'BC-06': 10 } },
-      { emoji: '😊', label: '보통 정도로 느껴요', desc: '감각 정상', value: 'normal', bcEffect: {} },
-      { emoji: '😶', label: '꽤 세게 해야 느껴져요', desc: '감각 둔화형', value: 'hyposensitive', bcEffect: { 'BC-08': 12 } },
-      { emoji: '🤷', label: '부위마다 다양해요', desc: '', value: 'varies', bcEffect: {} }
-    ],
-    saveAs: 'skin_sensitivity'
-  },
-  {
-    id: 'Q71', section: 'K', num: 71,
-    axis: 'A06', weight: 1.2, role: 'score',
-    question: '계단을 오를 때 주로 어느 쪽 발이 먼저 나가나요?',
-    hint: '편한 쪽 발이 항상 먼저 나간다면 근육 불균형의 신호일 수 있어요.',
-    type: 'SINGLE_SELECT',
-    weight: 1.2,
-    options: [
-      { emoji: '➡️', label: '오른발이 항상 먼저 나가요', desc: '', value: 'right_first', bcEffect: { 'BC-04': 8 } },
-      { emoji: '⬅️', label: '왼발이 항상 먼저 나가요', desc: '', value: 'left_first', bcEffect: { 'BC-04': 8 } },
-      { emoji: '⚖️', label: '번갈아가며 자연스럽게 나가요', desc: '', value: 'alternating', bcEffect: {} },
-      { emoji: '🤷', label: '생각해본 적 없어요', desc: '', value: 'unknown', bcEffect: {} }
-    ],
-    saveAs: 'stair_lead_foot'
   },
   {
     id: 'Q72', section: 'K', num: 72,
@@ -1249,10 +1151,10 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 1.5,
     options: [
-      { emoji: '🪑', label: '등을 등받이에 붙이고 바르게 앉아요', desc: '척추 정렬 양호', value: 'upright', bcEffect: {} },
-      { emoji: '📉', label: '엉덩이를 앞으로 빼고 구부정하게 앉아요', desc: '요추 후만 경향', value: 'slouch', bcEffect: { 'BC-04': 18 } },
-      { emoji: '↗️', label: '한쪽으로 기울어져 앉아요', desc: '골반 비대칭 경향', value: 'tilted', bcEffect: { 'BC-04': 15 } },
-      { emoji: '🦵', label: '다리를 꼬고 앉아요', desc: '골반 외회전 경향', value: 'crossed', bcEffect: { 'BC-05': 12, 'BC-04': 10 } }
+      { emoji: '🪑', label: '등을 등받이에 붙이고 바르게 앉아요', desc: '척추 정렬 양호', value: 'upright', axisEffect: {} },
+      { emoji: '📉', label: '엉덩이를 앞으로 빼고 구부정하게 앉아요', desc: '요추 후만 경향', value: 'slouch', axisEffect: { A06: 18 } },
+      { emoji: '↗️', label: '한쪽으로 기울어져 앉아요', desc: '골반 비대칭 경향', value: 'tilted', axisEffect: { A06: 15 } },
+      { emoji: '🦵', label: '다리를 꼬고 앉아요', desc: '골반 외회전 경향', value: 'crossed', axisEffect: { A02: 12, A06: 10 } }
     ],
     saveAs: 'sitting_posture'
   },
@@ -1264,10 +1166,10 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 1.8,
     options: [
-      { emoji: '🛋️', label: '거의 앉아서 생활해요 (3천 보 미만)', desc: '매우 낮은 활동량', value: 'sedentary', bcEffect: { 'BC-08': 20, 'BC-07': 15 } },
-      { emoji: '🚶', label: '가벼운 이동 정도예요 (3천~6천 보)', desc: '낮은 활동량', value: 'light', bcEffect: { 'BC-08': 10 } },
-      { emoji: '🏃', label: '어느 정도 걷고 활동해요 (6천~만 보)', desc: '보통 활동량', value: 'moderate', bcEffect: {} },
-      { emoji: '⚡', label: '활발하게 움직이는 편이에요 (만 보 이상)', desc: '높은 활동량', value: 'active', bcEffect: {} }
+      { emoji: '🛋️', label: '거의 앉아서 생활해요 (3천 보 미만)', desc: '매우 낮은 활동량', value: 'sedentary', axisEffect: { A03: 20, A04: 15 } },
+      { emoji: '🚶', label: '가벼운 이동 정도예요 (3천~6천 보)', desc: '낮은 활동량', value: 'light', axisEffect: { A03: 10 } },
+      { emoji: '🏃', label: '어느 정도 걷고 활동해요 (6천~만 보)', desc: '보통 활동량', value: 'moderate', axisEffect: {} },
+      { emoji: '⚡', label: '활발하게 움직이는 편이에요 (만 보 이상)', desc: '높은 활동량', value: 'active', axisEffect: {} }
     ],
     saveAs: 'daily_activity'
   },
@@ -1279,10 +1181,10 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 1.5,
     options: [
-      { emoji: '🙌', label: '양팔이 귀 옆에 딱 붙어요', desc: '어깨 가동성 정상', value: 'full_range', bcEffect: {} },
-      { emoji: '↔️', label: '한쪽이 덜 올라가요', desc: '어깨 불균형 경향', value: 'asymmetric', bcEffect: { 'BC-03': 15 } },
-      { emoji: '😖', label: '어깨가 아프거나 뻑뻑해서 잘 안 올라가요', desc: '어깨 가동성 저하', value: 'limited', bcEffect: { 'BC-03': 18 } },
-      { emoji: '🔙', label: '올릴 때 허리가 과하게 젖혀져요', desc: '코어 약화·흉추 가동성 저하', value: 'arched_back', bcEffect: { 'BC-04': 15, 'BC-03': 10 } }
+      { emoji: '🙌', label: '양팔이 귀 옆에 딱 붙어요', desc: '어깨 가동성 정상', value: 'full_range', axisEffect: {} },
+      { emoji: '↔️', label: '한쪽이 덜 올라가요', desc: '어깨 불균형 경향', value: 'asymmetric', axisEffect: { A06: 15 } },
+      { emoji: '😖', label: '어깨가 아프거나 뻑뻑해서 잘 안 올라가요', desc: '어깨 가동성 저하', value: 'limited', axisEffect: { A06: 18 } },
+      { emoji: '🔙', label: '올릴 때 허리가 과하게 젖혀져요', desc: '코어 약화·흉추 가동성 저하', value: 'arched_back', axisEffect: { A06: 25 } }
     ],
     saveAs: 'shoulder_mobility'
   },
@@ -1298,9 +1200,9 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 2.0,
     options: [
-      { emoji: '🤏', label: '1cm 미만, 거의 안 집혀요', desc: '내장지방 우세 가능성', value: 'thin', bcEffect: { 'BC-01': 25, 'BC-02': 20 }, feedbackKey: 'hard_fat' },
-      { emoji: '✌️', label: '1~3cm 정도 집혀요', desc: '혼합형', value: 'medium', bcEffect: { 'BC-05': 10, 'BC-07': 10 } },
-      { emoji: '🖐️', label: '3cm 이상 두껍게 집혀요', desc: '피하지방 우세 가능성', value: 'thick', bcEffect: { 'BC-05': 25 }, feedbackKey: 'soft_fat' }
+      { emoji: '🤏', label: '1cm 미만, 거의 안 집혀요', desc: '내장지방 우세 가능성', value: 'thin', axisEffect: { A01: 45 }, feedbackKey: 'hard_fat' },
+      { emoji: '✌️', label: '1~3cm 정도 집혀요', desc: '혼합형', value: 'medium', axisEffect: { A02: 10, A04: 10 } },
+      { emoji: '🖐️', label: '3cm 이상 두껍게 집혀요', desc: '피하지방 우세 가능성', value: 'thick', axisEffect: { A02: 25 }, feedbackKey: 'soft_fat' }
     ],
     saveAs: 'belly_fat_thickness'
   },
@@ -1312,10 +1214,10 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 1.3,
     options: [
-      { emoji: '🚫', label: '거의 안 마셔요', desc: '', value: 'none', bcEffect: {} },
-      { emoji: '☕', label: '하루 1~2잔', desc: '', value: 'moderate', bcEffect: {} },
-      { emoji: '☕☕', label: '하루 3~4잔', desc: '카페인 과다 경향', value: 'high', bcEffect: { 'BC-09': 10 } },
-      { emoji: '⚡', label: '하루 5잔 이상 (에너지드링크 포함)', desc: '카페인 의존 경향', value: 'very_high', bcEffect: { 'BC-09': 20 }, feedbackKey: 'stress_high' }
+      { emoji: '🚫', label: '거의 안 마셔요', desc: '', value: 'none', axisEffect: {} },
+      { emoji: '☕', label: '하루 1~2잔', desc: '', value: 'moderate', axisEffect: {} },
+      { emoji: '☕☕', label: '하루 3~4잔', desc: '카페인 과다 경향', value: 'high', axisEffect: { A07: 10 } },
+      { emoji: '⚡', label: '하루 5잔 이상 (에너지드링크 포함)', desc: '카페인 의존 경향', value: 'very_high', axisEffect: { A07: 20 }, feedbackKey: 'stress_high' }
     ],
     saveAs: 'caffeine_intake'
   },
@@ -1327,10 +1229,10 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 1.3,
     options: [
-      { emoji: '✅', label: '배변이 규칙적이고 편해요', desc: '', value: 'regular', bcEffect: {} },
-      { emoji: '🔒', label: '변비가 자주 있어요 (3일 이상)', desc: '', value: 'constipated', bcEffect: { 'BC-04': 12 }, ohaengEffect: { '토': 12 } },
-      { emoji: '💨', label: '자주 묽거나 과민성 장 증상이 있어요', desc: '', value: 'ibs', bcEffect: { 'BC-04': 10 }, ohaengEffect: { '토': 10 } },
-      { emoji: '🌀', label: '변비와 설사가 번갈아 와요', desc: '', value: 'alternating', bcEffect: { 'BC-04': 15 }, ohaengEffect: { '토': 15 } }
+      { emoji: '✅', label: '배변이 규칙적이고 편해요', desc: '', value: 'regular', axisEffect: {} },
+      { emoji: '🔒', label: '변비가 자주 있어요 (3일 이상)', desc: '', value: 'constipated', axisEffect: { A06: 12 }, ohaengEffect: { '토': 12 } },
+      { emoji: '💨', label: '자주 묽거나 과민성 장 증상이 있어요', desc: '', value: 'ibs', axisEffect: { A06: 10 }, ohaengEffect: { '토': 10 } },
+      { emoji: '🌀', label: '변비와 설사가 번갈아 와요', desc: '', value: 'alternating', axisEffect: { A06: 15 }, ohaengEffect: { '토': 15 } }
     ],
     saveAs: 'bowel_health'
   },
@@ -1342,11 +1244,11 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 2.0,
     options: [
-      { emoji: '🫃', label: '배·복부가 제일 먼저 나와요', desc: '', value: 'belly_first', bcEffect: { 'BC-01': 20, 'BC-02': 15 }, feedbackKey: 'belly_fat' },
-      { emoji: '🍑', label: '허벅지·엉덩이가 먼저 커져요', desc: '', value: 'hip_first', bcEffect: { 'BC-05': 25 } },
-      { emoji: '💪', label: '어깨·팔뚝·등이 먼저 두꺼워져요', desc: '', value: 'upper_first', bcEffect: { 'BC-03': 22 } },
-      { emoji: '🌊', label: '전신에 골고루 쪄요', desc: '', value: 'all_over', bcEffect: { 'BC-07': 15, 'BC-08': 12 } },
-      { emoji: '💧', label: '얼굴·목·손발이 먼저 붓는 것 같아요', desc: '', value: 'face_first', bcEffect: { 'BC-06': 25 }, feedbackKey: 'puffy' }
+      { emoji: '🫃', label: '배·복부가 제일 먼저 나와요', desc: '', value: 'belly_first', axisEffect: { A01: 35 }, feedbackKey: 'belly_fat' },
+      { emoji: '🍑', label: '허벅지·엉덩이가 먼저 커져요', desc: '', value: 'hip_first', axisEffect: { A02: 25 } },
+      { emoji: '💪', label: '어깨·팔뚝·등이 먼저 두꺼워져요', desc: '', value: 'upper_first', axisEffect: { A06: 22 } },
+      { emoji: '🌊', label: '전신에 골고루 쪄요', desc: '', value: 'all_over', axisEffect: { A03: 12, A04: 15 } },
+      { emoji: '💧', label: '얼굴·목·손발이 먼저 붓는 것 같아요', desc: '', value: 'face_first', axisEffect: { A02: 25 }, feedbackKey: 'puffy' }
     ],
     saveAs: 'fat_gain_order'
   },
@@ -1358,10 +1260,10 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     weight: 1.8,
     options: [
-      { emoji: '✨', label: '요요 경험이 없어요', desc: '', value: 'no_yoyo', bcEffect: {} },
-      { emoji: '📉', label: '5kg 이하 빠지고 5kg 이하 돌아왔어요', desc: '소폭 요요', value: 'small_yoyo', bcEffect: { 'BC-10': 10 } },
-      { emoji: '📊', label: '5~10kg 빠지고 거의 다 돌아왔어요', desc: '중간 요요', value: 'medium_yoyo', bcEffect: { 'BC-10': 20 }, feedbackKey: 'yoyo' },
-      { emoji: '🌊', label: '10kg 이상 빠졌다 그 이상 돌아온 적 있어요', desc: '대사 정체 경향', value: 'large_yoyo', bcEffect: { 'BC-10': 35, 'BC-08': 20 }, feedbackKey: 'yoyo' }
+      { emoji: '✨', label: '요요 경험이 없어요', desc: '', value: 'no_yoyo', axisEffect: {} },
+      { emoji: '📉', label: '5kg 이하 빠지고 5kg 이하 돌아왔어요', desc: '소폭 요요', value: 'small_yoyo', axisEffect: { A08: 10 } },
+      { emoji: '📊', label: '5~10kg 빠지고 거의 다 돌아왔어요', desc: '중간 요요', value: 'medium_yoyo', axisEffect: { A08: 20 }, feedbackKey: 'yoyo' },
+      { emoji: '🌊', label: '10kg 이상 빠졌다 그 이상 돌아온 적 있어요', desc: '대사 정체 경향', value: 'large_yoyo', axisEffect: { A03: 20, A08: 35 }, feedbackKey: 'yoyo' }
     ],
     saveAs: 'yoyo_magnitude'
   },
@@ -1379,23 +1281,23 @@ const QUESTIONS = [
     feedbackKey: 'allergy_detected',
     options: [
       { emoji: '🍗', label: '닭가슴살·가금류', desc: '고단백 식품', value: 'chicken',
-        bcEffect: {} },
+        axisEffect: {} },
       { emoji: '🥚', label: '달걀', desc: '흰자·노른자 포함', value: 'egg',
-        bcEffect: {} },
+        axisEffect: {} },
       { emoji: '🥛', label: '유제품', desc: '우유·치즈·요거트', value: 'dairy',
-        bcEffect: {} },
+        axisEffect: {} },
       { emoji: '🥜', label: '견과류', desc: '아몬드·땅콩·호두 등', value: 'nuts',
-        bcEffect: {} },
+        axisEffect: {} },
       { emoji: '🦐', label: '해산물·생선', desc: '새우·고등어·조개 등', value: 'seafood',
-        bcEffect: {} },
+        axisEffect: {} },
       { emoji: '🌾', label: '밀·글루텐', desc: '빵·파스타·밀가루', value: 'gluten',
-        bcEffect: {} },
+        axisEffect: {} },
       { emoji: '🫘', label: '콩류', desc: '두부·두유·콩단백', value: 'legume',
-        bcEffect: {} },
+        axisEffect: {} },
       { emoji: '🌶️', label: '자극적인 음식', desc: '맵고 짠 음식 과민 반응', value: 'spicy',
-        bcEffect: {} },
+        axisEffect: {} },
       { emoji: '✅', label: '반응 없어요', desc: '해당 없음', value: 'none',
-        exclusive: true, bcEffect: {} }
+        exclusive: true, axisEffect: {} }
     ],
     saveAs: 'food_allergy'
   },
@@ -1409,15 +1311,15 @@ const QUESTIONS = [
     feedbackKey: 'skin_reaction',
     options: [
       { emoji: '😊', label: '피부 변화가 거의 없어요', desc: '', value: 'no_reaction',
-        bcEffect: {} },
+        axisEffect: {} },
       { emoji: '🔴', label: '여드름·뾰루지가 올라와요', desc: '안드로겐·인슐린 과잉 신호',
-        value: 'acne', bcEffect: { 'BC-02': 8, 'BC-09': 6 }, feedbackKey: 'skin_acne' },
+        value: 'acne', axisEffect: { A01: 8, A07: 6 }, feedbackKey: 'skin_acne' },
       { emoji: '🌊', label: '얼굴·눈 주변이 붓고 칙칙해져요', desc: '림프·순환 정체',
-        value: 'puffiness', bcEffect: { 'BC-06': 12 }, feedbackKey: 'skin_puffy' },
+        value: 'puffiness', axisEffect: { A02: 12 }, feedbackKey: 'skin_puffy' },
       { emoji: '🔥', label: '피부가 가렵거나 발진이 생겨요', desc: '음식 과민 반응 가능성',
-        value: 'rash', bcEffect: {}, feedbackKey: 'skin_rash' },
+        value: 'rash', axisEffect: {}, feedbackKey: 'skin_rash' },
       { emoji: '🏜️', label: '피부가 건조해지고 각질이 생겨요', desc: '필수지방산·수분 부족',
-        value: 'dry', bcEffect: { 'BC-08': 5 } }
+        value: 'dry', axisEffect: { A03: 5 } }
     ],
     saveAs: 'skin_reaction'
   },
@@ -1432,15 +1334,15 @@ const QUESTIONS = [
     feedbackKey: 'menopause_detected',
     options: [
       { emoji: '🌱', label: '해당 없어요 (남성 또는 40대 이전)', desc: '',
-        value: 'not_applicable', bcEffect: {} },
+        value: 'not_applicable', axisEffect: {} },
       { emoji: '🌸', label: '갱년기 전기 (40대 중반~50초 / 생리 불규칙)', desc: '호르몬 변화 시작',
-        value: 'peri', bcEffect: { 'BC-09': 15, 'BC-08': 10 }, feedbackKey: 'menopause_peri' },
+        value: 'peri', axisEffect: { A03: 10, A07: 15 }, feedbackKey: 'menopause_peri' },
       { emoji: '🍂', label: '갱년기 중기 (폐경 전후 / 홍조·수면 장애)', desc: '에스트로겐 급감기',
-        value: 'meno', bcEffect: { 'BC-09': 20, 'BC-08': 15, 'BC-05': 10 }, feedbackKey: 'menopause_meno' },
+        value: 'meno', axisEffect: { A02: 10, A03: 15, A07: 20 }, feedbackKey: 'menopause_meno' },
       { emoji: '❄️', label: '폐경 완료 (2년 이상 / 생리 완전 중단)', desc: '대사 재설계 필요',
-        value: 'post', bcEffect: { 'BC-09': 25, 'BC-08': 20, 'BC-05': 15 }, feedbackKey: 'menopause_post' },
+        value: 'post', axisEffect: { A02: 15, A03: 20, A07: 25 }, feedbackKey: 'menopause_post' },
       { emoji: '💊', label: '호르몬 치료(HRT) 중이에요', desc: '의료진 협진 권고',
-        value: 'hrt', bcEffect: { 'BC-09': 18, 'BC-08': 12 }, feedbackKey: 'menopause_hrt' }
+        value: 'hrt', axisEffect: { A03: 12, A07: 18 }, feedbackKey: 'menopause_hrt' }
     ],
     saveAs: 'menopause_status'
   },
@@ -1455,25 +1357,25 @@ const QUESTIONS = [
     feedbackKey: 'medical_detected',
     options: [
       { emoji: '🩸', label: '당뇨 / 혈당 조절 이상', desc: '공복혈당 100 이상 포함', value: 'diabetes',
-        bcEffect: { 'BC-02': 20, 'BC-01': 15 }, feedbackKey: 'medical_diabetes' },
+        axisEffect: { A01: 35 }, feedbackKey: 'medical_diabetes' },
       { emoji: '💓', label: '고혈압', desc: '수축기 140 이상 또는 약 복용 중', value: 'hypertension',
-        bcEffect: { 'BC-01': 15, 'BC-09': 12 }, feedbackKey: 'medical_hypertension' },
+        axisEffect: { A01: 15, A07: 12 }, feedbackKey: 'medical_hypertension' },
       { emoji: '🦋', label: '갑상선 저하증', desc: '갑상선 기능 저하 / 약 복용 중', value: 'hypothyroid',
-        bcEffect: { 'BC-08': 25, 'BC-06': 15 }, feedbackKey: 'medical_hypothyroid' },
+        axisEffect: { A02: 15, A03: 25 }, feedbackKey: 'medical_hypothyroid' },
       { emoji: '🦴', label: '디스크 / 척추 질환', desc: '요추·경추 디스크 포함', value: 'disc',
-        bcEffect: { 'BC-04': 18 }, feedbackKey: 'medical_disc' },
+        axisEffect: { A06: 18 }, feedbackKey: 'medical_disc' },
       { emoji: '🎗️', label: '암 완치 후 관리 중', desc: '치료 종료 후 회복기', value: 'cancer_recovery',
-        bcEffect: { 'BC-08': 20, 'BC-07': 15 }, feedbackKey: 'medical_cancer' },
+        axisEffect: { A03: 20, A04: 15 }, feedbackKey: 'medical_cancer' },
       { emoji: '🔥', label: '류마티스 / 자가면역 질환', desc: '만성 염증 상태', value: 'rheumatoid',
-        bcEffect: { 'BC-06': 20, 'BC-09': 15 }, feedbackKey: 'medical_rheumatoid' },
+        axisEffect: { A02: 20, A07: 15 }, feedbackKey: 'medical_rheumatoid' },
       { emoji: '🌸', label: 'PCOS (다낭성 난소 증후군)', desc: '인슐린 저항성 연관', value: 'pcos',
-        bcEffect: { 'BC-02': 22, 'BC-09': 18, 'BC-05': 12 }, feedbackKey: 'medical_pcos' },
+        axisEffect: { A01: 22, A02: 12, A07: 18 }, feedbackKey: 'medical_pcos' },
       { emoji: '🫀', label: '지방간', desc: '비알코올성 지방간 포함', value: 'fatty_liver',
-        bcEffect: { 'BC-01': 20, 'BC-02': 15 }, feedbackKey: 'medical_fattyliver' },
+        axisEffect: { A01: 35 }, feedbackKey: 'medical_fattyliver' },
       { emoji: '💊', label: '스테로이드 / 항우울제 장기 복용', desc: '체중 증가 부작용 있는 약물',
-        value: 'steroid', bcEffect: { 'BC-02': 15, 'BC-08': 12 }, feedbackKey: 'medical_steroid' },
+        value: 'steroid', axisEffect: { A01: 15, A03: 12 }, feedbackKey: 'medical_steroid' },
       { emoji: '✅', label: '해당 없어요', desc: '', value: 'none',
-        exclusive: true, bcEffect: {} }
+        exclusive: true, axisEffect: {} }
     ],
     saveAs: 'medical_conditions'
   },
@@ -1492,13 +1394,13 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     options: [
       { emoji: '🧊', label: '항상 추워요·손발이 항상 차가워요', desc: '여름에도 긴팔 입어요',
-        value: 'always_cold', bcEffect: { 'BC-08': 20, 'BC-06': 10 } },
+        value: 'always_cold', axisEffect: { A02: 10, A03: 20 } },
       { emoji: '🌡️', label: '추운 편이에요', desc: '다른 사람보다 예민한 편',
-        value: 'cold', bcEffect: { 'BC-08': 12, 'BC-06': 6 } },
+        value: 'cold', axisEffect: { A02: 6, A03: 12 } },
       { emoji: '😊', label: '보통이에요', desc: '크게 신경 안 써요',
-        value: 'normal', bcEffect: {} },
+        value: 'normal', axisEffect: {} },
       { emoji: '🔥', label: '더위를 더 많이 타요', desc: '땀이 잘 나는 편',
-        value: 'warm', bcEffect: { 'BC-01': 8 } }
+        value: 'warm', axisEffect: { A01: 8 } }
     ],
     saveAs: 'thyroid_signal'
   },
@@ -1510,13 +1412,13 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     options: [
       { emoji: '😴', label: '거의 매일 있어요', desc: '밥 먹으면 졸음이 쏟아져요',
-        value: 'always', bcEffect: { 'BC-02': 20, 'BC-01': 10 } },
+        value: 'always', axisEffect: { A01: 30 } },
       { emoji: '🥱', label: '종종 있어요', desc: '특히 탄수화물 많이 먹을 때',
-        value: 'often', bcEffect: { 'BC-02': 12, 'BC-01': 6 } },
+        value: 'often', axisEffect: { A01: 18 } },
       { emoji: '🤔', label: '가끔 있어요', desc: '과식했을 때 정도',
-        value: 'sometimes', bcEffect: { 'BC-02': 6 } },
+        value: 'sometimes', axisEffect: { A01: 6 } },
       { emoji: '😊', label: '거의 없어요', desc: '식후에도 괜찮은 편',
-        value: 'rarely', bcEffect: {} }
+        value: 'rarely', axisEffect: {} }
     ],
     saveAs: 'insulin_signal'
   },
@@ -1529,15 +1431,15 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     options: [
       { emoji: '📅', label: '규칙적이에요 (28~35일)',    desc: '거의 날짜가 일정해요',
-        value: 'regular', bcEffect: {} },
+        value: 'regular', axisEffect: {} },
       { emoji: '〰️', label: '조금 불규칙해요 (±7일)',   desc: '가끔 앞당겨지거나 늦어져요',
-        value: 'slightly_irregular', bcEffect: { 'BC-09': 8, 'BC-08': 5 } },
+        value: 'slightly_irregular', axisEffect: { A03: 5, A07: 8 } },
       { emoji: '⚡', label: '많이 불규칙해요 (±2주 이상)', desc: '주기를 예측하기 어려워요',
-        value: 'irregular', bcEffect: { 'BC-09': 18, 'BC-08': 12, 'BC-05': 8 } },
+        value: 'irregular', axisEffect: { A02: 8, A03: 12, A07: 18 } },
       { emoji: '⏸️', label: '거의 없거나 없어요',       desc: '빈발·무월경 상태',
-        value: 'absent', bcEffect: { 'BC-09': 25, 'BC-08': 18, 'BC-05': 12 } },
+        value: 'absent', axisEffect: { A02: 12, A03: 18, A07: 25 } },
       { emoji: '🚫', label: '해당 없어요',               desc: '폐경 완료 또는 남성',
-        value: 'not_applicable', bcEffect: {} }
+        value: 'not_applicable', axisEffect: {} }
     ],
     saveAs: 'cycle_status'
   },
@@ -1549,13 +1451,13 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     options: [
       { emoji: '📈', label: '네, 3kg 이상 늘었어요',    desc: '아무것도 안 했는데',
-        value: 'gained_3plus', bcEffect: { 'BC-08': 20, 'BC-09': 10 } },
+        value: 'gained_3plus', axisEffect: { A03: 20, A07: 10 } },
       { emoji: '↗️', label: '1~3kg 정도 늘었어요',      desc: '살짝 불어난 느낌',
-        value: 'gained_1to3', bcEffect: { 'BC-08': 10, 'BC-09': 5 } },
+        value: 'gained_1to3', axisEffect: { A03: 10, A07: 5 } },
       { emoji: '➡️', label: '유지되고 있어요',           desc: '크게 변화 없어요',
-        value: 'stable', bcEffect: {} },
+        value: 'stable', axisEffect: {} },
       { emoji: '📉', label: '오히려 줄었어요',           desc: '자연스럽게 빠졌어요',
-        value: 'decreased', bcEffect: {} }
+        value: 'decreased', axisEffect: {} }
     ],
     saveAs: 'recent_weight_change'
   },
@@ -1569,11 +1471,11 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     options: [
       { emoji: '🫣', label: '네, 체중은 괜찮은데 체형이 맘에 안 들어요', desc: '숫자보다 거울이 더 신경 쓰여요',
-        value: 'yes', bcEffect: { 'BC-07': 25, 'BC-08': 10 } },
+        value: 'yes', axisEffect: { A03: 10, A04: 25 } },
       { emoji: '🤔', label: '조금 그런 편이에요',                        desc: '부분적으로 그런 것 같아요',
-        value: 'somewhat', bcEffect: { 'BC-07': 12 } },
+        value: 'somewhat', axisEffect: { A04: 12 } },
       { emoji: '😊', label: '아니요, 체형도 괜찮아요',                   desc: '체중이랑 체형이 비슷해요',
-        value: 'no', bcEffect: {} }
+        value: 'no', axisEffect: {} }
     ],
     saveAs: 'skinnyfat_flag'
   },
@@ -1585,13 +1487,13 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     options: [
       { emoji: '😮‍💨', label: '네, 금방 지치고 힘들어요',   desc: '계단 몇 개만 올라도 숨이 차요',
-        value: 'weak', bcEffect: { 'BC-07': 15, 'BC-08': 10 } },
+        value: 'weak', axisEffect: { A03: 10, A04: 15 } },
       { emoji: '😅', label: '조금 힘들긴 해요',              desc: '남들보다 더 힘든 것 같아요',
-        value: 'somewhat_weak', bcEffect: { 'BC-07': 8, 'BC-08': 5 } },
+        value: 'somewhat_weak', axisEffect: { A03: 5, A04: 8 } },
       { emoji: '😊', label: '보통이에요',                    desc: '크게 문제 없어요',
-        value: 'normal', bcEffect: {} },
+        value: 'normal', axisEffect: {} },
       { emoji: '💪', label: '전혀 힘들지 않아요',            desc: '운동을 즐기는 편이에요',
-        value: 'strong', bcEffect: {} }
+        value: 'strong', axisEffect: {} }
     ],
     saveAs: 'leg_power'
   },
@@ -1603,13 +1505,13 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     options: [
       { emoji: '⚡', label: '네, 운동하면 금방 몸이 바뀌어요',  desc: '근육이 잘 붙는 편',
-        value: 'good', bcEffect: {} },
+        value: 'good', axisEffect: {} },
       { emoji: '🤔', label: '보통이에요',                        desc: '꾸준히 하면 조금씩 변해요',
-        value: 'average', bcEffect: {} },
+        value: 'average', axisEffect: {} },
       { emoji: '😔', label: '아무리 해도 잘 안 붙어요',         desc: '운동해도 몸이 안 바뀌는 느낌',
-        value: 'poor', bcEffect: { 'BC-08': 15, 'BC-07': 10 } },
+        value: 'poor', axisEffect: { A03: 15, A04: 10 } },
       { emoji: '🚫', label: '운동을 거의 안 해서 모르겠어요',   desc: '운동 경험이 거의 없어요',
-        value: 'unknown', bcEffect: { 'BC-07': 8 } }
+        value: 'unknown', axisEffect: { A04: 8 } }
     ],
     saveAs: 'muscle_response'
   },
@@ -1623,13 +1525,13 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     options: [
       { emoji: '🫧', label: '매일 있어요',     desc: '거의 항상 배가 빵빵해요',
-        value: 'always', bcEffect: { 'BC-04': 15, 'BC-06': 8 } },
+        value: 'always', axisEffect: { A02: 8, A06: 15 } },
       { emoji: '😮‍💨', label: '자주 있어요',    desc: '식사 후에 특히 심해요',
-        value: 'often', bcEffect: { 'BC-04': 10, 'BC-06': 5 } },
+        value: 'often', axisEffect: { A02: 5, A06: 10 } },
       { emoji: '🤔', label: '가끔 있어요',     desc: '특정 음식 먹을 때',
-        value: 'sometimes', bcEffect: { 'BC-04': 5 } },
+        value: 'sometimes', axisEffect: { A06: 5 } },
       { emoji: '😊', label: '거의 없어요',     desc: '소화는 잘 되는 편',
-        value: 'rarely', bcEffect: {} }
+        value: 'rarely', axisEffect: {} }
     ],
     saveAs: 'bloating_level'
   },
@@ -1641,11 +1543,11 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     options: [
       { emoji: '⚠️', label: '네, 특정 음식이 확실히 있어요', desc: '먹으면 바로 반응이 와요',
-        value: 'yes_clear', bcEffect: { 'BC-06': 12, 'BC-04': 10 } },
+        value: 'yes_clear', axisEffect: { A02: 12, A06: 10 } },
       { emoji: '🤔', label: '아마도 있는 것 같아요',         desc: '확신은 없지만 의심돼요',
-        value: 'maybe', bcEffect: { 'BC-06': 6, 'BC-04': 5 } },
+        value: 'maybe', axisEffect: { A02: 6, A06: 5 } },
       { emoji: '😊', label: '아니요, 뭐든 잘 먹어요',       desc: '소화 트러블이 거의 없어요',
-        value: 'no', bcEffect: {} }
+        value: 'no', axisEffect: {} }
     ],
     saveAs: 'food_intolerance'
   },
@@ -1659,13 +1561,13 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     options: [
       { emoji: '😳', label: '거의 매일 깨요',    desc: '새벽 2~4시에 눈이 떠져요',
-        value: 'always', bcEffect: { 'BC-09': 15, 'BC-08': 8 } },
+        value: 'always', axisEffect: { A03: 8, A07: 15 } },
       { emoji: '😴', label: '자주 깨요',         desc: '주 3~4회 이상',
-        value: 'often', bcEffect: { 'BC-09': 10, 'BC-08': 5 } },
+        value: 'often', axisEffect: { A03: 5, A07: 10 } },
       { emoji: '😐', label: '가끔 깨요',         desc: '스트레스 심할 때',
-        value: 'sometimes', bcEffect: { 'BC-09': 5 } },
+        value: 'sometimes', axisEffect: { A07: 5 } },
       { emoji: '😊', label: '잘 안 깨요',        desc: '한번 자면 잘 자는 편',
-        value: 'rarely', bcEffect: {} }
+        value: 'rarely', axisEffect: {} }
     ],
     saveAs: 'sleep_wake'
   },
@@ -1677,13 +1579,13 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     options: [
       { emoji: '🪫', label: '항상 피곤해요',        desc: '자고 일어나도 개운하지 않아요',
-        value: 'always', bcEffect: { 'BC-09': 20, 'BC-08': 10 } },
+        value: 'always', axisEffect: { A03: 10, A07: 20 } },
       { emoji: '😩', label: '자주 피곤해요',        desc: '오후만 되면 기운이 없어요',
-        value: 'often', bcEffect: { 'BC-09': 12, 'BC-08': 6 } },
+        value: 'often', axisEffect: { A03: 6, A07: 12 } },
       { emoji: '😐', label: '가끔 피곤해요',        desc: '바쁠 때 특히 심해요',
-        value: 'sometimes', bcEffect: { 'BC-09': 6 } },
+        value: 'sometimes', axisEffect: { A07: 6 } },
       { emoji: '😊', label: '에너지가 충분해요',    desc: '피로감이 거의 없어요',
-        value: 'energetic', bcEffect: {} }
+        value: 'energetic', axisEffect: {} }
     ],
     saveAs: 'fatigue_level'
   },
@@ -1698,15 +1600,15 @@ const QUESTIONS = [
     maxSelect: 5,
     options: [
       { emoji: '🩸', label: '공복혈당 100~125mg (전당뇨)', desc: '관리가 필요한 구간',
-        value: 'prediabetes', bcEffect: { 'BC-02': 20, 'BC-01': 12 } },
+        value: 'prediabetes', axisEffect: { A01: 32 } },
       { emoji: '🔴', label: '공복혈당 126 이상 (당뇨)',    desc: '진단받았거나 의심 중',
-        value: 'diabetes', bcEffect: { 'BC-02': 30, 'BC-01': 20 } },
+        value: 'diabetes', axisEffect: { A01: 50 } },
       { emoji: '🍭', label: '단것 먹으면 금방 배고파요',   desc: '혈당 급등락 패턴',
-        value: 'sugar_craving', bcEffect: { 'BC-02': 15, 'BC-01': 8 } },
+        value: 'sugar_craving', axisEffect: { A01: 23 } },
       { emoji: '💫', label: '식사 거르면 어지럼증·손떨림', desc: '저혈당 반응 의심',
-        value: 'hypoglycemia', bcEffect: { 'BC-02': 12 } },
+        value: 'hypoglycemia', axisEffect: { A01: 12 } },
       { emoji: '✅', label: '해당 없어요',                  desc: '혈당은 정상이에요',
-        value: 'none', exclusive: true, bcEffect: {} }
+        value: 'none', exclusive: true, axisEffect: {} }
     ],
     saveAs: 'glucose_signals'
   },
@@ -1719,17 +1621,17 @@ const QUESTIONS = [
     maxSelect: 6,
     options: [
       { emoji: '🍺', label: '음주 주 3회 이상',          desc: '한 번에 2잔 이상',
-        value: 'alcohol', bcEffect: { 'BC-01': 15, 'BC-09': 10 } },
+        value: 'alcohol', axisEffect: { A01: 15, A07: 10 } },
       { emoji: '🚬', label: '흡연 중',                   desc: '전자담배 포함',
-        value: 'smoking', bcEffect: { 'BC-09': 10, 'BC-06': 8 } },
+        value: 'smoking', axisEffect: { A02: 8, A07: 10 } },
       { emoji: '😴', label: '수면 5시간 이하 지속',      desc: '만성 수면 부족',
-        value: 'sleep_deprivation', bcEffect: { 'BC-09': 15, 'BC-08': 10 } },
+        value: 'sleep_deprivation', axisEffect: { A03: 10, A07: 15 } },
       { emoji: '💊', label: '체중 증가 부작용 약물 복용', desc: '스테로이드·항우울제 등',
-        value: 'medication', bcEffect: { 'BC-08': 12, 'BC-02': 8 } },
+        value: 'medication', axisEffect: { A01: 8, A03: 12 } },
       { emoji: '🏭', label: '화학물질·환경독소 노출',    desc: '직업적 노출 포함',
-        value: 'chemical_exposure', bcEffect: { 'BC-09': 10 } },
+        value: 'chemical_exposure', axisEffect: { A07: 10 } },
       { emoji: '✅', label: '해당 없어요',                desc: '',
-        value: 'none', exclusive: true, bcEffect: {} }
+        value: 'none', exclusive: true, axisEffect: {} }
     ],
     saveAs: 'toxin_factors'
   },
@@ -1741,17 +1643,39 @@ const QUESTIONS = [
     type: 'SINGLE_SELECT',
     options: [
       { emoji: '🥤', label: '하루 2캔(500ml) 이상', desc: '거의 습관처럼 마셔요',
-        value: 'heavy', bcEffect: { 'BC-02': 15, 'BC-09': 10 } },
+        value: 'heavy', axisEffect: { A01: 15, A07: 10 } },
       { emoji: '🧃', label: '하루 1캔 정도',        desc: '매일 한 번씩은 마셔요',
-        value: 'moderate', bcEffect: { 'BC-02': 10, 'BC-09': 5 } },
+        value: 'moderate', axisEffect: { A01: 10, A07: 5 } },
       { emoji: '🍵', label: '가끔 (주 1~3회)',      desc: '자주는 아니에요',
-        value: 'occasional', bcEffect: { 'BC-02': 5 } },
+        value: 'occasional', axisEffect: { A01: 5 } },
       { emoji: '💧', label: '거의 안 마셔요',       desc: '물이나 무가당 음료만',
-        value: 'rarely', bcEffect: {} }
+        value: 'rarely', axisEffect: {} }
     ],
     saveAs: 'soda_intake'
   },
 
+
+  // ── A09 허리둘레 측정 (성인병 리스크 핵심 지표) ──
+  {
+    id: 'Q_WAIST', section: 'C', num: 99,
+    axis: 'A09', weight: 2.0, role: 'score',
+    question: '허리둘레를 알고 계신가요? (배꼽 위 가장 좁은 부위)',
+    hint: '허리둘레는 내장지방 위험도의 가장 정확한 단일 지표입니다.',
+    type: 'SINGLE_SELECT',
+    options: [
+      { emoji: '✅', label: '정상이에요 (남 85cm↓ / 여 80cm↓)',
+        desc: '복부비만 기준 이하', value: 'normal', axisEffect: {} },
+      { emoji: '⚠️', label: '경계예요 (남 85~90cm / 여 80~85cm)',
+        desc: '주의가 필요한 구간', value: 'borderline',
+        axisEffect: { A01: 15, A09: 12 } },
+      { emoji: '🔴', label: '높아요 (남 90cm↑ / 여 85cm↑)',
+        desc: '복부비만 기준 초과', value: 'high',
+        axisEffect: { A01: 30, A09: 25 } },
+      { emoji: '🤷', label: '모르겠어요',
+        desc: '측정해본 적 없어요', value: 'unknown', axisEffect: {} },
+    ],
+    saveAs: 'waist_circumference'
+  },
 
   // ══════════════════════════════════════════════════════
   //  섹션 H · 마무리 드림 질문
@@ -1775,25 +1699,88 @@ const QUESTIONS = [
   }
 ];
 
-// BC 코드 점수 계산 함수
-function calculateBCScores(answers) {
-  const bcScores = {
-    'BC-01': 0, 'BC-02': 0, 'BC-03': 0, 'BC-04': 0, 'BC-05': 0,
-    'BC-06': 0, 'BC-07': 0, 'BC-08': 0, 'BC-09': 0, 'BC-10': 0
+// ═══════════════════════════════════════════════════════════
+//  SlimMind 채점 엔진 v4.0 — axisEffect 직접 채점 방식
+// ═══════════════════════════════════════════════════════════
+
+// 유형명 16개 매핑 테이블 (1순위+2순위 축 조합)
+const TYPE_NAME_TABLE = {
+  'A01+A02': { name: '복부순환저하형',   emoji: '🔴', desc: '내장지방이 쌓이면서 림프순환이 막히는 복합 패턴' },
+  'A01+A03': { name: '인슐린대사형',     emoji: '🟠', desc: '혈당 조절 이상이 복부에 지방을 축적시키는 패턴' },
+  'A01+A07': { name: '코르티솔복부형',   emoji: '🔶', desc: '스트레스 호르몬이 복부지방을 축적시키는 패턴' },
+  'A01+A08': { name: '감정섭식복부형',   emoji: '🟡', desc: '감정적 과식이 복부비만으로 이어지는 패턴' },
+  'A02+A01': { name: '하체림프형',       emoji: '💜', desc: '림프순환 저하로 하체에 지방과 부종이 쌓이는 패턴' },
+  'A02+A07': { name: '냉증부종형',       emoji: '🔵', desc: '몸의 냉증과 스트레스가 결합된 부종·셀룰라이트 패턴' },
+  'A03+A01': { name: '호르몬대사형',     emoji: '🌸', desc: '호르몬 불균형이 체중 조절을 방해하는 패턴' },
+  'A03+A07': { name: '부신피로형',       emoji: '🟤', desc: '만성 스트레스로 부신이 지쳐 대사가 멈춘 패턴' },
+  'A04+A01': { name: '근감소비만형',     emoji: '⚪', desc: '근육이 줄면서 지방이 늘어나는 마른비만 패턴' },
+  'A04+A07': { name: '대사정체형',       emoji: '🔘', desc: '기초대사량이 낮아져 아무리 해도 안 빠지는 패턴' },
+  'A06+A01': { name: '체형불균형지방형', emoji: '🦴', desc: '골반·척추 불균형이 특정 부위에 지방을 쌓는 패턴' },
+  'A06+A02': { name: '자세순환저하형',   emoji: '💛', desc: '잘못된 자세가 순환을 막아 부종과 체형 변형을 만드는 패턴' },
+  'A07+A01': { name: '스트레스복부형',   emoji: '🌑', desc: '코르티솔 과잉이 복부를 중심으로 지방을 쌓는 패턴' },
+  'A07+A08': { name: '번아웃식이형',     emoji: '🫤', desc: '번아웃과 감정 식이가 결합된 패턴' },
+  'A08+A07': { name: '감정식이형',       emoji: '🧠', desc: '심리적 스트레스가 식이 행동을 통제하는 패턴' },
+  'A08+A10': { name: '기질식이형',       emoji: '🔮', desc: '타고난 기질과 식이 성향이 결합된 패턴' },
+};
+
+// 동적 유형명 생성 (테이블 미등록 조합 fallback)
+function generateTypeName(topAxes) {
+  if (!topAxes || topAxes.length === 0) return { name: '복합형', emoji: '🌀', desc: '다양한 원인이 복합적으로 작용하는 패턴' };
+  
+  const primary   = topAxes[0]?.axis || 'A01';
+  const secondary = topAxes[1]?.axis || 'A07';
+  const key = `${primary}+${secondary}`;
+  
+  if (TYPE_NAME_TABLE[key]) return TYPE_NAME_TABLE[key];
+  
+  // fallback: 1순위 축 이름 기반 동적 생성
+  const axisNames = {
+    A01: '지방저장', A02: '순환부종', A03: '호르몬대사', A04: '근육활동',
+    A05: '소화염증', A06: '체형정렬', A07: '스트레스회복', A08: '심리식이',
+    A09: '성인병리스크', A10: '기질성향'
   };
+  const p = axisNames[primary] || '복합';
+  const s = axisNames[secondary] || '';
+  return { name: `${p}·${s}형`, emoji: '🌀', desc: `${p} 문제가 주원인인 복합 패턴` };
+}
+
+// 도파민 기질 카드 분류
+function getDopamineType(answers) {
+  const mbti = answers['Q42']?.toUpperCase() || '';
+  const motivation = answers['Q38'] || '';
+  const compliance = answers['Q37b'] || answers['Q38'] || '';
+  
+  if (mbti.includes('E') && mbti.includes('P')) return 'explorer';   // 탐색형
+  if (mbti.includes('I') && mbti.includes('J')) return 'stable';     // 안정형
+  if (motivation === 'achievement' || mbti.includes('J')) return 'achiever'; // 성취형
+  if (motivation === 'health_scare') return 'survivor';              // 생존형
+  return 'achiever';
+}
+
+// 상위 3개 축 추출 유틸
+function getTop3Axes(axisScores) {
+  return Object.entries(axisScores)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([axis, score]) => ({ axis, score }));
+}
+
+// ── 신규 채점 함수: calculateAxisScores ──────────────────────
+function calculateAxisScores(answers) {
+  // 10축 점수 초기화
+  const axisScores = { A01:0, A02:0, A03:0, A04:0, A05:0, A06:0, A07:0, A08:0, A09:0, A10:0 };
   const ohaengScores = { '목': 0, '화': 0, '토': 0, '금': 0, '수': 0 };
 
   QUESTIONS.forEach(q => {
     const answer = answers[q.id];
     if (!answer) return;
-
     const weight = q.weight || 1.0;
 
     if (q.type === 'SINGLE_SELECT') {
       const opt = q.options?.find(o => o.value === answer);
-      if (opt?.bcEffect) {
-        Object.entries(opt.bcEffect).forEach(([code, pts]) => {
-          bcScores[code] = (bcScores[code] || 0) + pts * weight;
+      if (opt?.axisEffect) {
+        Object.entries(opt.axisEffect).forEach(([ax, pts]) => {
+          if (axisScores.hasOwnProperty(ax)) axisScores[ax] += pts * weight;
         });
       }
       if (opt?.ohaengEffect) {
@@ -1802,11 +1789,11 @@ function calculateBCScores(answers) {
         });
       }
     } else if (q.type === 'MULTI_SELECT') {
-      (answer || []).forEach(val => {
+      (Array.isArray(answer) ? answer : []).forEach(val => {
         const opt = q.options?.find(o => o.value === val);
-        if (opt?.bcEffect) {
-          Object.entries(opt.bcEffect).forEach(([code, pts]) => {
-            bcScores[code] = (bcScores[code] || 0) + pts * weight;
+        if (opt?.axisEffect) {
+          Object.entries(opt.axisEffect).forEach(([ax, pts]) => {
+            if (axisScores.hasOwnProperty(ax)) axisScores[ax] += pts * weight;
           });
         }
         if (opt?.ohaengEffect) {
@@ -1818,185 +1805,73 @@ function calculateBCScores(answers) {
     }
   });
 
-  // 병적요소(Q_MEDICAL) bc_effect 가중치 추가 반영
-  // bc-definitions.js MEDICAL_CONDITIONS 참조
-  const medicalAnswer = answers['Q_MEDICAL'];
-  if (Array.isArray(medicalAnswer) && medicalAnswer.length > 0 && typeof MEDICAL_CONDITIONS !== 'undefined') {
-    medicalAnswer.forEach(condKey => {
-      const cond = MEDICAL_CONDITIONS[condKey];
-      if (!cond || !cond.bc_effect) return;
-      Object.entries(cond.bc_effect).forEach(([code, pts]) => {
-        bcScores[code] = (bcScores[code] || 0) + pts;
-      });
-    });
-  }
-
-  // 갱년기(Q_MENOPAUSE) 추가 가중치
+  // 갱년기 → A03(호르몬), A07(스트레스) 가중치
   const menoAnswer = answers['Q_MENOPAUSE'];
   if (menoAnswer && menoAnswer !== 'not_applicable' && menoAnswer !== 'none') {
     const menoBoost = { meno: 1.2, post: 1.3, peri: 1.1, hrt: 1.1 };
     const factor = menoBoost[menoAnswer] || 1.0;
-    // BC-09(코르티솔형), BC-08(대사정체형) 강화
-    bcScores['BC-09'] = Math.round((bcScores['BC-09'] || 0) * factor);
-    bcScores['BC-08'] = Math.round((bcScores['BC-08'] || 0) * factor);
+    axisScores['A03'] = Math.round(axisScores['A03'] * factor);
+    axisScores['A07'] = Math.round(axisScores['A07'] * factor);
   }
 
-  // ── BC-09 스트레스 무관 응답자 보호 로직 ──────────────────────────
-  // 스트레스 강도가 낮거나 스트레스-식욕 연관이 없다고 응답한 경우
-  // BC-09 점수를 적극적으로 감소시켜 억울한 "스트레스형" 배정 방지
-  {
-    const stressLevel = answers['Q21'];    // 스트레스 강도 (1=별로없음 ~ 4=극심)
-    const stressAppetite = answers['stress_appetite'] || answers['Q54'];  // 스트레스→식욕
-    const stressType = answers['stress_type'];  // Q22 삭제됐지만 혹시 남은 경우
-
-    // 스트레스 거의 없는 응답 (1점) → BC-09 30% 감소
-    if (stressLevel === 1 || stressLevel === '1') {
-      bcScores['BC-09'] = Math.round((bcScores['BC-09'] || 0) * 0.70);
-    }
-    // 스트레스 중간 (2점) → BC-09 15% 감소
-    else if (stressLevel === 2 || stressLevel === '2') {
-      bcScores['BC-09'] = Math.round((bcScores['BC-09'] || 0) * 0.85);
-    }
-
-    // 스트레스와 식욕 연관 없음 선택 → BC-09 추가 25% 감소
-    if (stressAppetite === 'no_change' || stressType === 'no_appetite') {
-      bcScores['BC-09'] = Math.round((bcScores['BC-09'] || 0) * 0.75);
-    }
-    // 스트레스→식욕 감소 응답 → BC-09 추가 20% 감소
-    if (stressAppetite === 'less') {
-      bcScores['BC-09'] = Math.round((bcScores['BC-09'] || 0) * 0.80);
-    }
+  // 스트레스 낮음 보호 로직 (A07 과다 배정 방지)
+  const stressLevel = answers['Q21'];
+  if (stressLevel === 1 || stressLevel === '1') {
+    axisScores['A07'] = Math.round(axisScores['A07'] * 0.70);
+  } else if (stressLevel === 2 || stressLevel === '2') {
+    axisScores['A07'] = Math.round(axisScores['A07'] * 0.85);
   }
 
-  // BC-09 과다 배정 보정: 나머지 BC 평균의 1.5배를 초과하면 캡 적용
-  // (스트레스/수면 질문이 BC-09에 집중되어 실제 코르티솔형이 아닌 사람도 BC-09가 나오는 구조 방지)
-  {
-    const otherSum = Object.entries(bcScores)
-      .filter(([k]) => k !== 'BC-09')
-      .reduce((sum, [, v]) => sum + v, 0);
-    const otherAvg = otherSum / 9;
-    const cap = Math.round(otherAvg * 1.5);
-    if (bcScores['BC-09'] > cap) {
-      bcScores['BC-09'] = cap;
-    }
-  }
-
-  // 2단계 정규화
-  const maxBC = Math.max(...Object.values(bcScores));
-  if (maxBC > 0) {
-    Object.keys(bcScores).forEach(k => {
-      const ratio = bcScores[k] / maxBC;
-      const boosted = Math.sqrt(ratio);
-      bcScores[k] = Math.min(100, Math.round(boosted * 100));
-    });
-  }
-
-  const maxOH = Math.max(...Object.values(ohaengScores));
-  if (maxOH > 0) {
-    Object.keys(ohaengScores).forEach(k => {
-      ohaengScores[k] = Math.min(100, Math.round((ohaengScores[k] / maxOH) * 100));
-    });
-  }
-
-  const sortedBC = Object.entries(bcScores).sort((a, b) => b[1] - a[1]);
-  const bcPrimary      = sortedBC[0][0];
-  const bcPrimaryScore = sortedBC[0][1];
-  const bcSecondary = (sortedBC[1][1] >= 55 && (sortedBC[0][1] - sortedBC[1][1]) <= 20)
-    ? sortedBC[1][0] : null;
-  const bcSecondaryScore = bcSecondary ? sortedBC[1][1] : 0;
-  const ohaengType = Object.entries(ohaengScores).sort((a, b) => b[1] - a[1])[0][0];
-
-  // 특수 필드 추출
-  const foodAllergy = answers['Q_ALLERGY'] || [];
-  const skinReaction = answers['Q_SKIN'] || null;
-  const menopauseStatus = answers['Q_MENOPAUSE'] || null;
-  const medicalConditions = answers['Q_MEDICAL'] || [];
-
-  // 알레르기 제외 식품 목록 (결과지 식단 가이드에서 사용)
-  const allergyExclude = foodAllergy.filter(v => v !== 'none');
-
-  // 갱년기 여부 플래그
-  const isMenopause = menopauseStatus && !['not_applicable', 'none', null].includes(menopauseStatus);
-
-  // 병적요소 존재 여부 플래그
-  const hasMedicalConditions = medicalConditions.length > 0 && !medicalConditions.includes('none');
-
-
-  // ── 10축(axis) 점수 계산 ──────────────────────────────────
-  const axisScores = {};
-  if (typeof AXIS_META !== 'undefined') {
-    Object.keys(AXIS_META).forEach(ax => { axisScores[ax] = 0; });
-  } else {
-    ['A01','A02','A03','A04','A05','A06','A07','A08','A09','A10'].forEach(ax => {
-      axisScores[ax] = 0;
-    });
-  }
-
-  QUESTIONS.forEach(q => {
-    if (!q.axis) return;
-    const answer = answers[q.id];
-    if (!answer) return;
-    const qWeight = q.weight || 1.0;
-
-    let qTotal = 0;
-    if (q.type === 'SINGLE_SELECT') {
-      const opt = q.options?.find(o => o.value === answer);
-      if (opt?.bcEffect) {
-        qTotal = Object.values(opt.bcEffect).reduce((s, v) => s + v, 0);
-      }
-    } else if (q.type === 'MULTI_SELECT') {
-      (answer || []).forEach(val => {
-        const opt = q.options?.find(o => o.value === val);
-        if (opt?.bcEffect) {
-          qTotal += Object.values(opt.bcEffect).reduce((s, v) => s + v, 0);
-        }
-      });
-    }
-    axisScores[q.axis] = (axisScores[q.axis] || 0) + qTotal * qWeight;
-  });
-
-  // axis 점수 정규화 (0~100)
+  // 정규화 (0~100)
   const maxAxis = Math.max(...Object.values(axisScores), 1);
   const axisNorm = {};
   Object.entries(axisScores).forEach(([ax, val]) => {
-    axisNorm[ax] = Math.min(100, Math.round((val / maxAxis) * 100));
+    const ratio = val / maxAxis;
+    axisNorm[ax] = Math.min(100, Math.round(Math.sqrt(ratio) * 100));
   });
 
-  // 상위 3개 축 추출
-  const topAxes = Object.entries(axisNorm)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([ax, score]) => ({ axis: ax, score }));
+  const maxOH = Math.max(...Object.values(ohaengScores), 1);
+  Object.keys(ohaengScores).forEach(k => {
+    ohaengScores[k] = Math.min(100, Math.round((ohaengScores[k] / maxOH) * 100));
+  });
+
+  // 상위 3개 축
+  const topAxes = getTop3Axes(axisNorm);
+
+  // 유형명 결정
+  const typeInfo = generateTypeName(topAxes);
+
+  // 도파민 기질
+  const dopamineType = getDopamineType(answers);
+
+  // 섹션 L 특수 필드
+  const foodAllergy        = answers['Q_ALLERGY'] || [];
+  const skinReaction       = answers['Q_SKIN'] || null;
+  const menopauseStatus    = answers['Q_MENOPAUSE'] || null;
+  const medicalConditions  = (answers['Q_MEDICAL'] || []).filter(v => v !== 'none');
+  const allergyExclude     = foodAllergy.filter(v => v !== 'none');
+  const isMenopause        = menopauseStatus && !['not_applicable', 'none', null].includes(menopauseStatus);
+  const hasMedicalConditions = medicalConditions.length > 0;
+  const ohaengType         = Object.entries(ohaengScores).sort((a, b) => b[1] - a[1])[0][0];
 
   return {
-    bcScores, ohaengScores, bcPrimary, bcPrimaryScore, bcSecondary, bcSecondaryScore, ohaengType,
-    // 섹션 L 결과
+    // 핵심 결과
+    axisScores: axisNorm,
+    topAxes,
+    typeInfo,          // { name, emoji, desc }
+    dopamineType,      // 'achiever' | 'explorer' | 'stable' | 'survivor'
+    ohaengScores,
+    ohaengType,
+    // 섹션 L
     allergyExclude,
     skinReaction,
     menopauseStatus,
     isMenopause,
-    medicalConditions: hasMedicalConditions ? medicalConditions.filter(v => v !== 'none') : [],
+    medicalConditions,
     hasMedicalConditions,
-    // 10축 분석 결과
-    axisScores: axisNorm,
-    topAxes
   };
 }
 
-// BC 코드 정보
-const BC_INFO = {
-  'BC-01': { name: '내장지방형', emoji: '🔴', color: '#E74C3C', desc: '복부 중심 단단한 지방' },
-  'BC-02': { name: '복부비만형', emoji: '🟠', color: '#E67E22', desc: '인슐린 저항성 기반 복부 집중' },
-  'BC-03': { name: '상체비대형', emoji: '🟡', color: '#F39C12', desc: '어깨·팔뚝·등 집중' },
-  'BC-04': { name: '복압형', emoji: '🟤', color: '#795548', desc: '허리 골반 균형 문제' },
-  'BC-05': { name: '하체지방형', emoji: '🟣', color: '#9B59B6', desc: '피하지방 하체 집중' },
-  'BC-06': { name: '냉증셀룰라이트형', emoji: '🔵', color: '#2980B9', desc: '림프 순환 저하 + 셀룰라이트' },
-  'BC-07': { name: '마른비만형', emoji: '🔷', color: '#1ABC9C', desc: '체중 정상·체지방 과잉' },
-  'BC-08': { name: '대사정체형', emoji: '⬜', color: '#7F8C8D', desc: '기초대사량 저하·정체기 반복' },
-  'BC-09': { name: '코르티솔형', emoji: '🌑', color: '#2C3E50', desc: '스트레스·수면 부족 기반' },
-  'BC-10': { name: '요요반복형', emoji: '🌀', color: '#8E44AD', desc: '다이어트 반복·요요 패턴' }
-};
-
 if (typeof module !== 'undefined') {
-  module.exports = { SECTIONS, QUESTIONS, FEEDBACK_MESSAGES, calculateBCScores, BC_INFO };
+  module.exports = { SECTIONS, QUESTIONS, FEEDBACK_MESSAGES, AXIS_META, TYPE_NAME_TABLE, calculateAxisScores, generateTypeName, getDopamineType };
 }
