@@ -493,13 +493,13 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
     <button class="tab-btn" data-ch="3" onclick="goChapter(3)">
       <span class="tab-icon">💡</span>체질·기질
     </button>
-    <button class="tab-btn locked" data-ch="4" onclick="goChapter(4)">
+    <button class="tab-btn" data-ch="4" onclick="goChapter(4)">
       <span class="tab-icon">💊</span>처방
     </button>
-    <button class="tab-btn locked" data-ch="5" onclick="goChapter(5)">
+    <button class="tab-btn" data-ch="5" onclick="goChapter(5)">
       <span class="tab-icon">🗓️</span>여정
     </button>
-    <button class="tab-btn locked" data-ch="6" onclick="goChapter(6)">
+    <button class="tab-btn" data-ch="6" onclick="goChapter(6)">
       <span class="tab-icon">🌟</span>클로징
     </button>
   </nav>
@@ -840,7 +840,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 
 // ── 전역 상태 ──────────────────────────────────────
 let RESULTS = null;
-let IS_PAID = false;
+let IS_PAID = true;  // TODO: 프로덕션에서 false로 변경 후 결제 연동
 let radarChartInstance = null;
 
 // ── 유틸 ──────────────────────────────────────────
@@ -1692,7 +1692,8 @@ function processResults(answers) {
   // 유료 여부 확인
   const params = new URLSearchParams(window.location.search);
   const paidByUrl = params.get('paid') === '1';
-  IS_PAID = paidByUrl || localStorage.getItem('slimmind_paid') === '1';
+  const paidByDb  = results.is_premium === 1 || results.is_premium === true;
+  IS_PAID = paidByUrl || paidByDb || localStorage.getItem('slimmind_paid') === '1';
 
   // ?paid=1 로 복귀 시 localStorage 저장 (결제 완료 영구 처리)
   if (paidByUrl) {
@@ -1702,22 +1703,20 @@ function processResults(answers) {
     window.history.replaceState(null, '', cleanUrl);
   }
 
-  // 유료 탭 잠금 해제
+  // 유료 탭 잠금 해제 + blur 영역 숨기기
   if (IS_PAID) {
-    document.querySelectorAll('.tab-btn.locked').forEach(b => {
-      b.classList.remove('locked');
-    });
+    document.querySelectorAll('.tab-btn.locked').forEach(b => b.classList.remove('locked'));
+    const blurWrap = $('blurPreviewWrap');
+    if (blurWrap) blurWrap.style.display = 'none';
   }
 
-  // 각 챕터 렌더링
+  // 각 챕터 렌더링 (IS_PAID=true면 항상 전체 렌더링)
   renderCH1(results, answers);
   renderCH2(results);
   renderCH3(results);
-  if (IS_PAID) {
-    renderCH4(results);
-    renderCH5(results);
-    renderCH6(results, answers);
-  }
+  renderCH4(results);
+  renderCH5(results);
+  renderCH6(results, answers);
 
   // 로딩 → 결과 전환
   const loadTime = IS_PAID ? 2200 : 1800; // 유료 시 렌더링 시간 확보
