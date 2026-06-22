@@ -881,6 +881,17 @@
           맞춤 바디코드 솔루션을 받아보세요.
         </div>
       </div>
+      <!-- 결과지 바로가기 버튼 -->
+      <button id="view-result-v4-btn" onclick="goToResultV4()" style="
+        display:block;width:100%;padding:16px;margin-bottom:12px;
+        background:linear-gradient(135deg,#C9A84C,#E5C060);
+        color:#0D1B2A;font-size:1rem;font-weight:800;
+        border:none;border-radius:16px;cursor:pointer;
+        box-shadow:0 4px 20px rgba(201,168,76,0.3);
+        letter-spacing:0.5px;
+      ">
+        ✨ 나의 바디코드 결과지 바로 보기
+      </button>
       <button class="restart-btn" id="restart-btn">처음부터 다시 진단하기</button>
     </div>
   </section>
@@ -2510,7 +2521,35 @@ function showCompleteScreen() {
   if (state.resultId) {
     document.getElementById('complete-result-id').textContent = `접수 번호: ${state.resultId}`;
   }
+
+  // ── result-v4 연동: sessionStorage에 결과 저장 ──────────────
+  try {
+    const result = calculateBCScores(state.answers);
+    const slimmindResult = {
+      userName: state.answers['Q01'] || '회원',
+      axisScores: result.axisScores || {},
+      ohaengType: result.ohaengType || '목',
+      ohaengScores: result.ohaengScores || {},
+      topAxes: result.topAxes || [],
+      answers: {
+        Q01: state.answers['Q01'] || '회원',
+        Q_MBTI: state.answers['Q42'] || state.answers['Q_MBTI'] || 'INFP',
+        Q_BLOOD: state.answers['Q44'] || state.answers['Q_BLOOD'] || 'A',
+        Q_BLOODTYPE: state.answers['Q44'] || 'A',
+        blood_type: state.answers['Q44'] || 'A',
+      }
+    };
+    sessionStorage.setItem('slimmind_result', JSON.stringify(slimmindResult));
+    localStorage.setItem('slimmind_result', JSON.stringify(slimmindResult));
+  } catch(e) {
+    console.warn('result-v4 데이터 저장 실패:', e);
+  }
+
   showScreen('result-screen');
+}
+
+function goToResultV4() {
+  window.location.href = '/result-v4';
 }
 
 // ════════════════════════════════════════
