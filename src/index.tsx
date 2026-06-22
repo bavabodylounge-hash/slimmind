@@ -218,7 +218,9 @@ app.post('/api/survey/submit', async (c) => {
     menopause_status, is_menopause,
     medical_conditions, has_medical_conditions,
     // v4.0 10축 분석 결과
-    axis_scores, top_axes
+    axis_scores, top_axes,
+    // v4.1 axis_primary (migration 0024)
+    axis_primary, axis_secondary, axis_primary_score
   } = body
 
   const result_id = resultIdGen()
@@ -277,8 +279,9 @@ app.post('/api/survey/submit', async (c) => {
       food_allergy_json, allergy_exclude_json, skin_reaction,
       menopause_status, is_menopause,
       medical_conditions_json, has_medical_conditions,
-      axis_scores_json, top_axes_json
-    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      axis_scores_json, top_axes_json,
+      axis_primary, axis_secondary, axis_primary_score
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
   `).bind(
     result_id, user_name || '익명', validConsultantCode,
     bc_primary, bc_secondary || null, bc_primary_score || 0, bc_secondary_score || 0,
@@ -307,7 +310,11 @@ app.post('/api/survey/submit', async (c) => {
     has_medical_conditions ? 1 : 0,
     // v4.0 10축 분석
     JSON.stringify(axis_scores || {}),
-    JSON.stringify(Array.isArray(top_axes) ? top_axes : [])
+    JSON.stringify(Array.isArray(top_axes) ? top_axes : []),
+    // v4.1 axis_primary (migration 0024)
+    toStr(axis_primary) || bc_primary || null,
+    toStr(axis_secondary) || bc_secondary || null,
+    axis_primary_score ? Number(axis_primary_score) : (bc_primary_score ? Number(bc_primary_score) : null)
   ).run()
 
   return c.json({ success: true, result_id, message: '설문이 제출되었습니다.' })
