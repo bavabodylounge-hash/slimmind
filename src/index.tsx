@@ -234,6 +234,9 @@ app.post('/api/survey/submit', async (c) => {
     return String(v)
   }
 
+  // user_name 폴백: payload.user_name → answers.name → '익명'
+  const resolvedUserName = toStr(user_name) || toStr(answers?.name) || '익명'
+
   // birth_date 오염 방지: "T00:00:00", "shoulderT..." 등 비정상 값 차단
   // YYYY-MM-DD 형식만 허용, 범위 1920-01-01 ~ 오늘
   const sanitizeBirthDate = (raw: any): string | null => {
@@ -259,6 +262,14 @@ app.post('/api/survey/submit', async (c) => {
     validConsultantCode = cons?.code || null
   }
 
+  // D1은 undefined를 허용하지 않으므로 모든 값을 null-safe 처리
+  const n = (v: any): number | null => (v !== undefined && v !== null && !isNaN(Number(v))) ? Number(v) : null
+  const nz = (v: any): number => n(v) ?? 0
+  const b = (v: any): number => (v ? 1 : 0)
+
+  // bc_primary는 NOT NULL — 없으면 axis_primary 또는 기본값 'UNKNOWN' 폴백
+  const safeBcPrimary = toStr(bc_primary) || toStr(axis_primary) || 'UNKNOWN'
+
   await db.prepare(`
     INSERT INTO results (
       id, user_name, consultant_code,
@@ -283,20 +294,20 @@ app.post('/api/survey/submit', async (c) => {
       axis_primary, axis_secondary, axis_primary_score
     ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
   `).bind(
-    result_id, user_name || '익명', validConsultantCode,
-    bc_primary, bc_secondary || null, bc_primary_score || 0, bc_secondary_score || 0,
-    JSON.stringify(bc_scores || {}), ohaeng_type || null, JSON.stringify(ohaeng_scores || {}),
+    result_id, resolvedUserName, validConsultantCode,
+    safeBcPrimary, toStr(bc_secondary), nz(bc_primary_score), nz(bc_secondary_score),
+    JSON.stringify(bc_scores || {}), toStr(ohaeng_type), JSON.stringify(ohaeng_scores || {}),
     toStr(mbti), toStr(blood_type), toStr(saju_il_gan), toStr(saju_ohaeng),
-    toStr(saju_il_ji) || null, toStr(saju_yin_yang) || null, toStr(birth_hour) || null,
-    toStr(saju_hour_stem) || null, toStr(saju_hour_branch) || null, toStr(saju_display) || null,
+    toStr(saju_il_ji), toStr(saju_yin_yang), toStr(birth_hour),
+    toStr(saju_hour_stem), toStr(saju_hour_branch), toStr(saju_display),
     toStr(gender), cleanBirthDate,
-    height ? Number(height) : null, weight ? Number(weight) : null, target_weight ? Number(target_weight) : null,
-    bmi ? Number(bmi) : null, bfr ? Number(bfr) : null,
-    fat_kg ? Number(fat_kg) : null, muscle_kg ? Number(muscle_kg) : null,
+    n(height), n(weight), n(target_weight),
+    n(bmi), n(bfr),
+    n(fat_kg), n(muscle_kg),
     toStr(top_size), toStr(bottom_size), toStr(target_top_size), toStr(target_bottom_size),
     toStr(emotional_state), toStr(main_goal), toStr(priority_value),
     JSON.stringify(answers || {}), JSON.stringify(survey_summary || {}),
-    toStr(aerobic_response), massage_swells ? 1 : 0, toStr(sauna_response),
+    toStr(aerobic_response), b(massage_swells), toStr(sauna_response),
     toStr(current_facility), toStr(context_type), toStr(current_medications),
     toStr(target_body_part), toStr(psych_state), toStr(monthly_budget), toStr(muscle_soreness_level),
     'v5.0',
@@ -305,16 +316,16 @@ app.post('/api/survey/submit', async (c) => {
     JSON.stringify(Array.isArray(allergy_exclude) ? allergy_exclude : []),
     toStr(skin_reaction),
     toStr(menopause_status),
-    is_menopause ? 1 : 0,
+    b(is_menopause),
     JSON.stringify(Array.isArray(medical_conditions) ? medical_conditions : []),
-    has_medical_conditions ? 1 : 0,
+    b(has_medical_conditions),
     // v4.0 10축 분석
     JSON.stringify(axis_scores || {}),
     JSON.stringify(Array.isArray(top_axes) ? top_axes : []),
-    // v4.1 axis_primary (migration 0024)
-    toStr(axis_primary) || bc_primary || null,
-    toStr(axis_secondary) || bc_secondary || null,
-    axis_primary_score ? Number(axis_primary_score) : (bc_primary_score ? Number(bc_primary_score) : null)
+    // v4.1 axis_primary (migration 0024) — bc_primary 폴백
+    toStr(axis_primary) || safeBcPrimary,
+    toStr(axis_secondary) || toStr(bc_secondary),
+    n(axis_primary_score) ?? n(bc_primary_score)
   ).run()
 
   return c.json({ success: true, result_id, message: '설문이 제출되었습니다.' })
@@ -374,12 +385,24 @@ app.post('/api/admin/consultants', requireRole('MASTER'), async (c) => {
   }
   const code = `SC-${String(nextNum).padStart(4, '0')}`
 
-  await db.prepare(`
-    INSERT INTO consultants (code, name, email, phone, job_type, grade, subscription_status, subscription_end, memo, password_hash)
-    VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)
-  `).bind(code, name, email || null, phone || null, job_type || null, grade || '일반', subscription_end || null, memo || null, `pass${String(nextNum).padStart(4,'0')}`).run()
-
   const initialPassword = `pass${String(nextNum).padStart(4,'0')}`
+
+  try {
+    await db.prepare(`
+      INSERT INTO consultants (code, name, email, phone, job_type, grade, subscription_status, subscription_end, memo, password_hash)
+      VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)
+    `).bind(code, name, email || null, phone || null, job_type || null, grade || '일반', subscription_end || null, memo || null, initialPassword).run()
+  } catch (err: any) {
+    const msg = err?.message || String(err)
+    if (msg.includes('UNIQUE constraint failed: consultants.email')) {
+      return c.json({ success: false, error: '이미 등록된 이메일입니다.' }, 409)
+    }
+    if (msg.includes('UNIQUE constraint failed: consultants.code')) {
+      return c.json({ success: false, error: '코드 충돌이 발생했습니다. 다시 시도해주세요.' }, 409)
+    }
+    return c.json({ success: false, error: msg }, 500)
+  }
+
   return c.json({ success: true, code, initialPassword, message: `컨설턴트 ${code} 생성 완료. 초기 비밀번호: ${initialPassword}` })
 })
 
