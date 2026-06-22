@@ -1826,12 +1826,20 @@ const AXIS_ACADEMIC_DB = {
   },
 };
 
-// ── CH2 렌더링 ────────────────────────────────────
+// ══════════════════════════════════════════════════════
+//  CH2 렌더링 — 탑3 원인 "왜 이 사람의 문제인가" 심층 감별
+//  ① 10축 전체 한눈에 (점수 나열이 아닌 시각적 현황판)
+//  ② 탑3 원인 각각 — 감별 스토리 + 연결고리 + 취약점
+//  ③ "이 세 원인이 얽혀있다" 연결 구조도
+//  ④ 역효과 경고
+// ══════════════════════════════════════════════════════
 function renderCH2(results) {
   const { topAxes, axisScores } = results;
+  const name = results.answers?.name || results.answers?.Q01 || '회원';
   const sortedAxes = Object.entries(axisScores).sort((a,b) => b[1]-a[1]);
+  const top1 = topAxes[0], top2 = topAxes[1], top3 = topAxes[2];
 
-  // ① 인바디 스타일 카운트업 리스트
+  // ① 10축 현황판 — 점수 시각화 (클릭 시 팝업)
   const listEl = $('axisCountupList');
   if (listEl) {
     listEl.innerHTML = '';
@@ -1839,14 +1847,14 @@ function renderCH2(results) {
       const meta  = AXIS_META[axis] || {};
       const rank  = idx + 1;
       const rankCls = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : 'rank-other';
-      const zone  = score >= 70 ? '<span class="axis-zone zone-danger">⚠ 위험 구간</span>'
-                  : score >= 45 ? '<span class="axis-zone zone-warning">△ 주의 구간</span>'
-                  : '<span class="axis-zone zone-normal">✓ 정상</span>';
+      const zone  = score >= 70 ? '<span class="axis-zone zone-danger">⚠ 위험</span>'
+                  : score >= 45 ? '<span class="axis-zone zone-warning">△ 주의</span>'
+                  : '<span class="axis-zone zone-normal">✓ 양호</span>';
       const row = el('div', `axis-countup-row ${rankCls}`);
       row.dataset.axis = axis;
       row.dataset.score = score;
       row.innerHTML = `
-        ${rank <= 3 ? `<div class="rank-badge r${rank}">${rank}순위</div>` : ''}
+        ${rank <= 3 ? `<div class="rank-badge r${rank}">${rank}</div>` : ''}
         <div class="axis-cu-icon">${meta.icon||'📌'}</div>
         <div class="axis-cu-info">
           <div class="axis-cu-name" style="color:${meta.color||'#374151'}">${meta.name||axis}</div>
@@ -1864,59 +1872,85 @@ function renderCH2(results) {
       row.onclick = () => showAxisPopup(axis, score, results);
       listEl.appendChild(row);
     });
-
-    // 카운트업 애니메이션 — 결과 화면이 보인 후 실행
     setTimeout(() => {
-      document.querySelectorAll('.axis-cu-bar-fill').forEach(bar => {
-        bar.style.width = bar.dataset.target + '%';
-      });
+      document.querySelectorAll('.axis-cu-bar-fill').forEach(bar => { bar.style.width = bar.dataset.target + '%'; });
       document.querySelectorAll('.count-num').forEach(num => {
         const target = parseInt(num.dataset.target);
-        let cur = 0;
-        const step = Math.ceil(target / 30);
-        const timer = setInterval(() => {
-          cur = Math.min(cur + step, target);
-          num.textContent = cur;
-          if (cur >= target) clearInterval(timer);
-        }, 40);
+        let cur = 0; const step = Math.ceil(target / 30);
+        const timer = setInterval(() => { cur = Math.min(cur + step, target); num.textContent = cur; if (cur >= target) clearInterval(timer); }, 40);
       });
     }, 800);
   }
+  const primaryMeta = AXIS_META[top1?.axis] || {};
+  if ($('radarSub')) $('radarSub').textContent = `${name}님의 1순위 원인 — ${primaryMeta.name||'—'} (항목을 눌러 상세 확인)`;
 
-  // ② 레이더 차트 서브
-  const primaryMeta = AXIS_META[topAxes[0]?.axis] || {};
-  if ($('radarSub')) $('radarSub').textContent = `1순위 ${primaryMeta.name||'—'} ${topAxes[0]?.score||0}점 — 항목을 눌러 상세 설명을 확인하세요`;
-
-  // ③ 학술 근거 심층 분석 카드 (상위 3축)
+  // ② 탑3 원인 심층 감별 카드
   const acadWrap = $('academicCardsWrap');
   if (acadWrap) {
     acadWrap.innerHTML = '';
+
+    // ── 탑3 연결고리 인트로 배너 ──
+    const top3Names = topAxes.slice(0,3).map(t => (AXIS_META[t.axis]||{}).name || t.axis);
+    const introBanner = document.createElement('div');
+    introBanner.style.cssText = 'margin:0 16px 16px;padding:16px 18px;background:linear-gradient(135deg,#0B1929,#1A3A5C);border-radius:14px;color:#fff';
+    introBanner.innerHTML = `
+      <div style="font-size:10px;letter-spacing:2px;color:#94A3B8;text-transform:uppercase;margin-bottom:10px">SlimMind AI 원인 감별</div>
+      <div style="font-size:16px;font-weight:900;line-height:1.6;margin-bottom:10px">
+        ${name}님이 살이 안 빠진 건<br>
+        <span style="color:#FCA67C">${top3Names[0]}</span>이 핵심이고,<br>
+        <span style="color:#FCD34D">${top3Names[1]||''}</span>${top3Names[1] ? '가 이를 악화시키고,' : ''}<br>
+        ${top3Names[2] ? `<span style="color:#A5B4FC">${top3Names[2]}</span>이 회복을 막고 있습니다.` : ''}
+      </div>
+      <div style="font-size:12px;color:#94A3B8;line-height:1.7">
+        세 원인이 서로 맞물려 있기 때문에, 하나만 바꿔서는 효과가 없었습니다.<br>
+        아래에서 각각이 <em style="color:#CBD5E1;font-style:normal">왜 이 사람의 문제인지</em> 확인하세요.
+      </div>
+    `;
+    acadWrap.appendChild(introBanner);
+
+    // ── 탑3 각각 심층 감별 카드 ──
     topAxes.slice(0, 3).forEach((item, i) => {
       const meta = AXIS_META[item.axis] || {};
       const acad = AXIS_ACADEMIC_DB[item.axis] || {};
-      const colors = ['#E8631A','#D97706','#EAB308'];
-      const div = el('div', 'academic-card');
+      const rankLabels = ['1순위 핵심 원인', '2순위 악화 요인', '3순위 회복 차단'];
+      const rankColors = ['#E8631A','#D97706','#6366F1'];
+      const rankBg     = ['#FFF7ED','#FFFBEB','#EEF2FF'];
+      const div = document.createElement('div');
+      div.style.cssText = 'margin:0 16px 14px;border-radius:14px;overflow:hidden;box-shadow:0 3px 16px rgba(0,0,0,.1)';
       div.innerHTML = `
-        <div class="academic-card-header" style="background:linear-gradient(135deg,${meta.color||colors[i]},${meta.color||colors[i]}cc)">
-          <div class="academic-rank-badge">${i+1}</div>
-          <div>
-            <div style="font-size:11px;opacity:.8;margin-bottom:2px">${i+1}순위 원인</div>
-            <div class="academic-card-title">${meta.icon||''} ${meta.name||item.axis}</div>
+        <!-- 헤더: 원인명 + 순위 -->
+        <div style="padding:16px 18px;background:linear-gradient(135deg,${meta.color||rankColors[i]},${meta.color||rankColors[i]}bb);color:#fff">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <div style="background:rgba(255,255,255,.2);border-radius:8px;padding:2px 10px;font-size:11px;font-weight:800">${rankLabels[i]}</div>
+            <div style="font-size:20px">${meta.icon||'📌'}</div>
+            <div style="font-size:17px;font-weight:900;flex:1">${meta.name||item.axis}</div>
           </div>
-          <div class="academic-card-score">${item.score}</div>
+          <!-- "왜 이 사람인가" 핵심 한 줄 -->
+          <div style="font-size:13px;font-weight:700;line-height:1.6;background:rgba(0,0,0,.2);border-radius:8px;padding:10px 12px">
+            💬 "${name}님에게 이게 문제인 이유: ${acad.ref||''}"
+          </div>
         </div>
-        <div class="academic-body">
-          <div class="academic-ref">💡 ${acad.ref||meta.hook||''}</div>
-          <div class="academic-story">${acad.story||''}</div>
-          <div class="academic-vulnerability">${acad.vulnerability||''}</div>
+
+        <!-- 본문: 스토리 감별 -->
+        <div style="background:#fff;padding:16px 18px">
+          <div style="font-size:14px;line-height:1.9;color:#1E293B;margin-bottom:12px">${acad.story||''}</div>
+
+          <!-- 연결고리: 이 원인이 다른 원인과 어떻게 엮이는가 -->
+          ${i < 2 ? `
+          <div style="background:${rankBg[i]};border-radius:10px;padding:10px 14px;margin-bottom:10px;border-left:3px solid ${meta.color||rankColors[i]}">
+            <div style="font-size:11px;font-weight:800;color:${meta.color||rankColors[i]};margin-bottom:4px">🔗 ${i===0?'2·3순위와의 연결고리':'다른 원인과의 연결'}</div>
+            <div style="font-size:12px;color:#374151;line-height:1.7">${buildAxisConnection(item.axis, topAxes, i)}</div>
+          </div>` : ''}
+
+          <!-- 취약점 -->
+          <div style="background:#FFF9E6;border-radius:8px;padding:10px 12px;font-size:12px;color:#92400E;font-weight:600;line-height:1.6">${acad.vulnerability||''}</div>
         </div>
-        <div class="academic-next-tease">다음 페이지에서 처음으로 해결책을 알게 됩니다 →</div>
       `;
       acadWrap.appendChild(div);
     });
   }
 
-  // ④ 역효과 빨간카드 (최대 3개)
+  // ③ 역효과 빨간카드 (최대 3개)
   const badWrap = $('badCardsWrap');
   if (badWrap) {
     badWrap.innerHTML = '';
@@ -1927,10 +1961,7 @@ function renderCH2(results) {
         const div = el('div', 'bad-card');
         div.style.margin = '0 16px 12px';
         div.innerHTML = `
-          <div class="bad-card-header">
-            <span class="bad-card-icon">🚫</span>
-            <span class="bad-card-action">${card.action}</span>
-          </div>
+          <div class="bad-card-header"><span class="bad-card-icon">🚫</span><span class="bad-card-action">${card.action}</span></div>
           <div class="bad-card-why">${card.why}</div>
           <div class="bad-card-alt">${card.alt}</div>
         `;
@@ -1939,6 +1970,26 @@ function renderCH2(results) {
       });
     });
   }
+}
+
+// ── 원인 연결고리 문구 생성 ─────────────────────────
+function buildAxisConnection(axis, topAxes, idx) {
+  const next = topAxes[idx+1];
+  const nextMeta = next ? (AXIS_META[next.axis]||{}) : null;
+  const connectionMap = {
+    A01_A07: `인슐린 저항이 높으면 혈당 급등락이 반복됩니다. 이 불안정한 혈당이 코르티솔 분비를 자극해 ${nextMeta?.name||''}을 악화시킵니다.`,
+    A01_A04: `인슐린 저항 상태에서는 단백질 합성(MPS)이 저하됩니다. ${nextMeta?.name||''}(근감소)이 함께 있으면 기초대사 회복이 더욱 어려워집니다.`,
+    A07_A01: `코르티솔 상승은 간 당신생을 촉진해 공복혈당을 올립니다. ${nextMeta?.name||''}(인슐린저항)이 이미 있다면 혈당 관리가 이중으로 어려워집니다.`,
+    A07_A04: `코르티솔은 근육 이화(분해) 호르몬입니다. 만성 스트레스가 계속되면 ${nextMeta?.name||''}(근감소)을 직접 유발합니다.`,
+    A04_A01: `근육량이 줄면 인슐린 수용체 수도 줄어 ${nextMeta?.name||''}(인슐린저항)이 심화됩니다. 악순환 구조입니다.`,
+    A04_A07: `근육이 줄면 혈당 완충 능력이 감소해 혈당 스파이크가 코르티솔을 자극합니다. ${nextMeta?.name||''}과 직결됩니다.`,
+    A02_A01: `림프·순환 정체는 인슐린 수용체 주변 간질액 정체로 이어져 ${nextMeta?.name||''}을 악화시킵니다.`,
+    A05_A01: `장내 미생물 불균형 → 단쇄지방산 감소 → 인슐린 감수성 저하 경로로 ${nextMeta?.name||''}과 직결됩니다.`,
+    A08_A07: `감정적 폭식 → 혈당 급등 → 인슐린 급등 → 코르티솔 반응 순서로 ${nextMeta?.name||''}을 악화시킵니다.`,
+  };
+  const key = `${axis}_${next?.axis}`;
+  return connectionMap[key] ||
+    (nextMeta ? `이 원인이 개선되지 않으면 ${nextMeta.name} 문제가 함께 해결되지 않습니다. 두 원인은 서로 악순환을 형성하고 있습니다.` : '이 원인이 전체 대사 환경에 영향을 미치고 있습니다.');
 }
 
 // 축 팝업 (클릭 시 상세)
@@ -2443,10 +2494,67 @@ const DIRECTION_META = {
   destiny:  { label: '철학/점술 (命)', icon: '🔯', color: '#92400E', expert: '명리상담·한의원' }
 };
 
-// ── CH4 렌더링 — 11방향 전문가 처방 ─────────────
+// ══════════════════════════════════════════════════════
+//  11방향 우선순위 로직 — 탑3 원인 기반 자동 정렬
+//  각 원인별 "어느 방향이 효과적인가" 가중치 매핑
+// ══════════════════════════════════════════════════════
+const DIRECTION_WEIGHT_MAP = {
+  // axis → { dirKey: priority 1~11 (1=최우선) }
+  A01: { hormone:1, med:2, food:3, exercise:4, recovery:5, korean:6, psych:7, posture:8, procedure:9, care:10, destiny:11 },
+  A02: { care:1, exercise:2, recovery:3, korean:4, food:5, hormone:6, med:7, posture:8, procedure:9, psych:10, destiny:11 },
+  A03: { hormone:1, med:2, recovery:3, food:4, korean:5, care:6, posture:7, exercise:8, psych:9, procedure:10, destiny:11 },
+  A04: { exercise:1, food:2, hormone:3, med:4, recovery:5, korean:6, posture:7, psych:8, care:9, procedure:10, destiny:11 },
+  A05: { food:1, korean:2, med:3, recovery:4, hormone:5, exercise:6, psych:7, posture:8, care:9, procedure:10, destiny:11 },
+  A06: { posture:1, exercise:2, korean:3, care:4, med:5, hormone:6, food:7, recovery:8, psych:9, procedure:10, destiny:11 },
+  A07: { recovery:1, psych:2, korean:3, food:4, exercise:5, hormone:6, med:7, posture:8, care:9, procedure:10, destiny:11 },
+  A08: { psych:1, food:2, recovery:3, korean:4, exercise:5, hormone:6, med:7, destiny:8, posture:9, care:10, procedure:11 },
+  A09: { hormone:1, med:2, food:3, exercise:4, korean:5, care:6, psych:7, posture:8, recovery:9, procedure:10, destiny:11 },
+  A10: { psych:1, exercise:2, food:3, recovery:4, hormone:5, destiny:6, korean:7, posture:8, care:9, med:10, procedure:11 },
+};
+
+// 탑3 원인 종합 → 11방향 우선순위 계산
+function calcDirectionPriority(topAxes) {
+  const scores = {}; // dirKey → 합산 점수 (낮을수록 우선)
+  const allDirs = Object.keys(DIRECTION_META);
+  allDirs.forEach(k => { scores[k] = 0; });
+
+  topAxes.slice(0,3).forEach((item, rankIdx) => {
+    const weight = rankIdx === 0 ? 3 : rankIdx === 1 ? 2 : 1; // 1순위=3배, 2순위=2배, 3순위=1배
+    const weightMap = DIRECTION_WEIGHT_MAP[item.axis] || {};
+    allDirs.forEach(k => {
+      scores[k] += (weightMap[k] || 6) * weight;
+    });
+  });
+
+  // 낮은 점수 = 높은 우선순위
+  return allDirs.sort((a,b) => scores[a] - scores[b]);
+}
+
+// 우선순위별 추천 이유 생성
+function buildDirReason(dirKey, topAxes, rank) {
+  const top1 = topAxes[0], top2 = topAxes[1], top3 = topAxes[2];
+  const t1m = AXIS_META[top1?.axis]||{}, t2m = AXIS_META[top2?.axis]||{}, t3m = AXIS_META[top3?.axis]||{};
+  const reasonMap = {
+    hormone: `${t1m.name||''}의 핵심 기전이 호르몬 이상이기 때문입니다. 검사 없이 식단·운동만 해서는 반응이 없습니다. 수치를 확인하고 개입해야 나머지가 작동합니다.`,
+    med:     `${t1m.name||''}이 심각한 수준이라면 생활 개입만으로 한계가 있습니다. 전문의 약물 or 보조제 개입이 토대를 만들어줍니다.`,
+    food:    `${t1m.name||''}·${t2m.name||''}는 식이 환경 재설계 없이는 개선이 불가능합니다. 운동을 먼저 해도 식단이 안 되면 효과가 상쇄됩니다.`,
+    exercise:`${t1m.name||''}에는 특정 운동 처방이 핵심 치료입니다. 일반 다이어트 운동이 아닌 이 원인에 맞는 종류·강도·순서가 필요합니다.`,
+    recovery:`${t1m.name||''}과 ${t2m.name||''}는 모두 수면·회복이 기저 조건입니다. 회복 없이 진행하면 운동·식단 효과가 절반으로 줄어듭니다.`,
+    korean:  `${t1m.name||''}·${t3m.name||''}는 한의학적 체질 개입이 효과적인 원인입니다. 서양 의학과 병행하면 회복 속도가 빨라집니다.`,
+    psych:   `${t1m.name||''}의 근본에는 심리·행동 패턴이 있습니다. 기술적 처방보다 이 부분이 해결되지 않으면 지속이 불가능합니다.`,
+    posture: `${t1m.name||''}이 체형 불균형과 연결되어 있습니다. 자세·골격 교정이 선행되지 않으면 운동 효과가 나오지 않습니다.`,
+    care:    `${t2m.name||''}·${t3m.name||''}는 바디 관리로 순환·회복을 보조하면 전체 진행 속도가 빨라집니다.`,
+    procedure:`${t1m.name||''} 관련 체형 보조가 동기 유지에 도움이 됩니다. 단, 생활 개선 후 마무리 단계로 활용하세요.`,
+    destiny: `자신의 기질·체질을 명리/체질 관점에서 이해하면 실패 패턴의 자기 수용과 지속성이 높아집니다.`,
+  };
+  return reasonMap[dirKey] || `${t1m.name||''} 원인 개선에 이 방향이 효과적입니다.`;
+}
+
+// ── CH4 렌더링 — 11방향 우선순위 진단서 ─────────────
 function renderCH4(results) {
   const { axisScores, topAxes } = results;
   const name = results.answers?.name || results.answers?.Q01 || '회원';
+  window._LAST_TOPAXES = topAxes; // toggleCH4Dir에서 참조
 
   if ($('ch4NextName')) $('ch4NextName').textContent = name;
 
@@ -2468,89 +2576,139 @@ function renderCH4(results) {
   const calorieWrap = $('calorieCardWrap');
   if (calorieWrap) calorieWrap.innerHTML = buildCalorieCard(results.answers || {}, macro);
 
-  // ── 11방향 아코디언 처방 ──────────────────────────
+  // ── 11방향 우선순위 진단서 ────────────────────────
   const accordionEl = $('axisAccordionList');
   if (!accordionEl) return;
   accordionEl.innerHTML = '';
 
-  const sortedAxes = Object.entries(axisScores).sort((a,b) => b[1]-a[1]);
+  // 탑3 원인 기반으로 11방향 우선순위 계산
+  const priorityDirs = calcDirectionPriority(topAxes); // 우선순위 정렬된 dirKey 배열
 
-  sortedAxes.forEach(([axis, score], idx) => {
-    const meta = AXIS_META[axis] || {};
-    const zone = score >= 70 ? {label:'위험',color:'#DC2626',bg:'#FEF2F2'}
-               : score >= 45 ? {label:'주의',color:'#D97706',bg:'#FFFBEB'}
-               : {label:'양호',color:'#16A34A',bg:'#F0FDF4'};
-    const isTop = idx < 3;
-    const axisColor = meta.color || '#E8631A';
+  // 진단서 헤더 배너
+  const top1m = AXIS_META[topAxes[0]?.axis]||{};
+  const top2m = AXIS_META[topAxes[1]?.axis]||{};
+  const top3m = AXIS_META[topAxes[2]?.axis]||{};
+  const headerBanner = document.createElement('div');
+  headerBanner.style.cssText = 'margin-bottom:14px;padding:16px 18px;background:linear-gradient(135deg,#0F172A,#1E3A5F);border-radius:14px;color:#fff';
+  headerBanner.innerHTML = `
+    <div style="font-size:10px;letter-spacing:2px;color:#94A3B8;text-transform:uppercase;margin-bottom:8px">11방향 전문가 우선순위 진단</div>
+    <div style="font-size:15px;font-weight:900;line-height:1.7;margin-bottom:10px">
+      <span style="color:#FCA67C">${top1m.name||''}</span>·<span style="color:#FCD34D">${top2m.name||''}</span>·<span style="color:#A5B4FC">${top3m.name||''}</span> 원인을 종합하면<br>
+      <span style="color:#4ADE80">이 순서로</span> 전문가 방향에 투자해야 합니다.
+    </div>
+    <div style="font-size:12px;color:#94A3B8;line-height:1.7">순서 계산 기준: 탑3 원인 각각의 '어느 방향이 가장 효과적인가'를 3배·2배·1배 가중합산하여 최적 투자 순서를 산출했습니다.</div>
+  `;
+  accordionEl.appendChild(headerBanner);
 
-    // 이 축(원인)에 대한 11방향 DB 가져오기
-    const axisDb = AXIS_DIRECTION_DB[axis];
-    const directions = axisDb ? axisDb.directions : buildDefaultDirections(axis, meta);
+  // 전역 방향 데이터 초기화 (toggleDir에서 사용)
+  window._dirData = window._dirData || {};
+  // 탑3 원인 각각의 방향 DB를 전역에 등록
+  topAxes.slice(0,3).forEach(item => {
+    const aDb = AXIS_DIRECTION_DB[item.axis];
+    const aMeta = AXIS_META[item.axis]||{};
+    window._dirData[item.axis] = aDb ? aDb.directions : buildDefaultDirections(item.axis, aMeta);
+  });
 
-    // 외부 아코디언 (축 단위)
-    const outerId = `outer_${axis}`;
-    const outerItem = document.createElement('div');
-    outerItem.style.cssText = `margin-bottom:10px;border-radius:14px;overflow:hidden;border:2px solid ${isTop ? axisColor+'60' : '#E2E8F0'};${isTop ? 'box-shadow:0 4px 16px '+axisColor+'25' : ''}`;
+  // 진단서 상세 패널 컨테이너 (방향 선택 시 여기에 렌더링)
+  const detailPanel = document.createElement('div');
+  detailPanel.id = 'ch4_detail_panel';
+  detailPanel.style.cssText = 'margin-bottom:14px;display:none';
 
-    // 외부 헤더 (축 요약)
-    outerItem.innerHTML = `
-      <div onclick="toggleOuter('${outerId}')"
-           style="display:flex;align-items:center;gap:10px;padding:14px 16px;
-                  background:${isTop ? 'linear-gradient(135deg,'+axisColor+'18,'+axisColor+'08)' : '#FAFAFA'};
-                  cursor:pointer;user-select:none;position:relative">
-        ${isTop
-          ? `<div style="background:${axisColor};color:#fff;font-size:10px;font-weight:900;padding:3px 9px;border-radius:8px;flex-shrink:0;letter-spacing:.5px">${idx+1}순위</div>`
-          : `<div style="font-size:10px;color:#94A3B8;font-weight:700;width:30px;flex-shrink:0;text-align:center">${idx+1}위</div>`}
-        <div style="font-size:20px;flex-shrink:0">${meta.icon||'📌'}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:14px;font-weight:900;color:${axisColor};letter-spacing:-.2px">${meta.name||axis}</div>
-          <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
-            <div style="flex:1;height:5px;background:#F1F5F9;border-radius:3px;overflow:hidden">
-              <div style="height:100%;width:${score}%;background:${axisColor};border-radius:3px;transition:width 1.2s ease"></div>
+  // 11방향 우선순위 카드 렌더링
+  priorityDirs.forEach((dirKey, rankIdx) => {
+    const dm = DIRECTION_META[dirKey] || {};
+    const rank = rankIdx + 1;
+    const isTop3 = rank <= 3;
+    const isMid = rank <= 7 && rank > 3;
+
+    // 이 방향에 대한 실제 처방 데이터는 탑1 원인 기준으로 가져오기
+    const primaryAxis = topAxes[0]?.axis || 'A01';
+    const primaryDb = AXIS_DIRECTION_DB[primaryAxis];
+    const dirObj = primaryDb
+      ? primaryDb.directions.find(d => d.key === dirKey)
+      : null;
+
+    const rankBgMap  = ['#FFF0E6','#FFFBEB','#EEF2FF','#F0FDF4','#F8FAFC','#F8FAFC','#F8FAFC'];
+    const rankBdMap  = ['#E8631A','#D97706','#6366F1','#16A34A','#E2E8F0','#E2E8F0','#E2E8F0'];
+    const rankTxtMap = ['🥇 1순위 — 지금 당장','🥈 2순위 — 다음으로','🥉 3순위 — 병행','4순위','5순위','6순위','7순위'];
+
+    if (isTop3) {
+      // ── 1~3순위: 풀 카드 ──
+      const card = document.createElement('div');
+      card.style.cssText = `margin-bottom:10px;border-radius:14px;overflow:hidden;border:2px solid ${rankBdMap[rankIdx]||'#E2E8F0'};box-shadow:0 4px 16px ${dm.color||'#E8631A'}22`;
+      card.innerHTML = `
+        <!-- 카드 헤더 -->
+        <div style="padding:14px 16px;background:linear-gradient(135deg,${dm.color||'#E8631A'}20,${dm.color||'#E8631A'}08);border-bottom:1px solid ${dm.color||'#E8631A'}30">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <div style="background:${dm.color||'#E8631A'};color:#fff;font-size:10px;font-weight:900;padding:3px 10px;border-radius:8px;flex-shrink:0">${rankTxtMap[rankIdx]}</div>
+            <div style="font-size:22px;flex-shrink:0">${dm.icon||'📌'}</div>
+            <div style="flex:1">
+              <div style="font-size:16px;font-weight:900;color:${dm.color||'#E8631A'}">${dm.label||dirKey}</div>
+              <div style="font-size:11px;color:#64748B;margin-top:2px">🏥 ${dm.expert||''}</div>
             </div>
-            <div style="font-size:12px;font-weight:900;color:${axisColor}">${score}점</div>
+          </div>
+          <!-- 왜 이 순서인가 -->
+          <div style="background:rgba(255,255,255,.8);border-radius:10px;padding:10px 12px;font-size:12px;color:#374151;line-height:1.7;border-left:3px solid ${dm.color||'#E8631A'}">
+            <span style="font-weight:800;color:${dm.color||'#E8631A'}">왜 ${rank}순위인가:</span> ${buildDirReason(dirKey, topAxes, rank)}
           </div>
         </div>
-        <div style="background:${zone.bg};color:${zone.color};font-size:10px;font-weight:800;padding:3px 9px;border-radius:8px;flex-shrink:0">${zone.label}</div>
-        <div id="outer_arr_${axis}" style="font-size:18px;color:#CBD5E1;transition:transform .3s;flex-shrink:0;margin-left:4px">▼</div>
-      </div>
+        <!-- 상세 처방 토글 -->
+        <div onclick="toggleCH4Dir('${dirKey}', '${primaryAxis}')"
+             style="display:flex;align-items:center;justify-content:space-between;padding:11px 16px;background:#FAFAFA;cursor:pointer;user-select:none">
+          <div style="font-size:12px;font-weight:800;color:#475569">📋 상세 처방 보기 (${dirObj ? dirObj.sub?.length||0 : 3}가지 전문 방법)</div>
+          <div id="ch4_arr_${dirKey}" style="font-size:16px;color:#CBD5E1;transition:transform .3s">▼</div>
+        </div>
+        <div id="ch4_panel_${dirKey}" style="display:none;padding:0 14px 14px;background:#fff">
+          <!-- toggleCH4Dir 호출 시 여기에 렌더링 -->
+        </div>
+      `;
+      accordionEl.appendChild(card);
 
-      <!-- 11방향 그리드 (처음엔 숨김) -->
-      <div id="${outerId}" style="display:none;border-top:2px solid ${isTop ? axisColor+'30' : '#F1F5F9'}">
-
-        <!-- 방향 안내 헤더 -->
-        <div style="padding:12px 16px 8px;background:#F8FAFC;border-bottom:1px solid #F1F5F9">
-          <div style="font-size:11px;font-weight:800;color:#475569;letter-spacing:.5px;text-transform:uppercase">
-            🎯 이 원인에 대한 11가지 전문가 방향
+    } else if (isMid) {
+      // ── 4~7순위: 중간 카드 ──
+      const card = document.createElement('div');
+      card.style.cssText = `margin-bottom:8px;border-radius:12px;overflow:hidden;border:1.5px solid #E2E8F0`;
+      card.innerHTML = `
+        <div onclick="toggleCH4Dir('${dirKey}', '${primaryAxis}')"
+             style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:#FAFAFA;cursor:pointer;user-select:none">
+          <div style="background:#F1F5F9;color:#475569;font-size:10px;font-weight:900;padding:3px 8px;border-radius:6px;flex-shrink:0">${rank}순위</div>
+          <div style="font-size:18px;flex-shrink:0">${dm.icon||'📌'}</div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:800;color:#334155">${dm.label||dirKey}</div>
+            <div style="font-size:11px;color:#94A3B8">${dm.expert||''}</div>
           </div>
-          <div style="font-size:12px;color:#94A3B8;margin-top:2px">각 방향을 눌러 전문 처방을 확인하세요</div>
+          <div style="font-size:11px;color:#94A3B8;max-width:120px;text-align:right;line-height:1.4;padding-right:6px">${buildDirReason(dirKey, topAxes, rank).slice(0,30)}…</div>
+          <div id="ch4_arr_${dirKey}" style="font-size:14px;color:#CBD5E1;transition:transform .3s;flex-shrink:0">▼</div>
         </div>
-
-        <!-- 11방향 탭 그리드 -->
-        <div style="padding:10px 12px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
-          ${directions.map((dir,di) => `
-            <div onclick="toggleDir('${axis}_${dir.key}')"
-                 id="dtab_${axis}_${dir.key}"
-                 style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 4px;
-                        border-radius:10px;border:1.5px solid #E2E8F0;background:#fff;cursor:pointer;
-                        transition:all .2s;text-align:center">
-              <div style="font-size:18px">${dir.icon}</div>
-              <div style="font-size:10px;font-weight:800;color:${dir.color};line-height:1.2">${dir.label}</div>
-              <div style="font-size:9px;color:#94A3B8;line-height:1.2">${dir.expert}</div>
-            </div>
-          `).join('')}
+        <div id="ch4_panel_${dirKey}" style="display:none;padding:12px 14px;background:#fff;border-top:1px solid #F1F5F9">
+          <div style="font-size:12px;color:#374151;line-height:1.8;border-left:3px solid ${dm.color||'#E8631A'};padding-left:10px">
+            <span style="font-weight:800;color:${dm.color||'#E8631A'}">${rank}순위인 이유:</span> ${buildDirReason(dirKey, topAxes, rank)}
+          </div>
         </div>
+      `;
+      accordionEl.appendChild(card);
 
-        <!-- 방향별 상세 처방 패널 (동적 열림) -->
-        <div id="dirpanel_${axis}" style="padding:0 12px 14px"></div>
-      </div>
-    `;
-
-    accordionEl.appendChild(outerItem);
-
-    // ── 방향 패널 데이터 저장 (전역) ──
-    window._dirData = window._dirData || {};
-    window._dirData[axis] = directions;
+    } else {
+      // ── 8~11순위: 콤팩트 리스트 (첫 8순위 항목 앞에 섹션 헤더 추가) ──
+      if (rank === 8) {
+        const secHeader = document.createElement('div');
+        secHeader.style.cssText = 'padding:8px 4px 6px;font-size:11px;font-weight:800;color:#94A3B8;letter-spacing:1px;text-transform:uppercase';
+        secHeader.textContent = '▸ 나중에 고려 (8~11순위)';
+        accordionEl.appendChild(secHeader);
+      }
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;border:1px solid #F1F5F9;background:#FAFAFA;margin-bottom:5px';
+      row.innerHTML = `
+        <div style="font-size:10px;color:#CBD5E1;font-weight:700;width:26px;flex-shrink:0;text-align:center">${rank}</div>
+        <div style="font-size:16px;flex-shrink:0">${dm.icon||'📌'}</div>
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:700;color:#64748B">${dm.label||dirKey}</div>
+          <div style="font-size:10px;color:#94A3B8">${dm.expert||''}</div>
+        </div>
+        <div style="font-size:10px;color:#CBD5E1">현재는 보류</div>
+      `;
+      accordionEl.appendChild(row);
+    }
   });
 
   // 오늘 밤 액션
@@ -2571,6 +2729,69 @@ function renderCH4(results) {
       tonightEl.appendChild(div);
     });
   }
+}
+
+// ── CH4 방향 패널 토글 (11방향 진단서 전용) ─────────
+function toggleCH4Dir(dirKey, primaryAxis) {
+  const panelEl = $('ch4_panel_' + dirKey);
+  const arrEl   = $('ch4_arr_'   + dirKey);
+  if (!panelEl) return;
+
+  const isOpen = panelEl.style.display !== 'none';
+  if (isOpen) {
+    panelEl.style.display = 'none';
+    if (arrEl) arrEl.style.transform = '';
+    return;
+  }
+
+  panelEl.style.display = 'block';
+  if (arrEl) arrEl.style.transform = 'rotate(180deg)';
+
+  // 이미 렌더링된 경우 스킵
+  if (panelEl.dataset.rendered) return;
+  panelEl.dataset.rendered = '1';
+
+  const dm = DIRECTION_META[dirKey] || {};
+
+  // 탑3 원인에서 이 방향의 데이터 탐색
+  let dirObj = null;
+  const axes = window._LAST_TOPAXES || [];
+  for (const item of axes) {
+    const aDb = AXIS_DIRECTION_DB[item.axis];
+    if (aDb) {
+      const found = aDb.directions.find(d => d.key === dirKey);
+      if (found) { dirObj = found; break; }
+    }
+  }
+  // fallback: primaryAxis
+  if (!dirObj) {
+    const pDb = AXIS_DIRECTION_DB[primaryAxis];
+    if (pDb) dirObj = pDb.directions.find(d => d.key === dirKey);
+  }
+
+  if (!dirObj) {
+    // DB 없으면 buildDefaultContent 활용
+    const axisMeta = AXIS_META[primaryAxis]||{};
+    const content = buildDefaultContent(primaryAxis, dirKey, axisMeta);
+    panelEl.innerHTML = `
+      <div style="font-size:13px;line-height:1.85;color:#374151;border-left:3px solid ${dm.color||'#E8631A'};padding-left:12px">${content}</div>
+    `;
+    return;
+  }
+
+  // sub 항목 렌더링
+  panelEl.innerHTML = `
+    <div style="font-size:12px;font-weight:800;color:#64748B;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #F1F5F9">
+      🏥 전문 처방 — ${dm.expert||''}
+    </div>
+    <div style="font-size:13px;font-weight:700;color:${dm.color||'#E8631A'};margin-bottom:10px">${dirObj.headline||''}</div>
+    ${(dirObj.sub||[]).map((s,si) => `
+      <div style="margin-bottom:10px;padding:10px 12px;background:#F8FAFC;border-radius:10px;border-left:3px solid ${dm.color||'#E8631A'}">
+        <div style="font-size:11px;font-weight:900;color:${dm.color||'#E8631A'};margin-bottom:5px">${si+1}. ${s.label||''}</div>
+        <div style="font-size:12px;color:#374151;line-height:1.8">${s.content||''}</div>
+      </div>
+    `).join('')}
+  `;
 }
 
 // ── 기본 11방향 생성 (DB 미정의 축용) ───────────────
@@ -3676,105 +3897,90 @@ function buildPrescHtml(presc) {
 }
 
 // ── CH5 렌더링 ────────────────────────────────────
-function renderCH5(results) {
-  const { topAxes } = results;
-  const weekRatios = buildWeekRatios(topAxes);
-  const UNLOCKED_WEEKS = 4; // 1~4주만 공개
+// ── CH5: 12주 Phase 진단 데이터 생성 ────────────────
+function buildPhasePlan(topAxes) {
+  const t1 = topAxes[0], t2 = topAxes[1], t3 = topAxes[2];
+  const t1m = AXIS_META[t1?.axis]||{}, t2m = AXIS_META[t2?.axis]||{}, t3m = AXIS_META[t3?.axis]||{};
 
-  const tabsEl = $('weekTabs');
-  const contentEl = $('weekContent');
-  if (!tabsEl || !contentEl) return;
+  // Phase별 비율은 탑1 원인에 따라 다름
+  const phaseMap = {
+    A01: { // 인슐린저항형: 식단 압도적 우선
+      p1: { food:50, exercise:20, recovery:20, mind:10,
+            why:`${t1m.name||'인슐린 저항'}은 식이 환경이 가장 먼저 바뀌어야 합니다. 운동보다 식단이 먼저인 이유는 운동 효과 자체가 인슐린 감수성에 달려 있기 때문입니다. 이 단계에서 운동을 무리하게 늘리면 혈당 반응성이 더 나빠질 수 있습니다.` },
+      p2: { food:40, exercise:35, recovery:15, mind:10,
+            why:`1~4주 식단 기반이 갖춰졌다면 이제 GLUT4 자극 운동을 본격 투입할 타이밍입니다. 저항성 운동(근력)이 인슐린 수용체 수를 늘립니다. 식단:운동 4:3.5 비율로 두 축을 동시에 강화합니다.` },
+      p3: { food:35, exercise:40, recovery:15, mind:10,
+            why:`기반이 잡힌 후반부는 운동 비율을 역전시킵니다. 근육량 증가 → 기초대사 상승 → 인슐린 감수성 자동 개선의 선순환 구조. 식단은 유지 수준으로 내리고 운동 강도를 끌어올립니다.` }
+    },
+    A04: { // 근감소형: 운동 압도적 우선
+      p1: { food:30, exercise:45, recovery:20, mind:5,
+            why:`${t1m.name||'근감소'}는 운동이 핵심 치료입니다. 1~4주는 신경근 적응기 — 무게보다 패턴 정착이 목표입니다. 저항성 운동 주 3회+단백질 확보가 선행되어야 식단 개선의 효과가 나옵니다.` },
+      p2: { food:30, exercise:50, recovery:15, mind:5,
+            why:`근육 합성 최대화 구간. 점진적 과부하(+5~10%) 적용. 운동 비율 50%는 주 4회 저항성+1회 유산소 조합. 단백질 체중×1.8g 필수. 이 구간이 전체 여정의 핵심입니다.` },
+      p3: { food:30, exercise:45, recovery:20, mind:5,
+            why:`근육량이 올라오면 회복이 중요해집니다. 과훈련(OTS) 방지를 위해 회복 비율을 20%로 복원. 운동 강도는 유지, 식단은 체중당 단백질 1.6g으로 안정화.` }
+    },
+    A07: { // 코르티솔형: 회복·심리 최우선
+      p1: { food:30, exercise:15, recovery:35, mind:20,
+            why:`${t1m.name||'만성 스트레스·코르티솔'}이 높은 상태에서 운동을 늘리면 코르티솔이 더 올라갑니다. 1~4주는 역설적으로 운동을 줄이고 수면·부교감 활성화에 집중합니다. HPA축이 안정되어야 나머지가 작동합니다.` },
+      p2: { food:30, exercise:30, recovery:25, mind:15,
+            why:`HPA축이 안정되면 이제 저강도 운동 투입. 코르티솔형은 HIIT 금지 — 중강도 유산소(존2, 최대심박수 65~70%)만 허용. 심리 개입을 병행해 스트레스 근원을 줄입니다.` },
+      p3: { food:30, exercise:40, recovery:20, mind:10,
+            why:`회복 기반이 갖춰진 후 운동 강도를 점진 상승. 하지만 코르티솔형은 평생 회복 우선 원칙을 유지해야 합니다. 운동 40%는 저항성 30%+유산소 10% 조합으로 유지.` }
+    },
+  };
 
-  // 탭 생성 (1~12주)
-  tabsEl.innerHTML = '';
-  for (let w = 1; w <= 12; w++) {
-    const tab = el('div', 'week-tab' + (w > UNLOCKED_WEEKS ? ' week-tab-locked' : '') + (w === 1 ? ' active' : ''));
-    tab.dataset.week = w;
-    tab.innerHTML = `${w}주${w > UNLOCKED_WEEKS ? '<span class="week-lock-icon">🔒</span>' : ''}`;
-    if (w <= UNLOCKED_WEEKS) {
-      tab.onclick = () => switchWeekTab(w, topAxes, weekRatios);
-    } else {
-      tab.onclick = () => {
-        // 잠금 탭 클릭 시 블러 섹션으로 스크롤
-        const blur = $('weekBlurSection');
-        if (blur) blur.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      };
-    }
-    tabsEl.appendChild(tab);
-  }
+  // 기본 플랜 (A01~A10 중 위에 없는 축)
+  const defaultPlan = {
+    p1: { food:40, exercise:30, recovery:20, mind:10,
+          why:`초기 4주는 식단 기반 구축이 우선입니다. 어떤 원인이든 식이 환경이 바뀌지 않으면 운동 효과가 절반으로 줄어듭니다. 식단:운동:회복:심리 = 4:3:2:1 비율로 시작합니다.` },
+    p2: { food:35, exercise:40, recovery:15, mind:10,
+          why:`식단 습관이 자리 잡히면 운동 강도를 올릴 타이밍입니다. 운동 비율을 40%로 높이고 식단은 35%로 줄입니다. 이 구간에서 체성분 변화가 본격적으로 시작됩니다.` },
+    p3: { food:30, exercise:45, recovery:15, mind:10,
+          why:`후반 4주는 운동 강도 극대화 구간. 식단은 습관화되어 30%로 내려도 자동 유지가 됩니다. 운동 45%는 저항성 위주로 기초대사를 지속 상승시킵니다.` }
+  };
 
-  // 1주차 초기 렌더링
-  renderWeekContent(1, topAxes, weekRatios, contentEl);
+  return phaseMap[t1?.axis] || defaultPlan;
 }
 
-function switchWeekTab(w, topAxes, weekRatios) {
-  // 탭 활성화
-  document.querySelectorAll('.week-tab').forEach(t => t.classList.remove('active'));
-  const activeTab = document.querySelector(`.week-tab[data-week="${w}"]`);
-  if (activeTab) activeTab.classList.add('active');
-  // 콘텐츠 렌더링
-  renderWeekContent(w, topAxes, weekRatios, $('weekContent'));
-}
-
-function renderWeekContent(w, topAxes, weekRatios, container) {
-  if (!container) return;
-  const wr = weekRatios[w - 1] || weekRatios[0];
-  const ratioItems = [
-    { label: '식단', value: wr.food, color: '#16A34A', sublabel: '식이 조절' },
-    { label: '운동', value: wr.exercise, color: '#E8631A', sublabel: '신체 활동' },
-    { label: '회복', value: wr.recovery, color: '#3B82F6', sublabel: '수면·이완' },
-    { label: '심리', value: wr.mind, color: '#8B5CF6', sublabel: '동기·마인드' }
-  ];
-
-  // 3단계 클릭트리 세부 항목
+function buildPhaseWeekContent(w, topAxes, weekRatios) {
+  const t1 = topAxes[0], t2 = topAxes[1], t3 = topAxes[2];
+  const t1m = AXIS_META[t1?.axis]||{};
+  // buildWeekRatios, buildWeekAxisItems는 기존 WEEK_PRESC_DB 기반 상세 처방 생성
+  const wr = weekRatios[w-1] || weekRatios[0];
   const axisItems = buildWeekAxisItems(w, topAxes);
-
-  container.innerHTML = `
-    <!-- 주차 헤더 -->
+  const ratioItems = [
+    { label:'식단', value:wr.food,     color:'#16A34A' },
+    { label:'운동', value:wr.exercise,  color:'#E8631A' },
+    { label:'회복', value:wr.recovery,  color:'#3B82F6' },
+    { label:'심리', value:wr.mind||10,  color:'#8B5CF6' }
+  ];
+  return `
     <div style="padding:12px 16px 8px">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
         <div style="background:#E8631A;color:#fff;font-size:11px;font-weight:900;padding:3px 10px;border-radius:8px">${w}주차</div>
-        <div style="font-size:14px;font-weight:800;color:#1e293b">${wr.theme}</div>
+        <div style="font-size:14px;font-weight:800;color:#1e293b">${wr.theme||''}</div>
       </div>
-      <div style="font-size:12px;color:#64748B">🎯 ${wr.focus}</div>
-    </div>
-
-    <!-- 100분율 바 -->
-    <div style="padding:0 16px 12px">
-      <div style="display:flex;height:36px;border-radius:10px;overflow:hidden;gap:2px">
+      <div style="font-size:12px;color:#64748B;margin-bottom:10px">🎯 ${wr.focus||''}</div>
+      <!-- 비율 바 -->
+      <div style="display:flex;height:32px;border-radius:10px;overflow:hidden;gap:2px;margin-bottom:8px">
         ${ratioItems.map(r => `
-          <div style="flex:${r.value};background:${r.color};display:flex;align-items:center;justify-content:center;min-width:28px;transition:flex .6s ease" title="${r.label} ${r.value}%">
-            <div style="font-size:10px;font-weight:900;color:#fff;white-space:nowrap">${r.label}<br>${r.value}%</div>
-          </div>
-        `).join('')}
-      </div>
-      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-        ${ratioItems.map(r => `
-          <div style="display:flex;align-items:center;gap:4px">
-            <div style="width:8px;height:8px;border-radius:50%;background:${r.color}"></div>
-            <div style="font-size:10px;color:#64748B">${r.label} ${r.value}% <span style="color:#94A3B8">(${r.sublabel})</span></div>
-          </div>
-        `).join('')}
+          <div style="flex:${r.value};background:${r.color};display:flex;align-items:center;justify-content:center;min-width:24px">
+            <div style="font-size:9px;font-weight:900;color:#fff;white-space:nowrap">${r.label}<br>${r.value}%</div>
+          </div>`).join('')}
       </div>
     </div>
-
-    <!-- 3단계 클릭트리 -->
-    <div style="padding:0 16px 12px">
+    <!-- 핵심 처방 클릭트리 -->
+    <div style="padding:0 16px 14px">
       <div style="font-size:12px;font-weight:800;color:#374151;margin-bottom:8px">📋 ${w}주차 핵심 처방</div>
-      ${w <= 4 && wr.key1 ? `
-        <div style="display:flex;flex-direction:column;gap:6px">
-          ${[wr.key1, wr.key2, wr.key3].filter(Boolean).map((key, i) => `
-            <div style="display:flex;align-items:flex-start;gap:8px;background:#F8FAFC;border-radius:8px;padding:10px 12px">
-              <div style="width:20px;height:20px;border-radius:50%;background:#E8631A;color:#fff;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0">${i+1}</div>
-              <div style="font-size:13px;color:#374151;line-height:1.5">${key}</div>
-            </div>
-          `).join('')}
-        </div>
-      ` : ''}
-
-      <!-- 축별 상세 클릭트리 (클릭하면 열림) -->
-      <div style="margin-top:10px">
-        ${axisItems.map((item, i) => `
+      ${[wr.key1, wr.key2, wr.key3].filter(Boolean).map((key,i) => `
+        <div style="display:flex;align-items:flex-start;gap:8px;background:#F8FAFC;border-radius:8px;padding:10px 12px;margin-bottom:6px">
+          <div style="width:20px;height:20px;border-radius:50%;background:#E8631A;color:#fff;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0">${i+1}</div>
+          <div style="font-size:13px;color:#374151;line-height:1.6">${key}</div>
+        </div>`).join('')}
+      <!-- 축별 상세 -->
+      <div style="margin-top:8px">
+        ${axisItems.map((item,i) => `
           <div style="margin-bottom:6px;border:1px solid #E2E8F0;border-radius:8px;overflow:hidden">
             <div onclick="toggleWeekDetail('wd_${w}_${i}')" style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;cursor:pointer;background:#fff">
               <div style="display:flex;align-items:center;gap:8px">
@@ -3786,11 +3992,145 @@ function renderWeekContent(w, topAxes, weekRatios, container) {
             <div id="wd_${w}_${i}" style="display:none;padding:10px 12px 12px;border-top:1px solid #F1F5F9;background:#FAFAFA">
               <div style="font-size:12px;color:#374151;line-height:1.7;border-left:3px solid ${item.color};padding-left:10px">${item.value}</div>
             </div>
-          </div>
-        `).join('')}
+          </div>`).join('')}
       </div>
     </div>
   `;
+}
+
+function renderCH5(results) {
+  const { topAxes } = results;
+  const name = results.answers?.name || results.answers?.Q01 || '회원';
+  const weekRatios = buildWeekRatios(topAxes);
+  const phasePlan  = buildPhasePlan(topAxes);
+  const UNLOCKED_WEEKS = 4;
+
+  const t1m = AXIS_META[topAxes[0]?.axis]||{};
+  const t2m = AXIS_META[topAxes[1]?.axis]||{};
+  const t3m = AXIS_META[topAxes[2]?.axis]||{};
+
+  const tabsEl    = $('weekTabs');
+  const contentEl = $('weekContent');
+  if (!tabsEl || !contentEl) return;
+
+  // ── Phase 로드맵 배너 — CH5 탭 영역 앞에 삽입 ──
+  const ch5Wrap = tabsEl.parentElement;
+  let phaseEl = $('ch5_phase_banner');
+  if (!phaseEl) {
+    phaseEl = document.createElement('div');
+    phaseEl.id = 'ch5_phase_banner';
+    ch5Wrap.insertBefore(phaseEl, tabsEl);
+  }
+
+  const phases = [
+    { label:'Phase 1', weeks:'1~4주', theme:'기반 구축', color:'#E8631A',
+      ratioObj: phasePlan.p1,
+      dirLabels: ['식단 환경 재설계', '수면 확보', '호르몬 검사'],
+      whyKey: 'p1' },
+    { label:'Phase 2', weeks:'5~8주', theme:'전환 가속', color:'#D97706',
+      ratioObj: phasePlan.p2,
+      dirLabels: ['운동 강도 상향', '식단 유지', '심리 루틴'],
+      whyKey: 'p2' },
+    { label:'Phase 3', weeks:'9~12주', theme:'완성 최적화', color:'#6366F1',
+      ratioObj: phasePlan.p3,
+      dirLabels: ['운동 극대화', '체성분 완성', '유지 전략'],
+      whyKey: 'p3' },
+  ];
+
+  phaseEl.innerHTML = `
+    <!-- Phase 진단서 헤더 -->
+    <div style="margin:0 0 16px;padding:16px 18px;background:linear-gradient(135deg,#0F172A,#1A3A5C);border-radius:14px;color:#fff">
+      <div style="font-size:10px;letter-spacing:2px;color:#94A3B8;text-transform:uppercase;margin-bottom:8px">12주 종합 로드맵 진단</div>
+      <div style="font-size:15px;font-weight:900;line-height:1.7;margin-bottom:10px">
+        <span style="color:#FCA67C">${t1m.name||''}</span>·<span style="color:#FCD34D">${t2m.name||''}</span>·<span style="color:#A5B4FC">${t3m.name||''}</span> 세 원인을<br>
+        12주에 걸쳐 <span style="color:#4ADE80">이 비율로</span> 공략해야 합니다.
+      </div>
+      <div style="font-size:12px;color:#94A3B8;line-height:1.7">비율 산출 기준: 탑3 원인의 생리학적 개입 순서(선행 조건 → 효과 최대화)를 반영했습니다.<br>같은 운동을 해도 Phase별 목적과 강도가 달라야 합니다.</div>
+    </div>
+
+    <!-- Phase 3단계 카드 -->
+    ${phases.map((ph, pi) => `
+      <div style="margin-bottom:12px;border-radius:14px;overflow:hidden;border:2px solid ${ph.color}40">
+        <!-- Phase 헤더 (클릭하면 이유 열림) -->
+        <div onclick="toggleWeekDetail('phase_why_${pi}')"
+             style="display:flex;align-items:center;gap:10px;padding:14px 16px;background:linear-gradient(135deg,${ph.color}18,${ph.color}08);cursor:pointer;user-select:none">
+          <div style="background:${ph.color};color:#fff;font-size:11px;font-weight:900;padding:4px 12px;border-radius:8px;flex-shrink:0">${ph.label}</div>
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:900;color:${ph.color}">${ph.weeks} — ${ph.theme}</div>
+            <div style="font-size:11px;color:#64748B;margin-top:2px">${ph.dirLabels.join(' · ')}</div>
+          </div>
+          <div id="arr_phase_why_${pi}" style="font-size:16px;color:#CBD5E1;transition:transform .3s;flex-shrink:0">▼</div>
+        </div>
+
+        <!-- 비율 바 -->
+        <div style="padding:10px 16px 6px;background:#FAFAFA">
+          <div style="display:flex;height:28px;border-radius:8px;overflow:hidden;gap:2px;margin-bottom:6px">
+            ${[
+              {l:'식단',v:ph.ratioObj.food,    c:'#16A34A'},
+              {l:'운동',v:ph.ratioObj.exercise, c:'#E8631A'},
+              {l:'회복',v:ph.ratioObj.recovery, c:'#3B82F6'},
+              {l:'심리',v:ph.ratioObj.mind,     c:'#8B5CF6'}
+            ].map(r => `
+              <div style="flex:${r.v};background:${r.c};display:flex;align-items:center;justify-content:center;min-width:22px">
+                <div style="font-size:9px;font-weight:900;color:#fff;white-space:nowrap;text-align:center">${r.l}<br>${r.v}%</div>
+              </div>`).join('')}
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            ${[
+              {l:'식단',v:ph.ratioObj.food,    c:'#16A34A'},
+              {l:'운동',v:ph.ratioObj.exercise, c:'#E8631A'},
+              {l:'회복',v:ph.ratioObj.recovery, c:'#3B82F6'},
+              {l:'심리',v:ph.ratioObj.mind,     c:'#8B5CF6'}
+            ].map(r => `
+              <div style="display:flex;align-items:center;gap:4px">
+                <div style="width:7px;height:7px;border-radius:50%;background:${r.c}"></div>
+                <div style="font-size:10px;color:#64748B">${r.l} ${r.v}%</div>
+              </div>`).join('')}
+          </div>
+        </div>
+
+        <!-- 이유 패널 (클릭 시 열림) -->
+        <div id="phase_why_${pi}" style="display:none;padding:12px 16px 14px;background:#fff;border-top:1px solid ${ph.color}20">
+          <div style="font-size:12px;line-height:1.85;color:#374151;border-left:3px solid ${ph.color};padding-left:12px">
+            <span style="font-weight:800;color:${ph.color}">왜 이 비율인가:</span> ${phasePlan[ph.whyKey]?.why||''}
+          </div>
+        </div>
+      </div>
+    `).join('')}
+
+    <!-- 주차별 탭 안내 -->
+    <div style="margin-bottom:12px;padding:10px 14px;background:#F0FDF4;border-radius:10px;border-left:3px solid #16A34A;font-size:12px;color:#374151;line-height:1.7">
+      <span style="font-weight:800;color:#16A34A">📋 1~4주 처방 상세</span> — 아래 탭에서 주차별 구체적 행동 처방을 확인하세요. 5~12주 처방은 컨설팅 후 공개됩니다.
+    </div>
+  `;
+
+  // ── 주차 탭 생성 ──
+  tabsEl.innerHTML = '';
+  for (let w = 1; w <= 12; w++) {
+    const tab = el('div', 'week-tab' + (w > UNLOCKED_WEEKS ? ' week-tab-locked' : '') + (w === 1 ? ' active' : ''));
+    tab.dataset.week = w;
+    tab.innerHTML = `${w}주${w > UNLOCKED_WEEKS ? '<span class="week-lock-icon">🔒</span>' : ''}`;
+    if (w <= UNLOCKED_WEEKS) {
+      tab.onclick = () => switchWeekTab(w, topAxes, weekRatios);
+    } else {
+      tab.onclick = () => {
+        const blur = $('weekBlurSection');
+        if (blur) blur.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      };
+    }
+    tabsEl.appendChild(tab);
+  }
+
+  // 1주차 초기 렌더링
+  contentEl.innerHTML = buildPhaseWeekContent(1, topAxes, weekRatios);
+}
+
+function switchWeekTab(w, topAxes, weekRatios) {
+  document.querySelectorAll('.week-tab').forEach(t => t.classList.remove('active'));
+  const activeTab = document.querySelector(`.week-tab[data-week="${w}"]`);
+  if (activeTab) activeTab.classList.add('active');
+  const contentEl = $('weekContent');
+  if (contentEl) contentEl.innerHTML = buildPhaseWeekContent(w, topAxes, weekRatios);
 }
 
 function toggleWeekDetail(id) {
