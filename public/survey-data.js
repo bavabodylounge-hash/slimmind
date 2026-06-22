@@ -1678,6 +1678,146 @@ const QUESTIONS = [
   },
 
   // ══════════════════════════════════════════════════════
+  //  신규 추가 문항 (docx v2 기준, 코드 미반영분 7개)
+  //  Q37 / Q41 / Q44 / Q_CORTISOL / Q_THIGH_TYPE / Q_ANKLE_TYPE / Q_BODY_FRAME
+  // ══════════════════════════════════════════════════════
+
+  // ── Q37: 식단 계획 준수 방식 → A08 심리·식이 ──
+  {
+    id: 'Q37', section: 'G', num: 37,
+    axis: 'A08', weight: 1.5, role: 'score',
+    question: '식단 계획을 세우면 {name}님은 보통?',
+    hint: '계획형인지 즉흥형인지에 따라 처방 방식이 완전히 달라집니다.',
+    type: 'SINGLE_SELECT',
+    options: [
+      { emoji: '📋', label: '정확히 지켜요', desc: '루틴이 있어야 안심', value: 'strict',
+        axisEffect: {} },
+      { emoji: '🌊', label: '큰 틀만, 세부는 유연하게', desc: '', value: 'flexible',
+        axisEffect: {} },
+      { emoji: '🎲', label: '그날그날 즉흥적으로', desc: '', value: 'spontaneous',
+        axisEffect: { A08: 10, A10: 5 } },
+      { emoji: '💔', label: '세우지만 늘 무너져요', desc: '', value: 'fail',
+        axisEffect: { A08: 25 }, feedbackKey: 'yoyo' }
+    ],
+    saveAs: 'diet_compliance'
+  },
+
+  // ── Q41: 지금 이 순간 솔직한 감정 → E코드 직접 연결 ──
+  {
+    id: 'Q41', section: 'E', num: 41,
+    axis: 'A08', weight: 1.5, role: 'wow',
+    question: '지금 이 순간, 가장 솔직한 감정은?',
+    hint: '이 감정이 결과지 첫 문장의 온도를 정합니다. 완전히 솔직해도 됩니다.',
+    type: 'SINGLE_SELECT',
+    options: [
+      { emoji: '😮‍💨', label: '지쳐있어요', desc: '해도 안 돼서', value: 'tired',
+        axisEffect: { A08: 15, A07: 10 }, feedbackKey: 'no_effect' },
+      { emoji: '😰', label: '불안해요', desc: '이대로 가면 안 될 것 같아', value: 'anxious',
+        axisEffect: { A08: 10, A07: 15 }, feedbackKey: 'stress_high' },
+      { emoji: '🤔', label: '궁금해요', desc: '내 체형이 뭔지', value: 'curious',
+        axisEffect: {} },
+      { emoji: '✊', label: '결심했어요', desc: '이번엔 진짜', value: 'determined',
+        axisEffect: {} },
+      { emoji: '✨', label: '기대돼요', desc: '결과가 설레는', value: 'excited',
+        axisEffect: {} }
+    ],
+    saveAs: 'current_emotion'
+  },
+
+  // ── Q44: 혈액형 → 참고용(점수 0), saveAs로 저장 ──
+  {
+    id: 'Q44', section: 'G', num: 44,
+    axis: 'A10', weight: 0, role: 'signal',
+    question: '혈액형은요?',
+    hint: '결과 전달 톤을 맞추는 가벼운 참고 자료로 씁니다.',
+    type: 'SINGLE_SELECT',
+    options: [
+      { emoji: '🅰️', label: 'A형', desc: '', value: 'A', axisEffect: {} },
+      { emoji: '🅱️', label: 'B형', desc: '', value: 'B', axisEffect: {} },
+      { emoji: '🅾️', label: 'O형', desc: '', value: 'O', axisEffect: {} },
+      { emoji: '🆎', label: 'AB형', desc: '', value: 'AB', axisEffect: {} },
+      { emoji: '❓', label: '몰라요', desc: '', value: 'unknown', axisEffect: {} }
+    ],
+    saveAs: 'blood_type'
+  },
+
+  // ── Q_CORTISOL: 스트레스 반응 → A07 핵심 ──
+  {
+    id: 'Q_CORTISOL', section: 'D', num: 23,
+    axis: 'A07', weight: 2.0, role: 'score',
+    question: '스트레스를 받으면 몸이 어떻게 반응하나요?',
+    hint: '코르티솔 반응 패턴은 복부 지방의 핵심 원인을 밝혀줍니다.',
+    type: 'SINGLE_SELECT',
+    options: [
+      { emoji: '🍫', label: '단것·짠것이 폭발적으로 당겨요', desc: '코르티솔 폭식', value: 'craving',
+        axisEffect: { A07: 35, A08: 20 }, feedbackKey: 'stress_high' },
+      { emoji: '😴', label: '기운이 빠지고 무기력해져요', desc: '부신 피로', value: 'fatigue',
+        axisEffect: { A07: 30, A03: 15 }, feedbackKey: 'stress_high' },
+      { emoji: '🤷', label: '잠이 안 오고 머리가 복잡해요', desc: '코르티솔 과잉', value: 'insomnia',
+        axisEffect: { A07: 40, A08: 10 }, feedbackKey: 'sleep_late' },
+      { emoji: '💪', label: '오히려 에너지가 올라요', desc: '긍정 반응', value: 'energized',
+        axisEffect: {} }
+    ],
+    saveAs: 'cortisol_response'
+  },
+
+  // ── Q_THIGH_TYPE: 허벅지 타입 → A04/A02 처방 분기 ──
+  {
+    id: 'Q_THIGH_TYPE', section: 'B', num: 15,
+    axis: 'A04', weight: 1.8, role: 'score',
+    question: '허벅지를 직접 만져보세요. 어떤 느낌인가요?',
+    hint: '허벅지 타입에 따라 운동 처방이 완전히 반대입니다. 잘못 운동하면 더 굵어집니다.',
+    type: 'SINGLE_SELECT',
+    options: [
+      { emoji: '🪨', label: '단단하고 잘 안 잡혀요', desc: '근육형', value: 'muscle',
+        axisEffect: { A04: 10, A06: 15 } },
+      { emoji: '🍮', label: '말랑하게 잡혀요', desc: '지방형', value: 'fat',
+        axisEffect: { A02: 20, A04: 15 }, feedbackKey: 'soft_fat' },
+      { emoji: '🫨', label: '단단한데 겉에 물렁살이 있어요', desc: '복합형', value: 'mixed',
+        axisEffect: { A02: 10, A04: 10 } }
+    ],
+    saveAs: 'thigh_type'
+  },
+
+  // ── Q_ANKLE_TYPE: 발목·종아리 타입 → A02 순환 ──
+  {
+    id: 'Q_ANKLE_TYPE', section: 'B', num: 16,
+    axis: 'A02', weight: 1.5, role: 'score',
+    question: '발목과 종아리 굵기가 어떤 편인가요?',
+    hint: '발목 두께는 지방이 아닌 경우가 많습니다. 원인에 따라 처방이 달라집니다.',
+    type: 'SINGLE_SELECT',
+    options: [
+      { emoji: '🦢', label: '발목이 가늘고 종아리도 날씬해요', desc: '', value: 'thin',
+        axisEffect: {} },
+      { emoji: '🐘', label: '발목이 굵고 저녁엔 더 부어요', desc: '부종형', value: 'puffy',
+        axisEffect: { A02: 35 }, feedbackKey: 'puffy' },
+      { emoji: '💪', label: '종아리가 근육질로 굵어요', desc: '근육형', value: 'muscle',
+        axisEffect: { A04: 10, A06: 10 } },
+      { emoji: '🫧', label: '발목은 얇은데 종아리만 굵어요', desc: '', value: 'calf_only',
+        axisEffect: { A06: 15 } }
+    ],
+    saveAs: 'ankle_type'
+  },
+
+  // ── Q_BODY_FRAME: 골격 크기 → 목표 체중 보정용 ──
+  {
+    id: 'Q_BODY_FRAME', section: 'C', num: 22,
+    axis: 'A06', weight: 1.0, role: 'signal',
+    question: '손목을 반대 손으로 감아보세요. 엄지와 중지가 어떻게 되나요?',
+    hint: '골격 크기는 유전입니다. 골격을 무시한 목표 체중은 처음부터 잘못된 목표입니다.',
+    type: 'SINGLE_SELECT',
+    options: [
+      { emoji: '🤏', label: '엄지와 중지가 겹쳐요', desc: '소골격', value: 'small',
+        axisEffect: {} },
+      { emoji: '👌', label: '딱 맞게 닿아요', desc: '중골격', value: 'medium',
+        axisEffect: {} },
+      { emoji: '🖐', label: '닿지 않아요', desc: '대골격(빅본)', value: 'large',
+        axisEffect: { A06: 10 } }
+    ],
+    saveAs: 'body_frame'
+  },
+
+  // ══════════════════════════════════════════════════════
   //  섹션 H · 마무리 드림 질문
   // ══════════════════════════════════════════════════════
   {
@@ -1883,47 +2023,69 @@ function calculateAxisScores(answers) {
 function classifyECode(answers) {
   const scores = { E01:0, E02:0, E03:0, E04:0, E05:0, E06:0, E07:0 };
 
-  // E-01: 늘 실패하는 사람 — 시도 3회+ / 요요 2회+
-  const yoyo = answers['Q04'];
-  if (yoyo === 5 || yoyo === 10) scores.E01 += 40;
-  if (yoyo === 2)                 scores.E01 += 15;
+  // ── 공통 응답 추출 ──────────────────────────────────────
+  const yoyo        = answers['Q04'];
   const expectation = answers['Q00'] || answers['expectation'];
-  if (expectation === 'final')    scores.E01 += 20;
+  const stressLevel = parseInt(answers['Q21']) || 0;
+  const gender      = answers['Q02'];
+  const mbti        = answers['Q_MBTI'] || answers['Q45'] || '';
 
-  // E-02: 아무도 몰라주는 사람 — 혼자 다이어트 / 지지 없음
+  // 신규 문항 saveAs 키
+  const currentEmotion   = answers['current_emotion']   || answers['Q41'] || '';   // Q41
+  const dietCompliance   = answers['diet_compliance']   || answers['Q37'] || '';   // Q37
+  const cortisolResponse = answers['cortisol_response'] || answers['Q_CORTISOL'] || ''; // Q_CORTISOL
+
+  // E-01: 늘 실패하는 사람 — 시도 3회+ / 요요 2회+ / 지침 감정
+  if (yoyo === 5 || yoyo === 10) scores.E01 += 40;
+  if (yoyo === 2)                scores.E01 += 15;
+  if (expectation === 'final')   scores.E01 += 20;
+  // Q41: 지쳐있어요 → 실패 반복 패턴 강화
+  if (currentEmotion === 'tired')    scores.E01 += 20;
+  // Q37: 늘 무너져요 → 실패 패턴 명확
+  if (dietCompliance === 'fail')     scores.E01 += 15;
+
+  // E-02: 아무도 몰라주는 사람 — 혼자 다이어트 / 지지 없음 / 불안
   const support = answers['Q_SUPPORT'] || answers['Q38'] || '';
   if (String(support).includes('alone') || String(support).includes('solo')) scores.E02 += 30;
-  const stressLevel = parseInt(answers['Q21']) || 0;
-  if (stressLevel >= 4)           scores.E02 += 20;
-  const gender = answers['Q02'];
+  if (stressLevel >= 4)                        scores.E02 += 20;
   if (gender === 'female' && stressLevel >= 3) scores.E02 += 10;
+  // Q41: 불안해요 → 지지 부족 패턴과 일치
+  if (currentEmotion === 'anxious')            scores.E02 += 15;
+  // Q_CORTISOL: 불면·각성 → 코르티솔 과잉 → 고립 스트레스
+  if (cortisolResponse === 'insomnia')         scores.E02 += 20;
 
   // E-03: 돈 걱정형 — 저비용 선호 / 경제적 압박 스트레스
   const costPref = answers['Q_COST'] || answers['Q_BUDGET'] || '';
   if (String(costPref).includes('low') || String(costPref).includes('cheap')) scores.E03 += 30;
   if (stressLevel >= 3 && expectation === 'health') scores.E03 += 10;
 
-  // E-04: 냉혈한·무관심 — 감정 질문 최소 응답 / 수치 응답 적극
-  const mbti = answers['Q_MBTI'] || answers['Q45'] || '';
+  // E-04: 냉혈한·무관심 — 논리 우선 / 계획형 / 감정 표현 최소
   if (mbti.includes('T')) scores.E04 += 25;
   if (mbti.includes('J')) scores.E04 += 10;
   if (expectation === 'plan') scores.E04 += 15;
+  // Q37: 정확히 지켜요 → 계획형 성향 강화
+  if (dietCompliance === 'strict') scores.E04 += 10;
 
-  // E-05: 폭식·야식형 — 저녁 충동 / 스트레스→단것
+  // E-05: 폭식·야식형 — 저녁 충동 / 스트레스→단것 / 코르티솔 폭식
   const lateEat  = answers['Q_LATEEATING'] || answers['Q28'] || '';
   const sweeting = answers['Q_SWEET'] || answers['Q29'] || '';
   if (String(lateEat).includes('often') || String(lateEat).includes('daily')) scores.E05 += 35;
   if (String(sweeting).includes('stress') || String(sweeting).includes('often')) scores.E05 += 25;
-  // Q04 심리·식이행동 축 높은 경우 반영
   const eatBehavior = answers['Q35'] || answers['Q36'] || '';
   if (String(eatBehavior).includes('binge') || String(eatBehavior).includes('night')) scores.E05 += 15;
+  // Q_CORTISOL: 폭식 충동 → E05 핵심 신호
+  if (cortisolResponse === 'craving') scores.E05 += 25;
+  // Q37: 즉흥형 → 충동적 식이행동 패턴
+  if (dietCompliance === 'spontaneous') scores.E05 += 10;
 
-  // E-06: 아픈 사람 — 질환 보유 / 통증
+  // E-06: 아픈 사람 — 질환 보유 / 만성 통증
   const medical = answers['Q_MEDICAL'] || [];
   const medArr = Array.isArray(medical) ? medical : [medical];
   if (medArr.length > 0 && !medArr.includes('none')) scores.E06 += 50;
   const pain = answers['Q_PAIN'] || answers['Q47'] || '';
   if (String(pain).includes('chronic') || String(pain).includes('pain')) scores.E06 += 20;
+  // Q_CORTISOL: 무기력·부신 피로 → 질환형 신호
+  if (cortisolResponse === 'fatigue') scores.E06 += 15;
 
   // E-07: 은둔·대인공포 — 사회 활동 없음 / 혼자 식사
   const social   = answers['Q_SOCIAL'] || answers['Q_ACTIVITY'] || '';
@@ -1931,14 +2093,15 @@ function classifyECode(answers) {
   if (String(social).includes('none') || String(social).includes('rarely')) scores.E07 += 30;
   if (String(eatAlone).includes('always') || String(eatAlone).includes('often')) scores.E07 += 25;
   if (mbti.includes('I') && stressLevel >= 3) scores.E07 += 15;
+  // Q41: 지쳐있거나 불안한 내향형 → 은둔형 확률 상승
+  if ((currentEmotion === 'tired' || currentEmotion === 'anxious') && mbti.includes('I')) scores.E07 += 10;
 
-  // 최고 점수 E코드 선택 (동점 시 앞 번호 우선)
+  // ── 최고 점수 E코드 선택 (동점 시 앞 번호 우선) ──────────
   const best = Object.entries(scores).sort((a, b) => b[1] - a[1])[0][0];
 
-  // E코드가 모두 0점이면(응답 데이터 부족) 축 점수로 2차 추론
+  // E코드가 모두 0점이면(응답 데이터 부족) fallback
   const total = Object.values(scores).reduce((s, v) => s + v, 0);
   if (total < 10) {
-    // 기본 fallback: yoyo 없으면 E04, 있으면 E01
     return yoyo >= 5 ? 'E01' : 'E04';
   }
 
