@@ -2,12 +2,14 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import indexHtml from '../public/index.html?raw'
 import surveyDataJs from '../public/survey-data.js?raw'
+import bcEngineJs from '../public/bc-engine.js?raw'
 // bc-definitions.js — BC코드 시스템 폐기로 미사용 (axis 시스템으로 전환)
 // import bcDefinitionsJs from '../public/bc-definitions.js?raw'
 import adminHtml from '../public/admin.html?raw'
 import consultantHtml from '../public/consultant.html?raw'
 import resultHtml from '../public/result.html?raw'
 import resultV3Html from '../public/result-v3.html?raw'
+import resultV4Html from '../public/result-v4.html?raw'
 import bodymapPreviewHtml from '../public/bodymap_preview.html?raw'
 import slimmindLiveHtml from '../public/slimmind_live.html?raw'
 
@@ -128,6 +130,10 @@ app.get('/survey-data.js', (c) =>
 // /bc-definitions.js — BC코드 시스템 폐기, 204 No Content 반환
 app.get('/bc-definitions.js', (c) =>
   c.body('/* bc-definitions.js deprecated — axis system */', 200, { 'Content-Type': 'application/javascript; charset=utf-8' })
+)
+// /bc-engine.js — PRD V3.0 BC 코드 연산 엔진
+app.get('/bc-engine.js', (c) =>
+  c.body(bcEngineJs, 200, { 'Content-Type': 'application/javascript; charset=utf-8' })
 )
 
 // ═══════════════════════════════════════════════════════════════
@@ -1119,6 +1125,10 @@ app.get('/result', (c) => c.html(resultHtml))
 // ─── result-v3.html (SlimMind v3.0 11축 결과지) ────────────────────────────
 app.get('/result-v3.html', (c) => c.html(resultV3Html))
 app.get('/result-v3', (c) => c.html(resultV3Html))
+
+// ─── result-v4.html (SlimMind V3.0 PRD 최종 BC코드 결과지) ─────────────────
+app.get('/result-v4.html', (c) => c.html(resultV4Html))
+app.get('/result-v4', (c) => c.html(resultV4Html))
 
 // ─── favicon ───────────────────────────────────────────────────────────────
 app.get('/favicon.ico', async (c) => {
