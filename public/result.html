@@ -1207,6 +1207,31 @@ function renderCH6(results, answers) {
   `;
 }
 
+// ── 빈 answers 진입 감지 화면 ────────────────────
+function showSurveyGuide() {
+  $('loading-screen').style.display = 'none';
+  document.body.style.background = 'linear-gradient(160deg,#0B1929 0%,#1A3A5C 60%,#0B2545 100%)';
+  document.body.innerHTML = `
+    <div style="max-width:440px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;text-align:center;color:#fff;">
+      <div style="font-size:56px;margin-bottom:24px;">🧬</div>
+      <div style="font-size:11px;letter-spacing:3px;color:#94A3B8;text-transform:uppercase;margin-bottom:12px;">SLIMMIND</div>
+      <div style="font-size:24px;font-weight:900;margin-bottom:12px;background:linear-gradient(135deg,#fff 0%,#FCA67C 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">
+        먼저 분석을 완료해주세요
+      </div>
+      <div style="font-size:14px;color:#94A3B8;margin-bottom:36px;line-height:1.8;">
+        결과지는 설문 완료 후 자동으로 열립니다.<br>
+        지금 바로 10분 분석을 시작해보세요.
+      </div>
+      <a href="/" style="display:block;width:100%;background:linear-gradient(135deg,#E8631A,#F59E0B);color:#fff;font-size:16px;font-weight:700;border-radius:16px;padding:18px;text-decoration:none;box-shadow:0 6px 20px rgba(232,99,26,.4);">
+        🔍 무료 분석 시작하기
+      </a>
+      <div style="margin-top:16px;font-size:12px;color:#475569;">
+        소요 시간 약 10분 · 완전 무료
+      </div>
+    </div>
+  `;
+}
+
 // ── 메인 초기화 ──────────────────────────────────
 function initResult() {
   // URL 파라미터 또는 localStorage에서 답변 가져오기
@@ -1219,6 +1244,8 @@ function initResult() {
   // URL 파라미터 파싱 (token 등)
   const params = new URLSearchParams(window.location.search);
   const token = params.get('token');
+  const demo = params.get('demo'); // ?demo=1 이면 fallback 허용
+
   if (token) {
     // 서버에서 답변 로드 (API 연동)
     fetch(`/api/survey/result?token=${token}`)
@@ -1229,6 +1256,12 @@ function initResult() {
       })
       .catch(() => processResults(answers));
   } else {
+    // answers가 비어있고 demo 파라미터도 없으면 설문 유도 화면
+    const hasAnswers = Object.keys(answers).filter(k => !k.startsWith('_')).length > 0;
+    if (!hasAnswers && demo !== '1') {
+      showSurveyGuide();
+      return;
+    }
     processResults(answers);
   }
 }
