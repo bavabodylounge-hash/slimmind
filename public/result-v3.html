@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SlimMind v3.0 — 대사 사슬 정밀 해독 리포트</title>
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   SlimMind v3.0 마스터 결과지
+   11축 시스템: 약/식/복/한/심/형/하/관(진단) + 동/술/명(밸브)
+   5페이지: P1.표지+4대지표 / P2.도미노 / P3.밸브 / P4.11방향처방 / P5.12주처방전
+   최종 확정 2026-06-22
+═══════════════════════════════════════════════════════════════ */
+
+:root {
+  --primary:  #0B1929;
+  --accent:   #E8631A;
+  --gold:     #D97706;
+  --green:    #059669;
+  --red:      #DC2626;
+  --blue:     #2563EB;
+  --bg:       #F8FAFC;
+  --card:     #FFFFFF;
+  --text:     #1E293B;
+  --sub:      #64748B;
+  --border:   #E2E8F0;
+  --radius:   16px;
+  --shadow:   0 4px 24px rgba(0,0,0,.10);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif;
+  line-height: 1.6;
+}
+
+/* ── 로딩 ── */
+#loading-screen {
+  position: fixed; inset: 0; background: #0B1929;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  z-index: 9999; transition: opacity .7s;
+}
+#loading-screen.fade-out { opacity: 0; pointer-events: none; }
+.loading-logo { font-size: 38px; color: #fff; font-weight: 900; letter-spacing: -1px; margin-bottom: 6px; }
+.loading-sub  { color: #94A3B8; font-size: 13px; margin-bottom: 36px; }
+.loading-bar-wrap { width: 220px; height: 4px; background: #1E3A5C; border-radius: 2px; overflow: hidden; }
+.loading-bar  { height: 100%; width: 0; background: linear-gradient(90deg,#E8631A,#F59E0B); border-radius: 2px;
+  animation: loadProg 2.4s cubic-bezier(.4,0,.2,1) forwards; }
+@keyframes loadProg { from{width:0} to{width:100%} }
+.loading-msg  { color: #64748B; font-size: 12px; margin-top: 14px; animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%,100%{opacity:.4} 50%{opacity:1} }
+
+/* ── 공통 래퍼 ── */
+#result-wrap { display: none; max-width: 480px; margin: 0 auto; min-height: 100vh; }
+
+/* ── 탭 내비 (5탭) ── */
+.tab-nav {
+  position: sticky; top: 0; z-index: 100;
+  background: #fff; border-bottom: 1px solid var(--border);
+  display: flex; padding: 0 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+}
+.tab-btn {
+  flex: 1; padding: 10px 2px 8px; border: none; background: none;
+  font-size: 10px; font-weight: 600; color: var(--sub); cursor: pointer;
+  border-bottom: 3px solid transparent; transition: all .2s;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  position: relative;
+}
+.tab-btn .tab-icon { font-size: 15px; }
+.tab-btn.active { color: var(--accent); border-color: var(--accent); }
+.tab-btn.locked { color: #CBD5E1; }
+.tab-btn.locked::after { content:'🔒'; position:absolute; top:5px; right:3px; font-size:8px; }
+
+/* ── 페이지 ── */
+.page { display: none; animation: pageIn .4s cubic-bezier(.16,1,.3,1) both; }
+.page.active { display: block; }
+@keyframes pageIn { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+
+/* ── 공통 카드 ── */
+.card {
+  background: var(--card); border-radius: var(--radius);
+  box-shadow: var(--shadow); overflow: hidden; margin: 16px;
+}
+.card-body { padding: 20px; }
+
+/* ══════════════════════════════════════════
+   PAGE 1 — 표지 + 4대 대사지표
+══════════════════════════════════════════ */
+
+/* 커버 히어로 */
+.cover-hero {
+  background: linear-gradient(160deg, #0B1929 0%, #1A3A5C 60%, #0B2545 100%);
+  padding: 48px 24px 36px; color: #fff; position: relative; overflow: hidden;
+}
+.cover-hero::before {
+  content:''; position:absolute; inset:0;
+  background: radial-gradient(circle at 70% 30%, rgba(232,99,26,.22) 0%, transparent 60%);
+}
+.cover-eyebrow { font-size: 11px; letter-spacing: 2px; color: #94A3B8; text-transform: uppercase; margin-bottom: 10px; position: relative; }
+.cover-name { font-size: 30px; font-weight: 900; line-height: 1.2; margin-bottom: 6px; position: relative;
+  background: linear-gradient(135deg, #fff 0%, #FCA67C 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.cover-subtitle { font-size: 13px; color: #94A3B8; margin-bottom: 20px; position: relative; }
+.cover-chain-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(232,99,26,.18); border: 1px solid rgba(232,99,26,.4);
+  color: #FCA67C; font-size: 12px; font-weight: 700; padding: 6px 14px; border-radius: 20px;
+  position: relative;
+}
+
+/* 3D 바디맵 플레이스홀더 */
+.bodymap-area {
+  background: linear-gradient(180deg, #F0F4FF 0%, #E8EDF8 100%);
+  margin: 16px; border-radius: var(--radius);
+  padding: 24px; text-align: center;
+  border: 1px dashed #C7D2E8; min-height: 180px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+}
+.bodymap-area .bm-title { font-size: 13px; font-weight: 700; color: #1A3A5C; }
+.bodymap-area .bm-desc { font-size: 11px; color: #64748B; line-height: 1.5; }
+.bodymap-area .bm-badge {
+  background: #1A3A5C; color: #fff; font-size: 11px; font-weight: 700;
+  padding: 4px 12px; border-radius: 12px; margin-top: 4px;
+}
+
+/* 4대 지표 그리드 */
+.metrics-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px;
+}
+.metric-card {
+  background: var(--card); border-radius: 14px; padding: 18px 16px;
+  box-shadow: var(--shadow); border-top: 4px solid;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.metric-card.meta-age   { border-color: var(--gold); }
+.metric-card.belly-fat  { border-color: var(--red); }
+.metric-card.hormone    { border-color: #8B5CF6; }
+.metric-card.body-shape { border-color: var(--blue); }
+.metric-label { font-size: 11px; color: var(--sub); font-weight: 600; }
+.metric-value { font-size: 26px; font-weight: 900; line-height: 1; }
+.metric-card.meta-age   .metric-value { color: var(--gold); }
+.metric-card.belly-fat  .metric-value { color: var(--red); }
+.metric-card.hormone    .metric-value { color: #8B5CF6; }
+.metric-card.body-shape .metric-value { color: var(--blue); }
+.metric-formula { font-size: 10px; color: #94A3B8; margin-top: 2px; }
+
+/* 감성 오프닝 카피 */
+.opening-copy {
+  margin: 16px; background: #fff; border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 24px;
+  border-left: 5px solid var(--accent);
+}
+.opening-copy .oc-headline { font-size: 16px; font-weight: 800; color: #0B1929; margin-bottom: 14px; line-height: 1.5; }
+.opening-copy .oc-body { font-size: 14px; color: #374151; line-height: 1.85; word-break: keep-all; }
+.opening-copy .oc-emphasis { font-weight: 800; color: #0B1929; }
+
+/* ══════════════════════════════════════════
+   PAGE 2 — 원인 사슬 도미노
+══════════════════════════════════════════ */
+.domino-hero {
+  background: #111; color: #fff; padding: 28px 20px; margin-bottom: 0;
+}
+.domino-hero h2 { font-size: 15px; color: #ff4d4d; font-weight: 800; line-height: 1.5; margin-bottom: 6px; }
+.domino-hero .dh-sub { font-size: 12px; color: #64748B; }
+
+.domino-steps { background: #111; padding: 0 20px 28px; }
+.domino-step {
+  padding: 18px 16px; border-left: 3px solid #ff4d4d;
+  margin-bottom: 6px; position: relative;
+}
+.domino-step-title { font-size: 15px; font-weight: 800; color: #ff8080; margin-bottom: 8px; }
+.domino-step-desc  { font-size: 13.5px; color: #ccc; line-height: 1.75; word-break: keep-all; }
+.domino-arrow      { font-size: 22px; color: #ff4d4d; padding: 4px 0 4px 16px; }
+
+.domino-wrap { background: #111; margin: 16px; border-radius: var(--radius); overflow: hidden; }
+
+/* ══════════════════════════════════════════
+   PAGE 3 — 3대 밸브 계기판
+══════════════════════════════════════════ */
+.valve-section { margin: 16px; }
+.valve-header { font-size: 18px; font-weight: 800; color: var(--text); margin-bottom: 16px; }
+
+.valve-card {
+  background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);
+  margin-bottom: 14px; overflow: hidden;
+}
+.valve-card-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 16px 18px; border-bottom: 1px solid var(--border);
+}
+.valve-icon { font-size: 22px; width: 40px; text-align: center; }
+.valve-title-group { flex: 1; }
+.valve-title { font-size: 15px; font-weight: 800; }
+.valve-subtitle { font-size: 11px; color: var(--sub); }
+.valve-score { font-size: 22px; font-weight: 900; }
+
+/* 게이지 바 */
+.gauge-wrap { padding: 12px 18px 4px; }
+.gauge-track { height: 10px; background: #F1F5F9; border-radius: 5px; overflow: hidden; }
+.gauge-fill  { height: 100%; border-radius: 5px; transition: width 1.2s cubic-bezier(.4,0,.2,1); }
+.gauge-labels { display: flex; justify-content: space-between; font-size: 10px; color: #94A3B8; margin-top: 4px; }
+
+.valve-card-body { padding: 14px 18px 18px; font-size: 13.5px; color: #374151; line-height: 1.75; word-break: keep-all; }
+
+/* 밸브 색상 */
+.valve-명 .valve-title { color: #B45309; }
+.valve-명 .valve-score { color: #B45309; }
+.valve-명 .gauge-fill  { background: linear-gradient(90deg, #FCD34D, #D97706); }
+
+.valve-동 .valve-title { color: var(--red); }
+.valve-동 .valve-score { color: var(--red); }
+.valve-동 .gauge-fill  { background: linear-gradient(90deg, #FCA5A5, #DC2626); }
+
+.valve-술 .valve-title { color: var(--blue); }
+.valve-술 .valve-score { color: var(--blue); }
+.valve-술 .gauge-fill  { background: linear-gradient(90deg, #93C5FD, #2563EB); }
+
+/* 밸브 분기 배지 */
+.valve-branch-badge {
+  margin: 0 18px 16px; padding: 10px 14px; border-radius: 10px;
+  font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 6px;
+}
+.branch-medical { background: #FEF2F2; color: var(--red); border: 1px solid #FECACA; }
+.branch-natural  { background: #EFF6FF; color: var(--blue); border: 1px solid #BFDBFE; }
+
+/* ══════════════════════════════════════════
+   PAGE 4 — 11방향 전문 진단처방 솔루션
+══════════════════════════════════════════ */
+.rx-header { padding: 24px 20px 16px; }
+.rx-header h2 { font-size: 18px; font-weight: 900; color: var(--text); line-height: 1.4; }
+.rx-header p  { font-size: 13px; color: var(--sub); margin-top: 6px; }
+
+/* TOP3 긴급 카드 */
+.rx-top3 { margin: 0 16px 14px; }
+.rx-top3-label {
+  font-size: 11px; font-weight: 800; letter-spacing: 1px; color: var(--red);
+  text-transform: uppercase; margin-bottom: 8px; padding-left: 2px;
+}
+.rx-urgent-card {
+  background: #FEF2F2; border: 2px solid var(--red); border-radius: 14px;
+  padding: 16px 18px; margin-bottom: 10px;
+}
+.rx-urgent-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--red); color: #fff; font-size: 11px; font-weight: 800;
+  padding: 3px 10px; border-radius: 10px; margin-bottom: 8px;
+}
+.rx-urgent-title { font-size: 16px; font-weight: 800; color: #0B1929; margin-bottom: 6px; }
+.rx-urgent-where { font-size: 11px; font-weight: 700; color: var(--red); margin-bottom: 6px; }
+.rx-urgent-desc  { font-size: 13px; color: #374151; line-height: 1.7; word-break: keep-all; }
+
+/* 나머지 8개 리스트 */
+.rx-others { margin: 0 16px 16px; }
+.rx-others-label {
+  font-size: 11px; font-weight: 800; letter-spacing: 1px; color: var(--sub);
+  text-transform: uppercase; margin-bottom: 8px; padding-left: 2px;
+}
+.rx-list-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+  padding: 16px 18px; box-shadow: var(--shadow);
+}
+.rx-list-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 0; border-bottom: 1px solid #F1F5F9;
+}
+.rx-list-item:last-child { border-bottom: none; padding-bottom: 0; }
+.rx-num {
+  width: 28px; height: 28px; border-radius: 50%; background: #F1F5F9;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800; color: var(--sub); flex-shrink: 0;
+  margin-top: 2px;
+}
+.rx-item-content {}
+.rx-item-name  { font-size: 14px; font-weight: 800; color: var(--text); margin-bottom: 2px; }
+.rx-item-where { font-size: 11px; color: var(--sub); margin-bottom: 4px; }
+.rx-item-desc  { font-size: 12.5px; color: #4B5563; line-height: 1.6; word-break: keep-all; }
+
+/* ══════════════════════════════════════════
+   PAGE 5 — 12주 처방전
+══════════════════════════════════════════ */
+.prescription-header {
+  background: linear-gradient(135deg, #0B1929, #1A3A5C);
+  color: #fff; padding: 28px 20px; text-align: center;
+}
+.prescription-header h2 { font-size: 18px; font-weight: 900; margin-bottom: 8px; }
+.prescription-header p  { font-size: 13px; color: #94A3B8; line-height: 1.6; word-break: keep-all; }
+
+.week-cards { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+
+/* 공개 주차 카드 */
+.week-card-open {
+  background: var(--card); border-radius: 14px; box-shadow: var(--shadow);
+  overflow: hidden; border-left: 5px solid var(--green);
+}
+.week-card-header {
+  background: #F0FDF4; padding: 14px 18px;
+  border-bottom: 1px solid #D1FAE5;
+  display: flex; align-items: center; gap: 10px;
+}
+.week-num-badge {
+  background: var(--green); color: #fff; font-size: 11px; font-weight: 800;
+  padding: 3px 10px; border-radius: 10px; white-space: nowrap;
+}
+.week-card-title { font-size: 14px; font-weight: 800; color: #065F46; line-height: 1.4; }
+.week-card-body  { padding: 14px 18px; }
+.week-quote {
+  font-size: 13px; font-weight: 700; color: #0B1929; margin-bottom: 12px;
+  padding: 10px 14px; background: #F8FAFC; border-radius: 8px; border-left: 3px solid var(--accent);
+  word-break: keep-all; line-height: 1.6;
+}
+.week-items { display: flex; flex-direction: column; gap: 10px; }
+.week-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  font-size: 13px; color: #374151; line-height: 1.7; word-break: keep-all;
+}
+.week-item-tag {
+  flex-shrink: 0; background: #EFF6FF; color: var(--blue);
+  font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 8px; margin-top: 2px;
+}
+.week-item-tag.tag-recovery { background: #F0FDF4; color: var(--green); }
+.week-item-tag.tag-manage   { background: #EFF6FF; color: var(--blue); }
+.week-item-tag.tag-medical  { background: #FEF2F2; color: var(--red); }
+.week-item-tag.tag-diet     { background: #FEF9EE; color: #92400E; }
+.week-item-tag.tag-psych    { background: #FAF5FF; color: #6D28D9; }
+.week-item-tag.tag-med      { background: #FFF7ED; color: #C2410C; }
+.week-item-tag.tag-posture  { background: #F0FDF4; color: #065F46; }
+.week-item-tag.tag-exercise { background: #F0F9FF; color: #0369A1; }
+
+/* 잠금 주차 카드 */
+.week-card-locked {
+  background: #F8FAFC; border-radius: 14px; box-shadow: var(--shadow);
+  overflow: hidden; border-left: 5px solid #CBD5E1;
+  filter: blur(5px); pointer-events: none; user-select: none;
+}
+.week-card-locked .week-card-header {
+  background: #F1F5F9; border-color: #E2E8F0;
+}
+.week-card-locked .week-num-badge { background: #CBD5E1; }
+.week-card-locked .week-card-title { color: #94A3B8; }
+.week-card-locked .week-card-body  { padding: 14px 18px; color: #CBD5E1; font-size: 13px; }
+
+/* 잠금 오버레이 */
+.lock-overlay {
+  margin: 0 16px; background: linear-gradient(135deg, #0B1929, #1A3A5C);
+  border-radius: 14px; padding: 24px; text-align: center; color: #fff;
+}
+.lock-overlay .lo-icon  { font-size: 36px; margin-bottom: 10px; }
+.lock-overlay .lo-title { font-size: 16px; font-weight: 800; margin-bottom: 8px; }
+.lock-overlay .lo-desc  { font-size: 13px; color: #94A3B8; line-height: 1.6; word-break: keep-all; }
+
+/* CTA 버튼 */
+.cta-section {
+  margin: 16px; padding: 24px;
+  background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);
+  text-align: center; border-top: 3px solid var(--accent);
+}
+.cta-closing { font-size: 13.5px; color: #374151; line-height: 1.8; word-break: keep-all; margin-bottom: 20px; }
+.cta-btn {
+  width: 100%; padding: 18px 20px;
+  background: linear-gradient(135deg, #0B1929, #1A3A5C);
+  color: #fff; border: none; border-radius: 14px;
+  font-size: 15px; font-weight: 900; cursor: pointer; line-height: 1.4;
+  box-shadow: 0 6px 20px rgba(11,25,41,.3);
+  transition: transform .15s, box-shadow .15s;
+}
+.cta-btn:active { transform: scale(.98); box-shadow: 0 3px 10px rgba(11,25,41,.2); }
+.cta-sub-text { font-size: 11px; color: var(--sub); margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<!-- 로딩 화면 -->
+<div id="loading-screen">
+  <div class="loading-logo">SlimMind</div>
+  <div class="loading-sub">대사 사슬 정밀 분석 중</div>
+  <div class="loading-bar-wrap"><div class="loading-bar"></div></div>
+  <div class="loading-msg">50개 데이터 해독 중...</div>
+</div>
+
+<!-- 결과 화면 -->
+<div id="result-wrap">
+
+  <!-- 탭 내비 -->
+  <nav class="tab-nav">
+    <button class="tab-btn active" onclick="showPage(0,this)">
+      <span class="tab-icon">📊</span><span>진단표지</span>
+    </button>
+    <button class="tab-btn" onclick="showPage(1,this)">
+      <span class="tab-icon">🔗</span><span>원인사슬</span>
+    </button>
+    <button class="tab-btn" onclick="showPage(2,this)">
+      <span class="tab-icon">⚙️</span><span>밸브진단</span>
+    </button>
+    <button class="tab-btn" onclick="showPage(3,this)">
+      <span class="tab-icon">🧠</span><span>11방향처방</span>
+    </button>
+    <button class="tab-btn" onclick="showPage(4,this)">
+      <span class="tab-icon">🗺️</span><span>12주처방전</span>
+    </button>
+  </nav>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- PAGE 1: 표지 + 4대 대사지표                 -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="page active" id="page-0">
+
+    <!-- 커버 히어로 -->
+    <div class="cover-hero">
+      <div class="cover-eyebrow">SlimMind v3.0 — 대사 사슬 정밀 해독 리포트</div>
+      <div class="cover-name" id="cover-name">홍길동님만을 위한</div>
+      <div class="cover-subtitle">50개 고유 데이터 기반 · 11축 원인 분석 완료</div>
+      <div class="cover-chain-badge" id="cover-chain-badge">🔗 CHAIN_POSTURE_EDEMA — 자세·부종 파괴 사슬</div>
+    </div>
+
+    <!-- 3D 바디맵 플레이스홀더 -->
+    <div class="bodymap-area" id="bodymap-area">
+      <div style="font-size:48px;">🫀</div>
+      <div class="bm-title">3D 신체 대사 취약 부위 시각화</div>
+      <div class="bm-desc" id="bodymap-desc">현재 <strong>자세·부종 파괴 사슬</strong>이 감지되었습니다.<br>골반 왜곡 + 하체 림프 정체 부위가 붉은색 펄스로 표시됩니다.</div>
+      <div class="bm-badge" id="bodymap-badge">● 하체 부종/셀룰라이트 패턴</div>
+    </div>
+
+    <!-- 4대 대사지표 -->
+    <div class="metrics-grid">
+      <div class="metric-card meta-age">
+        <div class="metric-label">⏱️ 대사 효율 나이</div>
+        <div class="metric-value" id="m-meta-age">—세</div>
+        <div class="metric-formula">= 실제나이 + (식+복)×0.15</div>
+      </div>
+      <div class="metric-card belly-fat">
+        <div class="metric-label">⚠️ 복부 비만 예측도</div>
+        <div class="metric-value" id="m-belly">—%</div>
+        <div class="metric-formula">= 허리점수×0.6 + 하×0.4</div>
+      </div>
+      <div class="metric-card hormone">
+        <div class="metric-label">🌡️ 호르몬 피로도</div>
+        <div class="metric-value" id="m-hormone">—%</div>
+        <div class="metric-formula">= 복 × (갱년기?1.3:1.1)</div>
+      </div>
+      <div class="metric-card body-shape">
+        <div class="metric-label">🦴 체형 불균형 지수</div>
+        <div class="metric-value" id="m-body-shape">—%</div>
+        <div class="metric-formula">= 형×0.7 + 관×0.3</div>
+      </div>
+    </div>
+
+    <!-- 감성 오프닝 카피 -->
+    <div class="opening-copy">
+      <div class="oc-headline" id="opening-headline">
+        솔직히 말씀드릴게요.<br>아무리 해도 안 빠지는 게 의지력 문제가 아닙니다.
+      </div>
+      <div class="oc-body" id="opening-body">
+        배는 딱딱하게 볼록 나오고, 손발은 차갑고, 저녁만 되면 발목이 양말 자국 그대로 부어오르는 이 증상들. 이건 살이 아니라 당신의 몸이 비명을 지르고 있는 <span class="oc-emphasis">고장 신호</span>입니다.<br><br>
+        그동안 남들보다 몸에 대해 훨씬 잘 알고, 지독하게 열심히 굶고 달렸는데도 왜 내 몸 하나 뜻대로 통제가 안 될까 밤마다 혼자 자책하셨죠? '내가 또 미련해서, 의지가 약해서 실패했구나'라며 스스로를 몰아세웠을 그 외롭고 답답한 심정을 우리는 깊이 공감합니다.<br><br>
+        하지만 오늘 50개의 고유 데이터가 말해주는 진실은 전혀 다릅니다. 이 살은 게으름의 결과가 아닙니다. 거북목과 골반이 틀어지면서 하체로 가는 림프 순환로가 물리적으로 막혔고, 고인 체액이 밤마다 부종이 되다 결국 단단한 셀룰라이트 벽으로 굳어버린 것입니다.<br><br>
+        <span class="oc-emphasis">당신은 게으른 게 아니라, 이 고장 난 몸을 이끌고 생존하기 위해 온몸으로 버텨내고 있었던 것입니다.</span>
+      </div>
+    </div>
+
+  </div><!-- /page-0 -->
+
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- PAGE 2: 원인 사슬 도미노                    -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="page" id="page-1">
+
+    <div class="card" style="margin:16px;">
+      <div class="domino-hero">
+        <h2 id="domino-title">다이어트를 멈춰 세운 잔혹한 인과관계</h2>
+        <div class="dh-sub">아래 3단계 파괴 사슬이 지금까지의 모든 노력을 무효화해왔습니다</div>
+      </div>
+      <div class="domino-steps" id="domino-steps">
+        <!-- JS로 동적 렌더링 -->
+      </div>
+    </div>
+
+    <!-- 사슬 설명 하단 -->
+    <div class="card-body" style="margin:16px; background:#fff; border-radius:14px; box-shadow:var(--shadow); padding:20px;">
+      <div style="font-size:13px; color:#374151; line-height:1.8; word-break:keep-all;" id="chain-bottom-desc">
+        이 파괴 사슬의 핵심은, <strong>원인을 제거하지 않고 표면만 공략하는 다이어트가 왜 반드시 실패할 수밖에 없는지</strong>를 설명합니다. 무작정 굶거나 스쿼트를 100번 처방하는 것이 오히려 증상을 악화시킬 수 있는 이유가 바로 여기에 있습니다.
+      </div>
+    </div>
+
+  </div><!-- /page-1 -->
+
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- PAGE 3: 3대 밸브 계기판                     -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="page" id="page-2">
+
+    <div class="valve-section">
+      <div style="padding: 24px 0 8px;">
+        <div class="valve-header">3대 통제 불능 밸브 진단</div>
+        <div style="font-size:13px; color:var(--sub); word-break:keep-all; line-height:1.6;">
+          원인축 점수 뒤에서 처방 비율과 강도를 흔드는 3개 필터축의 실체입니다. 이 밸브 수치에 따라 12주 처방전의 세부 내용이 달라집니다.
+        </div>
+      </div>
+
+      <!-- 명 밸브 -->
+      <div class="valve-card valve-명">
+        <div class="valve-card-header">
+          <div class="valve-icon">🌙</div>
+          <div class="valve-title-group">
+            <div class="valve-title">명 (命) — 선천 체질 필터 밸브</div>
+            <div class="valve-subtitle">사주 오행 + MBTI → 감정 카피 톤 결정</div>
+          </div>
+          <div class="valve-score" id="valve-명-score">80</div>
+        </div>
+        <div class="gauge-wrap">
+          <div class="gauge-track"><div class="gauge-fill" id="gauge-명" style="width:0%"></div></div>
+          <div class="gauge-labels"><span>선천 약형</span><span>선천 강형</span></div>
+        </div>
+        <div class="valve-card-body">
+          생년월일 기반 사주 오행상 '불(火)'의 기질을 타고나 완벽주의적 성향이 강하지만, 현재 과도한 스트레스로 기운이 상체로 역류하여 '상열하한'을 심화시키고 있습니다. 이 밸브를 통해 심리적 타격 없이 설득될 수 있도록 최종 리포트의 감정 카피 톤앤매너를 제어합니다.
+        </div>
+      </div>
+
+      <!-- 동 밸브 -->
+      <div class="valve-card valve-동">
+        <div class="valve-card-header">
+          <div class="valve-icon">🏃</div>
+          <div class="valve-title-group">
+            <div class="valve-title">동 (動) — 활동량 NEAT 필터 밸브</div>
+            <div class="valve-subtitle">일일 NEAT 수준 → 운동 처방 강도 브레이크</div>
+          </div>
+          <div class="valve-score" id="valve-동-score">90</div>
+        </div>
+        <div class="gauge-wrap">
+          <div class="gauge-track"><div class="gauge-fill" id="gauge-동" style="width:0%"></div></div>
+          <div class="gauge-labels"><span>활동 부족</span><span>과잉 활동</span></div>
+        </div>
+        <div class="valve-card-body">
+          일일 연속 좌식 시간이 극도로 길어 현재 대사 소모량 밸브가 완벽하게 잠겨 있습니다. 이 상태에서 무작정 고강도 운동을 가하면 부신 호르몬이 무너져 내리므로, 12주 처방전에서 초기 운동 처방 비율을 안전하게 낮추는 안전 브레이크 역할을 합니다.
+        </div>
+      </div>
+
+      <!-- 술 밸브 -->
+      <div class="valve-card valve-술">
+        <div class="valve-card-header">
+          <div class="valve-icon">💉</div>
+          <div class="valve-title-group">
+            <div class="valve-title">술 (術) — 시술 선호 기질 필터 밸브</div>
+            <div class="valve-subtitle">≥70: 메디컬 시술 / &lt;70: 자연 요법 스왑</div>
+          </div>
+          <div class="valve-score" id="valve-술-score">75</div>
+        </div>
+        <div class="gauge-wrap">
+          <div class="gauge-track"><div class="gauge-fill" id="gauge-술" style="width:0%"></div></div>
+          <div class="gauge-labels"><span>자연 요법형</span><span>메디컬 선호형</span></div>
+        </div>
+        <div class="valve-card-body">
+          과거 미용 시술(바디 주사 등) 경험이 풍부하고 지루한 장기 변화보다 국소 라인의 빠른 개선 및 의료적 개입을 신뢰하는 성향이 강하게 작동 중입니다. 이 밸브 수치에 따라 최종 오프라인 메디컬 시술 연계 프로토콜 노출 여부가 자동으로 스왑됩니다.
+        </div>
+        <!-- 분기 배지 -->
+        <div class="valve-branch-badge branch-medical" id="valve-술-branch" style="display:none;">
+          🏥 술 밸브 ≥70 → <strong>1주차: 메디컬 시술 처방 연동</strong>
+        </div>
+        <div class="valve-branch-badge branch-natural" id="valve-술-branch-nat" style="display:none;">
+          🌿 술 밸브 &lt;70 → <strong>1주차: 자연 온열 홈케어 처방 연동</strong>
+        </div>
+      </div>
+
+    </div>
+  </div><!-- /page-2 -->
+
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- PAGE 4: 11방향 전문 진단처방 솔루션          -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="page" id="page-3">
+
+    <div class="rx-header">
+      <h2 id="rx-header-name">님을 구원하기 위해 결성된<br>11방향 전문 진단처방 가이드</h2>
+      <p>8대 원인축 점수 기반 · 가장 위험한 TOP3 영역 🚨 긴급 배치</p>
+    </div>
+
+    <!-- TOP3 긴급 -->
+    <div class="rx-top3">
+      <div class="rx-top3-label">🚨 긴급 처방 — TOP 3 고위험 영역</div>
+      <div id="rx-top3-cards">
+        <!-- JS로 동적 렌더링 -->
+      </div>
+    </div>
+
+    <!-- 나머지 8방향 -->
+    <div class="rx-others">
+      <div class="rx-others-label">📋 전문 진단처방 센터 가이드 (나머지 8방향)</div>
+      <div class="rx-list-card">
+        <div id="rx-others-list">
+          <!-- JS로 동적 렌더링 -->
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /page-3 -->
+
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- PAGE 5: 12주 처방전                          -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="page" id="page-4">
+
+    <div class="prescription-header">
+      <h2 id="rx12-title">님 맞춤형 12주<br>대사 사슬 끊기 최종 처방전</h2>
+      <p>1달 차(1~4주) 처방전의 모든 정밀 알맹이를 투명하게 공개합니다.<br>숨 쉬듯 즉시 이행하십시오.</p>
+    </div>
+
+    <div class="week-cards">
+
+      <!-- ■ 1주차 — 완전 오픈 -->
+      <div class="week-card-open">
+        <div class="week-card-header">
+          <div class="week-num-badge">1주차</div>
+          <div class="week-card-title">세포 깨우기 &amp; 호르몬 휴식<br>[4.회복 + 10.관리 개입]</div>
+        </div>
+        <div class="week-card-body">
+          <div class="week-quote">"이번 주는 절대로 뛰어선 안 됩니다. 뇌와 몸의 밸브를 열어주는 처방을 즉시 시작하세요."</div>
+          <div class="week-items">
+            <div class="week-item">
+              <div class="week-item-tag tag-recovery">4.회복</div>
+              <div>밤 11시 이후 스마트폰 화면을 차단하고 수면 6시간을 확보하세요. 부신을 쉬게 하는 것이 체지방 분해의 절대적 선행 조건입니다.</div>
+            </div>
+            <div class="week-item">
+              <div class="week-item-tag tag-manage">10.관리</div>
+              <div>퇴근 후 폼롤러를 서해부(허벅지 안쪽)에 대고 하루 딱 3분간만 문지르세요. 고여서 굳어가던 하지 체액이 배농되기 시작합니다.</div>
+            </div>
+            <!-- 술 밸브 분기 렌더링 -->
+            <div class="week-item" id="w1-술-medical" style="display:none;">
+              <div class="week-item-tag tag-medical">9.시술↗</div>
+              <div><strong>[술 밸브 ≥70 메디컬 처방]</strong> 제휴 병원을 통한 코르티솔 리셋 영양 수액 및 하체 냉증을 녹이는 심부 고주파 레이저 테라피 의료 개입 1회 처방을 스왑 연동합니다.</div>
+            </div>
+            <div class="week-item" id="w1-술-natural" style="display:none;">
+              <div class="week-item-tag tag-manage">10.관리↗</div>
+              <div><strong>[술 밸브 &lt;70 자연형 처방]</strong> 인위적인 시술 대신 성향에 맞춰 스스로 순환을 유도하는 고농축 천연 미네랄 온열 입욕 프로토콜 및 부신 이완 홈케어 가이드를 처방합니다.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ■ 2주차 — 완전 오픈 -->
+      <div class="week-card-open">
+        <div class="week-card-header">
+          <div class="week-num-badge">2주차</div>
+          <div class="week-card-title">장내 염증 완화 &amp; 가짜 배고픔 차단<br>[2.식단 + 6.심리 개입]</div>
+        </div>
+        <div class="week-card-body">
+          <div class="week-quote">"밤마다 찾아오는 가짜 식욕, 당신의 식탐이 아니라 탈진한 뇌의 비명입니다."</div>
+          <div class="week-items">
+            <div class="week-item">
+              <div class="week-item-tag tag-psych">6.심리</div>
+              <div>뇌의 야식 도파민 갈구 현상을 제어하기 위해 식이행동 패턴 교정 미션을 발동합니다. 고장 난 보상 회로가 강제 폭식 명령을 내리는 메커니즘을 무력화합니다.</div>
+            </div>
+            <div class="week-item">
+              <div class="week-item-tag tag-diet">2.식단</div>
+              <div>장내 유해균(뚱보균)을 사멸시키고 저등급 염증을 가라앉히기 위한 프로바이오틱스 및 장 건강 식단 정화 가이드를 이행하십시오.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ■ 3주차 — 완전 오픈 -->
+      <div class="week-card-open">
+        <div class="week-card-header">
+          <div class="week-num-badge">3주차</div>
+          <div class="week-card-title">혈당 롤러코스터 브레이크<br>[2.식단 + 1.약 개입]</div>
+        </div>
+        <div class="week-card-body">
+          <div class="week-quote">"지방을 움켜쥐는 인슐린 밸브를 강제로 잠가야 할 타이밍입니다."</div>
+          <div class="week-items">
+            <div class="week-item">
+              <div class="week-item-tag tag-diet">2.식단</div>
+              <div>인슐린 저항성을 잡기 위해 식사 시 채소 → 단백질 → 탄수화물 순으로 섭취하는 거꾸로 식사법을 이번 주 반드시 정착시킵니다.</div>
+            </div>
+            <div class="week-item">
+              <div class="week-item-tag tag-med">1.약</div>
+              <div>대사 저하 및 혈당 스파이크가 극심한 경우, 제휴 비만클리닉을 통한 정밀 대사·혈당 관련 약물 전문 상담 처방을 연동합니다.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ■ 4주차 — 완전 오픈 -->
+      <div class="week-card-open">
+        <div class="week-card-header">
+          <div class="week-num-badge">4주차</div>
+          <div class="week-card-title">골격 정렬 &amp; 국소 대사 점화<br>[7.체형 + 3.운동 개입]</div>
+        </div>
+        <div class="week-card-body">
+          <div class="week-quote">"이제 막혔던 통로가 뚫렸습니다. 불꽃을 켤 시간입니다."</div>
+          <div class="week-items">
+            <div class="week-item">
+              <div class="week-item-tag tag-posture">7.체형</div>
+              <div>골반 틀어짐과 근막 정체를 물리적으로 바로잡는 10분 메디컬 스트레칭 프로토콜을 최초 해제합니다. 관절 손상 없는 가동성 회복이 우선입니다.</div>
+            </div>
+            <div class="week-item">
+              <div class="week-item-tag tag-exercise">3.운동</div>
+              <div>관절과 부신에 타격을 주는 스쿼트 등 금기 운동을 철저히 회피하고, 하체 대사 효율을 뚫어내는 저강도 순환 운동 처방을 결합합니다.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ■ 5~8주차 — 블러 잠금 -->
+      <div class="week-card-locked">
+        <div class="week-card-header">
+          <div class="week-num-badge">5~8주차</div>
+          <div class="week-card-title">도파민 보상회로 재보정 & 요요 방지</div>
+        </div>
+        <div class="week-card-body">🔒 이 처방 구역은 잠겨 있습니다. 결제 완료 시 해제됩니다.</div>
+      </div>
+
+      <!-- ■ 9~12주차 — 블러 잠금 -->
+      <div class="week-card-locked">
+        <div class="week-card-header">
+          <div class="week-num-badge">9~12주차</div>
+          <div class="week-card-title">인슐린 안정화 & 체질 전환 완료</div>
+        </div>
+        <div class="week-card-body">🔒 이 처방 구역은 잠겨 있습니다. 결제 완료 시 해제됩니다.</div>
+      </div>
+
+    </div><!-- /week-cards -->
+
+    <!-- 잠금 오버레이 메시지 -->
+    <div class="lock-overlay">
+      <div class="lo-icon">🔒</div>
+      <div class="lo-title">5~12주 핵심 마스터 처방전이 잠겨 있습니다</div>
+      <div class="lo-desc">
+        1~4주차 처방전의 이행만으로도 하체 부종과 야식 갈구 현상은 눈에 띄게 사라질 것입니다.<br>하지만 진짜 대사 파괴 사슬을 완전히 끊어내고 '먹어도 살이 잘 안 찌는 몸'으로 들어서는 5주차부터의 핵심 마스터 처방전은 잠겨 있습니다.
+      </div>
+    </div>
+
+    <!-- CTA -->
+    <div class="cta-section">
+      <div class="cta-closing" id="cta-closing">
+        12주 후, 그동안 입지 못하고 장롱에만 넣어두었던 그 옷을 입고 거울 앞에서 활짝 웃을 <strong id="cta-name">홍길동</strong>님의 미래를 현실로 만드세요.<br><br>
+        11방향 전문가 드림팀이 최종 승인한 12주 전체 처방전 가이드를 즉시 잠금 해제하십시오.
+      </div>
+      <button class="cta-btn" onclick="alert('SlimMind 12주 처방전 결제/예약 팝업 트리거')">
+        👗 12주 후 그 옷을 입고 활짝 웃을<br><span id="cta-btn-name">홍길동</span>님을 위해<br>나만의 12주 처방전 전체 해제하기
+      </button>
+      <div class="cta-sub-text">🔒 결제 즉시 5~12주차 전체 처방전 잠금 해제 · 30일 열람 보장</div>
+    </div>
+
+  </div><!-- /page-4 -->
+
+</div><!-- /result-wrap -->
+
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   SlimMind v3.0 결과지 마스터 JS
+   
+   Props (URL 파라미터 또는 window.SLIMMIND_DATA 주입):
+   - name         : 유저 이름
+   - chain_code   : CHAIN_POSTURE_EDEMA | CHAIN_STRESS_DOPAMINE | ...
+   - axis_scores  : { 약,식,복,한,심,형,하,관,동,술,명 } (0~100)
+   - user_age     : 실제 나이
+   - Q_WAIST_SCORE: 허리 점수 (0~100 환산)
+   - isMenopause  : true | false
+══════════════════════════════════════════════════════════════ */
+
+/* ── 1. 데이터 정의 ──────────────────────────────── */
+
+// 11방향 처방 마스터 데이터 (1~11번 처방 방향)
+const RX_DIRECTIONS = [
+  { id:1,  key:'약', name:'약 (藥)', icon:'💊', where:'내과·가정의학·비만클리닉',
+    desc:'식욕억제제 상담 및 GLP-1 계열(위고비·삭센다), 대사 약물 검토 연계. 혈당·인슐린 저항성 정밀 처방.' },
+  { id:2,  key:'식', name:'식단 (食)', icon:'🥗', where:'다이어트센터·영양컨설팅',
+    desc:'칼로리 매크로 비율 조정 및 저GI 혈당 관리식, 장 건강식 재설계. 뚱보균 사멸 식단 가이드.' },
+  { id:3,  key:'동', name:'운동 (動)', icon:'🏃', where:'트레이너·필라테스·요가',
+    desc:'순환 유도용 LISS, 가동성 스트레칭 및 척추 부하 방지 금기운동 회피 처방. 부신 과부하 방지 프로토콜.' },
+  { id:4,  key:'복', name:'회복 (復)', icon:'😴', where:'일반·한의원·수면클리닉',
+    desc:'만성 부신 피로 개선을 위한 수면 위생 프로토콜과 정체기 리피딩 전략. 코르티솔 안정화 처방.' },
+  { id:5,  key:'한', name:'한방 (韓)', icon:'🌿', where:'한의원',
+    desc:'체질 한약, 경락 침 치료를 통한 한열 균형 회복 및 기혈 순환 처방. 상열하한 교정 치료.' },
+  { id:6,  key:'심', name:'심리 (心)', icon:'🧠', where:'정신건강의학과·심리상담',
+    desc:'스트레스성 정서적 폭식과 무의식 가짜 허기 자동식이 패턴 교정. 도파민 중독 회로 해체 프로토콜.' },
+  { id:7,  key:'형', name:'체형 (型)', icon:'🦴', where:'필라테스·재활·정형외과',
+    desc:'골반 전방경사 및 척추 불균형 교정을 위한 근막 가동성 제한 해제 프로토콜. 10분 메디컬 스트레칭.' },
+  { id:8,  key:'하', name:'호르몬 (荷)', icon:'⚗️', where:'산부인과·내분비내과',
+    desc:'갑상선, 인슐린 저항성, 생리주기 대사 저하 변수 정밀 추적. 성호르몬 불균형 검사 및 치료.' },
+  { id:9,  key:'관', name:'시술 (術)', icon:'💉', where:'성형외과·피부과',
+    desc:'지방분해주사 및 체외충격파, 고주파를 활용한 바디 컨투어링 의료 개입 매칭. 셀룰라이트 메디컬 처방.' },
+  { id:10, key:'관', name:'관리 (管)', icon:'🛁', where:'에스테틱·뷰티',
+    desc:'비의료적 림프 배농 마사지와 부종 온열 관리(래핑) 처방. 하지 체액 정체 해소 집중 케어.' },
+  { id:11, key:'명', name:'철학/점술 (命)', icon:'🔮', where:'명리상담·한의원',
+    desc:'사주 명리 오행 분석과 MBTI를 결합한 도파민 행동기질 취약성 보완 컨설팅.' }
+];
+
+// 원인 사슬 도미노 데이터 (현재 확정 2개 + 확장 예정 4개)
+const CHAIN_DATA = {
+  CHAIN_POSTURE_EDEMA: {
+    badge: '🔗 자세·부종 파괴 사슬',
+    bodymap_desc: '현재 <strong>자세·부종 파괴 사슬</strong>이 감지되었습니다.<br>골반 왜곡 + 하체 림프 정체 부위가 붉은색 펄스로 표시됩니다.',
+    bodymap_badge: '● 하체 부종/셀룰라이트 패턴',
+    opening_headline: '솔직히 말씀드릴게요.<br>아무리 해도 안 빠지는 게 의지력 문제가 아닙니다.',
+    opening_body: `배는 딱딱하게 볼록 나오고, 손발은 차갑고, 저녁만 되면 발목이 양말 자국 그대로 부어오르는 이 증상들. 이건 살이 아니라 당신의 몸이 비명을 지르고 있는 <span class="oc-emphasis">고장 신호</span>입니다.<br><br>
+그동안 남들보다 몸에 대해 훨씬 잘 알고, 지독하게 열심히 굶고 달렸는데도 왜 내 몸 하나 뜻대로 통제가 안 될까 밤마다 혼자 자책하셨죠? 그 외롭고 답답한 심정을 우리는 깊이 공감합니다.<br><br>
+거북목과 골반이 틀어지면서 하체로 가는 림프 순환로가 물리적으로 막혔고, 고인 체액이 밤마다 부종이 되다 결국 단단한 셀룰라이트 벽으로 굳어버린 것입니다.<br><br>
+<span class="oc-emphasis">당신은 게으른 게 아니라, 이 고장 난 몸을 이끌고 생존하기 위해 온몸으로 버텨내고 있었던 것입니다.</span>`,
+    title: '다이어트를 멈춰 세운 잔혹한 인과관계: [형 ➔ 관 ➔ 한] 파괴 사슬',
+    steps: [
+      { title: '1단계: 형(骨格·根幕) — 물리적 통로의 폐쇄', color: '#ff6b6b',
+        desc: '일상적인 자세 불균형과 골반 틀어짐이 하체로 내려가는 주요 혈관과 림프관을 밧줄로 묶듯 강하게 압박합니다. 이 구조적 정체 상태에서는 아무리 걸어도 살이 빠지지 않고 오히려 관절 통증과 보상 움직임만 가속화됩니다.' },
+      { title: '2단계: 관(下肢·浮腫) — 독소 체액의 감옥', color: '#ff4d4d',
+        desc: '순환로가 막히자 밤마다 쓰레기 수거차가 멈춘 것처럼 하지에 독소 체액이 무겁게 고입니다. 배출되지 못한 노폐물이 피하지방 세포 주변에 끈적하게 엉겨 붙으며, 아무리 마사지를 해도 꿈쩍도 하지 않는 단단한 셀룰라이트 감옥을 형성합니다.' },
+      { title: '3단계: 한(氣血·上熱下寒) — 하체 대사 완전 고립', color: '#ff3333',
+        desc: '결국 화(火)기운은 위로 쏠려 머리와 가슴은 답답하고, 아랫배와 손발은 얼음장처럼 차가운 상열하한 상태에 갇힙니다. 차가워진 하체 조직은 스스로를 보호하기 위해 지방을 더 두껍게 움켜쥐기 시작합니다. 이 사슬을 끊지 않는다면 스쿼트를 할수록 하체는 더 굵고 단단해집니다.' }
+    ],
+    bottom_desc: '이 파괴 사슬의 핵심은, <strong>자세 교정 없이 식단과 운동만으로 하체 부종을 해결하려는 모든 시도가 왜 반드시 실패하는지</strong>를 설명합니다. 물리적으로 막힌 통로를 먼저 뚫지 않으면 어떤 처방도 밑 빠진 독에 물 붓기입니다.'
+  },
+  CHAIN_STRESS_DOPAMINE: {
+    badge: '🔗 스트레스·도파민 파괴 사슬',
+    bodymap_desc: '현재 <strong>스트레스·도파민 파괴 사슬</strong>이 감지되었습니다.<br>복부 내장지방 + 폭식 패턴 부위가 붉은색 펄스로 표시됩니다.',
+    bodymap_badge: '● 내장지방/야식 폭식 패턴',
+    opening_headline: '솔직히 말씀드릴게요.<br>의지력으로 버텨낸 다이어트가 오히려 살을 더 찌웠습니다.',
+    opening_body: `굶고 달리고 버텼는데 왜 몸은 반대로 반응하는 걸까요? 야식 충동이 밤마다 더 강해지고, 정작 낮에는 입맛이 없다가 밤 12시만 되면 냉장고 앞에 서 있는 자신을 발견하셨죠?<br><br>
+이건 의지 부족이 아닙니다. <span class="oc-emphasis">고장 난 뇌가 보내는 비상 신호</span>입니다.<br><br>
+만성 스트레스가 코르티솔을 폭발시키고, 탈진한 신경계가 당장 도파민을 충전할 수 있는 고당질 식품을 강렬하게 갈구하도록 명령을 내립니다. 당신의 식탐이 아니라, 고장 난 뇌의 생존 본능이 만든 회로입니다.<br><br>
+<span class="oc-emphasis">이 사슬을 끊지 않는 한 다이어트를 할수록 폭식은 더 심해집니다.</span>`,
+    title: '다이어트를 멈춰 세운 잔혹한 인과관계: [복 ➔ 심 ➔ 식] 파괴 사슬',
+    steps: [
+      { title: '1단계: 복(自律神經·副腎疲勞) — 야간 대사 기절 상태', color: '#ff6b6b',
+        desc: '만성 스트레스와 압박감으로 인해 코르티솔 호르몬이 비정상적으로 과활성화되었습니다. 몸이 위기 상태로 인지하여 밤마다 대사 스위치를 강제로 기절시키고 불면을 유도하여, 아무리 적게 먹어도 빠지지 않는 방어 태세에 돌입했습니다.' },
+      { title: '2단계: 심(도파민 보상회로 폭식) — 뇌의 강제 명령', color: '#ff4d4d',
+        desc: '대사가 마비되고 뇌 신경계가 탈진하자 브레이크를 담당하는 보상 회로가 고장 납니다. 의지와 무관하게, 고장 난 뇌는 당장 도파민을 채울 수 있는 고당질·고지방의 자극적인 맛을 강렬하게 갈구(Craving)하도록 강제 폭식 명령을 내립니다.' },
+      { title: '3단계: 식(혈당 롤러코스터) — 만성 염증 및 체질 고착화', color: '#ff3333',
+        desc: '결국 야간 폭식으로 혈당 스파이크가 폭발하고, 세포 수준의 저등급 염증이 장내세균막 생태계를 완전히 교란합니다. 몸이 먹는 족족 지방으로 움켜쥐는 체질로 고착화된 것이며, 이 사슬을 끊지 않는 한 그 어떤 다이어트 노력도 밑 빠진 독에 물 붓기입니다.' }
+    ],
+    bottom_desc: '이 파괴 사슬의 핵심은, <strong>심리·신경계의 교란을 해결하지 않고 식단과 운동만으로 폭식 패턴을 끊으려는 모든 시도가 왜 반드시 실패하는지</strong>를 설명합니다. 뇌의 보상 회로를 먼저 교정하지 않으면 의지력은 아무 소용이 없습니다.'
+  },
+  CHAIN_INSULIN_REBOUND: {
+    badge: '🔗 인슐린·혈당 파괴 사슬',
+    bodymap_desc: '현재 <strong>인슐린·혈당 롤러코스터 사슬</strong>이 감지되었습니다.<br>복부 내장지방 + 인슐린 저항 부위가 붉은색 펄스로 표시됩니다.',
+    bodymap_badge: '● 인슐린 저항/혈당 스파이크 패턴',
+    opening_headline: '솔직히 말씀드릴게요.<br>굶을수록 살이 붙는 게 당신 몸의 비극적 반응입니다.',
+    opening_body: `조금만 먹어도 배가 나오고, 배고프지 않은데 자꾸 뭔가 집어먹게 되고, 식사 후 30분이 지나면 또 허기가 찾아오는 이 패턴. 이건 식탐이 아닙니다.<br><br>
+<span class="oc-emphasis">인슐린이 폭주하고 있다는 신체 비상 경보</span>입니다.<br><br>
+혈당이 롤러코스터처럼 오르내릴 때마다 세포는 인슐린 신호에 무감각해지고, 몸은 점점 더 많은 음식을 지방으로 저장하는 체질로 고착화됩니다. 이 사슬을 끊지 않으면 어떤 식단도 효과가 없습니다.<br><br>
+<span class="oc-emphasis">당신이 게으른 게 아니라, 인슐린 시스템이 고장 난 것입니다.</span>`,
+    title: '다이어트를 멈춰 세운 잔혹한 인과관계: [식 ➔ 약 ➔ 하] 파괴 사슬',
+    steps: [
+      { title: '1단계: 식(혈당 롤러코스터) — 인슐린 폭주 시작', color: '#ff6b6b',
+        desc: '정제 탄수화물 위주의 식습관이 식사마다 혈당을 폭발적으로 올리고, 췌장이 대량의 인슐린을 분비하여 급격한 혈당 저하를 만들어냅니다. 이 롤러코스터가 반복될수록 세포는 인슐린 신호에 둔감해지기 시작합니다.' },
+      { title: '2단계: 약(인슐린 저항성 고착) — 대사 기능 마비', color: '#ff4d4d',
+        desc: '세포가 인슐린에 반응하지 않자 췌장은 더 많은 인슐린을 분비합니다. 과잉 인슐린은 지방 분해를 완전히 차단하고 모든 영양소를 지방으로 전환하도록 명령합니다. 이 상태에서는 칼로리를 아무리 줄여도 살이 빠지지 않습니다.' },
+      { title: '3단계: 하(호르몬 연쇄 붕괴) — 체질 완전 고착', color: '#ff3333',
+        desc: '인슐린 저항성이 심화되면서 성호르몬·갑상선호르몬·렙틴 등 모든 대사 호르몬이 연쇄적으로 교란됩니다. 몸은 이제 먹는 족족 지방을 쌓는 체질로 완전히 고착화되며, 이 사슬을 끊지 않는 한 어떤 식단도 일시적 효과에 그칩니다.' }
+    ],
+    bottom_desc: '이 파괴 사슬의 핵심은, <strong>혈당 관리 없이 칼로리만 줄이는 다이어트가 왜 인슐린 저항성을 더 악화시키는지</strong>를 설명합니다. 먹는 순서와 식품 선택을 바꾸지 않으면 어떤 노력도 소용없습니다.'
+  },
+  CHAIN_HORMONE_FATIGUE: {
+    badge: '🔗 호르몬·피로 파괴 사슬',
+    bodymap_desc: '현재 <strong>호르몬·부신 피로 파괴 사슬</strong>이 감지되었습니다.<br>복부·골반 호르몬 교란 부위가 붉은색 펄스로 표시됩니다.',
+    bodymap_badge: '● 호르몬 교란/갱년기 대사 저하 패턴',
+    opening_headline: '솔직히 말씀드릴게요.<br>지금 당신의 몸은 호르몬이 내부에서 무너지고 있습니다.',
+    opening_body: `갑자기 체중이 늘기 시작했고, 열감과 냉감이 교차하며, 피로가 잠을 자도 풀리지 않고, 예전에는 통했던 다이어트가 이제는 전혀 효과가 없다면?<br><br>
+이건 의지의 문제가 아닙니다. <span class="oc-emphasis">호르몬 시스템이 붕괴되고 있다는 비상 신호</span>입니다.<br><br>
+성호르몬·갑상선·부신이 연쇄적으로 교란되면 기초대사량이 절벽처럼 떨어지고, 지방 분해 효소가 작동을 멈춥니다. 이 상태에서 굶으면 근육만 빠지고 지방은 더 단단하게 붙습니다.<br><br>
+<span class="oc-emphasis">당신의 노력이 부족한 게 아니라, 호르몬이 모든 노력을 무효화하고 있는 것입니다.</span>`,
+    title: '다이어트를 멈춰 세운 잔혹한 인과관계: [하 ➔ 복 ➔ 약] 파괴 사슬',
+    steps: [
+      { title: '1단계: 하(荷·호르몬 교란) — 대사 엔진 점화 실패', color: '#ff6b6b',
+        desc: '성호르몬(에스트로겐·프로게스테론) 불균형 또는 갑상선 기능 저하가 기초대사량을 30~40% 급감시킵니다. 지방 분해를 촉진하는 효소들이 활성화되지 않아 아무리 운동해도 에너지원으로 지방이 연소되지 않습니다.' },
+      { title: '2단계: 복(副腎疲勞·코르티솔) — 생존 모드 강제 전환', color: '#ff4d4d',
+        desc: '호르몬 교란으로 신체가 만성 위기 상태를 인식하면 부신이 코르티솔을 과잉 분비하여 생존 모드로 전환합니다. 복부 지방을 에너지 비축용으로 최우선 보호하고, 모든 대사를 최소화하여 지방 분해를 원천 차단합니다.' },
+      { title: '3단계: 약(藥·대사 약물 필요성) — 자력 교정 불가 단계', color: '#ff3333',
+        desc: '호르몬과 부신이 동시에 무너진 상태에서는 식단과 운동만으로 자력 교정이 불가능합니다. 전문 내분비 검사와 필요 시 의료적 호르몬 조절 개입 없이는 어떤 다이어트도 임시방편에 불과합니다.' }
+    ],
+    bottom_desc: '이 파괴 사슬의 핵심은, <strong>호르몬 검사와 의료적 개입 없이 식단·운동만으로 갱년기 대사 저하를 극복하려는 시도가 왜 오히려 근육 손실만 가속화하는지</strong>를 설명합니다.'
+  },
+  CHAIN_COLD_LYMPH: {
+    badge: '🔗 냉증·림프 파괴 사슬',
+    bodymap_desc: '현재 <strong>냉증·림프 순환 파괴 사슬</strong>이 감지되었습니다.<br>하체 냉기 + 림프 정체 부위가 붉은색 펄스로 표시됩니다.',
+    bodymap_badge: '● 하체 냉증/림프 순환 장애 패턴',
+    opening_headline: '솔직히 말씀드릴게요.<br>손발이 차가운 그 순간부터 살은 이미 빠지지 않습니다.',
+    opening_body: `아랫배는 항상 차갑고, 다리는 쉽게 붓고, 특히 허벅지와 종아리가 단단하게 뭉쳐있다면?<br><br>
+이건 단순한 체질이 아닙니다. <span class="oc-emphasis">하체 대사 회로가 완전히 잠겨버린 상태</span>입니다.<br><br>
+한의학에서 말하는 한기(寒氣)가 하체에 쌓이면 혈관과 림프관이 수축하여 독소 배출이 멈추고, 지방 세포는 냉기로부터 내장을 보호하기 위해 더 두껍게 층을 쌓습니다. 운동을 해도 하체 혈류가 충분히 오르지 않으면 지방은 타지 않습니다.<br><br>
+<span class="oc-emphasis">당신의 하체가 차가운 이유는 체질이 아니라, 순환 회로가 고장 났기 때문입니다.</span>`,
+    title: '다이어트를 멈춰 세운 잔혹한 인과관계: [한 ➔ 관 ➔ 식] 파괴 사슬',
+    steps: [
+      { title: '1단계: 한(韓·기혈 순환) — 하체 냉기 장벽 형성', color: '#ff6b6b',
+        desc: '상열하한 상태에서 화(火)기운은 상체에 집중되고 하체는 냉기로 가득 찹니다. 차가워진 혈관과 림프관은 수축하여 산소와 영양소 공급이 줄어들고, 지방 분해 효소가 활성화되는 체온 조건이 유지되지 않습니다.' },
+      { title: '2단계: 관(管·하지 체액 정체) — 독소 체액 고임', color: '#ff4d4d',
+        desc: '림프 순환이 멈추자 노폐물과 독소 체액이 하체에 정체됩니다. 배출되지 못한 체액이 피하지방 사이에 스며들어 굳어지면서 셀룰라이트로 굳어갑니다. 아무리 마사지해도 온도가 낮으면 림프는 흐르지 않습니다.' },
+      { title: '3단계: 식(食·영양 흡수 교란) — 장내 환경 악화', color: '#ff3333',
+        desc: '하체 냉증이 장 주변 온도까지 낮추면 소화 효소 활성이 저하되어 영양 흡수가 불균형해집니다. 좋은 것을 먹어도 흡수가 안 되고, 나쁜 것은 더 잘 축적되는 악순환이 시작됩니다. 한방 온열 처방 없이는 어떤 식단도 효과가 반감됩니다.' }
+    ],
+    bottom_desc: '이 파괴 사슬의 핵심은, <strong>체온 회복과 림프 순환 개선 없이 식단과 운동만으로 하체 냉증성 비만을 해결하려는 시도가 왜 실패하는지</strong>를 설명합니다.'
+  },
+  CHAIN_COMPLEX: {
+    badge: '🔗 복합 파괴 사슬',
+    bodymap_desc: '현재 <strong>복합 다중 파괴 사슬</strong>이 감지되었습니다.<br>전신 복합 대사 교란 패턴이 붉은색 펄스로 표시됩니다.',
+    bodymap_badge: '● 복합 다중 원인 패턴',
+    opening_headline: '솔직히 말씀드릴게요.<br>단 하나의 이유로 살이 찌는 게 아닙니다.',
+    opening_body: `다이어트를 해봤는데 이건 되다가 저건 안 되고, 저건 됐다가 이건 다시 막히고... 왜 일관성 없이 몸이 반응하는지 도무지 이해가 안 되셨죠?<br><br>
+그건 당신 몸이 <span class="oc-emphasis">여러 개의 고장이 동시에 얽혀서 서로를 악화시키는 복합 파괴 사슬</span>에 걸려 있기 때문입니다.<br><br>
+자세가 틀어지면서 림프가 막히고, 그 스트레스가 코르티솔을 올리고, 코르티솔이 식욕을 폭발시키고, 폭식이 혈당을 흔들고, 혈당이 호르몬을 교란하는... 이 모든 것이 동시에 진행되고 있습니다.<br><br>
+<span class="oc-emphasis">단순 식단이나 단순 운동이 효과가 없었던 이유가 여기에 있습니다. 여러 사슬을 동시에 끊어야 합니다.</span>`,
+    title: '다이어트를 멈춰 세운 잔혹한 인과관계: 복합 다중 파괴 사슬',
+    steps: [
+      { title: '1단계: 복합 물리 교란 — 자세·순환 복합 정체', color: '#ff6b6b',
+        desc: '골격 불균형, 림프 정체, 하체 냉증이 동시에 작동하여 신체의 물리적 순환 시스템이 전방위로 막혀 있습니다. 어느 한 곳만 뚫어도 다른 곳에서 막히는 상태입니다.' },
+      { title: '2단계: 복합 대사 교란 — 호르몬·혈당 동시 붕괴', color: '#ff4d4d',
+        desc: '인슐린 저항성, 코르티솔 과잉, 성호르몬 불균형이 연쇄적으로 맞물려 기초대사량이 복합적으로 저하되어 있습니다. 하나를 잡으면 다른 하나가 흔들리는 구조입니다.' },
+      { title: '3단계: 복합 심리 교란 — 도파민·식이행동 패턴 고착', color: '#ff3333',
+        desc: '물리적·대사적 고장이 누적되면서 심리적 폭식 회로와 식이장애 패턴이 동시에 고착화되었습니다. 의지로 버티는 것이 오히려 반동 폭식을 심화시키는 악순환이 진행 중입니다.' }
+    ],
+    bottom_desc: '이 복합 파괴 사슬은 <strong>단일 처방으로 해결이 불가능</strong>합니다. 물리적·대사적·심리적 세 가지 사슬을 동시에, 그리고 올바른 순서로 끊어야만 진짜 변화가 시작됩니다.'
+  }
+};
+
+/* ── 2. 핵심 계산 함수 ───────────────────────────── */
+
+/**
+ * 4대 대사지표 계산
+ */
+function calcMetrics({ axis_scores, user_age, Q_WAIST_SCORE, isMenopause }) {
+  const raw = user_age + Math.round((axis_scores['식'] + axis_scores['복']) * 0.15);
+  return {
+    metabolicAge:      Math.min(user_age + 29, raw),
+    bellyFatPredict:   Math.min(100, Math.round((Q_WAIST_SCORE * 0.6) + (axis_scores['하'] * 0.4))),
+    hormoneFatigue:    Math.min(100, Math.round(axis_scores['복'] * (isMenopause ? 1.3 : 1.1))),
+    bodyImbalanceIndex: Math.min(100, Math.round((axis_scores['형'] * 0.7) + (axis_scores['관'] * 0.3)))
+  };
+}
+
+/**
+ * TOP3 원인축 판정 (8대 진단축 기준)
+ * 진단축: 약/식/복/한/심/형/하/관
+ */
+function getTop3Axes(axis_scores) {
+  const diagAxes = ['약','식','복','한','심','형','하','관'];
+  return diagAxes
+    .map(k => ({ key: k, score: axis_scores[k] || 0 }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3)
+    .map(a => a.key);
+}
+
+/**
+ * 원인축 key → 처방 방향 ID 매핑
+ * 주의: 시술(9번)과 관리(10번) 모두 '관' 축에서 발생할 수 있음
+ * TOP3에서 '관'이 나오면 → 기본: 10.관리, 술≥70: 9.시술
+ */
+const AXIS_TO_RX = {
+  '약': 1,   // 1.약
+  '식': 2,   // 2.식단
+  '복': 4,   // 4.회복
+  '한': 5,   // 5.한방
+  '심': 6,   // 6.심리
+  '형': 7,   // 7.체형
+  '하': 8,   // 8.호르몬
+  '관': 10,  // 10.관리 (기본) / 술≥70 → 9.시술
+};
+
+/* ── 3. 렌더링 함수 ──────────────────────────────── */
+
+function renderAll(data) {
+  const { name, chain_code, axis_scores, user_age, Q_WAIST_SCORE, isMenopause } = data;
+  const metrics = calcMetrics(data);
+  const chain   = CHAIN_DATA[chain_code] || CHAIN_DATA['CHAIN_POSTURE_EDEMA'];
+  const top3    = getTop3Axes(axis_scores);
+  const isMedical = axis_scores['술'] >= 70;
+
+  /* PAGE 1 */
+  document.getElementById('cover-name').textContent       = name + '님만을 위한';
+  document.getElementById('cover-chain-badge').textContent = chain.badge;
+  document.getElementById('bodymap-desc').innerHTML        = chain.bodymap_desc;
+  document.getElementById('bodymap-badge').textContent     = chain.bodymap_badge;
+
+  document.getElementById('m-meta-age').textContent    = metrics.metabolicAge   + '세';
+  document.getElementById('m-belly').textContent       = metrics.bellyFatPredict + '%';
+  document.getElementById('m-hormone').textContent     = metrics.hormoneFatigue  + '%';
+  document.getElementById('m-body-shape').textContent  = metrics.bodyImbalanceIndex + '%';
+
+  document.getElementById('opening-headline').innerHTML = chain.opening_headline;
+  document.getElementById('opening-body').innerHTML     = chain.opening_body;
+
+  /* PAGE 2 도미노 */
+  document.getElementById('domino-title').textContent   = chain.title;
+  document.getElementById('chain-bottom-desc').innerHTML = chain.bottom_desc;
+  const stepsEl = document.getElementById('domino-steps');
+  stepsEl.innerHTML = '';
+  chain.steps.forEach((step, i) => {
+    const div = document.createElement('div');
+    div.className = 'domino-step';
+    div.style.borderLeftColor = step.color;
+    div.innerHTML = `<div class="domino-step-title" style="color:${step.color}">${step.title}</div>
+                     <div class="domino-step-desc">${step.desc}</div>`;
+    stepsEl.appendChild(div);
+    if (i < chain.steps.length - 1) {
+      const arr = document.createElement('div');
+      arr.className = 'domino-arrow';
+      arr.style.color = step.color;
+      arr.textContent = '↓';
+      stepsEl.appendChild(arr);
+    }
+  });
+
+  /* PAGE 3 밸브 */
+  ['명','동','술'].forEach(key => {
+    const sc = axis_scores[key] || 0;
+    const el = document.getElementById('valve-' + key + '-score');
+    if (el) el.textContent = sc;
+    const g  = document.getElementById('gauge-' + key);
+    if (g)  setTimeout(() => g.style.width = sc + '%', 100);
+  });
+  const brM  = document.getElementById('valve-술-branch');
+  const brN  = document.getElementById('valve-술-branch-nat');
+  if (isMedical) {
+    if (brM) brM.style.display = 'flex';
+    if (brN) brN.style.display = 'none';
+  } else {
+    if (brM) brM.style.display = 'none';
+    if (brN) brN.style.display = 'flex';
+  }
+
+  /* PAGE 4 — TOP3 */
+  document.getElementById('rx-header-name').innerHTML = name + '님을 구원하기 위해 결성된<br>11방향 전문 진단처방 가이드';
+  const top3El = document.getElementById('rx-top3-cards');
+  top3El.innerHTML = '';
+  const rankLabel = ['🚨 전문 진단처방 1위 영역', '🚨 전문 진단처방 2위 영역', '🚨 전문 진단처방 3위 영역'];
+  top3.forEach((axisKey, rank) => {
+    let rxId = AXIS_TO_RX[axisKey];
+    // 술 밸브 분기: 관 축이 TOP3에 들고 술≥70이면 9.시술로 스왑
+    if (axisKey === '관' && isMedical) rxId = 9;
+    const rx = RX_DIRECTIONS.find(r => r.id === rxId) || RX_DIRECTIONS.find(r => r.key === axisKey);
+    if (!rx) return;
+    const div = document.createElement('div');
+    div.className = 'rx-urgent-card';
+    div.innerHTML = `
+      <div class="rx-urgent-badge">${rankLabel[rank]}</div>
+      <div class="rx-urgent-title">${rx.icon} ${rx.name}</div>
+      <div class="rx-urgent-where">[받는 곳: ${rx.where}]</div>
+      <div class="rx-urgent-desc">${rx.desc}</div>
+    `;
+    top3El.appendChild(div);
+  });
+
+  /* PAGE 4 — 나머지 8방향 */
+  const top3Ids = top3.map(k => {
+    let id = AXIS_TO_RX[k];
+    if (k === '관' && isMedical) id = 9;
+    return id;
+  });
+  const othersEl = document.getElementById('rx-others-list');
+  othersEl.innerHTML = '';
+  RX_DIRECTIONS.filter(rx => !top3Ids.includes(rx.id)).forEach(rx => {
+    const div = document.createElement('div');
+    div.className = 'rx-list-item';
+    div.innerHTML = `
+      <div class="rx-num">${rx.id}</div>
+      <div class="rx-item-content">
+        <div class="rx-item-name">${rx.icon} ${rx.name}</div>
+        <div class="rx-item-where">${rx.where}</div>
+        <div class="rx-item-desc">${rx.desc}</div>
+      </div>
+    `;
+    othersEl.appendChild(div);
+  });
+
+  /* PAGE 5 술 분기 */
+  document.getElementById('rx12-title').innerHTML = name + '님 맞춤형 12주<br>대사 사슬 끊기 최종 처방전';
+  document.getElementById('cta-name').textContent     = name;
+  document.getElementById('cta-btn-name').textContent = name;
+  if (isMedical) {
+    document.getElementById('w1-술-medical').style.display = 'flex';
+    document.getElementById('w1-술-natural').style.display = 'none';
+  } else {
+    document.getElementById('w1-술-medical').style.display = 'none';
+    document.getElementById('w1-술-natural').style.display = 'flex';
+  }
+}
+
+/* ── 4. 탭 전환 ──────────────────────────────────── */
+function showPage(idx, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + idx).classList.add('active');
+  btn.classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+/* ── 5. 초기화 ──────────────────────────────────── */
+function init() {
+  // 기본 데모 데이터 (실제 서비스에서는 URL 파라미터 또는 window.SLIMMIND_DATA 주입)
+  let DATA = {
+    name:          '홍길동',
+    chain_code:    'CHAIN_POSTURE_EDEMA',
+    axis_scores:   { 약:40, 식:85, 복:90, 한:80, 심:75, 형:85, 하:60, 관:85, 동:90, 술:75, 명:80 },
+    user_age:      35,
+    Q_WAIST_SCORE: 80,
+    isMenopause:   false
+  };
+
+  // window.SLIMMIND_DATA 주입 방식 지원
+  if (window.SLIMMIND_DATA) {
+    DATA = { ...DATA, ...window.SLIMMIND_DATA };
+  }
+
+  // URL 파라미터 방식 지원 (테스트용)
+  try {
+    const p = new URLSearchParams(window.location.search);
+    if (p.get('name'))        DATA.name        = p.get('name');
+    if (p.get('chain'))       DATA.chain_code  = p.get('chain');
+    if (p.get('age'))         DATA.user_age    = parseInt(p.get('age'));
+    if (p.get('waist'))       DATA.Q_WAIST_SCORE = parseInt(p.get('waist'));
+    if (p.get('menopause'))   DATA.isMenopause  = p.get('menopause') === 'true';
+    // axis_scores JSON 주입
+    if (p.get('scores')) {
+      try { DATA.axis_scores = JSON.parse(decodeURIComponent(p.get('scores'))); } catch(e){}
+    }
+  } catch(e) {}
+
+  renderAll(DATA);
+
+  // 로딩 종료
+  setTimeout(() => {
+    const ls = document.getElementById('loading-screen');
+    ls.classList.add('fade-out');
+    setTimeout(() => {
+      ls.style.display = 'none';
+      document.getElementById('result-wrap').style.display = 'block';
+    }, 700);
+  }, 2500);
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

@@ -7,6 +7,7 @@ import surveyDataJs from '../public/survey-data.js?raw'
 import adminHtml from '../public/admin.html?raw'
 import consultantHtml from '../public/consultant.html?raw'
 import resultHtml from '../public/result.html?raw'
+import resultV3Html from '../public/result-v3.html?raw'
 import bodymapPreviewHtml from '../public/bodymap_preview.html?raw'
 import slimmindLiveHtml from '../public/slimmind_live.html?raw'
 
@@ -1114,6 +1115,10 @@ app.get('/slimmind', (c) => c.html(slimmindLiveHtml))
 // ─── result.html 직접 접근 (bc=BC-01&name=... 파라미터 방식) ──────────────
 app.get('/result.html', (c) => c.html(resultHtml))
 app.get('/result', (c) => c.html(resultHtml))
+
+// ─── result-v3.html (SlimMind v3.0 11축 결과지) ────────────────────────────
+app.get('/result-v3.html', (c) => c.html(resultV3Html))
+app.get('/result-v3', (c) => c.html(resultV3Html))
 
 // ─── favicon ───────────────────────────────────────────────────────────────
 app.get('/favicon.ico', async (c) => {
