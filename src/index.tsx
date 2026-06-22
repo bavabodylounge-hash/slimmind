@@ -2,7 +2,8 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import indexHtml from '../public/index.html?raw'
 import surveyDataJs from '../public/survey-data.js?raw'
-import bcDefinitionsJs from '../public/bc-definitions.js?raw'
+// bc-definitions.js — BC코드 시스템 폐기로 미사용 (axis 시스템으로 전환)
+// import bcDefinitionsJs from '../public/bc-definitions.js?raw'
 import adminHtml from '../public/admin.html?raw'
 import consultantHtml from '../public/consultant.html?raw'
 import resultHtml from '../public/result.html?raw'
@@ -123,8 +124,9 @@ function resultIdGen() {
 app.get('/survey-data.js', (c) =>
   c.body(surveyDataJs, 200, { 'Content-Type': 'application/javascript; charset=utf-8' })
 )
+// /bc-definitions.js — BC코드 시스템 폐기, 204 No Content 반환
 app.get('/bc-definitions.js', (c) =>
-  c.body(bcDefinitionsJs, 200, { 'Content-Type': 'application/javascript; charset=utf-8' })
+  c.body('/* bc-definitions.js deprecated — axis system */', 200, { 'Content-Type': 'application/javascript; charset=utf-8' })
 )
 
 // ═══════════════════════════════════════════════════════════════
