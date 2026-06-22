@@ -245,6 +245,20 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .macro-legend-item { display: flex; align-items: flex-start; gap: 4px; font-size: 11px; color: var(--sub); }
 .macro-legend-item strong { color: var(--text); font-size: 12px; }
 
+/* ── CH4: 칼로리 목표 카드 ── */
+.calorie-card { background: linear-gradient(135deg, #FFF7ED 0%, #FEF3C7 100%); border-radius: 16px; padding: 18px 16px; margin-top: 12px; border: 1px solid #FDE68A; }
+.calorie-card-title { font-size: 13px; font-weight: 800; color: #92400E; margin-bottom: 14px; display: flex; align-items: center; gap: 6px; }
+.calorie-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+.calorie-cell { background: #fff; border-radius: 10px; padding: 10px 8px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+.calorie-cell-val { font-size: 17px; font-weight: 900; color: var(--accent); line-height: 1; margin-bottom: 3px; }
+.calorie-cell-val.target { color: #E8631A; font-size: 19px; }
+.calorie-cell-label { font-size: 10px; color: var(--sub); font-weight: 600; }
+.calorie-breakdown { display: flex; gap: 6px; flex-wrap: wrap; }
+.calorie-macro-item { flex: 1; min-width: 0; background: rgba(255,255,255,.7); border-radius: 8px; padding: 7px 6px; text-align: center; }
+.calorie-macro-val { font-size: 13px; font-weight: 800; margin-bottom: 1px; }
+.calorie-macro-label { font-size: 10px; color: var(--sub); }
+.calorie-tip { margin-top: 10px; font-size: 11px; color: #78350F; line-height: 1.6; background: rgba(251,191,36,.15); border-radius: 8px; padding: 8px 10px; }
+
 /* ── CH5: Phase 블록 ── */
 .phase-block { border-radius: 12px; overflow: hidden; margin-bottom: 12px; border: 1px solid var(--border); }
 .phase-header { padding: 12px 16px; display: flex; align-items: center; gap: 10px; }
@@ -660,6 +674,8 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
           <div class="macro-legend" id="macroLegend"></div>
         </div>
         <div style="margin-top:12px;font-size:12px;color:var(--sub);line-height:1.7" id="macroDesc"></div>
+        <!-- 칼로리 목표 카드 (renderCH4에서 동적 삽입) -->
+        <div id="calorieCardWrap"></div>
       </div>
     </div>
 
@@ -979,6 +995,88 @@ function calcMacro(topAxes) {
     A10: { p: 30, c: 45, f: 25, desc: '실천 가능성을 최우선으로 설계했습니다. 완벽한 식단보다 80% 지속이 더 중요합니다.' }
   };
   return macros[primary] || macros['A01'];
+}
+
+// ── 칼로리 목표 계산 (Harris-Benedict BMR 기반) ──────
+function calcCalorie(answers) {
+  const m   = (answers && answers._measure) || {};
+  const h   = parseFloat(m.h) || 165;   // 키 (cm)
+  const w   = parseFloat(m.w) || 65;    // 현재 체중 (kg)
+  const t   = parseFloat(m.t) || 0;     // 목표 체중 (kg) — 0 = 미입력
+  const gender = (answers && answers.Q02) || 'female';
+  const age  = 35;                       // 나이 데이터 없을 때 기본값
+
+  // Harris-Benedict BMR
+  const bmr = gender === 'male'
+    ? Math.round(66.5   + 13.75 * w + 5.003 * h - 6.755 * age)
+    : Math.round(655.1  +  9.563 * w + 1.850 * h - 4.676 * age);
+
+  // TDEE: 가벼운 활동 (sedentary~light) 1.375
+  const tdee   = Math.round(bmr * 1.375);
+
+  // 목표 칼로리: TDEE – 400 kcal 적자 (주 ~0.35 kg 감량)
+  const target = Math.round(tdee - 400);
+
+  // 이상체중 (브로카 공식)
+  const ideal = gender === 'male'
+    ? Math.round((h - 100) * 0.9)
+    : Math.round((h - 100) * 0.85);
+
+  // 목표 체중 미입력 시 이상체중으로 대체
+  const goalWeight = t > 0 ? t : ideal;
+  const tolose = Math.max(0, Math.round((w - goalWeight) * 10) / 10);
+
+  return { bmr, tdee, target, h, w, goalWeight, tolose, gender };
+}
+
+// ── 칼로리 카드 HTML 생성 ────────────────────────────
+function buildCalorieCard(answers, macro) {
+  const cal  = calcCalorie(answers);
+  const p    = Math.round(cal.target * macro.p / 100 / 4);   // 단백질 g (4 kcal/g)
+  const c    = Math.round(cal.target * macro.c / 100 / 4);   // 탄수화물 g
+  const f    = Math.round(cal.target * macro.f / 100 / 9);   // 지방 g (9 kcal/g)
+
+  // 활동 부족 여부: tdee < 1500이면 수치 보정 메시지
+  const isLow = cal.target < 1200;
+  const displayTarget = isLow ? 1200 : cal.target;
+  const tipMsg = isLow
+    ? '⚠️ 계산된 목표치가 1,200kcal 미만입니다. 최소 1,200kcal를 유지하세요.'
+    : `현재 체중 <strong>${cal.w}kg</strong>에서 목표 <strong>${cal.goalWeight}kg</strong>까지 ${cal.tolose > 0 ? '<strong>' + cal.tolose + 'kg</strong> 감량이 필요합니다.' : '이미 목표 범위입니다! 유지 식단을 권장합니다.'}`;
+
+  return `
+    <div class="calorie-card">
+      <div class="calorie-card-title">🔥 하루 목표 칼로리</div>
+      <div class="calorie-row">
+        <div class="calorie-cell">
+          <div class="calorie-cell-val">${cal.bmr}</div>
+          <div class="calorie-cell-label">기초대사량<br>(kcal)</div>
+        </div>
+        <div class="calorie-cell">
+          <div class="calorie-cell-val">${cal.tdee}</div>
+          <div class="calorie-cell-label">유지 칼로리<br>(kcal)</div>
+        </div>
+        <div class="calorie-cell">
+          <div class="calorie-cell-val target">${displayTarget}</div>
+          <div class="calorie-cell-label">목표 칼로리<br>(kcal)</div>
+        </div>
+      </div>
+      <div class="calorie-breakdown">
+        <div class="calorie-macro-item">
+          <div class="calorie-macro-val" style="color:#16A34A">${p}g</div>
+          <div class="calorie-macro-label">단백질</div>
+        </div>
+        <div class="calorie-macro-item">
+          <div class="calorie-macro-val" style="color:#D97706">${c}g</div>
+          <div class="calorie-macro-label">탄수화물</div>
+        </div>
+        <div class="calorie-macro-item">
+          <div class="calorie-macro-val" style="color:#2563EB">${f}g</div>
+          <div class="calorie-macro-label">지방</div>
+        </div>
+      </div>
+      <div class="calorie-tip">${tipMsg}</div>
+    </div>
+  `;
 }
 
 // ── 챕터 이동 ───────────────────────────────────
@@ -1410,6 +1508,12 @@ function renderCH4(results) {
     <div class="macro-legend-item"><div class="macro-dot" style="background:#2563EB;margin-top:4px"></div><div><strong>지방 ${macro.f}%</strong><br>호르몬 지원</div></div>
   `;
   $('macroDesc').innerHTML = macro.desc;
+
+  // 칼로리 목표 카드 (체중 데이터 기반)
+  const calorieWrap = $('calorieCardWrap');
+  if (calorieWrap) {
+    calorieWrap.innerHTML = buildCalorieCard(results.answers || {}, macro);
+  }
 
   // 오늘 밤 액션
   const primaryAxis = topAxes[0]?.axis || 'default';
