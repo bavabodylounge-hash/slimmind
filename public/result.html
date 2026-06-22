@@ -1004,7 +1004,11 @@ function calcCalorie(answers) {
   const w   = parseFloat(m.w) || 65;    // 현재 체중 (kg)
   const t   = parseFloat(m.t) || 0;     // 목표 체중 (kg) — 0 = 미입력
   const gender = (answers && answers.Q02) || 'female';
-  const age  = 35;                       // 나이 데이터 없을 때 기본값
+  // age_group 값: '-20'=20대, '0'=30대, '20'=40대, '40'=50대, '60'=60대+
+  // → 실제 나이 추정: 30대 기본 35세, 각 decade 중간값 적용
+  const agGroupMap = {'-20': 25, '0': 35, '20': 45, '40': 55, '60': 65};
+  const ageKey = (answers && (answers.age_group || answers.Q13)) || null;
+  const age = agGroupMap[ageKey] || 35;
 
   // Harris-Benedict BMR
   const bmr = gender === 'male'
