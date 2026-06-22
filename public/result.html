@@ -361,6 +361,13 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
   .blur-overlay { display: none; }
 }
 
+/* ── 개발 모드: 페이월 완전 비활성화 ── */
+.blur-preview-wrap { display: none !important; }
+.blur-overlay { display: none !important; }
+.paywall-backdrop { display: none !important; }
+.tab-btn.locked { color: inherit !important; pointer-events: auto !important; }
+.tab-btn.locked::after { display: none !important; }
+
 /* ── 결제 바텀시트 모달 ── */
 .paywall-backdrop {
   position: fixed; inset: 0; background: rgba(0,0,0,.55);
@@ -1085,10 +1092,7 @@ function buildCalorieCard(answers, macro) {
 
 // ── 챕터 이동 ───────────────────────────────────
 function goChapter(num) {
-  if ((num >= 4) && !IS_PAID) {
-    showPaywall();
-    return;
-  }
+  // IS_PAID = true (개발 모드) — 잠금 없음
   document.querySelectorAll('.chapter').forEach(c => c.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   $('ch' + num).classList.add('active');
