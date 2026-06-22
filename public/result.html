@@ -1621,12 +1621,27 @@ function initResult() {
     if (stored) answers = JSON.parse(stored);
   } catch(e) {}
 
-  // URL 파라미터 파싱 (token 등)
+  // URL 파라미터 파싱 (token, id, demo 등)
   const params = new URLSearchParams(window.location.search);
   const token = params.get('token');
-  const demo = params.get('demo'); // ?demo=1 이면 fallback 허용
+  const resultId = params.get('id');   // ?id=RES-XXXX — 서버 저장 결과 직접 조회
+  const demo = params.get('demo');     // ?demo=1 이면 fallback 허용
 
-  if (token) {
+  if (resultId) {
+    // 서버 저장 결과 조회 (?id=RES-XXXX)
+    fetch(`/api/survey/result/public/${resultId}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!data.success) { showSurveyGuide(); return; }
+        // answers에 서버 결과 병합
+        const serverAnswers = data.merged_answers || data.answers || {};
+        // localStorage answers와 병합 (서버 우선)
+        answers = Object.assign({}, answers, serverAnswers);
+        processResults(answers);
+      })
+      .catch(() => { showSurveyGuide(); });
+
+  } else if (token) {
     // 서버에서 답변 로드 (API 연동)
     fetch(`/api/survey/result?token=${token}`)
       .then(r => r.json())
@@ -1635,6 +1650,7 @@ function initResult() {
         processResults(answers);
       })
       .catch(() => processResults(answers));
+
   } else {
     // answers가 비어있고 demo 파라미터도 없으면 설문 유도 화면
     const hasAnswers = Object.keys(answers).filter(k => !k.startsWith('_')).length > 0;

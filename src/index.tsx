@@ -541,6 +541,37 @@ app.get('/api/consultant/results', requireRole('ANY'), async (c) => {
   return c.json({ results: result.results })
 })
 
+// GET /api/survey/result/public/:id — 공개 결과 조회 (result.html에서 ?id= 파라미터용)
+app.get('/api/survey/result/public/:id', async (c) => {
+  const db = c.env.DB
+  const id = c.req.param('id')
+  const result = await db.prepare('SELECT * FROM results WHERE id=?').bind(id).first<any>()
+  if (!result) return c.json({ success: false, error: '결과를 찾을 수 없습니다.' }, 404)
+
+  const answers = parseJson(result.survey_answers_json, {})
+
+  return c.json({
+    success: true,
+    result_id: result.id,
+    user_name: result.user_name,
+    bc_primary: result.bc_primary,
+    bc_secondary: result.bc_secondary,
+    axis_primary: result.axis_primary,
+    axis_primary_score: result.axis_primary_score,
+    consultant_code: result.consultant_code,
+    created_at: result.created_at,
+    answers,
+    // 결과지 렌더에 필요한 신체 정보 answers에 병합
+    merged_answers: {
+      ...answers,
+      _bc_primary: result.bc_primary,
+      _bc_secondary: result.bc_secondary,
+      _axis_primary: result.axis_primary,
+      _result_id: result.id,
+    }
+  })
+})
+
 // GET /api/results/:id — 결과 상세 JSON (컨설턴트 본인 또는 MASTER)
 app.get('/api/results/:id', async (c) => {
   const user = await getAuthUser(c)
