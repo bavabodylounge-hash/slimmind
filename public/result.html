@@ -346,9 +346,116 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
   .blur-preview-card { filter: none; }
   .blur-overlay { display: none; }
 }
+
+/* ── 결제 바텀시트 모달 ── */
+.paywall-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,.55);
+  z-index: 9000; display: flex; align-items: flex-end;
+  animation: backdropIn .25s ease;
+}
+@keyframes backdropIn { from { opacity:0 } to { opacity:1 } }
+.paywall-sheet {
+  width: 100%; max-width: 480px; margin: 0 auto;
+  background: #fff; border-radius: 24px 24px 0 0;
+  padding: 0 0 env(safe-area-inset-bottom, 16px);
+  animation: sheetUp .3s cubic-bezier(.34,1.2,.64,1);
+  max-height: 92vh; overflow-y: auto;
+}
+@keyframes sheetUp { from { transform:translateY(100%) } to { transform:translateY(0) } }
+.paywall-handle {
+  width: 40px; height: 4px; background: #E2E8F0;
+  border-radius: 2px; margin: 12px auto 0;
+}
+.paywall-hero {
+  background: linear-gradient(160deg, #0B1929 0%, #1A3A5C 100%);
+  padding: 24px 24px 20px; color: #fff; text-align: center; margin: 12px 16px 0;
+  border-radius: 16px;
+}
+.paywall-badge {
+  display: inline-block; background: rgba(255,165,0,.2); border: 1px solid rgba(255,165,0,.4);
+  border-radius: 20px; padding: 3px 10px; font-size: 10px; color: #FCA67C;
+  font-weight: 700; letter-spacing: 1px; margin-bottom: 10px;
+}
+.paywall-title {
+  font-size: 20px; font-weight: 900; margin-bottom: 6px; line-height: 1.35;
+}
+.paywall-sub {
+  font-size: 12px; color: #94A3B8; line-height: 1.7;
+}
+.paywall-benefits {
+  padding: 16px 16px 0;
+}
+.paywall-benefit-row {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 0; border-bottom: 1px solid #F1F5F9;
+}
+.paywall-benefit-row:last-child { border-bottom: none; }
+.paywall-benefit-icon { font-size: 20px; flex-shrink: 0; width: 28px; text-align: center; }
+.paywall-benefit-text { flex: 1; }
+.paywall-benefit-title { font-size: 13px; font-weight: 700; color: #1A3A5C; margin-bottom: 2px; }
+.paywall-benefit-desc { font-size: 11px; color: #64748B; line-height: 1.5; }
+.paywall-price-box {
+  margin: 16px 16px 0; padding: 16px; background: #FFF7ED;
+  border-radius: 14px; border: 1px solid #FED7AA;
+}
+.paywall-price-row { display: flex; align-items: baseline; gap: 6px; margin-bottom: 4px; }
+.paywall-price-main { font-size: 28px; font-weight: 900; color: #E8631A; }
+.paywall-price-orig { font-size: 14px; color: #94A3B8; text-decoration: line-through; }
+.paywall-price-badge {
+  background: #DC2626; color: #fff; border-radius: 6px;
+  padding: 2px 6px; font-size: 10px; font-weight: 700;
+}
+.paywall-price-sub { font-size: 11px; color: #92400E; }
+.paywall-cta-wrap { padding: 16px 16px 8px; }
+.paywall-cta-btn {
+  display: block; width: 100%; padding: 18px;
+  background: linear-gradient(135deg, #E8631A, #F59E0B);
+  color: #fff; border: none; border-radius: 16px;
+  font-size: 17px; font-weight: 900; cursor: pointer; text-align: center;
+  box-shadow: 0 6px 24px rgba(232,99,26,.4);
+  transition: transform .12s, box-shadow .12s; letter-spacing: .3px;
+}
+.paywall-cta-btn:active { transform: scale(.98); box-shadow: 0 3px 12px rgba(232,99,26,.3); }
+.paywall-cta-sub {
+  text-align: center; font-size: 11px; color: #94A3B8; margin-top: 8px; padding-bottom: 4px;
+}
+.paywall-close {
+  position: absolute; top: 14px; right: 16px;
+  background: none; border: none; font-size: 22px; color: #94A3B8;
+  cursor: pointer; padding: 4px; line-height: 1;
+}
+.paywall-methods {
+  display: flex; gap: 8px; justify-content: center; padding: 0 16px 4px;
+  flex-wrap: wrap;
+}
+.paywall-method {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 11px; color: #64748B;
+}
+/* unlock 축하 오버레이 */
+.unlock-toast {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%) scale(.85);
+  background: #0B1929; color: #fff; border-radius: 20px;
+  padding: 24px 32px; text-align: center; z-index: 9999;
+  opacity: 0; pointer-events: none; transition: all .3s;
+}
+.unlock-toast.show {
+  opacity: 1; transform: translate(-50%,-50%) scale(1);
+}
+.unlock-toast-icon { font-size: 40px; margin-bottom: 10px; }
+.unlock-toast-text { font-size: 16px; font-weight: 800; }
 </style>
 </head>
 <body>
+
+<!-- 결제 바텀시트 모달 (JS로 동적 삽입) -->
+<div id="paywall-backdrop" style="display:none"></div>
+
+<!-- unlock 축하 토스트 -->
+<div class="unlock-toast" id="unlockToast">
+  <div class="unlock-toast-icon">🎉</div>
+  <div class="unlock-toast-text">처방 전체 해제됐어요!</div>
+</div>
 
 <!-- 로딩 스크린 -->
 <div id="loading-screen">
@@ -498,19 +605,19 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
       <div class="dopamine-desc" id="dopamineTypeDesc"></div>
     </div>
 
-    <!-- Blur 처방 미리보기 (결제 전환) -->
+    <!-- Blur 처방 미리보기 (결제 전환) — JS로 동적 렌더링 -->
     <div class="blur-preview-wrap" id="blurPreviewWrap">
       <div class="blur-preview-card" id="blurCard">
         <div style="font-size:15px;font-weight:800;margin-bottom:12px">💊 맞춤 처방 플랜</div>
-        <div style="font-size:13px;color:#64748B;line-height:1.8;margin-bottom:12px">
+        <div style="font-size:13px;color:#64748B;line-height:1.8;margin-bottom:12px" id="blurCardList">
           <div>• 단백질 <strong style="color:#16A34A">우선</strong> 탄단지 비율 조정</div>
           <div>• 하루 <strong style="color:#D97706">3끼 타이밍</strong> 최적화</div>
           <div>• 체형 특화 <strong style="color:#7C3AED">운동 루틴</strong> 설계</div>
           <div>• <strong style="color:#DC2626">12주 여정</strong> Phase별 목표</div>
           <div>• 오늘 밤부터 시작할 <strong style="color:#0B1929">3가지 액션</strong></div>
         </div>
-        <div style="background:#F0FDF4;border-radius:8px;padding:10px;font-size:12px;color:#15803D">
-          ✅ 내장지방 집중 감소 프로토콜<br>✅ 코르티솔 리셋 수면 루틴
+        <div style="background:#F0FDF4;border-radius:8px;padding:10px;font-size:12px;color:#15803D" id="blurCardBadge">
+          ✅ 원인 맞춤 감량 프로토콜<br>✅ 오늘 밤 시작 3가지 액션
         </div>
       </div>
       <div class="blur-overlay">
@@ -521,8 +628,8 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
           <span class="plan-badge">🌟 클로징 선언</span>
         </div>
         <div class="blur-lock-title">CH4~CH6 전체 해제</div>
-        <div class="blur-lock-sub">무료 분석 완료! 이제 맞춤 처방을 받으세요</div>
-        <button class="btn-unlock" onclick="goUnlock()">지금 처방 받기 →</button>
+        <div class="blur-lock-sub" id="blurLockSub">무료 분석 완료! 이제 맞춤 처방을 받으세요</div>
+        <button class="btn-unlock" onclick="openPaywallSheet()">지금 처방 받기 →</button>
       </div>
     </div>
 
@@ -892,18 +999,148 @@ function goChapter(num) {
   }
 }
 
-// ── 결제 유도 ────────────────────────────────────
-function goUnlock() {
-  alert('준비 중입니다! 곧 결제 시스템이 연결됩니다. 🔓\n\nCH4~CH6 처방 전체 해제 서비스를 론칭 예정입니다.');
-}
+// ── 결제 바텀시트 ─────────────────────────────────
+const PAYWALL_CONFIG = {
+  price:        '29,000',
+  priceOrig:    '59,000',
+  discount:     '51%',
+  // ▼ 실제 결제 연동 시 교체 (카카오페이 링크 or 토스페이먼츠 URL)
+  // 결제 완료 후 /result?paid=1 로 리다이렉트되어야 함
+  paymentUrl:   null,   // null = 데모 모드 (즉시 unlock)
+  kakaoChannel: null,   // '카카오채널 ID' — 1:1 문의 연결용
+};
 
 function showPaywall() {
   // CH3로 이동해서 blur 처방 보여줌
   goChapter(3);
-  // blur 섹션으로 스크롤
   setTimeout(() => {
     $('blurPreviewWrap')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, 300);
+  setTimeout(() => openPaywallSheet(), 600);
+}
+
+function openPaywallSheet() {
+  const name = RESULTS?.answers?.Q01 || RESULTS?.answers?.name || '';
+  const typeName = RESULTS?.typeInfo?.name || '다이어트 유형';
+
+  const backdrop = $('paywall-backdrop');
+  backdrop.innerHTML = `
+    <div class="paywall-sheet" id="paywallSheet">
+      <div class="paywall-handle"></div>
+      <div style="position:relative">
+        <button class="paywall-close" onclick="closePaywallSheet()">✕</button>
+        <div class="paywall-hero">
+          <div class="paywall-badge">🔓 FULL REPORT</div>
+          <div class="paywall-title">${name ? name + '님의 ' : ''}맞춤 처방<br>전체를 꺼내드릴게요</div>
+          <div class="paywall-sub">${typeName}에 최적화된<br>12주 여정 + 오늘 밤 3가지 액션까지</div>
+        </div>
+      </div>
+
+      <div class="paywall-benefits">
+        <div class="paywall-benefit-row">
+          <div class="paywall-benefit-icon">💊</div>
+          <div class="paywall-benefit-text">
+            <div class="paywall-benefit-title">CH4 — 원인축별 처방 강도 + 탄단지 플랜</div>
+            <div class="paywall-benefit-desc">10축 점수 기반 맞춤 처방 바차트 · 체중·체지방률 연동 탄단지 자동 산출 · 오늘 밤 3가지 즉시 실천 액션</div>
+          </div>
+        </div>
+        <div class="paywall-benefit-row">
+          <div class="paywall-benefit-icon">🗓️</div>
+          <div class="paywall-benefit-text">
+            <div class="paywall-benefit-title">CH5 — 12주 여정 Phase 플랜</div>
+            <div class="paywall-benefit-desc">리셋·가속·유지·안착 4단계 맞춤 로드맵 · 각 Phase별 핵심 전략과 금지 행동 가이드</div>
+          </div>
+        </div>
+        <div class="paywall-benefit-row">
+          <div class="paywall-benefit-icon">🌟</div>
+          <div class="paywall-benefit-text">
+            <div class="paywall-benefit-title">CH6 — 감성 클로징 + B2B 매칭</div>
+            <div class="paywall-benefit-desc">유형별 맞춤 선언문 · 내 결과 공유 · 전문가 1:1 매칭 연결</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="paywall-price-box">
+        <div class="paywall-price-row">
+          <span class="paywall-price-main">₩${PAYWALL_CONFIG.price}</span>
+          <span class="paywall-price-orig">₩${PAYWALL_CONFIG.priceOrig}</span>
+          <span class="paywall-price-badge">${PAYWALL_CONFIG.discount} OFF</span>
+        </div>
+        <div class="paywall-price-sub">지금 이 시간 한정 특가 · 분석 리포트 평생 보관</div>
+      </div>
+
+      <div class="paywall-cta-wrap">
+        <button class="paywall-cta-btn" onclick="goUnlock()">
+          지금 전체 처방 받기 →
+        </button>
+        <div class="paywall-cta-sub">결제 후 즉시 잠금 해제 · 100% 안전 결제</div>
+      </div>
+
+      <div class="paywall-methods">
+        <span class="paywall-method">💳 카드</span>
+        <span class="paywall-method">🟡 카카오페이</span>
+        <span class="paywall-method">💙 토스페이</span>
+        <span class="paywall-method">📱 간편결제</span>
+      </div>
+    </div>
+  `;
+  backdrop.style.display = 'flex';
+  backdrop.onclick = e => { if (e.target === backdrop) closePaywallSheet(); };
+
+  // 스크롤 잠금
+  document.body.style.overflow = 'hidden';
+}
+
+function closePaywallSheet() {
+  const backdrop = $('paywall-backdrop');
+  const sheet = $('paywallSheet');
+  if (sheet) {
+    sheet.style.animation = 'none';
+    sheet.style.transform = 'translateY(100%)';
+    sheet.style.transition = 'transform .25s ease';
+  }
+  setTimeout(() => {
+    backdrop.style.display = 'none';
+    backdrop.innerHTML = '';
+    document.body.style.overflow = '';
+  }, 250);
+}
+
+function goUnlock() {
+  closePaywallSheet();
+
+  if (PAYWALL_CONFIG.paymentUrl) {
+    // ── 실제 결제 연동: 외부 결제 URL로 이동
+    // 결제 완료 후 /result?paid=1 으로 리다이렉트되어야 함
+    const returnUrl = encodeURIComponent(window.location.origin + '/result?paid=1');
+    window.location.href = PAYWALL_CONFIG.paymentUrl + '?return_url=' + returnUrl;
+  } else {
+    // ── 데모 모드: 즉시 unlock (결제 URL 미설정 시)
+    unlockPaid();
+  }
+}
+
+function unlockPaid() {
+  IS_PAID = true;
+  localStorage.setItem('slimmind_paid', '1');
+
+  // 탭 잠금 해제
+  document.querySelectorAll('.tab-btn.locked').forEach(b => b.classList.remove('locked'));
+
+  // CH4~6 렌더링 (아직 안 된 경우만)
+  if (RESULTS) {
+    renderCH4(RESULTS);
+    renderCH5(RESULTS);
+    renderCH6(RESULTS, RESULTS.answers);
+  }
+
+  // 축하 토스트
+  const toast = $('unlockToast');
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2500);
+
+  // CH4로 이동
+  setTimeout(() => goChapter(4), 400);
 }
 
 // ── 공유 ─────────────────────────────────────────
@@ -1108,6 +1345,31 @@ function renderCH3(results) {
   $('dopamineTypeName').textContent = dp.emoji + ' ' + dp.name;
   $('dopamineTypeDesc').textContent = dp.desc;
   $('dopamineCard').style.borderColor = dp.color;
+
+  // blur 처방 미리보기 — 유형 데이터로 동적 업데이트
+  if (!IS_PAID) {
+    const name = results.answers?.Q01 || results.answers?.name || '';
+    const typeName = results.typeInfo?.name || '';
+    const primary = results.topAxes?.[0]?.axis || 'A01';
+    const axisMeta = AXIS_META[primary] || {};
+    const macro = calcMacro(results.topAxes || []);
+
+    if ($('blurCardList')) {
+      $('blurCardList').innerHTML = `
+        <div>• <strong style="color:#16A34A">단백질 ${macro.p}%</strong> 우선 탄단지 비율 설계</div>
+        <div>• <strong style="color:#E8631A">${axisMeta.name || '원인축'}</strong> 집중 처방 루틴</div>
+        <div>• 체형 특화 <strong style="color:#7C3AED">운동·식단</strong> 12주 로드맵</div>
+        <div>• Phase별 <strong style="color:#DC2626">주간 목표</strong>와 금지 행동</div>
+        <div>• 오늘 밤부터 시작할 <strong style="color:#0B1929">3가지 액션</strong></div>
+      `;
+    }
+    if ($('blurCardBadge') && typeName) {
+      $('blurCardBadge').innerHTML = `✅ ${typeName} 맞춤 감량 프로토콜<br>✅ ${axisMeta.name || '원인'} 집중 처방 포함`;
+    }
+    if ($('blurLockSub') && name) {
+      $('blurLockSub').textContent = `${name}님 분석 완료! 맞춤 처방을 받으세요`;
+    }
+  }
 }
 
 // ── CH4 렌더링 ────────────────────────────────────
@@ -1289,11 +1551,22 @@ function processResults(answers) {
     };
   }
 
+  // answers를 results에 붙여서 CH6 등에서 참조 가능하게
+  results.answers = answers;
   RESULTS = results;
 
   // 유료 여부 확인
   const params = new URLSearchParams(window.location.search);
-  IS_PAID = params.get('paid') === '1' || localStorage.getItem('slimmind_paid') === '1';
+  const paidByUrl = params.get('paid') === '1';
+  IS_PAID = paidByUrl || localStorage.getItem('slimmind_paid') === '1';
+
+  // ?paid=1 로 복귀 시 localStorage 저장 (결제 완료 영구 처리)
+  if (paidByUrl) {
+    localStorage.setItem('slimmind_paid', '1');
+    // URL에서 paid 파라미터 제거 (깔끔한 URL 유지)
+    const cleanUrl = window.location.pathname;
+    window.history.replaceState(null, '', cleanUrl);
+  }
 
   // 유료 탭 잠금 해제
   if (IS_PAID) {
@@ -1313,6 +1586,7 @@ function processResults(answers) {
   }
 
   // 로딩 → 결과 전환
+  const loadTime = IS_PAID ? 2200 : 1800; // 유료 시 렌더링 시간 확보
   setTimeout(() => {
     $('loading-screen').classList.add('fade-out');
     setTimeout(() => {
@@ -1322,8 +1596,12 @@ function processResults(answers) {
       document.querySelectorAll('.axis-rank-fill').forEach(el => {
         el.style.width = el.style.width; // reflow
       });
+      // ?paid=1 복귀 시 CH4로 바로 이동
+      if (paidByUrl) {
+        setTimeout(() => goChapter(4), 300);
+      }
     }, 600);
-  }, 2200);
+  }, loadTime);
 }
 
 // ── DOMContentLoaded ──────────────────────────────
