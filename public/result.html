@@ -1106,10 +1106,8 @@ const PAYWALL_CONFIG = {
   price:        '29,000',
   priceOrig:    '59,000',
   discount:     '51%',
-  // ▼ 실제 결제 연동 시 교체 (카카오페이 링크 or 토스페이먼츠 URL)
-  // 결제 완료 후 /result?paid=1 로 리다이렉트되어야 함
-  paymentUrl:   null,   // null = 데모 모드 (즉시 unlock)
-  kakaoChannel: null,   // '카카오채널 ID' — 1:1 문의 연결용
+  paymentUrl:   null,                              // null = 카카오채널 문의 방식
+  kakaoChannel: 'http://pf.kakao.com/_xgCgsX',    // 카카오 채널 1:1 문의
 };
 
 function showPaywall() {
@@ -1173,16 +1171,19 @@ function openPaywallSheet() {
 
       <div class="paywall-cta-wrap">
         <button class="paywall-cta-btn" onclick="goUnlock()">
-          지금 전체 처방 받기 →
+          💬 카카오로 결제 문의하기
         </button>
-        <div class="paywall-cta-sub">결제 후 즉시 잠금 해제 · 100% 안전 결제</div>
+        <div class="paywall-cta-sub">카카오 채널 1:1 채팅 · 담당자가 바로 안내해드려요</div>
       </div>
 
+      <div style="margin:0 16px 8px;background:#FFF9E6;border-radius:12px;padding:12px 14px;font-size:12px;color:#7C6700;line-height:1.7">
+        💬 버튼을 누르면 카카오 채널 채팅이 열립니다.<br>
+        담당자가 <strong>결제 방법 안내 + 잠금 해제</strong>를 바로 도와드려요.
+      </div>
       <div class="paywall-methods">
-        <span class="paywall-method">💳 카드</span>
         <span class="paywall-method">🟡 카카오페이</span>
-        <span class="paywall-method">💙 토스페이</span>
-        <span class="paywall-method">📱 간편결제</span>
+        <span class="paywall-method">💳 카드이체</span>
+        <span class="paywall-method">🏦 계좌이체</span>
       </div>
     </div>
   `;
@@ -1212,12 +1213,21 @@ function goUnlock() {
   closePaywallSheet();
 
   if (PAYWALL_CONFIG.paymentUrl) {
-    // ── 실제 결제 연동: 외부 결제 URL로 이동
-    // 결제 완료 후 /result?paid=1 으로 리다이렉트되어야 함
+    // ── 실제 결제 URL 연동 (카카오페이·토스 등)
     const returnUrl = encodeURIComponent(window.location.origin + '/result?paid=1');
     window.location.href = PAYWALL_CONFIG.paymentUrl + '?return_url=' + returnUrl;
+  } else if (PAYWALL_CONFIG.kakaoChannel) {
+    // ── 카카오채널 1:1 문의 방식
+    // 결과 URL을 채널 채팅 시작 메시지로 자동 포함
+    const name = RESULTS?.answers?.Q01 || '';
+    const typeName = RESULTS?.typeInfo?.name || '';
+    const msg = encodeURIComponent(`안녕하세요! 슬림마인드 결과 전체 처방 문의드립니다.\n이름: ${name}\n유형: ${typeName}\n결과 URL: ${window.location.origin}/result`);
+    window.open(
+      `${PAYWALL_CONFIG.kakaoChannel}`,
+      '_blank'
+    );
   } else {
-    // ── 데모 모드: 즉시 unlock (결제 URL 미설정 시)
+    // ── 데모 모드: 즉시 unlock (개발·테스트용)
     unlockPaid();
   }
 }
