@@ -1854,6 +1854,9 @@ function calculateAxisScores(answers) {
   const hasMedicalConditions = medicalConditions.length > 0;
   const ohaengType         = Object.entries(ohaengScores).sort((a, b) => b[1] - a[1])[0][0];
 
+  // E코드 감정 유형 분류
+  const eCode = classifyECode(answers);
+
   return {
     // 핵심 결과
     axisScores: axisNorm,
@@ -1862,6 +1865,7 @@ function calculateAxisScores(answers) {
     dopamineType,      // 'achiever' | 'explorer' | 'stable' | 'survivor'
     ohaengScores,
     ohaengType,
+    eCode,             // 'E01'~'E07'
     // 섹션 L
     allergyExclude,
     skinReaction,
@@ -1872,6 +1876,75 @@ function calculateAxisScores(answers) {
   };
 }
 
+// ══════════════════════════════════════════════════════
+//  E코드 감정 유형 분류 (설문 패턴 → E-01~E-07)
+//  설문 응답을 직접 언급하지 않고 종합 패턴으로 추론
+// ══════════════════════════════════════════════════════
+function classifyECode(answers) {
+  const scores = { E01:0, E02:0, E03:0, E04:0, E05:0, E06:0, E07:0 };
+
+  // E-01: 늘 실패하는 사람 — 시도 3회+ / 요요 2회+
+  const yoyo = answers['Q04'];
+  if (yoyo === 5 || yoyo === 10) scores.E01 += 40;
+  if (yoyo === 2)                 scores.E01 += 15;
+  const expectation = answers['Q00'] || answers['expectation'];
+  if (expectation === 'final')    scores.E01 += 20;
+
+  // E-02: 아무도 몰라주는 사람 — 혼자 다이어트 / 지지 없음
+  const support = answers['Q_SUPPORT'] || answers['Q38'] || '';
+  if (String(support).includes('alone') || String(support).includes('solo')) scores.E02 += 30;
+  const stressLevel = parseInt(answers['Q21']) || 0;
+  if (stressLevel >= 4)           scores.E02 += 20;
+  const gender = answers['Q02'];
+  if (gender === 'female' && stressLevel >= 3) scores.E02 += 10;
+
+  // E-03: 돈 걱정형 — 저비용 선호 / 경제적 압박 스트레스
+  const costPref = answers['Q_COST'] || answers['Q_BUDGET'] || '';
+  if (String(costPref).includes('low') || String(costPref).includes('cheap')) scores.E03 += 30;
+  if (stressLevel >= 3 && expectation === 'health') scores.E03 += 10;
+
+  // E-04: 냉혈한·무관심 — 감정 질문 최소 응답 / 수치 응답 적극
+  const mbti = answers['Q_MBTI'] || answers['Q45'] || '';
+  if (mbti.includes('T')) scores.E04 += 25;
+  if (mbti.includes('J')) scores.E04 += 10;
+  if (expectation === 'plan') scores.E04 += 15;
+
+  // E-05: 폭식·야식형 — 저녁 충동 / 스트레스→단것
+  const lateEat  = answers['Q_LATEEATING'] || answers['Q28'] || '';
+  const sweeting = answers['Q_SWEET'] || answers['Q29'] || '';
+  if (String(lateEat).includes('often') || String(lateEat).includes('daily')) scores.E05 += 35;
+  if (String(sweeting).includes('stress') || String(sweeting).includes('often')) scores.E05 += 25;
+  // Q04 심리·식이행동 축 높은 경우 반영
+  const eatBehavior = answers['Q35'] || answers['Q36'] || '';
+  if (String(eatBehavior).includes('binge') || String(eatBehavior).includes('night')) scores.E05 += 15;
+
+  // E-06: 아픈 사람 — 질환 보유 / 통증
+  const medical = answers['Q_MEDICAL'] || [];
+  const medArr = Array.isArray(medical) ? medical : [medical];
+  if (medArr.length > 0 && !medArr.includes('none')) scores.E06 += 50;
+  const pain = answers['Q_PAIN'] || answers['Q47'] || '';
+  if (String(pain).includes('chronic') || String(pain).includes('pain')) scores.E06 += 20;
+
+  // E-07: 은둔·대인공포 — 사회 활동 없음 / 혼자 식사
+  const social   = answers['Q_SOCIAL'] || answers['Q_ACTIVITY'] || '';
+  const eatAlone = answers['Q_EATALONE'] || answers['Q30'] || '';
+  if (String(social).includes('none') || String(social).includes('rarely')) scores.E07 += 30;
+  if (String(eatAlone).includes('always') || String(eatAlone).includes('often')) scores.E07 += 25;
+  if (mbti.includes('I') && stressLevel >= 3) scores.E07 += 15;
+
+  // 최고 점수 E코드 선택 (동점 시 앞 번호 우선)
+  const best = Object.entries(scores).sort((a, b) => b[1] - a[1])[0][0];
+
+  // E코드가 모두 0점이면(응답 데이터 부족) 축 점수로 2차 추론
+  const total = Object.values(scores).reduce((s, v) => s + v, 0);
+  if (total < 10) {
+    // 기본 fallback: yoyo 없으면 E04, 있으면 E01
+    return yoyo >= 5 ? 'E01' : 'E04';
+  }
+
+  return best;
+}
+
 if (typeof module !== 'undefined') {
-  module.exports = { SECTIONS, QUESTIONS, FEEDBACK_MESSAGES, AXIS_META, TYPE_NAME_TABLE, calculateAxisScores, generateTypeName, getDopamineType };
+  module.exports = { SECTIONS, QUESTIONS, FEEDBACK_MESSAGES, AXIS_META, TYPE_NAME_TABLE, calculateAxisScores, generateTypeName, getDopamineType, classifyECode };
 }
