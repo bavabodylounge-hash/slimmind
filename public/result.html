@@ -4268,13 +4268,72 @@ function initResult() {
     if (stored) answers = JSON.parse(stored);
   } catch(e) {}
 
-  // URL 파라미터 파싱 (token, id, demo 등)
+  // URL 파라미터 파싱 (token, id, demo, data 등)
   const params = new URLSearchParams(window.location.search);
   const token = params.get('token');
   const resultId = params.get('id');   // ?id=RES-XXXX — 서버 저장 결과 직접 조회
   const demo = params.get('demo');     // ?demo=1 이면 fallback 허용
+  const dataParam = params.get('data'); // ?data=base64 — 직접 결과 데이터 전달
 
-  if (resultId) {
+  if (dataParam) {
+    // ?data=base64 파라미터: JSON 디코딩 후 바로 렌더링
+    try {
+      // base64 패딩 보정 (URL에서 = 가 잘릴 수 있음)
+      const padded = dataParam.replace(/-/g, '+').replace(/_/g, '/');
+      const pad = padded.length % 4;
+      const fixed = pad ? padded + '===='.slice(pad) : padded;
+      const decoded = JSON.parse(atob(fixed));
+      // answers 병합
+      if (decoded.answers) answers = Object.assign({}, answers, decoded.answers);
+      // axisScores / topAxes가 이미 있으면 채점 스킵하고 직접 주입
+      if (decoded.axisScores && decoded.topAxes) {
+        const prebuilt = {
+          axisScores: decoded.axisScores,
+          topAxes: decoded.topAxes,
+          eCode: decoded.eCode || 'E04',
+          typeInfo: decoded.typeInfo || { name: '복합형', emoji: '🌀', desc: '' },
+          dopamineType: decoded.dopamineType || 'achiever',
+          ohaengScores: decoded.ohaengScores || {},
+          ohaengType: decoded.ohaengType || null,
+          allergyExclude: decoded.allergyExclude || [],
+          skinReaction: decoded.skinReaction || null,
+          isMenopause: decoded.isMenopause || false,
+          medicalConditions: decoded.medicalConditions || [],
+          hasMedicalConditions: false,
+          answers: answers
+        };
+        RESULTS = prebuilt;
+        const paramsCheck = new URLSearchParams(window.location.search);
+        IS_PAID = paramsCheck.get('paid') === '1' || localStorage.getItem('slimmind_paid') === '1';
+        if (IS_PAID) {
+          document.querySelectorAll('.tab-btn.locked').forEach(b => b.classList.remove('locked'));
+          const bw = $('blurPreviewWrap'); if (bw) bw.style.display = 'none';
+        }
+        try { renderCH1(prebuilt, answers); } catch(e) { console.error('CH1 오류:', e); }
+        try { renderCH2(prebuilt); } catch(e) { console.error('CH2 오류:', e); }
+        try { renderCH3(prebuilt); } catch(e) { console.error('CH3 오류:', e); }
+        try { renderCH4(prebuilt); } catch(e) { console.error('CH4 오류:', e); }
+        try { renderCH5(prebuilt); } catch(e) { console.error('CH5 오류:', e); }
+        try { renderCH6(prebuilt, answers); } catch(e) { console.error('CH6 오류:', e); }
+        // 로딩 → 결과 전환 (렌더링 에러와 무관하게 result-wrap 표시)
+        const ls = $('loading-screen');
+        if (ls) {
+          ls.classList.add('fade-out');
+          setTimeout(() => { ls.style.display = 'none'; }, 600);
+        }
+        setTimeout(() => {
+          $('result-wrap').style.display = 'block';
+          goChapter(1);
+        }, 400);
+      } else {
+        processResults(answers);
+      }
+    } catch(e) {
+      console.error('data 파라미터 파싱 오류:', e);
+      processResults(answers);
+    }
+
+  } else if (resultId) {
     // 서버 저장 결과 조회 (?id=RES-XXXX)
     fetch(`/api/survey/result/public/${resultId}`)
       .then(r => r.json())
