@@ -7,6 +7,7 @@ import bcEngineJs from '../public/bc-engine.js?raw'
 // import bcDefinitionsJs from '../public/bc-definitions.js?raw'
 import adminHtml from '../public/admin.html?raw'
 import consultantHtml from '../public/consultant.html?raw'
+import b2bHtml from '../public/b2b.html?raw'
 import resultHtml from '../public/result.html?raw'
 import resultV3Html from '../public/result-v3.html?raw'
 import resultV4Html from '../public/result-v4.html?raw'
@@ -20,9 +21,9 @@ type Bindings = {
 }
 
 type JwtPayload = {
-  sub: string        // consultants.id
-  code: string       // MASTER | SC-XXXX
-  role: 'MASTER' | 'CONSULTANT'
+  sub: string        // consultants.id OR b2b_partners.id
+  code: string       // MASTER | SC-XXXX | B2B-XXX-000
+  role: 'MASTER' | 'CONSULTANT' | 'B2B_PARTNER'
   name: string
   exp: number
 }
@@ -108,6 +109,16 @@ function requireRole(role: 'MASTER' | 'CONSULTANT' | 'ANY') {
   }
 }
 
+function requireB2B() {
+  return async (c: any, next: any) => {
+    const user = await getAuthUser(c)
+    if (!user) return c.json({ error: '인증이 필요합니다.' }, 401)
+    if (user.role !== 'B2B_PARTNER' && user.role !== 'MASTER') return c.json({ error: 'B2B 파트너 권한이 필요합니다.' }, 403)
+    c.set('user', user)
+    await next()
+  }
+}
+
 // ─── JSON 파싱 유틸 ────────────────────────────────────────────
 const parseJson = (s: string | null, fallback: any = null) => {
   try { return s ? JSON.parse(s) : fallback } catch { return fallback }
@@ -140,7 +151,7 @@ app.get('/bc-engine.js', (c) =>
 //  AUTH API
 // ═══════════════════════════════════════════════════════════════
 
-// POST /api/auth/login — 공통 로그인 (MASTER + CONSULTANT)
+// POST /api/auth/login — 공통 로그인 (MASTER + CONSULTANT + B2B_PARTNER)
 app.post('/api/auth/login', async (c) => {
   try {
     const body = await c.req.json()
@@ -149,9 +160,60 @@ app.post('/api/auth/login', async (c) => {
     if (!code || !password) return c.json({ error: '코드와 비밀번호를 입력하세요.' }, 400)
 
     const db = c.env.DB
+    const upperCode = code.toUpperCase()
+
+    // ── B2B_PARTNER 로그인 분기 ─────────────────────────────
+    if (upperCode.startsWith('B2B-')) {
+      const partner = await db.prepare(
+        'SELECT * FROM b2b_partners WHERE code = ?'
+      ).bind(upperCode).first<any>()
+
+      if (!partner) return c.json({ error: '존재하지 않는 B2B 파트너 코드입니다.' }, 401)
+
+      let pwOk = false
+      if (partner.password_hash && partner.password_hash === password) {
+        pwOk = true
+      } else {
+        // 기본 비밀번호: 코드 뒤 숫자 부분
+        const parts = upperCode.split('-')
+        const defaultPw = `b2b${parts[parts.length - 1]}`
+        if (password === defaultPw) pwOk = true
+      }
+
+      if (!pwOk) return c.json({ error: '비밀번호가 올바르지 않습니다.' }, 401)
+      if (partner.status === 'suspended') {
+        return c.json({ error: '정지된 계정입니다. 관리자에게 문의하세요.' }, 403)
+      }
+
+      const secret = c.env.JWT_SECRET || 'slimmind-jwt-secret-change-in-production'
+      const payload: JwtPayload = {
+        sub: partner.id,
+        code: partner.code,
+        role: 'B2B_PARTNER',
+        name: partner.brand_name || partner.name,
+        exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7, // 7일
+      }
+      const token = await signJwt(payload, secret)
+
+      // first_login_at 기록
+      if (!partner.first_login_at) {
+        await db.prepare("UPDATE b2b_partners SET first_login_at=datetime('now') WHERE code=?").bind(upperCode).run()
+      }
+
+      return c.json({
+        token, role: 'B2B_PARTNER',
+        name: partner.brand_name || partner.name,
+        code: partner.code,
+        brand_color: partner.brand_color,
+        brand_logo_url: partner.brand_logo_url,
+        brand_name: partner.brand_name || partner.name,
+      })
+    }
+
+    // ── MASTER / CONSULTANT 로그인 ──────────────────────────
     const consultant = await db.prepare(
       'SELECT * FROM consultants WHERE code = ?'
-    ).bind(code.toUpperCase()).first<any>()
+    ).bind(upperCode).first<any>()
 
     if (!consultant) return c.json({ error: '존재하지 않는 계정입니다.' }, 401)
 
@@ -339,6 +401,31 @@ app.post('/api/survey/submit', async (c) => {
 })
 
 // ═══════════════════════════════════════════════════════════════
+//  B2B 파트너 공개 브랜드 데이터 API
+// ═══════════════════════════════════════════════════════════════
+
+// GET /api/b2b/brand/:code — 화이트라벨 브랜드 데이터 (공개)
+app.get('/api/b2b/brand/:code', async (c) => {
+  const db = c.env.DB
+  const code = c.req.param('code').toUpperCase()
+  const partner = await db.prepare(
+    'SELECT code, name, brand_name, brand_color, brand_logo_url, status FROM b2b_partners WHERE code = ?'
+  ).bind(code).first<any>()
+
+  if (!partner || partner.status === 'suspended') {
+    return c.json({ found: false })
+  }
+
+  return c.json({
+    found: true,
+    code: partner.code,
+    brand_name: partner.brand_name || partner.name,
+    brand_color: partner.brand_color || '#6366f1',
+    brand_logo_url: partner.brand_logo_url || null,
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════
 //  관리자 API (/api/admin/*)  — MASTER 전용
 // ═══════════════════════════════════════════════════════════════
 
@@ -508,6 +595,150 @@ app.put('/api/admin/bc-codes/:code', requireRole('MASTER'), async (c) => {
     .bind(...vals, user.name, bcCode).run()
 
   return c.json({ success: true })
+})
+
+// ─── B2B 파트너 관리 CRUD ──────────────────────────────────────
+
+// GET /api/admin/b2b-partners — 목록 조회
+app.get('/api/admin/b2b-partners', requireRole('MASTER'), async (c) => {
+  const db = c.env.DB
+  const search = c.req.query('search') || ''
+  const status = c.req.query('status') || ''
+  let query = 'SELECT p.*, (SELECT COUNT(*) FROM results r WHERE r.ref_code = p.code) as result_count FROM b2b_partners p WHERE 1=1'
+  const params: any[] = []
+  if (search) { query += ' AND (p.name LIKE ? OR p.code LIKE ? OR p.owner_name LIKE ?)'; params.push(`%${search}%`, `%${search}%`, `%${search}%`) }
+  if (status) { query += ' AND p.status = ?'; params.push(status) }
+  query += ' ORDER BY p.created_at DESC'
+  const stmt = db.prepare(query)
+  const result = params.length ? await stmt.bind(...params).all<any>() : await stmt.all<any>()
+  return c.json({ partners: result.results })
+})
+
+// POST /api/admin/b2b-partners — 파트너 생성
+app.post('/api/admin/b2b-partners', requireRole('MASTER'), async (c) => {
+  const db = c.env.DB
+  const body = await c.req.json()
+  const { name, type, owner_name, phone, email, address, commission_rate, memo,
+          brand_logo_url, brand_color, brand_name } = body
+
+  if (!name) return c.json({ success: false, error: '영업장명은 필수입니다.' }, 400)
+
+  // B2B 코드 자동 생성: 업종 약자 + 순번
+  const typeAbbr: Record<string, string> = {
+    '에스테틱': 'AES', '필라테스': 'PIL', '한의원': 'HAN',
+    '헬스장': 'GYM', '뷰티샵': 'BTY', '병원': 'HOS', '기타': 'ETC'
+  }
+  const abbr = typeAbbr[type || '기타'] || 'ETC'
+  const last = await db.prepare(
+    `SELECT code FROM b2b_partners WHERE code LIKE 'B2B-${abbr}-%' ORDER BY code DESC LIMIT 1`
+  ).first<any>()
+  let nextNum = 1
+  if (last?.code) {
+    const n = parseInt(last.code.split('-').pop() || '0')
+    if (!isNaN(n)) nextNum = n + 1
+  }
+  const code = `B2B-${abbr}-${String(nextNum).padStart(3, '0')}`
+  const defaultPassword = `b2b${String(nextNum).padStart(3, '0')}`
+
+  try {
+    await db.prepare(`
+      INSERT INTO b2b_partners
+        (code, name, type, owner_name, phone, email, address, commission_rate, memo,
+         brand_logo_url, brand_color, brand_name, password_hash, status)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,'pending')
+    `).bind(
+      code, name, type || null, owner_name || null, phone || null, email || null,
+      address || null, commission_rate || 15.0, memo || null,
+      brand_logo_url || null, brand_color || '#6366f1', brand_name || name,
+      defaultPassword
+    ).run()
+  } catch (err: any) {
+    const msg = err?.message || String(err)
+    if (msg.includes('UNIQUE constraint failed: b2b_partners.email')) {
+      return c.json({ success: false, error: '이미 등록된 이메일입니다.' }, 409)
+    }
+    return c.json({ success: false, error: msg }, 500)
+  }
+
+  return c.json({
+    success: true, code, defaultPassword,
+    message: `B2B 파트너 ${code} 생성 완료. 초기 비밀번호: ${defaultPassword}`,
+    survey_url: `/s/${code}`
+  })
+})
+
+// PUT /api/admin/b2b-partners/:code — 수정
+app.put('/api/admin/b2b-partners/:code', requireRole('MASTER'), async (c) => {
+  const db = c.env.DB
+  const code = c.req.param('code').toUpperCase()
+  const body = await c.req.json()
+  const { name, type, owner_name, phone, email, address, commission_rate, status, memo,
+          brand_logo_url, brand_color, brand_name } = body
+
+  await db.prepare(`
+    UPDATE b2b_partners SET
+      name=?, type=?, owner_name=?, phone=?, email=?, address=?,
+      commission_rate=?, status=?, memo=?,
+      brand_logo_url=?, brand_color=?, brand_name=?,
+      updated_at=datetime('now')
+    WHERE code=?
+  `).bind(
+    name, type || null, owner_name || null, phone || null, email || null, address || null,
+    commission_rate || 15.0, status || 'active', memo || null,
+    brand_logo_url || null, brand_color || '#6366f1', brand_name || name,
+    code
+  ).run()
+
+  return c.json({ success: true })
+})
+
+// DELETE /api/admin/b2b-partners/:code — 정지
+app.delete('/api/admin/b2b-partners/:code', requireRole('MASTER'), async (c) => {
+  const db = c.env.DB
+  const code = c.req.param('code').toUpperCase()
+  await db.prepare("UPDATE b2b_partners SET status='suspended', updated_at=datetime('now') WHERE code=?").bind(code).run()
+  return c.json({ success: true, message: 'B2B 파트너가 정지되었습니다.' })
+})
+
+// ═══════════════════════════════════════════════════════════════
+//  B2B 파트너 API (/api/b2b/*) — B2B_PARTNER 전용
+// ═══════════════════════════════════════════════════════════════
+
+// GET /api/b2b/me — B2B 파트너 내 정보
+app.get('/api/b2b/me', requireB2B(), async (c) => {
+  const user = c.get('user') as JwtPayload
+  const db = c.env.DB
+  const partner = await db.prepare('SELECT * FROM b2b_partners WHERE code=?').bind(user.code).first<any>()
+  return c.json({ partner })
+})
+
+// GET /api/b2b/results — B2B 파트너 설문 결과 목록 (자신의 ref_code 기준)
+app.get('/api/b2b/results', requireB2B(), async (c) => {
+  const user = c.get('user') as JwtPayload
+  const db = c.env.DB
+  const search = c.req.query('search') || ''
+  let query = 'SELECT id, user_name, bc_primary, axis_primary, created_at, ref_code FROM results WHERE ref_code=?'
+  const params: any[] = [user.code]
+  if (search) { query += ' AND user_name LIKE ?'; params.push(`%${search}%`) }
+  query += ' ORDER BY created_at DESC LIMIT 50'
+  const result = await db.prepare(query).bind(...params).all<any>()
+  return c.json({ results: result.results })
+})
+
+// GET /api/b2b/stats — B2B 파트너 통계
+app.get('/api/b2b/stats', requireB2B(), async (c) => {
+  const user = c.get('user') as JwtPayload
+  const db = c.env.DB
+  const [total, thisMonth, nickDist] = await Promise.all([
+    db.prepare('SELECT COUNT(*) as cnt FROM results WHERE ref_code=?').bind(user.code).first<any>(),
+    db.prepare("SELECT COUNT(*) as cnt FROM results WHERE ref_code=? AND strftime('%Y-%m', created_at)=strftime('%Y-%m','now')").bind(user.code).first<any>(),
+    db.prepare('SELECT bc_primary, COUNT(*) as cnt FROM results WHERE ref_code=? GROUP BY bc_primary ORDER BY cnt DESC LIMIT 5').bind(user.code).all<any>(),
+  ])
+  return c.json({
+    total: total?.cnt || 0,
+    this_month: thisMonth?.cnt || 0,
+    nickname_distribution: nickDist.results,
+  })
 })
 
 // ═══════════════════════════════════════════════════════════════
@@ -1108,6 +1339,9 @@ app.get('/admin/*', (c) => c.html(adminHtml))
 app.get('/consultant', (c) => c.html(consultantHtml))
 app.get('/consultant.html', (c) => c.html(consultantHtml))
 app.get('/consultant/*', (c) => c.html(consultantHtml))
+app.get('/b2b', (c) => c.html(b2bHtml))
+app.get('/b2b.html', (c) => c.html(b2bHtml))
+app.get('/b2b/*', (c) => c.html(b2bHtml))
 
 // ─── 임시: 바디맵 미리보기 (개발용) ────────────────────────────
 app.get('/bodymap-preview', (c) => c.html(bodymapPreviewHtml))
@@ -1117,6 +1351,105 @@ app.get('/bodymap-preview', (c) => c.html(bodymapPreviewHtml))
 app.get('/slimmind_live', (c) => c.html(slimmindLiveHtml))
 app.get('/slimmind_live.html', (c) => c.html(slimmindLiveHtml))
 app.get('/slimmind', (c) => c.html(slimmindLiveHtml))
+
+// ─── /s/:code — B2B/컨설턴트 화이트라벨 진입 라우트 ────────────
+// 예: /s/B2B-AES-001 → 해당 업체 브랜드가 적용된 설문지
+// 예: /s/SC-0001    → 컨설턴트 ref_code 심어진 설문지
+app.get('/s/:code', async (c) => {
+  const db = c.env.DB
+  const rawCode = c.req.param('code').toUpperCase()
+
+  let brandInject = ''
+
+  // B2B 코드인 경우 브랜드 데이터 조회
+  if (rawCode.startsWith('B2B-')) {
+    const partner = await db.prepare(
+      'SELECT code, name, brand_name, brand_color, brand_logo_url, status FROM b2b_partners WHERE code = ?'
+    ).bind(rawCode).first<any>()
+
+    if (partner && partner.status !== 'suspended') {
+      // scan_count 증가
+      await db.prepare(
+        "UPDATE b2b_partners SET qr_scan_count = qr_scan_count + 1, updated_at=datetime('now') WHERE code=?"
+      ).bind(rawCode).run()
+
+      const bColor = partner.brand_color || '#6366f1'
+      const bName = partner.brand_name || partner.name
+      const bLogo = partner.brand_logo_url || ''
+
+      brandInject = `
+<script>
+  window.__BRAND__ = {
+    code: "${rawCode}",
+    type: "B2B",
+    brand_name: ${JSON.stringify(bName)},
+    brand_color: "${bColor}",
+    brand_logo_url: ${JSON.stringify(bLogo)},
+    ref_code: "${rawCode}"
+  };
+  // CSS 변수 즉시 적용
+  document.documentElement.style.setProperty('--brand-color', "${bColor}");
+  document.documentElement.style.setProperty('--brand-color-light', "${bColor}22");
+</script>
+<style>
+  :root {
+    --brand-color: ${bColor};
+    --brand-color-light: ${bColor}22;
+  }
+  /* 헤더/버튼 브랜드컬러 오버라이드 */
+  .v3-header, .v3-progress-bar .fill { background: var(--brand-color) !important; }
+  .v3-next-btn.ready, .option-btn.selected { background: var(--brand-color) !important; }
+  .v3-brand-logo { display: block !important; }
+</style>`
+    }
+  } else if (rawCode.startsWith('SC-') || rawCode === 'MASTER') {
+    // 컨설턴트 코드: ref_code만 심기
+    brandInject = `
+<script>
+  window.__BRAND__ = {
+    code: "${rawCode}",
+    type: "CONSULTANT",
+    ref_code: "${rawCode}"
+  };
+</script>`
+  }
+
+  // slimmind_live.html에 브랜드 인젝션 + ref_code 심기
+  let html = slimmindLiveHtml
+
+  // ref 쿼리 파라미터도 함께 전달 (기존 URL 방식 호환)
+  if (brandInject) {
+    html = html.replace('</head>', `${brandInject}\n</head>`)
+  }
+
+  // __BRAND__ → v3State.ref_code 자동 연동 스크립트 주입
+  const refScript = `
+<script>
+  // /s/:code 진입 시 ref_code 자동 설정
+  document.addEventListener('DOMContentLoaded', function() {
+    if (window.__BRAND__ && window.__BRAND__.ref_code) {
+      // v3State 초기화 후 ref_code 세팅
+      var checkV3 = setInterval(function() {
+        if (typeof v3State !== 'undefined') {
+          v3State.ref_code = window.__BRAND__.ref_code;
+          clearInterval(checkV3);
+          // B2B 로고 표시
+          if (window.__BRAND__.brand_logo_url) {
+            var logoEls = document.querySelectorAll('.v3-brand-logo-img');
+            logoEls.forEach(function(el) {
+              el.src = window.__BRAND__.brand_logo_url;
+              el.style.display = 'block';
+            });
+          }
+        }
+      }, 100);
+    }
+  });
+</script>`
+  html = html.replace('</body>', `${refScript}\n</body>`)
+
+  return c.html(html)
+})
 
 // ─── result.html 직접 접근 (bc=BC-01&name=... 파라미터 방식) ──────────────
 app.get('/result.html', (c) => c.html(resultHtml))

@@ -39,6 +39,7 @@
     .nav-item:hover { background: rgba(255,255,255,.08); }
     .nav-item.active { background: rgba(255,255,255,.15); border-left-color: #fff; }
     .nav-item i { width: 18px; text-align: center; opacity: .8; }
+    .nav-section-label { padding: 14px 20px 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; opacity: .45; color: #fff; }
     .sidebar-footer { padding: 16px 20px; border-top: 1px solid rgba(255,255,255,.12); }
     .sidebar-user { font-size: 13px; opacity: .7; margin-bottom: 8px; }
     .logout-btn { font-size: 13px; color: rgba(255,255,255,.6); cursor: pointer; }
@@ -282,7 +283,10 @@
       </div>
       <nav class="sidebar-nav">
         <div class="nav-item active" data-page="dashboard"><i class="fas fa-chart-line"></i> 대시보드</div>
-        <div class="nav-item" data-page="consultants"><i class="fas fa-users"></i> 컨설턴트 관리</div>
+        <div class="nav-section-label">파트너 관리</div>
+        <div class="nav-item" data-page="consultants"><i class="fas fa-user-tie"></i> 컨설턴트 관리</div>
+        <div class="nav-item" data-page="b2b-partners"><i class="fas fa-building"></i> B2B 파트너 관리</div>
+        <div class="nav-section-label">데이터</div>
         <div class="nav-item" data-page="results"><i class="fas fa-file-medical"></i> 고객 결과 관리</div>
         <div class="nav-item" data-page="bc-codes"><i class="fas fa-dna"></i> BC코드 처방 편집</div>
         <div class="nav-item" data-page="settings"><i class="fas fa-cog"></i> 설정</div>
@@ -433,6 +437,158 @@
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="closeModal('modal-registered')">닫기</button>
       <button class="btn btn-primary" onclick="copyAllRegInfo()"><i class="fas fa-copy"></i> 전체 복사</button>
+    </div>
+  </div>
+</div>
+
+<!-- B2B 파트너 등록/수정 모달 -->
+<div class="modal-overlay" id="modal-b2b">
+  <div class="modal" style="max-width:580px">
+    <div class="modal-head">
+      <h3 id="modal-b2b-title"><i class="fas fa-building" style="color:#6366f1"></i> B2B 파트너 등록</h3>
+      <button class="modal-close" onclick="closeModal('modal-b2b')">×</button>
+    </div>
+    <div class="modal-body">
+      <!-- 기본 정보 -->
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">📋 기본 정보</div>
+      <div class="form-grid">
+        <div class="form-field">
+          <label>영업장명 *</label>
+          <input type="text" id="b2b-name" placeholder="예: 아름다운 에스테틱">
+        </div>
+        <div class="form-field">
+          <label>업종</label>
+          <select id="b2b-type">
+            <option value="">선택</option>
+            <option value="에스테틱">에스테틱</option>
+            <option value="필라테스">필라테스</option>
+            <option value="한의원">한의원</option>
+            <option value="헬스장">헬스장</option>
+            <option value="뷰티숍">뷰티숍</option>
+            <option value="병원">병원</option>
+            <option value="기타">기타</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-field">
+          <label>원장명</label>
+          <input type="text" id="b2b-owner" placeholder="홍길동">
+        </div>
+        <div class="form-field">
+          <label>연락처</label>
+          <input type="text" id="b2b-phone" placeholder="010-1234-5678">
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-field">
+          <label>이메일</label>
+          <input type="email" id="b2b-email" placeholder="contact@example.com">
+        </div>
+        <div class="form-field">
+          <label>수수료율 (%)</label>
+          <input type="number" id="b2b-commission" value="15" min="0" max="50" step="0.5">
+        </div>
+      </div>
+      <div class="form-field">
+        <label>주소</label>
+        <input type="text" id="b2b-address" placeholder="서울시 강남구...">
+      </div>
+
+      <!-- 화이트라벨 브랜딩 -->
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin:16px 0 8px;text-transform:uppercase;letter-spacing:.06em">🎨 화이트라벨 브랜딩 <span style="font-weight:400;font-size:10px;text-transform:none;letter-spacing:0">(설문지·결과지에 자동 적용)</span></div>
+      <div style="background:linear-gradient(135deg,#6366f111,#8b5cf611);border:1.5px solid #6366f133;border-radius:12px;padding:16px;margin-bottom:4px">
+        <div class="form-field" style="margin-bottom:12px">
+          <label>브랜드명 <span style="font-weight:400;font-size:11px;color:var(--muted)">(없으면 영업장명 사용)</span></label>
+          <input type="text" id="b2b-brand-name" placeholder="예: 아라 슬림케어">
+        </div>
+        <div class="form-grid">
+          <div class="form-field" style="margin-bottom:0">
+            <label>브랜드 컬러</label>
+            <div style="display:flex;align-items:center;gap:8px">
+              <input type="color" id="b2b-color-picker" value="#6366f1" style="width:48px;height:36px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;padding:2px"
+                oninput="document.getElementById('b2b-color-hex').value=this.value;updateColorPreview(this.value)">
+              <input type="text" id="b2b-color-hex" placeholder="#6366f1" value="#6366f1" maxlength="7"
+                style="flex:1"
+                oninput="syncColorPicker(this.value)">
+            </div>
+          </div>
+          <div class="form-field" style="margin-bottom:0">
+            <label>미리보기</label>
+            <div id="b2b-color-preview" style="height:36px;border-radius:8px;background:#6366f1;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;transition:background .2s">
+              설문 버튼 미리보기
+            </div>
+          </div>
+        </div>
+        <div class="form-field" style="margin-bottom:0;margin-top:12px">
+          <label>로고 이미지 URL</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="url" id="b2b-logo-url" placeholder="https://example.com/logo.png" style="flex:1"
+              oninput="previewLogo(this.value)">
+            <div id="b2b-logo-preview" style="width:48px;height:36px;border:1.5px solid var(--border);border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#f8fafc">
+              <i class="fas fa-image" style="color:var(--muted);font-size:16px"></i>
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">이미지 URL을 입력하면 설문지 상단에 로고가 표시됩니다</div>
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label>메모</label>
+        <textarea id="b2b-memo" rows="2" placeholder="관리자 메모..."></textarea>
+      </div>
+      <input type="hidden" id="b2b-edit-code">
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-b2b')">취소</button>
+      <button class="btn btn-primary" id="modal-b2b-save" onclick="saveB2BPartner()"><i class="fas fa-save"></i> 등록</button>
+    </div>
+  </div>
+</div>
+
+<!-- B2B 등록 완료 팝업 -->
+<div class="modal-overlay" id="modal-b2b-registered">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-head">
+      <h3 style="color:#6366f1"><i class="fas fa-check-circle"></i> B2B 파트너 등록 완료</h3>
+      <button class="modal-close" onclick="closeModal('modal-b2b-registered')">×</button>
+    </div>
+    <div class="modal-body" style="max-height:70vh;overflow-y:auto">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+        <div class="reg-code-box" style="margin-bottom:0">
+          <div class="reg-code-label">B2B 파트너 코드</div>
+          <div class="reg-code-val" id="b2b-reg-code">B2B-AES-001</div>
+        </div>
+        <div style="background:#FFFBEB;border:1.5px solid #FCD34D;border-radius:10px;padding:12px;display:flex;flex-direction:column;justify-content:center">
+          <div style="font-size:10px;font-weight:700;color:#92400E;margin-bottom:4px">🔑 초기 비밀번호</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div id="b2b-reg-pw" style="font-size:16px;font-weight:700;font-family:monospace;color:#1A3C6B;flex:1">b2b001</div>
+            <button class="btn btn-warn btn-sm" onclick="copyText(document.getElementById('b2b-reg-pw').textContent)" style="padding:4px 8px"><i class="fas fa-copy"></i></button>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">공유 링크</div>
+      <div class="reg-link-row">
+        <span class="link-label">📋 고객 설문 링크</span>
+        <span class="link-val" id="b2b-reg-survey-url" style="font-size:10px"></span>
+        <button class="btn btn-ghost btn-sm copy-btn" onclick="copyText(document.getElementById('b2b-reg-survey-url').textContent)"><i class="fas fa-copy"></i></button>
+      </div>
+      <div class="reg-link-row" style="margin-bottom:14px">
+        <span class="link-label">🖥️ B2B 대시보드</span>
+        <span class="link-val" id="b2b-reg-dash-url" style="font-size:10px"></span>
+        <button class="btn btn-primary btn-sm copy-btn" onclick="copyText(document.getElementById('b2b-reg-dash-url').textContent)"><i class="fas fa-copy"></i></button>
+      </div>
+      <div style="background:linear-gradient(135deg,#6366f111,#8b5cf611);border:1.5px dashed #6366f155;border-radius:10px;padding:14px;font-size:12px;line-height:1.8;color:#1E293B">
+        <strong>전달 안내문:</strong><br>
+        안녕하세요! SlimMind B2B 파트너로 등록되셨습니다. 🎉<br>
+        고객 전용 설문 링크: <span id="b2b-reg-survey-url2"></span><br>
+        파트너 대시보드: <span id="b2b-reg-dash-url2"></span><br>
+        로그인 코드: <span id="b2b-reg-code2"></span> / 초기PW: <span id="b2b-reg-pw2"></span>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-b2b-registered')">닫기</button>
+      <button class="btn btn-primary" onclick="copyB2BInfo()"><i class="fas fa-copy"></i> 전체 복사</button>
     </div>
   </div>
 </div>
@@ -641,12 +797,13 @@ document.querySelectorAll('.nav-item').forEach(el => {
 function navigateTo(page) {
   currentPage = page;
   document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.page === page));
-  const titles = { dashboard:'대시보드', consultants:'컨설턴트 관리', results:'고객 결과 관리', 'bc-codes':'BC코드 처방 편집', settings:'설정' };
+  const titles = { dashboard:'대시보드', consultants:'컨설턴트 관리', 'b2b-partners':'B2B 파트너 관리', results:'고객 결과 관리', 'bc-codes':'BC코드 처방 편집', settings:'설정' };
   document.getElementById('topbar-title').textContent = titles[page] || page;
   const body = document.getElementById('page-body');
   body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted)"><i class="fas fa-circle-notch fa-spin fa-2x"></i></div>';
   if (page === 'dashboard') loadDashboard();
   else if (page === 'consultants') loadConsultants();
+  else if (page === 'b2b-partners') loadB2BPartners();
   else if (page === 'results') loadResults();
   else if (page === 'bc-codes') loadBcCodes();
   else if (page === 'settings') loadSettings();
@@ -1192,6 +1349,237 @@ function genLink() {
   el.textContent = url;
   el.style.display = 'block';
   navigator.clipboard.writeText(url).then(() => toast('링크 복사 완료!', 'success'));
+}
+
+// ═════════════════════════════════════════════
+//  B2B 파트너 관리
+// ═════════════════════════════════════════════
+let editingB2BCode = null;
+
+async function loadB2BPartners(search = '', status = '') {
+  let url = '/admin/b2b-partners?';
+  if (search) url += `search=${encodeURIComponent(search)}&`;
+  if (status) url += `status=${status}`;
+  const data = await api('GET', url);
+  if (!data) return;
+
+  const statusBadgeB2B = s => {
+    const m = { active:'badge-green', pending:'badge-yellow', suspended:'badge-red' };
+    const l = { active:'활성', pending:'대기', suspended:'정지' };
+    return `<span class="badge ${m[s]||'badge-gray'}">${l[s]||s}</span>`;
+  };
+
+  const rows = (data.partners || []).map(p => {
+    const color = p.brand_color || '#6366f1';
+    const logo = p.brand_logo_url ? `<img src="${p.brand_logo_url}" style="height:24px;max-width:60px;object-fit:contain;border-radius:4px;vertical-align:middle">` : `<span style="color:var(--muted);font-size:11px">로고없음</span>`;
+    return `<tr>
+      <td><code style="font-weight:700;color:#6366f1">${p.code}</code></td>
+      <td>
+        <div style="font-weight:600">${p.name || '-'}</div>
+        <div style="font-size:11px;color:var(--muted)">${p.type || ''} ${p.owner_name ? '· '+p.owner_name : ''}</div>
+      </td>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div style="width:16px;height:16px;border-radius:4px;background:${color};flex-shrink:0"></div>
+          <span style="font-size:12px;font-family:monospace">${color}</span>
+        </div>
+        <div style="margin-top:3px">${logo}</div>
+      </td>
+      <td><div style="font-weight:600;font-size:13px">${p.brand_name || p.name}</div></td>
+      <td>${statusBadgeB2B(p.status)}</td>
+      <td style="text-align:center">${p.result_count||0}건</td>
+      <td style="text-align:center">${p.qr_scan_count||0}회</td>
+      <td style="text-align:center;font-weight:600">${p.commission_rate||15}%</td>
+      <td style="white-space:nowrap;text-align:right">
+        <button class="btn btn-ghost btn-sm" title="설문 링크 복사" onclick="copyText('${location.origin}/s/${p.code}')" style="padding:5px 8px">
+          <i class="fas fa-share-alt" style="color:#6366f1"></i>
+        </button>
+        <button class="btn btn-ghost btn-sm" onclick="openEditB2B(${JSON.stringify(p).replace(/"/g,'&quot;')})" style="padding:5px 8px;margin-left:2px">수정</button>
+        ${p.status !== 'suspended'
+          ? `<button class="btn btn-danger btn-sm" style="margin-left:4px" onclick="suspendB2B('${p.code}')">정지</button>`
+          : `<button class="btn btn-success btn-sm" style="margin-left:4px" onclick="activateB2B('${p.code}')">활성화</button>`}
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('page-body').innerHTML = `
+    <div class="filter-row">
+      <input type="text" id="b2b-search" placeholder="영업장명, 코드, 원장명 검색..." style="width:240px"
+        onkeydown="if(event.key==='Enter') loadB2BPartners(this.value, document.getElementById('b2b-status-filter').value)">
+      <select id="b2b-status-filter" onchange="loadB2BPartners(document.getElementById('b2b-search').value, this.value)">
+        <option value="">전체 상태</option>
+        <option value="active">활성</option>
+        <option value="pending">대기</option>
+        <option value="suspended">정지</option>
+      </select>
+      <button class="btn btn-primary" style="background:#6366f1;border-color:#6366f1" onclick="openAddB2B()">
+        <i class="fas fa-plus"></i> B2B 파트너 등록
+      </button>
+    </div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:12px">
+      총 <strong style="color:var(--text)">${(data.partners||[]).length}개</strong> 파트너 등록됨
+      <span style="margin-left:12px;font-size:12px;color:#6366f1">
+        <i class="fas fa-info-circle"></i> 설문 링크: <code>/s/B2B-XXX-000</code> — 브랜드컬러·로고가 자동 적용됩니다
+      </span>
+    </div>
+    <div class="card" style="padding:0">
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>코드</th><th>영업장</th><th>브랜드컬러·로고</th><th>브랜드명</th>
+            <th>상태</th><th>결과수</th><th>스캔</th><th>수수료</th><th style="text-align:right">관리</th>
+          </tr></thead>
+          <tbody>${rows || '<tr><td colspan="9"><div class="empty-state"><i class="fas fa-building"></i><p>등록된 B2B 파트너가 없습니다</p></div></td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function openAddB2B() {
+  editingB2BCode = null;
+  document.getElementById('modal-b2b-title').innerHTML = '<i class="fas fa-building" style="color:#6366f1"></i> B2B 파트너 등록';
+  document.getElementById('modal-b2b-save').textContent = '등록';
+  ['b2b-name','b2b-owner','b2b-phone','b2b-email','b2b-address','b2b-brand-name','b2b-logo-url','b2b-memo'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.value = '';
+  });
+  document.getElementById('b2b-type').value = '';
+  document.getElementById('b2b-commission').value = '15';
+  document.getElementById('b2b-color-hex').value = '#6366f1';
+  document.getElementById('b2b-color-picker').value = '#6366f1';
+  document.getElementById('b2b-edit-code').value = '';
+  updateColorPreview('#6366f1');
+  document.getElementById('b2b-logo-preview').innerHTML = '<i class="fas fa-image" style="color:var(--muted);font-size:16px"></i>';
+  openModal('modal-b2b');
+}
+
+function openEditB2B(p) {
+  editingB2BCode = p.code;
+  document.getElementById('modal-b2b-title').innerHTML = '<i class="fas fa-edit" style="color:#6366f1"></i> B2B 파트너 수정';
+  document.getElementById('modal-b2b-save').textContent = '저장';
+  document.getElementById('b2b-name').value = p.name || '';
+  document.getElementById('b2b-type').value = p.type || '';
+  document.getElementById('b2b-owner').value = p.owner_name || '';
+  document.getElementById('b2b-phone').value = p.phone || '';
+  document.getElementById('b2b-email').value = p.email || '';
+  document.getElementById('b2b-address').value = p.address || '';
+  document.getElementById('b2b-commission').value = p.commission_rate || 15;
+  document.getElementById('b2b-brand-name').value = p.brand_name || '';
+  document.getElementById('b2b-logo-url').value = p.brand_logo_url || '';
+  document.getElementById('b2b-memo').value = p.memo || '';
+  document.getElementById('b2b-edit-code').value = p.code;
+  const color = p.brand_color || '#6366f1';
+  document.getElementById('b2b-color-hex').value = color;
+  document.getElementById('b2b-color-picker').value = color;
+  updateColorPreview(color);
+  previewLogo(p.brand_logo_url || '');
+  openModal('modal-b2b');
+}
+
+async function saveB2BPartner() {
+  const name = document.getElementById('b2b-name').value.trim();
+  if (!name) { toast('영업장명을 입력하세요.', 'error'); return; }
+
+  const hex = document.getElementById('b2b-color-hex').value.trim();
+  const body = {
+    name,
+    type: document.getElementById('b2b-type').value,
+    owner_name: document.getElementById('b2b-owner').value.trim(),
+    phone: document.getElementById('b2b-phone').value.trim(),
+    email: document.getElementById('b2b-email').value.trim() || null,
+    address: document.getElementById('b2b-address').value.trim(),
+    commission_rate: parseFloat(document.getElementById('b2b-commission').value) || 15,
+    brand_name: document.getElementById('b2b-brand-name').value.trim() || name,
+    brand_color: /^#[0-9a-fA-F]{6}$/.test(hex) ? hex : '#6366f1',
+    brand_logo_url: document.getElementById('b2b-logo-url').value.trim() || null,
+    memo: document.getElementById('b2b-memo').value.trim(),
+    status: 'active',
+  };
+
+  if (editingB2BCode) {
+    const res = await api('PUT', `/admin/b2b-partners/${editingB2BCode}`, body);
+    if (res?.success) {
+      toast('B2B 파트너 정보가 수정되었습니다.', 'success');
+      closeModal('modal-b2b');
+      loadB2BPartners();
+    } else {
+      toast(res?.error || '수정 실패', 'error');
+    }
+  } else {
+    const res = await api('POST', '/admin/b2b-partners', body);
+    if (res?.success) {
+      closeModal('modal-b2b');
+      // 등록 완료 팝업
+      const code = res.code;
+      const pw = res.defaultPassword;
+      const surveyUrl = `${location.origin}/s/${code}`;
+      const dashUrl = `${location.origin}/b2b`;
+      document.getElementById('b2b-reg-code').textContent = code;
+      document.getElementById('b2b-reg-pw').textContent = pw;
+      document.getElementById('b2b-reg-survey-url').textContent = surveyUrl;
+      document.getElementById('b2b-reg-dash-url').textContent = dashUrl;
+      document.getElementById('b2b-reg-code2').textContent = code;
+      document.getElementById('b2b-reg-pw2').textContent = pw;
+      document.getElementById('b2b-reg-survey-url2').textContent = surveyUrl;
+      document.getElementById('b2b-reg-dash-url2').textContent = dashUrl;
+      openModal('modal-b2b-registered');
+      loadB2BPartners();
+    } else {
+      toast(res?.error || '등록 실패', 'error');
+    }
+  }
+}
+
+function copyB2BInfo() {
+  const code = document.getElementById('b2b-reg-code').textContent;
+  const pw = document.getElementById('b2b-reg-pw').textContent;
+  const survey = document.getElementById('b2b-reg-survey-url').textContent;
+  const dash = document.getElementById('b2b-reg-dash-url').textContent;
+  const txt = `[SlimMind B2B 파트너 등록 안내]\n코드: ${code}\n초기비밀번호: ${pw}\n고객설문링크: ${survey}\nB2B대시보드: ${dash}`;
+  copyText(txt);
+}
+
+async function suspendB2B(code) {
+  if (!confirm(`${code} B2B 파트너를 정지하시겠습니까?`)) return;
+  const res = await api('DELETE', `/admin/b2b-partners/${code}`);
+  if (res?.success) { toast('정지 완료', 'success'); loadB2BPartners(); }
+}
+
+async function activateB2B(code) {
+  const res = await api('PUT', `/admin/b2b-partners/${code}`, { status: 'active' });
+  if (res?.success) { toast('활성화 완료', 'success'); loadB2BPartners(); }
+}
+
+function updateColorPreview(hex) {
+  const preview = document.getElementById('b2b-color-preview');
+  if (preview) { preview.style.background = hex; }
+}
+
+function syncColorPicker(hex) {
+  if (/^#[0-9a-fA-F]{6}$/.test(hex)) {
+    const picker = document.getElementById('b2b-color-picker');
+    if (picker) picker.value = hex;
+    updateColorPreview(hex);
+  }
+}
+
+function previewLogo(url) {
+  const preview = document.getElementById('b2b-logo-preview');
+  if (!preview) return;
+  if (url && url.startsWith('http')) {
+    preview.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:contain" onerror="this.parentElement.innerHTML='<i class=\\"fas fa-exclamation-triangle\\" style=\\"color:#EF4444\\"></i>'">`;
+  } else {
+    preview.innerHTML = '<i class="fas fa-image" style="color:var(--muted);font-size:16px"></i>';
+  }
+}
+
+function copyText(text) {
+  navigator.clipboard.writeText(text).then(() => toast('복사 완료!', 'success')).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    toast('복사 완료!', 'success');
+  });
 }
 
 // ═════════════════════════════════════════════

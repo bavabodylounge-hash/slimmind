@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SlimMind B2B 파트너 대시보드</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --brand: #6366f1;
+      --brand-light: #6366f122;
+      --primary: #1A3C6B;
+      --accent: #10B981;
+      --danger: #EF4444;
+      --warn: #F59E0B;
+      --bg: #F1F5F9;
+      --card: #fff;
+      --text: #1E293B;
+      --muted: #64748B;
+      --border: #E2E8F0;
+    }
+    body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ── 로그인 ─── */
+    #login-page { display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 24px; }
+    .login-card { background: var(--card); border-radius: 20px; padding: 48px 40px; width: 100%; max-width: 420px; box-shadow: 0 4px 32px rgba(0,0,0,.10); }
+    .login-brand { text-align: center; margin-bottom: 32px; }
+    .login-brand-badge { display: inline-block; background: var(--brand); color: #fff; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; margin-bottom: 8px; letter-spacing: .05em; }
+    .login-logo-text { font-size: 28px; font-weight: 700; color: var(--primary); }
+    .login-logo-sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    .login-field { margin-bottom: 16px; }
+    .login-field label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+    .login-field input { width: 100%; border: 1.5px solid var(--border); border-radius: 10px; padding: 12px 16px; font-size: 15px; font-family: inherit; outline: none; transition: border-color .2s; }
+    .login-field input:focus { border-color: var(--brand); }
+    .login-btn { width: 100%; background: var(--brand); color: #fff; border: none; border-radius: 10px; padding: 14px; font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit; margin-top: 8px; transition: opacity .2s; }
+    .login-btn:hover { opacity: .85; }
+    .login-err { color: var(--danger); font-size: 13px; text-align: center; margin-top: 8px; display: none; }
+    .login-hint { font-size: 12px; color: var(--muted); text-align: center; margin-top: 16px; line-height: 1.6; }
+
+    /* ── 레이아웃 ─── */
+    #main-page { display: none; }
+    .layout { display: flex; min-height: 100vh; }
+
+    /* ── 사이드바 ─── */
+    .sidebar { width: 240px; background: var(--brand); color: #fff; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; height: 100vh; z-index: 100; }
+    .sidebar-logo { padding: 24px 20px 20px; border-bottom: 1px solid rgba(255,255,255,.15); }
+    .sidebar-logo-text { font-size: 18px; font-weight: 700; }
+    .sidebar-logo-sub { font-size: 11px; opacity: .6; margin-top: 2px; }
+    .sidebar-brand-name { font-size: 12px; opacity: .8; margin-top: 6px; background: rgba(255,255,255,.15); padding: 4px 8px; border-radius: 6px; display: inline-block; }
+    .sidebar-nav { flex: 1; padding: 12px 0; }
+    .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 20px; cursor: pointer; font-size: 14px; font-weight: 500; transition: background .15s; border-left: 3px solid transparent; }
+    .nav-item:hover { background: rgba(255,255,255,.1); }
+    .nav-item.active { background: rgba(255,255,255,.18); border-left-color: #fff; }
+    .nav-item i { width: 18px; text-align: center; opacity: .8; }
+    .sidebar-footer { padding: 16px 20px; border-top: 1px solid rgba(255,255,255,.15); }
+    .sidebar-user { font-size: 13px; opacity: .7; margin-bottom: 8px; }
+    .logout-btn { font-size: 13px; color: rgba(255,255,255,.6); cursor: pointer; }
+    .logout-btn:hover { color: #fff; }
+
+    /* ── 메인 ─── */
+    .main-content { margin-left: 240px; flex: 1; min-height: 100vh; }
+    .topbar { background: var(--card); border-bottom: 1px solid var(--border); padding: 0 32px; height: 60px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; }
+    .topbar-title { font-size: 16px; font-weight: 700; }
+    .page-body { padding: 28px 32px; }
+
+    /* ── 카드 ─── */
+    .card { background: var(--card); border-radius: 14px; border: 1px solid var(--border); padding: 24px; margin-bottom: 20px; }
+    .card-title { font-size: 15px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+    /* ── KPI ─── */
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .kpi-card { background: var(--card); border-radius: 14px; border: 1px solid var(--border); padding: 20px; }
+    .kpi-val { font-size: 32px; font-weight: 700; color: var(--brand); line-height: 1; }
+    .kpi-label { font-size: 13px; color: var(--muted); margin-top: 6px; }
+
+    /* ── 테이블 ─── */
+    .tbl-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background: #F8FAFC; padding: 10px 14px; text-align: left; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
+    td { padding: 12px 14px; border-bottom: 1px solid #F1F5F9; vertical-align: middle; }
+    tr:hover td { background: #F8FAFC; }
+
+    /* ── 배지 ─── */
+    .badge { display: inline-block; border-radius: 6px; padding: 3px 10px; font-size: 11px; font-weight: 600; }
+    .badge-purple { background: #EDE9FE; color: #7C3AED; }
+    .badge-green { background: #DCFCE7; color: #16A34A; }
+    .badge-blue { background: #DBEAFE; color: #2563EB; }
+    .badge-gray { background: #F1F5F9; color: #64748B; }
+
+    /* ── 버튼 ─── */
+    .btn { border: none; border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: opacity .15s; }
+    .btn:hover { opacity: .85; }
+    .btn-primary { background: var(--brand); color: #fff; }
+    .btn-ghost { background: transparent; border: 1.5px solid var(--border); color: var(--text); }
+    .btn-sm { padding: 5px 12px; font-size: 12px; }
+
+    /* ── 필터 ─── */
+    .filter-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+    .filter-row input, .filter-row select { border: 1.5px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 13px; font-family: inherit; outline: none; background: var(--card); }
+    .filter-row input:focus, .filter-row select:focus { border-color: var(--brand); }
+
+    /* ── 결과 카드 ─── */
+    .result-card { background: var(--card); border: 1.5px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 16px; cursor: pointer; transition: box-shadow .15s, border-color .15s; }
+    .result-card:hover { box-shadow: 0 4px 16px rgba(99,102,241,.12); border-color: var(--brand); }
+    .result-icon { width: 48px; height: 48px; border-radius: 12px; background: var(--brand-light); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+    .result-info { flex: 1; }
+    .result-name { font-size: 15px; font-weight: 700; }
+    .result-meta { font-size: 12px; color: var(--muted); margin-top: 3px; }
+    .result-nick { font-size: 13px; font-weight: 600; color: var(--brand); margin-top: 4px; }
+
+    /* ── QR 섹션 ─── */
+    .qr-section { text-align: center; padding: 24px; }
+    .qr-url { font-size: 13px; color: var(--brand); word-break: break-all; margin: 12px 0; background: var(--brand-light); padding: 10px 16px; border-radius: 8px; }
+
+    /* ── 파트너 뷰 카드 ─── */
+    .partner-view-card { border: 1.5px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+    .partner-view-card.rec1 { border-left: 4px solid #10B981; }
+    .partner-view-card.rec2 { border-left: 4px solid #3B82F6; }
+    .partner-view-card.forbid { border-left: 4px solid #EF4444; }
+    .pv-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+    .pv-text { font-size: 14px; color: var(--text); line-height: 1.6; }
+
+    /* ── 빈 상태 ─── */
+    .empty-state { text-align: center; padding: 48px; color: var(--muted); }
+    .empty-state i { font-size: 36px; margin-bottom: 12px; opacity: .4; }
+    .empty-state p { font-size: 14px; }
+
+    /* ── 토스트 ─── */
+    .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+    .toast { background: #1E293B; color: #fff; padding: 12px 20px; border-radius: 10px; font-size: 14px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,.2); animation: slideIn .3s ease; max-width: 320px; }
+    .toast.success { background: #10B981; }
+    .toast.error { background: #EF4444; }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+    /* ── 브랜드 배너 ─── */
+    .brand-banner { border-radius: 14px; padding: 20px 24px; margin-bottom: 24px; display: flex; align-items: center; gap: 16px; color: #fff; }
+    .brand-logo-img { width: 56px; height: 56px; object-fit: contain; border-radius: 10px; background: rgba(255,255,255,.2); padding: 4px; }
+
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .main-content { margin-left: 0; }
+      .kpi-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="toast-container" id="toast-container"></div>
+
+<!-- 로그인 페이지 -->
+<div id="login-page">
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="login-brand-badge">B2B PARTNER</div>
+      <div class="login-logo-text">SlimMind</div>
+      <div class="login-logo-sub">B2B 파트너 대시보드</div>
+    </div>
+    <div class="login-field">
+      <label>파트너 코드</label>
+      <input type="text" id="login-code" placeholder="B2B-AES-001" autocomplete="off"
+        onkeydown="if(event.key==='Enter') doLogin()">
+    </div>
+    <div class="login-field">
+      <label>비밀번호</label>
+      <input type="password" id="login-pw" placeholder="초기 비밀번호"
+        onkeydown="if(event.key==='Enter') doLogin()">
+    </div>
+    <button class="login-btn" onclick="doLogin()"><i class="fas fa-sign-in-alt"></i> 로그인</button>
+    <div class="login-err" id="login-err"></div>
+    <div class="login-hint">
+      코드와 초기 비밀번호는 관리자에게 문의하세요<br>
+      마스터 관리자: <a href="/admin" style="color:var(--brand)">관리자 페이지</a>
+    </div>
+  </div>
+</div>
+
+<!-- 메인 페이지 -->
+<div id="main-page">
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div id="sidebar-logo-img-wrap" style="display:none">
+            <img id="sidebar-logo-img" src="" style="height:32px;object-fit:contain;border-radius:6px;background:rgba(255,255,255,.15);padding:2px">
+          </div>
+          <div>
+            <div class="sidebar-logo-text" id="sidebar-brand-text">SlimMind</div>
+            <div class="sidebar-logo-sub">B2B 파트너</div>
+          </div>
+        </div>
+        <div class="sidebar-brand-name" id="sidebar-brand-name-badge"></div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-item active" data-page="dashboard"><i class="fas fa-chart-pie"></i> 대시보드</div>
+        <div class="nav-item" data-page="customers"><i class="fas fa-users"></i> 고객 결과 조회</div>
+        <div class="nav-item" data-page="qr"><i class="fas fa-qrcode"></i> QR 코드 출력</div>
+        <div class="nav-item" data-page="partner-view"><i class="fas fa-star"></i> 파트너 추천 뷰</div>
+        <div class="nav-item" data-page="profile"><i class="fas fa-building"></i> 업체 정보</div>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="sidebar-user" id="sidebar-user"></div>
+        <div class="logout-btn" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i> 로그아웃</div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <div class="topbar">
+        <div class="topbar-title" id="topbar-title">대시보드</div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span id="topbar-user" style="font-size:13px;color:var(--muted)"></span>
+        </div>
+      </div>
+      <div class="page-body" id="page-body">
+        <div style="padding:40px;text-align:center;color:var(--muted)"><i class="fas fa-circle-notch fa-spin fa-2x"></i></div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+// ─── 전역 상태 ────────────────────────────────
+let TOKEN = localStorage.getItem('b2b_token') || '';
+let USER_CODE = localStorage.getItem('b2b_code') || '';
+let USER_INFO = null;
+let BRAND = {};
+let currentPage = 'dashboard';
+
+// ─── API 헬퍼 ────────────────────────────────
+async function api(method, path, body) {
+  try {
+    const opts = {
+      method,
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` },
+    };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch('/api' + path, opts);
+    const data = await res.json();
+    if (res.status === 401) { doLogout(); return null; }
+    return data;
+  } catch (e) {
+    toast('네트워크 오류', 'error');
+    return null;
+  }
+}
+
+// ─── 토스트 ──────────────────────────────────
+function toast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+// ─── 날짜 포맷 ───────────────────────────────
+function fmtDate(s) {
+  if (!s) return '-';
+  return new Date(s).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+// ─── 로그인 ──────────────────────────────────
+async function doLogin() {
+  const code = document.getElementById('login-code').value.trim().toUpperCase();
+  const pw = document.getElementById('login-pw').value;
+  const errEl = document.getElementById('login-err');
+  errEl.style.display = 'none';
+
+  if (!code || !pw) { errEl.textContent = '코드와 비밀번호를 입력하세요.'; errEl.style.display = 'block'; return; }
+  if (!code.startsWith('B2B-')) { errEl.textContent = 'B2B 파트너 코드는 B2B-로 시작합니다.'; errEl.style.display = 'block'; return; }
+
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, password: pw })
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error || '로그인 실패'; errEl.style.display = 'block'; return; }
+    if (data.role !== 'B2B_PARTNER') { errEl.textContent = 'B2B 파트너 계정으로만 접근 가능합니다.'; errEl.style.display = 'block'; return; }
+
+    TOKEN = data.token;
+    USER_CODE = data.code;
+    BRAND = {
+      brand_name: data.brand_name,
+      brand_color: data.brand_color || '#6366f1',
+      brand_logo_url: data.brand_logo_url || '',
+    };
+    localStorage.setItem('b2b_token', TOKEN);
+    localStorage.setItem('b2b_code', USER_CODE);
+    localStorage.setItem('b2b_brand', JSON.stringify(BRAND));
+
+    initMain(data.name, data.code);
+  } catch (e) {
+    errEl.textContent = '서버 오류가 발생했습니다.'; errEl.style.display = 'block';
+  }
+}
+
+function doLogout() {
+  TOKEN = ''; USER_CODE = '';
+  localStorage.removeItem('b2b_token');
+  localStorage.removeItem('b2b_code');
+  localStorage.removeItem('b2b_brand');
+  document.getElementById('login-page').style.display = 'flex';
+  document.getElementById('main-page').style.display = 'none';
+}
+
+function initMain(name, code) {
+  // 브랜드 컬러 적용
+  const color = BRAND.brand_color || '#6366f1';
+  document.documentElement.style.setProperty('--brand', color);
+  document.documentElement.style.setProperty('--brand-light', color + '22');
+
+  // 사이드바 브랜드
+  document.getElementById('sidebar-brand-text').textContent = BRAND.brand_name || 'SlimMind';
+  document.getElementById('sidebar-brand-name-badge').textContent = code;
+  if (BRAND.brand_logo_url) {
+    document.getElementById('sidebar-logo-img').src = BRAND.brand_logo_url;
+    document.getElementById('sidebar-logo-img-wrap').style.display = 'block';
+  }
+  document.getElementById('sidebar-user').textContent = name;
+  document.getElementById('topbar-user').textContent = name;
+
+  document.getElementById('login-page').style.display = 'none';
+  document.getElementById('main-page').style.display = 'block';
+  navigateTo('dashboard');
+}
+
+// ─── 내비게이션 ──────────────────────────────
+document.querySelectorAll('.nav-item').forEach(el => {
+  el.onclick = () => navigateTo(el.dataset.page);
+});
+
+function navigateTo(page) {
+  currentPage = page;
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.page === page));
+  const titles = {
+    dashboard: '대시보드',
+    customers: '고객 결과 조회',
+    qr: 'QR 코드 출력',
+    'partner-view': '파트너 추천 뷰',
+    profile: '업체 정보',
+  };
+  document.getElementById('topbar-title').textContent = titles[page] || page;
+  const body = document.getElementById('page-body');
+  body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted)"><i class="fas fa-circle-notch fa-spin fa-2x"></i></div>';
+
+  if (page === 'dashboard') loadDashboard();
+  else if (page === 'customers') loadCustomers();
+  else if (page === 'qr') loadQR();
+  else if (page === 'partner-view') loadPartnerView();
+  else if (page === 'profile') loadProfile();
+}
+
+// ─── 대시보드 ─────────────────────────────────
+async function loadDashboard() {
+  const [stats, partner] = await Promise.all([
+    api('GET', '/b2b/stats'),
+    api('GET', '/b2b/me'),
+  ]);
+  if (!stats) return;
+
+  const p = partner?.partner || {};
+  const color = BRAND.brand_color || '#6366f1';
+  const logoHtml = BRAND.brand_logo_url
+    ? `<img class="brand-logo-img" src="${BRAND.brand_logo_url}" alt="로고">`
+    : `<div style="width:56px;height:56px;border-radius:10px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:24px">🏢</div>`;
+
+  const nickRows = (stats.nickname_distribution || []).map(n =>
+    `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <div style="flex:1;font-size:13px;font-weight:600">${n.bc_primary || '-'}</div>
+      <div style="width:80px;height:8px;background:#F1F5F9;border-radius:4px;overflow:hidden">
+        <div style="height:100%;width:${Math.min(100, Math.round(n.cnt/(stats.total||1)*100))}%;background:${color};border-radius:4px"></div>
+      </div>
+      <div style="width:32px;text-align:right;font-size:12px;font-weight:700">${n.cnt}</div>
+    </div>`
+  ).join('');
+
+  document.getElementById('page-body').innerHTML = `
+    <div class="brand-banner" style="background:linear-gradient(135deg, ${color}, ${color}cc)">
+      ${logoHtml}
+      <div>
+        <div style="font-size:20px;font-weight:700">${BRAND.brand_name || p.name || '-'}</div>
+        <div style="font-size:13px;opacity:.8;margin-top:4px">${p.code || USER_CODE} · ${p.type || '-'} · 수수료 ${p.commission_rate || 15}%</div>
+        <div style="font-size:12px;opacity:.7;margin-top:4px">고객 설문 링크: ${location.origin}/s/${USER_CODE}</div>
+      </div>
+      <div style="margin-left:auto">
+        <button class="btn" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3)" onclick="copyLink()">
+          <i class="fas fa-copy"></i> 링크 복사
+        </button>
+      </div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-val">${stats.total || 0}</div>
+        <div class="kpi-label">📋 누적 고객 수</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-val">${stats.this_month || 0}</div>
+        <div class="kpi-label">📅 이번 달 신규</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-val">${p.qr_scan_count || 0}</div>
+        <div class="kpi-label">📱 QR 스캔 수</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <div class="card">
+        <div class="card-title"><i class="fas fa-chart-bar" style="color:${color}"></i> 고객 유형 분포</div>
+        ${nickRows || '<div class="empty-state"><i class="fas fa-chart-bar"></i><p>데이터 없음</p></div>'}
+      </div>
+      <div class="card">
+        <div class="card-title"><i class="fas fa-qrcode" style="color:${color}"></i> 빠른 QR 출력</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px">고객이 설문을 시작할 수 있는 QR 코드를 출력하세요.</p>
+        <div id="mini-qr" style="text-align:center;margin-bottom:12px"></div>
+        <button class="btn btn-primary" style="width:100%" onclick="navigateTo('qr')">
+          <i class="fas fa-qrcode"></i> QR 관리 페이지로 이동
+        </button>
+      </div>
+    </div>
+  `;
+
+  // 미니 QR 생성
+  generateMiniQR();
+}
+
+function generateMiniQR() {
+  const url = `${location.origin}/s/${USER_CODE}`;
+  const qrEl = document.getElementById('mini-qr');
+  if (!qrEl) return;
+  qrEl.innerHTML = `<div style="background:#fff;padding:12px;border:1.5px solid var(--border);border-radius:10px;display:inline-block">
+    <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(url)}" 
+      alt="QR" style="width:120px;height:120px;display:block">
+  </div>
+  <div style="font-size:11px;color:var(--muted);margin-top:8px">${url}</div>`;
+}
+
+function copyLink() {
+  const url = `${location.origin}/s/${USER_CODE}`;
+  navigator.clipboard.writeText(url).then(() => toast('링크가 복사되었습니다!', 'success'));
+}
+
+// ─── 고객 결과 조회 ──────────────────────────
+async function loadCustomers(search = '') {
+  let url = '/b2b/results';
+  if (search) url += `?search=${encodeURIComponent(search)}`;
+  const data = await api('GET', url);
+  if (!data) return;
+
+  const rows = (data.results || []).map(r => `
+    <tr style="cursor:pointer" onclick="window.open('/result/${r.id}', '_blank')">
+      <td><code style="font-size:11px;color:var(--brand)">${r.id.slice(0,14)}…</code></td>
+      <td style="font-weight:600">${r.user_name || '익명'}</td>
+      <td>
+        <span class="badge badge-purple">${r.bc_primary || '-'}</span>
+      </td>
+      <td style="font-size:12px;color:var(--muted)">${fmtDate(r.created_at)}</td>
+      <td>
+        <a href="/result/${r.id}" target="_blank" class="btn btn-primary btn-sm">
+          <i class="fas fa-external-link-alt"></i> 결과지
+        </a>
+      </td>
+    </tr>
+  `).join('');
+
+  document.getElementById('page-body').innerHTML = `
+    <div class="filter-row">
+      <input type="text" id="cust-search" placeholder="이름 검색..." style="width:200px"
+        onkeydown="if(event.key==='Enter') loadCustomers(this.value)">
+      <button class="btn btn-primary" onclick="loadCustomers(document.getElementById('cust-search').value)">
+        <i class="fas fa-search"></i> 검색
+      </button>
+      <button class="btn btn-ghost" onclick="loadCustomers()"><i class="fas fa-sync"></i> 전체</button>
+    </div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:12px">
+      총 <strong style="color:var(--text)">${(data.results||[]).length}명</strong>
+      <span style="margin-left:8px;font-size:12px;color:var(--brand)">· 결과지를 클릭하면 상세 내용을 확인할 수 있습니다</span>
+    </div>
+    <div class="card" style="padding:0">
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>결과 ID</th><th>이름</th><th>유형 (BC)</th><th>날짜</th><th></th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="5"><div class="empty-state"><i class="fas fa-users"></i><p>고객 데이터가 없습니다<br>설문 링크를 고객에게 공유해 시작하세요</p></div></td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+// ─── QR 코드 출력 ────────────────────────────
+function loadQR() {
+  const url = `${location.origin}/s/${USER_CODE}`;
+  const color = BRAND.brand_color || '#6366f1';
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(url)}&color=${color.replace('#','')}`;
+
+  document.getElementById('page-body').innerHTML = `
+    <div class="card" style="max-width:480px;margin:0 auto">
+      <div class="card-title"><i class="fas fa-qrcode" style="color:${color}"></i> QR 코드 출력</div>
+      
+      <div class="qr-section">
+        <img src="${qrUrl}" alt="QR Code" style="width:240px;height:240px;border:3px solid ${color};border-radius:16px;padding:8px">
+        <div class="qr-url">${url}</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px">
+          고객이 이 QR을 스캔하면 <strong style="color:${color}">${BRAND.brand_name||'귀사'} 전용 설문지</strong>가 열립니다.<br>
+          브랜드컬러와 로고가 자동으로 적용됩니다.
+        </p>
+      </div>
+
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="printQR('${qrUrl}', '${url}')">
+          <i class="fas fa-print"></i> 인쇄하기
+        </button>
+        <button class="btn btn-ghost" onclick="navigator.clipboard.writeText('${url}').then(()=>toast('링크 복사!','success'))">
+          <i class="fas fa-copy"></i> 링크 복사
+        </button>
+        <a href="${qrUrl}" download="slimmind-qr-${USER_CODE}.png" class="btn btn-ghost">
+          <i class="fas fa-download"></i> QR 다운로드
+        </a>
+      </div>
+    </div>
+
+    <div class="card" style="max-width:480px;margin:20px auto 0">
+      <div class="card-title"><i class="fas fa-mobile-alt" style="color:${color}"></i> QR 활용 팁</div>
+      <ul style="font-size:13px;color:var(--muted);line-height:2;padding-left:20px">
+        <li>리셉션 데스크, 대기실에 QR 코드를 비치하세요</li>
+        <li>고객이 QR을 스캔하면 ${BRAND.brand_name||'귀사'} 브랜드 설문이 시작됩니다</li>
+        <li>설문 완료 시 고객 유형이 자동으로 분석됩니다</li>
+        <li>대시보드에서 고객 결과를 실시간 확인하세요</li>
+      </ul>
+    </div>
+  `;
+}
+
+function printQR(qrUrl, surveyUrl) {
+  const brandName = BRAND.brand_name || 'SlimMind';
+  const color = BRAND.brand_color || '#6366f1';
+  const win = window.open('', '_blank');
+  win.document.write(`
+    <!DOCTYPE html><html><head><title>${brandName} QR</title>
+    <style>
+      body { font-family: sans-serif; text-align: center; padding: 40px; }
+      h2 { color: ${color}; margin-bottom: 8px; }
+      p { color: #666; font-size: 14px; margin-bottom: 20px; }
+      img { border: 3px solid ${color}; border-radius: 12px; padding: 8px; }
+      .url { font-size: 12px; color: #888; margin-top: 12px; word-break: break-all; }
+      @media print { button { display: none; } }
+    </style></head>
+    <body>
+      <h2>${brandName}</h2>
+      <p>QR 코드를 스캔하여 무료 체형 분석을 시작하세요</p>
+      <img src="${qrUrl}" width="200">
+      <div class="url">${surveyUrl}</div>
+      <br><button onclick="window.print()">🖨️ 인쇄</button>
+    </body></html>
+  `);
+  win.document.close();
+}
+
+// ─── 파트너 추천 뷰 ──────────────────────────
+async function loadPartnerView() {
+  const custData = await api('GET', '/b2b/results');
+  if (!custData) return;
+
+  const results = custData.results || [];
+  const color = BRAND.brand_color || '#6366f1';
+
+  // 닉네임 빈도 계산
+  const nickCount = {};
+  results.forEach(r => {
+    if (r.bc_primary) nickCount[r.bc_primary] = (nickCount[r.bc_primary] || 0) + 1;
+  });
+  const topNicks = Object.entries(nickCount).sort((a,b) => b[1]-a[1]).slice(0, 5);
+
+  let partnerViewHtml = '';
+  if (topNicks.length === 0) {
+    partnerViewHtml = '<div class="empty-state"><i class="fas fa-star"></i><p>아직 고객 데이터가 없습니다</p></div>';
+  } else {
+    partnerViewHtml = `
+      <p style="font-size:13px;color:var(--muted);margin-bottom:16px">
+        고객 유형별 최적 추천 서비스입니다. 고객 상담 시 활용하세요.
+      </p>
+      ${topNicks.map(([nick, cnt]) => `
+        <div style="margin-bottom:20px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+            <span class="badge" style="background:${color}22;color:${color}">${nick}</span>
+            <span style="font-size:12px;color:var(--muted)">${cnt}명</span>
+          </div>
+          <div id="pv-${nick.replace(/\s/g,'_')}" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+            <div style="text-align:center;padding:20px;color:var(--muted)"><i class="fas fa-circle-notch fa-spin"></i></div>
+          </div>
+        </div>
+      `).join('')}
+    `;
+  }
+
+  document.getElementById('page-body').innerHTML = `
+    <div class="card">
+      <div class="card-title"><i class="fas fa-star" style="color:${color}"></i> 파트너 추천 뷰 (고객 상담용)</div>
+      ${partnerViewHtml}
+    </div>
+  `;
+
+  // 각 닉네임별 파트너 뷰 조회 — 로컬 시드 데이터 활용
+  // (bc_partner_view API가 없으면 시드 데이터 로컬 표시)
+  const PARTNER_VIEW_SEED = {
+    '호르몬스위치 갱년기형': { rec1: '고주파 심부열 테라피 — 갱년기 에스트로겐 저하로 굳은 지방층을 열로 풀어줍니다', rec2: '림프 드레나쥐 — 호르몬 변화로 정체된 하체 림프를 순환시킵니다', forbidden: '고강도 근력 운동 — 코르티솔 추가 분비로 복부지방 악화', price: 150000 },
+    '스트레스성 야식부엉이형': { rec1: '두피·경추 이완 마사지 — 코르티솔 억제 효과가 즉각적입니다', rec2: '아로마 림프 마사지 — 부교감 신경 활성화로 야식 충동 감소', forbidden: '야간 사우나 — 코르티솔 분비 리듬을 더 교란합니다', price: 120000 },
+    '식후기절 혈당롤러코스터형': { rec1: '인바디 정밀 체성분 분석 — 인슐린 저항성 패턴 파악 필수', rec2: '저주파 EMS 복부 자극 — 인슐린 감수성 개선에 효과적', forbidden: '고강도 유산소 단독 — 혈당 급락으로 폭식 유발', price: 130000 },
+    '오후만되면 코끼리다리형': { rec1: '공기압 하체 순환 마사지 — 림프 정체 즉각 해소', rec2: '냉온 교대 족욕 테라피 — 하지 정맥 순환 개선', forbidden: '열 치료 단독 — 부종 일시 악화 가능', price: 100000 },
+    '출산후 바람빠진 풍선형': { rec1: '복압 회복 코어 필라테스 — 출산 후 복압 재건 전문', rec2: '산후 림프 드레나쥐 — 산후 부종 집중 관리', forbidden: '고강도 복근 운동 — 복압 손상 위험', price: 160000 },
+  };
+
+  topNicks.forEach(([nick]) => {
+    const key = nick.replace(/\s/g,'_');
+    const el = document.getElementById(`pv-${key}`);
+    if (!el) return;
+    const pv = PARTNER_VIEW_SEED[nick];
+    if (pv) {
+      el.innerHTML = `
+        <div class="partner-view-card rec1">
+          <div class="pv-label" style="color:#10B981">✅ 1순위 추천</div>
+          <div class="pv-text">${pv.rec1}</div>
+        </div>
+        <div class="partner-view-card rec2">
+          <div class="pv-label" style="color:#3B82F6">💡 2순위 추천</div>
+          <div class="pv-text">${pv.rec2}</div>
+        </div>
+        <div class="partner-view-card forbid">
+          <div class="pv-label" style="color:#EF4444">🚫 금기 서비스</div>
+          <div class="pv-text">${pv.forbidden}</div>
+          ${pv.price ? `<div style="margin-top:8px;font-size:12px;font-weight:700;color:${color}">예상 객단가 ${pv.price.toLocaleString()}원</div>` : ''}
+        </div>
+      `;
+    } else {
+      el.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--muted);font-size:13px">파트너 뷰 데이터 준비 중입니다</div>`;
+    }
+  });
+}
+
+// ─── 업체 정보 ───────────────────────────────
+async function loadProfile() {
+  const data = await api('GET', '/b2b/me');
+  if (!data) return;
+  const p = data.partner || {};
+  const color = BRAND.brand_color || '#6366f1';
+
+  document.getElementById('page-body').innerHTML = `
+    <div class="card" style="max-width:600px">
+      <div class="card-title"><i class="fas fa-building" style="color:${color}"></i> 업체 정보</div>
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:10px 24px;font-size:14px;line-height:2">
+        <span style="color:var(--muted);font-weight:600">파트너 코드</span>
+        <span><code style="color:${color};font-weight:700">${p.code || USER_CODE}</code></span>
+        <span style="color:var(--muted);font-weight:600">영업장명</span>
+        <span>${p.name || '-'}</span>
+        <span style="color:var(--muted);font-weight:600">업종</span>
+        <span>${p.type || '-'}</span>
+        <span style="color:var(--muted);font-weight:600">원장명</span>
+        <span>${p.owner_name || '-'}</span>
+        <span style="color:var(--muted);font-weight:600">연락처</span>
+        <span>${p.phone || '-'}</span>
+        <span style="color:var(--muted);font-weight:600">이메일</span>
+        <span>${p.email || '-'}</span>
+        <span style="color:var(--muted);font-weight:600">브랜드명</span>
+        <span style="color:${color};font-weight:700">${p.brand_name || p.name || '-'}</span>
+        <span style="color:var(--muted);font-weight:600">브랜드 컬러</span>
+        <span style="display:flex;align-items:center;gap:8px">
+          <span style="width:20px;height:20px;border-radius:4px;background:${p.brand_color||color};display:inline-block"></span>
+          <code>${p.brand_color || color}</code>
+        </span>
+        <span style="color:var(--muted);font-weight:600">로고</span>
+        <span>${p.brand_logo_url ? `<img src="${p.brand_logo_url}" style="height:32px;border-radius:6px;object-fit:contain;background:#f8fafc;padding:2px;border:1px solid var(--border)">` : '미등록'}</span>
+        <span style="color:var(--muted);font-weight:600">수수료율</span>
+        <span>${p.commission_rate || 15}%</span>
+        <span style="color:var(--muted);font-weight:600">상태</span>
+        <span class="badge badge-green">${p.status || 'active'}</span>
+      </div>
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);font-size:13px;color:var(--muted)">
+        정보 수정이 필요하시면 관리자에게 문의하세요.
+      </div>
+    </div>
+    <div class="card" style="max-width:600px;margin-top:0">
+      <div class="card-title"><i class="fas fa-link" style="color:${color}"></i> 고객 설문 링크</div>
+      <div style="background:${color}11;border:1.5px solid ${color}44;border-radius:10px;padding:16px">
+        <div style="font-size:13px;font-weight:700;color:${color};margin-bottom:8px">고객 전용 설문 URL</div>
+        <div style="font-size:14px;word-break:break-all;margin-bottom:12px">${location.origin}/s/${USER_CODE}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="copyLink()"><i class="fas fa-copy"></i> 링크 복사</button>
+          <button class="btn btn-ghost" onclick="navigateTo('qr')"><i class="fas fa-qrcode"></i> QR 출력</button>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-top:10px">
+          ✅ 이 링크로 접속하면 귀사 브랜드컬러와 로고가 자동으로 적용된 설문지가 열립니다
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ─── 자동 로그인 확인 ─────────────────────────
+if (TOKEN) {
+  const savedBrand = localStorage.getItem('b2b_brand');
+  if (savedBrand) { try { BRAND = JSON.parse(savedBrand); } catch(e) {} }
+
+  fetch('/api/auth/me', { headers: { 'Authorization': `Bearer ${TOKEN}` } })
+    .then(r => r.json())
+    .then(data => {
+      if (data.role === 'B2B_PARTNER') {
+        // 브랜드 정보 새로고침
+        fetch('/api/b2b/me', { headers: { 'Authorization': `Bearer ${TOKEN}` } })
+          .then(r => r.json())
+          .then(pData => {
+            if (pData?.partner) {
+              const p = pData.partner;
+              BRAND = {
+                brand_name: p.brand_name || p.name,
+                brand_color: p.brand_color || '#6366f1',
+                brand_logo_url: p.brand_logo_url || '',
+              };
+              localStorage.setItem('b2b_brand', JSON.stringify(BRAND));
+            }
+            initMain(data.name, data.code);
+          })
+          .catch(() => initMain(data.name, data.code));
+      } else {
+        doLogout();
+      }
+    })
+    .catch(() => {
+      TOKEN = '';
+      document.getElementById('login-page').style.display = 'flex';
+    });
+} else {
+  document.getElementById('login-page').style.display = 'flex';
+}
+</script>
+</body>
+</html>
