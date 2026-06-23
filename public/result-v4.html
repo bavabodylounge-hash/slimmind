@@ -8,881 +8,864 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
-  * { font-family: 'Noto Sans KR', sans-serif; box-sizing: border-box; }
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
+*{font-family:'Noto Sans KR',sans-serif;box-sizing:border-box;margin:0;padding:0;}
 
-  :root {
-    --gold: #C9A84C;
-    --gold-light: #F0D060;
-    --navy: #0A1628;
-    --navy-mid: #1A2E4A;
-    --navy-light: #243B55;
-    --cream: #FAF6EF;
-    --red-accent: #E8402A;
-  }
+:root{
+  --mint:#3EB8A0; --mint-d:#2A9B85; --mint-l:#E6F7F4;
+  --navy:#0F1D30; --navy2:#1A2E4A; --navy3:#243A5E;
+  --red:#DC2626; --orange:#EA580C;
+  --text:#1A1A2E; --sub:#555; --border:#E8E8EE;
+  --bg:#FFFFFF;
+}
 
-  body { background: var(--navy); color: #fff; min-height: 100vh; }
+body{background:var(--bg);color:var(--text);min-height:100vh;}
 
-  /* ── 로딩 오버레이 ── */
-  #loading-overlay {
-    position: fixed; inset: 0; background: var(--navy);
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    z-index: 9999; transition: opacity 0.5s;
-  }
-  .loader-ring {
-    width: 64px; height: 64px; border: 4px solid rgba(201,168,76,0.2);
-    border-top-color: var(--gold); border-radius: 50%;
-    animation: spin 0.9s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
+/* ── 로딩 ── */
+#loading-overlay{
+  position:fixed;inset:0;background:var(--navy);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  z-index:9999;transition:opacity .5s;
+}
+.loader-ring{width:56px;height:56px;border:3px solid rgba(62,184,160,.2);border-top-color:var(--mint);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
 
-  /* ── 탑 네비게이션 ── */
-  #top-nav {
-    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-    background: rgba(10,22,40,0.95); backdrop-filter: blur(12px);
-    border-bottom: 1px solid rgba(201,168,76,0.2);
-    padding: 0 16px; height: 56px;
-    display: flex; align-items: center; justify-content: space-between;
-  }
-  .nav-logo { font-size: 13px; font-weight: 700; color: var(--gold); letter-spacing: 2px; }
-  .nav-tabs { display: flex; gap: 4px; }
-  .nav-tab {
-    padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;
-    cursor: pointer; transition: all 0.2s; color: rgba(255,255,255,0.5);
-    border: 1px solid transparent;
-  }
-  .nav-tab.active {
-    background: linear-gradient(135deg, var(--gold), #A07830);
-    color: #fff; border-color: var(--gold);
-  }
-  .nav-tab:hover:not(.active) {
-    color: var(--gold); border-color: rgba(201,168,76,0.3);
-  }
+/* ── 탑 네비게이션 ── */
+#top-nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  background:#fff;border-bottom:1px solid var(--border);
+  height:56px;padding:0 12px;
+  display:flex;align-items:center;justify-content:space-between;
+  box-shadow:0 2px 8px rgba(0,0,0,.06);
+}
+.nav-logo{font-size:13px;font-weight:900;color:var(--navy);letter-spacing:2px;}
+.nav-tabs{display:flex;gap:3px;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.nav-tabs::-webkit-scrollbar{display:none;}
+.nav-tab{
+  padding:6px 12px;border-radius:20px;font-size:11px;font-weight:600;
+  cursor:pointer;transition:all .2s;color:var(--sub);border:1px solid transparent;
+  white-space:nowrap;
+}
+.nav-tab.active{background:var(--mint);color:#fff;}
+.nav-tab:hover:not(.active){color:var(--mint);border-color:var(--mint-l);}
 
-  /* ── 페이지 컨테이너 ── */
-  .page { display: none; padding-top: 72px; min-height: 100vh; }
-  .page.active { display: block; }
+/* ── 페이지 ── */
+.page{display:none;padding-top:68px;min-height:100vh;}
+.page.active{display:block;}
+.section-wrap{max-width:720px;margin:0 auto;padding:0 16px 60px;}
 
-  /* ── 공통 섹션 ── */
-  .section-wrap { max-width: 760px; margin: 0 auto; padding: 0 16px 40px; }
+/* ── 공통 타이포 ── */
+.eyebrow{font-size:11px;letter-spacing:3px;color:var(--mint);text-transform:uppercase;margin-bottom:6px;font-weight:700;}
+.page-title{font-size:clamp(18px,4vw,24px);font-weight:900;color:var(--navy);line-height:1.35;margin-bottom:20px;}
+.section-title{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.section-title::after{content:'';flex:1;height:1px;background:var(--border);}
+.body-text{font-size:14px;line-height:1.85;color:#333;word-break:keep-all;}
+.body-text strong{color:var(--navy);font-weight:700;}
+.body-text em{color:var(--mint-d);font-style:normal;font-weight:600;}
 
-  /* ── 골드 디바이더 ── */
-  .gold-divider {
-    height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent);
-    margin: 32px 0;
-  }
+/* ── 카드 ── */
+.card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px;}
+.card-mint{border-left:4px solid var(--mint);background:var(--mint-l);}
+.card-warn{border-left:4px solid var(--red);background:#FFF5F5;}
+.card-navy{background:var(--navy);color:#fff;}
 
-  /* ── 배지 ── */
-  .badge-gold {
-    display: inline-block; padding: 4px 14px; border-radius: 20px;
-    background: linear-gradient(135deg, var(--gold), #A07830);
-    font-size: 11px; font-weight: 700; letter-spacing: 1px; color: #fff;
-  }
-  .badge-red {
-    display: inline-block; padding: 4px 14px; border-radius: 20px;
-    background: var(--red-accent); font-size: 11px; font-weight: 700; color: #fff;
-  }
+/* ── 구분선 ── */
+.divider{height:1px;background:var(--border);margin:24px 0;}
 
-  /* ══════════════════════════════
-     PAGE 1 — 바디 페르소나 카드
-  ══════════════════════════════ */
-  #page1 { background: linear-gradient(180deg, #080F1C 0%, #0D1E35 60%, #080F1C 100%); }
+/* ── 배지 ── */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;}
+.badge-mint{background:var(--mint);color:#fff;}
+.badge-navy{background:var(--navy);color:#fff;}
+.badge-outline{background:transparent;border:1px solid var(--mint);color:var(--mint);}
+.badge-red{background:var(--red);color:#fff;}
+.badge-orange{background:var(--orange);color:#fff;}
 
-  .hero-eyebrow {
-    font-size: 11px; letter-spacing: 3px; color: var(--gold);
-    text-transform: uppercase; text-align: center; margin-bottom: 8px;
-  }
-  .hero-title {
-    font-size: clamp(18px, 4vw, 26px); font-weight: 900; text-align: center;
-    line-height: 1.35; color: #fff; margin-bottom: 6px;
-  }
-  .hero-title span { color: var(--gold); }
+/* ── 면책 고지 ── */
+.disclaimer{font-size:10px;color:#999;line-height:1.6;padding:12px 16px;border-top:1px solid var(--border);margin-top:32px;}
 
-  /* 메디컬 ID 카드 */
-  .medical-card {
-    background: linear-gradient(135deg, #0D1E35 0%, #162840 50%, #0D1E35 100%);
-    border: 1px solid rgba(201,168,76,0.4);
-    border-radius: 20px; padding: 28px 24px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(201,168,76,0.15);
-    position: relative; overflow: hidden;
-  }
-  .medical-card::before {
-    content: ''; position: absolute; top: -40px; right: -40px;
-    width: 180px; height: 180px;
-    background: radial-gradient(circle, rgba(201,168,76,0.07) 0%, transparent 70%);
-    border-radius: 50%;
-  }
+/* ══════════════════════ P1 ══════════════════════ */
+/* BC 히어로 카드 */
+.bc-hero-card{
+  background:var(--navy);border-radius:20px;padding:28px 24px;
+  position:relative;overflow:hidden;margin-bottom:20px;
+}
+.bc-hero-card::before{
+  content:'';position:absolute;top:-60px;right:-60px;width:200px;height:200px;
+  background:radial-gradient(circle,rgba(62,184,160,.12) 0%,transparent 70%);border-radius:50%;
+}
+.bc-nickname{font-size:clamp(18px,4vw,24px);font-weight:500;color:#fff;margin-bottom:8px;line-height:1.3;}
+.bc-code-num{font-size:13px;font-weight:500;color:var(--mint);margin-bottom:4px;letter-spacing:1px;}
+.bc-medical{font-size:11px;color:rgba(255,255,255,.55);margin-bottom:20px;}
+.bc-full-badge{
+  background:rgba(255,255,255,.06);border:1px solid rgba(62,184,160,.3);
+  border-radius:10px;padding:10px 14px;font-size:11px;color:rgba(255,255,255,.6);line-height:1.6;
+}
+.bc-full-badge strong{color:var(--mint);}
 
-  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-  .card-logo { font-size: 11px; font-weight: 700; color: var(--gold); letter-spacing: 2px; }
-  .card-barcode {
-    display: flex; align-items: flex-end; gap: 1.5px;
-    height: 28px;
-  }
-  .barcode-line {
-    width: 2px; background: var(--gold); opacity: 0.7;
-    border-radius: 1px;
-  }
+/* 4대 지표 */
+.metrics-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;}
+.metric-card{
+  background:#F8FAFB;border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center;
+}
+.metric-label{font-size:10px;color:var(--sub);margin-bottom:4px;font-weight:600;}
+.metric-value{font-size:22px;font-weight:900;color:var(--navy);}
+.metric-unit{font-size:10px;color:var(--sub);}
 
-  .card-bc-code {
-    font-size: clamp(36px, 8vw, 56px); font-weight: 900;
-    color: var(--gold); letter-spacing: 4px;
-    text-shadow: 0 0 30px rgba(201,168,76,0.4);
-    line-height: 1; margin-bottom: 4px;
-  }
-  .card-nickname {
-    font-size: 14px; color: rgba(255,255,255,0.7); margin-bottom: 16px;
-    font-weight: 500;
-  }
-  .card-medical-title {
-    font-size: 12px; color: var(--gold); letter-spacing: 0.5px;
-    padding: 6px 12px; border-left: 2px solid var(--gold);
-    background: rgba(201,168,76,0.08); border-radius: 0 6px 6px 0;
-    margin-bottom: 16px; line-height: 1.4;
-  }
+/* BC 마스터 9종 그리드 */
+.bc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.bc-grid-item{
+  border:1px solid var(--border);border-radius:12px;padding:12px 8px;text-align:center;
+  transition:all .3s;opacity:.45;
+}
+.bc-grid-item.active-bc{opacity:1;border-color:var(--mint);background:var(--mint-l);}
+.bc-grid-icon{font-size:20px;margin-bottom:4px;}
+.bc-grid-code{font-size:12px;font-weight:900;color:var(--navy);}
+.bc-grid-nick{font-size:9px;color:var(--sub);margin-top:2px;line-height:1.3;}
 
-  .card-sub-badge {
-    background: rgba(10,22,40,0.8); border: 1px solid rgba(201,168,76,0.3);
-    border-radius: 8px; padding: 10px 14px;
-    font-size: 11px; color: rgba(255,255,255,0.6); line-height: 1.6;
-  }
-  .card-sub-badge strong { color: var(--gold); }
+/* ══════════════════════ P2 ══════════════════════ */
+/* 도미노 체인 */
+.domino-chain{display:flex;flex-direction:column;gap:0;}
+.domino-step{
+  display:flex;gap:14px;align-items:flex-start;position:relative;
+  padding-bottom:24px;
+}
+.domino-step:last-child{padding-bottom:0;}
+.domino-step::before{
+  content:'';position:absolute;left:20px;top:44px;bottom:0;width:2px;
+  background:linear-gradient(180deg,var(--mint),transparent);
+}
+.domino-step:last-child::before{display:none;}
+.domino-num{
+  width:42px;height:42px;border-radius:50%;background:var(--mint);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;
+  flex-shrink:0;box-shadow:0 4px 12px rgba(62,184,160,.3);
+}
+.domino-num.top1{background:var(--navy);box-shadow:0 4px 12px rgba(15,29,48,.3);}
+.domino-content{flex:1;}
+.domino-title{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:6px;}
+.domino-desc{font-size:13px;color:#444;line-height:1.7;word-break:keep-all;}
 
-  /* 실패 고발 텍스트 박스 */
-  .fail-expose-box {
-    background: linear-gradient(135deg, rgba(232,64,42,0.08), rgba(232,64,42,0.04));
-    border: 1px solid rgba(232,64,42,0.3); border-radius: 16px;
-    padding: 24px; position: relative;
-  }
-  .fail-expose-box::before {
-    content: '⚠️ 당신 몸의 진짜 고장 원인';
-    display: block; font-size: 11px; font-weight: 700;
-    color: var(--red-accent); letter-spacing: 1px; margin-bottom: 12px;
-  }
+/* 11축 스코어 아코디언 */
+.axis-top-card{
+  border:2px solid var(--mint);background:var(--mint-l);border-radius:14px;
+  padding:18px;margin-bottom:12px;position:relative;overflow:hidden;
+}
+.axis-top-card::after{content:'1순위';position:absolute;top:12px;right:12px;font-size:10px;font-weight:700;color:var(--mint);background:rgba(62,184,160,.12);border-radius:6px;padding:2px 8px;}
+.axis-mini-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
+.axis-mini-item{background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 8px;text-align:center;}
+.axis-mini-icon{font-size:16px;margin-bottom:3px;}
+.axis-mini-label{font-size:10px;color:var(--sub);margin-bottom:5px;}
+.axis-mini-bar-bg{height:4px;background:#EEE;border-radius:2px;overflow:hidden;}
+.axis-mini-bar{height:100%;border-radius:2px;background:var(--mint);transition:width 1s ease;}
+.axis-mini-score{font-size:13px;font-weight:700;color:var(--navy);margin-top:3px;}
 
-  .story-text {
-    font-size: 14px; line-height: 1.9; color: rgba(255,255,255,0.85);
-    word-break: keep-all;
-  }
-  .story-text strong { color: var(--gold); font-weight: 700; }
-  .story-text em { color: #fff; font-style: normal; font-weight: 600; }
+/* ══════════════════════ P3 ══════════════════════ */
+/* 상단 융합 코드 */
+.fusion-code-bar{
+  background:var(--navy);border-radius:12px;padding:14px 18px;
+  display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap;
+}
+.fusion-sep{color:rgba(255,255,255,.3);font-size:18px;}
 
-  /* ══════════════════════════════
-     PAGE 2 — 11대 진단축
-  ══════════════════════════════ */
-  #page2 { background: linear-gradient(180deg, #080F1C 0%, #0A1628 100%); }
+/* 삼각 매트릭스 SVG */
+.tri-wrap{display:flex;justify-content:center;margin:24px 0 28px;}
 
-  .domino-grid {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 12px; margin: 20px 0;
-  }
-  .domino-card {
-    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 14px; padding: 14px 10px; text-align: center;
-    transition: all 0.3s; position: relative; overflow: hidden;
-    cursor: pointer;
-  }
-  .domino-card.highlighted {
-    border-color: var(--gold); background: rgba(201,168,76,0.1);
-    box-shadow: 0 0 20px rgba(201,168,76,0.2);
-  }
-  .domino-card.highlighted::after {
-    content: '🎯 1순위';
-    position: absolute; top: 6px; right: 6px;
-    font-size: 9px; font-weight: 700; color: var(--gold);
-    background: rgba(0,0,0,0.5); border-radius: 4px; padding: 2px 5px;
-  }
-  .domino-icon { font-size: 22px; margin-bottom: 6px; }
-  .domino-label { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.7); margin-bottom: 8px; }
-  .domino-bar-bg {
-    height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;
-  }
-  .domino-bar-fill {
-    height: 100%; border-radius: 3px; transition: width 1.2s cubic-bezier(.4,0,.2,1);
-    background: linear-gradient(90deg, var(--gold), #F0D060);
-  }
-  .domino-score {
-    font-size: 18px; font-weight: 900; color: #fff; margin-top: 6px;
-  }
+/* 인사이트 카드 */
+.insight-card{border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:16px;}
+.insight-header{
+  background:var(--navy);color:#fff;padding:16px 20px;
+  display:flex;align-items:flex-start;gap:12px;
+}
+.insight-num{
+  width:32px;height:32px;border-radius:50%;background:var(--mint);
+  display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0;
+}
+.insight-titles{}
+.insight-title{font-size:14px;font-weight:700;margin-bottom:3px;}
+.insight-sub{font-size:11px;color:rgba(255,255,255,.6);}
+.insight-body{padding:16px 20px;}
+.insight-block{margin-bottom:12px;}
+.insight-block-label{font-size:10px;font-weight:700;letter-spacing:1px;margin-bottom:6px;text-transform:uppercase;}
+.insight-block-label.medical{color:var(--navy);}
+.insight-block-label.personal{color:var(--mint-d);}
+.insight-block-label.warn{color:var(--red);}
+.insight-block-label.solution{color:#2A9B85;}
+.insight-block-text{font-size:13px;line-height:1.75;color:#333;word-break:keep-all;}
+.warn-box{background:#FFF5F5;border:1px solid #FECACA;border-radius:8px;padding:10px 14px;font-size:12px;color:var(--red);line-height:1.6;}
+.solution-box{background:var(--mint-l);border:1px solid rgba(62,184,160,.3);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--mint-d);line-height:1.6;}
 
-  /* 도미노 연결선 차트 */
-  .domino-chain {
-    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 16px; padding: 20px;
-    margin: 20px 0;
-  }
-  .chain-row {
-    display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
-    opacity: 0; transform: translateX(-20px);
-    transition: all 0.5s;
-  }
-  .chain-row.visible { opacity: 1; transform: translateX(0); }
-  .chain-node {
-    min-width: 80px; padding: 8px 12px; border-radius: 10px;
-    text-align: center; font-size: 12px; font-weight: 700;
-    border: 1px solid;
-  }
-  .chain-arrow { color: var(--gold); font-size: 16px; flex-shrink: 0; }
-  .chain-desc { font-size: 11px; color: rgba(255,255,255,0.5); line-height: 1.4; }
+/* ══════════════════════ P4 ══════════════════════ */
+/* 잔혹사 트리거 카드 */
+.trigger-card{border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:16px;}
+.trigger-header{background:var(--navy2);color:#fff;padding:16px 20px;display:flex;align-items:flex-start;gap:12px;}
+.trigger-num-badge{
+  min-width:56px;padding:4px 8px;background:var(--mint);border-radius:8px;
+  text-align:center;font-size:10px;font-weight:700;color:#fff;
+}
+.trigger-title{font-size:13px;font-weight:700;color:#fff;line-height:1.4;}
+.trigger-body{padding:16px 20px;}
+.info-block{border-radius:8px;padding:12px 14px;margin-bottom:10px;font-size:12px;line-height:1.7;word-break:keep-all;}
+.info-block.blue{background:#EFF6FF;border:1px solid #BFDBFE;color:#1E40AF;}
+.info-block.mint{background:var(--mint-l);border:1px solid rgba(62,184,160,.3);color:var(--mint-d);}
+.info-block.green{background:#F0FFF4;border:1px solid #BBF7D0;color:#166534;}
+.info-block-label{font-size:10px;font-weight:700;letter-spacing:.5px;margin-bottom:5px;text-transform:uppercase;}
 
-  /* ══════════════════════════════
-     PAGE 3 — 선천 기질 레이어
-  ══════════════════════════════ */
-  #page3 { background: linear-gradient(180deg, #080F1C 0%, #0C1829 100%); }
+/* ══════════════════════ P5 ══════════════════════ */
+/* 시뮬레이터 게이지 */
+.sim-card{border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:12px;}
+.sim-label{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:12px;}
+.sim-row{display:flex;align-items:center;gap:12px;margin-bottom:6px;}
+.sim-tag{font-size:10px;font-weight:600;min-width:40px;}
+.sim-tag.before{color:var(--red);}
+.sim-tag.after{color:var(--mint-d);}
+.sim-bar-bg{flex:1;height:10px;background:#EEE;border-radius:5px;overflow:hidden;}
+.sim-bar-fill{height:100%;border-radius:5px;transition:width 1.4s cubic-bezier(.4,0,.2,1);}
+.sim-bar-fill.before-bar{background:linear-gradient(90deg,#EF4444,#F87171);}
+.sim-bar-fill.after-bar{background:linear-gradient(90deg,var(--mint-d),var(--mint));}
+.sim-num{font-size:12px;font-weight:700;min-width:38px;text-align:right;}
+.sim-num.before{color:var(--red);}
+.sim-num.after{color:var(--mint-d);}
+.sim-desc{font-size:11px;color:var(--sub);line-height:1.6;margin-top:6px;}
+.sim-disclaimer{font-size:10px;color:#999;margin-top:6px;font-style:italic;}
 
-  /* 삼각 매트릭스 */
-  .triangle-matrix {
-    display: flex; flex-direction: column; gap: 16px; margin: 24px 0;
-  }
-  .trait-layer {
-    border-radius: 16px; padding: 20px 20px 20px 24px;
-    border-left: 4px solid; position: relative; overflow: hidden;
-  }
-  .trait-layer::before {
-    content: ''; position: absolute; top: 0; right: 0; bottom: 0; width: 60%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.02));
-  }
-  .trait-layer-header {
-    display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
-  }
-  .trait-layer-icon {
-    width: 40px; height: 40px; border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 20px;
-  }
-  .trait-layer-tag { font-size: 10px; font-weight: 700; letter-spacing: 1px; opacity: 0.7; text-transform: uppercase; }
-  .trait-layer-value { font-size: 22px; font-weight: 900; line-height: 1; }
-  .trait-layer-desc { font-size: 13px; color: rgba(255,255,255,0.7); line-height: 1.7; word-break: keep-all; }
+/* ══════════════════════ P6 ══════════════════════ */
+/* 주차 카드 */
+.week-card{border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:16px;}
+.week-header{background:var(--navy);color:#fff;padding:16px 20px;display:flex;align-items:flex-start;gap:12px;}
+.week-badge-num{background:var(--mint);color:#fff;border-radius:8px;padding:4px 12px;font-size:11px;font-weight:700;white-space:nowrap;}
+.week-title-text{font-size:13px;font-weight:700;color:#fff;line-height:1.4;}
+.week-body{padding:16px 20px;}
+.week-section{margin-bottom:14px;}
+.week-section-label{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--sub);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.week-section-label::after{content:'';flex:1;height:1px;background:var(--border);}
+.rule{display:flex;gap:8px;font-size:12px;line-height:1.65;color:#333;margin-bottom:6px;word-break:keep-all;}
+.rule-icon{font-size:14px;flex-shrink:0;margin-top:1px;}
+.fail-expose-box{background:#F8FAFB;border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;}
 
-  /* 삼각형 SVG 다이어그램 */
-  .triangle-svg-wrap {
-    display: flex; justify-content: center; margin: 24px 0;
-    position: relative;
-  }
+/* B2B 버튼 */
+.b2b-btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  background:var(--navy);color:#fff;border-radius:10px;padding:14px 20px;
+  font-size:13px;font-weight:700;cursor:pointer;margin-top:12px;
+  border:none;width:100%;transition:background .2s;
+}
+.b2b-btn:hover{background:var(--navy2);}
 
-  /* ══════════════════════════════
-     PAGE 4 — 12주 로드맵
-  ══════════════════════════════ */
-  #page4 { background: linear-gradient(180deg, #080F1C 0%, #0A1628 100%); }
+/* 잠금 카드 */
+.lock-card{
+  border:1px solid rgba(62,184,160,.3);border-radius:16px;padding:36px 24px;
+  text-align:center;background:#F8FAFB;position:relative;overflow:hidden;margin-bottom:16px;
+}
+.lock-card::before{
+  content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(45deg,rgba(62,184,160,.03) 0,rgba(62,184,160,.03) 1px,transparent 1px,transparent 12px);
+}
+.lock-icon{width:64px;height:64px;border-radius:50%;background:var(--mint-l);border:2px solid rgba(62,184,160,.3);display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 16px;animation:pulse-lock 2s ease-in-out infinite;}
+@keyframes pulse-lock{0%,100%{box-shadow:0 0 0 0 rgba(62,184,160,.3)}50%{box-shadow:0 0 0 10px rgba(62,184,160,.0)}}
+.lock-weeks{display:flex;justify-content:center;gap:5px;flex-wrap:wrap;margin-bottom:16px;}
+.lock-week-circle{width:34px;height:34px;border-radius:50%;background:#EEE;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--sub);}
+.lock-title{font-size:17px;font-weight:900;color:var(--navy);margin-bottom:10px;}
+.lock-desc{font-size:13px;color:var(--sub);line-height:1.8;word-break:keep-all;margin-bottom:20px;}
+.lock-cta{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--mint);color:#fff;border-radius:10px;padding:12px 24px;
+  font-size:13px;font-weight:700;cursor:pointer;border:none;
+}
 
-  .week-card {
-    background: linear-gradient(135deg, rgba(13,30,53,0.9), rgba(22,40,64,0.9));
-    border: 1px solid rgba(201,168,76,0.25); border-radius: 20px;
-    padding: 24px; margin-bottom: 20px;
-    position: relative; overflow: hidden;
-  }
-  .week-card::before {
-    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
-    background: linear-gradient(90deg, var(--gold), transparent);
-  }
-  .week-badge {
-    display: inline-flex; align-items: center; gap: 6px;
-    background: linear-gradient(135deg, var(--gold), #A07830);
-    color: #fff; font-size: 11px; font-weight: 700;
-    padding: 5px 14px; border-radius: 20px; margin-bottom: 12px;
-  }
-  .week-title {
-    font-size: 16px; font-weight: 800; color: #fff; margin-bottom: 16px; line-height: 1.4;
-  }
+/* ── 애니메이션 ── */
+.fade-up{opacity:0;transform:translateY(20px);transition:opacity .5s ease,transform .5s ease;}
+.fade-up.visible{opacity:1;transform:translateY(0);}
 
-  .week-section { margin-bottom: 16px; }
-  .week-section-title {
-    font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
-    text-transform: uppercase; color: var(--gold); margin-bottom: 8px;
-    display: flex; align-items: center; gap: 6px;
-  }
-  .week-section-title::after {
-    content: ''; flex: 1; height: 1px; background: rgba(201,168,76,0.2);
-  }
+/* ── 진행 바 (P6) ── */
+.progress-bar-wrap{margin-bottom:24px;}
+.progress-labels{display:flex;justify-content:space-between;font-size:11px;color:var(--sub);margin-bottom:6px;}
+.progress-bg{height:8px;background:#EEE;border-radius:4px;overflow:hidden;}
+.progress-fill{width:33.3%;height:100%;background:linear-gradient(90deg,var(--mint-d),var(--mint));border-radius:4px;}
 
-  .rule-item {
-    display: flex; gap: 8px; font-size: 13px; line-height: 1.65;
-    color: rgba(255,255,255,0.8); margin-bottom: 6px; word-break: keep-all;
-  }
-  .rule-ban { color: #FF6B6B; flex-shrink: 0; font-size: 15px; }
-  .rule-ok { color: #69DB7C; flex-shrink: 0; font-size: 15px; }
-
-  /* LOCK 카드 */
-  .lock-card {
-    background: linear-gradient(135deg, rgba(10,22,40,0.98), rgba(6,14,26,0.98));
-    border: 1px solid rgba(201,168,76,0.3); border-radius: 20px;
-    padding: 40px 24px; text-align: center; position: relative; overflow: hidden;
-    margin-bottom: 20px;
-  }
-  .lock-card::before {
-    content: ''; position: absolute; inset: 0;
-    background: repeating-linear-gradient(
-      45deg,
-      rgba(201,168,76,0.02) 0px,
-      rgba(201,168,76,0.02) 1px,
-      transparent 1px,
-      transparent 12px
-    );
-  }
-  .lock-icon-wrap {
-    width: 72px; height: 72px; border-radius: 50%;
-    background: rgba(201,168,76,0.1); border: 2px solid rgba(201,168,76,0.3);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 30px; margin: 0 auto 16px;
-    animation: pulse-lock 2s ease-in-out infinite;
-  }
-  @keyframes pulse-lock {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(201,168,76,0.3); }
-    50% { box-shadow: 0 0 0 12px rgba(201,168,76,0.0); }
-  }
-  .lock-weeks {
-    display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; margin-bottom: 16px;
-  }
-  .lock-week-badge {
-    width: 36px; height: 36px; border-radius: 50%;
-    background: rgba(201,168,76,0.08); border: 1px solid rgba(201,168,76,0.2);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 11px; font-weight: 700; color: rgba(201,168,76,0.5);
-  }
-  .lock-title { font-size: 18px; font-weight: 900; color: var(--gold); margin-bottom: 12px; }
-  .lock-desc { font-size: 13px; color: rgba(255,255,255,0.55); line-height: 1.8; word-break: keep-all; }
-
-  /* 하단 여백 */
-  .page-bottom { height: 48px; }
-
-  /* ── 애니메이션 ── */
-  .fade-up {
-    opacity: 0; transform: translateY(24px);
-    transition: opacity 0.6s ease, transform 0.6s ease;
-  }
-  .fade-up.visible { opacity: 1; transform: translateY(0); }
-
-  /* 반응형 */
-  @media (max-width: 480px) {
-    .nav-tab { padding: 5px 10px; font-size: 11px; }
-    .domino-grid { grid-template-columns: repeat(3, 1fr); }
-  }
+@media(max-width:480px){
+  .bc-grid{grid-template-columns:repeat(3,1fr);}
+  .axis-mini-grid{grid-template-columns:repeat(3,1fr);}
+  .nav-tab{padding:5px 9px;font-size:10px;}
+}
 </style>
 </head>
 <body>
 
-<!-- 로딩 오버레이 -->
+<!-- 로딩 -->
 <div id="loading-overlay">
-  <div style="font-size:13px;letter-spacing:3px;color:var(--gold);font-weight:700;margin-bottom:20px;">SLIMMIND</div>
+  <div style="font-size:12px;letter-spacing:3px;color:var(--mint);font-weight:900;margin-bottom:20px;">SLIMMIND</div>
   <div class="loader-ring"></div>
-  <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:16px;">바디코드 분석 중…</div>
+  <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:14px;">바디코드 분석 중…</div>
 </div>
 
-<!-- 탑 네비게이션 -->
+<!-- 네비게이션 -->
 <nav id="top-nav">
-  <div class="nav-logo">SLIMMIND</div>
+  <div class="nav-logo">SLIM<span style="color:var(--mint);">MIND</span></div>
   <div class="nav-tabs">
     <button class="nav-tab active" onclick="switchPage(1)">페르소나</button>
     <button class="nav-tab" onclick="switchPage(2)">진단축</button>
     <button class="nav-tab" onclick="switchPage(3)">기질</button>
-    <button class="nav-tab" onclick="switchPage(4)">로드맵</button>
+    <button class="nav-tab" onclick="switchPage(4)">잔혹사</button>
+    <button class="nav-tab" onclick="switchPage(5)">시뮬레이터</button>
+    <button class="nav-tab" onclick="switchPage(6)">로드맵</button>
   </div>
 </nav>
 
-<!-- ════════════════════════════════════
-     PAGE 1 — 나의 바디 페르소나
-════════════════════════════════════ -->
+<!-- ═══ P1: 바디 페르소나 리포트 ═══ -->
 <section id="page1" class="page active">
 <div class="section-wrap">
+  <div class="eyebrow" style="padding-top:8px;">BODY PERSONA REPORT</div>
+  <h1 class="page-title fade-up" id="p1-title">바디코드 분석 결과</h1>
 
-  <div class="hero-eyebrow" id="p1-eyebrow">BODY CODE ANALYSIS REPORT</div>
-  <h1 class="hero-title fade-up" id="p1-title" style="transition-delay:0.1s">
-    <span id="p1-name">분석중</span>님만을 위한<br>대사 사슬 해제 해답 책
-  </h1>
-  <p style="text-align:center;font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:24px;letter-spacing:1px;">
-    The SlimMind Book
-  </p>
-
-  <!-- 메디컬 ID 카드 -->
-  <div class="medical-card fade-up" style="transition-delay:0.2s;margin-bottom:20px;">
-    <div class="card-header">
-      <div class="card-logo">SLIMMIND · MEDICAL ID</div>
-      <div class="card-barcode" id="p1-barcode"></div>
+  <!-- BC 히어로 카드 -->
+  <div class="bc-hero-card fade-up" style="transition-delay:.1s">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+      <span class="badge badge-mint" style="font-size:10px;letter-spacing:1px;">바디코드 ID</span>
     </div>
-
-    <div class="card-bc-code" id="p1-bc-code">BC-??</div>
-    <div class="card-nickname" id="p1-nickname">분석 중...</div>
-    <div class="card-medical-title" id="p1-medical-title">분석 중...</div>
-
-    <div class="card-sub-badge">
-      종합 진단 최종 고장 코드 : <strong id="p1-full-code">BC-??-?-??-?</strong>
+    <div class="bc-nickname" id="p1-nickname">분석 중...</div>
+    <div class="bc-code-num" id="p1-bc-code">BC-??</div>
+    <div class="bc-medical" id="p1-medical-title">분석 중...</div>
+    <div class="bc-full-badge">
+      최종 고장 코드: <strong id="p1-full-code">BC-??-?기질-??</strong>
     </div>
   </div>
 
-  <div class="gold-divider"></div>
+  <!-- 4대 지표 -->
+  <div class="section-title fade-up" style="transition-delay:.15s">📊 4대 바디 지표</div>
+  <div class="metrics-grid fade-up" style="transition-delay:.2s" id="p1-metrics"></div>
 
-  <!-- 서사 텍스트 -->
-  <div class="fade-up" style="transition-delay:0.3s;margin-bottom:20px;">
-    <div class="badge-gold" style="margin-bottom:14px;">📖 당신의 몸 이야기</div>
-    <p class="story-text" id="p1-story">분석 중입니다...</p>
+  <div class="divider"></div>
+
+  <!-- 감성 서사 -->
+  <div class="card card-mint fade-up" style="transition-delay:.25s">
+    <p class="body-text" id="p1-story">분석 중...</p>
   </div>
 
-  <!-- 실패 유형 고발 박스 -->
-  <div class="fail-expose-box fade-up" style="transition-delay:0.4s;margin-bottom:20px;">
-    <p class="story-text" id="p1-fail-desc">분석 중입니다...</p>
+  <!-- 실패 유형 고발 -->
+  <div class="section-title fade-up" style="transition-delay:.3s">⚠️ 당신 몸의 진짜 고장 원인</div>
+  <div class="card card-warn fade-up" style="transition-delay:.35s">
+    <p class="body-text" id="p1-fail-desc">분석 중...</p>
   </div>
 
-  <!-- BC 마스터 9종 전체 요약 -->
-  <div class="fade-up" style="transition-delay:0.5s;">
-    <div class="badge-gold" style="margin-bottom:14px;">🗂 BC 마스터 9종 전체 코드</div>
-    <div id="p1-bc-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;"></div>
-  </div>
+  <!-- BC 마스터 9종 -->
+  <div class="section-title fade-up" style="transition-delay:.4s">🗂 바디코드 마스터 9종</div>
+  <div class="bc-grid fade-up" style="transition-delay:.45s" id="p1-bc-grid"></div>
 
-  <div class="page-bottom"></div>
+  <div class="disclaimer" id="p1-disclaimer"></div>
 </div>
 </section>
 
-<!-- ════════════════════════════════════
-     PAGE 2 — 11대 진단축 역추적
-════════════════════════════════════ -->
+<!-- ═══ P2: 11대 진단축 역추적 ═══ -->
 <section id="page2" class="page">
 <div class="section-wrap">
+  <div class="eyebrow" style="padding-top:8px;">11 AXIS DOMINO REPORT</div>
+  <h1 class="page-title fade-up" id="p2-title">첫 번째 도미노 고발</h1>
+  <p class="body-text fade-up" style="transition-delay:.1s;margin-bottom:24px;" id="p2-story">분석 중...</p>
 
-  <div class="hero-eyebrow">11 MEDICAL AXIS DIAGNOSIS</div>
-  <h1 class="hero-title fade-up" style="transition-delay:0.1s">
-    첫 번째 도미노 고발:<br><span style="color:var(--gold);" id="p2-domino-title">당신 몸을 무너뜨린 원인</span>
-  </h1>
+  <!-- 1순위 축 크게 강조 -->
+  <div class="section-title fade-up" style="transition-delay:.15s">🎯 1순위 고장 진단축</div>
+  <div class="axis-top-card fade-up" style="transition-delay:.2s" id="p2-top-axis"></div>
 
-  <p class="story-text fade-up" style="transition-delay:0.2s;margin-bottom:24px;" id="p2-story">분석 중...</p>
+  <!-- 2·3순위 + 나머지 -->
+  <div class="section-title fade-up" style="transition-delay:.25s">📊 전체 11대 진단축 스코어</div>
+  <div class="axis-mini-grid fade-up" style="transition-delay:.3s" id="p2-axis-grid"></div>
 
-  <!-- 11축 도미노 그리드 -->
-  <div class="badge-gold" style="margin-bottom:14px;">📊 11대 전문 진단축 스코어보드</div>
-  <div class="domino-grid" id="p2-domino-grid"></div>
+  <div class="divider"></div>
 
-  <div class="gold-divider"></div>
+  <!-- 도미노 4단계 체인 -->
+  <div class="section-title fade-up" style="transition-delay:.35s">🔗 고장 인과관계 도미노 체인</div>
+  <div class="domino-chain fade-up" style="transition-delay:.4s" id="p2-chain"></div>
 
-  <!-- 인과관계 체인 -->
-  <div class="badge-gold" style="margin-bottom:14px;">🔗 고장 인과관계 역추적 체인</div>
-  <div class="domino-chain" id="p2-chain">
-    <div class="chain-row" id="chain-0">
-      <div class="chain-node" style="background:rgba(201,168,76,0.1);border-color:rgba(201,168,76,0.4);color:var(--gold);" id="chain-node-0">첫 도미노</div>
-      <div class="chain-arrow">→</div>
-      <div class="chain-desc" id="chain-desc-0">1순위 고장축 → 호르몬계 자극</div>
-    </div>
-    <div class="chain-row" id="chain-1">
-      <div class="chain-node" style="background:rgba(232,64,42,0.1);border-color:rgba(232,64,42,0.4);color:#FF6B6B;">대사 차단</div>
-      <div class="chain-arrow">→</div>
-      <div class="chain-desc">호르몬 교란 → 기초대사량 저하 → 지방 축적 가속</div>
-    </div>
-    <div class="chain-row" id="chain-2">
-      <div class="chain-node" style="background:rgba(106,78,170,0.1);border-color:rgba(106,78,170,0.4);color:#B39DDB;">심리 폭식</div>
-      <div class="chain-arrow">→</div>
-      <div class="chain-desc">도파민 추락 → 가짜 허기 → 보상성 과식 유발</div>
-    </div>
-    <div class="chain-row" id="chain-3">
-      <div class="chain-node" style="background:rgba(26,127,193,0.1);border-color:rgba(26,127,193,0.4);color:#64B5F6;">국소 부종</div>
-      <div class="chain-arrow">→</div>
-      <div class="chain-desc">체액 정체 → 림프 차단 → 국소 지방 고착화</div>
-    </div>
-  </div>
-
-  <div class="page-bottom"></div>
+  <div class="disclaimer" id="p2-disclaimer"></div>
 </div>
 </section>
 
-<!-- ════════════════════════════════════
-     PAGE 3 — 선천 기질 레이어
-════════════════════════════════════ -->
+<!-- ═══ P3: 선천 기질 융합 분석 ═══ -->
 <section id="page3" class="page">
 <div class="section-wrap">
-
-  <div class="hero-eyebrow">INNATE DISPOSITION ANALYSIS</div>
-  <h1 class="hero-title fade-up" style="transition-delay:0.1s">
-    타고난 체질적 그릇:<br><span style="color:var(--gold);">명리학과 생리학의 교차점</span>
-  </h1>
-  <p class="story-text fade-up" style="transition-delay:0.15s;margin-bottom:24px;">
-    똑같은 체형 코드를 가졌더라도, 당신이 타고난 성향과 기질에 따라 행동 지침은 완전히 재조합되어야 합니다. 기계적인 매뉴얼은 당신의 몸을 고칠 수 없습니다.
+  <div class="eyebrow" style="padding-top:8px;">INNATE DISPOSITION REPORT</div>
+  <h1 class="page-title fade-up">기질 융합 분석 리포트</h1>
+  <p class="body-text fade-up" style="transition-delay:.1s;margin-bottom:20px;">
+    똑같은 바디코드를 가졌더라도, 당신이 타고난 성향과 기질에 따라 행동 지침은 완전히 재조합되어야 합니다.
+    기계적인 매뉴얼은 당신의 몸을 개선하는 데 효과가 크게 제한될 수 있습니다.
   </p>
 
-  <!-- 삼각형 SVG 다이어그램 -->
-  <div class="triangle-svg-wrap fade-up" style="transition-delay:0.2s;">
-    <svg width="280" height="240" viewBox="0 0 280 240">
+  <!-- 융합 코드 바 -->
+  <div class="fusion-code-bar fade-up" style="transition-delay:.15s" id="p3-fusion-bar"></div>
+
+  <!-- 삼각형 SVG -->
+  <div class="tri-wrap fade-up" style="transition-delay:.2s">
+    <svg width="260" height="220" viewBox="0 0 260 220">
       <defs>
-        <linearGradient id="triGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" style="stop-color:#C9A84C;stop-opacity:0.15"/>
-          <stop offset="100%" style="stop-color:#C9A84C;stop-opacity:0.03"/>
+        <linearGradient id="tg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#3EB8A0;stop-opacity:.12"/>
+          <stop offset="100%" style="stop-color:#3EB8A0;stop-opacity:.03"/>
         </linearGradient>
       </defs>
-      <!-- 삼각형 -->
-      <polygon points="140,20 20,220 260,220" fill="url(#triGrad)" stroke="rgba(201,168,76,0.3)" stroke-width="1.5"/>
-      <!-- 내부 연결선 -->
-      <line x1="140" y1="20" x2="140" y2="220" stroke="rgba(201,168,76,0.15)" stroke-width="1" stroke-dasharray="4,4"/>
-      <line x1="20" y1="220" x2="200" y2="120" stroke="rgba(201,168,76,0.15)" stroke-width="1" stroke-dasharray="4,4"/>
-      <line x1="260" y1="220" x2="80" y2="120" stroke="rgba(201,168,76,0.15)" stroke-width="1" stroke-dasharray="4,4"/>
-      <!-- 꼭짓점 노드 -->
-      <circle cx="140" cy="20" r="24" fill="rgba(201,168,76,0.15)" stroke="rgba(201,168,76,0.5)" stroke-width="1.5"/>
-      <circle cx="20" cy="220" r="24" fill="rgba(26,127,193,0.15)" stroke="rgba(26,127,193,0.5)" stroke-width="1.5"/>
-      <circle cx="260" cy="220" r="24" fill="rgba(192,57,122,0.15)" stroke="rgba(192,57,122,0.5)" stroke-width="1.5"/>
-      <!-- 라벨 -->
-      <text x="140" y="14" text-anchor="middle" font-size="18" dy="6">🌿</text>
-      <text x="140" y="54" text-anchor="middle" font-size="10" fill="rgba(201,168,76,0.9)" font-weight="bold" id="tri-saju-label">木</text>
-      <text x="20" y="214" text-anchor="middle" font-size="18" dy="6">🧬</text>
-      <text x="20" y="252" text-anchor="middle" font-size="10" fill="rgba(26,127,193,0.9)" font-weight="bold" id="tri-blood-label">A형</text>
-      <text x="260" y="214" text-anchor="middle" font-size="18" dy="6">🧠</text>
-      <text x="260" y="252" text-anchor="middle" font-size="10" fill="rgba(192,57,122,0.9)" font-weight="bold" id="tri-mbti-label">INFP</text>
-      <!-- 중앙 텍스트 -->
-      <text x="140" y="130" text-anchor="middle" font-size="11" fill="rgba(201,168,76,0.8)" font-weight="bold" id="tri-center">BC코드</text>
-      <text x="140" y="148" text-anchor="middle" font-size="9" fill="rgba(255,255,255,0.4)">기질 융합 코드</text>
+      <polygon points="130,16 16,210 244,210" fill="url(#tg)" stroke="rgba(62,184,160,.25)" stroke-width="1.5"/>
+      <line x1="130" y1="16" x2="130" y2="210" stroke="rgba(62,184,160,.12)" stroke-width="1" stroke-dasharray="4,4"/>
+      <line x1="16" y1="210" x2="187" y2="113" stroke="rgba(62,184,160,.12)" stroke-width="1" stroke-dasharray="4,4"/>
+      <line x1="244" y1="210" x2="73" y2="113" stroke="rgba(62,184,160,.12)" stroke-width="1" stroke-dasharray="4,4"/>
+      <circle cx="130" cy="16" r="22" fill="rgba(62,184,160,.12)" stroke="rgba(62,184,160,.4)" stroke-width="1.5"/>
+      <circle cx="16"  cy="210" r="22" fill="rgba(15,29,48,.1)" stroke="rgba(15,29,48,.35)" stroke-width="1.5"/>
+      <circle cx="244" cy="210" r="22" fill="rgba(192,57,122,.08)" stroke="rgba(192,57,122,.35)" stroke-width="1.5"/>
+      <text x="130" y="22" text-anchor="middle" font-size="16" dy="2" id="tri-ohaeng-icon">🌱</text>
+      <text x="130" y="50" text-anchor="middle" font-size="10" fill="#3EB8A0" font-weight="bold" id="tri-ohaeng-label">목 기질</text>
+      <text x="16"  y="204" text-anchor="middle" font-size="16" dy="2">🧠</text>
+      <text x="16"  y="238" text-anchor="middle" font-size="10" fill="#555" font-weight="bold" id="tri-mbti-label">INFP</text>
+      <text x="244" y="204" text-anchor="middle" font-size="16" dy="2">🔮</text>
+      <text x="244" y="238" text-anchor="middle" font-size="10" fill="#C0397A" font-weight="bold" id="tri-bc-label">BC코드</text>
+      <text x="130" y="118" text-anchor="middle" font-size="12" fill="var(--navy)" font-weight="bold" id="tri-center">BC-??</text>
+      <text x="130" y="134" text-anchor="middle" font-size="9" fill="#777">기질 융합 코드</text>
     </svg>
   </div>
 
-  <!-- 삼각 매트릭스 레이어 -->
-  <div class="triangle-matrix fade-up" style="transition-delay:0.3s;" id="p3-matrix"></div>
+  <!-- 통합 인사이트 3개 -->
+  <div class="section-title fade-up" style="transition-delay:.25s">💡 기질 융합 통합 인사이트</div>
+  <div id="p3-insights" class="fade-up" style="transition-delay:.3s"></div>
 
-  <div class="page-bottom"></div>
+  <div class="disclaimer" id="p3-disclaimer"></div>
 </div>
 </section>
 
-<!-- ════════════════════════════════════
-     PAGE 4 — 12주 하이퍼 로드맵
-════════════════════════════════════ -->
+<!-- ═══ P4: 다이어트 잔혹사 리포트 ═══ -->
 <section id="page4" class="page">
 <div class="section-wrap">
+  <div class="eyebrow" style="padding-top:8px;">DIET CRUEL HISTORY REPORT</div>
+  <h1 class="page-title fade-up">다이어트 잔혹사 리포트</h1>
+  <p class="body-text fade-up" style="transition-delay:.1s;margin-bottom:24px;">
+    당신의 다이어트가 반복적으로 실패한 것은 의지력 문제가 아닙니다.
+    행동의학적으로 예측 가능한 <strong>3가지 생리적 타이밍</strong>에 의해
+    구조적으로 무너지도록 설계된 패턴이었습니다.
+  </p>
 
-  <div class="hero-eyebrow">12-WEEK HYPER ROADMAP</div>
-  <h1 class="hero-title fade-up" style="transition-delay:0.1s">
-    초정밀 타임라인 대시보드:<br><span style="color:var(--gold);">12주 하이퍼 로드맵</span>
-  </h1>
-  <p class="story-text fade-up" style="transition-delay:0.15s;margin-bottom:8px;" id="p4-code-display"></p>
+  <!-- 3대 트리거 카드 -->
+  <div id="p4-triggers" class="fade-up" style="transition-delay:.15s"></div>
+
+  <div class="disclaimer" id="p4-disclaimer"></div>
+</div>
+</section>
+
+<!-- ═══ P5: 12주 후 바디 시뮬레이터 ═══ -->
+<section id="page5" class="page">
+<div class="section-wrap">
+  <div class="eyebrow" style="padding-top:8px;">12-WEEK BODY SIMULATOR</div>
+  <h1 class="page-title fade-up">12주 후 바디 시뮬레이터</h1>
+  <p class="body-text fade-up" style="transition-delay:.1s;margin-bottom:8px;">
+    12주 프로토콜을 완료했을 때 예측되는 4대 바디 지표 변화입니다.
+    <strong>Before(현재) → After(12주 후)</strong>의 수치 변화를 확인하세요.
+  </p>
+  <div style="background:#FFF5F5;border:1px solid #FECACA;border-radius:8px;padding:10px 14px;font-size:11px;color:var(--red);margin-bottom:24px;" class="fade-up" style="transition-delay:.15s">
+    ※ 본 수치는 통계적 예측이며 개인에 따라 차이가 있습니다.
+  </div>
+
+  <div id="p5-metrics" class="fade-up" style="transition-delay:.2s"></div>
+
+  <!-- 시뮬레이터 면책 고지 -->
+  <div class="card" style="background:#F8FAFB;margin-top:8px;" id="p5-disclaim-box">
+    <p style="font-size:11px;color:#666;line-height:1.7;">
+      <strong>시뮬레이터 면책 고지</strong><br>
+      본 예측 수치는 통계적 기대값이며 개인의 건강 상태, 실천 정도에 따라 실제 결과는 차이가 있을 수 있습니다.
+      의료적 진단이나 치료를 대체하지 않습니다.
+    </p>
+  </div>
+
+  <div class="disclaimer" id="p5-disclaimer"></div>
+</div>
+</section>
+
+<!-- ═══ P6: 12주 하이퍼 로드맵 ═══ -->
+<section id="page6" class="page">
+<div class="section-wrap">
+  <div class="eyebrow" style="padding-top:8px;">12-WEEK HYPER ROADMAP</div>
+  <h1 class="page-title fade-up">12주 하이퍼 로드맵</h1>
+  <p class="body-text fade-up" style="transition-delay:.1s;margin-bottom:8px;" id="p6-code-display"></p>
 
   <!-- 진행 바 -->
-  <div class="fade-up" style="transition-delay:0.2s;margin-bottom:28px;">
-    <div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:6px;">
-      <span>시작</span><span>12주 완료</span>
-    </div>
-    <div style="height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;">
-      <div style="width:33.3%;height:100%;background:linear-gradient(90deg,var(--gold),#F0D060);border-radius:3px;"></div>
-    </div>
-    <div style="display:flex;gap:4px;margin-top:8px;">
-      <span style="font-size:10px;color:var(--gold);">🔓 1~4주차 개방</span>
-      <span style="font-size:10px;color:rgba(255,255,255,0.3);">•</span>
-      <span style="font-size:10px;color:rgba(201,168,76,0.4);">🔒 5~12주차 잠금</span>
+  <div class="progress-bar-wrap fade-up" style="transition-delay:.15s">
+    <div class="progress-labels"><span>시작</span><span>12주 완료</span></div>
+    <div class="progress-bg"><div class="progress-fill"></div></div>
+    <div style="display:flex;gap:6px;margin-top:6px;">
+      <span style="font-size:10px;color:var(--mint);font-weight:600;">🔓 1~4주차 개방</span>
+      <span style="font-size:10px;color:#bbb;">·</span>
+      <span style="font-size:10px;color:#bbb;">🔒 5~12주차 잠금</span>
     </div>
   </div>
 
-  <!-- 주차 카드 컨테이너 -->
-  <div id="p4-weeks"></div>
+  <!-- 주차 카드들 -->
+  <div id="p6-weeks" class="fade-up" style="transition-delay:.2s"></div>
 
-  <div class="page-bottom"></div>
+  <!-- Lock 카드 -->
+  <div class="lock-card fade-up" style="transition-delay:.25s">
+    <div class="lock-icon">🔒</div>
+    <div class="lock-weeks" id="p6-lock-weeks"></div>
+    <div class="lock-title">5~12주차 하이퍼 세포 연소 구간</div>
+    <div class="lock-desc" id="p6-lock-desc">잠금 중...</div>
+    <button class="lock-cta">5주차 처방 해제 →</button>
+  </div>
+
+  <div class="disclaimer" id="p6-disclaimer"></div>
 </div>
 </section>
 
-<!-- ════════════════════════════════════
-     JS 로직
-════════════════════════════════════ -->
+<!-- ─── JS ─── -->
 <script src="/survey-data.js"></script>
 <script src="/bc-engine.js"></script>
 <script>
-// ── 페이지 전환 ──────────────────────────────
+// ── 페이지 전환 ──────────────────
 function switchPage(num) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   document.getElementById('page' + num).classList.add('active');
   document.querySelectorAll('.nav-tab')[num - 1].classList.add('active');
   window.scrollTo(0, 0);
-  // 해당 페이지 애니메이션 트리거
-  setTimeout(() => triggerAnimations(), 100);
+  setTimeout(triggerAnim, 80);
+  if (num === 5) setTimeout(animSimBars, 300);
+  if (num === 2) setTimeout(animAxisBars, 300);
 }
 
-// ── 스크롤 인터섹션 애니메이션 ──────────────
-function triggerAnimations() {
-  document.querySelectorAll('.fade-up, .chain-row').forEach(el => {
-    el.classList.add('visible');
-  });
+function triggerAnim() {
+  document.querySelectorAll('.fade-up').forEach(el => el.classList.add('visible'));
 }
 
-// ── URL 파라미터 / localStorage 데이터 로드 ──
-function loadResultData() {
-  // 1) URL 파라미터에서 확인
+// ── 데이터 로드 ──────────────────
+function loadData() {
   const params = new URLSearchParams(window.location.search);
   const urlData = params.get('data');
-  if (urlData) {
-    try { return JSON.parse(decodeURIComponent(urlData)); } catch(e) {}
-  }
-  // 2) localStorage에서 확인
-  const keys = ['slimmind_result', 'surveyResult', 'survey_result', 'resultData', 'sm_result'];
-  for (const key of keys) {
-    const raw = localStorage.getItem(key);
-    if (raw) {
-      try {
-        const parsed = JSON.parse(raw);
-        // calculateAxisScores 결과 구조 확인
-        if (parsed.axisScores || parsed.answers) return parsed;
-      } catch(e) {}
-    }
+  if (urlData) { try { return JSON.parse(decodeURIComponent(urlData)); } catch(e){} }
+  const keys = ['slimmind_result','surveyResult','survey_result','resultData','sm_result'];
+  for (const k of keys) {
+    const raw = localStorage.getItem(k);
+    if (raw) { try { const p = JSON.parse(raw); if (p.axisScores || p.answers) return p; } catch(e){} }
   }
   return null;
 }
 
-// ── 데모 데이터 생성 ──────────────────────────
-function makeDemoData() {
+function demoData() {
   return {
-    userName: '김지현',
-    axisScores: { A01:72, A02:85, A03:58, A04:41, A05:63, A06:78, A07:90, A08:88, A09:30, A10:55 },
-    ohaengType: '목',
-    mbtiType: 'INFP',
-    bloodType: 'A',
-    isDemo: true,
+    userName:'김지현',
+    axisScores:{A01:60,A02:78,A03:55,A04:40,A05:58,A06:70,A07:90,A08:85,A09:25,A10:50},
+    ohaengType:'목', mbtiType:'INFP', isDemo:true
   };
 }
 
-// ── 바코드 생성 ──────────────────────────────
-function buildBarcode(el) {
-  const heights = [22,14,18,10,24,16,20,12,22,18,14,24,10,20,16];
-  heights.forEach(h => {
-    const line = document.createElement('div');
-    line.className = 'barcode-line';
-    line.style.height = h + 'px';
-    el.appendChild(line);
-  });
+// ── 메인 렌더 ──────────────────
+function renderAll(data) {
+  const { userName='고객', axisScores={}, ohaengType='목', mbtiType='INFP' } = data;
+  const bc = computeBCCode(axisScores);
+  const { bcCode, bcMaster, causalScores, sorted, firstDomino, metrics } = bc;
+  const ohaeng = SAJU_ELEMENT_DESC[ohaengType] || SAJU_ELEMENT_DESC['목'];
+  const mbti   = MBTI_DESC[mbtiType] || MBTI_DESC['INFP'];
+  const fullCode = `${bcCode} · ${ohaeng.label} · ${mbtiType}`;
+
+  renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores);
+  renderP2(userName, bcCode, firstDomino, axisScores, sorted);
+  renderP3(userName, bcCode, bcMaster, ohaengType, ohaeng, mbtiType, mbti, fullCode);
+  renderP4(userName, ohaengType, mbtiType);
+  renderP5();
+  renderP6(userName, fullCode);
+
+  // 면책 고지 전 페이지
+  document.querySelectorAll('[id$="-disclaimer"]').forEach(el => { el.textContent = DISCLAIMER; });
 }
 
-// ── 메인 렌더링 ──────────────────────────────
-function renderResult(data) {
-  const {
-    userName = '고객',
-    axisScores = {},
-    ohaengType = '목',
-    mbtiType = 'INFP',
-    bloodType = 'A',
-  } = data;
-
-  // BC 코드 연산
-  const bc = computeBCCode(axisScores);
-  const { bcCode, bcMaster, causalScores, sorted, firstDomino, axis11Scores } = bc;
-
-  // 복합 코드: BC-61-木-INFP-A
-  const fullCode = `${bcCode}-${ohaengType}-${mbtiType}-${bloodType}`;
-
-  /* ─── PAGE 1 ─── */
-  document.getElementById('p1-name').textContent = userName;
-  document.getElementById('p1-bc-code').textContent = bcCode;
+/* ── P1 ── */
+function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores) {
+  document.getElementById('p1-title').textContent = `${userName}님의 바디 페르소나 리포트`;
   document.getElementById('p1-nickname').textContent = bcMaster.app_nickname;
+  document.getElementById('p1-bc-code').textContent = bcCode;
   document.getElementById('p1-medical-title').textContent = bcMaster.medical_title;
   document.getElementById('p1-full-code').textContent = fullCode;
-  buildBarcode(document.getElementById('p1-barcode'));
 
-  // 서사 텍스트
-  document.getElementById('p1-story').innerHTML = `
-    남들처럼 똑같이 닭가슴살을 먹고, 눈물을 흘리며 천국의 계단을 타도 살이 빠지지 않고 오히려 다음 날 아침 다리가 터질 듯이 붓던 잔혹한 날들.
-    <strong>${userName}</strong>님, 당신은 절대 게으르거나 의지가 부족한 것이 아니었습니다.
-    당신의 영혼과 신체를 갉아먹던 그 괴로운 증상들의 진짜 의학적 이름은 바로
-    <em>[${bcCode} : ${bcMaster.app_nickname}]</em>입니다.<br><br>
-    오늘 이 책은 당신이 타고난 선천적 기질과 후천적인 신체 고장 원인을 융합하여,
-    당신의 대사 사슬을 완벽하게 끊어낼 단 하나의 정밀한 의학적 해답을 제공합니다.
-  `;
+  // 4대 지표
+  const mGrid = document.getElementById('p1-metrics');
+  const mItems = [
+    { label:'대사 효율 나이',   val: metrics.metaAge,    unit:'세' },
+    { label:'복부 위험도',       val: metrics.metaBelly,  unit:'%' },
+    { label:'호르몬 부하',       val: metrics.metaHormone,unit:'%' },
+    { label:'체형 불균형',       val: metrics.metaBody,   unit:'%' },
+  ];
+  mItems.forEach(m => {
+    const d = document.createElement('div');
+    d.className='metric-card';
+    d.innerHTML=`<div class="metric-label">${m.label}</div><div class="metric-value">${m.val}<span class="metric-unit">${m.unit}</span></div>`;
+    mGrid.appendChild(d);
+  });
+
+  // 감성 서사
+  document.getElementById('p1-story').innerHTML =
+    `남들처럼 똑같이 닭가슴살을 씹어 삼키고, 눈물을 흘리며 천국의 계단을 타도 살이 빠지지 않고
+    다음 날 종아리와 허벅지가 터질 듯 부어오르던 잔혹한 날들. <strong>${userName}</strong>님,
+    당신은 단 한 번도 게으르거나 의지가 부족했던 적이 없습니다.<br><br>
+    당신의 몸은 일반적인 비만과 완전히 다릅니다. 당신의 영혼과 신체를 갉아먹던 그 괴로운 증상들의
+    분석 소견은 바로 <em>[${bcCode} : ${bcMaster.app_nickname}]</em>입니다.<br><br>
+    오늘 이 가이드는 당신이 타고난 선천적 기질과 후천적인 신체 고장 원인을 융합하여,
+    당신의 대사 개선을 돕는 맞춤 라이프스타일 가이드를 제공합니다.`;
 
   document.getElementById('p1-fail-desc').innerHTML =
-    '당신의 몸은 현재 <strong>' + bcMaster.failed_type_desc + '</strong>';
+    `<strong>분석 소견:</strong> ${bcMaster.failed_type_desc}`;
 
-  // BC 마스터 9종 그리드
-  const grid = document.getElementById('p1-bc-grid');
+  // BC 마스터 9종
+  const bcGrid = document.getElementById('p1-bc-grid');
   Object.values(BC_MASTER).forEach(m => {
     const isActive = m.code === bcMaster.code;
-    const card = document.createElement('div');
-    card.style.cssText = `
-      background:${isActive ? m.bg + '22' : 'rgba(255,255,255,0.03)'};
-      border:1px solid ${isActive ? m.color : 'rgba(255,255,255,0.08)'};
-      border-radius:12px; padding:12px 10px; text-align:center;
-      transition:all 0.3s;
-      ${isActive ? 'box-shadow:0 0 16px ' + m.color + '33;' : ''}
-    `;
-    card.innerHTML = `
-      <div style="font-size:20px;margin-bottom:4px;">${m.icon}</div>
-      <div style="font-size:13px;font-weight:900;color:${isActive ? m.color : 'rgba(255,255,255,0.5)'};">${m.code}</div>
-      <div style="font-size:9px;color:${isActive ? m.color : 'rgba(255,255,255,0.35)'};margin-top:3px;line-height:1.3;">${m.app_nickname.replace('#','')}</div>
-      ${isActive ? '<div style="font-size:9px;font-weight:700;color:'+m.color+';margin-top:4px;">◀ 나의 코드</div>' : ''}
-    `;
-    grid.appendChild(card);
+    const div = document.createElement('div');
+    div.className = 'bc-grid-item' + (isActive ? ' active-bc' : '');
+    if (isActive) { div.style.borderColor = m.color; div.style.background = m.bg + '33'; }
+    div.innerHTML = `<div class="bc-grid-icon">${m.icon}</div>
+      <div class="bc-grid-code" style="color:${isActive?m.color:'var(--navy)'}">${m.code}</div>
+      <div class="bc-grid-nick">${m.app_nickname.replace('#','')}</div>
+      ${isActive?`<div style="font-size:9px;font-weight:700;color:${m.color};margin-top:4px;">◀ 나의 코드</div>`:''}`;
+    bcGrid.appendChild(div);
   });
+}
 
-  /* ─── PAGE 2 ─── */
-  document.getElementById('p2-domino-title').textContent =
-    `'${firstDomino}'가 무너뜨린 연쇄 고장`;
-  document.getElementById('p2-story').innerHTML = `
-    모든 문제를 한 번에 해결하려는 다이어트는 100% 실패합니다. 우리 몸은 유기적으로 연결되어 있기 때문입니다.
-    슬림마인드의 11가지 전문 진단축(<em>약물·식단·운동·회복·한방·심리·체형·호르몬·시술·관리·철학</em>) 데이터 연산 결과,
-    <strong>${userName}</strong>님의 신체 네트워크를 연쇄적으로 무너뜨린 [첫 번째 도미노]는 바로
-    <strong style="color:var(--gold);">'${firstDomino}'</strong>로 최종 도출되었습니다.<br><br>
-    ${firstDomino}에서 발생한 물리적·기능적 고장이 호르몬계를 자극하고, 이것이 대사를 막아 최종적으로 심리적 폭식과
-    국소 부위 부종을 유발한 것입니다. 흐르지 않고 막혀서 썩어가는 강물에 아무리 비싼 다이어트 약을 타고 식단을
-    조절해 봤자 밑 빠진 독에 물 붓기입니다.
-  `;
+/* ── P2 ── */
+function renderP2(userName, bcCode, firstDomino, axisScores, sorted) {
+  document.getElementById('p2-title').innerHTML = `<em>${firstDomino}</em>가 무너뜨린 연쇄 고장`;
+  document.getElementById('p2-story').innerHTML =
+    `슬림마인드의 11가지 전문 진단축(<em>약물·식단·운동·회복·한방·심리·체형·호르몬·시술·관리·철학</em>) 데이터 분석 결과,
+    <strong>${userName}</strong>님의 신체 네트워크를 연쇄적으로 무너뜨린 [첫 번째 도미노]는
+    바로 <strong style="color:var(--mint-d);">'${firstDomino}'</strong>로 최종 도출되었습니다.
+    모든 문제를 한 번에 해결하려는 다이어트는 효과가 크게 제한될 수 있습니다. 우리 몸은 유기적으로 연결되어 있기 때문입니다.`;
 
-  // 11축 도미노 그리드
-  const domGrid = document.getElementById('p2-domino-grid');
-  const topAxisKey = sorted[0][0]; // 예: '심'
-  const topAxisMeta = CAUSAL_AXIS_META[topAxisKey];
-
-  AXIS_11.forEach(ax => {
-    const rawScore = axisScores[ax.axisRef] || 0;
-    const isTop = ax.label === firstDomino || ax.axisRef === topAxisMeta.axisKeys[0];
-    const card = document.createElement('div');
-    card.className = 'domino-card' + (isTop ? ' highlighted' : '');
-    card.innerHTML = `
-      <div class="domino-icon">${ax.icon}</div>
-      <div class="domino-label">${ax.label}</div>
-      <div class="domino-bar-bg">
-        <div class="domino-bar-fill" style="width:0%;background:linear-gradient(90deg,${ax.color},${ax.color}88);"
-             data-score="${rawScore}"></div>
+  // 1순위 축 강조
+  const topAxisEl = AXIS_11.find(a => axisScores[a.axisRef] === Math.max(...AXIS_11.map(x=>axisScores[x.axisRef]||0))) || AXIS_11[0];
+  const topScore = axisScores[topAxisEl.axisRef] || 0;
+  const topCard = document.getElementById('p2-top-axis');
+  topCard.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+      <span style="font-size:28px;">${topAxisEl.icon}</span>
+      <div>
+        <div style="font-size:11px;color:var(--mint-d);font-weight:700;margin-bottom:2px;">1순위 진단축</div>
+        <div style="font-size:18px;font-weight:900;color:var(--navy);">${topAxisEl.label}</div>
       </div>
-      <div class="domino-score">${rawScore}</div>
-    `;
-    domGrid.appendChild(card);
+      <div style="margin-left:auto;font-size:32px;font-weight:900;color:var(--mint-d);">${topScore}<span style="font-size:14px;color:var(--sub);">/100</span></div>
+    </div>
+    <div style="height:10px;background:rgba(62,184,160,.15);border-radius:5px;overflow:hidden;">
+      <div style="width:${topScore}%;height:100%;background:var(--mint);border-radius:5px;transition:width 1.2s ease;" class="top-bar-fill" data-score="${topScore}"></div>
+    </div>`;
+
+  // 전체 11축 미니 그리드
+  const grid = document.getElementById('p2-axis-grid');
+  AXIS_11.forEach(ax => {
+    const sc = axisScores[ax.axisRef] || 0;
+    const div = document.createElement('div');
+    div.className = 'axis-mini-item';
+    div.innerHTML = `<div class="axis-mini-icon">${ax.icon}</div>
+      <div class="axis-mini-label">${ax.label}</div>
+      <div class="axis-mini-bar-bg"><div class="axis-mini-bar" style="width:0%" data-score="${sc}" data-color="${ax.color}"></div></div>
+      <div class="axis-mini-score">${sc}</div>`;
+    grid.appendChild(div);
   });
 
-  // 체인 노드 업데이트
-  document.getElementById('chain-node-0').textContent = firstDomino;
-  document.getElementById('chain-desc-0').textContent =
-    sorted[0][0] + ' 축 ' + sorted[0][1] + '점 → 호르몬계 연쇄 자극';
+  // 도미노 4단계 체인 (명세서 원문)
+  const chain = document.getElementById('p2-chain');
+  const steps = [
+    { title:'복신·회복 — 부신이 기절했습니다', desc:'장기화된 피로와 스트레스로 코르티솔이 임계치를 초과하여 부신이 극도로 지친 상태입니다. 뇌가 신체를 위기 상황으로 인식하여 밤마다 대사 스위치를 강제로 내립니다. 아무리 적게 먹어도 체중 변화가 크지 않은 직접적인 이유입니다.', isTop: true },
+    { title:'대사 차단 — 기초대사량이 무너집니다', desc:'교감신경 과항진으로 소화기 주변 미세 혈류가 저하되고, 신체는 영양소를 에너지로 쓰지 않고 비상 지방으로 전환합니다. 먹는 족족 지방으로 저장되는 경향이 강해집니다.' },
+    { title:'심리 과식 — 뇌가 야식을 명령합니다', desc:'뇌의 보상회로 내 도파민 수치가 저녁 시간 급격히 하강하면서, 생존을 위해 탄수화물을 즉각 섭취하라는 강력한 호르몬 명령을 보냅니다. 의지력만으로 참기 어려운 이유가 여기 있습니다.' },
+    { title:'국소 부종 — 하체에 독소가 갇힙니다', desc:'복압 소실로 하수된 장기들이 서해부(사타구니) 림프절을 압착하여 하체 독소가 배출되지 못하고 셀룰라이트 결합 조직으로 고착화됩니다. 이 상태에서 하체 운동을 하면 지방 위에 근육만 커져 다리가 굵어질 수 있습니다.' },
+  ];
+  steps.forEach((s, i) => {
+    const div = document.createElement('div');
+    div.className = 'domino-step';
+    div.innerHTML = `<div class="domino-num${s.isTop?' top1':''}">${i+1}</div>
+      <div class="domino-content">
+        <div class="domino-title">${s.title}</div>
+        <div class="domino-desc">${s.desc}</div>
+      </div>`;
+    chain.appendChild(div);
+  });
+}
 
-  /* ─── PAGE 3 ─── */
-  const sajuEl = SAJU_ELEMENT_DESC[ohaengType] || SAJU_ELEMENT_DESC['목'];
-  const mbtiDesc = MBTI_DESC[mbtiType] || MBTI_DESC['INFP'];
-  const bloodDesc = BLOOD_TYPE_DESC[bloodType] || BLOOD_TYPE_DESC['A'];
+/* ── P3 ── */
+function renderP3(userName, bcCode, bcMaster, ohaengKey, ohaeng, mbtiType, mbti, fullCode) {
+  // 융합 코드 바
+  const bar = document.getElementById('p3-fusion-bar');
+  bar.innerHTML = `
+    <span class="badge badge-mint">${bcCode}</span>
+    <span class="fusion-sep">·</span>
+    <span style="font-size:13px;font-weight:700;color:#fff;">${ohaeng.label}</span>
+    <span class="fusion-sep">·</span>
+    <span style="font-size:13px;font-weight:700;color:rgba(255,255,255,.8);">${mbtiType}</span>`;
 
-  // SVG 라벨
-  document.getElementById('tri-saju-label').textContent = (sajuEl.label || ohaengType).split(' ')[0];
-  document.getElementById('tri-blood-label').textContent = bloodType + '형';
+  // 삼각형 라벨
+  document.getElementById('tri-ohaeng-icon').textContent = ohaeng.icon;
+  document.getElementById('tri-ohaeng-label').textContent = ohaeng.label;
   document.getElementById('tri-mbti-label').textContent = mbtiType;
+  document.getElementById('tri-bc-label').textContent = bcCode;
   document.getElementById('tri-center').textContent = bcCode;
 
-  const matrix = document.getElementById('p3-matrix');
-  const layers = [
-    {
-      tag: '만세력 오행 필터',
-      icon: sajuEl.icon,
-      value: sajuEl.label,
-      desc: '당신은 사주학적으로 스트레스와 소통을 관장하는 <strong>[' + sajuEl.label + ']</strong>의 기운이 비정상적으로 과열되고 울결(뭉침)되어 있습니다. ' + sajuEl.desc,
-      color: sajuEl.color,
-      bg: sajuEl.bg,
-      borderColor: sajuEl.color,
-    },
-    {
-      tag: 'MBTI 행동 양식 필터',
-      icon: '🧠',
-      value: mbtiType,
-      desc: '당신은 태생적으로 <strong>[' + mbtiType + ']</strong> 성향을 가집니다. ' + mbtiDesc,
-      color: '#C0397A',
-      bg: '#FCE4EE',
-      borderColor: '#C0397A',
-    },
-    {
-      tag: '혈액형 생리학 필터',
-      icon: '🧬',
-      value: bloodType + '형',
-      desc: '당신은 생리학적으로 <strong>[' + bloodType + '형]</strong>입니다. ' + bloodDesc,
-      color: '#1A7FC1',
-      bg: '#E3F1FB',
-      borderColor: '#1A7FC1',
-    },
-  ];
-
-  layers.forEach(l => {
+  // 인사이트 3개
+  const insights = getMbtiOhaengInsights(bcMaster, ohaengKey, mbtiType);
+  const container = document.getElementById('p3-insights');
+  insights.forEach(ins => {
     const div = document.createElement('div');
-    div.className = 'trait-layer';
-    div.style.cssText = `background:${l.bg}18;border-left-color:${l.borderColor};`;
+    div.className = 'insight-card';
     div.innerHTML = `
-      <div class="trait-layer-header">
-        <div class="trait-layer-icon" style="background:${l.bg}33;">${l.icon}</div>
-        <div>
-          <div class="trait-layer-tag" style="color:${l.color};">${l.tag}</div>
-          <div class="trait-layer-value" style="color:${l.color};">${l.value}</div>
+      <div class="insight-header">
+        <div class="insight-num">${ins.num}</div>
+        <div class="insight-titles">
+          <div class="insight-title">${ins.title}</div>
+          <div class="insight-sub">${ins.subtitle}</div>
         </div>
       </div>
-      <div class="trait-layer-desc">${l.desc}</div>
-    `;
-    matrix.appendChild(div);
+      <div class="insight-body">
+        <div class="insight-block">
+          <div class="insight-block-label medical">🔬 의학 기전</div>
+          <div class="insight-block-text">${ins.medical}</div>
+        </div>
+        <div class="insight-block">
+          <div class="insight-block-label personal">🌿 기질 분석</div>
+          <div class="insight-block-text">${ins.personal}</div>
+        </div>
+        <div class="warn-box" style="margin-bottom:10px;">⚠️ ${ins.warn}</div>
+        <div class="solution-box">✅ ${ins.solution}</div>
+      </div>`;
+    container.appendChild(div);
   });
+}
 
-  /* ─── PAGE 4 ─── */
-  document.getElementById('p4-code-display').innerHTML =
-    `매칭 파라미터: <strong style="color:var(--gold);">${fullCode}</strong> — 개인 맞춤 12주 프로토콜`;
+/* ── P4 ── */
+function renderP4(userName, ohaengKey, mbtiType) {
+  const triggers = getCruelHistoryTriggers(userName, ohaengKey, mbtiType);
+  const container = document.getElementById('p4-triggers');
+  triggers.forEach(t => {
+    const div = document.createElement('div');
+    div.className = 'trigger-card';
+    div.innerHTML = `
+      <div class="trigger-header">
+        <div>
+          <div class="trigger-num-badge">행동의학 분석 포인트 ${t.num}</div>
+        </div>
+        <div class="trigger-title">${t.title}</div>
+      </div>
+      <div class="trigger-body">
+        <div class="info-block blue">
+          <div class="info-block-label">📚 학술 기전</div>${t.medical}
+        </div>
+        <div class="info-block mint">
+          <div class="info-block-label">🎯 맞춤 분석 소견</div>${t.personal}
+        </div>
+        <div class="info-block green">
+          <div class="info-block-label">✅ 개선 방향</div>${t.solution}
+        </div>
+      </div>`;
+    container.appendChild(div);
+  });
+}
 
-  const weeksContainer = document.getElementById('p4-weeks');
+/* ── P5 ── */
+function renderP5() {
+  const container = document.getElementById('p5-metrics');
+  SIMULATOR_METRICS.forEach(m => {
+    const div = document.createElement('div');
+    div.className = 'sim-card';
+    const isReverse = m.reverse;
+    div.innerHTML = `
+      <div class="sim-label">${m.label}</div>
+      <div class="sim-row">
+        <span class="sim-tag before">현재</span>
+        <div class="sim-bar-bg"><div class="sim-bar-fill before-bar" style="width:0%" data-score="${m.before}"></div></div>
+        <span class="sim-num before">${m.before}${m.unit}</span>
+      </div>
+      <div class="sim-row">
+        <span class="sim-tag after">12주 후</span>
+        <div class="sim-bar-bg"><div class="sim-bar-fill after-bar" style="width:0%" data-score="${m.after}"></div></div>
+        <span class="sim-num after">${m.after}${m.unit} ${isReverse?'개선':'향상'}</span>
+      </div>
+      <div class="sim-desc">${m.desc}</div>
+      <div class="sim-disclaimer">※ 본 수치는 통계적 예측이며 개인에 따라 차이가 있습니다.</div>`;
+    container.appendChild(div);
+  });
+}
 
-  // 1~4주차 오픈 카드
+function animSimBars() {
+  document.querySelectorAll('.sim-bar-fill[data-score]').forEach(bar => {
+    setTimeout(() => { bar.style.width = bar.getAttribute('data-score') + '%'; }, 200);
+  });
+}
+
+/* ── P6 ── */
+function renderP6(userName, fullCode) {
+  document.getElementById('p6-code-display').innerHTML =
+    `매칭 파라미터: <strong style="color:var(--mint-d);">${fullCode}</strong>`;
+
+  const container = document.getElementById('p6-weeks');
   ROADMAP_WEEKS.forEach(w => {
-    const card = document.createElement('div');
-    card.className = 'week-card fade-up';
-    const storyText = w.failure_expose.replace('{USER_NAME}', userName);
-    card.innerHTML = `
-      <div class="week-badge">
-        🔓 <span>${w.week}주차</span>
+    const storyText = w.failure_expose.replace(/{USER_NAME}/g, userName);
+    const div = document.createElement('div');
+    div.className = 'week-card';
+    div.innerHTML = `
+      <div class="week-header">
+        <div class="week-badge-num">🔓 ${w.week}주차</div>
+        <div class="week-title-text">${w.title}</div>
       </div>
-      <div class="week-title">${w.title}</div>
-
-      <div class="week-section">
-        <div class="week-section-title">🔍 실패 유형 & 메커니즘 고발</div>
-        <p class="story-text" style="font-size:13px;">${storyText}</p>
-      </div>
-
-      <div class="week-section">
-        <div class="week-section-title">🎯 개입 센터 논리</div>
-        <p class="story-text" style="font-size:13px;">${w.axis_logic}</p>
-      </div>
-
-      <div class="week-section">
-        <div class="week-section-title">🏋️ 운동 처방</div>
-        ${w.exercise_ban ? `<div class="rule-item"><span class="rule-ban">❌</span><span>${w.exercise_ban}</span></div>` : ''}
-        <div class="rule-item"><span class="rule-ok">⭕</span><span>${w.exercise_ok}</span></div>
-      </div>
-
-      <div class="week-section">
-        <div class="week-section-title">🍽️ 식단 처방</div>
-        ${w.diet_ban ? `<div class="rule-item"><span class="rule-ban">❌</span><span>${w.diet_ban}</span></div>` : ''}
-        <div class="rule-item"><span class="rule-ok">⭕</span><span>${w.diet_ok}</span></div>
-      </div>
-
-      <div class="week-section">
-        <div class="week-section-title">💆 회복순환법</div>
-        ${w.recovery_ban ? `<div class="rule-item"><span class="rule-ban">❌</span><span>${w.recovery_ban}</span></div>` : ''}
-        <div class="rule-item"><span class="rule-ok">⭕</span><span>${w.recovery_ok}</span></div>
-      </div>
-    `;
-    weeksContainer.appendChild(card);
+      <div class="week-body">
+        <div class="week-section">
+          <div class="week-section-label">🔍 실패 유형 & 메커니즘 분석</div>
+          <div class="fail-expose-box"><p class="body-text" style="font-size:13px;">${storyText}</p></div>
+        </div>
+        <div class="week-section">
+          <div class="week-section-label">🎯 개입 센터 논리</div>
+          <p class="body-text" style="font-size:13px;margin-bottom:12px;">${w.axis_logic}</p>
+        </div>
+        <div class="week-section">
+          <div class="week-section-label">🏋️ 운동 처방</div>
+          ${w.exercise_ban ? `<div class="rule"><span class="rule-icon">❌</span><span>${w.exercise_ban}</span></div>` : ''}
+          <div class="rule"><span class="rule-icon">✅</span><span>${w.exercise_ok}</span></div>
+        </div>
+        <div class="week-section">
+          <div class="week-section-label">🍽️ 식단 처방</div>
+          ${w.diet_ban ? `<div class="rule"><span class="rule-icon">❌</span><span>${w.diet_ban}</span></div>` : ''}
+          <div class="rule"><span class="rule-icon">✅</span><span>${w.diet_ok}</span></div>
+        </div>
+        <div class="week-section">
+          <div class="week-section-label">💆 회복순환법</div>
+          ${w.recovery_ban ? `<div class="rule"><span class="rule-icon">❌</span><span>${w.recovery_ban}</span></div>` : ''}
+          <div class="rule"><span class="rule-icon">✅</span><span>${w.recovery_ok}</span></div>
+        </div>
+        ${w.b2b ? `<button class="b2b-btn" onclick="handleB2B()">🏥 파트너 센터 연계 → 분석 데이터 전송</button>` : ''}
+      </div>`;
+    container.appendChild(div);
   });
 
-  // 5~12주차 LOCK 카드
-  const lockCard = document.createElement('div');
-  lockCard.className = 'lock-card fade-up';
-  const lockWeeks = [5,6,7,8,9,10,11,12];
-  lockCard.innerHTML = `
-    <div class="lock-icon-wrap">🔒</div>
-    <div class="lock-weeks">
-      ${lockWeeks.map(n => `<div class="lock-week-badge">${n}주</div>`).join('')}
-    </div>
-    <div class="lock-title">5~12주차 : 하이퍼 세포 연소 구간</div>
-    <div class="lock-desc">
-      뇌의 도파민 보상 회로를 리셋하고 본격적으로 전신 체지방을 융단폭격하는
-      <strong style="color:rgba(201,168,76,0.7);">[5~12주차: 하이퍼 세포 연소 구간]</strong>입니다.<br><br>
-      본 비밀 해답 책의 후반부 타임라인은 <strong style="color:rgba(201,168,76,0.7);">${userName}</strong>님이
-      1~4주차의 첫 번째 도미노(골반 정렬 및 부신 회복 미션)를 완료하여
-      대사 브레이크가 해제되는 순간, 당신의 전용 스마트 스케줄러와 함께
-      락(Lock)이 자동 해제됩니다.
-    </div>
-  `;
-  weeksContainer.appendChild(lockCard);
+  // 잠금 주차 원
+  const lockWeeks = document.getElementById('p6-lock-weeks');
+  [5,6,7,8,9,10,11,12].forEach(n => {
+    const d = document.createElement('div');
+    d.className = 'lock-week-circle';
+    d.textContent = n + '주';
+    lockWeeks.appendChild(d);
+  });
+
+  document.getElementById('p6-lock-desc').innerHTML =
+    `5~12주차 하이퍼 세포 연소 구간은 잠겨 있습니다. 1~4주차 처방을 이행하여 대사 기반이 구축되면 자동으로 해제됩니다.`;
 }
 
-// ── 도미노 바 애니메이션 ──────────────────────
-function animateDominoBars() {
-  document.querySelectorAll('.domino-bar-fill[data-score]').forEach(bar => {
+function handleB2B() {
+  alert('파트너 센터로 분석 데이터가 연계됩니다.\n(BC코드 + 상위 3개 진단축 데이터 전송)');
+}
+
+function animAxisBars() {
+  document.querySelectorAll('.axis-mini-bar[data-score]').forEach(bar => {
     const score = parseInt(bar.getAttribute('data-score')) || 0;
-    setTimeout(() => { bar.style.width = score + '%'; }, 300);
+    const color = bar.getAttribute('data-color') || 'var(--mint)';
+    bar.style.background = color;
+    setTimeout(() => { bar.style.width = score + '%'; }, 200);
+  });
+  document.querySelectorAll('.top-bar-fill[data-score]').forEach(bar => {
+    setTimeout(() => { bar.style.width = bar.getAttribute('data-score') + '%'; }, 300);
   });
 }
 
-// ── 초기화 ────────────────────────────────────
+// ── 초기화 ──────────────────
 window.addEventListener('DOMContentLoaded', () => {
-  let resultData = loadResultData();
+  let resultData = loadData();
+  if (!resultData) { resultData = demoData(); console.log('[SlimMind] 데모 데이터 렌더링'); }
 
-  if (!resultData) {
-    resultData = makeDemoData();
-    console.log('[SlimMind] 데모 데이터로 렌더링');
-  }
-
-  // axisScores 정규화
+  // answers → axisScores 변환
   if (resultData.answers && typeof calculateAxisScores === 'function') {
     const calc = calculateAxisScores(resultData.answers);
     resultData = {
@@ -890,29 +873,16 @@ window.addEventListener('DOMContentLoaded', () => {
       axisScores: calc.axisScores,
       ohaengType: calc.ohaengType || '목',
       mbtiType: resultData.answers['Q_MBTI'] || resultData.answers['Q45'] || 'INFP',
-      bloodType: resultData.answers['Q_BLOOD'] || resultData.answers['Q_BLOODTYPE'] || 'A',
     };
   }
 
-  // 렌더링
-  renderResult(resultData);
+  renderAll(resultData);
 
-  // 로딩 오버레이 제거
   setTimeout(() => {
     const ov = document.getElementById('loading-overlay');
     ov.style.opacity = '0';
-    setTimeout(() => { ov.style.display = 'none'; triggerAnimations(); animateDominoBars(); }, 500);
-  }, 1200);
-});
-
-// 탭 전환 시 바 애니메이션 재실행
-document.querySelectorAll('.nav-tab').forEach((tab, i) => {
-  tab.addEventListener('click', () => {
-    setTimeout(() => {
-      triggerAnimations();
-      if (i === 1) animateDominoBars();
-    }, 150);
-  });
+    setTimeout(() => { ov.style.display = 'none'; triggerAnim(); }, 500);
+  }, 1000);
 });
 </script>
 </body>
