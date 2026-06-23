@@ -5654,7 +5654,14 @@ toggleConsent = function(n) {
   idx = 0;
   var _ref2 = new URLSearchParams(location.search).get('ref');
   if (_ref2) answers._consultant_code = _ref2;
-  
+
+  // ── V3 모드 감지 (?v3=1) ──────────────────────────
+  if (new URLSearchParams(location.search).get('v3') === '1') {
+    setTimeout(function(){ startV3Survey(); }, 50);
+    return;
+  }
+  // ─────────────────────────────────────────────────
+
   // 임시저장 확인 → 재개 팝업
   var draft = loadDraft();
   if (draft && draft.idx >= 3) {
@@ -5663,6 +5670,1631 @@ toggleConsent = function(n) {
   } else {
     renderApp();
   }
+})();
+
+// ══════════════════════════════════════════════════════════════════
+//  SlimMind V3.0 적응형 설문 엔진
+//  공통 30문항 → 인터미션 → BC코드 심층 10문항
+// ══════════════════════════════════════════════════════════════════
+
+// ── BC코드 메타 ───────────────────────────────────────
+var BC_META = {
+  'BC1': { name:'코끼리다리형',   emoji:'🐘', color:'#6366f1', desc:'림프 순환 저하로 하체에 지방과 부종이 쌓이는 패턴' },
+  'BC2': { name:'거북이형',       emoji:'🐢', color:'#8b5cf6', desc:'경추·자세 문제로 목·어깨에 지방이 쌓이는 패턴' },
+  'BC3': { name:'수박배형',       emoji:'🍉', color:'#ef4444', desc:'내장지방이 배를 수박처럼 만드는 인슐린 저항 패턴' },
+  'BC4': { name:'요요형',         emoji:'🔄', color:'#f97316', desc:'반복 다이어트로 갑상선이 셧다운된 물만마셔도살찌는 패턴' },
+  'BC5': { name:'귤껍질형',       emoji:'🍊', color:'#eab308', desc:'셀룰라이트·바탕질 변성으로 울퉁불퉁한 섬유화 패턴' },
+  'BC6': { name:'야식부엉이형',   emoji:'🦉', color:'#3b82f6', desc:'야간 식욕과 스트레스 식이가 결합된 코르티솔 패턴' },
+  'BC7': { name:'바람빠진풍선형', emoji:'🎈', color:'#ec4899', desc:'출산 후 복압 소실과 코어 약화로 처진 복부 패턴' },
+  'BC8': { name:'말벅지형',       emoji:'🐎', color:'#14b8a6', desc:'알파수용체 우세로 운동할수록 하체가 굵어지는 패턴' },
+  'BC9': { name:'올챙이배형',     emoji:'🐸', color:'#a855f7', desc:'근감소성 이화작용으로 팔다리는 가늘고 배만 나오는 패턴' }
+};
+
+// ── 공통 30문항 ───────────────────────────────────────
+var QUESTIONS_V3 = [
+  { id:'VQ01', num:1, category:'WELCOME', emoji:'👋',
+    question:'반갑습니다! 먼저 뭐라고 불러드릴까요?',
+    hint:'닉네임도 좋고, 본명도 완전 OK예요.',
+    type:'TEXT_INPUT', placeholder:'예: 지연, 혜진, 민수...', maxLength:10,
+    aiReaction:'[이름]님이라고 부를게요! 잘 부탁드려요.',
+    routeKey:'COMMON_NAME', bcScore:{}, saveAs:'name' },
+  { id:'VQ02', num:2, category:'기본 정보', emoji:'🎂',
+    question:'[이름]님, 연령대를 알려주세요!',
+    hint:'체형 분석에 나이가 생각보다 중요해요.',
+    type:'SINGLE_SELECT',
+    options:[
+      { label:'20대 — 인생 제일 바쁜 나이', value:'20s', aiReaction:'20대도 몸 신호 놓치면 나중에 후회해요.', bcScore:{} },
+      { label:'30대 — 몸이 슬슬 말을 안 들음', value:'30s', aiReaction:'30대부터 대사가 바뀌기 시작해요. 중요한 시기예요.', bcScore:{BC6:5} },
+      { label:'40대 — 예전과 확실히 다름', value:'40s', aiReaction:'40대 체형 변화는 호르몬과 관련 있어요.', bcScore:{BC3:5,BC4:5} },
+      { label:'50대 이상 — 경험치 만렙', value:'50s', aiReaction:'인생 경험만큼 몸도 많이 겪으셨겠어요.', bcScore:{BC3:8,BC4:8} }
+    ], routeKey:'COMMON_AGE', saveAs:'age_group' },
+  { id:'VQ03', num:3, category:'출산 이력', emoji:'👶',
+    question:'출산 경험이 있으신가요?',
+    hint:'솔직하게 알려주시면 결과가 훨씬 정확해져요.',
+    type:'SINGLE_SELECT',
+    options:[
+      { label:'출산 경험 없음', value:'none', aiReaction:'OK! 산후 요인 없이 분석해드릴게요.', bcScore:{} },
+      { label:'출산 후 1년 미만 — 아직 회복 중', value:'post_1y', aiReaction:'아직 몸이 회복 중일 수 있어요. 중요한 정보예요.', bcScore:{BC7:30} },
+      { label:'출산 후 1~3년', value:'post_1_3y', aiReaction:'출산 후 체형 변화가 아직 진행 중일 수 있어요.', bcScore:{BC7:20} },
+      { label:'출산 후 3년 이상', value:'post_3y_plus', aiReaction:'출산 이력이 체형에 영향을 줬을 가능성이 있어요.', bcScore:{BC7:12} },
+      { label:'여러 번 출산', value:'multi', aiReaction:'다중 출산은 복압 회복에 시간이 더 필요해요.', bcScore:{BC7:35} }
+    ], routeKey:'COMMON_BIRTH', saveAs:'birth_history' },
+  { id:'VQ04', num:4, category:'체형 정보', emoji:'📏',
+    question:'현재 체중이 어느 구간에 있나요?',
+    hint:'정확한 숫자 안 말씀하셔도 돼요. 느낌으로!',
+    type:'SINGLE_SELECT',
+    options:[
+      { label:'표준이라 생각하지만 체지방이 걱정', value:'normal_fat', aiReaction:'마른 비만 유형일 수 있어요. 중요한 패턴이에요.', bcScore:{BC5:15} },
+      { label:'5~10kg 감량 목표', value:'goal_5_10', aiReaction:'5~10kg은 체형 교정으로 충분히 가능한 범위예요.', bcScore:{} },
+      { label:'10~20kg 감량 목표', value:'goal_10_20', aiReaction:'10~20kg 감량, 원인부터 제대로 찾아야 해요.', bcScore:{BC3:8,BC6:8} },
+      { label:'20kg 이상 감량 목표', value:'goal_20plus', aiReaction:'20kg 이상이라면 대사 교정이 선행되어야 해요.', bcScore:{BC3:15,BC4:10} }
+    ], routeKey:'COMMON_WEIGHT', saveAs:'weight_goal' },
+  { id:'VQ05', num:5, category:'다이어트 이력', emoji:'📅',
+    question:'지금까지 다이어트를 몇 번이나 시도해봤나요?',
+    hint:'실패 포함입니다. 오히려 실패 경험이 더 중요해요.',
+    type:'SINGLE_SELECT',
+    options:[
+      { label:'처음 도전 — 신선한 시작', value:'first', aiReaction:'처음이시군요! 처음부터 제대로 해봐요.', bcScore:{} },
+      { label:'2~3번 — 아직 포기 안 했어요', value:'2_3', aiReaction:'2~3번이면 원인 파악이 안 됐던 거예요.', bcScore:{BC4:10} },
+      { label:'4~5번 — 이번엔 진짜임', value:'4_5', aiReaction:'4~5번... 방법이 문제였던 거예요.', bcScore:{BC4:20} },
+      { label:'셀 수가 없어요 — 연속 시도 중', value:'countless', aiReaction:'그 의지력이면 원인만 제대로 알면 무조건 되세요.', bcScore:{BC4:30} }
+    ], routeKey:'COMMON_DIET_HISTORY', saveAs:'diet_history' },
+  { id:'VQ06', num:6, category:'하체 증상', emoji:'🦵',
+    question:'오후 5시 이후 다리 상태를 묘사해주세요.',
+    hint:'퇴근길 다리 느낌 묻는 거예요.',
+    type:'SINGLE_SELECT',
+    options:[
+      { label:'아침이랑 똑같이 가벼워요 (부러워요)', value:'light', aiReaction:'부럽습니다. 순환이 정말 좋으신 거예요.', bcScore:{} },
+      { label:'살짝 무거운 느낌', value:'slightly_heavy', aiReaction:'경미한 부종 신호일 수 있어요.', bcScore:{BC1:10} },
+      { label:'확실히 붓고 무거워요', value:'swollen', aiReaction:'BC-1 코끼리다리형 패턴이 보이기 시작해요.', bcScore:{BC1:25} },
+      { label:'양말 자국이 뚜렷하게 남아요 (코끼리 자국)', value:'sock_mark', aiReaction:'BC-1 코끼리다리형 가능성이 높아요. 림프 순환 이슈예요.', bcScore:{BC1:40} }
+    ], routeKey:'COMMON_LEG_EDEMA', saveAs:'leg_edema' },
+  { id:'VQ07', num:7, category:'복부 증상', emoji:'🫃',
+    question:'배 얘기 해봐요. 솔직하게!',
+    hint:'눕거나 앉을 때 어떤 느낌인지 골라주세요.',
+    type:'SINGLE_SELECT',
+    options:[
+      { label:'누우면 배가 옆으로 납작하게 퍼져요', value:'flat_sides', aiReaction:'피하지방형이에요. 관리 가능해요.', bcScore:{} },
+      { label:'누워도 배가 동그랗게 볼록 올라와요', value:'round_up', aiReaction:'BC-3 수박배형 내장지방 패턴이에요.', bcScore:{BC3:30} },
+      { label:'앉으면 아랫배가 접히면서 툭 튀어나와요', value:'fold_out', aiReaction:'BC-7 또는 BC-9 복압 소실형 패턴이에요.', bcScore:{BC7:20} },
+      { label:'아침에는 괜찮은데 저녁엔 임산부처럼 나와요', value:'evening_bloat', aiReaction:'혈당 또는 소화 문제와 연관됐을 수 있어요.', bcScore:{BC3:15,BC6:10} }
+    ], routeKey:'COMMON_BELLY', saveAs:'belly_type' },
+  { id:'VQ08', num:8, category:'목·어깨 증상', emoji:'🐢',
+    question:'목이랑 어깨 상태 어때요?',
+    hint:'평소 자세를 떠올리며 골라주세요.',
+    type:'SINGLE_SELECT',
+    options:[
+      { label:'아무 문제 없어요 — 목이 기린처럼 길어요', value:'fine', aiReaction:'부러워요! 자세가 좋으신 거예요.', bcScore:{} },
+      { label:'하루 종일 어깨가 뭉쳐있어요', value:'shoulder_stiff', aiReaction:'어깨 뭉침이 림프 순환에 영향 줄 수 있어요.', bcScore:{BC2:10} },
+      { label:'목덜미에 버섯 같은 살집이 생겼어요', value:'neck_fat', aiReaction:'BC-2 거북이형 핵심 증상이에요!', bcScore:{BC2:35} },
+      { label:'폰 볼 때 목이 앞으로 쭉 나와요 (거북목 확정)', value:'turtle_neck', aiReaction:'BC-2 거북이형 강한 패턴이에요.', bcScore:{BC2:40} }
+    ], routeKey:'COMMON_NECK', saveAs:'neck_type' },
+  { id:'VQ09', num:9, category:'허리 증상', emoji:'🍉',
+    question:'허리둘레 고민 있나요?',
+    hint:'옷 고를 때 어떤 생각이 드는지 골라주세요.',
+    type:'SINGLE_SELECT',
+    options:[
+      { label:'허리가 가장 슬림한 부위예요', value:'slim', aiReaction:'복부 집중형이 아니시네요.', bcScore:{} },
+      { label:'아랫배보다 허리가 더 나와요', value:'waist_more', aiReaction:'BC-3 수박배형 가능성이 있어요.', bcScore:{BC3:20} },
+      { label:'허리보다 뱃살이 앞으로 더 나와요', value:'belly_more', aiReaction:'내장지방형이에요. 식단 교정이 핵심이에요.', bcScore:{BC3:25} },
+      { label:'앉으면 뒷구리살(러브핸들)이 튀어나와요', value:'love_handle', aiReaction:'코르티솔 스트레스 지방이 쌓이는 전형적 패턴이에요.', bcScore:{BC3:15,BC6:20} }
+    ], routeKey:'COMMON_WAIST', saveAs:'waist_type' },
+  { id:'VQ10', num:10, category:'운동 반응', emoji:'🏃',
+    question:'운동을 꾸준히 했는데 결과가 어땠나요?',
+    hint:'가장 최근 운동 경험을 떠올려주세요.',
+    type:'SINGLE_SELECT',
+    options:[
+      { label:'운동하니까 살이 잘 빠졌어요', value:'good', aiReaction:'운동 반응이 좋은 편이에요.', bcScore:{} },
+      { label:'운동해도 체중 변화가 없었어요', value:'no_change', aiReaction:'운동 방향이 잘못됐을 가능성이 높아요.', bcScore:{BC4:15} },
+      { label:'운동 후 오히려 다리가 더 굵어진 것 같아요', value:'legs_bigger', aiReaction:'BC-8 말벅지형 핵심 패턴이에요! 운동 종류를 바꿔야 해요.', bcScore:{BC8:40} },
+      { label:'운동 자체를 거의 못 해봤어요', value:'cant', aiReaction:'이유 있어요. 운동보다 먼저 해결해야 할 게 있을 수 있어요.', bcScore:{BC4:10} }
+    ], routeKey:'COMMON_EXERCISE_RESULT', saveAs:'exercise_result' },
+  { id:'VQ11', num:11, category:'체온·순환', emoji:'🥶',
+    question:'평소 손발 온도는 어떤가요?',
+    hint:'겨울 얘기가 아니에요. 여름에도!',
+    type:'SINGLE_SELECT',
+    options:[
+      { label:'항상 따뜻해요 — 손난로 자처해요', value:'warm', aiReaction:'순환이 좋은 편이에요.', bcScore:{} },
+      { label:'계절에 따라 달라요', value:'seasonal', aiReaction:'일반적인 패턴이에요.', bcScore:{} },
+      { label:'손발이 항상 차가워요', value:'cold', aiReaction:'수형 또는 목형 기질에서 많이 나타나는 냉증이에요.', bcScore:{BC4:10,BC7:5} },
+      { label:'손발은 차가운데 얼굴은 항상 달아요', value:'upper_hot_lower_cold', aiReaction:'상열하한 — 한의학적으로 전형적인 기혈 불균형이에요.', bcScore:{BC4:15,BC1:10} }
+    ], routeKey:'COMMON_TEMP', saveAs:'body_temp' },
+  { id:'VQ12', num:12, category:'피로도', emoji:'😪',
+    question:'하루 중 에너지가 가장 바닥나는 시간이 언제예요?',
+    hint:'솔직히 말해주세요. 판단 안 해요.',
+    type:'SINGLE_SELECT',
+    options:[
+      { label:'오전 11시 — 점심 전에 이미 지침', value:'11am', aiReaction:'혈당 문제 또는 아침 식사 패턴 이슈일 수 있어요.', bcScore:{BC3:10} },
+      { label:'오후 2~3시 — 식곤증 타임', value:'2_3pm', aiReaction:'전형적인 인슐린 반응이에요.', bcScore:{BC3:15} },
+      { label:'오후 5~6시 — 퇴근 시간에 방전', value:'5_6pm', aiReaction:'BC-6 야식부엉이형 패턴이에요. 저녁 폭식으로 이어지기 쉬워요.', bcScore:{BC6:20} },
+      { label:'항상 피곤해요 — 에너지 레벨 자체가 낮아요', value:'always', aiReaction:'BC-4 요요형 또는 갑상선 저하 패턴이에요.', bcScore:{BC4:25} }
+    ], routeKey:'COMMON_FATIGUE', saveAs:'fatigue_time' },
+  { id:'VQ13', num:13, category:'수면 패턴', emoji:'😴',
+    question:'평균 수면 시간이 어떻게 되나요?',
+    hint:'자고 싶은 시간 말고, 실제로 자는 시간이요.',
+    type:'SINGLE_SELECT',
+    options:[
+      { label:'8시간 이상 — 수면 부자예요', value:'8plus', aiReaction:'수면이 좋으면 대사도 좋아요.', bcScore:{} },
+      { label:'6~7시간 — 적당히 자요', value:'6_7', aiReaction:'적당해요. 질이 중요해요.', bcScore:{} },
+      { label:'4~5시간 — 수면 빚 쌓이는 중', value:'4_5', aiReaction:'수면 부족이 식욕 호르몬을 교란시켜요. 중요한 패턴이에요.', bcScore:{BC6:15} },
+      { label:'4시간 미만 — 저는 로봇인가봐요', value:'under4', aiReaction:'수면 부족이 다이어트의 가장 큰 적 중 하나예요.', bcScore:{BC6:25} }
+    ], routeKey:'COMMON_SLEEP', saveAs:'sleep_hours' },
+  { id:'VQ14', num:14, category:'식사 패턴', emoji:'🍽️',
+    question:'식사 패턴을 솔직하게 말해줘요.',
+    hint:'이상적인 게 아니라 실제 패턴이요!',
+    type:'SINGLE_SELECT',
+    options:[
+      { label:'하루 3식 규칙적으로 먹어요', value:'regular', aiReaction:'규칙적인 식사는 대사의 기본이에요.', bcScore:{} },
+      { label:'아침을 자주 거르고 점심부터 시작해요', value:'skip_breakfast', aiReaction:'간헐적 단식 패턴이에요. 몸이 절전 모드일 수 있어요.', bcScore:{BC4:10} },
+      { label:'낮엔 거의 안 먹고 저녁에 몰아먹어요', value:'night_binge', aiReaction:'BC-6 야식부엉이형 핵심 패턴이에요.', bcScore:{BC6:35} },
+      { label:'끼니보다 간식 위주로 먹어요', value:'snack_based', aiReaction:'혈당이 불안정해지기 쉬운 패턴이에요.', bcScore:{BC3:15,BC6:10} }
+    ], routeKey:'COMMON_MEAL_PATTERN', saveAs:'meal_pattern' },
+  { id:'VQ15', num:15, category:'소화 패턴', emoji:'💩',
+    question:'장 건강 이야기 — 부끄러워 말고!',
+    hint:'변비나 소화 불량 경험이 있나요?',
+    type:'SINGLE_SELECT',
+    options:[
+      { label:'아주 규칙적이에요 — 장이 시계예요', value:'regular', aiReaction:'장이 건강하시네요!', bcScore:{} },
+      { label:'가끔 변비가 와요', value:'occasional', aiReaction:'스트레스성 변비 가능성이 있어요.', bcScore:{} },
+      { label:'만성 변비예요 — 3~4일에 한 번', value:'chronic', aiReaction:'BC-4 또는 금형 기질에서 많이 나타나요.', bcScore:{BC4:15} },
+      { label:'복부 팽만감이 항상 있어요', value:'bloating', aiReaction:'장내 환경 개선이 먼저 필요해요.', bcScore:{BC3:10} }
+    ], routeKey:'COMMON_DIGESTIVE', saveAs:'digestive' },
+  { id:'VQ16', num:16, category:'스트레스 반응', emoji:'🧘',
+    question:'스트레스를 받으면 어떻게 반응하나요?',
+    hint:'솔직히 — 이걸 아는 게 진단의 50%예요.',
+    type:'SINGLE_SELECT',
+    options:[
+      { label:'일이 생겨도 스트레스를 잘 안 받아요 (진짜요?)', value:'no_stress', aiReaction:'대단해요. 부신이 강한 분이에요.', bcScore:{} },
+      { label:'티는 안 내지만 속으로 엄청 쌓여요', value:'hidden', aiReaction:'BC-6 야식부엉이형 심리 패턴이에요.', bcScore:{BC6:20} },
+      { label:'먹는 것으로 풀어요 — 먹방이 치료약', value:'eat', aiReaction:'감정적 식사 패턴 — BC-6 또는 토형 기질이에요.', bcScore:{BC6:30} },
+      { label:'아무것도 못 먹어요 — 식욕이 사라져요', value:'no_appetite', aiReaction:'스트레스성 식욕 억제, 이후 폭식으로 이어지기 쉬워요.', bcScore:{BC6:15} }
+    ], routeKey:'COMMON_STRESS', saveAs:'stress_reaction' },
+  { id:'VQ17', num:17, category:'활동량', emoji:'🏢',
+    question:'하루 중 앉아서 보내는 시간이 얼마나 돼요?',
+    hint:'출퇴근 포함 총 좌식 시간이요.',
+    type:'SINGLE_SELECT',
+    options:[
+      { label:'4시간 미만 — 활동적인 직업이에요', value:'active', aiReaction:'활동량이 많으시네요!', bcScore:{} },
+      { label:'4~6시간', value:'moderate', aiReaction:'적당한 편이에요.', bcScore:{} },
+      { label:'6~9시간 — 사무직이에요', value:'sedentary', aiReaction:'좌식 시간이 길면 림프 순환이 느려져요.', bcScore:{BC1:10,BC2:10} },
+      { label:'10시간 이상 — 의자가 제 친구예요', value:'very_sedentary', aiReaction:'장시간 좌식은 하체 부종과 대사 저하의 직접 원인이에요.', bcScore:{BC1:20,BC2:15} }
+    ], routeKey:'COMMON_ACTIVITY', saveAs:'sitting_hours' },
+  { id:'VQ18', num:18, category:'카페인·음료', emoji:'☕',
+    question:'하루 커피를 몇 잔이나 마시나요?',
+    hint:'아이스 아메리카노 포함이에요.',
+    type:'SINGLE_SELECT',
+    options:[
+      { label:'거의 안 마셔요 — 물만으로 충분', value:'none', aiReaction:'좋아요! 카페인 부담이 없어요.', bcScore:{} },
+      { label:'1~2잔 — 적당히', value:'1_2', aiReaction:'적당해요.', bcScore:{} },
+      { label:'3~4잔 — 커피 없으면 사람 못 돼요', value:'3_4', aiReaction:'BC-6 패턴에서 카페인이 부신에 영향 줄 수 있어요.', bcScore:{BC6:10} },
+      { label:'5잔 이상 — 커피가 피예요', value:'5plus', aiReaction:'부신 피로와 수면 문제의 원인일 수 있어요.', bcScore:{BC6:20} }
+    ], routeKey:'COMMON_CAFFEINE', saveAs:'caffeine' },
+  { id:'VQ19', num:19, category:'음주 패턴', emoji:'🍺',
+    question:'음주 빈도가 어떻게 되나요?',
+    hint:'판단 없어요. 데이터가 필요할 뿐이에요.',
+    type:'SINGLE_SELECT',
+    options:[
+      { label:'거의 안 마셔요', value:'none', aiReaction:'좋아요!', bcScore:{} },
+      { label:'월 1~2회', value:'monthly', aiReaction:'적당한 편이에요.', bcScore:{} },
+      { label:'주 1~2회', value:'weekly', aiReaction:'주기적 음주는 간 대사에 영향을 줄 수 있어요.', bcScore:{BC3:10} },
+      { label:'주 3회 이상 — 사회생활 어쩔 수 없어요', value:'frequent', aiReaction:'간 기능과 목형 기질 패턴에서 중요한 요인이에요.', bcScore:{BC3:20} }
+    ], routeKey:'COMMON_ALCOHOL', saveAs:'alcohol' },
+  { id:'VQ20', num:20, category:'수분 섭취', emoji:'💧',
+    question:'하루 물을 얼마나 마시나요?',
+    hint:'커피, 음료 말고 순수 물이요.',
+    type:'SINGLE_SELECT',
+    options:[
+      { label:'1.5L 이상 — 물병 항상 갖고 다녀요', value:'1_5plus', aiReaction:'완벽해요!', bcScore:{} },
+      { label:'1~1.5L — 적당히 마셔요', value:'1_1_5', aiReaction:'조금 늘리면 좋겠어요.', bcScore:{} },
+      { label:'500mL 이하 — 물 마시는 걸 깜빡해요', value:'under500', aiReaction:'수분 부족이 부종과 역설적으로 연결돼요.', bcScore:{BC1:15} },
+      { label:'물 마시기가 싫어요 — 음료로 대체', value:'beverage', aiReaction:'수분 대신 음료를 마시면 혈당이 불안정해질 수 있어요.', bcScore:{BC1:10,BC3:10} }
+    ], routeKey:'COMMON_WATER', saveAs:'water' },
+  { id:'VQ21', num:21, category:'시술 경험', emoji:'🧴',
+    question:'미용 목적 시술 경험이 있나요?',
+    hint:'다이어트 관련 포함해서요.',
+    type:'SINGLE_SELECT',
+    options:[
+      { label:'없어요 — 자연주의파', value:'none', aiReaction:'자연 요법 중심으로 처방해드릴게요.', bcScore:{} },
+      { label:'1~2회 경험 있어요', value:'1_2', aiReaction:'경험이 있으시군요.', bcScore:{} },
+      { label:'여러 번 받아봤어요', value:'several', aiReaction:'시술 선호 성향을 처방에 반영할게요.', bcScore:{} },
+      { label:'정기적으로 받고 있어요', value:'regular', aiReaction:'메디컬 케어 선호 유형이시네요.', bcScore:{} }
+    ], routeKey:'COMMON_PROCEDURE', saveAs:'procedure' },
+  { id:'VQ22', num:22, category:'약물 이력', emoji:'💊',
+    question:'다이어트 약을 복용한 경험이 있나요?',
+    hint:'식욕억제제, 한약, 영양제 등 포함이에요.',
+    type:'SINGLE_SELECT',
+    options:[
+      { label:'없어요', value:'none', aiReaction:'OK!', bcScore:{} },
+      { label:'영양제·한약 정도 먹어봤어요', value:'supplement', aiReaction:'자연 요법 먼저 시작해봐요.', bcScore:{} },
+      { label:'식욕억제제 처방받아봤어요', value:'appetite_med', aiReaction:'약 없이도 가능해요. 원인을 잡으면 돼요.', bcScore:{BC4:15} },
+      { label:'여러 종류를 시도해봤어요', value:'various', aiReaction:'BC-4 요요형 패턴이 있을 수 있어요.', bcScore:{BC4:25} }
+    ], routeKey:'COMMON_MEDS', saveAs:'meds' },
+  { id:'VQ23', num:23, category:'야간 식욕', emoji:'🌙',
+    question:'야식 얘기를 해봐요. 솔직하게!',
+    hint:'밤 9시 이후 이런 경험이 있나요?',
+    type:'SINGLE_SELECT',
+    options:[
+      { label:'없어요 — 저녁 7시 이후 단식이에요', value:'none', aiReaction:'대단해요! 야간 자제력이 높아요.', bcScore:{} },
+      { label:'가끔 — 스트레스 심한 날만', value:'occasional', aiReaction:'BC-6 패턴 시작이에요.', bcScore:{BC6:15} },
+      { label:'주 3~4회 — 꽤 자주 있어요', value:'frequent', aiReaction:'BC-6 야식부엉이형 중간 단계예요.', bcScore:{BC6:30} },
+      { label:'거의 매일 — 밤이 되면 배달앱이 열려요', value:'daily', aiReaction:'BC-6 야식부엉이형 거의 확정이에요.', bcScore:{BC6:45} }
+    ], routeKey:'COMMON_NIGHT_EAT', saveAs:'night_eat' },
+  { id:'VQ24', num:24, category:'다이어트 실패 패턴', emoji:'😩',
+    question:'다이어트를 포기하게 되는 가장 흔한 이유가 뭐예요?',
+    hint:'제일 솔직한 답을 고르세요.',
+    type:'SINGLE_SELECT',
+    options:[
+      { label:'3일 지나면 의지가 사라져요', value:'3days', aiReaction:'72시간 금단 반응이에요. 방법이 잘못됐던 거예요.', bcScore:{} },
+      { label:'3주차 정체기가 오면 포기해요', value:'3weeks', aiReaction:'3주차 정체기는 실패가 아니에요. 몸이 재조정 중인 거예요.', bcScore:{BC4:10} },
+      { label:'생리 전만 되면 무너져요', value:'period', aiReaction:'호르몬 주기 패턴이에요. 대처법이 있어요.', bcScore:{BC7:10} },
+      { label:'계획이 조금만 틀어져도 다 포기해요', value:'perfectionism', aiReaction:'INFP 또는 완벽주의 기질이에요.', bcScore:{} }
+    ], routeKey:'COMMON_FAIL_PATTERN', saveAs:'fail_pattern' },
+  { id:'VQ25', num:25, category:'다이어트 동기', emoji:'🎯',
+    question:'지금 다이어트를 하려는 진짜 이유가 뭐예요?',
+    hint:'판단 없어요. 제일 솔직한 이유요.',
+    type:'SINGLE_SELECT',
+    options:[
+      { label:'건강이 걱정돼서 — 혈압·혈당 등', value:'health', aiReaction:'내적 동기예요. 지속 가능성이 가장 높아요.', bcScore:{} },
+      { label:'옷 입을 때 자신감을 갖고 싶어서', value:'confidence', aiReaction:'자기효능감 동기예요. 좋아요.', bcScore:{} },
+      { label:'누군가의 시선이나 말이 신경 쓰여서', value:'external', aiReaction:'외적 압박도 동기가 돼요. 괜찮아요.', bcScore:{} },
+      { label:'그냥... 오래전부터 하고 싶었어요', value:'vague', aiReaction:'막연한 동기예요. 구체적인 목표를 잡아드릴게요.', bcScore:{} }
+    ], routeKey:'COMMON_MOTIVATION', saveAs:'motivation' },
+  { id:'VQ26', num:26, category:'계획 스타일', emoji:'📋',
+    question:'다이어트 계획을 세울 때 어떤 스타일이에요?',
+    hint:'자신을 가장 잘 표현하는 걸 골라주세요.',
+    type:'SINGLE_SELECT',
+    options:[
+      { label:'완벽한 식단표를 짜고 시작해요', value:'perfect_plan', aiReaction:'목형·금형 기질이에요. 완벽주의 성향이 있어요.', bcScore:{} },
+      { label:'대략적인 방향만 잡고 시작해요', value:'loose_plan', aiReaction:'유연한 실행형이에요.', bcScore:{} },
+      { label:'일단 시작하고 계획은 나중에', value:'no_plan', aiReaction:'화형·INFP 즉흥형이에요.', bcScore:{} },
+      { label:'계획 세우다가 지쳐서 시작을 못 해요', value:'planning_exhausted', aiReaction:'계획 자체가 에너지를 소진하는 유형이에요.', bcScore:{} }
+    ], routeKey:'COMMON_PLAN_STYLE', saveAs:'plan_style' },
+  { id:'VQ27', num:27, category:'감정 반응', emoji:'🎭',
+    question:'기분이 안 좋을 때 어떻게 반응하나요?',
+    hint:'본능적인 반응이요!',
+    type:'SINGLE_SELECT',
+    options:[
+      { label:'일에 더 집중해서 잊어버려요', value:'work', aiReaction:'목형 기질 — 억압형 반응이에요.', bcScore:{} },
+      { label:'혼자 조용히 삭혀요', value:'alone', aiReaction:'역시 억압형이에요. 수형 또는 금형 기질.', bcScore:{} },
+      { label:'음식으로 풀어요 — 맛있는 게 치료제', value:'eat', aiReaction:'감정적 식사 패턴 — BC-6의 심리 기전이에요.', bcScore:{BC6:25} },
+      { label:'친구한테 털어놓아요', value:'social', aiReaction:'화형 또는 ENFP 기질이에요.', bcScore:{} }
+    ], routeKey:'COMMON_EMOTION', saveAs:'emotion_reaction' },
+  { id:'VQ28', num:28, category:'성취 패턴', emoji:'🏆',
+    question:'목표를 정하면 어떻게 되나요?',
+    hint:'다이어트 외 다른 목표도 포함해서요.',
+    type:'SINGLE_SELECT',
+    options:[
+      { label:'무조건 완수해요 — 끝장을 봐야 해요', value:'always', aiReaction:'목형 기질 — 강한 추진력이 있어요.', bcScore:{} },
+      { label:'어느 정도 하다가 흐지부지돼요', value:'fizzle', aiReaction:'화형 또는 수형 기질이에요.', bcScore:{} },
+      { label:'완벽하게 못 하면 아예 안 해요', value:'perfectionism', aiReaction:'INFP 또는 금형 — 완벽주의 패턴이에요.', bcScore:{} },
+      { label:'목표 설정 자체를 잘 못 해요', value:'cant_set', aiReaction:'목표 세팅법부터 같이 잡아드릴게요.', bcScore:{} }
+    ], routeKey:'COMMON_ACHIEVEMENT', saveAs:'achievement' },
+  { id:'VQ29', num:29, category:'오행 기질', emoji:'🌿',
+    question:'평소 이런 사람이라는 소리를 많이 들어요?',
+    hint:'자기 자신을 가장 잘 표현하는 걸 골라주세요.',
+    type:'SINGLE_SELECT',
+    options:[
+      { label:'추진력 있고 목표지향적이에요', value:'wood', aiReaction:'목형(木) 기질이에요.', bcScore:{} },
+      { label:'감성적이고 창의적이에요', value:'fire', aiReaction:'화형(火) 또는 INFP 기질이에요.', bcScore:{} },
+      { label:'따뜻하고 다른 사람 걱정을 잘 해요', value:'earth', aiReaction:'토형(土) 기질이에요.', bcScore:{} },
+      { label:'원칙적이고 완벽주의예요', value:'metal', aiReaction:'금형(金) 기질이에요.', bcScore:{} },
+      { label:'생각이 깊고 신중해요', value:'water', aiReaction:'수형(水) 기질이에요.', bcScore:{} }
+    ], routeKey:'COMMON_OHAENG', saveAs:'ohaeng' },
+  { id:'VQ30', num:30, category:'마지막 공통 질문', emoji:'🔮',
+    question:'지금 이 순간, 가장 바꾸고 싶은 게 뭐예요?',
+    hint:'이게 마지막 공통 질문이에요! 거의 다 왔어요.',
+    type:'SINGLE_SELECT',
+    options:[
+      { label:'오후만 되면 터질 것 같은 다리', value:'legs', aiReaction:'BC-1 코끼리다리형 확인 중...', bcScore:{BC1:50} },
+      { label:'식단·운동 다 하는데 안 빠지는 아랫배', value:'belly', aiReaction:'BC-3 또는 BC-7 확인 중...', bcScore:{BC3:30,BC7:20} },
+      { label:'밤마다 반복되는 야식 충동', value:'night_eat', aiReaction:'BC-6 야식부엉이형 확인 중...', bcScore:{BC6:50} },
+      { label:'운동할수록 굵어지는 하체', value:'thigh', aiReaction:'BC-8 말벅지형 확인 중...', bcScore:{BC8:50} },
+      { label:'물만 마셔도 살 찌는 것 같은 체질', value:'constitution', aiReaction:'BC-4 요요형 확인 중...', bcScore:{BC4:50} }
+    ], routeKey:'COMMON_FINAL_WISH', saveAs:'final_wish',
+    isIntermissionTrigger: true }
+];
+
+// ── 심층 문항 Pool ────────────────────────────────────
+var DEEP_QUESTIONS = {
+  'BC6': [
+    { id:'D6Q01', num:1, emoji:'🦉', category:'야식 패턴 심층', question:'밤 9시 이후, 가장 당기는 음식이 뭐예요?', hint:'제일 솔직한 답을 골라주세요.', type:'SINGLE_SELECT', options:[
+      { label:'매운 음식 — 떡볶이, 라면, 양념치킨', value:'spicy', aiReaction:'자극적인 맛 갈구 — 도파민 추락 신호예요.' },
+      { label:'단 음식 — 초콜릿, 아이스크림', value:'sweet', aiReaction:'당 보충 본능 — 세로토닌 고갈 신호예요.' },
+      { label:'짭짤한 탄수화물 — 과자, 빵', value:'salty_carb', aiReaction:'탄수화물 갈구 — 혈당 저하 반응이에요.' },
+      { label:'뭐든 상관없어요 — 그냥 계속 집어먹어요', value:'anything', aiReaction:'폭식 패턴 — 감정적 식사가 강해요.' }
+    ], routeKey:'BC6_CRAVING' },
+    { id:'D6Q02', num:2, emoji:'⏰', category:'야식 타이밍', question:'야식 충동이 오는 정확한 시간대가 있나요?', hint:'몸이 시계처럼 반응하는 시간이요.', type:'SINGLE_SELECT', options:[
+      { label:'8~9시 사이 — 저녁 먹었는데도', value:'8_9', aiReaction:'저녁 식사 후 혈당 반응이에요.' },
+      { label:'10~11시 사이 — 잠자리 들기 전', value:'10_11', aiReaction:'코르티솔이 가장 낮아지는 시간이에요.' },
+      { label:'자정 이후 — 진짜 밤부장', value:'midnight', aiReaction:'수면 부족이 식욕 호르몬을 교란시키고 있어요.' },
+      { label:'시간 상관없이 스트레스받으면 언제나', value:'stress_any', aiReaction:'감정 트리거형 폭식 패턴이에요.' }
+    ], routeKey:'BC6_TIMING' },
+    { id:'D6Q03', num:3, emoji:'😤', category:'야식 후 감정', question:'야식을 먹고 나면 어떤 감정이 드나요?', hint:'먹는 순간과 이후 감정 모두요.', type:'SINGLE_SELECT', options:[
+      { label:'먹는 순간은 행복 — 이후엔 자책', value:'happy_then_regret', aiReaction:'도파민 보상 후 자책 사이클 — 전형적이에요.' },
+      { label:'먹는 순간도 별로 — 그냥 습관으로 먹어요', value:'habit', aiReaction:'습관성 섭식 패턴이에요.' },
+      { label:'먹은 다음 날 아침이 너무 후회돼요', value:'next_morning', aiReaction:'자책이 다음 야식을 만드는 악순환이에요.' },
+      { label:'솔직히 별로 죄책감 없어요', value:'no_guilt', aiReaction:'죄책감 없는 유형은 다른 접근이 필요해요.' }
+    ], routeKey:'BC6_AFTER_EMOTION' },
+    { id:'D6Q04', num:4, emoji:'😰', category:'낮 스트레스', question:'직장이나 일상에서 스트레스를 받는 빈도는?', hint:'야식 충동과 스트레스의 연관성을 보는 거예요.', type:'SINGLE_SELECT', options:[
+      { label:'거의 없어요 — 삶이 평화로워요', value:'none', aiReaction:'스트레스 외 다른 원인이 있는 BC-6이에요.' },
+      { label:'주 2~3회 정도 스트레스받아요', value:'2_3_week', aiReaction:'주기적 스트레스와 야식 패턴을 연결해볼게요.' },
+      { label:'거의 매일 스트레스예요', value:'daily', aiReaction:'만성 스트레스가 코르티솔을 과활성화하고 있어요.' },
+      { label:'만성 스트레스 상태예요 — 24시간', value:'chronic', aiReaction:'BC-6의 가장 심각한 단계예요. 부신 회복이 먼저예요.' }
+    ], routeKey:'BC6_STRESS' },
+    { id:'D6Q05', num:5, emoji:'🌅', category:'아침 식욕', question:'아침에 일어났을 때 식욕이 어때요?', hint:'야식 패턴과 아침 식욕은 연결되어 있어요.', type:'SINGLE_SELECT', options:[
+      { label:'아침부터 배고파요 — 밥 먹어야 출발', value:'hungry', aiReaction:'정상적인 대사 리듬이에요.' },
+      { label:'아침엔 입맛이 없어요', value:'no_appetite', aiReaction:'야식이 아침 식욕을 억제하고 있어요.' },
+      { label:'구역감이 있어요 — 아침 먹기 힘들어요', value:'nausea', aiReaction:'전날 야식의 영향이에요. 순환 고리예요.' },
+      { label:'커피 한 잔이 아침 식사예요', value:'coffee_only', aiReaction:'공복 카페인이 부신에 영향 줄 수 있어요.' }
+    ], routeKey:'BC6_MORNING' },
+    { id:'D6Q06', num:6, emoji:'💡', category:'야식 참기', question:'야식 충동을 억제하려고 해본 것이 있나요?', hint:'뭘 시도해봤는지가 중요해요.', type:'SINGLE_SELECT', options:[
+      { label:'의지력으로 참아봤어요 — 대부분 실패', value:'willpower', aiReaction:'의지력 억제는 보상 폭식을 만들어요. 방법이 달라야 해요.' },
+      { label:'물 마시기로 속이려 했어요', value:'water', aiReaction:'물로 속이는 건 단기적이에요. 근본 원인 해결이 필요해요.' },
+      { label:'일찍 자려고 해봤어요', value:'early_sleep', aiReaction:'수면 조기화는 좋은 전략이에요!' },
+      { label:'아무것도 안 해봤어요 — 포기 상태', value:'nothing', aiReaction:'BC-6 해결책이 있어요. 포기하지 마세요.' }
+    ], routeKey:'BC6_CONTROL' },
+    { id:'D6Q07', num:7, emoji:'🫁', category:'복부 위치', question:'야식 후 살이 주로 찌는 부위가 어디예요?', hint:'오랜 기간의 패턴을 보세요.', type:'SINGLE_SELECT', options:[
+      { label:'윗배 — 명치 아래 볼록', value:'upper', aiReaction:'코르티솔성 내장지방 — BC-6 전형이에요.' },
+      { label:'아랫배 — 골반 위 러브핸들', value:'lower', aiReaction:'BC-6의 러브핸들 패턴이에요.' },
+      { label:'전체적으로 고루', value:'all', aiReaction:'전신 대사 저하 가능성이 있어요.' },
+      { label:'얼굴이랑 허벅지에 먼저 쪄요', value:'face_thigh', aiReaction:'BC-1과 복합 패턴일 수 있어요.' }
+    ], routeKey:'BC6_FAT_LOCATION' },
+    { id:'D6Q08', num:8, emoji:'☀️', category:'낮 활동', question:'낮 동안 활동 수준이 어떤가요?', hint:'에너지 소비와 야식 관계를 보는 거예요.', type:'SINGLE_SELECT', options:[
+      { label:'많이 움직여요 — 서서 일해요', value:'active', aiReaction:'활동적인데 야식이 있다면 대사 문제예요.' },
+      { label:'보통 수준이에요', value:'moderate', aiReaction:'일반적인 패턴이에요.' },
+      { label:'거의 앉아있어요 — 좌식 직업', value:'sedentary', aiReaction:'좌식 + 야식 조합은 BC-6의 악화 요인이에요.' },
+      { label:'집에 있는 시간이 많아요', value:'home', aiReaction:'재택 환경은 야식 기회가 더 많아요.' }
+    ], routeKey:'BC6_DAYTIME' },
+    { id:'D6Q09', num:9, emoji:'😴', category:'수면 질', question:'잠의 질은 어때요? 자고 일어나면?', hint:'수면과 식욕 호르몬은 직결되어 있어요.', type:'SINGLE_SELECT', options:[
+      { label:'개운하게 일어나요', value:'refreshed', aiReaction:'수면 질이 좋아요!' },
+      { label:'자도 피곤해요', value:'tired', aiReaction:'수면 효율이 낮아요. 그렐린·렙틴이 교란됐을 수 있어요.' },
+      { label:'중간에 자주 깨요', value:'wake_up', aiReaction:'수면 분절 — 코르티솔 리듬이 깨져 있어요.' },
+      { label:'불면증이 있어요', value:'insomnia', aiReaction:'불면 + 야식은 BC-6의 완전체예요.' }
+    ], routeKey:'BC6_SLEEP_QUALITY' },
+    { id:'D6Q10', num:10, emoji:'🎯', category:'BC-6 최종 확인', question:'마지막으로, 이런 경험이 있나요?', hint:'가장 솔직한 답을 골라주세요.', type:'SINGLE_SELECT', options:[
+      { label:'낮엔 입맛 없다가 밤에만 폭발적으로 먹어요', value:'night_only', aiReaction:'BC-6 야식부엉이형 확정이에요.' },
+      { label:'스트레스 없는 날엔 야식 충동도 없어요', value:'stress_trigger', aiReaction:'스트레스 트리거형 BC-6이에요.' },
+      { label:'다이어트 잘 하다가 야식 한 번에 다 포기해요', value:'give_up', aiReaction:'INFP 기질 + BC-6 조합이에요.' },
+      { label:'위 세 가지가 다 해당돼요', value:'all', aiReaction:'BC-6 복합형이에요. 결과지가 정밀하게 나올 거예요.' }
+    ], routeKey:'BC6_FINAL' }
+  ],
+
+  'BC7': [
+    { id:'D7Q01', num:1, emoji:'🎈', category:'출산 후 변화', question:'출산 전과 후 가장 크게 달라진 신체 변화가 뭐예요?', hint:'솔직하게 — 여기는 안전한 공간이에요.', type:'SINGLE_SELECT', options:[
+      { label:'아랫배가 뱃살 아닌 처진 느낌이에요', value:'sagging', aiReaction:'복압 소실 패턴이에요. BC-7 핵심 증상이에요.' },
+      { label:'골반이 넓어졌어요 — 바지 사이즈가 달라졌어요', value:'pelvis', aiReaction:'릴랙신 호르몬이 골반을 넓힌 거예요.' },
+      { label:'코어 힘이 완전히 없어졌어요', value:'core_loss', aiReaction:'BC-7 코어 약화 패턴이에요.' },
+      { label:'전부 다 해당돼요', value:'all', aiReaction:'BC-7 전형 패턴이에요. 정확한 분석이 가능해요.' }
+    ], routeKey:'BC7_POST_BIRTH' },
+    { id:'D7Q02', num:2, emoji:'💪', category:'코어 강도', question:'복부 코어 힘이 어느 정도예요?', hint:'솔직히 평가해주세요.', type:'SINGLE_SELECT', options:[
+      { label:'플랭크 1분 이상 가능해요', value:'strong', aiReaction:'코어가 양호해요. 다른 원인을 더 봐야 해요.' },
+      { label:'30초 이상이 한계예요', value:'moderate', aiReaction:'BC-7 중등도 코어 약화예요.' },
+      { label:'10초도 힘들어요', value:'weak', aiReaction:'BC-7 심각한 복압 소실이에요.' },
+      { label:'시도 자체가 무서워요 — 요실금 걱정', value:'fear', aiReaction:'BC-7 + 골반저근 약화 복합이에요.' }
+    ], routeKey:'BC7_CORE' },
+    { id:'D7Q03', num:3, emoji:'🚽', category:'골반저 증상', question:'이런 경험이 있나요? (솔직하게!)', hint:'산후 여성에게 매우 흔한 증상이에요.', type:'SINGLE_SELECT', options:[
+      { label:'기침·재채기할 때 소변이 찔끔 나와요', value:'leak', aiReaction:'골반저근 약화 — BC-7 핵심 증상이에요.' },
+      { label:'급하게 화장실 가고 싶어요 (절박뇨)', value:'urgency', aiReaction:'방광 과민 — 골반저 기능 이상이에요.' },
+      { label:'아랫배에 무거운 압박감이 있어요', value:'pressure', aiReaction:'장기 하수 압박감 — BC-7 중증이에요.' },
+      { label:'해당 없어요', value:'none', aiReaction:'증상이 없어도 복압 소실이 있을 수 있어요.' }
+    ], routeKey:'BC7_PELVIC' },
+    { id:'D7Q04', num:4, emoji:'😣', category:'허리·골반 통증', question:'허리나 골반 통증이 있나요?', hint:'출산 후 통증 패턴이요.', type:'SINGLE_SELECT', options:[
+      { label:'아침에 일어날 때 허리가 뻣뻣해요', value:'morning', aiReaction:'BC-7 기상 시 통증 패턴이에요.' },
+      { label:'오래 서 있으면 허리가 아파요', value:'standing', aiReaction:'장시간 기립 불내성 — BC-7 연관이에요.' },
+      { label:'아기 안고 나면 허리가 끊어질 것 같아요', value:'baby', aiReaction:'육아 자세 + 복압 소실 복합이에요.' },
+      { label:'통증은 없어요', value:'none', aiReaction:'통증 없이도 BC-7 패턴 가능해요.' }
+    ], routeKey:'BC7_PAIN' },
+    { id:'D7Q05', num:5, emoji:'👗', category:'체형 변화', question:'출산 전 옷을 지금도 입을 수 있나요?', hint:'솔직한 현실을 골라주세요.', type:'SINGLE_SELECT', options:[
+      { label:'상의는 돼요 — 하의만 안 맞아요', value:'bottom_only', aiReaction:'골반 확장 — BC-7 전형 패턴이에요.' },
+      { label:'둘 다 안 맞아요 — 사이즈 자체가 달라졌어요', value:'both', aiReaction:'전체 체형 변화 — BC-7 복합이에요.' },
+      { label:'몸무게는 돌아왔는데 옷 핏이 달라요', value:'fit_diff', aiReaction:'체형 변화 BC-7 — 체중은 아닌 구조 문제예요.' },
+      { label:'거의 다 입을 수 있어요', value:'fine', aiReaction:'회복이 잘 된 편이에요.' }
+    ], routeKey:'BC7_CLOTHES' },
+    { id:'D7Q06', num:6, emoji:'🤸', category:'운동 반응', question:'출산 후 운동을 시작했을 때 어떤 일이 있었나요?', hint:'경험담을 솔직하게 말해주세요.', type:'SINGLE_SELECT', options:[
+      { label:'윗몸일으키기 하면 아랫배가 더 볼록해졌어요', value:'crunch_worse', aiReaction:'복압 역류 — BC-7에서 윗몸일으키기 금기예요.' },
+      { label:'스쿼트 하면 무릎·골반이 아파요', value:'squat_pain', aiReaction:'골반 불안정 + 운동 — BC-7 악화 패턴이에요.' },
+      { label:'걷기만 해도 회음부가 불편해요', value:'walking_discomfort', aiReaction:'골반저근 약화 — 운동 전 회복이 먼저예요.' },
+      { label:'아직 운동을 시작 못 했어요', value:'not_started', aiReaction:'지금이 시작할 때예요. 방법이 중요해요.' }
+    ], routeKey:'BC7_EXERCISE' },
+    { id:'D7Q07', num:7, emoji:'🌙', category:'야간 증상', question:'밤에 누웠을 때 몸 상태는 어때요?', hint:'BC-7 야간 증상을 확인하는 거예요.', type:'SINGLE_SELECT', options:[
+      { label:'옆으로 누우면 아랫배가 옆으로 처져요', value:'side_sag', aiReaction:'BC-7 피하지방 처짐 패턴이에요.' },
+      { label:'누우면 방광 압박이 느껴져요', value:'bladder', aiReaction:'방광 압박 — 골반저 약화 확인이에요.' },
+      { label:'배가 처지는 느낌이 싫어서 엎드려 자요', value:'prone', aiReaction:'불편함을 피하는 보상 자세예요.' },
+      { label:'별다른 증상 없어요', value:'none', aiReaction:'증상이 경미한 BC-7이에요.' }
+    ], routeKey:'BC7_NIGHT' },
+    { id:'D7Q08', num:8, emoji:'🍽️', category:'모유 수유', question:'모유 수유 경험이 있나요?', hint:'모유 수유는 대사에 영향을 줘요.', type:'SINGLE_SELECT', options:[
+      { label:'완전 모유 수유 6개월 이상 했어요', value:'full_6plus', aiReaction:'수유 종료 후 호르몬 급변이 체형에 영향 줘요.' },
+      { label:'혼합 수유를 했어요', value:'mixed', aiReaction:'혼합 수유도 호르몬 변화가 있어요.' },
+      { label:'분유 수유를 했어요', value:'formula', aiReaction:'수유 외 다른 BC-7 원인을 더 살펴볼게요.' },
+      { label:'수유 기간 종료됐어요', value:'ended', aiReaction:'수유 종료 시점 이후 체형 변화를 체크할게요.' }
+    ], routeKey:'BC7_NURSING' },
+    { id:'D7Q09', num:9, emoji:'😰', category:'복부 감각', question:'아랫배를 만져보면 어떤 느낌이에요?', hint:'섬세한 질문이지만 진단에 중요해요.', type:'SINGLE_SELECT', options:[
+      { label:'단단하고 탄탄해요', value:'firm', aiReaction:'코어가 유지된 편이에요.' },
+      { label:'말랑말랑하지만 튀어나와 있어요', value:'soft_protruding', aiReaction:'BC-7 피하지방 + 복압 소실 조합이에요.' },
+      { label:'손으로 누르면 속이 묵직한 느낌이에요', value:'heavy', aiReaction:'내장 하수감 — BC-7 중증 신호예요.' },
+      { label:'아랫배 중앙이 움푹 들어가 있어요', value:'diastasis', aiReaction:'복직근 이개 가능성이 있어요.' }
+    ], routeKey:'BC7_BELLY_FEEL' },
+    { id:'D7Q10', num:10, emoji:'🎯', category:'BC-7 최종', question:'출산 후 이런 생각을 해본 적 있나요?', hint:'가장 공감되는 것을 골라주세요.', type:'SINGLE_SELECT', options:[
+      { label:'살을 빼도 뱃살 모양이 예전이랑 달라요', value:'shape_diff', aiReaction:'구조 변화 BC-7 확정이에요.' },
+      { label:'운동해도 복부 라인이 안 잡혀요', value:'no_line', aiReaction:'BC-7 + 코어 약화 복합이에요.' },
+      { label:'뭔가 속에서 처진 느낌이 있어요', value:'inner_sag', aiReaction:'BC-7 내장 하수 패턴이에요.' },
+      { label:'위 세 가지가 다 해당돼요', value:'all', aiReaction:'BC-7 완전 패턴이에요. 정밀 결과지가 나올 거예요.' }
+    ], routeKey:'BC7_FINAL' }
+  ],
+
+  'BC1': [
+    { id:'D1Q01', num:1, emoji:'🐘', category:'부종 패턴', question:'다리 부종이 심해지는 정확한 타이밍이 있나요?', hint:'부종 패턴이 원인을 알려줘요.', type:'SINGLE_SELECT', options:[
+      { label:'아침부터 부어있어요 (기상 시 부종)', value:'morning', aiReaction:'신장 또는 심장 기능 이상을 체크해봐야 해요.' },
+      { label:'오후 2~3시부터 시작돼요', value:'afternoon', aiReaction:'림프 순환 저하 — BC-1 초기 패턴이에요.' },
+      { label:'저녁 5~6시에 최고조예요', value:'evening', aiReaction:'BC-1 코끼리다리형 전형 패턴이에요.' },
+      { label:'앉아있다 일어서면 바로 부어요', value:'standing', aiReaction:'정맥류 또는 림프 정체 가능성이에요.' }
+    ], routeKey:'BC1_TIMING' },
+    { id:'D1Q02', num:2, emoji:'🧦', category:'양말 자국', question:'양말 자국이 얼마나 깊이 남나요?', hint:'저녁에 양말 벗고 확인해보세요.', type:'SINGLE_SELECT', options:[
+      { label:'자국이 거의 남지 않아요', value:'none', aiReaction:'부종이 경미한 편이에요.' },
+      { label:'자국이 남지만 30분 내 사라져요', value:'mild', aiReaction:'경미한 부종이에요.' },
+      { label:'자국이 1~2시간 지속돼요', value:'moderate', aiReaction:'BC-1 중등도 부종이에요.' },
+      { label:'다음날 아침까지 자국이 남아요', value:'severe', aiReaction:'BC-1 심한 부종 + 림프 정체가 심해요.' }
+    ], routeKey:'BC1_SOCK' },
+    { id:'D1Q03', num:3, emoji:'👟', category:'신발 사이즈', question:'하루 중 신발 사이즈 변화가 있나요?', hint:'아침에 신은 신발이 저녁에 어때요?', type:'SINGLE_SELECT', options:[
+      { label:'아침이나 저녁이나 똑같아요', value:'same', aiReaction:'부종이 없는 편이에요.' },
+      { label:'저녁엔 살짝 조여요', value:'slightly', aiReaction:'경미한 수분 저류예요.' },
+      { label:'저녁엔 신발이 꽉 끼어요', value:'tight', aiReaction:'BC-1 중등도 부종이에요.' },
+      { label:'아침에 신은 부츠가 저녁엔 지퍼가 안 올라가요', value:'cant_zip', aiReaction:'BC-1 코끼리다리형 확정이에요.' }
+    ], routeKey:'BC1_SHOE' },
+    { id:'D1Q04', num:4, emoji:'🚶', category:'다리 무게감', question:'걷거나 서있을 때 다리 느낌이 어때요?', hint:'하루 종일 느끼는 감각이요.', type:'SINGLE_SELECT', options:[
+      { label:'가볍고 편해요', value:'light', aiReaction:'순환이 좋아요.' },
+      { label:'오래 서있으면 무거워요', value:'standing', aiReaction:'자세 관련 부종일 수 있어요.' },
+      { label:'항상 다리가 무거운 느낌이에요', value:'always', aiReaction:'BC-1 만성 하지 정체 패턴이에요.' },
+      { label:'다리에 납이 달린 것 같아요', value:'lead', aiReaction:'BC-1 심각한 림프 순환 장애예요.' }
+    ], routeKey:'BC1_HEAVINESS' },
+    { id:'D1Q05', num:5, emoji:'🌡️', category:'다리 온도', question:'다리 온도가 어때요?', hint:'특히 종아리 온도를 느껴보세요.', type:'SINGLE_SELECT', options:[
+      { label:'따뜻하고 혈색이 좋아요', value:'warm', aiReaction:'순환이 좋아요.' },
+      { label:'약간 차가워요', value:'slightly_cold', aiReaction:'경미한 순환 저하예요.' },
+      { label:'항상 차가워요 — 한여름에도', value:'cold', aiReaction:'BC-1 + 수형 기질 조합이에요.' },
+      { label:'차갑고 보라빛이 돌아요', value:'purple', aiReaction:'정맥 순환 장애를 의사에게 확인하세요.' }
+    ], routeKey:'BC1_TEMP' },
+    { id:'D1Q06', num:6, emoji:'💆', category:'마사지 반응', question:'다리 마사지를 받거나 하면 어때요?', hint:'마사지 반응이 진단에 도움돼요.', type:'SINGLE_SELECT', options:[
+      { label:'시원하고 바로 가벼워져요', value:'great', aiReaction:'림프 반응이 좋은 편이에요.' },
+      { label:'일시적으로 좋아졌다가 다시 돌아와요', value:'temporary', aiReaction:'BC-1 림프 정체 — 단순 마사지로는 한계예요.' },
+      { label:'아파서 마사지를 못 받아요', value:'painful', aiReaction:'셀룰라이트 혼합 BC-1이에요.' },
+      { label:'마사지 후 오히려 더 부어요', value:'worse', aiReaction:'마사지 방향이 잘못됐을 수 있어요.' }
+    ], routeKey:'BC1_MASSAGE' },
+    { id:'D1Q07', num:7, emoji:'🏃', category:'운동 후 부종', question:'운동 후 다리 부종이 어때요?', hint:'운동 전후 비교예요.', type:'SINGLE_SELECT', options:[
+      { label:'운동 후엔 오히려 가벼워요', value:'better', aiReaction:'운동이 림프 순환을 도와주고 있어요.' },
+      { label:'별 차이 없어요', value:'same', aiReaction:'운동 효과가 아직 없는 상태예요.' },
+      { label:'운동 후 잠깐은 좋다가 더 붓기도 해요', value:'worse_after', aiReaction:'운동 종류를 바꾸면 달라져요.' },
+      { label:'걷기만 해도 다리가 더 부어요', value:'worse_walking', aiReaction:'BC-1에서 잘못된 운동이 역효과를 낼 수 있어요.' }
+    ], routeKey:'BC1_EXERCISE' },
+    { id:'D1Q08', num:8, emoji:'🛌', category:'수면 중 증상', question:'밤에 잘 때 다리 증상이 있나요?', hint:'수면 중 하지 증상이요.', type:'SINGLE_SELECT', options:[
+      { label:'잘 때 다리를 높이 올리면 편해요', value:'elevate', aiReaction:'BC-1에서 다리 높이기가 좋은 습관이에요.' },
+      { label:'다리가 저리거나 쥐가 잘 나요', value:'cramp', aiReaction:'정맥 순환 문제 또는 마그네슘 부족이에요.' },
+      { label:'하지불안증후군 진단을 받았어요', value:'rls', aiReaction:'신경 + 순환 복합 문제예요.' },
+      { label:'특별한 증상 없어요', value:'none', aiReaction:'BC-1 경도 패턴이에요.' }
+    ], routeKey:'BC1_SLEEP' },
+    { id:'D1Q09', num:9, emoji:'☀️', category:'날씨·계절 영향', question:'날씨나 계절에 따라 부종이 달라지나요?', hint:'외부 환경과 부종의 관계예요.', type:'SINGLE_SELECT', options:[
+      { label:'더운 날 훨씬 심해요', value:'hot', aiReaction:'열성 림프 정체 — BC-1 여름 악화형이에요.' },
+      { label:'비 오는 날 더 부어요', value:'rain', aiReaction:'기압 변화 반응 — 순환 예민형이에요.' },
+      { label:'계절 상관없이 항상 부어요', value:'always', aiReaction:'BC-1 만성 림프 정체 — 환경 독립적이에요.' },
+      { label:'특별한 연관성 모르겠어요', value:'unknown', aiReaction:'내부 원인이 더 강한 BC-1이에요.' }
+    ], routeKey:'BC1_WEATHER' },
+    { id:'D1Q10', num:10, emoji:'🎯', category:'BC-1 최종', question:'이런 경험이 있나요?', hint:'가장 해당되는 것을 골라주세요.', type:'SINGLE_SELECT', options:[
+      { label:'아침엔 날씬한데 저녁엔 완전 다른 다리', value:'daily_change', aiReaction:'BC-1 전형 일중 변동형이에요.' },
+      { label:'살 빼도 다리 라인이 안 잡혀요', value:'no_line', aiReaction:'BC-1 지방 + 부종 복합이에요.' },
+      { label:'부종인지 지방인지 모르겠어요', value:'confused', aiReaction:'BC-1 + BC-5 셀룰라이트 복합이에요.' },
+      { label:'위 세 가지가 다 해당돼요', value:'all', aiReaction:'BC-1 완전 패턴이에요. 정밀 결과가 나올 거예요.' }
+    ], routeKey:'BC1_FINAL' }
+  ],
+
+  'BC3': [
+    { id:'D3Q01', num:1, emoji:'🍉', category:'배 단단함', question:'배를 손으로 눌러봤을 때 어때요?', hint:'솔직하게 — 탁구공처럼 튕겨나오나요?', type:'SINGLE_SELECT', options:[
+      { label:'살이 말랑말랑해요', value:'soft', aiReaction:'피하지방형이에요.' },
+      { label:'전체적으로 단단해요', value:'firm', aiReaction:'BC-3 내장지방 패턴 시작이에요.' },
+      { label:'윗배는 단단하고 아랫배는 말랑해요', value:'upper_firm', aiReaction:'내장지방 + 피하지방 혼합이에요.' },
+      { label:'눌러도 안 들어가요 — 야구공이에요', value:'baseball', aiReaction:'BC-3 수박배형 확정 신호예요.' }
+    ], routeKey:'BC3_FIRMNESS' },
+    { id:'D3Q02', num:2, emoji:'😴', category:'누운 자세', question:'누웠을 때 배 모양이 어때요?', hint:'솔직한 관찰이 중요해요.', type:'SINGLE_SELECT', options:[
+      { label:'납작해져요 — 지방이 옆으로 퍼져요', value:'flat', aiReaction:'피하지방형이에요.' },
+      { label:'누워도 배가 볼록 올라와 있어요', value:'up', aiReaction:'BC-3 내장지방 초기예요.' },
+      { label:'야구공처럼 튀어나와 있어요', value:'baseball', aiReaction:'BC-3 수박배형 전형이에요.' },
+      { label:'오히려 누우면 더 나오는 것 같아요', value:'more', aiReaction:'BC-3 심한 내장지방이에요.' }
+    ], routeKey:'BC3_LYING' },
+    { id:'D3Q03', num:3, emoji:'🍽️', category:'식후 반응', question:'밥 먹고 나면 어떻게 돼요?', hint:'식사 후 30분~1시간 이내 반응이요.', type:'SINGLE_SELECT', options:[
+      { label:'배가 더부룩하고 가스가 차요', value:'bloat', aiReaction:'장내 환경 문제 또는 소화 기능 이상이에요.' },
+      { label:'졸립고 나른해져요', value:'sleepy', aiReaction:'인슐린 반응 — BC-3 혈당 패턴이에요.' },
+      { label:'바로 또 배고파요 — 밥 먹어도 배고파요', value:'hungry_again', aiReaction:'인슐린 저항성 — BC-3 핵심 증상이에요.' },
+      { label:'배가 눈에 띄게 더 나와요', value:'bigger', aiReaction:'BC-3 식후 혈당 스파이크가 강해요.' }
+    ], routeKey:'BC3_AFTER_MEAL' },
+    { id:'D3Q04', num:4, emoji:'🍬', category:'단맛 갈구', question:'단 음식이 당기는 빈도가 어때요?', hint:'의지와 상관없이 당기는 느낌이요.', type:'SINGLE_SELECT', options:[
+      { label:'거의 안 당겨요', value:'none', aiReaction:'혈당이 안정적인 편이에요.' },
+      { label:'식후에 가끔 당겨요', value:'after_meal', aiReaction:'경미한 혈당 반응이에요.' },
+      { label:'밥 먹고 나면 항상 단 것이 먹고 싶어요', value:'always_after', aiReaction:'BC-3 인슐린 저항성 신호예요.' },
+      { label:'항상 당겨요 — 밥보다 단 것이 좋아요', value:'always', aiReaction:'BC-3 심한 혈당 불안정이에요.' }
+    ], routeKey:'BC3_SWEET' },
+    { id:'D3Q05', num:5, emoji:'🩺', category:'건강 수치', question:'최근 건강검진에서 이런 결과가 있었나요?', hint:'없었다면 해당 없음 선택', type:'SINGLE_SELECT', options:[
+      { label:'공복혈당이 경계선이에요', value:'glucose', aiReaction:'BC-3 대사증후군 전단계 패턴이에요.' },
+      { label:'중성지방 수치가 높았어요', value:'triglyceride', aiReaction:'BC-3 지방 대사 이상 신호예요.' },
+      { label:'허리둘레가 기준치 이상이에요', value:'waist', aiReaction:'BC-3 복부비만 기준 해당이에요.' },
+      { label:'해당 없어요 (또는 검진 안 했어요)', value:'none', aiReaction:'수치 정상이어도 BC-3 패턴은 있을 수 있어요.' }
+    ], routeKey:'BC3_HEALTH' },
+    { id:'D3Q06', num:6, emoji:'😤', category:'허리 통증', question:'허리 통증 경험이 있나요?', hint:'BC-3와 허리 통증은 연결되어 있어요.', type:'SINGLE_SELECT', options:[
+      { label:'없어요', value:'none', aiReaction:'요통이 없으시군요.' },
+      { label:'오래 앉으면 허리가 아파요', value:'sitting', aiReaction:'자세 관련 요통이에요.' },
+      { label:'만성 요통이 있어요', value:'chronic', aiReaction:'BC-3 내장지방 압박 가능성이에요.' },
+      { label:'내장지방 때문인지 허리가 무거워요', value:'heavy', aiReaction:'BC-3 내장지방 + 요통 복합이에요.' }
+    ], routeKey:'BC3_BACK' },
+    { id:'D3Q07', num:7, emoji:'🍺', category:'음주 후 반응', question:'술을 마신 다음날 배가 어때요?', hint:'알코올과 내장지방의 관계예요.', type:'SINGLE_SELECT', options:[
+      { label:'술을 거의 안 마셔요', value:'none', aiReaction:'음주 요인이 없는 BC-3예요.' },
+      { label:'음주 다음날 배가 더 나와요', value:'bigger', aiReaction:'알코올이 내장지방을 키우고 있어요.' },
+      { label:'배가 더 딱딱해지는 느낌이에요', value:'firmer', aiReaction:'알코올 + 내장지방 — BC-3 악화 요인이에요.' },
+      { label:'별 변화 없어요', value:'same', aiReaction:'알코올 반응이 없는 BC-3이에요.' }
+    ], routeKey:'BC3_ALCOHOL' },
+    { id:'D3Q08', num:8, emoji:'🏃', category:'유산소 반응', question:'달리기나 유산소 운동을 했을 때 결과가?', hint:'복부 변화 중심으로 답해주세요.', type:'SINGLE_SELECT', options:[
+      { label:'달리기 하니까 뱃살이 빠졌어요', value:'good', aiReaction:'유산소 반응이 좋은 편이에요.' },
+      { label:'체중은 빠졌는데 뱃살은 그대로예요', value:'weight_not_belly', aiReaction:'BC-3 — 식단 교정이 운동보다 먼저예요.' },
+      { label:'유산소를 많이 해도 배 모양이 안 바뀌어요', value:'no_change', aiReaction:'BC-3 내장지방 — 호르몬 교정이 필요해요.' },
+      { label:'유산소 후 배가 더 고파져서 더 먹게 돼요', value:'more_hungry', aiReaction:'인슐린 저항성이 운동 효과를 상쇄하고 있어요.' }
+    ], routeKey:'BC3_CARDIO' },
+    { id:'D3Q09', num:9, emoji:'😴', category:'수면 후 배', question:'아침에 일어났을 때 배 상태는?', hint:'수면 중 대사와 내장지방의 관계예요.', type:'SINGLE_SELECT', options:[
+      { label:'저녁보다 아침에 배가 더 들어가요', value:'smaller', aiReaction:'대사가 야간에도 작동하고 있어요.' },
+      { label:'자고 나도 배가 비슷해요', value:'same', aiReaction:'BC-3 중등도 내장지방이에요.' },
+      { label:'아침에도 배가 단단하게 나와있어요', value:'firm', aiReaction:'BC-3 심한 내장지방 — 야간 대사가 낮아요.' },
+      { label:'아침 배가 가장 나와있어요', value:'biggest', aiReaction:'야식 + BC-3 복합 패턴이에요.' }
+    ], routeKey:'BC3_MORNING' },
+    { id:'D3Q10', num:10, emoji:'🎯', category:'BC-3 최종', question:'이런 경험이 있나요?', hint:'가장 공감되는 걸 골라주세요.', type:'SINGLE_SELECT', options:[
+      { label:'살을 빼도 허리둘레만 안 빠져요', value:'waist_stuck', aiReaction:'BC-3 허리 집중형이에요.' },
+      { label:'누워도 배가 납작해지지 않아요', value:'not_flat', aiReaction:'BC-3 내장지방 확정이에요.' },
+      { label:'뱃살을 잡으면 딱딱해요', value:'hard', aiReaction:'BC-3 섬유화 내장지방이에요.' },
+      { label:'위 세 가지가 다 해당돼요', value:'all', aiReaction:'BC-3 수박배형 완전 패턴이에요.' }
+    ], routeKey:'BC3_FINAL' }
+  ],
+
+  // ── BC-2 거북이형 심층 10문항 ─────────────────────
+  'BC2': [
+    { id:'D2Q01', num:1, emoji:'🐢', category:'목·경추 증상',
+      question:'거울 보면 목이 어떻게 보여요?',
+      hint:'솔직하게 — 자기 목을 한번 관찰해보세요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'목이 길고 우아해요 — 기린 수준', value:'giraffe', aiReaction:'BC-2 패턴이 없는 편이에요.' },
+        { label:'전에보다 목이 짧아진 것 같아요', value:'shorter', aiReaction:'경추 압박 초기 신호예요.' },
+        { label:'목덜미에 불룩한 살집이 생겼어요', value:'neckfat', aiReaction:'BC-2 거북이형 핵심 증상이에요!' },
+        { label:'어깨에 목이 파묻혀 있어요', value:'buried', aiReaction:'BC-2 심한 단계예요. 경추 정렬 확인 필요.' }
+      ], routeKey:'BC2_NECK_LOOK' },
+    { id:'D2Q02', num:2, emoji:'💻', category:'자세 습관',
+      question:'폰이나 노트북 볼 때 자세가 어때요?',
+      hint:'솔직히 — 지금 이 질문 읽는 자세를 보세요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'등 곧게 세우고 봐요 (정말요?)', value:'straight', aiReaction:'대단해요!' },
+        { label:'조금 숙이긴 해요', value:'slight', aiReaction:'일반적인 패턴이에요.' },
+        { label:'목이 화면 쪽으로 쭉 나와 있어요', value:'forward', aiReaction:'거북목 확정이에요. BC-2 핵심 원인이에요.' },
+        { label:'누워서 폰 봐요 — 목이 90도예요', value:'lying', aiReaction:'목 디스크 위험 자세예요.' }
+      ], routeKey:'BC2_POSTURE' },
+    { id:'D2Q03', num:3, emoji:'💆', category:'어깨 뭉침',
+      question:'어깨·목 뭉침이 얼마나 심해요?',
+      hint:'마사지샵에서 뭐라고 하던가요?',
+      type:'SINGLE_SELECT', options:[
+        { label:'안 뭉쳐요 — 어깨가 솜사탕이에요', value:'none', aiReaction:'BC-2 패턴이 없는 편이에요.' },
+        { label:'가끔 뭉쳐요', value:'sometimes', aiReaction:'경미한 패턴이에요.' },
+        { label:'항상 뭉쳐있어요 — 돌덩이예요', value:'always', aiReaction:'BC-2 림프 정체 원인이 되고 있어요.' },
+        { label:'마사지사가 놀랄 정도예요 — 최강 뭉침', value:'extreme', aiReaction:'BC-2 심각한 상체 구조 왜곡이에요.' }
+      ], routeKey:'BC2_SHOULDER' },
+    { id:'D2Q04', num:4, emoji:'💪', category:'팔뚝·겨드랑이 살',
+      question:'팔뚝 밑살이나 겨드랑이 살이 있나요?',
+      hint:'BC-2에서 림프 막히면 이쪽에 살이 껴요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'없어요 — 팔뚝이 깔끔해요', value:'none', aiReaction:'BC-2 패턴이 약한 편이에요.' },
+        { label:'팔뚝 밑살이 흔들려요', value:'arm', aiReaction:'액와 림프 정체 초기 신호예요.' },
+        { label:'겨드랑이 옆에 볼록한 살이 있어요', value:'armpit', aiReaction:'BC-2 겨드랑이 림프절 차단 패턴이에요.' },
+        { label:'둘 다 있어요 — 브라 라인도 신경 쓰여요', value:'both', aiReaction:'BC-2 상체 림프 전체 정체예요.' }
+      ], routeKey:'BC2_ARM_FAT' },
+    { id:'D2Q05', num:5, emoji:'🤕', category:'두통 패턴',
+      question:'두통이나 머리 무거움이 있나요?',
+      hint:'경추 문제는 두통으로 이어지기 쉬워요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'없어요', value:'none', aiReaction:'BC-2 두통 패턴이 없어요.' },
+        { label:'가끔 뒤통수가 묵직해요', value:'sometimes', aiReaction:'긴장성 두통 초기예요.' },
+        { label:'목 뒤에서 시작하는 두통이 자주 있어요', value:'often', aiReaction:'BC-2 경추성 두통 패턴이에요.' },
+        { label:'만성 두통이에요 — 진통제가 친구예요', value:'chronic', aiReaction:'BC-2 + 자율신경 문제 복합이에요.' }
+      ], routeKey:'BC2_HEADACHE' },
+    { id:'D2Q06', num:6, emoji:'🛏️', category:'수면 자세',
+      question:'잠잘 때 주로 어떤 자세예요?',
+      hint:'수면 자세가 경추에 큰 영향을 줘요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'등 대고 바로 누워요', value:'back', aiReaction:'가장 이상적인 자세예요.' },
+        { label:'옆으로 자요 — 한쪽만 계속', value:'side', aiReaction:'한쪽 경추 압박이 쌓이고 있어요.' },
+        { label:'엎드려 자요', value:'prone', aiReaction:'경추에 가장 나쁜 자세예요. BC-2 악화 원인이에요.' },
+        { label:'베개를 여러 개 쌓고 자요', value:'pillows', aiReaction:'베개 높이가 경추 곡선에 영향 줘요.' }
+      ], routeKey:'BC2_SLEEP_POSTURE' },
+    { id:'D2Q07', num:7, emoji:'📱', category:'화면 사용',
+      question:'하루 중 화면(폰·PC)을 보는 총 시간이?',
+      hint:'경추 피로 누적과 직결돼요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'4시간 미만', value:'under4', aiReaction:'경추 부담이 적은 편이에요.' },
+        { label:'4~7시간', value:'4to7', aiReaction:'일반적인 수준이에요.' },
+        { label:'7~10시간', value:'7to10', aiReaction:'BC-2 누적 경추 피로가 있을 수 있어요.' },
+        { label:'10시간 이상 — 화면 속에서 살아요', value:'over10', aiReaction:'BC-2 위험 수준이에요. 자세 교정이 시급해요.' }
+      ], routeKey:'BC2_SCREEN' },
+    { id:'D2Q08', num:8, emoji:'🤸', category:'스트레칭 반응',
+      question:'목·어깨 스트레칭을 하면 어때요?',
+      hint:'소리가 나거나 통증이 있나요?',
+      type:'SINGLE_SELECT', options:[
+        { label:'시원하고 잘 늘어나요', value:'good', aiReaction:'유연성이 좋아요.' },
+        { label:'뻐근하지만 괜찮아요', value:'stiff', aiReaction:'경미한 근막 긴장이에요.' },
+        { label:'뚝뚝 소리가 나요', value:'cracking', aiReaction:'관절 가스 또는 근막 마찰이에요. 정렬 확인 필요.' },
+        { label:'아파서 스트레칭을 못 해요', value:'painful', aiReaction:'BC-2 심한 경추 구조 문제예요.' }
+      ], routeKey:'BC2_STRETCH' },
+    { id:'D2Q09', num:9, emoji:'🏊', category:'운동 반응',
+      question:'유산소 운동을 해도 팔뚝·상체 살이 안 빠지나요?',
+      hint:'BC-2에서 이게 흔한 패턴이에요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'운동하면 상체도 잘 빠져요', value:'yes', aiReaction:'BC-2 패턴이 약해요.' },
+        { label:'하체는 빠지는데 상체가 안 빠져요', value:'lower_only', aiReaction:'하체 우선 연소 패턴이에요.' },
+        { label:'팔뚝 밑살은 어떤 운동을 해도 그대로예요', value:'arm_resist', aiReaction:'BC-2 겨드랑이 림프 차단 확인이에요.' },
+        { label:'운동 자체를 거의 못 해봤어요', value:'no_exercise', aiReaction:'원인부터 찾고 운동하는 게 효율적이에요.' }
+      ], routeKey:'BC2_EXERCISE' },
+    { id:'D2Q10', num:10, emoji:'🎯', category:'BC-2 최종 확인',
+      question:'이런 경험이 있나요?',
+      hint:'가장 솔직한 답을 골라주세요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'살 빼도 팔뚝 밑살·쇄골 라인이 안 잡혀요', value:'arm_clavicle', aiReaction:'BC-2 림프 차단형 확인이에요.' },
+        { label:'목이 짧아 보이는 게 신경 쓰여요', value:'short_neck', aiReaction:'BC-2 체형 변화 패턴이에요.' },
+        { label:'어깨가 항상 귀 쪽으로 올라가 있어요', value:'raised_shoulder', aiReaction:'BC-2 승모근 과긴장 패턴이에요.' },
+        { label:'위 세 가지가 다 해당돼요', value:'all', aiReaction:'BC-2 거북이형 완전 패턴이에요.' }
+      ], routeKey:'BC2_FINAL' }
+  ],
+
+  // ── BC-4 요요형 심층 10문항 ─────────────────────────
+  'BC4': [
+    { id:'D4Q01', num:1, emoji:'💧', category:'다이어트 이력',
+      question:'다이어트 경험을 솔직하게 털어놔요.',
+      hint:'얼마나 많이, 어떻게 해봤나요?',
+      type:'SINGLE_SELECT', options:[
+        { label:'1~2번 해봤어요', value:'few', aiReaction:'이력이 적어요. BC-4 가능성이 낮아요.' },
+        { label:'5번 이상 — 반복 시도 중', value:'many', aiReaction:'반복 다이어트가 대사를 낮췄을 수 있어요.' },
+        { label:'극단적으로 굶거나 원푸드 다이어트를 해봤어요', value:'extreme', aiReaction:'BC-4 핵심 원인이에요. 굶기가 갑상선을 셧다운시켜요.' },
+        { label:'식욕억제제나 다이어트 약을 써봤어요', value:'medicine', aiReaction:'BC-4 약물 대사 영향 패턴이에요.' }
+      ], routeKey:'BC4_HISTORY' },
+    { id:'D4Q02', num:2, emoji:'📉', category:'요요 경험',
+      question:'다이어트 후 요요를 경험한 적 있나요?',
+      hint:'솔직히 — 뺀 것보다 더 찐 경험이요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'없어요 — 요요 없이 유지해요', value:'none', aiReaction:'대단해요!' },
+        { label:'뺀 만큼 돌아왔어요', value:'same', aiReaction:'일반적인 요요예요.' },
+        { label:'뺀 것보다 더 쪘어요', value:'more', aiReaction:'BC-4 대사 저하 요요 패턴이에요.' },
+        { label:'요요가 너무 무서워서 다이어트를 못 해요', value:'scared', aiReaction:'BC-4 심리적 요요 공포증이에요.' }
+      ], routeKey:'BC4_YOYO' },
+    { id:'D4Q03', num:3, emoji:'🐌', category:'대사 속도 체감',
+      question:'본인의 대사가 어떻다고 느끼나요?',
+      hint:'친구들과 비교해서요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'잘 먹어도 잘 안 쪄요 — 먹방 가능', value:'fast', aiReaction:'BC-4 패턴이 아니에요.' },
+        { label:'평균 정도인 것 같아요', value:'normal', aiReaction:'일반적인 대사예요.' },
+        { label:'남들보다 조금만 먹어도 살이 쪄요', value:'slow', aiReaction:'BC-4 대사 저하 중등도예요.' },
+        { label:'물만 마셔도 살이 찌는 것 같아요', value:'extreme', aiReaction:'BC-4 완전 셧다운 패턴이에요.' }
+      ], routeKey:'BC4_METABOLISM' },
+    { id:'D4Q04', num:4, emoji:'🌡️', category:'체온 변화',
+      question:'항상 추위를 많이 타나요?',
+      hint:'갑상선과 체온은 직결되어 있어요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'더위를 더 타요', value:'hot', aiReaction:'갑상선 과활성 가능성이에요.' },
+        { label:'춥지도 덥지도 않아요', value:'normal', aiReaction:'정상 체온 조절이에요.' },
+        { label:'추위를 많이 타요 — 여름에도 긴 옷 입어요', value:'cold', aiReaction:'BC-4 갑상선 저하 신호예요.' },
+        { label:'손발이 항상 차갑고 몸이 냉해요', value:'very_cold', aiReaction:'BC-4 심각한 냉증 + 대사 저하예요.' }
+      ], routeKey:'BC4_COLD' },
+    { id:'D4Q05', num:5, emoji:'😪', category:'만성 피로',
+      question:'충분히 잤는데도 피곤한 적이 있나요?',
+      hint:'8시간 자도 피곤한 그 느낌이요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'없어요 — 자면 바로 개운해요', value:'none', aiReaction:'대사가 좋은 편이에요.' },
+        { label:'가끔 있어요', value:'sometimes', aiReaction:'일반적인 피로예요.' },
+        { label:'자주 있어요 — 피로가 기본값이에요', value:'often', aiReaction:'BC-4 갑상선 피로 패턴이에요.' },
+        { label:'항상 피곤해요 — 피로가 제 정체성이에요', value:'always', aiReaction:'BC-4 만성 피로 + 대사 저하 확인이에요.' }
+      ], routeKey:'BC4_FATIGUE' },
+    { id:'D4Q06', num:6, emoji:'💇', category:'모발·피부 변화',
+      question:'최근 이런 변화를 느끼나요?',
+      hint:'갑상선 저하의 숨겨진 신호예요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'모발·피부 변화 없어요', value:'none', aiReaction:'갑상선 신호가 없어요.' },
+        { label:'머리카락이 예전보다 많이 빠져요', value:'hair', aiReaction:'BC-4 갑상선 저하 초기 신호예요.' },
+        { label:'피부가 건조하고 거칠어졌어요', value:'skin', aiReaction:'BC-4 갑상선 피부 신호예요.' },
+        { label:'둘 다 있어요 — 머리도 피부도 망가진 느낌', value:'both', aiReaction:'BC-4 갑상선 저하 복합 신호예요.' }
+      ], routeKey:'BC4_HAIR_SKIN' },
+    { id:'D4Q07', num:7, emoji:'🍽️', category:'식욕 패턴',
+      question:'식욕이 어떤 패턴이에요?',
+      hint:'대사 속도와 식욕은 연결되어 있어요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'항상 적당히 배고파요', value:'normal', aiReaction:'정상적인 식욕이에요.' },
+        { label:'먹어도 배부른 느낌이 잘 안 와요', value:'no_full', aiReaction:'인슐린 저항성 또는 렙틴 저항 가능성이에요.' },
+        { label:'조금만 먹어도 배불러요 — 소식이에요', value:'small', aiReaction:'BC-4 소식 + 살찌는 패턴이에요.' },
+        { label:'식욕 자체가 별로 없어요', value:'no_appetite', aiReaction:'BC-4 식욕 저하 + 대사 저하 복합이에요.' }
+      ], routeKey:'BC4_APPETITE' },
+    { id:'D4Q08', num:8, emoji:'💩', category:'배변 패턴',
+      question:'변비 경험이 있나요?',
+      hint:'갑상선 저하는 장 운동도 느리게 해요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'매일 규칙적이에요 — 장이 시계예요', value:'regular', aiReaction:'장이 건강해요.' },
+        { label:'2~3일에 한 번이에요', value:'2to3', aiReaction:'경미한 장 운동 저하예요.' },
+        { label:'3~4일 이상 — 만성 변비예요', value:'chronic', aiReaction:'BC-4 갑상선 저하 장 증상이에요.' },
+        { label:'변비약 없으면 못 가요', value:'medicine', aiReaction:'BC-4 심각한 장 운동 저하예요.' }
+      ], routeKey:'BC4_CONSTIPATION' },
+    { id:'D4Q09', num:9, emoji:'🩺', category:'갑상선 검사',
+      question:'갑상선 검사를 받아본 적 있나요?',
+      hint:'이미 알고 계신 정보를 활용해요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'검사 받았고 정상이에요', value:'normal', aiReaction:'갑상선은 정상이에요. 다른 원인을 더 볼게요.' },
+        { label:'경계선이라는 말을 들었어요', value:'borderline', aiReaction:'BC-4 경계형이에요. 관리가 중요해요.' },
+        { label:'갑상선 저하 진단을 받았어요', value:'diagnosed', aiReaction:'BC-4 갑상선 저하 확정이에요.' },
+        { label:'검사를 아직 안 해봤어요', value:'not_done', aiReaction:'검사를 권장해요. BC-4 가능성이 있어요.' }
+      ], routeKey:'BC4_THYROID' },
+    { id:'D4Q10', num:10, emoji:'🎯', category:'BC-4 최종 확인',
+      question:'이런 경험이 있나요?',
+      hint:'가장 공감되는 걸 골라주세요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'다이어트 반복 후 이제 아무것도 안 빠져요', value:'nothing', aiReaction:'BC-4 대사 저하 확인이에요.' },
+        { label:'샐러드만 먹는데도 체중이 안 빠져요', value:'salad', aiReaction:'BC-4 기초대사 셧다운 패턴이에요.' },
+        { label:'조금만 먹어도 살이 찌는 체질이 됐어요', value:'constitution', aiReaction:'BC-4 완전 절전 모드예요.' },
+        { label:'위 세 가지가 다 해당돼요', value:'all', aiReaction:'BC-4 물만마셔도요요형 완전 패턴이에요.' }
+      ], routeKey:'BC4_FINAL' }
+  ],
+
+  // ── BC-5 귤껍질형 심층 10문항 ────────────────────────
+  'BC5': [
+    { id:'D5Q01', num:1, emoji:'🍊', category:'셀룰라이트 위치',
+      question:'귤껍질 같은 피부가 어디에 있나요?',
+      hint:'비틀지 않아도 평소에 보이는 부위요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'없어요 — 피부가 매끄러워요', value:'none', aiReaction:'BC-5 패턴이 없어요.' },
+        { label:'비틀었을 때만 살짝 보여요', value:'only_twist', aiReaction:'초기 단계예요.' },
+        { label:'허벅지 뒤·엉덩이 밑에 평소에도 보여요', value:'thigh_butt', aiReaction:'BC-5 귤껍질형 전형 패턴이에요.' },
+        { label:'종아리·팔까지 전신에 퍼져있어요', value:'whole_body', aiReaction:'BC-5 전신 섬유화 진행이에요.' }
+      ], routeKey:'BC5_LOCATION' },
+    { id:'D5Q02', num:2, emoji:'😣', category:'압통 여부',
+      question:'셀룰라이트 부위를 눌렀을 때 어때요?',
+      hint:'꼬집거나 눌렀을 때 통증이 있나요?',
+      type:'SINGLE_SELECT', options:[
+        { label:'별로 안 아파요', value:'none', aiReaction:'섬유화 초기예요.' },
+        { label:'살짝 아파요', value:'slight', aiReaction:'BC-5 중등도 섬유화예요.' },
+        { label:'꽤 아파요 — 누르기 싫어요', value:'painful', aiReaction:'BC-5 상당한 섬유화 진행이에요.' },
+        { label:'그냥 만져도 아파요', value:'very_painful', aiReaction:'BC-5 심각한 바탕질 변성이에요.' }
+      ], routeKey:'BC5_PAIN' },
+    { id:'D5Q03', num:3, emoji:'💪', category:'마사지 효과',
+      question:'마사지를 받으면 얼마나 효과가 있나요?',
+      hint:'셀룰라이트 부위 마사지 기준이에요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'마사지 후 많이 풀려요', value:'effective', aiReaction:'섬유화가 심하지 않아요.' },
+        { label:'잠깐은 좋아지다가 다시 원래로 돌아와요', value:'temporary', aiReaction:'BC-5 중등도 — 더 깊은 치료가 필요해요.' },
+        { label:'별 효과가 없어요', value:'none', aiReaction:'BC-5 심한 섬유화 — 단순 마사지 한계예요.' },
+        { label:'너무 아파서 마사지를 못 받아요', value:'too_painful', aiReaction:'BC-5 압통형 — 부드러운 접근 필요해요.' }
+      ], routeKey:'BC5_MASSAGE' },
+    { id:'D5Q04', num:4, emoji:'🏃', category:'운동 후 변화',
+      question:'운동을 꾸준히 했을 때 셀룰라이트가 어땠나요?',
+      hint:'BC-5에서 운동만으로는 한계가 있어요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'운동하면 셀룰라이트가 줄어들었어요', value:'improved', aiReaction:'BC-5 패턴이 약해요.' },
+        { label:'살은 빠졌는데 셀룰라이트는 그대로예요', value:'same', aiReaction:'BC-5 전형 패턴이에요. 운동 외 개입이 필요해요.' },
+        { label:'오히려 더 단단해진 것 같아요', value:'harder', aiReaction:'BC-5 섬유화 고착 — 물리적 처치가 먼저예요.' },
+        { label:'운동을 아직 제대로 해본 적 없어요', value:'no_exercise', aiReaction:'경험해봐요. BC-5 패턴 확인이 필요해요.' }
+      ], routeKey:'BC5_EXERCISE' },
+    { id:'D5Q05', num:5, emoji:'🌡️', category:'하체 냉증',
+      question:'허벅지나 엉덩이가 차갑게 느껴지나요?',
+      hint:'셀룰라이트 부위 온도를 느껴보세요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'따뜻해요', value:'warm', aiReaction:'순환이 좋아요.' },
+        { label:'약간 차가워요', value:'slight', aiReaction:'경미한 냉증이에요.' },
+        { label:'항상 차가워요 — 하체가 냉골이에요', value:'cold', aiReaction:'BC-5 + BC-7 하체 냉증 복합이에요.' },
+        { label:'손으로 만지면 주변보다 확연히 차가워요', value:'very_cold', aiReaction:'BC-5 심한 국소 순환 장애예요.' }
+      ], routeKey:'BC5_COLD' },
+    { id:'D5Q06', num:6, emoji:'👖', category:'착용감 변화',
+      question:'앉을 때 허벅지가 납작하게 퍼지나요?',
+      hint:'청바지 입었을 때 느낌이요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'별로 퍼지지 않아요', value:'none', aiReaction:'BC-5 패턴이 약해요.' },
+        { label:'조금 퍼지는 편이에요', value:'slight', aiReaction:'일반적인 피하지방이에요.' },
+        { label:'많이 퍼지고 셀룰라이트가 더 잘 보여요', value:'spread', aiReaction:'BC-5 중등도 섬유화예요.' },
+        { label:'앉으면 허벅지가 두 배로 퍼져요', value:'very_spread', aiReaction:'BC-5 심한 피하지방 + 섬유화 복합이에요.' }
+      ], routeKey:'BC5_SIT' },
+    { id:'D5Q07', num:7, emoji:'💦', category:'수분 섭취',
+      question:'평소 물을 잘 마시나요?',
+      hint:'수분 부족이 셀룰라이트를 악화시켜요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'하루 1.5L 이상 마셔요', value:'enough', aiReaction:'수분 관리가 좋아요.' },
+        { label:'1L 정도 마셔요', value:'ok', aiReaction:'조금 더 늘리면 좋겠어요.' },
+        { label:'500mL도 안 마셔요', value:'little', aiReaction:'수분 부족이 BC-5 악화 요인이에요.' },
+        { label:'물 말고 음료로 대체해요', value:'drinks', aiReaction:'음료의 당분이 셀룰라이트를 키워요.' }
+      ], routeKey:'BC5_WATER' },
+    { id:'D5Q08', num:8, emoji:'🍬', category:'당분 섭취',
+      question:'단 음식이나 정제 탄수화물 섭취가 많은 편인가요?',
+      hint:'당분이 셀룰라이트 바탕질 변성을 가속해요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'거의 안 먹어요', value:'none', aiReaction:'BC-5 당분 요인이 낮아요.' },
+        { label:'가끔 먹어요', value:'sometimes', aiReaction:'일반적이에요.' },
+        { label:'자주 먹어요 — 단 것을 좋아해요', value:'often', aiReaction:'BC-5 당분 + 셀룰라이트 연관이 있어요.' },
+        { label:'매일 먹어요 — 단 것 없이 못 살아요', value:'always', aiReaction:'BC-5 악화 원인이에요.' }
+      ], routeKey:'BC5_SUGAR' },
+    { id:'D5Q09', num:9, emoji:'⏰', category:'셀룰라이트 기간',
+      question:'셀룰라이트가 생긴 지 얼마나 됐나요?',
+      hint:'기간이 길수록 섬유화가 심할 수 있어요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'최근에 생겼어요 — 1년 미만', value:'under1', aiReaction:'초기 단계 BC-5예요. 관리 가능해요.' },
+        { label:'2~3년 됐어요', value:'2to3', aiReaction:'중등도 BC-5예요.' },
+        { label:'5년 이상 됐어요', value:'over5', aiReaction:'BC-5 장기 섬유화 패턴이에요.' },
+        { label:'언제부터인지 기억도 없어요', value:'unknown', aiReaction:'BC-5 심각한 만성 섬유화예요.' }
+      ], routeKey:'BC5_DURATION' },
+    { id:'D5Q10', num:10, emoji:'🎯', category:'BC-5 최종 확인',
+      question:'이런 경험이 있나요?',
+      hint:'가장 공감되는 걸 골라주세요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'살 빠져도 허벅지 뒤 울퉁불퉁함이 안 없어져요', value:'remain', aiReaction:'BC-5 섬유화 확인이에요.' },
+        { label:'마사지해도 며칠 만에 원래로 돌아와요', value:'rebound', aiReaction:'BC-5 마사지 저항형이에요.' },
+        { label:'꼬집으면 아프고 모양이 이상하게 잡혀요', value:'painful_shape', aiReaction:'BC-5 압통 섬유화형이에요.' },
+        { label:'위 세 가지가 다 해당돼요', value:'all', aiReaction:'BC-5 귤껍질형 완전 패턴이에요.' }
+      ], routeKey:'BC5_FINAL' }
+  ],
+
+  // ── BC-8 말벅지형 심층 10문항 ───────────────────────
+  'BC8': [
+    { id:'D8Q01', num:1, emoji:'🐎', category:'운동 후 하체 반응',
+      question:'하체 운동을 하면 어떻게 돼요?',
+      hint:'스쿼트, 런지, 천국의 계단 경험이요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'운동하면 하체가 슬림해져요', value:'slim', aiReaction:'BC-8 패턴이 아니에요.' },
+        { label:'별 변화가 없어요', value:'none', aiReaction:'반응이 없는 패턴이에요.' },
+        { label:'허벅지가 더 굵어진 것 같아요', value:'thicker', aiReaction:'BC-8 말벅지형 초기 확인이에요.' },
+        { label:'확실히 굵어졌어요 — 운동할수록 말벅지', value:'definitely', aiReaction:'BC-8 완전 패턴이에요!' }
+      ], routeKey:'BC8_EXERCISE' },
+    { id:'D8Q02', num:2, emoji:'💪', category:'근육 발달 속도',
+      question:'운동하면 근육이 빨리 생기는 편인가요?',
+      hint:'체형 변화 속도를 솔직하게요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'운동해도 근육이 잘 안 생겨요', value:'slow', aiReaction:'BC-8 가능성이 낮아요.' },
+        { label:'보통 수준이에요', value:'normal', aiReaction:'일반적이에요.' },
+        { label:'운동하면 빠르게 근육이 붙어요', value:'fast', aiReaction:'BC-8 근육 발달 우세형이에요.' },
+        { label:'조금만 운동해도 금방 알통이 생겨요', value:'very_fast', aiReaction:'BC-8 알파 수용체 우세 확인이에요.' }
+      ], routeKey:'BC8_MUSCLE' },
+    { id:'D8Q03', num:3, emoji:'👖', category:'하체 사이즈',
+      question:'상·하체 사이즈 차이가 있나요?',
+      hint:'옷 살 때 어떤 불편함이 있나요?',
+      type:'SINGLE_SELECT', options:[
+        { label:'상·하체 사이즈가 비슷해요', value:'same', aiReaction:'BC-8 패턴이 없어요.' },
+        { label:'하체가 상체보다 한 사이즈 커요', value:'one_size', aiReaction:'경미한 BC-8이에요.' },
+        { label:'하체가 두 사이즈 이상 커요', value:'two_size', aiReaction:'BC-8 하체 과발달형이에요.' },
+        { label:'하체 때문에 일자형 옷만 입어요', value:'only_straight', aiReaction:'BC-8 심한 하체 비대형이에요.' }
+      ], routeKey:'BC8_SIZE' },
+    { id:'D8Q04', num:4, emoji:'🚴', category:'운동 종류',
+      question:'주로 어떤 운동을 하거나 해봤나요?',
+      hint:'BC-8에서 운동 종류가 핵심이에요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'걷기·수영·요가 등 저충격 운동', value:'low_impact', aiReaction:'BC-8에 잘 맞는 운동이에요.' },
+        { label:'런닝·사이클 등 유산소 중심', value:'cardio', aiReaction:'종류에 따라 BC-8이 악화될 수 있어요.' },
+        { label:'스쿼트·데드리프트 등 하체 웨이트', value:'lower_weight', aiReaction:'BC-8 악화 운동 조합이에요. 바꿔야 해요.' },
+        { label:'크로스핏·하이록스 등 고강도', value:'hiit', aiReaction:'BC-8을 가장 심하게 만드는 조합이에요.' }
+      ], routeKey:'BC8_SPORT' },
+    { id:'D8Q05', num:5, emoji:'🏔️', category:'계단 반응',
+      question:'천국의 계단이나 계단 오르기를 해봤나요?',
+      hint:'BC-8에서 계단 운동 반응이 중요해요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'해봤는데 하체가 슬림해졌어요', value:'slim', aiReaction:'BC-8이 아닐 수 있어요.' },
+        { label:'효과가 별로 없었어요', value:'none', aiReaction:'일반적인 반응이에요.' },
+        { label:'허벅지가 오히려 더 굵어졌어요', value:'thicker', aiReaction:'BC-8 계단 악화 패턴 확인이에요!' },
+        { label:'아직 해본 적 없어요', value:'no_try', aiReaction:'나중에 해보면 반응을 확인할 수 있어요.' }
+      ], routeKey:'BC8_STAIRS' },
+    { id:'D8Q06', num:6, emoji:'🦵', category:'허벅지 조성',
+      question:'허벅지를 만져보면 어때요?',
+      hint:'지방인지 근육인지 느낌이요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'말랑말랑해요 — 지방이에요', value:'soft', aiReaction:'피하지방형이에요.' },
+        { label:'반반 섞인 느낌이에요', value:'mixed', aiReaction:'혼합형이에요.' },
+        { label:'단단해요 — 근육이 두꺼운 느낌', value:'firm', aiReaction:'BC-8 근육형 하체 비대예요.' },
+        { label:'딱딱하고 울퉁불퉁해요 — 근육 + 지방 섞임', value:'hard_bumpy', aiReaction:'BC-8 근육 + 셀룰라이트 복합이에요.' }
+      ], routeKey:'BC8_THIGH' },
+    { id:'D8Q07', num:7, emoji:'😤', category:'운동 후 통증',
+      question:'하체 운동 후 다음 날 어때요?',
+      hint:'근육통 패턴이요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'개운하고 가뿐해요', value:'good', aiReaction:'운동 반응이 좋아요.' },
+        { label:'약간의 근육통이 있어요', value:'slight', aiReaction:'일반적인 근육통이에요.' },
+        { label:'심한 근육통이 며칠 지속돼요', value:'severe', aiReaction:'과훈련 + BC-8 복합이에요.' },
+        { label:'무릎·관절이 아파요', value:'joint', aiReaction:'관절 부하가 심한 운동 패턴이에요.' }
+      ], routeKey:'BC8_SORENESS' },
+    { id:'D8Q08', num:8, emoji:'📏', category:'체중 vs 체형',
+      question:'체중계 숫자와 거울 속 체형이 달라요?',
+      hint:'숫자는 줄었는데 다리는 그대로인 느낌이요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'체중이 줄면 체형도 같이 달라져요', value:'match', aiReaction:'체성분 변화가 좋아요.' },
+        { label:'체중은 줄었는데 하체 라인이 안 변해요', value:'lower_fixed', aiReaction:'BC-8 체형 고착 패턴이에요.' },
+        { label:'체중이 줄어도 허벅지가 더 굵어 보여요', value:'thicker_despite', aiReaction:'BC-8 근육 발달 + 지방 공존 패턴이에요.' },
+        { label:'체중이 안 줄어서 비교 자체를 못 해요', value:'no_change', aiReaction:'먼저 BC-8 원인부터 파악해요.' }
+      ], routeKey:'BC8_SCALE' },
+    { id:'D8Q09', num:9, emoji:'🧬', category:'가족력',
+      question:'가족 중에 하체가 발달한 분이 있나요?',
+      hint:'BC-8은 유전적 요소가 있어요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'없어요 — 저만 이래요', value:'none', aiReaction:'후천적 BC-8이에요. 운동 교정으로 개선 가능해요.' },
+        { label:'엄마·이모 쪽이 하체가 발달했어요', value:'maternal', aiReaction:'모계 유전형 BC-8이에요.' },
+        { label:'아빠·삼촌 쪽이 하체가 굵어요', value:'paternal', aiReaction:'부계 유전형 BC-8이에요.' },
+        { label:'양쪽 다 하체가 튼실해요', value:'both', aiReaction:'BC-8 강한 유전적 배경이에요.' }
+      ], routeKey:'BC8_GENETICS' },
+    { id:'D8Q10', num:10, emoji:'🎯', category:'BC-8 최종 확인',
+      question:'이런 경험이 있나요?',
+      hint:'가장 공감되는 걸 골라주세요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'운동할수록 하체가 점점 굵어졌어요', value:'thicker_exercise', aiReaction:'BC-8 운동 악화형 확인이에요.' },
+        { label:'하체 지방은 그대로인데 근육만 생겨요', value:'muscle_only', aiReaction:'BC-8 근육형 확인이에요.' },
+        { label:'하체 때문에 치마·타이즈를 못 입어요', value:'cant_wear', aiReaction:'BC-8 체형 콤플렉스형이에요.' },
+        { label:'위 세 가지가 다 해당돼요', value:'all', aiReaction:'BC-8 말벅지형 완전 패턴이에요.' }
+      ], routeKey:'BC8_FINAL' }
+  ],
+
+  // ── BC-9 올챙이배형 심층 10문항 ─────────────────────
+  'BC9': [
+    { id:'D9Q01', num:1, emoji:'🐸', category:'마른 비만 자각',
+      question:'다른 사람이 보면 어떻게 말하나요?',
+      hint:'솔직한 피드백이요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'살쪘다고 해요', value:'fat', aiReaction:'BC-9 패턴이 없어요.' },
+        { label:'보통이라고 해요', value:'normal', aiReaction:'일반 체형이에요.' },
+        { label:'말랐다고 하는데 나는 뱃살이 신경 쓰여요', value:'thin_but_belly', aiReaction:'BC-9 마른 비만 초기 패턴이에요.' },
+        { label:'엄청 말랐다고 하는데 배만 나왔어요', value:'very_thin_belly', aiReaction:'BC-9 스키니팻 전형 패턴이에요!' }
+      ], routeKey:'BC9_PERCEPTION' },
+    { id:'D9Q02', num:2, emoji:'💪', category:'근육량 자각',
+      question:'팔다리 근육이 어때요?',
+      hint:'만져보거나 들어올릴 때 느낌이요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'탄탄하고 근육이 있어요', value:'firm', aiReaction:'BC-9 패턴이 없어요.' },
+        { label:'보통이에요', value:'normal', aiReaction:'일반적이에요.' },
+        { label:'힘은 없고 팔다리가 가늘어요', value:'thin_weak', aiReaction:'BC-9 근감소 초기 패턴이에요.' },
+        { label:'팔다리는 말랐는데 배만 나왔어요', value:'thin_limbs_belly', aiReaction:'BC-9 스키니팻 확정 패턴이에요.' }
+      ], routeKey:'BC9_MUSCLE' },
+    { id:'D9Q03', num:3, emoji:'🏋️', category:'무거운 것 들기',
+      question:'무거운 것을 들거나 체력이 어떤가요?',
+      hint:'근력 수준을 솔직하게요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'체력이 좋아요 — 웬만한 건 끄떡없어요', value:'strong', aiReaction:'근육량이 좋은 편이에요.' },
+        { label:'보통이에요', value:'normal', aiReaction:'일반적이에요.' },
+        { label:'조금만 움직여도 금방 지쳐요', value:'weak', aiReaction:'BC-9 근감소 패턴이에요.' },
+        { label:'마트 장바구니도 무거워요', value:'very_weak', aiReaction:'BC-9 심각한 근감소 + 마른 비만이에요.' }
+      ], routeKey:'BC9_STRENGTH' },
+    { id:'D9Q04', num:4, emoji:'🥗', category:'식이 제한 이력',
+      question:'식사를 극단적으로 줄인 경험이 있나요?',
+      hint:'BC-9는 굶기가 원인인 경우가 많아요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'없어요', value:'none', aiReaction:'BC-9 식이 요인이 없어요.' },
+        { label:'단기간 극단적 다이어트를 해봤어요', value:'short', aiReaction:'단기 이화작용 경험이에요.' },
+        { label:'장기간 소식·원푸드를 해봤어요', value:'long', aiReaction:'BC-9 근손실 원인이에요. 근육이 녹아내렸을 수 있어요.' },
+        { label:'반복적으로 극단적 제한 → 폭식을 반복해요', value:'repeat', aiReaction:'BC-9 + BC-4 복합 대사 저하 패턴이에요.' }
+      ], routeKey:'BC9_DIET' },
+    { id:'D9Q05', num:5, emoji:'🍚', category:'탄수화물 두려움',
+      question:'탄수화물이 무섭나요?',
+      hint:'BC-9에서 탄수 공포가 근손실을 만들어요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'아니요 — 밥은 당연히 먹어요', value:'no_fear', aiReaction:'BC-9 패턴이 없어요.' },
+        { label:'조심하는 편이에요', value:'careful', aiReaction:'일반적이에요.' },
+        { label:'밥이 무서워서 줄이고 있어요', value:'scared', aiReaction:'BC-9 탄수 제한 + 근손실 가능성이에요.' },
+        { label:'탄수화물은 아예 안 먹어요 — 적이에요', value:'enemy', aiReaction:'BC-9 심각한 탄수 공포 + 이화작용 패턴이에요.' }
+      ], routeKey:'BC9_CARB_FEAR' },
+    { id:'D9Q06', num:6, emoji:'🪞', category:'체형 불일치',
+      question:'체중계 숫자와 거울이 불일치하나요?',
+      hint:'숫자는 정상인데 체형이 이상한 느낌이요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'체중과 체형이 일치해요', value:'match', aiReaction:'BC-9 패턴이 없어요.' },
+        { label:'체중은 정상인데 배가 나왔어요', value:'normal_but_belly', aiReaction:'BC-9 복부 집중형이에요.' },
+        { label:'마른데 왜 이렇게 처지지? 하는 느낌', value:'saggy', aiReaction:'BC-9 탄력 저하 + 마른 비만이에요.' },
+        { label:'BMI는 정상인데 완전 스키니팻이에요', value:'skinny_fat', aiReaction:'BC-9 완전 스키니팻이에요.' }
+      ], routeKey:'BC9_MISMATCH' },
+    { id:'D9Q07', num:7, emoji:'😴', category:'피로·기력',
+      question:'일상에서 기력이 어때요?',
+      hint:'근육이 부족하면 에너지가 없어요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'활력 넘쳐요', value:'energetic', aiReaction:'에너지가 좋아요.' },
+        { label:'보통이에요', value:'normal', aiReaction:'일반적이에요.' },
+        { label:'쉽게 지치고 기력이 없어요', value:'tired', aiReaction:'BC-9 근감소 + 에너지 부족 패턴이에요.' },
+        { label:'만성 피로 — 항상 노곤해요', value:'chronic', aiReaction:'BC-9 + BC-4 만성 피로 복합이에요.' }
+      ], routeKey:'BC9_ENERGY' },
+    { id:'D9Q08', num:8, emoji:'🦴', category:'뼈·관절 느낌',
+      question:'뼈가 얇거나 관절이 약하다고 느끼나요?',
+      hint:'근육이 없으면 관절에 부담이 커요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'뼈대가 굵고 튼튼해요', value:'strong', aiReaction:'BC-9 패턴이 약해요.' },
+        { label:'보통이에요', value:'normal', aiReaction:'일반적이에요.' },
+        { label:'뼈가 얇고 가는 편이에요', value:'thin', aiReaction:'BC-9 외배엽형 + 마른 비만이에요.' },
+        { label:'조금만 무리해도 관절이 아파요', value:'joint', aiReaction:'BC-9 근감소 + 관절 부하 패턴이에요.' }
+      ], routeKey:'BC9_BONE' },
+    { id:'D9Q09', num:9, emoji:'📸', category:'사진 vs 거울',
+      question:'사진 찍히면 어떤가요?',
+      hint:'BC-9에서 이 질문이 의미 있어요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'거울이랑 사진이 비슷해요', value:'same', aiReaction:'BC-9 패턴이 없어요.' },
+        { label:'사진에서 더 말라 보여요', value:'thinner', aiReaction:'일반적이에요.' },
+        { label:'사진에서 배가 더 나와 보여요', value:'belly_worse', aiReaction:'BC-9 사진 복부 노출형이에요.' },
+        { label:'사진 찍기가 너무 싫어요 — 배 때문에', value:'hate_photo', aiReaction:'BC-9 복부 콤플렉스형이에요.' }
+      ], routeKey:'BC9_PHOTO' },
+    { id:'D9Q10', num:10, emoji:'🎯', category:'BC-9 최종 확인',
+      question:'이런 경험이 있나요?',
+      hint:'가장 공감되는 걸 골라주세요.',
+      type:'SINGLE_SELECT', options:[
+        { label:'남들은 말랐다 하는데 나는 배가 신경 쓰여요', value:'perception', aiReaction:'BC-9 마른 비만 확인이에요.' },
+        { label:'팔다리는 가는데 뱃살만 있어요', value:'thin_limbs', aiReaction:'BC-9 스키니팻 전형이에요.' },
+        { label:'다이어트하면 얼굴·팔만 빠지고 배는 그대로예요', value:'face_arm_only', aiReaction:'BC-9 선택적 지방 저항형이에요.' },
+        { label:'위 세 가지가 다 해당돼요', value:'all', aiReaction:'BC-9 올챙이배형 완전 패턴이에요.' }
+      ], routeKey:'BC9_FINAL' }
+  ]
+};
+
+// ── 기질 설문 10문항 (전 분기 공통) ───────────────────
+var QUESTIONS_DISPOSITION = [
+  { id:'GQ01', num:1, emoji:'⚡', category:'에너지 스타일',
+    question:'평소 에너지 레벨이 어떤가요?',
+    hint:'생활 패턴을 솔직하게 골라주세요.',
+    type:'SINGLE_SELECT', options:[
+      { label:'아침부터 넘쳐요 — 새벽 기상 가능', value:'morning', aiReaction:'목형·화형 기질이에요.' },
+      { label:'오후부터 본격적으로 달아올라요', value:'afternoon', aiReaction:'화형 기질 — 밤에 더 활발한 유형이에요.' },
+      { label:'일정하게 중간 에너지예요', value:'steady', aiReaction:'금형·수형 기질이에요.' },
+      { label:'항상 에너지가 부족해요 — 충전이 필요해요', value:'low', aiReaction:'수형 기질 또는 에너지 소모가 많은 상태예요.' }
+    ], routeKey:'DISP_ENERGY' },
+  { id:'GQ02', num:2, emoji:'😤', category:'감정 표현 방식',
+    question:'화가 나거나 스트레스받으면 어떻게 해요?',
+    hint:'가장 본능적인 반응이요.',
+    type:'SINGLE_SELECT', options:[
+      { label:'바로 표현해요 — 참는 게 더 힘들어요', value:'express', aiReaction:'화형·목형 외향형이에요.' },
+      { label:'티는 내지만 속으로도 많이 삭혀요', value:'mixed', aiReaction:'목형 갈등형 기질이에요.' },
+      { label:'밖으로 전혀 안 내고 혼자 삭혀요', value:'internal', aiReaction:'금형·수형 내향형이에요.' },
+      { label:'먹거나 자면서 잊어버려요', value:'eat_sleep', aiReaction:'토형 감정 식사형이에요.' }
+    ], routeKey:'DISP_EMOTION' },
+  { id:'GQ03', num:3, emoji:'🎯', category:'목표 설정 방식',
+    question:'목표를 어떻게 세우나요?',
+    hint:'다이어트 목표 기준이에요.',
+    type:'SINGLE_SELECT', options:[
+      { label:'크고 완벽한 목표를 세워요 — 전부 아니면 무', value:'all_or_nothing', aiReaction:'목형·금형 완벽주의형이에요.' },
+      { label:'작은 목표를 단계별로 세워요', value:'step_by_step', aiReaction:'수형·토형 안정형이에요.' },
+      { label:'대충 방향만 잡고 즉흥적으로 해요', value:'improvise', aiReaction:'화형 즉흥형이에요.' },
+      { label:'목표 세우기 자체가 부담이에요', value:'burden', aiReaction:'수형 목표 회피형이에요.' }
+    ], routeKey:'DISP_GOAL' },
+  { id:'GQ04', num:4, emoji:'👥', category:'사람 관계',
+    question:'사람들과 있을 때 어떤 느낌이에요?',
+    hint:'내향·외향 성향을 보는 거예요.',
+    type:'SINGLE_SELECT', options:[
+      { label:'사람이 많을수록 에너지가 충전돼요', value:'extrovert', aiReaction:'화형·외향형(E) 기질이에요.' },
+      { label:'적당히 어울리면 좋아요', value:'balanced', aiReaction:'균형형 기질이에요.' },
+      { label:'혼자 있을 때 더 편해요 — 충전은 혼자서', value:'introvert', aiReaction:'수형·내향형(I) 기질이에요.' },
+      { label:'소수의 깊은 관계가 편해요', value:'deep_few', aiReaction:'INFP 또는 수형 깊이 우선형이에요.' }
+    ], routeKey:'DISP_SOCIAL' },
+  { id:'GQ05', num:5, emoji:'📋', category:'계획 vs 즉흥',
+    question:'일상을 어떻게 보내나요?',
+    hint:'계획형인지 즉흥형인지요.',
+    type:'SINGLE_SELECT', options:[
+      { label:'계획표 없으면 불안해요 — 철저한 계획형', value:'plan', aiReaction:'금형·J 기질이에요.' },
+      { label:'대략적인 계획은 세워요', value:'rough_plan', aiReaction:'목형 계획 선호형이에요.' },
+      { label:'그때그때 상황 봐가며 해요', value:'flexible', aiReaction:'토형·P 기질이에요.' },
+      { label:'계획은 스트레스예요 — 완전 즉흥', value:'spontaneous', aiReaction:'화형·INFP 즉흥형이에요.' }
+    ], routeKey:'DISP_PLAN' },
+  { id:'GQ06', num:6, emoji:'🌿', category:'오행 자기진단',
+    question:'이 설명 중 가장 나에 가까운 것은?',
+    hint:'오행 기질을 직접 선택해보세요.',
+    type:'SINGLE_SELECT', options:[
+      { label:'추진력·목표지향적 — 끝장을 봐야 해요', value:'wood', aiReaction:'목형(木) 기질이에요.' },
+      { label:'열정적·즉흥적 — 불꽃처럼 살아요', value:'fire', aiReaction:'화형(火) 기질이에요.' },
+      { label:'따뜻·배려형 — 남 걱정이 먼저예요', value:'earth', aiReaction:'토형(土) 기질이에요.' },
+      { label:'원칙·완벽주의 — 기준이 높아요', value:'metal', aiReaction:'금형(金) 기질이에요.' },
+      { label:'생각 깊고 신중 — 차분하게 분석해요', value:'water', aiReaction:'수형(水) 기질이에요.' }
+    ], routeKey:'DISP_OHAENG' },
+  { id:'GQ07', num:7, emoji:'💭', category:'생각 처리 방식',
+    question:'결정을 내릴 때 어떻게 해요?',
+    hint:'논리형인지 감정형인지요.',
+    type:'SINGLE_SELECT', options:[
+      { label:'데이터와 논리로 판단해요', value:'logic', aiReaction:'금형·T 기질이에요.' },
+      { label:'논리도 보지만 감정도 중요해요', value:'both', aiReaction:'균형형 기질이에요.' },
+      { label:'주로 느낌과 가치관으로 결정해요', value:'feeling', aiReaction:'토형·INFP F 기질이에요.' },
+      { label:'다른 사람들 의견이 중요해요', value:'others', aiReaction:'토형·외향형 공감형이에요.' }
+    ], routeKey:'DISP_DECISION' },
+  { id:'GQ08', num:8, emoji:'🔋', category:'번아웃 패턴',
+    question:'번아웃이 오면 어떻게 반응해요?',
+    hint:'지쳤을 때 본능적 반응이요.',
+    type:'SINGLE_SELECT', options:[
+      { label:'더 열심히 해서 극복해요', value:'push_through', aiReaction:'목형 과잉 추진형이에요.' },
+      { label:'휴식 후 다시 시작해요', value:'rest_restart', aiReaction:'균형 회복형이에요.' },
+      { label:'아무것도 하기 싫어지고 무기력해져요', value:'lethargy', aiReaction:'수형·우울 취약형이에요.' },
+      { label:'먹거나 쇼핑으로 기분을 달래요', value:'comfort', aiReaction:'토형 감정 보상형이에요.' }
+    ], routeKey:'DISP_BURNOUT' },
+  { id:'GQ09', num:9, emoji:'🌙', category:'야간 활동성',
+    question:'밤에 더 활발해지는 편인가요?',
+    hint:'바이오리듬 타입이요.',
+    type:'SINGLE_SELECT', options:[
+      { label:'아침형 — 새벽에 제일 맑아요', value:'morning', aiReaction:'목형·금형 아침 기질이에요.' },
+      { label:'낮 중간형 — 오전 10시~오후 3시', value:'midday', aiReaction:'균형형이에요.' },
+      { label:'저녁형 — 저녁 먹고 나서 뇌가 깨어요', value:'evening', aiReaction:'화형 저녁형이에요.' },
+      { label:'완전 올빼미 — 자정 이후가 골든타임', value:'night_owl', aiReaction:'BC-6 야식부엉이형과 연관된 기질이에요.' }
+    ], routeKey:'DISP_NIGHT' },
+  { id:'GQ10', num:10, emoji:'🎭', category:'다이어트 실패 심리',
+    question:'다이어트를 포기할 때 주로 어떤 생각이 드나요?',
+    hint:'가장 솔직한 내면의 소리요.',
+    type:'SINGLE_SELECT', options:[
+      { label:'에이 모르겠다 — 오늘만 먹고 내일부터', value:'tomorrow', aiReaction:'화형·즉흥형 실패 패턴이에요.' },
+      { label:'조금 실패했으면 전부 포기해버려요 (완벽 아니면 포기)', value:'all_or_nothing', aiReaction:'금형·INFP 완벽주의 실패 패턴이에요.' },
+      { label:'이렇게 해서 될까 싶어서 의욕이 사라져요', value:'doubt', aiReaction:'수형·자기효능감 저하형이에요.' },
+      { label:'그냥 지쳐서 관심 자체가 없어져요', value:'burnout', aiReaction:'토형·번아웃형 실패 패턴이에요.' }
+    ], routeKey:'DISP_FAIL_MIND' }
+];
+
+// ── BC 라우팅 엔진 ────────────────────────────────────
+function v3CalcBcScores(v3Ans) {
+  var scores = { BC1:0, BC2:0, BC3:0, BC4:0, BC5:0, BC6:0, BC7:0, BC8:0, BC9:0 };
+  QUESTIONS_V3.forEach(function(q) {
+    var ans = v3Ans[q.id];
+    if (!ans) return;
+    if (q.type === 'SINGLE_SELECT') {
+      var opt = (q.options || []).find(function(o){ return o.value === ans; });
+      if (opt && opt.bcScore) {
+        Object.keys(opt.bcScore).forEach(function(bc) {
+          if (scores.hasOwnProperty(bc)) scores[bc] += opt.bcScore[bc];
+        });
+      }
+    }
+  });
+  return scores;
+}
+
+function v3GetTopBcCodes(bcScores, minScore) {
+  minScore = minScore || 20;
+  return Object.keys(bcScores)
+    .filter(function(k){ return bcScores[k] >= minScore; })
+    .sort(function(a, b){ return bcScores[b] - bcScores[a]; })
+    .slice(0, 2)
+    .map(function(code) {
+      var meta = BC_META[code] || {};
+      return {
+        code: code,
+        score: bcScores[code],
+        pct: Math.min(99, Math.round(bcScores[code] * 1.5)),
+        name: meta.name || code,
+        emoji: meta.emoji || '🔬',
+        color: meta.color || '#6366f1',
+        desc: meta.desc || ''
+      };
+    });
+}
+
+function v3MidScoreCheck(v3Ans) {
+  var bcScores = v3CalcBcScores(v3Ans);
+  var topCodes = v3GetTopBcCodes(bcScores);
+  var primary = topCodes[0] || { code:'BC6', score:0, pct:55, name:'야식부엉이형', emoji:'🦉', color:'#3b82f6' };
+  var secondary = topCodes[1] || null;
+  return { bcScores: bcScores, topCodes: topCodes, primary: primary, secondary: secondary, deepSection: primary.code };
+}
+
+// ── V3 상태 ───────────────────────────────────────────
+var v3State = {
+  active: false,
+  phase: 'common',    // 'common' | 'intermission' | 'deep' | 'disposition' | 'done'
+  currentQ: 0,
+  deepQ: 0,
+  dispQ: 0,
+  answers: {},
+  deepCode: null,
+  midResult: null
+};
+
+// ── V3 공통 문항 렌더링 ──────────────────────────────
+function v3RenderQuestion(qIdx) {
+  var q = QUESTIONS_V3[qIdx];
+  if (!q) return;
+
+  var appEl = document.getElementById('app');
+  if (!appEl) return;
+
+  var nameVal = v3State.answers['VQ01'] || v3State.answers['name'] || '당신';
+  var qText = q.question.replace(/\[이름\]/g, nameVal);
+  var totalQ = QUESTIONS_V3.length;
+  var pct = Math.round((qIdx / totalQ) * 100);
+  var answered = !!v3State.answers[q.id];
+  var isLast = (qIdx === totalQ - 1);
+
+  var optsHtml = '';
+  if (q.type === 'TEXT_INPUT') {
+    var curVal = v3State.answers[q.id] || '';
+    optsHtml = '<div style="padding:0 4px">'
+      + '<input id="v3-text-inp" type="text" maxlength="' + (q.maxLength||20) + '" value="' + curVal + '"'
+      + ' placeholder="' + (q.placeholder||'입력해주세요') + '"'
+      + ' oninput="v3State.answers[\'' + q.id + '\']=this.value;if(q.saveAs)v3State.answers[q.saveAs]=this.value;document.getElementById(\'v3-next-btn\').disabled=!this.value.trim()"'
+      + ' style="width:100%;padding:14px 16px;border:2px solid rgba(99,102,241,0.3);border-radius:14px;font-size:16px;font-family:inherit;outline:none;background:#fff;box-shadow:0 2px 8px rgba(99,102,241,0.1)"'
+      + '></div>';
+    // saveAs 연동
+    if (q.saveAs) {
+      optsHtml = '<div style="padding:0 4px">'
+        + '<input id="v3-text-inp" type="text" maxlength="' + (q.maxLength||20) + '" value="' + curVal + '"'
+        + ' placeholder="' + (q.placeholder||'입력해주세요') + '"'
+        + ' oninput="v3State.answers[\'' + q.id + '\']=this.value;v3State.answers[\'' + q.saveAs + '\']=this.value;document.getElementById(\'v3-next-btn\').classList.toggle(\'ready\',!!this.value.trim())"'
+        + ' style="width:100%;padding:14px 16px;border:2px solid rgba(99,102,241,0.3);border-radius:14px;font-size:16px;font-family:inherit;outline:none;background:#fff;box-shadow:0 2px 8px rgba(99,102,241,0.1)"'
+        + '></div>';
+    }
+    answered = !!curVal;
+  } else if (q.type === 'SINGLE_SELECT') {
+    (q.options || []).forEach(function(opt) {
+      var isOn = (v3State.answers[q.id] === opt.value);
+      optsHtml += '<div onclick="v3Pick(\'' + q.id + '\',\'' + opt.value + '\',' + qIdx + ',\'' + (opt.aiReaction||'').replace(/'/g,"&#39;") + '\')"'
+        + ' style="padding:14px 16px;border:2px solid ' + (isOn ? '#6366f1' : 'rgba(0,0,0,0.09)') + ';'
+        + 'border-radius:14px;margin-bottom:10px;cursor:pointer;background:' + (isOn ? 'rgba(99,102,241,0.06)' : '#fff') + ';'
+        + 'box-shadow:' + (isOn ? '0 2px 12px rgba(99,102,241,0.2)' : '0 1px 4px rgba(0,0,0,0.06)') + ';'
+        + 'font-size:15px;font-weight:' + (isOn ? '700' : '500') + ';color:' + (isOn ? '#4338ca' : '#3D3128') + ';'
+        + 'transition:all .18s;display:flex;justify-content:space-between;align-items:center">'
+        + '<span>' + opt.label + '</span>'
+        + (isOn ? '<span style="font-size:18px">✓</span>' : '') 
+        + '</div>';
+    });
+  }
+
+  // AI 반응 메시지 (선택 후 표시용)
+  var aiMsg = '';
+  if (q.type === 'SINGLE_SELECT' && answered) {
+    var selOpt = (q.options||[]).find(function(o){ return o.value === v3State.answers[q.id]; });
+    if (selOpt && selOpt.aiReaction) aiMsg = selOpt.aiReaction;
+  } else if (q.type === 'TEXT_INPUT' && q.aiReaction) {
+    aiMsg = q.aiReaction.replace(/\[이름\]/g, v3State.answers[q.id] || '');
+  }
+
+  appEl.innerHTML = '<div class="card" style="border-radius:22px;background:linear-gradient(165deg,#FFF6EC 0%,#EEF2FF 60%,#F5F3FF 100%)">'
+    + '<div class="pbar">'
+    + '<div class="ptop"><span class="psec" style="color:#6366f1">' + q.emoji + ' ' + q.category + '</span><span class="pno">' + (qIdx+1) + ' / ' + totalQ + '</span></div>'
+    + '<div class="ptrack"><div class="pfill" style="width:' + pct + '%;background:linear-gradient(90deg,#6366f1,#8b5cf6)"></div></div>'
+    + '</div>'
+    + '<div class="qbody">'
+    + '<div class="qtext" style="font-size:20px;font-weight:700;line-height:1.5;margin-bottom:13px">' + qText + '</div>'
+    + (q.hint ? '<div style="display:flex;gap:8px;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:12px;padding:11px 13px;margin-bottom:16px"><span style="font-size:14px">💡</span><span style="font-size:11.5px;color:#5A6B7B;line-height:1.6">' + q.hint + '</span></div>' : '')
+    + '<div class="opts">' + optsHtml + '</div>'
+    + (aiMsg ? '<div id="v3-ai-msg" style="margin-top:12px;padding:10px 14px;background:rgba(99,102,241,0.08);border-left:3px solid #6366f1;border-radius:0 10px 10px 0;font-size:13px;color:#4338ca;line-height:1.5">🤖 ' + aiMsg + '</div>' : '')
+    + '</div>'
+    + '<div class="nav">'
+    + (qIdx > 0 ? '<span class="prev" onclick="v3Go(-1)" style="cursor:pointer;font-size:14px;color:#8A7B6D;padding:8px 12px">← 이전</span>' : '<span></span>')
+    + '<button id="v3-next-btn" class="next ' + (answered ? 'ready' : '') + '" onclick="' + (answered ? (isLast ? 'v3TriggerIntermission()' : 'v3Go(1)') : '') + '"'
+    + ' style="' + (!answered ? 'opacity:0.45;cursor:not-allowed' : '') + '">'
+    + (isLast ? '분석 시작하기 →' : '다음 →') + '</button>'
+    + '</div>'
+    + '</div>';
+}
+
+function v3Pick(qid, val, qIdx, aiReaction) {
+  var q = QUESTIONS_V3[qIdx];
+  v3State.answers[qid] = val;
+  if (q && q.saveAs) v3State.answers[q.saveAs] = val;
+  // 자동 진행 (500ms 후)
+  setTimeout(function() {
+    if (q && q.isIntermissionTrigger) {
+      v3TriggerIntermission();
+    } else {
+      v3Go(1);
+    }
+  }, 450);
+  v3RenderQuestion(qIdx);
+}
+
+function v3Go(d) {
+  if (d > 0) {
+    var q = QUESTIONS_V3[v3State.currentQ];
+    if (q && q.isIntermissionTrigger) { v3TriggerIntermission(); return; }
+    var next = v3State.currentQ + 1;
+    if (next >= QUESTIONS_V3.length) { v3TriggerIntermission(); return; }
+    v3State.currentQ = next;
+    v3RenderQuestion(next);
+  } else {
+    if (v3State.currentQ <= 0) return;
+    v3State.currentQ--;
+    v3RenderQuestion(v3State.currentQ);
+  }
+  window.scrollTo(0,0);
+}
+
+// ── 인터미션 트리거 ────────────────────────────────────
+function v3TriggerIntermission() {
+  var midResult = v3MidScoreCheck(v3State.answers);
+  v3State.midResult = midResult;
+  v3State.phase = 'intermission';
+  v3ShowIntermission(midResult);
+}
+
+function v3ShowIntermission(midResult) {
+  var appEl = document.getElementById('app');
+  if (!appEl) return;
+
+  var primary = midResult.primary;
+  var secondary = midResult.secondary;
+  var nameVal = v3State.answers['VQ01'] || v3State.answers['name'] || '당신';
+
+  // 예감 카드 HTML
+  var cardsHtml = '<div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:20px 0">';
+  cardsHtml += '<div style="flex:1;min-width:140px;max-width:180px;background:linear-gradient(135deg,' + primary.color + '22,' + primary.color + '44);border:2px solid ' + primary.color + ';border-radius:18px;padding:20px 16px;text-align:center">'
+    + '<div style="font-size:36px;margin-bottom:8px">' + primary.emoji + '</div>'
+    + '<div style="font-size:11px;font-weight:700;color:' + primary.color + ';letter-spacing:1px;margin-bottom:4px">1순위</div>'
+    + '<div style="font-size:15px;font-weight:800;color:#1e1b4b;margin-bottom:6px">' + primary.name + '</div>'
+    + '<div style="font-size:22px;font-weight:900;color:' + primary.color + '">' + primary.pct + '%</div>'
+    + '</div>';
+  if (secondary) {
+    cardsHtml += '<div style="flex:1;min-width:140px;max-width:180px;background:' + secondary.color + '18;border:1.5px solid ' + secondary.color + '66;border-radius:18px;padding:20px 16px;text-align:center;opacity:0.85">'
+      + '<div style="font-size:32px;margin-bottom:8px">' + secondary.emoji + '</div>'
+      + '<div style="font-size:11px;font-weight:700;color:' + secondary.color + ';letter-spacing:1px;margin-bottom:4px">2순위</div>'
+      + '<div style="font-size:14px;font-weight:800;color:#1e1b4b;margin-bottom:6px">' + secondary.name + '</div>'
+      + '<div style="font-size:20px;font-weight:900;color:' + secondary.color + '">' + secondary.pct + '%</div>'
+      + '</div>';
+  }
+  cardsHtml += '</div>';
+
+  appEl.innerHTML = '<div style="min-height:100vh;background:linear-gradient(160deg,#0d1b2a 0%,#1a2744 50%,#0d1b2a 100%);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:40px 20px 32px;text-align:center">'
+    + '<div style="font-size:28px;margin-bottom:8px">🔬</div>'
+    + '<div style="font-size:22px;font-weight:800;color:#fff;margin-bottom:6px">공통 분석 완료</div>'
+    + '<div style="font-size:14px;color:rgba(255,255,255,0.65);margin-bottom:28px">30개 신호를 분석했어요, ' + nameVal + '님</div>'
+    + cardsHtml
+    + '<div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:14px;padding:16px 20px;margin:16px 0;max-width:340px">'
+    + '<div style="font-size:13px;color:rgba(255,255,255,0.55);margin-bottom:6px">1순위 코드 기반</div>'
+    + '<div style="font-size:15px;font-weight:700;color:#a5b4fc">✨ ' + primary.name + ' 심층 10문항으로 이어집니다</div>'
+    + '</div>'
+    + '<button onclick="v3StartDeepPhase()" style="width:100%;max-width:340px;padding:18px;border:none;border-radius:16px;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;letter-spacing:0.5px;box-shadow:0 8px 32px rgba(99,102,241,0.4);margin-top:8px;animation:v3PulseBtn 2s ease-in-out infinite">'
+    + '🔍 심층 분석 이어가기</button>'
+    + '</div>';
+}
+
+// ── 심층 분기 시작 ────────────────────────────────────
+function v3StartDeepPhase() {
+  v3State.phase = 'deep';
+  v3State.deepCode = v3State.midResult ? v3State.midResult.deepSection : 'BC6';
+  v3State.deepQ = 0;
+  var appEl = document.getElementById('app');
+  if (appEl) appEl.style.removeProperty('min-height');
+  v3RenderDeepQuestion(0);
+  window.scrollTo(0,0);
+}
+
+// ── 심층 문항 렌더링 ──────────────────────────────────
+function v3RenderDeepQuestion(qIdx) {
+  var deepList = DEEP_QUESTIONS[v3State.deepCode];
+  if (!deepList || qIdx >= deepList.length) { v3FinishSurvey(); return; }
+
+  var q = deepList[qIdx];
+  var appEl = document.getElementById('app');
+  if (!appEl) return;
+
+  var bcMeta = BC_META[v3State.deepCode] || {};
+  var totalAll = QUESTIONS_V3.length + deepList.length;
+  var doneAll = QUESTIONS_V3.length + qIdx;
+  var pct = Math.round((doneAll / totalAll) * 100);
+  var answered = !!v3State.answers[q.id];
+  var isLast = (qIdx === deepList.length - 1);
+
+  var optsHtml = '';
+  (q.options || []).forEach(function(opt) {
+    var isOn = (v3State.answers[q.id] === opt.value);
+    optsHtml += '<div onclick="v3DeepPick(\'' + q.id + '\',\'' + opt.value + '\',' + qIdx + ')"'
+      + ' style="padding:14px 16px;border:2px solid ' + (isOn ? (bcMeta.color||'#6366f1') : 'rgba(0,0,0,0.09)') + ';'
+      + 'border-radius:14px;margin-bottom:10px;cursor:pointer;background:' + (isOn ? (bcMeta.color||'#6366f1')+'0d' : '#fff') + ';'
+      + 'font-size:15px;font-weight:' + (isOn ? '700' : '500') + ';color:' + (isOn ? (bcMeta.color||'#4338ca') : '#3D3128') + ';'
+      + 'transition:all .18s;display:flex;justify-content:space-between;align-items:center">'
+      + '<span>' + opt.label + '</span>'
+      + (isOn ? '<span style="font-size:18px">✓</span>' : '')
+      + '</div>';
+  });
+
+  // AI 반응
+  var aiMsg = '';
+  if (answered) {
+    var selOpt = (q.options||[]).find(function(o){ return o.value === v3State.answers[q.id]; });
+    if (selOpt && selOpt.aiReaction) aiMsg = selOpt.aiReaction;
+  }
+
+  appEl.innerHTML = '<div class="card" style="border-radius:22px;background:linear-gradient(165deg,#FFF6EC 0%,' + (bcMeta.color||'#6366f1') + '18 100%)">'
+    + '<div class="pbar">'
+    + '<div class="ptop"><span class="psec" style="color:' + (bcMeta.color||'#6366f1') + '">' + q.emoji + ' ' + q.category + '</span>'
+    + '<span class="pno">심층 ' + (qIdx+1) + ' / ' + deepList.length + '</span></div>'
+    + '<div class="ptrack"><div class="pfill" style="width:' + pct + '%;background:linear-gradient(90deg,' + (bcMeta.color||'#6366f1') + ',' + (bcMeta.color||'#6366f1') + 'cc)"></div></div>'
+    + '<div style="margin-top:8px;font-size:12px;color:' + (bcMeta.color||'#6366f1') + ';font-weight:700">' + (bcMeta.emoji||'🔬') + ' ' + (bcMeta.name||v3State.deepCode) + ' 심층 분석</div>'
+    + '</div>'
+    + '<div class="qbody">'
+    + '<div class="qtext" style="font-size:20px;font-weight:700;line-height:1.5;margin-bottom:13px">' + q.question + '</div>'
+    + (q.hint ? '<div style="display:flex;gap:8px;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:12px;padding:11px 13px;margin-bottom:16px"><span style="font-size:14px">💡</span><span style="font-size:11.5px;color:#5A6B7B;line-height:1.6">' + q.hint + '</span></div>' : '')
+    + '<div class="opts">' + optsHtml + '</div>'
+    + (aiMsg ? '<div style="margin-top:12px;padding:10px 14px;background:' + (bcMeta.color||'#6366f1') + '14;border-left:3px solid ' + (bcMeta.color||'#6366f1') + ';border-radius:0 10px 10px 0;font-size:13px;color:' + (bcMeta.color||'#4338ca') + ';line-height:1.5">🤖 ' + aiMsg + '</div>' : '')
+    + '</div>'
+    + '<div class="nav">'
+    + (qIdx > 0 ? '<span class="prev" onclick="v3DeepGo(-1)" style="cursor:pointer;font-size:14px;color:#8A7B6D;padding:8px 12px">← 이전</span>' : '<span></span>')
+    + '<button class="next ' + (answered ? 'ready' : '') + '" onclick="' + (answered ? (isLast ? 'v3FinishSurvey()' : 'v3DeepGo(1)') : '') + '"'
+    + ' style="' + (!answered ? 'opacity:0.45;cursor:not-allowed' : '') + '">'
+    + (isLast ? '최종 분석하기 →' : '다음 →') + '</button>'
+    + '</div>'
+    + '</div>';
+}
+
+function v3DeepPick(qid, val, qIdx) {
+  v3State.answers[qid] = val;
+  var deepList = DEEP_QUESTIONS[v3State.deepCode];
+  setTimeout(function() {
+    var isLast = (qIdx === deepList.length - 1);
+    if (isLast) { v3FinishSurvey(); } else { v3DeepGo(1); }
+  }, 450);
+  v3RenderDeepQuestion(qIdx);
+}
+
+function v3DeepGo(d) {
+  if (d > 0) {
+    var deepList = DEEP_QUESTIONS[v3State.deepCode];
+    var next = v3State.deepQ + 1;
+    if (next >= deepList.length) { v3FinishSurvey(); return; }
+    v3State.deepQ = next;
+    v3RenderDeepQuestion(next);
+  } else {
+    if (v3State.deepQ <= 0) { v3ShowIntermission(v3State.midResult); return; }
+    v3State.deepQ--;
+    v3RenderDeepQuestion(v3State.deepQ);
+  }
+  window.scrollTo(0,0);
+}
+
+// ── 심층 완료 → 기질 설문으로 연결 ──────────────────
+function v3FinishSurvey() {
+  // 심층 완료 후 기질 설문으로 전환
+  v3StartDispositionPhase();
+}
+
+// ── 기질 설문 Phase 시작 ──────────────────────────────
+function v3StartDispositionPhase() {
+  v3State.phase = 'disposition';
+  v3State.dispQ = 0;
+  // 전환 애니메이션 화면
+  var appEl = document.getElementById('app');
+  if (appEl) {
+    appEl.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(160deg,#1a1a2e,#16213e);padding:40px 20px;text-align:center">'
+      + '<div style="font-size:56px;margin-bottom:20px;animation:v3PulseBtn 1.5s infinite">🌿</div>'
+      + '<div style="font-size:22px;font-weight:800;color:#fff;margin-bottom:10px">마지막 단계예요!</div>'
+      + '<div style="font-size:15px;color:rgba(255,255,255,0.7);line-height:1.7;max-width:320px;margin:0 auto 24px">'
+      + '기질 분석 10문항으로<br>나만의 처방 톤을 찾아볼게요 🎭'
+      + '</div>'
+      + '<div style="font-size:13px;color:rgba(255,255,255,0.45)">오행 + MBTI 행동 유형 분석</div>'
+      + '</div>';
+  }
+  setTimeout(function() { v3RenderDispQuestion(0); }, 1600);
+  window.scrollTo(0,0);
+}
+
+// ── 기질 문항 렌더링 ───────────────────────────────────
+function v3RenderDispQuestion(qIdx) {
+  var appEl = document.getElementById('app');
+  if (!appEl) return;
+  var q = QUESTIONS_DISPOSITION[qIdx];
+  if (!q) { v3DoFinalComplete(); return; }
+
+  var totalDisp = QUESTIONS_DISPOSITION.length;
+  var answered = v3State.answers[q.id];
+  var isLast = (qIdx === totalDisp - 1);
+
+  // 진행률: 공통30 + 심층10 + 기질10 = 50문항 기준
+  var deepCount = (DEEP_QUESTIONS[v3State.deepCode] || []).length;
+  var doneAll = QUESTIONS_V3.length + deepCount + qIdx;
+  var totalAll = QUESTIONS_V3.length + deepCount + totalDisp;
+  var pct = Math.round((doneAll / totalAll) * 100);
+
+  var optsHtml = q.options.map(function(opt) {
+    var sel = (answered === opt.value);
+    return '<div class="opt' + (sel ? ' selected' : '') + '" '
+      + 'onclick="v3DispPick(\'' + q.id + '\',\'' + opt.value + '\',' + qIdx + ',\'' + (opt.aiReaction||'').replace(/'/g,"\\'") + '\')" '
+      + 'style="margin-bottom:10px;padding:14px 16px;border-radius:14px;border:2px solid ' + (sel ? '#22c55e' : 'rgba(255,255,255,0.12)') + ';'
+      + 'background:' + (sel ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.04)') + ';'
+      + 'color:#fff;font-size:15px;cursor:pointer;transition:all 0.2s;text-align:left">'
+      + opt.label + '</div>';
+  }).join('');
+
+  var aiMsg = answered ? (q.options.find(function(o){return o.value===answered;})||{}).aiReaction : '';
+
+  appEl.innerHTML = '<div style="max-width:480px;margin:0 auto;padding:24px 20px 120px">'
+    + '<div style="margin-bottom:20px">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+    + '<span style="font-size:12px;color:rgba(255,255,255,0.5)">기질 ' + q.num + ' / ' + totalDisp + '</span>'
+    + '<span style="font-size:12px;color:rgba(255,255,255,0.5)">전체 ' + pct + '%</span>'
+    + '</div>'
+    + '<div style="height:4px;background:rgba(255,255,255,0.1);border-radius:4px">'
+    + '<div style="height:4px;background:linear-gradient(90deg,#22c55e,#16a34a);border-radius:4px;width:' + pct + '%;transition:width 0.4s"></div>'
+    + '</div></div>'
+    + '<div style="font-size:28px;margin-bottom:8px">' + q.emoji + '</div>'
+    + '<div style="font-size:13px;color:#86efac;font-weight:600;margin-bottom:6px">' + q.category + '</div>'
+    + '<div style="font-size:20px;font-weight:700;line-height:1.5;color:#fff;margin-bottom:10px">' + q.question + '</div>'
+    + (q.hint ? '<div style="display:flex;gap:8px;background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.2);border-radius:12px;padding:11px 13px;margin-bottom:16px"><span style="font-size:14px">🌱</span><span style="font-size:11.5px;color:rgba(255,255,255,0.6);line-height:1.6">' + q.hint + '</span></div>' : '')
+    + '<div>' + optsHtml + '</div>'
+    + (aiMsg ? '<div style="margin-top:12px;padding:10px 14px;background:rgba(34,197,94,0.1);border-left:3px solid #22c55e;border-radius:0 10px 10px 0;font-size:13px;color:#86efac;line-height:1.5">🌿 ' + aiMsg + '</div>' : '')
+    + '</div>'
+    + '<div class="nav" style="position:fixed;bottom:0;left:0;right:0;padding:16px 20px 24px;background:linear-gradient(transparent,rgba(13,27,42,0.98))">'
+    + '<div style="max-width:480px;margin:0 auto;display:flex;justify-content:space-between;align-items:center">'
+    + (qIdx > 0 ? '<span onclick="v3DispGo(-1)" style="cursor:pointer;font-size:14px;color:rgba(255,255,255,0.5);padding:8px 12px">← 이전</span>' : '<span></span>')
+    + '<button class="next ' + (answered ? 'ready' : '') + '" onclick="' + (answered ? (isLast ? 'v3DoFinalComplete()' : 'v3DispGo(1)') : '') + '"'
+    + ' style="' + (!answered ? 'opacity:0.45;cursor:not-allowed' : 'animation:v3PulseBtn 2s infinite') + '">'
+    + (isLast ? '결과 분석하기 ✨' : '다음 →') + '</button>'
+    + '</div></div>';
+}
+
+// ── 기질 선택 ─────────────────────────────────────────
+function v3DispPick(qid, val, qIdx, aiReaction) {
+  v3State.answers[qid] = val;
+  var isLast = (qIdx === QUESTIONS_DISPOSITION.length - 1);
+  setTimeout(function() {
+    if (isLast) { v3DoFinalComplete(); } else { v3DispGo(1); }
+  }, 450);
+  v3RenderDispQuestion(qIdx);
+}
+
+// ── 기질 이동 ─────────────────────────────────────────
+function v3DispGo(d) {
+  if (d > 0) {
+    var next = v3State.dispQ + 1;
+    if (next >= QUESTIONS_DISPOSITION.length) { v3DoFinalComplete(); return; }
+    v3State.dispQ = next;
+    v3RenderDispQuestion(next);
+  } else {
+    if (v3State.dispQ <= 0) {
+      // 심층 마지막 문항으로 돌아가기
+      v3State.phase = 'deep';
+      var deepList = DEEP_QUESTIONS[v3State.deepCode] || [];
+      v3RenderDeepQuestion(deepList.length - 1);
+      return;
+    }
+    v3State.dispQ--;
+    v3RenderDispQuestion(v3State.dispQ);
+  }
+  window.scrollTo(0,0);
+}
+
+// ── 최종 완료: answers 병합 후 결과 처리 ─────────────
+function v3DoFinalComplete() {
+  v3State.phase = 'done';
+  // 모든 V3 답변을 기존 answers에 병합
+  Object.assign(answers, v3State.answers);
+  if (v3State.midResult) {
+    answers['_v3_primary_bc'] = v3State.midResult.primary.code;
+    answers['_v3_deep_code'] = v3State.deepCode;
+    answers['_v3_bc_scores'] = JSON.stringify(v3State.midResult.bcScores);
+  }
+  // 기질 답변 저장
+  QUESTIONS_DISPOSITION.forEach(function(q) {
+    if (v3State.answers[q.id]) answers[q.id] = v3State.answers[q.id];
+  });
+  // Q01(이름) 동기화
+  if (v3State.answers['name']) answers['Q01'] = v3State.answers['name'];
+
+  // 완료 화면
+  var appEl = document.getElementById('app');
+  if (appEl) {
+    appEl.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(160deg,#0d1b2a,#1a2744);padding:40px 20px;text-align:center">'
+      + '<div style="font-size:56px;margin-bottom:16px">✨</div>'
+      + '<div style="font-size:24px;font-weight:800;color:#fff;margin-bottom:10px">분석 완료!</div>'
+      + '<div style="font-size:15px;color:rgba(255,255,255,0.65);line-height:1.7">공통 30문항 + 심층 10문항 + 기질 10문항<br>총 50문항 완료했어요 🎉</div>'
+      + '<div style="margin-top:20px;font-size:13px;color:rgba(255,255,255,0.4)">결과지를 생성하고 있어요...</div>'
+      + '</div>';
+  }
+  setTimeout(function() {
+    try { doResultRedirect(); } catch(e) {
+      for (var i = D.seq.length - 1; i >= 0; i--) {
+        if (D.seq[i].t === 'result') { idx = i; break; }
+      }
+      renderApp();
+    }
+  }, 1500);
+}
+
+// ── V3 설문 시작 ──────────────────────────────────────
+function startV3Survey() {
+  v3State.active = true;
+  v3State.phase = 'common';
+  v3State.currentQ = 0;
+  v3State.deepQ = 0;
+  v3State.dispQ = 0;
+  v3State.answers = {};
+  v3State.deepCode = null;
+  v3State.midResult = null;
+
+  // ref 파라미터 보존
+  var _ref = new URLSearchParams(location.search).get('ref');
+  if (_ref) { v3State.answers['_consultant_code'] = _ref; answers['_consultant_code'] = _ref; }
+
+  v3RenderQuestion(0);
+  window.scrollTo(0,0);
+}
+
+// ── pulseBtn 애니메이션 (CSS 인라인 삽입) ─────────────
+(function() {
+  var styleEl = document.createElement('style');
+  styleEl.textContent = '@keyframes v3PulseBtn{0%,100%{transform:scale(1);box-shadow:0 8px 32px rgba(99,102,241,0.4)}50%{transform:scale(1.03);box-shadow:0 12px 40px rgba(99,102,241,0.65)}}';
+  document.head.appendChild(styleEl);
 })();
 </script>
 </body>
