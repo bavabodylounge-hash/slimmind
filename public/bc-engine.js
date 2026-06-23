@@ -1,6 +1,8 @@
 // ============================================================
 // SlimMind BC-ENGINE v3.1
-// ※ MBTI 레이블 제거 / 남성·완경 P4 분기 / BC복합코드 단순화
+// ※ NICKNAME_TABLE 30개 코드 / Top1×Top2×배경필터
+// ※ computeNickname() / generatePrescription() BC×기질 분리
+// ※ MBTI 레이블 제거 / 남성·완경 P4 분기
 // ============================================================
 
 // ──────────────────────────────────────────────
@@ -82,7 +84,294 @@ const BC_MASTER = {
 };
 
 // ──────────────────────────────────────────────
-// 2. 8대 원인축 메타 (약·식·복·확·한·심·형·관)
+// 2. 10대 원인축 정의 (A01~A10)
+// ──────────────────────────────────────────────
+const AXIS_10_META = {
+  'A01': { label: '인슐린·내장', icon: '🍽️', color: '#E8631A', desc: '식후 혈당 반응 + 복부 내장지방 패턴' },
+  'A02': { label: '림프순환',   icon: '💧', color: '#1A7FC1', desc: '하체·상체 림프 및 정맥 순환 상태' },
+  'A03': { label: '호르몬',     icon: '🌸', color: '#C0397A', desc: '에스트로겐·갑상선·성호르몬 균형' },
+  'A04': { label: '근감소',     icon: '🏃', color: '#4A8C1C', desc: '근육량·기초대사량·이화작용 패턴' },
+  'A05': { label: '소화·장',    icon: '🌿', color: '#1A8C5B', desc: '장내 환경·소화 기능·가스 팽만' },
+  'A06': { label: '골격·복압',  icon: '🦴', color: '#6B4EAA', desc: '골반 정렬·복압·코어 안정성' },
+  'A07': { label: '코르티솔',   icon: '🌙', color: '#3F51B5', desc: '부신·스트레스 호르몬·자율신경 상태' },
+  'A08': { label: '심리·식이',  icon: '🧠', color: '#7B1FA2', desc: '감정적 섭식·식욕 조절·행동 패턴' },
+  'A09': { label: '대사위험',   icon: '⚠️', color: '#E67E22', desc: '대사증후군·혈압·혈당 복합 위험도' },
+  'A10': { label: '기질·성향',  icon: '🔮', color: '#607D8B', desc: '오행 기질 + MBTI 행동 패턴 (처방 톤 필터)' },
+};
+
+// ──────────────────────────────────────────────
+// 3. NICKNAME_TABLE: [Top1축][Top2축][배경필터] = 닉네임
+// 30개 바디코드 전체 (문서 기준 22개 대표 + 보완 8개)
+// 배경필터 키: '유전'|'모계유전'|'출산'|'갱년기'|'시술'|'약물'|
+//              'PCOS'|'번아웃'|'대사증후군'|'default'
+// ──────────────────────────────────────────────
+const NICKNAME_TABLE = {
+  // ── A01 Top1: 인슐린·내장 → BC-3 계열 ──
+  'A01': {
+    'A10': { 유전: '아빠체형 내장비대형', default: '아빠체형 내장비대형' },
+    'A09': { 유전: '아빠체형 내장비대형', default: '식후기절 혈당롤러코스터형' },
+    'A08': { 약물: '억제제부작용 배부름마비형', default: '억제제부작용 배부름마비형' },
+    'A07': { default: '스트레스성 야식부엉이형' },
+    'A05': { default: '식후임산부 가스풍선형' },
+    'default': { default: '식후기절 혈당롤러코스터형' },
+  },
+  // ── A02 Top1: 림프순환 → BC-1 계열 ──
+  'A02': {
+    'A03': { 모계유전: '엄마체형 하지정체형', default: '오후만되면 코끼리다리형' },
+    'A10': { 모계유전: '엄마체형 하지정체형', default: '엄마체형 하지정체형' },
+    'A04': { 시술: '지방흡입후 재발형', default: '오후만되면 코끼리다리형' },
+    'A06': { 시술: '지방흡입후 재발형', default: '안 쓰는 팔뚝 부종형' },
+    'default': { default: '오후만되면 코끼리다리형' },
+  },
+  // ── A03 Top1: 호르몬 → BC-6 계열 ──
+  'A03': {
+    'A07': { 갱년기: '호르몬스위치 갱년기형', default: '호르몬스위치 갱년기형' },
+    'A01': { PCOS: '털털한 PCOS형', 갱년기: '호르몬스위치 갱년기형', default: '털털한 PCOS형' },
+    'A02': { 갱년기: '호르몬스위치 갱년기형', default: '여름에도 시린 얼음장형' },
+    'A10': { 갱년기: '호르몬스위치 갱년기형', default: '여름에도 시린 얼음장형' },
+    'default': { 갱년기: '호르몬스위치 갱년기형', default: '털털한 PCOS형' },
+  },
+  // ── A04 Top1: 근감소 → BC-9 계열 ──
+  'A04': {
+    'A03': { default: '팔다리거미 올챙이배형' },
+    'A01': { default: '팔다리거미 올챙이배형' },
+    'A02': { default: '운동할수록 말벅지형' },
+    'A06': { default: '운동할수록 말벅지형' },
+    'default': { default: '팔다리거미 올챙이배형' },
+  },
+  // ── A05 Top1: 소화·장 → BC-3 소화 계열 ──
+  'A05': {
+    'A06': { 출산: '출산후 바람빠진 풍선형', default: '식후임산부 가스풍선형' },
+    'A02': { default: '식후임산부 가스풍선형' },
+    'A01': { default: '식후임산부 가스풍선형' },
+    'default': { default: '식후임산부 가스풍선형' },
+  },
+  // ── A06 Top1: 골격·복압 → BC-7 계열 ──
+  'A06': {
+    'A04': { 출산: '출산후 바람빠진 풍선형', default: '출산후 바람빠진 풍선형' },
+    'A03': { 출산: '출산후 바람빠진 풍선형', default: '겨드랑이 부유방형' },
+    'A02': { default: '목짧아지는 거북이형' },
+    'A07': { default: '목짧아지는 거북이형' },
+    'default': { 출산: '출산후 바람빠진 풍선형', default: '골반틀어짐 승마살형' },
+  },
+  // ── A07 Top1: 코르티솔 → BC-6 계열 ──
+  'A07': {
+    'A08': { 번아웃: '스트레스기절 번아웃형', default: '스트레스성 야식부엉이형' },
+    'A03': { 갱년기: '호르몬스위치 갱년기형', 번아웃: '스트레스기절 번아웃형', default: '스트레스기절 번아웃형' },
+    'A02': { default: '스트레스기절 번아웃형' },
+    'A01': { default: '스트레스성 야식부엉이형' },
+    'default': { 번아웃: '스트레스기절 번아웃형', default: '스트레스성 야식부엉이형' },
+  },
+  // ── A08 Top1: 심리·식이 → BC-6 심리 계열 ──
+  'A08': {
+    'A05': { 약물: '억제제부작용 배부름마비형', default: '억제제부작용 배부름마비형' },
+    'A01': { 약물: '억제제부작용 배부름마비형', default: '스트레스성 야식부엉이형' },
+    'A07': { 번아웃: '스트레스기절 번아웃형', default: '스트레스기절 번아웃형' },
+    'default': { 약물: '억제제부작용 배부름마비형', default: '스트레스성 야식부엉이형' },
+  },
+  // ── A09 Top1: 대사위험 → BC-4 계열 ──
+  'A09': {
+    'A01': { 대사증후군: '대사증후군 종합형', 유전: '아빠체형 내장비대형', default: '대사증후군 종합형' },
+    'A03': { 대사증후군: '대사증후군 종합형', 약물: '약물부작용 강제축적형', default: '약물부작용 강제축적형' },
+    'A07': { default: '동시다발 다중악순환형' },
+    'default': { 약물: '약물부작용 강제축적형', 대사증후군: '대사증후군 종합형', default: '대사증후군 종합형' },
+  },
+  // ── A10 Top1: 기질·성향 → 기질설문으로 분기 (닉네임은 Top2·Top3 기준) ──
+  'A10': {
+    // A10이 Top1이면 Top2로 닉네임 결정
+    'A01': { default: '식후기절 혈당롤러코스터형' },
+    'A02': { 모계유전: '엄마체형 하지정체형', default: '오후만되면 코끼리다리형' },
+    'A03': { 갱년기: '호르몬스위치 갱년기형', default: '여름에도 시린 얼음장형' },
+    'A07': { default: '스트레스성 야식부엉이형' },
+    'default': { default: '동시다발 다중악순환형' },
+  },
+};
+
+// ──────────────────────────────────────────────
+// 4. 배경 필터 감지 함수
+// answers: { Q3, Q21, Q22, Q_MENOPAUSE, Q_FAMILY_HISTORY, ... }
+// 반환: '유전'|'모계유전'|'출산'|'갱년기'|'시술'|'약물'|'PCOS'|'번아웃'|'대사증후군'|null
+// ──────────────────────────────────────────────
+function detectBackground(answers) {
+  if (!answers) return null;
+
+  // 갱년기·완경
+  const meno = answers['Q_MENOPAUSE'] || answers['Q_meno'] || '';
+  if (meno && meno !== 'not_applicable' && meno !== 'none' && meno !== '') {
+    return '갱년기';
+  }
+
+  // PCOS (다낭성 난소 증후군)
+  const pcos = answers['Q_PCOS'] || answers['Q_pcos'] || '';
+  if (pcos === 'yes' || pcos === 'Y' || pcos === '있음') return 'PCOS';
+
+  // 시술 이력 (지방흡입 등)
+  const surgery = answers['Q21'] || answers['Q_surgery'] || '';
+  if (surgery && surgery !== 'none' && surgery !== '없음' && surgery !== '') {
+    // 지방흡입 키워드 확인
+    if (String(surgery).includes('지방흡입') || String(surgery).includes('liposuction')) {
+      return '시술';
+    }
+    return '시술';
+  }
+
+  // 약물 복용력 (스테로이드·항우울제·식욕억제제 등)
+  const drug = answers['Q22'] || answers['Q_drug'] || '';
+  if (drug && drug !== 'none' && drug !== '없음' && drug !== '') {
+    // 번아웃/부신 고갈 키워드 우선 확인
+    if (String(drug).includes('번아웃') || String(drug).includes('부신')) return '번아웃';
+    return '약물';
+  }
+
+  // 출산 경험
+  const birth = answers['Q3'] || answers['Q_birth'] || '';
+  if (birth === 'yes' || birth === 'Y' || birth === '있음' || birth === '경험있음' ||
+      (typeof birth === 'string' && birth !== '' && birth !== 'none' && birth !== '없음')) {
+    return '출산';
+  }
+
+  // 가족력·유전 (부계 vs 모계)
+  const family = answers['Q_FAMILY'] || answers['Q_family'] || answers['Q_heredity'] || '';
+  if (family) {
+    if (String(family).includes('모') || String(family).includes('엄마') || String(family).includes('이모')) {
+      return '모계유전';
+    }
+    if (String(family).includes('부') || String(family).includes('아빠') || String(family).includes('삼촌')) {
+      return '유전';
+    }
+    if (String(family) !== 'none' && String(family) !== '없음' && String(family) !== '') {
+      return '유전';
+    }
+  }
+
+  // 대사증후군 고위험 (복합 수치)
+  const diabetesRisk = answers['Q_diabetes'] || answers['Q_metabolic'] || '';
+  if (diabetesRisk === 'yes' || diabetesRisk === 'Y' || diabetesRisk === '있음') {
+    return '대사증후군';
+  }
+
+  // 번아웃 (별도 질문)
+  const burnout = answers['Q_burnout'] || answers['Q_stress_level'] || '';
+  if (burnout === 'severe' || burnout === '심각' || burnout === '극심') return '번아웃';
+
+  return null; // 배경 필터 없음 → default 코드
+}
+
+// ──────────────────────────────────────────────
+// 5. computeNickname() — 5단계 퍼널 닉네임 결정
+// axisScores: { A01: 75, A02: 60, ... }
+// answers: 설문 응답 객체
+// ──────────────────────────────────────────────
+function computeNickname(axisScores, answers) {
+  // ① 10개 원인축 점수 정렬 (Top1, Top2, Top3)
+  const sorted = Object.entries(axisScores)
+    .filter(([k]) => k.startsWith('A'))
+    .sort((a, b) => b[1] - a[1]);
+
+  let top1 = sorted[0] ? sorted[0][0] : 'A07'; // 'A01'~'A10'
+  const top2 = sorted[1] ? sorted[1][0] : 'A08';
+  const top3 = sorted[2] ? sorted[2][0] : 'A01';
+
+  // ② A10이 Top1이면 → 기질 설문 분기 플래그 + Top2로 닉네임 재결정
+  const isDispositionTop1 = (top1 === 'A10');
+  if (isDispositionTop1) {
+    // A10이 Top1 → Top2를 실질 Top1로 사용
+    top1 = top2;
+  }
+
+  // ③ 배경 필터 감지
+  const background = detectBackground(answers);
+
+  // ④ NICKNAME_TABLE 3단계 룩업
+  const t1Entry = NICKNAME_TABLE[top1] || NICKNAME_TABLE['A07'];
+  const t2Entry = t1Entry[top2] || t1Entry['default'] || { default: '동시다발 다중악순환형' };
+
+  // 배경 필터 매칭: 정확히 일치하는 키 우선, 없으면 default
+  let nickname = t2Entry[background] || t2Entry['default'] || '동시다발 다중악순환형';
+
+  // ⑤ 심층 설문 라우팅 결정 (Top1 축 기반)
+  const deepSurveyRoute = getDeepSurveyRoute(isDispositionTop1 ? 'A10' : top1);
+
+  return {
+    nickname,
+    top1: isDispositionTop1 ? 'A10' : top1, // 원래 Top1 (A10 포함)
+    top1Actual: top1,  // 닉네임 결정에 실제 사용한 축
+    top2, top3,
+    background,
+    isDispositionTop1,
+    deepSurveyRoute,
+    sortedAxes: sorted,
+  };
+}
+
+// ──────────────────────────────────────────────
+// 6. Top1 축 → 심층 설문 라우팅 매핑
+// ──────────────────────────────────────────────
+function getDeepSurveyRoute(top1Axis) {
+  const routeMap = {
+    'A01': { bcRef: 'BC-3', routeKey: 'BC3',  label: '혈당·내장지방 심층',   desc: 'BC-3 수박배형 심층 설문' },
+    'A02': { bcRef: 'BC-1', routeKey: 'BC1',  label: '림프순환 심층',        desc: 'BC-1 코끼리다리형 심층 설문' },
+    'A03': { bcRef: 'BC-6', routeKey: 'BC6',  label: '호르몬 심층',          desc: 'BC-6 야식부엉이형 심층 설문 (호르몬 파트)' },
+    'A04': { bcRef: 'BC-9', routeKey: 'BC9',  label: '근감소·마른비만 심층', desc: 'BC-9 올챙이배형 심층 설문' },
+    'A05': { bcRef: 'BC-3', routeKey: 'BC3D', label: '소화·장 심층',         desc: 'BC-3 심층 일부 + 소화 특화 추가 5문항' },
+    'A06': { bcRef: 'BC-7', routeKey: 'BC7',  label: '골격·복압 심층',       desc: 'BC-7 바람빠진풍선형 심층 설문' },
+    'A07': { bcRef: 'BC-6', routeKey: 'BC6',  label: '코르티솔·부신 심층',   desc: 'BC-6 야식부엉이형 심층 설문' },
+    'A08': { bcRef: 'BC-6', routeKey: 'BC6P', label: '심리·감정식이 심층',   desc: 'BC-6 심층 설문 (심리 파트)' },
+    'A09': { bcRef: 'BC-4', routeKey: 'BC4',  label: '대사위험 심층',        desc: 'BC-4 요요형 심층 설문' },
+    'A10': { bcRef: null,   routeKey: 'DISP', label: '기질 설문',            desc: '기질 설문 10문항 (DISP_*)으로 분기' },
+  };
+  return routeMap[top1Axis] || routeMap['A07'];
+}
+
+// ──────────────────────────────────────────────
+// 7. 닉네임 → BC코드 역매핑 테이블
+// (기존 BC_MASTER와 호환, 결과지·처방 엔진 연결용)
+// ──────────────────────────────────────────────
+const NICKNAME_TO_BC = {
+  // 복부형
+  '아빠체형 내장비대형':          'BC-3',
+  '식후기절 혈당롤러코스터형':    'BC-3',
+  '털털한 PCOS형':                'BC-6',
+  '약물부작용 강제축적형':        'BC-4',
+  '스트레스성 야식부엉이형':      'BC-6',
+  '억제제부작용 배부름마비형':    'BC-6',
+  '출산후 바람빠진 풍선형':       'BC-7',
+  '식후임산부 가스풍선형':        'BC-3',
+  '팔다리거미 올챙이배형':        'BC-9',
+  // 하체형
+  '오후만되면 코끼리다리형':      'BC-1',
+  '엄마체형 하지정체형':          'BC-1',
+  '여름에도 시린 얼음장형':       'BC-4',
+  '운동할수록 말벅지형':          'BC-8',
+  '골반틀어짐 승마살형':          'BC-7',
+  '지방흡입후 재발형':            'BC-5',
+  // 상체형
+  '목짧아지는 거북이형':          'BC-2',
+  '안 쓰는 팔뚝 부종형':         'BC-2',
+  '상체근육형':                   'BC-8',
+  '겨드랑이 부유방형':            'BC-2',
+  // 전신·기타형
+  '호르몬스위치 갱년기형':        'BC-6',
+  '스트레스기절 번아웃형':        'BC-6',
+  '대사증후군 종합형':            'BC-9',
+  '동시다발 다중악순환형':        'BC-6',
+};
+
+// BC코드 → 닉네임 역방향 (기본 대표 닉네임)
+const BC_TO_DEFAULT_NICKNAME = {
+  'BC-1': '오후만되면 코끼리다리형',
+  'BC-2': '목짧아지는 거북이형',
+  'BC-3': '식후기절 혈당롤러코스터형',
+  'BC-4': '약물부작용 강제축적형',
+  'BC-5': '지방흡입후 재발형',
+  'BC-6': '스트레스성 야식부엉이형',
+  'BC-7': '출산후 바람빠진 풍선형',
+  'BC-8': '운동할수록 말벅지형',
+  'BC-9': '팔다리거미 올챙이배형',
+};
+
+// ──────────────────────────────────────────────
+// 8. 8대 원인축 메타 (약·식·복·확·한·심·형·관) — 기존 유지
 // ──────────────────────────────────────────────
 const CAUSAL_AXIS_META = {
   '약': { label: '약물·식이습관', icon: '💊', color: '#7B1FA2', axisKeys: ['A08','A09'], bcNum: 9 },
@@ -113,9 +402,26 @@ const AXIS_11 = [
 ];
 
 // ──────────────────────────────────────────────
-// 4. BC_CODE 연산 함수
+// 12. BC_CODE 연산 함수 (V3.1: NICKNAME_TABLE 기반)
+// axisScores: { A01~A10 } 직접 사용
+// answers: 설문 응답 (배경 필터 감지용) — optional
 // ──────────────────────────────────────────────
-function computeBCCode(axisScores) {
+function computeBCCode(axisScores, answers) {
+  // ① 10개 축 점수 직접 정렬
+  const sortedAxes = Object.entries(axisScores)
+    .filter(([k]) => k.startsWith('A'))
+    .sort((a, b) => b[1] - a[1]);
+
+  // ② computeNickname()으로 닉네임 + 배경 필터 + 라우팅 결정
+  const nicknameResult = computeNickname(axisScores, answers || {});
+  const { nickname, top1Actual, top2, top3, background, deepSurveyRoute } = nicknameResult;
+
+  // ③ 닉네임 → BC코드 역매핑
+  const masterKey = NICKNAME_TO_BC[nickname] || 'BC-6';
+  const bcCode    = masterKey;
+  const bcMaster  = BC_MASTER[masterKey] || BC_MASTER['BC-6'];
+
+  // ④ 기존 causalScores 호환용 (CAUSAL_AXIS_META 기반 8축)
   const causalScores = {};
   causalScores['약'] = Math.round(((axisScores['A08']||0)*0.7 + (axisScores['A09']||0)*0.3));
   causalScores['식'] = Math.round(((axisScores['A01']||0) + (axisScores['A05']||0)) / 2);
@@ -127,31 +433,202 @@ function computeBCCode(axisScores) {
   causalScores['관'] = Math.round(((axisScores['A02']||0) + (axisScores['A04']||0)) / 2);
 
   const sorted = Object.entries(causalScores).sort((a, b) => b[1] - a[1]);
-  const top1 = sorted[0];
-  const top2 = sorted[1];
-  const bc1Num = CAUSAL_AXIS_META[top1[0]].bcNum;
-  // ★ 복합 코드 제거: 항상 단일 BC-N 형태로만 표기
-  const bcCode = `BC-${bc1Num}`;
-  const masterKey = `BC-${bc1Num}`;
-  const bcMaster = BC_MASTER[masterKey] || BC_MASTER['BC-6'];
-  const firstDomino = CAUSAL_AXIS_META[top1[0]].label;
+  const top1Legacy = sorted[0];
+  const top2Legacy = sorted[1];
+  const firstDomino = CAUSAL_AXIS_META[top1Legacy[0]]?.label || '스트레스';
 
-  // 4대 지표 (내부 계산용)
+  // ⑤ 4대 지표
   const metaAge    = Math.round(40 + (axisScores['A03']||0) * 0.15 + (axisScores['A07']||0) * 0.1);
   const metaBelly  = Math.min(99, Math.round((axisScores['A01']||0) * 0.8 + (axisScores['A05']||0) * 0.2));
   const metaHormone= Math.min(99, Math.round((axisScores['A03']||0) * 0.6 + (axisScores['A07']||0) * 0.4));
   const metaBody   = Math.min(99, Math.round((axisScores['A06']||0) * 0.7 + (axisScores['A02']||0) * 0.3));
 
   return {
+    // V3.1 신규
+    nickname,          // '스트레스성 야식부엉이형'
+    nicknameResult,    // computeNickname() 전체 결과
+    background,        // '갱년기'|'출산'|null ...
+    deepSurveyRoute,   // 심층설문 라우팅
+    // 기존 호환
     bcCode, masterKey, bcMaster,
-    causalScores, sorted, top1, top2,
+    causalScores, sorted, top1: top1Legacy, top2: top2Legacy,
     firstDomino,
     metrics: { metaAge, metaBelly, metaHormone, metaBody },
   };
 }
 
 // ──────────────────────────────────────────────
-// 5. 오행 데이터 (한글 표기, 법적 수정 완료)
+// 13. BC_PRESCRIPTION_DB — 처방 핵심 (기질 무관 공통)
+// ──────────────────────────────────────────────
+const BC_PRESCRIPTION_DB = {
+  'BC-1': {
+    label: '오후만되면 코끼리다리형',
+    icon: '🦵',
+    exerciseBan: '하체 근력 운동·러닝머신·크로스핏·하이록스',
+    exerciseOk: '수영·걷기·필라테스 (저충격 순환 중심)',
+    dietDirection: '저탄고지 + 수분 충분 + 림프 촉진 식품 (사과, 아보카도, 파인애플)',
+    b2b: '에스테틱·뷰티 (림프 드레나쥐)',
+    care: '서해부 온열 요법·폼롤러 드레나쥐',
+    coreMessage: '오후 부종은 하체 림프·정맥 순환 장애입니다. 통로를 먼저 열어야 지방이 빠집니다.',
+  },
+  'BC-2': {
+    label: '목짧아지는 거북이형',
+    icon: '🐢',
+    exerciseBan: '목·어깨 압박 웨이트 (바벨 스쿼트, 숄더프레스)',
+    exerciseOk: '경추 교정 필라테스 + 겨드랑이 림프 마사지 + 수영',
+    dietDirection: '항염 식단 + 셀러리·파인애플 림프 촉진 + 수분 2L',
+    b2b: '필라테스·정형외과',
+    care: '경추 교정 + 겨드랑이 림프절 케어',
+    coreMessage: '거북목·라운드숄더가 상체 림프를 차단합니다. 척추 정렬이 체형의 출발점입니다.',
+  },
+  'BC-3': {
+    label: '식후기절 혈당롤러코스터형',
+    icon: '🍉',
+    exerciseBan: '공복 고강도 유산소 (혈당 스파이크 심화)',
+    exerciseOk: '식후 15분 속보 + 저강도 유산소 + 필라테스',
+    dietDirection: '탄수화물 순서 식단 (채소→단백질→탄수화물) + 저GI 식품 + 식후 걷기',
+    b2b: '내과·영양 컨설팅',
+    care: '혈당 측정기 활용 + 식이 패턴 기록',
+    coreMessage: '밥 먹은 뒤 졸음·단것 갈구는 혈당 롤러코스터의 신호입니다. 식사 순서 하나로 바뀝니다.',
+  },
+  'BC-4': {
+    label: '약물부작용 강제축적형',
+    icon: '💊',
+    exerciseBan: '무리한 고강도 운동 (면역 저하 심화)',
+    exerciseOk: '저강도 산책 + 요가 + 대사 회복 필라테스',
+    dietDirection: '항염 식단 + 가공식품 배제 + 장 건강 회복 식단',
+    b2b: '내과·약학 상담',
+    care: '주치의와 약물 조정 상담 선행',
+    coreMessage: '약물이 대사를 바꿨습니다. 원인 약물 조정 없는 다이어트는 효과가 제한됩니다.',
+  },
+  'BC-5': {
+    label: '지방흡입후 재발형',
+    icon: '🍊',
+    exerciseBan: '시술 부위 고강도 압박 운동',
+    exerciseOk: '림프 드레나쥐 마사지 + 저충격 수영 + 걷기',
+    dietDirection: '항섬유화 식단 + 비타민C 풍부 + 수분 충분',
+    b2b: '에스테틱·성형외과',
+    care: '림프 회복 + 섬유화 전문 케어',
+    coreMessage: '지방흡입 후 섬유화가 재발의 핵심입니다. 림프 통로 복구가 우선입니다.',
+  },
+  'BC-6': {
+    label: '스트레스성 야식부엉이형',
+    icon: '🦉',
+    exerciseBan: '야간 고강도 운동·카페인 보충제',
+    exerciseOk: '밤 9시 야외 산책 20분 + 낮 요가',
+    dietDirection: '도파민 대체 스낵 전략 + 트립토판 단백질 (저녁) + 야식 환경 제거',
+    b2b: '수면클리닉·심리상담',
+    care: '블루라이트 차단 + 자율신경 안정 루틴',
+    coreMessage: '밤에 먹는 것은 의지력 부족이 아닙니다. 뇌의 가짜 허기를 만드는 코르티솔 문제입니다.',
+  },
+  'BC-7': {
+    label: '출산후 바람빠진 풍선형',
+    icon: '🎈',
+    exerciseBan: '복직근 이개 심화 운동 (크런치·레그레이즈·버피)',
+    exerciseOk: '골반저근 운동 + 기구 필라테스 + 복압 회복 코어',
+    dietDirection: '복부 장기 압박 식이 제한 + 소식다회 + 소화 돕는 식품',
+    b2b: '필라테스·산부인과',
+    care: '복직근 이개 재활 + 골반저근 전문 케어',
+    coreMessage: '출산 후 코어가 무너지면서 모든 게 처졌습니다. 복압 회복이 체형 변화의 시작입니다.',
+  },
+  'BC-8': {
+    label: '운동할수록 말벅지형',
+    icon: '🏋️',
+    exerciseBan: '하체 고강도 웨이트 (스쿼트·레그프레스·런지)',
+    exerciseOk: '수영·요가·저충격 유산소 (하체 웨이트 유보)',
+    dietDirection: '근육 이완 지원 식단 + 마그네슘 풍부 + 나트륨 제한',
+    b2b: '필라테스·재활',
+    care: '근육 과발달 이완 스트레칭 + 폼롤러',
+    coreMessage: '하체 운동이 오히려 허벅지를 키우는 역설. 알파 수용체 체형은 다른 접근이 필요합니다.',
+  },
+  'BC-9': {
+    label: '팔다리거미 올챙이배형',
+    icon: '🕷️',
+    exerciseBan: '과도한 유산소 + 단식 반복 (근육 분해 심화)',
+    exerciseOk: '고단백 식사 후 저충격 근력 + 필라테스',
+    dietDirection: '고단백 식사 (체중×1.6g) + 근육 합성 지원 + 아침 단백질 우선',
+    b2b: '영양 컨설팅·PT',
+    care: '체성분 분석 + 근육량 중심 지표 관리',
+    coreMessage: '몸무게가 아닌 근육량이 기준입니다. 사지 빠지고 배만 남는 이화작용을 역전해야 합니다.',
+  },
+};
+
+// ──────────────────────────────────────────────
+// 14. TONE_DB — 처방 톤 (기질별, 6×16 = 96 조합)
+// MVP: 6기질 × 주요 MBTI 4개 = 24 세트
+// 나머지는 오행 기본 톤으로 fallback
+// ──────────────────────────────────────────────
+const TONE_DB = {
+  '목': {
+    'INFP': { tone: '비강박 공감형', cta: '억지로 참지 않아도 됩니다. 환경을 바꾸면 돼요.', approach: '감정 억압 해소 루틴 먼저. 야식 대체 스낵 환경 구성.', diet: '칼로리 계산 없음. 색깔별 채소 접시 제안.', exercise: '혼자 하는 수영. 야외 평지 산책. 그룹 운동 ✗' },
+    'INTJ': { tone: '목표·데이터형', cta: '단계별로 정확하게, 하지만 자책 없이.', approach: '목표 미달 시 자책 방지 프로토콜. 마일스톤 세분화.', diet: '영양 수치 제공. 단계별 목표 설정. 주간 체크.', exercise: '계획된 수영 루틴. 진도 기록표 제공.' },
+    'ISFJ': { tone: '안정·공감형', cta: '천천히 가도 괜찮아요. 꾸준함이 답이에요.', approach: '지지 그룹 연결. 음식 외 스트레스 해소책 개발.', diet: '따뜻한 음식. 규칙적 3식. 공복 금지.', exercise: '걷기·요가. 자연 속 운동.' },
+    'default': { tone: '감성 지지형', cta: '몸이 보내는 신호를 먼저 들어보세요.', approach: '감정 억압을 풀어주는 저녁 루틴 설계.', diet: '직관 식사 방식 + 녹색 채소 중심.', exercise: '야외 걷기 + 스트레칭 중심.' },
+  },
+  '화': {
+    'ENFP': { tone: '열정·챌린지형', cta: '지금 당장 시작해도 됩니다. 같이 해요!', approach: '챌린지 구조. 버디 매칭. 매주 새 목표.', diet: '다양한 식단 로테이션. 지루함 방지 메뉴 다양화.', exercise: '아쿠아로빅·그룹 수영. SNS 챌린지 연동.' },
+    'ENTJ': { tone: '목표 통솔형', cta: '전략을 세우되, 예외 규칙도 미리 설계하세요.', approach: '통제 욕구를 80/20 규칙으로 전환.', diet: '정량 식단 + 치트데이 공식화.', exercise: '데이터 트래킹 + 계획된 고강도 (1주에 2회).' },
+    'default': { tone: '활력·속도형', cta: '에너지를 태우되 회복 시간도 설계하세요.', approach: '흥분-소진 사이클 관리가 핵심.', diet: '시원하고 가벼운 식단. 쓴맛 채소 활용.', exercise: '그룹 운동 + 다양한 종목 로테이션.' },
+  },
+  '토': {
+    'ISFJ': { tone: '안정·공감형', cta: '천천히 가도 괜찮아요. 꾸준함이 답이에요.', approach: '소식다회 전략 + 규칙적 식사 시간 고정.', diet: '따뜻하고 소화 잘 되는 식품 우선.', exercise: '걷기·요가. 혼자보다 함께.' },
+    'ESFJ': { tone: '사교 조화형', cta: '함께 하면 더 잘 됩니다. 건강한 식사 모임을 만드세요.', approach: '사회적 식사 상황 방어 전략 먼저.', diet: '소화 돕는 발효 식품 + 온식.', exercise: '그룹 요가·산책.' },
+    'default': { tone: '온화·지속형', cta: '오늘 하루 소화가 잘 됐다면 성공입니다.', approach: '비위 운화 기능 지원이 우선.', diet: '단맛 자연식 + 소식다회.', exercise: '저강도 규칙적 산책 + 소화 스트레칭.' },
+  },
+  '금': {
+    'ISTJ': { tone: '규칙·원칙형', cta: '원칙대로, 하지만 완벽하지 않아도 됩니다.', approach: '완벽주의 이완 프로토콜. 작은 실수 허용 규칙.', diet: '정량 식단. 80/20 규칙 명확히. 예외 허용 기준 안내.', exercise: '개인 PT. 혼자 하는 계획된 루틴.' },
+    'INTJ': { tone: '전략·데이터형', cta: '계획 내 이탈도 계획의 일부입니다.', approach: '올-오-낫씽 패턴 인지 차단 훈련.', diet: '주간 식단표 + 예외 규칙 포함.', exercise: '계획된 루틴 + 진도 기록.' },
+    'default': { tone: '규칙 지향형', cta: '완벽한 하루보다 70%의 꾸준함이 답입니다.', approach: '점진적 접근 + 독소 배출 우선.', diet: '흰색 채소·폐 건강 식품 중심.', exercise: '호흡 운동 + 규칙적 유산소.' },
+  },
+  '수': {
+    'INFJ': { tone: '사색·내향형', cta: '나에게 맞는 속도로, 내 방식대로.', approach: '장기 목표 1개만. 에너지 상태 기반 유동 플랜.', diet: '검은 음식·따뜻한 식단. 에너지 상태 기반 유동.', exercise: '수영·저강도 혼자 운동. 아침 운동 추천.' },
+    'INFP': { tone: '직관 회복형', cta: '몸이 따뜻해지면 마음도 따라옵니다.', approach: '냉증 개선이 심리 안정에도 효과적임을 안내.', diet: '검은 음식 + 따뜻한 차 중심.', exercise: '저강도 혼자 운동 + 온열 요법 병행.' },
+    'default': { tone: '깊이·회복형', cta: '천천히, 하지만 방향은 분명하게.', approach: '신장 기운 회복이 전체 대사의 기반.', diet: '검은색 식품군 + 짠맛 자연염.', exercise: '수영 + 온열 요법 + 저강도 루틴.' },
+  },
+};
+
+// ──────────────────────────────────────────────
+// 15. generatePrescription() — BC × 기질 교차 처방 생성
+// bc_code: 'BC-1'~'BC-9'
+// ohaeng_type: '목'|'화'|'토'|'금'|'수'
+// mbti_full: 'INFP'|'ISTJ' 등 (선택)
+// ──────────────────────────────────────────────
+function generatePrescription(bc_code, ohaeng_type, mbti_full) {
+  // 처방 핵심 (기질 무관 공통)
+  const core = BC_PRESCRIPTION_DB[bc_code] || BC_PRESCRIPTION_DB['BC-6'];
+
+  // 처방 톤 (기질별)
+  const ohaengTone = TONE_DB[ohaeng_type] || TONE_DB['목'];
+  const tone = ohaengTone[mbti_full] || ohaengTone['default'];
+
+  // 닉네임 (BC_MASTER app_nickname 활용)
+  const bcMaster = BC_MASTER[bc_code] || BC_MASTER['BC-6'];
+  const nicknameDisplay = BC_TO_DEFAULT_NICKNAME[bc_code] || core.label;
+
+  return {
+    // 핵심 처방 (BC 공통)
+    nickname: nicknameDisplay,
+    bcCode: bc_code,
+    icon: core.icon,
+    coreMessage: core.coreMessage,
+    exerciseBan: core.exerciseBan,
+    exerciseOk: core.exerciseOk,
+    dietDirection: core.dietDirection,
+    b2b: core.b2b,
+    care: core.care,
+    // 기질별 처방 톤
+    prescriptionTone: tone.tone,
+    cta: tone.cta,
+    approach: tone.approach,
+    dietPersonal: tone.diet,
+    exercisePersonal: tone.exercise,
+    // 처방 키 (저장용)
+    prescriptionKey: `${bc_code}_${ohaeng_type}_${mbti_full || 'default'}`,
+  };
+}
+
+// ──────────────────────────────────────────────
+// 16. 오행 데이터 (한글 표기, 법적 수정 완료)
 // ──────────────────────────────────────────────
 const SAJU_ELEMENT_DESC = {
   '목': {
@@ -542,6 +1019,11 @@ const DISCLAIMER = '본 결과지는 설문 응답을 기반으로 한 라이프
 // ──────────────────────────────────────────────
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
+    // V3.1 신규
+    AXIS_10_META, NICKNAME_TABLE, NICKNAME_TO_BC, BC_TO_DEFAULT_NICKNAME,
+    BC_PRESCRIPTION_DB, TONE_DB,
+    computeNickname, detectBackground, getDeepSurveyRoute, generatePrescription,
+    // 기존 유지
     BC_MASTER, CAUSAL_AXIS_META, AXIS_11,
     SAJU_ELEMENT_DESC, MBTI_DESC,
     SIMULATOR_METRICS, ROADMAP_WEEKS, DISCLAIMER,

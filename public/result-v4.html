@@ -737,16 +737,30 @@ function demoData() {
 // ── 메인 렌더 ──────────────────
 function renderAll(data) {
   const { userName='고객', axisScores={}, ohaengType='목', mbtiType='INFP' } = data;
-  const bc = computeBCCode(axisScores);
-  const { bcCode, bcMaster, causalScores, sorted, firstDomino, metrics } = bc;
+  const answers = data.answers || {};
+
+  // V3.1: computeBCCode에 answers 전달 → nickname + background 포함
+  const bc = computeBCCode(axisScores, answers);
+  const { bcCode, bcMaster, causalScores, sorted, firstDomino, metrics,
+          nickname, background } = bc;
+
   const ohaeng = SAJU_ELEMENT_DESC[ohaengType] || SAJU_ELEMENT_DESC['목'];
   const mbti   = MBTI_DESC[mbtiType] || MBTI_DESC['INFP'];
-  const fullCode = `${bcCode} · ${ohaeng.label} · ${mbtiType}`;
 
-  renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores);
+  // V3.1: fullCode = 닉네임 우선 (BC번호 대신)
+  const nicknameDisplay = nickname
+    || (bcMaster.app_nickname || '').replace(/#/g,'').replace(/_/g,' ');
+  const fullCode = `${nicknameDisplay} · ${ohaeng.label} · ${mbtiType}`;
+
+  // V3.1: BC×기질 처방 생성
+  const prescription = (typeof generatePrescription !== 'undefined')
+    ? generatePrescription(bcCode, ohaengType, mbtiType)
+    : null;
+
+  renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nicknameDisplay, background);
   renderP2(userName, bcCode, firstDomino, axisScores, sorted);
-  renderP3(userName, bcCode, bcMaster, ohaengType, ohaeng, mbtiType, mbti, fullCode);
-  renderP4(userName, ohaengType, mbtiType, data.answers && data.answers['Q02'], data.answers && data.answers['Q_MENOPAUSE']);
+  renderP3(userName, bcCode, bcMaster, ohaengType, ohaeng, mbtiType, mbti, fullCode, prescription);
+  renderP4(userName, ohaengType, mbtiType, answers['Q02'], answers['Q_MENOPAUSE']);
   renderP5(metrics);
   renderP6(userName, fullCode, ohaengType);
 
@@ -755,9 +769,18 @@ function renderAll(data) {
 }
 
 /* ── P1 ── */
-function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores) {
+function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nicknameDisplay, background) {
   document.getElementById('p1-title').textContent = `${userName}님의 바디코드 리포트`;
-  document.getElementById('p1-nickname').textContent = bcMaster.app_nickname;
+  // V3.1: 닉네임 우선 표시 (BC번호 대신)
+  const nickEl = document.getElementById('p1-nickname');
+  nickEl.textContent = nicknameDisplay || bcMaster.app_nickname.replace(/#/g,'').replace(/_/g,' ');
+  // 배경 필터 뱃지 (갱년기·출산 등)
+  if (background) {
+    nickEl.insertAdjacentHTML('afterend',
+      `<div style="display:inline-block;background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.85);`+
+      `font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;margin:4px auto 0;letter-spacing:0.5px;">`+
+      `🏷 ${background} 분류</div>`);
+  }
   document.getElementById('p1-bc-code').textContent = bcCode;
   document.getElementById('p1-medical-title').textContent = bcMaster.medical_title;
   document.getElementById('p1-full-code').textContent = fullCode;
@@ -802,7 +825,7 @@ function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores) {
       당신은 게으른 게 아닙니다. 당신의 몸이 다른 구조로 작동하고 있는 것입니다.
     </p>
     <p style="margin-bottom:1.5rem;">당신의 몸은 일반적인 비만과 완전히 다릅니다. 당신의 영혼과 신체를 갉아먹던 그 괴로운 증상들의
-    분석 소견은 바로 <em>[${bcCode} : ${bcMaster.app_nickname}]</em>입니다.</p>
+    분석 소견은 바로 <em>[${nicknameDisplay || bcMaster.app_nickname.replace(/#/g,'').replace(/_/g,' ')}]</em>입니다.</p>
     <p>오늘 이 가이드는 당신이 타고난 선천적 기질과 후천적인 신체 고장 원인을 융합하여,
     당신의 대사 개선을 돕는 맞춤 라이프스타일 가이드를 제공합니다.</p>`;
 
@@ -884,22 +907,60 @@ function renderP2(userName, bcCode, firstDomino, axisScores, sorted) {
 }
 
 /* ── P3 ── */
-function renderP3(userName, bcCode, bcMaster, ohaengKey, ohaeng, mbtiType, mbti, fullCode) {
-  // 융합 코드 바
+function renderP3(userName, bcCode, bcMaster, ohaengKey, ohaeng, mbtiType, mbti, fullCode, prescription) {
+  // V3.1: 융합 코드 바 — BC번호 대신 처방 키 표시
+  const prescKey = prescription ? prescription.prescriptionKey : `${bcCode}_${ohaengKey}`;
   const bar = document.getElementById('p3-fusion-bar');
   bar.innerHTML = `
-    <span class="badge badge-mint">${bcCode}</span>
+    <span class="badge badge-mint" title="${bcCode}">${prescription ? prescription.prescriptionTone : bcCode}</span>
     <span class="fusion-sep">·</span>
     <span style="font-size:13px;font-weight:700;color:#fff;">${ohaeng.label}</span>
     <span class="fusion-sep">·</span>
     <span style="font-size:13px;font-weight:700;color:rgba(255,255,255,.8);">${mbtiType}</span>`;
 
-  // 수평 3열 배지 업데이트
+  // 수평 3열 배지 업데이트 (BC배지에 닉네임 표시)
   document.getElementById('badge-ohaeng-icon').textContent = ohaeng.icon;
   document.getElementById('badge-ohaeng-val').textContent = ohaeng.label;
   document.getElementById('badge-bc-icon').textContent = bcMaster.icon || '🔍';
+  // V3.1: BC-N 번호 대신 BC 아이콘+코드 병기
   document.getElementById('badge-bc-val').textContent = bcCode;
   document.getElementById('badge-mbti-val').textContent = mbtiType;
+
+  // V3.1: 처방 CTA 카드 (prescription 있을 때)
+  if (prescription) {
+    const existingCta = document.getElementById('p3-prescription-cta');
+    if (!existingCta) {
+      const ctaDiv = document.createElement('div');
+      ctaDiv.id = 'p3-prescription-cta';
+      ctaDiv.style.cssText = 'background:linear-gradient(135deg,var(--navy),#2d3a5c);border-radius:16px;padding:20px;margin:20px 0;border:1px solid rgba(255,255,255,0.12);';
+      ctaDiv.innerHTML = `
+        <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.5);letter-spacing:1.5px;margin-bottom:8px;">
+          💊 ${bcCode} × ${ohaeng.label} 맞춤 처방 방향
+        </div>
+        <div style="font-size:15px;font-weight:800;color:var(--mint);line-height:1.4;margin-bottom:10px;">
+          "${prescription.cta}"
+        </div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.75);line-height:1.6;">
+          ${prescription.coreMessage}
+        </div>
+        <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div style="background:rgba(255,255,255,0.06);border-radius:10px;padding:10px 12px;">
+            <div style="font-size:10px;color:rgba(255,255,255,0.4);font-weight:700;margin-bottom:4px;">✅ 권장 운동</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.85);line-height:1.5;">${prescription.exerciseOk}</div>
+          </div>
+          <div style="background:rgba(255,80,80,0.08);border-radius:10px;padding:10px 12px;">
+            <div style="font-size:10px;color:rgba(255,120,120,0.7);font-weight:700;margin-bottom:4px;">🚫 유보 운동</div>
+            <div style="font-size:12px;color:rgba(255,200,200,0.85);line-height:1.5;">${prescription.exerciseBan}</div>
+          </div>
+        </div>
+        <div style="margin-top:8px;background:rgba(255,255,255,0.06);border-radius:10px;padding:10px 12px;">
+          <div style="font-size:10px;color:rgba(255,255,255,0.4);font-weight:700;margin-bottom:4px;">🍽️ 식단 방향</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.85);line-height:1.5;">${prescription.dietDirection}</div>
+        </div>`;
+      const insightContainer = document.getElementById('p3-insights');
+      if (insightContainer) insightContainer.before(ctaDiv);
+    }
+  }
 
   // 인사이트 3개
   const insights = getMbtiOhaengInsights(bcMaster, ohaengKey, mbtiType);

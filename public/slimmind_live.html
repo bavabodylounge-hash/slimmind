@@ -6890,12 +6890,99 @@ function v3GetTopBcCodes(bcScores, minScore) {
     });
 }
 
+// ── V3.1: Top1 축 기반 심층 라우팅 ──────────────────────
+// axisScores: { A01:72, A02:55, ... } (공통30문항 채점 결과)
+// 반환: deepSection = 'BC6'|'BC1'|'BC3'|... (DEEP_QUESTIONS 키와 호환)
+var AXIS_TO_DEEP_SECTION = {
+  'A01': 'BC3',  // 인슐린·내장 → BC-3 수박배형 심층
+  'A02': 'BC1',  // 림프순환 → BC-1 코끼리다리형 심층
+  'A03': 'BC6',  // 호르몬 → BC-6 야식부엉이형 심층 (호르몬 파트)
+  'A04': 'BC9',  // 근감소 → BC-9 올챙이배형 심층
+  'A05': 'BC3',  // 소화·장 → BC-3 심층 일부 + 소화 특화
+  'A06': 'BC7',  // 골격·복압 → BC-7 바람빠진풍선형 심층
+  'A07': 'BC6',  // 코르티솔 → BC-6 야식부엉이형 심층
+  'A08': 'BC6',  // 심리·식이 → BC-6 심층 (심리 파트)
+  'A09': 'BC4',  // 대사위험 → BC-4 요요형 심층
+  'A10': 'DISP', // 기질·성향 → 기질 설문 10문항으로 분기
+};
+
+var AXIS_TO_NICKNAME_LABEL = {
+  'A01': '혈당·내장지방',  'A02': '하체 림프순환',
+  'A03': '호르몬 균형',    'A04': '근육·대사',
+  'A05': '소화·장 건강',   'A06': '골격·복압',
+  'A07': '코르티솔·부신',  'A08': '심리·식이행동',
+  'A09': '대사 위험',      'A10': '기질·성향',
+};
+
 function v3MidScoreCheck(v3Ans) {
+  // ① 기존 BC 점수 (호환용)
   var bcScores = v3CalcBcScores(v3Ans);
   var topCodes = v3GetTopBcCodes(bcScores);
+
+  // ② V3.1: 원인축 점수 (QUESTIONS_V3의 axis 필드 기반)
+  var axisScores = {};
+  QUESTIONS_V3.forEach(function(q) {
+    var ans = v3Ans[q.id];
+    if (!ans || !q.options) return;
+    var opt = q.options.find(function(o){ return o.value === ans; });
+    if (!opt || !opt.bcScore) return;
+    // bcScore를 역으로 축 점수에 합산
+    // A01~A10 매핑은 q.axis 필드 활용
+    if (q.axis && axisScores.hasOwnProperty(q.axis) !== undefined) {
+      axisScores[q.axis] = (axisScores[q.axis] || 0);
+      // 선택지 득점을 해당 축에 누적
+      var maxBc = 0;
+      Object.values(opt.bcScore).forEach(function(v){ if(v > maxBc) maxBc = v; });
+      axisScores[q.axis] = (axisScores[q.axis] || 0) + maxBc;
+    }
+  });
+
+  // ③ Top1 축 결정
+  var sortedAxes = Object.entries(axisScores)
+    .filter(function(e){ return e[0].startsWith('A'); })
+    .sort(function(a,b){ return b[1]-a[1]; });
+  var top1Axis = sortedAxes.length > 0 ? sortedAxes[0][0] : null;
+
+  // ④ Top1 축 → 심층 설문 섹션 결정 (V3.1)
+  var deepSection;
+  if (top1Axis && AXIS_TO_DEEP_SECTION[top1Axis]) {
+    deepSection = AXIS_TO_DEEP_SECTION[top1Axis];
+  } else {
+    // fallback: 기존 BC 점수 기반
+    deepSection = topCodes[0] ? topCodes[0].code : 'BC6';
+  }
+
+  // ⑤ A10이 Top1 → DISP(기질 설문)로 분기
+  var isDispositionFirst = (top1Axis === 'A10');
+
+  // ⑥ primary 카드 정보 (인터미션 UI용)
   var primary = topCodes[0] || { code:'BC6', score:0, pct:55, name:'야식부엉이형', emoji:'🦉', color:'#3b82f6' };
   var secondary = topCodes[1] || null;
-  return { bcScores: bcScores, topCodes: topCodes, primary: primary, secondary: secondary, deepSection: primary.code };
+
+  // Top1 축 기반 primary 오버라이드
+  if (top1Axis) {
+    var axLabel = AXIS_TO_NICKNAME_LABEL[top1Axis] || top1Axis;
+    var axMeta  = BC_META[deepSection] || {};
+    primary = {
+      code:  deepSection,
+      score: sortedAxes[0] ? sortedAxes[0][1] : 0,
+      pct:   Math.min(99, Math.round((sortedAxes[0] ? sortedAxes[0][1] : 0) * 1.2)),
+      name:  axLabel,
+      emoji: axMeta.emoji || '🔬',
+      color: axMeta.color || '#6366f1',
+      desc:  axMeta.desc || '',
+      top1Axis: top1Axis,
+    };
+  }
+
+  return {
+    bcScores: bcScores, topCodes: topCodes,
+    primary: primary, secondary: secondary,
+    deepSection: deepSection,
+    top1Axis: top1Axis,
+    isDispositionFirst: isDispositionFirst,
+    axisScores: axisScores,
+  };
 }
 
 // ── V3 상태 ───────────────────────────────────────────
@@ -7067,10 +7154,25 @@ function v3ShowIntermission(midResult) {
     + '</div>';
 }
 
-// ── 심층 분기 시작 ────────────────────────────────────
+// ── 심층 분기 시작 (V3.1: Top1 축 기반 라우팅) ───────
 function v3StartDeepPhase() {
+  var midResult = v3State.midResult;
+  var deepSection = midResult ? midResult.deepSection : 'BC6';
+  var isDispositionFirst = midResult ? midResult.isDispositionFirst : false;
+
+  // A10이 Top1 → 기질 설문(DISP_*) 로 직행
+  if (isDispositionFirst || deepSection === 'DISP') {
+    v3State.phase = 'disposition';
+    v3State.dispQ = 0;
+    var appEl = document.getElementById('app');
+    if (appEl) appEl.style.removeProperty('min-height');
+    v3RenderDispQuestion(0);
+    window.scrollTo(0,0);
+    return;
+  }
+
   v3State.phase = 'deep';
-  v3State.deepCode = v3State.midResult ? v3State.midResult.deepSection : 'BC6';
+  v3State.deepCode = deepSection;
   v3State.deepQ = 0;
   var appEl = document.getElementById('app');
   if (appEl) appEl.style.removeProperty('min-height');
