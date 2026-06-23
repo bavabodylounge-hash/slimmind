@@ -289,7 +289,9 @@ app.post('/api/survey/submit', async (c) => {
     // v4.0 10축 분석 결과
     axis_scores, top_axes,
     // v4.1 axis_primary (migration 0024)
-    axis_primary, axis_secondary, axis_primary_score
+    axis_primary, axis_secondary, axis_primary_score,
+    // v5.0 B2B/컨설턴트 추적 (migration 0025)
+    ref_code, ref_type
   } = body
 
   const result_id = resultIdGen()
@@ -360,8 +362,9 @@ app.post('/api/survey/submit', async (c) => {
       menopause_status, is_menopause,
       medical_conditions_json, has_medical_conditions,
       axis_scores_json, top_axes_json,
-      axis_primary, axis_secondary, axis_primary_score
-    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      axis_primary, axis_secondary, axis_primary_score,
+      ref_code, ref_type
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
   `).bind(
     result_id, resolvedUserName, validConsultantCode,
     safeBcPrimary, toStr(bc_secondary), nz(bc_primary_score), nz(bc_secondary_score),
@@ -394,7 +397,10 @@ app.post('/api/survey/submit', async (c) => {
     // v4.1 axis_primary (migration 0024) — bc_primary 폴백
     toStr(axis_primary) || safeBcPrimary,
     toStr(axis_secondary) || toStr(bc_secondary),
-    n(axis_primary_score) ?? n(bc_primary_score)
+    n(axis_primary_score) ?? n(bc_primary_score),
+    // v5.0 B2B/컨설턴트 추적 (migration 0025)
+    toStr(ref_code) || null,
+    toStr(ref_type) || 'DIRECT'
   ).run()
 
   return c.json({ success: true, result_id, message: '설문이 제출되었습니다.' })
@@ -1312,10 +1318,35 @@ app.get('/result/:id', async (c) => {
     consultant_name: isOwner ? (authUser?.name || null) : null,
   }
 
-  // result.html에 window.__RESULT__ 주입
+  // ─── B2B 화이트라벨: 결과지에도 브랜드컬러 주입 ───
+  let brandInjectResult = ''
+  const resultRefCode = result.ref_code as string | null
+  if (resultRefCode && resultRefCode.startsWith('B2B-')) {
+    const b2bPartner = await db.prepare(
+      'SELECT code, brand_name, brand_color, brand_logo_url, status FROM b2b_partners WHERE code=?'
+    ).bind(resultRefCode).first<any>()
+
+    if (b2bPartner && b2bPartner.status !== 'suspended') {
+      const bColor = (b2bPartner.brand_color || '#6366f1').replace(/[^#0-9a-fA-F]/g, '')
+      const bName = (b2bPartner.brand_name || b2bPartner.code || '').replace(/[<>"]/g, '')
+      const bLogo = (b2bPartner.brand_logo_url || '').replace(/[<>"]/g, '')
+      brandInjectResult = `
+<script>window.__BRAND__ = { code: "${resultRefCode}", type: "B2B", brand_name: "${bName}", brand_color: "${bColor}", brand_logo_url: "${bLogo}" };</script>
+<style>
+:root { --brand-color: ${bColor}; --brand-color-light: ${bColor}22; }
+/* 결과지 헤더/버튼 브랜드컬러 오버라이드 */
+.result-header, .v4-header { background: var(--brand-color) !important; }
+.result-action-btn, .download-btn, .share-btn { background: var(--brand-color) !important; border-color: var(--brand-color) !important; }
+.bc-badge, .section-title-bar { background: var(--brand-color) !important; }
+.progress-fill, .score-bar-fill { background: var(--brand-color) !important; }
+</style>`
+    }
+  }
+
+  // result.html에 window.__RESULT__ + 브랜드컬러 주입
   const injectedHtml = resultHtml.replace(
     '</head>',
-    `<script>window.__RESULT__ = ${JSON.stringify(resultData)};</script>\n</head>`
+    `${brandInjectResult}\n<script>window.__RESULT__ = ${JSON.stringify(resultData)};</script>\n</head>`
   )
 
   return c.html(injectedHtml)
