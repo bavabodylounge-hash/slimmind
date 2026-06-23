@@ -7015,21 +7015,16 @@ function v3RenderQuestion(qIdx) {
   var optsHtml = '';
   if (q.type === 'TEXT_INPUT') {
     var curVal = v3State.answers[q.id] || '';
+    // TEXT_INPUT: oninput에서 answers 저장 후 v3RenderQuestion 재호출로 버튼 onclick 갱신
+    var oninputCode = 'v3State.answers[\'' + q.id + '\']=this.value;'
+      + (q.saveAs ? 'v3State.answers[\'' + q.saveAs + '\']=this.value;' : '')
+      + 'v3TextInputChange(' + qIdx + ',this.value);';
     optsHtml = '<div style="padding:0 4px">'
       + '<input id="v3-text-inp" type="text" maxlength="' + (q.maxLength||20) + '" value="' + curVal + '"'
       + ' placeholder="' + (q.placeholder||'입력해주세요') + '"'
-      + ' oninput="v3State.answers[\'' + q.id + '\']=this.value;if(q.saveAs)v3State.answers[q.saveAs]=this.value;document.getElementById(\'v3-next-btn\').disabled=!this.value.trim()"'
+      + ' oninput="' + oninputCode + '"'
       + ' style="width:100%;padding:14px 16px;border:2px solid rgba(99,102,241,0.3);border-radius:14px;font-size:16px;font-family:inherit;outline:none;background:#fff;box-shadow:0 2px 8px rgba(99,102,241,0.1)"'
       + '></div>';
-    // saveAs 연동
-    if (q.saveAs) {
-      optsHtml = '<div style="padding:0 4px">'
-        + '<input id="v3-text-inp" type="text" maxlength="' + (q.maxLength||20) + '" value="' + curVal + '"'
-        + ' placeholder="' + (q.placeholder||'입력해주세요') + '"'
-        + ' oninput="v3State.answers[\'' + q.id + '\']=this.value;v3State.answers[\'' + q.saveAs + '\']=this.value;document.getElementById(\'v3-next-btn\').classList.toggle(\'ready\',!!this.value.trim())"'
-        + ' style="width:100%;padding:14px 16px;border:2px solid rgba(99,102,241,0.3);border-radius:14px;font-size:16px;font-family:inherit;outline:none;background:#fff;box-shadow:0 2px 8px rgba(99,102,241,0.1)"'
-        + '></div>';
-    }
     answered = !!curVal;
   } else if (q.type === 'SINGLE_SELECT') {
     (q.options || []).forEach(function(opt) {
@@ -7068,11 +7063,60 @@ function v3RenderQuestion(qIdx) {
     + '</div>'
     + '<div class="nav">'
     + (qIdx > 0 ? '<span class="prev" onclick="v3Go(-1)" style="cursor:pointer;font-size:14px;color:#8A7B6D;padding:8px 12px">← 이전</span>' : '<span></span>')
-    + '<button id="v3-next-btn" class="next ' + (answered ? 'ready' : '') + '" onclick="' + (answered ? (isLast ? 'v3TriggerIntermission()' : 'v3Go(1)') : '') + '"'
+    + '<button id="v3-next-btn" class="next ' + (answered ? 'ready' : '') + '" onclick="v3NextBtnClick(' + qIdx + ',' + isLast + ')"'
     + ' style="' + (!answered ? 'opacity:0.45;cursor:not-allowed' : '') + '">'
     + (isLast ? '분석 시작하기 →' : '다음 →') + '</button>'
     + '</div>'
     + '</div>';
+}
+
+// TEXT_INPUT 입력 변경 핸들러 — answers 저장 후 화면 갱신
+function v3TextInputChange(qIdx, val) {
+  // 버튼 상태 즉시 갱신 (DOM 재렌더 없이)
+  var btn = document.getElementById('v3-next-btn');
+  var hasVal = !!(val && val.trim());
+  if (btn) {
+    if (hasVal) {
+      btn.classList.add('ready');
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+    } else {
+      btn.classList.remove('ready');
+      btn.style.opacity = '0.45';
+      btn.style.cursor = 'not-allowed';
+    }
+  }
+  // AI 반응 메시지 갱신
+  var q = QUESTIONS_V3[qIdx];
+  if (q && q.aiReaction && hasVal) {
+    var aiMsg = q.aiReaction.replace(/\[이름\]/g, val);
+    var aiEl = document.getElementById('v3-ai-msg');
+    if (aiEl) {
+      aiEl.textContent = '🤖 ' + aiMsg;
+    } else {
+      // 아직 없으면 opts 다음에 삽입
+      var optsEl = document.querySelector('#app .opts');
+      if (optsEl && optsEl.parentNode) {
+        var div = document.createElement('div');
+        div.id = 'v3-ai-msg';
+        div.style.cssText = 'margin-top:12px;padding:10px 14px;background:rgba(99,102,241,0.08);border-left:3px solid #6366f1;border-radius:0 10px 10px 0;font-size:13px;color:#4338ca;line-height:1.5';
+        div.textContent = '🤖 ' + aiMsg;
+        optsEl.parentNode.insertBefore(div, optsEl.nextSibling);
+      }
+    }
+  }
+}
+
+// 다음 버튼 클릭 핸들러 — answered 여부 확인 후 진행
+function v3NextBtnClick(qIdx, isLast) {
+  var q = QUESTIONS_V3[qIdx];
+  var answered = q ? !!v3State.answers[q.id] : false;
+  if (!answered) return; // 미입력 시 무시
+  if (isLast) {
+    v3TriggerIntermission();
+  } else {
+    v3Go(1);
+  }
 }
 
 function v3Pick(qid, val, qIdx, aiReaction) {
