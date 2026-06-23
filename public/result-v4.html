@@ -1,1333 +1,919 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <title>SlimMind V3.0 — 나의 바디코드 정밀 결과지</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Noto+Serif+KR:wght@400;700;900&display=swap');
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SlimMind — 나의 바디코드 결과지</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
+  * { font-family: 'Noto Sans KR', sans-serif; box-sizing: border-box; }
 
-    :root {
-      --navy: #0D1B2A;
-      --gold: #C9A84C;
-      --gold-light: #F0D060;
-      --cream: #FAF6EE;
-      --silver: #8A9BB0;
-      --accent-red: #C0392B;
-      --accent-blue: #1A7FC1;
-    }
+  :root {
+    --gold: #C9A84C;
+    --gold-light: #F0D060;
+    --navy: #0A1628;
+    --navy-mid: #1A2E4A;
+    --navy-light: #243B55;
+    --cream: #FAF6EF;
+    --red-accent: #E8402A;
+  }
 
-    * { box-sizing: border-box; }
+  body { background: var(--navy); color: #fff; min-height: 100vh; }
 
-    body {
-      font-family: 'Noto Sans KR', sans-serif;
-      background: #0D1B2A;
-      color: #fff;
-      overflow-x: hidden;
-      margin: 0; padding: 0;
-    }
+  /* ── 로딩 오버레이 ── */
+  #loading-overlay {
+    position: fixed; inset: 0; background: var(--navy);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 9999; transition: opacity 0.5s;
+  }
+  .loader-ring {
+    width: 64px; height: 64px; border: 4px solid rgba(201,168,76,0.2);
+    border-top-color: var(--gold); border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ──────────────────── COVER / PAGE TRANSITION ──────────────────── */
-    .page-section {
-      min-height: 100vh;
-      position: relative;
-      overflow: hidden;
-    }
+  /* ── 탑 네비게이션 ── */
+  #top-nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(10,22,40,0.95); backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(201,168,76,0.2);
+    padding: 0 16px; height: 56px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .nav-logo { font-size: 13px; font-weight: 700; color: var(--gold); letter-spacing: 2px; }
+  .nav-tabs { display: flex; gap: 4px; }
+  .nav-tab {
+    padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s; color: rgba(255,255,255,0.5);
+    border: 1px solid transparent;
+  }
+  .nav-tab.active {
+    background: linear-gradient(135deg, var(--gold), #A07830);
+    color: #fff; border-color: var(--gold);
+  }
+  .nav-tab:hover:not(.active) {
+    color: var(--gold); border-color: rgba(201,168,76,0.3);
+  }
 
-    /* ──────────────────── PAGE 1: PERSONA CARD ──────────────────── */
-    #page1 {
-      background: linear-gradient(160deg, #0D1B2A 0%, #1a2a40 40%, #0D1B2A 100%);
-    }
+  /* ── 페이지 컨테이너 ── */
+  .page { display: none; padding-top: 72px; min-height: 100vh; }
+  .page.active { display: block; }
 
-    .gold-border {
-      border: 1px solid rgba(201,168,76,0.4);
-    }
+  /* ── 공통 섹션 ── */
+  .section-wrap { max-width: 760px; margin: 0 auto; padding: 0 16px 40px; }
 
-    .gold-gradient {
-      background: linear-gradient(135deg, #C9A84C, #F0D060, #C9A84C);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
+  /* ── 골드 디바이더 ── */
+  .gold-divider {
+    height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    margin: 32px 0;
+  }
 
-    .medical-card {
-      background: linear-gradient(145deg, #111e2e, #0a1520);
-      border: 1px solid rgba(201,168,76,0.3);
-      border-radius: 20px;
-      box-shadow:
-        0 0 0 1px rgba(201,168,76,0.1),
-        0 20px 60px rgba(0,0,0,0.5),
-        inset 0 1px 0 rgba(201,168,76,0.15);
-      position: relative;
-      overflow: hidden;
-    }
+  /* ── 배지 ── */
+  .badge-gold {
+    display: inline-block; padding: 4px 14px; border-radius: 20px;
+    background: linear-gradient(135deg, var(--gold), #A07830);
+    font-size: 11px; font-weight: 700; letter-spacing: 1px; color: #fff;
+  }
+  .badge-red {
+    display: inline-block; padding: 4px 14px; border-radius: 20px;
+    background: var(--red-accent); font-size: 11px; font-weight: 700; color: #fff;
+  }
 
-    .medical-card::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, transparent, #C9A84C, transparent);
-    }
+  /* ══════════════════════════════
+     PAGE 1 — 바디 페르소나 카드
+  ══════════════════════════════ */
+  #page1 { background: linear-gradient(180deg, #080F1C 0%, #0D1E35 60%, #080F1C 100%); }
 
-    .barcode-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 6px;
-    }
+  .hero-eyebrow {
+    font-size: 11px; letter-spacing: 3px; color: var(--gold);
+    text-transform: uppercase; text-align: center; margin-bottom: 8px;
+  }
+  .hero-title {
+    font-size: clamp(18px, 4vw, 26px); font-weight: 900; text-align: center;
+    line-height: 1.35; color: #fff; margin-bottom: 6px;
+  }
+  .hero-title span { color: var(--gold); }
 
-    .barcode-bars {
-      display: flex;
-      align-items: flex-end;
-      gap: 1.5px;
-      height: 52px;
-    }
+  /* 메디컬 ID 카드 */
+  .medical-card {
+    background: linear-gradient(135deg, #0D1E35 0%, #162840 50%, #0D1E35 100%);
+    border: 1px solid rgba(201,168,76,0.4);
+    border-radius: 20px; padding: 28px 24px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(201,168,76,0.15);
+    position: relative; overflow: hidden;
+  }
+  .medical-card::before {
+    content: ''; position: absolute; top: -40px; right: -40px;
+    width: 180px; height: 180px;
+    background: radial-gradient(circle, rgba(201,168,76,0.07) 0%, transparent 70%);
+    border-radius: 50%;
+  }
 
-    .barcode-bars span {
-      display: block;
-      background: #C9A84C;
-      border-radius: 1px;
-    }
+  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .card-logo { font-size: 11px; font-weight: 700; color: var(--gold); letter-spacing: 2px; }
+  .card-barcode {
+    display: flex; align-items: flex-end; gap: 1.5px;
+    height: 28px;
+  }
+  .barcode-line {
+    width: 2px; background: var(--gold); opacity: 0.7;
+    border-radius: 1px;
+  }
 
-    .bc-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: linear-gradient(135deg, rgba(201,168,76,0.15), rgba(201,168,76,0.05));
-      border: 1px solid rgba(201,168,76,0.5);
-      border-radius: 50px;
-      padding: 8px 20px;
-    }
+  .card-bc-code {
+    font-size: clamp(36px, 8vw, 56px); font-weight: 900;
+    color: var(--gold); letter-spacing: 4px;
+    text-shadow: 0 0 30px rgba(201,168,76,0.4);
+    line-height: 1; margin-bottom: 4px;
+  }
+  .card-nickname {
+    font-size: 14px; color: rgba(255,255,255,0.7); margin-bottom: 16px;
+    font-weight: 500;
+  }
+  .card-medical-title {
+    font-size: 12px; color: var(--gold); letter-spacing: 0.5px;
+    padding: 6px 12px; border-left: 2px solid var(--gold);
+    background: rgba(201,168,76,0.08); border-radius: 0 6px 6px 0;
+    margin-bottom: 16px; line-height: 1.4;
+  }
 
-    .bc-code-display {
-      font-family: 'Courier New', monospace;
-      font-size: 2.4rem;
-      font-weight: 900;
-      letter-spacing: 4px;
-      background: linear-gradient(135deg, #C9A84C, #F0D060);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
+  .card-sub-badge {
+    background: rgba(10,22,40,0.8); border: 1px solid rgba(201,168,76,0.3);
+    border-radius: 8px; padding: 10px 14px;
+    font-size: 11px; color: rgba(255,255,255,0.6); line-height: 1.6;
+  }
+  .card-sub-badge strong { color: var(--gold); }
 
-    .narrative-text {
-      font-family: 'Noto Serif KR', serif;
-      font-size: 0.95rem;
-      line-height: 2.0;
-      color: rgba(255,255,255,0.82);
-      word-break: keep-all;
-    }
+  /* 실패 고발 텍스트 박스 */
+  .fail-expose-box {
+    background: linear-gradient(135deg, rgba(232,64,42,0.08), rgba(232,64,42,0.04));
+    border: 1px solid rgba(232,64,42,0.3); border-radius: 16px;
+    padding: 24px; position: relative;
+  }
+  .fail-expose-box::before {
+    content: '⚠️ 당신 몸의 진짜 고장 원인';
+    display: block; font-size: 11px; font-weight: 700;
+    color: var(--red-accent); letter-spacing: 1px; margin-bottom: 12px;
+  }
 
-    .emphasis-box {
-      background: linear-gradient(135deg, rgba(201,168,76,0.08), rgba(201,168,76,0.02));
-      border-left: 3px solid #C9A84C;
-      border-radius: 0 8px 8px 0;
-      padding: 16px 20px;
-    }
+  .story-text {
+    font-size: 14px; line-height: 1.9; color: rgba(255,255,255,0.85);
+    word-break: keep-all;
+  }
+  .story-text strong { color: var(--gold); font-weight: 700; }
+  .story-text em { color: #fff; font-style: normal; font-weight: 600; }
 
-    /* ──────────────────── PAGE DIVIDER ──────────────────── */
-    .page-divider {
-      width: 100%;
-      height: 4px;
-      background: linear-gradient(90deg, transparent, #C9A84C 20%, #F0D060 50%, #C9A84C 80%, transparent);
-      position: relative;
-    }
+  /* ══════════════════════════════
+     PAGE 2 — 11대 진단축
+  ══════════════════════════════ */
+  #page2 { background: linear-gradient(180deg, #080F1C 0%, #0A1628 100%); }
 
-    .page-divider::before {
-      content: '◆';
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      color: #C9A84C;
-      font-size: 1.2rem;
-      background: #0D1B2A;
-      padding: 0 12px;
-    }
+  .domino-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 12px; margin: 20px 0;
+  }
+  .domino-card {
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px; padding: 14px 10px; text-align: center;
+    transition: all 0.3s; position: relative; overflow: hidden;
+    cursor: pointer;
+  }
+  .domino-card.highlighted {
+    border-color: var(--gold); background: rgba(201,168,76,0.1);
+    box-shadow: 0 0 20px rgba(201,168,76,0.2);
+  }
+  .domino-card.highlighted::after {
+    content: '🎯 1순위';
+    position: absolute; top: 6px; right: 6px;
+    font-size: 9px; font-weight: 700; color: var(--gold);
+    background: rgba(0,0,0,0.5); border-radius: 4px; padding: 2px 5px;
+  }
+  .domino-icon { font-size: 22px; margin-bottom: 6px; }
+  .domino-label { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.7); margin-bottom: 8px; }
+  .domino-bar-bg {
+    height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;
+  }
+  .domino-bar-fill {
+    height: 100%; border-radius: 3px; transition: width 1.2s cubic-bezier(.4,0,.2,1);
+    background: linear-gradient(90deg, var(--gold), #F0D060);
+  }
+  .domino-score {
+    font-size: 18px; font-weight: 900; color: #fff; margin-top: 6px;
+  }
 
-    /* ──────────────────── PAGE 2: 11-AXIS CHART ──────────────────── */
-    #page2 {
-      background: linear-gradient(160deg, #0a1520 0%, #111e2e 50%, #0a1520 100%);
-    }
+  /* 도미노 연결선 차트 */
+  .domino-chain {
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px; padding: 20px;
+    margin: 20px 0;
+  }
+  .chain-row {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+    opacity: 0; transform: translateX(-20px);
+    transition: all 0.5s;
+  }
+  .chain-row.visible { opacity: 1; transform: translateX(0); }
+  .chain-node {
+    min-width: 80px; padding: 8px 12px; border-radius: 10px;
+    text-align: center; font-size: 12px; font-weight: 700;
+    border: 1px solid;
+  }
+  .chain-arrow { color: var(--gold); font-size: 16px; flex-shrink: 0; }
+  .chain-desc { font-size: 11px; color: rgba(255,255,255,0.5); line-height: 1.4; }
 
-    .domino-card {
-      background: linear-gradient(145deg, #0f1c2e, #091523);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 16px;
-      transition: all 0.3s ease;
-      position: relative;
-      overflow: hidden;
-    }
+  /* ══════════════════════════════
+     PAGE 3 — 선천 기질 레이어
+  ══════════════════════════════ */
+  #page3 { background: linear-gradient(180deg, #080F1C 0%, #0C1829 100%); }
 
-    .domino-card.first-domino {
-      border-color: rgba(201,168,76,0.5);
-      box-shadow: 0 0 30px rgba(201,168,76,0.15);
-    }
+  /* 삼각 매트릭스 */
+  .triangle-matrix {
+    display: flex; flex-direction: column; gap: 16px; margin: 24px 0;
+  }
+  .trait-layer {
+    border-radius: 16px; padding: 20px 20px 20px 24px;
+    border-left: 4px solid; position: relative; overflow: hidden;
+  }
+  .trait-layer::before {
+    content: ''; position: absolute; top: 0; right: 0; bottom: 0; width: 60%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.02));
+  }
+  .trait-layer-header {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+  }
+  .trait-layer-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+  }
+  .trait-layer-tag { font-size: 10px; font-weight: 700; letter-spacing: 1px; opacity: 0.7; text-transform: uppercase; }
+  .trait-layer-value { font-size: 22px; font-weight: 900; line-height: 1; }
+  .trait-layer-desc { font-size: 13px; color: rgba(255,255,255,0.7); line-height: 1.7; word-break: keep-all; }
 
-    .domino-card.first-domino::before {
-      content: '★ FIRST DOMINO';
-      position: absolute;
-      top: 10px; right: 12px;
-      font-size: 0.6rem;
-      letter-spacing: 2px;
-      color: #C9A84C;
-      font-weight: 700;
-    }
+  /* 삼각형 SVG 다이어그램 */
+  .triangle-svg-wrap {
+    display: flex; justify-content: center; margin: 24px 0;
+    position: relative;
+  }
 
-    .axis-bar-wrap {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+  /* ══════════════════════════════
+     PAGE 4 — 12주 로드맵
+  ══════════════════════════════ */
+  #page4 { background: linear-gradient(180deg, #080F1C 0%, #0A1628 100%); }
 
-    .axis-bar-track {
-      flex: 1;
-      height: 8px;
-      background: rgba(255,255,255,0.08);
-      border-radius: 10px;
-      overflow: hidden;
-    }
+  .week-card {
+    background: linear-gradient(135deg, rgba(13,30,53,0.9), rgba(22,40,64,0.9));
+    border: 1px solid rgba(201,168,76,0.25); border-radius: 20px;
+    padding: 24px; margin-bottom: 20px;
+    position: relative; overflow: hidden;
+  }
+  .week-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, var(--gold), transparent);
+  }
+  .week-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: linear-gradient(135deg, var(--gold), #A07830);
+    color: #fff; font-size: 11px; font-weight: 700;
+    padding: 5px 14px; border-radius: 20px; margin-bottom: 12px;
+  }
+  .week-title {
+    font-size: 16px; font-weight: 800; color: #fff; margin-bottom: 16px; line-height: 1.4;
+  }
 
-    .axis-bar-fill {
-      height: 100%;
-      border-radius: 10px;
-      transition: width 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    }
+  .week-section { margin-bottom: 16px; }
+  .week-section-title {
+    font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
+    text-transform: uppercase; color: var(--gold); margin-bottom: 8px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .week-section-title::after {
+    content: ''; flex: 1; height: 1px; background: rgba(201,168,76,0.2);
+  }
 
-    /* ──────────────────── PAGE 3: TRAIT TRIANGLE ──────────────────── */
-    #page3 {
-      background: linear-gradient(160deg, #111826 0%, #0d1520 50%, #111826 100%);
-    }
+  .rule-item {
+    display: flex; gap: 8px; font-size: 13px; line-height: 1.65;
+    color: rgba(255,255,255,0.8); margin-bottom: 6px; word-break: keep-all;
+  }
+  .rule-ban { color: #FF6B6B; flex-shrink: 0; font-size: 15px; }
+  .rule-ok { color: #69DB7C; flex-shrink: 0; font-size: 15px; }
 
-    .trait-card {
-      background: linear-gradient(145deg, #0f1e30, #091523);
-      border-radius: 18px;
-      overflow: hidden;
-      position: relative;
-    }
+  /* LOCK 카드 */
+  .lock-card {
+    background: linear-gradient(135deg, rgba(10,22,40,0.98), rgba(6,14,26,0.98));
+    border: 1px solid rgba(201,168,76,0.3); border-radius: 20px;
+    padding: 40px 24px; text-align: center; position: relative; overflow: hidden;
+    margin-bottom: 20px;
+  }
+  .lock-card::before {
+    content: ''; position: absolute; inset: 0;
+    background: repeating-linear-gradient(
+      45deg,
+      rgba(201,168,76,0.02) 0px,
+      rgba(201,168,76,0.02) 1px,
+      transparent 1px,
+      transparent 12px
+    );
+  }
+  .lock-icon-wrap {
+    width: 72px; height: 72px; border-radius: 50%;
+    background: rgba(201,168,76,0.1); border: 2px solid rgba(201,168,76,0.3);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 30px; margin: 0 auto 16px;
+    animation: pulse-lock 2s ease-in-out infinite;
+  }
+  @keyframes pulse-lock {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(201,168,76,0.3); }
+    50% { box-shadow: 0 0 0 12px rgba(201,168,76,0.0); }
+  }
+  .lock-weeks {
+    display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; margin-bottom: 16px;
+  }
+  .lock-week-badge {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: rgba(201,168,76,0.08); border: 1px solid rgba(201,168,76,0.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: rgba(201,168,76,0.5);
+  }
+  .lock-title { font-size: 18px; font-weight: 900; color: var(--gold); margin-bottom: 12px; }
+  .lock-desc { font-size: 13px; color: rgba(255,255,255,0.55); line-height: 1.8; word-break: keep-all; }
 
-    .trait-header {
-      padding: 20px 24px 16px;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
-    }
+  /* 하단 여백 */
+  .page-bottom { height: 48px; }
 
-    .trait-body {
-      padding: 20px 24px 24px;
-    }
+  /* ── 애니메이션 ── */
+  .fade-up {
+    opacity: 0; transform: translateY(24px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+  .fade-up.visible { opacity: 1; transform: translateY(0); }
 
-    .triangle-matrix {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0;
-    }
-
-    .triangle-row {
-      display: flex;
-      justify-content: center;
-      gap: 2px;
-    }
-
-    .triangle-node {
-      width: 100px;
-      height: 100px;
-      border-radius: 12px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      border: 1px solid rgba(255,255,255,0.1);
-      transition: all 0.3s;
-    }
-
-    .triangle-connector {
-      width: 2px;
-      height: 30px;
-      background: linear-gradient(to bottom, rgba(201,168,76,0.3), rgba(201,168,76,0.1));
-      margin: 0 auto;
-    }
-
-    /* ──────────────────── PAGE 4: 12-WEEK ROADMAP ──────────────────── */
-    #page4 {
-      background: linear-gradient(160deg, #080f1a 0%, #0d1825 60%, #080f1a 100%);
-    }
-
-    .week-card {
-      background: linear-gradient(145deg, #0f1c2e, #091523);
-      border-radius: 20px;
-      overflow: hidden;
-      border: 1px solid rgba(255,255,255,0.07);
-      transition: all 0.4s ease;
-    }
-
-    .week-card:hover {
-      border-color: rgba(201,168,76,0.2);
-      transform: translateY(-2px);
-      box-shadow: 0 12px 40px rgba(0,0,0,0.3);
-    }
-
-    .week-header {
-      padding: 22px 24px 18px;
-      display: flex;
-      align-items: flex-start;
-      gap: 16px;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
-    }
-
-    .week-num {
-      width: 52px;
-      height: 52px;
-      border-radius: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.3rem;
-      font-weight: 900;
-      flex-shrink: 0;
-      letter-spacing: -1px;
-      font-family: 'Courier New', monospace;
-    }
-
-    .week-body {
-      padding: 22px 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 18px;
-    }
-
-    .section-label {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 0.68rem;
-      font-weight: 700;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-      padding: 4px 10px;
-      border-radius: 20px;
-      margin-bottom: 10px;
-    }
-
-    .action-item {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      padding: 10px 14px;
-      border-radius: 10px;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.05);
-    }
-
-    .action-item.ban {
-      border-color: rgba(192,57,43,0.2);
-      background: rgba(192,57,43,0.05);
-    }
-
-    .action-item.allow {
-      border-color: rgba(74,140,28,0.2);
-      background: rgba(74,140,28,0.05);
-    }
-
-    /* LOCK SECTION */
-    .lock-section {
-      position: relative;
-      border-radius: 20px;
-      overflow: hidden;
-      border: 1px solid rgba(201,168,76,0.2);
-    }
-
-    .lock-overlay {
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(160deg, rgba(13,27,42,0.95), rgba(8,16,28,0.97));
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 20px;
-      z-index: 10;
-      backdrop-filter: blur(8px);
-    }
-
-    .lock-icon-wrap {
-      width: 90px;
-      height: 90px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, rgba(201,168,76,0.15), rgba(201,168,76,0.05));
-      border: 2px solid rgba(201,168,76,0.4);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      animation: lockPulse 3s ease-in-out infinite;
-    }
-
-    @keyframes lockPulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(201,168,76,0.2); }
-      50% { box-shadow: 0 0 0 20px rgba(201,168,76,0); }
-    }
-
-    .locked-weeks-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 8px;
-      padding: 24px;
-      opacity: 0.3;
-      filter: blur(3px);
-      pointer-events: none;
-    }
-
-    .locked-week-stub {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 12px;
-      padding: 20px;
-      height: 120px;
-    }
-
-    /* ──────────────────── GLOBAL DECORATIONS ──────────────────── */
-    .section-title-wrap {
-      position: relative;
-      text-align: center;
-      padding: 20px 0 8px;
-    }
-
-    .section-title-wrap::after {
-      content: '';
-      display: block;
-      width: 60px;
-      height: 2px;
-      background: linear-gradient(90deg, transparent, #C9A84C, transparent);
-      margin: 12px auto 0;
-    }
-
-    .dot-grid {
-      position: absolute;
-      pointer-events: none;
-      opacity: 0.03;
-    }
-
-    .page-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: rgba(201,168,76,0.08);
-      border: 1px solid rgba(201,168,76,0.25);
-      border-radius: 50px;
-      padding: 6px 16px;
-      font-size: 0.72rem;
-      font-weight: 700;
-      letter-spacing: 2px;
-      color: #C9A84C;
-      text-transform: uppercase;
-    }
-
-    /* Chart radar */
-    .chart-container {
-      position: relative;
-      width: 100%;
-      max-width: 340px;
-      margin: 0 auto;
-    }
-
-    /* Scroll animation */
-    .fade-in-up {
-      opacity: 0;
-      transform: translateY(30px);
-      transition: opacity 0.7s ease, transform 0.7s ease;
-    }
-
-    .fade-in-up.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    /* Responsive */
-    @media (max-width: 640px) {
-      .bc-code-display { font-size: 1.8rem; }
-      .narrative-text { font-size: 0.88rem; line-height: 1.9; }
-    }
-
-    /* Divider line */
-    .gold-line {
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(201,168,76,0.3), transparent);
-    }
-
-    /* Nav dots */
-    .nav-dots {
-      position: fixed;
-      right: 20px;
-      top: 50%;
-      transform: translateY(-50%);
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      z-index: 100;
-    }
-
-    .nav-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: rgba(201,168,76,0.3);
-      cursor: pointer;
-      transition: all 0.3s;
-    }
-
-    .nav-dot.active {
-      background: #C9A84C;
-      box-shadow: 0 0 8px rgba(201,168,76,0.5);
-      transform: scale(1.4);
-    }
-  </style>
+  /* 반응형 */
+  @media (max-width: 480px) {
+    .nav-tab { padding: 5px 10px; font-size: 11px; }
+    .domino-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+</style>
 </head>
 <body>
 
-<!-- NAV DOTS -->
-<nav class="nav-dots" id="navDots" aria-label="페이지 네비게이션">
-  <div class="nav-dot active" onclick="scrollToPage(1)" title="바디 페르소나"></div>
-  <div class="nav-dot" onclick="scrollToPage(2)" title="11대 진단축"></div>
-  <div class="nav-dot" onclick="scrollToPage(3)" title="선천 기질"></div>
-  <div class="nav-dot" onclick="scrollToPage(4)" title="12주 로드맵"></div>
+<!-- 로딩 오버레이 -->
+<div id="loading-overlay">
+  <div style="font-size:13px;letter-spacing:3px;color:var(--gold);font-weight:700;margin-bottom:20px;">SLIMMIND</div>
+  <div class="loader-ring"></div>
+  <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:16px;">바디코드 분석 중…</div>
+</div>
+
+<!-- 탑 네비게이션 -->
+<nav id="top-nav">
+  <div class="nav-logo">SLIMMIND</div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="switchPage(1)">페르소나</button>
+    <button class="nav-tab" onclick="switchPage(2)">진단축</button>
+    <button class="nav-tab" onclick="switchPage(3)">기질</button>
+    <button class="nav-tab" onclick="switchPage(4)">로드맵</button>
+  </div>
 </nav>
 
-<!-- ═══════════════════════════════════════════════════
-  PAGE 1: 나의 바디 페르소나
-════════════════════════════════════════════════════ -->
-<section id="page1" class="page-section">
-  <!-- Background decorative elements -->
-  <div style="position:absolute;top:10%;right:-100px;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(201,168,76,0.04),transparent);pointer-events:none;"></div>
-  <div style="position:absolute;bottom:15%;left:-80px;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(26,127,193,0.05),transparent);pointer-events:none;"></div>
+<!-- ════════════════════════════════════
+     PAGE 1 — 나의 바디 페르소나
+════════════════════════════════════ -->
+<section id="page1" class="page active">
+<div class="section-wrap">
 
-  <div class="max-w-2xl mx-auto px-5 py-12">
+  <div class="hero-eyebrow" id="p1-eyebrow">BODY CODE ANALYSIS REPORT</div>
+  <h1 class="hero-title fade-up" id="p1-title" style="transition-delay:0.1s">
+    <span id="p1-name">분석중</span>님만을 위한<br>대사 사슬 해제 해답 책
+  </h1>
+  <p style="text-align:center;font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:24px;letter-spacing:1px;">
+    The SlimMind Book
+  </p>
 
-    <!-- Top Badge -->
-    <div class="flex justify-center mb-8 fade-in-up">
-      <div class="page-badge">
-        <i class="fas fa-dna"></i>
-        PAGE 01 · 바디 페르소나
-      </div>
+  <!-- 메디컬 ID 카드 -->
+  <div class="medical-card fade-up" style="transition-delay:0.2s;margin-bottom:20px;">
+    <div class="card-header">
+      <div class="card-logo">SLIMMIND · MEDICAL ID</div>
+      <div class="card-barcode" id="p1-barcode"></div>
     </div>
 
-    <!-- Main Title -->
-    <div class="text-center mb-8 fade-in-up">
-      <p style="color:rgba(255,255,255,0.45);font-size:0.78rem;letter-spacing:3px;text-transform:uppercase;margin-bottom:12px;" id="p1SubTitle">— THE SLIMMIND BOOK —</p>
-      <h1 style="font-family:'Noto Serif KR',serif;font-size:1.6rem;font-weight:900;line-height:1.5;color:#fff;" id="p1MainTitle">
-        <span id="userNameDisplay">회원</span>님만을 위한<br>
-        <span class="gold-gradient">대사 사슬 해제 해답 책</span>
-      </h1>
-    </div>
+    <div class="card-bc-code" id="p1-bc-code">BC-??</div>
+    <div class="card-nickname" id="p1-nickname">분석 중...</div>
+    <div class="card-medical-title" id="p1-medical-title">분석 중...</div>
 
-    <!-- BC Code Badge -->
-    <div class="flex justify-center mb-8 fade-in-up">
-      <div style="background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.3);border-radius:12px;padding:14px 28px;text-align:center;">
-        <div style="font-size:0.62rem;letter-spacing:3px;color:rgba(201,168,76,0.6);text-transform:uppercase;margin-bottom:8px;">종합 진단 최종 고장 코드</div>
-        <div class="bc-code-display" id="bcCodeDisplay">BC-61</div>
-        <div style="font-size:0.7rem;color:rgba(255,255,255,0.4);margin-top:6px;" id="fullCodeDisplay">BC-61-木-INFP-A형</div>
-      </div>
-    </div>
-
-    <!-- Medical Certificate Card -->
-    <div class="medical-card p-6 mb-6 fade-in-up">
-      <!-- Watermark -->
-      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-30deg);font-size:5rem;font-weight:900;color:rgba(201,168,76,0.025);letter-spacing:8px;pointer-events:none;white-space:nowrap;">SLIMMIND</div>
-
-      <!-- Card Header -->
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.06);">
-        <div>
-          <div style="font-size:0.6rem;letter-spacing:3px;color:rgba(201,168,76,0.5);text-transform:uppercase;margin-bottom:4px;">BODY CODE DIAGNOSIS</div>
-          <div style="font-size:1.1rem;font-weight:700;color:#C9A84C;" id="appNicknameDisplay">#오후만되면_코끼리다리형</div>
-        </div>
-        <!-- Barcode -->
-        <div class="barcode-container">
-          <div class="barcode-bars" id="barcodeDisplay"></div>
-          <div style="font-family:'Courier New',monospace;font-size:0.6rem;color:rgba(201,168,76,0.5);" id="bcBarcodeLabel">BC-61</div>
-        </div>
-      </div>
-
-      <!-- Medical Title -->
-      <div style="margin-bottom:20px;">
-        <div style="font-size:0.6rem;letter-spacing:2px;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:6px;">의학적 전문 진단명</div>
-        <div style="font-size:1.05rem;font-weight:700;color:rgba(255,255,255,0.9);" id="medicalTitleDisplay">하지 림프·정맥 울혈성 체형</div>
-      </div>
-
-      <!-- Narrative -->
-      <div class="narrative-text" id="p1Narrative">
-        <!-- JS로 채워짐 -->
-      </div>
-    </div>
-
-    <!-- Scroll indicator -->
-    <div class="text-center fade-in-up" style="padding-top:8px;">
-      <div style="color:rgba(255,255,255,0.25);font-size:0.7rem;letter-spacing:2px;margin-bottom:10px;">SCROLL DOWN</div>
-      <div style="animation:bounce 2s infinite;">
-        <i class="fas fa-chevron-down" style="color:rgba(201,168,76,0.4);font-size:1.1rem;"></i>
-      </div>
+    <div class="card-sub-badge">
+      종합 진단 최종 고장 코드 : <strong id="p1-full-code">BC-??-?-??-?</strong>
     </div>
   </div>
 
-  <div class="page-divider"></div>
+  <div class="gold-divider"></div>
+
+  <!-- 서사 텍스트 -->
+  <div class="fade-up" style="transition-delay:0.3s;margin-bottom:20px;">
+    <div class="badge-gold" style="margin-bottom:14px;">📖 당신의 몸 이야기</div>
+    <p class="story-text" id="p1-story">분석 중입니다...</p>
+  </div>
+
+  <!-- 실패 유형 고발 박스 -->
+  <div class="fail-expose-box fade-up" style="transition-delay:0.4s;margin-bottom:20px;">
+    <p class="story-text" id="p1-fail-desc">분석 중입니다...</p>
+  </div>
+
+  <!-- BC 마스터 9종 전체 요약 -->
+  <div class="fade-up" style="transition-delay:0.5s;">
+    <div class="badge-gold" style="margin-bottom:14px;">🗂 BC 마스터 9종 전체 코드</div>
+    <div id="p1-bc-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;"></div>
+  </div>
+
+  <div class="page-bottom"></div>
+</div>
 </section>
 
-<!-- ═══════════════════════════════════════════════════
-  PAGE 2: 11대 진단축 역추적
-════════════════════════════════════════════════════ -->
-<section id="page2" class="page-section">
-  <div style="position:absolute;top:20%;left:-60px;width:250px;height:250px;border-radius:50%;background:radial-gradient(circle,rgba(192,57,43,0.04),transparent);pointer-events:none;"></div>
+<!-- ════════════════════════════════════
+     PAGE 2 — 11대 진단축 역추적
+════════════════════════════════════ -->
+<section id="page2" class="page">
+<div class="section-wrap">
 
-  <div class="max-w-2xl mx-auto px-5 py-12">
+  <div class="hero-eyebrow">11 MEDICAL AXIS DIAGNOSIS</div>
+  <h1 class="hero-title fade-up" style="transition-delay:0.1s">
+    첫 번째 도미노 고발:<br><span style="color:var(--gold);" id="p2-domino-title">당신 몸을 무너뜨린 원인</span>
+  </h1>
 
-    <!-- Badge -->
-    <div class="flex justify-center mb-8 fade-in-up">
-      <div class="page-badge" style="border-color:rgba(192,57,43,0.4);color:#E74C3C;">
-        <i class="fas fa-project-diagram"></i>
-        PAGE 02 · 첫 번째 도미노 고발
-      </div>
+  <p class="story-text fade-up" style="transition-delay:0.2s;margin-bottom:24px;" id="p2-story">분석 중...</p>
+
+  <!-- 11축 도미노 그리드 -->
+  <div class="badge-gold" style="margin-bottom:14px;">📊 11대 전문 진단축 스코어보드</div>
+  <div class="domino-grid" id="p2-domino-grid"></div>
+
+  <div class="gold-divider"></div>
+
+  <!-- 인과관계 체인 -->
+  <div class="badge-gold" style="margin-bottom:14px;">🔗 고장 인과관계 역추적 체인</div>
+  <div class="domino-chain" id="p2-chain">
+    <div class="chain-row" id="chain-0">
+      <div class="chain-node" style="background:rgba(201,168,76,0.1);border-color:rgba(201,168,76,0.4);color:var(--gold);" id="chain-node-0">첫 도미노</div>
+      <div class="chain-arrow">→</div>
+      <div class="chain-desc" id="chain-desc-0">1순위 고장축 → 호르몬계 자극</div>
     </div>
-
-    <!-- Title -->
-    <div class="section-title-wrap fade-in-up mb-4">
-      <p style="font-size:0.7rem;letter-spacing:3px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:8px;">11인 메디컬 드림팀의 정밀 고발</p>
-      <h2 style="font-family:'Noto Serif KR',serif;font-size:1.5rem;font-weight:900;color:#fff;line-height:1.5;">
-        당신 몸을 무너뜨린<br><span style="background:linear-gradient(135deg,#E74C3C,#C0392B);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">'첫 번째 도미노'</span>
-      </h2>
+    <div class="chain-row" id="chain-1">
+      <div class="chain-node" style="background:rgba(232,64,42,0.1);border-color:rgba(232,64,42,0.4);color:#FF6B6B;">대사 차단</div>
+      <div class="chain-arrow">→</div>
+      <div class="chain-desc">호르몬 교란 → 기초대사량 저하 → 지방 축적 가속</div>
     </div>
-
-    <!-- Narrative -->
-    <div class="emphasis-box mb-8 fade-in-up" style="border-color:rgba(192,57,43,0.4);">
-      <p class="narrative-text" id="p2Narrative" style="font-size:0.88rem;"></p>
+    <div class="chain-row" id="chain-2">
+      <div class="chain-node" style="background:rgba(106,78,170,0.1);border-color:rgba(106,78,170,0.4);color:#B39DDB;">심리 폭식</div>
+      <div class="chain-arrow">→</div>
+      <div class="chain-desc">도파민 추락 → 가짜 허기 → 보상성 과식 유발</div>
     </div>
-
-    <!-- First Domino Highlight -->
-    <div class="fade-in-up mb-8">
-      <div style="background:linear-gradient(135deg,rgba(192,57,43,0.12),rgba(192,57,43,0.04));border:1px solid rgba(192,57,43,0.3);border-radius:16px;padding:20px;text-align:center;">
-        <div style="font-size:0.62rem;letter-spacing:3px;color:rgba(192,57,43,0.7);text-transform:uppercase;margin-bottom:12px;">FIRST DOMINO — 고장 원점</div>
-        <div style="font-size:2.5rem;margin-bottom:8px;" id="firstDominoIcon">🧠</div>
-        <div style="font-size:1.3rem;font-weight:900;color:#fff;margin-bottom:6px;" id="firstDominoName">심리·부신 센터</div>
-        <div style="font-size:0.82rem;color:rgba(255,255,255,0.5);line-height:1.7;" id="firstDominoDesc">감정적 섭식·폭식 사이클·도파민 보상 회로</div>
-      </div>
-    </div>
-
-    <!-- Radar Chart -->
-    <div class="fade-in-up mb-8">
-      <div style="background:linear-gradient(145deg,#0f1c2e,#091523);border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:24px;">
-        <div style="text-align:center;margin-bottom:16px;">
-          <span style="font-size:0.65rem;letter-spacing:2px;color:rgba(255,255,255,0.4);text-transform:uppercase;">11대 전문 진단축 스코어맵</span>
-        </div>
-        <div class="chart-container">
-          <canvas id="radarChart"></canvas>
-        </div>
-      </div>
-    </div>
-
-    <!-- 11 Axis Bars -->
-    <div class="fade-in-up">
-      <div style="background:linear-gradient(145deg,#0f1c2e,#091523);border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:24px;">
-        <div style="font-size:0.65rem;letter-spacing:2px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:20px;">축별 고장 지수 상세</div>
-        <div id="axisBarsContainer" style="display:flex;flex-direction:column;gap:12px;"></div>
-      </div>
+    <div class="chain-row" id="chain-3">
+      <div class="chain-node" style="background:rgba(26,127,193,0.1);border-color:rgba(26,127,193,0.4);color:#64B5F6;">국소 부종</div>
+      <div class="chain-arrow">→</div>
+      <div class="chain-desc">체액 정체 → 림프 차단 → 국소 지방 고착화</div>
     </div>
   </div>
 
-  <div class="page-divider"></div>
+  <div class="page-bottom"></div>
+</div>
 </section>
 
-<!-- ═══════════════════════════════════════════════════
-  PAGE 3: 선천 기질 레이어
-════════════════════════════════════════════════════ -->
-<section id="page3" class="page-section">
-  <div style="position:absolute;top:15%;right:-60px;width:280px;height:280px;border-radius:50%;background:radial-gradient(circle,rgba(201,168,76,0.04),transparent);pointer-events:none;"></div>
+<!-- ════════════════════════════════════
+     PAGE 3 — 선천 기질 레이어
+════════════════════════════════════ -->
+<section id="page3" class="page">
+<div class="section-wrap">
 
-  <div class="max-w-2xl mx-auto px-5 py-12">
+  <div class="hero-eyebrow">INNATE DISPOSITION ANALYSIS</div>
+  <h1 class="hero-title fade-up" style="transition-delay:0.1s">
+    타고난 체질적 그릇:<br><span style="color:var(--gold);">명리학과 생리학의 교차점</span>
+  </h1>
+  <p class="story-text fade-up" style="transition-delay:0.15s;margin-bottom:24px;">
+    똑같은 체형 코드를 가졌더라도, 당신이 타고난 성향과 기질에 따라 행동 지침은 완전히 재조합되어야 합니다. 기계적인 매뉴얼은 당신의 몸을 고칠 수 없습니다.
+  </p>
 
-    <!-- Badge -->
-    <div class="flex justify-center mb-8 fade-in-up">
-      <div class="page-badge" style="border-color:rgba(201,168,76,0.4);color:#C9A84C;">
-        <i class="fas fa-yin-yang"></i>
-        PAGE 03 · 선천 기질 레이어
-      </div>
-    </div>
-
-    <!-- Title -->
-    <div class="section-title-wrap fade-in-up mb-4">
-      <p style="font-size:0.7rem;letter-spacing:3px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:8px;">명리학 × 생리학의 교차점</p>
-      <h2 style="font-family:'Noto Serif KR',serif;font-size:1.5rem;font-weight:900;color:#fff;line-height:1.5;">
-        타고난 체질적 그릇
-      </h2>
-    </div>
-
-    <!-- Intro narrative -->
-    <div class="emphasis-box mb-8 fade-in-up">
-      <p class="narrative-text" style="font-size:0.88rem;">
-        똑같은 체형 코드를 가졌더라도, 당신이 타고난 성향과 기질에 따라 행동 지침은 완전히 재조합되어야 합니다. 기계적인 매뉴얼은 당신의 몸을 고칠 수 없습니다.
-      </p>
-    </div>
-
-    <!-- Triangle Matrix -->
-    <div class="fade-in-up mb-6">
-      <div style="background:linear-gradient(145deg,#0f1c2e,#091523);border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:28px;text-align:center;">
-        <div style="font-size:0.62rem;letter-spacing:2px;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:24px;">삼각 성향 매트릭스</div>
-
-        <!-- Triangle top node: 오행 -->
-        <div class="flex justify-center mb-2">
-          <div id="sajuNode" class="triangle-node" style="width:120px;height:90px;background:rgba(201,168,76,0.08);border-color:rgba(201,168,76,0.3);">
-            <div style="font-size:1.8rem;" id="sajuEmoji">🌳</div>
-            <div style="font-size:0.75rem;font-weight:700;color:#C9A84C;" id="sajuLabel">木(목)</div>
-            <div style="font-size:0.6rem;color:rgba(255,255,255,0.4);">만세력 오행</div>
-          </div>
-        </div>
-
-        <!-- Connector -->
-        <div style="display:flex;justify-content:center;gap:80px;height:24px;align-items:flex-end;">
-          <div style="width:1px;height:24px;background:linear-gradient(to bottom,rgba(201,168,76,0.4),rgba(201,168,76,0.1));margin-right:50px;"></div>
-          <div style="width:1px;height:24px;background:linear-gradient(to bottom,rgba(201,168,76,0.4),rgba(201,168,76,0.1));margin-left:50px;"></div>
-        </div>
-
-        <!-- Bottom row: MBTI + Blood -->
-        <div style="display:flex;justify-content:center;gap:16px;">
-          <div id="mbtiNode" class="triangle-node" style="background:rgba(123,31,162,0.08);border-color:rgba(123,31,162,0.3);">
-            <div style="font-size:1.5rem;">🧬</div>
-            <div style="font-size:0.8rem;font-weight:700;color:#CE93D8;" id="mbtiLabel">INFP</div>
-            <div style="font-size:0.58rem;color:rgba(255,255,255,0.4);">MBTI</div>
-          </div>
-          <div id="bloodNode" class="triangle-node" style="background:rgba(192,57,43,0.08);border-color:rgba(192,57,43,0.3);">
-            <div style="font-size:1.5rem;">🩸</div>
-            <div style="font-size:0.8rem;font-weight:700;color:#EF9A9A;" id="bloodLabel">A형</div>
-            <div style="font-size:0.58rem;color:rgba(255,255,255,0.4);">혈액형</div>
-          </div>
-        </div>
-
-        <!-- Center connection line -->
-        <div style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.06);">
-          <div style="font-size:0.62rem;letter-spacing:1px;color:rgba(201,168,76,0.5);" id="traitCodeDisplay">木 × INFP × A형 = 독립 맞춤 프로토콜 활성화</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 3 Trait Cards -->
-    <div style="display:flex;flex-direction:column;gap:16px;">
-
-      <!-- 오행 카드 -->
-      <div class="trait-card fade-in-up" style="border:1px solid rgba(201,168,76,0.15);">
-        <div class="trait-header" style="background:rgba(201,168,76,0.05);">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <div style="width:36px;height:36px;border-radius:10px;background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.3);display:flex;align-items:center;justify-content:center;font-size:1.2rem;" id="ohaengIcon">🌳</div>
-            <div>
-              <div style="font-size:0.6rem;letter-spacing:2px;color:rgba(201,168,76,0.6);text-transform:uppercase;">만세력 오행 필터</div>
-              <div style="font-size:0.95rem;font-weight:700;color:#C9A84C;" id="ohaengTitle">木(목) 기운</div>
-            </div>
-          </div>
-        </div>
-        <div class="trait-body">
-          <p class="narrative-text" id="ohaengDesc" style="font-size:0.87rem;"></p>
-        </div>
-      </div>
-
-      <!-- MBTI 카드 -->
-      <div class="trait-card fade-in-up" style="border:1px solid rgba(123,31,162,0.2);">
-        <div class="trait-header" style="background:rgba(123,31,162,0.05);">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <div style="width:36px;height:36px;border-radius:10px;background:rgba(123,31,162,0.12);border:1px solid rgba(123,31,162,0.3);display:flex;align-items:center;justify-content:center;font-size:1.2rem;">🧬</div>
-            <div>
-              <div style="font-size:0.6rem;letter-spacing:2px;color:rgba(206,147,216,0.7);text-transform:uppercase;">MBTI 행동 양식 필터</div>
-              <div style="font-size:0.95rem;font-weight:700;color:#CE93D8;" id="mbtiTitle">INFP 유형</div>
-            </div>
-          </div>
-        </div>
-        <div class="trait-body">
-          <p class="narrative-text" id="mbtiDesc" style="font-size:0.87rem;"></p>
-        </div>
-      </div>
-
-      <!-- 혈액형 카드 -->
-      <div class="trait-card fade-in-up" style="border:1px solid rgba(192,57,43,0.2);">
-        <div class="trait-header" style="background:rgba(192,57,43,0.05);">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <div style="width:36px;height:36px;border-radius:10px;background:rgba(192,57,43,0.12);border:1px solid rgba(192,57,43,0.3);display:flex;align-items:center;justify-content:center;font-size:1.2rem;">🩸</div>
-            <div>
-              <div style="font-size:0.6rem;letter-spacing:2px;color:rgba(239,154,154,0.7);text-transform:uppercase;">혈액형 생리학 필터</div>
-              <div style="font-size:0.95rem;font-weight:700;color:#EF9A9A;" id="bloodTitle">A형 생리 시스템</div>
-            </div>
-          </div>
-        </div>
-        <div class="trait-body">
-          <p class="narrative-text" id="bloodDesc" style="font-size:0.87rem;"></p>
-        </div>
-      </div>
-    </div>
-
+  <!-- 삼각형 SVG 다이어그램 -->
+  <div class="triangle-svg-wrap fade-up" style="transition-delay:0.2s;">
+    <svg width="280" height="240" viewBox="0 0 280 240">
+      <defs>
+        <linearGradient id="triGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#C9A84C;stop-opacity:0.15"/>
+          <stop offset="100%" style="stop-color:#C9A84C;stop-opacity:0.03"/>
+        </linearGradient>
+      </defs>
+      <!-- 삼각형 -->
+      <polygon points="140,20 20,220 260,220" fill="url(#triGrad)" stroke="rgba(201,168,76,0.3)" stroke-width="1.5"/>
+      <!-- 내부 연결선 -->
+      <line x1="140" y1="20" x2="140" y2="220" stroke="rgba(201,168,76,0.15)" stroke-width="1" stroke-dasharray="4,4"/>
+      <line x1="20" y1="220" x2="200" y2="120" stroke="rgba(201,168,76,0.15)" stroke-width="1" stroke-dasharray="4,4"/>
+      <line x1="260" y1="220" x2="80" y2="120" stroke="rgba(201,168,76,0.15)" stroke-width="1" stroke-dasharray="4,4"/>
+      <!-- 꼭짓점 노드 -->
+      <circle cx="140" cy="20" r="24" fill="rgba(201,168,76,0.15)" stroke="rgba(201,168,76,0.5)" stroke-width="1.5"/>
+      <circle cx="20" cy="220" r="24" fill="rgba(26,127,193,0.15)" stroke="rgba(26,127,193,0.5)" stroke-width="1.5"/>
+      <circle cx="260" cy="220" r="24" fill="rgba(192,57,122,0.15)" stroke="rgba(192,57,122,0.5)" stroke-width="1.5"/>
+      <!-- 라벨 -->
+      <text x="140" y="14" text-anchor="middle" font-size="18" dy="6">🌿</text>
+      <text x="140" y="54" text-anchor="middle" font-size="10" fill="rgba(201,168,76,0.9)" font-weight="bold" id="tri-saju-label">木</text>
+      <text x="20" y="214" text-anchor="middle" font-size="18" dy="6">🧬</text>
+      <text x="20" y="252" text-anchor="middle" font-size="10" fill="rgba(26,127,193,0.9)" font-weight="bold" id="tri-blood-label">A형</text>
+      <text x="260" y="214" text-anchor="middle" font-size="18" dy="6">🧠</text>
+      <text x="260" y="252" text-anchor="middle" font-size="10" fill="rgba(192,57,122,0.9)" font-weight="bold" id="tri-mbti-label">INFP</text>
+      <!-- 중앙 텍스트 -->
+      <text x="140" y="130" text-anchor="middle" font-size="11" fill="rgba(201,168,76,0.8)" font-weight="bold" id="tri-center">BC코드</text>
+      <text x="140" y="148" text-anchor="middle" font-size="9" fill="rgba(255,255,255,0.4)">기질 융합 코드</text>
+    </svg>
   </div>
 
-  <div class="page-divider"></div>
+  <!-- 삼각 매트릭스 레이어 -->
+  <div class="triangle-matrix fade-up" style="transition-delay:0.3s;" id="p3-matrix"></div>
+
+  <div class="page-bottom"></div>
+</div>
 </section>
 
-<!-- ═══════════════════════════════════════════════════
-  PAGE 4: 12주 하이퍼 로드맵
-════════════════════════════════════════════════════ -->
-<section id="page4" class="page-section" style="padding-bottom:80px;">
-  <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:600px;height:200px;background:radial-gradient(circle,rgba(201,168,76,0.04),transparent);pointer-events:none;"></div>
+<!-- ════════════════════════════════════
+     PAGE 4 — 12주 하이퍼 로드맵
+════════════════════════════════════ -->
+<section id="page4" class="page">
+<div class="section-wrap">
 
-  <div class="max-w-2xl mx-auto px-5 py-12">
+  <div class="hero-eyebrow">12-WEEK HYPER ROADMAP</div>
+  <h1 class="hero-title fade-up" style="transition-delay:0.1s">
+    초정밀 타임라인 대시보드:<br><span style="color:var(--gold);">12주 하이퍼 로드맵</span>
+  </h1>
+  <p class="story-text fade-up" style="transition-delay:0.15s;margin-bottom:8px;" id="p4-code-display"></p>
 
-    <!-- Badge -->
-    <div class="flex justify-center mb-8 fade-in-up">
-      <div class="page-badge" style="border-color:rgba(26,127,193,0.4);color:#64B5F6;">
-        <i class="fas fa-route"></i>
-        PAGE 04 · 12주 하이퍼 로드맵
-      </div>
+  <!-- 진행 바 -->
+  <div class="fade-up" style="transition-delay:0.2s;margin-bottom:28px;">
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:6px;">
+      <span>시작</span><span>12주 완료</span>
     </div>
-
-    <!-- Title -->
-    <div class="section-title-wrap fade-in-up mb-8">
-      <p style="font-size:0.7rem;letter-spacing:3px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:8px;">초정밀 타임라인 대시보드</div>
-      <h2 style="font-family:'Noto Serif KR',serif;font-size:1.5rem;font-weight:900;color:#fff;line-height:1.5;">
-        최종장: 대사 사슬을<br><span style="background:linear-gradient(135deg,#64B5F6,#1A7FC1);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">완전히 끊어내는 12주</span>
-      </h2>
+    <div style="height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;">
+      <div style="width:33.3%;height:100%;background:linear-gradient(90deg,var(--gold),#F0D060);border-radius:3px;"></div>
     </div>
-
-    <!-- Phase Label: 1-4주 -->
-    <div class="fade-in-up mb-4">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
-        <div style="flex:1;height:1px;background:rgba(255,255,255,0.08);"></div>
-        <div style="display:flex;align-items:center;gap:8px;padding:6px 16px;background:rgba(74,140,28,0.1);border:1px solid rgba(74,140,28,0.3);border-radius:20px;">
-          <i class="fas fa-unlock" style="color:#81C784;font-size:0.8rem;"></i>
-          <span style="font-size:0.68rem;letter-spacing:2px;color:#81C784;font-weight:700;">1~4주차 · 오픈 액션 구간</span>
-        </div>
-        <div style="flex:1;height:1px;background:rgba(255,255,255,0.08);"></div>
-      </div>
+    <div style="display:flex;gap:4px;margin-top:8px;">
+      <span style="font-size:10px;color:var(--gold);">🔓 1~4주차 개방</span>
+      <span style="font-size:10px;color:rgba(255,255,255,0.3);">•</span>
+      <span style="font-size:10px;color:rgba(201,168,76,0.4);">🔒 5~12주차 잠금</span>
     </div>
-
-    <!-- Week Cards Container -->
-    <div id="weekCardsContainer" style="display:flex;flex-direction:column;gap:20px;"></div>
-
-    <!-- Lock Section: 5-12주 -->
-    <div class="fade-in-up mt-8">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
-        <div style="flex:1;height:1px;background:rgba(255,255,255,0.08);"></div>
-        <div style="display:flex;align-items:center;gap:8px;padding:6px 16px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.25);border-radius:20px;">
-          <i class="fas fa-lock" style="color:#C9A84C;font-size:0.8rem;"></i>
-          <span style="font-size:0.68rem;letter-spacing:2px;color:#C9A84C;font-weight:700;">5~12주차 · 하이퍼 세포 연소 구간</span>
-        </div>
-        <div style="flex:1;height:1px;background:rgba(255,255,255,0.08);"></div>
-      </div>
-
-      <div class="lock-section">
-        <!-- Locked weeks blur preview -->
-        <div class="locked-weeks-grid">
-          <div class="locked-week-stub"></div>
-          <div class="locked-week-stub"></div>
-          <div class="locked-week-stub"></div>
-          <div class="locked-week-stub"></div>
-          <div class="locked-week-stub"></div>
-          <div class="locked-week-stub"></div>
-          <div class="locked-week-stub"></div>
-          <div class="locked-week-stub"></div>
-        </div>
-        <!-- Lock Overlay -->
-        <div class="lock-overlay">
-          <div class="lock-icon-wrap">
-            <i class="fas fa-lock" style="font-size:2rem;color:#C9A84C;"></i>
-          </div>
-          <div style="text-align:center;max-width:280px;padding:0 20px;">
-            <div style="font-size:0.6rem;letter-spacing:3px;color:rgba(201,168,76,0.6);text-transform:uppercase;margin-bottom:10px;">CLASSIFIED — 보안 잠금 구간</div>
-            <div style="font-size:0.95rem;font-weight:700;color:#fff;line-height:1.7;margin-bottom:16px;" id="lockText">
-              뇌의 도파민 보상 회로를 리셋하고 본격적으로 전신 체지방을 융단폭격하는<br>
-              <span style="color:#C9A84C;">[5~12주차: 하이퍼 세포 연소 구간]</span>
-            </div>
-            <p style="font-size:0.8rem;color:rgba(255,255,255,0.5);line-height:1.7;" id="lockSubText">
-            </p>
-            <div style="margin-top:20px;">
-              <div style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,rgba(201,168,76,0.15),rgba(201,168,76,0.05));border:1px solid rgba(201,168,76,0.4);border-radius:50px;padding:10px 24px;font-size:0.78rem;font-weight:700;color:#C9A84C;cursor:pointer;" onclick="alert('상담 예약 후 1~4주차 미션 완료 시 자동 해제됩니다.')">
-                <i class="fas fa-calendar-check"></i>
-                상담 예약으로 잠금 해제
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Bottom CTA -->
-    <div class="fade-in-up mt-10 text-center">
-      <div style="background:linear-gradient(145deg,rgba(201,168,76,0.08),rgba(201,168,76,0.02));border:1px solid rgba(201,168,76,0.2);border-radius:20px;padding:28px;">
-        <div style="font-size:0.62rem;letter-spacing:3px;color:rgba(201,168,76,0.5);text-transform:uppercase;margin-bottom:12px;">YOUR FINAL MISSION</div>
-        <p style="font-family:'Noto Serif KR',serif;font-size:1.05rem;font-weight:700;color:#fff;line-height:1.8;margin-bottom:20px;">
-          당신의 몸은 절대 게으른 것이 아니었습니다.<br>
-          <span class="gold-gradient">이제 당신만의 고장 코드를 가진 <br>정밀 전략으로 다시 시작합니다.</span>
-        </p>
-        <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;">
-          <div style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#C9A84C,#E5C060);border-radius:50px;padding:12px 28px;font-size:0.85rem;font-weight:700;color:#0D1B2A;cursor:pointer;" onclick="window.location.href='/'">
-            <i class="fas fa-redo"></i>
-            설문 다시하기
-          </div>
-          <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:50px;padding:12px 28px;font-size:0.85rem;font-weight:700;color:#fff;cursor:pointer;" onclick="shareResult()">
-            <i class="fas fa-share-alt"></i>
-            결과 공유
-          </div>
-        </div>
-      </div>
-    </div>
-
   </div>
+
+  <!-- 주차 카드 컨테이너 -->
+  <div id="p4-weeks"></div>
+
+  <div class="page-bottom"></div>
+</div>
 </section>
 
-<!-- Scripts -->
+<!-- ════════════════════════════════════
+     JS 로직
+════════════════════════════════════ -->
 <script src="/survey-data.js"></script>
 <script src="/bc-engine.js"></script>
 <script>
-// ═══════════════════════════════════════════════════
-// MAIN RENDER ENGINE
-// ═══════════════════════════════════════════════════
+// ── 페이지 전환 ──────────────────────────────
+function switchPage(num) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page' + num).classList.add('active');
+  document.querySelectorAll('.nav-tab')[num - 1].classList.add('active');
+  window.scrollTo(0, 0);
+  // 해당 페이지 애니메이션 트리거
+  setTimeout(() => triggerAnimations(), 100);
+}
 
-const BCE = window.BCEngine;
-let globalResult = null;
+// ── 스크롤 인터섹션 애니메이션 ──────────────
+function triggerAnimations() {
+  document.querySelectorAll('.fade-up, .chain-row').forEach(el => {
+    el.classList.add('visible');
+  });
+}
 
-// 설문 결과 로드
-function loadSurveyResult() {
-  try {
-    const raw = sessionStorage.getItem('slimmind_result')
-      || localStorage.getItem('slimmind_result');
-    if (raw) return JSON.parse(raw);
-  } catch(e) {}
+// ── URL 파라미터 / localStorage 데이터 로드 ──
+function loadResultData() {
+  // 1) URL 파라미터에서 확인
+  const params = new URLSearchParams(window.location.search);
+  const urlData = params.get('data');
+  if (urlData) {
+    try { return JSON.parse(decodeURIComponent(urlData)); } catch(e) {}
+  }
+  // 2) localStorage에서 확인
+  const keys = ['slimmind_result', 'surveyResult', 'survey_result', 'resultData', 'sm_result'];
+  for (const key of keys) {
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        // calculateAxisScores 결과 구조 확인
+        if (parsed.axisScores || parsed.answers) return parsed;
+      } catch(e) {}
+    }
+  }
+  return null;
+}
 
-  // 데모 데이터
+// ── 데모 데이터 생성 ──────────────────────────
+function makeDemoData() {
   return {
-    userName: '박지현',
-    axisScores: { A01:55, A02:92, A03:72, A04:45, A05:63, A06:78, A07:88, A08:95, A09:30, A10:40 },
+    userName: '김지현',
+    axisScores: { A01:72, A02:85, A03:58, A04:41, A05:63, A06:78, A07:90, A08:88, A09:30, A10:55 },
     ohaengType: '목',
-    ohaengScores: { '목':100, '화':45, '토':30, '금':60, '수':20 },
-    topAxes: ['A08','A07','A02'],
-    answers: {
-      Q01: '박지현',
-      Q_MBTI: 'INFP',
-      Q_BLOOD: 'A',
-      Q_BLOODTYPE: 'A',
-      blood_type: 'A',
-    }
+    mbtiType: 'INFP',
+    bloodType: 'A',
+    isDemo: true,
   };
 }
 
-function initPage() {
-  const surveyRaw = loadSurveyResult();
-  const answers = surveyRaw.answers || {};
-
-  // compileFinalResult 호출
-  const result = BCE.compileFinalResult(surveyRaw, answers);
-  globalResult = result;
-
-  renderPage1(result);
-  renderPage2(result);
-  renderPage3(result);
-  renderPage4(result);
-  initScrollAnimations();
-  initNavDots();
+// ── 바코드 생성 ──────────────────────────────
+function buildBarcode(el) {
+  const heights = [22,14,18,10,24,16,20,12,22,18,14,24,10,20,16];
+  heights.forEach(h => {
+    const line = document.createElement('div');
+    line.className = 'barcode-line';
+    line.style.height = h + 'px';
+    el.appendChild(line);
+  });
 }
 
-// ──────────────────── PAGE 1 ────────────────────
-function renderPage1(r) {
-  document.getElementById('userNameDisplay').textContent = r.userName;
-  document.getElementById('bcCodeDisplay').textContent = r.bcCode;
-  document.getElementById('fullCodeDisplay').textContent = r.fullCode;
-  document.getElementById('appNicknameDisplay').textContent = r.appNickname;
-  document.getElementById('medicalTitleDisplay').textContent = r.medicalTitle;
-  document.getElementById('bcBarcodeLabel').textContent = r.bcCode;
+// ── 메인 렌더링 ──────────────────────────────
+function renderResult(data) {
+  const {
+    userName = '고객',
+    axisScores = {},
+    ohaengType = '목',
+    mbtiType = 'INFP',
+    bloodType = 'A',
+  } = data;
 
-  // Barcode generation
-  generateBarcode('barcodeDisplay', r.bcCode);
+  // BC 코드 연산
+  const bc = computeBCCode(axisScores);
+  const { bcCode, bcMaster, causalScores, sorted, firstDomino, axis11Scores } = bc;
 
-  // Narrative
-  const narrative = buildP1Narrative(r);
-  document.getElementById('p1Narrative').innerHTML = narrative;
-}
+  // 복합 코드: BC-61-木-INFP-A
+  const fullCode = `${bcCode}-${ohaengType}-${mbtiType}-${bloodType}`;
 
-function buildP1Narrative(r) {
-  return `
-    <p style="margin-bottom:14px;">
-      남들처럼 똑같이 닭가슴살을 먹고, 눈물을 흘리며 천국의 계단을 타도 살이 빠지지 않고 오히려 다음 날 아침 다리가 터질 듯이 붓던 잔혹한 날들. <strong style="color:#C9A84C;">${r.userName}</strong>님, 당신은 절대 게으르거나 의지가 부족한 것이 아니었습니다.
-    </p>
-    <p style="margin-bottom:14px;">
-      당신의 영혼과 신체를 갉아먹던 그 괴로운 증상들의 진짜 의학적 이름은 바로<br>
-      <span style="display:inline-block;margin-top:6px;padding:6px 14px;background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.3);border-radius:8px;font-family:'Courier New',monospace;font-weight:700;color:#C9A84C;">[${r.bcCode} : ${r.appNickname}]</span>
-    </p>
-    <p style="margin-bottom:14px;">
-      당신의 몸은 현재 <strong style="color:rgba(255,255,255,0.85);">${r.failedTypeDesc}</strong>
-    </p>
-    <p>
-      오늘 이 책은 당신이 타고난 선천적 기질과 후천적인 신체 고장 원인을 융합하여, 당신의 대사 사슬을 완벽하게 끊어낼 단 하나의 정밀한 의학적 해답을 제공합니다. 이제 기계적인 진단서가 아닌, <em style="color:#C9A84C;">당신의 몸을 살려낼 단 한 편의 다큐멘터리</em> 속으로 들어오십시오.
-    </p>
+  /* ─── PAGE 1 ─── */
+  document.getElementById('p1-name').textContent = userName;
+  document.getElementById('p1-bc-code').textContent = bcCode;
+  document.getElementById('p1-nickname').textContent = bcMaster.app_nickname;
+  document.getElementById('p1-medical-title').textContent = bcMaster.medical_title;
+  document.getElementById('p1-full-code').textContent = fullCode;
+  buildBarcode(document.getElementById('p1-barcode'));
+
+  // 서사 텍스트
+  document.getElementById('p1-story').innerHTML = `
+    남들처럼 똑같이 닭가슴살을 먹고, 눈물을 흘리며 천국의 계단을 타도 살이 빠지지 않고 오히려 다음 날 아침 다리가 터질 듯이 붓던 잔혹한 날들.
+    <strong>${userName}</strong>님, 당신은 절대 게으르거나 의지가 부족한 것이 아니었습니다.
+    당신의 영혼과 신체를 갉아먹던 그 괴로운 증상들의 진짜 의학적 이름은 바로
+    <em>[${bcCode} : ${bcMaster.app_nickname}]</em>입니다.<br><br>
+    오늘 이 책은 당신이 타고난 선천적 기질과 후천적인 신체 고장 원인을 융합하여,
+    당신의 대사 사슬을 완벽하게 끊어낼 단 하나의 정밀한 의학적 해답을 제공합니다.
   `;
-}
 
-function generateBarcode(containerId, code) {
-  const el = document.getElementById(containerId);
-  if (!el) return;
-  const heights = [40,28,44,22,38,50,30,42,26,44,32,48,20,36,52,24,40,28,34,46,22,38,50,26,42,30];
-  let html = '';
-  heights.forEach((h, i) => {
-    const w = i % 3 === 0 ? 2 : 1;
-    html += `<span style="width:${w}px;height:${h}px;"></span>`;
-  });
-  el.innerHTML = html;
-}
+  document.getElementById('p1-fail-desc').innerHTML =
+    '당신의 몸은 현재 <strong>' + bcMaster.failed_type_desc + '</strong>';
 
-// ──────────────────── PAGE 2 ────────────────────
-function renderPage2(r) {
-  // Narrative
-  const p2Text = buildP2Narrative(r);
-  document.getElementById('p2Narrative').innerHTML = p2Text;
-
-  // First Domino
-  const fd = r.firstDomino;
-  document.getElementById('firstDominoIcon').textContent = fd.icon;
-  document.getElementById('firstDominoName').textContent = fd.name + ' 센터';
-  document.getElementById('firstDominoDesc').textContent = fd.desc;
-
-  // Axis bars
-  renderAxisBars(r.axis11Scores);
-
-  // Radar chart
-  setTimeout(() => renderRadarChart(r.axis11Scores), 300);
-}
-
-function buildP2Narrative(r) {
-  return `모든 문제를 한 번에 해결하려는 다이어트는 100% 실패합니다. 우리 몸은 유기적으로 연결되어 있기 때문입니다. 슬림마인드의 11가지 전문 진단축(<em style="color:rgba(201,168,76,0.8);">약물·식단·운동·회복·한방·심리·체형·호르몬·시술·관리·철학</em>) 데이터 연산 결과, <strong style="color:#C9A84C;">${r.userName}</strong>님의 신체 네트워크를 연쇄적으로 무너뜨린 무서운 [첫 번째 도미노]는 바로 '<strong style="color:#E74C3C;">${r.firstDomino.name} 센터</strong>'로 최종 도출되었습니다.<br><br>${r.firstDomino.name} 센터에서 발생한 물리적·기능적 고장이 호르몬계를 자극하고, 이것이 대사를 막아 최종적으로 심리적 폭식과 국소 부위 부종을 유발한 것입니다. 흐르지 않고 막혀서 썩어가는 강물에 아무리 비싼 다이어트 약을 타고 식단을 조절해 봤자 밑 빠진 독에 물 붓기입니다.`;
-}
-
-function renderAxisBars(axis11Scores) {
-  const container = document.getElementById('axisBarsContainer');
-  if (!container) return;
-
-  const sorted = [...axis11Scores].sort((a, b) => b.score - a.score);
-  let html = '';
-
-  sorted.forEach((ax, i) => {
-    const isFirst = i === 0;
-    const pct = ax.score;
-    const barColor = isFirst
-      ? 'linear-gradient(90deg,#E74C3C,#C0392B)'
-      : `linear-gradient(90deg,${ax.color},${ax.color}88)`;
-
-    html += `
-      <div style="padding:2px 0;">
-        <div class="axis-bar-wrap">
-          <div style="width:70px;display:flex;align-items:center;gap:6px;flex-shrink:0;">
-            <span style="font-size:1rem;">${ax.icon}</span>
-            <span style="font-size:0.72rem;font-weight:600;color:${isFirst ? '#E74C3C' : 'rgba(255,255,255,0.65)'};">${ax.name}</span>
-          </div>
-          <div class="axis-bar-track" style="flex:1;">
-            <div class="axis-bar-fill" style="width:0%;background:${barColor};" data-target="${pct}"></div>
-          </div>
-          <div style="width:36px;text-align:right;font-size:0.72rem;font-weight:700;color:${isFirst ? '#E74C3C' : 'rgba(255,255,255,0.5)'};">${pct}</div>
-        </div>
-        ${isFirst ? '<div style="font-size:0.65rem;color:#E74C3C;margin-top:3px;margin-left:76px;">⚠ FIRST DOMINO — 최우선 개입 축</div>' : ''}
-      </div>
+  // BC 마스터 9종 그리드
+  const grid = document.getElementById('p1-bc-grid');
+  Object.values(BC_MASTER).forEach(m => {
+    const isActive = m.code === bcMaster.code;
+    const card = document.createElement('div');
+    card.style.cssText = `
+      background:${isActive ? m.bg + '22' : 'rgba(255,255,255,0.03)'};
+      border:1px solid ${isActive ? m.color : 'rgba(255,255,255,0.08)'};
+      border-radius:12px; padding:12px 10px; text-align:center;
+      transition:all 0.3s;
+      ${isActive ? 'box-shadow:0 0 16px ' + m.color + '33;' : ''}
     `;
+    card.innerHTML = `
+      <div style="font-size:20px;margin-bottom:4px;">${m.icon}</div>
+      <div style="font-size:13px;font-weight:900;color:${isActive ? m.color : 'rgba(255,255,255,0.5)'};">${m.code}</div>
+      <div style="font-size:9px;color:${isActive ? m.color : 'rgba(255,255,255,0.35)'};margin-top:3px;line-height:1.3;">${m.app_nickname.replace('#','')}</div>
+      ${isActive ? '<div style="font-size:9px;font-weight:700;color:'+m.color+';margin-top:4px;">◀ 나의 코드</div>' : ''}
+    `;
+    grid.appendChild(card);
   });
 
-  container.innerHTML = html;
+  /* ─── PAGE 2 ─── */
+  document.getElementById('p2-domino-title').textContent =
+    `'${firstDomino}'가 무너뜨린 연쇄 고장`;
+  document.getElementById('p2-story').innerHTML = `
+    모든 문제를 한 번에 해결하려는 다이어트는 100% 실패합니다. 우리 몸은 유기적으로 연결되어 있기 때문입니다.
+    슬림마인드의 11가지 전문 진단축(<em>약물·식단·운동·회복·한방·심리·체형·호르몬·시술·관리·철학</em>) 데이터 연산 결과,
+    <strong>${userName}</strong>님의 신체 네트워크를 연쇄적으로 무너뜨린 [첫 번째 도미노]는 바로
+    <strong style="color:var(--gold);">'${firstDomino}'</strong>로 최종 도출되었습니다.<br><br>
+    ${firstDomino}에서 발생한 물리적·기능적 고장이 호르몬계를 자극하고, 이것이 대사를 막아 최종적으로 심리적 폭식과
+    국소 부위 부종을 유발한 것입니다. 흐르지 않고 막혀서 썩어가는 강물에 아무리 비싼 다이어트 약을 타고 식단을
+    조절해 봤자 밑 빠진 독에 물 붓기입니다.
+  `;
 
-  // Animate bars
-  setTimeout(() => {
-    container.querySelectorAll('.axis-bar-fill').forEach(el => {
-      el.style.width = el.dataset.target + '%';
-    });
-  }, 400);
-}
+  // 11축 도미노 그리드
+  const domGrid = document.getElementById('p2-domino-grid');
+  const topAxisKey = sorted[0][0]; // 예: '심'
+  const topAxisMeta = CAUSAL_AXIS_META[topAxisKey];
 
-function renderRadarChart(axis11Scores) {
-  const canvas = document.getElementById('radarChart');
-  if (!canvas) return;
+  AXIS_11.forEach(ax => {
+    const rawScore = axisScores[ax.axisRef] || 0;
+    const isTop = ax.label === firstDomino || ax.axisRef === topAxisMeta.axisKeys[0];
+    const card = document.createElement('div');
+    card.className = 'domino-card' + (isTop ? ' highlighted' : '');
+    card.innerHTML = `
+      <div class="domino-icon">${ax.icon}</div>
+      <div class="domino-label">${ax.label}</div>
+      <div class="domino-bar-bg">
+        <div class="domino-bar-fill" style="width:0%;background:linear-gradient(90deg,${ax.color},${ax.color}88);"
+             data-score="${rawScore}"></div>
+      </div>
+      <div class="domino-score">${rawScore}</div>
+    `;
+    domGrid.appendChild(card);
+  });
 
-  // Top 8 for radar
-  const sorted = [...axis11Scores].sort((a,b) => b.score - a.score).slice(0,8);
-  const labels = sorted.map(a => a.name);
-  const data = sorted.map(a => a.score);
-  const colors = sorted.map(a => a.color);
+  // 체인 노드 업데이트
+  document.getElementById('chain-node-0').textContent = firstDomino;
+  document.getElementById('chain-desc-0').textContent =
+    sorted[0][0] + ' 축 ' + sorted[0][1] + '점 → 호르몬계 연쇄 자극';
 
-  new Chart(canvas, {
-    type: 'radar',
-    data: {
-      labels,
-      datasets: [{
-        data,
-        backgroundColor: 'rgba(201,168,76,0.08)',
-        borderColor: '#C9A84C',
-        borderWidth: 1.5,
-        pointBackgroundColor: colors,
-        pointBorderColor: '#fff',
-        pointBorderWidth: 1,
-        pointRadius: 5,
-        pointHoverRadius: 7,
-      }]
+  /* ─── PAGE 3 ─── */
+  const sajuEl = SAJU_ELEMENT_DESC[ohaengType] || SAJU_ELEMENT_DESC['목'];
+  const mbtiDesc = MBTI_DESC[mbtiType] || MBTI_DESC['INFP'];
+  const bloodDesc = BLOOD_TYPE_DESC[bloodType] || BLOOD_TYPE_DESC['A'];
+
+  // SVG 라벨
+  document.getElementById('tri-saju-label').textContent = (sajuEl.label || ohaengType).split(' ')[0];
+  document.getElementById('tri-blood-label').textContent = bloodType + '형';
+  document.getElementById('tri-mbti-label').textContent = mbtiType;
+  document.getElementById('tri-center').textContent = bcCode;
+
+  const matrix = document.getElementById('p3-matrix');
+  const layers = [
+    {
+      tag: '만세력 오행 필터',
+      icon: sajuEl.icon,
+      value: sajuEl.label,
+      desc: '당신은 사주학적으로 스트레스와 소통을 관장하는 <strong>[' + sajuEl.label + ']</strong>의 기운이 비정상적으로 과열되고 울결(뭉침)되어 있습니다. ' + sajuEl.desc,
+      color: sajuEl.color,
+      bg: sajuEl.bg,
+      borderColor: sajuEl.color,
     },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: (ctx) => ` 고장 지수: ${ctx.raw}점`
-          }
-        }
-      },
-      scales: {
-        r: {
-          min: 0, max: 100,
-          ticks: {
-            display: false,
-          },
-          grid: {
-            color: 'rgba(255,255,255,0.06)',
-          },
-          angleLines: {
-            color: 'rgba(255,255,255,0.06)',
-          },
-          pointLabels: {
-            color: 'rgba(255,255,255,0.55)',
-            font: { size: 10, family: 'Noto Sans KR' },
-          }
-        }
-      }
-    }
-  });
-}
+    {
+      tag: 'MBTI 행동 양식 필터',
+      icon: '🧠',
+      value: mbtiType,
+      desc: '당신은 태생적으로 <strong>[' + mbtiType + ']</strong> 성향을 가집니다. ' + mbtiDesc,
+      color: '#C0397A',
+      bg: '#FCE4EE',
+      borderColor: '#C0397A',
+    },
+    {
+      tag: '혈액형 생리학 필터',
+      icon: '🧬',
+      value: bloodType + '형',
+      desc: '당신은 생리학적으로 <strong>[' + bloodType + '형]</strong>입니다. ' + bloodDesc,
+      color: '#1A7FC1',
+      bg: '#E3F1FB',
+      borderColor: '#1A7FC1',
+    },
+  ];
 
-// ──────────────────── PAGE 3 ────────────────────
-function renderPage3(r) {
-  const { sajuElement, ohaengInfo, mbtiType, mbtiInfo, bloodType, bloodInfo } = r;
-
-  // Triangle matrix
-  document.getElementById('sajuEmoji').textContent = ohaengInfo.emoji;
-  document.getElementById('sajuLabel').textContent = ohaengInfo.name;
-  document.getElementById('sajuNode').style.borderColor = `${ohaengInfo.color}50`;
-
-  document.getElementById('mbtiLabel').textContent = mbtiType;
-  document.getElementById('bloodLabel').textContent = bloodType + '형';
-
-  document.getElementById('traitCodeDisplay').textContent =
-    `${sajuElement} × ${mbtiType} × ${bloodType}형 = 독립 맞춤 프로토콜 활성화`;
-
-  // 오행 카드
-  document.getElementById('ohaengIcon').textContent = ohaengInfo.emoji;
-  document.getElementById('ohaengTitle').textContent = ohaengInfo.name + ' 기운';
-  document.getElementById('ohaengTitle').style.color = ohaengInfo.color;
-  document.getElementById('ohaengDesc').textContent = ohaengInfo.desc;
-
-  // MBTI 카드
-  document.getElementById('mbtiTitle').textContent = mbtiType + ' 유형';
-  document.getElementById('mbtiDesc').textContent = mbtiInfo;
-
-  // 혈액형 카드
-  document.getElementById('bloodTitle').textContent = bloodType + '형 생리 시스템';
-  document.getElementById('bloodDesc').textContent = bloodInfo;
-}
-
-// ──────────────────── PAGE 4 ────────────────────
-function renderPage4(r) {
-  const container = document.getElementById('weekCardsContainer');
-  if (!container) return;
-
-  const weekColors = {
-    1: { num: '#1A7FC1', bg: '#E3F1FB', theme: '#1A7FC1' },
-    2: { num: '#7B1FA2', bg: '#EDE7F6', theme: '#7B1FA2' },
-    3: { num: '#1A8C5B', bg: '#DEF3EA', theme: '#1A8C5B' },
-    4: { num: '#E8631A', bg: '#FFE3D3', theme: '#E8631A' },
-  };
-
-  let html = '';
-
-  [1,2,3,4].forEach(weekNum => {
-    const week = BCE.ROADMAP_WEEKS[`week${weekNum}`];
-    const wc = weekColors[weekNum];
-    const failDesc = week.failDesc(r.userName);
-
-    html += `
-      <div class="week-card fade-in-up" style="border-color:rgba(${hexToRgb(wc.theme)},0.2);">
-        <!-- Week Header -->
-        <div class="week-header" style="background:rgba(${hexToRgb(wc.theme)},0.05);">
-          <div class="week-num" style="background:rgba(${hexToRgb(wc.theme)},0.12);border:1px solid rgba(${hexToRgb(wc.theme)},0.3);color:${wc.theme};">W${weekNum}</div>
-          <div style="flex:1;">
-            <div style="font-size:0.6rem;letter-spacing:2px;color:rgba(255,255,255,0.35);text-transform:uppercase;margin-bottom:5px;">WEEK ${weekNum}</div>
-            <div style="font-size:0.95rem;font-weight:700;color:#fff;line-height:1.4;">${week.title}</div>
-            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">
-              ${week.centers.map(c => `<span style="font-size:0.62rem;padding:3px 10px;background:rgba(${hexToRgb(wc.theme)},0.12);border:1px solid rgba(${hexToRgb(wc.theme)},0.25);border-radius:20px;color:${wc.theme};font-weight:600;">${c}</span>`).join('')}
-            </div>
-          </div>
-        </div>
-
-        <!-- Week Body -->
-        <div class="week-body">
-
-          <!-- 실패 고발 -->
-          <div>
-            <div class="section-label" style="background:rgba(192,57,43,0.1);border:1px solid rgba(192,57,43,0.25);color:#E74C3C;">
-              <i class="fas fa-exclamation-triangle"></i>
-              실패 유형 및 메커니즘 고발
-            </div>
-            <div style="padding:14px;background:rgba(192,57,43,0.04);border:1px solid rgba(192,57,43,0.1);border-radius:10px;">
-              <p style="font-size:0.83rem;line-height:1.85;color:rgba(255,255,255,0.78);">${failDesc}</p>
-            </div>
-          </div>
-
-          <!-- 전문축 개입 -->
-          <div>
-            <div class="section-label" style="background:rgba(${hexToRgb(wc.theme)},0.1);border:1px solid rgba(${hexToRgb(wc.theme)},0.25);color:${wc.theme};">
-              <i class="fas fa-sitemap"></i>
-              11대 전문축 개입 논리
-            </div>
-            <div style="padding:14px;background:rgba(${hexToRgb(wc.theme)},0.04);border:1px solid rgba(${hexToRgb(wc.theme)},0.1);border-radius:10px;">
-              <p style="font-size:0.83rem;line-height:1.85;color:rgba(255,255,255,0.78);">${week.axisLogic}</p>
-            </div>
-          </div>
-
-          <!-- 운동 처방 -->
-          <div>
-            <div class="section-label" style="background:rgba(74,140,28,0.1);border:1px solid rgba(74,140,28,0.25);color:#81C784;">
-              <i class="fas fa-dumbbell"></i>
-              매칭 운동 처방
-            </div>
-            <div style="display:flex;flex-direction:column;gap:8px;">
-              ${week.exerciseBan.map(e => `
-                <div class="action-item ban">
-                  <span style="color:#E74C3C;font-size:0.85rem;flex-shrink:0;">❌</span>
-                  <span style="font-size:0.82rem;color:rgba(255,255,255,0.7);">${e}</span>
-                </div>`).join('')}
-              ${week.exerciseAllow.map(e => `
-                <div class="action-item allow">
-                  <span style="color:#81C784;font-size:0.85rem;flex-shrink:0;">✅</span>
-                  <span style="font-size:0.82rem;font-weight:600;color:rgba(255,255,255,0.9);">${e}</span>
-                </div>`).join('')}
-            </div>
-          </div>
-
-          <!-- 식단 처방 -->
-          <div>
-            <div class="section-label" style="background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.22);color:#C9A84C;">
-              <i class="fas fa-utensils"></i>
-              매칭 식단 처방
-            </div>
-            <div style="display:flex;flex-direction:column;gap:8px;">
-              ${week.dietBan.map(d => `
-                <div class="action-item ban">
-                  <span style="color:#E74C3C;font-size:0.85rem;flex-shrink:0;">❌</span>
-                  <span style="font-size:0.82rem;color:rgba(255,255,255,0.7);">${d}</span>
-                </div>`).join('')}
-              ${week.dietAllow.map(d => `
-                <div class="action-item allow">
-                  <span style="color:#81C784;font-size:0.85rem;flex-shrink:0;">✅</span>
-                  <span style="font-size:0.82rem;font-weight:600;color:rgba(255,255,255,0.9);">${d}</span>
-                </div>`).join('')}
-            </div>
-          </div>
-
-          <!-- 회복순환법 -->
-          <div>
-            <div class="section-label" style="background:rgba(63,81,181,0.1);border:1px solid rgba(63,81,181,0.25);color:#90CAF9;">
-              <i class="fas fa-heart-pulse"></i>
-              회복순환법 매칭
-            </div>
-            <div style="display:flex;flex-direction:column;gap:8px;">
-              ${week.recoveryBan.map(rb => `
-                <div class="action-item ban">
-                  <span style="color:#E74C3C;font-size:0.85rem;flex-shrink:0;">❌</span>
-                  <span style="font-size:0.82rem;color:rgba(255,255,255,0.7);">${rb}</span>
-                </div>`).join('')}
-              ${week.recoveryAllow.map(ra => `
-                <div class="action-item allow">
-                  <span style="color:#81C784;font-size:0.85rem;flex-shrink:0;">✅</span>
-                  <span style="font-size:0.82rem;font-weight:600;color:rgba(255,255,255,0.9);">${ra}</span>
-                </div>`).join('')}
-            </div>
-          </div>
-
+  layers.forEach(l => {
+    const div = document.createElement('div');
+    div.className = 'trait-layer';
+    div.style.cssText = `background:${l.bg}18;border-left-color:${l.borderColor};`;
+    div.innerHTML = `
+      <div class="trait-layer-header">
+        <div class="trait-layer-icon" style="background:${l.bg}33;">${l.icon}</div>
+        <div>
+          <div class="trait-layer-tag" style="color:${l.color};">${l.tag}</div>
+          <div class="trait-layer-value" style="color:${l.color};">${l.value}</div>
         </div>
       </div>
+      <div class="trait-layer-desc">${l.desc}</div>
     `;
+    matrix.appendChild(div);
   });
 
-  container.innerHTML = html;
+  /* ─── PAGE 4 ─── */
+  document.getElementById('p4-code-display').innerHTML =
+    `매칭 파라미터: <strong style="color:var(--gold);">${fullCode}</strong> — 개인 맞춤 12주 프로토콜`;
 
-  // Lock text
-  document.getElementById('lockSubText').innerHTML =
-    `본 비밀 해답 책의 후반부 타임라인은 <strong style="color:#C9A84C;">${r.userName}</strong>님이 1~4주차의 첫 번째 도미노(골반 정렬 및 부신 회복 미션)를 완료하여 대사 브레이크가 해제되는 순간, 당신의 전용 스마트 스케줄러와 함께 락(Lock)이 자동 해제됩니다.`;
+  const weeksContainer = document.getElementById('p4-weeks');
+
+  // 1~4주차 오픈 카드
+  ROADMAP_WEEKS.forEach(w => {
+    const card = document.createElement('div');
+    card.className = 'week-card fade-up';
+    const storyText = w.failure_expose.replace('{USER_NAME}', userName);
+    card.innerHTML = `
+      <div class="week-badge">
+        🔓 <span>${w.week}주차</span>
+      </div>
+      <div class="week-title">${w.title}</div>
+
+      <div class="week-section">
+        <div class="week-section-title">🔍 실패 유형 & 메커니즘 고발</div>
+        <p class="story-text" style="font-size:13px;">${storyText}</p>
+      </div>
+
+      <div class="week-section">
+        <div class="week-section-title">🎯 개입 센터 논리</div>
+        <p class="story-text" style="font-size:13px;">${w.axis_logic}</p>
+      </div>
+
+      <div class="week-section">
+        <div class="week-section-title">🏋️ 운동 처방</div>
+        ${w.exercise_ban ? `<div class="rule-item"><span class="rule-ban">❌</span><span>${w.exercise_ban}</span></div>` : ''}
+        <div class="rule-item"><span class="rule-ok">⭕</span><span>${w.exercise_ok}</span></div>
+      </div>
+
+      <div class="week-section">
+        <div class="week-section-title">🍽️ 식단 처방</div>
+        ${w.diet_ban ? `<div class="rule-item"><span class="rule-ban">❌</span><span>${w.diet_ban}</span></div>` : ''}
+        <div class="rule-item"><span class="rule-ok">⭕</span><span>${w.diet_ok}</span></div>
+      </div>
+
+      <div class="week-section">
+        <div class="week-section-title">💆 회복순환법</div>
+        ${w.recovery_ban ? `<div class="rule-item"><span class="rule-ban">❌</span><span>${w.recovery_ban}</span></div>` : ''}
+        <div class="rule-item"><span class="rule-ok">⭕</span><span>${w.recovery_ok}</span></div>
+      </div>
+    `;
+    weeksContainer.appendChild(card);
+  });
+
+  // 5~12주차 LOCK 카드
+  const lockCard = document.createElement('div');
+  lockCard.className = 'lock-card fade-up';
+  const lockWeeks = [5,6,7,8,9,10,11,12];
+  lockCard.innerHTML = `
+    <div class="lock-icon-wrap">🔒</div>
+    <div class="lock-weeks">
+      ${lockWeeks.map(n => `<div class="lock-week-badge">${n}주</div>`).join('')}
+    </div>
+    <div class="lock-title">5~12주차 : 하이퍼 세포 연소 구간</div>
+    <div class="lock-desc">
+      뇌의 도파민 보상 회로를 리셋하고 본격적으로 전신 체지방을 융단폭격하는
+      <strong style="color:rgba(201,168,76,0.7);">[5~12주차: 하이퍼 세포 연소 구간]</strong>입니다.<br><br>
+      본 비밀 해답 책의 후반부 타임라인은 <strong style="color:rgba(201,168,76,0.7);">${userName}</strong>님이
+      1~4주차의 첫 번째 도미노(골반 정렬 및 부신 회복 미션)를 완료하여
+      대사 브레이크가 해제되는 순간, 당신의 전용 스마트 스케줄러와 함께
+      락(Lock)이 자동 해제됩니다.
+    </div>
+  `;
+  weeksContainer.appendChild(lockCard);
 }
 
-// ──────────────────── UTILITIES ────────────────────
-function hexToRgb(hex) {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result
-    ? `${parseInt(result[1],16)},${parseInt(result[2],16)},${parseInt(result[3],16)}`
-    : '255,255,255';
-}
-
-function shareResult() {
-  const text = `슬림마인드 V3.0 결과 — ${globalResult?.bcCode || ''} ${globalResult?.appNickname || ''}`;
-  if (navigator.share) {
-    navigator.share({ title: '나의 바디코드 결과', text, url: window.location.href });
-  } else {
-    navigator.clipboard?.writeText(window.location.href)
-      .then(() => alert('링크가 복사되었습니다!'))
-      .catch(() => alert(text));
-  }
-}
-
-// ──────────────────── SCROLL & NAV ────────────────────
-function initScrollAnimations() {
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('visible');
-      }
-    });
-  }, { threshold: 0.1 });
-
-  document.querySelectorAll('.fade-in-up').forEach(el => observer.observe(el));
-}
-
-function initNavDots() {
-  const pages = ['page1','page2','page3','page4'];
-  const dots = document.querySelectorAll('.nav-dot');
-
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        const idx = pages.indexOf(entry.target.id);
-        if (idx >= 0) {
-          dots.forEach((d,i) => d.classList.toggle('active', i === idx));
-        }
-      }
-    });
-  }, { threshold: 0.5 });
-
-  pages.forEach(id => {
-    const el = document.getElementById(id);
-    if (el) observer.observe(el);
+// ── 도미노 바 애니메이션 ──────────────────────
+function animateDominoBars() {
+  document.querySelectorAll('.domino-bar-fill[data-score]').forEach(bar => {
+    const score = parseInt(bar.getAttribute('data-score')) || 0;
+    setTimeout(() => { bar.style.width = score + '%'; }, 300);
   });
 }
 
-function scrollToPage(num) {
-  const el = document.getElementById(`page${num}`);
-  if (el) el.scrollIntoView({ behavior: 'smooth' });
-}
+// ── 초기화 ────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  let resultData = loadResultData();
 
-// CSS bounce animation
-const style = document.createElement('style');
-style.textContent = `
-  @keyframes bounce {
-    0%,100%{transform:translateY(0);}
-    50%{transform:translateY(8px);}
+  if (!resultData) {
+    resultData = makeDemoData();
+    console.log('[SlimMind] 데모 데이터로 렌더링');
   }
-`;
-document.head.appendChild(style);
 
-// ──────────────────── INIT ────────────────────
-document.addEventListener('DOMContentLoaded', initPage);
+  // axisScores 정규화
+  if (resultData.answers && typeof calculateAxisScores === 'function') {
+    const calc = calculateAxisScores(resultData.answers);
+    resultData = {
+      userName: resultData.answers['user_name'] || resultData.answers['Q01'] || '고객',
+      axisScores: calc.axisScores,
+      ohaengType: calc.ohaengType || '목',
+      mbtiType: resultData.answers['Q_MBTI'] || resultData.answers['Q45'] || 'INFP',
+      bloodType: resultData.answers['Q_BLOOD'] || resultData.answers['Q_BLOODTYPE'] || 'A',
+    };
+  }
+
+  // 렌더링
+  renderResult(resultData);
+
+  // 로딩 오버레이 제거
+  setTimeout(() => {
+    const ov = document.getElementById('loading-overlay');
+    ov.style.opacity = '0';
+    setTimeout(() => { ov.style.display = 'none'; triggerAnimations(); animateDominoBars(); }, 500);
+  }, 1200);
+});
+
+// 탭 전환 시 바 애니메이션 재실행
+document.querySelectorAll('.nav-tab').forEach((tab, i) => {
+  tab.addEventListener('click', () => {
+    setTimeout(() => {
+      triggerAnimations();
+      if (i === 1) animateDominoBars();
+    }, 150);
+  });
+});
 </script>
-
 </body>
 </html>
