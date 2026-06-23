@@ -2916,38 +2916,69 @@ function renderTransitionToResult() {
 }
 
 function doResultRedirect() {
-  // answers에 name 필드 보장 (Q01 saveAs)
+  // ── 1. answers 복사 + name 보장 ──
   var finalAnswers = {};
   Object.keys(answers).forEach(function(k){ finalAnswers[k] = answers[k]; });
   if (!finalAnswers.name && finalAnswers.Q01) finalAnswers.name = finalAnswers.Q01;
 
-  // ── axis 기반 채점 ──
+  // ── 2. axis 채점 (calcAxisScores → normalized 객체) ──
   var axisData = calcAxisScores();
-  var axScores = {};
-  axisData.list && axisData.list.forEach(function(a){ axScores[a.id] = a.pct; });
-  var topAxes = axisData.list ? axisData.list.slice(0,3).map(function(a){ return a.id; }) : [];
+  var axScores = axisData.normalized || {};  // { A01:72, A02:55, ... }
+
+  var sorted = Object.entries(axScores)
+    .sort(function(a,b){ return b[1]-a[1]; });
+  var topAxes = sorted.slice(0,3).map(function(x){ return x[0]; });
   var topAxis = topAxes[0] || 'A01';
 
-  // ── DB 저장 (axis 기반, bc_primary는 axis ID로 대체) ──
+  // ── 3. 오행 기질 결정 (기질 설문 GQ 답변 기반) ──
+  //    GQ08 = "오행 자기진단" 문항 → 직접 선택값 활용
+  var ohaengType = finalAnswers['GQ08'] || '목';
+  // GQ08이 없으면 A03(호르몬)/A07(스트레스) 점수 기반 추정
+  if (!finalAnswers['GQ08']) {
+    var oMap = {A01:'목', A02:'화', A03:'토', A04:'금', A05:'수',
+                A06:'목', A07:'화', A08:'토', A09:'금', A10:'수'};
+    ohaengType = oMap[topAxis] || '목';
+  }
+
+  // ── 4. MBTI 결정 (기질 설문 GQ01~GQ07 조합) ──
+  var mbtiType = deriveMbtiFromDisposition(finalAnswers) || 'INFP';
+
+  // ── 5. result-v4용 slimmind_result 저장 ──
+  var resultPayload = {
+    userName:   finalAnswers.Q01 || finalAnswers.name || '고객',
+    axisScores: axScores,
+    ohaengType: ohaengType,
+    mbtiType:   mbtiType,
+    answers:    finalAnswers
+  };
+  try {
+    localStorage.setItem('slimmind_result', JSON.stringify(resultPayload));
+    localStorage.setItem('slimmind_answers', JSON.stringify(finalAnswers));
+  } catch(e) {
+    console.warn('[SlimMind] localStorage 저장 실패:', e);
+  }
+
+  // ── 6. DB 저장 (비동기, 실패해도 진행) ──
   if (!finalAnswers._submitted) {
     finalAnswers._submitted = true;
     (function() {
       var payload = {
-        consultant_code: finalAnswers._consultant_code || null,
-        user_name:       finalAnswers.Q01 || null,
-        gender:          finalAnswers.Q02 || null,
-        height:          measureVals.h || null,
-        weight:          measureVals.w || null,
-        // bc_primary 컬럼 NOT NULL 제약 → axis ID로 채움 (마이그레이션 전 임시)
-        bc_primary:      topAxis,
-        bc_primary_score: axScores[topAxis] || 0,
-        bc_secondary:    topAxes[1] || null,
+        consultant_code:    finalAnswers._consultant_code || null,
+        user_name:          finalAnswers.Q01 || null,
+        gender:             finalAnswers.Q02 || null,
+        height:             measureVals.h || null,
+        weight:             measureVals.w || null,
+        bc_primary:         topAxis,
+        bc_primary_score:   axScores[topAxis] || 0,
+        bc_secondary:       topAxes[1] || null,
         bc_secondary_score: topAxes[1] ? (axScores[topAxes[1]] || 0) : 0,
-        bc_scores:       {},
-        axis_scores:     axScores,
-        top_axes:        topAxes,
-        answers:         finalAnswers,
-        survey_summary:  { top_axis: topAxis }
+        bc_scores:          {},
+        axis_scores:        axScores,
+        top_axes:           topAxes,
+        ohaeng_type:        ohaengType,
+        mbti_type:          mbtiType,
+        answers:            finalAnswers,
+        survey_summary:     { top_axis: topAxis }
       };
       fetch('/api/survey/submit', {
         method: 'POST',
@@ -2957,18 +2988,25 @@ function doResultRedirect() {
     })();
   }
 
-  // ── localStorage에 저장 ──
-  try {
-    localStorage.setItem('slimmind_answers', JSON.stringify(finalAnswers));
-  } catch(e) {
-    console.warn('[SlimMind] localStorage 저장 실패:', e);
-  }
-
-  // ── 임시저장(draft) 클리어 ──
+  // ── 7. 임시저장 클리어 ──
   try { localStorage.removeItem('sm_survey_draft_v2'); } catch(e) {}
 
-  // ── /result 로 이동 ──
-  window.location.href = '/result';
+  // ── 8. result-v4로 이동 ──
+  window.location.href = '/result-v4';
+}
+
+// ── MBTI 추정 함수 (기질 GQ 답변 → 4자리 코드) ──
+function deriveMbtiFromDisposition(ans) {
+  // GQ01: 에너지 스타일 (E/I)
+  // GQ02: 감정표현 (F/T)
+  // GQ03: 목표설정 (J/P)
+  // GQ04: 사람관계 (E/I 보완)
+  // GQ05: 계획/즉흥 (J/P 보완)
+  var ei = (ans['GQ01'] === 'A' || ans['GQ04'] === 'A') ? 'E' : 'I';
+  var sn = (ans['GQ09'] === 'A') ? 'N' : 'S';  // GQ09: 생각처리방식
+  var tf = (ans['GQ02'] === 'A') ? 'F' : 'T';  // GQ02: 감정표현
+  var jp = (ans['GQ03'] === 'A' || ans['GQ05'] === 'A') ? 'J' : 'P';  // GQ03/GQ05
+  return ei + sn + tf + jp;
 }
 
 function renderResult1st() {

@@ -588,14 +588,34 @@ function triggerAnim() {
 
 // ── 데이터 로드 ──────────────────
 function loadData() {
+  // 1순위: URL 쿼리 파라미터 ?data=
   const params = new URLSearchParams(window.location.search);
   const urlData = params.get('data');
   if (urlData) { try { return JSON.parse(decodeURIComponent(urlData)); } catch(e){} }
+
+  // 2순위: localStorage 검색 (slimmind_result 우선)
   const keys = ['slimmind_result','surveyResult','survey_result','resultData','sm_result'];
   for (const k of keys) {
     const raw = localStorage.getItem(k);
-    if (raw) { try { const p = JSON.parse(raw); if (p.axisScores || p.answers) return p; } catch(e){} }
+    if (!raw) continue;
+    try {
+      const p = JSON.parse(raw);
+      // axisScores가 있으면 바로 사용
+      if (p.axisScores && Object.keys(p.axisScores).length > 0) return p;
+      // answers만 있는 경우 → calculateAxisScores로 변환 후 반환
+      if (p.answers) return p;
+    } catch(e){}
   }
+
+  // 3순위: slimmind_answers (raw answers) 폴백
+  const rawAns = localStorage.getItem('slimmind_answers');
+  if (rawAns) {
+    try {
+      const ans = JSON.parse(rawAns);
+      if (ans && typeof ans === 'object') return { answers: ans };
+    } catch(e){}
+  }
+
   return null;
 }
 
@@ -949,16 +969,41 @@ window.addEventListener('DOMContentLoaded', () => {
   let resultData = loadData();
   if (!resultData) { resultData = demoData(); console.log('[SlimMind] 데모 데이터 렌더링'); }
 
-  // answers → axisScores 변환
-  if (resultData.answers && typeof calculateAxisScores === 'function') {
-    const calc = calculateAxisScores(resultData.answers);
-    resultData = {
-      userName: resultData.answers['user_name'] || resultData.answers['Q01'] || '고객',
-      axisScores: calc.axisScores,
-      ohaengType: calc.ohaengType || '목',
-      mbtiType: resultData.answers['Q_MBTI'] || resultData.answers['Q45'] || 'INFP',
-    };
+  // ── answers → axisScores 변환 (slimmind_result에 axisScores 없을 때) ──
+  if (resultData.answers && (!resultData.axisScores || Object.keys(resultData.axisScores).length === 0)) {
+    if (typeof calculateAxisScores === 'function') {
+      const calc = calculateAxisScores(resultData.answers);
+      // calculateAxisScores는 { axisScores, ohaengType, ... } 반환
+      resultData = {
+        userName:   resultData.userName
+                 || resultData.answers['Q01']
+                 || resultData.answers['name']
+                 || '고객',
+        axisScores: calc.axisScores || {},
+        ohaengType: resultData.ohaengType || calc.ohaengType || '목',
+        mbtiType:   resultData.mbtiType
+                 || resultData.answers['Q_MBTI']
+                 || null,
+        answers:    resultData.answers
+      };
+    }
   }
+
+  // ── MBTI 미정 → 기본값 'INFP' ──
+  if (!resultData.mbtiType) resultData.mbtiType = 'INFP';
+
+  // ── userName 최종 보장 ──
+  if (!resultData.userName || resultData.userName === '고객') {
+    const ans = resultData.answers || {};
+    resultData.userName = ans['Q01'] || ans['name'] || '고객';
+  }
+
+  console.log('[result-v4] 로드된 데이터:', {
+    userName: resultData.userName,
+    ohaengType: resultData.ohaengType,
+    mbtiType: resultData.mbtiType,
+    axisScoreKeys: Object.keys(resultData.axisScores || {})
+  });
 
   renderAll(resultData);
 
