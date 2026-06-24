@@ -286,6 +286,9 @@
         <div class="nav-section-label">파트너 관리</div>
         <div class="nav-item" data-page="consultants"><i class="fas fa-user-tie"></i> 컨설턴트 관리</div>
         <div class="nav-item" data-page="b2b-partners"><i class="fas fa-building"></i> B2B 파트너 관리</div>
+        <div class="nav-section-label">이용 안내</div>
+        <div class="nav-item" data-page="guide-consultant"><i class="fas fa-book-open"></i> 컨설턴트 이용법</div>
+        <div class="nav-item" data-page="guide-b2b"><i class="fas fa-store"></i> B2B 파트너 이용법</div>
         <div class="nav-section-label">데이터</div>
         <div class="nav-item" data-page="results"><i class="fas fa-file-medical"></i> 고객 결과 관리</div>
         <div class="nav-item" data-page="bc-codes"><i class="fas fa-dna"></i> BC코드 처방 편집</div>
@@ -293,6 +296,13 @@
       </nav>
       <div class="sidebar-footer">
         <div class="sidebar-user" id="sidebar-user"></div>
+        <!-- 카카오 채널 채팅 버튼 -->
+        <a href="https://pf.kakao.com/_xgCgsX/chat" target="_blank"
+           style="display:flex;align-items:center;gap:8px;background:#FEE500;color:#3C1E1E;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:700;text-decoration:none;margin-bottom:10px;transition:opacity .2s"
+           onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#3C1E1E"><path d="M12 2C6.48 2 2 5.92 2 10.73c0 2.98 1.67 5.6 4.19 7.22l-.97 3.57 4.1-2.72c.87.16 1.76.24 2.68.24 5.52 0 10-3.92 10-8.77S17.52 2 12 2z"/></svg>
+          슬림마인드 채팅 문의
+        </a>
         <div class="logout-btn" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i> 로그아웃</div>
       </div>
     </aside>
@@ -339,8 +349,25 @@
         </div>
       </div>
       <div class="form-field">
-        <label>이메일</label>
-        <input type="email" id="f-email" placeholder="email@example.com">
+        <label>이메일 <span style="color:var(--danger)">*</span></label>
+        <input type="email" id="f-email" placeholder="email@example.com (로그인 시 필수)">
+      </div>
+      <!-- 로그인 정보 설정 -->
+      <div style="background:linear-gradient(135deg,#1A3C6B11,#2563EB11);border:1.5px solid #2563EB33;border-radius:12px;padding:14px;margin-bottom:4px">
+        <div style="font-size:11px;font-weight:700;color:#1A3C6B;margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em">🔑 로그인 정보 설정 <span style="font-weight:400;font-size:10px;text-transform:none;letter-spacing:0;color:var(--muted)">(|비워두면 자동 발급)</span></div>
+        <div class="form-grid">
+          <div class="form-field" style="margin-bottom:0">
+            <label>컨설턴트 코드 <span style="font-weight:400;font-size:10px;color:var(--muted)">(|비워두면 SC-자동번호)</span></label>
+            <input type="text" id="f-custom-code" placeholder="예: SC-BABA (|비워두면 자동)" style="font-family:monospace">
+          </div>
+          <div class="form-field" style="margin-bottom:0">
+            <label>비밀번호 <span style="font-weight:400;font-size:10px;color:var(--muted)">(|비워두면 pass+번호)</span></label>
+            <div style="display:flex;gap:6px">
+              <input type="text" id="f-custom-pw" placeholder="예: mypass1234" style="flex:1;font-family:monospace">
+              <button type="button" onclick="genRandPw('f-custom-pw')" style="background:#e5e7eb;border:none;border-radius:8px;padding:0 10px;cursor:pointer;font-size:12px;color:#374151"><i class="fas fa-random"></i></button>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="form-grid">
         <div class="form-field">
@@ -373,6 +400,7 @@
         <textarea id="f-memo" rows="3" placeholder="관리자 메모..."></textarea>
       </div>
       <input type="hidden" id="f-edit-code">
+      <input type="hidden" id="f-is-edit" value="0">
     </div>
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="closeModal('modal-consultant')">취소</button>
@@ -533,6 +561,23 @@
         </div>
       </div>
 
+      <!-- B2B 로그인 정보 설정 -->
+      <div style="background:linear-gradient(135deg,#6366f111,#8b5cf611);border:1.5px solid #6366f133;border-radius:12px;padding:14px;margin-bottom:12px">
+        <div style="font-size:11px;font-weight:700;color:#6366f1;margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em">🔑 로그인 정보 설정 <span style="font-weight:400;font-size:10px;text-transform:none;letter-spacing:0;color:var(--muted)">(|비워두면 자동 발급)</span></div>
+        <div class="form-grid">
+          <div class="form-field" style="margin-bottom:0">
+            <label>로그인 코드 <span style="font-weight:400;font-size:10px;color:var(--muted)">(|비워두면 B2B-업종-번호)</span></label>
+            <input type="text" id="b2b-custom-code" placeholder="예: B2B-BABA (|비워두면 자동)" style="font-family:monospace">
+          </div>
+          <div class="form-field" style="margin-bottom:0">
+            <label>비밀번호 <span style="font-weight:400;font-size:10px;color:var(--muted)">(|비워두면 b2b+번호)</span></label>
+            <div style="display:flex;gap:6px">
+              <input type="text" id="b2b-custom-pw" placeholder="예: baba2024" style="flex:1;font-family:monospace">
+              <button type="button" onclick="genRandPw('b2b-custom-pw')" style="background:#e5e7eb;border:none;border-radius:8px;padding:0 10px;cursor:pointer;font-size:12px;color:#374151"><i class="fas fa-random"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="form-field">
         <label>메모</label>
         <textarea id="b2b-memo" rows="2" placeholder="관리자 메모..."></textarea>
@@ -797,13 +842,15 @@ document.querySelectorAll('.nav-item').forEach(el => {
 function navigateTo(page) {
   currentPage = page;
   document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.page === page));
-  const titles = { dashboard:'대시보드', consultants:'컨설턴트 관리', 'b2b-partners':'B2B 파트너 관리', results:'고객 결과 관리', 'bc-codes':'BC코드 처방 편집', settings:'설정' };
+  const titles = { dashboard:'대시보드', consultants:'컨설턴트 관리', 'b2b-partners':'B2B 파트너 관리', 'guide-consultant':'컨설턴트 이용법', 'guide-b2b':'B2B 파트너 이용법', results:'고객 결과 관리', 'bc-codes':'BC코드 처방 편집', settings:'설정' };
   document.getElementById('topbar-title').textContent = titles[page] || page;
   const body = document.getElementById('page-body');
   body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted)"><i class="fas fa-circle-notch fa-spin fa-2x"></i></div>';
   if (page === 'dashboard') loadDashboard();
   else if (page === 'consultants') loadConsultants();
   else if (page === 'b2b-partners') loadB2BPartners();
+  else if (page === 'guide-consultant') loadGuideConsultant();
+  else if (page === 'guide-b2b') loadGuideB2B();
   else if (page === 'results') loadResults();
   else if (page === 'bc-codes') loadBcCodes();
   else if (page === 'settings') loadSettings();
@@ -855,6 +902,36 @@ async function loadDashboard() {
 
   document.getElementById('page-body').innerHTML = `
     <div class="kpi-grid">${kpiCards}</div>
+
+    <!-- 빠른 바로가기 -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px">
+      <button onclick="navigateTo('consultants')" style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:12px;padding:16px;cursor:pointer;text-align:center;transition:all .2s" onmouseover="this.style.background='#DBEAFE'" onmouseout="this.style.background='#EFF6FF'">
+        <div style="font-size:24px;margin-bottom:6px">👤</div>
+        <div style="font-size:13px;font-weight:700;color:#1D4ED8">컨설턴트 관리</div>
+        <div style="font-size:11px;color:#64748B;margin-top:2px">등록·수정·조회</div>
+      </button>
+      <button onclick="navigateTo('b2b-partners')" style="background:#F5F3FF;border:1.5px solid #DDD6FE;border-radius:12px;padding:16px;cursor:pointer;text-align:center;transition:all .2s" onmouseover="this.style.background='#EDE9FE'" onmouseout="this.style.background='#F5F3FF'">
+        <div style="font-size:24px;margin-bottom:6px">🏢</div>
+        <div style="font-size:13px;font-weight:700;color:#6D28D9">B2B 파트너 관리</div>
+        <div style="font-size:11px;color:#64748B;margin-top:2px">등록·수정·조회</div>
+      </button>
+      <a href="/b2b" target="_blank" style="background:#F0FDF4;border:1.5px solid #BBF7D0;border-radius:12px;padding:16px;cursor:pointer;text-align:center;text-decoration:none;display:block;transition:all .2s" onmouseover="this.style.background='#DCFCE7'" onmouseout="this.style.background='#F0FDF4'">
+        <div style="font-size:24px;margin-bottom:6px">🖥️</div>
+        <div style="font-size:13px;font-weight:700;color:#15803D">B2B 대시보드 열기</div>
+        <div style="font-size:11px;color:#64748B;margin-top:2px">파트너 전용 페이지</div>
+      </a>
+      <button onclick="navigateTo('results')" style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:12px;padding:16px;cursor:pointer;text-align:center;transition:all .2s" onmouseover="this.style.background='#FEE8C8'" onmouseout="this.style.background='#FFF7ED'">
+        <div style="font-size:24px;margin-bottom:6px">📊</div>
+        <div style="font-size:13px;font-weight:700;color:#C2410C">고객 결과 조회</div>
+        <div style="font-size:11px;color:#64748B;margin-top:2px">BC코드·컨설턴트 필터</div>
+      </button>
+      <a href="https://pf.kakao.com/_xgCgsX/chat" target="_blank" style="background:#FFFDE7;border:1.5px solid #FEE500;border-radius:12px;padding:16px;cursor:pointer;text-align:center;text-decoration:none;display:block;transition:all .2s" onmouseover="this.style.background='#FFF9C4'" onmouseout="this.style.background='#FFFDE7'">
+        <div style="font-size:24px;margin-bottom:6px">💬</div>
+        <div style="font-size:13px;font-weight:700;color:#795548">본사 채팅 문의</div>
+        <div style="font-size:11px;color:#64748B;margin-top:2px">카카오채널 바로가기</div>
+      </a>
+    </div>
+
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
       <div class="card">
         <div class="card-title"><i class="fas fa-chart-bar"></i> BC코드 분포</div>
@@ -942,7 +1019,11 @@ function openAddConsultant() {
   editingConsCode = null;
   document.getElementById('modal-cons-title').textContent = '컨설턴트 등록';
   document.getElementById('modal-cons-save').textContent = '등록';
-  ['f-name','f-phone','f-email','f-memo','f-sub-end'].forEach(id => document.getElementById(id).value = '');
+  ['f-name','f-phone','f-email','f-memo','f-sub-end','f-custom-code','f-custom-pw'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  document.getElementById('f-is-edit').value = '0';
+  // 코드/PW 입력란 표시 (신규등록시만)
+  const loginSection = document.querySelector('#modal-consultant .login-setting-section');
+  if (loginSection) loginSection.style.display = 'block';
   document.getElementById('f-job').value = '';
   document.getElementById('f-grade').value = '일반';
   document.getElementById('f-edit-code').value = '';
@@ -956,6 +1037,7 @@ async function openEditConsultant(code) {
   editingConsCode = code;
   document.getElementById('modal-cons-title').textContent = `${code} 수정`;
   document.getElementById('modal-cons-save').textContent = '저장';
+  document.getElementById('f-is-edit').value = '1';
   document.getElementById('f-name').value = c.name || '';
   document.getElementById('f-phone').value = c.phone || '';
   document.getElementById('f-email').value = c.email || '';
@@ -969,15 +1051,22 @@ async function openEditConsultant(code) {
 
 async function saveConsultant() {
   const code = document.getElementById('f-edit-code').value;
+  const isEdit = document.getElementById('f-is-edit').value === '1';
+  const email = document.getElementById('f-email').value.trim();
+  if (!isEdit && !email) { toast('이메일은 필수입니다.', 'error'); return; }
+  const customCode = document.getElementById('f-custom-code')?.value.trim().toUpperCase() || '';
+  const customPw = document.getElementById('f-custom-pw')?.value.trim() || '';
   const body = {
     name: document.getElementById('f-name').value.trim(),
-    email: document.getElementById('f-email').value.trim(),
+    email,
     phone: document.getElementById('f-phone').value.trim(),
     job_type: document.getElementById('f-job').value,
     grade: document.getElementById('f-grade').value,
     subscription_end: document.getElementById('f-sub-end').value,
     memo: document.getElementById('f-memo').value.trim(),
     subscription_status: 'active',
+    custom_code: customCode || undefined,
+    custom_password: customPw || undefined,
   };
   if (!body.name) { toast('이름을 입력하세요.', 'error'); return; }
 
@@ -1440,7 +1529,7 @@ function openAddB2B() {
   editingB2BCode = null;
   document.getElementById('modal-b2b-title').innerHTML = '<i class="fas fa-building" style="color:#6366f1"></i> B2B 파트너 등록';
   document.getElementById('modal-b2b-save').textContent = '등록';
-  ['b2b-name','b2b-owner','b2b-phone','b2b-email','b2b-address','b2b-brand-name','b2b-logo-url','b2b-memo'].forEach(id => {
+  ['b2b-name','b2b-owner','b2b-phone','b2b-email','b2b-address','b2b-brand-name','b2b-logo-url','b2b-memo','b2b-custom-code','b2b-custom-pw'].forEach(id => {
     const el = document.getElementById(id); if(el) el.value = '';
   });
   document.getElementById('b2b-type').value = '';
@@ -1479,14 +1568,18 @@ function openEditB2B(p) {
 async function saveB2BPartner() {
   const name = document.getElementById('b2b-name').value.trim();
   if (!name) { toast('영업장명을 입력하세요.', 'error'); return; }
+  const email = document.getElementById('b2b-email').value.trim();
+  if (!editingB2BCode && !email) { toast('이메일은 필수입니다.', 'error'); return; }
 
   const hex = document.getElementById('b2b-color-hex').value.trim();
+  const customCodeRaw = (document.getElementById('b2b-custom-code')?.value || '').trim().toUpperCase();
+  const customPw = (document.getElementById('b2b-custom-pw')?.value || '').trim();
   const body = {
     name,
     type: document.getElementById('b2b-type').value,
     owner_name: document.getElementById('b2b-owner').value.trim(),
     phone: document.getElementById('b2b-phone').value.trim(),
-    email: document.getElementById('b2b-email').value.trim() || null,
+    email: email || null,
     address: document.getElementById('b2b-address').value.trim(),
     commission_rate: parseFloat(document.getElementById('b2b-commission').value) || 15,
     brand_name: document.getElementById('b2b-brand-name').value.trim() || name,
@@ -1494,6 +1587,8 @@ async function saveB2BPartner() {
     brand_logo_url: document.getElementById('b2b-logo-url').value.trim() || null,
     memo: document.getElementById('b2b-memo').value.trim(),
     status: 'active',
+    custom_code: customCodeRaw || null,
+    custom_password: customPw || null,
   };
 
   if (editingB2BCode) {
@@ -1571,6 +1666,195 @@ function previewLogo(url) {
   } else {
     preview.innerHTML = '<i class="fas fa-image" style="color:var(--muted);font-size:16px"></i>';
   }
+}
+
+// ═════════════════════════════════════════════
+//  랜덤 비밀번호 생성
+// ═════════════════════════════════════════════
+function genRandPw(targetId) {
+  const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
+  let pw = '';
+  for (let i = 0; i < 8; i++) pw += chars[Math.floor(Math.random() * chars.length)];
+  const el = document.getElementById(targetId);
+  if (el) { el.value = pw; toast('임시 비밀번호 생성됨: ' + pw, 'success'); }
+}
+
+// ═════════════════════════════════════════════
+//  컨설턴트 이용법 안내 페이지
+// ═════════════════════════════════════════════
+function loadGuideConsultant() {
+  document.getElementById('page-body').innerHTML = `
+    <div class="card" style="max-width:820px;margin:0 auto">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+        <div style="width:48px;height:48px;background:#EFF6FF;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px">👤</div>
+        <div>
+          <div style="font-size:20px;font-weight:700;color:#1A3C6B">컨설턴트 이용 가이드</div>
+          <div style="font-size:13px;color:#64748B;margin-top:2px">슬림마인드 컨설턴트를 위한 상세 이용법 안내</div>
+        </div>
+      </div>
+
+      <!-- STEP 1 -->
+      <div style="border-left:4px solid #3B82F6;padding:16px 20px;background:#F8FAFF;border-radius:0 12px 12px 0;margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;color:#3B82F6;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">STEP 1</div>
+        <div style="font-size:16px;font-weight:700;color:#1E293B;margin-bottom:8px">🔐 로그인 방법</div>
+        <div style="font-size:14px;color:#334155;line-height:1.8">
+          <b>접속 주소:</b> <code style="background:#E2E8F0;padding:2px 8px;border-radius:4px">${location.origin}/consultant</code><br>
+          <b>로그인 정보:</b> 마스터가 발급한 <b>컨설턴트 코드(SC-XXXX)</b>와 <b>비밀번호</b>를 입력합니다.<br>
+          <b>초기 비밀번호:</b> 마스터에게 전달받은 비밀번호로 최초 로그인 후 반드시 변경해 주세요.<br>
+          <span style="color:#EF4444;font-size:13px">⚠️ 비밀번호 분실 시 마스터(슬림마인드 본사)에 문의하세요.</span>
+        </div>
+      </div>
+
+      <!-- STEP 2 -->
+      <div style="border-left:4px solid #10B981;padding:16px 20px;background:#F0FDF8;border-radius:0 12px 12px 0;margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;color:#10B981;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">STEP 2</div>
+        <div style="font-size:16px;font-weight:700;color:#1E293B;margin-bottom:8px">📋 고객 설문 링크 발송</div>
+        <div style="font-size:14px;color:#334155;line-height:1.8">
+          컨설턴트 대시보드 로그인 후 <b>「설문 링크 복사」</b> 버튼을 클릭하면 고객 전용 설문 링크가 복사됩니다.<br>
+          링크 형식: <code style="background:#D1FAE5;padding:2px 8px;border-radius:4px">${location.origin}/slimmind_live?ref=SC-XXXX</code><br>
+          이 링크를 <b>카카오톡, 문자, 이메일</b> 등으로 고객에게 전달하세요.<br>
+          링크를 통해 설문을 완료한 고객의 결과가 <b>내 대시보드에 자동으로 연결</b>됩니다.
+        </div>
+      </div>
+
+      <!-- STEP 3 -->
+      <div style="border-left:4px solid #8B5CF6;padding:16px 20px;background:#F5F3FF;border-radius:0 12px 12px 0;margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;color:#8B5CF6;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">STEP 3</div>
+        <div style="font-size:16px;font-weight:700;color:#1E293B;margin-bottom:8px">📊 고객 BC코드 결과 확인</div>
+        <div style="font-size:14px;color:#334155;line-height:1.8">
+          고객이 설문을 완료하면 대시보드 <b>「고객 결과」</b> 탭에서 확인할 수 있습니다.<br>
+          <b>BC코드(BC-01~BC-12)</b>는 고객의 비만 유형과 원인을 10개 축으로 분석한 결과입니다.<br>
+          결과지를 클릭하면 상세 분석 리포트(결과지)를 확인하고, 링크를 고객에게 공유할 수 있습니다.<br>
+          <b>BC코드 해석 자료</b>는 별도 교육 자료를 참고하거나 본사에 문의해 주세요.
+        </div>
+      </div>
+
+      <!-- STEP 4 -->
+      <div style="border-left:4px solid #F59E0B;padding:16px 20px;background:#FFFBEB;border-radius:0 12px 12px 0;margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;color:#F59E0B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">STEP 4</div>
+        <div style="font-size:16px;font-weight:700;color:#1E293B;margin-bottom:8px">💬 컨설팅 진행 방법</div>
+        <div style="font-size:14px;color:#334155;line-height:1.8">
+          결과지의 <b>BC코드와 10축 점수</b>를 바탕으로 맞춤 다이어트 컨설팅을 진행합니다.<br>
+          <b>주의:</b> 진단 결과는 참고 자료이며, 의학적 진단/처방을 대체하지 않습니다.<br>
+          결과지에는 <b>운동 처방, 식단 가이드, 생활 습관 교정</b> 내용이 포함되어 있습니다.<br>
+          컨설팅 중 BC코드 해석에 대한 질문은 <a href="https://pf.kakao.com/_xgCgsX/chat" target="_blank" style="color:#3B82F6;font-weight:700">슬림마인드 본사 카카오채널</a>로 문의하세요.
+        </div>
+      </div>
+
+      <!-- STEP 5 -->
+      <div style="border-left:4px solid #EF4444;padding:16px 20px;background:#FFF1F2;border-radius:0 12px 12px 0;margin-bottom:24px">
+        <div style="font-size:12px;font-weight:700;color:#EF4444;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">자주 묻는 질문 (FAQ)</div>
+        <div style="font-size:14px;color:#334155;line-height:1.8">
+          <b>Q. 고객 결과가 내 대시보드에 안 보여요?</b><br>
+          A. 고객이 설문 완료 시 제 링크(ref=SC-XXXX 포함)를 사용했는지 확인해주세요.<br><br>
+          <b>Q. 비밀번호를 바꾸고 싶어요.</b><br>
+          A. 컨설턴트 대시보드 로그인 후 우측 상단 「설정」에서 변경 가능합니다.<br><br>
+          <b>Q. 고객 링크는 몇 번이나 사용 가능한가요?</b><br>
+          A. 횟수 제한 없이 여러 고객에게 공유할 수 있습니다.<br><br>
+          <b>Q. 기타 문의사항</b><br>
+          A. <a href="https://pf.kakao.com/_xgCgsX/chat" target="_blank" style="color:#3B82F6;font-weight:700">슬림마인드 본사 카카오채널</a>로 채팅 문의해 주세요.
+        </div>
+      </div>
+
+      <div style="text-align:center">
+        <a href="https://pf.kakao.com/_xgCgsX/chat" target="_blank"
+           style="display:inline-flex;align-items:center;gap:10px;background:#FEE500;color:#3C1E1E;border-radius:12px;padding:14px 28px;font-size:15px;font-weight:700;text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.1)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="#3C1E1E"><path d="M12 2C6.48 2 2 5.92 2 10.73c0 2.98 1.67 5.6 4.19 7.22l-.97 3.57 4.1-2.72c.87.16 1.76.24 2.68.24 5.52 0 10-3.92 10-8.77S17.52 2 12 2z"/></svg>
+          슬림마인드 본사에 채팅 문의하기
+        </a>
+      </div>
+    </div>
+  `;
+}
+
+// ═════════════════════════════════════════════
+//  B2B 파트너 이용법 안내 페이지
+// ═════════════════════════════════════════════
+function loadGuideB2B() {
+  document.getElementById('page-body').innerHTML = `
+    <div class="card" style="max-width:820px;margin:0 auto">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+        <div style="width:48px;height:48px;background:#F5F3FF;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px">🏢</div>
+        <div>
+          <div style="font-size:20px;font-weight:700;color:#6D28D9">B2B 파트너 이용 가이드</div>
+          <div style="font-size:13px;color:#64748B;margin-top:2px">슬림마인드 B2B 파트너(병원·에스테틱·헬스장 등) 전용 상세 이용법</div>
+        </div>
+      </div>
+
+      <!-- STEP 1 -->
+      <div style="border-left:4px solid #6366F1;padding:16px 20px;background:#F5F3FF;border-radius:0 12px 12px 0;margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;color:#6366F1;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">STEP 1</div>
+        <div style="font-size:16px;font-weight:700;color:#1E293B;margin-bottom:8px">🔐 B2B 대시보드 로그인</div>
+        <div style="font-size:14px;color:#334155;line-height:1.8">
+          <b>접속 주소:</b> <code style="background:#EDE9FE;padding:2px 8px;border-radius:4px">${location.origin}/b2b</code><br>
+          <b>로그인 정보:</b> 슬림마인드 본사로부터 발급받은 <b>파트너 코드(B2B-XXX-001)</b>와 <b>비밀번호</b>를 입력합니다.<br>
+          <b>최초 로그인 후</b> 반드시 비밀번호를 변경해 주세요.<br>
+          <span style="color:#EF4444;font-size:13px">⚠️ 로그인 정보 분실 시 슬림마인드 본사에 문의하세요.</span>
+        </div>
+      </div>
+
+      <!-- STEP 2 -->
+      <div style="border-left:4px solid #10B981;padding:16px 20px;background:#F0FDF8;border-radius:0 12px 12px 0;margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;color:#10B981;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">STEP 2</div>
+        <div style="font-size:16px;font-weight:700;color:#1E293B;margin-bottom:8px">📱 고객 설문 링크 & QR 활용</div>
+        <div style="font-size:14px;color:#334155;line-height:1.8">
+          로그인 후 대시보드에서 <b>「고객 설문 링크」</b> 및 <b>QR코드</b>를 확인할 수 있습니다.<br>
+          링크 형식: <code style="background:#D1FAE5;padding:2px 8px;border-radius:4px">${location.origin}/s/B2B-XXX-001</code><br>
+          ✅ 이 링크로 들어온 고객의 설문지에는 <b>귀 업체의 브랜드 컬러와 로고</b>가 자동으로 적용됩니다.<br>
+          ✅ QR코드를 인쇄하여 원내 안내판, 명함, 리플렛 등에 활용하세요.<br>
+          ✅ 고객이 설문 완료 시 <b>귀 업체 이름이 기재된 맞춤형 결과지</b>가 생성됩니다.
+        </div>
+      </div>
+
+      <!-- STEP 3 -->
+      <div style="border-left:4px solid #3B82F6;padding:16px 20px;background:#EFF6FF;border-radius:0 12px 12px 0;margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;color:#3B82F6;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">STEP 3</div>
+        <div style="font-size:16px;font-weight:700;color:#1E293B;margin-bottom:8px">📊 고객 결과지 조회 및 활용</div>
+        <div style="font-size:14px;color:#334155;line-height:1.8">
+          대시보드 <b>「고객 현황」</b> 탭에서 귀 업체를 통해 등록된 모든 고객의 BC코드 결과를 확인할 수 있습니다.<br>
+          <b>결과지 링크</b>를 고객에게 재전송하거나, 직접 상담에 활용하세요.<br>
+          BC코드별 <b>운동·식단·생활습관 처방</b>이 결과지에 포함되어 있어 원내 상담 자료로 바로 활용 가능합니다.<br>
+          <span style="color:#3B82F6;font-weight:600">💡 Tip: 초진 전 설문 링크를 미리 발송하면 상담 효율이 높아집니다!</span>
+        </div>
+      </div>
+
+      <!-- STEP 4 -->
+      <div style="border-left:4px solid #F59E0B;padding:16px 20px;background:#FFFBEB;border-radius:0 12px 12px 0;margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;color:#F59E0B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">STEP 4</div>
+        <div style="font-size:16px;font-weight:700;color:#1E293B;margin-bottom:8px">🎨 화이트라벨 브랜딩 안내</div>
+        <div style="font-size:14px;color:#334155;line-height:1.8">
+          귀 업체 전용 링크(<code style="background:#FEF3C7;padding:2px 6px;border-radius:4px">/s/B2B-XXX-001</code>)로 접속하면:<br>
+          &nbsp;&nbsp;• 설문지 헤더에 <b>귀 업체 브랜드컬러</b>가 적용됩니다<br>
+          &nbsp;&nbsp;• 등록된 로고가 있으면 <b>설문지 상단에 로고가 표시</b>됩니다<br>
+          &nbsp;&nbsp;• 결과지에도 동일한 브랜딩이 적용됩니다<br>
+          브랜드 컬러·로고 변경이 필요한 경우 슬림마인드 본사에 문의하세요.
+        </div>
+      </div>
+
+      <!-- STEP 5: 주의사항 -->
+      <div style="border-left:4px solid #EF4444;padding:16px 20px;background:#FFF1F2;border-radius:0 12px 12px 0;margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;color:#EF4444;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">주의사항 및 FAQ</div>
+        <div style="font-size:14px;color:#334155;line-height:1.8">
+          <b>Q. 고객 설문 결과가 안 보여요.</b><br>
+          A. 고객이 귀 업체 전용 링크(<code>/s/B2B-XXX-001</code>)로 접속했는지 확인해주세요.<br><br>
+          <b>Q. 브랜드 컬러나 로고를 바꾸고 싶어요.</b><br>
+          A. 슬림마인드 본사에 요청하시면 수정해 드립니다.<br><br>
+          <b>Q. QR코드를 고화질로 받고 싶어요.</b><br>
+          A. 본사 카카오채널로 문의 주시면 고해상도 QR 이미지를 제공해 드립니다.<br><br>
+          <b>Q. 의료기기·의약품과 연계해도 되나요?</b><br>
+          A. SlimMind는 라이프스타일 분석 도구이며, 의료 행위를 대체하지 않습니다.
+        </div>
+      </div>
+
+      <div style="text-align:center">
+        <a href="https://pf.kakao.com/_xgCgsX/chat" target="_blank"
+           style="display:inline-flex;align-items:center;gap:10px;background:#FEE500;color:#3C1E1E;border-radius:12px;padding:14px 28px;font-size:15px;font-weight:700;text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.1)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="#3C1E1E"><path d="M12 2C6.48 2 2 5.92 2 10.73c0 2.98 1.67 5.6 4.19 7.22l-.97 3.57 4.1-2.72c.87.16 1.76.24 2.68.24 5.52 0 10-3.92 10-8.77S17.52 2 12 2z"/></svg>
+          슬림마인드 본사에 채팅 문의하기
+        </a>
+      </div>
+    </div>
+  `;
 }
 
 function copyText(text) {

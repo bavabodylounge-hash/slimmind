@@ -477,17 +477,32 @@ app.get('/api/admin/consultants', requireRole('MASTER'), async (c) => {
 app.post('/api/admin/consultants', requireRole('MASTER'), async (c) => {
   const db = c.env.DB
   const body = await c.req.json()
-  const { name, email, phone, job_type, grade, subscription_end, memo } = body
+  const { name, email, phone, job_type, grade, subscription_end, memo, custom_code, custom_password } = body
 
-  const last = await db.prepare("SELECT code FROM consultants WHERE code LIKE 'SC-%' ORDER BY code DESC LIMIT 1").first<any>()
-  let nextNum = 1
-  if (last?.code) {
-    const n = parseInt(last.code.replace('SC-', ''))
-    if (!isNaN(n)) nextNum = n + 1
+  if (!email) return c.json({ success: false, error: '이메일은 필수입니다.' }, 400)
+
+  let code: string
+  if (custom_code && /^SC-/i.test(custom_code)) {
+    // 커스텀 코드 사용 (SC-XXX 형식 강제)
+    code = custom_code.toUpperCase()
+    const exists = await db.prepare('SELECT code FROM consultants WHERE code=?').bind(code).first()
+    if (exists) return c.json({ success: false, error: `코드 ${code}는 이미 사용 중입니다.` }, 409)
+  } else if (custom_code) {
+    code = `SC-${custom_code.toUpperCase()}`
+    const exists = await db.prepare('SELECT code FROM consultants WHERE code=?').bind(code).first()
+    if (exists) return c.json({ success: false, error: `코드 ${code}는 이미 사용 중입니다.` }, 409)
+  } else {
+    const last = await db.prepare("SELECT code FROM consultants WHERE code LIKE 'SC-%' ORDER BY code DESC LIMIT 1").first<any>()
+    let nextNum = 1
+    if (last?.code) {
+      const n = parseInt(last.code.replace('SC-', ''))
+      if (!isNaN(n)) nextNum = n + 1
+    }
+    code = `SC-${String(nextNum).padStart(4, '0')}`
   }
-  const code = `SC-${String(nextNum).padStart(4, '0')}`
 
-  const initialPassword = `pass${String(nextNum).padStart(4,'0')}`
+  const num = code.replace(/^SC-/i, '')
+  const initialPassword = custom_password || `pass${num.padStart(4,'0')}`
 
   try {
     await db.prepare(`
@@ -627,9 +642,10 @@ app.post('/api/admin/b2b-partners', requireRole('MASTER'), async (c) => {
   const db = c.env.DB
   const body = await c.req.json()
   const { name, type, owner_name, phone, email, address, commission_rate, memo,
-          brand_logo_url, brand_color, brand_name } = body
+          brand_logo_url, brand_color, brand_name, custom_code, custom_password } = body
 
   if (!name) return c.json({ success: false, error: '영업장명은 필수입니다.' }, 400)
+  if (!email) return c.json({ success: false, error: '이메일은 필수입니다.' }, 400)
 
   // B2B 코드 자동 생성: 업종 약자 + 순번
   const typeAbbr: Record<string, string> = {
@@ -637,19 +653,30 @@ app.post('/api/admin/b2b-partners', requireRole('MASTER'), async (c) => {
     '헬스장': 'GYM', '뷰티샵': 'BTY', '병원': 'HOS', '기타': 'ETC',
     '성형외과': 'SUR', '피부과': 'DRM', '성형외과피부과': 'SUR', '성형': 'SUR',
     '요가': 'YGA', 'PT샵': 'PTS', '다이어트샵': 'DTS', '비만클리닉': 'OBC',
-    '웰니스': 'WEL', '스파': 'SPA'
+    '웰니스': 'WEL', '스파': 'SPA', '뷰티숍': 'BTY'
   }
-  const abbr = typeAbbr[type || '기타'] || 'ETC'
-  const last = await db.prepare(
-    `SELECT code FROM b2b_partners WHERE code LIKE 'B2B-${abbr}-%' ORDER BY code DESC LIMIT 1`
-  ).first<any>()
-  let nextNum = 1
-  if (last?.code) {
-    const n = parseInt(last.code.split('-').pop() || '0')
-    if (!isNaN(n)) nextNum = n + 1
+
+  let code: string
+  if (custom_code) {
+    // 커스텀 코드: B2B- 접두사 자동 추가
+    const raw = custom_code.toUpperCase().replace(/^B2B-/, '')
+    code = `B2B-${raw}`
+    const exists = await db.prepare('SELECT code FROM b2b_partners WHERE code=?').bind(code).first()
+    if (exists) return c.json({ success: false, error: `코드 ${code}는 이미 사용 중입니다.` }, 409)
+  } else {
+    const abbr = typeAbbr[type || '기타'] || 'ETC'
+    const last = await db.prepare(
+      `SELECT code FROM b2b_partners WHERE code LIKE 'B2B-${abbr}-%' ORDER BY code DESC LIMIT 1`
+    ).first<any>()
+    let nextNum = 1
+    if (last?.code) {
+      const n = parseInt(last.code.split('-').pop() || '0')
+      if (!isNaN(n)) nextNum = n + 1
+    }
+    code = `B2B-${abbr}-${String(nextNum).padStart(3, '0')}`
   }
-  const code = `B2B-${abbr}-${String(nextNum).padStart(3, '0')}`
-  const defaultPassword = `b2b${String(nextNum).padStart(3, '0')}`
+  const numSuffix = code.split('-').pop() || '001'
+  const defaultPassword = custom_password || `b2b${numSuffix.padStart(3, '0')}`
 
   try {
     await db.prepare(`
