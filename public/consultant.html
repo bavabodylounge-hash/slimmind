@@ -233,13 +233,13 @@
         <div style="border-left:4px solid #3B82F6;padding:14px 18px;background:#F8FAFF;border-radius:0 10px 10px 0;margin-bottom:14px">
           <div style="font-size:11px;font-weight:700;color:#3B82F6;margin-bottom:5px">STEP 1 — 로그인</div>
           <div style="font-size:14px;font-weight:700;color:#1E293B;margin-bottom:6px">🔐 대시보드 접속</div>
-          <div style="font-size:13px;color:#334155;line-height:1.8">이 페이지(<b>/consultant</b>)에서 발급받은 <b>코드(SC-XXXX)</b>와 <b>비밀번호</b>로 로그인합니다.<br>bimax 로그인 후 비밀번호를 반드시 변경하세요. (내 정보 탭 → 비밀번호 변경)</div>
+          <div style="font-size:13px;color:#334155;line-height:1.8">이 페이지(<b>/consultant</b>)에서 발급받은 <b>코드(SC-XXXX)</b>와 <b>비밀번호</b>로 로그인합니다.<br>로그인 후 비밀번호를 반드시 변경하세요. (내 정보 탭 → 비밀번호 변경)</div>
         </div>
 
         <div style="border-left:4px solid #10B981;padding:14px 18px;background:#F0FDF8;border-radius:0 10px 10px 0;margin-bottom:14px">
           <div style="font-size:11px;font-weight:700;color:#10B981;margin-bottom:5px">STEP 2 — 고객 설문 전송</div>
           <div style="font-size:14px;font-weight:700;color:#1E293B;margin-bottom:6px">📱 내 전용 설문 링크 공유</div>
-          <div style="font-size:13px;color:#334155;line-height:1.8">초대 링크 탭에서 <b>설문 링크</b>를 복사하여 고객에게 카카오톡/문자/이메일로 발송하세요.<br>링크 형식: <code style="background:#D1FAE5;padding:1px 6px;border-radius:4px">/slimmind_live?ref=SC-XXXX</code><br>링크를 통해 설문 완료한 <b>고객의 결과가 내 대시보드에 자동 연결</b>됩니다.</div>
+          <div style="font-size:13px;color:#334155;line-height:1.8">초대 링크 탭에서 <b>설문 링크</b>를 복사하여 고객에게 카카오톡/문자/이메일로 발송하세요.<br>링크 형식: <code style="background:#D1FAE5;padding:1px 6px;border-radius:4px">/s/SC-XXXX</code><br>링크를 통해 설문 완료한 <b>고객의 결과가 내 대시보드에 자동 연결</b>됩니다.</div>
         </div>
 
         <div style="border-left:4px solid #8B5CF6;padding:14px 18px;background:#F5F3FF;border-radius:0 10px 10px 0;margin-bottom:14px">
@@ -258,7 +258,7 @@
             <b>Q. 링크는 몇 번이나 사용 가능한가요?</b><br>
             A. 횟수 제한 없이 여러 고객에게 공유할 수 있습니다.<br>
             <b>Q. 기타 문의</b><br>
-            A. 아래 컨설당 쳄널로 문의하세요.
+            A. 아래 카카오 채팅 버튼으로 문의하세요.
           </div>
         </div>
 
@@ -378,7 +378,7 @@ async function initApp() {
   document.getElementById('main-page').style.display = 'block';
   document.getElementById('topbar-code').textContent = ME.code;
   document.getElementById('topbar-name').textContent = ME.name;
-  const surveyUrl = `${location.origin}/slimmind_live?ref=${ME.code}`;
+  const surveyUrl = `${location.origin}/s/${ME.code}`;
   document.getElementById('invite-url').textContent = surveyUrl;
 
   // topbar 설문링크 버튼 표시
@@ -550,7 +550,7 @@ function showKakaoPreview(message, resultUrl, userName, bcName) {
 }
 
 function shareKakao() {
-  const url = `${location.origin}/slimmind_live?ref=${ME.code}`;
+  const url = `${location.origin}/s/${ME.code}`;
   navigator.clipboard.writeText(url).then(() => {
     toast('설문 링크 복사 완료! 카카오톡에 붙여넣기 하세요.', 'success');
   });
@@ -558,12 +558,12 @@ function shareKakao() {
 
 function copyTopbarSurveyLink() {
   if (!ME?.code) return;
-  const url = `${location.origin}/slimmind_live?ref=${ME.code}`;
+  const url = `${location.origin}/s/${ME.code}`;
   navigator.clipboard.writeText(url).then(() => toast('📋 설문 링크 복사 완료!', 'success'));
 }
 
 function copyInviteLink() {
-  const url = `${location.origin}/slimmind_live?ref=${ME.code}`;
+  const url = `${location.origin}/s/${ME.code}`;
   navigator.clipboard.writeText(url).then(() => toast('링크 복사 완료!', 'success'));
 }
 

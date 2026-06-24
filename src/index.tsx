@@ -579,7 +579,7 @@ app.post('/api/admin/consultants', requireRole('MASTER'), async (c) => {
     return c.json({ success: false, error: msg }, 500)
   }
 
-  return c.json({ success: true, code, initialPassword, message: `컨설턴트 ${code} 생성 완료. 초기 비밀번호: ${initialPassword}` })
+  return c.json({ success: true, code, password: initialPassword, initialPassword, message: `컨설턴트 ${code} 생성 완료. 초기 비밀번호: ${initialPassword}` })
 })
 
 // PUT /api/admin/consultants/:code — 수정
@@ -611,7 +611,7 @@ app.delete('/api/admin/consultants/:code', requireRole('MASTER'), async (c) => {
   return c.json({ success: true, message: '계정이 정지되었습니다.' })
 })
 
-// DELETE /api/admin/consultants/:code/hard — 영구 삭제(하드)
+// DELETE /api/admin/consultants/:code/hard — 영구 삭제(하드, 관련 결과지 포함)
 app.delete('/api/admin/consultants/:code/hard', requireRole('MASTER'), async (c) => {
   const db = c.env.DB
   const code = c.req.param('code')
@@ -620,7 +620,9 @@ app.delete('/api/admin/consultants/:code/hard', requireRole('MASTER'), async (c)
   if (!existing) {
     return c.json({ success: false, message: '존재하지 않는 컨설턴트입니다.' }, 404)
   }
-  // 영구 삭제
+  // 관련 결과지 먼저 삭제 (외래키 제약 해소)
+  await db.prepare("DELETE FROM results WHERE consultant_code=?").bind(code).run()
+  // 컨설턴트 영구 삭제
   await db.prepare("DELETE FROM consultants WHERE code=?").bind(code).run()
   return c.json({ success: true, message: `${code} 컨설턴트가 영구 삭제되었습니다.` })
 })
@@ -742,7 +744,7 @@ app.post('/api/admin/b2b-partners', requireRole('MASTER'), async (c) => {
       INSERT INTO b2b_partners
         (code, name, type, owner_name, phone, email, address, commission_rate, memo,
          brand_logo_url, brand_color, brand_name, password_hash, status)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,'pending')
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,'active')
     `).bind(
       code, name, type || null, owner_name || null, phone || null, email || null,
       address || null, commission_rate || 15.0, memo || null,
@@ -758,7 +760,9 @@ app.post('/api/admin/b2b-partners', requireRole('MASTER'), async (c) => {
   }
 
   return c.json({
-    success: true, code, defaultPassword,
+    success: true, code,
+    password: defaultPassword,
+    defaultPassword,
     message: `B2B 파트너 ${code} 생성 완료. 초기 비밀번호: ${defaultPassword}`,
     survey_url: `/s/${code}`
   })
