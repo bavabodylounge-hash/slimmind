@@ -1187,10 +1187,10 @@ app.post('/api/consultant/ai-message', requireRole('ANY'), async (c) => {
     `).bind(bc_code).first<any>()
     if (!row) return c.json({ error: `BC코드(${bc_code})를 찾을 수 없습니다.` }, 404)
 
-    const parse = (v: any) => { try { return JSON.parse(v) } catch { return [] } }
-    const principles = parse(row.correct_principles_json).slice(0, 2).map((p: any) => p.title || p).join(', ')
-    const lifestyle = parse(row.lifestyle_rules_json).slice(0, 2).map((l: any) => l.rule || l).join(', ')
-    const goals = parse(row.monthly_goals_json).slice(0, 1).map((g: any) => g.goal || g).join('')
+    const parse = (v: any) => { try { const r = JSON.parse(v); return Array.isArray(r) ? r : [] } catch { return [] } }
+    const principles = parse(row.correct_principles_json).slice(0, 2).map((p: any) => typeof p === 'string' ? p : (p.title || p.principle || '')).filter(Boolean).join(', ')
+    const lifestyle = parse(row.lifestyle_rules_json).slice(0, 2).map((l: any) => typeof l === 'string' ? l : (l.rule || l.habit || '')).filter(Boolean).join(', ')
+    const goals = parse(row.monthly_goals_json).slice(0, 1).map((g: any) => typeof g === 'string' ? g : (g.goal || g.target || '')).filter(Boolean).join('')
 
     // 멘트 템플릿 (OpenAI 없이 구조화된 자동 생성)
     const name = user_name || '고객님'
