@@ -624,83 +624,264 @@ function printQR(qrUrl, surveyUrl) {
 
 // ─── 파트너 추천 뷰 ──────────────────────────
 async function loadPartnerView() {
-  const custData = await api('GET', '/b2b/results');
-  if (!custData) return;
-
-  const results = custData.results || [];
   const color = BRAND.brand_color || '#6366f1';
 
-  // 닉네임 빈도 계산
-  const nickCount = {};
-  results.forEach(r => {
-    if (r.bc_primary) nickCount[r.bc_primary] = (nickCount[r.bc_primary] || 0) + 1;
-  });
-  const topNicks = Object.entries(nickCount).sort((a,b) => b[1]-a[1]).slice(0, 5);
-
-  let partnerViewHtml = '';
-  if (topNicks.length === 0) {
-    partnerViewHtml = '<div class="empty-state"><i class="fas fa-star"></i><p>아직 고객 데이터가 없습니다</p></div>';
-  } else {
-    partnerViewHtml = `
-      <p style="font-size:13px;color:var(--muted);margin-bottom:16px">
-        고객 유형별 최적 추천 서비스입니다. 고객 상담 시 활용하세요.
-      </p>
-      ${topNicks.map(([nick, cnt]) => `
-        <div style="margin-bottom:20px">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-            <span class="badge" style="background:${color}22;color:${color}">${nick}</span>
-            <span style="font-size:12px;color:var(--muted)">${cnt}명</span>
-          </div>
-          <div id="pv-${nick.replace(/\s/g,'_')}" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
-            <div style="text-align:center;padding:20px;color:var(--muted)"><i class="fas fa-circle-notch fa-spin"></i></div>
-          </div>
-        </div>
-      `).join('')}
-    `;
-  }
-
   document.getElementById('page-body').innerHTML = `
-    <div class="card">
-      <div class="card-title"><i class="fas fa-star" style="color:${color}"></i> 파트너 추천 뷰 (고객 상담용)</div>
-      ${partnerViewHtml}
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title"><i class="fas fa-search" style="color:${color}"></i> 고객 이름으로 즉시 처방 조회</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:14px">
+        초진 상담 전 고객 이름을 입력하면 해당 고객의 BC유형과 맞춤 처방을 즉시 확인할 수 있습니다.
+      </p>
+      <div style="display:flex;gap:10px;margin-bottom:0">
+        <input type="text" id="pv-search-input" placeholder="고객 이름 입력..." 
+          style="flex:1;border:1.5px solid var(--border);border-radius:10px;padding:12px 16px;font-size:15px;font-family:inherit;outline:none"
+          onkeydown="if(event.key==='Enter') searchPartnerView()"
+          onfocus="this.style.borderColor='${color}'" onblur="this.style.borderColor='var(--border)'">
+        <button class="btn btn-primary" onclick="searchPartnerView()" style="padding:12px 24px;font-size:14px">
+          <i class="fas fa-search"></i> 조회
+        </button>
+      </div>
+    </div>
+
+    <div id="pv-result-area">
+      <div class="card">
+        <div class="card-title"><i class="fas fa-star" style="color:${color}"></i> BC유형별 처방 가이드</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px">
+          위에서 고객 이름을 검색하거나, 아래에서 BC유형을 직접 선택하여 처방을 확인하세요.
+        </p>
+        <div style="display:flex;flex-wrap:wrap;gap:8px" id="bc-type-btns">
+          ${['BC-01','BC-02','BC-03','BC-04','BC-05','BC-06','BC-07','BC-08','BC-09','BC-10'].map((code,i) => `
+            <button class="btn btn-ghost btn-sm" onclick="loadBcPrescription('${code}', null)"
+              style="border-color:${color}44;color:${color}">
+              ${code}
+            </button>
+          `).join('')}
+        </div>
+      </div>
+      <div id="pv-prescription-area"></div>
     </div>
   `;
 
-  // 각 닉네임별 파트너 뷰 조회 — 로컬 시드 데이터 활용
-  // (bc_partner_view API가 없으면 시드 데이터 로컬 표시)
-  const PARTNER_VIEW_SEED = {
-    '호르몬스위치 갱년기형': { rec1: '고주파 심부열 테라피 — 갱년기 에스트로겐 저하로 굳은 지방층을 열로 풀어줍니다', rec2: '림프 드레나쥐 — 호르몬 변화로 정체된 하체 림프를 순환시킵니다', forbidden: '고강도 근력 운동 — 코르티솔 추가 분비로 복부지방 악화', price: 150000 },
-    '스트레스성 야식부엉이형': { rec1: '두피·경추 이완 마사지 — 코르티솔 억제 효과가 즉각적입니다', rec2: '아로마 림프 마사지 — 부교감 신경 활성화로 야식 충동 감소', forbidden: '야간 사우나 — 코르티솔 분비 리듬을 더 교란합니다', price: 120000 },
-    '식후기절 혈당롤러코스터형': { rec1: '인바디 정밀 체성분 분석 — 인슐린 저항성 패턴 파악 필수', rec2: '저주파 EMS 복부 자극 — 인슐린 감수성 개선에 효과적', forbidden: '고강도 유산소 단독 — 혈당 급락으로 폭식 유발', price: 130000 },
-    '오후만되면 코끼리다리형': { rec1: '공기압 하체 순환 마사지 — 림프 정체 즉각 해소', rec2: '냉온 교대 족욕 테라피 — 하지 정맥 순환 개선', forbidden: '열 치료 단독 — 부종 일시 악화 가능', price: 100000 },
-    '출산후 바람빠진 풍선형': { rec1: '복압 회복 코어 필라테스 — 출산 후 복압 재건 전문', rec2: '산후 림프 드레나쥐 — 산후 부종 집중 관리', forbidden: '고강도 복근 운동 — 복압 손상 위험', price: 160000 },
-  };
+  // BC코드 이름 로드
+  loadBcTypeNames();
+}
 
-  topNicks.forEach(([nick]) => {
-    const key = nick.replace(/\s/g,'_');
-    const el = document.getElementById(`pv-${key}`);
-    if (!el) return;
-    const pv = PARTNER_VIEW_SEED[nick];
-    if (pv) {
-      el.innerHTML = `
-        <div class="partner-view-card rec1">
-          <div class="pv-label" style="color:#10B981">✅ 1순위 추천</div>
-          <div class="pv-text">${pv.rec1}</div>
-        </div>
-        <div class="partner-view-card rec2">
-          <div class="pv-label" style="color:#3B82F6">💡 2순위 추천</div>
-          <div class="pv-text">${pv.rec2}</div>
-        </div>
-        <div class="partner-view-card forbid">
-          <div class="pv-label" style="color:#EF4444">🚫 금기 서비스</div>
-          <div class="pv-text">${pv.forbidden}</div>
-          ${pv.price ? `<div style="margin-top:8px;font-size:12px;font-weight:700;color:${color}">예상 객단가 ${pv.price.toLocaleString()}원</div>` : ''}
-        </div>
-      `;
-    } else {
-      el.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--muted);font-size:13px">파트너 뷰 데이터 준비 중입니다</div>`;
+async function loadBcTypeNames() {
+  const codes = ['BC-01','BC-02','BC-03','BC-04','BC-05','BC-06','BC-07','BC-08','BC-09','BC-10'];
+  for (const code of codes) {
+    const data = await api('GET', `/b2b/partner-view/${code}`);
+    if (data && data.brand_name) {
+      const btn = document.querySelector(`button[onclick="loadBcPrescription('${code}', null)"]`);
+      if (btn) btn.innerHTML = `<span style="font-size:10px;opacity:.7">${code}</span> ${data.brand_name}`;
     }
-  });
+  }
+}
+
+async function searchPartnerView() {
+  const name = document.getElementById('pv-search-input').value.trim();
+  if (!name) { toast('이름을 입력하세요', 'error'); return; }
+  const color = BRAND.brand_color || '#6366f1';
+  const area = document.getElementById('pv-result-area');
+  area.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted)"><i class="fas fa-circle-notch fa-spin fa-2x"></i><p style="margin-top:12px">검색 중...</p></div>';
+
+  const data = await api('GET', `/b2b/customer-lookup?name=${encodeURIComponent(name)}`);
+  if (!data) return;
+
+  const results = data.results || [];
+  if (results.length === 0) {
+    area.innerHTML = `
+      <div class="card">
+        <div class="empty-state">
+          <i class="fas fa-user-slash"></i>
+          <p><strong>"${name}"</strong> 이름의 고객을 찾을 수 없습니다.<br>
+          전용 설문 링크로 설문을 완료한 고객만 조회됩니다.</p>
+        </div>
+      </div>`;
+    return;
+  }
+
+  // 고객이 1명이면 바로 처방 표시, 여러 명이면 선택
+  if (results.length === 1) {
+    showCustomerPrescription(results[0], color);
+  } else {
+    area.innerHTML = `
+      <div class="card">
+        <div class="card-title"><i class="fas fa-users" style="color:${color}"></i> "${name}" 검색 결과 (${results.length}명)</div>
+        ${results.map((r,i) => `
+          <div class="result-card" onclick='showCustomerPrescription(${JSON.stringify(r).replace(/'/g,"&#39;")}, "${color}")' style="margin-bottom:10px">
+            <div class="result-icon" style="background:${color}22;color:${color}"><i class="fas fa-user"></i></div>
+            <div class="result-info">
+              <div class="result-name">${r.user_name}</div>
+              <div class="result-meta">${fmtDate(r.created_at)}</div>
+              <div class="result-nick">${r.bc_primary || '-'}</div>
+            </div>
+            <i class="fas fa-chevron-right" style="color:var(--muted)"></i>
+          </div>
+        `).join('')}
+      </div>`;
+  }
+}
+
+function showCustomerPrescription(customer, color) {
+  if (!color) color = BRAND.brand_color || '#6366f1';
+  const area = document.getElementById('pv-prescription-area') || document.getElementById('pv-result-area');
+  const p = customer.prescription;
+
+  if (!p) {
+    area.innerHTML = `
+      <div class="card">
+        <div class="card-title">👤 ${customer.user_name} — ${customer.bc_primary || '유형 미분류'}</div>
+        <div class="empty-state"><i class="fas fa-file-medical"></i><p>해당 유형의 처방 데이터가 없습니다.<br>관리자에게 문의하세요.</p></div>
+      </div>`;
+    return;
+  }
+
+  const foodList = (arr) => arr.slice(0,3).map(f => `
+    <span style="display:inline-flex;align-items:center;gap:4px;background:#F8FAFC;border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:12px;margin:3px">
+      ${f.emoji||''} ${f.name}
+    </span>`).join('');
+
+  area.innerHTML = `
+    <div class="card" style="border-top:4px solid ${color}">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <div>
+          <div style="font-size:18px;font-weight:700">👤 ${customer.user_name}</div>
+          <div style="margin-top:6px">
+            <span class="badge" style="background:${color}22;color:${color};font-size:13px;padding:5px 14px">${customer.bc_primary} · ${p.brand_name}</span>
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-top:6px">${fmtDate(customer.created_at)} 설문 완료</div>
+        </div>
+        <a href="/result/${customer.id}" target="_blank" class="btn btn-ghost btn-sm">
+          <i class="fas fa-external-link-alt"></i> 전체 결과지
+        </a>
+      </div>
+
+      <!-- 핵심 원인 -->
+      <div style="background:${color}11;border-left:4px solid ${color};border-radius:0 10px 10px 0;padding:14px 18px;margin-bottom:16px">
+        <div style="font-size:11px;font-weight:700;color:${color};margin-bottom:6px">🔍 핵심 원인</div>
+        <div style="font-size:14px;line-height:1.7;color:var(--text)">${p.reason || '-'}</div>
+      </div>
+
+      <!-- 처방 3열 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:16px">
+        <!-- 올바른 원칙 -->
+        <div style="background:#F0FDF4;border-radius:10px;padding:14px">
+          <div style="font-size:11px;font-weight:700;color:#16A34A;margin-bottom:10px">✅ 핵심 원칙</div>
+          ${(p.correct_principles||[]).slice(0,3).map(pp => `
+            <div style="font-size:12px;color:var(--text);padding:6px 0;border-bottom:1px solid #DCFCE7;line-height:1.5">
+              <strong>${pp.title||pp}</strong>${pp.description ? `<br><span style="color:var(--muted)">${pp.description}</span>` : ''}
+            </div>`).join('') || '<div style="font-size:12px;color:var(--muted)">데이터 없음</div>'}
+        </div>
+        <!-- 권장 식품 -->
+        <div style="background:#EFF6FF;border-radius:10px;padding:14px">
+          <div style="font-size:11px;font-weight:700;color:#2563EB;margin-bottom:10px">🥗 권장 식품</div>
+          ${(p.recommended_foods||[]).slice(0,3).map(f => `
+            <div style="font-size:12px;color:var(--text);padding:5px 0;border-bottom:1px solid #DBEAFE">
+              ${f.emoji||''} <strong>${f.name}</strong><br>
+              <span style="color:var(--muted);font-size:11px">${f.reason||''}</span>
+            </div>`).join('') || '<div style="font-size:12px;color:var(--muted)">데이터 없음</div>'}
+        </div>
+        <!-- 금기 식품 -->
+        <div style="background:#FEF2F2;border-radius:10px;padding:14px">
+          <div style="font-size:11px;font-weight:700;color:#DC2626;margin-bottom:10px">🚫 금기 식품</div>
+          ${(p.forbidden_foods||[]).slice(0,3).map(f => `
+            <div style="font-size:12px;color:var(--text);padding:5px 0;border-bottom:1px solid #FEE2E2">
+              ${f.emoji||''} <strong>${f.name}</strong><br>
+              <span style="color:var(--muted);font-size:11px">${f.reason||''}</span>
+            </div>`).join('') || '<div style="font-size:12px;color:var(--muted)">데이터 없음</div>'}
+        </div>
+      </div>
+
+      <!-- 생활습관 -->
+      ${p.lifestyle_rules && p.lifestyle_rules.length > 0 ? `
+      <div style="background:#FFFBEB;border-radius:10px;padding:14px">
+        <div style="font-size:11px;font-weight:700;color:#D97706;margin-bottom:10px">📋 생활습관 처방</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          ${p.lifestyle_rules.slice(0,4).map(l => `
+            <div style="background:#FEF3C7;border-radius:8px;padding:6px 12px;font-size:12px;color:var(--text)">
+              ${l.icon||'💡'} ${l.rule||l}
+            </div>`).join('')}
+        </div>
+      </div>` : ''}
+
+      <div style="margin-top:14px;text-align:center">
+        <button class="btn btn-ghost btn-sm" onclick="loadBcPrescription('${customer.bc_primary}', '${customer.user_name}')" style="border-color:${color};color:${color}">
+          <i class="fas fa-expand-alt"></i> 전체 처방 상세보기
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+async function loadBcPrescription(bcCode, customerName) {
+  const color = BRAND.brand_color || '#6366f1';
+  const area = document.getElementById('pv-prescription-area') || document.getElementById('pv-result-area');
+  if (area) area.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted)"><i class="fas fa-circle-notch fa-spin fa-2x"></i></div>';
+
+  const data = await api('GET', `/b2b/partner-view/${bcCode}`);
+  if (!data || data.error) { toast('처방 데이터를 불러오지 못했습니다.', 'error'); return; }
+
+  const tagEl = customerName ? `<div style="font-size:13px;color:var(--muted);margin-top:4px">검색 고객: ${customerName}</div>` : '';
+
+  const renderList = (arr, color, icon) => arr.slice(0,4).map(item => `
+    <div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <span style="color:${color};font-size:16px;flex-shrink:0">${item.emoji||icon}</span>
+      <div>
+        <div style="font-size:13px;font-weight:600">${item.name||item.title||item.rule||item}</div>
+        ${item.reason||item.description ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${item.reason||item.description}</div>` : ''}
+      </div>
+    </div>`).join('');
+
+  if (area) area.innerHTML = `
+    <div class="card" style="border-top:4px solid ${color}">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px">
+        <div>
+          <div style="font-size:20px;font-weight:700">${data.brand_name}</div>
+          ${tagEl}
+          <div style="font-size:12px;color:${color};font-weight:600;margin-top:4px">${bcCode}</div>
+        </div>
+        <span class="badge" style="background:${color}22;color:${color}">${data.brand_name}</span>
+      </div>
+
+      <div style="background:${color}11;border-left:4px solid ${color};border-radius:0 10px 10px 0;padding:14px 18px;margin-bottom:20px">
+        <div style="font-size:11px;font-weight:700;color:${color};margin-bottom:6px">🔍 핵심 원인 한 줄 설명</div>
+        <div style="font-size:14px;line-height:1.7">${data.reason||'-'}</div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#16A34A;margin-bottom:8px">✅ 권장 식품</div>
+          ${renderList(data.recommended_foods||[], '#16A34A', '🥗')||'<div style="color:var(--muted);font-size:12px">데이터 없음</div>'}
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#DC2626;margin-bottom:8px">🚫 금기 식품</div>
+          ${renderList(data.forbidden_foods||[], '#DC2626', '❌')||'<div style="color:var(--muted);font-size:12px">데이터 없음</div>'}
+        </div>
+      </div>
+
+      ${data.correct_principles && data.correct_principles.length > 0 ? `
+      <div style="margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;color:#2563EB;margin-bottom:8px">💡 올바른 원칙</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          ${data.correct_principles.slice(0,4).map(p => `
+            <div style="background:#EFF6FF;border-radius:8px;padding:10px 14px;font-size:12px">
+              <strong>${p.title||p}</strong>${p.description ? `<br><span style="color:var(--muted)">${p.description}</span>` : ''}
+            </div>`).join('')}
+        </div>
+      </div>` : ''}
+
+      ${data.lifestyle_rules && data.lifestyle_rules.length > 0 ? `
+      <div>
+        <div style="font-size:12px;font-weight:700;color:#D97706;margin-bottom:8px">📋 생활습관 처방</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          ${data.lifestyle_rules.slice(0,5).map(l => `
+            <div style="background:#FFFBEB;border-radius:8px;padding:6px 12px;font-size:12px">
+              ${l.icon||'💡'} ${l.rule||l}
+            </div>`).join('')}
+        </div>
+      </div>` : ''}
+    </div>
+  `;
 }
 
 // ─── 업체 정보 ───────────────────────────────

@@ -252,6 +252,7 @@
     <div class="tab-item" data-tab="customers"><i class="fas fa-users"></i> 내 고객 목록</div>
     <div class="tab-item" data-tab="invite"><i class="fas fa-link"></i> 초대 링크</div>
     <div class="tab-item" data-tab="profile"><i class="fas fa-user-circle"></i> 내 정보</div>
+    <div class="tab-item" data-tab="ai-message"><i class="fas fa-robot"></i> AI 상담 멘트</div>
     <div class="tab-item" data-tab="guide"><i class="fas fa-book-open"></i> 이용 안내</div>
   </div>
 
@@ -419,6 +420,61 @@
     </div>
 
     <!-- ═══ 이용 안내 탭 ═══ -->
+    <!-- ═══ AI 상담 멘트 탭 ═══ -->
+    <div class="page-tab" id="tab-ai-message">
+      <div style="max-width:860px;margin:0 auto">
+        <div class="card" style="margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+            <div style="width:48px;height:48px;background:linear-gradient(135deg,#EFF6FF,#F5F3FF);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px">🤖</div>
+            <div>
+              <div style="font-size:18px;font-weight:800;color:var(--primary)">AI 상담 멘트 생성기</div>
+              <div style="font-size:12px;color:var(--muted)">고객 이름과 BC코드를 선택하면 5가지 상황별 멘트를 즉시 생성합니다</div>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end">
+            <div>
+              <label style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;display:block">고객 이름 (선택)</label>
+              <input type="text" id="ai-customer-name" placeholder="예: 김슬림" 
+                style="width:100%;border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;font-size:14px;font-family:inherit;outline:none"
+                onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;display:block">BC유형 코드 <span style="color:#EF4444">*</span></label>
+              <select id="ai-bc-code" style="width:100%;border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;font-size:14px;font-family:inherit;outline:none;background:#fff"
+                onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'">
+                <option value="">BC코드 선택...</option>
+                <option value="BC-01">BC-01 · A-CORE형 (복부인슐린저항)</option>
+                <option value="BC-02">BC-02 · V-VISCERAL형 (복부알코올지방)</option>
+                <option value="BC-03">BC-03 · U-TRAP형 (상체림프정체)</option>
+                <option value="BC-04">BC-04 · BLOCK-A형 (코어약화통짜)</option>
+                <option value="BC-05">BC-05 · PEAR-L형 (하체에스트로겐)</option>
+                <option value="BC-06">BC-06 · COLD-L형 (하체냉증순환)</option>
+                <option value="BC-07">BC-07 · S-SKINNY형 (마른비만내장)</option>
+                <option value="BC-08">BC-08 · T-PLATEAU형 (정체기대사)</option>
+                <option value="BC-09">BC-09 · C-STRESS형 (코르티솔복부)</option>
+                <option value="BC-10">BC-10 · R-REBOUND형 (요요반복)</option>
+              </select>
+            </div>
+            <button class="btn btn-primary" onclick="generateAiMessages()" style="padding:11px 24px;white-space:nowrap">
+              <i class="fas fa-magic"></i> 멘트 생성
+            </button>
+          </div>
+
+          <!-- 고객 목록에서 빠른 선택 -->
+          <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+            <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px">최근 고객에서 빠른 선택:</div>
+            <div id="ai-quick-customers" style="display:flex;flex-wrap:wrap;gap:6px">
+              <div style="font-size:12px;color:var(--muted);padding:4px 0"><i class="fas fa-circle-notch fa-spin"></i> 불러오는 중...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 생성 결과 영역 -->
+        <div id="ai-messages-area"></div>
+      </div>
+    </div>
+
     <div class="page-tab" id="tab-guide">
       <div class="card" style="max-width:800px;margin:0 auto">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
@@ -721,6 +777,10 @@ async function initApp() {
 function switchTab(t) {
   document.querySelectorAll('.tab-item').forEach(x => x.classList.toggle('active', x.dataset.tab === t));
   document.querySelectorAll('.page-tab').forEach(x => x.classList.toggle('active', x.id === `tab-${t}`));
+  // AI 상담 멘트 탭 진입 시 빠른 고객 목록 로드
+  if (t === 'ai-message') {
+    loadAiMessageTab();
+  }
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1289,6 +1349,115 @@ document.getElementById('detail-modal').addEventListener('click', function(e) {
 document.getElementById('b2b-modal-overlay').addEventListener('click', function(e) {
   if (e.target === this) closeB2bModal();
 });
+
+// ══════════════════════════════════════════════════════════
+// AI 상담 멘트 생성
+// ══════════════════════════════════════════════════════════
+async function loadAiMessageTab() {
+  // 최근 고객 빠른 선택 로드
+  const data = await api('GET', '/consultant/results?limit=8');
+  const container = document.getElementById('ai-quick-customers');
+  if (!container) return;
+  const results = data?.results || [];
+  if (results.length === 0) {
+    container.innerHTML = '<span style="font-size:12px;color:var(--muted)">아직 고객이 없습니다</span>';
+    return;
+  }
+  container.innerHTML = results.map(r => `
+    <button onclick="quickSelectCustomer('${r.user_name||'익명'}','${r.bc_primary||''}')"
+      style="border:1.5px solid var(--border);border-radius:8px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--text);transition:all .15s"
+      onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)'"
+      onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text)'">
+      ${r.user_name||'익명'} <span style="color:var(--muted);font-weight:400">${r.bc_primary||'-'}</span>
+    </button>
+  `).join('');
+}
+
+function quickSelectCustomer(name, bcCode) {
+  const nameEl = document.getElementById('ai-customer-name');
+  const codeEl = document.getElementById('ai-bc-code');
+  if (nameEl) nameEl.value = name;
+  if (codeEl && bcCode) codeEl.value = bcCode;
+  generateAiMessages();
+}
+
+async function generateAiMessages() {
+  const bcCode = document.getElementById('ai-bc-code').value;
+  const customerName = document.getElementById('ai-customer-name').value.trim() || '고객님';
+  if (!bcCode) { toast('BC코드를 선택해주세요.', 'error'); return; }
+
+  const area = document.getElementById('ai-messages-area');
+  area.innerHTML = `<div style="text-align:center;padding:32px;color:var(--muted)">
+    <i class="fas fa-magic fa-2x" style="margin-bottom:12px;display:block;animation:spin 1s linear infinite"></i>
+    <style>@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}</style>
+    ${customerName}님의 ${bcCode} 맞춤 멘트 생성 중...
+  </div>`;
+
+  const data = await api('POST', '/consultant/ai-message', { bc_code: bcCode, user_name: customerName });
+  if (!data || data.error) {
+    area.innerHTML = `<div class="card"><div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>${data?.error || '멘트 생성 실패'}</p></div></div>`;
+    return;
+  }
+
+  const messages = data.messages || [];
+  const typeColors = {
+    '초진 환영 멘트': { bg: '#EFF6FF', border: '#2563EB', icon: '#2563EB' },
+    '원인 설명 멘트': { bg: '#FEF3C7', border: '#D97706', icon: '#D97706' },
+    '처방 안내 멘트': { bg: '#F0FDF4', border: '#16A34A', icon: '#16A34A' },
+    '동기부여 멘트': { bg: '#F5F3FF', border: '#7C3AED', icon: '#7C3AED' },
+    '재방문 독려 멘트': { bg: '#FFF1F2', border: '#E11D48', icon: '#E11D48' },
+  };
+
+  area.innerHTML = `
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+        <span class="badge" style="background:#EFF6FF;color:#2563EB;font-size:13px;padding:5px 14px">${data.bc_code} · ${data.brand_name}</span>
+        <span style="font-size:13px;color:var(--muted)">👤 ${customerName}</span>
+        <span style="margin-left:auto;font-size:12px;color:var(--muted)">총 ${messages.length}개 멘트 생성됨</span>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">📋 각 멘트를 클릭하면 클립보드에 복사됩니다</div>
+    </div>
+    ${messages.map(m => {
+      const c = typeColors[m.type] || { bg: '#F8FAFC', border: '#CBD5E1', icon: '#64748B' };
+      return `
+      <div style="background:${c.bg};border:1.5px solid ${c.border}44;border-left:4px solid ${c.border};border-radius:12px;padding:16px 20px;margin-bottom:12px;cursor:pointer;transition:box-shadow .15s"
+        onclick="copyAiMessage(this, \`${m.text.replace(/`/g,'\\`').replace(/\$/g,'\\$')}\`)"
+        onmouseover="this.style.boxShadow='0 4px 16px ${c.border}33'" onmouseout="this.style.boxShadow='none'">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:12px;font-weight:700;color:${c.icon}">${m.icon} ${m.type}</div>
+          <div style="font-size:11px;color:var(--muted);background:#fff;border:1px solid var(--border);border-radius:6px;padding:3px 10px">
+            <i class="fas fa-copy"></i> 클릭해서 복사
+          </div>
+        </div>
+        <div style="font-size:14px;line-height:1.8;color:var(--text)">${m.text}</div>
+      </div>`;
+    }).join('')}
+    <div style="text-align:center;margin-top:8px">
+      <button class="btn btn-ghost btn-sm" onclick="copyAllMessages(${JSON.stringify(messages).replace(/"/g,'&quot;')})">
+        <i class="fas fa-copy"></i> 전체 복사
+      </button>
+    </div>
+  `;
+}
+
+function copyAiMessage(el, text) {
+  // HTML 태그 제거
+  const plain = text.replace(/<[^>]+>/g, '');
+  navigator.clipboard.writeText(plain).then(() => {
+    const orig = el.style.boxShadow;
+    el.style.background = '#D1FAE5';
+    setTimeout(() => { el.style.background = ''; }, 800);
+    toast('멘트가 복사되었습니다!', 'success');
+  });
+}
+
+function copyAllMessages(messages) {
+  const text = messages.map(m => `【${m.type}】\n${m.text.replace(/<[^>]+>/g,'')}`).join('\n\n');
+  navigator.clipboard.writeText(text).then(() => toast('전체 멘트가 복사되었습니다!', 'success'));
+}
+
+// ── 탭 전환 시 AI 탭 초기화 ──
+const _origSwitchTab = window.switchTab;
 
 if (TOKEN) {
   fetch('/api/auth/me', { headers: { 'Authorization': `Bearer ${TOKEN}` } })

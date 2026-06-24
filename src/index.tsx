@@ -1061,6 +1061,165 @@ app.put('/api/results/:id/b2b', async (c) => {
   return c.json({ success: true, institution_types: filtered })
 })
 
+// ─── B2B 파트너뷰 처방 조회 ──────────────────────────────────────
+// GET /api/b2b/partner-view/:bc_code — BC코드로 처방 데이터 반환
+app.get('/api/b2b/partner-view/:bc_code', requireB2B(), async (c) => {
+  const db = c.env.DB
+  const bcCode = c.req.param('bc_code')
+  const row = await db.prepare(`
+    SELECT bc_code, brand_name, tagline, bc_primary_oneline_reason, bc_cause_story,
+           closing_copy, correct_principles_json, recommended_exercises_json,
+           forbidden_exercises_json, recommended_foods_json, forbidden_foods_json,
+           supplement_list_json, lifestyle_rules_json, monthly_goals_json
+    FROM bc_prescriptions WHERE bc_code=?
+  `).bind(bcCode).first<any>()
+  if (!row) return c.json({ error: 'BC코드를 찾을 수 없습니다.' }, 404)
+  // JSON 필드 파싱
+  const parse = (v: any) => { try { return JSON.parse(v) } catch { return [] } }
+  return c.json({
+    bc_code: row.bc_code,
+    brand_name: row.brand_name,
+    tagline: row.tagline,
+    reason: row.bc_primary_oneline_reason,
+    cause_story: row.bc_cause_story,
+    closing_copy: row.closing_copy,
+    correct_principles: parse(row.correct_principles_json),
+    recommended_exercises: parse(row.recommended_exercises_json),
+    forbidden_exercises: parse(row.forbidden_exercises_json),
+    recommended_foods: parse(row.recommended_foods_json),
+    forbidden_foods: parse(row.forbidden_foods_json),
+    supplements: parse(row.supplement_list_json),
+    lifestyle_rules: parse(row.lifestyle_rules_json),
+    monthly_goals: parse(row.monthly_goals_json),
+  })
+})
+
+// ─── B2B 고객 이름으로 BC코드 즉시 조회 ──────────────────────────
+// GET /api/b2b/customer-lookup?name=xxx — 고객 이름 검색 → BC코드 + 처방 반환
+app.get('/api/b2b/customer-lookup', requireB2B(), async (c) => {
+  const user = c.get('user') as JwtPayload
+  const db = c.env.DB
+  const name = c.req.query('name') || ''
+  if (!name) return c.json({ error: '이름을 입력하세요.' }, 400)
+  const results = await db.prepare(`
+    SELECT r.id, r.user_name, r.bc_primary, r.axis_primary, r.created_at,
+           p.brand_name, p.tagline, p.bc_primary_oneline_reason,
+           p.recommended_foods_json, p.forbidden_foods_json,
+           p.correct_principles_json, p.lifestyle_rules_json
+    FROM results r
+    LEFT JOIN bc_prescriptions p ON p.bc_code = r.bc_primary
+    WHERE r.ref_code=? AND r.user_name LIKE ?
+    ORDER BY r.created_at DESC LIMIT 10
+  `).bind(user.code, `%${name}%`).all<any>()
+  const parse = (v: any) => { try { return JSON.parse(v) } catch { return [] } }
+  return c.json({
+    results: results.results.map((r: any) => ({
+      id: r.id,
+      user_name: r.user_name,
+      bc_primary: r.bc_primary,
+      axis_primary: r.axis_primary,
+      created_at: r.created_at,
+      prescription: r.brand_name ? {
+        brand_name: r.brand_name,
+        tagline: r.tagline,
+        reason: r.bc_primary_oneline_reason,
+        recommended_foods: parse(r.recommended_foods_json).slice(0, 3),
+        forbidden_foods: parse(r.forbidden_foods_json).slice(0, 3),
+        correct_principles: parse(r.correct_principles_json).slice(0, 3),
+        lifestyle_rules: parse(r.lifestyle_rules_json).slice(0, 3),
+      } : null,
+    }))
+  })
+})
+
+// ─── 정산 API ────────────────────────────────────────────────────
+// GET /api/admin/settlement?month=2025-06 — 컨설턴트별 월 정산 내역
+app.get('/api/admin/settlement', requireRole('MASTER'), async (c) => {
+  const db = c.env.DB
+  const month = c.req.query('month') || new Date().toISOString().slice(0, 7)
+  // 컨설턴트별 해당 월 완료 건수
+  const rows = await db.prepare(`
+    SELECT
+      r.consultant_code,
+      con.name AS consultant_name,
+      con.phone AS consultant_phone,
+      con.grade AS consultant_grade,
+      COUNT(*) AS monthly_count,
+      SUM(CASE WHEN r.program_price IS NOT NULL THEN r.program_price ELSE 150000 END) AS total_sales,
+      SUM(CASE WHEN r.program_price IS NOT NULL THEN r.program_price ELSE 150000 END) * 0.25 AS settlement_amount
+    FROM results r
+    LEFT JOIN consultants con ON con.code = r.consultant_code
+    WHERE strftime('%Y-%m', r.created_at) = ?
+      AND r.consultant_code IS NOT NULL
+    GROUP BY r.consultant_code
+    ORDER BY monthly_count DESC
+  `).bind(month).all<any>()
+  // 전체 월별 매출
+  const total = await db.prepare(`
+    SELECT COUNT(*) as cnt,
+           SUM(CASE WHEN program_price IS NOT NULL THEN program_price ELSE 150000 END) as total
+    FROM results WHERE strftime('%Y-%m', created_at) = ?
+  `).bind(month).first<any>()
+  return c.json({
+    month,
+    summary: {
+      total_count: total?.cnt || 0,
+      total_sales: total?.total || 0,
+      total_settlement: Math.round((total?.total || 0) * 0.25),
+    },
+    consultants: rows.results
+  })
+})
+
+// ─── AI 상담 멘트 생성 ────────────────────────────────────────────
+// POST /api/consultant/ai-message — BC코드 기반 상담 멘트 생성
+app.post('/api/consultant/ai-message', requireRole('ANY'), async (c) => {
+  const db = c.env.DB
+  const { bc_code, user_name, context } = await c.req.json()
+  if (!bc_code) return c.json({ error: 'BC코드가 필요합니다.' }, 400)
+  const row = await db.prepare(`
+    SELECT brand_name, tagline, bc_primary_oneline_reason, bc_cause_story, closing_copy,
+           correct_principles_json, lifestyle_rules_json, monthly_goals_json
+    FROM bc_prescriptions WHERE bc_code=?
+  `).bind(bc_code).first<any>()
+  if (!row) return c.json({ error: 'BC코드를 찾을 수 없습니다.' }, 404)
+  const parse = (v: any) => { try { return JSON.parse(v) } catch { return [] } }
+  const principles = parse(row.correct_principles_json).slice(0, 2).map((p: any) => p.title || p).join(', ')
+  const lifestyle = parse(row.lifestyle_rules_json).slice(0, 2).map((l: any) => l.rule || l).join(', ')
+  const goals = parse(row.monthly_goals_json).slice(0, 1).map((g: any) => g.goal || g).join('')
+
+  // 멘트 템플릿 (Claude API 없이 구조화된 자동 생성)
+  const name = user_name || '고객님'
+  const messages = [
+    {
+      type: '초진 환영 멘트',
+      icon: '👋',
+      text: `${name}, 슬림마인드에 오신 걸 환영합니다! 체형 분석 결과 ${name}의 유형은 <strong>${row.brand_name}</strong>입니다. ${row.bc_primary_oneline_reason} 지금부터 ${name}만을 위한 맞춤 처방을 시작해드릴게요.`
+    },
+    {
+      type: '원인 설명 멘트',
+      icon: '🔍',
+      text: `${name}, 지금까지 다이어트가 어려우셨던 건 의지 부족이 아니에요. ${row.bc_cause_story || `${row.brand_name} 특성상 일반적인 방법이 맞지 않았기 때문입니다.`} 원인을 알면 해결책도 명확해집니다.`
+    },
+    {
+      type: '처방 안내 멘트',
+      icon: '💊',
+      text: `${name}의 ${row.brand_name} 유형에는 <strong>${principles}</strong> 접근이 핵심입니다. ${lifestyle ? `일상에서는 ${lifestyle}을 꼭 지켜주세요. ` : ''}${goals ? `이번 달 목표: ${goals}` : ''} 지금 바로 시작하면 변화를 느끼실 수 있습니다!`
+    },
+    {
+      type: '동기부여 멘트',
+      icon: '💪',
+      text: `${name}, ${row.closing_copy || `${row.brand_name} 유형의 분들은 올바른 방법을 찾으면 빠른 변화를 경험합니다.`} 저희가 끝까지 함께하겠습니다. 오늘 첫 걸음이 가장 중요한 걸음입니다! 🎯`
+    },
+    {
+      type: '재방문 독려 멘트',
+      icon: '📅',
+      text: `${name}, 오늘 상담 잘 마무리하셨나요? ${row.brand_name} 유형은 꾸준한 관리가 특히 중요합니다. 다음 방문까지 ${lifestyle ? lifestyle + '을 실천해보시고,' : ''} 궁금한 점은 언제든 연락주세요. 좋은 결과로 뵙겠습니다! 😊`
+    },
+  ]
+  return c.json({ messages, bc_code, brand_name: row.brand_name })
+})
+
 // ═══════════════════════════════════════════════════════════════
 //  결과지 페이지 라우트 — window.__RESULT__ 서버사이드 주입
 // ═══════════════════════════════════════════════════════════════
