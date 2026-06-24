@@ -1655,9 +1655,84 @@ app.get('/result/:id', async (c) => {
   }
 
   // result.html에 window.__RESULT__ + 브랜드컬러 주입
+  // result.html의 initResult()가 기대하는 flat 구조로 펼쳐서 주입
+  const flatResult = {
+    // 식별자
+    result_id: resultData.result?.id,
+    // 기본 정보
+    user_name: resultData.result?.user_name,
+    consultant_code: resultData.result?.consultant_code,
+    bc_primary: resultData.result?.bc_primary,
+    bc_secondary: resultData.result?.bc_secondary,
+    bc_primary_score: resultData.result?.bc_primary_score,
+    bc_secondary_score: resultData.result?.bc_secondary_score,
+    bc_scores: resultData.result?.bc_scores,
+    // 신체 정보
+    gender: resultData.result?.gender,
+    birth_date: resultData.result?.birth_date,
+    height: resultData.result?.height,
+    weight: resultData.result?.weight,
+    target_weight: resultData.result?.target_weight,
+    bmi: resultData.result?.bmi,
+    bfr: resultData.result?.bfr,
+    fat_kg: resultData.result?.fat_kg,
+    muscle_kg: resultData.result?.muscle_kg,
+    age: resultData.result?.age,
+    estimated_bfr: resultData.result?.estimated_bfr,
+    estimated_fat_kg: resultData.result?.estimated_fat_kg,
+    estimated_lean_kg: resultData.result?.estimated_lean_kg,
+    estimated_muscle_kg: resultData.result?.estimated_muscle_kg,
+    body_data_source: resultData.result?.body_data_source,
+    macro_ratio: resultData.result?.macro_ratio,
+    body_goal: resultData.result?.body_goal,
+    // 체형 사이즈
+    top_size: resultData.result?.top_size,
+    bottom_size: resultData.result?.bottom_size,
+    target_top_size: resultData.result?.target_top_size,
+    target_bottom_size: resultData.result?.target_bottom_size,
+    // 동양의학
+    ohaeng_type: resultData.result?.ohaeng_type,
+    ohaeng_scores: resultData.result?.ohaeng_scores,
+    mbti: resultData.result?.mbti,
+    blood_type: resultData.result?.blood_type,
+    saju_il_gan: resultData.result?.saju_il_gan,
+    saju_display: resultData.result?.saju_display,
+    // 설문 응답 (채점 재활용)
+    survey_answers: resultData.result?.survey_answers,
+    answers: resultData.result?.survey_answers,
+    survey_summary: resultData.result?.survey_summary,
+    // v4 10축 분석
+    axis_scores: resultData.result?.axis_scores,
+    top_axes: resultData.result?.top_axes,
+    axis_primary: resultData.result?.axis_primary,
+    // 건강 조건
+    food_allergy: resultData.result?.food_allergy,
+    allergy_exclude: resultData.result?.allergy_exclude,
+    skin_reaction: resultData.result?.skin_reaction,
+    is_menopause: resultData.result?.is_menopause,
+    medical_conditions: resultData.result?.medical_conditions,
+    has_medical_conditions: resultData.result?.has_medical_conditions,
+    is_premium: resultData.result?.is_premium,
+    emotional_state: resultData.result?.emotional_state,
+    main_goal: resultData.result?.main_goal,
+    created_at: resultData.result?.created_at,
+    // 처방 데이터 (BC 전문가 데이터)
+    prescription: resultData.bc,
+    // 동양의학 상세
+    ohaeng: resultData.ohaeng,
+    saju: resultData.saju,
+    mbti_blood: resultData.mbti_blood,
+    // 권한 정보
+    is_consultant: resultData.is_consultant,
+    is_owner: resultData.is_owner,
+    is_b2b_partner: resultData.is_b2b_partner,
+    b2b_institution_types: resultData.b2b_institution_types,
+    consultant_name: resultData.consultant_name,
+  };
+
   const injectedHtml = resultHtml.replace(
     '</head>',
-    `${brandInjectResult}\n<script>window.__RESULT__ = ${JSON.stringify(resultData)};</script>\n</head>`
+    `${brandInjectResult}\n<script>window.__RESULT__ = ${JSON.stringify(flatResult)};window.__RESULT_FULL__ = ${JSON.stringify(resultData)};</script>\n</head>`
   )
 
   return c.html(injectedHtml)
@@ -1860,6 +1935,103 @@ app.post('/api/checkin', async (c) => {
     return c.json({ ok: false, error: String(e) }, 500);
   }
 })
+
+/* ═══════════════════════════════════════════════════════
+   GET /api/b2b/bc-list — B2B 전용 바디코드 목록 (파트너 힌트 포함)
+═══════════════════════════════════════════════════════ */
+app.get('/api/b2b/bc-list', requireB2B(), async (c) => {
+  const db = c.env.DB as D1Database | undefined;
+  try {
+    const rows = db ? await db.prepare(`
+      SELECT bc_code, brand_name, tagline, fat_area,
+        bc_primary_oneline_reason, bc_cause_story, bc_worsen_word, closing_copy,
+        recommended_foods_json, forbidden_foods_json,
+        lifestyle_rules_json, correct_principles_json, wrong_methods_json,
+        recommended_exercises_json, supplement_list_json, symptom_checklist_json,
+        partner_hints_json, b2b_treatments_json
+      FROM bc_prescriptions WHERE is_active=1 ORDER BY bc_code
+    `).all<any>() : { results: [] };
+
+    const list = (rows.results || []).map((r: any) => ({
+      bc_code: r.bc_code,
+      brand_name: r.brand_name,
+      tagline: r.tagline,
+      fat_area: r.fat_area,
+      reason: r.bc_primary_oneline_reason,
+      cause_story: r.bc_cause_story,
+      worsen_word: r.bc_worsen_word,
+      closing_copy: r.closing_copy,
+      recommended_foods: parseJson(r.recommended_foods_json, []),
+      forbidden_foods: parseJson(r.forbidden_foods_json, []),
+      lifestyle_rules: parseJson(r.lifestyle_rules_json, []),
+      correct_principles: parseJson(r.correct_principles_json, []),
+      wrong_methods: parseJson(r.wrong_methods_json, []),
+      recommended_exercises: parseJson(r.recommended_exercises_json, []),
+      supplement_list: parseJson(r.supplement_list_json, []),
+      symptom_checklist: parseJson(r.symptom_checklist_json, []),
+      partner_hints: parseJson(r.partner_hints_json, []),
+      b2b_treatments: parseJson(r.b2b_treatments_json, {}),
+    }));
+
+    return c.json({ ok: true, list });
+  } catch(e) {
+    return c.json({ ok: false, error: String(e) }, 500);
+  }
+});
+
+/* ═══════════════════════════════════════════════════════
+   GET /api/bc/list — 바디코드 전체 목록 (인증 필요)
+   모든 역할(마스터/컨설턴트/B2B) 공통 사용
+═══════════════════════════════════════════════════════ */
+app.get('/api/bc/list', async (c) => {
+  const db = c.env.DB as D1Database | undefined;
+  // 가벼운 인증 체크 (로그인한 사용자만)
+  const user = await getAuthUser(c);
+  if (!user) return c.json({ error: '인증이 필요합니다.' }, 401);
+
+  try {
+    const rows = db ? await db.prepare(`
+      SELECT
+        bc_code, brand_name, tagline, fat_area,
+        bc_primary_oneline_reason, bc_cause_story, bc_worsen_word, closing_copy,
+        recommended_foods_json, forbidden_foods_json,
+        lifestyle_rules_json, correct_principles_json, wrong_methods_json,
+        recommended_exercises_json, supplement_list_json,
+        symptom_checklist_json,
+        -- B2B 전용 (파트너 힌트)
+        partner_hints_json, b2b_treatments_json
+      FROM bc_prescriptions
+      WHERE is_active = 1
+      ORDER BY bc_code
+    `).all<any>() : { results: [] };
+
+    const list = (rows.results || []).map((r: any) => ({
+      bc_code: r.bc_code,
+      brand_name: r.brand_name,
+      tagline: r.tagline,
+      fat_area: r.fat_area,
+      reason: r.bc_primary_oneline_reason,
+      cause_story: r.bc_cause_story,
+      worsen_word: r.bc_worsen_word,
+      closing_copy: r.closing_copy,
+      recommended_foods: parseJson(r.recommended_foods_json, []),
+      forbidden_foods: parseJson(r.forbidden_foods_json, []),
+      lifestyle_rules: parseJson(r.lifestyle_rules_json, []),
+      correct_principles: parseJson(r.correct_principles_json, []),
+      wrong_methods: parseJson(r.wrong_methods_json, []),
+      recommended_exercises: parseJson(r.recommended_exercises_json, []),
+      supplement_list: parseJson(r.supplement_list_json, []),
+      symptom_checklist: parseJson(r.symptom_checklist_json, []),
+      // B2B/파트너 전용 (역할별 필터링은 프론트에서)
+      partner_hints: user.role !== 'CONSULTANT' ? parseJson(r.partner_hints_json, []) : null,
+      b2b_treatments: user.role !== 'CONSULTANT' ? parseJson(r.b2b_treatments_json, {}) : null,
+    }));
+
+    return c.json({ ok: true, list, role: user.role });
+  } catch(e) {
+    return c.json({ ok: false, error: String(e) }, 500);
+  }
+});
 
 /* ═══════════════════════════════════════════════════════
    GET /api/admin/ranking — 컨설턴트 랭킹 보드

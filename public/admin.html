@@ -292,6 +292,8 @@
         <div class="nav-section-label">데이터</div>
         <div class="nav-item" data-page="results"><i class="fas fa-file-medical"></i> 고객 결과 관리</div>
         <div class="nav-item" data-page="bc-codes"><i class="fas fa-dna"></i> BC코드 처방 편집</div>
+        <div class="nav-section-label">바디코드</div>
+        <div class="nav-item" data-page="bc-library"><i class="fas fa-dna"></i> 바디코드 도감</div>
         <div class="nav-section-label">분석 · 예측</div>
         <div class="nav-item" data-page="ranking"><i class="fas fa-trophy"></i> 컨설턴트 랭킹</div>
         <div class="nav-item" data-page="revenue-forecast"><i class="fas fa-chart-bar"></i> 매출 예측기</div>
@@ -859,6 +861,7 @@ function navigateTo(page) {
   else if (page === 'guide-b2b') loadGuideB2B();
   else if (page === 'results') loadResults();
   else if (page === 'bc-codes') loadBcCodes();
+  else if (page === 'bc-library') loadBcLibrary();
   else if (page === 'ranking') loadRanking();
   else if (page === 'revenue-forecast') loadRevenueForecast();
   else if (page === 'settlement') loadSettlement();
@@ -1508,6 +1511,203 @@ async function saveBcCode() {
   } else {
     toast('저장 실패', 'error');
   }
+}
+
+// ═════════════════════════════════════════════
+//  바디코드 도감 (공통)
+// ═════════════════════════════════════════════
+const BC_COLORS = {
+  'BC-01':'#EF4444','BC-02':'#F97316','BC-03':'#8B5CF6',
+  'BC-04':'#EC4899','BC-05':'#06B6D4','BC-06':'#3B82F6',
+  'BC-07':'#10B981','BC-08':'#F59E0B','BC-09':'#6366F1','BC-10':'#84CC16'
+};
+const BC_ICONS = {
+  'BC-01':'🔴','BC-02':'🟠','BC-03':'🟣',
+  'BC-04':'🌸','BC-05':'🩵','BC-06':'💙',
+  'BC-07':'🟢','BC-08':'🟡','BC-09':'🔵','BC-10':'🟩'
+};
+
+async function loadBcLibrary(filterCode='') {
+  document.getElementById('page-body').innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+      <h2 style="margin:0;font-size:20px;font-weight:700"><i class="fas fa-dna" style="color:#6366F1;margin-right:8px"></i>바디코드 도감</h2>
+      <span style="font-size:12px;background:#EEF2FF;color:#6366F1;padding:3px 10px;border-radius:99px">슬림마인드 10대 체형 코드</span>
+    </div>
+    <!-- 검색 + 필터 -->
+    <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+      <input type="text" id="bc-search" placeholder="🔍 코드명·특징 검색..." oninput="filterBcCards()"
+        style="flex:1;min-width:200px;padding:10px 14px;border:1px solid #E5E7EB;border-radius:8px;font-size:14px">
+      <div style="display:flex;gap:6px;flex-wrap:wrap" id="bc-filter-btns">
+        <button class="btn btn-primary btn-sm" onclick="filterBcCards('')" data-filter="">전체</button>
+      </div>
+    </div>
+    <div id="bc-cards-area" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px">
+      <div style="text-align:center;padding:60px;grid-column:1/-1;color:var(--muted)">
+        <i class="fas fa-circle-notch fa-spin fa-2x"></i><div style="margin-top:12px">로딩 중...</div>
+      </div>
+    </div>`;
+
+  const data = await api('GET', '/bc/list');
+  if (!data || !data.ok) {
+    document.getElementById('bc-cards-area').innerHTML = `<div style="color:red;padding:40px">오류: ${data?.error||'로드 실패'}</div>`;
+    return;
+  }
+
+  window._bcList = data.list;
+  window._bcRole = data.role;
+  renderBcCards(data.list, filterCode);
+}
+
+function renderBcCards(list, filterCode='') {
+  const search = (document.getElementById('bc-search')?.value || '').toLowerCase();
+  const filtered = list.filter(bc => {
+    if (filterCode && bc.bc_code !== filterCode) return false;
+    if (search) {
+      const hay = `${bc.bc_code} ${bc.brand_name} ${bc.tagline} ${bc.reason||''} ${bc.fat_area||''}`.toLowerCase();
+      return hay.includes(search);
+    }
+    return true;
+  });
+
+  const area = document.getElementById('bc-cards-area');
+  if (!area) return;
+
+  if (filtered.length === 0) {
+    area.innerHTML = `<div style="text-align:center;padding:60px;grid-column:1/-1;color:var(--muted)">검색 결과가 없습니다</div>`;
+    return;
+  }
+
+  area.innerHTML = filtered.map(bc => renderBcCard(bc)).join('');
+}
+
+function filterBcCards(code='') {
+  if (window._bcList) renderBcCards(window._bcList, code);
+}
+
+function renderBcCard(bc) {
+  const color = BC_COLORS[bc.bc_code] || '#6366F1';
+  const icon = BC_ICONS[bc.bc_code] || '🧬';
+  const foods = (bc.recommended_foods||[]).slice(0,5).join(', ') || '—';
+  const forbidden = (bc.forbidden_foods||[]).slice(0,4).join(', ') || '—';
+  const lifestyle = (bc.lifestyle_rules||[]).slice(0,3);
+  const symptoms = (bc.symptom_checklist||[]).slice(0,4);
+  const exercises = (bc.recommended_exercises||[]).slice(0,3).join(', ') || '—';
+  const supplements = (bc.supplement_list||[]).slice(0,3).join(', ') || '—';
+  const principles = (bc.correct_principles||[]).slice(0,3);
+  const wrongs = (bc.wrong_methods||[]).slice(0,3);
+  const cardId = `bc-card-${bc.bc_code.replace('-','')}`;
+
+  return `
+  <div style="background:#fff;border:1px solid #E5E7EB;border-radius:16px;overflow:hidden;transition:box-shadow .15s"
+    onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.1)'" onmouseout="this.style.boxShadow='none'">
+    <!-- 헤더 (항상 노출) -->
+    <div style="background:linear-gradient(135deg,${color}15,${color}05);border-bottom:2px solid ${color}30;padding:16px 20px;cursor:pointer"
+      onclick="toggleBcCard('${cardId}')">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:28px">${icon}</span>
+          <div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="background:${color};color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px">${bc.bc_code}</span>
+              <span style="font-size:15px;font-weight:800;color:#1F2937">${bc.brand_name}</span>
+            </div>
+            <div style="font-size:12px;color:#6B7280;margin-top:3px">${bc.tagline||''}</div>
+          </div>
+        </div>
+        <i class="fas fa-chevron-down" id="${cardId}-chevron" style="color:${color};transition:transform .3s"></i>
+      </div>
+      <!-- 핵심 원인 한 줄 (항상 노출) -->
+      ${bc.reason ? `<div style="margin-top:10px;background:${color}12;border-left:3px solid ${color};padding:8px 12px;border-radius:0 8px 8px 0;font-size:13px;color:#374151">
+        <strong>핵심 원인:</strong> ${bc.reason}
+      </div>` : ''}
+    </div>
+
+    <!-- 상세 내용 (아코디언) -->
+    <div id="${cardId}" style="display:none;padding:16px 20px">
+
+      <!-- 지방 부위 -->
+      ${bc.fat_area ? `<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <i class="fas fa-map-marker-alt" style="color:${color};width:16px"></i>
+        <span style="font-size:13px;color:#374151"><strong>주요 지방 부위:</strong> ${bc.fat_area}</span>
+      </div>` : ''}
+
+      <!-- 원인 스토리 -->
+      ${bc.cause_story ? `<div style="background:#F9FAFB;border-radius:10px;padding:12px;margin-bottom:12px;font-size:13px;color:#4B5563;line-height:1.7">
+        <div style="font-weight:700;color:#374151;margin-bottom:6px"><i class="fas fa-book-open" style="color:${color};margin-right:6px"></i>원인 스토리</div>
+        ${bc.cause_story}
+      </div>` : ''}
+
+      <!-- 자가진단 체크리스트 -->
+      ${symptoms.length > 0 ? `<div style="margin-bottom:12px">
+        <div style="font-weight:700;font-size:13px;color:#374151;margin-bottom:8px"><i class="fas fa-clipboard-check" style="color:${color};margin-right:6px"></i>자가진단 체크리스트</div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          ${symptoms.map(s=>`<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#4B5563">
+            <span style="color:${color}">✓</span> ${s}
+          </div>`).join('')}
+        </div>
+      </div>` : ''}
+
+      <!-- 2열 그리드: 권장/금지 식품 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <div style="background:#ECFDF5;border-radius:10px;padding:10px">
+          <div style="font-size:11px;font-weight:700;color:#065F46;margin-bottom:6px">✅ 권장 식품</div>
+          <div style="font-size:12px;color:#065F46">${foods}</div>
+        </div>
+        <div style="background:#FEF2F2;border-radius:10px;padding:10px">
+          <div style="font-size:11px;font-weight:700;color:#991B1B;margin-bottom:6px">❌ 금지 식품</div>
+          <div style="font-size:12px;color:#991B1B">${forbidden}</div>
+        </div>
+      </div>
+
+      <!-- 추천 운동 + 보충제 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <div style="background:#EEF2FF;border-radius:10px;padding:10px">
+          <div style="font-size:11px;font-weight:700;color:#3730A3;margin-bottom:6px">🏃 추천 운동</div>
+          <div style="font-size:12px;color:#3730A3">${exercises}</div>
+        </div>
+        <div style="background:#FFF7ED;border-radius:10px;padding:10px">
+          <div style="font-size:11px;font-weight:700;color:#92400E;margin-bottom:6px">💊 보충제</div>
+          <div style="font-size:12px;color:#92400E">${supplements}</div>
+        </div>
+      </div>
+
+      <!-- 올바른 원칙 -->
+      ${principles.length > 0 ? `<div style="margin-bottom:10px">
+        <div style="font-weight:700;font-size:13px;color:#374151;margin-bottom:6px"><i class="fas fa-check-circle" style="color:#10B981;margin-right:6px"></i>올바른 원칙</div>
+        ${principles.map(p=>`<div style="font-size:12px;color:#4B5563;padding:3px 0">→ ${p}</div>`).join('')}
+      </div>` : ''}
+
+      <!-- 잘못된 방법 -->
+      ${wrongs.length > 0 ? `<div style="margin-bottom:10px">
+        <div style="font-weight:700;font-size:13px;color:#374151;margin-bottom:6px"><i class="fas fa-times-circle" style="color:#EF4444;margin-right:6px"></i>흔한 실수</div>
+        ${wrongs.map(w=>`<div style="font-size:12px;color:#6B7280;padding:3px 0">✗ ${w}</div>`).join('')}
+      </div>` : ''}
+
+      <!-- 생활습관 -->
+      ${lifestyle.length > 0 ? `<div style="margin-bottom:10px">
+        <div style="font-weight:700;font-size:13px;color:#374151;margin-bottom:6px"><i class="fas fa-sun" style="color:#F59E0B;margin-right:6px"></i>생활습관 규칙</div>
+        ${lifestyle.map(l=>`<div style="font-size:12px;color:#4B5563;padding:3px 0">• ${l}</div>`).join('')}
+      </div>` : ''}
+
+      <!-- 마감 카피 -->
+      ${bc.closing_copy ? `<div style="background:${color}10;border-radius:10px;padding:10px;margin-top:4px;font-size:13px;font-style:italic;color:${color};text-align:center;font-weight:600">
+        "${bc.closing_copy}"
+      </div>` : ''}
+
+      <button onclick="toggleBcCard('${cardId}')" style="width:100%;margin-top:12px;background:none;border:1px solid #E5E7EB;border-radius:8px;padding:8px;font-size:12px;color:var(--muted);cursor:pointer">
+        접기 ▲
+      </button>
+    </div>
+  </div>`;
+}
+
+function toggleBcCard(id) {
+  const el = document.getElementById(id);
+  const chevron = document.getElementById(id + '-chevron');
+  if (!el) return;
+  const isOpen = el.style.display !== 'none';
+  el.style.display = isOpen ? 'none' : 'block';
+  if (chevron) chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
 }
 
 // ═════════════════════════════════════════════

@@ -4261,6 +4261,91 @@ function showSurveyGuide() {
 
 // ── 메인 초기화 ──────────────────────────────────
 function initResult() {
+
+  // ══════════════════════════════════════════════════════
+  // 1순위: 백엔드가 주입한 window.__RESULT__ (DB 저장 결과)
+  // /result/:id 경로로 접근 시 서버가 직접 데이터를 주입함
+  // ══════════════════════════════════════════════════════
+  if (window.__RESULT__ && window.__RESULT__.result_id) {
+    const R = window.__RESULT__;
+    // DB 저장된 결과를 answers 형식으로 변환하여 렌더링
+    const serverAnswers = {
+      _bc_primary: R.bc_primary,
+      _bc_secondary: R.bc_secondary,
+      _axis_primary: R.axis_primary,
+      _result_id: R.result_id,
+      _user_name: R.user_name,
+      _from_db: true,
+      // 신체정보
+      height: R.height,
+      weight: R.weight,
+      target_weight: R.target_weight,
+      bmi: R.bmi,
+      bfr: R.bfr,
+      fat_kg: R.fat_kg,
+      muscle_kg: R.muscle_kg,
+      gender: R.gender,
+      birth_date: R.birth_date,
+      // DB 저장 설문 답변 병합
+      ...(R.survey_answers || {}),
+      ...(R.answers || {}),
+    };
+
+    // axisScores / topAxes 가 이미 DB에 있으면 바로 렌더링
+    const axisScores = R.axis_scores || null;
+    const topAxes = R.top_axes || null;
+
+    // localStorage에 캐시 (새로고침 대응)
+    try { localStorage.setItem('slimmind_answers', JSON.stringify(serverAnswers)); } catch(e) {}
+
+    if (axisScores && topAxes && topAxes.length > 0) {
+      // 미리 계산된 점수 있을 때 채점 스킵
+      const prebuilt = {
+        axisScores,
+        topAxes,
+        eCode: topAxes[0]?.axis || 'A01',
+        typeInfo: { name: R.bc_primary || '복합형', emoji: '🧬', desc: '' },
+        dopamineType: 'achiever',
+        ohaengScores: R.ohaeng_scores || {},
+        ohaengType: R.ohaeng_type || null,
+        allergyExclude: R.food_allergy || [],
+        skinReaction: R.skin_reaction || null,
+        isMenopause: R.is_menopause || false,
+        medicalConditions: R.medical_conditions || [],
+        hasMedicalConditions: !!(R.has_medical_conditions),
+        answers: serverAnswers,
+        // 전문가 결과 데이터 (컨설턴트/B2B 뷰용)
+        prescription: R.prescription || null,
+        ohaeng: R.ohaeng || null,
+        saju: R.saju || null,
+        mbti_blood: R.mbti_blood || null,
+        is_consultant: R.is_consultant || false,
+        is_owner: R.is_owner || false,
+        consultant_name: R.consultant_name || null,
+      };
+      RESULTS = prebuilt;
+      IS_PAID = R.is_premium === 1 || R.is_premium === true || localStorage.getItem('slimmind_paid') === '1';
+      if (IS_PAID) {
+        document.querySelectorAll('.tab-btn.locked').forEach(b => b.classList.remove('locked'));
+        const bw = $('blurPreviewWrap'); if (bw) bw.style.display = 'none';
+      }
+      try { renderCH1(prebuilt, serverAnswers); } catch(e) { console.error('CH1:', e); }
+      try { renderCH2(prebuilt); } catch(e) { console.error('CH2:', e); }
+      try { renderCH3(prebuilt); } catch(e) { console.error('CH3:', e); }
+      try { renderCH4(prebuilt); } catch(e) { console.error('CH4:', e); }
+      try { renderCH5(prebuilt); } catch(e) { console.error('CH5:', e); }
+      try { renderCH6(prebuilt, serverAnswers); } catch(e) { console.error('CH6:', e); }
+      const ls = $('loading-screen');
+      if (ls) { ls.classList.add('fade-out'); setTimeout(() => { ls.style.display = 'none'; }, 600); }
+      setTimeout(() => { $('result-wrap').style.display = 'block'; goChapter(1); }, 400);
+      return;
+    } else {
+      // 점수 없을 때 answers로 재채점
+      processResults(serverAnswers);
+      return;
+    }
+  }
+
   // URL 파라미터 또는 localStorage에서 답변 가져오기
   let answers = {};
   try {

@@ -254,6 +254,7 @@
     <div class="tab-item" data-tab="profile"><i class="fas fa-user-circle"></i> 내 정보</div>
     <div class="tab-item" data-tab="ai-message"><i class="fas fa-robot"></i> AI 상담 멘트</div>
     <div class="tab-item" data-tab="weight-track"><i class="fas fa-weight"></i> 체중 추적</div>
+    <div class="tab-item" data-tab="bc-library"><i class="fas fa-dna"></i> 바디코드</div>
     <div class="tab-item" data-tab="guide"><i class="fas fa-book-open"></i> 이용 안내</div>
   </div>
 
@@ -485,6 +486,27 @@
                 <div>고객 목록 로딩 중...</div>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ 바디코드 탭 ═══ -->
+    <div class="page-tab" id="tab-bc-library">
+      <div style="max-width:960px;margin:0 auto">
+        <div class="card" style="margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+            <div style="font-size:18px;font-weight:800;color:var(--primary)"><i class="fas fa-dna" style="margin-right:8px"></i>바디코드 도감</div>
+            <span style="font-size:12px;background:#EEF2FF;color:#6366F1;padding:3px 10px;border-radius:99px">상담 레퍼런스</span>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <input type="text" id="cons-bc-search" placeholder="🔍 코드명·특징 검색..." oninput="consBcFilter()"
+              style="flex:1;min-width:200px;padding:10px 14px;border:1px solid #E5E7EB;border-radius:8px;font-size:14px">
+          </div>
+        </div>
+        <div id="cons-bc-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px">
+          <div style="text-align:center;padding:60px;grid-column:1/-1;color:var(--muted)">
+            <i class="fas fa-circle-notch fa-spin fa-2x"></i>
           </div>
         </div>
       </div>
@@ -855,6 +877,10 @@ function switchTab(t) {
   // 체중 추적 탭 진입 시 고객 목록 로드
   if (t === 'weight-track') {
     loadWeightTrack();
+  }
+  // 바디코드 탭 진입 시 로드
+  if (t === 'bc-library') {
+    loadBcLibraryTab();
   }
 }
 
@@ -1529,6 +1555,92 @@ function copyAiMessage(el, text) {
 function copyAllMessages(messages) {
   const text = messages.map(m => `【${m.type}】\n${m.text.replace(/<[^>]+>/g,'')}`).join('\n\n');
   navigator.clipboard.writeText(text).then(() => toast('전체 멘트가 복사되었습니다!', 'success'));
+}
+
+// ══════════════════════════════════════════════════════════
+//  바디코드 도감
+// ══════════════════════════════════════════════════════════
+const CONS_BC_COLORS = {'BC-01':'#EF4444','BC-02':'#F97316','BC-03':'#8B5CF6','BC-04':'#EC4899','BC-05':'#06B6D4','BC-06':'#3B82F6','BC-07':'#10B981','BC-08':'#F59E0B','BC-09':'#6366F1','BC-10':'#84CC16'};
+const CONS_BC_ICONS  = {'BC-01':'🔴','BC-02':'🟠','BC-03':'🟣','BC-04':'🌸','BC-05':'🩵','BC-06':'💙','BC-07':'🟢','BC-08':'🟡','BC-09':'🔵','BC-10':'🟩'};
+
+async function loadBcLibraryTab() {
+  const area = document.getElementById('cons-bc-cards');
+  if (!area) return;
+  if (window._consBcList) { renderConsBcCards(window._consBcList); return; }
+  const data = await api('GET', '/bc/list');
+  if (!data?.ok) { area.innerHTML = `<div style="color:red;padding:40px">로드 실패</div>`; return; }
+  window._consBcList = data.list;
+  renderConsBcCards(data.list);
+}
+
+function consBcFilter() {
+  if (window._consBcList) renderConsBcCards(window._consBcList);
+}
+
+function renderConsBcCards(list) {
+  const search = (document.getElementById('cons-bc-search')?.value || '').toLowerCase();
+  const area = document.getElementById('cons-bc-cards');
+  if (!area) return;
+  const filtered = search ? list.filter(bc => `${bc.bc_code} ${bc.brand_name} ${bc.tagline} ${bc.reason||''}`.toLowerCase().includes(search)) : list;
+  if (!filtered.length) { area.innerHTML = `<div style="text-align:center;padding:40px;grid-column:1/-1;color:var(--muted)">검색 결과 없음</div>`; return; }
+  area.innerHTML = filtered.map(bc => renderConsBcCard(bc)).join('');
+}
+
+function renderConsBcCard(bc) {
+  const color = CONS_BC_COLORS[bc.bc_code] || '#6366F1';
+  const icon = CONS_BC_ICONS[bc.bc_code] || '🧬';
+  const cid = 'cbc-' + bc.bc_code.replace('-','');
+  const foods = (bc.recommended_foods||[]).slice(0,5).join(', ') || '—';
+  const forbidden = (bc.forbidden_foods||[]).slice(0,4).join(', ') || '—';
+  const exercises = (bc.recommended_exercises||[]).slice(0,3).join(', ') || '—';
+  const supplements = (bc.supplement_list||[]).slice(0,3).join(', ') || '—';
+  const symptoms = (bc.symptom_checklist||[]).slice(0,4);
+  const principles = (bc.correct_principles||[]).slice(0,3);
+  const lifestyle = (bc.lifestyle_rules||[]).slice(0,3);
+  return `<div style="background:#fff;border:1px solid #E5E7EB;border-radius:14px;overflow:hidden">
+    <div style="background:${color}12;border-bottom:2px solid ${color}30;padding:14px 16px;cursor:pointer" onclick="consBcToggle('${cid}')">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:24px">${icon}</span>
+          <div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="background:${color};color:#fff;font-size:10px;font-weight:700;padding:1px 7px;border-radius:99px">${bc.bc_code}</span>
+              <span style="font-size:14px;font-weight:800;color:#1F2937">${bc.brand_name}</span>
+            </div>
+            <div style="font-size:11px;color:#6B7280;margin-top:2px">${bc.tagline||''}</div>
+          </div>
+        </div>
+        <i class="fas fa-chevron-down" id="${cid}-chev" style="color:${color};transition:transform .3s;font-size:12px"></i>
+      </div>
+      ${bc.reason ? `<div style="margin-top:8px;background:${color}15;border-left:3px solid ${color};padding:6px 10px;border-radius:0 6px 6px 0;font-size:12px;color:#374151"><strong>핵심:</strong> ${bc.reason}</div>` : ''}
+    </div>
+    <div id="${cid}" style="display:none;padding:14px 16px;font-size:13px">
+      ${bc.fat_area ? `<div style="margin-bottom:10px;color:#374151"><i class="fas fa-map-marker-alt" style="color:${color};margin-right:6px"></i><strong>지방 부위:</strong> ${bc.fat_area}</div>` : ''}
+      ${bc.cause_story ? `<div style="background:#F9FAFB;border-radius:8px;padding:10px;margin-bottom:10px;color:#4B5563;line-height:1.7;font-size:12px"><strong style="color:#374151">원인 스토리</strong><br>${bc.cause_story}</div>` : ''}
+      ${symptoms.length ? `<div style="margin-bottom:10px"><div style="font-weight:700;color:#374151;margin-bottom:4px">자가진단</div>${symptoms.map(s=>`<div style="color:#4B5563;font-size:12px">✓ ${s}</div>`).join('')}</div>` : ''}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div style="background:#ECFDF5;border-radius:8px;padding:8px"><div style="font-size:10px;font-weight:700;color:#065F46;margin-bottom:4px">✅ 권장 식품</div><div style="font-size:11px;color:#065F46">${foods}</div></div>
+        <div style="background:#FEF2F2;border-radius:8px;padding:8px"><div style="font-size:10px;font-weight:700;color:#991B1B;margin-bottom:4px">❌ 금지 식품</div><div style="font-size:11px;color:#991B1B">${forbidden}</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div style="background:#EEF2FF;border-radius:8px;padding:8px"><div style="font-size:10px;font-weight:700;color:#3730A3;margin-bottom:4px">🏃 추천 운동</div><div style="font-size:11px;color:#3730A3">${exercises}</div></div>
+        <div style="background:#FFF7ED;border-radius:8px;padding:8px"><div style="font-size:10px;font-weight:700;color:#92400E;margin-bottom:4px">💊 보충제</div><div style="font-size:11px;color:#92400E">${supplements}</div></div>
+      </div>
+      ${principles.length ? `<div style="margin-bottom:8px"><div style="font-weight:700;color:#374151;margin-bottom:4px;font-size:12px">올바른 원칙</div>${principles.map(p=>`<div style="font-size:12px;color:#4B5563">→ ${p}</div>`).join('')}</div>` : ''}
+      ${lifestyle.length ? `<div style="margin-bottom:8px"><div style="font-weight:700;color:#374151;margin-bottom:4px;font-size:12px">생활습관</div>${lifestyle.map(l=>`<div style="font-size:12px;color:#4B5563">• ${l}</div>`).join('')}</div>` : ''}
+      ${bc.closing_copy ? `<div style="background:${color}10;border-radius:8px;padding:8px;font-size:12px;font-style:italic;color:${color};text-align:center;font-weight:600">"${bc.closing_copy}"</div>` : ''}
+      <button onclick="consBcToggle('${cid}')" style="width:100%;margin-top:10px;background:none;border:1px solid #E5E7EB;border-radius:6px;padding:6px;font-size:11px;color:var(--muted);cursor:pointer">접기 ▲</button>
+    </div>
+  </div>`;
+}
+
+function consBcToggle(id) {
+  const el = document.getElementById(id);
+  const chev = document.getElementById(id+'-chev');
+  if (!el) return;
+  const open = el.style.display !== 'none';
+  el.style.display = open ? 'none' : 'block';
+  if (chev) chev.style.transform = open ? 'rotate(0deg)' : 'rotate(180deg)';
 }
 
 // ══════════════════════════════════════════════════════════
