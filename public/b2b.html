@@ -917,8 +917,8 @@ function showCustomerPrescription(customer, color) {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
           ${(p.correct_principles||[]).slice(0,4).map(pp => `
             <div style="background:#F0FDF4;border-radius:8px;padding:8px 12px;font-size:12px">
-              <strong style="color:#16A34A">${pp.title||pp}</strong>
-              ${pp.description ? `<div style="color:var(--muted);font-size:11px;margin-top:2px">${pp.description}</div>` : ''}
+              <strong style="color:#16A34A">${pp.principle||pp.title||pp}</strong>
+              ${pp.detail||pp.description ? `<div style="color:var(--muted);font-size:11px;margin-top:2px">${pp.detail||pp.description}</div>` : ''}
             </div>`).join('')}
         </div>
       </div>` : ''}
@@ -929,7 +929,7 @@ function showCustomerPrescription(customer, color) {
         <div style="font-size:11px;font-weight:700;color:#D97706;margin-bottom:8px">📋 생활습관 처방</div>
         <div style="display:flex;flex-wrap:wrap;gap:8px">
           ${(p.lifestyle_rules||[]).slice(0,5).map(l =>
-            `<div style="background:#FEF3C7;border-radius:8px;padding:6px 12px;font-size:12px">${l.icon||'💡'} ${l.rule||l}</div>`
+            `<div style="background:#FEF3C7;border-radius:8px;padding:6px 12px;font-size:12px">${l.do===false?'🚫':'✅'} ${l.rule||l}</div>`
           ).join('')}
         </div>
       </div>` : ''}
@@ -977,10 +977,10 @@ async function loadBcPrescription(bcCode, customerName) {
     </div>`
   ).join('') || '<div style="font-size:12px;color:var(--muted)">-</div>';
 
-  const principles = (data.correct_principles||[]).slice(0,4).map(p =>
+  const principles = (data.correct_principles||[]).slice(0,4).map(pp =>
     `<div style="background:#EFF6FF;border-radius:8px;padding:8px 12px;font-size:12px">
-      <strong style="color:#2563EB">${p.title||p}</strong>
-      ${p.description ? `<div style="color:var(--muted);font-size:11px;margin-top:2px">${p.description}</div>` : ''}
+      <strong style="color:#2563EB">${pp.principle||pp.title||pp}</strong>
+      ${pp.detail||pp.description ? `<div style="color:var(--muted);font-size:11px;margin-top:2px">${pp.detail||pp.description}</div>` : ''}
     </div>`
   ).join('');
 
@@ -1040,7 +1040,7 @@ async function loadBcPrescription(bcCode, customerName) {
         <div style="font-size:11px;font-weight:700;color:#D97706;margin-bottom:8px">📋 생활습관 처방</div>
         <div style="display:flex;flex-wrap:wrap;gap:8px">
           ${(data.lifestyle_rules||[]).slice(0,6).map(l =>
-            `<div style="background:#FEF3C7;border-radius:8px;padding:6px 12px;font-size:12px">${l.icon||'💡'} ${l.rule||l}</div>`
+            `<div style="background:#FEF3C7;border-radius:8px;padding:6px 12px;font-size:12px">${l.do===false?'🚫':'✅'} ${l.rule||l}${l.detail ? `<span style="color:var(--muted);font-size:10px;display:block;margin-top:2px">${l.detail}</span>` : ''}</div>`
           ).join('')}
         </div>
       </div>` : ''}
@@ -1054,12 +1054,17 @@ async function loadBcPrescription(bcCode, customerName) {
 // ── B2B 파트너 전용 해석 HTML 생성 공통 함수 ─────────────────
 function renderB2bPartnerRxPanel(data, color) {
   const hints = data.partner_hints || [];
-  const treatments = data.b2b_treatments || {};
-  const treatKeys = Object.keys(treatments);
+  // b2b_treatments: 배열 [{type, treatments[], revisit}] 또는 객체 형식 모두 지원
+  const rawTreat = data.b2b_treatments || [];
+  const treatArr = Array.isArray(rawTreat)
+    ? rawTreat   // [{type:'병원', treatments:[...], revisit:'...'}]
+    : Object.entries(rawTreat).map(([k,v]) => ({type:k, treatments: Array.isArray(v)?v:[v]}));
   const consultPoints = data.consulting_points || [];
-  const typeIcons = {'병원':'🏥','에스테틱':'✨','헬스장':'💪','필라테스':'🧘','한의원':'🌿','약국':'💊','기타':'🏢'};
+  const wrongMethods = data.wrong_methods || [];
+  const typeIcons = {'병원':'🏥','에스테틱':'✨','헬스장':'💪','필라테스':'🧘','한의원':'🌿','약국':'💊','성형외과':'💉','기타':'🏢'};
 
-  if (!hints.length && !treatKeys.length && !consultPoints.length) return '';
+  const hasContent = hints.length || treatArr.length || consultPoints.length || wrongMethods.length;
+  if (!hasContent) return '';
 
   return `
     <div style="border-top:2px dashed ${color}44;margin-top:4px;padding-top:14px">
@@ -1081,24 +1086,26 @@ function renderB2bPartnerRxPanel(data, color) {
         </div>
       </div>` : ''}
 
-      ${treatKeys.length > 0 ? `
+      ${treatArr.length > 0 ? `
       <!-- 업종별 추천 프로그램 -->
       <div style="background:#EEF2FF;border:1px solid #C7D2FE;border-radius:10px;padding:12px 16px;margin-bottom:12px">
         <div style="font-size:12px;font-weight:800;color:#4338CA;margin-bottom:12px">🏥 업종별 추천 프로그램</div>
         <div style="display:flex;flex-direction:column;gap:12px">
-          ${treatKeys.map(k => {
-            const items = Array.isArray(treatments[k]) ? treatments[k] : [treatments[k]];
+          ${treatArr.map(t => {
+            const typeName = t.type || '기타';
+            const items = Array.isArray(t.treatments) ? t.treatments : (t.treatments ? [t.treatments] : []);
             return `
             <div style="border-bottom:1px solid #C7D2FE;padding-bottom:10px">
               <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
-                <span style="font-size:16px">${typeIcons[k]||'🏢'}</span>
-                <span style="font-size:12px;font-weight:700;color:#4338CA">${k}</span>
+                <span style="font-size:16px">${typeIcons[typeName.replace(/[()·\s].*/,'')]||'🏥'}</span>
+                <span style="font-size:12px;font-weight:700;color:#4338CA">${typeName}</span>
               </div>
               <div style="display:flex;flex-direction:column;gap:4px">
                 ${items.slice(0,5).map(item =>
                   `<div style="font-size:12px;color:#3730A3;padding-left:8px;line-height:1.6">→ ${item}</div>`
                 ).join('')}
               </div>
+              ${t.revisit ? `<div style="font-size:11px;color:#6366f1;margin-top:6px;padding-left:8px;font-style:italic">💡 재방문 전략: ${t.revisit}</div>` : ''}
             </div>`;
           }).join('')}
         </div>

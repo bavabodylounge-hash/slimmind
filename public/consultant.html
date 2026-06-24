@@ -1227,9 +1227,9 @@ function renderDetailRx(r) {
   const panel = document.getElementById('detail-rx-panel');
   if (!panel) return;
 
-  // _consBcList 캐시에서 bc_primary 검색
+  // _consBcList 캐시에서 bc_primary 검색 (bc_code 또는 code 필드 모두 지원)
   const bcList = window._consBcList || [];
-  const bc = bcList.find(b => b.code === r.bc_primary);
+  const bc = bcList.find(b => (b.bc_code || b.code) === r.bc_primary);
 
   if (!bc) {
     panel.innerHTML = `
@@ -1248,13 +1248,26 @@ function renderDetailRx(r) {
   const color = BC_COLORS[r.bc_primary] || '#6366f1';
   const p = bc; // bc 객체 자체가 처방 데이터
 
-  const foodRow = (arr, max) => (arr||[]).slice(0, max).map(f =>
-    `<span style="display:inline-flex;align-items:center;gap:4px;background:#F8FAFC;border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:12px;margin:3px">${f.emoji||''} ${f.name||f}</span>`
-  ).join('') || '<span style="font-size:12px;color:var(--muted)">-</span>';
+  // ── 데이터 구조 정규화 헬퍼 ────────────────────────────────
+  // correct_principles: {principle, detail} → title/description 통일
+  const normPrinciple = (pp) => ({
+    title: pp.principle || pp.title || pp,
+    description: pp.detail || pp.description || ''
+  });
+  // lifestyle_rules: {rule, detail, do} → 표시용 정규화
+  const normHabit = (l) => ({
+    icon: l.do === false ? '🚫' : '✅',
+    rule: l.rule || l,
+    detail: l.detail || l.description || ''
+  });
+  // symptom_checklist: {tag} → text 통일
+  const normSymptom = (s) => s.tag || s.text || s;
+  // supplement_list: {name, timing, reason}
+  const normSupplement = (s) => s;
 
   const listRows = (arr, max) => (arr||[]).slice(0, max).map(item =>
     `<div style="display:flex;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
-      <span style="font-size:15px;flex-shrink:0">${item.emoji||'💡'}</span>
+      <span style="font-size:15px;flex-shrink:0">${item.emoji||'•'}</span>
       <div>
         <div style="font-size:12px;font-weight:600;color:var(--text)">${item.name||item.title||item.rule||item}</div>
         ${item.reason||item.description ? `<div style="font-size:11px;color:var(--muted);margin-top:1px">${item.reason||item.description}</div>` : ''}
@@ -1262,39 +1275,63 @@ function renderDetailRx(r) {
     </div>`
   ).join('');
 
-  const principles = (p.correct_principles||[]).slice(0,4).map(pp =>
-    `<div style="background:#F0FDF4;border-radius:8px;padding:8px 12px;font-size:12px">
-      <strong style="color:#16A34A">${pp.title||pp}</strong>
-      ${pp.description ? `<div style="color:var(--muted);font-size:11px;margin-top:2px">${pp.description}</div>` : ''}
-    </div>`
-  ).join('');
+  const principles = (p.correct_principles||[]).slice(0,4).map(pp => {
+    const n = normPrinciple(pp);
+    return `<div style="background:#F0FDF4;border-radius:8px;padding:8px 12px;font-size:12px">
+      <strong style="color:#16A34A">${n.title}</strong>
+      ${n.description ? `<div style="color:var(--muted);font-size:11px;margin-top:2px">${n.description}</div>` : ''}
+    </div>`;
+  }).join('');
 
-  const habits = (p.lifestyle_rules||[]).slice(0,5).map(l =>
-    `<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
-      <span style="font-size:14px">${l.icon||'💡'}</span>
-      <span style="font-size:12px;color:var(--text)">${l.rule||l}</span>
-    </div>`
-  ).join('');
+  const habits = (p.lifestyle_rules||[]).slice(0,5).map(l => {
+    const n = normHabit(l);
+    return `<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:14px;flex-shrink:0">${n.icon}</span>
+      <div>
+        <span style="font-size:12px;color:var(--text);font-weight:600">${n.rule}</span>
+        ${n.detail ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${n.detail}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
 
-  const supplements = (p.supplements||[]).slice(0,4).map(s =>
-    `<div style="background:#F5F3FF;border-radius:8px;padding:8px 12px;font-size:12px">
-      <strong style="color:#7C3AED">${s.name||s}</strong>
-      ${s.reason ? `<div style="color:var(--muted);font-size:11px;margin-top:2px">${s.reason}</div>` : ''}
-    </div>`
-  ).join('');
+  // 보충제: supplement_list
+  const supplements = (p.supplement_list||p.supplements||[]).slice(0,4).map(s => {
+    const n = normSupplement(s);
+    return `<div style="background:#F5F3FF;border-radius:8px;padding:8px 12px;font-size:12px">
+      <strong style="color:#7C3AED">${n.name||n}</strong>
+      ${n.timing ? `<span style="font-size:10px;background:#7C3AED22;color:#7C3AED;border-radius:4px;padding:1px 6px;margin-left:4px">${n.timing}</span>` : ''}
+      ${n.reason ? `<div style="color:var(--muted);font-size:11px;margin-top:2px">${n.reason}</div>` : ''}
+    </div>`;
+  }).join('');
 
-  const exercises = (p.exercises||[]).slice(0,4).map(e =>
+  // 운동: recommended_exercises
+  const exercises = (p.recommended_exercises||p.exercises||[]).slice(0,4).map(e =>
     `<div style="background:#ECFDF5;border-radius:8px;padding:8px 12px;font-size:12px">
       <strong style="color:#059669">${e.name||e.title||e}</strong>
-      ${e.description||e.reason ? `<div style="color:var(--muted);font-size:11px;margin-top:2px">${e.description||e.reason}</div>` : ''}
+      ${e.description||e.detail||e.reason ? `<div style="color:var(--muted);font-size:11px;margin-top:2px">${e.description||e.detail||e.reason}</div>` : ''}
     </div>`
   ).join('');
 
-  // 상담 포인트 (consulting_points)
-  const consultPoints = (p.consulting_points||[]).slice(0,5).map((pt,i) =>
+  // 자가진단: symptom_checklist
+  const symptoms = p.symptom_checklist||p.self_check||p.symptoms||[];
+
+  // 상담 포인트: wrong_methods를 상담 포인트로 활용 (consulting_points 없으면)
+  const cpList = p.consulting_points||[];
+  const consultPoints = cpList.slice(0,5).map((pt,i) =>
     `<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
       <span style="background:${color};color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${i+1}</span>
       <span style="font-size:12px;color:var(--text);line-height:1.6">${pt}</span>
+    </div>`
+  ).join('');
+
+  // wrong_methods → 피해야 할 방법 (상담에서 활용)
+  const wrongMethods = (p.wrong_methods||[]).slice(0,3).map(w =>
+    `<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid #FEE2E2">
+      <span style="color:#EF4444;flex-shrink:0">✗</span>
+      <div>
+        <span style="font-size:12px;font-weight:600;color:#DC2626">${w.method||w}</span>
+        ${w.reason ? `<div style="font-size:11px;color:var(--muted);margin-top:1px">${w.reason}</div>` : ''}
+      </div>
     </div>`
   ).join('');
 
@@ -1315,13 +1352,13 @@ function renderDetailRx(r) {
     </div>
 
     <!-- 자가진단 체크리스트 -->
-    ${(p.self_check||p.symptoms||[]).length > 0 ? `
+    ${symptoms.length > 0 ? `
     <div style="background:#FFFBEB;border-radius:10px;padding:12px 14px;margin-bottom:14px">
-      <div style="font-size:11px;font-weight:700;color:#D97706;margin-bottom:8px">📝 자가진단 체크리스트</div>
+      <div style="font-size:11px;font-weight:700;color:#D97706;margin-bottom:8px">📝 고객 자가진단 체크리스트</div>
       <div style="display:flex;flex-direction:column;gap:5px">
-        ${(p.self_check||p.symptoms||[]).slice(0,5).map(s =>
+        ${symptoms.slice(0,5).map(s =>
           `<div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--text)">
-            <span style="color:#F59E0B;flex-shrink:0;margin-top:1px">✓</span>${s.text||s}
+            <span style="color:#F59E0B;flex-shrink:0;margin-top:1px">✓</span>${normSymptom(s)}
           </div>`
         ).join('')}
       </div>
@@ -1367,18 +1404,22 @@ function renderDetailRx(r) {
       ${habits}
     </div>` : ''}
 
-    <!-- 상담 포인트 -->
+    <!-- 상담 포인트 (DB에 있으면 표시, 없으면 wrong_methods로 대체) -->
     ${consultPoints ? `
     <div style="background:#F0F9FF;border-radius:10px;padding:12px 14px;margin-bottom:14px;border:1px solid #BAE6FD">
       <div style="font-size:11px;font-weight:700;color:#0284C7;margin-bottom:6px">💬 상담 포인트</div>
       ${consultPoints}
+    </div>` : wrongMethods ? `
+    <div style="background:#FEF2F2;border-radius:10px;padding:12px 14px;margin-bottom:14px;border:1px solid #FCA5A5">
+      <div style="font-size:11px;font-weight:700;color:#DC2626;margin-bottom:6px">⚠️ 이 고객에게 피해야 할 방법 (상담 시 강조)</div>
+      ${wrongMethods}
     </div>` : ''}
 
-    <!-- 동기부여 멘트 -->
-    ${p.motivation_message||p.motivation ? `
+    <!-- 동기부여 멘트 (closing_copy 활용) -->
+    ${p.closing_copy||p.motivation_message||p.motivation ? `
     <div style="background:${color}11;border-radius:10px;padding:12px 16px;border:1px dashed ${color}55">
       <div style="font-size:11px;font-weight:700;color:${color};margin-bottom:6px">💌 고객 동기부여 멘트</div>
-      <div style="font-size:13px;font-style:italic;color:var(--text);line-height:1.8">"${p.motivation_message||p.motivation}"</div>
+      <div style="font-size:12px;font-style:italic;color:var(--text);line-height:1.8">"${p.closing_copy||p.motivation_message||p.motivation}"</div>
     </div>` : ''}
   `;
 }
