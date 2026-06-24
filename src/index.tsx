@@ -632,7 +632,10 @@ app.post('/api/admin/b2b-partners', requireRole('MASTER'), async (c) => {
   // B2B 코드 자동 생성: 업종 약자 + 순번
   const typeAbbr: Record<string, string> = {
     '에스테틱': 'AES', '필라테스': 'PIL', '한의원': 'HAN',
-    '헬스장': 'GYM', '뷰티샵': 'BTY', '병원': 'HOS', '기타': 'ETC'
+    '헬스장': 'GYM', '뷰티샵': 'BTY', '병원': 'HOS', '기타': 'ETC',
+    '성형외과': 'SUR', '피부과': 'DRM', '성형외과피부과': 'SUR', '성형': 'SUR',
+    '요가': 'YGA', 'PT샵': 'PTS', '다이어트샵': 'DTS', '비만클리닉': 'OBC',
+    '웰니스': 'WEL', '스파': 'SPA'
   }
   const abbr = typeAbbr[type || '기타'] || 'ETC'
   const last = await db.prepare(
