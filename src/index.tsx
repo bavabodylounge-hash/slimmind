@@ -1175,49 +1175,62 @@ app.get('/api/admin/settlement', requireRole('MASTER'), async (c) => {
 // POST /api/consultant/ai-message — BC코드 기반 상담 멘트 생성
 app.post('/api/consultant/ai-message', requireRole('ANY'), async (c) => {
   const db = c.env.DB
-  const { bc_code, user_name, context } = await c.req.json()
-  if (!bc_code) return c.json({ error: 'BC코드가 필요합니다.' }, 400)
-  const row = await db.prepare(`
-    SELECT brand_name, tagline, bc_primary_oneline_reason, bc_cause_story, closing_copy,
-           correct_principles_json, lifestyle_rules_json, monthly_goals_json
-    FROM bc_prescriptions WHERE bc_code=?
-  `).bind(bc_code).first<any>()
-  if (!row) return c.json({ error: 'BC코드를 찾을 수 없습니다.' }, 404)
-  const parse = (v: any) => { try { return JSON.parse(v) } catch { return [] } }
-  const principles = parse(row.correct_principles_json).slice(0, 2).map((p: any) => p.title || p).join(', ')
-  const lifestyle = parse(row.lifestyle_rules_json).slice(0, 2).map((l: any) => l.rule || l).join(', ')
-  const goals = parse(row.monthly_goals_json).slice(0, 1).map((g: any) => g.goal || g).join('')
+  try {
+    const body = await c.req.json().catch(() => ({}))
+    const { bc_code, user_name } = body as any
+    if (!bc_code) return c.json({ error: 'BC코드가 필요합니다.' }, 400)
 
-  // 멘트 템플릿 (Claude API 없이 구조화된 자동 생성)
-  const name = user_name || '고객님'
-  const messages = [
-    {
-      type: '초진 환영 멘트',
-      icon: '👋',
-      text: `${name}, 슬림마인드에 오신 걸 환영합니다! 체형 분석 결과 ${name}의 유형은 <strong>${row.brand_name}</strong>입니다. ${row.bc_primary_oneline_reason} 지금부터 ${name}만을 위한 맞춤 처방을 시작해드릴게요.`
-    },
-    {
-      type: '원인 설명 멘트',
-      icon: '🔍',
-      text: `${name}, 지금까지 다이어트가 어려우셨던 건 의지 부족이 아니에요. ${row.bc_cause_story || `${row.brand_name} 특성상 일반적인 방법이 맞지 않았기 때문입니다.`} 원인을 알면 해결책도 명확해집니다.`
-    },
-    {
-      type: '처방 안내 멘트',
-      icon: '💊',
-      text: `${name}의 ${row.brand_name} 유형에는 <strong>${principles}</strong> 접근이 핵심입니다. ${lifestyle ? `일상에서는 ${lifestyle}을 꼭 지켜주세요. ` : ''}${goals ? `이번 달 목표: ${goals}` : ''} 지금 바로 시작하면 변화를 느끼실 수 있습니다!`
-    },
-    {
-      type: '동기부여 멘트',
-      icon: '💪',
-      text: `${name}, ${row.closing_copy || `${row.brand_name} 유형의 분들은 올바른 방법을 찾으면 빠른 변화를 경험합니다.`} 저희가 끝까지 함께하겠습니다. 오늘 첫 걸음이 가장 중요한 걸음입니다! 🎯`
-    },
-    {
-      type: '재방문 독려 멘트',
-      icon: '📅',
-      text: `${name}, 오늘 상담 잘 마무리하셨나요? ${row.brand_name} 유형은 꾸준한 관리가 특히 중요합니다. 다음 방문까지 ${lifestyle ? lifestyle + '을 실천해보시고,' : ''} 궁금한 점은 언제든 연락주세요. 좋은 결과로 뵙겠습니다! 😊`
-    },
-  ]
-  return c.json({ messages, bc_code, brand_name: row.brand_name })
+    const row = await db.prepare(`
+      SELECT brand_name, tagline, bc_primary_oneline_reason, bc_cause_story, closing_copy,
+             correct_principles_json, lifestyle_rules_json, monthly_goals_json
+      FROM bc_prescriptions WHERE bc_code=?
+    `).bind(bc_code).first<any>()
+    if (!row) return c.json({ error: `BC코드(${bc_code})를 찾을 수 없습니다.` }, 404)
+
+    const parse = (v: any) => { try { return JSON.parse(v) } catch { return [] } }
+    const principles = parse(row.correct_principles_json).slice(0, 2).map((p: any) => p.title || p).join(', ')
+    const lifestyle = parse(row.lifestyle_rules_json).slice(0, 2).map((l: any) => l.rule || l).join(', ')
+    const goals = parse(row.monthly_goals_json).slice(0, 1).map((g: any) => g.goal || g).join('')
+
+    // 멘트 템플릿 (OpenAI 없이 구조화된 자동 생성)
+    const name = user_name || '고객님'
+    const brandName = row.brand_name || bc_code
+    const oneliner = row.bc_primary_oneline_reason || `${brandName} 특성에 맞는 맞춤 관리가 필요합니다.`
+    const causeStory = row.bc_cause_story || `${brandName} 특성상 일반적인 방법이 맞지 않았기 때문입니다.`
+    const closingCopy = row.closing_copy || `${brandName} 유형의 분들은 올바른 방법을 찾으면 빠른 변화를 경험합니다.`
+
+    const messages = [
+      {
+        type: '초진 환영 멘트',
+        icon: '👋',
+        text: `${name}님, 슬림마인드에 오신 걸 환영합니다! 체형 분석 결과 ${name}님의 유형은 <strong>${brandName}</strong>입니다. ${oneliner} 지금부터 ${name}님만을 위한 맞춤 처방을 시작해드릴게요.`
+      },
+      {
+        type: '원인 설명 멘트',
+        icon: '🔍',
+        text: `${name}님, 지금까지 다이어트가 어려우셨던 건 의지 부족이 아니에요. ${causeStory} 원인을 알면 해결책도 명확해집니다.`
+      },
+      {
+        type: '처방 안내 멘트',
+        icon: '💊',
+        text: `${name}님의 ${brandName} 유형에는 <strong>${principles || '맞춤 식단·생활습관 교정'}</strong> 접근이 핵심입니다. ${lifestyle ? `일상에서는 ${lifestyle}을 꼭 지켜주세요. ` : ''}${goals ? `이번 달 목표: ${goals}` : ''} 지금 바로 시작하면 변화를 느끼실 수 있습니다!`
+      },
+      {
+        type: '동기부여 멘트',
+        icon: '💪',
+        text: `${name}님, ${closingCopy} 저희가 끝까지 함께하겠습니다. 오늘 첫 걸음이 가장 중요한 걸음입니다! 🎯`
+      },
+      {
+        type: '재방문 독려 멘트',
+        icon: '📅',
+        text: `${name}님, 오늘 상담 잘 마무리하셨나요? ${brandName} 유형은 꾸준한 관리가 특히 중요합니다. 다음 방문까지 ${lifestyle ? lifestyle + '을 실천해보시고,' : ''} 궁금한 점은 언제든 연락주세요. 좋은 결과로 뵙겠습니다! 😊`
+      },
+    ]
+    return c.json({ messages, bc_code, brand_name: brandName })
+  } catch(e: any) {
+    console.error('[ai-message error]', e)
+    return c.json({ error: `멘트 생성 중 오류가 발생했습니다: ${String(e?.message || e)}` }, 500)
+  }
 })
 
 // ═══════════════════════════════════════════════════════════════
@@ -1692,22 +1705,38 @@ app.get('/result/:id', async (c) => {
     target_bottom_size: resultData.result?.target_bottom_size,
     // 동양의학
     ohaeng_type: resultData.result?.ohaeng_type,
-    ohaeng_scores: resultData.result?.ohaeng_scores,
+    ohaeng_scores: resultData.result?.ohaeng_scores_json
+      ? (() => { try { return JSON.parse(resultData.result.ohaeng_scores_json) } catch { return null } })()
+      : null,
     mbti: resultData.result?.mbti,
     blood_type: resultData.result?.blood_type,
     saju_il_gan: resultData.result?.saju_il_gan,
     saju_display: resultData.result?.saju_display,
-    // 설문 응답 (채점 재활용)
-    survey_answers: resultData.result?.survey_answers,
-    answers: resultData.result?.survey_answers,
-    survey_summary: resultData.result?.survey_summary,
-    // v4 10축 분석
-    axis_scores: resultData.result?.axis_scores,
-    top_axes: resultData.result?.top_axes,
+    // 설문 응답 (채점 재활용) — DB 실제 컬럼: survey_answers_json
+    survey_answers: resultData.result?.survey_answers_json
+      ? (() => { try { return JSON.parse(resultData.result.survey_answers_json) } catch { return null } })()
+      : null,
+    answers: resultData.result?.survey_answers_json
+      ? (() => { try { return JSON.parse(resultData.result.survey_answers_json) } catch { return null } })()
+      : null,
+    survey_summary: resultData.result?.survey_summary_json
+      ? (() => { try { return JSON.parse(resultData.result.survey_summary_json) } catch { return null } })()
+      : null,
+    // v4 10축 분석 — DB 실제 컬럼: axis_scores_json, top_axes_json
+    axis_scores: resultData.result?.axis_scores_json
+      ? (() => { try { return JSON.parse(resultData.result.axis_scores_json) } catch { return null } })()
+      : null,
+    top_axes: resultData.result?.top_axes_json
+      ? (() => { try { return JSON.parse(resultData.result.top_axes_json) } catch { return null } })()
+      : null,
     axis_primary: resultData.result?.axis_primary,
-    // 건강 조건
-    food_allergy: resultData.result?.food_allergy,
-    allergy_exclude: resultData.result?.allergy_exclude,
+    // 건강 조건 — DB 실제 컬럼: food_allergy_json, allergy_exclude_json
+    food_allergy: resultData.result?.food_allergy_json
+      ? (() => { try { return JSON.parse(resultData.result.food_allergy_json) } catch { return null } })()
+      : null,
+    allergy_exclude: resultData.result?.allergy_exclude_json
+      ? (() => { try { return JSON.parse(resultData.result.allergy_exclude_json) } catch { return null } })()
+      : null,
     skin_reaction: resultData.result?.skin_reaction,
     is_menopause: resultData.result?.is_menopause,
     medical_conditions: resultData.result?.medical_conditions,
@@ -1730,7 +1759,8 @@ app.get('/result/:id', async (c) => {
     consultant_name: resultData.consultant_name,
   };
 
-  const injectedHtml = resultHtml.replace(
+  // result-v4.html을 최신 결과지 템플릿으로 사용
+  const injectedHtml = resultV4Html.replace(
     '</head>',
     `${brandInjectResult}\n<script>window.__RESULT__ = ${JSON.stringify(flatResult)};window.__RESULT_FULL__ = ${JSON.stringify(resultData)};</script>\n</head>`
   )
@@ -2565,9 +2595,9 @@ app.get('/api/b2b/result-link/:id', requireB2B(), async (c) => {
   const partnerCode = user?.code || ''
   const resultId = c.req.param('id')
   try {
-    // 이 파트너 고객인지 확인
+    // 이 파트너 고객인지 확인 (ref_code = 파트너 코드)
     const result = await db.prepare(
-      "SELECT id FROM results WHERE id = ? AND b2b_code = ?"
+      "SELECT id FROM results WHERE id = ? AND ref_code = ?"
     ).bind(resultId, partnerCode).first<any>()
     if (!result) return c.json({ error: '권한 없음' }, 403)
     // 기존 파트너 토큰으로 링크 생성
@@ -2626,13 +2656,13 @@ app.get('/api/b2b/recommend/:resultId', requireB2B(), async (c) => {
   const resultId = c.req.param('resultId')
 
   try {
-    // 1) 고객 결과지 조회 (이 파트너 소속인지 확인)
+    // 1) 고객 결과지 조회 (ref_code = 파트너 코드로 소속 확인)
     const result = await db.prepare(
-      "SELECT id, name, bc_code, b2b_code FROM results WHERE id = ? AND b2b_code = ?"
+      "SELECT id, user_name, bc_primary, ref_code FROM results WHERE id = ? AND ref_code = ?"
     ).bind(resultId, partnerCode).first<any>()
     if (!result) return c.json({ error: '권한 없음 또는 결과지 미존재' }, 403)
 
-    const bcCode = result.bc_code as string | null
+    const bcCode = result.bc_primary as string | null
     if (!bcCode) return c.json({ error: 'BC코드 미설정', treatments: [] })
 
     // 2) 해당 파트너 시술 중 bc_tags에 고객 BC코드가 포함된 것 조회
@@ -2655,7 +2685,7 @@ app.get('/api/b2b/recommend/:resultId', requireB2B(), async (c) => {
     treatments.sort((a: any, b: any) => (a.price || 0) - (b.price || 0))
 
     return c.json({
-      customer_name: result.name,
+      customer_name: result.user_name,
       bc_code: bcCode,
       recommend_title: commentInfo.title,
       recommend_reason: commentInfo.reason,

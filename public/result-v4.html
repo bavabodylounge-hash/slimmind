@@ -695,6 +695,51 @@ function triggerAnim() {
 
 // ── 데이터 로드 ──────────────────
 function loadData() {
+  // 0순위: 서버사이드 주입 window.__RESULT__ (공유링크 /result/:id 접근 시)
+  if (window.__RESULT__ && (window.__RESULT__.bc_primary || window.__RESULT__.bc_code)) {
+    const r = window.__RESULT__;
+    // 서버 flat 구조 → result-v4 구조로 변환
+    // axis_scores는 서버에서 이미 JSON.parse된 객체로 전달됨
+    const axisScores = r.axis_scores && typeof r.axis_scores === 'object' && !Array.isArray(r.axis_scores)
+      ? r.axis_scores
+      : {};
+    const answers = r.answers && typeof r.answers === 'object' ? r.answers : {};
+    return {
+      userName: r.user_name || r.name || '고객',
+      bc_code: r.bc_primary || r.bc_code,
+      bc_primary: r.bc_primary || r.bc_code,
+      axisScores: axisScores,
+      top_axes: Array.isArray(r.top_axes) ? r.top_axes : [],
+      axis_primary: r.axis_primary || '',
+      ohaengType: r.ohaeng_type || '',
+      mbtiType: r.mbti || '',
+      bloodType: r.blood_type || '',
+      saju_il_gan: r.saju_il_gan || '',
+      saju_display: r.saju_display || '',
+      age: r.age || '',
+      gender: r.gender || '',
+      height: r.height || '',
+      weight: r.weight || '',
+      target_weight: r.target_weight || '',
+      bmi: r.bmi || '',
+      bfr: r.bfr || '',
+      fat_kg: r.fat_kg || '',
+      muscle_kg: r.muscle_kg || '',
+      body_goal: r.body_goal || '',
+      prescription: r.prescription || (window.__RESULT_FULL__ && window.__RESULT_FULL__.bc) || null,
+      ohaeng: r.ohaeng || (window.__RESULT_FULL__ && window.__RESULT_FULL__.ohaeng) || null,
+      answers: answers,
+      survey_answers: answers,
+      // 브랜드 정보
+      brand: window.__BRAND__ || null,
+      is_consultant: r.is_consultant || false,
+      is_b2b_partner: r.is_b2b_partner || false,
+      consultant_name: r.consultant_name || '',
+      created_at: r.created_at || '',
+      _from_server: true,
+    };
+  }
+
   // 1순위: URL 쿼리 파라미터 ?data=
   const params = new URLSearchParams(window.location.search);
   const urlData = params.get('data');
