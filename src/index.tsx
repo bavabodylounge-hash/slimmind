@@ -963,6 +963,63 @@ app.get('/api/results/:id', async (c) => {
   })
 })
 
+// GET /api/consultant/stats — 컨설턴트 대시보드 통계
+app.get('/api/consultant/stats', requireRole('ANY'), async (c) => {
+  const user = c.get('user') as JwtPayload
+  const db = c.env.DB
+
+  let whereClause = user.role === 'MASTER' ? '1=1' : 'consultant_code=?'
+  const bindParams: any[] = user.role === 'MASTER' ? [] : [user.code]
+
+  const [total, thisMonth, bcDist, recentResults] = await Promise.all([
+    db.prepare(`SELECT COUNT(*) as cnt FROM results WHERE ${whereClause}`)
+      .bind(...bindParams).first<any>(),
+    db.prepare(`SELECT COUNT(*) as cnt FROM results WHERE ${whereClause} AND strftime('%Y-%m', created_at)=strftime('%Y-%m','now')`)
+      .bind(...bindParams).first<any>(),
+    db.prepare(`SELECT bc_primary, COUNT(*) as cnt FROM results WHERE ${whereClause} GROUP BY bc_primary ORDER BY cnt DESC`)
+      .bind(...bindParams).all<any>(),
+    db.prepare(`SELECT id, user_name, bc_primary, created_at, admin_memo FROM results WHERE ${whereClause} ORDER BY created_at DESC LIMIT 5`)
+      .bind(...bindParams).all<any>(),
+  ])
+
+  return c.json({
+    total: total?.cnt || 0,
+    this_month: thisMonth?.cnt || 0,
+    bc_distribution: bcDist.results,
+    recent_results: recentResults.results,
+  })
+})
+
+// PUT /api/consultant/change-password — 비밀번호 변경
+app.put('/api/consultant/change-password', requireRole('ANY'), async (c) => {
+  const user = c.get('user') as JwtPayload
+  const db = c.env.DB
+  const { current_password, new_password } = await c.req.json()
+
+  if (!current_password || !new_password) {
+    return c.json({ error: '현재 비밀번호와 새 비밀번호를 모두 입력하세요.' }, 400)
+  }
+  if (new_password.length < 6) {
+    return c.json({ error: '새 비밀번호는 6자 이상이어야 합니다.' }, 400)
+  }
+
+  const consultant = await db.prepare('SELECT * FROM consultants WHERE code=?').bind(user.code).first<any>()
+  if (!consultant) return c.json({ error: '계정을 찾을 수 없습니다.' }, 404)
+
+  // 현재 비밀번호 확인
+  const num = consultant.code.replace('SC-', '')
+  const defaultPw = `pass${num}`
+  const storedPw = consultant.password_hash || defaultPw
+  if (storedPw !== current_password) {
+    return c.json({ error: '현재 비밀번호가 올바르지 않습니다.' }, 400)
+  }
+
+  await db.prepare("UPDATE consultants SET password_hash=?, updated_at=datetime('now') WHERE code=?")
+    .bind(new_password, user.code).run()
+
+  return c.json({ success: true, message: '비밀번호가 변경되었습니다.' })
+})
+
 // PUT /api/results/:id/memo — 관리자 메모 저장
 app.put('/api/results/:id/memo', async (c) => {
   const user = await getAuthUser(c)
