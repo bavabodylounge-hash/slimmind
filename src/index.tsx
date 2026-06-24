@@ -261,6 +261,65 @@ app.get('/api/auth/me', async (c) => {
 })
 
 // ═══════════════════════════════════════════════════════════════
+//  GET /api/admin/impersonate/:code
+//  마스터 전용: 해당 컨설턴트 또는 B2B 파트너의 JWT를 대리 발급
+//  → 프론트에서 이 토큰을 localStorage에 저장 후 해당 페이지로 리다이렉트
+// ═══════════════════════════════════════════════════════════════
+app.get('/api/admin/impersonate/:code', requireRole('MASTER'), async (c) => {
+  const db = c.env.DB
+  const secret = c.env.JWT_SECRET || 'slimmind-jwt-secret-change-in-production'
+  const targetCode = c.req.param('code').toUpperCase()
+
+  // B2B 파트너인지 먼저 확인
+  if (targetCode.startsWith('B2B-')) {
+    const partner = await db.prepare(
+      'SELECT * FROM b2b_partners WHERE code=?'
+    ).bind(targetCode).first<any>()
+    if (!partner) return c.json({ error: '파트너를 찾을 수 없습니다.' }, 404)
+
+    const payload: JwtPayload = {
+      sub: String(partner.id),
+      code: partner.code,
+      role: 'B2B_PARTNER',
+      name: partner.brand_name || partner.name,
+      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 2, // 2시간 (대리접속은 짧게)
+    }
+    const token = await signJwt(payload, secret)
+    return c.json({
+      token, role: 'B2B_PARTNER',
+      code: partner.code,
+      name: partner.brand_name || partner.name,
+      redirect: '/b2b',
+      brand_color: partner.brand_color,
+      brand_logo_url: partner.brand_logo_url,
+      brand_name: partner.brand_name || partner.name,
+    })
+  }
+
+  // 컨설턴트
+  const consultant = await db.prepare(
+    'SELECT * FROM consultants WHERE code=?'
+  ).bind(targetCode).first<any>()
+  if (!consultant) return c.json({ error: '컨설턴트를 찾을 수 없습니다.' }, 404)
+
+  const role: 'MASTER' | 'CONSULTANT' = consultant.code === 'MASTER' ? 'MASTER' : 'CONSULTANT'
+  const payload: JwtPayload = {
+    sub: String(consultant.id),
+    code: consultant.code,
+    role,
+    name: consultant.name,
+    exp: Math.floor(Date.now() / 1000) + 60 * 60 * 2, // 2시간
+  }
+  const token = await signJwt(payload, secret)
+  return c.json({
+    token, role,
+    code: consultant.code,
+    name: consultant.name,
+    redirect: '/consultant',
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════
 //  설문 API
 // ═══════════════════════════════════════════════════════════════
 

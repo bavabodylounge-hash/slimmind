@@ -198,9 +198,15 @@
         <div class="nav-item" data-page="qr"><i class="fas fa-qrcode"></i> QR 코드 출력</div>
         <div class="nav-item" data-page="partner-view"><i class="fas fa-star"></i> 파트너 추천 뷰</div>
         <div class="nav-item" data-page="profile"><i class="fas fa-building"></i> 업체 정보</div>
+        <div class="nav-item" data-page="guide"><i class="fas fa-book-open"></i> 이용 안내</div>
       </nav>
       <div class="sidebar-footer">
         <div class="sidebar-user" id="sidebar-user"></div>
+        <a href="https://pf.kakao.com/_xgCgsX/chat" target="_blank"
+           style="display:flex;align-items:center;gap:8px;background:#FEE500;color:#3C1E1E;border-radius:8px;padding:9px 12px;font-size:12px;font-weight:700;text-decoration:none;margin-bottom:10px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="#3C1E1E"><path d="M12 2C6.48 2 2 5.92 2 10.73c0 2.98 1.67 5.6 4.19 7.22l-.97 3.57 4.1-2.72c.87.16 1.76.24 2.68.24 5.52 0 10-3.92 10-8.77S17.52 2 12 2z"/></svg>
+          본사 쳄팅 문의
+        </a>
         <div class="logout-btn" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i> 로그아웃</div>
       </div>
     </aside>
@@ -221,6 +227,11 @@
 
 <script>
 // ─── 전역 상태 ────────────────────────────────
+// 마스터 대리접속: sm_b2b_token이 있으면 우선 사용
+const _impB2BToken = localStorage.getItem('sm_b2b_token');
+if (_impB2BToken && new URLSearchParams(location.search).get('_impersonate') === '1') {
+  localStorage.setItem('b2b_token', _impB2BToken);
+}
 let TOKEN = localStorage.getItem('b2b_token') || '';
 let USER_CODE = localStorage.getItem('b2b_code') || '';
 let USER_INFO = null;
@@ -341,6 +352,7 @@ function navigateTo(page) {
     qr: 'QR 코드 출력',
     'partner-view': '파트너 추천 뷰',
     profile: '업체 정보',
+    guide: '이용 안내',
   };
   document.getElementById('topbar-title').textContent = titles[page] || page;
   const body = document.getElementById('page-body');
@@ -351,6 +363,57 @@ function navigateTo(page) {
   else if (page === 'qr') loadQR();
   else if (page === 'partner-view') loadPartnerView();
   else if (page === 'profile') loadProfile();
+  else if (page === 'guide') loadGuideB2B();
+}
+
+function loadGuideB2B() {
+  const origin = location.origin;
+  document.getElementById('page-body').innerHTML = `
+    <div class="card" style="max-width:760px;margin:0 auto">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+        <div style="width:40px;height:40px;background:rgba(255,255,255,.15);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px">🏢</div>
+        <div>
+          <div style="font-size:17px;font-weight:700">B2B 파트너 이용 가이드</div>
+          <div style="font-size:12px;opacity:.7">슬림마인드 B2B 파트너를 위한 상세 이용법</div>
+        </div>
+      </div>
+
+      <div style="border-left:4px solid rgba(255,255,255,.5);padding:14px 18px;background:rgba(255,255,255,.08);border-radius:0 10px 10px 0;margin-bottom:14px">
+        <div style="font-size:11px;font-weight:700;opacity:.7;margin-bottom:5px">STEP 1</div>
+        <div style="font-size:14px;font-weight:700;margin-bottom:6px">📱 고객 설문 링크 &amp; QR 활용</div>
+        <div style="font-size:13px;opacity:.9;line-height:1.8">대시보드의 <b>파트너 전용 설문 링크</b>를 고객에게 카카오톡/문자로 발송하세요.<br>링크: <code style="background:rgba(0,0,0,.2);padding:1px 6px;border-radius:4px">${origin}/s/B2B-XXX-001</code><br>QR 코드 메뉴에서 QR을 인송하여 원내 안내판·리플릿 등에 활용하세요.</div>
+      </div>
+
+      <div style="border-left:4px solid rgba(255,255,255,.5);padding:14px 18px;background:rgba(255,255,255,.08);border-radius:0 10px 10px 0;margin-bottom:14px">
+        <div style="font-size:11px;font-weight:700;opacity:.7;margin-bottom:5px">STEP 2</div>
+        <div style="font-size:14px;font-weight:700;margin-bottom:6px">🎨 화이트라벨 브랜딩</div>
+        <div style="font-size:13px;opacity:.9;line-height:1.8">전용 링크로 접속하는 고객의 설문지에 <b>귀 업체 브랜드켇러와 로고</b>가 자동 적용됩니다.<br>로고/켇러 변경이 필요하면 본사에 문의하세요.</div>
+      </div>
+
+      <div style="border-left:4px solid rgba(255,255,255,.5);padding:14px 18px;background:rgba(255,255,255,.08);border-radius:0 10px 10px 0;margin-bottom:14px">
+        <div style="font-size:11px;font-weight:700;opacity:.7;margin-bottom:5px">STEP 3</div>
+        <div style="font-size:14px;font-weight:700;margin-bottom:6px">📊 고객 결과 조회 및 컨설팅</div>
+        <div style="font-size:13px;opacity:.9;line-height:1.8"><b>고객 결과 조회</b> 메뉴에서 및업체를 통해 등록된 모든 고객의 BC코드 결과를 확인할 수 있습니다.<br>운동·식단·생활습관 처방이 포함된 결과지를 원내 상담 자료로 바로 활용하세요.<br>특히 <b>초진 전 설문 링크 선발송</b>을 권장합니다!</div>
+      </div>
+
+      <div style="border-left:4px solid rgba(255,255,255,.5);padding:14px 18px;background:rgba(255,255,255,.08);border-radius:0 10px 10px 0;margin-bottom:20px">
+        <div style="font-size:11px;font-weight:700;opacity:.7;margin-bottom:5px">FAQ</div>
+        <div style="font-size:13px;opacity:.9;line-height:2">
+          <b>Q. 고객 결과가 안 보여요?</b><br>A. 고객이 전용 링크(/s/B2B-XXX-001)로 접속했는지 확인해주세요.<br>
+          <b>Q. 비밀번호를 바꼼고 싶어요.</b><br>A. 업체 정보 탭에서 변경 가능합니다.<br>
+          <b>Q. 브랜드켇러/로고를 바꾸고 싶어요.</b><br>A. 본사 컨설당 쳄널로 문의해주세요.
+        </div>
+      </div>
+
+      <div style="text-align:center">
+        <a href="https://pf.kakao.com/_xgCgsX/chat" target="_blank"
+           style="display:inline-flex;align-items:center;gap:10px;background:#FEE500;color:#3C1E1E;border-radius:12px;padding:13px 26px;font-size:14px;font-weight:700;text-decoration:none">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#3C1E1E"><path d="M12 2C6.48 2 2 5.92 2 10.73c0 2.98 1.67 5.6 4.19 7.22l-.97 3.57 4.1-2.72c.87.16 1.76.24 2.68.24 5.52 0 10-3.92 10-8.77S17.52 2 12 2z"/></svg>
+          슬림마인드 본사에 채팅 문의하기
+        </a>
+      </div>
+    </div>
+  `;
 }
 
 // ─── 대시보드 ─────────────────────────────────

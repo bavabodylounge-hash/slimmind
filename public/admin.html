@@ -510,8 +510,8 @@
       </div>
       <div class="form-grid">
         <div class="form-field">
-          <label>이메일</label>
-          <input type="email" id="b2b-email" placeholder="contact@example.com">
+          <label>이메일 <span style="color:var(--danger)">*</span></label>
+          <input type="email" id="b2b-email" placeholder="contact@example.com (로그인 시 필수)">
         </div>
         <div class="form-field">
           <label>수수료율 (%)</label>
@@ -859,14 +859,49 @@ function navigateTo(page) {
 // ═════════════════════════════════════════════
 //  대시보드
 // ═════════════════════════════════════════════
+// ═══════════════════════════
+//  대리 접속 (마스터 전용)
+// ═══════════════════════════
+async function impersonateLogin(code) {
+  try {
+    const res = await api('GET', `/admin/impersonate/${code}`);
+    if (!res?.token) { toast('대리접속 실패: ' + (res?.error || '알 수 없는 오류'), 'error'); return; }
+    // 해당 역할 localStorage 키에 저장
+    if (res.role === 'B2B_PARTNER') {
+      localStorage.setItem('sm_b2b_token', res.token);
+      localStorage.setItem('sm_b2b_code', res.code);
+      localStorage.setItem('sm_b2b_name', res.name || '');
+      localStorage.setItem('sm_b2b_color', res.brand_color || '#6366f1');
+      localStorage.setItem('sm_b2b_logo', res.brand_logo_url || '');
+      localStorage.setItem('sm_b2b_brand', res.brand_name || '');
+      window.open('/b2b?_impersonate=1', '_blank');
+    } else {
+      localStorage.setItem('sm_token', res.token);
+      localStorage.setItem('sm_role', res.role);
+      localStorage.setItem('sm_name', res.name || '');
+      localStorage.setItem('sm_code', res.code);
+      window.open('/consultant?_impersonate=1', '_blank');
+    }
+    toast(`🔑 ${code} 대리접속 창이 열렸습니다.`, 'success');
+  } catch(e) {
+    toast('대리접속 오류: ' + e, 'error');
+  }
+}
+
 async function loadDashboard() {
-  const data = await api('GET', '/admin/dashboard');
+  // 대시보드 + 컨설턴트목록 + B2B목록 동시 로드
+  const [data, consData, b2bData] = await Promise.all([
+    api('GET', '/admin/dashboard'),
+    api('GET', '/admin/consultants?limit=200'),
+    api('GET', '/admin/b2b-partners?limit=200'),
+  ]);
   if (!data) return;
   const { kpi, recent_results, bc_distribution } = data;
 
   const kpiCards = [
     { icon: '📋', label: '총 결과지', val: kpi.total_results, color: '#DBEAFE', iconBg: '#3B82F6' },
-    { icon: '👥', label: '총 컨설턴트', val: kpi.total_consultants, color: '#DCFCE7', iconBg: '#10B981' },
+    { icon: '👥', label: '컨설턴트', val: kpi.total_consultants, color: '#DCFCE7', iconBg: '#10B981' },
+    { icon: '🏢', label: 'B2B 파트너', val: (b2bData?.partners?.length || 0), color: '#F5F3FF', iconBg: '#6366F1' },
     { icon: '✅', label: '활성 컨설턴트', val: kpi.active_consultants, color: '#FEF9C3', iconBg: '#F59E0B' },
   ].map(k => `
     <div class="kpi-card">
@@ -900,36 +935,99 @@ async function loadDashboard() {
     </tr>
   `).join('');
 
+  // 컨설턴트 목록 (구독만료일 오름차순 — 만료 임박 순)
+  const consultants = (consData?.consultants || []).filter(c => c.code !== 'MASTER');
+  consultants.sort((a, b) => {
+    if (!a.subscription_end && !b.subscription_end) return 0;
+    if (!a.subscription_end) return 1;
+    if (!b.subscription_end) return -1;
+    return a.subscription_end.localeCompare(b.subscription_end);
+  });
+
+  // B2B 파트너 목록
+  const partners = (b2bData?.partners || []);
+
+  const today = new Date().toISOString().slice(0,10);
+
+  function dDayBadge(endDate) {
+    if (!endDate) return '<span style="font-size:11px;color:#94A3B8">만료일 없음</span>';
+    const diff = Math.ceil((new Date(endDate) - new Date(today)) / 86400000);
+    if (diff < 0) return `<span style="background:#FEE2E2;color:#DC2626;font-size:11px;font-weight:700;padding:2px 7px;border-radius:12px">D+${Math.abs(diff)} 만료</span>`;
+    if (diff === 0) return '<span style="background:#FEE2E2;color:#DC2626;font-size:11px;font-weight:700;padding:2px 7px;border-radius:12px">오늘 만료</span>';
+    if (diff <= 7) return `<span style="background:#FEF3C7;color:#D97706;font-size:11px;font-weight:700;padding:2px 7px;border-radius:12px">D-${diff}</span>`;
+    if (diff <= 30) return `<span style="background:#FEF9C3;color:#92400E;font-size:11px;padding:2px 7px;border-radius:12px">D-${diff}</span>`;
+    return `<span style="font-size:11px;color:#64748B">${endDate.slice(0,10)}</span>`;
+  }
+
+  const consRows = consultants.map(c => `
+    <tr style="cursor:pointer" onclick="impersonateLogin('${c.code}')" title="${c.code} 관리자 페이지로 대리접속">
+      <td><code style="font-weight:700;color:#1D4ED8">${c.code}</code></td>
+      <td>${c.name || '-'}</td>
+      <td>${c.job_type || '-'}</td>
+      <td>${gradeBadge(c.grade)}</td>
+      <td>${statusBadge(c.subscription_status)}</td>
+      <td>${dDayBadge(c.subscription_end)}</td>
+      <td>
+        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();impersonateLogin('${c.code}')" style="white-space:nowrap">
+          <i class="fas fa-sign-in-alt"></i> 바로가기
+        </button>
+      </td>
+    </tr>
+  `).join('');
+
+  const b2bRows = partners.map(p => `
+    <tr style="cursor:pointer" onclick="impersonateLogin('${p.code}')" title="${p.code} B2B 대시보드 대리접속">
+      <td>
+        <code style="font-weight:700;color:#6D28D9">${p.code}</code>
+      </td>
+      <td>
+        ${p.brand_logo_url ? `<img src="${p.brand_logo_url}" style="width:24px;height:24px;object-fit:contain;margin-right:6px;vertical-align:middle" onerror="this.style.display='none'">` : ''}
+        ${p.brand_name || p.name}
+      </td>
+      <td>${p.owner_name || '-'}</td>
+      <td>${p.type || '-'}</td>
+      <td>
+        <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${p.brand_color||'#6366f1'};vertical-align:middle;margin-right:4px"></span>
+        ${p.brand_color || '-'}
+      </td>
+      <td>${statusBadge(p.status)}</td>
+      <td>
+        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();impersonateLogin('${p.code}')" style="white-space:nowrap;background:#6D28D9;border-color:#6D28D9">
+          <i class="fas fa-sign-in-alt"></i> B2B 바로가기
+        </button>
+      </td>
+    </tr>
+  `).join('');
+
   document.getElementById('page-body').innerHTML = `
     <div class="kpi-grid">${kpiCards}</div>
 
-    <!-- 빠른 바로가기 -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px">
-      <button onclick="navigateTo('consultants')" style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:12px;padding:16px;cursor:pointer;text-align:center;transition:all .2s" onmouseover="this.style.background='#DBEAFE'" onmouseout="this.style.background='#EFF6FF'">
-        <div style="font-size:24px;margin-bottom:6px">👤</div>
-        <div style="font-size:13px;font-weight:700;color:#1D4ED8">컨설턴트 관리</div>
-        <div style="font-size:11px;color:#64748B;margin-top:2px">등록·수정·조회</div>
-      </button>
-      <button onclick="navigateTo('b2b-partners')" style="background:#F5F3FF;border:1.5px solid #DDD6FE;border-radius:12px;padding:16px;cursor:pointer;text-align:center;transition:all .2s" onmouseover="this.style.background='#EDE9FE'" onmouseout="this.style.background='#F5F3FF'">
-        <div style="font-size:24px;margin-bottom:6px">🏢</div>
-        <div style="font-size:13px;font-weight:700;color:#6D28D9">B2B 파트너 관리</div>
-        <div style="font-size:11px;color:#64748B;margin-top:2px">등록·수정·조회</div>
-      </button>
-      <a href="/b2b" target="_blank" style="background:#F0FDF4;border:1.5px solid #BBF7D0;border-radius:12px;padding:16px;cursor:pointer;text-align:center;text-decoration:none;display:block;transition:all .2s" onmouseover="this.style.background='#DCFCE7'" onmouseout="this.style.background='#F0FDF4'">
-        <div style="font-size:24px;margin-bottom:6px">🖥️</div>
-        <div style="font-size:13px;font-weight:700;color:#15803D">B2B 대시보드 열기</div>
-        <div style="font-size:11px;color:#64748B;margin-top:2px">파트너 전용 페이지</div>
-      </a>
-      <button onclick="navigateTo('results')" style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:12px;padding:16px;cursor:pointer;text-align:center;transition:all .2s" onmouseover="this.style.background='#FEE8C8'" onmouseout="this.style.background='#FFF7ED'">
-        <div style="font-size:24px;margin-bottom:6px">📊</div>
-        <div style="font-size:13px;font-weight:700;color:#C2410C">고객 결과 조회</div>
-        <div style="font-size:11px;color:#64748B;margin-top:2px">BC코드·컨설턴트 필터</div>
-      </button>
-      <a href="https://pf.kakao.com/_xgCgsX/chat" target="_blank" style="background:#FFFDE7;border:1.5px solid #FEE500;border-radius:12px;padding:16px;cursor:pointer;text-align:center;text-decoration:none;display:block;transition:all .2s" onmouseover="this.style.background='#FFF9C4'" onmouseout="this.style.background='#FFFDE7'">
-        <div style="font-size:24px;margin-bottom:6px">💬</div>
-        <div style="font-size:13px;font-weight:700;color:#795548">본사 채팅 문의</div>
-        <div style="font-size:11px;color:#64748B;margin-top:2px">카카오채널 바로가기</div>
-      </a>
+    <!-- 컨설턴트 목록 (구독 만료일 정렬) -->
+    <div class="card" style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="card-title" style="margin-bottom:0"><i class="fas fa-user-tie" style="color:#3B82F6"></i> 컨설턴트 목록 <span style="font-size:12px;font-weight:400;color:#64748B">(구독 만료일 임박 순 · 클릭 시 대리접속)</span></div>
+        <button class="btn btn-primary btn-sm" onclick="navigateTo('consultants')"><i class="fas fa-plus"></i> 등록·관리</button>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>코드</th><th>이름</th><th>직종</th><th>등급</th><th>상태</th><th>구독 만료일</th><th>접속</th></tr></thead>
+          <tbody>${consRows || '<tr><td colspan="7"><div class="empty-state"><i class="fas fa-users"></i><p>등록된 컨설턴트 없음</p></div></td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- B2B 파트너 목록 -->
+    <div class="card" style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="card-title" style="margin-bottom:0"><i class="fas fa-building" style="color:#6D28D9"></i> B2B 파트너 목록 <span style="font-size:12px;font-weight:400;color:#64748B">(클릭 시 B2B 대시보드 대리접속)</span></div>
+        <button class="btn btn-primary btn-sm" onclick="navigateTo('b2b-partners')" style="background:#6D28D9;border-color:#6D28D9"><i class="fas fa-plus"></i> 등록·관리</button>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>코드</th><th>브랜드명</th><th>원장명</th><th>업종</th><th>브랜드컬러</th><th>상태</th><th>접속</th></tr></thead>
+          <tbody>${b2bRows || '<tr><td colspan="7"><div class="empty-state"><i class="fas fa-building"></i><p>등록된 B2B 파트너 없음</p></div></td></tr>'}</tbody>
+        </table>
+      </div>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
