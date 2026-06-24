@@ -641,29 +641,52 @@
       </div>
       <button onclick="closeDetailModal()" style="background:none;border:none;cursor:pointer;font-size:22px;color:#94A3B8">✕</button>
     </div>
-    <div class="modal-body">
-      <!-- 고객 정보 -->
-      <div id="detail-info" style="margin-bottom:20px"></div>
+    <!-- 모달 탭 바 -->
+    <div style="display:flex;border-bottom:2px solid var(--border);background:#F8FAFC;padding:0 20px">
+      <button class="dtab-btn active" id="dtab-info"     onclick="switchDetailTab('info')"     style="padding:12px 18px;font-size:13px;font-weight:700;background:none;border:none;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;color:var(--muted);transition:all .15s">📋 기본정보</button>
+      <button class="dtab-btn"        id="dtab-rx"       onclick="switchDetailTab('rx')"       style="padding:12px 18px;font-size:13px;font-weight:700;background:none;border:none;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;color:var(--muted);transition:all .15s">🔬 처방 해석</button>
+      <button class="dtab-btn"        id="dtab-memo"     onclick="switchDetailTab('memo')"     style="padding:12px 18px;font-size:13px;font-weight:700;background:none;border:none;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;color:var(--muted);transition:all .15s">📝 메모·설정</button>
+    </div>
 
-      <!-- 메모 -->
-      <div style="margin-bottom:20px">
-        <div style="font-size:13px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:8px">
-          <i class="fas fa-sticky-note" style="color:#F59E0B"></i> 컨설턴트 메모
-          <span class="memo-saved" id="memo-saved-badge">저장됨 ✓</span>
-        </div>
-        <textarea class="memo-area" id="detail-memo" placeholder="고객 상담 내용, 특이사항, 다음 상담 계획 등을 기록하세요..."></textarea>
-        <div style="display:flex;gap:8px;margin-top:8px">
-          <button class="btn btn-success btn-sm" onclick="saveMemo()"><i class="fas fa-save"></i> 메모 저장</button>
-          <button class="btn btn-ghost btn-sm" onclick="clearMemo()"><i class="fas fa-trash"></i> 지우기</button>
+    <div class="modal-body" style="padding-top:16px">
+
+      <!-- ── 탭1: 기본정보 ── -->
+      <div id="detail-tab-info">
+        <div id="detail-info" style="margin-bottom:4px"></div>
+      </div>
+
+      <!-- ── 탭2: 처방 해석 ── -->
+      <div id="detail-tab-rx" style="display:none">
+        <div id="detail-rx-panel">
+          <div style="text-align:center;padding:32px;color:var(--muted)">
+            <i class="fas fa-circle-notch fa-spin fa-2x" style="margin-bottom:12px;display:block"></i>
+            처방 데이터를 불러오는 중...
+          </div>
         </div>
       </div>
 
-      <!-- B2B 설정 -->
-      <div>
-        <div style="font-size:13px;font-weight:700;margin-bottom:10px"><i class="fas fa-hospital" style="color:#10B981"></i> B2B 파트너 처방 설정</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" id="detail-b2b-checks"></div>
-        <button class="btn btn-success btn-sm" style="margin-top:10px" onclick="saveB2bTypes()"><i class="fas fa-save"></i> B2B 설정 저장</button>
+      <!-- ── 탭3: 메모·설정 ── -->
+      <div id="detail-tab-memo" style="display:none">
+        <!-- 메모 -->
+        <div style="margin-bottom:20px">
+          <div style="font-size:13px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:8px">
+            <i class="fas fa-sticky-note" style="color:#F59E0B"></i> 컨설턴트 메모
+            <span class="memo-saved" id="memo-saved-badge">저장됨 ✓</span>
+          </div>
+          <textarea class="memo-area" id="detail-memo" placeholder="고객 상담 내용, 특이사항, 다음 상담 계획 등을 기록하세요..."></textarea>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn btn-success btn-sm" onclick="saveMemo()"><i class="fas fa-save"></i> 메모 저장</button>
+            <button class="btn btn-ghost btn-sm" onclick="clearMemo()"><i class="fas fa-trash"></i> 지우기</button>
+          </div>
+        </div>
+        <!-- B2B 설정 -->
+        <div>
+          <div style="font-size:13px;font-weight:700;margin-bottom:10px"><i class="fas fa-hospital" style="color:#10B981"></i> B2B 파트너 처방 설정</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" id="detail-b2b-checks"></div>
+          <button class="btn btn-success btn-sm" style="margin-top:10px" onclick="saveB2bTypes()"><i class="fas fa-save"></i> B2B 설정 저장</button>
+        </div>
       </div>
+
     </div>
     <div class="modal-footer">
       <a id="detail-result-link" href="#" target="_blank" class="btn btn-primary"><i class="fas fa-eye"></i> 결과지 열람</a>
@@ -1164,7 +1187,213 @@ function openDetailModal(r) {
     </label>
   `).join('');
 
+  // 탭 항상 기본정보로 리셋
+  switchDetailTab('info');
+  // 처방 해석 탭 패널 초기화 (다음 진입 시 재렌더)
+  const rxPanel = document.getElementById('detail-rx-panel');
+  if (rxPanel) rxPanel.innerHTML = `
+    <div style="text-align:center;padding:32px;color:var(--muted)">
+      <i class="fas fa-circle-notch fa-spin fa-2x" style="margin-bottom:12px;display:block"></i>
+      처방 해석 탭을 클릭하면 데이터를 불러옵니다.
+    </div>`;
+
   document.getElementById('detail-modal').classList.add('show');
+}
+
+// ── 모달 탭 전환 ──────────────────────────────────────────
+function switchDetailTab(tab) {
+  ['info','rx','memo'].forEach(t => {
+    const panel = document.getElementById(`detail-tab-${t}`);
+    const btn   = document.getElementById(`dtab-${t}`);
+    if (!panel || !btn) return;
+    const active = (t === tab);
+    panel.style.display = active ? '' : 'none';
+    btn.style.color = active ? 'var(--brand)' : 'var(--muted)';
+    btn.style.borderBottomColor = active ? 'var(--brand)' : 'transparent';
+    btn.style.fontWeight = active ? '800' : '700';
+  });
+  // 처방 해석 탭 진입 시: 캐시 있으면 바로 렌더, 없으면 자동 로드
+  if (tab === 'rx' && CURRENT_DETAIL) {
+    if (window._consBcList && window._consBcList.length > 0) {
+      renderDetailRx(CURRENT_DETAIL);
+    } else {
+      preloadBcForModal();
+    }
+  }
+}
+
+// ── 처방 해석 패널 렌더 ───────────────────────────────────
+function renderDetailRx(r) {
+  const panel = document.getElementById('detail-rx-panel');
+  if (!panel) return;
+
+  // _consBcList 캐시에서 bc_primary 검색
+  const bcList = window._consBcList || [];
+  const bc = bcList.find(b => b.code === r.bc_primary);
+
+  if (!bc) {
+    panel.innerHTML = `
+      <div style="text-align:center;padding:32px 16px;color:var(--muted)">
+        <i class="fas fa-database" style="font-size:28px;margin-bottom:12px;display:block;opacity:.4"></i>
+        <div style="font-weight:700;margin-bottom:6px">처방 데이터 없음</div>
+        <div style="font-size:12px">BC 코드: <strong>${r.bc_primary||'미분류'}</strong></div>
+        <div style="font-size:12px;margin-top:8px">바디코드 탭을 먼저 열어 데이터를 로드해주세요.</div>
+        <button class="btn btn-ghost btn-sm" style="margin-top:12px" onclick="preloadBcForModal()">
+          <i class="fas fa-sync"></i> 처방 데이터 로드
+        </button>
+      </div>`;
+    return;
+  }
+
+  const color = BC_COLORS[r.bc_primary] || '#6366f1';
+  const p = bc; // bc 객체 자체가 처방 데이터
+
+  const foodRow = (arr, max) => (arr||[]).slice(0, max).map(f =>
+    `<span style="display:inline-flex;align-items:center;gap:4px;background:#F8FAFC;border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:12px;margin:3px">${f.emoji||''} ${f.name||f}</span>`
+  ).join('') || '<span style="font-size:12px;color:var(--muted)">-</span>';
+
+  const listRows = (arr, max) => (arr||[]).slice(0, max).map(item =>
+    `<div style="display:flex;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:15px;flex-shrink:0">${item.emoji||'💡'}</span>
+      <div>
+        <div style="font-size:12px;font-weight:600;color:var(--text)">${item.name||item.title||item.rule||item}</div>
+        ${item.reason||item.description ? `<div style="font-size:11px;color:var(--muted);margin-top:1px">${item.reason||item.description}</div>` : ''}
+      </div>
+    </div>`
+  ).join('');
+
+  const principles = (p.correct_principles||[]).slice(0,4).map(pp =>
+    `<div style="background:#F0FDF4;border-radius:8px;padding:8px 12px;font-size:12px">
+      <strong style="color:#16A34A">${pp.title||pp}</strong>
+      ${pp.description ? `<div style="color:var(--muted);font-size:11px;margin-top:2px">${pp.description}</div>` : ''}
+    </div>`
+  ).join('');
+
+  const habits = (p.lifestyle_rules||[]).slice(0,5).map(l =>
+    `<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:14px">${l.icon||'💡'}</span>
+      <span style="font-size:12px;color:var(--text)">${l.rule||l}</span>
+    </div>`
+  ).join('');
+
+  const supplements = (p.supplements||[]).slice(0,4).map(s =>
+    `<div style="background:#F5F3FF;border-radius:8px;padding:8px 12px;font-size:12px">
+      <strong style="color:#7C3AED">${s.name||s}</strong>
+      ${s.reason ? `<div style="color:var(--muted);font-size:11px;margin-top:2px">${s.reason}</div>` : ''}
+    </div>`
+  ).join('');
+
+  const exercises = (p.exercises||[]).slice(0,4).map(e =>
+    `<div style="background:#ECFDF5;border-radius:8px;padding:8px 12px;font-size:12px">
+      <strong style="color:#059669">${e.name||e.title||e}</strong>
+      ${e.description||e.reason ? `<div style="color:var(--muted);font-size:11px;margin-top:2px">${e.description||e.reason}</div>` : ''}
+    </div>`
+  ).join('');
+
+  // 상담 포인트 (consulting_points)
+  const consultPoints = (p.consulting_points||[]).slice(0,5).map((pt,i) =>
+    `<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <span style="background:${color};color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${i+1}</span>
+      <span style="font-size:12px;color:var(--text);line-height:1.6">${pt}</span>
+    </div>`
+  ).join('');
+
+  panel.innerHTML = `
+    <!-- 헤더 배지 -->
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:${color}11;border-radius:12px;margin-bottom:16px;border:1px solid ${color}33">
+      <span style="background:${color};color:#fff;border-radius:8px;padding:4px 14px;font-size:13px;font-weight:700">${r.bc_primary}</span>
+      <div>
+        <div style="font-size:14px;font-weight:700;color:var(--text)">${p.brand_name||p.name||r.bc_primary}</div>
+        <div style="font-size:11px;color:${color};font-weight:600">${p.personality||''}</div>
+      </div>
+    </div>
+
+    <!-- 핵심 원인 -->
+    <div style="background:${color}0D;border-left:4px solid ${color};border-radius:0 10px 10px 0;padding:12px 16px;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:${color};margin-bottom:6px">🔍 핵심 원인</div>
+      <div style="font-size:13px;line-height:1.8;color:var(--text)">${p.reason||p.description||'-'}</div>
+    </div>
+
+    <!-- 자가진단 체크리스트 -->
+    ${(p.self_check||p.symptoms||[]).length > 0 ? `
+    <div style="background:#FFFBEB;border-radius:10px;padding:12px 14px;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:#D97706;margin-bottom:8px">📝 자가진단 체크리스트</div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        ${(p.self_check||p.symptoms||[]).slice(0,5).map(s =>
+          `<div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--text)">
+            <span style="color:#F59E0B;flex-shrink:0;margin-top:1px">✓</span>${s.text||s}
+          </div>`
+        ).join('')}
+      </div>
+    </div>` : ''}
+
+    <!-- 식품 2열 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+      <div style="background:#EFF6FF;border-radius:10px;padding:12px">
+        <div style="font-size:11px;font-weight:700;color:#2563EB;margin-bottom:8px">🥗 권장 식품</div>
+        ${listRows(p.recommended_foods, 4)||'<div style="font-size:12px;color:var(--muted)">-</div>'}
+      </div>
+      <div style="background:#FEF2F2;border-radius:10px;padding:12px">
+        <div style="font-size:11px;font-weight:700;color:#DC2626;margin-bottom:8px">🚫 금기 식품</div>
+        ${listRows(p.forbidden_foods, 4)||'<div style="font-size:12px;color:var(--muted)">-</div>'}
+      </div>
+    </div>
+
+    <!-- 핵심 원칙 -->
+    ${principles ? `
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:#16A34A;margin-bottom:8px">✅ 핵심 원칙</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${principles}</div>
+    </div>` : ''}
+
+    <!-- 운동 + 보충제 2열 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+      ${exercises ? `
+      <div>
+        <div style="font-size:11px;font-weight:700;color:#059669;margin-bottom:8px">🏃 추천 운동</div>
+        <div style="display:flex;flex-direction:column;gap:6px">${exercises}</div>
+      </div>` : '<div></div>'}
+      ${supplements ? `
+      <div>
+        <div style="font-size:11px;font-weight:700;color:#7C3AED;margin-bottom:8px">💊 추천 보충제</div>
+        <div style="display:flex;flex-direction:column;gap:6px">${supplements}</div>
+      </div>` : '<div></div>'}
+    </div>
+
+    <!-- 생활습관 -->
+    ${habits ? `
+    <div style="background:#FFFBEB;border-radius:10px;padding:12px 14px;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:#D97706;margin-bottom:6px">📋 생활습관 처방</div>
+      ${habits}
+    </div>` : ''}
+
+    <!-- 상담 포인트 -->
+    ${consultPoints ? `
+    <div style="background:#F0F9FF;border-radius:10px;padding:12px 14px;margin-bottom:14px;border:1px solid #BAE6FD">
+      <div style="font-size:11px;font-weight:700;color:#0284C7;margin-bottom:6px">💬 상담 포인트</div>
+      ${consultPoints}
+    </div>` : ''}
+
+    <!-- 동기부여 멘트 -->
+    ${p.motivation_message||p.motivation ? `
+    <div style="background:${color}11;border-radius:10px;padding:12px 16px;border:1px dashed ${color}55">
+      <div style="font-size:11px;font-weight:700;color:${color};margin-bottom:6px">💌 고객 동기부여 멘트</div>
+      <div style="font-size:13px;font-style:italic;color:var(--text);line-height:1.8">"${p.motivation_message||p.motivation}"</div>
+    </div>` : ''}
+  `;
+}
+
+// BC 데이터 미로드 상태에서 처방 해석 탭 진입 시 미리 로드
+async function preloadBcForModal() {
+  const panel = document.getElementById('detail-rx-panel');
+  if (panel) panel.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)"><i class="fas fa-circle-notch fa-spin fa-2x"></i></div>';
+  const data = await api('GET', '/bc/list');
+  if (data?.list) {
+    window._consBcList = data.list;
+    if (CURRENT_DETAIL) renderDetailRx(CURRENT_DETAIL);
+  } else {
+    if (panel) panel.innerHTML = '<div style="text-align:center;padding:24px;color:#EF4444">처방 데이터 로드 실패</div>';
+  }
 }
 
 function toggleDetailB2b(t) {
