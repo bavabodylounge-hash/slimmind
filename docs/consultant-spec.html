@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SlimMind — 컨설턴트 포털 기능 명세</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; background: #F8FAFC; color: #1E293B; line-height: 1.7; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 40px 24px; }
+
+  .page-header { background: linear-gradient(135deg, #0F766E, #14B8A6); color: #fff; border-radius: 16px; padding: 36px 40px; margin-bottom: 32px; }
+  .page-header h1 { font-size: 26px; font-weight: 800; margin-bottom: 6px; }
+  .page-header .subtitle { font-size: 14px; opacity: .75; }
+  .meta-row { display: flex; gap: 20px; margin-top: 16px; flex-wrap: wrap; }
+  .meta-item { background: rgba(255,255,255,.18); border-radius: 8px; padding: 6px 14px; font-size: 12px; font-weight: 600; }
+
+  .section { background: #fff; border: 1px solid #E2E8F0; border-radius: 14px; padding: 28px 32px; margin-bottom: 20px; }
+  .section-title { font-size: 18px; font-weight: 800; color: #0F766E; margin-bottom: 4px; display: flex; align-items: center; gap: 10px; }
+  .section-desc { font-size: 13px; color: #64748B; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #F1F5F9; }
+  .section-num { background: #0F766E; color: #fff; border-radius: 50%; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+
+  .feature-list { list-style: none; }
+  .feature-list li { padding: 10px 0; border-bottom: 1px solid #F8FAFC; display: flex; gap: 12px; align-items: flex-start; }
+  .feature-list li:last-child { border-bottom: none; }
+  .feat-icon { font-size: 16px; width: 24px; flex-shrink: 0; margin-top: 1px; }
+  .feat-body strong { font-weight: 700; font-size: 14px; color: #0F172A; }
+  .feat-body p { font-size: 13px; color: #475569; margin-top: 2px; }
+
+  .badge { display: inline-block; border-radius: 6px; padding: 2px 9px; font-size: 11px; font-weight: 700; }
+  .badge-teal { background: #CCFBF1; color: #0F766E; }
+  .badge-blue { background: #DBEAFE; color: #1D4ED8; }
+  .badge-green { background: #DCFCE7; color: #15803D; }
+  .badge-orange { background: #FFEDD5; color: #C2410C; }
+  .badge-purple { background: #EDE9FE; color: #6D28D9; }
+  .badge-gray { background: #F1F5F9; color: #475569; }
+
+  .api-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; }
+  .api-table th { background: #F0FDFA; padding: 8px 12px; text-align: left; font-weight: 700; color: #0F766E; border-bottom: 1px solid #CCFBF1; }
+  .api-table td { padding: 9px 12px; border-bottom: 1px solid #F8FAFC; vertical-align: top; }
+  .api-table tr:last-child td { border-bottom: none; }
+  .method { font-family: monospace; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px; }
+  .get { background: #DBEAFE; color: #1D4ED8; }
+  .post { background: #DCFCE7; color: #15803D; }
+  .put { background: #FEF9C3; color: #A16207; }
+  .path { font-family: monospace; font-size: 12px; color: #1E293B; }
+
+  .tab-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-top: 4px; }
+  .tab-card { background: #F0FDFA; border: 1px solid #CCFBF1; border-radius: 10px; padding: 14px 16px; }
+  .tab-card .tab-icon { font-size: 20px; margin-bottom: 6px; }
+  .tab-card .tab-name { font-size: 14px; font-weight: 700; color: #0F172A; }
+  .tab-card .tab-desc { font-size: 11px; color: #64748B; margin-top: 2px; }
+
+  .flow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 8px 0; font-size: 13px; }
+  .flow-step { background: #CCFBF1; border: 1px solid #5EEAD4; border-radius: 8px; padding: 6px 12px; color: #0F766E; font-weight: 600; }
+  .flow-arrow { color: #94A3B8; font-weight: 700; }
+
+  .perm-box { background: #F0FDF4; border: 1px solid #86EFAC; border-radius: 10px; padding: 14px 16px; font-size: 13px; color: #14532D; }
+
+  .msg-box { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 16px; margin-top: 8px; }
+  .msg-type { font-size: 12px; font-weight: 700; color: #0F766E; margin-bottom: 4px; }
+  .msg-sample { font-size: 13px; color: #475569; line-height: 1.7; }
+
+  .data-model { background: #0F172A; color: #E2E8F0; border-radius: 10px; padding: 16px 20px; font-family: monospace; font-size: 12px; line-height: 1.8; overflow-x: auto; margin-top: 8px; }
+  .data-model .key { color: #93C5FD; }
+  .data-model .type { color: #86EFAC; }
+  .data-model .comment { color: #94A3B8; }
+
+  @media (max-width: 600px) {
+    .page-header { padding: 24px 20px; }
+    .section { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- 헤더 -->
+  <div class="page-header">
+    <h1>🎯 SlimMind 컨설턴트 포털</h1>
+    <div class="subtitle">접속 경로: /consultant &nbsp;|&nbsp; 권한: CONSULTANT + MASTER &nbsp;|&nbsp; 파일: /public/consultant.html</div>
+    <div class="meta-row">
+      <div class="meta-item">📄 consultant.html (2,271줄)</div>
+      <div class="meta-item">🔌 API 10개</div>
+      <div class="meta-item">📂 탭 8개</div>
+      <div class="meta-item">👤 대상: 상담사</div>
+    </div>
+  </div>
+
+  <!-- 권한 -->
+  <div class="section">
+    <div class="section-title"><span class="section-num">1</span> 접근 권한 및 인증 구조</div>
+    <div class="section-desc">컨설턴트 계정과 마스터 계정 모두 접근 가능. B2B 파트너는 접근 불가.</div>
+    <div class="perm-box">
+      <strong>🔑 권한: CONSULTANT 또는 MASTER</strong><br><br>
+      로그인 코드: <code>SC-0001</code> 형식 / 비밀번호: 초기 발급 비밀번호 (첫 로그인 후 변경 권장)<br><br>
+      JWT 토큰 → localStorage(<code>consultant_token</code>) 저장 → 모든 API 요청 자동 포함.<br>
+      자신이 담당한 고객 결과만 조회 가능 (다른 컨설턴트 고객 조회 불가).
+    </div>
+  </div>
+
+  <!-- 탭 구성 -->
+  <div class="section">
+    <div class="section-title"><span class="section-num">2</span> 탭 전체 구성 (8개)</div>
+    <div class="section-desc">상단 수평 탭 네비게이션. 모바일에서도 스크롤 가능.</div>
+    <div class="tab-grid">
+      <div class="tab-card">
+        <div class="tab-icon">📊</div>
+        <div class="tab-name">대시보드</div>
+        <div class="tab-desc">내 실적 요약 + 최근 고객</div>
+      </div>
+      <div class="tab-card">
+        <div class="tab-icon">👥</div>
+        <div class="tab-name">내 고객 목록</div>
+        <div class="tab-desc">담당 고객 전체 조회·관리</div>
+      </div>
+      <div class="tab-card">
+        <div class="tab-icon">🔗</div>
+        <div class="tab-name">초대 링크</div>
+        <div class="tab-desc">고유 설문 URL + QR코드</div>
+      </div>
+      <div class="tab-card">
+        <div class="tab-icon">👤</div>
+        <div class="tab-name">내 정보</div>
+        <div class="tab-desc">비밀번호 변경·프로필 확인</div>
+      </div>
+      <div class="tab-card">
+        <div class="tab-icon">🤖</div>
+        <div class="tab-name">AI 상담 멘트</div>
+        <div class="tab-desc">BC코드별 5종 멘트 자동 생성</div>
+      </div>
+      <div class="tab-card">
+        <div class="tab-icon">⚖️</div>
+        <div class="tab-name">체중 추적</div>
+        <div class="tab-desc">고객별 체중 체크인·그래프</div>
+      </div>
+      <div class="tab-card">
+        <div class="tab-icon">🧬</div>
+        <div class="tab-name">바디코드</div>
+        <div class="tab-desc">BC-01~22 처방 참고 자료</div>
+      </div>
+      <div class="tab-card">
+        <div class="tab-icon">📖</div>
+        <div class="tab-name">이용 안내</div>
+        <div class="tab-desc">업무 가이드 + 설문 공유법</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 각 탭별 기능 상세 -->
+  <div class="section">
+    <div class="section-title"><span class="section-num">3</span> 대시보드 탭</div>
+    <div class="section-desc">로그인 후 기본 화면. 내 실적과 최근 고객을 한눈에.</div>
+    <ul class="feature-list">
+      <li>
+        <span class="feat-icon">📊</span>
+        <div class="feat-body">
+          <strong>내 실적 KPI 카드</strong>
+          <p>이달 상담 건수 / 누적 고객 수 / 최근 7일 신규 고객 수. API: GET /api/consultant/stats</p>
+        </div>
+      </li>
+      <li>
+        <span class="feat-icon">📋</span>
+        <div class="feat-body">
+          <strong>최근 접수 고객 목록</strong>
+          <p>내가 담당한 최근 고객 8명. 이름·BC코드·접수일·결과지 링크.</p>
+        </div>
+      </li>
+      <li>
+        <span class="feat-icon">🧬</span>
+        <div class="feat-body">
+          <strong>내 고객 BC코드 분포</strong>
+          <p>내 고객들의 BC코드 비율 시각화. 어떤 유형이 많은지 파악 가능.</p>
+        </div>
+      </li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <div class="section-title"><span class="section-num">4</span> 내 고객 목록 탭</div>
+    <div class="section-desc">담당 고객 전체 조회 및 개별 관리. API: GET /api/consultant/results</div>
+    <ul class="feature-list">
+      <li>
+        <span class="feat-icon">🔍</span>
+        <div class="feat-body">
+          <strong>이름 검색 + BC코드 필터</strong>
+          <p>고객 이름 검색 및 BC코드별 필터. 내 담당 고객만 표시.</p>
+        </div>
+      </li>
+      <li>
+        <span class="feat-icon">📝</span>
+        <div class="feat-body">
+          <strong>메모 추가</strong>
+          <p>각 고객에게 상담 메모 작성 가능. API: PUT /api/results/:id/memo</p>
+        </div>
+      </li>
+      <li>
+        <span class="feat-icon">📤</span>
+        <div class="feat-body">
+          <strong>카카오 결과 공유</strong>
+          <p>결과지 URL + 고객명 + BC코드가 포함된 카카오 메시지 자동 생성. 클립보드 복사 후 카카오 전송.</p>
+        </div>
+      </li>
+      <li>
+        <span class="feat-icon">🔗</span>
+        <div class="feat-body">
+          <strong>결과지 링크</strong>
+          <p><code>/result/RES-xxx</code> 공유 링크 클릭 → result-v4.html 최신 결과지 열림.</p>
+        </div>
+      </li>
+      <li>
+        <span class="feat-icon">📊</span>
+        <div class="feat-body">
+          <strong>체크인 현황 표시</strong>
+          <p>각 고객의 마지막 체크인 일자 + 총 체크인 횟수 표시. 관리 필요 고객 파악 가능.</p>
+        </div>
+      </li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <div class="section-title"><span class="section-num">5</span> 초대 링크 탭</div>
+    <div class="section-desc">고객 유입을 위한 고유 설문 링크 + QR코드 관리.</div>
+    <ul class="feature-list">
+      <li>
+        <span class="feat-icon">🔗</span>
+        <div class="feat-body">
+          <strong>고유 설문 URL</strong>
+          <p><code>https://도메인/s/SC-0001</code> 형식. 이 링크로 접속한 고객은 자동으로 내 담당으로 등록됨.</p>
+        </div>
+      </li>
+      <li>
+        <span class="feat-icon">📱</span>
+        <div class="feat-body">
+          <strong>QR코드 즉시 생성</strong>
+          <p>URL 기반 QR코드 자동 생성. 인쇄 버튼으로 바로 인쇄 가능. 상담 현장 비치용.</p>
+        </div>
+      </li>
+      <li>
+        <span class="feat-icon">📋</span>
+        <div class="feat-body">
+          <strong>링크 복사 버튼</strong>
+          <p>1클릭으로 클립보드 복사 → 카카오·문자로 즉시 공유 가능.</p>
+        </div>
+      </li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <div class="section-title"><span class="section-num">6</span> AI 상담 멘트 탭 ⭐ 핵심 기능</div>
+    <div class="section-desc">BC코드 선택 → 고객 이름 입력 → 1클릭으로 5종류 상담 멘트 자동 생성. API: POST /api/consultant/ai-message</div>
+    <ul class="feature-list">
+      <li>
+        <span class="feat-icon">🎯</span>
+        <div class="feat-body">
+          <strong>BC코드 선택 드롭다운 (BC-01~22 전체)</strong>
+          <p>체형·지방 유형(BC-01~10) / 기능·대사·피부 유형(BC-11~22) 두 그룹으로 구분된 옵션 선택.</p>
+        </div>
+      </li>
+      <li>
+        <span class="feat-icon">⚡</span>
+        <div class="feat-body">
+          <strong>최근 고객 빠른 선택 버튼</strong>
+          <p>최근 8명의 고객이 버튼으로 표시됨. 클릭 한 번으로 이름·BC코드 자동 입력 후 즉시 생성.</p>
+        </div>
+      </li>
+      <li>
+        <span class="feat-icon">🤖</span>
+        <div class="feat-body">
+          <strong>5종류 멘트 자동 생성</strong>
+          <p>BC코드 처방 DB에서 브랜드명·원인스토리·처방원칙·생활규칙을 가져와 개인화된 멘트 구성.</p>
+        </div>
+      </li>
+    </ul>
+
+    <!-- 5가지 멘트 타입 -->
+    <div style="margin-top: 16px;">
+      <div style="font-size: 13px; font-weight: 700; color: #0F766E; margin-bottom: 10px;">생성되는 5가지 멘트 유형:</div>
+      <div class="msg-box">
+        <div class="msg-type">👋 초진 환영 멘트</div>
+        <div class="msg-sample">"[고객명]님, 슬림마인드에 오신 걸 환영합니다! 체형 분석 결과 [고객명]님의 유형은 <strong>[브랜드명]</strong>입니다. [한줄원인] 지금부터 [고객명]님만을 위한 맞춤 처방을 시작해드릴게요."</div>
+      </div>
+      <div class="msg-box" style="margin-top: 8px;">
+        <div class="msg-type">🔍 원인 설명 멘트</div>
+        <div class="msg-sample">"[고객명]님, 지금까지 다이어트가 어려우셨던 건 의지 부족이 아니에요. [원인 스토리] 원인을 알면 해결책도 명확해집니다."</div>
+      </div>
+      <div class="msg-box" style="margin-top: 8px;">
+        <div class="msg-type">💊 처방 안내 멘트</div>
+        <div class="msg-sample">"[고객명]님의 [브랜드명] 유형에는 <strong>[처방원칙1], [처방원칙2]</strong> 접근이 핵심입니다. 일상에서는 [생활규칙]을 꼭 지켜주세요."</div>
+      </div>
+      <div class="msg-box" style="margin-top: 8px;">
+        <div class="msg-type">💪 동기부여 멘트</div>
+        <div class="msg-sample">"[고객명]님, [마감 카피] 저희가 끝까지 함께하겠습니다. 오늘 첫 걸음이 가장 중요한 걸음입니다!"</div>
+      </div>
+      <div class="msg-box" style="margin-top: 8px;">
+        <div class="msg-type">📅 재방문 독려 멘트</div>
+        <div class="msg-sample">"[고객명]님, 오늘 상담 잘 마무리하셨나요? [브랜드명] 유형은 꾸준한 관리가 특히 중요합니다. 다음 방문까지 [생활규칙]을 실천해보시고..."</div>
+      </div>
+    </div>
+
+    <div style="margin-top: 12px; background: #F0FDFA; border: 1px solid #CCFBF1; border-radius: 8px; padding: 12px; font-size: 13px; color: #0F766E;">
+      <strong>💡 사용법:</strong> 각 멘트 카드를 클릭하면 클립보드에 자동 복사 → 카카오톡에 바로 붙여넣기 가능.
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title"><span class="section-num">7</span> 체중 추적 탭</div>
+    <div class="section-desc">고객별 주차 체중 기록 및 변화 그래프 확인.</div>
+    <ul class="feature-list">
+      <li>
+        <span class="feat-icon">📋</span>
+        <div class="feat-body">
+          <strong>내 고객 목록에서 고객 선택</strong>
+          <p>API: GET /api/consultant/my-customers — 체크인 횟수와 마지막 체크인 일자 함께 표시.</p>
+        </div>
+      </li>
+      <li>
+        <span class="feat-icon">⚖️</span>
+        <div class="feat-body">
+          <strong>주차별 체중 체크인 기록</strong>
+          <p>고객 선택 → 주차 + 현재 체중(kg) + 메모 입력 → 저장. API: POST /api/consultant/weight-checkin</p>
+        </div>
+      </li>
+      <li>
+        <span class="feat-icon">📈</span>
+        <div class="feat-body">
+          <strong>체중 변화 그래프</strong>
+          <p>체크인 기록 기반 꺾은선 그래프 시각화. 목표 체중 라인 함께 표시. API: GET /api/consultant/checkin-history/:result_id</p>
+        </div>
+      </li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <div class="section-title"><span class="section-num">8</span> 내 정보 탭</div>
+    <div class="section-desc">프로필 확인 및 비밀번호 변경.</div>
+    <ul class="feature-list">
+      <li>
+        <span class="feat-icon">👤</span>
+        <div class="feat-body">
+          <strong>프로필 정보 확인</strong>
+          <p>내 코드, 이름, 등급, 구독 상태, 구독 만료일, 이메일, 전화번호. API: GET /api/consultant/me</p>
+        </div>
+      </li>
+      <li>
+        <span class="feat-icon">🔒</span>
+        <div class="feat-body">
+          <strong>비밀번호 변경</strong>
+          <p>현재 비밀번호 확인 → 새 비밀번호 입력 → 변경. API: PUT /api/consultant/change-password</p>
+        </div>
+      </li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <div class="section-title"><span class="section-num">9</span> 바디코드 도감 탭</div>
+    <div class="section-desc">BC-01~22 처방 정보 열람. 상담 전 준비 자료.</div>
+    <ul class="feature-list">
+      <li>
+        <span class="feat-icon">🧬</span>
+        <div class="feat-body">
+          <strong>22개 BC코드 카드 뷰</strong>
+          <p>각 코드별 컬러·아이콘·브랜드명·태그라인 표시. 클릭 시 전체 처방 상세 열람 가능.</p>
+        </div>
+      </li>
+      <li>
+        <span class="feat-icon">📋</span>
+        <div class="feat-body">
+          <strong>처방 상세 정보</strong>
+          <p>원인 스토리·추천 식품·금지 식품·운동 처방·영양제·생활 규칙·월간 목표 전체 열람.</p>
+        </div>
+      </li>
+    </ul>
+  </div>
+
+  <!-- API 목록 -->
+  <div class="section">
+    <div class="section-title"><span class="section-num">10</span> 컨설턴트 API 전체 목록</div>
+    <div class="section-desc">모든 엔드포인트는 JWT Bearer 토큰 + role=CONSULTANT|MASTER 필수.</div>
+    <table class="api-table">
+      <tr>
+        <th>메서드</th>
+        <th>경로</th>
+        <th>기능</th>
+      </tr>
+      <tr><td><span class="method get">GET</span></td><td class="path">/api/auth/me</td><td>내 프로필 확인</td></tr>
+      <tr><td><span class="method get">GET</span></td><td class="path">/api/consultant/me</td><td>내 컨설턴트 상세 정보</td></tr>
+      <tr><td><span class="method get">GET</span></td><td class="path">/api/consultant/stats</td><td>내 실적 통계 (이달/누적)</td></tr>
+      <tr><td><span class="method get">GET</span></td><td class="path">/api/consultant/results</td><td>내 고객 결과 목록</td></tr>
+      <tr><td><span class="method get">GET</span></td><td class="path">/api/consultant/my-customers</td><td>내 고객 + 체크인 현황</td></tr>
+      <tr><td><span class="method post">POST</span></td><td class="path">/api/consultant/ai-message</td><td>BC코드 기반 상담 멘트 5종 생성</td></tr>
+      <tr><td><span class="method post">POST</span></td><td class="path">/api/consultant/weight-checkin</td><td>체중 체크인 기록</td></tr>
+      <tr><td><span class="method get">GET</span></td><td class="path">/api/consultant/checkin-history/:id</td><td>특정 고객 체크인 기록 + 그래프용</td></tr>
+      <tr><td><span class="method put">PUT</span></td><td class="path">/api/consultant/change-password</td><td>비밀번호 변경</td></tr>
+      <tr><td><span class="method put">PUT</span></td><td class="path">/api/results/:id/memo</td><td>고객 메모 저장</td></tr>
+      <tr><td><span class="method post">POST</span></td><td class="path">/api/kakao/send</td><td>카카오 결과 메시지 생성</td></tr>
+      <tr><td><span class="method get">GET</span></td><td class="path">/api/settings/kakao</td><td>카카오 설정 조회</td></tr>
+    </table>
+  </div>
+
+  <!-- AI 멘트 생성 흐름 -->
+  <div class="section">
+    <div class="section-title"><span class="section-num">11</span> AI 상담 멘트 생성 흐름</div>
+    <div class="section-desc">서버 처리 과정 상세.</div>
+    <div class="flow">
+      <div class="flow-step">BC코드 + 이름 입력</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">POST /api/consultant/ai-message</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">bc_prescriptions DB 조회</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">JSON 배열 파싱 (원칙·규칙·목표)</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">5가지 멘트 조합 생성</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">클라이언트 카드 렌더링</div>
+    </div>
+    <div style="margin-top: 12px; font-size: 13px; color: #475569;">
+      <strong>사용 DB 컬럼:</strong> brand_name, bc_primary_oneline_reason, bc_cause_story, closing_copy, correct_principles_json, lifestyle_rules_json, monthly_goals_json
+    </div>
+  </div>
+
+  <!-- 고객 소속 등록 흐름 -->
+  <div class="section">
+    <div class="section-title"><span class="section-num">12</span> 고객 자동 소속 등록 흐름</div>
+    <div class="section-desc">컨설턴트의 고유 링크로 들어온 고객이 자동으로 해당 컨설턴트 담당으로 저장되는 구조.</div>
+    <div class="flow">
+      <div class="flow-step">컨설턴트 고유 URL<br>/s/SC-0001</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">ref_code=SC-0001<br>설문지 렌더</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">설문 완료<br>POST /api/survey/submit</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">results 테이블<br>consultant_code=SC-0001 저장</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">내 고객 목록에<br>자동 표시</div>
+    </div>
+  </div>
+
+  <!-- DB -->
+  <div class="section">
+    <div class="section-title"><span class="section-num">13</span> 관련 DB 구조</div>
+    <div class="data-model">
+<span class="comment">-- results (고객 결과 - 컨설턴트가 조회하는 주 테이블)</span>
+<span class="key">id</span>                   <span class="type">TEXT PRIMARY KEY</span>    <span class="comment">-- RES-20260624-XXXXXX</span>
+<span class="key">user_name</span>            <span class="type">TEXT</span>                <span class="comment">-- 고객 이름</span>
+<span class="key">consultant_code</span>      <span class="type">TEXT</span>                <span class="comment">-- SC-0001 (담당 컨설턴트)</span>
+<span class="key">ref_code</span>             <span class="type">TEXT</span>                <span class="comment">-- 유입 경로 코드</span>
+<span class="key">bc_primary</span>           <span class="type">TEXT</span>                <span class="comment">-- BC-01 ~ BC-22</span>
+<span class="key">bc_secondary</span>         <span class="type">TEXT</span>
+<span class="key">weight</span>               <span class="type">REAL</span>
+<span class="key">target_weight</span>        <span class="type">REAL</span>
+<span class="key">axis_scores_json</span>     <span class="type">TEXT</span>                <span class="comment">-- 10축 점수 JSON</span>
+<span class="key">survey_answers_json</span>  <span class="type">TEXT</span>                <span class="comment">-- 설문 응답 JSON</span>
+<span class="key">created_at</span>           <span class="type">DATETIME</span>
+
+<span class="comment">-- checkin_log (체중 추적 체크인)</span>
+<span class="key">id</span>                   <span class="type">INTEGER PRIMARY KEY</span>
+<span class="key">result_id</span>            <span class="type">TEXT</span>                <span class="comment">-- 고객 결과 ID</span>
+<span class="key">consultant_code</span>      <span class="type">TEXT</span>
+<span class="key">week_range</span>           <span class="type">TEXT</span>                <span class="comment">-- W2026-06-24</span>
+<span class="key">axis_name</span>            <span class="type">TEXT</span>                <span class="comment">-- "체중:65kg / 메모"</span>
+<span class="key">checked_at</span>           <span class="type">DATETIME</span>
+    </div>
+  </div>
+
+  <div style="text-align:center;color:#94A3B8;font-size:12px;margin-top:24px;padding-bottom:40px">
+    SlimMind V3.1 &nbsp;|&nbsp; Cloudflare Pages + D1 &nbsp;|&nbsp; 컨설턴트 포털 명세 문서
+  </div>
+
+</div>
+</body>
+</html>

@@ -6,40 +6,40 @@
 // 실시간 피드백 후킹 메시지 포함
 
 const SECTIONS = [
-  { id: 'A', name: '몸의 기억', color: '#1A5276', bg: '#F8FBFF',
+  { id: 'A', name: '몸의 기억', color: '#3EB8A0', bg: '#E6F7F4',
     hook: '지금부터 나오는 질문들이 당신의 지방 패턴을 결정하는 첫 번째 열쇠입니다.',
     transition: '몸의 역사를 읽었습니다. 이제 지방이 보내는 신호를 들어볼게요.' },
-  { id: 'B', name: '지방의 언어', color: '#CA6F1E', bg: '#FFFBF5',
+  { id: 'B', name: '지방의 언어', color: '#0F1D30', bg: '#EEF2F8',
     hook: '다음 6개 질문은 직접 몸을 만지면서 답해야 합니다. 지금 자리에 편하게 앉아주세요.',
     transition: '지방이 보내는 신호를 포착했습니다. 이제 숫자로 더 정밀하게 들어가 볼게요.' },
-  { id: 'C', name: '숫자의 비밀', color: '#0E6655', bg: '#F0FDF8',
+  { id: 'C', name: '숫자의 비밀', color: '#3EB8A0', bg: '#E6F7F4',
     hook: '이 섹션에서 입력하는 숫자들이 당신만의 체성분 지도를 완성합니다.',
     transition: '출발점의 좌표를 잡았습니다. 이제 내 몸의 시간 감각을 확인할게요.' },
-  { id: 'D', name: '내 몸의 시계', color: '#6C3483', bg: '#FAF5FF',
+  { id: 'D', name: '내 몸의 시계', color: '#1A2E4A', bg: '#EEF2F8',
     hook: '수면·스트레스·습관. 이 세 가지가 지방보다 다이어트 결과에 더 큰 영향을 미칩니다.',
     transition: '생활 리듬을 읽었습니다. 이제 동양 의학이 남긴 신호를 찾아볼게요.' },
-  { id: 'E', name: '오행의 신호', color: '#880E4F', bg: '#FFF0F5',
+  { id: 'E', name: '오행의 신호', color: '#7C3AED', bg: '#F3EEFF',
     hook: '한의학 5000년이 발견한 체질 분류. 맛·계절·피부·체온이 모두 연결됩니다.',
     transition: '타고난 체질 신호를 읽었습니다. 이제 행동 패턴을 볼게요.' },
-  { id: 'F', name: '행동의 패턴', color: '#1D6A39', bg: '#F0FFF4',
+  { id: 'F', name: '행동의 패턴', color: '#3EB8A0', bg: '#E6F7F4',
     hook: '같은 식단도 사람마다 결과가 다른 이유, 바로 이 섹션에서 밝혀집니다.',
     transition: '{name}님을 거의 다 알아가고 있어요. 마지막 퍼즐 조각들이 남았습니다.' },
-  { id: 'G', name: 'DNA의 언어', color: '#283593', bg: '#EEF2FF',
+  { id: 'G', name: 'DNA의 언어', color: '#0F1D30', bg: '#EEF2F8',
     hook: '타고난 정보들이 맞춰지는 섹션입니다. MBTI·혈액형·사주를 모두 활용합니다.',
     transition: 'DNA 패턴을 읽었습니다. 이제 심리 패턴을 살펴볼게요.' },
-  { id: 'H', name: '마지막 질문', color: '#922B21', bg: '#FFF5F5',
+  { id: 'H', name: '마지막 질문', color: '#EA580C', bg: '#FFF3ED',
     hook: '분석의 마지막 조각들입니다. 조금만 더 집중해주세요.',
     transition: '거의 다 왔어요! 이제 행동 패턴과 몸의 감각을 탐색할 차례입니다.' },
-  { id: 'I', name: '마음의 패턴', color: '#5D4037', bg: '#FFF8F0',
+  { id: 'I', name: '마음의 패턴', color: '#1A2E4A', bg: '#EEF2F8',
     hook: '다이어트의 70%는 심리전입니다. 내 패턴을 아는 것이 이기는 방법입니다.',
     transition: '마음의 패턴을 읽었습니다. 이제 몸이 보내는 신호를 들어볼게요.' },
-  { id: 'J', name: '몸의 신호', color: '#2E7D32', bg: '#F1FFF3',
+  { id: 'J', name: '몸의 신호', color: '#3EB8A0', bg: '#E6F7F4',
     hook: '몸은 항상 신호를 보냅니다. 그 신호를 읽을 줄 아는 사람이 결국 성공합니다.',
     transition: '몸의 신호를 다 읽었어요! 마지막으로 움직임 습관을 확인할게요.' },
-  { id: 'K', name: '움직임의 습관', color: '#00695C', bg: '#F0FFFE',
+  { id: 'K', name: '움직임의 습관', color: '#0F1D30', bg: '#EEF2F8',
     hook: '걸음걸이·앉는 자세·폰 보는 방식. 이것들이 체형을 매일 조금씩 바꿉니다.',
     transition: '움직임 패턴까지 파악했어요. 마지막으로 내 몸의 안전 조건을 확인할게요.' },
-  { id: 'L', name: '내 몸의 안전 조건', color: '#AD1457', bg: '#FFF0F8',
+  { id: 'L', name: '내 몸의 안전 조건', color: '#EA580C', bg: '#FFF3ED',
     hook: '이 섹션은 당신의 결과지를 더 안전하고 정확하게 만들기 위한 마지막 퍼즐입니다.',
     transition: '' }
 ];
@@ -2839,16 +2839,98 @@ const QUESTIONS_V3 = [
 //  BC코드 메타 정보
 // ══════════════════════════════════════════════════════════════════
 const BC_META = {
-  'BC1': { name: '코끼리다리형',     emoji: '🐘', color: '#6366f1', desc: '림프 순환 저하로 하체에 지방과 부종이 쌓이는 패턴' },
-  'BC2': { name: '거북이형',         emoji: '🐢', color: '#8b5cf6', desc: '경추·자세 문제로 목·어깨에 지방이 쌓이는 패턴' },
-  'BC3': { name: '수박배형',         emoji: '🍉', color: '#ef4444', desc: '내장지방이 배를 수박처럼 만드는 인슐린 저항 패턴' },
-  'BC4': { name: '요요형',           emoji: '🔄', color: '#f97316', desc: '반복 다이어트로 대사가 무너진 요요 패턴' },
-  'BC5': { name: '마른비만형',       emoji: '🪄', color: '#eab308', desc: '체중은 정상이지만 체지방이 높은 숨은비만 패턴' },
-  'BC6': { name: '야식부엉이형',     emoji: '🦉', color: '#3b82f6', desc: '야간 식욕과 스트레스 식이가 결합된 코르티솔 패턴' },
-  'BC7': { name: '바람빠진풍선형',   emoji: '🎈', color: '#ec4899', desc: '출산 후 복압 소실과 코어 약화로 처진 복부 패턴' },
-  'BC8': { name: '말벅지형',         emoji: '🦵', color: '#14b8a6', desc: '잘못된 운동으로 허벅지 근육이 비대해진 패턴' },
-  'BC9': { name: '복압소실형',       emoji: '🫧', color: '#a855f7', desc: '복압 저하로 내장이 처지는 전신 약화 패턴' },
+  'BC1': { name: '코끼리다리형',             emoji: '🐘', color: '#3EB8A0', desc: '림프 순환 저하로 하체에 지방과 부종이 쌓이는 패턴',       top3: ['A02','A03','A10'] },
+  'BC2': { name: '거북이형',                 emoji: '🐢', color: '#0F1D30', desc: '경추·자세 문제로 목·어깨에 지방이 쌓이는 패턴',           top3: ['A06','A02','A04'] },
+  'BC3': { name: '수박배형',                 emoji: '🍉', color: '#EA580C', desc: '내장지방이 배를 수박처럼 만드는 인슐린 저항 패턴',         top3: ['A01','A09','A07'] },
+  'BC4': { name: '요요형',                   emoji: '🔄', color: '#1A2E4A', desc: '반복 다이어트로 대사가 무너진 요요 패턴',                   top3: ['A01','A07','A09'] },
+  'BC5': { name: '마른비만형',               emoji: '🪄', color: '#3EB8A0', desc: '체중은 정상이지만 체지방이 높은 숨은비만 패턴',             top3: ['A05','A01','A04'] },
+  'BC6': { name: '야식부엉이형',             emoji: '🦉', color: '#0F1D30', desc: '야간 식욕과 스트레스 식이가 결합된 코르티솔 패턴',         top3: ['A07','A08','A01'] },
+  'BC7': { name: '바람빠진풍선형',           emoji: '🎈', color: '#3EB8A0', desc: '출산 후 복압 소실과 코어 약화로 처진 복부 패턴',           top3: ['A06','A04','A02'] },
+  'BC8': { name: '말벅지형',                 emoji: '🦵', color: '#1A2E4A', desc: '잘못된 운동으로 허벅지 근육이 비대해진 패턴',               top3: ['A04','A02','A06'] },
+  'BC9': { name: '복압소실형',               emoji: '🫧', color: '#7C3AED', desc: '복압 저하로 내장이 처지는 전신 약화 패턴',                  top3: ['A05','A06','A01'] },
+  // ── 누락 8개 추가 (BC10~BC17) ──
+  'BC10': { name: '털털한 PCOS형',           emoji: '🔗', color: '#EA580C', desc: '다낭성난소 + 안드로겐 과잉으로 복부·체모 변화가 특징',    top3: ['A03','A01','A09'] },
+  'BC11': { name: '약물부작용 강제축적형',   emoji: '💊', color: '#0F1D30', desc: '스테로이드·항우울제 복용력으로 강제 지방 축적 패턴',       top3: ['A09','A03','A01'] },
+  'BC12': { name: '억제제부작용 배부름마비형',emoji: '🫗', color: '#1A2E4A', desc: '비만클리닉 약물 장기복용으로 위장·포만감 마비 패턴',      top3: ['A08','A05','A01'] },
+  'BC13': { name: '여름에도 시린 얼음장형',  emoji: '❄️', color: '#3EB8A0', desc: '갑상선 저하 + 냉증으로 하체에 냉기지방이 쌓이는 패턴',    top3: ['A03','A02','A10'] },
+  'BC14': { name: '골반틀어짐 승마살형',     emoji: '🐴', color: '#0F1D30', desc: '골반 비대칭 + 승마살 패턴 — 자세 교정이 우선',             top3: ['A06','A02','A04'] },
+  'BC15': { name: '겨드랑이 부유방형',       emoji: '🦊', color: '#1A2E4A', desc: '흉추 + 브라라인 불룩 — 자세·림프 복합 패턴',              top3: ['A06','A02','A03'] },
+  'BC16': { name: '호르몬스위치 갱년기형',   emoji: '🔄', color: '#7C3AED', desc: '완경 + 지방 감쪽이동 — 호르몬 전환기 체형 변화 패턴',     top3: ['A03','A07','A02'] },
+  'BC17': { name: '동시다발 다중악순환형',   emoji: '🌀', color: '#EA580C', desc: '상위 축 점수 동점 — 여러 원인이 동시 작동하는 복합 패턴',  top3: ['A01','A07','A09'] },
 };
+
+// ══════════════════════════════════════════════════════
+//  닉네임 테이블 — top1·top2 축 + 배경필터 기반 동적 닉네임
+// ══════════════════════════════════════════════════════
+const NICKNAME_TABLE = {
+  A01: {
+    A09: { default: '아빠체형 내장비대형' },
+    A10: { default: '식후기절 혈당롤러형' },
+    A07: { default: '스트레스성 야식부엉이형' },
+    A08: { default: '스트레스성 야식부엉이형' }
+  },
+  A02: {
+    A03: { default: '오후만되면 코끼리다리형' },
+    A10: { default: '엄마체형 하지정체형' },
+    A04: { default: '운동할수록 말벅지형' }
+  },
+  A03: {
+    A01: { default: '털털한 PCOS형', PCOS: '털털한 PCOS형' },
+    A02: { default: '여름에도 시린 얼음장형' },
+    A07: { default: '스트레스기절 번아웃형', meno: '호르몬스위치 갱년기형' }
+  },
+  A04: {
+    A03: { default: '팔다리거미 올챙이배형' },
+    A02: { default: '운동할수록 말벅지형' }
+  },
+  A05: {
+    A06: { default: '식후임산부 가스풍선형' },
+    A01: { default: '마른비만 숨은지방형' }
+  },
+  A06: {
+    A04: { default: '출산후 바람빠진 풍선형', birth: '출산후 바람빠진 풍선형' },
+    A02: { default: '골반틀어짐 승마살형' },
+    A07: { default: '목짧아지는 거북이형' },
+    A03: { default: '겨드랑이 부유방형' }
+  },
+  A07: {
+    A08: { default: '스트레스성 야식부엉이형' },
+    A03: { default: '스트레스기절 번아웃형' },
+    A02: { default: '호르몬스위치 갱년기형', meno: '호르몬스위치 갱년기형' },
+    A01: { default: '스트레스성 야식부엉이형' }
+  },
+  A08: {
+    A05: { default: '억제제부작용 배부름마비형', drug: '억제제부작용 배부름마비형' },
+    A01: { default: '스트레스성 야식부엉이형' },
+    A07: { default: '스트레스기절 번아웃형' }
+  },
+  A09: {
+    A03: { default: '약물부작용 강제축적형', drug: '약물부작용 강제축적형' },
+    A01: { default: '대사증후군 종합형' }
+  },
+  A10: {
+    A01: { default: '식후기절 혈당롤러형' },
+    A02: { default: '엄마체형 하지정체형' }
+  }
+};
+
+function getNickname(axisScores, bgFilter) {
+  if (!axisScores) return '스트레스성 야식부엉이형';
+  const ranked = Object.entries(axisScores).sort((a, b) => b[1] - a[1]);
+  const top1 = ranked[0]?.[0];
+  const top2 = ranked[1]?.[0];
+  if (!top1) return '스트레스성 야식부엉이형';
+  const table = NICKNAME_TABLE[top1];
+  if (!table) return '대사증후군 종합형';
+  const sub = top2 ? table[top2] : null;
+  if (!sub) return '대사증후군 종합형';
+  // 배경필터 우선 적용
+  if (bgFilter === 'birth' && sub.birth) return sub.birth;
+  if (bgFilter === 'meno'  && sub.meno)  return sub.meno;
+  if (bgFilter === 'drug'  && sub.drug)  return sub.drug;
+  if (bgFilter === 'PCOS'  && sub.PCOS)  return sub.PCOS;
+  return sub.default;
+}
 
 // ══════════════════════════════════════════════════════════════════
 //  BC 라우팅 엔진 — 공통 30문항 응답으로 BC코드 점수 계산
@@ -3696,12 +3778,166 @@ const DEEP_QUESTIONS = {
 
 }; // DEEP_QUESTIONS 끝
 
+// ══════════════════════════════════════════════════════
+//  기질 설문 데이터 — DISP_* (G01~G10) 10문항
+//  6단계 파이프라인 완료 후 모든 사용자에게 공통 적용
+//  결과: ohaeng_type + mbti_full → 결과지 P3 기질 융합 분석에 사용
+// ══════════════════════════════════════════════════════
+const DISP_QUESTIONS = [
+  {
+    id: 'DISP_ENERGY', num: 'G01', icon: '⚡',
+    q: '평소 에너지 레벨이 어떤가요?',
+    hint: '아침부터 밤까지, 내 에너지 흐름을 떠올려보세요.',
+    opts: [
+      '아침부터 넘쳐요 — 새벽 기상 가능',
+      '오후부터 달아올라요',
+      '항상 중간 에너지예요',
+      '항상 부족해요 — 충전이 필요해요'
+    ],
+    axis: 'ohaeng'
+  },
+  {
+    id: 'DISP_EMOTION', num: 'G02', icon: '😤',
+    q: '화가 나거나 스트레스받으면 어떻게 해요?',
+    hint: '가장 자주 하는 반응을 골라주세요.',
+    opts: [
+      '바로 표현해요 — 참는 게 더 힘들어요',
+      '티는 내지만 속으로도 삭혀요',
+      '밖으로 전혀 안 내고 혼자 삭혀요',
+      '먹거나 자면서 잊어버려요'
+    ],
+    axis: 'ohaeng'
+  },
+  {
+    id: 'DISP_GOAL', num: 'G03', icon: '🎯',
+    q: '목표를 어떻게 세우나요?',
+    hint: '다이어트 목표를 세울 때를 떠올려보세요.',
+    opts: [
+      '크고 완벽한 목표 — 전부 아니면 무',
+      '작은 목표를 단계별로 세워요',
+      '대충 방향만 잡고 즉흥으로 해요',
+      '목표 세우기 자체가 부담이에요'
+    ],
+    axis: 'mbti_life'
+  },
+  {
+    id: 'DISP_SOCIAL', num: 'G04', icon: '👥',
+    q: '사람들과 있을 때 어떤 느낌이에요?',
+    hint: '에너지 충전 vs 방전을 기준으로 골라주세요.',
+    opts: [
+      '사람 많을수록 에너지 충전',
+      '적당히 어울리면 좋아요',
+      '혼자 있을 때 더 편해요',
+      '소수의 깊은 관계가 편해요'
+    ],
+    axis: 'mbti_energy'
+  },
+  {
+    id: 'DISP_PLAN', num: 'G05', icon: '📋',
+    q: '일상을 어떻게 보내나요?',
+    hint: '식단·운동 계획 세울 때도 이 방식인가요?',
+    opts: [
+      '계획표 없으면 불안해요 — 철저한 계획형',
+      '대략적인 계획은 세워요',
+      '그때그때 상황 봐가며 해요',
+      '계획은 스트레스예요 — 완전 즉흥'
+    ],
+    axis: 'mbti_life'
+  },
+  {
+    id: 'DISP_OHAENG', num: 'G06', icon: '🌿',
+    q: '이 설명 중 가장 나에 가까운 것은?',
+    hint: '직관적으로 가장 먼저 공감가는 걸 골라주세요.',
+    opts: [
+      '추진력·목표지향적 — 끝장을 봐야 해요',
+      '열정적·즉흥적 — 불꽃처럼 살아요',
+      '따뜻·배려형 — 남 걱정이 먼저예요',
+      '원칙·완벽주의 — 기준이 높아요',
+      '생각 깊고 신중 — 차분하게 분석해요'
+    ],
+    axis: 'ohaeng'
+  },
+  {
+    id: 'DISP_DECISION', num: 'G07', icon: '💭',
+    q: '결정을 내릴 때 어떻게 해요?',
+    hint: '중요한 결정을 앞에 뒀을 때를 떠올려보세요.',
+    opts: [
+      '데이터와 논리로 판단해요',
+      '논리도 보지만 감정도 중요해요',
+      '주로 느낌과 가치관으로 결정해요',
+      '다른 사람들 의견이 중요해요'
+    ],
+    axis: 'mbti_decide'
+  },
+  {
+    id: 'DISP_BURNOUT', num: 'G08', icon: '🔋',
+    q: '번아웃이 오면 어떻게 반응해요?',
+    hint: '다이어트 의지가 떨어질 때도 비슷한 패턴인가요?',
+    opts: [
+      '더 열심히 해서 극복해요',
+      '휴식 후 다시 시작해요',
+      '아무것도 하기 싫어지고 무기력해져요',
+      '먹거나 쇼핑으로 기분을 달래요'
+    ],
+    axis: 'ohaeng'
+  },
+  {
+    id: 'DISP_NIGHT', num: 'G09', icon: '🌙',
+    q: '밤에 더 활발해지는 편인가요?',
+    hint: '하루 중 뇌가 가장 잘 돌아가는 시간대는?',
+    opts: [
+      '아침형 — 새벽에 제일 맑아요',
+      '낮 중간형 — 오전 10시~오후 3시',
+      '저녁형 — 저녁 먹고 나서 뇌가 깨요',
+      '완전 올빼미 — 자정 이후가 골든타임'
+    ],
+    axis: 'ohaeng'
+  },
+  {
+    id: 'DISP_FAIL_MIND', num: 'G10', icon: '🎭',
+    q: '다이어트를 포기할 때 주로 어떤 생각이 드나요?',
+    hint: '가장 솔직한 내면의 목소리를 골라주세요.',
+    opts: [
+      '에이 모르겠다 — 오늘만 먹고 내일부터',
+      '조금 실패했으면 전부 포기 (완벽 아니면 포기)',
+      '이렇게 해서 될까 싶어서 의욕이 사라져요',
+      '그냥 지쳐서 관심 자체가 없어져요'
+    ],
+    axis: 'ohaeng'
+  }
+];
+
+// 기질 결과 계산 함수
+function calcDisposition(dispAnswers) {
+  // 오행 분류 (DISP_OHAENG 답변 인덱스 기반)
+  const ohaengMap = { 0: '목형', 1: '화형', 2: '토형', 3: '금형', 4: '수형' };
+  const ohaengIdx = dispAnswers['DISP_OHAENG'];
+  const ohaeng_type = ohaengMap[ohaengIdx] ?? '목형';
+
+  // MBTI 4축 도출
+  const socialIdx   = dispAnswers['DISP_SOCIAL']   ?? 2;
+  const energyIdx   = dispAnswers['DISP_ENERGY']   ?? 2;
+  const decisionIdx = dispAnswers['DISP_DECISION'] ?? 2;
+  const planIdx     = dispAnswers['DISP_PLAN']     ?? 2;
+
+  const mbtiE  = socialIdx   <= 1 ? 'E' : 'I';
+  const mbtiN  = energyIdx   <= 1 ? 'N' : 'S';
+  const mbtiT  = decisionIdx <= 1 ? 'T' : 'F';
+  const mbtiJ  = planIdx     <= 1 ? 'J' : 'P';
+  const mbti_full = mbtiE + mbtiN + mbtiT + mbtiJ;
+
+  return { ohaeng_type, mbti_full };
+}
+
 if (typeof module !== 'undefined') {
   module.exports = {
     SECTIONS, QUESTIONS, FEEDBACK_MESSAGES, AXIS_META, TYPE_NAME_TABLE,
     calculateAxisScores, generateTypeName, getDopamineType, classifyECode,
     // V3 신규 추가
     QUESTIONS_V3, DEEP_QUESTIONS, BC_META,
-    calcBcScores, getTopBcCodes, midScoreCheck
+    calcBcScores, getTopBcCodes, midScoreCheck,
+    // V4 닉네임 + 기질
+    NICKNAME_TABLE, getNickname,
+    DISP_QUESTIONS, calcDisposition
   };
 }

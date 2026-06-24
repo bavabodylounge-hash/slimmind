@@ -693,6 +693,36 @@ function triggerAnim() {
   document.querySelectorAll('.fade-up').forEach(el => el.classList.add('visible'));
 }
 
+// ── V4.1 diagnosis API 로드 ──────────────────
+async function loadDiagnosisResult() {
+  const params = new URLSearchParams(window.location.search);
+  const diagId = params.get('diagnosis_id') || params.get('did');
+  if (!diagId) return null;
+  try {
+    const res = await fetch(`/api/v1/diagnosis/${diagId}`);
+    if (!res.ok) return null;
+    const d = await res.json();
+    // result-v4 구조로 변환
+    return {
+      userName: d.user_name || '고객',
+      bc_code: d.bc_primary || 'BC6',
+      bc_primary: d.bc_primary || 'BC6',
+      bc_nickname: d.bc_nickname || null,
+      axisScores: d.axis_scores || {},
+      top_axes: d.top3_axes || [],
+      ohaengType: d.ohaeng_type || '목',
+      mbtiType: d.mbti_full || 'INFP',
+      bg_filter: d.bg_filter || '',
+      region: d.region || '',
+      texture: d.texture || '',
+      disp_answers: d.disp_answers || {},
+      ref_code: d.ref_code || '',
+      created_at: d.completed_at || d.created_at || '',
+      _from_diagnosis: true,
+    };
+  } catch(e) { return null; }
+}
+
 // ── 데이터 로드 ──────────────────
 function loadData() {
   // 0순위: 서버사이드 주입 window.__RESULT__ (공유링크 /result/:id 접근 시)
@@ -1312,8 +1342,15 @@ function animAxisBars() {
 }
 
 // ── 초기화 ──────────────────
-window.addEventListener('DOMContentLoaded', () => {
-  let resultData = loadData();
+window.addEventListener('DOMContentLoaded', async () => {
+  // diagnosis_id 파라미터가 있으면 새 API에서 우선 로드
+  const urlParams = new URLSearchParams(window.location.search);
+  const diagId = urlParams.get('diagnosis_id') || urlParams.get('did');
+  let resultData = null;
+  if (diagId) {
+    resultData = await loadDiagnosisResult();
+  }
+  if (!resultData) resultData = loadData();
   if (!resultData) { resultData = demoData(); console.log('[SlimMind] 데모 데이터 렌더링'); }
 
   // ── answers → axisScores 변환 (slimmind_result에 axisScores 없을 때) ──

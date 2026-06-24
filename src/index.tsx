@@ -2697,4 +2697,120 @@ app.get('/api/b2b/recommend/:resultId', requireB2B(), async (c) => {
   }
 })
 
+// ════════════════════════════════════════════════════════
+//  POST /api/v1/diagnosis — 설문 완료 후 기질+닉네임 저장
+// ════════════════════════════════════════════════════════
+app.post('/api/v1/diagnosis', async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not configured' }, 500)
+
+  try {
+    const body = await c.req.json()
+    const {
+      user_name, bc_nickname, bc_primary, bc_secondary,
+      top3_axes, axis_scores, region, texture, bg_filter,
+      ohaeng_type, mbti_full, disp_answers, ref_code, completed_at
+    } = body
+
+    if (!user_name) return c.json({ error: 'user_name required' }, 400)
+
+    // UUID 생성
+    const result_id = crypto.randomUUID()
+    const now = new Date().toISOString()
+
+    await db.prepare(`
+      INSERT INTO diagnosis_results
+        (id, user_name, bc_nickname, bc_primary, bc_secondary,
+         top3_axes, axis_scores, region, texture, bg_filter,
+         ohaeng_type, mbti_full, disp_answers, ref_code, completed_at, created_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    `).bind(
+      result_id,
+      String(user_name || '익명'),
+      bc_nickname || null,
+      bc_primary || null,
+      bc_secondary || null,
+      top3_axes ? JSON.stringify(top3_axes) : null,
+      axis_scores ? JSON.stringify(axis_scores) : null,
+      region || null,
+      texture || null,
+      bg_filter || '',
+      ohaeng_type || null,
+      mbti_full || null,
+      disp_answers ? JSON.stringify(disp_answers) : null,
+      ref_code || null,
+      completed_at || now,
+      now
+    ).run()
+
+    // ref_code가 있으면 컨설턴트/B2B 연결 확인
+    let connected_to: string | null = null
+    if (ref_code) {
+      const cst = await db.prepare(
+        `SELECT id FROM consultants WHERE code = ? LIMIT 1`
+      ).bind(ref_code).first()
+      if (cst) connected_to = 'consultant'
+      else {
+        const b2b = await db.prepare(
+          `SELECT id FROM b2b_partners WHERE ref_code = ? LIMIT 1`
+        ).bind(ref_code).first()
+        if (b2b) connected_to = 'b2b_partner'
+      }
+    }
+
+    return c.json({
+      result_id,
+      bc_nickname: bc_nickname || null,
+      status: 'ok',
+      connected_to
+    })
+  } catch (e) {
+    console.error('[diagnosis POST]', e)
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ════════════════════════════════════════════════════════
+//  GET /api/v1/diagnosis/:id — 결과지 데이터 조회
+// ════════════════════════════════════════════════════════
+app.get('/api/v1/diagnosis/:id', async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not configured' }, 500)
+
+  try {
+    const id = c.req.param('id')
+    const row = await db.prepare(
+      `SELECT * FROM diagnosis_results WHERE id = ? LIMIT 1`
+    ).bind(id).first() as any
+
+    if (!row) return c.json({ error: 'not found' }, 404)
+
+    const parseJson = (v: any, fallback: any) => {
+      try { return v ? JSON.parse(v) : fallback } catch { return fallback }
+    }
+
+    return c.json({
+      result_id: row.id,
+      user_name: row.user_name,
+      bc_nickname: row.bc_nickname,
+      bc_primary: row.bc_primary,
+      bc_secondary: row.bc_secondary,
+      top3_axes: parseJson(row.top3_axes, []),
+      axis_scores: parseJson(row.axis_scores, {}),
+      region: row.region,
+      texture: row.texture,
+      bg_filter: row.bg_filter,
+      ohaeng_type: row.ohaeng_type,
+      mbti_full: row.mbti_full,
+      disp_answers: parseJson(row.disp_answers, {}),
+      ref_code: row.ref_code,
+      completed_at: row.completed_at,
+      created_at: row.created_at
+    })
+  } catch (e) {
+    console.error('[diagnosis GET]', e)
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
 export default app
