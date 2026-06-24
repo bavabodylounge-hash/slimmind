@@ -292,6 +292,9 @@
         <div class="nav-section-label">데이터</div>
         <div class="nav-item" data-page="results"><i class="fas fa-file-medical"></i> 고객 결과 관리</div>
         <div class="nav-item" data-page="bc-codes"><i class="fas fa-dna"></i> BC코드 처방 편집</div>
+        <div class="nav-section-label">분석 · 예측</div>
+        <div class="nav-item" data-page="ranking"><i class="fas fa-trophy"></i> 컨설턴트 랭킹</div>
+        <div class="nav-item" data-page="revenue-forecast"><i class="fas fa-chart-bar"></i> 매출 예측기</div>
         <div class="nav-section-label">정산 · 다운로드</div>
         <div class="nav-item" data-page="settlement"><i class="fas fa-calculator"></i> 수익 정산</div>
         <div class="nav-item" data-page="excel-export"><i class="fas fa-file-excel"></i> 엑셀 다운로드</div>
@@ -856,6 +859,8 @@ function navigateTo(page) {
   else if (page === 'guide-b2b') loadGuideB2B();
   else if (page === 'results') loadResults();
   else if (page === 'bc-codes') loadBcCodes();
+  else if (page === 'ranking') loadRanking();
+  else if (page === 'revenue-forecast') loadRevenueForecast();
   else if (page === 'settlement') loadSettlement();
   else if (page === 'excel-export') loadExcelExport();
   else if (page === 'settings') loadSettings();
@@ -1503,6 +1508,224 @@ async function saveBcCode() {
   } else {
     toast('저장 실패', 'error');
   }
+}
+
+// ═════════════════════════════════════════════
+//  컨설턴트 랭킹 보드
+// ═════════════════════════════════════════════
+async function loadRanking(period = 'month') {
+  document.getElementById('page-body').innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <h2 style="margin:0;font-size:20px;font-weight:700"><i class="fas fa-trophy" style="color:#F59E0B;margin-right:8px"></i>컨설턴트 랭킹 보드</h2>
+      <div style="display:flex;gap:8px">
+        <button class="btn ${period==='month'?'btn-primary':'btn-secondary'}" onclick="loadRanking('month')">이번달</button>
+        <button class="btn ${period==='quarter'?'btn-primary':'btn-secondary'}" onclick="loadRanking('quarter')">이번분기</button>
+        <button class="btn ${period==='all'?'btn-primary':'btn-secondary'}" onclick="loadRanking('all')">전체</button>
+      </div>
+    </div>
+    <div id="ranking-content" style="display:flex;align-items:center;justify-content:center;padding:60px">
+      <i class="fas fa-circle-notch fa-spin fa-2x" style="color:var(--muted)"></i>
+    </div>`;
+
+  const data = await api('GET', `/admin/ranking?period=${period}`);
+  if (!data.ok) { document.getElementById('ranking-content').innerHTML = `<p style="color:red">오류: ${data.error}</p>`; return; }
+
+  const { ranking, totalResults, totalSettlement, mvp } = data;
+  const periodLabel = period === 'month' ? '이번달' : period === 'quarter' ? '이번분기' : '전체';
+
+  const rankBadge = (rank) => {
+    if (rank === 1) return `<span style="font-size:24px">🥇</span>`;
+    if (rank === 2) return `<span style="font-size:24px">🥈</span>`;
+    if (rank === 3) return `<span style="font-size:24px">🥉</span>`;
+    return `<span style="display:inline-block;width:28px;height:28px;background:#E5E7EB;border-radius:50%;text-align:center;line-height:28px;font-weight:700;font-size:13px">${rank}</span>`;
+  };
+
+  const growthBadge = (g) => {
+    if (g > 0) return `<span style="color:#10B981;font-size:12px">▲${g}%</span>`;
+    if (g < 0) return `<span style="color:#EF4444;font-size:12px">▼${Math.abs(g)}%</span>`;
+    return `<span style="color:#9CA3AF;font-size:12px">━</span>`;
+  };
+
+  const gradeBadge = (g) => {
+    const map = {'최우수':'#F59E0B','우수':'#6366F1','일반':'#6B7280','신규':'#3B82F6'};
+    const c = map[g] || '#6B7280';
+    return `<span style="background:${c}20;color:${c};padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700">${g||'일반'}</span>`;
+  };
+
+  document.getElementById('ranking-content').innerHTML = `
+    <!-- MVP 카드 -->
+    ${mvp && mvp.total_results > 0 ? `
+    <div style="background:linear-gradient(135deg,#F59E0B,#EF4444);border-radius:16px;padding:20px 24px;color:#fff;margin-bottom:24px;display:flex;align-items:center;gap:16px">
+      <div style="font-size:48px">🏆</div>
+      <div style="flex:1">
+        <div style="font-size:11px;opacity:.8;margin-bottom:2px">${periodLabel} MVP</div>
+        <div style="font-size:22px;font-weight:800">${mvp.name}</div>
+        <div style="font-size:13px;opacity:.9;margin-top:4px">상담 완료 ${mvp.total_results}건 · 정산 예정 ${Math.round(mvp.est_settlement||0).toLocaleString()}원</div>
+      </div>
+      <div style="text-align:right">
+        ${mvp.growth_rate > 0 ? `<div style="font-size:14px;opacity:.9">전월 대비</div><div style="font-size:28px;font-weight:800">+${mvp.growth_rate}%</div>` : ''}
+      </div>
+    </div>` : ''}
+    <!-- 전체 KPI -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px">
+      <div style="background:#F9FAFB;border-radius:12px;padding:16px">
+        <div style="font-size:12px;color:#6B7280">${periodLabel} 총 상담</div>
+        <div style="font-size:28px;font-weight:700;color:#1F2937;margin-top:4px">${totalResults}건</div>
+      </div>
+      <div style="background:#F9FAFB;border-radius:12px;padding:16px">
+        <div style="font-size:12px;color:#6B7280">추정 총 매출</div>
+        <div style="font-size:28px;font-weight:700;color:#6366F1;margin-top:4px">${(totalResults*150000).toLocaleString()}원</div>
+      </div>
+      <div style="background:#F9FAFB;border-radius:12px;padding:16px">
+        <div style="font-size:12px;color:#6B7280">총 정산 예정</div>
+        <div style="font-size:28px;font-weight:700;color:#10B981;margin-top:4px">${Math.round(totalSettlement).toLocaleString()}원</div>
+      </div>
+    </div>
+    <!-- 랭킹 테이블 -->
+    <div style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden">
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="background:#F9FAFB;border-bottom:1px solid #E5E7EB">
+            <th style="padding:12px 16px;text-align:center;font-size:12px;color:#6B7280;width:60px">순위</th>
+            <th style="padding:12px 16px;text-align:left;font-size:12px;color:#6B7280">컨설턴트</th>
+            <th style="padding:12px 16px;text-align:center;font-size:12px;color:#6B7280">등급</th>
+            <th style="padding:12px 16px;text-align:right;font-size:12px;color:#6B7280">상담수</th>
+            <th style="padding:12px 16px;text-align:right;font-size:12px;color:#6B7280">프리미엄</th>
+            <th style="padding:12px 16px;text-align:center;font-size:12px;color:#6B7280">전월대비</th>
+            <th style="padding:12px 16px;text-align:right;font-size:12px;color:#6B7280">정산예정</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${ranking.map(r => `
+          <tr style="border-bottom:1px solid #F3F4F6;${r.rank<=3?'background:#FFFBF0':''}" onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='${r.rank<=3?'#FFFBF0':'#fff'}'">
+            <td style="padding:14px 16px;text-align:center">${rankBadge(r.rank)}</td>
+            <td style="padding:14px 16px">
+              <div style="font-weight:600;color:#1F2937">${r.name}</div>
+              <div style="font-size:11px;color:#9CA3AF">${r.code}</div>
+            </td>
+            <td style="padding:14px 16px;text-align:center">${gradeBadge(r.grade)}</td>
+            <td style="padding:14px 16px;text-align:right;font-weight:700;font-size:16px">${r.total_results}</td>
+            <td style="padding:14px 16px;text-align:right;color:#6366F1">${r.premium_cnt||0}</td>
+            <td style="padding:14px 16px;text-align:center">${growthBadge(r.growth_rate)}</td>
+            <td style="padding:14px 16px;text-align:right;font-weight:700;color:#10B981">${Math.round(r.est_settlement||0).toLocaleString()}원</td>
+          </tr>`).join('')}
+          ${ranking.length === 0 ? `<tr><td colspan="7" style="padding:40px;text-align:center;color:#9CA3AF">데이터가 없습니다</td></tr>` : ''}
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top:16px;font-size:12px;color:#9CA3AF;text-align:right">
+      * 정산 예정액 = 상담 건당 150,000원 × 25% 기준 추정치
+    </div>`;
+}
+
+// ═════════════════════════════════════════════
+//  실시간 매출 예측기
+// ═════════════════════════════════════════════
+async function loadRevenueForecast() {
+  document.getElementById('page-body').innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+      <h2 style="margin:0;font-size:20px;font-weight:700"><i class="fas fa-chart-bar" style="color:#6366F1;margin-right:8px"></i>실시간 매출 예측기</h2>
+      <span style="font-size:12px;background:#EEF2FF;color:#6366F1;padding:3px 10px;border-radius:99px">AI 추산</span>
+    </div>
+    <div id="forecast-content" style="display:flex;align-items:center;justify-content:center;padding:60px">
+      <i class="fas fa-circle-notch fa-spin fa-2x" style="color:var(--muted)"></i>
+    </div>`;
+
+  const data = await api('GET', '/admin/revenue-forecast');
+  if (!data.ok) { document.getElementById('forecast-content').innerHTML = `<p style="color:red">오류: ${data.error}</p>`; return; }
+
+  const {
+    month, today, daysInMonth,
+    currentMonthTotal, currentRevenue, currentSettlement,
+    forecastThisMonth, forecastRevenue, forecastSettlement,
+    avgMonthly, prevMonthTotal, achieveRate, dailyData, histData
+  } = data;
+
+  // 일별 바 차트 SVG 생성
+  const maxCnt = Math.max(...(dailyData.map(d => d.cnt)), 1);
+  const barW = Math.max(8, Math.floor(600 / Math.max(dailyData.length, 1)) - 3);
+  const bars = dailyData.map((d, i) => {
+    const h = Math.round((d.cnt / maxCnt) * 80);
+    const x = i * (barW + 3) + 10;
+    const dayNum = parseInt(d.day.slice(-2));
+    return `
+      <rect x="${x}" y="${90-h}" width="${barW}" height="${h}" rx="3"
+        fill="${dayNum === today ? '#F59E0B' : '#6366F1'}" opacity="${dayNum === today ? '1' : '0.7'}"/>
+      <title>${d.day}: ${d.cnt}건</title>`;
+  }).join('');
+  const svgW = dailyData.length * (barW + 3) + 20;
+
+  // 목표 달성 게이지
+  const gaugeRate = Math.min(achieveRate, 100);
+  const gaugeColor = gaugeRate >= 100 ? '#10B981' : gaugeRate >= 70 ? '#6366F1' : gaugeRate >= 40 ? '#F59E0B' : '#EF4444';
+
+  document.getElementById('forecast-content').innerHTML = `
+    <!-- 이번달 KPI -->
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:24px">
+      <div style="background:linear-gradient(135deg,#6366F1,#8B5CF6);border-radius:16px;padding:24px;color:#fff">
+        <div style="font-size:12px;opacity:.8;margin-bottom:8px">📅 ${month} 현재까지</div>
+        <div style="font-size:32px;font-weight:800">${currentMonthTotal}건</div>
+        <div style="font-size:14px;opacity:.9;margin-top:8px">${currentRevenue.toLocaleString()}원 매출</div>
+        <div style="font-size:12px;opacity:.7">정산 ${currentSettlement.toLocaleString()}원</div>
+      </div>
+      <div style="background:linear-gradient(135deg,#F59E0B,#EF4444);border-radius:16px;padding:24px;color:#fff">
+        <div style="font-size:12px;opacity:.8;margin-bottom:8px">🔮 월말 예측 (${daysInMonth}일 기준)</div>
+        <div style="font-size:32px;font-weight:800">${forecastThisMonth}건</div>
+        <div style="font-size:14px;opacity:.9;margin-top:8px">${forecastRevenue.toLocaleString()}원 매출</div>
+        <div style="font-size:12px;opacity:.7">정산 ${forecastSettlement.toLocaleString()}원</div>
+      </div>
+    </div>
+
+    <!-- 달성률 게이지 -->
+    <div style="background:#fff;border:1px solid #E5E7EB;border-radius:16px;padding:20px;margin-bottom:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div>
+          <div style="font-weight:700;font-size:15px">📊 목표 달성률</div>
+          <div style="font-size:12px;color:#6B7280;margin-top:2px">3개월 평균 대비 (월평균 ${avgMonthly}건)</div>
+        </div>
+        <div style="font-size:28px;font-weight:800;color:${gaugeColor}">${achieveRate}%</div>
+      </div>
+      <div style="background:#F3F4F6;border-radius:99px;height:12px;overflow:hidden">
+        <div style="background:${gaugeColor};height:100%;width:${gaugeRate}%;border-radius:99px;transition:width .5s ease"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:12px;color:#9CA3AF">
+        <span>0건</span>
+        <span>전월 ${prevMonthTotal}건</span>
+        <span>목표 ${avgMonthly}건</span>
+      </div>
+    </div>
+
+    <!-- 일별 상담 차트 -->
+    <div style="background:#fff;border:1px solid #E5E7EB;border-radius:16px;padding:20px;margin-bottom:20px">
+      <div style="font-weight:700;font-size:15px;margin-bottom:16px">📈 일별 상담 현황 <span style="font-size:12px;color:#F59E0B;font-weight:400">■ 오늘</span> <span style="font-size:12px;color:#6366F1;font-weight:400">■ 기타</span></div>
+      ${dailyData.length > 0 ? `
+      <div style="overflow-x:auto">
+        <svg width="${svgW}" height="100" style="display:block">
+          ${bars}
+          <line x1="0" y1="90" x2="${svgW}" y2="90" stroke="#E5E7EB" stroke-width="1"/>
+        </svg>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:#9CA3AF;margin-top:4px;padding:0 10px">
+          <span>1일</span><span>${Math.ceil(daysInMonth/2)}일</span><span>${daysInMonth}일</span>
+        </div>
+      </div>` : `<div style="text-align:center;color:#9CA3AF;padding:20px">이번달 데이터가 없습니다</div>`}
+    </div>
+
+    <!-- 최근 3개월 히스토리 -->
+    <div style="background:#fff;border:1px solid #E5E7EB;border-radius:16px;padding:20px">
+      <div style="font-weight:700;font-size:15px;margin-bottom:16px">📋 최근 월별 실적</div>
+      <div style="display:grid;grid-template-columns:repeat(${Math.max(histData.length,1)},1fr);gap:12px">
+        ${histData.map(h => `
+          <div style="background:#F9FAFB;border-radius:12px;padding:16px;text-align:center">
+            <div style="font-size:11px;color:#6B7280">${h.ym}</div>
+            <div style="font-size:24px;font-weight:700;color:#1F2937;margin:8px 0">${h.cnt}건</div>
+            <div style="font-size:12px;color:#6B7280">${(h.cnt*150000).toLocaleString()}원</div>
+          </div>`).join('')}
+        ${histData.length === 0 ? `<div style="text-align:center;color:#9CA3AF;padding:20px">이전 데이터 없음</div>` : ''}
+      </div>
+    </div>
+    <div style="margin-top:16px;font-size:12px;color:#9CA3AF;text-align:right">
+      * 예측치는 현재까지의 일평균 속도 기반 추산 · 오늘(${today}일) 기준 / 건당 단가 150,000원
+    </div>`;
 }
 
 // ═════════════════════════════════════════════

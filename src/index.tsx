@@ -1861,4 +1861,244 @@ app.post('/api/checkin', async (c) => {
   }
 })
 
+/* ═══════════════════════════════════════════════════════
+   GET /api/admin/ranking — 컨설턴트 랭킹 보드
+   ?period=month|quarter|all  (기본: month)
+═══════════════════════════════════════════════════════ */
+app.get('/api/admin/ranking', requireRole('MASTER'), async (c) => {
+  const db = c.env.DB as D1Database | undefined;
+  const period = (c.req.query('period') || 'month') as string;
+
+  let dateFilter = '';
+  const now = new Date();
+  if (period === 'month') {
+    const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    dateFilter = `AND substr(r.created_at,1,7) = '${ym}'`;
+  } else if (period === 'quarter') {
+    const q = Math.floor(now.getMonth() / 3);
+    const startM = q * 3 + 1;
+    const endM = startM + 2;
+    dateFilter = `AND CAST(substr(r.created_at,6,2) AS INTEGER) BETWEEN ${startM} AND ${endM} AND substr(r.created_at,1,4)='${now.getFullYear()}'`;
+  }
+
+  try {
+    const rows = db ? await db.prepare(`
+      SELECT
+        c.code,
+        c.name,
+        c.grade,
+        c.commission_rate,
+        COUNT(r.id)                   AS total_results,
+        SUM(CASE WHEN r.is_premium=1 THEN 1 ELSE 0 END) AS premium_cnt,
+        ROUND(COUNT(r.id)*150000*0.25) AS est_settlement
+      FROM consultants c
+      LEFT JOIN results r ON r.consultant_code = c.code ${dateFilter}
+      WHERE c.subscription_status != 'inactive'
+      GROUP BY c.code, c.name, c.grade, c.commission_rate
+      ORDER BY total_results DESC, premium_cnt DESC
+    `).all<any>() : { results: [] };
+
+    // 지난 기간 대비 성장률 계산을 위해 전월 데이터도 조회
+    const prevYm = (() => {
+      const d = new Date(now.getFullYear(), now.getMonth()-1, 1);
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    })();
+    const prevRows = db ? await db.prepare(`
+      SELECT consultant_code, COUNT(*) AS cnt
+      FROM results
+      WHERE substr(created_at,1,7)='${prevYm}'
+      GROUP BY consultant_code
+    `).all<any>() : { results: [] };
+
+    const prevMap: Record<string, number> = {};
+    (prevRows.results || []).forEach((r: any) => { prevMap[r.consultant_code] = r.cnt; });
+
+    const ranking = (rows.results || []).map((r: any, idx: number) => {
+      const prev = prevMap[r.code] || 0;
+      const growth = prev === 0 ? (r.total_results > 0 ? 100 : 0) : Math.round(((r.total_results - prev) / prev) * 100);
+      return { ...r, rank: idx + 1, prev_results: prev, growth_rate: growth };
+    });
+
+    // 전체 통계
+    const totalSettlement = ranking.reduce((s: number, r: any) => s + (r.est_settlement || 0), 0);
+    const totalResults = ranking.reduce((s: number, r: any) => s + (r.total_results || 0), 0);
+    const mvp = ranking[0] || null;
+
+    return c.json({ ok: true, ranking, period, totalResults, totalSettlement, mvp });
+  } catch(e) {
+    return c.json({ ok: false, error: String(e) }, 500);
+  }
+});
+
+/* ═══════════════════════════════════════════════════════
+   GET /api/admin/revenue-forecast — 실시간 매출 예측
+═══════════════════════════════════════════════════════ */
+app.get('/api/admin/revenue-forecast', requireRole('MASTER'), async (c) => {
+  const db = c.env.DB as D1Database | undefined;
+  const now = new Date();
+  const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const today = now.getDate();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+
+  try {
+    // 이번 달 일별 결과 수
+    const dailyRows = db ? await db.prepare(`
+      SELECT substr(created_at,1,10) AS day, COUNT(*) AS cnt
+      FROM results
+      WHERE substr(created_at,1,7)='${ym}'
+      GROUP BY substr(created_at,1,10)
+      ORDER BY day
+    `).all<any>() : { results: [] };
+
+    const dailyData = (dailyRows.results || []) as Array<{day: string; cnt: number}>;
+    const currentMonthTotal = dailyData.reduce((s, d) => s + d.cnt, 0);
+
+    // 지난 3달 평균으로 예측
+    const hist = db ? await db.prepare(`
+      SELECT substr(created_at,1,7) AS ym, COUNT(*) AS cnt
+      FROM results
+      WHERE substr(created_at,1,7) < '${ym}'
+      GROUP BY substr(created_at,1,7)
+      ORDER BY ym DESC
+      LIMIT 3
+    `).all<any>() : { results: [] };
+
+    const histData = (hist.results || []) as Array<{ym: string; cnt: number}>;
+    const avgMonthly = histData.length > 0
+      ? histData.reduce((s, h) => s + h.cnt, 0) / histData.length
+      : 30;
+
+    // 당월 예측: 현재 진행율 기반
+    const dailyRate = today > 0 ? currentMonthTotal / today : 0;
+    const forecastThisMonth = Math.round(dailyRate * daysInMonth);
+    const forecastRevenue = forecastThisMonth * 150000;
+    const forecastSettlement = Math.round(forecastRevenue * 0.25);
+
+    // 지난달 실적
+    const prevYm = (() => {
+      const d = new Date(now.getFullYear(), now.getMonth()-1, 1);
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    })();
+    const prevTotal = histData.find(h => h.ym === prevYm)?.cnt || 0;
+
+    // 이번달 현재까지 매출
+    const currentRevenue = currentMonthTotal * 150000;
+    const currentSettlement = Math.round(currentRevenue * 0.25);
+
+    // 달성률
+    const achieveRate = avgMonthly > 0 ? Math.round((currentMonthTotal / avgMonthly) * 100) : 0;
+
+    return c.json({
+      ok: true,
+      month: ym,
+      today,
+      daysInMonth,
+      currentMonthTotal,
+      currentRevenue,
+      currentSettlement,
+      forecastThisMonth,
+      forecastRevenue,
+      forecastSettlement,
+      avgMonthly: Math.round(avgMonthly),
+      prevMonthTotal: prevTotal,
+      achieveRate,
+      dailyData,
+      histData
+    });
+  } catch(e) {
+    return c.json({ ok: false, error: String(e) }, 500);
+  }
+});
+
+/* ═══════════════════════════════════════════════════════
+   GET /api/consultant/checkin-history/:result_id — 체크인 이력 조회
+═══════════════════════════════════════════════════════ */
+app.get('/api/consultant/checkin-history/:result_id', requireRole('ANY'), async (c: any) => {
+  const db = c.env.DB as D1Database | undefined;
+  const resultId = c.req.param('result_id');
+  try {
+    const rows = db ? await db.prepare(`
+      SELECT * FROM checkin_log
+      WHERE result_id = ?
+      ORDER BY checked_at ASC
+    `).bind(resultId).all<any>() : { results: [] };
+
+    // 고객 기본 정보도 함께
+    const customer = db ? await db.prepare(`
+      SELECT id, user_name, bc_primary, weight, target_weight, height, created_at, consultant_code
+      FROM results WHERE id = ?
+    `).bind(resultId).first<any>() : null;
+
+    return c.json({ ok: true, customer, checkins: rows.results || [] });
+  } catch(e) {
+    return c.json({ ok: false, error: String(e) }, 500);
+  }
+});
+
+/* ═══════════════════════════════════════════════════════
+   GET /api/consultant/my-customers — 내 고객 목록 + 체중/체크인 현황
+═══════════════════════════════════════════════════════ */
+app.get('/api/consultant/my-customers', requireRole('ANY'), async (c) => {
+  const db = c.env.DB as D1Database | undefined;
+  const user = c.get('user') as JwtPayload;
+  const consultantCode = user?.code || '';
+
+  try {
+    const rows = db ? await db.prepare(`
+      SELECT
+        r.id, r.user_name, r.bc_primary, r.bc_secondary,
+        r.weight, r.target_weight, r.height, r.bmi,
+        r.gender, r.created_at,
+        (SELECT COUNT(*) FROM checkin_log cl WHERE cl.result_id = r.id) AS checkin_count,
+        (SELECT MAX(cl.checked_at) FROM checkin_log cl WHERE cl.result_id = r.id) AS last_checkin
+      FROM results r
+      WHERE r.consultant_code = ?
+      ORDER BY r.created_at DESC
+      LIMIT 100
+    `).bind(consultantCode).all<any>() : { results: [] };
+
+    return c.json({ ok: true, customers: rows.results || [], consultantCode });
+  } catch(e) {
+    return c.json({ ok: false, error: String(e) }, 500);
+  }
+});
+
+/* ═══════════════════════════════════════════════════════
+   POST /api/consultant/weight-checkin — 체중 변화 체크인
+═══════════════════════════════════════════════════════ */
+app.post('/api/consultant/weight-checkin', requireRole('ANY'), async (c) => {
+  const db = c.env.DB as D1Database | undefined;
+  try {
+    const body = await c.req.json() as {
+      result_id?: string;
+      week_range?: string;
+      current_weight?: number;
+      memo?: string;
+    };
+
+    if (!body.result_id) return c.json({ ok: false, error: 'result_id required' }, 400);
+
+    // axis_name에 "체중" 키워드 + week_range로 저장
+    const user = c.get('user') as JwtPayload;
+    const consultantCode = user?.code || '';
+
+    if (db) {
+      await db.prepare(`
+        INSERT INTO checkin_log (result_id, consultant_code, week_range, axis_name, checked_at)
+        VALUES (?,?,?,?,?)
+      `).bind(
+        body.result_id,
+        consultantCode,
+        body.week_range || `W${new Date().toISOString().slice(0,10)}`,
+        `체중:${body.current_weight || 0}kg${body.memo ? ' / '+body.memo : ''}`,
+        new Date().toISOString()
+      ).run();
+    }
+
+    return c.json({ ok: true, message: '체중 체크인 완료' });
+  } catch(e) {
+    return c.json({ ok: false, error: String(e) }, 500);
+  }
+});
+
 export default app
