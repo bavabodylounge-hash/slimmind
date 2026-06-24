@@ -12,7 +12,9 @@ import resultHtml from '../public/result.html?raw'
 import resultV3Html from '../public/result-v3.html?raw'
 import resultV4Html from '../public/result-v4.html?raw'
 import bodymapPreviewHtml from '../public/bodymap_preview.html?raw'
-import slimmindLiveHtml from '../public/slimmind_live.html?raw'
+// slimmind_live.html은 구버전(키오스크) — index.html(최신 설문지)로 교체됨
+// import slimmindLiveHtml from '../public/slimmind_live.html?raw'
+const slimmindLiveHtml = indexHtml  // ← index.html = 30문항+심층질문 최신 설문지
 
 // ─── 타입 정의 ───────────────────────────────────────────────
 type Bindings = {
@@ -1448,7 +1450,7 @@ app.get('/s/:code', async (c) => {
 </script>`
   }
 
-  // slimmind_live.html에 브랜드 인젝션 + ref_code 심기
+  // index.html(최신 설문지)에 브랜드 인젝션 + ref_code 심기
   let html = slimmindLiveHtml
 
   // ref 쿼리 파라미터도 함께 전달 (기존 URL 방식 호환)
