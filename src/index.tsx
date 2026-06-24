@@ -2586,4 +2586,75 @@ app.get('/api/b2b/result-link/:id', requireB2B(), async (c) => {
   }
 })
 
+// ============================================================
+// BC코드 → 시술 추천 API
+// GET /api/b2b/recommend/:resultId
+// B2B 파트너가 고객 결과지 기반으로 매칭 시술 목록 조회
+// ============================================================
+
+// BC 코드별 추천 코멘트 맵
+const BC_RECOMMEND_COMMENTS: Record<string, { title: string; reason: string }> = {
+  'BC-01': { title: '복부 내장지방 집중 관리', reason: '내장지방형(BC-01)은 복부 심층 지방 분해가 핵심입니다. 카복시테라피·GPL주사·슬림주사가 내장지방 분해와 대사 촉진에 직접 작용합니다.' },
+  'BC-02': { title: '복부 피하지방 집중 관리', reason: '피하지방형(BC-02)은 복부 표층 지방 분해 시술이 효과적입니다. 메조테라피·카복시·슬림주사로 국소 지방을 직접 공략하세요.' },
+  'BC-03': { title: '허리·옆구리 라인 개선', reason: '허리라인형(BC-03)은 옆구리·복부 라인 정리에 윤곽주사 계열과 카복시가 적합합니다.' },
+  'BC-04': { title: '상체 지방 집중 관리', reason: '상체비만형(BC-04)은 상반신 전체 지방 분해를 위해 슬림주사·메조테라피 조합이 권장됩니다.' },
+  'BC-05': { title: '하체·허벅지 라인 슬리밍', reason: '하체비만형(BC-05)은 허벅지·종아리 부위에 카복시·윤곽주사·바디보톡스가 효과적입니다.' },
+  'BC-06': { title: '팔뚝·어깨 라인 정리', reason: '팔뚝형(BC-06)은 승모근 보톡스 및 팔뚝 카복시·윤곽주사로 라인을 정리할 수 있습니다.' },
+  'BC-07': { title: '전신 체형 균형 관리', reason: '전신형(BC-07)은 부위별 복합 관리가 필요합니다. 메조테라피와 슬림주사 병행을 추천합니다.' },
+  'BC-08': { title: '스트레스·코르티솔 피로 회복', reason: '스트레스형(BC-08)은 코르티솔 과잉으로 피로와 피부저하가 동반됩니다. 마녀주사(신데렐라)·GPL주사가 피로 해소와 항산화에 탁월합니다.' },
+  'BC-09': { title: '호르몬·탄력 복합 개선', reason: '호르몬형(BC-09)은 피부탄력 저하와 체형변화를 동반합니다. 실리프팅·스킨부스터·리프팅레이저를 통한 복합 관리를 권장합니다.' },
+  'BC-10': { title: '피부 탄력·광채 집중 케어', reason: '탄력저하형(BC-10)은 콜라겐 재생과 수분 공급이 우선입니다. 스킨부스터·실리프팅·보톡스 조합이 효과적입니다.' },
+  'BC-11': { title: '피부결·모공 정밀 개선', reason: '피부결형(BC-11)은 모공·피부결 개선에 실펌X·보톡스·리프팅이 복합 적용됩니다.' },
+  'BC-12': { title: '피부 미백·균일 톤 관리', reason: '색소형(BC-12)은 미백·색소 개선에 토닝레이저·GV레이저·스킨부스터가 직접 작용합니다.' },
+}
+
+app.get('/api/b2b/recommend/:resultId', requireB2B(), async (c) => {
+  const db = c.env.DB as D1Database | undefined
+  if (!db) return c.json({ error: 'DB 없음' }, 500)
+  const user = c.get('user') as JwtPayload
+  const partnerCode = user?.code || ''
+  const resultId = c.req.param('resultId')
+
+  try {
+    // 1) 고객 결과지 조회 (이 파트너 소속인지 확인)
+    const result = await db.prepare(
+      "SELECT id, name, bc_code, b2b_code FROM results WHERE id = ? AND b2b_code = ?"
+    ).bind(resultId, partnerCode).first<any>()
+    if (!result) return c.json({ error: '권한 없음 또는 결과지 미존재' }, 403)
+
+    const bcCode = result.bc_code as string | null
+    if (!bcCode) return c.json({ error: 'BC코드 미설정', treatments: [] })
+
+    // 2) 해당 파트너 시술 중 bc_tags에 고객 BC코드가 포함된 것 조회
+    const programs = await db.prepare(
+      `SELECT id, program_name, price, description, tags, bc_tags
+       FROM b2b_custom_programs
+       WHERE b2b_code = ?
+         AND bc_tags LIKE ?`
+    ).bind(partnerCode, `%${bcCode}%`).all<any>()
+
+    const treatments = programs.results || []
+
+    // 3) BC코드 코멘트 생성
+    const commentInfo = BC_RECOMMEND_COMMENTS[bcCode] || {
+      title: `${bcCode} 맞춤 관리`,
+      reason: `고객의 BC코드(${bcCode})에 맞춘 시술 프로그램을 추천합니다.`
+    }
+
+    // 4) 가격 기준 정렬 (저렴한 순)
+    treatments.sort((a: any, b: any) => (a.price || 0) - (b.price || 0))
+
+    return c.json({
+      customer_name: result.name,
+      bc_code: bcCode,
+      recommend_title: commentInfo.title,
+      recommend_reason: commentInfo.reason,
+      treatments,
+      partner_code: partnerCode,
+    })
+  } catch(e) {
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
 export default app
