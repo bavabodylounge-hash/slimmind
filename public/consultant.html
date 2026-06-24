@@ -6,6 +6,7 @@
   <title>SlimMind 컨설턴트</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -2034,33 +2035,74 @@ async function onWeightCustomerSelect() {
   const totalLoss = (initWeight && latestWeight) ? (initWeight - latestWeight).toFixed(1) : null;
   const remaining = (latestWeight && targetWeight) ? (latestWeight - targetWeight).toFixed(1) : null;
 
-  // SVG 꺾은선 그래프
+  // Chart.js 꺾은선 그래프
+  const chartId = 'weightChart_' + Date.now();
   let chartHtml = '';
-  if (weights.length >= 2) {
-    const allW = [initWeight, ...weights.map(w=>w.weight)].filter(Boolean);
-    const minW = Math.min(...allW) - 1;
-    const maxW = Math.max(...allW) + 1;
-    const rangeW = maxW - minW || 1;
-    const pts = weights.map((w, i) => {
-      const x = 30 + i * (340 / Math.max(weights.length-1, 1));
-      const y = 90 - Math.round(((w.weight - minW) / rangeW) * 70);
-      return { x, y, w: w.weight, week: w.week };
-    });
-    const polyline = pts.map(p=>`${p.x},${p.y}`).join(' ');
-    const dots = pts.map(p=>`<circle cx="${p.x}" cy="${p.y}" r="5" fill="#6366F1">
-      <title>${p.week}: ${p.w}kg</title></circle>`).join('');
-    const targetY = targetWeight ? 90 - Math.round(((targetWeight - minW) / rangeW) * 70) : null;
+  if (weights.length >= 1) {
+    const labels = weights.map(w => w.week || `${weights.indexOf(w)+1}주차`);
+    const chartWeights = weights.map(w => w.weight);
     chartHtml = `
       <div style="margin-top:16px;margin-bottom:16px">
         <div style="font-size:13px;font-weight:700;margin-bottom:8px">📉 체중 변화 그래프</div>
-        <svg width="100%" viewBox="0 0 380 110" style="overflow:visible">
-          ${targetY!==null?`<line x1="20" y1="${targetY}" x2="370" y2="${targetY}" stroke="#10B981" stroke-width="1.5" stroke-dasharray="6,3"/><text x="375" y="${targetY+4}" font-size="10" fill="#10B981">목표</text>`:''}
-          <polyline points="${polyline}" fill="none" stroke="#6366F1" stroke-width="2.5" stroke-linejoin="round"/>
-          ${dots}
-          ${pts.map(p=>`<text x="${p.x}" y="${p.y-8}" font-size="10" fill="#6366F1" text-anchor="middle">${p.w}kg</text>`).join('')}
-          <line x1="20" y1="92" x2="370" y2="92" stroke="#E5E7EB" stroke-width="1"/>
-        </svg>
+        <div style="position:relative;height:220px;background:#F9FAFB;border-radius:12px;padding:12px">
+          <canvas id="${chartId}"></canvas>
+        </div>
       </div>`;
+    // 다음 틱에 Chart.js 초기화 (DOM에 추가된 뒤)
+    setTimeout(() => {
+      const ctx = document.getElementById(chartId);
+      if (!ctx || !window.Chart) return;
+      const datasets = [{
+        label: '체중 (kg)',
+        data: chartWeights,
+        borderColor: '#6366F1',
+        backgroundColor: 'rgba(99,102,241,0.08)',
+        borderWidth: 2.5,
+        pointBackgroundColor: '#6366F1',
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        tension: 0.35,
+        fill: true,
+      }];
+      if (targetWeight) {
+        datasets.push({
+          label: '목표 체중',
+          data: Array(labels.length).fill(parseFloat(targetWeight)),
+          borderColor: '#10B981',
+          borderWidth: 1.5,
+          borderDash: [6,4],
+          pointRadius: 0,
+          fill: false,
+        });
+      }
+      new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top', labels: { font: { size: 12 }, padding: 12 } },
+            tooltip: {
+              callbacks: {
+                label: ctx2 => `${ctx2.dataset.label}: ${ctx2.parsed.y}kg`
+              }
+            }
+          },
+          scales: {
+            y: {
+              title: { display: true, text: 'kg', font: { size: 11 } },
+              ticks: { callback: v => v + 'kg', font: { size: 11 } },
+              grid: { color: '#F1F5F9' }
+            },
+            x: {
+              ticks: { font: { size: 11 } },
+              grid: { display: false }
+            }
+          }
+        }
+      });
+    }, 80);
   }
 
   infoEl.innerHTML = `

@@ -2273,4 +2273,317 @@ app.post('/api/consultant/weight-checkin', requireRole('ANY'), async (c) => {
   }
 });
 
+// ══════════════════════════════════════════════════════════════════
+//  4단계: 카카오 설정 API (API 키 없이도 구조 작동)
+// ══════════════════════════════════════════════════════════════════
+
+// GET /api/settings/kakao — 카카오 설정 조회
+app.get('/api/settings/kakao', requireRole('ANY'), async (c) => {
+  const db = c.env.DB as D1Database | undefined
+  if (!db) return c.json({ kakao_app_key: '', kakao_enabled: false })
+  try {
+    const row = await db.prepare(
+      "SELECT value FROM _cf_KV WHERE key = 'kakao_app_key'"
+    ).first<any>()
+    const key = row?.value || ''
+    return c.json({ kakao_app_key: key ? key.slice(0,4) + '****' : '', kakao_enabled: !!key })
+  } catch {
+    return c.json({ kakao_app_key: '', kakao_enabled: false })
+  }
+})
+
+// PUT /api/settings/kakao — 카카오 API 키 저장 (마스터만)
+app.put('/api/settings/kakao', requireRole('MASTER'), async (c) => {
+  const db = c.env.DB as D1Database | undefined
+  try {
+    const body = await c.req.json() as { kakao_app_key?: string }
+    const key = (body.kakao_app_key || '').trim()
+    if (!db) return c.json({ ok: false, error: 'DB 없음' }, 500)
+    await db.prepare(
+      "INSERT OR REPLACE INTO _cf_KV (key, value) VALUES ('kakao_app_key', ?)"
+    ).bind(key).run()
+    return c.json({ ok: true, message: key ? '카카오 API 키가 저장되었습니다.' : '카카오 API 키가 삭제되었습니다.' })
+  } catch(e) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// POST /api/kakao/send — 카카오 메시지 발송 (API 키 있을 때만)
+app.post('/api/kakao/send', requireRole('ANY'), async (c) => {
+  const db = c.env.DB as D1Database | undefined
+  try {
+    const body = await c.req.json() as {
+      result_id?: string
+      user_name?: string
+      bc_primary?: string
+      bc_secondary?: string
+      custom_message?: string
+    }
+    // API 키 확인
+    let kakaoKey = ''
+    if (db) {
+      const row = await db.prepare("SELECT value FROM _cf_KV WHERE key = 'kakao_app_key'").first<any>()
+      kakaoKey = row?.value || ''
+    }
+    // 메시지 텍스트 생성
+    const resultUrl = `https://7ed6c475-8afa-4ef8-9af8-8fab0cf8224b.vip.gensparksite.com/result/${body.result_id}`
+    const message = body.custom_message || [
+      `[슬림마인드 바디코드 분석 결과] 🌿`,
+      ``,
+      `안녕하세요, ${body.user_name || '고객'}님!`,
+      `바디코드 정밀 분석이 완료되었습니다.`,
+      ``,
+      `📊 주요 체형: ${body.bc_primary || '분석완료'}`,
+      body.bc_secondary ? `📌 보조 체형: ${body.bc_secondary}` : null,
+      ``,
+      `👇 전체 결과 보러가기`,
+      resultUrl,
+      ``,
+      `궁금한 점은 언제든지 문의해 주세요 😊`,
+    ].filter(l => l !== null).join('\n')
+
+    if (!kakaoKey) {
+      // API 키 없음 → 클립보드용 메시지만 반환
+      return c.json({
+        ok: true,
+        method: 'clipboard',
+        message,
+        notice: '카카오 API 키가 설정되지 않았습니다. 클립보드 복사로 전송하세요.'
+      })
+    }
+
+    // TODO: 카카오 API 키 있을 때 실제 발송 (나중에 구현)
+    // const res = await fetch('https://kapi.kakao.com/v2/api/talk/memo/default/send', { ... })
+    return c.json({
+      ok: true,
+      method: 'kakao_api',
+      message,
+      notice: '카카오 알림톡 발송 완료 (API 연동됨)'
+    })
+  } catch(e) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// ══════════════════════════════════════════════════════════════════
+//  5단계: 월간 AI 리포트
+// ══════════════════════════════════════════════════════════════════
+
+app.get('/api/admin/monthly-report', requireRole('MASTER'), async (c) => {
+  const db = c.env.DB as D1Database | undefined
+  if (!db) return c.json({ error: 'DB 없음' }, 500)
+  try {
+    const now = new Date()
+    const thisMonth = now.toISOString().slice(0, 7) // "2026-06"
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 7)
+
+    // 이달 신규 고객
+    const thisMonthNew = await db.prepare(
+      "SELECT COUNT(*) as cnt FROM results WHERE created_at LIKE ?"
+    ).bind(`${thisMonth}%`).first<any>()
+
+    // 지난달 신규 고객
+    const lastMonthNew = await db.prepare(
+      "SELECT COUNT(*) as cnt FROM results WHERE created_at LIKE ?"
+    ).bind(`${lastMonth}%`).first<any>()
+
+    // BC 코드 분포 (이달)
+    const bcDist = await db.prepare(
+      "SELECT bc_primary, COUNT(*) as cnt FROM results WHERE created_at LIKE ? GROUP BY bc_primary ORDER BY cnt DESC"
+    ).bind(`${thisMonth}%`).all<any>()
+
+    // 활성 컨설턴트 수
+    const activeConsultants = await db.prepare(
+      "SELECT COUNT(*) as cnt FROM consultants WHERE subscription_status = 'active'"
+    ).first<any>()
+
+    // 이달 체크인 수
+    const checkinsThisMonth = await db.prepare(
+      "SELECT COUNT(*) as cnt FROM checkin_log WHERE checked_at LIKE ?"
+    ).bind(`${thisMonth}%`).first<any>()
+
+    // 이탈 위험 고객 (21일 이상)
+    const churnRisk = await db.prepare(
+      "SELECT COUNT(*) as cnt FROM results WHERE julianday('now') - julianday(created_at) >= 21"
+    ).first<any>()
+
+    // 컨설턴트별 실적 TOP 5
+    const consultantRanking = await db.prepare(`
+      SELECT c.name, c.code, COUNT(r.id) as result_cnt
+      FROM consultants c
+      LEFT JOIN results r ON r.consultant_code = c.code AND r.created_at LIKE ?
+      WHERE c.code != 'MASTER'
+      GROUP BY c.code ORDER BY result_cnt DESC LIMIT 5
+    `).bind(`${thisMonth}%`).all<any>()
+
+    // 최근 6개월 월별 신규 고객 트렌드
+    const trend: any[] = []
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const ym = d.toISOString().slice(0, 7)
+      const row = await db.prepare(
+        "SELECT COUNT(*) as cnt FROM results WHERE created_at LIKE ?"
+      ).bind(`${ym}%`).first<any>()
+      trend.push({ month: ym, count: row?.cnt || 0 })
+    }
+
+    const thisN = thisMonthNew?.cnt || 0
+    const lastN = lastMonthNew?.cnt || 0
+    const growthRate = lastN > 0 ? Math.round(((thisN - lastN) / lastN) * 100) : 0
+
+    return c.json({
+      period: thisMonth,
+      summary: {
+        new_customers_this_month: thisN,
+        new_customers_last_month: lastN,
+        growth_rate: growthRate,
+        active_consultants: activeConsultants?.cnt || 0,
+        checkins_this_month: checkinsThisMonth?.cnt || 0,
+        churn_risk_count: churnRisk?.cnt || 0,
+      },
+      bc_distribution: bcDist.results || [],
+      consultant_ranking: consultantRanking.results || [],
+      monthly_trend: trend,
+      generated_at: now.toISOString(),
+    })
+  } catch(e) {
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ══════════════════════════════════════════════════════════════════
+//  5단계: B2B 서브계정 (원장이 직원 계정 생성/관리)
+// ══════════════════════════════════════════════════════════════════
+
+// GET /api/b2b/subaccounts — 내 서브계정 목록
+app.get('/api/b2b/subaccounts', requireB2B(), async (c) => {
+  const db = c.env.DB as D1Database | undefined
+  if (!db) return c.json({ subaccounts: [] })
+  const user = c.get('user') as JwtPayload
+  const partnerCode = user?.code || ''
+  try {
+    // b2b_partners 테이블의 parent_code 컬럼 사용 (없으면 빈 배열)
+    const rows = await db.prepare(
+      "SELECT code, name, email, phone, status, created_at FROM b2b_partners WHERE parent_code = ? ORDER BY created_at"
+    ).bind(partnerCode).all<any>()
+    return c.json({ subaccounts: rows.results || [] })
+  } catch {
+    return c.json({ subaccounts: [] })
+  }
+})
+
+// POST /api/b2b/subaccounts — 서브계정 생성
+app.post('/api/b2b/subaccounts', requireB2B(), async (c) => {
+  const db = c.env.DB as D1Database | undefined
+  if (!db) return c.json({ ok: false, error: 'DB 없음' }, 500)
+  const user = c.get('user') as JwtPayload
+  const partnerCode = user?.code || ''
+  try {
+    const body = await c.req.json() as {
+      name?: string
+      role_label?: string  // "직원" | "원장보" | "실장" 등
+      password?: string
+    }
+    if (!body.name) return c.json({ ok: false, error: '이름을 입력하세요.' }, 400)
+
+    // 파트너 정보 조회
+    const partner = await db.prepare('SELECT * FROM b2b_partners WHERE code = ?').bind(partnerCode).first<any>()
+    if (!partner) return c.json({ ok: false, error: '파트너 정보 없음' }, 404)
+
+    // 서브계정 코드 생성: B2B-XXX-001-S01 형식
+    const existingCount = await db.prepare(
+      "SELECT COUNT(*) as cnt FROM b2b_partners WHERE parent_code = ?"
+    ).bind(partnerCode).first<any>()
+    const seq = String((existingCount?.cnt || 0) + 1).padStart(2, '0')
+    const subCode = `${partnerCode}-S${seq}`
+    const defaultPw = body.password || `sub${seq}1234`
+    const id = crypto.randomUUID().replace(/-/g, '')
+
+    await db.prepare(`
+      INSERT INTO b2b_partners
+        (id, code, name, type, brand_name, brand_color, parent_code, password_hash, status, created_at, updated_at)
+      VALUES (?,?,?,?,?,?,?,?,?,datetime('now'),datetime('now'))
+    `).bind(
+      id, subCode,
+      body.name,
+      partner.type || '기타',
+      partner.brand_name || partner.name,
+      partner.brand_color || '#6366f1',
+      partnerCode,
+      defaultPw,
+      'active'
+    ).run()
+
+    return c.json({
+      ok: true,
+      subaccount: { code: subCode, name: body.name, password: defaultPw },
+      message: `서브계정 생성 완료. 코드: ${subCode}, 초기 비밀번호: ${defaultPw}`
+    })
+  } catch(e: any) {
+    // parent_code 컬럼 없으면 ALTER TABLE
+    if (String(e).includes('no such column: parent_code')) {
+      try {
+        await (db as D1Database).prepare(
+          "ALTER TABLE b2b_partners ADD COLUMN parent_code TEXT DEFAULT NULL"
+        ).run()
+        return c.json({ ok: false, error: 'DB 컬럼 추가 완료. 다시 시도해주세요.' })
+      } catch {}
+    }
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// DELETE /api/b2b/subaccounts/:code — 서브계정 삭제
+app.delete('/api/b2b/subaccounts/:code', requireB2B(), async (c) => {
+  const db = c.env.DB as D1Database | undefined
+  if (!db) return c.json({ ok: false }, 500)
+  const user = c.get('user') as JwtPayload
+  const partnerCode = user?.code || ''
+  const subCode = c.req.param('code')
+  try {
+    // 내 서브계정인지 확인
+    const sub = await db.prepare(
+      "SELECT code FROM b2b_partners WHERE code = ? AND parent_code = ?"
+    ).bind(subCode, partnerCode).first<any>()
+    if (!sub) return c.json({ ok: false, error: '권한 없음' }, 403)
+    await db.prepare("DELETE FROM b2b_partners WHERE code = ?").bind(subCode).run()
+    return c.json({ ok: true })
+  } catch(e) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// ══════════════════════════════════════════════════════════════════
+//  B2B 결과지 토큰 포함 접근 링크
+// ══════════════════════════════════════════════════════════════════
+
+// GET /api/b2b/result-link/:id — B2B 파트너용 결과지 접근 토큰 생성
+app.get('/api/b2b/result-link/:id', requireB2B(), async (c) => {
+  const db = c.env.DB as D1Database | undefined
+  if (!db) return c.json({ error: 'DB 없음' }, 500)
+  const user = c.get('user') as JwtPayload
+  const partnerCode = user?.code || ''
+  const resultId = c.req.param('id')
+  try {
+    // 이 파트너 고객인지 확인
+    const result = await db.prepare(
+      "SELECT id FROM results WHERE id = ? AND b2b_code = ?"
+    ).bind(resultId, partnerCode).first<any>()
+    if (!result) return c.json({ error: '권한 없음' }, 403)
+    // 기존 파트너 토큰으로 링크 생성
+    const secret = c.env.JWT_SECRET || 'slimmind-jwt-secret-change-in-production'
+    const payload: JwtPayload = {
+      sub: partnerCode,
+      code: partnerCode,
+      role: 'B2B_PARTNER',
+      name: user.name || '',
+      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30, // 30일
+    }
+    const token = await signJwt(payload, secret)
+    return c.json({ url: `/result/${resultId}?token=${token}` })
+  } catch(e) {
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
 export default app

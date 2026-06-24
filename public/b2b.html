@@ -198,6 +198,7 @@
         <div class="nav-item" data-page="qr"><i class="fas fa-qrcode"></i> QR 코드 출력</div>
         <div class="nav-item" data-page="partner-view"><i class="fas fa-star"></i> 파트너 추천 뷰</div>
         <div class="nav-item" data-page="bc-library"><i class="fas fa-dna"></i> 바디코드 도감</div>
+        <div class="nav-item" data-page="subaccounts"><i class="fas fa-user-friends"></i> 직원 계정 관리</div>
         <div class="nav-item" data-page="profile"><i class="fas fa-building"></i> 업체 정보</div>
         <div class="nav-item" data-page="guide"><i class="fas fa-book-open"></i> 이용 안내</div>
       </nav>
@@ -353,6 +354,7 @@ function navigateTo(page) {
     qr: 'QR 코드 출력',
     'partner-view': '파트너 추천 뷰',
     'bc-library': '바디코드 도감',
+    subaccounts: '직원 계정 관리',
     profile: '업체 정보',
     guide: '이용 안내',
   };
@@ -365,6 +367,7 @@ function navigateTo(page) {
   else if (page === 'qr') loadQR();
   else if (page === 'partner-view') loadPartnerView();
   else if (page === 'bc-library') loadB2bBcLibrary();
+  else if (page === 'subaccounts') loadSubaccounts();
   else if (page === 'profile') loadProfile();
   else if (page === 'guide') loadGuideB2B();
 }
@@ -642,17 +645,20 @@ async function loadCustomers(search = '') {
   if (!data) return;
 
   const rows = (data.results || []).map(r => `
-    <tr style="cursor:pointer" onclick="window.open('/result/${r.id}', '_blank')">
+    <tr>
       <td><code style="font-size:11px;color:var(--brand)">${r.id.slice(0,14)}…</code></td>
       <td style="font-weight:600">${r.user_name || '익명'}</td>
       <td>
         <span class="badge badge-purple">${r.bc_primary || '-'}</span>
       </td>
       <td style="font-size:12px;color:var(--muted)">${fmtDate(r.created_at)}</td>
-      <td>
-        <a href="/result/${r.id}" target="_blank" class="btn btn-primary btn-sm">
+      <td style="white-space:nowrap">
+        <button class="btn btn-primary btn-sm" onclick="openB2bResult('${r.id}')" style="margin-right:4px">
           <i class="fas fa-external-link-alt"></i> 결과지
-        </a>
+        </button>
+        <button class="btn btn-ghost btn-sm" onclick="copyB2bResultLink('${r.id}')" title="링크 복사">
+          <i class="fas fa-link"></i>
+        </button>
       </td>
     </tr>
   `).join('');
@@ -679,6 +685,31 @@ async function loadCustomers(search = '') {
       </div>
     </div>
   `;
+}
+
+// ─── 결과지 토큰 링크 (B2B 전용) ────────────
+async function openB2bResult(resultId) {
+  try {
+    const res = await api('GET', `/b2b/result-link/${resultId}`);
+    if (res?.url) {
+      window.open(res.url, '_blank');
+    } else {
+      // 폴백: 토큰 없이 열기
+      window.open(`/result/${resultId}`, '_blank');
+    }
+  } catch(e) {
+    window.open(`/result/${resultId}`, '_blank');
+  }
+}
+
+async function copyB2bResultLink(resultId) {
+  try {
+    const res = await api('GET', `/b2b/result-link/${resultId}`);
+    const url = res?.url || `${location.origin}/result/${resultId}`;
+    navigator.clipboard.writeText(url).then(() => toast('📋 결과지 링크가 복사되었습니다.', 'success'));
+  } catch(e) {
+    navigator.clipboard.writeText(`${location.origin}/result/${resultId}`).then(() => toast('📋 링크 복사 완료!', 'success'));
+  }
 }
 
 // ─── QR 코드 출력 ────────────────────────────
@@ -1125,6 +1156,128 @@ function renderB2bPartnerRxPanel(data, color) {
       </div>` : ''}
     </div>
   `;
+}
+
+// ═══════════════════════════════════════
+//  5단계: B2B 서브계정(직원) 관리
+// ═══════════════════════════════════════
+async function loadSubaccounts() {
+  const data = await api('GET', '/b2b/subaccounts');
+  const subs = data?.subaccounts || [];
+  const color = BRAND.brand_color || '#6366f1';
+
+  document.getElementById('page-body').innerHTML = `
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-title" style="color:${color}"><i class="fas fa-user-friends"></i> 직원 계정 관리</div>
+      <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:14px 18px;margin-bottom:20px;font-size:13px;color:#1E40AF;line-height:1.7">
+        💡 직원별 서브계정을 생성하면 직원이 독립적으로 SlimMind에 로그인할 수 있습니다.<br>
+        서브계정의 결과지는 모두 <b>${BRAND.brand_name || '파트너'}</b> 이름으로 관리됩니다.
+      </div>
+
+      <!-- 신규 생성 폼 -->
+      <div style="background:#F8FAFC;border-radius:10px;padding:18px;margin-bottom:20px">
+        <h4 style="font-size:14px;font-weight:700;margin-bottom:14px">+ 새 직원 계정 생성</h4>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end">
+          <div>
+            <label style="display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px">직원 이름 *</label>
+            <input type="text" id="sub-name" placeholder="홍길동"
+              style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit;outline:none">
+          </div>
+          <div>
+            <label style="display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px">직함/역할</label>
+            <input type="text" id="sub-role" placeholder="원장, 상담사, 직원..."
+              style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit;outline:none">
+          </div>
+          <div>
+            <label style="display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px">비밀번호 *</label>
+            <input type="password" id="sub-pw" placeholder="초기 비밀번호"
+              style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit;outline:none">
+          </div>
+          <button class="btn" style="background:${color};color:#fff;white-space:nowrap;height:38px" onclick="createSubaccount()">
+            <i class="fas fa-plus"></i> 생성
+          </button>
+        </div>
+      </div>
+
+      <!-- 서브계정 목록 -->
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>계정 코드</th>
+              <th>직원 이름</th>
+              <th>역할</th>
+              <th style="text-align:center">결과지</th>
+              <th style="text-align:center">상태</th>
+              <th style="text-align:right">관리</th>
+            </tr>
+          </thead>
+          <tbody id="sub-table-body">
+            ${subs.length === 0 ? `
+              <tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted)">
+                <i class="fas fa-user-plus" style="font-size:28px;display:block;margin-bottom:8px;opacity:.4"></i>
+                직원 계정이 없습니다. 위에서 새 계정을 생성하세요.
+              </td></tr>
+            ` : subs.map(s => `
+              <tr>
+                <td><code style="color:${color};font-weight:700">${s.code}</code></td>
+                <td><b>${s.name || '-'}</b></td>
+                <td><span style="font-size:12px;color:var(--muted)">${s.role_label || '직원'}</span></td>
+                <td style="text-align:center;font-weight:700">${s.result_count || 0}건</td>
+                <td style="text-align:center">
+                  <span class="badge ${s.status === 'active' ? 'badge-green' : 'badge-gray'}">${s.status === 'active' ? '활성' : '정지'}</span>
+                </td>
+                <td style="text-align:right">
+                  <button class="btn btn-ghost btn-sm" onclick="copySubLoginInfo('${s.code}','${s.name||''}')" title="로그인 정보 복사" style="margin-right:4px">
+                    <i class="fas fa-copy"></i> 정보복사
+                  </button>
+                  <button class="btn btn-danger btn-sm" onclick="deleteSubaccount('${s.code}','${s.name||''}')" title="계정 삭제">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <div style="margin-top:16px;font-size:12px;color:var(--muted)">
+        총 <b>${subs.length}</b>개 직원 계정 · 서브계정은 B2B 파트너 로그인 페이지에서 로그인할 수 있습니다.
+      </div>
+    </div>
+  `;
+}
+
+async function createSubaccount() {
+  const name = document.getElementById('sub-name').value.trim();
+  const roleLabel = document.getElementById('sub-role').value.trim();
+  const password = document.getElementById('sub-pw').value.trim();
+  if (!name) { toast('직원 이름을 입력하세요.', 'error'); return; }
+  if (!password || password.length < 4) { toast('비밀번호는 4자 이상이어야 합니다.', 'error'); return; }
+
+  const res = await api('POST', '/b2b/subaccounts', { name, role_label: roleLabel, password });
+  if (res?.success) {
+    toast(`✅ ${res.code} 계정이 생성되었습니다.`, 'success');
+    loadSubaccounts();
+  } else {
+    toast('생성 실패: ' + (res?.error || '오류'), 'error');
+  }
+}
+
+async function deleteSubaccount(code, name) {
+  if (!confirm(`"${name}" (${code}) 계정을 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.`)) return;
+  const res = await api('DELETE', `/b2b/subaccounts/${code}`);
+  if (res?.success) {
+    toast(`🗑️ ${code} 계정이 삭제되었습니다.`, 'success');
+    loadSubaccounts();
+  } else {
+    toast('삭제 실패: ' + (res?.error || '오류'), 'error');
+  }
+}
+
+function copySubLoginInfo(code, name) {
+  const text = `[SlimMind B2B 로그인 정보]\n이름: ${name}\n계정 코드: ${code}\n로그인: ${location.origin}/b2b`;
+  navigator.clipboard.writeText(text).then(() => toast('📋 로그인 정보가 복사되었습니다.', 'success'));
 }
 
 // ─── 업체 정보 ───────────────────────────────
