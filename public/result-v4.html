@@ -824,7 +824,8 @@ body{background:var(--paper);color:var(--ink);min-height:100vh;}
 /* P5 시뮬레이터 실루엣 래퍼 */
 .p5-silhouette-wrap{
   display:flex;justify-content:center;align-items:flex-end;gap:32px;
-  padding:24px 0 8px;
+  padding:24px 16px 16px;
+  background:var(--dark);border-radius:16px;margin-bottom:8px;
 }
 .p5-silhouette-col{text-align:center;}
 .p5-silhouette-label{
@@ -834,9 +835,10 @@ body{background:var(--paper);color:var(--ink);min-height:100vh;}
 .p5-silhouette-label.after{color:rgba(255,255,255,.85);}
 .p5-sil-svg{display:block;margin:0 auto;}
 .p5-silhouette-val{
-  font-size:20px;font-weight:900;color:#fff;margin-top:10px;
+  font-size:20px;font-weight:900;color:#1a1a17;margin-top:10px;
+  background:rgba(0,0,0,.06);padding:4px 12px;border-radius:8px;
 }
-.p5-silhouette-val.after{color:#fff;}
+.p5-silhouette-val.after{color:#3a5a20;}
 .p5-sil-arrow{
   font-size:28px;color:rgba(255,255,255,.55);
   align-self:center;padding-bottom:24px;
@@ -1444,6 +1446,101 @@ body{background:var(--paper);color:var(--ink);min-height:100vh;}
 .p7-age-num.counting{animation:p7-countup .5s cubic-bezier(.2,.8,.2,1) both;}
 
 /* ═══ /P7 ═══ */
+
+/* ══════════════════════════════════════════════
+   📱 모바일 반응형 전역 개선 (iPhong 390px 기준)
+   ══════════════════════════════════════════════ */
+*{-webkit-text-size-adjust:100%;text-size-adjust:100%;}
+body{-webkit-tap-highlight-color:transparent;}
+
+/* 네비게이션 탭 — 7개일 때 스크롤 가능하게 */
+.nav-bar{
+  overflow-x:auto;overflow-y:hidden;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:none;white-space:nowrap;
+  display:flex;flex-wrap:nowrap;
+}
+.nav-bar::-webkit-scrollbar{display:none;}
+.nav-tab{flex-shrink:0;}
+
+/* 페이지 공통 — 모바일 padding */
+.page{padding-left:16px;padding-right:16px;}
+
+/* 카드 모바일 최적화 */
+@media(max-width:430px){
+  .card{padding:18px 16px;}
+  .section-title{font-size:15px;}
+  .p1-bc-hero{padding:24px 16px 20px;}
+  .p1-bc-code{font-size:clamp(52px,16vw,72px);}
+  .metric-card-hero{padding:20px 16px;}
+  .metric-hero-value{font-size:clamp(52px,14vw,68px);}
+  .metric-sub-grid{gap:8px;}
+  .metric-card{padding:14px 12px;}
+  .metric-value{font-size:24px;}
+
+  /* P2 진단축 그리드 */
+  .axis-grid{grid-template-columns:repeat(2,1fr);gap:8px;}
+
+  /* P3 기질 */
+  .ohaeng-block{padding:16px;}
+
+  /* P5 시뮬레이터 */
+  .sim-hero-block{padding:20px 14px;}
+  .p5-silhouette-wrap{gap:20px;padding:18px 12px 14px;}
+
+  /* P6 로드맵 */
+  .p6-seg-btn{font-size:10px;padding:6px 10px;}
+  .p6-week-panel{padding:16px 14px;}
+
+  /* 체크인 모달 */
+  .checkin-modal{border-radius:20px 20px 0 0;}
+  .checkin-score-row{grid-template-columns:1fr 1fr;gap:10px;}
+
+  /* P7 */
+  .p7-opening-title{font-size:22px;}
+  .p7-share-btns{flex-direction:column;gap:10px;}
+  .p7-btn-kakao,.p7-btn-insta{width:100%;}
+  .p7-prev-stats{grid-template-columns:repeat(3,1fr);}
+  .p7-prev-stat-val{font-size:16px;}
+
+  /* 네비바 아이콘·텍스트 크기 */
+  .nav-icon{font-size:16px;}
+  .nav-text{font-size:9px;}
+  .nav-tab{padding:6px 8px 4px;}
+
+  /* 가족코드 */
+  .fc-code-val{font-size:20px;letter-spacing:3px;}
+  .fc-tabs{flex-direction:column;}
+
+  /* 공유 모달 */
+  .sm-modal-inner{border-radius:20px 20px 0 0;}
+  .sm-btn-row{flex-direction:column;gap:8px;}
+}
+
+/* 텍스트 overflow 방지 — 전역 */
+p, div, span, h1, h2, h3, h4{
+  word-break:keep-all;overflow-wrap:break-word;
+}
+
+/* P3 잔혹사 — 텍스트 넘침 방지 */
+.p3-cruelty-item, .p4-cruelty-item{
+  word-break:keep-all;
+}
+
+/* P6 week panel 글자 */
+.p6-week-panel h3{font-size:clamp(16px,4.5vw,22px);}
+.p6-week-panel p{font-size:clamp(13px,3.5vw,15px);}
+
+/* 이미지 공유 미리보기 스크롤 */
+#sharePreview img{
+  max-width:100%;height:auto;border-radius:12px;
+}
+
+/* 도움말 팝업 하단 시트 */
+#_help-modal-overlay > div{
+  box-sizing:border-box;
+  padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 24px);
+}
 </style>
 </head>
 <body>
@@ -1517,7 +1614,10 @@ body{background:var(--paper);color:var(--ink);min-height:100vh;}
   <!-- ===== 기능 8: 가족 코드 비교 ===== -->
   <div id="familyCodeSection" class="fade-up" style="transition-delay:.32s">
     <div class="fc-label">FAMILY CODE · 가족 단체 비교</div>
-    <div class="fc-title">💜 가족끼리 체형 코드 비교</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+      <div class="fc-title" style="margin-bottom:0;">💜 가족끼리 체형 코드 비교</div>
+      <button onclick="showFcHelp()" style="background:rgba(255,255,255,.12);border:none;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:13px;font-weight:900;color:rgba(245,236,224,.7);display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0;">?</button>
+    </div>
     <div class="fc-sub">코드를 공유하면 가족의 바디코드를 한눈에 비교할 수 있어요.<br>비만 원인이 같은 가족을 찾아보세요.</div>
 
     <!-- 내 코드 표시 (JS가 생성 후 채움) -->
@@ -1934,7 +2034,10 @@ body{background:var(--paper);color:var(--ink);min-height:100vh;}
 <div class="checkin-modal-overlay" id="checkinModalOverlay" onclick="if(event.target===this)closeCheckin()">
   <div class="checkin-modal">
     <div class="checkin-modal-hd">
-      <div class="checkin-modal-title" id="checkin-modal-title">📝 주차 체크인</div>
+      <div style="display:flex;align-items:center;gap:8px;flex:1;">
+        <div class="checkin-modal-title" id="checkin-modal-title">📝 주차 체크인</div>
+        <button onclick="showCheckinHelp()" style="background:rgba(90,110,58,.15);border:1px solid rgba(90,110,58,.3);border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:13px;font-weight:900;color:#5a6e3a;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0;">?</button>
+      </div>
       <button class="checkin-modal-close" onclick="closeCheckin()">✕</button>
     </div>
     <div class="checkin-score-row">
@@ -2322,22 +2425,43 @@ async function shareGenImage() {
 function shareKakao() {
   const d = _shareData || {};
   const url = window.location.href;
-  const text = `[SlimMind] 나의 바디코드는 ${d.bcCode || ''}!\n${d.nickname ? '"'+d.nickname+'"' : ''}\n내 체형 원인을 AI가 분석했어요. 당신의 코드는?`;
-  // Kakao SDK 없음 → 카카오톡 URL 스킴 or 링크 공유로 폴백
-  const kakaoShareUrl = `https://sharer.kakao.com/talk/friends/picker/link?app_key=none&link_ver=4.0&template_id=none`;
-  // 실제로는 Web Share API로 폴백
+  const nick = d.nickname || d.bcCode || '바디코드';
+  const name = d.userName || '나';
+  const text = `🔬 ${name}님의 바디코드가 밝혀졌어요!\n\n체형 코드: ${d.bcCode || ''}\n"${nick}"\n\n다이어트가 반복 실패한 진짜 이유,\n드디어 찾았어요 😱\n\n혹시 너도 같은 코드?? 👇`;
+  // Web Share API 우선 (iOS Safari, Android Chrome)
   if (navigator.share) {
-    navigator.share({ title: `내 바디코드: ${d.bcCode}`, text, url })
-      .catch(() => {});
+    navigator.share({
+      title: `${name}님의 바디코드: ${nick}`,
+      text,
+      url
+    }).catch(() => _kakaoFallback(text, url));
   } else {
-    // 카카오톡 앱 딥링크 (모바일)
-    const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
-    if (isMobile) {
-      window.location.href = `kakaolink://send?msg=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
-      setTimeout(() => shareCopyLink(), 800); // 앱 없으면 링크 복사 폴백
-    } else {
-      shareCopyLink();
-    }
+    _kakaoFallback(text, url);
+  }
+}
+
+function _kakaoFallback(text, url) {
+  const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
+  if (isMobile) {
+    // 카카오톡 딥링크 시도
+    const kakaoUrl = `kakaolink://send?msg=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+    window.location.href = kakaoUrl;
+    setTimeout(() => _copyAndToast(url, '📋 링크가 복사됐어요!\n카카오톡에 직접 붙여넣기 해보세요 💬'), 800);
+  } else {
+    _copyAndToast(url, '📋 링크 복사 완료!\n카카오톡에 붙여넣기 해보세요 💬');
+  }
+}
+
+function _copyAndToast(url, msg) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(() => _showToast(msg)).catch(() => {});
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = url; ta.style.cssText = 'position:fixed;opacity:0;';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    _showToast(msg);
   }
 }
 
@@ -2869,34 +2993,58 @@ function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nic
   // 4대 지표 — 히어로(대사 효율 나이) + 보조 3개
   const mGrid = document.getElementById('p1-metrics');
 
+  // axisScores 합계 → 0이면 "설문 응답 없음" 안내
+  const axisTotal = Object.values(axisScores || {}).reduce((s, v) => s + (Number(v)||0), 0);
+  const metricsEmpty = axisTotal === 0;
+
   // 히어로 카드: 대사 효율 나이
   const heroDiv = document.createElement('div');
   heroDiv.className = 'metric-card-hero';
-  heroDiv.innerHTML = `
-    <div class="metric-hero-eyebrow">대사 효율 나이</div>
-    <div>
-      <span class="metric-hero-value">${metrics.metaAge}</span>
-      <span class="metric-hero-unit">세</span>
-    </div>
-    <div class="metric-hero-label">⚠️ 지금 당신 몸이 인식하는 대사 나이</div>
-    <div class="metric-hero-sub">이 수치가 지금 당신 신체의 진짜 상태입니다</div>`;
+  if (metricsEmpty) {
+    heroDiv.innerHTML = `
+      <div class="metric-hero-eyebrow">대사 효율 나이</div>
+      <div style="padding:12px 0;">
+        <span style="font-size:15px;color:rgba(255,255,255,.5);line-height:1.7;">
+          📋 설문 응답 데이터를 기반으로 계산됩니다.<br>
+          설문을 완료하면 정확한 수치가 표시됩니다.
+        </span>
+      </div>
+      <div class="metric-hero-label">⚠️ 지금 당신 몸이 인식하는 대사 나이</div>`;
+  } else {
+    heroDiv.innerHTML = `
+      <div class="metric-hero-eyebrow">대사 효율 나이</div>
+      <div>
+        <span class="metric-hero-value">${metrics.metaAge}</span>
+        <span class="metric-hero-unit">세</span>
+      </div>
+      <div class="metric-hero-label">⚠️ 지금 당신 몸이 인식하는 대사 나이</div>
+      <div class="metric-hero-sub">이 수치가 지금 당신 신체의 진짜 상태입니다</div>`;
+  }
   mGrid.appendChild(heroDiv);
 
   // 보조 3개 그리드
   const subGrid = document.createElement('div');
   subGrid.className = 'metric-sub-grid';
   const subItems = [
-    { label:'복부 위험도', val: metrics.metaBelly,  unit:'%' },
-    { label:'호르몬 부하', val: metrics.metaHormone,unit:'%' },
-    { label:'체형 불균형', val: metrics.metaBody,   unit:'%' },
+    { label:'복부 위험도', val: metricsEmpty ? '—' : metrics.metaBelly,  unit: metricsEmpty ? '' : '%' },
+    { label:'호르몬 부하', val: metricsEmpty ? '—' : metrics.metaHormone,unit: metricsEmpty ? '' : '%' },
+    { label:'체형 불균형', val: metricsEmpty ? '—' : metrics.metaBody,   unit: metricsEmpty ? '' : '%' },
   ];
   subItems.forEach(m => {
     const d = document.createElement('div');
     d.className = 'metric-card';
-    d.innerHTML = `<div class="metric-label">${m.label}</div><div class="metric-value">${m.val}<span class="metric-unit">${m.unit}</span></div>`;
+    const valColor = metricsEmpty ? 'color:var(--muted)' : '';
+    d.innerHTML = `<div class="metric-label">${m.label}</div><div class="metric-value" style="${valColor}">${m.val}<span class="metric-unit">${m.unit}</span></div>`;
     subGrid.appendChild(d);
   });
   mGrid.appendChild(subGrid);
+
+  if (metricsEmpty) {
+    const notice = document.createElement('div');
+    notice.style.cssText = 'font-size:11px;color:var(--muted);text-align:center;margin-top:8px;padding:8px;background:rgba(0,0,0,.03);border-radius:8px;';
+    notice.textContent = '※ 설문 응답 데이터가 있는 경우 정확한 수치가 계산됩니다';
+    mGrid.appendChild(notice);
+  }
 
   // 감성 서사
   document.getElementById('p1-story').innerHTML =
@@ -2941,21 +3089,37 @@ function renderP2(userName, bcCode, firstDomino, axisScores, sorted) {
     모든 문제를 한 번에 해결하려는 다이어트는 효과가 크게 제한될 수 있습니다. 우리 몸은 유기적으로 연결되어 있기 때문입니다.`;
 
   // 1순위 축 강조
+  const axisTotal2 = Object.values(axisScores || {}).reduce((s, v) => s + (Number(v)||0), 0);
   const topAxisEl = AXIS_11.find(a => axisScores[a.axisRef] === Math.max(...AXIS_11.map(x=>axisScores[x.axisRef]||0))) || AXIS_11[0];
   const topScore = axisScores[topAxisEl.axisRef] || 0;
   const topCard = document.getElementById('p2-top-axis');
-  topCard.innerHTML = `
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
-      <span style="font-size:28px;">${topAxisEl.icon}</span>
-      <div>
-        <div style="font-size:11px;color:var(--mint-d);font-weight:700;margin-bottom:2px;">1순위 진단축</div>
-        <div style="font-size:18px;font-weight:900;color:var(--navy);">${topAxisEl.label}</div>
+  if (axisTotal2 === 0) {
+    topCard.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+        <span style="font-size:28px;">${topAxisEl.icon}</span>
+        <div>
+          <div style="font-size:11px;color:var(--mint-d);font-weight:700;margin-bottom:2px;">1순위 진단축</div>
+          <div style="font-size:16px;font-weight:900;color:var(--navy);">${topAxisEl.label}</div>
+        </div>
+        <div style="margin-left:auto;font-size:13px;color:var(--muted);text-align:right;">설문 완료 후<br>정확히 계산됩니다</div>
       </div>
-      <div style="margin-left:auto;font-size:32px;font-weight:900;color:var(--mint-d);">${topScore}<span style="font-size:14px;color:var(--sub);">/100</span></div>
-    </div>
-    <div style="height:10px;background:rgba(62,184,160,.15);border-radius:5px;overflow:hidden;">
-      <div style="width:${topScore}%;height:100%;background:var(--mint);border-radius:5px;transition:width 1.2s ease;" class="top-bar-fill" data-score="${topScore}"></div>
-    </div>`;
+      <div style="font-size:12px;color:var(--muted);background:rgba(0,0,0,.03);border-radius:8px;padding:10px;text-align:center;">
+        📋 설문 응답 기반 분석 결과입니다. 설문을 완료하면 정확한 진단 점수가 표시됩니다.
+      </div>`;
+  } else {
+    topCard.innerHTML = `
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+        <span style="font-size:28px;">${topAxisEl.icon}</span>
+        <div>
+          <div style="font-size:11px;color:var(--mint-d);font-weight:700;margin-bottom:2px;">1순위 진단축</div>
+          <div style="font-size:18px;font-weight:900;color:var(--navy);">${topAxisEl.label}</div>
+        </div>
+        <div style="margin-left:auto;font-size:32px;font-weight:900;color:var(--mint-d);">${topScore}<span style="font-size:14px;color:var(--sub);">/100</span></div>
+      </div>
+      <div style="height:10px;background:rgba(62,184,160,.15);border-radius:5px;overflow:hidden;">
+        <div style="width:${topScore}%;height:100%;background:var(--mint);border-radius:5px;transition:width 1.2s ease;" class="top-bar-fill" data-score="${topScore}"></div>
+      </div>`;
+  }
 
   // 전체 11축 미니 그리드
   const grid = document.getElementById('p2-axis-grid');
@@ -3569,6 +3733,9 @@ function p6SwitchWeek(weekNum) {
   const n = Math.max(1, Math.min(total, weekNum));
   _p6CurWeek = n;
 
+  // 주차 전환 시 페이지 최상단으로 스크롤
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
   // translateX — 패널 너비 = 100% / total
   const track = document.getElementById('p6-swipe-track');
   if (track) {
@@ -3708,8 +3875,14 @@ async function submitCheckin() {
     const json = await res.json();
     if (json.success) {
       closeCheckin();
-      // 성공 토스트
-      _showToast(`✅ ${_checkinWeekNum}주차 체크인이 저장되었습니다!`);
+      // 주차별 보상 메시지
+      const rewardMsg = {
+        1: '✅ 1주차 체크인 완료!\n2주차 처방이 잠금 해제됩니다 🔓',
+        2: '✅ 2주차 완료!\n변화 추이 그래프가 활성화됩니다 📈',
+        3: '✅ 3주차 완료!\n절반을 넘었어요. 이제 진짜 변화가 시작됩니다 💪',
+        4: '✅ 4주차 완료!\n1:1 컨설턴트 피드백 신청 자격이 생겼습니다 🎯',
+      };
+      _showToast(rewardMsg[_checkinWeekNum] || `✅ ${_checkinWeekNum}주차 체크인이 저장되었습니다!`);
     } else {
       throw new Error(json.error || '저장 실패');
     }
@@ -4118,7 +4291,6 @@ function p7CopyLink() {
       _showToast('🔗 링크가 복사됐어요!\n가족·친구에게 공유해보세요 💜');
     });
   } else {
-    // fallback
     const ta = document.createElement('textarea');
     ta.value = url;
     document.body.appendChild(ta);
@@ -4127,6 +4299,90 @@ function p7CopyLink() {
     document.body.removeChild(ta);
     _showToast('🔗 링크 복사 완료!');
   }
+}
+
+// ══════════════════════════════════════════════
+// 도움말 팝업 시스템 (범용)
+// ══════════════════════════════════════════════
+function _showHelpModal(title, html) {
+  let overlay = document.getElementById('_help-modal-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = '_help-modal-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);display:flex;align-items:flex-end;justify-content:center;padding:0 0 0 0;';
+    overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+    document.body.appendChild(overlay);
+  }
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:20px 20px 0 0;padding:24px 20px 40px;width:100%;max-width:480px;max-height:80vh;overflow-y:auto;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+        <div style="font-size:17px;font-weight:900;color:#1a1a17;">${title}</div>
+        <button onclick="document.getElementById('_help-modal-overlay').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#999;padding:4px;">✕</button>
+      </div>
+      ${html}
+    </div>`;
+}
+
+// 가족코드 도움말
+function showFcHelp() {
+  _showHelpModal('💜 가족코드 사용 방법', `
+    <div style="display:flex;flex-direction:column;gap:16px;font-size:14px;line-height:1.7;color:#444;">
+      <div style="background:#fef9f0;border-radius:12px;padding:16px;">
+        <div style="font-weight:800;color:#b5452e;margin-bottom:8px;">1단계 — 내 코드 만들기 🆕</div>
+        <p style="margin:0;">'내 코드 만들기' 탭에서 <strong>가족 코드 생성하기</strong>를 누르면 6자리 코드가 생성됩니다.<br>이 코드를 가족에게 카카오톡으로 전달하세요.</p>
+      </div>
+      <div style="background:#f0f9f4;border-radius:12px;padding:16px;">
+        <div style="font-weight:800;color:#3a7a20;margin-bottom:8px;">2단계 — 가족이 코드로 참여하기 🔗</div>
+        <p style="margin:0;">가족이 본인의 결과지에서 <strong>'코드로 참여하기'</strong> 탭을 열고, 받은 6자리 코드를 입력하면 같은 그룹에 등록됩니다.</p>
+      </div>
+      <div style="background:#f0f4ff;border-radius:12px;padding:16px;">
+        <div style="font-weight:800;color:#2563eb;margin-bottom:8px;">3단계 — 비교 결과 확인 📊</div>
+        <p style="margin:0;">코드 생성자 결과지에서 가족 전원의 바디코드를 한눈에 비교할 수 있습니다.<br>비만 원인이 같은 가족을 찾아보세요!</p>
+      </div>
+      <div style="font-size:12px;color:#999;padding:0 4px;">
+        ※ 최대 10명까지 같은 그룹에 참여 가능합니다.<br>
+        ※ 코드는 결과지 링크가 유효한 동안 사용할 수 있습니다.
+      </div>
+    </div>`);
+}
+
+// 체크인 도움말
+function showCheckinHelp() {
+  _showHelpModal('📝 체크인 기준 안내', `
+    <div style="display:flex;flex-direction:column;gap:14px;font-size:14px;line-height:1.7;color:#444;">
+      <p style="margin:0;background:#f0f9f4;border-radius:10px;padding:12px;font-size:13px;color:#2a5a1a;">
+        매주 같은 요일·시간에 체크인하면 변화 추이를 정확히 파악할 수 있어요 🌱
+      </p>
+      <div>
+        <div style="font-weight:800;color:#1a1a17;margin-bottom:6px;">💪 활력 (1~10점)</div>
+        <p style="margin:0;font-size:13px;">하루 전반적인 에너지 수준. 10: 매우 활기참 / 1: 극도로 무기력</p>
+      </div>
+      <div>
+        <div style="font-weight:800;color:#1a1a17;margin-bottom:6px;">🍽 공복감 (1~10점)</div>
+        <p style="margin:0;font-size:13px;">식사 사이 배고픔 강도. 10: 항상 배고픔 / 1: 공복감 거의 없음<br><span style="color:#5a6e3a;font-size:12px;">※ 점수가 낮을수록 좋습니다</span></p>
+      </div>
+      <div>
+        <div style="font-weight:800;color:#1a1a17;margin-bottom:6px;">😴 수면질 (1~10점)</div>
+        <p style="margin:0;font-size:13px;">지난 한 주 수면의 질. 10: 숙면 / 1: 매우 불량한 수면</p>
+      </div>
+      <div>
+        <div style="font-weight:800;color:#1a1a17;margin-bottom:6px;">😊 기분 (1~10점)</div>
+        <p style="margin:0;font-size:13px;">전반적인 정서 상태. 10: 매우 긍정적 / 1: 매우 우울·불안</p>
+      </div>
+      <div>
+        <div style="font-weight:800;color:#1a1a17;margin-bottom:6px;">⚖️ 현재 체중 + 🥗 식단 지킴률</div>
+        <p style="margin:0;font-size:13px;">아침 공복 기준 체중을 입력하세요.<br>식단 지킴률: 이번 주 처방 식단을 지킨 비율 (0~100%)</p>
+      </div>
+      <div style="background:#fff7ed;border-radius:10px;padding:12px;">
+        <div style="font-weight:800;color:#b5452e;margin-bottom:6px;">🏆 체크인 완료 보상</div>
+        <p style="margin:0;font-size:13px;">
+          • <strong>1주차 완료</strong>: 다음 주차 처방 잠금 해제 🔓<br>
+          • <strong>2주차 완료</strong>: 개인 변화 그래프 활성화 📈<br>
+          • <strong>4주차 완료</strong>: 컨설턴트 1:1 피드백 신청 자격 🎯<br>
+          • <strong>전 주차 완료</strong>: 5주차 이후 심화 프로그램 열람 권한 ⭐
+        </p>
+      </div>
+    </div>`);
 }
 </script>
 </body>

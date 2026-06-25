@@ -1353,9 +1353,30 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
         // JSON.stringify 직렬화 실패 방어
         let injectedData = '{}'
         try { injectedData = JSON.stringify(diagResult) } catch { injectedData = '{}' }
+
+        // OG 메타태그 생성 (카카오/SNS 공유용)
+        const ogNickname = diagResult.bc_nickname || diagResult.bc_primary || '바디코드'
+        const ogName     = diagResult.user_name   || '고객'
+        const ogBcCode   = diagResult.bc_primary  || 'BC-6'
+        const siteBase   = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.com' } })()
+        const ogUrl      = `${siteBase}/result/${id}`
+        const ogMeta = `
+<meta property="og:type"        content="website">
+<meta property="og:site_name"   content="SlimMind · 바디코드 분석">
+<meta property="og:title"       content="${ogName}님의 바디코드: ${ogNickname}">
+<meta property="og:description" content="다이어트가 반복 실패한 진짜 이유가 밝혀졌습니다. ${ogName}님의 체형 코드는 '${ogNickname}' — 몸의 고장 원인을 발견하고, 맞춤 처방을 확인해보세요.">
+<meta property="og:url"         content="${ogUrl}">
+<meta property="og:image"       content="${siteBase}/static/og-slimmind.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card"        content="summary_large_image">
+<meta name="twitter:title"       content="${ogName}님의 바디코드: ${ogNickname}">
+<meta name="twitter:description" content="다이어트가 반복 실패한 진짜 이유가 밝혀졌습니다. 나만의 바디코드를 확인해보세요.">
+<meta name="twitter:image"       content="${siteBase}/static/og-slimmind.png">`
+
         const injectedHtml = resultV4Html.replace(
           '</head>',
-          `<script>window.__RESULT__ = ${injectedData};window.__RESULT_FULL__ = {};</script>\n</head>`
+          `${ogMeta}\n<script>window.__RESULT__ = ${injectedData};window.__RESULT_FULL__ = {};</script>\n</head>`
         )
         return c.html(injectedHtml)
       }
@@ -1879,9 +1900,28 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
   try { flatJson = JSON.stringify(flatResult) } catch { flatJson = '{}' }
   try { fullJson = JSON.stringify(resultData) } catch { fullJson = '{}' }
 
+  // OG 메타태그 생성 (카카오/SNS 공유용)
+  const ogNicknameR   = (result as any).bc_nickname || (result as any).bc_primary || '바디코드'
+  const ogNameR       = (result as any).user_name   || '고객'
+  const siteBaseR     = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.com' } })()
+  const ogUrlR        = `${siteBaseR}/result/${id}`
+  const ogMetaR = `
+<meta property="og:type"        content="website">
+<meta property="og:site_name"   content="SlimMind · 바디코드 분석">
+<meta property="og:title"       content="${ogNameR}님의 바디코드: ${ogNicknameR}">
+<meta property="og:description" content="다이어트가 반복 실패한 진짜 이유가 밝혀졌습니다. ${ogNameR}님의 체형 코드는 '${ogNicknameR}' — 몸의 고장 원인을 발견하고, 맞춤 처방을 확인해보세요.">
+<meta property="og:url"         content="${ogUrlR}">
+<meta property="og:image"       content="${siteBaseR}/static/og-slimmind.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card"        content="summary_large_image">
+<meta name="twitter:title"       content="${ogNameR}님의 바디코드: ${ogNicknameR}">
+<meta name="twitter:description" content="다이어트가 반복 실패한 진짜 이유가 밝혀졌습니다. 나만의 바디코드를 확인해보세요.">
+<meta name="twitter:image"       content="${siteBaseR}/static/og-slimmind.png">`
+
   const injectedHtml = resultV4Html.replace(
     '</head>',
-    `${brandInjectResult}\n<script>window.__RESULT__ = ${flatJson};window.__RESULT_FULL__ = ${fullJson};</script>\n</head>`
+    `${ogMetaR}\n${brandInjectResult}\n<script>window.__RESULT__ = ${flatJson};window.__RESULT_FULL__ = ${fullJson};</script>\n</head>`
   )
 
   return c.html(injectedHtml)
