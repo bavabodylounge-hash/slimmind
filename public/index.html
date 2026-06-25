@@ -1149,6 +1149,150 @@
     .cond-label { font-size: 14.5px; }
   }
   /* ===== /기능 10 ===== */
+
+  /* ===== 기능 11: 시간대별 증상 히트맵 ===== */
+  #timeStep { display: none; }
+
+  .time-wrap {
+    max-width: 480px; margin: 0 auto; padding: 28px 0 20px;
+  }
+  .time-eyebrow {
+    font-size: 11px; font-weight: 700; letter-spacing: .18em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 14px;
+    display: flex; align-items: center; gap: 7px;
+  }
+  .time-eyebrow::before {
+    content: ''; display: inline-block;
+    width: 6px; height: 6px; border-radius: 50%; background: var(--c1);
+  }
+  .time-h1 {
+    font-size: 22px; font-weight: 700; line-height: 1.35;
+    letter-spacing: -.02em; margin-bottom: 6px;
+  }
+  .time-sub {
+    font-size: 13.5px; color: var(--muted); line-height: 1.65;
+    margin-bottom: 22px;
+  }
+
+  /* 히트맵 테이블 */
+  .heatmap-wrap {
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+    margin-bottom: 18px; border-radius: 12px;
+    border: 1px solid var(--line);
+  }
+  .heatmap-table {
+    width: 100%; border-collapse: collapse; min-width: 340px;
+  }
+
+  /* 헤더 행: 시간대 */
+  .hm-th-corner {
+    background: var(--paper); border-bottom: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+    padding: 8px 6px; min-width: 64px;
+  }
+  .hm-th {
+    background: var(--paper); border-bottom: 1px solid var(--line);
+    border-right: 1px solid var(--line); padding: 7px 4px;
+    text-align: center; min-width: 52px;
+  }
+  .hm-th:last-child { border-right: none; }
+  .hm-th-time { font-size: 15px; display: block; margin-bottom: 1px; }
+  .hm-th-label { font-size: 10px; font-weight: 700; color: var(--muted); }
+
+  /* 증상 행 */
+  .hm-tr { border-bottom: 1px solid var(--line); }
+  .hm-tr:last-child { border-bottom: none; }
+
+  /* 증상 라벨 셀 */
+  .hm-td-label {
+    background: var(--paper); border-right: 1px solid var(--line);
+    padding: 10px 10px; white-space: nowrap;
+  }
+  .hm-symptom-icon { font-size: 16px; display: block; margin-bottom: 2px; }
+  .hm-symptom-name { font-size: 11px; font-weight: 700; color: var(--ink); }
+
+  /* 히트맵 셀 */
+  .hm-cell {
+    border-right: 1px solid var(--line);
+    padding: 6px 4px; text-align: center; cursor: pointer;
+    transition: background .12s; position: relative;
+    min-width: 44px; min-height: 44px; /* 44px 터치 타겟 */
+    -webkit-tap-highlight-color: transparent;
+  }
+  .hm-cell:last-child { border-right: none; }
+  .hm-cell:hover { background: #fdf0ec; }
+
+  /* 셀 내부 원 */
+  .hm-dot {
+    width: 26px; height: 26px; border-radius: 50%;
+    border: 2px solid var(--line); margin: 0 auto;
+    transition: border-color .12s, background .12s, transform .1s;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+  }
+  .hm-cell:active .hm-dot { transform: scale(.88); }
+
+  /* 선택 강도별 색상 */
+  .hm-cell.lv1 .hm-dot {
+    border-color: #f4b89a; background: #fde8dc; color: var(--c1);
+  }
+  .hm-cell.lv2 .hm-dot {
+    border-color: var(--c1); background: #f9d4c2; color: var(--c3);
+  }
+  .hm-cell.lv3 .hm-dot {
+    border-color: var(--c3); background: var(--c1); color: #fff;
+  }
+
+  /* 히트맵 범례 */
+  .hm-legend {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; color: var(--muted); margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+  .hm-legend-dot {
+    width: 12px; height: 12px; border-radius: 50%; display: inline-block;
+  }
+
+  /* 선택 요약 뱃지 */
+  .time-summary {
+    display: none; align-items: flex-start; gap: 8px;
+    background: #f9f1ee; border: 1px solid var(--c1);
+    border-radius: 10px; padding: 10px 14px;
+    font-size: 13px; color: var(--c3); font-weight: 600;
+    margin-bottom: 18px; line-height: 1.5;
+  }
+  .time-summary.show { display: flex; }
+  .time-summary-icon { font-size: 17px; flex-shrink: 0; margin-top: 1px; }
+
+  /* 버튼 */
+  .time-actions { display: flex; flex-direction: column; gap: 10px; }
+  .time-btn-go {
+    display: block; width: 100%; padding: 15px;
+    background: var(--c3); color: #fff;
+    font-size: 16px; font-weight: 700; border: none;
+    border-radius: 12px; cursor: pointer; min-height: 52px;
+    transition: background .14s; font-family: inherit;
+  }
+  .time-btn-go:hover { background: var(--c1); }
+  .time-btn-skip {
+    display: block; width: 100%; padding: 11px;
+    background: transparent; color: var(--muted);
+    font-size: 13px; font-weight: 600; border: none;
+    cursor: pointer; font-family: inherit;
+    transition: color .14s;
+  }
+  .time-btn-skip:hover { color: var(--ink); }
+
+  @media (max-width: 760px) {
+    .time-h1 { font-size: 19px; }
+    .hm-td-label { padding: 8px 8px; }
+    .hm-symptom-name { font-size: 10px; }
+    .hm-dot { width: 22px; height: 22px; font-size: 11px; }
+    .hm-cell { min-width: 36px; }
+    .hm-th { min-width: 40px; padding: 6px 2px; }
+    .hm-th-label { font-size: 9px; }
+  }
+  /* ===== /기능 11 ===== */
 </style>
 </head>
 <body>
@@ -1607,6 +1751,52 @@
     </div>
     <!-- ===== /기능 10 ===== -->
 
+    <!-- ===== 기능 11: 시간대별 증상 히트맵 스텝 ===== -->
+    <div class="hero" id="timeStep" style="display:none">
+      <div class="time-wrap">
+        <div class="time-eyebrow">시간대별 증상 패턴</div>
+        <h1 class="time-h1" id="timeH1">언제 이런 증상이 심해지나요?</h1>
+        <p class="time-sub">해당하는 칸을 탭해주세요. 여러 개 선택 가능해요.<br>클릭할수록 증상이 진해집니다.</p>
+
+        <div class="heatmap-wrap">
+          <table class="heatmap-table" id="hmTable">
+            <thead>
+              <tr>
+                <th class="hm-th-corner"></th>
+                <th class="hm-th"><span class="hm-th-time">🌙</span><span class="hm-th-label">새벽</span></th>
+                <th class="hm-th"><span class="hm-th-time">🌅</span><span class="hm-th-label">아침</span></th>
+                <th class="hm-th"><span class="hm-th-time">☀️</span><span class="hm-th-label">오전</span></th>
+                <th class="hm-th"><span class="hm-th-time">🌤️</span><span class="hm-th-label">오후</span></th>
+                <th class="hm-th"><span class="hm-th-time">🌆</span><span class="hm-th-label">저녁</span></th>
+                <th class="hm-th"><span class="hm-th-time">🌃</span><span class="hm-th-label">밤</span></th>
+              </tr>
+            </thead>
+            <tbody id="hmBody"></tbody>
+          </table>
+        </div>
+
+        <!-- 범례 -->
+        <div class="hm-legend">
+          <span>강도:</span>
+          <span class="hm-legend-dot" style="background:#fde8dc;border:1.5px solid #f4b89a"></span><span>가끔</span>
+          <span class="hm-legend-dot" style="background:#f9d4c2;border:1.5px solid #e05c3a"></span><span>자주</span>
+          <span class="hm-legend-dot" style="background:#e05c3a;border:1.5px solid #b5452e"></span><span>항상</span>
+        </div>
+
+        <!-- 선택 요약 -->
+        <div class="time-summary" id="timeSummary">
+          <span class="time-summary-icon">📊</span>
+          <span id="timeSummaryText"></span>
+        </div>
+
+        <div class="time-actions">
+          <button class="time-btn-go" onclick="timeConfirm()">분석에 반영하고 시작 →</button>
+          <button class="time-btn-skip" onclick="timeSkip()">건너뛰고 바로 시작</button>
+        </div>
+      </div>
+    </div>
+    <!-- ===== /기능 11 ===== -->
+
     <!-- 1차 외형 설문 -->
     <div id="stage1" style="display:none">
       <div class="stageintro" id="intro1">
@@ -2063,6 +2253,7 @@ function smSnapshot() {
     bmsSelected: bmsSelected || null,
     bmsPreset: window._bmsPresetSv1 ?? null,
     condBonus: window._condBonus || {},  // ★ 기능 10
+    timeBonus: window._timeBonus || {},  // ★ 기능 11
   };
 }
 
@@ -2157,9 +2348,12 @@ function smResume() {
   Object.assign(stage4Answers, snap.stage4Answers || {});
   if (snap.bmsPreset !== null) window._bmsPresetSv1 = snap.bmsPreset;
   bmsSelected = snap.bmsSelected || null;
-  // ★ 기능 10: 이어하기 시 conditionStep 건너뜀 (이미 진행 중이었으므로)
+  // ★ 기능 10: 이어하기 시 conditionStep 건너뜀
   window._condDone  = true;
   window._condBonus = snap.condBonus || {};
+  // ★ 기능 11: 이어하기 시 timeStep 건너뜀
+  window._timeDone  = true;
+  window._timeBonus = snap.timeBonus || {};
 
   // UI 동기화
   if (userInfo.name) {
@@ -2325,50 +2519,205 @@ function condPick(idx) {
   if (btn) btn.disabled = false;
 }
 
-function condConfirm() {
-  if (_condSelected === null) return;
-  const opt = COND_OPTIONS[_condSelected];
-  window._condBonus = opt.bonus || {};
-  window._condDone  = true;
+/* ===== /기능 10 ===== */
+// condConfirm / condSkip 은 기능11 JS 블록에서 정의 (timeStep 경유 포함)
+
+/* ===== 기능 11: 시간대별 증상 히트맵 ===== */
+// 증상 행 정의: { key, icon, name, axisMap }
+// axisMap: { 시간대idx: 축코드 } — 해당 시간대에 이 증상이 나타나면 어떤 축에 보정을 줄지
+const HM_SYMPTOMS = [
+  {
+    key: 'bloat',
+    icon: '🫃', name: '붓거나\n팽만',
+    // 붓기: 새벽/밤 → 림프(A02), 오전/오후 → 인슐린(A01), 저녁 → 호르몬(A06)
+    axisMap: { 0:'A02', 1:'A02', 2:'A01', 3:'A01', 4:'A06', 5:'A02' }
+  },
+  {
+    key: 'tired',
+    icon: '😴', name: '피곤·\n나른함',
+    // 피곤: 새벽 → 부신(A08), 아침/오전 → 갑상선(A03), 오후/저녁/밤 → 스트레스(A05)
+    axisMap: { 0:'A08', 1:'A03', 2:'A03', 3:'A05', 4:'A05', 5:'A08' }
+  },
+  {
+    key: 'hungry',
+    icon: '🍽️', name: '식욕·\n당김',
+    // 식욕: 아침 → 인슐린(A01), 오전/오후 → 인슐린(A01)+장내(A07), 저녁/밤 → 스트레스(A05)
+    axisMap: { 0:'A05', 1:'A01', 2:'A01', 3:'A07', 4:'A05', 5:'A05' }
+  },
+  {
+    key: 'pain',
+    icon: '🦴', name: '결림·\n통증',
+    // 결림: 새벽/아침 → 골격(A09), 오전/오후 → 근감소(A04), 저녁/밤 → 순환(A02)
+    axisMap: { 0:'A09', 1:'A09', 2:'A04', 3:'A04', 4:'A02', 5:'A02' }
+  },
+];
+
+// hmState[symptomKey][timeIdx] = 0~3 강도
+const hmState = {};
+HM_SYMPTOMS.forEach(s => { hmState[s.key] = [0,0,0,0,0,0]; });
+
+window._timeBonus = {}; // scoreAxes()에서 참조
+window._timeDone  = false;
+
+// 테이블 tbody 렌더
+(function buildHmTable(){
+  const tbody = document.getElementById('hmBody');
+  if (!tbody) return;
+  HM_SYMPTOMS.forEach(sym => {
+    const tr = document.createElement('tr');
+    tr.className = 'hm-tr';
+    // 증상 라벨 셀
+    const tdLabel = document.createElement('td');
+    tdLabel.className = 'hm-td-label';
+    tdLabel.innerHTML = `<span class="hm-symptom-icon">${sym.icon}</span><span class="hm-symptom-name">${sym.name.replace('\n','<br>')}</span>`;
+    tr.appendChild(tdLabel);
+    // 시간대 셀 6개
+    for (let t = 0; t < 6; t++) {
+      const td = document.createElement('td');
+      td.className = 'hm-cell';
+      td.id = `hmc_${sym.key}_${t}`;
+      td.innerHTML = `<div class="hm-dot"></div>`;
+      td.addEventListener('click', () => hmToggle(sym.key, t));
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  });
+})();
+
+function hmToggle(symKey, timeIdx) {
+  const cur = hmState[symKey][timeIdx];
+  hmState[symKey][timeIdx] = (cur + 1) % 4; // 0→1→2→3→0 순환
+  const lv = hmState[symKey][timeIdx];
+  const cell = document.getElementById(`hmc_${symKey}_${timeIdx}`);
+  if (!cell) return;
+  // 강도 클래스 교체
+  cell.classList.remove('lv1','lv2','lv3');
+  if (lv > 0) cell.classList.add('lv' + lv);
+  // 이모지 표시
+  const dot = cell.querySelector('.hm-dot');
+  if (dot) {
+    const sym = HM_SYMPTOMS.find(s => s.key === symKey);
+    dot.textContent = lv > 0 ? sym.icon : '';
+  }
+  // 요약 업데이트
+  hmUpdateSummary();
+}
+
+function hmCalcBonus() {
+  const bonus = {};
+  HM_SYMPTOMS.forEach(sym => {
+    for (let t = 0; t < 6; t++) {
+      const lv = hmState[sym.key][t];
+      if (lv === 0) continue;
+      const ax = sym.axisMap[t];
+      if (!ax) continue;
+      bonus[ax] = (bonus[ax] || 0) + lv; // 강도(1~3) 만큼 가산
+    }
+  });
+  return bonus;
+}
+
+function hmUpdateSummary() {
+  const bonus = hmCalcBonus();
+  const total = Object.values(hmState).flat().reduce((a,v)=>a+v,0);
+  const summary = document.getElementById('timeSummary');
+  const text    = document.getElementById('timeSummaryText');
+  if (!summary || !text) return;
+  if (total === 0) {
+    summary.classList.remove('show');
+    return;
+  }
+  summary.classList.add('show');
+  const topAxes = Object.entries(bonus)
+    .sort((a,b)=>b[1]-a[1]).slice(0,2)
+    .map(([ax]) => ({
+      A01:'인슐린저항', A02:'림프순환', A03:'갑상선',
+      A04:'근감소', A05:'스트레스', A06:'호르몬',
+      A07:'장내환경', A08:'부신피로', A09:'골격', A10:'복합'
+    }[ax] || ax));
+  const selCount = Object.values(hmState).flat().filter(v=>v>0).length;
+  text.textContent = `${selCount}개 패턴 선택됨 — ${topAxes.join('·')} 축 분석 비중이 높아집니다`;
+}
+
+function timeConfirm() {
+  window._timeBonus = hmCalcBonus();
+  window._timeDone  = true;
   _startSurveyCore();
 }
 
-function condSkip() {
-  window._condBonus = {};
-  window._condDone  = true;
+function timeSkip() {
+  window._timeBonus = {};
+  window._timeDone  = true;
   _startSurveyCore();
 }
-/* ===== /기능 10 ===== */
+/* ===== /기능 11 ===== */
 
 function startSurvey(){
-  // ★ 기능 10: conditionStep 경유 (이미 완료된 경우 스킵)
+  // ★ 기능 10: conditionStep 경유
   if (!window._condDone) {
     document.getElementById('hero').style.display = 'none';
     document.getElementById('nameStep').style.display = 'none';
     const condEl = document.getElementById('conditionStep');
     if (condEl) {
       condEl.style.display = 'block';
-      // 이름 반영
       const condH1 = document.getElementById('condH1');
       if (condH1 && userInfo.name)
         condH1.textContent = `${userInfo.name}님, 오늘 몸이 어떤 상태예요?`;
       window.scrollTo({ top: 0, behavior: 'smooth' });
-      return; // condConfirm() 또는 condSkip() 에서 _startSurveyCore() 호출
+      return;
     }
+  }
+  // ★ 기능 11: timeStep 경유
+  if (!window._timeDone) {
+    _goTimeStep();
+    return;
   }
   _startSurveyCore();
 }
 
+// 기능 10: condConfirm/condSkip → timeStep으로 연결
+function condConfirm() {
+  if (_condSelected === null) return;
+  const opt = COND_OPTIONS[_condSelected];
+  window._condBonus = opt.bonus || {};
+  window._condDone  = true;
+  _goTimeStep();
+}
+
+function condSkip() {
+  window._condBonus = {};
+  window._condDone  = true;
+  _goTimeStep();
+}
+
+// 기능 11: timeStep 전환 헬퍼
+function _goTimeStep() {
+  const timeEl = document.getElementById('timeStep');
+  if (!timeEl) { _startSurveyCore(); return; }
+  // 이전 화면 숨기기
+  ['hero','nameStep','conditionStep'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  // 이름 반영
+  const timeH1 = document.getElementById('timeH1');
+  if (timeH1 && userInfo.name)
+    timeH1.textContent = `${userInfo.name}님, 언제 이런 증상이 심해지나요?`;
+  timeEl.style.display = 'block';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 function _startSurveyCore(){
   window._condDone = true;
+  window._timeDone = true;
   setStageIcon(0); startQTimer();
   // ★ 기능 4: 설문 시작 시 저장 버튼 표시
   const saveBtn = document.getElementById('smSaveBtn');
   if (saveBtn) saveBtn.style.display = 'block';
-  document.getElementById('hero').style.display = 'none';
-  document.getElementById('nameStep').style.display = 'none';
-  const condEl = document.getElementById('conditionStep');
-  if (condEl) condEl.style.display = 'none';
+  ['hero','nameStep','conditionStep','timeStep'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
   document.getElementById('stage1').style.display = 'block';
   document.getElementById('progress').style.display = 'block';
   if(userInfo.name){
@@ -2831,6 +3180,13 @@ function goBack(){
     // ★ 기능 10: stage1 → conditionStep → nameStep 역순
     const condEl = document.getElementById('conditionStep');
     if(condEl){ condEl.style.display='block'; window._condDone=false; }
+    else { nameStep.style.display='block'; }
+  } else if(document.getElementById('timeStep') && document.getElementById('timeStep').style.display==='block'){
+    // ★ 기능 11: timeStep → conditionStep 복귀
+    document.getElementById('timeStep').style.display='none';
+    window._timeDone = false;
+    const condEl2 = document.getElementById('conditionStep');
+    if(condEl2){ condEl2.style.display='block'; window._condDone=false; }
     else { nameStep.style.display='block'; }
   } else if(document.getElementById('conditionStep') && document.getElementById('conditionStep').style.display==='block'){
     // ★ 기능 10: conditionStep → nameStep 복귀
@@ -3460,9 +3816,14 @@ function scoreAxes(){
     sc[ax]+=v; // 네=2, 가끔=1, 아니오=0
   }
   // ★ 기능 10: 컨디션 보정 가산
-  const bonus = window._condBonus || {};
-  Object.entries(bonus).forEach(([ax, add]) => {
+  const condBonus = window._condBonus || {};
+  Object.entries(condBonus).forEach(([ax, add]) => {
     if (sc[ax] !== undefined) sc[ax] += add;
+  });
+  // ★ 기능 11: 시간대 히트맵 보정 가산
+  const timeBonus = window._timeBonus || {};
+  Object.entries(timeBonus).forEach(([ax, add]) => {
+    if (sc[ax] !== undefined) sc[ax] += Math.round(add * 0.5); // 최대 반감 (과보정 방지)
   });
   return sc;
 }
