@@ -1534,50 +1534,292 @@ var BC_ROADMAP_DB = {
 };
 
 // ──────────────────────────────────────────────
-// 10-C. getRoadmapWeeks() — bc_primary 코드별 처방 반환 + 칼로리 주입
-// bc_primary: 'BC-1'~'BC-9' (또는 'BC-X' 확장 코드)
-// goal_weight: 목표체중(kg) | null
-// weight_loss_pct: 감량률(%) | null
-// user_name: 표시 이름 (failure_expose 치환용)
+// 10-C. 오행 기질별 처방 레이어 (운동·식단 오버라이드)
+// bc_primary 처방 위에 오행이 "어떻게" 실행할지를 덮는다
 // ──────────────────────────────────────────────
-function getRoadmapWeeks(bc_primary, goal_weight, weight_loss_pct, user_name) {
-  var name = user_name || '회원';
+var OHAENG_OVERLAY = {
+  '목': {
+    exercise_add: '저녁 야외 산책 20분 추가 (간(肝) 기운 소통, 도파민 자연 회복)',
+    diet_add: '신맛 식품 활용 (식초·레몬·유자) — 간의 울결 해소. 녹색 채소 매끼 필수.',
+    diet_macro_note: '탄수화물 : 단백질 : 지방 = 40 : 30 : 30 (감정 억압성 폭식 방어를 위해 단백질 비율 유지)',
+    recovery_add: '취침 전 10분 일기 쓰기 또는 감정 해소 루틴 (억눌린 긴장 해소)',
+    tone_caution: '칼로리 계산 강박 금지 — 숫자 집착이 오히려 보상 과식을 유발합니다.',
+  },
+  '화': {
+    exercise_add: '운동 강도 80% 이하 유지 + 쿨다운 10분 필수 (상열 방지)',
+    diet_add: '쓴맛 식품(상추·쑥갓·오이·연근) 매끼 1종 이상 — 심화(心火) 하강. 차가운 음식 약간 허용.',
+    diet_macro_note: '탄수화물 : 단백질 : 지방 = 38 : 32 : 30 (흥분-소진 사이클 방어, 단백질 비율 소폭 상향)',
+    recovery_add: '운동 후 5분 냉찜질 or 냉수 족탕 — 상체 열 하강',
+    tone_caution: '운동량 급격히 늘리기 금지 — 화 기질은 과잉 실행 후 번아웃이 빠릅니다.',
+  },
+  '토': {
+    exercise_add: '식후 30분 후 소화 산책 15분 (비위(脾胃) 운화 기능 자극)',
+    diet_add: '따뜻하고 소화 잘 되는 식품 우선 — 생식·차가운 음식 최소화. 소식다회(1일 5~6회 소량).',
+    diet_macro_note: '탄수화물 : 단백질 : 지방 = 45 : 28 : 27 (소화력 지원을 위해 탄수화물 비율 소폭 허용, 단 저GI 필수)',
+    recovery_add: '복부 온찜질 10분 (소화 기능 및 림프 순환 동시 지원)',
+    tone_caution: '단것 과다 금지 — 토 기질은 단맛에 강하게 끌리나 습담(濕痰) 축적을 유발합니다.',
+  },
+  '금': {
+    exercise_add: '호흡 운동 5분 추가 (폐(肺) 기운 소통) — 코로 들이쉬고 입으로 내쉬기',
+    diet_add: '흰색 채소(무·도라지·배·연근) 매끼 1종 — 폐·대장 소통. 수분 2L+ 필수.',
+    diet_macro_note: '탄수화물 : 단백질 : 지방 = 38 : 30 : 32 (폐·대장 독소 배출을 위해 지방 비율 소폭 상향, 오메가3 우선)',
+    recovery_add: '완벽주의 체크 — 오늘 목표의 70%만 달성해도 "성공"으로 기록하는 루틴',
+    tone_caution: '올-오-낫씽 식단 금지 — 한 번 어기면 전부 포기하는 패턴이 금 기질의 최대 함정입니다.',
+  },
+  '수': {
+    exercise_add: '운동 전 허리·하체 5분 온열 스트레칭 (신장(腎) 기운 활성화)',
+    diet_add: '검은 식품(흑미·검은콩·흑임자·미역·다시마) 1종 이상/일 — 신장 기운 보충.',
+    diet_macro_note: '탄수화물 : 단백질 : 지방 = 40 : 28 : 32 (하체 냉증·기초대사량 회복을 위해 건강한 지방 비율 확보)',
+    recovery_add: '취침 전 족욕 15분 (하체 냉증 해소, 수 기질 핵심 루틴)',
+    tone_caution: '무기력기에 운동 강행 금지 — 수 기질은 에너지 고갈 시 회복에 집중하는 것이 더 효율적입니다.',
+  },
+};
 
-  // bc_primary에서 BC 코드 추출 (e.g. 'BC-3' → 'BC-3')
-  var bcKey = 'BC-6'; // 기본값
+// ──────────────────────────────────────────────
+// 10-D. 22개 바디코드 닉네임별 스토리 특화 레이어
+// NICKNAME_TO_BC로 BC 모체를 찾은 뒤, 이 레이어로 스토리·포커스를 미세 조정
+// ──────────────────────────────────────────────
+var NICKNAME_OVERLAY = {
+  // ── BC-1 계열 ──
+  '오후만되면 코끼리다리형': {
+    story_hook: '오후만 되면 다리가 터질 것처럼 붓고, 구두가 발에 끼이는 경험 — 이것이 하지 림프·정맥 울혈의 전형적 신호입니다.',
+    week1_focus: '사타구니 림프절 집중 개방 — 하체 통로의 첫 번째 관문',
+    week4_focus: '하체 부종 측정 기준화 — 체중보다 발목 둘레 변화를 추적',
+  },
+  '엄마체형 하지정체형': {
+    story_hook: '엄마, 외할머니도 똑같이 하체가 굵으셨다면 — 이것은 유전적 림프관 탄력 저하입니다. 의지로 극복하려 해도 한계가 있는 이유가 있습니다.',
+    week1_focus: '모계 유전성 림프관 약화 → 수영과 필라테스가 유일한 비침습 처방',
+    week4_focus: '유전 체질 맞춤 지속 관리 체계 구축 — 단기가 아닌 평생 전략',
+  },
+  // ── BC-2 계열 ──
+  '목짧아지는 거북이형': {
+    story_hook: '스마트폰을 내려다볼수록 목이 짧아 보이고, 쇄골 위가 점점 두꺼워지는 느낌 — 경추 전만 소실이 상체 림프를 막고 있습니다.',
+    week1_focus: '경추 전만 각도 회복 — 목이 1cm 앞으로 나올수록 어깨에 5kg 추가 하중',
+    week4_focus: '모니터 높이·자세 환경 개조 — 구조가 바뀌어야 처방이 유지됩니다',
+  },
+  '안 쓰는 팔뚝 부종형': {
+    story_hook: '팔을 거의 안 쓰는데 팔뚝만 유독 두껍고, 누르면 자국이 남는다면 — 액와(겨드랑이) 림프절 압박이 원인입니다.',
+    week1_focus: '액와 림프절 개방 운동이 1순위 — 팔 유산소보다 겨드랑이 스트레칭',
+    week4_focus: '팔뚝 림프 드레나쥐 루틴 자동화',
+  },
+  '겨드랑이 부유방형': {
+    story_hook: '브라 라인 옆에 살이 접히고, 특히 팔을 들었을 때 두드러진다면 — 액와 부유방 지방과 림프 정체의 복합 문제입니다.',
+    week1_focus: '겨드랑이 림프 개방 + 흉근 이완으로 부유방 압박 해제',
+    week4_focus: '부유방 지방 분해 가속 — 유산소 추가는 림프 통로 완전 개방 후',
+  },
+  // ── BC-3 계열 ──
+  '식후기절 혈당롤러코스터형': {
+    story_hook: '밥 먹고 나면 졸음이 쏟아지고, 2시간 후 또 단것이 당기는 사이클 — 혈당이 급상승 후 급추락하는 패턴의 교과서적 증거입니다.',
+    week1_focus: '식사 순서 교정만으로 식후 혈당 스파이크 30% 감소 확인',
+    week4_focus: '연속혈당측정기(CGM) 또는 혈당 앱으로 본인 혈당 패턴 학습',
+  },
+  '아빠체형 내장비대형': {
+    story_hook: '아버지, 할아버지도 같은 체형 — 유전적 인슐린 저항성 소인과 내장지방 선호 체질입니다. 팔다리는 가는데 배만 나온다면 더욱 확실한 신호입니다.',
+    week1_focus: '부계 유전 인슐린 저항성 → 단순 칼로리 제한은 효과 없음, 식사 순서부터',
+    week4_focus: '허리둘레 측정 기준화 — 체중보다 허리둘레 1cm 감소가 내장지방 200g 감소 신호',
+  },
+  '식후임산부 가스풍선형': {
+    story_hook: '밥만 먹으면 배가 빵빵해지고 임산부처럼 볼록해진다면 — 소장 내 가스 생성 과잉 또는 장운동 저하의 신호입니다.',
+    week1_focus: '장내 가스 유발 식품(양파·브로콜리 생것·콩류) 1주간 제한으로 기준 확인',
+    week4_focus: '장내 유익균 회복 — 프로바이오틱스 + 프리바이오틱스 조합 도입',
+  },
+  // ── BC-4 계열 ──
+  '약물부작용 강제축적형': {
+    story_hook: '스테로이드·항우울제·호르몬제·고혈압약 복용 이후 급격히 살이 쪘다면 — 약물이 지방 대사와 수분 조절을 직접 바꾼 것입니다.',
+    week1_focus: '약물 변경 없이 다이어트 먼저 시도하는 것은 역효과 가능 — 주치의 상담이 선행 조건',
+    week4_focus: '약물 조정 후 대사 회복 속도 모니터링 — B2B 의원 연계 필수',
+  },
+  '여름에도 시린 얼음장형': {
+    story_hook: '여름에도 발이 시리고, 손발이 항상 차갑고, 아무리 먹어도 살이 안 찌다가 갑자기 불어난다면 — 갑상선 기능 저하의 전형적 패턴입니다.',
+    week1_focus: '체온 측정 기준화 — 기상 직후 체온 36.1도 이하면 갑상선 저하 의심',
+    week4_focus: '체온 0.5도 상승 목표 — 이것이 기초대사량 3~5% 회복의 신호',
+  },
+  // ── BC-5 계열 ──
+  '지방흡입후 재발형': {
+    story_hook: '지방흡입 후 처음엔 빠졌는데 1~2년 후 다시 돌아왔다면 — 시술이 림프관 손상을 일으켜 재발 속도가 더 빠른 상태입니다.',
+    week1_focus: '손상 림프관 회복 — 전문 림프 드레나쥐 마사지 주 2~3회 초기 집중',
+    week4_focus: '림프관 재생 기간 6~12개월 — 장기 관리 체계 필수',
+  },
+  // ── BC-6 계열 ──
+  '스트레스성 야식부엉이형': {
+    story_hook: '낮에는 입맛이 없다가 밤 9시만 되면 냉장고 앞에 서 있는 자신을 발견한다면 — 코르티솔 역전 패턴의 교과서적 신호입니다.',
+    week1_focus: '야식 충동 30분 전 산책으로 도파민 선제 보충',
+    week4_focus: '야식 0회 달성보다 야식 대체 스낵 루틴 자동화가 지속 가능한 목표',
+  },
+  '털털한 PCOS형': {
+    story_hook: 'PCOS(다낭성 난소 증후군)이 있다면 인슐린 저항성과 안드로겐 과잉이 복합되어 일반 다이어트의 효과가 크게 제한됩니다.',
+    week1_focus: 'PCOS × 인슐린 저항성 이중 교정 — 저GI 식단이 최우선 처방',
+    week4_focus: 'PCOS 관리 지표: 체중보다 허리둘레·생리 주기 정상화를 기준으로',
+  },
+  '억제제부작용 배부름마비형': {
+    story_hook: '식욕억제제 복용 후 포만감을 못 느끼거나, 오히려 반동 과식이 더 심해졌다면 — 뇌의 포만 신호 경로가 교란된 상태입니다.',
+    week1_focus: '식욕억제제 의존 감소 프로토콜 — 포만 신호 재훈련이 1주차 핵심',
+    week4_focus: '자연 포만 신호 회복 확인 — 20분 천천히 먹기 루틴',
+  },
+  '호르몬스위치 갱년기형': {
+    story_hook: '예전이랑 똑같이 먹는데 배에만 살이 찌고, 갑자기 열이 확 오르며 식은땀이 난다면 — 에스트로겐 급락에 따른 지방 재배치 시작 신호입니다.',
+    week1_focus: '에스트로겐 대체 식품(파이토에스트로겐) 식단 — 콩·석류·아마씨 매일',
+    week4_focus: '복부 둘레 측정 기준화 — 체중보다 허리·복부 사이즈가 진짜 지표',
+  },
+  '스트레스기절 번아웃형': {
+    story_hook: '번아웃 후 몸이 극도로 무겁고, 조금만 움직여도 지치고, 식욕이 완전히 사라졌다가 폭발적으로 과식하는 사이클 — 부신 고갈의 극단적 표현입니다.',
+    week1_focus: '번아웃 → 운동 먼저 금지. 부신 회복이 최우선, 모든 운동은 2주차 이후',
+    week4_focus: '에너지 회복 지표: 아침 기상이 힘들지 않은 날이 주 3일 이상이면 다음 단계 진입',
+  },
+  // ── BC-7 계열 ──
+  '출산후 바람빠진 풍선형': {
+    story_hook: '출산 후 배가 바람 빠진 풍선처럼 처지고, 아무리 운동해도 아랫배가 들어가지 않는다면 — 복직근 이개와 골반저근 약화가 핵심 원인입니다.',
+    week1_focus: '복직근 이개 자가 확인 — 배꼽 위 2~3cm에 손가락 2개 이상 들어가면 이개 있음',
+    week4_focus: '이개 1~2지 이하로 좁혀지면 외복사근 운동 단계 진입 가능',
+  },
+  '골반틀어짐 승마살형': {
+    story_hook: '한쪽 골반이 더 나와 있고, 앉았다 일어날 때 엉덩이 옆쪽이 유독 부각된다면 — 골반 비대칭이 승마살 부위 지방 편중 축적을 유발합니다.',
+    week1_focus: '골반 비대칭 교정 — 한쪽 다리를 꼬고 앉는 습관 즉시 중단',
+    week4_focus: '골반 대칭 회복 후 승마살 부위 림프 마사지 추가',
+  },
+  // ── BC-8 계열 ──
+  '운동할수록 말벅지형': {
+    story_hook: '스쿼트·런지를 열심히 했더니 허벅지가 오히려 커졌다면 — 하체 알파-2 수용체 우세 체형입니다. 운동 방향 자체를 바꿔야 합니다.',
+    week1_focus: '하체 웨이트 0으로 즉시 감소 — 이 결정이 가장 어렵고 가장 중요',
+    week4_focus: '수영·사이클·요가 루틴 완성 — 이 3가지가 평생 메인 운동',
+  },
+  '상체근육형': {
+    story_hook: '상체 운동을 좋아했는데 어깨·등이 과발달되어 오히려 상체가 더 넓어 보인다면 — 상체 알파 수용체 과활성화 패턴입니다.',
+    week1_focus: '상체 웨이트 일시 중단 + 이완 스트레칭 집중',
+    week4_focus: '상체 운동 재도입 시: 고중량 저반복 → 저중량 고반복으로 방향 전환',
+  },
+  // ── BC-9 계열 ──
+  '팔다리거미 올챙이배형': {
+    story_hook: '팔다리는 가는데 배만 볼록하고, 굶을수록 팔다리가 더 가늘어지는 패턴 — 이화작용이 지방보다 근육을 먼저 태우는 상태입니다.',
+    week1_focus: '체중 감량 목표 일시 중단 — 근육 회복이 먼저, 체중계 숫자는 3주 후부터',
+    week4_focus: '체성분 측정 기준화 — 체중이 오르더라도 근육량 증가면 성공',
+  },
+  '대사증후군 종합형': {
+    story_hook: '혈압·혈당·중성지방·복부비만 중 3가지 이상 해당된다면 — 대사증후군 복합 위험 상태. 단순 다이어트보다 의료 연계 관리가 필수입니다.',
+    week1_focus: '대사증후군 5대 지표 측정 기준화 — 체중보다 수치 개선이 진짜 목표',
+    week4_focus: 'B2B 내과·영양 컨설팅 연계 — 이 단계는 전문가 없이 진행 불가',
+  },
+  // ── 동시다발·번아웃 계열 ──
+  '동시다발 다중악순환형': {
+    story_hook: '하나만 고치면 다른 게 문제고, 뭘 해도 결과가 없는 느낌 — 여러 악순환이 동시에 작동하는 상태입니다. 순서가 중요합니다.',
+    week1_focus: '가장 점수 높은 단일 원인축 1개만 집중 — 동시 다발 접근은 역효과',
+    week4_focus: '1개 축 안정 후 2번째 축 진입 — 순차적 접근이 유일한 해법',
+  },
+};
+
+// ──────────────────────────────────────────────
+// 10-E. getRoadmapWeeks() — 완전 통합 처방 생성기
+// ① bc_primary(한글 닉네임) → NICKNAME_TO_BC → BC 모체 처방
+// ② NICKNAME_OVERLAY → 닉네임별 스토리 미세 조정
+// ③ OHAENG_OVERLAY(ohaeng_type) → 오행 기질 레이어 추가
+// ④ computeNutrition(goal_weight) → 칼로리/탄단지 주입
+// ──────────────────────────────────────────────
+function getRoadmapWeeks(bc_primary, goal_weight, weight_loss_pct, user_name, ohaeng_type) {
+  var name    = user_name   || '회원';
+  var ohaeng  = ohaeng_type || null;
+
+  // ① bc_primary → BC 모체 코드 결정
+  //    bc_primary는 한글 닉네임('스트레스성 야식부엉이형') OR BC 숫자코드('BC-6') 둘 다 처리
+  var bcKey = 'BC-6';
   if (bc_primary) {
-    var m = String(bc_primary).match(/BC-(\d)/i);
-    if (m) bcKey = 'BC-' + m[1];
+    var s = String(bc_primary).trim();
+    // 숫자 코드 형식 (BC-1~BC-9) 직접 입력된 경우
+    var mCode = s.match(/^BC-(\d)$/i);
+    if (mCode) {
+      bcKey = 'BC-' + mCode[1];
+    } else {
+      // 한글 닉네임 → NICKNAME_TO_BC 역매핑
+      var mapped = (typeof NICKNAME_TO_BC !== 'undefined') ? NICKNAME_TO_BC[s] : null;
+      if (mapped) {
+        bcKey = mapped;
+      } else {
+        // 부분 일치 fallback (공백 등 차이 대비)
+        var keys = (typeof NICKNAME_TO_BC !== 'undefined') ? Object.keys(NICKNAME_TO_BC) : [];
+        for (var i = 0; i < keys.length; i++) {
+          if (s.indexOf(keys[i]) !== -1 || keys[i].indexOf(s) !== -1) {
+            bcKey = NICKNAME_TO_BC[keys[i]];
+            break;
+          }
+        }
+      }
+    }
   }
 
-  // BC별 처방 가져오기 (없으면 BC-6 fallback)
-  var weeks = BC_ROADMAP_DB[bcKey] || BC_ROADMAP_DB['BC-6'];
+  // ② BC 모체 처방 로드
+  var baseWeeks = BC_ROADMAP_DB[bcKey] || BC_ROADMAP_DB['BC-6'];
 
-  // Deep clone + 동적 데이터 주입
-  var result = weeks.map(function(w) {
-    var item = Object.assign({}, w);
+  // ③ 닉네임 오버레이 로드
+  var nickOv = (bc_primary && typeof NICKNAME_OVERLAY !== 'undefined')
+    ? (NICKNAME_OVERLAY[String(bc_primary).trim()] || null) : null;
+
+  // ④ 오행 오버레이 로드
+  var ohaengOv = (ohaeng && typeof OHAENG_OVERLAY !== 'undefined')
+    ? (OHAENG_OVERLAY[ohaeng] || null) : null;
+
+  // ⑤ 칼로리 계산
+  var nutritionData = null;
+  if (goal_weight != null && goal_weight > 0) {
+    nutritionData = computeNutrition(null, goal_weight, weight_loss_pct, null);
+  }
+
+  // ⑥ 주차별 처방 조합
+  var result = baseWeeks.map(function(w) {
+    var item = JSON.parse(JSON.stringify(w)); // deep clone
 
     // {USER_NAME} 치환
     if (item.failure_expose) {
       item.failure_expose = item.failure_expose.replace(/\{USER_NAME\}/g, name);
     }
 
-    // 칼로리·탄단지 주입 (goal_weight가 있을 때)
-    if (goal_weight != null && goal_weight > 0) {
-      var nutrition = computeNutrition(
-        null,              // curWeight: null → goal_weight 기준 BMR
-        goal_weight,
-        weight_loss_pct,
-        null               // height: fallback
-      );
-      var v = nutrition.weekVariants.find(function(x){ return x.week === item.week; }) || nutrition.weekVariants[0];
+    // 닉네임 스토리 오버레이 (1주차 hook, 해당 주차 focus 주입)
+    if (nickOv) {
+      if (item.week === 1 && nickOv.story_hook) {
+        item.failure_expose = nickOv.story_hook + '\n\n' + item.failure_expose;
+      }
+      if (item.week === 1 && nickOv.week1_focus) {
+        item.keyFocus = [nickOv.week1_focus].concat(item.keyFocus || []).slice(0, 3);
+      }
+      if (item.week === 4 && nickOv.week4_focus) {
+        item.keyFocus = [nickOv.week4_focus].concat(item.keyFocus || []).slice(0, 3);
+      }
+    }
+
+    // 오행 기질 레이어 주입
+    if (ohaengOv) {
+      // 운동: 오행 추가 처방 append
+      if (ohaengOv.exercise_add) {
+        item.exercise_ok = (item.exercise_ok || '') + ' · ' + ohaengOv.exercise_add;
+      }
+      // 식단: 오행 추가 지침 append
+      if (ohaengOv.diet_add) {
+        item.diet_ok = (item.diet_ok || '') + '\n[' + ohaeng + ' 기질] ' + ohaengOv.diet_add;
+      }
+      // 주의사항
+      if (ohaengOv.tone_caution) {
+        item.ohaeng_caution = ohaengOv.tone_caution;
+      }
+      // 탄단지 비율 메모
+      if (ohaengOv.diet_macro_note) {
+        item.diet_macro_note = ohaengOv.diet_macro_note;
+      }
+      // 회복 추가 (1주차에만)
+      if (item.week === 1 && ohaengOv.recovery_add) {
+        item.recovery_ok = (item.recovery_ok || '') + ' · ' + ohaengOv.recovery_add;
+      }
+    }
+
+    // 칼로리·탄단지 주입
+    if (nutritionData) {
+      var v = nutritionData.weekVariants.filter(function(x){ return x.week === item.week; })[0]
+           || nutritionData.weekVariants[0];
       item.nutrition = {
         kcal:     v.kcal,
         carbG:    v.carbG,
         proteinG: v.proteinG,
         fatG:     v.fatG,
         note:     v.note,
-        lossPct:  nutrition.deficit,
+        // 오행 탄단지 오버라이드 안내
+        macro_note: ohaengOv ? ohaengOv.diet_macro_note : null,
       };
     }
 
@@ -1608,7 +1850,7 @@ if (typeof module !== 'undefined' && module.exports) {
     BC_PRESCRIPTION_DB, TONE_DB,
     computeNickname, detectBackground, getDeepSurveyRoute, generatePrescription,
     // V4.1 신규 (PHASE 4-A/B)
-    BC_ROADMAP_DB,
+    BC_ROADMAP_DB, OHAENG_OVERLAY, NICKNAME_OVERLAY,
     computeNutrition, getRoadmapWeeks,
     // 기존 유지
     BC_MASTER, CAUSAL_AXIS_META, AXIS_11,

@@ -2332,15 +2332,17 @@ function renderP6(userName, fullCode, ohaengType, inputData) {
   const ohaengData = (typeof SAJU_ELEMENT_DESC !== 'undefined' && SAJU_ELEMENT_DESC[ohaengType])
     ? SAJU_ELEMENT_DESC[ohaengType] : null;
 
-  // bc_primary + goal_weight 기반 맞춤 주간 처방 불러오기
+  // bc_primary + goal_weight + ohaeng_type 기반 완전 통합 처방 불러오기
   const d = inputData || window.__DIAG_DATA__ || window.__RESULT__ || {};
   const bcPrimary     = d.bc_primary || d.bc_code || null;
   const goalWeight    = d.goal_weight    != null ? Number(d.goal_weight)    : null;
   const weightLossPct = d.weight_loss_pct != null ? Number(d.weight_loss_pct) : null;
+  // ohaeng_type: renderP6에 파라미터로 전달받은 값 우선, data에서 fallback
+  const ohaengForRoadmap = ohaengType || d.ohaengType || d.ohaeng_type || null;
 
-  // getRoadmapWeeks()가 없으면 기존 ROADMAP_WEEKS 사용 (하위호환)
+  // getRoadmapWeeks(): bc_primary(한글닉네임) + goal_weight + weight_loss_pct + user_name + ohaeng_type
   const ACTIVE_WEEKS = (typeof getRoadmapWeeks === 'function')
-    ? getRoadmapWeeks(bcPrimary, goalWeight, weightLossPct, userName)
+    ? getRoadmapWeeks(bcPrimary, goalWeight, weightLossPct, userName, ohaengForRoadmap)
     : (typeof ROADMAP_WEEKS !== 'undefined' ? ROADMAP_WEEKS : []);
 
   const PHASE_COLORS = ['var(--vis)','var(--muscle)','var(--circ)','var(--sub)'];
