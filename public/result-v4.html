@@ -290,13 +290,15 @@ body{background:var(--paper);color:var(--ink);min-height:100vh;}
 /* ══════════════════════ P6 ══════════════════════ */
 
 /* ── 6-0: 원형 SVG 다이어그램 ── */
+/* ── P6 타임라인 로드맵 (원형 차트 대체) ── */
 .p6-diagram-wrap{
   margin-bottom:32px;background:var(--dark);border-radius:24px;
   padding:24px 16px 20px;position:relative;overflow:hidden;
 }
 .p6-diagram-wrap::before{
-  content:'';position:absolute;top:-80px;right:-80px;width:260px;height:260px;
-  background:radial-gradient(circle,rgba(181,69,46,.10) 0%,transparent 65%);border-radius:50%;
+  content:'';position:absolute;top:0;right:0;bottom:0;left:0;
+  background:repeating-linear-gradient(135deg,rgba(181,69,46,.025) 0,rgba(181,69,46,.025) 1px,transparent 1px,transparent 28px);
+  pointer-events:none;
 }
 .p6-diagram-eyebrow{
   font-size:10px;font-weight:800;letter-spacing:2px;color:rgba(255,255,255,.9);
@@ -309,36 +311,80 @@ body{background:var(--paper);color:var(--ink);min-height:100vh;}
 .p6-diagram-sub{
   font-size:11px;color:rgba(255,255,255,.4);text-align:center;margin-bottom:20px;
 }
-/* SVG 컨테이너 */
-.p6-svg-wrap{
-  width:100%;max-width:360px;margin:0 auto 16px;
+
+/* ── 3단계 페이즈 헤더 ── */
+.p6-tl-phases{
+  display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;
+  margin-bottom:16px;position:relative;z-index:1;
+}
+.p6-tl-phase{
+  border-radius:10px;padding:8px 6px;text-align:center;
+}
+.p6-tl-phase-icon{font-size:18px;margin-bottom:2px;}
+.p6-tl-phase-label{font-size:10px;font-weight:800;line-height:1.3;word-break:keep-all;}
+.p6-tl-phase-weeks{font-size:9px;opacity:.65;margin-top:2px;}
+
+/* ── 12주 타임라인 그리드 ── */
+.p6-tl-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  gap:5px;margin-bottom:14px;position:relative;z-index:1;
+}
+/* 중앙 수평 연결선 */
+.p6-tl-grid::before{
+  content:'';position:absolute;top:24px;left:12.5%;right:12.5%;height:2px;
+  background:linear-gradient(90deg,rgba(181,69,46,.6) 0%,rgba(90,110,58,.6) 33%,rgba(90,110,58,.4) 66%,rgba(47,125,140,.3) 100%);
+  z-index:0;
+}
+.p6-tl-node{
+  position:relative;z-index:1;text-align:center;cursor:pointer;
+  transition:transform .15s;
+}
+.p6-tl-node:hover{transform:translateY(-2px);}
+.p6-tl-node.active .p6-tl-dot{
+  transform:scale(1.25);
+  box-shadow:0 0 0 3px rgba(181,69,46,.35);
+}
+.p6-tl-dot{
+  width:36px;height:36px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;margin:0 auto 4px;
+  transition:transform .2s,box-shadow .2s;
   position:relative;
 }
-.p6-svg-wrap svg{width:100%;height:auto;display:block;}
-
-/* 링 범례 */
-.p6-ring-legend{
-  display:flex;justify-content:center;gap:16px;flex-wrap:wrap;
-  margin-bottom:16px;
+.p6-tl-dot.locked{
+  background:rgba(255,255,255,.08)!important;
+  border:1px solid rgba(255,255,255,.15);
 }
-.p6-ring-legend-item{
-  display:flex;align-items:center;gap:6px;
-  font-size:11px;color:rgba(255,255,255,.65);font-weight:600;
+.p6-tl-dot-num{
+  font-size:9px;font-weight:900;color:rgba(255,255,255,.55);
+  letter-spacing:.5px;
 }
-.p6-ring-dot{width:10px;height:10px;border-radius:50%;}
+.p6-tl-wlabel{
+  font-size:9px;font-weight:700;color:rgba(255,255,255,.5);
+  line-height:1.3;word-break:keep-all;
+}
+.p6-tl-node.active .p6-tl-wlabel{color:rgba(255,255,255,.9);}
 
-/* 주차 클릭 시 중앙 정보 */
+/* ── 선택된 주차 상세 카드 ── */
 .p6-week-info-box{
-  background:rgba(255,255,255,.06);border:1px solid rgba(181,69,46,.25);
-  border-radius:14px;padding:14px 16px;text-align:center;
-  min-height:70px;transition:all .25s;
+  background:rgba(255,255,255,.06);border:1px solid rgba(181,69,46,.3);
+  border-radius:14px;padding:14px 16px;
+  transition:all .25s;position:relative;z-index:1;
 }
-.p6-week-info-week{font-size:11px;font-weight:700;color:rgba(255,255,255,.85);margin-bottom:3px;letter-spacing:.5px;}
-.p6-week-info-title{font-size:15px;font-weight:900;color:#fff;margin-bottom:4px;}
-.p6-week-info-tags{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;}
-.p6-week-info-tag{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;
-  background:rgba(255,255,255,.15);color:rgba(255,255,255,.95);}
-.p6-week-info-tag.locked{background:rgba(255,255,255,.07);color:rgba(255,255,255,.35);}
+.p6-week-info-week{font-size:10px;font-weight:800;color:rgba(255,255,255,.6);margin-bottom:3px;letter-spacing:1px;text-transform:uppercase;}
+.p6-week-info-title{font-size:15px;font-weight:900;color:#fff;margin-bottom:6px;line-height:1.3;}
+.p6-week-info-tags{display:flex;gap:6px;flex-wrap:wrap;}
+.p6-week-info-tag{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;
+  background:rgba(255,255,255,.12);color:rgba(255,255,255,.9);}
+.p6-week-info-tag.locked{background:rgba(255,255,255,.05);color:rgba(255,255,255,.3);}
+.p6-week-info-progress{
+  margin-top:10px;height:3px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;
+}
+.p6-week-info-progress-fill{height:100%;border-radius:3px;transition:width .6s ease;}
+
+/* 레거시 SVG wrap (숨김) */
+.p6-svg-wrap{ display:none; }
+.p6-ring-legend{ display:none; }
 
 /* ── 섹션 헤더 공통 ── */
 .p6-section-hd{
@@ -947,10 +993,15 @@ body{background:var(--paper);color:var(--ink);min-height:100vh;}
 .p5-silhouette-label.after{color:rgba(255,255,255,.85);}
 .p5-sil-svg{display:block;margin:0 auto;}
 .p5-silhouette-val{
-  font-size:20px;font-weight:900;color:#1a1a17;margin-top:10px;
-  background:rgba(0,0,0,.06);padding:4px 12px;border-radius:8px;
+  font-size:17px;font-weight:900;color:#fff;margin-top:10px;
+  background:rgba(255,255,255,.12);padding:5px 14px;border-radius:10px;
+  border:1px solid rgba(255,255,255,.18);letter-spacing:.3px;
 }
-.p5-silhouette-val.after{color:#3a5a20;}
+.p5-silhouette-val.after{
+  color:#b8f088;
+  background:rgba(90,110,58,.25);
+  border-color:rgba(90,110,58,.4);
+}
 .p5-sil-arrow{
   font-size:28px;color:rgba(255,255,255,.55);
   align-self:center;padding-bottom:24px;
@@ -2021,20 +2072,51 @@ p, div, span, h1, h2, h3, h4{
   <h1 class="page-title fade-up">12주 하이퍼 로드맵</h1>
   <p class="body-text fade-up" style="transition-delay:.05s;margin-bottom:20px;" id="p6-code-display"></p>
 
-  <!-- 6-0: 원형 SVG 다이어그램 -->
+  <!-- 6-0: 12주 타임라인 로드맵 (원형 차트 대체) -->
   <div class="p6-diagram-wrap fade-up" style="transition-delay:.08s" id="p6-diagram-wrap">
-    <div class="p6-diagram-eyebrow">ROADMAP OVERVIEW</div>
-    <div class="p6-diagram-title" id="p6-diagram-title">12주 바디 변환 로드맵</div>
-    <div class="p6-diagram-sub" id="p6-diagram-sub">탭을 눌러 주차별 처방을 확인하세요</div>
-    <div class="p6-svg-wrap">
-      <svg id="p6-svg" viewBox="0 0 360 360" xmlns="http://www.w3.org/2000/svg"><!-- JS 렌더 --></svg>
+    <div class="p6-diagram-eyebrow">12-WEEK ROADMAP</div>
+    <div class="p6-diagram-title" id="p6-diagram-title">12주 변환 타임라인</div>
+    <div class="p6-diagram-sub" id="p6-diagram-sub">주차를 눌러 처방을 확인하세요</div>
+
+    <!-- 3단계 페이즈 표시 -->
+    <div class="p6-tl-phases" id="p6-tl-phases">
+      <div class="p6-tl-phase" style="background:rgba(181,69,46,.15);border:1px solid rgba(181,69,46,.3);">
+        <div class="p6-tl-phase-icon">🔥</div>
+        <div class="p6-tl-phase-label" style="color:#e8937a;">기반 구축</div>
+        <div class="p6-tl-phase-weeks" style="color:rgba(232,147,122,.7);">1~4주</div>
+      </div>
+      <div class="p6-tl-phase" style="background:rgba(90,110,58,.15);border:1px solid rgba(90,110,58,.3);">
+        <div class="p6-tl-phase-icon">⚡</div>
+        <div class="p6-tl-phase-label" style="color:#a8c97a;">집중 연소</div>
+        <div class="p6-tl-phase-weeks" style="color:rgba(168,201,122,.7);">5~8주</div>
+      </div>
+      <div class="p6-tl-phase" style="background:rgba(47,125,140,.15);border:1px solid rgba(47,125,140,.3);">
+        <div class="p6-tl-phase-icon">✨</div>
+        <div class="p6-tl-phase-label" style="color:#7ec8d8;">세포 재편</div>
+        <div class="p6-tl-phase-weeks" style="color:rgba(126,200,216,.7);">9~12주</div>
+      </div>
     </div>
-    <div class="p6-ring-legend" id="p6-ring-legend"></div>
+
+    <!-- 12주 타임라인 노드 그리드 -->
+    <div class="p6-tl-grid" id="p6-tl-grid">
+      <!-- JS로 렌더 -->
+    </div>
+
+    <!-- 선택된 주차 상세 -->
     <div class="p6-week-info-box" id="p6-week-info">
-      <div class="p6-week-info-week">1주차</div>
-      <div class="p6-week-info-title">항목을 선택하세요</div>
-      <div class="p6-week-info-tags"></div>
+      <div class="p6-week-info-week" id="p6-info-week-label">주차를 선택하세요</div>
+      <div class="p6-week-info-title" id="p6-info-title">—</div>
+      <div class="p6-week-info-tags" id="p6-info-tags"></div>
+      <div class="p6-week-info-progress">
+        <div class="p6-week-info-progress-fill" id="p6-info-progress" style="width:0%"></div>
+      </div>
     </div>
+
+    <!-- 레거시 SVG (숨김) -->
+    <div class="p6-svg-wrap" style="display:none">
+      <svg id="p6-svg" viewBox="0 0 360 360" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+    <div class="p6-ring-legend" id="p6-ring-legend" style="display:none"></div>
   </div>
 
   <!-- ── 스와이프 전환 힌트 버튼 ── -->
@@ -3541,128 +3623,94 @@ function renderP6(userName, fullCode, ohaengType, inputData) {
   const PHASE_COLORS = ['var(--vis)','var(--muscle)','var(--circ)','var(--sub)'];
 
   // ════════════════════════════════════════════
-  // 6-0: 원형 SVG 다이어그램
+  // 6-0: 12주 타임라인 로드맵 노드 렌더링
   // ════════════════════════════════════════════
-  const CX = 180, CY = 180;
-  const RADII = [155, 120, 88];
-  const RING_COLORS = ['rgba(181,69,46,1)','rgba(90,110,58,1)','rgba(47,125,140,1)'];
-  const RING_LOCKED = [false, true, true];
 
-  const svg = document.getElementById('p6-svg');
-  function mkSvg(tag, attrs) {
-    const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
-    Object.entries(attrs).forEach(([k,v]) => el.setAttribute(k,v));
-    return el;
-  }
-
-  // 배경 트랙 링
-  RADII.forEach((r,ri) => {
-    svg.appendChild(mkSvg('circle',{
-      cx:CX,cy:CY,r,fill:'none',
-      stroke:RING_LOCKED[ri]?'rgba(255,255,255,.06)':'rgba(255,255,255,.09)',
-      'stroke-width': ri===0?24:ri===1?22:20
-    }));
-  });
-
-  // 12주 세그먼트 데이터 정의
+  // 12주 전체 데이터 정의 (활성 1~4주 + 잠금 5~12주)
   const ALL_WEEKS = [
     ...(ACTIVE_WEEKS||[]).map((w,i) => ({
-      week:w.week, label:w.weekLabel||`${w.week}주차`,
-      title:w.title, icon:w.icon||'🔓',
-      tags:w.keyFocus||[], color:PHASE_COLORS[i]||'var(--vis)',
-      ring:0, locked:false
+      week: w.week,
+      label: w.weekLabel || `${w.week}주`,
+      title: w.title,
+      icon: w.icon || ['🔥','⚡','💫','🏆'][i] || '🔓',
+      tags: w.keyFocus || [],
+      color: PHASE_COLORS[i] || 'rgba(181,69,46,.9)',
+      locked: false
     })),
-    {week:5,label:'5주차',title:'심화 지방 연소',icon:'🔥',tags:['내장지방 타깃','대사율 극대화'],color:'rgba(90,110,58,.9)',ring:1,locked:true},
-    {week:6,label:'6주차',title:'호르몬 최적화',icon:'⚡',tags:['인슐린 민감도','생체리듬'],color:'rgba(90,110,58,.8)',ring:1,locked:true},
-    {week:7,label:'7주차',title:'바디 리컴프',icon:'💪',tags:['근지방 교환','대사 완성'],color:'rgba(90,110,58,.7)',ring:1,locked:true},
-    {week:8,label:'8주차',title:'순환 극대화',icon:'🌀',tags:['림프 순환','독소 배출'],color:'rgba(90,110,58,.6)',ring:1,locked:true},
-    {week:9, label:'9주차', title:'세포 재편 1단계',icon:'🔬',tags:['세포 활성'],color:'rgba(47,125,140,.8)',ring:2,locked:true},
-    {week:10,label:'10주차',title:'세포 재편 2단계',icon:'⚗️',tags:['미토콘드리아'],color:'rgba(47,125,140,.7)',ring:2,locked:true},
-    {week:11,label:'11주차',title:'장기 유지 설계',icon:'🏆',tags:['요요 차단'],color:'rgba(47,125,140,.6)',ring:2,locked:true},
-    {week:12,label:'12주차',title:'자동화 완성',icon:'✨',tags:['습관 자동화'],color:'rgba(47,125,140,.5)',ring:2,locked:true},
+    {week:5,  label:'5주',  title:'심화 지방 연소',  icon:'🔥', tags:['내장지방 타깃','대사율 극대화'],   color:'rgba(90,110,58,.9)',  locked:true},
+    {week:6,  label:'6주',  title:'호르몬 최적화',    icon:'⚡', tags:['인슐린 민감도','생체리듬'],       color:'rgba(90,110,58,.8)',  locked:true},
+    {week:7,  label:'7주',  title:'바디 리컴프',      icon:'💪', tags:['근지방 교환','대사 완성'],        color:'rgba(90,110,58,.7)',  locked:true},
+    {week:8,  label:'8주',  title:'순환 극대화',      icon:'🌀', tags:['림프 순환','독소 배출'],          color:'rgba(90,110,58,.6)',  locked:true},
+    {week:9,  label:'9주',  title:'세포 재편 1단계',  icon:'🔬', tags:['세포 활성','미토콘드리아'],       color:'rgba(47,125,140,.85)', locked:true},
+    {week:10, label:'10주', title:'세포 재편 2단계',  icon:'⚗️', tags:['미토콘드리아 강화','항산화'],     color:'rgba(47,125,140,.75)', locked:true},
+    {week:11, label:'11주', title:'장기 유지 설계',   icon:'🏆', tags:['요요 차단','습관 고착'],          color:'rgba(47,125,140,.65)', locked:true},
+    {week:12, label:'12주', title:'자동화 완성',       icon:'✨', tags:['습관 자동화','평생 유지'],        color:'rgba(47,125,140,.55)', locked:true},
   ];
 
-  const byRing = [[],[],[]];
-  ALL_WEEKS.forEach(w => byRing[w.ring].push(w));
+  // 타임라인 그리드 렌더링
+  const grid = document.getElementById('p6-tl-grid');
+  if (grid) {
+    grid.innerHTML = '';
+    ALL_WEEKS.forEach((w, i) => {
+      const node = document.createElement('div');
+      node.className = 'p6-tl-node' + (i === 0 ? ' active' : '');
+      node.dataset.week = w.week;
 
-  byRing.forEach((weeks,ri) => {
-    const r = RADII[ri];
-    const total = weeks.length;
-    const GAP = 3;
-    const segDeg = (360/total) - GAP;
-    weeks.forEach((w,si) => {
-      const startDeg = -90 + si*(360/total);
-      const endDeg   = startDeg + segDeg;
-      const toRad    = d => d*Math.PI/180;
-      const x1 = CX + r*Math.cos(toRad(startDeg));
-      const y1 = CY + r*Math.sin(toRad(startDeg));
-      const x2 = CX + r*Math.cos(toRad(endDeg));
-      const y2 = CY + r*Math.sin(toRad(endDeg));
-      const sw = ri===0?24:ri===1?22:20;
-      const path = mkSvg('path',{
-        d:`M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 0 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`,
-        fill:'none',
-        stroke:w.locked?'rgba(255,255,255,.18)':w.color,
-        'stroke-width':sw,'stroke-linecap':'round',
-        style:'cursor:pointer;transition:opacity .2s;',
-        'data-week':w.week
+      const dotBg = w.locked
+        ? ''
+        : `background:${w.color};box-shadow:0 2px 8px ${w.color.replace(/[\d.]+\)$/,'0.45)')};`;
+
+      node.innerHTML = `
+        <div class="p6-tl-dot${w.locked ? ' locked' : ''}" style="${dotBg}">
+          ${w.locked
+            ? `<span style="font-size:13px;opacity:.45;">🔒</span>`
+            : `<span style="font-size:14px;">${w.icon}</span>`}
+        </div>
+        <div class="p6-tl-wlabel">${w.label}</div>`;
+
+      node.addEventListener('click', () => {
+        if (w.locked) {
+          _showToast('🔒 이전 주차를 완료하면 잠금이 해제됩니다');
+          return;
+        }
+        // 타임라인 노드 active 처리
+        document.querySelectorAll('.p6-tl-node').forEach(n => n.classList.remove('active'));
+        node.classList.add('active');
+
+        // 주차 상세 info 박스 업데이트
+        const weekInfoBox = document.getElementById('p6-week-info');
+        const labelEl = document.getElementById('p6-info-week-label');
+        const titleEl = document.getElementById('p6-info-title');
+        const tagsEl  = document.getElementById('p6-info-tags');
+        const progEl  = document.getElementById('p6-info-progress');
+
+        if (labelEl) labelEl.textContent = `WEEK ${w.week}`;
+        if (titleEl) titleEl.textContent = w.title;
+        if (tagsEl)  tagsEl.innerHTML = (w.tags||[]).map(t =>
+          `<span class="p6-week-info-tag">${t}</span>`).join('');
+        if (progEl) {
+          const pct = Math.round((w.week / 12) * 100);
+          progEl.style.cssText = `width:${pct}%;background:${w.color};`;
+        }
+        if (weekInfoBox) {
+          weekInfoBox.style.borderColor = w.color.replace(/[\d.]+\)$/, '0.4)');
+        }
+
+        // 스와이프 패널도 동기화 (활성 주차 1~4)
+        if (w.week >= 1 && w.week <= (ACTIVE_WEEKS||[]).length) {
+          p6SwitchWeek(w.week);
+        }
       });
-      path.addEventListener('click',  () => p6SelectWeek(w));
-      path.addEventListener('mouseenter', () => { path.style.opacity='.7'; });
-      path.addEventListener('mouseleave', () => { path.style.opacity='1'; });
-      svg.appendChild(path);
 
-      // 아이콘 (링 0 = 활성 주차만)
-      if (ri === 0) {
-        const midDeg = startDeg + segDeg/2;
-        const midRad = midDeg*Math.PI/180;
-        const t = mkSvg('text',{
-          x:(CX+r*Math.cos(midRad)).toFixed(2),
-          y:(CY+r*Math.sin(midRad)+5).toFixed(2),
-          'text-anchor':'middle','font-size':'13',
-          style:'pointer-events:none;'
-        });
-        t.textContent = w.icon;
-        svg.appendChild(t);
-      }
+      grid.appendChild(node);
     });
-    // 잠금 링: 🔒 표시 1개
-    if (ri > 0 && weeks.length > 0) {
-      const w0 = weeks[0];
-      const GAP2 = 3;
-      const s2 = (360/weeks.length - GAP2);
-      const midDeg = -90 + s2/2;
-      const midRad = midDeg*Math.PI/180;
-      const t = mkSvg('text',{
-        x:(CX+r*Math.cos(midRad)).toFixed(2),
-        y:(CY+r*Math.sin(midRad)+5).toFixed(2),
-        'text-anchor':'middle','font-size':'12',
-        style:'pointer-events:none;opacity:.5;'
-      });
-      t.textContent = '🔒';
-      svg.appendChild(t);
+
+    // 첫 번째 노드 자동 선택 (info 박스 초기화)
+    if (ALL_WEEKS[0]) {
+      const firstNode = grid.querySelector('.p6-tl-node');
+      if (firstNode) firstNode.click();
     }
-  });
-
-  // 중앙 텍스트
-  const c1 = mkSvg('text',{x:CX,y:CY-8,'text-anchor':'middle','font-size':'14',fill:'rgba(255,255,255,.55)','font-weight':'700'});
-  c1.textContent = '12주';
-  svg.appendChild(c1);
-  const c2 = mkSvg('text',{x:CX,y:CY+12,'text-anchor':'middle','font-size':'11',fill:'rgba(255,255,255,.3)'});
-  c2.textContent = '로드맵';
-  svg.appendChild(c2);
-
-  // 링 범례
-  const legendEl = document.getElementById('p6-ring-legend');
-  if (legendEl) {
-    [['1~4주 기반 구축',RING_COLORS[0]],['5~8주 집중 연소',RING_COLORS[1]],['9~12주 세포 재편',RING_COLORS[2]]]
-    .forEach(([label,color]) => {
-      legendEl.innerHTML += `<div class="p6-ring-legend-item"><div class="p6-ring-dot" style="background:${color}"></div>${label}</div>`;
-    });
   }
-
-  // 초기 선택
-  if (ALL_WEEKS[0]) p6SelectWeek(ALL_WEEKS[0]);
 
   // ════════════════════════════════════════════
   // 6-1~6-4: Swipe Panel 방식 — 4주차 독립 패널 렌더
@@ -3943,15 +3991,31 @@ function renderP6(userName, fullCode, ohaengType, inputData) {
 
 /* SVG 클릭 — 중앙 info 업데이트 */
 function p6SelectWeek(w) {
-  const box = document.getElementById('p6-week-info');
-  if (!box) return;
-  const tagsHtml = (w.tags||[]).map(t =>
+  // 타임라인 노드 active 처리
+  document.querySelectorAll('.p6-tl-node').forEach(n => {
+    n.classList.toggle('active', parseInt(n.dataset.week) === w.week);
+  });
+
+  // info 박스 업데이트 (분리된 엘리먼트 방식)
+  const labelEl = document.getElementById('p6-info-week-label');
+  const titleEl = document.getElementById('p6-info-title');
+  const tagsEl  = document.getElementById('p6-info-tags');
+  const progEl  = document.getElementById('p6-info-progress');
+  const infoBox = document.getElementById('p6-week-info');
+
+  if (labelEl) labelEl.textContent = `WEEK ${w.week}${w.locked ? ' 🔒' : ''}`;
+  if (titleEl) titleEl.textContent = w.title || '—';
+  if (tagsEl)  tagsEl.innerHTML = (w.tags||[]).map(t =>
     `<span class="p6-week-info-tag${w.locked?' locked':''}">${t}</span>`).join('');
-  box.innerHTML = `
-    <div class="p6-week-info-week">${w.label}${w.locked?' · 🔒':''}</div>
-    <div class="p6-week-info-title">${w.title}</div>
-    <div class="p6-week-info-tags">${tagsHtml}</div>`;
-  // SVG에서 활성 링 1(1~4주차)이면 탭도 동기화
+  if (progEl) {
+    const pct = Math.round((w.week / 12) * 100);
+    progEl.style.cssText = `width:${pct}%;background:${w.color||'var(--vis)'};`;
+  }
+  if (infoBox && w.color) {
+    infoBox.style.borderColor = w.color.replace(/[\d.]+\)$/, '0.4)');
+  }
+
+  // 활성 주차(1~4)이면 스와이프 패널도 동기화
   if (!w.locked && w.week >= 1 && w.week <= 4) {
     p6SwitchWeek(w.week);
   }
@@ -3988,17 +4052,25 @@ function p6SwitchWeek(weekNum) {
   const labelEl = document.getElementById('p6-prog-label');
   if (labelEl) labelEl.textContent = `${n}주차 / ${total}주차`;
 
-  // SVG week-info 동기화
+  // 타임라인 week-info 동기화
   if (_p6ActiveWeeks && _p6ActiveWeeks[n-1]) {
     const wd = _p6ActiveWeeks[n-1];
-    const box = document.getElementById('p6-week-info');
-    if (box) {
-      const tagsHtml = (wd.keyFocus||[]).map(t => `<span class="p6-week-info-tag">${t}</span>`).join('');
-      box.innerHTML = `
-        <div class="p6-week-info-week">${wd.weekLabel||n+'주차'}</div>
-        <div class="p6-week-info-title">${wd.title||''}</div>
-        <div class="p6-week-info-tags">${tagsHtml}</div>`;
+    const labelEl = document.getElementById('p6-info-week-label');
+    const titleEl = document.getElementById('p6-info-title');
+    const tagsEl  = document.getElementById('p6-info-tags');
+    const progEl  = document.getElementById('p6-info-progress');
+    if (labelEl) labelEl.textContent = `WEEK ${n}`;
+    if (titleEl) titleEl.textContent = wd.title || '';
+    if (tagsEl)  tagsEl.innerHTML = (wd.keyFocus||[]).map(t =>
+      `<span class="p6-week-info-tag">${t}</span>`).join('');
+    if (progEl) {
+      const pct = Math.round((n / 12) * 100);
+      progEl.style.width = `${pct}%`;
     }
+    // 타임라인 노드 active 동기화
+    document.querySelectorAll('.p6-tl-node').forEach(nd => {
+      nd.classList.toggle('active', parseInt(nd.dataset.week) === n);
+    });
   }
 
   // Prev/Next 버튼 상태
@@ -4765,27 +4837,113 @@ function _showHelpModal(title, html) {
     </div>`;
 }
 
-// 가족코드 도움말
+// 가족코드 도움말 — 인터랙티브 패널 (코드 표시 + 바로 실행)
 function showFcHelp() {
-  _showHelpModal('💜 가족코드 사용 방법', `
-    <div style="display:flex;flex-direction:column;gap:16px;font-size:14px;line-height:1.7;color:#444;">
-      <div style="background:#fef9f0;border-radius:12px;padding:16px;">
-        <div style="font-weight:800;color:#b5452e;margin-bottom:8px;">1단계 — 내 코드 만들기 🆕</div>
-        <p style="margin:0;">'내 코드 만들기' 탭에서 <strong>가족 코드 생성하기</strong>를 누르면 6자리 코드가 생성됩니다.<br>이 코드를 가족에게 카카오톡으로 전달하세요.</p>
+  // 현재 저장된 가족코드 확인
+  let myCode = '';
+  try {
+    const saved = JSON.parse(localStorage.getItem('slimmind_fc') || '{}');
+    myCode = saved.family_code || '';
+  } catch(e) {}
+
+  const codeDisplay = myCode
+    ? `<div style="background:linear-gradient(135deg,rgba(181,69,46,.12),rgba(181,69,46,.06));
+         border:1.5px dashed rgba(181,69,46,.4);border-radius:14px;padding:14px 16px;margin-bottom:4px;">
+         <div style="font-size:11px;font-weight:800;color:#b5452e;letter-spacing:1px;margin-bottom:8px;">
+           내 가족코드
+         </div>
+         <div style="display:flex;align-items:center;gap:10px;">
+           <div id="fcHelpCodeDisplay" style="font-size:30px;font-weight:900;letter-spacing:5px;
+             color:#b5452e;font-family:monospace;flex:1;">${myCode}</div>
+           <button onclick="fcHelpCopy('${myCode}')" style="
+             background:#b5452e;color:#fff;border:none;border-radius:10px;
+             padding:8px 14px;font-size:13px;font-weight:800;cursor:pointer;
+             font-family:inherit;flex-shrink:0;" id="fcHelpCopyBtn">
+             복사 📋
+           </button>
+         </div>
+         <div style="font-size:11px;color:#999;margin-top:6px;">이 코드를 카카오톡으로 가족에게 보내세요</div>
+       </div>`
+    : `<div style="background:#fef9f0;border:1px dashed rgba(181,69,46,.3);border-radius:14px;
+         padding:14px 16px;margin-bottom:4px;text-align:center;">
+         <div style="font-size:28px;margin-bottom:6px;">💜</div>
+         <div style="font-size:13px;font-weight:800;color:#b5452e;margin-bottom:4px;">
+           아직 가족코드가 없어요
+         </div>
+         <div style="font-size:12px;color:#888;margin-bottom:10px;">
+           아래 버튼으로 지금 바로 만들어보세요!
+         </div>
+         <button onclick="document.querySelector('.help-modal-overlay')?.remove(); fcCreateCodeFromHelp();" style="
+           background:#b5452e;color:#fff;border:none;border-radius:10px;
+           padding:10px 20px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;">
+           코드 생성하기 →
+         </button>
+       </div>`;
+
+  _showHelpModal('💜 가족코드', `
+    <div style="display:flex;flex-direction:column;gap:12px;font-size:14px;line-height:1.7;color:#444;">
+      ${codeDisplay}
+
+      <div style="display:flex;flex-direction:column;gap:8px;padding:4px 0;">
+        <div style="display:flex;align-items:flex-start;gap:10px;">
+          <div style="width:24px;height:24px;border-radius:50%;background:#b5452e;color:#fff;
+            font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">1</div>
+          <div style="font-size:13px;color:#555;line-height:1.6;">
+            <strong style="color:#222;">코드 생성</strong> — 내 코드 만들기 탭 → <strong>코드 생성하기</strong><br>
+            6자리 코드를 카카오톡으로 가족에게 전달
+          </div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:10px;">
+          <div style="width:24px;height:24px;border-radius:50%;background:#5a6e3a;color:#fff;
+            font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">2</div>
+          <div style="font-size:13px;color:#555;line-height:1.6;">
+            <strong style="color:#222;">가족 참여</strong> — 가족이 본인 결과지에서<br>
+            <strong>코드로 참여하기</strong> 탭 → 코드 6자리 입력
+          </div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:10px;">
+          <div style="width:24px;height:24px;border-radius:50%;background:#2f7d8c;color:#fff;
+            font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">3</div>
+          <div style="font-size:13px;color:#555;line-height:1.6;">
+            <strong style="color:#222;">BC 비교</strong> — 가족 전원의 바디코드를 한눈에 비교<br>
+            비만 원인이 같은 가족을 찾아보세요 📊
+          </div>
+        </div>
       </div>
-      <div style="background:#f0f9f4;border-radius:12px;padding:16px;">
-        <div style="font-weight:800;color:#3a7a20;margin-bottom:8px;">2단계 — 가족이 코드로 참여하기 🔗</div>
-        <p style="margin:0;">가족이 본인의 결과지에서 <strong>'코드로 참여하기'</strong> 탭을 열고, 받은 6자리 코드를 입력하면 같은 그룹에 등록됩니다.</p>
-      </div>
-      <div style="background:#f0f4ff;border-radius:12px;padding:16px;">
-        <div style="font-weight:800;color:#2563eb;margin-bottom:8px;">3단계 — 비교 결과 확인 📊</div>
-        <p style="margin:0;">코드 생성자 결과지에서 가족 전원의 바디코드를 한눈에 비교할 수 있습니다.<br>비만 원인이 같은 가족을 찾아보세요!</p>
-      </div>
-      <div style="font-size:12px;color:#999;padding:0 4px;">
-        ※ 최대 10명까지 같은 그룹에 참여 가능합니다.<br>
-        ※ 코드는 결과지 링크가 유효한 동안 사용할 수 있습니다.
+
+      <div style="background:#f8f8f6;border-radius:10px;padding:10px 12px;font-size:11px;color:#999;line-height:1.8;">
+        ※ 최대 10명 참여 가능<br>
+        ※ 코드 생성은 결과지 링크가 유효한 동안 사용 가능
       </div>
     </div>`);
+}
+
+// 도움말에서 코드 복사
+async function fcHelpCopy(code) {
+  const url = window.location.href;
+  const text = `[SlimMind 가족코드] ${code}\n가족 체형코드 비교하기 → ${url}`;
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch(e) {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+  }
+  const btn = document.getElementById('fcHelpCopyBtn');
+  if (btn) { btn.textContent = '복사됨 ✓'; btn.style.background = '#3a7a20'; }
+  _showToast('📋 가족코드가 복사됐어요!\n카카오톡에 붙여넣기 하세요 💬');
+}
+
+// 도움말에서 코드 생성 (결과지 내 fcCreateCode 호출)
+async function fcCreateCodeFromHelp() {
+  // p1 탭으로 이동 + 가족코드 섹션 스크롤
+  const p1 = document.querySelector('[data-page="page1"]') || document.querySelector('.nav-tab[onclick*="page1"]');
+  if (p1) p1.click();
+  setTimeout(() => {
+    const fc = document.getElementById('familyCodeSection');
+    if (fc) fc.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    fcCreateCode();
+  }, 400);
 }
 
 // 체크인 도움말
