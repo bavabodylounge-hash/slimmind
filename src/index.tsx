@@ -2862,6 +2862,124 @@ app.get('/api/v1/diagnosis/:id', async (c) => {
 })
 
 // ════════════════════════════════════════════════════════
+//  기능 8: 가족 코드 비교
+//  POST /api/v1/family-code/join   — 결과에 가족코드 연결 (신규 or 기존 코드 참여)
+//  GET  /api/v1/family-code/:code  — 가족 코드 구성원 목록 + 코드 비교
+// ════════════════════════════════════════════════════════
+
+// 6자리 대문자+숫자 코드 생성
+function genFamilyCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  let code = ''
+  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)]
+  return code
+}
+
+// POST /api/v1/family-code/join
+// body: { result_id, family_code? }  — family_code 없으면 새로 생성
+app.post('/api/v1/family-code/join', async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not configured' }, 500)
+  try {
+    const { result_id, family_code } = await c.req.json() as any
+    if (!result_id) return c.json({ error: 'result_id required' }, 400)
+
+    // 결과 존재 확인
+    const row = await db.prepare(
+      'SELECT id, user_name, bc_primary, bc_nickname, family_group_code FROM diagnosis_results WHERE id=?'
+    ).bind(result_id).first() as any
+    if (!row) return c.json({ error: '결과를 찾을 수 없습니다.' }, 404)
+
+    // 가족코드 결정: 기존 코드 참여 or 신규 생성
+    let code = family_code ? family_code.toUpperCase().trim() : null
+
+    if (code) {
+      // 유효성 검사: 6자리, 기존 코드 존재 여부
+      if (!/^[A-Z0-9]{6}$/.test(code)) return c.json({ error: '유효하지 않은 가족코드 형식입니다.' }, 400)
+      const exists = await db.prepare(
+        'SELECT COUNT(*) as cnt FROM diagnosis_results WHERE family_group_code=?'
+      ).bind(code).first() as any
+      if ((exists?.cnt ?? 0) === 0) return c.json({ error: '존재하지 않는 가족코드입니다. 가족에게 코드를 다시 확인해주세요.' }, 404)
+    } else {
+      // 신규 코드 생성 (중복 회피)
+      let tries = 0
+      do {
+        code = genFamilyCode()
+        const dup = await db.prepare(
+          'SELECT COUNT(*) as cnt FROM diagnosis_results WHERE family_group_code=?'
+        ).bind(code).first() as any
+        if ((dup?.cnt ?? 0) === 0) break
+      } while (++tries < 10)
+    }
+
+    // 업데이트
+    await db.prepare(
+      'UPDATE diagnosis_results SET family_group_code=? WHERE id=?'
+    ).bind(code, result_id).run()
+
+    return c.json({ success: true, family_code: code, is_new: !family_code })
+  } catch (e) {
+    console.error('[family-code/join]', e)
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// GET /api/v1/family-code/:code — 구성원 목록 + 축 비교
+app.get('/api/v1/family-code/:code', async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not configured' }, 500)
+  try {
+    const code = (c.req.param('code') || '').toUpperCase().trim()
+    if (!/^[A-Z0-9]{6}$/.test(code)) return c.json({ error: '유효하지 않은 코드' }, 400)
+
+    const rows = await db.prepare(`
+      SELECT id, user_name, bc_primary, bc_nickname, top3_axes, axis_scores,
+             region, ohaeng_type, completed_at
+      FROM diagnosis_results
+      WHERE family_group_code = ?
+      ORDER BY completed_at ASC
+      LIMIT 10
+    `).bind(code).all() as any
+
+    const members = (rows?.results ?? []).map((r: any) => ({
+      id:          r.id,
+      name:        r.user_name,
+      bc:          r.bc_primary,
+      nickname:    r.bc_nickname,
+      top3:        (() => { try { return JSON.parse(r.top3_axes) } catch { return [] } })(),
+      scores:      (() => { try { return JSON.parse(r.axis_scores) } catch { return {} } })(),
+      region:      r.region,
+      ohaeng:      r.ohaeng_type,
+      joined_at:   r.completed_at,
+    }))
+
+    if (members.length === 0) return c.json({ error: '해당 코드의 가족 그룹이 없습니다.' }, 404)
+
+    // 축별 최고점자 계산
+    const axes = ['A01','A02','A03','A04','A05','A06','A07','A08','A09','A10']
+    const axisChamps: Record<string, { name: string; score: number }> = {}
+    axes.forEach(ax => {
+      let best = { name: '', score: -1 }
+      members.forEach((m: any) => {
+        const sc = m.scores[ax] ?? 0
+        if (sc > best.score) best = { name: m.name, score: sc }
+      })
+      if (best.score >= 0) axisChamps[ax] = best
+    })
+
+    return c.json({
+      family_code: code,
+      count: members.length,
+      members,
+      axis_champs: axisChamps,
+    })
+  } catch (e) {
+    console.error('[family-code GET]', e)
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ════════════════════════════════════════════════════════
 //  GET /api/v1/stats/axis-rank?scores=A01:78,A03:92,...
 //  기능 7: 축 랭킹 배지 — 각 축별 상위 몇% 백분위 계산
 //  - diagnosis_results.axis_scores JSON 집계

@@ -439,6 +439,50 @@ body{background:var(--bg);color:var(--text);min-height:100vh;}
   .timeline-track::before{left:50%;}
 }
 
+/* ===== 기능 8: 가족 코드 비교 ===== */
+#familyCodeSection {
+  margin: 28px 0;
+  background: linear-gradient(135deg, #0e1220, #1a1a2e);
+  border: 1px solid rgba(167,139,250,.2);
+  border-radius: 20px; padding: 22px 20px 20px;
+  position: relative; overflow: hidden;
+}
+#familyCodeSection::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, #a78bfa, #818cf8, #6ee7b7);
+  border-radius: 20px 20px 0 0;
+}
+.fc-label { font-size: 10px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(167,139,250,.6); margin-bottom: 12px; }
+.fc-title { font-size: 18px; font-weight: 900; color: #f5ece0; margin-bottom: 6px; }
+.fc-sub   { font-size: 12px; color: rgba(245,236,224,.45); margin-bottom: 18px; line-height: 1.6; }
+.fc-code-box { background: rgba(167,139,250,.1); border: 1px solid rgba(167,139,250,.25); border-radius: 14px; padding: 14px 18px; display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.fc-code-val { font-size: 28px; font-weight: 900; letter-spacing: 4px; color: #a78bfa; font-family: monospace; flex: 1; }
+.fc-copy-btn { padding: 8px 14px; border-radius: 10px; border: none; cursor: pointer; background: rgba(167,139,250,.2); color: #a78bfa; font-size: 12px; font-weight: 700; font-family: inherit; transition: background .15s; min-height: 36px; }
+.fc-copy-btn:hover { background: rgba(167,139,250,.35); }
+.fc-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+.fc-tab { flex: 1; padding: 10px; border-radius: 12px; border: none; cursor: pointer; font-size: 12px; font-weight: 700; font-family: inherit; transition: background .15s; min-height: 40px; }
+.fc-tab.active { background: rgba(167,139,250,.25); color: #a78bfa; }
+.fc-tab:not(.active) { background: rgba(255,255,255,.06); color: rgba(245,236,224,.4); }
+.fc-input-row { display: flex; gap: 8px; margin-bottom: 12px; }
+.fc-input { flex: 1; padding: 12px 14px; border-radius: 12px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); color: #f5ece0; font-size: 15px; font-weight: 800; letter-spacing: 3px; font-family: monospace; text-transform: uppercase; outline: none; min-height: 44px; }
+.fc-input::placeholder { letter-spacing: 1px; font-weight: 500; font-size: 13px; color: rgba(245,236,224,.25); }
+.fc-input:focus { border-color: rgba(167,139,250,.5); }
+.fc-join-btn { padding: 12px 18px; border-radius: 12px; border: none; cursor: pointer; background: linear-gradient(135deg, #7c3aed, #a78bfa); color: #fff; font-size: 13px; font-weight: 800; font-family: inherit; min-height: 44px; transition: opacity .15s; }
+.fc-join-btn:hover { opacity: .88; } .fc-join-btn:disabled { opacity: .4; cursor: not-allowed; }
+.fc-members { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+.fc-member-card { background: rgba(255,255,255,.05); border-radius: 14px; padding: 14px 16px; border: 1px solid rgba(255,255,255,.08); }
+.fc-member-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.fc-member-name { font-size: 14px; font-weight: 800; color: #f5ece0; flex: 1; }
+.fc-member-bc { font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 20px; background: rgba(167,139,250,.15); color: #a78bfa; }
+.fc-member-nick { font-size: 11px; color: rgba(245,236,224,.45); margin-top: 2px; }
+.fc-axis-mini { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.fc-axis-chip { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 8px; background: rgba(255,255,255,.07); color: rgba(245,236,224,.6); }
+.fc-axis-chip.champ { background: rgba(251,191,36,.15); color: #fbbf24; border: 1px solid rgba(251,191,36,.25); }
+.fc-error { font-size: 13px; color: #f87171; text-align: center; padding: 12px 0; }
+.fc-loading { font-size: 12px; color: rgba(245,236,224,.35); text-align: center; padding: 14px 0; }
+@media(max-width:600px){ #familyCodeSection { padding: 18px 14px 16px; } .fc-code-val { font-size: 22px; } .fc-tabs { flex-direction: column; } }
+/* ===== /기능 8 ===== */
+
 /* ===== 기능 7: 축 랭킹 배지 ===== */
 /* axis-mini-item에 붙는 백분위 배지 */
 .rank-badge {
@@ -780,6 +824,51 @@ body{background:var(--bg);color:var(--text);min-height:100vh;}
     <div id="statsContent" style="display:none"></div>
   </div>
   <!-- ===== /기능 5 ===== -->
+
+  <!-- ===== 기능 8: 가족 코드 비교 ===== -->
+  <div id="familyCodeSection" class="fade-up" style="transition-delay:.32s">
+    <div class="fc-label">FAMILY CODE · 가족 단체 비교</div>
+    <div class="fc-title">💜 가족끼리 체형 코드 비교</div>
+    <div class="fc-sub">코드를 공유하면 가족의 바디코드를 한눈에 비교할 수 있어요.<br>비만 원인이 같은 가족을 찾아보세요.</div>
+
+    <!-- 내 코드 표시 (JS가 생성 후 채움) -->
+    <div id="fcMyCodeBox" style="display:none">
+      <div class="fc-code-box">
+        <div class="fc-code-val" id="fcCodeVal">——</div>
+        <button class="fc-copy-btn" onclick="fcCopyCode()">복사</button>
+      </div>
+      <div style="font-size:11px;color:rgba(245,236,224,.35);margin-bottom:16px;text-align:center">
+        위 코드를 가족에게 전달하세요 · 최대 10명
+      </div>
+    </div>
+
+    <!-- 탭: 새 코드 만들기 / 코드 참여하기 -->
+    <div class="fc-tabs" id="fcTabs">
+      <button class="fc-tab active" id="fcTab1" onclick="fcSwitchTab(1)">🆕 내 코드 만들기</button>
+      <button class="fc-tab"        id="fcTab2" onclick="fcSwitchTab(2)">🔗 코드로 참여하기</button>
+    </div>
+
+    <!-- 탭1: 새 코드 만들기 -->
+    <div id="fcPanel1">
+      <button class="fc-join-btn" style="width:100%" onclick="fcCreateCode()">
+        가족 코드 생성하기 →
+      </button>
+    </div>
+
+    <!-- 탭2: 기존 코드 참여 -->
+    <div id="fcPanel2" style="display:none">
+      <div class="fc-input-row">
+        <input class="fc-input" id="fcCodeInput" maxlength="6"
+          placeholder="XXXXXX 입력" oninput="fcOnInput(this)"
+          autocomplete="off" autocorrect="off" spellcheck="false">
+        <button class="fc-join-btn" id="fcJoinBtn" onclick="fcJoinCode()" disabled>참여</button>
+      </div>
+    </div>
+
+    <!-- 비교 결과 -->
+    <div id="fcResult" style="display:none"></div>
+  </div>
+  <!-- ===== /기능 8 ===== -->
 
   <!-- 실패 유형 고발 -->
   <div class="section-title fade-up" style="transition-delay:.3s">⚠️ 당신 몸의 진짜 고장 원인</div>
@@ -1391,6 +1480,148 @@ async function shareNative() {
 }
 /* ===== /기능 6 ===== */
 
+/* ===== 기능 8: 가족 코드 비교 ===== */
+const FC_KEY = 'slimmind_fc'; // localStorage 키: { result_id, family_code }
+let _fcResultId = null;       // 현재 result_id
+
+// renderAll 후 result_id 세팅
+function fcInit(resultId) {
+  _fcResultId = resultId;
+  // 기존 저장 코드 있으면 자동 표시
+  try {
+    const saved = JSON.parse(localStorage.getItem(FC_KEY) || '{}');
+    if (saved.family_code && saved.result_id === resultId) {
+      fcShowMyCode(saved.family_code);
+      fcLoadGroup(saved.family_code);
+    }
+  } catch(e) {}
+}
+
+// 탭 전환
+function fcSwitchTab(n) {
+  document.getElementById('fcTab1').classList.toggle('active', n === 1);
+  document.getElementById('fcTab2').classList.toggle('active', n === 2);
+  document.getElementById('fcPanel1').style.display = n === 1 ? '' : 'none';
+  document.getElementById('fcPanel2').style.display = n === 2 ? '' : 'none';
+}
+
+// 코드 입력 핸들러
+function fcOnInput(el) {
+  el.value = el.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  document.getElementById('fcJoinBtn').disabled = el.value.length !== 6;
+}
+
+// 내 코드 박스 표시
+function fcShowMyCode(code) {
+  document.getElementById('fcCodeVal').textContent = code;
+  document.getElementById('fcMyCodeBox').style.display = '';
+  // 탭 숨기기 (이미 코드 있음)
+  document.getElementById('fcTabs').style.display   = 'none';
+  document.getElementById('fcPanel1').style.display = 'none';
+  document.getElementById('fcPanel2').style.display = 'none';
+}
+
+// 코드 복사
+async function fcCopyCode() {
+  const code = document.getElementById('fcCodeVal').textContent;
+  const url  = window.location.href;
+  const text = `[SlimMind 가족코드] ${code}\n가족 체형코드 비교하기 → ${url}`;
+  try { await navigator.clipboard.writeText(text); }
+  catch { const ta = document.createElement('textarea'); ta.value = text;
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); }
+  const btn = document.querySelector('.fc-copy-btn');
+  if (btn) { btn.textContent = '복사됨 ✓'; setTimeout(() => btn.textContent = '복사', 1800); }
+}
+
+// 새 코드 생성
+async function fcCreateCode() {
+  if (!_fcResultId) return;
+  const btn = document.querySelector('#fcPanel1 .fc-join-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '생성 중...'; }
+  try {
+    const res  = await fetch('/api/v1/family-code/join', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ result_id: _fcResultId }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.family_code) throw new Error(data.error || '생성 실패');
+    localStorage.setItem(FC_KEY, JSON.stringify({ result_id: _fcResultId, family_code: data.family_code }));
+    fcShowMyCode(data.family_code);
+    fcLoadGroup(data.family_code);
+  } catch(e) {
+    document.getElementById('fcResult').style.display = '';
+    document.getElementById('fcResult').innerHTML = `<div class="fc-error">⚠️ ${e.message}</div>`;
+    if (btn) { btn.disabled = false; btn.textContent = '가족 코드 생성하기 →'; }
+  }
+}
+
+// 기존 코드 참여
+async function fcJoinCode() {
+  const code = document.getElementById('fcCodeInput').value.trim().toUpperCase();
+  if (code.length !== 6 || !_fcResultId) return;
+  const btn = document.getElementById('fcJoinBtn');
+  btn.disabled = true; btn.textContent = '참여 중...';
+  try {
+    const res  = await fetch('/api/v1/family-code/join', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ result_id: _fcResultId, family_code: code }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.family_code) throw new Error(data.error || '참여 실패');
+    localStorage.setItem(FC_KEY, JSON.stringify({ result_id: _fcResultId, family_code: data.family_code }));
+    fcShowMyCode(data.family_code);
+    fcLoadGroup(data.family_code);
+  } catch(e) {
+    document.getElementById('fcResult').style.display = '';
+    document.getElementById('fcResult').innerHTML = `<div class="fc-error">⚠️ ${e.message}</div>`;
+    btn.disabled = false; btn.textContent = '참여';
+  }
+}
+
+// 그룹 목록 불러오기 + 렌더
+async function fcLoadGroup(code) {
+  const resultEl = document.getElementById('fcResult');
+  resultEl.style.display = '';
+  resultEl.innerHTML = '<div class="fc-loading">⏳ 가족 코드 불러오는 중...</div>';
+  try {
+    const res  = await fetch(`/api/v1/family-code/${code}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || '불러오기 실패');
+
+    const { members, axis_champs } = data;
+    const ANAME = { A01:'인슐린', A02:'림프', A03:'호르몬', A04:'근감소',
+      A05:'소화', A06:'골격', A07:'스트레스', A08:'심리식이', A09:'대사', A10:'기질' };
+
+    const cardsHtml = members.map(m => {
+      const top3Html = (m.top3 || []).map(ax => {
+        const isChamp = axis_champs[ax]?.name === m.name;
+        return `<span class="fc-axis-chip${isChamp?' champ':''}">${isChamp?'👑 ':''}${ANAME[ax]||ax}</span>`;
+      }).join('');
+      return `
+        <div class="fc-member-card">
+          <div class="fc-member-header">
+            <div>
+              <div class="fc-member-name">${m.name}님</div>
+              <div class="fc-member-nick">${m.nickname || ''}</div>
+            </div>
+            <div class="fc-member-bc">${m.bc || '분석중'}</div>
+          </div>
+          <div class="fc-axis-mini">${top3Html || '<span style="font-size:11px;color:rgba(255,255,255,.2)">축 데이터 없음</span>'}</div>
+        </div>`;
+    }).join('');
+
+    resultEl.innerHTML = `
+      <div style="font-size:11px;color:rgba(245,236,224,.3);margin-bottom:12px;text-align:center">
+        👨‍👩‍👧‍👦 현재 ${members.length}명 참여 중
+      </div>
+      <div class="fc-members">${cardsHtml}</div>`;
+
+  } catch(e) {
+    resultEl.innerHTML = `<div class="fc-error">⚠️ ${e.message}</div>`;
+  }
+}
+/* ===== /기능 8 ===== */
+
 /* ===== 기능 7: 축 랭킹 배지 ===== */
 const AXIS_COLORS = {
   A01:'#e05c3a', A02:'#3b82f6', A03:'#a78bfa',
@@ -1652,6 +1883,10 @@ function renderAll(data) {
   loadBodyTypeStats(bcCode, userName);
   // ★ 기능 7: 축 랭킹 배지 비동기 로드
   loadAxisRank(axisScores);
+  // ★ 기능 8: 가족 코드 초기화
+  const urlParams8 = new URLSearchParams(window.location.search);
+  const rid8 = urlParams8.get('id') || urlParams8.get('diagnosis_id') || urlParams8.get('did');
+  if (rid8) fcInit(rid8);
 
   // 면책 고지 전 페이지
   document.querySelectorAll('[id$="-disclaimer"]').forEach(el => { el.textContent = DISCLAIMER; });
