@@ -289,108 +289,147 @@ body{background:var(--paper);color:var(--ink);min-height:100vh;}
 
 /* ══════════════════════ P6 ══════════════════════ */
 
-/* ── 전체 개요 지그재그 타임라인 ── */
-.p6-overview{margin-bottom:32px;}
-.p6-overview-title{font-size:13px;font-weight:800;letter-spacing:1.5px;color:var(--ink);text-transform:uppercase;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
-.p6-overview-title::after{content:'';flex:1;height:1px;background:var(--line);}
-
-.timeline-track{position:relative;padding:8px 0 0;}
-/* 중앙 점선 세로 선 */
-.timeline-track::before{
-  content:'';position:absolute;left:50%;top:0;bottom:0;
-  width:2px;background:repeating-linear-gradient(to bottom,var(--mint) 0,var(--mint) 6px,transparent 6px,transparent 12px);
-  transform:translateX(-50%);z-index:0;
+/* ── 6-0: 원형 SVG 다이어그램 ── */
+.p6-diagram-wrap{
+  margin-bottom:32px;background:var(--dark);border-radius:24px;
+  padding:24px 16px 20px;position:relative;overflow:hidden;
 }
-
-.tl-node{
-  display:flex;align-items:center;
-  margin-bottom:20px;position:relative;z-index:1;
+.p6-diagram-wrap::before{
+  content:'';position:absolute;top:-80px;right:-80px;width:260px;height:260px;
+  background:radial-gradient(circle,rgba(181,69,46,.10) 0%,transparent 65%);border-radius:50%;
 }
-/* 홀수: 왼쪽 콘텐츠 */
-.tl-node:nth-child(odd){flex-direction:row;}
-/* 짝수: 오른쪽 콘텐츠 (미러) */
-.tl-node:nth-child(even){flex-direction:row-reverse;}
-
-.tl-content{
-  flex:0 0 calc(50% - 36px);
-  background:var(--card);border:1px solid var(--line);border-radius:14px;
-  padding:12px 14px;box-shadow:0 2px 8px rgba(42,33,24,.05);
+.p6-diagram-eyebrow{
+  font-size:10px;font-weight:800;letter-spacing:2px;color:rgba(181,69,46,.7);
+  text-transform:uppercase;text-align:center;margin-bottom:6px;
 }
-.tl-node:nth-child(odd) .tl-content{margin-right:auto;}
-.tl-node:nth-child(even) .tl-content{margin-left:auto;text-align:right;}
-
-.tl-spacer{flex:0 0 72px;}/* 중앙 원 영역 */
-
-.tl-circle{
-  position:absolute;left:50%;transform:translateX(-50%);
-  width:52px;height:52px;border-radius:50%;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  font-size:18px;z-index:2;border:3px solid #fff;
-  box-shadow:0 0 0 3px currentColor;
+.p6-diagram-title{
+  font-size:17px;font-weight:900;color:#fff;text-align:center;
+  margin-bottom:4px;line-height:1.3;
 }
-.tl-circle.active{background:var(--dark);color:var(--vis);}
-.tl-circle.locked{background:#E8ECF0;color:#A0A8B8;}
-.tl-circle-week{font-size:9px;font-weight:800;letter-spacing:.5px;margin-top:1px;}
-
-.tl-phase{font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;margin-bottom:3px;}
-.tl-title{font-size:12px;font-weight:700;color:var(--navy);line-height:1.4;margin-bottom:4px;word-break:keep-all;}
-.tl-tags{display:flex;gap:4px;flex-wrap:wrap;}
-.tl-node:nth-child(even) .tl-tags{justify-content:flex-end;}
-.tl-tag{font-size:9px;font-weight:600;padding:2px 7px;border-radius:20px;background:var(--vis-l);color:var(--vis-d);}
-.tl-tag.locked-tag{background:#F0F0F5;color:#999;}
-
-/* 잠금 구간 요약 배너 */
-.tl-lock-banner{
-  margin-top:8px;background:var(--dark);border-radius:14px;
-  padding:16px 18px;display:flex;align-items:center;gap:12px;
+.p6-diagram-sub{
+  font-size:11px;color:rgba(255,255,255,.4);text-align:center;margin-bottom:20px;
 }
-.tl-lock-banner-icon{font-size:24px;flex-shrink:0;}
-.tl-lock-banner-text{font-size:12px;color:rgba(255,255,255,.7);line-height:1.6;}
-.tl-lock-banner-text strong{color:var(--vis);font-weight:700;}
+/* SVG 컨테이너 */
+.p6-svg-wrap{
+  width:100%;max-width:360px;margin:0 auto 16px;
+  position:relative;
+}
+.p6-svg-wrap svg{width:100%;height:auto;display:block;}
 
-/* ── 주차별 독립 확장 카드 (아코디언) ── */
+/* 링 범례 */
+.p6-ring-legend{
+  display:flex;justify-content:center;gap:16px;flex-wrap:wrap;
+  margin-bottom:16px;
+}
+.p6-ring-legend-item{
+  display:flex;align-items:center;gap:6px;
+  font-size:11px;color:rgba(255,255,255,.65);font-weight:600;
+}
+.p6-ring-dot{width:10px;height:10px;border-radius:50%;}
+
+/* 주차 클릭 시 중앙 정보 */
+.p6-week-info-box{
+  background:rgba(255,255,255,.06);border:1px solid rgba(181,69,46,.25);
+  border-radius:14px;padding:14px 16px;text-align:center;
+  min-height:70px;transition:all .25s;
+}
+.p6-week-info-week{font-size:11px;font-weight:700;color:rgba(181,69,46,.8);margin-bottom:3px;letter-spacing:.5px;}
+.p6-week-info-title{font-size:15px;font-weight:900;color:#fff;margin-bottom:4px;}
+.p6-week-info-tags{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;}
+.p6-week-info-tag{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;
+  background:rgba(181,69,46,.18);color:rgba(181,69,46,.9);}
+.p6-week-info-tag.locked{background:rgba(255,255,255,.07);color:rgba(255,255,255,.35);}
+
+/* ── 섹션 헤더 공통 ── */
+.p6-section-hd{
+  font-size:13px;font-weight:800;letter-spacing:1.5px;color:var(--ink);
+  text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px;
+}
+.p6-section-hd::after{content:'';flex:1;height:1px;background:var(--line);}
+
+/* ── 6-1~6-4: 주간 처방 카드 ── */
 .p6-weeks-section{margin-bottom:28px;}
-.p6-weeks-label{font-size:13px;font-weight:800;letter-spacing:1.5px;color:var(--ink);text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
-.p6-weeks-label::after{content:'';flex:1;height:1px;background:var(--line);}
 
-.week-accordion{border:1px solid var(--line);border-radius:16px;overflow:hidden;margin-bottom:12px;transition:box-shadow .2s;}
-.week-accordion:hover{box-shadow:0 4px 16px rgba(42,33,24,.08);}
-
-.week-acc-header{
-  display:flex;align-items:center;gap:12px;padding:16px 18px;
-  background:var(--dark);cursor:pointer;user-select:none;
+.week-card{
+  border-radius:20px;overflow:hidden;margin-bottom:16px;
+  border:1px solid var(--line);
+  box-shadow:0 2px 12px rgba(42,33,24,.06);
 }
-.week-acc-num{
-  width:40px;height:40px;border-radius:50%;border:2px solid var(--vis);
-  display:flex;align-items:center;justify-content:center;
-  font-size:13px;font-weight:900;color:var(--vis);flex-shrink:0;
+
+/* 히어로 헤더 */
+.week-hero{
+  position:relative;padding:22px 20px 18px;overflow:hidden;
 }
-.week-acc-info{flex:1;min-width:0;}
-.week-acc-phase{font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:2px;}
-.week-acc-title{font-size:15px;font-weight:700;color:#fff;line-height:1.3;word-break:keep-all;}
-.week-acc-icons{display:flex;gap:4px;margin-top:4px;}
-.week-acc-icon-chip{font-size:14px;background:rgba(255,255,255,.1);border-radius:6px;padding:2px 6px;}
-.week-acc-toggle{font-size:18px;color:rgba(255,255,255,.5);flex-shrink:0;transition:transform .3s;}
-.week-accordion.open .week-acc-toggle{transform:rotate(180deg);}
-
-.week-acc-body{
-  display:none;padding:18px;background:var(--card);
-  border-top:1px solid var(--line);
+.week-hero::before{
+  content:'';position:absolute;top:-40px;right:-40px;width:160px;height:160px;
+  background:radial-gradient(circle,rgba(255,255,255,.08) 0%,transparent 65%);border-radius:50%;
 }
-.week-accordion.open .week-acc-body{display:block;}
+.week-hero-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);
+  border-radius:20px;padding:3px 12px;font-size:10px;font-weight:700;
+  color:rgba(255,255,255,.85);letter-spacing:.5px;margin-bottom:10px;
+}
+.week-hero-num{font-size:13px;font-weight:900;color:rgba(255,255,255,.5);margin-bottom:2px;letter-spacing:.5px;}
+.week-hero-title{font-size:20px;font-weight:900;color:#fff;line-height:1.25;margin-bottom:8px;}
+.week-hero-icons{display:flex;gap:6px;flex-wrap:wrap;}
+.week-hero-chip{font-size:13px;background:rgba(255,255,255,.12);border-radius:8px;padding:3px 8px;}
 
-.week-acc-keyfocus{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
-.keyfocus-tag{font-size:10px;font-weight:700;padding:4px 10px;border-radius:20px;background:var(--dark);color:var(--vis);letter-spacing:.3px;}
+/* 핵심 원칙 배너 */
+.week-principle-banner{
+  padding:12px 20px;
+  display:flex;align-items:center;gap:10px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.week-principle-label{
+  font-size:9px;font-weight:800;letter-spacing:1.5px;
+  text-transform:uppercase;opacity:.55;white-space:nowrap;
+}
+.week-principle-text{font-size:12px;font-weight:600;color:rgba(255,255,255,.9);line-height:1.5;}
 
-.week-section{margin-bottom:14px;}
-.week-section-label{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
-.week-section-label::after{content:'';flex:1;height:1px;background:var(--line);}
-.rule{display:flex;gap:8px;font-size:14px;line-height:1.75;color:#333;margin-bottom:8px;word-break:keep-all;}
-.rule-icon{font-size:13px;flex-shrink:0;margin-top:1px;}
-.fail-expose-box{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px;font-size:13px;line-height:1.8;color:var(--muted);word-break:keep-all;}
+/* 바디 2열 그리드 */
+.week-body{background:var(--card);padding:18px 16px 14px;}
+.week-2col{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.week-col-card{
+  background:var(--paper);border:1px solid var(--line);
+  border-radius:12px;padding:12px 12px 10px;
+}
+.week-col-label{
+  font-size:9px;font-weight:800;letter-spacing:1px;text-transform:uppercase;
+  margin-bottom:8px;display:flex;align-items:center;gap:5px;
+}
+.week-col-label .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.week-col-rule{
+  font-size:12px;line-height:1.75;color:var(--ink);word-break:keep-all;
+  margin-bottom:5px;
+}
+.week-col-rule.ban{
+  font-size:11px;color:var(--muted);text-decoration:line-through;
+  text-decoration-color:rgba(181,69,46,.5);
+}
+.week-col-rule.ban::before{content:'✕ ';color:var(--vis);font-weight:700;font-style:normal;}
+.week-col-rule.ok::before{content:'✓ ';color:#5a6e3a;font-weight:700;}
 
-/* ── 6대영양소 추천 카드 ── */
-.nutri-section{margin-top:6px;padding-top:12px;border-top:1px dashed var(--line);}
+/* 3열 보조 카드 */
+.week-3col{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;}
+.week-mini-card{
+  background:var(--paper);border:1px solid var(--line);
+  border-radius:10px;padding:10px 8px;text-align:center;
+}
+.week-mini-icon{font-size:18px;margin-bottom:4px;}
+.week-mini-label{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;}
+.week-mini-val{font-size:11px;font-weight:700;color:var(--ink);line-height:1.4;word-break:keep-all;}
+
+/* 경고 배너 (있는 경우) */
+.week-warn-banner{
+  background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.18);
+  border-radius:10px;padding:10px 14px;margin-bottom:12px;
+  font-size:12px;color:#991b1b;line-height:1.7;display:flex;gap:8px;align-items:flex-start;
+}
+.week-warn-icon{flex-shrink:0;font-size:14px;margin-top:1px;}
+
+/* 오행 영양 섹션 */
+.nutri-section{margin-top:4px;padding-top:12px;border-top:1px dashed var(--line);}
 .nutri-section-title{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
 .nutri-section-title::after{content:'';flex:1;height:1px;background:var(--line);}
 .nutri-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;}
@@ -399,6 +438,23 @@ body{background:var(--paper);color:var(--ink);min-height:100vh;}
 .nutri-item-foods{font-size:10px;color:var(--ink);line-height:1.6;word-break:keep-all;}
 .nutri-tip-box{background:var(--dark);border-radius:10px;padding:12px 14px;font-size:12px;color:rgba(255,255,255,.85);line-height:1.7;}
 .nutri-tip-box strong{color:var(--vis);}
+
+/* 주차 카드 하단 네비 */
+.week-nav{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:12px 16px;background:var(--paper);border-top:1px solid var(--line);
+}
+.week-nav-btn{
+  font-size:12px;font-weight:700;color:var(--muted);background:none;
+  border:1px solid var(--line);border-radius:8px;padding:6px 14px;cursor:pointer;
+  transition:all .15s;
+}
+.week-nav-btn:hover{color:var(--ink);border-color:var(--ink);}
+.week-nav-btn.primary{background:var(--dark);color:#fff;border-color:var(--dark);}
+.week-nav-btn.primary:hover{background:var(--dark2);}
+.week-nav-dots{display:flex;gap:5px;}
+.week-nav-dot{width:6px;height:6px;border-radius:50%;background:var(--line);}
+.week-nav-dot.active{background:var(--vis);}
 
 /* B2B 버튼 */
 .b2b-btn{
@@ -409,30 +465,57 @@ body{background:var(--paper);color:var(--ink);min-height:100vh;}
 }
 .b2b-btn:hover{background:var(--dark2);}
 
-/* 잠금 카드 */
-.lock-card{
-  border:2px solid rgba(181,69,46,.25);border-radius:20px;padding:36px 24px;
-  text-align:center;background:var(--dark);position:relative;overflow:hidden;margin-bottom:16px;
+/* ── 6-5: 잠금 CTA 다크 섹션 ── */
+.p6-lock-section{
+  background:var(--ink);border-radius:24px;padding:32px 20px 28px;
+  margin-bottom:16px;position:relative;overflow:hidden;
 }
-.lock-card::before{
+.p6-lock-section::before{
   content:'';position:absolute;inset:0;
-  background:repeating-linear-gradient(45deg,rgba(181,69,46,.04) 0,rgba(181,69,46,.04) 1px,transparent 1px,transparent 16px);
+  background:repeating-linear-gradient(135deg,rgba(181,69,46,.03) 0,rgba(181,69,46,.03) 1px,transparent 1px,transparent 24px);
 }
-.lock-icon{width:72px;height:72px;border-radius:50%;background:rgba(181,69,46,.12);border:2px solid rgba(181,69,46,.4);display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 16px;animation:pulse-lock 2s ease-in-out infinite;}
-@keyframes pulse-lock{0%,100%{box-shadow:0 0 0 0 rgba(181,69,46,.3)}50%{box-shadow:0 0 0 10px rgba(181,69,46,.0)}}
-.lock-weeks-row{display:flex;justify-content:center;gap:5px;flex-wrap:wrap;margin-bottom:16px;}
-.lock-week-circle{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:rgba(255,255,255,.4);}
-.lock-title{font-size:20px;font-weight:900;color:#fff;margin-bottom:8px;}
-.lock-teaser{font-size:13px;color:var(--vis);font-weight:600;margin-bottom:12px;font-style:italic;}
-.lock-desc{font-size:13px;color:rgba(255,255,255,.6);line-height:1.8;word-break:keep-all;margin-bottom:20px;}
-.lock-preview-list{text-align:left;margin:0 auto 20px;max-width:280px;}
-.lock-preview-item{display:flex;align-items:flex-start;gap:8px;font-size:12px;color:rgba(255,255,255,.75);line-height:1.6;margin-bottom:6px;}
-.lock-preview-item::before{content:'›';color:var(--vis);font-weight:900;flex-shrink:0;}
-.lock-cta{
-  display:flex;align-items:center;justify-content:center;gap:8px;
-  background:linear-gradient(135deg,var(--vis),var(--vis-d));color:#fff;border-radius:12px;padding:16px 24px;
-  font-size:15px;font-weight:700;cursor:pointer;border:none;width:100%;max-width:360px;margin:0 auto;
-  box-shadow:0 4px 16px rgba(181,69,46,.4);
+.p6-lock-eyebrow{
+  font-size:10px;font-weight:800;letter-spacing:2px;
+  text-transform:uppercase;color:rgba(181,69,46,.7);
+  text-align:center;margin-bottom:8px;
+}
+.p6-lock-title{
+  font-size:22px;font-weight:900;color:#fff;text-align:center;
+  line-height:1.3;margin-bottom:6px;
+}
+.p6-lock-sub{
+  font-size:12px;color:rgba(255,255,255,.45);text-align:center;
+  line-height:1.7;margin-bottom:22px;word-break:keep-all;
+}
+/* 4개 티저 카드 */
+.p6-teaser-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:24px;}
+.p6-teaser-card{
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);
+  border-radius:14px;padding:14px 12px;
+}
+.p6-teaser-icon{font-size:22px;margin-bottom:8px;}
+.p6-teaser-week{font-size:9px;font-weight:800;letter-spacing:1px;text-transform:uppercase;
+  color:rgba(181,69,46,.7);margin-bottom:4px;}
+.p6-teaser-name{font-size:13px;font-weight:800;color:#fff;margin-bottom:4px;line-height:1.3;}
+.p6-teaser-desc{font-size:11px;color:rgba(255,255,255,.45);line-height:1.55;word-break:keep-all;}
+/* 주차별 색상 강조 */
+.p6-teaser-card:nth-child(1){border-color:rgba(181,69,46,.25);}
+.p6-teaser-card:nth-child(2){border-color:rgba(90,110,58,.25);}
+.p6-teaser-card:nth-child(3){border-color:rgba(47,125,140,.25);}
+.p6-teaser-card:nth-child(4){border-color:rgba(91,74,134,.25);}
+/* CTA 버튼 */
+.p6-lock-cta{
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  background:linear-gradient(135deg,var(--vis),var(--vis-d));
+  color:#fff;border-radius:14px;padding:18px 28px;
+  font-size:16px;font-weight:900;cursor:pointer;border:none;
+  width:100%;max-width:380px;margin:0 auto 12px;
+  box-shadow:0 6px 20px rgba(181,69,46,.45);
+  transition:transform .15s,box-shadow .15s;
+}
+.p6-lock-cta:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(181,69,46,.55);}
+.p6-lock-cta-sub{
+  font-size:11px;color:rgba(255,255,255,.35);text-align:center;
 }
 
 /* ── 애니메이션 ── */
@@ -441,18 +524,18 @@ body{background:var(--paper);color:var(--ink);min-height:100vh;}
 
 /* ── 진행 바 (P6) ── */
 .progress-bar-wrap{margin-bottom:24px;}
-.progress-labels{display:flex;justify-content:space-between;font-size:11px;color:var(--sub);margin-bottom:6px;}
-.progress-bg{height:8px;background:#EEE;border-radius:4px;overflow:hidden;}
+.progress-labels{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:6px;}
+.progress-bg{height:8px;background:var(--line);border-radius:4px;overflow:hidden;}
 .progress-fill{width:33.3%;height:100%;background:linear-gradient(90deg,var(--vis-d),var(--vis));border-radius:4px;}
 
 @media(max-width:480px){
   .bc-grid{grid-template-columns:repeat(3,1fr);}
   .axis-mini-grid{grid-template-columns:repeat(3,1fr);}
   .nav-tab{padding:5px 9px;font-size:10px;}
-  .tl-title{font-size:11px;}
-  .tl-content{padding:10px 11px;}
+  .week-2col{grid-template-columns:1fr;}
+  .week-3col{grid-template-columns:repeat(3,1fr);}
+  .p6-teaser-grid{grid-template-columns:1fr 1fr;}
   .nutri-grid{grid-template-columns:repeat(2,1fr);}
-  .timeline-track::before{left:50%;}
 }
 
 /* ===== 기능 8: 가족 코드 비교 ===== */
@@ -1051,29 +1134,38 @@ body{background:var(--paper);color:var(--ink);min-height:100vh;}
 <div class="section-wrap">
   <div class="eyebrow" style="padding-top:8px;">12-WEEK HYPER ROADMAP</div>
   <h1 class="page-title fade-up">12주 하이퍼 로드맵</h1>
-  <p class="body-text fade-up" style="transition-delay:.1s;margin-bottom:20px;" id="p6-code-display"></p>
+  <p class="body-text fade-up" style="transition-delay:.05s;margin-bottom:20px;" id="p6-code-display"></p>
 
-  <!-- ① 전체 개요 지그재그 타임라인 -->
-  <div class="p6-overview fade-up" style="transition-delay:.12s">
-    <div class="p6-overview-title">📍 전체 로드맵 개요</div>
-    <div class="timeline-track" id="p6-timeline"><!-- JS 렌더 --></div>
+  <!-- 6-0: 원형 SVG 다이어그램 -->
+  <div class="p6-diagram-wrap fade-up" style="transition-delay:.08s" id="p6-diagram-wrap">
+    <div class="p6-diagram-eyebrow">ROADMAP OVERVIEW</div>
+    <div class="p6-diagram-title" id="p6-diagram-title">12주 바디 변환 로드맵</div>
+    <div class="p6-diagram-sub" id="p6-diagram-sub">클릭하면 주차별 내용을 확인할 수 있습니다</div>
+    <div class="p6-svg-wrap">
+      <svg id="p6-svg" viewBox="0 0 360 360" xmlns="http://www.w3.org/2000/svg"><!-- JS 렌더 --></svg>
+    </div>
+    <div class="p6-ring-legend" id="p6-ring-legend"></div>
+    <div class="p6-week-info-box" id="p6-week-info">
+      <div class="p6-week-info-week">1주차</div>
+      <div class="p6-week-info-title">항목을 선택하세요</div>
+      <div class="p6-week-info-tags"></div>
+    </div>
   </div>
 
-  <!-- ② 주차별 독립 확장 카드 (1~4주차) -->
-  <div class="p6-weeks-section fade-up" style="transition-delay:.2s">
-    <div class="p6-weeks-label">🔓 1~4주차 처방 상세</div>
+  <!-- 6-1~6-4: 주간 처방 카드 -->
+  <div class="p6-weeks-section fade-up" style="transition-delay:.14s">
+    <div class="p6-section-hd">🔓 1~4주차 처방 상세</div>
     <div id="p6-weeks"><!-- JS 렌더 --></div>
   </div>
 
-  <!-- ③ Lock 카드 (5~12주차) -->
-  <div class="lock-card fade-up" style="transition-delay:.28s">
-    <div class="lock-icon">🔒</div>
-    <div class="lock-weeks-row" id="p6-lock-weeks"></div>
-    <div class="lock-title">5~12주차 하이퍼 세포 연소 구간</div>
-    <div class="lock-teaser">"지금 해제하면 이게 기다립니다"</div>
-    <ul class="lock-preview-list" id="p6-lock-preview"></ul>
-    <div class="lock-desc" id="p6-lock-desc"></div>
-    <button class="lock-cta">5주차 처방 해제 →</button>
+  <!-- 6-5: 잠금 CTA 다크 섹션 -->
+  <div class="p6-lock-section fade-up" style="transition-delay:.2s" id="p6-lock-section">
+    <div class="p6-lock-eyebrow">5~12주차 · 잠금 구간</div>
+    <div class="p6-lock-title">지금 해제하면<br>이게 기다립니다 🔥</div>
+    <div class="p6-lock-sub">1~4주차 기반 구축 완료 후<br>고강도 세포 연소 구간이 열립니다</div>
+    <div class="p6-teaser-grid" id="p6-teaser-grid"><!-- JS 렌더 --></div>
+    <button class="p6-lock-cta" onclick="handleB2B()">5주차 처방 해제 신청 →</button>
+    <div class="p6-lock-cta-sub">담당 컨설턴트를 통해 해제 가능합니다</div>
   </div>
 
   <div class="disclaimer" id="p6-disclaimer"></div>
@@ -2205,180 +2297,281 @@ function animSimBars() {
 /* ── P6 ── */
 function renderP6(userName, fullCode, ohaengType) {
   document.getElementById('p6-code-display').innerHTML =
-    `매칭 파라미터: <strong style="color:var(--mint-d);">${fullCode}</strong>`;
+    `매칭 파라미터: <strong style="color:var(--vis-d);">${fullCode}</strong>`;
 
-  // 오행 영양소 데이터
   const ohaengData = (typeof SAJU_ELEMENT_DESC !== 'undefined' && SAJU_ELEMENT_DESC[ohaengType])
-    ? SAJU_ELEMENT_DESC[ohaengType]
-    : null;
+    ? SAJU_ELEMENT_DESC[ohaengType] : null;
 
-  // ──────────────────────────────────────────
-  // ① 지그재그 타임라인 개요
-  // ──────────────────────────────────────────
-  const tlContainer = document.getElementById('p6-timeline');
+  const PHASE_COLORS = ['var(--vis)','var(--muscle)','var(--circ)','var(--sub)'];
 
-  // 1~4주차 활성 노드
-  ROADMAP_WEEKS.forEach((w, i) => {
-    const node = document.createElement('div');
-    node.className = 'tl-node';
-    const tagHTML = (w.keyFocus || []).map(t =>
-      `<span class="tl-tag">${t}</span>`).join('');
-    node.innerHTML = `
-      <div class="tl-content">
-        <div class="tl-phase" style="color:${w.phaseColor||'var(--mint)'}">${w.phase || ''}</div>
-        <div class="tl-title">${w.weekLabel} · ${w.title}</div>
-        <div class="tl-tags">${tagHTML}</div>
-      </div>
-      <div class="tl-spacer"></div>
-      <div class="tl-circle active" style="box-shadow:0 0 0 3px ${w.phaseColor||'var(--mint)'}">
-        <span>${w.icon || '🔓'}</span>
-        <span class="tl-circle-week">${w.weekLabel}</span>
-      </div>`;
-    tlContainer.appendChild(node);
+  // ════════════════════════════════════════════
+  // 6-0: 원형 SVG 다이어그램
+  // ════════════════════════════════════════════
+  const CX = 180, CY = 180;
+  const RADII = [155, 120, 88];
+  const RING_COLORS = ['rgba(181,69,46,1)','rgba(90,110,58,1)','rgba(47,125,140,1)'];
+  const RING_LOCKED = [false, true, true];
+
+  const svg = document.getElementById('p6-svg');
+  function mkSvg(tag, attrs) {
+    const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    Object.entries(attrs).forEach(([k,v]) => el.setAttribute(k,v));
+    return el;
+  }
+
+  // 배경 트랙 링
+  RADII.forEach((r,ri) => {
+    svg.appendChild(mkSvg('circle',{
+      cx:CX,cy:CY,r,fill:'none',
+      stroke:RING_LOCKED[ri]?'rgba(255,255,255,.06)':'rgba(255,255,255,.09)',
+      'stroke-width': ri===0?24:ri===1?22:20
+    }));
   });
 
-  // 5~8주차 잠금 노드 (요약 2개)
-  const lockedNodes = [
-    { range:'5~6주차', phase:'심화 지방 연소', icon:'🔥', tags:['내장지방 타깃','대사율 극대화'] },
-    { range:'7~8주차', phase:'호르몬 최적화', icon:'⚡', tags:['인슐린 민감도','생체리듬 재설정'] },
-    { range:'9~12주차', phase:'완성·유지 시스템', icon:'🏆', tags:['바디 리컴프','장기 유지 전략'] },
+  // 12주 세그먼트 데이터 정의
+  const ALL_WEEKS = [
+    ...(ROADMAP_WEEKS||[]).map((w,i) => ({
+      week:w.week, label:w.weekLabel||`${w.week}주차`,
+      title:w.title, icon:w.icon||'🔓',
+      tags:w.keyFocus||[], color:PHASE_COLORS[i]||'var(--vis)',
+      ring:0, locked:false
+    })),
+    {week:5,label:'5주차',title:'심화 지방 연소',icon:'🔥',tags:['내장지방 타깃','대사율 극대화'],color:'rgba(90,110,58,.9)',ring:1,locked:true},
+    {week:6,label:'6주차',title:'호르몬 최적화',icon:'⚡',tags:['인슐린 민감도','생체리듬'],color:'rgba(90,110,58,.8)',ring:1,locked:true},
+    {week:7,label:'7주차',title:'바디 리컴프',icon:'💪',tags:['근지방 교환','대사 완성'],color:'rgba(90,110,58,.7)',ring:1,locked:true},
+    {week:8,label:'8주차',title:'순환 극대화',icon:'🌀',tags:['림프 순환','독소 배출'],color:'rgba(90,110,58,.6)',ring:1,locked:true},
+    {week:9, label:'9주차', title:'세포 재편 1단계',icon:'🔬',tags:['세포 활성'],color:'rgba(47,125,140,.8)',ring:2,locked:true},
+    {week:10,label:'10주차',title:'세포 재편 2단계',icon:'⚗️',tags:['미토콘드리아'],color:'rgba(47,125,140,.7)',ring:2,locked:true},
+    {week:11,label:'11주차',title:'장기 유지 설계',icon:'🏆',tags:['요요 차단'],color:'rgba(47,125,140,.6)',ring:2,locked:true},
+    {week:12,label:'12주차',title:'자동화 완성',icon:'✨',tags:['습관 자동화'],color:'rgba(47,125,140,.5)',ring:2,locked:true},
   ];
-  lockedNodes.forEach((ln, i) => {
-    const node = document.createElement('div');
-    node.className = 'tl-node';
-    const tagHTML = ln.tags.map(t => `<span class="tl-tag locked-tag">${t}</span>`).join('');
-    node.innerHTML = `
-      <div class="tl-content" style="opacity:.55;border-style:dashed;">
-        <div class="tl-phase" style="color:#999;">${ln.phase}</div>
-        <div class="tl-title" style="color:#777;">${ln.range} · 잠금 구간</div>
-        <div class="tl-tags">${tagHTML}</div>
-      </div>
-      <div class="tl-spacer"></div>
-      <div class="tl-circle locked">
-        <span style="font-size:16px;">🔒</span>
-        <span class="tl-circle-week" style="color:#999;">${ln.range}</span>
-      </div>`;
-    tlContainer.appendChild(node);
+
+  const byRing = [[],[],[]];
+  ALL_WEEKS.forEach(w => byRing[w.ring].push(w));
+
+  byRing.forEach((weeks,ri) => {
+    const r = RADII[ri];
+    const total = weeks.length;
+    const GAP = 3;
+    const segDeg = (360/total) - GAP;
+    weeks.forEach((w,si) => {
+      const startDeg = -90 + si*(360/total);
+      const endDeg   = startDeg + segDeg;
+      const toRad    = d => d*Math.PI/180;
+      const x1 = CX + r*Math.cos(toRad(startDeg));
+      const y1 = CY + r*Math.sin(toRad(startDeg));
+      const x2 = CX + r*Math.cos(toRad(endDeg));
+      const y2 = CY + r*Math.sin(toRad(endDeg));
+      const sw = ri===0?24:ri===1?22:20;
+      const path = mkSvg('path',{
+        d:`M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 0 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`,
+        fill:'none',
+        stroke:w.locked?'rgba(255,255,255,.18)':w.color,
+        'stroke-width':sw,'stroke-linecap':'round',
+        style:'cursor:pointer;transition:opacity .2s;',
+        'data-week':w.week
+      });
+      path.addEventListener('click',  () => p6SelectWeek(w));
+      path.addEventListener('mouseenter', () => { path.style.opacity='.7'; });
+      path.addEventListener('mouseleave', () => { path.style.opacity='1'; });
+      svg.appendChild(path);
+
+      // 아이콘 (링 0 = 활성 주차만)
+      if (ri === 0) {
+        const midDeg = startDeg + segDeg/2;
+        const midRad = midDeg*Math.PI/180;
+        const t = mkSvg('text',{
+          x:(CX+r*Math.cos(midRad)).toFixed(2),
+          y:(CY+r*Math.sin(midRad)+5).toFixed(2),
+          'text-anchor':'middle','font-size':'13',
+          style:'pointer-events:none;'
+        });
+        t.textContent = w.icon;
+        svg.appendChild(t);
+      }
+    });
+    // 잠금 링: 🔒 표시 1개
+    if (ri > 0 && weeks.length > 0) {
+      const w0 = weeks[0];
+      const GAP2 = 3;
+      const s2 = (360/weeks.length - GAP2);
+      const midDeg = -90 + s2/2;
+      const midRad = midDeg*Math.PI/180;
+      const t = mkSvg('text',{
+        x:(CX+r*Math.cos(midRad)).toFixed(2),
+        y:(CY+r*Math.sin(midRad)+5).toFixed(2),
+        'text-anchor':'middle','font-size':'12',
+        style:'pointer-events:none;opacity:.5;'
+      });
+      t.textContent = '🔒';
+      svg.appendChild(t);
+    }
   });
 
-  // 잠금 배너
-  const banner = document.createElement('div');
-  banner.className = 'tl-lock-banner';
-  banner.innerHTML = `
-    <div class="tl-lock-banner-icon">🔒</div>
-    <div class="tl-lock-banner-text">
-      <strong>5~12주차 하이퍼 세포 연소 구간</strong>이 잠겨 있습니다.<br>
-      1~4주차 기반 구축 완료 후 자동 해제됩니다.
-    </div>`;
-  tlContainer.appendChild(banner);
+  // 중앙 텍스트
+  const c1 = mkSvg('text',{x:CX,y:CY-8,'text-anchor':'middle','font-size':'14',fill:'rgba(255,255,255,.55)','font-weight':'700'});
+  c1.textContent = '12주';
+  svg.appendChild(c1);
+  const c2 = mkSvg('text',{x:CX,y:CY+12,'text-anchor':'middle','font-size':'11',fill:'rgba(255,255,255,.3)'});
+  c2.textContent = '로드맵';
+  svg.appendChild(c2);
 
-  // ──────────────────────────────────────────
-  // ② 주차별 독립 확장 카드 (1~4주차)
-  // ──────────────────────────────────────────
+  // 링 범례
+  const legendEl = document.getElementById('p6-ring-legend');
+  if (legendEl) {
+    [['1~4주 기반 구축',RING_COLORS[0]],['5~8주 집중 연소',RING_COLORS[1]],['9~12주 세포 재편',RING_COLORS[2]]]
+    .forEach(([label,color]) => {
+      legendEl.innerHTML += `<div class="p6-ring-legend-item"><div class="p6-ring-dot" style="background:${color}"></div>${label}</div>`;
+    });
+  }
+
+  // 초기 선택
+  if (ALL_WEEKS[0]) p6SelectWeek(ALL_WEEKS[0]);
+
+  // ════════════════════════════════════════════
+  // 6-1~6-4: 주간 처방 카드
+  // ════════════════════════════════════════════
   const weeksContainer = document.getElementById('p6-weeks');
+  const nutriCatMap = [['단백질','탄수화물'],['수분','미네랄'],['식이섬유','지방'],['단백질','식이섬유','탄수화물']];
+
   ROADMAP_WEEKS.forEach((w, idx) => {
-    const storyText = w.failure_expose.replace(/{USER_NAME}/g, userName);
-    const acc = document.createElement('div');
-    acc.className = 'week-accordion' + (idx === 0 ? ' open' : '');
-    acc.id = `p6-${w.week}`;
-
-    const iconChips = (w.centerIcons || []).map(ic =>
-      `<span class="week-acc-icon-chip">${ic}</span>`).join('');
-    const keyFocusTags = (w.keyFocus || []).map(kf =>
-      `<span class="keyfocus-tag">${kf}</span>`).join('');
-
-    // 6대영양소 카드 (주차별로 강조 카테고리 다르게)
-    const nutriCatMap = [
-      ['단백질','탄수화물'],   // 1주차
-      ['수분','미네랄'],       // 2주차
-      ['식이섬유','지방'],     // 3주차
-      ['단백질','식이섬유','탄수화물'], // 4주차
-    ];
-    const highlightCats = nutriCatMap[idx] || ['단백질','탄수화물'];
+    const pc = PHASE_COLORS[idx];
+    const storyText = (w.failure_expose||'').replace(/{USER_NAME}/g, userName);
+    const hCats = nutriCatMap[idx]||['단백질'];
     let nutriHTML = '';
     if (ohaengData && ohaengData.nutriFoods) {
       const nf = ohaengData.nutriFoods;
-      const cats = Object.keys(nf).filter(c => highlightCats.includes(c));
-      const catCards = cats.map(cat => `
-        <div class="nutri-item">
-          <div class="nutri-item-cat">${cat}</div>
-          <div class="nutri-item-foods">${nf[cat].slice(0,4).join(' · ')}</div>
-        </div>`).join('');
-      nutriHTML = `
-        <div class="nutri-section">
-          <div class="nutri-section-title">🌿 ${w.weekLabel} 오행 맞춤 식품 — ${ohaengData.label}</div>
-          <div class="nutri-grid">${catCards}</div>
-          <div class="nutri-tip-box">💡 <strong>${w.weekLabel} 핵심 :</strong> ${ohaengData.nutriTip}</div>
-        </div>`;
+      const cats = Object.keys(nf).filter(c => hCats.includes(c));
+      const cards = cats.map(cat =>
+        `<div class="nutri-item"><div class="nutri-item-cat">${cat}</div>
+         <div class="nutri-item-foods">${(nf[cat]||[]).slice(0,4).join(' · ')}</div></div>`).join('');
+      if (cards) nutriHTML = `<div class="nutri-section">
+        <div class="nutri-section-title">🌿 ${w.weekLabel} 오행 맞춤 — ${ohaengData.label}</div>
+        <div class="nutri-grid">${cards}</div>
+        <div class="nutri-tip-box">💡 <strong>${w.weekLabel} 핵심:</strong> ${ohaengData.nutriTip||''}</div>
+      </div>`;
     }
 
-    acc.innerHTML = `
-      <div class="week-acc-header" onclick="toggleAccordion(this)">
-        <div class="week-acc-num" style="border-color:${w.phaseColor||'var(--mint)'};color:${w.phaseColor||'var(--mint)'};">${w.week}</div>
-        <div class="week-acc-info">
-          <div class="week-acc-phase" style="color:${w.phaseColor||'var(--mint)'};">${w.phase}</div>
-          <div class="week-acc-title">${w.title}</div>
-          <div class="week-acc-icons">${iconChips}</div>
-        </div>
-        <span class="week-acc-toggle">⌄</span>
+    const warnHTML = w.diet_ban
+      ? `<div class="week-warn-banner"><span class="week-warn-icon">⚠️</span><span><strong>주의:</strong> ${w.diet_ban}</span></div>` : '';
+
+    const navDots = [0,1,2,3].map(i =>
+      `<span class="week-nav-dot${i===idx?' active':''}"></span>`).join('');
+
+    // 히어로 배경 그라데이션 (CSS 변수 → 실제 색상으로 폴백)
+    const heroBg = {
+      'var(--vis)':    'linear-gradient(135deg,#b5452e,#8f321e)',
+      'var(--muscle)': 'linear-gradient(135deg,#5a6e3a,#3d4d26)',
+      'var(--circ)':   'linear-gradient(135deg,#2f7d8c,#1e5460)',
+      'var(--sub)':    'linear-gradient(135deg,#c98a3c,#9a6525)',
+    }[pc] || 'linear-gradient(135deg,#2a2118,#3a2e22)';
+
+    const card = document.createElement('div');
+    card.className = 'week-card';
+    card.id = `p6-week-${w.week}`;
+    card.style.display = idx === 0 ? 'block' : 'none';
+    card.innerHTML = `
+      <div class="week-hero" style="background:${heroBg}">
+        <div class="week-hero-badge">${w.phase||'PHASE'}</div>
+        <div class="week-hero-num">${w.weekLabel}</div>
+        <div class="week-hero-title">${w.title}</div>
+        <div class="week-hero-icons">${(w.centerIcons||[]).map(ic=>`<span class="week-hero-chip">${ic}</span>`).join('')}</div>
       </div>
-      <div class="week-acc-body">
-        <div class="week-acc-keyfocus">${keyFocusTags}</div>
-        <div class="week-section">
-          <div class="week-section-label">🔍 실패 메커니즘 분석</div>
-          <div class="fail-expose-box">${storyText}</div>
+      <div class="week-principle-banner" style="background:${heroBg.replace('linear-gradient(135deg,','linear-gradient(135deg,').replace(',',', color-mix(in srgb,').split(' linear-gradient')[0]}">
+        <span class="week-principle-label" style="color:rgba(255,255,255,.55)">핵심원칙</span>
+        <span class="week-principle-text">${w.axis_logic||''}</span>
+      </div>
+      <div class="week-body">
+        ${warnHTML}
+        <div class="week-2col">
+          <div class="week-col-card">
+            <div class="week-col-label"><span class="dot" style="background:var(--muscle)"></span>운동 처방</div>
+            ${w.exercise_ban?`<div class="week-col-rule ban">${w.exercise_ban}</div>`:''}
+            <div class="week-col-rule ok">${w.exercise_ok||''}</div>
+          </div>
+          <div class="week-col-card">
+            <div class="week-col-label"><span class="dot" style="background:var(--sub)"></span>식단 처방</div>
+            <div class="week-col-rule ok">${w.diet_ok||''}</div>
+          </div>
         </div>
-        <div class="week-section">
-          <div class="week-section-label">🎯 개입 센터 논리</div>
-          <div class="rule"><span class="rule-icon">💡</span><span>${w.axis_logic}</span></div>
-        </div>
-        <div class="week-section">
-          <div class="week-section-label">🏋️ 운동 처방</div>
-          ${w.exercise_ban ? `<div class="rule"><span class="rule-icon">❌</span><span>${w.exercise_ban}</span></div>` : ''}
-          <div class="rule"><span class="rule-icon">✅</span><span>${w.exercise_ok}</span></div>
-        </div>
-        <div class="week-section">
-          <div class="week-section-label">🍽️ 식단 처방</div>
-          ${w.diet_ban ? `<div class="rule"><span class="rule-icon">❌</span><span>${w.diet_ban}</span></div>` : ''}
-          <div class="rule"><span class="rule-icon">✅</span><span>${w.diet_ok}</span></div>
-        </div>
-        <div class="week-section">
-          <div class="week-section-label">💆 회복순환법</div>
-          ${w.recovery_ban ? `<div class="rule"><span class="rule-icon">❌</span><span>${w.recovery_ban}</span></div>` : ''}
-          <div class="rule"><span class="rule-icon">✅</span><span>${w.recovery_ok}</span></div>
+        <div class="week-3col">
+          <div class="week-mini-card">
+            <div class="week-mini-icon">💆</div>
+            <div class="week-mini-label">회복법</div>
+            <div class="week-mini-val">${w.recovery_ok||'—'}</div>
+          </div>
+          <div class="week-mini-card">
+            <div class="week-mini-icon">🔍</div>
+            <div class="week-mini-label">실패 분석</div>
+            <div class="week-mini-val" style="font-size:10px;line-height:1.5;">${storyText.slice(0,55)}…</div>
+          </div>
+          <div class="week-mini-card">
+            <div class="week-mini-icon">🎯</div>
+            <div class="week-mini-label">키 포커스</div>
+            <div class="week-mini-val">${(w.keyFocus||[]).slice(0,2).join('<br>')}</div>
+          </div>
         </div>
         ${nutriHTML}
-        ${w.b2b ? `<button class="b2b-btn" onclick="handleB2B()">🏥 파트너 센터 연계 → 분석 데이터 전송</button>` : ''}
+        ${w.b2b?`<button class="b2b-btn" onclick="handleB2B()">🏥 파트너 센터 연계 → 데이터 전송</button>`:''}
+      </div>
+      <div class="week-nav">
+        ${idx>0?`<button class="week-nav-btn" onclick="p6GoWeek(${idx-1})">← ${idx}주차</button>`:'<span></span>'}
+        <div class="week-nav-dots">${navDots}</div>
+        ${idx<3?`<button class="week-nav-btn primary" onclick="p6GoWeek(${idx+1})">${idx+2}주차 →</button>`:'<span></span>'}
       </div>`;
-    weeksContainer.appendChild(acc);
+    weeksContainer.appendChild(card);
   });
 
-  // ──────────────────────────────────────────
-  // ③ 잠금 카드 (5~12주차)
-  // ──────────────────────────────────────────
-  const lockWeeks = document.getElementById('p6-lock-weeks');
-  [5,6,7,8,9,10,11,12].forEach(n => {
-    const d = document.createElement('div');
-    d.className = 'lock-week-circle';
-    d.textContent = n + '주';
-    lockWeeks.appendChild(d);
-  });
+  // ════════════════════════════════════════════
+  // 6-5: 잠금 CTA 다크 섹션 — 4개 티저 카드
+  // ════════════════════════════════════════════
+  const teaserData = [
+    {icon:'🔥',week:'5~6주차',name:'심화 지방 연소',desc:'내장지방 타깃 프로토콜 + 대사율 극대화'},
+    {icon:'⚡',week:'7~8주차',name:'호르몬 최적화',desc:'인슐린 민감도 개선 + 생체리듬 재설정'},
+    {icon:'💧',week:'9~10주차',name:'바디 리컴프',desc:'근지방 교환 전략 + 순환 대사 완성'},
+    {icon:'🏆',week:'11~12주차',name:'유지 자동화',desc:'요요 차단 솔루션 + 습관 자동화 설계'},
+  ];
+  const teaserGrid = document.getElementById('p6-teaser-grid');
+  if (teaserGrid) {
+    teaserData.forEach(t => {
+      teaserGrid.innerHTML += `<div class="p6-teaser-card">
+        <div class="p6-teaser-icon">${t.icon}</div>
+        <div class="p6-teaser-week">${t.week}</div>
+        <div class="p6-teaser-name">${t.name}</div>
+        <div class="p6-teaser-desc">${t.desc}</div>
+      </div>`;
+    });
+  }
+}
 
-  const lockPreview = document.getElementById('p6-lock-preview');
-  [
-    '5~6주차: 심화 지방 연소 — 내장지방 타깃 + 대사율 극대화 프로토콜',
-    '7~8주차: 호르몬 최적화 — 인슐린 민감도 개선 + 생체리듬 재설정',
-    '9~10주차: 바디 리컴프 — 근지방 교환 전략 + 순환 대사 완성',
-    '11~12주차: 장기 유지 시스템 — 요요 차단 솔루션 + 자동화 습관 설계',
-  ].forEach(txt => {
-    const li = document.createElement('li');
-    li.className = 'lock-preview-item';
-    li.textContent = txt;
-    lockPreview.appendChild(li);
-  });
+/* SVG 클릭 — 중앙 info 업데이트 */
+function p6SelectWeek(w) {
+  const box = document.getElementById('p6-week-info');
+  if (!box) return;
+  const tagsHtml = (w.tags||[]).map(t =>
+    `<span class="p6-week-info-tag${w.locked?' locked':''}">${t}</span>`).join('');
+  box.innerHTML = `
+    <div class="p6-week-info-week">${w.label}${w.locked?' · 🔒':''}</div>
+    <div class="p6-week-info-title">${w.title}</div>
+    <div class="p6-week-info-tags">${tagsHtml}</div>`;
+}
 
-  document.getElementById('p6-lock-desc').innerHTML =
-    `1~4주차 기반 구축이 완료되면 대사 스위치가 켜지고 5주차 하이퍼 세포 연소 구간이 자동 해제됩니다.`;
+/* 주차 네비 이동 */
+function p6GoWeek(idx) {
+  document.querySelectorAll('.week-card').forEach((c,i) => {
+    c.style.display = (i===idx)?'block':'none';
+  });
+  // SVG도 해당 주차 강조
+  if (ROADMAP_WEEKS && ROADMAP_WEEKS[idx]) {
+    const w = ROADMAP_WEEKS[idx];
+    p6SelectWeek({
+      week:w.week, label:w.weekLabel||`${w.week}주차`,
+      title:w.title, tags:w.keyFocus||[], locked:false
+    });
+  }
+  // 스크롤: 카드 상단으로
+  const target = document.getElementById(`p6-week-${(idx||0)+1}`);
+  if (target) target.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
 function toggleAccordion(headerEl) {
