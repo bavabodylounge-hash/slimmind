@@ -529,6 +529,102 @@
   }
 
   /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     기능 3: 체형 바디맵 터치 셀프진단
+     · 설문 시작 직전(편지→이름/성별 사이) 삽입
+     · SVG 실루엣에서 고민 부위 탭 → survAnswers[1] 미리 세팅
+     · 모바일 44px+ 터치 타겟, 부드러운 하이라이트 애니메이션
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  #bodymapStep{display:none}
+
+  .bms-wrap{padding:32px 0 24px;text-align:center}
+  .bms-badge{
+    display:inline-block;font-size:11px;font-weight:800;
+    letter-spacing:.16em;text-transform:uppercase;
+    color:var(--c3);background:#fdf1ee;
+    border-radius:20px;padding:5px 14px;margin-bottom:14px;
+  }
+  .bms-title{font-size:24px;font-weight:800;letter-spacing:-.02em;line-height:1.3;margin-bottom:8px}
+  .bms-sub{font-size:14px;color:var(--muted);line-height:1.7;margin-bottom:24px}
+
+  /* SVG 컨테이너 */
+  .bms-body-wrap{
+    position:relative;
+    width:100%;max-width:300px;
+    margin:0 auto 24px;
+    user-select:none;-webkit-user-select:none;
+  }
+  .bms-body-wrap svg{width:100%;height:auto;display:block}
+
+  /* 터치 영역 — 투명 오버레이 */
+  .bms-zone{
+    position:absolute;
+    cursor:pointer;
+    border-radius:50%;
+    /* 최소 44px 터치 타겟 */
+    min-width:44px;min-height:44px;
+    display:flex;align-items:center;justify-content:center;
+    transition:transform .15s,opacity .15s;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .bms-zone:active{transform:scale(.92)}
+
+  /* 존 내부 라벨 버블 */
+  .bms-zlabel{
+    background:rgba(255,255,255,.92);
+    border:2px solid var(--line);
+    border-radius:12px;
+    padding:7px 12px;
+    font-size:12px;font-weight:800;
+    color:var(--ink);
+    box-shadow:0 2px 12px rgba(0,0,0,.1);
+    transition:border-color .2s,background .2s,color .2s,transform .2s,box-shadow .2s;
+    white-space:nowrap;
+    pointer-events:none;
+  }
+  .bms-zone:hover .bms-zlabel,
+  .bms-zone:focus .bms-zlabel{
+    border-color:var(--c3);
+    box-shadow:0 4px 18px rgba(181,69,46,.18);
+  }
+  .bms-zone.bms-sel .bms-zlabel{
+    background:var(--c3);color:#fff;
+    border-color:var(--c3);
+    transform:scale(1.08);
+    box-shadow:0 6px 22px rgba(181,69,46,.35);
+  }
+
+  /* 선택 결과 메시지 */
+  .bms-result{
+    min-height:58px;
+    background:var(--card);border:1px solid var(--line);
+    border-radius:14px;padding:14px 18px;
+    font-size:14px;line-height:1.65;color:#444;
+    margin-bottom:18px;
+    transition:opacity .3s;
+    text-align:left;
+  }
+  .bms-result b{color:var(--c3)}
+  .bms-result.ready{border-color:var(--c3);background:#fdf8f6}
+
+  /* SVG 신체 부위 하이라이트 경로 */
+  .bm-body-path{transition:fill .3s,opacity .3s}
+  .bm-zone-highlight{
+    transition:opacity .3s,fill .3s;
+    opacity:0;pointer-events:none;
+  }
+  .bm-zone-highlight.active{opacity:1}
+
+  /* 스킵 링크 */
+  .bms-skip{
+    font-size:13px;color:var(--muted);
+    background:none;border:none;
+    cursor:pointer;font-family:inherit;
+    padding:6px 0;margin-top:4px;
+    text-decoration:underline;
+    text-underline-offset:2px;
+  }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
      기능 1: 실시간 몸 반응 거울
      · 데스크탑(>760px): 우측 고정 패널
      · 모바일(≤760px):  하단 슬라이드업 미니 바 (3차 진입 시 나타남)
@@ -921,6 +1017,116 @@
         <div class="lettersign">당신의 몸은 생각보다<br>많은 신호를 보내고 있습니다.</div>
       </div>
       <button class="startbtn" onclick="goNameStep()">내 체형 코드 찾기 시작 →</button>
+    </div>
+
+    <!-- ★ 기능 3: 바디맵 터치 셀프진단 스텝 -->
+    <div class="hero" id="bodymapStep" style="display:none">
+      <button class="topback" onclick="goBack()">← 이전</button>
+      <div class="bms-wrap">
+        <span class="bms-badge">STEP 0 · 바디맵 셀프진단</span>
+        <h1 class="bms-title">지금 가장 신경 쓰이는<br>부위가 어디인가요?</h1>
+        <p class="bms-sub">실루엣을 <b>직접 탭</b>해서 알려주세요.<br>해당 부위부터 분석을 시작합니다.</p>
+
+        <!-- 신체 실루엣 SVG + 터치 오버레이 -->
+        <div class="bms-body-wrap" id="bmsBodyWrap">
+          <!-- 여성 실루엣 SVG (성별 선택 전 기본: 중성적 실루엣) -->
+          <svg id="bmsSvg" viewBox="0 0 200 420" xmlns="http://www.w3.org/2000/svg" aria-label="신체 실루엣">
+            <!-- 배경 -->
+            <rect width="200" height="420" fill="transparent"/>
+
+            <!-- 몸통 기본 실루엣 (중성) -->
+            <!-- 머리 -->
+            <ellipse cx="100" cy="42" rx="28" ry="32" fill="#e8e0d4" class="bm-body-path"/>
+            <!-- 목 -->
+            <rect x="90" y="68" width="20" height="18" rx="4" fill="#e8e0d4" class="bm-body-path"/>
+            <!-- 어깨/상체 -->
+            <path d="M55,82 Q38,90 34,130 L38,185 L162,185 L166,130 Q162,90 145,82 Q122,74 100,74 Q78,74 55,82Z"
+              fill="#e8e0d4" class="bm-body-path"/>
+            <!-- 팔 왼쪽 -->
+            <path d="M38,90 Q22,100 20,150 Q18,180 24,200 Q30,215 38,210 Q44,200 44,185 L38,130Z"
+              fill="#e8e0d4" class="bm-body-path"/>
+            <!-- 팔 오른쪽 -->
+            <path d="M162,90 Q178,100 180,150 Q182,180 176,200 Q170,215 162,210 Q156,200 156,185 L162,130Z"
+              fill="#e8e0d4" class="bm-body-path"/>
+            <!-- 복부 -->
+            <path d="M38,185 Q36,220 40,255 Q44,270 100,272 Q156,270 160,255 Q164,220 162,185Z"
+              fill="#e8e0d4" id="bmsAbdomen" class="bm-body-path"/>
+            <!-- 하체/허벅지 왼쪽 -->
+            <path d="M40,255 Q36,280 38,310 Q40,340 46,360 Q54,375 68,374 Q78,372 80,355 Q82,335 80,310 Q78,285 76,272 Q60,270 40,255Z"
+              fill="#e8e0d4" id="bmsThighL" class="bm-body-path"/>
+            <!-- 하체/허벅지 오른쪽 -->
+            <path d="M160,255 Q164,280 162,310 Q160,340 154,360 Q146,375 132,374 Q122,372 120,355 Q118,335 120,310 Q122,285 124,272 Q140,270 160,255Z"
+              fill="#e8e0d4" id="bmsThighR" class="bm-body-path"/>
+            <!-- 종아리 왼쪽 -->
+            <path d="M46,360 Q44,380 46,400 Q50,415 60,416 Q70,416 72,400 Q74,382 68,360Z"
+              fill="#ddd4c8" class="bm-body-path"/>
+            <!-- 종아리 오른쪽 -->
+            <path d="M154,360 Q156,380 154,400 Q150,415 140,416 Q130,416 128,400 Q126,382 132,360Z"
+              fill="#ddd4c8" class="bm-body-path"/>
+
+            <!-- ── 선택 하이라이트 오버레이 (각 구역) ── -->
+            <!-- 상체 하이라이트 -->
+            <path id="hlUpper"
+              d="M55,82 Q38,90 34,130 L38,185 L55,185 L55,82Z M145,82 Q162,90 166,130 L162,185 L145,185 L145,82Z M38,90 Q22,100 20,150 Q18,180 24,200 Q30,215 38,210 Q44,200 44,185 L38,130Z M162,90 Q178,100 180,150 Q182,180 176,200 Q170,215 162,210 Q156,200 156,185 L162,130Z"
+              fill="rgba(90,110,58,.25)" class="bm-zone-highlight" id="hl_upper"/>
+            <!-- 복부 하이라이트 -->
+            <path id="hlAbdomen"
+              d="M55,82 Q78,74 100,74 Q122,74 145,82 L162,185 L38,185Z M38,185 Q36,220 40,255 Q44,270 100,272 Q156,270 160,255 Q164,220 162,185Z"
+              fill="rgba(181,69,46,.22)" class="bm-zone-highlight" id="hl_belly"/>
+            <!-- 하체 하이라이트 -->
+            <path id="hlLower"
+              d="M40,255 Q36,280 38,310 Q40,340 46,360 Q54,375 68,374 Q78,372 80,355 Q82,335 80,310 Q78,285 76,272 Q60,270 40,255Z M160,255 Q164,280 162,310 Q160,340 154,360 Q146,375 132,374 Q122,372 120,355 Q118,335 120,310 Q122,285 124,272 Q140,270 160,255Z M46,360 Q44,380 46,400 Q50,415 60,416 Q70,416 72,400 Q74,382 68,360Z M154,360 Q156,380 154,400 Q150,415 140,416 Q130,416 128,400 Q126,382 132,360Z"
+              fill="rgba(47,125,140,.25)" class="bm-zone-highlight" id="hl_lower"/>
+            <!-- 전신 하이라이트 -->
+            <rect x="18" y="10" width="164" height="406" rx="20"
+              fill="rgba(91,74,134,.15)" class="bm-zone-highlight" id="hl_whole"/>
+          </svg>
+
+          <!-- 터치 존 오버레이 (절대 위치, % 기반) -->
+          <!-- 상체 존 -->
+          <div class="bms-zone" id="bzUpper"
+            style="top:18%;left:5%;width:30%;height:28%"
+            onclick="bmsSelect('upper')" role="button" tabindex="0"
+            aria-label="상체 어깨·팔뚝 선택" onkeydown="if(event.key==='Enter')bmsSelect('upper')">
+            <div class="bms-zlabel">💪 상체<br><span style="font-size:10px;font-weight:600;opacity:.75">어깨·팔뚝</span></div>
+          </div>
+          <!-- 복부 존 -->
+          <div class="bms-zone" id="bzBelly"
+            style="top:20%;left:30%;width:40%;height:40%"
+            onclick="bmsSelect('belly')" role="button" tabindex="0"
+            aria-label="복부 선택" onkeydown="if(event.key==='Enter')bmsSelect('belly')">
+            <div class="bms-zlabel">🫃 복부<br><span style="font-size:10px;font-weight:600;opacity:.75">윗배·아랫배</span></div>
+          </div>
+          <!-- 하체 존 -->
+          <div class="bms-zone" id="bzLower"
+            style="top:60%;left:20%;width:60%;height:32%"
+            onclick="bmsSelect('lower')" role="button" tabindex="0"
+            aria-label="하체 허벅지·종아리 선택" onkeydown="if(event.key==='Enter')bmsSelect('lower')">
+            <div class="bms-zlabel">🦵 하체<br><span style="font-size:10px;font-weight:600;opacity:.75">허벅지·종아리</span></div>
+          </div>
+          <!-- 전신 존 — 오른쪽 -->
+          <div class="bms-zone" id="bzWhole"
+            style="top:18%;right:5%;width:30%;height:28%"
+            onclick="bmsSelect('whole')" role="button" tabindex="0"
+            aria-label="전신 골고루 선택" onkeydown="if(event.key==='Enter')bmsSelect('whole')">
+            <div class="bms-zlabel">🌊 전신<br><span style="font-size:10px;font-weight:600;opacity:.75">골고루</span></div>
+          </div>
+        </div><!-- /bmsBodyWrap -->
+
+        <!-- 선택 결과 메시지 -->
+        <div class="bms-result" id="bmsResult">
+          위 실루엣에서 가장 신경 쓰이는 부위를 탭해주세요.
+        </div>
+
+        <!-- 다음 버튼 -->
+        <button class="startbtn" id="bmsNext" onclick="bmsConfirm()" disabled
+          style="margin-top:4px">
+          이 부위부터 분석 시작 →
+        </button>
+        <button class="bms-skip" onclick="bmsSkip()">
+          잘 모르겠어요, 그냥 넘어갈게요
+        </button>
+      </div>
     </div>
 
     <!-- 이름·성별·동의 -->
@@ -1410,10 +1616,122 @@ function startSurvey(){
   }
   document.getElementById('intro1').scrollIntoView({behavior:'smooth'});
 }
+/* ===== 기능 3: 바디맵 터치 셀프진단 ===== */
+let bmsSelected = null; // 'upper' | 'belly' | 'lower' | 'whole' | null
+
+// zone → survAnswers[1] 매핑 (0=복부,1=하복부,2=허벅지,3=상체,4=전신)
+const BMS_ZONE_MAP = {
+  belly:  { sv1: 0, label: '복부 (윗배·아랫배)', icon: '🫃',
+    desc: '복부 중심으로 인슐린·대사 축 분석을 우선합니다.' },
+  lower:  { sv1: 2, label: '하체 (허벅지·종아리)', icon: '🦵',
+    desc: '림프·순환·호르몬 축 분석을 우선합니다.' },
+  upper:  { sv1: 3, label: '상체 (어깨·팔뚝)', icon: '💪',
+    desc: '근감소·골격·스트레스 축 분석을 우선합니다.' },
+  whole:  { sv1: 4, label: '전신 골고루', icon: '🌊',
+    desc: '전신 복합 축을 균형있게 분석합니다.' },
+};
+
+function bmsSelect(zone) {
+  bmsSelected = zone;
+
+  // 1) 모든 터치존 선택 해제
+  ['upper','belly','lower','whole'].forEach(z => {
+    const el = document.getElementById('bz' + z.charAt(0).toUpperCase() + z.slice(1));
+    if (el) el.classList.remove('bms-sel');
+    // SVG 하이라이트 비활성
+    const hl = document.getElementById('hl_' + z);
+    if (hl) hl.classList.remove('active');
+  });
+
+  // 2) 선택된 존 활성화
+  const zoneEl = document.getElementById('bz' + zone.charAt(0).toUpperCase() + zone.slice(1));
+  if (zoneEl) zoneEl.classList.add('bms-sel');
+  const hlEl = document.getElementById('hl_' + zone);
+  if (hlEl) hlEl.classList.add('active');
+
+  // 3) 결과 메시지 업데이트
+  const info = BMS_ZONE_MAP[zone];
+  const result = document.getElementById('bmsResult');
+  if (result && info) {
+    result.innerHTML = `<strong>${info.icon} ${info.label}</strong> 선택됨<br>
+      <span style="font-size:13px;opacity:.8">${info.desc}</span>`;
+    result.style.color = 'var(--c3)';
+  }
+
+  // 4) 다음 버튼 활성화
+  const nextBtn = document.getElementById('bmsNext');
+  if (nextBtn) {
+    nextBtn.disabled = false;
+    nextBtn.style.opacity = '1';
+  }
+
+  // 5) survAnswers[1] 미리 세팅 (나중에 덮어써도 되도록 '예약'으로만)
+  if (info) window._bmsPresetSv1 = info.sv1;
+}
+
+function bmsConfirm() {
+  if (!bmsSelected) return;
+  // 선택된 부위를 survAnswers[1]에 미리 반영
+  if (window._bmsPresetSv1 !== undefined) {
+    survAnswers[1] = window._bmsPresetSv1;
+  }
+  // bodymapStep 숨기고 nameStep으로 이동
+  document.getElementById('bodymapStep').style.display = 'none';
+  document.getElementById('nameStep').style.display = 'block';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function bmsSkip() {
+  // 선택 없이 바로 nameStep으로
+  bmsSelected = null;
+  document.getElementById('bodymapStep').style.display = 'none';
+  document.getElementById('nameStep').style.display = 'block';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function goBodyMap() {
+  // hero → bodymapStep (기능 3 진입점)
+  document.getElementById('hero').style.display = 'none';
+  // 초기화: 이전 선택 리셋
+  bmsSelected = null;
+  window._bmsPresetSv1 = undefined;
+  ['upper','belly','lower','whole'].forEach(z => {
+    const el = document.getElementById('bz' + z.charAt(0).toUpperCase() + z.slice(1));
+    if (el) el.classList.remove('bms-sel');
+    const hl = document.getElementById('hl_' + z);
+    if (hl) hl.classList.remove('active');
+  });
+  const result = document.getElementById('bmsResult');
+  if (result) {
+    result.innerHTML = '위 실루엣에서 가장 신경 쓰이는 부위를 탭해주세요.';
+    result.style.color = '';
+  }
+  const nextBtn = document.getElementById('bmsNext');
+  if (nextBtn) { nextBtn.disabled = true; nextBtn.style.opacity = ''; }
+
+  document.getElementById('bodymapStep').style.display = 'block';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+/* ===== /기능 3 ===== */
+
 function goNameStep(){
-  document.getElementById('hero').style.display='none';
-  document.getElementById('nameStep').style.display='block';
-  window.scrollTo({top:0,behavior:'smooth'});
+  // ★ 기능 3: hero → bodymapStep → nameStep 순서로 경유
+  const hero = document.getElementById('hero');
+  const bms  = document.getElementById('bodymapStep');
+  const name = document.getElementById('nameStep');
+  if (hero && (hero.style.display === 'block' || hero.style.display === '')) {
+    // hero에서 호출 → 바디맵 먼저
+    goBodyMap();
+  } else if (bms && bms.style.display === 'block') {
+    // 바디맵에서 호출 → nameStep (bmsConfirm/bmsSkip이 처리하므로 이 경로는 fallback)
+    bms.style.display = 'none';
+    name.style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } else {
+    // 그 외 → 직접 nameStep
+    name.style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 }
 function checkName(){userInfo.name=document.getElementById('userName').value.trim();updateNameNext();}
 function pickGender(g,el){
@@ -1749,7 +2067,15 @@ function goBack(){
     document.getElementById('progress').style.display='none';
     nameStep.style.display='block';
   } else if(nameStep && nameStep.style.display==='block'){
-    nameStep.style.display='none'; hero.style.display='block';
+    nameStep.style.display='none';
+    // ★ 기능 3: nameStep → bodymapStep → hero 역순
+    const bmsEl=document.getElementById('bodymapStep');
+    if(bmsEl){ bmsEl.style.display='block'; }
+    else { hero.style.display='block'; }
+  } else if(document.getElementById('bodymapStep') && document.getElementById('bodymapStep').style.display==='block'){
+    // ★ 기능 3: bodymapStep → hero 복귀
+    document.getElementById('bodymapStep').style.display='none';
+    hero.style.display='block';
   } else if(hero && (hero.style.display==='block'||hero.style.display==='')){
     hero.style.display='none';
     const surveyApp=document.getElementById('surveyApp');
