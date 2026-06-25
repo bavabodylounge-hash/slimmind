@@ -628,19 +628,74 @@ app.delete('/api/admin/consultants/:code/hard', requireRole('MASTER'), async (c)
 })
 
 // GET /api/admin/results
+// ✅ BUG-2 수정: diagnosis_results(V4 신버전) + results(구버전) 두 테이블 UNION 조회
 app.get('/api/admin/results', requireRole('MASTER'), async (c) => {
   const db = c.env.DB
   const bc = c.req.query('bc') || ''
   const cons = c.req.query('consultant') || ''
   const search = c.req.query('search') || ''
-  let query = 'SELECT r.*, c.name as consultant_name FROM results r LEFT JOIN consultants c ON r.consultant_code = c.code WHERE 1=1'
-  const params: any[] = []
-  if (bc) { query += ' AND r.bc_primary = ?'; params.push(bc) }
-  if (cons) { query += ' AND r.consultant_code = ?'; params.push(cons) }
-  if (search) { query += ' AND (r.user_name LIKE ? OR r.id LIKE ?)'; params.push(`%${search}%`, `%${search}%`) }
-  query += ' ORDER BY r.created_at DESC LIMIT 100'
-  const stmt = db.prepare(query)
-  const result = params.length ? await stmt.bind(...params).all<any>() : await stmt.all<any>()
+
+  // 조건절 파라미터 (구버전 + 신버전 각각)
+  const oldParams: any[] = []
+  const newParams: any[] = []
+
+  // ── 구버전 results 테이블 조건 ──
+  let oldWhere = ' WHERE 1=1'
+  if (bc) { oldWhere += ' AND r.bc_primary = ?'; oldParams.push(bc) }
+  if (cons) { oldWhere += ' AND r.consultant_code = ?'; oldParams.push(cons) }
+  if (search) { oldWhere += ' AND (r.user_name LIKE ? OR r.id LIKE ?)'; oldParams.push(`%${search}%`, `%${search}%`) }
+
+  // ── 신버전 diagnosis_results 테이블 조건 ──
+  // bc 필터는 bc_code_key(BC-N) 또는 bc_primary(닉네임) 둘 다 검색
+  let newWhere = ' WHERE 1=1'
+  if (bc) { newWhere += ' AND (d.bc_code_key = ? OR d.bc_primary = ?)'; newParams.push(bc, bc) }
+  if (cons) { newWhere += ' AND d.ref_code = ?'; newParams.push(cons) }
+  if (search) { newWhere += ' AND (d.user_name LIKE ? OR d.id LIKE ?)'; newParams.push(`%${search}%`, `%${search}%`) }
+
+  // ── UNION ALL 쿼리 ──
+  // 구버전 results: 컨설턴트명 JOIN 포함, _source 태그 추가
+  const unionQuery = `
+    SELECT
+      r.id, r.user_name,
+      COALESCE(r.bc_primary, '') as bc_primary,
+      NULL as bc_code_key,
+      NULL as bc_nickname,
+      r.axis_scores,
+      r.consultant_code,
+      c.name as consultant_name,
+      NULL as ref_code,
+      r.created_at,
+      'results_v3' as _source
+    FROM results r
+    LEFT JOIN consultants c ON r.consultant_code = c.code
+    ${oldWhere}
+
+    UNION ALL
+
+    SELECT
+      d.id, d.user_name,
+      COALESCE(d.bc_primary, d.bc_nickname, '') as bc_primary,
+      d.bc_code_key,
+      d.bc_nickname,
+      d.axis_scores,
+      NULL as consultant_code,
+      NULL as consultant_name,
+      d.ref_code,
+      d.created_at,
+      'diagnosis_v4' as _source
+    FROM diagnosis_results d
+    ${newWhere}
+
+    ORDER BY created_at DESC
+    LIMIT 200
+  `
+
+  const allParams = [...oldParams, ...newParams]
+  const stmt = db.prepare(unionQuery)
+  const result = allParams.length
+    ? await stmt.bind(...allParams).all<any>()
+    : await stmt.all<any>()
+
   return c.json({ results: result.results })
 })
 
@@ -1270,10 +1325,11 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
           try { return v ? JSON.parse(v) : fallback } catch { return fallback }
         }
         const diagResult = {
-          bc_primary:      diagRow.bc_primary,
-          bc_code:         diagRow.bc_primary,
+          bc_primary:      diagRow.bc_code_key || diagRow.bc_primary,   // ✅ BC-6 형태 우선
+          bc_code:         diagRow.bc_code_key || diagRow.bc_primary,   // ✅ BC-6 형태 우선
+          bc_nickname:     diagRow.bc_nickname || diagRow.bc_primary,   // 닉네임 (bc_primary가 닉네임일 수도)
           user_name:       diagRow.user_name,
-          bc_nickname:     diagRow.bc_nickname,
+          bc_nickname_raw: diagRow.bc_nickname,
           axis_scores:     parseJsonSafe(diagRow.axis_scores, {}),
           top_axes:        parseJsonSafe(diagRow.top3_axes, []),
           axis_primary:    parseJsonSafe(diagRow.top3_axes, [null])[0] || null,
@@ -2831,7 +2887,7 @@ app.post('/api/v1/diagnosis', async (c) => {
   try {
     const body = await c.req.json()
     const {
-      user_name, bc_nickname, bc_primary, bc_secondary,
+      user_name, bc_nickname, bc_primary, bc_secondary, bc_code_key,
       top3_axes, axis_scores, region, texture, bg_filter,
       ohaeng_type, mbti_full, disp_answers, raw_answers,
       goal_weight, weight_loss_pct,
@@ -2839,6 +2895,24 @@ app.post('/api/v1/diagnosis', async (c) => {
     } = body
 
     if (!user_name) return c.json({ error: 'user_name required' }, 400)
+
+    // ✅ BUG-1 대응: bc_primary가 닉네임(한글)이므로 bc_code_key(BC-N 형태) 도 저장
+    // bc_code_key가 없으면 NICKNAME_TO_BC 로컬 테이블로 역매핑
+    const NICKNAME_TO_BC_BACKEND: Record<string, string> = {
+      '아빠체형 내장비대형':'BC-3','식후기절 혈당롤러코스터형':'BC-3','털털한 PCOS형':'BC-6',
+      '약물부작용 강제축적형':'BC-4','스트레스성 야식부엉이형':'BC-6','억제제부작용 배부름마비형':'BC-6',
+      '출산후 바람빠진 풍선형':'BC-7','식후임산부 가스풍선형':'BC-3','팔다리거미 올챙이배형':'BC-9',
+      '오후만되면 코끼리다리형':'BC-1','엄마체형 하지정체형':'BC-1','여름에도 시린 얼음장형':'BC-4',
+      '운동할수록 말벅지형':'BC-8','골반틀어짐 승마살형':'BC-7','지방흡입후 재발형':'BC-5',
+      '목짧아지는 거북이형':'BC-2','안 쓰는 팔뚝 부종형':'BC-2','상체근육형':'BC-8',
+      '겨드랑이 부유방형':'BC-2','호르몬스위치 갱년기형':'BC-6','스트레스기절 번아웃형':'BC-6',
+      '대사증후군 종합형':'BC-9','동시다발 다중악순환형':'BC-6',
+    }
+    // bc_code_key가 없으면 bc_primary(닉네임)로 역매핑, 그것도 없으면 'BC-6' 기본값
+    const resolvedBcCodeKey = bc_code_key ||
+      (bc_primary && NICKNAME_TO_BC_BACKEND[bc_primary]) ||
+      (bc_nickname && NICKNAME_TO_BC_BACKEND[bc_nickname]) ||
+      null
 
     // UUID 생성
     const result_id = crypto.randomUUID()
@@ -2849,20 +2923,21 @@ app.post('/api/v1/diagnosis', async (c) => {
     const rawAnswersJson = raw_answers ? JSON.stringify(raw_answers) : null
 
     try {
-      // goal_weight/weight_loss_pct 컬럼 포함 INSERT 시도 (migration 0030 이후)
+      // ✅ BUG-1 완전 수정: bc_code_key(BC-6 형태) 컬럼 포함 INSERT (migration 0032 이후)
       await db.prepare(`
         INSERT INTO diagnosis_results
-          (id, user_name, bc_nickname, bc_primary, bc_secondary,
+          (id, user_name, bc_nickname, bc_primary, bc_code_key, bc_secondary,
            top3_axes, axis_scores, region, texture, bg_filter,
            ohaeng_type, mbti_full, disp_answers, raw_answers,
            goal_weight, weight_loss_pct,
            ref_code, completed_at, created_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
       `).bind(
         result_id,
         String(user_name || '익명'),
         bc_nickname || null,
-        bc_primary  || null,
+        bc_primary  || null,       // 한글 닉네임 '스트레스성 야식부엉이형'
+        resolvedBcCodeKey || null, // 'BC-6' 형태 코드
         bc_secondary || null,
         top3_axes   ? JSON.stringify(top3_axes)   : null,
         axis_scores ? JSON.stringify(axis_scores) : null,
@@ -2880,12 +2955,13 @@ app.post('/api/v1/diagnosis', async (c) => {
         now
       ).run()
     } catch (insertErr: any) {
-      // goal_weight 컬럼이 없는 경우 (migration 미적용) → 폴백 INSERT
-      if (String(insertErr).includes('no column named goal_weight') ||
+      // bc_code_key 컬럼이 없는 경우 (migration 미적용) → 폴백 INSERT
+      if (String(insertErr).includes('no column named bc_code_key') ||
+          String(insertErr).includes('no column named goal_weight') ||
           String(insertErr).includes('no column named weight_loss_pct') ||
           String(insertErr).includes('no column named raw_answers') ||
           String(insertErr).includes('table diagnosis_results has no column')) {
-        console.warn('[diagnosis POST] goal_weight/raw_answers 컬럼 없음 — 폴백 INSERT')
+        console.warn('[diagnosis POST] bc_code_key/goal_weight/raw_answers 컬럼 없음 — 폴백 INSERT')
         await db.prepare(`
           INSERT INTO diagnosis_results
             (id, user_name, bc_nickname, bc_primary, bc_secondary,

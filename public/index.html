@@ -2227,6 +2227,11 @@
       </div>
     </div>
 
+    <!-- ✅ BUG-3 수정: 결과지 바로 보기 버튼 (showWaitScreen에서 활성화) -->
+    <button id="waitDirectBtn" class="wait-direct-btn" style="display:none;width:100%;max-width:340px;margin:0 auto 12px;padding:16px;background:var(--c1,#b5452e);color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;letter-spacing:-.3px;">
+      🔍 내 결과지 바로 보기
+    </button>
+
     <button class="wait-share-btn" onclick="waitCopyLink()">
       📋 내 분석 코드 복사하기
     </button>
@@ -4653,6 +4658,21 @@ function showWaitScreen(resultId, userName) {
   if (step2) { step2.textContent = '⟳'; step2.style.background = 'var(--c3)'; }
   // localStorage에 result_id 저장 (나중에 링크 받았을 때 참고용)
   try { localStorage.setItem('sm_last_result_id', resultId); } catch(e) {}
+
+  // ✅ BUG-3 수정: "결과지 바로 보기" 버튼 + 자동 리다이렉트 옵션 추가
+  const directBtnEl = document.getElementById('waitDirectBtn');
+  if (directBtnEl && resultId) {
+    const resultUrl = '/result/' + resultId;
+    directBtnEl.style.display = 'block';
+    directBtnEl.onclick = function() { window.location.href = resultUrl; };
+  }
+  // 결과지 직접 링크를 waitSub 텍스트에도 삽입
+  const subEl = document.getElementById('waitSub');
+  if (subEl && resultId) {
+    subEl.innerHTML = `담당 컨설턴트가 결과지를 직접<br>공유해드릴 예정입니다 ✉️<br>
+      <span style="font-size:12px;color:#7c776b;">또는 지금 바로 확인하려면 아래 버튼을 누르세요.</span>`;
+  }
+
   // 상단으로 스크롤
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -4707,6 +4727,17 @@ async function submitDiagnosis(dispAnswers) {
     }
   }
 
+  // ✅ BUG-4 수정: DISP 스킵 시 BC코드 기반 오행 기본값 추가
+  // BC코드 → 오행 디폴트 매핑 (DISP 없을 때 결과지에서 오행 패널이 비지 않도록)
+  if (!ohaeng_type && _bcCodeKey) {
+    const _BC_OHAENG_DEFAULT = {
+      'BC-1':'수', 'BC-2':'금', 'BC-3':'토', 'BC-4':'수',
+      'BC-5':'목', 'BC-6':'화', 'BC-7':'토', 'BC-8':'금',
+      'BC-9':'토'
+    };
+    ohaeng_type = _BC_OHAENG_DEFAULT[_bcCodeKey] || '토';
+  }
+
   // ── 1~4차 전체 원시 답변 수집 ──
   const rawAnswers = buildRawAnswers(dispAnswers);
 
@@ -4736,10 +4767,25 @@ async function submitDiagnosis(dispAnswers) {
     ? Math.round((_curWt - _goalWt) / _curWt * 100)
     : null;
 
+  // ── NICKNAME → BC코드 역매핑 (bc-engine.js NICKNAME_TO_BC 사용, 없으면 로컬 fallback) ──
+  const _NICKNAME_TO_BC_LOCAL = {
+    '아빠체형 내장비대형':'BC-3','식후기절 혈당롤러코스터형':'BC-3','털털한 PCOS형':'BC-6',
+    '약물부작용 강제축적형':'BC-4','스트레스성 야식부엉이형':'BC-6','억제제부작용 배부름마비형':'BC-6',
+    '출산후 바람빠진 풍선형':'BC-7','식후임산부 가스풍선형':'BC-3','팔다리거미 올챙이배형':'BC-9',
+    '오후만되면 코끼리다리형':'BC-1','엄마체형 하지정체형':'BC-1','여름에도 시린 얼음장형':'BC-4',
+    '운동할수록 말벅지형':'BC-8','골반틀어짐 승마살형':'BC-7','지방흡입후 재발형':'BC-5',
+    '목짧아지는 거북이형':'BC-2','안 쓰는 팔뚝 부종형':'BC-2','상체근육형':'BC-8',
+    '겨드랑이 부유방형':'BC-2','호르몬스위치 갱년기형':'BC-6','스트레스기절 번아웃형':'BC-6',
+    '대사증후군 종합형':'BC-9','동시다발 다중악순환형':'BC-6',
+  };
+  const _nicknameMap = (typeof NICKNAME_TO_BC !== 'undefined') ? NICKNAME_TO_BC : _NICKNAME_TO_BC_LOCAL;
+  const _bcCodeKey = (f.name && _nicknameMap[f.name]) ? _nicknameMap[f.name] : 'BC-6';
+
   const payload = {
     user_name:       name,
     bc_nickname:     f.name   || null,
-    bc_primary:      f.ax     ? f.ax.split('·')[0]       : null,
+    bc_primary:      f.name   || null,   // ✅ BUG-1 수정: 닉네임(한글) 저장 → bc-engine NICKNAME_TO_BC 역매핑 지원
+    bc_code_key:     _bcCodeKey,         // ✅ 추가: 'BC-6' 형태 BC코드 직접 저장
     bc_secondary:    f.ax     ? (f.ax.split('·')[1]||null): null,
     top3_axes:       top3Axes,
     axis_scores:     scores,
