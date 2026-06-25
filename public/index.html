@@ -2690,8 +2690,8 @@ function smResume() {
 
 // 스테이지 화면 전환
 function smGoToStage(stage) {
-  const allPanels = ['hero','bodymapStep','nameStep','stage1','academic',
-    'stage2','recap','stage3','stage4'];
+  const allPanels = ['hero','bodymapStep','nameStep','conditionStep','timeStep',
+    'stage1','academic','stage2','recap','stage3','stage4'];
   allPanels.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
@@ -3486,10 +3486,15 @@ function goBack(){
   } else if(s1 && s1.style.display==='block'){
     s1.style.display='none';
     document.getElementById('progress').style.display='none';
-    // ★ 기능 10: stage1 → conditionStep → nameStep 역순
-    const condEl = document.getElementById('conditionStep');
-    if(condEl){ condEl.style.display='block'; window._condDone=false; }
-    else { nameStep.style.display='block'; }
+    // ★ 기능 11: stage1 → timeStep 역순
+    const timeElBack = document.getElementById('timeStep');
+    if(timeElBack){ timeElBack.style.display='block'; window._timeDone=false; }
+    else {
+      // timeStep 없으면 conditionStep으로
+      const condElBack = document.getElementById('conditionStep');
+      if(condElBack){ condElBack.style.display='block'; window._condDone=false; }
+      else { nameStep.style.display='block'; }
+    }
   } else if(document.getElementById('timeStep') && document.getElementById('timeStep').style.display==='block'){
     // ★ 기능 11: timeStep → conditionStep 복귀
     document.getElementById('timeStep').style.display='none';
