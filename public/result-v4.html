@@ -291,100 +291,245 @@ body{background:var(--paper);color:var(--ink);min-height:100vh;}
 
 /* ── 6-0: 원형 SVG 다이어그램 ── */
 /* ── P6 타임라인 로드맵 (원형 차트 대체) ── */
-.p6-diagram-wrap{
-  margin-bottom:32px;background:var(--dark);border-radius:24px;
-  padding:24px 16px 20px;position:relative;overflow:hidden;
-}
-.p6-diagram-wrap::before{
-  content:'';position:absolute;top:0;right:0;bottom:0;left:0;
-  background:repeating-linear-gradient(135deg,rgba(181,69,46,.025) 0,rgba(181,69,46,.025) 1px,transparent 1px,transparent 28px);
-  pointer-events:none;
-}
-.p6-diagram-eyebrow{
-  font-size:10px;font-weight:800;letter-spacing:2px;color:rgba(255,255,255,.9);
-  text-transform:uppercase;text-align:center;margin-bottom:6px;
-}
-.p6-diagram-title{
-  font-size:17px;font-weight:900;color:#fff;text-align:center;
-  margin-bottom:4px;line-height:1.3;
-}
-.p6-diagram-sub{
-  font-size:11px;color:rgba(255,255,255,.4);text-align:center;margin-bottom:20px;
-}
-
-/* ── 3단계 페이즈 헤더 ── */
-.p6-tl-phases{
-  display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;
-  margin-bottom:16px;position:relative;z-index:1;
-}
-.p6-tl-phase{
-  border-radius:10px;padding:8px 6px;text-align:center;
-}
-.p6-tl-phase-icon{font-size:18px;margin-bottom:2px;}
-.p6-tl-phase-label{font-size:10px;font-weight:800;line-height:1.3;word-break:keep-all;}
-.p6-tl-phase-weeks{font-size:9px;opacity:.65;margin-top:2px;}
-
-/* ── 12주 타임라인 그리드 ── */
-.p6-tl-grid{
-  display:grid;grid-template-columns:repeat(4,1fr);
-  gap:5px;margin-bottom:14px;position:relative;z-index:1;
-}
-/* 중앙 수평 연결선 */
-.p6-tl-grid::before{
-  content:'';position:absolute;top:24px;left:12.5%;right:12.5%;height:2px;
-  background:linear-gradient(90deg,rgba(181,69,46,.6) 0%,rgba(90,110,58,.6) 33%,rgba(90,110,58,.4) 66%,rgba(47,125,140,.3) 100%);
-  z-index:0;
-}
-.p6-tl-node{
-  position:relative;z-index:1;text-align:center;cursor:pointer;
-  transition:transform .15s;
-}
-.p6-tl-node:hover{transform:translateY(-2px);}
-.p6-tl-node.active .p6-tl-dot{
-  transform:scale(1.25);
-  box-shadow:0 0 0 3px rgba(181,69,46,.35);
-}
-.p6-tl-dot{
-  width:36px;height:36px;border-radius:50%;
-  display:flex;align-items:center;justify-content:center;
-  font-size:14px;margin:0 auto 4px;
-  transition:transform .2s,box-shadow .2s;
-  position:relative;
-}
-.p6-tl-dot.locked{
-  background:rgba(255,255,255,.08)!important;
-  border:1px solid rgba(255,255,255,.15);
-}
-.p6-tl-dot-num{
-  font-size:9px;font-weight:900;color:rgba(255,255,255,.55);
-  letter-spacing:.5px;
-}
-.p6-tl-wlabel{
-  font-size:9px;font-weight:700;color:rgba(255,255,255,.5);
-  line-height:1.3;word-break:keep-all;
-}
-.p6-tl-node.active .p6-tl-wlabel{color:rgba(255,255,255,.9);}
-
-/* ── 선택된 주차 상세 카드 ── */
-.p6-week-info-box{
-  background:rgba(255,255,255,.06);border:1px solid rgba(181,69,46,.3);
-  border-radius:14px;padding:14px 16px;
-  transition:all .25s;position:relative;z-index:1;
-}
-.p6-week-info-week{font-size:10px;font-weight:800;color:rgba(255,255,255,.6);margin-bottom:3px;letter-spacing:1px;text-transform:uppercase;}
-.p6-week-info-title{font-size:15px;font-weight:900;color:#fff;margin-bottom:6px;line-height:1.3;}
-.p6-week-info-tags{display:flex;gap:6px;flex-wrap:wrap;}
-.p6-week-info-tag{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;
-  background:rgba(255,255,255,.12);color:rgba(255,255,255,.9);}
-.p6-week-info-tag.locked{background:rgba(255,255,255,.05);color:rgba(255,255,255,.3);}
-.p6-week-info-progress{
-  margin-top:10px;height:3px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;
-}
-.p6-week-info-progress-fill{height:100%;border-radius:3px;transition:width .6s ease;}
-
-/* 레거시 SVG wrap (숨김) */
+/* ══════════════════════════════════
+   P6 진단 처방전 타임라인 (NEW)
+   ══════════════════════════════════ */
+/* 레거시 숨김 */
 .p6-svg-wrap{ display:none; }
 .p6-ring-legend{ display:none; }
+.p6-diagram-wrap{ display:none; } /* 구 diagram-wrap 숨김 */
+.p6-tl-phases{ display:none; }    /* 구 phase 헤더 숨김 */
+.p6-tl-grid{ display:none; }      /* 구 타임라인 그리드 숨김 */
+.p6-week-info-box{ display:none;} /* 구 info 박스 숨김 */
+
+/* ── 새 진단 처방전 래퍼 ── */
+.p6-dx-wrap{
+  margin-bottom:28px;
+  position:relative;
+}
+/* 진단 헤더 배너 */
+.p6-dx-banner{
+  background:var(--dark);border-radius:20px;padding:20px 18px 16px;
+  margin-bottom:20px;position:relative;overflow:hidden;
+}
+.p6-dx-banner::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse 80% 60% at 50% 0%, rgba(181,69,46,.18) 0%, transparent 70%);
+  pointer-events:none;
+}
+.p6-dx-banner-eyebrow{
+  font-size:9px;font-weight:800;letter-spacing:2.5px;
+  color:rgba(181,69,46,.8);text-transform:uppercase;
+  margin-bottom:6px;display:flex;align-items:center;gap:6px;
+}
+.p6-dx-banner-eyebrow::before{
+  content:'';display:inline-block;width:18px;height:1px;
+  background:rgba(181,69,46,.6);
+}
+.p6-dx-banner-title{
+  font-size:19px;font-weight:900;color:#fff;
+  line-height:1.25;margin-bottom:6px;
+}
+.p6-dx-banner-title em{
+  font-style:normal;
+  background:linear-gradient(90deg,#e8937a,#c07850);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.p6-dx-banner-sub{
+  font-size:11.5px;color:rgba(245,236,224,.45);line-height:1.6;
+}
+/* 진단 긴급도 게이지 */
+.p6-dx-urgency-bar{
+  display:flex;gap:3px;margin-top:14px;
+}
+.p6-dx-urgency-seg{
+  flex:1;height:4px;border-radius:4px;
+  background:rgba(255,255,255,.08);overflow:hidden;
+}
+.p6-dx-urgency-seg-fill{
+  height:100%;border-radius:4px;
+  transition:width 1s cubic-bezier(.22,1,.36,1);width:0;
+}
+
+/* ── 진단 타임라인 수직 레일 ── */
+.p6-dx-timeline{
+  position:relative;
+  padding-left:52px;   /* 레일 공간 확보 */
+}
+/* 수직 연결선 */
+.p6-dx-timeline::before{
+  content:'';
+  position:absolute;left:21px;top:16px;bottom:16px;width:2px;
+  background:linear-gradient(
+    180deg,
+    rgba(181,69,46,.7) 0%,
+    rgba(181,69,46,.5) 25%,
+    rgba(90,110,58,.4) 50%,
+    rgba(47,125,140,.3) 75%,
+    rgba(47,125,140,.1) 100%
+  );
+  border-radius:2px;
+}
+
+/* ── 진단 아이템 ── */
+.p6-dx-item{
+  position:relative;
+  margin-bottom:10px;
+  cursor:pointer;
+}
+.p6-dx-item:last-child{ margin-bottom:0; }
+
+/* 번호 뱃지 (수직선 위에 절대 위치) */
+.p6-dx-badge{
+  position:absolute;left:-52px;top:10px;
+  width:42px;height:42px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  flex-direction:column;
+  font-size:9px;font-weight:900;letter-spacing:.3px;
+  transition:transform .2s,box-shadow .2s;
+  flex-shrink:0;
+}
+.p6-dx-badge-num{
+  font-size:15px;font-weight:900;line-height:1;
+}
+.p6-dx-badge-label{
+  font-size:8px;font-weight:700;opacity:.8;margin-top:1px;
+}
+
+/* 카드 본체 */
+.p6-dx-card{
+  background:rgba(255,255,255,.055);
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:14px;padding:12px 14px;
+  transition:all .25s cubic-bezier(.22,1,.36,1);
+  position:relative;overflow:hidden;
+}
+.p6-dx-card::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
+  border-radius:3px 0 0 3px;background:var(--dx-color,rgba(181,69,46,.6));
+  transition:opacity .25s;
+}
+/* 카드 헤더 행 */
+.p6-dx-card-head{
+  display:flex;align-items:center;gap:10px;
+}
+.p6-dx-card-icon{
+  font-size:20px;line-height:1;flex-shrink:0;
+}
+.p6-dx-card-info{
+  flex:1;min-width:0;
+}
+.p6-dx-card-title{
+  font-size:14px;font-weight:800;color:#fff;
+  line-height:1.2;margin-bottom:2px;
+}
+.p6-dx-card-expert{
+  font-size:10px;color:rgba(245,236,224,.4);
+  font-weight:600;
+}
+.p6-dx-card-arrow{
+  font-size:12px;color:rgba(255,255,255,.25);
+  transition:transform .2s,color .2s;flex-shrink:0;
+}
+/* 긴급도 미니바 */
+.p6-dx-card-urgbar{
+  margin-top:8px;height:3px;border-radius:3px;
+  background:rgba(255,255,255,.07);overflow:hidden;
+}
+.p6-dx-card-urgbar-fill{
+  height:100%;border-radius:3px;
+  transition:width 1.2s cubic-bezier(.22,1,.36,1);width:0;
+}
+/* 태그 행 */
+.p6-dx-card-tags{
+  display:flex;gap:5px;flex-wrap:wrap;margin-top:7px;
+}
+.p6-dx-card-tag{
+  font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:20px;
+  background:rgba(255,255,255,.1);color:rgba(255,255,255,.8);
+}
+
+/* 활성(탭됨) 상태 */
+.p6-dx-item.open .p6-dx-card{
+  background:rgba(255,255,255,.1);
+  border-color:var(--dx-color,rgba(181,69,46,.5));
+  box-shadow:0 4px 20px rgba(0,0,0,.25);
+}
+.p6-dx-item.open .p6-dx-badge{
+  transform:scale(1.08);
+  box-shadow:0 0 0 3px rgba(255,255,255,.12);
+}
+.p6-dx-item.open .p6-dx-card-arrow{
+  transform:rotate(90deg);color:rgba(255,255,255,.6);
+}
+
+/* 잠김 스타일 */
+.p6-dx-item.locked .p6-dx-badge{
+  background:rgba(255,255,255,.07)!important;
+  border:1px solid rgba(255,255,255,.12);
+  box-shadow:none;
+}
+.p6-dx-item.locked .p6-dx-card{
+  opacity:.45;
+  cursor:default;
+}
+.p6-dx-item.locked .p6-dx-card::before{
+  opacity:.3;
+}
+
+/* 상세 펼침 패널 */
+.p6-dx-detail{
+  overflow:hidden;
+  max-height:0;
+  transition:max-height .4s cubic-bezier(.22,1,.36,1),opacity .3s;
+  opacity:0;
+}
+.p6-dx-item.open .p6-dx-detail{
+  max-height:500px;
+  opacity:1;
+}
+.p6-dx-detail-inner{
+  padding:12px 14px 14px;
+  background:rgba(0,0,0,.15);
+  border:1px solid rgba(255,255,255,.08);
+  border-top:none;
+  border-radius:0 0 14px 14px;
+  margin-top:-4px;
+}
+.p6-dx-detail-why{
+  font-size:12px;color:rgba(245,236,224,.7);
+  line-height:1.7;margin-bottom:10px;
+}
+.p6-dx-detail-why strong{
+  color:#e8937a;font-weight:800;
+}
+.p6-dx-detail-actions{
+  display:flex;gap:7px;flex-wrap:wrap;
+}
+.p6-dx-detail-action{
+  font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;
+  border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.85);
+  background:rgba(255,255,255,.08);cursor:default;
+}
+.p6-dx-detail-action.primary{
+  background:rgba(181,69,46,.55);
+  border-color:rgba(181,69,46,.7);
+  color:#fff;
+}
+
+/* 잠김 안내 */
+.p6-dx-lock-notice{
+  text-align:center;margin-top:20px;padding:16px;
+  background:rgba(255,255,255,.04);border-radius:14px;
+  border:1px dashed rgba(255,255,255,.1);
+}
+.p6-dx-lock-notice-title{
+  font-size:13px;font-weight:800;color:rgba(255,255,255,.5);
+  margin-bottom:4px;
+}
+.p6-dx-lock-notice-sub{
+  font-size:11px;color:rgba(255,255,255,.25);line-height:1.6;
+}
 
 /* ── 섹션 헤더 공통 ── */
 .p6-section-hd{
@@ -2366,51 +2511,46 @@ p, div, span, h1, h2, h3, h4{
   <h1 class="page-title fade-up">12주 하이퍼 로드맵</h1>
   <p class="body-text fade-up" style="transition-delay:.05s;margin-bottom:20px;" id="p6-code-display"></p>
 
-  <!-- 6-0: 12주 타임라인 로드맵 (원형 차트 대체) -->
-  <div class="p6-diagram-wrap fade-up" style="transition-delay:.08s" id="p6-diagram-wrap">
-    <div class="p6-diagram-eyebrow">12-WEEK ROADMAP</div>
-    <div class="p6-diagram-title" id="p6-diagram-title">12주 변환 타임라인</div>
-    <div class="p6-diagram-sub" id="p6-diagram-sub">주차를 눌러 처방을 확인하세요</div>
+  <!-- 6-0: 11대 진단 처방전 타임라인 (NEW) -->
+  <div class="p6-dx-wrap fade-up" style="transition-delay:.08s" id="p6-dx-wrap">
 
-    <!-- 3단계 페이즈 표시 -->
-    <div class="p6-tl-phases" id="p6-tl-phases">
-      <div class="p6-tl-phase" style="background:rgba(181,69,46,.15);border:1px solid rgba(181,69,46,.3);">
-        <div class="p6-tl-phase-icon">🔥</div>
-        <div class="p6-tl-phase-label" style="color:#e8937a;">기반 구축</div>
-        <div class="p6-tl-phase-weeks" style="color:rgba(232,147,122,.7);">1~4주</div>
+    <!-- 배너 헤더 -->
+    <div class="p6-dx-banner">
+      <div class="p6-dx-banner-eyebrow">EXPERT DIAGNOSIS ROADMAP</div>
+      <div class="p6-dx-banner-title" id="p6-dx-banner-title">
+        <em id="p6-dx-name">당신</em>에게 필요한<br>11가지 전문 진단 순서
       </div>
-      <div class="p6-tl-phase" style="background:rgba(90,110,58,.15);border:1px solid rgba(90,110,58,.3);">
-        <div class="p6-tl-phase-icon">⚡</div>
-        <div class="p6-tl-phase-label" style="color:#a8c97a;">집중 연소</div>
-        <div class="p6-tl-phase-weeks" style="color:rgba(168,201,122,.7);">5~8주</div>
+      <div class="p6-dx-banner-sub" id="p6-dx-banner-sub">
+        당신의 BC 기질 분석 결과를 바탕으로,<br>11명의 전문가가 진단해야 할 순서를 정렬했습니다
       </div>
-      <div class="p6-tl-phase" style="background:rgba(47,125,140,.15);border:1px solid rgba(47,125,140,.3);">
-        <div class="p6-tl-phase-icon">✨</div>
-        <div class="p6-tl-phase-label" style="color:#7ec8d8;">세포 재편</div>
-        <div class="p6-tl-phase-weeks" style="color:rgba(126,200,216,.7);">9~12주</div>
+      <!-- 전체 긴급도 시각화 바 (11칸) -->
+      <div class="p6-dx-urgency-bar" id="p6-dx-urgency-bar">
+        <!-- JS로 렌더 -->
       </div>
     </div>
 
-    <!-- 12주 타임라인 노드 그리드 -->
-    <div class="p6-tl-grid" id="p6-tl-grid">
+    <!-- 수직 타임라인 -->
+    <div class="p6-dx-timeline" id="p6-dx-timeline">
       <!-- JS로 렌더 -->
     </div>
 
-    <!-- 선택된 주차 상세 -->
-    <div class="p6-week-info-box" id="p6-week-info">
-      <div class="p6-week-info-week" id="p6-info-week-label">주차를 선택하세요</div>
-      <div class="p6-week-info-title" id="p6-info-title">—</div>
-      <div class="p6-week-info-tags" id="p6-info-tags"></div>
-      <div class="p6-week-info-progress">
-        <div class="p6-week-info-progress-fill" id="p6-info-progress" style="width:0%"></div>
+    <!-- 하단 잠김 안내 -->
+    <div class="p6-dx-lock-notice" id="p6-dx-lock-notice" style="display:none">
+      <div class="p6-dx-lock-notice-title">🔒 심층 진단 잠금 해제</div>
+      <div class="p6-dx-lock-notice-sub">
+        상위 3개 진단을 먼저 실천하면<br>
+        나머지 전문가 진단이 순차적으로 열립니다
       </div>
     </div>
 
-    <!-- 레거시 SVG (숨김) -->
-    <div class="p6-svg-wrap" style="display:none">
-      <svg id="p6-svg" viewBox="0 0 360 360" xmlns="http://www.w3.org/2000/svg"></svg>
+    <!-- 레거시 호환 (숨김) -->
+    <div style="display:none">
+      <div id="p6-tl-grid"></div>
+      <div id="p6-week-info"><div id="p6-info-week-label"></div><div id="p6-info-title"></div><div id="p6-info-tags"></div><div id="p6-info-progress"></div></div>
+      <div id="p6-diagram-title"></div><div id="p6-diagram-sub"></div>
+      <svg id="p6-svg" viewBox="0 0 360 360"></svg>
+      <div id="p6-ring-legend"></div>
     </div>
-    <div class="p6-ring-legend" id="p6-ring-legend" style="display:none"></div>
   </div>
 
   <!-- ── 스와이프 전환 힌트 버튼 ── -->
@@ -3982,93 +4122,263 @@ function renderP6(userName, fullCode, ohaengType, inputData) {
   const PHASE_COLORS = ['var(--vis)','var(--muscle)','var(--circ)','var(--sub)'];
 
   // ════════════════════════════════════════════
-  // 6-0: 12주 타임라인 로드맵 노드 렌더링
+  // 6-0: 11대 진단 처방전 타임라인 렌더링
+  // axisScores 기반으로 진단 우선순위 자동 정렬
   // ════════════════════════════════════════════
 
-  // 12주 전체 데이터 정의 (활성 1~4주 + 잠금 5~12주)
-  const ALL_WEEKS = [
-    ...(ACTIVE_WEEKS||[]).map((w,i) => ({
-      week: w.week,
-      label: w.weekLabel || `${w.week}주`,
-      title: w.title,
-      icon: w.icon || ['🔥','⚡','💫','🏆'][i] || '🔓',
-      tags: w.keyFocus || [],
-      color: PHASE_COLORS[i] || 'rgba(181,69,46,.9)',
-      locked: false
-    })),
-    {week:5,  label:'5주',  title:'심화 지방 연소',  icon:'🔥', tags:['내장지방 타깃','대사율 극대화'],   color:'rgba(90,110,58,.9)',  locked:true},
-    {week:6,  label:'6주',  title:'호르몬 최적화',    icon:'⚡', tags:['인슐린 민감도','생체리듬'],       color:'rgba(90,110,58,.8)',  locked:true},
-    {week:7,  label:'7주',  title:'바디 리컴프',      icon:'💪', tags:['근지방 교환','대사 완성'],        color:'rgba(90,110,58,.7)',  locked:true},
-    {week:8,  label:'8주',  title:'순환 극대화',      icon:'🌀', tags:['림프 순환','독소 배출'],          color:'rgba(90,110,58,.6)',  locked:true},
-    {week:9,  label:'9주',  title:'세포 재편 1단계',  icon:'🔬', tags:['세포 활성','미토콘드리아'],       color:'rgba(47,125,140,.85)', locked:true},
-    {week:10, label:'10주', title:'세포 재편 2단계',  icon:'⚗️', tags:['미토콘드리아 강화','항산화'],     color:'rgba(47,125,140,.75)', locked:true},
-    {week:11, label:'11주', title:'장기 유지 설계',   icon:'🏆', tags:['요요 차단','습관 고착'],          color:'rgba(47,125,140,.65)', locked:true},
-    {week:12, label:'12주', title:'자동화 완성',       icon:'✨', tags:['습관 자동화','평생 유지'],        color:'rgba(47,125,140,.55)', locked:true},
+  // axisScores에서 각 진단축 점수 계산 (AXIS_11 axisRef 매핑)
+  const axisScoresRef = (typeof _wowData !== 'undefined' && _wowData.axisScores)
+    ? _wowData.axisScores
+    : (inputData && inputData.axis_scores ? inputData.axis_scores : {});
+
+  // 11개 진단 전체 정의 — axisRef 점수로 긴급도 계산
+  const DX_11_BASE = [
+    {
+      key:'식단',   icon:'🍽️', color:'#E8631A',
+      expert:'영양·식이 전문가',
+      title:'식이 패턴 진단',
+      axisRef:'A01',
+      tagsFn:(score)=>score>70?['탄수화물 과잉','혈당 스파이크','야식 패턴']:['식이 기반 안정','영양 밸런스 점검'],
+      whyFn:(score,name)=>score>70
+        ? `<strong>${name}</strong>의 식이 패턴에서 혈당 급등-급락 사이클이 감지됩니다. 탄수화물 타이밍과 양 조절이 다른 어떤 개입보다 먼저 안정되어야 이후 처방 효과가 올라갑니다.`
+        : `식이 기반은 비교적 안정적이지만 BC 기질에 맞는 영양 비율을 미세 조정하면 대사 효율이 달라집니다.`,
+      actions:['탄수화물 타이밍 교정','단백질 목표량 설정','야식 패턴 차단'],
+    },
+    {
+      key:'심리',   icon:'🧠', color:'#9C27B0',
+      expert:'행동심리·식욕 전문가',
+      title:'심리·식욕 조절 진단',
+      axisRef:'A08',
+      tagsFn:(score)=>score>65?['스트레스 식욕','감정적 폭식','도파민 보상']:['심리 안정','의지력 설계'],
+      whyFn:(score,name)=>score>65
+        ? `<strong>${name}</strong>의 체중 문제는 의지 부족이 아니라 스트레스-식욕 호르몬 연결 고리에서 시작됩니다. 행동 패턴을 먼저 진단해야 식단·운동 처방이 지속됩니다.`
+        : `심리적 식욕 조절은 안정적입니다. 현재 루틴을 강화하는 방향으로 접근합니다.`,
+      actions:['스트레스 식욕 트리거 분석','감정 식사 일지','도파민 보상 대체 루틴'],
+    },
+    {
+      key:'호르몬', icon:'🌸', color:'#C0397A',
+      expert:'내분비·호르몬 전문가',
+      title:'호르몬 불균형 진단',
+      axisRef:'A03',
+      tagsFn:(score)=>score>65?['인슐린 저항','코르티솔 이상','갑상선 기능']:['호르몬 기반 안정','주기적 모니터링'],
+      whyFn:(score,name)=>score>65
+        ? `<strong>${name}</strong>의 호르몬 지표가 체중 조절의 핵심 병목입니다. 인슐린 민감도와 코르티솔 패턴을 교정하지 않으면 식이·운동 효과가 반감됩니다.`
+        : `호르몬 기반은 관리 가능한 수준입니다. 생활 패턴으로 최적화할 수 있습니다.`,
+      actions:['인슐린 민감도 검사','코르티솔 일주기 체크','갑상선 기능 모니터링'],
+    },
+    {
+      key:'운동',   icon:'🏃', color:'#4A8C1C',
+      expert:'운동처방·재활 전문가',
+      title:'운동 처방 진단',
+      axisRef:'A04',
+      tagsFn:(score)=>score>60?['근육량 부족','체형 불균형','운동 부작용']:['운동 기반 양호','강도 최적화 필요'],
+      whyFn:(score,name)=>score>60
+        ? `<strong>${name}</strong>의 BC 기질에 맞지 않는 운동이 오히려 염증과 식욕을 증가시킬 수 있습니다. BC 맞춤 운동 종류와 강도를 먼저 진단합니다.`
+        : `운동 기반은 양호합니다. BC에 맞는 종류와 시간대를 최적화합니다.`,
+      actions:['체형별 운동 금지 목록 확인','주간 운동 루틴 설계','근육 활성화 순서 교정'],
+    },
+    {
+      key:'회복',   icon:'🌙', color:'#3F51B5',
+      expert:'수면·자율신경 전문가',
+      title:'수면·회복 진단',
+      axisRef:'A07',
+      tagsFn:(score)=>score>60?['수면 호르몬 교란','야간 식욕','회복력 저하']:['수면 패턴 안정','회복력 양호'],
+      whyFn:(score,name)=>score>60
+        ? `<strong>${name}</strong>의 수면 패턴이 렙틴·그렐린 불균형을 만들어 다음날 식욕 폭발로 이어집니다. 수면 질을 먼저 개선해야 모든 처방 효과가 살아납니다.`
+        : `수면·회복 기반은 양호합니다. 질적 최적화로 대사 회복을 가속합니다.`,
+      actions:['수면 단계 분석','야간 코르티솔 패턴 체크','회복 루틴 설계'],
+    },
+    {
+      key:'체형',   icon:'🦴', color:'#6B4EAA',
+      expert:'체형·자세 전문가',
+      title:'체형·자세 교정 진단',
+      axisRef:'A06',
+      tagsFn:(score)=>score>60?['체형 불균형','자세성 비만','림프 순환 저하']:['체형 기반 안정','자세 미세 교정'],
+      whyFn:(score,name)=>score>60
+        ? `<strong>${name}</strong>의 체형 불균형이 특정 부위 지방 분포에 영향을 줍니다. 자세·체형 교정이 선행되어야 운동 효율과 순환이 개선됩니다.`
+        : `체형 기반은 양호합니다. 세부 자세 교정으로 대사 효율을 높입니다.`,
+      actions:['체형 불균형 부위 분석','자세 교정 루틴','BC 맞춤 스트레칭'],
+    },
+    {
+      key:'한방',   icon:'🌿', color:'#1A8C5B',
+      expert:'한의학·동양의학 전문가',
+      title:'한방 기질 진단',
+      axisRef:'A02',
+      tagsFn:(score)=>score>55?['기혈 순환 저하','체질 불균형','담음 축적']:['기혈 순환 양호','체질 기반 안정'],
+      whyFn:(score,name)=>score>55
+        ? `<strong>${name}</strong>의 오행 기질 분석에서 특정 장부 불균형이 감지됩니다. 한방적 접근으로 체질 기반 처방을 보완하면 효과가 배가됩니다.`
+        : `오행 기질 기반은 안정적입니다. 계절·시간대 맞춤 보완으로 최적화합니다.`,
+      actions:['오행 기질 처방 확인','한방 식이 보완 목록','체질별 금기 식품 체크'],
+    },
+    {
+      key:'관리',   icon:'💆', color:'#3EB8A0',
+      expert:'생활습관·코칭 전문가',
+      title:'생활 습관 진단',
+      axisRef:'A04',
+      tagsFn:()=>['습관 자동화 설계','데일리 루틴 점검','행동 지속성 강화'],
+      whyFn:(_,name)=>`<strong>${name}</strong>의 처방이 지속되려면 일상 루틴에 녹아들어야 합니다. 습관화 설계 없이는 어떤 처방도 3주를 넘기기 어렵습니다.`,
+      actions:['아침 루틴 설계','습관 트래킹 시스템','환경 설계'],
+    },
+    {
+      key:'시술',   icon:'✨', color:'#E67E22',
+      expert:'미용·시술 전문가',
+      title:'보조 시술 진단',
+      axisRef:'A09',
+      tagsFn:()=>['BC 맞춤 시술 선별','효과·부작용 점검','시술 타이밍 최적화'],
+      whyFn:(_,name)=>`<strong>${name}</strong>의 체형 목표에 보조적 시술이 도움될 수 있습니다. 단, BC 기질에 맞지 않는 시술은 오히려 역효과가 납니다. 사전 진단이 필요합니다.`,
+      actions:['BC 맞춤 시술 목록 확인','시술 금기 체크','시술 전 기반 조건 충족'],
+    },
+    {
+      key:'약물',   icon:'💊', color:'#7B1FA2',
+      expert:'약학·보조요법 전문가',
+      title:'약물·보충제 진단',
+      axisRef:'A08',
+      tagsFn:()=>['복용 중인 약물 점검','보충제 궁합 분석','BC 맞춤 보충제'],
+      whyFn:(_,name)=>`<strong>${name}</strong>의 현재 복용 약물 또는 보충제가 대사에 영향을 주고 있을 수 있습니다. BC×복용 조합의 궁합을 먼저 점검해야 처방 효과가 극대화됩니다.`,
+      actions:['현재 복용 목록 정리','BC 맞춤 보충제 확인','약물-영양소 상호작용 체크'],
+    },
+    {
+      key:'철학',   icon:'🔮', color:'#E67E22',
+      expert:'목표 설계·삶의 방향 코치',
+      title:'목표·철학 진단',
+      axisRef:'A10',
+      tagsFn:()=>['목표 구체화','동기 지속 설계','장기 유지 철학'],
+      whyFn:(_,name)=>`<strong>${name}</strong>이 원하는 몸과 삶의 연결고리를 명확히 하는 것이 모든 처방의 마지막 접착제입니다. 왜 살을 빼야 하는지를 깊이 정의할수록 습관이 자동화됩니다.`,
+      actions:['목표 체중 의미 탐구','장기 유지 비전 설계','요요 차단 마인드셋'],
+    },
   ];
 
-  // 타임라인 그리드 렌더링
-  const grid = document.getElementById('p6-tl-grid');
-  if (grid) {
-    grid.innerHTML = '';
-    ALL_WEEKS.forEach((w, i) => {
-      const node = document.createElement('div');
-      node.className = 'p6-tl-node' + (i === 0 ? ' active' : '');
-      node.dataset.week = w.week;
+  // axisScores 기반으로 긴급도 점수 계산 후 정렬
+  const dxWithScores = DX_11_BASE.map(dx => {
+    const rawScore = axisScoresRef[dx.axisRef] || 0;
+    return { ...dx, urgency: rawScore };
+  });
+  // 점수 높은 순 정렬 (= 가장 시급한 진단이 먼저)
+  dxWithScores.sort((a, b) => b.urgency - a.urgency);
 
-      const dotBg = w.locked
-        ? ''
-        : `background:${w.color};box-shadow:0 2px 8px ${w.color.replace(/[\d.]+\)$/,'0.45)')};`;
+  // 배너 업데이트
+  const bannerNameEl = document.getElementById('p6-dx-name');
+  if (bannerNameEl) bannerNameEl.textContent = userName || '당신';
+  const bannerSubEl = document.getElementById('p6-dx-banner-sub');
+  if (bannerSubEl && dxWithScores[0]) {
+    bannerSubEl.innerHTML = `BC 분석 결과, <strong style="color:#e8937a">${dxWithScores[0].title}</strong>이<br>지금 가장 시급한 진단입니다`;
+  }
 
-      node.innerHTML = `
-        <div class="p6-tl-dot${w.locked ? ' locked' : ''}" style="${dotBg}">
-          ${w.locked
-            ? `<span style="font-size:13px;opacity:.45;">🔒</span>`
-            : `<span style="font-size:14px;">${w.icon}</span>`}
-        </div>
-        <div class="p6-tl-wlabel">${w.label}</div>`;
-
-      node.addEventListener('click', () => {
-        if (w.locked) {
-          _showToast('🔒 이전 주차를 완료하면 잠금이 해제됩니다');
-          return;
-        }
-        // 타임라인 노드 active 처리
-        document.querySelectorAll('.p6-tl-node').forEach(n => n.classList.remove('active'));
-        node.classList.add('active');
-
-        // 주차 상세 info 박스 업데이트
-        const weekInfoBox = document.getElementById('p6-week-info');
-        const labelEl = document.getElementById('p6-info-week-label');
-        const titleEl = document.getElementById('p6-info-title');
-        const tagsEl  = document.getElementById('p6-info-tags');
-        const progEl  = document.getElementById('p6-info-progress');
-
-        if (labelEl) labelEl.textContent = `WEEK ${w.week}`;
-        if (titleEl) titleEl.textContent = w.title;
-        if (tagsEl)  tagsEl.innerHTML = (w.tags||[]).map(t =>
-          `<span class="p6-week-info-tag">${t}</span>`).join('');
-        if (progEl) {
-          const pct = Math.round((w.week / 12) * 100);
-          progEl.style.cssText = `width:${pct}%;background:${w.color};`;
-        }
-        if (weekInfoBox) {
-          weekInfoBox.style.borderColor = w.color.replace(/[\d.]+\)$/, '0.4)');
-        }
-
-        // 스와이프 패널도 동기화 (활성 주차 1~4)
-        if (w.week >= 1 && w.week <= (ACTIVE_WEEKS||[]).length) {
-          p6SwitchWeek(w.week);
-        }
+  // 긴급도 바 렌더링 (11칸)
+  const urgBar = document.getElementById('p6-dx-urgency-bar');
+  if (urgBar) {
+    urgBar.innerHTML = dxWithScores.map((dx, i) => {
+      const fillPct = Math.max(10, Math.round((dx.urgency / 100) * 100));
+      const alpha = i < 3 ? '1' : i < 6 ? '0.55' : '0.3';
+      return `<div class="p6-dx-urgency-seg">
+        <div class="p6-dx-urgency-seg-fill" style="background:${dx.color};opacity:${alpha};"
+          data-w="${fillPct}%"></div></div>`;
+    }).join('');
+    // 애니메이션
+    setTimeout(() => {
+      urgBar.querySelectorAll('.p6-dx-urgency-seg-fill').forEach(el => {
+        el.style.width = el.dataset.w;
       });
+    }, 400);
+  }
 
-      grid.appendChild(node);
+  // 진단 타임라인 렌더링
+  const timeline = document.getElementById('p6-dx-timeline');
+  if (timeline) {
+    timeline.innerHTML = '';
+    dxWithScores.forEach((dx, i) => {
+      const isOpen = i === 0;               // 첫 번째는 기본 펼침
+      const isLocked = i >= 3;             // 4번부터 잠금 (1~3번만 열림)
+      const score = dx.urgency;
+      const urgPct = Math.max(8, Math.round((score / 100) * 100));
+      const tags = (dx.tagsFn ? dx.tagsFn(score) : []);
+      const whyText = dx.whyFn ? dx.whyFn(score, userName) : '';
+      const actions = dx.actions || [];
+
+      // 순위별 색상 그라데이션
+      const rankColors = [
+        '#e8513a','#e06c30','#d88a3c',  // 1~3: 붉은-주황
+        '#5a8a3a','#4a7a5a','#3a6a7a',  // 4~6: 녹색계
+        '#3a5a8a','#5a4a8a','#7a3a8a',  // 7~9: 파란-보라
+        '#8a5a3a','#6a4a2a',            // 10~11: 브라운
+      ];
+      const rankColor = rankColors[i] || '#666';
+
+      const item = document.createElement('div');
+      item.className = `p6-dx-item${isOpen ? ' open' : ''}${isLocked ? ' locked' : ''}`;
+      item.style.setProperty('--dx-color', dx.color);
+
+      item.innerHTML = `
+        <div class="p6-dx-badge" style="background:linear-gradient(135deg,${rankColor},${rankColor}cc);">
+          <div class="p6-dx-badge-num">${isLocked ? '🔒' : (i+1)}</div>
+          ${!isLocked ? `<div class="p6-dx-badge-label">순위</div>` : ''}
+        </div>
+        <div class="p6-dx-card">
+          <div class="p6-dx-card-head">
+            <div class="p6-dx-card-icon">${dx.icon}</div>
+            <div class="p6-dx-card-info">
+              <div class="p6-dx-card-title">${dx.title}</div>
+              <div class="p6-dx-card-expert">${dx.expert}</div>
+            </div>
+            ${!isLocked ? `<div class="p6-dx-card-arrow">▶</div>` : ''}
+          </div>
+          ${!isLocked ? `
+            <div class="p6-dx-card-urgbar">
+              <div class="p6-dx-card-urgbar-fill" style="background:${dx.color};"
+                data-w="${urgPct}%"></div>
+            </div>
+            <div class="p6-dx-card-tags">
+              ${tags.map(t=>`<span class="p6-dx-card-tag">${t}</span>`).join('')}
+            </div>` : ''
+          }
+        </div>
+        ${!isLocked ? `
+        <div class="p6-dx-detail">
+          <div class="p6-dx-detail-inner">
+            <div class="p6-dx-detail-why">${whyText}</div>
+            <div class="p6-dx-detail-actions">
+              ${actions.map((a,ai)=>`<span class="p6-dx-detail-action${ai===0?' primary':''}">${a}</span>`).join('')}
+            </div>
+          </div>
+        </div>` : ''}
+      `;
+
+      // 클릭 이벤트 (잠금 제외)
+      if (!isLocked) {
+        item.addEventListener('click', () => {
+          const wasOpen = item.classList.contains('open');
+          // 다른 열린 항목 닫기
+          timeline.querySelectorAll('.p6-dx-item.open').forEach(el => el.classList.remove('open'));
+          if (!wasOpen) item.classList.add('open');
+          // 긴급도 바 애니메이션 (펼칠 때)
+          if (!wasOpen) {
+            setTimeout(() => {
+              item.querySelectorAll('.p6-dx-card-urgbar-fill[data-w]').forEach(el => {
+                el.style.width = el.dataset.w;
+              });
+            }, 100);
+          }
+        });
+        // 첫 번째 아이템 긴급도 바 초기 애니메이션
+        if (isOpen) {
+          setTimeout(() => {
+            item.querySelectorAll('.p6-dx-card-urgbar-fill[data-w]').forEach(el => {
+              el.style.width = el.dataset.w;
+            });
+          }, 600);
+        }
+      } else {
+        item.addEventListener('click', () => {
+          _showToast('🔒 상위 3개 진단을 먼저 확인하세요');
+        });
+      }
+
+      timeline.appendChild(item);
     });
 
-    // 첫 번째 노드 자동 선택 (info 박스 초기화)
-    if (ALL_WEEKS[0]) {
-      const firstNode = grid.querySelector('.p6-tl-node');
-      if (firstNode) firstNode.click();
-    }
+    // 잠금 안내 표시
+    const lockNotice = document.getElementById('p6-dx-lock-notice');
+    if (lockNotice) lockNotice.style.display = 'block';
   }
 
   // ════════════════════════════════════════════
