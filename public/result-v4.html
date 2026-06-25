@@ -1704,6 +1704,251 @@ p, div, span, h1, h2, h3, h4{
   box-sizing:border-box;
   padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 24px);
 }
+
+/* ══════════════════════════════════════════
+   WOW-1: BC DNA 공유 카드 (DNA 카드 모달)
+   ══════════════════════════════════════════ */
+.dna-card-modal-overlay{
+  position:fixed;inset:0;z-index:9100;background:rgba(0,0,0,.75);
+  display:flex;align-items:flex-end;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .25s;
+}
+.dna-card-modal-overlay.open{opacity:1;pointer-events:auto;}
+.dna-card-modal{
+  background:var(--dark);border-radius:24px 24px 0 0;padding:24px 20px 36px;
+  width:100%;max-width:480px;
+  transform:translateY(40px);transition:transform .3s cubic-bezier(.2,.9,.3,1);
+}
+.dna-card-modal-overlay.open .dna-card-modal{transform:translateY(0);}
+.dna-card-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+.dna-card-hd-title{font-size:14px;font-weight:800;color:var(--cream);letter-spacing:.5px;}
+.dna-card-hd-close{background:none;border:none;color:rgba(255,255,255,.5);font-size:20px;cursor:pointer;padding:0;}
+.dna-canvas-wrap{border-radius:14px;overflow:hidden;margin-bottom:14px;line-height:0;}
+.dna-canvas-wrap canvas,.dna-canvas-wrap img{width:100%;height:auto;display:block;}
+.dna-skin-row{display:flex;gap:8px;margin-bottom:16px;}
+.dna-skin-btn{flex:1;padding:8px;border:1.5px solid rgba(255,255,255,.15);border-radius:10px;
+  background:rgba(255,255,255,.05);color:rgba(255,255,255,.6);font-size:11px;font-weight:700;
+  cursor:pointer;transition:all .2s;}
+.dna-skin-btn.active{border-color:var(--vis);color:var(--cream);background:rgba(181,69,46,.12);}
+.dna-share-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.dna-share-btn{padding:12px;border:none;border-radius:12px;font-size:13px;font-weight:800;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .2s;}
+.dna-share-btn.primary{background:var(--vis);color:#fff;}
+.dna-share-btn.secondary{background:rgba(255,255,255,.1);color:var(--cream);border:1px solid rgba(255,255,255,.2);}
+/* P7에 DNA 카드 열기 버튼 */
+.p7-dna-btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  width:100%;padding:14px;border:none;border-radius:14px;
+  background:linear-gradient(135deg,rgba(181,69,46,.8),rgba(200,90,60,.9));
+  color:#fff;font-size:14px;font-weight:800;cursor:pointer;
+  box-shadow:0 4px 20px rgba(181,69,46,.35);transition:all .2s;margin-bottom:12px;
+}
+.p7-dna-btn:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(181,69,46,.5);}
+
+/* ══════════════════════════════════════════
+   WOW-2: BC 변화 타임라인 그래프
+   ══════════════════════════════════════════ */
+.wow2-section{
+  background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);
+  border-radius:18px;padding:20px 18px;margin-bottom:20px;
+}
+.wow2-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.wow2-title{font-size:13px;font-weight:800;color:var(--cream);letter-spacing:.3px;}
+.wow2-empty{
+  text-align:center;padding:32px 16px;
+  color:rgba(255,255,255,.35);font-size:12px;line-height:1.8;
+}
+.wow2-empty-icon{font-size:36px;margin-bottom:8px;}
+.wow2-chart-wrap{position:relative;height:180px;}
+.wow2-stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px;}
+.wow2-stat{
+  background:rgba(255,255,255,.05);border-radius:10px;padding:10px;text-align:center;
+}
+.wow2-stat-val{font-size:18px;font-weight:900;color:var(--cream);}
+.wow2-stat-lbl{font-size:9px;color:rgba(255,255,255,.45);font-weight:700;margin-top:2px;}
+.wow2-stat-change{font-size:11px;font-weight:800;margin-top:2px;}
+.wow2-stat-change.plus{color:#b8f088;}
+.wow2-stat-change.minus{color:#f08888;}
+
+/* ══════════════════════════════════════════
+   WOW-3: BC 잔혹사 경보 시스템
+   ══════════════════════════════════════════ */
+.wow3-alarm-banner{
+  border-radius:14px;padding:16px;margin-bottom:20px;overflow:hidden;position:relative;
+  background:linear-gradient(135deg,rgba(200,50,30,.18),rgba(150,20,10,.08));
+  border:1px solid rgba(220,60,40,.35);
+}
+.wow3-alarm-blink{
+  display:inline-flex;align-items:center;gap:6px;
+  background:rgba(220,60,40,.25);border-radius:20px;padding:3px 10px;
+  font-size:10px;font-weight:800;color:#ff8070;letter-spacing:1px;margin-bottom:10px;
+}
+.wow3-alarm-blink::before{
+  content:'●';color:#ff4030;font-size:8px;
+  animation:wow3-blink 1.2s ease-in-out infinite;
+}
+@keyframes wow3-blink{0%,100%{opacity:1;}50%{opacity:.2;}}
+.wow3-alarm-title{font-size:15px;font-weight:900;color:var(--cream);margin-bottom:10px;line-height:1.4;}
+.wow3-risk-list{display:flex;flex-direction:column;gap:8px;}
+.wow3-risk-item{
+  display:flex;align-items:center;gap:10px;
+  background:rgba(0,0,0,.25);border-radius:10px;padding:10px 12px;
+  cursor:pointer;transition:all .2s;
+}
+.wow3-risk-item:hover{background:rgba(220,60,40,.12);}
+.wow3-risk-thermo{
+  flex-shrink:0;width:36px;height:36px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:16px;
+}
+.wow3-risk-thermo.red{background:rgba(220,60,40,.25);}
+.wow3-risk-thermo.orange{background:rgba(220,130,40,.25);}
+.wow3-risk-thermo.yellow{background:rgba(220,200,40,.2);}
+.wow3-risk-body{flex:1;}
+.wow3-risk-title{font-size:12px;font-weight:800;color:var(--cream);margin-bottom:2px;}
+.wow3-risk-desc{font-size:11px;color:rgba(255,255,255,.55);line-height:1.5;}
+.wow3-risk-badge{
+  flex-shrink:0;font-size:9px;font-weight:800;padding:3px 7px;border-radius:8px;
+}
+.wow3-risk-badge.red{background:rgba(220,60,40,.3);color:#ff8070;}
+.wow3-risk-badge.orange{background:rgba(220,130,40,.25);color:#ffaa60;}
+.wow3-risk-badge.yellow{background:rgba(220,200,40,.2);color:#ffe070;}
+.wow3-sos-btn{
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  width:100%;margin-top:12px;padding:11px;border:1px solid rgba(220,60,40,.35);
+  border-radius:10px;background:rgba(220,60,40,.1);
+  color:#ff9080;font-size:12px;font-weight:800;cursor:pointer;transition:all .2s;
+}
+.wow3-sos-btn:hover{background:rgba(220,60,40,.2);}
+/* 경보 상세 모달 */
+.wow3-detail-modal{
+  position:fixed;inset:0;z-index:9200;background:rgba(0,0,0,.8);
+  display:flex;align-items:flex-end;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .25s;
+}
+.wow3-detail-modal.open{opacity:1;pointer-events:auto;}
+.wow3-detail-inner{
+  background:#1a1008;border-radius:24px 24px 0 0;padding:24px 20px 40px;
+  width:100%;max-width:480px;
+  transform:translateY(40px);transition:transform .3s cubic-bezier(.2,.9,.3,1);
+  max-height:80vh;overflow-y:auto;
+}
+.wow3-detail-modal.open .wow3-detail-inner{transform:translateY(0);}
+
+/* ══════════════════════════════════════════
+   WOW-4: 주간 미션 카드 + Confetti
+   ══════════════════════════════════════════ */
+.wow4-mission-card{
+  background:linear-gradient(135deg,rgba(90,110,58,.18),rgba(60,80,30,.08));
+  border:1.5px solid rgba(90,110,58,.4);border-radius:16px;
+  padding:16px 16px 14px;margin-bottom:18px;position:relative;overflow:hidden;
+}
+.wow4-mission-card::before{
+  content:'';position:absolute;top:-20px;right:-20px;width:80px;height:80px;
+  background:radial-gradient(circle,rgba(90,110,58,.2),transparent 70%);
+  border-radius:50%;
+}
+.wow4-mission-eyebrow{
+  font-size:9px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;
+  color:rgba(168,201,122,.8);margin-bottom:6px;
+}
+.wow4-mission-title{font-size:14px;font-weight:900;color:var(--cream);line-height:1.4;margin-bottom:10px;}
+.wow4-mission-diff-row{display:flex;gap:6px;margin-bottom:12px;}
+.wow4-diff-btn{
+  padding:5px 10px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;
+  border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);
+  color:rgba(255,255,255,.55);transition:all .15s;
+}
+.wow4-diff-btn.active{
+  background:rgba(90,110,58,.3);border-color:rgba(90,110,58,.6);
+  color:#a8c97a;
+}
+.wow4-mission-action-row{display:flex;gap:8px;align-items:center;}
+.wow4-complete-btn{
+  flex:1;padding:11px;border:none;border-radius:12px;
+  background:linear-gradient(135deg,rgba(90,110,58,.9),rgba(110,140,60,.9));
+  color:#fff;font-size:13px;font-weight:800;cursor:pointer;
+  transition:all .2s;position:relative;overflow:hidden;
+}
+.wow4-complete-btn.done{
+  background:rgba(255,255,255,.08);color:rgba(255,255,255,.4);cursor:default;
+}
+.wow4-complete-btn:not(.done):hover{transform:scale(1.02);}
+.wow4-streak-badge{
+  flex-shrink:0;background:rgba(255,180,0,.15);border:1px solid rgba(255,180,0,.3);
+  border-radius:10px;padding:8px 10px;text-align:center;
+}
+.wow4-streak-num{font-size:18px;font-weight:900;color:#ffb400;}
+.wow4-streak-lbl{font-size:8px;color:rgba(255,255,255,.45);font-weight:700;}
+
+/* ══════════════════════════════════════════
+   WOW-5: 가족 BC 레이더 차트
+   ══════════════════════════════════════════ */
+.wow5-radar-wrap{
+  background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);
+  border-radius:16px;padding:18px;margin-top:16px;
+}
+.wow5-radar-title{font-size:13px;font-weight:800;color:var(--cream);margin-bottom:4px;}
+.wow5-radar-sub{font-size:11px;color:rgba(255,255,255,.4);margin-bottom:14px;}
+.wow5-chart-wrap{position:relative;height:240px;}
+.wow5-common-list{margin-top:14px;}
+.wow5-common-title{font-size:11px;font-weight:800;color:rgba(255,255,255,.5);
+  letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;}
+.wow5-common-item{
+  display:flex;align-items:center;gap:8px;padding:8px 10px;
+  background:rgba(255,255,255,.04);border-radius:8px;margin-bottom:6px;
+  font-size:12px;color:var(--cream);
+}
+.wow5-common-icon{font-size:16px;flex-shrink:0;}
+.wow5-empty{
+  text-align:center;padding:24px;color:rgba(255,255,255,.3);font-size:12px;line-height:1.8;
+}
+
+/* ══════════════════════════════════════════
+   WOW-6: BC 보충제 궁합 체크리스트
+   ══════════════════════════════════════════ */
+.wow6-section{
+  background:rgba(47,125,140,.08);border:1px solid rgba(47,125,140,.25);
+  border-radius:18px;padding:20px 18px;margin-top:20px;
+}
+.wow6-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.wow6-title{font-size:13px;font-weight:800;color:var(--cream);letter-spacing:.3px;}
+.wow6-sub{font-size:11px;color:rgba(255,255,255,.45);margin-bottom:16px;}
+.wow6-grid{display:flex;flex-direction:column;gap:6px;}
+.wow6-item{
+  display:flex;align-items:center;gap:10px;
+  background:rgba(255,255,255,.04);border-radius:10px;padding:10px 12px;
+  border:1px solid rgba(255,255,255,.07);transition:all .2s;cursor:pointer;
+}
+.wow6-item.good{border-color:rgba(90,110,58,.35);background:rgba(90,110,58,.08);}
+.wow6-item.caution{border-color:rgba(220,130,40,.3);background:rgba(220,130,40,.06);}
+.wow6-item.danger{border-color:rgba(220,60,40,.3);background:rgba(220,60,40,.06);}
+.wow6-item-icon{font-size:20px;flex-shrink:0;}
+.wow6-item-body{flex:1;}
+.wow6-item-name{font-size:13px;font-weight:800;color:var(--cream);}
+.wow6-item-desc{font-size:11px;color:rgba(255,255,255,.5);margin-top:2px;line-height:1.5;}
+.wow6-badge{
+  flex-shrink:0;font-size:10px;font-weight:800;padding:4px 9px;border-radius:8px;
+}
+.wow6-badge.good{background:rgba(90,110,58,.3);color:#a8c97a;}
+.wow6-badge.caution{background:rgba(220,130,40,.25);color:#ffaa60;}
+.wow6-badge.danger{background:rgba(220,60,40,.25);color:#ff8070;}
+.wow6-checker-row{
+  display:flex;align-items:center;gap:8px;margin-top:14px;
+  background:rgba(47,125,140,.12);border-radius:10px;padding:12px;
+}
+.wow6-checker-label{font-size:12px;color:rgba(255,255,255,.6);flex:1;}
+.wow6-checker-select{
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);
+  border-radius:8px;color:var(--cream);font-size:12px;padding:6px 8px;
+  cursor:pointer;
+}
+.wow6-checker-result{
+  margin-top:10px;padding:10px;border-radius:10px;
+  font-size:12px;line-height:1.6;display:none;
+}
+.wow6-checker-result.show{display:block;}
+.wow6-checker-result.ok{background:rgba(90,110,58,.15);border:1px solid rgba(90,110,58,.3);color:#b8f088;}
+.wow6-checker-result.warn{background:rgba(220,130,40,.12);border:1px solid rgba(220,130,40,.3);color:#ffcc80;}
 </style>
 </head>
 <body>
@@ -1819,6 +2064,16 @@ p, div, span, h1, h2, h3, h4{
 
     <!-- 비교 결과 -->
     <div id="fcResult" style="display:none"></div>
+
+    <!-- WOW-5: 가족 BC 레이더 차트 -->
+    <div class="wow5-radar-wrap" id="wow5-wrap" style="display:none">
+      <div class="wow5-radar-title">📊 가족 BC 비교 레이더</div>
+      <div class="wow5-radar-sub" id="wow5-radar-sub">가족 구성원의 BC 특성을 한눈에 비교합니다</div>
+      <div class="wow5-chart-wrap">
+        <canvas id="wow5-radar-canvas"></canvas>
+      </div>
+      <div class="wow5-common-list" id="wow5-common-list"></div>
+    </div>
   </div>
   <!-- ===== /기능 8 ===== -->
 
@@ -1915,6 +2170,35 @@ p, div, span, h1, h2, h3, h4{
   <div class="section-title fade-up" style="transition-delay:.25s">💡 기질 융합 통합 인사이트</div>
   <div id="p3-insights" class="fade-up" style="transition-delay:.3s"></div>
 
+  <!-- WOW-6: BC 보충제 궁합 체크리스트 -->
+  <div class="wow6-section fade-up" style="transition-delay:.35s" id="wow6-section">
+    <div class="wow6-hd">
+      <div class="wow6-title">💊 지금 먹는 영양제, 내 BC에 맞나요?</div>
+    </div>
+    <div class="wow6-sub" id="wow6-sub">내 BC 타입에 최적화된 보충제 궁합을 분석했어요</div>
+    <div class="wow6-grid" id="wow6-grid">
+      <!-- JS 렌더 -->
+    </div>
+    <!-- 복용 중인 보충제 체커 -->
+    <div class="wow6-checker-row">
+      <div class="wow6-checker-label">🔍 지금 복용 중인 보충제 선택</div>
+      <select class="wow6-checker-select" id="wow6-checker-sel" onchange="wow6CheckItem()">
+        <option value="">선택하세요</option>
+        <option value="protein">단백질 보충제</option>
+        <option value="omega3">오메가3</option>
+        <option value="vitd">비타민D</option>
+        <option value="magnesium">마그네슘</option>
+        <option value="probiotics">프로바이오틱스</option>
+        <option value="creatine">크레아틴</option>
+        <option value="multivit">종합 비타민</option>
+        <option value="coq10">코큐텐(CoQ10)</option>
+        <option value="collagen">콜라겐</option>
+        <option value="mct">MCT오일</option>
+      </select>
+    </div>
+    <div class="wow6-checker-result" id="wow6-checker-result"></div>
+  </div>
+
   <div class="disclaimer" id="p3-disclaimer"></div>
 </div>
 </section>
@@ -1929,6 +2213,16 @@ p, div, span, h1, h2, h3, h4{
     행동의학적으로 예측 가능한 <strong>3가지 생리적 타이밍</strong>에 의해
     구조적으로 무너지도록 설계된 패턴이었습니다.
   </p>
+
+  <!-- WOW-3: BC 잔혹사 경보 시스템 -->
+  <div class="wow3-alarm-banner fade-up" style="transition-delay:.08s" id="wow3-banner">
+    <div class="wow3-alarm-blink">LIVE ALERT</div>
+    <div class="wow3-alarm-title" id="wow3-main-title">🚨 지금 이 순간 가장 위험한 패턴이 감지됐습니다</div>
+    <div class="wow3-risk-list" id="wow3-risk-list">
+      <!-- JS 렌더 -->
+    </div>
+    <button class="wow3-sos-btn" onclick="wow3ShowSos()">⚡ 지금 당장 응급처치 보기</button>
+  </div>
 
   <!-- 3대 트리거 카드 -->
   <div id="p4-triggers" class="fade-up" style="transition-delay:.15s"></div>
@@ -2182,8 +2476,27 @@ p, div, span, h1, h2, h3, h4{
     <div class="p7-age-badge" id="p7-age-badge">분석 중...</div>
   </div>
 
+  <!-- WOW-2: BC 변화 타임라인 그래프 -->
+  <div class="wow2-section fade-up" style="transition-delay:.58s" id="wow2-section">
+    <div class="wow2-hd">
+      <div class="wow2-title">📈 내 몸의 변화 기록</div>
+      <button onclick="wow2Refresh()" style="background:none;border:none;color:rgba(255,255,255,.4);font-size:12px;cursor:pointer;">새로고침</button>
+    </div>
+    <div id="wow2-body">
+      <div class="wow2-empty">
+        <div class="wow2-empty-icon">📊</div>
+        체크인 기록이 쌓이면<br>체중·체성분 변화 그래프가 표시됩니다<br>
+        <strong style="color:rgba(255,255,255,.5);">P6 로드맵 → 주차 체크인</strong>을 시작해보세요
+      </div>
+    </div>
+  </div>
+
   <!-- 공유 유도 섹션 -->
   <div class="p7-share-section fade-up" style="transition-delay:.65s">
+    <!-- WOW-1: DNA 카드 공유 버튼 -->
+    <button class="p7-dna-btn" onclick="openDnaCard()">
+      🧬 내 BC DNA 카드 만들기 — 카카오·인스타 공유
+    </button>
     <div class="p7-share-title">📣 이 결과, 혼자 보기엔<br>너무 아깝습니다</div>
     <div class="p7-share-sub">같은 고민을 가진 가족·친구에게 공유해보세요<br>같은 코드일 수도 있거든요 😮</div>
 
@@ -2289,6 +2602,40 @@ p, div, span, h1, h2, h3, h4{
 <!-- ===== 기능 6: 1초 공유 ===== -->
 <!-- 플로팅 공유 버튼 -->
 <button id="shareFloatBtn" onclick="shareOpen()" aria-label="결과 공유하기">🔗</button>
+
+<!-- WOW-1: BC DNA 카드 모달 -->
+<div class="dna-card-modal-overlay" id="dnaCardModal" onclick="if(event.target===this)closeDnaCard()">
+  <div class="dna-card-modal">
+    <div class="dna-card-hd">
+      <div class="dna-card-hd-title">🧬 내 BC DNA 카드</div>
+      <button class="dna-card-hd-close" onclick="closeDnaCard()">✕</button>
+    </div>
+    <!-- 스킨 선택 -->
+    <div class="dna-skin-row">
+      <button class="dna-skin-btn active" onclick="dnaChangeSkin('dark')" data-skin="dark">🌑 다크</button>
+      <button class="dna-skin-btn" onclick="dnaChangeSkin('warm')" data-skin="warm">🔥 웜</button>
+      <button class="dna-skin-btn" onclick="dnaChangeSkin('nature')" data-skin="nature">🌿 그린</button>
+    </div>
+    <!-- 카드 미리보기 -->
+    <div class="dna-canvas-wrap" id="dnaCardPreview"></div>
+    <!-- 공유 버튼 -->
+    <div class="dna-share-btns">
+      <button class="dna-share-btn primary" onclick="dnaSaveOrShare()">
+        📤 저장·공유하기
+      </button>
+      <button class="dna-share-btn secondary" onclick="dnaDownload()">
+        💾 이미지 저장
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- WOW-3: 잔혹사 경보 상세 모달 -->
+<div class="wow3-detail-modal" id="wow3DetailModal" onclick="if(event.target===this)wow3CloseDetail()">
+  <div class="wow3-detail-inner" id="wow3DetailInner">
+    <!-- JS 렌더 -->
+  </div>
+</div>
 
 <!-- 공유 선택 바텀시트 모달 -->
 <div id="shareModal" role="dialog" aria-modal="true" aria-label="공유 방법 선택"
@@ -2903,6 +3250,9 @@ async function fcLoadGroup(code) {
       </div>
       <div class="fc-members">${cardsHtml}</div>`;
 
+    // WOW-5: 가족 BC 레이더 차트 자동 연결
+    wow5TryRender(data);
+
   } catch(e) {
     resultEl.innerHTML = `<div class="fc-error">⚠️ ${e.message}</div>`;
   }
@@ -3181,6 +3531,15 @@ function renderAll(data) {
   const urlParams8 = new URLSearchParams(window.location.search);
   const rid8 = urlParams8.get('id') || urlParams8.get('diagnosis_id') || urlParams8.get('did');
   if (rid8) fcInit(rid8);
+
+  // ★ WOW 기능 초기화 (전역 데이터 세팅 후 호출)
+  _wowData = { userName, bcCode, bcMaster, metrics, ohaengType, mbtiType,
+               fullCode, nicknameDisplay, axisScores, answers, sorted };
+  wow1Init();   // DNA 카드 준비
+  wow2Init();   // 변화 그래프
+  wow3Init(userName, ohaengType, mbtiType, answers['Q02'], answers['Q_MENOPAUSE']); // 경보
+  wow4Init();   // 주간 미션
+  wow6Init(bcCode, ohaengType, answers['Q_MENOPAUSE']); // 보충제 궁합
 
   // 면책 고지 전 페이지
   document.querySelectorAll('[id$="-disclaimer"]').forEach(el => { el.textContent = DISCLAIMER; });
@@ -3933,6 +4292,8 @@ function renderP6(userName, fullCode, ohaengType, inputData) {
           <span class="week-principle-text">${w.axis_logic||''}</span>
         </div>
         <div class="week-body">
+          <!-- WOW-4: 주간 미션 카드 -->
+          ${wow4MissionHTML(w, idx)}
           ${weekTargetHTML}
           <div class="week-story-block">
             <div class="week-story-label">📖 이 주차가 필요한 이유</div>
@@ -4992,6 +5353,750 @@ function showCheckinHelp() {
       </div>
     </div>`);
 }
+
+/* ══════════════════════════════════════════════════════════
+   WOW FEATURES — 전역 데이터 & 공통 유틸
+   ══════════════════════════════════════════════════════════ */
+let _wowData = {};
+let _dnaCurrentSkin = 'dark';
+let _wow3Triggers = [];
+
+/* ──────────────────────────────────────────
+   WOW-1: BC DNA 공유 카드
+   ────────────────────────────────────────── */
+function wow1Init() {
+  // shareSetData 연동 (buildDnaCanvas에서 _wowData 사용)
+  shareSetData(_wowData.bcCode, _wowData.nicknameDisplay, _wowData.userName);
+}
+
+function openDnaCard() {
+  const modal = document.getElementById('dnaCardModal');
+  if (!modal) return;
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  _dnaCurrentSkin = 'dark';
+  document.querySelectorAll('.dna-skin-btn').forEach(b => b.classList.toggle('active', b.dataset.skin === 'dark'));
+  buildDnaCanvas(_dnaCurrentSkin).then(canvas => {
+    const wrap = document.getElementById('dnaCardPreview');
+    if (wrap) { wrap.innerHTML = ''; wrap.appendChild(canvas); }
+  });
+}
+
+function closeDnaCard() {
+  const modal = document.getElementById('dnaCardModal');
+  if (modal) modal.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function dnaChangeSkin(skin) {
+  _dnaCurrentSkin = skin;
+  document.querySelectorAll('.dna-skin-btn').forEach(b => b.classList.toggle('active', b.dataset.skin === skin));
+  buildDnaCanvas(skin).then(canvas => {
+    const wrap = document.getElementById('dnaCardPreview');
+    if (wrap) { wrap.innerHTML = ''; wrap.appendChild(canvas); }
+  });
+}
+
+async function buildDnaCanvas(skin = 'dark') {
+  const d = _wowData;
+  const W = 720, H = 900;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  // 스킨별 팔레트
+  const SKINS = {
+    dark:   { bg0:'#0e0804', bg1:'#2a1a10', bg2:'#0a0603', accent:'rgba(181,69,46,1)',   text:'#f5ece0', sub:'rgba(245,236,224,.55)' },
+    warm:   { bg0:'#2a0f06', bg1:'#4a1f0a', bg2:'#1a0804', accent:'rgba(230,100,40,1)',  text:'#fff5e8', sub:'rgba(255,235,200,.55)' },
+    nature: { bg0:'#071508', bg1:'#1a3012', bg2:'#040d05', accent:'rgba(90,150,60,1)',   text:'#e8f5e0', sub:'rgba(220,240,210,.55)' },
+  };
+  const sk = SKINS[skin] || SKINS.dark;
+
+  // 배경
+  const bgGrad = ctx.createLinearGradient(0, 0, W, H);
+  bgGrad.addColorStop(0, sk.bg0); bgGrad.addColorStop(0.5, sk.bg1); bgGrad.addColorStop(1, sk.bg2);
+  ctx.fillStyle = bgGrad; ctx.fillRect(0, 0, W, H);
+
+  // 광원 효과
+  const addGlow = (x, y, r, c) => {
+    const g = ctx.createRadialGradient(x,y,0,x,y,r);
+    g.addColorStop(0, c); g.addColorStop(1,'transparent');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+  };
+  addGlow(W*0.15, H*0.15, 320, `${sk.accent.replace('1)','0.18)')}`);
+  addGlow(W*0.85, H*0.8,  260, `rgba(100,160,220,0.1)`);
+
+  // 상단 브랜드
+  ctx.font = '900 22px sans-serif'; ctx.fillStyle = sk.sub;
+  ctx.textAlign = 'center'; ctx.fillText('SLIMMIND', W/2, 55);
+
+  // 구분선
+  ctx.strokeStyle = sk.accent.replace('1)','0.4)'); ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(W*0.1, 76); ctx.lineTo(W*0.9, 76); ctx.stroke();
+
+  // DNA 이중나선 장식 (양쪽)
+  for (let i = 0; i < 12; i++) {
+    const y = 100 + i * 65;
+    const sinVal = Math.sin(i * 0.6) * 30;
+    ctx.beginPath(); ctx.arc(40 + sinVal, y, 5, 0, Math.PI*2);
+    ctx.fillStyle = `${sk.accent.replace('1)','0.5)')}`; ctx.fill();
+    ctx.beginPath(); ctx.arc(W - 40 - sinVal, y, 5, 0, Math.PI*2); ctx.fill();
+    if (i < 11) {
+      ctx.strokeStyle = `${sk.accent.replace('1)','0.15)')}`;
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(40+sinVal, y); ctx.lineTo(40+Math.sin((i+1)*0.6)*30, y+65); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(W-40-sinVal, y); ctx.lineTo(W-40-Math.sin((i+1)*0.6)*30, y+65); ctx.stroke();
+    }
+  }
+
+  // 이름
+  ctx.font = '700 28px sans-serif'; ctx.fillStyle = sk.sub; ctx.textAlign = 'center';
+  ctx.fillText(`${d.userName||'고객'}님의 체형 코드`, W/2, 130);
+
+  // BC 코드 (대형)
+  ctx.font = '900 130px sans-serif';
+  const codeGrad = ctx.createLinearGradient(W/2-180, 200, W/2+180, 360);
+  codeGrad.addColorStop(0, sk.accent); codeGrad.addColorStop(1, sk.accent.replace('1)','0.7)'));
+  ctx.fillStyle = codeGrad;
+  ctx.fillText(`BC-${d.bcCode||'?'}`, W/2, 330);
+
+  // 닉네임
+  ctx.font = '700 34px sans-serif'; ctx.fillStyle = sk.text;
+  ctx.fillText(d.nicknameDisplay || '바디코드', W/2, 390);
+
+  // fullCode 라인
+  ctx.font = '600 20px sans-serif'; ctx.fillStyle = sk.sub;
+  ctx.fillText(d.fullCode || '', W/2, 430);
+
+  // 구분선
+  const divG = ctx.createLinearGradient(W*0.15, 0, W*0.85, 0);
+  divG.addColorStop(0,'transparent'); divG.addColorStop(0.5, sk.accent.replace('1)','0.5)')); divG.addColorStop(1,'transparent');
+  ctx.strokeStyle = divG; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(W*0.15,460); ctx.lineTo(W*0.85,460); ctx.stroke();
+
+  // 지표 3개 (대사 세포나이 / BC 번호 / 오행)
+  const metrics = d.metrics || {};
+  const stats = [
+    { label:'대사 세포나이', val: metrics.metabolicAge ? `${metrics.metabolicAge}세` : '—' },
+    { label:'바디코드', val: `BC-${d.bcCode||'?'}` },
+    { label:'오행 기질', val: (d.ohaengType||'목') + ' 기질' },
+  ];
+  stats.forEach((s, i) => {
+    const x = W * (0.2 + i * 0.3);
+    ctx.font = '900 28px sans-serif'; ctx.fillStyle = sk.text; ctx.textAlign = 'center';
+    ctx.fillText(s.val, x, 520);
+    ctx.font = '600 16px sans-serif'; ctx.fillStyle = sk.sub;
+    ctx.fillText(s.label, x, 548);
+  });
+
+  // 하단 CTA
+  ctx.font = '700 22px sans-serif'; ctx.fillStyle = sk.sub; ctx.textAlign = 'center';
+  ctx.fillText('나도 내 바디코드 알아보기 →', W/2, 620);
+  ctx.font = '500 18px sans-serif'; ctx.fillStyle = `${sk.sub.replace('0.55','0.3')}`;
+  ctx.fillText(window.location.hostname, W/2, 655);
+
+  // 하단 DNA 태그
+  ctx.font = '700 16px sans-serif'; ctx.fillStyle = sk.accent.replace('1)','0.6)');
+  ctx.fillText('🧬 DNA CARD · SLIMMIND V4', W/2, H - 40);
+
+  return canvas;
+}
+
+async function dnaSaveOrShare() {
+  const wrap = document.getElementById('dnaCardPreview');
+  const canvas = wrap && wrap.querySelector('canvas');
+  if (!canvas) return;
+  const d = _wowData;
+  const fileName = `slimmind-dna-bc${d.bcCode||''}.png`;
+
+  if (navigator.share && navigator.canShare) {
+    const blob = await new Promise(r => canvas.toBlob(r,'image/png'));
+    const file = new File([blob], fileName, { type:'image/png' });
+    if (navigator.canShare({ files:[file] })) {
+      try {
+        await navigator.share({ title:`내 BC DNA 카드: BC-${d.bcCode}`, files:[file] });
+        closeDnaCard();
+        return;
+      } catch(e) { if (e.name === 'AbortError') return; }
+    }
+  }
+  dnaDownload();
+}
+
+function dnaDownload() {
+  const wrap = document.getElementById('dnaCardPreview');
+  const canvas = wrap && wrap.querySelector('canvas');
+  if (!canvas) return;
+  const a = document.createElement('a');
+  a.href = canvas.toDataURL('image/png');
+  a.download = `slimmind-dna-bc${_wowData.bcCode||''}.png`;
+  a.click();
+  _showToast('💾 DNA 카드가 저장됐어요!');
+}
+
+/* ──────────────────────────────────────────
+   WOW-2: BC 변화 타임라인 그래프
+   ────────────────────────────────────────── */
+let _wow2Chart = null;
+
+function wow2Init() {
+  const sid = new URLSearchParams(window.location.search).get('id')
+           || new URLSearchParams(window.location.search).get('diagnosis_id')
+           || new URLSearchParams(window.location.search).get('did');
+  if (!sid) return;
+  wow2Render(sid);
+}
+
+function wow2Refresh() {
+  const sid = new URLSearchParams(window.location.search).get('id')
+           || new URLSearchParams(window.location.search).get('diagnosis_id')
+           || new URLSearchParams(window.location.search).get('did');
+  if (sid) wow2Render(sid);
+}
+
+function wow2Render(sid) {
+  const body = document.getElementById('wow2-body');
+  if (!body) return;
+
+  // localStorage에서 체크인 데이터 수집
+  const checkins = [];
+  for (let w = 1; w <= 4; w++) {
+    try {
+      const stored = JSON.parse(localStorage.getItem(`slimmind_checkin_${sid}`) || '{}');
+      const wdata  = stored[w];
+      if (wdata && wdata.weight) {
+        checkins.push({ week: w, ...wdata });
+      }
+    } catch(e) {}
+  }
+
+  // 체크인 0개: 안내 메시지
+  if (checkins.length === 0) {
+    body.innerHTML = `<div class="wow2-empty">
+      <div class="wow2-empty-icon">📊</div>
+      체크인 기록이 쌓이면 체중·체성분 변화 그래프가 표시됩니다<br>
+      <strong style="color:rgba(255,255,255,.5);">P6 로드맵 → 주차 체크인</strong>을 시작해보세요
+    </div>`;
+    return;
+  }
+
+  // 체크인 1개 이상: 그래프 렌더
+  const labels = ['시작', ...checkins.map(c => `${c.week}주차`)];
+  const weights = [checkins[0].startWeight || checkins[0].weight, ...checkins.map(c => c.weight)];
+  const firstW = weights[0], lastW = weights[weights.length-1];
+  const diff   = firstW ? Math.round((firstW - lastW) * 10) / 10 : 0;
+  const mood   = checkins.map(c => c.mood).filter(Boolean);
+  const avgMood = mood.length ? (mood.reduce((a,b)=>a+b,0)/mood.length).toFixed(1) : null;
+
+  body.innerHTML = `
+    <div class="wow2-chart-wrap"><canvas id="wow2-chart-canvas"></canvas></div>
+    <div class="wow2-stats-row">
+      <div class="wow2-stat">
+        <div class="wow2-stat-val">${lastW || '—'}kg</div>
+        <div class="wow2-stat-lbl">현재 체중</div>
+        ${diff ? `<div class="wow2-stat-change ${diff>0?'plus':'minus'}">${diff>0?'▼':'▲'}${Math.abs(diff)}kg</div>` : ''}
+      </div>
+      <div class="wow2-stat">
+        <div class="wow2-stat-val">${checkins.length}주</div>
+        <div class="wow2-stat-lbl">완료 주차</div>
+        <div class="wow2-stat-change plus">/ 4주</div>
+      </div>
+      <div class="wow2-stat">
+        <div class="wow2-stat-val">${avgMood ? avgMood + '점' : '—'}</div>
+        <div class="wow2-stat-lbl">평균 기분</div>
+        ${avgMood ? `<div class="wow2-stat-change ${avgMood>=6?'plus':'minus'}">${avgMood>=8?'😊':avgMood>=6?'🙂':'😔'}</div>` : ''}
+      </div>
+    </div>`;
+
+  // Chart.js 그래프 (requestAnimationFrame으로 렌더 타이밍 확보)
+  requestAnimationFrame(() => {
+    const cvs = document.getElementById('wow2-chart-canvas');
+    if (!cvs || typeof Chart === 'undefined') return;
+    if (_wow2Chart) { _wow2Chart.destroy(); _wow2Chart = null; }
+    _wow2Chart = new Chart(cvs, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: '체중(kg)',
+          data: weights,
+          borderColor: 'rgba(181,69,46,1)',
+          backgroundColor: 'rgba(181,69,46,0.15)',
+          tension: 0.4,
+          pointBackgroundColor: 'rgba(181,69,46,1)',
+          pointRadius: 5,
+          fill: true,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color:'rgba(255,255,255,.06)' }, ticks: { color:'rgba(255,255,255,.5)', font:{size:11} } },
+          y: { grid: { color:'rgba(255,255,255,.06)' }, ticks: { color:'rgba(255,255,255,.5)', font:{size:11} },
+               min: Math.floor(Math.min(...weights.filter(Boolean)) - 2) }
+        }
+      }
+    });
+  });
+}
+
+/* ──────────────────────────────────────────
+   WOW-3: BC 잔혹사 경보 시스템
+   ────────────────────────────────────────── */
+function wow3Init(userName, ohaengKey, mbtiType, gender, menopause) {
+  if (typeof getCruelHistoryTriggers !== 'function') return;
+  _wow3Triggers = getCruelHistoryTriggers(userName, ohaengKey, mbtiType, gender, menopause);
+
+  const RISK_CONFIG = [
+    { level:'red',    icon:'🚨', badge:'위험', thermo:'red' },
+    { level:'orange', icon:'⚠️', badge:'주의', thermo:'orange' },
+    { level:'yellow', icon:'💡', badge:'인지', thermo:'yellow' },
+  ];
+
+  const list = document.getElementById('wow3-risk-list');
+  const titleEl = document.getElementById('wow3-main-title');
+  if (!list) return;
+
+  if (titleEl) titleEl.textContent =
+    `🚨 ${userName}님에게 가장 위험한 3가지 다이어트 패턴`;
+
+  list.innerHTML = '';
+  _wow3Triggers.forEach((t, i) => {
+    const cfg = RISK_CONFIG[i] || RISK_CONFIG[2];
+    const div = document.createElement('div');
+    div.className = 'wow3-risk-item';
+    div.innerHTML = `
+      <div class="wow3-risk-thermo ${cfg.thermo}">${cfg.icon}</div>
+      <div class="wow3-risk-body">
+        <div class="wow3-risk-title">${t.title}</div>
+        <div class="wow3-risk-desc">${t.medical.substring(0,60)}...</div>
+      </div>
+      <div class="wow3-risk-badge ${cfg.level}">${cfg.badge}</div>`;
+    div.addEventListener('click', () => wow3ShowDetail(i));
+    list.appendChild(div);
+  });
+}
+
+function wow3ShowDetail(idx) {
+  const t = _wow3Triggers[idx];
+  if (!t) return;
+  const inner = document.getElementById('wow3DetailInner');
+  if (!inner) return;
+  inner.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div style="font-size:14px;font-weight:800;color:#f5ece0;">🚨 경보 분석 포인트 ${t.num}</div>
+      <button onclick="wow3CloseDetail()" style="background:none;border:none;color:rgba(255,255,255,.4);font-size:20px;cursor:pointer;">✕</button>
+    </div>
+    <div style="font-size:16px;font-weight:900;color:#f5ece0;margin-bottom:14px;line-height:1.4;">${t.title}</div>
+    <div style="background:rgba(220,60,40,.12);border:1px solid rgba(220,60,40,.25);border-radius:10px;padding:12px 14px;margin-bottom:10px;">
+      <div style="font-size:10px;font-weight:800;color:#ff9070;letter-spacing:1px;margin-bottom:6px;">📚 학술 기전</div>
+      <div style="font-size:13px;color:rgba(255,255,255,.8);line-height:1.7;">${t.medical}</div>
+    </div>
+    <div style="background:rgba(47,125,140,.12);border:1px solid rgba(47,125,140,.25);border-radius:10px;padding:12px 14px;margin-bottom:10px;">
+      <div style="font-size:10px;font-weight:800;color:#7ec8d8;letter-spacing:1px;margin-bottom:6px;">🎯 맞춤 분석</div>
+      <div style="font-size:13px;color:rgba(255,255,255,.8);line-height:1.7;">${t.personal}</div>
+    </div>
+    <div style="background:rgba(90,110,58,.18);border:1px solid rgba(90,110,58,.35);border-radius:10px;padding:14px 14px;">
+      <div style="font-size:10px;font-weight:800;color:#a8c97a;letter-spacing:1px;margin-bottom:8px;">⚡ 지금 당장 응급처치</div>
+      <div style="font-size:14px;color:#d8f0b8;line-height:1.7;font-weight:700;">${t.solution}</div>
+    </div>`;
+  document.getElementById('wow3DetailModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function wow3ShowSos() { if (_wow3Triggers.length > 0) wow3ShowDetail(0); }
+
+function wow3CloseDetail() {
+  document.getElementById('wow3DetailModal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+/* ──────────────────────────────────────────
+   WOW-4: 주간 미션 카드 (HTML 생성 함수 — renderP6 내에서 호출)
+   ────────────────────────────────────────── */
+const WOW4_MISSIONS = {
+  easy:   ['아침 공복에 물 한 잔 마시기', '저녁 식사 후 10분 산책하기', '취침 전 스트레칭 3분', '간식 대신 견과류 한 줌'],
+  normal: ['탄수화물 저녁 절반 줄이기', '걷기 30분 + 공복 1시간', '단백질 2끼에 포함하기', '수면 11시 전 취침'],
+  hard:   ['간헐적 단식 16:8 실천', '하루 단백질 체중×1.5g 달성', '저강도 운동 45분', '밀가루·설탕 하루 제로'],
+};
+
+function wow4MissionHTML(w, idx) {
+  const sid = new URLSearchParams(window.location.search).get('id')
+           || new URLSearchParams(window.location.search).get('diagnosis_id')
+           || new URLSearchParams(window.location.search).get('did') || '';
+
+  // localStorage에서 미션 상태 로드
+  let missionState = {};
+  try {
+    missionState = JSON.parse(localStorage.getItem(`slimmind_mission_${sid}`) || '{}');
+  } catch(e) {}
+
+  const weekState = missionState[w.week] || { diff:'normal', done:false, streak:0 };
+  const totalStreak = Object.values(missionState).filter(s => s.done).length;
+  const missions = WOW4_MISSIONS;
+  const mText = missions[weekState.diff || 'normal'][idx] || '이번 주 목표 달성하기';
+
+  const diffs = [
+    { key:'easy',   label:'😊 쉬움' },
+    { key:'normal', label:'💪 보통' },
+    { key:'hard',   label:'🔥 도전' },
+  ];
+  const diffBtns = diffs.map(d =>
+    `<button class="wow4-diff-btn${(weekState.diff||'normal')===d.key?' active':''}"
+      onclick="wow4SetDiff(${w.week}, '${d.key}')">${d.label}</button>`).join('');
+
+  const isDone = !!weekState.done;
+
+  return `<div class="wow4-mission-card" id="wow4-card-${w.week}">
+    <div class="wow4-mission-eyebrow">⚡ ${w.weekLabel} 미션</div>
+    <div class="wow4-mission-title" id="wow4-title-${w.week}">${mText}</div>
+    <div class="wow4-mission-diff-row" id="wow4-diff-${w.week}">${diffBtns}</div>
+    <div class="wow4-mission-action-row">
+      <button class="wow4-complete-btn${isDone?' done':''}" id="wow4-btn-${w.week}"
+        onclick="wow4Complete(${w.week})">
+        ${isDone ? '✅ 미션 완료!' : '🎯 오늘 완료하기'}
+      </button>
+      <div class="wow4-streak-badge">
+        <div class="wow4-streak-num">${totalStreak}</div>
+        <div class="wow4-streak-lbl">연속</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function wow4Init() {
+  // 미션 완료 여부는 HTML 생성 시 이미 반영됨 (wow4MissionHTML)
+}
+
+function wow4SetDiff(week, diff) {
+  const sid = new URLSearchParams(window.location.search).get('id')
+           || new URLSearchParams(window.location.search).get('diagnosis_id')
+           || new URLSearchParams(window.location.search).get('did') || '';
+  let state = {};
+  try { state = JSON.parse(localStorage.getItem(`slimmind_mission_${sid}`) || '{}'); } catch(e) {}
+  if (!state[week]) state[week] = {};
+  state[week].diff = diff;
+  localStorage.setItem(`slimmind_mission_${sid}`, JSON.stringify(state));
+
+  // 미션 텍스트 업데이트
+  const wIdx = (_p6ActiveWeeks||[]).findIndex(w => w.week === week);
+  const mText = WOW4_MISSIONS[diff][Math.max(wIdx,0)] || '이번 주 목표 달성하기';
+  const titleEl = document.getElementById(`wow4-title-${week}`);
+  if (titleEl) titleEl.textContent = mText;
+
+  // 버튼 active 업데이트
+  const diffRow = document.getElementById(`wow4-diff-${week}`);
+  if (diffRow) {
+    diffRow.querySelectorAll('.wow4-diff-btn').forEach(b => {
+      b.classList.toggle('active', b.textContent.includes(
+        diff === 'easy' ? '쉬움' : diff === 'normal' ? '보통' : '도전'
+      ));
+    });
+  }
+}
+
+function wow4Complete(week) {
+  const btn = document.getElementById(`wow4-btn-${week}`);
+  if (!btn || btn.classList.contains('done')) return;
+
+  const sid = new URLSearchParams(window.location.search).get('id')
+           || new URLSearchParams(window.location.search).get('diagnosis_id')
+           || new URLSearchParams(window.location.search).get('did') || '';
+  let state = {};
+  try { state = JSON.parse(localStorage.getItem(`slimmind_mission_${sid}`) || '{}'); } catch(e) {}
+  if (!state[week]) state[week] = {};
+  state[week].done = true;
+  state[week].completedAt = Date.now();
+  localStorage.setItem(`slimmind_mission_${sid}`, JSON.stringify(state));
+
+  btn.textContent = '✅ 미션 완료!';
+  btn.classList.add('done');
+
+  const totalStreak = Object.values(state).filter(s => s.done).length;
+  const streakEls = document.querySelectorAll('.wow4-streak-num');
+  streakEls.forEach(el => { el.textContent = totalStreak; });
+
+  // Confetti!
+  wow4Confetti();
+  _showToast(`🎉 ${week}주차 미션 완료! ${totalStreak}개 달성 🔥`);
+}
+
+function wow4Confetti() {
+  // canvas-confetti CDN 없으면 CSS 대체 애니메이션
+  const colors = ['#b5452e','#5a6e3a','#2f7d8c','#c98a3c','#fff','#f0c060'];
+  const N = 60;
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden;';
+  document.body.appendChild(overlay);
+
+  for (let i = 0; i < N; i++) {
+    const el = document.createElement('div');
+    const size = 6 + Math.random() * 8;
+    const x = Math.random() * 100;
+    const delay = Math.random() * 0.8;
+    const dur = 0.8 + Math.random() * 1.2;
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    const rotate = Math.random() * 720;
+    el.style.cssText = `
+      position:absolute;width:${size}px;height:${size}px;
+      background:${color};border-radius:${Math.random()>0.5?'50%':'2px'};
+      left:${x}%;top:-10px;
+      animation:wow4fall ${dur}s ${delay}s cubic-bezier(.25,.46,.45,.94) forwards;`;
+    overlay.appendChild(el);
+  }
+
+  // keyframe 주입 (한 번만)
+  if (!document.getElementById('wow4-keyframe')) {
+    const style = document.createElement('style');
+    style.id = 'wow4-keyframe';
+    style.textContent = `@keyframes wow4fall{
+      0%{transform:translateY(0) rotate(0);opacity:1;}
+      80%{opacity:1;}
+      100%{transform:translateY(100vh) rotate(${720}deg);opacity:0;}
+    }`;
+    document.head.appendChild(style);
+  }
+
+  setTimeout(() => overlay.remove(), 3000);
+}
+
+/* ──────────────────────────────────────────
+   WOW-5: 가족 BC 레이더 차트
+   (fcResult 렌더 후 자동 호출)
+   ────────────────────────────────────────── */
+let _wow5Chart = null;
+const BC_AXIS_RADAR = {
+  'BC-1': [9,3,4,3,5,3], 'BC-2': [4,9,3,4,4,2], 'BC-3': [3,3,9,3,3,4],
+  'BC-4': [4,3,3,9,3,3], 'BC-5': [3,4,3,3,9,3], 'BC-6': [3,3,4,3,3,9],
+  'BC-7': [5,4,3,5,4,3], 'BC-8': [4,3,5,3,4,4], 'BC-9': [3,5,3,4,3,5],
+};
+const BC_AXIS_LABELS = ['스트레스축','인슐린축','갑상선축','호르몬축','에스트로겐축','장내환경축'];
+const RADAR_COLORS  = ['rgba(181,69,46,', 'rgba(90,110,58,', 'rgba(47,125,140,',
+                       'rgba(201,138,60,', 'rgba(130,80,180,', 'rgba(80,160,180,'];
+
+function wow5RenderRadar(members) {
+  // members: [{name, bcCode}]
+  const wrap = document.getElementById('wow5-wrap');
+  if (!wrap || !members || members.length < 2) { if (wrap) wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+
+  const sub = document.getElementById('wow5-radar-sub');
+  if (sub) sub.textContent = `${members.length}명 가족의 BC 특성 비교 — 공통 취약점을 찾아보세요`;
+
+  const commonList = document.getElementById('wow5-common-list');
+  if (commonList) {
+    // 공통 취약 축 분석
+    const avgScores = BC_AXIS_LABELS.map((_, i) =>
+      members.reduce((s, m) => s + ((BC_AXIS_RADAR[`BC-${m.bcCode}`] || [5,5,5,5,5,5])[i] || 5), 0) / members.length
+    );
+    const topAxes = BC_AXIS_LABELS
+      .map((lbl, i) => ({ lbl, score: avgScores[i] }))
+      .sort((a,b) => b.score - a.score)
+      .slice(0, 3);
+
+    const iconMap = {'스트레스축':'😤','인슐린축':'🍬','갑상선축':'⚡','호르몬축':'🔄','에스트로겐축':'🌸','장내환경축':'🦠'};
+    commonList.innerHTML = `
+      <div class="wow5-common-title">가족 공통 취약 패턴</div>
+      ${topAxes.map(a =>
+        `<div class="wow5-common-item">
+          <div class="wow5-common-icon">${iconMap[a.lbl]||'📌'}</div>
+          <div><strong>${a.lbl}</strong> — 가족 평균 ${a.score.toFixed(1)}점 (10점 만점)</div>
+        </div>`
+      ).join('')}`;
+  }
+
+  // 레이더 차트 렌더
+  requestAnimationFrame(() => {
+    const cvs = document.getElementById('wow5-radar-canvas');
+    if (!cvs || typeof Chart === 'undefined') return;
+    if (_wow5Chart) { _wow5Chart.destroy(); _wow5Chart = null; }
+    const datasets = members.map((m, i) => ({
+      label: m.name || `멤버${i+1}`,
+      data: BC_AXIS_RADAR[`BC-${m.bcCode}`] || [5,5,5,5,5,5],
+      borderColor:     `${RADAR_COLORS[i%RADAR_COLORS.length]}1)`,
+      backgroundColor: `${RADAR_COLORS[i%RADAR_COLORS.length]}0.08)`,
+      borderWidth: 2,
+      pointBackgroundColor: `${RADAR_COLORS[i%RADAR_COLORS.length]}1)`,
+    }));
+    _wow5Chart = new Chart(cvs, {
+      type: 'radar',
+      data: { labels: BC_AXIS_LABELS, datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { color:'rgba(255,255,255,.6)', font:{size:10} } } },
+        scales: {
+          r: {
+            min: 0, max: 10,
+            grid:      { color:'rgba(255,255,255,.08)' },
+            ticks:     { display:false },
+            pointLabels: { color:'rgba(255,255,255,.55)', font:{size:10} }
+          }
+        }
+      }
+    });
+  });
+}
+
+// fcResult 렌더 후 호출 — 가족 구성원 BC 코드 파싱
+function wow5TryRender(groupData) {
+  if (!groupData || !groupData.members) return;
+  const members = groupData.members
+    .filter(m => m.bc_code)
+    .map(m => ({ name: m.name || '멤버', bcCode: m.bc_code.replace('BC-','') }));
+  if (members.length >= 2) wow5RenderRadar(members);
+}
+
+/* ──────────────────────────────────────────
+   WOW-6: BC 보충제 궁합 체크리스트
+   ────────────────────────────────────────── */
+const WOW6_SUPP_DB = {
+  'BC-1': { // 스트레스·코르티솔형
+    good:    [{ icon:'🧲', name:'마그네슘', desc:'코르티솔 억제 · 부신 지원 · 수면 개선' },
+              { icon:'🌿', name:'아시와간다', desc:'스트레스 호르몬 30% 감소 임상 근거' },
+              { icon:'🐟', name:'오메가3', desc:'염증성 코르티솔 반응 완화' }],
+    caution: [{ icon:'☕', name:'카페인(과다)', desc:'코르티솔 추가 자극 가능 — 1잔/일 권장' }],
+    danger:  [{ icon:'💊', name:'에너지 드링크류', desc:'아드레날린·코르티솔 급등 위험' }],
+  },
+  'BC-2': { // 인슐린저항성형
+    good:    [{ icon:'🫐', name:'베르베린', desc:'인슐린 민감도 개선 · 혈당 스파이크 완화' },
+              { icon:'🍵', name:'크롬', desc:'인슐린 수용체 기능 보조' },
+              { icon:'🌾', name:'식이섬유(이눌린)', desc:'혈당 상승 억제 · 장내 균형' }],
+    caution: [{ icon:'🍊', name:'과일 비타민C 고용량', desc:'과당 섭취 동반 시 혈당 자극 가능' }],
+    danger:  [{ icon:'🍬', name:'고당분 보충제', desc:'혈당 급등 → 인슐린 저항 악화' }],
+  },
+  'BC-3': { // 갑상선형
+    good:    [{ icon:'🦀', name:'셀레늄', desc:'갑상선 호르몬(T4→T3) 전환 필수 미네랄' },
+              { icon:'🌊', name:'아이오딘(요오드)', desc:'갑상선 호르몬 생성 원료' },
+              { icon:'⚡', name:'비타민D', desc:'갑상선 자가면역 완화 보조' }],
+    caution: [{ icon:'🌿', name:'대두 이소플라본 고용량', desc:'갑상선 호르몬 흡수 방해 가능' }],
+    danger:  [{ icon:'🥦', name:'생십자화채소 다량', desc:'고이트로겐 성분 갑상선 기능 억제' }],
+  },
+  'BC-4': { // 성장호르몬·근감소형
+    good:    [{ icon:'💪', name:'단백질(WPC/WPI)', desc:'근합성 트리거 · 성장호르몬 분비 자극' },
+              { icon:'⚗️', name:'크레아틴', desc:'근력·근육량 증가 가장 근거 높은 보충제' },
+              { icon:'🔬', name:'아연+마그네슘(ZMA)', desc:'테스토스테론·성장호르몬 야간 분비 지원' }],
+    caution: [{ icon:'🌿', name:'소이 프로틴', desc:'식물성 에스트로겐 → 테스토스테론 감소 가능' }],
+    danger:  [{ icon:'🚫', name:'과도한 유산소만', desc:'근감소 가속 → 기초대사 저하' }],
+  },
+  'BC-5': { // 에스트로겐형
+    good:    [{ icon:'🌸', name:'석류 추출물', desc:'식물성 에스트로겐 균형 · 복부지방 완화' },
+              { icon:'🐟', name:'오메가3', desc:'에스트로겐 대사 지원 · 항염' },
+              { icon:'💎', name:'DIM(디인돌릴메탄)', desc:'에스트로겐 과잉 대사 촉진' }],
+    caution: [{ icon:'🌿', name:'미레나/피임약 복용자', desc:'호르몬 보충제 병용 전 의사 상담 필수' }],
+    danger:  [{ icon:'💊', name:'고용량 이소플라본', desc:'에스트로겐 수용체 과잉 자극 위험' }],
+  },
+  'BC-6': { // 장내환경형
+    good:    [{ icon:'🦠', name:'프로바이오틱스', desc:'장내 유익균 복원 · 식욕 신호 정상화' },
+              { icon:'🌾', name:'프리바이오틱스', desc:'유익균 먹이 · 단쇄지방산 생성' },
+              { icon:'⚗️', name:'L-글루타민', desc:'장 점막 복구 · 장누수 개선' }],
+    caution: [{ icon:'🍺', name:'알코올', desc:'장내 유해균 급증 · 유익균 사멸' }],
+    danger:  [{ icon:'💊', name:'장기 항생제', desc:'장내 미생물 군집 파괴 → 장 생태계 붕괴' }],
+  },
+  'BC-7': { // 수면교란형
+    good:    [{ icon:'🌙', name:'마그네슘글리시네이트', desc:'GABA 활성화 · 수면 개시 지원' },
+              { icon:'🍒', name:'몬트모렌시 체리', desc:'멜라토닌 천연 공급원' },
+              { icon:'🌿', name:'발레리안루트', desc:'수면 질 개선 · 각성 억제' }],
+    caution: [{ icon:'☕', name:'오후 카페인', desc:'반감기 6시간 — 오후 2시 이후 금지' }],
+    danger:  [{ icon:'📱', name:'취침 전 블루라이트', desc:'멜라토닌 분비 90분 지연' }],
+  },
+  'BC-8': { // 도파민보상형
+    good:    [{ icon:'🧠', name:'타이로신', desc:'도파민 전구체 · 보상 회로 보완' },
+              { icon:'🌿', name:'5-HTP', desc:'세로토닌 합성 · 음식 갈망 감소' },
+              { icon:'🌊', name:'오메가3(DHA)', desc:'뇌 도파민 수용체 밀도 유지' }],
+    caution: [{ icon:'🍫', name:'다크초콜릿 과다', desc:'도파민 단기 자극 후 반동 갈망 증가' }],
+    danger:  [{ icon:'🍷', name:'음주', desc:'도파민 내성 → 음식 보상 의존 심화' }],
+  },
+  'BC-9': { // 림프순환형
+    good:    [{ icon:'🍋', name:'비타민C 고용량', desc:'림프관 콜라겐 합성 · 항산화' },
+              { icon:'🫒', name:'쿼세틴', desc:'림프 항염 · 부종 완화' },
+              { icon:'💧', name:'수분(물) 2L+', desc:'림프 흐름 점도 유지 핵심' }],
+    caution: [{ icon:'🧂', name:'고나트륨 식품', desc:'림프 체액 농도 증가 → 순환 저해' }],
+    danger:  [{ icon:'🚫', name:'장시간 좌식', desc:'림프 펌프 기능 완전 정지' }],
+  },
+};
+
+// 보충제 체커 매핑 (선택 보충제 → 모든 BC 타입 궁합)
+const WOW6_CHECKER_MAP = {
+  protein:     { ok:['BC-4','BC-3','BC-7'], warn:['BC-5'], msg_ok:'근합성·대사 촉진에 적합한 보충제입니다. BC 타입에 잘 맞아요.', msg_warn:'단백질 보충제 자체는 좋지만 소이 단백질은 에스트로겐 축 자극 가능 — WPC/WPI 권장.' },
+  omega3:      { ok:['BC-1','BC-5','BC-8','BC-9'], warn:[], msg_ok:'모든 BC 타입에 유익한 범용 보충제입니다. 계속 드세요.', msg_warn:'' },
+  vitd:        { ok:['BC-3','BC-5','BC-6'], warn:[], msg_ok:'면역·갑상선·에스트로겐 균형에 도움이 됩니다.', msg_warn:'' },
+  magnesium:   { ok:['BC-1','BC-7','BC-4'], warn:[], msg_ok:'스트레스·수면·근육 회복에 핵심 미네랄입니다.', msg_warn:'' },
+  probiotics:  { ok:['BC-6','BC-2'], warn:[], msg_ok:'장내환경형·인슐린형 모두에 효과적입니다.', msg_warn:'' },
+  creatine:    { ok:['BC-4'], warn:['BC-5','BC-7'], msg_ok:'근감소형에 가장 강력한 근합성 보충제입니다.', msg_warn:'수분 저류 증가 가능 — 에스트로겐·림프 타입은 소량부터 시작하세요.' },
+  multivit:    { ok:['BC-3','BC-6'], warn:['BC-1'], msg_ok:'갑상선·장내환경 타입의 미량 영양소 보완에 도움.', msg_warn:'종합 비타민의 아이오딘·요오드가 스트레스 타입 갑상선 과부하 가능 — 갑상선 수치 확인 후 복용 권장.' },
+  coq10:       { ok:['BC-3','BC-4','BC-9'], warn:[], msg_ok:'미토콘드리아 에너지·갑상선·림프 순환 모두에 유익합니다.', msg_warn:'' },
+  collagen:    { ok:['BC-9','BC-5'], warn:[], msg_ok:'림프관 조직·에스트로겐형 피부 탄력 개선에 적합합니다.', msg_warn:'' },
+  mct:         { ok:['BC-2','BC-1'], warn:['BC-6'], msg_ok:'인슐린 민감도·케토 에너지원으로 탁월합니다.', msg_warn:'장내환경형은 MCT 과다 시 장 불편감 가능 — 1작은술부터 시작 권장.' },
+};
+
+function wow6Init(bcCode, ohaengType, menopause) {
+  const grid = document.getElementById('wow6-grid');
+  const sub  = document.getElementById('wow6-sub');
+  if (!grid) return;
+
+  const key = `BC-${bcCode}`;
+  const data = WOW6_SUPP_DB[key];
+
+  if (!data) {
+    grid.innerHTML = '<div style="color:rgba(255,255,255,.3);font-size:12px;padding:8px;">BC 코드 분석 후 표시됩니다.</div>';
+    return;
+  }
+
+  if (sub) sub.textContent = `BC-${bcCode} 타입에 맞춤 분석된 보충제 궁합입니다`;
+
+  const buildItems = (items, type) => items.map(item => `
+    <div class="wow6-item ${type}">
+      <div class="wow6-item-icon">${item.icon}</div>
+      <div class="wow6-item-body">
+        <div class="wow6-item-name">${item.name}</div>
+        <div class="wow6-item-desc">${item.desc}</div>
+      </div>
+      <div class="wow6-badge ${type}">${type==='good'?'✅ 추천':type==='caution'?'⚠️ 주의':'🚫 위험'}</div>
+    </div>`).join('');
+
+  grid.innerHTML = `
+    <div style="font-size:10px;font-weight:800;color:rgba(168,201,122,.8);letter-spacing:1px;margin-bottom:6px;">✅ 적극 추천</div>
+    ${buildItems(data.good,'good')}
+    <div style="font-size:10px;font-weight:800;color:rgba(255,170,80,.7);letter-spacing:1px;margin:10px 0 6px;">⚠️ 주의 필요</div>
+    ${buildItems(data.caution,'caution')}
+    <div style="font-size:10px;font-weight:800;color:rgba(255,100,80,.7);letter-spacing:1px;margin:10px 0 6px;">🚫 피해야 할 것</div>
+    ${buildItems(data.danger,'danger')}
+    ${menopause && menopause !== 'none' ? `
+    <div style="background:rgba(201,138,60,.12);border:1px solid rgba(201,138,60,.3);border-radius:10px;padding:10px 12px;margin-top:10px;font-size:12px;color:#ffcc80;line-height:1.7;">
+      ⚠️ <strong>호르몬 치료 중 주의사항</strong><br>
+      미레나·피임약·호르몬 치료 중인 경우, 식물성 에스트로겐(이소플라본·석류) 보충제는<br>
+      반드시 전문의 상담 후 복용하세요.
+    </div>` : ''}`;
+}
+
+function wow6CheckItem() {
+  const sel = document.getElementById('wow6-checker-sel');
+  const result = document.getElementById('wow6-checker-result');
+  if (!sel || !result) return;
+
+  const val = sel.value;
+  if (!val) { result.className = 'wow6-checker-result'; return; }
+
+  const bcCode = `BC-${_wowData.bcCode || '1'}`;
+  const map = WOW6_CHECKER_MAP[val];
+  if (!map) return;
+
+  const isOk = map.ok.includes(bcCode);
+  const isWarn = map.warn.includes(bcCode);
+
+  if (isOk) {
+    result.className = 'wow6-checker-result show ok';
+    result.textContent = `✅ BC-${_wowData.bcCode} 타입과 잘 맞아요! ${map.msg_ok}`;
+  } else if (isWarn) {
+    result.className = 'wow6-checker-result show warn';
+    result.textContent = `⚠️ 주의가 필요합니다. ${map.msg_warn}`;
+  } else {
+    result.className = 'wow6-checker-result show warn';
+    result.textContent = `💡 이 보충제는 BC-${_wowData.bcCode} 타입에 중립적입니다. 큰 문제는 없지만 더 효과적인 것들이 있어요.`;
+  }
+}
+
 </script>
 </body>
 </html>
