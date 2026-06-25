@@ -1646,7 +1646,7 @@ async function loadAxisRank(axisScores) {
   try {
     // 상위 5축만 요청 (의미 있는 점수 위주)
     const sorted = Object.entries(axisScores)
-      .sort((a, b) => (b[1] as number) - (a[1] as number))
+      .sort((a, b) => Number(b[1]) - Number(a[1]))
       .slice(0, 5);
 
     const scoresParam = sorted.map(([ax, v]) => `${ax}:${v}`).join(',');
@@ -1705,7 +1705,7 @@ async function loadAxisRank(axisScores) {
     requestAnimationFrame(() => requestAnimationFrame(() => {
       card.querySelectorAll('.arc-bar-fill').forEach(el => {
         const w = el.getAttribute('data-w');
-        if (w) (el as HTMLElement).style.width = w + '%';
+        if (w) el.style.width = w + '%';
       });
     }));
 
@@ -2390,60 +2390,91 @@ function animAxisBars() {
   });
 }
 
+// ── 로딩 오버레이 강제 해제 (5초 안전망 — 어떤 에러가 발생해도 스피너 무한 루프 방지) ──
+function _forceHideOverlay() {
+  const ov = document.getElementById('loading-overlay');
+  if (ov && ov.style.display !== 'none') {
+    ov.style.opacity = '0';
+    setTimeout(() => { ov.style.display = 'none'; }, 400);
+  }
+}
+const _overlayKillTimer = setTimeout(_forceHideOverlay, 5000);
+
 // ── 초기화 ──────────────────
 window.addEventListener('DOMContentLoaded', async () => {
-  // diagnosis_id 파라미터가 있으면 새 API에서 우선 로드
-  const urlParams = new URLSearchParams(window.location.search);
-  const diagId = urlParams.get('diagnosis_id') || urlParams.get('did');
-  let resultData = null;
-  if (diagId) {
-    resultData = await loadDiagnosisResult();
-  }
-  if (!resultData) resultData = loadData();
-  if (!resultData) { resultData = demoData(); console.log('[SlimMind] 데모 데이터 렌더링'); }
-
-  // ── answers → axisScores 변환 (slimmind_result에 axisScores 없을 때) ──
-  if (resultData.answers && (!resultData.axisScores || Object.keys(resultData.axisScores).length === 0)) {
-    if (typeof calculateAxisScores === 'function') {
-      const calc = calculateAxisScores(resultData.answers);
-      // calculateAxisScores는 { axisScores, ohaengType, ... } 반환
-      resultData = {
-        userName:   resultData.userName
-                 || resultData.answers['Q01']
-                 || resultData.answers['name']
-                 || '고객',
-        axisScores: calc.axisScores || {},
-        ohaengType: resultData.ohaengType || calc.ohaengType || '목',
-        mbtiType:   resultData.mbtiType
-                 || resultData.answers['Q_MBTI']
-                 || null,
-        answers:    resultData.answers
-      };
+  try {
+    // diagnosis_id 파라미터가 있으면 새 API에서 우선 로드
+    const urlParams = new URLSearchParams(window.location.search);
+    const diagId = urlParams.get('diagnosis_id') || urlParams.get('did');
+    let resultData = null;
+    if (diagId) {
+      resultData = await loadDiagnosisResult();
     }
+    if (!resultData) resultData = loadData();
+    if (!resultData) { resultData = demoData(); console.log('[SlimMind] 데모 데이터 렌더링'); }
+
+    // ── answers → axisScores 변환 (slimmind_result에 axisScores 없을 때) ──
+    if (resultData.answers && (!resultData.axisScores || Object.keys(resultData.axisScores).length === 0)) {
+      if (typeof calculateAxisScores === 'function') {
+        const calc = calculateAxisScores(resultData.answers);
+        resultData = {
+          userName:   resultData.userName
+                   || resultData.answers['Q01']
+                   || resultData.answers['name']
+                   || '고객',
+          axisScores: calc.axisScores || {},
+          ohaengType: resultData.ohaengType || calc.ohaengType || '목',
+          mbtiType:   resultData.mbtiType
+                   || resultData.answers['Q_MBTI']
+                   || null,
+          answers:    resultData.answers
+        };
+      }
+    }
+
+    // ── MBTI 미정 → 기본값 'INFP' ──
+    if (!resultData.mbtiType) resultData.mbtiType = 'INFP';
+
+    // ── userName 최종 보장 ──
+    if (!resultData.userName || resultData.userName === '고객') {
+      const ans = resultData.answers || {};
+      resultData.userName = ans['Q01'] || ans['name'] || '고객';
+    }
+
+    console.log('[result-v4] 로드된 데이터:', {
+      userName: resultData.userName,
+      ohaengType: resultData.ohaengType,
+      mbtiType: resultData.mbtiType,
+      axisScoreKeys: Object.keys(resultData.axisScores || {})
+    });
+
+    renderAll(resultData);
+
+  } catch (initErr) {
+    // 초기화 중 예외 발생 → 콘솔 기록 + 오버레이 즉시 해제
+    console.error('[result-v4] 초기화 오류:', initErr);
+    _forceHideOverlay();
+    // 사용자에게 안내 (렌더 영역이 비어 있는 경우 대비)
+    const bodyEl = document.getElementById('page1') || document.body;
+    if (bodyEl && !bodyEl.querySelector('.init-error-msg')) {
+      const errDiv = document.createElement('div');
+      errDiv.className = 'init-error-msg';
+      errDiv.style.cssText = 'padding:40px 24px;text-align:center;font-family:sans-serif;color:#7c776b';
+      errDiv.innerHTML = '<p style="font-size:16px;font-weight:700;color:#b5452e;margin-bottom:8px">결과지 로드 중 오류가 발생했습니다</p>'
+        + '<p style="font-size:13px;line-height:1.7">잠시 후 다시 시도하거나, 설문을 처음부터 진행해 주세요.</p>'
+        + '<a href="/" style="display:inline-block;margin-top:20px;padding:10px 28px;background:#b5452e;color:#fff;border-radius:10px;text-decoration:none;font-weight:700;font-size:14px">새로 시작하기</a>';
+      bodyEl.prepend(errDiv);
+    }
+    return;
   }
 
-  // ── MBTI 미정 → 기본값 'INFP' ──
-  if (!resultData.mbtiType) resultData.mbtiType = 'INFP';
-
-  // ── userName 최종 보장 ──
-  if (!resultData.userName || resultData.userName === '고객') {
-    const ans = resultData.answers || {};
-    resultData.userName = ans['Q01'] || ans['name'] || '고객';
-  }
-
-  console.log('[result-v4] 로드된 데이터:', {
-    userName: resultData.userName,
-    ohaengType: resultData.ohaengType,
-    mbtiType: resultData.mbtiType,
-    axisScoreKeys: Object.keys(resultData.axisScores || {})
-  });
-
-  renderAll(resultData);
-
+  clearTimeout(_overlayKillTimer);
   setTimeout(() => {
     const ov = document.getElementById('loading-overlay');
-    ov.style.opacity = '0';
-    setTimeout(() => { ov.style.display = 'none'; triggerAnim(); }, 500);
+    if (ov) {
+      ov.style.opacity = '0';
+      setTimeout(() => { ov.style.display = 'none'; triggerAnim(); }, 500);
+    }
   }, 1000);
 });
 </script>

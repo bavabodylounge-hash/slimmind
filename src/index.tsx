@@ -1240,16 +1240,70 @@ app.get('/result/:id', async (c) => {
   const db = c.env.DB
   const id = c.req.param('id')
 
-  // 결과 조회 (공개 접근 가능 — URL 알면 볼 수 있음)
-  const result = await db.prepare('SELECT * FROM results WHERE id=?').bind(id).first<any>()
-  if (!result) {
-    return c.html(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>결과 없음</title></head>
-<body style="font-family:sans-serif;text-align:center;padding:60px">
-<h2>결과지를 찾을 수 없습니다</h2>
-<p style="color:#666">링크가 만료되었거나 잘못된 주소입니다.</p>
-<a href="/" style="color:#1A5276">홈으로 돌아가기</a>
-</body></html>`, 404)
-  }
+  // ── 공통 404 / 500 HTML 헬퍼 ──────────────────────────────────────────────
+  const _errorHtml = (title: string, desc: string, status: 404 | 500) =>
+    c.html(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+<title>${title} | SlimMind</title>
+<style>
+body{font-family:'Pretendard',sans-serif;background:#f6f4ee;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}
+.box{text-align:center;padding:48px 32px;background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08);max-width:420px}
+h2{font-size:22px;color:#1a1a17;margin-bottom:12px}
+p{color:#7c776b;font-size:14px;line-height:1.7;margin-bottom:0}
+a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;color:#fff;border-radius:10px;text-decoration:none;font-weight:700}
+</style></head><body><div class="box">
+<h2>${title}</h2><p>${desc}</p>
+<a href="/">새로 시작하기</a>
+</div></body></html>`, status)
+
+  try {
+    // ── 결과 조회 ────────────────────────────────────────────────────────────
+    // 1순위: results 테이블 (구버전 설문 파이프라인)
+    let result = await db.prepare('SELECT * FROM results WHERE id=?').bind(id).first<any>()
+
+    // 2순위: diagnosis_results 테이블 폴백 (V4.1 신버전 파이프라인)
+    // submitDiagnosis() → /api/v1/diagnosis POST → diagnosis_results 저장 → /result/:id 리다이렉트
+    if (!result) {
+      const diagRow = await db.prepare('SELECT * FROM diagnosis_results WHERE id=?').bind(id).first<any>()
+      if (diagRow) {
+        // diagnosis_results → result-v4.html에 주입할 __RESULT__ 구조로 변환
+        const parseJsonSafe = (v: any, fallback: any = null) => {
+          try { return v ? JSON.parse(v) : fallback } catch { return fallback }
+        }
+        const diagResult = {
+          bc_primary:    diagRow.bc_primary,
+          bc_code:       diagRow.bc_primary,
+          user_name:     diagRow.user_name,
+          bc_nickname:   diagRow.bc_nickname,
+          axis_scores:   parseJsonSafe(diagRow.axis_scores, {}),
+          top_axes:      parseJsonSafe(diagRow.top3_axes, []),
+          axis_primary:  parseJsonSafe(diagRow.top3_axes, [null])[0] || null,
+          ohaeng_type:   diagRow.ohaeng_type,
+          mbti:          diagRow.mbti_full,
+          region:        diagRow.region,
+          texture:       diagRow.texture,
+          bg_filter:     diagRow.bg_filter || '',
+          ref_code:      diagRow.ref_code,
+          created_at:    diagRow.created_at,
+          answers:       parseJsonSafe(diagRow.raw_answers, null),
+          disp_answers:  parseJsonSafe(diagRow.disp_answers, {}),
+          is_consultant: false,
+          is_owner:      false,
+          is_b2b_partner: false,
+          _source:       'diagnosis_results',
+        }
+        // JSON.stringify 직렬화 실패 방어
+        let injectedData = '{}'
+        try { injectedData = JSON.stringify(diagResult) } catch { injectedData = '{}' }
+        const injectedHtml = resultV4Html.replace(
+          '</head>',
+          `<script>window.__RESULT__ = ${injectedData};window.__RESULT_FULL__ = {};</script>\n</head>`
+        )
+        return c.html(injectedHtml)
+      }
+
+      // 두 테이블 모두 없음 → 404
+      return _errorHtml('결과지를 찾을 수 없습니다', '링크가 만료되었거나<br>잘못된 주소입니다.', 404)
+    }
 
   // JWT 확인 (컨설턴트 여부 판별)
   const authUser = await getAuthUser(c)
@@ -1760,12 +1814,24 @@ app.get('/result/:id', async (c) => {
   };
 
   // result-v4.html을 최신 결과지 템플릿으로 사용
+  // JSON.stringify 직렬화 실패 방어
+  let flatJson = '{}'
+  let fullJson = '{}'
+  try { flatJson = JSON.stringify(flatResult) } catch { flatJson = '{}' }
+  try { fullJson = JSON.stringify(resultData) } catch { fullJson = '{}' }
+
   const injectedHtml = resultV4Html.replace(
     '</head>',
-    `${brandInjectResult}\n<script>window.__RESULT__ = ${JSON.stringify(flatResult)};window.__RESULT_FULL__ = ${JSON.stringify(resultData)};</script>\n</head>`
+    `${brandInjectResult}\n<script>window.__RESULT__ = ${flatJson};window.__RESULT_FULL__ = ${fullJson};</script>\n</head>`
   )
 
   return c.html(injectedHtml)
+
+  } catch (routeErr) {
+    // DB 조회 or 직렬화 중 예상치 못한 오류 → 500 에러 페이지
+    console.error('[/result/:id] 서버 오류:', routeErr)
+    return _errorHtml('일시적인 오류가 발생했습니다', '잠시 후 다시 시도해 주세요.<br>문제가 계속되면 처음부터 진행해 주세요.', 500)
+  }
 })
 
 // ═══════════════════════════════════════════════════════════════
