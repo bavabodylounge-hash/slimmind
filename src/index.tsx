@@ -2862,6 +2862,88 @@ app.get('/api/v1/diagnosis/:id', async (c) => {
 })
 
 // ════════════════════════════════════════════════════════
+//  GET /api/v1/stats/axis-rank?scores=A01:78,A03:92,...
+//  기능 7: 축 랭킹 배지 — 각 축별 상위 몇% 백분위 계산
+//  - diagnosis_results.axis_scores JSON 집계
+//  - 인증 불필요, 캐시 2분
+// ════════════════════════════════════════════════════════
+app.get('/api/v1/stats/axis-rank', async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not configured' }, 500)
+
+  try {
+    const scoresParam = (c.req.query('scores') || '').trim()
+    if (!scoresParam) return c.json({ error: 'scores parameter required' }, 400)
+
+    // 내 점수 파싱: "A01:78,A03:92,..."
+    const myScores: Record<string, number> = {}
+    scoresParam.split(',').forEach(p => {
+      const [ax, val] = p.split(':')
+      if (ax && val) myScores[ax.trim()] = parseInt(val.trim()) || 0
+    })
+
+    // 전체 axis_scores JSON 행 가져오기 (최대 2000행, 최근 데이터)
+    const rows = await db.prepare(
+      `SELECT axis_scores FROM diagnosis_results WHERE axis_scores IS NOT NULL ORDER BY created_at DESC LIMIT 2000`
+    ).all() as any
+
+    const allRows = (rows?.results ?? []) as any[]
+    const total = allRows.length
+
+    if (total < 5) {
+      // 데이터 부족 — 시뮬레이션 백분위 반환
+      const result: Record<string, any> = {}
+      for (const [ax, myVal] of Object.entries(myScores)) {
+        result[ax] = { my: myVal, percentile: null, simulated: true }
+      }
+      return c.json({ total, ranks: result, simulated: true }, 200, {
+        'Cache-Control': 'public, max-age=120',
+      })
+    }
+
+    // 축별 점수 배열 집계
+    const axisArrays: Record<string, number[]> = {}
+    for (const [ax] of Object.entries(myScores)) {
+      axisArrays[ax] = []
+    }
+
+    for (const row of allRows) {
+      try {
+        const sc = typeof row.axis_scores === 'string'
+          ? JSON.parse(row.axis_scores)
+          : row.axis_scores
+        if (!sc || typeof sc !== 'object') continue
+        for (const ax of Object.keys(myScores)) {
+          const v = sc[ax]
+          if (typeof v === 'number') axisArrays[ax].push(v)
+        }
+      } catch { /* skip */ }
+    }
+
+    // 백분위 계산: 내 점수보다 낮은 사람 비율 = 상위 (100 - pct)%
+    const ranks: Record<string, any> = {}
+    for (const [ax, myVal] of Object.entries(myScores)) {
+      const arr = axisArrays[ax] || []
+      if (arr.length < 3) {
+        ranks[ax] = { my: myVal, percentile: null, count: arr.length, simulated: true }
+        continue
+      }
+      const below = arr.filter(v => v < myVal).length
+      const pct   = Math.round((below / arr.length) * 100) // 하위 pct%
+      const top   = 100 - pct                               // 상위 top%
+      ranks[ax] = { my: myVal, percentile: pct, top, count: arr.length, simulated: false }
+    }
+
+    return c.json({ total, ranks, simulated: false }, 200, {
+      'Cache-Control': 'public, max-age=120',
+    })
+  } catch (e) {
+    console.error('[axis-rank]', e)
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ════════════════════════════════════════════════════════
 //  GET /api/v1/stats/body-type?bc=BC6  — 기능 5: 익명 통계 비교
 //  - 전체 응답자 수, 동일 bc_primary 수, 백분위, 상위 5개 코드 분포
 //  - 인증 불필요 (공개), 캐시 1분

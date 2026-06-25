@@ -439,6 +439,72 @@ body{background:var(--bg);color:var(--text);min-height:100vh;}
   .timeline-track::before{left:50%;}
 }
 
+/* ===== 기능 7: 축 랭킹 배지 ===== */
+/* axis-mini-item에 붙는 백분위 배지 */
+.rank-badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 8px; border-radius: 20px;
+  font-size: 10px; font-weight: 800; letter-spacing: .3px;
+  margin-top: 4px; line-height: 1.4;
+  animation: rb-pop .4s cubic-bezier(.2,.8,.2,1) both;
+}
+@keyframes rb-pop {
+  from { transform: scale(.6); opacity: 0 }
+  to   { transform: scale(1);  opacity: 1 }
+}
+.rank-badge.rb-top5   { background: rgba(251,191,36,.15); color: #fbbf24; border: 1px solid rgba(251,191,36,.3) }
+.rank-badge.rb-top20  { background: rgba(52,211,153,.12); color: #34d399; border: 1px solid rgba(52,211,153,.25) }
+.rank-badge.rb-top50  { background: rgba(147,197,253,.1); color: #93c5fd; border: 1px solid rgba(147,197,253,.2) }
+.rank-badge.rb-bottom { background: rgba(255,255,255,.06); color: rgba(255,255,255,.4); border: 1px solid rgba(255,255,255,.1) }
+
+/* 축 랭킹 요약 카드 (P2 상단) */
+#axisRankCard {
+  background: linear-gradient(135deg, #0e1a14, #162212);
+  border: 1px solid rgba(52,211,153,.15);
+  border-radius: 18px; padding: 18px 18px 16px;
+  margin-bottom: 20px; position: relative; overflow: hidden;
+}
+#axisRankCard::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, #34d399, #3b82f6, #a78bfa);
+  border-radius: 18px 18px 0 0;
+}
+.arc-label {
+  font-size: 10px; font-weight: 800; letter-spacing: 1.5px;
+  text-transform: uppercase; color: rgba(52,211,153,.55);
+  margin-bottom: 12px;
+}
+.arc-rows { display: flex; flex-direction: column; gap: 8px; }
+.arc-row {
+  display: flex; align-items: center; gap: 10px;
+}
+.arc-icon { font-size: 18px; flex-shrink: 0; width: 24px; text-align: center; }
+.arc-name { font-size: 12px; font-weight: 700; color: rgba(255,255,255,.7); flex: 1; min-width: 0; }
+.arc-bar-wrap {
+  width: 90px; background: rgba(255,255,255,.08);
+  border-radius: 4px; height: 6px; overflow: hidden; flex-shrink: 0;
+}
+.arc-bar-fill {
+  height: 100%; border-radius: 4px;
+  transition: width 1.1s cubic-bezier(.2,.8,.2,1);
+}
+.arc-pct {
+  font-size: 11px; font-weight: 800; min-width: 48px;
+  text-align: right; flex-shrink: 0;
+}
+.arc-skeleton {
+  background: linear-gradient(90deg,
+    rgba(255,255,255,.05) 25%, rgba(255,255,255,.1) 50%, rgba(255,255,255,.05) 75%);
+  background-size: 200% 100%;
+  animation: sc-shimmer 1.4s infinite;
+  border-radius: 6px; height: 14px; margin-bottom: 8px;
+}
+@media(max-width:600px){
+  .arc-bar-wrap { width: 60px }
+  .arc-name { font-size: 11px }
+}
+/* ===== /기능 7 ===== */
+
 /* ===== 기능 6: 1초 공유 카드 ===== */
 /* 공유 플로팅 버튼 */
 #shareFloatBtn {
@@ -742,6 +808,19 @@ body{background:var(--bg);color:var(--text);min-height:100vh;}
 
   <!-- 2·3순위 + 나머지 -->
   <div class="section-title fade-up" style="transition-delay:.25s">📊 전체 11대 진단축 스코어</div>
+
+  <!-- ===== 기능 7: 축 랭킹 배지 요약 카드 ===== -->
+  <div id="axisRankCard" class="fade-up" style="transition-delay:.27s">
+    <div class="arc-label">AXIS PERCENTILE RANKING</div>
+    <div id="arcRows">
+      <!-- 스켈레톤 로딩 -->
+      <div class="arc-skeleton" style="width:80%"></div>
+      <div class="arc-skeleton" style="width:65%"></div>
+      <div class="arc-skeleton" style="width:72%"></div>
+    </div>
+  </div>
+  <!-- ===== /기능 7 ===== -->
+
   <div class="axis-mini-grid fade-up" style="transition-delay:.3s" id="p2-axis-grid"></div>
 
   <div class="divider"></div>
@@ -1312,6 +1391,122 @@ async function shareNative() {
 }
 /* ===== /기능 6 ===== */
 
+/* ===== 기능 7: 축 랭킹 배지 ===== */
+const AXIS_COLORS = {
+  A01:'#e05c3a', A02:'#3b82f6', A03:'#a78bfa',
+  A04:'#34d399', A05:'#fbbf24', A06:'#f472b6',
+  A07:'#fb923c', A08:'#60a5fa', A09:'#4ade80', A10:'#e879f9',
+};
+const AXIS_NAMES = {
+  A01:'인슐린저항', A02:'림프순환', A03:'호르몬교란',
+  A04:'근감소', A05:'소화기능', A06:'골격불균형',
+  A07:'스트레스', A08:'심리식이', A09:'대사위험', A10:'기질성향',
+};
+const AXIS_ICONS = {
+  A01:'🍬', A02:'💧', A03:'⚡', A04:'💪',
+  A05:'🫁', A06:'🦴', A07:'😤', A08:'🧠', A09:'🔥', A10:'🌀',
+};
+
+async function loadAxisRank(axisScores) {
+  const card   = document.getElementById('axisRankCard');
+  const rowsEl = document.getElementById('arcRows');
+  if (!card || !rowsEl || !axisScores) return;
+
+  try {
+    // 상위 5축만 요청 (의미 있는 점수 위주)
+    const sorted = Object.entries(axisScores)
+      .sort((a, b) => (b[1] as number) - (a[1] as number))
+      .slice(0, 5);
+
+    const scoresParam = sorted.map(([ax, v]) => `${ax}:${v}`).join(',');
+    const res  = await fetch(`/api/v1/stats/axis-rank?scores=${encodeURIComponent(scoresParam)}`);
+    const data = res.ok ? await res.json() : null;
+    if (!data) { card.style.display = 'none'; return; }
+
+    const { ranks, total, simulated } = data;
+
+    // 데이터 부족 → 카드 숨김
+    if (total < 5) { card.style.display = 'none'; return; }
+
+    // 카드 렌더링
+    rowsEl.innerHTML = sorted.map(([ax, myVal]) => {
+      const r     = ranks[ax];
+      const color = AXIS_COLORS[ax] || '#6ee7b7';
+      const name  = AXIS_NAMES[ax]  || ax;
+      const icon  = AXIS_ICONS[ax]  || '📊';
+
+      if (!r || r.percentile === null) return ''; // 데이터 부족 축 생략
+
+      const top    = r.top;           // 상위 top%
+      const barW   = Math.max(top, 2); // 바 너비 = 상위% (높을수록 일반적)
+      const invBar = Math.max(100 - top, 2); // 희귀할수록 바 짧음
+
+      // 등급 분류
+      let badgeClass = 'rb-bottom', badgeLabel = '하위권';
+      if (top <= 5)       { badgeClass = 'rb-top5';  badgeLabel = `상위 ${top}% 🏆` }
+      else if (top <= 20) { badgeClass = 'rb-top20'; badgeLabel = `상위 ${top}% ✨` }
+      else if (top <= 50) { badgeClass = 'rb-top50'; badgeLabel = `상위 ${top}%` }
+      else                { badgeLabel = `하위 ${100-top}%` }
+
+      return `
+        <div class="arc-row">
+          <div class="arc-icon">${icon}</div>
+          <div class="arc-name">${name}</div>
+          <div class="arc-bar-wrap">
+            <div class="arc-bar-fill" style="width:0%;background:${color}"
+              data-w="${invBar}"></div>
+          </div>
+          <div class="arc-pct" style="color:${color}">
+            <span class="rank-badge ${badgeClass}">${badgeLabel}</span>
+          </div>
+        </div>`;
+    }).filter(Boolean).join('');
+
+    if (!rowsEl.innerHTML.trim()) { card.style.display = 'none'; return; }
+
+    if (simulated) {
+      rowsEl.insertAdjacentHTML('beforeend',
+        `<div style="font-size:10px;color:rgba(255,255,255,.2);margin-top:10px;text-align:center">
+          ※ 데이터 누적 중 — 수치가 업데이트됩니다</div>`);
+    }
+
+    // 바 애니메이션
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      card.querySelectorAll('.arc-bar-fill').forEach(el => {
+        const w = el.getAttribute('data-w');
+        if (w) (el as HTMLElement).style.width = w + '%';
+      });
+    }));
+
+    // axis-mini-item에도 배지 추가
+    document.querySelectorAll('.axis-mini-item').forEach(item => {
+      const scoreEl = item.querySelector('.axis-mini-score');
+      const barEl   = item.querySelector('.axis-mini-bar');
+      if (!scoreEl || !barEl) return;
+      const sc   = parseInt(barEl.getAttribute('data-score') || '0');
+      const axRef = [...Object.entries(axisScores)].find(([,v]) => v === sc)?.[0];
+      if (!axRef) return;
+      const r = ranks[axRef];
+      if (!r || r.percentile === null) return;
+      const top = r.top;
+      let cls = 'rb-bottom', lbl = `하위 ${100-top}%`;
+      if (top <= 5)       { cls = 'rb-top5';  lbl = `상위 ${top}% 🏆` }
+      else if (top <= 20) { cls = 'rb-top20'; lbl = `상위 ${top}%` }
+      else if (top <= 50) { cls = 'rb-top50'; lbl = `상위 ${top}%` }
+      const badge = document.createElement('div');
+      badge.className = `rank-badge ${cls}`;
+      badge.textContent = lbl;
+      badge.style.animationDelay = `${Math.random() * 0.3}s`;
+      scoreEl.insertAdjacentElement('afterend', badge);
+    });
+
+  } catch(e) {
+    console.warn('[axisRank]', e);
+    card.style.display = 'none';
+  }
+}
+/* ===== /기능 7 ===== */
+
 /* ===== 기능 5: 익명 통계 비교 ===== */
 async function loadBodyTypeStats(bcCode, userName) {
   const card    = document.getElementById('statsCard');
@@ -1455,6 +1650,8 @@ function renderAll(data) {
 
   // ★ 기능 5: 익명 통계 카드 비동기 로드
   loadBodyTypeStats(bcCode, userName);
+  // ★ 기능 7: 축 랭킹 배지 비동기 로드
+  loadAxisRank(axisScores);
 
   // 면책 고지 전 페이지
   document.querySelectorAll('[id$="-disclaimer"]').forEach(el => { el.textContent = DISCLAIMER; });
