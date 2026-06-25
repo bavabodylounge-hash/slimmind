@@ -654,16 +654,17 @@ app.get('/api/admin/results', requireRole('MASTER'), async (c) => {
 
   // ── UNION ALL 쿼리 ──
   // 구버전 results: 컨설턴트명 JOIN 포함, _source 태그 추가
+  // ※ results 테이블은 axis_scores_json 컬럼명 사용 (diagnosis_results는 axis_scores)
   const unionQuery = `
     SELECT
       r.id, r.user_name,
       COALESCE(r.bc_primary, '') as bc_primary,
       NULL as bc_code_key,
       NULL as bc_nickname,
-      r.axis_scores,
+      r.axis_scores_json as axis_scores,
       r.consultant_code,
       c.name as consultant_name,
-      NULL as ref_code,
+      r.ref_code,
       r.created_at,
       'results_v3' as _source
     FROM results r
@@ -3042,7 +3043,8 @@ app.get('/api/v1/diagnosis/:id', async (c) => {
       result_id:    row.id,
       user_name:    row.user_name,
       bc_nickname:  row.bc_nickname,
-      bc_primary:   row.bc_primary,
+      bc_primary:   row.bc_primary,    // 한글 닉네임 ('스트레스성 야식부엉이형')
+      bc_code_key:  row.bc_code_key,   // ✅ BC-N 형태 코드 ('BC-6') — result-v4.html에서 우선 사용
       bc_secondary: row.bc_secondary,
       top3_axes:    parseJson(row.top3_axes,    []),
       axis_scores:  parseJson(row.axis_scores,  {}),
@@ -3052,7 +3054,7 @@ app.get('/api/v1/diagnosis/:id', async (c) => {
       ohaeng_type:  row.ohaeng_type,
       mbti_full:    row.mbti_full,
       disp_answers: parseJson(row.disp_answers, {}),
-      raw_answers:  parseJson(row.raw_answers,  null),  // 원시 답변 (학습용)
+      raw_answers:  parseJson(row.raw_answers,  null),
       ref_code:     row.ref_code,
       completed_at: row.completed_at,
       created_at:   row.created_at
