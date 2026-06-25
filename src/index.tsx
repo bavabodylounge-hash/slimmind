@@ -2862,6 +2862,68 @@ app.get('/api/v1/diagnosis/:id', async (c) => {
 })
 
 // ════════════════════════════════════════════════════════
+//  GET /api/v1/stats/body-type?bc=BC6  — 기능 5: 익명 통계 비교
+//  - 전체 응답자 수, 동일 bc_primary 수, 백분위, 상위 5개 코드 분포
+//  - 인증 불필요 (공개), 캐시 1분
+// ════════════════════════════════════════════════════════
+app.get('/api/v1/stats/body-type', async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not configured' }, 500)
+
+  try {
+    const bc = (c.req.query('bc') || '').trim().toUpperCase()
+    if (!bc) return c.json({ error: 'bc parameter required' }, 400)
+
+    // 전체 카운트 + 해당 bc 카운트 동시 조회
+    const [totalRow, bcRow, topRow] = await Promise.all([
+      db.prepare(`SELECT COUNT(*) as total FROM diagnosis_results`).first() as Promise<any>,
+      db.prepare(`SELECT COUNT(*) as cnt FROM diagnosis_results WHERE bc_primary = ?`).bind(bc).first() as Promise<any>,
+      db.prepare(`SELECT bc_primary, COUNT(*) as cnt FROM diagnosis_results GROUP BY bc_primary ORDER BY cnt DESC LIMIT 5`).all() as Promise<any>,
+    ])
+
+    const total   = (totalRow?.total  ?? 0) as number
+    const bcCount = (bcRow?.cnt       ?? 0) as number
+    const topList = (topRow?.results  ?? []) as any[]
+
+    // 같은 코드 비율 (소수점 1자리)
+    const pct = total > 0 ? Math.round((bcCount / total) * 1000) / 10 : 0
+
+    // 희귀도 등급 (상위 몇%)
+    // topList에서 해당 bc의 순위 파악
+    const rank = topList.findIndex((r: any) => r.bc_primary === bc)
+    let rarityLabel = '희귀형'
+    let rarityColor = '#a78bfa'  // 보라
+    if (rank === 0)       { rarityLabel = '가장 흔한 유형';  rarityColor = '#6ee7b7' }
+    else if (rank === 1)  { rarityLabel = '2번째로 흔한 유형'; rarityColor = '#6ee7b7' }
+    else if (rank <= 3)   { rarityLabel = '상위 유형';       rarityColor = '#fcd34d' }
+    else if (bcCount < 3) { rarityLabel = '초희귀형 🔮';     rarityColor = '#f472b6' }
+
+    // 최소 데이터가 부족한 경우 시뮬레이션 값 사용 (신뢰성 표시용)
+    const simulated = total < 20
+
+    return c.json({
+      bc,
+      total,
+      bc_count:     bcCount,
+      pct,
+      rarity_label: rarityLabel,
+      rarity_color: rarityColor,
+      simulated,
+      top5: topList.map((r: any) => ({
+        bc:  r.bc_primary,
+        cnt: r.cnt,
+        pct: total > 0 ? Math.round((r.cnt / total) * 1000) / 10 : 0,
+      })),
+    }, 200, {
+      'Cache-Control': 'public, max-age=60',
+    })
+  } catch (e) {
+    console.error('[stats/body-type]', e)
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ════════════════════════════════════════════════════════
 //  GET /api/admin/diagnosis-results — MASTER 전용, 바디코드 진단 결과지 목록
 // ════════════════════════════════════════════════════════
 app.get('/api/admin/diagnosis-results', requireRole('MASTER'), async (c) => {
