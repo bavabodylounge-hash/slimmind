@@ -617,64 +617,14 @@ body{background:var(--paper);color:var(--ink);min-height:100vh;}
   font-style:italic;
 }
 
-/* ── 6-5: 잠금 CTA 다크 섹션 ── */
-.p6-lock-section{
-  background:var(--ink);border-radius:24px;padding:32px 20px 28px;
-  margin-bottom:16px;position:relative;overflow:hidden;
-}
-.p6-lock-section::before{
-  content:'';position:absolute;inset:0;
-  background:repeating-linear-gradient(135deg,rgba(181,69,46,.03) 0,rgba(181,69,46,.03) 1px,transparent 1px,transparent 24px);
-}
-.p6-lock-eyebrow{
-  font-size:10px;font-weight:800;letter-spacing:2px;
-  text-transform:uppercase;color:rgba(255,255,255,.9);
-  text-align:center;margin-bottom:8px;
-}
-.p6-lock-title{
-  font-size:22px;font-weight:900;color:#fff;text-align:center;
-  line-height:1.3;margin-bottom:6px;
-}
-.p6-lock-sub{
-  font-size:12px;color:rgba(255,255,255,.7);text-align:center;
-  line-height:1.7;margin-bottom:22px;word-break:keep-all;
-}
-/* 8개 티저 카드 (5~12주차) */
-.p6-teaser-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:24px;}
+/* macro note 줄 (moved here)
 /* macro note 줄 */
 .week-nut-macro-note{
   font-size:11px;color:var(--muted);padding:6px 8px 0;
   border-top:1px dashed var(--line);margin-top:8px;line-height:1.7;word-break:keep-all;
 }
 .week-nut-macro-note strong{color:var(--vis-d);}
-.p6-teaser-card{
-  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);
-  border-radius:14px;padding:14px 12px;
-}
-.p6-teaser-icon{font-size:22px;margin-bottom:8px;}
-.p6-teaser-week{font-size:9px;font-weight:800;letter-spacing:1px;text-transform:uppercase;
-  color:rgba(255,255,255,.75);margin-bottom:4px;}
-.p6-teaser-name{font-size:13px;font-weight:800;color:#fff;margin-bottom:4px;line-height:1.3;}
-.p6-teaser-desc{font-size:11px;color:rgba(255,255,255,.7);line-height:1.55;word-break:keep-all;}
-/* 주차별 색상 강조 */
-.p6-teaser-card:nth-child(1){border-color:rgba(181,69,46,.25);}
-.p6-teaser-card:nth-child(2){border-color:rgba(90,110,58,.25);}
-.p6-teaser-card:nth-child(3){border-color:rgba(47,125,140,.25);}
-.p6-teaser-card:nth-child(4){border-color:rgba(91,74,134,.25);}
-/* CTA 버튼 */
-.p6-lock-cta{
-  display:flex;align-items:center;justify-content:center;gap:10px;
-  background:linear-gradient(135deg,var(--vis),var(--vis-d));
-  color:#fff;border-radius:14px;padding:18px 28px;
-  font-size:16px;font-weight:900;cursor:pointer;border:none;
-  width:100%;max-width:380px;margin:0 auto 12px;
-  box-shadow:0 6px 20px rgba(181,69,46,.45);
-  transition:transform .15s,box-shadow .15s;
-}
-.p6-lock-cta:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(181,69,46,.55);}
-.p6-lock-cta-sub{
-  font-size:11px;color:rgba(255,255,255,.6);text-align:center;
-}
+
 
 /* ── 애니메이션 ── */
 .fade-up{opacity:0;transform:translateY(20px);transition:opacity .5s ease,transform .5s ease;}
@@ -845,7 +795,6 @@ body{background:var(--paper);color:var(--ink);min-height:100vh;}
 .p6-swipe-hint-btn:disabled{opacity:.3;pointer-events:none;}
 
 /* CRIT-2: 다크카드 텍스트 가독성 ── 전역 강제 적용 */
-.p6-lock-section .p6-teaser-desc{color:rgba(255,255,255,.88)!important;}
 .week-hero .week-principle-text{color:rgba(255,255,255,.95)!important;}
 .nutri-tip-box{color:rgba(255,255,255,.92)!important;}
 .bc-medical{color:rgba(255,255,255,.9)!important;}
@@ -1276,6 +1225,225 @@ body{background:var(--paper);color:var(--ink);min-height:100vh;}
   .sc-headline { font-size: 19px }
 }
 /* ===== /기능 5 ===== */
+
+/* ═══════════════════════════════════════════
+   P7: 종합 요약 · 공유
+   ═══════════════════════════════════════════ */
+
+/* P7 탭 강조 (맥박 애니메이션) */
+.p7-share-tab .nav-icon::after{
+  content:'';position:absolute;top:-2px;right:-2px;
+  width:6px;height:6px;border-radius:50%;
+  background:var(--vis);animation:p7-pulse 2s infinite;
+}
+@keyframes p7-pulse{
+  0%,100%{transform:scale(1);opacity:1}
+  50%{transform:scale(1.6);opacity:.4}
+}
+
+/* 오프닝 카드 */
+.p7-opening{
+  text-align:center;padding:36px 20px 28px;
+  background:linear-gradient(160deg,var(--ink) 0%,#2a1c14 100%);
+  border-radius:24px;margin-bottom:20px;
+  position:relative;overflow:hidden;
+}
+.p7-opening::before{
+  content:'✦';position:absolute;font-size:200px;
+  color:rgba(181,69,46,.04);top:-30px;right:-20px;
+  line-height:1;pointer-events:none;
+}
+.p7-opening-eyebrow{
+  font-size:10px;font-weight:800;letter-spacing:3px;
+  color:var(--vis);margin-bottom:14px;
+  animation:p7-glow 3s ease-in-out infinite;
+}
+@keyframes p7-glow{
+  0%,100%{text-shadow:0 0 8px rgba(181,69,46,.4)}
+  50%{text-shadow:0 0 20px rgba(181,69,46,.9)}
+}
+.p7-opening-title{
+  font-size:28px;font-weight:900;color:#fff;
+  line-height:1.25;margin-bottom:10px;letter-spacing:-.03em;
+}
+.p7-opening-title span{
+  background:linear-gradient(90deg,var(--vis),#e8a060);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+.p7-opening-name{
+  font-size:14px;color:rgba(255,255,255,.55);font-weight:600;
+}
+
+/* 공감 Q 카드 */
+.p7-insight-stack{display:flex;flex-direction:column;gap:12px;margin-bottom:20px;}
+.p7-q-card{
+  background:var(--card);border:1.5px solid var(--line);
+  border-radius:16px;padding:18px 18px;
+  position:relative;overflow:hidden;
+}
+.p7-q-card::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
+  background:linear-gradient(180deg,var(--vis),var(--vis-d));
+  border-radius:3px 0 0 3px;
+}
+.p7-q-label{
+  font-size:11px;font-weight:700;color:var(--muted);
+  margin-bottom:8px;letter-spacing:.2px;
+}
+.p7-q-ans{
+  font-size:14px;font-weight:600;color:var(--ink);
+  line-height:1.65;word-break:keep-all;
+}
+.p7-q-ans strong{color:var(--c3);font-weight:800;}
+
+/* 대사 세포나이 카드 */
+.p7-age-card{
+  background:var(--card);border:1px solid var(--line);
+  border-radius:20px;padding:24px 20px;margin-bottom:20px;
+  text-align:center;
+}
+.p7-age-label{
+  font-size:11px;font-weight:700;letter-spacing:.1em;
+  color:var(--muted);margin-bottom:18px;
+}
+.p7-age-row{
+  display:flex;align-items:center;justify-content:center;gap:0;
+}
+.p7-age-block{
+  flex:1;text-align:center;
+}
+.p7-age-num{
+  font-size:48px;font-weight:900;line-height:1;
+  letter-spacing:-.04em;
+}
+.p7-age-block.before .p7-age-num{color:var(--c3);}
+.p7-age-block.after .p7-age-num{
+  color:var(--c6);
+  background:linear-gradient(135deg,#5a6e3a,#7ab648);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+.p7-age-sub{font-size:10px;color:var(--muted);font-weight:600;margin-top:4px;}
+.p7-age-arrow{
+  width:44px;text-align:center;
+  font-size:22px;color:var(--line);
+  flex:none;
+}
+.p7-arrow-anim{
+  display:inline-block;
+  animation:p7-arrow 1.4s ease-in-out infinite;
+}
+@keyframes p7-arrow{
+  0%,100%{transform:translateX(0);opacity:.7}
+  50%{transform:translateX(5px);opacity:1;color:var(--vis);}
+}
+.p7-age-badge{
+  display:inline-block;margin-top:14px;
+  padding:6px 16px;background:rgba(90,110,58,.12);
+  border:1px solid rgba(90,110,58,.25);border-radius:20px;
+  font-size:12px;font-weight:700;color:var(--c6);
+}
+
+/* 공유 섹션 */
+.p7-share-section{
+  background:linear-gradient(145deg,rgba(181,69,46,.07),rgba(201,138,60,.05));
+  border:1.5px solid rgba(181,69,46,.15);
+  border-radius:20px;padding:24px 20px;margin-bottom:20px;
+}
+.p7-share-title{
+  font-size:18px;font-weight:800;color:var(--ink);
+  text-align:center;margin-bottom:8px;line-height:1.4;
+}
+.p7-share-sub{
+  font-size:13px;color:var(--muted);text-align:center;
+  line-height:1.65;margin-bottom:20px;word-break:keep-all;
+}
+.p7-share-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+.p7-btn-kakao,.p7-btn-insta{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  padding:14px 16px;border-radius:12px;font-size:14px;
+  font-weight:800;border:none;cursor:pointer;
+  font-family:inherit;transition:transform .15s,box-shadow .15s;
+}
+.p7-btn-kakao:active,.p7-btn-insta:active{transform:scale(.97);}
+.p7-btn-kakao{
+  background:#fee500;color:#3c1e1e;
+  box-shadow:0 3px 12px rgba(254,229,0,.35);
+}
+.p7-btn-kakao:hover{box-shadow:0 5px 18px rgba(254,229,0,.55);}
+.p7-btn-insta{
+  background:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045);
+  color:#fff;
+  box-shadow:0 3px 12px rgba(131,58,180,.35);
+}
+.p7-btn-insta:hover{box-shadow:0 5px 18px rgba(131,58,180,.55);}
+.p7-btn-copy{
+  width:100%;padding:14px;background:var(--card);
+  border:1.5px dashed var(--line);border-radius:12px;
+  font-size:13px;font-weight:700;color:var(--muted);
+  cursor:pointer;font-family:inherit;
+  transition:all .2s;
+}
+.p7-btn-copy:hover{border-color:var(--vis);color:var(--vis-d);background:rgba(181,69,46,.04);}
+
+/* SNS 미리보기 카드 */
+.p7-preview-wrap{margin-bottom:20px;}
+.p7-preview-label{
+  font-size:11px;font-weight:700;letter-spacing:.1em;
+  color:var(--muted);text-align:center;margin-bottom:10px;
+}
+.p7-preview-card{
+  background:var(--card);border:1px solid var(--line);
+  border-radius:18px;padding:20px 18px;
+  position:relative;overflow:hidden;
+  box-shadow:0 4px 24px rgba(0,0,0,.06);
+}
+.p7-preview-card::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--vis-d),var(--vis),var(--sub));
+}
+.p7-prev-brand{
+  font-size:9px;font-weight:800;letter-spacing:2px;
+  color:var(--muted);margin-bottom:10px;
+}
+.p7-prev-nickname{
+  font-size:20px;font-weight:900;color:var(--ink);
+  margin-bottom:4px;line-height:1.25;
+}
+.p7-prev-tagline{
+  font-size:12px;color:var(--muted);margin-bottom:10px;
+  line-height:1.5;
+}
+.p7-prev-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+.p7-prev-tag{
+  padding:3px 10px;border-radius:20px;font-size:10px;
+  font-weight:700;background:var(--vis-l);color:var(--vis-d);
+}
+.p7-prev-stats{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:8px;margin-bottom:12px;
+  padding-top:12px;border-top:1px solid var(--line);
+}
+.p7-prev-stat{text-align:center;}
+.p7-prev-stat-val{
+  font-size:16px;font-weight:800;color:var(--vis-d);
+  margin-bottom:2px;
+}
+.p7-prev-stat-lbl{font-size:9px;color:var(--muted);font-weight:600;}
+.p7-prev-cta{
+  font-size:12px;font-weight:700;color:var(--vis-d);
+  text-align:right;opacity:.7;
+}
+
+/* P7 카운트업 애니메이션 */
+@keyframes p7-countup{
+  from{opacity:0;transform:translateY(8px) scale(.9)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+.p7-age-num.counting{animation:p7-countup .5s cubic-bezier(.2,.8,.2,1) both;}
+
+/* ═══ /P7 ═══ */
 </style>
 </head>
 <body>
@@ -1297,6 +1465,7 @@ body{background:var(--paper);color:var(--ink);min-height:100vh;}
     <button class="nav-tab" onclick="switchPage(4)"><span class="nav-icon">⚡</span><span class="nav-text">잔혹사</span></button>
     <button class="nav-tab" onclick="switchPage(5)"><span class="nav-icon">🔮</span><span class="nav-text">시뮬레이터</span></button>
     <button class="nav-tab" onclick="switchPage(6)"><span class="nav-icon">🗓</span><span class="nav-text">로드맵</span></button>
+    <button class="nav-tab p7-share-tab" onclick="switchPage(7)"><span class="nav-icon">🎯</span><span class="nav-text">요약·공유</span></button>
   </div>
 </nav>
 
@@ -1669,17 +1838,95 @@ body{background:var(--paper);color:var(--ink);min-height:100vh;}
     </div>
   </div>
 
-  <!-- 6-5: 잠금 CTA 다크 섹션 -->
-  <div class="p6-lock-section fade-up" style="transition-delay:.2s;margin-top:24px;" id="p6-lock-section">
-    <div class="p6-lock-eyebrow">🔒 5~12주차 · 잠금 구간</div>
-    <div class="p6-lock-title">지금 해제하면<br>이게 기다립니다 🔥</div>
-    <div class="p6-lock-sub">1~4주차 기반 구축 완료 후<br>고강도 세포 연소 구간이 열립니다</div>
-    <div class="p6-teaser-grid" id="p6-teaser-grid"><!-- JS 렌더 --></div>
-    <button class="p6-lock-cta" onclick="handleB2B()">5주차 처방 해제 신청 →</button>
-    <div class="p6-lock-cta-sub">담당 컨설턴트를 통해 해제 가능합니다</div>
+  <div class="disclaimer" id="p6-disclaimer"></div>
+</div>
+</section>
+
+<!-- ═══ P7: 종합 요약 · 공유 ═══ -->
+<section id="page7" class="page">
+<div class="section-wrap">
+
+  <!-- P7 헤더 -->
+  <div class="p7-opening fade-up" id="p7-opening">
+    <div class="p7-opening-eyebrow">✦ FINAL SUMMARY ✦</div>
+    <div class="p7-opening-title" id="p7-opening-title">오늘, 당신의 몸이<br><span>고백했습니다</span></div>
+    <div class="p7-opening-name" id="p7-opening-name">— 고객님 —</div>
   </div>
 
-  <div class="disclaimer" id="p6-disclaimer"></div>
+  <!-- 공감 3줄 카드 (순차 애니메이션) -->
+  <div class="p7-insight-stack" id="p7-insight-stack">
+    <div class="p7-q-card fade-up" style="transition-delay:.15s" id="p7-q1">
+      <div class="p7-q-label">❓ 지금까지 왜 안 빠졌을까요?</div>
+      <div class="p7-q-ans" id="p7-ans1">분석 중...</div>
+    </div>
+    <div class="p7-q-card fade-up" style="transition-delay:.28s" id="p7-q2">
+      <div class="p7-q-label">❓ 왜 밤마다 과식을 반복했을까요?</div>
+      <div class="p7-q-ans" id="p7-ans2">분석 중...</div>
+    </div>
+    <div class="p7-q-card fade-up" style="transition-delay:.41s" id="p7-q3">
+      <div class="p7-q-label">💡 그럼 어떻게 하면 되나요?</div>
+      <div class="p7-q-ans" id="p7-ans3">분석 중...</div>
+    </div>
+  </div>
+
+  <!-- 대사 세포나이 카운트업 카드 -->
+  <div class="p7-age-card fade-up" style="transition-delay:.55s" id="p7-age-card">
+    <div class="p7-age-label">지금 내 대사 세포나이</div>
+    <div class="p7-age-row">
+      <div class="p7-age-block before">
+        <div class="p7-age-num" id="p7-age-before">—</div>
+        <div class="p7-age-sub">현재 상태</div>
+      </div>
+      <div class="p7-age-arrow">
+        <div class="p7-arrow-anim" id="p7-arrow-anim">→</div>
+      </div>
+      <div class="p7-age-block after">
+        <div class="p7-age-num" id="p7-age-after">—</div>
+        <div class="p7-age-sub">12주 후 예상</div>
+      </div>
+    </div>
+    <div class="p7-age-badge" id="p7-age-badge">분석 중...</div>
+  </div>
+
+  <!-- 공유 유도 섹션 -->
+  <div class="p7-share-section fade-up" style="transition-delay:.65s">
+    <div class="p7-share-title">📣 이 결과, 혼자 보기엔<br>너무 아깝습니다</div>
+    <div class="p7-share-sub">같은 고민을 가진 가족·친구에게 공유해보세요<br>같은 코드일 수도 있거든요 😮</div>
+
+    <div class="p7-share-btns">
+      <button class="p7-btn-kakao" onclick="shareKakao()">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2C5.6 2 2 4.9 2 8.5c0 2.3 1.4 4.3 3.5 5.5L4.5 17l3.3-2.1c.7.1 1.5.1 2.2.1 4.4 0 8-2.9 8-6.5S14.4 2 10 2z" fill="#3C1E1E"/></svg>
+        카카오톡 공유
+      </button>
+      <button class="p7-btn-insta" onclick="p7ShareInsta()">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="2" width="16" height="16" rx="5" stroke="white" stroke-width="1.8"/><circle cx="10" cy="10" r="3.5" stroke="white" stroke-width="1.8"/><circle cx="14.5" cy="5.5" r="1" fill="white"/></svg>
+        인스타 스토리
+      </button>
+    </div>
+
+    <button class="p7-btn-copy" onclick="p7CopyLink()">
+      🔗 결과 링크 복사 — 가족·친구 코드도 찾아보세요
+    </button>
+  </div>
+
+  <!-- SNS 미리보기 카드 (공유 시 보여줄 미리보기) -->
+  <div class="p7-preview-wrap fade-up" style="transition-delay:.75s">
+    <div class="p7-preview-label">공유하면 이렇게 보여요</div>
+    <div class="p7-preview-card" id="p7-preview-card">
+      <div class="p7-prev-brand">SLIMMIND · 바디코드 리포트</div>
+      <div class="p7-prev-nickname" id="p7-prev-nickname">—</div>
+      <div class="p7-prev-tagline" id="p7-prev-tagline">—</div>
+      <div class="p7-prev-tags" id="p7-prev-tags"></div>
+      <div class="p7-prev-stats" id="p7-prev-stats">
+        <div class="p7-prev-stat"><div class="p7-prev-stat-val" id="p7-prev-s1">—</div><div class="p7-prev-stat-lbl">대사 세포나이</div></div>
+        <div class="p7-prev-stat"><div class="p7-prev-stat-val" id="p7-prev-s2">—</div><div class="p7-prev-stat-lbl">12주 목표 감량</div></div>
+        <div class="p7-prev-stat"><div class="p7-prev-stat-val" id="p7-prev-s3">—</div><div class="p7-prev-stat-lbl">복합 코드 희소성</div></div>
+      </div>
+      <div class="p7-prev-cta">나도 내 바디코드 찾기 →</div>
+    </div>
+  </div>
+
+  <div class="disclaimer" style="margin-top:24px;">본 결과지는 전문 의료 진단을 대체하지 않습니다.</div>
 </div>
 </section>
 
@@ -1789,6 +2036,7 @@ function switchPage(num) {
   setTimeout(triggerAnim, 80);
   if (num === 5) setTimeout(animSimBars, 300);
   if (num === 2) setTimeout(animAxisBars, 300);
+  if (num === 7) setTimeout(p7AnimAgeCount, 400);
 }
 
 function triggerAnim() {
@@ -2554,6 +2802,7 @@ function renderAll(data) {
   renderP4(userName, ohaengType, mbtiType, answers['Q02'], answers['Q_MENOPAUSE']);
   renderP5(metrics);
   renderP6(userName, fullCode, ohaengType, data);
+  renderP7(userName, bcCode, bcMaster, metrics, ohaengType, mbtiType, fullCode, nicknameDisplay);
 
   // ★ 기능 5: 익명 통계 카드 비동기 로드
   loadBodyTypeStats(bcCode, userName);
@@ -3294,32 +3543,6 @@ function renderP6(userName, fullCode, ohaengType, inputData) {
     }
   }, { passive: true });
 
-  // ════════════════════════════════════════════
-  // 6-5: 잠금 CTA 다크 섹션 — 8개 티저 카드 (5~12주차)
-  // ════════════════════════════════════════════
-  const teaserData = [
-    {icon:'🔥',week:'5주차',name:'심화 지방 연소',desc:'1~4주 기반 위에 내장지방 타깃 인터벌 프로토콜 가동. 지방산 산화 효율 극대화.'},
-    {icon:'⚡',week:'6주차',name:'호르몬 최적화',desc:'인슐린 민감도 회복 식단 재설계. 생체리듬 재설정으로 야간 지방 연소 활성화.'},
-    {icon:'💪',week:'7주차',name:'바디 리컴프',desc:'근육은 늘리고 지방은 동시 감소. 테스토스테론·성장호르몬 자연 촉진.'},
-    {icon:'🌀',week:'8주차',name:'순환 극대화',desc:'림프·혈액 순환 완성. 셀룰라이트 분해 가속. 노폐물 배출 루틴 자동화.'},
-    {icon:'🔬',week:'9주차',name:'세포 재편 1단계',desc:'세포 에너지 대사 전환. 미토콘드리아 밀도 증가. 기초대사량 영구 상승 시작.'},
-    {icon:'⚗️',week:'10주차',name:'세포 재편 2단계',desc:'항염 식단으로 지방세포 리셋. 아디포넥틴 분비 자극으로 인슐린 저항성 완전 해소.'},
-    {icon:'🏆',week:'11주차',name:'유지 설계',desc:'요요 차단 신경 회로 구축. 포만감 호르몬(렙틴) 정상화. 자동 유지 체계 세팅.'},
-    {icon:'✨',week:'12주차',name:'자동화 완성',desc:'12주 변화를 평생 습관으로 전환. 슬림마인드 졸업 체크리스트 + 다음 목표 설정.'},
-  ];
-  const teaserGrid = document.getElementById('p6-teaser-grid');
-  if (teaserGrid) {
-    teaserData.forEach((t, ti) => {
-      const lockColors = ['rgba(181,69,46,.22)','rgba(181,69,46,.18)','rgba(90,110,58,.22)','rgba(90,110,58,.18)','rgba(47,125,140,.22)','rgba(47,125,140,.18)','rgba(91,74,134,.22)','rgba(91,74,134,.18)'];
-      teaserGrid.innerHTML += `<div class="p6-teaser-card" style="border-color:${lockColors[ti]||'rgba(255,255,255,.1)'}">
-        <div class="p6-teaser-icon">${t.icon}</div>
-        <div class="p6-teaser-week">${t.week} 🔒</div>
-        <div class="p6-teaser-name">${t.name}</div>
-        <div class="p6-teaser-desc">${t.desc}</div>
-      </div>`;
-    });
-  }
-
   // 초기 1주차 표시
   p6SwitchWeek(1);
 }
@@ -3735,6 +3958,176 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
   }, 1000);
 });
+
+// ══════════════════════════════════════════════
+// P7: 종합 요약 렌더 + 공유 함수
+// ══════════════════════════════════════════════
+let _p7Data = {};
+
+function renderP7(userName, bcCode, bcMaster, metrics, ohaengType, mbtiType, fullCode, nicknameDisplay) {
+  // 데이터 캐싱 (공유용)
+  _p7Data = { userName, bcCode, bcMaster, metrics, ohaengType, mbtiType, fullCode, nicknameDisplay };
+
+  const ohaeng = SAJU_ELEMENT_DESC[ohaengType] || SAJU_ELEMENT_DESC['목'];
+  const mbti   = MBTI_DESC[mbtiType] || MBTI_DESC['INFP'];
+  const failKey  = (bcMaster && bcMaster.fail_key)  || '지방 축적';
+  const failDesc = (bcMaster && bcMaster.fail_desc) || '이 문제가 체중 감량을 막았습니다.';
+
+  // 오프닝
+  const openTitle = document.getElementById('p7-opening-title');
+  if (openTitle) openTitle.innerHTML = `오늘, 당신의 몸이<br><span>고백했습니다</span>`;
+  const openName = document.getElementById('p7-opening-name');
+  if (openName) openName.textContent = `— ${userName}님 —`;
+
+  // 공감 3줄 Q&A (BC 타입별 맞춤 텍스트)
+  const q1Map = {
+    'BC-1': `게으른 게 아니에요. <strong>코르티솔이 24시간 켜진 채로</strong> 지방을 쌓으라는 신호를 보내고 있었던 겁니다.`,
+    'BC-2': `의지 문제가 아니에요. <strong>인슐린 저항성</strong>이 먹은 것마다 지방으로 바꾸는 방향으로 작동하고 있었어요.`,
+    'BC-3': `노력이 부족한 게 아니에요. <strong>갑상선 기능이 대사 속도를 낮추고</strong> 있어서 같은 걸 먹어도 더 쌓이는 몸 상태였어요.`,
+    'BC-4': `게으른 게 아니에요. <strong>성장호르몬·테스토스테론이 부족해서</strong> 지방을 태울 근육이 점점 사라지고 있었던 거예요.`,
+    'BC-5': `의지가 약한 게 아니에요. <strong>에스트로겐 불균형</strong>이 복부에 집중적으로 지방을 쌓으라는 명령을 내리고 있었어요.`,
+    'BC-6': `노력이 부족한 게 아니에요. <strong>렉틴과 장 투과성</strong> 문제로 영양소가 제대로 흡수되지 않고 염증 신호가 쌓이고 있었어요.`,
+    'BC-7': `게으른 게 아니에요. <strong>수면 호르몬(멜라토닌·그렐린) 교란</strong>으로 잠만 자도 지방이 쌓이는 사이클이 돌고 있었어요.`,
+    'BC-8': `의지 문제가 아니에요. <strong>도파민 보상 회로</strong>가 음식으로 위안을 찾도록 뇌를 프로그래밍한 상태였어요.`,
+    'BC-9': `노력이 부족한 게 아니에요. <strong>림프 순환이 막혀</strong> 노폐물과 지방이 빠져나가지 못하고 정체되고 있었던 거예요.`,
+  };
+  const q2Map = {
+    'BC-1': `스트레스 호르몬이 밤 9시에 뇌한테 <strong>"지금 안 먹으면 위험해"라고 거짓 신호</strong>를 보내거든요. 뇌가 시킨 겁니다.`,
+    'BC-2': `인슐린이 혈당을 급격히 떨어뜨려서 뇌가 <strong>"지금 당장 탄수화물 주입"이라고 명령</strong>한 거예요. 의지로는 못 막아요.`,
+    'BC-3': `대사가 느려지면 몸이 에너지 부족을 감지하고 <strong>음식에 대한 집착을 본능적으로 강화</strong>합니다. 생존 본능이에요.`,
+    'BC-4': `근육이 줄면 기초대사가 낮아지고, <strong>뇌가 에너지 보충 신호를 더 자주 보내요</strong>. 먹는 게 당연한 반응입니다.`,
+    'BC-5': `에스트로겐이 롤러코스터를 타면 <strong>세로토닌이 뚝 떨어지고</strong>, 뇌는 단 음식으로 세로토닌을 채우려 합니다.`,
+    'BC-6': `장 속 유해균이 <strong>당 갈망 신호를 뇌에 직접 보냅니다</strong>. 과식은 내 의지가 아니라 균들의 요청이었어요.`,
+    'BC-7': `수면 부족 시 그렐린(식욕 호르몬)이 30% 급증해요. <strong>뇌가 "고칼로리 음식 먹어"라고 명령</strong>을 내린 거예요.`,
+    'BC-8': `도파민 결핍 상태에서 <strong>뇌는 음식으로 보상을 얻으려 합니다</strong>. 과식은 중독 회로 작동이지, 식탐이 아니에요.`,
+    'BC-9': `림프가 막히면 독소가 쌓이고, <strong>몸이 독소 희석을 위해 수분과 음식을 더 요구</strong>합니다. 부기와 식욕이 같이 오는 이유예요.`,
+  };
+  const q3Map = {
+    'BC-1': `스트레스 호르몬을 낮추는 순서가 있어요. <strong>그 순서만 맞추면 12주 안에 몸이 바뀝니다.</strong> 이게 슬림마인드 처방의 핵심이에요.`,
+    'BC-2': `인슐린 저항성을 역전시키는 식단 타이밍이 있어요. <strong>먹는 시간과 순서를 바꾸는 것만으로</strong> 몸의 신호가 달라집니다.`,
+    'BC-3': `갑상선을 깨우는 영양소 조합이 있어요. <strong>먹는 것만 바꿔도 대사 속도가 올라옵니다.</strong> 운동보다 식단 조정이 먼저예요.`,
+    'BC-4': `호르몬을 자연 회복시키는 운동 타이밍이 있어요. <strong>언제, 어떻게 움직이느냐</strong>가 살을 빼느냐 찌느냐를 결정합니다.`,
+    'BC-5': `에스트로겐 균형을 맞추는 식품이 있어요. <strong>그걸 먹고 안 먹는 것을 조정하면</strong> 복부 지방이 서서히 빠지기 시작해요.`,
+    'BC-6': `장 환경을 복구하면 갈망이 줄어듭니다. <strong>프리바이오틱스와 유산균 배치 순서</strong>만 알면 몸이 스스로 정화돼요.`,
+    'BC-7': `수면 질을 높이는 루틴이 있어요. <strong>잠들기 전 2시간의 행동 패턴을 바꾸면</strong> 그 다음날 식욕이 눈에 띄게 줄어들어요.`,
+    'BC-8': `도파민 회로를 리셋하는 루틴이 있어요. <strong>음식 외의 보상 경로를 열면</strong> 과식 충동이 자연스럽게 사라집니다.`,
+    'BC-9': `림프를 깨우는 동작이 있어요. <strong>하루 10분 특정 동작만으로</strong> 노폐물 배출이 시작되고 몸이 가벼워집니다.`,
+  };
+
+  const bcKey = bcCode ? `BC-${bcCode}` : 'BC-1';
+  const a1 = q1Map[bcKey] || q1Map['BC-1'];
+  const a2 = q2Map[bcKey] || q2Map['BC-1'];
+  const a3 = q3Map[bcKey] || q3Map['BC-1'];
+  ['p7-ans1','p7-ans2','p7-ans3'].forEach((id, i) => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = [a1, a2, a3][i];
+  });
+
+  // 대사 세포나이
+  const ageBefore = metrics && metrics.metabolicAge ? metrics.metabolicAge : null;
+  const ageAfter  = metrics && metrics.metabolicAgeAfter ? metrics.metabolicAgeAfter : null;
+  if (ageBefore !== null) {
+    document.getElementById('p7-age-before').textContent = ageBefore + '세';
+    document.getElementById('p7-age-after').textContent  = ageAfter + '세';
+    const diff = ageBefore - (ageAfter || ageBefore);
+    const badge = document.getElementById('p7-age-badge');
+    if (badge && diff > 0) badge.textContent = `12주 후 ${diff}세 더 젊어질 수 있어요 ✨`;
+    else if (badge) badge.textContent = '12주 후 체형 변화 예상';
+  } else {
+    // 대사나이 없을 시 카드 숨김
+    const ac = document.getElementById('p7-age-card');
+    if (ac) ac.style.display = 'none';
+  }
+
+  // SNS 미리보기 카드
+  const pNick = document.getElementById('p7-prev-nickname');
+  if (pNick) pNick.textContent = nicknameDisplay || '—';
+  const pTag = document.getElementById('p7-prev-tagline');
+  if (pTag) {
+    const desc = bcMaster && bcMaster.fail_desc ? bcMaster.fail_desc.split('.')[0] + '.' : failDesc;
+    pTag.textContent = desc;
+  }
+  const pTags = document.getElementById('p7-prev-tags');
+  if (pTags) {
+    const tags = [ohaeng.label, mbtiType, bcMaster?.region || '복합체형'].filter(Boolean);
+    pTags.innerHTML = tags.map(t => `<span class="p7-prev-tag">${t}</span>`).join('');
+  }
+  const ps1 = document.getElementById('p7-prev-s1');
+  if (ps1) ps1.textContent = ageBefore ? `${ageBefore}→${ageAfter}세` : `BC-${bcCode}`;
+  const ps2 = document.getElementById('p7-prev-s2');
+  if (ps2) {
+    const gl = metrics && metrics.goalLoss ? `-${metrics.goalLoss}kg` : '맞춤 처방';
+    ps2.textContent = gl;
+  }
+  const ps3 = document.getElementById('p7-prev-s3');
+  if (ps3) {
+    const rarity = bcMaster?.rarity || '상위 5%';
+    ps3.textContent = rarity;
+  }
+}
+
+// P7 카운트업 애니메이션
+function p7AnimAgeCount() {
+  const elB = document.getElementById('p7-age-before');
+  const elA = document.getElementById('p7-age-after');
+  if (!elB || !elA) return;
+
+  const targetB = parseInt(elB.textContent) || 0;
+  const targetA = parseInt(elA.textContent) || 0;
+  if (!targetB) return;
+
+  // 카운트업 함수
+  function countUp(el, target, duration) {
+    const start = Math.max(target - 20, 0);
+    const startTime = performance.now();
+    el.classList.add('counting');
+    function step(now) {
+      const pct = Math.min((now - startTime) / duration, 1);
+      const ease = 1 - Math.pow(1 - pct, 3);
+      el.textContent = Math.round(start + (target - start) * ease) + '세';
+      if (pct < 1) requestAnimationFrame(step);
+      else el.textContent = target + '세';
+    }
+    requestAnimationFrame(step);
+  }
+
+  countUp(elB, targetB, 800);
+  setTimeout(() => countUp(elA, targetA, 800), 400);
+}
+
+// P7 인스타 스토리 공유
+function p7ShareInsta() {
+  // 결과 링크 복사 후 안내 (인스타 Web API 미지원)
+  const url = window.location.href;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(() => {
+      _showToast('📋 링크 복사 완료!\n인스타그램 스토리에 붙여넣기 해보세요 📸');
+    }).catch(() => {
+      _showToast('📸 인스타그램 앱에서 스토리로 직접 공유해보세요!');
+    });
+  } else {
+    _showToast('📸 인스타그램 앱에서 스토리로 직접 공유해보세요!');
+  }
+}
+
+// P7 링크 복사
+function p7CopyLink() {
+  const url = window.location.href;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(() => {
+      _showToast('🔗 링크가 복사됐어요!\n가족·친구에게 공유해보세요 💜');
+    });
+  } else {
+    // fallback
+    const ta = document.createElement('textarea');
+    ta.value = url;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    _showToast('🔗 링크 복사 완료!');
+  }
+}
 </script>
 </body>
 </html>

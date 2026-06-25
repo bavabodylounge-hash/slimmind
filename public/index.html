@@ -339,45 +339,78 @@
   .astep.done .astepic:after{content:"✓";position:absolute;inset:0;color:#fff;font-size:12px;font-weight:700;
     display:flex;align-items:center;justify-content:center}
 
-  /* ===== 제출 완료 대기 화면 ===== */
-  #waitScreen{display:none;padding:0 20px;min-height:100dvh;background:var(--paper);}
-  .wait-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;
-    min-height:100dvh;padding:40px 0 80px;text-align:center;max-width:380px;margin:0 auto;}
-  .wait-logo{font-size:13px;font-weight:800;letter-spacing:.18em;color:var(--muted);margin-bottom:40px;}
-  .wait-check-ring{width:88px;height:88px;border-radius:50%;border:3px solid var(--c3);
-    display:flex;align-items:center;justify-content:center;margin:0 auto 28px;
-    background:var(--card);box-shadow:0 0 0 8px rgba(181,69,46,.06);}
-  .wait-check-icon{font-size:36px;}
-  .wait-title{font-size:24px;font-weight:800;letter-spacing:-.02em;color:var(--ink);line-height:1.35;margin-bottom:12px;}
-  .wait-title span{color:var(--c3);}
-  .wait-sub{font-size:15px;color:var(--muted);line-height:1.7;margin-bottom:36px;word-break:keep-all;}
-  .wait-card{background:var(--card);border:1px solid var(--line);border-radius:16px;
-    padding:24px 20px;margin-bottom:28px;width:100%;box-sizing:border-box;}
-  .wait-card-title{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
-    color:var(--muted);margin-bottom:16px;}
-  .wait-step-list{display:flex;flex-direction:column;gap:12px;}
-  .wait-step{display:flex;align-items:center;gap:12px;text-align:left;}
-  .wait-step-num{width:28px;height:28px;border-radius:50%;background:var(--c3);color:#fff;
-    font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none;}
-  .wait-step-num.done{background:#5a6e3a;}
-  .wait-step-num.pending{background:var(--line);color:var(--muted);}
-  .wait-step-text{font-size:14px;font-weight:600;color:var(--ink);line-height:1.4;}
-  .wait-step-text.pending{color:var(--muted);}
-  .wait-id-box{background:var(--paper);border:1px dashed var(--line);border-radius:10px;
-    padding:12px 16px;margin-top:16px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  /* ===== 제출 완료 대기 화면 (V2 감성 종료 화면) ===== */
+  #waitScreen{display:none;padding:0;min-height:100dvh;
+    background:linear-gradient(180deg,var(--paper) 0%,#f5ece0 100%);overflow:hidden;}
+  .wait-wrap{display:flex;flex-direction:column;align-items:center;
+    min-height:100dvh;padding:0 24px 60px;text-align:center;max-width:420px;margin:0 auto;}
+  .wait-particle-bg{position:fixed;top:0;left:0;right:0;bottom:0;pointer-events:none;overflow:hidden;z-index:0;}
+  .wait-p{position:absolute;font-size:20px;animation:wait-float linear infinite;opacity:0;}
+  @keyframes wait-float{
+    0%{transform:translateY(100vh) scale(0) rotate(0deg);opacity:0}
+    10%{opacity:.9} 90%{opacity:.6}
+    100%{transform:translateY(-20px) scale(1.2) rotate(360deg);opacity:0}
+  }
+  .wait-logo{font-size:13px;font-weight:800;letter-spacing:.18em;color:var(--muted);
+    padding-top:48px;margin-bottom:32px;position:relative;z-index:1;}
+  .wait-check-ring{
+    width:100px;height:100px;border-radius:50%;
+    background:linear-gradient(135deg,#5a6e3a,#7ab648);
+    display:flex;align-items:center;justify-content:center;
+    margin:0 auto 24px;position:relative;z-index:1;
+    box-shadow:0 0 0 12px rgba(90,110,58,.1),0 8px 32px rgba(90,110,58,.25);
+    animation:wait-pop .6s cubic-bezier(.2,.8,.2,1) both;}
+  @keyframes wait-pop{0%{transform:scale(0);opacity:0}60%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
+  .wait-check-icon{font-size:42px;line-height:1;}
+  .wait-title{font-size:26px;font-weight:900;letter-spacing:-.03em;color:var(--ink);line-height:1.3;
+    margin-bottom:10px;position:relative;z-index:1;
+    animation:wait-slide-up .5s .2s cubic-bezier(.2,.8,.2,1) both;}
+  @keyframes wait-slide-up{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+  .wait-title span{color:var(--c6);}
+  .wait-name-hl{color:var(--c3);}
+  .wait-emotion-msg{font-size:14px;color:var(--muted);line-height:1.8;margin-bottom:28px;
+    position:relative;z-index:1;animation:wait-slide-up .5s .35s cubic-bezier(.2,.8,.2,1) both;word-break:keep-all;}
+  .wait-emotion-msg strong{color:var(--c3);font-weight:700;}
+  .wait-consult-card{background:#fff;border:1.5px solid rgba(90,110,58,.2);border-radius:20px;
+    padding:22px 20px;margin-bottom:20px;width:100%;box-sizing:border-box;
+    position:relative;z-index:1;animation:wait-slide-up .5s .5s cubic-bezier(.2,.8,.2,1) both;
+    box-shadow:0 4px 20px rgba(90,110,58,.08);}
+  .wait-consult-icon-row{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:14px;}
+  .wait-consult-icon{width:48px;height:48px;border-radius:50%;
+    background:linear-gradient(135deg,rgba(181,69,46,.1),rgba(201,138,60,.1));
+    display:flex;align-items:center;justify-content:center;font-size:22px;}
+  .wait-consult-arrow{font-size:16px;color:var(--line);}
+  .wait-consult-title{font-size:14px;font-weight:800;color:var(--ink);margin-bottom:6px;}
+  .wait-consult-sub{font-size:13px;color:var(--muted);line-height:1.65;word-break:keep-all;}
+  .wait-consult-divider{border:none;border-top:1px dashed var(--line);margin:14px 0;}
+  .wait-consult-step-list{display:flex;flex-direction:column;gap:10px;text-align:left;}
+  .wait-consult-step{display:flex;align-items:center;gap:10px;}
+  .wait-cs-num{width:24px;height:24px;border-radius:50%;flex:none;font-size:11px;font-weight:800;
+    display:flex;align-items:center;justify-content:center;}
+  .wait-cs-num.done{background:#5a6e3a;color:#fff;}
+  .wait-cs-num.active{background:var(--c3);color:#fff;animation:wait-pulse .9s ease-in-out infinite;}
+  .wait-cs-num.wait{background:var(--line);color:var(--muted);}
+  @keyframes wait-pulse{0%,100%{box-shadow:0 0 0 0 rgba(181,69,46,.4)}50%{box-shadow:0 0 0 5px rgba(181,69,46,.0)}}
+  .wait-cs-text{font-size:13px;font-weight:600;color:var(--ink);line-height:1.4;}
+  .wait-cs-text.muted{color:var(--muted);}
+  .wait-id-badge{background:var(--paper);border:1.5px dashed var(--line);border-radius:12px;
+    padding:12px 18px;margin-top:14px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
   .wait-id-label{font-size:11px;font-weight:700;color:var(--muted);}
-  .wait-id-value{font-size:12px;font-weight:700;color:var(--ink);font-family:monospace;
-    flex:1;text-align:right;word-break:break-all;}
-  .wait-ratings{display:flex;gap:6px;justify-content:center;margin-bottom:28px;}
-  .wait-rating-card{flex:1;background:var(--card);border:1px solid var(--line);border-radius:12px;
-    padding:14px 10px;text-align:center;}
-  .wait-rating-num{font-size:22px;font-weight:800;color:var(--c3);}
-  .wait-rating-label{font-size:10px;color:var(--muted);font-weight:600;margin-top:2px;}
-  .wait-share-btn{width:100%;padding:16px;background:var(--c3);color:#fff;border:none;
-    border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;letter-spacing:-.01em;
-    font-family:inherit;transition:opacity .2s;}
+  .wait-id-value{font-size:13px;font-weight:800;color:var(--ink);font-family:monospace;flex:1;text-align:right;word-break:break-all;}
+  .wait-expect-msg{font-size:13px;color:var(--muted);line-height:1.75;margin-bottom:24px;
+    position:relative;z-index:1;animation:wait-slide-up .5s .65s cubic-bezier(.2,.8,.2,1) both;word-break:keep-all;}
+  .wait-expect-hl{color:var(--c3);font-weight:700;}
+  .wait-stats-row{display:flex;gap:8px;width:100%;margin-bottom:24px;
+    position:relative;z-index:1;animation:wait-slide-up .5s .75s cubic-bezier(.2,.8,.2,1) both;}
+  .wait-stat-chip{flex:1;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 8px;text-align:center;}
+  .wait-stat-num{font-size:18px;font-weight:800;color:var(--c3);}
+  .wait-stat-lbl{font-size:9px;color:var(--muted);font-weight:600;margin-top:2px;}
+  .wait-sub,.wait-ratings,.wait-card{display:none!important;}
+  .wait-share-btn{width:100%;padding:15px;background:var(--c3);color:#fff;border:none;
+    border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .2s;
+    position:relative;z-index:1;animation:wait-slide-up .5s .85s cubic-bezier(.2,.8,.2,1) both;}
   .wait-share-btn:active{opacity:.85;}
-  .wait-disclaimer{font-size:11px;color:var(--muted);line-height:1.6;margin-top:20px;word-break:keep-all;}
+  .wait-disclaimer{font-size:11px;color:var(--muted);line-height:1.6;margin-top:18px;word-break:keep-all;position:relative;z-index:1;}
 
   /* 목표 감량 배지 */
   .goal-loss-badge{display:flex;align-items:center;justify-content:center;
@@ -463,6 +496,13 @@
   .quizicon.no{background:rgba(181,69,46,.12);color:var(--c3)}
   .quiztitle{font-size:19px;font-weight:800;margin-bottom:10px;color:var(--ink)}
   .quizdesc{font-size:13.5px;color:#4a443a;line-height:1.7;margin-bottom:18px}.quizdesc b{color:var(--c3)}
+  /* 이름 페이지 전화번호 */
+  .name-phone-wrap{margin:16px 0 0;display:flex;flex-direction:column;gap:8px;}
+  .name-phone-label{font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.3px;}
+  .name-phone-input{width:100%;padding:14px 18px;border:2px solid var(--line);border-radius:12px;font-size:17px;font-weight:600;color:var(--ink);background:transparent;box-sizing:border-box;transition:border-color .2s;}
+  .name-phone-input:focus{outline:none;border-color:var(--c3);background:rgba(181,69,46,.04);}
+  .name-phone-input::placeholder{color:#cfcabb;font-weight:400;}
+  .name-phone-hint{font-size:11.5px;color:var(--muted);line-height:1.5;}
   .phonebox{display:flex;flex-direction:column;gap:10px}
   .phoneinput{width:100%;padding:14px 16px;border:2px solid var(--line);border-radius:12px;font-size:16px;
     font-family:inherit;text-align:center;font-weight:600;background:rgba(181,69,46,.06)}
@@ -1853,6 +1893,11 @@
         <span class="badge" style="font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--c3);font-weight:700">먼저, 당신을 알고 싶어요</span>
         <h1 class="nameh1">어떤 이름으로<br>불러드릴까요?</h1>
         <input type="text" id="userName" class="nameinput" placeholder="이름 또는 닉네임" oninput="checkName()" maxlength="12" autocomplete="off" autocorrect="off" spellcheck="false">
+        <div class="name-phone-wrap">
+          <div class="name-phone-label">📱 연락처 (카카오톡 결과지 전송용)</div>
+          <input type="tel" id="userPhone" class="name-phone-input" placeholder="010-0000-0000" oninput="checkName()" maxlength="13" autocomplete="tel">
+          <div class="name-phone-hint">담당 컨설턴트가 결과지를 카카오톡으로 직접 전달드립니다</div>
+        </div>
         <div class="genderwrap">
           <div class="gq">성별은요?</div>
           <div class="genderbtns">
@@ -2176,59 +2221,89 @@
   </div><!-- /wrap -->
 </div><!-- /surveyApp -->
 
-<!-- ═══ 제출 완료 대기 화면 ═══ -->
+<!-- ═══ 제출 완료 대기 화면 (V2 감성 종료 화면) ═══ -->
 <div id="waitScreen">
+  <!-- 파티클 배경 -->
+  <div class="wait-particle-bg" id="waitParticleBg"></div>
+
   <div class="wait-wrap">
     <div class="wait-logo">SLIMMIND</div>
 
+    <!-- 체크 링 -->
     <div class="wait-check-ring">
-      <span class="wait-check-icon">✓</span>
+      <span class="wait-check-icon">🎉</span>
     </div>
 
-    <h1 class="wait-title" id="waitTitle">분석이<br><span>완료됐습니다</span></h1>
-    <p class="wait-sub" id="waitSub">
-      담당 컨설턴트가 결과지를 직접<br>공유해드릴 예정입니다 ✉️
-    </p>
+    <!-- 타이틀 -->
+    <h1 class="wait-title" id="waitTitle">
+      <span class="wait-name-hl" id="waitNameHl">고객</span>님,<br>정말 <span>고생하셨어요!</span>
+    </h1>
 
-    <div class="wait-card">
-      <div class="wait-card-title">결과지 전달 프로세스</div>
-      <div class="wait-step-list">
-        <div class="wait-step">
-          <div class="wait-step-num done">✓</div>
-          <div class="wait-step-text">설문 완료 &amp; 분석 데이터 저장</div>
+    <!-- 감성 메시지 -->
+    <div class="wait-emotion-msg">
+      오늘 솔직하게 답해주신 덕분에<br>
+      <strong>당신만의 취맞춤 처방</strong>이 완성됩니다. ✨
+    </div>
+
+    <!-- 컨설턴트 안내 카드 -->
+    <div class="wait-consult-card">
+      <div class="wait-consult-icon-row">
+        <div class="wait-consult-icon">📋</div>
+        <div class="wait-consult-arrow">→</div>
+        <div class="wait-consult-icon">📱</div>
+        <div class="wait-consult-arrow">→</div>
+        <div class="wait-consult-icon">👌</div>
+      </div>
+      <div class="wait-consult-title">담당 컨설턴트가 디렉트 전달합니다</div>
+      <div class="wait-consult-sub">결과지는 고객님이 직접 보시는 게 아니라,<br>품질을 위해 컨설턴트가 직접 검토 후 전달드립니다.</div>
+
+      <hr class="wait-consult-divider">
+
+      <div class="wait-consult-step-list">
+        <div class="wait-consult-step">
+          <div class="wait-cs-num done">✓</div>
+          <div class="wait-cs-text">설문 완료 &amp; 포종 데이터 저장 완료</div>
         </div>
-        <div class="wait-step">
-          <div class="wait-step-num" id="waitStep2">2</div>
-          <div class="wait-step-text" id="waitStep2Text">담당 컨설턴트 결과지 검토 중</div>
+        <div class="wait-consult-step">
+          <div class="wait-cs-num active" id="waitStep2">↻</div>
+          <div class="wait-cs-text">담당 컨설턴트 결과지 검토 중...</div>
         </div>
-        <div class="wait-step">
-          <div class="wait-step-num pending">3</div>
-          <div class="wait-step-text pending">카카오톡·문자로 결과지 링크 전송</div>
+        <div class="wait-consult-step">
+          <div class="wait-cs-num wait">3</div>
+          <div class="wait-cs-text muted">카카오톡으로 결과지 링크 전송</div>
         </div>
       </div>
-      <div class="wait-id-box">
-        <span class="wait-id-label">내 분석 코드</span>
+
+      <!-- 분석 코드 배지 -->
+      <div class="wait-id-badge">
+        <span class="wait-id-label">🔑 내 분석 코드</span>
         <span class="wait-id-value" id="waitResultId">—</span>
       </div>
     </div>
 
-    <div class="wait-ratings">
-      <div class="wait-rating-card">
-        <div class="wait-rating-num">4.9</div>
-        <div class="wait-rating-label">★ 고객 만족도</div>
+    <!-- 기대감 메시지 -->
+    <div class="wait-expect-msg">
+      보통 2~3일 내로 <span class="wait-expect-hl">컨설턴트가 확인 연락</span>을 드릴 거예요.<br>스마트폰 알림을 켜두세요! 📲
+    </div>
+
+    <!-- 통계 배지 행 -->
+    <div class="wait-stats-row">
+      <div class="wait-stat-chip">
+        <div class="wait-stat-num">4.9★</div>
+        <div class="wait-stat-lbl">고객 만족도</div>
       </div>
-      <div class="wait-rating-card">
-        <div class="wait-rating-num">12주</div>
-        <div class="wait-rating-label">체형 변화 프로그램</div>
+      <div class="wait-stat-chip">
+        <div class="wait-stat-num">12주</div>
+        <div class="wait-stat-lbl">체형변화 프로그램</div>
       </div>
-      <div class="wait-rating-card">
-        <div class="wait-rating-num">22종</div>
-        <div class="wait-rating-label">바디코드 유형</div>
+      <div class="wait-stat-chip">
+        <div class="wait-stat-num">22종</div>
+        <div class="wait-stat-lbl">바디코드 유형</div>
       </div>
     </div>
 
-    <!-- ✅ BUG-3 수정: 결과지 바로 보기 버튼 (showWaitScreen에서 활성화) -->
-    <button id="waitDirectBtn" class="wait-direct-btn" style="display:none;width:100%;max-width:340px;margin:0 auto 12px;padding:16px;background:var(--c1,#b5452e);color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;letter-spacing:-.3px;">
+    <!-- 하위호환 요소 -->
+    <button id="waitDirectBtn" style="display:none;width:100%;max-width:340px;margin:0 auto 12px;padding:16px;background:var(--c1,#b5452e);color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;letter-spacing:-.3px;position:relative;z-index:1;">
       🔍 내 결과지 바로 보기
     </button>
 
@@ -3266,7 +3341,19 @@ function goNameStep(){
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 }
-function checkName(){userInfo.name=document.getElementById('userName').value.trim();updateNameNext();}
+function checkName(){
+  userInfo.name=document.getElementById('userName').value.trim();
+  // 전화번호 자동 하이픈 포맷
+  const ph=document.getElementById('userPhone');
+  if(ph){
+    let v=ph.value.replace(/[^0-9]/g,'');
+    if(v.length>3&&v.length<=7) v=v.slice(0,3)+'-'+v.slice(3);
+    else if(v.length>7) v=v.slice(0,3)+'-'+v.slice(3,7)+'-'+v.slice(7,11);
+    ph.value=v;
+    userInfo.phone=v;
+  }
+  updateNameNext();
+}
 function pickGender(g,el){
   document.querySelectorAll('.genbtn').forEach(b=>b.classList.remove('sel'));
   el.classList.add('sel');userInfo.gender=g;updateNameNext();
@@ -4647,34 +4734,47 @@ function showWaitScreen(resultId, userName) {
   // 대기 화면 표시
   const waitEl = document.getElementById('waitScreen');
   if (waitEl) waitEl.style.display = 'block';
-  // 이름 반영
-  const titleEl = document.getElementById('waitTitle');
-  if (titleEl) titleEl.innerHTML = `<span>${userName || '고객'}</span>님<br>분석이 완료됐습니다`;
-  // 분석 코드 표시 (앞 8자리만)
+
+  // 이름 반영 (V2: waitNameHl 사용)
+  const nameHl = document.getElementById('waitNameHl');
+  if (nameHl) nameHl.textContent = userName || '고객';
+
+  // 분석 코드 표시
   const idEl = document.getElementById('waitResultId');
   if (idEl) idEl.textContent = resultId ? resultId.split('-')[0].toUpperCase() : '—';
-  // 2단계 강조 (컨설턴트 검토 중)
-  const step2 = document.getElementById('waitStep2');
-  if (step2) { step2.textContent = '⟳'; step2.style.background = 'var(--c3)'; }
-  // localStorage에 result_id 저장 (나중에 링크 받았을 때 참고용)
+
+  // localStorage에 result_id 저장
   try { localStorage.setItem('sm_last_result_id', resultId); } catch(e) {}
 
-  // ✅ BUG-3 수정: "결과지 바로 보기" 버튼 + 자동 리다이렉트 옵션 추가
+  // 결과지 바로 보기 버튼 (하위 호환)
   const directBtnEl = document.getElementById('waitDirectBtn');
   if (directBtnEl && resultId) {
     const resultUrl = '/result/' + resultId;
     directBtnEl.style.display = 'block';
     directBtnEl.onclick = function() { window.location.href = resultUrl; };
   }
-  // 결과지 직접 링크를 waitSub 텍스트에도 삽입
-  const subEl = document.getElementById('waitSub');
-  if (subEl && resultId) {
-    subEl.innerHTML = `담당 컨설턴트가 결과지를 직접<br>공유해드릴 예정입니다 ✉️<br>
-      <span style="font-size:12px;color:#7c776b;">또는 지금 바로 확인하려면 아래 버튼을 누르세요.</span>`;
-  }
+
+  // 파티클 배경 생성
+  _waitSpawnParticles();
 
   // 상단으로 스크롤
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function _waitSpawnParticles() {
+  const bg = document.getElementById('waitParticleBg');
+  if (!bg) return;
+  const emojis = ['🎉','✨','⭐','💫','🌟','💚','🌿','🍃'];
+  for (let i = 0; i < 18; i++) {
+    const p = document.createElement('div');
+    p.className = 'wait-p';
+    p.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+    p.style.left = Math.random() * 100 + '%';
+    p.style.animationDuration = (3 + Math.random() * 4) + 's';
+    p.style.animationDelay = (Math.random() * 3) + 's';
+    p.style.fontSize = (14 + Math.random() * 16) + 'px';
+    bg.appendChild(p);
+  }
 }
 
 function waitCopyLink() {
@@ -4783,6 +4883,7 @@ async function submitDiagnosis(dispAnswers) {
 
   const payload = {
     user_name:       name,
+    phone:           (userInfo && userInfo.phone) ? userInfo.phone : null,
     bc_nickname:     f.name   || null,
     bc_primary:      f.name   || null,   // ✅ BUG-1 수정: 닉네임(한글) 저장 → bc-engine NICKNAME_TO_BC 역매핑 지원
     bc_code_key:     _bcCodeKey,         // ✅ 추가: 'BC-6' 형태 BC코드 직접 저장

@@ -2888,7 +2888,7 @@ app.post('/api/v1/diagnosis', async (c) => {
   try {
     const body = await c.req.json()
     const {
-      user_name, bc_nickname, bc_primary, bc_secondary, bc_code_key,
+      user_name, phone, bc_nickname, bc_primary, bc_secondary, bc_code_key,
       top3_axes, axis_scores, region, texture, bg_filter,
       ohaeng_type, mbti_full, disp_answers, raw_answers,
       goal_weight, weight_loss_pct,
@@ -2927,18 +2927,19 @@ app.post('/api/v1/diagnosis', async (c) => {
       // ✅ BUG-1 완전 수정: bc_code_key(BC-6 형태) 컬럼 포함 INSERT (migration 0032 이후)
       await db.prepare(`
         INSERT INTO diagnosis_results
-          (id, user_name, bc_nickname, bc_primary, bc_code_key, bc_secondary,
+          (id, user_name, phone, bc_nickname, bc_primary, bc_code_key, bc_secondary,
            top3_axes, axis_scores, region, texture, bg_filter,
            ohaeng_type, mbti_full, disp_answers, raw_answers,
            goal_weight, weight_loss_pct,
            ref_code, completed_at, created_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
       `).bind(
         result_id,
         String(user_name || '익명'),
+        phone || null,
         bc_nickname || null,
-        bc_primary  || null,       // 한글 닉네임 '스트레스성 야식부엉이형'
-        resolvedBcCodeKey || null, // 'BC-6' 형태 코드
+        bc_primary  || null,
+        resolvedBcCodeKey || null,
         bc_secondary || null,
         top3_axes   ? JSON.stringify(top3_axes)   : null,
         axis_scores ? JSON.stringify(axis_scores) : null,
@@ -3341,7 +3342,7 @@ app.get('/api/admin/diagnosis-results', requireRole('MASTER'), async (c) => {
     const ohaeng = c.req.query('ohaeng') || ''
     const limit = Math.min(parseInt(c.req.query('limit') || '200'), 500)
 
-    let query = 'SELECT id, user_name, bc_nickname, bc_primary, bc_secondary, top3_axes, region, texture, ohaeng_type, mbti_full, ref_code, completed_at, created_at FROM diagnosis_results WHERE 1=1'
+    let query = 'SELECT id, user_name, phone, bc_nickname, bc_primary, bc_secondary, top3_axes, region, texture, ohaeng_type, mbti_full, ref_code, completed_at, created_at FROM diagnosis_results WHERE 1=1'
     const params: any[] = []
 
     if (search) {
