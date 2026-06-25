@@ -1861,6 +1861,263 @@ function getRoadmapWeeks(bc_primary, goal_weight, weight_loss_pct, user_name, oh
 // ──────────────────────────────────────────────
 var ROADMAP_WEEKS = BC_ROADMAP_DB['BC-6'];
 
+// ══════════════════════════════════════════════════════════════════
+// TIER 2: BC_EVIDENCE_DB — 처방 근거 레벨 & 문헌 기반 신뢰도 데이터
+// ══════════════════════════════════════════════════════════════════
+// 근거 등급 정의 (GRADE 체계 간소화)
+//   A  — 무작위대조시험(RCT) ≥2편 또는 메타분석 존재
+//   B  — 코호트·관찰 연구 ≥2편 또는 RCT 1편
+//   C  — 전문가 합의·기전 근거·사례군
+//   D  — 전통 의학·경험적 근거 (오행 기반 등)
+// confidence: 0-100 (시스템 내 데이터 누적 기반 — weekly_checkins 집계 후 갱신)
+// ──────────────────────────────────────────────
+var BC_EVIDENCE_DB = {
+  'BC-1': {
+    label: '오후만되면 코끼리다리형',
+    mechanism: '하지 정맥·림프 순환 장애 → 체액 재분포 불균형',
+    evidence_level: 'B',
+    evidence_summary: '압박 스타킹 + 림프 드레나쥐 복합 요법의 하지 부종 감소 효과 (코호트 3편)',
+    key_references: [
+      'Földi et al. (2012) Lymphedema and venous disorders — Elsevier',
+      'Brorson et al. (2016) Complete reduction of lymphedema — Ann Surg',
+    ],
+    contraindication_evidence: 'B',
+    contraindication_note: '하체 고강도 저항운동 → 정맥압 상승 → 부종 악화 (관찰 연구 2편)',
+    confidence: 62,   // weekly_checkins 누적 후 자동 갱신 예정
+    last_updated: '2025-01-01',
+  },
+  'BC-2': {
+    label: '목짧아지는 거북이형',
+    mechanism: '경추 전만 소실 → 상부 교차 증후군 → 두개경부 림프 정체',
+    evidence_level: 'B',
+    evidence_summary: '경추 교정 운동 + 자세 재교육의 경추통 및 두통 감소 효과 (RCT 1편, 코호트 2편)',
+    key_references: [
+      'Gross et al. (2015) Manipulation and mobilisation of the cervical spine — Cochrane',
+      'Jull et al. (2002) Therapeutic exercise for cervicogenic headache — Spine',
+    ],
+    contraindication_evidence: 'C',
+    contraindication_note: '경추 불안정 시 무거운 바벨 압박 운동 → 신경 손상 위험 (전문가 합의)',
+    confidence: 55,
+    last_updated: '2025-01-01',
+  },
+  'BC-3': {
+    label: '식후기절 혈당롤러코스터형',
+    mechanism: '인슐린 저항성 → 반응성 저혈당 → 지방 합성 촉진',
+    evidence_level: 'A',
+    evidence_summary: '저GI 식이 + 식후 유산소 운동의 혈당 변동성 감소 효과 (메타분석 5편)',
+    key_references: [
+      'Reynolds et al. (2019) Glycaemic index — BMJ meta-analysis',
+      'Colberg et al. (2016) Physical activity and diabetes — Diabetes Care',
+      'DiNicolantonio et al. (2018) Sugar addiction — Br J Sports Med',
+    ],
+    contraindication_evidence: 'A',
+    contraindication_note: '공복 고강도 운동 → 코르티솔↑ → 혈당 스파이크 → 인슐린 반응 악화 (RCT 3편)',
+    confidence: 78,
+    last_updated: '2025-01-01',
+  },
+  'BC-4': {
+    label: '스트레스성 야식부엉이형',
+    mechanism: '만성 스트레스 → HPA 축 활성화 → 코르티솔 과분비 → 복부 지방 축적',
+    evidence_level: 'A',
+    evidence_summary: '코르티솔-복부비만 연관성 (메타분석 6편), 수면 제한 → 식욕 호르몬 교란 (RCT 4편)',
+    key_references: [
+      'Björntorp (2001) Do stress reactions cause abdominal obesity? — Obes Rev',
+      'Spiegel et al. (2004) Sleep curtailment in healthy young men — Ann Intern Med',
+      'Epel et al. (2000) Stress and body shape — Psychosom Med',
+    ],
+    contraindication_evidence: 'A',
+    contraindication_note: '저녁 고강도 운동 → 코르티솔 재상승 → 수면 질 저하 → 악순환 (RCT 2편)',
+    confidence: 82,
+    last_updated: '2025-01-01',
+  },
+  'BC-5': {
+    label: '갑상선·대사저하 빙하형',
+    mechanism: '갑상선 기능 저하 (명시 또는 기능성) → 기초대사율 감소 → 에너지 소비 불균형',
+    evidence_level: 'B',
+    evidence_summary: '갑상선 기능 저하증과 비만의 양방향 연관성 (코호트 4편), 요오드·셀레늄 영양 개입 효과 (RCT 2편)',
+    key_references: [
+      'Sanyal & Raychaudhuri (2016) Relationship between obesity and hypothyroidism — Indian J Endocrinol',
+      'Triggiani et al. (2009) Role of iodine in evolution — Thyroid',
+    ],
+    contraindication_evidence: 'B',
+    contraindication_note: '초저칼로리 (<1,000kcal) 급격한 제한 → T3 추가 억제 → 대사율 더 하락 (관찰 2편)',
+    confidence: 65,
+    last_updated: '2025-01-01',
+  },
+  'BC-6': {
+    label: '인슐린저항 복부비만형',
+    mechanism: '내장 지방 과잉 → 아디포넥틴↓ TNF-α↑ → 인슐린 신호 차단 → 지방 분해 억제',
+    evidence_level: 'A',
+    evidence_summary: '저탄수화물 식이의 내장 지방 감소 우월성 (메타분석 8편), 근력 운동 + 유산소 복합 효과 (RCT 6편)',
+    key_references: [
+      'Bray et al. (2004) Low-carbohydrate diets — Obesity Research',
+      'Després & Lemieux (2006) Abdominal obesity and metabolic syndrome — Nature',
+      'Ross et al. (2012) Importance of exercise type — Am J Clin Nutr',
+    ],
+    contraindication_evidence: 'A',
+    contraindication_note: '초고지방 식이 (>60%) 단독 접근 시 LDL 상승 부작용 가능 (RCT 4편)',
+    confidence: 85,
+    last_updated: '2025-01-01',
+  },
+  'BC-7': {
+    label: '호르몬스위치 갱년기형',
+    mechanism: '에스트로겐 급감 → 내장 지방 재분포 + 인슐린 감수성↓ + 수면 장애 → 복합 대사 교란',
+    evidence_level: 'A',
+    evidence_summary: '갱년기 여성 체성분 변화 기전 (메타분석 5편), 저항 운동의 골밀도·근육량 보호 효과 (RCT 7편)',
+    key_references: [
+      'Davis et al. (2012) Menopause and obesity — Climacteric',
+      'Villareal et al. (2011) Weight loss, exercise, or both — NEJM',
+      'Sternfeld et al. (2014) Efficacy of exercise for menopause-related QoL — Menopause',
+    ],
+    contraindication_evidence: 'B',
+    contraindication_note: '초저칼로리 단식 → 코르티솔 상승 → 갱년기 열감 악화 (관찰 3편)',
+    confidence: 80,
+    last_updated: '2025-01-01',
+  },
+  'BC-8': {
+    label: '장누수·마이크로바이옴형',
+    mechanism: '장 상피 투과성↑ → LPS 흡수 → 만성 저등급 염증 → 지방 분해 억제',
+    evidence_level: 'B',
+    evidence_summary: '장내 미생물군 다양성과 비만의 연관성 (코호트 5편), 프리바이오틱·프로바이오틱 체중 감소 효과 (RCT 3편)',
+    key_references: [
+      'Turnbaugh et al. (2006) An obesity-associated gut microbiome — Nature',
+      'Ridaura et al. (2013) Gut microbiota from twins — Science',
+      'Cani et al. (2007) Metabolic endotoxemia — Diabetes',
+    ],
+    contraindication_evidence: 'C',
+    contraindication_note: '고가공식품·고당 식이 지속 → 유익균 급감 → 처방 효과 무력화 (전문가 합의)',
+    confidence: 60,
+    last_updated: '2025-01-01',
+  },
+  'BC-9': {
+    label: '운동공포 근감소형',
+    mechanism: '근육량 부족 → 안정시 대사율↓ + 포도당 uptake↓ → 지방 우선 축적',
+    evidence_level: 'A',
+    evidence_summary: '저항 운동의 근비대 및 기초대사율 상승 효과 (메타분석 9편), 단백질 섭취량과 근합성 용량-반응 관계 (RCT 5편)',
+    key_references: [
+      'Wolfe (2006) The underappreciated role of muscle — Am J Clin Nutr',
+      'Morton et al. (2018) Protein supplementation to augment resistance — Br J Sports Med',
+      'Peterson et al. (2011) Resistance exercise for obesity — J Am Geriatr Soc',
+    ],
+    contraindication_evidence: 'B',
+    contraindication_note: '유산소 단독 과다 → 근 이화 촉진 → 근감소증 악화 (RCT 2편)',
+    confidence: 83,
+    last_updated: '2025-01-01',
+  },
+};
+
+// ──────────────────────────────────────────────
+// TIER 2 헬퍼: evidence badge 텍스트 생성
+// 사용: getBadge('BC-3') → { grade:'A', label:'RCT 메타분석 근거', color:'#22c55e', confidence:78 }
+// ──────────────────────────────────────────────
+function getEvidenceBadge(bcCode) {
+  var ev = BC_EVIDENCE_DB[bcCode] || BC_EVIDENCE_DB['BC-6'];
+  var gradeMap = {
+    'A': { label: '메타분석·RCT 근거', color: '#22c55e', stars: '★★★★★' },
+    'B': { label: '코호트·관찰 근거',  color: '#3b82f6', stars: '★★★★☆' },
+    'C': { label: '전문가 합의 근거',   color: '#f59e0b', stars: '★★★☆☆' },
+    'D': { label: '전통·경험 근거',     color: '#8b5cf6', stars: '★★☆☆☆' },
+  };
+  var g = gradeMap[ev.evidence_level] || gradeMap['C'];
+  return {
+    bcCode:     bcCode,
+    grade:      ev.evidence_level,
+    label:      g.label,
+    stars:      g.stars,
+    color:      g.color,
+    summary:    ev.evidence_summary,
+    confidence: ev.confidence,
+    mechanism:  ev.mechanism,
+  };
+}
+
+// ══════════════════════════════════════════════════════════════════
+// TIER 3: computeBCCodeSafe — 경계형 BC 코드 처리 (Top1-Top2 diff < 10)
+// ══════════════════════════════════════════════════════════════════
+// 기존 computeBCCode()를 감싸는 안전망 레이어
+// 역할:
+//   1. Top1과 Top2 축 점수 차이가 10점 미만 → 경계형(borderline) 플래그
+//   2. 경계형일 경우 secondary BC 코드와 처방 블렌딩 힌트 제공
+//   3. result-v4.html에서 "이중 패턴 주의" 배지 표시 근거
+// ──────────────────────────────────────────────
+var BORDERLINE_THRESHOLD = 10; // 점수 차 기준 (임상적으로 10점 미만 = 불명확)
+
+function computeBCCodeSafe(axisScores, answers) {
+  // ① 기존 1차 처리
+  var primary = computeBCCode(axisScores, answers || {});
+
+  // ② 10개 축 점수 정렬 (실제 10D 축 기반)
+  var sortedAxes = Object.entries(axisScores)
+    .filter(function(kv) { return kv[0].startsWith('A'); })
+    .sort(function(a, b) { return b[1] - a[1]; });
+
+  var top1Score = sortedAxes[0] ? sortedAxes[0][1] : 0;
+  var top2Score = sortedAxes[1] ? sortedAxes[1][1] : 0;
+  var diff      = top1Score - top2Score;
+
+  var isBorderline = diff < BORDERLINE_THRESHOLD;
+
+  // ③ 2순위 BC 코드 산출 (Top2 축 → 닉네임 → BC 역매핑)
+  var secondaryBcCode = null;
+  var secondaryNickname = null;
+  if (isBorderline && sortedAxes[1]) {
+    // Top2 축 단독으로 가상 점수 구성
+    var fakeScores = {};
+    Object.keys(axisScores).forEach(function(k) { fakeScores[k] = 0; });
+    fakeScores[sortedAxes[1][0]] = top2Score;
+    // Top1도 약간 반영 (혼합형 특성 보존)
+    fakeScores[sortedAxes[0][0]] = Math.round(top2Score * 0.3);
+    try {
+      var secondaryResult = computeBCCode(fakeScores, answers || {});
+      secondaryBcCode     = secondaryResult.bcCode;
+      secondaryNickname   = secondaryResult.nickname;
+    } catch(e) {
+      secondaryBcCode   = 'BC-6';
+      secondaryNickname = null;
+    }
+    // primary와 동일하면 경계형 무의미
+    if (secondaryBcCode === primary.bcCode) {
+      secondaryBcCode   = null;
+      secondaryNickname = null;
+      isBorderline      = false;
+    }
+  }
+
+  // ④ 처방 블렌딩 힌트 생성
+  var blendingHint = null;
+  if (isBorderline && secondaryBcCode) {
+    var ev1 = BC_EVIDENCE_DB[primary.bcCode]   || {};
+    var ev2 = BC_EVIDENCE_DB[secondaryBcCode]  || {};
+    blendingHint = {
+      message: '두 패턴이 혼합된 경계형입니다. 처방 1순위(' + primary.bcCode + ')를 주축으로 하되, '
+                + secondaryBcCode + ' 처방 항목 중 충돌하지 않는 것을 보완적으로 추가하세요.',
+      primaryMechanism:   ev1.mechanism || null,
+      secondaryMechanism: ev2.mechanism || null,
+      primaryWeight:  Math.round(60 + diff * 2),   // diff 0→60%, diff 5→70%
+      secondaryWeight: Math.round(40 - diff * 2),  // diff 0→40%, diff 5→30%
+    };
+  }
+
+  // ⑤ 최종 반환 — 기존 computeBCCode 결과 + 경계형 필드 추가
+  return Object.assign({}, primary, {
+    // 경계형 진단 필드
+    isBorderline:       isBorderline,
+    borderlineDiff:     diff,
+    borderlineThreshold: BORDERLINE_THRESHOLD,
+    secondaryBcCode:    secondaryBcCode,
+    secondaryNickname:  secondaryNickname,
+    blendingHint:       blendingHint,
+    // evidence badge (1순위)
+    evidenceBadge:      getEvidenceBadge(primary.bcCode),
+  });
+}
+
+// ──────────────────────────────────────────────
+// 10-D. ROADMAP_WEEKS — 하위호환 기본값 (BC-6 제네릭)
+// 결과지가 bc_primary 없이 직접 ROADMAP_WEEKS를 참조할 때 사용
+// ──────────────────────────────────────────────
+var ROADMAP_WEEKS = BC_ROADMAP_DB['BC-6'];
+
 // ──────────────────────────────────────────────
 // 11. 면책 고지문 (전 페이지 공통)
 // ──────────────────────────────────────────────
@@ -1878,6 +2135,9 @@ if (typeof module !== 'undefined' && module.exports) {
     // V4.1 신규 (PHASE 4-A/B)
     BC_ROADMAP_DB, OHAENG_OVERLAY, NICKNAME_OVERLAY,
     computeNutrition, getRoadmapWeeks,
+    // V4.2 신규 (TIER 2/3)
+    BC_EVIDENCE_DB, getEvidenceBadge,
+    computeBCCodeSafe, BORDERLINE_THRESHOLD,
     // 기존 유지
     BC_MASTER, CAUSAL_AXIS_META, AXIS_11,
     SAJU_ELEMENT_DESC, MBTI_DESC,

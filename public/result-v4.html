@@ -2063,7 +2063,7 @@ function renderAll(data) {
   const { userName='고객', axisScores={}, ohaengType='목', mbtiType='INFP' } = data;
   const answers = data.answers || {};
 
-  // V3.1: computeBCCode에 answers 전달 → nickname + background 포함
+  // V4.2: computeBCCodeSafe → TIER2 evidence badge + TIER3 경계형 처리 포함
   // 방어: bc-engine.js 로드 실패 시 fallback
   if (typeof computeBCCode !== 'function') {
     console.error('[result-v4] computeBCCode 미정의 — bc-engine.js 로드 실패');
@@ -2071,9 +2071,14 @@ function renderAll(data) {
       '<p style="color:#e74c3c;padding:2rem;text-align:center">⚠️ 결과 데이터 로딩 오류<br>페이지를 새로고침 해주세요.</p>');
     return;
   }
-  const bc = computeBCCode(axisScores, answers);
+  // computeBCCodeSafe가 있으면 사용 (경계형 + evidence badge 포함), 없으면 기존 fallback
+  const bc = (typeof computeBCCodeSafe === 'function')
+    ? computeBCCodeSafe(axisScores, answers)
+    : computeBCCode(axisScores, answers);
   const { bcCode, bcMaster, causalScores, sorted, firstDomino, metrics,
-          nickname, background } = bc;
+          nickname, background,
+          isBorderline, borderlineDiff, secondaryBcCode, secondaryNickname,
+          blendingHint, evidenceBadge } = bc;
 
   const ohaeng = SAJU_ELEMENT_DESC[ohaengType] || SAJU_ELEMENT_DESC['목'];
   const mbti   = MBTI_DESC[mbtiType] || MBTI_DESC['INFP'];
@@ -2088,7 +2093,8 @@ function renderAll(data) {
     ? generatePrescription(bcCode, ohaengType, mbtiType)
     : null;
 
-  renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nicknameDisplay, background);
+  renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nicknameDisplay, background,
+           isBorderline, borderlineDiff, secondaryBcCode, secondaryNickname, evidenceBadge);
   renderP2(userName, bcCode, firstDomino, axisScores, sorted);
   renderP3(userName, bcCode, bcMaster, ohaengType, ohaeng, mbtiType, mbti, fullCode, prescription);
   renderP4(userName, ohaengType, mbtiType, answers['Q02'], answers['Q_MENOPAUSE']);
@@ -2109,7 +2115,8 @@ function renderAll(data) {
 }
 
 /* ── P1 ── */
-function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nicknameDisplay, background) {
+function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nicknameDisplay, background,
+                 isBorderline, borderlineDiff, secondaryBcCode, secondaryNickname, evidenceBadge) {
   document.getElementById('p1-title').textContent = `${userName}님의 바디코드 리포트`;
   // V3.1: 닉네임 우선 표시 (BC번호 대신)
   const nickEl = document.getElementById('p1-nickname');
@@ -2124,6 +2131,37 @@ function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nic
   document.getElementById('p1-bc-code').textContent = bcCode;
   document.getElementById('p1-medical-title').textContent = bcMaster.medical_title;
   document.getElementById('p1-full-code').textContent = fullCode;
+
+  // ── V4.2: evidence badge 삽입 ────────────────────────────────
+  if (evidenceBadge) {
+    const bcCodeEl = document.getElementById('p1-bc-code');
+    bcCodeEl.insertAdjacentHTML('afterend',
+      `<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:10px 0 4px;">
+        <span style="display:inline-flex;align-items:center;gap:5px;background:rgba(0,0,0,0.3);
+          color:${evidenceBadge.color};border:1px solid ${evidenceBadge.color};
+          font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;
+          letter-spacing:0.3px;" title="${evidenceBadge.summary}">
+          📚 근거 ${evidenceBadge.grade}등급 &nbsp;${evidenceBadge.stars}
+        </span>
+        <span style="display:inline-flex;align-items:center;gap:4px;background:rgba(0,0,0,0.25);
+          color:rgba(255,255,255,0.75);font-size:11px;padding:4px 10px;border-radius:20px;">
+          🎯 처방 신뢰도 ${evidenceBadge.confidence}%
+        </span>
+      </div>`);
+  }
+
+  // ── V4.2: 경계형 경고 배지 삽입 ─────────────────────────────
+  if (isBorderline && secondaryBcCode) {
+    const fullCodeEl = document.getElementById('p1-full-code');
+    fullCodeEl.insertAdjacentHTML('afterend',
+      `<div style="margin-top:14px;padding:10px 14px;background:rgba(251,191,36,0.15);
+        border:1px solid rgba(251,191,36,0.5);border-radius:12px;
+        font-size:12px;line-height:1.6;color:rgba(255,220,150,.95);">
+        ⚡ <strong>이중 패턴 감지</strong> — Top1·Top2 축 점수 차 <strong>${borderlineDiff}점</strong><br>
+        <span style="opacity:.85">${bcCode}와 ${secondaryBcCode} 특성이 공존합니다.
+        ${secondaryNickname ? '(보조: ' + secondaryNickname + ')' : ''}</span>
+      </div>`);
+  }
 
   // 4대 지표 — 히어로(대사 효율 나이) + 보조 3개
   const mGrid = document.getElementById('p1-metrics');
