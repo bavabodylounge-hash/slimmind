@@ -290,6 +290,7 @@
         <div class="nav-item" data-page="guide-consultant"><i class="fas fa-book-open"></i> 컨설턴트 이용법</div>
         <div class="nav-item" data-page="guide-b2b"><i class="fas fa-store"></i> B2B 파트너 이용법</div>
         <div class="nav-section-label">데이터</div>
+        <div class="nav-item" data-page="diagnosis-results"><i class="fas fa-clipboard-list" style="color:#b5452e"></i> 바디코드 진단 결과지</div>
         <div class="nav-item" data-page="results"><i class="fas fa-file-medical"></i> 고객 결과 관리</div>
         <div class="nav-item" data-page="bc-codes"><i class="fas fa-dna"></i> BC코드 처방 편집</div>
         <div class="nav-section-label">바디코드</div>
@@ -860,7 +861,7 @@ document.querySelectorAll('.nav-item').forEach(el => {
 function navigateTo(page) {
   currentPage = page;
   document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.page === page));
-  const titles = { dashboard:'대시보드', consultants:'컨설턴트 관리', 'b2b-partners':'B2B 파트너 관리', 'guide-consultant':'컨설턴트 이용법', 'guide-b2b':'B2B 파트너 이용법', results:'고객 결과 관리', 'bc-codes':'BC코드 처방 편집', settings:'설정', 'kakao-settings':'카카오 설정', 'monthly-report':'월간 AI 리포트' };
+  const titles = { dashboard:'대시보드', consultants:'컨설턴트 관리', 'b2b-partners':'B2B 파트너 관리', 'guide-consultant':'컨설턴트 이용법', 'guide-b2b':'B2B 파트너 이용법', 'diagnosis-results':'바디코드 진단 결과지', results:'고객 결과 관리', 'bc-codes':'BC코드 처방 편집', settings:'설정', 'kakao-settings':'카카오 설정', 'monthly-report':'월간 AI 리포트' };
   document.getElementById('topbar-title').textContent = titles[page] || page;
   const body = document.getElementById('page-body');
   body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted)"><i class="fas fa-circle-notch fa-spin fa-2x"></i></div>';
@@ -869,6 +870,7 @@ function navigateTo(page) {
   else if (page === 'b2b-partners') loadB2BPartners();
   else if (page === 'guide-consultant') loadGuideConsultant();
   else if (page === 'guide-b2b') loadGuideB2B();
+  else if (page === 'diagnosis-results') loadDiagnosisResults();
   else if (page === 'results') loadResults();
   else if (page === 'bc-codes') loadBcCodes();
   else if (page === 'bc-library') loadBcLibrary();
@@ -1351,6 +1353,119 @@ function copyInviteLink(code) {
 
 function exportCsv() {
   toast('CSV 내보내기 기능은 준비 중입니다.', 'default');
+}
+
+// ═════════════════════════════════════════════
+//  바디코드 진단 결과지 (diagnosis_results 테이블)
+// ═════════════════════════════════════════════
+const DIAG_AXIS_NAMES = { A01:'인슐린·내장', A02:'림프·순환', A03:'호르몬·대사', A04:'근감소', A05:'소화·장', A06:'골격·자세', A07:'스트레스', A08:'심리식이', A09:'대사위험', A10:'유전기질' };
+const DIAG_BC_LABELS = {
+  A01:'🧬 아빠체형·혈당형', A02:'🐘 코끼리다리·하체형', A03:'🔄 호르몬·갱년기형',
+  A04:'🐸 올챙이배·근감소형', A05:'🎈 가스풍선형', A06:'🐢 거북목·골격형',
+  A07:'🦉 야식부엉이형', A08:'🫗 배부름마비형', A09:'🚨 대사증후군형', A10:'🧬 유전기질형'
+};
+const DIAG_REGION_COLORS = { '복부':'#b5452e', '하체':'#2f7d8c', '상체':'#5a6e3a', '전신':'#5b4a86' };
+const DIAG_OHAENG_COLORS = { '목형':'#5a6e3a', '화형':'#b5452e', '토형':'#c98a3c', '금형':'#5b4a86', '수형':'#2f7d8c' };
+
+async function loadDiagnosisResults(search = '', bc = '', region = '', ohaeng = '') {
+  let url = '/admin/diagnosis-results?limit=200';
+  if (search) url += `&search=${encodeURIComponent(search)}`;
+  if (bc)     url += `&bc=${encodeURIComponent(bc)}`;
+  if (region) url += `&region=${encodeURIComponent(region)}`;
+  if (ohaeng) url += `&ohaeng=${encodeURIComponent(ohaeng)}`;
+  const data = await api('GET', url);
+  if (!data) return;
+
+  const rows = (data.results || []).map(r => {
+    const top3 = (() => { try { return JSON.parse(r.top3_axes||'[]'); } catch { return []; } })();
+    const top3Badges = top3.map(ax => `<span style="font-size:10px;background:#f6e3df;color:#b5452e;border-radius:4px;padding:1px 5px;font-weight:700">${ax}</span>`).join(' ');
+    const regionColor = DIAG_REGION_COLORS[r.region] || '#888';
+    const ohaengColor = DIAG_OHAENG_COLORS[r.ohaeng_type] || '#888';
+    const dateStr = r.created_at ? r.created_at.slice(0,16).replace('T',' ') : '-';
+    return `
+      <tr>
+        <td><code style="font-size:11px;color:#888">${(r.id||'').slice(0,12)}…</code></td>
+        <td style="font-weight:600">${r.user_name || '익명'}</td>
+        <td>
+          <div style="font-size:12px;font-weight:700;color:#1a1a17">${r.bc_nickname || '-'}</div>
+          <div style="font-size:11px;color:#888;margin-top:2px">${top3Badges}</div>
+        </td>
+        <td>
+          <span style="font-size:11px;font-weight:700;color:${regionColor};background:${regionColor}18;border-radius:5px;padding:2px 7px">${r.region||'-'}</span>
+          ${r.texture ? `<span style="font-size:11px;color:#888;margin-left:4px">${r.texture}</span>` : ''}
+        </td>
+        <td>
+          ${r.ohaeng_type ? `<span style="font-size:11px;font-weight:700;color:${ohaengColor};background:${ohaengColor}18;border-radius:5px;padding:2px 7px">${r.ohaeng_type}</span>` : '<span style="color:var(--muted);font-size:12px">-</span>'}
+          ${r.mbti_full ? `<span style="font-size:11px;color:#888;margin-left:4px">${r.mbti_full}</span>` : ''}
+        </td>
+        <td style="font-size:12px;color:var(--muted)">${r.ref_code ? `<code style="font-size:11px;background:#EFF6FF;color:#1D4ED8;padding:2px 6px;border-radius:4px">${r.ref_code}</code>` : '-'}</td>
+        <td style="color:var(--muted);font-size:12px">${dateStr}</td>
+        <td style="white-space:nowrap">
+          <a href="/result-v4.html?id=${r.id}" target="_blank" class="btn btn-primary btn-sm" style="background:#b5452e;border-color:#b5452e">결과지</a>
+        </td>
+      </tr>`;
+  }).join('');
+
+  const bcOpts = Object.keys(DIAG_AXIS_NAMES).map(k => `<option value="${k}">${k} ${DIAG_AXIS_NAMES[k]}</option>`).join('');
+  const regionOpts = ['복부','하체','상체','전신'].map(r => `<option value="${r}">${r}</option>`).join('');
+  const ohaengOpts = ['목형','화형','토형','금형','수형'].map(o => `<option value="${o}">${o}</option>`).join('');
+
+  document.getElementById('page-body').innerHTML = `
+    <div style="background:linear-gradient(135deg,#b5452e15,#c98a3c10);border:1px solid #b5452e33;border-radius:14px;padding:18px 20px;margin-bottom:18px">
+      <div style="font-size:16px;font-weight:800;color:#b5452e;margin-bottom:4px">🔬 바디코드 진단 결과지 (V4.1)</div>
+      <div style="font-size:13px;color:#7c776b">설문 완료 후 저장된 진단 결과지. result-v4.html 기반 — DISP 기질까지 포함한 신규 파이프라인</div>
+    </div>
+    <div class="filter-row" style="flex-wrap:wrap;gap:8px;margin-bottom:12px">
+      <input type="text" id="dr-search" placeholder="이름, ID, 닉네임 검색..." style="width:200px"
+        value="${search}"
+        onkeydown="if(event.key==='Enter') loadDiagnosisResults(this.value, document.getElementById('dr-bc').value, document.getElementById('dr-region').value, document.getElementById('dr-ohaeng').value)">
+      <select id="dr-bc" onchange="loadDiagnosisResults(document.getElementById('dr-search').value, this.value, document.getElementById('dr-region').value, document.getElementById('dr-ohaeng').value)">
+        <option value="">전체 BC축</option>${bcOpts}
+      </select>
+      <select id="dr-region" onchange="loadDiagnosisResults(document.getElementById('dr-search').value, document.getElementById('dr-bc').value, this.value, document.getElementById('dr-ohaeng').value)">
+        <option value="">전체 부위</option>${regionOpts}
+      </select>
+      <select id="dr-ohaeng" onchange="loadDiagnosisResults(document.getElementById('dr-search').value, document.getElementById('dr-bc').value, document.getElementById('dr-region').value, this.value)">
+        <option value="">전체 오행</option>${ohaengOpts}
+      </select>
+      <button class="btn btn-ghost" onclick="loadDiagnosisResults(document.getElementById('dr-search').value, document.getElementById('dr-bc').value, document.getElementById('dr-region').value, document.getElementById('dr-ohaeng').value)">
+        <i class="fas fa-sync"></i> 조회
+      </button>
+      <button class="btn btn-ghost" onclick="loadDiagnosisResults()" style="color:#888">
+        <i class="fas fa-times"></i> 초기화
+      </button>
+    </div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:12px">
+      조회 <strong style="color:var(--text)">${data.results.length}건</strong>
+      <span style="margin-left:10px;color:#aaa">/ 전체 ${data.total}건</span>
+    </div>
+    <div class="card" style="padding:0">
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>결과 ID</th>
+              <th>이름</th>
+              <th>바디코드 닉네임</th>
+              <th>부위·촉감</th>
+              <th>오행·MBTI</th>
+              <th>레퍼럴</th>
+              <th>완료일</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows || '<tr><td colspan="8"><div class="empty-state"><i class="fas fa-clipboard-list"></i><p>진단 결과지가 없습니다</p><p style="font-size:12px;color:var(--muted)">설문을 완료하면 여기에 나타납니다</p></div></td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+  // 필터 값 복원
+  if (search)  { const el = document.getElementById('dr-search');  if(el) el.value = search; }
+  if (bc)      { const el = document.getElementById('dr-bc');      if(el) el.value = bc; }
+  if (region)  { const el = document.getElementById('dr-region');  if(el) el.value = region; }
+  if (ohaeng)  { const el = document.getElementById('dr-ohaeng');  if(el) el.value = ohaeng; }
 }
 
 // ═════════════════════════════════════════════

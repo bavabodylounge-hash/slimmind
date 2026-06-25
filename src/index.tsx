@@ -2817,4 +2817,55 @@ app.get('/api/v1/diagnosis/:id', async (c) => {
   }
 })
 
+// ════════════════════════════════════════════════════════
+//  GET /api/admin/diagnosis-results — MASTER 전용, 바디코드 진단 결과지 목록
+// ════════════════════════════════════════════════════════
+app.get('/api/admin/diagnosis-results', requireRole('MASTER'), async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not configured' }, 500)
+
+  try {
+    const search = c.req.query('search') || ''
+    const bc = c.req.query('bc') || ''
+    const region = c.req.query('region') || ''
+    const ohaeng = c.req.query('ohaeng') || ''
+    const limit = Math.min(parseInt(c.req.query('limit') || '200'), 500)
+
+    let query = 'SELECT id, user_name, bc_nickname, bc_primary, bc_secondary, top3_axes, region, texture, ohaeng_type, mbti_full, ref_code, completed_at, created_at FROM diagnosis_results WHERE 1=1'
+    const params: any[] = []
+
+    if (search) {
+      query += ' AND (user_name LIKE ? OR id LIKE ? OR bc_nickname LIKE ?)'
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`)
+    }
+    if (bc) {
+      query += ' AND bc_primary = ?'
+      params.push(bc)
+    }
+    if (region) {
+      query += ' AND region = ?'
+      params.push(region)
+    }
+    if (ohaeng) {
+      query += ' AND ohaeng_type = ?'
+      params.push(ohaeng)
+    }
+
+    query += ' ORDER BY created_at DESC LIMIT ?'
+    params.push(limit)
+
+    const stmt = db.prepare(query)
+    const result = await stmt.bind(...params).all<any>()
+
+    // 총 건수 집계
+    const countResult = await db.prepare('SELECT COUNT(*) as cnt FROM diagnosis_results').first<any>()
+    const total = countResult?.cnt || 0
+
+    return c.json({ results: result.results, total })
+  } catch (e) {
+    console.error('[admin/diagnosis-results GET]', e)
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
 export default app

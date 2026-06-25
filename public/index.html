@@ -1541,12 +1541,6 @@ function goBack(){
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
-function s2progress(){
-  const done=Object.keys(stage2Answers).length;
-  document.getElementById('pfill').style.width=(done/14*100)+'%';
-  document.getElementById('pstep').textContent=`2차 배경 · ${done} / 14`;
-}
-
 /* ===== 중간 정산 ===== */
 function goRecap(){
   document.getElementById('stage2').style.display='none';
@@ -1718,63 +1712,150 @@ function showLiveToast(){
 }
 </script>
 <script>
-/* ===== Part 5-C : stage4Questions (4문항) + goStage4 + s4pick ===== */
+/* ===== Part 5-C : stage4Questions (동적 갈림길) + goStage4 + s4pick ===== */
 
-const stage4Questions=[
-  {title:"딱 하나만 더. 밥 먹고 2시간 뒤, 오히려 더 배고프고 손이 떨리나요?",
-   hint:"이 질문 하나가 '유전 아빠체형'과 '혈당 롤러형'을 가릅니다. 혈당이 급락하면 처방이 완전히 달라져요.",
-   opts:["네, 2시간 뒤 더 허기지고 떨려요","그냥 배만 고파요","별로 안 그래요"]},
-  {title:"그 살이 찐 게, 특정 '사건' 이후부터인가요? 아니면 늘 그랬나요?",
-   hint:"약물·출산 같은 사건이 방아쇠였다면 '강제 축적형', 평생이면 '체질형'. 같은 물렁배도 원인이 정반대예요.",
-   opts:["특정 사건(약물·출산·수술) 이후","스트레스 받은 시기 이후","원래 늘 이랬어요"]},
-  {title:"가장 신경 쓰이는 그 부위, 손으로 꽉 쥐면 유독 차갑게 느껴지나요?",
-   hint:"차가우면 순환·냉증형, 따뜻하면 유전·호르몬형. 손끝에 닿는 온도 하나로 갈립니다.",
-   opts:["네, 유독 차가워요","비슷해요","오히려 따뜻해요"]},
-  {title:"지금까지 답하면서, '어? 이거 완전 내 얘기네' 싶었던 순간이 있었나요?",
-   hint:"당신이 가장 강하게 반응한 지점이 곧 당신의 핵심 원인입니다. 그 직감이 마지막 가중치를 정합니다.",
-   opts:["혈당·식후 졸음 부분","붓기·순환 부분","스트레스·야식 부분","호르몬·갱년기 부분"]},
-];
+/*
+ * 4차 결정질문 라이브러리 — 경합 축 쌍별 갈림질문
+ * pairKey: "A01_A09" 형태 (작은 번호 앞)
+ * score: 해당 질문을 통해 가중되는 축 (응답 idx → axis)
+ */
+const STAGE4_BANK={
+  // ─ A01 vs A09 : 인슐린 vs 대사위험 ─
+  A01_A09:{
+    title:"밥 먹고 2시간 뒤, 오히려 더 배고프고 손이 떨리나요?",
+    hint:"'혈당 급락'이면 A01 인슐린형, '늘 피곤+무기력'이면 A09 대사위험형. 이 질문 하나가 처방을 완전히 가릅니다.",
+    opts:["네, 2시간 뒤 더 허기지고 떨려요","그냥 피곤하고 무기력해요","별로 안 그래요"],
+    scores:{0:'A01',1:'A09',2:null}
+  },
+  // ─ A01 vs A07 : 인슐린 vs 스트레스 ─
+  A01_A07:{
+    title:"과식하는 게 '배가 고파서'인가요, '스트레스 받아서'인가요?",
+    hint:"인슐린형은 진짜 공복감, 스트레스형은 감정 때문에 먹어요. 같은 폭식도 원인이 정반대예요.",
+    opts:["배가 진짜 고파서 먹어요","스트레스·감정 때문에 먹어요","둘 다 비슷해요"],
+    scores:{0:'A01',1:'A07',2:null}
+  },
+  // ─ A02 vs A06 : 순환 vs 골격 ─
+  A02_A06:{
+    title:"가장 신경 쓰이는 부위, 꽉 쥐면 유독 차갑게 느껴지나요?",
+    hint:"차가우면 A02 순환·림프형, 따뜻하고 뭉쳐있으면 A06 골격·자세형. 손끝 온도가 처방을 가릅니다.",
+    opts:["네, 유독 차가워요","비슷해요","오히려 따뜻하고 뭉쳐있어요"],
+    scores:{0:'A02',1:null,2:'A06'}
+  },
+  // ─ A02 vs A03 : 순환 vs 호르몬 ─
+  A02_A03:{
+    title:"살이 찐 게 특정 '사건(임신·완경·약물)' 이후인가요, 아니면 원래 늘 그랬나요?",
+    hint:"사건 이후라면 A03 호르몬형, 원래부터라면 A02 순환·체질형. 같은 하체 셀룰라이트도 원인이 다릅니다.",
+    opts:["완경·임신·출산·약물 이후부터요","스트레스 받은 시기 이후요","원래 늘 이랬어요"],
+    scores:{0:'A03',1:'A03',2:'A02'}
+  },
+  // ─ A03 vs A07 : 호르몬 vs 스트레스 ─
+  A03_A07:{
+    title:"몸이 가장 힘들 때, 어떤 증상이 먼저 오나요?",
+    hint:"갱년기·생리 불규칙·피부 변화면 A03 호르몬형, 불면·두근거림·야식 충동이면 A07 스트레스형.",
+    opts:["생리 불규칙·갱년기 증상·피부 변화","불면·야식 충동·두근거림","둘 다 비슷해요"],
+    scores:{0:'A03',1:'A07',2:null}
+  },
+  // ─ A07 vs A08 : 스트레스 vs 심리식이 ─
+  A07_A08:{
+    title:"야식이나 폭식, '배가 고파서'인가요 '먹어야 마음이 진정되어서'인가요?",
+    hint:"스트레스 코르티솔형(A07)은 신체적 허기, 심리식이형(A08)은 감정 해소를 위해 먹어요.",
+    opts:["신체적으로 허기져서 먹어요","먹어야 마음이 진정돼요","습관적으로 먹어요"],
+    scores:{0:'A07',1:'A08',2:null}
+  },
+  // ─ A04 vs A06 : 근감소 vs 골격 ─
+  A04_A06:{
+    title:"운동을 하면 몸이 어떻게 변하던가요?",
+    hint:"근력운동 후 부피가 줄었으면 A04 근감소형, 자세 교정 후 라인이 달라졌으면 A06 골격형.",
+    opts:["근력운동 후 부피가 줄었어요","자세 교정·스트레칭으로 변했어요","운동 효과를 별로 못 봤어요"],
+    scores:{0:'A04',1:'A06',2:null}
+  },
+  // ─ A09 vs A10 : 대사위험 vs 유전기질 ─
+  A09_A10:{
+    title:"가족 중 당뇨·고혈압·대사증후군이 있나요?",
+    hint:"가족력 있으면 A10 유전기질형이 강화되고, 본인 직접 증상이 있으면 A09 대사위험형이 우선입니다.",
+    opts:["가족 중 당뇨·고혈압 있어요","본인이 당뇨전단계·고혈압 진단받았어요","가족력도 본인 진단도 없어요"],
+    scores:{0:'A10',1:'A09',2:null}
+  },
+  // ─ 기본 공통 질문 (경합이 없을 때 항상 출력) ─
+  DEFAULT:{
+    title:"지금까지 답하면서, '어? 이거 완전 내 얘기네' 싶었던 순간이 있었나요?",
+    hint:"당신이 가장 강하게 반응한 지점이 곧 핵심 원인입니다. 그 직감이 마지막 가중치를 정합니다.",
+    opts:["혈당·식후 졸음 부분","붓기·순환 부분","스트레스·야식 부분","호르몬·갱년기 부분"],
+    scores:{0:'A01',1:'A02',2:'A07',3:'A03'}
+  }
+};
+
 const stage4Answers={};
+let activeStage4Qs=[];   // 실제 출력할 질문 목록
 
-// DOM 렌더 (questions4 wrap)
-(function renderStage4(){
+/* 1·2등 축 차이 ≤ 2이면 경합 감지 → 해당 쌍의 갈림질문 추가 */
+function buildStage4Questions(scores){
+  const ranked=Object.entries(scores).sort((a,b)=>b[1]-a[1]);
+  const [ax1,sc1]=ranked[0];
+  const [ax2,sc2]=ranked[1]||[null,0];
+  const gap=sc1-sc2;
+
+  const qs=[];
+
+  // 경합 감지 (차이 ≤ 2)
+  if(gap<=2 && ax2){
+    const pairKey=[ax1,ax2].sort().join('_');
+    if(STAGE4_BANK[pairKey]) qs.push({key:pairKey,...STAGE4_BANK[pairKey]});
+  }
+
+  // 항상 공통 직감 질문 1개 추가
+  qs.push({key:'DEFAULT',...STAGE4_BANK.DEFAULT});
+
+  return qs;
+}
+
+function renderStage4Dynamic(qs){
   const sq4wrap=document.getElementById('questions4');
   if(!sq4wrap) return;
-  stage4Questions.forEach((q,i)=>{
+  sq4wrap.innerHTML='';
+  qs.forEach((q,i)=>{
     const card=document.createElement('div');card.className='q';card.id='s4q'+i;
     card.style.borderColor='#1a1a17';card.style.borderWidth='1.5px';
     const opts=q.opts.map((o,oi)=>`<div class="opt" onclick="s4pick(${i},${oi},this)"><span class="dot"></span><span class="otext"><b>${o}</b></span></div>`).join('');
-    card.innerHTML=`<div class="qtop"><span class="qno" style="background:#1a1a17">결정 ${i+1}</span><span class="qlv">갈림길</span></div>
+    const label=i===0&&qs.length>1?'갈림길 질문':'마지막 질문';
+    card.innerHTML=`<div class="qtop"><span class="qno" style="background:#1a1a17">결정 ${i+1}</span><span class="qlv">${label}</span></div>
       <div class="qtitle">${q.title}</div>
       <div class="qhint" style="background:#f0eee8;border-radius:8px;padding:8px 12px;color:#1a1a17;font-weight:500">⚖️ ${q.hint}</div>
       <div class="opts">${opts}</div>`;
     sq4wrap.appendChild(card);
   });
-})();
+}
 
 function goStage4(){
   setStageIcon(3);
   startQTimer();
+  // 현재 3차 점수 기반 동적 질문 생성
+  const preScores=scoreAxes?scoreAxes():{};
+  activeStage4Qs=buildStage4Questions(preScores);
+  renderStage4Dynamic(activeStage4Qs);
   document.getElementById('stage3').style.display='none';
   document.getElementById('stage4').style.display='block';
   document.getElementById('pfill').style.width='0%';
-  document.getElementById('pstep').textContent=`4차 결정 · 0 / ${stage4Questions.length}`;
+  document.getElementById('pstep').textContent=`4차 결정 · 0 / ${activeStage4Qs.length}`;
   window.scrollTo({top:0,behavior:'smooth'});
 }
 function s4pick(i,oi,el){
   const card=document.getElementById('s4q'+i);
   card.querySelectorAll('.opt').forEach(o=>o.classList.remove('sel'));
   el.classList.add('sel');
-  stage4Answers[i]=oi;
+  stage4Answers[i]={qi:i,oi,key:activeStage4Qs[i]?.key};
   const done=Object.keys(stage4Answers).length;
-  document.getElementById('pfill').style.width=(done/stage4Questions.length*100)+'%';
-  document.getElementById('pstep').textContent=`4차 결정 · ${done} / ${stage4Questions.length}`;
+  document.getElementById('pfill').style.width=(done/activeStage4Qs.length*100)+'%';
+  document.getElementById('pstep').textContent=`4차 결정 · ${done} / ${activeStage4Qs.length}`;
   const fn=document.getElementById('finalName');
   if(fn && userInfo.name) fn.textContent=userInfo.name+'님';
   resetQTimer();
-  if(i<stage4Questions.length-1){
+  if(i<activeStage4Qs.length-1){
     const nx=document.getElementById('s4q'+(i+1));
     setTimeout(()=>nx&&nx.scrollIntoView({behavior:'smooth',block:'center'}),400);
+  } else {
+    // 모든 4차 질문 완료 → AI 분석 화면으로 자동 전환
+    setTimeout(()=>showAnalyzing(),700);
   }
 }
 </script>
@@ -1861,13 +1942,15 @@ const CODE_RULES=[
 ];
 
 function applyDecision(scores){
-  if(stage4Answers[0]===0) scores.A01+=3;
-  if(stage4Answers[1]===0){scores.A09+=2;scores.A03+=1;}
-  if(stage4Answers[1]===1) scores.A07+=2;
-  if(stage4Answers[2]===0) scores.A02+=3;
-  if(stage4Answers[2]===2) scores.A03+=2;
-  const m={0:'A01',1:'A02',2:'A07',3:'A03'};
-  if(m[stage4Answers[3]]) scores[m[stage4Answers[3]]]+=3;
+  // 동적 stage4Answers: {i: {qi, oi, key}} 구조
+  Object.values(stage4Answers).forEach(ans=>{
+    if(!ans) return;
+    const {oi, key}=ans;
+    const bank=STAGE4_BANK[key];
+    if(!bank) return;
+    const targetAxis=bank.scores[oi];
+    if(targetAxis) scores[targetAxis]=(scores[targetAxis]||0)+3;
+  });
 }
 
 function decideCode(){
