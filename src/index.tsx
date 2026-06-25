@@ -1270,26 +1270,28 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
           try { return v ? JSON.parse(v) : fallback } catch { return fallback }
         }
         const diagResult = {
-          bc_primary:    diagRow.bc_primary,
-          bc_code:       diagRow.bc_primary,
-          user_name:     diagRow.user_name,
-          bc_nickname:   diagRow.bc_nickname,
-          axis_scores:   parseJsonSafe(diagRow.axis_scores, {}),
-          top_axes:      parseJsonSafe(diagRow.top3_axes, []),
-          axis_primary:  parseJsonSafe(diagRow.top3_axes, [null])[0] || null,
-          ohaeng_type:   diagRow.ohaeng_type,
-          mbti:          diagRow.mbti_full,
-          region:        diagRow.region,
-          texture:       diagRow.texture,
-          bg_filter:     diagRow.bg_filter || '',
-          ref_code:      diagRow.ref_code,
-          created_at:    diagRow.created_at,
-          answers:       parseJsonSafe(diagRow.raw_answers, null),
-          disp_answers:  parseJsonSafe(diagRow.disp_answers, {}),
-          is_consultant: false,
-          is_owner:      false,
-          is_b2b_partner: false,
-          _source:       'diagnosis_results',
+          bc_primary:      diagRow.bc_primary,
+          bc_code:         diagRow.bc_primary,
+          user_name:       diagRow.user_name,
+          bc_nickname:     diagRow.bc_nickname,
+          axis_scores:     parseJsonSafe(diagRow.axis_scores, {}),
+          top_axes:        parseJsonSafe(diagRow.top3_axes, []),
+          axis_primary:    parseJsonSafe(diagRow.top3_axes, [null])[0] || null,
+          ohaeng_type:     diagRow.ohaeng_type,
+          mbti:            diagRow.mbti_full,
+          region:          diagRow.region,
+          texture:         diagRow.texture,
+          bg_filter:       diagRow.bg_filter || '',
+          ref_code:        diagRow.ref_code,
+          created_at:      diagRow.created_at,
+          answers:         parseJsonSafe(diagRow.raw_answers, null),
+          disp_answers:    parseJsonSafe(diagRow.disp_answers, {}),
+          goal_weight:     diagRow.goal_weight     ?? null,
+          weight_loss_pct: diagRow.weight_loss_pct ?? null,
+          is_consultant:   false,
+          is_owner:        false,
+          is_b2b_partner:  false,
+          _source:         'diagnosis_results',
         }
         // JSON.stringify 직렬화 실패 방어
         let injectedData = '{}'
@@ -2780,6 +2782,7 @@ app.post('/api/v1/diagnosis', async (c) => {
       user_name, bc_nickname, bc_primary, bc_secondary,
       top3_axes, axis_scores, region, texture, bg_filter,
       ohaeng_type, mbti_full, disp_answers, raw_answers,
+      goal_weight, weight_loss_pct,
       ref_code, completed_at
     } = body
 
@@ -2794,14 +2797,15 @@ app.post('/api/v1/diagnosis', async (c) => {
     const rawAnswersJson = raw_answers ? JSON.stringify(raw_answers) : null
 
     try {
-      // raw_answers 컬럼 포함 INSERT 시도 (migration 0028 이후)
+      // goal_weight/weight_loss_pct 컬럼 포함 INSERT 시도 (migration 0030 이후)
       await db.prepare(`
         INSERT INTO diagnosis_results
           (id, user_name, bc_nickname, bc_primary, bc_secondary,
            top3_axes, axis_scores, region, texture, bg_filter,
            ohaeng_type, mbti_full, disp_answers, raw_answers,
+           goal_weight, weight_loss_pct,
            ref_code, completed_at, created_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
       `).bind(
         result_id,
         String(user_name || '익명'),
@@ -2817,15 +2821,19 @@ app.post('/api/v1/diagnosis', async (c) => {
         mbti_full   || null,
         disp_answers ? JSON.stringify(disp_answers) : null,
         rawAnswersJson,
+        goal_weight     != null ? Number(goal_weight)     : null,
+        weight_loss_pct != null ? Number(weight_loss_pct) : null,
         ref_code     || null,
         completed_at || now,
         now
       ).run()
     } catch (insertErr: any) {
-      // raw_answers 컬럼이 없는 경우 (migration 미적용) → 폴백 INSERT
-      if (String(insertErr).includes('no column named raw_answers') ||
+      // goal_weight 컬럼이 없는 경우 (migration 미적용) → 폴백 INSERT
+      if (String(insertErr).includes('no column named goal_weight') ||
+          String(insertErr).includes('no column named weight_loss_pct') ||
+          String(insertErr).includes('no column named raw_answers') ||
           String(insertErr).includes('table diagnosis_results has no column')) {
-        console.warn('[diagnosis POST] raw_answers 컬럼 없음 — 폴백 INSERT')
+        console.warn('[diagnosis POST] goal_weight/raw_answers 컬럼 없음 — 폴백 INSERT')
         await db.prepare(`
           INSERT INTO diagnosis_results
             (id, user_name, bc_nickname, bc_primary, bc_secondary,

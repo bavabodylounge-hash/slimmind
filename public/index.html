@@ -339,6 +339,53 @@
   .astep.done .astepic:after{content:"✓";position:absolute;inset:0;color:#fff;font-size:12px;font-weight:700;
     display:flex;align-items:center;justify-content:center}
 
+  /* ===== 제출 완료 대기 화면 ===== */
+  #waitScreen{display:none;padding:0 20px;min-height:100dvh;background:var(--paper);}
+  .wait-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;
+    min-height:100dvh;padding:40px 0 80px;text-align:center;max-width:380px;margin:0 auto;}
+  .wait-logo{font-size:13px;font-weight:800;letter-spacing:.18em;color:var(--muted);margin-bottom:40px;}
+  .wait-check-ring{width:88px;height:88px;border-radius:50%;border:3px solid var(--c3);
+    display:flex;align-items:center;justify-content:center;margin:0 auto 28px;
+    background:var(--card);box-shadow:0 0 0 8px rgba(181,69,46,.06);}
+  .wait-check-icon{font-size:36px;}
+  .wait-title{font-size:24px;font-weight:800;letter-spacing:-.02em;color:var(--ink);line-height:1.35;margin-bottom:12px;}
+  .wait-title span{color:var(--c3);}
+  .wait-sub{font-size:15px;color:var(--muted);line-height:1.7;margin-bottom:36px;word-break:keep-all;}
+  .wait-card{background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:24px 20px;margin-bottom:28px;width:100%;box-sizing:border-box;}
+  .wait-card-title{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--muted);margin-bottom:16px;}
+  .wait-step-list{display:flex;flex-direction:column;gap:12px;}
+  .wait-step{display:flex;align-items:center;gap:12px;text-align:left;}
+  .wait-step-num{width:28px;height:28px;border-radius:50%;background:var(--c3);color:#fff;
+    font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none;}
+  .wait-step-num.done{background:#5a6e3a;}
+  .wait-step-num.pending{background:var(--line);color:var(--muted);}
+  .wait-step-text{font-size:14px;font-weight:600;color:var(--ink);line-height:1.4;}
+  .wait-step-text.pending{color:var(--muted);}
+  .wait-id-box{background:var(--paper);border:1px dashed var(--line);border-radius:10px;
+    padding:12px 16px;margin-top:16px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .wait-id-label{font-size:11px;font-weight:700;color:var(--muted);}
+  .wait-id-value{font-size:12px;font-weight:700;color:var(--ink);font-family:monospace;
+    flex:1;text-align:right;word-break:break-all;}
+  .wait-ratings{display:flex;gap:6px;justify-content:center;margin-bottom:28px;}
+  .wait-rating-card{flex:1;background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:14px 10px;text-align:center;}
+  .wait-rating-num{font-size:22px;font-weight:800;color:var(--c3);}
+  .wait-rating-label{font-size:10px;color:var(--muted);font-weight:600;margin-top:2px;}
+  .wait-share-btn{width:100%;padding:16px;background:var(--c3);color:#fff;border:none;
+    border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;letter-spacing:-.01em;
+    font-family:inherit;transition:opacity .2s;}
+  .wait-share-btn:active{opacity:.85;}
+  .wait-disclaimer{font-size:11px;color:var(--muted);line-height:1.6;margin-top:20px;word-break:keep-all;}
+
+  /* 목표 감량 배지 */
+  .goal-loss-badge{display:flex;align-items:center;justify-content:center;
+    background:rgba(181,69,46,.08);border:1px solid rgba(181,69,46,.2);
+    border-radius:8px;padding:8px 14px;margin:4px 0 8px;
+    font-size:13px;font-weight:700;color:var(--c3);}
+  .goal-loss-badge span{font-size:15px;font-weight:800;}
+
   /* 다중선택 체크박스 */
   .opt.multi .dot{border-radius:5px}
   .opt.multi.sel .dot:after{border-radius:2px;inset:3px;content:"";position:absolute;background:var(--c3)}
@@ -2129,6 +2176,68 @@
   </div><!-- /wrap -->
 </div><!-- /surveyApp -->
 
+<!-- ═══ 제출 완료 대기 화면 ═══ -->
+<div id="waitScreen">
+  <div class="wait-wrap">
+    <div class="wait-logo">SLIMMIND</div>
+
+    <div class="wait-check-ring">
+      <span class="wait-check-icon">✓</span>
+    </div>
+
+    <h1 class="wait-title" id="waitTitle">분석이<br><span>완료됐습니다</span></h1>
+    <p class="wait-sub" id="waitSub">
+      담당 컨설턴트가 결과지를 직접<br>공유해드릴 예정입니다 ✉️
+    </p>
+
+    <div class="wait-card">
+      <div class="wait-card-title">결과지 전달 프로세스</div>
+      <div class="wait-step-list">
+        <div class="wait-step">
+          <div class="wait-step-num done">✓</div>
+          <div class="wait-step-text">설문 완료 &amp; 분석 데이터 저장</div>
+        </div>
+        <div class="wait-step">
+          <div class="wait-step-num" id="waitStep2">2</div>
+          <div class="wait-step-text" id="waitStep2Text">담당 컨설턴트 결과지 검토 중</div>
+        </div>
+        <div class="wait-step">
+          <div class="wait-step-num pending">3</div>
+          <div class="wait-step-text pending">카카오톡·문자로 결과지 링크 전송</div>
+        </div>
+      </div>
+      <div class="wait-id-box">
+        <span class="wait-id-label">내 분석 코드</span>
+        <span class="wait-id-value" id="waitResultId">—</span>
+      </div>
+    </div>
+
+    <div class="wait-ratings">
+      <div class="wait-rating-card">
+        <div class="wait-rating-num">4.9</div>
+        <div class="wait-rating-label">★ 고객 만족도</div>
+      </div>
+      <div class="wait-rating-card">
+        <div class="wait-rating-num">12주</div>
+        <div class="wait-rating-label">체형 변화 프로그램</div>
+      </div>
+      <div class="wait-rating-card">
+        <div class="wait-rating-num">22종</div>
+        <div class="wait-rating-label">바디코드 유형</div>
+      </div>
+    </div>
+
+    <button class="wait-share-btn" onclick="waitCopyLink()">
+      📋 내 분석 코드 복사하기
+    </button>
+
+    <p class="wait-disclaimer">
+      결과지는 담당 컨설턴트가 직접 검토 후 전달드립니다.<br>
+      문의: 카카오톡 채널 @슬림마인드
+    </p>
+  </div>
+</div>
+
 <!-- ═══ Part 6: DISP 기질 10문항 모달 ═══ -->
 <div class="disp-overlay" id="dispOverlay">
   <div class="disp-sheet" id="dispSheet">
@@ -3308,9 +3417,14 @@ stage2Questions.forEach(q=>{
   if(q.input==='spec'){
     body=`<div class="specbox">
       <div class="sliderrow"><div class="sliderlabel"><span>키</span><b id="kh_v_${q.no}">165 cm</b></div>
-        <input type="range" min="140" max="200" value="165" class="slider" oninput="document.getElementById('kh_v_${q.no}').textContent=this.value+' cm';s2input(${q.no})"></div>
+        <input type="range" min="140" max="200" value="165" class="slider" id="kh_r_${q.no}" oninput="document.getElementById('kh_v_${q.no}').textContent=this.value+' cm';s2input(${q.no})"></div>
       <div class="sliderrow"><div class="sliderlabel"><span>현재 체중</span><b id="kw_v_${q.no}">65 kg</b></div>
-        <input type="range" min="40" max="150" value="65" class="slider" oninput="document.getElementById('kw_v_${q.no}').textContent=this.value+' kg';s2input(${q.no})"></div>
+        <input type="range" min="40" max="150" value="65" class="slider" id="kw_r_${q.no}" oninput="document.getElementById('kw_v_${q.no}').textContent=this.value+' kg';updateGoalRange(${q.no});s2input(${q.no})"></div>
+      <div class="sliderrow"><div class="sliderlabel"><span>목표 체중</span><b id="kg_v_${q.no}">58 kg</b></div>
+        <input type="range" min="40" max="150" value="58" class="slider" id="kg_r_${q.no}" oninput="document.getElementById('kg_v_${q.no}').textContent=this.value+' kg';updateLossBadge(${q.no});s2input(${q.no})"></div>
+      <div class="goal-loss-badge" id="glbadge_${q.no}">
+        <span id="glpct_${q.no}">11%</span> 감량 목표 &nbsp;·&nbsp; <span id="glkg_${q.no}">7 kg</span> 줄이기
+      </div>
       <div class="specdiv">인바디 있으면 (선택)</div>
       <div class="sliderrow"><div class="sliderlabel"><span>골격근량</span><b id="km_v_${q.no}">— kg</b></div>
         <input type="range" min="15" max="50" value="27" class="slider" oninput="document.getElementById('km_v_${q.no}').textContent=this.value+' kg';s2input(${q.no})"></div>
@@ -3421,6 +3535,34 @@ function s2pick(qno,oi,el,multi){
 function s2input(qno){
   stage2Answers[qno]='input';s2progress();
   const t=document.getElementById('tease2_'+qno);if(t)t.classList.add('show');
+}
+
+/* 목표체중 감량률 배지 업데이트 */
+function updateGoalRange(qno) {
+  const curEl = document.getElementById('kw_r_' + qno);
+  const goalEl = document.getElementById('kg_r_' + qno);
+  if (!curEl || !goalEl) return;
+  const cur = +curEl.value;
+  // 목표체중 max를 현재 체중 - 1 로 제한
+  goalEl.max = Math.max(cur - 1, 40);
+  if (+goalEl.value >= cur) {
+    goalEl.value = Math.max(cur - 5, 40);
+    document.getElementById('kg_v_' + qno).textContent = goalEl.value + ' kg';
+  }
+  updateLossBadge(qno);
+}
+function updateLossBadge(qno) {
+  const curEl  = document.getElementById('kw_r_' + qno);
+  const goalEl = document.getElementById('kg_r_' + qno);
+  if (!curEl || !goalEl) return;
+  const cur  = +curEl.value;
+  const goal = +goalEl.value;
+  const diffKg  = Math.max(cur - goal, 0);
+  const diffPct = cur > 0 ? Math.round(diffKg / cur * 100) : 0;
+  const pctEl = document.getElementById('glpct_' + qno);
+  const kgEl  = document.getElementById('glkg_' + qno);
+  if (pctEl) pctEl.textContent = diffPct + '%';
+  if (kgEl)  kgEl.textContent  = diffKg + ' kg';
 }
 
 /* 허리 인치 라벨 */
@@ -4491,7 +4633,47 @@ async function postDiagnosisWithRetry(payload, maxRetry = 3) {
 }
 
 /* ─────────────────────────────────────────────────────────
-   POST /api/v1/diagnosis + result-v4.html 리다이렉트
+   대기 화면 표시 함수 — 제출 성공 후 결과지 전달 대기
+   ───────────────────────────────────────────────────────── */
+function showWaitScreen(resultId, userName) {
+  // 설문 영역 숨기기
+  const surveyApp = document.getElementById('surveyApp');
+  if (surveyApp) surveyApp.style.display = 'none';
+  // 대기 화면 표시
+  const waitEl = document.getElementById('waitScreen');
+  if (waitEl) waitEl.style.display = 'block';
+  // 이름 반영
+  const titleEl = document.getElementById('waitTitle');
+  if (titleEl) titleEl.innerHTML = `<span>${userName || '고객'}</span>님<br>분석이 완료됐습니다`;
+  // 분석 코드 표시 (앞 8자리만)
+  const idEl = document.getElementById('waitResultId');
+  if (idEl) idEl.textContent = resultId ? resultId.split('-')[0].toUpperCase() : '—';
+  // 2단계 강조 (컨설턴트 검토 중)
+  const step2 = document.getElementById('waitStep2');
+  if (step2) { step2.textContent = '⟳'; step2.style.background = 'var(--c3)'; }
+  // localStorage에 result_id 저장 (나중에 링크 받았을 때 참고용)
+  try { localStorage.setItem('sm_last_result_id', resultId); } catch(e) {}
+  // 상단으로 스크롤
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function waitCopyLink() {
+  const idEl = document.getElementById('waitResultId');
+  const code = idEl ? idEl.textContent : '';
+  const fullId = localStorage.getItem('sm_last_result_id') || '';
+  const text = fullId ? `슬림마인드 분석 코드: ${code}\n결과지: ${location.origin}/result/${fullId}` : `슬림마인드 분석 코드: ${code}`;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.querySelector('.wait-share-btn');
+      if (btn) { btn.textContent = '✓ 복사 완료!'; setTimeout(() => { btn.textContent = '📋 내 분석 코드 복사하기'; }, 2000); }
+    });
+  } else {
+    alert('분석 코드: ' + code);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
+   POST /api/v1/diagnosis + 대기 화면 전환
    (DISP 완료 또는 스킵 후 실행)
    ───────────────────────────────────────────────────────── */
 async function submitDiagnosis(dispAnswers) {
@@ -4545,30 +4727,41 @@ async function submitDiagnosis(dispAnswers) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 
   // ── 페이로드 구성 ──
+  // Q13 목표체중 / 감량률 수집
+  const _goalWtEl = document.getElementById('kg_r_13');
+  const _curWtEl  = document.getElementById('kw_r_13');
+  const _goalWt   = _goalWtEl ? parseInt(_goalWtEl.value, 10) : null;
+  const _curWt    = _curWtEl  ? parseInt(_curWtEl.value, 10)  : null;
+  const _lossPct  = (_goalWt !== null && _curWt !== null && _curWt > 0)
+    ? Math.round((_curWt - _goalWt) / _curWt * 100)
+    : null;
+
   const payload = {
-    user_name:    name,
-    bc_nickname:  f.name   || null,
-    bc_primary:   f.ax     ? f.ax.split('·')[0]       : null,
-    bc_secondary: f.ax     ? (f.ax.split('·')[1]||null): null,
-    top3_axes:    top3Axes,
-    axis_scores:  scores,
-    region:       prof.region  || null,
-    texture:      prof.texture || null,
-    bg_filter:    '',
+    user_name:       name,
+    bc_nickname:     f.name   || null,
+    bc_primary:      f.ax     ? f.ax.split('·')[0]       : null,
+    bc_secondary:    f.ax     ? (f.ax.split('·')[1]||null): null,
+    top3_axes:       top3Axes,
+    axis_scores:     scores,
+    region:          prof.region  || null,
+    texture:         prof.texture || null,
+    bg_filter:       '',
     ohaeng_type,
     mbti_full,
-    disp_answers: (dispAnswers && Object.keys(dispAnswers).length > 0) ? dispAnswers : null,
-    raw_answers:  rawAnswers,
-    ref_code:     refCode,
-    completed_at: new Date().toISOString()
+    goal_weight:     _goalWt,
+    weight_loss_pct: _lossPct,
+    disp_answers:    (dispAnswers && Object.keys(dispAnswers).length > 0) ? dispAnswers : null,
+    raw_answers:     rawAnswers,
+    ref_code:        refCode,
+    completed_at:    new Date().toISOString()
   };
 
   // ── POST (3회 재시도) ──
   const result = await postDiagnosisWithRetry(payload, 3);
 
   if (result.ok && result.result_id) {
-    // ── 성공 → result-v4.html 리다이렉트 ──
-    window.location.href = `/result-v4.html?id=${result.result_id}`;
+    // ── 성공 → 대기 화면으로 전환 (결과지는 컨설턴트가 직접 공유) ──
+    showWaitScreen(result.result_id, name);
     return;
   }
 
