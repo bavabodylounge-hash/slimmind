@@ -439,6 +439,105 @@ body{background:var(--bg);color:var(--text);min-height:100vh;}
   .timeline-track::before{left:50%;}
 }
 
+/* ===== 기능 6: 1초 공유 카드 ===== */
+/* 공유 플로팅 버튼 */
+#shareFloatBtn {
+  position: fixed; bottom: 28px; right: 20px;
+  z-index: 300;
+  width: 56px; height: 56px; border-radius: 50%;
+  background: linear-gradient(135deg, #b5452e, #e05c3a);
+  border: none; cursor: pointer;
+  box-shadow: 0 4px 20px rgba(181,69,46,.5);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+  transition: transform .2s, box-shadow .2s;
+  bottom: calc(28px + env(safe-area-inset-bottom));
+}
+#shareFloatBtn:hover { transform: scale(1.1); box-shadow: 0 6px 28px rgba(181,69,46,.65); }
+
+/* 공유 모달 오버레이 */
+#shareModal {
+  position: fixed; inset: 0; z-index: 400;
+  background: rgba(10,8,6,.75); backdrop-filter: blur(6px);
+  display: flex; align-items: flex-end; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity .3s;
+}
+#shareModal.sm-open { opacity: 1; pointer-events: auto; }
+.sm-sheet {
+  width: 100%; max-width: 480px;
+  background: #1a1510;
+  border-radius: 24px 24px 0 0;
+  padding: 20px 20px 28px;
+  padding-bottom: calc(28px + env(safe-area-inset-bottom));
+  transform: translateY(100%);
+  transition: transform .38s cubic-bezier(.2,.8,.2,1);
+}
+#shareModal.sm-open .sm-sheet { transform: translateY(0); }
+.sm-handle { width: 40px; height: 4px; background: rgba(255,255,255,.15);
+  border-radius: 2px; margin: 0 auto 18px; }
+.sm-title { font-size: 16px; font-weight: 800; color: #f5ece0;
+  text-align: center; margin-bottom: 4px; }
+.sm-sub { font-size: 12px; color: rgba(245,236,224,.45);
+  text-align: center; margin-bottom: 20px; }
+
+/* 공유 버튼 그리드 */
+.sm-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.sm-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 16px 12px; border-radius: 16px; border: none; cursor: pointer;
+  font-family: inherit; font-size: 12px; font-weight: 700;
+  min-height: 80px; transition: transform .15s, opacity .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.sm-btn:active { transform: scale(.96); opacity: .85; }
+.sm-btn .sm-bicon { font-size: 26px; line-height: 1; }
+.sm-btn-kakao { background: #fee500; color: #3c1e1e; }
+.sm-btn-copy  { background: rgba(255,255,255,.1); color: #f5ece0;
+  border: 1px solid rgba(255,255,255,.12); }
+.sm-btn-img   { background: linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045);
+  color: #fff; }
+.sm-btn-native{ background: rgba(255,255,255,.08); color: #f5ece0;
+  border: 1px solid rgba(255,255,255,.1); }
+
+/* 닫기 버튼 */
+.sm-close {
+  width: 100%; padding: 13px; border-radius: 14px;
+  background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08);
+  color: rgba(245,236,224,.5); font-size: 13px; font-weight: 700;
+  cursor: pointer; font-family: inherit; margin-top: 4px;
+}
+
+/* 공유 이미지 프리뷰 (생성 후 표시) */
+#sharePreview {
+  display: none; margin-top: 14px; text-align: center;
+}
+#sharePreview img {
+  width: 100%; border-radius: 14px;
+  box-shadow: 0 4px 24px rgba(0,0,0,.5);
+}
+.sp-hint { font-size: 11px; color: rgba(245,236,224,.35); margin-top: 8px; }
+
+/* 토스트 */
+#shareCopyToast {
+  position: fixed; left: 50%; bottom: 100px;
+  transform: translateX(-50%) translateY(16px);
+  z-index: 500; background: rgba(30,40,20,.95);
+  border: 1px solid rgba(110,231,183,.25); border-radius: 12px;
+  padding: 10px 20px; color: #6ee7b7;
+  font-size: 13px; font-weight: 700;
+  opacity: 0; transition: opacity .28s, transform .28s;
+  pointer-events: none; white-space: nowrap;
+}
+#shareCopyToast.sct-show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+@media(max-width: 480px) {
+  .sm-sheet { border-radius: 20px 20px 0 0; padding: 16px 16px 24px;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+  #shareFloatBtn { right: 16px; width: 52px; height: 52px; font-size: 20px; }
+}
+/* ===== /기능 6 ===== */
+
 /* ===== 기능 5: 익명 통계 비교 카드 ===== */
 #statsCard {
   margin: 24px 0;
@@ -797,6 +896,55 @@ body{background:var(--bg);color:var(--text);min-height:100vh;}
 </div>
 </section>
 
+<!-- ===== 기능 6: 1초 공유 ===== -->
+<!-- 플로팅 공유 버튼 -->
+<button id="shareFloatBtn" onclick="shareOpen()" aria-label="결과 공유하기">🔗</button>
+
+<!-- 공유 선택 바텀시트 모달 -->
+<div id="shareModal" role="dialog" aria-modal="true" aria-label="공유 방법 선택"
+     onclick="if(event.target===this)shareClose()">
+  <div class="sm-sheet">
+    <div class="sm-handle"></div>
+    <div class="sm-title">결과 공유하기</div>
+    <div class="sm-sub" id="smSubText">내 바디코드를 1초 만에 공유해요</div>
+
+    <div class="sm-btns">
+      <!-- 카카오톡 -->
+      <button class="sm-btn sm-btn-kakao" onclick="shareKakao()">
+        <span class="sm-bicon">💬</span>
+        카카오톡 공유
+      </button>
+      <!-- 이미지 저장 (Canvas) -->
+      <button class="sm-btn sm-btn-img" onclick="shareGenImage()">
+        <span class="sm-bicon">🖼</span>
+        이미지 저장
+      </button>
+      <!-- 링크 복사 -->
+      <button class="sm-btn sm-btn-copy" onclick="shareCopyLink()">
+        <span class="sm-bicon">🔗</span>
+        링크 복사
+      </button>
+      <!-- 기기 기본 공유 -->
+      <button class="sm-btn sm-btn-native" onclick="shareNative()">
+        <span class="sm-bicon">📤</span>
+        더 보내기
+      </button>
+    </div>
+
+    <!-- 이미지 프리뷰 (생성 후 표시) -->
+    <div id="sharePreview">
+      <img id="sharePreviewImg" src="" alt="공유 이미지 미리보기">
+      <div class="sp-hint">이미지를 길게 눌러 저장하세요</div>
+    </div>
+
+    <button class="sm-close" onclick="shareClose()">닫기</button>
+  </div>
+</div>
+
+<!-- 링크 복사 완료 토스트 -->
+<div id="shareCopyToast" role="status" aria-live="polite">🔗 링크가 복사되었어요!</div>
+<!-- ===== /기능 6 ===== -->
+
 <!-- ─── JS ─── -->
 <script src="/survey-data.js"></script>
 <script src="/bc-engine.js"></script>
@@ -937,6 +1085,233 @@ function demoData() {
 }
 
 // ── 메인 렌더 ──────────────────
+/* ===== 기능 6: 1초 공유 Canvas 카드 ===== */
+// 전역 공유 상태
+let _shareData = null; // { bcCode, nickname, userName, pct, top1Axis }
+
+// renderAll 이후 shareData 세팅 (renderP1 호출 시 연동)
+function shareSetData(bcCode, nickname, userName) {
+  _shareData = { bcCode, nickname, userName };
+  // 모달 서브 텍스트 업데이트
+  const sub = document.getElementById('smSubText');
+  if (sub) sub.textContent = `${nickname || bcCode} 결과를 공유해요`;
+}
+
+/* ── 모달 열기/닫기 ── */
+function shareOpen() {
+  document.getElementById('shareModal').classList.add('sm-open');
+  document.body.style.overflow = 'hidden';
+}
+function shareClose() {
+  document.getElementById('shareModal').classList.remove('sm-open');
+  document.body.style.overflow = '';
+  // 프리뷰 초기화
+  document.getElementById('sharePreview').style.display = 'none';
+}
+
+/* ── Canvas 이미지 생성 ── */
+async function buildShareCanvas() {
+  const d = _shareData || { bcCode: 'BC6', nickname: '바디코드', userName: '고객' };
+
+  const W = 720, H = 1280;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  // ① 배경 그라디언트
+  const bg = ctx.createLinearGradient(0, 0, W, H);
+  bg.addColorStop(0,   '#1a0f08');
+  bg.addColorStop(0.5, '#2c1a10');
+  bg.addColorStop(1,   '#0f0a06');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // ② 장식 원 (배경 광원 효과)
+  const addGlow = (x, y, r, color) => {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, color);
+    g.addColorStop(1, 'transparent');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  };
+  addGlow(W * 0.15, H * 0.2,  350, 'rgba(181,69,46,.18)');
+  addGlow(W * 0.85, H * 0.75, 280, 'rgba(110,183,255,.12)');
+
+  // ③ 브랜드 로고 텍스트
+  ctx.font = '700 28px sans-serif';
+  ctx.fillStyle = 'rgba(245,236,224,.35)';
+  ctx.textAlign = 'center';
+  ctx.fillText('SlimMind V4.1', W / 2, 80);
+
+  // ④ 구분선
+  ctx.strokeStyle = 'rgba(181,69,46,.4)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(W*0.1, 105); ctx.lineTo(W*0.9, 105); ctx.stroke();
+
+  // ⑤ 서브타이틀
+  ctx.font = '600 22px sans-serif';
+  ctx.fillStyle = 'rgba(245,236,224,.45)';
+  ctx.fillText('바디코드 분석 결과', W / 2, 155);
+
+  // ⑥ 이름
+  ctx.font = '800 38px sans-serif';
+  ctx.fillStyle = '#f5ece0';
+  ctx.fillText(`${d.userName}님의 체형 코드`, W / 2, 220);
+
+  // ⑦ BC 코드 큰 텍스트
+  ctx.font = '900 140px sans-serif';
+  const codeGrad = ctx.createLinearGradient(W/2 - 200, 300, W/2 + 200, 450);
+  codeGrad.addColorStop(0, '#e05c3a');
+  codeGrad.addColorStop(1, '#f0a070');
+  ctx.fillStyle = codeGrad;
+  ctx.fillText(d.bcCode, W / 2, 430);
+
+  // ⑧ 닉네임 (코드 아래)
+  ctx.font = '700 36px sans-serif';
+  ctx.fillStyle = 'rgba(245,236,224,.8)';
+  const nick = d.nickname || '';
+  if (nick) ctx.fillText(nick, W / 2, 500);
+
+  // ⑨ 장식 구분선
+  const divGrad = ctx.createLinearGradient(W*0.2, 0, W*0.8, 0);
+  divGrad.addColorStop(0, 'transparent');
+  divGrad.addColorStop(0.5, 'rgba(181,69,46,.6)');
+  divGrad.addColorStop(1, 'transparent');
+  ctx.strokeStyle = divGrad;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(W*0.2, 540); ctx.lineTo(W*0.8, 540); ctx.stroke();
+
+  // ⑩ 안내 메시지
+  ctx.font = '600 26px sans-serif';
+  ctx.fillStyle = 'rgba(245,236,224,.5)';
+  ctx.fillText('나도 내 바디코드 알아보기 →', W / 2, 610);
+
+  // ⑪ URL
+  ctx.font = '500 22px sans-serif';
+  ctx.fillStyle = 'rgba(245,236,224,.3)';
+  ctx.fillText(window.location.hostname, W / 2, 660);
+
+  // ⑫ 하단 워터마크
+  ctx.font = '600 20px sans-serif';
+  ctx.fillStyle = 'rgba(245,236,224,.2)';
+  ctx.fillText('© SlimMind · 익명 바디코드 분석', W / 2, H - 60);
+
+  return canvas;
+}
+
+/* ── 이미지 저장 (다운로드 or 프리뷰) ── */
+async function shareGenImage() {
+  const btn = document.querySelector('.sm-btn-img');
+  const origText = btn ? btn.innerHTML : '';
+  if (btn) btn.innerHTML = '<span class="sm-bicon">⏳</span>생성 중...';
+
+  try {
+    const canvas = await buildShareCanvas();
+    const dataUrl = canvas.toDataURL('image/png');
+
+    // 모바일: 프리뷰로 보여주기 (길게 눌러 저장)
+    const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
+    if (isMobile) {
+      const preview = document.getElementById('sharePreview');
+      const img = document.getElementById('sharePreviewImg');
+      img.src = dataUrl;
+      preview.style.display = 'block';
+      preview.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } else {
+      // 데스크탑: 직접 다운로드
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = `slimmind-${(_shareData?.bcCode || 'result').toLowerCase()}.png`;
+      a.click();
+    }
+  } catch(e) {
+    console.warn('[shareGenImage]', e);
+  } finally {
+    if (btn) btn.innerHTML = origText;
+  }
+}
+
+/* ── 카카오톡 공유 ── */
+function shareKakao() {
+  const d = _shareData || {};
+  const url = window.location.href;
+  const text = `[SlimMind] 나의 바디코드는 ${d.bcCode || ''}!\n${d.nickname ? '"'+d.nickname+'"' : ''}\n내 체형 원인을 AI가 분석했어요. 당신의 코드는?`;
+  // Kakao SDK 없음 → 카카오톡 URL 스킴 or 링크 공유로 폴백
+  const kakaoShareUrl = `https://sharer.kakao.com/talk/friends/picker/link?app_key=none&link_ver=4.0&template_id=none`;
+  // 실제로는 Web Share API로 폴백
+  if (navigator.share) {
+    navigator.share({ title: `내 바디코드: ${d.bcCode}`, text, url })
+      .catch(() => {});
+  } else {
+    // 카카오톡 앱 딥링크 (모바일)
+    const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
+    if (isMobile) {
+      window.location.href = `kakaolink://send?msg=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+      setTimeout(() => shareCopyLink(), 800); // 앱 없으면 링크 복사 폴백
+    } else {
+      shareCopyLink();
+    }
+  }
+}
+
+/* ── 링크 복사 ── */
+async function shareCopyLink() {
+  const url = window.location.href;
+  try {
+    await navigator.clipboard.writeText(url);
+  } catch(e) {
+    // fallback
+    const ta = document.createElement('textarea');
+    ta.value = url; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+  // 토스트 표시
+  const toast = document.getElementById('shareCopyToast');
+  if (toast) {
+    toast.classList.add('sct-show');
+    clearTimeout(toast._tid);
+    toast._tid = setTimeout(() => toast.classList.remove('sct-show'), 2400);
+  }
+  shareClose();
+}
+
+/* ── 기기 기본 공유 (Web Share API) ── */
+async function shareNative() {
+  const d = _shareData || {};
+  const url = window.location.href;
+  if (navigator.share) {
+    try {
+      // 이미지 포함 공유 시도
+      const canvas = await buildShareCanvas();
+      const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+      const file = new File([blob], `slimmind-${d.bcCode || 'result'}.png`, { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: `내 바디코드: ${d.bcCode}`,
+          text: `${d.nickname || d.bcCode} — SlimMind 바디코드 분석 결과`,
+          url,
+          files: [file],
+        });
+        return;
+      }
+    } catch(e) { /* 이미지 공유 실패 시 텍스트로 폴백 */ }
+    // 텍스트 공유
+    try {
+      await navigator.share({
+        title: `내 바디코드: ${d.bcCode}`,
+        text: `${d.nickname || d.bcCode} — SlimMind 바디코드 분석 결과`,
+        url,
+      });
+    } catch(e) {}
+  } else {
+    shareCopyLink();
+  }
+}
+/* ===== /기능 6 ===== */
+
 /* ===== 기능 5: 익명 통계 비교 ===== */
 async function loadBodyTypeStats(bcCode, userName) {
   const card    = document.getElementById('statsCard');
@@ -1162,6 +1537,9 @@ function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nic
       ${isActive?`<div style="font-size:9px;font-weight:700;color:${m.color};margin-top:4px;">◀ 나의 코드</div>`:''}`;
     bcGrid.appendChild(div);
   });
+
+  // ★ 기능 6: 공유 데이터 세팅
+  shareSetData(bcCode, nicknameDisplay, userName);
 }
 
 /* ── P2 ── */
