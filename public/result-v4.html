@@ -456,6 +456,33 @@ body{background:var(--paper);color:var(--ink);min-height:100vh;}
 .week-nav-dot{width:6px;height:6px;border-radius:50%;background:var(--line);}
 .week-nav-dot.active{background:var(--vis);}
 
+/* 칼로리·탄단지 영양 정보 블록 */
+.week-nutrition-block{
+  margin:12px 0 4px;padding:14px 16px;
+  background:var(--paper);border-radius:12px;
+  border:1px solid var(--line);
+}
+.week-nutrition-title{
+  font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
+  color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:6px;
+}
+.week-nutrition-title::after{content:'';flex:1;height:1px;background:var(--line);}
+.week-nutrition-row{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px;
+}
+.week-nut-item{
+  text-align:center;padding:10px 6px;border-radius:10px;background:var(--card);
+  border:1px solid var(--line);
+}
+.week-nut-item.kcal{background:rgba(181,69,46,.07);border-color:rgba(181,69,46,.2);}
+.week-nut-item.carb{background:rgba(201,138,60,.07);border-color:rgba(201,138,60,.2);}
+.week-nut-item.protein{background:rgba(90,110,58,.07);border-color:rgba(90,110,58,.2);}
+.week-nut-item.fat{background:rgba(47,125,140,.07);border-color:rgba(47,125,140,.2);}
+.week-nut-val{font-size:18px;font-weight:800;color:var(--ink);line-height:1;}
+.week-nut-unit{font-size:10px;font-weight:500;color:var(--muted);margin-left:1px;}
+.week-nut-label{font-size:9px;color:var(--muted);margin-top:4px;font-weight:600;}
+.week-nut-note{font-size:10px;color:var(--muted);padding:6px 8px;background:rgba(0,0,0,.03);border-radius:6px;}
+
 /* B2B 버튼 */
 .b2b-btn{
   display:flex;align-items:center;justify-content:center;gap:8px;
@@ -1314,6 +1341,9 @@ function loadData() {
       is_b2b_partner: r.is_b2b_partner || false,
       consultant_name: r.consultant_name || '',
       created_at: r.created_at || '',
+      // PHASE 4-A: 목표체중·감량률
+      goal_weight:     r.goal_weight     != null ? Number(r.goal_weight)     : null,
+      weight_loss_pct: r.weight_loss_pct != null ? Number(r.weight_loss_pct) : null,
       _from_server: true,
     };
   }
@@ -1985,7 +2015,7 @@ function renderAll(data) {
   renderP3(userName, bcCode, bcMaster, ohaengType, ohaeng, mbtiType, mbti, fullCode, prescription);
   renderP4(userName, ohaengType, mbtiType, answers['Q02'], answers['Q_MENOPAUSE']);
   renderP5(metrics);
-  renderP6(userName, fullCode, ohaengType);
+  renderP6(userName, fullCode, ohaengType, data);
 
   // ★ 기능 5: 익명 통계 카드 비동기 로드
   loadBodyTypeStats(bcCode, userName);
@@ -2295,12 +2325,23 @@ function animSimBars() {
 }
 
 /* ── P6 ── */
-function renderP6(userName, fullCode, ohaengType) {
+function renderP6(userName, fullCode, ohaengType, inputData) {
   document.getElementById('p6-code-display').innerHTML =
     `매칭 파라미터: <strong style="color:var(--vis-d);">${fullCode}</strong>`;
 
   const ohaengData = (typeof SAJU_ELEMENT_DESC !== 'undefined' && SAJU_ELEMENT_DESC[ohaengType])
     ? SAJU_ELEMENT_DESC[ohaengType] : null;
+
+  // bc_primary + goal_weight 기반 맞춤 주간 처방 불러오기
+  const d = inputData || window.__DIAG_DATA__ || window.__RESULT__ || {};
+  const bcPrimary     = d.bc_primary || d.bc_code || null;
+  const goalWeight    = d.goal_weight    != null ? Number(d.goal_weight)    : null;
+  const weightLossPct = d.weight_loss_pct != null ? Number(d.weight_loss_pct) : null;
+
+  // getRoadmapWeeks()가 없으면 기존 ROADMAP_WEEKS 사용 (하위호환)
+  const ACTIVE_WEEKS = (typeof getRoadmapWeeks === 'function')
+    ? getRoadmapWeeks(bcPrimary, goalWeight, weightLossPct, userName)
+    : (typeof ROADMAP_WEEKS !== 'undefined' ? ROADMAP_WEEKS : []);
 
   const PHASE_COLORS = ['var(--vis)','var(--muscle)','var(--circ)','var(--sub)'];
 
@@ -2330,7 +2371,7 @@ function renderP6(userName, fullCode, ohaengType) {
 
   // 12주 세그먼트 데이터 정의
   const ALL_WEEKS = [
-    ...(ROADMAP_WEEKS||[]).map((w,i) => ({
+    ...(ACTIVE_WEEKS||[]).map((w,i) => ({
       week:w.week, label:w.weekLabel||`${w.week}주차`,
       title:w.title, icon:w.icon||'🔓',
       tags:w.keyFocus||[], color:PHASE_COLORS[i]||'var(--vis)',
@@ -2434,7 +2475,7 @@ function renderP6(userName, fullCode, ohaengType) {
   const weeksContainer = document.getElementById('p6-weeks');
   const nutriCatMap = [['단백질','탄수화물'],['수분','미네랄'],['식이섬유','지방'],['단백질','식이섬유','탄수화물']];
 
-  ROADMAP_WEEKS.forEach((w, idx) => {
+  ACTIVE_WEEKS.forEach((w, idx) => {
     const pc = PHASE_COLORS[idx];
     const storyText = (w.failure_expose||'').replace(/{USER_NAME}/g, userName);
     const hCats = nutriCatMap[idx]||['단백질'];
@@ -2449,6 +2490,34 @@ function renderP6(userName, fullCode, ohaengType) {
         <div class="nutri-section-title">🌿 ${w.weekLabel} 오행 맞춤 — ${ohaengData.label}</div>
         <div class="nutri-grid">${cards}</div>
         <div class="nutri-tip-box">💡 <strong>${w.weekLabel} 핵심:</strong> ${ohaengData.nutriTip||''}</div>
+      </div>`;
+    }
+
+    // 칼로리·탄단지 영양 정보 블록 (goal_weight가 있을 때)
+    let kcalHTML = '';
+    if (w.nutrition) {
+      const n = w.nutrition;
+      kcalHTML = `<div class="week-nutrition-block">
+        <div class="week-nutrition-title">🔢 ${w.weekLabel} 맞춤 목표 열량</div>
+        <div class="week-nutrition-row">
+          <div class="week-nut-item kcal">
+            <div class="week-nut-val">${n.kcal}<span class="week-nut-unit">kcal</span></div>
+            <div class="week-nut-label">목표 열량</div>
+          </div>
+          <div class="week-nut-item carb">
+            <div class="week-nut-val">${n.carbG}<span class="week-nut-unit">g</span></div>
+            <div class="week-nut-label">탄수화물</div>
+          </div>
+          <div class="week-nut-item protein">
+            <div class="week-nut-val">${n.proteinG}<span class="week-nut-unit">g</span></div>
+            <div class="week-nut-label">단백질</div>
+          </div>
+          <div class="week-nut-item fat">
+            <div class="week-nut-val">${n.fatG}<span class="week-nut-unit">g</span></div>
+            <div class="week-nut-label">지방</div>
+          </div>
+        </div>
+        <div class="week-nut-note">📌 ${n.note||''}</div>
       </div>`;
     }
 
@@ -2511,6 +2580,7 @@ function renderP6(userName, fullCode, ohaengType) {
             <div class="week-mini-val">${(w.keyFocus||[]).slice(0,2).join('<br>')}</div>
           </div>
         </div>
+        ${kcalHTML}
         ${nutriHTML}
         ${w.b2b?`<button class="b2b-btn" onclick="handleB2B()">🏥 파트너 센터 연계 → 데이터 전송</button>`:''}
       </div>
@@ -2561,9 +2631,10 @@ function p6GoWeek(idx) {
   document.querySelectorAll('.week-card').forEach((c,i) => {
     c.style.display = (i===idx)?'block':'none';
   });
-  // SVG도 해당 주차 강조
-  if (ROADMAP_WEEKS && ROADMAP_WEEKS[idx]) {
-    const w = ROADMAP_WEEKS[idx];
+  // SVG도 해당 주차 강조 (ACTIVE_WEEKS는 renderP6 스코프 — 전역에서 fallback)
+  const _ref = (typeof ROADMAP_WEEKS !== 'undefined' ? ROADMAP_WEEKS : []);
+  if (_ref && _ref[idx]) {
+    const w = _ref[idx];
     p6SelectWeek({
       week:w.week, label:w.weekLabel||`${w.week}주차`,
       title:w.title, tags:w.keyFocus||[], locked:false

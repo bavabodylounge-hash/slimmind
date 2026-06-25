@@ -927,87 +927,671 @@ var SIMULATOR_METRICS = [
 ];
 
 // ──────────────────────────────────────────────
-// 10. 12주 로드맵 — 1~4주차 상세 데이터
+// 10-A. 칼로리·탄단지 동적 계산 함수
+// curWeight: 현재체중(kg), goalWeight: 목표체중(kg)
+// lossPct: 감량률(%), height: 신장(cm, optional)
 // ──────────────────────────────────────────────
-var ROADMAP_WEEKS = [
-  {
-    week: 1,
-    weekLabel: '1주차',
-    phase: '기반 구축',
-    phaseColor: '#3EB8A0',
-    icon: '🔓',
-    title: '막힌 하체 연료 호스 뚫기',
-    center: '체형 센터 + 회복 센터',
-    centerIcons: ['🦴', '🌙'],
-    failure_expose: `{USER_NAME}님, 1주차의 미션은 칼로리를 태우는 것이 아닙니다. 현재 골반이 앞으로 꺾여 하지로 내려가는 순환로와 림프관이 압착된 상태입니다. 이 상태에서 런닝머신을 뛰거나 무작정 굶는 행위는 부신 시스템을 지치게 합니다. 뇌는 이를 기아 비상사태로 인식해 대사율을 낮추고 '초절전 생존 모드'를 발동시킵니다. 이것이 물만 마셔도 다리가 붓던 원인이었습니다.`,
-    axis_logic: `11개 진단축 중 이번 주 0순위는 [체형 센터]와 [회복 센터]입니다. 식단 센터는 잠시 OFF합니다. 꺾여 있는 골반의 림프 통로를 먼저 펴주는 것이 우선입니다.`,
-    exercise_ban: '고강도 무산소 운동(크로스핏, 하이록스, 하체 웨이트)',
-    exercise_ok: '수영(하지 정맥 배농) + 필라테스(골반각 교정, 순환로 개방)',
-    diet_ban: '극단적 단식, 원푸드, 덴마크 식단',
-    diet_ok: '저탄고지 안심 래퍼 식단 — 칼로리 강박 없이 고단백·고지방 중심',
-    recovery_ban: '전신 땀을 빼는 고온 사우나',
-    recovery_ok: '서해부 심부 온열 요법 — 사타구니 림프절 집중 관리, 밤마다 15분',
-    keyFocus: ['골반 정렬', '림프 배농', '부신 회복'],
-  },
-  {
-    week: 2,
-    weekLabel: '2주차',
-    phase: '신호 교정',
-    phaseColor: '#6B4EAA',
-    icon: '🔓',
-    title: '밤 9시, 뇌의 가짜 명령 해제',
-    center: '심리 센터 + 호르몬 센터',
-    centerIcons: ['🧠', '🌸'],
-    failure_expose: `낮에 입맛이 없다가 퇴근 후 해만 지면 야식 식욕이 폭발하는 것은 의지력 문제가 아닙니다. 낮 동안 억눌린 긴장감으로 교감신경이 극도로 항진되어 있다가 밤에 긴장이 풀리는 순간 뇌의 도파민 수치가 급격히 추락합니다. 지친 뇌는 생존을 위해 '당장 자극적인 탄수화물을 섭취해 도파민을 채워라!'라는 호르몬 명령을 내리는 것입니다.`,
-    axis_logic: `이번 주 0순위는 [심리 센터]와 [호르몬 센터]입니다. 식욕 억제 약물은 자율신경계를 자극하여 불면증과 과식 주기를 유발할 수 있습니다. 뇌의 착각을 교정하는 자율신경 안정화가 최우선입니다.`,
-    exercise_ban: '야간 고강도 러닝 및 헬스',
-    exercise_ok: '밤 9시 가벼운 야외 평지 산책 20분',
-    diet_ban: '무조건적인 야식 참기(보상 과식 유발 가능)',
-    diet_ok: '도파민 대체 스낵 가이드(구운 김, 천연 버터 팝콘) — 밤 10시 교체 투입',
-    recovery_ban: '',
-    recovery_ok: '블루라이트 차단 + 자율신경 안정 오디오 테라피 — 치유 사운드 수면 전 재생',
-    keyFocus: ['야간 도파민', '자율신경 안정', '호르몬 리셋'],
-  },
-  {
-    week: 3,
-    weekLabel: '3주차',
-    phase: '조직 용해',
-    phaseColor: '#1A8C5B',
-    icon: '🔓',
-    title: '세포 결합조직 용해와 상열하한 개선',
-    center: '순환 센터 + 한방 센터',
-    centerIcons: ['💧', '🌿'],
-    failure_expose: `{USER_NAME}님의 허벅지 뒤쪽과 엉덩이 밑에 단단하게 자리 잡은 살들은 단순한 지방이 아닙니다. 순환계 정체로 인해 배출되지 못한 만성 염증성 노폐물 체액이 지방세포를 감아 굳어버린 '바탕질 변성 세포 결합조직(Cellulite)'입니다. 현재 머리와 가슴은 뜨겁고 하체는 차가운 '상열하한'의 경향을 보이고 있습니다.`,
-    axis_logic: `이번 주 0순위는 [순환 센터]와 [한방 센터]입니다. 이 시점에 하체 근력 운동을 결합하면 단단한 결합조직 위에 근육막이 두껍게 덮여 다리가 더 굵어지는 역효과가 나타날 수 있습니다.`,
-    exercise_ban: '하체 관절을 수축시키는 웨이트 트레이닝',
-    exercise_ok: '힐링 요가 + 골반저근 이완 트레이닝',
-    diet_ban: '아이스 아메리카노, 찬 음료, 밀가루 과다 섭취',
-    diet_ok: '심부 온열 한방 차(계피생강차) 하루 500ml 이상 음용',
-    recovery_ban: '',
-    recovery_ok: '심부 압착 폼롤러 드레나쥐 테라피 — 허벅지 뒤쪽·서해부 라인 이완',
-    keyFocus: ['셀룰라이트 용해', '상열하한 개선', '순환 회복'],
-  },
-  {
-    week: 4,
-    weekLabel: '4주차',
-    phase: '대사 점화',
-    phaseColor: '#E8631A',
-    icon: '🔓',
-    title: '인슐린 저항성 개선과 대사 사슬 해제',
-    center: '식단 센터 + 관리 센터',
-    centerIcons: ['🍽️', '💆'],
-    failure_expose: `체중계 숫자는 줄었는데 왜 아랫배와 러브핸들은 그대로였을까요? 지방이 빠진 게 아니라 근육이 줄어든 비극의 증거입니다. 지속된 야식과 스트레스성 당류 과식은 췌장을 지치게 만들어, 세포가 영양소를 흡수하지 못하는 '인슐린 저항성'을 유발했습니다. 먹는 족족 인슐린이 발동해 아랫배에 지방을 집중 적치하는 악순환의 사슬이 완성된 것입니다.`,
-    axis_logic: `1~3주차에 통로를 열고, 호르몬을 달래고, 세포 결합조직을 이완해 놓았습니다. 이제야 진짜 지방을 태울 준비가 끝났습니다. [식단 센터]와 [관리 센터]가 드디어 0순위로 전면 등판합니다.`,
-    exercise_ban: '장시간 공복 유산소(근육 분해 가능)',
-    exercise_ok: '매트 필라테스(복부 코어 압력 복구) + 식후 15분 속보',
-    diet_ban: '칼로리만 줄이는 굶기 식단',
-    diet_ok: '간헐적 탄수화물 제한 + 사이클링 식단 — 3일 탄수화물 배제 후 4일째 깨끗한 탄수화물 공급',
-    recovery_ban: '',
-    recovery_ok: '파트너 센터 연계 — 4주 대사 기반 구축 완료, 분석 데이터 전송',
-    keyFocus: ['인슐린 리셋', '내장지방 연소', '대사 활성화'],
-    b2b: true,
-  },
-];
+function computeNutrition(curWeight, goalWeight, lossPct, height) {
+  // 안전 처리
+  var cw  = Number(curWeight)  || 65;
+  var gw  = Number(goalWeight) || Math.round(cw * 0.9);
+  var pct = Number(lossPct)    || Math.round((cw - gw) / cw * 100);
+  var h   = Number(height)     || 162; // 평균 신장 fallback
+
+  // 목표체중 기준 BMR (Mifflin-St Jeor 여성 기준, 연령 35세 fallback)
+  var bmr = Math.round(10 * gw + 6.25 * h - 5 * 35 - 161);
+
+  // 활동계수: 감량률 10% 이하 → 보통(1.375), 초과 → 가벼움(1.2)
+  var activityFactor = pct <= 10 ? 1.375 : 1.2;
+  var tdee = Math.round(bmr * activityFactor);
+
+  // 결핍 칼로리: 감량률 비례 (5%→ -200, 10%→ -300, 20%→ -400, 30%+→ -500)
+  var deficit = pct <= 5  ? 200
+              : pct <= 10 ? 300
+              : pct <= 20 ? 400
+              : 500;
+  var targetKcal = Math.max(1200, tdee - deficit);
+
+  // 탄수화물 비율: BC별 가중치는 getRoadmapWeeks에서 override 가능
+  // 기본: 탄:단:지 = 40:30:30
+  var carbPct    = pct >= 20 ? 35 : 40; // 고감량 → 저탄
+  var proteinPct = 30;
+  var fatPct     = 100 - carbPct - proteinPct;
+
+  var carbG    = Math.round(targetKcal * (carbPct / 100) / 4);
+  var proteinG = Math.round(targetKcal * (proteinPct / 100) / 4);
+  var fatG     = Math.round(targetKcal * (fatPct / 100) / 9);
+
+  // 주차별 탄수화물 조정 (1주: 더 낮게, 2~3주: 유지, 4주: 사이클링)
+  return {
+    targetKcal,
+    carbG, proteinG, fatG,
+    carbPct, proteinPct, fatPct,
+    bmr, tdee, deficit,
+    // 주차별 변형 기준
+    weekVariants: [
+      { week:1, kcal: Math.round(targetKcal * 0.9),  carbG: Math.round(carbG * 0.7),  proteinG: Math.round(proteinG * 1.1), fatG: Math.round(fatG * 1.1),  note: '1주: 탄수화물 -30%, 단백질·지방 보충' },
+      { week:2, kcal: targetKcal,                     carbG,                            proteinG,                              fatG,                            note: '2주: 기준 유지, 도파민 안정 식품 추가' },
+      { week:3, kcal: Math.round(targetKcal * 1.0),  carbG: Math.round(carbG * 0.85), proteinG: Math.round(proteinG * 1.05), fatG: Math.round(fatG * 1.05), note: '3주: 항염 식단, 온열 식품 강화' },
+      { week:4, kcal: targetKcal,                     carbG: Math.round(carbG * 0.6),  proteinG: Math.round(proteinG * 1.2),  fatG,                            note: '4주: 탄수화물 사이클링 OFF일 -40%' },
+    ],
+  };
+}
+
+// ──────────────────────────────────────────────
+// 10-B. BC별 1~4주차 처방 데이터 테이블
+// ──────────────────────────────────────────────
+var BC_ROADMAP_DB = {
+
+  // ── BC-1: 하지 림프·정맥 울혈형 ──
+  'BC-1': [
+    {
+      week: 1, weekLabel: '1주차', phase: '통로 개방', phaseColor: 'var(--vis)',
+      icon: '💧', title: '막힌 하체 림프 호스 뚫기',
+      center: '순환 센터 + 체형 센터', centerIcons: ['💧', '🦴'],
+      failure_expose: '{USER_NAME}님, 1주차 미션은 칼로리를 태우는 것이 아닙니다. 지금 골반이 앞으로 꺾여 하지로 내려가는 림프관이 압착된 상태입니다. 이 상태에서 런닝머신을 뛰면 부신이 소진되어 뇌가 "초절전 생존 모드"를 발동시킵니다. 물만 마셔도 다리가 붓던 이유가 바로 이것입니다.',
+      axis_logic: '이번 주 0순위는 [순환 센터]와 [체형 센터]입니다. 식단 센터는 잠시 OFF합니다. 골반 정렬로 림프 통로를 먼저 열어야 이후 모든 처방이 작동합니다.',
+      keyFocus: ['하지 림프 배농', '골반 정렬', '순환 통로 개방'],
+      exercise_ban: '하체 웨이트·런닝머신·크로스핏 (림프관 압박 심화)',
+      exercise_ok: '수영 40분(하지 정맥 배농) + 필라테스 30분(골반각 교정)',
+      diet_ban: '극단적 단식·원푸드·나트륨 과다 섭취',
+      diet_ok: '저탄고지 안심 래퍼 식단 — 아보카도·연어·두부 중심, 파인애플 200g(림프 효소)',
+      recovery_ban: '전신 고온 사우나 (혈관 과부하)',
+      recovery_ok: '서해부 심부 온열 요법 — 사타구니 림프절 온찜질 15분/일',
+    },
+    {
+      week: 2, weekLabel: '2주차', phase: '부종 배출', phaseColor: 'var(--muscle)',
+      icon: '🌊', title: '만성 부종·체액 정체 배출',
+      center: '순환 센터 + 회복 센터', centerIcons: ['💧', '🌙'],
+      failure_expose: '오후만 되면 다리가 터질 것 같고, 아침에는 빠졌다 저녁에 다시 붓는 반복 패턴은 의지력 문제가 아닙니다. 하지 정맥·림프계의 역류 방지 시스템이 약화된 구조적 문제입니다.',
+      axis_logic: '1주차에 개방한 통로를 실제로 사용합니다. 배농 운동을 구조화하고 식품으로 림프 흐름을 가속합니다.',
+      keyFocus: ['부종 배출', '림프 가속', '정맥 압력 완화'],
+      exercise_ban: '장시간 서 있기·하이힐·정적 자세 유지',
+      exercise_ok: '아쿠아 에어로빅 30분 + 발목 펌핑 운동 200회/일',
+      diet_ban: '인스턴트·짠 음식·알코올',
+      diet_ok: '셀러리·오이·수박(수분 이뇨) + 사과·파인애플(림프 효소) — 수분 2.5L/일',
+      recovery_ban: '다리를 낮게 두고 자는 수면 자세',
+      recovery_ok: '취침 시 다리 15cm 거상 + 폼롤러 하지 마사지 10분',
+    },
+    {
+      week: 3, weekLabel: '3주차', phase: '순환 강화', phaseColor: 'var(--circ)',
+      icon: '🔄', title: '정맥 탄력 회복과 심부 순환 강화',
+      center: '순환 센터 + 한방 센터', centerIcons: ['💧', '🌿'],
+      failure_expose: '허벅지 뒤쪽 셀룰라이트는 단순 지방이 아닙니다. 만성 림프 정체로 배출 못한 노폐물 체액이 지방세포를 감아 굳은 바탕질 변성 조직입니다. 피부를 누르면 딱딱하거나 울퉁불퉁한 느낌이 그 증거입니다.',
+      axis_logic: '2주차까지 통로를 열고 배출했습니다. 이번 주는 정맥 탄력을 회복해 역류가 다시 생기지 않는 구조를 만듭니다.',
+      keyFocus: ['셀룰라이트 분해', '정맥 탄력 회복', '한방 온열'],
+      exercise_ban: '하체 관절 수축 웨이트 트레이닝',
+      exercise_ok: '힐링 요가(골반저근 이완) + 드라이 브러싱(피부 림프)',
+      diet_ban: '찬 음료·밀가루·설탕',
+      diet_ok: '계피생강차 500ml/일 + 비타민C 풍부 식품(피망·딸기·키위)',
+      recovery_ban: '',
+      recovery_ok: '심부 압착 폼롤러 드레나쥐 — 서혜부→허벅지 뒤→종아리 10분',
+    },
+    {
+      week: 4, weekLabel: '4주차', phase: '대사 연동', phaseColor: 'var(--sub)',
+      icon: '🔥', title: '림프 회복 완료 → 지방 연소 시작',
+      center: '식단 센터 + 관리 센터', centerIcons: ['🍽️', '💆'],
+      failure_expose: '1~3주차에 통로를 열고 배출하고 탄력을 회복했습니다. 이제야 비로소 지방을 태울 인프라가 갖춰졌습니다. 이 전 단계 없이 굶기만 했다면 근육이 빠지고 부종은 오히려 심해졌을 것입니다.',
+      axis_logic: '이제 [식단 센터]와 [관리 센터]가 0순위로 등판합니다. 칼로리 제한을 처음으로 도입하되, 급격한 단식은 절대 금물입니다.',
+      keyFocus: ['지방 연소 시작', '칼로리 제어', '림프 유지'],
+      exercise_ban: '장시간 공복 유산소',
+      exercise_ok: '수영 + 식후 15분 속보 — 주 4회',
+      diet_ban: '극단적 칼로리 제한 (1,000kcal 이하)',
+      diet_ok: '저탄고지 → 탄수화물 사이클링 전환 (3일 저탄 + 1일 복합탄수화물)',
+      recovery_ban: '',
+      recovery_ok: '파트너 센터 연계 데이터 전송 — 4주 순환 기반 구축 완료',
+      b2b: true,
+    },
+  ],
+
+  // ── BC-2: 경추·흉추 림프 차단형 ──
+  'BC-2': [
+    {
+      week: 1, weekLabel: '1주차', phase: '정렬 교정', phaseColor: 'var(--vis)',
+      icon: '🐢', title: '거북목 교정 — 상체 림프관 해방',
+      center: '체형 센터 + 순환 센터', centerIcons: ['🦴', '💧'],
+      failure_expose: '{USER_NAME}님, 목이 앞으로 쏠릴수록 겨드랑이 림프절이 물리적으로 눌려 상체 전체의 노폐물 흐름이 막힙니다. 팔뚝과 쇄골 주변이 부풀어 있다면 이것이 원인입니다. 이 상태에서 유산소를 늘려도 상체 부피는 줄지 않습니다.',
+      axis_logic: '1주차 0순위는 [체형 센터]와 [순환 센터]입니다. 척추 정렬 없이 시작하는 운동은 림프 통로를 더 압박할 수 있습니다.',
+      keyFocus: ['경추 정렬', '겨드랑이 림프 개방', '라운드숄더 교정'],
+      exercise_ban: '바벨 스쿼트·숄더프레스·목에 부하가 걸리는 웨이트',
+      exercise_ok: '경추 교정 필라테스 30분 + 흉추 이완 폼롤러 15분',
+      diet_ban: '염증 유발 식품 (트랜스지방·가공육·설탕)',
+      diet_ok: '항염 식단 — 연어·호두·아마씨 + 셀러리·파인애플(림프 효소)',
+      recovery_ban: '엎드려 자는 자세 (경추 압박)',
+      recovery_ok: '경추 베개 교정 + 겨드랑이 온찜질 10분/일',
+    },
+    {
+      week: 2, weekLabel: '2주차', phase: '상체 배농', phaseColor: 'var(--muscle)',
+      icon: '🦋', title: '쇄골·겨드랑이 림프 집중 배농',
+      center: '순환 센터 + 회복 센터', centerIcons: ['💧', '🌙'],
+      failure_expose: '팔뚝이 쉽게 붓고, 오후에 목이 뻣뻣해지고, 어깨·날개뼈 주변이 묵직한 것은 상체 림프가 고인 신호입니다. 이 노폐물 체액이 상체를 두껍게 만들고 있습니다.',
+      axis_logic: '1주차 정렬 교정 위에서 실제 배농 루틴을 추가합니다. 전문 드레나쥐 마사지가 핵심입니다.',
+      keyFocus: ['상체 림프 배농', '팔뚝 부종 해소', '어깨 이완'],
+      exercise_ban: '팔뚝·어깨 고강도 운동 (림프 압박)',
+      exercise_ok: '수영 30분 + 겨드랑이 림프 셀프 마사지 10분/일',
+      diet_ban: '알코올·나트륨 과다·카페인 과다',
+      diet_ok: '수분 2.5L + 파슬리·오이·셀러리 생즙 100ml/일',
+      recovery_ban: '',
+      recovery_ok: '온열 상체 온탕욕(40도 5분) + 쿨링 스프레이 교차',
+    },
+    {
+      week: 3, weekLabel: '3주차', phase: '자세 안정', phaseColor: 'var(--circ)',
+      icon: '🧘', title: '흉추 가동성 회복 + 자세 자동화',
+      center: '체형 센터 + 한방 센터', centerIcons: ['🦴', '🌿'],
+      failure_expose: '교정이 일시적으로 효과가 있다가 금방 원래대로 돌아오는 이유는 근기억(Muscle Memory)이 나쁜 자세를 정상으로 착각하기 때문입니다. 이번 주는 근기억을 다시 쓰는 주입니다.',
+      axis_logic: '자세 유지 근육(심부 경추근·전거근)을 활성화합니다. 자세가 자동으로 유지되면 림프 통로가 지속적으로 열립니다.',
+      keyFocus: ['흉추 가동성', '심부 경추근 활성화', '자세 자동화'],
+      exercise_ban: '전방 머리 자세가 유발되는 장시간 좌업 (중간 스트레칭 필수)',
+      exercise_ok: '데드버그 코어 운동 + 흉추 스파인 롤 — 주 4회',
+      diet_ban: '밀가루(글루텐 염증 악화)',
+      diet_ok: '강황·생강·검은후추 항염 조합 + 수분 유지',
+      recovery_ban: '',
+      recovery_ok: '자세 교정 테이핑 + 취침 전 흉추 이완 스트레칭 10분',
+    },
+    {
+      week: 4, weekLabel: '4주차', phase: '체형 점화', phaseColor: 'var(--sub)',
+      icon: '🔥', title: '상체 정렬 완료 → 본격 체형 개선',
+      center: '운동 센터 + 식단 센터', centerIcons: ['🏃', '🍽️'],
+      failure_expose: '1~3주차에 경추를 정렬하고, 림프를 배농하고, 자세를 자동화했습니다. 이제야 안전하게 상체 운동을 추가할 수 있는 인프라가 완성되었습니다.',
+      axis_logic: '안전한 상체 근력 운동을 처음으로 도입합니다. 림프 통로를 막지 않는 형태를 엄격히 선별합니다.',
+      keyFocus: ['상체 근력 시작', '식단 칼로리 제어', '체형 슬림'],
+      exercise_ban: '목·어깨 직접 압박 웨이트 (바벨 등)',
+      exercise_ok: '밴드 저항 운동 + 경추 부하 없는 상체 필라테스 — 주 3회',
+      diet_ban: '고칼로리 폭식',
+      diet_ok: '고단백 저탄 — 닭가슴살·연어·두부 + 야채 충분',
+      recovery_ban: '',
+      recovery_ok: '파트너 센터 연계 데이터 전송',
+      b2b: true,
+    },
+  ],
+
+  // ── BC-3: 인슐린 저항성·내장비대형 ──
+  'BC-3': [
+    {
+      week: 1, weekLabel: '1주차', phase: '혈당 안정', phaseColor: 'var(--vis)',
+      icon: '🍉', title: '혈당 롤러코스터 탈출 — 스파이크 차단',
+      center: '식단 센터 + 호르몬 센터', centerIcons: ['🍽️', '🌸'],
+      failure_expose: '{USER_NAME}님, 식후 졸음과 달콤한 것에 대한 강렬한 갈망은 의지력 부족이 아닙니다. 식후 혈당이 급상승했다가 급추락하는 롤러코스터 때문에 뇌가 "당장 당분을 보충하라"는 생존 신호를 보내는 것입니다. 이 사이클을 끊는 것이 1주차 유일한 목표입니다.',
+      axis_logic: '1주차 0순위는 [식단 센터]입니다. 칼로리는 일단 신경 끄고, 혈당 스파이크를 일으키는 음식 순서와 종류만 바꿉니다.',
+      keyFocus: ['혈당 스파이크 차단', '인슐린 안정', '식사 순서 교정'],
+      exercise_ban: '공복 고강도 유산소 (혈당 급락 심화)',
+      exercise_ok: '식후 15분 속보 — 식후 혈당 스파이크 30% 감소',
+      diet_ban: '흰밥·흰빵·설탕음료·과당주스 (고GI 식품)',
+      diet_ok: '식사 순서 프로토콜 → 채소 먼저 → 단백질 → 탄수화물 마지막',
+      recovery_ban: '',
+      recovery_ok: '식후 바로 눕지 않기 + 식사 일기 앱 기록 시작',
+    },
+    {
+      week: 2, weekLabel: '2주차', phase: '인슐린 재교육', phaseColor: 'var(--muscle)',
+      icon: '⚖️', title: '인슐린 감수성 회복 — 세포 수용체 재활성화',
+      center: '식단 센터 + 운동 센터', centerIcons: ['🍽️', '🏃'],
+      failure_expose: '살이 찌는데 배는 더 고프고, 조금만 먹어도 피곤한 이유는 세포가 인슐린 신호를 무시하기 시작했기 때문입니다(인슐린 저항성). 먹는 영양소가 에너지로 쓰이지 않고 지방으로 저장되는 악순환입니다.',
+      axis_logic: '인슐린 감수성을 높이는 두 가지 핵심: 근육 운동과 식이섬유. 이번 주는 이 두 가지에 집중합니다.',
+      keyFocus: ['인슐린 감수성 회복', '근육 포도당 흡수', '식이섬유 강화'],
+      exercise_ban: '장시간 공복 유산소',
+      exercise_ok: '저강도 근력 운동 20분 + 식후 속보 10분 — 주 4회',
+      diet_ban: '단순당·정제 탄수화물·과당',
+      diet_ok: '저GI 탄수화물(고구마·현미·렌틸콩) + 식이섬유 25g 이상/일',
+      recovery_ban: '',
+      recovery_ok: '충분한 수면 7시간+ (수면 부족 → 인슐린 저항성 악화)',
+    },
+    {
+      week: 3, weekLabel: '3주차', phase: '내장지방 타깃', phaseColor: 'var(--circ)',
+      icon: '🎯', title: '내장지방 집중 타깃 — 코어 압력 회복',
+      center: '운동 센터 + 한방 센터', centerIcons: ['🏃', '🌿'],
+      failure_expose: '허리둘레가 줄지 않는 이유는 내장지방이 단순히 "많아서"가 아닙니다. 복강 내압이 낮아 장기가 복부 전면으로 처진 상태에서 지방이 장기 주변에 추가로 쌓이는 구조입니다.',
+      axis_logic: '이번 주는 코어 복압 회복 운동과 항염 식단을 결합합니다. 내장지방은 피하지방보다 분해가 빠르므로, 인슐린만 안정되면 이 시기부터 빠지기 시작합니다.',
+      keyFocus: ['내장지방 연소', '복압 회복', '항염 식단'],
+      exercise_ban: '복직근 분리 유발 운동 (크런치·레그레이즈)',
+      exercise_ok: '플랭크·데드버그·버드독 — 복강 내압 회복 코어 3종 세트',
+      diet_ban: '알코올 (내장지방 직접 합성)',
+      diet_ok: '오메가3 풍부 식품(연어·고등어·호두) + 강황 항염 식단',
+      recovery_ban: '',
+      recovery_ok: '복부 온열 찜질 15분/일 (혈류 개선 + 지방 분해 가속)',
+    },
+    {
+      week: 4, weekLabel: '4주차', phase: '대사 점화', phaseColor: 'var(--sub)',
+      icon: '🔥', title: '탄수화물 사이클링 — 인슐린 쇼크 방어',
+      center: '식단 센터 + 관리 센터', centerIcons: ['🍽️', '💆'],
+      failure_expose: '체중은 줄었는데 아랫배·러브핸들이 그대로인 것은 지방이 아니라 근육이 빠진 증거입니다. 칼로리만 줄이는 굶기 식단은 인슐린을 더 불안정하게 만들어 내장지방을 오히려 고착시킵니다.',
+      axis_logic: '탄수화물 사이클링으로 인슐린 민감도를 극대화합니다. 3일 저탄→1일 복합탄수화물 주기로 대사 유연성을 만들어 냅니다.',
+      keyFocus: ['탄수화물 사이클링', '대사 유연성', '인슐린 민감도 극대화'],
+      exercise_ban: '장시간 공복 유산소',
+      exercise_ok: '매트 필라테스(코어 압력 복구) + 식후 15분 속보',
+      diet_ban: '단조로운 칼로리 제한 굶기',
+      diet_ok: '3일 저탄수화물(100g 이하) → 4일째 복합탄수화물 200g (현미·고구마)',
+      recovery_ban: '',
+      recovery_ok: '파트너 센터 연계 — 4주 인슐린 기반 구축 완료',
+      b2b: true,
+    },
+  ],
+
+  // ── BC-4: 갑상선 셧다운·초절전형 ──
+  'BC-4': [
+    {
+      week: 1, weekLabel: '1주차', phase: '대사 소생', phaseColor: 'var(--vis)',
+      icon: '🌊', title: '꺼진 갑상선 스위치 — 대사 소생 1단계',
+      center: '호르몬 센터 + 회복 센터', centerIcons: ['🌸', '🌙'],
+      failure_expose: '{USER_NAME}님, 지금 뇌가 몸 전체에 "에너지 절약 비상령"을 내린 상태입니다. 반복된 초저칼로리 식이로 갑상선 호르몬이 저하되어, 조금만 먹어도 살이 찌고 추위를 많이 타게 되었습니다. 이 상태에서 다시 굶으면 대사는 더 낮아집니다.',
+      axis_logic: '1주차 0순위는 [호르몬 센터]와 [회복 센터]입니다. 절대로 칼로리를 더 줄이지 않습니다. 갑상선을 다시 깨우는 것이 전부입니다.',
+      keyFocus: ['갑상선 호르몬 회복', '기초대사량 복구', '요요 사이클 차단'],
+      exercise_ban: '고강도 운동 (코르티솔 급등 → 갑상선 저하 심화)',
+      exercise_ok: '30분 가벼운 산책 — 갑상선 자극 호르몬(TSH) 정상화 지원',
+      diet_ban: '극저칼로리 식단 (<1,200kcal), 원푸드, 단식',
+      diet_ok: '갑상선 지원 식품 — 해조류(요오드), 브라질넛(셀레늄), 달걀(아연)',
+      recovery_ban: '과도한 수면 (12시간+ → 오히려 대사 저하)',
+      recovery_ok: '수면 7~8시간 정확히 유지 + 아침 햇빛 노출 15분',
+    },
+    {
+      week: 2, weekLabel: '2주차', phase: '호르몬 재점화', phaseColor: 'var(--muscle)',
+      icon: '⚡', title: '기초대사량 복구 — 체온 올리기',
+      center: '호르몬 센터 + 식단 센터', centerIcons: ['🌸', '🍽️'],
+      failure_expose: '몸이 늘 차갑고 손발이 시린 것은 갑상선이 열 생산 명령을 제대로 내리지 못하기 때문입니다. 체온이 1도 떨어지면 기초대사량이 약 7% 감소합니다. 체온을 올리는 것이 대사 회복의 핵심입니다.',
+      axis_logic: '체온 상승 전략: 온열 식품 + 근육 생성(체온 생산 공장) + 규칙적 식사 타이밍 조합.',
+      keyFocus: ['체온 회복', '기초대사량 증가', '규칙적 식사 타이밍'],
+      exercise_ban: '공복 운동 (갑상선 저하 시 공복 운동 금물)',
+      exercise_ok: '식사 후 1시간 저강도 근력 운동 — 주 3회 (근육량 증가 = 대사 공장)',
+      diet_ban: '차가운 음식·생식·차가운 음료 (체온 저하)',
+      diet_ok: '규칙적 3식 + 온식 중심 — 생강·계피·마늘로 체온 자극',
+      recovery_ban: '',
+      recovery_ok: '반신욕 15분/일 + 족욕 — 말초 혈류 개선 및 체온 상승',
+    },
+    {
+      week: 3, weekLabel: '3주차', phase: '요요 방어벽', phaseColor: 'var(--circ)',
+      icon: '🛡️', title: '요요 방어벽 구축 — 세트포인트 리셋',
+      center: '호르몬 센터 + 심리 센터', centerIcons: ['🌸', '🧠'],
+      failure_expose: '체중이 줄면 몸은 원래 체중으로 돌아가려는 세트포인트 방어 기전을 작동시킵니다. 갑상선이 저하된 분들은 이 기전이 더 강하게 작동합니다. 이번 주는 뇌가 새로운 체중을 "정상"으로 인식하도록 재프로그래밍합니다.',
+      axis_logic: '갑상선 호르몬 수치가 안정되는 3~4주차에 세트포인트를 조금씩 낮추는 전략. 급격한 감량은 세트포인트 방어를 역으로 강화합니다.',
+      keyFocus: ['세트포인트 리셋', '갑상선 안정화', '서서히 감량'],
+      exercise_ban: '갑자기 강도 높이기 (대사 비상사태 재발)',
+      exercise_ok: '저강도 유산소(수영·자전거) + 주간 운동 시간 10분씩 점진 증가',
+      diet_ban: '단기간 급격한 식단 변화',
+      diet_ok: '칼로리를 100kcal씩 점진적으로 줄이기 — 뇌가 감지 못하는 속도로',
+      recovery_ban: '',
+      recovery_ok: '스트레스 관리 루틴 — 코르티솔 급등은 갑상선을 다시 누름',
+    },
+    {
+      week: 4, weekLabel: '4주차', phase: '대사 정상화', phaseColor: 'var(--sub)',
+      icon: '🔥', title: '대사 정상화 확인 — 지속 가능한 감량 시작',
+      center: '식단 센터 + 관리 센터', centerIcons: ['🍽️', '💆'],
+      failure_expose: '3주간 갑상선을 깨우고 대사를 복구했습니다. 이제야 체중계 숫자를 조금씩 움직일 수 있는 기반이 마련되었습니다. 성급하게 400~500kcal 이상 급격히 줄이면 다시 갑상선이 눌릴 수 있습니다.',
+      axis_logic: '지속 가능한 속도: 주당 0.3~0.5kg 감량. 이 속도가 갑상선 저하 없이 지방을 빼는 안전 레인입니다.',
+      keyFocus: ['안전 감량 속도 유지', '대사 정상화 점검', 'B2B 분석 전송'],
+      exercise_ban: '단기 결과를 위한 무리한 운동',
+      exercise_ok: '저강도 근력 + 유산소 복합 — 주 4회',
+      diet_ban: '칼로리 폭탄 치트데이 (갑상선 민감 시기)',
+      diet_ok: '칼로리 200~300kcal 적자 유지 + 단백질 충분 (근육 보호)',
+      recovery_ban: '',
+      recovery_ok: '파트너 센터 연계 — 4주 갑상선 대사 데이터 전송',
+      b2b: true,
+    },
+  ],
+
+  // ── BC-5: 바탕질 변성·지방 섬유화형 ──
+  'BC-5': [
+    {
+      week: 1, weekLabel: '1주차', phase: '섬유화 분해', phaseColor: 'var(--vis)',
+      icon: '🍊', title: '셀룰라이트 섬유화 장벽 분해 시작',
+      center: '순환 센터 + 한방 센터', centerIcons: ['💧', '🌿'],
+      failure_expose: '{USER_NAME}님, 허벅지와 엉덩이를 잡으면 귤껍질처럼 울퉁불퉁한 것은 단순 지방이 아닙니다. 만성 염증성 노폐물 체액이 지방세포와 엉겨붙어 콜라겐 섬유가 감싼 "지방 섬유화" 조직입니다. 굶어서는 이 섬유화 벽이 깨지지 않습니다.',
+      axis_logic: '1주차 0순위는 섬유화 분해. 단순 칼로리 제한보다 림프 드레나쥐 + 항섬유화 식품 조합이 핵심입니다.',
+      keyFocus: ['셀룰라이트 분해', '림프 드레나쥐', '항섬유화 식품'],
+      exercise_ban: '시술 부위 고강도 압박 운동·마찰 운동',
+      exercise_ok: '림프 드레나쥐 전신 마사지 30분 + 저충격 수영 30분',
+      diet_ban: '트랜스지방·설탕·알코올 (섬유화 촉진)',
+      diet_ok: '비타민C 고함량 (키위·피망·딸기) + 파인애플(브로멜라인 효소)',
+      recovery_ban: '',
+      recovery_ok: '드라이 브러싱(피부 림프) + 냉온 샤워 교차 (순환 자극)',
+    },
+    {
+      week: 2, weekLabel: '2주차', phase: '순환 가속', phaseColor: 'var(--muscle)',
+      icon: '🌊', title: '미세 순환 복구 — 노폐물 배출 가속',
+      center: '순환 센터 + 회복 센터', centerIcons: ['💧', '🌙'],
+      failure_expose: '섬유화 조직 내 혈류가 막혀 산소와 영양이 들어오지 못하는 상태입니다. 이 구역에서는 지방 분해 효소(Lipase)가 도달하지 못해 지방이 아무리 제한해도 빠지지 않습니다.',
+      axis_logic: '미세 순환을 복구해 지방 분해 효소가 섬유화 구역에 도달할 수 있도록 합니다.',
+      keyFocus: ['미세 순환 복구', '지방 분해 효소 전달', '노폐물 가속 배출'],
+      exercise_ban: '섬유화 부위를 강하게 압박하는 기구 운동',
+      exercise_ok: '아쿠아 에어로빅 30분 + 진동 폼롤러(셀룰라이트 구역) 10분',
+      diet_ban: '카페인 과다 (혈관 수축 → 미세 순환 저해)',
+      diet_ok: '콜라겐 분해 지원 식품 (비타민C+아연 조합) + 오메가3',
+      recovery_ban: '',
+      recovery_ok: '전문 림프 드레나쥐 마사지 주 2회 강력 권장',
+    },
+    {
+      week: 3, weekLabel: '3주차', phase: '조직 재생', phaseColor: 'var(--circ)',
+      icon: '🌱', title: '콜라겐 재구성 — 새 결합조직 생성',
+      center: '식단 센터 + 한방 센터', centerIcons: ['🍽️', '🌿'],
+      failure_expose: '섬유화가 분해되는 과정에서 일시적으로 "더 부어 보이는" 시기가 옵니다. 이는 실패가 아니라 노폐물 체액이 이동하는 과도기입니다. 이 시기에 멈추면 안 됩니다.',
+      axis_logic: '기존 비정상 콜라겐을 분해하면서 동시에 정상 콜라겐 합성을 지원합니다.',
+      keyFocus: ['콜라겐 재구성', '항염 지속', '과도기 유지'],
+      exercise_ban: '강도 급격히 올리기 (과도기 조직에 무리)',
+      exercise_ok: '요가(순환 자극) + 저강도 필라테스 — 주 4회',
+      diet_ban: '설탕·고GI 식품 (콜라게나제 활성화 억제)',
+      diet_ok: '콜라겐 합성 지원: 본브로스·비타민C·아연·실리카 풍부 식품',
+      recovery_ban: '',
+      recovery_ok: '온찜질(혈류) → 냉찜질(수축) 교차 — 섬유화 구역 집중',
+    },
+    {
+      week: 4, weekLabel: '4주차', phase: '지속 관리', phaseColor: 'var(--sub)',
+      icon: '🔥', title: '섬유화 개선 확인 + 지속 관리 체계 구축',
+      center: '관리 센터 + 식단 센터', centerIcons: ['💆', '🍽️'],
+      failure_expose: '셀룰라이트 섬유화는 4주에 완전히 없어지지 않습니다. 하지만 4주 후 조직 질감이 부드러워지고 울퉁불퉁함이 줄어드는 변화가 체감됩니다. 이것이 치유의 신호입니다.',
+      axis_logic: '개선 효과를 유지하는 생활습관 자동화와 전문 관리 연계를 구성합니다.',
+      keyFocus: ['변화 체감 확인', '생활습관 자동화', '전문 관리 연계'],
+      exercise_ban: '섬유화 재발 유발 (스트레스 + 좌업 장시간)',
+      exercise_ok: '수영 + 드라이 브러싱 + 냉온 샤워 루틴 자동화',
+      diet_ban: '트랜스지방·알코올 (섬유화 재발 촉진)',
+      diet_ok: '항염·항섬유화 식품 지속 + 하루 수분 2.5L',
+      recovery_ban: '',
+      recovery_ok: '파트너 에스테틱 센터 연계 — 4주 데이터 전송',
+      b2b: true,
+    },
+  ],
+
+  // ── BC-6: 부신 피로·자율신경 교란형 ──
+  'BC-6': [
+    {
+      week: 1, weekLabel: '1주차', phase: '부신 안정', phaseColor: 'var(--vis)',
+      icon: '🦉', title: '밤 9시 가짜 허기 — 코르티솔 소방',
+      center: '심리 센터 + 호르몬 센터', centerIcons: ['🧠', '🌸'],
+      failure_expose: '{USER_NAME}님, 밤에 먹는 것은 의지력 부족이 아닙니다. 낮 동안 극도로 항진된 교감신경이 밤에 풀리는 순간 도파민이 급추락합니다. 뇌는 생존을 위해 "당장 자극적인 탄수화물로 도파민을 채워라"는 화학 명령을 내립니다. 이것이 야식입니다.',
+      axis_logic: '1주차 0순위는 [심리 센터]와 [호르몬 센터]입니다. 야식을 "참는" 전략이 아니라 야식 충동을 만드는 코르티솔 사이클 자체를 끊는 환경을 설계합니다.',
+      keyFocus: ['코르티솔 안정', '야간 도파민 방어', '환경 설계'],
+      exercise_ban: '밤 9시 이후 고강도 운동·카페인 (교감신경 재점화)',
+      exercise_ok: '저녁 9시 야외 평지 산책 20분 — 도파민 자연 충전',
+      diet_ban: '야식 무조건 참기 (보상 과식 이중 폭발 유발)',
+      diet_ok: '도파민 대체 스낵 세트 — 구운 김 + 무가당 그릭요거트 (밤 10시 허용)',
+      recovery_ban: '블루라이트 스크린 (멜라토닌 차단)',
+      recovery_ok: '블루라이트 안경 + 자율신경 안정 ASMR 수면 전 20분',
+    },
+    {
+      week: 2, weekLabel: '2주차', phase: '수면 최적화', phaseColor: 'var(--muscle)',
+      icon: '🌙', title: '수면 품질 개선 — 렙틴·그렐린 리셋',
+      center: '회복 센터 + 호르몬 센터', centerIcons: ['🌙', '🌸'],
+      failure_expose: '수면이 부족하면 배고픔 호르몬(그렐린)이 30% 증가하고 포만 호르몬(렙틴)이 18% 감소합니다. 잠을 못 자면 다음 날 과식이 구조적으로 설계되어 있는 것입니다.',
+      axis_logic: '수면 품질을 높이면 식욕 호르몬이 자연적으로 정상화됩니다. 다이어트가 아니라 수면 개선이 식욕 감소의 지름길입니다.',
+      keyFocus: ['수면 품질 개선', '렙틴·그렐린 정상화', '식욕 자동 감소'],
+      exercise_ban: '취침 3시간 전 격렬한 운동',
+      exercise_ok: '낮 요가 + 저녁 산책 — 코르티솔 일중 리듬 정상화',
+      diet_ban: '카페인 오후 2시 이후·알코올 (수면 질 저하)',
+      diet_ok: '트립토판 식품(저녁) — 바나나·닭고기·두부·우유 (멜라토닌 전구체)',
+      recovery_ban: '주말 수면 몰아자기 (리듬 파괴)',
+      recovery_ok: '매일 같은 시간 취침·기상 + 수면 환경 18°C + 암막',
+    },
+    {
+      week: 3, weekLabel: '3주차', phase: '스트레스 해독', phaseColor: 'var(--circ)',
+      icon: '🧘', title: '만성 스트레스 해독 — 부신 피로 회복',
+      center: '심리 센터 + 회복 센터', centerIcons: ['🧠', '🌙'],
+      failure_expose: '부신이 지치면 코르티솔을 더 이상 조절하지 못하고 온종일 높거나 온종일 낮은 상태가 됩니다. 낮에 무기력하고 밤에 각성되는 역전 패턴이 그 증거입니다.',
+      axis_logic: '부신 회복은 시간이 필요합니다. 이번 주는 부신에 가해지는 부하를 최소화하고 회복 재료(영양소)를 보충합니다.',
+      keyFocus: ['부신 회복', '코르티솔 일중 리듬 복구', '스트레스 해독'],
+      exercise_ban: '몸이 지쳐있을 때 무리한 운동 강행 (부신 추가 고갈)',
+      exercise_ok: '에너지 상태 기반 유동 운동 — 좋은 날 30분, 피곤한 날 10분',
+      diet_ban: '카페인 의존 (부신을 억지로 쥐어짜기)',
+      diet_ok: '부신 회복 영양소 — 마그네슘·비타민B5·비타민C + 아슈와간다(어댑토젠)',
+      recovery_ban: '',
+      recovery_ok: '자연 속 걷기 30분 — 코르티솔 20% 감소 입증된 요법',
+    },
+    {
+      week: 4, weekLabel: '4주차', phase: '자율신경 안정화', phaseColor: 'var(--sub)',
+      icon: '🔥', title: '자율신경 안정 완료 → 본격 식단 도입',
+      center: '식단 센터 + 관리 센터', centerIcons: ['🍽️', '💆'],
+      failure_expose: '1~3주차에 코르티솔 사이클을 끊고, 수면을 회복하고, 부신을 재충전했습니다. 이제야 식단 제한이 효과를 내는 신체 상태가 만들어졌습니다. 전보다 야식 충동이 20~30% 줄어들었을 것입니다.',
+      axis_logic: '안정된 자율신경 위에 칼로리 관리를 처음으로 도입합니다. 급격한 제한 없이 천천히 시작합니다.',
+      keyFocus: ['칼로리 조절 시작', '자율신경 안정 유지', 'B2B 분석 전송'],
+      exercise_ban: '스트레스 상태에서 강행하는 다이어트',
+      exercise_ok: '규칙적 저강도 운동 루틴 자동화',
+      diet_ban: '스트레스 폭식 트리거 환경 유지',
+      diet_ok: '야식 대체 루틴 완성 + 하루 3식 규칙 + 칼로리 200kcal 점진 감소',
+      recovery_ban: '',
+      recovery_ok: '파트너 센터 연계 — 4주 자율신경 기반 구축 완료',
+      b2b: true,
+    },
+  ],
+
+  // ── BC-7: 릴랙신 이완·산후 구조 정체형 ──
+  'BC-7': [
+    {
+      week: 1, weekLabel: '1주차', phase: '코어 재건', phaseColor: 'var(--vis)',
+      icon: '🎈', title: '골반저근 회복 — 복압 재건 1단계',
+      center: '체형 센터 + 회복 센터', centerIcons: ['🦴', '🌙'],
+      failure_expose: '{USER_NAME}님, 출산 후 배가 처지는 것은 지방 때문이 아닙니다. 릴랙신 호르몬으로 골격이 이완되고 복직근이 벌어지면서(복직근 이개) 장기가 복부 앞으로 처진 것입니다. 이 상태에서 윗몸일으키기나 크런치를 하면 복직근 이개가 더 심해집니다.',
+      axis_logic: '1주차 0순위는 [체형 센터]입니다. 복직근 이개 여부 확인 후, 안전한 골반저근 운동만 시행합니다.',
+      keyFocus: ['골반저근 회복', '복직근 이개 방지', '복압 재건 시작'],
+      exercise_ban: '크런치·레그레이즈·버피·점핑 운동 (복직근 이개 심화)',
+      exercise_ok: '케겔 운동 + 횡복근 호흡 + 골반저근 이완 — 1일 15분',
+      diet_ban: '극단적 칼로리 제한 (모유 수유 중인 경우 특히)',
+      diet_ok: '산후 회복 식단 — 단백질 풍부 + 철분(빈혈 방지) + 엽산',
+      recovery_ban: '복부 압박 복대 (장기 처짐 악화 가능)',
+      recovery_ok: '산후 골반 교정 밴드 + 폼롤러 등 이완',
+    },
+    {
+      week: 2, weekLabel: '2주차', phase: '복압 회복', phaseColor: 'var(--muscle)',
+      icon: '🌸', title: '심부 코어 활성화 — 횡복근 재훈련',
+      center: '체형 센터 + 운동 센터', centerIcons: ['🦴', '🏃'],
+      failure_expose: '출산 후 뱃살이 안 빠지는 핵심 이유: 복압이 낮아 장기가 복부를 밀어내고 있기 때문입니다. 외형 지방을 빼려는 시도보다 복강 내압을 복구하는 것이 체형 변화에 훨씬 빠릅니다.',
+      axis_logic: '횡복근(천연 복대)을 활성화해 복강 내압을 회복합니다. 이것이 아랫배가 들어가는 첫 번째 열쇠입니다.',
+      keyFocus: ['횡복근 활성화', '복강 내압 회복', '아랫배 당김 시작'],
+      exercise_ban: '외복사근 주도 운동 (체형 왜곡 가능성)',
+      exercise_ok: '데드버그 + 버드독 + 브릿지 — 심부 코어 3종 세트 주 4회',
+      diet_ban: '산후 폭식·고나트륨 (부종 악화)',
+      diet_ok: '소화 돕는 소식다회 — 1일 5~6회 소량, 따뜻한 음식 중심',
+      recovery_ban: '',
+      recovery_ok: '산후 온열 요법 — 복부 온찜질 15분 (장기 복위 지원)',
+    },
+    {
+      week: 3, weekLabel: '3주차', phase: '체형 재건', phaseColor: 'var(--circ)',
+      icon: '🧘', title: '기구 필라테스 도입 — 체형 재건 시작',
+      center: '체형 센터 + 운동 센터', centerIcons: ['🦴', '🏃'],
+      failure_expose: '2주간 골반저근과 심부 코어를 재건했습니다. 이제 기구 필라테스를 도입할 준비가 된 단계입니다. 일반 헬스와 달리 필라테스는 복압을 높이면서 동시에 척추를 교정합니다.',
+      axis_logic: '전문 산후 필라테스 강사와 함께하는 기구 운동이 최고 효율입니다. 혼자 하면 자세 오류로 역효과 가능성이 있습니다.',
+      keyFocus: ['기구 필라테스 시작', '척추 정렬', '체형 재건 본격화'],
+      exercise_ban: '고충격 점프 운동·달리기 (골반저근 부하)',
+      exercise_ok: '기구 필라테스 주 2회 + 맨몸 코어 운동 주 3회',
+      diet_ban: '밀가루·유제품 과다 (소화 부담)',
+      diet_ok: '포만감 길고 소화 잘 되는 식품 — 고구마·달걀·두부·아보카도',
+      recovery_ban: '',
+      recovery_ok: '산후 전문 마사지 + 골반 교정 자가 스트레칭 10분/일',
+    },
+    {
+      week: 4, weekLabel: '4주차', phase: '복압 완성', phaseColor: 'var(--sub)',
+      icon: '🔥', title: '복압 완성 — 지속 가능한 체형 유지 시스템',
+      center: '운동 센터 + 관리 센터', centerIcons: ['🏃', '💆'],
+      failure_expose: '1~3주차에 골반저근을 회복하고, 심부 코어를 활성화하고, 체형을 재건했습니다. 이제 이 변화를 일상에서 자동으로 유지하는 루틴을 만드는 것이 4주차 목표입니다.',
+      axis_logic: '복압 유지 = 아랫배 탄력 유지. 이것이 산후 체형의 장기 유지 핵심입니다.',
+      keyFocus: ['복압 자동 유지', '운동 루틴 자동화', 'B2B 분석 전송'],
+      exercise_ban: '무거운 짐을 갑자기 들기 (복압 순간 저하)',
+      exercise_ok: '필라테스 + 일상 동작에서 복압 유지 연습',
+      diet_ban: '',
+      diet_ok: '칼로리 200~300kcal 점진 감소 + 고단백 유지',
+      recovery_ban: '',
+      recovery_ok: '파트너 산부인과·필라테스 센터 연계 데이터 전송',
+      b2b: true,
+    },
+  ],
+
+  // ── BC-8: 알파 수용체 우세·하체 과발달형 ──
+  'BC-8': [
+    {
+      week: 1, weekLabel: '1주차', phase: '하체 이완', phaseColor: 'var(--vis)',
+      icon: '🏋️', title: '알파 수용체 차단 — 하체 지방 분해 환경 조성',
+      center: '체형 센터 + 한방 센터', centerIcons: ['🦴', '🌿'],
+      failure_expose: '{USER_NAME}님, 하체 운동을 열심히 할수록 허벅지가 커지는 것은 알파-2 아드레날린 수용체 때문입니다. 하체 지방조직에 이 수용체가 집중되어 있어 지방 분해를 막고 있습니다. 하체 자극 운동을 쉬어야 이 수용체의 지방 분해 억제가 풀립니다.',
+      axis_logic: '1주차 절대 원칙: 하체 자극 운동 전면 금지. 상체와 코어 중심으로 전환합니다.',
+      keyFocus: ['하체 운동 중단', '알파 수용체 억제 완화', '하체 림프 이완'],
+      exercise_ban: '스쿼트·레그프레스·런지·하체 웨이트 전면 금지',
+      exercise_ok: '수영(하체 비자극 유산소) + 상체 가벼운 밴드 운동',
+      diet_ban: '나트륨 과다·알코올 (하체 부종 고착)',
+      diet_ok: '마그네슘 풍부(근육 이완) — 아몬드·시금치·바나나 + 수분 2.5L',
+      recovery_ban: '',
+      recovery_ok: '하체 스트레칭 집중 30분 + 허벅지 폼롤러 이완',
+    },
+    {
+      week: 2, weekLabel: '2주차', phase: '지방 분해 준비', phaseColor: 'var(--muscle)',
+      icon: '🌊', title: '하체 림프 재활성화 — 지방 분해 준비',
+      center: '순환 센터 + 운동 센터', centerIcons: ['💧', '🏃'],
+      failure_expose: '하체 알파 수용체 억제가 완화되기 시작하는 1~2주. 이 기간에 림프 순환을 높여 지방 분해 노폐물이 빠져나갈 통로를 만들어 놓아야 합니다.',
+      axis_logic: '림프 순환을 높이는 방법만 선택합니다. 하체 근육에 직접적인 자극을 주지 않으면서 순환을 높이는 기법 조합.',
+      keyFocus: ['하체 림프 활성화', '지방 분해 통로 개방', '순환 강화'],
+      exercise_ban: '하체 근력 자극 모든 운동',
+      exercise_ok: '아쿠아 에어로빅 30분 + 발목 펌핑 200회 + 하체 림프 마사지',
+      diet_ban: '카페인 과다·이뇨제 남용 (미네랄 불균형)',
+      diet_ok: '칼륨 풍부(나트륨 배출) — 고구마·아보카도·바나나 + 저염 식단',
+      recovery_ban: '',
+      recovery_ok: '냉온 샤워 교차 — 하체 혈관 탄력 회복',
+    },
+    {
+      week: 3, weekLabel: '3주차', phase: '지방 연소', phaseColor: 'var(--circ)',
+      icon: '🔥', title: '인터벌 수영 도입 — 하체 지방 연소 시작',
+      center: '운동 센터 + 식단 센터', centerIcons: ['🏃', '🍽️'],
+      failure_expose: '2주간 알파 수용체가 안정되고 림프 통로가 열렸습니다. 이제 하체 자극 없이 지방을 태우는 운동을 도입할 수 있는 시기입니다. 수영과 사이클이 최적입니다.',
+      axis_logic: '수영과 사이클은 하체 근육을 키우지 않고 지방을 태우는 최적의 알파 수용체 체형 운동입니다.',
+      keyFocus: ['지방 연소 시작', '하체 비자극 유산소', '칼로리 제한 도입'],
+      exercise_ban: '하체 웨이트 여전히 금지',
+      exercise_ok: '인터벌 수영(30초 빠름+30초 쉬움) 30분 + 실내 사이클 30분',
+      diet_ban: '고나트륨·고당분',
+      diet_ok: '저탄고단 식단 — 하체 지방 분해 최적화',
+      recovery_ban: '',
+      recovery_ok: '스트레칭 루틴 자동화 + 폼롤러 하체 10분/일',
+    },
+    {
+      week: 4, weekLabel: '4주차', phase: '체형 안정화', phaseColor: 'var(--sub)',
+      icon: '✨', title: '체형 안정화 확인 + 슬리밍 루틴 자동화',
+      center: '운동 센터 + 관리 센터', centerIcons: ['🏃', '💆'],
+      failure_expose: '3주간 하체 지방을 서서히 이완시키고 연소 준비를 마쳤습니다. 체중보다 허벅지 둘레 감소가 먼저 체감될 것입니다. 이제 이 루틴을 자동화하는 것이 4주차 목표입니다.',
+      axis_logic: '알파 수용체 체형의 장기 관리 원칙: 하체 자극 운동 비율을 최소화하고, 수영·사이클·요가 중심 루틴을 평생 유지합니다.',
+      keyFocus: ['체형 변화 확인', '루틴 자동화', 'B2B 분석 전송'],
+      exercise_ban: '체중감량 목적 하체 웨이트 재개',
+      exercise_ok: '수영·요가 주 4회 + 가벼운 상체 근력',
+      diet_ban: '',
+      diet_ok: '나트륨 제한 + 수분 충분 + 칼로리 200kcal 점진 감소',
+      recovery_ban: '',
+      recovery_ok: '파트너 필라테스·재활 센터 연계 데이터 전송',
+      b2b: true,
+    },
+  ],
+
+  // ── BC-9: 근감소성 이화작용·마른비만형 ──
+  'BC-9': [
+    {
+      week: 1, weekLabel: '1주차', phase: '근육 보호', phaseColor: 'var(--vis)',
+      icon: '🕷️', title: '이화작용 차단 — 근육 방어벽 구축',
+      center: '식단 센터 + 운동 센터', centerIcons: ['🍽️', '🏃'],
+      failure_expose: '{USER_NAME}님, 다이어트를 할수록 사지는 가늘어지고 배만 남는 것은 의지력의 문제가 아닙니다. 몸이 근육을 에너지로 태우고(이화작용), 지방은 에너지 저장을 위해 보호하는 역전된 대사 패턴이 고착된 상태입니다. 유산소를 더 늘리면 이 현상이 심해집니다.',
+      axis_logic: '1주차 0순위는 [식단 센터]와 [운동 센터]. 단백질 공급을 최우선으로 하고, 이화작용을 유발하는 공복 유산소를 중단합니다.',
+      keyFocus: ['이화작용 차단', '근육 방어벽 구축', '단백질 최우선'],
+      exercise_ban: '공복 유산소·장시간 유산소 (근육 분해 심화)',
+      exercise_ok: '식사 후 1시간 저충격 저항 운동 — 주 3회 (근육 합성 신호)',
+      diet_ban: '저단백 식단·원푸드·무작정 굶기',
+      diet_ok: '단백질 매 끼니 최소 30g — 닭가슴살·연어·두부·달걀·그릭요거트',
+      recovery_ban: '',
+      recovery_ok: '아침 단백질 30g — 공복 이화작용 차단의 핵심 타이밍',
+    },
+    {
+      week: 2, weekLabel: '2주차', phase: '근육 합성', phaseColor: 'var(--muscle)',
+      icon: '💪', title: '근육 합성 가속 — 복부 지방 집중 공략',
+      center: '운동 센터 + 식단 센터', centerIcons: ['🏃', '🍽️'],
+      failure_expose: '근육이 1kg 늘면 하루 기초대사량이 13kcal 증가합니다. 적어 보이지만 1년이면 4,745kcal, 즉 지방 0.68kg에 해당합니다. 근육이 지방을 태우는 공장입니다.',
+      axis_logic: '저충격 근력 운동 + 고단백 식단 조합. 근육을 만들면서 동시에 복부 지방만 제거하는 구조를 만듭니다.',
+      keyFocus: ['근육 합성 시작', '기초대사량 증가', '복부 지방 타깃'],
+      exercise_ban: '과도한 유산소 (근육 합성 방해)',
+      exercise_ok: '저충격 근력 운동(밴드·덤벨) 30분 + 코어 운동 15분 — 주 4회',
+      diet_ban: '탄수화물 극단 제한 (근육 합성 에너지 부족)',
+      diet_ok: '운동 전 복합 탄수화물 100g + 운동 후 단백질 30g (골든타임)',
+      recovery_ban: '',
+      recovery_ok: '수면 7~8시간 (성장호르몬 분비 = 근육 합성 타임)',
+    },
+    {
+      week: 3, weekLabel: '3주차', phase: '내장지방 타깃', phaseColor: 'var(--circ)',
+      icon: '🎯', title: '마른비만 역전 — 근육↑ 복부지방↓ 동시 전략',
+      center: '운동 센터 + 식단 센터', centerIcons: ['🏃', '🍽️'],
+      failure_expose: '체중계 숫자가 같아도 몸이 달라집니다. 근육이 늘고 복부 지방이 빠지는 "리컴포지션" 단계입니다. 체중에 집착하지 말고 허리둘레와 체성분을 보는 것이 핵심입니다.',
+      axis_logic: '단백질을 충분히 공급하면서 칼로리를 소폭만 줄이는 리컴포지션 전략. 급격한 제한은 이화작용을 다시 활성화합니다.',
+      keyFocus: ['근지방 교환', '허리둘레 감소', '체성분 개선'],
+      exercise_ban: '유산소 위주 단일 운동',
+      exercise_ok: '복합 운동(근력+코어+유산소 복합) 45분 — 주 4회',
+      diet_ban: '단백질 부족 (1.4g/kg 이하)',
+      diet_ok: '단백질 1.6~2g/kg (현재 체중 기준) + 복합 탄수화물',
+      recovery_ban: '',
+      recovery_ok: '마사지건 근막 이완 + 스트레칭 20분/일',
+    },
+    {
+      week: 4, weekLabel: '4주차', phase: '대사 역전', phaseColor: 'var(--sub)',
+      icon: '🔥', title: '이화작용 역전 완성 — 지속 가능한 근비만 탈출',
+      center: '운동 센터 + 관리 센터', centerIcons: ['🏃', '💆'],
+      failure_expose: '3주간 이화작용을 차단하고, 근육 합성을 시작하고, 복부 지방을 타깃했습니다. 이제 이 변화를 평생 지속할 수 있는 자동화 루틴을 만드는 것이 마지막 단계입니다.',
+      axis_logic: '마른비만 탈출의 유일한 장기 솔루션: 단백질 충분 섭취 + 근력 운동 지속 + 유산소 최소화. 이 세 원칙이 자동화되면 됩니다.',
+      keyFocus: ['루틴 자동화', '체성분 측정 기준화', 'B2B 분석 전송'],
+      exercise_ban: '유산소로만 다시 돌아가기',
+      exercise_ok: '근력 운동 주 3~4회 루틴 완성',
+      diet_ban: '단백질 식사 건너뛰기',
+      diet_ok: '고단백 저탄 기준 유지 + 칼로리 200kcal 점진 감소',
+      recovery_ban: '',
+      recovery_ok: '파트너 영양 컨설팅·PT 센터 연계 데이터 전송',
+      b2b: true,
+    },
+  ],
+};
+
+// ──────────────────────────────────────────────
+// 10-C. getRoadmapWeeks() — bc_primary 코드별 처방 반환 + 칼로리 주입
+// bc_primary: 'BC-1'~'BC-9' (또는 'BC-X' 확장 코드)
+// goal_weight: 목표체중(kg) | null
+// weight_loss_pct: 감량률(%) | null
+// user_name: 표시 이름 (failure_expose 치환용)
+// ──────────────────────────────────────────────
+function getRoadmapWeeks(bc_primary, goal_weight, weight_loss_pct, user_name) {
+  var name = user_name || '회원';
+
+  // bc_primary에서 BC 코드 추출 (e.g. 'BC-3' → 'BC-3')
+  var bcKey = 'BC-6'; // 기본값
+  if (bc_primary) {
+    var m = String(bc_primary).match(/BC-(\d)/i);
+    if (m) bcKey = 'BC-' + m[1];
+  }
+
+  // BC별 처방 가져오기 (없으면 BC-6 fallback)
+  var weeks = BC_ROADMAP_DB[bcKey] || BC_ROADMAP_DB['BC-6'];
+
+  // Deep clone + 동적 데이터 주입
+  var result = weeks.map(function(w) {
+    var item = Object.assign({}, w);
+
+    // {USER_NAME} 치환
+    if (item.failure_expose) {
+      item.failure_expose = item.failure_expose.replace(/\{USER_NAME\}/g, name);
+    }
+
+    // 칼로리·탄단지 주입 (goal_weight가 있을 때)
+    if (goal_weight != null && goal_weight > 0) {
+      var nutrition = computeNutrition(
+        null,              // curWeight: null → goal_weight 기준 BMR
+        goal_weight,
+        weight_loss_pct,
+        null               // height: fallback
+      );
+      var v = nutrition.weekVariants.find(function(x){ return x.week === item.week; }) || nutrition.weekVariants[0];
+      item.nutrition = {
+        kcal:     v.kcal,
+        carbG:    v.carbG,
+        proteinG: v.proteinG,
+        fatG:     v.fatG,
+        note:     v.note,
+        lossPct:  nutrition.deficit,
+      };
+    }
+
+    return item;
+  });
+
+  return result;
+}
+
+// ──────────────────────────────────────────────
+// 10-D. ROADMAP_WEEKS — 하위호환 기본값 (BC-6 제네릭)
+// 결과지가 bc_primary 없이 직접 ROADMAP_WEEKS를 참조할 때 사용
+// ──────────────────────────────────────────────
+var ROADMAP_WEEKS = BC_ROADMAP_DB['BC-6'];
 
 // ──────────────────────────────────────────────
 // 11. 면책 고지문 (전 페이지 공통)
@@ -1023,6 +1607,9 @@ if (typeof module !== 'undefined' && module.exports) {
     AXIS_10_META, NICKNAME_TABLE, NICKNAME_TO_BC, BC_TO_DEFAULT_NICKNAME,
     BC_PRESCRIPTION_DB, TONE_DB,
     computeNickname, detectBackground, getDeepSurveyRoute, generatePrescription,
+    // V4.1 신규 (PHASE 4-A/B)
+    BC_ROADMAP_DB,
+    computeNutrition, getRoadmapWeeks,
     // 기존 유지
     BC_MASTER, CAUSAL_AXIS_META, AXIS_11,
     SAJU_ELEMENT_DESC, MBTI_DESC,
