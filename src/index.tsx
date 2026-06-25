@@ -1992,49 +1992,101 @@ app.get('/favicon.ico', async (c) => {
 })
 
 /* ═══════════════════════════════════════════════════════
-   POST /api/checkin — 주차별 체크인 저장 + 컨설턴트 자동전송
+   POST /api/checkin — 주차별 체크인 저장 (weekly_checkins + checkin_log 병행)
 ═══════════════════════════════════════════════════════ */
 app.post('/api/checkin', async (c) => {
   const db = c.env.DB as D1Database | undefined;
   try {
     const body = await c.req.json() as {
+      // weekly_checkins 스키마
+      session_id?: string;
+      bc_code?: string;
+      week_number?: number;
+      energy_score?: number;
+      hunger_score?: number;
+      sleep_score?: number;
+      mood_score?: number;
+      weight_kg?: number;
+      diet_adherence?: number;
+      // 기존 checkin_log 스키마 (하위호환)
       result_id?: string;
       consultant_code?: string;
-      bc_code?: string;
       week_range?: string;
       axis_name?: string;
       checked_at?: string;
     };
 
-    if(!body.result_id){
-      return c.json({ ok: false, error: 'result_id required' }, 400);
-    }
-
-    if(db){
-      // checkin_log 테이블에 저장 (없으면 graceful 처리)
-      try {
-        await db.prepare(`
-          INSERT INTO checkin_log
-            (result_id, consultant_code, bc_code, week_range, axis_name, checked_at)
-          VALUES (?,?,?,?,?,?)
-        `).bind(
-          body.result_id || '',
-          body.consultant_code || '',
-          body.bc_code || '',
-          body.week_range || '',
-          body.axis_name || '',
-          body.checked_at || new Date().toISOString()
-        ).run();
-      } catch(dbErr) {
-        // 테이블 미존재 등 DB 오류 — 로그만 남기고 성공 응답
-        console.warn('[checkin] DB insert skipped:', dbErr);
+    if (db) {
+      // ── 신규: weekly_checkins 테이블 저장 ──
+      if (body.session_id || body.week_number) {
+        try {
+          // on_track: 에너지+수면+기분 평균 >= 6이면 true
+          const avgScore = ((body.energy_score||0) + (body.sleep_score||0) + (body.mood_score||0)) / 3;
+          const onTrack = avgScore >= 6 ? 1 : 0;
+          await db.prepare(`
+            INSERT INTO weekly_checkins
+              (session_id, bc_code, week_number, energy_score, hunger_score, sleep_score,
+               mood_score, weight_kg, diet_adherence, on_track)
+            VALUES (?,?,?,?,?,?,?,?,?,?)
+            ON CONFLICT(session_id, week_number)
+            DO UPDATE SET
+              energy_score=excluded.energy_score,
+              hunger_score=excluded.hunger_score,
+              sleep_score=excluded.sleep_score,
+              mood_score=excluded.mood_score,
+              weight_kg=excluded.weight_kg,
+              diet_adherence=excluded.diet_adherence,
+              on_track=excluded.on_track,
+              updated_at=CURRENT_TIMESTAMP
+          `).bind(
+            body.session_id || null,
+            body.bc_code    || null,
+            body.week_number || 1,
+            body.energy_score   ?? null,
+            body.hunger_score   ?? null,
+            body.sleep_score    ?? null,
+            body.mood_score     ?? null,
+            body.weight_kg      ?? null,
+            body.diet_adherence ?? null,
+            onTrack
+          ).run();
+          return c.json({ success: true, message: `${body.week_number}주차 체크인 저장 완료` });
+        } catch (dbErr) {
+          console.warn('[checkin] weekly_checkins insert 오류:', dbErr);
+          // 테이블 없는 경우 등 — 에러 반환
+          return c.json({ success: false, error: String(dbErr) }, 500);
+        }
       }
+
+      // ── 기존 하위호환: checkin_log 저장 ──
+      if (body.result_id) {
+        try {
+          await db.prepare(`
+            INSERT INTO checkin_log
+              (result_id, consultant_code, bc_code, week_range, axis_name, checked_at)
+            VALUES (?,?,?,?,?,?)
+          `).bind(
+            body.result_id || '',
+            body.consultant_code || '',
+            body.bc_code || '',
+            body.week_range || '',
+            body.axis_name || '',
+            body.checked_at || new Date().toISOString()
+          ).run();
+        } catch(dbErr) {
+          console.warn('[checkin] checkin_log insert skipped:', dbErr);
+        }
+        return c.json({ ok: true, success: true, message: '체크인 완료' });
+      }
+    } else {
+      // DB 없는 환경 (개발 미연결) — 성공 응답
+      return c.json({ success: true, message: '체크인 수신 (DB 미연결)' });
     }
 
-    return c.json({ ok: true, message: '체크인 완료' });
+    return c.json({ ok: true, success: true, message: '체크인 완료' });
   } catch(e) {
     console.error('[/api/checkin]', e);
-    return c.json({ ok: false, error: String(e) }, 500);
+    return c.json({ success: false, error: String(e) }, 500);
   }
 })
 

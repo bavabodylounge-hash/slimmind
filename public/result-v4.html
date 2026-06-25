@@ -628,6 +628,269 @@ body{background:var(--paper);color:var(--ink);min-height:100vh;}
 .progress-bg{height:8px;background:var(--line);border-radius:4px;overflow:hidden;}
 .progress-fill{width:33.3%;height:100%;background:linear-gradient(90deg,var(--vis-d),var(--vis));border-radius:4px;}
 
+/* ══════════════════════════════════════════════
+   CRIT-1: P6 Segmented Control + Swipe 뷰포트
+   ══════════════════════════════════════════════ */
+
+/* Sticky 상단 탭 컨테이너 */
+.p6-seg-sticky{
+  position:sticky;top:52px;z-index:90;
+  background:var(--paper);
+  padding:10px 16px 0;
+  border-bottom:1px solid var(--line);
+  box-shadow:0 2px 12px rgba(42,33,24,.06);
+}
+
+/* Segmented Control 탭 바 */
+.p6-seg-bar{
+  display:flex;gap:4px;
+  background:rgba(42,33,24,.07);
+  border-radius:14px;
+  padding:4px;
+  margin-bottom:10px;
+}
+.p6-seg-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
+  padding:8px 4px;border-radius:11px;border:none;background:transparent;
+  cursor:pointer;transition:background .2s,color .2s,transform .15s;
+  font-family:inherit;
+}
+.p6-seg-btn .seg-icon{font-size:16px;line-height:1;}
+.p6-seg-btn .seg-label{font-size:10px;font-weight:700;letter-spacing:.3px;color:var(--muted);}
+.p6-seg-btn .seg-week{font-size:9px;font-weight:600;color:rgba(42,33,24,.35);}
+.p6-seg-btn.active{
+  background:var(--dark);
+  box-shadow:0 2px 8px rgba(42,33,24,.18);
+  transform:translateY(-1px);
+}
+.p6-seg-btn.active .seg-label{color:rgba(255,200,150,1);}
+.p6-seg-btn.active .seg-week{color:rgba(255,255,255,.55);}
+
+/* Sticky 진행 표시 (주차 점 + 라벨) */
+.p6-progress-row{
+  display:flex;align-items:center;gap:8px;padding-bottom:10px;
+}
+.p6-progress-dots{display:flex;gap:6px;}
+.p6-progress-dot{
+  width:8px;height:8px;border-radius:50%;
+  background:var(--line);transition:all .3s;
+}
+.p6-progress-dot.done{background:var(--vis-d);}
+.p6-progress-dot.current{
+  background:var(--vis);width:22px;border-radius:4px;
+  box-shadow:0 0 6px rgba(181,69,46,.5);
+}
+.p6-progress-label{
+  font-size:11px;font-weight:700;color:var(--muted);margin-left:auto;
+}
+
+/* ── Swipe 뷰포트 래퍼 ── */
+.p6-swipe-viewport{
+  overflow:hidden;
+  position:relative;
+  /* 높이는 JS로 제어 */
+}
+.p6-swipe-track{
+  display:flex;
+  /* width는 JS로 동적 설정: 주차수 * 100% */
+  transition:transform .38s cubic-bezier(.4,0,.2,1);
+  will-change:transform;
+}
+.p6-swipe-panel{
+  flex-shrink:0;
+  /* width는 JS로 설정 */
+  padding:20px 16px 0;
+  box-sizing:border-box;
+}
+
+/* 각 주차 패널 내 week-card: 마진 재조정 */
+.p6-swipe-panel .week-number-hd{margin-top:0;}
+.p6-swipe-panel .week-card{margin-bottom:20px;}
+
+/* 주차 CTA 카드 (패널 말미) */
+.p6-week-cta{
+  margin:8px 0 32px;
+  border-radius:16px;overflow:hidden;
+  background:var(--dark);
+  padding:20px 20px 18px;
+  text-align:center;
+  position:relative;
+}
+.p6-week-cta::before{
+  content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(135deg,rgba(181,69,46,.04) 0,rgba(181,69,46,.04) 1px,transparent 1px,transparent 20px);
+}
+.p6-week-cta-eyebrow{
+  font-size:10px;font-weight:800;letter-spacing:1.5px;
+  text-transform:uppercase;color:rgba(255,200,150,.9);
+  margin-bottom:6px;
+}
+.p6-week-cta-title{
+  font-size:17px;font-weight:900;color:#fff;
+  margin-bottom:4px;line-height:1.3;
+}
+.p6-week-cta-sub{
+  font-size:12px;color:rgba(255,255,255,.6);
+  margin-bottom:16px;line-height:1.6;word-break:keep-all;
+}
+.p6-week-cta-row{display:flex;gap:8px;justify-content:center;}
+.p6-week-cta-btn{
+  flex:1;max-width:180px;
+  padding:13px 16px;border-radius:12px;border:none;
+  font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;
+  transition:transform .15s,box-shadow .15s;
+}
+.p6-week-cta-btn.primary{
+  background:linear-gradient(135deg,var(--vis),var(--vis-d));
+  color:#fff;
+  box-shadow:0 4px 14px rgba(181,69,46,.4);
+}
+.p6-week-cta-btn.primary:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(181,69,46,.5);}
+.p6-week-cta-btn.secondary{
+  background:rgba(255,255,255,.1);
+  color:rgba(255,255,255,.85);
+  border:1px solid rgba(255,255,255,.15);
+}
+
+/* ── P6 패널 CTA 버튼 (renderP6에서 생성) ── */
+.p6-cta-row{display:flex;gap:8px;position:relative;z-index:1;}
+.p6-cta-checkin{
+  flex:1;padding:13px 10px;border-radius:12px;border:1px solid rgba(255,200,150,.3);
+  background:rgba(255,255,255,.08);color:rgba(255,200,150,.9);
+  font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;
+  transition:background .15s,transform .15s;
+}
+.p6-cta-checkin:hover{background:rgba(255,255,255,.14);transform:translateY(-1px);}
+.p6-cta-next{
+  flex:1;padding:13px 10px;border-radius:12px;border:none;
+  background:linear-gradient(135deg,var(--vis),#a03824);color:#fff;
+  font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;
+  box-shadow:0 4px 14px rgba(181,69,46,.4);
+  transition:transform .15s,box-shadow .15s;
+}
+.p6-cta-next:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(181,69,46,.5);}
+.p6-cta-complete{background:linear-gradient(135deg,#c98a3c,#9a6525) !important;}
+
+/* ── 터치/드래그 스와이프 힌트 화살표 ── */
+.p6-swipe-hint{
+  display:flex;justify-content:center;gap:12px;
+  margin-top:8px;margin-bottom:16px;
+}
+.p6-swipe-hint-btn{
+  display:flex;align-items:center;gap:5px;
+  background:var(--paper);border:1px solid var(--line);
+  border-radius:20px;padding:5px 14px;font-size:12px;
+  font-weight:700;color:var(--muted);cursor:pointer;
+  transition:all .15s;font-family:inherit;
+}
+.p6-swipe-hint-btn:hover{border-color:var(--vis);color:var(--vis-d);}
+.p6-swipe-hint-btn:disabled{opacity:.3;pointer-events:none;}
+
+/* CRIT-2: 다크카드 텍스트 가독성 ── 전역 강제 적용 */
+.p6-lock-section .p6-teaser-desc{color:rgba(255,255,255,.88)!important;}
+.week-hero .week-principle-text{color:rgba(255,255,255,.95)!important;}
+.nutri-tip-box{color:rgba(255,255,255,.92)!important;}
+.bc-medical{color:rgba(255,255,255,.9)!important;}
+.bc-full-badge{color:rgba(255,255,255,.82)!important;}
+
+/* CRIT-5: 네비게이션 탭 아이콘 추가 */
+.nav-tab{
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  padding:6px 10px;font-size:10px;font-weight:700;
+  color:var(--muted);border:none;background:transparent;
+  cursor:pointer;border-radius:10px;transition:all .2s;
+  white-space:nowrap;font-family:inherit;
+  position:relative;
+}
+.nav-tab .nav-icon{font-size:14px;line-height:1;}
+.nav-tab .nav-text{font-size:9px;letter-spacing:.3px;}
+.nav-tab.active{color:var(--vis-d);background:var(--vis-l);}
+.nav-tab.active::after{
+  content:'';position:absolute;bottom:-1px;left:50%;transform:translateX(-50%);
+  width:20px;height:2px;border-radius:1px;background:var(--vis);
+}
+
+@keyframes p5ArrowPulse {
+  0%,100%{opacity:.7;transform:translateX(0);}
+  50%{opacity:1;transform:translateX(4px);}
+}
+/* P5 시뮬레이터 실루엣 래퍼 */
+.p5-silhouette-wrap{
+  display:flex;justify-content:center;align-items:flex-end;gap:32px;
+  padding:24px 0 8px;
+}
+.p5-silhouette-col{text-align:center;}
+.p5-silhouette-label{
+  font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
+  color:rgba(255,255,255,.5);margin-bottom:12px;
+}
+.p5-silhouette-label.after{color:rgba(255,200,150,.9);}
+.p5-sil-svg{display:block;margin:0 auto;}
+.p5-silhouette-val{
+  font-size:20px;font-weight:900;color:#fff;margin-top:10px;
+}
+.p5-silhouette-val.after{color:rgba(255,200,150,1);}
+.p5-sil-arrow{
+  font-size:28px;color:rgba(255,200,150,.7);
+  align-self:center;padding-bottom:24px;
+}
+
+/* 주차 체크인 모달 */
+.checkin-modal-overlay{
+  position:fixed;inset:0;z-index:999;
+  background:rgba(0,0,0,.6);backdrop-filter:blur(4px);
+  display:flex;align-items:flex-end;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .25s;
+}
+.checkin-modal-overlay.open{opacity:1;pointer-events:all;}
+.checkin-modal{
+  width:100%;max-width:480px;
+  background:var(--paper);border-radius:24px 24px 0 0;
+  padding:28px 20px 40px;
+  transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);
+}
+.checkin-modal-overlay.open .checkin-modal{transform:translateY(0);}
+.checkin-modal-hd{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:20px;
+}
+.checkin-modal-title{font-size:18px;font-weight:900;color:var(--ink);}
+.checkin-modal-close{
+  width:32px;height:32px;border-radius:50%;background:var(--line);
+  border:none;cursor:pointer;font-size:16px;
+  display:flex;align-items:center;justify-content:center;
+}
+.checkin-score-row{
+  display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;
+}
+.checkin-score-item{
+  background:var(--card);border-radius:12px;padding:12px;
+  border:1px solid var(--line);
+}
+.checkin-score-label{font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;}
+.checkin-score-slider{width:100%;accent-color:var(--vis);}
+.checkin-score-val{font-size:20px;font-weight:900;color:var(--ink);text-align:center;margin-top:4px;}
+.checkin-weight-row{
+  display:flex;gap:10px;margin-bottom:16px;
+}
+.checkin-weight-item{flex:1;}
+.checkin-weight-label{font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;}
+.checkin-weight-input{
+  width:100%;padding:10px 12px;border-radius:10px;
+  border:1px solid var(--line);background:var(--card);
+  font-size:16px;font-weight:700;color:var(--ink);
+  font-family:inherit;box-sizing:border-box;
+}
+.checkin-submit-btn{
+  width:100%;padding:16px;border-radius:14px;border:none;
+  background:linear-gradient(135deg,var(--vis),var(--vis-d));
+  color:#fff;font-size:16px;font-weight:900;cursor:pointer;
+  font-family:inherit;
+  box-shadow:0 4px 14px rgba(181,69,46,.4);
+  transition:transform .15s;
+}
+.checkin-submit-btn:hover{transform:translateY(-1px);}
+
 @media(max-width:480px){
   .bc-grid{grid-template-columns:repeat(3,1fr);}
   .axis-mini-grid{grid-template-columns:repeat(3,1fr);}
@@ -970,12 +1233,12 @@ body{background:var(--paper);color:var(--ink);min-height:100vh;}
 <nav id="top-nav">
   <div class="nav-logo">SLIM<span style="color:var(--mint);">MIND</span></div>
   <div class="nav-tabs">
-    <button class="nav-tab active" onclick="switchPage(1)">바디코드</button>
-    <button class="nav-tab" onclick="switchPage(2)">진단축</button>
-    <button class="nav-tab" onclick="switchPage(3)">기질</button>
-    <button class="nav-tab" onclick="switchPage(4)">잔혹사</button>
-    <button class="nav-tab" onclick="switchPage(5)">시뮬레이터</button>
-    <button class="nav-tab" onclick="switchPage(6)">로드맵</button>
+    <button class="nav-tab active" onclick="switchPage(1)"><span class="nav-icon">🧬</span><span class="nav-text">바디코드</span></button>
+    <button class="nav-tab" onclick="switchPage(2)"><span class="nav-icon">📡</span><span class="nav-text">진단축</span></button>
+    <button class="nav-tab" onclick="switchPage(3)"><span class="nav-icon">🧠</span><span class="nav-text">기질</span></button>
+    <button class="nav-tab" onclick="switchPage(4)"><span class="nav-icon">⚡</span><span class="nav-text">잔혹사</span></button>
+    <button class="nav-tab" onclick="switchPage(5)"><span class="nav-icon">🔮</span><span class="nav-text">시뮬레이터</span></button>
+    <button class="nav-tab" onclick="switchPage(6)"><span class="nav-icon">🗓</span><span class="nav-text">로드맵</span></button>
   </div>
 </nav>
 
@@ -1216,6 +1479,51 @@ body{background:var(--paper);color:var(--ink);min-height:100vh;}
 
   <div id="p5-metrics" class="fade-up" style="transition-delay:.25s"></div>
 
+  <!-- P5 실루엣 Before/After SVG 애니메이션 -->
+  <div class="p5-silhouette-wrap fade-up" id="p5-silhouette-section" style="transition-delay:.3s; display:none;">
+    <div class="p5-silhouette-col">
+      <div class="p5-silhouette-label">BEFORE</div>
+      <svg class="p5-sil-svg" id="p5-sil-before" width="80" height="160" viewBox="0 0 80 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- 머리 -->
+        <circle cx="40" cy="18" r="13" fill="rgba(181,69,46,.5)" stroke="rgba(181,69,46,.8)" stroke-width="1.5"/>
+        <!-- 목 -->
+        <rect x="34" y="30" width="12" height="10" rx="4" fill="rgba(181,69,46,.4)"/>
+        <!-- 몸통 (비만형: 넓은 허리) -->
+        <path id="p5-body-before" d="M18 42 C10 48, 6 72, 8 96 C10 110, 22 118, 40 120 C58 118, 70 110, 72 96 C74 72, 70 48, 62 42 C58 40, 52 38, 40 38 C28 38, 22 40, 18 42Z" fill="rgba(181,69,46,.45)" stroke="rgba(181,69,46,.8)" stroke-width="1.5"/>
+        <!-- 팔 왼쪽 -->
+        <path d="M16 46 C8 54, 4 72, 6 90 L14 88 C12 72, 14 58, 20 50Z" fill="rgba(181,69,46,.35)" stroke="rgba(181,69,46,.6)" stroke-width="1"/>
+        <!-- 팔 오른쪽 -->
+        <path d="M64 46 C72 54, 76 72, 74 90 L66 88 C68 72, 66 58, 60 50Z" fill="rgba(181,69,46,.35)" stroke="rgba(181,69,46,.6)" stroke-width="1"/>
+        <!-- 다리 왼쪽 -->
+        <path d="M26 118 C22 130, 20 144, 22 158 L32 158 C30 144, 30 130, 34 120Z" fill="rgba(181,69,46,.4)" stroke="rgba(181,69,46,.6)" stroke-width="1"/>
+        <!-- 다리 오른쪽 -->
+        <path d="M54 118 C58 130, 60 144, 58 158 L48 158 C50 144, 50 130, 46 120Z" fill="rgba(181,69,46,.4)" stroke="rgba(181,69,46,.6)" stroke-width="1"/>
+      </svg>
+      <div class="p5-silhouette-val" id="p5-sil-before-val">현재</div>
+    </div>
+    <div class="p5-sil-arrow" id="p5-sil-arrow">→</div>
+    <div class="p5-silhouette-col">
+      <div class="p5-silhouette-label after">AFTER 12W</div>
+      <svg class="p5-sil-svg" id="p5-sil-after" width="80" height="160" viewBox="0 0 80 160" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:0;transform:scale(.92);transition:opacity .8s .4s, transform .8s .4s">
+        <!-- 머리 -->
+        <circle cx="40" cy="18" r="12" fill="rgba(90,110,58,.6)" stroke="rgba(90,110,58,.9)" stroke-width="1.5"/>
+        <!-- 목 -->
+        <rect x="35" y="29" width="10" height="9" rx="4" fill="rgba(90,110,58,.5)"/>
+        <!-- 몸통 (슬림형: 좁은 허리) -->
+        <path id="p5-body-after" d="M24 42 C18 48, 14 66, 16 88 C18 104, 28 114, 40 116 C52 114, 62 104, 64 88 C66 66, 62 48, 56 42 C52 40, 46 38, 40 38 C34 38, 28 40, 24 42Z" fill="rgba(90,110,58,.45)" stroke="rgba(90,110,58,.8)" stroke-width="1.5"/>
+        <!-- 팔 왼쪽 (슬림) -->
+        <path d="M21 46 C14 54, 12 70, 14 86 L20 84 C18 70, 18 56, 24 50Z" fill="rgba(90,110,58,.35)" stroke="rgba(90,110,58,.6)" stroke-width="1"/>
+        <!-- 팔 오른쪽 -->
+        <path d="M59 46 C66 54, 68 70, 66 86 L60 84 C62 70, 62 56, 56 50Z" fill="rgba(90,110,58,.35)" stroke="rgba(90,110,58,.6)" stroke-width="1"/>
+        <!-- 다리 왼쪽 (슬림) -->
+        <path d="M29 114 C26 126, 24 142, 26 158 L34 158 C32 142, 32 128, 36 116Z" fill="rgba(90,110,58,.4)" stroke="rgba(90,110,58,.6)" stroke-width="1"/>
+        <!-- 다리 오른쪽 -->
+        <path d="M51 114 C54 126, 56 142, 54 158 L46 158 C48 142, 48 128, 44 116Z" fill="rgba(90,110,58,.4)" stroke="rgba(90,110,58,.6)" stroke-width="1"/>
+      </svg>
+      <div class="p5-silhouette-val after" id="p5-sil-after-val">12주 후</div>
+    </div>
+  </div>
+
   <!-- 시뮬레이터 면책 고지 -->
   <div class="card" style="background:#F8FAFB;margin-top:8px;" id="p5-disclaim-box">
     <p style="font-size:11px;color:#666;line-height:1.7;">
@@ -1231,7 +1539,45 @@ body{background:var(--paper);color:var(--ink);min-height:100vh;}
 
 <!-- ═══ P6: 12주 하이퍼 로드맵 ═══ -->
 <section id="page6" class="page">
-<div class="section-wrap">
+
+  <!-- 상단 고정 영역 (section-wrap 밖) -->
+  <div class="p6-seg-sticky" id="p6-seg-sticky">
+    <!-- Segmented Control 탭 바 -->
+    <div class="p6-seg-bar" id="p6-seg-bar">
+      <button class="p6-seg-btn active" data-week="1" onclick="p6SwitchWeek(1)">
+        <span class="seg-icon">🔓</span>
+        <span class="seg-label">1주차</span>
+        <span class="seg-week">기반 구축</span>
+      </button>
+      <button class="p6-seg-btn" data-week="2" onclick="p6SwitchWeek(2)">
+        <span class="seg-icon">⚡</span>
+        <span class="seg-label">2주차</span>
+        <span class="seg-week">대사 점화</span>
+      </button>
+      <button class="p6-seg-btn" data-week="3" onclick="p6SwitchWeek(3)">
+        <span class="seg-icon">🌊</span>
+        <span class="seg-label">3주차</span>
+        <span class="seg-week">항염 강화</span>
+      </button>
+      <button class="p6-seg-btn" data-week="4" onclick="p6SwitchWeek(4)">
+        <span class="seg-icon">🔥</span>
+        <span class="seg-label">4주차</span>
+        <span class="seg-week">사이클링</span>
+      </button>
+    </div>
+    <!-- 진행 도트 -->
+    <div class="p6-progress-row">
+      <div class="p6-progress-dots">
+        <div class="p6-progress-dot current" id="p6dot-1"></div>
+        <div class="p6-progress-dot" id="p6dot-2"></div>
+        <div class="p6-progress-dot" id="p6dot-3"></div>
+        <div class="p6-progress-dot" id="p6dot-4"></div>
+      </div>
+      <div class="p6-progress-label" id="p6-prog-label">1주차 / 4주차</div>
+    </div>
+  </div>
+
+<div class="section-wrap" style="padding-top:12px;">
   <div class="eyebrow" style="padding-top:8px;">12-WEEK HYPER ROADMAP</div>
   <h1 class="page-title fade-up">12주 하이퍼 로드맵</h1>
   <p class="body-text fade-up" style="transition-delay:.05s;margin-bottom:20px;" id="p6-code-display"></p>
@@ -1240,7 +1586,7 @@ body{background:var(--paper);color:var(--ink);min-height:100vh;}
   <div class="p6-diagram-wrap fade-up" style="transition-delay:.08s" id="p6-diagram-wrap">
     <div class="p6-diagram-eyebrow">ROADMAP OVERVIEW</div>
     <div class="p6-diagram-title" id="p6-diagram-title">12주 바디 변환 로드맵</div>
-    <div class="p6-diagram-sub" id="p6-diagram-sub">클릭하면 주차별 내용을 확인할 수 있습니다</div>
+    <div class="p6-diagram-sub" id="p6-diagram-sub">탭을 눌러 주차별 처방을 확인하세요</div>
     <div class="p6-svg-wrap">
       <svg id="p6-svg" viewBox="0 0 360 360" xmlns="http://www.w3.org/2000/svg"><!-- JS 렌더 --></svg>
     </div>
@@ -1252,14 +1598,21 @@ body{background:var(--paper);color:var(--ink);min-height:100vh;}
     </div>
   </div>
 
-  <!-- 6-1~6-4: 1주차~4주차 완전 펼치기 섹션 -->
-  <div class="p6-weeks-section fade-up" style="transition-delay:.14s">
-    <div class="p6-section-hd">🔓 1~4주차 맞춤 처방 — 완전 상세</div>
-    <div id="p6-weeks"><!-- JS 렌더: 1~4주차 독립 섹션 --></div>
+  <!-- ── 스와이프 전환 힌트 버튼 ── -->
+  <div class="p6-swipe-hint fade-up" style="transition-delay:.12s">
+    <button class="p6-swipe-hint-btn" id="p6-btn-prev" onclick="p6SwitchWeek(_p6CurWeek-1)" disabled>← 이전 주차</button>
+    <button class="p6-swipe-hint-btn" id="p6-btn-next" onclick="p6SwitchWeek(_p6CurWeek+1)">다음 주차 →</button>
+  </div>
+
+  <!-- 6-1~6-4: Swipe Viewport — 주차별 패널 -->
+  <div class="p6-swipe-viewport fade-up" style="transition-delay:.14s" id="p6-swipe-viewport">
+    <div class="p6-swipe-track" id="p6-swipe-track">
+      <!-- JS로 p6-swipe-panel × 4 렌더 -->
+    </div>
   </div>
 
   <!-- 6-5: 잠금 CTA 다크 섹션 -->
-  <div class="p6-lock-section fade-up" style="transition-delay:.2s" id="p6-lock-section">
+  <div class="p6-lock-section fade-up" style="transition-delay:.2s;margin-top:24px;" id="p6-lock-section">
     <div class="p6-lock-eyebrow">🔒 5~12주차 · 잠금 구간</div>
     <div class="p6-lock-title">지금 해제하면<br>이게 기다립니다 🔥</div>
     <div class="p6-lock-sub">1~4주차 기반 구축 완료 후<br>고강도 세포 연소 구간이 열립니다</div>
@@ -1271,6 +1624,49 @@ body{background:var(--paper);color:var(--ink);min-height:100vh;}
   <div class="disclaimer" id="p6-disclaimer"></div>
 </div>
 </section>
+
+<!-- 주차 체크인 모달 -->
+<div class="checkin-modal-overlay" id="checkinModalOverlay" onclick="if(event.target===this)closeCheckin()">
+  <div class="checkin-modal">
+    <div class="checkin-modal-hd">
+      <div class="checkin-modal-title" id="checkin-modal-title">📝 주차 체크인</div>
+      <button class="checkin-modal-close" onclick="closeCheckin()">✕</button>
+    </div>
+    <div class="checkin-score-row">
+      <div class="checkin-score-item">
+        <div class="checkin-score-label">💪 활력</div>
+        <input type="range" class="checkin-score-slider" id="ci-energy" min="1" max="10" value="5" oninput="document.getElementById('ci-energy-v').textContent=this.value">
+        <div class="checkin-score-val" id="ci-energy-v">5</div>
+      </div>
+      <div class="checkin-score-item">
+        <div class="checkin-score-label">🍽 공복감</div>
+        <input type="range" class="checkin-score-slider" id="ci-hunger" min="1" max="10" value="5" oninput="document.getElementById('ci-hunger-v').textContent=this.value">
+        <div class="checkin-score-val" id="ci-hunger-v">5</div>
+      </div>
+      <div class="checkin-score-item">
+        <div class="checkin-score-label">😴 수면질</div>
+        <input type="range" class="checkin-score-slider" id="ci-sleep" min="1" max="10" value="5" oninput="document.getElementById('ci-sleep-v').textContent=this.value">
+        <div class="checkin-score-val" id="ci-sleep-v">5</div>
+      </div>
+      <div class="checkin-score-item">
+        <div class="checkin-score-label">😊 기분</div>
+        <input type="range" class="checkin-score-slider" id="ci-mood" min="1" max="10" value="5" oninput="document.getElementById('ci-mood-v').textContent=this.value">
+        <div class="checkin-score-val" id="ci-mood-v">5</div>
+      </div>
+    </div>
+    <div class="checkin-weight-row">
+      <div class="checkin-weight-item">
+        <div class="checkin-weight-label">⚖️ 현재 체중 (kg)</div>
+        <input type="number" class="checkin-weight-input" id="ci-weight" placeholder="예: 63.5" step="0.1">
+      </div>
+      <div class="checkin-weight-item">
+        <div class="checkin-weight-label">🥗 식단 지킴 (%)</div>
+        <input type="number" class="checkin-weight-input" id="ci-diet-adh" placeholder="예: 80" min="0" max="100">
+      </div>
+    </div>
+    <button class="checkin-submit-btn" id="checkin-submit-btn" onclick="submitCheckin()">✅ 이번 주 체크인 저장</button>
+  </div>
+</div>
 
 <!-- ===== 기능 6: 1초 공유 ===== -->
 <!-- 플로팅 공유 버튼 -->
@@ -2432,6 +2828,42 @@ function renderP5(metrics) {
       <div class="sim-disclaimer">※ 본 수치는 통계적 예측이며 개인에 따라 차이가 있습니다.</div>`;
     container.appendChild(div);
   });
+
+  // ── 실루엣 Before/After 섹션 노출 ──
+  renderP5Silhouette(metrics);
+}
+
+function renderP5Silhouette(metrics) {
+  const section = document.getElementById('p5-silhouette-section');
+  if (!section) return;
+  section.style.display = 'flex';
+
+  // Before 수치 텍스트
+  const bEl = document.getElementById('p5-sil-before-val');
+  const aEl = document.getElementById('p5-sil-after-val');
+  if (metrics && metrics.weightNow) {
+    if (bEl) bEl.textContent = `${metrics.weightNow}kg`;
+    const afterW = metrics.goalWeight || Math.round(metrics.weightNow * 0.88);
+    if (aEl) aEl.textContent = `${afterW}kg`;
+  } else {
+    if (bEl) bEl.textContent = '현재 체중';
+    if (aEl) aEl.textContent = '12주 목표';
+  }
+
+  // After SVG 진입 애니메이션 (지연 후 표시)
+  const afterSvg = document.getElementById('p5-sil-after');
+  if (afterSvg) {
+    setTimeout(() => {
+      afterSvg.style.opacity = '1';
+      afterSvg.style.transform = 'scale(1)';
+    }, 600);
+  }
+
+  // 화살표 펄스 애니메이션
+  const arrow = document.getElementById('p5-sil-arrow');
+  if (arrow) {
+    arrow.style.cssText += 'animation:p5ArrowPulse 1.5s ease-in-out infinite;';
+  }
 }
 
 function animSimBars() {
@@ -2441,6 +2873,11 @@ function animSimBars() {
 }
 
 /* ── P6 ── */
+var _p6CurWeek = 1;
+var _p6ActiveWeeks = [];
+var _p6TouchStartX = 0;
+var _p6TouchStartY = 0;
+
 function renderP6(userName, fullCode, ohaengType, inputData) {
   document.getElementById('p6-code-display').innerHTML =
     `매칭 파라미터: <strong style="color:var(--vis-d);">${fullCode}</strong>`;
@@ -2594,14 +3031,23 @@ function renderP6(userName, fullCode, ohaengType, inputData) {
   if (ALL_WEEKS[0]) p6SelectWeek(ALL_WEEKS[0]);
 
   // ════════════════════════════════════════════
-  // 6-1~6-4: 주간 처방 카드 — 1~4주차 독립 섹션 완전 펼치기
+  // 6-1~6-4: Swipe Panel 방식 — 4주차 독립 패널 렌더
   // ════════════════════════════════════════════
-  const weeksContainer = document.getElementById('p6-weeks');
-  const nutriCatMap = [['단백질','탄수화물'],['수분','미네랄'],['식이섬유','지방'],['단백질','식이섬유','탄수화물']];
+  _p6ActiveWeeks = ACTIVE_WEEKS; // 전역 참조 저장
 
-  // 주차별 배지 색상
+  const track = document.getElementById('p6-swipe-track');
+  const viewport = document.getElementById('p6-swipe-viewport');
+  if (!track || !viewport) { console.error('[P6] swipe-track / viewport 없음'); return; }
+
+  const nutriCatMap = [['단백질','탄수화물'],['수분','미네랄'],['식이섬유','지방'],['단백질','식이섬유','탄수화물']];
   const weekBadgeColors = ['#b5452e','#5a6e3a','#2f7d8c','#c98a3c'];
   const weekBadgeEmojis = ['🔓','⚡','🌊','🔥'];
+  const weekNextLabels  = ['2주차 → 근활성화','3주차 → 지방연소','4주차 → 유지설계','🏁 1~4주 완주!'];
+  const weekCheckinLabels = ['1주차 체크인 기록','2주차 체크인 기록','3주차 체크인 기록','4주차 체크인 기록'];
+  const totalPanels = ACTIVE_WEEKS.length || 4;
+
+  // track 너비 = totalPanels * 100vw 상당
+  track.style.width = `${totalPanels * 100}%`;
 
   ACTIVE_WEEKS.forEach((w, idx) => {
     const pc = PHASE_COLORS[idx];
@@ -2609,7 +3055,6 @@ function renderP6(userName, fullCode, ohaengType, inputData) {
     const storyText = (w.failure_expose||'').replace(/{USER_NAME}/g, userName);
     const hCats = nutriCatMap[idx]||['단백질'];
 
-    // ── 히어로 배경 ──
     const heroBg = {
       'var(--vis)':    'linear-gradient(135deg,#b5452e,#8f321e)',
       'var(--muscle)': 'linear-gradient(135deg,#5a6e3a,#3d4d26)',
@@ -2625,52 +3070,35 @@ function renderP6(userName, fullCode, ohaengType, inputData) {
       kcalHTML = `<div class="week-nutrition-block">
         <div class="week-nutrition-title">🔢 ${w.weekLabel} 맞춤 목표 열량</div>
         <div class="week-nutrition-row">
-          <div class="week-nut-item kcal">
-            <div class="week-nut-val">${n.kcal}<span class="week-nut-unit">kcal</span></div>
-            <div class="week-nut-label">목표 열량</div>
-          </div>
-          <div class="week-nut-item carb">
-            <div class="week-nut-val">${n.carbG}<span class="week-nut-unit">g</span></div>
-            <div class="week-nut-label">탄수화물</div>
-          </div>
-          <div class="week-nut-item protein">
-            <div class="week-nut-val">${n.proteinG}<span class="week-nut-unit">g</span></div>
-            <div class="week-nut-label">단백질</div>
-          </div>
-          <div class="week-nut-item fat">
-            <div class="week-nut-val">${n.fatG}<span class="week-nut-unit">g</span></div>
-            <div class="week-nut-label">지방</div>
-          </div>
+          <div class="week-nut-item kcal"><div class="week-nut-val">${n.kcal}<span class="week-nut-unit">kcal</span></div><div class="week-nut-label">목표 열량</div></div>
+          <div class="week-nut-item carb"><div class="week-nut-val">${n.carbG}<span class="week-nut-unit">g</span></div><div class="week-nut-label">탄수화물</div></div>
+          <div class="week-nut-item protein"><div class="week-nut-val">${n.proteinG}<span class="week-nut-unit">g</span></div><div class="week-nut-label">단백질</div></div>
+          <div class="week-nut-item fat"><div class="week-nut-val">${n.fatG}<span class="week-nut-unit">g</span></div><div class="week-nut-label">지방</div></div>
         </div>
         <div class="week-nut-note">📌 ${n.note||''}</div>
         ${macroNote}
       </div>`;
     }
 
-    // ── 오행 기질 레이어 블록 ──
+    // ── 오행 기질 레이어 ──
     let ohaengHTML = '';
-    if (w.ohaeng_caution || w.diet_add || w.exercise_add_ohaeng) {
+    if (w.ohaeng_caution || w.diet_macro_note) {
       const rows = [];
-      // exercise_ok에 오행 추가분이 이미 합쳐져 있으므로 caution/diet_add 표시
       if (w.ohaeng_caution) rows.push(`<div class="week-ohaeng-row"><span class="week-ohaeng-tag">주의</span><span class="week-ohaeng-val">${w.ohaeng_caution}</span></div>`);
       if (w.diet_macro_note) rows.push(`<div class="week-ohaeng-row"><span class="week-ohaeng-tag">탄단지</span><span class="week-ohaeng-val">${w.diet_macro_note}</span></div>`);
       if (rows.length) {
-        const ohaengLabel = ohaengForRoadmap ? `🌿 ${ohaengForRoadmap}(${['목','화','토','금','수'].includes(ohaengForRoadmap)?'木火土金水'['목화토금수'.indexOf(ohaengForRoadmap)]:ohaengForRoadmap}) 기질 처방 레이어` : '🌿 오행 기질 레이어';
-        ohaengHTML = `<div class="week-ohaeng-block">
-          <div class="week-ohaeng-label">${ohaengLabel}</div>
-          <div class="week-ohaeng-rows">${rows.join('')}</div>
-        </div>`;
+        const ohaengLabel = ohaengForRoadmap ? `🌿 ${ohaengForRoadmap} 기질 처방 레이어` : '🌿 오행 기질 레이어';
+        ohaengHTML = `<div class="week-ohaeng-block"><div class="week-ohaeng-label">${ohaengLabel}</div><div class="week-ohaeng-rows">${rows.join('')}</div></div>`;
       }
     }
 
-    // ── 오행 영양 식품 블록 ──
+    // ── 오행 영양 식품 ──
     let nutriHTML = '';
     if (ohaengData && ohaengData.nutriFoods) {
       const nf = ohaengData.nutriFoods;
       const cats = Object.keys(nf).filter(c => hCats.includes(c));
       const cards = cats.map(cat =>
-        `<div class="nutri-item"><div class="nutri-item-cat">${cat}</div>
-         <div class="nutri-item-foods">${(nf[cat]||[]).slice(0,4).join(' · ')}</div></div>`).join('');
+        `<div class="nutri-item"><div class="nutri-item-cat">${cat}</div><div class="nutri-item-foods">${(nf[cat]||[]).slice(0,4).join(' · ')}</div></div>`).join('');
       if (cards) nutriHTML = `<div class="nutri-section">
         <div class="nutri-section-title">🌿 ${w.weekLabel} 오행 맞춤 식품 — ${ohaengData.label||''}</div>
         <div class="nutri-grid">${cards}</div>
@@ -2678,90 +3106,101 @@ function renderP6(userName, fullCode, ohaengType, inputData) {
       </div>`;
     }
 
-    // ── 회복 처방 (recovery_ok에 오행 추가분 이미 포함) ──
     const recoveryText = w.recovery_ok || '—';
     const recoveryBanText = w.recovery_ban ? `<div class="week-col-rule ban">${w.recovery_ban}</div>` : '';
+    const focusTags = (w.keyFocus||[]).map(f => `<span class="week-focus-tag">${f}</span>`).join('');
 
-    // ── 키 포커스 태그 ──
-    const focusTags = (w.keyFocus||[]).map(f =>
-      `<span class="week-focus-tag">${f}</span>`).join('');
-
-    // ── 카드 생성 (항상 display:block — 탭 없이 전부 펼침) ──
-    const card = document.createElement('div');
-    card.id = `p6-week-${w.week}`;
-
-    // 주차 번호 구분 헤더 (카드 외부)
-    const numHd = document.createElement('div');
-    numHd.className = 'week-number-hd';
-    numHd.innerHTML = `
-      <div class="week-number-badge" style="background:${badgeColor}">${weekBadgeEmojis[idx]}</div>
-      <div>
-        <div class="week-number-label">${w.weekLabel} · ${w.title}</div>
-        <div class="week-number-phase">${w.phase||''} ${w.center ? '— ' + w.center : ''}</div>
-      </div>`;
-    weeksContainer.appendChild(numHd);
-
-    card.className = 'week-card';
-    card.innerHTML = `
-      <!-- 히어로 헤더 -->
-      <div class="week-hero" style="background:${heroBg}">
-        <div class="week-hero-badge">${w.phase||'PHASE'}</div>
-        <div class="week-hero-num">${w.weekLabel}</div>
-        <div class="week-hero-title">${w.title}</div>
-        <div class="week-hero-icons">${(w.centerIcons||[]).map(ic=>`<span class="week-hero-chip">${ic}</span>`).join('')}</div>
+    // ── CTA 버튼 ──
+    const isLastPanel = idx === totalPanels - 1;
+    const ctaHTML = `<div class="p6-week-cta">
+      <div class="p6-cta-row">
+        <button class="p6-cta-checkin" onclick="openCheckin(${w.week})">
+          📝 ${weekCheckinLabels[idx]}
+        </button>
+        ${!isLastPanel
+          ? `<button class="p6-cta-next" onclick="p6SwitchWeek(${idx+2})">
+              ${weekNextLabels[idx]} →
+            </button>`
+          : `<button class="p6-cta-next p6-cta-complete" onclick="handleB2B()">
+              🏆 전문가 1:1 코칭 받기
+            </button>`
+        }
       </div>
+    </div>`;
 
-      <!-- 핵심 원칙 배너 -->
-      <div class="week-principle-banner" style="background:${heroBg}">
-        <span class="week-principle-label" style="color:rgba(255,255,255,.55)">핵심원칙</span>
-        <span class="week-principle-text">${w.axis_logic||''}</span>
+    // ── 패널 DOM 생성 ──
+    const panel = document.createElement('div');
+    panel.className = 'p6-swipe-panel';
+    panel.id = `p6-panel-${w.week}`;
+    panel.style.width = `${100 / totalPanels}%`;
+
+    panel.innerHTML = `
+      <div class="week-number-hd">
+        <div class="week-number-badge" style="background:${badgeColor}">${weekBadgeEmojis[idx]}</div>
+        <div>
+          <div class="week-number-label">${w.weekLabel} · ${w.title}</div>
+          <div class="week-number-phase">${w.phase||''} ${w.center ? '— ' + w.center : ''}</div>
+        </div>
       </div>
-
-      <div class="week-body">
-
-        <!-- 🔴 이 주차에 왜 이 처방인가 — 실패 노출 전체 스토리 -->
-        <div class="week-story-block">
-          <div class="week-story-label">📖 이 주차가 필요한 이유</div>
-          ${storyText}
+      <div class="week-card" id="p6-week-${w.week}">
+        <div class="week-hero" style="background:${heroBg}">
+          <div class="week-hero-badge">${w.phase||'PHASE'}</div>
+          <div class="week-hero-num">${w.weekLabel}</div>
+          <div class="week-hero-title">${w.title}</div>
+          <div class="week-hero-icons">${(w.centerIcons||[]).map(ic=>`<span class="week-hero-chip">${ic}</span>`).join('')}</div>
         </div>
-
-        <!-- 키 포커스 태그 -->
-        ${focusTags ? `<div class="week-focus-tags">${focusTags}</div>` : ''}
-
-        <!-- 운동 / 식단 2열 -->
-        <div class="week-2col">
-          <div class="week-col-card">
-            <div class="week-col-label"><span class="dot" style="background:var(--muscle)"></span>운동 처방</div>
-            ${w.exercise_ban?`<div class="week-col-rule ban">${w.exercise_ban}</div>`:''}
-            <div class="week-col-rule ok">${w.exercise_ok||''}</div>
+        <div class="week-principle-banner" style="background:${heroBg}">
+          <span class="week-principle-label" style="color:rgba(255,255,255,.55)">핵심원칙</span>
+          <span class="week-principle-text">${w.axis_logic||''}</span>
+        </div>
+        <div class="week-body">
+          <div class="week-story-block">
+            <div class="week-story-label">📖 이 주차가 필요한 이유</div>
+            ${storyText}
           </div>
-          <div class="week-col-card">
-            <div class="week-col-label"><span class="dot" style="background:var(--sub)"></span>식단 처방</div>
-            ${w.diet_ban?`<div class="week-col-rule ban">${w.diet_ban}</div>`:''}
-            <div class="week-col-rule ok">${w.diet_ok||''}</div>
+          ${focusTags ? `<div class="week-focus-tags">${focusTags}</div>` : ''}
+          <div class="week-2col">
+            <div class="week-col-card">
+              <div class="week-col-label"><span class="dot" style="background:var(--muscle)"></span>운동 처방</div>
+              ${w.exercise_ban?`<div class="week-col-rule ban">${w.exercise_ban}</div>`:''}
+              <div class="week-col-rule ok">${w.exercise_ok||''}</div>
+            </div>
+            <div class="week-col-card">
+              <div class="week-col-label"><span class="dot" style="background:var(--sub)"></span>식단 처방</div>
+              ${w.diet_ban?`<div class="week-col-rule ban">${w.diet_ban}</div>`:''}
+              <div class="week-col-rule ok">${w.diet_ok||''}</div>
+            </div>
           </div>
+          <div class="week-col-card" style="margin-bottom:14px;">
+            <div class="week-col-label"><span class="dot" style="background:var(--circ)"></span>회복·셀프케어 처방</div>
+            ${recoveryBanText}
+            <div class="week-col-rule ok">${recoveryText}</div>
+          </div>
+          ${ohaengHTML}
+          ${kcalHTML}
+          ${nutriHTML}
+          ${w.b2b?`<button class="b2b-btn" onclick="handleB2B()">🏥 파트너 센터 연계 → 데이터 전송</button>`:''}
         </div>
+      </div>
+      ${ctaHTML}`;
 
-        <!-- 회복 처방 전체 -->
-        <div class="week-col-card" style="margin-bottom:14px;">
-          <div class="week-col-label"><span class="dot" style="background:var(--circ)"></span>회복·셀프케어 처방</div>
-          ${recoveryBanText}
-          <div class="week-col-rule ok">${recoveryText}</div>
-        </div>
-
-        <!-- 오행 기질 레이어 -->
-        ${ohaengHTML}
-
-        <!-- 칼로리·탄단지 영양 정보 -->
-        ${kcalHTML}
-
-        <!-- 오행 맞춤 식품 -->
-        ${nutriHTML}
-
-        ${w.b2b?`<button class="b2b-btn" onclick="handleB2B()">🏥 파트너 센터 연계 → 데이터 전송</button>`:''}
-      </div>`;
-    weeksContainer.appendChild(card);
+    track.appendChild(panel);
   });
+
+  // ── 스와이프 터치 이벤트 ──
+  viewport.addEventListener('touchstart', function(e) {
+    _p6TouchStartX = e.touches[0].clientX;
+    _p6TouchStartY = e.touches[0].clientY;
+  }, { passive: true });
+
+  viewport.addEventListener('touchend', function(e) {
+    const dx = e.changedTouches[0].clientX - _p6TouchStartX;
+    const dy = e.changedTouches[0].clientY - _p6TouchStartY;
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+      if (dx < 0) p6SwitchWeek(_p6CurWeek + 1); // 왼쪽 → 다음
+      else         p6SwitchWeek(_p6CurWeek - 1); // 오른쪽 → 이전
+    }
+  }, { passive: true });
 
   // ════════════════════════════════════════════
   // 6-5: 잠금 CTA 다크 섹션 — 8개 티저 카드 (5~12주차)
@@ -2788,6 +3227,9 @@ function renderP6(userName, fullCode, ohaengType, inputData) {
       </div>`;
     });
   }
+
+  // 초기 1주차 표시
+  p6SwitchWeek(1);
 }
 
 /* SVG 클릭 — 중앙 info 업데이트 */
@@ -2800,31 +3242,71 @@ function p6SelectWeek(w) {
     <div class="p6-week-info-week">${w.label}${w.locked?' · 🔒':''}</div>
     <div class="p6-week-info-title">${w.title}</div>
     <div class="p6-week-info-tags">${tagsHtml}</div>`;
+  // SVG에서 활성 링 1(1~4주차)이면 탭도 동기화
+  if (!w.locked && w.week >= 1 && w.week <= 4) {
+    p6SwitchWeek(w.week);
+  }
 }
 
-/* 주차 SVG 클릭 → 해당 주차 카드로 스크롤 이동 */
-function p6GoWeek(weekNum) {
-  // weekNum은 1~4 (week 번호) 또는 0~3 (인덱스) 둘 다 허용
-  const num = weekNum >= 1 ? weekNum : weekNum + 1;
-  const target = document.getElementById(`p6-week-${num}`);
-  if (target) {
-    target.scrollIntoView({behavior:'smooth', block:'start'});
-    // 살짝 강조 애니메이션
-    target.style.outline = '2px solid rgba(181,69,46,.5)';
-    target.style.outlineOffset = '4px';
-    setTimeout(() => {
-      target.style.outline = '';
-      target.style.outlineOffset = '';
-    }, 1200);
+/* 주차 탭 전환 — Swipe 슬라이드 + 탭 active + 도트 업데이트 */
+function p6SwitchWeek(weekNum) {
+  const total = (_p6ActiveWeeks && _p6ActiveWeeks.length) || 4;
+  const n = Math.max(1, Math.min(total, weekNum));
+  _p6CurWeek = n;
+
+  // translateX — 패널 너비 = 100% / total
+  const track = document.getElementById('p6-swipe-track');
+  if (track) {
+    track.style.transform = `translateX(-${(n-1) * (100/total)}%)`;
   }
+
+  // 탭 버튼 active 토글
+  document.querySelectorAll('.p6-seg-btn').forEach(btn => {
+    const w = parseInt(btn.dataset.week);
+    btn.classList.toggle('active', w === n);
+  });
+
+  // 진행 도트 업데이트
+  for (let i = 1; i <= total; i++) {
+    const dot = document.getElementById(`p6dot-${i}`);
+    if (dot) {
+      dot.className = 'p6-progress-dot' + (i < n ? ' done' : i === n ? ' current' : '');
+    }
+  }
+  const labelEl = document.getElementById('p6-prog-label');
+  if (labelEl) labelEl.textContent = `${n}주차 / ${total}주차`;
+
+  // SVG week-info 동기화
+  if (_p6ActiveWeeks && _p6ActiveWeeks[n-1]) {
+    const wd = _p6ActiveWeeks[n-1];
+    const box = document.getElementById('p6-week-info');
+    if (box) {
+      const tagsHtml = (wd.keyFocus||[]).map(t => `<span class="p6-week-info-tag">${t}</span>`).join('');
+      box.innerHTML = `
+        <div class="p6-week-info-week">${wd.weekLabel||n+'주차'}</div>
+        <div class="p6-week-info-title">${wd.title||''}</div>
+        <div class="p6-week-info-tags">${tagsHtml}</div>`;
+    }
+  }
+
+  // Prev/Next 버튼 상태
+  const prevBtn = document.getElementById('p6-btn-prev');
+  const nextBtn = document.getElementById('p6-btn-next');
+  if (prevBtn) prevBtn.disabled = n <= 1;
+  if (nextBtn) nextBtn.disabled = n >= total;
+}
+
+/* SVG 클릭 → Swipe 탭 이동 (하위 호환) */
+function p6GoWeek(weekNum) {
+  const num = weekNum >= 1 ? weekNum : weekNum + 1;
+  p6SwitchWeek(num);
 }
 
 function toggleAccordion(headerEl) {
   const acc = headerEl.closest('.week-accordion');
+  if (!acc) return;
   const isOpen = acc.classList.contains('open');
-  // 모두 닫기
   document.querySelectorAll('.week-accordion.open').forEach(a => a.classList.remove('open'));
-  // 클릭된 것이 닫혀 있었으면 열기
   if (!isOpen) acc.classList.add('open');
 }
 
@@ -2842,6 +3324,236 @@ function animAxisBars() {
   document.querySelectorAll('.top-bar-fill[data-score]').forEach(bar => {
     setTimeout(() => { bar.style.width = bar.getAttribute('data-score') + '%'; }, 300);
   });
+}
+
+/* ════════════════════════════════════════════════════════
+   FEAT-2: 주차 체크인 모달 JS
+   ════════════════════════════════════════════════════════ */
+var _checkinWeekNum = 1;
+
+function openCheckin(weekNum) {
+  _checkinWeekNum = weekNum || 1;
+  const titleEl = document.getElementById('checkin-modal-title');
+  if (titleEl) titleEl.textContent = `📝 ${weekNum}주차 체크인`;
+  // 슬라이더 초기화
+  ['energy','hunger','sleep','mood'].forEach(k => {
+    const sl = document.getElementById(`ci-${k}`);
+    const vl = document.getElementById(`ci-${k}-v`); // HTML: ci-energy-v
+    if (sl) sl.value = 5;
+    if (vl) vl.textContent = '5';
+  });
+  const wEl = document.getElementById('ci-weight');
+  const dEl = document.getElementById('ci-diet-adh');
+  if (wEl) wEl.value = '';
+  if (dEl) dEl.value = '';
+
+  const overlay = document.getElementById('checkinModalOverlay');
+  if (overlay) overlay.classList.add('open');
+}
+
+function closeCheckin() {
+  const overlay = document.getElementById('checkinModalOverlay');
+  if (overlay) overlay.classList.remove('open');
+}
+
+async function submitCheckin() {
+  const getVal = id => {
+    const el = document.getElementById(id);
+    return el ? (el.value || null) : null;
+  };
+  const sessionId = (window.__DIAG_DATA__ && window.__DIAG_DATA__.session_id)
+                  || (window.__RESULT__ && window.__RESULT__.session_id)
+                  || window._currentSessionId
+                  || null;
+  const bcCode = (window.__DIAG_DATA__ && window.__DIAG_DATA__.bc_code)
+               || (window.__RESULT__ && window.__RESULT__.bc_code)
+               || null;
+
+  const payload = {
+    session_id:      sessionId,
+    bc_code:         bcCode,
+    week_number:     _checkinWeekNum,
+    energy_score:    parseInt(getVal('ci-energy')) || null,
+    hunger_score:    parseInt(getVal('ci-hunger')) || null,
+    sleep_score:     parseInt(getVal('ci-sleep'))  || null,
+    mood_score:      parseInt(getVal('ci-mood'))   || null,
+    weight_kg:       parseFloat(getVal('ci-weight')) || null,
+    diet_adherence:  parseInt(getVal('ci-diet-adh')) || null,
+  };
+
+  const submitBtn = document.querySelector('.checkin-submit-btn');
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '저장 중...'; }
+
+  try {
+    const res = await fetch('/api/checkin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.success) {
+      closeCheckin();
+      // 성공 토스트
+      _showToast(`✅ ${_checkinWeekNum}주차 체크인이 저장되었습니다!`);
+    } else {
+      throw new Error(json.error || '저장 실패');
+    }
+  } catch (e) {
+    console.error('[checkin] 저장 오류:', e);
+    _showToast(`❌ 저장 중 오류가 발생했습니다. (${e.message})`);
+  } finally {
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '✅ 이번 주 체크인 저장'; }
+  }
+}
+
+function _showToast(msg) {
+  let toast = document.getElementById('slimmind-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'slimmind-toast';
+    toast.style.cssText = `
+      position:fixed;bottom:88px;left:50%;transform:translateX(-50%) translateY(20px);
+      background:rgba(42,33,24,.95);color:#fff;padding:12px 20px;border-radius:12px;
+      font-size:14px;font-weight:600;z-index:9999;opacity:0;
+      transition:opacity .3s, transform .3s;pointer-events:none;
+      white-space:nowrap;max-width:90vw;text-align:center;
+      box-shadow:0 4px 20px rgba(0,0,0,.35);
+    `;
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  toast.style.transform = 'translateX(-50%) translateY(0)';
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(-50%) translateY(20px)';
+  }, 3000);
+}
+
+/* ════════════════════════════════════════════════════════
+   FEAT-3: 결과 카드 공유 이미지 Canvas API
+   ════════════════════════════════════════════════════════ */
+async function shareResultCard() {
+  const canvas = document.createElement('canvas');
+  const W = 400, H = 560;
+  canvas.width  = W * 2; // Retina
+  canvas.height = H * 2;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(2, 2);
+
+  // 배경 그라디언트
+  const bg = ctx.createLinearGradient(0, 0, W, H);
+  bg.addColorStop(0,   '#1a120e');
+  bg.addColorStop(0.5, '#2a2118');
+  bg.addColorStop(1,   '#1e1710');
+  ctx.fillStyle = bg;
+  ctx.roundRect(0, 0, W, H, 20);
+  ctx.fill();
+
+  // 상단 브랜드 바
+  const brandGrad = ctx.createLinearGradient(0, 0, W, 0);
+  brandGrad.addColorStop(0, '#b5452e');
+  brandGrad.addColorStop(1, '#c98a3c');
+  ctx.fillStyle = brandGrad;
+  ctx.fillRect(0, 0, W, 4);
+
+  // 브랜드 로고 텍스트
+  ctx.fillStyle = 'rgba(255,255,255,.35)';
+  ctx.font = '700 11px system-ui, sans-serif';
+  ctx.fillText('SlimMind V4', 20, 28);
+
+  // 사용자명
+  const uName = (window.__DIAG_DATA__ && window.__DIAG_DATA__.user_name) || '고객';
+  ctx.fillStyle = 'rgba(255,200,150,.8)';
+  ctx.font = '600 12px system-ui, sans-serif';
+  ctx.fillText(`${uName}님의 바디코드 분석`, 20, 52);
+
+  // BC 코드 대형 타이포
+  const bcCode = (window.__DIAG_DATA__ && window.__DIAG_DATA__.bc_code) || '---';
+  const bcFill = ctx.createLinearGradient(0, 70, 0, 130);
+  bcFill.addColorStop(0, '#ffffff');
+  bcFill.addColorStop(1, 'rgba(255,200,150,.8)');
+  ctx.fillStyle = bcFill;
+  ctx.font = '900 52px system-ui, sans-serif';
+  ctx.fillText(bcCode, 20, 120);
+
+  // 닉네임
+  const nickname = (window.__DIAG_DATA__ && window.__DIAG_DATA__.bc_master && window.__DIAG_DATA__.bc_master.nickname) || '';
+  ctx.fillStyle = 'rgba(255,255,255,.55)';
+  ctx.font = '600 14px system-ui, sans-serif';
+  if (nickname) ctx.fillText(nickname, 20, 145);
+
+  // 구분선
+  ctx.strokeStyle = 'rgba(255,255,255,.1)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(20, 162); ctx.lineTo(W-20, 162); ctx.stroke();
+
+  // 축 점수 바 (상위 5개)
+  const scores = window.__DIAG_DATA__ && window.__DIAG_DATA__.axis_scores;
+  if (scores) {
+    const entries = Object.entries(scores)
+      .sort((a,b) => b[1]-a[1]).slice(0,5);
+    const AXIS_COLORS = {
+      visceral:'#b5452e', muscle:'#5a6e3a', circulation:'#2f7d8c',
+      sugar:'#c98a3c', stress:'#7b5ea7', microbiome:'#2a7a6a',
+      inflammation:'#8b4513', thyroid:'#4a90a4', hormonal:'#9b59b6'
+    };
+    ctx.fillStyle = 'rgba(255,255,255,.4)';
+    ctx.font = '600 10px system-ui, sans-serif';
+    ctx.fillText('진단 축 점수', 20, 182);
+    entries.forEach(([key, val], i) => {
+      const y = 196 + i * 38;
+      const label = key.replace(/_/g,' ');
+      const barColor = AXIS_COLORS[key] || '#b5452e';
+      // 레이블
+      ctx.fillStyle = 'rgba(255,255,255,.65)';
+      ctx.font = '600 10px system-ui, sans-serif';
+      ctx.fillText(label, 20, y + 12);
+      // 점수
+      ctx.fillStyle = 'rgba(255,255,255,.9)';
+      ctx.font = '700 12px system-ui, sans-serif';
+      ctx.fillText(`${val}`, W-42, y + 12);
+      // 바 배경
+      ctx.fillStyle = 'rgba(255,255,255,.08)';
+      ctx.roundRect(20, y + 18, W-40, 6, 3);
+      ctx.fill();
+      // 바 채움
+      const fillW = ((val||0)/100) * (W-40);
+      ctx.fillStyle = barColor;
+      ctx.roundRect(20, y + 18, fillW, 6, 3);
+      ctx.fill();
+    });
+  }
+
+  // 하단 워터마크
+  ctx.fillStyle = 'rgba(255,255,255,.2)';
+  ctx.font = '500 10px system-ui, sans-serif';
+  const today = new Date().toLocaleDateString('ko-KR');
+  ctx.fillText(`슬림마인드 분석 결과 · ${today}`, 20, H - 20);
+
+  // QR 또는 URL 힌트
+  ctx.fillStyle = 'rgba(181,69,46,.6)';
+  ctx.font = '600 10px system-ui, sans-serif';
+  ctx.fillText('slimmind.com', W - 90, H - 20);
+
+  // 공유 처리
+  canvas.toBlob(async (blob) => {
+    if (!blob) return;
+    const file = new File([blob], 'slimmind-result.png', { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: '내 바디코드 분석 결과', text: `${bcCode} — 슬림마인드 AI 분석` });
+        return;
+      } catch (e) { /* fallback */ }
+    }
+    // 다운로드 fallback
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'slimmind-result.png';
+    a.click();
+    URL.revokeObjectURL(url);
+    _showToast('📥 이미지가 저장되었습니다!');
+  }, 'image/png');
 }
 
 // ── 로딩 오버레이 강제 해제 (5초 안전망 — 어떤 에러가 발생해도 스피너 무한 루프 방지) ──
