@@ -4087,7 +4087,15 @@ function calculateBCScores(answers) {
   // 1) 10축 점수 + 오행 계산
   const axisResult = calculateAxisScores(answers);
 
-  // 2) BC코드 계산 (bc-engine.js의 computeBCCode 사용, 없으면 fallback)
+  // 2) 4차 결정질문 boosts 반영 (_decide_boosts: { A01: 12, A07: 24, ... })
+  const boosts = (answers && answers['_decide_boosts']) || {};
+  Object.entries(boosts).forEach(function([axis, pts]) {
+    if (axisResult.axisScores[axis] !== undefined) {
+      axisResult.axisScores[axis] = (axisResult.axisScores[axis] || 0) + pts;
+    }
+  });
+
+  // 3) BC코드 계산 (bc-engine.js의 computeBCCode 사용, 없으면 fallback)
   let bcPrimary = 'BC-06', bcSecondary = null, bcPrimaryScore = 50, bcSecondaryScore = 0, bcScores = {};
   try {
     if (typeof computeBCCode === 'function') {
