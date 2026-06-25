@@ -1293,11 +1293,182 @@
     .hm-th-label { font-size: 9px; }
   }
   /* ===== /기능 11 ===== */
+
+  /* ===== 기능 12: Lottie 스타일 인트로 애니메이션 ===== */
+  #lottieIntro {
+    display: none;
+    position: fixed; inset: 0; z-index: 500;
+    background: #1a100a;
+    flex-direction: column; align-items: center; justify-content: center;
+    padding: 0 24px;
+  }
+  #lottieIntro.active { display: flex; }
+
+  /* 애니메이션 캔버스 영역 */
+  .li-stage {
+    position: relative; width: 220px; height: 220px; flex-shrink: 0;
+    margin-bottom: 36px;
+  }
+
+  /* 몸 실루엣 SVG */
+  .li-body {
+    position: absolute; inset: 0; display: flex;
+    align-items: center; justify-content: center;
+  }
+  .li-body svg { width: 90px; opacity: .85; }
+
+  /* 스캔 라인 */
+  .li-scan-line {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    width: 110px; height: 2px;
+    background: linear-gradient(90deg, transparent, #e05c3a, #f4a87a, #e05c3a, transparent);
+    border-radius: 2px; top: 10%;
+    box-shadow: 0 0 12px 3px rgba(224,92,58,.55);
+    animation: liScan 2.4s ease-in-out infinite;
+    opacity: 0;
+  }
+  @keyframes liScan {
+    0%   { top: 10%; opacity: 0; }
+    8%   { opacity: 1; }
+    90%  { opacity: 1; }
+    100% { top: 88%; opacity: 0; }
+  }
+
+  /* 외곽 원형 펄스 */
+  .li-ring {
+    position: absolute; inset: 0; border-radius: 50%;
+    border: 1.5px solid rgba(224,92,58,.3);
+    animation: liRing 2.4s ease-out infinite;
+    transform-origin: center;
+  }
+  .li-ring:nth-child(2) { animation-delay: .8s; }
+  .li-ring:nth-child(3) { animation-delay: 1.6s; }
+  @keyframes liRing {
+    0%   { transform: scale(.55); opacity: .7; }
+    100% { transform: scale(1.15); opacity: 0; }
+  }
+
+  /* 축 배지 점들 (랜덤 위치) */
+  .li-dot {
+    position: absolute; width: 8px; height: 8px; border-radius: 50%;
+    background: #e05c3a;
+    box-shadow: 0 0 8px 2px rgba(224,92,58,.6);
+    animation: liDotPop .5s cubic-bezier(.2,.8,.2,1) both;
+  }
+  @keyframes liDotPop {
+    from { transform: scale(0); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
+  }
+
+  /* 텍스트 시퀀스 */
+  .li-text-wrap {
+    text-align: center; min-height: 72px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+  .li-headline {
+    font-size: 20px; font-weight: 700; color: #fdf6ee;
+    letter-spacing: -.01em; line-height: 1.4;
+    opacity: 0; transform: translateY(8px);
+    transition: opacity .45s, transform .45s;
+    margin-bottom: 6px;
+  }
+  .li-headline.show { opacity: 1; transform: translateY(0); }
+  .li-sub {
+    font-size: 13px; color: rgba(253,246,238,.55);
+    line-height: 1.6; opacity: 0;
+    transition: opacity .45s .12s;
+  }
+  .li-sub.show { opacity: 1; }
+
+  /* 진행 바 */
+  .li-progress-wrap {
+    width: 100%; max-width: 260px; margin-top: 32px;
+  }
+  .li-progress-track {
+    height: 2px; background: rgba(255,255,255,.12);
+    border-radius: 2px; overflow: hidden;
+  }
+  .li-progress-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, #e05c3a, #f4a87a);
+    border-radius: 2px; transition: width .1s linear;
+  }
+
+  /* 건너뛰기 버튼 */
+  .li-skip {
+    position: fixed; bottom: calc(28px + env(safe-area-inset-bottom));
+    right: 20px; z-index: 501;
+    background: rgba(253,246,238,.1); color: rgba(253,246,238,.7);
+    border: 1px solid rgba(253,246,238,.2); border-radius: 20px;
+    padding: 8px 18px; font-size: 12px; font-weight: 600;
+    font-family: inherit; cursor: pointer; letter-spacing: .06em;
+    transition: background .15s, color .15s;
+    backdrop-filter: blur(4px);
+  }
+  .li-skip:hover { background: rgba(253,246,238,.18); color: #fdf6ee; }
+
+  @media (max-width: 380px) {
+    .li-stage { width: 180px; height: 180px; margin-bottom: 28px; }
+    .li-headline { font-size: 18px; }
+  }
+  /* ===== /기능 12 ===== */
 </style>
 </head>
 <body>
 
 <!-- ===== 브라운 풀스크린 인트로 ===== -->
+<!-- ===== 기능 12: Lottie 스타일 인트로 애니메이션 ===== -->
+<div id="lottieIntro">
+  <!-- 애니메이션 스테이지 -->
+  <div class="li-stage" id="liStage">
+    <!-- 펄스 링 3개 -->
+    <div class="li-ring"></div>
+    <div class="li-ring"></div>
+    <div class="li-ring"></div>
+    <!-- 몸 실루엣 -->
+    <div class="li-body">
+      <svg viewBox="0 0 60 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- 머리 -->
+        <circle cx="30" cy="12" r="9" fill="rgba(253,246,238,0.18)" stroke="rgba(244,168,122,0.7)" stroke-width="1.2"/>
+        <!-- 목 -->
+        <rect x="27" y="21" width="6" height="7" rx="2" fill="rgba(253,246,238,0.12)" stroke="rgba(244,168,122,0.5)" stroke-width="1"/>
+        <!-- 몸통 -->
+        <path d="M18 28 Q14 34 13 50 Q12 64 16 70 L44 70 Q48 64 47 50 Q46 34 42 28 Z"
+              fill="rgba(253,246,238,0.1)" stroke="rgba(244,168,122,0.65)" stroke-width="1.2"/>
+        <!-- 왼팔 -->
+        <path d="M18 30 Q10 38 9 54 Q8.5 60 11 62" stroke="rgba(244,168,122,0.55)" stroke-width="1.1" stroke-linecap="round" fill="none"/>
+        <!-- 오른팔 -->
+        <path d="M42 30 Q50 38 51 54 Q51.5 60 49 62" stroke="rgba(244,168,122,0.55)" stroke-width="1.1" stroke-linecap="round" fill="none"/>
+        <!-- 왼다리 -->
+        <path d="M22 70 Q20 85 20 100 Q20 108 22 112" stroke="rgba(244,168,122,0.6)" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+        <!-- 오른다리 -->
+        <path d="M38 70 Q40 85 40 100 Q40 108 38 112" stroke="rgba(244,168,122,0.6)" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+      </svg>
+    </div>
+    <!-- 스캔 라인 -->
+    <div class="li-scan-line"></div>
+    <!-- 축 점들 (JS로 추가) -->
+    <div id="liDots"></div>
+  </div>
+
+  <!-- 텍스트 시퀀스 -->
+  <div class="li-text-wrap">
+    <div class="li-headline" id="liHeadline">몸의 신호를 읽는 중</div>
+    <div class="li-sub" id="liSub">당신의 체형 코드를 분석합니다</div>
+  </div>
+
+  <!-- 진행 바 -->
+  <div class="li-progress-wrap">
+    <div class="li-progress-track">
+      <div class="li-progress-fill" id="liProgressFill"></div>
+    </div>
+  </div>
+</div>
+<!-- 건너뛰기 버튼 (오버레이 바깥) -->
+<button class="li-skip" id="liSkipBtn" onclick="lottieSkip()" style="display:none">건너뛰기 ›</button>
+<!-- ===== /기능 12 ===== -->
+
 <div id="introSplash">
   <div class="splashinner">
     <div class="splashbrand">SlimMind</div>
@@ -2183,9 +2354,147 @@ function goSurvey(){
   surveyApp.style.display='block';
   window.scrollTo(0,0);
 }
+/* ===== 기능 12: Lottie 스타일 인트로 애니메이션 ===== */
+(function(){
+  // 텍스트 시퀀스 정의 (ms 기준)
+  const SEQUENCES = [
+    { t:   0, headline: '몸의 신호를 읽는 중',         sub: '10가지 원인 축을 스캔합니다' },
+    { t: 900, headline: '살이 찌는 진짜 이유가 있어요', sub: '외형만으론 알 수 없는 내부 패턴' },
+    { t:1900, headline: '당신의 체형 코드를 찾습니다',  sub: '인슐린·림프·스트레스·호르몬 분석' },
+    { t:3000, headline: '준비됐어요!',                  sub: '약 4분이면 코드를 찾을 수 있어요' },
+  ];
+
+  // 축 점 위치 (스테이지 220×220 기준, %)
+  const DOT_POSITIONS = [
+    { left:'22%', top:'18%', delay:300  },
+    { left:'72%', top:'22%', delay:600  },
+    { left:'15%', top:'48%', delay:950  },
+    { left:'78%', top:'45%', delay:1200 },
+    { left:'30%', top:'72%', delay:1550 },
+    { left:'65%', top:'68%', delay:1850 },
+    { left:'48%', top:'35%', delay:2200 },
+    { left:'20%', top:'85%', delay:2500 },
+    { left:'70%', top:'82%', delay:2800 },
+    { left:'50%', top:'88%', delay:3100 },
+  ];
+
+  const TOTAL_DURATION = 4000; // ms
+  let _lottieTimer = null;
+  let _lottieStart = 0;
+  let _rafId = null;
+  let _seqIdx = 0;
+
+  window.lottiePlay = function() {
+    const overlay  = document.getElementById('lottieIntro');
+    const skipBtn  = document.getElementById('liSkipBtn');
+    const fill     = document.getElementById('liProgressFill');
+    const headline = document.getElementById('liHeadline');
+    const sub      = document.getElementById('liSub');
+    const dotsWrap = document.getElementById('liDots');
+    if (!overlay) { _lottieFinish(); return; }
+
+    // 초기화
+    overlay.classList.add('active');
+    if (skipBtn) skipBtn.style.display = 'block';
+    if (fill)    fill.style.width = '0%';
+    if (dotsWrap) dotsWrap.innerHTML = '';
+    _seqIdx = 0;
+
+    // 첫 텍스트 즉시 표시
+    _setSeq(0, headline, sub);
+
+    // 축 점 타이머
+    DOT_POSITIONS.forEach((pos, i) => {
+      setTimeout(() => {
+        if (!document.getElementById('lottieIntro')?.classList.contains('active')) return;
+        const dot = document.createElement('div');
+        dot.className = 'li-dot';
+        dot.style.left  = pos.left;
+        dot.style.top   = pos.top;
+        dot.style.animationDelay = '0s';
+        if (dotsWrap) dotsWrap.appendChild(dot);
+      }, pos.delay);
+    });
+
+    // 텍스트 시퀀스 타이머
+    SEQUENCES.slice(1).forEach((seq, i) => {
+      setTimeout(() => {
+        if (!document.getElementById('lottieIntro')?.classList.contains('active')) return;
+        _setSeq(i + 1, headline, sub);
+      }, seq.t);
+    });
+
+    // 진행 바 RAF 업데이트
+    _lottieStart = performance.now();
+    function rafStep(now) {
+      const elapsed = now - _lottieStart;
+      const pct = Math.min(elapsed / TOTAL_DURATION * 100, 100);
+      if (fill) fill.style.width = pct + '%';
+      if (elapsed < TOTAL_DURATION) {
+        _rafId = requestAnimationFrame(rafStep);
+      } else {
+        _lottieFinish();
+      }
+    }
+    _rafId = requestAnimationFrame(rafStep);
+  };
+
+  function _setSeq(idx, headline, sub) {
+    const seq = SEQUENCES[idx];
+    if (!seq || !headline || !sub) return;
+    headline.classList.remove('show');
+    sub.classList.remove('show');
+    // 짧은 딜레이 후 fade-in
+    setTimeout(() => {
+      headline.textContent = seq.headline;
+      sub.textContent      = seq.sub;
+      headline.classList.add('show');
+      sub.classList.add('show');
+    }, idx === 0 ? 80 : 120);
+  }
+
+  function _lottieFinish() {
+    if (_rafId) { cancelAnimationFrame(_rafId); _rafId = null; }
+    const overlay = document.getElementById('lottieIntro');
+    const skipBtn = document.getElementById('liSkipBtn');
+    if (overlay) {
+      // 페이드 아웃
+      overlay.style.transition = 'opacity .4s';
+      overlay.style.opacity = '0';
+      setTimeout(() => {
+        overlay.classList.remove('active');
+        overlay.style.opacity = '';
+        overlay.style.transition = '';
+      }, 420);
+    }
+    if (skipBtn) skipBtn.style.display = 'none';
+    // 실제 설문 진입
+    _doEnterSurvey();
+  }
+
+  window.lottieSkip = function() {
+    if (_rafId) { cancelAnimationFrame(_rafId); _rafId = null; }
+    _lottieFinish();
+  };
+
+  function _doEnterSurvey() {
+    document.getElementById('introSplash').style.display = 'none';
+    goSurvey();
+  }
+
+  // enterSurvey가 이 함수를 호출하도록 대체
+  window._lottieReady = true;
+})();
+/* ===== /기능 12 ===== */
+
 function enterSurvey(){
+  // ★ 기능 12: Lottie 인트로 재생 후 goSurvey
   document.getElementById('introSplash').style.display='none';
-  goSurvey();
+  if (window._lottieReady && window.lottiePlay) {
+    lottiePlay();
+  } else {
+    goSurvey();
+  }
 }
 function backToMap(){
   surveyApp.style.display='none';
