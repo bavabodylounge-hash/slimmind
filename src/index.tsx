@@ -1772,12 +1772,16 @@ app.get('/result/:id', async (c) => {
 //  페이지 라우트
 // ═══════════════════════════════════════════════════════════════
 
-// ─── 대표 주소(루트) — 항상 최신 설문지(slimmind_live)로 리다이렉트 ──
-// ?ref= 등 쿼리파라미터를 그대로 전달해 컨설턴트 코드가 유실되지 않도록 함
+// ─── 대표 주소(루트) — 신버전 설문지 직접 서빙 (리다이렉트 없음) ──
+// ?ref= 쿼리파라미터가 있으면 /s/:code 로 301 리다이렉트 (컨설턴트 코드 보존)
 app.get('/', (c) => {
-  const qs = c.req.raw.url.split('?')[1]
-  const target = qs ? `/slimmind_live?${qs}` : '/slimmind_live'
-  return c.redirect(target, 301)
+  const url = new URL(c.req.raw.url)
+  const ref = url.searchParams.get('ref')
+  if (ref) {
+    // ?ref=SC-0001 → /s/SC-0001 (컨설턴트 링크 보존)
+    return c.redirect(`/s/${ref}`, 301)
+  }
+  return c.html(slimmindLiveHtml)
 })
 
 app.get('/admin', (c) => c.html(adminHtml))
@@ -1794,7 +1798,7 @@ app.get('/b2b/*', (c) => c.html(b2bHtml))
 app.get('/bodymap-preview', (c) => c.html(bodymapPreviewHtml))
 
 // ─── 슬림마인드 라이브 설문지 — 유일한 최신 설문지 ────────────
-// 대표 URL: /slimmind_live  (루트 / 도 여기로 리다이렉트됨)
+// /slimmind_live, /slimmind 는 하위 호환용 (기존 공유 링크 보호)
 app.get('/slimmind_live', (c) => c.html(slimmindLiveHtml))
 app.get('/slimmind_live.html', (c) => c.html(slimmindLiveHtml))
 app.get('/slimmind', (c) => c.html(slimmindLiveHtml))

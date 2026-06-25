@@ -195,7 +195,7 @@ var QUESTIONS = [
   },
   {
     id: 'Q05', section: 'A', num: 5,
-    axis: 'A01', weight: 1.8, role: 'score',
+    axis: 'A01', weight: 1.5, role: 'score', // [의학검수] 몸상태 체감 → 보조 신호, 1.8→1.5
     question: '지금 이 순간 {name}님의 몸 상태와 가장 가까운 것은?',
     hint: '오늘 아침 눈 떴을 때의 몸 감각으로 답해주세요.',
     type: 'SINGLE_SELECT',
@@ -272,7 +272,7 @@ var QUESTIONS = [
   },
   {
     id: 'Q10', section: 'B', num: 10,
-    axis: 'A01', weight: 1.5, role: 'score',
+    axis: 'A01', weight: 1.0, role: 'score', // [의학검수] 허벅지 흔들기 → 형태 보조, 1.5→1.0
     question: '허벅지 바깥쪽을 양손으로 잡고 살짝 흔들어보세요. 어떤가요?',
     hint: '이 질문에서 셀룰라이트 여부와 지방 밀도가 결정됩니다.',
     type: 'SINGLE_SELECT',
@@ -286,7 +286,7 @@ var QUESTIONS = [
   },
   {
     id: 'Q11', section: 'B', num: 11,
-    axis: 'A01', weight: 1.8, role: 'score',
+    axis: 'A01', weight: 2.0, role: 'score', // [의학검수] 아랫배 촉진 핵심 → 1.8→2.0
     question: '배꼽 아래 아랫배를 손으로 꾹 눌러보세요. 어떤 느낌인가요?',
     hint: '내장지방과 피하지방의 차이가 이 느낌 하나로 드러납니다.',
     type: 'SINGLE_SELECT',
@@ -300,7 +300,7 @@ var QUESTIONS = [
   },
   {
     id: 'Q12', section: 'B', num: 12,
-    axis: 'A01', weight: 1.3, role: 'score',
+    axis: 'A01', weight: 1.0, role: 'score', // [의학검수] 허리 실루엣 형태 보조 → 1.3→1.0
     question: '허리를 정면에서 보면 어떤 실루엣인가요?',
     hint: '허리 라인의 형태가 처방 운동 종류를 결정합니다.',
     type: 'SINGLE_SELECT',
@@ -414,7 +414,7 @@ var QUESTIONS = [
   // ══════════════════════════════════════════════════════
   {
     id: 'Q13', section: 'C', num: 13,
-    axis: 'A01', weight: 1.5, role: 'score',
+    axis: null, weight: 0, role: 'data', // [의학검수] 키 슬라이더 = 계측치, A01 직접 의미 없음 → axis 제거
     question: '{name}님의 키를 알려주세요.',
     hint: '체지방률과 BMI 계산의 시작점입니다.',
     type: 'SLIDER',
@@ -424,7 +424,7 @@ var QUESTIONS = [
   },
   {
     id: 'Q14', section: 'C', num: 14,
-    axis: 'A01', weight: 2.0, role: 'score',
+    axis: null, weight: 0, role: 'data', // [의학검수] 체중 슬라이더 = 계측치, 직접 A01 점수 의미 없음 → axis 제거
     question: '지금 이 순간의 체중은 어떻게 되나요?',
     hint: '판단하지 않습니다. 이 숫자는 당신의 출발점입니다.',
     type: 'SLIDER',
@@ -447,7 +447,7 @@ var QUESTIONS = [
   },
   {
     id: 'Q14b', section: 'C', num: 15,
-    axis: 'A01', weight: 1.5, role: 'score',
+    axis: null, weight: 0, role: 'data', // [의학검수] 허리·엉덩이 계측치 → Q_WAIST가 A09로 별도 처리
     question: '허리와 엉덩이 사이즈를 알고 계신가요?',
     hint: '줄자로 배꼽 위 2~3cm 허리 가장 잘록한 곳, 엉덩이 가장 넓은 곳을 재주세요. 모르시면 건너뛰어도 됩니다.',
     type: 'WAIST_HIP_INPUT',
@@ -457,7 +457,7 @@ var QUESTIONS = [
   },
   {
     id: 'Q15', section: 'C', num: 16,
-    axis: 'A01', weight: 1.5, role: 'score',
+    axis: null, weight: 0, role: 'data', // [의학검수] 목표체중 = 목표치, A01 점수에 포함 부적절
     question: '6개월 후 {name}님이 목표로 하는 체중은요?',
     hint: '숫자가 목표가 아니라, 그 숫자일 때 입고 싶은 옷이 진짜 목표입니다.',
     type: 'SLIDER',
@@ -467,7 +467,7 @@ var QUESTIONS = [
   },
   {
     id: 'Q16', section: 'C', num: 16,
-    axis: 'A01', weight: 1.5, role: 'score',
+    axis: null, weight: 0, role: 'data', // [의학검수] 상의 사이즈 = 기록용, A01 직접 의미 없음
     question: '현재 상의 사이즈는요?',
     hint: '결과지에서 목표 사이즈 변화가 표시됩니다.',
     type: 'SIZE_GRID',
@@ -566,7 +566,7 @@ var QUESTIONS = [
   // ── P1 추가: Q_ALCOHOL — 음주 (A07·A09 보강) ──
   {
     id: 'Q_ALCOHOL', section: 'D', num: 21.6,
-    axis: 'A09', weight: 1.3, role: 'score',
+    axis: 'A09', weight: 1.5, role: 'score', // [의학검수] 음주 = 간 대사 직접 원인 → 1.3→1.5
     question: '음주 습관을 알려주세요.',
     hint: '알코올은 간에서 중성지방으로 직접 전환됩니다. 음주량이 곧 내장지방량이에요.',
     type: 'SINGLE_SELECT',
@@ -921,7 +921,7 @@ var QUESTIONS = [
   },
   {
     id: 'Q46', section: 'G', num: 46,
-    axis: 'A09', weight: 1.0, role: 'score',
+    axis: 'A09', weight: 0.8, role: 'score', // [의학검수] 인바디 수치 = 보조 데이터, 1.0→0.8
     question: '인바디 수치를 알려주세요. (선택)',
     hint: '정확한 숫자보다 대략적인 범위면 충분합니다. 입력하면 훨씬 정밀한 결과가 나옵니다.',
     type: 'INBODY_RANGE',
@@ -1312,7 +1312,7 @@ var QUESTIONS = [
   },
   {
     id: 'Q74', section: 'K', num: 74,
-    axis: 'A01', weight: 1.3, role: 'score',
+    axis: 'A06', weight: 1.3, role: 'score', // [의학검수] 어깨 가동성 = A06(체형·자세) 소속으로 변경
     question: '팔을 머리 위로 들어올려 보세요. 어떤가요?',
     hint: '양팔을 귀 옆으로 올려보세요. 어깨·흉추 가동성을 확인하는 동작입니다.',
     type: 'SINGLE_SELECT',
@@ -1331,7 +1331,7 @@ var QUESTIONS = [
   // ══════════════════════════════════════════════════════
   {
     id: 'Q75', section: 'B', num: 75,
-    axis: 'A01', weight: 1.5, role: 'score',
+    axis: 'A01', weight: 2.0, role: 'score', // [의학검수] 배꼽살 두께 직접 촉진 → 핵심 지표, 1.5→2.0
     question: '배꼽 주변 살을 양손으로 집어보세요. 두께가 얼마나 되나요?',
     hint: '정말로 한번 집어보세요! 이 두께가 피하지방 vs 내장지방을 구별하는 단서입니다.',
     type: 'SINGLE_SELECT',
@@ -1375,7 +1375,7 @@ var QUESTIONS = [
   },
   {
     id: 'Q78', section: 'A', num: 78,
-    axis: 'A01', weight: 1.5, role: 'score',
+    axis: 'A01', weight: 2.0, role: 'score', // [의학검수] 살찌는부위 패턴 → 분류 핵심, 1.5→2.0
     question: '살이 찌기 시작할 때 어느 부위에 제일 먼저 티가 나나요?',
     hint: '지방이 쌓이는 순서가 바디코드 분류의 결정적 단서입니다.',
     type: 'SINGLE_SELECT',
@@ -1730,7 +1730,7 @@ var QUESTIONS = [
   // ── A09 성인병 리스크 축 ─────────────────────────
   {
     id: 'Q_GLUCOSE', section: 'L', num: 96,
-    axis: 'A09', weight: 1.2, role: 'signal',
+    axis: 'A09', weight: 1.5, role: 'signal', // [의학검수] 혈당 직접 신호 = A09 핵심 지표, 1.2→1.5
     question: '공복혈당 수치를 알고 계신가요? 또는 혈당 관련 증상이 있나요?',
     hint: '혈당 신호는 체지방 저장 패턴을 결정합니다.',
     type: 'MULTI_SELECT',
@@ -1774,7 +1774,7 @@ var QUESTIONS = [
   },
   {
     id: 'Q_SODA', section: 'L', num: 98,
-    axis: 'A09', weight: 1.2, role: 'score',
+    axis: 'A09', weight: 1.3, role: 'score', // [의학검수] 가당음료 = 혈당·간 부담 식이 원인, 1.2→1.3
     question: '하루에 가당음료(탄산음료·과일주스·믹스커피·에너지드링크)를 얼마나 마시나요?',
     hint: '가당음료는 액체 칼로리이자 혈당 스파이크의 주범입니다.',
     type: 'SINGLE_SELECT',
