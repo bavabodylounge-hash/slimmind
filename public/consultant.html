@@ -655,6 +655,7 @@
       <div>
         <div style="font-size:16px;font-weight:800" id="detail-title">고객 상세</div>
         <div style="font-size:12px;color:var(--muted)" id="detail-id"></div>
+        <div style="margin-top:4px" id="detail-phone"></div>
       </div>
       <button onclick="closeDetailModal()" style="background:none;border:none;cursor:pointer;font-size:22px;color:#94A3B8">✕</button>
     </div>
@@ -1147,7 +1148,7 @@ async function loadMyResults() {
     <table>
       <thead>
         <tr>
-          <th>고객명</th><th>BC코드</th><th>신체정보</th><th>MBTI/혈액형</th><th>설문일</th><th>B2B</th><th>액션</th>
+          <th>고객명</th><th>📱 연락처</th><th>BC코드</th><th>신체정보</th><th>MBTI/혈액형</th><th>설문일</th><th>B2B</th><th>액션</th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>
@@ -1165,6 +1166,13 @@ function openDetailModal(r) {
   CURRENT_DETAIL = r;
   document.getElementById('detail-title').textContent = `${r.user_name||'익명'} 님`;
   document.getElementById('detail-id').textContent = r.id;
+  // 전화번호 표시
+  const detailPhoneEl = document.getElementById('detail-phone');
+  if (detailPhoneEl) {
+    detailPhoneEl.innerHTML = r.phone
+      ? `<a href="tel:${r.phone}" style="color:#2563eb;font-weight:700;text-decoration:none">📱 ${r.phone}</a>`
+      : '<span style="color:#CBD5E1;font-size:12px">전화번호 미입력</span>';
+  }
 
   // 결과지 링크
   document.getElementById('detail-result-link').href = `/result/${r.id}?token=${TOKEN}`;
