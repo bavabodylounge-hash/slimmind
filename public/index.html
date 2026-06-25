@@ -1010,6 +1010,79 @@
 <!-- 피드백 토스트 -->
 <div id="feedback-toast"></div>
 
+<!-- ══ P2: 돌발 퀴즈 모달 ══ -->
+<div id="quiz-modal" style="
+  display:none; position:fixed; inset:0; z-index:9999;
+  background:rgba(0,0,0,0.65); backdrop-filter:blur(6px);
+  align-items:center; justify-content:center; padding:20px;
+">
+  <div style="
+    background:#fff; border-radius:24px; padding:28px 24px; max-width:360px; width:100%;
+    box-shadow:0 24px 64px rgba(0,0,0,0.25); animation: quizPop 0.4s cubic-bezier(.22,1,.36,1);
+  ">
+    <div style="font-size:11px;font-weight:800;letter-spacing:.12em;color:#E8734D;margin-bottom:10px;text-transform:uppercase;">⚡ 돌발 퀴즈</div>
+    <div id="quiz-q" style="font-size:19px;font-weight:800;line-height:1.45;margin-bottom:6px;color:#2a1f18;">팔뚝살을 뺄 때<br>가장 먼저 해야 하는 것은?</div>
+    <div style="font-size:12px;color:#9a8f85;margin-bottom:20px;">정답자에게는 특별한 코드 해석 힌트를 드려요!</div>
+    <div id="quiz-opts" style="display:flex;flex-direction:column;gap:9px;">
+      <button onclick="quizAnswer(0)" style="background:#FFF6F0;border:2px solid #FFD4BB;border-radius:14px;padding:13px 16px;font-size:14px;font-weight:700;color:#5a3a2a;cursor:pointer;text-align:left;font-family:inherit;">
+        💧 림프순환부터 풀기
+      </button>
+      <button onclick="quizAnswer(1)" style="background:#F8F9FA;border:2px solid #E9ECEF;border-radius:14px;padding:13px 16px;font-size:14px;font-weight:700;color:#495057;cursor:pointer;text-align:left;font-family:inherit;">
+        🏋️ 아령 운동하기
+      </button>
+      <button onclick="quizAnswer(2)" style="background:#F8F9FA;border:2px solid #E9ECEF;border-radius:14px;padding:13px 16px;font-size:14px;font-weight:700;color:#495057;cursor:pointer;text-align:left;font-family:inherit;">
+        🥗 덜 먹기 (굶기)
+      </button>
+    </div>
+    <div id="quiz-result" style="display:none;"></div>
+    <div id="quiz-skip" style="text-align:center;margin-top:14px;">
+      <button onclick="closeQuizModal()" style="background:none;border:none;color:#b0a89e;font-size:12px;cursor:pointer;font-family:inherit;">건너뛰기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ P2: 접속자 토스트 ══ -->
+<div id="visitor-toast" style="
+  display:none; position:fixed; bottom:80px; left:50%; transform:translateX(-50%);
+  background:rgba(30,20,10,0.88); color:#fff; padding:11px 18px; border-radius:40px;
+  font-size:12.5px; font-weight:700; z-index:9000; white-space:nowrap;
+  box-shadow:0 4px 20px rgba(0,0,0,0.25); backdrop-filter:blur(8px);
+  animation:slideUpToast 0.4s cubic-bezier(.22,1,.36,1);
+">
+  🔥 지금 <span id="visitor-count" style="color:#FF9A76;">...</span>명이 같은 유형 분석 중
+</div>
+
+<!-- ══ P2: 친구 공유 카드 ══ -->
+<div id="bottom-share-card" style="
+  display:none; position:fixed; bottom:0; left:0; right:0; z-index:8000;
+  background:#fff; border-radius:24px 24px 0 0;
+  padding:24px 20px 36px; box-shadow:0 -8px 40px rgba(0,0,0,0.15);
+  animation:slideUpCard 0.45s cubic-bezier(.22,1,.36,1);
+  max-width:520px; margin:0 auto;
+">
+  <div style="width:40px;height:4px;background:#e0d8d0;border-radius:2px;margin:0 auto 20px;"></div>
+  <div style="font-size:14px;font-weight:800;color:#E8734D;margin-bottom:6px;">🎉 분석 완료!</div>
+  <div style="font-size:18px;font-weight:800;color:#2a1f18;margin-bottom:6px;line-height:1.4;">친구에게도 알려주세요</div>
+  <div style="font-size:13px;color:#8a7b6d;margin-bottom:20px;line-height:1.6;">내 바디코드 결과를 친구에게 공유하고<br>함께 체형을 비교해보세요!</div>
+  <div style="display:flex;gap:10px;margin-bottom:12px;">
+    <button onclick="shareKakao()" style="flex:1;background:#FEE500;border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:800;color:#3A1D1D;cursor:pointer;font-family:inherit;">
+      💬 카카오톡 공유
+    </button>
+    <button onclick="shareLink()" style="flex:1;background:#F0F4FF;border:none;border-radius:14px;padding:14px;font-size:14px;font-weight:800;color:#4F46E5;cursor:pointer;font-family:inherit;">
+      🔗 링크 복사
+    </button>
+  </div>
+  <button onclick="closeShareCard()" style="width:100%;background:none;border:none;color:#b0a89e;font-size:13px;cursor:pointer;padding:8px;font-family:inherit;">
+    나중에 하기
+  </button>
+</div>
+
+<style>
+@keyframes quizPop { from{opacity:0;transform:scale(.92)} to{opacity:1;transform:scale(1)} }
+@keyframes slideUpToast { from{opacity:0;transform:translateX(-50%) translateY(20px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+@keyframes slideUpCard { from{opacity:0;transform:translateY(100%)} to{opacity:1;transform:translateY(0)} }
+</style>
+
 <script src="survey-data.js"></script>
 <script>
 // ════════════════════════════════════════
@@ -1823,7 +1896,8 @@ function renderSingleSelect(q, area) {
       recordAnswerTime();
       checkContradictions();
       checkShareInterrupt(q.id);
-      setTimeout(() => goNext(), 300);
+      triggerQuizIfNeeded(q.id); // P2: 돌발 퀴즈 트리거
+      setTimeout(() => goNext(), _quizShown && !document.getElementById('quiz-modal')?.style.display.includes('flex') ? 300 : 300);
     };
     grid.appendChild(card);
   });
@@ -3005,6 +3079,8 @@ function goNext() {
 
   if (nextQ.section !== q.section) {
     const sec = SECTIONS.find(s => s.id === q.section);
+    // P2: 섹션 E(오행, 3차) 진입 시 접속자 토스트
+    if (nextQ.section === 'E') { setTimeout(showVisitorToast, 1200); }
     showTransition(q.section, nextQ.section, replaceName(sec?.transition || ''), () => {
       // 새 섹션의 axis hook 표시 (axisHookNeeded 조건에서 axisHookNeeded가 true면)
       if (axisHookNeeded && typeof AXIS_META !== 'undefined') {
@@ -3332,6 +3408,8 @@ function showCompleteScreen() {
   }
 
   showScreen('result-screen');
+  // P2: 결과 화면에서 친구 공유 카드 표시 (3초 후)
+  setTimeout(showShareCard, 3000);
 }
 
 function goToResultV4() {
@@ -3490,6 +3568,126 @@ document.getElementById('restart-btn').onclick = () => {
 setInterval(() => {
   if (state.currentQ > 0) autoSaveState();
 }, 5000);
+
+// ══════════════════════════════════════════
+//  P2: 돌발 퀴즈 모달
+// ══════════════════════════════════════════
+let _quizShown = false;
+function triggerQuizIfNeeded(qId) {
+  // 9번 문항(팔뚝 흔들기 상체촉감) 답 시 1회 팝업
+  if ((qId === 'Q_UPPER_TOUCH' || qId === 'Q09') && !_quizShown) {
+    _quizShown = true;
+    setTimeout(() => openQuizModal(), 600);
+  }
+}
+function openQuizModal() {
+  const modal = document.getElementById('quiz-modal');
+  if (modal) {
+    modal.style.display = 'flex';
+    document.getElementById('quiz-opts').style.display = 'flex';
+    document.getElementById('quiz-result').style.display = 'none';
+    document.getElementById('quiz-skip').style.display = 'block';
+  }
+}
+function closeQuizModal() {
+  const modal = document.getElementById('quiz-modal');
+  if (modal) modal.style.display = 'none';
+}
+function quizAnswer(idx) {
+  const opts = document.getElementById('quiz-opts');
+  const result = document.getElementById('quiz-result');
+  const skip = document.getElementById('quiz-skip');
+  opts.style.display = 'none';
+  skip.style.display = 'none';
+  if (idx === 0) {
+    result.innerHTML = `
+      <div style="text-align:center;padding:8px 0;">
+        <div style="font-size:36px;margin-bottom:10px;">✅</div>
+        <div style="font-size:17px;font-weight:800;color:#27ae60;margin-bottom:8px;">정답이에요!</div>
+        <div style="font-size:13px;color:#5a4a3a;line-height:1.7;margin-bottom:18px;">
+          팔뚝은 <b>붓기(림프 정체)</b>부터 풀어야 합니다.<br>
+          아령부터 들면 오히려 더 굵어 보일 수 있어요.<br>
+          굶기는 절대 답이 아닙니다 — 근육만 빠지거든요.
+        </div>
+        <div style="background:#FFF6F0;border-radius:12px;padding:12px;font-size:12px;color:#E8734D;font-weight:700;">
+          🎁 힌트: 팔뚝 처방은 결과지 코드에서 확인하세요!
+        </div>
+      </div>`;
+  } else {
+    const why = idx === 1
+      ? '아령부터 들면, 붓기를 안 푼 상태라 팔뚝이 더 굵어 보일 수 있어요.'
+      : '굶으면 근육부터 빠져서 팔뚝은 더 물렁해집니다. 굶기는 답이 아니에요.';
+    result.innerHTML = `
+      <div style="text-align:center;padding:8px 0;">
+        <div style="font-size:36px;margin-bottom:10px;">❌</div>
+        <div style="font-size:17px;font-weight:800;color:#e74c3c;margin-bottom:8px;">아쉬워요!</div>
+        <div style="font-size:13px;color:#5a4a3a;line-height:1.7;margin-bottom:18px;">
+          ${why}<br>정답은 <b>림프순환</b>입니다.
+        </div>
+      </div>`;
+  }
+  result.style.display = 'block';
+  setTimeout(() => closeQuizModal(), 3200);
+}
+
+// ══════════════════════════════════════════
+//  P2: 접속자 토스트 (3차 시작 시)
+// ══════════════════════════════════════════
+let _visitorToastShown = false;
+function showVisitorToast() {
+  if (_visitorToastShown) return;
+  _visitorToastShown = true;
+  const toast = document.getElementById('visitor-toast');
+  if (!toast) return;
+  // 실시간처럼 보이는 랜덤 숫자 (127~984)
+  const count = Math.floor(Math.random() * 857) + 127;
+  document.getElementById('visitor-count').textContent = count.toLocaleString();
+  toast.style.display = 'block';
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.8s';
+    setTimeout(() => { toast.style.display = 'none'; toast.style.opacity = ''; toast.style.transition = ''; }, 800);
+  }, 4000);
+}
+
+// ══════════════════════════════════════════
+//  P2: 친구 공유 카드
+// ══════════════════════════════════════════
+function showShareCard() {
+  const card = document.getElementById('bottom-share-card');
+  if (card) card.style.display = 'block';
+}
+function closeShareCard() {
+  const card = document.getElementById('bottom-share-card');
+  if (card) card.style.display = 'none';
+}
+function shareKakao() {
+  const url = location.href.split('?')[0];
+  const msg = encodeURIComponent(`슬림마인드 바디코드 진단해봤어요!\n내 체형 원인을 10축으로 분석해주는데 신기해요.\n${url}`);
+  window.open(`https://sharer.kakao.com/talk/friends/picker/link?app_key=&link_ver=4.0&msg=${msg}`, '_blank');
+  // 카카오 SDK 없이 URL scheme 사용
+  const shareUrl = `https://accounts.kakao.com/login?continue=${encodeURIComponent(location.href)}`;
+  navigator.clipboard?.writeText(`슬림마인드 바디코드 진단해봤어요! 👇\n${url}`).then(() => {
+    showFeedbackToast('📋 공유 링크 복사 완료! 카카오톡에 붙여넣기 하세요.');
+  }).catch(() => {});
+  closeShareCard();
+}
+function shareLink() {
+  const url = location.href.split('?')[0];
+  navigator.clipboard?.writeText(`슬림마인드 바디코드 진단 👇\n${url}`).then(() => {
+    showFeedbackToast('📋 링크가 복사되었어요!');
+  }).catch(() => {
+    showFeedbackToast('링크: ' + url);
+  });
+  closeShareCard();
+}
+function showFeedbackToast(msg) {
+  const el = document.getElementById('feedback-toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.cssText = 'display:block;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(30,20,10,.88);color:#fff;padding:11px 18px;border-radius:40px;font-size:13px;font-weight:700;z-index:9999;white-space:nowrap;';
+  setTimeout(() => { el.style.display = 'none'; }, 3000);
+}
 </script>
 </body>
 </html>

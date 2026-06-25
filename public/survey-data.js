@@ -313,6 +313,102 @@ var QUESTIONS = [
     ]
   },
 
+  // ── P1 추가: Q_FAT_ORDER — 살 찌는 순서 ──
+  {
+    id: 'Q_FAT_ORDER', section: 'B', num: 12.1,
+    axis: 'A01', weight: 1.8, role: 'score',
+    question: '살이 찌기 시작하면, 어디부터 티가 나나요?',
+    hint: '지방이 쌓이는 순서에는 당신만의 패턴이 있습니다. 이 순서가 체형 코드의 결정적 단서예요.',
+    type: 'SINGLE_SELECT',
+    options: [
+      { emoji: '🫃', label: '배부터', desc: '복부가 가장 먼저 나와요', value: 'belly',
+        axisEffect: { A01: 30 }, feedbackKey: 'belly_fat' },
+      { emoji: '🍑', label: '허벅지·엉덩이부터', desc: '하체가 먼저 커져요', value: 'thigh',
+        axisEffect: { A02: 25, A04: 15 }, feedbackKey: 'soft_fat' },
+      { emoji: '💪', label: '어깨·팔뚝·등부터', desc: '상체가 먼저 넓어져요', value: 'upper',
+        axisEffect: { A06: 20, A04: 10 } },
+      { emoji: '😶', label: '얼굴·손발이 먼저 붓는', desc: '붓기가 먼저 와요', value: 'face_feet',
+        axisEffect: { A02: 30, A07: 15 }, feedbackKey: 'puffy' },
+      { emoji: '🌊', label: '전신에 골고루', desc: '딱히 한 부위 없이 전체적으로', value: 'whole',
+        axisEffect: { A03: 15, A04: 10 } }
+    ],
+    saveAs: 'fat_order'
+  },
+
+  // ── P1 추가: Q_FAT_THICKNESS — 피하지방 두께 실측 ──
+  {
+    id: 'Q_FAT_THICKNESS', section: 'B', num: 12.2,
+    axis: 'A02', weight: 1.5, role: 'score',
+    question: '배꼽 주변 살을 집어보세요. 두께가 어느 정도인가요?',
+    hint: '집히는 두께가 곧 피하지방의 양입니다. 1cm와 4cm는 완전히 다른 처방으로 갑니다.',
+    type: 'SINGLE_SELECT',
+    options: [
+      { emoji: '✋', label: '1cm 미만, 거의 안 집혀요', desc: '내장지방 우세형', value: 'thin',
+        axisEffect: { A01: 25 }, feedbackKey: 'hard_fat' },
+      { emoji: '🤏', label: '2~3cm 정도 집혀요', desc: '보통 피하지방', value: 'medium',
+        axisEffect: { A02: 15 } },
+      { emoji: '🫴', label: '4cm 이상, 두껍게 잡혀요', desc: '피하지방 우세형', value: 'thick',
+        axisEffect: { A02: 30, A04: 15 }, feedbackKey: 'soft_fat' }
+    ],
+    saveAs: 'fat_thickness'
+  },
+
+  // ── P1 추가: Q_SLIM_FAT — 마른비만 판별 ──
+  {
+    id: 'Q_SLIM_FAT', section: 'B', num: 12.3,
+    axis: 'A04', weight: 1.8, role: 'score',
+    question: '팔다리에 비해, 배가 유독 나온 편인가요?',
+    hint: '남들은 말랐다고 하는데 옷 벗으면 배만 볼록 — 체중은 정상인데 근육이 적고 내장지방이 숨어 있는 상태일 수 있습니다.',
+    type: 'SINGLE_SELECT',
+    options: [
+      { emoji: '🐸', label: '네, 팔다리는 가는데 배만 나왔어요', desc: '마른비만형', value: 'slim_fat',
+        axisEffect: { A04: 35, A01: 25 }, feedbackKey: 'hard_fat' },
+      { emoji: '🍑', label: '전체적으로 통통한 편이에요', desc: '균형형 비만', value: 'overall',
+        axisEffect: { A02: 20, A03: 15 } },
+      { emoji: '✅', label: '아니에요, 균형이 맞는 편', desc: '', value: 'balanced',
+        axisEffect: {} }
+    ],
+    saveAs: 'slim_fat_pattern'
+  },
+
+  // ── P1 추가: Q_UPPER_TOUCH — 상체촉감 (팔뚝 흔들기) ──
+  {
+    id: 'Q_UPPER_TOUCH', section: 'B', num: 12.4,
+    axis: 'A04', weight: 1.5, role: 'score',
+    question: '팔을 뻗고, 팔 뒤쪽(삼두근)을 살짝 흔들어보세요.',
+    hint: '팔뚝이 굵어지는 이유는 정반대 두 가지 — 안 써서 붓거나, 너무 써서 근육이거나. 흔들리는 정도가 답을 알려줍니다.',
+    type: 'SINGLE_SELECT',
+    options: [
+      { emoji: '🫨', label: '출렁출렁 흔들려요', desc: '순환 정체·피하지방형', value: 'floppy',
+        axisEffect: { A02: 20, A04: 15 }, feedbackKey: 'soft_fat' },
+      { emoji: '🪨', label: '별로 안 흔들리고 단단해요', desc: '근육 발달형', value: 'solid',
+        axisEffect: { A04: 20, A06: 15 } },
+      { emoji: '🌊', label: '울퉁불퉁하게 잡혀요', desc: '셀룰라이트형', value: 'bumpy',
+        axisEffect: { A02: 25 } }
+    ],
+    saveAs: 'upper_arm_type'
+  },
+
+  // ── P1 추가: Q_SILHOUETTE — 옆모습 실루엣 ──
+  {
+    id: 'Q_SILHOUETTE', section: 'B', num: 12.5,
+    axis: 'A01', weight: 1.5, role: 'score',
+    question: '옆모습 거울 — 허리에서 배가 어떻게 보이나요?',
+    hint: '옆선 실루엣이 당신에게 맞는 운동의 종류를 결정합니다. 이 한 컷이 1차 분석의 마지막 퍼즐이에요.',
+    type: 'SINGLE_SELECT',
+    options: [
+      { emoji: '⌛', label: '잘록하게 들어가요', desc: '허리 라인이 보여요', value: 'hourglass',
+        axisEffect: {} },
+      { emoji: '🪣', label: '일자로 통짜예요', desc: '정면·옆 모두 직선', value: 'straight',
+        axisEffect: { A06: 20 } },
+      { emoji: '🫃', label: '아랫배만 볼록 나와요', desc: '상복부는 괜찮은데', value: 'lower_only',
+        axisEffect: { A02: 20, A04: 15 }, feedbackKey: 'soft_fat' },
+      { emoji: '🍎', label: '배 전체가 앞으로 나와요', desc: '위아래 다 나온 형', value: 'whole_belly',
+        axisEffect: { A01: 35 }, feedbackKey: 'belly_fat' }
+    ],
+    saveAs: 'silhouette_type'
+  },
+
   // ══════════════════════════════════════════════════════
   //  섹션 C · 숫자의 비밀
   // ══════════════════════════════════════════════════════
@@ -446,6 +542,47 @@ var QUESTIONS = [
     ],
     saveAs: 'stress_level'
   },
+
+  // ── P1 추가: Q_SMOKING — 흡연 (A07·A09 보강) ──
+  {
+    id: 'Q_SMOKING', section: 'D', num: 21.5,
+    axis: 'A07', weight: 1.3, role: 'score',
+    question: '흡연을 하시나요?',
+    hint: '흡연은 뱃살을 직접 늘립니다. 니코틴이 코르티솔을 자극해 지방을 복부로 몰거든요. 끊은 직후 살찌는 것도 같은 이유예요.',
+    type: 'SINGLE_SELECT',
+    options: [
+      { emoji: '🚫', label: '비흡연자예요', desc: '한 번도 안 피웠거나 끊었어요', value: 'never',
+        axisEffect: {} },
+      { emoji: '🚬', label: '현재 흡연 중이에요', desc: '전자담배 포함', value: 'active',
+        axisEffect: { A07: 15, A09: 20 } },
+      { emoji: '✅', label: '금연한 지 1년 미만이에요', desc: '금연 초기', value: 'quit_recent',
+        axisEffect: { A07: 8, A09: 10 } },
+      { emoji: '🌿', label: '금연한 지 1년 이상이에요', desc: '이미 몸이 회복 중', value: 'quit_long',
+        axisEffect: { A09: 5 } }
+    ],
+    saveAs: 'smoking_status'
+  },
+
+  // ── P1 추가: Q_ALCOHOL — 음주 (A07·A09 보강) ──
+  {
+    id: 'Q_ALCOHOL', section: 'D', num: 21.6,
+    axis: 'A09', weight: 1.3, role: 'score',
+    question: '음주 습관을 알려주세요.',
+    hint: '알코올은 간에서 중성지방으로 직접 전환됩니다. 음주량이 곧 내장지방량이에요.',
+    type: 'SINGLE_SELECT',
+    options: [
+      { emoji: '🙅', label: '거의 안 마셔요 (월 1회 미만)', desc: '술을 잘 안 마시는 편', value: 'rarely',
+        axisEffect: {} },
+      { emoji: '🍷', label: '가끔 마셔요 (주 1~2회, 1~2잔)', desc: '적당히 즐기는 편', value: 'light',
+        axisEffect: { A09: 8 } },
+      { emoji: '🍺', label: '자주 마셔요 (주 3회 이상)', desc: '술자리가 잦은 편', value: 'moderate',
+        axisEffect: { A07: 15, A09: 20 }, feedbackKey: 'stress_high' },
+      { emoji: '🍻', label: '매일 또는 폭음이 있어요', desc: '하루에 3잔 이상 또는 폭음', value: 'heavy',
+        axisEffect: { A01: 15, A07: 20, A09: 30 } }
+    ],
+    saveAs: 'alcohol_frequency'
+  },
+
   {
     id: 'Q23', section: 'D', num: 23,
     axis: 'A04', weight: 1.8, role: 'score',
