@@ -473,6 +473,60 @@
   .disp-intro .di-badge{font-size:11px;font-weight:700;color:var(--c3);letter-spacing:.1em;margin-bottom:8px}
   .disp-intro .di-title{font-size:18px;font-weight:700;line-height:1.4;margin-bottom:6px}
   .disp-intro .di-sub{font-size:13px;color:var(--muted);line-height:1.6}
+
+  /* ── DISP 기질 모달 오버레이 ── */
+  .disp-overlay{
+    position:fixed;inset:0;z-index:300;
+    background:rgba(26,26,23,.7);backdrop-filter:blur(4px);
+    display:flex;align-items:flex-end;justify-content:center;
+    opacity:0;pointer-events:none;transition:opacity .3s;
+  }
+  .disp-overlay.open{opacity:1;pointer-events:auto}
+  .disp-sheet{
+    width:100%;max-width:540px;
+    background:var(--paper);border-radius:24px 24px 0 0;
+    padding:0 0 env(safe-area-inset-bottom,0);
+    max-height:92dvh;overflow-y:auto;
+    transform:translateY(100%);transition:transform .35s cubic-bezier(.32,.72,0,1);
+  }
+  .disp-overlay.open .disp-sheet{transform:translateY(0)}
+  .disp-sheet-handle{width:40px;height:4px;border-radius:2px;background:var(--line);
+    margin:12px auto 0;flex-shrink:0}
+  .disp-sheet-head{padding:16px 20px 12px;border-bottom:1px solid var(--line);
+    position:sticky;top:0;background:var(--paper);z-index:2}
+  .disp-sheet-prog{height:3px;background:var(--line);border-radius:2px;margin-bottom:10px}
+  .disp-sheet-prog-fill{height:100%;background:var(--c3);border-radius:2px;transition:width .3s}
+  .disp-sheet-step{font-size:11px;font-weight:700;color:var(--c3);letter-spacing:.1em}
+  .disp-sheet-title{font-size:17px;font-weight:700;line-height:1.45;margin:6px 0 2px}
+  .disp-sheet-hint{font-size:12.5px;color:var(--muted);line-height:1.55}
+  .disp-opts{padding:14px 20px 24px;display:flex;flex-direction:column;gap:10px}
+  .disp-opt{
+    border:1.5px solid var(--line);border-radius:12px;
+    padding:13px 16px;cursor:pointer;font-size:14px;font-weight:600;
+    background:var(--card);color:var(--ink);
+    transition:border-color .18s,background .18s,color .18s;
+    text-align:left;font-family:inherit;width:100%;
+  }
+  .disp-opt:hover{border-color:var(--c3);background:#fdf1ee}
+  .disp-opt.sel{border-color:var(--c3);background:var(--c3);color:#fff}
+  .disp-intro-screen{padding:24px 24px 28px;text-align:center}
+  .disp-intro-icon{font-size:42px;margin-bottom:14px}
+  .disp-intro-badge{font-size:10px;font-weight:700;color:var(--c3);letter-spacing:.15em;
+    background:#fdf1ee;border-radius:20px;padding:4px 12px;display:inline-block;margin-bottom:12px}
+  .disp-intro-title{font-size:20px;font-weight:700;line-height:1.4;margin-bottom:10px}
+  .disp-intro-desc{font-size:13.5px;color:var(--muted);line-height:1.7;margin-bottom:22px}
+  .disp-start-btn{
+    display:block;width:100%;padding:16px;
+    background:var(--c3);color:#fff;border:none;border-radius:12px;
+    font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;
+    transition:opacity .15s;
+  }
+  .disp-start-btn:hover{opacity:.88}
+  .disp-skip-btn{
+    display:block;width:100%;padding:10px;margin-top:8px;
+    background:none;border:none;color:var(--muted);
+    font-size:13px;cursor:pointer;font-family:inherit;
+  }
 </style>
 </head>
 <body>
@@ -853,6 +907,35 @@
 
   </div><!-- /wrap -->
 </div><!-- /surveyApp -->
+
+<!-- ═══ Part 6: DISP 기질 10문항 모달 ═══ -->
+<div class="disp-overlay" id="dispOverlay">
+  <div class="disp-sheet" id="dispSheet">
+    <div class="disp-sheet-handle"></div>
+    <!-- 인트로 화면 -->
+    <div id="dispIntroScreen" class="disp-intro-screen">
+      <div class="disp-intro-icon">🧠</div>
+      <div class="disp-intro-badge">INNATE DISPOSITION</div>
+      <div class="disp-intro-title" id="dispIntroTitle">마지막으로,<br>당신의 타고난 기질을<br>10가지로 확인합니다</div>
+      <div class="disp-intro-desc">
+        똑같은 바디코드라도<br>기질에 따라 처방이 완전히 달라집니다.<br>
+        오행 체질 + MBTI 성향을 융합해<br>당신만의 맞춤 결과지를 완성합니다.
+      </div>
+      <button class="disp-start-btn" onclick="startDisp()">기질 설문 시작하기 →</button>
+      <button class="disp-skip-btn" onclick="skipDisp()">건너뛰고 결과 보기</button>
+    </div>
+    <!-- 문항 화면 -->
+    <div id="dispQuestionScreen" style="display:none">
+      <div class="disp-sheet-head">
+        <div class="disp-sheet-prog"><div class="disp-sheet-prog-fill" id="dispProgFill" style="width:0%"></div></div>
+        <div class="disp-sheet-step" id="dispStepLabel">G01 / G10</div>
+        <div class="disp-sheet-title" id="dispQTitle">문항 제목</div>
+        <div class="disp-sheet-hint" id="dispQHint">힌트</div>
+      </div>
+      <div class="disp-opts" id="dispOpts"></div>
+    </div>
+  </div>
+</div>
 
 <script src="/survey-data.js"></script>
 <script src="/bc-engine.js"></script>
@@ -1856,10 +1939,17 @@ function showAnalyzing(){
   tick();
 }
 
-/* 확정 코드 결과 화면 → POST /api/v1/diagnosis → result-v4.html?id= 리다이렉트 */
+/* 확정 코드 결과 화면 → DISP 모달 → POST /api/v1/diagnosis → result-v4.html?id= 리다이렉트 */
 async function showCodeResult(r){
   const name=userInfo.name||'당신';
   const f=r.code;
+
+  // DISP 모달로 분기 (survey-data.js 로드 완료 후)
+  if(typeof DISP_QUESTIONS!=='undefined' && DISP_QUESTIONS.length>0){
+    openDispModal(r);
+    return;
+  }
+  // DISP 없으면 바로 API 호출
 
   // 축 이름 맵
   const axisNames={
@@ -1996,6 +2086,190 @@ function shareToFriend(){
   }catch(e){/* 탭 추적 실패해도 설문 정상 작동 */}
 })();
 </script>
-<!-- ===== Part 5 전체 완료 ===== -->
+<script>
+/* ===== Part 6-B : DISP 기질 10문항 모달 JS ===== */
+
+let _dispCodeResult = null;   // showCodeResult에서 전달받은 decideCode 결과
+let _dispAnswers    = {};     // 사용자 응답 {DISP_ENERGY: 0, ...}
+let _dispIdx        = 0;      // 현재 문항 인덱스
+
+function openDispModal(codeResult) {
+  _dispCodeResult = codeResult;
+  _dispAnswers    = {};
+  _dispIdx        = 0;
+
+  // 인트로 타이틀에 이름 반영
+  const name = userInfo.name || '당신';
+  const titleEl = document.getElementById('dispIntroTitle');
+  if (titleEl) titleEl.innerHTML = `${name}님,<br>마지막으로 타고난 기질을<br>10가지로 확인합니다`;
+
+  // 인트로 화면 표시
+  document.getElementById('dispIntroScreen').style.display = 'block';
+  document.getElementById('dispQuestionScreen').style.display = 'none';
+
+  // 오버레이 열기
+  const overlay = document.getElementById('dispOverlay');
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function startDisp() {
+  document.getElementById('dispIntroScreen').style.display = 'none';
+  document.getElementById('dispQuestionScreen').style.display = 'block';
+  _dispIdx = 0;
+  renderDispQ(_dispIdx);
+}
+
+function skipDisp() {
+  document.getElementById('dispOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+  submitDiagnosis({});  // 빈 disp_answers로 바로 제출
+}
+
+function renderDispQ(idx) {
+  const qs = DISP_QUESTIONS;
+  if (!qs || idx >= qs.length) {
+    // 전체 완료 → 제출
+    const sheet = document.getElementById('dispSheet');
+    closeDispModal();
+    submitDiagnosis(_dispAnswers);
+    return;
+  }
+
+  const q = qs[idx];
+  const total = qs.length;
+
+  // 프로그레스
+  document.getElementById('dispProgFill').style.width = (idx / total * 100) + '%';
+  document.getElementById('dispStepLabel').textContent = `${q.num} / G${String(total).padStart(2,'0')} · ${q.icon} 기질 분석`;
+  document.getElementById('dispQTitle').textContent = q.q;
+  document.getElementById('dispQHint').textContent = q.hint;
+
+  // 옵션 렌더
+  const optsEl = document.getElementById('dispOpts');
+  optsEl.innerHTML = q.opts.map((o, oi) =>
+    `<button class="disp-opt ${_dispAnswers[q.id]===oi?'sel':''}" onclick="dispPick('${q.id}',${oi},this)">${o}</button>`
+  ).join('');
+
+  // 시트 상단으로 스크롤
+  document.getElementById('dispSheet').scrollTop = 0;
+}
+
+function dispPick(qid, oi, el) {
+  // 선택 표시
+  el.closest('.disp-opts').querySelectorAll('.disp-opt').forEach(b => b.classList.remove('sel'));
+  el.classList.add('sel');
+
+  _dispAnswers[qid] = oi;
+
+  // 0.4초 후 다음 문항
+  setTimeout(() => {
+    _dispIdx++;
+    renderDispQ(_dispIdx);
+  }, 380);
+}
+
+function closeDispModal() {
+  const overlay = document.getElementById('dispOverlay');
+  overlay.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+/* POST /api/v1/diagnosis + result-v4.html 리다이렉트 (DISP 완료 후 실행) */
+async function submitDiagnosis(dispAnswers) {
+  const r = _dispCodeResult;
+  if (!r) return;
+
+  const name = userInfo.name || '당신';
+  const f = r.code;
+  const top3 = Object.entries(r.scores).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const top3Axes = top3.map(([ax]) => ax);
+  const refCode = new URLSearchParams(window.location.search).get('ref') || '';
+
+  // calcDisposition으로 오행/MBTI 도출
+  let ohaeng_type = null, mbti_full = null;
+  if (typeof calcDisposition !== 'undefined' && Object.keys(dispAnswers).length > 0) {
+    try {
+      const d = calcDisposition(dispAnswers);
+      ohaeng_type = d.ohaeng_type || null;
+      mbti_full   = d.mbti_full   || null;
+    } catch(e) { /* 계산 실패 시 null */ }
+  }
+
+  // 로딩 표시 (analyzing 화면)
+  document.getElementById('analyzing').style.display = 'block';
+  document.getElementById('codeScreen').style.display = 'none';
+  const titleEl = document.getElementById('analyzeTitle');
+  if (titleEl) titleEl.textContent = '결과지를 저장하는 중입니다…';
+  const pctEl = document.getElementById('spinPct');
+  if (pctEl) pctEl.textContent = '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  let resultId = null;
+  try {
+    const payload = {
+      user_name:    name,
+      bc_nickname:  f.name,
+      bc_primary:   f.ax ? f.ax.split('·')[0] : null,
+      bc_secondary: f.ax ? f.ax.split('·')[1] || null : null,
+      top3_axes:    top3Axes,
+      axis_scores:  r.scores,
+      region:       r.prof.region  || null,
+      texture:      r.prof.texture || null,
+      bg_filter:    '',
+      ohaeng_type,
+      mbti_full,
+      disp_answers: Object.keys(dispAnswers).length > 0 ? dispAnswers : null,
+      ref_code:     refCode || null,
+      completed_at: new Date().toISOString()
+    };
+
+    const res = await fetch('/api/v1/diagnosis', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      resultId = data.result_id || null;
+    }
+  } catch (err) {
+    console.error('[submitDiagnosis] POST failed', err);
+  }
+
+  if (resultId) {
+    window.location.href = `/result-v4.html?id=${resultId}`;
+  } else {
+    // 폴백: 인라인 표시
+    const axisNames = {
+      A01:'인슐린·내장지방',A02:'림프·순환',A03:'호르몬·대사',
+      A04:'근감소',A05:'소화·장',A06:'골격·자세',
+      A07:'스트레스·코르티솔',A08:'심리·식이',A09:'대사위험',A10:'기질'
+    };
+    const maxS = Math.max(...top3.map(x => x[1]), 1);
+    const bars = top3.map(([ax, s]) => `
+      <div class="rsbar">
+        <span class="rsname">${ax} ${axisNames[ax]}</span>
+        <span class="rstrack"><span class="rsfill" style="width:${Math.round(s/maxS*100)}%"></span></span>
+      </div>`).join('');
+    const el = document.getElementById('codeResult');
+    if (el) el.innerHTML = `
+      <div class="cr-emoji">${f.e}</div>
+      <div class="cr-label">${name}님의 바디코드</div>
+      <div class="cr-name">${f.name}</div>
+      <div class="cr-chain">${f.chain}</div>
+      <div class="cr-section">당신을 움직인 핵심 원인 TOP 3</div>
+      <div class="rsbars">${bars}</div>
+      <div class="cr-ext">외형 신호 · ${r.prof.region}${r.prof.texture?' '+r.prof.texture:''}형</div>
+      <div class="cr-note">결과지 저장 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.</div>
+      <button class="cr-btn" onclick="showAnalyzing()">다시 분석하기</button>`;
+    document.getElementById('analyzing').style.display = 'none';
+    document.getElementById('codeScreen').style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+}
+</script>
+<!-- ===== Part 6 완료 ===== -->
 </body>
 </html>
