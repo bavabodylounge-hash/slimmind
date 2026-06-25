@@ -1386,6 +1386,11 @@ function demoData() {
     axisScores:{A01:55,A02:60,A03:92,A04:35,A05:48,A06:62,A07:78,A08:58,A09:30,A10:45},
     ohaengType:'수', mbtiType:'INFJ',
     answers:{ Q_MENOPAUSE:'meno', Q02:'female', age_group:'50s' },
+    // P6 처방 엔진 테스트: bc_primary(한글닉네임) + 목표체중 + 감량률
+    bc_primary: '호르몬스위치 갱년기형',
+    bc_code: '호르몬스위치 갱년기형',
+    goal_weight: 58,
+    weight_loss_pct: 12,
     isDemo:true
   };
 }
@@ -2341,9 +2346,15 @@ function renderP6(userName, fullCode, ohaengType, inputData) {
   const ohaengForRoadmap = ohaengType || d.ohaengType || d.ohaeng_type || null;
 
   // getRoadmapWeeks(): bc_primary(한글닉네임) + goal_weight + weight_loss_pct + user_name + ohaeng_type
+  console.log('[P6] getRoadmapWeeks 파라미터:', { bcPrimary, goalWeight, weightLossPct, userName, ohaengForRoadmap });
   const ACTIVE_WEEKS = (typeof getRoadmapWeeks === 'function')
     ? getRoadmapWeeks(bcPrimary, goalWeight, weightLossPct, userName, ohaengForRoadmap)
     : (typeof ROADMAP_WEEKS !== 'undefined' ? ROADMAP_WEEKS : []);
+  console.log('[P6] ACTIVE_WEEKS 생성:', ACTIVE_WEEKS.length + '주차', ACTIVE_WEEKS[0] ? '1주차:' + ACTIVE_WEEKS[0].title : '없음');
+  if (ACTIVE_WEEKS[0]) {
+    console.log('[P6] 1주차 오행레이어:', { ohaeng_caution: ACTIVE_WEEKS[0].ohaeng_caution, diet_macro_note: ACTIVE_WEEKS[0].diet_macro_note });
+    console.log('[P6] 1주차 영양정보:', ACTIVE_WEEKS[0].nutrition);
+  }
 
   const PHASE_COLORS = ['var(--vis)','var(--muscle)','var(--circ)','var(--sub)'];
 
