@@ -900,6 +900,145 @@
     #smSaveBtn  { top: 10px; right: 10px; font-size: 11px; padding: 6px 11px }
   }
   /* ===== /기능 4 ===== */
+
+  /* ===== 기능 9: AI 설문 도우미 ===== */
+  /* ? 도우미 버튼 */
+  .q-help-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--c1); color: #fff;
+    font-size: 12px; font-weight: 800; line-height: 1;
+    border: none; cursor: pointer; flex-shrink: 0;
+    vertical-align: middle; margin-left: 7px;
+    transition: background .15s, transform .12s;
+    position: relative; top: -1px;
+  }
+  .q-help-btn:hover { background: var(--c3); transform: scale(1.12) }
+  .q-help-btn:active { transform: scale(.92) }
+
+  /* qtitle 행 레이아웃 (? 버튼 나란히) */
+  .qtitle-row {
+    display: flex; align-items: flex-start; gap: 4px;
+    margin: 8px 0 4px;
+  }
+  .qtitle-row .qtitle {
+    margin: 0; flex: 1;
+  }
+
+  /* 도우미 팝업 오버레이 (배경 딤) */
+  #qHelpOverlay {
+    display: none;
+    position: fixed; inset: 0; z-index: 9500;
+    background: rgba(30,20,14,.52);
+    align-items: flex-end;      /* 모바일: 하단 시트 */
+    justify-content: center;
+    padding: env(safe-area-inset-bottom, 0);
+  }
+  #qHelpOverlay.open { display: flex }
+
+  /* 팝업 패널 (바텀시트) */
+  #qHelpPanel {
+    background: var(--card);
+    border-radius: 20px 20px 0 0;
+    padding: 26px 22px 32px;
+    width: 100%; max-width: 520px;
+    box-shadow: 0 -6px 36px rgba(0,0,0,.2);
+    position: relative;
+    transform: translateY(100%);
+    transition: transform .26s cubic-bezier(.22,.61,.36,1);
+    padding-bottom: calc(32px + env(safe-area-inset-bottom));
+  }
+  #qHelpOverlay.open #qHelpPanel { transform: translateY(0) }
+
+  /* 팝업 핸들 바 */
+  #qHelpPanel .qhp-handle {
+    width: 40px; height: 4px; border-radius: 2px;
+    background: var(--line); margin: 0 auto 18px;
+  }
+
+  /* 팝업 헤더 */
+  .qhp-header {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 16px;
+  }
+  .qhp-icon {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--c1); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 800; flex-shrink: 0;
+  }
+  .qhp-title-text {
+    font-size: 14px; font-weight: 700; color: var(--muted);
+    line-height: 1.3;
+  }
+  .qhp-question {
+    font-size: 16px; font-weight: 700; color: var(--ink);
+    line-height: 1.45; margin-top: 2px;
+  }
+
+  /* 구분선 */
+  .qhp-divider {
+    height: 1px; background: var(--line); margin: 14px 0;
+  }
+
+  /* 힌트 본문 */
+  .qhp-body {
+    font-size: 15px; color: #444; line-height: 1.75;
+    background: #f9f1ee; border-radius: 12px;
+    padding: 16px 18px; border-left: 3px solid var(--c1);
+  }
+  .qhp-body .qhp-emoji {
+    font-size: 20px; margin-bottom: 8px; display: block;
+  }
+
+  /* 닫기 버튼 */
+  #qHelpPanel .qhp-close {
+    position: absolute; top: 14px; right: 14px;
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--line); border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; color: var(--muted);
+    transition: background .12s;
+  }
+  #qHelpPanel .qhp-close:hover { background: #ddd }
+
+  /* 닫기 CTA 버튼 */
+  .qhp-cta {
+    display: block; width: 100%; margin-top: 18px;
+    padding: 14px; border-radius: 12px;
+    background: var(--c1); color: #fff;
+    font-size: 15px; font-weight: 700;
+    border: none; cursor: pointer;
+    transition: background .15s;
+    min-height: 44px;
+  }
+  .qhp-cta:hover { background: var(--c3) }
+
+  /* 데스크탑: 중앙 다이얼로그 */
+  @media (min-width: 761px) {
+    #qHelpOverlay {
+      align-items: center;
+    }
+    #qHelpPanel {
+      border-radius: 16px;
+      max-width: 440px;
+      padding: 28px 28px 28px;
+      transform: scale(.92) translateY(10px);
+      opacity: 0;
+      transition: transform .22s cubic-bezier(.22,.61,.36,1), opacity .22s;
+    }
+    #qHelpOverlay.open #qHelpPanel {
+      transform: scale(1) translateY(0);
+      opacity: 1;
+    }
+  }
+
+  /* 모바일 소형 화면 */
+  @media (max-width: 380px) {
+    #qHelpPanel { padding: 20px 16px 28px; }
+    .qhp-body { font-size: 14px; padding: 14px 14px; }
+  }
+  /* ===== /기능 9 ===== */
 </style>
 </head>
 <body>
@@ -2540,7 +2679,10 @@ const stage3Answers={};
          <div class="opt" onclick="s3pick(${gi},1,this)"><span class="dot"></span><span class="otext"><b>가끔 그래요</b></span></div>
          <div class="opt" onclick="s3pick(${gi},0,this)"><span class="dot"></span><span class="otext"><b>아니에요</b></span></div>`;
     card.innerHTML=`<div class="qtop"><span class="qno" style="background:${q.c}">${q.code}-${q.axisIdx}</span></div>
-      <div class="qtitle">${q.title}</div>
+      <div class="qtitle-row">
+        <div class="qtitle">${q.title}</div>
+        <button class="q-help-btn" onclick="showQHelp(${gi})" title="이게 무슨 말이에요?" aria-label="질문 도우미">?</button>
+      </div>
       <div class="qhint">${q.hint}</div>
       <div class="opts">${optsHtml}</div>
       <div class="tease" id="tease3_${gi}">${q.tease} <span class="teasearrow">↓</span></div>`;
@@ -3484,6 +3626,105 @@ async function submitDiagnosis(dispAnswers) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 </script>
+<!-- ===== 기능 9: AI 설문 도우미 팝업 DOM ===== -->
+<div id="qHelpOverlay" role="dialog" aria-modal="true" aria-labelledby="qHelpDialogTitle"
+     onclick="if(event.target===this)hideQHelp()">
+  <div id="qHelpPanel">
+    <div class="qhp-handle"></div>
+    <button class="qhp-close" onclick="hideQHelp()" aria-label="닫기">✕</button>
+    <div class="qhp-header">
+      <div class="qhp-icon">?</div>
+      <div>
+        <div class="qhp-title-text">💡 이 질문이 어렵게 느껴지셨나요?</div>
+        <div id="qHelpDialogTitle" class="qhp-question"></div>
+      </div>
+    </div>
+    <div class="qhp-divider"></div>
+    <div class="qhp-body" id="qHelpHintText">
+      <span class="qhp-emoji" id="qHelpEmoji">💬</span>
+      <span id="qHelpHintBody"></span>
+    </div>
+    <button class="qhp-cta" onclick="hideQHelp()">알겠어요, 이제 답할게요 ✓</button>
+  </div>
+</div>
+<!-- ===== /기능 9 ===== -->
+
+<script>
+/* ===== 기능 9: AI 설문 도우미 ===== */
+(function(){
+  // hint에서 앞쪽 이모지 추출 (있으면 분리, 없으면 기본 이모지 사용)
+  function extractEmoji(text){
+    if(!text) return { emoji:'💬', body: text };
+    // 이모지가 텍스트 앞에 있는 경우 추출
+    const m = text.match(/^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F)\s*/u);
+    if(m){ return { emoji: m[1], body: text.slice(m[0].length) }; }
+    // 이모지가 없을 때 축 컬러로 매핑
+    return { emoji: '💬', body: text };
+  }
+
+  // 축 코드 → 이모지 기본값
+  const AXIS_HINT_EMOJI = {
+    A01:'🍬', A02:'💧', A03:'🔥', A04:'😴', A05:'🧠',
+    A06:'🌿', A07:'🫁', A08:'⚡', A09:'🦴', A10:'🫀'
+  };
+
+  window.showQHelp = function(gi){
+    const flat = typeof stage3Flat !== 'undefined' ? stage3Flat : null;
+    if(!flat || gi < 0 || gi >= flat.length) return;
+    const q = flat[gi];
+
+    // 질문 제목
+    const titleEl = document.getElementById('qHelpDialogTitle');
+    if(titleEl) titleEl.textContent = q.title;
+
+    // 힌트 내용
+    const hintText = q.hint || '이 질문은 현재 겪고 있는 증상을 확인하는 문항입니다.';
+    const axisCode = q.code || '';
+    const { emoji, body } = extractEmoji(hintText);
+    const finalEmoji = emoji !== '💬' ? emoji : (AXIS_HINT_EMOJI[axisCode] || '💬');
+
+    const emojiEl = document.getElementById('qHelpEmoji');
+    const bodyEl  = document.getElementById('qHelpHintBody');
+    if(emojiEl) emojiEl.textContent = finalEmoji;
+    if(bodyEl)  bodyEl.textContent  = body;
+
+    // 오버레이 열기
+    const overlay = document.getElementById('qHelpOverlay');
+    if(!overlay) return;
+    overlay.style.display = 'flex';
+    // 한 프레임 뒤 open 클래스 → 트랜지션 실행
+    requestAnimationFrame(()=>{ overlay.classList.add('open'); });
+
+    // 포커스 트랩: 닫기 버튼에 포커스
+    const closeBtn = overlay.querySelector('.qhp-close');
+    if(closeBtn) setTimeout(()=>closeBtn.focus(), 280);
+
+    // 스크롤 잠금
+    document.body.style.overflow = 'hidden';
+  };
+
+  window.hideQHelp = function(){
+    const overlay = document.getElementById('qHelpOverlay');
+    if(!overlay) return;
+    overlay.classList.remove('open');
+    // 트랜지션 끝난 뒤 display:none
+    setTimeout(()=>{
+      overlay.style.display = 'none';
+      document.body.style.overflow = '';
+    }, 300);
+  };
+
+  // ESC 키로 닫기
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape'){
+      const overlay = document.getElementById('qHelpOverlay');
+      if(overlay && overlay.classList.contains('open')) hideQHelp();
+    }
+  });
+})();
+/* ===== /기능 9 ===== */
+</script>
+
 <!-- ===== Part 6 완료 ===== -->
 </body>
 </html>
