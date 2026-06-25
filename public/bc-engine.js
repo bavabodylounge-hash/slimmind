@@ -962,18 +962,44 @@ function computeNutrition(curWeight, goalWeight, lossPct, height) {
   var proteinG = Math.round(targetKcal * (proteinPct / 100) / 4);
   var fatG     = Math.round(targetKcal * (fatPct / 100) / 9);
 
-  // 주차별 탄수화물 조정 (1주: 더 낮게, 2~3주: 유지, 4주: 사이클링)
+  // ── 주차별 변형 헬퍼: 탄단지 비율로 kcal에서 역산 ──
+  // 각 주차는 (carbPct_w, proteinPct_w, fatPct_w) 비율 기준으로
+  // 실제 kcal에서 그램수를 계산 → 합산 오차 원천 차단
+  function _week(wk, kcalMul, cPct, pPct, note) {
+    var fPct = 100 - cPct - pPct;
+    var wKcal = Math.max(1200, Math.round(targetKcal * kcalMul));
+    return {
+      week:     wk,
+      kcal:     wKcal,
+      carbG:    Math.round(wKcal * (cPct / 100) / 4),
+      proteinG: Math.round(wKcal * (pPct / 100) / 4),
+      fatG:     Math.round(wKcal * (fPct / 100) / 9),
+      note:     note,
+    };
+  }
+
+  // 주차별 탄단지 비율 전략
+  // 1주: 저탄 시작 (탄35 단33 지32) — 탄수화물 −5%p, 단백질 +3%p
+  // 2주: 기준 유지 (carbPct : 30 : fatPct)
+  // 3주: 항염 강화 (탄−3%p, 단+3%p, 지동일)
+  // 4주: 탄수화물 사이클링 OFF일 (탄−10%p, 단+5%p, 지+5%p)
+  var w1cPct = Math.max(30, carbPct - 5);
+  var w1pPct = Math.min(38, proteinPct + 3);
+  var w3cPct = Math.max(30, carbPct - 3);
+  var w3pPct = Math.min(38, proteinPct + 3);
+  var w4cPct = Math.max(25, carbPct - 10);
+  var w4pPct = Math.min(40, proteinPct + 5);
+
   return {
     targetKcal,
     carbG, proteinG, fatG,
     carbPct, proteinPct, fatPct,
     bmr, tdee, deficit,
-    // 주차별 변형 기준
     weekVariants: [
-      { week:1, kcal: Math.round(targetKcal * 0.9),  carbG: Math.round(carbG * 0.7),  proteinG: Math.round(proteinG * 1.1), fatG: Math.round(fatG * 1.1),  note: '1주: 탄수화물 -30%, 단백질·지방 보충' },
-      { week:2, kcal: targetKcal,                     carbG,                            proteinG,                              fatG,                            note: '2주: 기준 유지, 도파민 안정 식품 추가' },
-      { week:3, kcal: Math.round(targetKcal * 1.0),  carbG: Math.round(carbG * 0.85), proteinG: Math.round(proteinG * 1.05), fatG: Math.round(fatG * 1.05), note: '3주: 항염 식단, 온열 식품 강화' },
-      { week:4, kcal: targetKcal,                     carbG: Math.round(carbG * 0.6),  proteinG: Math.round(proteinG * 1.2),  fatG,                            note: '4주: 탄수화물 사이클링 OFF일 -40%' },
+      _week(1, 0.9, w1cPct, w1pPct, '1주: 저탄 진입 — 탄수화물 비율 낮추고 단백질 보충'),
+      _week(2, 1.0, carbPct, proteinPct, '2주: 기준 칼로리 유지, 도파민 안정 식품 추가'),
+      _week(3, 1.0, w3cPct, w3pPct, '3주: 항염 식단 강화 — 단백질 소폭 상향'),
+      _week(4, 1.0, w4cPct, w4pPct, '4주: 탄수화물 사이클링 OFF일 — 탄 -10%p, 단·지 보충'),
     ],
   };
 }
