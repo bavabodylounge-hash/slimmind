@@ -5,7 +5,7 @@
 // Q2/Q3/Q8/Q14/Q23/Q34/Q37/Q38/Q42/Q45/Q58/Q62/Q63 수정
 // 실시간 피드백 후킹 메시지 포함
 
-const SECTIONS = [
+var SECTIONS = [
   { id: 'A', name: '몸의 기억', color: '#3EB8A0', bg: '#E6F7F4',
     hook: '지금부터 나오는 질문들이 당신의 지방 패턴을 결정하는 첫 번째 열쇠입니다.',
     transition: '몸의 역사를 읽었습니다. 이제 지방이 보내는 신호를 들어볼게요.' },
@@ -112,7 +112,7 @@ const AXIS_META = {
          hook: '의지가 아니라 성향의 문제일 수 있습니다.' }
 };
 
-const QUESTIONS = [
+var QUESTIONS = [
   // ══════════════════════════════════════════════════════
   //  Q00 · 기대값 설정 (점수 미포함 — 완주율 향상용)
   // ══════════════════════════════════════════════════════
@@ -2112,7 +2112,7 @@ function classifyECode(answers) {
 //  SlimMind V3.0 — 공통 30문항 (기획서 확정본)
 //  BC코드 라우팅 가중치 (bcScore) 내장 / 유머러스+공감 톤
 // ══════════════════════════════════════════════════════════════════
-const QUESTIONS_V3 = [
+var QUESTIONS_V3 = [
   {
     id: 'VQ01', num: 1,
     category: 'WELCOME',
@@ -2838,7 +2838,7 @@ const QUESTIONS_V3 = [
 // ══════════════════════════════════════════════════════════════════
 //  BC코드 메타 정보
 // ══════════════════════════════════════════════════════════════════
-const BC_META = {
+var BC_META = {
   'BC1': { name: '코끼리다리형',             emoji: '🐘', color: '#3EB8A0', desc: '림프 순환 저하로 하체에 지방과 부종이 쌓이는 패턴',       top3: ['A02','A03','A10'] },
   'BC2': { name: '거북이형',                 emoji: '🐢', color: '#0F1D30', desc: '경추·자세 문제로 목·어깨에 지방이 쌓이는 패턴',           top3: ['A06','A02','A04'] },
   'BC3': { name: '수박배형',                 emoji: '🍉', color: '#EA580C', desc: '내장지방이 배를 수박처럼 만드는 인슐린 저항 패턴',         top3: ['A01','A09','A07'] },
@@ -2862,7 +2862,7 @@ const BC_META = {
 // ══════════════════════════════════════════════════════
 //  닉네임 테이블 — top1·top2 축 + 배경필터 기반 동적 닉네임
 // ══════════════════════════════════════════════════════
-const NICKNAME_TABLE = {
+var NICKNAME_TABLE = {
   A01: {
     A09: { default: '아빠체형 내장비대형' },
     A10: { default: '식후기절 혈당롤러형' },
@@ -2990,7 +2990,7 @@ function midScoreCheck(v3Answers) {
 // ══════════════════════════════════════════════════════════════════
 //  BC별 심층 10문항 (기획서 확정본)
 // ══════════════════════════════════════════════════════════════════
-const DEEP_QUESTIONS = {
+var DEEP_QUESTIONS = {
 
   // ────────────────────────────────────────────────
   //  BC-6 야식부엉이형
@@ -3783,7 +3783,7 @@ const DEEP_QUESTIONS = {
 //  6단계 파이프라인 완료 후 모든 사용자에게 공통 적용
 //  결과: ohaeng_type + mbti_full → 결과지 P3 기질 융합 분석에 사용
 // ══════════════════════════════════════════════════════
-const DISP_QUESTIONS = [
+var DISP_QUESTIONS = [
   {
     id: 'DISP_ENERGY', num: 'G01', icon: '⚡',
     q: '평소 에너지 레벨이 어떤가요?',
@@ -3939,5 +3939,51 @@ if (typeof module !== 'undefined') {
     // V4 닉네임 + 기질
     NICKNAME_TABLE, getNickname,
     DISP_QUESTIONS, calcDisposition
+  };
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  calculateBCScores: index.html이 호출하는 통합 래퍼 함수
+//  calculateAxisScores(10축) + computeBCCode(bc-engine.js) 통합
+// ══════════════════════════════════════════════════════════════════
+function calculateBCScores(answers) {
+  // 1) 10축 점수 + 오행 계산
+  const axisResult = calculateAxisScores(answers);
+
+  // 2) BC코드 계산 (bc-engine.js의 computeBCCode 사용, 없으면 fallback)
+  let bcPrimary = 'BC-06', bcSecondary = null, bcPrimaryScore = 50, bcSecondaryScore = 0, bcScores = {};
+  try {
+    if (typeof computeBCCode === 'function') {
+      const bcResult = computeBCCode(axisResult.axisScores, answers);
+      bcPrimary      = bcResult.primary   || 'BC-06';
+      bcSecondary    = bcResult.secondary || null;
+      bcPrimaryScore = bcResult.primaryScore   || 50;
+      bcSecondaryScore = bcResult.secondaryScore || 0;
+      bcScores       = bcResult.scores    || {};
+    }
+  } catch(e) {
+    console.warn('computeBCCode 오류 (fallback):', e);
+  }
+
+  return {
+    // bc-engine 결과
+    bcPrimary,
+    bcSecondary,
+    bcPrimaryScore,
+    bcSecondaryScore,
+    bcScores,
+    // 10축 결과
+    axisScores:   axisResult.axisScores,
+    topAxes:      axisResult.topAxes,
+    // 오행
+    ohaengScores: axisResult.ohaengScores,
+    ohaengType:   axisResult.ohaengType,
+    // 기타
+    allergyExclude:       axisResult.allergyExclude,
+    skinReaction:         axisResult.skinReaction,
+    menopauseStatus:      axisResult.menopauseStatus,
+    isMenopause:          axisResult.isMenopause,
+    medicalConditions:    axisResult.medicalConditions,
+    hasMedicalConditions: axisResult.hasMedicalConditions,
   };
 }
