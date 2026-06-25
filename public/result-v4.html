@@ -818,6 +818,13 @@ function renderAll(data) {
   const answers = data.answers || {};
 
   // V3.1: computeBCCode에 answers 전달 → nickname + background 포함
+  // 방어: bc-engine.js 로드 실패 시 fallback
+  if (typeof computeBCCode !== 'function') {
+    console.error('[result-v4] computeBCCode 미정의 — bc-engine.js 로드 실패');
+    document.getElementById('loading-spinner') && (document.getElementById('loading-spinner').innerHTML =
+      '<p style="color:#e74c3c;padding:2rem;text-align:center">⚠️ 결과 데이터 로딩 오류<br>페이지를 새로고침 해주세요.</p>');
+    return;
+  }
   const bc = computeBCCode(axisScores, answers);
   const { bcCode, bcMaster, causalScores, sorted, firstDomino, metrics,
           nickname, background } = bc;
