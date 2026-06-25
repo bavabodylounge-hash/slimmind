@@ -527,6 +527,199 @@
     background:none;border:none;color:var(--muted);
     font-size:13px;cursor:pointer;font-family:inherit;
   }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     기능 1: 실시간 몸 반응 거울
+     · 데스크탑(>760px): 우측 고정 패널
+     · 모바일(≤760px):  하단 슬라이드업 미니 바 (3차 진입 시 나타남)
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+  /* ── 공통 기반 ── */
+  #bodyMirror{
+    position:fixed;
+    z-index:180;
+    background:rgba(22,20,18,.94);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    box-shadow:0 8px 40px rgba(0,0,0,.38);
+    opacity:0;pointer-events:none;
+    transition:opacity .35s ease,transform .35s ease;
+    will-change:transform,opacity;
+  }
+  #bodyMirror.bm-visible{opacity:1;pointer-events:auto}
+
+  /* ── 데스크탑: 우측 세로 패널 ── */
+  @media(min-width:761px){
+    #bodyMirror{
+      right:16px;top:50%;
+      transform:translateY(-50%) translateX(24px);
+      width:166px;
+      border-radius:18px;
+      padding:14px 13px 15px;
+    }
+    #bodyMirror.bm-visible{transform:translateY(-50%) translateX(0)}
+    #bmCollapse{display:none}                /* 데스크탑엔 토글 없음 */
+  }
+
+  /* ── 모바일: 하단 슬라이드업 바 ── */
+  @media(max-width:760px){
+    #bodyMirror{
+      left:0;right:0;bottom:0;
+      transform:translateY(100%);
+      border-radius:18px 18px 0 0;
+      padding:0;
+      /* safe-area 대응 */
+      padding-bottom:env(safe-area-inset-bottom,0px);
+    }
+    #bodyMirror.bm-visible{transform:translateY(0)}
+    #bodyMirror.bm-collapsed #bmBody{display:none}
+    #bodyMirror.bm-collapsed{
+      /* 핸들만 보이는 최소 높이 */
+    }
+    #bmBody{padding:0 16px 14px}
+  }
+
+  /* ── 핸들 (모바일 탭으로 접기/펼치기) ── */
+  #bmHandle{
+    display:none; /* 모바일만 */
+  }
+  @media(max-width:760px){
+    #bmHandle{
+      display:flex;align-items:center;justify-content:center;
+      padding:10px 0 8px;cursor:pointer;gap:8px;
+    }
+    #bmHandle .bm-pill{
+      width:36px;height:4px;border-radius:2px;
+      background:rgba(255,255,255,.25);
+    }
+    #bmHandle .bm-htitle{
+      font-size:11px;font-weight:800;color:#c8c2b8;
+      letter-spacing:.1em;text-transform:uppercase;
+    }
+    #bmHandle .bm-hbadge{
+      font-size:9px;font-weight:700;background:var(--c3);
+      color:#fff;border-radius:20px;padding:2px 7px;
+    }
+  }
+
+  /* ── 타이틀 바 (데스크탑) ── */
+  .bm-title{
+    font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+    color:#8a8278;margin-bottom:11px;
+    display:flex;align-items:center;gap:6px;
+  }
+  @media(max-width:760px){.bm-title{display:none}}
+  .bm-dot{
+    width:6px;height:6px;border-radius:50%;background:#5ee08a;flex:none;
+    animation:livePulse 1.4s infinite;
+  }
+
+  /* ── 축 목록 ── */
+  /* 데스크탑: 단일 컬럼 */
+  #bmAxes{display:flex;flex-direction:column;gap:0}
+  @media(max-width:760px){
+    /* 모바일: 2×5 그리드 */
+    #bmAxes{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:6px 18px;
+      padding:4px 0 2px;
+    }
+  }
+
+  .bm-axis{display:flex;align-items:center;gap:7px;margin-bottom:6px}
+  @media(max-width:760px){.bm-axis{margin-bottom:0}}
+
+  .bm-label{
+    font-size:10px;font-weight:700;color:#9e9790;
+    width:50px;flex:none;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .bm-track{
+    flex:1;height:5px;
+    background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden;
+    min-width:28px;
+  }
+  .bm-fill{
+    height:100%;border-radius:3px;
+    transition:width .55s cubic-bezier(.4,0,.2,1),background .55s;
+    width:0%;
+  }
+  .bm-score{
+    font-size:9px;font-weight:800;
+    width:18px;text-align:right;color:#6a645c;flex:none;
+  }
+  /* 1·2위 강조 */
+  .bm-axis.bm-top1 .bm-label{color:#fff;font-weight:900}
+  .bm-axis.bm-top1 .bm-score{color:#f0b896}
+  .bm-axis.bm-top2 .bm-label{color:#e0d8ce}
+  .bm-axis.bm-top2 .bm-score{color:#c8b89a}
+
+  /* ── 하단 요약 ── */
+  .bm-foot{
+    font-size:10px;color:#5a5448;
+    margin-top:9px;padding-top:9px;
+    border-top:1px solid rgba(255,255,255,.07);
+    text-align:center;line-height:1.5;
+  }
+  @media(max-width:760px){
+    .bm-foot{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:8px 0 0;margin-top:8px;
+      font-size:10px;
+    }
+  }
+  .bm-code{
+    font-size:11px;font-weight:800;color:#f0b896;margin-top:2px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  @media(max-width:760px){
+    .bm-code{margin-top:0;font-size:12px}
+  }
+
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     기능 2: 패턴 감지 스낵 토스트
+     · 모바일/데스크탑 동일 위치 (하단 중앙)
+     · 몸 반응 거울 바와 겹치지 않게 z-index / bottom 조정
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+  #patternToast{
+    position:fixed;
+    left:50%;bottom:22px;
+    transform:translateX(-50%) translateY(28px);
+    z-index:270; /* 거울 패널보다 위 */
+    background:linear-gradient(135deg,#1c2b1e,#0f1a11);
+    color:#fff;
+    border:1px solid rgba(110,231,183,.2);
+    border-radius:16px;
+    padding:13px 16px 13px 14px;
+    max-width:340px;width:calc(100% - 40px);
+    display:flex;align-items:flex-start;gap:11px;
+    opacity:0;pointer-events:none;
+    box-shadow:0 12px 50px rgba(0,0,0,.45);
+    transition:opacity .38s ease,transform .38s ease;
+  }
+  #patternToast.show{
+    opacity:1;
+    transform:translateX(-50%) translateY(0);
+  }
+  /* 모바일: 거울 바 위로 띄움 */
+  @media(max-width:760px){
+    #patternToast{bottom:auto;top:70px}
+    #patternToast.show{transform:translateX(-50%) translateY(0)}
+  }
+  .pt-icon{font-size:22px;line-height:1;flex:none;margin-top:1px}
+  .pt-body{min-width:0}
+  .pt-tag{
+    font-size:10px;font-weight:800;letter-spacing:.12em;
+    color:#6ee7b7;margin-bottom:3px;
+  }
+  .pt-msg{font-size:13px;line-height:1.55;color:#e8f5f0}
+  .pt-msg b{color:#fcd34d}
+  .pt-axis{
+    display:inline-block;font-size:10px;font-weight:800;
+    padding:2px 9px;border-radius:20px;
+    background:rgba(252,211,77,.12);color:#fcd34d;
+    margin-top:5px;
+  }
 </style>
 </head>
 <body>
@@ -637,6 +830,36 @@
 
   <!-- 실시간 접속자 토스트 -->
   <div id="liveToast" class="livetoast"></div>
+
+  <!-- ★ 기능 1: 실시간 몸 반응 거울 패널 (데스크탑 우측 / 모바일 하단) -->
+  <div id="bodyMirror" role="complementary" aria-label="실시간 원인축 반응" aria-live="polite">
+    <!-- 모바일 핸들: 탭하면 접기/펼치기 -->
+    <div id="bmHandle" onclick="bmToggle()" role="button" aria-expanded="true" aria-controls="bmBody">
+      <div class="bm-pill"></div>
+      <span class="bm-htitle">내 몸 반응 거울</span>
+      <span class="bm-hbadge" id="bmBadge">분석중</span>
+    </div>
+    <!-- 데스크탑 타이틀 -->
+    <div class="bm-title"><span class="bm-dot"></span>내 몸 반응 거울</div>
+    <!-- 본문 -->
+    <div id="bmBody">
+      <div id="bmAxes"><!-- JS 렌더 --></div>
+      <div class="bm-foot">
+        <span>답변할수록 정밀해져요</span>
+        <div class="bm-code" id="bmTopCode">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ★ 기능 2: 패턴 감지 스낵 토스트 -->
+  <div id="patternToast" role="status" aria-live="polite" aria-atomic="true">
+    <div class="pt-icon" id="ptIcon">🔍</div>
+    <div class="pt-body">
+      <div class="pt-tag">패턴 감지</div>
+      <div class="pt-msg" id="ptMsg">—</div>
+      <div class="pt-axis" id="ptAxis"></div>
+    </div>
+  </div>
 
   <!-- 돌발 퀴즈 모달 -->
   <div id="quizModal" class="quizmodal">
@@ -1011,7 +1234,8 @@ lanes.forEach(l=>{
 });
 
 /* ===== 6차 코드 전체 렌더 ===== */
-const fins=[
+/* fins는 Part5-D에서 const로 선언되므로 여기선 window 할당으로 먼저 정의 */
+window._finsForGrid=[
  {e:'🧬',name:'아빠체형 내장비대형',chain:'성인병 가계력 + 대골격 → 단단 복부',ext:'복부 단단',ax:'A01·A10·A09'},
  {e:'🎢',name:'식후기절 혈당롤러형',chain:'가당음료 역사 + 식후 졸음',ext:'복부 단단',ax:'A01·A09·A10'},
  {e:'🔗',name:'털털한 PCOS형',chain:'다낭성난소 진단 + 안드로겐',ext:'복부 단단',ax:'A03·A01·A09'},
@@ -1036,7 +1260,7 @@ const fins=[
  {e:'🌪️',name:'동시다발 다중악순환형',chain:'상위 축 점수 동점',ext:'전신 복합',ax:'A01·A07·A09'},
 ];
 const cg=document.getElementById('codegrid');
-fins.forEach(f=>{
+window._finsForGrid.forEach(f=>{
   const el=document.createElement('div');el.className='fcode';
   el.innerHTML=`<div class="fh"><span class="e">${f.e}</span><span class="fn">${f.name}</span></div>
     <div class="fchain">${f.chain}</div>
@@ -1693,6 +1917,10 @@ function s3pick(gi,val,el){
   const t=document.getElementById('tease3_'+gi);if(t)t.classList.add('show');
   if(gi===1 && !liveShown){liveShown=true;showLiveToast();}
   resetQTimer();
+  /* ★ 기능 1: 몸 반응 거울 실시간 업데이트 */
+  bmUpdate();
+  /* ★ 기능 2: 5/10/16/22/32문항 패턴 토스트 */
+  showPatternToast();
   if(gi<TOTAL3-1){
     const nx=document.getElementById('s3q'+(gi+1));
     setTimeout(()=>nx&&nx.scrollIntoView({behavior:'smooth',block:'center'}),500);
@@ -1709,6 +1937,231 @@ function showLiveToast(){
     그중 <b>${ageGroup} ${sameType}명</b>이 당신과 같은 <b>인슐린·내장지방</b> 신호를 보였어요.</span>`;
   t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),5200);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   기능 1: 실시간 몸 반응 거울 (Body Mirror)
+   - 3차 설문 진입 시 패널 등장
+   - s3pick() 호출마다 scoreAxes() → 10개 바 실시간 업데이트
+   - 모바일: 핸들 탭으로 접기/펼치기
+═══════════════════════════════════════════════════════════ */
+const BM_AXES_INFO = {
+  A01:{name:'인슐린',   short:'A01', color:'#e05c3a'},
+  A02:{name:'림프순환', short:'A02', color:'#2f9fb0'},
+  A03:{name:'호르몬',   short:'A03', color:'#7c5cb8'},
+  A04:{name:'근감소',   short:'A04', color:'#6a8c3a'},
+  A05:{name:'소화·장',  short:'A05', color:'#b07a38'},
+  A06:{name:'골격',     short:'A06', color:'#c8963e'},
+  A07:{name:'스트레스', short:'A07', color:'#a83a28'},
+  A08:{name:'심리식이', short:'A08', color:'#9a6a46'},
+  A09:{name:'대사위험', short:'A09', color:'#e05c3a'},
+  A10:{name:'기질',     short:'A10', color:'#7c5cb8'},
+};
+const BM_ORDER = ['A01','A09','A07','A03','A02','A08','A04','A05','A06','A10'];
+
+let bmInited = false;
+let bmCollapsedState = false; /* 모바일 접힘 여부 */
+
+/* 축 바 DOM 초기 생성 */
+function bmInit(){
+  if(bmInited) return;
+  bmInited = true;
+  const wrap = document.getElementById('bmAxes');
+  if(!wrap) return;
+  wrap.innerHTML = '';
+  BM_ORDER.forEach(ax => {
+    const info = BM_AXES_INFO[ax];
+    const div = document.createElement('div');
+    div.className = 'bm-axis';
+    div.id = 'bma_' + ax;
+    div.innerHTML = `
+      <span class="bm-label" title="${info.name}">${info.short} ${info.name}</span>
+      <span class="bm-track"><span class="bm-fill" id="bmf_${ax}" style="width:0%;background:${info.color}40"></span></span>
+      <span class="bm-score" id="bms_${ax}">0</span>`;
+    wrap.appendChild(div);
+  });
+}
+
+/* 점수 → 바 업데이트 */
+function bmUpdate(){
+  const mirror = document.getElementById('bodyMirror');
+  if(!mirror) return;
+
+  /* 3차 시작 전이면 무시 */
+  if(Object.keys(stage3Answers).length === 0) return;
+
+  /* 패널 표시 */
+  if(!mirror.classList.contains('bm-visible')){
+    bmInit();
+    mirror.classList.add('bm-visible');
+  }
+
+  const sc = (typeof scoreAxes === 'function') ? scoreAxes() : {};
+  const vals = Object.values(sc);
+  const maxVal = Math.max(...vals, 1);
+  const sorted = Object.entries(sc).sort((a,b)=>b[1]-a[1]);
+  const top1 = sorted[0]?.[0];
+  const top2 = sorted[1]?.[0];
+
+  BM_ORDER.forEach(ax => {
+    const val   = sc[ax] || 0;
+    const pct   = Math.round(val / maxVal * 100);
+    const info  = BM_AXES_INFO[ax];
+    const fillEl  = document.getElementById('bmf_' + ax);
+    const scoreEl = document.getElementById('bms_' + ax);
+    const axEl    = document.getElementById('bma_' + ax);
+    if(!fillEl || !scoreEl || !axEl) return;
+
+    /* 바 색상: 1위=강조색, 2위=중간, 나머지=dim */
+    let color = info.color + '40'; /* dim */
+    if(ax === top1) color = info.color;
+    else if(ax === top2) color = info.color + 'aa';
+
+    fillEl.style.width   = pct + '%';
+    fillEl.style.background = color;
+    scoreEl.textContent  = val;
+
+    axEl.classList.remove('bm-top1','bm-top2');
+    if(ax === top1) axEl.classList.add('bm-top1');
+    else if(ax === top2) axEl.classList.add('bm-top2');
+  });
+
+  /* 상단 코드 텍스트 */
+  const codeEl = document.getElementById('bmTopCode');
+  const badgeEl = document.getElementById('bmBadge');
+  if(top1 && codeEl){
+    const topName = BM_AXES_INFO[top1]?.name || top1;
+    codeEl.textContent = '🔴 ' + top1 + ' ' + topName + ' 우세';
+  }
+  if(top1 && badgeEl){
+    badgeEl.textContent = top1 + ' 우세';
+  }
+}
+
+/* 모바일 접기/펼치기 토글 */
+function bmToggle(){
+  const mirror = document.getElementById('bodyMirror');
+  if(!mirror) return;
+  bmCollapsedState = !bmCollapsedState;
+  mirror.classList.toggle('bm-collapsed', bmCollapsedState);
+  const handle = document.getElementById('bmHandle');
+  if(handle) handle.setAttribute('aria-expanded', String(!bmCollapsedState));
+}
+
+/* ═══════════════════════════════════════════════════════════
+   기능 2: 패턴 감지 스낵 토스트 (5문항마다 자동 출력)
+   - 답변 누적 패턴에 따라 맞춤 메시지
+   - 같은 메시지는 한 번만 표시
+═══════════════════════════════════════════════════════════ */
+const PT_SHOWN = new Set(); /* 이미 보여준 메시지 키 */
+let ptTimer = null;
+
+const PATTERN_MSGS = [
+  /* 5문항 완료 */
+  {
+    trigger: (sc, done) => done >= 5 && done < 10,
+    key: 'q5',
+    icon: '🌡️',
+    axis: null,
+    msg: (sc, top) => `답변 초반부터 <b>${BM_AXES_INFO[top]?.name || top}</b> 신호가 감지됩니다. 계속 답해주세요.`,
+    axisLabel: (sc, top) => top + ' 신호 감지'
+  },
+  /* 10문항: 1위 축 경고 */
+  {
+    trigger: (sc, done) => done >= 10 && done < 16,
+    key: 'q10',
+    icon: '⚡',
+    axis: null,
+    msg: (sc, top) => {
+      const n = BM_AXES_INFO[top]?.name || top;
+      return `<b>${n}</b> 축이 빠르게 올라가고 있어요. 이 패턴은 전체 응답자 중 <b>상위 20%</b>에 해당합니다.`;
+    },
+    axisLabel: (sc, top) => top + ' 상위패턴'
+  },
+  /* 16문항: 1·2위 경합 */
+  {
+    trigger: (sc, done) => done >= 16 && done < 22,
+    key: 'q16',
+    icon: '🔀',
+    axis: null,
+    msg: (sc, top, top2) => {
+      const n1 = BM_AXES_INFO[top]?.name  || top;
+      const n2 = BM_AXES_INFO[top2]?.name || top2;
+      const diff = (sc[top]||0) - (sc[top2]||0);
+      if(diff <= 2){
+        return `<b>${n1}</b>과 <b>${n2}</b>가 단 ${diff}점 차이! 다음 답변이 코드를 결정할 수 있어요.`;
+      }
+      return `<b>${n1}</b> 축이 선두예요. 절반쯤 왔습니다 — 끝까지 집중해주세요!`;
+    },
+    axisLabel: (sc, top) => '경합 감지'
+  },
+  /* 22문항: 거의 완료 */
+  {
+    trigger: (sc, done) => done >= 22 && done < 28,
+    key: 'q22',
+    icon: '🎯',
+    axis: null,
+    msg: (sc, top) => {
+      const n = BM_AXES_INFO[top]?.name || top;
+      return `거의 다 왔어요! 현재 <b>${n}</b>형이 유력합니다. 마지막 답변이 코드를 확정합니다.`;
+    },
+    axisLabel: (sc, top) => '코드 윤곽 잡힘'
+  },
+  /* 전체 완료(32문항) */
+  {
+    trigger: (sc, done) => done >= 32,
+    key: 'q32',
+    icon: '✅',
+    axis: null,
+    msg: (sc, top) => {
+      const n = BM_AXES_INFO[top]?.name || top;
+      return `모든 문항 완료! <b>${n}</b> 우세로 코드가 거의 확정됐어요.`;
+    },
+    axisLabel: (sc, top) => '분석 완료'
+  },
+];
+
+function showPatternToast(){
+  if(typeof scoreAxes !== 'function') return;
+  const sc   = scoreAxes();
+  const done = Object.keys(stage3Answers).length;
+  if(done === 0) return;
+
+  const sorted = Object.entries(sc).sort((a,b)=>b[1]-a[1]);
+  const top  = sorted[0]?.[0] || 'A01';
+  const top2 = sorted[1]?.[0] || 'A09';
+
+  /* 해당하는 메시지 찾기 */
+  for(const p of PATTERN_MSGS){
+    if(p.trigger(sc, done) && !PT_SHOWN.has(p.key)){
+      PT_SHOWN.add(p.key);
+      _firePatternToast(p.icon, p.msg(sc, top, top2), p.axisLabel(sc, top));
+      break;
+    }
+  }
+}
+
+function _firePatternToast(icon, msg, axisLabel){
+  const toast = document.getElementById('patternToast');
+  const iconEl = document.getElementById('ptIcon');
+  const msgEl  = document.getElementById('ptMsg');
+  const axEl   = document.getElementById('ptAxis');
+  if(!toast || !msgEl) return;
+
+  iconEl.textContent = icon;
+  msgEl.innerHTML    = msg;
+  axEl.textContent   = axisLabel || '';
+
+  if(ptTimer) clearTimeout(ptTimer);
+  toast.classList.remove('show');
+
+  /* 짧게 끊었다가 다시 show (재트리거) */
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>{
+      toast.classList.add('show');
+      ptTimer = setTimeout(()=> toast.classList.remove('show'), 4500);
+    });
+  });
 }
 </script>
 <script>
