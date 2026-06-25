@@ -2713,7 +2713,8 @@ app.post('/api/v1/diagnosis', async (c) => {
     const {
       user_name, bc_nickname, bc_primary, bc_secondary,
       top3_axes, axis_scores, region, texture, bg_filter,
-      ohaeng_type, mbti_full, disp_answers, ref_code, completed_at
+      ohaeng_type, mbti_full, disp_answers, raw_answers,
+      ref_code, completed_at
     } = body
 
     if (!user_name) return c.json({ error: 'user_name required' }, 400)
@@ -2722,30 +2723,72 @@ app.post('/api/v1/diagnosis', async (c) => {
     const result_id = crypto.randomUUID()
     const now = new Date().toISOString()
 
-    await db.prepare(`
-      INSERT INTO diagnosis_results
-        (id, user_name, bc_nickname, bc_primary, bc_secondary,
-         top3_axes, axis_scores, region, texture, bg_filter,
-         ohaeng_type, mbti_full, disp_answers, ref_code, completed_at, created_at)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-    `).bind(
-      result_id,
-      String(user_name || '익명'),
-      bc_nickname || null,
-      bc_primary || null,
-      bc_secondary || null,
-      top3_axes ? JSON.stringify(top3_axes) : null,
-      axis_scores ? JSON.stringify(axis_scores) : null,
-      region || null,
-      texture || null,
-      bg_filter || '',
-      ohaeng_type || null,
-      mbti_full || null,
-      disp_answers ? JSON.stringify(disp_answers) : null,
-      ref_code || null,
-      completed_at || now,
-      now
-    ).run()
+    // raw_answers: 1~4차 전체 원시 답변 JSON 직렬화
+    // raw_answers 컬럼이 없는 구버전 DB에서도 graceful하게 처리
+    const rawAnswersJson = raw_answers ? JSON.stringify(raw_answers) : null
+
+    try {
+      // raw_answers 컬럼 포함 INSERT 시도 (migration 0028 이후)
+      await db.prepare(`
+        INSERT INTO diagnosis_results
+          (id, user_name, bc_nickname, bc_primary, bc_secondary,
+           top3_axes, axis_scores, region, texture, bg_filter,
+           ohaeng_type, mbti_full, disp_answers, raw_answers,
+           ref_code, completed_at, created_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      `).bind(
+        result_id,
+        String(user_name || '익명'),
+        bc_nickname || null,
+        bc_primary  || null,
+        bc_secondary || null,
+        top3_axes   ? JSON.stringify(top3_axes)   : null,
+        axis_scores ? JSON.stringify(axis_scores) : null,
+        region      || null,
+        texture     || null,
+        bg_filter   || '',
+        ohaeng_type || null,
+        mbti_full   || null,
+        disp_answers ? JSON.stringify(disp_answers) : null,
+        rawAnswersJson,
+        ref_code     || null,
+        completed_at || now,
+        now
+      ).run()
+    } catch (insertErr: any) {
+      // raw_answers 컬럼이 없는 경우 (migration 미적용) → 폴백 INSERT
+      if (String(insertErr).includes('no column named raw_answers') ||
+          String(insertErr).includes('table diagnosis_results has no column')) {
+        console.warn('[diagnosis POST] raw_answers 컬럼 없음 — 폴백 INSERT')
+        await db.prepare(`
+          INSERT INTO diagnosis_results
+            (id, user_name, bc_nickname, bc_primary, bc_secondary,
+             top3_axes, axis_scores, region, texture, bg_filter,
+             ohaeng_type, mbti_full, disp_answers,
+             ref_code, completed_at, created_at)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        `).bind(
+          result_id,
+          String(user_name || '익명'),
+          bc_nickname  || null,
+          bc_primary   || null,
+          bc_secondary || null,
+          top3_axes   ? JSON.stringify(top3_axes)   : null,
+          axis_scores ? JSON.stringify(axis_scores) : null,
+          region      || null,
+          texture     || null,
+          bg_filter   || '',
+          ohaeng_type || null,
+          mbti_full   || null,
+          disp_answers ? JSON.stringify(disp_answers) : null,
+          ref_code     || null,
+          completed_at || now,
+          now
+        ).run()
+      } else {
+        throw insertErr
+      }
+    }
 
     // ref_code가 있으면 컨설턴트/B2B 연결 확인
     let connected_to: string | null = null
@@ -2794,22 +2837,23 @@ app.get('/api/v1/diagnosis/:id', async (c) => {
     }
 
     return c.json({
-      result_id: row.id,
-      user_name: row.user_name,
-      bc_nickname: row.bc_nickname,
-      bc_primary: row.bc_primary,
+      result_id:    row.id,
+      user_name:    row.user_name,
+      bc_nickname:  row.bc_nickname,
+      bc_primary:   row.bc_primary,
       bc_secondary: row.bc_secondary,
-      top3_axes: parseJson(row.top3_axes, []),
-      axis_scores: parseJson(row.axis_scores, {}),
-      region: row.region,
-      texture: row.texture,
-      bg_filter: row.bg_filter,
-      ohaeng_type: row.ohaeng_type,
-      mbti_full: row.mbti_full,
+      top3_axes:    parseJson(row.top3_axes,    []),
+      axis_scores:  parseJson(row.axis_scores,  {}),
+      region:       row.region,
+      texture:      row.texture,
+      bg_filter:    row.bg_filter,
+      ohaeng_type:  row.ohaeng_type,
+      mbti_full:    row.mbti_full,
       disp_answers: parseJson(row.disp_answers, {}),
-      ref_code: row.ref_code,
+      raw_answers:  parseJson(row.raw_answers,  null),  // 원시 답변 (학습용)
+      ref_code:     row.ref_code,
       completed_at: row.completed_at,
-      created_at: row.created_at
+      created_at:   row.created_at
     })
   } catch (e) {
     console.error('[diagnosis GET]', e)

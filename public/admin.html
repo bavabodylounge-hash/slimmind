@@ -343,6 +343,17 @@
   </div>
 </div>
 
+<!-- ══ 바디코드 진단 원시 데이터 상세 모달 ══ -->
+<div class="modal-overlay" id="modal-diag-raw" style="display:none;z-index:9999" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" style="max-width:680px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column">
+    <div class="modal-head" style="flex:none">
+      <h3 id="diag-raw-title">원시 진단 데이터</h3>
+      <button class="modal-close" onclick="document.getElementById('modal-diag-raw').style.display='none'">×</button>
+    </div>
+    <div class="modal-body" id="diag-raw-body" style="overflow-y:auto;flex:1;font-size:12px"></div>
+  </div>
+</div>
+
 <!-- 컨설턴트 등록 모달 -->
 <div class="modal-overlay" id="modal-consultant">
   <div class="modal">
@@ -1400,8 +1411,9 @@ async function loadDiagnosisResults(search = '', bc = '', region = '', ohaeng = 
         </td>
         <td style="font-size:12px;color:var(--muted)">${r.ref_code ? `<code style="font-size:11px;background:#EFF6FF;color:#1D4ED8;padding:2px 6px;border-radius:4px">${r.ref_code}</code>` : '-'}</td>
         <td style="color:var(--muted);font-size:12px">${dateStr}</td>
-        <td style="white-space:nowrap">
+        <td style="white-space:nowrap;display:flex;gap:4px;align-items:center">
           <a href="/result-v4.html?id=${r.id}" target="_blank" class="btn btn-primary btn-sm" style="background:#b5452e;border-color:#b5452e">결과지</a>
+          <button class="btn btn-ghost btn-sm" style="font-size:11px;padding:3px 7px" onclick="showDiagRawDetail('${r.id}')">원시</button>
         </td>
       </tr>`;
   }).join('');
@@ -1466,6 +1478,138 @@ async function loadDiagnosisResults(search = '', bc = '', region = '', ohaeng = 
   if (bc)      { const el = document.getElementById('dr-bc');      if(el) el.value = bc; }
   if (region)  { const el = document.getElementById('dr-region');  if(el) el.value = region; }
   if (ohaeng)  { const el = document.getElementById('dr-ohaeng');  if(el) el.value = ohaeng; }
+}
+
+// ─────────────────────────────────────────────
+//  바디코드 원시 진단 데이터 상세 보기
+// ─────────────────────────────────────────────
+const STAGE1_Q = ['부위','살찌는순서','복부촉감','살촉감','복부두께','팔다리vs배','아침저녁변화','목어깨','팔뚝흔들기','부유방','어깨팔뚝','골반','발목종아리','옆모습실루엣'];
+const STAGE2_Q = ['부모유전','부모체형','과거약물','출산경험','현재약물','수면시간','스트레스수준','식사패턴','수분섭취','허리사이즈','몸무게목표','다이어트경험','라이프스타일','현재활동량'];
+const AXIS_LABEL = {A01:'인슐린·내장지방',A02:'림프·순환',A03:'호르몬·대사',A04:'근감소',A05:'소화·장',A06:'골격·자세',A07:'스트레스',A08:'심리식이',A09:'대사위험',A10:'유전기질'};
+
+async function showDiagRawDetail(id) {
+  const modal = document.getElementById('modal-diag-raw');
+  const body  = document.getElementById('diag-raw-body');
+  const title = document.getElementById('diag-raw-title');
+  if (!modal || !body) return;
+
+  title.textContent = '로딩 중…';
+  body.innerHTML = '<div style="padding:24px;text-align:center"><i class="fas fa-circle-notch fa-spin fa-2x" style="color:#b5452e"></i></div>';
+  modal.style.display = 'flex';
+
+  const data = await api('GET', `/v1/diagnosis/${id}`);
+  if (!data) { body.innerHTML = '<p style="padding:20px;color:var(--danger)">데이터 로드 실패</p>'; return; }
+
+  title.textContent = `${data.user_name || '익명'} 님 — ${data.bc_nickname || '-'}`;
+
+  const raw = data.raw_answers || {};
+  const s1  = raw.stage1 || {};
+  const s2  = raw.stage2 || {};
+  const s3  = raw.stage3 || {};
+  const s4  = raw.stage4 || {};
+  const ui  = raw.userInfo || {};
+  const meta= raw.meta    || {};
+
+  // 축 점수 바 렌더
+  const scores = data.axis_scores || {};
+  const maxSc  = Math.max(...Object.values(scores).map(Number), 1);
+  const axisBars = Object.entries(scores).sort((a,b)=>Number(b[1])-Number(a[1])).map(([ax,sc]) =>
+    `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+      <span style="width:100px;font-size:11px;font-weight:600">${ax} ${AXIS_LABEL[ax]||''}</span>
+      <div style="flex:1;height:10px;background:#ece8df;border-radius:5px;overflow:hidden">
+        <div style="height:100%;background:#b5452e;border-radius:5px;width:${Math.round(Number(sc)/maxSc*100)}%"></div>
+      </div>
+      <span style="font-size:11px;font-weight:700;color:#b5452e;width:22px;text-align:right">${sc}</span>
+    </div>`).join('');
+
+  // 1차 답변 표
+  const s1rows = Object.entries(s1).map(([q,v]) =>
+    `<tr><td style="color:#888;padding:3px 8px">${STAGE1_Q[Number(q)-1]||'Q'+q}</td><td style="padding:3px 8px;font-weight:600">${v}</td></tr>`).join('');
+
+  // 2차 답변 표
+  const s2rows = Object.entries(s2).map(([q,v]) =>
+    `<tr><td style="color:#888;padding:3px 8px">${STAGE2_Q[Number(q)-1]||'Q'+q}</td><td style="padding:3px 8px;font-weight:600">${Array.isArray(v)?v.join(', '):v}</td></tr>`).join('');
+
+  // 3차 점수 요약
+  const s3summary = Object.entries(s3).length > 0
+    ? `<div style="font-size:11px;color:#888">${Object.entries(s3).map(([i,v])=>`Q${Number(i)+1}:${v}`).join(' ')}</div>`
+    : '<div style="color:#aaa;font-size:11px">없음</div>';
+
+  // 4차 동적 질문
+  const s4rows = Object.entries(s4).map(([i,v]) => {
+    const vv = typeof v === 'object' ? v : {oi:v};
+    return `<tr><td style="color:#888;padding:3px 8px">결정${Number(i)+1} (${vv.key||'-'})</td><td style="padding:3px 8px;font-weight:600">선택 ${vv.oi}</td></tr>`;
+  }).join('');
+
+  body.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:16px;padding:4px 0">
+
+      <!-- 기본 정보 -->
+      <div>
+        <div style="font-size:11px;font-weight:800;color:#b5452e;letter-spacing:.06em;margin-bottom:8px">기본 정보</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <div style="background:#f6f4ee;border-radius:8px;padding:8px 12px"><div style="font-size:10px;color:#888">이름</div><div style="font-weight:700">${data.user_name||'-'}</div></div>
+          <div style="background:#f6f4ee;border-radius:8px;padding:8px 12px"><div style="font-size:10px;color:#888">성별</div><div style="font-weight:700">${ui.gender||'-'}</div></div>
+          <div style="background:#f6f4ee;border-radius:8px;padding:8px 12px"><div style="font-size:10px;color:#888">부위</div><div style="font-weight:700">${data.region||'-'} ${data.texture||''}</div></div>
+          <div style="background:#f6f4ee;border-radius:8px;padding:8px 12px"><div style="font-size:10px;color:#888">오행·MBTI</div><div style="font-weight:700">${data.ohaeng_type||'-'} ${data.mbti_full||''}</div></div>
+          <div style="background:#f6f4ee;border-radius:8px;padding:8px 12px"><div style="font-size:10px;color:#888">레퍼럴</div><div style="font-weight:700">${data.ref_code||'-'}</div></div>
+          <div style="background:#f6f4ee;border-radius:8px;padding:8px 12px"><div style="font-size:10px;color:#888">완료시각</div><div style="font-weight:600;font-size:11px">${(data.completed_at||'').slice(0,16).replace('T',' ')}</div></div>
+        </div>
+      </div>
+
+      <!-- 축 점수 -->
+      <div>
+        <div style="font-size:11px;font-weight:800;color:#b5452e;letter-spacing:.06em;margin-bottom:8px">10축 점수</div>
+        <div style="background:#f6f4ee;border-radius:8px;padding:12px 14px">${axisBars}</div>
+      </div>
+
+      <!-- 1차 외형 -->
+      ${s1rows ? `<div>
+        <div style="font-size:11px;font-weight:800;color:#b5452e;letter-spacing:.06em;margin-bottom:8px">1차 외형 답변</div>
+        <div style="background:#f6f4ee;border-radius:8px;overflow:hidden">
+          <table style="width:100%;border-collapse:collapse">${s1rows}</table>
+        </div>
+      </div>` : ''}
+
+      <!-- 2차 배경 -->
+      ${s2rows ? `<div>
+        <div style="font-size:11px;font-weight:800;color:#b5452e;letter-spacing:.06em;margin-bottom:8px">2차 배경 답변</div>
+        <div style="background:#f6f4ee;border-radius:8px;overflow:hidden">
+          <table style="width:100%;border-collapse:collapse">${s2rows}</table>
+        </div>
+      </div>` : ''}
+
+      <!-- 3차 원인축 -->
+      <div>
+        <div style="font-size:11px;font-weight:800;color:#b5452e;letter-spacing:.06em;margin-bottom:8px">3차 원인축 원시응답</div>
+        <div style="background:#f6f4ee;border-radius:8px;padding:10px 12px">${s3summary}</div>
+      </div>
+
+      <!-- 4차 결정질문 -->
+      ${s4rows ? `<div>
+        <div style="font-size:11px;font-weight:800;color:#b5452e;letter-spacing:.06em;margin-bottom:8px">4차 동적 결정질문</div>
+        <div style="background:#f6f4ee;border-radius:8px;overflow:hidden">
+          <table style="width:100%;border-collapse:collapse">${s4rows}</table>
+        </div>
+      </div>` : ''}
+
+      <!-- 메타 -->
+      <div>
+        <div style="font-size:11px;font-weight:800;color:#b5452e;letter-spacing:.06em;margin-bottom:8px">메타 정보</div>
+        <div style="background:#f6f4ee;border-radius:8px;padding:10px 12px;font-size:11px;color:#888;word-break:break-all">
+          UA: ${meta.ua||'-'}<br>
+          화면: ${meta.screen||'-'}
+        </div>
+      </div>
+
+      <!-- JSON 원문 복사 -->
+      <div>
+        <button class="btn btn-ghost" style="font-size:11px;width:100%"
+          onclick="navigator.clipboard&&navigator.clipboard.writeText(JSON.stringify(${JSON.stringify(data).replace(/</g,'&lt;').replace(/>/g,'&gt;')},null,2)).then(()=>toast('JSON 복사됨','success'))">
+          <i class="fas fa-copy"></i> 전체 JSON 복사
+        </button>
+      </div>
+    </div>`;
 }
 
 // ═════════════════════════════════════════════

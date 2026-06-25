@@ -2022,91 +2022,18 @@ function showAnalyzing(){
   tick();
 }
 
-/* 확정 코드 결과 화면 → DISP 모달 → POST /api/v1/diagnosis → result-v4.html?id= 리다이렉트 */
-async function showCodeResult(r){
-  const name=userInfo.name||'당신';
-  const f=r.code;
-
-  // DISP 모달로 분기 (survey-data.js 로드 완료 후)
-  if(typeof DISP_QUESTIONS!=='undefined' && DISP_QUESTIONS.length>0){
+/* 확정 코드 결과 화면 → DISP 모달 분기 or 바로 제출 */
+function showCodeResult(r){
+  // DISP 모달 분기 (survey-data.js 로드 완료 시)
+  if(typeof DISP_QUESTIONS !== 'undefined' && Array.isArray(DISP_QUESTIONS) && DISP_QUESTIONS.length > 0){
+    // _dispCodeResult를 미리 세팅해두고 DISP 모달 열기
+    _dispCodeResult = r;
     openDispModal(r);
     return;
   }
-  // DISP 없으면 바로 API 호출
-
-  // 축 이름 맵
-  const axisNames={
-    A01:'인슐린·내장지방',A02:'림프·순환',A03:'호르몬·대사',
-    A04:'근감소',A05:'소화·장',A06:'골격·자세',
-    A07:'스트레스·코르티솔',A08:'심리·식이',A09:'대사위험',A10:'기질'
-  };
-
-  // 상위 3개 축
-  const top3=Object.entries(r.scores).sort((a,b)=>b[1]-a[1]).slice(0,3);
-  const top3Axes=top3.map(([ax])=>ax);
-
-  // URL 파라미터에서 ref_code 추출
-  const refCode=new URLSearchParams(window.location.search).get('ref')||'';
-
-  // POST /api/v1/diagnosis
-  let resultId=null;
-  try{
-    const payload={
-      user_name: name,
-      bc_nickname: f.name,
-      bc_primary: f.ax ? f.ax.split('·')[0] : null,
-      bc_secondary: f.ax ? f.ax.split('·')[1]||null : null,
-      top3_axes: top3Axes,
-      axis_scores: r.scores,
-      region: r.prof.region||null,
-      texture: r.prof.texture||null,
-      bg_filter: '',
-      ohaeng_type: null,
-      mbti_full: null,
-      disp_answers: null,
-      ref_code: refCode||null,
-      completed_at: new Date().toISOString()
-    };
-    const res=await fetch('/api/v1/diagnosis',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(payload)
-    });
-    if(res.ok){
-      const data=await res.json();
-      resultId=data.result_id||null;
-    }
-  }catch(err){
-    console.error('[showCodeResult] POST failed',err);
-  }
-
-  // result-v4.html?id=xxx 리다이렉트
-  if(resultId){
-    window.location.href=`/result-v4.html?id=${resultId}`;
-    return;
-  }
-
-  // API 실패 시 폴백: 인라인 결과 표시
-  const maxS=Math.max(...top3.map(x=>x[1]),1);
-  const bars=top3.map(([ax,s])=>`
-    <div class="rsbar">
-      <span class="rsname">${ax} ${axisNames[ax]}</span>
-      <span class="rstrack"><span class="rsfill" style="width:${Math.round(s/maxS*100)}%"></span></span>
-    </div>`).join('');
-  const el=document.getElementById('codeResult');
-  if(el) el.innerHTML=`
-    <div class="cr-emoji">${f.e}</div>
-    <div class="cr-label">${name}님의 바디코드</div>
-    <div class="cr-name">${f.name}</div>
-    <div class="cr-chain">${f.chain}</div>
-    <div class="cr-section">당신을 움직인 핵심 원인 TOP 3</div>
-    <div class="rsbars">${bars}</div>
-    <div class="cr-ext">외형 신호 · ${r.prof.region}${r.prof.texture?' '+r.prof.texture:''}형</div>
-    <div class="cr-note">결과지 저장 중 오류가 발생했습니다. 다시 시도해 주세요.</div>
-    <button class="cr-btn" onclick="showAnalyzing()">다시 분석하기</button>`;
-  document.getElementById('analyzing').style.display='none';
-  document.getElementById('codeScreen').style.display='block';
-  window.scrollTo({top:0,behavior:'smooth'});
+  // DISP 없으면 바로 제출 (dispAnswers = {})
+  _dispCodeResult = r;
+  submitDiagnosis({});
 }
 </script>
 <script>
@@ -2258,99 +2185,189 @@ function closeDispModal() {
   document.body.style.overflow = '';
 }
 
-/* POST /api/v1/diagnosis + result-v4.html 리다이렉트 (DISP 완료 후 실행) */
+/* ─────────────────────────────────────────────────────────
+   buildRawAnswers() — 1~4차 전체 원시 답변을 하나의 객체로 묶음
+   서버에 저장해 학습·재분석에 활용
+   ───────────────────────────────────────────────────────── */
+function buildRawAnswers(dispAnswers) {
+  try {
+    return {
+      userInfo: {
+        name:   userInfo.name   || null,
+        gender: userInfo.gender || null
+      },
+      stage1:  (typeof survAnswers   !== 'undefined') ? Object.assign({}, survAnswers)   : {},
+      stage2:  (typeof stage2Answers !== 'undefined') ? Object.assign({}, stage2Answers) : {},
+      stage3:  (typeof stage3Answers !== 'undefined') ? Object.assign({}, stage3Answers) : {},
+      stage4:  (typeof stage4Answers !== 'undefined') ? Object.assign({}, stage4Answers) : {},
+      waist:   (typeof waistState    !== 'undefined') ? Object.assign({}, waistState)    : {},
+      disp:    dispAnswers || {},
+      meta: {
+        completed_at: new Date().toISOString(),
+        ua:           navigator.userAgent.slice(0, 120),
+        ref_code:     new URLSearchParams(window.location.search).get('ref') || null,
+        screen:       `${screen.width}x${screen.height}`
+      }
+    };
+  } catch(e) {
+    return { _build_error: String(e) };
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
+   postDiagnosisWithRetry() — 3회 재시도, 실패 시 localStorage 백업
+   ───────────────────────────────────────────────────────── */
+async function postDiagnosisWithRetry(payload, maxRetry = 3) {
+  let lastErr = null;
+  for (let attempt = 1; attempt <= maxRetry; attempt++) {
+    try {
+      const res = await fetch('/api/v1/diagnosis', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(payload)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.result_id) return { ok: true, result_id: data.result_id, data };
+        lastErr = new Error('result_id missing in response');
+      } else {
+        const errTxt = await res.text().catch(() => res.status);
+        lastErr = new Error(`HTTP ${res.status}: ${errTxt}`);
+        // 4xx는 재시도 의미 없음 (서버 거절)
+        if (res.status >= 400 && res.status < 500) break;
+      }
+    } catch(e) {
+      lastErr = e;
+    }
+    if (attempt < maxRetry) {
+      await new Promise(r => setTimeout(r, 800 * attempt)); // 지수 백오프: 0.8s, 1.6s
+    }
+  }
+  // 모든 재시도 실패 → localStorage에 백업
+  try {
+    const backupKey = 'slimmind_pending_' + Date.now();
+    localStorage.setItem(backupKey, JSON.stringify({
+      payload,
+      failed_at: new Date().toISOString(),
+      error: String(lastErr)
+    }));
+    console.warn('[submitDiagnosis] 서버 저장 실패, localStorage 백업:', backupKey);
+  } catch(e2) { /* localStorage 실패 무시 */ }
+  return { ok: false, error: lastErr };
+}
+
+/* ─────────────────────────────────────────────────────────
+   POST /api/v1/diagnosis + result-v4.html 리다이렉트
+   (DISP 완료 또는 스킵 후 실행)
+   ───────────────────────────────────────────────────────── */
 async function submitDiagnosis(dispAnswers) {
   const r = _dispCodeResult;
-  if (!r) return;
+  if (!r || !r.code) {
+    console.error('[submitDiagnosis] _dispCodeResult 없음 — 분석 결과 누락');
+    return;
+  }
 
-  const name = userInfo.name || '당신';
-  const f = r.code;
-  const top3 = Object.entries(r.scores).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const name    = (userInfo && userInfo.name) ? userInfo.name : '익명';
+  const f       = r.code;
+  const scores  = r.scores  || {};
+  const prof    = r.prof    || {};
+
+  // ── 상위 3개 축 ──
+  const top3     = Object.entries(scores).sort((a, b) => b[1] - a[1]).slice(0, 3);
   const top3Axes = top3.map(([ax]) => ax);
-  const refCode = new URLSearchParams(window.location.search).get('ref') || '';
 
-  // calcDisposition으로 오행/MBTI 도출
+  // ── ref_code (URL ?ref= 파라미터) ──
+  const refCode = new URLSearchParams(window.location.search).get('ref') || null;
+
+  // ── 오행/MBTI 계산 ──
   let ohaeng_type = null, mbti_full = null;
-  if (typeof calcDisposition !== 'undefined' && Object.keys(dispAnswers).length > 0) {
+  if (typeof calcDisposition === 'function' && dispAnswers && Object.keys(dispAnswers).length > 0) {
     try {
-      const d = calcDisposition(dispAnswers);
+      const d    = calcDisposition(dispAnswers);
       ohaeng_type = d.ohaeng_type || null;
       mbti_full   = d.mbti_full   || null;
-    } catch(e) { /* 계산 실패 시 null */ }
+    } catch(e) {
+      console.warn('[submitDiagnosis] calcDisposition 실패:', e);
+    }
   }
 
-  // 로딩 표시 (analyzing 화면)
-  document.getElementById('analyzing').style.display = 'block';
-  document.getElementById('codeScreen').style.display = 'none';
-  const titleEl = document.getElementById('analyzeTitle');
-  if (titleEl) titleEl.textContent = '결과지를 저장하는 중입니다…';
-  const pctEl = document.getElementById('spinPct');
-  if (pctEl) pctEl.textContent = '';
+  // ── 1~4차 전체 원시 답변 수집 ──
+  const rawAnswers = buildRawAnswers(dispAnswers);
+
+  // ── 로딩 UI ──
+  const analyzingEl  = document.getElementById('analyzing');
+  const codeScreenEl = document.getElementById('codeScreen');
+  const titleEl      = document.getElementById('analyzeTitle');
+  const pctEl        = document.getElementById('spinPct');
+  const stepsEl      = document.getElementById('analyzeSteps');
+  if (analyzingEl)  analyzingEl.style.display  = 'block';
+  if (codeScreenEl) codeScreenEl.style.display = 'none';
+  if (titleEl)      titleEl.textContent         = '결과지를 안전하게 저장하는 중…';
+  if (pctEl)        pctEl.textContent           = '';
+  if (stepsEl)      stepsEl.innerHTML           = `
+    <div class="astep active"><span class="astepic"></span><span>서버에 분석 결과 저장 중</span></div>
+    <div class="astep"><span class="astepic"></span><span>결과지 ID 생성 중</span></div>
+    <div class="astep"><span class="astepic"></span><span>개인화 페이지 준비 중</span></div>`;
   window.scrollTo({ top: 0, behavior: 'smooth' });
 
-  let resultId = null;
-  try {
-    const payload = {
-      user_name:    name,
-      bc_nickname:  f.name,
-      bc_primary:   f.ax ? f.ax.split('·')[0] : null,
-      bc_secondary: f.ax ? f.ax.split('·')[1] || null : null,
-      top3_axes:    top3Axes,
-      axis_scores:  r.scores,
-      region:       r.prof.region  || null,
-      texture:      r.prof.texture || null,
-      bg_filter:    '',
-      ohaeng_type,
-      mbti_full,
-      disp_answers: Object.keys(dispAnswers).length > 0 ? dispAnswers : null,
-      ref_code:     refCode || null,
-      completed_at: new Date().toISOString()
-    };
+  // ── 페이로드 구성 ──
+  const payload = {
+    user_name:    name,
+    bc_nickname:  f.name   || null,
+    bc_primary:   f.ax     ? f.ax.split('·')[0]       : null,
+    bc_secondary: f.ax     ? (f.ax.split('·')[1]||null): null,
+    top3_axes:    top3Axes,
+    axis_scores:  scores,
+    region:       prof.region  || null,
+    texture:      prof.texture || null,
+    bg_filter:    '',
+    ohaeng_type,
+    mbti_full,
+    disp_answers: (dispAnswers && Object.keys(dispAnswers).length > 0) ? dispAnswers : null,
+    raw_answers:  rawAnswers,
+    ref_code:     refCode,
+    completed_at: new Date().toISOString()
+  };
 
-    const res = await fetch('/api/v1/diagnosis', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+  // ── POST (3회 재시도) ──
+  const result = await postDiagnosisWithRetry(payload, 3);
 
-    if (res.ok) {
-      const data = await res.json();
-      resultId = data.result_id || null;
-    }
-  } catch (err) {
-    console.error('[submitDiagnosis] POST failed', err);
+  if (result.ok && result.result_id) {
+    // ── 성공 → result-v4.html 리다이렉트 ──
+    window.location.href = `/result-v4.html?id=${result.result_id}`;
+    return;
   }
 
-  if (resultId) {
-    window.location.href = `/result-v4.html?id=${resultId}`;
-  } else {
-    // 폴백: 인라인 표시
-    const axisNames = {
-      A01:'인슐린·내장지방',A02:'림프·순환',A03:'호르몬·대사',
-      A04:'근감소',A05:'소화·장',A06:'골격·자세',
-      A07:'스트레스·코르티솔',A08:'심리·식이',A09:'대사위험',A10:'기질'
-    };
-    const maxS = Math.max(...top3.map(x => x[1]), 1);
-    const bars = top3.map(([ax, s]) => `
-      <div class="rsbar">
-        <span class="rsname">${ax} ${axisNames[ax]}</span>
-        <span class="rstrack"><span class="rsfill" style="width:${Math.round(s/maxS*100)}%"></span></span>
-      </div>`).join('');
-    const el = document.getElementById('codeResult');
-    if (el) el.innerHTML = `
-      <div class="cr-emoji">${f.e}</div>
-      <div class="cr-label">${name}님의 바디코드</div>
-      <div class="cr-name">${f.name}</div>
-      <div class="cr-chain">${f.chain}</div>
-      <div class="cr-section">당신을 움직인 핵심 원인 TOP 3</div>
-      <div class="rsbars">${bars}</div>
-      <div class="cr-ext">외형 신호 · ${r.prof.region}${r.prof.texture?' '+r.prof.texture:''}형</div>
-      <div class="cr-note">결과지 저장 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.</div>
-      <button class="cr-btn" onclick="showAnalyzing()">다시 분석하기</button>`;
-    document.getElementById('analyzing').style.display = 'none';
-    document.getElementById('codeScreen').style.display = 'block';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
+  // ── 실패 폴백: 인라인 결과 표시 ──
+  console.error('[submitDiagnosis] 최종 실패:', result.error);
+  const AXIS_NAMES = {
+    A01:'인슐린·내장지방', A02:'림프·순환',   A03:'호르몬·대사',
+    A04:'근감소',          A05:'소화·장',      A06:'골격·자세',
+    A07:'스트레스·코르티솔',A08:'심리·식이',   A09:'대사위험',   A10:'기질'
+  };
+  const maxS = Math.max(...top3.map(x => x[1]), 1);
+  const bars = top3.map(([ax, s]) => `
+    <div class="rsbar">
+      <span class="rsname">${ax} ${AXIS_NAMES[ax] || ax}</span>
+      <span class="rstrack"><span class="rsfill" style="width:${Math.round(s / maxS * 100)}%"></span></span>
+    </div>`).join('');
+  const el = document.getElementById('codeResult');
+  if (el) el.innerHTML = `
+    <div class="cr-emoji">${f.e || '🔬'}</div>
+    <div class="cr-label">${name}님의 바디코드</div>
+    <div class="cr-name">${f.name}</div>
+    <div class="cr-chain">${f.chain}</div>
+    <div class="cr-section">당신을 움직인 핵심 원인 TOP 3</div>
+    <div class="rsbars">${bars}</div>
+    <div class="cr-ext">외형 신호 · ${prof.region || ''}${prof.texture ? ' ' + prof.texture : ''}형</div>
+    <div class="cr-note" style="background:#fff3cd;color:#856404;border-radius:8px;padding:10px 14px;font-size:13px;margin-top:12px">
+      ⚠️ 잠시 네트워크 문제가 있어 결과지 저장이 지연됩니다.<br>
+      <button style="margin-top:8px;padding:8px 18px;background:#b5452e;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700"
+        onclick="submitDiagnosis(_dispAnswers||{})">다시 저장하기</button>
+    </div>`;
+  if (analyzingEl)  analyzingEl.style.display  = 'none';
+  if (codeScreenEl) codeScreenEl.style.display = 'block';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 </script>
 <!-- ===== Part 6 완료 ===== -->
