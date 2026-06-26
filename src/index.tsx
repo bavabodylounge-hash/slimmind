@@ -3510,6 +3510,38 @@ app.post('/api/coupon/issue', async (c) => {
 })
 
 // ════════════════════════════════════════════════════════
+//  쿠폰 사용 처리 API (MASTER 전용)
+//  POST /api/admin/coupons/use
+//    body: { id: number }
+//  → used=1, used_at=now() 으로 업데이트
+// ════════════════════════════════════════════════════════
+app.post('/api/admin/coupons/use', requireRole('MASTER'), async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ ok: false, error: 'DB not configured' }, 500)
+
+  try {
+    const body = await c.req.json()
+    const id = Number(body.id)
+    if (!id || isNaN(id)) return c.json({ ok: false, error: 'id가 필요합니다.' }, 400)
+
+    // 쿠폰 존재 확인
+    const coupon = await db.prepare('SELECT id, used FROM coupons WHERE id = ?').bind(id).first<any>()
+    if (!coupon) return c.json({ ok: false, error: '쿠폰을 찾을 수 없습니다.' }, 404)
+    if (coupon.used === 1) return c.json({ ok: false, error: '이미 사용 처리된 쿠폰입니다.' }, 409)
+
+    // 사용 처리
+    await db.prepare(
+      `UPDATE coupons SET used = 1, used_at = datetime('now') WHERE id = ?`
+    ).bind(id).run()
+
+    return c.json({ ok: true, message: '사용 처리 완료' })
+  } catch (e: any) {
+    console.error('[admin/coupons/use]', e)
+    return c.json({ ok: false, error: '서버 오류: ' + (e?.message || String(e)) }, 500)
+  }
+})
+
+// ════════════════════════════════════════════════════════
 //  쿠폰 관리자 조회 API (MASTER 전용)
 //  GET /api/admin/coupons?limit=100&search=010
 // ════════════════════════════════════════════════════════
