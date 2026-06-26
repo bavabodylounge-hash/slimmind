@@ -3094,11 +3094,13 @@ app.get('/api/v1/diagnosis/:id', async (c) => {
       bg_filter:    row.bg_filter,
       ohaeng_type:  row.ohaeng_type,
       mbti_full:    row.mbti_full,
-      disp_answers: parseJson(row.disp_answers, {}),
-      raw_answers:  parseJson(row.raw_answers,  null),
-      ref_code:     row.ref_code,
-      completed_at: row.completed_at,
-      created_at:   row.created_at
+      disp_answers:    parseJson(row.disp_answers, {}),
+      raw_answers:     parseJson(row.raw_answers,  null),
+      goal_weight:     row.goal_weight     ?? null,   // ✅ 추가
+      weight_loss_pct: row.weight_loss_pct ?? null,   // ✅ 추가
+      ref_code:        row.ref_code,
+      completed_at:    row.completed_at,
+      created_at:      row.created_at
     })
   } catch (e) {
     console.error('[diagnosis GET]', e)

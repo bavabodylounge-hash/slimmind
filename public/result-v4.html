@@ -4127,9 +4127,13 @@ function renderP6(userName, fullCode, ohaengType, inputData) {
   // ════════════════════════════════════════════
 
   // axisScores에서 각 진단축 점수 계산 (AXIS_11 axisRef 매핑)
-  const axisScoresRef = (typeof _wowData !== 'undefined' && _wowData.axisScores)
-    ? _wowData.axisScores
-    : (inputData && inputData.axis_scores ? inputData.axis_scores : {});
+  // ★ 주의: renderP6()는 renderAll() 내에서 _wowData 세팅 전에 호출되므로
+  //   _wowData.axisScores는 항상 undefined → inputData.axisScores를 직접 참조
+  const axisScoresRef = (inputData && inputData.axisScores && Object.keys(inputData.axisScores).length > 0)
+    ? inputData.axisScores
+    : (inputData && inputData.axis_scores && Object.keys(inputData.axis_scores).length > 0
+        ? inputData.axis_scores
+        : {});
 
   // 11개 진단 전체 정의 — axisRef 점수로 긴급도 계산
   const DX_11_BASE = [
@@ -4287,8 +4291,9 @@ function renderP6(userName, fullCode, ohaengType, inputData) {
   if (timeline) {
     timeline.innerHTML = '';
     dxWithScores.forEach((dx, i) => {
+      const isLocked = i >= 3;             // 4번부터 완전 제거 (1~3번만 렌더)
+      if (isLocked) return;               // ★ 4~11번 DOM 추가 자체를 스킵
       const isOpen = i === 0;               // 첫 번째는 기본 펼침
-      const isLocked = i >= 3;             // 4번부터 잠금 (1~3번만 열림)
       const score = dx.urgency;
       const urgPct = Math.max(8, Math.round((score / 100) * 100));
       const tags = (dx.tagsFn ? dx.tagsFn(score) : []);
