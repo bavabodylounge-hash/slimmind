@@ -2161,7 +2161,8 @@ async function loadAdminNotifications(unreadOnly = false) {
 
 async function markNotifRead(id) {
   try {
-    const res = await api('POST', '/admin/notifications/read', { ids: [id] });
+    // POST /api/notifications/read — body: { ids: [id] }
+    const res = await api('POST', '/notifications/read', { ids: [Number(id)] });
     if (res && res.ok) {
       toast('읽음 처리 완료', 'success');
       loadAdminNotifications();
@@ -2174,14 +2175,14 @@ async function markNotifRead(id) {
 async function markAllNotifsRead() {
   if (!confirm('미읽은 알림을 모두 읽음 처리하시겠습니까?')) return;
   try {
-    const res = await api('POST', '/admin/notifications/read', { ref_code: '__ALL_ADMIN__' });
-    // ref_code 없이 전체 처리 — 백엔드에서 ref_code 없이 ids도 없으면 전체 읽음
-    await fetch('/api/admin/notifications/read-all', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('sm_token') || '') }
-    }).catch(() => null);
-    toast('전체 읽음 처리 완료', 'success');
-    loadAdminNotifications();
+    // POST /api/admin/notifications/read-all — MASTER 전용 전체 읽음
+    const res = await api('POST', '/admin/notifications/read-all');
+    if (res && res.ok) {
+      toast('전체 읽음 처리 완료', 'success');
+      loadAdminNotifications();
+    } else {
+      toast('처리 실패', 'error');
+    }
   } catch(e) { toast('오류: ' + e.message, 'error'); }
 }
 

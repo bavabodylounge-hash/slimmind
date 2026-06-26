@@ -886,14 +886,18 @@ app.get('/api/b2b/results', requireB2B(), async (c) => {
 app.get('/api/b2b/stats', requireB2B(), async (c) => {
   const user = c.get('user') as JwtPayload
   const db = c.env.DB
-  const [total, thisMonth, nickDist] = await Promise.all([
+  const [total, thisMonth, nickDist, today, thisWeek] = await Promise.all([
     db.prepare('SELECT COUNT(*) as cnt FROM results WHERE ref_code=?').bind(user.code).first<any>(),
     db.prepare("SELECT COUNT(*) as cnt FROM results WHERE ref_code=? AND strftime('%Y-%m', created_at)=strftime('%Y-%m','now')").bind(user.code).first<any>(),
     db.prepare('SELECT bc_primary, COUNT(*) as cnt FROM results WHERE ref_code=? GROUP BY bc_primary ORDER BY cnt DESC LIMIT 5').bind(user.code).all<any>(),
+    db.prepare("SELECT COUNT(*) as cnt FROM results WHERE ref_code=? AND date(created_at)=date('now')").bind(user.code).first<any>(),
+    db.prepare("SELECT COUNT(*) as cnt FROM results WHERE ref_code=? AND created_at>=datetime('now','-7 days')").bind(user.code).first<any>(),
   ])
   return c.json({
     total: total?.cnt || 0,
     this_month: thisMonth?.cnt || 0,
+    today: today?.cnt || 0,
+    this_week: thisWeek?.cnt || 0,
     nickname_distribution: nickDist.results,
   })
 })
@@ -1027,15 +1031,25 @@ app.get('/api/consultant/stats', requireRole('ANY'), async (c) => {
   let whereClause = user.role === 'MASTER' ? '1=1' : 'consultant_code=?'
   const bindParams: any[] = user.role === 'MASTER' ? [] : [user.code]
 
-  const [total, thisMonth, bcDist, recentResults] = await Promise.all([
+  // diagnosis_results 기반 where절 (컨설턴트별 필터)
+  const drWhere = user.role === 'MASTER' ? '1=1' : 'ref_code=?'
+  const drParams: any[] = user.role === 'MASTER' ? [] : [user.code]
+
+  const [total, thisMonth, bcDist, recentResults, totalCheckins] = await Promise.all([
     db.prepare(`SELECT COUNT(*) as cnt FROM results WHERE ${whereClause}`)
       .bind(...bindParams).first<any>(),
     db.prepare(`SELECT COUNT(*) as cnt FROM results WHERE ${whereClause} AND strftime('%Y-%m', created_at)=strftime('%Y-%m','now')`)
       .bind(...bindParams).first<any>(),
-    db.prepare(`SELECT bc_primary, COUNT(*) as cnt FROM results WHERE ${whereClause} GROUP BY bc_primary ORDER BY cnt DESC`)
-      .bind(...bindParams).all<any>(),
+    // diagnosis_results 기반 BC 분포 (최신 파이프라인)
+    db.prepare(`SELECT bc_primary, COUNT(*) as cnt FROM diagnosis_results WHERE ${drWhere} AND bc_primary IS NOT NULL GROUP BY bc_primary ORDER BY cnt DESC`)
+      .bind(...drParams).all<any>(),
     db.prepare(`SELECT id, user_name, bc_primary, created_at, admin_memo FROM results WHERE ${whereClause} ORDER BY created_at DESC LIMIT 5`)
       .bind(...bindParams).all<any>(),
+    // checkin_log 기반 체크인 완료 수
+    db.prepare(user.role === 'MASTER'
+      ? `SELECT COUNT(DISTINCT result_id) as cnt FROM checkin_log`
+      : `SELECT COUNT(DISTINCT cl.result_id) as cnt FROM checkin_log cl INNER JOIN diagnosis_results d ON d.id = cl.result_id WHERE d.ref_code = ?`
+    ).bind(...drParams).first<any>(),
   ])
 
   return c.json({
@@ -1043,6 +1057,7 @@ app.get('/api/consultant/stats', requireRole('ANY'), async (c) => {
     this_month: thisMonth?.cnt || 0,
     bc_distribution: bcDist.results,
     recent_results: recentResults.results,
+    total_checkins: totalCheckins?.cnt || 0,
   })
 })
 
@@ -3645,7 +3660,7 @@ app.get('/api/notifications', async (c) => {
       `SELECT n.id, n.result_id, n.ref_code, n.is_read, n.notified_at,
               d.user_name, d.phone
        FROM survey_notifications n
-       LEFT JOIN diagnoses d ON d.id = n.result_id
+       LEFT JOIN diagnosis_results d ON d.id = n.result_id
        WHERE n.ref_code = ?
        ORDER BY n.notified_at DESC
        LIMIT ?`
@@ -3737,7 +3752,7 @@ app.get('/api/admin/notifications', requireRole('MASTER'), async (c) => {
     let query = `SELECT n.id, n.result_id, n.ref_code, n.is_read, n.notified_at,
                         d.user_name, d.phone
                  FROM survey_notifications n
-                 LEFT JOIN diagnoses d ON d.id = n.result_id`
+                 LEFT JOIN diagnosis_results d ON d.id = n.result_id`
     if (unreadOnly) query += ` WHERE n.is_read = 0`
     query += ` ORDER BY n.notified_at DESC LIMIT ?`
 
@@ -3790,25 +3805,25 @@ app.get('/api/consultant/analytics/conversion', requireRole('ANY'), async (c) =>
     // 최근 6개월 월별 신규 고객
     const monthlyRows = await db.prepare(`
       SELECT strftime('%Y-%m', created_at) as month, COUNT(*) as cnt
-      FROM diagnoses
+      FROM diagnosis_results
       WHERE ref_code = ? AND created_at >= date('now', '-6 months')
       GROUP BY month ORDER BY month ASC
     `).bind(refCode).all<any>()
 
-    // 전환율: 체중 체크인 있는 고객 / 전체 고객
+    // 전환율: 체크인 있는 고객 / 전체 고객
     const totalResult = await db.prepare(
-      `SELECT COUNT(DISTINCT d.id) as total FROM diagnoses d WHERE d.ref_code = ?`
+      `SELECT COUNT(DISTINCT d.id) as total FROM diagnosis_results d WHERE d.ref_code = ?`
     ).bind(refCode).first<any>()
 
     const checkinResult = await db.prepare(`
-      SELECT COUNT(DISTINCT d.id) as cnt FROM diagnoses d
-      INNER JOIN weight_checkins wc ON wc.result_id = d.id
+      SELECT COUNT(DISTINCT d.id) as cnt FROM diagnosis_results d
+      INNER JOIN checkin_log cl ON cl.result_id = d.id
       WHERE d.ref_code = ?
     `).bind(refCode).first<any>()
 
     // BC 분포 상위 5개
     const bcTop = await db.prepare(`
-      SELECT bc_primary, COUNT(*) as cnt FROM diagnoses
+      SELECT bc_primary, COUNT(*) as cnt FROM diagnosis_results
       WHERE ref_code = ? AND bc_primary IS NOT NULL
       GROUP BY bc_primary ORDER BY cnt DESC LIMIT 5
     `).bind(refCode).all<any>()
@@ -3841,7 +3856,7 @@ app.get('/api/admin/analytics/bc-trend', requireRole('MASTER'), async (c) => {
     // 최근 12개월 월별 BC 분포 상위 5코드
     const rows = await db.prepare(`
       SELECT strftime('%Y-%m', created_at) as month, bc_primary, COUNT(*) as cnt
-      FROM diagnoses
+      FROM diagnosis_results
       WHERE created_at >= date('now', '-12 months') AND bc_primary IS NOT NULL
       GROUP BY month, bc_primary
       ORDER BY month ASC, cnt DESC
@@ -3849,7 +3864,7 @@ app.get('/api/admin/analytics/bc-trend', requireRole('MASTER'), async (c) => {
 
     // 전체 BC 분포
     const bcDist = await db.prepare(`
-      SELECT bc_primary, COUNT(*) as cnt FROM diagnoses
+      SELECT bc_primary, COUNT(*) as cnt FROM diagnosis_results
       WHERE bc_primary IS NOT NULL
       GROUP BY bc_primary ORDER BY cnt DESC LIMIT 10
     `).all<any>()
@@ -3879,9 +3894,9 @@ app.get('/api/admin/churn/risk-list', requireRole('MASTER'), async (c) => {
       SELECT d.id, d.user_name, d.phone, d.bc_primary, d.bc_secondary,
              d.ref_code, d.created_at,
              CAST((julianday('now') - julianday(d.created_at)) AS INTEGER) as days_elapsed,
-             u.name as consultant_name
-      FROM diagnoses d
-      LEFT JOIN users u ON u.code = d.ref_code
+             c.name as consultant_name
+      FROM diagnosis_results d
+      LEFT JOIN consultants c ON c.code = d.ref_code
       WHERE d.created_at <= date('now', ? || ' days')
         AND d.bc_primary IS NOT NULL
       ORDER BY d.created_at ASC
@@ -3909,31 +3924,31 @@ app.get('/api/admin/analytics/customer-segments', requireRole('MASTER'), async (
   try {
     // D+0 (오늘)
     const d0 = await db.prepare(
-      `SELECT COUNT(*) as cnt FROM diagnoses WHERE date(created_at) = date('now')`
+      `SELECT COUNT(*) as cnt FROM diagnosis_results WHERE date(created_at) = date('now')`
     ).first<any>()
     // D+1~3 (72시간 이내)
     const d3 = await db.prepare(
-      `SELECT COUNT(*) as cnt FROM diagnoses WHERE created_at >= datetime('now', '-3 days') AND date(created_at) < date('now')`
+      `SELECT COUNT(*) as cnt FROM diagnosis_results WHERE created_at >= datetime('now', '-3 days') AND date(created_at) < date('now')`
     ).first<any>()
     // D+4~21 (활성)
     const d21 = await db.prepare(
-      `SELECT COUNT(*) as cnt FROM diagnoses WHERE created_at >= datetime('now', '-21 days') AND created_at < datetime('now', '-3 days')`
+      `SELECT COUNT(*) as cnt FROM diagnosis_results WHERE created_at >= datetime('now', '-21 days') AND created_at < datetime('now', '-3 days')`
     ).first<any>()
     // D+22~30 (위험)
     const d30 = await db.prepare(
-      `SELECT COUNT(*) as cnt FROM diagnoses WHERE created_at >= datetime('now', '-30 days') AND created_at < datetime('now', '-21 days')`
+      `SELECT COUNT(*) as cnt FROM diagnosis_results WHERE created_at >= datetime('now', '-30 days') AND created_at < datetime('now', '-21 days')`
     ).first<any>()
     // D+31+ (이탈)
     const churned = await db.prepare(
-      `SELECT COUNT(*) as cnt FROM diagnoses WHERE created_at < datetime('now', '-30 days')`
+      `SELECT COUNT(*) as cnt FROM diagnosis_results WHERE created_at < datetime('now', '-30 days')`
     ).first<any>()
 
     // 체크인 참여율
     const withCheckin = await db.prepare(
-      `SELECT COUNT(DISTINCT result_id) as cnt FROM weight_checkins`
+      `SELECT COUNT(DISTINCT result_id) as cnt FROM checkin_log`
     ).first<any>()
     const totalAll = await db.prepare(
-      `SELECT COUNT(*) as cnt FROM diagnoses WHERE bc_primary IS NOT NULL`
+      `SELECT COUNT(*) as cnt FROM diagnosis_results WHERE bc_primary IS NOT NULL`
     ).first<any>()
 
     return c.json({
@@ -3964,26 +3979,26 @@ app.get('/api/consultant/analytics/axis-benchmark', requireRole('ANY'), async (c
   const user = (c as any).get('user')
   const refCode = user?.code || ''
   try {
-    // BC코드별 고객 수 + 최근 3개월
+    // BC코드별 고객 수 + 최근 30일
     const bcStats = await db.prepare(`
       SELECT bc_primary, COUNT(*) as cnt,
              SUM(CASE WHEN created_at >= date('now', '-30 days') THEN 1 ELSE 0 END) as recent_cnt
-      FROM diagnoses
+      FROM diagnosis_results
       WHERE ref_code = ? AND bc_primary IS NOT NULL
       GROUP BY bc_primary ORDER BY cnt DESC LIMIT 10
     `).bind(refCode).all<any>()
 
     // 이탈 위험 (21일 이상)
     const riskCount = await db.prepare(`
-      SELECT COUNT(*) as cnt FROM diagnoses
+      SELECT COUNT(*) as cnt FROM diagnosis_results
       WHERE ref_code = ? AND created_at <= date('now', '-21 days') AND bc_primary IS NOT NULL
     `).bind(refCode).first<any>()
 
     // 체크인 완료 고객 수
     const checkinCount = await db.prepare(`
-      SELECT COUNT(DISTINCT wc.result_id) as cnt
-      FROM weight_checkins wc
-      INNER JOIN diagnoses d ON d.id = wc.result_id
+      SELECT COUNT(DISTINCT cl.result_id) as cnt
+      FROM checkin_log cl
+      INNER JOIN diagnosis_results d ON d.id = cl.result_id
       WHERE d.ref_code = ?
     `).bind(refCode).first<any>()
 
