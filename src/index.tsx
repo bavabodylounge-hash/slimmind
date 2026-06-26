@@ -3422,4 +3422,136 @@ app.get('/api/admin/diagnosis-results', requireRole('MASTER'), async (c) => {
   }
 })
 
+// ════════════════════════════════════════════════════════
+//  쿠폰 자동 발급 API
+//  POST /api/coupon/issue
+//    body: { phone: string }
+//  응답: { ok: true, coupon_code: string, duplicate: boolean }
+//
+//  로직:
+//   1. 전화번호 정규화 (숫자만, 010XXXXXXXX)
+//   2. 동일 번호 이미 발급 여부 확인 → 기존 코드 반환 (중복 방지)
+//   3. 신규: SM-XXXX-XXXX 유니크 코드 생성
+//   4. coupons 테이블에 INSERT
+//   5. 쿠폰 코드 반환
+// ════════════════════════════════════════════════════════
+app.post('/api/coupon/issue', async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ ok: false, error: 'DB not configured' }, 500)
+
+  try {
+    const body = await c.req.json()
+    const rawPhone: string = body.phone || ''
+
+    // ── 전화번호 정규화 (숫자만 추출, 최소 10자리)
+    const digits = rawPhone.replace(/[^0-9]/g, '')
+    if (digits.length < 10 || digits.length > 11) {
+      return c.json({ ok: false, error: '올바른 전화번호를 입력하세요.' }, 400)
+    }
+    // 010XXXXXXXX → 010-XXXX-XXXX 형식으로 저장
+    const phone = digits.length === 11
+      ? `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`
+      : `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`
+
+    // ── 중복 체크: 동일 번호 이미 발급된 경우
+    const existing = await db.prepare(
+      'SELECT coupon_code FROM coupons WHERE phone = ? LIMIT 1'
+    ).bind(phone).first<any>()
+
+    if (existing) {
+      // 기존 쿠폰 코드 그대로 반환 (재발급 없음)
+      return c.json({
+        ok: true,
+        coupon_code: existing.coupon_code,
+        duplicate: true,
+        message: '이미 발급된 쿠폰입니다.'
+      })
+    }
+
+    // ── 유니크 쿠폰 코드 생성: SM-XXXX-XXXX (대문자+숫자 혼합)
+    function genCouponCode(): string {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // 헷갈리는 I,O,1,0 제외
+      const rand4 = () => Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+      return `SM-${rand4()}-${rand4()}`
+    }
+
+    // 충돌 방지: 최대 5회 재시도
+    let couponCode = ''
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const candidate = genCouponCode()
+      const conflict = await db.prepare(
+        'SELECT id FROM coupons WHERE coupon_code = ? LIMIT 1'
+      ).bind(candidate).first<any>()
+      if (!conflict) {
+        couponCode = candidate
+        break
+      }
+    }
+    if (!couponCode) {
+      return c.json({ ok: false, error: '쿠폰 코드 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' }, 500)
+    }
+
+    // ── D1에 쿠폰 저장
+    await db.prepare(
+      `INSERT INTO coupons (phone, coupon_code, quiz_type, is_duplicate, used, issued_at)
+       VALUES (?, ?, 'arm_fat', 0, 0, datetime('now'))`
+    ).bind(phone, couponCode).run()
+
+    return c.json({
+      ok: true,
+      coupon_code: couponCode,
+      duplicate: false,
+      message: '쿠폰이 발급되었습니다.'
+    })
+  } catch (e: any) {
+    console.error('[coupon/issue]', e)
+    return c.json({ ok: false, error: '서버 오류: ' + (e?.message || String(e)) }, 500)
+  }
+})
+
+// ════════════════════════════════════════════════════════
+//  쿠폰 관리자 조회 API (MASTER 전용)
+//  GET /api/admin/coupons?limit=100&search=010
+// ════════════════════════════════════════════════════════
+app.get('/api/admin/coupons', requireRole('MASTER'), async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not configured' }, 500)
+
+  try {
+    const search = c.req.query('search') || ''
+    const limit = Math.min(parseInt(c.req.query('limit') || '200'), 500)
+
+    let query = 'SELECT * FROM coupons WHERE 1=1'
+    const params: any[] = []
+
+    if (search) {
+      query += ' AND (phone LIKE ? OR coupon_code LIKE ?)'
+      params.push(`%${search}%`, `%${search}%`)
+    }
+
+    query += ' ORDER BY issued_at DESC LIMIT ?'
+    params.push(limit)
+
+    const stmt = db.prepare(query)
+    const result = params.length > 1
+      ? await stmt.bind(...params).all<any>()
+      : await stmt.bind(limit).all<any>()
+
+    const countResult = await db.prepare('SELECT COUNT(*) as cnt FROM coupons').first<any>()
+    const total = countResult?.cnt || 0
+    const usedResult = await db.prepare('SELECT COUNT(*) as cnt FROM coupons WHERE used = 1').first<any>()
+    const usedCount = usedResult?.cnt || 0
+
+    return c.json({
+      coupons: result.results,
+      total,
+      used_count: usedCount,
+      unused_count: total - usedCount
+    })
+  } catch (e: any) {
+    console.error('[admin/coupons GET]', e)
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
 export default app
