@@ -444,7 +444,7 @@
   .tease.show{max-height:60px;opacity:1;margin:14px 0 0}
   .teasearrow{display:inline-block;animation:bounce 1.2s infinite}
   @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(3px)}}
-  .navbtn{display:block;width:100%;margin:30px 0;padding:15px;background:var(--ink);color:var(--paper);border:none;
+  .navbtn{display:block;width:100%;margin:30px 0;padding:15px;background:#2a1e16;color:var(--paper);border:none;
     border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
   #stage1{display:none}
 
@@ -456,7 +456,7 @@
   .acard .abody{font-size:14px;color:#444;line-height:1.75}.acard .abody b{color:var(--ink);font-weight:700}
   .acard .aref{font-size:11.5px;color:var(--muted);margin-top:12px;padding-top:10px;border-top:1px dashed var(--line);line-height:1.5}
   .acard .aref i{font-style:italic}
-  .bridge{background:#eef0f6;border:1px solid #c9cde0;border-radius:16px;padding:26px 24px;margin-top:24px;text-align:center}
+  .bridge{background:#f9f1ec;border:1px solid #e8d4c8;border-radius:16px;padding:26px 24px;margin-top:24px;text-align:center}
   .bridge .bridgeicon{width:40px;height:40px;border-radius:50%;background:var(--c2);color:#fff;font-size:20px;font-weight:700;
     display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
   .bridge .bridgetitle{font-size:19px;font-weight:700;margin-bottom:10px;line-height:1.4}
@@ -622,6 +622,15 @@
   .fitbtn:hover{border-color:var(--c3);color:var(--ink)}
   .fitbtn.sel{border-color:var(--c3);background:var(--c3);color:#fff}
 
+  /* 다중선택 힌트 + 다음 버튼 (2차 multi 질문) */
+  .s2maxhint{font-size:11.5px;color:var(--muted);text-align:center;margin-top:10px;padding:6px 0;
+    transition:color .2s}
+  .s2maxhint.warn{color:#d85a30;font-weight:700}
+  .s2next{display:block;width:100%;margin-top:12px;padding:13px;background:var(--c3);color:#fff;
+    border:none;border-radius:12px;font-size:14.5px;font-weight:700;font-family:inherit;cursor:pointer;
+    transition:background .15s}
+  .s2next:hover{background:#c06820}
+
   /* ===== 브라운 풀스크린 인트로 스플래시 ===== */
   #introSplash{position:fixed;inset:0;z-index:200;background:linear-gradient(165deg,#c9622e 0%,#b5452e 55%,#9c3a28 100%);
     display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px}
@@ -675,16 +684,45 @@
     font-size:15px;font-weight:700;font-family:inherit;cursor:pointer}
   .quizbtn:disabled{background:#dcd7ca;cursor:not-allowed}
 
-  /* 실시간 접속자 토스트 */
-  .livetoast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);z-index:250;
-    background:var(--ink);color:#fff;border-radius:14px;padding:14px 18px;max-width:340px;width:calc(100% - 40px);
-    font-size:13px;line-height:1.6;display:flex;align-items:flex-start;gap:10px;opacity:0;pointer-events:none;
-    box-shadow:0 12px 40px rgba(0,0,0,.3);transition:opacity .4s,transform .4s}
-  .livetoast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-  .livetoast b{color:#f0b896;font-weight:800}
-  .livedot{width:9px;height:9px;border-radius:50%;background:#5ee08a;flex:none;margin-top:5px;
-    box-shadow:0 0 0 0 rgba(94,224,138,.6);animation:livePulse 1.4s infinite}
-  @keyframes livePulse{0%{box-shadow:0 0 0 0 rgba(94,224,138,.5)}70%{box-shadow:0 0 0 8px rgba(94,224,138,0)}100%{box-shadow:0 0 0 0 rgba(94,224,138,0)}}
+  /* 실시간 접속자 — livecard (동적 생성, 떴다 사라짐) */
+  .livecard{position:fixed;z-index:300;
+    width:300px;max-width:calc(100vw - 36px);
+    background:linear-gradient(135deg,#fff6f1 0%,#fdeee6 100%);
+    border:1px solid rgba(216,90,48,.2);border-radius:18px;padding:20px 18px;
+    box-shadow:0 12px 36px rgba(216,90,48,.18);
+    opacity:0;transition:opacity .5s ease,transform .5s ease;pointer-events:none}
+  @media(min-width:761px){
+    .livecard{left:18px;bottom:18px;transform:translateY(16px)}
+    .livecard.show{opacity:1;transform:translateY(0)}
+  }
+  @media(max-width:760px){
+    .livecard{left:50%;bottom:96px;transform:translateX(-50%) translateY(16px)}
+    .livecard.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  }
+  .lc-head{display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:16px;
+    font-size:11px;font-weight:700;letter-spacing:.08em;color:#c06820}
+  .lc-dotwrap{position:relative;width:8px;height:8px}
+  .lc-dot{position:absolute;inset:0;border-radius:50%;background:#e0822e;animation:livePulse 1.5s infinite}
+  .lc-mainlabel{text-align:center;font-size:13px;color:var(--muted);margin-bottom:4px}
+  .lc-bignum{display:flex;align-items:baseline;justify-content:center;gap:4px;margin-bottom:2px}
+  .lc-bignum #lcNum{font-size:44px;font-weight:800;line-height:1;color:#d85a30;letter-spacing:-.02em}
+  .lc-unit{font-size:20px;font-weight:700;color:#d85a30}
+  .lc-div{height:1px;background:rgba(216,90,48,.15);margin:16px 8px}
+  .lc-sub{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.7);
+    border-radius:12px;padding:12px 14px}
+  .lc-fire{flex-shrink:0;width:42px;height:42px;border-radius:50%;background:#d85a30;
+    display:flex;align-items:center;justify-content:center;font-size:18px}
+  .lc-subtext{min-width:0}
+  .lc-sublabel{font-size:12px;color:var(--muted);margin-bottom:2px}
+  .lc-submain{font-size:14.5px;font-weight:500;line-height:1.4;color:var(--ink)}
+  .lc-hl{color:#d85a30;font-weight:800}
+  .lc-submain b{font-weight:800}
+  @media(max-width:760px){
+    .livecard{padding:20px 16px}
+    .lc-bignum #lcNum{font-size:38px}
+    .lc-submain{font-size:13px}
+  }
+  @keyframes livePulse{0%{box-shadow:0 0 0 0 rgba(224,130,46,.5)}70%{box-shadow:0 0 0 9px rgba(224,130,46,0)}100%{box-shadow:0 0 0 0 rgba(224,130,46,0)}}
 
   /* 친구 공유 보상 카드 */
   .sharecard{background:linear-gradient(155deg,#c9622e,#a33c25);border-radius:16px;padding:24px 22px;margin-top:18px;text-align:center;color:#fff}
@@ -1036,6 +1074,9 @@
     font-size:9.5px;font-weight:700;color:#c06820;
     background:rgba(224,130,46,.12);border-radius:20px;padding:3px 9px;
   }
+  .bm-hbadge.bm-hbadge-top{
+    color:#d85a30;background:rgba(216,90,48,.1);
+  }
   .bm-footlabel{font-size:10.5px;color:var(--muted)}
 
   /* ── 축 목록 (데스크탑·모바일 공통 단일 컬럼) ── */
@@ -1088,41 +1129,56 @@
   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
   #patternToast{
     position:fixed;
-    left:50%;bottom:22px;
+    left:50%;bottom:24px;
     transform:translateX(-50%) translateY(28px);
     z-index:270; /* 거울 패널보다 위 */
-    background:linear-gradient(135deg,#1c2b1e,#0f1a11);
-    color:#fff;
-    border:1px solid rgba(110,231,183,.2);
-    border-radius:16px;
-    padding:13px 16px 13px 14px;
+    background:#ffffff;
+    border:1px solid rgba(216,90,48,.25);
+    border-left:3px solid #d85a30;
+    border-radius:14px;
+    padding:15px 16px;
     max-width:340px;width:calc(100% - 40px);
-    display:flex;align-items:flex-start;gap:11px;
+    display:flex;align-items:flex-start;gap:12px;
     opacity:0;pointer-events:none;
-    box-shadow:0 12px 50px rgba(0,0,0,.45);
-    transition:opacity .38s ease,transform .38s ease;
+    box-shadow:0 10px 32px rgba(216,90,48,.16),0 2px 8px rgba(0,0,0,.05);
+    transition:opacity .4s cubic-bezier(.2,.8,.2,1),transform .4s cubic-bezier(.2,.8,.2,1);
   }
   #patternToast.show{
     opacity:1;
     transform:translateX(-50%) translateY(0);
   }
-  /* 모바일: 거울 바 위로 띄움 */
+  /* 데스크탑·패드: 우측 상단 고정 (거울과 세로로 분리) */
+  @media(min-width:761px){
+    #patternToast{
+      left:auto;right:18px;
+      bottom:auto;top:24px;
+      transform:translateX(0) translateY(-12px);
+      width:248px;max-width:248px;
+    }
+    #patternToast.show{transform:translateX(0) translateY(0)}
+  }
+  /* 모바일: 화면 상단 (거울은 하단이라 완전 분리) */
   @media(max-width:760px){
-    #patternToast{bottom:auto;top:70px}
+    #patternToast{bottom:auto;top:74px}
     #patternToast.show{transform:translateX(-50%) translateY(0)}
   }
-  .pt-icon{font-size:22px;line-height:1;flex:none;margin-top:1px}
+  .pt-icontile{
+    flex-shrink:0;width:38px;height:38px;border-radius:11px;
+    background:linear-gradient(135deg,#d85a30,#e67a52);
+    display:flex;align-items:center;justify-content:center;
+    font-size:18px;line-height:1;
+  }
   .pt-body{min-width:0}
   .pt-tag{
     font-size:10px;font-weight:800;letter-spacing:.12em;
-    color:#6ee7b7;margin-bottom:3px;
+    color:#d85a30;margin-bottom:3px;
   }
-  .pt-msg{font-size:13px;line-height:1.55;color:#e8f5f0}
-  .pt-msg b{color:#fcd34d}
+  .pt-msg{font-size:13px;line-height:1.55;color:var(--ink)}
+  .pt-msg b{color:#d85a30;font-weight:800}
   .pt-axis{
     display:inline-block;font-size:10px;font-weight:800;
     padding:2px 9px;border-radius:20px;
-    background:rgba(252,211,77,.12);color:#fcd34d;
+    background:rgba(216,90,48,.1);color:#d85a30;
     margin-top:5px;
   }
 
@@ -1989,7 +2045,7 @@
 
   <!-- ★ 기능 2: 패턴 감지 스낵 토스트 -->
   <div id="patternToast" role="status" aria-live="polite" aria-atomic="true">
-    <div class="pt-icon" id="ptIcon">🔍</div>
+    <div class="pt-icontile" id="ptIcon">🔍</div>
     <div class="pt-body">
       <div class="pt-tag">패턴 감지</div>
       <div class="pt-msg" id="ptMsg">—</div>
@@ -2323,7 +2379,7 @@
 
     <!-- 1차 외형 설문 -->
     <div id="stage1" style="display:none">
-      <div class="stageintro" id="intro1">
+      <div class="stageintro st-s1" id="intro1">
         <span class="snum">● 1차 — 외형 분석</span>
         <h2>몸에는 숨길 수 없는 흔적이 있습니다</h2>
         <div class="why">
@@ -2332,7 +2388,7 @@
         </div>
       </div>
       <div id="questions"></div>
-      <div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px;margin-top:20px;text-align:center">
+      <div id="stage1done" style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px;margin-top:20px;text-align:center">
         <div style="font-size:16px;font-weight:700;margin-bottom:6px">1차 외형 분석이 끝났습니다</div>
         <div style="font-size:13.5px;color:var(--muted);line-height:1.7">당신의 몸이 남긴 흔적을 다 읽었어요.<br>본격 분석 전에, 알아두면 좋은 이야기 하나 들려드릴게요.</div>
         <button class="navbtn" onclick="goAcademic()" style="margin-top:18px">잠깐, 알고 가면 좋아요 →</button>
@@ -2379,7 +2435,7 @@
 
     <!-- 2차 배경 설문 -->
     <div id="stage2" style="display:none">
-      <div class="stageintro">
+      <div class="stageintro st-s2">
         <span class="snum" style="background:#eef0f6;border-color:var(--c2);color:var(--c2)">● 2차 — 배경 분석</span>
         <h2>당신의 몸은,<br>당신만의 역사를 갖고 있습니다</h2>
         <div class="why">
@@ -2436,7 +2492,7 @@
 
     <!-- 3차 원인축 설문 -->
     <div id="stage3" style="display:none">
-      <div class="stageintro">
+      <div class="stageintro st-s3">
         <span class="snum" style="background:#f6e3df;border-color:var(--c3);color:var(--c3)">● 3차 — 원인 추적</span>
         <h2 id="stage3H2">이제, 당신 몸 안을 들여다봅니다</h2>
         <div class="why">
@@ -2455,7 +2511,7 @@
 
     <!-- 4차 결정질문 -->
     <div id="stage4" style="display:none">
-      <div class="stageintro">
+      <div class="stageintro st-s4">
         <span class="snum" style="background:#1a1a17;border-color:#1a1a17;color:#fff">● 4차 — 결정의 순간</span>
         <h2 id="stage4H2">거의 다 왔습니다.<br>마지막 0.1mm를 가릅니다</h2>
         <div class="why">
@@ -2471,7 +2527,7 @@
         <button class="sharebtn" onclick="shareToFriend()">🔗 링크 복사해서 공유하기</button>
         <div class="sharenote" id="shareNote"></div>
       </div>
-      <div class="bridge" style="background:#1a1a17;border-color:#1a1a17">
+      <div class="bridge" style="background:#2a1e16;border-color:#2a1e16">
         <div class="bridgeicon" style="background:var(--c3)">✓</div>
         <div class="bridgetitle" style="color:#fff">모든 질문이 끝났습니다.</div>
         <div class="bridgebody" style="color:#d8d3c6">
@@ -2802,7 +2858,7 @@ survQuestions.forEach(q=>{
   const card=document.createElement('div');card.className='q';card.id='sq'+q.no;
   const opts=q.opts.map((o,i)=>`<div class="opt" onclick="survPick(${q.no},${i},this)">
     <span class="dot"></span><span class="otext"><b>${o[0]}</b>${o[1]?`<span class="osub">${o[1]}</span>`:''}</span></div>`).join('');
-  card.innerHTML=`<div class="qtop"><span class="qno">Q${q.no}</span><span class="qlv">${q.lv}</span></div>
+  card.innerHTML=`<div class="qtop"><span class="qno">외형</span><span class="qlv">${q.lv}</span></div>
     <div class="qtitle">${q.title}</div>
     <div class="qhint${q.touch?' touch':''}">${q.touch?'✋ 직접 만져보고 답해주세요 — ':''}${q.hint}</div>
     <div class="opts">${opts}</div>
@@ -2984,10 +3040,37 @@ function setStageIcon(idx){
   document.querySelectorAll('.sicon').forEach(el=>{
     const s=el.dataset.stage;const i=order.indexOf(s);
     el.classList.remove('active','done');
-    if(i<idx)el.classList.add('done');
-    else if(i===idx)el.classList.add('active');
+    if(i<idx){
+      el.classList.add('done');
+      el.style.cursor='pointer';
+      el.title=(el.title||'').replace(' (눌러서 이동)','')+' (눌러서 이동)';
+    } else if(i===idx){
+      el.classList.add('active');
+      el.style.cursor='default';
+    } else {
+      el.style.cursor='default';
+    }
   });
 }
+/* 완료한 단계 아이콘 클릭 시 해당 단계 첫 화면으로 이동 */
+function jumpToStage(stageKey){
+  if(stageKey==='outline'){
+    ['academic','stage2','recap','stage3','stage4'].forEach(id=>{const e=document.getElementById(id);if(e){e.style.display='none';e.classList&&e.classList.remove('show');}});
+    const s1=document.getElementById('stage1');if(s1)s1.style.display='block';
+    setStageIcon(0);
+    const top=document.getElementById('intro1')||document.getElementById('sq1');
+    if(top)top.scrollIntoView({behavior:'smooth',block:'start'});
+  } else if(stageKey==='background'){
+    if(typeof goStage2==='function')goStage2();
+  } else if(stageKey==='cause'){
+    if(typeof goStage3==='function')goStage3();
+  }
+  /* final(4차)은 점프 대상 제외 — 동적 생성이라 재진입 시 재계산 필요 */
+}
+document.addEventListener('click',function(e){
+  const ic=e.target.closest('.sicon');
+  if(ic&&ic.classList.contains('done')){jumpToStage(ic.dataset.stage);}
+});
 
 /* ===== 타이머 ===== */
 let qStart=Date.now(), qTimerInt=null;
@@ -3723,14 +3806,20 @@ function survPick(qno,oi,el){
   el.classList.add('sel');
   survAnswers[qno]=oi;
   const done=Object.keys(survAnswers).length;
-  document.getElementById('pfill').style.width=(done/14*100)+'%';
-  document.getElementById('pstep').textContent=`1차 외형 · ${done} / 14`;
+  setProgress(1,done,'1차 외형');
   const tease=document.getElementById('tease'+qno);
   if(tease)tease.classList.add('show');
   smAutoSave(); /* ★ 기능 4 자동저장 */
   if(qno===9&&!quizShown){quizShown=true;setTimeout(openQuiz,500);return;}
   resetQTimer();
-  if(qno<14){const nx=document.getElementById('sq'+(qno+1));setTimeout(()=>nx.scrollIntoView({behavior:'smooth',block:'center'}),600);}
+  if(qno<14){
+    const nx=document.getElementById('sq'+(qno+1));
+    setTimeout(()=>nx.scrollIntoView({behavior:'smooth',block:'center'}),600);
+  } else {
+    /* 14번(마지막) 답하면 완료 박스로 자동 이동 */
+    const done2=document.getElementById('stage1done');
+    if(done2)setTimeout(()=>done2.scrollIntoView({behavior:'smooth',block:'center'}),600);
+  }
 }
 
 /* ===== 돌발 퀴즈 ===== */
@@ -3774,12 +3863,16 @@ function closeQuiz(){
 }
 function goAcademic(){
   const done=Object.keys(survAnswers).length;
-  if(done<14){alert(`아직 ${14-done}문항 남았어요. 모두 답해주세요.`);return;}
+  if(done<14){
+    const miss=firstMissing('sq',14,survAnswers);
+    showWarnToast(`아직 ${14-done}문항 남았어요`,miss?miss.id:null);
+    return;
+  }
   document.getElementById('stage1').style.display='none';
   const ac=document.getElementById('academic');
   ac.style.display='block'; ac.classList.add('show');
   ac.scrollTop=0;
-  window.scrollTo({top:0,behavior:'smooth'});
+  window.scrollTo({top:0,behavior:'instant'});
 }
 function backToStage1(){
   const ac=document.getElementById('academic');
@@ -3787,6 +3880,7 @@ function backToStage1(){
   const s1=document.getElementById('stage1');
   if(s1)s1.style.display='block';
   setStageIcon(0);
+  setProgress(1,Object.keys(survAnswers).length,'1차 외형');
   const done2=document.getElementById('stage1done')||document.getElementById('sq14');
   if(done2)done2.scrollIntoView({behavior:'smooth',block:'center'});
 }
@@ -3796,16 +3890,17 @@ function backToStage2(){
   const s2=document.getElementById('stage2');
   if(s2)s2.style.display='block';
   setStageIcon(1);
+  setProgress(2,Object.keys(stage2Answers).length,'2차 배경');
   const done2=document.getElementById('stage2done')||document.getElementById('s2q14');
   if(done2)done2.scrollIntoView({behavior:'smooth',block:'center'});
 }
 
 /* ===== 2차 배경 14문항 ===== */
 const stage2Questions=[
- {no:1,grp:"유전 가계력",grpc:"#5b4a86",lv:"레벨3 · 가계력",title:"부모님이나 형제 중에, 당뇨·고혈압·고지혈증이 있는 분이 계신가요?",
-  hint:"성인병은 유전됩니다. 가족력이 있다면 당신의 단단한 복부는 '아빠에게 물려받은 설계도'일 가능성이 큽니다.",tease:"그렇다면 — 부모님 체형도 떠올려볼까요?",multi:true,
+ {no:1,grp:"유전 가계력",grpc:"#7a4a38",lv:"레벨3 · 가계력",title:"부모님이나 형제 중에, 당뇨·고혈압·고지혈증이 있는 분이 계신가요?",
+  hint:"성인병은 유전됩니다. 가족력이 있다면 당신의 단단한 복부는 '아빠에게 물려받은 설계도'일 가능성이 큽니다.",tease:"그렇다면 — 부모님 체형도 떠올려볼까요?",multi:true,max:1,
   opts:[["아버지가 그래요",""],["어머니가 그래요",""],["형제·자매가 그래요",""],["없어요",""]]},
- {no:2,grp:"유전 가계력",grpc:"#5b4a86",lv:"레벨3 · 체형 복제",title:"부모님 체형을 보면, 당신의 미래가 보이나요?",
+ {no:2,grp:"유전 가계력",grpc:"#7a4a38",lv:"레벨3 · 체형 복제",title:"부모님 체형을 보면, 당신의 미래가 보이나요?",
   hint:"\"엄마처럼 되고 싶지 않은데\" — 그 직감은 과학입니다. 지방이 쌓이는 부위는 유전되거든요.",tease:"이제 당신이 직접 겪어온 의료 history를 봅니다.",multi:false,
   opts:[["아버지를 닮아 배부터 나와요","아빠체형"],["어머니를 닮아 하체부터 쪄요","엄마체형"],["둘 다 조금씩",""],["부모님과 다른 편이에요",""]]},
  {no:3,grp:"메디컬 과거력",grpc:"#b5452e",lv:"레벨3 · 쐐기",title:"진단받은 적 있는 질환을 모두 골라주세요.",
@@ -3897,8 +3992,9 @@ stage2Questions.forEach(q=>{
       <div class="specest"><span class="esticon">⚡</span> <span id="est_${q.no}">허리 30인치 → 체지방률 약 24% 추정</span></div>
     </div>`;
   } else {
-    body=`<div class="opts">${q.opts.map((o,i)=>`<div class="opt${q.multi?' multi':''}" onclick="s2pick(${q.no},${i},this,${q.multi})">
+    body=`<div class="opts">${q.opts.map((o,i)=>`<div class="opt${q.multi?' multi':''}" onclick="s2pick(${q.no},${i},this,${q.multi},${q.max||0})">
       <span class="dot"></span><span class="otext"><b>${o[0]}</b>${o[1]?`<span class="osub">${o[1]}</span>`:''}</span></div>`).join('')}</div>`;
+    if(q.multi)body+=`<div class="s2maxhint" id="s2maxhint_${q.no}">${q.max?`최대 ${q.max}개까지 선택`:'해당하는 것 모두'}</div><button class="s2next" id="s2next_${q.no}" onclick="s2next(${q.no})" style="display:none">다음 ↓</button>`;
   }
   const tease=q.tease?`<div class="tease" id="tease2_${q.no}">${q.tease} <span class="teasearrow">↓</span></div>`:'';
   card.innerHTML=`<div class="qtop"><span class="qno" style="background:${q.grpc}">${q.grp}</span><span class="qlv">${q.lv}</span></div>
@@ -3953,12 +4049,20 @@ function applyGenderQ9(){
 }
 function s2progress(){
   const done=Object.keys(stage2Answers).length;
-  document.getElementById('pfill').style.width=(done/14*100)+'%';
-  document.getElementById('pstep').textContent=`2차 배경 · ${done} / 14`;
+  setProgress(2,done,'2차 배경');
 }
-function s2pick(qno,oi,el,multi){
+function s2pick(qno,oi,el,multi,max){
   const card=document.getElementById('s2q'+qno);
+  max=max||0;
   if(multi){
+    const isSel=el.classList.contains('sel');
+    const selCount=card.querySelectorAll('.opt.sel').length;
+    /* 이미 max개 찼는데 새로 고르려 하면 막기 (해제는 허용) */
+    if(!isSel&&max>0&&selCount>=max){
+      const mh=document.getElementById('s2maxhint_'+qno);
+      if(mh){mh.classList.add('warn');setTimeout(()=>mh.classList.remove('warn'),700);}
+      return;
+    }
     el.classList.toggle('sel');
     stage2Answers[qno]=[...card.querySelectorAll('.opt.sel')].map(o=>o.querySelector('b').textContent);
     if(stage2Answers[qno].length===0)delete stage2Answers[qno];
@@ -3971,7 +4075,26 @@ function s2pick(qno,oi,el,multi){
   const t=document.getElementById('tease2_'+qno);if(t)t.classList.add('show');
   resetQTimer();
   smAutoSave(); /* ★ 기능 4 자동저장 */
-  if(!multi&&qno<12){const nx=document.getElementById('s2q'+(qno+1));setTimeout(()=>nx.scrollIntoView({behavior:'smooth',block:'center'}),550);}
+  if(multi){
+    const now=card.querySelectorAll('.opt.sel').length;
+    const nb=document.getElementById('s2next_'+qno);
+    /* max개 다 채우면 자동 다음 문항, 아니면 '다음' 버튼 노출 */
+    if(max>0&&now>=max){
+      if(nb)nb.style.display='none';
+      if(qno<14){const nx=document.getElementById('s2q'+(qno+1));if(nx)setTimeout(()=>nx.scrollIntoView({behavior:'smooth',block:'center'}),400);}
+    } else {
+      if(nb)nb.style.display=now>0?'block':'none';
+    }
+  } else {
+    /* 단일선택: 고르는 즉시 다음 문항으로 */
+    if(qno<14){const nx=document.getElementById('s2q'+(qno+1));if(nx)setTimeout(()=>nx.scrollIntoView({behavior:'smooth',block:'center'}),450);}
+  }
+}
+function s2next(qno){
+  if(qno<14){
+    const nx=document.getElementById('s2q'+(qno+1));
+    if(nx)nx.scrollIntoView({behavior:'smooth',block:'center'});
+  }
 }
 function s2input(qno){
   stage2Answers[qno]='input';s2progress();
@@ -4213,6 +4336,43 @@ stage3Axes.forEach(ax=>{
 const TOTAL3=stage3Flat.length;
 const stage3Answers={};
 
+/* ===== 전체 통합 진행바 ===== */
+const STAGE_OFFSET={1:0,2:14,3:28,4:28+TOTAL3};   // 각 단계 시작 전까지 누적 문항수
+let GRAND_TOTAL=14+14+TOTAL3;                       // 4차 진입 시 가변분 합산
+function updateGrandTotalWithStage4(){GRAND_TOTAL=28+TOTAL3+(typeof activeStage4Qs!=='undefined'?activeStage4Qs.length:0);}
+function setProgress(stage,doneInStage,label){
+  const overall=STAGE_OFFSET[stage]+doneInStage;
+  const pf=document.getElementById('pfill');
+  const ps=document.getElementById('pstep');
+  if(pf)pf.style.width=Math.min(100,(overall/GRAND_TOTAL*100))+'%';
+  if(ps)ps.textContent=`${label} · 전체 ${overall} / ${GRAND_TOTAL}`;
+}
+
+/* ★ 미답변 경고 토스트 (1·2·3·4차 공통) */
+let _warnToastTimer=null;
+function showWarnToast(msg,scrollToEl){
+  const t=document.getElementById('warnToast');
+  if(!t)return;
+  if(msg)document.getElementById('warnToastMsg').textContent=msg;
+  if(scrollToEl){
+    const el=typeof scrollToEl==='string'?document.getElementById(scrollToEl):scrollToEl;
+    if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.classList.add('q-missing');setTimeout(()=>el.classList.remove('q-missing'),1600);}
+  }
+  t.classList.add('show');
+  if(_warnToastTimer)clearTimeout(_warnToastTimer);
+  _warnToastTimer=setTimeout(()=>t.classList.remove('show'),2600);
+}
+/* 빈 문항 id 찾기: answers 객체와 전체 문항수 비교 → 첫 미응답 카드 id 반환 */
+function firstMissing(idPrefix,total,answers,skip){
+  for(let i=1;i<=total;i++){
+    if(skip&&skip.includes(i))continue;
+    const v=answers[i];
+    const empty=(v===undefined||v===null||(Array.isArray(v)&&v.length===0));
+    if(empty)return {n:i,id:idPrefix+i};
+  }
+  return null;
+}
+
 // DOM 렌더 (questions3 wrap)
 (function renderStage3(){
   const sq3wrap=document.getElementById('questions3');
@@ -4283,13 +4443,39 @@ function showLiveToast(){
   const online=820+Math.floor(Math.random()*780);
   const sameType=140+Math.floor(Math.random()*120);
   const ageGroup=['20대','30대','40대'][Math.floor(Math.random()*3)];
-  const t=document.getElementById('liveToast');
-  if(!t)return;
-  t.innerHTML=`<span class="livedot"></span>
-    <span>지금 전국 <b>${online.toLocaleString()}명</b>이 함께 분석 중이에요.<br>
-    그중 <b>${ageGroup} ${sameType}명</b>이 당신과 같은 <b>인슐린·내장지방</b> 신호를 보였어요.</span>`;
-  t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),5200);
+  if(document.getElementById('liveCard'))return;
+  const card=document.createElement('div');
+  card.id='liveCard';
+  card.className='livecard';
+  card.innerHTML=`
+    <div class="lc-head"><span class="lc-dotwrap"><span class="lc-dot"></span></span>LIVE · 실시간</div>
+    <div class="lc-mainlabel">지금 전국에서 함께 분석 중</div>
+    <div class="lc-bignum"><span id="lcNum">0</span><span class="lc-unit">명</span></div>
+    <div class="lc-div"></div>
+    <div class="lc-sub">
+      <div class="lc-fire">🔥</div>
+      <div class="lc-subtext">
+        <div class="lc-sublabel">당신과 같은 신호를 보인 사람</div>
+        <div class="lc-submain"><b class="lc-hl">${ageGroup} ${sameType}명</b>이 <b>인슐린·내장지방</b> 패턴</div>
+      </div>
+    </div>`;
+  document.body.appendChild(card);
+  /* 숫자 카운트업 */
+  const numEl=document.getElementById('lcNum');
+  const dur=1100,start=performance.now();
+  function step(now){
+    const p=Math.min((now-start)/dur,1);
+    const eased=1-Math.pow(1-p,3);
+    numEl.textContent=Math.floor(eased*online).toLocaleString();
+    if(p<1)requestAnimationFrame(step); else numEl.textContent=online.toLocaleString();
+  }
+  requestAnimationFrame(step);
+  setTimeout(()=>card.classList.add('show'),30);
+  /* 12초 뒤 사라짐 */
+  setTimeout(()=>{
+    card.classList.remove('show');
+    setTimeout(()=>card.remove(),500);
+  },12000);
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -4301,14 +4487,14 @@ function showLiveToast(){
 const BM_AXES_INFO = {
   A01:{name:'인슐린',   short:'A01', color:'#e05c3a'},
   A02:{name:'림프순환', short:'A02', color:'#2f9fb0'},
-  A03:{name:'호르몬',   short:'A03', color:'#7c5cb8'},
+  A03:{name:'호르몬',   short:'A03', color:'#9a6a4e'},
   A04:{name:'근감소',   short:'A04', color:'#6a8c3a'},
   A05:{name:'소화·장',  short:'A05', color:'#b07a38'},
   A06:{name:'골격',     short:'A06', color:'#c8963e'},
   A07:{name:'스트레스', short:'A07', color:'#a83a28'},
   A08:{name:'심리식이', short:'A08', color:'#9a6a46'},
   A09:{name:'대사위험', short:'A09', color:'#e05c3a'},
-  A10:{name:'기질',     short:'A10', color:'#7c5cb8'},
+  A10:{name:'기질',     short:'A10', color:'#9a6a4e'},
 };
 const BM_ORDER = ['A01','A09','A07','A03','A02','A08','A04','A05','A06','A10'];
 
