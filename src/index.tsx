@@ -3758,4 +3758,244 @@ app.get('/api/admin/notifications', requireRole('MASTER'), async (c) => {
   }
 })
 
+// ══════════════════════════════════════════════════════════════════
+//  POST /api/notifications/read-all?ref_code=XXX
+//  컨설턴트/B2B — 내 알림 전체 읽음 처리
+// ══════════════════════════════════════════════════════════════════
+app.post('/api/notifications/read-all', async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not available' }, 503)
+  const refCode = c.req.query('ref_code') || ''
+  if (!refCode) return c.json({ error: 'ref_code required' }, 400)
+  try {
+    await db.prepare(
+      `UPDATE survey_notifications SET is_read = 1, read_at = datetime('now') WHERE ref_code = ? AND is_read = 0`
+    ).bind(refCode).run()
+    return c.json({ ok: true })
+  } catch (e: any) {
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ══════════════════════════════════════════════════════════════════
+//  GET /api/consultant/analytics/conversion
+//  컨설턴트 전환율 / 월별 트렌드 분석 (Phase 2)
+// ══════════════════════════════════════════════════════════════════
+app.get('/api/consultant/analytics/conversion', requireRole('ANY'), async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not available' }, 503)
+  const user = (c as any).get('user')
+  const refCode = user?.code || ''
+  try {
+    // 최근 6개월 월별 신규 고객
+    const monthlyRows = await db.prepare(`
+      SELECT strftime('%Y-%m', created_at) as month, COUNT(*) as cnt
+      FROM diagnoses
+      WHERE ref_code = ? AND created_at >= date('now', '-6 months')
+      GROUP BY month ORDER BY month ASC
+    `).bind(refCode).all<any>()
+
+    // 전환율: 체중 체크인 있는 고객 / 전체 고객
+    const totalResult = await db.prepare(
+      `SELECT COUNT(DISTINCT d.id) as total FROM diagnoses d WHERE d.ref_code = ?`
+    ).bind(refCode).first<any>()
+
+    const checkinResult = await db.prepare(`
+      SELECT COUNT(DISTINCT d.id) as cnt FROM diagnoses d
+      INNER JOIN weight_checkins wc ON wc.result_id = d.id
+      WHERE d.ref_code = ?
+    `).bind(refCode).first<any>()
+
+    // BC 분포 상위 5개
+    const bcTop = await db.prepare(`
+      SELECT bc_primary, COUNT(*) as cnt FROM diagnoses
+      WHERE ref_code = ? AND bc_primary IS NOT NULL
+      GROUP BY bc_primary ORDER BY cnt DESC LIMIT 5
+    `).bind(refCode).all<any>()
+
+    const total = totalResult?.total || 0
+    const checkins = checkinResult?.cnt || 0
+    const conversionRate = total > 0 ? Math.round((checkins / total) * 100) : 0
+
+    return c.json({
+      ok: true,
+      monthly_trend: monthlyRows.results || [],
+      total_customers: total,
+      checkin_customers: checkins,
+      conversion_rate: conversionRate,
+      bc_top5: bcTop.results || []
+    })
+  } catch (e: any) {
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ══════════════════════════════════════════════════════════════════
+//  GET /api/admin/analytics/bc-trend
+//  BC코드 시계열 트렌드 (Phase 2 — MASTER 전용)
+// ══════════════════════════════════════════════════════════════════
+app.get('/api/admin/analytics/bc-trend', requireRole('MASTER'), async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not available' }, 503)
+  try {
+    // 최근 12개월 월별 BC 분포 상위 5코드
+    const rows = await db.prepare(`
+      SELECT strftime('%Y-%m', created_at) as month, bc_primary, COUNT(*) as cnt
+      FROM diagnoses
+      WHERE created_at >= date('now', '-12 months') AND bc_primary IS NOT NULL
+      GROUP BY month, bc_primary
+      ORDER BY month ASC, cnt DESC
+    `).all<any>()
+
+    // 전체 BC 분포
+    const bcDist = await db.prepare(`
+      SELECT bc_primary, COUNT(*) as cnt FROM diagnoses
+      WHERE bc_primary IS NOT NULL
+      GROUP BY bc_primary ORDER BY cnt DESC LIMIT 10
+    `).all<any>()
+
+    return c.json({
+      ok: true,
+      monthly_bc: rows.results || [],
+      bc_distribution: bcDist.results || []
+    })
+  } catch (e: any) {
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ══════════════════════════════════════════════════════════════════
+//  GET /api/admin/churn/risk-list
+//  이탈 위험 고객 목록 (21일 이상 미응답 — MASTER 전용)
+// ══════════════════════════════════════════════════════════════════
+app.get('/api/admin/churn/risk-list', requireRole('MASTER'), async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not available' }, 503)
+  try {
+    const limit = Math.min(Number(c.req.query('limit') || 50), 200)
+    const days  = Number(c.req.query('days') || 21)
+
+    const rows = await db.prepare(`
+      SELECT d.id, d.user_name, d.phone, d.bc_primary, d.bc_secondary,
+             d.ref_code, d.created_at,
+             CAST((julianday('now') - julianday(d.created_at)) AS INTEGER) as days_elapsed,
+             u.name as consultant_name
+      FROM diagnoses d
+      LEFT JOIN users u ON u.code = d.ref_code
+      WHERE d.created_at <= date('now', ? || ' days')
+        AND d.bc_primary IS NOT NULL
+      ORDER BY d.created_at ASC
+      LIMIT ?
+    `).bind(`-${days}`, limit).all<any>()
+
+    return c.json({
+      ok: true,
+      risk_customers: rows.results || [],
+      threshold_days: days,
+      total: rows.results?.length || 0
+    })
+  } catch (e: any) {
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ══════════════════════════════════════════════════════════════════
+//  GET /api/admin/analytics/customer-segments
+//  고객 세그먼트 분류 (Phase 3 — MASTER 전용)
+// ══════════════════════════════════════════════════════════════════
+app.get('/api/admin/analytics/customer-segments', requireRole('MASTER'), async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not available' }, 503)
+  try {
+    // D+0 (오늘)
+    const d0 = await db.prepare(
+      `SELECT COUNT(*) as cnt FROM diagnoses WHERE date(created_at) = date('now')`
+    ).first<any>()
+    // D+1~3 (72시간 이내)
+    const d3 = await db.prepare(
+      `SELECT COUNT(*) as cnt FROM diagnoses WHERE created_at >= datetime('now', '-3 days') AND date(created_at) < date('now')`
+    ).first<any>()
+    // D+4~21 (활성)
+    const d21 = await db.prepare(
+      `SELECT COUNT(*) as cnt FROM diagnoses WHERE created_at >= datetime('now', '-21 days') AND created_at < datetime('now', '-3 days')`
+    ).first<any>()
+    // D+22~30 (위험)
+    const d30 = await db.prepare(
+      `SELECT COUNT(*) as cnt FROM diagnoses WHERE created_at >= datetime('now', '-30 days') AND created_at < datetime('now', '-21 days')`
+    ).first<any>()
+    // D+31+ (이탈)
+    const churned = await db.prepare(
+      `SELECT COUNT(*) as cnt FROM diagnoses WHERE created_at < datetime('now', '-30 days')`
+    ).first<any>()
+
+    // 체크인 참여율
+    const withCheckin = await db.prepare(
+      `SELECT COUNT(DISTINCT result_id) as cnt FROM weight_checkins`
+    ).first<any>()
+    const totalAll = await db.prepare(
+      `SELECT COUNT(*) as cnt FROM diagnoses WHERE bc_primary IS NOT NULL`
+    ).first<any>()
+
+    return c.json({
+      ok: true,
+      segments: {
+        d0:       d0?.cnt       || 0,
+        d1_3:     d3?.cnt       || 0,
+        d4_21:    d21?.cnt      || 0,
+        d22_30:   d30?.cnt      || 0,
+        churned:  churned?.cnt  || 0,
+      },
+      checkin_rate: totalAll?.cnt > 0
+        ? Math.round((withCheckin?.cnt / totalAll?.cnt) * 100) : 0,
+      total_with_bc: totalAll?.cnt || 0
+    })
+  } catch (e: any) {
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ══════════════════════════════════════════════════════════════════
+//  GET /api/consultant/analytics/axis-benchmark
+//  컨설턴트 담당 고객 BC코드별 축 점수 벤치마크 (Phase 3)
+// ══════════════════════════════════════════════════════════════════
+app.get('/api/consultant/analytics/axis-benchmark', requireRole('ANY'), async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not available' }, 503)
+  const user = (c as any).get('user')
+  const refCode = user?.code || ''
+  try {
+    // BC코드별 고객 수 + 최근 3개월
+    const bcStats = await db.prepare(`
+      SELECT bc_primary, COUNT(*) as cnt,
+             SUM(CASE WHEN created_at >= date('now', '-30 days') THEN 1 ELSE 0 END) as recent_cnt
+      FROM diagnoses
+      WHERE ref_code = ? AND bc_primary IS NOT NULL
+      GROUP BY bc_primary ORDER BY cnt DESC LIMIT 10
+    `).bind(refCode).all<any>()
+
+    // 이탈 위험 (21일 이상)
+    const riskCount = await db.prepare(`
+      SELECT COUNT(*) as cnt FROM diagnoses
+      WHERE ref_code = ? AND created_at <= date('now', '-21 days') AND bc_primary IS NOT NULL
+    `).bind(refCode).first<any>()
+
+    // 체크인 완료 고객 수
+    const checkinCount = await db.prepare(`
+      SELECT COUNT(DISTINCT wc.result_id) as cnt
+      FROM weight_checkins wc
+      INNER JOIN diagnoses d ON d.id = wc.result_id
+      WHERE d.ref_code = ?
+    `).bind(refCode).first<any>()
+
+    return c.json({
+      ok: true,
+      bc_benchmark: bcStats.results || [],
+      risk_count: riskCount?.cnt || 0,
+      checkin_count: checkinCount?.cnt || 0
+    })
+  } catch (e: any) {
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
 export default app

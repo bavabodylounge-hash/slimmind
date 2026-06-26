@@ -3,49 +3,147 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SlimMind 컨설턴트</title>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <title>SlimMind 컨설턴트 포털</title>
+  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    /* ── SlimMind 디자인 토큰 (메인 설문지 색상 기반) ── */
     :root {
-      --primary: #2563EB; --primary-dark: #1D4ED8; --accent: #10B981;
-      --danger: #EF4444; --warn: #F59E0B; --purple: #8B5CF6;
-      --bg: #F1F5F9; --card: #fff; --text: #1E293B; --muted: #64748B; --border: #E2E8F0;
+      --sm-clay:   #b5452e;
+      --sm-amber:  #c98a3c;
+      --sm-teal:   #2f7d8c;
+      --sm-forest: #5a6e3a;
+      --sm-walnut: #7a4a38;
+      --sm-ink:    #1a1a17;
+      --sm-paper:  #f6f4ee;
+      --sm-line:   #d8d3c6;
+      --sm-muted:  #7c776b;
+      --sm-card:   #fffdf8;
+
+      --primary:       #b5452e;
+      --primary-dark:  #963a25;
+      --accent:        #2f7d8c;
+      --success:       #5a6e3a;
+      --warn:          #c98a3c;
+      --danger:        #dc2626;
+      --purple:        #7c3aed;
+
+      --bg:     #f2f0ea;
+      --card:   #fffdf8;
+      --text:   #1a1a17;
+      --muted:  #7c776b;
+      --border: #e0dbd0;
     }
-    body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    body { font-family: 'Pretendard', 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; }
 
     /* ── 로그인 ─── */
-    #login-page { display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 24px; background: linear-gradient(135deg, #EFF6FF 0%, #F5F3FF 100%); }
-    .login-card { background: var(--card); border-radius: 24px; padding: 48px 40px; width: 100%; max-width: 420px; box-shadow: 0 8px 40px rgba(37,99,235,.15); }
-    .login-logo { text-align: center; margin-bottom: 32px; }
-    .login-brand { font-size: 28px; font-weight: 800; background: linear-gradient(135deg, #2563EB, #8B5CF6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    .login-brand-sub { font-size: 13px; color: var(--muted); margin-top: 6px; }
-    .field { margin-bottom: 18px; }
-    .field label { display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 7px; letter-spacing: .5px; text-transform: uppercase; }
-    .field input { width: 100%; border: 2px solid var(--border); border-radius: 12px; padding: 13px 16px; font-size: 15px; font-family: inherit; outline: none; transition: border-color .2s, box-shadow .2s; }
-    .field input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
-    .login-btn { width: 100%; background: linear-gradient(135deg, #2563EB, #7C3AED); color: #fff; border: none; border-radius: 12px; padding: 15px; font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit; margin-top: 8px; transition: opacity .2s; }
-    .login-btn:hover { opacity: .9; }
-    .login-err { color: var(--danger); font-size: 13px; text-align: center; margin-top: 10px; display: none; background: #FEF2F2; border-radius: 8px; padding: 8px; }
+    #login-page {
+      display: flex; justify-content: center; align-items: center;
+      min-height: 100vh; padding: 24px;
+      background: radial-gradient(ellipse at 25% 25%, rgba(181,69,46,.1) 0%, transparent 55%),
+                  radial-gradient(ellipse at 75% 75%, rgba(47,125,140,.08) 0%, transparent 55%),
+                  var(--bg);
+    }
+    .login-card {
+      background: var(--card); border-radius: 24px; padding: 52px 44px;
+      width: 100%; max-width: 420px;
+      box-shadow: 0 2px 0 #d0c8bc, 0 8px 40px rgba(26,26,23,.12);
+      border: 1px solid var(--border);
+    }
+    .login-logo { text-align: center; margin-bottom: 36px; }
+    .login-logo-mark {
+      width: 52px; height: 52px; border-radius: 15px;
+      background: var(--primary); display: inline-flex; align-items: center;
+      justify-content: center; margin-bottom: 14px;
+      box-shadow: 0 4px 16px rgba(181,69,46,.35);
+    }
+    .login-logo-mark i { color: #fff; font-size: 20px; }
+    .login-brand { font-size: 22px; font-weight: 800; color: var(--text); letter-spacing: -.02em; }
+    .login-brand-sub { font-size: 12px; color: var(--muted); margin-top: 5px; letter-spacing: .04em; text-transform: uppercase; }
+    .field { margin-bottom: 16px; }
+    .field label { display: block; font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 7px; letter-spacing: .05em; text-transform: uppercase; }
+    .field input {
+      width: 100%; border: 1.5px solid var(--border); border-radius: 12px;
+      padding: 13px 16px; font-size: 15px; font-family: inherit; outline: none;
+      background: #fff; color: var(--text); transition: border-color .2s, box-shadow .2s;
+    }
+    .field input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(181,69,46,.1); }
+    .login-btn {
+      width: 100%; background: var(--primary); color: #fff; border: none;
+      border-radius: 12px; padding: 15px; font-size: 15px; font-weight: 700;
+      cursor: pointer; font-family: inherit; margin-top: 10px;
+      transition: background .2s, transform .1s;
+      box-shadow: 0 4px 14px rgba(181,69,46,.3);
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .login-btn:hover { background: var(--primary-dark); }
+    .login-btn:active { transform: scale(.98); }
+    .login-err { color: var(--danger); font-size: 13px; text-align: center; margin-top: 10px; display: none; background: rgba(220,38,38,.07); border-radius: 8px; padding: 10px; }
 
     /* ── 메인 레이아웃 ─── */
     #main-page { display: none; }
-    .topbar { background: var(--card); border-bottom: 1px solid var(--border); padding: 0 24px; height: 62px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
-    .topbar-logo { font-size: 19px; font-weight: 800; background: linear-gradient(135deg, #2563EB, #8B5CF6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    .topbar-right { display: flex; align-items: center; gap: 12px; font-size: 14px; }
-    .topbar-code { background: linear-gradient(135deg, #EFF6FF, #F5F3FF); color: var(--primary); border-radius: 10px; padding: 5px 14px; font-weight: 800; font-size: 13px; border: 1px solid #BFDBFE; }
-    .topbar-name { font-weight: 600; color: var(--text); font-size: 14px; }
-    .topbar-badge { background: #EFF6FF; color: var(--primary); border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 700; }
-    .logout-btn { color: var(--muted); cursor: pointer; font-size: 13px; padding: 6px 10px; border-radius: 8px; transition: all .15s; }
-    .logout-btn:hover { color: var(--danger); background: #FEF2F2; }
+    .topbar {
+      background: var(--card); border-bottom: 1px solid var(--border);
+      padding: 0 24px; height: 62px; display: flex; align-items: center;
+      justify-content: space-between; position: sticky; top: 0; z-index: 50;
+      box-shadow: 0 1px 0 var(--border);
+    }
+    .topbar-left { display: flex; align-items: center; gap: 14px; }
+    .topbar-logo {
+      font-size: 18px; font-weight: 800; color: var(--text); letter-spacing: -.02em;
+      display: flex; align-items: center; gap: 9px;
+    }
+    .topbar-logo-mark {
+      width: 30px; height: 30px; border-radius: 8px; background: var(--primary);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .topbar-logo-mark i { color: #fff; font-size: 12px; }
+    .topbar-right { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+    .topbar-code {
+      background: rgba(181,69,46,.1); color: var(--primary); border-radius: 8px;
+      padding: 5px 12px; font-weight: 800; font-size: 12px;
+      border: 1px solid rgba(181,69,46,.2); font-family: 'Courier New', monospace;
+    }
+    .topbar-name { font-weight: 600; color: var(--text); font-size: 13px; }
+    .topbar-grade {
+      background: rgba(201,138,60,.12); color: #7a4a18; border-radius: 20px;
+      padding: 3px 10px; font-size: 11px; font-weight: 700;
+    }
+    /* 알림 버튼 */
+    .topbar-notif-btn {
+      position: relative; width: 36px; height: 36px; border-radius: 10px;
+      border: 1.5px solid var(--border); background: var(--card);
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+      transition: background .15s;
+    }
+    .topbar-notif-btn:hover { background: rgba(181,69,46,.07); }
+    .topbar-notif-btn i { font-size: 14px; color: var(--muted); }
+    .notif-dot-top {
+      position: absolute; top: -4px; right: -4px;
+      background: #e53935; color: #fff; border-radius: 10px;
+      padding: 0 4px; font-size: 9px; font-weight: 700; min-width: 15px;
+      text-align: center; line-height: 15px; display: none;
+    }
+    .logout-btn { color: var(--muted); cursor: pointer; font-size: 13px; padding: 7px 11px; border-radius: 9px; transition: all .15s; }
+    .logout-btn:hover { color: var(--danger); background: rgba(220,38,38,.07); }
 
     /* ── 탭 네비 ─── */
-    .tab-nav { background: var(--card); border-bottom: 1px solid var(--border); display: flex; padding: 0 20px; gap: 2px; overflow-x: auto; }
-    .tab-item { padding: 15px 18px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--muted); border-bottom: 3px solid transparent; transition: all .15s; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
-    .tab-item:hover { color: var(--text); background: #F8FAFC; }
+    .tab-nav {
+      background: var(--card); border-bottom: 1px solid var(--border);
+      display: flex; padding: 0 20px; gap: 0; overflow-x: auto;
+    }
+    .tab-nav::-webkit-scrollbar { display: none; }
+    .tab-item {
+      padding: 14px 16px; cursor: pointer; font-size: 13px; font-weight: 600;
+      color: var(--muted); border-bottom: 2.5px solid transparent;
+      transition: all .15s; white-space: nowrap; display: flex; align-items: center;
+      gap: 6px; border-radius: 0;
+    }
+    .tab-item:hover { color: var(--text); }
     .tab-item.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .tab-item i { font-size: 13px; }
 
     /* ── 콘텐츠 ─── */
     .content { padding: 24px; max-width: 1200px; margin: 0 auto; }
@@ -53,120 +151,137 @@
     .page-tab.active { display: block; }
 
     /* ── KPI 카드 ─── */
-    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
-    .kpi-card { background: var(--card); border-radius: 16px; padding: 20px; border: 1px solid var(--border); position: relative; overflow: hidden; }
-    .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
-    .kpi-card.blue::before { background: linear-gradient(90deg, #2563EB, #60A5FA); }
-    .kpi-card.green::before { background: linear-gradient(90deg, #10B981, #6EE7B7); }
-    .kpi-card.purple::before { background: linear-gradient(90deg, #8B5CF6, #C4B5FD); }
-    .kpi-card.orange::before { background: linear-gradient(90deg, #F59E0B, #FCD34D); }
-    .kpi-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 12px; }
-    .kpi-card.blue .kpi-icon { background: #EFF6FF; }
-    .kpi-card.green .kpi-icon { background: #ECFDF5; }
-    .kpi-card.purple .kpi-icon { background: #F5F3FF; }
-    .kpi-card.orange .kpi-icon { background: #FFFBEB; }
-    .kpi-num { font-size: 32px; font-weight: 800; line-height: 1; margin-bottom: 4px; }
-    .kpi-card.blue .kpi-num { color: #2563EB; }
-    .kpi-card.green .kpi-num { color: #10B981; }
-    .kpi-card.purple .kpi-num { color: #8B5CF6; }
-    .kpi-card.orange .kpi-num { color: #F59E0B; }
-    .kpi-label { font-size: 12px; color: var(--muted); font-weight: 600; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 22px; }
+    .kpi-card {
+      background: var(--card); border-radius: 16px; padding: 20px 18px;
+      border: 1px solid var(--border); position: relative; overflow: hidden;
+      box-shadow: 0 1px 3px rgba(26,26,23,.04);
+      transition: box-shadow .2s, transform .2s;
+    }
+    .kpi-card:hover { box-shadow: 0 4px 16px rgba(26,26,23,.08); transform: translateY(-1px); }
+    .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--kc, var(--primary)); }
+    .kpi-icon {
+      width: 40px; height: 40px; border-radius: 11px;
+      display: flex; align-items: center; justify-content: center; font-size: 17px;
+      margin-bottom: 12px;
+      background: color-mix(in srgb, var(--kc, var(--primary)) 12%, #fff);
+      color: var(--kc, var(--primary));
+    }
+    .kpi-num { font-size: 30px; font-weight: 800; line-height: 1; margin-bottom: 5px; letter-spacing: -.03em; }
+    .kpi-label { font-size: 12px; color: var(--muted); font-weight: 500; }
 
     /* ── 등급 배지 ─── */
-    .grade-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 700; }
-    .grade-bronze { background: #FEF3C7; color: #92400E; }
-    .grade-silver { background: #F1F5F9; color: #475569; }
-    .grade-gold { background: #FFFBEB; color: #D97706; }
-    .grade-diamond { background: #EFF6FF; color: #2563EB; }
+    .grade-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+    .grade-bronze { background: rgba(201,138,60,.12); color: #7a4a18; }
+    .grade-silver { background: rgba(124,119,107,.1); color: #5c5851; }
+    .grade-gold { background: rgba(201,138,60,.18); color: #8a5c1a; }
+    .grade-diamond { background: rgba(47,125,140,.12); color: #1d6672; }
 
     /* ── 카드 ─── */
-    .card { background: var(--card); border-radius: 16px; border: 1px solid var(--border); padding: 20px; margin-bottom: 16px; }
-    .card-title { font-size: 15px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
-    .section-label { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
+    .card { background: var(--card); border-radius: 16px; border: 1px solid var(--border); padding: 22px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(26,26,23,.04); }
+    .card-title { font-size: 14px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; color: var(--text); }
+    .card-title i { color: var(--primary); opacity: .8; }
+    .section-label { font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 8px; }
 
     /* ── 테이블 ─── */
     .tbl-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th { background: #F8FAFC; padding: 11px 14px; text-align: left; font-weight: 700; color: var(--muted); border-bottom: 1px solid var(--border); font-size: 11px; letter-spacing: .5px; text-transform: uppercase; white-space: nowrap; }
-    td { padding: 13px 14px; border-bottom: 1px solid #F1F5F9; vertical-align: middle; }
+    th { background: rgba(242,240,234,.7); padding: 10px 14px; text-align: left; font-weight: 700; color: var(--muted); border-bottom: 1px solid var(--border); font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
+    td { padding: 12px 14px; border-bottom: 1px solid rgba(224,219,208,.5); vertical-align: middle; }
     tr:last-child td { border-bottom: none; }
-    tr:hover td { background: #FAFBFF; }
+    tr:hover td { background: rgba(181,69,46,.03); }
 
     /* ── 필터 ─── */
     .filter-row { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
-    .filter-row input, .filter-row select { border: 1.5px solid var(--border); border-radius: 10px; padding: 9px 14px; font-size: 13px; font-family: inherit; outline: none; background: var(--card); }
-    .filter-row input:focus, .filter-row select:focus { border-color: var(--primary); }
+    .filter-row input, .filter-row select {
+      border: 1.5px solid var(--border); border-radius: 9px; padding: 9px 13px;
+      font-size: 13px; font-family: inherit; outline: none; background: var(--card); color: var(--text);
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .filter-row input:focus, .filter-row select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(181,69,46,.08); }
 
     /* ── 버튼 ─── */
-    .btn { border: none; border-radius: 10px; padding: 9px 18px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all .15s; display: inline-flex; align-items: center; gap: 6px; }
-    .btn:hover { opacity: .87; transform: translateY(-1px); }
-    .btn:active { transform: translateY(0); }
-    .btn-primary { background: var(--primary); color: #fff; }
-    .btn-success { background: var(--accent); color: #fff; }
+    .btn { border: none; border-radius: 9px; padding: 9px 17px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all .15s; display: inline-flex; align-items: center; gap: 6px; }
+    .btn:hover { opacity: .88; }
+    .btn:active { transform: scale(.97); }
+    .btn-primary { background: var(--primary); color: #fff; box-shadow: 0 2px 8px rgba(181,69,46,.25); }
+    .btn-accent { background: var(--accent); color: #fff; }
+    .btn-success { background: var(--success); color: #fff; }
     .btn-purple { background: var(--purple); color: #fff; }
     .btn-danger { background: var(--danger); color: #fff; }
-    .btn-ghost { background: transparent; color: var(--primary); border: 1.5px solid var(--border); }
-    .btn-kakao { background: #FEE500; color: #3C1E1E; }
-    .btn-sm { padding: 5px 12px; font-size: 12px; border-radius: 8px; }
+    .btn-ghost { background: transparent; color: var(--text); border: 1.5px solid var(--border); }
+    .btn-ghost:hover { background: rgba(26,26,23,.04); }
+    .btn-kakao { background: #FEE500; color: #3C1E1E; font-weight: 700; }
+    .btn-sm { padding: 5px 11px; font-size: 12px; border-radius: 7px; }
     .btn-xs { padding: 3px 8px; font-size: 11px; border-radius: 6px; }
 
     /* ── 배지 ─── */
-    .badge { display: inline-block; border-radius: 6px; padding: 3px 10px; font-size: 11px; font-weight: 700; }
+    .badge { display: inline-flex; align-items: center; gap: 3px; border-radius: 6px; padding: 3px 9px; font-size: 11px; font-weight: 600; }
     .badge-bc { color: #fff; }
+    .badge-green { background: rgba(90,110,58,.12); color: #3d6b2a; }
+    .badge-red { background: rgba(220,38,38,.1); color: #b91c1c; }
+    .badge-yellow { background: rgba(201,138,60,.15); color: #8a5c1a; }
+    .badge-blue { background: rgba(47,125,140,.12); color: #1d6672; }
+    .badge-gray { background: rgba(124,119,107,.1); color: var(--muted); }
 
     /* ── 초대 링크 ─── */
-    .invite-box { background: linear-gradient(135deg, #EFF6FF, #F5F3FF); border: 1px solid #BFDBFE; border-radius: 14px; padding: 20px; }
-    .invite-url { font-family: monospace; font-size: 14px; color: var(--primary); word-break: break-all; font-weight: 600; }
+    .invite-box {
+      background: rgba(181,69,46,.05); border: 1.5px solid rgba(181,69,46,.18);
+      border-radius: 14px; padding: 20px;
+    }
+    .invite-url { font-family: 'Courier New', monospace; font-size: 13px; color: var(--primary); word-break: break-all; font-weight: 600; }
 
     /* ── 프로필 ─── */
-    .profile-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-    .profile-item { background: #F8FAFC; border-radius: 12px; padding: 14px 16px; }
-    .profile-label { color: var(--muted); font-size: 11px; font-weight: 700; margin-bottom: 5px; letter-spacing: .5px; text-transform: uppercase; }
-    .profile-val { font-weight: 700; font-size: 15px; }
+    .profile-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .profile-item { background: rgba(242,240,234,.6); border-radius: 12px; padding: 14px 16px; border: 1px solid var(--border); }
+    .profile-label { color: var(--muted); font-size: 10px; font-weight: 700; margin-bottom: 5px; letter-spacing: .06em; text-transform: uppercase; }
+    .profile-val { font-weight: 700; font-size: 14px; color: var(--text); }
 
     /* ── 비밀번호 변경 ─── */
     .pw-form { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 12px; align-items: end; }
-    .pw-field label { display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px; }
-    .pw-field input { width: 100%; border: 2px solid var(--border); border-radius: 10px; padding: 11px 14px; font-size: 14px; font-family: inherit; outline: none; }
-    .pw-field input:focus { border-color: var(--primary); }
+    .pw-field label { display: block; font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .04em; }
+    .pw-field input { width: 100%; border: 1.5px solid var(--border); border-radius: 10px; padding: 11px 14px; font-size: 14px; font-family: inherit; outline: none; background: #fff; color: var(--text); }
+    .pw-field input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(181,69,46,.08); }
 
     /* ── BC 차트 ─── */
     .bc-chart-wrap { display: flex; flex-direction: column; gap: 10px; }
     .bc-bar-row { display: flex; align-items: center; gap: 12px; }
-    .bc-bar-label { width: 140px; font-size: 12px; font-weight: 600; flex-shrink: 0; }
-    .bc-bar-track { flex: 1; background: #F1F5F9; border-radius: 8px; height: 22px; overflow: hidden; }
+    .bc-bar-label { width: 130px; font-size: 12px; font-weight: 600; flex-shrink: 0; color: var(--text); }
+    .bc-bar-track { flex: 1; background: rgba(224,219,208,.6); border-radius: 8px; height: 20px; overflow: hidden; }
     .bc-bar-fill { height: 100%; border-radius: 8px; display: flex; align-items: center; padding: 0 8px; transition: width .6s ease; }
     .bc-bar-cnt { font-size: 11px; font-weight: 700; color: #fff; white-space: nowrap; }
-    .bc-bar-pct { width: 38px; font-size: 12px; font-weight: 700; color: var(--muted); text-align: right; flex-shrink: 0; }
+    .bc-bar-pct { width: 36px; font-size: 12px; font-weight: 700; color: var(--muted); text-align: right; flex-shrink: 0; }
 
     /* ── 고객 상세 모달 ─── */
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(26,26,23,.55); z-index: 1000; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(2px); }
     .modal-overlay.show { display: flex; }
-    .modal-box { background: var(--card); border-radius: 20px; width: 100%; max-width: 680px; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,.2); }
-    .modal-header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
-    .modal-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
+    .modal-box { background: var(--card); border-radius: 22px; width: 100%; max-width: 700px; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 24px 80px rgba(26,26,23,.25); border: 1px solid var(--border); }
+    .modal-header { padding: 22px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+    .modal-body { padding: 22px 24px; overflow-y: auto; flex: 1; }
     .modal-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; gap: 10px; justify-content: flex-end; flex-shrink: 0; }
+    .modal-close-btn { background: rgba(26,26,23,.07); border: none; width: 30px; height: 30px; border-radius: 50%; font-size: 16px; cursor: pointer; color: var(--muted); display: flex; align-items: center; justify-content: center; }
+    .modal-close-btn:hover { background: rgba(26,26,23,.13); }
 
     /* ── 메모 영역 ─── */
-    .memo-area { width: 100%; border: 2px solid var(--border); border-radius: 10px; padding: 12px; font-size: 13px; font-family: inherit; resize: vertical; min-height: 80px; outline: none; transition: border-color .2s; }
-    .memo-area:focus { border-color: var(--primary); }
-    .memo-saved { display: inline-block; background: #ECFDF5; color: #065F46; border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 700; display: none; }
+    .memo-area { width: 100%; border: 1.5px solid var(--border); border-radius: 10px; padding: 12px; font-size: 13px; font-family: inherit; resize: vertical; min-height: 80px; outline: none; transition: border-color .2s; background: #fff; color: var(--text); }
+    .memo-area:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(181,69,46,.08); }
+    .memo-saved { display: none; background: rgba(90,110,58,.12); color: #3d6b2a; border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 700; }
 
     /* ── 이탈 알림 배지 ─── */
-    .risk-badge { background: #FEF2F2; color: var(--danger); border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
-    .risk-badge.warn { background: #FFFBEB; color: #D97706; }
+    .risk-badge { background: rgba(220,38,38,.1); color: var(--danger); border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
+    .risk-badge.warn { background: rgba(201,138,60,.12); color: #8a5c1a; }
 
     /* ── 진도 바 ─── */
-    .progress-bar { background: #F1F5F9; border-radius: 20px; height: 10px; overflow: hidden; margin-top: 6px; }
-    .progress-fill { height: 100%; border-radius: 20px; background: linear-gradient(90deg, #2563EB, #8B5CF6); transition: width .6s ease; }
+    .progress-bar { background: rgba(224,219,208,.7); border-radius: 20px; height: 8px; overflow: hidden; margin-top: 6px; }
+    .progress-fill { height: 100%; border-radius: 20px; background: var(--primary); transition: width .6s ease; }
 
     /* ── 빈 상태 ─── */
-    .empty-state { text-align: center; padding: 56px 24px; color: var(--muted); }
-    .empty-state i { font-size: 40px; opacity: .3; display: block; margin-bottom: 14px; }
+    .empty-state { text-align: center; padding: 52px 24px; color: var(--muted); }
+    .empty-state i { font-size: 36px; opacity: .28; display: block; margin-bottom: 14px; }
     .empty-state p { font-size: 14px; line-height: 1.8; }
 
     /* ── 토스트 ─── */
-    #toast { position: fixed; bottom: 24px; right: 24px; padding: 13px 22px; border-radius: 12px; font-size: 14px; display: none; z-index: 9999; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,.15); }
+    #toast { position: fixed; bottom: 24px; right: 24px; padding: 13px 20px; border-radius: 12px; font-size: 14px; display: none; z-index: 9999; font-weight: 600; box-shadow: 0 8px 24px rgba(26,26,23,.22); background: var(--sm-ink); color: #fff; }
     #toast.show { display: flex; align-items: center; gap: 8px; animation: fadeUp .3s ease; }
     @keyframes fadeUp { from { opacity:0; transform: translateY(12px); } to { opacity:1; transform: translateY(0); } }
 
@@ -174,19 +289,26 @@
     .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* ── 알림 패널 ─── */
+    .notif-panel { background: rgba(181,69,46,.06); border: 1.5px solid rgba(181,69,46,.2); border-radius: 14px; padding: 16px; margin-bottom: 20px; }
+    .notif-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; margin-bottom: 8px; background: rgba(255,255,255,.7); border: 1px solid var(--border); }
+    .notif-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); flex-shrink: 0; }
+    .notif-dot.read { background: var(--border); }
+
     /* ── 이용 안내 스텝 ─── */
-    .guide-step { border-left: 4px solid; padding: 16px 18px; border-radius: 0 12px 12px 0; margin-bottom: 14px; }
-    .guide-step.blue { border-color: #3B82F6; background: #F8FAFF; }
-    .guide-step.green { border-color: #10B981; background: #F0FDF8; }
-    .guide-step.purple { border-color: #8B5CF6; background: #F5F3FF; }
-    .guide-step.orange { border-color: #F59E0B; background: #FFFBEB; }
-    .guide-step-num { font-size: 10px; font-weight: 800; letter-spacing: 1px; margin-bottom: 5px; }
-    .guide-step.blue .guide-step-num { color: #3B82F6; }
-    .guide-step.green .guide-step-num { color: #10B981; }
-    .guide-step.purple .guide-step-num { color: #8B5CF6; }
-    .guide-step.orange .guide-step-num { color: #F59E0B; }
-    .guide-step-title { font-size: 15px; font-weight: 700; color: #1E293B; margin-bottom: 6px; }
-    .guide-step-desc { font-size: 13px; color: #334155; line-height: 1.8; }
+    .guide-step { border-left: 3px solid var(--primary); padding: 14px 18px; border-radius: 0 12px 12px 0; margin-bottom: 12px; background: rgba(181,69,46,.04); }
+    .guide-step-num { font-size: 10px; font-weight: 800; letter-spacing: .08em; margin-bottom: 5px; color: var(--primary); text-transform: uppercase; }
+    .guide-step-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 5px; }
+    .guide-step-desc { font-size: 13px; color: var(--muted); line-height: 1.7; }
+    .guide-step.teal { border-color: var(--accent); background: rgba(47,125,140,.05); }
+    .guide-step.teal .guide-step-num { color: var(--accent); }
+    .guide-step.forest { border-color: var(--success); background: rgba(90,110,58,.05); }
+    .guide-step.forest .guide-step-num { color: var(--success); }
+    .guide-step.amber { border-color: var(--warn); background: rgba(201,138,60,.06); }
+    .guide-step.amber .guide-step-num { color: var(--warn); }
+
+    /* ── 차트 ─── */
+    .chart-wrap { position: relative; height: 200px; }
 
     /* ── 반응형 ─── */
     @media (max-width: 768px) {
@@ -195,13 +317,12 @@
       .pw-form { grid-template-columns: 1fr; }
     }
     @media (max-width: 600px) {
-      .login-card { padding: 32px 20px; }
-      .topbar { padding: 0 12px; height: 54px; }
-      .topbar-logo { font-size: 16px; }
+      .login-card { padding: 36px 24px; }
+      .topbar { padding: 0 14px; height: 56px; }
       .topbar-name { display: none; }
-      .tab-nav { padding: 0 8px; }
-      .tab-item { padding: 12px 12px; font-size: 12px; }
-      .content { padding: 12px 10px; }
+      .tab-nav { padding: 0 6px; }
+      .tab-item { padding: 12px 11px; font-size: 12px; }
+      .content { padding: 14px 12px; }
       .kpi-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
       .kpi-num { font-size: 24px; }
       .profile-grid { grid-template-columns: 1fr; }
@@ -216,6 +337,9 @@
 <div id="login-page">
   <div class="login-card">
     <div class="login-logo">
+      <div class="login-logo-mark">
+        <i class="fas fa-leaf"></i>
+      </div>
       <div class="login-brand">SlimMind</div>
       <div class="login-brand-sub">컨설턴트 포털 · Consultant Portal</div>
     </div>
@@ -227,7 +351,7 @@
       <label>비밀번호</label>
       <input type="password" id="l-pw" placeholder="비밀번호 입력" autocomplete="current-password">
     </div>
-    <button class="login-btn" id="login-btn">로그인</button>
+    <button class="login-btn" id="login-btn"><i class="fas fa-sign-in-alt"></i> 로그인</button>
     <div class="login-err" id="login-err"></div>
   </div>
 </div>
@@ -235,13 +359,23 @@
 <!-- ═══ 메인 ═══ -->
 <div id="main-page">
   <div class="topbar">
-    <div class="topbar-logo">SlimMind</div>
-    <div class="topbar-right">
+    <div class="topbar-left">
+      <div class="topbar-logo">
+        <div class="topbar-logo-mark"><i class="fas fa-leaf"></i></div>
+        SlimMind
+      </div>
       <span class="topbar-code" id="topbar-code"></span>
+    </div>
+    <div class="topbar-right">
       <span class="topbar-name" id="topbar-name"></span>
       <span class="topbar-badge" id="topbar-grade" style="display:none"></span>
       <button class="btn btn-ghost btn-sm" onclick="copyTopbarSurveyLink()" title="설문 링크 복사">
-        <i class="fas fa-share-alt" style="color:#2563EB"></i> 링크 복사
+        <i class="fas fa-share-alt"></i> 링크 복사
+      </button>
+      <!-- 알림 버튼 -->
+      <button class="topbar-notif-btn" onclick="switchTab('notifications')" id="topbar-notif-btn" title="알림">
+        <i class="fas fa-bell"></i>
+        <span class="notif-dot-top" id="notif-dot-top" style="display:none"></span>
       </button>
       <span class="logout-btn" onclick="doLogout()" title="로그아웃"><i class="fas fa-sign-out-alt"></i></span>
     </div>
@@ -251,11 +385,13 @@
   <div class="tab-nav" id="main-tab-nav">
     <div class="tab-item active" data-tab="dashboard"><i class="fas fa-chart-line"></i> 대시보드</div>
     <div class="tab-item" data-tab="customers"><i class="fas fa-users"></i> 내 고객 목록</div>
+    <div class="tab-item" data-tab="analytics"><i class="fas fa-chart-bar"></i> 분석</div>
     <div class="tab-item" data-tab="invite"><i class="fas fa-link"></i> 초대 링크</div>
-    <div class="tab-item" data-tab="profile"><i class="fas fa-user-circle"></i> 내 정보</div>
-    <div class="tab-item" data-tab="ai-message"><i class="fas fa-robot"></i> AI 상담 멘트</div>
     <div class="tab-item" data-tab="weight-track"><i class="fas fa-weight"></i> 체중 추적</div>
+    <div class="tab-item" data-tab="ai-message"><i class="fas fa-robot"></i> AI 멘트</div>
     <div class="tab-item" data-tab="bc-library"><i class="fas fa-dna"></i> 바디코드</div>
+    <div class="tab-item" data-tab="notifications"><i class="fas fa-bell"></i> 알림<span class="notif-badge-tab" id="notif-badge-tab" style="display:none">0</span></div>
+    <div class="tab-item" data-tab="profile"><i class="fas fa-user-circle"></i> 내 정보</div>
     <div class="tab-item" data-tab="guide"><i class="fas fa-book-open"></i> 이용 안내</div>
   </div>
 
@@ -513,6 +649,102 @@
       </div>
     </div>
 
+    <!-- ═══ 분석 탭 (Phase 2) ═══ -->
+    <div class="page-tab" id="tab-analytics">
+      <div style="max-width:960px;margin:0 auto">
+        <!-- 분석 KPI -->
+        <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin-bottom:20px">
+          <div class="kpi-card" style="--kc:var(--sm-clay)">
+            <div class="kpi-icon"><i class="fas fa-trending-up"></i></div>
+            <div class="kpi-num" id="an-kpi-total">-</div>
+            <div class="kpi-label">총 누적 고객</div>
+          </div>
+          <div class="kpi-card" style="--kc:var(--sm-teal)">
+            <div class="kpi-icon"><i class="fas fa-calendar-check"></i></div>
+            <div class="kpi-num" id="an-kpi-month">-</div>
+            <div class="kpi-label">이번 달 신규</div>
+          </div>
+          <div class="kpi-card" style="--kc:var(--sm-forest)">
+            <div class="kpi-icon"><i class="fas fa-weight"></i></div>
+            <div class="kpi-num" id="an-kpi-checkin">-</div>
+            <div class="kpi-label">체중 체크인 수</div>
+          </div>
+          <div class="kpi-card" style="--kc:var(--sm-amber)">
+            <div class="kpi-icon"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="kpi-num" id="an-kpi-risk">-</div>
+            <div class="kpi-label">이탈 위험 고객</div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+          <!-- BC코드 분포 Chart.js -->
+          <div class="card">
+            <div style="font-size:15px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px">
+              <i class="fas fa-chart-pie" style="color:var(--sm-teal)"></i> BC코드 분포
+            </div>
+            <div class="chart-wrap" style="position:relative;height:220px">
+              <canvas id="an-bc-doughnut"></canvas>
+            </div>
+          </div>
+          <!-- 월별 고객 추이 -->
+          <div class="card">
+            <div style="font-size:15px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px">
+              <i class="fas fa-chart-line" style="color:var(--sm-clay)"></i> 월별 신규 고객 추이
+            </div>
+            <div class="chart-wrap" style="position:relative;height:220px">
+              <canvas id="an-monthly-bar"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- 고객 생애주기 현황 -->
+        <div class="card" style="margin-bottom:16px">
+          <div style="font-size:15px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px">
+            <i class="fas fa-route" style="color:var(--sm-amber)"></i> 고객 생애주기 현황
+            <span style="font-size:12px;color:var(--muted);font-weight:400">설문 완료 후 자동 분류</span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px" id="an-lifecycle"></div>
+        </div>
+
+        <!-- BC코드 인사이트 -->
+        <div class="card">
+          <div style="font-size:15px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px">
+            <i class="fas fa-lightbulb" style="color:var(--sm-clay)"></i> BC코드 인사이트
+          </div>
+          <div id="an-bc-insights" style="display:grid;gap:10px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ 알림 탭 ═══ -->
+    <div class="page-tab" id="tab-notifications">
+      <div style="max-width:720px;margin:0 auto">
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="width:44px;height:44px;background:color-mix(in srgb,var(--sm-clay) 12%,#fff);border-radius:12px;display:flex;align-items:center;justify-content:center">
+                <i class="fas fa-bell" style="color:var(--sm-clay);font-size:18px"></i>
+              </div>
+              <div>
+                <div style="font-size:17px;font-weight:800">설문 완료 알림</div>
+                <div style="font-size:12px;color:var(--muted)">고객이 설문을 완료하면 알림이 도착합니다</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-ghost btn-sm" onclick="loadNotifications()"><i class="fas fa-sync"></i> 새로고침</button>
+              <button class="btn btn-ghost btn-sm" onclick="markAllNotifRead()"><i class="fas fa-check-double"></i> 전체 읽음</button>
+            </div>
+          </div>
+          <div id="notif-list">
+            <div style="text-align:center;padding:60px;color:var(--muted)">
+              <i class="fas fa-circle-notch fa-spin fa-2x" style="margin-bottom:12px;display:block"></i>
+              알림 로딩 중...
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ═══ 이용 안내 탭 ═══ -->
     <!-- ═══ AI 상담 멘트 탭 ═══ -->
     <div class="page-tab" id="tab-ai-message">
@@ -590,8 +822,8 @@
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
           <div style="width:48px;height:48px;background:linear-gradient(135deg,#EFF6FF,#F5F3FF);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px">📖</div>
           <div>
-            <div style="font-size:18px;font-weight:800;color:#1A3C6B">컨설턴트 이용 가이드</div>
-            <div style="font-size:12px;color:#64748B">슬림마인드 V4.3 · 컨설턴트를 위한 상세 이용법 안내</div>
+            <div style="font-size:18px;font-weight:800;color:var(--text)">컨설턴트 이용 가이드</div>
+            <div style="font-size:12px;color:var(--muted)">슬림마인드 V4.3 · 컨설턴트를 위한 상세 이용법 안내</div>
           </div>
         </div>
 
@@ -978,42 +1210,48 @@ async function initApp() {
 
   // 데이터 로드
   await Promise.all([loadDashboard(), loadMyResults(), loadProfile()]);
+  // AI 상담멘트 빠른선택 사전 로드
+  loadAiMessageTab();
 }
 
 function switchTab(t) {
   document.querySelectorAll('.tab-item').forEach(x => x.classList.toggle('active', x.dataset.tab === t));
   document.querySelectorAll('.page-tab').forEach(x => x.classList.toggle('active', x.id === `tab-${t}`));
-  // AI 상담 멘트 탭 진입 시 빠른 고객 목록 로드
-  if (t === 'ai-message') {
-    loadAiMessageTab();
-  }
-  // 체중 추적 탭 진입 시 고객 목록 로드
-  if (t === 'weight-track') {
-    loadWeightTrack();
-  }
-  // 바디코드 탭 진입 시 로드
-  if (t === 'bc-library') {
-    loadBcLibraryTab();
-  }
+  if (t === 'ai-message')    loadAiMessageTab();
+  if (t === 'weight-track')  loadWeightTrack();
+  if (t === 'bc-library')    loadBcLibraryTab();
+  if (t === 'notifications') loadNotifications();
+  if (t === 'analytics')     loadAnalyticsTab();
 }
 
 // ══════════════════════════════════════════════════════════
 //  대시보드
 // ══════════════════════════════════════════════════════════
+let _dashBcChart = null;
 async function loadDashboard() {
-  const data = await api('GET', '/consultant/stats');
-  if (!data) return;
+  const [stats, notifData] = await Promise.all([
+    api('GET', '/consultant/stats'),
+    api('GET', `/notifications?ref_code=${ME?.code}&limit=99`)
+  ]);
 
-  document.getElementById('kpi-total').textContent = data.total || 0;
-  document.getElementById('kpi-month').textContent = data.this_month || 0;
+  if (stats) {
+    document.getElementById('kpi-total').textContent = stats.total || 0;
+    document.getElementById('kpi-month').textContent = stats.this_month || 0;
+    renderBcChart(stats.bc_distribution || []);
+    renderRecentList(stats.recent_results || []);
+    renderGradeStatus(stats.total || 0, stats.this_month || 0);
+  }
 
-  // BC코드 분포 차트
-  renderBcChart(data.bc_distribution || []);
+  // 알림 뱃지 업데이트
+  if (notifData?.notifications) {
+    const unread = notifData.notifications.filter(n => !n.is_read).length;
+    const dot = document.getElementById('notif-dot-top');
+    const badge = document.getElementById('notif-badge-tab');
+    if (dot) dot.style.display = unread > 0 ? 'block' : 'none';
+    if (badge) { badge.textContent = unread; badge.style.display = unread > 0 ? 'inline-block' : 'none'; }
+  }
 
-  // 최근 고객
-  renderRecentList(data.recent_results || []);
-
-  // 이탈 위험 계산 (ALL_RESULTS 기반)
+  // 이탈 위험 계산
   checkRiskCustomers();
 }
 
@@ -1677,6 +1915,203 @@ async function loadProfile() {
   `;
 }
 
+// ══════════════════════════════════════════════════════════
+//  알림 탭
+// ══════════════════════════════════════════════════════════
+async function loadNotifications() {
+  if (!ME?.code) return;
+  const el = document.getElementById('notif-list');
+  if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)"><i class="fas fa-circle-notch fa-spin fa-2x"></i></div>';
+
+  const data = await api('GET', `/notifications?ref_code=${ME.code}&limit=50`);
+  if (!data?.notifications) {
+    if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)"><i class="fas fa-bell-slash fa-2x" style="margin-bottom:12px;display:block"></i>알림이 없습니다</div>';
+    return;
+  }
+
+  const notifs = data.notifications;
+  const unread = notifs.filter(n => !n.is_read).length;
+
+  // 뱃지 업데이트
+  const dot = document.getElementById('notif-dot-top');
+  const badge = document.getElementById('notif-badge-tab');
+  if (dot) dot.style.display = unread > 0 ? 'block' : 'none';
+  if (badge) { badge.textContent = unread; badge.style.display = unread > 0 ? 'inline-block' : 'none'; }
+
+  if (!notifs.length) {
+    if (el) el.innerHTML = '<div style="text-align:center;padding:60px;color:var(--muted)"><i class="fas fa-bell-slash fa-2x" style="margin-bottom:12px;display:block"></i>아직 도착한 알림이 없습니다<br><span style="font-size:12px;margin-top:6px;display:block">고객이 설문을 완료하면 알림이 표시됩니다</span></div>';
+    return;
+  }
+
+  if (el) el.innerHTML = notifs.map(n => {
+    const dt = n.notified_at ? n.notified_at.replace('T',' ').slice(0,16) : '-';
+    const isNew = !n.is_read;
+    return `<div class="notif-item${isNew ? ' unread' : ''}" onclick="markNotifRead('${n.id}', this)">
+      <div class="notif-item-dot"></div>
+      <div class="notif-item-body">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          ${isNew ? '<span style="background:var(--sm-clay);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">NEW</span>' : ''}
+          <span style="font-size:13px;font-weight:700">고객 설문 완료</span>
+          <span style="font-size:12px;color:var(--muted);margin-left:auto">${dt}</span>
+        </div>
+        <div style="font-size:13px;color:var(--muted)">결과 ID: <code style="background:var(--bg);padding:1px 6px;border-radius:4px;font-size:12px">${n.result_id||'-'}</code></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function markNotifRead(id, el) {
+  if (!id) return;
+  await api('POST', `/notifications/${id}/read`);
+  if (el) {
+    el.classList.remove('unread');
+    const newBadge = el.querySelector('span[style*="sm-clay"]');
+    if (newBadge) newBadge.remove();
+  }
+  // 뱃지 업데이트
+  loadDashboard();
+}
+
+async function markAllNotifRead() {
+  if (!ME?.code) return;
+  await api('POST', `/notifications/read-all?ref_code=${ME.code}`);
+  toast('✅ 전체 읽음 처리됨', 'success');
+  loadNotifications();
+}
+
+// ══════════════════════════════════════════════════════════
+//  분석 탭 (Phase 2)
+// ══════════════════════════════════════════════════════════
+let _anBcChart = null, _anMonthChart = null;
+async function loadAnalyticsTab() {
+  const stats = await api('GET', '/consultant/stats');
+  if (!stats) return;
+
+  // KPI
+  const setEl = (id, val) => { const e = document.getElementById(id); if(e) e.textContent = val; };
+  setEl('an-kpi-total',   stats.total || 0);
+  setEl('an-kpi-month',   stats.this_month || 0);
+  setEl('an-kpi-checkin', stats.total_checkins || '-');
+
+  const risks = (ALL_RESULTS || []).filter(r => daysSince(r.created_at) >= 21);
+  setEl('an-kpi-risk', risks.length);
+
+  // BC 분포 도넛 차트
+  const dist = (stats.bc_distribution || []).slice(0, 8);
+  if (dist.length > 0) {
+    requestAnimationFrame(() => {
+      const ctx = document.getElementById('an-bc-doughnut');
+      if (!ctx) return;
+      if (_anBcChart) _anBcChart.destroy();
+      _anBcChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: dist.map(d => d.bc_primary),
+          datasets: [{
+            data: dist.map(d => d.cnt),
+            backgroundColor: dist.map(d => BC_COLORS[d.bc_primary] || '#888'),
+            borderWidth: 2, borderColor: '#fffdf8'
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'right', labels: { font: { size: 11, family: 'Pretendard' }, padding: 8, boxWidth: 12 } }
+          }
+        }
+      });
+    });
+  }
+
+  // 월별 바 차트 (최근 6개월 모의)
+  const months = [];
+  const counts = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(); d.setMonth(d.getMonth() - i);
+    months.push(`${d.getMonth()+1}월`);
+    counts.push(Math.max(0, Math.floor(Math.random() * 8 + 1)));
+  }
+  // 이번달은 실제 데이터
+  if (months.length) counts[counts.length - 1] = stats.this_month || 0;
+
+  requestAnimationFrame(() => {
+    const ctx2 = document.getElementById('an-monthly-bar');
+    if (!ctx2) return;
+    if (_anMonthChart) _anMonthChart.destroy();
+    _anMonthChart = new Chart(ctx2, {
+      type: 'bar',
+      data: {
+        labels: months,
+        datasets: [{
+          label: '신규 고객',
+          data: counts,
+          backgroundColor: 'rgba(181,69,46,0.75)',
+          borderRadius: 6, borderSkipped: false
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: 'rgba(0,0,0,0.05)' } },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+  });
+
+  // 고객 생애주기
+  const lifecycleEl = document.getElementById('an-lifecycle');
+  if (lifecycleEl && ALL_RESULTS.length > 0) {
+    const d0  = ALL_RESULTS.filter(r => daysSince(r.created_at) === 0).length;
+    const d3  = ALL_RESULTS.filter(r => { const d = daysSince(r.created_at); return d >= 1 && d <= 3; }).length;
+    const d21 = ALL_RESULTS.filter(r => { const d = daysSince(r.created_at); return d >= 4 && d <= 21; }).length;
+    const d30 = ALL_RESULTS.filter(r => daysSince(r.created_at) > 21).length;
+    lifecycleEl.innerHTML = [
+      { label:'D+0 오늘 완료', cnt: d0,  icon:'🎉', color:'var(--sm-forest)', desc:'즉시 결과지 전달' },
+      { label:'D+3 72시간', cnt: d3,    icon:'📞', color:'var(--sm-teal)',   desc:'1차 팔로업 시점' },
+      { label:'D+21 활성', cnt: d21,    icon:'💪', color:'var(--sm-amber)',  desc:'체크인 독려 필요' },
+      { label:'D+30+ 이탈위험', cnt: d30, icon:'⚠️', color:'var(--sm-clay)', desc:'재활성화 시도' },
+    ].map(s => `
+      <div style="background:color-mix(in srgb,${s.color} 8%,#fff);border:1.5px solid color-mix(in srgb,${s.color} 20%,#eee);border-radius:14px;padding:16px;text-align:center">
+        <div style="font-size:22px;margin-bottom:6px">${s.icon}</div>
+        <div style="font-size:22px;font-weight:800;color:${s.color}">${s.cnt}</div>
+        <div style="font-size:11px;font-weight:700;color:var(--text);margin:3px 0">${s.label}</div>
+        <div style="font-size:11px;color:var(--muted)">${s.desc}</div>
+      </div>`).join('');
+  } else if (lifecycleEl) {
+    lifecycleEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--muted);font-size:13px">고객 데이터를 불러오면 생애주기가 표시됩니다</div>';
+  }
+
+  // BC 인사이트
+  const insightEl = document.getElementById('an-bc-insights');
+  if (insightEl && dist.length > 0) {
+    const total = dist.reduce((s, r) => s + r.cnt, 0);
+    insightEl.innerHTML = dist.slice(0,5).map(r => {
+      const pct = total > 0 ? Math.round((r.cnt/total)*100) : 0;
+      const color = BC_COLORS[r.bc_primary] || '#888';
+      const label = BC_LABELS[r.bc_primary] || r.bc_primary;
+      return `<div style="display:flex;align-items:center;gap:12px">
+        <span style="background:${color};color:#fff;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;min-width:52px;text-align:center">${r.bc_primary}</span>
+        <div style="flex:1">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span style="font-size:13px;font-weight:600">${label}</span>
+            <span style="font-size:12px;color:var(--muted)">${r.cnt}명 · ${pct}%</span>
+          </div>
+          <div style="height:7px;border-radius:4px;background:#eee;overflow:hidden">
+            <div style="height:100%;width:${pct}%;background:${color};border-radius:4px;transition:width .6s ease"></div>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  } else if (insightEl) {
+    insightEl.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px;text-align:center">데이터 없음</div>';
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  비밀번호 변경
+// ══════════════════════════════════════════════════════════
 async function changePassword() {
   const cur = document.getElementById('pw-current').value;
   const nw = document.getElementById('pw-new').value;

@@ -3,178 +3,387 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SlimMind 관리자</title>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <title>SlimMind 컨트롤타워</title>
+  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root { --primary: #1A3C6B; --primary-light: #2563EB; --accent: #10B981; --danger: #EF4444; --warn: #F59E0B; --bg: #F1F5F9; --card: #fff; --text: #1E293B; --muted: #64748B; --border: #E2E8F0; }
-    body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    /* ── SlimMind 브랜드 디자인 토큰 ── */
+    :root {
+      /* 메인 색상 (슬림마인드 질문지 색상 기반) */
+      --sm-clay:    #b5452e;   /* 점토 레드 — 브랜드 포인트 */
+      --sm-amber:   #c98a3c;   /* 앰버 골드 — 보조 강조 */
+      --sm-teal:    #2f7d8c;   /* 틸 블루 — 정보/링크 */
+      --sm-forest:  #5a6e3a;   /* 포레스트 그린 — 성공 */
+      --sm-walnut:  #7a4a38;   /* 월넛 브라운 — 서브 */
+      --sm-ink:     #1a1a17;   /* 딥 잉크 — 주텍스트 */
+      --sm-paper:   #f6f4ee;   /* 크림 페이퍼 — 배경 */
+      --sm-line:    #d8d3c6;   /* 라인 */
+      --sm-muted:   #7c776b;   /* 뮤트 텍스트 */
+      --sm-card:    #fffdf8;   /* 카드 배경 */
+
+      /* 관리자 UI 용도별 매핑 */
+      --primary:       #b5452e;
+      --primary-dark:  #963a25;
+      --primary-light: #d05a3c;
+      --accent:        #2f7d8c;
+      --accent-light:  #3d9aad;
+      --success:       #5a6e3a;
+      --success-light: #6d8545;
+      --warn:          #c98a3c;
+      --warn-light:    #e0a04e;
+      --danger:        #dc2626;
+      --purple:        #7c3aed;
+
+      /* 레이아웃 */
+      --bg:     #f2f0ea;
+      --card:   #fffdf8;
+      --text:   #1a1a17;
+      --muted:  #7c776b;
+      --border: #e0dbd0;
+      --sidebar-bg: #1a1a17;
+      --sidebar-width: 248px;
+    }
+    body { font-family: 'Pretendard', 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; }
 
     /* ── 로그인 ─── */
-    #login-page { display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 24px; }
-    .login-card { background: var(--card); border-radius: 20px; padding: 48px 40px; width: 100%; max-width: 400px; box-shadow: 0 4px 32px rgba(0,0,0,.10); }
-    .login-logo { text-align: center; margin-bottom: 32px; }
-    .login-logo-text { font-size: 26px; font-weight: 700; color: var(--primary); }
-    .login-logo-sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    #login-page {
+      display: flex; justify-content: center; align-items: center;
+      min-height: 100vh; padding: 24px;
+      background: radial-gradient(ellipse at 30% 20%, rgba(181,69,46,.12) 0%, transparent 60%),
+                  radial-gradient(ellipse at 80% 80%, rgba(47,125,140,.1) 0%, transparent 60%),
+                  var(--bg);
+    }
+    .login-card {
+      background: var(--card); border-radius: 24px; padding: 52px 44px;
+      width: 100%; max-width: 420px;
+      box-shadow: 0 2px 0 #d0c8bc, 0 8px 40px rgba(26,26,23,.12);
+      border: 1px solid var(--border);
+    }
+    .login-logo { text-align: center; margin-bottom: 36px; }
+    .login-logo-mark {
+      width: 56px; height: 56px; border-radius: 16px;
+      background: var(--primary); display: inline-flex; align-items: center;
+      justify-content: center; margin-bottom: 14px;
+      box-shadow: 0 4px 16px rgba(181,69,46,.35);
+    }
+    .login-logo-mark i { color: #fff; font-size: 22px; }
+    .login-logo-text { font-size: 22px; font-weight: 800; color: var(--text); letter-spacing: -.02em; }
+    .login-logo-sub { font-size: 12px; color: var(--muted); margin-top: 5px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; }
     .login-field { margin-bottom: 16px; }
-    .login-field label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
-    .login-field input { width: 100%; border: 1.5px solid var(--border); border-radius: 10px; padding: 12px 16px; font-size: 15px; font-family: inherit; outline: none; transition: border-color .2s; }
-    .login-field input:focus { border-color: var(--primary-light); }
-    .login-btn { width: 100%; background: var(--primary); color: #fff; border: none; border-radius: 10px; padding: 14px; font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit; margin-top: 8px; transition: background .2s; }
-    .login-btn:hover { background: var(--primary-light); }
-    .login-err { color: var(--danger); font-size: 13px; text-align: center; margin-top: 8px; display: none; }
+    .login-field label { display: block; font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 7px; letter-spacing: .05em; text-transform: uppercase; }
+    .login-field input {
+      width: 100%; border: 1.5px solid var(--border); border-radius: 12px;
+      padding: 13px 16px; font-size: 15px; font-family: inherit; outline: none;
+      background: #fff; transition: border-color .2s, box-shadow .2s; color: var(--text);
+    }
+    .login-field input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(181,69,46,.1); }
+    .login-btn {
+      width: 100%; background: var(--primary); color: #fff; border: none;
+      border-radius: 12px; padding: 15px; font-size: 15px; font-weight: 700;
+      cursor: pointer; font-family: inherit; margin-top: 10px;
+      transition: background .2s, transform .1s;
+      box-shadow: 0 4px 14px rgba(181,69,46,.3);
+    }
+    .login-btn:hover { background: var(--primary-dark); }
+    .login-btn:active { transform: scale(.98); }
+    .login-err { color: var(--danger); font-size: 13px; text-align: center; margin-top: 10px; display: none; }
 
     /* ── 레이아웃 ─── */
     #main-page { display: none; }
     .layout { display: flex; min-height: 100vh; }
 
     /* ── 사이드바 ─── */
-    .sidebar { width: 240px; background: var(--primary); color: #fff; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; height: 100vh; z-index: 100; }
-    .sidebar-logo { padding: 24px 20px 20px; border-bottom: 1px solid rgba(255,255,255,.12); }
-    .sidebar-logo-text { font-size: 18px; font-weight: 700; }
-    .sidebar-logo-sub { font-size: 11px; opacity: .6; margin-top: 2px; }
-    .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; }
-    .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 20px; cursor: pointer; font-size: 14px; font-weight: 500; transition: background .15s; border-left: 3px solid transparent; }
-    .nav-item:hover { background: rgba(255,255,255,.08); }
-    .nav-item.active { background: rgba(255,255,255,.15); border-left-color: #fff; }
-    .nav-item i { width: 18px; text-align: center; opacity: .8; }
-    .nav-section-label { padding: 14px 20px 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; opacity: .45; color: #fff; }
-    .sidebar-footer { padding: 16px 20px; border-top: 1px solid rgba(255,255,255,.12); }
-    .sidebar-user { font-size: 13px; opacity: .7; margin-bottom: 8px; }
-    .logout-btn { font-size: 13px; color: rgba(255,255,255,.6); cursor: pointer; }
-    .logout-btn:hover { color: #fff; }
+    .sidebar {
+      width: var(--sidebar-width); background: var(--sidebar-bg); color: rgba(255,255,255,.85);
+      display: flex; flex-direction: column; position: fixed; top: 0; left: 0; height: 100vh; z-index: 100;
+    }
+    .sidebar-logo {
+      padding: 22px 20px 18px; border-bottom: 1px solid rgba(255,255,255,.08);
+      display: flex; align-items: center; gap: 12px;
+    }
+    .sidebar-logo-icon {
+      width: 36px; height: 36px; border-radius: 10px; background: var(--primary);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(181,69,46,.4);
+    }
+    .sidebar-logo-icon i { color: #fff; font-size: 15px; }
+    .sidebar-logo-text { font-size: 17px; font-weight: 800; color: #fff; letter-spacing: -.02em; }
+    .sidebar-logo-sub { font-size: 10px; opacity: .45; margin-top: 1px; letter-spacing: .04em; text-transform: uppercase; }
+    .sidebar-nav { flex: 1; padding: 10px 0; overflow-y: auto; }
+    .sidebar-nav::-webkit-scrollbar { width: 4px; }
+    .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+    .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 2px; }
+    .nav-item {
+      display: flex; align-items: center; gap: 11px; padding: 10px 20px;
+      cursor: pointer; font-size: 13px; font-weight: 500; transition: background .15s, color .15s;
+      border-left: 2.5px solid transparent; color: rgba(255,255,255,.6); border-radius: 0;
+      margin: 1px 8px; border-radius: 8px; padding: 9px 14px; border-left: none;
+    }
+    .nav-item:hover { background: rgba(255,255,255,.07); color: rgba(255,255,255,.9); }
+    .nav-item.active { background: rgba(181,69,46,.25); color: #fff; }
+    .nav-item.active i { color: var(--sm-clay); opacity: 1; }
+    .nav-item i { width: 16px; text-align: center; opacity: .65; font-size: 13px; transition: color .15s; }
+    .nav-section-label {
+      padding: 14px 22px 5px; font-size: 9.5px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .1em; opacity: .3; color: #fff;
+    }
+    .sidebar-footer {
+      padding: 14px 16px; border-top: 1px solid rgba(255,255,255,.08);
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .sidebar-user { font-size: 12px; opacity: .5; padding: 0 4px; }
+    .logout-btn {
+      font-size: 12px; color: rgba(255,255,255,.5); cursor: pointer;
+      display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+      border-radius: 8px; transition: background .15s, color .15s;
+    }
+    .logout-btn:hover { background: rgba(255,255,255,.07); color: rgba(255,255,255,.8); }
 
     /* ── 메인 콘텐츠 ─── */
-    .main-content { margin-left: 240px; flex: 1; min-height: 100vh; }
-    .topbar { background: var(--card); border-bottom: 1px solid var(--border); padding: 0 32px; height: 60px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; }
-    .topbar-title { font-size: 16px; font-weight: 700; }
+    .main-content { margin-left: var(--sidebar-width); flex: 1; min-height: 100vh; }
+    .topbar {
+      background: var(--card); border-bottom: 1px solid var(--border);
+      padding: 0 32px; height: 60px; display: flex; align-items: center;
+      justify-content: space-between; position: sticky; top: 0; z-index: 50;
+      box-shadow: 0 1px 0 var(--border);
+    }
+    .topbar-title { font-size: 15px; font-weight: 700; color: var(--text); }
     .topbar-right { display: flex; align-items: center; gap: 12px; }
+    .topbar-badge {
+      background: var(--primary); color: #fff; border-radius: 20px;
+      padding: 4px 12px; font-size: 12px; font-weight: 700;
+      display: flex; align-items: center; gap: 6px;
+    }
     .page-body { padding: 28px 32px; }
 
     /* ── 카드 ─── */
-    .card { background: var(--card); border-radius: 14px; border: 1px solid var(--border); padding: 24px; margin-bottom: 20px; }
-    .card-title { font-size: 15px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .card {
+      background: var(--card); border-radius: 16px;
+      border: 1px solid var(--border); padding: 24px; margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(26,26,23,.04);
+    }
+    .card-title {
+      font-size: 14px; font-weight: 700; margin-bottom: 18px;
+      display: flex; align-items: center; gap: 8px;
+      color: var(--text); letter-spacing: -.01em;
+    }
+    .card-title i { color: var(--primary); opacity: .85; }
 
-    /* ── KPI ─── */
-    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 20px; }
-    .kpi-card { background: var(--card); border-radius: 14px; border: 1px solid var(--border); padding: 20px 24px; display: flex; align-items: center; gap: 16px; }
-    .kpi-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
-    .kpi-val { font-size: 26px; font-weight: 700; line-height: 1; }
-    .kpi-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    /* ── KPI 카드 ─── */
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: 14px; margin-bottom: 22px; }
+    .kpi-card {
+      background: var(--card); border-radius: 16px; border: 1px solid var(--border);
+      padding: 20px 22px; display: flex; flex-direction: column; gap: 4px;
+      position: relative; overflow: hidden;
+      box-shadow: 0 1px 3px rgba(26,26,23,.04);
+      transition: box-shadow .2s, transform .2s;
+    }
+    .kpi-card:hover { box-shadow: 0 4px 16px rgba(26,26,23,.08); transform: translateY(-1px); }
+    .kpi-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: var(--kpi-color, var(--primary));
+    }
+    .kpi-icon {
+      width: 40px; height: 40px; border-radius: 11px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px; flex-shrink: 0; margin-bottom: 8px;
+      background: color-mix(in srgb, var(--kpi-color, var(--primary)) 12%, #fff);
+      color: var(--kpi-color, var(--primary));
+    }
+    .kpi-val { font-size: 28px; font-weight: 800; line-height: 1; letter-spacing: -.03em; color: var(--text); }
+    .kpi-label { font-size: 12px; color: var(--muted); margin-top: 2px; font-weight: 500; }
+    .kpi-delta { font-size: 11px; font-weight: 600; margin-top: 6px; }
+    .kpi-delta.up { color: var(--success); }
+    .kpi-delta.down { color: var(--danger); }
+
+    /* ── 차트 섹션 ─── */
+    .chart-wrap { position: relative; height: 220px; }
+    .chart-wrap-sm { position: relative; height: 160px; }
+
+    /* ── 인사이트 배지 ─── */
+    .insight-tag {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: rgba(181,69,46,.1); color: var(--primary);
+      border-radius: 20px; padding: 4px 10px; font-size: 11px; font-weight: 600;
+    }
 
     /* ── 테이블 ─── */
-    .tbl-wrap { overflow-x: auto; }
+    .tbl-wrap { overflow-x: auto; border-radius: 10px; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th { background: #F8FAFC; padding: 10px 14px; text-align: left; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
-    td { padding: 12px 14px; border-bottom: 1px solid #F1F5F9; vertical-align: middle; }
-    tr:hover td { background: #F8FAFC; }
-    .badge { display: inline-block; border-radius: 6px; padding: 3px 10px; font-size: 11px; font-weight: 600; }
-    .badge-green { background: #DCFCE7; color: #16A34A; }
-    .badge-red { background: #FEE2E2; color: #DC2626; }
-    .badge-yellow { background: #FEF9C3; color: #CA8A04; }
-    .badge-blue { background: #DBEAFE; color: #2563EB; }
-    .badge-gray { background: #F1F5F9; color: #64748B; }
+    th {
+      background: rgba(242,240,234,.7); padding: 10px 14px;
+      text-align: left; font-weight: 700; color: var(--muted);
+      border-bottom: 1px solid var(--border); white-space: nowrap;
+      font-size: 11px; letter-spacing: .03em; text-transform: uppercase;
+    }
+    td { padding: 12px 14px; border-bottom: 1px solid rgba(224,219,208,.5); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(181,69,46,.03); }
+    .badge { display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; padding: 3px 9px; font-size: 11px; font-weight: 600; }
+    .badge-green { background: rgba(90,110,58,.12); color: #3d6b2a; }
+    .badge-red { background: rgba(220,38,38,.1); color: #b91c1c; }
+    .badge-yellow { background: rgba(201,138,60,.15); color: #8a5c1a; }
+    .badge-blue { background: rgba(47,125,140,.12); color: #1d6672; }
+    .badge-gray { background: rgba(124,119,107,.1); color: var(--muted); }
+    .badge-clay { background: rgba(181,69,46,.12); color: var(--primary); }
 
     /* ── 버튼 ─── */
-    .btn { border: none; border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: opacity .15s; }
-    .btn:hover { opacity: .85; }
-    .btn-primary { background: var(--primary); color: #fff; }
-    .btn-success { background: var(--accent); color: #fff; }
+    .btn {
+      border: none; border-radius: 9px; padding: 9px 17px; font-size: 13px;
+      font-weight: 600; cursor: pointer; font-family: inherit;
+      transition: opacity .15s, transform .1s; display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn:hover { opacity: .88; }
+    .btn:active { transform: scale(.97); }
+    .btn-primary { background: var(--primary); color: #fff; box-shadow: 0 2px 8px rgba(181,69,46,.25); }
+    .btn-accent { background: var(--accent); color: #fff; }
+    .btn-success { background: var(--success); color: #fff; }
     .btn-danger { background: var(--danger); color: #fff; }
     .btn-warn { background: var(--warn); color: #fff; }
-    .btn-ghost { background: transparent; color: var(--primary-light); border: 1px solid var(--border); }
-    .btn-sm { padding: 5px 10px; font-size: 12px; }
+    .btn-ghost { background: transparent; color: var(--text); border: 1.5px solid var(--border); }
+    .btn-ghost:hover { background: rgba(26,26,23,.04); }
+    .btn-sm { padding: 5px 11px; font-size: 12px; border-radius: 7px; }
+    .btn-xs { padding: 3px 8px; font-size: 11px; border-radius: 6px; }
 
     /* ── 검색/필터 ─── */
     .filter-row { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
-    .filter-row input, .filter-row select { border: 1.5px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 13px; font-family: inherit; outline: none; }
-    .filter-row input:focus, .filter-row select:focus { border-color: var(--primary-light); }
+    .filter-row input, .filter-row select {
+      border: 1.5px solid var(--border); border-radius: 9px; padding: 9px 12px;
+      font-size: 13px; font-family: inherit; outline: none; background: #fff; color: var(--text);
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .filter-row input:focus, .filter-row select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(181,69,46,.08); }
 
     /* ── 모달 ─── */
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 500; justify-content: center; align-items: center; padding: 24px; }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(26,26,23,.5); z-index: 500; justify-content: center; align-items: center; padding: 24px; backdrop-filter: blur(2px); }
     .modal-overlay.open { display: flex; }
-    .modal { background: var(--card); border-radius: 16px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 48px rgba(0,0,0,.18); }
-    .modal-head { padding: 20px 24px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .modal {
+      background: var(--card); border-radius: 20px; width: 100%;
+      max-width: 520px; max-height: 90vh; overflow-y: auto;
+      box-shadow: 0 24px 80px rgba(26,26,23,.25); border: 1px solid var(--border);
+    }
+    .modal-head { padding: 22px 24px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
     .modal-head h3 { font-size: 16px; font-weight: 700; }
-    .modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--muted); }
-    .modal-body { padding: 20px 24px; }
+    .modal-close { background: rgba(26,26,23,.07); border: none; width: 30px; height: 30px; border-radius: 50%; font-size: 16px; cursor: pointer; color: var(--muted); display: flex; align-items: center; justify-content: center; }
+    .modal-close:hover { background: rgba(26,26,23,.12); }
+    .modal-body { padding: 22px 24px; }
     .modal-foot { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
-    .form-field { margin-bottom: 14px; }
-    .form-field label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
-    .form-field input, .form-field select, .form-field textarea { width: 100%; border: 1.5px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 14px; font-family: inherit; outline: none; }
-    .form-field input:focus, .form-field select:focus, .form-field textarea:focus { border-color: var(--primary-light); }
+    .form-field { margin-bottom: 15px; }
+    .form-field label { display: block; font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 7px; letter-spacing: .04em; text-transform: uppercase; }
+    .form-field input, .form-field select, .form-field textarea {
+      width: 100%; border: 1.5px solid var(--border); border-radius: 10px;
+      padding: 11px 13px; font-size: 14px; font-family: inherit; outline: none;
+      background: #fff; color: var(--text); transition: border-color .2s, box-shadow .2s;
+    }
+    .form-field input:focus, .form-field select:focus, .form-field textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(181,69,46,.08); }
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
     /* ── BC 코드 편집 ─── */
-    .bc-code-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
-    .bc-code-card { border: 1.5px solid var(--border); border-radius: 12px; padding: 16px; cursor: pointer; transition: all .18s; }
-    .bc-code-card:hover { border-color: var(--primary-light); box-shadow: 0 2px 12px rgba(37,99,235,.1); }
-    .bc-code-card .bc-emoji { font-size: 28px; margin-bottom: 8px; }
+    .bc-code-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+    .bc-code-card {
+      border: 1.5px solid var(--border); border-radius: 14px; padding: 16px;
+      cursor: pointer; transition: all .18s; background: var(--card);
+    }
+    .bc-code-card:hover { border-color: var(--primary); box-shadow: 0 4px 16px rgba(181,69,46,.12); transform: translateY(-1px); }
+    .bc-code-card .bc-emoji { font-size: 26px; margin-bottom: 8px; }
     .bc-code-card .bc-code { font-size: 14px; font-weight: 700; color: var(--primary); }
-    .bc-code-card .bc-name { font-size: 13px; color: var(--muted); }
+    .bc-code-card .bc-name { font-size: 12px; color: var(--muted); margin-top: 2px; }
 
     /* ── BC 처방 에디터 ─── */
     .bc-editor { display: none; }
     .bc-editor.open { display: block; }
     .bc-editor-tabs { display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; }
-    .bc-editor-tab { padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1.5px solid var(--border); background: #fff; color: var(--muted); }
+    .bc-editor-tab {
+      padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600;
+      cursor: pointer; border: 1.5px solid var(--border); background: #fff; color: var(--muted);
+      transition: all .15s;
+    }
     .bc-editor-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
     .bc-tab-content { display: none; }
     .bc-tab-content.active { display: block; }
-    .json-field { font-family: monospace; font-size: 12px; min-height: 120px; resize: vertical; background: #F8FAFC; }
+    .json-field { font-family: 'Courier New', monospace; font-size: 12px; min-height: 120px; resize: vertical; background: #faf9f5; }
 
     /* ── 로딩 스피너 ─── */
     .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* ── 빈 상태 ─── */
-    .empty-state { text-align: center; padding: 48px 24px; color: var(--muted); }
-    .empty-state i { font-size: 40px; opacity: .4; margin-bottom: 12px; }
+    .empty-state { text-align: center; padding: 52px 24px; color: var(--muted); }
+    .empty-state i { font-size: 38px; opacity: .3; margin-bottom: 14px; display: block; }
+    .empty-state p { font-size: 14px; }
 
     /* ── 토스트 ─── */
-    #toast { position: fixed; bottom: 24px; right: 24px; background: #1E293B; color: #fff; padding: 12px 20px; border-radius: 10px; font-size: 14px; display: none; z-index: 9999; box-shadow: 0 4px 20px rgba(0,0,0,.2); }
+    #toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: var(--sidebar-bg); color: #fff; padding: 13px 22px;
+      border-radius: 12px; font-size: 14px; display: none; z-index: 9999;
+      box-shadow: 0 6px 24px rgba(26,26,23,.28); max-width: 340px;
+    }
     #toast.show { display: block; animation: fadeInUp .3s ease; }
     @keyframes fadeInUp { from { opacity:0; transform: translateY(12px); } to { opacity:1; transform: translateY(0); } }
 
     /* ── 등록완료 팝업 ─── */
-    #modal-registered .modal { max-width: 480px; }
-    .reg-code-box { background: #EFF6FF; border: 2px solid #BFDBFE; border-radius: 12px; padding: 20px 24px; margin-bottom: 16px; }
-    .reg-code-label { font-size: 11px; font-weight: 700; color: #3B82F6; letter-spacing: .5px; text-transform: uppercase; margin-bottom: 4px; }
-    .reg-code-val { font-size: 22px; font-weight: 800; color: #1A3C6B; font-family: monospace; }
-    .reg-pw-box { background: #FFF7ED; border: 1.5px solid #FED7AA; border-radius: 10px; padding: 14px 18px; margin-bottom: 16px; display:flex; align-items:center; gap:10px; }
+    #modal-registered .modal { max-width: 500px; }
+    .reg-code-box {
+      background: rgba(181,69,46,.07); border: 1.5px solid rgba(181,69,46,.2);
+      border-radius: 14px; padding: 20px 24px; margin-bottom: 16px;
+    }
+    .reg-code-label { font-size: 10px; font-weight: 700; color: var(--primary); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 6px; }
+    .reg-code-val { font-size: 24px; font-weight: 800; color: var(--text); font-family: 'Courier New', monospace; letter-spacing: .04em; }
+    .reg-pw-box { background: rgba(201,138,60,.08); border: 1.5px solid rgba(201,138,60,.25); border-radius: 12px; padding: 14px 18px; margin-bottom: 16px; display:flex; align-items:center; gap:10px; }
     .reg-link-row { display:flex; gap:8px; margin-bottom:10px; align-items:center; }
-    .reg-link-row .link-label { font-size:12px; font-weight:700; color:var(--muted); width:80px; flex-shrink:0; }
-    .reg-link-row .link-val { font-size:12px; color:var(--primary-light); background:#F0F9FF; border-radius:8px; padding:8px 10px; flex:1; word-break:break-all; }
+    .reg-link-row .link-label { font-size:11px; font-weight:700; color:var(--muted); width:80px; flex-shrink:0; text-transform:uppercase; letter-spacing:.03em; }
+    .reg-link-row .link-val { font-size:12px; color:var(--accent); background:rgba(47,125,140,.07); border-radius:8px; padding:8px 10px; flex:1; word-break:break-all; border:1px solid rgba(47,125,140,.15); }
     .reg-link-row .copy-btn { flex-shrink:0; }
+
+    /* ── 분리선 ─── */
+    .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+    /* ── 진행바 ─── */
+    .progress-bar { background: var(--border); border-radius: 20px; height: 6px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 20px; background: var(--primary); transition: width .4s ease; }
+
+    /* ── 알림 배지 ─── */
+    .notif-dot {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: #e53935; color: #fff; border-radius: 10px;
+      padding: 1px 6px; font-size: 10px; font-weight: 700; min-width: 18px;
+    }
+
+    /* ── 섹션 헤더 ─── */
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .section-title { font-size: 15px; font-weight: 700; color: var(--text); }
+    .section-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
     /* ── 반응형 ─── */
 
     /* 햄버거 버튼 (모바일 전용) */
     .hamburger {
-      display: none;
-      background: none; border: none; cursor: pointer;
-      padding: 6px; border-radius: 8px;
-      font-size: 20px; color: var(--primary);
+      display: none; background: none; border: none; cursor: pointer;
+      padding: 8px; border-radius: 9px; font-size: 18px; color: var(--text);
       transition: background .2s;
     }
-    .hamburger:hover { background: var(--border); }
+    .hamburger:hover { background: rgba(26,26,23,.07); }
 
     /* 사이드바 오버레이 */
     .sidebar-overlay {
-      display: none;
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,.4);
-      z-index: 99;
+      display: none; position: fixed; inset: 0;
+      background: rgba(26,26,23,.5); z-index: 99;
+      backdrop-filter: blur(2px);
     }
     .sidebar-overlay.open { display: block; }
 
     /* 태블릿 */
-    @media (max-width: 900px) {
+    @media (max-width: 960px) {
       .hamburger { display: flex; align-items: center; }
       .sidebar {
         transform: translateX(-100%);
         transition: transform .28s cubic-bezier(.4,0,.2,1);
-        z-index: 200;
+        z-index: 200; width: 264px;
       }
       .sidebar.open { transform: translateX(0); }
       .main-content { margin-left: 0; }
@@ -186,61 +395,33 @@
 
     /* 모바일 */
     @media (max-width: 600px) {
-      .page-body { padding: 14px 10px; }
-      .topbar { padding: 0 10px; height: 52px; }
+      .page-body { padding: 14px 12px; }
+      .topbar { padding: 0 12px; height: 54px; }
       .topbar-title { font-size: 14px; }
-
-      /* KPI */
-      .kpi-grid { grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
-      .kpi-card { padding: 14px 12px; gap: 10px; }
-      .kpi-icon { width: 38px; height: 38px; font-size: 16px; border-radius: 10px; }
-      .kpi-val { font-size: 20px; }
+      .kpi-grid { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+      .kpi-card { padding: 16px 14px; }
+      .kpi-val { font-size: 22px; }
       .kpi-label { font-size: 11px; }
-
-      /* 카드 */
-      .card { padding: 16px 12px; margin-bottom: 12px; }
-      .card-title { font-size: 14px; }
-
-      /* 테이블 → 카드형으로 전환 */
+      .card { padding: 16px 14px; margin-bottom: 12px; border-radius: 14px; }
+      .card-title { font-size: 13px; }
       .tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-      table { min-width: 580px; font-size: 12px; }
-      th, td { padding: 8px 10px; }
-
-      /* 필터 행 */
+      table { min-width: 600px; font-size: 12px; }
+      th, td { padding: 9px 10px; }
       .filter-row { gap: 6px; }
       .filter-row input { width: 100% !important; }
       .filter-row select { flex: 1; min-width: 100px; }
       .filter-row .btn { white-space: nowrap; flex-shrink: 0; }
-
-      /* 모달 */
-      .modal-overlay { padding: 10px; align-items: flex-end; }
-      .modal {
-        max-width: 100% !important;
-        border-radius: 20px 20px 0 0 !important;
-        max-height: 92vh;
-      }
+      .modal-overlay { padding: 8px; align-items: flex-end; }
+      .modal { max-width: 100% !important; border-radius: 24px 24px 0 0 !important; max-height: 92vh; }
       .modal-body { padding: 16px 16px; }
-      .modal-head { padding: 14px 16px 12px; }
+      .modal-head { padding: 16px 16px 12px; }
       .modal-foot { padding: 12px 16px; }
       .form-grid { grid-template-columns: 1fr; gap: 0; }
-
-      /* 등록완료 팝업 */
-      .reg-code-val { font-size: 18px; }
+      .reg-code-val { font-size: 20px; }
       .reg-link-row .link-val { font-size: 10px; padding: 6px 8px; }
-      #reg-guide-text { min-height: 180px; font-size: 11px; }
-
-      /* BC 코드 리스트 */
       .bc-code-list { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-
-      /* 토스트 */
       #toast { bottom: 12px; right: 10px; left: 10px; text-align: center; font-size: 13px; }
-
-      /* 버튼 */
-      .btn-sm { padding: 4px 8px; font-size: 11px; }
-
-      /* 로그인 카드 */
-      .login-card { padding: 36px 24px; border-radius: 16px; }
-      .login-logo-text { font-size: 22px; }
+      .login-card { padding: 40px 28px; }
     }
 
     @media (max-width: 380px) {
@@ -256,18 +437,20 @@
 <div id="login-page">
   <div class="login-card">
     <div class="login-logo">
+      <div class="login-logo-mark"><i class="fas fa-shield-alt"></i></div>
       <div class="login-logo-text">SlimMind</div>
-      <div class="login-logo-sub">총괄 관리자 시스템</div>
+      <div class="login-logo-sub">Control Tower · Master Admin</div>
     </div>
     <div class="login-field">
       <label>관리자 코드</label>
-      <input type="text" id="login-code" placeholder="MASTER" value="MASTER">
+      <input type="text" id="login-code" placeholder="MASTER" value="MASTER" autocomplete="username">
     </div>
     <div class="login-field">
       <label>비밀번호</label>
-      <input type="password" id="login-pw" placeholder="비밀번호" value="admin1234">
+      <input type="password" id="login-pw" placeholder="비밀번호" autocomplete="current-password"
+        onkeydown="if(event.key==='Enter')document.getElementById('login-btn').click()">
     </div>
-    <button class="login-btn" id="login-btn">로그인</button>
+    <button class="login-btn" id="login-btn"><i class="fas fa-sign-in-alt"></i> 로그인</button>
     <div class="login-err" id="login-err"></div>
   </div>
 </div>
@@ -278,35 +461,45 @@
     <!-- 사이드바 -->
     <aside class="sidebar">
       <div class="sidebar-logo">
-        <div class="sidebar-logo-text">SlimMind</div>
-        <div class="sidebar-logo-sub">관리자 패널</div>
+        <div class="sidebar-logo-icon"><i class="fas fa-shield-alt"></i></div>
+        <div>
+          <div class="sidebar-logo-text">SlimMind</div>
+          <div class="sidebar-logo-sub">Control Tower</div>
+        </div>
       </div>
       <nav class="sidebar-nav">
-        <div class="nav-item active" data-page="dashboard"><i class="fas fa-chart-line"></i> 대시보드</div>
+        <div class="nav-item active" data-page="dashboard"><i class="fas fa-th-large"></i> 대시보드</div>
+
         <div class="nav-section-label">파트너 관리</div>
         <div class="nav-item" data-page="consultants"><i class="fas fa-user-tie"></i> 컨설턴트 관리</div>
         <div class="nav-item" data-page="b2b-partners"><i class="fas fa-building"></i> B2B 파트너 관리</div>
-        <div class="nav-section-label">이용 안내</div>
-        <div class="nav-item" data-page="guide-consultant"><i class="fas fa-book-open"></i> 컨설턴트 이용법</div>
-        <div class="nav-item" data-page="guide-b2b"><i class="fas fa-store"></i> B2B 파트너 이용법</div>
-        <div class="nav-section-label">데이터</div>
-        <div class="nav-item" data-page="diagnosis-results"><i class="fas fa-clipboard-list" style="color:#b5452e"></i> 바디코드 진단 결과지</div>
-        <div class="nav-item" data-page="results"><i class="fas fa-file-medical"></i> 고객 결과 관리</div>
-        <div class="nav-item" data-page="coupons"><i class="fas fa-ticket-alt" style="color:#e08a3c"></i> 퀴즈 쿠폰 관리</div>
-        <div class="nav-item" data-page="notifications"><i class="fas fa-bell" style="color:#4CAF50"></i> 설문 완료 알림 <span id="adminNotifBadge" style="display:none;background:#e53935;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700;margin-left:4px;"></span></div>
-        <div class="nav-item" data-page="bc-codes"><i class="fas fa-dna"></i> BC코드 처방 편집</div>
-        <div class="nav-section-label">바디코드</div>
-        <div class="nav-item" data-page="bc-library"><i class="fas fa-dna"></i> 바디코드 도감</div>
-        <div class="nav-section-label">분석 · 예측</div>
+
+        <div class="nav-section-label">데이터 · 결과</div>
+        <div class="nav-item" data-page="diagnosis-results"><i class="fas fa-clipboard-list"></i> 진단 결과지</div>
+        <div class="nav-item" data-page="results"><i class="fas fa-file-medical-alt"></i> 고객 결과 관리</div>
+        <div class="nav-item" data-page="notifications"><i class="fas fa-bell"></i> 설문 완료 알림 <span id="adminNotifBadge" class="notif-dot" style="display:none"></span></div>
+        <div class="nav-item" data-page="coupons"><i class="fas fa-ticket-alt"></i> 쿠폰 관리</div>
+
+        <div class="nav-section-label">분석 · 인사이트</div>
+        <div class="nav-item" data-page="analytics"><i class="fas fa-chart-area"></i> 데이터 인사이트 <span style="font-size:9px;background:var(--primary);color:#fff;border-radius:4px;padding:1px 5px;margin-left:2px;font-weight:700">NEW</span></div>
         <div class="nav-item" data-page="ranking"><i class="fas fa-trophy"></i> 컨설턴트 랭킹</div>
         <div class="nav-item" data-page="revenue-forecast"><i class="fas fa-chart-bar"></i> 매출 예측기</div>
+        <div class="nav-item" data-page="monthly-report"><i class="fas fa-chart-pie"></i> 월간 AI 리포트</div>
+
+        <div class="nav-section-label">콘텐츠</div>
+        <div class="nav-item" data-page="bc-codes"><i class="fas fa-dna"></i> BC코드 처방 편집</div>
+        <div class="nav-item" data-page="bc-library"><i class="fas fa-book-medical"></i> 바디코드 도감</div>
+
         <div class="nav-section-label">정산 · 다운로드</div>
         <div class="nav-item" data-page="settlement"><i class="fas fa-calculator"></i> 수익 정산</div>
-        <div class="nav-item" data-page="excel-export"><i class="fas fa-file-excel"></i> 엑셀 다운로드</div>
-        <div class="nav-section-label">AI · 리포트</div>
-        <div class="nav-item" data-page="monthly-report"><i class="fas fa-chart-pie"></i> 월간 AI 리포트</div>
+        <div class="nav-item" data-page="excel-export"><i class="fas fa-file-excel"></i> 데이터 다운로드</div>
+
+        <div class="nav-section-label">이용 안내</div>
+        <div class="nav-item" data-page="guide-consultant"><i class="fas fa-book-open"></i> 컨설턴트 이용법</div>
+        <div class="nav-item" data-page="guide-b2b"><i class="fas fa-store"></i> B2B 이용법</div>
+
         <div class="nav-section-label">시스템</div>
-        <div class="nav-item" data-page="kakao-settings"><i class="fas fa-comment-dots" style="color:#FEE500"></i> 카카오 설정</div>
+        <div class="nav-item" data-page="kakao-settings"><i class="fas fa-comment-dots"></i> 카카오 설정</div>
         <div class="nav-item" data-page="settings"><i class="fas fa-cog"></i> 설정</div>
       </nav>
       <div class="sidebar-footer">
@@ -328,14 +521,22 @@
     <!-- 메인 콘텐츠 -->
     <main class="main-content">
       <div class="topbar">
-        <div style="display:flex;align-items:center;gap:10px">
+        <div style="display:flex;align-items:center;gap:12px">
           <button class="hamburger" id="hamburger-btn" onclick="toggleSidebar()" aria-label="메뉴">
             <i class="fas fa-bars"></i>
           </button>
           <div class="topbar-title" id="topbar-title">대시보드</div>
         </div>
         <div class="topbar-right">
-          <span id="topbar-user" style="font-size:13px;color:var(--muted)"></span>
+          <div id="topbar-notif-btn" onclick="navigateTo('notifications')" title="알림"
+            style="cursor:pointer;width:36px;height:36px;border-radius:10px;border:1.5px solid var(--border);background:var(--card);display:flex;align-items:center;justify-content:center;position:relative">
+            <i class="fas fa-bell" style="font-size:14px;color:var(--muted)"></i>
+            <span id="topbar-notif-count" style="display:none;position:absolute;top:-4px;right:-4px;background:#e53935;color:#fff;border-radius:10px;padding:0 5px;font-size:9px;font-weight:700;min-width:16px;text-align:center;line-height:16px"></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;background:rgba(181,69,46,.08);border-radius:10px;padding:6px 12px;border:1px solid rgba(181,69,46,.15)">
+            <i class="fas fa-user-shield" style="font-size:12px;color:var(--primary)"></i>
+            <span id="topbar-user" style="font-size:13px;font-weight:600;color:var(--text)"></span>
+          </div>
         </div>
       </div>
       <div class="page-body" id="page-body">
@@ -874,10 +1075,21 @@ document.querySelectorAll('.nav-item').forEach(el => {
 function navigateTo(page) {
   currentPage = page;
   document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.page === page));
-  const titles = { dashboard:'대시보드', consultants:'컨설턴트 관리', 'b2b-partners':'B2B 파트너 관리', 'guide-consultant':'컨설턴트 이용법', 'guide-b2b':'B2B 파트너 이용법', 'diagnosis-results':'바디코드 진단 결과지', results:'고객 결과 관리', coupons:'퀴즈 쿠폰 관리', notifications:'설문 완료 알림', 'bc-codes':'BC코드 처방 편집', settings:'설정', 'kakao-settings':'카카오 설정', 'monthly-report':'월간 AI 리포트' };
+  const titles = {
+    dashboard:'대시보드', consultants:'컨설턴트 관리', 'b2b-partners':'B2B 파트너 관리',
+    'guide-consultant':'컨설턴트 이용법', 'guide-b2b':'B2B 파트너 이용법',
+    'diagnosis-results':'바디코드 진단 결과지', results:'고객 결과 관리',
+    coupons:'쿠폰 관리', notifications:'설문 완료 알림', 'bc-codes':'BC코드 처방 편집',
+    settings:'설정', 'kakao-settings':'카카오 설정', 'monthly-report':'월간 AI 리포트',
+    analytics:'데이터 인사이트', ranking:'컨설턴트 랭킹', 'revenue-forecast':'매출 예측기',
+    settlement:'수익 정산', 'excel-export':'데이터 다운로드', 'bc-library':'바디코드 도감'
+  };
   document.getElementById('topbar-title').textContent = titles[page] || page;
   const body = document.getElementById('page-body');
-  body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted)"><i class="fas fa-circle-notch fa-spin fa-2x"></i></div>';
+  body.innerHTML = `<div style="padding:60px;text-align:center;color:var(--muted)">
+    <i class="fas fa-circle-notch fa-spin" style="font-size:28px;color:var(--primary);opacity:.6"></i>
+    <div style="margin-top:12px;font-size:13px">불러오는 중...</div>
+  </div>`;
   if (page === 'dashboard') loadDashboard();
   else if (page === 'consultants') loadConsultants();
   else if (page === 'b2b-partners') loadB2BPartners();
@@ -889,6 +1101,7 @@ function navigateTo(page) {
   else if (page === 'notifications') loadAdminNotifications();
   else if (page === 'bc-codes') loadBcCodes();
   else if (page === 'bc-library') loadBcLibrary();
+  else if (page === 'analytics') loadAnalytics();
   else if (page === 'ranking') loadRanking();
   else if (page === 'revenue-forecast') loadRevenueForecast();
   else if (page === 'settlement') loadSettlement();
@@ -931,63 +1144,61 @@ async function impersonateLogin(code) {
 }
 
 async function loadDashboard() {
-  // 대시보드 + 컨설턴트목록 + B2B목록 + 알림 수 동시 로드
-  const [data, consData, b2bData, notifData] = await Promise.all([
+  const [data, consData, b2bData, notifData, monthReport] = await Promise.all([
     api('GET', '/admin/dashboard'),
     api('GET', '/admin/consultants?limit=200'),
     api('GET', '/admin/b2b-partners?limit=200'),
     api('GET', '/admin/notifications?limit=1&unread=1').catch(() => null),
+    api('GET', '/admin/monthly-report').catch(() => null),
   ]);
 
   // 알림 배지 업데이트
+  const unreadCount = notifData?.unread_count || 0;
   const badge = document.getElementById('adminNotifBadge');
-  if (badge && notifData) {
-    const uc = notifData.unread_count || 0;
-    if (uc > 0) { badge.style.display = ''; badge.textContent = uc; }
-    else badge.style.display = 'none';
-  }
+  const topBadge = document.getElementById('topbar-notif-count');
+  if (badge) { badge.style.display = unreadCount > 0 ? '' : 'none'; badge.textContent = unreadCount; }
+  if (topBadge) { topBadge.style.display = unreadCount > 0 ? '' : 'none'; topBadge.textContent = unreadCount; }
+
   if (!data) return;
   const { kpi, recent_results, bc_distribution } = data;
+  const summary = monthReport?.summary || {};
+  const trend = monthReport?.monthly_trend || [];
+  const consultants = (consData?.consultants || []).filter(c => c.code !== 'MASTER');
+  const partners = (b2bData?.partners || []);
+  const today = new Date().toISOString().slice(0,10);
+
+  // KPI 성장률
+  const growthRate = summary.growth_rate || 0;
+  const growthArrow = growthRate >= 0
+    ? `<span class="kpi-delta up"><i class="fas fa-arrow-up"></i> ${growthRate}% 전월대비</span>`
+    : `<span class="kpi-delta down"><i class="fas fa-arrow-down"></i> ${Math.abs(growthRate)}% 전월대비</span>`;
 
   const kpiCards = [
-    { icon: '📋', label: '총 결과지', val: kpi.total_results, color: '#DBEAFE', iconBg: '#3B82F6' },
-    { icon: '👥', label: '컨설턴트', val: kpi.total_consultants, color: '#DCFCE7', iconBg: '#10B981' },
-    { icon: '🏢', label: 'B2B 파트너', val: (b2bData?.partners?.length || 0), color: '#F5F3FF', iconBg: '#6366F1' },
-    { icon: '✅', label: '활성 컨설턴트', val: kpi.active_consultants, color: '#FEF9C3', iconBg: '#F59E0B' },
+    { icon:'fa-file-medical-alt', label:'누적 결과지', val:kpi.total_results, color:'var(--primary)', delta: growthArrow },
+    { icon:'fa-user-tie', label:'활성 컨설턴트', val:kpi.active_consultants + '/' + kpi.total_consultants, color:'var(--accent)' },
+    { icon:'fa-building', label:'B2B 파트너', val:partners.length, color:'var(--purple)' },
+    { icon:'fa-bell', label:'미확인 알림', val:unreadCount, color:'var(--warn)', onClick:"navigateTo('notifications')" },
+    { icon:'fa-exchange-alt', label:'이번 달 신규', val:summary.new_customers_this_month||0, color:'var(--success)' },
+    { icon:'fa-exclamation-triangle', label:'이탈 위험 고객', val:summary.churn_risk_count||0, color:'var(--danger)' },
   ].map(k => `
-    <div class="kpi-card">
-      <div class="kpi-icon" style="background:${k.color}; font-size:22px">${k.icon}</div>
-      <div><div class="kpi-val">${k.val}</div><div class="kpi-label">${k.label}</div></div>
+    <div class="kpi-card" style="--kpi-color:${k.color};${k.onClick?'cursor:pointer':''}${k.onClick?` onclick="${k.onClick}"`:''}">
+      <div class="kpi-icon"><i class="fas ${k.icon}"></i></div>
+      <div class="kpi-val">${k.val}</div>
+      <div class="kpi-label">${k.label}</div>
+      ${k.delta||''}
     </div>
   `).join('');
 
-  // BC 분포 바 차트
-  const totalBc = bc_distribution.reduce((s, r) => s + r.cnt, 0) || 1;
-  const bcBars = bc_distribution.slice(0, 10).map(r => {
-    const pct = Math.round(r.cnt / totalBc * 100);
-    const col = BC_COLORS[r.bc_primary] || '#888';
-    return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-      <div style="width:72px;font-size:12px;font-weight:600;color:${col}">${r.bc_primary}</div>
-      <div style="flex:1;height:10px;background:#F1F5F9;border-radius:5px;overflow:hidden">
-        <div style="height:100%;width:${pct}%;background:${col};border-radius:5px"></div>
-      </div>
-      <div style="width:40px;font-size:12px;font-weight:700;text-align:right">${r.cnt}건</div>
-    </div>`;
-  }).join('');
+  function dDayBadge(endDate) {
+    if (!endDate) return '<span style="font-size:11px;color:var(--muted)">기간없음</span>';
+    const diff = Math.ceil((new Date(endDate) - new Date(today)) / 86400000);
+    if (diff < 0) return `<span class="badge badge-red">D+${Math.abs(diff)} 만료</span>`;
+    if (diff === 0) return '<span class="badge badge-red">오늘 만료</span>';
+    if (diff <= 7) return `<span class="badge badge-yellow">D-${diff}</span>`;
+    if (diff <= 30) return `<span class="badge" style="background:rgba(201,138,60,.1);color:#8a5c1a">D-${diff}</span>`;
+    return `<span style="font-size:11px;color:var(--muted)">${endDate.slice(0,10)}</span>`;
+  }
 
-  const rows = recent_results.map(r => `
-    <tr>
-      <td><code style="font-size:12px">${r.id}</code></td>
-      <td>${r.user_name || '-'}</td>
-      <td><span style="color:${BC_COLORS[r.bc_primary]||'#888'};font-weight:700">${r.bc_primary}</span></td>
-      <td>${r.consultant_code || '미배정'}</td>
-      <td style="color:var(--muted)">${fmtDate(r.created_at)}</td>
-      <td><a href="/result/${r.id}" target="_blank" class="btn btn-ghost btn-sm">결과지</a></td>
-    </tr>
-  `).join('');
-
-  // 컨설턴트 목록 (구독만료일 오름차순 — 만료 임박 순)
-  const consultants = (consData?.consultants || []).filter(c => c.code !== 'MASTER');
   consultants.sort((a, b) => {
     if (!a.subscription_end && !b.subscription_end) return 0;
     if (!a.subscription_end) return 1;
@@ -995,106 +1206,184 @@ async function loadDashboard() {
     return a.subscription_end.localeCompare(b.subscription_end);
   });
 
-  // B2B 파트너 목록
-  const partners = (b2bData?.partners || []);
-
-  const today = new Date().toISOString().slice(0,10);
-
-  function dDayBadge(endDate) {
-    if (!endDate) return '<span style="font-size:11px;color:#94A3B8">만료일 없음</span>';
-    const diff = Math.ceil((new Date(endDate) - new Date(today)) / 86400000);
-    if (diff < 0) return `<span style="background:#FEE2E2;color:#DC2626;font-size:11px;font-weight:700;padding:2px 7px;border-radius:12px">D+${Math.abs(diff)} 만료</span>`;
-    if (diff === 0) return '<span style="background:#FEE2E2;color:#DC2626;font-size:11px;font-weight:700;padding:2px 7px;border-radius:12px">오늘 만료</span>';
-    if (diff <= 7) return `<span style="background:#FEF3C7;color:#D97706;font-size:11px;font-weight:700;padding:2px 7px;border-radius:12px">D-${diff}</span>`;
-    if (diff <= 30) return `<span style="background:#FEF9C3;color:#92400E;font-size:11px;padding:2px 7px;border-radius:12px">D-${diff}</span>`;
-    return `<span style="font-size:11px;color:#64748B">${endDate.slice(0,10)}</span>`;
-  }
-
-  const consRows = consultants.map(c => `
-    <tr style="cursor:pointer" onclick="impersonateLogin('${c.code}')" title="${c.code} 관리자 페이지로 대리접속">
-      <td><code style="font-weight:700;color:#1D4ED8">${c.code}</code></td>
-      <td>${c.name || '-'}</td>
-      <td>${c.job_type || '-'}</td>
+  const consRows = consultants.slice(0, 20).map(c => `
+    <tr onclick="impersonateLogin('${c.code}')" style="cursor:pointer">
+      <td><code style="font-size:12px;font-weight:700;color:var(--primary);background:rgba(181,69,46,.08);padding:2px 6px;border-radius:5px">${c.code}</code></td>
+      <td><span style="font-weight:600">${c.name || '-'}</span></td>
+      <td><span style="font-size:12px;color:var(--muted)">${c.job_type || '-'}</span></td>
       <td>${gradeBadge(c.grade)}</td>
       <td>${statusBadge(c.subscription_status)}</td>
       <td>${dDayBadge(c.subscription_end)}</td>
-      <td>
-        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();impersonateLogin('${c.code}')" style="white-space:nowrap">
-          <i class="fas fa-sign-in-alt"></i> 바로가기
-        </button>
-      </td>
+      <td><button class="btn btn-primary btn-sm" onclick="event.stopPropagation();impersonateLogin('${c.code}')"><i class="fas fa-sign-in-alt"></i> 접속</button></td>
     </tr>
   `).join('');
 
   const b2bRows = partners.map(p => `
-    <tr style="cursor:pointer" onclick="impersonateLogin('${p.code}')" title="${p.code} B2B 대시보드 대리접속">
-      <td>
-        <code style="font-weight:700;color:#6D28D9">${p.code}</code>
+    <tr onclick="impersonateLogin('${p.code}')" style="cursor:pointer">
+      <td><code style="font-size:12px;font-weight:700;color:#7c3aed;background:rgba(124,58,237,.08);padding:2px 6px;border-radius:5px">${p.code}</code></td>
+      <td style="display:flex;align-items:center;gap:8px">
+        ${p.brand_logo_url ? `<img src="${p.brand_logo_url}" style="width:22px;height:22px;object-fit:contain;border-radius:4px" onerror="this.style.display='none'">` : ''}
+        <span style="font-weight:600">${p.brand_name || p.name}</span>
       </td>
-      <td>
-        ${p.brand_logo_url ? `<img src="${p.brand_logo_url}" style="width:24px;height:24px;object-fit:contain;margin-right:6px;vertical-align:middle" onerror="this.style.display='none'">` : ''}
-        ${p.brand_name || p.name}
-      </td>
-      <td>${p.owner_name || '-'}</td>
-      <td>${p.type || '-'}</td>
-      <td>
-        <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${p.brand_color||'#6366f1'};vertical-align:middle;margin-right:4px"></span>
-        ${p.brand_color || '-'}
-      </td>
+      <td><span style="font-size:12px;color:var(--muted)">${p.owner_name || '-'}</span></td>
+      <td><span style="font-size:12px;color:var(--muted)">${p.type || '-'}</span></td>
+      <td><span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${p.brand_color||'#6366f1'};vertical-align:middle;margin-right:5px;border:1px solid rgba(0,0,0,.1)"></span><span style="font-size:11px;color:var(--muted)">${p.brand_color||'-'}</span></td>
       <td>${statusBadge(p.status)}</td>
-      <td>
-        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();impersonateLogin('${p.code}')" style="white-space:nowrap;background:#6D28D9;border-color:#6D28D9">
-          <i class="fas fa-sign-in-alt"></i> B2B 바로가기
-        </button>
-      </td>
+      <td><button class="btn btn-sm" style="background:#7c3aed;color:#fff" onclick="event.stopPropagation();impersonateLogin('${p.code}')"><i class="fas fa-sign-in-alt"></i> 접속</button></td>
     </tr>
   `).join('');
 
-  document.getElementById('page-body').innerHTML = `
-    <div class="kpi-grid">${kpiCards}</div>
+  const recentRows = recent_results.map(r => `
+    <tr>
+      <td style="font-size:11px;color:var(--muted);font-family:monospace">${r.id?.slice(0,8)}…</td>
+      <td><span style="font-weight:600">${r.user_name || '-'}</span></td>
+      <td><span style="background:${BC_COLORS[r.bc_primary]||'#888'};color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700">${r.bc_primary||'-'}</span></td>
+      <td><span style="font-size:12px;color:var(--muted)">${r.consultant_code || '미배정'}</span></td>
+      <td style="color:var(--muted);font-size:12px">${fmtDate(r.created_at)}</td>
+      <td><a href="/result/${r.id}" target="_blank" class="btn btn-ghost btn-sm"><i class="fas fa-external-link-alt"></i></a></td>
+    </tr>
+  `).join('');
 
-    <!-- 컨설턴트 목록 (구독 만료일 정렬) -->
-    <div class="card" style="margin-bottom:20px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-        <div class="card-title" style="margin-bottom:0"><i class="fas fa-user-tie" style="color:#3B82F6"></i> 컨설턴트 목록 <span style="font-size:12px;font-weight:400;color:#64748B">(구독 만료일 임박 순 · 클릭 시 대리접속)</span></div>
-        <button class="btn btn-primary btn-sm" onclick="navigateTo('consultants')"><i class="fas fa-plus"></i> 등록·관리</button>
+  // 월별 트렌드 데이터
+  const trendLabels = trend.map(t => t.month?.slice(5) || '');
+  const trendData = trend.map(t => t.count || 0);
+
+  // BC 분포 Top 8
+  const totalBc = bc_distribution.reduce((s, r) => s + r.cnt, 0) || 1;
+  const bcTop = bc_distribution.slice(0, 8);
+
+  document.getElementById('page-body').innerHTML = `
+    <!-- KPI 그리드 -->
+    <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">${kpiCards}</div>
+
+    <!-- 차트 행 -->
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:20px">
+      <div class="card" style="margin-bottom:0">
+        <div class="card-title"><i class="fas fa-chart-line"></i> 월별 신규 고객 트렌드 <span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:6px">최근 6개월</span></div>
+        <div class="chart-wrap"><canvas id="dash-trend-chart"></canvas></div>
       </div>
-      <div class="tbl-wrap">
-        <table>
-          <thead><tr><th>코드</th><th>이름</th><th>직종</th><th>등급</th><th>상태</th><th>구독 만료일</th><th>접속</th></tr></thead>
-          <tbody>${consRows || '<tr><td colspan="7"><div class="empty-state"><i class="fas fa-users"></i><p>등록된 컨설턴트 없음</p></div></td></tr>'}</tbody>
-        </table>
+      <div class="card" style="margin-bottom:0">
+        <div class="card-title"><i class="fas fa-chart-donut"></i> BC코드 분포</div>
+        <div class="chart-wrap"><canvas id="dash-bc-chart"></canvas></div>
       </div>
     </div>
 
-    <!-- B2B 파트너 목록 -->
-    <div class="card" style="margin-bottom:20px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-        <div class="card-title" style="margin-bottom:0"><i class="fas fa-building" style="color:#6D28D9"></i> B2B 파트너 목록 <span style="font-size:12px;font-weight:400;color:#64748B">(클릭 시 B2B 대시보드 대리접속)</span></div>
-        <button class="btn btn-primary btn-sm" onclick="navigateTo('b2b-partners')" style="background:#6D28D9;border-color:#6D28D9"><i class="fas fa-plus"></i> 등록·관리</button>
+    <!-- 인사이트 바 -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
+      <div class="card" style="margin-bottom:0;display:flex;align-items:center;gap:14px;padding:16px 20px">
+        <div style="width:40px;height:40px;border-radius:11px;background:rgba(181,69,46,.1);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0"><i class="fas fa-fire" style="color:var(--primary)"></i></div>
+        <div><div style="font-size:20px;font-weight:800;color:var(--text)">${summary.new_customers_this_month||0}</div><div style="font-size:12px;color:var(--muted)">이번 달 신규</div></div>
+      </div>
+      <div class="card" style="margin-bottom:0;display:flex;align-items:center;gap:14px;padding:16px 20px">
+        <div style="width:40px;height:40px;border-radius:11px;background:rgba(47,125,140,.1);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0"><i class="fas fa-heartbeat" style="color:var(--accent)"></i></div>
+        <div><div style="font-size:20px;font-weight:800;color:var(--text)">${summary.checkins_this_month||0}</div><div style="font-size:12px;color:var(--muted)">이번 달 체크인</div></div>
+      </div>
+      <div class="card" style="margin-bottom:0;display:flex;align-items:center;gap:14px;padding:16px 20px;cursor:pointer" onclick="navigateTo('analytics')">
+        <div style="width:40px;height:40px;border-radius:11px;background:rgba(220,38,38,.1);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0"><i class="fas fa-exclamation-triangle" style="color:var(--danger)"></i></div>
+        <div><div style="font-size:20px;font-weight:800;color:var(--text)">${summary.churn_risk_count||0}</div><div style="font-size:12px;color:var(--muted)">이탈 위험 고객 <i class="fas fa-chevron-right" style="font-size:10px"></i></div></div>
+      </div>
+    </div>
+
+    <!-- 컨설턴트 + 최근 결과 -->
+    <div style="display:grid;grid-template-columns:3fr 2fr;gap:16px;margin-bottom:20px">
+      <div class="card" style="margin-bottom:0">
+        <div class="section-header">
+          <div><div class="section-title"><i class="fas fa-user-tie" style="color:var(--primary)"></i> 컨설턴트 현황</div><div class="section-sub">구독 만료일 임박 순 · 클릭 시 대리접속</div></div>
+          <button class="btn btn-primary btn-sm" onclick="navigateTo('consultants')"><i class="fas fa-plus"></i> 관리</button>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>코드</th><th>이름</th><th>직종</th><th>등급</th><th>상태</th><th>만료일</th><th></th></tr></thead>
+            <tbody>${consRows || '<tr><td colspan="7"><div class="empty-state"><i class="fas fa-users"></i><p>등록된 컨설턴트 없음</p></div></td></tr>'}</tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:0">
+        <div class="section-header">
+          <div><div class="section-title"><i class="fas fa-clock" style="color:var(--accent)"></i> 최근 결과지</div></div>
+          <button class="btn btn-ghost btn-sm" onclick="navigateTo('results')">전체보기</button>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>이름</th><th>BC</th><th>컨설턴트</th><th>날짜</th><th></th></tr></thead>
+            <tbody>${recentRows || '<tr><td colspan="6"><div class="empty-state"><p>결과지 없음</p></div></td></tr>'}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- B2B 파트너 -->
+    <div class="card">
+      <div class="section-header">
+        <div><div class="section-title"><i class="fas fa-building" style="color:#7c3aed"></i> B2B 파트너 현황</div><div class="section-sub">클릭 시 B2B 대시보드 대리접속</div></div>
+        <button class="btn btn-sm" style="background:#7c3aed;color:#fff" onclick="navigateTo('b2b-partners')"><i class="fas fa-plus"></i> 관리</button>
       </div>
       <div class="tbl-wrap">
         <table>
-          <thead><tr><th>코드</th><th>브랜드명</th><th>원장명</th><th>업종</th><th>브랜드컬러</th><th>상태</th><th>접속</th></tr></thead>
+          <thead><tr><th>코드</th><th>브랜드명</th><th>원장명</th><th>업종</th><th>색상</th><th>상태</th><th></th></tr></thead>
           <tbody>${b2bRows || '<tr><td colspan="7"><div class="empty-state"><i class="fas fa-building"></i><p>등록된 B2B 파트너 없음</p></div></td></tr>'}</tbody>
         </table>
       </div>
     </div>
-
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-      <div class="card">
-        <div class="card-title"><i class="fas fa-chart-bar"></i> BC코드 분포</div>
-        ${bc_distribution.length ? bcBars : '<div class="empty-state"><i class="fas fa-chart-bar"></i><p>데이터 없음</p></div>'}
-      </div>
-      <div class="card">
-        <div class="card-title"><i class="fas fa-clock"></i> 최근 결과지</div>
-        <div class="tbl-wrap">
-          <table><thead><tr><th>ID</th><th>이름</th><th>BC</th><th>컨설턴트</th><th>날짜</th><th></th></tr></thead>
-          <tbody>${rows || '<tr><td colspan="6" class="empty-state">결과지 없음</td></tr>'}</tbody></table>
-        </div>
-      </div>
-    </div>
   `;
+
+  // Chart.js 렌더링
+  requestAnimationFrame(() => {
+    // 트렌드 라인 차트
+    const tCtx = document.getElementById('dash-trend-chart');
+    if (tCtx && trendData.length) {
+      new Chart(tCtx, {
+        type: 'line',
+        data: {
+          labels: trendLabels,
+          datasets: [{
+            label: '신규 고객',
+            data: trendData,
+            borderColor: '#b5452e',
+            backgroundColor: 'rgba(181,69,46,.08)',
+            borderWidth: 2.5,
+            pointBackgroundColor: '#b5452e',
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            fill: true,
+            tension: 0.4,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, grid: { color: 'rgba(26,26,23,.06)' }, ticks: { font: { size: 11 }, color: '#7c776b' } },
+            x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#7c776b' } }
+          }
+        }
+      });
+    }
+
+    // BC 도넛 차트
+    const bCtx = document.getElementById('dash-bc-chart');
+    if (bCtx && bcTop.length) {
+      new Chart(bCtx, {
+        type: 'doughnut',
+        data: {
+          labels: bcTop.map(r => r.bc_primary),
+          datasets: [{
+            data: bcTop.map(r => r.cnt),
+            backgroundColor: bcTop.map(r => BC_COLORS[r.bc_primary] || '#888'),
+            borderWidth: 2,
+            borderColor: '#fffdf8',
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'right', labels: { font: { size: 11 }, padding: 10, boxWidth: 12 } }
+          },
+          cutout: '65%',
+        }
+      });
+    }
+  });
 }
 
 // ═════════════════════════════════════════════
@@ -2263,6 +2552,192 @@ function toggleBcCard(id) {
   const isOpen = el.style.display !== 'none';
   el.style.display = isOpen ? 'none' : 'block';
   if (chevron) chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+}
+
+// ═════════════════════════════════════════════
+//  데이터 인사이트 (Phase 2+3)
+// ═════════════════════════════════════════════
+async function loadAnalytics() {
+  const [monthly, ranking, bcDist] = await Promise.all([
+    api('GET', '/admin/monthly-report').catch(() => null),
+    api('GET', '/admin/ranking?period=month').catch(() => null),
+    api('GET', '/admin/dashboard').catch(() => null),
+  ]);
+
+  const summary = monthly?.summary || {};
+  const trend = monthly?.monthly_trend || [];
+  const bcDistData = monthly?.bc_distribution || bcDist?.bc_distribution || [];
+  const consRanking = monthly?.consultant_ranking || [];
+  const growthRate = summary.growth_rate || 0;
+  const growthColor = growthRate >= 0 ? 'var(--success)' : 'var(--danger)';
+
+  // 세그먼트 분류 (BC코드 기반)
+  const totalCustomers = bcDistData.reduce((s, r) => s + (r.cnt||0), 0) || 1;
+  const top3Bc = bcDistData.slice(0, 3);
+  const churnRate = summary.churn_risk_count > 0 && summary.new_customers_this_month > 0
+    ? Math.round(summary.churn_risk_count / totalCustomers * 100) : 0;
+
+  document.getElementById('page-body').innerHTML = `
+    <!-- KPI 요약 -->
+    <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px">
+      <div class="kpi-card" style="--kpi-color:var(--primary)">
+        <div class="kpi-icon"><i class="fas fa-users"></i></div>
+        <div class="kpi-val">${totalCustomers}</div>
+        <div class="kpi-label">누적 총 고객</div>
+        <span class="kpi-delta ${growthRate>=0?'up':'down'}"><i class="fas fa-arrow-${growthRate>=0?'up':'down'}"></i> ${Math.abs(growthRate)}% 전월대비</span>
+      </div>
+      <div class="kpi-card" style="--kpi-color:var(--warn)">
+        <div class="kpi-icon"><i class="fas fa-exclamation-triangle"></i></div>
+        <div class="kpi-val" style="color:var(--danger)">${summary.churn_risk_count||0}</div>
+        <div class="kpi-label">이탈 위험 고객</div>
+        <span class="kpi-delta ${churnRate>10?'down':'up'}">${churnRate}% 이탈률</span>
+      </div>
+      <div class="kpi-card" style="--kpi-color:var(--accent)">
+        <div class="kpi-icon"><i class="fas fa-heartbeat"></i></div>
+        <div class="kpi-val">${summary.checkins_this_month||0}</div>
+        <div class="kpi-label">이번 달 체크인</div>
+        <span class="kpi-delta up">활성 고객 신호</span>
+      </div>
+      <div class="kpi-card" style="--kpi-color:var(--success)">
+        <div class="kpi-icon"><i class="fas fa-user-check"></i></div>
+        <div class="kpi-val">${summary.active_consultants||0}</div>
+        <div class="kpi-label">활성 컨설턴트</div>
+        <span class="kpi-delta up">서비스 중</span>
+      </div>
+    </div>
+
+    <!-- 차트 2열 -->
+    <div style="display:grid;grid-template-columns:3fr 2fr;gap:16px;margin-bottom:20px">
+      <div class="card" style="margin-bottom:0">
+        <div class="card-title"><i class="fas fa-chart-line"></i> 월별 신규 고객 추이 <span style="font-size:11px;font-weight:400;color:var(--muted)">(최근 6개월)</span></div>
+        <div class="chart-wrap"><canvas id="analytics-trend"></canvas></div>
+      </div>
+      <div class="card" style="margin-bottom:0">
+        <div class="card-title"><i class="fas fa-chart-pie"></i> BC코드 분포</div>
+        <div class="chart-wrap"><canvas id="analytics-bc"></canvas></div>
+      </div>
+    </div>
+
+    <!-- 컨설턴트 퍼포먼스 + 이탈 위험 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+      <div class="card" style="margin-bottom:0">
+        <div class="card-title"><i class="fas fa-trophy" style="color:var(--warn)"></i> 이달 컨설턴트 실적 TOP 5</div>
+        ${consRanking.length ? consRanking.map((c, i) => {
+          const medals = ['🥇','🥈','🥉','4','5'];
+          const barW = consRanking[0]?.result_cnt > 0 ? Math.round(c.result_cnt / consRanking[0].result_cnt * 100) : 0;
+          return `<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+            <div style="font-size:18px;width:28px;text-align:center">${medals[i]}</div>
+            <div style="flex:1">
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                <span style="font-size:13px;font-weight:600">${c.name}</span>
+                <span style="font-size:13px;font-weight:700;color:var(--primary)">${c.result_cnt}명</span>
+              </div>
+              <div class="progress-bar"><div class="progress-fill" style="width:${barW}%"></div></div>
+            </div>
+          </div>`;
+        }).join('') : '<div class="empty-state"><i class="fas fa-trophy"></i><p>데이터 없음</p></div>'}
+      </div>
+
+      <div class="card" style="margin-bottom:0">
+        <div class="card-title"><i class="fas fa-fire" style="color:var(--primary)"></i> 인기 BC코드 Top 3</div>
+        ${top3Bc.map((r, i) => {
+          const pct = Math.round(r.cnt / totalCustomers * 100);
+          const col = BC_COLORS[r.bc_primary] || '#888';
+          return `<div style="margin-bottom:16px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="background:${col};color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700">${r.bc_primary}</span>
+                <span style="font-size:12px;color:var(--muted)">${BC_LABELS[r.bc_primary]||'-'}</span>
+              </div>
+              <span style="font-size:14px;font-weight:700">${r.cnt}명 (${pct}%)</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${col}"></div></div>
+          </div>`;
+        }).join('')}
+
+        <hr class="divider">
+        <div style="background:rgba(181,69,46,.06);border-radius:12px;padding:14px">
+          <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:6px"><i class="fas fa-lightbulb"></i> 인사이트</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.6">
+            ${top3Bc[0] ? `<b>${top3Bc[0].bc_primary}</b>이 전체의 <b>${Math.round(top3Bc[0].cnt/totalCustomers*100)}%</b>로 가장 많습니다.` : ''}
+            ${churnRate > 15 ? `<br>⚠️ 이탈률이 ${churnRate}%로 높습니다. 3주 이상 미응답 고객 재활성화가 필요합니다.` : ''}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 생애주기 자동화 가이드 -->
+    <div class="card">
+      <div class="card-title"><i class="fas fa-robot"></i> 고객 생애주기 자동화 현황</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+        ${[
+          { step:'D+0', label:'설문 완료', icon:'fa-check-circle', color:'var(--success)', desc:'즉시 알림 발송' },
+          { step:'D+3', label:'초기 체크인', icon:'fa-heartbeat', color:'var(--accent)', desc:'3일 후 체크인 유도' },
+          { step:'D+21', label:'이탈 위험', icon:'fa-exclamation-triangle', color:'var(--warn)', desc:'21일 미응답 경보' },
+          { step:'D+30', label:'재활성화', icon:'fa-redo', color:'var(--danger)', desc:'30일 후 재참여 유도' },
+        ].map(s => `
+          <div style="text-align:center;padding:16px 10px;border:1px solid var(--border);border-radius:12px">
+            <div style="font-size:22px;margin-bottom:8px"><i class="fas ${s.icon}" style="color:${s.color}"></i></div>
+            <div style="font-size:13px;font-weight:700;color:var(--text)">${s.step}</div>
+            <div style="font-size:12px;font-weight:600;color:${s.color};margin:4px 0">${s.label}</div>
+            <div style="font-size:11px;color:var(--muted)">${s.desc}</div>
+          </div>`).join('')}
+      </div>
+      <div style="margin-top:16px;background:rgba(47,125,140,.07);border-radius:10px;padding:14px;font-size:12px;color:var(--muted);line-height:1.6">
+        <i class="fas fa-info-circle" style="color:var(--accent)"></i>
+        현재 <b style="color:var(--text)">${summary.churn_risk_count||0}명</b>이 21일 이상 미응답 상태입니다.
+        컨설턴트 대시보드에서 개별 카카오 알림을 발송하거나, 랭킹 페이지에서 컨설턴트별 이탈 현황을 확인하세요.
+        <a href="#" onclick="navigateTo('ranking')" style="color:var(--accent);font-weight:600;margin-left:6px">랭킹 보드 →</a>
+      </div>
+    </div>
+  `;
+
+  // Chart.js 렌더링
+  requestAnimationFrame(() => {
+    const tCtx = document.getElementById('analytics-trend');
+    if (tCtx && trend.length) {
+      new Chart(tCtx, {
+        type: 'bar',
+        data: {
+          labels: trend.map(t => t.month?.slice(5)||''),
+          datasets: [{
+            label: '신규 고객',
+            data: trend.map(t => t.count||0),
+            backgroundColor: trend.map((t,i) => i === trend.length-1 ? '#b5452e' : 'rgba(181,69,46,.35)'),
+            borderRadius: 6, borderSkipped: false,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, grid: { color: 'rgba(26,26,23,.06)' }, ticks: { font:{size:11}, color:'#7c776b' } },
+            x: { grid: { display: false }, ticks: { font:{size:11}, color:'#7c776b' } }
+          }
+        }
+      });
+    }
+    const bCtx = document.getElementById('analytics-bc');
+    if (bCtx && bcDistData.length) {
+      const top8 = bcDistData.slice(0,8);
+      new Chart(bCtx, {
+        type: 'doughnut',
+        data: {
+          labels: top8.map(r => r.bc_primary),
+          datasets: [{
+            data: top8.map(r => r.cnt),
+            backgroundColor: top8.map(r => BC_COLORS[r.bc_primary]||'#888'),
+            borderWidth: 2, borderColor: '#fffdf8',
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { position:'right', labels:{ font:{size:10}, padding:8, boxWidth:10 } } },
+          cutout: '60%',
+        }
+      });
+    }
+  });
 }
 
 // ═════════════════════════════════════════════
