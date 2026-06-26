@@ -2147,116 +2147,114 @@ app.get('/favicon.ico', async (c) => {
 })
 
 // ─── /og/survey — 설문 공유용 OG 이미지 ─────────────────────────────────
-// 카카오톡: 세로형(630×1200) 대형 이미지로 청첩장처럼 임팩트 있게 표시
-// 일반 SNS(트위터/페북): og:image width/height 메타로 1200×630 가로형 인식
-// → 세로형 SVG 하나로 양쪽 대응 (카카오가 자체 crop 처리)
+// 핵심 콘텐츠를 상단 50% 이내에 배치 → 카카오 crop 시 잘리지 않음
 app.get('/og/survey', (c) => {
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="630" height="1200" viewBox="0 0 630 1200">
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="630" height="1200" viewBox="0 0 630 1200">
   <defs>
-    <linearGradient id="bgS" x1="0" y1="0" x2="0.4" y2="1">
-      <stop offset="0%" stop-color="#c04e34"/>
-      <stop offset="50%" stop-color="#b5452e"/>
-      <stop offset="100%" stop-color="#8c3220"/>
+    <linearGradient id="bgS" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0%"   stop-color="#bf4e32"/>
+      <stop offset="50%"  stop-color="#b5452e"/>
+      <stop offset="100%" stop-color="#8a3020"/>
     </linearGradient>
-    <linearGradient id="fadeS" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#b5452e" stop-opacity="0"/>
-      <stop offset="100%" stop-color="#7a2a1a" stop-opacity="0.5"/>
-    </linearGradient>
+    <radialGradient id="hilS" cx="1" cy="0" r="0.9">
+      <stop offset="0%"   stop-color="#cc5a3a" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#b5452e" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="vigS" cx="0" cy="1" r="1.1">
+      <stop offset="0%"   stop-color="#6a2010" stop-opacity="0.50"/>
+      <stop offset="100%" stop-color="#b5452e" stop-opacity="0"/>
+    </radialGradient>
   </defs>
 
-  <!-- ── 배경 ── -->
+  <!-- 배경 -->
   <rect width="630" height="1200" fill="url(#bgS)"/>
-  <rect width="630" height="1200" fill="url(#fadeS)"/>
+  <rect width="630" height="1200" fill="url(#hilS)"/>
+  <rect width="630" height="1200" fill="url(#vigS)"/>
 
-  <!-- ── 장식: 대형 원 (우상단) ── -->
-  <circle cx="560" cy="90" r="220" fill="#c9583a" opacity="0.20"/>
-  <circle cx="600" cy="60" r="130" fill="#d4643f" opacity="0.15"/>
+  <!-- 장식 원 -->
+  <circle cx="570" cy="70"  r="180" fill="#c9583a" opacity="0.15"/>
+  <circle cx="60"  cy="1150" r="150" fill="#7a2a1a" opacity="0.25"/>
 
-  <!-- ── 장식: 소형 원 (좌하단) ── -->
-  <circle cx="60" cy="1130" r="160" fill="#8c3220" opacity="0.35"/>
-  <circle cx="-20" cy="1180" r="100" fill="#7a2a1a" opacity="0.40"/>
+  <!-- ══ 핵심 영역: y 60~480 (이미지 상단 40%) ══ -->
 
-  <!-- ── 장식: 중앙 우측 원 ── -->
-  <circle cx="590" cy="700" r="180" fill="#a03a26" opacity="0.18"/>
-
-  <!-- ── 상단 얇은 라인 ── -->
-  <rect x="60" y="88" width="44" height="1.5" fill="#f6f4ee" opacity="0.45"/>
-  <rect x="116" y="88" width="8" height="1.5" fill="#f6f4ee" opacity="0.25"/>
-
-  <!-- ── 브랜드 서브텍스트 상단 ── -->
-  <text x="60" y="80" font-family="Georgia,'Times New Roman',serif"
-        font-size="11" letter-spacing="6" fill="#f6f4ee" opacity="0.50">SLIMMIND</text>
-
-  <!-- ── 중앙 상단 여백 장식선 ── -->
-  <rect x="60" y="160" width="510" height="0.8" fill="#f6f4ee" opacity="0.10"/>
-
-  <!-- ── 메인 로고 "SlimMind" ── -->
-  <text x="315" y="520"
+  <!-- SLIMMIND 소형 브랜드 -->
+  <text x="315" y="90"
         text-anchor="middle"
         font-family="Georgia,'Times New Roman',serif"
-        font-size="82" font-weight="400" letter-spacing="6"
+        font-size="11" letter-spacing="8"
+        fill="#f6f4ee" opacity="0.45">SLIMMIND</text>
+
+  <!-- 상단 구분선 -->
+  <rect x="180" y="102" width="270" height="0.8" fill="#f6f4ee" opacity="0.25"/>
+
+  <!-- SlimMind 메인 로고 — y:200 (충분한 여백, 잘리지 않는 위치) -->
+  <text x="315" y="220"
+        text-anchor="middle"
+        font-family="Georgia,'Times New Roman',serif"
+        font-size="90" font-weight="300" letter-spacing="-2"
         fill="#f6f4ee" opacity="0.97">SlimMind</text>
 
-  <!-- ── 로고 하단 장식 구분선 ── -->
-  <rect x="255" y="548" width="120" height="1.5" fill="#f6f4ee" opacity="0.55"/>
+  <!-- 로고 하단 장식선 -->
+  <rect x="245" y="240" width="140" height="1.2" fill="#f6f4ee" opacity="0.45"/>
 
-  <!-- ── 핵심 카피 1 ── -->
-  <text x="315" y="620"
+  <!-- 카피 1 — y:295 -->
+  <text x="315" y="295"
         text-anchor="middle"
         font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
-        font-size="23" font-weight="300" letter-spacing="5"
-        fill="#f6f4ee" opacity="0.92">당신의 몸은 하나의 코드입니다.</text>
+        font-size="21" font-weight="300" letter-spacing="4"
+        fill="#f6f4ee" opacity="0.90">당신의 몸은 하나의 코드입니다.</text>
 
-  <!-- ── 핵심 카피 2 ── -->
-  <text x="315" y="665"
+  <!-- 카피 2 — y:335 -->
+  <text x="315" y="335"
         text-anchor="middle"
         font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
-        font-size="23" font-weight="300" letter-spacing="5"
-        fill="#f6f4ee" opacity="0.92">우리는 그 원인을 해독합니다.</text>
+        font-size="21" font-weight="300" letter-spacing="4"
+        fill="#f6f4ee" opacity="0.90">우리는 그 원인을 해독합니다.</text>
 
-  <!-- ── 중간 여백 장식선 ── -->
-  <rect x="60" y="730" width="510" height="0.8" fill="#f6f4ee" opacity="0.10"/>
+  <!-- 중간 구분선 -->
+  <rect x="60" y="380" width="510" height="0.6" fill="#f6f4ee" opacity="0.12"/>
 
-  <!-- ── 설명 텍스트 블록 ── -->
-  <text x="315" y="820"
-        text-anchor="middle"
-        font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
-        font-size="16" font-weight="300" letter-spacing="2"
-        fill="#f6f4ee" opacity="0.65">체형 분석 · 식이 패턴 · 호르몬 밸런스</text>
-  <text x="315" y="855"
-        text-anchor="middle"
-        font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
-        font-size="16" font-weight="300" letter-spacing="2"
-        fill="#f6f4ee" opacity="0.65">10가지 바디코드로 밝혀내는 나의 몸 설계도</text>
-
-  <!-- ── CTA 버튼 형태 장식 ── -->
-  <rect x="165" y="920" width="300" height="52" rx="26"
+  <!-- CTA 버튼 — y:420 (상단 35% 이내) -->
+  <rect x="170" y="400" width="290" height="52" rx="26"
         fill="#f6f4ee" opacity="0.12"/>
-  <rect x="166" y="921" width="298" height="50" rx="25"
-        fill="none" stroke="#f6f4ee" stroke-width="1" opacity="0.30"/>
-  <text x="315" y="951"
+  <rect x="170" y="400" width="290" height="52" rx="26"
+        fill="none" stroke="#f6f4ee" stroke-width="0.9" opacity="0.40"/>
+  <text x="315" y="432"
         text-anchor="middle"
         font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
-        font-size="15" letter-spacing="4"
+        font-size="14" letter-spacing="5"
         fill="#f6f4ee" opacity="0.85">지금 무료 진단 받기</text>
 
-  <!-- ── 영문 태그라인 ── -->
+  <!-- ══ 하단 여백 영역 (잘려도 상관없음) ══ -->
+
+  <rect x="60" y="530" width="510" height="0.6" fill="#f6f4ee" opacity="0.08"/>
+
+  <text x="315" y="610"
+        text-anchor="middle"
+        font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
+        font-size="15" font-weight="300" letter-spacing="2"
+        fill="#f6f4ee" opacity="0.50">체형 분석 · 식이 패턴 · 호르몬 밸런스</text>
+  <text x="315" y="646"
+        text-anchor="middle"
+        font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
+        font-size="15" font-weight="300" letter-spacing="2"
+        fill="#f6f4ee" opacity="0.50">10가지 바디코드로 밝혀내는 나의 몸 설계도</text>
+
+  <rect x="60" y="720" width="510" height="0.6" fill="#f6f4ee" opacity="0.07"/>
+
   <text x="315" y="1050"
         text-anchor="middle"
         font-family="Georgia,'Times New Roman',serif"
-        font-size="13" letter-spacing="7"
-        fill="#f6f4ee" opacity="0.38">BODY CODE ANALYSIS</text>
+        font-size="11" letter-spacing="7"
+        fill="#f6f4ee" opacity="0.25">BODY CODE ANALYSIS</text>
 
-  <!-- ── 하단 도메인 ── -->
   <text x="315" y="1150"
         text-anchor="middle"
         font-family="Georgia,serif"
-        font-size="12" letter-spacing="4"
-        fill="#f6f4ee" opacity="0.28">slimmind.com</text>
-
-  <!-- ── 하단 구분선 ── -->
-  <rect x="60" y="1120" width="510" height="0.8" fill="#f6f4ee" opacity="0.08"/>
+        font-size="11" letter-spacing="4"
+        fill="#f6f4ee" opacity="0.20">slimmind.com</text>
 </svg>`
   return c.body(svg, 200, {
     'Content-Type': 'image/svg+xml',
@@ -2264,146 +2262,134 @@ app.get('/og/survey', (c) => {
   })
 })
 
-// ─── /og/result — 결과지 공유용 OG 이미지 ───────────────────────────────
-// 카카오톡 세로형 대형 이미지 + 1:1 컨설팅 CTA
+// ─── /og/result — 결과지 공유용 OG 이미지 (시인성 최우선 개선) ──────────
 // 쿼리: ?name=홍길동&bc=BC-3&nick=하복부+지방형
 app.get('/og/result', (c) => {
   const name = c.req.query('name') || '고객'
   const bc   = c.req.query('bc')   || 'BC'
   const nick = c.req.query('nick') || '바디코드'
-  // XSS 방어: SVG 속성에 삽입될 특수문자 제거
   const safe = (s: string) => s.replace(/[<>"'&\\]/g, '').slice(0, 40)
   const safeName = safe(name)
   const safeBc   = safe(bc)
   const safeNick = safe(nick)
 
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="630" height="1200" viewBox="0 0 630 1200">
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="630" height="1200" viewBox="0 0 630 1200">
   <defs>
-    <linearGradient id="bgR" x1="0" y1="0" x2="0.3" y2="1">
-      <stop offset="0%" stop-color="#1e1c18"/>
-      <stop offset="60%" stop-color="#1a1a17"/>
-      <stop offset="100%" stop-color="#120f0a"/>
-    </linearGradient>
-    <linearGradient id="clayR" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#b5452e"/>
-      <stop offset="100%" stop-color="#8c3220"/>
+    <linearGradient id="bgR" x1="0" y1="0" x2="0.2" y2="1">
+      <stop offset="0%"   stop-color="#1c1a16"/>
+      <stop offset="100%" stop-color="#0e0c09"/>
     </linearGradient>
     <linearGradient id="amberR" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#c98a3c"/>
-      <stop offset="100%" stop-color="#e0a44a"/>
+      <stop offset="0%"   stop-color="#d4923f"/>
+      <stop offset="100%" stop-color="#e8b055"/>
     </linearGradient>
+    <radialGradient id="glowR" cx="0.9" cy="0.05" r="0.55">
+      <stop offset="0%"   stop-color="#b5452e" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#1c1a16" stop-opacity="0"/>
+    </radialGradient>
   </defs>
 
-  <!-- ── 배경 ── -->
+  <!-- 배경 -->
   <rect width="630" height="1200" fill="url(#bgR)"/>
+  <rect width="630" height="1200" fill="url(#glowR)"/>
 
-  <!-- ── 장식: 우상단 클레이 원 ── -->
-  <circle cx="580" cy="120" r="220" fill="#b5452e" opacity="0.13"/>
-  <circle cx="620" cy="80" r="120" fill="#c9583a" opacity="0.09"/>
+  <!-- 좌측 클레이 강조선 -->
+  <rect x="0" y="0" width="5" height="1200" fill="#b5452e" opacity="0.85"/>
 
-  <!-- ── 장식: 좌하단 원 ── -->
-  <circle cx="30" cy="1100" r="200" fill="#b5452e" opacity="0.10"/>
+  <!-- ══ 핵심 영역: y 55~520 (상단 43%) — 카카오 crop 시 온전히 보임 ══ -->
 
-  <!-- ── 장식: 중앙 앰버 원 (희미) ── -->
-  <circle cx="580" cy="620" r="150" fill="#c98a3c" opacity="0.07"/>
+  <!-- 브랜드 -->
+  <text x="72" y="78"
+        font-family="Georgia,'Times New Roman',serif"
+        font-size="11" letter-spacing="7"
+        fill="#c98a3c">SLIMMIND</text>
+  <rect x="72" y="88" width="380" height="0.8" fill="#f6f4ee" opacity="0.15"/>
+  <text x="72" y="106"
+        font-family="'Apple SD Gothic Neo','Malgun Gothic',sans-serif"
+        font-size="11" letter-spacing="2"
+        fill="#c98a3c" opacity="0.60">바디코드 정밀 분석</text>
 
-  <!-- ── 상단 브랜드 바 ── -->
-  <rect x="60" y="75" width="36" height="1.5" fill="#c98a3c" opacity="0.70"/>
-  <text x="60" y="68"
+  <!-- 고객 이름 — y:148 -->
+  <text x="72" y="148"
+        font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
+        font-size="15" letter-spacing="1"
+        fill="#f0ece2" opacity="0.75">${safeName}님의 바디코드 분석이 완료되었습니다</text>
+
+  <!-- BC 코드 배경 블록 -->
+  <rect x="60" y="165" width="510" height="130" rx="6" fill="#b5452e" opacity="0.10"/>
+  <rect x="60" y="165" width="5"   height="130" rx="2" fill="#b5452e" opacity="0.90"/>
+
+  <!-- BC 코드 대형 — y:270 -->
+  <text x="315" y="272"
+        text-anchor="middle"
+        font-family="Georgia,'Times New Roman',serif"
+        font-size="108" font-weight="700" letter-spacing="2"
+        fill="#c9563a">${safeBc}</text>
+
+  <!-- 닉네임 구분선 + 텍스트 — y:310~340 -->
+  <rect x="72" y="308" width="300" height="0.8" fill="#c98a3c" opacity="0.45"/>
+  <text x="72" y="340"
+        font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
+        font-size="24" letter-spacing="3" font-weight="500"
+        fill="#f0ece2">${safeNick}</text>
+
+  <!-- 분석 항목 — y:390~460 -->
+  <rect x="60" y="372" width="510" height="0.8" fill="#f6f4ee" opacity="0.10"/>
+
+  <rect x="72" y="393" width="3" height="20" rx="1.5" fill="#c98a3c"/>
+  <text x="88" y="408"
+        font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
+        font-size="16" fill="#f0ece2">체형 원인 분석 완료</text>
+
+  <rect x="72" y="425" width="3" height="20" rx="1.5" fill="#c98a3c"/>
+  <text x="88" y="440"
+        font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
+        font-size="16" fill="#f0ece2">맞춤 식단 처방 준비 완료</text>
+
+  <rect x="72" y="457" width="3" height="20" rx="1.5" fill="#c98a3c"/>
+  <text x="88" y="472"
+        font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
+        font-size="16" fill="#f0ece2">전문가 1:1 케어 프로그램 연결 가능</text>
+
+  <!-- CTA 버튼 — y:500 (상단 42%) -->
+  <rect x="60" y="492" width="510" height="0.8" fill="#f6f4ee" opacity="0.10"/>
+  <rect x="72" y="510" width="300" height="52" rx="8" fill="url(#amberR)"/>
+  <text x="222" y="542"
+        text-anchor="middle"
+        font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
+        font-size="16" letter-spacing="2" font-weight="700"
+        fill="#1a1a17">컨설팅 바로 예약하기</text>
+
+  <!-- ══ 하단 여백 (잘려도 괜찮음) ══ -->
+  <rect x="60" y="620" width="510" height="0.8" fill="#f6f4ee" opacity="0.08"/>
+
+  <text x="72" y="680"
+        font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
+        font-size="22" font-weight="700"
+        fill="#f0ece2" opacity="0.85">지금 바로 1:1 전문 컨설팅을</text>
+  <text x="72" y="714"
+        font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
+        font-size="22" font-weight="700"
+        fill="#f0ece2" opacity="0.85">예약하고 처방을 받아보세요.</text>
+  <text x="72" y="754"
+        font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
+        font-size="13"
+        fill="#c98a3c" opacity="0.80">반복 실패 없이, 원인부터 해결하는 맞춤 프로그램</text>
+
+  <text x="315" y="1100"
+        text-anchor="middle"
         font-family="Georgia,'Times New Roman',serif"
         font-size="11" letter-spacing="6"
-        fill="#c98a3c" opacity="0.75">SLIMMIND</text>
-  <text x="60" y="100"
-        font-family="'Apple SD Gothic Neo','Malgun Gothic',sans-serif"
-        font-size="11" letter-spacing="3"
-        fill="#c98a3c" opacity="0.40">Body Code Analysis</text>
-
-  <!-- ── 상단 구분선 ── -->
-  <rect x="60" y="130" width="510" height="0.8" fill="#f6f4ee" opacity="0.07"/>
-
-  <!-- ── 진단 완료 서브텍스트 ── -->
-  <text x="60" y="210"
-        font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
-        font-size="15" letter-spacing="2"
-        fill="#f6f4ee" opacity="0.50">${safeName}님의 정밀 바디코드 분석이 완료되었습니다</text>
-
-  <!-- ── BC 코드 대형 텍스트 ── -->
-  <text x="60" y="340"
-        font-family="Georgia,'Times New Roman',serif"
-        font-size="110" font-weight="700" letter-spacing="4"
-        fill="url(#clayR)" opacity="0.95">${safeBc}</text>
-
-  <!-- ── BC 코드 하단 장식선 ── -->
-  <rect x="60" y="365" width="80" height="2" fill="#b5452e" opacity="0.50"/>
-
-  <!-- ── 닉네임 ── -->
-  <text x="60" y="420"
-        font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
-        font-size="24" letter-spacing="4"
-        fill="#f6f4ee" opacity="0.75">${safeNick}</text>
-
-  <!-- ── 중간 구분선 ── -->
-  <rect x="60" y="480" width="510" height="0.8" fill="#f6f4ee" opacity="0.08"/>
-
-  <!-- ── 분석 결과 항목 ── -->
-  <text x="60" y="545"
-        font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
-        font-size="15" letter-spacing="1"
-        fill="#c98a3c" opacity="0.80">&#x25AA;  체형 원인 분석 완료</text>
-  <text x="60" y="585"
-        font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
-        font-size="15" letter-spacing="1"
-        fill="#c98a3c" opacity="0.80">&#x25AA;  맞춤 식단 처방 준비</text>
-  <text x="60" y="625"
-        font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
-        font-size="15" letter-spacing="1"
-        fill="#c98a3c" opacity="0.80">&#x25AA;  전문가 1:1 케어 연결 가능</text>
-
-  <!-- ── 중간 구분선 2 ── -->
-  <rect x="60" y="680" width="510" height="0.8" fill="#f6f4ee" opacity="0.08"/>
-
-  <!-- ── CTA 헤드라인 ── -->
-  <text x="60" y="760"
-        font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
-        font-size="22" font-weight="500" letter-spacing="2"
-        fill="#f6f4ee" opacity="0.92">지금 바로 1:1 전문 컨설팅을</text>
-  <text x="60" y="798"
-        font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
-        font-size="22" font-weight="500" letter-spacing="2"
-        fill="#f6f4ee" opacity="0.92">예약하고 나만의 처방을 받아보세요.</text>
-
-  <!-- ── CTA 서브텍스트 ── -->
-  <text x="60" y="848"
-        font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
-        font-size="14" letter-spacing="1"
-        fill="#f6f4ee" opacity="0.42">반복되는 다이어트 실패, 이제 원인부터 해결하세요.</text>
-
-  <!-- ── CTA 버튼 형태 장식 ── -->
-  <rect x="60" y="900" width="320" height="54" rx="27"
-        fill="url(#amberR)" opacity="0.90"/>
-  <text x="220" y="933"
-        text-anchor="middle"
-        font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
-        font-size="16" letter-spacing="3" font-weight="500"
-        fill="#1a1a17" opacity="0.95">컨설팅 바로 예약하기</text>
-
-  <!-- ── 하단 구분선 ── -->
-  <rect x="60" y="1050" width="510" height="0.8" fill="#f6f4ee" opacity="0.08"/>
-
-  <!-- ── 영문 태그라인 ── -->
-  <text x="315" y="1110"
-        text-anchor="middle"
-        font-family="Georgia,'Times New Roman',serif"
-        font-size="12" letter-spacing="6"
-        fill="#f6f4ee" opacity="0.28">PREMIUM BODY CODE ANALYSIS</text>
-
-  <!-- ── 하단 도메인 ── -->
+        fill="#c98a3c" opacity="0.35">PREMIUM BODY CODE ANALYSIS</text>
   <text x="315" y="1150"
         text-anchor="middle"
         font-family="Georgia,serif"
-        font-size="11" letter-spacing="4"
-        fill="#f6f4ee" opacity="0.22">slimmind.com</text>
+        font-size="10" letter-spacing="4"
+        fill="#f6f4ee" opacity="0.18">slimmind.com</text>
+
+  <rect x="0" y="1196" width="630" height="4" fill="#b5452e" opacity="0.55"/>
 </svg>`
   return c.body(svg, 200, {
     'Content-Type': 'image/svg+xml',
