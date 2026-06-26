@@ -1208,7 +1208,7 @@ app.get('/api/b2b/customer-lookup', requireB2B(), async (c) => {
 app.get('/api/admin/settlement', requireRole('MASTER'), async (c) => {
   const db = c.env.DB
   const month = c.req.query('month') || new Date().toISOString().slice(0, 7)
-  // 컨설턴트별 해당 월 완료 건수
+  // 컨설턴트별 해당 월 완료 건수 (program_price 컬럼 없음 → 건당 150,000 고정)
   const rows = await db.prepare(`
     SELECT
       r.consultant_code,
@@ -1216,8 +1216,8 @@ app.get('/api/admin/settlement', requireRole('MASTER'), async (c) => {
       con.phone AS consultant_phone,
       con.grade AS consultant_grade,
       COUNT(*) AS monthly_count,
-      SUM(CASE WHEN r.program_price IS NOT NULL THEN r.program_price ELSE 150000 END) AS total_sales,
-      SUM(CASE WHEN r.program_price IS NOT NULL THEN r.program_price ELSE 150000 END) * 0.25 AS settlement_amount
+      COUNT(*) * 150000 AS total_sales,
+      COUNT(*) * 150000 * 0.25 AS settlement_amount
     FROM results r
     LEFT JOIN consultants con ON con.code = r.consultant_code
     WHERE strftime('%Y-%m', r.created_at) = ?
@@ -1228,7 +1228,7 @@ app.get('/api/admin/settlement', requireRole('MASTER'), async (c) => {
   // 전체 월별 매출
   const total = await db.prepare(`
     SELECT COUNT(*) as cnt,
-           SUM(CASE WHEN program_price IS NOT NULL THEN program_price ELSE 150000 END) as total
+           COUNT(*) * 150000 as total
     FROM results WHERE strftime('%Y-%m', created_at) = ?
   `).bind(month).first<any>()
   return c.json({
