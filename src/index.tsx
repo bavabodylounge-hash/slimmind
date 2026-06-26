@@ -1326,6 +1326,7 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
           try { return v ? JSON.parse(v) : fallback } catch { return fallback }
         }
         const diagResult = {
+          result_id:       diagRow.id,                                  // ✅ 가족코드 fcInit용 result_id 추가
           bc_primary:      diagRow.bc_code_key || diagRow.bc_primary,   // ✅ BC-6 형태 우선
           bc_code:         diagRow.bc_code_key || diagRow.bc_primary,   // ✅ BC-6 형태 우선
           bc_nickname:     diagRow.bc_nickname || diagRow.bc_primary,   // 닉네임 (bc_primary가 닉네임일 수도)
