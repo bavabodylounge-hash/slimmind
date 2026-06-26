@@ -293,6 +293,7 @@
         <div class="nav-item" data-page="diagnosis-results"><i class="fas fa-clipboard-list" style="color:#b5452e"></i> 바디코드 진단 결과지</div>
         <div class="nav-item" data-page="results"><i class="fas fa-file-medical"></i> 고객 결과 관리</div>
         <div class="nav-item" data-page="coupons"><i class="fas fa-ticket-alt" style="color:#e08a3c"></i> 퀴즈 쿠폰 관리</div>
+        <div class="nav-item" data-page="notifications"><i class="fas fa-bell" style="color:#4CAF50"></i> 설문 완료 알림 <span id="adminNotifBadge" style="display:none;background:#e53935;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700;margin-left:4px;"></span></div>
         <div class="nav-item" data-page="bc-codes"><i class="fas fa-dna"></i> BC코드 처방 편집</div>
         <div class="nav-section-label">바디코드</div>
         <div class="nav-item" data-page="bc-library"><i class="fas fa-dna"></i> 바디코드 도감</div>
@@ -873,7 +874,7 @@ document.querySelectorAll('.nav-item').forEach(el => {
 function navigateTo(page) {
   currentPage = page;
   document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.page === page));
-  const titles = { dashboard:'대시보드', consultants:'컨설턴트 관리', 'b2b-partners':'B2B 파트너 관리', 'guide-consultant':'컨설턴트 이용법', 'guide-b2b':'B2B 파트너 이용법', 'diagnosis-results':'바디코드 진단 결과지', results:'고객 결과 관리', coupons:'퀴즈 쿠폰 관리', 'bc-codes':'BC코드 처방 편집', settings:'설정', 'kakao-settings':'카카오 설정', 'monthly-report':'월간 AI 리포트' };
+  const titles = { dashboard:'대시보드', consultants:'컨설턴트 관리', 'b2b-partners':'B2B 파트너 관리', 'guide-consultant':'컨설턴트 이용법', 'guide-b2b':'B2B 파트너 이용법', 'diagnosis-results':'바디코드 진단 결과지', results:'고객 결과 관리', coupons:'퀴즈 쿠폰 관리', notifications:'설문 완료 알림', 'bc-codes':'BC코드 처방 편집', settings:'설정', 'kakao-settings':'카카오 설정', 'monthly-report':'월간 AI 리포트' };
   document.getElementById('topbar-title').textContent = titles[page] || page;
   const body = document.getElementById('page-body');
   body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted)"><i class="fas fa-circle-notch fa-spin fa-2x"></i></div>';
@@ -885,6 +886,7 @@ function navigateTo(page) {
   else if (page === 'diagnosis-results') loadDiagnosisResults();
   else if (page === 'results') loadResults();
   else if (page === 'coupons') loadCoupons();
+  else if (page === 'notifications') loadAdminNotifications();
   else if (page === 'bc-codes') loadBcCodes();
   else if (page === 'bc-library') loadBcLibrary();
   else if (page === 'ranking') loadRanking();
@@ -929,12 +931,21 @@ async function impersonateLogin(code) {
 }
 
 async function loadDashboard() {
-  // 대시보드 + 컨설턴트목록 + B2B목록 동시 로드
-  const [data, consData, b2bData] = await Promise.all([
+  // 대시보드 + 컨설턴트목록 + B2B목록 + 알림 수 동시 로드
+  const [data, consData, b2bData, notifData] = await Promise.all([
     api('GET', '/admin/dashboard'),
     api('GET', '/admin/consultants?limit=200'),
     api('GET', '/admin/b2b-partners?limit=200'),
+    api('GET', '/admin/notifications?limit=1&unread=1').catch(() => null),
   ]);
+
+  // 알림 배지 업데이트
+  const badge = document.getElementById('adminNotifBadge');
+  if (badge && notifData) {
+    const uc = notifData.unread_count || 0;
+    if (uc > 0) { badge.style.display = ''; badge.textContent = uc; }
+    else badge.style.display = 'none';
+  }
   if (!data) return;
   const { kpi, recent_results, bc_distribution } = data;
 
@@ -1748,6 +1759,141 @@ async function markCouponUsed(id, code) {
   } catch(e) {
     toast('오류: ' + e.message, 'error');
   }
+}
+
+// ═════════════════════════════════════════════
+//  설문 완료 알림 관리
+// ═════════════════════════════════════════════
+async function loadAdminNotifications(unreadOnly = false) {
+  const body = document.getElementById('page-body');
+  body.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted)"><i class="fas fa-circle-notch fa-spin fa-2x"></i></div>';
+
+  const url = '/admin/notifications?limit=200' + (unreadOnly ? '&unread=1' : '');
+  const data = await api('GET', url);
+  if (!data) return;
+
+  const notifs = data.notifications || [];
+  const total  = data.total_count  || 0;
+  const unread = data.unread_count || 0;
+
+  const rows = notifs.map(n => {
+    const isRead = n.is_read === 1;
+    const notifiedAt = n.notified_at ? n.notified_at.replace('T', ' ').slice(0, 16) : '-';
+    return `<tr style="${!isRead ? 'background:#f0fdf4;font-weight:600' : ''}">
+      <td style="font-size:11px;color:var(--muted)">${n.id}</td>
+      <td><code style="font-size:12px">${(n.result_id||'').slice(0,14)}…</code></td>
+      <td><b>${n.ref_code || '-'}</b></td>
+      <td>${n.user_name || '<span style="color:var(--muted)">미상</span>'}</td>
+      <td>${n.phone || '-'}</td>
+      <td>
+        <span style="font-size:11px;padding:3px 9px;border-radius:20px;font-weight:700;
+          background:${!isRead ? '#dcfce7' : '#f1f5f9'};color:${!isRead ? '#166534' : '#94a3b8'}">
+          ${!isRead ? '🔔 신규' : '읽음'}
+        </span>
+      </td>
+      <td style="font-size:12px;color:var(--muted)">${notifiedAt}</td>
+      <td>
+        ${!isRead
+          ? `<button class="btn btn-sm" style="background:#4CAF50;color:#fff;border:none;font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer"
+              onclick="markNotifRead(${n.id})">읽음 처리</button>`
+          : `<span style="font-size:11px;color:var(--muted)">완료</span>`}
+      </td>
+    </tr>`;
+  }).join('');
+
+  body.innerHTML = `
+    <div style="padding:24px 24px 0">
+      <!-- 통계 카드 -->
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:22px;max-width:500px">
+        <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px 20px">
+          <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">
+            <i class="fas fa-bell" style="color:#4CAF50;margin-right:5px"></i>전체 알림
+          </div>
+          <div style="font-size:28px;font-weight:900;color:var(--text)">${total}<span style="font-size:14px;font-weight:400;color:var(--muted);margin-left:4px">건</span></div>
+        </div>
+        <div style="background:${unread > 0 ? '#f0fdf4' : '#fff'};border:${unread > 0 ? '1.5px solid #4CAF50' : '1px solid var(--border)'};border-radius:12px;padding:18px 20px">
+          <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">
+            <i class="fas fa-bell" style="color:#e53935;margin-right:5px"></i>미읽은 알림
+          </div>
+          <div style="font-size:28px;font-weight:900;color:${unread > 0 ? '#16a34a' : 'var(--text)'}">
+            ${unread}<span style="font-size:14px;font-weight:400;color:var(--muted);margin-left:4px">건</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 필터 + 액션 바 -->
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+        <button class="btn ${unreadOnly ? 'btn-primary' : 'btn-ghost'}" onclick="loadAdminNotifications(true)">
+          <i class="fas fa-bell"></i> 미읽은 것만
+        </button>
+        <button class="btn ${!unreadOnly ? 'btn-primary' : 'btn-ghost'}" onclick="loadAdminNotifications(false)">
+          <i class="fas fa-list"></i> 전체 보기
+        </button>
+        ${unread > 0 ? `<button class="btn btn-ghost" onclick="markAllNotifsRead()" style="margin-left:auto;color:#4CAF50;border-color:#4CAF50">
+          <i class="fas fa-check-double"></i> 전체 읽음 처리
+        </button>` : ''}
+        <button class="btn btn-ghost" onclick="loadAdminNotifications(${unreadOnly})" style="${unread === 0 ? 'margin-left:auto' : ''}">
+          <i class="fas fa-sync-alt"></i> 새로고침
+        </button>
+      </div>
+    </div>
+
+    <!-- 테이블 -->
+    <div style="padding:0 24px 32px">
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:40px">#</th>
+              <th>결과지 ID</th>
+              <th>담당자 코드</th>
+              <th>고객명</th>
+              <th>전화번호</th>
+              <th>상태</th>
+              <th>알림 시각</th>
+              <th>처리</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows || '<tr><td colspan="8" class="empty-state">알림이 없습니다</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  // 상단 배지 업데이트
+  const badge = document.getElementById('adminNotifBadge');
+  if (badge) {
+    if (unread > 0) { badge.style.display = ''; badge.textContent = unread; }
+    else badge.style.display = 'none';
+  }
+}
+
+async function markNotifRead(id) {
+  try {
+    const res = await api('POST', '/admin/notifications/read', { ids: [id] });
+    if (res && res.ok) {
+      toast('읽음 처리 완료', 'success');
+      loadAdminNotifications();
+    } else {
+      toast('처리 실패', 'error');
+    }
+  } catch(e) { toast('오류: ' + e.message, 'error'); }
+}
+
+async function markAllNotifsRead() {
+  if (!confirm('미읽은 알림을 모두 읽음 처리하시겠습니까?')) return;
+  try {
+    const res = await api('POST', '/admin/notifications/read', { ref_code: '__ALL_ADMIN__' });
+    // ref_code 없이 전체 처리 — 백엔드에서 ref_code 없이 ids도 없으면 전체 읽음
+    await fetch('/api/admin/notifications/read-all', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('sm_token') || '') }
+    }).catch(() => null);
+    toast('전체 읽음 처리 완료', 'success');
+    loadAdminNotifications();
+  } catch(e) { toast('오류: ' + e.message, 'error'); }
 }
 
 // ═════════════════════════════════════════════

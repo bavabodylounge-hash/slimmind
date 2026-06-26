@@ -3586,4 +3586,176 @@ app.get('/api/admin/coupons', requireRole('MASTER'), async (c) => {
   }
 })
 
+// ══════════════════════════════════════════════════════════════════
+//  POST /api/survey/notify
+//  설문 완료 후 담당자(ref_code)에게 알림 전송 (공개 API)
+//  Body: { result_id: string, ref_code: string }
+// ══════════════════════════════════════════════════════════════════
+app.post('/api/survey/notify', async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not available' }, 503)
+
+  try {
+    const body = await c.req.json().catch(() => ({})) as any
+    const result_id = String(body.result_id || '').trim()
+    const ref_code  = String(body.ref_code  || '').trim()
+
+    if (!ref_code) return c.json({ error: 'ref_code 필요' }, 400)
+
+    // 중복 알림 방지 — 같은 result_id+ref_code 조합 5분 내 재전송 차단
+    const recent = await db.prepare(
+      `SELECT id FROM survey_notifications
+       WHERE result_id = ? AND ref_code = ?
+         AND notified_at >= datetime('now', '-5 minutes')
+       LIMIT 1`
+    ).bind(result_id, ref_code).first<any>()
+
+    if (recent) {
+      return c.json({ ok: true, duplicate: true, message: '이미 알림이 전송되었습니다.' })
+    }
+
+    await db.prepare(
+      `INSERT INTO survey_notifications (result_id, ref_code) VALUES (?, ?)`
+    ).bind(result_id, ref_code).run()
+
+    return c.json({ ok: true })
+  } catch (e: any) {
+    console.error('[survey/notify]', e)
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ══════════════════════════════════════════════════════════════════
+//  GET /api/notifications?ref_code=XXX
+//  담당자(ref_code) 페이지용 — 미읽은 알림 목록 조회
+//  (consultant.html / b2b.html 에서 호출)
+// ══════════════════════════════════════════════════════════════════
+app.get('/api/notifications', async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not available' }, 503)
+
+  const ref_code = c.req.query('ref_code')?.trim() || ''
+  if (!ref_code) return c.json({ error: 'ref_code 필요' }, 400)
+
+  try {
+    const limit = Math.min(Number(c.req.query('limit') || 50), 200)
+
+    // 알림 목록 (최신순)
+    const { results } = await db.prepare(
+      `SELECT n.id, n.result_id, n.ref_code, n.is_read, n.notified_at,
+              d.user_name, d.phone
+       FROM survey_notifications n
+       LEFT JOIN diagnoses d ON d.id = n.result_id
+       WHERE n.ref_code = ?
+       ORDER BY n.notified_at DESC
+       LIMIT ?`
+    ).bind(ref_code, limit).all<any>()
+
+    // 미읽은 알림 수
+    const unread = await db.prepare(
+      `SELECT COUNT(*) as cnt FROM survey_notifications WHERE ref_code = ? AND is_read = 0`
+    ).bind(ref_code).first<any>()
+
+    return c.json({
+      ok: true,
+      notifications: results || [],
+      unread_count: unread?.cnt ?? 0
+    })
+  } catch (e: any) {
+    console.error('[notifications GET]', e)
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ══════════════════════════════════════════════════════════════════
+//  POST /api/notifications/read
+//  알림 읽음 처리 — Body: { ids: number[] } 또는 { ref_code: string } (전체 읽음)
+// ══════════════════════════════════════════════════════════════════
+app.post('/api/notifications/read', async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not available' }, 503)
+
+  try {
+    const body = await c.req.json().catch(() => ({})) as any
+    const ref_code = String(body.ref_code || '').trim()
+    const ids: number[] = Array.isArray(body.ids) ? body.ids : []
+
+    if (!ref_code && ids.length === 0) return c.json({ error: '파라미터 필요' }, 400)
+
+    if (ids.length > 0) {
+      // 특정 ID들 읽음 처리
+      const placeholders = ids.map(() => '?').join(',')
+      await db.prepare(
+        `UPDATE survey_notifications SET is_read = 1, read_at = datetime('now')
+         WHERE id IN (${placeholders})`
+      ).bind(...ids).run()
+    } else if (ref_code) {
+      // ref_code 전체 읽음 처리
+      await db.prepare(
+        `UPDATE survey_notifications SET is_read = 1, read_at = datetime('now')
+         WHERE ref_code = ? AND is_read = 0`
+      ).bind(ref_code).run()
+    }
+
+    return c.json({ ok: true })
+  } catch (e: any) {
+    console.error('[notifications/read]', e)
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ══════════════════════════════════════════════════════════════════
+//  POST /api/admin/notifications/read-all
+//  관리자용 — 전체 알림 읽음 처리 (MASTER 전용)
+// ══════════════════════════════════════════════════════════════════
+app.post('/api/admin/notifications/read-all', requireRole('MASTER'), async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not available' }, 503)
+  try {
+    await db.prepare(
+      `UPDATE survey_notifications SET is_read = 1, read_at = datetime('now') WHERE is_read = 0`
+    ).run()
+    return c.json({ ok: true })
+  } catch (e: any) {
+    console.error('[admin/notifications/read-all]', e)
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ══════════════════════════════════════════════════════════════════
+//  GET /api/admin/notifications
+//  관리자용 — 전체 알림 목록 (MASTER 전용)
+// ══════════════════════════════════════════════════════════════════
+app.get('/api/admin/notifications', requireRole('MASTER'), async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not available' }, 503)
+
+  try {
+    const limit  = Math.min(Number(c.req.query('limit') || 100), 500)
+    const unreadOnly = c.req.query('unread') === '1'
+
+    let query = `SELECT n.id, n.result_id, n.ref_code, n.is_read, n.notified_at,
+                        d.user_name, d.phone
+                 FROM survey_notifications n
+                 LEFT JOIN diagnoses d ON d.id = n.result_id`
+    if (unreadOnly) query += ` WHERE n.is_read = 0`
+    query += ` ORDER BY n.notified_at DESC LIMIT ?`
+
+    const { results } = await db.prepare(query).bind(limit).all<any>()
+
+    const total  = await db.prepare(`SELECT COUNT(*) as cnt FROM survey_notifications`).first<any>()
+    const unread = await db.prepare(`SELECT COUNT(*) as cnt FROM survey_notifications WHERE is_read = 0`).first<any>()
+
+    return c.json({
+      ok: true,
+      notifications: results || [],
+      total_count:   total?.cnt  ?? 0,
+      unread_count:  unread?.cnt ?? 0
+    })
+  } catch (e: any) {
+    console.error('[admin/notifications GET]', e)
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
 export default app
