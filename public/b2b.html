@@ -42,7 +42,7 @@
       --sidebar-bg:    #1a1a17;
       --sidebar-width: 240px;
     }
-    body { font-family: 'Pretendard', 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; }
+    body { font-family: 'Pretendard', 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; word-break: keep-all; overflow-wrap: break-word; }
 
     /* ── 로그인 ─── */
     #login-page {
@@ -985,9 +985,6 @@ async function loadCustomers(search = '') {
       </td>
       <td style="font-size:12px;color:var(--muted)">${fmtDate(r.created_at)}</td>
       <td style="white-space:nowrap">
-        <button class="btn btn-sm" style="background:${color};color:#fff;margin-right:4px" onclick="toggleRecommend('${r.id}', this)">
-          <i class="fas fa-magic"></i> 추천
-        </button>
         <button class="btn btn-primary btn-sm" onclick="openB2bResult('${r.id}')" style="margin-right:4px">
           <i class="fas fa-external-link-alt"></i> 결과지
         </button>
@@ -995,9 +992,6 @@ async function loadCustomers(search = '') {
           <i class="fas fa-link"></i>
         </button>
       </td>
-    </tr>
-    <tr id="recommend-${r.id}" style="display:none">
-      <td colspan="5" style="padding:0;background:transparent"></td>
     </tr>
   `).join('');
 
@@ -1012,7 +1006,7 @@ async function loadCustomers(search = '') {
     </div>
     <div style="font-size:13px;color:var(--muted);margin-bottom:12px">
       총 <strong style="color:var(--text)">${(data.results||[]).length}명</strong>
-      <span style="margin-left:8px;font-size:12px;color:${color}">· ✨ 추천 버튼으로 BC 맞춤 시술을 바로 확인하세요</span>
+      <span style="margin-left:8px;font-size:12px;color:var(--muted)">· 결과지를 클릭하거나 링크를 복사해 고객에게 공유하세요</span>
     </div>
     <div class="card" style="padding:0">
       <div class="tbl-wrap">
@@ -1023,87 +1017,6 @@ async function loadCustomers(search = '') {
       </div>
     </div>
   `;
-}
-
-// ─── BC 맞춤 시술 추천 인라인 토글 ────────────
-const _recommendCache = {};
-async function toggleRecommend(resultId, btn) {
-  const row = document.getElementById(`recommend-${resultId}`);
-  if (!row) return;
-  const color = BRAND.brand_color || '#6366f1';
-
-  // 이미 열려있으면 닫기
-  if (row.style.display !== 'none') {
-    row.style.display = 'none';
-    btn.innerHTML = '<i class="fas fa-magic"></i> 추천';
-    btn.style.opacity = '1';
-    return;
-  }
-
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-  btn.disabled = true;
-
-  try {
-    let rec = _recommendCache[resultId];
-    if (!rec) {
-      rec = await api('GET', `/b2b/recommend/${resultId}`);
-      if (rec) _recommendCache[resultId] = rec;
-    }
-
-    if (!rec || rec.error) {
-      const msg = rec?.error || '추천 데이터 없음';
-      row.querySelector('td').innerHTML = `
-        <div style="padding:12px 16px;color:var(--muted);font-size:13px">
-          ℹ️ ${msg === '권한 없음 또는 결과지 미존재' ? '이 파트너사에 등록된 시술 데이터가 없습니다.' : msg}
-        </div>`;
-      row.style.display = '';
-      btn.innerHTML = '<i class="fas fa-magic"></i> 추천';
-      btn.disabled = false;
-      return;
-    }
-
-    const treatments = rec.treatments || [];
-    const treatCards = treatments.length > 0
-      ? treatments.map(t => `
-        <div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:12px 14px;flex:0 0 auto;width:180px">
-          <div style="font-weight:700;font-size:13px;color:#1f2937;margin-bottom:4px">${t.program_name}</div>
-          <div style="font-size:12px;color:${color};font-weight:600;margin-bottom:4px">₩${(t.price||0).toLocaleString()}~</div>
-          <div style="font-size:11px;color:#6b7280;line-height:1.4">${t.description || ''}</div>
-          <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:3px">
-            ${(t.tags||'').split(',').filter(Boolean).slice(0,3).map(tag=>
-              `<span style="font-size:10px;background:${color}20;color:${color};padding:1px 6px;border-radius:20px">${tag}</span>`
-            ).join('')}
-          </div>
-        </div>`).join('')
-      : `<div style="font-size:13px;color:var(--muted);padding:8px 0">등록된 맞춤 시술이 없습니다.</div>`;
-
-    row.querySelector('td').innerHTML = `
-      <div style="padding:16px;background:linear-gradient(135deg,${color}08,${color}15);border-top:2px solid ${color}30">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-          <div style="background:${color};color:#fff;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700">
-            ✨ ${rec.bc_code} 맞춤 추천
-          </div>
-          <div>
-            <div style="font-size:13px;font-weight:700;color:#1f2937">${rec.recommend_title}</div>
-            <div style="font-size:11px;color:#6b7280;margin-top:2px">${rec.customer_name}님 · ${treatments.length}개 시술 매칭</div>
-          </div>
-        </div>
-        <div style="font-size:12px;color:#4b5563;background:#fff;border-left:3px solid ${color};padding:8px 12px;border-radius:0 6px 6px 0;margin-bottom:14px;line-height:1.6">
-          💬 ${rec.recommend_reason}
-        </div>
-        <div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:4px">
-          ${treatCards}
-        </div>
-      </div>`;
-    row.style.display = '';
-    btn.innerHTML = '<i class="fas fa-times"></i> 닫기';
-    btn.style.opacity = '0.8';
-  } catch(e) {
-    toast('추천 로드 실패: ' + e, 'error');
-    btn.innerHTML = '<i class="fas fa-magic"></i> 추천';
-  } finally {
-    btn.disabled = false;
-  }
 }
 
 // ─── 결과지 토큰 링크 (B2B 전용) ────────────
@@ -1385,29 +1298,99 @@ function showCustomerPrescription(customer, color) {
         </div>
       </div>` : ''}
 
-      <!-- ★ B2B 파트너 전용 해석 섹션 불러오기 버튼 -->
+      <!-- ★ B2B 파트너 전용 해석 + 업체 등록 프로그램 자동 로드 -->
       <div id="b2b-partner-rx-${customer.id}" style="margin-top:4px">
-        <button class="btn btn-primary btn-sm" onclick="loadB2bPartnerRx('${customer.bc_primary}', '${customer.id}', '${color.replace('#','')}')" style="width:100%;background:${color};border-color:${color}">
-          <i class="fas fa-star"></i> 파트너 전용 해석 & 업종별 추천 보기
-        </button>
+        <div style="text-align:center;padding:14px;color:var(--muted);font-size:13px">
+          <i class="fas fa-circle-notch fa-spin"></i> 파트너 전용 해석 및 등록 프로그램 불러오는 중...
+        </div>
       </div>
     </div>
   `;
+
+  // 자동으로 파트너 전용 해석 + 업체 등록 프로그램 로드
+  loadB2bPartnerRxAuto(customer.bc_primary, customer.id, color);
 }
 
-// ── B2B 파트너 전용 해석 섹션 (인라인 로드) ─────────────────
-async function loadB2bPartnerRx(bcCode, customerId, colorHex) {
-  const color = '#' + colorHex;
+// ── B2B 파트너 전용 해석 + 업체 등록 프로그램 자동 로드 ──────
+async function loadB2bPartnerRxAuto(bcCode, customerId, color) {
+  if (!color) color = BRAND.brand_color || '#6366f1';
   const container = document.getElementById(`b2b-partner-rx-${customerId}`);
   if (!container) return;
-  container.innerHTML = '<div style="text-align:center;padding:16px;color:var(--muted)"><i class="fas fa-circle-notch fa-spin"></i> 파트너 데이터 로드 중...</div>';
 
-  const data = await api('GET', `/b2b/partner-view/${bcCode}`);
-  if (!data || data.error) {
-    container.innerHTML = `<div style="color:var(--danger);font-size:13px;text-align:center;padding:12px">파트너 데이터 로드 실패</div>`;
+  // 처방 해석 데이터 + 업체 등록 프로그램 병렬 로드
+  const [partnerData, myPrograms] = await Promise.all([
+    api('GET', `/b2b/partner-view/${bcCode}`),
+    api('GET', `/b2b/my-programs/${bcCode}`),
+  ]);
+
+  let html = '';
+
+  // 1) 파트너 전용 해석 (기존 renderB2bPartnerRxPanel)
+  if (partnerData && !partnerData.error) {
+    html += renderB2bPartnerRxPanel(partnerData, color);
+  }
+
+  // 2) 업체 등록 프로그램 섹션
+  const matched = myPrograms?.matched_programs || [];
+  const general = myPrograms?.general_programs || [];
+
+  if (matched.length > 0 || general.length > 0) {
+    const programCard = (p) => `
+      <div style="background:#fff;border:1.5px solid ${color}33;border-radius:12px;padding:14px 16px;flex:0 0 auto;min-width:180px;max-width:220px">
+        <div style="font-size:13px;font-weight:700;color:#1f2937;margin-bottom:4px;word-break:keep-all">${p.program_name}</div>
+        ${p.price ? `<div style="font-size:13px;color:${color};font-weight:700;margin-bottom:6px">₩${Number(p.price).toLocaleString()}~</div>` : ''}
+        ${p.description ? `<div style="font-size:11px;color:#6b7280;line-height:1.5;margin-bottom:6px;word-break:keep-all">${p.description}</div>` : ''}
+        ${p.tags ? `<div style="display:flex;flex-wrap:wrap;gap:3px">
+          ${p.tags.split(',').filter(Boolean).slice(0,3).map(tag =>
+            `<span style="font-size:10px;background:${color}18;color:${color};padding:2px 7px;border-radius:20px">${tag.trim()}</span>`
+          ).join('')}
+        </div>` : ''}
+      </div>`;
+
+    html += `
+      <div style="border-top:2px dashed ${color}44;margin-top:4px;padding-top:14px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <span style="background:${color};color:#fff;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:700">🏥 우리 업체 추천 프로그램</span>
+          <span style="font-size:11px;color:var(--muted)">${bcCode} 맞춤 · ${matched.length}개 매칭</span>
+        </div>
+        ${matched.length > 0 ? `
+          <div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch">
+            ${matched.map(programCard).join('')}
+          </div>` : `
+          <div style="font-size:13px;color:var(--muted);padding:12px 0;background:#f8fafc;border-radius:8px;text-align:center">
+            <i class="fas fa-info-circle" style="margin-right:6px"></i>${bcCode} 태그가 달린 등록 프로그램이 없습니다.
+          </div>`}
+        ${general.length > 0 ? `
+          <div style="margin-top:12px">
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px">📋 기타 업체 프로그램</div>
+            <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:4px">
+              ${general.map(programCard).join('')}
+            </div>
+          </div>` : ''}
+      </div>`;
+  } else {
+    // 등록된 프로그램 없음 → 안내 버튼
+    html += `
+      <div style="border-top:2px dashed ${color}44;margin-top:4px;padding-top:14px">
+        <div style="background:#F8FAFC;border:1.5px solid var(--border);border-radius:10px;padding:14px 16px;text-align:center;font-size:13px;color:var(--muted)">
+          <i class="fas fa-plus-circle" style="color:${color};margin-bottom:6px;display:block;font-size:22px"></i>
+          아직 등록된 프로그램이 없습니다.<br>
+          <span style="font-size:12px">업체 정보 → 프로그램 등록 메뉴에서 추가하시면<br>BC코드에 맞게 자동으로 추천됩니다.</span>
+        </div>
+      </div>`;
+  }
+
+  if (!html) {
+    container.innerHTML = `<div style="color:var(--muted);font-size:13px;text-align:center;padding:12px">파트너 데이터를 불러올 수 없습니다.</div>`;
     return;
   }
-  container.innerHTML = renderB2bPartnerRxPanel(data, color);
+  container.innerHTML = html;
+}
+
+// (구) loadB2bPartnerRx — loadBcPrescription에서 여전히 사용
+async function loadB2bPartnerRx(bcCode, customerId, colorHex) {
+  const color = '#' + colorHex;
+  await loadB2bPartnerRxAuto(bcCode, customerId, color);
 }
 
 async function loadBcPrescription(bcCode, customerName) {
@@ -1496,10 +1479,84 @@ async function loadBcPrescription(bcCode, customerName) {
         </div>
       </div>` : ''}
 
-      <!-- ★★ B2B 파트너 전용 섹션 ★★ -->
-      ${renderB2bPartnerRxPanel(data, color)}
+      <!-- ★★ B2B 파트너 전용 섹션 (자동 로드) ★★ -->
+      <div id="bc-partner-section-${bcCode.replace('-','')}">
+        <div style="text-align:center;padding:14px;color:var(--muted);font-size:13px">
+          <i class="fas fa-circle-notch fa-spin"></i> 업체 등록 프로그램 불러오는 중...
+        </div>
+      </div>
     </div>
   `;
+
+  // BC코드 직접 선택 시에도 업체 등록 프로그램 자동 로드
+  loadBcPartnerSection(bcCode, color);
+}
+
+async function loadBcPartnerSection(bcCode, color) {
+  const containerId = `bc-partner-section-${bcCode.replace('-','')}`;
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const [partnerData, myPrograms] = await Promise.all([
+    api('GET', `/b2b/partner-view/${bcCode}`),
+    api('GET', `/b2b/my-programs/${bcCode}`),
+  ]);
+
+  let html = '';
+
+  if (partnerData && !partnerData.error) {
+    html += renderB2bPartnerRxPanel(partnerData, color);
+  }
+
+  const matched = myPrograms?.matched_programs || [];
+  const general = myPrograms?.general_programs || [];
+
+  const programCard = (p) => `
+    <div style="background:#fff;border:1.5px solid ${color}33;border-radius:12px;padding:14px 16px;flex:0 0 auto;min-width:180px;max-width:220px">
+      <div style="font-size:13px;font-weight:700;color:#1f2937;margin-bottom:4px;word-break:keep-all">${p.program_name}</div>
+      ${p.price ? `<div style="font-size:13px;color:${color};font-weight:700;margin-bottom:6px">₩${Number(p.price).toLocaleString()}~</div>` : ''}
+      ${p.description ? `<div style="font-size:11px;color:#6b7280;line-height:1.5;margin-bottom:6px;word-break:keep-all">${p.description}</div>` : ''}
+      ${p.tags ? `<div style="display:flex;flex-wrap:wrap;gap:3px">
+        ${p.tags.split(',').filter(Boolean).slice(0,3).map(tag =>
+          `<span style="font-size:10px;background:${color}18;color:${color};padding:2px 7px;border-radius:20px">${tag.trim()}</span>`
+        ).join('')}
+      </div>` : ''}
+    </div>`;
+
+  if (matched.length > 0 || general.length > 0) {
+    html += `
+      <div style="border-top:2px dashed ${color}44;margin-top:4px;padding-top:14px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <span style="background:${color};color:#fff;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:700">🏥 우리 업체 추천 프로그램</span>
+          <span style="font-size:11px;color:var(--muted)">${bcCode} 맞춤 · ${matched.length}개 매칭</span>
+        </div>
+        ${matched.length > 0 ? `
+          <div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:8px">
+            ${matched.map(programCard).join('')}
+          </div>` : `
+          <div style="font-size:13px;color:var(--muted);padding:12px;background:#f8fafc;border-radius:8px;text-align:center">
+            <i class="fas fa-info-circle" style="margin-right:6px"></i>${bcCode} 태그 프로그램이 없습니다.
+          </div>`}
+        ${general.length > 0 ? `
+          <div style="margin-top:12px">
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px">📋 기타 업체 프로그램</div>
+            <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:4px">
+              ${general.map(programCard).join('')}
+            </div>
+          </div>` : ''}
+      </div>`;
+  } else {
+    html += `
+      <div style="border-top:2px dashed ${color}44;margin-top:4px;padding-top:14px">
+        <div style="background:#F8FAFC;border:1.5px solid var(--border);border-radius:10px;padding:14px 16px;text-align:center;font-size:13px;color:var(--muted)">
+          <i class="fas fa-plus-circle" style="color:${color};margin-bottom:6px;display:block;font-size:22px"></i>
+          아직 등록된 프로그램이 없습니다.<br>
+          <span style="font-size:12px">업체 정보 메뉴에서 프로그램을 등록하시면<br>BC코드별로 자동 추천됩니다.</span>
+        </div>
+      </div>`;
+  }
+
+  container.innerHTML = html || `<div style="color:var(--muted);font-size:13px;text-align:center;padding:12px">파트너 데이터가 없습니다.</div>`;
 }
 
 // ── B2B 파트너 전용 해석 HTML 생성 공통 함수 ─────────────────

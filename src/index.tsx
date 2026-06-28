@@ -3148,6 +3148,48 @@ app.get('/api/b2b/result-link/:id', requireB2B(), async (c) => {
 
 // ============================================================
 // BC코드 → 시술 추천 API
+// GET /api/b2b/my-programs/:bc_code — 내 업체 등록 프로그램 중 BC코드 매칭 목록
+// 파트너 추천 뷰에서 BC코드별 자동 연동용
+app.get('/api/b2b/my-programs/:bc_code', requireB2B(), async (c) => {
+  const db = c.env.DB as D1Database | undefined
+  if (!db) return c.json({ error: 'DB 없음' }, 500)
+  const user = c.get('user') as JwtPayload
+  const partnerCode = user?.code || ''
+  const bcCode = c.req.param('bc_code')
+
+  try {
+    // 1) 해당 파트너의 등록 프로그램 중 bc_tags에 bcCode 포함된 것 조회
+    const programs = await db.prepare(
+      `SELECT id, program_name, price, description, tags, bc_tags
+       FROM b2b_custom_programs
+       WHERE b2b_code = ? AND bc_tags LIKE ?
+       ORDER BY price ASC`
+    ).bind(partnerCode, `%${bcCode}%`).all<any>()
+
+    // 2) 업체 전체 프로그램도 함께 반환 (bc_tags가 비어있거나 'ALL' 포함)
+    const allPrograms = await db.prepare(
+      `SELECT id, program_name, price, description, tags, bc_tags
+       FROM b2b_custom_programs
+       WHERE b2b_code = ? AND (bc_tags IS NULL OR bc_tags = '' OR bc_tags LIKE '%ALL%')
+       ORDER BY price ASC LIMIT 5`
+    ).bind(partnerCode).all<any>()
+
+    const matched = programs.results || []
+    const general = (allPrograms.results || []).filter(
+      (g: any) => !matched.some((m: any) => m.id === g.id)
+    )
+
+    return c.json({
+      bc_code: bcCode,
+      matched_programs: matched,
+      general_programs: general,
+      has_programs: matched.length > 0 || general.length > 0,
+    })
+  } catch(e) {
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
 // GET /api/b2b/recommend/:resultId
 // B2B 파트너가 고객 결과지 기반으로 매칭 시술 목록 조회
 // ============================================================
