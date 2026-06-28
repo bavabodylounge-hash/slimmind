@@ -872,7 +872,7 @@
   .bms-stage.show{max-height:1400px;opacity:1;margin-top:18px}
 
   .bms-body-wrap{
-    position:relative;width:100%;max-width:228px;
+    position:relative;width:100%;max-width:155px;
     margin:0 auto;aspect-ratio:460/1180;
     user-select:none;-webkit-user-select:none;
   }
@@ -1171,6 +1171,28 @@
     #patternToast{bottom:auto;top:74px}
     #patternToast.show{transform:translateX(-50%) translateY(0)}
   }
+
+  /* ★ 빠른 응답 공감 안내 토스트 (부드러운 톤) */
+  #rushToast{
+    position:fixed; left:50%; bottom:90px;
+    transform:translateX(-50%) translateY(24px);
+    z-index:355;
+    display:flex; align-items:center; gap:11px;
+    background:rgba(255,255,255,.97); backdrop-filter:blur(14px);
+    border:1px solid rgba(224,92,58,.22);
+    border-radius:16px; padding:13px 18px;
+    color:#3a322a; font-size:13.5px; font-weight:600; line-height:1.45;
+    box-shadow:0 12px 40px rgba(224,92,58,.18),0 2px 10px rgba(0,0,0,.05);
+    opacity:0; transition:opacity .35s cubic-bezier(.2,.8,.2,1),transform .35s cubic-bezier(.2,.8,.2,1);
+    pointer-events:none; max-width:calc(100vw - 40px);
+  }
+  #rushToast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+  #rushToast .rt-icon{flex-shrink:0; font-size:20px; line-height:1}
+  #rushToast .rt-msg{min-width:0}
+  @media(max-width:760px){
+    #rushToast{bottom:calc(80px + env(safe-area-inset-bottom)); font-size:12.5px; padding:12px 15px}
+  }
+
   .pt-icontile{
     flex-shrink:0;width:38px;height:38px;border-radius:11px;
     background:linear-gradient(135deg,#d85a30,#e67a52);
@@ -2062,6 +2084,12 @@
     </div>
   </div>
 
+  <!-- ★ 빠른 응답 공감 안내 토스트 -->
+  <div id="rushToast" role="status" aria-live="polite">
+    <span class="rt-icon">🌿</span>
+    <span class="rt-msg">조금 빠르게 답하고 계세요.<br>천천히 떠올려보면 더 정확한 결과가 나와요.</span>
+  </div>
+
   <!-- 돌발 퀴즈 모달 -->
   <div id="quizModal" class="quizmodal">
     <div class="quizcard">
@@ -2224,9 +2252,16 @@
           <input type="tel" id="userPhone" class="name-phone-input" placeholder="010-0000-0000" oninput="checkName()" maxlength="13" autocomplete="tel">
           <div class="name-phone-hint">담당 컨설턴트가 결과지를 카카오톡으로 직접 전달드립니다</div>
         </div>
-        <div class="genderwrap">
+        <!-- 성별: 바디맵에서 이미 선택한 경우 배지로 표시, 건너뛴 경우만 버튼 표시 -->
+        <div class="genderwrap" id="genderWrap">
           <div class="gq">성별은요?</div>
-          <div class="genderbtns">
+          <!-- 바디맵 선택 시 표시되는 확인 배지 -->
+          <div id="genderConfirmed" style="display:none;padding:13px 16px;border-radius:12px;background:var(--card);border:2px solid var(--c3);font-size:14px;font-weight:600;color:var(--c3);display:none;align-items:center;gap:8px;">
+            <span id="genderConfirmedLabel"></span>
+            <span style="font-size:12px;color:var(--muted);font-weight:400;margin-left:auto;cursor:pointer;" onclick="showGenderBtns()">변경</span>
+          </div>
+          <!-- 건너뛴 경우 또는 변경 시 표시 -->
+          <div id="genderBtns" class="genderbtns" style="display:none">
             <button class="genbtn" onclick="pickGender('여성',this)">여성</button>
             <button class="genbtn" onclick="pickGender('남성',this)">남성</button>
             <button class="genbtn" onclick="pickGender('트랜스 남성',this)">트랜스 남성</button>
@@ -2260,12 +2295,13 @@
           <div class="consentnote">※ SlimMind 결과지는 의학적 진단·치료가 아닌 건강 참고용 정보입니다.</div>
         </div>
         <button class="startbtn" id="nameNext" onclick="startSurvey()" disabled>분석 시작하기 →</button>
-        <div class="namehint" id="nameHint">이름·성별 입력 후 필수 항목에 동의해주세요</div>
+        <div class="namehint" id="nameHint">이름 입력 후 필수 항목에 동의해주세요</div>
       </div>
     </div>
 
     <!-- ===== 기능 10: 오늘 컨디션 보정 스텝 ===== -->
     <div class="hero" id="conditionStep" style="display:none">
+      <button class="topback" onclick="goBack()">← 이전</button>
       <div class="cond-wrap">
         <div class="cond-eyebrow">오늘 몸 상태 체크</div>
         <h1 class="cond-h1" id="condH1">오늘 몸이 어떤 상태예요?</h1>
@@ -2342,6 +2378,7 @@
 
     <!-- ===== 기능 11: 시간대별 증상 히트맵 스텝 ===== -->
     <div class="hero" id="timeStep" style="display:none">
+      <button class="topback" onclick="goBack()">← 이전</button>
       <div class="time-wrap">
         <div class="time-eyebrow">시간대별 증상 패턴</div>
         <h1 class="time-h1" id="timeH1">언제 이런 증상이 심해지나요?</h1>
@@ -2388,6 +2425,7 @@
 
     <!-- 1차 외형 설문 -->
     <div id="stage1" style="display:none">
+      <button class="topback" onclick="goBack()" style="display:block;padding:12px 0 0 16px">← 이전</button>
       <div class="stageintro st-s1" id="intro1">
         <span class="snum">● 1차 — 외형 분석</span>
         <h2>몸에는 숨길 수 없는 흔적이 있습니다</h2>
@@ -2444,6 +2482,7 @@
 
     <!-- 2차 배경 설문 -->
     <div id="stage2" style="display:none">
+      <button class="topback" onclick="goBack()" style="display:block;padding:12px 0 0 16px">← 이전</button>
       <div class="stageintro st-s2">
         <span class="snum" style="background:#eef0f6;border-color:var(--c2);color:var(--c2)">● 2차 — 배경 분석</span>
         <h2>당신의 몸은,<br>당신만의 역사를 갖고 있습니다</h2>
@@ -2501,6 +2540,7 @@
 
     <!-- 3차 원인축 설문 -->
     <div id="stage3" style="display:none">
+      <button class="topback" onclick="goBack()" style="display:block;padding:12px 0 0 16px">← 이전</button>
       <div class="stageintro st-s3">
         <span class="snum" style="background:#f6e3df;border-color:var(--c3);color:var(--c3)">● 3차 — 원인 추적</span>
         <h2 id="stage3H2">이제, 당신 몸 안을 들여다봅니다</h2>
@@ -2520,6 +2560,7 @@
 
     <!-- 4차 결정질문 -->
     <div id="stage4" style="display:none">
+      <button class="topback" onclick="goBack()" style="display:block;padding:12px 0 0 16px">← 이전</button>
       <div class="stageintro st-s4">
         <span class="snum" style="background:#1a1a17;border-color:#1a1a17;color:#fff">● 4차 — 결정의 순간</span>
         <h2 id="stage4H2">거의 다 왔습니다.<br>마지막 0.1mm를 가릅니다</h2>
@@ -3097,7 +3138,37 @@ function startQTimer(){
     el.classList.toggle('slow',s>=8);
   },100);
 }
-function resetQTimer(){startQTimer();}
+function resetQTimer(){
+  /* 직전 문항 소요 시간 기록 → 빠른 응답(연속 1초 미만) 감지 */
+  recordAnswerSpeed((Date.now()-qStart)/1000);
+  startQTimer();
+}
+/* ── 빠른 응답 감지 (공감형 안내, 진행은 막지 않음) ── */
+let _answerTimes=[];          // 최근 응답 소요 시간(초)
+let _rushToastAt=0;           // 마지막 안내 시각 (쿨다운용)
+const RUSH_THRESHOLD=1.0;     // 1초 미만이면 '빨리 답함'
+const RUSH_STREAK=3;          // 연속 3문항
+const RUSH_COOLDOWN=15000;    // 같은 안내 최소 간격(ms)
+function recordAnswerSpeed(sec){
+  if(!isFinite(sec)||sec<=0)return;
+  _answerTimes.push(sec);
+  if(_answerTimes.length>RUSH_STREAK)_answerTimes.shift();
+  if(_answerTimes.length>=RUSH_STREAK && _answerTimes.every(t=>t<RUSH_THRESHOLD)){
+    const now=Date.now();
+    if(now-_rushToastAt>RUSH_COOLDOWN){
+      _rushToastAt=now;
+      _answerTimes=[];   // 안내 후 카운터 리셋
+      showRushToast();
+    }
+  }
+}
+function showRushToast(){
+  const t=document.getElementById('rushToast');
+  if(!t)return;
+  t.classList.add('show');
+  if(t._timer)clearTimeout(t._timer);
+  t._timer=setTimeout(()=>t.classList.remove('show'),3200);
+}
 
 /* ===== 이름/성별/동의 ===== */
 /* ===== 기능 4: 저장하고 나중에 계속하기 ===== */
@@ -3241,6 +3312,7 @@ function smResume() {
     document.querySelectorAll('.genbtn').forEach(b => {
       if (b.textContent.trim() === userInfo.gender) b.classList.add('sel');
     });
+    _syncGenderUI();
   }
   Object.keys(consentState).forEach(k => {
     const el = document.getElementById('chk_' + k);
@@ -3725,7 +3797,36 @@ function bmsSkip(){
 // 바디맵에서 고른 성별을 nameStep에 반영
 function bmsSyncNameStepGender(){
   if (bmsGender) userInfo.gender = BMS_GENDER_LABEL[bmsGender] || bmsGender;
+  _syncGenderUI();
   if (typeof updateNameNext === 'function') updateNameNext();
+}
+// 성별 UI 동기화 (배지 vs 버튼)
+function _syncGenderUI(){
+  const confirmed = document.getElementById('genderConfirmed');
+  const btns = document.getElementById('genderBtns');
+  const label = document.getElementById('genderConfirmedLabel');
+  if (!confirmed || !btns) return;
+  if (userInfo.gender) {
+    // 배지 표시
+    label.textContent = '✓ ' + userInfo.gender + ' 선택됨';
+    confirmed.style.display = 'flex';
+    btns.style.display = 'none';
+    // 기존 genbtn sel 동기화
+    document.querySelectorAll('.genbtn').forEach(b => {
+      b.classList.toggle('sel', b.textContent.trim() === userInfo.gender);
+    });
+  } else {
+    // 버튼 표시
+    confirmed.style.display = 'none';
+    btns.style.display = 'flex';
+  }
+}
+// 성별 변경 버튼 클릭 시
+function showGenderBtns(){
+  const confirmed = document.getElementById('genderConfirmed');
+  const btns = document.getElementById('genderBtns');
+  if (confirmed) confirmed.style.display = 'none';
+  if (btns) btns.style.display = 'flex';
 }
 
 function goBodyMap(){
@@ -3779,7 +3880,10 @@ function checkName(){
 }
 function pickGender(g,el){
   document.querySelectorAll('.genbtn').forEach(b=>b.classList.remove('sel'));
-  el.classList.add('sel');userInfo.gender=g;updateNameNext();
+  el.classList.add('sel');userInfo.gender=g;
+  // 선택 후 배지로 전환
+  setTimeout(()=>_syncGenderUI(), 300);
+  updateNameNext();
 }
 function toggleItem(k){
   consentState[k]=!consentState[k];
@@ -3802,12 +3906,16 @@ function syncAll(){
 }
 function updateNameNext(){
   userInfo.consent=consentState.c1&&consentState.c2;
-  const ok=userInfo.name&&userInfo.gender&&userInfo.consent;
+  // 성별은 바디맵에서 이미 선택했으면 필수 조건에서 제외 (bmsGender가 있으면 통과)
+  const genderOk = userInfo.gender || bmsGender;
+  const ok=userInfo.name&&genderOk&&userInfo.consent;
   const btn=document.getElementById('nameNext');
   const hint=document.getElementById('nameHint');
   btn.disabled=!ok;
   if(ok){hint.textContent=`${userInfo.name}님, 준비됐어요. 시작할까요?`;hint.style.color='var(--c3)';}
-  else{hint.textContent='이름·성별 입력 후 필수 항목에 동의해주세요';hint.style.color='var(--muted)';}
+  else if(!userInfo.name){hint.textContent='이름을 입력해주세요';hint.style.color='var(--muted)';}
+  else if(!genderOk){hint.textContent='성별을 선택해주세요';hint.style.color='var(--muted)';}
+  else{hint.textContent='필수 항목에 동의해주세요';hint.style.color='var(--muted)';}
 }
 
 /* ===== 1차 외형 답변 ===== */
