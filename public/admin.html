@@ -1716,6 +1716,7 @@ async function loadDiagnosisResults(search = '', bc = '', region = '', ohaeng = 
         <td style="color:var(--muted);font-size:12px">${dateStr}</td>
         <td style="white-space:nowrap;display:flex;gap:4px;align-items:center">
           <a href="/result/${r.id}" target="_blank" class="btn btn-primary btn-sm" style="background:#b5452e;border-color:#b5452e">결과지</a>
+          <button class="btn btn-ghost btn-sm" style="font-size:11px;padding:3px 7px;color:#b5452e;border-color:#b5452e33" onclick="showResultPreview('${r.id}','${(r.user_name||'').replace(/'/g,'\\'')}','${(r.bc_nickname||r.bc_primary||'').replace(/'/g,'\\'')}')"><i class="fas fa-eye"></i> 미리보기</button>
           <button class="btn btn-ghost btn-sm" style="font-size:11px;padding:3px 7px" onclick="showDiagRawDetail('${r.id}')">원시</button>
         </td>
       </tr>`;
@@ -1914,6 +1915,68 @@ async function showDiagRawDetail(id) {
         </button>
       </div>
     </div>`;
+}
+
+// ═════════════════════════════════════════════
+//  결과지 인라인 미리보기 (iframe 슬라이드 패널)
+// ═════════════════════════════════════════════
+function showResultPreview(id, userName, bcNick) {
+  // 기존 패널 제거
+  const existing = document.getElementById('result-preview-panel');
+  if (existing) existing.remove();
+
+  const panel = document.createElement('div');
+  panel.id = 'result-preview-panel';
+  panel.style.cssText = `
+    position:fixed; top:0; right:0; width:480px; height:100vh;
+    background:#fff; box-shadow:-8px 0 40px rgba(0,0,0,.18);
+    z-index:9000; display:flex; flex-direction:column;
+    transform:translateX(100%); transition:transform .32s cubic-bezier(.4,0,.2,1);
+  `;
+  panel.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;
+      padding:14px 18px;border-bottom:1px solid #e8e3da;background:#f6f4ee;flex-shrink:0">
+      <div>
+        <div style="font-size:14px;font-weight:800;color:#1a1a17">${userName || '익명'} 님 결과지</div>
+        <div style="font-size:11px;color:#b5452e;font-weight:700;margin-top:2px">${bcNick || '-'}</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <a href="/result/${id}" target="_blank" 
+          style="font-size:11px;font-weight:700;color:#2563eb;text-decoration:none;
+          background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:4px 10px">
+          <i class="fas fa-external-link-alt"></i> 새탭
+        </a>
+        <button onclick="document.getElementById('result-preview-panel').style.transform='translateX(100%)';setTimeout(()=>this.closest('#result-preview-panel').remove(),350)"
+          style="border:none;background:none;cursor:pointer;font-size:18px;color:#888;padding:4px 6px;line-height:1">✕</button>
+      </div>
+    </div>
+    <div id="result-preview-loading" style="flex:1;display:flex;align-items:center;justify-content:center;background:#f6f4ee">
+      <div style="text-align:center">
+        <i class="fas fa-circle-notch fa-spin fa-2x" style="color:#b5452e"></i>
+        <div style="margin-top:12px;font-size:13px;color:#888">결과지 로딩 중…</div>
+      </div>
+    </div>
+    <iframe id="result-preview-iframe" src="/result/${id}" 
+      style="flex:1;width:100%;border:none;display:none"
+      onload="
+        document.getElementById('result-preview-loading').style.display='none';
+        this.style.display='block';
+      "></iframe>
+  `;
+
+  document.body.appendChild(panel);
+  // 슬라이드 인
+  requestAnimationFrame(() => { panel.style.transform = 'translateX(0)'; });
+
+  // 배경 클릭 오버레이
+  const overlay = document.createElement('div');
+  overlay.id = 'result-preview-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.18);z-index:8999;';
+  overlay.onclick = () => {
+    panel.style.transform = 'translateX(100%)';
+    setTimeout(() => { panel.remove(); overlay.remove(); }, 350);
+  };
+  document.body.insertBefore(overlay, panel);
 }
 
 // ═════════════════════════════════════════════
@@ -2211,8 +2274,9 @@ async function loadResults(search = '', bc = '', consultant = '') {
       </td>
       <td style="font-size:12px">${r.gender || '-'} ${r.height ? r.height+'cm' : ''} ${r.weight ? r.weight+'kg' : ''}</td>
       <td style="color:var(--muted);font-size:12px">${fmtDate(r.created_at)}</td>
-      <td style="white-space:nowrap">
+      <td style="white-space:nowrap;display:flex;gap:4px;align-items:center">
         <a href="/result/${r.id}" target="_blank" class="btn btn-primary btn-sm">결과지</a>
+        <button class="btn btn-ghost btn-sm" style="font-size:11px;padding:3px 7px;color:#b5452e;border-color:#b5452e33" onclick="showResultPreview('${r.id}','${(r.user_name||'').replace(/'/g,'\\'')}','${(r.bc_primary||'').replace(/'/g,'\\'')}')"><i class="fas fa-eye"></i> 미리보기</button>
       </td>
     </tr>
   `).join('');

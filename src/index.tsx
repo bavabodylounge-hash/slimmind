@@ -126,6 +126,39 @@ const parseJson = (s: string | null, fallback: any = null) => {
   try { return s ? JSON.parse(s) : fallback } catch { return fallback }
 }
 
+// ─── BC 코드 정규화 ─────────────────────────────────────────────
+// DB에 저장된 다양한 형태를 BC_MASTER 키(BC-1~BC-9)로 통일
+// BC-09 → BC-9, BC-01 → BC-1, BC01 → BC-1, A01/A07 → 축코드 기반 매핑
+const AXIS_TO_BC: Record<string, string> = {
+  'A01': 'BC-3',  // 인슐린·내장 → 내장지방형
+  'A02': 'BC-1',  // 림프순환 → 코끼리다리형
+  'A03': 'BC-6',  // 호르몬 → 갱년기형
+  'A04': 'BC-4',  // 근감소 → 올챙이배형
+  'A05': 'BC-5',  // 소화·장 → 가스팽만형
+  'A06': 'BC-2',  // 골격·복압 → 거북이형
+  'A07': 'BC-6',  // 코르티솔 → 야식부엉이형(BC-6)
+  'A08': 'BC-8',  // 심리·식이 → 심리식이형
+  'A09': 'BC-9',  // 대사위험 → 대사증후군형
+  'A10': 'BC-7',  // 기질 → 기질형
+}
+function normalizeBcCode(raw: string | null): string {
+  if (!raw) return 'BC-6'
+  const s = raw.trim()
+  // 이미 BC-N 단일자리 형태 (BC-1 ~ BC-9)
+  if (/^BC-[1-9]$/.test(s)) return s
+  // BC-09, BC-01 등 두자리 0패딩
+  if (/^BC-0([1-9])$/.test(s)) return `BC-${s[4]}`
+  // BC01 형태 (하이픈 없음)
+  if (/^BC0?([1-9])$/.test(s)) {
+    const m = s.match(/^BC0?([1-9])$/)
+    return m ? `BC-${m[1]}` : 'BC-6'
+  }
+  // 축 코드 (A01~A10) → BC 매핑
+  if (/^A\d{2}$/.test(s)) return AXIS_TO_BC[s] || 'BC-6'
+  // 닉네임 그대로 (diagnosis_results의 bc_nickname 형태)
+  return s
+}
+
 // ─── 결과 ID 생성 ─────────────────────────────────────────────
 function resultIdGen() {
   const d = new Date()
@@ -1832,8 +1865,8 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
     // 기본 정보
     user_name: resultData.result?.user_name,
     consultant_code: resultData.result?.consultant_code,
-    bc_primary: resultData.result?.bc_primary,
-    bc_secondary: resultData.result?.bc_secondary,
+    bc_primary: normalizeBcCode(resultData.result?.bc_primary),   // ← 정규화
+    bc_secondary: normalizeBcCode(resultData.result?.bc_secondary),
     bc_primary_score: resultData.result?.bc_primary_score,
     bc_secondary_score: resultData.result?.bc_secondary_score,
     bc_scores: resultData.result?.bc_scores,

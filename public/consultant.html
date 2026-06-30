@@ -1434,7 +1434,8 @@ async function loadMyResults() {
       <td>${typeHtml || '<span style="color:#CBD5E1;font-size:11px">-</span>'}</td>
       <td style="white-space:nowrap">
         <button class="btn btn-primary btn-xs" onclick="openDetailModal(${JSON.stringify(r).replace(/"/g,'&quot;')})"><i class="fas fa-file-alt"></i> 상세</button>
-        <a href="/result/${r.id}?token=${TOKEN}" target="_blank" class="btn btn-ghost btn-xs" style="margin-left:4px"><i class="fas fa-eye"></i></a>
+        <a href="/result/${r.id}?token=${TOKEN}" target="_blank" class="btn btn-ghost btn-xs" style="margin-left:4px" title="새 탭으로 열기"><i class="fas fa-external-link-alt"></i></a>
+        <button class="btn btn-ghost btn-xs" style="margin-left:4px;color:#b5452e;border-color:#b5452e33" title="인라인 미리보기" onclick="showResultPreview('${r.id}','${(r.user_name||'').replace(/'/g,'\'')}','${(r.bc_primary||'').replace(/'/g,'\'')}')" ><i class="fas fa-eye"></i></button>
         <button class="btn btn-kakao btn-xs" style="margin-left:4px" onclick="shareResultKakao('${r.id}','${(r.user_name||'고객').replace(/'/g,'')}','${r.bc_primary||''}','${r.bc_secondary||''}')">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="#3C1E1E"><path d="M12 2C6.48 2 2 5.92 2 10.73c0 2.98 1.67 5.6 4.19 7.22l-.97 3.57 4.1-2.72c.87.16 1.76.24 2.68.24 5.52 0 10-3.92 10-8.77S17.52 2 12 2z"/></svg>
         </button>
@@ -2768,6 +2769,56 @@ if (TOKEN) {
       }
     })
     .catch(() => { localStorage.removeItem('cons_token'); TOKEN = ''; });
+}
+
+// ══════════════════════════════════════════════════════════
+//  결과지 인라인 미리보기 (iframe 슬라이드 패널)
+// ══════════════════════════════════════════════════════════
+function showResultPreview(id, userName, bcNick) {
+  const existing = document.getElementById('result-preview-panel');
+  if (existing) existing.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'result-preview-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:8999;';
+  overlay.onclick = () => { closeResultPreview(); };
+  document.body.appendChild(overlay);
+
+  const panel = document.createElement('div');
+  panel.id = 'result-preview-panel';
+  panel.style.cssText = [
+    'position:fixed;top:0;right:0;width:480px;height:100vh;',
+    'background:#fff;box-shadow:-8px 0 40px rgba(0,0,0,.22);',
+    'z-index:9000;display:flex;flex-direction:column;',
+    'transform:translateX(100%);transition:transform .32s cubic-bezier(.4,0,.2,1);'
+  ].join('');
+
+  panel.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #eee;flex-shrink:0;background:#fff">
+      <div>
+        <div style="font-size:14px;font-weight:800;color:#1a1a17">${userName || '익명'} 님 결과지</div>
+        <div style="font-size:11px;color:#888;margin-top:2px">${bcNick || ''} &nbsp;·&nbsp; ID: <code style="background:#f5f3ef;padding:1px 5px;border-radius:3px;font-size:10px">${id}</code></div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <a href="/result/${id}" target="_blank" style="font-size:12px;color:#b5452e;text-decoration:none;font-weight:700" title="새 탭으로 열기"><i class="fas fa-external-link-alt"></i> 새 탭</a>
+        <button onclick="closeResultPreview()" style="border:none;background:none;font-size:20px;cursor:pointer;color:#888;line-height:1;padding:0 4px">&times;</button>
+      </div>
+    </div>
+    <div id="result-preview-spinner" style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:#888;font-size:13px">
+      <div style="width:32px;height:32px;border:3px solid #eee;border-top-color:#b5452e;border-radius:50%;animation:spin .8s linear infinite"></div>
+      <div>결과지 로딩 중…</div>
+    </div>
+    <iframe id="result-preview-iframe" src="/result/${id}"
+      style="flex:1;border:none;width:100%;display:none"
+      onload="document.getElementById('result-preview-spinner').style.display='none';this.style.display='block'"></iframe>
+  `;
+  document.body.appendChild(panel);
+  requestAnimationFrame(() => { panel.style.transform = 'translateX(0)'; });
+}
+function closeResultPreview() {
+  const panel = document.getElementById('result-preview-panel');
+  const overlay = document.getElementById('result-preview-overlay');
+  if (panel) { panel.style.transform = 'translateX(100%)'; setTimeout(() => panel.remove(), 350); }
+  if (overlay) overlay.remove();
 }
 </script>
 </body>
