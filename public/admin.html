@@ -1716,7 +1716,7 @@ async function loadDiagnosisResults(search = '', bc = '', region = '', ohaeng = 
         <td style="color:var(--muted);font-size:12px">${dateStr}</td>
         <td style="white-space:nowrap;display:flex;gap:4px;align-items:center">
           <a href="/result/${r.id}" target="_blank" class="btn btn-primary btn-sm" style="background:#b5452e;border-color:#b5452e">결과지</a>
-          <button class="btn btn-ghost btn-sm" style="font-size:11px;padding:3px 7px;color:#b5452e;border-color:#b5452e33" onclick="showResultPreview('${r.id}','${(r.user_name||'').replace(/'/g,'\\'')}','${(r.bc_nickname||r.bc_primary||'').replace(/'/g,'\\'')}')"><i class="fas fa-eye"></i> 미리보기</button>
+          <button class="btn btn-ghost btn-sm" style="font-size:11px;padding:3px 7px;color:#b5452e;border-color:#b5452e33" data-pid="${r.id}" data-pname="${(r.user_name||'')+''}" data-pnick="${(r.bc_nickname||r.bc_primary||'')+''}" onclick="_previewClick(this)"><i class="fas fa-eye"></i> 미리보기</button>
           <button class="btn btn-ghost btn-sm" style="font-size:11px;padding:3px 7px" onclick="showDiagRawDetail('${r.id}')">원시</button>
         </td>
       </tr>`;
@@ -1920,6 +1920,12 @@ async function showDiagRawDetail(id) {
 // ═════════════════════════════════════════════
 //  결과지 인라인 미리보기 (iframe 슬라이드 패널)
 // ═════════════════════════════════════════════
+function _previewClick(btn) {
+  const id   = btn.getAttribute('data-pid') || '';
+  const name = decodeURIComponent(btn.getAttribute('data-pname') || '');
+  const nick = decodeURIComponent(btn.getAttribute('data-pnick') || '');
+  showResultPreview(id, name, nick);
+}
 function showResultPreview(id, userName, bcNick) {
   // 기존 패널 제거
   const existing = document.getElementById('result-preview-panel');
@@ -2276,7 +2282,7 @@ async function loadResults(search = '', bc = '', consultant = '') {
       <td style="color:var(--muted);font-size:12px">${fmtDate(r.created_at)}</td>
       <td style="white-space:nowrap;display:flex;gap:4px;align-items:center">
         <a href="/result/${r.id}" target="_blank" class="btn btn-primary btn-sm">결과지</a>
-        <button class="btn btn-ghost btn-sm" style="font-size:11px;padding:3px 7px;color:#b5452e;border-color:#b5452e33" onclick="showResultPreview('${r.id}','${(r.user_name||'').replace(/'/g,'\\'')}','${(r.bc_primary||'').replace(/'/g,'\\'')}')"><i class="fas fa-eye"></i> 미리보기</button>
+        <button class="btn btn-ghost btn-sm" style="font-size:11px;padding:3px 7px;color:#b5452e;border-color:#b5452e33" data-pid="${r.id}" data-pname="${(r.user_name||'')+''}" data-pnick="${(r.bc_primary||'')+''}" onclick="_previewClick(this)"><i class="fas fa-eye"></i> 미리보기</button>
       </td>
     </tr>
   `).join('');
