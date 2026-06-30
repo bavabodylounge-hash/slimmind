@@ -14397,7 +14397,8 @@ function renderP7(userName, bcCode, bcMaster, metrics, ohaengType, mbtiType, ful
     'BC-9': `림프를 깨우는 동작이 있어요. <strong>하루 10분 특정 동작만으로</strong> 노폐물 배출이 시작되고 몸이 가벼워집니다.`,
   };
 
-  const bcKey = bcCode ? `BC-${bcCode}` : 'BC-1';
+  // bcCode는 이미 'BC-6' 형식으로 전달됨 — 그대로 사용 (BC-BC-6 방지)
+  const bcKey = (bcCode && String(bcCode).match(/^BC-\d$/i)) ? String(bcCode) : (bcCode ? 'BC-' + String(bcCode).replace(/^BC-?/i,'') : 'BC-1');
   const a1 = q1Map[bcKey] || q1Map['BC-1'];
   const a2 = q2Map[bcKey] || q2Map['BC-1'];
   const a3 = q3Map[bcKey] || q3Map['BC-1'];
@@ -19110,7 +19111,8 @@ function wow6Init(bcCode, ohaengType, menopause) {
   const sub  = document.getElementById('wow6-sub');
   if (!grid) return;
 
-  const key = `BC-${bcCode}`;
+  // bcCode는 이미 'BC-6' 형식 — BC-BC-6 방지
+  const key = (bcCode && String(bcCode).match(/^BC-\d$/i)) ? String(bcCode) : (bcCode ? 'BC-' + String(bcCode).replace(/^BC-?/i,'') : 'BC-1');
   const data = WOW6_SUPP_DB[key];
 
   if (!data) {

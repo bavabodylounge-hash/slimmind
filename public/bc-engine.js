@@ -197,63 +197,69 @@ var NICKNAME_TABLE = {
 function detectBackground(answers) {
   if (!answers) return null;
 
+  // ──────────────────────────────────────────────────────────────────
+  // 실제 survey-data.js 저장 키 기준으로 수정 (2025-06)
+  // answers 객체: { [Q키]: value, [saveAs키]: value } 양쪽 저장됨
+  // Q_MENOPAUSE.saveAs = 'menopause_status'
+  // VQ03.saveAs       = 'birth_history'  (출산 경험)
+  // VQ21.saveAs       = 'procedure'      (시술 이력)
+  // VQ22.saveAs       = 'meds'           (약물 이력)
+  // Q_MEDICAL.saveAs  = 'medical_conditions' (배열 — PCOS/당뇨/대사증후군 등)
+  // Q21 = 스트레스 강도(1~4 숫자) — 시술이력과 무관
+  // ──────────────────────────────────────────────────────────────────
+
   // 갱년기·완경
-  const meno = answers['Q_MENOPAUSE'] || answers['Q_meno'] || '';
+  // Q_MENOPAUSE(id키) 또는 menopause_status(saveAs키) 양쪽 확인
+  const meno = answers['Q_MENOPAUSE'] || answers['menopause_status'] || answers['Q_meno'] || '';
   if (meno && meno !== 'not_applicable' && meno !== 'none' && meno !== '') {
     return '갱년기';
   }
 
   // PCOS (다낭성 난소 증후군)
-  const pcos = answers['Q_PCOS'] || answers['Q_pcos'] || '';
-  if (pcos === 'yes' || pcos === 'Y' || pcos === '있음') return 'PCOS';
+  // Q_MEDICAL 배열 안에 'pcos' 포함 여부 OR 별도 Q_PCOS 키
+  const medCondRaw = answers['medical_conditions'] || answers['Q_MEDICAL'] || answers['Q_PCOS'] || answers['Q_pcos'] || null;
+  const medCondArr = Array.isArray(medCondRaw) ? medCondRaw
+    : (typeof medCondRaw === 'string' && medCondRaw !== '' ? [medCondRaw] : []);
+  if (medCondArr.some(v => String(v).toLowerCase().includes('pcos'))) return 'PCOS';
+  if (answers['Q_PCOS'] === 'yes' || answers['Q_PCOS'] === 'Y' || answers['Q_pcos'] === 'yes') return 'PCOS';
 
   // 시술 이력 (지방흡입 등)
-  const surgery = answers['Q21'] || answers['Q_surgery'] || '';
+  // VQ21.saveAs = 'procedure' : 'none'|'once'|'several'|'regular'
+  // Q_MEDICAL 배열에서도 시술 관련 값 확인
+  const surgery = answers['procedure'] || answers['Q_surgery'] || '';
   if (surgery && surgery !== 'none' && surgery !== '없음' && surgery !== '') {
-    // 지방흡입 키워드 확인
-    if (String(surgery).includes('지방흡입') || String(surgery).includes('liposuction')) {
-      return '시술';
-    }
     return '시술';
   }
 
-  // 약물 복용력 (스테로이드·항우울제·식욕억제제 등)
-  const drug = answers['Q22'] || answers['Q_drug'] || '';
+  // 약물 복용력 (식욕억제제·한약 등)
+  // VQ22.saveAs = 'meds' : 'none'|'supplement'|'appetite_med'|'various'
+  const drug = answers['meds'] || answers['Q_drug'] || answers['Q22'] || '';
   if (drug && drug !== 'none' && drug !== '없음' && drug !== '') {
-    // 번아웃/부신 고갈 키워드 우선 확인
-    if (String(drug).includes('번아웃') || String(drug).includes('부신')) return '번아웃';
     return '약물';
   }
 
   // 출산 경험
-  const birth = answers['Q3'] || answers['Q_birth'] || '';
-  if (birth === 'yes' || birth === 'Y' || birth === '있음' || birth === '경험있음' ||
-      (typeof birth === 'string' && birth !== '' && birth !== 'none' && birth !== '없음')) {
+  // VQ03.saveAs = 'birth_history' : 'none'|'post_1y'|'post_1_3y'|'post_3y_plus'|'multi'
+  const birth = answers['birth_history'] || answers['Q_birth'] || answers['Q3'] || '';
+  if (birth && birth !== 'none' && birth !== '없음' && birth !== '') {
     return '출산';
   }
 
-  // 가족력·유전 (부계 vs 모계)
-  const family = answers['Q_FAMILY'] || answers['Q_family'] || answers['Q_heredity'] || '';
-  if (family) {
-    if (String(family).includes('모') || String(family).includes('엄마') || String(family).includes('이모')) {
-      return '모계유전';
-    }
-    if (String(family).includes('부') || String(family).includes('아빠') || String(family).includes('삼촌')) {
-      return '유전';
-    }
-    if (String(family) !== 'none' && String(family) !== '없음' && String(family) !== '') {
-      return '유전';
-    }
+  // 대사증후군 고위험 (당뇨·고혈압·지방간 등 Q_MEDICAL 배열)
+  const metabolicFlags = ['diabetes', 'hypertension', 'fatty_liver'];
+  if (medCondArr.some(v => metabolicFlags.includes(String(v).toLowerCase()))) {
+    return '대사증후군';
   }
-
-  // 대사증후군 고위험 (복합 수치)
   const diabetesRisk = answers['Q_diabetes'] || answers['Q_metabolic'] || '';
   if (diabetesRisk === 'yes' || diabetesRisk === 'Y' || diabetesRisk === '있음') {
     return '대사증후군';
   }
 
-  // 번아웃 (별도 질문)
-  const burnout = answers['Q_burnout'] || answers['Q_stress_level'] || '';
+  // 번아웃 (스트레스 극심 + 피로 복합)
+  // Q21.saveAs = 'stress_level' : 1(낮음)~4(극심). 4='극심'만 해당
+  const stressVal = Number(answers['stress_level'] || answers['Q21'] || 0);
+  if (stressVal >= 4) return '번아웃';
+  const burnout = answers['Q_burnout'] || '';
   if (burnout === 'severe' || burnout === '심각' || burnout === '극심') return '번아웃';
 
   return null; // 배경 필터 없음 → default 코드
