@@ -3307,20 +3307,33 @@ app.post('/api/v1/diagnosis', async (c) => {
 
     // ✅ BUG-1 대응: bc_primary가 닉네임(한글)이므로 bc_code_key(BC-N 형태) 도 저장
     // bc_code_key가 없으면 NICKNAME_TO_BC 로컬 테이블로 역매핑
+    // [수정 V4.4] 억제제부작용→BC-4, 동시다발→BC-3으로 수정 (BC-6 쏠림 방지)
     const NICKNAME_TO_BC_BACKEND: Record<string, string> = {
       '아빠체형 내장비대형':'BC-3','식후기절 혈당롤러코스터형':'BC-3','털털한 PCOS형':'BC-6',
-      '약물부작용 강제축적형':'BC-4','스트레스성 야식부엉이형':'BC-6','억제제부작용 배부름마비형':'BC-6',
+      '약물부작용 강제축적형':'BC-4','스트레스성 야식부엉이형':'BC-6',
+      '억제제부작용 배부름마비형':'BC-4',  // [수정] BC-6 → BC-4
       '출산후 바람빠진 풍선형':'BC-7','식후임산부 가스풍선형':'BC-3','팔다리거미 올챙이배형':'BC-9',
       '오후만되면 코끼리다리형':'BC-1','엄마체형 하지정체형':'BC-1','여름에도 시린 얼음장형':'BC-4',
       '운동할수록 말벅지형':'BC-8','골반틀어짐 승마살형':'BC-7','지방흡입후 재발형':'BC-5',
       '목짧아지는 거북이형':'BC-2','안 쓰는 팔뚝 부종형':'BC-2','상체근육형':'BC-8',
       '겨드랑이 부유방형':'BC-2','호르몬스위치 갱년기형':'BC-6','스트레스기절 번아웃형':'BC-6',
-      '대사증후군 종합형':'BC-9','동시다발 다중악순환형':'BC-6',
+      '대사증후군 종합형':'BC-9',
+      '동시다발 다중악순환형':'BC-3',  // [수정] BC-6 → BC-3
     }
-    // bc_code_key가 없으면 bc_primary(닉네임)로 역매핑, 그것도 없으면 'BC-6' 기본값
+    // ✅ [수정 V4.4] bc_primary에 raw 축코드(A07, A02 등)가 들어올 경우 정규화 적용
+    // normalizeBcCode()가 A0X 패턴을 BC코드로 변환함
+    const safeBcPrimaryForKey = bc_primary
+      ? (/^A\d{2}$/.test(String(bc_primary).trim()) ? normalizeBcCode(bc_primary) : bc_primary)
+      : null
+    const safeBcNicknameForKey = bc_nickname
+      ? (/^A\d{2}$/.test(String(bc_nickname).trim()) ? null : bc_nickname)  // 닉네임에 축코드면 무시
+      : null
+
+    // bc_code_key가 없으면 bc_primary(닉네임)로 역매핑, 그것도 없으면 null
     const resolvedBcCodeKey = bc_code_key ||
-      (bc_primary && NICKNAME_TO_BC_BACKEND[bc_primary]) ||
-      (bc_nickname && NICKNAME_TO_BC_BACKEND[bc_nickname]) ||
+      (safeBcPrimaryForKey && NICKNAME_TO_BC_BACKEND[safeBcPrimaryForKey]) ||
+      (safeBcPrimaryForKey && /^BC-[1-9]$/.test(safeBcPrimaryForKey) ? safeBcPrimaryForKey : null) ||
+      (safeBcNicknameForKey && NICKNAME_TO_BC_BACKEND[safeBcNicknameForKey]) ||
       null
 
     // UUID 생성
@@ -3345,8 +3358,10 @@ app.post('/api/v1/diagnosis', async (c) => {
         result_id,
         String(user_name || '익명'),
         phone || null,
-        bc_nickname || null,
-        bc_primary  || null,
+        // [수정 V4.4] bc_nickname에 raw 축코드(A07 등) 들어오면 닉네임 컬럼엔 null 저장
+        safeBcNicknameForKey || null,
+        // [수정 V4.4] bc_primary에 raw 축코드가 들어오면 정규화된 BC코드로 저장
+        safeBcPrimaryForKey || null,
         resolvedBcCodeKey || null,
         bc_secondary || null,
         top3_axes   ? JSON.stringify(top3_axes)   : null,
