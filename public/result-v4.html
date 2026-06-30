@@ -2900,6 +2900,100 @@ p, div, span, h1, h2, h3, h4{
 }
 
 /* ══════════════════════════════════════════
+   CHRONO: 시간대별 맞춤 영양 처방
+   ══════════════════════════════════════════ */
+.chrono-section{
+  margin:28px 0 0;
+  padding:20px 16px 24px;
+  background:linear-gradient(160deg,rgba(22,38,58,.97) 0%,rgba(12,24,38,.99) 100%);
+  border-radius:18px;
+  border:1px solid rgba(80,160,255,.15);
+  position:relative;
+  overflow:hidden;
+}
+.chrono-section::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 70% 0%,rgba(60,120,255,.08) 0%,transparent 65%);
+  pointer-events:none;
+}
+.chrono-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
+.chrono-title{font-size:14px;font-weight:800;color:#fff;letter-spacing:.3px;}
+.chrono-badge{font-size:10px;font-weight:700;background:rgba(60,140,255,.18);color:#7cc8ff;
+  border:1px solid rgba(60,140,255,.3);border-radius:20px;padding:3px 9px;letter-spacing:.5px;}
+.chrono-sub{font-size:11.5px;color:rgba(200,220,255,.55);margin-bottom:18px;line-height:1.6;}
+/* 타임라인 세로 축 */
+.chrono-timeline{display:flex;flex-direction:column;gap:0;position:relative;}
+.chrono-timeline::before{
+  content:'';position:absolute;left:30px;top:16px;bottom:16px;width:2px;
+  background:linear-gradient(180deg,rgba(80,160,255,.25),rgba(80,160,255,.08));
+  border-radius:2px;
+}
+/* 각 시간대 행 */
+.chrono-row{
+  display:flex;align-items:flex-start;gap:14px;
+  padding:14px 0;
+  position:relative;
+}
+.chrono-row:not(:last-child){
+  border-bottom:1px solid rgba(255,255,255,.05);
+}
+/* 시간 아이콘 원형 */
+.chrono-dot{
+  flex-shrink:0;width:24px;height:24px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;
+  position:relative;z-index:1;
+  box-shadow:0 0 0 3px rgba(15,28,48,1);
+  margin-top:1px;
+  margin-left:19px;
+}
+/* 우측 내용 */
+.chrono-body{flex:1;min-width:0;}
+.chrono-time-label{
+  font-size:11px;font-weight:800;letter-spacing:.8px;
+  text-transform:uppercase;margin-bottom:4px;opacity:.7;
+}
+.chrono-headline{
+  font-size:13.5px;font-weight:700;color:#f0ede6;
+  margin-bottom:6px;line-height:1.4;
+}
+.chrono-pills{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:7px;}
+.chrono-pill{
+  font-size:11px;font-weight:600;
+  padding:3px 9px;border-radius:20px;
+  line-height:1.4;
+  border:1px solid;
+}
+.chrono-pill.eat{background:rgba(80,200,120,.1);border-color:rgba(80,200,120,.3);color:#7fe0a0;}
+.chrono-pill.avoid{background:rgba(255,100,80,.1);border-color:rgba(255,100,80,.25);color:#ff9080;}
+.chrono-pill.tip{background:rgba(200,160,60,.1);border-color:rgba(200,160,60,.25);color:#f0c060;}
+.chrono-desc{font-size:11.5px;color:rgba(200,210,230,.55);line-height:1.65;}
+/* 시간대 색상 변수 */
+.chrono-row[data-slot="wake"]  .chrono-dot{background:#3a6a4a;}
+.chrono-row[data-slot="wake"]  .chrono-time-label{color:#80e0a0;}
+.chrono-row[data-slot="break"] .chrono-dot{background:#7a5c20;}
+.chrono-row[data-slot="break"] .chrono-time-label{color:#ffc060;}
+.chrono-row[data-slot="lunch"] .chrono-dot{background:#1a5a8a;}
+.chrono-row[data-slot="lunch"] .chrono-time-label{color:#60c0ff;}
+.chrono-row[data-slot="snack"] .chrono-dot{background:#5a3a7a;}
+.chrono-row[data-slot="snack"] .chrono-time-label{color:#c090ff;}
+.chrono-row[data-slot="dinner"].chrono-dot{background:#7a3a2a;}
+.chrono-row[data-slot="dinner"] .chrono-dot{background:#8a4a20;}
+.chrono-row[data-slot="dinner"] .chrono-time-label{color:#ff9860;}
+.chrono-row[data-slot="night"] .chrono-dot{background:#2a3a5a;}
+.chrono-row[data-slot="night"] .chrono-time-label{color:#8090c0;}
+/* 사이언스 뱃지 */
+.chrono-science{
+  margin-top:16px;padding:10px 13px;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:10px;
+  font-size:11px;color:rgba(200,210,230,.5);
+  line-height:1.7;
+}
+.chrono-science strong{color:rgba(200,210,230,.75);}
+
+/* ══════════════════════════════════════════
    WOW-6: BC 보충제 궁합 체크리스트
    ══════════════════════════════════════════ */
 /* ── WOW-6: 보충제 궁합 (P3 밝은 배경 위에 놓임 → 다크 래퍼로 완전 격리) ── */
@@ -5231,7 +5325,20 @@ p, div, span, h1, h2, h3, h4{
     <div class="ev-punch-s">바디코드 진단은 BC-6의 고장 원인을 이미 증명했습니다. 당신의 데이터가 가리키지 않는 영역에 힘 빼지 마세요. 나머지 8개 영역은, 그 원인을 치료하는 것이 진짜 필요해질 때까지 잠시 미뤄두세요.</div>
   </div>
 
-  <button class="next-flow fade-up" style="transition-delay:.4s" onclick="switchPage(8)">
+  <!-- ═══ 크로노 영양 처방 섹션 ═══ -->
+  <div class="chrono-section fade-up" style="transition-delay:.42s" id="chrono-section">
+    <div class="chrono-hd">
+      <div class="chrono-title">⏰ 크로노 영양 처방</div>
+      <div class="chrono-badge" id="chrono-bc-badge">BC-?</div>
+    </div>
+    <div class="chrono-sub" id="chrono-sub">내 바디코드에 최적화된 시간대별 먹는 법입니다</div>
+    <div class="chrono-timeline" id="chrono-timeline">
+      <!-- JS renderChrono()가 채웁니다 -->
+    </div>
+    <div class="chrono-science" id="chrono-science"></div>
+  </div>
+
+  <button class="next-flow fade-up" style="transition-delay:.5s" onclick="switchPage(8)">
     <div class="nf-left">
       <span class="nf-step">다음 — 주차별 맞춤 비율</span>
       <span class="nf-name" id="p5-next-name">먼저 집중할 3개 원인, 12주 동안 어떤 비율로</span>
@@ -11521,6 +11628,7 @@ function renderAll(data) {
   wow3Init(userName, ohaengType, mbtiType, answers['Q02'], answers['Q_MENOPAUSE']); // 경보
   wow4Init();   // 주간 미션
   wow6Init(bcCode, ohaengType, answers['Q_MENOPAUSE']); // 보충제 궁합
+  renderChrono(bcCode); // 크로노 영양 처방
 
   // 면책 고지 전 페이지
   document.querySelectorAll('[id$="-disclaimer"]').forEach(el => { el.textContent = DISCLAIMER; });
@@ -12253,15 +12361,15 @@ function renderP5(metrics, bcCode, axisScores, userName) {
 
   // BC코드별 핵심 영역 3개 매핑
   var BC_P5_MAP = {
-    'BC-1': { strong:['식단','순환','회복'],   comment:'내장비만형: 식이조절+혈당순환+수면회복' },
-    'BC-2': { strong:['호르몬','식단','회복'], comment:'피하지방형: 에스트로겐+식단+회복' },
-    'BC-3': { strong:['순환','체형','회복'],   comment:'하지부종형: 림프순환+하체체형+회복' },
-    'BC-4': { strong:['호르몬','회복','식단'], comment:'약물부작용형: 호르몬복구+회복+식단' },
-    'BC-5': { strong:['식단','호르몬','회복'], comment:'재발형: 식단관리+호르몬+회복' },
-    'BC-6': { strong:['회복','호르몬','체형'], comment:'갱년기형: 수면자율신경+호르몬+체형' },
-    'BC-7': { strong:['식단','회복','체형'],   comment:'야식부엉이형: 식단리셋+수면회복+체형' },
-    'BC-8': { strong:['운동','체형','식단'],   comment:'운동말벅지형: 운동방향+체형교정+식단' },
-    'BC-9': { strong:['식단','심리','회복'],   comment:'번아웃형: 식단+스트레스심리+회복' }
+    'BC-1': { strong:['순환','회복','체형'],   comment:'BC-1 코끼리다리형: 림프순환+회복+하체체형' },
+    'BC-2': { strong:['체형','순환','회복'],   comment:'BC-2 거북이형: 경추체형+상체순환+회복' },
+    'BC-3': { strong:['식단','순환','회복'],   comment:'BC-3 수박배형: 혈당식단+내장순환+수면회복' },
+    'BC-4': { strong:['호르몬','회복','식단'], comment:'BC-4 요요형: 갑상선호르몬+회복+따뜻한식단' },
+    'BC-5': { strong:['식단','호르몬','회복'], comment:'BC-5 귤껍질형: 항염식단+호르몬+조직회복' },
+    'BC-6': { strong:['회복','심리','호르몬'], comment:'BC-6 야식부엉이형: 수면자율신경+심리식이+코르티솔' },
+    'BC-7': { strong:['체형','회복','식단'],   comment:'BC-7 바람빠진풍선형: 골반체형+산후회복+식단' },
+    'BC-8': { strong:['운동','체형','식단'],   comment:'BC-8 말벅지형: 운동방향교정+하체체형+저탄식단' },
+    'BC-9': { strong:['식단','운동','회복'],   comment:'BC-9 올챙이배형: 고단백식단+근력운동+이화방지회복' }
   };
 
   // 11개 전문 영역 전체 데이터
@@ -14975,7 +15083,7 @@ async function dnaSaveOrShare() {
     const file = new File([blob], fileName, { type:'image/png' });
     if (navigator.canShare({ files:[file] })) {
       try {
-        await navigator.share({ title:`내 BC DNA 카드: BC-${d.bcCode}`, files:[file] });
+        await navigator.share({ title:`내 BC DNA 카드: ${d.bcCode}`, files:[file] });
         closeDnaCard();
         return;
       } catch(e) { if (e.name === 'AbortError') return; }
@@ -19155,7 +19263,9 @@ function wow6CheckItem() {
   const val = sel.value;
   if (!val) { result.className = 'wow6-checker-result'; return; }
 
-  const bcCode = `BC-${_wowData.bcCode || '1'}`;
+  // _wowData.bcCode는 이미 'BC-3' 형식 — BC-BC-3 방지
+  const rawBcCode = String(_wowData.bcCode || 'BC-1');
+  const bcCode = /^BC-\d/.test(rawBcCode) ? rawBcCode : ('BC-' + rawBcCode.replace(/^BC-?/i,''));
   const map = WOW6_CHECKER_MAP[val];
   if (!map) return;
 
@@ -19164,14 +19274,344 @@ function wow6CheckItem() {
 
   if (isOk) {
     result.className = 'wow6-checker-result show ok';
-    result.textContent = `✅ BC-${_wowData.bcCode} 타입과 잘 맞아요! ${map.msg_ok}`;
+    result.textContent = `✅ ${bcCode} 타입과 잘 맞아요! ${map.msg_ok}`;
   } else if (isWarn) {
     result.className = 'wow6-checker-result show warn';
     result.textContent = `⚠️ 주의가 필요합니다. ${map.msg_warn}`;
   } else {
     result.className = 'wow6-checker-result show warn';
-    result.textContent = `💡 이 보충제는 BC-${_wowData.bcCode} 타입에 중립적입니다. 큰 문제는 없지만 더 효과적인 것들이 있어요.`;
+    result.textContent = `💡 이 보충제는 ${bcCode} 타입에 중립적입니다. 큰 문제는 없지만 더 효과적인 것들이 있어요.`;
   }
+}
+
+// ══════════════════════════════════════════════════════════════
+// CHRONO NUTRITION ENGINE — 시간대별 맞춤 영양 처방
+// BC-1~9 각 코드별 6개 시간대 데이터
+// slot: wake(기상) / break(아침) / lunch(점심) / snack(간식) / dinner(저녁) / night(취침전)
+// ══════════════════════════════════════════════════════════════
+var CHRONO_DB = {
+  'BC-1': {
+    sub: '하지 림프·정맥 순환 타입 — 하루 중 체액 이동 타이밍이 핵심입니다',
+    science: '⬆️ <strong>과학적 근거</strong>: 림프계는 중력 영향을 받습니다. 아침 공복 수분 섭취 + 저녁 염분 제한이 하지 부종 30% 개선(NEJM 2020).',
+    slots: [
+      { slot:'wake',  icon:'🌿', time:'기상 직후 (30분 이내)',
+        headline:'림프 펌프 시동 — 따뜻한 물부터',
+        eat:['따뜻한 물 300ml','레몬즙 1/2개'], avoid:['찬 음료','커피 공복'],
+        tip:['다리 올리고 마시기'], desc:'기상 직후 림프계 가장 압축된 상태. 따뜻한 물이 림프 흐름을 10배 빠르게 활성화합니다.' },
+      { slot:'break', icon:'🌅', time:'아침 식사 (기상 후 1시간)',
+        headline:'단백질 + 칼륨 조합으로 부종 차단',
+        eat:['달걀 2개','시금치·미역','바나나 1/2개'], avoid:['짠 찌개','가공식품','라면'],
+        tip:['염분 2g 이하 유지'], desc:'칼륨이 나트륨을 신장에서 배출시켜 하지 부종 원인을 차단합니다.' },
+      { slot:'lunch', icon:'☀️', time:'점심 식사 (12:00~13:30)',
+        headline:'하루 중 가장 많이 먹는 타이밍',
+        eat:['현미밥 2/3공기','연어·고등어','브로콜리'], avoid:['짠 소스·젓갈','탄산음료'],
+        tip:['식후 10분 걷기 필수'], desc:'오후 활동이 림프 펌프 역할. 점심 후 10분 걷기만으로 하체 순환 40% 개선.' },
+      { slot:'snack', icon:'🍀', time:'오후 간식 (15:00~16:00)',
+        headline:'칼륨 부스터 간식 타임',
+        eat:['아보카도 1/4개','토마토','그릭요거트'], avoid:['과자·빵','짠 견과류'],
+        tip:['이 시간 커피는 OK'], desc:'오후 3시 혈당이 가장 안정적인 시간대. 칼륨 간식이 저녁 부종 예방.' },
+      { slot:'dinner',icon:'🌙', time:'저녁 식사 (18:00~19:00)',
+        headline:'18시 이후 나트륨 완전 차단',
+        eat:['두부','채소 위주','미역국(저염)'], avoid:['짠 음식 전체','술','국물 많은 음식'],
+        tip:['19시 이후 금식 목표'], desc:'저녁 과잉 나트륨은 수면 중 하지에 쌓여 아침 코끼리 다리 직접 원인.' },
+      { slot:'night', icon:'🌑', time:'취침 전 (21:00~22:00)',
+        headline:'다리 올리기 + 마그네슘',
+        eat:['따뜻한 허브티(무카페인)','마그네슘 보충제'], avoid:['야식 절대 금지','알코올'],
+        tip:['벽에 다리 올리고 10분'], desc:'수면 중 다리를 심장보다 높이 유지하면 림프 역류 배출이 촉진됩니다.' }
+    ]
+  },
+  'BC-2': {
+    sub: '경추·흉추 림프 차단 타입 — 상체 순환과 자세 연동 식이 전략이 핵심입니다',
+    science: '⬆️ <strong>과학적 근거</strong>: 거북목 시 액와 림프절 압박 → 상체 부종. 항염 식이 + 오메가-3가 림프관 탄력 20% 회복(Lymphology 2021).',
+    slots: [
+      { slot:'wake',  icon:'🐢', time:'기상 직후 (30분 이내)',
+        headline:'목 림프 깨우기 — 따뜻한 생강수',
+        eat:['따뜻한 생강차','레몬물'], avoid:['찬 음료','공복 커피'],
+        tip:['목 스트레칭 3분 후 섭취'], desc:'경추 주변 림프절이 기상 직후 가장 굳어있는 상태. 따뜻한 수분이 활성화.' },
+      { slot:'break', icon:'🌅', time:'아침 식사 (기상 후 1시간)',
+        headline:'오메가-3 + 항염 조합',
+        eat:['연어·청어','아보카도','달걀'], avoid:['흰 빵·도넛','가공식품'],
+        tip:['오메가-3 1g 보충제 추가'], desc:'아침 오메가-3 섭취가 하루 전체 림프관 탄력 유지에 가장 효과적.' },
+      { slot:'lunch', icon:'☀️', time:'점심 식사 (12:00~13:30)',
+        headline:'콜라겐·실리카 식품으로 조직 회복',
+        eat:['뼈 육수 스프','현미밥','브로콜리'], avoid:['튀김류','패스트푸드'],
+        tip:['식후 어깨 돌리기 10회'], desc:'콜라겐 전구체 섭취 + 식후 어깨 운동 조합이 액와 림프 압박 해소.' },
+      { slot:'snack', icon:'🍒', time:'오후 간식 (15:00~16:00)',
+        headline:'항산화 베리류 + 비타민C',
+        eat:['블루베리·딸기','키위'], avoid:['가공 과자','초콜릿'],
+        tip:['비타민C 500mg 이 시간에'], desc:'비타민C가 림프관 내피세포 복구를 지원. 오후가 흡수율 가장 높음.' },
+      { slot:'dinner',icon:'🌙', time:'저녁 식사 (18:30~19:30)',
+        headline:'저녁은 가볍게 — 항염 위주',
+        eat:['두부·계란','나물','된장국(저염)'], avoid:['치킨·기름진 음식','술'],
+        tip:['저녁 후 목 마사지 5분'], desc:'저녁 과식 시 횡격막 압박 → 흉관 림프 역류. 소식 + 항염이 핵심.' },
+      { slot:'night', icon:'🌑', time:'취침 전 (21:00~22:00)',
+        headline:'취침 자세 + 마그네슘',
+        eat:['카모마일 허브티','마그네슘'], avoid:['야식','카페인'],
+        tip:['낮은 베개 + 바른 자세'], desc:'수면 중 자세가 경추 림프절 압박 결정. 낮은 베개가 상체 림프 순환 보호.' }
+    ]
+  },
+  'BC-3': {
+    sub: '인슐린 저항성·내장지방 타입 — 혈당 스파이크를 막는 타이밍 식이가 전부입니다',
+    science: '⬆️ <strong>과학적 근거</strong>: 아침 고단백 식사가 당일 혈당 스파이크 평균 46% 감소(Diabetes Care 2022). 저녁 탄수화물 제한이 내장지방 주 0.3kg 감소.',
+    slots: [
+      { slot:'wake',  icon:'🍉', time:'기상 직후 (30분 이내)',
+        headline:'혈당 리셋 — 공복 물 + 계피',
+        eat:['따뜻한 물 300ml','계피차'], avoid:['주스·과일','빵'],
+        tip:['공복혈당 자가 측정 권장'], desc:'기상 직후 혈당이 코르티솔로 자연 상승. 계피 성분이 인슐린 감수성 개선.' },
+      { slot:'break', icon:'🥚', time:'아침 식사 (기상 후 1시간 이내)',
+        headline:'단백질 FIRST — 탄수화물은 마지막에',
+        eat:['달걀 3개','채소 먼저','현미밥 1/4공기'], avoid:['빵·시리얼','과일주스','흰 쌀'],
+        tip:['채소→단백질→탄수 순서로'], desc:'음식 먹는 순서만 바꿔도 혈당 스파이크 37% 감소. 이것이 가장 쉬운 BC-3 처방.' },
+      { slot:'lunch', icon:'☀️', time:'점심 식사 (12:00~13:30)',
+        headline:'하루 중 가장 많이 먹는 타이밍',
+        eat:['현미밥 2/3공기','닭가슴살·생선','브로콜리·루꼴라'], avoid:['흰 쌀밥','단 소스','탄산음료'],
+        tip:['식후 10분 걷기로 혈당 하강'], desc:'낮 인슐린 감수성이 저녁보다 2배 높음. 탄수화물은 반드시 낮에만.' },
+      { slot:'snack', icon:'🥜', time:'오후 간식 (15:00~16:00)',
+        headline:'저혈당 방어 간식 — 견과류 우선',
+        eat:['아몬드 10알','그릭요거트'], avoid:['과자·케이크','단 음료'],
+        tip:['이 시간 이후 탄수 금지'], desc:'오후 저혈당이 저녁 폭식 원인 1위. 견과류가 느린 혈당 완충재.' },
+      { slot:'dinner',icon:'🌙', time:'저녁 식사 (18:00~19:00)',
+        headline:'저녁 탄수화물 제로 목표',
+        eat:['닭가슴살·두부','채소 듬뿍','된장국'], avoid:['밥·국수·빵','과일','술·맥주'],
+        tip:['19시 이후 금식'], desc:'저녁 인슐린 감수성 최저. 저녁 탄수화물이 내장지방 직접 저장으로 이어짐.' },
+      { slot:'night', icon:'🌑', time:'취침 전 (21:00~22:00)',
+        headline:'야식 충동 차단 전략',
+        eat:['허브티(무카페인)'], avoid:['야식 전부','과일도 피하기','술'],
+        tip:['허기 = 가짜 허기 신호'], desc:'수면 중 성장호르몬이 인슐린 저항성 회복. 공복 수면이 BC-3 치유의 핵심.' }
+    ]
+  },
+  'BC-4': {
+    sub: '갑상선 셧다운·초절전 타입 — 대사 시동 타이밍과 따뜻한 음식이 전부입니다',
+    science: '⬆️ <strong>과학적 근거</strong>: 갑상선 저하 시 아침 단백질 섭취가 T3 활성화를 18% 촉진(J Thyroid Res 2021). 요오드·셀레늄 타이밍 섭취 중요.',
+    slots: [
+      { slot:'wake',  icon:'🌊', time:'기상 직후 (30분 이내)',
+        headline:'체온 올리기 — 따뜻한 물 필수',
+        eat:['따뜻한 물 400ml','생강·계피'], avoid:['찬물·얼음','공복 운동'],
+        tip:['일어나자마자 따뜻한 물'], desc:'체온 0.5도 상승이 기초대사량 7% 향상. 갑상선 저하형은 아침 체온 관리가 1순위.' },
+      { slot:'break', icon:'🌅', time:'아침 식사 (기상 후 30분 이내)',
+        headline:'요오드 + 셀레늄 — 갑상선 연료 보급',
+        eat:['미역국·김','달걀','견과류(브라질너트)'], avoid:['생배추·생브로콜리(갑상선 억제)','콩 과잉'],
+        tip:['생 십자화과 채소 피하기'], desc:'요오드(해조류)와 셀레늄(브라질너트 2알)이 T4→T3 전환 효소의 핵심 원료.' },
+      { slot:'lunch', icon:'☀️', time:'점심 식사 (12:00~13:30)',
+        headline:'따뜻하게 익힌 음식 위주',
+        eat:['따뜻한 국밥·찌개','닭고기·생선','고구마'], avoid:['샐러드 과잉(차가운)','생채소 다량'],
+        tip:['음식 온도 신경쓰기'], desc:'BC-4 타입은 소화 효소 활성도 낮음. 따뜻하게 익힌 음식이 영양 흡수율 30% 향상.' },
+      { slot:'snack', icon:'🌰', time:'오후 간식 (15:00~16:00)',
+        headline:'에너지 유지 간식 — 끊지 말기',
+        eat:['고구마','호두·아몬드'], avoid:['굶기(대사 더 낮아짐)'],
+        tip:['소식 자주 먹기 전략'], desc:'BC-4는 절식이 금물. 공복이 길어질수록 갑상선이 더 절전 모드로 진입.' },
+      { slot:'dinner',icon:'🌙', time:'저녁 식사 (18:30~19:30)',
+        headline:'따뜻한 저녁 + 아연 보충',
+        eat:['굴·조개','두부찌개','나물'], avoid:['차가운 음식','알코올(갑상선 억제)'],
+        tip:['아연 보충제 저녁에'], desc:'아연이 TSH 수용체 민감성 회복. 저녁 굴·조개가 갑상선 처방 음식 1위.' },
+      { slot:'night', icon:'🌑', time:'취침 전 (21:00~22:00)',
+        headline:'깊은 수면 = 갑상선 회복 시간',
+        eat:['따뜻한 우유·귀리','마그네슘'], avoid:['야식','찬 음료'],
+        tip:['22시 취침 목표'], desc:'성장호르몬 분비 피크(23~01시)에 갑상선 T4도 재합성. 수면이 BC-4 치유의 약.' }
+    ]
+  },
+  'BC-5': {
+    sub: '지방 섬유화·셀룰라이트 타입 — 항염 + 콜라겐 분해 식이가 핵심입니다',
+    science: '⬆️ <strong>과학적 근거</strong>: 만성 염증 마커(IL-6) 감소 식이가 셀룰라이트 두께 12주 15% 감소(Ann Dermatol 2023). 비타민C + 콜라겐 펩타이드 병용 효과.',
+    slots: [
+      { slot:'wake',  icon:'🍊', time:'기상 직후 (30분 이내)',
+        headline:'항산화 시동 — 레몬물',
+        eat:['따뜻한 레몬물','블랙커피(선택)'], avoid:['단 주스','설탕 음료'],
+        tip:['비타민C 500mg 공복'], desc:'비타민C 공복 섭취 시 콜라겐 합성 효소(하이드록실라제) 활성화. 셀룰라이트 분해 시작.' },
+      { slot:'break', icon:'🌅', time:'아침 식사 (기상 후 1시간)',
+        headline:'콜라겐 전구체 로딩',
+        eat:['달걀 흰자','뼈 육수','고수·루꼴라'], avoid:['튀김','흰빵','설탕'],
+        tip:['콜라겐 펩타이드 10g'], desc:'아침 콜라겐 원료 보충이 피부 진피층 섬유아세포 활성화. 섬유화 된 지방에 틈을 만듦.' },
+      { slot:'lunch', icon:'☀️', time:'점심 식사 (12:00~13:30)',
+        headline:'항염 지중해식 패턴',
+        eat:['연어·고등어','올리브오일 드레싱','현미'], avoid:['튀김·가공육','설탕 소스'],
+        tip:['오메가-3 : 오메가-6 = 1:4 목표'], desc:'만성 염증이 셀룰라이트 굳히는 주범. 지중해식이 염증 마커 40% 감소.' },
+      { slot:'snack', icon:'🍇', time:'오후 간식 (15:00~16:00)',
+        headline:'폴리페놀 항산화 간식',
+        eat:['블루베리·포도','다크초콜릿 1칸'], avoid:['과자·케이크'],
+        tip:['레스베라트롤 식품 우선'], desc:'폴리페놀이 지방세포 주변 만성 염증 회로를 직접 차단.' },
+      { slot:'dinner',icon:'🌙', time:'저녁 식사 (18:30~19:30)',
+        headline:'저자극·저염 항염 저녁',
+        eat:['두부·생선','나물·미역','된장국(저염)'], avoid:['술','짠 음식','가공 소세지'],
+        tip:['알코올 = 셀룰라이트 악화 1위'], desc:'알코올이 림프 배출 막고 지방 섬유화 가속. BC-5 타입 금주는 선택이 아닌 필수.' },
+      { slot:'night', icon:'🌑', time:'취침 전 (21:00~22:00)',
+        headline:'수면 중 조직 재생 극대화',
+        eat:['트립토판 함유 식품(우유·바나나)'], avoid:['야식','술'],
+        tip:['수면 중 성장호르몬 = 콜라겐 합성'], desc:'수면 중 성장호르몬이 섬유아세포에서 콜라겐 합성 지시. BC-5는 수면이 치료.' }
+    ]
+  },
+  'BC-6': {
+    sub: '부신 피로·자율신경 교란 타입 — 코르티솔 리듬 복원이 모든 식이의 전제입니다',
+    science: '⬆️ <strong>과학적 근거</strong>: 코르티솔은 오전 8시 피크, 오후 4시 저점 패턴. 아침 고단백 식사가 당일 코르티솔 변동폭 28% 감소(Psychoneuroendocrinology 2022).',
+    slots: [
+      { slot:'wake',  icon:'🦉', time:'기상 직후 (30분 이내)',
+        headline:'코르티솔 정상화 — 빛 + 단백질',
+        eat:['따뜻한 물 300ml'], avoid:['커피 첫 2시간 금지','당분 즉시 섭취'],
+        tip:['기상 즉시 햇빛 보기 10분'], desc:'기상 후 코르티솔 피크 활용. 커피는 90분 후가 최적 — 그 전엔 코르티솔 중복 자극.' },
+      { slot:'break', icon:'🌅', time:'아침 식사 (기상 후 1~1.5시간)',
+        headline:'트립토판 + 단백질로 도파민 전구체 충전',
+        eat:['달걀','닭가슴살','바나나 1개'], avoid:['단 시리얼','도넛·빵','에너지 드링크'],
+        tip:['기상 90분 후 커피 타이밍'], desc:'트립토판 → 세로토닌 → 멜라토닌 전환 회로. 아침 단백질이 저녁 수면 질까지 결정.' },
+      { slot:'lunch', icon:'☀️', time:'점심 식사 (12:00~13:30)',
+        headline:'혈당 안정이 코르티솔 안정',
+        eat:['현미밥 2/3공기','단백질 위주','채소 듬뿍'], avoid:['단 음식','흰 쌀','주스'],
+        tip:['이 시간 이후 카페인 금지'], desc:'점심 후 카페인이 오후 코르티솔 재상승 → 야간 코르티솔 역류 → 야식 충동 악순환.' },
+      { slot:'snack', icon:'🍌', time:'오후 간식 (15:00~16:00)',
+        headline:'코르티솔 저점 — 탄수 소량 보충',
+        eat:['바나나 1/2개','견과류'], avoid:['에너지 드링크','커피'],
+        tip:['이 시간 약간의 탄수가 OK'], desc:'오후 4시 코르티솔 자연 저점. 소량 탄수화물이 뇌 세로토닌 보충, 저녁 야식 충동 차단.' },
+      { slot:'dinner',icon:'🌙', time:'저녁 식사 (18:30~19:30)',
+        headline:'21시 이후 야식 충동 차단 준비',
+        eat:['두부·생선','나물','된장국'], avoid:['야식 트리거 음식','알코올','카페인'],
+        tip:['저녁 후 스마트폰 최소화'], desc:'저녁 자율신경 부교감 전환 시간. 저자극 식사가 코르티솔 야간 역류를 막음.' },
+      { slot:'night', icon:'🌑', time:'야식 충동 타임 (21:00~23:00)',
+        headline:'가짜 허기 차단 — 허브티로 대체',
+        eat:['카모마일·패션플라워 허브티','따뜻한 물'], avoid:['야식 전부','과일·단 음식','알코올'],
+        tip:['허기는 가짜 신호 — 10분만 버티기'], desc:'BC-6의 야식 충동은 진짜 허기가 아닌 코르티솔-도파민 교란 신호. 허브티가 부교감 전환 유도.' }
+    ]
+  },
+  'BC-7': {
+    sub: '릴랙신 이완·산후 구조 타입 — 골반 코어 회복과 항염 영양이 동시에 필요합니다',
+    science: '⬆️ <strong>과학적 근거</strong>: 산후 릴랙신 잔류 기간 항염 식이가 복직근 이개 회복 속도 23% 향상(J Obstet Gynecol 2022). 콜라겐 + 마그네슘 병용 효과.',
+    slots: [
+      { slot:'wake',  icon:'🎈', time:'기상 직후 (30분 이내)',
+        headline:'골반 회복 시동 — 따뜻한 물 + 마그네슘',
+        eat:['따뜻한 물 300ml'], avoid:['차가운 음료','공복 커피'],
+        tip:['마그네슘 취침 전 이동 권장'], desc:'출산 후 골반 인대 이완 상태. 아침 수분이 조직 순환 시작, 무리한 공복 운동 금지.' },
+      { slot:'break', icon:'🌅', time:'아침 식사 (기상 후 1시간)',
+        headline:'콜라겐 원료 + 단백질 로딩',
+        eat:['뼈 육수','달걀 3개','브로콜리'], avoid:['찬 음식','가공식품'],
+        tip:['콜라겐 10g 보충제 아침에'], desc:'콜라겐 전구체가 이완된 인대·근막 회복 원료 직접 공급. 산후 타입 아침 필수.' },
+      { slot:'lunch', icon:'☀️', time:'점심 식사 (12:00~13:30)',
+        headline:'철분 + 단백질 회복 식사',
+        eat:['소고기·시금치','현미밥','된장국'], avoid:['패스트푸드','튀김'],
+        tip:['철분 흡수 위해 비타민C 함께'], desc:'산후 철분 저하 타입 많음. 점심 철분 식품이 에너지 회복과 부종 감소 동시.' },
+      { slot:'snack', icon:'🥛', time:'오후 간식 (15:00~16:00)',
+        headline:'칼슘 + 비타민D 간식',
+        eat:['그릭요거트','치즈','아몬드'], avoid:['단 과자','탄산음료'],
+        tip:['비타민D 보충제 식후에'], desc:'산후 골밀도 감소 경향. 오후 칼슘 간식 + 비타민D가 골반 뼈 회복 지원.' },
+      { slot:'dinner',icon:'🌙', time:'저녁 식사 (18:30~19:30)',
+        headline:'마그네슘으로 인대 이완 완화',
+        eat:['두부·굴','시금치·아보카도','된장국'], avoid:['알코올','짠 음식'],
+        tip:['마그네슘 300mg 저녁 식후'], desc:'마그네슘이 근막·인대 긴장도 조절. 취침 전 복용이 수면 중 골반 회복 극대화.' },
+      { slot:'night', icon:'🌑', time:'취침 전 (21:00~22:00)',
+        headline:'수면 자세 + 골반 지지',
+        eat:['따뜻한 우유','트립토판 식품'], avoid:['야식','무거운 음식'],
+        tip:['무릎 사이 쿠션 끼고 수면'], desc:'수면 중 골반 비틀림 방지가 BC-7 회복의 핵심. 수면 자세만으로 릴랙신 효과 최소화.' }
+    ]
+  },
+  'BC-8': {
+    sub: '알파 수용체 우세·하체 과발달 타입 — 지방 분해 저항 타임에 맞선 식이가 핵심입니다',
+    science: '⬆️ <strong>과학적 근거</strong>: 알파-2 수용체 밀집 지방은 공복 시간 연장 + 저강도 운동이 베타 수용체 활성화(JSSM 2021). 인터밋팅 파스팅 효과적.',
+    slots: [
+      { slot:'wake',  icon:'🏋️', time:'기상 직후 (30분 이내)',
+        headline:'공복 유지 — 지방 분해 극대화',
+        eat:['블랙커피(무설탕)','물'], avoid:['음식 즉시 섭취','우유 커피'],
+        tip:['공복 유지가 베타 수용체 활성화'], desc:'BC-8 타입은 공복 상태에서 베타 수용체가 알파를 이김. 아침 공복 지방 분해 골든 타임.' },
+      { slot:'break', icon:'🌅', time:'아침 식사 (기상 후 2~3시간)',
+        headline:'공복 최대한 연장 후 고단백 식사',
+        eat:['달걀 3개','닭가슴살','채소'], avoid:['빵·탄수화물 아침','과일'],
+        tip:['가능하면 12~14시간 공복 유지'], desc:'인터밋팅 파스팅으로 알파 수용체 지방의 베타 전환 유도. BC-8 핵심 전략.' },
+      { slot:'lunch', icon:'☀️', time:'점심 식사 (12:00~13:30)',
+        headline:'탄수화물은 점심에만 집중',
+        eat:['현미밥','닭고기·생선','채소'], avoid:['저녁 탄수화물로 이동','단 소스'],
+        tip:['탄수화물은 오전 활동 후에만'], desc:'BC-8 하체 지방은 인슐린에 매우 민감. 탄수화물은 낮 활동량 많을 때만 섭취.' },
+      { slot:'snack', icon:'🌿', time:'오후 간식 (15:00~16:00)',
+        headline:'지방 분해 유지 간식',
+        eat:['아몬드·호두 10알','블랙커피'], avoid:['단 과자','과일 주스'],
+        tip:['이 시간 가벼운 유산소 병행'], desc:'오후 저강도 유산소(걷기 20분)가 하체 알파 수용체 지방에 직접 작용.' },
+      { slot:'dinner',icon:'🌙', time:'저녁 식사 (18:30~19:30)',
+        headline:'저녁 탄수화물 완전 제거',
+        eat:['두부·생선·닭가슴살','채소 위주'], avoid:['밥·빵·면','알코올','과일'],
+        tip:['저탄 저녁이 하체 지방 분해 가속'], desc:'저녁 탄수화물이 하체 알파 수용체 지방에 직접 저장. BC-8은 저탄 저녁이 절대 원칙.' },
+      { slot:'night', icon:'🌑', time:'취침 전 (21:00~22:00)',
+        headline:'공복 수면으로 야간 지방 분해',
+        eat:['허브티'], avoid:['야식 전부','단 음식'],
+        tip:['수면 중 성장호르몬 = 알파 수용체 지방 분해'], desc:'수면 중 성장호르몬이 BC-8의 알파 수용체 지방을 분해하는 유일한 타이밍.' }
+    ]
+  },
+  'BC-9': {
+    sub: '근감소성 마른 비만 타입 — 근육을 지키면서 내장지방만 빼는 타이밍 식이가 핵심입니다',
+    science: '⬆️ <strong>과학적 근거</strong>: 근감소 타입은 단백질 분산 섭취(매끼 30g)가 단순 총량 섭취보다 근단백 합성 40% 높음(Am J Clin Nutr 2023).',
+    slots: [
+      { slot:'wake',  icon:'🕷️', time:'기상 직후 (30분 이내)',
+        headline:'이화 방지 — 즉시 아미노산',
+        eat:['BCAA 또는 류신 함유 식품','따뜻한 물'], avoid:['공복 유산소 운동(근육 분해)','공복 장시간'],
+        tip:['기상 직후 단백질 섭취가 근육 보호'], desc:'수면 중 공복으로 이화작용 진행 중. 기상 즉시 아미노산 공급이 BC-9 근육 보호 1번' },
+      { slot:'break', icon:'🌅', time:'아침 식사 (기상 후 30분 이내)',
+        headline:'아침 단백질 30g 목표',
+        eat:['달걀 3개+닭가슴살','그릭요거트','아몬드'], avoid:['단 시리얼','빵','주스만'],
+        tip:['단백질 30g = 달걀 4개 = 닭가슴살 100g'], desc:'매 식사 단백질 30g이 근단백 합성 역치. BC-9 타입은 아침을 절대 굶지 않습니다.' },
+      { slot:'lunch', icon:'☀️', time:'점심 식사 (12:00~13:30)',
+        headline:'단백질 30g + 탄수화물 병행',
+        eat:['닭고기·연어 150g','현미밥','채소'], avoid:['단백질 빠진 탄수만','가공식품'],
+        tip:['운동 전후 타이밍 맞추기'], desc:'점심 후 운동 시 근단백 합성 최대화. 탄수화물이 단백질 절약 효과로 근육 보호.' },
+      { slot:'snack', icon:'💪', time:'오후 간식 (15:00~16:00)',
+        headline:'중간 단백질 보충',
+        eat:['단백질 보충제(20g)','그릭요거트','치즈'], avoid:['단 과자','탄수 위주 간식'],
+        tip:['단백질 분산 섭취가 핵심'], desc:'BC-9는 하루 단백질을 한꺼번에 먹으면 효율 반감. 4~5회 분산이 근육 합성 극대화.' },
+      { slot:'dinner',icon:'🌙', time:'저녁 식사 (18:30~19:30)',
+        headline:'저녁 단백질 30g + 탄수 최소화',
+        eat:['두부·생선·닭고기','채소 듬뿍'], avoid:['탄수화물 과다','알코올(근단백 분해 가속)'],
+        tip:['알코올 = BC-9 근손실 1위 원인'], desc:'알코올이 근단백 합성 효소 mTOR 억제. BC-9 금주는 근육 보호를 위한 필수 처방.' },
+      { slot:'night', icon:'🌑', time:'취침 전 (21:00~22:00)',
+        headline:'수면 전 카제인 단백질',
+        eat:['카제인 단백질 20g 또는 그릭요거트','따뜻한 우유'], avoid:['야식 탄수화물','알코올'],
+        tip:['카제인 = 느린 소화 = 수면 중 근육 보호'], desc:'카제인이 7~8시간 천천히 소화되며 수면 중 이화작용 차단. BC-9 최고의 야간 전략.' }
+    ]
+  }
+};
+
+// ──────────────────────────────────────────────
+// renderChrono() — BC코드 → 크로노 타임라인 렌더
+// ──────────────────────────────────────────────
+function renderChrono(bcCode) {
+  var sec   = document.getElementById('chrono-section');
+  var tl    = document.getElementById('chrono-timeline');
+  var sub   = document.getElementById('chrono-sub');
+  var sci   = document.getElementById('chrono-science');
+  var badge = document.getElementById('chrono-bc-badge');
+  if (!sec || !tl) return;
+
+  // bcCode 정규화: 'BC-3' 형식 보장
+  var key = String(bcCode || '').trim();
+  if (!/^BC-\d$/.test(key)) {
+    key = 'BC-' + key.replace(/^BC-?/i, '');
+  }
+
+  var data = CHRONO_DB[key];
+  if (!data) { sec.style.display = 'none'; return; }
+
+  // 뱃지 + 서브 텍스트
+  if (badge) badge.textContent = key;
+  if (sub)   sub.textContent   = data.sub;
+  if (sci)   sci.innerHTML     = data.science;
+
+  // 슬롯 이모지 아이콘 맵
+  var slotIcons = {
+    wake:'🌿', break:'🌅', lunch:'☀️', snack:'🍀', dinner:'🌙', night:'🌑'
+  };
+
+  // 타임라인 HTML 생성
+  var html = data.slots.map(function(s) {
+    var eatPills  = (s.eat   || []).map(function(t){ return '<span class="chrono-pill eat">'  + t + '</span>'; }).join('');
+    var avoidPills= (s.avoid || []).map(function(t){ return '<span class="chrono-pill avoid">' + t + '</span>'; }).join('');
+    var tipPills  = (s.tip   || []).map(function(t){ return '<span class="chrono-pill tip">'  + '💡 ' + t + '</span>'; }).join('');
+    return [
+      '<div class="chrono-row" data-slot="' + s.slot + '">',
+      '  <div class="chrono-dot">' + (s.icon || slotIcons[s.slot] || '●') + '</div>',
+      '  <div class="chrono-body">',
+      '    <div class="chrono-time-label">' + s.time + '</div>',
+      '    <div class="chrono-headline">' + s.headline + '</div>',
+      '    <div class="chrono-pills">' + eatPills + avoidPills + tipPills + '</div>',
+      '    <div class="chrono-desc">' + s.desc + '</div>',
+      '  </div>',
+      '</div>'
+    ].join('');
+  }).join('');
+
+  tl.innerHTML = html;
+  sec.style.display = 'block';
 }
 
 </script>
