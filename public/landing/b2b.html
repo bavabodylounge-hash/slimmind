@@ -4,11 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>슬림마인드 파트너 입점 — 화이트라벨 바디코드 진단 솔루션</title>
+<meta name="description" content="병원·뷰티·피트니스·한의원 전용 화이트라벨 바디코드 진단 솔루션. 고객 상담 전환율 +34%, 추가 수익 창출. 무료 30분 데모 신청.">
 <style>
 :root{
   --paper:#f6f4ee;--card:#fffdf8;--ink:#1a1a17;--muted:#7c776b;--line:#d8d3c6;
   --vis:#b5452e;--vis-l:#f6e3df;--vis-d:#8c3320;
-  --circ:#2f7d8c;--circ-l:#eef0f6;
+  --circ:#2f7d8c;--circ-l:#d8eef2;--circ-d:#256a77;
   --whole:#5b4a86;--whole-l:#eeeaf6;
   --muscle:#5a6e3a;--muscle-l:#ecf0e8;
   --sub:#c98a3c;--sub-l:#fdf6ee;
@@ -16,149 +17,257 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
-body{word-break:keep-all;overflow-wrap:break-word;font-family:"Apple SD Gothic Neo","Noto Sans KR",-apple-system,sans-serif;background:var(--paper);color:var(--ink);line-height:1.6}
+body{word-break:keep-all;overflow-wrap:break-word;font-family:"Apple SD Gothic Neo","Noto Sans KR",-apple-system,sans-serif;background:var(--paper);color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased}
 a{text-decoration:none;color:inherit}
 .wrap{max-width:1180px;margin:0 auto;padding:0 24px}
 
-header{position:sticky;top:0;z-index:100;background:rgba(246,244,238,0.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+/* ===== 헤더 ===== */
+header{position:sticky;top:0;z-index:100;background:rgba(246,244,238,0.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
 .nav{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;max-width:1180px;margin:0 auto}
-.logo{font-size:20px;font-weight:800}
+.logo{font-size:20px;font-weight:800;letter-spacing:-0.5px}
 .logo span{color:var(--vis)}
 .nav-links{display:flex;gap:32px;align-items:center}
-.nav-links a{font-size:14px;font-weight:500;color:var(--muted)}
+.nav-links a{font-size:14px;font-weight:500;color:var(--muted);transition:color .2s}
+.nav-links a:hover{color:var(--ink)}
 .nav-links a.active{color:var(--circ);font-weight:700}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 22px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;border:none;transition:all .2s;white-space:nowrap}
 .btn-primary{background:var(--circ);color:#fff}
-.btn-primary:hover{background:#256a77;transform:translateY(-1px)}
+.btn-primary:hover{background:var(--circ-d);transform:translateY(-1px)}
+.btn-white{background:#fff;color:var(--navy)}
+.btn-white:hover{background:#f0f0f0}
+.btn-ghost{background:transparent;border:1.5px solid rgba(255,255,255,0.35);color:#fff}
+.btn-ghost:hover{background:rgba(255,255,255,0.1)}
 .btn-outline{background:transparent;border:1.5px solid var(--ink);color:var(--ink)}
 .btn-sm{padding:8px 16px;font-size:13px}
-.btn-lg{padding:17px 34px;font-size:16px;border-radius:12px}
+.btn-lg{padding:15px 28px;font-size:15px;border-radius:12px}
+.btn-xl{padding:18px 38px;font-size:17px;border-radius:14px}
+.hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:4px;background:none;border:none}
+.hamburger span{display:block;width:22px;height:2px;background:var(--ink);border-radius:2px}
+.mobile-nav{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(246,244,238,0.98);z-index:200;flex-direction:column;align-items:center;justify-content:center;gap:32px}
+.mobile-nav.open{display:flex}
+.mobile-nav a{font-size:20px;font-weight:700;color:var(--ink)}
+.mobile-nav .close-btn{position:absolute;top:20px;right:24px;font-size:28px;cursor:pointer;background:none;border:none;color:var(--ink)}
+@media(max-width:900px){.hamburger{display:flex}.nav-links{display:none}}
 
-.hero{padding:80px 24px 60px;background:linear-gradient(135deg,#0F1D30,#1A2E4A);color:#fff;text-align:center}
-.hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.1);color:#9fd4e0;padding:7px 16px;border-radius:30px;font-size:13px;font-weight:700;margin-bottom:28px}
-.hero h1{font-size:44px;font-weight:800;line-height:1.3;letter-spacing:-1px;margin-bottom:20px}
+/* ===== Sticky CTA 바 ===== */
+.sticky-cta-bar{
+  position:fixed;bottom:0;left:0;right:0;z-index:90;
+  background:var(--navy);padding:14px 24px;
+  display:flex;align-items:center;justify-content:center;gap:16px;
+  transform:translateY(100%);transition:transform .3s ease;
+  box-shadow:0 -4px 20px rgba(0,0,0,0.2);
+  padding-bottom:calc(14px + env(safe-area-inset-bottom));
+}
+.sticky-cta-bar.visible{transform:translateY(0)}
+.sticky-cta-bar p{font-size:14px;color:rgba(255,255,255,0.8);display:none}
+@media(min-width:600px){.sticky-cta-bar p{display:block}}
+
+/* ===== 카카오 플로팅 버튼 ===== */
+.kakao-float{position:fixed;bottom:90px;right:24px;z-index:89;width:56px;height:56px;background:#FEE500;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,0.18);cursor:pointer;transition:transform .2s}
+.kakao-float:hover{transform:scale(1.08)}
+.kakao-float svg{width:28px;height:28px}
+
+/* ===== 실시간 알림 팝업 ===== */
+.notif-popup{
+  position:fixed;bottom:170px;left:24px;z-index:88;
+  background:var(--card);border:1px solid var(--line);border-radius:14px;
+  padding:14px 18px;box-shadow:0 8px 28px rgba(0,0,0,0.12);
+  max-width:280px;font-size:13px;
+  transform:translateX(-120%);transition:transform .4s cubic-bezier(.34,1.56,.64,1);
+  pointer-events:none;
+}
+.notif-popup.show{transform:translateX(0)}
+.notif-popup strong{display:block;font-size:13px;font-weight:700;margin-bottom:2px}
+.notif-popup span{color:var(--muted)}
+
+/* ===== Exit Intent 팝업 ===== */
+.exit-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:300;align-items:center;justify-content:center}
+.exit-overlay.open{display:flex}
+.exit-modal{background:var(--card);border-radius:24px;padding:44px 40px;max-width:480px;width:calc(100% - 48px);text-align:center;position:relative}
+.exit-modal .close{position:absolute;top:16px;right:20px;font-size:22px;cursor:pointer;color:var(--muted);background:none;border:none}
+.exit-modal h3{font-size:22px;font-weight:800;letter-spacing:-0.5px;margin-bottom:12px}
+.exit-modal p{font-size:14px;color:var(--muted);margin-bottom:24px;line-height:1.7}
+.exit-demo-badge{background:var(--circ-l);color:var(--circ);padding:8px 18px;border-radius:30px;font-size:14px;font-weight:700;display:inline-block;margin-bottom:18px}
+
+/* ===== 공통 섹션 헤더 ===== */
+.section-head{text-align:center;margin-bottom:48px}
+.section-eyebrow{font-size:12px;font-weight:800;color:var(--circ);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px}
+.section-head h2{font-size:32px;font-weight:800;letter-spacing:-0.5px;margin-bottom:12px;line-height:1.4}
+.section-head p{font-size:15px;color:var(--muted)}
+
+/* ===== 히어로 ===== */
+.hero{padding:80px 24px 60px;background:linear-gradient(135deg,#0F1D30 0%,#1A2E4A 60%,#0d3040 100%);color:#fff;text-align:center;position:relative;overflow:hidden}
+.hero::before{content:"";position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:radial-gradient(circle at 70% 30%,rgba(47,125,140,0.2),transparent 60%);pointer-events:none}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.1);color:#9fd4e0;padding:7px 16px;border-radius:30px;font-size:13px;font-weight:700;margin-bottom:24px;border:1px solid rgba(255,255,255,0.15)}
+.hero h1{font-size:46px;font-weight:800;line-height:1.25;letter-spacing:-1.5px;margin-bottom:18px}
 .hero h1 .accent{color:#5DCAA5}
-.hero-sub{font-size:17px;color:rgba(255,255,255,0.65);max-width:660px;margin:0 auto 36px;line-height:1.7}
-.hero-cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
-.btn-white{background:#fff;color:#0F1D30}
-.btn-white:hover{background:#f0f0f0}
-.btn-ghost{background:transparent;border:1.5px solid rgba(255,255,255,0.3);color:#fff}
+.hero-sub{font-size:16px;color:rgba(255,255,255,0.7);max-width:660px;margin:0 auto 32px;line-height:1.8}
+.hero-cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:40px}
+.hero-stats{display:flex;gap:40px;justify-content:center;flex-wrap:wrap;padding-top:32px;border-top:1px solid rgba(255,255,255,0.12)}
+.hero-stat-num{font-size:32px;font-weight:800;color:#5DCAA5}
+.hero-stat-label{font-size:13px;color:rgba(255,255,255,0.6);margin-top:4px}
 
-/* 문제 제기 섹션 — 핵심 신규 */
+/* ===== Before/After 비교 ===== */
 .problem{padding:90px 24px;background:var(--card)}
-.section-head{text-align:center;margin-bottom:56px}
-.section-eyebrow{font-size:13px;font-weight:800;color:var(--circ);letter-spacing:2px;text-transform:uppercase;margin-bottom:14px}
-.section-head h2{font-size:32px;font-weight:800;letter-spacing:-1px;margin-bottom:14px;line-height:1.4}
-.section-head p{font-size:16px;color:var(--muted);max-width:620px;margin:0 auto}
-
 .problem-compare{display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:1000px;margin:0 auto}
-.problem-card{border-radius:18px;padding:32px 28px}
+.problem-card{border-radius:20px;padding:32px 28px}
 .problem-card.before{background:var(--vis-l);border:1px solid #e8c0b6}
-.problem-card.after{background:var(--circ-l);border:1px solid #c4d8e0}
-.problem-tag{font-size:12px;font-weight:800;margin-bottom:16px;display:inline-block;padding:4px 12px;border-radius:14px}
+.problem-card.after{background:var(--circ-l);border:1px solid #b8d8e0}
+.problem-tag{font-size:12px;font-weight:800;margin-bottom:16px;display:inline-block;padding:5px 14px;border-radius:14px}
 .problem-card.before .problem-tag{background:var(--vis);color:#fff}
 .problem-card.after .problem-tag{background:var(--circ);color:#fff}
-.problem-card h3{font-size:18px;font-weight:800;margin-bottom:18px}
+.problem-card h3{font-size:18px;font-weight:800;margin-bottom:18px;line-height:1.4}
 .problem-list{list-style:none}
 .problem-list li{font-size:14px;padding:10px 0;border-bottom:1px solid rgba(0,0,0,0.06);line-height:1.6}
 .problem-list li:last-child{border-bottom:none}
 .problem-card.before .problem-list li::before{content:"✕ ";color:var(--vis);font-weight:800}
 .problem-card.after .problem-list li::before{content:"✓ ";color:var(--circ);font-weight:800}
 
-/* 4가지 핵심 가치 */
-.value-section{padding:90px 24px}
-.value-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;max-width:1000px;margin:0 auto}
-.value-card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:32px 28px}
-.value-num{font-size:13px;font-weight:800;color:var(--circ);margin-bottom:14px}
-.value-icon{font-size:28px;margin-bottom:16px}
-.value-card h3{font-size:19px;font-weight:800;margin-bottom:12px;line-height:1.4}
-.value-card p{font-size:14px;color:var(--muted);line-height:1.75}
+/* ===== 업종별 탭 ===== */
+.industry-section{padding:90px 24px;background:var(--paper)}
+.industry-tabs{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:40px}
+.ind-tab{padding:10px 22px;border-radius:30px;font-size:14px;font-weight:700;cursor:pointer;border:1.5px solid var(--line);background:var(--card);color:var(--muted);transition:all .2s}
+.ind-tab.active{background:var(--circ);color:#fff;border-color:var(--circ)}
+.ind-content{display:none;max-width:900px;margin:0 auto;animation:fadeIn .3s ease}
+.ind-content.active{display:grid;grid-template-columns:1fr 1fr;gap:28px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.ind-info{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:32px}
+.ind-info h3{font-size:20px;font-weight:800;margin-bottom:14px}
+.ind-info p{font-size:14px;color:var(--muted);line-height:1.8;margin-bottom:20px}
+.ind-benefits{list-style:none}
+.ind-benefits li{font-size:14px;padding:9px 0;border-bottom:1px solid var(--line);display:flex;gap:10px}
+.ind-benefits li:last-child{border-bottom:none}
+.ind-benefits li::before{content:"✓";color:var(--circ);font-weight:800;flex-shrink:0}
+.ind-numbers{background:var(--circ);color:#fff;border-radius:20px;padding:32px;display:flex;flex-direction:column;gap:20px;justify-content:center}
+.ind-num-item .num{font-size:38px;font-weight:800;line-height:1}
+.ind-num-item .label{font-size:13px;color:rgba(255,255,255,0.7);margin-top:4px}
+.ind-num-item .desc{font-size:12px;color:rgba(255,255,255,0.55);margin-top:3px}
+.ind-num-divider{height:1px;background:rgba(255,255,255,0.15)}
 
-/* 화이트라벨 */
-.whitelabel{padding:90px 24px;background:var(--card);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+/* ===== 인터랙티브 ROI 계산기 ===== */
+.roi-section{padding:80px 24px;background:var(--card);border-top:1px solid var(--line)}
+.roi-box{max-width:760px;margin:0 auto;background:var(--paper);border:2px solid var(--line);border-radius:20px;padding:40px}
+.roi-box h3{font-size:22px;font-weight:800;margin-bottom:8px}
+.roi-box .roi-sub{font-size:14px;color:var(--muted);margin-bottom:32px}
+.roi-slider-wrap{margin-bottom:24px}
+.roi-slider-wrap label{font-size:15px;font-weight:700;display:block;margin-bottom:10px}
+.roi-slider-wrap label span{color:var(--circ);font-size:18px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;background:var(--line);border-radius:3px;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--circ);cursor:pointer;box-shadow:0 2px 8px rgba(47,125,140,0.3)}
+.roi-result{background:var(--circ);color:#fff;border-radius:16px;padding:28px 32px;display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.roi-result-item .label{font-size:12px;color:rgba(255,255,255,0.75);margin-bottom:4px}
+.roi-result-item .value{font-size:24px;font-weight:800;line-height:1}
+.roi-result-item .unit{font-size:13px;font-weight:500}
+.roi-payback{margin-top:20px;padding:16px 20px;background:var(--circ-l);border:1px solid #b8d8e0;border-radius:12px;font-size:14px;color:var(--circ-d);font-weight:700;text-align:center}
+
+/* ===== 화이트라벨 ===== */
+.whitelabel{padding:90px 24px;background:var(--paper);border-top:1px solid var(--line)}
 .wl-grid{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;max-width:1100px;margin:0 auto}
-.wl-text .section-eyebrow{text-align:left}
-.wl-text h2{font-size:30px;font-weight:800;text-align:left;margin-bottom:18px;letter-spacing:-0.5px;line-height:1.4}
-.wl-text p{font-size:15px;color:var(--muted);text-align:left;margin-bottom:28px;line-height:1.8}
+.wl-text h2{font-size:30px;font-weight:800;margin-bottom:16px;letter-spacing:-0.5px;line-height:1.4}
+.wl-text p{font-size:14px;color:var(--muted);margin-bottom:26px;line-height:1.8}
 .wl-features{display:flex;flex-direction:column;gap:16px}
 .wl-feat{display:flex;gap:14px;align-items:flex-start}
-.wl-feat-icon{width:38px;height:38px;border-radius:10px;background:var(--circ-l);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
-.wl-feat-text strong{font-size:15px;display:block;margin-bottom:3px}
+.wl-feat-icon{width:40px;height:40px;border-radius:10px;background:var(--circ-l);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.wl-feat-text strong{font-size:14px;display:block;margin-bottom:3px}
 .wl-feat-text span{font-size:13px;color:var(--muted)}
-.wl-visual{background:#0F1D30;border-radius:24px;padding:32px;position:relative}
+.wl-visual{background:var(--navy);border-radius:24px;padding:28px}
 .wl-mockup{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,0.3)}
-.wl-mockup-hdr{padding:16px 20px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #eee}
-.wl-mockup-logo{width:28px;height:28px;border-radius:8px;background:var(--vis)}
+.wl-mockup-hdr{padding:14px 18px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #eee}
+.wl-mockup-logo{width:28px;height:28px;border-radius:8px;background:var(--circ)}
 .wl-mockup-name{font-size:14px;font-weight:800;color:#333}
-.wl-mockup-body{padding:24px 20px}
-.wl-mockup-body h4{font-size:16px;color:#333;margin-bottom:8px}
+.wl-mockup-body{padding:22px 18px}
+.wl-mockup-body h4{font-size:15px;color:#333;margin-bottom:8px}
 .wl-mockup-body p{font-size:12px;color:#888;margin-bottom:14px}
-.wl-mockup-btn{background:var(--vis);color:#fff;font-size:12px;font-weight:700;padding:9px 16px;border-radius:8px;display:inline-block}
+.wl-mockup-btn{background:var(--circ);color:#fff;font-size:12px;font-weight:700;padding:9px 16px;border-radius:8px;display:inline-block}
+.wl-label{background:rgba(93,202,165,0.15);color:#5DCAA5;font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;margin-bottom:14px;display:inline-block}
 
-/* 가격 */
-.pricing{padding:90px 24px}
-.price-card{max-width:640px;margin:0 auto;background:var(--ink);color:#fff;border-radius:24px;padding:48px 44px;position:relative;overflow:hidden}
-.price-tag{position:absolute;top:28px;right:28px;background:var(--circ);color:#fff;font-size:12px;font-weight:800;padding:6px 14px;border-radius:20px}
-.price-row{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:32px;padding-bottom:32px;border-bottom:1px solid rgba(255,255,255,0.12)}
-.price-item-label{font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:8px}
-.price-item-num{font-size:34px;font-weight:800}
-.price-item-num small{font-size:16px;color:rgba(255,255,255,0.5);font-weight:500}
-.price-includes{margin-bottom:32px}
-.price-includes-title{font-size:14px;font-weight:700;margin-bottom:16px;color:rgba(255,255,255,0.85)}
+/* ===== 경쟁사 비교표 ===== */
+.compare-section{padding:80px 24px;background:var(--card);border-top:1px solid var(--line)}
+.compare-table{max-width:900px;margin:0 auto;border-radius:18px;overflow:hidden;border:1.5px solid var(--line)}
+.compare-table table{width:100%;border-collapse:collapse}
+.compare-table th{padding:16px 20px;font-size:13px;font-weight:800;text-align:center;background:var(--navy);color:#fff}
+.compare-table th:first-child{text-align:left}
+.compare-table td{padding:14px 20px;font-size:14px;border-bottom:1px solid var(--line);text-align:center}
+.compare-table td:first-child{text-align:left;font-weight:600;color:var(--ink)}
+.compare-table tr:last-child td{border-bottom:none}
+.compare-table tr:nth-child(even) td{background:rgba(246,244,238,0.4)}
+.chk-yes{color:var(--muscle);font-weight:800}
+.chk-no{color:var(--muted);font-size:13px}
+.chk-slim{color:var(--circ);font-weight:800}
+.compare-note{text-align:center;font-size:13px;color:var(--muted);margin-top:16px}
+
+/* ===== 가격 카드 ===== */
+.pricing-section{padding:80px 24px;background:var(--paper);border-top:1px solid var(--line)}
+.price-grid{max-width:900px;margin:0 auto;display:grid;grid-template-columns:1.5fr 1fr;gap:24px;align-items:start}
+.price-card{background:var(--navy);color:#fff;border-radius:24px;padding:44px 40px;position:relative}
+.price-tag{position:absolute;top:24px;right:24px;background:var(--circ);color:#fff;font-size:12px;font-weight:800;padding:6px 14px;border-radius:20px}
+.price-main{font-size:12px;font-weight:800;color:rgba(255,255,255,0.5);letter-spacing:2px;text-transform:uppercase;margin-bottom:16px}
+.price-row{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:28px;padding-bottom:28px;border-bottom:1px solid rgba(255,255,255,0.1)}
+.price-item-label{font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:6px}
+.price-item-num{font-size:32px;font-weight:800}
+.price-item-num small{font-size:14px;color:rgba(255,255,255,0.5);font-weight:500}
+.price-includes{margin-bottom:28px}
+.price-includes-title{font-size:13px;font-weight:700;margin-bottom:14px;color:rgba(255,255,255,0.8)}
 .price-includes ul{list-style:none}
-.price-includes li{font-size:14px;padding:9px 0;display:flex;gap:10px;color:rgba(255,255,255,0.75);border-bottom:1px solid rgba(255,255,255,0.06)}
+.price-includes li{font-size:13px;padding:9px 0;display:flex;gap:10px;color:rgba(255,255,255,0.7);border-bottom:1px solid rgba(255,255,255,0.06)}
 .price-includes li:last-child{border-bottom:none}
 .price-includes li::before{content:"✓";color:#5DCAA5;font-weight:800;flex-shrink:0}
-.price-note{font-size:13px;color:rgba(255,255,255,0.4);margin-bottom:28px;line-height:1.7}
-.price-card .btn-lg{width:100%}
+.price-note{font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:24px;line-height:1.7}
+.demo-card{background:var(--circ);color:#fff;border-radius:24px;padding:36px 32px;text-align:center}
+.demo-card h3{font-size:20px;font-weight:800;margin-bottom:12px;line-height:1.4}
+.demo-card p{font-size:13px;color:rgba(255,255,255,0.8);margin-bottom:24px;line-height:1.7}
+.demo-free-badge{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;padding:8px 16px;border-radius:20px;font-size:13px;font-weight:700;display:inline-block;margin-bottom:20px}
+.demo-includes{font-size:13px;color:rgba(255,255,255,0.8);margin-top:16px;line-height:1.7}
 
-/* 수익 시뮬레이션 */
-.revenue-sim{padding:90px 24px;background:var(--card);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
-.sim-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:1000px;margin:0 auto}
-.sim-card{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:30px 26px;text-align:center}
-.sim-card.featured{border-color:var(--circ);background:var(--circ-l)}
-.sim-period{font-size:13px;font-weight:700;color:var(--circ);margin-bottom:14px}
-.sim-customers{font-size:30px;font-weight:800;margin-bottom:4px}
-.sim-customers small{font-size:14px;color:var(--muted);font-weight:500}
-.sim-label{font-size:13px;color:var(--muted);margin-bottom:20px}
-.sim-revenue{font-size:24px;font-weight:800;color:var(--circ);padding-top:18px;border-top:1px solid var(--line)}
-.sim-revenue-label{font-size:12px;color:var(--muted);margin-top:4px}
-
-.process{padding:90px 24px}
-.process-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;max-width:1100px;margin:0 auto}
-.process-step{text-align:center;position:relative}
-.process-num{width:48px;height:48px;border-radius:50%;background:var(--circ);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;margin:0 auto 16px}
-.process-step h4{font-size:16px;font-weight:800;margin-bottom:8px}
+/* ===== 도입 프로세스 ===== */
+.process-section{padding:80px 24px;background:var(--card);border-top:1px solid var(--line)}
+.process-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;max-width:1100px;margin:0 auto;position:relative}
+.process-steps::before{content:"";position:absolute;top:24px;left:12%;right:12%;height:2px;background:linear-gradient(90deg,var(--circ),var(--whole));z-index:0}
+.process-step{text-align:center;position:relative;z-index:1}
+.process-num{width:48px;height:48px;border-radius:50%;background:var(--circ);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;margin:0 auto 16px;box-shadow:0 4px 12px rgba(47,125,140,0.3)}
+.process-step h4{font-size:15px;font-weight:800;margin-bottom:8px}
 .process-step p{font-size:13px;color:var(--muted);line-height:1.6}
+.process-time{font-size:11px;font-weight:800;color:var(--circ);background:var(--circ-l);padding:3px 10px;border-radius:10px;margin-bottom:10px;display:inline-block}
 
+/* ===== B2B FAQ ===== */
+.faq{padding:80px 24px;background:var(--paper);border-top:1px solid var(--line)}
+.faq-list{max-width:720px;margin:0 auto}
+.faq-item{border-bottom:1px solid var(--line)}
+.faq-q{font-size:16px;font-weight:700;padding:22px 0;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.faq-q .arrow{flex-shrink:0;transition:transform .3s;font-size:18px;color:var(--muted)}
+.faq-item.open .faq-q .arrow{transform:rotate(180deg)}
+.faq-a{font-size:14px;color:var(--muted);line-height:1.8;max-height:0;overflow:hidden;transition:max-height .35s ease,padding .3s ease;padding-bottom:0}
+.faq-item.open .faq-a{max-height:400px;padding-bottom:22px}
+
+/* ===== 최종 CTA ===== */
 .final-cta{padding:90px 24px;text-align:center;background:linear-gradient(135deg,#0F1D30,#1A2E4A);color:#fff}
-.final-cta h2{font-size:34px;font-weight:800;margin-bottom:16px;letter-spacing:-1px}
-.final-cta p{font-size:16px;color:rgba(255,255,255,0.6);margin-bottom:32px}
+.final-cta h2{font-size:36px;font-weight:800;letter-spacing:-1px;margin-bottom:16px;line-height:1.35}
+.final-cta p{font-size:16px;color:rgba(255,255,255,0.7);margin-bottom:36px;line-height:1.7}
 
-footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:50px 24px 30px;text-align:center;font-size:12px}
+footer{background:var(--ink);color:rgba(255,255,255,0.5);padding:50px 24px 120px;text-align:center;font-size:12px;line-height:1.8}
+footer a{color:rgba(255,255,255,0.5)}
 
-@media (max-width:900px){
-  .hero h1{font-size:28px}
-  .problem-compare,.value-grid,.process-steps,.sim-grid{grid-template-columns:1fr}
-  .wl-grid{grid-template-columns:1fr}
-  .nav-links{display:none}
+@media(max-width:900px){
+  .hero h1{font-size:30px}
+  .problem-compare,.wl-grid,.price-grid{grid-template-columns:1fr}
+  .ind-content.active{grid-template-columns:1fr}
+  .process-steps{grid-template-columns:repeat(2,1fr)}
+  .process-steps::before{display:none}
+  .roi-result{grid-template-columns:1fr}
+  .hero-stats{gap:24px}
 }
-
-/* 모바일 햄버거 메뉴 */
-.hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:4px;background:none;border:none}
-.hamburger span{display:block;width:22px;height:2px;background:var(--ink);border-radius:2px;transition:all .3s}
-.mobile-nav{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(246,244,238,0.98);z-index:200;flex-direction:column;align-items:center;justify-content:center;gap:32px}
-.mobile-nav.open{display:flex}
-.mobile-nav a{font-size:20px;font-weight:700;color:var(--ink)}
-.mobile-nav .close-btn{position:absolute;top:20px;right:24px;font-size:28px;cursor:pointer;background:none;border:none;color:var(--ink)}
-@media (max-width:900px){.hamburger{display:flex}}
+@media(max-width:600px){
+  .process-steps{grid-template-columns:1fr}
+  .price-row{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
 
+<!-- ===== 헤더 ===== -->
 <header>
   <div class="nav">
-    <a href="/landing/" class="logo">SLIM<span style="color:var(--vis)">MIND</span></a>
+    <a href="/landing/" class="logo">SLIM<span>MIND</span></a>
     <nav class="nav-links">
       <a href="/landing/service.html">서비스 소개</a>
       <a href="/landing/pricing.html">요금제</a>
@@ -167,23 +276,43 @@ footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:50px 24px 30px;
       <a href="/landing/about.html">회사 소개</a>
     </nav>
     <button class="hamburger" onclick="openMobileNav()"><span></span><span></span><span></span></button>
-    <a href="#apply" class="btn btn-primary btn-sm">입점 문의하기</a>
+    <a href="#demo" class="btn btn-primary btn-sm">무료 데모 신청</a>
   </div>
 </header>
 
+<!-- ===== 히어로 ===== -->
 <section class="hero">
-  <div class="hero-badge">🏢 병원 · 뷰티 · 피트니스 입점 파트너 모집</div>
+  <div class="hero-badge">🏢 병원 · 뷰티 · 피트니스 · 한의원 파트너 모집 중</div>
   <h1>"감"으로 하던 상담을<br><span class="accent">데이터</span>로 설명하세요</h1>
   <p class="hero-sub">
     로고도, 색상도, 전부 당신의 브랜드입니다. 슬림마인드는 보이지 않는 엔진만 제공합니다.<br>
-    초기비용 290만원, 월 9,900원이 끝입니다.
+    초기비용 290만원, 월 9,900원. 무료 30분 데모로 먼저 확인하세요.
   </p>
   <div class="hero-cta">
-    <a href="#apply" class="btn btn-white btn-lg">파트너 입점 문의하기 →</a>
-    <a href="#pricing" class="btn btn-ghost btn-lg">가격 자세히 보기</a>
+    <a href="#demo" class="btn btn-white btn-lg">무료 30분 데모 신청 →</a>
+    <a href="#roi" class="btn btn-ghost btn-lg">수익 시뮬레이션 보기</a>
+  </div>
+  <div class="hero-stats">
+    <div>
+      <div class="hero-stat-num">+34%</div>
+      <div class="hero-stat-label">상담 전환율 평균 상승</div>
+    </div>
+    <div>
+      <div class="hero-stat-num">2주</div>
+      <div class="hero-stat-label">문의 후 오픈까지 소요 기간</div>
+    </div>
+    <div>
+      <div class="hero-stat-num">0건</div>
+      <div class="hero-stat-label">진단 건수 제한</div>
+    </div>
+    <div>
+      <div class="hero-stat-num">100%</div>
+      <div class="hero-stat-label">화이트라벨 브랜딩</div>
+    </div>
   </div>
 </section>
 
+<!-- ===== Before/After ===== -->
 <section class="problem">
   <div class="wrap">
     <div class="section-head">
@@ -201,6 +330,7 @@ footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:50px 24px 30px;
           <li>대기 시간에 고객이 그냥 핸드폰만 봄</li>
           <li>"왜 이 프로그램이어야 하는지" 설득력 부족</li>
           <li>운동·식단·회복은 별도 전문가 필요</li>
+          <li>고객 데이터 관리 수기로 진행</li>
         </ul>
       </div>
       <div class="problem-card after">
@@ -212,67 +342,223 @@ footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:50px 24px 30px;
           <li>대기 시간에 패드로 진단 → 추가 수익 발생</li>
           <li>"당신의 코드는 이거다" 데이터로 증명하는 설득</li>
           <li>운동·식단·영양·회복까지 한 번에 처방 제공</li>
+          <li>관리자페이지에서 실시간 고객 데이터 확인</li>
         </ul>
       </div>
     </div>
   </div>
 </section>
 
-<section class="value-section">
+<!-- ===== 업종별 탭 ===== -->
+<section class="industry-section">
   <div class="wrap">
     <div class="section-head">
-      <div class="section-eyebrow">4 core values</div>
-      <h2>입점 매장이 실제로 얻는 4가지</h2>
+      <div class="section-eyebrow">업종별 활용 사례</div>
+      <h2>내 매장에 어떻게 적용될까요?</h2>
+      <p>업종별로 슬림마인드가 만드는 변화를 확인하세요</p>
     </div>
-    <div class="value-grid">
-      <div class="value-card">
-        <div class="value-num">VALUE 01</div>
-        <div class="value-icon">📊</div>
-        <h3>감이 아닌 데이터로 설명하는 힘</h3>
-        <p>"제 경험상 이게 좋아요"가 아니라 "당신의 호르몬 점수는 92점, 1순위 원인축은 이겁니다"라고 데이터로 말합니다. 고객의 신뢰가 다릅니다.</p>
+    <div class="industry-tabs">
+      <button class="ind-tab active" onclick="switchIndustry('hospital',this)">🏥 병원·의원</button>
+      <button class="ind-tab" onclick="switchIndustry('beauty',this)">💆 뷰티·에스테틱</button>
+      <button class="ind-tab" onclick="switchIndustry('fitness',this)">🏋️ 피트니스·PT샵</button>
+      <button class="ind-tab" onclick="switchIndustry('korean',this)">🌿 한의원·한방</button>
+    </div>
+
+    <!-- 병원·의원 -->
+    <div class="ind-content active" id="ind-hospital">
+      <div class="ind-info">
+        <h3>🏥 병원·의원</h3>
+        <p>비만클리닉, 가정의학과, 내분비내과에서 기존 약물 처방·체성분 분석과 병행하면 환자 만족도가 크게 올라갑니다. "왜 이 약인지"를 데이터로 설명할 수 있습니다.</p>
+        <ul class="ind-benefits">
+          <li>체성분 분석 + 바디코드 진단 패키지 구성 가능</li>
+          <li>약물 처방 근거 보완 (호르몬축·인슐린저항 데이터)</li>
+          <li>재진율 향상 (12주 로드맵으로 지속 방문 유도)</li>
+          <li>비급여 추가 수익 (진단비 3~5만원 자체 책정 가능)</li>
+        </ul>
       </div>
-      <div class="value-card">
-        <div class="value-num">VALUE 02</div>
-        <div class="value-icon">⏱️</div>
-        <h3>대기 시간이 곧 추가 수익</h3>
-        <p>고객이 대기하는 시간에 패드로 바디코드 진단을 받습니다. 진단 자체가 유료 서비스이자, 다음 상담으로 이어지는 영업 도구가 됩니다.</p>
+      <div class="ind-numbers">
+        <div class="ind-num-item">
+          <div class="num">+41%</div>
+          <div class="label">재진 예약률 상승</div>
+          <div class="desc">12주 로드맵 연계 효과</div>
+        </div>
+        <div class="ind-num-divider"></div>
+        <div class="ind-num-item">
+          <div class="num">+28%</div>
+          <div class="label">추가 비급여 수익</div>
+          <div class="desc">진단 서비스 자체 운영</div>
+        </div>
+        <div class="ind-num-divider"></div>
+        <div class="ind-num-item">
+          <div class="num">92%</div>
+          <div class="label">환자 만족도</div>
+          <div class="desc">"이유 있는 처방"에 대한 반응</div>
+        </div>
       </div>
-      <div class="value-card">
-        <div class="value-num">VALUE 03</div>
-        <div class="value-icon">💬</div>
-        <h3>이유 있는 설명, 이유 있는 거절도 가능</h3>
-        <p>"이 시술은 당신 코드에 안 맞습니다"라고 데이터 기반으로 말할 수 있습니다. 무리한 영업이 아니라 신뢰를 쌓는 상담이 됩니다.</p>
+    </div>
+
+    <!-- 뷰티·에스테틱 -->
+    <div class="ind-content" id="ind-beauty">
+      <div class="ind-info">
+        <h3>💆 뷰티·에스테틱</h3>
+        <p>피부관리실, 에스테틱, 바디케어샵에서 시술 전 바디코드 진단으로 차별화된 상담을 제공하세요. "이 시술이 왜 당신에게 맞는지"를 설명하는 근거가 됩니다.</p>
+        <ul class="ind-benefits">
+          <li>시술 전 진단으로 프리미엄 상담 포지셔닝</li>
+          <li>BC코드별 맞춤 케어 프로그램 구성</li>
+          <li>고객 데이터베이스 구축 (재방문 유도)</li>
+          <li>관리 효과 설명의 과학적 근거 제공</li>
+        </ul>
       </div>
-      <div class="value-card">
-        <div class="value-num">VALUE 04</div>
-        <div class="value-icon">🎯</div>
-        <h3>전문분야 밖도 책임지는 특화성</h3>
-        <p>운동·식단·영양·회복까지 담당자의 전문 분야가 아니어도 시스템이 대신 처방합니다. 1인 매장도 종합 케어가 가능해집니다.</p>
+      <div class="ind-numbers">
+        <div class="ind-num-item">
+          <div class="num">+38%</div>
+          <div class="label">객단가 상승</div>
+          <div class="desc">프리미엄 패키지 전환</div>
+        </div>
+        <div class="ind-num-divider"></div>
+        <div class="ind-num-item">
+          <div class="num">+52%</div>
+          <div class="label">재방문율 상승</div>
+          <div class="desc">12주 케어 패키지 연계</div>
+        </div>
+        <div class="ind-num-divider"></div>
+        <div class="ind-num-item">
+          <div class="num">2.3배</div>
+          <div class="label">추천 고객 증가</div>
+          <div class="desc">"데이터 있는 관리샵" 입소문</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 피트니스·PT샵 -->
+    <div class="ind-content" id="ind-fitness">
+      <div class="ind-info">
+        <h3>🏋️ 피트니스·PT샵</h3>
+        <p>헬스장, PT샵, 크로스핏 센터에서 PT 계약 전 바디코드 진단으로 전환율을 높이세요. "왜 이 운동이 당신에게 맞는지"를 과학적으로 설명할 수 있습니다.</p>
+        <ul class="ind-benefits">
+          <li>PT 상담 전환율 대폭 향상</li>
+          <li>BC코드별 맞춤 운동 프로그램 처방</li>
+          <li>정체기 분석 및 프로그램 변경 근거 제공</li>
+          <li>운동 외 식단·영양·회복까지 종합 케어</li>
+        </ul>
+      </div>
+      <div class="ind-numbers">
+        <div class="ind-num-item">
+          <div class="num">+45%</div>
+          <div class="label">PT 계약 전환율</div>
+          <div class="desc">진단 후 상담 연계</div>
+        </div>
+        <div class="ind-num-divider"></div>
+        <div class="ind-num-item">
+          <div class="num">+31%</div>
+          <div class="label">회원 갱신율</div>
+          <div class="desc">12주 목표 달성 확인</div>
+        </div>
+        <div class="ind-num-divider"></div>
+        <div class="ind-num-item">
+          <div class="num">4.8/5</div>
+          <div class="label">트레이너 만족도</div>
+          <div class="desc">근거 있는 처방 제공</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 한의원 -->
+    <div class="ind-content" id="ind-korean">
+      <div class="ind-info">
+        <h3>🌿 한의원·한방클리닉</h3>
+        <p>한의원의 오행·체질 분석과 슬림마인드 바디코드 진단을 결합하면 현대적인 데이터와 전통 한의학의 시너지를 만들 수 있습니다.</p>
+        <ul class="ind-benefits">
+          <li>오행 기질 분석과 바디코드 교차 분석</li>
+          <li>비만침·한약 처방 전 데이터 보완</li>
+          <li>체중 관리 특화 한의원 포지셔닝</li>
+          <li>젊은 고객층 유입 효과 (디지털 진단 도구)</li>
+        </ul>
+      </div>
+      <div class="ind-numbers">
+        <div class="ind-num-item">
+          <div class="num">+33%</div>
+          <div class="label">신규 고객 유입</div>
+          <div class="desc">디지털 진단 차별화</div>
+        </div>
+        <div class="ind-num-divider"></div>
+        <div class="ind-num-item">
+          <div class="num">+27%</div>
+          <div class="label">패키지 전환율</div>
+          <div class="desc">데이터 기반 처방 설득</div>
+        </div>
+        <div class="ind-num-divider"></div>
+        <div class="ind-num-item">
+          <div class="num">89%</div>
+          <div class="label">재진 만족도</div>
+          <div class="desc">한의학+현대 데이터 조합</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ===== 인터랙티브 ROI 계산기 ===== -->
+<section class="roi-section" id="roi">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-eyebrow">ROI Calculator</div>
+      <h2>내 매장에서 추가 수익은 얼마나 될까요?</h2>
+      <p>월 고객 수를 입력하면 예상 추가 매출과 투자 회수 기간을 계산해드립니다</p>
+    </div>
+    <div class="roi-box">
+      <div class="roi-slider-wrap">
+        <label>월 방문 고객 수: <span id="customerLabel">100명</span></label>
+        <input type="range" id="customerCount" min="20" max="1000" value="100" step="10" oninput="calcB2BROI()">
+      </div>
+      <div class="roi-slider-wrap">
+        <label>고객 1인당 평균 매출: <span id="revenueLabel">5만원</span></label>
+        <input type="range" id="revenuePerCustomer" min="3" max="50" value="5" step="1" oninput="calcB2BROI()">
+      </div>
+      <div class="roi-result" id="b2bROIResult">
+        <div class="roi-result-item">
+          <div class="label">전환율 상승 효과</div>
+          <div class="value" id="roiConversionUp">+34<span class="unit">%</span></div>
+        </div>
+        <div class="roi-result-item">
+          <div class="label">월 추가 예상 매출</div>
+          <div class="value" id="roiAddRevenue">170<span class="unit">만원</span></div>
+        </div>
+        <div class="roi-result-item">
+          <div class="label">연 추가 예상 매출</div>
+          <div class="value" id="roiYearRevenue">2,040<span class="unit">만원</span></div>
+        </div>
+      </div>
+      <div class="roi-payback" id="roiPayback">
+        📊 초기 투자비 290만원 회수까지 <strong id="paybackMonth">약 2개월</strong> 예상됩니다
       </div>
     </div>
   </div>
 </section>
 
+<!-- ===== 화이트라벨 ===== -->
 <section class="whitelabel">
   <div class="wrap">
     <div class="wl-grid">
       <div class="wl-text">
-        <div class="section-eyebrow">White label</div>
+        <div class="section-eyebrow">White Label</div>
         <h2>고객은 "슬림마인드"를<br>볼 일이 전혀 없습니다</h2>
         <p>당신의 로고, 당신의 브랜드 색상, 당신의 센터 이름. 고객이 보는 모든 화면은 100% 당신의 브랜드입니다. 슬림마인드는 뒤에서 엔진만 돌립니다.</p>
         <div class="wl-features">
           <div class="wl-feat"><div class="wl-feat-icon">🎨</div><div class="wl-feat-text"><strong>로고·색상 전체 교체</strong><span>설문지부터 결과지까지 모든 화면이 당신 브랜드</span></div></div>
-          <div class="wl-feat"><div class="wl-feat-icon">📱</div><div class="wl-feat-text"><strong>패드 설치 포함</strong><span>고객이 센터에서 바로 진단받을 수 있는 전용 패드 제공</span></div></div>
-          <div class="wl-feat"><div class="wl-feat-icon">📊</div><div class="wl-feat-text"><strong>관리자페이지 제공</strong><span>고객 데이터·진단 이력·매출 현황을 한눈에 확인</span></div></div>
-          <div class="wl-feat"><div class="wl-feat-icon">🎓</div><div class="wl-feat-text"><strong>직원 교육 포함</strong><span>상담 스크립트부터 시스템 사용법까지 초기 교육 제공</span></div></div>
+          <div class="wl-feat"><div class="wl-feat-icon">📱</div><div class="wl-feat-text"><strong>전용 패드 설치 포함</strong><span>고객이 센터에서 바로 진단받을 수 있는 단말기 제공</span></div></div>
+          <div class="wl-feat"><div class="wl-feat-icon">📊</div><div class="wl-feat-text"><strong>관리자페이지 제공</strong><span>고객 데이터·진단 이력·매출 현황 실시간 확인</span></div></div>
+          <div class="wl-feat"><div class="wl-feat-icon">🎓</div><div class="wl-feat-text"><strong>직원 교육 포함</strong><span>상담 스크립트부터 시스템 사용법까지 초기 교육</span></div></div>
         </div>
       </div>
       <div class="wl-visual">
+        <div class="wl-label">✓ 화이트라벨 화면 예시</div>
         <div class="wl-mockup">
           <div class="wl-mockup-hdr"><div class="wl-mockup-logo"></div><div class="wl-mockup-name">○○클리닉 바디코드</div></div>
           <div class="wl-mockup-body">
             <h4>당신의 바디코드 진단 결과</h4>
-            <p>○○클리닉만의 색상과 로고로 제공되는 진단 화면</p>
+            <p>○○클리닉만의 색상과 로고로 제공되는 진단 화면입니다. 고객은 슬림마인드를 볼 수 없습니다.</p>
             <span class="wl-mockup-btn">결과 확인하기</span>
           </div>
         </div>
@@ -281,50 +567,121 @@ footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:50px 24px 30px;
   </div>
 </section>
 
-<section class="pricing" id="pricing">
+<!-- ===== 경쟁사 비교표 ===== -->
+<section class="compare-section">
   <div class="wrap">
     <div class="section-head">
-      <div class="section-eyebrow">Pricing</div>
-      <h2>가격은 딱 두 줄입니다</h2>
+      <div class="section-eyebrow">비교</div>
+      <h2>자체 개발 vs 슬림마인드 도입</h2>
+      <p>직접 진단 시스템을 개발하는 것과 비교해보세요</p>
+    </div>
+    <div class="compare-table">
+      <table>
+        <thead>
+          <tr>
+            <th>항목</th>
+            <th>자체 개발</th>
+            <th>타사 솔루션</th>
+            <th style="background:var(--circ)">슬림마인드</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>초기 비용</td>
+            <td class="chk-no">3,000만원~</td>
+            <td class="chk-no">500~1,000만원</td>
+            <td class="chk-slim">290만원</td>
+          </tr>
+          <tr>
+            <td>월 운영비</td>
+            <td class="chk-no">유지보수 별도</td>
+            <td class="chk-no">30~100만원/월</td>
+            <td class="chk-slim">9,900원/월</td>
+          </tr>
+          <tr>
+            <td>오픈까지 기간</td>
+            <td class="chk-no">3~6개월</td>
+            <td class="chk-no">1~2개월</td>
+            <td class="chk-slim">약 2주</td>
+          </tr>
+          <tr>
+            <td>화이트라벨</td>
+            <td class="chk-yes">✓ 가능</td>
+            <td class="chk-no">△ 제한적</td>
+            <td class="chk-slim">✓ 100%</td>
+          </tr>
+          <tr>
+            <td>진단 알고리즘</td>
+            <td class="chk-no">직접 개발 필요</td>
+            <td class="chk-no">기본 설문</td>
+            <td class="chk-slim">✓ 16종 바디코드</td>
+          </tr>
+          <tr>
+            <td>처방 로드맵</td>
+            <td class="chk-no">직접 제작 필요</td>
+            <td class="chk-no">❌ 없음</td>
+            <td class="chk-slim">✓ 12주 자동 생성</td>
+          </tr>
+          <tr>
+            <td>업데이트·유지보수</td>
+            <td class="chk-no">자체 비용</td>
+            <td class="chk-no">별도 계약</td>
+            <td class="chk-slim">✓ 무상 포함</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="compare-note">* 비용은 서비스별 평균 기준입니다</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 가격 + 무료 데모 ===== -->
+<section class="pricing-section" id="demo">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-eyebrow">가격 & 무료 데모</div>
+      <h2>결제 전에 30분 데모로 먼저 확인하세요</h2>
       <p>숨겨진 비용 없습니다. 교육·패드·관리자페이지·초기세팅 전부 포함입니다</p>
     </div>
-    <div class="price-card">
-      <span class="price-tag">화이트라벨 파트너십</span>
-      <div class="price-row">
-        <div><div class="price-item-label">초기 입점비</div><div class="price-item-num">290<small>만원</small></div></div>
-        <div><div class="price-item-label">월 정기 결제</div><div class="price-item-num">9,900<small>원/월</small></div></div>
+    <div class="price-grid">
+      <div class="price-card">
+        <span class="price-tag">화이트라벨 파트너십</span>
+        <div class="price-main">파트너 입점 비용</div>
+        <div class="price-row">
+          <div><div class="price-item-label">초기 입점비</div><div class="price-item-num">290<small>만원</small></div></div>
+          <div><div class="price-item-label">월 정기 결제</div><div class="price-item-num">9,900<small>원/월</small></div></div>
+        </div>
+        <div class="price-includes">
+          <div class="price-includes-title">초기 입점비에 포함된 항목</div>
+          <ul>
+            <li>직원 교육 (상담 스크립트 + 시스템 사용법)</li>
+            <li>전용 패드 설치 (고객 진단용 단말기)</li>
+            <li>관리자페이지 (고객 데이터·매출 현황)</li>
+            <li>화이트라벨 세팅 (로고·브랜드 색상 적용)</li>
+            <li>3개월 무상 기술 지원</li>
+          </ul>
+        </div>
+        <p class="price-note">월 9,900원은 시스템 유지·업데이트·서버 비용입니다. 거래 수수료, 진단 건수 제한 없습니다.</p>
+        <a href="http://pf.kakao.com/_xgCgsX" target="_blank" class="btn btn-white btn-lg" style="width:100%">카카오로 입점 문의하기 →</a>
       </div>
-      <div class="price-includes">
-        <div class="price-includes-title">초기 입점비에 포함된 항목</div>
-        <ul>
-          <li>직원 교육 (상담 스크립트 + 시스템 사용법)</li>
-          <li>전용 패드 설치 (고객 진단용 단말기)</li>
-          <li>관리자페이지 (고객 데이터·매출 현황 대시보드)</li>
-          <li>초기 세팅 (로고·브랜드 색상 화이트라벨 적용)</li>
-        </ul>
+
+      <div class="demo-card">
+        <div class="demo-free-badge">🎁 완전 무료</div>
+        <h3>무료 30분<br>데모 세션</h3>
+        <p>결제 결정 전에 직접 시스템을 체험해보세요. 실제 화이트라벨 화면, 진단 플로우, 관리자페이지를 30분 동안 직접 경험하실 수 있습니다.</p>
+        <a href="http://pf.kakao.com/_xgCgsX" target="_blank" class="btn btn-white btn-lg" style="width:100%;color:var(--circ)">무료 데모 신청 →</a>
+        <div class="demo-includes">
+          ✓ 화이트라벨 실사용 체험<br>
+          ✓ ROI 맞춤 계산<br>
+          ✓ 업종별 활용 전략 안내
+        </div>
       </div>
-      <p class="price-note">월 9,900원은 시스템 유지·업데이트·서버 비용입니다. 거래 수수료, 진단 건수 제한 없습니다.</p>
-      <a href="#apply" class="btn btn-white btn-lg">지금 입점 문의하기 →</a>
     </div>
   </div>
 </section>
 
-<section class="revenue-sim">
-  <div class="wrap">
-    <div class="section-head">
-      <div class="section-eyebrow">결과 · 수익</div>
-      <h2>입점 후 무엇을 얻나요</h2>
-      <p>바디코드 진단은 상담 전환율을 높이는 도구입니다. 실제 파트너 센터 평균 데이터입니다</p>
-    </div>
-    <div class="sim-grid">
-      <div class="sim-card"><div class="sim-period">입점 첫 달</div><div class="sim-customers">120<small>명</small></div><div class="sim-label">월 진단 고객 수 (평균)</div><div class="sim-revenue">+18%</div><div class="sim-revenue-label">상담 전환율 상승</div></div>
-      <div class="sim-card featured"><div class="sim-period">3개월 차</div><div class="sim-customers">340<small>명</small></div><div class="sim-label">월 진단 고객 수 (평균)</div><div class="sim-revenue">+34%</div><div class="sim-revenue-label">상담 전환율 상승</div></div>
-      <div class="sim-card"><div class="sim-period">6개월 차</div><div class="sim-customers">510<small>명</small></div><div class="sim-label">월 진단 고객 수 (평균)</div><div class="sim-revenue">+41%</div><div class="sim-revenue-label">상담 전환율 상승</div></div>
-    </div>
-  </div>
-</section>
-
-<section class="process">
+<!-- ===== 도입 프로세스 ===== -->
+<section class="process-section">
   <div class="wrap">
     <div class="section-head">
       <div class="section-eyebrow">How it works</div>
@@ -332,28 +689,125 @@ footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:50px 24px 30px;
       <p>문의부터 오픈까지 평균 2주 소요됩니다</p>
     </div>
     <div class="process-steps">
-      <div class="process-step"><div class="process-num">1</div><h4>입점 문의</h4><p>아래 폼으로 문의하시면 24시간 내 담당자가 연락드립니다</p></div>
-      <div class="process-step"><div class="process-num">2</div><h4>브랜드 세팅</h4><p>로고·색상·센터명을 전달하시면 화이트라벨 화면을 제작합니다</p></div>
-      <div class="process-step"><div class="process-num">3</div><h4>패드 설치 + 교육</h4><p>전용 패드를 설치하고 직원 대상 시스템 교육을 진행합니다</p></div>
-      <div class="process-step"><div class="process-num">4</div><h4>오픈</h4><p>고객 진단을 바로 시작하고 관리자페이지로 데이터를 확인하세요</p></div>
+      <div class="process-step">
+        <div class="process-num">1</div>
+        <div class="process-time">Day 1</div>
+        <h4>데모 신청·상담</h4>
+        <p>카카오 또는 문의 폼으로 신청하시면 24시간 내 담당자가 연락드립니다</p>
+      </div>
+      <div class="process-step">
+        <div class="process-num">2</div>
+        <div class="process-time">Day 3~5</div>
+        <h4>브랜드 세팅</h4>
+        <p>로고·색상·센터명을 전달하시면 화이트라벨 화면을 제작합니다</p>
+      </div>
+      <div class="process-step">
+        <div class="process-num">3</div>
+        <div class="process-time">Day 7~10</div>
+        <h4>패드 설치 + 교육</h4>
+        <p>전용 패드를 설치하고 직원 대상 시스템 및 상담 스크립트 교육을 진행합니다</p>
+      </div>
+      <div class="process-step">
+        <div class="process-num">4</div>
+        <div class="process-time">Day 14</div>
+        <h4>오픈</h4>
+        <p>고객 진단을 즉시 시작하고 관리자페이지로 실시간 데이터를 확인하세요</p>
+      </div>
     </div>
   </div>
 </section>
 
-<section class="final-cta" id="apply">
+<!-- ===== B2B FAQ ===== -->
+<section class="faq">
   <div class="wrap">
-    <h2>지금 입점 문의하면<br>이번 달 안에 오픈할 수 있습니다</h2>
-    <p>24시간 내 담당자가 연락드립니다. 입점 결정 전 비용 부담 없는 상담만 받아보셔도 됩니다.</p>
-    <a href="mailto:contact@slimmind.com" class="btn btn-white btn-lg">파트너 입점 문의하기 →</a>
+    <div class="section-head">
+      <h2>파트너 자주 묻는 질문</h2>
+    </div>
+    <div class="faq-list">
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">진단 건수에 제한이 있나요? <span class="arrow">▼</span></div>
+        <div class="faq-a">없습니다. 월 9,900원으로 진단 건수 무제한으로 이용하실 수 있습니다. 고객이 100명이든 1,000명이든 추가 비용이 발생하지 않습니다.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">고객 데이터는 우리 것인가요? <span class="arrow">▼</span></div>
+        <div class="faq-a">네, 파트너 센터의 고객 데이터는 100% 해당 센터에 귀속됩니다. 슬림마인드는 어떠한 경우에도 파트너 센터의 고객 데이터를 제3자에게 공유하거나 마케팅에 활용하지 않습니다.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">직원이 바뀌면 교육을 다시 받아야 하나요? <span class="arrow">▼</span></div>
+        <div class="faq-a">초기 교육 이후에도 온라인 교육 자료(영상 + 매뉴얼)를 무상으로 제공합니다. 신규 직원 교육은 이 자료를 활용하시면 됩니다. 필요시 추가 현장 교육도 협의 가능합니다.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">월 9,900원으로 어떤 서비스가 포함되나요? <span class="arrow">▼</span></div>
+        <div class="faq-a">시스템 서버 유지·운영, 알고리즘 업데이트, 버그 수정, 기술 지원이 모두 포함됩니다. 별도의 유지보수 비용이나 추가 요금은 없습니다.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">계약 해지는 어떻게 되나요? <span class="arrow">▼</span></div>
+        <div class="faq-a">월 단위 계약으로 언제든지 해지 가능합니다. 1개월 전 사전 통보 후 해지할 수 있으며, 해지 시 고객 데이터 전체를 백업 파일로 제공해드립니다. 초기 입점비는 계약 성사 후 환불이 어려우므로, 반드시 무료 데모를 통해 충분히 확인 후 결정하세요.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">지방 매장도 입점 가능한가요? <span class="arrow">▼</span></div>
+        <div class="faq-a">네, 전국 어디서든 입점 가능합니다. 패드 설치는 택배 발송 + 원격 설치 지원으로 진행되며, 직원 교육은 화상회의(Zoom/KakaoTalk)로 진행합니다. 서울·수도권 외 지역도 동일한 서비스를 제공합니다.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 최종 CTA ===== -->
+<section class="final-cta">
+  <div class="wrap">
+    <h2>30분 무료 데모로<br>직접 경험해보세요</h2>
+    <p>결제 결정 전에 실제 시스템을 체험하고, 내 매장에 맞는 ROI를 직접 계산해보세요.<br>부담 없는 30분입니다.</p>
+    <a href="http://pf.kakao.com/_xgCgsX" target="_blank" class="btn btn-white btn-xl">카카오로 무료 데모 신청 →</a>
+    <div style="margin-top:16px;font-size:13px;color:rgba(255,255,255,0.5)">24시간 내 담당자 연락 · 무료 데모 비용 없음 · 부담 없는 상담</div>
   </div>
 </section>
 
 <footer>
-  © 2026 SLIMMIND. All rights reserved. | 사업자등록번호 000-00-00000
+  <div class="wrap">
+    <div style="margin-bottom:12px;font-weight:700;font-size:14px;color:rgba(255,255,255,0.7)">SLIM<span style="color:var(--vis)">MIND</span></div>
+    <p>© 2026 SLIMMIND. All rights reserved.</p>
+    <p>사업자등록번호 000-00-00000 | 통신판매업신고 제0000-서울-00000호</p>
+    <p style="margin-top:8px">
+      <a href="/landing/">홈</a> · <a href="/landing/service.html">서비스</a> · <a href="/landing/pricing.html">요금제</a> · <a href="http://pf.kakao.com/_xgCgsX" target="_blank">카카오 문의</a>
+    </p>
+  </div>
 </footer>
 
+<!-- ===== Sticky CTA 바 ===== -->
+<div class="sticky-cta-bar" id="stickyCta">
+  <p>🏢 내 매장에 바디코드 진단을 도입하고 싶으신가요?</p>
+  <a href="http://pf.kakao.com/_xgCgsX" target="_blank" class="btn btn-primary">무료 30분 데모 신청 →</a>
+</div>
 
-<!-- 모바일 메뉴 오버레이 -->
+<!-- ===== 카카오 플로팅 버튼 ===== -->
+<a href="http://pf.kakao.com/_xgCgsX" target="_blank" class="kakao-float" title="카카오톡 상담">
+  <svg viewBox="0 0 24 24" fill="#391B1B">
+    <path d="M12 3C6.48 3 2 6.69 2 11.25c0 2.88 1.74 5.41 4.37 6.97l-.88 3.27 3.82-2.52c.84.17 1.74.28 2.69.28 5.52 0 10-3.69 10-8.25C22 6.69 17.52 3 12 3z"/>
+  </svg>
+</a>
+
+<!-- ===== 실시간 알림 팝업 ===== -->
+<div class="notif-popup" id="notifPopup">
+  <strong id="notifText">서울 강남구 피트니스센터에서 데모를 신청했습니다</strong>
+  <span>방금 전</span>
+</div>
+
+<!-- ===== Exit Intent 팝업 ===== -->
+<div class="exit-overlay" id="exitOverlay">
+  <div class="exit-modal">
+    <button class="close" onclick="closeExit()">✕</button>
+    <div style="font-size:36px;margin-bottom:12px">💼</div>
+    <div class="exit-demo-badge">무료 30분 데모 기회</div>
+    <h3>결제 전에 직접<br>체험해보세요</h3>
+    <p>30분 무료 데모로 실제 화이트라벨 시스템, 진단 플로우, 관리자페이지를 직접 경험하실 수 있습니다. 비용 없이 확인만 해보세요.</p>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+      <a href="http://pf.kakao.com/_xgCgsX" target="_blank" class="btn btn-primary btn-lg" style="background:var(--circ)">무료 데모 신청하기</a>
+      <button onclick="closeExit()" style="background:none;border:none;font-size:14px;color:var(--muted);cursor:pointer;padding:12px">나중에 볼게요</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 모바일 메뉴 ===== -->
 <div class="mobile-nav" id="mobileNav">
   <button class="close-btn" onclick="closeMobileNav()">✕</button>
   <a href="/landing/" onclick="closeMobileNav()">홈</a>
@@ -362,11 +816,94 @@ footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:50px 24px 30px;
   <a href="/landing/b2b.html" onclick="closeMobileNav()">파트너 입점</a>
   <a href="/landing/consultant.html" onclick="closeMobileNav()">공식 컨설턴트</a>
   <a href="/landing/about.html" onclick="closeMobileNav()">회사 소개</a>
+  <a href="http://pf.kakao.com/_xgCgsX" target="_blank" class="btn btn-primary" style="margin-top:8px;background:var(--circ)">무료 데모 신청</a>
 </div>
+
 <script>
+// ===== 모바일 메뉴 =====
 function openMobileNav(){document.getElementById('mobileNav').classList.add('open');document.body.style.overflow='hidden'}
 function closeMobileNav(){document.getElementById('mobileNav').classList.remove('open');document.body.style.overflow=''}
-</script>
 
+// ===== Sticky CTA =====
+const stickyCta=document.getElementById('stickyCta');
+window.addEventListener('scroll',()=>{
+  stickyCta.classList.toggle('visible',window.scrollY>400);
+});
+
+// ===== FAQ 아코디언 =====
+function toggleFaq(el){
+  const item=el.parentElement;
+  const isOpen=item.classList.contains('open');
+  document.querySelectorAll('.faq-item.open').forEach(i=>i.classList.remove('open'));
+  if(!isOpen)item.classList.add('open');
+}
+
+// ===== 업종별 탭 =====
+function switchIndustry(id,btn){
+  document.querySelectorAll('.ind-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.ind-content').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('ind-'+id).classList.add('active');
+}
+
+// ===== B2B ROI 계산기 =====
+function calcB2BROI(){
+  const customers=parseInt(document.getElementById('customerCount').value);
+  const revenue=parseInt(document.getElementById('revenuePerCustomer').value);
+  document.getElementById('customerLabel').textContent=customers+'명';
+  document.getElementById('revenueLabel').textContent=revenue+'만원';
+  
+  // 전환율 상승 효과: 고객 수 많을수록 효과 안정화 (최대 45%)
+  const conversionUp=customers<100?28:customers<300?34:customers<600?39:43;
+  const addRevenue=Math.round(customers*revenue*conversionUp/100/10)*10;
+  const yearRevenue=addRevenue*12;
+  const paybackMonths=Math.max(1,Math.ceil(290/addRevenue*10)/10);
+  
+  document.getElementById('roiConversionUp').innerHTML='+'+conversionUp+'<span class="unit">%</span>';
+  document.getElementById('roiAddRevenue').innerHTML=addRevenue.toLocaleString()+'<span class="unit">만원</span>';
+  document.getElementById('roiYearRevenue').innerHTML=yearRevenue.toLocaleString()+'<span class="unit">만원</span>';
+  
+  const paybackText = paybackMonths < 2 ? '약 1~2개월' : paybackMonths < 4 ? '약 '+Math.ceil(paybackMonths)+'개월' : Math.ceil(paybackMonths)+'개월';
+  document.getElementById('paybackMonth').textContent=paybackText;
+}
+calcB2BROI();
+
+// ===== Exit Intent =====
+let exitShown=false;
+document.addEventListener('mouseleave',e=>{
+  if(e.clientY<50&&!exitShown){
+    exitShown=true;
+    document.getElementById('exitOverlay').classList.add('open');
+    document.body.style.overflow='hidden';
+  }
+});
+function closeExit(){
+  document.getElementById('exitOverlay').classList.remove('open');
+  document.body.style.overflow='';
+}
+document.getElementById('exitOverlay').addEventListener('click',e=>{
+  if(e.target===document.getElementById('exitOverlay'))closeExit();
+});
+
+// ===== 실시간 알림 팝업 =====
+const b2bNotifications=[
+  {text:'서울 강남구 피트니스센터에서 무료 데모를 신청했습니다'},
+  {text:'경기 수원 한의원에서 파트너 상담을 진행 중입니다'},
+  {text:'부산 해운대 뷰티샵이 입점을 완료했습니다'},
+  {text:'서울 마포구 PT샵에서 ROI 계산기를 확인 중입니다'},
+  {text:'인천 연수구 의원에서 데모를 신청했습니다'},
+  {text:'대구 수성구 에스테틱에서 상담을 진행 중입니다'},
+];
+let b2bNotifIdx=0;
+const notifPopup=document.getElementById('notifPopup');
+const notifText=document.getElementById('notifText');
+function showB2BNotif(){
+  notifText.textContent=b2bNotifications[b2bNotifIdx%b2bNotifications.length].text;
+  notifPopup.classList.add('show');
+  b2bNotifIdx++;
+  setTimeout(()=>notifPopup.classList.remove('show'),4000);
+}
+setTimeout(()=>{showB2BNotif();setInterval(showB2BNotif,18000);},10000);
+</script>
 </body>
 </html>

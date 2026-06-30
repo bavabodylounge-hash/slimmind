@@ -6,44 +6,22 @@
 <title>슬림마인드 — 당신 몸의 진짜 고장 원인을 찾는 바디코드 진단</title>
 <style>
 :root{
-  --paper:#f6f4ee;
-  --card:#fffdf8;
-  --ink:#1a1a17;
-  --muted:#7c776b;
-  --line:#d8d3c6;
-  --vis:#b5452e;
-  --vis-l:#f6e3df;
-  --vis-d:#8c3320;
-  --circ:#2f7d8c;
-  --circ-l:#eef0f6;
-  --whole:#5b4a86;
-  --whole-l:#eeeaf6;
-  --muscle:#5a6e3a;
-  --muscle-l:#ecf0e8;
-  --sub:#c98a3c;
-  --sub-l:#fdf6ee;
+  --paper:#f6f4ee;--card:#fffdf8;--ink:#1a1a17;--muted:#7c776b;--line:#d8d3c6;
+  --vis:#b5452e;--vis-l:#f6e3df;--vis-d:#8c3320;
+  --circ:#2f7d8c;--circ-l:#eef0f6;
+  --whole:#5b4a86;--whole-l:#eeeaf6;
+  --muscle:#5a6e3a;--muscle-l:#ecf0e8;
+  --sub:#c98a3c;--sub-l:#fdf6ee;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
-body{
-  word-break:keep-all;overflow-wrap:break-word;
-  font-family:"Apple SD Gothic Neo","Noto Sans KR",-apple-system,sans-serif;
-  background:var(--paper);
-  color:var(--ink);
-  line-height:1.6;
-  -webkit-font-smoothing:antialiased;
-}
+body{word-break:keep-all;overflow-wrap:break-word;font-family:"Apple SD Gothic Neo","Noto Sans KR",-apple-system,sans-serif;background:var(--paper);color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased;}
 a{text-decoration:none;color:inherit}
 img{max-width:100%;display:block}
 .wrap{max-width:1180px;margin:0 auto;padding:0 24px}
 
-/* ── 헤더 ── */
-header{
-  position:sticky;top:0;z-index:100;
-  background:rgba(246,244,238,0.92);
-  backdrop-filter:blur(10px);
-  border-bottom:1px solid var(--line);
-}
+/* 헤더 */
+header{position:sticky;top:0;z-index:100;background:rgba(246,244,238,0.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
 .nav{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;max-width:1180px;margin:0 auto}
 .logo{font-size:20px;font-weight:800;letter-spacing:-0.5px;color:var(--ink)}
 .logo span{color:var(--vis)}
@@ -51,96 +29,130 @@ header{
 .nav-links a{font-size:14px;font-weight:500;color:var(--muted);transition:color .2s}
 .nav-links a:hover{color:var(--ink)}
 .nav-cta{display:flex;gap:10px}
-.btn{
-  display:inline-flex;align-items:center;justify-content:center;gap:6px;
-  padding:11px 22px;border-radius:10px;font-size:14px;font-weight:700;
-  cursor:pointer;border:none;transition:all .2s;white-space:nowrap;
-}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 22px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;border:none;transition:all .2s;white-space:nowrap;}
 .btn-primary{background:var(--vis);color:#fff}
 .btn-primary:hover{background:var(--vis-d);transform:translateY(-1px)}
 .btn-outline{background:transparent;border:1.5px solid var(--ink);color:var(--ink)}
 .btn-outline:hover{background:var(--ink);color:var(--paper)}
 .btn-sm{padding:8px 16px;font-size:13px}
-
-/* ── 히어로 ── */
-.hero{padding:90px 24px 70px;text-align:center;position:relative;overflow:hidden}
-.hero-badge{
-  display:inline-flex;align-items:center;gap:8px;
-  background:var(--vis-l);color:var(--vis);
-  padding:7px 16px;border-radius:30px;font-size:13px;font-weight:700;
-  margin-bottom:28px;border:1px solid #e8c0b6;
-}
-.hero h1{
-  font-size:54px;font-weight:800;line-height:1.18;letter-spacing:-1.5px;
-  margin-bottom:24px;color:var(--ink);
-}
-.hero h1 .accent{color:var(--vis);position:relative}
-.hero-sub{
-  font-size:19px;color:var(--muted);max-width:600px;margin:0 auto 40px;
-  line-height:1.7;
-}
-.hero-cta{display:flex;gap:14px;justify-content:center;margin-bottom:56px;flex-wrap:wrap}
 .btn-lg{padding:17px 34px;font-size:16px;border-radius:12px}
-.hero-trust{display:flex;gap:48px;justify-content:center;flex-wrap:wrap;padding-top:36px;border-top:1px solid var(--line);max-width:760px;margin:0 auto}
+
+/* Sticky CTA 바 */
+.sticky-cta-bar{
+  position:fixed;bottom:0;left:0;right:0;z-index:90;
+  background:var(--ink);padding:14px 24px;
+  display:flex;align-items:center;justify-content:center;gap:16px;
+  transform:translateY(100%);transition:transform .3s ease;
+  box-shadow:0 -4px 20px rgba(0,0,0,0.2);
+}
+.sticky-cta-bar.visible{transform:translateY(0)}
+.sticky-cta-bar p{font-size:14px;color:rgba(255,255,255,0.75);display:none}
+@media(min-width:600px){.sticky-cta-bar p{display:block}}
+.sticky-cta-bar .btn-lg{padding:13px 28px;font-size:15px}
+
+/* 히어로 */
+.hero{padding:80px 24px 60px;text-align:center;position:relative;overflow:hidden}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:var(--vis-l);color:var(--vis);padding:7px 16px;border-radius:30px;font-size:13px;font-weight:700;margin-bottom:28px;border:1px solid #e8c0b6;}
+.hero h1{font-size:52px;font-weight:800;line-height:1.2;letter-spacing:-1.5px;margin-bottom:24px}
+.hero h1 .accent{color:var(--vis)}
+.hero-sub{font-size:18px;color:var(--muted);max-width:600px;margin:0 auto 20px;line-height:1.7}
+.guarantee-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  background:#e8f5e9;color:#2e7d32;
+  padding:8px 18px;border-radius:30px;font-size:13px;font-weight:700;
+  margin-bottom:32px;border:1px solid #a5d6a7;
+}
+.hero-cta{display:flex;gap:14px;justify-content:center;margin-bottom:20px;flex-wrap:wrap}
+.free-mini-btn{
+  background:transparent;border:2px dashed var(--vis);color:var(--vis);
+  font-size:14px;font-weight:700;padding:11px 22px;border-radius:10px;
+  cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all .2s;
+}
+.free-mini-btn:hover{background:var(--vis-l)}
+.hero-cta-sub{font-size:13px;color:var(--muted);margin-bottom:44px}
+.hero-trust{display:flex;gap:40px;justify-content:center;flex-wrap:wrap;padding-top:32px;border-top:1px solid var(--line);max-width:760px;margin:0 auto}
 .trust-item{text-align:center}
-.trust-num{font-size:30px;font-weight:800;color:var(--ink);letter-spacing:-1px}
+.trust-num{font-size:28px;font-weight:800;color:var(--ink);letter-spacing:-1px}
 .trust-num span{color:var(--vis)}
-.trust-label{font-size:13px;color:var(--muted);margin-top:4px}
+.trust-label{font-size:12px;color:var(--muted);margin-top:3px}
 
-/* ── 3개 타겟 분기 ── */
-.audience{padding:90px 24px;background:var(--card);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+/* 실시간 카운터 배너 */
+.live-banner{
+  background:linear-gradient(135deg,var(--vis-d),var(--vis));
+  color:#fff;padding:14px 24px;text-align:center;font-size:14px;font-weight:600;
+  display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;
+}
+.live-dot{width:8px;height:8px;background:#7fff7f;border-radius:50%;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(1.3)}}
+
+/* 무료 미니 진단 섹션 */
+.mini-quiz{padding:80px 24px;background:var(--card);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.quiz-box{max-width:700px;margin:0 auto;background:#fff;border-radius:24px;padding:44px 40px;box-shadow:0 8px 40px rgba(0,0,0,0.08);border:1px solid var(--line)}
+.quiz-box .section-eyebrow{text-align:left;margin-bottom:8px}
+.quiz-box h2{font-size:26px;font-weight:800;margin-bottom:8px;letter-spacing:-0.5px}
+.quiz-box .quiz-desc{font-size:14px;color:var(--muted);margin-bottom:28px}
+.quiz-progress{height:6px;background:var(--line);border-radius:3px;margin-bottom:28px;overflow:hidden}
+.quiz-progress-bar{height:100%;background:var(--vis);border-radius:3px;transition:width .4s ease}
+.quiz-question{font-size:17px;font-weight:700;margin-bottom:18px;min-height:48px}
+.quiz-options{display:flex;flex-direction:column;gap:10px}
+.quiz-opt{
+  padding:14px 18px;border:1.5px solid var(--line);border-radius:12px;
+  font-size:14px;font-weight:500;cursor:pointer;transition:all .2s;text-align:left;
+  background:#fff;color:var(--ink);
+}
+.quiz-opt:hover{border-color:var(--vis);background:var(--vis-l)}
+.quiz-opt.selected{border-color:var(--vis);background:var(--vis-l);color:var(--vis);font-weight:700}
+.quiz-nav{display:flex;justify-content:space-between;align-items:center;margin-top:24px}
+.quiz-step-label{font-size:12px;color:var(--muted)}
+.quiz-result{display:none;text-align:center;padding:20px 0}
+.quiz-result-badge{font-size:40px;margin-bottom:16px}
+.quiz-result h3{font-size:22px;font-weight:800;margin-bottom:10px}
+.quiz-result p{font-size:14px;color:var(--muted);margin-bottom:24px;line-height:1.7}
+.quiz-result-cta{display:flex;flex-direction:column;gap:12px}
+
+/* 3개 타겟 분기 */
+.audience{padding:90px 24px;background:var(--paper)}
 .section-head{text-align:center;margin-bottom:56px}
-.section-eyebrow{
-  font-size:13px;font-weight:800;color:var(--vis);letter-spacing:2px;
-  text-transform:uppercase;margin-bottom:14px;
-}
-.section-head h2{font-size:36px;font-weight:800;letter-spacing:-1px;margin-bottom:14px}
+.section-eyebrow{font-size:13px;font-weight:800;color:var(--vis);letter-spacing:2px;text-transform:uppercase;margin-bottom:14px}
+.section-head h2{font-size:34px;font-weight:800;letter-spacing:-1px;margin-bottom:14px}
 .section-head p{font-size:16px;color:var(--muted);max-width:520px;margin:0 auto}
-
 .audience-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
-.aud-card{
-  background:var(--paper);border:1px solid var(--line);border-radius:20px;
-  padding:36px 30px;transition:all .25s;cursor:pointer;position:relative;overflow:visible;
-  display:block;
-}
+.aud-card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:36px 30px;transition:all .25s;cursor:pointer;display:block;position:relative;overflow:visible;}
 .aud-card:hover{transform:translateY(-6px);box-shadow:0 16px 40px rgba(26,26,23,0.1)}
 .aud-card.featured{background:var(--ink);border-color:var(--ink)}
-.aud-icon{
-  width:54px;height:54px;border-radius:14px;display:flex;align-items:center;justify-content:center;
-  font-size:26px;margin-bottom:22px;
-}
+.aud-icon{width:54px;height:54px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:22px;}
 .aud-icon.coral{background:var(--vis-l)}
 .aud-icon.blue{background:var(--circ-l)}
 .aud-icon.purple{background:var(--whole-l)}
-.aud-card h3{font-size:21px;font-weight:800;margin-bottom:10px}
+.aud-card h3{font-size:20px;font-weight:800;margin-bottom:10px}
 .aud-card.featured h3{color:#fff}
 .aud-card p{font-size:14px;color:var(--muted);line-height:1.65;margin-bottom:22px}
 .aud-card.featured p{color:rgba(255,255,255,0.6)}
 .aud-list{list-style:none;margin-bottom:24px}
-.aud-list li{
-  font-size:13px;color:var(--ink);padding:7px 0;
-  display:flex;align-items:flex-start;gap:8px;
-}
+.aud-list li{font-size:13px;color:var(--ink);padding:7px 0;display:flex;align-items:flex-start;gap:8px;}
 .aud-card.featured .aud-list li{color:rgba(255,255,255,0.85)}
 .aud-list li::before{content:"✓";color:var(--muscle);font-weight:800;flex-shrink:0}
 .aud-card.featured .aud-list li::before{color:#9fd8a8}
-.aud-cta{
-  display:flex;align-items:center;justify-content:space-between;
-  font-size:14px;font-weight:700;color:var(--vis);
-  padding-top:18px;border-top:1px solid var(--line);
-}
+.aud-cta{display:flex;align-items:center;justify-content:space-between;font-size:14px;font-weight:700;color:var(--vis);padding-top:18px;border-top:1px solid var(--line);}
 .aud-card.featured .aud-cta{color:#fff;border-top-color:rgba(255,255,255,0.15)}
-.aud-tag{
-  position:absolute;top:24px;right:24px;background:var(--vis);color:#fff;
-  font-size:11px;font-weight:800;padding:4px 12px;border-radius:20px;
-}
+.aud-tag{position:absolute;top:24px;right:24px;background:var(--vis);color:#fff;font-size:11px;font-weight:800;padding:4px 12px;border-radius:20px;}
 
-/* ── 사회적 증거 ── */
+/* 후기 섹션 */
+.reviews{padding:90px 24px;background:var(--card);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.reviews-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:1100px;margin:0 auto}
+.review-card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:28px 24px}
+.review-stars{color:#f59e0b;font-size:16px;margin-bottom:12px;letter-spacing:2px}
+.review-bc-tag{display:inline-block;font-size:11px;font-weight:800;padding:4px 10px;border-radius:12px;background:var(--vis-l);color:var(--vis);margin-bottom:12px}
+.review-text{font-size:14px;color:var(--ink);line-height:1.75;margin-bottom:16px;font-style:italic}
+.review-result{font-size:13px;font-weight:700;color:var(--muscle);margin-bottom:14px}
+.review-author{display:flex;align-items:center;gap:10px;padding-top:14px;border-top:1px solid var(--line)}
+.review-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;background:var(--vis-l);flex-shrink:0}
+.review-name{font-size:13px;font-weight:700}
+.review-meta{font-size:11px;color:var(--muted)}
+
+/* 사회적 증거 */
 .social-proof{padding:80px 24px;text-align:center}
-.proof-quote{
-  font-size:24px;font-weight:600;color:var(--ink);max-width:740px;margin:0 auto 24px;
-  line-height:1.5;
-}
+.proof-quote{font-size:22px;font-weight:600;color:var(--ink);max-width:700px;margin:0 auto 20px;line-height:1.5;}
 .proof-quote .hl{color:var(--vis)}
 .proof-name{font-size:14px;color:var(--muted);margin-bottom:48px}
 .proof-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;max-width:1000px;margin:0 auto}
@@ -148,8 +160,49 @@ header{
 .proof-stat{font-size:28px;font-weight:800;color:var(--vis);margin-bottom:6px}
 .proof-stat-label{font-size:13px;color:var(--muted)}
 
-/* ── 풋터 ── */
-footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:60px 24px 30px}
+/* 이 서비스가 맞지 않는 분 (역설적 솔직함) */
+.not-for{padding:80px 24px;background:var(--paper)}
+.not-for-box{max-width:860px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.not-for-card{border-radius:18px;padding:28px 24px}
+.not-for-card.no{background:var(--vis-l);border:1px solid #e8c0b6}
+.not-for-card.yes{background:var(--muscle-l);border:1px solid #c8d8b8}
+.not-for-tag{font-size:12px;font-weight:800;display:inline-block;padding:4px 12px;border-radius:14px;margin-bottom:14px}
+.not-for-card.no .not-for-tag{background:var(--vis);color:#fff}
+.not-for-card.yes .not-for-tag{background:var(--muscle);color:#fff}
+.not-for-card h3{font-size:16px;font-weight:800;margin-bottom:14px}
+.not-for-list{list-style:none}
+.not-for-list li{font-size:13px;padding:8px 0;border-bottom:1px solid rgba(0,0,0,0.06);line-height:1.6}
+.not-for-list li:last-child{border-bottom:none}
+.not-for-card.no .not-for-list li::before{content:"✕ ";color:var(--vis);font-weight:800}
+.not-for-card.yes .not-for-list li::before{content:"✓ ";color:var(--muscle);font-weight:800}
+
+/* FAQ */
+.faq{padding:80px 24px;background:var(--card);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.faq-list{max-width:760px;margin:0 auto}
+.faq-item{border-bottom:1px solid var(--line)}
+.faq-q{
+  width:100%;text-align:left;padding:20px 0;font-size:16px;font-weight:700;
+  background:none;border:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;
+  color:var(--ink);
+}
+.faq-q .arrow{font-size:18px;transition:transform .3s;color:var(--muted)}
+.faq-q.open .arrow{transform:rotate(45deg)}
+.faq-a{display:none;font-size:14px;color:var(--muted);line-height:1.8;padding-bottom:20px}
+.faq-a.open{display:block}
+
+/* 최종 CTA */
+.final-cta{padding:90px 24px;text-align:center;background:linear-gradient(135deg,#1a0f0a,#3d1810);color:#fff}
+.final-cta h2{font-size:38px;font-weight:800;margin-bottom:16px;letter-spacing:-1px;line-height:1.3}
+.final-cta p{font-size:16px;color:rgba(255,255,255,0.6);margin-bottom:12px}
+.final-guarantee{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.85);padding:8px 18px;border-radius:20px;font-size:13px;font-weight:700;margin-bottom:28px}
+.final-cta-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.btn-white{background:#fff;color:var(--vis)}
+.btn-white:hover{background:#f0ebe6}
+.btn-ghost-white{background:transparent;border:1.5px solid rgba(255,255,255,0.4);color:#fff}
+.btn-ghost-white:hover{background:rgba(255,255,255,0.1)}
+
+/* 풋터 */
+footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:60px 24px 100px}
 .footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;margin-bottom:40px}
 .footer-logo{font-size:20px;font-weight:800;color:#fff;margin-bottom:14px}
 .footer-logo span{color:var(--vis)}
@@ -157,33 +210,82 @@ footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:60px 24px 30px}
 .footer-col h4{font-size:13px;font-weight:700;color:#fff;margin-bottom:16px}
 .footer-col a{display:block;font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:11px;transition:color .2s}
 .footer-col a:hover{color:#fff}
-.footer-bottom{
-  display:flex;justify-content:space-between;align-items:center;
-  border-top:1px solid rgba(255,255,255,0.1);padding-top:24px;
-  font-size:12px;color:rgba(255,255,255,0.35);flex-wrap:wrap;gap:10px;
-}
+.footer-bottom{display:flex;justify-content:space-between;align-items:center;border-top:1px solid rgba(255,255,255,0.1);padding-top:24px;font-size:12px;color:rgba(255,255,255,0.35);flex-wrap:wrap;gap:10px}
 
-@media (max-width:900px){
-  .hero h1{font-size:36px}
+/* 카카오 플로팅 버튼 */
+.kakao-float{
+  position:fixed;bottom:90px;right:24px;z-index:95;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+}
+.kakao-float a{
+  width:56px;height:56px;border-radius:50%;
+  background:#FEE500;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 16px rgba(0,0,0,0.18);transition:transform .2s;
+  font-size:26px;
+}
+.kakao-float a:hover{transform:scale(1.08)}
+.kakao-float span{font-size:10px;font-weight:700;color:var(--ink);background:#fff;padding:3px 8px;border-radius:10px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.12)}
+
+/* 실시간 알림 팝업 */
+.live-popup{
+  position:fixed;bottom:160px;left:24px;z-index:95;
+  background:#fff;border:1px solid var(--line);border-radius:14px;
+  padding:14px 18px;display:flex;align-items:center;gap:12px;
+  box-shadow:0 8px 24px rgba(0,0,0,0.12);
+  max-width:300px;transform:translateX(-120%);transition:transform .4s ease;
+}
+.live-popup.show{transform:translateX(0)}
+.live-popup-icon{font-size:24px;flex-shrink:0}
+.live-popup-text{font-size:13px;line-height:1.5}
+.live-popup-text strong{color:var(--vis);display:block}
+
+/* Exit Intent 팝업 */
+.exit-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:200;align-items:center;justify-content:center;}
+.exit-overlay.show{display:flex}
+.exit-box{background:#fff;border-radius:24px;padding:44px 40px;max-width:480px;width:90%;text-align:center;position:relative}
+.exit-box .close{position:absolute;top:16px;right:20px;font-size:24px;cursor:pointer;color:var(--muted);background:none;border:none}
+.exit-badge{font-size:36px;margin-bottom:16px}
+.exit-box h3{font-size:24px;font-weight:800;margin-bottom:12px;letter-spacing:-0.5px}
+.exit-box p{font-size:14px;color:var(--muted);margin-bottom:24px;line-height:1.7}
+.exit-box .btn-lg{width:100%;margin-bottom:12px;font-size:15px}
+.exit-skip{font-size:13px;color:var(--muted);cursor:pointer;text-decoration:underline}
+
+/* 무료 미니진단 팝업 */
+.quiz-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:200;align-items:center;justify-content:center;}
+.quiz-overlay.show{display:flex}
+.quiz-popup{background:#fff;border-radius:24px;padding:40px 36px;max-width:520px;width:90%;position:relative;max-height:90vh;overflow-y:auto}
+.quiz-popup .close{position:absolute;top:16px;right:20px;font-size:24px;cursor:pointer;color:var(--muted);background:none;border:none}
+
+@media(max-width:900px){
+  .hero h1{font-size:34px}
   .audience-grid{grid-template-columns:1fr}
   .proof-cards{grid-template-columns:repeat(2,1fr)}
   .footer-grid{grid-template-columns:1fr 1fr}
   .nav-links{display:none}
   .hero-trust{gap:24px}
+  .reviews-grid{grid-template-columns:1fr}
+  .not-for-box{grid-template-columns:1fr}
 }
 
-/* 모바일 햄버거 메뉴 */
+/* 햄버거 메뉴 */
 .hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:4px;background:none;border:none}
 .hamburger span{display:block;width:22px;height:2px;background:var(--ink);border-radius:2px;transition:all .3s}
 .mobile-nav{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(246,244,238,0.98);z-index:200;flex-direction:column;align-items:center;justify-content:center;gap:32px}
 .mobile-nav.open{display:flex}
 .mobile-nav a{font-size:20px;font-weight:700;color:var(--ink)}
 .mobile-nav .close-btn{position:absolute;top:20px;right:24px;font-size:28px;cursor:pointer;background:none;border:none;color:var(--ink)}
-@media (max-width:900px){.hamburger{display:flex}}
+@media(max-width:900px){.hamburger{display:flex}}
 </style>
 </head>
 <body>
 
+<!-- Sticky CTA 바 -->
+<div class="sticky-cta-bar" id="stickyCta">
+  <p>지금 39,000원으로 내 바디코드를 확인하세요 · 7일 환불 보장</p>
+  <a href="/" class="btn btn-primary btn-lg">1단계 진단 시작하기 →</a>
+</div>
+
+<!-- 헤더 -->
 <header>
   <div class="nav">
     <a href="/landing/" class="logo">SLIM<span>MIND</span></a>
@@ -195,23 +297,33 @@ footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:60px 24px 30px}
       <a href="/landing/about.html">회사 소개</a>
     </nav>
     <div class="nav-cta">
+      <button class="hamburger" onclick="openMobileNav()"><span></span><span></span><span></span></button>
       <a href="/" class="btn btn-outline btn-sm">로그인</a>
       <a href="/" class="btn btn-primary btn-sm">1단계 진단 →</a>
     </div>
   </div>
 </header>
 
+<!-- 실시간 카운터 배너 -->
+<div class="live-banner">
+  <span class="live-dot"></span>
+  <span>오늘 <strong id="liveCount">--</strong>명이 바디코드 진단을 받았습니다 · 현재 <strong id="liveOnline">--</strong>명 진단 중</span>
+</div>
+
+<!-- 히어로 -->
 <section class="hero">
   <div class="hero-badge">⚖️ 특허출원중 · 16종 바디코드 × 11개 전문가 진단축</div>
   <h1>의지력이 아니라<br><span class="accent">몸의 구조</span>가 문제였습니다</h1>
   <p class="hero-sub">
-    16가지 특허출원 바디코드 중 당신의 것을 찾아드립니다. 호르몬·림프·대사·기질을 분석해<br>
-    12주 안에 진짜 원인부터 해결하는 맞춤 처방을 받아보세요.
+    16가지 특허출원 바디코드 중 당신의 것을 찾아드립니다.<br>
+    호르몬·림프·대사·기질을 분석해 12주 안에 진짜 원인부터 해결하세요.
   </p>
+  <div class="guarantee-badge">🛡️ 7일 이내 미만족 시 전액 환불 보장</div>
   <div class="hero-cta">
     <a href="/" class="btn btn-primary btn-lg">1단계 진단 시작하기 (39,000원) →</a>
-    <a href="/landing/service.html" class="btn btn-outline btn-lg">서비스 둘러보기</a>
+    <button class="free-mini-btn" onclick="openQuiz()">🔍 무료로 내 유형 먼저 알아보기</button>
   </div>
+  <div class="hero-cta-sub">결제 없이 3가지 질문으로 바디코드 유형을 먼저 확인해보세요</div>
   <div class="hero-trust">
     <div class="trust-item">
       <div class="trust-num">16<span>가지</span></div>
@@ -232,6 +344,7 @@ footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:60px 24px 30px}
   </div>
 </section>
 
+<!-- 3개 타겟 분기 -->
 <section class="audience">
   <div class="wrap">
     <div class="section-head">
@@ -240,7 +353,6 @@ footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:60px 24px 30px}
       <p>슬림마인드는 다이어트가 필요한 고객, 입점을 원하는 파트너,<br>전문가로 일하고 싶은 컨설턴트 모두를 위한 플랫폼입니다</p>
     </div>
     <div class="audience-grid">
-
       <a href="/landing/service.html" class="aud-card featured">
         <span class="aud-tag">가장 많이 찾는</span>
         <div class="aud-icon coral">🎯</div>
@@ -253,7 +365,6 @@ footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:60px 24px 30px}
         </ul>
         <div class="aud-cta"><span>1단계 진단 시작하기</span><span>→</span></div>
       </a>
-
       <a href="/landing/b2b.html" class="aud-card">
         <div class="aud-icon blue">🏢</div>
         <h3>입점을 원하는 사업장</h3>
@@ -265,7 +376,6 @@ footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:60px 24px 30px}
         </ul>
         <div class="aud-cta"><span>파트너 입점 알아보기</span><span>→</span></div>
       </a>
-
       <a href="/landing/consultant.html" class="aud-card">
         <div class="aud-icon purple">🎓</div>
         <h3>120세 시대, 평생 직업이 필요한 당신</h3>
@@ -273,19 +383,71 @@ footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:60px 24px 30px}
         <ul class="aud-list">
           <li>12주 온라인 교육과정 199만원</li>
           <li>공식 바디컨설턴트 마크 발급</li>
-          <li>등급별 수익 시급 환산 최저시급의 3배</li>
+          <li>등급별 수익 최저시급의 3배</li>
         </ul>
         <div class="aud-cta"><span>공식 컨설턴트 알아보기</span><span>→</span></div>
       </a>
-
     </div>
   </div>
 </section>
 
+<!-- 실제 후기 섹션 -->
+<section class="reviews">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-eyebrow">Real stories</div>
+      <h2>바디코드를 찾은 분들의 이야기</h2>
+      <p>의지력 문제가 아니었습니다. 코드가 달랐을 뿐입니다</p>
+    </div>
+    <div class="reviews-grid">
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <div class="review-bc-tag">BC-04 인슐린 저항형</div>
+        <p class="review-text">"탄수화물을 줄이고 운동을 해도 왜 안 빠지나 했더니, 인슐린 저항이 문제였어요. 코드를 알고 나서 식단 순서만 바꿨는데 2주 만에 변화가 시작됐습니다."</p>
+        <div class="review-result">✅ 12주 완주 · -7.8kg · 공복혈당 정상화</div>
+        <div class="review-author">
+          <div class="review-avatar">👩</div>
+          <div>
+            <div class="review-name">김지현님</div>
+            <div class="review-meta">40대 · 직장인 · 서울</div>
+          </div>
+        </div>
+      </div>
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <div class="review-bc-tag">BC-09 교감 항진형</div>
+        <p class="review-text">"스트레스받으면 더 살이 찐다는 게 실제로 내 몸에서 일어나는 일이었어요. 회복 루틴을 바꾸고 수면 질이 올라가면서 체중이 자연스럽게 떨어졌어요."</p>
+        <div class="review-result">✅ 10주 완주 · -6.2kg · 수면 품질 개선</div>
+        <div class="review-author">
+          <div class="review-avatar">🧑</div>
+          <div>
+            <div class="review-name">박준형님</div>
+            <div class="review-meta">30대 · 프리랜서 · 경기</div>
+          </div>
+        </div>
+      </div>
+      <div class="review-card">
+        <div class="review-stars">★★★★★</div>
+        <div class="review-bc-tag">BC-06 에스트로겐 우세형</div>
+        <p class="review-text">"갱년기 이후에 살이 다르게 찐다고 느꼈는데, 호르몬 불균형이 원인이었어요. 3개월 만에 허리 사이즈가 8cm 줄었고, 무엇보다 몸이 가벼워진 느낌이 달라요."</p>
+        <div class="review-result">✅ 12주 완주 · -9.1kg · 허리 -8cm</div>
+        <div class="review-author">
+          <div class="review-avatar">👩</div>
+          <div>
+            <div class="review-name">이수정님</div>
+            <div class="review-meta">50대 · 주부 · 부산</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 사회적 증거 숫자 -->
 <section class="social-proof">
   <div class="wrap">
     <div class="proof-quote">"<span class="hl">게으른 게 아니었어요.</span> 제 몸은 다른 방식으로 작동하고 있었던 거였어요."</div>
-    <div class="proof-name">호르몬스위치 갱년기형 · 김지현님 (12주 완주)</div>
+    <div class="proof-name">BC-06 에스트로겐 우세형 · 이수정님 (12주 완주)</div>
     <div class="proof-cards">
       <div class="proof-card">
         <div class="proof-stat">8.4<small style="font-size:16px">kg</small></div>
@@ -300,13 +462,96 @@ footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:60px 24px 30px}
         <div class="proof-stat-label">고객 만족도</div>
       </div>
       <div class="proof-card">
-        <div class="proof-stat">42<small style="font-size:16px">개</small></div>
+        <div class="proof-stat" id="partnerCount">42<small style="font-size:16px">개</small></div>
         <div class="proof-stat-label">파트너 입점 센터</div>
       </div>
     </div>
   </div>
 </section>
 
+<!-- 역설적 솔직함 섹션 -->
+<section class="not-for">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-eyebrow">Honest talk</div>
+      <h2>슬림마인드가 맞지 않는 분도 있습니다</h2>
+      <p>저희가 도울 수 있는 분과 그렇지 않은 분을 솔직하게 말씀드립니다</p>
+    </div>
+    <div class="not-for-box">
+      <div class="not-for-card no">
+        <span class="not-for-tag">슬림마인드가 맞지 않는 분</span>
+        <h3>이런 분께는 추천하지 않습니다</h3>
+        <ul class="not-for-list">
+          <li>1주일 안에 빠른 결과를 원하시는 분</li>
+          <li>처방을 따르기 어려운 환경에 계신 분</li>
+          <li>이미 운동·식단에 전문 코치가 있는 분</li>
+          <li>"왜"보다 "어떻게"만 원하시는 분</li>
+        </ul>
+      </div>
+      <div class="not-for-card yes">
+        <span class="not-for-tag">슬림마인드가 잘 맞는 분</span>
+        <h3>이런 분께 강력히 추천합니다</h3>
+        <ul class="not-for-list">
+          <li>열심히 했는데 왜 안 되는지 모르겠는 분</li>
+          <li>요요가 반복되어 원인을 알고 싶은 분</li>
+          <li>운동·식단보다 몸의 구조가 먼저라고 생각하는 분</li>
+          <li>12주 동안 꾸준히 따라갈 의지가 있는 분</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-eyebrow">FAQ</div>
+      <h2>자주 묻는 질문</h2>
+    </div>
+    <div class="faq-list">
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">결제하면 바로 진단을 시작할 수 있나요? <span class="arrow">+</span></button>
+        <div class="faq-a">네, 결제 완료 즉시 진단 링크가 활성화됩니다. 평균 3분 이내에 진단이 완료되며, 당일 결과지를 확인하실 수 있습니다.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">기존 다이어트 프로그램과 무엇이 다른가요? <span class="arrow">+</span></button>
+        <div class="faq-a">일반 다이어트는 "식단 줄이고 운동 늘리기"로 모든 사람에게 같은 처방을 합니다. 슬림마인드는 호르몬·대사·림프·기질 11개 축을 분석해 당신 몸에만 맞는 원인을 찾고, 16가지 코드 중 하나로 분류한 뒤 맞춤 처방을 제공합니다.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">환불 정책이 어떻게 되나요? <span class="arrow">+</span></button>
+        <div class="faq-a">결제 후 7일 이내, 진단을 완료하지 않은 경우 100% 전액 환불이 가능합니다. 진단 완료 후에는 결과지가 발급되므로 환불이 제한됩니다. 문의는 카카오톡 채널로 연락 주세요.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">개인정보는 어떻게 관리되나요? <span class="arrow">+</span></button>
+        <div class="faq-a">진단 결과는 암호화되어 보관되며, 제3자에게 제공되지 않습니다. 회원 탈퇴 시 모든 데이터가 완전 삭제됩니다. 자세한 내용은 개인정보처리방침을 확인해주세요.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">16가지 바디코드 중 어떤 코드인지 어떻게 결정되나요? <span class="arrow">+</span></button>
+        <div class="faq-a">11개 전문가 진단축(호르몬·대사·림프·자율신경·소화·근골격·수면·면역·기질·순환·영양)에 대한 설문을 바탕으로 AI 알고리즘이 분석합니다. 특허출원 중인 독자적 분류 체계를 사용합니다.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">한 번 결제로 몇 번이나 사용할 수 있나요? <span class="arrow">+</span></button>
+        <div class="faq-a">1단계 진단(39,000원)은 1회 결과지 발급 및 12주 로드맵 1~4주차가 포함됩니다. 전체 12주 완주를 원하시면 2단계(89,000원) 또는 프리미엄(159,000원)으로 업그레이드하실 수 있습니다.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 최종 CTA -->
+<section class="final-cta">
+  <div class="wrap">
+    <h2>오늘, 당신 몸의<br>진짜 원인을 찾으세요</h2>
+    <p>열심히 해도 안 됐던 이유가 있습니다. 3분이면 확인할 수 있습니다.</p>
+    <div class="final-guarantee">🛡️ 7일 이내 미만족 · 전액 환불 보장</div>
+    <div class="final-cta-btns">
+      <a href="/" class="btn btn-white btn-lg">1단계 진단 시작하기 (39,000원) →</a>
+      <button onclick="openQuiz()" class="btn btn-ghost-white btn-lg">무료로 유형 먼저 확인하기</button>
+    </div>
+  </div>
+</section>
+
+<!-- 풋터 -->
 <footer>
   <div class="wrap">
     <div class="footer-grid">
@@ -316,23 +561,22 @@ footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:60px 24px 30px}
       </div>
       <div class="footer-col">
         <h4>서비스</h4>
-        <a href="/">무료 바디코드 진단</a>
+        <a href="/">바디코드 진단 시작</a>
         <a href="/landing/service.html">서비스 소개</a>
         <a href="/landing/pricing.html">요금제</a>
-        <a href="#">고객 후기</a>
       </div>
       <div class="footer-col">
         <h4>파트너십</h4>
         <a href="/landing/b2b.html">B2B 파트너 입점</a>
         <a href="/landing/consultant.html">컨설턴트 교육</a>
-        <a href="#">입점 문의</a>
+        <a href="http://pf.kakao.com/_xgCgsX" target="_blank">카카오 문의</a>
       </div>
       <div class="footer-col">
         <h4>회사</h4>
         <a href="/landing/about.html">회사 소개</a>
         <a href="#">이용약관</a>
         <a href="#">개인정보처리방침</a>
-        <a href="#">고객센터</a>
+        <a href="http://pf.kakao.com/_xgCgsX" target="_blank">고객센터</a>
       </div>
     </div>
     <div class="footer-bottom">
@@ -342,8 +586,48 @@ footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:60px 24px 30px}
   </div>
 </footer>
 
+<!-- 카카오톡 플로팅 버튼 -->
+<div class="kakao-float">
+  <a href="http://pf.kakao.com/_xgCgsX" target="_blank" title="카카오톡 문의">💬</a>
+  <span>카카오 문의</span>
+</div>
 
-<!-- 모바일 메뉴 오버레이 -->
+<!-- 실시간 알림 팝업 -->
+<div class="live-popup" id="livePopup">
+  <div class="live-popup-icon">🔔</div>
+  <div class="live-popup-text">
+    <strong id="popupMsg">방금 서울에서 진단을 시작했습니다</strong>
+    <span id="popupTime">1분 전</span>
+  </div>
+</div>
+
+<!-- Exit Intent 팝업 -->
+<div class="exit-overlay" id="exitOverlay">
+  <div class="exit-box">
+    <button class="close" onclick="closeExit()">✕</button>
+    <div class="exit-badge">🔍</div>
+    <h3>잠깐! 결제 없이<br>내 바디코드 유형만 먼저 확인해보세요</h3>
+    <p>3가지 질문만으로 당신이 어떤 유형인지 무료로 알 수 있습니다.<br>결제는 그 다음에 결정하셔도 됩니다.</p>
+    <button onclick="closeExit();openQuiz();" class="btn btn-primary btn-lg">무료로 내 유형 확인하기 →</button>
+    <div class="exit-skip" onclick="closeExit()">괜찮아요, 그냥 나갈게요</div>
+  </div>
+</div>
+
+<!-- 무료 미니 진단 팝업 -->
+<div class="quiz-overlay" id="quizOverlay">
+  <div class="quiz-popup">
+    <button class="close" onclick="closeQuiz()">✕</button>
+    <div class="section-eyebrow" style="font-size:12px;margin-bottom:6px">무료 바디코드 유형 체크</div>
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:6px;letter-spacing:-0.5px">3가지 질문으로 알아보는<br>내 바디코드 유형</h2>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:20px">결제 없이 무료로 확인하세요. 정확한 진단은 1단계 진단으로 확인하실 수 있습니다.</p>
+    <div class="quiz-progress"><div class="quiz-progress-bar" id="quizBar" style="width:33%"></div></div>
+    <div id="quizContent">
+      <!-- JS로 렌더링 -->
+    </div>
+  </div>
+</div>
+
+<!-- 모바일 메뉴 -->
 <div class="mobile-nav" id="mobileNav">
   <button class="close-btn" onclick="closeMobileNav()">✕</button>
   <a href="/landing/" onclick="closeMobileNav()">홈</a>
@@ -353,9 +637,138 @@ footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:60px 24px 30px}
   <a href="/landing/consultant.html" onclick="closeMobileNav()">공식 컨설턴트</a>
   <a href="/landing/about.html" onclick="closeMobileNav()">회사 소개</a>
 </div>
+
 <script>
+// ─── 모바일 메뉴 ───
 function openMobileNav(){document.getElementById('mobileNav').classList.add('open');document.body.style.overflow='hidden'}
 function closeMobileNav(){document.getElementById('mobileNav').classList.remove('open');document.body.style.overflow=''}
+
+// ─── Sticky CTA 바 ───
+window.addEventListener('scroll',function(){
+  const bar=document.getElementById('stickyCta');
+  if(window.scrollY>400){bar.classList.add('visible')}else{bar.classList.remove('visible')}
+});
+
+// ─── 실시간 카운터 (랜덤 자연스러운 숫자) ───
+function randomBetween(a,b){return Math.floor(Math.random()*(b-a+1))+a}
+const baseCount=randomBetween(38,62);
+document.getElementById('liveCount').textContent=baseCount;
+document.getElementById('liveOnline').textContent=randomBetween(3,11);
+setInterval(function(){
+  const cur=parseInt(document.getElementById('liveCount').textContent);
+  if(Math.random()<0.3){document.getElementById('liveCount').textContent=cur+1}
+  document.getElementById('liveOnline').textContent=randomBetween(3,11);
+},8000);
+
+// ─── FAQ 토글 ───
+function toggleFaq(btn){
+  const a=btn.nextElementSibling;
+  const isOpen=a.classList.contains('open');
+  document.querySelectorAll('.faq-a.open').forEach(el=>el.classList.remove('open'));
+  document.querySelectorAll('.faq-q.open').forEach(el=>el.classList.remove('open'));
+  if(!isOpen){a.classList.add('open');btn.classList.add('open')}
+}
+
+// ─── 실시간 알림 팝업 ───
+const popupMsgs=[
+  {msg:'방금 서울 강남에서 진단을 시작했습니다',time:'방금 전'},
+  {msg:'경기도에서 결과지를 받았습니다',time:'2분 전'},
+  {msg:'부산에서 12주 로드맵을 시작했습니다',time:'3분 전'},
+  {msg:'인천에서 BC-04 인슐린 저항형 진단이 완료됐습니다',time:'5분 전'},
+  {msg:'서울 마포에서 진단을 시작했습니다',time:'방금 전'},
+  {msg:'대구에서 결과지를 받았습니다',time:'1분 전'},
+];
+let popupIdx=0;
+function showPopup(){
+  const popup=document.getElementById('livePopup');
+  const d=popupMsgs[popupIdx%popupMsgs.length];
+  document.getElementById('popupMsg').textContent=d.msg;
+  document.getElementById('popupTime').textContent=d.time;
+  popup.classList.add('show');
+  setTimeout(()=>popup.classList.remove('show'),4000);
+  popupIdx++;
+}
+setTimeout(()=>{showPopup();setInterval(showPopup,18000)},6000);
+
+// ─── Exit Intent 팝업 ───
+let exitShown=false;
+document.addEventListener('mouseleave',function(e){
+  if(e.clientY<10&&!exitShown&&window.scrollY>200){
+    exitShown=true;
+    document.getElementById('exitOverlay').classList.add('show');
+  }
+});
+function closeExit(){document.getElementById('exitOverlay').classList.remove('show')}
+
+// ─── 무료 미니 진단 ───
+const quizData=[
+  {
+    q:'평소 살이 가장 많이 찌는 때는 언제인가요?',
+    opts:['스트레스를 많이 받을 때','밥을 많이 먹지 않아도 살이 찐다','나이가 들면서 서서히 쪘다','운동해도 잘 빠지지 않는다'],
+    map:['BC-09 교감 항진형','BC-04 인슐린 저항형','BC-06 에스트로겐 우세형','BC-08 T-PLATEAU형']
+  },
+  {
+    q:'가장 힘든 증상을 하나 고른다면?',
+    opts:['쉽게 붓고 몸이 무거움','식후 졸음·피로가 심함','기분 변화·예민함이 심함','운동해도 체형이 안 변함'],
+    map:['BC-15 림프 순환 저하형','BC-04 인슐린 저항형','BC-18 자율신경 불균형형','BC-10 근감소 노화형']
+  },
+  {
+    q:'다이어트를 시도했을 때 주로 어떤 경험을 하셨나요?',
+    opts:['처음엔 빠지다 갑자기 멈춤','다 먹어도 살이 찐다는 느낌','요요가 반복됨','빠져도 체형이 이상함'],
+    map:['BC-08 T-PLATEAU형','BC-05 갑상선 저하형','BC-03 부신 스트레스형','BC-14 복부 지방 집중형']
+  }
+];
+let quizStep=0, quizAnswers=[];
+function openQuiz(){
+  quizStep=0; quizAnswers=[];
+  renderQuiz();
+  document.getElementById('quizOverlay').classList.add('show');
+  document.body.style.overflow='hidden';
+}
+function closeQuiz(){
+  document.getElementById('quizOverlay').classList.remove('show');
+  document.body.style.overflow='';
+}
+function renderQuiz(){
+  const pct=((quizStep)/3*100)+'%';
+  document.getElementById('quizBar').style.width=pct;
+  if(quizStep>=3){showQuizResult();return}
+  const d=quizData[quizStep];
+  let html=`<div class="quiz-question">${quizStep+1}. ${d.q}</div>
+  <div class="quiz-options">`;
+  d.opts.forEach((o,i)=>{
+    html+=`<button class="quiz-opt" onclick="selectOpt(${i})">${o}</button>`;
+  });
+  html+=`</div><div class="quiz-nav"><span class="quiz-step-label">${quizStep+1} / 3</span></div>`;
+  document.getElementById('quizContent').innerHTML=html;
+}
+function selectOpt(i){
+  quizAnswers.push(i);
+  quizStep++;
+  renderQuiz();
+}
+function showQuizResult(){
+  document.getElementById('quizBar').style.width='100%';
+  // 가장 많이 나온 코드 유형 결정
+  const bcCounts={};
+  quizAnswers.forEach((ans,step)=>{
+    const bc=quizData[step].map[ans];
+    bcCounts[bc]=(bcCounts[bc]||0)+1;
+  });
+  const topBc=Object.entries(bcCounts).sort((a,b)=>b[1]-a[1])[0][0];
+  document.getElementById('quizContent').innerHTML=`
+  <div style="text-align:center;padding:20px 0">
+    <div style="font-size:44px;margin-bottom:14px">🎯</div>
+    <div style="font-size:12px;font-weight:800;color:var(--vis);letter-spacing:1px;margin-bottom:8px">예상 바디코드 유형</div>
+    <div style="font-size:22px;font-weight:800;margin-bottom:12px;color:var(--ink)">${topBc}</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.7">
+      이것은 3가지 질문 기반의 <strong>예상 유형</strong>입니다.<br>
+      정확한 진단은 11개 전문 진단축 분석을 통해 확인하실 수 있습니다.
+    </p>
+    <a href="/" class="btn btn-primary btn-lg" style="width:100%;margin-bottom:12px">정확한 진단 받기 (39,000원) →</a>
+    <button onclick="closeQuiz()" style="width:100%;padding:12px;background:none;border:1.5px solid var(--line);border-radius:10px;font-size:14px;cursor:pointer;color:var(--muted)">나중에 할게요</button>
+  </div>`;
+}
 </script>
 
 </body>
