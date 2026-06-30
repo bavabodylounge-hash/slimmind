@@ -537,6 +537,17 @@ body{background:var(--paper);color:var(--ink);min-height:100vh;}
 .p3-rx-act.stress .p3-rx-act-k{color:#a3302a;}
 .p3-rx-act.diet .p3-rx-act-k{color:#9a6a1c;}
 .p3-rx-act-v{font-size:12.5px;color:var(--ink);line-height:1.6;word-break:keep-all;}
+/* ── V4.6: 오행×BC 핵심 식품 패널 ── */
+.p3-rx-ohaeng-foods{margin-top:14px;border-radius:13px;padding:13px 14px;background:color-mix(in srgb,var(--oc,#4A8C1C) 7%,#fff);border:1.5px solid color-mix(in srgb,var(--oc,#4A8C1C) 28%,transparent);}
+.p3-rx-ohaeng-head{display:flex;align-items:center;gap:7px;margin-bottom:9px;}
+.p3-rx-ohaeng-ic{font-size:18px;flex-shrink:0;}
+.p3-rx-ohaeng-title{font-size:13px;font-weight:900;color:var(--ink);display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.p3-rx-bc-badge{font-size:10px;font-weight:900;background:color-mix(in srgb,var(--oc,#4A8C1C) 18%,#fff);color:color-mix(in srgb,var(--oc,#4A8C1C) 80%,#000);border:1px solid color-mix(in srgb,var(--oc,#4A8C1C) 35%,transparent);border-radius:20px;padding:2px 8px;}
+.p3-rx-ohaeng-pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:9px;}
+.p3-rx-food-pill{font-size:12px;font-weight:800;background:#fff;color:color-mix(in srgb,var(--oc,#4A8C1C) 80%,#000);border:1.5px solid color-mix(in srgb,var(--oc,#4A8C1C) 40%,transparent);border-radius:20px;padding:4px 12px;}
+.p3-rx-ohaeng-tip{font-size:11.5px;color:var(--muted);line-height:1.5;word-break:keep-all;margin-bottom:6px;}
+.p3-rx-macro{font-size:11px;font-weight:700;color:color-mix(in srgb,var(--oc,#4A8C1C) 75%,#000);background:color-mix(in srgb,var(--oc,#4A8C1C) 10%,#fff);border-radius:8px;padding:5px 9px;margin-bottom:5px;}
+.p3-rx-caution{font-size:11px;font-weight:700;color:#7a5c00;background:#fff8e1;border-radius:8px;padding:5px 9px;border-left:3px solid #f9a825;}
 /* 멘탈처방 상단 검증 라인 */
 .p3-rx-verify{display:flex;align-items:center;gap:7px;background:var(--green-l);border:1px solid rgba(90,110,58,.28);border-radius:10px;padding:9px 12px;margin-bottom:15px;}
 .p3-rx-verify-ic{flex-shrink:0;width:20px;height:20px;border-radius:50%;background:#5a6e3a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;}
@@ -3923,6 +3934,10 @@ p, div, span, h1, h2, h3, h4{
 .tdy-fire{font-size:20px;}
 .tdy-streak b{font-size:16px;color:#b5452e;}
 .tdy-prog{font-size:13px;font-weight:900;color:#6a7555;}
+/* 오행 배지 — 오늘 할 일 타이틀 옆 */
+.tdy-ohaeng-badge{display:inline-flex;align-items:center;font-size:10.5px;font-weight:800;border-radius:20px;padding:3px 10px;margin-left:8px;vertical-align:middle;letter-spacing:.2px;}
+/* 오행 주의사항 배지 */
+.tdy-caution{background:#fff8e1;border:1.5px solid #ffe082;border-radius:12px;padding:10px 14px;margin-top:12px;font-size:11.5px;font-weight:700;color:#7a5c00;line-height:1.45;word-break:keep-all;}
 /* ─── 나의 실천 기록 (밝은 프리미엄) ─── */
 .liverec{background:linear-gradient(160deg,#fffefb,#fdf7ec);border:1px solid #ecdfca;border-radius:18px;padding:19px 17px;margin-top:22px;margin-bottom:20px;box-shadow:0 6px 22px rgba(150,110,50,.08);}
 /* ── 새 실천기록 lr2 (60대 가독성) ── */
@@ -7839,8 +7854,27 @@ function generatePrescription(bc_code, ohaeng_type, mbti_full) {
   const tone = ohaengTone[mbti_full] || ohaengTone['default'];
 
   // 닉네임 (BC_MASTER app_nickname 활용)
-  const bcMaster = BC_MASTER[bc_code] || BC_MASTER['BC-6'];
-  const nicknameDisplay = BC_TO_DEFAULT_NICKNAME[bc_code] || core.label;
+  const bcMaster = (typeof BC_MASTER !== 'undefined') ? (BC_MASTER[bc_code] || BC_MASTER['BC-6']) : null;
+  const nicknameDisplay = (typeof BC_TO_DEFAULT_NICKNAME !== 'undefined')
+    ? (BC_TO_DEFAULT_NICKNAME[bc_code] || core.label) : core.label;
+
+  // ── V4.6 신규: 오행 × BC 교차 식품 데이터 연결 ──────────────────
+  const ohaengData = (typeof SAJU_ELEMENT_DESC !== 'undefined' && SAJU_ELEMENT_DESC[ohaeng_type])
+    ? SAJU_ELEMENT_DESC[ohaeng_type] : null;
+  const ohaengOverlay = (typeof OHAENG_OVERLAY !== 'undefined' && OHAENG_OVERLAY[ohaeng_type])
+    ? OHAENG_OVERLAY[ohaeng_type] : null;
+
+  // 오행별 핵심 식품 (BC 우선 영양소 순)
+  const bcNutrientPriority = (typeof BC_NUTRIENT_PRIORITY !== 'undefined')
+    ? (BC_NUTRIENT_PRIORITY[bc_code] || ['단백질','식이섬유','수분']) : ['단백질','식이섬유','수분'];
+  let keyFoods = [];
+  if (ohaengData && ohaengData.nutriFoods) {
+    bcNutrientPriority.forEach(function(nutrient) {
+      const list = ohaengData.nutriFoods[nutrient];
+      if (list && list.length > 0) keyFoods.push(list[0]);
+    });
+    keyFoods = [...new Set(keyFoods)].slice(0, 3);
+  }
 
   return {
     // 핵심 처방 (BC 공통)
@@ -7859,6 +7893,19 @@ function generatePrescription(bc_code, ohaeng_type, mbti_full) {
     approach: tone.approach,
     dietPersonal: tone.diet,
     exercisePersonal: tone.exercise,
+    // ── V4.6 신규: 오행 × BC 교차 개인화 데이터 ──
+    ohaengLabel: ohaengData ? ohaengData.label : ohaeng_type,
+    ohaengIcon: ohaengData ? ohaengData.icon : '',
+    ohaengNutriTip: ohaengData ? ohaengData.nutriTip : '',
+    ohaengKeyFoods: keyFoods,                          // BC+오행 교차 핵심 식품 3종
+    ohaengDietAdd: ohaengOverlay ? ohaengOverlay.diet_add : '',   // 오행 식단 추가 지침
+    ohaengExerciseAdd: ohaengOverlay ? ohaengOverlay.exercise_add : '', // 오행 운동 추가
+    ohaengRecoveryAdd: ohaengOverlay ? ohaengOverlay.recovery_add : '', // 오행 회복 추가
+    ohaengMacroNote: ohaengOverlay ? ohaengOverlay.diet_macro_note : '', // 탄단지 비율
+    ohaengCaution: ohaengOverlay ? ohaengOverlay.tone_caution : '',      // 주의사항
+    // MBTI 행동 힌트
+    mbtiExerciseHint: (typeof MBTI_EXERCISE_HINT !== 'undefined') ? (MBTI_EXERCISE_HINT[mbti_full] || '') : '',
+    mbtiRecoveryHint: (typeof MBTI_RECOVERY_HINT !== 'undefined') ? (MBTI_RECOVERY_HINT[mbti_full] || '') : '',
     // 처방 키 (저장용)
     prescriptionKey: `${bc_code}_${ohaeng_type}_${mbti_full || 'default'}`,
   };
@@ -11276,6 +11323,25 @@ function renderP3(userName, bcCode, bcMaster, ohaengKey, ohaeng, mbtiType, mbti,
             <div class="p3-rx-act stress"><div class="p3-rx-act-ic">🔴</div><div class="p3-rx-act-body"><div class="p3-rx-act-k">멘탈 스트레스 액션</div><div class="p3-rx-act-v">${stressAct}</div></div></div>
             <div class="p3-rx-act diet"><div class="p3-rx-act-ic">🍽️</div><div class="p3-rx-act-body"><div class="p3-rx-act-k">행동 교정 식단 방향</div><div class="p3-rx-act-v">${dietAct}</div></div></div>
           </div>
+          ${(() => {
+            // ── V4.6: 오행 × BC 핵심 식품 패널 (동적 생성) ──
+            if (!prescription || !prescription.ohaengKeyFoods || !prescription.ohaengKeyFoods.length) return '';
+            const foods = prescription.ohaengKeyFoods;
+            const ohaengColor = ohaeng.color || '#4A8C1C';
+            const macroNote = prescription.ohaengMacroNote ? `<div class="p3-rx-macro">${prescription.ohaengMacroNote}</div>` : '';
+            const cautionNote = prescription.ohaengCaution ? `<div class="p3-rx-caution">⚠️ ${prescription.ohaengCaution}</div>` : '';
+            return `<div class="p3-rx-ohaeng-foods" style="--oc:${ohaengColor}">
+              <div class="p3-rx-ohaeng-head">
+                <span class="p3-rx-ohaeng-ic">${ohaeng.icon||'☯'}</span>
+                <span class="p3-rx-ohaeng-title">${ohaeng.label} 핵심 식품 <span class="p3-rx-bc-badge">${bcCode}</span></span>
+              </div>
+              <div class="p3-rx-ohaeng-pills">
+                ${foods.map(f=>`<span class="p3-rx-food-pill">${f}</span>`).join('')}
+              </div>
+              <div class="p3-rx-ohaeng-tip">${prescription.ohaengNutriTip || ''}</div>
+              ${macroNote}${cautionNote}
+            </div>`;
+          })()}
         </div>
       </div>`;
   }
@@ -14222,6 +14288,82 @@ function consultantLabel(name){
 window.consultantLabel = consultantLabel;
 
 // ════ 오늘 페이지: "오늘 할 일" 카드 (page10 맨 위) ════
+
+// ── 오행별 오늘 식단 핵심 식품 추출 ──────────────────────────────────────────
+// BC별 핵심 영양소 우선순위 매핑
+var BC_NUTRIENT_PRIORITY = {
+  'BC-1': ['식이섬유','단백질','수분'],  // 림프순환: 섬유질+수분 촉진
+  'BC-2': ['단백질','미네랄','식이섬유'], // 경추/림프: 항염+미네랄
+  'BC-3': ['단백질','식이섬유','탄수화물'], // 혈당: 단백질 먼저, 저GI 탄수
+  'BC-4': ['단백질','미네랄','지방'],    // 약물부작용: 항염+장회복
+  'BC-5': ['단백질','식이섬유','수분'],  // 재발: 항섬유화+수분
+  'BC-6': ['단백질','탄수화물','지방'],  // 야식부엉이: 트립토판 단백질+도파민
+  'BC-7': ['단백질','미네랄','식이섬유'], // 출산후: 코어+소화
+  'BC-8': ['미네랄','단백질','수분'],    // 말벅지: 마그네슘+나트륨제한
+  'BC-9': ['단백질','탄수화물','미네랄'], // 올챙이배: 고단백 우선
+};
+
+// ohaeng + bc 교차 → 오늘 식단 서브텍스트 동적 생성
+function getOhaengDietShort(ohaengType, bcCode) {
+  try {
+    var ot = ohaengType || '목';
+    var bc = bcCode || 'BC-6';
+    var ohaengData = (typeof SAJU_ELEMENT_DESC !== 'undefined') ? SAJU_ELEMENT_DESC[ot] : null;
+    if (!ohaengData || !ohaengData.nutriFoods) return null;
+
+    var foods = ohaengData.nutriFoods;
+    var priorities = BC_NUTRIENT_PRIORITY[bc] || ['단백질','식이섬유','수분'];
+
+    // 각 우선 영양소에서 대표 식품 1개씩 추출
+    var picks = [];
+    priorities.forEach(function(nutrient) {
+      var list = foods[nutrient];
+      if (list && list.length > 0) {
+        picks.push(list[0]);
+      }
+    });
+
+    // 중복 제거 후 최대 3개
+    var unique = picks.filter(function(v, i, a){ return a.indexOf(v) === i; }).slice(0, 3);
+    if (unique.length === 0) return null;
+
+    // nutriTip 한 줄 요약 (30자 이하)
+    var tip = '';
+    if (ohaengData.nutriTip) {
+      // 첫 문장 또는 괄호 앞까지
+      var t = ohaengData.nutriTip.replace(/[（(][^）)]*[）)]/g, '').split('。')[0].split('.')[0].trim();
+      if (t.length > 28) t = t.slice(0, 27) + '…';
+      tip = t;
+    }
+
+    // 출력 예: "닭가슴살 · 시금치 · 오이 (간 울결 해소)"
+    var foodStr = unique.join(' · ');
+    return tip ? foodStr + ' 중심' : foodStr;
+  } catch(e) { return null; }
+}
+
+// MBTI 기질별 운동/회복 한 줄 힌트
+var MBTI_EXERCISE_HINT = {
+  'INFP':'무리하지 말고 기분 좋은 강도로',  'INFJ':'혼자 집중하는 루틴이 효과적',
+  'INTJ':'계획대로 실행, 완벽보다 꾸준함',   'INTP':'실험처럼 가볍게 시작하기',
+  'ENFP':'다양하게 바꾸며 즐겁게',           'ENFJ':'함께하면 더 힘이 나요',
+  'ENTJ':'전략적으로, 쉬는 것도 계획',       'ENTP':'새 방법 시도해도 OK',
+  'ISTJ':'정해진 루틴 그대로 실행',          'ISFJ':'천천히 꾸준하게',
+  'ESTJ':'원칙대로, 70%도 성공',             'ESFJ':'함께하는 환경 만들기',
+  'ISTP':'효율 중심으로 핵심만',             'ISFP':'강제 없이 자연스럽게',
+  'ESTP':'짧고 강렬하게 집중',               'ESFP':'즐기면서 움직이기',
+};
+var MBTI_RECOVERY_HINT = {
+  'INFP':'감정 일기 5줄 쓰기',               'INFJ':'혼자 조용한 회복 시간',
+  'INTJ':'다음날 계획 짧게 메모',            'INTP':'뇌를 쉬게 하는 독서',
+  'ENFP':'좋아하는 음악 들으며 스트레칭',    'ENFJ':'감사한 것 3가지 적기',
+  'ENTJ':'내일 목표 1개만 설정',             'ENTP':'가볍게 영상 보며 스트레칭',
+  'ISTJ':'루틴 체크리스트 확인',             'ISFJ':'따뜻한 차 한 잔 + 족욕',
+  'ESTJ':'오늘 달성 항목 체크',              'ESFJ':'가족과 짧은 대화',
+  'ISTP':'가장 빠른 회복 방법 집중',         'ISFP':'좋아하는 향 아로마',
+  'ESTP':'짧은 냉온 샤워로 회복',            'ESFP':'신나는 음악 + 가벼운 댄스',
+};
+
 function renderDailyPage(){
   // 아코디언·기록은 renderRoadmapAccordion/renderLiveRecord가 이미 p10에 채움.
   // 여기선 맨 위 "오늘 할 일" 카드만 그린다.
@@ -14241,20 +14383,76 @@ function renderDailyPage(){
   var todayIdx = (jsDay===0) ? 6 : jsDay-1;  // 월0..일6
   var todayNm = DAYS[todayIdx];
 
-  // 운동 — 요일별 분리에서 오늘 것
+  // ── 오행·MBTI 정보 읽기 ──────────────────────────────────────
+  var ohaengType = '목';
+  var mbtiType   = '';
+  var bcCodeRaw  = 'BC-6';
+  try {
+    if (typeof _wowData !== 'undefined' && _wowData) {
+      ohaengType = _wowData.ohaengType || '목';
+      mbtiType   = _wowData.mbtiType   || '';
+      bcCodeRaw  = 'BC-' + (_wowData.bcCode || '6');
+    }
+    // __DIAG_DATA__ 폴백
+    if (ohaengType === '목' && window.__DIAG_DATA__) {
+      ohaengType = window.__DIAG_DATA__.ohaengType || ohaengType;
+      if (!mbtiType) mbtiType = window.__DIAG_DATA__.mbtiType || '';
+      if (bcCodeRaw === 'BC-6' && window.__DIAG_DATA__.bc_code) {
+        bcCodeRaw = window.__DIAG_DATA__.bc_code.startsWith('BC-')
+          ? window.__DIAG_DATA__.bc_code : 'BC-' + window.__DIAG_DATA__.bc_code;
+      }
+    }
+  } catch(e) {}
+  var ohaengLabel = (typeof SAJU_ELEMENT_DESC !== 'undefined' && SAJU_ELEMENT_DESC[ohaengType])
+    ? (SAJU_ELEMENT_DESC[ohaengType].icon || '') + ' ' + ohaengType + '기질'
+    : ohaengType + '기질';
+
+  // ── 운동 — 요일별 분리 + MBTI 힌트 ───────────────────────────
   var exMain = w.exercise_ok || '운동';
   var exSplit = (typeof parseExerciseSplit==='function') ? parseExerciseSplit(w.exercise_detail, exMain) : null;
-  var exToday;
+  var exBase;
   if (exSplit){
-    if (todayIdx>=5){ exToday = (todayIdx===5 ? (exSplit.sat||exMain) : '완전 휴식 — 회복'); }
-    else if (todayIdx===0||todayIdx===2||todayIdx===4){ exToday = exSplit.mwf.main; }
-    else { exToday = exSplit.tt.main; }
-  } else { exToday = exMain; }
+    if (todayIdx>=5){ exBase = (todayIdx===5 ? (exSplit.sat||exMain) : '완전 휴식 — 회복'); }
+    else if (todayIdx===0||todayIdx===2||todayIdx===4){ exBase = exSplit.mwf.main; }
+    else { exBase = exSplit.tt.main; }
+  } else { exBase = exMain; }
 
-  // 식단 — 끼니 요약
-  var dietShort = '아침 · 점심 · 저녁';
-  // 회복 — 오늘 밤 루틴
-  var recToday = w.recovery_ok || '밤 루틴';
+  // MBTI 운동 힌트 추가 (있을 때만)
+  var exHint = mbtiType ? (MBTI_EXERCISE_HINT[mbtiType] || '') : '';
+  var exToday = exHint ? (exBase + ' · ' + exHint) : exBase;
+
+  // ── 식단 — 오행+BC 기반 핵심 식품 동적 생성 ──────────────────
+  // 우선순위 1: SAJU_ELEMENT_DESC × BC_NUTRIENT_PRIORITY 교차 식품
+  // 우선순위 2: OHAENG_OVERLAY diet_add (이미 weeks[0].diet_ok에 반영)
+  // 우선순위 3: BC_PRESCRIPTION_DB dietDirection 일부
+  var dietShort = getOhaengDietShort(ohaengType, bcCodeRaw);
+  if (!dietShort) {
+    // fallback: 오행 오버레이 diet_add 텍스트 활용
+    var overlayDiet = (typeof OHAENG_OVERLAY !== 'undefined' && OHAENG_OVERLAY[ohaengType])
+      ? (OHAENG_OVERLAY[ohaengType].diet_add || '') : '';
+    if (overlayDiet) {
+      // 첫 문장만 (— 앞까지)
+      var di = overlayDiet.split('—')[0].split('(')[0].trim();
+      dietShort = di.length > 30 ? di.slice(0, 29) + '…' : di;
+    }
+  }
+  if (!dietShort) dietShort = '아침 · 점심 · 저녁';
+
+  // ── 회복 — BC별 루틴 + MBTI 힌트 ───────────────────────────
+  var recBase = w.recovery_ok || '밤 루틴';
+  var recHint = mbtiType ? (MBTI_RECOVERY_HINT[mbtiType] || '') : '';
+  var recToday = recHint ? (recBase + ' · ' + recHint) : recBase;
+
+  // ── 오행 주의사항 배지 (ohaeng_caution 있을 때) ────────────────
+  var cautionBadge = '';
+  if (w.ohaeng_caution) {
+    cautionBadge = '<div class="tdy-caution">⚠️ ' + w.ohaeng_caution + '</div>';
+  }
+
+  // ── 오행 배지 ──────────────────────────────────────────────
+  var ohaengColor = (typeof SAJU_ELEMENT_DESC !== 'undefined' && SAJU_ELEMENT_DESC[ohaengType])
+    ? SAJU_ELEMENT_DESC[ohaengType].color : '#888';
+  var ohaengBadge = '<span class="tdy-ohaeng-badge" style="background:' + ohaengColor + '22;color:' + ohaengColor + ';border:1px solid ' + ohaengColor + '44;">' + ohaengLabel + '</span>';
 
   var isRestDay = (todayIdx>=6); // 일요일만 운동 완전휴식 취급
 
@@ -14270,12 +14468,13 @@ function renderDailyPage(){
     '<div class="tdy-card">'+
       '<div class="tdy-top"><span class="tdy-day">오늘 · '+todayNm+'요일</span>'+
         '<span class="tdy-week">'+phaseName+' '+weekNo+'주차</span></div>'+
-      '<div class="tdy-title">오늘 할 일</div>'+
+      '<div class="tdy-title">오늘 할 일 '+ohaengBadge+'</div>'+
       '<div class="tdy-list">'+
         row('ex','🏃','#5a6e3a','ex','운동', exToday, 'ex')+
         row('di','🍽️','#c98a3c','di','식단', dietShort, 'di')+
         row('re','🌙','#b5452e','re','회복', recToday, 're')+
       '</div>'+
+      cautionBadge+
       '<div class="tdy-foot">'+
         '<span class="tdy-streak"><span class="tdy-fire">🔥</span> <b id="tdy-streak-n">0</b>일 연속</span>'+
         '<span class="tdy-prog" id="tdy-prog">오늘 체크하러 가기</span>'+
