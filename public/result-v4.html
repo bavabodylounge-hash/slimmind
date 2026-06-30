@@ -5054,18 +5054,7 @@ p, div, span, h1, h2, h3, h4{
     <p class="body-text" id="p1-fail-desc">분석 중...</p>
   </div>
 
-  <!-- ===== 기능 5: 익명 통계 비교 카드 ===== -->
-  <div id="statsCard" class="fade-up" style="transition-delay:.4s">
-    <div id="statsLoading">
-      <div class="sc-label">익명 통계 비교</div>
-      <div class="sc-skeleton" style="width:70%;height:28px;margin-bottom:8px"></div>
-      <div class="sc-skeleton" style="width:50%;height:14px;margin-bottom:18px"></div>
-      <div class="sc-skeleton" style="width:100%;height:10px;margin-bottom:8px"></div>
-      <div class="sc-skeleton" style="width:40%;height:12px"></div>
-    </div>
-    <div id="statsContent" style="display:none"></div>
-  </div>
-  <!-- ===== /기능 5 ===== -->
+  <!-- ===== 기능 5: 익명 통계 비교 카드 — V4.7 제거됨 ===== -->
 
   <!-- 16종 연결 리드인 -->
   <div class="grid-leadin fade-up" style="transition-delay:.43s">
@@ -11459,109 +11448,8 @@ async function loadAxisRank(axisScores) {
 }
 /* ===== /기능 7 ===== */
 
-/* ===== 기능 5: 익명 통계 비교 ===== */
-async function loadBodyTypeStats(bcCode, userName) {
-  const card    = document.getElementById('statsCard');
-  const loading = document.getElementById('statsLoading');
-  const content = document.getElementById('statsContent');
-  if (!card || !content) return;
-
-  try {
-    const res  = await fetch(`/api/v1/stats/body-type?bc=${encodeURIComponent(bcCode)}`);
-    const data = res.ok ? await res.json() : null;
-
-    if (!data || !res.ok) {
-      // API 실패 시 카드 숨김
-      card.style.display = 'none'; return;
-    }
-
-    const { total, bc_count, pct, rarity_label, rarity_color, top5, simulated } = data;
-
-    // 데이터 부족 시 안내 문구만 표시
-    if (total < 5) {
-      loading.innerHTML = `
-        <div class="sc-label">익명 통계 비교</div>
-        <div style="color:rgba(255,255,255,.35);font-size:13px;padding:8px 0">
-          📊 데이터가 쌓이고 있어요. 곧 통계를 보여드릴게요!
-        </div>`;
-      return;
-    }
-
-    // 전체 대비 내 코드 비율
-    const barWidth = Math.max(pct, 1);
-
-    // TOP5 분포 행 생성
-    const top5Html = top5.map(row => {
-      const isMine = row.bc === bcCode;
-      const maxPct = top5[0]?.pct || 1;
-      const barW   = Math.round((row.pct / maxPct) * 100);
-      return `
-        <div class="sc-dist-row">
-          <div class="sc-dist-bc${isMine?' sc-mine':''}">${row.bc}</div>
-          <div class="sc-dist-bar-wrap">
-            <div class="sc-dist-bar${isMine?' sc-mine':''}"
-              style="width:${barW}%"></div>
-          </div>
-          <div class="sc-dist-pct${isMine?' sc-mine':''}">${row.pct}%</div>
-        </div>`;
-    }).join('');
-
-    // 내 코드가 TOP5에 없는 경우 추가
-    const inTop5 = top5.some(r => r.bc === bcCode);
-    const myRowHtml = !inTop5 ? `
-      <div class="sc-dist-row">
-        <div class="sc-dist-bc sc-mine">${bcCode} ★</div>
-        <div class="sc-dist-bar-wrap">
-          <div class="sc-dist-bar sc-mine" style="width:${Math.max(Math.round(pct),2)}%"></div>
-        </div>
-        <div class="sc-dist-pct sc-mine">${pct}%</div>
-      </div>` : '';
-
-    content.innerHTML = `
-      <div class="sc-label">익명 통계 비교</div>
-      <div class="sc-headline">
-        전체 응답자 <span>${total.toLocaleString()}명</span> 중<br>
-        ${userName}님과 같은 유형은 <span>${pct}%</span>
-      </div>
-      <div class="sc-sub">
-        ${bcCode} 코드 · ${bc_count.toLocaleString()}명 동일 유형 · 익명 집계
-      </div>
-      <div class="sc-rarity" style="color:${rarity_color};border-color:${rarity_color}40;background:${rarity_color}12">
-        ✦ ${rarity_label}
-      </div>
-      <div class="sc-bar-wrap">
-        <div class="sc-bar-fill" id="scBarFill" style="width:0%"></div>
-      </div>
-      <div class="sc-bar-labels">
-        <span>0%</span>
-        <span>${pct}% (내 유형)</span>
-        <span>${top5[0]?.pct || 0}% (최다)</span>
-      </div>
-      <div class="sc-dist-title">TOP 유형 분포</div>
-      <div class="sc-dist">
-        ${top5Html}
-        ${myRowHtml}
-      </div>
-      ${simulated ? '<div class="sc-simulated">※ 데이터 누적 중 — 수치는 실시간 업데이트됩니다</div>' : ''}
-    `;
-
-    // 스켈레톤 → 콘텐츠 전환
-    loading.style.display = 'none';
-    content.style.display = 'block';
-
-    // 바 애니메이션 (requestAnimationFrame으로 트리거)
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const fill = document.getElementById('scBarFill');
-        if (fill) fill.style.width = barWidth + '%';
-      });
-    });
-
-  } catch(e) {
-    console.warn('[stats]', e);
-    card.style.display = 'none';
-  }
-}
+/* ===== 기능 5: 익명 통계 비교 — V4.7 제거됨 ===== */
+function loadBodyTypeStats(){ /* 제거됨 */ }
 /* ===== /기능 5 ===== */
 
 function renderAll(data) {
@@ -11755,12 +11643,13 @@ function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nic
   });
   mGrid.appendChild(subGrid);
 
-  if (metricsEmpty) {
-    const notice = document.createElement('div');
-    notice.style.cssText = 'font-size:12.5px;color:var(--muted);text-align:center;margin-top:8px;padding:8px;background:rgba(0,0,0,.03);border-radius:8px;';
-    notice.textContent = '※ 바디코드 진단 데이터가 있는 경우 정확한 수치가 계산됩니다';
-    mGrid.appendChild(notice);
-  }
+  // 수치 출처 안내 문구 (데이터 유무 무관 항상 표시)
+  const metricNotice = document.createElement('div');
+  metricNotice.style.cssText = 'font-size:11.5px;color:var(--muted);text-align:center;margin-top:8px;padding:6px 10px;background:rgba(0,0,0,.03);border-radius:8px;line-height:1.5;';
+  metricNotice.textContent = metricsEmpty
+    ? '※ 바디코드 진단 데이터가 있는 경우 정확한 수치가 계산됩니다'
+    : '※ 위 수치는 설문 응답 기반의 위험도 추정치입니다. 의료 검사 수치가 아니며, 개인 상담 시 정밀 분석이 제공됩니다.';
+  mGrid.appendChild(metricNotice);
 
   // 감성 서사 — BC코드·닉네임별 개별 매핑
   var BC_STORY = {
@@ -11925,8 +11814,44 @@ function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nic
     ]},
   ];
   var myNick = (typeof nicknameDisplay !== 'undefined' && nicknameDisplay) ? nicknameDisplay : (bcMaster.app_nickname||'').replace(/#/g,'').replace(/_/g,' ');
-  function _norm(s){ return (s||'').replace(/[\s·]/g,''); }
-  var myKey = _norm(myNick);
+  // ── 닉네임 → BC16 카드 정확 매핑 테이블 (24개 닉네임 전체 커버) ──
+  // bc-engine.js NICKNAME_TO_BC의 24개 닉네임을 BC16 카드명에 1:1 대응
+  var NICK_TO_CARD = {
+    // 복부형
+    '아빠체형 내장비대형':    '단단 내장형',
+    '식후기절 혈당롤러코스터형': '단단 내장형',
+    '남산 수박배형':          '단단 내장형',
+    '인슐린저항 복부형':      '단단 내장형',
+    '팔다리거미 올챙이배형':  '올챙이배형',
+    '털털한 PCOS형':          '물렁 피하형',
+    '약물부작용 강제축적형':  '물렁 피하형',
+    '물만마셔도 요요형':      '물렁 피하형',
+    '억제제부작용 배부름마비형': '가스 팽만형',
+    '식후임산부 가스풍선형':  '가스 팽만형',
+    // 하체형
+    '오후만되면 코끼리다리형': '코끼리다리형',
+    '엄마체형 하지정체형':    '코끼리다리형',
+    '셀룰라이트 귤껍질형':    '귤껍질 하체형',
+    '여름에도 시린 얼음장형': '귤껍질 하체형',
+    '운동할수록 말벅지형':    '말벅지형',
+    '상체근육형':             '상체근육형',
+    '골반틀어짐 승마살형':    '승마살형',
+    '지방흡입후 재발형':      '승마살형',
+    // 상체형
+    '목짧아지는 거북이형':    '거북이형',
+    '안 쓰는 팔뚝 부종형':   '팔뚝부종형',
+    '겨드랑이 부유방형':      '부유방형',
+    // 전신형
+    '호르몬스위치 갱년기형':  '갱년기 변환형',
+    '출산후 바람빠진 풍선형': '갱년기 변환형',
+    '스트레스기절 번아웃형':  '번아웃 무기력형',
+    '스트레스성 야식부엉이형': '번아웃 무기력형',
+    '대사증후군 종합형':      '대사증후군형',
+    '동시다발 다중악순환형':  '다중악순환형',
+  };
+  // 정확 매핑 우선, 없으면 기존 부분 문자열 폴백
+  var activeCardName = NICK_TO_CARD[myNick] || null;
+
   var ICON16 = {
     '단단 내장형':'\uD83D\uDD34','물렁 피하형':'\uD83C\uDF6E','가스 팽만형':'\uD83C\uDF88','올챙이배형':'\uD83E\uDD5A',
     '코끼리다리형':'\uD83D\uDC18','귤껍질 하체형':'\uD83C\uDF4A','말벅지형':'\uD83C\uDF56','승마살형':'\uD83D\uDC0E',
@@ -11936,10 +11861,17 @@ function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nic
 
   bcGrid.innerHTML = BC16.map(function(group){
     var cards = group.cells.map(function(cell){
+      // 정확 매핑 우선, 없으면 부분문자열 폴백(안전망)
       var active = false;
-      var nk = _norm(cell.name);
-      if (myKey && (myKey.indexOf(nk)>=0 || nk.indexOf(myKey)>=0)) active = true;
-      if (!active && myKey.indexOf('갱년기')>=0 && cell.name.indexOf('갱년기')>=0) active = true;
+      if (activeCardName) {
+        active = (cell.name === activeCardName);
+      } else {
+        // 폴백: 공백 제거 후 포함 여부
+        function _norm(s){ return (s||'').replace(/[\s·]/g,''); }
+        var myKey = _norm(myNick);
+        var nk = _norm(cell.name);
+        if (myKey && (myKey.indexOf(nk)>=0 || nk.indexOf(myKey)>=0)) active = true;
+      }
       var icon = (ICON16[cell.name]||'\u25C9');
       return '<div class="cell'+(active?' cell-active':'')+'"'+(active?' style="--cc:'+cell.c+'"':'')+'>'
         + '<span class="cell-bar" style="background:'+cell.c+'"></span>'
@@ -11960,7 +11892,7 @@ function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nic
 /* ── P2 ── */
 function renderP2(userName, bcCode, firstDomino, axisScores, sorted) {
   // ── 10원인축 표시 (점수는 백엔드가 0~100으로 전달; 프론트는 표시만) ──
-  // ※ 정규화/가중은 서우님 백엔드 담당. 프론트는 받은 값을 그대로 쓰고 0~100 클램프만 한다.
+  // 정규화/가중: 백엔드에서 0~100으로 전달. 프론트는 받은 값을 그대로 쓰고 0~100 클램프만 한다.
   var meta = (typeof AXIS_10_META !== 'undefined') ? AXIS_10_META : {
     A01:{label:'인슐린·내장',icon:'🍽️',color:'#E8631A'}, A02:{label:'림프순환',icon:'💧',color:'#1A7FC1'},
     A03:{label:'호르몬',icon:'🌸',color:'#C0397A'}, A04:{label:'근감소',icon:'🏃',color:'#4A8C1C'},
@@ -12049,7 +11981,7 @@ function renderP2(userName, bcCode, firstDomino, axisScores, sorted) {
   }
 
   // ── 원인의 도미노 (상위 3축을 인과 사슬로) ──
-  // ※ 도미노 본문은 표시용 템플릿. 서우님이 BC코드별로 백엔드 연결/교체 예정.
+  // 도미노 본문: BC코드별 맞춤 처방 체인 표시.
   var chain = document.getElementById('p2-chain');
   chain.innerHTML = '';
   var steps = [
@@ -12315,56 +12247,147 @@ function renderP4(userName, ohaengKey, mbtiType, gender, menopause) {
 /* ── P5 ── */
 function renderP5(metrics, bcCode, axisScores, userName) {
   // ════════════════════════════════════════════
-  // P5 근거 기반 선별 — 11개 전문 영역 중 근거 있는 것만
-  // ※ 영역별 근거 등급/켜짐 여부는 백엔드(서우님)가 BC코드별로 채울 자리.
-  //   프론트는 데모(BC-6 갱년기형) 기준 표시 + 디자인만 담당.
-  // 11영역: 약물 식단 운동 회복 한방 심리 체형 호르몬 시술 관리 철학
+  // P5 근거 기반 선별 — 11개 전문 영역 중 BC코드별 근거 있는 것만 표시
+  // BC-1~BC-9 각각의 핵심 영역 3개(STRONG) + 비핵심 8개(NONE)를 동적으로 빌드
   // ════════════════════════════════════════════
 
-  // 데모: BC-6 갱년기형 — 회복·호르몬·체형이 근거 강함, 운동·식단은 아직 이르다
-  // ※ ev = 6개 진단 소스 교차 근거 (기질·성향·가족력·증상 진단·답안속도·체지방률)
-  //   각 소스가 이 영역을 가리키는지/중립인지를 백엔드가 채울 자리. 지금은 데모.
-  var STRONG = [
-    { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#b5452e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.2 6.2 0 0 0 10.5 10.5Z"/></svg>', nm:'회복', to:'수면·자율신경 클리닉', c:'#b5452e', grade:3, gtx:'근거 강함',
-      hit:5, ev:[
-        {k:'기질', t:'수(水)', tc:'#2f7d8c', tb:'#e7f0f4', v:'에너지 고갈형 — <b>밀어붙이면 더 무너짐</b>. 회복부터.', on:true},
-        {k:'성향', t:'INFJ', tc:'#6b4eaa', tb:'#efeafa', v:'내향·사색형 — <b>혼자, 내 속도로</b> 회복하는 방식이 맞음.', on:true},
-        {k:'가족력', t:'갱년기·호르몬', tc:'#993556', tb:'#fbeaf0', v:'모계 갱년기 이력 — <b>호르몬·자율신경</b> 흔들림 취약군.', on:true},
-        {k:'증상 진단', t:'수면·무기력', tc:'#8a5a18', tb:'#faf0dc', v:'“밤에 2~3번 깬다” · “오후에 갑자기 무기력” \u2014 진단에서 또렷이 잡힘.', on:true},
-        {k:'답안 속도', t:'빠름', tc:'#3f5022', tb:'#eef2e4', v:'수면 문항에서 <b>즉답</b> — 망설임 없는 확실한 증상.', pt:'빠른 응답 = 이미 또렷이 겪고 있는 신호', on:true},
-        {k:'체지방률', t:'중립', tc:'#5f5e5a', tb:'#f1efe8', v:'31% — 회복 영역과는 직접 연결 약함.', on:false}
-      ],
-      concl:'기질도, 성향도, 가족력도, 증상도, 답하는 속도까지 — <b>전부 회복을 가리킵니다.</b>' },
-    { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#c0397a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5C12 3.5 6 9.5 6 14a6 6 0 0 0 12 0c0-4.5-6-10.5-6-10.5Z"/><path d="M9.5 14.5a2.5 2.5 0 0 0 2.5 2.5"/></svg>', nm:'호르몬', to:'내분비내과 · 산부인과', c:'#c0397a', grade:3, gtx:'근거 강함',
-      hit:4, ev:[
-        {k:'기질', t:'수(水)', tc:'#2f7d8c', tb:'#e7f0f4', v:'신장·생식 기운 약화형 — <b>호르몬 축이 먼저 흔들림</b>.', on:true},
-        {k:'가족력', t:'갱년기·호르몬', tc:'#993556', tb:'#fbeaf0', v:'모계 갱년기 — <b>에스트로겐 급감</b> 가족 패턴.', on:true},
-        {k:'증상 진단', t:'시기·변화', tc:'#8a5a18', tb:'#faf0dc', v:'갱년기 시기 + “체형이 갑자기 바뀜” \u2014 호르몬 변화 신호.', on:true},
-        {k:'답안 속도', t:'느림', tc:'#a35a2d', tb:'#f6ece7', v:'호르몬 문항에서 <b>망설임</b> — 본인도 확신 못 하는 변화.', pt:'느린 응답 = 검사로 확인이 필요한 신호', on:true},
-        {k:'성향', t:'INFJ', tc:'#6b4eaa', tb:'#efeafa', v:'직접 연결은 약함.', on:false},
-        {k:'체지방률', t:'중립', tc:'#5f5e5a', tb:'#f1efe8', v:'31% — 호르몬 단독 지표로는 약함.', on:false}
-      ],
-      concl:'기질·가족력·증상이 모이고, <b>망설인 답이 “검사가 필요하다”를 가리킵니다.</b>' },
-    { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#6b4eaa" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.5" r="2"/><path d="M12 7v6M12 9l-4-1.5M12 9l4-1.5M12 13l-3 7M12 13l3 7"/></svg>', nm:'체형', to:'필라테스 · 도수', c:'#6b4eaa', grade:2, gtx:'근거 보통',
-      hit:3, ev:[
-        {k:'체지방률', t:'31%', tc:'#5f5e5a', tb:'#f1efe8', v:'표준 상한 — <b>근감소·자세 무너짐</b> 동반 가능 구간.', on:true},
-        {k:'증상 진단', t:'체형·자세', tc:'#8a5a18', tb:'#faf0dc', v:'“아랫배·옆구리 집중” + “거북목” \u2014 정렬·코어 약화 패턴.', on:true},
-        {k:'가족력', t:'갱년기', tc:'#993556', tb:'#fbeaf0', v:'갱년기 체형 변화 — <b>골반·코어</b> 관리 필요군.', on:true},
-        {k:'기질', t:'수(水)', tc:'#2f7d8c', tb:'#e7f0f4', v:'저강도·정렬 위주가 맞음 (고강도 ✗).', on:false},
-        {k:'답안 속도', t:'보통', tc:'#5f5e5a', tb:'#f1efe8', v:'체형 문항 응답 속도 평이.', on:false}
-      ],
-      concl:'체지방률·증상·가족력이 <b>체형 관리가 필요함을 가리킵니다.</b>' }
-  ];
-  var NONE = [
-    { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.6 4.2L18 8l-3 3 .8 4.6L12 13.7 8.2 15.6 9 11 6 8l4.4-.8L12 3Z"/></svg>', nm:'시술', strike:'· 피부과·성형', tag:'지금 불필요' },
-    { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="9" width="16" height="6" rx="3" transform="rotate(-40 12 12)"/><path d="M9.5 8.5l5 5"/></svg>', nm:'약물', strike:'· 내과 처방',   tag:'지금 불필요' },
-    { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2"/><path d="M12 7v5M12 12l5 3M12 12l-5 3M8 21l1.5-4M16 21l-1.5-4"/></svg>', nm:'운동', strike:'· 고강도',       tag:'아직 이르다', hidden:true },
-    { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v7a2 2 0 0 0 2 2v9M8 3v6M5 3v6M18 3c-1.5 0-2.5 2-2.5 5s1 4 2.5 4v9"/></svg>', nm:'식단', strike:'· 극단 제한',     tag:'아직 이르다', hidden:true },
-    { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c4-3 7-6 7-10a4 4 0 0 0-7-2.5A4 4 0 0 0 5 11c0 4 3 7 7 10Z"/><path d="M12 8.5V21"/></svg>', nm:'한방', strike:'',               tag:'근거 약함',   hidden:true },
-    { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 4A3.5 3.5 0 0 0 6 7.5 3 3 0 0 0 5 12a3 3 0 0 0 1 5 3 3 0 0 0 3.5 3 2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/><path d="M14.5 4A3.5 3.5 0 0 1 18 7.5 3 3 0 0 1 19 12a3 3 0 0 1-1 5"/></svg>', nm:'심리', strike:'',               tag:'근거 약함',   hidden:true },
-    { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12c0-2 1.8-3.5 4-3.5s4 1.5 4 3.5M5 13c1.5 1.5 4 2.5 7 2.5s5.5-1 7-2.5"/><circle cx="9.5" cy="11" r=".6" fill="#8a8474"/><circle cx="14.5" cy="11" r=".6" fill="#8a8474"/></svg>', nm:'관리', strike:'',               tag:'근거 약함',   hidden:true },
-    { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l5 3"/></svg>', nm:'철학', strike:'',               tag:'근거 약함',   hidden:true }
-  ];
+  // BC코드별 핵심 영역 3개 매핑
+  var BC_P5_MAP = {
+    'BC-1': { strong:['식단','순환','회복'],   comment:'내장비만형: 식이조절+혈당순환+수면회복' },
+    'BC-2': { strong:['호르몬','식단','회복'], comment:'피하지방형: 에스트로겐+식단+회복' },
+    'BC-3': { strong:['순환','체형','회복'],   comment:'하지부종형: 림프순환+하체체형+회복' },
+    'BC-4': { strong:['호르몬','회복','식단'], comment:'약물부작용형: 호르몬복구+회복+식단' },
+    'BC-5': { strong:['식단','호르몬','회복'], comment:'재발형: 식단관리+호르몬+회복' },
+    'BC-6': { strong:['회복','호르몬','체형'], comment:'갱년기형: 수면자율신경+호르몬+체형' },
+    'BC-7': { strong:['식단','회복','체형'],   comment:'야식부엉이형: 식단리셋+수면회복+체형' },
+    'BC-8': { strong:['운동','체형','식단'],   comment:'운동말벅지형: 운동방향+체형교정+식단' },
+    'BC-9': { strong:['식단','심리','회복'],   comment:'번아웃형: 식단+스트레스심리+회복' }
+  };
+
+  // 11개 전문 영역 전체 데이터
+  var DOMAIN_DATA = {
+    '약물':   { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#7a4a38" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M8 11V6a4 4 0 0 1 8 0v5"/><circle cx="12" cy="16" r="1.5"/></svg>', nm:'약물', to:'내과 · 약물상담', c:'#7a4a38',
+      ev_template:[
+        {k:'기질', v:'선천 체질과 약물 반응성 — 복용 약물이 체중 변화를 유발하고 있을 수 있음.', on:true},
+        {k:'증상 진단', v:'약물 부작용 패턴이 감지됨 — 복용 이력과 체중 변화 시점 일치 여부 확인 필요.', on:true},
+        {k:'성향', v:'약물 순응도 패턴 분석 — 복용 규칙성과 효과 편차 관련.', on:true}
+      ], concl:'현재 복용 중인 약물이 체중·대사에 영향을 줄 수 있습니다. 전문의 상담을 권장합니다.' },
+    '식단':   { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#c98a3c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2Z"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>', nm:'식단', to:'영양상담 · 식이치료', c:'#c98a3c',
+      ev_template:[
+        {k:'기질', v:'오행 체질별 맞춤 식품 — 피해야 할 음식과 섭취해야 할 음식 패턴 분석.', on:true},
+        {k:'증상 진단', v:'혈당 패턴과 식이 루틴 — 진단에서 포착된 식습관 문제점.', on:true},
+        {k:'성향', v:'식욕 조절 성향 — MBTI 기반 감정적 식사 패턴 분석.', on:true}
+      ], concl:'식단 패턴 개선이 가장 직접적인 변화를 만들 수 있습니다.' },
+    '운동':   { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#5a6e3a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/></svg>', nm:'운동', to:'운동처방 · 재활', c:'#5a6e3a',
+      ev_template:[
+        {k:'기질', v:'체질별 적합 운동 강도 — 과도한 운동이 오히려 역효과를 낼 수 있는지 확인.', on:true},
+        {k:'증상 진단', v:'운동 반응 패턴 — 현재 운동 방식의 효율성 평가.', on:true},
+        {k:'성향', v:'운동 지속성 패턴 — MBTI 성향 기반 실현 가능한 운동 루틴 설계.', on:true}
+      ], concl:'현재 운동 방식보다 체질에 맞는 방향으로 전환이 필요합니다.' },
+    '회복':   { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#b5452e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.2 6.2 0 0 0 10.5 10.5Z"/></svg>', nm:'회복', to:'수면·자율신경 클리닉', c:'#b5452e',
+      ev_template:[
+        {k:'기질', v:'에너지 고갈형 — 밀어붙이면 더 무너짐. 회복부터.', on:true},
+        {k:'성향', v:'수면 패턴과 자율신경 리듬 — 회복 방식이 체질에 맞는지 점검.', on:true},
+        {k:'증상 진단', v:'수면·무기력 패턴 감지 — 진단에서 또렷이 잡힌 회복 신호.', on:true}
+      ], concl:'회복 시스템 복구가 모든 변화의 전제 조건입니다.' },
+    '한방':   { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#2f7d8c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22V12"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/><path d="M8 6l4-4 4 4"/><path d="M8 12V6"/><path d="M16 12V6"/></svg>', nm:'한방', to:'한의원 침·뜸·한약', c:'#2f7d8c',
+      ev_template:[
+        {k:'기질', v:'오행 체질 — 한의학적 접근이 체질과 부합하는 영역.', on:true},
+        {k:'가족력', v:'체질적 취약점 — 가족력 패턴이 한방 처치 방향과 연결됨.', on:true}
+      ], concl:'한의학적 체질 개선이 보조적으로 효과를 낼 수 있습니다.' },
+    '심리':   { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#7a4a8c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 9h.01"/><path d="M15 9h.01"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/></svg>', nm:'심리', to:'심리상담 · 행동치료', c:'#7a4a8c',
+      ev_template:[
+        {k:'성향', v:'감정적 식사 패턴 — 스트레스와 식욕의 연결 고리 분석.', on:true},
+        {k:'기질', v:'번아웃 취약성 — 심리적 에너지 소진 패턴 감지.', on:true}
+      ], concl:'심리적 요인이 체중 변화를 방해하고 있을 가능성이 높습니다.' },
+    '체형':   { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#6b4eaa" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"/><path d="M12 8v8"/><path d="M8 12l4 4 4-4"/></svg>', nm:'체형', to:'도수치료 · 체형교정', c:'#6b4eaa',
+      ev_template:[
+        {k:'증상 진단', v:'체형 불균형 패턴 — 골반·척추 정렬 문제가 대사에 영향을 줄 수 있음.', on:true},
+        {k:'기질', v:'체질별 체형 취약 부위 — 선천적으로 취약한 체형 영역.', on:true}
+      ], concl:'체형 교정이 전체 대사 효율을 높이는 데 기여합니다.' },
+    '호르몬': { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#c0397a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5C12 3.5 6 9.5 6 14a6 6 0 0 0 12 0c0-4.5-6-10.5-6-10.5Z"/><path d="M9.5 14.5a2.5 2.5 0 0 0 2.5 2.5"/></svg>', nm:'호르몬', to:'내분비내과 · 산부인과', c:'#c0397a',
+      ev_template:[
+        {k:'기질', v:'신장·생식 기운 약화형 — 호르몬 축이 먼저 흔들림.', on:true},
+        {k:'가족력', v:'모계 호르몬 이력 — 갱년기·내분비 취약군 여부 확인.', on:true},
+        {k:'증상 진단', v:'호르몬 불균형 신호 감지 — 복부지방·수면·감정 패턴에서 포착.', on:true}
+      ], concl:'호르몬 균형 복구가 체중 변화의 핵심 열쇠입니다.' },
+    '시술':   { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#8a5a18" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.287 1.288L3 12l5.8 1.9a2 2 0 0 1 1.288 1.287L12 21l1.9-5.8a2 2 0 0 1 1.287-1.288L21 12l-5.8-1.9a2 2 0 0 1-1.288-1.287Z"/></svg>', nm:'시술', to:'비만클리닉 · 피부과', c:'#8a5a18',
+      ev_template:[
+        {k:'증상 진단', v:'지방 분포 패턴 — 시술적 접근이 효과를 낼 수 있는 부위 분석.', on:true}
+      ], concl:'특정 부위의 완고한 지방에 시술적 보조 접근이 도움될 수 있습니다.' },
+    '관리':   { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M8.56 2.75c4.37 6.03 6.02 9.42 8.03 17.72m2.54-15.38c-3.72 4.35-8.94 5.66-16.88 5.85m19.5 1.9c-3.5-.93-6.63-.82-8.94 0-2.58.92-5.01 2.86-7.44 6.32"/></svg>', nm:'관리', strike:'',               tag:'근거 약함',   hidden:true },
+    '철학':   { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l5 3"/></svg>', nm:'철학', strike:'',               tag:'근거 약함',   hidden:true }
+  };
+
+  // axisScores → 축 키 점수 매핑 (보조: 점수 높은 축을 STRONG에 반영)
+  var axisToKey = {
+    A01: 'rec', A02: 'form', A03: 'horm', A04: 'diet',
+    A05: 'diet', A06: 'form', A07: 'horm', A08: 'circ', A09: 'ex', A10: 'rec'
+  };
+  // axisScores 기반 최고 점수 축 추출 (≥75)
+  var highAxes = [];
+  if (axisScores) {
+    Object.keys(axisScores).forEach(function(k) {
+      var mapped = axisToKey[k];
+      if (mapped && axisScores[k] >= 75) highAxes.push(mapped);
+    });
+  }
+
+  // BC코드별 기본 STRONG 목록 가져오기
+  var bc = bcCode || 'BC-1';
+  var mapEntry = BC_P5_MAP[bc] || BC_P5_MAP['BC-1'];
+  var strongKeys = mapEntry.strong.slice(); // ['회복','호르몬','체형'] 등
+
+  // axisScores 상위 축이 strongKeys에 없으면 3번째 자리와 교체 고려
+  // (단, 관리/철학/시술 같은 내부 영역 키가 아닌 DOMAIN_DATA에 있는 것만)
+  var axisKeyToName = { rec:'회복', diet:'식단', ex:'운동', horm:'호르몬', form:'체형', circ:'순환' };
+  highAxes.forEach(function(axKey) {
+    var nm = axisKeyToName[axKey];
+    if (nm && strongKeys.indexOf(nm) < 0 && strongKeys.length >= 3) {
+      // 3번째 자리 교체 (우선순위 낮은 3번째를 고점수 축으로 교체)
+      strongKeys[2] = nm;
+    }
+  });
+
+  // STRONG 배열 빌드 (최대 3개)
+  var STRONG = [];
+  strongKeys.forEach(function(nm) {
+    var d = DOMAIN_DATA[nm];
+    if (!d || d.hidden) return;
+    // ev_template에 등급 정보 추가
+    var ev = d.ev_template.map(function(e) {
+      return { k:e.k, t:'진단', tc:'#5a6e3a', tb:'#eef2e4', v:e.v, on:e.on };
+    });
+    STRONG.push({
+      ic: d.ic, nm: d.nm, to: d.to, c: d.c, grade: 3, gtx: '근거 강함',
+      hit: ev.filter(function(e){ return e.on; }).length,
+      ev: ev,
+      concl: d.concl
+    });
+  });
+
+  // NONE 배열 빌드 (STRONG에 없는 나머지 영역, 숨김/비활성)
+  var NONE_ICONS = {
+    '약물':   { ic: DOMAIN_DATA['약물'].ic,   nm:'약물',   strike:'약물·식단', tag:'근거 부족', hidden:true },
+    '한방':   { ic: DOMAIN_DATA['한방'].ic,   nm:'한방',   strike:'',          tag:'근거 약함', hidden:true },
+    '심리':   { ic: DOMAIN_DATA['심리'].ic,   nm:'심리',   strike:'',          tag:'근거 약함', hidden:true },
+    '시술':   { ic: DOMAIN_DATA['시술'].ic,   nm:'시술',   strike:'',          tag:'근거 약함', hidden:true },
+    '순환':   { ic: '<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>', nm:'순환', strike:'', tag:'근거 약함', hidden:true },
+    '관리':   DOMAIN_DATA['관리'],
+    '철학':   DOMAIN_DATA['철학']
+  };
+  var allNms = ['약물','식단','운동','회복','한방','심리','체형','호르몬','시술','관리','철학'];
+  var NONE = [];
+  allNms.forEach(function(nm) {
+    if (strongKeys.indexOf(nm) >= 0) return; // STRONG에 있으면 스킵
+    if (nm === '관리' || nm === '철학') {
+      NONE.push(DOMAIN_DATA[nm]);
+    } else {
+      var base = NONE_ICONS[nm] || { ic: '', nm: nm, strike: '', tag: '근거 약함', hidden: true };
+      NONE.push({ ic: base.ic, nm: base.nm, strike: base.strike || '', tag: base.tag || '근거 약함', hidden: true });
+    }
+  });
+
   var TOTAL = STRONG.length + NONE.length;
 
   // 도입부 — 1페이지(바디코드) 결론을 받아서 이어지게
@@ -12511,7 +12534,7 @@ function renderP8(metrics, bcCode, axisScores, userName) {
   var p8nameEl = document.getElementById('p8-name'); if (p8nameEl) p8nameEl.textContent = p8nm;
   // ════════════════════════════════════════════
   // P8 비율 — 주차별 맞춤 비율 그래프 (자동재생 1→4주) + 5주 블라인드
-  // ※ 주차별 비율 데이터는 백엔드(서우님)가 BC코드별로 채울 자리.
+  // 주차별 비율 데이터: BC코드별 동적 계산
   // ════════════════════════════════════════════
   // 축: group 'base'=기본 실천(항상), 'focus'=집중 포인트(개인 원인)
   // ※ 회복·식단·운동은 11축 진단에도 포함 → 원인 점수 높으면 focus에도 중복 노출(dup)
@@ -12530,12 +12553,67 @@ function renderP8(metrics, bcCode, axisScores, userName) {
   var FREE = 4, TOTAL = 12, DIM = 18;
   // 주차별 활성 축 수: 1~2주 3개(회복·식단·운동) → 3주 4개(+한방) → 4주 5개(+시술)
   var ACTIVE = { 1:3, 2:3, 3:4, 4:5 };
-  var DATA = {
-    1:{rec:54,diet:24,ex:22,ori:0,proc:0, horm:42,form:20,circ:14},
-    2:{rec:46,diet:28,ex:26,ori:0,proc:0, horm:40,form:22,circ:15},
-    3:{rec:38,diet:30,ex:23,ori:9,proc:0, horm:36,form:24,circ:18},
-    4:{rec:31,diet:32,ex:22,ori:9,proc:6, horm:33,form:25,circ:18}
+  // BC코드별 기본 DATA 맵 (4주차 비율)
+  // 구조: { 1: {rec,diet,ex,ori,proc,horm,form,circ}, 2: ..., 3: ..., 4: ... }
+  // rec=회복, diet=식단, ex=운동, ori=한방, proc=시술, horm=호르몬, form=체형, circ=순환
+  var BC_DATA_MAP = {
+    'BC-1': {
+      1:{rec:50,diet:30,ex:20,ori:0,proc:0, horm:20,form:15,circ:35},
+      2:{rec:42,diet:32,ex:26,ori:0,proc:0, horm:22,form:18,circ:38},
+      3:{rec:34,diet:34,ex:24,ori:8,proc:0, horm:25,form:20,circ:38},
+      4:{rec:28,diet:36,ex:24,ori:8,proc:4, horm:28,form:22,circ:40}
+    },
+    'BC-2': {
+      1:{rec:52,diet:28,ex:20,ori:0,proc:0, horm:45,form:18,circ:18},
+      2:{rec:44,diet:30,ex:26,ori:0,proc:0, horm:42,form:20,circ:20},
+      3:{rec:36,diet:32,ex:24,ori:8,proc:0, horm:38,form:22,circ:22},
+      4:{rec:30,diet:34,ex:22,ori:8,proc:6, horm:34,form:24,circ:22}
+    },
+    'BC-3': {
+      1:{rec:48,diet:24,ex:28,ori:0,proc:0, horm:22,form:22,circ:45},
+      2:{rec:40,diet:26,ex:34,ori:0,proc:0, horm:20,form:24,circ:46},
+      3:{rec:32,diet:28,ex:32,ori:10,proc:0, horm:18,form:26,circ:46},
+      4:{rec:26,diet:30,ex:28,ori:10,proc:6, horm:18,form:28,circ:46}
+    },
+    'BC-4': {
+      1:{rec:56,diet:26,ex:18,ori:0,proc:0, horm:48,form:16,circ:16},
+      2:{rec:48,diet:28,ex:24,ori:0,proc:0, horm:44,form:18,circ:18},
+      3:{rec:40,diet:30,ex:22,ori:8,proc:0, horm:40,form:20,circ:20},
+      4:{rec:34,diet:32,ex:20,ori:8,proc:6, horm:36,form:22,circ:20}
+    },
+    'BC-5': {
+      1:{rec:50,diet:32,ex:18,ori:0,proc:0, horm:35,form:18,circ:22},
+      2:{rec:44,diet:34,ex:22,ori:0,proc:0, horm:32,form:20,circ:24},
+      3:{rec:36,diet:36,ex:22,ori:6,proc:0, horm:30,form:22,circ:26},
+      4:{rec:30,diet:38,ex:20,ori:6,proc:6, horm:28,form:24,circ:26}
+    },
+    'BC-6': {
+      1:{rec:54,diet:24,ex:22,ori:0,proc:0, horm:42,form:20,circ:14},
+      2:{rec:46,diet:28,ex:26,ori:0,proc:0, horm:40,form:22,circ:15},
+      3:{rec:38,diet:30,ex:23,ori:9,proc:0, horm:36,form:24,circ:18},
+      4:{rec:31,diet:32,ex:22,ori:9,proc:6, horm:33,form:25,circ:18}
+    },
+    'BC-7': {
+      1:{rec:58,diet:22,ex:20,ori:0,proc:0, horm:30,form:18,circ:18},
+      2:{rec:50,diet:26,ex:24,ori:0,proc:0, horm:28,form:20,circ:20},
+      3:{rec:42,diet:28,ex:24,ori:6,proc:0, horm:26,form:22,circ:22},
+      4:{rec:36,diet:30,ex:22,ori:6,proc:6, horm:24,form:24,circ:22}
+    },
+    'BC-8': {
+      1:{rec:40,diet:26,ex:34,ori:0,proc:0, horm:18,form:35,circ:22},
+      2:{rec:34,diet:28,ex:38,ori:0,proc:0, horm:18,form:36,circ:22},
+      3:{rec:28,diet:30,ex:36,ori:6,proc:0, horm:20,form:38,circ:22},
+      4:{rec:24,diet:32,ex:32,ori:6,proc:6, horm:22,form:38,circ:24}
+    },
+    'BC-9': {
+      1:{rec:60,diet:20,ex:20,ori:0,proc:0, horm:20,form:16,circ:16},
+      2:{rec:52,diet:24,ex:24,ori:0,proc:0, horm:20,form:18,circ:18},
+      3:{rec:44,diet:26,ex:24,ori:6,proc:0, horm:22,form:20,circ:20},
+      4:{rec:38,diet:28,ex:22,ori:6,proc:6, horm:22,form:22,circ:20}
+    }
   };
+  // bcCode에 맞는 DATA 선택 (없으면 BC-6 기본값)
+  var DATA = BC_DATA_MAP[bcCode] || BC_DATA_MAP['BC-6'];
   // base 3축은 항상 활성. focus는 점수>0인 것 점수순. 전체 최소 6축 보장.
   // 표시 축 = 회복·식단·운동(기본 3) + 원인 점수 상위 3 = 총 6축 고정.
   // 회복·식단·운동은 점수 0이어도 항상 포함(빠질 수 없는 핵심).
@@ -12722,7 +12800,7 @@ function renderP8(metrics, bcCode, axisScores, userName) {
 function renderP9(metrics, bcCode, axisScores, data) {
   // ════════════════════════════════════════════
   // P9 미래 — 시뮬레이터 4주 공개 / 12주 잠김 (업셀링)
-  // ※ 4주/12주 예측값은 백엔드(서우님)가 BC코드별로 채울 자리.
+  // 4주/12주 예측값: axisScores 기반 계산
   // ════════════════════════════════════════════
   // 현재값은 바디코드(P1)와 동일한 실제 지표를 사용 — 나이 불일치 방지
   var curAge = (metrics && metrics.metaAge != null) ? metrics.metaAge : 52;
@@ -15120,7 +15198,7 @@ const WOW4_MISSIONS = {
 
 // ════════════════════════════════════════════════════════════════
 // 주차별 요일 주간표 — 운동·식단·회복 클리어 (직접 영역) + 호르몬 협진
-// ※ 요일별 세부 분배·체크 저장은 백엔드(서우님) 연동 자리. 지금은 데모 표시.
+// 요일별 세부 분배·체크 로직
 // ════════════════════════════════════════════════════════════════
 // ════════════════════════════════════════════════════════════════
 // 12주 여정 아코디언 — 4단계 묶음 × 주차별 주간표 펼침
@@ -15167,7 +15245,7 @@ var BC_NUTRIENT_PRIORITY = {
 function getOhaengDietShort(ohaengType, bcCode) {
   try {
     var ot = ohaengType || '목';
-    var bc = bcCode || 'BC-6';
+    var bc = bcCode || 'BC-1';
     var ohaengData = (typeof SAJU_ELEMENT_DESC !== 'undefined') ? SAJU_ELEMENT_DESC[ot] : null;
     if (!ohaengData || !ohaengData.nutriFoods) return null;
 
