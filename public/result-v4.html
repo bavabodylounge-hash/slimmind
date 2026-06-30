@@ -10827,11 +10827,136 @@ function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nic
     mGrid.appendChild(notice);
   }
 
-  // 감성 서사
+  // 감성 서사 — BC코드·닉네임별 개별 매핑
+  var BC_STORY = {
+    'BC-1': {
+      lead: '저녁만 되면 다리가 통나무처럼 부어오르고, 신발이 꽉 끼던 그 느낌.',
+      hook: '당신의 하체 순환로가 <strong>막혀있는 구조</strong>로 작동하고 있을 뿐입니다.',
+      nickOverride: {
+        '오후만되면코끼리다리형': {
+          lead: '아무리 걸어도, 저녁이면 다리가 코끼리처럼 부풀어 올랐습니다.',
+          hook: '당신의 림프 순환이 <strong>막혀있는 구조</strong>로 작동하고 있을 뿐입니다.'
+        },
+        '엄마체형하지정체형': {
+          lead: '하루 종일 서서 일했는데, 집에 오면 발목이 없어진 것 같았습니다.',
+          hook: '당신의 하지 정맥이 <strong>정체된 구조</strong>로 작동하고 있을 뿐입니다.'
+        }
+      }
+    },
+    'BC-2': {
+      lead: '어깨를 펴려 해도, 목이 자꾸 앞으로 쏟아지던 몸.',
+      hook: '당신의 골격 정렬이 <strong>보상성 구조</strong>로 굳어있을 뿐입니다.',
+      nickOverride: {
+        '목짧아지는거북이형': {
+          lead: '목을 바로 세우려 할수록, 어깨와 등이 같이 굳어가던 몸.',
+          hook: '당신의 경추가 <strong>보상성 림프 차단 구조</strong>로 작동하고 있을 뿐입니다.'
+        }
+      }
+    },
+    'BC-3': {
+      lead: '밥 한 끼만 먹어도 배가 먼저 나오고, 식후엔 쏟아지게 졸렸습니다.',
+      hook: '당신의 혈당 시스템이 <strong>롤러코스터 패턴</strong>으로 작동하고 있을 뿐입니다.',
+      nickOverride: {
+        '식후기절혈당롤러코스터형': {
+          lead: '밥을 먹고 나면 눈이 감기고, 배만 먼저 나오던 그 반복.',
+          hook: '당신의 인슐린 시스템이 <strong>롤러코스터 구조</strong>로 작동하고 있을 뿐입니다.'
+        },
+        '아빠체형내장비대형': {
+          lead: '운동도 했고, 식사량도 줄였는데 유독 배만 빠지지 않았습니다.',
+          hook: '당신의 내장지방이 <strong>인슐린 저항 구조</strong>로 쌓이고 있을 뿐입니다.'
+        },
+        '식후임산부가스풍선형': {
+          lead: '식사 후마다 배가 풍선처럼 빵빵해지고, 소화가 되지 않았습니다.',
+          hook: '당신의 소화 시스템이 <strong>가스 축적 구조</strong>로 작동하고 있을 뿐입니다.'
+        }
+      }
+    },
+    'BC-4': {
+      lead: '먹은 게 없는데도 체중이 늘고, 다이어트를 할수록 더 쪄갔습니다.',
+      hook: '당신의 대사 시스템이 <strong>초절전 생존 모드</strong>로 굳어있을 뿐입니다.',
+      nickOverride: {
+        '물만마셔도요요형': {
+          lead: '굶고 또 굶었는데, 몸은 오히려 더 저장하는 쪽을 택했습니다.',
+          hook: '당신의 갑상선이 <strong>에너지 절약 모드</strong>로 셧다운 된 것뿐입니다.'
+        },
+        '약물부작용강제축적형': {
+          lead: '약을 먹기 시작한 뒤로 체중이 이유 없이 늘기 시작했습니다.',
+          hook: '당신의 몸이 약물에 의해 <strong>강제 축적 구조</strong>로 바뀐 것뿐입니다.'
+        }
+      }
+    },
+    'BC-5': {
+      lead: '꾹꾹 눌러도 탄력 없이 울퉁불퉁한 그 느낌, 운동해도 달라지지 않았습니다.',
+      hook: '당신의 지방이 <strong>섬유화된 구조</strong>로 굳어있을 뿐입니다.',
+      nickOverride: {
+        '셀룰라이트귤껍질형': {
+          lead: '마사지도 해보고, 운동도 해봤지만 귤껍질 피부는 그대로였습니다.',
+          hook: '당신의 지방세포가 <strong>만성 염증성 섬유화</strong>로 굳어있을 뿐입니다.'
+        }
+      }
+    },
+    'BC-6': {
+      lead: '밤마다 이유 없이 배가 고프고, 참으면 더 폭식하게 되는 그 패턴.',
+      hook: '당신의 호르몬 시스템이 <strong>야간 역류 구조</strong>로 작동하고 있을 뿐입니다.',
+      nickOverride: {
+        '스트레스성야식부엉이형': {
+          lead: '낮엔 괜찮다가 밤이면 뭔가 먹지 않으면 잠들 수 없었습니다.',
+          hook: '당신의 코르티솔이 <strong>야간 역류 구조</strong>로 작동하고 있을 뿐입니다.'
+        },
+        '털털한PCOS형': {
+          lead: '먹는 양을 줄여도 체중이 빠지지 않고, 생리가 불규칙해졌습니다.',
+          hook: '당신의 여성 호르몬이 <strong>교란된 구조</strong>로 작동하고 있을 뿐입니다.'
+        },
+        '억제제부작용배부름마비형': {
+          lead: '배부른 느낌이 잘 오지 않아 나도 모르게 과식하게 됐습니다.',
+          hook: '당신의 포만 신호 시스템이 <strong>마비된 구조</strong>로 작동하고 있을 뿐입니다.'
+        }
+      }
+    },
+    'BC-7': {
+      lead: '출산 후 몸이 예전 같지 않고, 아랫배가 처진 채로 돌아오지 않았습니다.',
+      hook: '당신의 골반 구조가 <strong>이완된 상태</strong>로 정체되어 있을 뿐입니다.',
+      nickOverride: {
+        '출산후바람빠진풍선형': {
+          lead: '낳고 나서 몸이 바람 빠진 것처럼 늘어지고, 예전 옷이 맞지 않았습니다.',
+          hook: '당신의 복부 코어 압력이 <strong>산후 이완 구조</strong>로 정체되어 있을 뿐입니다.'
+        }
+      }
+    },
+    'BC-8': {
+      lead: '열심히 운동했는데, 살은 안 빠지고 허벅지만 굵어졌습니다.',
+      hook: '당신의 하체에 <strong>지방 분해를 막는 수용체</strong>가 우세하게 분포되어 있을 뿐입니다.',
+      nickOverride: {
+        '운동할수록말벅지형': {
+          lead: '스쿼트를 열심히 했는데 허벅지는 점점 더 커졌습니다.',
+          hook: '당신의 하체에 <strong>알파 수용체가 우세한 구조</strong>로 지방이 쌓이고 있을 뿐입니다.'
+        }
+      }
+    },
+    'BC-9': {
+      lead: '팔다리는 가는데 배만 볼록하고, 조금만 먹어도 배에만 쌓였습니다.',
+      hook: '당신의 근육이 <strong>에너지로 소모되는 구조</strong>로 작동하고 있을 뿐입니다.',
+      nickOverride: {
+        '팔다리거미올챙이배형': {
+          lead: '팔다리는 가늘어지는데 배만 유독 나오는 이유가 있었습니다.',
+          hook: '당신의 몸이 근육을 태우고 <strong>내장지방만 남기는 구조</strong>로 작동하고 있을 뿐입니다.'
+        }
+      }
+    }
+  };
+
+  // 닉네임 정규화 (공백·특수문자 제거)
+  function _normNick(s){ return (s||'').replace(/[\s·#_]/g,''); }
+  var _storyData = BC_STORY[bcCode] || BC_STORY['BC-6'];
+  var _nickKey = _normNick(nicknameDisplay || '');
+  var _storySelected = (_storyData.nickOverride && _storyData.nickOverride[_nickKey])
+    ? _storyData.nickOverride[_nickKey]
+    : _storyData;
+
   document.getElementById('p1-story').innerHTML =
-    `<p class="story-lead">닭가슴살을 씹어도, 천국의 계단을 올라도 빠지지 않던 몸.</p>
+    `<p class="story-lead">${_storySelected.lead}</p>
       <p class="story-bang"><strong>${userName}</strong>님, 당신은 게을렀던 게 아닙니다.</p>
-      <p class="story-hook">당신의 몸이 <strong>다른 구조</strong>로 작동하고 있을 뿐입니다.</p>`;
+      <p class="story-hook">당신의 몸이 ${_storySelected.hook}</p>`;
 
   document.getElementById('p1-fail-desc').innerHTML =
     `<strong>분석 소견:</strong> ${bcMaster.failed_type_desc}`;
