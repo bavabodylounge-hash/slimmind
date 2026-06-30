@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>슬림마인드 — 당신 몸의 진짜 고장 원인을 찾는 바디코드 진단</title>
+<style>
+:root{
+  --paper:#f6f4ee;
+  --card:#fffdf8;
+  --ink:#1a1a17;
+  --muted:#7c776b;
+  --line:#d8d3c6;
+  --vis:#b5452e;
+  --vis-l:#f6e3df;
+  --vis-d:#8c3320;
+  --circ:#2f7d8c;
+  --circ-l:#eef0f6;
+  --whole:#5b4a86;
+  --whole-l:#eeeaf6;
+  --muscle:#5a6e3a;
+  --muscle-l:#ecf0e8;
+  --sub:#c98a3c;
+  --sub-l:#fdf6ee;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  word-break:keep-all;overflow-wrap:break-word;
+  font-family:"Apple SD Gothic Neo","Noto Sans KR",-apple-system,sans-serif;
+  background:var(--paper);
+  color:var(--ink);
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+a{text-decoration:none;color:inherit}
+img{max-width:100%;display:block}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+
+/* ── 헤더 ── */
+header{
+  position:sticky;top:0;z-index:100;
+  background:rgba(246,244,238,0.92);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
+}
+.nav{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;max-width:1180px;margin:0 auto}
+.logo{font-size:20px;font-weight:800;letter-spacing:-0.5px;color:var(--ink)}
+.logo span{color:var(--vis)}
+.nav-links{display:flex;gap:32px;align-items:center}
+.nav-links a{font-size:14px;font-weight:500;color:var(--muted);transition:color .2s}
+.nav-links a:hover{color:var(--ink)}
+.nav-cta{display:flex;gap:10px}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:11px 22px;border-radius:10px;font-size:14px;font-weight:700;
+  cursor:pointer;border:none;transition:all .2s;white-space:nowrap;
+}
+.btn-primary{background:var(--vis);color:#fff}
+.btn-primary:hover{background:var(--vis-d);transform:translateY(-1px)}
+.btn-outline{background:transparent;border:1.5px solid var(--ink);color:var(--ink)}
+.btn-outline:hover{background:var(--ink);color:var(--paper)}
+.btn-sm{padding:8px 16px;font-size:13px}
+
+/* ── 히어로 ── */
+.hero{padding:90px 24px 70px;text-align:center;position:relative;overflow:hidden}
+.hero-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--vis-l);color:var(--vis);
+  padding:7px 16px;border-radius:30px;font-size:13px;font-weight:700;
+  margin-bottom:28px;border:1px solid #e8c0b6;
+}
+.hero h1{
+  font-size:54px;font-weight:800;line-height:1.18;letter-spacing:-1.5px;
+  margin-bottom:24px;color:var(--ink);
+}
+.hero h1 .accent{color:var(--vis);position:relative}
+.hero-sub{
+  font-size:19px;color:var(--muted);max-width:600px;margin:0 auto 40px;
+  line-height:1.7;
+}
+.hero-cta{display:flex;gap:14px;justify-content:center;margin-bottom:56px;flex-wrap:wrap}
+.btn-lg{padding:17px 34px;font-size:16px;border-radius:12px}
+.hero-trust{display:flex;gap:48px;justify-content:center;flex-wrap:wrap;padding-top:36px;border-top:1px solid var(--line);max-width:760px;margin:0 auto}
+.trust-item{text-align:center}
+.trust-num{font-size:30px;font-weight:800;color:var(--ink);letter-spacing:-1px}
+.trust-num span{color:var(--vis)}
+.trust-label{font-size:13px;color:var(--muted);margin-top:4px}
+
+/* ── 3개 타겟 분기 ── */
+.audience{padding:90px 24px;background:var(--card);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.section-head{text-align:center;margin-bottom:56px}
+.section-eyebrow{
+  font-size:13px;font-weight:800;color:var(--vis);letter-spacing:2px;
+  text-transform:uppercase;margin-bottom:14px;
+}
+.section-head h2{font-size:36px;font-weight:800;letter-spacing:-1px;margin-bottom:14px}
+.section-head p{font-size:16px;color:var(--muted);max-width:520px;margin:0 auto}
+
+.audience-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.aud-card{
+  background:var(--paper);border:1px solid var(--line);border-radius:20px;
+  padding:36px 30px;transition:all .25s;cursor:pointer;position:relative;overflow:visible;
+  display:block;
+}
+.aud-card:hover{transform:translateY(-6px);box-shadow:0 16px 40px rgba(26,26,23,0.1)}
+.aud-card.featured{background:var(--ink);border-color:var(--ink)}
+.aud-icon{
+  width:54px;height:54px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+  font-size:26px;margin-bottom:22px;
+}
+.aud-icon.coral{background:var(--vis-l)}
+.aud-icon.blue{background:var(--circ-l)}
+.aud-icon.purple{background:var(--whole-l)}
+.aud-card h3{font-size:21px;font-weight:800;margin-bottom:10px}
+.aud-card.featured h3{color:#fff}
+.aud-card p{font-size:14px;color:var(--muted);line-height:1.65;margin-bottom:22px}
+.aud-card.featured p{color:rgba(255,255,255,0.6)}
+.aud-list{list-style:none;margin-bottom:24px}
+.aud-list li{
+  font-size:13px;color:var(--ink);padding:7px 0;
+  display:flex;align-items:flex-start;gap:8px;
+}
+.aud-card.featured .aud-list li{color:rgba(255,255,255,0.85)}
+.aud-list li::before{content:"✓";color:var(--muscle);font-weight:800;flex-shrink:0}
+.aud-card.featured .aud-list li::before{color:#9fd8a8}
+.aud-cta{
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:14px;font-weight:700;color:var(--vis);
+  padding-top:18px;border-top:1px solid var(--line);
+}
+.aud-card.featured .aud-cta{color:#fff;border-top-color:rgba(255,255,255,0.15)}
+.aud-tag{
+  position:absolute;top:24px;right:24px;background:var(--vis);color:#fff;
+  font-size:11px;font-weight:800;padding:4px 12px;border-radius:20px;
+}
+
+/* ── 사회적 증거 ── */
+.social-proof{padding:80px 24px;text-align:center}
+.proof-quote{
+  font-size:24px;font-weight:600;color:var(--ink);max-width:740px;margin:0 auto 24px;
+  line-height:1.5;
+}
+.proof-quote .hl{color:var(--vis)}
+.proof-name{font-size:14px;color:var(--muted);margin-bottom:48px}
+.proof-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;max-width:1000px;margin:0 auto}
+.proof-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px 18px}
+.proof-stat{font-size:28px;font-weight:800;color:var(--vis);margin-bottom:6px}
+.proof-stat-label{font-size:13px;color:var(--muted)}
+
+/* ── 풋터 ── */
+footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:60px 24px 30px}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;margin-bottom:40px}
+.footer-logo{font-size:20px;font-weight:800;color:#fff;margin-bottom:14px}
+.footer-logo span{color:var(--vis)}
+.footer-desc{font-size:13px;line-height:1.7;color:rgba(255,255,255,0.45);max-width:280px}
+.footer-col h4{font-size:13px;font-weight:700;color:#fff;margin-bottom:16px}
+.footer-col a{display:block;font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:11px;transition:color .2s}
+.footer-col a:hover{color:#fff}
+.footer-bottom{
+  display:flex;justify-content:space-between;align-items:center;
+  border-top:1px solid rgba(255,255,255,0.1);padding-top:24px;
+  font-size:12px;color:rgba(255,255,255,0.35);flex-wrap:wrap;gap:10px;
+}
+
+@media (max-width:900px){
+  .hero h1{font-size:36px}
+  .audience-grid{grid-template-columns:1fr}
+  .proof-cards{grid-template-columns:repeat(2,1fr)}
+  .footer-grid{grid-template-columns:1fr 1fr}
+  .nav-links{display:none}
+  .hero-trust{gap:24px}
+}
+
+/* 모바일 햄버거 메뉴 */
+.hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:4px;background:none;border:none}
+.hamburger span{display:block;width:22px;height:2px;background:var(--ink);border-radius:2px;transition:all .3s}
+.mobile-nav{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(246,244,238,0.98);z-index:200;flex-direction:column;align-items:center;justify-content:center;gap:32px}
+.mobile-nav.open{display:flex}
+.mobile-nav a{font-size:20px;font-weight:700;color:var(--ink)}
+.mobile-nav .close-btn{position:absolute;top:20px;right:24px;font-size:28px;cursor:pointer;background:none;border:none;color:var(--ink)}
+@media (max-width:900px){.hamburger{display:flex}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="nav">
+    <a href="/landing/" class="logo">SLIM<span>MIND</span></a>
+    <nav class="nav-links">
+      <a href="/landing/service.html">서비스 소개</a>
+      <a href="/landing/pricing.html">요금제</a>
+      <a href="/landing/b2b.html">파트너 입점</a>
+      <a href="/landing/consultant.html">공식 컨설턴트</a>
+      <a href="/landing/about.html">회사 소개</a>
+    </nav>
+    <div class="nav-cta">
+      <a href="/" class="btn btn-outline btn-sm">로그인</a>
+      <a href="/" class="btn btn-primary btn-sm">1단계 진단 →</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="hero-badge">⚖️ 특허출원중 · 16종 바디코드 × 11개 전문가 진단축</div>
+  <h1>의지력이 아니라<br><span class="accent">몸의 구조</span>가 문제였습니다</h1>
+  <p class="hero-sub">
+    16가지 특허출원 바디코드 중 당신의 것을 찾아드립니다. 호르몬·림프·대사·기질을 분석해<br>
+    12주 안에 진짜 원인부터 해결하는 맞춤 처방을 받아보세요.
+  </p>
+  <div class="hero-cta">
+    <a href="/" class="btn btn-primary btn-lg">1단계 진단 시작하기 (39,000원) →</a>
+    <a href="/landing/service.html" class="btn btn-outline btn-lg">서비스 둘러보기</a>
+  </div>
+  <div class="hero-trust">
+    <div class="trust-item">
+      <div class="trust-num">16<span>가지</span></div>
+      <div class="trust-label">특허출원 바디코드</div>
+    </div>
+    <div class="trust-item">
+      <div class="trust-num"><span>11</span>개</div>
+      <div class="trust-label">전문가 진단축</div>
+    </div>
+    <div class="trust-item">
+      <div class="trust-num"><span>12</span>주</div>
+      <div class="trust-label">맞춤 로드맵</div>
+    </div>
+    <div class="trust-item">
+      <div class="trust-num">3<span>분</span></div>
+      <div class="trust-label">진단 소요 시간</div>
+    </div>
+  </div>
+</section>
+
+<section class="audience">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-eyebrow">Who is this for</div>
+      <h2>당신은 어떤 길로 오셨나요?</h2>
+      <p>슬림마인드는 다이어트가 필요한 고객, 입점을 원하는 파트너,<br>전문가로 일하고 싶은 컨설턴트 모두를 위한 플랫폼입니다</p>
+    </div>
+    <div class="audience-grid">
+
+      <a href="/landing/service.html" class="aud-card featured">
+        <span class="aud-tag">가장 많이 찾는</span>
+        <div class="aud-icon coral">🎯</div>
+        <h3>다이어트가 필요한 당신</h3>
+        <p>왜 안 빠지는지 모르겠던 그 이유, 16종 특허출원 코드로 확인하세요</p>
+        <ul class="aud-list">
+          <li>1단계 진단 39,000원 (3분 소요)</li>
+          <li>1~4주차 로드맵 전체 무료 공개</li>
+          <li>운동·식단·영양·회복 전문가 처방</li>
+        </ul>
+        <div class="aud-cta"><span>1단계 진단 시작하기</span><span>→</span></div>
+      </a>
+
+      <a href="/landing/b2b.html" class="aud-card">
+        <div class="aud-icon blue">🏢</div>
+        <h3>입점을 원하는 사업장</h3>
+        <p>"감"으로 하던 상담을 데이터로 설명하는 무기를 가지세요</p>
+        <ul class="aud-list">
+          <li>화이트라벨 — 내 브랜드 색상·로고</li>
+          <li>초기비용 290만원, 월 9,900원</li>
+          <li>교육·패드·관리자페이지 전부 포함</li>
+        </ul>
+        <div class="aud-cta"><span>파트너 입점 알아보기</span><span>→</span></div>
+      </a>
+
+      <a href="/landing/consultant.html" class="aud-card">
+        <div class="aud-icon purple">🎓</div>
+        <h3>120세 시대, 평생 직업이 필요한 당신</h3>
+        <p>AI가 대체할 수 없는 직업, 공식 바디컨설턴트가 되세요</p>
+        <ul class="aud-list">
+          <li>12주 온라인 교육과정 199만원</li>
+          <li>공식 바디컨설턴트 마크 발급</li>
+          <li>등급별 수익 시급 환산 최저시급의 3배</li>
+        </ul>
+        <div class="aud-cta"><span>공식 컨설턴트 알아보기</span><span>→</span></div>
+      </a>
+
+    </div>
+  </div>
+</section>
+
+<section class="social-proof">
+  <div class="wrap">
+    <div class="proof-quote">"<span class="hl">게으른 게 아니었어요.</span> 제 몸은 다른 방식으로 작동하고 있었던 거였어요."</div>
+    <div class="proof-name">호르몬스위치 갱년기형 · 김지현님 (12주 완주)</div>
+    <div class="proof-cards">
+      <div class="proof-card">
+        <div class="proof-stat">8.4<small style="font-size:16px">kg</small></div>
+        <div class="proof-stat-label">완주자 평균 감량</div>
+      </div>
+      <div class="proof-card">
+        <div class="proof-stat">78<small style="font-size:16px">%</small></div>
+        <div class="proof-stat-label">12주 완주율</div>
+      </div>
+      <div class="proof-card">
+        <div class="proof-stat">4.8<small style="font-size:16px">/5</small></div>
+        <div class="proof-stat-label">고객 만족도</div>
+      </div>
+      <div class="proof-card">
+        <div class="proof-stat">42<small style="font-size:16px">개</small></div>
+        <div class="proof-stat-label">파트너 입점 센터</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-logo">SLIM<span>MIND</span></div>
+        <p class="footer-desc">11개 전문가 진단축과 AI 바디코드 분석으로 진짜 원인을 찾는 맞춤 다이어트 솔루션입니다.</p>
+      </div>
+      <div class="footer-col">
+        <h4>서비스</h4>
+        <a href="/">무료 바디코드 진단</a>
+        <a href="/landing/service.html">서비스 소개</a>
+        <a href="/landing/pricing.html">요금제</a>
+        <a href="#">고객 후기</a>
+      </div>
+      <div class="footer-col">
+        <h4>파트너십</h4>
+        <a href="/landing/b2b.html">B2B 파트너 입점</a>
+        <a href="/landing/consultant.html">컨설턴트 교육</a>
+        <a href="#">입점 문의</a>
+      </div>
+      <div class="footer-col">
+        <h4>회사</h4>
+        <a href="/landing/about.html">회사 소개</a>
+        <a href="#">이용약관</a>
+        <a href="#">개인정보처리방침</a>
+        <a href="#">고객센터</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 SLIMMIND. All rights reserved.</span>
+      <span>사업자등록번호 000-00-00000 | 대표 OOO | 통신판매업신고 제0000-서울00-0000호</span>
+    </div>
+  </div>
+</footer>
+
+
+<!-- 모바일 메뉴 오버레이 -->
+<div class="mobile-nav" id="mobileNav">
+  <button class="close-btn" onclick="closeMobileNav()">✕</button>
+  <a href="/landing/" onclick="closeMobileNav()">홈</a>
+  <a href="/landing/service.html" onclick="closeMobileNav()">서비스 소개</a>
+  <a href="/landing/pricing.html" onclick="closeMobileNav()">요금제</a>
+  <a href="/landing/b2b.html" onclick="closeMobileNav()">파트너 입점</a>
+  <a href="/landing/consultant.html" onclick="closeMobileNav()">공식 컨설턴트</a>
+  <a href="/landing/about.html" onclick="closeMobileNav()">회사 소개</a>
+</div>
+<script>
+function openMobileNav(){document.getElementById('mobileNav').classList.add('open');document.body.style.overflow='hidden'}
+function closeMobileNav(){document.getElementById('mobileNav').classList.remove('open');document.body.style.overflow=''}
+</script>
+
+</body>
+</html>

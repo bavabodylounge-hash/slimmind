@@ -3,7 +3,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && node -e \"const fs=require('fs');const r=JSON.parse(fs.readFileSync('dist/_routes.json','utf8'));r.exclude=r.exclude.filter(e=>e!=='/survey-data.js'&&e!=='/bc-engine.js'&&e!=='/index.html');fs.writeFileSync('dist/_routes.json',JSON.stringify(r));console.log('_routes.json patched:',r.exclude)\"",
+    "build": "vite build && node -e \"const fs=require('fs');const r=JSON.parse(fs.readFileSync('dist/_routes.json','utf8'));r.exclude=r.exclude.filter(e=>e!=='/survey-data.js'&&e!=='/bc-engine.js'&&e!=='/index.html');if(!r.exclude.includes('/landing/*'))r.exclude.push('/landing/*');fs.writeFileSync('dist/_routes.json',JSON.stringify(r));console.log('_routes.json patched:',r.exclude)\"",
     "preview": "wrangler pages dev",
     "deploy": "npm run build && wrangler pages deploy",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings"

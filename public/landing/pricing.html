@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>슬림마인드 요금제</title>
+<style>
+:root{
+  --paper:#f6f4ee;--card:#fffdf8;--ink:#1a1a17;--muted:#7c776b;--line:#d8d3c6;
+  --vis:#b5452e;--vis-l:#f6e3df;--vis-d:#8c3320;
+  --circ:#2f7d8c;--circ-l:#eef0f6;
+  --whole:#5b4a86;--whole-l:#eeeaf6;
+  --muscle:#5a6e3a;--muscle-l:#ecf0e8;
+  --sub:#c98a3c;--sub-l:#fdf6ee;
+  --navy:#0F1D30;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{word-break:keep-all;overflow-wrap:break-word;font-family:"Apple SD Gothic Neo","Noto Sans KR",-apple-system,sans-serif;background:var(--paper);color:var(--ink);line-height:1.6}
+a{text-decoration:none;color:inherit}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+
+header{position:sticky;top:0;z-index:100;background:rgba(246,244,238,0.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.nav{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;max-width:1180px;margin:0 auto}
+.logo{font-size:20px;font-weight:800}
+.logo span{color:var(--vis)}
+.nav-links{display:flex;gap:32px;align-items:center}
+.nav-links a{font-size:14px;font-weight:500;color:var(--muted)}
+.nav-links a.active{color:var(--vis);font-weight:700}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 22px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;border:none;transition:all .2s}
+.btn-primary{background:var(--vis);color:#fff}
+.btn-sm{padding:8px 16px;font-size:13px}
+.btn-lg{padding:15px 28px;font-size:15px;border-radius:12px}
+.btn-outline{background:transparent;border:1.5px solid var(--ink);color:var(--ink)}
+
+.hero{padding:70px 24px 40px;text-align:center}
+.hero h1{font-size:38px;font-weight:800;letter-spacing:-1px;margin-bottom:16px}
+.hero p{font-size:16px;color:var(--muted);max-width:560px;margin:0 auto}
+
+/* 진행 단계 시각화 */
+.journey{padding:20px 24px 60px}
+.journey-bar{
+  max-width:900px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;
+  position:relative;
+}
+.journey-bar::before{
+  content:"";position:absolute;top:22px;left:40px;right:40px;height:2px;background:var(--line);z-index:0;
+}
+.journey-step{position:relative;z-index:1;text-align:center;flex:1}
+.journey-dot{
+  width:44px;height:44px;border-radius:50%;background:var(--card);border:2px solid var(--line);
+  display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;margin:0 auto 10px;
+  color:var(--muted);
+}
+.journey-dot.active{background:var(--vis);border-color:var(--vis);color:#fff}
+.journey-dot.locked{background:var(--paper)}
+.journey-label{font-size:12px;font-weight:700;color:var(--ink)}
+.journey-week{font-size:11px;color:var(--muted);margin-top:2px}
+
+.section-head{text-align:center;margin-bottom:48px}
+.section-head h2{font-size:30px;font-weight:800;letter-spacing:-0.5px;margin-bottom:12px}
+.section-head p{font-size:15px;color:var(--muted)}
+
+.plans{padding:30px 24px 90px}
+.plan-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:1100px;margin:0 auto}
+.plan-card{
+  background:var(--card);border:1px solid var(--line);border-radius:20px;padding:36px 30px;
+  position:relative;display:flex;flex-direction:column;
+}
+.plan-card.featured{border:2px solid var(--vis);transform:scale(1.02)}
+.plan-badge{position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:var(--vis);color:#fff;font-size:12px;font-weight:800;padding:5px 16px;border-radius:20px;white-space:nowrap}
+.plan-name{font-size:14px;font-weight:800;color:var(--muted);margin-bottom:14px;text-transform:uppercase;letter-spacing:1px}
+.plan-stage{font-size:12px;font-weight:800;color:var(--vis);background:var(--vis-l);display:inline-block;padding:4px 10px;border-radius:12px;margin-bottom:14px}
+.plan-price{font-size:36px;font-weight:800;margin-bottom:4px}
+.plan-price small{font-size:15px;color:var(--muted);font-weight:500}
+.plan-period{font-size:13px;color:var(--muted);margin-bottom:28px}
+.plan-features{list-style:none;flex:1;margin-bottom:28px}
+.plan-features li{font-size:14px;padding:10px 0;display:flex;gap:10px;border-bottom:1px solid var(--line)}
+.plan-features li:last-child{border-bottom:none}
+.plan-features li::before{content:"✓";color:var(--muscle);font-weight:800;flex-shrink:0}
+.plan-features li.no::before{content:"–";color:var(--line)}
+.plan-features li.no{color:var(--muted)}
+
+/* 4주차까지 오픈 강조 박스 */
+.open-notice{
+  max-width:1100px;margin:0 auto 50px;background:var(--whole-l);border:1px solid #d4cce8;
+  border-radius:16px;padding:24px 28px;display:flex;align-items:center;gap:18px;
+}
+.open-notice-icon{font-size:28px;flex-shrink:0}
+.open-notice h4{font-size:16px;font-weight:800;color:var(--whole);margin-bottom:4px}
+.open-notice p{font-size:13px;color:var(--muted)}
+
+.faq{padding:90px 24px;background:var(--card);border-top:1px solid var(--line)}
+.faq-list{max-width:700px;margin:0 auto}
+.faq-item{border-bottom:1px solid var(--line);padding:22px 0}
+.faq-q{font-size:16px;font-weight:700;margin-bottom:8px}
+.faq-a{font-size:14px;color:var(--muted);line-height:1.7}
+
+footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:50px 24px 30px;text-align:center;font-size:12px}
+
+@media (max-width:900px){
+  .plan-grid{grid-template-columns:1fr}
+  .nav-links{display:none}
+  .journey-bar{flex-wrap:wrap;gap:20px}
+  .journey-bar::before{display:none}
+}
+
+/* 모바일 햄버거 메뉴 */
+.hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:4px;background:none;border:none}
+.hamburger span{display:block;width:22px;height:2px;background:var(--ink);border-radius:2px;transition:all .3s}
+.mobile-nav{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(246,244,238,0.98);z-index:200;flex-direction:column;align-items:center;justify-content:center;gap:32px}
+.mobile-nav.open{display:flex}
+.mobile-nav a{font-size:20px;font-weight:700;color:var(--ink)}
+.mobile-nav .close-btn{position:absolute;top:20px;right:24px;font-size:28px;cursor:pointer;background:none;border:none;color:var(--ink)}
+@media (max-width:900px){.hamburger{display:flex}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="nav">
+    <a href="/landing/" class="logo">SLIM<span style="color:var(--vis)">MIND</span></a>
+    <nav class="nav-links">
+      <a href="/landing/service.html">서비스 소개</a>
+      <a href="/landing/pricing.html" class="active">요금제</a>
+      <a href="/landing/b2b.html">파트너 입점</a>
+      <a href="/landing/consultant.html">공식 컨설턴트</a>
+      <a href="/landing/about.html">회사 소개</a>
+    </nav>
+    <button class="hamburger" onclick="openMobileNav()"><span></span><span></span><span></span></button>
+    <a href="/" class="btn btn-primary btn-sm">1단계 진단 시작 →</a>
+  </div>
+</header>
+
+<section class="hero">
+  <h1>1단계부터, 39,000원</h1>
+  <p>16종 바디코드 진단부터 12주 맞춤 로드맵까지, 단계별로 결제하며 진행합니다</p>
+</section>
+
+<section class="journey">
+  <div class="wrap">
+    <div class="journey-bar">
+      <div class="journey-step">
+        <div class="journey-dot active">1</div>
+        <div class="journey-label">1단계 진단</div>
+        <div class="journey-week">39,000원</div>
+      </div>
+      <div class="journey-step">
+        <div class="journey-dot active">✓</div>
+        <div class="journey-label">1~4주차</div>
+        <div class="journey-week">전체 오픈</div>
+      </div>
+      <div class="journey-step">
+        <div class="journey-dot locked">🔒</div>
+        <div class="journey-label">5~8주차</div>
+        <div class="journey-week">핵심 처방</div>
+      </div>
+      <div class="journey-step">
+        <div class="journey-dot locked">🔒</div>
+        <div class="journey-label">9~12주차</div>
+        <div class="journey-week">완성·유지</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="plans">
+  <div class="wrap">
+
+    <div class="open-notice">
+      <div class="open-notice-icon">💡</div>
+      <div>
+        <h4>1단계 결제만으로 1~4주차 로드맵 전체를 확인할 수 있습니다</h4>
+        <p>운동·식단·영양·회복 처방을 직접 보고, 마음에 들면 5주차부터 이어서 진행하세요. 강제 결제 없습니다.</p>
+      </div>
+    </div>
+
+    <div class="section-head">
+      <h2>단계별 요금제</h2>
+      <p>한 번에 12주 전체를 결제하지 않습니다. 단계별로 확인하며 진행하세요</p>
+    </div>
+
+    <div class="plan-grid">
+
+      <div class="plan-card">
+        <span class="plan-stage">STAGE 1</span>
+        <div class="plan-name">바디코드 진단</div>
+        <div class="plan-price">39,000<small>원</small></div>
+        <div class="plan-period">1회 결제 · 즉시 확인</div>
+        <ul class="plan-features">
+          <li>16종 특허출원 바디코드 진단 (3분)</li>
+          <li>11대 진단축 분석 리포트</li>
+          <li>기질 융합 분석 (오행 × MBTI)</li>
+          <li>다이어트 잔혹사 리포트</li>
+          <li>12주 신체 변화 시뮬레이터</li>
+          <li>1~4주차 로드맵 전체 공개</li>
+        </ul>
+        <a href="/" class="btn btn-primary btn-lg">1단계 시작하기</a>
+      </div>
+
+      <div class="plan-card featured">
+        <span class="plan-badge">가장 많이 선택</span>
+        <span class="plan-stage">STAGE 2</span>
+        <div class="plan-name">12주 하이퍼 프로그램</div>
+        <div class="plan-price">89,000<small>원</small></div>
+        <div class="plan-period">1단계 결제자만 / 5~12주차 추가</div>
+        <ul class="plan-features">
+          <li>1단계 전체 포함</li>
+          <li>5~12주차 핵심 처방 잠금 해제</li>
+          <li>탑1 원인축 역전 프로토콜</li>
+          <li>코드별 운동 동영상 + 식단 PDF</li>
+          <li>영양제 처방 카드 + 회복 루틴</li>
+          <li>12주 완주 체형 변화 리포트</li>
+        </ul>
+        <a href="/" class="btn btn-primary btn-lg">12주 전체 진행하기</a>
+      </div>
+
+      <div class="plan-card">
+        <span class="plan-stage">STAGE 3</span>
+        <div class="plan-name">프리미엄 + 컨설턴트</div>
+        <div class="plan-price">159,000<small>원</small></div>
+        <div class="plan-period">12주 프로그램 + 1:1 케어</div>
+        <ul class="plan-features">
+          <li>하이퍼 프로그램 전체 포함</li>
+          <li>공식 컨설턴트 1:1 카카오 연결</li>
+          <li>파트너 센터 우선 연결</li>
+          <li>정체기 돌파 비밀 처방</li>
+          <li>다음 코드 재진단 무료 쿠폰</li>
+          <li class="no">—</li>
+        </ul>
+        <a href="/" class="btn btn-outline btn-lg">프리미엄 진행하기</a>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section class="faq">
+  <div class="wrap">
+    <div class="section-head"><h2>자주 묻는 질문</h2></div>
+    <div class="faq-list">
+      <div class="faq-item">
+        <div class="faq-q">왜 1단계부터 결제인가요?</div>
+        <div class="faq-a">16종 바디코드 진단은 11개 전문가 진단축을 AI로 교차분석하는 고도화된 시스템입니다. 정확한 결과를 위해 최소한의 진단 비용을 받고 있습니다. 대신 1~4주차 로드맵 전체를 바로 확인할 수 있어 효과를 직접 보고 다음 단계를 결정할 수 있습니다.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">1단계만 결제하고 멈춰도 되나요?</div>
+        <div class="faq-a">네, 가능합니다. 1단계 결제만으로 1~4주차 로드맵 전체를 확인하고 직접 실행할 수 있습니다. 5주차 이후가 필요하다고 느껴지면 그때 추가 결제하시면 됩니다.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">환불은 가능한가요?</div>
+        <div class="faq-a">결제 후 진단을 시작하지 않은 경우 7일 이내 100% 환불 가능합니다. 진단 완료 후에는 환불이 제한됩니다. 자세한 내용은 이용약관을 확인해주세요.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">공식 컨설턴트 연결은 어떻게 진행되나요?</div>
+        <div class="faq-a">프리미엄 플랜 결제 시 5주차부터 담당 공식 컨설턴트가 카카오톡으로 직접 연락드립니다. 식단·운동 관련 질문을 실시간으로 답변받을 수 있습니다.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  © 2026 SLIMMIND. All rights reserved. | 사업자등록번호 000-00-00000
+</footer>
+
+
+<!-- 모바일 메뉴 오버레이 -->
+<div class="mobile-nav" id="mobileNav">
+  <button class="close-btn" onclick="closeMobileNav()">✕</button>
+  <a href="/landing/" onclick="closeMobileNav()">홈</a>
+  <a href="/landing/service.html" onclick="closeMobileNav()">서비스 소개</a>
+  <a href="/landing/pricing.html" onclick="closeMobileNav()">요금제</a>
+  <a href="/landing/b2b.html" onclick="closeMobileNav()">파트너 입점</a>
+  <a href="/landing/consultant.html" onclick="closeMobileNav()">공식 컨설턴트</a>
+  <a href="/landing/about.html" onclick="closeMobileNav()">회사 소개</a>
+</div>
+<script>
+function openMobileNav(){document.getElementById('mobileNav').classList.add('open');document.body.style.overflow='hidden'}
+function closeMobileNav(){document.getElementById('mobileNav').classList.remove('open');document.body.style.overflow=''}
+</script>
+
+</body>
+</html>
