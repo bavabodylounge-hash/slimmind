@@ -3298,7 +3298,8 @@ app.post('/api/v1/diagnosis', async (c) => {
     const {
       user_name, phone, bc_nickname, bc_primary, bc_secondary, bc_code_key,
       top3_axes, axis_scores, region, texture, bg_filter,
-      ohaeng_type, mbti_full, disp_answers, raw_answers,
+      ohaeng_type, ohaeng_source, ohaeng_confidence, ohaeng_lacking, ohaeng_score,
+      mbti_full, disp_answers, raw_answers,
       goal_weight, weight_loss_pct,
       ref_code, completed_at
     } = body
@@ -3307,18 +3308,40 @@ app.post('/api/v1/diagnosis', async (c) => {
 
     // ✅ BUG-1 대응: bc_primary가 닉네임(한글)이므로 bc_code_key(BC-N 형태) 도 저장
     // bc_code_key가 없으면 NICKNAME_TO_BC 로컬 테이블로 역매핑
-    // [수정 V4.4] 억제제부작용→BC-4, 동시다발→BC-3으로 수정 (BC-6 쏠림 방지)
+    // [수정 V4.6] 전체 닉네임 21개 완비 — 누락 닉네임으로 인한 bc_code_key null 방지
     const NICKNAME_TO_BC_BACKEND: Record<string, string> = {
-      '아빠체형 내장비대형':'BC-3','식후기절 혈당롤러코스터형':'BC-3','털털한 PCOS형':'BC-6',
-      '약물부작용 강제축적형':'BC-4','스트레스성 야식부엉이형':'BC-6',
-      '억제제부작용 배부름마비형':'BC-4',  // [수정] BC-6 → BC-4
-      '출산후 바람빠진 풍선형':'BC-7','식후임산부 가스풍선형':'BC-3','팔다리거미 올챙이배형':'BC-9',
-      '오후만되면 코끼리다리형':'BC-1','엄마체형 하지정체형':'BC-1','여름에도 시린 얼음장형':'BC-4',
-      '운동할수록 말벅지형':'BC-8','골반틀어짐 승마살형':'BC-7','지방흡입후 재발형':'BC-5',
-      '목짧아지는 거북이형':'BC-2','안 쓰는 팔뚝 부종형':'BC-2','상체근육형':'BC-8',
-      '겨드랑이 부유방형':'BC-2','호르몬스위치 갱년기형':'BC-6','스트레스기절 번아웃형':'BC-6',
+      // BC-1: 림프·부종 계열
+      '오후만되면 코끼리다리형':'BC-1',
+      '엄마체형 하지정체형':'BC-1',
+      // BC-2: 골격·자세 계열
+      '목짧아지는 거북이형':'BC-2',
+      '안 쓰는 팔뚝 부종형':'BC-2',
+      '겨드랑이 부유방형':'BC-2',
+      // BC-3: 인슐린·내장 계열
+      '아빠체형 내장비대형':'BC-3',
+      '식후기절 혈당롤러코스터형':'BC-3',
+      '식후임산부 가스풍선형':'BC-3',
+      '동시다발 다중악순환형':'BC-3',
+      // BC-4: 대사저하·냉증 계열
+      '약물부작용 강제축적형':'BC-4',
+      '억제제부작용 배부름마비형':'BC-4',
+      '여름에도 시린 얼음장형':'BC-4',
+      // BC-5: 장·소화 계열
+      '지방흡입후 재발형':'BC-5',
+      // BC-6: 호르몬·스트레스 계열
+      '털털한 PCOS형':'BC-6',
+      '스트레스성 야식부엉이형':'BC-6',
+      '호르몬스위치 갱년기형':'BC-6',
+      '스트레스기절 번아웃형':'BC-6',
+      // BC-7: 자율신경·골반 계열
+      '출산후 바람빠진 풍선형':'BC-7',
+      '골반틀어짐 승마살형':'BC-7',
+      // BC-8: 근육·심리 계열
+      '운동할수록 말벅지형':'BC-8',
+      '상체근육형':'BC-8',
+      // BC-9: 대사증후군·복합 계열
+      '팔다리거미 올챙이배형':'BC-9',
       '대사증후군 종합형':'BC-9',
-      '동시다발 다중악순환형':'BC-3',  // [수정] BC-6 → BC-3
     }
     // ✅ [수정 V4.4] bc_primary에 raw 축코드(A07, A02 등)가 들어올 경우 정규화 적용
     // normalizeBcCode()가 A0X 패턴을 BC코드로 변환함
@@ -3345,15 +3368,16 @@ app.post('/api/v1/diagnosis', async (c) => {
     const rawAnswersJson = raw_answers ? JSON.stringify(raw_answers) : null
 
     try {
-      // ✅ BUG-1 완전 수정: bc_code_key(BC-6 형태) 컬럼 포함 INSERT (migration 0032 이후)
+      // ✅ V4.6: ohaeng 확장 필드(source/confidence/lacking/score) 포함 INSERT (migration 0036 이후)
       await db.prepare(`
         INSERT INTO diagnosis_results
           (id, user_name, phone, bc_nickname, bc_primary, bc_code_key, bc_secondary,
            top3_axes, axis_scores, region, texture, bg_filter,
-           ohaeng_type, mbti_full, disp_answers, raw_answers,
+           ohaeng_type, ohaeng_source, ohaeng_confidence, ohaeng_lacking, ohaeng_score,
+           mbti_full, disp_answers, raw_answers,
            goal_weight, weight_loss_pct,
            ref_code, completed_at, created_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
       `).bind(
         result_id,
         String(user_name || '익명'),
@@ -3370,6 +3394,11 @@ app.post('/api/v1/diagnosis', async (c) => {
         texture     || null,
         bg_filter   || '',
         ohaeng_type || null,
+        // V4.6 오행 확장 필드
+        ohaeng_source      || null,
+        ohaeng_confidence  != null ? Number(ohaeng_confidence) : null,
+        ohaeng_lacking     || null,
+        Array.isArray(ohaeng_score) ? JSON.stringify(ohaeng_score) : (ohaeng_score || null),
         mbti_full   || null,
         disp_answers ? JSON.stringify(disp_answers) : null,
         rawAnswersJson,
@@ -3380,13 +3409,10 @@ app.post('/api/v1/diagnosis', async (c) => {
         now
       ).run()
     } catch (insertErr: any) {
-      // bc_code_key 컬럼이 없는 경우 (migration 미적용) → 폴백 INSERT
-      if (String(insertErr).includes('no column named bc_code_key') ||
-          String(insertErr).includes('no column named goal_weight') ||
-          String(insertErr).includes('no column named weight_loss_pct') ||
-          String(insertErr).includes('no column named raw_answers') ||
+      // 신규 컬럼이 없는 구버전 DB → 폴백 INSERT (ohaeng 확장 컬럼 없이)
+      if (String(insertErr).includes('no column named') ||
           String(insertErr).includes('table diagnosis_results has no column')) {
-        console.warn('[diagnosis POST] bc_code_key/goal_weight/raw_answers 컬럼 없음 — 폴백 INSERT')
+        console.warn('[diagnosis POST] 신규 컬럼 없음 — 폴백 INSERT (migration 미적용)', String(insertErr).slice(0,120))
         await db.prepare(`
           INSERT INTO diagnosis_results
             (id, user_name, bc_nickname, bc_primary, bc_secondary,

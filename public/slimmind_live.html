@@ -1235,6 +1235,41 @@ function calculateOhaengScoreFull(ans) {
   var domIdx = score.indexOf(maxVal);
   var lackIdx = score.indexOf(minVal);
 
+  // ── V4.6 동점 처리: BC 코드 기반 기본 오행 적용 ──────────────────
+  // 점수가 모두 0이거나 1등-2등 격차가 2pt 미만이면 BC 기반 기본 오행으로 결정
+  var sorted2nd = score.slice().sort(function(a,b){ return b-a; });
+  var tieGap = sorted2nd[0] - sorted2nd[1];
+  var allZero = (sorted2nd[0] === 0);
+  if (allZero || tieGap < 2) {
+    // BC 코드 기반 기본 오행 (의학적 원인 특성 반영)
+    var BC_DEFAULT_OHAENG = {
+      'BC-1':'수',  // 림프·부종 → 신장·수분대사
+      'BC-2':'목',  // 골격·자세 → 간·근육
+      'BC-3':'토',  // 인슐린·내장 → 비위·소화
+      'BC-4':'수',  // 대사저하·냉증 → 신장허약
+      'BC-5':'토',  // 장·소화 → 비위
+      'BC-6':'화',  // 호르몬·스트레스 → 심화항진
+      'BC-7':'목',  // 자율신경·골반 → 간기울결
+      'BC-8':'화',  // 심리·식이 → 심화
+      'BC-9':'토',  // 대사증후군 → 비위허약
+    };
+    // 현재 answers에서 topBC 추출 시도
+    var _bcKeys = Object.keys(BC_DEFAULT_OHAENG);
+    var _ans = ans || (typeof answers !== 'undefined' ? answers : {});
+    var _topBcFromAns = _ans['_bc_primary'] || _ans['bc_primary'] || '';
+    // calcTopBC() 결과를 활용하려면 오염 방지를 위해 직접 계산 대신 단순 키 확인
+    var _defaultNm = null;
+    if (_topBcFromAns && BC_DEFAULT_OHAENG[_topBcFromAns]) {
+      _defaultNm = BC_DEFAULT_OHAENG[_topBcFromAns];
+    }
+    if (_defaultNm && allZero) {
+      // 점수 완전 0: 기본 오행으로 고정
+      var _di = NM.indexOf(_defaultNm);
+      if (_di >= 0) { domIdx = _di; score[_di] = 1; }
+    }
+    // tieGap < 2 이지만 allZero 아닌 경우: domIdx 유지 (기존 계산 우선)
+  }
+
   // 신뢰도 계산 (1등과 2등의 격차 반영)
   var sorted = score.slice().sort(function(a,b){ return b-a; });
   var gap = sorted[0] - sorted[1];

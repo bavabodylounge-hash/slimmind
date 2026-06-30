@@ -5569,25 +5569,33 @@ async function submitDiagnosis(dispAnswers) {
 
   // ── 오행/MBTI 계산 ──
   let ohaeng_type = null, mbti_full = null;
+  // V4.6: 오행 확장 필드도 함께 수집
+  let ohaeng_source = null, ohaeng_confidence = null, ohaeng_lacking = null, ohaeng_score = null;
   if (typeof calcDisposition === 'function' && dispAnswers && Object.keys(dispAnswers).length > 0) {
     try {
       const d    = calcDisposition(dispAnswers);
-      ohaeng_type = d.ohaeng_type || null;
-      mbti_full   = d.mbti_full   || null;
+      ohaeng_type       = d.ohaeng_type       || null;
+      mbti_full         = d.mbti_full         || null;
+      // V4.6 확장 필드
+      ohaeng_source     = d.ohaeng_source     || null;  // 'saju'|'survey'|'gq08'
+      ohaeng_confidence = d.ohaeng_confidence != null ? Number(d.ohaeng_confidence) : null;
+      ohaeng_lacking    = d.ohaeng_lacking    || null;  // '목'|'화'|'토'|'금'|'수'
+      ohaeng_score      = Array.isArray(d.ohaeng_score) ? d.ohaeng_score : null;  // [목,화,토,금,수]
     } catch(e) {
       console.warn('[submitDiagnosis] calcDisposition 실패:', e);
     }
   }
 
-  // ✅ BUG-4 수정: DISP 스킵 시 BC코드 기반 오행 기본값 추가
+  // ✅ V4.6: DISP 스킵 시 BC코드 기반 오행 기본값 (slimmind_live.html과 동기화)
   // BC코드 → 오행 디폴트 매핑 (DISP 없을 때 결과지에서 오행 패널이 비지 않도록)
   if (!ohaeng_type && _bcCodeKey) {
     const _BC_OHAENG_DEFAULT = {
-      'BC-1':'수', 'BC-2':'금', 'BC-3':'토', 'BC-4':'수',
-      'BC-5':'목', 'BC-6':'화', 'BC-7':'토', 'BC-8':'금',
+      'BC-1':'수', 'BC-2':'목', 'BC-3':'토', 'BC-4':'수',
+      'BC-5':'토', 'BC-6':'화', 'BC-7':'목', 'BC-8':'화',
       'BC-9':'토'
     };
-    ohaeng_type = _BC_OHAENG_DEFAULT[_bcCodeKey] || '토';
+    ohaeng_type   = _BC_OHAENG_DEFAULT[_bcCodeKey] || '토';
+    ohaeng_source = 'bc_default';  // BC 기반 기본값임을 명시
   }
 
   // ── 1~4차 전체 원시 답변 수집 ──
@@ -5691,6 +5699,10 @@ async function submitDiagnosis(dispAnswers) {
     bg_filter:       _bgFilter,  // [V4.5] 실제 감지값 전송 (갱년기/출산/약물/시술/번아웃/PCOS/'')
 
     ohaeng_type,
+    ohaeng_source,      // V4.6: 'saju'|'survey'|'gq08'|'bc_default'
+    ohaeng_confidence,  // V4.6: 신뢰도 0~100
+    ohaeng_lacking,     // V4.6: 부족 오행
+    ohaeng_score,       // V4.6: [목,화,토,금,수] 배열
     mbti_full,
     goal_weight:     _goalWt,
     weight_loss_pct: _lossPct,
