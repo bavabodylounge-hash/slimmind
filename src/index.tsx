@@ -1895,38 +1895,22 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
     target_bottom_size: resultData.result?.target_bottom_size,
     // 동양의학
     ohaeng_type: resultData.result?.ohaeng_type,
-    ohaeng_scores: resultData.result?.ohaeng_scores_json
-      ? (() => { try { return JSON.parse(resultData.result.ohaeng_scores_json) } catch { return null } })()
-      : null,
+    ohaeng_scores: null,  // resultData.result에 ohaeng_scores 없음 (별도 ohaeng 객체에 있음)
     mbti: resultData.result?.mbti,
     blood_type: resultData.result?.blood_type,
     saju_il_gan: resultData.result?.saju_il_gan,
     saju_display: resultData.result?.saju_display,
-    // 설문 응답 (채점 재활용) — DB 실제 컬럼: survey_answers_json
-    survey_answers: resultData.result?.survey_answers_json
-      ? (() => { try { return JSON.parse(resultData.result.survey_answers_json) } catch { return null } })()
-      : null,
-    answers: resultData.result?.survey_answers_json
-      ? (() => { try { return JSON.parse(resultData.result.survey_answers_json) } catch { return null } })()
-      : null,
-    survey_summary: resultData.result?.survey_summary_json
-      ? (() => { try { return JSON.parse(resultData.result.survey_summary_json) } catch { return null } })()
-      : null,
-    // v4 10축 분석 — DB 실제 컬럼: axis_scores_json, top_axes_json
-    axis_scores: resultData.result?.axis_scores_json
-      ? (() => { try { return JSON.parse(resultData.result.axis_scores_json) } catch { return null } })()
-      : null,
-    top_axes: resultData.result?.top_axes_json
-      ? (() => { try { return JSON.parse(resultData.result.top_axes_json) } catch { return null } })()
-      : null,
+    // 설문 응답 (채점 재활용) — resultData.result.survey_answers는 이미 parseJson된 객체
+    survey_answers: resultData.result?.survey_answers || null,
+    answers: resultData.result?.survey_answers || null,
+    survey_summary: resultData.result?.survey_summary || null,
+    // v4 10축 분석 — resultData.result.axis_scores / top_axes 이미 parseJson된 객체
+    axis_scores: resultData.result?.axis_scores || null,
+    top_axes: resultData.result?.top_axes || null,
     axis_primary: resultData.result?.axis_primary,
-    // 건강 조건 — DB 실제 컬럼: food_allergy_json, allergy_exclude_json
-    food_allergy: resultData.result?.food_allergy_json
-      ? (() => { try { return JSON.parse(resultData.result.food_allergy_json) } catch { return null } })()
-      : null,
-    allergy_exclude: resultData.result?.allergy_exclude_json
-      ? (() => { try { return JSON.parse(resultData.result.allergy_exclude_json) } catch { return null } })()
-      : null,
+    // 건강 조건 — resultData.result.food_allergy / allergy_exclude 이미 parseJson된 배열
+    food_allergy: resultData.result?.food_allergy || null,
+    allergy_exclude: resultData.result?.allergy_exclude || null,
     skin_reaction: resultData.result?.skin_reaction,
     is_menopause: resultData.result?.is_menopause,
     medical_conditions: resultData.result?.medical_conditions,
