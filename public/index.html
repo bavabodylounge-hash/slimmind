@@ -5620,21 +5620,62 @@ async function submitDiagnosis(dispAnswers) {
     : null;
 
   // ── NICKNAME → BC코드 역매핑 (bc-engine.js NICKNAME_TO_BC 사용, 없으면 로컬 fallback) ──
-  // [수정 V4.4] 억제제부작용→BC-4, 동시다발→BC-3 (BC-6 쏠림 방지)
+  // [수정 V4.5] result-v4.html NICKNAME_TABLE 변경과 완전 동기화
   const _NICKNAME_TO_BC_LOCAL = {
-    '아빠체형 내장비대형':'BC-3','식후기절 혈당롤러코스터형':'BC-3','털털한 PCOS형':'BC-6',
-    '약물부작용 강제축적형':'BC-4','스트레스성 야식부엉이형':'BC-6',
-    '억제제부작용 배부름마비형':'BC-4',  // [수정] BC-6 → BC-4
-    '출산후 바람빠진 풍선형':'BC-7','식후임산부 가스풍선형':'BC-3','팔다리거미 올챙이배형':'BC-9',
-    '오후만되면 코끼리다리형':'BC-1','엄마체형 하지정체형':'BC-1','여름에도 시린 얼음장형':'BC-4',
-    '운동할수록 말벅지형':'BC-8','골반틀어짐 승마살형':'BC-7','지방흡입후 재발형':'BC-5',
-    '목짧아지는 거북이형':'BC-2','안 쓰는 팔뚝 부종형':'BC-2','상체근육형':'BC-8',
-    '겨드랑이 부유방형':'BC-2','호르몬스위치 갱년기형':'BC-6','스트레스기절 번아웃형':'BC-6',
-    '대사증후군 종합형':'BC-9',
-    '동시다발 다중악순환형':'BC-3',  // [수정] BC-6 → BC-3
+    // BC-1 림프순환
+    '오후만되면 코끼리다리형':'BC-1','엄마체형 하지정체형':'BC-1',
+    // BC-2 상체·골격
+    '목짧아지는 거북이형':'BC-2','안 쓰는 팔뚝 부종형':'BC-2','겨드랑이 부유방형':'BC-2','상체근육형':'BC-2',
+    // BC-3 혈당·내장
+    '아빠체형 내장비대형':'BC-3','식후기절 혈당롤러코스터형':'BC-3',
+    '식후임산부 가스풍선형':'BC-3',
+    '동시다발 다중악순환형':'BC-3',  // [V4.4 수정] BC-6 → BC-3
+    // BC-4 호르몬·대사저하
+    '여름에도 시린 얼음장형':'BC-4','약물부작용 강제축적형':'BC-4',
+    '억제제부작용 배부름마비형':'BC-4',  // [V4.4 수정] BC-6 → BC-4
+    // BC-5 지방흡입 재발
+    '지방흡입후 재발형':'BC-5',
+    // BC-6 코르티솔·심리
+    '스트레스성 야식부엉이형':'BC-6','스트레스기절 번아웃형':'BC-6',
+    '호르몬스위치 갱년기형':'BC-6','털털한 PCOS형':'BC-6',
+    // BC-7 골격·복압
+    '출산후 바람빠진 풍선형':'BC-7','골반틀어짐 승마살형':'BC-7',
+    // BC-8 근육형
+    '운동할수록 말벅지형':'BC-8',
+    // BC-9 대사위험·근감소
+    '팔다리거미 올챙이배형':'BC-9','대사증후군 종합형':'BC-9',
   };
   const _nicknameMap = (typeof NICKNAME_TO_BC !== 'undefined') ? NICKNAME_TO_BC : _NICKNAME_TO_BC_LOCAL;
   const _bcCodeKey = (f.name && _nicknameMap[f.name]) ? _nicknameMap[f.name] : 'BC-6';
+
+  // ── bg_filter 실제 계산값 수집 [V4.5 추가] ──
+  // detectBackground()가 result-v4.html에 있으므로 여기서는 stage2 answers 기반 직접 판별
+  function _detectBgLocal(s2) {
+    if (!s2) return '';
+    function _ts(v) { return Array.isArray(v) ? v.join(',') : String(v||''); }
+    // 갱년기: stage2[10] 선택지
+    const meno = _ts(s2[10]);
+    if (meno && ['갱년기 변환형','호르몬 치료형','완경 후'].some(p=>meno.includes(p))) return '갱년기';
+    // PCOS
+    const pcos = _ts(s2['Q_PCOS']||'');
+    if (pcos==='yes'||pcos==='있음') return 'PCOS';
+    // 시술
+    const surg = _ts(s2['Q21']||s2[6]||'');
+    if (surg && surg!=='none' && surg!=='없음' && surg.includes('지방흡입')) return '시술';
+    // 약물: stage2[7] '억제제 부작용'
+    const drug = _ts(s2[7]||s2['Q22']||'');
+    if (drug && drug!=='none' && drug!=='없음' && drug!=='') return '약물';
+    // 출산: stage2[9] '출산후 풍선형' 값일 때만
+    const birth = _ts(s2[9]||s2['Q3']||'');
+    if (['출산후 풍선형','yes','있음','경험있음'].some(p=>birth===p)) return '출산';
+    // 번아웃
+    const burn = _ts(s2['Q_burnout']||'');
+    if (burn==='severe'||burn==='심각') return '번아웃';
+    return '';
+  }
+  const _bgFilter = _detectBgLocal(
+    (typeof stage2Answers !== 'undefined') ? stage2Answers : {}
+  );
 
   const payload = {
     user_name:       name,
@@ -5647,7 +5688,8 @@ async function submitDiagnosis(dispAnswers) {
     axis_scores:     scores,
     region:          prof.region  || null,
     texture:         prof.texture || null,
-    bg_filter:       '',
+    bg_filter:       _bgFilter,  // [V4.5] 실제 감지값 전송 (갱년기/출산/약물/시술/번아웃/PCOS/'')
+
     ohaeng_type,
     mbti_full,
     goal_weight:     _goalWt,

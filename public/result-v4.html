@@ -7343,20 +7343,30 @@ var NICKNAME_TABLE = {
     'A07': { default: '목짧아지는 거북이형' },
     'default': { 출산: '출산후 바람빠진 풍선형', default: '골반틀어짐 승마살형' },
   },
-  // ── A07 Top1: 코르티솔 → BC-6 계열 ──
+  // ── A07 Top1: 코르티솔 → BC-6 계열 (V4.5: Top2 기반 다각화) ──
+  // [수정 V4.5] A07 Top1은 여전히 코르티솔이 핵심이지만
+  //   Top2 축에 따라 BC-6 외 BC-1/BC-3/BC-4/BC-9로 분기
+  //   → 야식부엉이형·번아웃형 2종 독점 → 5종으로 확장
   'A07': {
-    'A08': { 번아웃: '스트레스기절 번아웃형', default: '스트레스성 야식부엉이형' },
-    'A03': { 갱년기: '호르몬스위치 갱년기형', 번아웃: '스트레스기절 번아웃형', default: '스트레스기절 번아웃형' },
-    'A02': { default: '스트레스기절 번아웃형' },
-    'A01': { default: '스트레스성 야식부엉이형' },
-    'default': { 번아웃: '스트레스기절 번아웃형', default: '스트레스성 야식부엉이형' },
+    'A08': { 번아웃: '스트레스기절 번아웃형', default: '스트레스성 야식부엉이형' }, // BC-6 유지 (코르티솔+심리)
+    'A03': { 갱년기: '호르몬스위치 갱년기형', 번아웃: '스트레스기절 번아웃형', default: '여름에도 시린 얼음장형' }, // [수정] BC-6 → BC-4 (코르티솔+호르몬)
+    'A02': { 번아웃: '스트레스기절 번아웃형', default: '오후만되면 코끼리다리형' }, // [수정] BC-6 → BC-1 (코르티솔+림프)
+    'A01': { 대사증후군: '대사증후군 종합형', default: '식후기절 혈당롤러코스터형' }, // [수정] BC-6 → BC-3 (코르티솔+인슐린)
+    'A09': { default: '대사증후군 종합형' }, // [추가] BC-9 (코르티솔+대사위험)
+    'A04': { default: '팔다리거미 올챙이배형' }, // [추가] BC-9 (코르티솔+근감소)
+    'A06': { 출산: '출산후 바람빠진 풍선형', default: '골반틀어짐 승마살형' }, // [추가] BC-7 (코르티솔+골격)
+    'default': { 번아웃: '스트레스기절 번아웃형', default: '스트레스성 야식부엉이형' }, // BC-6 기본 유지
   },
-  // ── A08 Top1: 심리·식이 → BC-6 심리 계열 ──
+  // ── A08 Top1: 심리·식이 → BC-6/BC-4 계열 (V4.5: Top2 기반 다각화) ──
+  // [수정 V4.5] A08 Top1도 BC-6 야식부엉이형 독점 → Top2 기반 다각화
   'A08': {
-    'A05': { 약물: '억제제부작용 배부름마비형', default: '억제제부작용 배부름마비형' },
-    'A01': { 약물: '억제제부작용 배부름마비형', default: '스트레스성 야식부엉이형' },
-    'A07': { 번아웃: '스트레스기절 번아웃형', default: '스트레스기절 번아웃형' },
-    'default': { 약물: '억제제부작용 배부름마비형', default: '스트레스성 야식부엉이형' },
+    'A05': { 약물: '억제제부작용 배부름마비형', default: '식후임산부 가스풍선형' }, // [수정] default BC-4 → BC-3 (심리+소화)
+    'A01': { 약물: '억제제부작용 배부름마비형', default: '식후기절 혈당롤러코스터형' }, // [수정] BC-6 → BC-3 (심리+인슐린)
+    'A07': { 번아웃: '스트레스기절 번아웃형', default: '스트레스성 야식부엉이형' }, // BC-6 유지 (심리+코르티솔)
+    'A03': { 갱년기: '호르몬스위치 갱년기형', default: '여름에도 시린 얼음장형' }, // [추가] BC-4 (심리+호르몬)
+    'A02': { default: '오후만되면 코끼리다리형' }, // [추가] BC-1 (심리+림프)
+    'A09': { default: '대사증후군 종합형' }, // [추가] BC-9 (심리+대사위험)
+    'default': { 약물: '억제제부작용 배부름마비형', default: '스트레스성 야식부엉이형' }, // BC-6 기본 유지
   },
   // ── A09 Top1: 대사위험 → BC-9/BC-4 계열 ──
   // [수정] A09+A07 경로: '동시다발 다중악순환형'(BC-6) → '대사증후군 종합형'(BC-9)
@@ -7384,70 +7394,91 @@ var NICKNAME_TABLE = {
 };
 
 // ──────────────────────────────────────────────
-// 4. 배경 필터 감지 함수
-// answers: { Q3, Q21, Q22, Q_MENOPAUSE, Q_FAMILY_HISTORY, ... }
+// 4. 배경 필터 감지 함수  [V4.5 수정]
+// answers: raw_answers.stage2 또는 { Q_MENOPAUSE, Q3, Q21, Q22, ... }
 // 반환: '유전'|'모계유전'|'출산'|'갱년기'|'시술'|'약물'|'PCOS'|'번아웃'|'대사증후군'|null
+//
+// [V4.5 수정 포인트]
+//   ① 갱년기: Q10(stage2 10번) 답변 opt 텍스트 포함 감지 추가
+//   ② 출산: Q9(stage2 9번) → '출산후 풍선형' 값일 때만 '출산' 반환
+//      (기존: birth 값이 공백·none·없음만 아니면 무조건 '출산' 반환 → 오탐 다수)
+//   ③ 약물·시술: Q22/Q21 빈 배열([]) 처리 추가
 // ──────────────────────────────────────────────
 function detectBackground(answers) {
   if (!answers) return null;
 
-  // 갱년기·완경
-  const meno = answers['Q_MENOPAUSE'] || answers['Q_meno'] || '';
-  if (meno && meno !== 'not_applicable' && meno !== 'none' && meno !== '') {
-    return '갱년기';
+  // ─── 헬퍼: 배열이든 문자열이든 안전하게 문자열로 변환 ───
+  function _toStr(v) {
+    if (!v) return '';
+    if (Array.isArray(v)) return v.join(',');
+    return String(v);
   }
 
-  // PCOS (다낭성 난소 증후군)
-  const pcos = answers['Q_PCOS'] || answers['Q_pcos'] || '';
+  // ① 갱년기·완경
+  // Q_MENOPAUSE 키(구형) 또는 stage2[10]번 질문 값 감지
+  const menoRaw = answers['Q_MENOPAUSE'] || answers['Q_meno'] || answers[10] || '';
+  const meno = _toStr(menoRaw);
+  // 갱년기 키워드: '갱년기 변환형', '호르몬 치료형', '완경 후' 등
+  const _MENO_POSITIVES = ['갱년기', '완경', '호르몬 치료', 'meno', 'menopause'];
+  const _MENO_NEGATIVES = ['not_applicable', 'none', '없음', '해당 없어요', '신호가 조금', ''];
+  if (meno && !_MENO_NEGATIVES.some(n => meno === n)) {
+    if (_MENO_POSITIVES.some(p => meno.includes(p))) return '갱년기';
+    // stage2[10] 답변이 긍정 선택지(갱년기 변환형/호르몬 치료형/완경 후)이면 갱년기
+    if (meno === '갱년기 변환형' || meno === '호르몬 치료형' || meno === '완경 후') return '갱년기';
+  }
+
+  // ② PCOS (다낭성 난소 증후군)
+  const pcos = _toStr(answers['Q_PCOS'] || answers['Q_pcos'] || '');
   if (pcos === 'yes' || pcos === 'Y' || pcos === '있음') return 'PCOS';
 
-  // 시술 이력 (지방흡입 등)
-  const surgery = answers['Q21'] || answers['Q_surgery'] || '';
+  // ③ 시술 이력 (지방흡입 등)
+  // Q21 또는 stage2[6]번(시술 관련 질문이 있을 경우)
+  const surgeryRaw = answers['Q21'] || answers['Q_surgery'] || answers[6] || '';
+  const surgery = _toStr(surgeryRaw);
   if (surgery && surgery !== 'none' && surgery !== '없음' && surgery !== '') {
-    // 지방흡입 키워드 확인
-    if (String(surgery).includes('지방흡입') || String(surgery).includes('liposuction')) {
-      return '시술';
-    }
-    return '시술';
+    if (surgery.includes('지방흡입') || surgery.includes('liposuction')) return '시술';
   }
 
-  // 약물 복용력 (스테로이드·항우울제·식욕억제제 등)
-  const drug = answers['Q22'] || answers['Q_drug'] || '';
+  // ④ 약물 복용력 (스테로이드·항우울제·식욕억제제 등)
+  // Q22 또는 stage2[7]번(식욕억제제 질문)
+  const drugRaw = answers['Q22'] || answers['Q_drug'] || answers[7] || '';
+  const drug = _toStr(drugRaw);
   if (drug && drug !== 'none' && drug !== '없음' && drug !== '') {
-    // 번아웃/부신 고갈 키워드 우선 확인
-    if (String(drug).includes('번아웃') || String(drug).includes('부신')) return '번아웃';
-    return '약물';
+    // 번아웃/부신 고갈 키워드 우선
+    if (drug.includes('번아웃') || drug.includes('부신')) return '번아웃';
+    // 억제제 복용 확인 (stage2[7] 선택지: '억제제 부작용')
+    if (drug.includes('억제제') || drug.includes('항우울') || drug.includes('스테로이드')) return '약물';
+    if (drug !== '') return '약물';
   }
 
-  // 출산 경험
-  const birth = answers['Q3'] || answers['Q_birth'] || '';
-  if (birth === 'yes' || birth === 'Y' || birth === '있음' || birth === '경험있음' ||
-      (typeof birth === 'string' && birth !== '' && birth !== 'none' && birth !== '없음')) {
-    return '출산';
+  // ⑤ 출산 경험  [V4.5 핵심 수정]
+  // stage2[9]번 질문 선택지:
+  //   "네, 출산 후 체형이 변했어요" → opts 값 = "출산후 풍선형"  ← 이 값일 때만 '출산' 반환
+  //   "출산했지만 큰 변화는 없어요" → opts 값 = ""
+  //   "해당 없어요"                 → opts 값 = ""
+  // 기존 코드: birth 값이 공백·none·없음이 아니면 무조건 '출산' → 오탐 유발
+  const birthRaw = answers['Q3'] || answers['Q_birth'] || answers[9] || '';
+  const birth = _toStr(birthRaw);
+  // ★ 핵심: '출산후 풍선형' 또는 명시적 긍정 값일 때만 '출산'
+  const _BIRTH_POSITIVES = ['출산후 풍선형', 'yes', 'Y', '있음', '경험있음', '생활급변 축적형'];
+  if (_BIRTH_POSITIVES.some(p => birth === p)) return '출산';
+  // 기타 birth 값(빈 문자열, "출산했지만 큰 변화는 없어요", "해당 없어요" 등)은 무시
+
+  // ⑥ 가족력·유전 (부계 vs 모계)
+  const familyRaw = answers['Q_FAMILY'] || answers['Q_family'] || answers['Q_heredity'] || '';
+  const family = _toStr(familyRaw);
+  if (family && family !== 'none' && family !== '없음') {
+    if (family.includes('모') || family.includes('엄마') || family.includes('이모')) return '모계유전';
+    if (family.includes('부') || family.includes('아빠') || family.includes('삼촌')) return '유전';
+    return '유전';
   }
 
-  // 가족력·유전 (부계 vs 모계)
-  const family = answers['Q_FAMILY'] || answers['Q_family'] || answers['Q_heredity'] || '';
-  if (family) {
-    if (String(family).includes('모') || String(family).includes('엄마') || String(family).includes('이모')) {
-      return '모계유전';
-    }
-    if (String(family).includes('부') || String(family).includes('아빠') || String(family).includes('삼촌')) {
-      return '유전';
-    }
-    if (String(family) !== 'none' && String(family) !== '없음' && String(family) !== '') {
-      return '유전';
-    }
-  }
+  // ⑦ 대사증후군 고위험
+  const diabetesRisk = _toStr(answers['Q_diabetes'] || answers['Q_metabolic'] || '');
+  if (diabetesRisk === 'yes' || diabetesRisk === 'Y' || diabetesRisk === '있음') return '대사증후군';
 
-  // 대사증후군 고위험 (복합 수치)
-  const diabetesRisk = answers['Q_diabetes'] || answers['Q_metabolic'] || '';
-  if (diabetesRisk === 'yes' || diabetesRisk === 'Y' || diabetesRisk === '있음') {
-    return '대사증후군';
-  }
-
-  // 번아웃 (별도 질문)
-  const burnout = answers['Q_burnout'] || answers['Q_stress_level'] || '';
+  // ⑧ 번아웃 (별도 질문)
+  const burnout = _toStr(answers['Q_burnout'] || answers['Q_stress_level'] || '');
   if (burnout === 'severe' || burnout === '심각' || burnout === '극심') return '번아웃';
 
   return null; // 배경 필터 없음 → default 코드
