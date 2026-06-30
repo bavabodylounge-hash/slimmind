@@ -1120,6 +1120,145 @@ function calcSaju(y, m, d, h) {
   return { ganji: CHEONGAN_LIST[cg]+JIJI_LIST[jj]+'년', score:score, dominant:maxIdx, lacking:minIdx };
 }
 
+// ══════════════════════════════════════════════════════
+// calculateOhaengScoreFull() — V4.6 통합 오행 산출
+// 우선순위: ① 사주(생년월일) → ② 설문 ohaengEffect 보정 → ③ GQ08 자기진단
+// 반환: { type:'목'|'화'|'토'|'금'|'수', score:[목,화,토,금,수],
+//         dominant:idx, lacking:idx, source:'saju'|'survey'|'gq08',
+//         ganji:'갑자년', confidence:0~100 }
+// ══════════════════════════════════════════════════════
+function calculateOhaengScoreFull(ans) {
+  var ans = ans || answers;
+  // 오행 인덱스 → 한글 이름 맵
+  var NM = ['목','화','토','금','수'];
+  // 종합 점수 배열 [목,화,토,금,수]
+  var score = [0, 0, 0, 0, 0];
+  var source = 'survey';  // 최종 판정 근거
+  var ganji = '';
+  var sajuConfidence = 0;
+
+  // ① 사주(생년월일) — 가장 높은 가중치 (생년월일 있을 때만)
+  var birthY = parseInt(ans['Q43_y'] || ans['birth_y']) || 0;
+  var birthM = parseInt(ans['Q43_m'] || ans['birth_m']) || 0;
+  var birthD = parseInt(ans['Q43_d'] || ans['birth_d']) || 15;
+  var birthH = parseInt(ans['Q43_h'] || ans['birth_h']) || 0;
+
+  if (birthY >= 1930 && birthY <= 2010 && birthM >= 1 && birthM <= 12) {
+    var saju = calcSaju(birthY, birthM, birthD, birthH);
+    // 사주 점수 → 표준화 후 가중치 40pt 배분
+    var sajuTotal = saju.score.reduce(function(a,b){ return a+b; }, 0);
+    if (sajuTotal > 0) {
+      saju.score.forEach(function(v, i) {
+        score[i] += Math.round(v / sajuTotal * 40);
+      });
+    }
+    ganji = saju.ganji || '';
+    sajuConfidence = 60;  // 생년월일 있으면 기본 60점 신뢰도
+    source = 'saju';
+  }
+
+  // ② 설문 ohaengEffect 보정 — Q08(체온 touch) + Q_THYROID(추위)에서 집계
+  var ohaengMap = { '목':0, '화':1, '토':2, '금':3, '수':4 };
+  D.seq.forEach(function(s) {
+    var q = s.q;
+    if (!q || !q.options) return;
+    var qId = q.id;
+    var val = ans[qId];
+    if (!val) return;
+    var vals = Array.isArray(val) ? val : [val];
+    vals.forEach(function(v) {
+      var opt = q.options.find(function(o){ return o.value === v; });
+      if (opt && opt.ohaengEffect) {
+        Object.keys(opt.ohaengEffect).forEach(function(nm) {
+          var idx = ohaengMap[nm];
+          if (idx !== undefined) {
+            score[idx] += opt.ohaengEffect[nm];  // 예: 수:10, 화:10
+          }
+        });
+        source = (source === 'saju') ? 'saju' : 'survey';
+      }
+    });
+  });
+
+  // ③ 체온 신호 추가 보정 (Q31: body_temp, Q60: body_awareness)
+  var bodyTemp = ans['body_temp'] || ans['Q31'] || '';
+  if (bodyTemp === 'cold')  { score[4] += 8; score[2] += 4; }  // 수↑ 토↑
+  if (bodyTemp === 'hot')   { score[1] += 8; }                 // 화↑
+  if (bodyTemp === 'mixed') { score[1] += 5; score[4] += 5; }  // 상열하한
+
+  var bodyAware = ans['body_awareness'] || '';
+  if (bodyAware === 'cold')   { score[4] += 6; }
+  if (bodyAware === 'heavy')  { score[2] += 6; }  // 토 (소화정체)
+  if (bodyAware === 'tense')  { score[0] += 6; }  // 목 (간 울결)
+
+  // 체온 touch (Q08)
+  var tempTouch = ans['body_temp_touch'] || '';
+  if (tempTouch === 'cold')  { score[4] += 6; }
+  if (tempTouch === 'warm')  { score[1] += 6; }
+  if (tempTouch === 'mixed') { score[1] += 3; score[4] += 3; }
+
+  // 추위 민감도 (Q_THYROID → cold_sensitivity)
+  var coldSens = ans['cold_sensitivity'] || '';
+  if (coldSens === 'very')  { score[4] += 8; }  // 수 (신장허약)
+  if (coldSens === 'hot')   { score[1] += 8; }  // 화 (심화 과잉)
+
+  // 부종 신호 → 수(水) 보정
+  var puffiness = ans['puffiness'] || '';
+  if (puffiness === 'leg' || puffiness === 'whole') { score[4] += 4; }
+
+  // 소화 신호 → 토(土) 보정
+  var bodyNow = ans['body_now'] || '';
+  if (bodyNow === 'puffy') { score[4] += 4; }
+  if (bodyNow === 'soft')  { score[2] += 4; }  // 물렁 늘어짐 → 토
+
+  // ANS 신호 보정
+  var cortisol = ans['cortisol_sign'] || '';
+  if (cortisol === 'craving')  { score[1] += 5; }   // 화 (심화 폭식)
+  if (cortisol === 'fatigue')  { score[4] += 5; }   // 수 (신장 피로)
+  if (cortisol === 'insomnia') { score[0] += 5; }   // 목 (간 울결 불면)
+
+  // 스트레스 식욕 → 목 보정
+  var stressApp = ans['stress_appetite'] || '';
+  if (stressApp === 'night' || stressApp === 'more') { score[0] += 5; }  // 목 야식
+
+  // ④ GQ08 자기진단 직접 선택 (보조 가중치)
+  var gq08 = ans['GQ08'] || '';
+  var gq08Idx = ohaengMap[gq08];
+  if (gq08Idx !== undefined) {
+    score[gq08Idx] += 15;  // 직접 선택 시 15pt 보너스
+    source = (source === 'saju') ? 'saju' : 'gq08';
+  }
+
+  // ⑤ 최종 dominant / lacking 결정
+  var maxVal = Math.max.apply(null, score);
+  var minVal = Math.min.apply(null, score);
+  var domIdx = score.indexOf(maxVal);
+  var lackIdx = score.indexOf(minVal);
+
+  // 신뢰도 계산 (1등과 2등의 격차 반영)
+  var sorted = score.slice().sort(function(a,b){ return b-a; });
+  var gap = sorted[0] - sorted[1];
+  var confidence = Math.min(100, sajuConfidence + Math.round(gap * 2));
+
+  return {
+    type:       NM[domIdx],       // '목'|'화'|'토'|'금'|'수'
+    score:      score,            // [목,화,토,금,수] 원점수
+    dominant:   domIdx,           // 0~4
+    lacking:    lackIdx,          // 0~4
+    source:     source,           // 'saju'|'survey'|'gq08'
+    ganji:      ganji,            // '갑자년' 등
+    confidence: confidence,       // 0~100
+    detail: {
+      hasBirth:  (birthY > 0),
+      hasGQ08:   (gq08 !== ''),
+      ohaengEffectCount: (
+        (tempTouch !== '' ? 1 : 0) +
+        (coldSens !== '' ? 1 : 0)
+      ),
+    }
+  };
+}
+
 function renderBirth(q){
   var y = answers[q.id+'_y'] || '';
   var m = answers[q.id+'_m'] || '';
@@ -2930,15 +3069,21 @@ function doResultRedirect() {
   var topAxes = sorted.slice(0,3).map(function(x){ return x[0]; });
   var topAxis = topAxes[0] || 'A01';
 
-  // ── 3. 오행 기질 결정 (기질 설문 GQ 답변 기반) ──
-  //    GQ08 = "오행 자기진단" 문항 → 직접 선택값 활용
-  var ohaengType = finalAnswers['GQ08'] || '목';
-  // GQ08이 없으면 A03(호르몬)/A07(스트레스) 점수 기반 추정
-  if (!finalAnswers['GQ08']) {
-    var oMap = {A01:'목', A02:'화', A03:'토', A04:'금', A05:'수',
-                A06:'목', A07:'화', A08:'토', A09:'금', A10:'수'};
-    ohaengType = oMap[topAxis] || '목';
-  }
+  // ── 3. 오행 기질 결정 — V4.6 calculateOhaengScoreFull() 통합 산출 ──
+  //    우선순위: 사주(생년월일) > 설문 ohaengEffect > 체온/ANS 신호 > GQ08 자기진단
+  var ohaengResult = calculateOhaengScoreFull(finalAnswers);
+  var ohaengType   = ohaengResult.type || '목';
+
+  // 오행 상세 결과를 answers에 저장 (결과지에서 활용)
+  finalAnswers['_ohaeng_score']      = JSON.stringify(ohaengResult.score);
+  finalAnswers['_ohaeng_source']     = ohaengResult.source;
+  finalAnswers['_ohaeng_confidence'] = ohaengResult.confidence;
+  finalAnswers['_ohaeng_lacking']    = ['목','화','토','금','수'][ohaengResult.lacking] || '';
+  console.log('[V4.6] 오행 산출 결과:', ohaengType,
+    '| 근거:', ohaengResult.source,
+    '| 신뢰도:', ohaengResult.confidence + '%',
+    '| 점수:', ohaengResult.score,
+    '| 부족 오행:', finalAnswers['_ohaeng_lacking']);
 
   // ── 4. MBTI 결정 (기질 설문 GQ01~GQ07 조합) ──
   var mbtiType = deriveMbtiFromDisposition(finalAnswers) || 'INFP';
@@ -2976,6 +3121,10 @@ function doResultRedirect() {
         axis_scores:        axScores,
         top_axes:           topAxes,
         ohaeng_type:        ohaengType,
+        ohaeng_source:      ohaengResult.source,
+        ohaeng_confidence:  ohaengResult.confidence,
+        ohaeng_lacking:     finalAnswers['_ohaeng_lacking'] || '',
+        ohaeng_score:       ohaengResult.score,
         mbti_type:          mbtiType,
         answers:            finalAnswers,
         survey_summary:     { top_axis: topAxis }
@@ -4184,38 +4333,16 @@ function renderResult5th() {
   var ansData = calcANSType();
   var presc   = calculatePrescScores();
 
-  // 오행 분석 (사주 or 기본)
+  // ── V4.6 오행 분석 — calculateOhaengScoreFull() 통합 산출 ──
+  var ohaengResult5 = calculateOhaengScoreFull(answers);
+  var maxOhaeng = ohaengResult5.type || '토';
+  // 하위 호환: ohaeng 객체도 유지 (게이지 바 등에서 사용)
   var ohaeng = {목:0, 화:0, 토:0, 금:0, 수:0};
-  try {
-    var sy=answers.Q43_y, sm=answers.Q43_m, sd=answers.Q43_d, sh=answers.Q43_h;
-    if (sy && sm && sd) {
-      var r = calcSaju(parseInt(sy), parseInt(sm), parseInt(sd), sh?parseInt(sh):12);
-      if (r && r.dominant) { ohaeng[r.dominant] = (ohaeng[r.dominant]||0) + 40; }
-    }
-  } catch(e) {}
-
-  // 체온·순환에서 오행 보정
-  var bodyTemp = answers.body_temp || answers.body_temp_touch || '';
-  if (bodyTemp === 'cold' || bodyTemp === 'very') { ohaeng['수'] += 15; ohaeng['목'] += 5; }
-  if (bodyTemp === 'hot') { ohaeng['화'] += 15; }
-  if (bodyTemp === 'mixed') { ohaeng['화'] += 8; ohaeng['수'] += 8; }
-
-  // ANS 분기로 오행 보정
-  if (ansData.dominant === 'sns_dominant') ohaeng['화'] += 12;
-  if (ansData.dominant === 'pns_deficit')  ohaeng['수'] += 12;
-  if (ansData.dominant === 'burnout')      ohaeng['토'] += 10;
-
-  // 오행 최댓값 → 체질 결정
-  var maxOhaeng = '토';
-  var maxVal = 0;
-  Object.keys(ohaeng).forEach(function(k) {
-    if (ohaeng[k] > maxVal) { maxVal = ohaeng[k]; maxOhaeng = k; }
-  });
-  // 기본값 보정 — 값이 모두 0이면 BC코드로 추론
-  if (maxVal === 0) {
-    var bcToOhaeng = {'BC-01':'토','BC-02':'토','BC-03':'금','BC-04':'목','BC-05':'수','BC-06':'수','BC-07':'목','BC-08':'수','BC-09':'화','BC-10':'토'};
-    maxOhaeng = bcToOhaeng[topBC.k] || '토';
-  }
+  var _NM5 = ['목','화','토','금','수'];
+  ohaengResult5.score.forEach(function(v, i) { ohaeng[_NM5[i]] = v; });
+  // score가 모두 0이면 dominant만 40pt
+  var _scoreSum5 = ohaengResult5.score.reduce(function(s,v){return s+v;},0);
+  if (_scoreSum5 === 0) { ohaeng[maxOhaeng] = 40; }
 
   // 오행별 체질 프로파일
   var OHAENG_PROFILE = {
