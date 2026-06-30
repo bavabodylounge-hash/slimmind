@@ -4244,7 +4244,29 @@ function calcDisposition(dispAnswers) {
   // 디버그용 점수 반환 (개발환경 확인용, 프로덕션에서도 저장됨)
   const _scores = { ei: +ei.toFixed(2), ns: +ns.toFixed(2), tf: +tf.toFixed(2), jp: +jp.toFixed(2) };
 
-  return { ohaeng_type, mbti_full, _scores };
+  // ── 권장-4: V4.6 오행 확장 필드 반환 ──────────────────────────
+  // ohaeng_type에서 '목형' → '목' 정규화 (DB 키와 일치)
+  const ohaengNormMap = { '목형':'목','화형':'화','토형':'토','금형':'금','수형':'수' };
+  const ohaeng_type_norm = ohaengNormMap[ohaeng_type] || ohaeng_type;
+
+  // 오행 점수 배열 [목,화,토,금,수] — DISP_OHAENG 인덱스 기반 (현재는 단일 선택이므로 선택된 오행에 100)
+  const ohaengNames = ['목','화','토','금','수'];
+  const ohaeng_score_arr = ohaengNames.map((_,i) => i === ohaengIdx ? 100 : 0);
+
+  // 부족 오행: 오행 상생 순서에서 현재 오행의 반대 (수극화, 화극금, 금극목, 목극토, 토극수)
+  const LACKING_MAP = { '목':'금', '화':'수', '토':'목', '금':'화', '수':'토' };
+  const ohaeng_lacking = LACKING_MAP[ohaeng_type_norm] || null;
+
+  return {
+    ohaeng_type: ohaeng_type_norm,  // 정규화: '목형' → '목'
+    mbti_full,
+    _scores,
+    // V4.6 확장 필드
+    ohaeng_source: 'survey',        // DISP_OHAENG 설문 응답 기반
+    ohaeng_confidence: 70,          // 단일 선택지 기반 — 70% 신뢰도
+    ohaeng_lacking,                 // 극克 관계 부족 오행
+    ohaeng_score: ohaeng_score_arr, // [목,화,토,금,수] 점수 배열
+  };
 }
 
 if (typeof module !== 'undefined') {

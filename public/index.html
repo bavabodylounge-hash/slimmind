@@ -5460,8 +5460,10 @@ function showWaitScreen(resultId, userName) {
   const idEl = document.getElementById('waitResultId');
   if (idEl) idEl.textContent = resultId ? resultId.split('-')[0].toUpperCase() : '—';
 
-  // localStorage에 result_id 저장
-  try { localStorage.setItem('sm_last_result_id', resultId); } catch(e) {}
+  // 위험-3: result_id를 탭 고유 sessionStorage에 저장 (멀티탭 혼용 방지)
+  // localStorage는 모든 탭 공유 → 탭A 제출 후 탭B에서 waitCopyLink() 시 탭A 결과 노출 위험
+  try { sessionStorage.setItem('sm_current_result_id', resultId); } catch(e) {}
+  try { localStorage.setItem('sm_last_result_id', resultId); } catch(e) {}  // 하위호환 유지
 
   // 완료 알림 버튼 — ref_code 있을 때만 표시
   const refCode = new URLSearchParams(window.location.search).get('ref') || null;
@@ -5498,7 +5500,8 @@ function _waitSpawnParticles() {
 function waitCopyLink() {
   const idEl = document.getElementById('waitResultId');
   const code = idEl ? idEl.textContent : '';
-  const fullId = localStorage.getItem('sm_last_result_id') || '';
+  // 위험-3: sessionStorage 우선, localStorage 폴백 (멀티탭 격리)
+  const fullId = sessionStorage.getItem('sm_current_result_id') || localStorage.getItem('sm_last_result_id') || '';
   const text = fullId ? `슬림마인드 분석 코드: ${code}\n결과지: ${location.origin}/result/${fullId}` : `슬림마인드 분석 코드: ${code}`;
   if (navigator.clipboard) {
     navigator.clipboard.writeText(text).then(() => {

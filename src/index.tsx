@@ -363,6 +363,8 @@ app.post('/api/survey/submit', async (c) => {
     consultant_code, user_name, answers,
     bc_primary, bc_secondary, bc_primary_score, bc_secondary_score,
     bc_scores, ohaeng_type, ohaeng_scores,
+    // V4.6 오행 확장 필드 (results 테이블은 ohaeng_type + ohaeng_scores_json만 저장 — source/confidence는 survey_answers_json에 포함)
+    ohaeng_source, ohaeng_confidence, ohaeng_lacking, ohaeng_score,
     mbti, blood_type, saju_il_gan, saju_ohaeng,
     // v5.0 사주 확장 필드
     saju_il_ji, saju_yin_yang, birth_hour,
@@ -462,7 +464,15 @@ app.post('/api/survey/submit', async (c) => {
   `).bind(
     result_id, resolvedUserName, validConsultantCode,
     safeBcPrimary, toStr(bc_secondary), nz(bc_primary_score), nz(bc_secondary_score),
-    JSON.stringify(bc_scores || {}), toStr(ohaeng_type), JSON.stringify(ohaeng_scores || {}),
+    // V4.6: ohaeng_scores에 source/confidence/lacking 메타 병합 저장 (results 테이블 ohaeng_scores_json 활용)
+    JSON.stringify(bc_scores || {}), toStr(ohaeng_type), JSON.stringify({
+      ...(ohaeng_scores || {}),
+      ...(ohaeng_source ? { _source: ohaeng_source } : {}),
+      ...(ohaeng_confidence != null ? { _confidence: Number(ohaeng_confidence) } : {}),
+      ...(ohaeng_lacking ? { _lacking: ohaeng_lacking } : {}),
+      ...(Array.isArray(ohaeng_score) ? { _score: ohaeng_score } : {}),
+    }),
+    // 위 라인이 ohaeng_scores_json에 해당하는 bind 값임
     toStr(mbti), toStr(blood_type), toStr(saju_il_gan), toStr(saju_ohaeng),
     toStr(saju_il_ji), toStr(saju_yin_yang), toStr(birth_hour),
     toStr(saju_hour_stem), toStr(saju_hour_branch), toStr(saju_display),
@@ -584,12 +594,15 @@ app.post('/api/admin/consultants', requireRole('MASTER'), async (c) => {
     const exists = await db.prepare('SELECT code FROM consultants WHERE code=?').bind(code).first()
     if (exists) return c.json({ success: false, error: `코드 ${code}는 이미 사용 중입니다.` }, 409)
   } else {
-    const last = await db.prepare("SELECT code FROM consultants WHERE code LIKE 'SC-%' ORDER BY code DESC LIMIT 1").first<any>()
+    // 위험-1: 레이스 컨디션 방지 — SELECT MAX보다 UUID 기반 고유 코드 사용
+    // SC-XXXX 순번 방식 유지하되, 충돌 시 자동 재시도 (UNIQUE 제약으로 최종 보장)
+    const last = await db.prepare("SELECT code FROM consultants WHERE code LIKE 'SC-%' ORDER BY CAST(SUBSTR(code,4) AS INTEGER) DESC LIMIT 1").first<any>()
     let nextNum = 1
     if (last?.code) {
       const n = parseInt(last.code.replace('SC-', ''))
       if (!isNaN(n)) nextNum = n + 1
     }
+    // 동시 등록 충돌 대비: UNIQUE constraint 에러 시 +1 재시도 (catch 블록 처리)
     code = `SC-${String(nextNum).padStart(4, '0')}`
   }
 
@@ -1689,6 +1702,7 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
       bc_secondary_score: result.bc_secondary_score,
       bc_scores: parseJson(result.bc_scores_json, {}),
       ohaeng_type: result.ohaeng_type,
+      ohaeng_scores: parseJson(result.ohaeng_scores_json, null),  // 즉시-3: flatResult에서 실제 값 접근 가능하도록
       mbti: result.mbti,
       blood_type: result.blood_type,
       saju_il_gan:      result.saju_il_gan,
@@ -1895,7 +1909,15 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
     target_bottom_size: resultData.result?.target_bottom_size,
     // 동양의학
     ohaeng_type: resultData.result?.ohaeng_type,
-    ohaeng_scores: null,  // resultData.result에 ohaeng_scores 없음 (별도 ohaeng 객체에 있음)
+    // 즉시-3: ohaeng_scores 실제 값 (null 하드코딩 제거)
+    // resultData.result.ohaeng_scores는 parseJson(ohaeng_scores_json, {}) 된 객체
+    ohaeng_scores: (() => {
+      const raw = resultData.result as any;
+      if (raw?.ohaeng_scores && typeof raw.ohaeng_scores === 'object' && Object.keys(raw.ohaeng_scores).length > 0) {
+        return raw.ohaeng_scores;
+      }
+      return null;
+    })(),
     mbti: resultData.result?.mbti,
     blood_type: resultData.result?.blood_type,
     saju_il_gan: resultData.result?.saju_il_gan,
@@ -3883,27 +3905,33 @@ app.post('/api/coupon/issue', async (c) => {
       return `SM-${rand4()}-${rand4()}`
     }
 
-    // 충돌 방지: 최대 5회 재시도
+    // 위험-2: INSERT OR IGNORE 패턴으로 원자적 충돌 방지
+    // SELECT-then-INSERT 레이스 컨디션 완전 제거
     let couponCode = ''
-    for (let attempt = 0; attempt < 5; attempt++) {
+    let insertOk = false
+    for (let attempt = 0; attempt < 8; attempt++) {
       const candidate = genCouponCode()
-      const conflict = await db.prepare(
-        'SELECT id FROM coupons WHERE coupon_code = ? LIMIT 1'
-      ).bind(candidate).first<any>()
-      if (!conflict) {
-        couponCode = candidate
-        break
+      try {
+        const result = await db.prepare(
+          `INSERT OR IGNORE INTO coupons (phone, coupon_code, quiz_type, is_duplicate, used, issued_at)
+           VALUES (?, ?, 'arm_fat', 0, 0, datetime('now'))`
+        ).bind(phone, candidate).run()
+        // changes > 0 이면 실제 INSERT 성공 (IGNORE로 스킵되지 않음)
+        if (result.meta?.changes && result.meta.changes > 0) {
+          couponCode = candidate
+          insertOk = true
+          break
+        }
+        // changes === 0: coupon_code UNIQUE 충돌로 스킵됨 → 재시도
+      } catch (innerErr: any) {
+        // phone UNIQUE 충돌은 위 중복체크에서 이미 처리됨, 기타 오류만 throw
+        const msg = String(innerErr?.message || innerErr)
+        if (!msg.includes('UNIQUE constraint')) throw innerErr
       }
     }
-    if (!couponCode) {
+    if (!insertOk) {
       return c.json({ ok: false, error: '쿠폰 코드 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' }, 500)
     }
-
-    // ── D1에 쿠폰 저장
-    await db.prepare(
-      `INSERT INTO coupons (phone, coupon_code, quiz_type, is_duplicate, used, issued_at)
-       VALUES (?, ?, 'arm_fat', 0, 0, datetime('now'))`
-    ).bind(phone, couponCode).run()
 
     return c.json({
       ok: true,

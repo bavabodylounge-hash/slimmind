@@ -1221,6 +1221,34 @@ function calculateOhaengScoreFull(ans) {
   var stressApp = ans['stress_appetite'] || '';
   if (stressApp === 'night' || stressApp === 'more') { score[0] += 5; }  // 목 야식
 
+  // ── 권장-1: 갱년기 오행 분기 (화/수 심화 구분) ──────────────────
+  // Q_MENOPAUSE: peri/meno → 화(心火항진), post/hrt → 수(腎虛)
+  var menopause = ans['menopause'] || ans['menopause_status'] || '';
+  if (menopause === 'peri' || menopause === 'meno') {
+    score[1] += 10;   // 화 — 안면홍조·식은땀 = 심화항진
+    score[4] += 6;    // 수 — 신허도 동반
+    if (source !== 'saju') source = 'survey';
+  } else if (menopause === 'post' || menopause === 'hrt') {
+    score[4] += 12;   // 수 — 완경 후 신허 우세
+    score[2] += 4;    // 토 — 비위 약화 동반
+    if (source !== 'saju') source = 'survey';
+  }
+
+  // ── 권장-1: 수면장애 오행 분기 (심화/간울/신허 구분) ─────────────
+  // Q_CORTISOL insomnia = 코르티솔 과잉 → 목(간울결) + 화(심화)
+  // 별도 수면질문(sleep_quality / Q_SLEEP)이 있으면 추가 활용
+  var sleepQ = ans['sleep_quality'] || ans['Q_SLEEP'] || '';
+  if (sleepQ === 'bad' || sleepQ === 'vbad') {
+    // 수면 불량 + 코르티솔 insomnia → 간울결 강조
+    if (cortisol === 'insomnia') {
+      score[0] += 5;  // 목(간울결) 추가
+    } else {
+      // 일반 수면 불량 → 심화/신허 중간 처리
+      score[1] += 4;  // 화(심화)
+      score[4] += 4;  // 수(신허)
+    }
+  }
+
   // ④ GQ08 자기진단 직접 선택 (보조 가중치)
   var gq08 = ans['GQ08'] || '';
   var gq08Idx = ohaengMap[gq08];
@@ -3132,10 +3160,14 @@ function doResultRedirect() {
     answers:    finalAnswers
   };
   try {
+    // 위험-3: sessionStorage에 탭 고유 결과 저장 (멀티탭 결과 혼용 방지)
+    sessionStorage.setItem('slimmind_result_tab', JSON.stringify(resultPayload));
+    sessionStorage.setItem('slimmind_answers_tab', JSON.stringify(finalAnswers));
+    // localStorage는 하위호환 유지 (기존 renderResult 참조용)
     localStorage.setItem('slimmind_result', JSON.stringify(resultPayload));
     localStorage.setItem('slimmind_answers', JSON.stringify(finalAnswers));
   } catch(e) {
-    console.warn('[SlimMind] localStorage 저장 실패:', e);
+    console.warn('[SlimMind] 저장 실패:', e);
   }
 
   // ── 6. DB 저장 (비동기, 실패해도 진행) ──
