@@ -3550,6 +3550,37 @@ p, div, span, h1, h2, h3, h4{
   .cells{ grid-template-columns:repeat(2,1fr); }
 }
 
+/* ── BC16 동물 이미지 스타일 ── */
+.cell-animal-wrap{
+  width:62px; height:62px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  border-radius:50%;
+  background:rgba(255,255,255,0.7);
+  overflow:hidden;
+  margin-bottom:6px;
+  box-shadow:0 2px 8px rgba(0,0,0,.08);
+  transition:transform .25s;
+}
+.cell.cell-active .cell-animal-wrap{
+  box-shadow:0 4px 14px rgba(181,69,46,.25);
+  transform:scale(1.08);
+}
+.cell-animal-img{
+  width:100%; height:100%;
+  object-fit:cover; object-position:center;
+  border-radius:50%;
+  display:block;
+}
+.cell-icon-fallback{
+  font-size:28px; line-height:1;
+}
+.cell-top{
+  display:flex; flex-direction:column; align-items:flex-start; gap:4px;
+}
+@media(max-width:400px){
+  .cell-animal-wrap{ width:52px; height:52px; }
+}
+
 /* ── 다음 페이지 네비 ── */
 .next-flow{
   width:100%; box-sizing:border-box; display:flex; align-items:center; justify-content:space-between; gap:14px;
@@ -10836,11 +10867,24 @@ function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nic
   var myNick = (typeof nicknameDisplay !== 'undefined' && nicknameDisplay) ? nicknameDisplay : (bcMaster.app_nickname||'').replace(/#/g,'').replace(/_/g,' ');
   function _norm(s){ return (s||'').replace(/[\s·]/g,''); }
   var myKey = _norm(myNick);
-  var ICON16 = {
-    '단단 내장형':'\uD83D\uDD34','물렁 피하형':'\uD83C\uDF6E','가스 팽만형':'\uD83C\uDF88','올챙이배형':'\uD83E\uDD5A',
-    '코끼리다리형':'\uD83D\uDC18','귤껍질 하체형':'\uD83C\uDF4A','말벅지형':'\uD83C\uDF56','승마살형':'\uD83D\uDC0E',
-    '거북이형':'\uD83D\uDC22','팔뚝부종형':'\uD83D\uDCA7','상체근육형':'\uD83D\uDCAA','부유방형':'\uD83C\uDF99',
-    '갱년기 변환형':'\uD83E\uDD89','번아웃 무기력형':'\uD83D\uDD0B','대사증후군형':'\uD83D\uDEA8','다중악순환형':'\uD83C\uDF00'
+  /* ── BC16 동물 이미지 매핑 ── */
+  var ANIMAL_IMG = {
+    '단단 내장형':   '/static/bc-animals/01_단단내장형.png',
+    '물렁 피하형':   '/static/bc-animals/02_물렁피하형.png',
+    '가스 팽만형':   '/static/bc-animals/03_가스팽만형.png',
+    '올챙이배형':    '/static/bc-animals/04_올챙이배형.png',
+    '코끼리다리형':  '/static/bc-animals/05_코끼리다리형.png',
+    '귤껍질 하체형': '/static/bc-animals/06_귤껍질하체형.png',
+    '말벅지형':      '/static/bc-animals/07_말벅지형.png',
+    '승마살형':      '/static/bc-animals/08_승마살형.png',
+    '거북이형':      '/static/bc-animals/09_거북이형.png',
+    '팔뚝부종형':    '/static/bc-animals/10_팔뚝부종형.png',
+    '상체근육형':    '/static/bc-animals/11_상체근육형.png',
+    '부유방형':      '/static/bc-animals/12_부유방형.png',
+    '갱년기 변환형': '/static/bc-animals/13_갱년기변환형.png',
+    '번아웃 무기력형':'/static/bc-animals/14_번아웃무기력형.png',
+    '대사증후군형':  '/static/bc-animals/15_대사증후군형.png',
+    '다중악순환형':  '/static/bc-animals/16_다중악순환형.png'
   };
   
   bcGrid.innerHTML = BC16.map(function(group){
@@ -10849,11 +10893,14 @@ function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nic
       var nk = _norm(cell.name);
       if (myKey && (myKey.indexOf(nk)>=0 || nk.indexOf(myKey)>=0)) active = true;
       if (!active && myKey.indexOf('갱년기')>=0 && cell.name.indexOf('갱년기')>=0) active = true;
-      var icon = (ICON16[cell.name]||'\u25C9');
+      var imgSrc = ANIMAL_IMG[cell.name] || '';
+      var animalHtml = imgSrc
+        ? '<img class="cell-animal-img" src="'+imgSrc+'" alt="'+cell.name+'" loading="lazy">'
+        : '<span class="cell-icon-fallback">\u25C9</span>';
       return '<div class="cell'+(active?' cell-active':'')+'"'+(active?' style="--cc:'+cell.c+'"':'')+'>'
         + '<span class="cell-bar" style="background:'+cell.c+'"></span>'
         + (active?'<span class="cell-laser"></span>':'')
-        + '<div class="cell-top"><span class="cell-icon">'+icon+'</span><span class="tag" style="background:'+cell.c+'1a;color:'+cell.c+'">'+cell.tag+'</span></div>'
+        + '<div class="cell-top"><div class="cell-animal-wrap">'+animalHtml+'</div><span class="tag" style="background:'+cell.c+'1a;color:'+cell.c+'">'+cell.tag+'</span></div>'
         + '<div class="name">'+cell.name+(cell.isnew?'<span class="new">\uBCF4\uAC15</span>':'')+'</div>'
         + '<div class="desc">'+cell.desc+'</div>'
         + (active?'<div class="mine"><span class="mine-dot"></span>\uB098\uC758 \uCF54\uB4DC</div>':'')
