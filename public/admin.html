@@ -975,21 +975,32 @@ function fmtDate(d) {
   return d.replace('T', ' ').slice(0, 16);
 }
 
+// ── SlimMind V4.7 BC코드 체계 (BC-1~9) ──
 const BC_LABELS = {
-  'BC-01':'내장지방형','BC-02':'피하지방형','BC-03':'근육감소형','BC-04':'수분부종형',
-  'BC-05':'하체지방형','BC-06':'냉증셀룰라이트형','BC-07':'상체비만형','BC-08':'호르몬불균형형',
-  'BC-09':'코르티솔형','BC-10':'요요반복형',
-  'BC-11':'피부결모공형','BC-12':'색소미백형','BC-13':'자세불균형형','BC-14':'만성피로형',
-  'BC-15':'면역순환형','BC-16':'수면교란형','BC-17':'해독부전형','BC-18':'대사저하형',
-  'BC-19':'수분불균형형','BC-20':'요산과잉형','BC-21':'장기능저하형','BC-22':'피부노화형'
+  'BC-1':'코끼리다리형','BC-2':'거북이형','BC-3':'수박배형',
+  'BC-4':'요요형',      'BC-5':'귤껍질형','BC-6':'야식부엉이형',
+  'BC-7':'바람빠진풍선형','BC-8':'말벅지형','BC-9':'올챙이배형'
+};
+const BC_MEDICAL = {
+  'BC-1':'하지 림프·정맥 울혈성 체형',
+  'BC-2':'경추·흉추 보상성 림프 차단형 체형',
+  'BC-3':'인슐린 저항성·내장 비대형 체형',
+  'BC-4':'갑상선 셧다운·초절전 생존형 체형',
+  'BC-5':'바탕질 변성·지방 섬유화 체형',
+  'BC-6':'부신 피로·자율신경 교란형 체형',
+  'BC-7':'릴랙신 이완·산후 구조 정체형 체형',
+  'BC-8':'알파 수용체 우세·하체 과발달형 체형',
+  'BC-9':'근감소성 이화작용·마른 비만형 체형'
+};
+const BC_EMOJI = {
+  'BC-1':'🐘','BC-2':'🐢','BC-3':'🍉',
+  'BC-4':'🔄','BC-5':'🍊','BC-6':'🦉',
+  'BC-7':'🎈','BC-8':'🦵','BC-9':'🕷️'
 };
 const BC_COLORS = {
-  'BC-01':'#E74C3C','BC-02':'#E67E22','BC-03':'#F39C12','BC-04':'#27AE60',
-  'BC-05':'#8E44AD','BC-06':'#3498DB','BC-07':'#1ABC9C','BC-08':'#E91E63',
-  'BC-09':'#FF5722','BC-10':'#795548',
-  'BC-11':'#0EA5E9','BC-12':'#F97316','BC-13':'#22C55E','BC-14':'#8B5CF6',
-  'BC-15':'#14B8A6','BC-16':'#EF4444','BC-17':'#06B6D4','BC-18':'#A855F7',
-  'BC-19':'#84CC16','BC-20':'#F59E0B','BC-21':'#EC4899','BC-22':'#6366F1'
+  'BC-1':'#1A7FC1','BC-2':'#5A6E3A','BC-3':'#E8631A',
+  'BC-4':'#6B4EAA','BC-5':'#C0397A','BC-6':'#3F51B5',
+  'BC-7':'#1A8C5B','BC-8':'#E67E22','BC-9':'#607D8B'
 };
 
 // ═════════════════════════════════════════════
@@ -1672,10 +1683,18 @@ function exportCsv() {
 //  바디코드 진단 결과지 (diagnosis_results 테이블)
 // ═════════════════════════════════════════════
 const DIAG_AXIS_NAMES = { A01:'인슐린·내장', A02:'림프·순환', A03:'호르몬·대사', A04:'근감소', A05:'소화·장', A06:'골격·자세', A07:'스트레스', A08:'심리식이', A09:'대사위험', A10:'유전기질' };
+// A01~A10 축 → BC코드 연결 레이블 (bc-engine.js 기준)
 const DIAG_BC_LABELS = {
-  A01:'🧬 아빠체형·혈당형', A02:'🐘 코끼리다리·하체형', A03:'🔄 호르몬·갱년기형',
-  A04:'🐸 올챙이배·근감소형', A05:'🎈 가스풍선형', A06:'🐢 거북목·골격형',
-  A07:'🦉 야식부엉이형', A08:'🫗 배부름마비형', A09:'🚨 대사증후군형', A10:'🧬 유전기질형'
+  A01:'🍉 BC-3 수박배형 (인슐린·내장)',
+  A02:'🐘 BC-1 코끼리다리형 (림프·순환)',
+  A03:'🦉 BC-6 야식부엉이형 (호르몬·부신)',
+  A04:'🕷️ BC-9 올챙이배형 (근감소·마른비만)',
+  A05:'🎈 BC-7 바람빠진풍선형 (소화·장)',
+  A06:'🐢 BC-2 거북이형 (골격·복압)',
+  A07:'🔄 BC-4 요요형 (코르티솔·부신)',
+  A08:'🍊 BC-5 귤껍질형 (심리·식이)',
+  A09:'🦵 BC-8 말벅지형 (대사위험·복합)',
+  A10:'🧬 BC-6/1 (유전·기질 필터)'
 };
 const DIAG_REGION_COLORS = { '복부':'#b5452e', '하체':'#2f7d8c', '상체':'#5a6e3a', '전신':'#5b4a86' };
 const DIAG_OHAENG_COLORS = { '목형':'#5a6e3a', '화형':'#b5452e', '토형':'#c98a3c', '금형':'#5b4a86', '수형':'#2f7d8c' };
@@ -1728,8 +1747,8 @@ async function loadDiagnosisResults(search = '', bc = '', region = '', ohaeng = 
 
   document.getElementById('page-body').innerHTML = `
     <div style="background:linear-gradient(135deg,#b5452e15,#c98a3c10);border:1px solid #b5452e33;border-radius:14px;padding:18px 20px;margin-bottom:18px">
-      <div style="font-size:16px;font-weight:800;color:#b5452e;margin-bottom:4px">🔬 바디코드 진단 결과지 (V4.1)</div>
-      <div style="font-size:13px;color:#7c776b">설문 완료 후 저장된 진단 결과지. result-v4.html 기반 — DISP 기질까지 포함한 신규 파이프라인</div>
+      <div style="font-size:16px;font-weight:800;color:#b5452e;margin-bottom:4px">🔬 바디코드 진단 결과지 (V4.7)</div>
+      <div style="font-size:13px;color:#7c776b">설문 완료 후 저장된 진단 결과지. result-v4.html 기반 — BC-1~9 · 크로노 영양처방 · DISP 기질 포함 파이프라인</div>
     </div>
     <div class="filter-row" style="flex-wrap:wrap;gap:8px;margin-bottom:12px">
       <input type="text" id="dr-search" placeholder="이름, ID, 닉네임 검색..." style="width:200px"
@@ -2433,20 +2452,18 @@ async function saveBcCode() {
 //  바디코드 도감 (공통)
 // ═════════════════════════════════════════════
 // BC_COLORS는 상단에 이미 선언됨 (중복 제거)
+// BC-1~9 아이콘 (V4.7 체계)
 const BC_ICONS = {
-  'BC-01':'🔴','BC-02':'🟠','BC-03':'🟣',
-  'BC-04':'🌸','BC-05':'🩵','BC-06':'💙',
-  'BC-07':'🟢','BC-08':'🟡','BC-09':'🔵','BC-10':'🟩',
-  'BC-11':'🩶','BC-12':'🟡','BC-13':'🦴','BC-14':'⚡',
-  'BC-15':'🛡️','BC-16':'🌙','BC-17':'🍃','BC-18':'🔥',
-  'BC-19':'💧','BC-20':'⚗️','BC-21':'🌿','BC-22':'✨'
+  'BC-1':'🐘','BC-2':'🐢','BC-3':'🍉',
+  'BC-4':'🔄','BC-5':'🍊','BC-6':'🦉',
+  'BC-7':'🎈','BC-8':'🦵','BC-9':'🕷️'
 };
 
 async function loadBcLibrary(filterCode='') {
   document.getElementById('page-body').innerHTML = `
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
       <h2 style="margin:0;font-size:20px;font-weight:700"><i class="fas fa-dna" style="color:#6366F1;margin-right:8px"></i>바디코드 도감</h2>
-      <span style="font-size:12px;background:#EEF2FF;color:#6366F1;padding:3px 10px;border-radius:99px">슬림마인드 22대 체형 코드</span>
+      <span style="font-size:12px;background:#EEF2FF;color:#6366F1;padding:3px 10px;border-radius:99px">SlimMind V4.7 · BC-1~9 체형 코드</span>
     </div>
     <!-- 검색 + 필터 -->
     <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
@@ -3883,7 +3900,7 @@ function loadGuideConsultant() {
         <div style="font-size:16px;font-weight:700;color:#1E293B;margin-bottom:8px">📊 고객 BC코드 결과 확인</div>
         <div style="font-size:14px;color:#334155;line-height:1.8">
           고객이 설문을 완료하면 대시보드 <b>「고객 결과」</b> 탭에서 확인할 수 있습니다.<br>
-          <b>BC코드(BC-01~BC-22)</b>는 고객의 비만 유형과 원인을 10개 축으로 분석한 결과입니다.<br>
+          <b>BC코드(BC-1~BC-9)</b>는 고객의 비만 유형과 원인을 10개 축으로 분석한 V4.7 결과입니다.<br>
           결과지를 카카오톡으로 고객에게 전달하거나 직접 컨설팅에 활용하세요.<br>
           <b>⚠️ 결과지 링크는 고객에게 직접 노출되지 않으며, 컨설턴트가 카카오로 직접 전달합니다.</b>
         </div>
