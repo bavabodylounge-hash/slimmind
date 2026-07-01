@@ -385,6 +385,7 @@
   <div class="tab-nav" id="main-tab-nav">
     <div class="tab-item active" data-tab="dashboard"><i class="fas fa-chart-line"></i> 대시보드</div>
     <div class="tab-item" data-tab="customers"><i class="fas fa-users"></i> 내 고객 목록</div>
+    <div class="tab-item" data-tab="daily-checks"><i class="fas fa-check-square"></i> 데일리 체크</div>
     <div class="tab-item" data-tab="analytics"><i class="fas fa-chart-bar"></i> 분석</div>
     <div class="tab-item" data-tab="invite"><i class="fas fa-link"></i> 초대 링크</div>
     <div class="tab-item" data-tab="weight-track"><i class="fas fa-weight"></i> 체중 추적</div>
@@ -1200,6 +1201,7 @@ function switchTab(t) {
   if (t === 'bc-library')    loadBcLibraryTab();
   if (t === 'notifications') loadNotifications();
   if (t === 'analytics')     loadAnalyticsTab();
+  if (t === 'daily-checks')  loadConsultantDailyChecks();
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1956,6 +1958,80 @@ async function markAllNotifRead() {
   await api('POST', `/notifications/read-all?ref_code=${ME.code}`);
   toast('✅ 전체 읽음 처리됨', 'success');
   loadNotifications();
+}
+
+// ══════════════════════════════════════════════════════════
+//  데일리 체크 현황 탭 (담당 고객 실천 모니터링)
+// ══════════════════════════════════════════════════════════
+async function loadConsultantDailyChecks(days = 7) {
+  // 탭 body 찾기
+  let host = document.getElementById('tab-daily-checks');
+  if (!host) {
+    host = document.createElement('div');
+    host.id = 'tab-daily-checks'; host.className = 'page-tab active';
+    const main = document.getElementById('main-content') || document.querySelector('.main-content') || document.body;
+    main.appendChild(host);
+  }
+  host.innerHTML = `<div style="padding:40px;text-align:center;color:#aaa;"><i class="fas fa-circle-notch fa-spin" style="font-size:24px"></i><div style="margin-top:10px;font-size:13px">불러오는 중...</div></div>`;
+
+  const data = await api('GET', `/consultant/daily-checks?days=${days}`).catch(() => null);
+  const clients = data?.clients || [];
+
+  function bar(pct, color) {
+    const p = Math.min(100, pct||0);
+    return `<div style="background:#f0ece6;border-radius:5px;height:6px;width:70px;overflow:hidden;display:inline-block;vertical-align:middle;">
+      <div style="background:${color};width:${p}%;height:100%;border-radius:5px;"></div>
+    </div><span style="font-size:11px;font-weight:700;color:#555;margin-left:4px;">${p}%</span>`;
+  }
+
+  const rows = clients.map((cl, i) => {
+    const rate = cl.adherence_rate || 0;
+    const color = rate >= 80 ? '#5a6e3a' : rate >= 50 ? '#c98a3c' : '#b5452e';
+    const daysSince = cl.last_check ? Math.floor((Date.now()-new Date(cl.last_check).getTime())/86400000) : 999;
+    const alert = daysSince >= 3 ? `<span style="color:#b5452e;font-size:11px" title="${daysSince}일 전 마지막 체크">⚠️</span>` : '';
+    return `<tr style="border-bottom:1px solid #f0ece6;">
+      <td style="padding:10px 12px;font-weight:700;font-size:13px">${cl.user_name||'이름없음'} ${alert}</td>
+      <td style="padding:10px 12px"><span style="background:#faf0dc;color:#8a5a18;border-radius:8px;padding:2px 8px;font-size:11px;font-weight:700">${cl.bc_code||'—'}</span></td>
+      <td style="padding:10px 12px;text-align:center;font-size:13px;font-weight:800;color:#5a6e3a">${cl.ex_days||0}</td>
+      <td style="padding:10px 12px;text-align:center;font-size:13px;font-weight:800;color:#c98a3c">${cl.di_days||0}</td>
+      <td style="padding:10px 12px;text-align:center;font-size:13px;font-weight:800;color:#b5452e">${cl.re_days||0}</td>
+      <td style="padding:10px 12px">${bar(rate, color)}</td>
+      <td style="padding:10px 12px;font-size:11px;color:#aaa">${cl.last_check ? cl.last_check.slice(0,10) : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  host.innerHTML = `
+    <div style="padding:20px 24px">
+      <div style="font-size:18px;font-weight:900;color:#241c14;margin-bottom:6px">🏃 담당 고객 데일리 체크 현황</div>
+      <div style="font-size:12px;color:#aaa;margin-bottom:18px">고객이 오늘 탭에서 체크한 운동·식단·회복 실천 현황을 실시간으로 확인합니다</div>
+
+      <!-- 기간 필터 -->
+      <div style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;">
+        ${[3,7,14,30].map(d => `<button onclick="loadConsultantDailyChecks(${d})" style="padding:6px 16px;border-radius:20px;border:1.5px solid ${days===d?'var(--primary)':'#e0d8cc'};background:${days===d?'var(--primary)':'transparent'};color:${days===d?'#fff':'#555'};font-size:12px;font-weight:800;cursor:pointer;">${d}일</button>`).join('')}
+        <span style="margin-left:auto;font-size:11px;color:#aaa;padding-top:8px;">⚠️ = 3일 이상 미체크</span>
+      </div>
+
+      <!-- 테이블 -->
+      <div style="background:#fff;border-radius:12px;border:1.5px solid #e8ddd0;overflow:hidden;">
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="background:linear-gradient(135deg,#fdfaf4,#fff8ee)">
+              <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:800;color:#8a7e66">고객명</th>
+              <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:800;color:#8a7e66">BC</th>
+              <th style="padding:10px 12px;text-align:center;font-size:11px;font-weight:800;color:#5a6e3a">🏃운동</th>
+              <th style="padding:10px 12px;text-align:center;font-size:11px;font-weight:800;color:#c98a3c">🍽식단</th>
+              <th style="padding:10px 12px;text-align:center;font-size:11px;font-weight:800;color:#b5452e">🌙회복</th>
+              <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:800;color:#8a7e66">실천율</th>
+              <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:800;color:#8a7e66">마지막</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows || `<tr><td colspan="7" style="padding:40px;text-align:center;color:#aaa;font-size:13px">아직 체크 데이터가 없습니다<br><span style="font-size:11px">고객이 결과지 "오늘" 탭에서 체크하면 여기에 표시됩니다</span></td></tr>`}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
 }
 
 // ══════════════════════════════════════════════════════════

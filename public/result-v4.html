@@ -4071,6 +4071,20 @@ p, div, span, h1, h2, h3, h4{
 .tdy-fire{font-size:20px;}
 .tdy-streak b{font-size:16px;color:#b5452e;}
 .tdy-prog{font-size:13px;font-weight:900;color:#6a7555;}
+/* ─── 오늘 체크 완료 상태 ─── */
+.tdy-item.done{opacity:1 !important;}
+.tdy-item.ex.done{background:linear-gradient(160deg,#eef4e0,#dbedc0);border-color:#9ab870;border-left-color:#5a6e3a;}
+.tdy-item.di.done{background:linear-gradient(160deg,#fdf4de,#f5e2b0);border-color:#d4a840;border-left-color:#c98a3c;}
+.tdy-item.re.done{background:linear-gradient(160deg,#fde8e2,#f4c4b4);border-color:#d08070;border-left-color:#b5452e;}
+.tdy-item.done .tdy-arrow{font-size:18px;}
+.tdy-item.done .tdy-nm::after{content:' ✓';font-size:13px;color:inherit;opacity:.7;}
+/* ─── 자동저장 토스트 ─── */
+.tdy-save-toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:#2a2118;color:#fff;font-size:13px;font-weight:800;padding:10px 22px;border-radius:30px;z-index:9999;opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;white-space:nowrap;}
+.tdy-save-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+/* ─── 체크 완료 카운터 배지 ─── */
+.tdy-done-badge{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:900;padding:4px 12px;border-radius:20px;background:#eef4e0;color:#4a6028;border:1.5px solid #9ab870;margin-left:8px;}
+.tdy-done-badge.all{background:linear-gradient(135deg,#5a6e3a,#8aaa58);color:#fff;border-color:#5a6e3a;animation:tdyAllDone .5s ease;}
+@keyframes tdyAllDone{0%{transform:scale(1);}40%{transform:scale(1.12);}100%{transform:scale(1);}}
 /* 오행 배지 — 오늘 할 일 타이틀 옆 */
 .tdy-ohaeng-badge{display:inline-flex;align-items:center;font-size:10.5px;font-weight:800;border-radius:20px;padding:3px 10px;margin-left:8px;vertical-align:middle;letter-spacing:.2px;}
 /* 오행 주의사항 배지 */
@@ -5137,13 +5151,15 @@ p, div, span, h1, h2, h3, h4{
     <span class="nav-home-toc"><span class="nav-home-chev">‹</span> 목차보기</span>
   </button>
   <div class="nav-tabs">
+    <!-- ✅ 최적 탭 순서: 고객 여정 스토리라인 -->
+    <!-- 내 코드 확인 → 타고난 기질(+크로노) → 잔혹사 → 핵심처방 → 맞춤비율 → 12주로드맵 → 변화예측 → 한장요약 -->
     <button class="nav-tab active" data-page="1" onclick="switchPage(1)"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#b5452e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3c0 4 12 6 12 12M18 3C18 7 6 9 6 18"/><path d="M8 6h8M8 18h8M7.5 9.5h9M7.5 14.5h9"/></svg></span><span class="nav-text">나의 바디코드</span></button>
+    <button class="nav-tab" data-page="3" onclick="switchPage(3)"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#9c5a6e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 3.5A4 4 0 0 0 5.5 7 3.3 3.3 0 0 0 4 9.8a3.3 3.3 0 0 0 .7 2 3.3 3.3 0 0 0 .3 4A3.5 3.5 0 0 0 9.5 20.5 2.2 2.2 0 0 0 12 18.3V5.7a2.2 2.2 0 0 0-2.5-2.2Z"/><path d="M14.5 3.5A4 4 0 0 1 18.5 7a3.3 3.3 0 0 1 1.5 2.8 3.3 3.3 0 0 1-.7 2 3.3 3.3 0 0 1-.3 4A3.5 3.5 0 0 1 14.5 20.5 2.2 2.2 0 0 1 12 18.3"/></svg></span><span class="nav-text">타고난 기질</span></button>
+    <button class="nav-tab" data-page="4" onclick="switchPage(4)"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#c0392b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2.5 4.5 13.5h6L11 21.5l8.5-11h-6L13 2.5Z"/></svg></span><span class="nav-text">다이어트 잔혹사</span></button>
     <button class="nav-tab" data-page="5" onclick="switchPage(5)"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#2f7d8c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="3" width="8" height="4" rx="1.2"/><path d="M8.5 7h7l-.6 12.2A1.8 1.8 0 0 1 13.1 21h-2.2a1.8 1.8 0 0 1-1.8-1.8L8.5 7Z"/><path d="M9 13h6"/></svg></span><span class="nav-text">핵심 처방</span></button>
     <button class="nav-tab" data-page="8" onclick="switchPage(8)"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#c98a3c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M5 7h14M7 21h10"/><path d="M5 7l-2.5 6a3 3 0 0 0 5 0L5 7ZM19 7l-2.5 6a3 3 0 0 0 5 0L19 7Z"/></svg></span><span class="nav-text">맞춤 비율</span></button>
     <button class="nav-tab" data-page="6" onclick="switchPage(6)"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#5a6e8c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 9h17M8 3v4M16 3v4"/><path d="M7.5 13h2M11 13h2M14.5 13h2M7.5 16.5h2M11 16.5h2"/></svg></span><span class="nav-text">12주 로드맵</span></button>
     <button class="nav-tab" data-page="9" onclick="switchPage(9)"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#8a5a9c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v3.5M3.25 4.75h3.5M17 16v3M15.25 17.5h3.5"/><path d="M11.5 4l1.7 4.6 4.6 1.7-4.6 1.7L11.5 17l-1.7-4.6L5.2 10.7l4.6-1.7L11.5 4Z"/></svg></span><span class="nav-text">변화 예측</span></button>
-    <button class="nav-tab" data-page="4" onclick="switchPage(4)"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#c0392b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2.5 4.5 13.5h6L11 21.5l8.5-11h-6L13 2.5Z"/></svg></span><span class="nav-text">다이어트 잔혹사</span></button>
-    <button class="nav-tab" data-page="3" onclick="switchPage(3)"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#9c5a6e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 3.5A4 4 0 0 0 5.5 7 3.3 3.3 0 0 0 4 9.8a3.3 3.3 0 0 0 .7 2 3.3 3.3 0 0 0 .3 4A3.5 3.5 0 0 0 9.5 20.5 2.2 2.2 0 0 0 12 18.3V5.7a2.2 2.2 0 0 0-2.5-2.2Z"/><path d="M14.5 3.5A4 4 0 0 1 18.5 7a3.3 3.3 0 0 1 1.5 2.8 3.3 3.3 0 0 1-.7 2 3.3 3.3 0 0 1-.3 4A3.5 3.5 0 0 1 14.5 20.5 2.2 2.2 0 0 1 12 18.3"/></svg></span><span class="nav-text">타고난 기질</span></button>
     <button class="nav-tab p7-share-tab" data-page="7" onclick="switchPage(7)"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#3a6b9c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5.5" r="2.8"/><circle cx="6" cy="12" r="2.8"/><circle cx="18" cy="18.5" r="2.8"/><path d="M8.4 10.7l7.2-3.9M8.4 13.3l7.2 3.9"/></svg></span><span class="nav-text">한 장 요약</span></button>
   </div>
   <button class="nav-tab-daily-fixed" data-page="10" onclick="switchPage(10)" title="오늘 — 오늘 할 일">
@@ -5202,11 +5218,11 @@ p, div, span, h1, h2, h3, h4{
   <div class="section-title fade-up" style="transition-delay:.45s">🗂 바디마스터 16종 <span class="patent-badge">특허출원중</span></div>
   <div class="bc16-wrap fade-up" style="transition-delay:.48s" id="p1-bc-grid"></div>
 
-  <!-- 다음 페이지 -->
-  <button class="next-flow fade-up" style="transition-delay:.5s" onclick="switchPage(5)">
+  <!-- 다음 페이지 — 탭 순서: P1 → P3(타고난 기질) -->
+  <button class="next-flow fade-up" style="transition-delay:.5s" onclick="switchPage(3)">
     <div class="nf-left">
-      <span class="nf-step">다음 — 핵심 처방</span>
-      <span class="nf-name">이 코드, 어디부터 손대야 할까</span>
+      <span class="nf-step">다음 — 타고난 기질</span>
+      <span class="nf-name">이 코드가 만들어진 이유 — 내 몸의 설계도</span>
     </div>
     <span class="nf-arrow">→</span>
   </button>
@@ -5238,11 +5254,11 @@ p, div, span, h1, h2, h3, h4{
   <p class="domino-hint fade-up" style="transition-delay:.37s">각 단계를 누르면 위 원인축과 어떻게 연결되는지 보여드립니다.</p>
   <div class="domino-chain fade-up" style="transition-delay:.4s" id="p2-chain"></div>
 
-  <!-- 다음 페이지 -->
-  <button class="next-flow fade-up" style="transition-delay:.45s" onclick="switchPage(5)">
+  <!-- 다음 페이지 — P2 → P3(타고난 기질) -->
+  <button class="next-flow fade-up" style="transition-delay:.45s" onclick="switchPage(3)">
     <div class="nf-left">
-      <span class="nf-step">다음 — 핵심 처방</span>
-      <span class="nf-name">이제 이 원인들을 어디부터 손댈까</span>
+      <span class="nf-step">다음 — 타고난 기질</span>
+      <span class="nf-name">이 원인들의 뿌리 — 기질에서 시작됩니다</span>
     </div>
     <span class="nf-arrow">→</span>
   </button>
@@ -5339,6 +5355,15 @@ p, div, span, h1, h2, h3, h4{
     <div class="chrono-science" id="chrono-science"></div>
   </div>
 
+  <!-- P3(타고난 기질) → P4(다이어트 잔혹사) 흐름 -->
+  <button class="next-flow fade-up" style="transition-delay:.5s" onclick="switchPage(4)">
+    <div class="nf-left">
+      <span class="nf-step">다음 — 다이어트 잔혹사</span>
+      <span class="nf-name">이 기질이 그동안 왜 실패하게 만들었는지</span>
+    </div>
+    <span class="nf-arrow">→</span>
+  </button>
+
   <div class="disclaimer" id="p3-disclaimer"></div>
 </div>
 </section>
@@ -5375,10 +5400,11 @@ p, div, span, h1, h2, h3, h4{
   <div id="p4-ending-mount" class="fade-up" style="transition-delay:.2s"></div>
 
   <!-- 다음 페이지 네비 -->
-  <button class="next-flow fade-up" style="transition-delay:.26s" onclick="switchPage(3)">
+  <!-- P4(잔혹사) → P5(핵심처방) —— 원인 확인 후 처방으로 -->
+  <button class="next-flow fade-up" style="transition-delay:.26s" onclick="switchPage(5)">
     <div class="nf-left">
-      <span class="nf-step">이 무너짐은 어디서 왔을까</span>
-      <span class="nf-name">나도 몰랐던 내 마음의 설계도</span>
+      <span class="nf-step">다음 — 핵심 처방</span>
+      <span class="nf-name">실패 원인을 알았으니, 이제 정확한 처방으로</span>
     </div>
     <span class="nf-arrow">→</span>
   </button>
@@ -5507,10 +5533,11 @@ p, div, span, h1, h2, h3, h4{
     <div class="up12-note">지금 결과지 데이터로 바로 상담이 진행됩니다</div>
   </div>
 
-  <button class="next-flow fade-up" style="transition-delay:.4s" onclick="switchPage(4)">
+  <!-- P9(변화예측) → P7(한장요약) — 마지막 마무리 -->
+  <button class="next-flow fade-up" style="transition-delay:.4s" onclick="switchPage(7)">
     <div class="nf-left">
-      <span class="nf-step">더 깊이 — 왜 그동안 실패했을까</span>
-      <span class="nf-name">의지가 아니라 몸의 시스템 문제였습니다</span>
+      <span class="nf-step">다음 — 한 장 요약</span>
+      <span class="nf-name">12주 여정을 한눈에 — 공유하고 시작하기</span>
     </div>
     <span class="nf-arrow">→</span>
   </button>
@@ -15577,42 +15604,78 @@ function renderDailyPage(){
 
   var isRestDay = (todayIdx>=6); // 일요일만 운동 완전휴식 취급
 
-  function row(area, ic, color, cl, nm, sub, target){
-    return '<button class="tdy-item '+cl+'" data-tdy-go="'+target+'" type="button">'+
+  // ── 오늘 날짜 키 & 저장 키 ──────────────────────────────────────────
+  var todayKey = (new Date()).toISOString().slice(0,10);  // YYYY-MM-DD
+  var checkStorageKey = 'slimmind_daily_check_' + sid;
+  var savedChecks = {};
+  try { savedChecks = JSON.parse(localStorage.getItem(checkStorageKey) || '{}'); } catch(e){}
+  var todayChecks = savedChecks[todayKey] || { ex:false, di:false, re:false };
+
+  function row(area, ic, color, cl, nm, sub){
+    var isDone = !!todayChecks[area];
+    return '<button class="tdy-item '+cl+(isDone?' done':'')+'" data-tdy-area="'+area+'" id="tdy-item-'+area+'" type="button">'+
       '<span class="tdy-ic">'+ic+'</span>'+
       '<span class="tdy-bd"><span class="tdy-nm">'+nm+'</span><span class="tdy-sub">'+sub+'</span></span>'+
-      '<span class="tdy-arrow">›</span>'+
+      '<span class="tdy-arrow">'+(isDone?'✓':'›')+'</span>'+
     '</button>';
   }
+
+  var doneCount = (todayChecks.ex?1:0)+(todayChecks.di?1:0)+(todayChecks.re?1:0);
+  var doneBadgeClass = doneCount===3 ? 'tdy-done-badge all' : 'tdy-done-badge';
+  var doneBadgeText  = doneCount===3 ? '🎉 오늘 완료!' : (doneCount+'/3 완료');
 
   host.innerHTML =
     '<div class="tdy-card">'+
       '<div class="tdy-top"><span class="tdy-day">오늘 · '+todayNm+'요일</span>'+
         '<span class="tdy-week">'+phaseName+' '+weekNo+'주차</span></div>'+
-      '<div class="tdy-title">오늘 할 일 '+ohaengBadge+'</div>'+
+      '<div class="tdy-title">오늘 할 일 '+ohaengBadge+
+        '<span id="tdy-done-badge" class="'+doneBadgeClass+'">'+doneBadgeText+'</span>'+
+      '</div>'+
       '<div class="tdy-list">'+
-        row('ex','🏃','#5a6e3a','ex','운동', exToday, 'ex')+
-        row('di','🍽️','#c98a3c','di','식단', dietShort, 'di')+
-        row('re','🌙','#b5452e','re','회복', recToday, 're')+
+        row('ex','🏃','#5a6e3a','ex','운동', exToday)+
+        row('di','🍽️','#c98a3c','di','식단', dietShort)+
+        row('re','🌙','#b5452e','re','회복', recToday)+
       '</div>'+
       cautionBadge+
       '<div class="tdy-foot">'+
         '<span class="tdy-streak"><span class="tdy-fire">🔥</span> <b id="tdy-streak-n">0</b>일 연속</span>'+
-        '<span class="tdy-prog" id="tdy-prog">오늘 체크하러 가기</span>'+
+        '<span class="tdy-prog" id="tdy-prog" style="cursor:pointer;">세부 내용 보기 →</span>'+
       '</div>'+
     '</div>';
 
-  // 항목 누르면 → 아코디언 1주차 펼치고 해당 영역(기둥) 맨 위로
+  // ── 체크 항목 클릭 → 토글 + 자동저장 ────────────────────────────────
   host.querySelectorAll('.tdy-item').forEach(function(btn){
-    btn.onclick=function(){
-      var go=btn.getAttribute('data-tdy-go');
-      _scrollToTrack(weekNo, go);
-    };
+    btn.addEventListener('click', function(){
+      var area = btn.getAttribute('data-tdy-area');
+      var isDone = btn.classList.contains('done');
+      // 토글
+      todayChecks[area] = !isDone;
+      btn.classList.toggle('done', todayChecks[area]);
+      btn.querySelector('.tdy-arrow').textContent = todayChecks[area] ? '✓' : '›';
+
+      // 배지 업데이트
+      var cnt=(todayChecks.ex?1:0)+(todayChecks.di?1:0)+(todayChecks.re?1:0);
+      var badge=document.getElementById('tdy-done-badge');
+      if(badge){
+        badge.className = cnt===3 ? 'tdy-done-badge all' : 'tdy-done-badge';
+        badge.textContent = cnt===3 ? '🎉 오늘 완료!' : (cnt+'/3 완료');
+      }
+
+      // localStorage 즉시 저장
+      savedChecks[todayKey] = todayChecks;
+      try { localStorage.setItem(checkStorageKey, JSON.stringify(savedChecks)); } catch(e){}
+
+      // DB 자동저장 (디바운스 300ms)
+      _scheduleDailyCheckSave(sid, todayKey, todayChecks, weekNo);
+      _showTdyToast(todayChecks[area]
+        ? (area==='ex'?'🏃 운동':area==='di'?'🍽 식단':'🌙 회복') + ' 체크 완료! 자동 저장 중…'
+        : '체크 해제됨');
+    });
   });
-  // "오늘 체크하러 가기" 누르면 → 아래 아코디언으로 스크롤
+
+  // "세부 내용 보기" 누르면 → 아코디언으로 스크롤
   var progBtn=document.getElementById('tdy-prog');
   if (progBtn){
-    progBtn.style.cursor='pointer';
     progBtn.onclick=function(){
       var acc=document.getElementById('p10-accordion');
       if(acc){
@@ -15627,6 +15690,83 @@ function renderDailyPage(){
   // 스트릭 동기화 (있으면)
   if (typeof _wgGetStreak==='function'){
     try{ var sk=_wgGetStreak(); var el=document.getElementById('tdy-streak-n'); if(el&&sk!=null) el.textContent=sk; }catch(e){}
+  }
+  // 스트릭 직접 계산 (연속 체크일 수)
+  _updateTdyStreak(sid, todayKey, savedChecks);
+}
+
+// ── 오늘 체크 저장 토스트 ────────────────────────────────────────────
+function _showTdyToast(msg){
+  var t=document.getElementById('tdy-save-toast-el');
+  if(!t){ t=document.createElement('div'); t.id='tdy-save-toast-el'; t.className='tdy-save-toast'; document.body.appendChild(t); }
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer=setTimeout(function(){ t.classList.remove('show'); }, 1800);
+}
+
+// ── 연속 달성 스트릭 계산 ────────────────────────────────────────────
+function _updateTdyStreak(sid, todayKey, savedChecks){
+  var streak=0;
+  var d=new Date(todayKey);
+  for(var i=0;i<90;i++){
+    var key=d.toISOString().slice(0,10);
+    var c=savedChecks[key]||{};
+    var cnt=(c.ex?1:0)+(c.di?1:0)+(c.re?1:0);
+    if(cnt>=1){ streak++; d.setDate(d.getDate()-1); }
+    else break;
+  }
+  var el=document.getElementById('tdy-streak-n');
+  if(el) el.textContent=streak;
+}
+
+// ── DB 자동저장 (디바운스) ───────────────────────────────────────────
+var _tdyCheckSaveTimer=null;
+function _scheduleDailyCheckSave(sid, checkDate, checks, weekNumber){
+  clearTimeout(_tdyCheckSaveTimer);
+  _tdyCheckSaveTimer=setTimeout(function(){
+    _saveDailyCheckToDB(sid, checkDate, checks, weekNumber);
+  }, 600);
+}
+
+async function _saveDailyCheckToDB(sid, checkDate, checks, weekNumber){
+  if(!sid) return;
+  // 담당 컨설턴트 코드 추출
+  var consultantCode='';
+  try{
+    if(window.__DIAG_DATA__ && window.__DIAG_DATA__.consultant_code)
+      consultantCode=window.__DIAG_DATA__.consultant_code;
+  }catch(e){}
+  var bcCode='BC-1';
+  try{
+    if(window._wowData && window._wowData.bcCode) bcCode='BC-'+window._wowData.bcCode;
+    else if(window.__DIAG_DATA__ && window.__DIAG_DATA__.bc_code) bcCode=window.__DIAG_DATA__.bc_code;
+  }catch(e){}
+  // 요일
+  var days=['일','월','화','수','목','금','토'];
+  var dow=days[new Date(checkDate).getDay()];
+
+  try{
+    var resp=await fetch('/api/daily-check',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        session_id:    sid,
+        check_date:    checkDate,
+        week_number:   weekNumber||1,
+        day_of_week:   dow,
+        bc_code:       bcCode,
+        consultant_code: consultantCode,
+        exercise_done: checks.ex?1:0,
+        diet_done:     checks.di?1:0,
+        recovery_done: checks.re?1:0
+      })
+    });
+    if(resp.ok){
+      _showTdyToast('✅ 저장 완료!');
+    }
+  }catch(e){
+    // 오프라인이거나 실패 시 localStorage에 이미 저장됐으므로 무시
+    console.warn('[daily-check] DB 저장 실패 (로컬에는 저장됨):', e);
   }
 }
 

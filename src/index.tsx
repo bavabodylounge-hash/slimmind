@@ -4434,4 +4434,308 @@ app.get('/api/consultant/analytics/axis-benchmark', requireRole('ANY'), async (c
   }
 })
 
+// ══════════════════════════════════════════════════════════════════
+//  POST /api/daily-check  — 오늘 운동·식단·회복 체크 자동저장
+//  (인증 불필요 — session_id 기반 본인 데이터만 저장)
+// ══════════════════════════════════════════════════════════════════
+app.post('/api/daily-check', async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not available' }, 503)
+
+  let body: any
+  try { body = await c.req.json() } catch { return c.json({ error: 'invalid json' }, 400) }
+
+  const {
+    session_id, check_date, week_number, day_of_week,
+    bc_code = 'BC-1', consultant_code = null, b2b_code = null,
+    exercise_done = 0, diet_done = 0, recovery_done = 0,
+    memo = null
+  } = body
+
+  if (!session_id || !check_date) {
+    return c.json({ error: 'session_id, check_date are required' }, 400)
+  }
+
+  // 날짜 형식 검증 (YYYY-MM-DD)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(check_date)) {
+    return c.json({ error: 'check_date must be YYYY-MM-DD' }, 400)
+  }
+
+  // result_id 조회 (있으면 연결)
+  let resultId: string | null = null
+  try {
+    const diagRow = await db.prepare(
+      `SELECT id FROM diagnosis_results WHERE session_id = ? LIMIT 1`
+    ).bind(session_id).first<any>()
+    if (diagRow) resultId = diagRow.id
+  } catch (_) {}
+
+  try {
+    await db.prepare(`
+      INSERT INTO daily_checks
+        (session_id, result_id, consultant_code, b2b_code, bc_code,
+         check_date, week_number, day_of_week,
+         exercise_done, diet_done, recovery_done, memo, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      ON CONFLICT (session_id, check_date) DO UPDATE SET
+        exercise_done  = excluded.exercise_done,
+        diet_done      = excluded.diet_done,
+        recovery_done  = excluded.recovery_done,
+        week_number    = excluded.week_number,
+        day_of_week    = excluded.day_of_week,
+        bc_code        = excluded.bc_code,
+        consultant_code = excluded.consultant_code,
+        b2b_code       = excluded.b2b_code,
+        memo           = excluded.memo,
+        updated_at     = datetime('now')
+    `).bind(
+      session_id, resultId, consultant_code || null, b2b_code || null, bc_code,
+      check_date, week_number || 1, day_of_week || null,
+      exercise_done ? 1 : 0, diet_done ? 1 : 0, recovery_done ? 1 : 0,
+      memo || null
+    ).run()
+
+    return c.json({ ok: true, session_id, check_date })
+  } catch (e: any) {
+    console.error('[/api/daily-check POST]', e)
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ══════════════════════════════════════════════════════════════════
+//  GET /api/daily-check/:session_id  — 세션별 체크 히스토리 조회
+//  (결과지 본인 확인용)
+// ══════════════════════════════════════════════════════════════════
+app.get('/api/daily-check/:session_id', async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not available' }, 503)
+
+  const sessionId = c.req.param('session_id')
+  const limit = parseInt(c.req.query('limit') || '90', 10)
+
+  try {
+    const rows = await db.prepare(`
+      SELECT check_date, week_number, day_of_week,
+             exercise_done, diet_done, recovery_done,
+             (exercise_done + diet_done + recovery_done) as done_count,
+             updated_at
+      FROM daily_checks
+      WHERE session_id = ?
+      ORDER BY check_date DESC
+      LIMIT ?
+    `).bind(sessionId, limit).all<any>()
+
+    return c.json({ ok: true, session_id: sessionId, checks: rows.results || [] })
+  } catch (e: any) {
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ══════════════════════════════════════════════════════════════════
+//  GET /api/admin/daily-checks  — 관리자: 전체 고객 데일리 체크 현황
+//  쿼리: ?days=7 (최근 N일), ?consultant=SC-0001, ?b2b=BP-001
+// ══════════════════════════════════════════════════════════════════
+app.get('/api/admin/daily-checks', requireRole('MASTER'), async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not available' }, 503)
+
+  const days    = parseInt(c.req.query('days') || '7', 10)
+  const consultant = c.req.query('consultant') || null
+  const b2b     = c.req.query('b2b') || null
+  const page    = parseInt(c.req.query('page') || '1', 10)
+  const perPage = 50
+
+  try {
+    // 조건 빌드
+    let where = `WHERE dc.check_date >= date('now', '-${days} days')`
+    const binds: any[] = []
+    if (consultant) { where += ` AND dc.consultant_code = ?`; binds.push(consultant) }
+    if (b2b)        { where += ` AND dc.b2b_code = ?`;        binds.push(b2b) }
+
+    // 고객별 집계
+    const sql = `
+      SELECT
+        dc.session_id,
+        dr.user_name,
+        dc.consultant_code,
+        dc.bc_code,
+        COUNT(DISTINCT dc.check_date)  AS total_days,
+        SUM(dc.exercise_done)          AS ex_days,
+        SUM(dc.diet_done)              AS di_days,
+        SUM(dc.recovery_done)          AS re_days,
+        MAX(dc.check_date)             AS last_check,
+        ROUND(100.0 * SUM(dc.exercise_done + dc.diet_done + dc.recovery_done)
+          / (COUNT(DISTINCT dc.check_date) * 3), 1) AS adherence_rate
+      FROM daily_checks dc
+      LEFT JOIN diagnosis_results dr ON dr.session_id = dc.session_id
+      ${where}
+      GROUP BY dc.session_id
+      ORDER BY last_check DESC
+      LIMIT ${perPage} OFFSET ${(page-1)*perPage}
+    `
+
+    const stmt = binds.length > 0
+      ? db.prepare(sql).bind(...binds)
+      : db.prepare(sql)
+    const rows = await stmt.all<any>()
+
+    // 전체 통계 (해당 기간)
+    const statSql = `
+      SELECT
+        COUNT(DISTINCT dc.check_date || dc.session_id)  AS total_entries,
+        ROUND(AVG(dc.exercise_done + dc.diet_done + dc.recovery_done) * 100.0 / 3, 1) AS avg_rate,
+        SUM(dc.exercise_done)  AS total_ex,
+        SUM(dc.diet_done)      AS total_di,
+        SUM(dc.recovery_done)  AS total_re
+      FROM daily_checks dc
+      ${where}
+    `
+    const statStmt = binds.length > 0
+      ? db.prepare(statSql).bind(...binds)
+      : db.prepare(statSql)
+    const stats = await statStmt.first<any>()
+
+    return c.json({
+      ok: true,
+      period_days: days,
+      stats: stats || {},
+      clients: rows.results || [],
+      page, per_page: perPage
+    })
+  } catch (e: any) {
+    console.error('[/api/admin/daily-checks]', e)
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ══════════════════════════════════════════════════════════════════
+//  GET /api/admin/daily-checks/:session_id  — 특정 고객 12주 체크 히트맵
+// ══════════════════════════════════════════════════════════════════
+app.get('/api/admin/daily-checks/:session_id', requireRole('MASTER'), async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not available' }, 503)
+
+  const sessionId = c.req.param('session_id')
+
+  try {
+    const rows = await db.prepare(`
+      SELECT check_date, week_number, day_of_week,
+             exercise_done, diet_done, recovery_done,
+             (exercise_done + diet_done + recovery_done) as done_count,
+             memo, updated_at
+      FROM daily_checks
+      WHERE session_id = ?
+      ORDER BY check_date ASC
+    `).bind(sessionId).all<any>()
+
+    // 주차별 통계
+    const weekStats = await db.prepare(`
+      SELECT week_number,
+             COUNT(*) as days,
+             SUM(exercise_done) as ex, SUM(diet_done) as di, SUM(recovery_done) as re,
+             ROUND(100.0 * SUM(exercise_done+diet_done+recovery_done)/(COUNT(*)*3),1) as rate
+      FROM daily_checks
+      WHERE session_id = ?
+      GROUP BY week_number ORDER BY week_number
+    `).bind(sessionId).all<any>()
+
+    return c.json({
+      ok: true,
+      session_id: sessionId,
+      checks: rows.results || [],
+      week_stats: weekStats.results || []
+    })
+  } catch (e: any) {
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ══════════════════════════════════════════════════════════════════
+//  GET /api/consultant/daily-checks  — 컨설턴트: 담당 고객 체크 현황
+// ══════════════════════════════════════════════════════════════════
+app.get('/api/consultant/daily-checks', requireRole('ANY'), async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not available' }, 503)
+
+  const user = (c as any).get('user')
+  const myCode = user?.code || ''
+  const days = parseInt(c.req.query('days') || '7', 10)
+
+  try {
+    const rows = await db.prepare(`
+      SELECT
+        dc.session_id,
+        dr.user_name,
+        dc.bc_code,
+        COUNT(DISTINCT dc.check_date)  AS total_days,
+        SUM(dc.exercise_done)          AS ex_days,
+        SUM(dc.diet_done)              AS di_days,
+        SUM(dc.recovery_done)          AS re_days,
+        MAX(dc.check_date)             AS last_check,
+        ROUND(100.0 * SUM(dc.exercise_done + dc.diet_done + dc.recovery_done)
+          / (COUNT(DISTINCT dc.check_date) * 3), 1) AS adherence_rate
+      FROM daily_checks dc
+      LEFT JOIN diagnosis_results dr ON dr.session_id = dc.session_id
+      WHERE dc.consultant_code = ?
+        AND dc.check_date >= date('now', '-${days} days')
+      GROUP BY dc.session_id
+      ORDER BY last_check DESC
+      LIMIT 100
+    `).bind(myCode).all<any>()
+
+    return c.json({
+      ok: true,
+      consultant_code: myCode,
+      period_days: days,
+      clients: rows.results || []
+    })
+  } catch (e: any) {
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ══════════════════════════════════════════════════════════════════
+//  GET /api/b2b/daily-checks  — B2B 파트너: 소속 고객 체크 현황
+// ══════════════════════════════════════════════════════════════════
+app.get('/api/b2b/daily-checks', requireRole('ANY'), async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not available' }, 503)
+
+  const user = (c as any).get('user')
+  const myCode = user?.code || ''
+  const days = parseInt(c.req.query('days') || '7', 10)
+
+  try {
+    const rows = await db.prepare(`
+      SELECT
+        dc.session_id,
+        dr.user_name,
+        dc.bc_code,
+        COUNT(DISTINCT dc.check_date)  AS total_days,
+        SUM(dc.exercise_done)          AS ex_days,
+        SUM(dc.diet_done)              AS di_days,
+        SUM(dc.recovery_done)          AS re_days,
+        MAX(dc.check_date)             AS last_check,
+        ROUND(100.0 * SUM(dc.exercise_done + dc.diet_done + dc.recovery_done)
+          / (COUNT(DISTINCT dc.check_date) * 3), 1) AS adherence_rate
+      FROM daily_checks dc
+      LEFT JOIN diagnosis_results dr ON dr.session_id = dc.session_id
+      WHERE dc.b2b_code = ?
+        AND dc.check_date >= date('now', '-${days} days')
+      GROUP BY dc.session_id
+      ORDER BY last_check DESC
+      LIMIT 100
+    `).bind(myCode).all<any>()
+
+    return c.json({
+      ok: true,
+      b2b_code: myCode,
+      period_days: days,
+      clients: rows.results || []
+    })
+  } catch (e: any) {
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
 export default app
