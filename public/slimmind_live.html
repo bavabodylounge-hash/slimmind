@@ -11,6 +11,8 @@ body{font-family:Pretendard,-apple-system,BlinkMacSystemFont,sans-serif;backgrou
 .screen{flex:1;display:flex;flex-direction:column;padding:20px 18px 90px;animation:fade .35s}
 @keyframes slideDownToast{from{opacity:0;transform:translateX(-50%) translateY(-12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
 @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes fbTabSlideIn{from{opacity:0;transform:translateY(-50%) translateX(40px)}to{opacity:1;transform:translateY(-50%) translateX(0)}}
+@keyframes resumeFadeSlide{0%{opacity:0;transform:translateY(30px) scale(.97)}60%{opacity:1;transform:translateY(-4px) scale(1.005)}100%{opacity:1;transform:translateY(0) scale(1)}}
 .card{background:linear-gradient(165deg,#FFF6EC 0%,#FFF0F4 60%,#F0F7FF 100%);border-radius:22px;overflow:hidden;box-shadow:0 8px 24px rgba(180,150,120,.13);flex:1;display:flex;flex-direction:column}
 .pbar{padding:18px 20px 0}
 .ptop{display:flex;justify-content:space-between;margin-bottom:9px}
@@ -2141,6 +2143,9 @@ function showFbHook(key, emotionText) {
   const alreadyOpen = (key === lastFbKey);
   lastFbKey = key;
 
+  // 탭 인디케이터가 표시 중이면 숨기기
+  _hideFbTabIndicator();
+
   let card = document.getElementById('fb-hook-card');
   if (!card) {
     card = document.createElement('div');
@@ -2150,13 +2155,20 @@ function showFbHook(key, emotionText) {
     _initFbCardSwipe(card);
   }
 
+  // 인라인 스타일 초기화 (이전 스와이프 잔여 스타일 제거)
+  card.style.right = '';
+  card.style.bottom = '';
+  card.style.top = '';
+  card.style.opacity = '';
+
   // 표시할 본문 — emotionText(옵션별)가 있으면 우선, 없으면 data.body
   const bodyText = emotionText || data.body;
+  const isMobileCard = window.innerWidth <= 520;
 
   card.innerHTML = '<div class="fh-title">'+data.title+'</div>'
     + '<div class="fh-divider"></div>'
     + '<div class="fh-body">'+bodyText+'</div>'
-    + '<div class="fh-close-hint">→ 밀어서 닫기</div>';
+    + (isMobileCard ? '' : '<div class="fh-close-hint">→ 밀어서 닫기</div>');
 
   card.classList.remove('fly-out');
   if (!alreadyOpen) {
@@ -2168,6 +2180,7 @@ function showFbHook(key, emotionText) {
   clearTimeout(fbHookTimer);
   fbHookTimer = setTimeout(function(){
     _dismissFbCard(card);
+    if (window.innerWidth <= 520) _showFbTabIndicator(card);
   }, 7000);
 }
 
@@ -2217,8 +2230,10 @@ function showBuildupPopup(type) {
 
 function _dismissFbCard(card) {
   if (!card) return;
+  // 인라인 스타일 전부 초기화 (CSS !important가 정상 적용되도록)
   card.style.right = '';
   card.style.bottom = '';
+  card.style.top = '';
   card.style.opacity = '';
   card.classList.add('fly-out');
   setTimeout(function(){
@@ -2229,14 +2244,14 @@ function _dismissFbCard(card) {
 }
 
 function _initFbCardSwipe(card) {
-  var startX = 0, startY = 0, curX = 0, curY = 0, dragging = false;
-  var _isMobile = window.innerWidth <= 520;
+  // ── 모바일/데스크탑 통합: 항상 right 기반으로만 동작 ──
+  // bottom 기반 로직 완전 제거 — CSS !important를 덮어쓰는 인라인 style.bottom 사용 금지
+  var startX = 0, startY = 0, curX = 0, dragging = false;
 
   function onTouchStart(e) {
-    _isMobile = window.innerWidth <= 520;
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
-    curX = 0; curY = 0;
+    curX = 0;
     dragging = true;
     card.classList.add('swiping');
     clearTimeout(fbHookTimer);
@@ -2244,54 +2259,94 @@ function _initFbCardSwipe(card) {
   function onTouchMove(e) {
     if (!dragging) return;
     curX = e.touches[0].clientX - startX;
-    curY = e.touches[0].clientY - startY;
-    if (_isMobile) {
-      // 모바일: 아래로 스와이프
-      if (curY > 0) {
-        e.preventDefault();
-        card.style.bottom = (-curY) + 'px';
-        card.style.opacity = String(Math.max(0.15, 1 - curY / 120));
-      }
-    } else {
-      // 데스크탑: 오른쪽으로 스와이프
-      if (curX > 0) {
-        e.preventDefault();
-        card.style.right = (10 - curX) + 'px';
-        card.style.opacity = String(Math.max(0.15, 1 - curX / 120));
-      }
+    var curY = e.touches[0].clientY - startY;
+    // 수평 스와이프(오른쪽으로) 감지 — 수직 스크롤과 구분
+    if (Math.abs(curX) > Math.abs(curY) && curX > 0) {
+      e.preventDefault();
+      card.style.right = (10 - curX) + 'px';
+      card.style.opacity = String(Math.max(0.15, 1 - curX / 120));
     }
   }
   function onTouchEnd() {
     if (!dragging) return;
     dragging = false;
     card.classList.remove('swiping');
-    if (_isMobile) {
-      if (curY > 60) {
-        card.style.bottom = '';
-        card.style.opacity = '';
-        _dismissFbCard(card);
-      } else {
-        card.style.bottom = '0';
-        card.style.opacity = '1';
-        fbHookTimer = setTimeout(function(){ _dismissFbCard(card); }, 5000);
-      }
+    if (curX > 60) {
+      // 충분히 오른쪽으로 스와이프 → 닫기 + 탭 인디케이터 표시
+      card.style.right = '';
+      card.style.opacity = '';
+      _dismissFbCard(card);
+      _showFbTabIndicator(card);
     } else {
-      if (curX > 60) {
-        card.style.right = '';
-        card.style.opacity = '';
+      // 스와이프 취소 → 원위치 복귀
+      card.style.right = '10px';
+      card.style.opacity = '1';
+      fbHookTimer = setTimeout(function(){
         _dismissFbCard(card);
-      } else {
-        card.style.right = '10px';
-        card.style.opacity = '1';
-        fbHookTimer = setTimeout(function(){ _dismissFbCard(card); }, 5000);
-      }
+        _showFbTabIndicator(card);
+      }, 5000);
     }
-    curX = 0; curY = 0;
+    curX = 0;
   }
   card.addEventListener('touchstart', onTouchStart, {passive: true});
   card.addEventListener('touchmove', onTouchMove, {passive: false});
   card.addEventListener('touchend', onTouchEnd, {passive: true});
-  card.addEventListener('click', function(){ _dismissFbCard(card); });
+  // 클릭 시 닫기 (탭 인디케이터는 dismiss 후 표시)
+  card.addEventListener('click', function(){
+    _dismissFbCard(card);
+    setTimeout(function(){ _showFbTabIndicator(card); }, 400);
+  });
+}
+
+// ── 모바일 우측 탭 인디케이터 ──────────────────────────────────
+// 카드가 닫혔을 때 우측 가장자리에 작은 탭을 표시, 탭 누르면 카드 다시 표시
+var _fbTabEl = null;
+function _showFbTabIndicator(card) {
+  if (window.innerWidth > 520) return; // 데스크탑은 표시 안함
+  if (_fbTabEl) return; // 이미 표시 중
+
+  _fbTabEl = document.createElement('div');
+  _fbTabEl.id = 'fb-tab-indicator';
+  _fbTabEl.innerHTML = '<span style="writing-mode:vertical-rl;font-size:10px;font-weight:800;color:#E8734D;letter-spacing:1px">거울 👁</span>';
+  _fbTabEl.style.cssText = [
+    'position:fixed',
+    'right:0',
+    'top:50%',
+    'transform:translateY(-50%)',
+    'z-index:997',
+    'background:linear-gradient(180deg,#fff9f5,#ffe8df)',
+    'border:1.5px solid rgba(232,115,77,.4)',
+    'border-right:none',
+    'border-radius:10px 0 0 10px',
+    'padding:12px 6px',
+    'cursor:pointer',
+    'box-shadow:-3px 0 12px rgba(232,115,77,.2)',
+    'animation:fbTabSlideIn .35s cubic-bezier(.22,1,.36,1)',
+    'touch-action:manipulation'
+  ].join(';');
+
+  _fbTabEl.addEventListener('click', function() {
+    if (_fbTabEl) { _fbTabEl.remove(); _fbTabEl = null; }
+    // 카드 다시 표시
+    if (card) {
+      card.classList.remove('fly-out');
+      card.style.right = '';
+      card.style.opacity = '';
+      void card.offsetHeight;
+      setTimeout(function(){ card.classList.add('show'); }, 20);
+      clearTimeout(fbHookTimer);
+      fbHookTimer = setTimeout(function(){
+        _dismissFbCard(card);
+        _showFbTabIndicator(card);
+      }, 7000);
+    }
+  });
+
+  document.body.appendChild(_fbTabEl);
+}
+
+function _hideFbTabIndicator() {
+  if (_fbTabEl) { _fbTabEl.remove(); _fbTabEl = null; }
 }
 
 // ── 레이저 스캔 + 엑스레이 언락 연출 ──
@@ -5839,25 +5894,73 @@ function showResumePopup(draft) {
 function _doResumeSurvey() {
   // 서버(D1)에서 비동기 복원 → 실패 시 localStorage 폴백
   var btn = document.querySelector('[onclick="_doResumeSurvey()"]');
-  if (btn) { btn.textContent = '⏳ 불러오는 중...'; btn.style.pointerEvents = 'none'; }
+  if (btn) {
+    btn.textContent = '⏳ 불러오는 중...';
+    btn.style.pointerEvents = 'none';
+    btn.style.opacity = '0.7';
+  }
 
   loadDraftAsync(function(draft) {
     if (!draft) {
       var el2 = document.getElementById('resume-overlay');
-      if (el2) el2.remove();
-      renderApp();
+      if (el2) {
+        el2.style.transition = 'opacity .3s';
+        el2.style.opacity = '0';
+        setTimeout(function(){ el2.remove(); renderApp(); }, 300);
+      } else {
+        renderApp();
+      }
       return;
     }
     try {
       idx = draft.idx;
       answers = draft.answers || {};
       if (draft.measureVals) Object.assign(measureVals, draft.measureVals);
-      // 서버에서 받은 SID 세팅
       if (draft.sid) _surveyDraftSid = draft.sid;
     } catch(e) { idx = 0; }
-    var el2 = document.getElementById('resume-overlay');
-    if (el2) el2.remove();
-    renderApp();
+
+    // ── 이어하기 전환 애니메이션 ──
+    var overlay = document.getElementById('resume-overlay');
+    // 1단계: 오버레이 페이드아웃
+    if (overlay) {
+      overlay.style.transition = 'opacity .35s ease';
+      overlay.style.opacity = '0';
+    }
+    setTimeout(function() {
+      if (overlay) overlay.remove();
+      // 2단계: 화면 전환 플래시 효과 (순간 어두워졌다 밝아짐)
+      var flash = document.createElement('div');
+      flash.style.cssText = 'position:fixed;inset:0;background:#E8734D;opacity:0;z-index:9999;pointer-events:none;transition:opacity .18s ease';
+      document.body.appendChild(flash);
+      requestAnimationFrame(function(){
+        flash.style.opacity = '0.18';
+        setTimeout(function(){
+          flash.style.opacity = '0';
+          setTimeout(function(){ flash.remove(); }, 200);
+        }, 180);
+      });
+      // 3단계: renderApp 후 .screen에 슬라이드업 애니메이션
+      renderApp();
+      setTimeout(function(){
+        var screen = document.querySelector('.screen');
+        if (screen) {
+          screen.style.animation = 'none';
+          screen.style.opacity = '0';
+          screen.style.transform = 'translateY(30px)';
+          screen.style.transition = 'opacity .45s cubic-bezier(.22,1,.36,1), transform .45s cubic-bezier(.22,1,.36,1)';
+          requestAnimationFrame(function(){
+            requestAnimationFrame(function(){
+              screen.style.opacity = '1';
+              screen.style.transform = 'translateY(0)';
+              setTimeout(function(){
+                screen.style.transition = '';
+                screen.style.transform = '';
+              }, 500);
+            });
+          });
+        }
+      }, 40);
+    }, 350);
   });
 }
 
