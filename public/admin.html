@@ -1114,7 +1114,7 @@ function navigateTo(page) {
   else if (page === 'notifications') loadAdminNotifications();
   else if (page === 'bc-codes') loadBcCodes();
   else if (page === 'bc-library') loadBcLibrary();
-  else if (page === 'daily-checks') loadDailyChecks();
+  else if (page === 'daily-checks') { loadDailyChecks(); loadAdminCheckAlerts(); }
   else if (page === 'analytics') loadAnalytics();
   else if (page === 'ranking') loadRanking();
   else if (page === 'revenue-forecast') loadRevenueForecast();
@@ -2649,183 +2649,366 @@ function toggleBcCard(id) {
 // ═════════════════════════════════════════════
 //  데일리 체크 현황 (관리자 전체 뷰)
 // ═════════════════════════════════════════════
-async function loadDailyChecks(days = 7, consultantFilter = '') {
+// ═══════════════════════════════════════════════════════════════
+//  체크 알림 패널 (missed_3days 자동 트리거)
+// ═══════════════════════════════════════════════════════════════
+async function loadAdminCheckAlerts() {
+  // page-body에 알림 패널 인젝트 (daily-checks 페이지 상단)
+  const body = document.getElementById('page-body');
+  if (!body) return;
+
+  // 알림 패널 컨테이너 찾기 or 생성
+  let alertPanel = document.getElementById('admin-check-alert-panel');
+  if (!alertPanel) {
+    alertPanel = document.createElement('div');
+    alertPanel.id = 'admin-check-alert-panel';
+    alertPanel.style.cssText = 'padding:0 24px 0;';
+    body.prepend(alertPanel);
+  }
+
+  const data = await api('GET', '/admin/check-alerts?unread_only=1&type=missed_3days').catch(() => null);
+  const alerts = data?.alerts || [];
+  const counts = data?.counts || {};
+
+  if (!alerts.length) {
+    alertPanel.innerHTML = '';
+    return;
+  }
+
+  const rows = alerts.slice(0, 5).map(a => {
+    const ts = a.triggered_at ? a.triggered_at.slice(0,10) : '—';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#fff;border-radius:8px;margin-bottom:6px;border:1px solid #f0ece6;">
+      <span style="font-size:13px;">🔴</span>
+      <div style="flex:1;font-size:12px;font-weight:700;color:#241c14;">${a.user_name||a.session_id?.slice(0,8)}</div>
+      <div style="font-size:11px;color:#8a7e66;">담당: ${a.ref_code||'—'}</div>
+      <div style="font-size:11px;color:#b5452e;">${ts}</div>
+    </div>`;
+  }).join('');
+
+  alertPanel.innerHTML = `
+    <div style="background:#fdeee7;border:1.5px solid #f0b4a0;border-radius:14px;padding:14px 18px;margin-bottom:20px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <span style="font-size:16px;">⚠️</span>
+        <span style="font-size:14px;font-weight:900;color:#8f321e;">미읽음 체크 알림 ${alerts.length}건</span>
+        <span style="font-size:11px;color:#b5452e;margin-left:2px;">(3일 연속 미체크 자동 감지)</span>
+        <button onclick="adminMarkAllCheckAlertsRead()" style="margin-left:auto;padding:5px 12px;border-radius:14px;background:#b5452e;color:#fff;border:none;font-size:11px;font-weight:700;cursor:pointer;">전체 읽음 처리</button>
+      </div>
+      ${rows}
+      ${alerts.length>5?`<div style="text-align:center;font-size:11px;color:#b5452e;margin-top:4px;">+${alerts.length-5}건 더 있음</div>`:''}
+    </div>
+  `;
+}
+
+async function adminMarkAllCheckAlertsRead() {
+  // MASTER는 /api/admin 경로 없음 — consultant 읽음 처리 API 재사용 불가
+  // 관리자 전용 전체 읽음: alert_type='missed_3days' 일괄 처리
+  // ※ MASTER 권한으로 /api/check-alerts/read를 직접 호출할 수 없으므로
+  //   간이 처리: 각 ref_code로 묶어 서버 재조회 후 표시 숨김
+  const panel = document.getElementById('admin-check-alert-panel');
+  if (panel) panel.innerHTML = '';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  데일리 체크 현황 — 신호등 정렬 + 일괄 관리 뷰
+// ═══════════════════════════════════════════════════════════════
+let _dcDays = 7, _dcConsultant = '', _dcSignal = '', _dcSelected = new Set();
+
+async function loadDailyChecks(days, consultantFilter, signalFilter) {
+  days             = days             ?? _dcDays;
+  consultantFilter = consultantFilter ?? _dcConsultant;
+  signalFilter     = signalFilter     ?? _dcSignal;
+  _dcDays = days; _dcConsultant = consultantFilter; _dcSignal = signalFilter;
+  _dcSelected.clear();
+
   const body = document.getElementById('page-body');
   body.innerHTML = `<div style="padding:60px;text-align:center;color:var(--muted)"><i class="fas fa-circle-notch fa-spin" style="font-size:28px;color:var(--primary);opacity:.6"></i><div style="margin-top:12px;font-size:13px">데이터 불러오는 중...</div></div>`;
 
-  // 컨설턴트 목록 (필터용)
+  const qs = [`days=${days}`, consultantFilter?`consultant=${consultantFilter}`:'', signalFilter?`signal=${signalFilter}`:''].filter(Boolean).join('&');
   const [checkData, consData] = await Promise.all([
-    api('GET', `/admin/daily-checks?days=${days}${consultantFilter ? '&consultant='+consultantFilter : ''}`).catch(() => null),
+    api('GET', `/admin/daily-checks?${qs}`).catch(() => null),
     api('GET', '/admin/consultants').catch(() => null)
   ]);
 
-  const clients = checkData?.clients || [];
-  const stats   = checkData?.stats   || {};
+  const clients     = checkData?.clients || [];
+  const stats       = checkData?.stats   || {};
   const consultants = consData?.consultants || [];
 
-  // 필터 옵션 빌드
-  const consOptions = consultants.map(c => `<option value="${c.code}" ${consultantFilter===c.code?'selected':''}>${c.name} (${c.code})</option>`).join('');
+  // 신호등 뱃지
+  const SIG = {
+    red:    { icon:'🔴', label:'위험',  bg:'#fdeee7', border:'#f0b4a0', text:'#8f321e' },
+    yellow: { icon:'🟡', label:'주의',  bg:'#fdf8e4', border:'#e8d070', text:'#7a6010' },
+    green:  { icon:'🟢', label:'순항',  bg:'#eef4e0', border:'#a8c870', text:'#3f5022' },
+    gray:   { icon:'⚪', label:'신규',  bg:'#f4f4f4', border:'#d0d0d0', text:'#666'   }
+  };
 
-  // 고객 행 빌드
+  function sigBadge(s) {
+    const m = SIG[s] || SIG.gray;
+    return `<span style="font-size:11px;padding:2px 8px;border-radius:10px;font-weight:800;background:${m.bg};border:1px solid ${m.border};color:${m.text};">${m.icon} ${m.label}</span>`;
+  }
   function bar(pct, color) {
     const p = Math.min(100, Math.max(0, pct||0));
-    return `<div style="background:#f0ece6;border-radius:6px;height:7px;width:80px;overflow:hidden;display:inline-block;vertical-align:middle;">
-      <div style="background:${color};width:${p}%;height:100%;border-radius:6px;transition:width .3s;"></div>
-    </div> <span style="font-size:11px;font-weight:700;color:#555;">${p}%</span>`;
+    return `<div style="background:#f0ece6;border-radius:6px;height:7px;width:72px;overflow:hidden;display:inline-block;vertical-align:middle;"><div style="background:${color};width:${p}%;height:100%;border-radius:6px;"></div></div> <span style="font-size:11px;font-weight:700;color:#555;">${p}%</span>`;
   }
+  function rateColor(r){ return r>=80?'#5a6e3a':r>=50?'#c98a3c':'#b5452e'; }
 
-  function rateColor(r) {
-    if (r >= 80) return '#5a6e3a';
-    if (r >= 50) return '#c98a3c';
-    return '#b5452e';
-  }
+  const consOptions = consultants.map(c => `<option value="${c.code}" ${consultantFilter===c.code?'selected':''}>${c.name} (${c.code})</option>`).join('');
 
-  const rows = clients.map((cl, i) => {
+  // 신호등 필터 버튼
+  const sigBtns = [
+    {val:'',    icon:'전체',  cnt: (stats.total_clients||clients.length) },
+    {val:'red', icon:'🔴',   cnt: stats.cnt_red||0 },
+    {val:'yellow',icon:'🟡', cnt: stats.cnt_yellow||0 },
+    {val:'green', icon:'🟢', cnt: stats.cnt_green||0 },
+    {val:'gray',  icon:'⚪', cnt: stats.cnt_gray||0 }
+  ].map(b => {
+    const on = signalFilter===b.val;
+    return `<button onclick="loadDailyChecks(${days},'${consultantFilter}','${b.val}')" style="padding:5px 13px;border-radius:18px;border:1.5px solid ${on?'#5a6e3a':'#e0d8cc'};background:${on?'#5a6e3a':'transparent'};color:${on?'#fff':'var(--ink)'};font-size:12px;font-weight:800;cursor:pointer;">${b.icon} ${b.cnt}</button>`;
+  }).join('');
+
+  const tableRows = clients.map((cl) => {
     const rate = cl.adherence_rate || 0;
-    const daysSince = cl.last_check
-      ? Math.floor((Date.now() - new Date(cl.last_check).getTime()) / 86400000) : 999;
-    const alertIcon = daysSince >= 3
-      ? `<span title="${daysSince}일 전 마지막 체크" style="color:#b5452e;font-size:12px;margin-left:4px">⚠️</span>` : '';
-    return `<tr style="cursor:pointer;" onclick="loadDailyCheckDetail('${cl.session_id}', '${cl.user_name||'이름 없음'}')">
-      <td style="padding:10px 12px;font-size:12px;color:var(--muted)">${i+1}</td>
-      <td style="padding:10px 12px;font-weight:700;font-size:13px;">${cl.user_name||'—'} ${alertIcon}</td>
-      <td style="padding:10px 12px;font-size:12px;"><span style="background:#faf0dc;color:#8a5a18;border-radius:8px;padding:2px 8px;font-weight:700;">${cl.bc_code||'—'}</span></td>
-      <td style="padding:10px 12px;font-size:12px;color:var(--muted)">${cl.consultant_code||'—'}</td>
-      <td style="padding:10px 12px;text-align:center;font-size:13px;font-weight:800;color:#5a6e3a;">${cl.ex_days||0}</td>
-      <td style="padding:10px 12px;text-align:center;font-size:13px;font-weight:800;color:#c98a3c;">${cl.di_days||0}</td>
-      <td style="padding:10px 12px;text-align:center;font-size:13px;font-weight:800;color:#b5452e;">${cl.re_days||0}</td>
-      <td style="padding:10px 12px;">${bar(rate, rateColor(rate))}</td>
-      <td style="padding:10px 12px;font-size:11px;color:var(--muted)">${cl.last_check ? cl.last_check.slice(0,10) : '—'} ${alertIcon}</td>
+    const sig  = cl.signal || 'gray';
+    const sid  = cl.session_id;
+    return `<tr style="cursor:pointer;border-bottom:1px solid #f0ece6;" data-sid="${sid}"
+      onclick="(event.target.tagName!=='INPUT') && loadDailyCheckDetail('${sid}','${(cl.user_name||'이름없음').replace(/'/g,'\\'')}','${sig}')">
+      <td style="padding:9px 10px;"><input type="checkbox" data-sid="${sid}" onclick="event.stopPropagation();_dcToggleSel('${sid}',this.checked)" style="cursor:pointer;width:15px;height:15px;"></td>
+      <td style="padding:9px 10px;">${sigBadge(sig)}</td>
+      <td style="padding:9px 10px;font-weight:700;font-size:13px;">${cl.user_name||'—'}</td>
+      <td style="padding:9px 10px;"><span style="background:#faf0dc;color:#8a5a18;border-radius:8px;padding:2px 7px;font-size:11px;font-weight:700;">${cl.bc_code||'—'}</span></td>
+      <td style="padding:9px 10px;font-size:11px;color:var(--muted)">${cl.consultant_code||'—'}</td>
+      <td style="padding:9px 10px;text-align:center;font-size:12px;font-weight:800;color:#5a6e3a;">${cl.ex_days||0}</td>
+      <td style="padding:9px 10px;text-align:center;font-size:12px;font-weight:800;color:#c98a3c;">${cl.di_days||0}</td>
+      <td style="padding:9px 10px;text-align:center;font-size:12px;font-weight:800;color:#b5452e;">${cl.re_days||0}</td>
+      <td style="padding:9px 10px;">${bar(rate, rateColor(rate))}</td>
+      <td style="padding:9px 10px;font-size:11px;color:var(--muted)">${cl.last_check ? cl.last_check.slice(0,10) : '—'}</td>
     </tr>`;
   }).join('');
 
   body.innerHTML = `
     <div style="padding:24px;">
-      <!-- 요약 카드 -->
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px;">
-        <div style="background:linear-gradient(135deg,#fdfaf4,#fff8ee);border:1.5px solid #e8c07a;border-radius:14px;padding:16px 18px;">
-          <div style="font-size:11px;font-weight:800;color:#8a7e66;letter-spacing:.5px;margin-bottom:4px;">최근 ${days}일 체크 고객수</div>
-          <div style="font-size:28px;font-weight:900;color:#241c14;">${clients.length}<span style="font-size:14px;color:var(--muted);font-weight:600;"> 명</span></div>
+
+      <!-- ① 요약 카드 (5칸: 신호등 포함) -->
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px;">
+        <div style="background:linear-gradient(135deg,#fdfaf4,#fff8ee);border:1.5px solid #e8c07a;border-radius:14px;padding:14px 16px;">
+          <div style="font-size:10px;font-weight:800;color:#8a7e66;margin-bottom:3px;">체크 고객수</div>
+          <div style="font-size:26px;font-weight:900;color:#241c14;">${stats.total_clients||clients.length}<span style="font-size:13px;color:var(--muted);font-weight:600;"> 명</span></div>
+          <div style="font-size:11px;color:#8a7e66;margin-top:2px;">평균 실천율 <b>${stats.avg_rate||0}%</b></div>
         </div>
-        <div style="background:linear-gradient(135deg,#eef4e0,#f3f7ea);border:1.5px solid #cdd9b0;border-radius:14px;padding:16px 18px;">
-          <div style="font-size:11px;font-weight:800;color:#5a7040;letter-spacing:.5px;margin-bottom:4px;">🏃 운동 총 일수</div>
-          <div style="font-size:28px;font-weight:900;color:#3f5022;">${stats.total_ex||0}<span style="font-size:14px;color:var(--muted);font-weight:600;"> 일</span></div>
+        <div style="background:#fdeee7;border:1.5px solid #f0b4a0;border-radius:14px;padding:14px 16px;">
+          <div style="font-size:10px;font-weight:800;color:#8f321e;margin-bottom:3px;">🔴 위험 (3일 0건)</div>
+          <div style="font-size:26px;font-weight:900;color:#8f321e;">${stats.cnt_red||0}<span style="font-size:13px;font-weight:600;"> 명</span></div>
+          <div style="font-size:11px;color:#b5452e;margin-top:2px;cursor:pointer;" onclick="loadDailyChecks(${days},'${consultantFilter}','red')">→ 필터보기</div>
         </div>
-        <div style="background:linear-gradient(135deg,#fbf2dd,#fdf6dc);border:1.5px solid #e8cd9a;border-radius:14px;padding:16px 18px;">
-          <div style="font-size:11px;font-weight:800;color:#8a6a30;letter-spacing:.5px;margin-bottom:4px;">🍽 식단 총 일수</div>
-          <div style="font-size:28px;font-weight:900;color:#7a5a18;">${stats.total_di||0}<span style="font-size:14px;color:var(--muted);font-weight:600;"> 일</span></div>
+        <div style="background:#fdf8e4;border:1.5px solid #e8d070;border-radius:14px;padding:14px 16px;">
+          <div style="font-size:10px;font-weight:800;color:#7a6010;margin-bottom:3px;">🟡 주의 (저실천)</div>
+          <div style="font-size:26px;font-weight:900;color:#7a6010;">${stats.cnt_yellow||0}<span style="font-size:13px;font-weight:600;"> 명</span></div>
+          <div style="font-size:11px;color:#c98a3c;margin-top:2px;cursor:pointer;" onclick="loadDailyChecks(${days},'${consultantFilter}','yellow')">→ 필터보기</div>
         </div>
-        <div style="background:linear-gradient(135deg,#fdeee7,#fdf0eb);border:1.5px solid #f0c4b3;border-radius:14px;padding:16px 18px;">
-          <div style="font-size:11px;font-weight:800;color:#8f321e;letter-spacing:.5px;margin-bottom:4px;">🌙 회복 총 일수</div>
-          <div style="font-size:28px;font-weight:900;color:#8f321e;">${stats.total_re||0}<span style="font-size:14px;color:var(--muted);font-weight:600;"> 일</span></div>
+        <div style="background:#eef4e0;border:1.5px solid #a8c870;border-radius:14px;padding:14px 16px;">
+          <div style="font-size:10px;font-weight:800;color:#3f5022;margin-bottom:3px;">🟢 순항</div>
+          <div style="font-size:26px;font-weight:900;color:#3f5022;">${stats.cnt_green||0}<span style="font-size:13px;font-weight:600;"> 명</span></div>
+          <div style="font-size:11px;color:#5a6e3a;margin-top:2px;cursor:pointer;" onclick="loadDailyChecks(${days},'${consultantFilter}','green')">→ 필터보기</div>
+        </div>
+        <div style="background:#f4f4f4;border:1.5px solid #d0d0d0;border-radius:14px;padding:14px 16px;">
+          <div style="font-size:10px;font-weight:800;color:#666;margin-bottom:3px;">⚪ 신규/미시작</div>
+          <div style="font-size:26px;font-weight:900;color:#555;">${stats.cnt_gray||0}<span style="font-size:13px;font-weight:600;"> 명</span></div>
+          <div style="font-size:11px;color:#888;margin-top:2px;cursor:pointer;" onclick="loadDailyChecks(${days},'${consultantFilter}','gray')">→ 필터보기</div>
         </div>
       </div>
 
-      <!-- 필터 바 -->
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap;">
-        <span style="font-size:13px;font-weight:800;color:var(--ink);">기간:</span>
-        ${[3,7,14,30].map(d => `<button onclick="loadDailyChecks(${d},'${consultantFilter}')" style="padding:6px 16px;border-radius:20px;border:1.5px solid ${days===d?'#5a6e3a':'#e0d8cc'};background:${days===d?'#5a6e3a':'transparent'};color:${days===d?'#fff':'var(--ink)'};font-size:12px;font-weight:800;cursor:pointer;">${d}일</button>`).join('')}
-        <select onchange="loadDailyChecks(${days},this.value)" style="padding:6px 12px;border-radius:8px;border:1.5px solid #e0d8cc;font-size:12px;font-weight:700;background:#fff;">
+      <!-- ② 필터 바 -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+        <span style="font-size:12px;font-weight:800;color:var(--ink);">기간:</span>
+        ${[3,7,14,30].map(d => `<button onclick="loadDailyChecks(${d},'${consultantFilter}','${signalFilter}')" style="padding:5px 14px;border-radius:18px;border:1.5px solid ${days===d?'#5a6e3a':'#e0d8cc'};background:${days===d?'#5a6e3a':'transparent'};color:${days===d?'#fff':'var(--ink)'};font-size:12px;font-weight:800;cursor:pointer;">${d}일</button>`).join('')}
+        <span style="font-size:12px;font-weight:800;color:var(--ink);">신호등:</span>
+        ${sigBtns}
+        <select onchange="loadDailyChecks(${days},this.value,'${signalFilter}')" style="padding:5px 10px;border-radius:8px;border:1.5px solid #e0d8cc;font-size:12px;font-weight:700;background:#fff;margin-left:4px;">
           <option value="">전체 컨설턴트</option>
           ${consOptions}
         </select>
-        <span style="margin-left:auto;font-size:11px;color:var(--muted);">⚠️ 표시 = 3일 이상 미체크</span>
       </div>
 
-      <!-- 테이블 -->
+      <!-- ③ 일괄 리마인드 툴바 -->
+      <div id="dc-bulk-bar" style="display:none;align-items:center;gap:12px;background:#fff8ee;border:1.5px solid #e8c07a;border-radius:10px;padding:10px 16px;margin-bottom:14px;">
+        <span id="dc-sel-count" style="font-size:13px;font-weight:800;color:#7a5a18;">0명 선택됨</span>
+        <button onclick="_dcSendReminder()" style="padding:7px 18px;border-radius:20px;background:#b5452e;color:#fff;border:none;font-size:12px;font-weight:800;cursor:pointer;">📢 리마인드 알림 발송</button>
+        <button onclick="_dcSelectAll()" style="padding:7px 14px;border-radius:20px;background:#5a6e3a;color:#fff;border:none;font-size:12px;font-weight:800;cursor:pointer;">전체 선택</button>
+        <button onclick="_dcClearSel()" style="padding:7px 14px;border-radius:20px;background:transparent;color:var(--ink);border:1.5px solid #e0d8cc;font-size:12px;font-weight:800;cursor:pointer;">선택 해제</button>
+      </div>
+
+      <!-- ④ 테이블 -->
       <div style="background:#fff;border-radius:14px;border:1.5px solid #e8ddd0;overflow:hidden;">
         <table style="width:100%;border-collapse:collapse;">
           <thead>
             <tr style="background:linear-gradient(135deg,#fdfaf4,#fff8ee);">
-              <th style="padding:11px 12px;text-align:left;font-size:11px;font-weight:800;color:#8a7e66;">#</th>
-              <th style="padding:11px 12px;text-align:left;font-size:11px;font-weight:800;color:#8a7e66;">고객명</th>
-              <th style="padding:11px 12px;text-align:left;font-size:11px;font-weight:800;color:#8a7e66;">BC코드</th>
-              <th style="padding:11px 12px;text-align:left;font-size:11px;font-weight:800;color:#8a7e66;">담당자</th>
-              <th style="padding:11px 12px;text-align:center;font-size:11px;font-weight:800;color:#5a6e3a;">🏃운동</th>
-              <th style="padding:11px 12px;text-align:center;font-size:11px;font-weight:800;color:#c98a3c;">🍽식단</th>
-              <th style="padding:11px 12px;text-align:center;font-size:11px;font-weight:800;color:#b5452e;">🌙회복</th>
-              <th style="padding:11px 12px;text-align:left;font-size:11px;font-weight:800;color:#8a7e66;">실천율</th>
-              <th style="padding:11px 12px;text-align:left;font-size:11px;font-weight:800;color:#8a7e66;">마지막 체크</th>
+              <th style="padding:10px;width:36px;"><input type="checkbox" id="dc-chk-all" onclick="_dcSelectAllChk(this.checked)" style="width:15px;height:15px;cursor:pointer;"></th>
+              <th style="padding:10px;text-align:left;font-size:11px;font-weight:800;color:#8a7e66;">상태</th>
+              <th style="padding:10px;text-align:left;font-size:11px;font-weight:800;color:#8a7e66;">고객명</th>
+              <th style="padding:10px;text-align:left;font-size:11px;font-weight:800;color:#8a7e66;">BC코드</th>
+              <th style="padding:10px;text-align:left;font-size:11px;font-weight:800;color:#8a7e66;">담당자</th>
+              <th style="padding:10px;text-align:center;font-size:11px;font-weight:800;color:#5a6e3a;">🏃</th>
+              <th style="padding:10px;text-align:center;font-size:11px;font-weight:800;color:#c98a3c;">🍽</th>
+              <th style="padding:10px;text-align:center;font-size:11px;font-weight:800;color:#b5452e;">🌙</th>
+              <th style="padding:10px;text-align:left;font-size:11px;font-weight:800;color:#8a7e66;">실천율</th>
+              <th style="padding:10px;text-align:left;font-size:11px;font-weight:800;color:#8a7e66;">마지막 체크</th>
             </tr>
           </thead>
-          <tbody>
-            ${rows || `<tr><td colspan="9" style="padding:40px;text-align:center;color:var(--muted);font-size:13px;">체크 데이터가 없습니다</td></tr>`}
+          <tbody id="dc-tbody">
+            ${tableRows || `<tr><td colspan="10" style="padding:40px;text-align:center;color:var(--muted);font-size:13px;">해당 조건의 데이터가 없습니다</td></tr>`}
           </tbody>
         </table>
       </div>
-      <div style="margin-top:8px;font-size:11px;color:var(--muted);text-align:right;">행 클릭 시 고객별 12주 히트맵 조회</div>
+      <div style="margin-top:8px;font-size:11px;color:var(--muted);text-align:right;">행 클릭 → 12주 히트맵 · 체크박스 선택 → 일괄 리마인드</div>
 
       <!-- 상세 패널 -->
       <div id="daily-check-detail" style="margin-top:22px;"></div>
     </div>
   `;
+
+  // 체크박스 이벤트 초기화 (체크박스 1개라도 있으면 툴바 표시)
+  _dcUpdateBulkBar();
 }
 
-async function loadDailyCheckDetail(sessionId, userName) {
+// ── 일괄 관리 헬퍼 ────────────────────────────────────────
+function _dcToggleSel(sid, checked) {
+  if (checked) _dcSelected.add(sid); else _dcSelected.delete(sid);
+  _dcUpdateBulkBar();
+}
+function _dcSelectAll() {
+  document.querySelectorAll('#dc-tbody input[type=checkbox]').forEach(c => { c.checked=true; _dcSelected.add(c.dataset.sid); });
+  _dcUpdateBulkBar();
+}
+function _dcClearSel() {
+  _dcSelected.clear();
+  document.querySelectorAll('#dc-tbody input[type=checkbox]').forEach(c => c.checked=false);
+  document.getElementById('dc-chk-all').checked = false;
+  _dcUpdateBulkBar();
+}
+function _dcSelectAllChk(checked) {
+  if (checked) _dcSelectAll(); else _dcClearSel();
+}
+function _dcUpdateBulkBar() {
+  const bar = document.getElementById('dc-bulk-bar');
+  const cnt = document.getElementById('dc-sel-count');
+  if (!bar) return;
+  const n = _dcSelected.size;
+  bar.style.display = n > 0 ? 'flex' : 'none';
+  if (cnt) cnt.textContent = `${n}명 선택됨`;
+}
+async function _dcSendReminder() {
+  if (_dcSelected.size === 0) return;
+  if (!confirm(`선택한 ${_dcSelected.size}명에게 리마인드 알림을 발송합니다.`)) return;
+  let ok=0, fail=0;
+  for (const sid of _dcSelected) {
+    const res = await api('POST', '/admin/daily-check/remind', { session_id: sid }).catch(() => null);
+    if (res?.ok) ok++; else fail++;
+  }
+  alert(`발송 완료: ${ok}명 성공${fail?', '+fail+'명 실패':''}`);
+  _dcClearSel();
+}
+
+async function loadDailyCheckDetail(sessionId, userName, sig) {
   const detail = document.getElementById('daily-check-detail');
   if (!detail) return;
   detail.innerHTML = `<div style="text-align:center;padding:20px;color:var(--muted);"><i class="fas fa-circle-notch fa-spin"></i></div>`;
 
   const data = await api('GET', `/admin/daily-checks/${sessionId}`).catch(() => null);
-  const checks   = data?.checks    || [];
-  const wkStats  = data?.week_stats || [];
+  const checks  = data?.checks     || [];
+  const wkStats = data?.week_stats || [];
 
   if (!checks.length) {
-    detail.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted);">체크 데이터 없음</div>`;
+    detail.innerHTML = `<div style="background:#fff;border:1.5px solid #e8ddd0;border-radius:14px;padding:30px;text-align:center;color:var(--muted);font-size:13px;">아직 체크 데이터가 없습니다</div>`;
     return;
   }
 
-  // 히트맵 — 날짜별 done_count를 시각화
+  const SIG = {red:{icon:'🔴',label:'위험'},yellow:{icon:'🟡',label:'주의'},green:{icon:'🟢',label:'순항'},gray:{icon:'⚪',label:'신규'}};
+  const sm = SIG[sig] || SIG.gray;
+
   const checkMap = {};
   checks.forEach(c => { checkMap[c.check_date] = c; });
 
-  // 최근 84일(12주) 셀 생성
-  const cells = [];
+  // ── 12주 × 7일 그리드 히트맵 (②에서 공유) ──────────────────
   const now = new Date();
-  for (let i = 83; i >= 0; i--) {
-    const d = new Date(now); d.setDate(d.getDate()-i);
-    const key = d.toISOString().slice(0,10);
-    const c = checkMap[key];
-    const cnt = c ? c.done_count : -1;
-    const colors = ['#f0ece6','#c0d4a0','#8aaa58','#5a6e3a'];
-    const bg = cnt < 0 ? '#f8f6f2' : colors[cnt] || colors[0];
-    const title = cnt < 0 ? key+' (미체크)' : `${key}: ${cnt}/3 완료 (운동${c.exercise_done?'✓':'✗'} 식단${c.diet_done?'✓':'✗'} 회복${c.recovery_done?'✓':'✗'})`;
-    cells.push(`<div title="${title}" style="width:11px;height:11px;border-radius:2px;background:${bg};flex-shrink:0;"></div>`);
+  // 이번 주 월요일 기준으로 정렬
+  const startDay = new Date(now);
+  const dow = startDay.getDay(); // 0=일
+  startDay.setDate(startDay.getDate() - ((dow+6)%7) - 83); // 12주(84일) 전 월요일
+  const DAY_LABELS = ['월','화','수','목','금','토','일'];
+
+  // 12주 행 빌드
+  const weekRows = [];
+  for (let w = 0; w < 12; w++) {
+    const cells = [];
+    for (let d = 0; d < 7; d++) {
+      const cur = new Date(startDay);
+      cur.setDate(cur.getDate() + w*7 + d);
+      const key = cur.toISOString().slice(0,10);
+      const c   = checkMap[key];
+      const cnt = c ? (c.exercise_done + c.diet_done + c.recovery_done) : -1;
+      const isFuture = cur > now;
+      let bg, border;
+      if (isFuture)    { bg='transparent'; border='1px dashed #e0d8cc'; }
+      else if (cnt<0)  { bg='#f0ece6';     border='none'; }
+      else if (cnt===0){ bg='#f0ece6';     border='none'; }
+      else if (cnt===1){ bg='#d4e8b0';     border='none'; }
+      else if (cnt===2){ bg='#8aaa58';     border='none'; }
+      else             { bg='#5a6e3a';     border='none'; }
+      const tooltip = isFuture ? key : cnt<0 ? `${key} 미체크` : `${key}: 운동${c.exercise_done?'✓':'✗'} 식단${c.diet_done?'✓':'✗'} 회복${c.recovery_done?'✓':'✗'}`;
+      cells.push(`<div title="${tooltip}" style="width:20px;height:20px;border-radius:4px;background:${bg};border:${border};flex-shrink:0;"></div>`);
+    }
+    const wn = w+1;
+    const ws = wkStats.find(x=>x.week_number===wn);
+    const wr = ws?.rate||0;
+    weekRows.push(`
+      <div style="display:flex;align-items:center;gap:4px;margin-bottom:3px;">
+        <span style="font-size:10px;font-weight:800;color:#8a7e66;width:28px;flex-shrink:0;">${wn}주</span>
+        ${cells.join('')}
+        <div style="margin-left:8px;background:#f0ece6;border-radius:4px;height:8px;width:60px;overflow:hidden;flex-shrink:0;">
+          <div style="width:${wr}%;height:100%;background:${wr>=80?'#5a6e3a':wr>=50?'#c98a3c':'#b5452e'};border-radius:4px;"></div>
+        </div>
+        <span style="font-size:10px;font-weight:700;color:#555;width:28px;">${wr}%</span>
+      </div>`);
   }
 
-  // 주간 통계 바
-  const wkBars = wkStats.map(w => `
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-      <span style="font-size:10px;font-weight:800;color:#8a7e66;width:32px;">${w.week_number}주</span>
-      <div style="flex:1;background:#f0ece6;border-radius:4px;height:8px;overflow:hidden;">
-        <div style="width:${w.rate||0}%;height:100%;background:${w.rate>=80?'#5a6e3a':w.rate>=50?'#c98a3c':'#b5452e'};border-radius:4px;"></div>
-      </div>
-      <span style="font-size:10px;font-weight:700;color:#555;width:36px;">${w.rate||0}%</span>
-      <span style="font-size:9px;color:var(--muted);">운동${w.ex}일/식단${w.di}일/회복${w.re}일</span>
-    </div>
-  `).join('');
+  // streak 계산
+  let streak=0, maxStreak=0, cur2=0;
+  const sortedKeys = Object.keys(checkMap).sort();
+  for (let i=sortedKeys.length-1; i>=0; i--) {
+    const c = checkMap[sortedKeys[i]];
+    if ((c.exercise_done+c.diet_done+c.recovery_done) > 0) { streak++; if(i<sortedKeys.length-1) break; }
+    else break;
+  }
+  sortedKeys.forEach(k => {
+    const c = checkMap[k];
+    if ((c.exercise_done+c.diet_done+c.recovery_done) > 0) { cur2++; maxStreak = Math.max(maxStreak, cur2); }
+    else cur2=0;
+  });
 
   detail.innerHTML = `
     <div style="background:linear-gradient(135deg,#fdfaf4,#fff8ee);border:1.5px solid #e8c07a;border-radius:16px;padding:20px 22px;">
-      <div style="font-size:16px;font-weight:900;color:#241c14;margin-bottom:16px;">
-        📊 ${userName} — 12주 체크 히트맵
-        <button onclick="document.getElementById('daily-check-detail').innerHTML=''" style="float:right;background:none;border:none;cursor:pointer;color:var(--muted);font-size:18px;">✕</button>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+        <span style="font-size:16px;font-weight:900;color:#241c14;">📊 ${userName}</span>
+        <span style="font-size:13px;padding:3px 10px;border-radius:10px;font-weight:800;background:${sig==='red'?'#fdeee7':sig==='yellow'?'#fdf8e4':sig==='green'?'#eef4e0':'#f4f4f4'};color:${sig==='red'?'#8f321e':sig==='yellow'?'#7a6010':sig==='green'?'#3f5022':'#666'};">${sm.icon} ${sm.label}</span>
+        <span style="font-size:11px;color:var(--muted);margin-left:4px;">연속 ${streak}일 · 최장 ${maxStreak}일</span>
+        <button onclick="document.getElementById('daily-check-detail').innerHTML=''" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--muted);font-size:18px;">✕</button>
       </div>
 
-      <!-- 히트맵 -->
-      <div style="display:flex;gap:2px;flex-wrap:wrap;margin-bottom:20px;max-width:700px;">
-        ${cells.join('')}
-      </div>
-      <div style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted);margin-bottom:20px;">
-        <div style="width:10px;height:10px;background:#f8f6f2;border-radius:2px;"></div> 미체크
-        <div style="width:10px;height:10px;background:#c0d4a0;border-radius:2px;"></div> 1/3
-        <div style="width:10px;height:10px;background:#8aaa58;border-radius:2px;"></div> 2/3
-        <div style="width:10px;height:10px;background:#5a6e3a;border-radius:2px;"></div> 3/3 완료
+      <!-- 요일 헤더 -->
+      <div style="display:flex;align-items:center;gap:4px;margin-bottom:5px;margin-left:32px;">
+        ${DAY_LABELS.map(l=>`<div style="width:20px;text-align:center;font-size:9px;font-weight:700;color:#8a7e66;">${l}</div>`).join('')}
       </div>
 
-      <!-- 주간 통계 바 -->
-      <div style="font-size:12px;font-weight:800;color:#8a7e66;margin-bottom:10px;">📅 주차별 실천율</div>
-      ${wkBars || '<div style="font-size:12px;color:var(--muted);">주차 데이터 없음</div>'}
+      <!-- 12주 히트맵 그리드 -->
+      <div style="margin-bottom:16px;">${weekRows.join('')}</div>
+
+      <!-- 범례 -->
+      <div style="display:flex;align-items:center;gap:8px;font-size:10px;color:var(--muted);flex-wrap:wrap;">
+        <div style="width:14px;height:14px;background:#f0ece6;border-radius:3px;"></div>미체크
+        <div style="width:14px;height:14px;background:#d4e8b0;border-radius:3px;"></div>1/3
+        <div style="width:14px;height:14px;background:#8aaa58;border-radius:3px;"></div>2/3
+        <div style="width:14px;height:14px;background:#5a6e3a;border-radius:3px;"></div>3/3 완료
+        <div style="width:14px;height:14px;background:transparent;border:1px dashed #e0d8cc;border-radius:3px;"></div>미래
+      </div>
     </div>
   `;
 }

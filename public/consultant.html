@@ -720,6 +720,30 @@
     <!-- ═══ 알림 탭 ═══ -->
     <div class="page-tab" id="tab-notifications">
       <div style="max-width:720px;margin:0 auto">
+
+        <!-- ── 체크 알림 (미체크 자동 트리거) ── -->
+        <div class="card" style="margin-bottom:16px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div style="width:44px;height:44px;background:#fdeee7;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;">⚠️</div>
+              <div>
+                <div style="font-size:16px;font-weight:800;">체크 미달 알림</div>
+                <div style="font-size:12px;color:var(--muted);">3일 연속 미체크 고객 자동 감지</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-ghost btn-sm" onclick="loadCheckAlerts()"><i class="fas fa-sync"></i> 새로고침</button>
+              <button class="btn btn-ghost btn-sm" onclick="markAllCheckAlertsRead()"><i class="fas fa-check-double"></i> 전체 읽음</button>
+            </div>
+          </div>
+          <div id="check-alert-list">
+            <div style="text-align:center;padding:30px;color:var(--muted);font-size:13px;">
+              <i class="fas fa-circle-notch fa-spin"></i> 로딩 중...
+            </div>
+          </div>
+        </div>
+
+        <!-- ── 설문 완료 알림 (기존) ── -->
         <div class="card">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
             <div style="display:flex;align-items:center;gap:12px">
@@ -1199,7 +1223,7 @@ function switchTab(t) {
   if (t === 'ai-message')    loadAiMessageTab();
   if (t === 'weight-track')  loadWeightTrack();
   if (t === 'bc-library')    loadBcLibraryTab();
-  if (t === 'notifications') loadNotifications();
+  if (t === 'notifications') { loadNotifications(); loadCheckAlerts(); }
   if (t === 'analytics')     loadAnalyticsTab();
   if (t === 'daily-checks')  loadConsultantDailyChecks();
 }
@@ -1963,8 +1987,71 @@ async function markAllNotifRead() {
 // ══════════════════════════════════════════════════════════
 //  데일리 체크 현황 탭 (담당 고객 실천 모니터링)
 // ══════════════════════════════════════════════════════════
-async function loadConsultantDailyChecks(days = 7) {
-  // 탭 body 찾기
+// ══════════════════════════════════════════════════════════
+//  체크 알림 (missed_3days 자동 트리거)
+// ══════════════════════════════════════════════════════════
+async function loadCheckAlerts() {
+  const el = document.getElementById('check-alert-list');
+  if (!el) return;
+  el.innerHTML = `<div style="text-align:center;padding:24px;color:#aaa;font-size:13px;"><i class="fas fa-circle-notch fa-spin"></i></div>`;
+
+  const data = await api('GET', '/check-alerts?limit=30').catch(() => null);
+  const alerts = data?.alerts || [];
+  const unread = data?.unread_count || 0;
+
+  // 알림 뱃지 업데이트
+  const badge = document.getElementById('notif-badge-tab');
+  if (badge) {
+    badge.style.display = unread > 0 ? '' : 'none';
+    badge.textContent   = unread;
+  }
+
+  if (!alerts.length) {
+    el.innerHTML = `<div style="text-align:center;padding:30px;color:#aaa;font-size:13px;">
+      <i class="fas fa-check-circle" style="font-size:24px;color:#5a6e3a;margin-bottom:8px;display:block;"></i>
+      미체크 알림 없음 — 모든 고객 정상 실천 중
+    </div>`;
+    return;
+  }
+
+  const TYPE_LABEL = { missed_3days:'🔴 3일 미체크', manual:'📢 수동 리마인드', remind:'📢 리마인드', achieve_4weeks:'🏆 4주 달성' };
+  const rows = alerts.map(a => {
+    const ts  = a.triggered_at ? a.triggered_at.slice(0,16).replace('T',' ') : '—';
+    const lbl = TYPE_LABEL[a.alert_type] || a.alert_type;
+    const bg  = a.is_read ? '#fff' : '#fff8ee';
+    const dot = a.is_read ? '' : `<span style="width:7px;height:7px;border-radius:50%;background:#e07a30;display:inline-block;margin-right:5px;flex-shrink:0;"></span>`;
+    return `<div onclick="markCheckAlertRead(${a.id})" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:${bg};border-bottom:1px solid #f0ece6;cursor:pointer;transition:background .2s;" onmouseover="this.style.background='#fdf8f0'" onmouseout="this.style.background='${bg}'">
+      ${dot}
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:${a.is_read?'600':'800'};color:#241c14;">${a.user_name||a.session_id?.slice(0,8)||'—'}</div>
+        <div style="font-size:11px;color:#8a7e66;margin-top:2px;">${lbl} · ${a.bc_code||''}</div>
+        <div style="font-size:11px;color:#aaa;margin-top:1px;">${a.message||''}</div>
+      </div>
+      <div style="font-size:10px;color:#aaa;flex-shrink:0;">${ts}</div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `<div style="border-radius:10px;overflow:hidden;border:1.5px solid #f0ece6;">${rows}</div>`;
+}
+
+async function markCheckAlertRead(id) {
+  await api('POST', '/check-alerts/read', { ids: [id] }).catch(() => null);
+  // 해당 행 UI 업데이트 (점 제거, 배경 흰색)
+  setTimeout(loadCheckAlerts, 300);
+}
+
+async function markAllCheckAlertsRead() {
+  await api('POST', '/check-alerts/read', {}).catch(() => null);
+  loadCheckAlerts();
+}
+
+let _cDays = 7, _cSig = '';
+
+async function loadConsultantDailyChecks(days, sigFilter) {
+  days      = days      ?? _cDays;
+  sigFilter = sigFilter ?? _cSig;
+  _cDays = days; _cSig = sigFilter;
+
   let host = document.getElementById('tab-daily-checks');
   if (!host) {
     host = document.createElement('div');
@@ -1974,64 +2061,278 @@ async function loadConsultantDailyChecks(days = 7) {
   }
   host.innerHTML = `<div style="padding:40px;text-align:center;color:#aaa;"><i class="fas fa-circle-notch fa-spin" style="font-size:24px"></i><div style="margin-top:10px;font-size:13px">불러오는 중...</div></div>`;
 
-  const data = await api('GET', `/consultant/daily-checks?days=${days}`).catch(() => null);
+  const qs = `days=${days}${sigFilter?'&signal='+sigFilter:''}`;
+  const data    = await api('GET', `/consultant/daily-checks?${qs}`).catch(() => null);
   const clients = data?.clients || [];
+  const counts  = data?.counts  || {};
 
+  const SIG = {
+    red:    {icon:'🔴', label:'위험',  bg:'#fdeee7', border:'#f0b4a0', text:'#8f321e'},
+    yellow: {icon:'🟡', label:'주의',  bg:'#fdf8e4', border:'#e8d070', text:'#7a6010'},
+    green:  {icon:'🟢', label:'순항',  bg:'#eef4e0', border:'#a8c870', text:'#3f5022'},
+    gray:   {icon:'⚪', label:'신규',  bg:'#f4f4f4', border:'#d0d0d0', text:'#666'}
+  };
+
+  function sigBadge(s) {
+    const m = SIG[s]||SIG.gray;
+    return `<span style="font-size:11px;padding:2px 7px;border-radius:9px;font-weight:800;background:${m.bg};border:1px solid ${m.border};color:${m.text};">${m.icon}</span>`;
+  }
   function bar(pct, color) {
     const p = Math.min(100, pct||0);
-    return `<div style="background:#f0ece6;border-radius:5px;height:6px;width:70px;overflow:hidden;display:inline-block;vertical-align:middle;">
-      <div style="background:${color};width:${p}%;height:100%;border-radius:5px;"></div>
-    </div><span style="font-size:11px;font-weight:700;color:#555;margin-left:4px;">${p}%</span>`;
+    return `<div style="background:#f0ece6;border-radius:5px;height:6px;width:70px;overflow:hidden;display:inline-block;vertical-align:middle;"><div style="background:${color};width:${p}%;height:100%;"></div></div><span style="font-size:11px;font-weight:700;color:#555;margin-left:4px;">${p}%</span>`;
   }
 
-  const rows = clients.map((cl, i) => {
+  // 신호등 필터 버튼
+  const sigBtns = [
+    {val:'',      icon:'전체', cnt: counts.total||clients.length},
+    {val:'red',   icon:'🔴',  cnt: counts.cnt_red||0},
+    {val:'yellow',icon:'🟡',  cnt: counts.cnt_yellow||0},
+    {val:'green', icon:'🟢',  cnt: counts.cnt_green||0},
+    {val:'gray',  icon:'⚪',  cnt: counts.cnt_gray||0}
+  ].map(b => {
+    const on = sigFilter===b.val;
+    return `<button onclick="loadConsultantDailyChecks(${days},'${b.val}')" style="padding:5px 12px;border-radius:17px;border:1.5px solid ${on?'var(--primary)':'#e0d8cc'};background:${on?'var(--primary)':'transparent'};color:${on?'#fff':'#555'};font-size:12px;font-weight:800;cursor:pointer;">${b.icon} ${b.cnt}</button>`;
+  }).join('');
+
+  const tableRows = clients.map(cl => {
     const rate = cl.adherence_rate || 0;
-    const color = rate >= 80 ? '#5a6e3a' : rate >= 50 ? '#c98a3c' : '#b5452e';
-    const daysSince = cl.last_check ? Math.floor((Date.now()-new Date(cl.last_check).getTime())/86400000) : 999;
-    const alert = daysSince >= 3 ? `<span style="color:#b5452e;font-size:11px" title="${daysSince}일 전 마지막 체크">⚠️</span>` : '';
-    return `<tr style="border-bottom:1px solid #f0ece6;">
-      <td style="padding:10px 12px;font-weight:700;font-size:13px">${cl.user_name||'이름없음'} ${alert}</td>
-      <td style="padding:10px 12px"><span style="background:#faf0dc;color:#8a5a18;border-radius:8px;padding:2px 8px;font-size:11px;font-weight:700">${cl.bc_code||'—'}</span></td>
-      <td style="padding:10px 12px;text-align:center;font-size:13px;font-weight:800;color:#5a6e3a">${cl.ex_days||0}</td>
-      <td style="padding:10px 12px;text-align:center;font-size:13px;font-weight:800;color:#c98a3c">${cl.di_days||0}</td>
-      <td style="padding:10px 12px;text-align:center;font-size:13px;font-weight:800;color:#b5452e">${cl.re_days||0}</td>
-      <td style="padding:10px 12px">${bar(rate, color)}</td>
-      <td style="padding:10px 12px;font-size:11px;color:#aaa">${cl.last_check ? cl.last_check.slice(0,10) : '—'}</td>
+    const sig  = cl.signal || 'gray';
+    const color = rate>=80?'#5a6e3a':rate>=50?'#c98a3c':'#b5452e';
+    return `<tr style="border-bottom:1px solid #f0ece6;cursor:pointer;" onclick="_cShowDetail('${cl.session_id}','${(cl.user_name||'이름없음').replace(/'/g,"\\'")}','${sig}')">
+      <td style="padding:9px 12px;">${sigBadge(sig)}</td>
+      <td style="padding:9px 12px;font-weight:700;font-size:13px;">${cl.user_name||'이름없음'}</td>
+      <td style="padding:9px 12px;"><span style="background:#faf0dc;color:#8a5a18;border-radius:8px;padding:2px 7px;font-size:11px;font-weight:700;">${cl.bc_code||'—'}</span></td>
+      <td style="padding:9px 12px;text-align:center;font-size:12px;font-weight:800;color:#5a6e3a;">${cl.ex_days||0}</td>
+      <td style="padding:9px 12px;text-align:center;font-size:12px;font-weight:800;color:#c98a3c;">${cl.di_days||0}</td>
+      <td style="padding:9px 12px;text-align:center;font-size:12px;font-weight:800;color:#b5452e;">${cl.re_days||0}</td>
+      <td style="padding:9px 12px;">${bar(rate, color)}</td>
+      <td style="padding:9px 12px;font-size:11px;color:#aaa;">${cl.last_check ? cl.last_check.slice(0,10) : '—'}</td>
     </tr>`;
   }).join('');
 
   host.innerHTML = `
-    <div style="padding:20px 24px">
-      <div style="font-size:18px;font-weight:900;color:#241c14;margin-bottom:6px">🏃 담당 고객 데일리 체크 현황</div>
-      <div style="font-size:12px;color:#aaa;margin-bottom:18px">고객이 오늘 탭에서 체크한 운동·식단·회복 실천 현황을 실시간으로 확인합니다</div>
+    <div style="padding:20px 24px;">
+      <div style="font-size:18px;font-weight:900;color:#241c14;margin-bottom:4px;">🏃 담당 고객 데일리 체크</div>
+      <div style="font-size:12px;color:#aaa;margin-bottom:16px;">오늘 탭 운동·식단·회복 실천 현황 · 신호등 기준: 최근 3일 체크 기반</div>
 
-      <!-- 기간 필터 -->
-      <div style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;">
-        ${[3,7,14,30].map(d => `<button onclick="loadConsultantDailyChecks(${d})" style="padding:6px 16px;border-radius:20px;border:1.5px solid ${days===d?'var(--primary)':'#e0d8cc'};background:${days===d?'var(--primary)':'transparent'};color:${days===d?'#fff':'#555'};font-size:12px;font-weight:800;cursor:pointer;">${d}일</button>`).join('')}
-        <span style="margin-left:auto;font-size:11px;color:#aaa;padding-top:8px;">⚠️ = 3일 이상 미체크</span>
+      <!-- 신호등 요약 카드 -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">
+        ${['red','yellow','green','gray'].map(s => {
+          const m=SIG[s]; const cnt={'red':counts.cnt_red,'yellow':counts.cnt_yellow,'green':counts.cnt_green,'gray':counts.cnt_gray}[s]||0;
+          const desc={'red':'3일 미체크','yellow':'저실천','green':'정상','gray':'신규'}[s];
+          return `<div onclick="loadConsultantDailyChecks(${days},'${s}')" style="background:${m.bg};border:1.5px solid ${m.border};border-radius:12px;padding:12px 14px;cursor:pointer;${sigFilter===s?'box-shadow:0 0 0 2px '+m.border+';':''}">
+            <div style="font-size:10px;font-weight:800;color:${m.text};margin-bottom:3px;">${m.icon} ${m.label}</div>
+            <div style="font-size:22px;font-weight:900;color:${m.text};">${cnt}<span style="font-size:12px;font-weight:600;"> 명</span></div>
+            <div style="font-size:10px;color:${m.text};opacity:.7;">${desc}</div>
+          </div>`;
+        }).join('')}
+      </div>
+
+      <!-- 필터 -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+        <span style="font-size:12px;font-weight:800;color:#555;">기간:</span>
+        ${[3,7,14,30].map(d => `<button onclick="loadConsultantDailyChecks(${d},'${sigFilter}')" style="padding:5px 13px;border-radius:17px;border:1.5px solid ${days===d?'var(--primary)':'#e0d8cc'};background:${days===d?'var(--primary)':'transparent'};color:${days===d?'#fff':'#555'};font-size:12px;font-weight:800;cursor:pointer;">${d}일</button>`).join('')}
+        <span style="font-size:12px;font-weight:800;color:#555;margin-left:8px;">신호등:</span>
+        ${sigBtns}
       </div>
 
       <!-- 테이블 -->
       <div style="background:#fff;border-radius:12px;border:1.5px solid #e8ddd0;overflow:hidden;">
-        <table style="width:100%;border-collapse:collapse">
+        <table style="width:100%;border-collapse:collapse;">
           <thead>
-            <tr style="background:linear-gradient(135deg,#fdfaf4,#fff8ee)">
-              <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:800;color:#8a7e66">고객명</th>
-              <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:800;color:#8a7e66">BC</th>
-              <th style="padding:10px 12px;text-align:center;font-size:11px;font-weight:800;color:#5a6e3a">🏃운동</th>
-              <th style="padding:10px 12px;text-align:center;font-size:11px;font-weight:800;color:#c98a3c">🍽식단</th>
-              <th style="padding:10px 12px;text-align:center;font-size:11px;font-weight:800;color:#b5452e">🌙회복</th>
-              <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:800;color:#8a7e66">실천율</th>
-              <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:800;color:#8a7e66">마지막</th>
+            <tr style="background:linear-gradient(135deg,#fdfaf4,#fff8ee);">
+              <th style="padding:10px;text-align:left;font-size:11px;font-weight:800;color:#8a7e66;">상태</th>
+              <th style="padding:10px;text-align:left;font-size:11px;font-weight:800;color:#8a7e66;">고객명</th>
+              <th style="padding:10px;text-align:left;font-size:11px;font-weight:800;color:#8a7e66;">BC</th>
+              <th style="padding:10px;text-align:center;font-size:11px;font-weight:800;color:#5a6e3a;">🏃</th>
+              <th style="padding:10px;text-align:center;font-size:11px;font-weight:800;color:#c98a3c;">🍽</th>
+              <th style="padding:10px;text-align:center;font-size:11px;font-weight:800;color:#b5452e;">🌙</th>
+              <th style="padding:10px;text-align:left;font-size:11px;font-weight:800;color:#8a7e66;">실천율</th>
+              <th style="padding:10px;text-align:left;font-size:11px;font-weight:800;color:#8a7e66;">마지막</th>
             </tr>
           </thead>
           <tbody>
-            ${rows || `<tr><td colspan="7" style="padding:40px;text-align:center;color:#aaa;font-size:13px">아직 체크 데이터가 없습니다<br><span style="font-size:11px">고객이 결과지 "오늘" 탭에서 체크하면 여기에 표시됩니다</span></td></tr>`}
+            ${tableRows || `<tr><td colspan="8" style="padding:40px;text-align:center;color:#aaa;font-size:13px;">해당 조건의 고객이 없습니다</td></tr>`}
           </tbody>
         </table>
       </div>
+      <div style="margin-top:8px;font-size:11px;color:#aaa;text-align:right;">행 클릭 → 12주 히트맵 확인</div>
+
+      <!-- 히트맵 상세 패널 -->
+      <div id="cons-check-detail" style="margin-top:16px;"></div>
     </div>
   `;
+}
+
+async function _cShowDetail(sessionId, userName, sig) {
+  const panel = document.getElementById('cons-check-detail');
+  if (!panel) return;
+  panel.innerHTML = `<div style="text-align:center;padding:20px;color:#aaa;"><i class="fas fa-circle-notch fa-spin"></i></div>`;
+
+  const data = await api('GET', `/admin/daily-checks/${sessionId}`).catch(() => null);
+  const checks  = data?.checks     || [];
+  const wkStats = data?.week_stats || [];
+
+  if (!checks.length) {
+    panel.innerHTML = `<div style="background:#fff;border:1.5px solid #e8ddd0;border-radius:14px;padding:24px;text-align:center;color:#aaa;font-size:13px;">아직 체크 데이터가 없습니다</div>`;
+    return;
+  }
+
+  const SIG2 = {red:{icon:'🔴'},yellow:{icon:'🟡'},green:{icon:'🟢'},gray:{icon:'⚪'}};
+  const sm = SIG2[sig]||SIG2.gray;
+  const checkMap = {};
+  checks.forEach(c => { checkMap[c.check_date] = c; });
+
+  const now2 = new Date();
+  const startDay2 = new Date(now2);
+  const dow2 = startDay2.getDay();
+  startDay2.setDate(startDay2.getDate() - ((dow2+6)%7) - 83);
+  const DLABELS = ['월','화','수','목','금','토','일'];
+
+  let streak=0, maxStreak=0, cur3=0;
+  const sortedK = Object.keys(checkMap).sort();
+  for (let i=sortedK.length-1; i>=0; i--) {
+    const c=checkMap[sortedK[i]];
+    if((c.exercise_done+c.diet_done+c.recovery_done)>0){streak++;} else break;
+  }
+  sortedK.forEach(k=>{const c=checkMap[k];if((c.exercise_done+c.diet_done+c.recovery_done)>0){cur3++;maxStreak=Math.max(maxStreak,cur3);}else cur3=0;});
+
+  const weekRows2 = [];
+  for (let w=0;w<12;w++) {
+    const cells2=[];
+    for(let d=0;d<7;d++){
+      const cur4=new Date(startDay2); cur4.setDate(cur4.getDate()+w*7+d);
+      const key4=cur4.toISOString().slice(0,10);
+      const c4=checkMap[key4];
+      const cnt4=c4?(c4.exercise_done+c4.diet_done+c4.recovery_done):-1;
+      const isFut=cur4>now2;
+      let bg4=isFut?'transparent':cnt4<0||cnt4===0?'#f0ece6':cnt4===1?'#d4e8b0':cnt4===2?'#8aaa58':'#5a6e3a';
+      const brd4=isFut?'1px dashed #e0d8cc':'none';
+      const tip4=isFut?key4:cnt4<0?`${key4} 미체크`:`${key4}: 운동${c4.exercise_done?'✓':'✗'} 식단${c4.diet_done?'✓':'✗'} 회복${c4.recovery_done?'✓':'✗'}`;
+      cells2.push(`<div title="${tip4}" style="width:18px;height:18px;border-radius:3px;background:${bg4};border:${brd4};flex-shrink:0;"></div>`);
+    }
+    const wn2=w+1; const ws2=wkStats.find(x=>x.week_number===wn2); const wr2=ws2?.rate||0;
+    weekRows2.push(`<div style="display:flex;align-items:center;gap:3px;margin-bottom:3px;">
+      <span style="font-size:10px;font-weight:800;color:#8a7e66;width:26px;flex-shrink:0;">${wn2}주</span>
+      ${cells2.join('')}
+      <div style="margin-left:6px;background:#f0ece6;border-radius:4px;height:7px;width:50px;overflow:hidden;flex-shrink:0;"><div style="width:${wr2}%;height:100%;background:${wr2>=80?'#5a6e3a':wr2>=50?'#c98a3c':'#b5452e'};"></div></div>
+      <span style="font-size:10px;font-weight:700;color:#555;width:26px;">${wr2}%</span>
+    </div>`);
+  }
+
+  // 기존 코멘트 로드
+  const cmtData = await api('GET', `/coaching-comment/${sessionId}?limit=5`).catch(() => null);
+  const comments = cmtData?.comments || [];
+  const today = new Date().toISOString().slice(0,10);
+
+  const cmtRows = comments.map(cm => {
+    const ts = cm.created_at ? cm.created_at.slice(0,16).replace('T',' ') : '';
+    return `<div style="display:flex;gap:10px;padding:9px 12px;background:#fff;border-radius:8px;margin-bottom:6px;border:1px solid #f0ece6;align-items:flex-start;">
+      <div style="width:28px;height:28px;border-radius:50%;background:#eef4e0;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">💬</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;color:#3f5022;font-weight:700;margin-bottom:2px;">${cm.consultant_code}</div>
+        <div style="font-size:13px;color:#241c14;line-height:1.5;">${cm.comment}</div>
+        <div style="font-size:10px;color:#aaa;margin-top:3px;">${ts}</div>
+      </div>
+      <button onclick="_cDeleteComment(${cm.id},'${sessionId}')" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:13px;flex-shrink:0;padding:0 2px;" title="숨기기">✕</button>
+    </div>`;
+  }).join('');
+
+  panel.innerHTML = `
+    <div style="background:linear-gradient(135deg,#fdfaf4,#fff8ee);border:1.5px solid #e8c07a;border-radius:16px;padding:18px 20px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+        <span style="font-size:15px;font-weight:900;color:#241c14;">📊 ${userName}</span>
+        <span style="font-size:12px;font-weight:800;">${sm.icon} 연속 ${streak}일 · 최장 ${maxStreak}일</span>
+        <button onclick="document.getElementById('cons-check-detail').innerHTML=''" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#aaa;font-size:17px;">✕</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:3px;margin-bottom:5px;margin-left:29px;">
+        ${DLABELS.map(l=>`<div style="width:18px;text-align:center;font-size:9px;font-weight:700;color:#8a7e66;">${l}</div>`).join('')}
+      </div>
+      <div style="margin-bottom:14px;">${weekRows2.join('')}</div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:10px;color:#aaa;flex-wrap:wrap;margin-bottom:18px;">
+        <div style="width:12px;height:12px;background:#f0ece6;border-radius:2px;"></div>미체크
+        <div style="width:12px;height:12px;background:#d4e8b0;border-radius:2px;"></div>1/3
+        <div style="width:12px;height:12px;background:#8aaa58;border-radius:2px;"></div>2/3
+        <div style="width:12px;height:12px;background:#5a6e3a;border-radius:2px;"></div>완료
+      </div>
+
+      <!-- ── 코칭 코멘트 섹션 ── -->
+      <div style="border-top:1.5px solid #e8d0a0;padding-top:16px;">
+        <div style="font-size:13px;font-weight:800;color:#5a4a28;margin-bottom:10px;">💬 코칭 코멘트</div>
+
+        <!-- 코멘트 입력 -->
+        <div style="display:flex;gap:8px;margin-bottom:12px;">
+          <textarea id="cmt-input-${sessionId}" placeholder="코멘트를 입력하세요 (고객 결과지에 표시됩니다)..."
+            style="flex:1;border:1.5px solid #e0d8cc;border-radius:10px;padding:10px 12px;font-size:12px;font-family:inherit;resize:vertical;min-height:52px;outline:none;line-height:1.5;"
+            onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='#e0d8cc'"></textarea>
+          <button onclick="_cSendComment('${sessionId}')" style="padding:0 16px;border-radius:10px;background:#5a6e3a;color:#fff;border:none;font-size:12px;font-weight:800;cursor:pointer;flex-shrink:0;align-self:flex-end;height:52px;">전송</button>
+        </div>
+
+        <!-- 기존 코멘트 목록 -->
+        <div id="cmt-list-${sessionId}">
+          ${cmtRows || `<div style="text-align:center;padding:16px;color:#aaa;font-size:12px;">아직 코멘트가 없습니다</div>`}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function _cSendComment(sessionId) {
+  const inp = document.getElementById(`cmt-input-${sessionId}`);
+  if (!inp) return;
+  const comment = inp.value.trim();
+  if (!comment) return;
+
+  inp.disabled = true;
+  const res = await api('POST', '/coaching-comment', {
+    session_id: sessionId,
+    comment,
+    check_date: new Date().toISOString().slice(0,10)
+  }).catch(() => null);
+
+  if (res?.ok) {
+    inp.value = '';
+    // 코멘트 목록 리프레시
+    const listEl = document.getElementById(`cmt-list-${sessionId}`);
+    if (listEl) {
+      const cData = await api('GET', `/coaching-comment/${sessionId}?limit=5`).catch(() => null);
+      const cmts  = cData?.comments || [];
+      listEl.innerHTML = cmts.map(cm => {
+        const ts = cm.created_at ? cm.created_at.slice(0,16).replace('T',' ') : '';
+        return `<div style="display:flex;gap:10px;padding:9px 12px;background:#fff;border-radius:8px;margin-bottom:6px;border:1px solid #f0ece6;align-items:flex-start;">
+          <div style="width:28px;height:28px;border-radius:50%;background:#eef4e0;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">💬</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:12px;color:#3f5022;font-weight:700;margin-bottom:2px;">${cm.consultant_code}</div>
+            <div style="font-size:13px;color:#241c14;line-height:1.5;">${cm.comment}</div>
+            <div style="font-size:10px;color:#aaa;margin-top:3px;">${ts}</div>
+          </div>
+          <button onclick="_cDeleteComment(${cm.id},'${sessionId}')" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:13px;flex-shrink:0;padding:0 2px;" title="숨기기">✕</button>
+        </div>`;
+      }).join('') || `<div style="text-align:center;padding:16px;color:#aaa;font-size:12px;">아직 코멘트가 없습니다</div>`;
+    }
+  } else {
+    alert('전송 실패. 다시 시도해주세요.');
+  }
+  inp.disabled = false;
+}
+
+async function _cDeleteComment(id, sessionId) {
+  if (!confirm('이 코멘트를 숨기겠습니까?')) return;
+  await api('DELETE', `/coaching-comment/${id}`).catch(() => null);
+  // 목록 리프레시
+  const listEl = document.getElementById(`cmt-list-${sessionId}`);
+  if (listEl) {
+    const cData = await api('GET', `/coaching-comment/${sessionId}?limit=5`).catch(() => null);
+    const cmts  = cData?.comments || [];
+    listEl.innerHTML = cmts.length ? cmts.map(cm => {
+      const ts = cm.created_at ? cm.created_at.slice(0,16).replace('T',' ') : '';
+      return `<div style="display:flex;gap:10px;padding:9px 12px;background:#fff;border-radius:8px;margin-bottom:6px;border:1px solid #f0ece6;">
+        <div style="width:28px;height:28px;border-radius:50%;background:#eef4e0;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">💬</div>
+        <div style="flex:1;"><div style="font-size:12px;color:#3f5022;font-weight:700;">${cm.consultant_code}</div><div style="font-size:13px;color:#241c14;">${cm.comment}</div></div>
+        <button onclick="_cDeleteComment(${cm.id},'${sessionId}')" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:13px;">✕</button>
+      </div>`;
+    }).join('') : `<div style="text-align:center;padding:16px;color:#aaa;font-size:12px;">아직 코멘트가 없습니다</div>`;
+  }
 }
 
 // ══════════════════════════════════════════════════════════

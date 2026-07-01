@@ -15643,6 +15643,9 @@ function renderDailyPage(){
       '</div>'+
     '</div>';
 
+  // ── 컨설턴트 코멘트 비동기 로드 ─────────────────────────────────────
+  _loadCoachingComment(sid, host);
+
   // ── 체크 항목 클릭 → 토글 + 자동저장 ────────────────────────────────
   host.querySelectorAll('.tdy-item').forEach(function(btn){
     btn.addEventListener('click', function(){
@@ -15717,6 +15720,40 @@ function _updateTdyStreak(sid, todayKey, savedChecks){
   }
   var el=document.getElementById('tdy-streak-n');
   if(el) el.textContent=streak;
+}
+
+// ── 컨설턴트 코멘트 로드 + 렌더 ─────────────────────────────────────
+async function _loadCoachingComment(sid, host){
+  if (!sid) return;
+  try {
+    var resp = await fetch('/api/coaching-comment/' + encodeURIComponent(sid) + '?limit=3');
+    if (!resp.ok) return;
+    var data = await resp.json();
+    var latest = data.latest;
+    if (!latest) return;
+
+    // 기존 코멘트 박스가 있으면 교체
+    var existing = host.querySelector('.tdy-coach-box');
+    if (existing) existing.remove();
+
+    // tdy-card 뒤에 추가
+    var card = host.querySelector('.tdy-card');
+    if (!card) return;
+
+    var ts = latest.created_at ? latest.created_at.slice(0,10) : '';
+    var box = document.createElement('div');
+    box.className = 'tdy-coach-box';
+    box.style.cssText = 'margin-top:10px;background:linear-gradient(135deg,#eef4e0,#f3f8e8);border:1.5px solid #a8c870;border-radius:14px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;';
+    box.innerHTML =
+      '<div style="width:36px;height:36px;border-radius:50%;background:#5a6e3a;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">💬</div>'+
+      '<div style="flex:1;min-width:0;">'+
+        '<div style="font-size:11px;font-weight:800;color:#3f5022;margin-bottom:4px;">컨설턴트 메시지 · '+ts+'</div>'+
+        '<div style="font-size:14px;color:#241c14;line-height:1.6;font-weight:600;">'+latest.comment+'</div>'+
+      '</div>';
+    card.insertAdjacentElement('afterend', box);
+  } catch(e) {
+    // 코멘트 로드 실패는 무시
+  }
 }
 
 // ── DB 자동저장 (디바운스) ───────────────────────────────────────────

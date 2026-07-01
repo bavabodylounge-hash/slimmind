@@ -4495,6 +4495,45 @@ app.post('/api/daily-check', async (c) => {
       memo || null
     ).run()
 
+    // ── 자동 트리거: 3일 연속 미체크 감지 ─────────────────────
+    // 저장 후 최근 3일 체크 건수 확인 → 0이면 담당자 알림 INSERT
+    try {
+      const recent3 = await db.prepare(`
+        SELECT SUM(exercise_done + diet_done + recovery_done) AS score
+        FROM daily_checks
+        WHERE session_id = ?
+          AND check_date >= date('now', '-3 days')
+      `).bind(session_id).first<any>()
+
+      const score3 = recent3?.score ?? 0
+      // 현재 저장된 값도 합산 — 저장 직후라 이미 반영됨
+      const todayScore = (exercise_done?1:0) + (diet_done?1:0) + (recovery_done?1:0)
+
+      if (score3 === 0 && todayScore === 0 && consultant_code) {
+        // 중복 알림 방지: 24시간 내 같은 type 이미 있으면 skip
+        const existing = await db.prepare(`
+          SELECT id FROM check_alerts
+          WHERE session_id = ? AND alert_type = 'missed_3days'
+            AND triggered_at >= datetime('now', '-1 day')
+          LIMIT 1
+        `).bind(session_id).first<any>()
+
+        if (!existing) {
+          await db.prepare(`
+            INSERT INTO check_alerts (session_id, alert_type, ref_code, bc_code, message)
+            VALUES (?, 'missed_3days', ?, ?, ?)
+          `).bind(
+            session_id,
+            consultant_code,
+            bc_code,
+            `${check_date} 기준 최근 3일 체크 0건 — 고객 연락 필요`
+          ).run()
+        }
+      }
+    } catch (_alertErr) {
+      // 알림 트리거 실패는 체크 저장 성공에 영향 없음
+    }
+
     return c.json({ ok: true, session_id, check_date })
   } catch (e: any) {
     console.error('[/api/daily-check POST]', e)
@@ -4539,38 +4578,64 @@ app.get('/api/admin/daily-checks', requireRole('MASTER'), async (c) => {
   const db = (c.env as any).DB as D1Database
   if (!db) return c.json({ error: 'DB not available' }, 503)
 
-  const days    = parseInt(c.req.query('days') || '7', 10)
+  const days       = parseInt(c.req.query('days') || '7', 10)
   const consultant = c.req.query('consultant') || null
-  const b2b     = c.req.query('b2b') || null
-  const page    = parseInt(c.req.query('page') || '1', 10)
-  const perPage = 50
+  const b2b        = c.req.query('b2b') || null
+  const signal     = c.req.query('signal') || null   // red|yellow|green|gray
+  const page       = parseInt(c.req.query('page') || '1', 10)
+  const perPage    = 50
 
   try {
-    // 조건 빌드
+    // 기간 조건 빌드
     let where = `WHERE dc.check_date >= date('now', '-${days} days')`
     const binds: any[] = []
     if (consultant) { where += ` AND dc.consultant_code = ?`; binds.push(consultant) }
     if (b2b)        { where += ` AND dc.b2b_code = ?`;        binds.push(b2b) }
 
-    // 고객별 집계
+    // ── 신호등 판정 로직 (CTE) ────────────────────────────────────
+    // recent3: 최근 3일 체크 건수
+    // signal:
+    //   'red'    → recent3_count = 0  (AND 이력 있음: total_days > 0)
+    //   'yellow' → recent3_count 1~2  OR (adherence_rate < 50)
+    //   'green'  → recent3_count >= 3 AND adherence_rate >= 50
+    //   'gray'   → total_days = 0 (이력 자체 없음, 신규)
     const sql = `
-      SELECT
-        dc.session_id,
-        dr.user_name,
-        dc.consultant_code,
-        dc.bc_code,
-        COUNT(DISTINCT dc.check_date)  AS total_days,
-        SUM(dc.exercise_done)          AS ex_days,
-        SUM(dc.diet_done)              AS di_days,
-        SUM(dc.recovery_done)          AS re_days,
-        MAX(dc.check_date)             AS last_check,
-        ROUND(100.0 * SUM(dc.exercise_done + dc.diet_done + dc.recovery_done)
-          / (COUNT(DISTINCT dc.check_date) * 3), 1) AS adherence_rate
-      FROM daily_checks dc
-      LEFT JOIN diagnosis_results dr ON dr.session_id = dc.session_id
-      ${where}
-      GROUP BY dc.session_id
-      ORDER BY last_check DESC
+      WITH base AS (
+        SELECT
+          dc.session_id,
+          dr.user_name,
+          dc.consultant_code,
+          dc.bc_code,
+          COUNT(DISTINCT dc.check_date)  AS total_days,
+          SUM(dc.exercise_done)          AS ex_days,
+          SUM(dc.diet_done)              AS di_days,
+          SUM(dc.recovery_done)          AS re_days,
+          MAX(dc.check_date)             AS last_check,
+          ROUND(100.0 * SUM(dc.exercise_done + dc.diet_done + dc.recovery_done)
+            / (COUNT(DISTINCT dc.check_date) * 3), 1) AS adherence_rate,
+          SUM(CASE WHEN dc.check_date >= date('now', '-3 days')
+                   THEN (dc.exercise_done + dc.diet_done + dc.recovery_done) ELSE 0 END
+          ) AS recent3_score
+        FROM daily_checks dc
+        LEFT JOIN diagnosis_results dr ON dr.session_id = dc.session_id
+        ${where}
+        GROUP BY dc.session_id
+      ),
+      with_signal AS (
+        SELECT *,
+          CASE
+            WHEN total_days = 0                                         THEN 'gray'
+            WHEN recent3_score = 0                                      THEN 'red'
+            WHEN recent3_score <= 3 OR adherence_rate < 50              THEN 'yellow'
+            ELSE                                                             'green'
+          END AS signal
+        FROM base
+      )
+      SELECT * FROM with_signal
+      ${signal ? `WHERE signal = '${signal}'` : ''}
+      ORDER BY
+        CASE signal WHEN 'red' THEN 1 WHEN 'yellow' THEN 2 WHEN 'green' THEN 3 ELSE 4 END,
+        last_check DESC
       LIMIT ${perPage} OFFSET ${(page-1)*perPage}
     `
 
@@ -4579,16 +4644,39 @@ app.get('/api/admin/daily-checks', requireRole('MASTER'), async (c) => {
       : db.prepare(sql)
     const rows = await stmt.all<any>()
 
-    // 전체 통계 (해당 기간)
+    // 전체 통계 (해당 기간) + 신호등별 카운트
     const statSql = `
+      WITH base AS (
+        SELECT
+          dc.session_id,
+          COUNT(DISTINCT dc.check_date) AS total_days,
+          ROUND(100.0 * SUM(dc.exercise_done + dc.diet_done + dc.recovery_done)
+            / (COUNT(DISTINCT dc.check_date) * 3), 1) AS adherence_rate,
+          SUM(CASE WHEN dc.check_date >= date('now', '-3 days')
+                   THEN (dc.exercise_done + dc.diet_done + dc.recovery_done) ELSE 0 END
+          ) AS recent3_score,
+          SUM(dc.exercise_done) AS total_ex,
+          SUM(dc.diet_done)     AS total_di,
+          SUM(dc.recovery_done) AS total_re
+        FROM daily_checks dc
+        ${where}
+        GROUP BY dc.session_id
+      )
       SELECT
-        COUNT(DISTINCT dc.check_date || dc.session_id)  AS total_entries,
-        ROUND(AVG(dc.exercise_done + dc.diet_done + dc.recovery_done) * 100.0 / 3, 1) AS avg_rate,
-        SUM(dc.exercise_done)  AS total_ex,
-        SUM(dc.diet_done)      AS total_di,
-        SUM(dc.recovery_done)  AS total_re
-      FROM daily_checks dc
-      ${where}
+        COUNT(*)                                                       AS total_clients,
+        ROUND(AVG(adherence_rate), 1)                                  AS avg_rate,
+        SUM(total_ex)                                                  AS total_ex,
+        SUM(total_di)                                                  AS total_di,
+        SUM(total_re)                                                  AS total_re,
+        SUM(CASE WHEN total_days = 0 THEN 1 ELSE 0 END)               AS cnt_gray,
+        SUM(CASE WHEN total_days > 0 AND recent3_score = 0
+                      THEN 1 ELSE 0 END)                               AS cnt_red,
+        SUM(CASE WHEN recent3_score > 0 AND recent3_score <= 3
+                      OR (recent3_score > 0 AND adherence_rate < 50)
+                      THEN 1 ELSE 0 END)                               AS cnt_yellow,
+        SUM(CASE WHEN recent3_score > 3 AND adherence_rate >= 50
+                      THEN 1 ELSE 0 END)                               AS cnt_green
+      FROM base
     `
     const statStmt = binds.length > 0
       ? db.prepare(statSql).bind(...binds)
@@ -4598,6 +4686,7 @@ app.get('/api/admin/daily-checks', requireRole('MASTER'), async (c) => {
     return c.json({
       ok: true,
       period_days: days,
+      signal_filter: signal,
       stats: stats || {},
       clients: rows.results || [],
       page, per_page: perPage
@@ -4657,36 +4746,89 @@ app.get('/api/consultant/daily-checks', requireRole('ANY'), async (c) => {
   const db = (c.env as any).DB as D1Database
   if (!db) return c.json({ error: 'DB not available' }, 503)
 
-  const user = (c as any).get('user')
+  const user   = (c as any).get('user')
   const myCode = user?.code || ''
-  const days = parseInt(c.req.query('days') || '7', 10)
+  const days   = parseInt(c.req.query('days') || '7', 10)
+  const signal = c.req.query('signal') || null  // red|yellow|green|gray
 
   try {
-    const rows = await db.prepare(`
-      SELECT
-        dc.session_id,
-        dr.user_name,
-        dc.bc_code,
-        COUNT(DISTINCT dc.check_date)  AS total_days,
-        SUM(dc.exercise_done)          AS ex_days,
-        SUM(dc.diet_done)              AS di_days,
-        SUM(dc.recovery_done)          AS re_days,
-        MAX(dc.check_date)             AS last_check,
-        ROUND(100.0 * SUM(dc.exercise_done + dc.diet_done + dc.recovery_done)
-          / (COUNT(DISTINCT dc.check_date) * 3), 1) AS adherence_rate
-      FROM daily_checks dc
-      LEFT JOIN diagnosis_results dr ON dr.session_id = dc.session_id
-      WHERE dc.consultant_code = ?
-        AND dc.check_date >= date('now', '-${days} days')
-      GROUP BY dc.session_id
-      ORDER BY last_check DESC
+    const sql = `
+      WITH base AS (
+        SELECT
+          dc.session_id,
+          dr.user_name,
+          dc.bc_code,
+          COUNT(DISTINCT dc.check_date)  AS total_days,
+          SUM(dc.exercise_done)          AS ex_days,
+          SUM(dc.diet_done)              AS di_days,
+          SUM(dc.recovery_done)          AS re_days,
+          MAX(dc.check_date)             AS last_check,
+          ROUND(100.0 * SUM(dc.exercise_done + dc.diet_done + dc.recovery_done)
+            / (COUNT(DISTINCT dc.check_date) * 3), 1) AS adherence_rate,
+          SUM(CASE WHEN dc.check_date >= date('now', '-3 days')
+                   THEN (dc.exercise_done + dc.diet_done + dc.recovery_done) ELSE 0 END
+          ) AS recent3_score
+        FROM daily_checks dc
+        LEFT JOIN diagnosis_results dr ON dr.session_id = dc.session_id
+        WHERE dc.consultant_code = ?
+          AND dc.check_date >= date('now', '-${days} days')
+        GROUP BY dc.session_id
+      ),
+      with_signal AS (
+        SELECT *,
+          CASE
+            WHEN total_days = 0                                    THEN 'gray'
+            WHEN recent3_score = 0                                 THEN 'red'
+            WHEN recent3_score <= 3 OR adherence_rate < 50         THEN 'yellow'
+            ELSE                                                        'green'
+          END AS signal
+        FROM base
+      )
+      SELECT * FROM with_signal
+      ${signal ? `WHERE signal = '${signal}'` : ''}
+      ORDER BY
+        CASE signal WHEN 'red' THEN 1 WHEN 'yellow' THEN 2 WHEN 'green' THEN 3 ELSE 4 END,
+        last_check DESC
       LIMIT 100
-    `).bind(myCode).all<any>()
+    `
+
+    const rows = await db.prepare(sql).bind(myCode).all<any>()
+
+    // 신호등별 카운트
+    const countSql = `
+      WITH base AS (
+        SELECT
+          dc.session_id,
+          COUNT(DISTINCT dc.check_date) AS total_days,
+          ROUND(100.0 * SUM(dc.exercise_done + dc.diet_done + dc.recovery_done)
+            / (COUNT(DISTINCT dc.check_date) * 3), 1) AS adherence_rate,
+          SUM(CASE WHEN dc.check_date >= date('now', '-3 days')
+                   THEN (dc.exercise_done + dc.diet_done + dc.recovery_done) ELSE 0 END
+          ) AS recent3_score
+        FROM daily_checks dc
+        WHERE dc.consultant_code = ?
+          AND dc.check_date >= date('now', '-${days} days')
+        GROUP BY dc.session_id
+      )
+      SELECT
+        COUNT(*) AS total,
+        SUM(CASE WHEN total_days = 0 THEN 1 ELSE 0 END)               AS cnt_gray,
+        SUM(CASE WHEN total_days > 0 AND recent3_score = 0 THEN 1 ELSE 0 END) AS cnt_red,
+        SUM(CASE WHEN recent3_score > 0 AND (recent3_score <= 3 OR adherence_rate < 50)
+                 THEN 1 ELSE 0 END)                                    AS cnt_yellow,
+        SUM(CASE WHEN recent3_score > 3 AND adherence_rate >= 50
+                 THEN 1 ELSE 0 END)                                    AS cnt_green,
+        ROUND(AVG(CASE WHEN total_days > 0 THEN adherence_rate END), 1) AS avg_rate
+      FROM base
+    `
+    const counts = await db.prepare(countSql).bind(myCode).first<any>()
 
     return c.json({
       ok: true,
       consultant_code: myCode,
       period_days: days,
+      signal_filter: signal,
+      counts: counts || {},
       clients: rows.results || []
     })
   } catch (e: any) {
@@ -4733,6 +4875,243 @@ app.get('/api/b2b/daily-checks', requireRole('ANY'), async (c) => {
       period_days: days,
       clients: rows.results || []
     })
+  } catch (e: any) {
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ══════════════════════════════════════════════════════════════════
+//  POST /api/coaching-comment  — 컨설턴트 코멘트 등록
+//  body: { session_id, comment, check_date? }
+// ══════════════════════════════════════════════════════════════════
+app.post('/api/coaching-comment', requireRole('ANY'), async (c) => {
+  const db   = (c.env as any).DB as D1Database
+  const user = (c as any).get('user')
+  const consultantCode = user?.code || ''
+
+  if (!db) return c.json({ error: 'DB not available' }, 503)
+
+  try {
+    const { session_id, comment, check_date } = await c.req.json() as any
+    if (!session_id || !comment?.trim()) {
+      return c.json({ error: 'session_id, comment are required' }, 400)
+    }
+    if (comment.length > 500) {
+      return c.json({ error: '코멘트는 최대 500자입니다' }, 400)
+    }
+
+    const result = await db.prepare(`
+      INSERT INTO coaching_comments (session_id, consultant_code, comment, check_date)
+      VALUES (?, ?, ?, ?)
+    `).bind(session_id, consultantCode, comment.trim(), check_date || null).run()
+
+    return c.json({ ok: true, id: result.meta?.last_row_id })
+  } catch (e: any) {
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ══════════════════════════════════════════════════════════════════
+//  GET /api/coaching-comment/:session_id  — 특정 고객 코멘트 목록
+//  (결과지 고객 본인 / 컨설턴트 공통 접근)
+// ══════════════════════════════════════════════════════════════════
+app.get('/api/coaching-comment/:session_id', async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not available' }, 503)
+
+  const sessionId = c.req.param('session_id')
+  const limit     = Math.min(parseInt(c.req.query('limit') || '10', 10), 50)
+
+  try {
+    const rows = await db.prepare(`
+      SELECT id, consultant_code, comment, check_date, is_visible, created_at
+      FROM coaching_comments
+      WHERE session_id = ? AND is_visible = 1
+      ORDER BY created_at DESC
+      LIMIT ${limit}
+    `).bind(sessionId).all<any>()
+
+    // 최신 1건 (고객 화면 노출용)
+    const latest = rows.results?.[0] || null
+
+    return c.json({
+      ok: true,
+      session_id: sessionId,
+      latest,
+      comments: rows.results || []
+    })
+  } catch (e: any) {
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ══════════════════════════════════════════════════════════════════
+//  DELETE /api/coaching-comment/:id  — 코멘트 숨김 (컨설턴트 본인만)
+// ══════════════════════════════════════════════════════════════════
+app.delete('/api/coaching-comment/:id', requireRole('ANY'), async (c) => {
+  const db   = (c.env as any).DB as D1Database
+  const user = (c as any).get('user')
+  const myCode = user?.code || ''
+
+  try {
+    const id = c.req.param('id')
+    await db.prepare(
+      `UPDATE coaching_comments SET is_visible=0 WHERE id=? AND consultant_code=?`
+    ).bind(id, myCode).run()
+    return c.json({ ok: true })
+  } catch (e: any) {
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ══════════════════════════════════════════════════════════════════
+//  GET /api/check-alerts  — 담당자 알림 조회
+//  쿼리: ?unread_only=1 (미읽음만), ?limit=50
+// ══════════════════════════════════════════════════════════════════
+app.get('/api/check-alerts', requireRole('ANY'), async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not available' }, 503)
+
+  const user      = (c as any).get('user')
+  const myCode    = user?.code || ''
+  const unreadOnly = c.req.query('unread_only') === '1'
+  const limit     = Math.min(parseInt(c.req.query('limit') || '50', 10), 200)
+
+  try {
+    const sql = `
+      SELECT ca.*, dr.user_name
+      FROM check_alerts ca
+      LEFT JOIN daily_checks dc ON dc.session_id = ca.session_id
+      LEFT JOIN diagnosis_results dr ON dr.session_id = ca.session_id
+      WHERE ca.ref_code = ?
+        ${unreadOnly ? "AND ca.is_read = 0" : ""}
+      ORDER BY ca.triggered_at DESC
+      LIMIT ${limit}
+    `
+    const rows = await db.prepare(sql).bind(myCode).all<any>()
+
+    const unreadCount = await db.prepare(
+      `SELECT COUNT(*) AS cnt FROM check_alerts WHERE ref_code = ? AND is_read = 0`
+    ).bind(myCode).first<any>()
+
+    return c.json({
+      ok: true,
+      unread_count: unreadCount?.cnt || 0,
+      alerts: rows.results || []
+    })
+  } catch (e: any) {
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ══════════════════════════════════════════════════════════════════
+//  GET /api/admin/check-alerts  — 관리자: 전체 알림 조회 (MASTER)
+// ══════════════════════════════════════════════════════════════════
+app.get('/api/admin/check-alerts', requireRole('MASTER'), async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not available' }, 503)
+
+  const unreadOnly = c.req.query('unread_only') === '1'
+  const alertType  = c.req.query('type') || null
+
+  try {
+    let where = unreadOnly ? 'WHERE ca.is_read = 0' : 'WHERE 1=1'
+    if (alertType) where += ` AND ca.alert_type = '${alertType}'`
+
+    const rows = await db.prepare(`
+      SELECT ca.*, dr.user_name
+      FROM check_alerts ca
+      LEFT JOIN diagnosis_results dr ON dr.session_id = ca.session_id
+      ${where}
+      ORDER BY ca.triggered_at DESC
+      LIMIT 200
+    `).all<any>()
+
+    const counts = await db.prepare(`
+      SELECT
+        COUNT(*) AS total,
+        SUM(CASE WHEN is_read=0 THEN 1 ELSE 0 END) AS unread,
+        SUM(CASE WHEN alert_type='missed_3days' THEN 1 ELSE 0 END) AS missed,
+        SUM(CASE WHEN alert_type='remind' THEN 1 ELSE 0 END) AS remind
+      FROM check_alerts
+      WHERE triggered_at >= date('now', '-7 days')
+    `).first<any>()
+
+    return c.json({ ok: true, counts: counts||{}, alerts: rows.results||[] })
+  } catch (e: any) {
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ══════════════════════════════════════════════════════════════════
+//  POST /api/check-alerts/read  — 알림 읽음 처리
+//  body: { ids: number[] } | { ref_code: string } (전체)
+// ══════════════════════════════════════════════════════════════════
+app.post('/api/check-alerts/read', requireRole('ANY'), async (c) => {
+  const db   = (c.env as any).DB as D1Database
+  const user = (c as any).get('user')
+  const myCode = user?.code || ''
+
+  try {
+    const body = await c.req.json().catch(() => ({})) as any
+    if (Array.isArray(body.ids) && body.ids.length > 0) {
+      const placeholders = body.ids.map(() => '?').join(',')
+      await db.prepare(
+        `UPDATE check_alerts SET is_read=1, read_at=datetime('now')
+         WHERE id IN (${placeholders}) AND ref_code=?`
+      ).bind(...body.ids, myCode).run()
+    } else {
+      // 전체 읽음
+      await db.prepare(
+        `UPDATE check_alerts SET is_read=1, read_at=datetime('now')
+         WHERE ref_code=? AND is_read=0`
+      ).bind(myCode).run()
+    }
+    return c.json({ ok: true })
+  } catch (e: any) {
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ══════════════════════════════════════════════════════════════════
+//  POST /api/admin/daily-check/remind  — 관리자 수동 리마인드 발송
+//  body: { session_id: string }
+// ══════════════════════════════════════════════════════════════════
+app.post('/api/admin/daily-check/remind', requireRole('MASTER'), async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not available' }, 503)
+
+  try {
+    const { session_id } = await c.req.json() as any
+    if (!session_id) return c.json({ error: 'session_id required' }, 400)
+
+    // 담당 컨설턴트 코드 찾기
+    const info = await db.prepare(`
+      SELECT consultant_code, bc_code FROM daily_checks
+      WHERE session_id = ? ORDER BY updated_at DESC LIMIT 1
+    `).bind(session_id).first<any>()
+
+    // 중복 발송 방지: 12시간 내 already remind
+    const dup = await db.prepare(`
+      SELECT id FROM check_alerts
+      WHERE session_id=? AND alert_type='manual'
+        AND triggered_at >= datetime('now','-12 hours') LIMIT 1
+    `).bind(session_id).first<any>()
+
+    if (dup) {
+      return c.json({ ok: true, skipped: true, reason: '12시간 이내 이미 발송됨' })
+    }
+
+    await db.prepare(`
+      INSERT INTO check_alerts (session_id, alert_type, ref_code, bc_code, message)
+      VALUES (?, 'manual', ?, ?, '관리자 수동 리마인드 발송')
+    `).bind(
+      session_id,
+      info?.consultant_code || 'ADMIN',
+      info?.bc_code || null
+    ).run()
+
+    return c.json({ ok: true, session_id })
   } catch (e: any) {
     return c.json({ error: String(e) }, 500)
   }
