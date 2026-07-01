@@ -1434,8 +1434,8 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
 <meta property="og:description"    content="${ogDesc}">
 <meta property="og:url"            content="${ogUrl}">
 <meta property="og:image"          content="${ogImage}">
-<meta property="og:image:width"    content="630">
-<meta property="og:image:height"   content="1200">
+<meta property="og:image:width"    content="1200">
+<meta property="og:image:height"   content="630">
 <meta property="og:image:type"     content="image/svg+xml">
 <meta name="twitter:card"          content="summary_large_image">
 <meta name="twitter:title"         content="${ogTitle}">
@@ -1980,8 +1980,8 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
 <meta property="og:description"    content="${ogDescR}">
 <meta property="og:url"            content="${ogUrlR}">
 <meta property="og:image"          content="${ogImageR}">
-<meta property="og:image:width"    content="630">
-<meta property="og:image:height"   content="1200">
+<meta property="og:image:width"    content="1200">
+<meta property="og:image:height"   content="630">
 <meta property="og:image:type"     content="image/svg+xml">
 <meta name="twitter:card"          content="summary_large_image">
 <meta name="twitter:title"         content="${ogTitleR}">
@@ -2119,8 +2119,8 @@ app.get('/s/:code', async (c) => {
 <meta property="og:description"    content="${ogDescS}">
 <meta property="og:url"            content="${ogUrlS}">
 <meta property="og:image"          content="${ogImageS}">
-<meta property="og:image:width"    content="630">
-<meta property="og:image:height"   content="1200">
+<meta property="og:image:width"    content="1200">
+<meta property="og:image:height"   content="630">
 <meta property="og:image:type"     content="image/svg+xml">
 <meta name="twitter:card"          content="summary_large_image">
 <meta name="twitter:title"         content="${ogTitleS}">
@@ -2185,114 +2185,118 @@ app.get('/favicon.ico', async (c) => {
   return c.body(svg, 200, { 'Content-Type': 'image/svg+xml' })
 })
 
-// ─── /og/survey — 설문 공유용 OG 이미지 ─────────────────────────────────
-// 핵심 콘텐츠를 상단 50% 이내에 배치 → 카카오 crop 시 잘리지 않음
+// ─── /og/survey — 설문 공유용 OG 이미지 (1200×630 가로형, 카카오 최적화) ──
 app.get('/og/survey', (c) => {
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg"
-     width="630" height="1200" viewBox="0 0 630 1200">
+     width="1200" height="630" viewBox="0 0 1200 630">
   <defs>
-    <linearGradient id="bgS" x1="0" y1="0" x2="0.3" y2="1">
+    <!-- 왼쪽 브랜드 레드 → 오른쪽 약간 어두운 레드 가로 그라디언트 -->
+    <linearGradient id="bgS" x1="0" y1="0" x2="1" y2="0.6">
       <stop offset="0%"   stop-color="#bf4e32"/>
-      <stop offset="50%"  stop-color="#b5452e"/>
+      <stop offset="55%"  stop-color="#b5452e"/>
       <stop offset="100%" stop-color="#8a3020"/>
     </linearGradient>
+    <!-- 우상단 하이라이트 -->
     <radialGradient id="hilS" cx="1" cy="0" r="0.9">
-      <stop offset="0%"   stop-color="#cc5a3a" stop-opacity="0.35"/>
+      <stop offset="0%"   stop-color="#cc5a3a" stop-opacity="0.40"/>
       <stop offset="100%" stop-color="#b5452e" stop-opacity="0"/>
     </radialGradient>
-    <radialGradient id="vigS" cx="0" cy="1" r="1.1">
-      <stop offset="0%"   stop-color="#6a2010" stop-opacity="0.50"/>
+    <!-- 좌하단 비네트 -->
+    <radialGradient id="vigS" cx="0" cy="1" r="1.0">
+      <stop offset="0%"   stop-color="#6a2010" stop-opacity="0.45"/>
       <stop offset="100%" stop-color="#b5452e" stop-opacity="0"/>
     </radialGradient>
   </defs>
 
   <!-- 배경 -->
-  <rect width="630" height="1200" fill="url(#bgS)"/>
-  <rect width="630" height="1200" fill="url(#hilS)"/>
-  <rect width="630" height="1200" fill="url(#vigS)"/>
+  <rect width="1200" height="630" fill="url(#bgS)"/>
+  <rect width="1200" height="630" fill="url(#hilS)"/>
+  <rect width="1200" height="630" fill="url(#vigS)"/>
 
-  <!-- 장식 원 -->
-  <circle cx="570" cy="70"  r="180" fill="#c9583a" opacity="0.15"/>
-  <circle cx="60"  cy="1150" r="150" fill="#7a2a1a" opacity="0.25"/>
+  <!-- 장식 원 (우상단 / 좌하단) -->
+  <circle cx="1090" cy="-40" r="280" fill="#c9583a" opacity="0.13"/>
+  <circle cx="110"  cy="680" r="220" fill="#7a2a1a" opacity="0.20"/>
+  <!-- 중앙 미세 텍스처 원 -->
+  <circle cx="600"  cy="315" r="420" fill="none" stroke="#f6f4ee" stroke-width="0.5" opacity="0.05"/>
 
-  <!-- ══ 핵심 영역: y 60~480 (이미지 상단 40%) ══ -->
+  <!-- ══════════ 왼쪽 영역: 로고 블록 (x 80~520) ══════════ -->
 
-  <!-- SLIMMIND 소형 브랜드 -->
-  <text x="315" y="90"
-        text-anchor="middle"
+  <!-- SLIMMIND 작은 브랜드명 -->
+  <text x="88" y="120"
         font-family="Georgia,'Times New Roman',serif"
-        font-size="11" letter-spacing="8"
+        font-size="12" letter-spacing="9"
         fill="#f6f4ee" opacity="0.45">SLIMMIND</text>
 
   <!-- 상단 구분선 -->
-  <rect x="180" y="102" width="270" height="0.8" fill="#f6f4ee" opacity="0.25"/>
+  <rect x="88" y="132" width="180" height="0.8" fill="#f6f4ee" opacity="0.25"/>
 
-  <!-- SlimMind 메인 로고 — y:200 (충분한 여백, 잘리지 않는 위치) -->
-  <text x="315" y="220"
-        text-anchor="middle"
+  <!-- SlimMind 메인 로고 (대형) -->
+  <text x="88" y="265"
         font-family="Georgia,'Times New Roman',serif"
-        font-size="90" font-weight="300" letter-spacing="-2"
+        font-size="108" font-weight="300" letter-spacing="-3"
         fill="#f6f4ee" opacity="0.97">SlimMind</text>
 
   <!-- 로고 하단 장식선 -->
-  <rect x="245" y="240" width="140" height="1.2" fill="#f6f4ee" opacity="0.45"/>
+  <rect x="88" y="285" width="140" height="1.2" fill="#f6f4ee" opacity="0.40"/>
 
-  <!-- 카피 1 — y:295 -->
-  <text x="315" y="295"
-        text-anchor="middle"
+  <!-- 태그라인 -->
+  <text x="88" y="330"
         font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
-        font-size="21" font-weight="300" letter-spacing="4"
-        fill="#f6f4ee" opacity="0.90">당신의 몸은 하나의 코드입니다.</text>
+        font-size="15" font-weight="300" letter-spacing="3"
+        fill="#f6f4ee" opacity="0.65">바디코드 정밀 진단</text>
 
-  <!-- 카피 2 — y:335 -->
-  <text x="315" y="335"
-        text-anchor="middle"
+  <!-- ══════════ 세로 구분선 ══════════ -->
+  <rect x="560" y="80" width="1" height="470" fill="#f6f4ee" opacity="0.15"/>
+
+  <!-- ══════════ 오른쪽 영역: 카피 + CTA (x 620~1120) ══════════ -->
+
+  <!-- 카피 1 -->
+  <text x="620" y="220"
         font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
-        font-size="21" font-weight="300" letter-spacing="4"
-        fill="#f6f4ee" opacity="0.90">우리는 그 원인을 해독합니다.</text>
-
-  <!-- 중간 구분선 -->
-  <rect x="60" y="380" width="510" height="0.6" fill="#f6f4ee" opacity="0.12"/>
-
-  <!-- CTA 버튼 — y:420 (상단 35% 이내) -->
-  <rect x="170" y="400" width="290" height="52" rx="26"
-        fill="#f6f4ee" opacity="0.12"/>
-  <rect x="170" y="400" width="290" height="52" rx="26"
-        fill="none" stroke="#f6f4ee" stroke-width="0.9" opacity="0.40"/>
-  <text x="315" y="432"
-        text-anchor="middle"
+        font-size="30" font-weight="300" letter-spacing="4"
+        fill="#f6f4ee" opacity="0.95">당신의 몸은</text>
+  <text x="620" y="270"
         font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
-        font-size="14" letter-spacing="5"
-        fill="#f6f4ee" opacity="0.85">지금 무료 진단 받기</text>
+        font-size="30" font-weight="300" letter-spacing="4"
+        fill="#f6f4ee" opacity="0.95">하나의 코드입니다.</text>
 
-  <!-- ══ 하단 여백 영역 (잘려도 상관없음) ══ -->
-
-  <rect x="60" y="530" width="510" height="0.6" fill="#f6f4ee" opacity="0.08"/>
-
-  <text x="315" y="610"
-        text-anchor="middle"
+  <!-- 카피 2 -->
+  <text x="620" y="330"
         font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
-        font-size="15" font-weight="300" letter-spacing="2"
+        font-size="22" font-weight="300" letter-spacing="3"
+        fill="#f6f4ee" opacity="0.70">우리는 그 원인을 해독합니다.</text>
+
+  <!-- 카피 보조 라인 -->
+  <rect x="620" y="358" width="440" height="0.7" fill="#f6f4ee" opacity="0.15"/>
+
+  <!-- 서브 카피 -->
+  <text x="620" y="390"
+        font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
+        font-size="14" font-weight="300" letter-spacing="2"
         fill="#f6f4ee" opacity="0.50">체형 분석 · 식이 패턴 · 호르몬 밸런스</text>
-  <text x="315" y="646"
+
+  <!-- CTA 버튼 -->
+  <rect x="620" y="430" width="260" height="54" rx="27"
+        fill="#f6f4ee" opacity="0.13"/>
+  <rect x="620" y="430" width="260" height="54" rx="27"
+        fill="none" stroke="#f6f4ee" stroke-width="1" opacity="0.45"/>
+  <text x="750" y="463"
         text-anchor="middle"
         font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
-        font-size="15" font-weight="300" letter-spacing="2"
-        fill="#f6f4ee" opacity="0.50">10가지 바디코드로 밝혀내는 나의 몸 설계도</text>
+        font-size="15" letter-spacing="5"
+        fill="#f6f4ee" opacity="0.90">지금 무료 진단 받기</text>
 
-  <rect x="60" y="720" width="510" height="0.6" fill="#f6f4ee" opacity="0.07"/>
-
-  <text x="315" y="1050"
-        text-anchor="middle"
+  <!-- ══════════ 하단 공통 브랜드 라인 ══════════ -->
+  <rect x="88" y="555" width="1024" height="0.6" fill="#f6f4ee" opacity="0.10"/>
+  <text x="88" y="585"
         font-family="Georgia,'Times New Roman',serif"
-        font-size="11" letter-spacing="7"
+        font-size="11" letter-spacing="6"
         fill="#f6f4ee" opacity="0.25">BODY CODE ANALYSIS</text>
-
-  <text x="315" y="1150"
-        text-anchor="middle"
+  <text x="1112" y="585"
+        text-anchor="end"
         font-family="Georgia,serif"
-        font-size="11" letter-spacing="4"
+        font-size="11" letter-spacing="3"
         fill="#f6f4ee" opacity="0.20">slimmind.com</text>
 </svg>`
   return c.body(svg, 200, {
