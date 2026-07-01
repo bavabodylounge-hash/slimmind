@@ -3222,8 +3222,8 @@ function doResultRedirect() {
     })();
   }
 
-  // ── 7. 임시저장 클리어 ──
-  try { localStorage.removeItem('sm_survey_draft_v2'); } catch(e) {}
+  // ── 7. 임시저장 클리어 (서버 + localStorage) ──
+  clearDraft();
 
   // ── 8. result-v4로 이동 ──
   window.location.href = '/result-v4';
@@ -5668,69 +5668,124 @@ function getSpeedMetaHtml() {
 }
 
 // ══════════════════════════════════════════════════════
-//  임시저장 + 재개 기능 (LocalStorage Draft)
+//  임시저장 + 재개 기능 — 서버(D1) 기반 크로스디바이스
+//  저장: POST /api/survey/draft  → D1 survey_drafts 테이블
+//  불러오기: GET /api/survey/draft?sid=xxx → D1에서 복원
+//  URL ?resume=sm_xxx 를 공유하면 어떤 기기/브라우저에서도 이어하기 가능
 // ══════════════════════════════════════════════════════
-var SAVE_KEY = 'sm_survey_draft_v2';
-// Cross-device: URL resume 파라미터 있으면 해당 세션 우선 로드
-(function() {
-  try {
-    var url = new URL(window.location.href);
-    var rid = url.searchParams.get('resume');
-    if (rid) {
-      var existing = localStorage.getItem(SAVE_KEY);
-      if (existing) {
-        var d = JSON.parse(existing);
-        if (d._sid && d._sid !== rid) {
-          // 다른 세션이므로 무시하고 resume URL로 진행 (현재는 same-device fallback)
-          // 추후 서버 연동 시 fetch('/api/survey/draft?sid='+rid) 로 교체
-        }
-      }
-    }
-  } catch(e) {}
-})();
+var SAVE_KEY = 'sm_survey_draft_v2';  // localStorage 폴백용
+var _surveyDraftSid = null;           // 현재 세션 SID (서버 key)
 var _autoSaveTimer = null;
 
+// 페이지 로드 시 URL ?resume= 파라미터 확인 → SID 세팅
+(function() {
+  try {
+    var rid = new URL(window.location.href).searchParams.get('resume');
+    if (rid && rid.startsWith('sm_')) _surveyDraftSid = rid;
+  } catch(e) {}
+})();
+
+// ── 서버 저장 (debounce 800ms) ─────────────────────────────────
 function autoSaveState() {
   clearTimeout(_autoSaveTimer);
   _autoSaveTimer = setTimeout(function() {
-    if (idx < 3) return; // 초반 동의/기본정보 이전엔 저장 안 함
+    if (idx < 3) return; // 초반 동의 이전엔 저장 안 함
     try {
       var draft = {
+        sid: _surveyDraftSid,  // null이면 서버에서 새로 발급
         idx: idx,
         answers: JSON.parse(JSON.stringify(answers)),
         measureVals: JSON.parse(JSON.stringify(measureVals)),
-        savedAt: Date.now(),
-        totalQ: D.total || 0
+        ref_code: answers._consultant_code || (window.__BRAND__ && window.__BRAND__.ref_code) || null,
+        total_q: D.seq ? D.seq.length : 0
       };
-      localStorage.setItem(SAVE_KEY, JSON.stringify(draft));
-    // Cross-device: URL에 session_id 반영하여 공유 가능한 이어하기 구현
-    try {
-      if (!draft._sid) draft._sid = 'sm_' + Date.now() + '_' + Math.random().toString(36).substr(2,6);
-      localStorage.setItem(SAVE_KEY, JSON.stringify(draft));
-      var url = new URL(window.location.href);
-      if (url.searchParams.get('resume') !== draft._sid) {
-        url.searchParams.set('resume', draft._sid);
-        window.history.replaceState(null, '', url.toString());
-      }
-    } catch(e) {}
+
+      // ① 서버에 저장 (fetch — 비동기, 실패해도 UX 무중단)
+      fetch('/api/survey/draft', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(draft)
+      })
+      .then(function(r){ return r.json(); })
+      .then(function(res) {
+        if (res.ok && res.sid) {
+          _surveyDraftSid = res.sid;
+          // URL에 ?resume=sid 반영 (공유 가능한 이어하기 링크)
+          try {
+            var url = new URL(window.location.href);
+            if (url.searchParams.get('resume') !== res.sid) {
+              url.searchParams.set('resume', res.sid);
+              window.history.replaceState(null, '', url.toString());
+            }
+          } catch(e2) {}
+          // localStorage에도 폴백 저장
+          try {
+            draft.sid = res.sid;
+            draft.savedAt = Date.now();
+            localStorage.setItem(SAVE_KEY, JSON.stringify(draft));
+          } catch(e3) {}
+        }
+      })
+      .catch(function() {
+        // 오프라인/서버 오류 → localStorage에만 저장
+        try {
+          draft.savedAt = Date.now();
+          localStorage.setItem(SAVE_KEY, JSON.stringify(draft));
+        } catch(e4) {}
+      });
     } catch(e) {}
   }, 800);
 }
 
-function loadDraft() {
+// ── 서버에서 불러오기 (비동기) ─────────────────────────────────
+function loadDraftAsync(callback) {
+  // 1순위: URL ?resume= SID로 서버 조회
+  if (_surveyDraftSid) {
+    fetch('/api/survey/draft?sid=' + encodeURIComponent(_surveyDraftSid))
+      .then(function(r){ return r.json(); })
+      .then(function(res) {
+        if (res.ok && res.idx >= 3) {
+          callback(res);
+        } else {
+          // 서버에 없으면 localStorage 폴백
+          callback(_loadLocalDraft());
+        }
+      })
+      .catch(function() {
+        callback(_loadLocalDraft());
+      });
+  } else {
+    // SID 없으면 localStorage만 확인
+    callback(_loadLocalDraft());
+  }
+}
+
+// ── localStorage 폴백 로더 ──────────────────────────────────────
+function _loadLocalDraft() {
   try {
     var raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     var d = JSON.parse(raw);
-    // 24시간 이내 저장된 것만 유효
-    if (!d || !d.savedAt || (Date.now() - d.savedAt) > 86400000) return null;
+    // 30일 이내 저장된 것만 유효
+    if (!d || !d.savedAt || (Date.now() - d.savedAt) > 30 * 86400000) return null;
     if (!d.idx || d.idx < 3) return null;
     return d;
   } catch(e) { return null; }
 }
 
+// ── 동기 폴백용 (기존 코드 호환) ───────────────────────────────
+function loadDraft() {
+  return _loadLocalDraft();
+}
+
 function clearDraft() {
+  _surveyDraftSid = null;
   try { localStorage.removeItem(SAVE_KEY); } catch(e) {}
+  // 서버에서도 삭제 (완료 후 정리)
+  var sid = new URL(window.location.href).searchParams.get('resume');
+  if (sid && sid.startsWith('sm_')) {
+    fetch('/api/survey/draft?sid=' + encodeURIComponent(sid), {method:'DELETE'}).catch(function(){});
+  }
 }
 
 function showResumePopup(draft) {
@@ -5738,9 +5793,22 @@ function showResumePopup(draft) {
   if (old) old.remove();
 
   var pct = Math.round(draft.idx / D.seq.length * 100);
-  var savedTime = new Date(draft.savedAt);
+  // savedAt: 서버 updated_at(ISO string) or localStorage savedAt(timestamp)
+  var savedTime = draft.updated_at
+    ? new Date(draft.updated_at.replace(' ','T') + 'Z')
+    : (draft.savedAt ? new Date(draft.savedAt) : new Date());
   var timeStr = savedTime.getHours() + ':' + String(savedTime.getMinutes()).padStart(2,'0');
   var dateStr = (savedTime.getMonth()+1) + '/' + savedTime.getDate() + ' ' + timeStr;
+
+  // 공유 링크 (이 URL 그대로 보내면 됨)
+  var resumeUrl = '';
+  try {
+    var u = new URL(window.location.href);
+    if (draft.sid || _surveyDraftSid) {
+      u.searchParams.set('resume', draft.sid || _surveyDraftSid);
+    }
+    resumeUrl = u.toString();
+  } catch(e) {}
 
   var el = document.createElement('div');
   el.id = 'resume-overlay';
@@ -5752,10 +5820,15 @@ function showResumePopup(draft) {
       + '<b style="color:#E8734D">' + dateStr + '</b>에 저장된<br>진단이 있어요.<br>'
       + '<span style="font-size:12px;color:#B0A090">진행률 약 <b style="color:#E8734D">' + pct + '%</b> 완료</span>'
     + '</div>'
-    + '<div style="background:#FFF5F0;border-radius:14px;padding:12px 16px;margin-bottom:18px;text-align:left">'
+    + '<div style="background:#FFF5F0;border-radius:14px;padding:12px 16px;margin-bottom:12px;text-align:left">'
       + '<div style="font-size:11px;color:#C09070;margin-bottom:4px">저장 시점</div>'
       + '<div style="font-size:13px;font-weight:700;color:#E8734D">' + (draft.idx) + '번째 화면 (총 ' + D.seq.length + '단계)</div>'
     + '</div>'
+    + (resumeUrl ? '<div style="background:#F0F7FF;border:1px solid rgba(91,155,213,.3);border-radius:10px;padding:9px 12px;margin-bottom:14px;text-align:left">'
+      + '<div style="font-size:10px;color:#5B9BD5;font-weight:700;margin-bottom:4px">📱 다른 기기에서 이어하기</div>'
+      + '<div style="font-size:10px;color:#555;word-break:break-all;line-height:1.5">' + resumeUrl + '</div>'
+      + '<div onclick="navigator.clipboard&&navigator.clipboard.writeText(\'' + resumeUrl.replace(/'/g,"\\'")+'\')+this.textContent=\'✅ 복사됨\'" style="margin-top:6px;font-size:11px;color:#5B9BD5;cursor:pointer;font-weight:600">🔗 링크 복사</div>'
+    + '</div>' : '')
     + '<div onclick="_doResumeSurvey()" style="background:linear-gradient(135deg,#FF9A76,#E8734D);color:#fff;border-radius:14px;padding:15px;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 6px 18px rgba(232,115,77,.35);margin-bottom:10px">📍 이어서 하기</div>'
     + '<div onclick="_doFreshStart()" style="background:rgba(0,0,0,.06);color:#888;border-radius:14px;padding:13px;font-size:13px;cursor:pointer;">처음부터 새로 시작</div>'
     + '</div>';
@@ -5764,18 +5837,28 @@ function showResumePopup(draft) {
 }
 
 function _doResumeSurvey() {
-  var draft = loadDraft();
-  if (!draft) return;
-  try {
-    idx = draft.idx;
-    answers = draft.answers || {};
-    if (draft.measureVals) {
-      Object.assign(measureVals, draft.measureVals);
+  // 서버(D1)에서 비동기 복원 → 실패 시 localStorage 폴백
+  var btn = document.querySelector('[onclick="_doResumeSurvey()"]');
+  if (btn) { btn.textContent = '⏳ 불러오는 중...'; btn.style.pointerEvents = 'none'; }
+
+  loadDraftAsync(function(draft) {
+    if (!draft) {
+      var el2 = document.getElementById('resume-overlay');
+      if (el2) el2.remove();
+      renderApp();
+      return;
     }
-  } catch(e) { idx = 0; }
-  var el = document.getElementById('resume-overlay');
-  if (el) el.remove();
-  renderApp();
+    try {
+      idx = draft.idx;
+      answers = draft.answers || {};
+      if (draft.measureVals) Object.assign(measureVals, draft.measureVals);
+      // 서버에서 받은 SID 세팅
+      if (draft.sid) _surveyDraftSid = draft.sid;
+    } catch(e) { idx = 0; }
+    var el2 = document.getElementById('resume-overlay');
+    if (el2) el2.remove();
+    renderApp();
+  });
 }
 
 function _doFreshStart() {
@@ -5940,13 +6023,13 @@ toggleConsent = function(n) {
   // ─────────────────────────────────────────────────
 
   // 임시저장 확인 → 재개 팝업
-  var draft = loadDraft();
-  if (draft && draft.idx >= 3) {
-    renderApp(); // 인트로 먼저 렌더
-    setTimeout(function(){ showResumePopup(draft); }, 400);
-  } else {
-    renderApp();
-  }
+  // ① 서버(D1) 우선 조회, 실패 시 localStorage 폴백
+  renderApp(); // 인트로 먼저 보여주고
+  loadDraftAsync(function(draft) {
+    if (draft && draft.idx >= 3) {
+      setTimeout(function(){ showResumePopup(draft); }, 400);
+    }
+  });
 })();
 
 // ══════════════════════════════════════════════════════════════════

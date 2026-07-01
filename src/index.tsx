@@ -356,6 +356,107 @@ app.get('/api/admin/impersonate/:code', requireRole('MASTER'), async (c) => {
 //  설문 API
 // ═══════════════════════════════════════════════════════════════
 
+// ─── 크로스디바이스 임시저장 API ─────────────────────────────────────
+// POST /api/survey/draft  — 저장 (sid 없으면 신규 생성, 있으면 업데이트)
+app.post('/api/survey/draft', async (c) => {
+  const db = c.env.DB
+  try {
+    const body = await c.req.json<{
+      sid?: string
+      idx: number
+      answers: Record<string, unknown>
+      measureVals?: Record<string, unknown>
+      ref_code?: string
+      total_q?: number
+    }>()
+
+    // sid 없으면 새로 발급
+    const sid = body.sid && body.sid.startsWith('sm_')
+      ? body.sid
+      : `sm_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`
+
+    const answersJson = JSON.stringify(body.answers ?? {})
+    const measureJson = JSON.stringify(body.measureVals ?? {})
+
+    await db.prepare(`
+      INSERT INTO survey_drafts (sid, idx, answers_json, measure_json, ref_code, total_q, saved_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      ON CONFLICT(sid) DO UPDATE SET
+        idx          = excluded.idx,
+        answers_json = excluded.answers_json,
+        measure_json = excluded.measure_json,
+        ref_code     = COALESCE(excluded.ref_code, ref_code),
+        total_q      = excluded.total_q,
+        updated_at   = datetime('now')
+    `).bind(
+      sid,
+      body.idx ?? 0,
+      answersJson,
+      measureJson,
+      body.ref_code ?? null,
+      body.total_q ?? 0
+    ).run()
+
+    return c.json({ ok: true, sid })
+  } catch (e: any) {
+    return c.json({ ok: false, error: e?.message }, 500)
+  }
+})
+
+// GET /api/survey/draft?sid=sm_xxx — 불러오기
+app.get('/api/survey/draft', async (c) => {
+  const db = c.env.DB
+  const sid = c.req.query('sid')
+  if (!sid || !sid.startsWith('sm_')) {
+    return c.json({ ok: false, error: 'invalid sid' }, 400)
+  }
+  try {
+    const row = await db.prepare(
+      'SELECT sid, idx, answers_json, measure_json, ref_code, total_q, updated_at FROM survey_drafts WHERE sid = ?'
+    ).bind(sid).first<{
+      sid: string; idx: number; answers_json: string
+      measure_json: string; ref_code: string | null
+      total_q: number; updated_at: string
+    }>()
+
+    if (!row) return c.json({ ok: false, error: 'not found' }, 404)
+
+    // 30일 이상 된 데이터는 만료 처리
+    const savedMs = new Date(row.updated_at + 'Z').getTime()
+    if (Date.now() - savedMs > 30 * 24 * 60 * 60 * 1000) {
+      await db.prepare('DELETE FROM survey_drafts WHERE sid = ?').bind(sid).run()
+      return c.json({ ok: false, error: 'expired' }, 404)
+    }
+
+    return c.json({
+      ok: true,
+      sid: row.sid,
+      idx: row.idx,
+      answers: JSON.parse(row.answers_json),
+      measureVals: JSON.parse(row.measure_json),
+      ref_code: row.ref_code,
+      total_q: row.total_q,
+      updated_at: row.updated_at
+    })
+  } catch (e: any) {
+    return c.json({ ok: false, error: e?.message }, 500)
+  }
+})
+
+// DELETE /api/survey/draft?sid=sm_xxx — 제출 완료 후 초기화
+app.delete('/api/survey/draft', async (c) => {
+  const db = c.env.DB
+  const sid = c.req.query('sid')
+  if (!sid) return c.json({ ok: false, error: 'no sid' }, 400)
+  try {
+    await db.prepare('DELETE FROM survey_drafts WHERE sid = ?').bind(sid).run()
+    return c.json({ ok: true })
+  } catch (e: any) {
+    return c.json({ ok: false, error: e?.message }, 500)
+  }
+})
+// ─────────────────────────────────────────────────────────────────────
+
 // POST /api/survey/submit
 app.post('/api/survey/submit', async (c) => {
   const body = await c.req.json()
