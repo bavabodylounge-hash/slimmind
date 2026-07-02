@@ -110,6 +110,16 @@ body{background:var(--paper);color:var(--ink);min-height:100vh;}
 .nav-tab-daily.active{background:linear-gradient(135deg,#b5452e,#c98a3c)!important;color:#fff!important;border-color:#8f321e!important;}
 .nav-tab-daily.active::after{background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.4);}
 .nav-daily-flag{position:absolute;top:-5px;left:50%;transform:translateX(-50%);font-size:8px;font-weight:900;letter-spacing:.3px;color:#fff;background:#b5452e;border-radius:6px;padding:1px 6px;white-space:nowrap;z-index:3;box-shadow:0 2px 5px rgba(181,69,46,.3);}
+/* 💬 코칭 메시지 뱃지 버튼 */
+#nav-coach-btn:hover{transform:translateY(-1px);box-shadow:0 5px 16px rgba(63,107,58,.45);}
+#nav-coach-btn:active{transform:scale(.96);}
+/* 코칭 메시지 모달 아이템 */
+.coach-msg-item{background:linear-gradient(135deg,#f0f7ea,#f8fbf4);border:1.5px solid #b8d9a0;border-radius:14px;padding:14px 16px;margin-bottom:10px;position:relative;}
+.coach-msg-item:last-child{margin-bottom:0;}
+.coach-msg-date{font-size:11px;font-weight:800;color:#3f6b3a;margin-bottom:6px;display:flex;align-items:center;gap:5px;}
+.coach-msg-text{font-size:14px;color:#241c14;line-height:1.65;font-weight:600;}
+.coach-msg-empty{text-align:center;padding:48px 0;color:var(--muted);font-size:13px;}
+@keyframes coachSlideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
 .nav-logo{font-size:13px;font-weight:900;color:var(--ink);letter-spacing:2px;}
 .nav-tabs{display:flex;gap:3px;flex:1;min-width:0;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;overscroll-behavior-y:none;touch-action:pan-x;scrollbar-width:none;}
 /* 데스크탑/노트북: 탭을 상단 중앙 정렬 */
@@ -5162,12 +5172,42 @@ p, div, span, h1, h2, h3, h4{
     <button class="nav-tab" data-page="9" onclick="switchPage(9)"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#8a5a9c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v3.5M3.25 4.75h3.5M17 16v3M15.25 17.5h3.5"/><path d="M11.5 4l1.7 4.6 4.6 1.7-4.6 1.7L11.5 17l-1.7-4.6L5.2 10.7l4.6-1.7L11.5 4Z"/></svg></span><span class="nav-text">변화 예측</span></button>
     <button class="nav-tab p7-share-tab" data-page="7" onclick="switchPage(7)"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#3a6b9c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5.5" r="2.8"/><circle cx="6" cy="12" r="2.8"/><circle cx="18" cy="18.5" r="2.8"/><path d="M8.4 10.7l7.2-3.9M8.4 13.3l7.2 3.9"/></svg></span><span class="nav-text">한 장 요약</span></button>
   </div>
+  <!-- 💬 코칭 메시지 뱃지 버튼 -->
+  <button id="nav-coach-btn" onclick="_openCoachModal()" title="컨설턴트 코칭 메시지" style="display:none;flex-shrink:0;margin-left:6px;align-items:center;gap:4px;background:linear-gradient(135deg,#3f6b3a,#5a8c52);color:#fff;border:none;border-radius:11px;padding:7px 11px;cursor:pointer;font-family:inherit;font-weight:900;font-size:12px;position:relative;box-shadow:0 3px 12px rgba(63,107,58,.35);transition:transform .12s,box-shadow .2s;">
+    <span style="font-size:15px;line-height:1;">💬</span>
+    <span id="nav-coach-count" style="font-size:12px;font-weight:900;letter-spacing:.3px;"></span>
+    <span id="nav-coach-new-dot" style="display:none;position:absolute;top:-3px;right:-3px;width:9px;height:9px;border-radius:50%;background:#ffd24a;border:2px solid var(--card);animation:dailyDot 1.8s ease-in-out infinite;"></span>
+  </button>
   <button class="nav-tab-daily-fixed" data-page="10" onclick="switchPage(10)" title="오늘 — 오늘 할 일">
     <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 9h17"/></svg></span>
     <span class="nav-tab-daily-tx">오늘</span>
     <span class="nav-tab-daily-dot"></span>
   </button>
 </nav>
+
+<!-- ═══ 코칭 메시지 모달 ═══ -->
+<div id="coach-modal-overlay" onclick="_closeCoachModal()" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.45);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);"></div>
+<div id="coach-modal" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:501;background:var(--card);border-radius:22px 22px 0 0;box-shadow:0 -8px 40px rgba(42,33,24,.18);max-height:80vh;overflow:hidden;flex-direction:column;padding:0;transition:transform .3s cubic-bezier(.4,0,.2,1);">
+  <!-- 핸들 -->
+  <div style="padding:12px 0 4px;text-align:center;cursor:pointer;" onclick="_closeCoachModal()">
+    <div style="width:40px;height:4px;border-radius:2px;background:#ddd;margin:0 auto;"></div>
+  </div>
+  <!-- 헤더 -->
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 20px 12px;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#3f6b3a,#5a8c52);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">💬</div>
+      <div>
+        <div style="font-size:15px;font-weight:900;color:var(--ink);">컨설턴트 코칭 메시지</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:1px;">담당 컨설턴트가 남긴 메시지입니다</div>
+      </div>
+    </div>
+    <button onclick="_closeCoachModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);padding:4px 8px;border-radius:8px;line-height:1;">✕</button>
+  </div>
+  <!-- 목록 스크롤 영역 -->
+  <div id="coach-modal-list" style="overflow-y:auto;padding:0 16px 32px;flex:1;-webkit-overflow-scrolling:touch;">
+    <div style="text-align:center;padding:40px 0;color:var(--muted);font-size:13px;">불러오는 중...</div>
+  </div>
+</div>
 
 <!-- ═══ P1: 바디코드 리포트 ═══ -->
 <section id="page1" class="page active">
@@ -15722,38 +15762,93 @@ function _updateTdyStreak(sid, todayKey, savedChecks){
   if(el) el.textContent=streak;
 }
 
-// ── 컨설턴트 코멘트 로드 + 렌더 ─────────────────────────────────────
+// ── 컨설턴트 코멘트 로드 + 렌더 + 뱃지 업데이트 ────────────────────────
+var _coachComments = []; // 전역 캐시
 async function _loadCoachingComment(sid, host){
   if (!sid) return;
   try {
-    var resp = await fetch('/api/coaching-comment/' + encodeURIComponent(sid) + '?limit=3');
+    var resp = await fetch('/api/coaching-comment/' + encodeURIComponent(sid) + '?limit=50');
     if (!resp.ok) return;
     var data = await resp.json();
-    var latest = data.latest;
-    if (!latest) return;
+    _coachComments = data.comments || (data.latest ? [data.latest] : []);
 
-    // 기존 코멘트 박스가 있으면 교체
+    // ── 뱃지 업데이트 ───────────────────────────────────────────────
+    var btn = document.getElementById('nav-coach-btn');
+    var countEl = document.getElementById('nav-coach-count');
+    var dotEl = document.getElementById('nav-coach-new-dot');
+    if (_coachComments.length > 0 && btn) {
+      btn.style.display = 'flex';
+      if (countEl) countEl.textContent = _coachComments.length;
+      // 최근 3일 이내 코멘트 있으면 황색 점 표시
+      var recentCutoff = Date.now() - 3 * 24 * 60 * 60 * 1000;
+      var hasNew = _coachComments.some(function(c){
+        return c.created_at && new Date(c.created_at).getTime() > recentCutoff;
+      });
+      if (dotEl) dotEl.style.display = hasNew ? 'block' : 'none';
+    }
+
+    // ── Page10 "오늘" 카드 안에 최신 1건 표시 (기존 UX 유지) ─────────
+    var latest = _coachComments[0];
+    if (!latest || !host) return;
     var existing = host.querySelector('.tdy-coach-box');
     if (existing) existing.remove();
-
-    // tdy-card 뒤에 추가
     var card = host.querySelector('.tdy-card');
     if (!card) return;
-
     var ts = latest.created_at ? latest.created_at.slice(0,10) : '';
     var box = document.createElement('div');
     box.className = 'tdy-coach-box';
-    box.style.cssText = 'margin-top:10px;background:linear-gradient(135deg,#eef4e0,#f3f8e8);border:1.5px solid #a8c870;border-radius:14px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;';
+    box.style.cssText = 'margin-top:10px;background:linear-gradient(135deg,#eef4e0,#f3f8e8);border:1.5px solid #a8c870;border-radius:14px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;cursor:pointer;';
+    box.title = '전체 메시지 보기';
+    box.onclick = function(){ _openCoachModal(); };
     box.innerHTML =
       '<div style="width:36px;height:36px;border-radius:50%;background:#5a6e3a;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">💬</div>'+
       '<div style="flex:1;min-width:0;">'+
-        '<div style="font-size:11px;font-weight:800;color:#3f5022;margin-bottom:4px;">컨설턴트 메시지 · '+ts+'</div>'+
+        '<div style="font-size:11px;font-weight:800;color:#3f5022;margin-bottom:4px;">컨설턴트 메시지 · '+ts+
+          (_coachComments.length > 1 ? ' <span style="background:#3f6b3a;color:#fff;border-radius:8px;padding:1px 7px;font-size:10px;margin-left:4px;">+'+(_coachComments.length-1)+'건 더보기</span>' : '')+
+        '</div>'+
         '<div style="font-size:14px;color:#241c14;line-height:1.6;font-weight:600;">'+latest.comment+'</div>'+
-      '</div>';
+      '</div>'+
+      '<div style="font-size:16px;color:#5a8c52;flex-shrink:0;align-self:center;">›</div>';
     card.insertAdjacentElement('afterend', box);
   } catch(e) {
     // 코멘트 로드 실패는 무시
   }
+}
+
+// ── 코칭 메시지 모달 열기/닫기 ──────────────────────────────────────
+function _openCoachModal(){
+  var overlay = document.getElementById('coach-modal-overlay');
+  var modal   = document.getElementById('coach-modal');
+  var list    = document.getElementById('coach-modal-list');
+  if (!modal || !overlay) return;
+
+  // 목록 렌더
+  if (_coachComments.length === 0) {
+    list.innerHTML = '<div class="coach-msg-empty">아직 코칭 메시지가 없습니다.</div>';
+  } else {
+    list.innerHTML = _coachComments.map(function(c){
+      var dateStr = c.created_at ? c.created_at.slice(0,10) : '';
+      var checkDate = c.check_date ? ' · '+c.check_date : '';
+      return '<div class="coach-msg-item">'+
+        '<div class="coach-msg-date">📅 '+dateStr+checkDate+'</div>'+
+        '<div class="coach-msg-text">'+c.comment+'</div>'+
+      '</div>';
+    }).join('');
+  }
+
+  overlay.style.display = 'block';
+  modal.style.display = 'flex';
+  modal.style.animation = 'coachSlideUp .28s cubic-bezier(.4,0,.2,1) both';
+  document.body.style.overflow = 'hidden';
+}
+
+function _closeCoachModal(){
+  var overlay = document.getElementById('coach-modal-overlay');
+  var modal   = document.getElementById('coach-modal');
+  if (!modal || !overlay) return;
+  overlay.style.display = 'none';
+  modal.style.display = 'none';
+  document.body.style.overflow = '';
 }
 
 // ── DB 자동저장 (디바운스) ───────────────────────────────────────────

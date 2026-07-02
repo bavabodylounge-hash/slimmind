@@ -5105,7 +5105,7 @@ app.get('/api/coaching-comment/:session_id', async (c) => {
   if (!db) return c.json({ error: 'DB not available' }, 503)
 
   const sessionId = c.req.param('session_id')
-  const limit     = Math.min(parseInt(c.req.query('limit') || '10', 10), 50)
+  const limit     = Math.min(parseInt(c.req.query('limit') || '50', 10), 100)
 
   try {
     const rows = await db.prepare(`
