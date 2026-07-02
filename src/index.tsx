@@ -1065,7 +1065,7 @@ app.get('/api/consultant/me', requireRole('ANY'), async (c) => {
 // ✅ FIX: diagnosis_results(신파이프라인) + results(구파이프라인) UNION 조회
 app.get('/api/consultant/results', requireRole('ANY'), async (c) => {
   const user = c.get('user') as JwtPayload
-  const db = c.env.DB
+  const db = (c.env as any).DB as D1Database   // ✅ FIX: 다른 API와 동일하게 (c.env as any).DB 방식 사용
   const search = c.req.query('search') || ''
   const bc = c.req.query('bc') || ''
 
@@ -1101,13 +1101,14 @@ app.get('/api/consultant/results', requireRole('ANY'), async (c) => {
       : await drStmt.all<any>()
 
     // 구버전 results 조회 (중복 제거: diagnosis_results에 없는 것만)
+    // ✅ FIX: results 테이블에 phone 컬럼 없음 → NULL AS phone으로 교체
     const rStmt = db.prepare(`
       SELECT
         r.id, r.user_name, r.bc_primary, r.bc_primary AS bc_nickname, r.bc_primary AS bc_code_key,
         NULL AS ohaeng_type, NULL AS mbti_full, r.consultant_code,
         NULL AS region, NULL AS texture, NULL AS bg_filter,
         NULL AS top3_axes_json, NULL AS axis_scores_json,
-        r.created_at, r.admin_memo, r.phone,
+        r.created_at, r.admin_memo, NULL AS phone,
         'results' AS _source
       FROM results r
       WHERE ${rWhere}
