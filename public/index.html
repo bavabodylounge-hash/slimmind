@@ -3239,7 +3239,7 @@ function smSnapshot() {
     stage2Answers: { ...stage2Answers },
     stage3Answers: { ...stage3Answers },
     stage4Answers: { ...stage4Answers },
-    bmsSelected: bmsSelected || null,
+    bmsSelected: bmsSelected.size > 0 ? [...bmsSelected] : null,
     bmsGender: bmsGender || null,
     bmsPreset: window._bmsPresetSv1 ?? null,
     condBonus: window._condBonus || {},  // ★ 기능 10
@@ -3337,7 +3337,7 @@ function smResume() {
   Object.keys(stage4Answers).forEach(k => delete stage4Answers[k]);
   Object.assign(stage4Answers, snap.stage4Answers || {});
   if (snap.bmsPreset !== null) window._bmsPresetSv1 = snap.bmsPreset;
-  bmsSelected = snap.bmsSelected || null;
+  bmsSelected = snap.bmsSelected ? new Set(snap.bmsSelected) : new Set();
   bmsGender = snap.bmsGender || null;
   // ★ 기능 10: 이어하기 시 conditionStep 건너뜀
   window._condDone  = true;
@@ -3738,7 +3738,7 @@ function _startSurveyCore(){
   document.getElementById('intro1').scrollIntoView({ behavior: 'smooth' });
 }
 /* ===== 기능 3: 바디맵 터치 셀프진단 ===== */
-let bmsSelected = null;   // 'upper'|'belly'|'lower'|'whole'|null
+let bmsSelected = new Set(); // Set<'upper'|'belly'|'lower'|'whole'> — 복수 선택 지원
 let bmsGender   = null;   // 'female'|'male'|'neutral'|null
 
 const BMS_ZONE_MAP = {
@@ -3780,16 +3780,17 @@ function bmsPickGender(g){
 }
 
 function bmsClearSelection(){
-  bmsSelected = null;
+  bmsSelected = new Set();
   window._bmsPresetSv1 = undefined;
-  ['Upper','Belly','Lower','Whole'].forEach(z=>{
-    const g = document.getElementById('glow'+z);
+  ['upper','belly','lower','whole'].forEach(z=>{
+    const cap=z.charAt(0).toUpperCase()+z.slice(1);
+    const g = document.getElementById('glow'+cap);
     if (g) g.classList.remove('show');
   });
   document.querySelectorAll('.bms-chip').forEach(c=>c.classList.remove('sel'));
   const r = document.getElementById('bmsResult');
   if (r){ r.classList.remove('ready');
-    r.innerHTML = '몸을 탭하거나, 아래에서 가장 신경 쓰이는 부위를 골라주세요.'; }
+    r.innerHTML = '몸을 탭하거나, 아래에서 신경 쓰이는 부위를 골라주세요. <span style="font-size:12px;color:var(--muted)">(여러 부위 복수 선택 가능)</span>'; }
   const n = document.getElementById('bmsNext');
   if (n){ n.disabled = true; n.style.opacity=''; }
 }
@@ -3800,46 +3801,61 @@ function bmsSelect(zone){
     if (s){ s.style.color='var(--c3)'; s.innerHTML='먼저 위에서 성별을 선택해주세요 ☝️'; }
     return;
   }
-  bmsSelected = zone;
-  // 글로우 전환
-  ['Upper','Belly','Lower','Whole'].forEach(z=>{
-    const g = document.getElementById('glow'+z);
-    if (g) g.classList.remove('show');
+  /* ★ 복수 선택: 이미 선택된 부위면 해제, 아니면 추가 */
+  if (bmsSelected.has(zone)) {
+    bmsSelected.delete(zone);
+  } else {
+    bmsSelected.add(zone);
+  }
+
+  /* 글로우: 선택된 모든 부위 표시 */
+  ['upper','belly','lower','whole'].forEach(z=>{
+    const cap=z.charAt(0).toUpperCase()+z.slice(1);
+    const g = document.getElementById('glow'+cap);
+    if (g) g.classList.toggle('show', bmsSelected.has(z));
   });
-  const cap = zone.charAt(0).toUpperCase()+zone.slice(1);
-  const glow = document.getElementById('glow'+cap);
-  if (glow) glow.classList.add('show');
-  // 칩 활성
+
+  /* 칩 활성: 선택된 부위만 sel */
   document.querySelectorAll('.bms-chip').forEach(c=>{
-    c.classList.toggle('sel', c.dataset.z === zone);
+    c.classList.toggle('sel', bmsSelected.has(c.dataset.z));
   });
-  // 마이크로 인터랙션: 마네킹 본체 모션 + 스캔 1회
+  /* 마이크로 인터랙션: 방금 선택/해제한 부위 모션 */
   const activeMq = document.querySelector('.bms-mq.active');
-  if (activeMq){
+  if (activeMq && bmsSelected.has(zone)){
     activeMq.classList.remove('fx-upper','fx-belly','fx-lower','fx-whole');
     void activeMq.offsetWidth;
     activeMq.classList.add('fx-'+zone);
   }
   const scan = document.getElementById('bmsScan');
-  if (scan){ scan.classList.remove('run'); void scan.offsetWidth; scan.classList.add('run'); }
-  // 결과 메시지
-  const info = BMS_ZONE_MAP[zone];
+  if (scan && bmsSelected.has(zone)){ scan.classList.remove('run'); void scan.offsetWidth; scan.classList.add('run'); }
+
+  /* 결과 메시지: 선택된 모든 부위 나열 */
   const r = document.getElementById('bmsResult');
-  if (r && info){
-    r.classList.add('ready');
-    r.innerHTML = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;
-      background:${info.color};margin-right:7px;vertical-align:middle"></span>
-      <strong>${info.label}</strong> 선택됨<br>
-      <span style="font-size:12.5px;color:var(--muted)">${info.desc}</span>`;
+  if (r){
+    if (bmsSelected.size === 0){
+      r.classList.remove('ready');
+      r.innerHTML = '몸을 탭하거나, 아래에서 신경 쓰이는 부위를 골라주세요. <span style="font-size:12px;color:var(--muted)">(여러 부위 복수 선택 가능)</span>';
+    } else {
+      r.classList.add('ready');
+      const tags = [...bmsSelected].map(z=>{
+        const info = BMS_ZONE_MAP[z];
+        return `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${info.color};margin-right:4px;vertical-align:middle"></span><strong>${info.label}</strong>`;
+      }).join('&nbsp;&nbsp;');
+      r.innerHTML = tags + `<br><span style="font-size:12.5px;color:var(--muted)">선택된 ${bmsSelected.size}개 부위를 우선 분석합니다.</span>`;
+    }
   }
-  // 다음 버튼
+
+  /* 다음 버튼: 1개 이상 선택 시 활성 */
   const n = document.getElementById('bmsNext');
-  if (n){ n.disabled = false; n.style.opacity='1'; }
-  window._bmsPresetSv1 = info ? info.sv1 : undefined;
+  if (n){ n.disabled = bmsSelected.size === 0; n.style.opacity = bmsSelected.size > 0 ? '1' : ''; }
+
+  /* sv1 프리셋: 첫 번째 선택 부위 기준 */
+  const firstZone = [...bmsSelected][0];
+  window._bmsPresetSv1 = firstZone ? BMS_ZONE_MAP[firstZone].sv1 : undefined;
 }
 
 function bmsConfirm(){
-  if (!bmsSelected) return;
+  if (bmsSelected.size === 0) return;
   if (window._bmsPresetSv1 !== undefined) survAnswers[1] = window._bmsPresetSv1;
   document.getElementById('bodymapStep').style.display='none';
   document.getElementById('nameStep').style.display='block';
@@ -3848,7 +3864,7 @@ function bmsConfirm(){
 }
 
 function bmsSkip(){
-  bmsSelected = null;
+  bmsSelected = new Set();
   document.getElementById('bodymapStep').style.display='none';
   document.getElementById('nameStep').style.display='block';
   bmsSyncNameStepGender();
@@ -3893,7 +3909,7 @@ function showGenderBtns(){
 function goBodyMap(){
   document.getElementById('hero').style.display='none';
   // 초기화
-  bmsGender = null; bmsSelected = null; window._bmsPresetSv1 = undefined;
+  bmsGender = null; bmsSelected = new Set(); window._bmsPresetSv1 = undefined;
   document.querySelectorAll('.bms-gbtn').forEach(b=>b.classList.remove('sel'));
   ['mqFemale','mqMale','mqNeutral'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.classList.remove('active');
