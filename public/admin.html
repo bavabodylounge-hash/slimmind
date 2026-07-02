@@ -2907,6 +2907,52 @@ async function _dcSendReminder() {
   _dcClearSel();
 }
 
+// ── 메인 코멘트 전송 (날짜 선택 없이 오늘 날짜로) ─────────────────
+async function _adminMainComment(sessionId, userName) {
+  const inp = document.getElementById(`admin-cmt-main-input-${sessionId}`);
+  if (!inp) return;
+  const txt = inp.value.trim();
+  if (!txt) { inp.focus(); return; }
+  const btn = inp.nextElementSibling?.querySelector('button') || inp.closest('div').querySelector('button');
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  const today = new Date().toISOString().slice(0,10);
+  const res = await api('POST', '/coaching-comment', { session_id: sessionId, comment: txt, check_date: today }).catch(()=>null);
+  if (res?.ok) {
+    inp.value = '';
+    await _adminRefreshMainCmtList(sessionId);
+  } else { alert('전송 실패. 다시 시도해주세요.'); }
+  if (btn) { btn.disabled = false; btn.textContent = '전송'; }
+}
+
+// ── 전체 코멘트 목록 새로고침 (admin) ──────────────────────────────
+async function _adminRefreshMainCmtList(sessionId) {
+  const listEl = document.getElementById(`admin-cmt-main-list-${sessionId}`);
+  if (!listEl) return;
+  const cmtData = await api('GET', `/coaching-comment/${sessionId}?limit=20`).catch(()=>null);
+  const cmts = cmtData?.comments || [];
+  listEl.innerHTML = cmts.length ? cmts.map(cm => {
+    const ts = cm.created_at ? cm.created_at.slice(0,16).replace('T',' ') : '';
+    const dateBadge = cm.check_date
+      ? `<span style="margin-left:6px;font-size:10px;background:#faf0dc;color:#8a5a18;border-radius:6px;padding:1px 6px;">📅 ${cm.check_date.slice(0,10)}</span>` : '';
+    return `<div style="display:flex;gap:10px;padding:10px 12px;background:#fff;border-radius:10px;margin-bottom:6px;border:1px solid #f0ece6;align-items:flex-start;">
+      <div style="width:30px;height:30px;border-radius:50%;background:#eef4e0;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">💬</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;color:#3f5022;font-weight:700;margin-bottom:2px;">${cm.consultant_code||'관리자'}${dateBadge}</div>
+        <div style="font-size:13px;color:#241c14;line-height:1.5;">${cm.comment}</div>
+        <div style="font-size:10px;color:#aaa;margin-top:3px;">${ts}</div>
+      </div>
+      <button onclick="_adminDeleteMainComment(${cm.id},'${sessionId}')"
+        style="background:none;border:none;cursor:pointer;color:#ccc;font-size:13px;flex-shrink:0;padding:2px 4px;" title="숨기기">✕</button>
+    </div>`;
+  }).join('') : `<div style="text-align:center;padding:16px;color:#aaa;font-size:12px;">아직 코멘트가 없습니다</div>`;
+}
+
+async function _adminDeleteMainComment(id, sessionId) {
+  if (!confirm('이 코멘트를 숨기겠습니까?')) return;
+  await api('DELETE', `/coaching-comment/${id}`).catch(()=>null);
+  await _adminRefreshMainCmtList(sessionId);
+}
+
 // ── 날짜 클릭 시 상세 + 코멘트 패널 (admin용) ────────────────────
 async function _showDcDayPanel(sessionId, userName, dateKey, checkData, consultantCode) {
   const panel = document.getElementById('dc-day-panel');
@@ -3135,19 +3181,41 @@ async function loadDailyCheckDetail(sessionId, userName, sig) {
       <div style="margin-bottom:16px;">${weekRows.join('')}</div>
 
       <!-- 범례 -->
-      <div style="display:flex;align-items:center;gap:8px;font-size:10px;color:var(--muted);flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:8px;font-size:10px;color:var(--muted);flex-wrap:wrap;margin-bottom:18px;">
         <div style="width:14px;height:14px;background:#f0ece6;border-radius:3px;"></div>미체크
         <div style="width:14px;height:14px;background:#f5d0c0;border:1px solid #e8b098;border-radius:3px;"></div>0/3
         <div style="width:14px;height:14px;background:#d4e8b0;border-radius:3px;"></div>1/3
         <div style="width:14px;height:14px;background:#8aaa58;border-radius:3px;"></div>2/3
         <div style="width:14px;height:14px;background:#5a6e3a;border-radius:3px;"></div>3/3 완료
         <div style="width:14px;height:14px;background:transparent;border:1px dashed #e0d8cc;border-radius:3px;"></div>미래
+        <span style="margin-left:4px;color:#aaa;">· 체크된 날짜 셀 클릭 → 운동/식단 상세</span>
       </div>
 
-      <!-- 날짜 클릭 상세+코멘트 패널 -->
-      <div id="dc-day-panel" style="margin-top:16px;"></div>
+      <!-- ── 코칭 코멘트 (항상 표시) ── -->
+      <div style="border-top:1.5px solid #e8d0a0;padding-top:16px;margin-bottom:14px;">
+        <div style="font-size:13px;font-weight:800;color:#5a4a28;margin-bottom:10px;">💬 코칭 코멘트 <span style="font-size:11px;font-weight:500;color:#aaa;">(고객 결과지에 즉시 표시됩니다)</span></div>
+        <div style="display:flex;gap:8px;margin-bottom:12px;">
+          <textarea id="admin-cmt-main-input-${sessionId}"
+            placeholder="코멘트를 입력하세요. 날짜 미선택 시 오늘 날짜로 저장됩니다..."
+            style="flex:1;border:1.5px solid #e0d8cc;border-radius:10px;padding:10px 14px;font-size:13px;font-family:inherit;resize:vertical;min-height:60px;outline:none;line-height:1.5;"
+            onfocus="this.style.borderColor='var(--primary,#5a6e3a)'" onblur="this.style.borderColor='#e0d8cc'"></textarea>
+          <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+            <button onclick="_adminMainComment('${sessionId}','${userName}')"
+              style="background:var(--primary,#5a6e3a);color:#fff;border:none;border-radius:10px;padding:0 18px;font-size:13px;font-weight:800;cursor:pointer;height:60px;min-width:64px;">전송</button>
+          </div>
+        </div>
+        <div id="admin-cmt-main-list-${sessionId}">
+          <div style="text-align:center;padding:10px;color:#aaa;font-size:12px;"><i class="fas fa-circle-notch fa-spin"></i></div>
+        </div>
+      </div>
+
+      <!-- 날짜 클릭 상세 패널 -->
+      <div id="dc-day-panel" style="margin-top:4px;"></div>
     </div>
   `;
+
+  // 코멘트 목록 비동기 로드
+  _adminRefreshMainCmtList(sessionId);
 }
 
 // ═════════════════════════════════════════════
