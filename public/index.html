@@ -2368,6 +2368,9 @@
           <span id="condBonusText"></span>
         </div>
 
+        <!-- ★ 컨디션 공감 메시지 -->
+        <div id="condEmpathyMsg" style="display:none;margin:10px 0 0;padding:14px 16px;border-radius:14px;font-size:13.5px;line-height:1.6;font-weight:500;transition:all .3s"></div>
+
         <div class="cond-actions">
           <button class="cond-btn-go" id="condGoBtn" onclick="condConfirm()" disabled>
             분석 시작하기 →
@@ -2911,17 +2914,53 @@ const survQuestions=[
 
 const survAnswers={};
 const sqwrap=document.getElementById('questions');
+// ★ Q1 부위별 서술 데이터
+const Q1_PART_LABELS = {
+  0: '윗배·복부',
+  1: '아랫배·하복부',
+  2: '허벅지·엉덩이',
+  3: '어깨·팔뚝·등',
+  4: '전체적으로'
+};
+const q1DetailAnswers = {}; // { optIdx: '서술 텍스트' }
+
 survQuestions.forEach(q=>{
   const card=document.createElement('div');card.className='q';card.id='sq'+q.no;
   const opts=q.opts.map((o,i)=>`<div class="opt" onclick="survPick(${q.no},${i},this)">
     <span class="dot"></span><span class="otext"><b>${o[0]}</b>${o[1]?`<span class="osub">${o[1]}</span>`:''}</span></div>`).join('');
+  // ★ Q1에는 textarea 영역 추가
+  const textareaSection = q.no === 1
+    ? `<div id="q1DetailWrap" style="display:none;margin-top:12px;padding:12px 0 4px">
+         <div style="font-size:12px;font-weight:700;color:#8a7a6a;margin-bottom:8px">✏️ 선택한 부위에 대해 조금 더 알려주세요 <span style="font-weight:400;color:#b0a09a">(선택)</span></div>
+         <div id="q1TextareaList"></div>
+       </div>`
+    : '';
   card.innerHTML=`<div class="qtop"><span class="qno">외형</span><span class="qlv">${q.lv}</span></div>
     <div class="qtitle">${q.title}</div>
     <div class="qhint${q.touch?' touch':''}">${q.touch?'✋ 직접 만져보고 답해주세요 — ':''}${q.hint}</div>
     <div class="opts">${opts}</div>
+    ${textareaSection}
     <div class="tease" id="tease${q.no}">${q.tease} <span class="teasearrow">↓</span></div>`;
   sqwrap.appendChild(card);
 });
+
+// ★ Q1 textarea 렌더링 함수
+function renderQ1Textareas(selectedIdx) {
+  const wrap = document.getElementById('q1DetailWrap');
+  const list = document.getElementById('q1TextareaList');
+  if (!wrap || !list) return;
+  const label = Q1_PART_LABELS[selectedIdx] || '선택 부위';
+  // 기존 textarea 저장값 보존
+  list.innerHTML = `<div style="margin-bottom:6px">
+    <div style="font-size:12.5px;font-weight:600;color:#5a4a3a;margin-bottom:5px">${label} — 가장 불만인 점은?</div>
+    <textarea id="q1ta_${selectedIdx}"
+      placeholder="예: 앉으면 바지가 낀다, 옆구리 살이 잡힌다..."
+      style="width:100%;border:1.5px solid rgba(224,92,58,.28);border-radius:10px;padding:10px 12px;font-size:13px;font-family:inherit;color:#3a322a;background:#fff9f5;resize:none;min-height:68px;outline:none;box-sizing:border-box"
+      oninput="q1DetailAnswers[${selectedIdx}]=this.value"
+    >${q1DetailAnswers[selectedIdx]||''}</textarea>
+  </div>`;
+  wrap.style.display = 'block';
+}
 
 /* 지도/설문 전환 함수 */
 const mapTopbar=document.querySelector('.topbar');
@@ -3451,6 +3490,15 @@ let _condSelected = null; // 선택된 옵션 idx
 window._condBonus  = {};   // scoreAxes()에서 참조할 보정값
 window._condDone   = false;
 
+// ★ 컨디션별 공감 메시지
+const COND_EMPATHY = [
+  { bg:'#E8F5E9', color:'#2E7D32', msg:'🌟 최상 컨디션이시군요! 오늘 분석 결과가 가장 정확하게 나올 거예요. 지금 이 상태를 꼭 기억해두세요.' },
+  { bg:'#E3F2FD', color:'#1565C0', msg:'😊 좋은 상태네요! 몸이 보내는 신호를 잘 읽을 수 있는 날이에요. 솔직하게 답해주시면 정확한 결과가 나와요.' },
+  { bg:'#FFF8E1', color:'#E65100', msg:'😐 평소 상태로 측정할게요. 부위를 직접 눌러보고 느끼는 그대로 답해주시면 됩니다.' },
+  { bg:'#FFF3E0', color:'#BF360C', msg:'😔 피곤하신 날이군요. 피로할 때 몸이 더 솔직해져요. 지금 느끼는 그대로 답해주시면 더 정확한 분석이 가능해요.' },
+  { bg:'#FCE4EC', color:'#880E4F', msg:'🤗 많이 힘드시겠어요. 무리하지 않아도 됩니다. 지금 이 상태도 소중한 데이터예요. 천천히 편하게 답해주세요.' }
+];
+
 function condPick(idx) {
   _condSelected = idx;
   // 카드 선택 상태 갱신
@@ -3467,6 +3515,15 @@ function condPick(idx) {
   if (badge && text) {
     text.textContent = opt.bonusIcon + ' ' + opt.bonusText;
     badge.classList.add('show');
+  }
+  // ★ 공감 메시지 표시
+  const emp = COND_EMPATHY[idx];
+  const empEl = document.getElementById('condEmpathyMsg');
+  if (empEl && emp) {
+    empEl.textContent = emp.msg;
+    empEl.style.background = emp.bg;
+    empEl.style.color = emp.color;
+    empEl.style.display = 'block';
   }
   // 시작 버튼 활성화
   const btn = document.getElementById('condGoBtn');
@@ -3929,6 +3986,8 @@ function survPick(qno,oi,el){
   card.querySelectorAll('.opt').forEach(o=>o.classList.remove('sel'));
   el.classList.add('sel');
   survAnswers[qno]=oi;
+  // ★ Q1 부위 선택 시 textarea 표시
+  if(qno===1){ renderQ1Textareas(oi); }
   const done=Object.keys(survAnswers).length;
   setProgress(1,done,'1차 외형');
   const tease=document.getElementById('tease'+qno);
@@ -4082,9 +4141,12 @@ const stage2Questions=[
  {no:1,grp:"유전 가계력",grpc:"#7a4a38",lv:"레벨3 · 가계력",title:"부모님이나 형제 중에, 당뇨·고혈압·고지혈증이 있는 분이 계신가요?",
   hint:"성인병은 유전됩니다. 가족력이 있다면 당신의 단단한 복부는 '아빠에게 물려받은 설계도'일 가능성이 큽니다.",tease:"그렇다면 — 부모님 체형도 떠올려볼까요?",multi:true,max:1,
   opts:[["아버지가 그래요",""],["어머니가 그래요",""],["형제·자매가 그래요",""],["없어요",""]]},
- {no:2,grp:"유전 가계력",grpc:"#7a4a38",lv:"레벨3 · 체형 복제",title:"부모님 체형을 보면, 당신의 미래가 보이나요?",
-  hint:"\"엄마처럼 되고 싶지 않은데\" — 그 직감은 과학입니다. 지방이 쌓이는 부위는 유전되거든요.",tease:"이제 당신이 직접 겪어온 의료 history를 봅니다.",multi:false,
-  opts:[["아버지를 닮아 배부터 나와요","아빠체형"],["어머니를 닮아 하체부터 쪄요","엄마체형"],["둘 다 조금씩",""],["부모님과 다른 편이에요",""]]},
+ {no:2,grp:"유전 가계력",grpc:"#7a4a38",lv:"레벨3 · 아버지 체형",title:"아버지 체형은 어땠나요? (기억나는 것 모두)",
+  hint:"아버지의 체형은 복부·내장지방 유전의 핵심 단서입니다. 비슷한 부위에 살이 붙는 경향이 있어요.",tease:"어머니 쪽도 확인해볼게요.",multi:true,max:0,optional:true,
+  opts:[["배가 나온 편","아빠복부형"],["하체(허벅지·엉덩이)가 큰 편","아빠하체형"],["상체(어깨·팔)가 발달한 편","아빠상체형"],["표준·마른 편",""],["전체적으로 통통한 편",""],["기억 안 나요",""]]},
+ {no:'2b',grp:"유전 가계력",grpc:"#7a4a38",lv:"레벨3 · 어머니 체형",title:"어머니 체형은 어땠나요? (기억나는 것 모두)",
+  hint:"어머니의 체형은 하체비만·셀룰라이트·피하지방 유전의 핵심 단서입니다.",tease:"이제 당신이 직접 겪어온 의료 history를 봅니다.",multi:true,max:0,optional:true,
+  opts:[["배가 나온 편","엄마복부형"],["하체(허벅지·엉덩이)가 큰 편","엄마하체형"],["상체(어깨·팔)가 발달한 편","엄마상체형"],["표준·마른 편",""],["전체적으로 통통한 편",""],["기억 안 나요",""]]},
  {no:3,grp:"메디컬 과거력",grpc:"#b5452e",lv:"레벨3 · 쐐기",title:"진단받은 적 있는 질환을 모두 골라주세요.",
   hint:"이건 가장 중요한 질문입니다. 진단명이 하나라도 있으면, 외형과 상관없이 그 원인이 당신 체형을 지배합니다.",tease:"진단까진 아니어도, '경계'라는 말은 들어보셨죠?",multi:true,
   opts:[["다낭성난소증후군(PCOS)","호르몬 쐐기"],["당뇨·당뇨 전단계","대사 쐐기"],["고혈압","대사 쐐기"],["갑상선 질환","냉증 쐐기"],["지방간",""],["해당 없음",""]]},
@@ -4211,7 +4273,7 @@ function goStage2(){
   ac.style.display='none'; ac.classList.remove('show');
   document.getElementById('stage2').style.display='block';
   document.getElementById('pfill').style.width='0%';
-  document.getElementById('pstep').textContent='2차 배경 · 0 / 14';
+  document.getElementById('pstep').textContent='2차 배경 · 0 / 15';
   window.scrollTo({top:0,behavior:'smooth'});
 }
 function applyGenderQ9(){
@@ -4263,18 +4325,22 @@ function s2pick(qno,oi,el,multi,max){
     /* max개 다 채우면 자동 다음 문항, 아니면 '다음' 버튼 노출 */
     if(max>0&&now>=max){
       if(nb)nb.style.display='none';
-      if(qno<14){const nx=document.getElementById('s2q'+(qno+1));if(nx)setTimeout(()=>nx.scrollIntoView({behavior:'smooth',block:'center'}),400);}
+      /* '2b' 처리: 자동 다음으로 이동 */
+      {const nextNo=qno==='2b'?3:(qno<14?qno+1:null);if(nextNo!==null){const nx=document.getElementById('s2q'+nextNo);if(nx)setTimeout(()=>nx.scrollIntoView({behavior:'smooth',block:'center'}),400);}}
     } else {
       if(nb)nb.style.display=now>0?'block':'none';
     }
   } else {
     /* 단일선택: 고르는 즉시 다음 문항으로 */
-    if(qno<14){const nx=document.getElementById('s2q'+(qno+1));if(nx)setTimeout(()=>nx.scrollIntoView({behavior:'smooth',block:'center'}),450);}
+    /* '2b' 처리 */
+    {const nextNo=qno==='2b'?3:(qno<14?qno+1:null);if(nextNo!==null){const nx=document.getElementById('s2q'+nextNo);if(nx)setTimeout(()=>nx.scrollIntoView({behavior:'smooth',block:'center'}),450);}}
   }
 }
 function s2next(qno){
-  if(qno<14){
-    const nx=document.getElementById('s2q'+(qno+1));
+  /* '2b' 문자열 키 처리: 2b 다음은 3 */
+  const nextNo = qno==='2b' ? 3 : (qno<14 ? qno+1 : null);
+  if(nextNo!==null){
+    const nx=document.getElementById('s2q'+nextNo);
     if(nx)nx.scrollIntoView({behavior:'smooth',block:'center'});
   }
 }
@@ -4519,9 +4585,9 @@ const TOTAL3=stage3Flat.length;
 const stage3Answers={};
 
 /* ===== 전체 통합 진행바 ===== */
-const STAGE_OFFSET={1:0,2:14,3:28,4:28+TOTAL3};   // 각 단계 시작 전까지 누적 문항수
-let GRAND_TOTAL=14+14+TOTAL3;                       // 4차 진입 시 가변분 합산
-function updateGrandTotalWithStage4(){GRAND_TOTAL=28+TOTAL3+(typeof activeStage4Qs!=='undefined'?activeStage4Qs.length:0);}
+const STAGE_OFFSET={1:0,2:14,3:29,4:29+TOTAL3};   // 각 단계 시작 전까지 누적 문항수 (2차 15문항)
+let GRAND_TOTAL=14+15+TOTAL3;                       // 4차 진입 시 가변분 합산 (2차 15문항)
+function updateGrandTotalWithStage4(){GRAND_TOTAL=29+TOTAL3+(typeof activeStage4Qs!=='undefined'?activeStage4Qs.length:0);}
 function setProgress(stage,doneInStage,label){
   const overall=STAGE_OFFSET[stage]+doneInStage;
   const pf=document.getElementById('pfill');
