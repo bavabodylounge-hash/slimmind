@@ -1062,29 +1062,74 @@ app.get('/api/consultant/me', requireRole('ANY'), async (c) => {
 })
 
 // GET /api/consultant/results — 내 고객 결과 목록
+// ✅ FIX: diagnosis_results(신파이프라인) + results(구파이프라인) UNION 조회
 app.get('/api/consultant/results', requireRole('ANY'), async (c) => {
   const user = c.get('user') as JwtPayload
   const db = c.env.DB
   const search = c.req.query('search') || ''
   const bc = c.req.query('bc') || ''
 
-  let query: string
-  let params: any[]
+  // ── diagnosis_results (신버전: /api/v1/diagnosis 파이프라인, ref_code 기준) ──
+  let drWhere = user.role === 'MASTER' ? '1=1' : 'dr.ref_code = ?'
+  const drParams: any[] = user.role === 'MASTER' ? [] : [user.code]
+  if (search) { drWhere += ' AND (dr.user_name LIKE ? OR dr.id LIKE ?)'; drParams.push(`%${search}%`, `%${search}%`) }
+  if (bc)     { drWhere += ' AND dr.bc_primary = ?'; drParams.push(bc) }
 
-  if (user.role === 'MASTER') {
-    query = 'SELECT * FROM results WHERE 1=1'
-    params = []
-  } else {
-    query = 'SELECT * FROM results WHERE consultant_code=?'
-    params = [user.code]
+  // ── results (구버전: /api/survey/submit 파이프라인, consultant_code 기준) ──
+  let rWhere = user.role === 'MASTER' ? '1=1' : 'r.consultant_code = ?'
+  const rParams: any[] = user.role === 'MASTER' ? [] : [user.code]
+  if (search) { rWhere += ' AND (r.user_name LIKE ? OR r.id LIKE ?)'; rParams.push(`%${search}%`, `%${search}%`) }
+  if (bc)     { rWhere += ' AND r.bc_primary = ?'; rParams.push(bc) }
+
+  try {
+    // 신버전 diagnosis_results 조회
+    const drStmt = db.prepare(`
+      SELECT
+        dr.id, dr.user_name, dr.bc_primary, dr.bc_nickname, dr.bc_code_key,
+        dr.ohaeng_type, dr.mbti_full, dr.ref_code AS consultant_code,
+        dr.region, dr.texture, dr.bg_filter,
+        dr.top3_axes AS top3_axes_json, dr.axis_scores AS axis_scores_json,
+        dr.completed_at AS created_at,
+        NULL AS admin_memo, NULL AS phone,
+        'diagnosis_results' AS _source
+      FROM diagnosis_results dr
+      WHERE ${drWhere}
+      ORDER BY dr.created_at DESC LIMIT 50
+    `)
+    const drResult = drParams.length
+      ? await drStmt.bind(...drParams).all<any>()
+      : await drStmt.all<any>()
+
+    // 구버전 results 조회 (중복 제거: diagnosis_results에 없는 것만)
+    const rStmt = db.prepare(`
+      SELECT
+        r.id, r.user_name, r.bc_primary, r.bc_primary AS bc_nickname, r.bc_primary AS bc_code_key,
+        NULL AS ohaeng_type, NULL AS mbti_full, r.consultant_code,
+        NULL AS region, NULL AS texture, NULL AS bg_filter,
+        NULL AS top3_axes_json, NULL AS axis_scores_json,
+        r.created_at, r.admin_memo, r.phone,
+        'results' AS _source
+      FROM results r
+      WHERE ${rWhere}
+      ORDER BY r.created_at DESC LIMIT 50
+    `)
+    const rResult = rParams.length
+      ? await rStmt.bind(...rParams).all<any>()
+      : await rStmt.all<any>()
+
+    // 신버전 우선, 구버전은 신버전에 없는 ID만 병합
+    const drIds = new Set((drResult.results || []).map((r: any) => r.id))
+    const oldOnly = (rResult.results || []).filter((r: any) => !drIds.has(r.id))
+
+    const merged = [...(drResult.results || []), ...oldOnly]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 50)
+
+    return c.json({ results: merged })
+  } catch (e) {
+    console.error('[consultant/results]', e)
+    return c.json({ results: [] })
   }
-  if (search) { query += ' AND (user_name LIKE ? OR id LIKE ?)'; params.push(`%${search}%`, `%${search}%`) }
-  if (bc) { query += ' AND bc_primary=?'; params.push(bc) }
-  query += ' ORDER BY created_at DESC LIMIT 50'
-
-  const stmt = db.prepare(query)
-  const result = params.length ? await stmt.bind(...params).all<any>() : await stmt.all<any>()
-  return c.json({ results: result.results })
 })
 
 // GET /api/survey/result/public/:id — 공개 결과 조회 (result.html에서 ?id= 파라미터용)
@@ -3422,7 +3467,8 @@ app.post('/api/v1/diagnosis', async (c) => {
       ohaeng_type, ohaeng_source, ohaeng_confidence, ohaeng_lacking, ohaeng_score,
       mbti_full, disp_answers, raw_answers,
       goal_weight, weight_loss_pct,
-      ref_code, completed_at
+      ref_code, completed_at,
+      session_id   // ✅ FIX: session_id 수신 (데일리 체크 JOIN 연결용)
     } = body
 
     if (!user_name) return c.json({ error: 'user_name required' }, 400)
@@ -3490,6 +3536,7 @@ app.post('/api/v1/diagnosis', async (c) => {
 
     try {
       // ✅ V4.6: ohaeng 확장 필드(source/confidence/lacking/score) 포함 INSERT (migration 0036 이후)
+      // ✅ FIX: session_id 추가 (daily_checks JOIN 연결용)
       await db.prepare(`
         INSERT INTO diagnosis_results
           (id, user_name, phone, bc_nickname, bc_primary, bc_code_key, bc_secondary,
@@ -3497,8 +3544,8 @@ app.post('/api/v1/diagnosis', async (c) => {
            ohaeng_type, ohaeng_source, ohaeng_confidence, ohaeng_lacking, ohaeng_score,
            mbti_full, disp_answers, raw_answers,
            goal_weight, weight_loss_pct,
-           ref_code, completed_at, created_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+           ref_code, session_id, completed_at, created_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
       `).bind(
         result_id,
         String(user_name || '익명'),
@@ -3526,6 +3573,7 @@ app.post('/api/v1/diagnosis', async (c) => {
         goal_weight     != null ? Number(goal_weight)     : null,
         weight_loss_pct != null ? Number(weight_loss_pct) : null,
         ref_code     || null,
+        session_id   || null,   // ✅ FIX: session_id 저장
         completed_at || now,
         now
       ).run()
@@ -3629,6 +3677,7 @@ app.get('/api/v1/diagnosis/:id', async (c) => {
       goal_weight:     row.goal_weight     ?? null,   // ✅ 추가
       weight_loss_pct: row.weight_loss_pct ?? null,   // ✅ 추가
       ref_code:        row.ref_code,
+      consultant_code: row.ref_code,   // ✅ FIX: result-v4.html daily-check용 (consultant_code = ref_code)
       completed_at:    row.completed_at,
       created_at:      row.created_at
     })
@@ -4561,12 +4610,23 @@ app.post('/api/daily-check', async (c) => {
   }
 
   // result_id 조회 (있으면 연결)
+  // ✅ FIX: result-v4.html에서 session_id = ?id= URL 파라미터 = diagnosis_results.id (UUID)
+  // diagnosis_results.id와 직접 매핑하여 연결
   let resultId: string | null = null
   try {
-    const diagRow = await db.prepare(
-      `SELECT id FROM diagnosis_results WHERE session_id = ? LIMIT 1`
+    // 1순위: session_id가 diagnosis_results.id(UUID)와 일치하는 경우 (신버전 파이프라인)
+    const diagRowById = await db.prepare(
+      `SELECT id FROM diagnosis_results WHERE id = ? LIMIT 1`
     ).bind(session_id).first<any>()
-    if (diagRow) resultId = diagRow.id
+    if (diagRowById) {
+      resultId = diagRowById.id
+    } else {
+      // 2순위: session_id 컬럼으로 조회 (구버전 호환)
+      const diagRowBySid = await db.prepare(
+        `SELECT id FROM diagnosis_results WHERE session_id = ? LIMIT 1`
+      ).bind(session_id).first<any>()
+      if (diagRowBySid) resultId = diagRowBySid.id
+    }
   } catch (_) {}
 
   try {
@@ -4716,7 +4776,7 @@ app.get('/api/admin/daily-checks', requireRole('MASTER'), async (c) => {
                    THEN (dc.exercise_done + dc.diet_done + dc.recovery_done) ELSE 0 END
           ) AS recent3_score
         FROM daily_checks dc
-        LEFT JOIN diagnosis_results dr ON dr.session_id = dc.session_id
+        LEFT JOIN diagnosis_results dr ON (dr.id = dc.session_id OR dr.session_id = dc.session_id)
         ${where}
         GROUP BY dc.session_id
       ),
@@ -4868,7 +4928,7 @@ app.get('/api/consultant/daily-checks', requireRole('ANY'), async (c) => {
                    THEN (dc.exercise_done + dc.diet_done + dc.recovery_done) ELSE 0 END
           ) AS recent3_score
         FROM daily_checks dc
-        LEFT JOIN diagnosis_results dr ON dr.session_id = dc.session_id
+        LEFT JOIN diagnosis_results dr ON dr.id = dc.session_id OR dr.session_id = dc.session_id
         WHERE dc.consultant_code = ?
           AND dc.check_date >= date('now', '-${days} days')
         GROUP BY dc.session_id
@@ -4960,7 +5020,7 @@ app.get('/api/b2b/daily-checks', requireRole('ANY'), async (c) => {
         ROUND(100.0 * SUM(dc.exercise_done + dc.diet_done + dc.recovery_done)
           / (COUNT(DISTINCT dc.check_date) * 3), 1) AS adherence_rate
       FROM daily_checks dc
-      LEFT JOIN diagnosis_results dr ON dr.session_id = dc.session_id
+      LEFT JOIN diagnosis_results dr ON (dr.id = dc.session_id OR dr.session_id = dc.session_id)
       WHERE dc.b2b_code = ?
         AND dc.check_date >= date('now', '-${days} days')
       GROUP BY dc.session_id
@@ -5081,7 +5141,7 @@ app.get('/api/check-alerts', requireRole('ANY'), async (c) => {
       SELECT ca.*, dr.user_name
       FROM check_alerts ca
       LEFT JOIN daily_checks dc ON dc.session_id = ca.session_id
-      LEFT JOIN diagnosis_results dr ON dr.session_id = ca.session_id
+      LEFT JOIN diagnosis_results dr ON (dr.id = ca.session_id OR dr.session_id = ca.session_id)
       WHERE ca.ref_code = ?
         ${unreadOnly ? "AND ca.is_read = 0" : ""}
       ORDER BY ca.triggered_at DESC
@@ -5120,7 +5180,7 @@ app.get('/api/admin/check-alerts', requireRole('MASTER'), async (c) => {
     const rows = await db.prepare(`
       SELECT ca.*, dr.user_name
       FROM check_alerts ca
-      LEFT JOIN diagnosis_results dr ON dr.session_id = ca.session_id
+      LEFT JOIN diagnosis_results dr ON (dr.id = ca.session_id OR dr.session_id = ca.session_id)
       ${where}
       ORDER BY ca.triggered_at DESC
       LIMIT 200
