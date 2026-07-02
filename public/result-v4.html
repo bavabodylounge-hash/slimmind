@@ -15782,20 +15782,59 @@ async function _saveDailyCheckToDB(sid, checkDate, checks, weekNumber){
   var days=['일','월','화','수','목','금','토'];
   var dow=days[new Date(checkDate).getDay()];
 
+  // ── V4.8: 운동 상세 데이터 수집 (_exCalorieLog에서 오늘 날짜 것만) ──
+  var exDetail=null, totalKcalOut=null;
+  try{
+    var dateKey=checkDate.replace(/-/g,''); // YYYYMMDD
+    var allExLogs=[];
+    // _exCalorieLog는 {wk1:[...], wk2:[...]} 구조
+    Object.values(_exCalorieLog||{}).forEach(function(arr){
+      (arr||[]).forEach(function(r){
+        // r.date 형식이 YYYYMMDD이거나 체크날짜와 동일한 것
+        if(r.date && (r.date===dateKey||r.date===checkDate)) allExLogs.push(r);
+      });
+    });
+    if(allExLogs.length>0){
+      exDetail=allExLogs.map(function(r){ return {nm:r.nm||'', min:r.min||0, kcal:r.kcal||0}; });
+      totalKcalOut=allExLogs.reduce(function(s,r){ return s+(r.kcal||0); },0);
+    }
+  }catch(e){}
+
+  // ── V4.8: 식단 상세 데이터 수집 (_foodCalorieLog에서 오늘 날짜 것만) ──
+  var dietDetail=null, totalKcalIn=null;
+  try{
+    var foodDateKey=checkDate.replace(/-/g,'');
+    var allFoodLogs=[];
+    Object.values(_foodCalorieLog||{}).forEach(function(arr){
+      (arr||[]).forEach(function(r){
+        if(r.date && (r.date===foodDateKey||r.date===checkDate)) allFoodLogs.push(r);
+      });
+    });
+    if(allFoodLogs.length>0){
+      dietDetail=allFoodLogs.map(function(r){ return {meal:r.meal||'', nm:r.nm||'', kcal:r.kcal||0}; });
+      totalKcalIn=allFoodLogs.reduce(function(s,r){ return s+(r.kcal||0); },0);
+    }
+  }catch(e){}
+
   try{
     var resp=await fetch('/api/daily-check',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        session_id:    sid,
-        check_date:    checkDate,
-        week_number:   weekNumber||1,
-        day_of_week:   dow,
-        bc_code:       bcCode,
+        session_id:      sid,
+        check_date:      checkDate,
+        week_number:     weekNumber||1,
+        day_of_week:     dow,
+        bc_code:         bcCode,
         consultant_code: consultantCode,
-        exercise_done: checks.ex?1:0,
-        diet_done:     checks.di?1:0,
-        recovery_done: checks.re?1:0
+        exercise_done:   checks.ex?1:0,
+        diet_done:       checks.di?1:0,
+        recovery_done:   checks.re?1:0,
+        // V4.8: 상세 데이터
+        exercise_detail: exDetail,
+        diet_detail:     dietDetail,
+        total_kcal_out:  totalKcalOut,
+        total_kcal_in:   totalKcalIn
       })
     });
     if(resp.ok){

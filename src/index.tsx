@@ -4598,7 +4598,14 @@ app.post('/api/daily-check', async (c) => {
     session_id, check_date, week_number, day_of_week,
     bc_code = 'BC-1', consultant_code = null, b2b_code = null,
     exercise_done = 0, diet_done = 0, recovery_done = 0,
-    memo = null
+    memo = null,
+    // ✅ V4.8: 운동/식단 상세 데이터
+    exercise_detail = null,  // [{nm, min, kcal}, ...]
+    diet_detail = null,      // [{meal, nm, kcal}, ...]
+    total_kcal_out = null,   // 운동 소모 칼로리 합계
+    total_kcal_in = null,    // 식단 섭취 칼로리 합계
+    memo_exercise = null,    // 운동 자유 메모
+    memo_diet = null         // 식단 자유 메모
   } = body
 
   if (!session_id || !check_date) {
@@ -4635,24 +4642,39 @@ app.post('/api/daily-check', async (c) => {
       INSERT INTO daily_checks
         (session_id, result_id, consultant_code, b2b_code, bc_code,
          check_date, week_number, day_of_week,
-         exercise_done, diet_done, recovery_done, memo, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+         exercise_done, diet_done, recovery_done, memo,
+         exercise_detail, diet_detail, total_kcal_out, total_kcal_in,
+         memo_exercise, memo_diet,
+         updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
       ON CONFLICT (session_id, check_date) DO UPDATE SET
-        exercise_done  = excluded.exercise_done,
-        diet_done      = excluded.diet_done,
-        recovery_done  = excluded.recovery_done,
-        week_number    = excluded.week_number,
-        day_of_week    = excluded.day_of_week,
-        bc_code        = excluded.bc_code,
-        consultant_code = excluded.consultant_code,
-        b2b_code       = excluded.b2b_code,
-        memo           = excluded.memo,
-        updated_at     = datetime('now')
+        exercise_done    = excluded.exercise_done,
+        diet_done        = excluded.diet_done,
+        recovery_done    = excluded.recovery_done,
+        week_number      = excluded.week_number,
+        day_of_week      = excluded.day_of_week,
+        bc_code          = excluded.bc_code,
+        consultant_code  = excluded.consultant_code,
+        b2b_code         = excluded.b2b_code,
+        memo             = excluded.memo,
+        exercise_detail  = COALESCE(excluded.exercise_detail, daily_checks.exercise_detail),
+        diet_detail      = COALESCE(excluded.diet_detail,     daily_checks.diet_detail),
+        total_kcal_out   = COALESCE(excluded.total_kcal_out,  daily_checks.total_kcal_out),
+        total_kcal_in    = COALESCE(excluded.total_kcal_in,   daily_checks.total_kcal_in),
+        memo_exercise    = COALESCE(excluded.memo_exercise,   daily_checks.memo_exercise),
+        memo_diet        = COALESCE(excluded.memo_diet,       daily_checks.memo_diet),
+        updated_at       = datetime('now')
     `).bind(
       session_id, resultId, consultant_code || null, b2b_code || null, bc_code,
       check_date, week_number || 1, day_of_week || null,
       exercise_done ? 1 : 0, diet_done ? 1 : 0, recovery_done ? 1 : 0,
-      memo || null
+      memo || null,
+      exercise_detail ? JSON.stringify(exercise_detail) : null,
+      diet_detail     ? JSON.stringify(diet_detail)     : null,
+      total_kcal_out  ?? null,
+      total_kcal_in   ?? null,
+      memo_exercise   || null,
+      memo_diet       || null
     ).run()
 
     // ── 자동 트리거: 3일 연속 미체크 감지 ─────────────────────
@@ -4871,7 +4893,10 @@ app.get('/api/admin/daily-checks/:session_id', requireRole('MASTER'), async (c) 
       SELECT check_date, week_number, day_of_week,
              exercise_done, diet_done, recovery_done,
              (exercise_done + diet_done + recovery_done) as done_count,
-             memo, updated_at
+             memo, memo_exercise, memo_diet,
+             exercise_detail, diet_detail,
+             total_kcal_out, total_kcal_in,
+             updated_at
       FROM daily_checks
       WHERE session_id = ?
       ORDER BY check_date ASC

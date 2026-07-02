@@ -2907,6 +2907,130 @@ async function _dcSendReminder() {
   _dcClearSel();
 }
 
+// ── 날짜 클릭 시 상세 + 코멘트 패널 (admin용) ────────────────────
+async function _showDcDayPanel(sessionId, userName, dateKey, checkData, consultantCode) {
+  const panel = document.getElementById('dc-day-panel');
+  if (!panel) return;
+
+  const c = checkData || {};
+  const exDetail  = c.exercise_detail ? (typeof c.exercise_detail==='string' ? JSON.parse(c.exercise_detail) : c.exercise_detail) : [];
+  const dietDetail= c.diet_detail     ? (typeof c.diet_detail==='string'     ? JSON.parse(c.diet_detail)     : c.diet_detail)     : [];
+  const kcalOut   = c.total_kcal_out || 0;
+  const kcalIn    = c.total_kcal_in  || 0;
+
+  const exRows = exDetail.length
+    ? exDetail.map(r=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f0ece6;font-size:12px;">
+        <span>🏋️ ${r.nm||'-'} ${r.min||0}분</span><span style="font-weight:800;color:#5a6e3a;">${r.kcal||0}kcal</span>
+      </div>`).join('')
+    : `<div style="font-size:12px;color:#aaa;padding:8px 0;">운동 상세 없음</div>`;
+
+  const dietRows = dietDetail.length
+    ? dietDetail.map(r=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f0ece6;font-size:12px;">
+        <span>🍽️ [${r.meal||'-'}] ${r.nm||'-'}</span><span style="font-weight:800;color:#c98a3c;">${r.kcal||0}kcal</span>
+      </div>`).join('')
+    : `<div style="font-size:12px;color:#aaa;padding:8px 0;">식단 상세 없음</div>`;
+
+  // 기존 코멘트 로드
+  let cmtHtml = '';
+  try {
+    const cmtData = await api('GET', `/coaching-comment/${sessionId}?limit=5`).catch(()=>null);
+    const cmts = cmtData?.comments || [];
+    const todayCmts = cmts.filter(cm => cm.check_date === dateKey);
+    cmtHtml = todayCmts.length
+      ? todayCmts.map(cm=>`
+          <div style="background:#eef4e0;border-radius:10px;padding:10px 12px;margin-bottom:8px;position:relative;">
+            <div style="font-size:10px;color:#5a6e3a;font-weight:800;margin-bottom:3px;">💬 ${cm.created_at?.slice(0,10)||''}</div>
+            <div style="font-size:13px;line-height:1.6;">${cm.comment}</div>
+            <button onclick="_adminDeleteComment(${cm.id},'${sessionId}','${dateKey}')" style="position:absolute;top:6px;right:8px;background:none;border:none;cursor:pointer;color:#bbb;font-size:14px;">✕</button>
+          </div>`).join('')
+      : `<div style="font-size:12px;color:#aaa;padding:8px 0;">이 날짜 코멘트 없음</div>`;
+  } catch(e) {}
+
+  panel.innerHTML = `
+    <div style="background:#fff;border:1.5px solid #e8c07a;border-radius:14px;padding:18px 20px;position:relative;">
+      <button onclick="document.getElementById('dc-day-panel').innerHTML=''" style="position:absolute;top:12px;right:14px;background:none;border:none;cursor:pointer;color:#aaa;font-size:18px;">✕</button>
+      <div style="font-size:15px;font-weight:900;color:#241c14;margin-bottom:4px;">📅 ${userName} · ${dateKey}</div>
+      <div style="display:flex;gap:8px;margin-bottom:14px;font-size:12px;font-weight:800;">
+        <span style="padding:3px 10px;border-radius:8px;background:${c.exercise_done?'#eef4e0':'#f4f4f4'};color:${c.exercise_done?'#3f5022':'#aaa'};">🏋️ 운동 ${c.exercise_done?'✓':'✗'}</span>
+        <span style="padding:3px 10px;border-radius:8px;background:${c.diet_done?'#fdf8e4':'#f4f4f4'};color:${c.diet_done?'#7a6010':'#aaa'};">🍽️ 식단 ${c.diet_done?'✓':'✗'}</span>
+        <span style="padding:3px 10px;border-radius:8px;background:${c.recovery_done?'#e8f0fb':'#f4f4f4'};color:${c.recovery_done?'#1e4a8f':'#aaa'};">🌙 회복 ${c.recovery_done?'✓':'✗'}</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+        <div>
+          <div style="font-size:11px;font-weight:800;color:#5a6e3a;margin-bottom:6px;">🏃 운동 기록 ${kcalOut?'· 총 '+kcalOut+'kcal':''}</div>
+          ${exRows}
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:800;color:#c98a3c;margin-bottom:6px;">🥗 식단 기록 ${kcalIn?'· 총 '+kcalIn+'kcal':''}</div>
+          ${dietRows}
+        </div>
+      </div>
+
+      ${(kcalIn||kcalOut) ? `<div style="background:#f8f4ec;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;display:flex;gap:16px;">
+        <span>섭취 <b style="color:#c98a3c;">${kcalIn}kcal</b></span>
+        <span>소모 <b style="color:#5a6e3a;">${kcalOut}kcal</b></span>
+        <span>순 칼로리 <b style="color:${(kcalIn-kcalOut)>0?'#b5452e':'#5a6e3a'};">${kcalIn-kcalOut>0?'+':''}${kcalIn-kcalOut}kcal</b></span>
+      </div>` : ''}
+
+      <div style="border-top:1px solid #f0ece6;padding-top:14px;">
+        <div style="font-size:11px;font-weight:800;color:#5a4a28;margin-bottom:8px;">💬 코칭 코멘트 (고객 결과지에 표시)</div>
+        <div id="admin-cmt-list-${dateKey}">${cmtHtml}</div>
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <textarea id="admin-cmt-input-${dateKey}" placeholder="코멘트를 입력하세요..." rows="2"
+            style="flex:1;border:1.5px solid #e0d8cc;border-radius:10px;padding:8px 12px;font-size:13px;resize:none;font-family:inherit;"></textarea>
+          <button onclick="_adminPostComment('${sessionId}','${dateKey}','${userName}')"
+            style="background:var(--primary,#5a6e3a);color:#fff;border:none;border-radius:10px;padding:0 16px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;">전송</button>
+        </div>
+      </div>
+    </div>
+  `;
+  panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+async function _adminPostComment(sessionId, dateKey, userName) {
+  const inp = document.getElementById(`admin-cmt-input-${dateKey}`);
+  if (!inp) return;
+  const txt = inp.value.trim();
+  if (!txt) return;
+  const res = await api('POST', '/coaching-comment', { session_id: sessionId, comment: txt, check_date: dateKey }).catch(()=>null);
+  if (res?.ok) {
+    inp.value = '';
+    // 코멘트 목록 새로고침
+    const cmtData = await api('GET', `/coaching-comment/${sessionId}?limit=5`).catch(()=>null);
+    const cmts = (cmtData?.comments||[]).filter(cm=>cm.check_date===dateKey);
+    const listEl = document.getElementById(`admin-cmt-list-${dateKey}`);
+    if (listEl) {
+      listEl.innerHTML = cmts.length
+        ? cmts.map(cm=>`
+            <div style="background:#eef4e0;border-radius:10px;padding:10px 12px;margin-bottom:8px;position:relative;">
+              <div style="font-size:10px;color:#5a6e3a;font-weight:800;margin-bottom:3px;">💬 ${cm.created_at?.slice(0,10)||''}</div>
+              <div style="font-size:13px;line-height:1.6;">${cm.comment}</div>
+              <button onclick="_adminDeleteComment(${cm.id},'${sessionId}','${dateKey}')" style="position:absolute;top:6px;right:8px;background:none;border:none;cursor:pointer;color:#bbb;font-size:14px;">✕</button>
+            </div>`).join('')
+        : `<div style="font-size:12px;color:#aaa;padding:8px 0;">이 날짜 코멘트 없음</div>`;
+    }
+  } else {
+    alert('저장 실패. 다시 시도해주세요.');
+  }
+}
+
+async function _adminDeleteComment(id, sessionId, dateKey) {
+  if (!confirm('코멘트를 숨기겠습니까?')) return;
+  await api('DELETE', `/coaching-comment/${id}`).catch(()=>null);
+  const cmtData = await api('GET', `/coaching-comment/${sessionId}?limit=5`).catch(()=>null);
+  const cmts = (cmtData?.comments||[]).filter(cm=>cm.check_date===dateKey);
+  const listEl = document.getElementById(`admin-cmt-list-${dateKey}`);
+  if (listEl) listEl.innerHTML = cmts.length
+    ? cmts.map(cm=>`
+        <div style="background:#eef4e0;border-radius:10px;padding:10px 12px;margin-bottom:8px;position:relative;">
+          <div style="font-size:10px;color:#5a6e3a;font-weight:800;margin-bottom:3px;">💬 ${cm.created_at?.slice(0,10)||''}</div>
+          <div style="font-size:13px;line-height:1.6;">${cm.comment}</div>
+          <button onclick="_adminDeleteComment(${cm.id},'${sessionId}','${dateKey}')" style="position:absolute;top:6px;right:8px;background:none;border:none;cursor:pointer;color:#bbb;font-size:14px;">✕</button>
+        </div>`).join('')
+    : `<div style="font-size:12px;color:#aaa;padding:8px 0;">코멘트 없음</div>`;
+}
+
 async function loadDailyCheckDetail(sessionId, userName, sig) {
   const detail = document.getElementById('daily-check-detail');
   if (!detail) return;
@@ -2927,15 +3051,18 @@ async function loadDailyCheckDetail(sessionId, userName, sig) {
   const checkMap = {};
   checks.forEach(c => { checkMap[c.check_date] = c; });
 
-  // ── 12주 × 7일 그리드 히트맵 (②에서 공유) ──────────────────
+  // ── 히트맵 시작일: 첫 체크인 날짜의 주 월요일 기준 ──────────────
+  // FIX: 오늘-84일 고정 → 진단 첫 체크 날짜 기반으로 1주차 정렬
   const now = new Date();
-  // 이번 주 월요일 기준으로 정렬
-  const startDay = new Date(now);
-  const dow = startDay.getDay(); // 0=일
-  startDay.setDate(startDay.getDate() - ((dow+6)%7) - 83); // 12주(84일) 전 월요일
+  const sortedDates = Object.keys(checkMap).sort();
+  const firstDate = sortedDates.length ? new Date(sortedDates[0]) : new Date(now);
+  // 첫 체크 날짜가 속한 주의 월요일을 1주차 시작으로
+  const firstDow = firstDate.getDay(); // 0=일
+  const startDay = new Date(firstDate);
+  startDay.setDate(startDay.getDate() - ((firstDow + 6) % 7)); // 해당 주 월요일
   const DAY_LABELS = ['월','화','수','목','금','토','일'];
 
-  // 12주 행 빌드
+  // 12주 행 빌드 (날짜 클릭 → 상세 패널)
   const weekRows = [];
   for (let w = 0; w < 12; w++) {
     const cells = [];
@@ -2946,39 +3073,44 @@ async function loadDailyCheckDetail(sessionId, userName, sig) {
       const c   = checkMap[key];
       const cnt = c ? (c.exercise_done + c.diet_done + c.recovery_done) : -1;
       const isFuture = cur > now;
-      let bg, border;
-      if (isFuture)    { bg='transparent'; border='1px dashed #e0d8cc'; }
-      else if (cnt<0)  { bg='#f0ece6';     border='none'; }
-      else if (cnt===0){ bg='#f0ece6';     border='none'; }
-      else if (cnt===1){ bg='#d4e8b0';     border='none'; }
-      else if (cnt===2){ bg='#8aaa58';     border='none'; }
-      else             { bg='#5a6e3a';     border='none'; }
-      const tooltip = isFuture ? key : cnt<0 ? `${key} 미체크` : `${key}: 운동${c.exercise_done?'✓':'✗'} 식단${c.diet_done?'✓':'✗'} 회복${c.recovery_done?'✓':'✗'}`;
-      cells.push(`<div title="${tooltip}" style="width:20px;height:20px;border-radius:4px;background:${bg};border:${border};flex-shrink:0;"></div>`);
+      let bg, border, cursor;
+      if (isFuture)    { bg='transparent'; border='1px dashed #e0d8cc'; cursor='default'; }
+      else if (cnt<0)  { bg='#f0ece6';     border='none'; cursor='default'; }
+      else if (cnt===0){ bg='#f5d0c0';     border='1px solid #e8b098'; cursor='pointer'; }
+      else if (cnt===1){ bg='#d4e8b0';     border='none'; cursor='pointer'; }
+      else if (cnt===2){ bg='#8aaa58';     border='none'; cursor='pointer'; }
+      else             { bg='#5a6e3a';     border='none'; cursor='pointer'; }
+      const hasDetail = !isFuture && c;
+      const tooltip = isFuture ? key : cnt<0 ? `${key} 미체크` : `${key}: 운동${c.exercise_done?'✓':'✗'} 식단${c.diet_done?'✓':'✗'} 회복${c.recovery_done?'✓':'✗'}${c.total_kcal_in?' · 섭취'+c.total_kcal_in+'kcal':''} — 클릭하면 상세보기`;
+      const clickAttr = hasDetail
+        ? `onclick="_showDcDayPanel('${sessionId}','${userName}','${key}',${JSON.stringify(c).replace(/'/g,"\\'")})" title="${tooltip}" style="cursor:${cursor}"`
+        : `title="${tooltip}" style="cursor:${cursor}"`;
+      cells.push(`<div ${clickAttr} style="width:20px;height:20px;border-radius:4px;background:${bg};border:${border};flex-shrink:0;transition:transform .1s;" onmouseenter="if(this.style.cursor!=='default')this.style.transform='scale(1.2)'" onmouseleave="this.style.transform=''"></div>`);
     }
     const wn = w+1;
     const ws = wkStats.find(x=>x.week_number===wn);
     const wr = ws?.rate||0;
+    const exS = ws?.ex||0, diS = ws?.di||0, reS = ws?.re||0;
     weekRows.push(`
-      <div style="display:flex;align-items:center;gap:4px;margin-bottom:3px;">
+      <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
         <span style="font-size:10px;font-weight:800;color:#8a7e66;width:28px;flex-shrink:0;">${wn}주</span>
         ${cells.join('')}
-        <div style="margin-left:8px;background:#f0ece6;border-radius:4px;height:8px;width:60px;overflow:hidden;flex-shrink:0;">
+        <div style="margin-left:8px;background:#f0ece6;border-radius:4px;height:8px;width:56px;overflow:hidden;flex-shrink:0;">
           <div style="width:${wr}%;height:100%;background:${wr>=80?'#5a6e3a':wr>=50?'#c98a3c':'#b5452e'};border-radius:4px;"></div>
         </div>
         <span style="font-size:10px;font-weight:700;color:#555;width:28px;">${wr}%</span>
+        <span style="font-size:9px;color:#aaa;white-space:nowrap;">🏋️${exS} 🍽️${diS} 🌙${reS}</span>
       </div>`);
   }
 
   // streak 계산
   let streak=0, maxStreak=0, cur2=0;
-  const sortedKeys = Object.keys(checkMap).sort();
-  for (let i=sortedKeys.length-1; i>=0; i--) {
-    const c = checkMap[sortedKeys[i]];
-    if ((c.exercise_done+c.diet_done+c.recovery_done) > 0) { streak++; if(i<sortedKeys.length-1) break; }
+  for (let i=sortedDates.length-1; i>=0; i--) {
+    const c = checkMap[sortedDates[i]];
+    if ((c.exercise_done+c.diet_done+c.recovery_done) > 0) { streak++; }
     else break;
   }
-  sortedKeys.forEach(k => {
+  sortedDates.forEach(k => {
     const c = checkMap[k];
     if ((c.exercise_done+c.diet_done+c.recovery_done) > 0) { cur2++; maxStreak = Math.max(maxStreak, cur2); }
     else cur2=0;
@@ -2990,6 +3122,7 @@ async function loadDailyCheckDetail(sessionId, userName, sig) {
         <span style="font-size:16px;font-weight:900;color:#241c14;">📊 ${userName}</span>
         <span style="font-size:13px;padding:3px 10px;border-radius:10px;font-weight:800;background:${sig==='red'?'#fdeee7':sig==='yellow'?'#fdf8e4':sig==='green'?'#eef4e0':'#f4f4f4'};color:${sig==='red'?'#8f321e':sig==='yellow'?'#7a6010':sig==='green'?'#3f5022':'#666'};">${sm.icon} ${sm.label}</span>
         <span style="font-size:11px;color:var(--muted);margin-left:4px;">연속 ${streak}일 · 최장 ${maxStreak}일</span>
+        <span style="font-size:11px;color:#aaa;margin-left:6px;">셀 클릭 → 상세+코멘트</span>
         <button onclick="document.getElementById('daily-check-detail').innerHTML=''" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--muted);font-size:18px;">✕</button>
       </div>
 
@@ -2998,17 +3131,21 @@ async function loadDailyCheckDetail(sessionId, userName, sig) {
         ${DAY_LABELS.map(l=>`<div style="width:20px;text-align:center;font-size:9px;font-weight:700;color:#8a7e66;">${l}</div>`).join('')}
       </div>
 
-      <!-- 12주 히트맵 그리드 -->
+      <!-- 12주 히트맵 그리드 (1주차=첫 체크인 기준) -->
       <div style="margin-bottom:16px;">${weekRows.join('')}</div>
 
       <!-- 범례 -->
       <div style="display:flex;align-items:center;gap:8px;font-size:10px;color:var(--muted);flex-wrap:wrap;">
         <div style="width:14px;height:14px;background:#f0ece6;border-radius:3px;"></div>미체크
+        <div style="width:14px;height:14px;background:#f5d0c0;border:1px solid #e8b098;border-radius:3px;"></div>0/3
         <div style="width:14px;height:14px;background:#d4e8b0;border-radius:3px;"></div>1/3
         <div style="width:14px;height:14px;background:#8aaa58;border-radius:3px;"></div>2/3
         <div style="width:14px;height:14px;background:#5a6e3a;border-radius:3px;"></div>3/3 완료
         <div style="width:14px;height:14px;background:transparent;border:1px dashed #e0d8cc;border-radius:3px;"></div>미래
       </div>
+
+      <!-- 날짜 클릭 상세+코멘트 패널 -->
+      <div id="dc-day-panel" style="margin-top:16px;"></div>
     </div>
   `;
 }
