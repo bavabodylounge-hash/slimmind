@@ -11063,7 +11063,13 @@ var _resultGuideSteps = [
 var _rgIdx = 0;
 
 function _showResultGuide(){
-  try { if(localStorage.getItem('slimmind_guide_done')) return; } catch(e){}
+  // 실제 결과지(window.__RESULT__ 주입된 경우)일 때만 표시
+  // → 관리자/컨설턴트 미리보기가 아닌 고객용 결과지에서만 동작
+  var rid = (window.__RESULT__ && (window.__RESULT__.result_id || window.__RESULT__.id)) || '';
+  if (!rid) return; // __RESULT__ 없으면 (=개발/미리보기 모드) 스킵
+  // result ID 별로 체크 → 새 고객 결과지마다 팝업 표시
+  var storageKey = 'slimmind_guide_' + rid;
+  try { if(localStorage.getItem(storageKey)) return; } catch(e){}
   _rgIdx = 0;
   _rgRender(0);
 }
@@ -11116,7 +11122,9 @@ function _rgClose(){
   var card    = document.getElementById('rg-card');
   if(overlay){ overlay.classList.remove('show'); setTimeout(function(){ if(overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 300); }
   if(card && card.parentNode) card.parentNode.removeChild(card);
-  try { localStorage.setItem('slimmind_guide_done','1'); } catch(e){}
+  // result ID 기준으로 저장 → 같은 결과지 재방문 시 팝업 생략
+  var rid = (window.__RESULT__ && (window.__RESULT__.result_id || window.__RESULT__.id)) || '';
+  if(rid){ try { localStorage.setItem('slimmind_guide_' + rid, '1'); } catch(e){} }
 }
 function openCover(){
   var c = document.getElementById('cover-overlay');
@@ -17102,7 +17110,9 @@ function obdClose(){
   if(overlay){ overlay.classList.remove('show'); setTimeout(function(){ if(overlay.parentNode) overlay.parentNode.removeChild(overlay); },300); }
   if(sp)     { sp.style.display='none'; }
   if(card && card.parentNode) card.parentNode.removeChild(card);
-  try { localStorage.setItem('slimmind_obd_done','1'); } catch(e){}
+  // result ID 기준으로 저장
+  var rid = (window.__RESULT__ && (window.__RESULT__.result_id || window.__RESULT__.id)) || '';
+  if(rid){ try { localStorage.setItem('slimmind_obd_' + rid, '1'); } catch(e){} }
 }
 
 // ? 버튼 클릭 → 해당 스텝 바로 표시
@@ -17112,13 +17122,15 @@ function obdShow(areaKey){
   obdRender(_obdIdx);
 }
 
-// 첫 방문 자동 투어 (P10 진입 시 호출)
+// 첫 방문 자동 투어 (P10 진입 시 호출) — result ID 기준으로 체크
 function obdAutoTour(){
-  try { if(localStorage.getItem('slimmind_obd_done')) return; } catch(e){}
-  // bars가 렌더된 후 잠깐 딜레이
+  var rid = (window.__RESULT__ && (window.__RESULT__.result_id || window.__RESULT__.id)) || '';
+  if(!rid) return; // __RESULT__ 없으면 스킵 (관리자/미리보기 모드)
+  var obdKey = 'slimmind_obd_' + rid;
+  try { if(localStorage.getItem(obdKey)) return; } catch(e){}
   setTimeout(function(){
     var bars = document.getElementById('lr2-bars');
-    if(!bars) return; // 아직 렌더 전이면 스킵
+    if(!bars) return;
     _obdIdx = 0;
     obdRender(0);
   }, 900);
