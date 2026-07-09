@@ -2050,6 +2050,9 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
     body_data_source: resultData.result?.body_data_source,
     macro_ratio: resultData.result?.macro_ratio,
     body_goal: resultData.result?.body_goal,
+    // ✅ 목표체중·감량률 — computeNutrition / getRoadmapWeeks 칼로리 계산 필수
+    goal_weight:     (resultData.result as any)?.goal_weight     != null ? Number((resultData.result as any).goal_weight)     : null,
+    weight_loss_pct: (resultData.result as any)?.weight_loss_pct != null ? Number((resultData.result as any).weight_loss_pct) : null,
     // 체형 사이즈
     top_size: resultData.result?.top_size,
     bottom_size: resultData.result?.bottom_size,

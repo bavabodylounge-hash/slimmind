@@ -939,15 +939,21 @@ var SIMULATOR_METRICS = [
 // curWeight: 현재체중(kg), goalWeight: 목표체중(kg)
 // lossPct: 감량률(%), height: 신장(cm, optional)
 // ──────────────────────────────────────────────
-function computeNutrition(curWeight, goalWeight, lossPct, height) {
+function computeNutrition(curWeight, goalWeight, lossPct, height, gender, age) {
   // 안전 처리
   var cw  = Number(curWeight)  || 65;
   var gw  = Number(goalWeight) || Math.round(cw * 0.9);
   var pct = Number(lossPct)    || Math.round((cw - gw) / cw * 100);
-  var h   = Number(height)     || 162; // 평균 신장 fallback
+  var h   = Number(height)     || 162;  // 평균 신장 fallback
+  var ag  = Number(age)        || 35;   // 나이 fallback (35세)
+  // gender: 'M'|'male'|'남성'|'남' → 남성, 그 외 → 여성
+  var isMale = (gender === 'M' || gender === 'male' || gender === '남성' || gender === '남');
 
-  // 목표체중 기준 BMR (Mifflin-St Jeor 여성 기준, 연령 35세 fallback)
-  var bmr = Math.round(10 * gw + 6.25 * h - 5 * 35 - 161);
+  // 목표체중 기준 BMR (Mifflin-St Jeor — 성별·나이 반영)
+  // 남성: 10W + 6.25H − 5A + 5   / 여성: 10W + 6.25H − 5A − 161
+  var bmr = isMale
+    ? Math.round(10 * gw + 6.25 * h - 5 * ag + 5)
+    : Math.round(10 * gw + 6.25 * h - 5 * ag - 161);
 
   // 활동계수: 감량률 10% 이하 → 보통(1.375), 초과 → 가벼움(1.2)
   var activityFactor = pct <= 10 ? 1.375 : 1.2;
@@ -2037,7 +2043,7 @@ var NICKNAME_OVERLAY = {
 // ③ OHAENG_OVERLAY(ohaeng_type) → 오행 기질 레이어 추가
 // ④ computeNutrition(goal_weight) → 칼로리/탄단지 주입
 // ──────────────────────────────────────────────
-function getRoadmapWeeks(bc_primary, goal_weight, weight_loss_pct, user_name, ohaeng_type) {
+function getRoadmapWeeks(bc_primary, goal_weight, weight_loss_pct, user_name, ohaeng_type, gender, age) {
   var name    = user_name   || '회원';
   var ohaeng  = ohaeng_type || null;
 
@@ -2095,7 +2101,7 @@ function getRoadmapWeeks(bc_primary, goal_weight, weight_loss_pct, user_name, oh
   var effectiveLossPct = (weight_loss_pct != null && weight_loss_pct > 0)
     ? weight_loss_pct
     : (BC_DEFAULT_LOSS_PCT[bcKey] || 12);
-  var nutritionData = computeNutrition(null, effectiveGoalWeight, effectiveLossPct, null);
+  var nutritionData = computeNutrition(null, effectiveGoalWeight, effectiveLossPct, null, gender, age);
   // fallback 여부 표시 (렌더링에서 참고)
   nutritionData._isDefaultGoal = (goal_weight == null || goal_weight <= 0);
 

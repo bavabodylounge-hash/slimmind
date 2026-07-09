@@ -9163,15 +9163,21 @@ var SIMULATOR_METRICS = [
 // curWeight: 현재체중(kg), goalWeight: 목표체중(kg)
 // lossPct: 감량률(%), height: 신장(cm, optional)
 // ──────────────────────────────────────────────
-function computeNutrition(curWeight, goalWeight, lossPct, height) {
+function computeNutrition(curWeight, goalWeight, lossPct, height, gender, age) {
   // 안전 처리
   var cw  = Number(curWeight)  || 65;
   var gw  = Number(goalWeight) || Math.round(cw * 0.9);
   var pct = Number(lossPct)    || Math.round((cw - gw) / cw * 100);
-  var h   = Number(height)     || 162; // 평균 신장 fallback
+  var h   = Number(height)     || 162;  // 평균 신장 fallback
+  var ag  = Number(age)        || 35;   // 나이 fallback (35세)
+  // gender: 'M'|'male'|'남성'|'남' → 남성, 그 외 → 여성
+  var isMale = (gender === 'M' || gender === 'male' || gender === '남성' || gender === '남');
 
-  // 목표체중 기준 BMR (Mifflin-St Jeor 여성 기준, 연령 35세 fallback)
-  var bmr = Math.round(10 * gw + 6.25 * h - 5 * 35 - 161);
+  // 목표체중 기준 BMR (Mifflin-St Jeor — 성별·나이 반영)
+  // 남성: 10W + 6.25H − 5A + 5   / 여성: 10W + 6.25H − 5A − 161
+  var bmr = isMale
+    ? Math.round(10 * gw + 6.25 * h - 5 * ag + 5)
+    : Math.round(10 * gw + 6.25 * h - 5 * ag - 161);
 
   // 활동계수: 감량률 10% 이하 → 보통(1.375), 초과 → 가벼움(1.2)
   var activityFactor = pct <= 10 ? 1.375 : 1.2;
@@ -10558,7 +10564,7 @@ var NICKNAME_OVERLAY = {
 // ③ OHAENG_OVERLAY(ohaeng_type) → 오행 기질 레이어 추가
 // ④ computeNutrition(goal_weight) → 칼로리/탄단지 주입
 // ──────────────────────────────────────────────
-function getRoadmapWeeks(bc_primary, goal_weight, weight_loss_pct, user_name, ohaeng_type) {
+function getRoadmapWeeks(bc_primary, goal_weight, weight_loss_pct, user_name, ohaeng_type, gender, age) {
   var name    = user_name   || '회원';
   var ohaeng  = ohaeng_type || null;
 
@@ -10616,7 +10622,7 @@ function getRoadmapWeeks(bc_primary, goal_weight, weight_loss_pct, user_name, oh
   var effectiveLossPct = (weight_loss_pct != null && weight_loss_pct > 0)
     ? weight_loss_pct
     : (BC_DEFAULT_LOSS_PCT[bcKey] || 12);
-  var nutritionData = computeNutrition(null, effectiveGoalWeight, effectiveLossPct, null);
+  var nutritionData = computeNutrition(null, effectiveGoalWeight, effectiveLossPct, null, gender, age);
   // fallback 여부 표시 (렌더링에서 참고)
   nutritionData._isDefaultGoal = (goal_weight == null || goal_weight <= 0);
 
@@ -13405,11 +13411,14 @@ function renderP6(userName, fullCode, ohaengType, inputData) {
   const weightLossPct = d.weight_loss_pct != null ? Number(d.weight_loss_pct) : null;
   // ohaeng_type: renderP6에 파라미터로 전달받은 값 우선, data에서 fallback
   const ohaengForRoadmap = ohaengType || d.ohaengType || d.ohaeng_type || null;
+  // 성별/나이 — BMR 계산 전달
+  const genderForNutr = d.gender || (d.answers && d.answers['Q02']) || null;
+  const ageForNutr    = d.age    != null ? Number(d.age) : null;
 
-  // getRoadmapWeeks(): bc_primary(한글닉네임) + goal_weight + weight_loss_pct + user_name + ohaeng_type
-  console.log('[P6] getRoadmapWeeks 파라미터:', { bcPrimary, goalWeight, weightLossPct, userName, ohaengForRoadmap });
+  // getRoadmapWeeks(): bc_primary(한글닉네임) + goal_weight + weight_loss_pct + user_name + ohaeng_type + gender + age
+  console.log('[P6] getRoadmapWeeks 파라미터:', { bcPrimary, goalWeight, weightLossPct, userName, ohaengForRoadmap, genderForNutr, ageForNutr });
   const ACTIVE_WEEKS = (typeof getRoadmapWeeks === 'function')
-    ? getRoadmapWeeks(bcPrimary, goalWeight, weightLossPct, userName, ohaengForRoadmap)
+    ? getRoadmapWeeks(bcPrimary, goalWeight, weightLossPct, userName, ohaengForRoadmap, genderForNutr, ageForNutr)
     : (typeof ROADMAP_WEEKS !== 'undefined' ? ROADMAP_WEEKS : []);
   window.__ACTIVE_WEEKS__ = ACTIVE_WEEKS;
   console.log('[P6] ACTIVE_WEEKS 생성:', ACTIVE_WEEKS.length + '주차', ACTIVE_WEEKS[0] ? '1주차:' + ACTIVE_WEEKS[0].title : '없음');
@@ -14670,9 +14679,11 @@ function renderP7(userName, bcCode, bcMaster, metrics, ohaengType, mbtiType, ful
       var weeks = [];
       try {
         if (typeof getRoadmapWeeks === 'function') {
-          var gw = (data && data.goal_weight!=null) ? data.goal_weight : null;
-          var lp = (data && data.weight_loss_pct!=null) ? data.weight_loss_pct : null;
-          weeks = getRoadmapWeeks(nicknameDisplay || bcCode, gw, lp, userName, ohaengType) || [];
+          var gw  = (data && data.goal_weight!=null)     ? data.goal_weight     : null;
+          var lp  = (data && data.weight_loss_pct!=null) ? data.weight_loss_pct : null;
+          var tlGender = (data && data.gender) || (data && data.answers && data.answers['Q02']) || null;
+          var tlAge    = (data && data.age!=null) ? Number(data.age) : null;
+          weeks = getRoadmapWeeks(nicknameDisplay || bcCode, gw, lp, userName, ohaengType, tlGender, tlAge) || [];
         }
       } catch(e){ weeks = []; }
       if (!weeks.length){ tl.parentElement && (tl.parentElement.style.display='none'); return; }
@@ -14718,6 +14729,10 @@ function renderP7(userName, bcCode, bcMaster, metrics, ohaengType, mbtiType, ful
       var goalW = (data && data.goal_weight!=null) ? Number(data.goal_weight) : null;
       var lossPct = (data && data.weight_loss_pct!=null) ? Number(data.weight_loss_pct) : null;
       var height = (data && data.height!=null) ? Number(data.height) : 162;
+      // ✅ 성별·나이 주입 (Mifflin-St Jeor 정확도 향상)
+      var p8Gender = (data && data.gender) || (data && data.answers && data.answers['Q02']) || null;
+      var p8Age    = (data && data.age!=null) ? Number(data.age) : 35;
+      var p8IsMale = (p8Gender === 'M' || p8Gender === 'male' || p8Gender === '남성' || p8Gender === '남');
       var curW = (goalW!=null && lossPct!=null && lossPct<100) ? Math.round(goalW/(1-lossPct/100)*10)/10 : null;
 
       // 데이터 부족 → 카드 숨김
@@ -14730,9 +14745,9 @@ function renderP7(userName, bcCode, bcMaster, metrics, ohaengType, mbtiType, ful
       function setT(id,v){ var e=document.getElementById(id); if(e!=null&&v!=null) e.textContent=v; }
       function round1(n){ return Math.round(n*10)/10; }
 
-      // ── 영양 계산 (computeNutrition) ──
+      // ── 영양 계산 (computeNutrition) — 성별·나이 전달 ──
       var nut=null;
-      try { if (typeof computeNutrition==='function') nut=computeNutrition(curW,goalW,lossPct,height); } catch(e){}
+      try { if (typeof computeNutrition==='function') nut=computeNutrition(curW,goalW,lossPct,height,p8Gender,p8Age); } catch(e){}
       if (!nut){ var gc1=document.querySelector('.p7v4-goal'); if(gc1) gc1.style.display='none'; return; }
 
       var targetKcal = nut.targetKcal!=null ? nut.targetKcal : nut.kcal;
@@ -14740,18 +14755,25 @@ function renderP7(userName, bcCode, bcMaster, metrics, ohaengType, mbtiType, ful
       var bmrGoal = nut.bmr;          // computeNutrition은 목표체중 기준 BMR
       var deficit = nut.deficit!=null ? nut.deficit : Math.max(0, tdee-targetKcal);
 
-      // ── 현재 BMR / TDEE (현재 체중 기준, 동일 식: Mifflin 여성 35세) ──
-      var bmrCur = Math.round(10*curW + 6.25*height - 5*35 - 161);
+      // ── 현재 BMR / TDEE (현재 체중 기준 — 성별·나이 반영) ──
+      var bmrCur = p8IsMale
+        ? Math.round(10*curW + 6.25*height - 5*p8Age + 5)
+        : Math.round(10*curW + 6.25*height - 5*p8Age - 161);
       var actFactor = lossPct<=10 ? 1.375 : 1.2;
       var tdeeCur = Math.round(bmrCur*actFactor);
 
       // ── 체지방률 ──
-      // 우선순위: 질문지 입력(data.body_fat) → 키·몸무게 추정(Deurenberg 여성, 35세)
+      // 우선순위: 질문지 입력(data.body_fat) → 키·몸무게 추정(Deurenberg — 성별·나이 반영)
       var bmiCur = curW/Math.pow(height/100,2);
-      function deurenbergFemale(bmi){ return 1.20*bmi + 0.23*35 - 5.4; } // 여성 -5.4
+      // 남성: 1.20*BMI + 0.23*age - 16.2  /  여성: 1.20*BMI + 0.23*age - 5.4
+      function deurenbergFemale(bmi){ return 1.20*bmi + 0.23*p8Age - 5.4; }  // 여성
+      function deurenbergMale(bmi)  { return 1.20*bmi + 0.23*p8Age - 16.2; } // 남성
+      // 남성 최솟값 8%, 여성 최솟값 15% / 최댓값 공통 50%
       var bfCur = (data && data.body_fat!=null && Number(data.body_fat)>0)
                 ? Number(data.body_fat)
-                : round1(Math.min(48, Math.max(15, deurenbergFemale(bmiCur))));
+                : p8IsMale
+                  ? round1(Math.min(50, Math.max(8,  deurenbergMale(bmiCur))))
+                  : round1(Math.min(50, Math.max(15, deurenbergFemale(bmiCur))));
       // 현재 지방량(kg)
       var fatMassCur = round1(curW*bfCur/100);
       // 12주 후 체지방률: 근손실 없는 감량 가정 → 빠진 무게의 80%를 지방으로 차감
