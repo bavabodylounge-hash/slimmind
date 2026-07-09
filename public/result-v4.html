@@ -4634,7 +4634,7 @@ p, div, span, h1, h2, h3, h4{
 .wgu-pop-btn.did{background:var(--wgc,#5a6e3a);color:#fff;}
 .wgu-pop-btn.miss{background:rgba(255,255,255,.13);color:#f0c0b0;}
 @keyframes wguPopPulse{0%{box-shadow:0 10px 28px rgba(0,0,0,.32),0 0 0 0 rgba(201,138,60,.7);}60%{box-shadow:0 10px 28px rgba(0,0,0,.32),0 0 0 10px rgba(201,138,60,0);}100%{box-shadow:0 10px 28px rgba(0,0,0,.32),0 0 0 0 rgba(201,138,60,0);}}
-.wgu-pop.wgu-pop-pulse{animation:wguPopPulse .7s ease-out 2;}
+.wgu-pop.wgu-pop-pulse,.wgu-row.wgu-pop-pulse{animation:wguPopPulse .7s ease-out 2;}
 .wgu-miss-q{font-size:11.5px;font-weight:800;color:#f6e7d8;text-align:center;padding:2px 0 2px;}
 .wgu-miss-opts{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
 .wgu-miss-opt{border:none;border-radius:8px;padding:8px 6px;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;background:rgba(255,255,255,.1);color:#f0d8cc;}
@@ -17574,6 +17574,12 @@ function bindUnifiedGrid(){
         row.style.display='';
         var cid = row.getAttribute('data-cellid');
         if (cid){ var note=document.getElementById(cid+'-note'); if(note) note.style.display=''; }
+        // 요일 탭 클릭 시 해당 행으로 자동 스크롤 + pulse
+        setTimeout(function(){
+          row.scrollIntoView({behavior:'smooth', block:'center'});
+          row.classList.add('wgu-pop-pulse');
+          setTimeout(function(){ row.classList.remove('wgu-pop-pulse'); }, 900);
+        }, 60);
       }
       return;
     }
