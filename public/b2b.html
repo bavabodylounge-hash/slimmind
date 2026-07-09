@@ -293,9 +293,49 @@
       .topbar { padding: 0 16px; }
       .page-body { padding: 16px; }
     }
+  /* ══ B2B 온보딩 팝업 ══ */
+  #b2b-obd-overlay{position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px;}
+  #b2b-obd-modal{background:#fff;border-radius:22px;width:100%;max-width:460px;box-shadow:0 24px 64px rgba(0,0,0,.22);overflow:hidden;animation:b2bobdIn .35s cubic-bezier(.4,0,.2,1) both;}
+  @keyframes b2bobdIn{from{opacity:0;transform:scale(.92) translateY(20px)}to{opacity:1;transform:none}}
+  .b2b-obd-hdr{background:linear-gradient(135deg,#7c3aed,#2f7d8c);padding:24px 24px 20px;color:#fff;}
+  .b2b-obd-dots{display:flex;gap:6px;margin-bottom:14px;}
+  .b2b-obd-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.35);transition:all .25s;}
+  .b2b-obd-dot.active{width:24px;border-radius:4px;background:#fff;}
+  .b2b-obd-icon{font-size:36px;margin-bottom:10px;}
+  .b2b-obd-title{font-size:19px;font-weight:900;margin-bottom:6px;line-height:1.3;}
+  .b2b-obd-sub{font-size:13px;opacity:.88;line-height:1.6;}
+  .b2b-obd-body{padding:20px 24px;}
+  .b2b-obd-list{display:flex;flex-direction:column;gap:10px;}
+  .b2b-obd-item{display:flex;gap:12px;align-items:flex-start;background:#faf8f5;border-radius:12px;padding:12px 14px;}
+  .b2b-obd-ic{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+  .b2b-obd-tx b{display:block;font-size:13px;font-weight:800;color:#1a1a17;margin-bottom:2px;}
+  .b2b-obd-tx span{font-size:12px;color:#7c776b;line-height:1.55;}
+  .b2b-obd-footer{display:flex;align-items:center;justify-content:space-between;padding:0 24px 20px;gap:10px;}
+  .b2b-obd-skip{background:none;border:none;font-size:13px;color:#aaa;cursor:pointer;padding:8px 4px;font-family:inherit;}
+  .b2b-obd-next{flex:1;background:linear-gradient(135deg,#7c3aed,#2f7d8c);color:#fff;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;transition:opacity .15s;}
+  .b2b-obd-next:hover{opacity:.9;}
   </style>
 </head>
 <body>
+
+<!-- ══ B2B 파트너 온보딩 팝업 ══ -->
+<div id="b2b-obd-overlay" style="display:none;">
+  <div id="b2b-obd-modal">
+    <div class="b2b-obd-hdr">
+      <div class="b2b-obd-dots" id="b2b-obd-dots"></div>
+      <div class="b2b-obd-icon" id="b2b-obd-icon"></div>
+      <div class="b2b-obd-title" id="b2b-obd-title"></div>
+      <div class="b2b-obd-sub" id="b2b-obd-sub"></div>
+    </div>
+    <div class="b2b-obd-body">
+      <div class="b2b-obd-list" id="b2b-obd-list"></div>
+    </div>
+    <div class="b2b-obd-footer">
+      <button class="b2b-obd-skip" onclick="_b2bObdClose()">건너뛰기</button>
+      <button class="b2b-obd-next" id="b2b-obd-next" onclick="_b2bObdNext()">다음 →</button>
+    </div>
+  </div>
+</div>
 
 <div class="toast-container" id="toast-container"></div>
 
@@ -493,6 +533,95 @@ function initMain(name, code) {
   document.getElementById('login-page').style.display = 'none';
   document.getElementById('main-page').style.display = 'block';
   navigateTo('dashboard');
+  // 최초 로그인 온보딩 팝업
+  setTimeout(_b2bObdShow, 800);
+}
+
+// ══════════════════════════════════════════════════════════
+//  B2B 파트너 온보딩 팝업 — 최초 로그인 1회
+// ══════════════════════════════════════════════════════════
+const _B2B_OBD_KEY = 'slimmind_b2b_obd_done';
+const _B2B_OBD_STEPS = [
+  {
+    icon: '🏢',
+    title: 'SlimMind B2B 파트너 포털에 오신 걸 환영해요!',
+    sub: '고객 설문부터 데일리 체크 모니터링, QR 출력까지. 4가지 핵심 기능을 안내해드릴게요.',
+    items: [
+      { ic: '📊', bg: '#ede9fe', label: '대시보드', desc: '소속 고객수, 오늘 데일리 체크 달성률, 신규 알림을 한눈에 확인해요.' },
+      { ic: '👥', bg: '#dbeafe', label: '고객 결과 조회', desc: '귀 업체를 통해 등록된 모든 고객의 BC코드 결과를 확인하세요.' },
+      { ic: '✅', bg: '#d1fae5', label: '데일리 체크', desc: '고객의 오늘 운동·식단·회복 실천 현황을 실시간으로 모니터링해요.' },
+    ]
+  },
+  {
+    icon: '📱',
+    title: 'STEP 1 — 설문 링크 & QR로 고객 등록',
+    sub: '전용 설문 링크를 고객에게 공유하거나 QR을 출력해 원내에 비치하세요.',
+    items: [
+      { ic: '🔗', bg: '#dbeafe', label: '설문 링크 공유', desc: '대시보드에서 「파트너 전용 설문 링크」를 복사해 카카오톡·문자로 고객에게 보내세요.' },
+      { ic: '📷', bg: '#ede9fe', label: 'QR 코드 출력', desc: '「QR 코드」메뉴에서 QR을 인쇄해 원내 안내판·리플릿에 비치하세요.' },
+      { ic: '🔔', bg: '#fef3c7', label: '완료 알림 수신', desc: '고객이 설문을 완료하고 알림을 보내면 「알림」메뉴에 즉시 표시됩니다.' },
+    ]
+  },
+  {
+    icon: '✅',
+    title: 'STEP 2 — 데일리 체크로 실천 모니터링',
+    sub: '고객이 결과지「오늘」탭에서 체크하면 여기서 실시간으로 확인할 수 있어요.',
+    items: [
+      { ic: '🏃', bg: '#d1fae5', label: '운동·식단·회복 체크', desc: '「데일리 체크」메뉴에서 소속 고객들의 오늘 실천 현황을 한눈에 파악하세요.' },
+      { ic: '⚠️', bg: '#fef3c7', label: '3일 미체크 경고', desc: '3일 이상 체크를 안 한 고객은 ⚠️ 경고 배지로 표시됩니다. 직접 연락해 독려하세요.' },
+      { ic: '📊', bg: '#ede9fe', label: '달성률 현황', desc: '오늘 체크 고객수, 전체 달성률, 주의 고객 수를 상단 카드로 빠르게 확인해요.' },
+    ]
+  },
+  {
+    icon: '📋',
+    title: 'STEP 3 — 고객 결과지 & 바디코드 도감 활용',
+    sub: '결과지를 상담 자료로 바로 활용하고, 바디코드 도감으로 전문성을 높이세요.',
+    items: [
+      { ic: '🔗', bg: '#fef3c7', label: '결과지 열기', desc: '「고객 결과 조회」→ 고객의 결과지 아이콘 클릭 → BC코드·처방·12주 로드맵 확인.' },
+      { ic: '📚', bg: '#d1fae5', label: '바디코드 도감', desc: '「바디코드 도감」메뉴에서 BC-1~BC-9 유형별 특징과 파트너 추천 포인트를 확인하세요.' },
+      { ic: '⭐', bg: '#ede9fe', label: '파트너 추천 뷰', desc: '「파트너 추천 뷰」에서 귀 업체가 BC코드별로 어떤 프로그램을 추천할지 설정하세요.' },
+    ]
+  },
+];
+
+let _b2bObdIdx = 0;
+
+function _b2bObdRender(idx) {
+  const s = _B2B_OBD_STEPS[idx];
+  document.getElementById('b2b-obd-dots').innerHTML =
+    _B2B_OBD_STEPS.map((_, i) =>
+      `<div class="b2b-obd-dot${i===idx?' active':''}"></div>`).join('');
+  document.getElementById('b2b-obd-icon').textContent = s.icon;
+  document.getElementById('b2b-obd-title').textContent = s.title;
+  document.getElementById('b2b-obd-sub').textContent = s.sub;
+  document.getElementById('b2b-obd-list').innerHTML = s.items.map(it => `
+    <div class="b2b-obd-item">
+      <div class="b2b-obd-ic" style="background:${it.bg}">${it.ic}</div>
+      <div class="b2b-obd-tx"><b>${it.label}</b><span>${it.desc}</span></div>
+    </div>`).join('');
+  document.getElementById('b2b-obd-next').textContent =
+    idx === _B2B_OBD_STEPS.length - 1 ? '🚀 시작하기' : '다음 →';
+}
+
+function _b2bObdNext() {
+  if (_b2bObdIdx < _B2B_OBD_STEPS.length - 1) {
+    _b2bObdIdx++;
+    _b2bObdRender(_b2bObdIdx);
+  } else {
+    _b2bObdClose();
+  }
+}
+
+function _b2bObdClose() {
+  document.getElementById('b2b-obd-overlay').style.display = 'none';
+  try { localStorage.setItem(_B2B_OBD_KEY, '1'); } catch(e) {}
+}
+
+function _b2bObdShow() {
+  try { if (localStorage.getItem(_B2B_OBD_KEY)) return; } catch(e) {}
+  _b2bObdIdx = 0;
+  _b2bObdRender(0);
+  document.getElementById('b2b-obd-overlay').style.display = 'flex';
 }
 
 // ─── 내비게이션 ──────────────────────────────

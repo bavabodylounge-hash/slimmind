@@ -429,9 +429,49 @@
       .bc-code-list { grid-template-columns: 1fr; }
       .page-body { padding: 10px 8px; }
     }
+  /* ══ 마스터 온보딩 팝업 ══ */
+  #admin-obd-overlay{position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px;}
+  #admin-obd-modal{background:#fff;border-radius:22px;width:100%;max-width:500px;box-shadow:0 24px 64px rgba(0,0,0,.22);overflow:hidden;animation:aobdIn .35s cubic-bezier(.4,0,.2,1) both;}
+  @keyframes aobdIn{from{opacity:0;transform:scale(.92) translateY(20px)}to{opacity:1;transform:none}}
+  .admin-obd-header{background:linear-gradient(135deg,#1a3c6b,#2f7d8c);padding:24px 24px 20px;color:#fff;}
+  .admin-obd-dots{display:flex;gap:6px;margin-bottom:14px;}
+  .admin-obd-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.35);transition:all .25s;}
+  .admin-obd-dot.active{width:24px;border-radius:4px;background:#fff;}
+  .admin-obd-icon{font-size:36px;margin-bottom:10px;}
+  .admin-obd-title{font-size:19px;font-weight:900;margin-bottom:6px;line-height:1.3;}
+  .admin-obd-sub{font-size:13px;opacity:.88;line-height:1.6;}
+  .admin-obd-body{padding:20px 24px;}
+  .admin-obd-list{display:flex;flex-direction:column;gap:10px;}
+  .admin-obd-item{display:flex;gap:12px;align-items:flex-start;background:#faf8f5;border-radius:12px;padding:12px 14px;}
+  .admin-obd-ic{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+  .admin-obd-tx b{display:block;font-size:13px;font-weight:800;color:#1a1a17;margin-bottom:2px;}
+  .admin-obd-tx span{font-size:12px;color:#7c776b;line-height:1.55;}
+  .admin-obd-footer{display:flex;align-items:center;justify-content:space-between;padding:0 24px 20px;gap:10px;}
+  .admin-obd-skip{background:none;border:none;font-size:13px;color:#aaa;cursor:pointer;padding:8px 4px;font-family:inherit;}
+  .admin-obd-next{flex:1;background:linear-gradient(135deg,#1a3c6b,#2f7d8c);color:#fff;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;transition:opacity .15s;}
+  .admin-obd-next:hover{opacity:.9;}
   </style>
 </head>
 <body>
+
+<!-- ══ 마스터 온보딩 팝업 ══ -->
+<div id="admin-obd-overlay" style="display:none;">
+  <div id="admin-obd-modal">
+    <div class="admin-obd-header">
+      <div class="admin-obd-dots" id="admin-obd-dots"></div>
+      <div class="admin-obd-icon" id="admin-obd-icon"></div>
+      <div class="admin-obd-title" id="admin-obd-title"></div>
+      <div class="admin-obd-sub" id="admin-obd-sub"></div>
+    </div>
+    <div class="admin-obd-body">
+      <div class="admin-obd-list" id="admin-obd-list"></div>
+    </div>
+    <div class="admin-obd-footer">
+      <button class="admin-obd-skip" onclick="_adminObdClose()">건너뛰기</button>
+      <button class="admin-obd-next" id="admin-obd-next" onclick="_adminObdNext()">다음 →</button>
+    </div>
+  </div>
+</div>
 
 <!-- 로그인 페이지 -->
 <div id="login-page">
@@ -1074,6 +1114,105 @@ function initApp(name) {
   document.getElementById('sidebar-user').textContent = name + ' 관리자';
   document.getElementById('topbar-user').textContent = name;
   navigateTo('dashboard');
+  // 최초 접속 온보딩 팝업
+  setTimeout(_adminObdShow, 900);
+}
+
+// ══════════════════════════════════════════════════════════
+//  마스터 온보딩 팝업 — 최초 접속 1회
+// ══════════════════════════════════════════════════════════
+const _ADMIN_OBD_KEY = 'slimmind_admin_obd_done';
+const _ADMIN_OBD_STEPS = [
+  {
+    icon: '🛡️',
+    title: '슬림마인드 마스터 관리자 포털',
+    sub: '컨설턴트 등록부터 전체 고객 데이터·매출까지 한 곳에서 관리합니다. 핵심 기능 4가지를 안내해드릴게요.',
+    items: [
+      { ic: '👤', bg: '#dbeafe', label: '컨설턴트 관리', desc: '좌측 메뉴 → 컨설턴트 관리에서 신규 컨설턴트를 등록하고 코드·링크를 발급하세요.' },
+      { ic: '🏢', bg: '#ede9fe', label: 'B2B 파트너 관리', desc: 'B2B 병원·헬스장 파트너를 등록하고 전용 설문 링크를 발급해요.' },
+      { ic: '📊', bg: '#d1fae5', label: '대시보드', desc: '전체 고객수, 오늘 신규 알림, 이탈 위험 고객, 월별 트렌드를 한눈에 파악해요.' },
+    ]
+  },
+  {
+    icon: '👤',
+    title: 'STEP 1 — 컨설턴트 등록 & 링크 발급',
+    sub: '새 컨설턴트를 등록하면 전용 설문 링크·대시보드 URL이 자동으로 생성됩니다.',
+    items: [
+      { ic: '➕', bg: '#dbeafe', label: '컨설턴트 등록', desc: '좌측 메뉴 「컨설턴트 관리」→ 「+ 신규 등록」버튼으로 이름·코드·비밀번호를 설정하세요.' },
+      { ic: '📋', bg: '#d1fae5', label: '링크 자동 발급', desc: '등록 완료 후 팝업에서 설문 링크·대시보드 링크·안내문을 한 번에 복사할 수 있어요.' },
+      { ic: '📤', bg: '#fef3c7', label: '컨설턴트에게 전달', desc: '안내문을 카카오톡으로 컨설턴트에게 전달하면 바로 시작할 수 있어요.' },
+    ]
+  },
+  {
+    icon: '✅',
+    title: 'STEP 2 — 전체 데일리 체크 현황 모니터링',
+    sub: '모든 고객의 운동·식단·회복 실천 현황을 실시간으로 파악하세요.',
+    items: [
+      { ic: '📊', bg: '#d1fae5', label: '데일리 체크 현황', desc: '좌측 메뉴 「데일리 체크 현황」에서 전체 고객의 오늘 실천율을 확인하세요.' },
+      { ic: '⚠️', bg: '#fef3c7', label: '3일 이상 미체크 경고', desc: '3일 이상 체크를 안 한 고객은 자동으로 ⚠️ 표시 → 담당 컨설턴트에게 연락을 지시하세요.' },
+      { ic: '📈', bg: '#ede9fe', label: '데이터 인사이트', desc: '「데이터 인사이트」메뉴에서 BC코드별 달성률·체중 변화 추이를 분석하세요.' },
+    ]
+  },
+  {
+    icon: '💬',
+    title: 'STEP 3 — 고객 결과지에서 피드백 남기기',
+    sub: '마스터도 고객의 결과지를 직접 열고 날짜별 코칭 피드백을 남길 수 있어요.',
+    items: [
+      { ic: '📋', bg: '#fef3c7', label: '결과지 열기', desc: '「고객 결과 관리」또는「진단 결과지」메뉴 → 고객 행의 🔗 아이콘 클릭.' },
+      { ic: '✍️', bg: '#d1fae5', label: '피드백 작성', desc: '결과지의 「오늘」탭 → 날짜별 체크 내역 확인 → 텍스트 박스에 코칭 메시지 입력 후 전송.' },
+      { ic: '💬', bg: '#dbeafe', label: '고객 확인', desc: '전송 즉시 고객 결과지의 💬 뱃지 + 오늘 카드에 메시지가 표시됩니다.' },
+    ]
+  },
+  {
+    icon: '📈',
+    title: 'STEP 4 — 매출·랭킹·월간 리포트 활용',
+    sub: '컨설턴트별 성과와 전체 매출 현황을 데이터로 관리하세요.',
+    items: [
+      { ic: '🏆', bg: '#fef3c7', label: '컨설턴트 랭킹', desc: '「컨설턴트 랭킹」메뉴에서 고객수·달성률·활성률 순위를 비교해요.' },
+      { ic: '💰', bg: '#d1fae5', label: '수익 정산', desc: '「수익 정산」메뉴에서 컨설턴트별 수수료와 정산 내역을 관리하세요.' },
+      { ic: '📅', bg: '#ede9fe', label: '월간 AI 리포트', desc: '매월 자동 생성되는 AI 리포트로 전략적 의사결정에 활용하세요.' },
+    ]
+  },
+];
+
+let _adminObdIdx = 0;
+
+function _adminObdRender(idx) {
+  const s = _ADMIN_OBD_STEPS[idx];
+  document.getElementById('admin-obd-dots').innerHTML =
+    _ADMIN_OBD_STEPS.map((_, i) =>
+      `<div class="admin-obd-dot${i===idx?' active':''}"></div>`).join('');
+  document.getElementById('admin-obd-icon').textContent = s.icon;
+  document.getElementById('admin-obd-title').textContent = s.title;
+  document.getElementById('admin-obd-sub').textContent = s.sub;
+  document.getElementById('admin-obd-list').innerHTML = s.items.map(it => `
+    <div class="admin-obd-item">
+      <div class="admin-obd-ic" style="background:${it.bg}">${it.ic}</div>
+      <div class="admin-obd-tx"><b>${it.label}</b><span>${it.desc}</span></div>
+    </div>`).join('');
+  document.getElementById('admin-obd-next').textContent =
+    idx === _ADMIN_OBD_STEPS.length - 1 ? '🚀 시작하기' : '다음 →';
+}
+
+function _adminObdNext() {
+  if (_adminObdIdx < _ADMIN_OBD_STEPS.length - 1) {
+    _adminObdIdx++;
+    _adminObdRender(_adminObdIdx);
+  } else {
+    _adminObdClose();
+  }
+}
+
+function _adminObdClose() {
+  document.getElementById('admin-obd-overlay').style.display = 'none';
+  try { localStorage.setItem(_ADMIN_OBD_KEY, '1'); } catch(e) {}
+}
+
+function _adminObdShow() {
+  try { if (localStorage.getItem(_ADMIN_OBD_KEY)) return; } catch(e) {}
+  _adminObdIdx = 0;
+  _adminObdRender(0);
+  document.getElementById('admin-obd-overlay').style.display = 'flex';
 }
 
 // 네비게이션

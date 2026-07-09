@@ -329,9 +329,50 @@
       table { min-width: 560px; }
       #toast { bottom: 10px; right: 8px; left: 8px; justify-content: center; }
     }
+  /* ══ 온보딩 팝업 ══ */
+  #cons-obd-overlay{position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px;}
+  #cons-obd-modal{background:#fff;border-radius:22px;width:100%;max-width:480px;box-shadow:0 24px 64px rgba(0,0,0,.22);overflow:hidden;animation:obdIn .35s cubic-bezier(.4,0,.2,1) both;}
+  @keyframes obdIn{from{opacity:0;transform:scale(.92) translateY(20px)}to{opacity:1;transform:none}}
+  .cons-obd-header{background:linear-gradient(135deg,#b5452e,#c98a3c);padding:24px 24px 20px;color:#fff;}
+  .cons-obd-step-dots{display:flex;gap:6px;margin-bottom:14px;}
+  .cons-obd-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.35);transition:all .25s;}
+  .cons-obd-dot.active{width:24px;border-radius:4px;background:#fff;}
+  .cons-obd-icon{font-size:36px;margin-bottom:10px;}
+  .cons-obd-title{font-size:20px;font-weight:900;margin-bottom:6px;line-height:1.3;}
+  .cons-obd-sub{font-size:13px;opacity:.88;line-height:1.6;}
+  .cons-obd-body{padding:20px 24px;}
+  .cons-obd-list{display:flex;flex-direction:column;gap:10px;}
+  .cons-obd-item{display:flex;gap:12px;align-items:flex-start;background:#faf8f5;border-radius:12px;padding:12px 14px;}
+  .cons-obd-item-ic{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+  .cons-obd-item-tx{flex:1;}
+  .cons-obd-item-tx b{display:block;font-size:13px;font-weight:800;color:#1a1a17;margin-bottom:2px;}
+  .cons-obd-item-tx span{font-size:12px;color:#7c776b;line-height:1.55;}
+  .cons-obd-footer{display:flex;align-items:center;justify-content:space-between;padding:0 24px 20px;gap:10px;}
+  .cons-obd-btn-skip{background:none;border:none;font-size:13px;color:#aaa;cursor:pointer;padding:8px 4px;font-family:inherit;}
+  .cons-obd-btn-next{flex:1;background:linear-gradient(135deg,#b5452e,#c98a3c);color:#fff;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;transition:opacity .15s;}
+  .cons-obd-btn-next:hover{opacity:.9;}
   </style>
 </head>
 <body>
+
+<!-- ══ 컨설턴트 온보딩 팝업 ══ -->
+<div id="cons-obd-overlay" style="display:none;">
+  <div id="cons-obd-modal">
+    <div class="cons-obd-header">
+      <div class="cons-obd-step-dots" id="cons-obd-dots"></div>
+      <div class="cons-obd-icon" id="cons-obd-icon"></div>
+      <div class="cons-obd-title" id="cons-obd-title"></div>
+      <div class="cons-obd-sub" id="cons-obd-sub"></div>
+    </div>
+    <div class="cons-obd-body">
+      <div class="cons-obd-list" id="cons-obd-list"></div>
+    </div>
+    <div class="cons-obd-footer">
+      <button class="cons-obd-btn-skip" onclick="_consObdClose()">건너뛰기</button>
+      <button class="cons-obd-btn-next" id="cons-obd-next" onclick="_consObdNext()">다음 →</button>
+    </div>
+  </div>
+</div>
 
 <!-- ═══ 로그인 ═══ -->
 <div id="login-page">
@@ -1215,6 +1256,9 @@ async function initApp() {
   await Promise.all([loadDashboard(), loadMyResults(), loadProfile()]);
   // AI 상담멘트 빠른선택 사전 로드
   loadAiMessageTab();
+
+  // 최초 로그인 온보딩 팝업 (1회)
+  setTimeout(_consObdShow, 800);
 }
 
 function switchTab(t) {
@@ -1226,6 +1270,112 @@ function switchTab(t) {
   if (t === 'notifications') { loadNotifications(); loadCheckAlerts(); }
   if (t === 'analytics')     loadAnalyticsTab();
   if (t === 'daily-checks')  loadConsultantDailyChecks();
+}
+
+// ══════════════════════════════════════════════════════════
+//  컨설턴트 온보딩 팝업 — 최초 로그인 1회
+// ══════════════════════════════════════════════════════════
+const _CONS_OBD_KEY = 'slimmind_cons_obd_done';
+const _CONS_OBD_STEPS = [
+  {
+    icon: '👋',
+    title: '슬림마인드 컨설턴트 포털에 오신 걸 환영해요!',
+    sub: '고객 관리·데일리 체크·피드백까지 한 곳에서. 30초면 핵심 기능을 모두 파악할 수 있어요.',
+    items: [
+      { ic: '🏠', bg: '#fef3c7', label: '대시보드', desc: '총 고객수, 이번 주 데일리 체크 현황, 미확인 알림을 한눈에 확인해요.' },
+      { ic: '👥', bg: '#dbeafe', label: '내 고객 목록', desc: '담당 고객의 BC코드·결과지 링크·메모를 관리해요.' },
+      { ic: '✅', bg: '#d1fae5', label: '데일리 체크', desc: '고객이 오늘 운동·식단·회복을 실천했는지 실시간으로 확인해요.' },
+    ]
+  },
+  {
+    icon: '📱',
+    title: 'STEP 1 — 고객에게 설문 링크 보내기',
+    sub: '가장 먼저 할 일! 내 전용 설문 링크를 카카오톡으로 고객에게 공유하세요.',
+    items: [
+      { ic: '🔗', bg: '#ede9fe', label: '초대 링크 탭', desc: '「초대 링크」탭에서 내 전용 설문 링크를 복사해 고객에게 전달하세요.' },
+      { ic: '✅', bg: '#d1fae5', label: '자동 연결', desc: '고객이 이 링크로 설문을 완료하면 내 대시보드에 자동으로 연결됩니다.' },
+      { ic: '🔔', bg: '#fef3c7', label: '즉시 알림', desc: '고객이 「담당자에게 완료 알림 보내기」를 누르면 알림 탭에서 바로 확인할 수 있어요.' },
+    ]
+  },
+  {
+    icon: '✅',
+    title: 'STEP 2 — 데일리 체크로 고객 실천 모니터링',
+    sub: '고객이 오늘 운동·식단·회복을 실천했는지 매일 확인하세요. 3일 이상 미체크 시 자동 경고!',
+    items: [
+      { ic: '🏃', bg: '#d1fae5', label: '운동 체크', desc: '고객 결과지 「오늘」탭에서 체크하면 여기서 실시간으로 확인돼요.' },
+      { ic: '🍽️', bg: '#fef3c7', label: '식단 체크', desc: '3일 연속 미체크 고객은 ⚠️ 경고 배지로 표시됩니다.' },
+      { ic: '🌙', bg: '#ede9fe', label: '회복 체크', desc: '주 달성률이 낮은 고객에게 코칭 메시지를 먼저 보내세요!' },
+    ]
+  },
+  {
+    icon: '💬',
+    title: 'STEP 3 — 고객에게 코칭 피드백 남기기',
+    sub: '고객 결과지를 열고 「데일리 체크」탭에서 날짜별로 피드백 메시지를 작성하세요.',
+    items: [
+      { ic: '📋', bg: '#fef3c7', label: '고객 결과지 열기', desc: '내 고객 목록 → 결과지 아이콘 클릭 → 오늘 탭의 날짜별 체크 내역 확인.' },
+      { ic: '✍️', bg: '#d1fae5', label: '피드백 작성', desc: '날짜 옆 텍스트 박스에 응원·교정 메시지를 입력하고 「전송」버튼을 누르세요.' },
+      { ic: '💬', bg: '#dbeafe', label: '고객 확인', desc: '고객의 결과지 「오늘」탭 + 네비게이션 💬 뱃지에 메시지가 표시됩니다.' },
+    ]
+  },
+  {
+    icon: '🔔',
+    title: 'STEP 4 — 알림 탭으로 신규 고객 확인',
+    sub: '설문 완료 알림을 빠르게 확인하고, 고객에게 결과지를 전달하는 것까지가 한 사이클이에요!',
+    items: [
+      { ic: '🔔', bg: '#fef3c7', label: '알림 탭', desc: '고객이 설문을 완료하고 알림을 보내면 이 탭에 즉시 표시됩니다.' },
+      { ic: '📤', bg: '#d1fae5', label: '결과지 전달', desc: '결과지 링크를 복사해 카카오톡으로 고객에게 직접 보내세요.' },
+      { ic: '🏋️', bg: '#ede9fe', label: 'AI 멘트 활용', desc: '「AI 멘트」탭에서 BC코드별 맞춤 상담 멘트를 자동 생성해 보세요.' },
+    ]
+  },
+];
+
+let _consObdIdx = 0;
+
+function _consObdRender(idx) {
+  const s = _CONS_OBD_STEPS[idx];
+  const total = _CONS_OBD_STEPS.length;
+
+  // 닷
+  document.getElementById('cons-obd-dots').innerHTML =
+    _CONS_OBD_STEPS.map((_, i) =>
+      `<div class="cons-obd-dot${i===idx?' active':''}"></div>`).join('');
+
+  // 헤더
+  document.getElementById('cons-obd-icon').textContent = s.icon;
+  document.getElementById('cons-obd-title').textContent = s.title;
+  document.getElementById('cons-obd-sub').textContent = s.sub;
+
+  // 아이템
+  document.getElementById('cons-obd-list').innerHTML = s.items.map(it => `
+    <div class="cons-obd-item">
+      <div class="cons-obd-item-ic" style="background:${it.bg}">${it.ic}</div>
+      <div class="cons-obd-item-tx"><b>${it.label}</b><span>${it.desc}</span></div>
+    </div>`).join('');
+
+  // 버튼
+  const btn = document.getElementById('cons-obd-next');
+  btn.textContent = idx === total - 1 ? '🚀 시작하기' : '다음 →';
+}
+
+function _consObdNext() {
+  if (_consObdIdx < _CONS_OBD_STEPS.length - 1) {
+    _consObdIdx++;
+    _consObdRender(_consObdIdx);
+  } else {
+    _consObdClose();
+  }
+}
+
+function _consObdClose() {
+  document.getElementById('cons-obd-overlay').style.display = 'none';
+  try { localStorage.setItem(_CONS_OBD_KEY, '1'); } catch(e) {}
+}
+
+function _consObdShow() {
+  try { if (localStorage.getItem(_CONS_OBD_KEY)) return; } catch(e) {}
+  _consObdIdx = 0;
+  _consObdRender(0);
+  document.getElementById('cons-obd-overlay').style.display = 'flex';
 }
 
 // ══════════════════════════════════════════════════════════
