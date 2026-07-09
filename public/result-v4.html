@@ -14535,7 +14535,9 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     // ── 💬 코칭 뱃지 초기화 (페이지 로드 직후 카운트 표시) ─────────
     (function initCoachBadge(){
-      var sid = new URLSearchParams(window.location.search).get('id')
+      // /result/:id 라우트는 URL 파라미터가 없으므로 __RESULT__.session_id 우선
+      var sid = (window.__RESULT__ && (window.__RESULT__.session_id || window.__RESULT__.result_id || window.__RESULT__.id))
+             || new URLSearchParams(window.location.search).get('id')
              || new URLSearchParams(window.location.search).get('diagnosis_id')
              || new URLSearchParams(window.location.search).get('did');
       if (!sid) return;
@@ -15511,7 +15513,8 @@ function dnaDownload() {
 let _wow2Chart = null;
 
 function wow2Init() {
-  const sid = new URLSearchParams(window.location.search).get('id')
+  const sid = (window.__RESULT__ && (window.__RESULT__.session_id || window.__RESULT__.result_id || window.__RESULT__.id))
+           || new URLSearchParams(window.location.search).get('id')
            || new URLSearchParams(window.location.search).get('diagnosis_id')
            || new URLSearchParams(window.location.search).get('did');
   if (!sid) return;
@@ -15519,7 +15522,8 @@ function wow2Init() {
 }
 
 function wow2Refresh() {
-  const sid = new URLSearchParams(window.location.search).get('id')
+  const sid = (window.__RESULT__ && (window.__RESULT__.session_id || window.__RESULT__.result_id || window.__RESULT__.id))
+           || new URLSearchParams(window.location.search).get('id')
            || new URLSearchParams(window.location.search).get('diagnosis_id')
            || new URLSearchParams(window.location.search).get('did');
   if (sid) wow2Render(sid);
@@ -15904,6 +15908,13 @@ function renderDailyPage(){
   var ohaengBadge = '<span class="tdy-ohaeng-badge" style="background:' + ohaengColor + '22;color:' + ohaengColor + ';border:1px solid ' + ohaengColor + '44;">' + ohaengLabel + '</span>';
 
   var isRestDay = (todayIdx>=6); // 일요일만 운동 완전휴식 취급
+
+  // ── session id 추출 (/result/:id 라우트는 URL 파라미터가 없으므로 __RESULT__ 우선) ──
+  var sid = (window.__RESULT__ && (window.__RESULT__.session_id || window.__RESULT__.result_id || window.__RESULT__.id))
+         || new URLSearchParams(window.location.search).get('id')
+         || new URLSearchParams(window.location.search).get('diagnosis_id')
+         || new URLSearchParams(window.location.search).get('did')
+         || 'local';
 
   // ── 오늘 날짜 키 & 저장 키 ──────────────────────────────────────────
   var todayKey = (new Date()).toISOString().slice(0,10);  // YYYY-MM-DD

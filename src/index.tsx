@@ -2023,6 +2023,7 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
   const flatResult = {
     // 식별자
     result_id: resultData.result?.id,
+    session_id: resultData.result?.session_id || resultData.result?.id,  // 코칭 코멘트 API 조회용
     // 기본 정보
     user_name: resultData.result?.user_name,
     consultant_code: resultData.result?.consultant_code,
