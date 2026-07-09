@@ -11038,6 +11038,85 @@ function enterReport(num){
   document.body.style.overflow='';
   switchPage(num || 1);
   if((num||1)===1){ setTimeout(runCertReveal, 200); setTimeout(countUpMetaAge, 300); }
+  // 첫 진입 시 결과지 사용법 안내 팝업
+  setTimeout(function(){ _showResultGuide(); }, 600);
+}
+
+// 결과지 처음 열 때 "어떻게 보는지" 안내 팝업 (최초 1회)
+var _resultGuideSteps = [
+  {
+    icon: '📋',
+    title: '결과지, 이렇게 보세요',
+    body: '위 탭을 눌러 <b>순서대로</b> 확인하시면 돼요.<br><br>① <b>진단 결과</b> → ② <b>처방·운동</b> → ③ <b>12주 로드맵</b> → ④ <b>오늘 체크</b><br><br>각 단계를 읽으면서 내 몸에 맞는 플랜을 확인하세요.'
+  },
+  {
+    icon: '📅',
+    title: '매일 체크인이 핵심이에요',
+    body: '<b>오늘 탭</b>에서 운동·식단·회복을 매일 체크하면 컨설턴트가 실시간으로 확인해요.<br><br>체크 후 <b>자동으로 다음 항목</b>으로 넘어가니 하나씩 탭해 보세요 👆'
+  },
+  {
+    icon: '💬',
+    title: '궁금한 건 언제든 문의하세요',
+    body: '결과지를 보다 모르는 게 있으면 <b>카카오톡 채널</b>로 바로 문의하실 수 있어요.<br><br>컨설턴트가 <b>직접 답변</b>드립니다 ✨'
+  }
+];
+var _rgIdx = 0;
+
+function _showResultGuide(){
+  try { if(localStorage.getItem('slimmind_guide_done')) return; } catch(e){}
+  _rgIdx = 0;
+  _rgRender(0);
+}
+
+function _rgRender(idx){
+  var step = _resultGuideSteps[idx];
+  var overlay = document.getElementById('rg-overlay');
+  if(!overlay){
+    overlay = document.createElement('div');
+    overlay.id = 'rg-overlay';
+    overlay.className = 'obd-overlay';
+    document.body.appendChild(overlay);
+  }
+  overlay.classList.add('show');
+
+  var card = document.getElementById('rg-card');
+  if(!card){
+    card = document.createElement('div');
+    card.id = 'rg-card';
+    card.className = 'obd-card';
+    card.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9202;';
+    document.body.appendChild(card);
+  }
+
+  var isLast = (idx === _resultGuideSteps.length - 1);
+  card.innerHTML =
+    '<div class="obd-card-icon">'+step.icon+'</div>'+
+    '<div class="obd-card-title">'+step.title+'</div>'+
+    '<div class="obd-card-body">'+step.body+'</div>'+
+    '<div class="obd-card-foot">'+
+      '<span class="obd-step">'+(idx+1)+' / '+_resultGuideSteps.length+'</span>'+
+      '<div class="obd-btns">'+
+        '<button class="obd-skip" onclick="_rgClose()">닫기</button>'+
+        (isLast
+          ? '<button class="obd-next" onclick="_rgClose()">시작하기 ✓</button>'
+          : '<button class="obd-next" onclick="_rgNext()">다음 →</button>'
+        )+
+      '</div>'+
+    '</div>';
+}
+
+function _rgNext(){
+  _rgIdx++;
+  if(_rgIdx < _resultGuideSteps.length) _rgRender(_rgIdx);
+  else _rgClose();
+}
+
+function _rgClose(){
+  var overlay = document.getElementById('rg-overlay');
+  var card    = document.getElementById('rg-card');
+  if(overlay){ overlay.classList.remove('show'); setTimeout(function(){ if(overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 300); }
+  if(card && card.parentNode) card.parentNode.removeChild(card);
+  try { localStorage.setItem('slimmind_guide_done','1'); } catch(e){}
 }
 function openCover(){
   var c = document.getElementById('cover-overlay');
@@ -17409,7 +17488,7 @@ function _syncExTrack(cell){
   else if (cell.classList.contains('miss')){ btn.classList.add('miss'); if(!isDi) st.textContent='✕'; }
   else { st.textContent = isRe ? '🌙' : ''; }
 }
-// 운동 트랙 자동 접힘 (기록 완료 후) — 행+노트 숨김, 뱃지 cur 해제
+// 운동 트랙 자동 접힘 (기록 완료 후) — 행+노트 숨김, 뱃지 cur 해제 → 다음 미체크 탭 자동 열기
 function _collapseExTrack(cell){
   var grid = cell.getAttribute('data-exrowgrid') || cell.getAttribute('data-grid');
   if (!grid) return;
@@ -17420,6 +17499,27 @@ function _collapseExTrack(cell){
     daysWrap.querySelectorAll('.wgu-note').forEach(function(n){ n.style.display='none'; });
   }
   if (trk) trk.querySelectorAll('.extrk-day, .mealtl-node').forEach(function(b){ b.classList.remove('cur'); });
+
+  // ── 다음 미체크(neither done nor miss) 탭 자동 열기 ──
+  setTimeout(function(){
+    if (!trk) return;
+    var allBtns = Array.prototype.slice.call(trk.querySelectorAll('.extrk-day:not(.rest), .mealtl-node'));
+    // 현재 셀의 day 인덱스 기준으로 다음 미완료 탭 탐색
+    var curDay = parseInt(cell.getAttribute('data-exrowi') || cell.getAttribute('data-i') || '-1', 10);
+    // curDay 이후 → 처음 순으로 순환
+    var ordered = allBtns.filter(function(b){ return parseInt(b.getAttribute('data-exday'),10) > curDay; })
+                  .concat(allBtns.filter(function(b){ return parseInt(b.getAttribute('data-exday'),10) <= curDay; }));
+    var nextBtn = null;
+    for (var i=0; i<ordered.length; i++){
+      var b = ordered[i];
+      if (!b.classList.contains('done') && !b.classList.contains('miss')){
+        nextBtn = b; break;
+      }
+    }
+    if (!nextBtn) return; // 모두 완료 → 자동열기 생략
+    // 다음 탭 클릭 시뮬레이션 (행 열기 + 스크롤 + pulse)
+    nextBtn.click();
+  }, 500);
 }
 
 // 회복 다중선택 완료
