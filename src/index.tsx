@@ -1554,6 +1554,10 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
           disp_answers:    parseJsonSafe(diagRow.disp_answers, {}),
           goal_weight:     diagRow.goal_weight     ?? null,
           weight_loss_pct: diagRow.weight_loss_pct ?? null,
+          // ✅ BMR·체지방률 개인화 계산용 — 0042 마이그레이션
+          gender:  diagRow.gender ?? null,
+          height:  diagRow.height != null ? Number(diagRow.height) : null,
+          age:     diagRow.age    != null ? Number(diagRow.age)    : null,
           is_consultant:   false,
           is_owner:        false,
           is_b2b_partner:  false,
@@ -3472,6 +3476,7 @@ app.post('/api/v1/diagnosis', async (c) => {
       ohaeng_type, ohaeng_source, ohaeng_confidence, ohaeng_lacking, ohaeng_score,
       mbti_full, disp_answers, raw_answers,
       goal_weight, weight_loss_pct,
+      gender, height, age,              // ✅ BMR·체지방률 개인화 계산용
       ref_code, completed_at,
       session_id   // ✅ FIX: session_id 수신 (데일리 체크 JOIN 연결용)
     } = body
@@ -3549,8 +3554,9 @@ app.post('/api/v1/diagnosis', async (c) => {
            ohaeng_type, ohaeng_source, ohaeng_confidence, ohaeng_lacking, ohaeng_score,
            mbti_full, disp_answers, raw_answers,
            goal_weight, weight_loss_pct,
+           gender, height, age,
            ref_code, session_id, completed_at, created_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
       `).bind(
         result_id,
         String(user_name || '익명'),
@@ -3577,6 +3583,9 @@ app.post('/api/v1/diagnosis', async (c) => {
         rawAnswersJson,
         goal_weight     != null ? Number(goal_weight)     : null,
         weight_loss_pct != null ? Number(weight_loss_pct) : null,
+        gender      || null,
+        height      != null ? Number(height) : null,
+        age         != null ? Number(age)    : null,
         ref_code     || null,
         session_id   || null,   // ✅ FIX: session_id 저장
         completed_at || now,

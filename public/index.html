@@ -5772,6 +5772,24 @@ async function submitDiagnosis(dispAnswers) {
     (typeof stage2Answers !== 'undefined') ? stage2Answers : {}
   );
 
+  // ── 성별·키·나이 추출 (BMR·체지방률 개인화 계산용) ──
+  // rawAnswers: Q02=gender('male'|'female'), height(saveAs), birth_date(saveAs)
+  const _genderVal = rawAnswers['Q02'] || rawAnswers['gender'] || null;
+  const _heightVal = rawAnswers['height'] != null ? Number(rawAnswers['height']) : null;
+  // 나이: rawAnswers에 birth_date가 있으면 만 나이 계산, 없으면 null
+  let _ageVal = null;
+  try {
+    const _bd = rawAnswers['birth_date'] || rawAnswers['Q_BIRTH'] || null;
+    if (_bd) {
+      const _bDate = new Date(_bd);
+      const _today = new Date();
+      let _a = _today.getFullYear() - _bDate.getFullYear();
+      const _md = _today.getMonth() - _bDate.getMonth();
+      if (_md < 0 || (_md === 0 && _today.getDate() < _bDate.getDate())) _a--;
+      if (_a > 0 && _a < 120) _ageVal = _a;
+    }
+  } catch(e) {}
+
   const payload = {
     user_name:       name,
     phone:           (userInfo && userInfo.phone) ? userInfo.phone : null,
@@ -5793,6 +5811,9 @@ async function submitDiagnosis(dispAnswers) {
     mbti_full,
     goal_weight:     _goalWt,
     weight_loss_pct: _lossPct,
+    gender:          _genderVal,   // ✅ BMR 성별 분기
+    height:          _heightVal,   // ✅ BMR 키 반영
+    age:             _ageVal,      // ✅ BMR 나이 반영 (birth_date → 만 나이)
     disp_answers:    (dispAnswers && Object.keys(dispAnswers).length > 0) ? dispAnswers : null,
     raw_answers:     rawAnswers,
     ref_code:        refCode,
