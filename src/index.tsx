@@ -12,9 +12,8 @@ import resultHtml from '../public/result.html?raw'
 import resultV3Html from '../public/result-v3.html?raw'
 import resultV4Html from '../public/result-v4.html?raw'
 import bodymapPreviewHtml from '../public/bodymap_preview.html?raw'
-// slimmind_live.html은 구버전(키오스크) — index.html(최신 설문지)로 교체됨
-// import slimmindLiveHtml from '../public/slimmind_live.html?raw'
-const slimmindLiveHtml = indexHtml  // ← index.html = 30문항+심층질문 최신 설문지
+// ★ 설문지는 index.html 단 하나로 통합 — 모든 라우트가 indexHtml을 직접 서빙
+// slimmind_live.html은 삭제됨 (dead code 제거)
 
 // ─── 타입 정의 ───────────────────────────────────────────────
 type Bindings = {
@@ -2226,7 +2225,7 @@ app.get('/', (c) => {
     // ?ref=SC-0001 → /s/SC-0001 (컨설턴트 링크 보존)
     return c.redirect(`/s/${ref}`, 301)
   }
-  return c.html(slimmindLiveHtml)
+  return c.html(indexHtml)
 })
 
 app.get('/admin', (c) => c.html(adminHtml))
@@ -2244,8 +2243,8 @@ app.get('/bodymap-preview', (c) => c.html(bodymapPreviewHtml))
 
 // ─── 슬림마인드 라이브 설문지 — 유일한 최신 설문지 ────────────
 // /slimmind_live, /slimmind 는 하위 호환용 (기존 공유 링크 보호)
-app.get('/slimmind_live', (c) => c.html(slimmindLiveHtml))
-app.get('/slimmind_live.html', (c) => c.html(slimmindLiveHtml))
+app.get('/slimmind_live', (c) => c.html(indexHtml))
+app.get('/slimmind_live.html', (c) => c.html(indexHtml))
 
 // Feature 7: /slimmind?b2b=B2B-XXX 또는 ?ref=SC-XXXX 쿼리파라미터 지원
 // → 내부적으로 /s/:code 와 동일한 화이트라벨 처리
@@ -2257,7 +2256,7 @@ app.get('/slimmind', async (c) => {
 
   // 코드 없으면 기본 설문지
   if (!code) {
-    let html = slimmindLiveHtml
+    let html = indexHtml
     if (rediag) {
       html = html.replace('</head>', `<script>window.__REDIAG_SESSION__=${JSON.stringify(rediag)};</script></head>`)
     }
@@ -2308,7 +2307,7 @@ app.get('/slimmind', async (c) => {
     brandInject += `<script>window.__REDIAG_SESSION__=${JSON.stringify(rediag)};</script>`
   }
 
-  let html = slimmindLiveHtml
+  let html = indexHtml
   if (brandInject) {
     html = html.replace('</head>', `${brandInject}</head>`)
   }
@@ -2378,7 +2377,7 @@ app.get('/s/:code', async (c) => {
   }
 
   // index.html(최신 설문지)에 브랜드 인젝션 + ref_code 심기
-  let html = slimmindLiveHtml
+  let html = indexHtml
 
   // ── OG 메타태그 주입 (카카오톡 공유 미리보기용) ───────────────────────
   const siteBaseS = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.kr' } })()

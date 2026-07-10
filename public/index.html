@@ -660,7 +660,8 @@
   @keyframes splashUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 
   /* ===== 돌발 퀴즈 모달 ===== */
-  .quizmodal{display:none;position:fixed;inset:0;z-index:300;background:rgba(26,26,23,.6);
+  /* z-index:420 → resumeBanner(310)/saveToast(320)보다 위, DISP(450)보다 아래 */
+  .quizmodal{display:none;position:fixed;inset:0;z-index:420;background:rgba(26,26,23,.6);
     align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(3px)}
   .quizcard{background:var(--card);border-radius:20px;padding:30px 26px 26px;max-width:380px;width:100%;
     box-shadow:0 20px 60px rgba(0,0,0,.3);animation:quizPop .4s cubic-bezier(.2,.8,.2,1) both;text-align:center}
@@ -698,7 +699,7 @@
   .quizbtn:disabled{background:#dcd7ca;cursor:not-allowed}
 
   /* 실시간 접속자 — livecard (동적 생성, 떴다 사라짐) */
-  .livecard{position:fixed;z-index:300;
+  .livecard{position:fixed;z-index:340;
     width:300px;max-width:calc(100vw - 36px);
     background:linear-gradient(135deg,#fff6f1 0%,#fdeee6 100%);
     border:1px solid rgba(216,90,48,.2);border-radius:18px;padding:20px 18px;
@@ -777,8 +778,9 @@
   .disp-intro .di-sub{font-size:13px;color:var(--muted);line-height:1.6}
 
   /* ── DISP 기질 모달 오버레이 ── */
+  /* z-index:450 → resumeBanner(310), saveToast(320), rushToast(355) 모두 위로 */
   .disp-overlay{
-    position:fixed;inset:0;z-index:300;
+    position:fixed;inset:0;z-index:450;
     background:rgba(26,26,23,.7);backdrop-filter:blur(4px);
     display:flex;align-items:flex-end;justify-content:center;
     opacity:0;pointer-events:none;transition:opacity .3s;
@@ -1315,6 +1317,28 @@
     #smSaveBtn  { top: 10px; right: 10px; font-size: 11px; padding: 6px 11px }
   }
   /* ===== /기능 4 ===== */
+
+  /* ===== 미답변 경고 토스트 (warnToast) ===== */
+  /* JS의 showWarnToast()가 참조하는 엘리먼트 — 상단 중앙 고정, disp-overlay보다 위 */
+  #warnToast {
+    position: fixed; left: 50%; top: 72px;
+    transform: translateX(-50%) translateY(-12px);
+    z-index: 460; /* disp-overlay(450)보다 위 */
+    background: rgba(160,30,10,.95); backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,120,100,.35);
+    border-radius: 14px; padding: 11px 20px;
+    color: #fff; font-size: 13.5px; font-weight: 700;
+    opacity: 0; transition: opacity .25s, transform .25s;
+    pointer-events: none; white-space: nowrap;
+    box-shadow: 0 6px 24px rgba(160,30,10,.35);
+    display: flex; align-items: center; gap: 8px;
+  }
+  #warnToast::before { content: '⚠️'; font-size: 15px; }
+  #warnToast.show { opacity: 1; transform: translateX(-50%) translateY(0) }
+  @media(max-width:760px){
+    #warnToast { top: 64px; font-size: 12.5px; padding: 10px 16px; }
+  }
+  /* ===== /미답변 경고 토스트 ===== */
 
   /* ===== 기능 9: AI 설문 도우미 ===== */
   /* ? 도우미 버튼 */
@@ -2061,6 +2085,11 @@
 
 <!-- 저장 완료 토스트 -->
 <div id="saveToast" role="status" aria-live="polite">✅ 진행상태 저장됨</div>
+
+<!-- 미답변 경고 토스트 (JS: showWarnToast() 참조) -->
+<div id="warnToast" role="alert" aria-live="assertive">
+  <span id="warnToastMsg">아직 답하지 않은 문항이 있어요</span>
+</div>
 
 <!-- 설문 진행 중 저장 버튼 (상단 플로팅) -->
 <button id="smSaveBtn" onclick="smSave(true)" aria-label="진행상태 저장">
