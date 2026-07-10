@@ -1015,7 +1015,7 @@ function renderQ(q){
    +(q.guide?'<div class="guide"><span>ℹ️</span><span class="gt">'+q.guide+'</span></div>':'')
    +(multi?(q.id==='Q03'?'<div class="qmax">원하는 만큼 선택 가능해요 (복수 선택 OK)</div>':'<div class="qmax">최대 '+q.maxSelect+'개 선택</div>'):'')+'</div>'
    +(q.type==='MBTI_SELECT'||q.id==='Q42'?renderMBTI(q):(q.type==='INBODY_INPUT'?renderInbody(q):(q.type==='BIRTH_SIMPLE'?renderBirth(q):(q.id==='Q35'?renderExerciseDuration(q,cur,multi):(isInput?renderTextInput(q):'<div class="opts">'+opts+'</div>')))))
-   +(q.id==='Q03'?'<div id="q03-textarea-area" style="display:none"></div>':'')+'<div class="nav">'+(idx>0?'<span class="prev" onclick="go(-1)">← 이전</span>':'')+'<button class="next '+(answered||q.optional?'ready':'')+'" onclick="'+(answered||q.optional?'go(1)':'')+'">'+(isLast?'결과 분석하기 →':(q.optional&&!answered?'건너뛰기 →':'다음 →'))+'</button></div>'
+   +(q.id==='Q03'?'<div id="q03-textarea-area" style="display:none"></div>':'')+'<div class="nav">'+(idx>0?'<span class="prev" onclick="go(-1)">← 이전</span>':'')+'<button class="next '+(answered||q.optional?'ready':'')+'" onclick="'+(answered||q.optional?'go(1)':'goGuard()')+'">'+(isLast?'결과 분석하기 →':(q.optional&&!answered?'건너뛰기 →':'다음 →'))+'</button></div>'
    +'</div></div>';
 }
 function renderTextInput(q){
@@ -6022,6 +6022,53 @@ function _doFreshStart() {
   // renderApp이 정의된 후 패치
   setTimeout(_patchAutoSave, 100);
 })();
+
+// ══════════════════════════════════════════════════════════════════
+//  미답 검증 가드 함수 — 미답 시 toast + 첫 미답 문항 스크롤
+// ══════════════════════════════════════════════════════════════════
+function goGuard() {
+  var s = D.seq[idx];
+  if (!s || !s.q) { go(1); return; }
+  var q = s.q;
+  var cur = answers[q.id];
+  var multi = q.maxSelect > 1;
+  var answered = multi ? (Array.isArray(cur) && cur.length > 0) : (cur != null && cur !== '');
+  if (answered || q.optional) { go(1); return; }
+
+  // 미답 toast 알림
+  _showUnansweredToast();
+  // 첫 번째 옵션 카드로 스크롤
+  var firstOpt = document.querySelector('.opts .opt, .opts [onclick*="pick"]');
+  if (firstOpt) {
+    firstOpt.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    firstOpt.style.transition = 'box-shadow .3s';
+    firstOpt.style.boxShadow = '0 0 0 3px #FF9A76';
+    setTimeout(function(){ firstOpt.style.boxShadow = ''; }, 1200);
+  }
+}
+
+function _showUnansweredToast() {
+  var existing = document.getElementById('_unanswered-toast');
+  if (existing) existing.remove();
+  var toast = document.createElement('div');
+  toast.id = '_unanswered-toast';
+  toast.style.cssText = [
+    'position:fixed', 'bottom:96px', 'left:50%', 'transform:translateX(-50%) translateY(20px)',
+    'background:rgba(30,20,10,.93)', 'color:#fff', 'font-size:14px', 'font-weight:700',
+    'padding:13px 22px', 'border-radius:30px', 'z-index:9999',
+    'box-shadow:0 8px 32px rgba(0,0,0,.3)', 'opacity:0',
+    'transition:all .3s cubic-bezier(.22,1,.36,1)', 'white-space:nowrap',
+    'max-width:90vw', 'text-align:center', 'pointer-events:none'
+  ].join(';');
+  toast.innerHTML = '⚠️ 이 문항에 답해야 다음으로 넘어갈 수 있어요';
+  document.body.appendChild(toast);
+  setTimeout(function(){ toast.style.opacity = '1'; toast.style.transform = 'translateX(-50%) translateY(0)'; }, 10);
+  setTimeout(function(){
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(-50%) translateY(20px)';
+    setTimeout(function(){ toast.remove(); }, 350);
+  }, 2500);
+}
 
 function jumpToAxis(ax) {
   // 이미 모든 문항에 답했는지 확인 (마지막 문항 이후)
