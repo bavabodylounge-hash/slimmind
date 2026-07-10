@@ -1025,7 +1025,17 @@
     transition:opacity .35s ease,transform .35s ease;
     will-change:transform,opacity;
   }
+  /* 데스크탑: 우측 패널이라 설문과 겹치지 않으므로 pointer-events:auto */
   #bodyMirror.bm-visible{opacity:1;pointer-events:auto}
+  /* 모바일: 펼쳐진(bm-visible, NOT bm-collapsed) 상태에서도
+     패널 배경 영역이 설문 클릭을 막지 않도록 none 유지
+     → 패널 내부 버튼/스크롤만 pointer-events:auto */
+  @media(max-width:760px){
+    #bodyMirror.bm-visible{pointer-events:none}
+    #bodyMirror.bm-visible #bmHandle,
+    #bodyMirror.bm-visible #bmBody,
+    #bodyMirror.bm-visible .bm-header{pointer-events:auto}
+  }
 
   /* ── 데스크탑: 우측 세로 패널 ── */
   @media(min-width:761px){
@@ -3015,6 +3025,7 @@ function goSurvey(){
   mapTopbar.style.display='none';
   mapWrap.style.display='none';
   surveyApp.style.display='block';
+  smDismiss(); /* resumeBanner: 앱 진입 즉시 닫기 */
   window.scrollTo(0,0);
 }
 /* ===== 기능 12: Lottie 스타일 인트로 애니메이션 ===== */
@@ -3708,6 +3719,7 @@ function timeSkip() {
 /* ===== /기능 11 ===== */
 
 function startSurvey(){
+  smDismiss(); /* resumeBanner: 이름 입력 후 시작 시 즉시 닫기 */
   // ★ 기능 10: conditionStep 경유
   if (!window._condDone) {
     document.getElementById('hero').style.display = 'none';
@@ -3766,9 +3778,10 @@ function _startSurveyCore(){
   window._condDone = true;
   window._timeDone = true;
   setStageIcon(0); startQTimer();
-  // ★ 기능 4: 설문 시작 시 저장 버튼 표시
+  // ★ 기능 4: 설문 시작 시 저장 버튼 표시 + resumeBanner 즉시 닫기
   const saveBtn = document.getElementById('smSaveBtn');
   if (saveBtn) saveBtn.style.display = 'block';
+  smDismiss(); /* resumeBanner: 설문 시작하면 즉시 닫아서 클릭 차단 방지 */
   ['hero','nameStep','conditionStep','timeStep'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
