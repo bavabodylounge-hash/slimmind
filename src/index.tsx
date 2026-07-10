@@ -1573,7 +1573,7 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
         const ogBcCode   = (diagResult.bc_primary || diagResult.bc_code || 'BC').replace(/[<>"'&\\]/g,'').slice(0,10)
         const ogNickEnc  = encodeURIComponent(ogNickname.slice(0,30))
         const ogNameEnc  = encodeURIComponent(ogName.slice(0,20))
-        const siteBase   = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.com' } })()
+        const siteBase   = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.kr' } })()
         const ogUrl      = `${siteBase}/result/${id}`
         const ogImage    = `${siteBase}/og/result?name=${ogNameEnc}&bc=${encodeURIComponent(ogBcCode)}&nick=${ogNickEnc}`
         const ogTitle    = `${ogName}님의 바디코드 분석 완료 — ${ogBcCode} ${ogNickname}`
@@ -2123,7 +2123,7 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
   const ogBcCodeR     = ((result as any).bc_primary || (result as any).bc_code || 'BC').replace(/[<>"'&\\]/g,'').slice(0,10)
   const ogNickEncR    = encodeURIComponent(ogNicknameR.slice(0,30))
   const ogNameEncR    = encodeURIComponent(ogNameR.slice(0,20))
-  const siteBaseR     = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.com' } })()
+  const siteBaseR     = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.kr' } })()
   const ogUrlR        = `${siteBaseR}/result/${id}`
   const ogImageR      = `${siteBaseR}/og/result?name=${ogNameEncR}&bc=${encodeURIComponent(ogBcCodeR)}&nick=${ogNickEncR}`
   const ogTitleR      = `${ogNameR}님의 바디코드 분석 완료 — ${ogBcCodeR} ${ogNicknameR}`
@@ -2259,7 +2259,7 @@ app.get('/s/:code', async (c) => {
   let html = slimmindLiveHtml
 
   // ── OG 메타태그 주입 (카카오톡 공유 미리보기용) ───────────────────────
-  const siteBaseS = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.com' } })()
+  const siteBaseS = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.kr' } })()
   const ogUrlS    = `${siteBaseS}/s/${rawCode}`
   // 카카오톡 최적화: SVG 대신 PNG 직접 참조 → 흰 여백 없이 가로형 표시
   const ogImageS  = `${siteBaseS}/static/og_survey.png`
@@ -2579,7 +2579,7 @@ app.get('/og/result', (c) => {
         text-anchor="middle"
         font-family="Georgia,serif"
         font-size="10" letter-spacing="4"
-        fill="#f6f4ee" opacity="0.18">slimmind.com</text>
+        fill="#f6f4ee" opacity="0.18">slimmind.kr</text>
 
   <rect x="0" y="1196" width="630" height="4" fill="#b5452e" opacity="0.55"/>
 </svg>`
@@ -3078,7 +3078,7 @@ app.post('/api/kakao/send', requireRole('ANY'), async (c) => {
       kakaoKey = row?.value || ''
     }
     // 메시지 텍스트 생성
-    const resultUrl = `https://7ed6c475-8afa-4ef8-9af8-8fab0cf8224b.vip.gensparksite.com/result/${body.result_id}`
+    const resultUrl = `https://slimmind.kr/result/${body.result_id}`
     const message = body.custom_message || [
       `[슬림마인드 바디코드 분석 결과] 🌿`,
       ``,
