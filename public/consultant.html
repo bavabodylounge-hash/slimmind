@@ -435,6 +435,7 @@
     <div class="tab-item" data-tab="notifications"><i class="fas fa-bell"></i> 알림<span class="notif-badge-tab" id="notif-badge-tab" style="display:none">0</span></div>
     <div class="tab-item" data-tab="profile"><i class="fas fa-user-circle"></i> 내 정보</div>
     <div class="tab-item" data-tab="guide"><i class="fas fa-book-open"></i> 이용 안내</div>
+    <div class="tab-item" data-tab="payment"><i class="fas fa-credit-card"></i> 구독/결제</div>
   </div>
 
   <div class="content">
@@ -811,6 +812,25 @@
           </div>
         </div>
 
+        <!-- ── Feature 6: 재진단 알림 ── -->
+        <div class="card" style="margin-bottom:16px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div style="width:44px;height:44px;background:#EFF6FF;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;">🔄</div>
+              <div>
+                <div style="font-size:16px;font-weight:800;">재진단 권유 알림</div>
+                <div style="font-size:12px;color:var(--muted);">진단 후 30/60/90일 경과 고객</div>
+              </div>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="loadRediagnosisAlerts()"><i class="fas fa-sync"></i> 새로고침</button>
+          </div>
+          <div id="rediagnosis-alert-list">
+            <div style="text-align:center;padding:30px;color:var(--muted);font-size:13px;">
+              <i class="fas fa-circle-notch fa-spin"></i> 로딩 중...
+            </div>
+          </div>
+        </div>
+
         <!-- ── 설문 완료 알림 (기존) ── -->
         <div class="card">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
@@ -840,44 +860,85 @@
 
     <!-- ═══ 이용 안내 탭 ═══ -->
     <!-- ═══ AI 상담 멘트 탭 ═══ -->
+    <!-- Feature 8: AI 상담 스크립트 UI 강화 -->
     <div class="page-tab" id="tab-ai-message">
-      <div style="max-width:860px;margin:0 auto">
+      <div style="max-width:900px;margin:0 auto">
+
+        <!-- 상단 입력 패널 -->
         <div class="card" style="margin-bottom:16px">
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
             <div style="width:48px;height:48px;background:linear-gradient(135deg,#EFF6FF,#F5F3FF);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px">🤖</div>
             <div>
-              <div style="font-size:18px;font-weight:800;color:var(--primary)">AI 상담 멘트 생성기</div>
-              <div style="font-size:12px;color:var(--muted)">고객 이름과 BC코드를 선택하면 5가지 상황별 멘트를 즉시 생성합니다</div>
+              <div style="font-size:18px;font-weight:800;color:var(--primary)">AI 상담 스크립트 생성기</div>
+              <div style="font-size:12px;color:var(--muted)">BC코드 + 고객 정보를 입력하면 단계별 맞춤 상담 스크립트를 생성합니다</div>
+            </div>
+            <button onclick="openSavedScripts()" class="btn btn-ghost btn-sm" style="margin-left:auto">
+              <i class="fas fa-bookmark"></i> 저장된 스크립트
+            </button>
+          </div>
+
+          <!-- 상담 단계 선택 -->
+          <div style="margin-bottom:16px">
+            <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px">상담 단계 선택</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button id="stage-btn-intro"  onclick="selectStage('intro')"  class="stage-btn active" style="padding:8px 16px;border-radius:20px;border:1.5px solid var(--primary);background:#EFF6FF;color:var(--primary);font-size:13px;font-weight:700;cursor:pointer">🌱 첫 상담</button>
+              <button id="stage-btn-mid"    onclick="selectStage('mid')"    class="stage-btn"        style="padding:8px 16px;border-radius:20px;border:1.5px solid var(--border);background:#fff;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer">📈 진행 중</button>
+              <button id="stage-btn-close"  onclick="selectStage('close')"  class="stage-btn"        style="padding:8px 16px;border-radius:20px;border:1.5px solid var(--border);background:#fff;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer">🏆 마무리</button>
+              <button id="stage-btn-revival" onclick="selectStage('revival')" class="stage-btn"      style="padding:8px 16px;border-radius:20px;border:1.5px solid var(--border);background:#fff;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer">💫 재방문 유도</button>
+              <button id="stage-btn-objection" onclick="selectStage('objection')" class="stage-btn" style="padding:8px 16px;border-radius:20px;border:1.5px solid var(--border);background:#fff;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer">🛡️ 반론 대처</button>
             </div>
           </div>
 
-          <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end">
+          <!-- 기본 정보 입력 -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
             <div>
               <label style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;display:block">고객 이름 (선택)</label>
-              <input type="text" id="ai-customer-name" placeholder="예: 김슬림" 
-                style="width:100%;border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;font-size:14px;font-family:inherit;outline:none"
+              <input type="text" id="ai-customer-name" placeholder="예: 김슬림"
+                style="width:100%;border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box"
                 onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'">
             </div>
             <div>
               <label style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;display:block">BC유형 코드 <span style="color:#EF4444">*</span></label>
               <select id="ai-bc-code" style="width:100%;border:1.5px solid var(--border);border-radius:10px;padding:11px 14px;font-size:14px;font-family:inherit;outline:none;background:#fff"
                 onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'">
-                <option value="">BC코드 선택... (V4.7 기준)</option>
-                <optgroup label="── SlimMind BC-1~9 체형 코드">
-                <option value="BC-1">BC-1 🐘 코끼리다리형 (하지 림프·정맥 울혈)</option>
-                <option value="BC-2">BC-2 🐢 거북이형 (경추·흉추 림프 차단)</option>
-                <option value="BC-3">BC-3 🍉 수박배형 (인슐린 저항성·내장 비대)</option>
-                <option value="BC-4">BC-4 🔄 요요형 (갑상선 셧다운·초절전 생존)</option>
-                <option value="BC-5">BC-5 🍊 귤껍질형 (바탕질 변성·지방 섬유화)</option>
-                <option value="BC-6">BC-6 🦉 야식부엉이형 (부신 피로·자율신경 교란)</option>
-                <option value="BC-7">BC-7 🎈 바람빠진풍선형 (릴랙신 이완·산후 구조 정체)</option>
-                <option value="BC-8">BC-8 🦵 말벅지형 (알파수용체 우세·하체 과발달)</option>
-                <option value="BC-9">BC-9 🕷️ 올챙이배형 (근감소성 이화작용·마른 비만)</option>
+                <option value="">BC코드 선택...</option>
+                <optgroup label="── BC-1~9 체형 코드">
+                  <option value="BC-1">BC-1 🐘 코끼리다리형</option>
+                  <option value="BC-2">BC-2 🐢 거북이형</option>
+                  <option value="BC-3">BC-3 🍉 수박배형</option>
+                  <option value="BC-4">BC-4 🔄 요요형</option>
+                  <option value="BC-5">BC-5 🍊 귤껍질형</option>
+                  <option value="BC-6">BC-6 🦉 야식부엉이형</option>
+                  <option value="BC-7">BC-7 🎈 바람빠진풍선형</option>
+                  <option value="BC-8">BC-8 🦵 말벅지형</option>
+                  <option value="BC-9">BC-9 🕷️ 올챙이배형</option>
                 </optgroup>
               </select>
             </div>
-            <button class="btn btn-primary" onclick="generateAiMessages()" style="padding:11px 24px;white-space:nowrap">
-              <i class="fas fa-magic"></i> 멘트 생성
+          </div>
+
+          <!-- 고객 맞춤 정보 (확장) -->
+          <div id="ai-extra-fields" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;padding:12px;background:#F8FAFC;border-radius:10px">
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">현재 체중 (kg)</label>
+              <input type="number" id="ai-current-weight" placeholder="예: 72" style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;outline:none;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">목표 체중 (kg)</label>
+              <input type="number" id="ai-goal-weight" placeholder="예: 60" style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;outline:none;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">상담 기간 (주)</label>
+              <input type="number" id="ai-duration-weeks" placeholder="예: 12" style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;outline:none;box-sizing:border-box">
+            </div>
+          </div>
+
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn btn-primary" onclick="generateAiMessages()" style="padding:12px 28px;flex:1">
+              <i class="fas fa-magic"></i> 스크립트 생성
+            </button>
+            <button class="btn btn-ghost" onclick="generateAiMessages('all')" style="padding:12px 20px">
+              <i class="fas fa-layer-group"></i> 전체 단계 생성
             </button>
           </div>
 
@@ -892,6 +953,66 @@
 
         <!-- 생성 결과 영역 -->
         <div id="ai-messages-area"></div>
+
+        <!-- 저장된 스크립트 패널 (숨김) -->
+        <div id="saved-scripts-panel" style="display:none" class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div style="font-size:15px;font-weight:700">⭐ 저장된 스크립트</div>
+            <button onclick="document.getElementById('saved-scripts-panel').style.display='none'" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:18px">✕</button>
+          </div>
+          <div id="saved-scripts-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ Feature 5: 구독/결제 탭 ══ -->
+    <div class="page-tab" id="tab-payment">
+      <div style="max-width:640px;margin:0 auto">
+        <div class="card" style="margin-bottom:20px">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+            <div style="width:48px;height:48px;background:linear-gradient(135deg,#EFF6FF,#DBEAFE);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px">💳</div>
+            <div>
+              <div style="font-size:18px;font-weight:800;color:var(--text)">구독 & 결제</div>
+              <div style="font-size:12px;color:var(--muted)">현재 구독 현황 및 플랜 결제</div>
+            </div>
+          </div>
+
+          <!-- 현재 구독 현황 -->
+          <div id="payment-sub-status" style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:12px;padding:16px;margin-bottom:20px">
+            <div style="font-size:13px;font-weight:700;color:#16A34A;margin-bottom:6px">✅ 현재 구독 상태</div>
+            <div id="payment-sub-info" style="font-size:14px;color:#166534">로딩 중...</div>
+          </div>
+
+          <!-- 플랜 선택 -->
+          <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:14px">플랜 선택</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+            <div id="plan-monthly" onclick="selectPlan('monthly')" style="border:2px solid #E2E8F0;border-radius:14px;padding:18px;cursor:pointer;transition:all .2s">
+              <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:6px">📅 월간 플랜</div>
+              <div style="font-size:24px;font-weight:900;color:var(--text)">30,000<span style="font-size:14px;font-weight:500">원</span></div>
+              <div style="font-size:12px;color:var(--muted);margin-top:4px">1개월 구독 연장</div>
+            </div>
+            <div id="plan-yearly" onclick="selectPlan('yearly')" style="border:2px solid #E2E8F0;border-radius:14px;padding:18px;cursor:pointer;transition:all .2s;position:relative">
+              <div style="position:absolute;top:-10px;right:12px;background:#7C3AED;color:#fff;font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px">2개월 무료</div>
+              <div style="font-size:13px;font-weight:700;color:#7C3AED;margin-bottom:6px">🎁 연간 플랜</div>
+              <div style="font-size:24px;font-weight:900;color:var(--text)">300,000<span style="font-size:14px;font-weight:500">원</span></div>
+              <div style="font-size:12px;color:var(--muted);margin-top:4px">12개월 구독 연장</div>
+            </div>
+          </div>
+
+          <button id="payment-btn" onclick="startPayment()" disabled
+            style="width:100%;padding:16px;background:linear-gradient(135deg,#3B82F6,#7C3AED);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;opacity:.5;transition:all .2s">
+            결제 플랜을 선택하세요
+          </button>
+          <div id="payment-notice" style="font-size:12px;color:var(--muted);text-align:center;margin-top:10px">
+            토스페이먼츠 보안 결제 · 카드/간편결제 지원
+          </div>
+        </div>
+
+        <!-- 결제 내역 -->
+        <div class="card">
+          <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:14px">결제 내역</div>
+          <div id="payment-history-list"><div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">로딩 중...</div></div>
+        </div>
       </div>
     </div>
 
@@ -1294,10 +1415,11 @@ function switchTab(t) {
   if (t === 'ai-message')    loadAiMessageTab();
   if (t === 'weight-track')  loadWeightTrack();
   if (t === 'bc-library')    loadBcLibraryTab();
-  if (t === 'notifications') { loadNotifications(); loadCheckAlerts(); }
+  if (t === 'notifications') { loadNotifications(); loadCheckAlerts(); loadRediagnosisAlerts(); }
   if (t === 'analytics')     loadAnalyticsTab();
   if (t === 'daily-checks')  loadConsultantDailyChecks();
   if (t === 'invite')        loadQrStats();
+  if (t === 'payment')       loadPaymentTab();
 }
 
 // ══════════════════════════════════════════════════════════
@@ -2930,6 +3052,25 @@ document.getElementById('b2b-modal-overlay').addEventListener('click', function(
 // ══════════════════════════════════════════════════════════
 // AI 상담 멘트 생성
 // ══════════════════════════════════════════════════════════
+let _aiStage = 'intro';
+const STAGE_LABELS = {
+  intro: '🌱 첫 상담',
+  mid: '📈 진행 중',
+  close: '🏆 마무리',
+  revival: '💫 재방문 유도',
+  objection: '🛡️ 반론 대처',
+};
+
+function selectStage(stage) {
+  _aiStage = stage;
+  document.querySelectorAll('.stage-btn').forEach(btn => {
+    const isActive = btn.id === `stage-btn-${stage}`;
+    btn.style.borderColor = isActive ? 'var(--primary)' : 'var(--border)';
+    btn.style.background  = isActive ? '#EFF6FF' : '#fff';
+    btn.style.color       = isActive ? 'var(--primary)' : 'var(--muted)';
+  });
+}
+
 async function loadAiMessageTab() {
   // 최근 고객 빠른 선택 로드
   const data = await api('GET', '/consultant/results?limit=8');
@@ -2941,7 +3082,7 @@ async function loadAiMessageTab() {
     return;
   }
   container.innerHTML = results.map(r => `
-    <button onclick="quickSelectCustomer('${r.user_name||'익명'}','${r.bc_primary||''}')"
+    <button onclick="quickSelectCustomer('${(r.user_name||'익명').replace(/'/g,"\\'")}','${r.bc_primary||''}')"
       style="border:1.5px solid var(--border);border-radius:8px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--text);transition:all .15s"
       onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)'"
       onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text)'">
@@ -2958,63 +3099,135 @@ function quickSelectCustomer(name, bcCode) {
   generateAiMessages();
 }
 
-async function generateAiMessages() {
-  const bcCode = document.getElementById('ai-bc-code').value;
+async function generateAiMessages(mode) {
+  const bcCode       = document.getElementById('ai-bc-code').value;
   const customerName = document.getElementById('ai-customer-name').value.trim() || '고객님';
+  const curWeight    = document.getElementById('ai-current-weight')?.value || '';
+  const goalWeight   = document.getElementById('ai-goal-weight')?.value   || '';
+  const durationWks  = document.getElementById('ai-duration-weeks')?.value || '';
   if (!bcCode) { toast('BC코드를 선택해주세요.', 'error'); return; }
 
   const area = document.getElementById('ai-messages-area');
+  const stageLabel = mode === 'all' ? '전체 단계' : (STAGE_LABELS[_aiStage] || _aiStage);
   area.innerHTML = `<div style="text-align:center;padding:32px;color:var(--muted)">
     <i class="fas fa-magic fa-2x" style="margin-bottom:12px;display:block;animation:spin 1s linear infinite"></i>
     <style>@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}</style>
-    ${customerName}님의 ${bcCode} 맞춤 멘트 생성 중...
+    ${customerName}님의 ${bcCode} · ${stageLabel} 스크립트 생성 중...
   </div>`;
 
-  const data = await api('POST', '/consultant/ai-message', { bc_code: bcCode, user_name: customerName });
+  const payload = {
+    bc_code: bcCode, user_name: customerName,
+    stage: mode === 'all' ? 'all' : _aiStage,
+    current_weight: curWeight ? parseFloat(curWeight) : null,
+    goal_weight:    goalWeight  ? parseFloat(goalWeight)  : null,
+    duration_weeks: durationWks ? parseInt(durationWks)   : null,
+  };
+  const data = await api('POST', '/consultant/ai-message', payload);
   if (!data || data.error) {
-    area.innerHTML = `<div class="card"><div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>${data?.error || '멘트 생성 실패'}</p></div></div>`;
+    area.innerHTML = `<div class="card"><div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>${data?.error||'스크립트 생성 실패'}</p></div></div>`;
     return;
   }
 
   const messages = data.messages || [];
   const typeColors = {
-    '초진 환영 멘트': { bg: '#EFF6FF', border: '#2563EB', icon: '#2563EB' },
-    '원인 설명 멘트': { bg: '#FEF3C7', border: '#D97706', icon: '#D97706' },
-    '처방 안내 멘트': { bg: '#F0FDF4', border: '#16A34A', icon: '#16A34A' },
-    '동기부여 멘트': { bg: '#F5F3FF', border: '#7C3AED', icon: '#7C3AED' },
-    '재방문 독려 멘트': { bg: '#FFF1F2', border: '#E11D48', icon: '#E11D48' },
+    '초진 환영 멘트':  { bg:'#EFF6FF', border:'#2563EB', icon:'#2563EB' },
+    '원인 설명 멘트':  { bg:'#FEF3C7', border:'#D97706', icon:'#D97706' },
+    '처방 안내 멘트':  { bg:'#F0FDF4', border:'#16A34A', icon:'#16A34A' },
+    '동기부여 멘트':   { bg:'#F5F3FF', border:'#7C3AED', icon:'#7C3AED' },
+    '재방문 독려 멘트':{ bg:'#FFF1F2', border:'#E11D48', icon:'#E11D48' },
+    '진행 점검 멘트':  { bg:'#F0FDF4', border:'#059669', icon:'#059669' },
+    '마무리 멘트':     { bg:'#FEF9C3', border:'#CA8A04', icon:'#CA8A04' },
+    '반론 대처 멘트':  { bg:'#F8FAFC', border:'#475569', icon:'#475569' },
   };
+
+  // 단계 라벨 배지
+  const stageBadgeColor = { intro:'#2563EB', mid:'#059669', close:'#CA8A04', revival:'#7C3AED', objection:'#475569', all:'#E11D48' };
+  const displayStage = mode === 'all' ? 'all' : _aiStage;
 
   area.innerHTML = `
     <div class="card" style="margin-bottom:12px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
-        <span class="badge" style="background:#EFF6FF;color:#2563EB;font-size:13px;padding:5px 14px">${data.bc_code} · ${data.brand_name}</span>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="background:#EFF6FF;color:${stageBadgeColor[displayStage]||'#2563EB'};padding:5px 14px;border-radius:20px;font-size:13px;font-weight:700">${data.bc_code}</span>
+        <span style="font-size:13px;font-weight:600;color:var(--text)">${STAGE_LABELS[displayStage]||stageLabel}</span>
         <span style="font-size:13px;color:var(--muted)">👤 ${customerName}</span>
-        <span style="margin-left:auto;font-size:12px;color:var(--muted)">총 ${messages.length}개 멘트 생성됨</span>
+        ${curWeight  ? `<span style="font-size:12px;color:var(--muted)">⚖️ ${curWeight}→${goalWeight||'?'}kg</span>` : ''}
+        ${durationWks? `<span style="font-size:12px;color:var(--muted)">⏱️ ${durationWks}주 플랜</span>` : ''}
+        <div style="margin-left:auto;display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="saveAllScripts(${JSON.stringify(messages).replace(/"/g,'&quot;')}, '${bcCode}', '${customerName}')">
+            <i class="fas fa-bookmark"></i> 저장
+          </button>
+          <button class="btn btn-ghost btn-sm" onclick="copyAllMessages(${JSON.stringify(messages).replace(/"/g,'&quot;')})">
+            <i class="fas fa-copy"></i> 전체 복사
+          </button>
+        </div>
       </div>
-      <div style="font-size:12px;color:var(--muted);margin-top:4px">📋 각 멘트를 클릭하면 클립보드에 복사됩니다</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:8px">💡 카드를 클릭하면 해당 스크립트만 복사됩니다</div>
     </div>
-    ${messages.map(m => {
-      const c = typeColors[m.type] || { bg: '#F8FAFC', border: '#CBD5E1', icon: '#64748B' };
+    ${messages.map((m,i) => {
+      const col = typeColors[m.type] || { bg:'#F8FAFC', border:'#CBD5E1', icon:'#64748B' };
+      const safeText = (m.text||'').replace(/\\/g,'\\\\').replace(/`/g,'\\`').replace(/\$/g,'\\$');
       return `
-      <div style="background:${c.bg};border:1.5px solid ${c.border}44;border-left:4px solid ${c.border};border-radius:12px;padding:16px 20px;margin-bottom:12px;cursor:pointer;transition:box-shadow .15s"
-        onclick="copyAiMessage(this, \`${m.text.replace(/`/g,'\\`').replace(/\$/g,'\\$')}\`)"
-        onmouseover="this.style.boxShadow='0 4px 16px ${c.border}33'" onmouseout="this.style.boxShadow='none'">
+      <div style="background:${col.bg};border:1.5px solid ${col.border}44;border-left:4px solid ${col.border};border-radius:12px;padding:16px 20px;margin-bottom:10px;cursor:pointer;transition:all .15s"
+        onclick="copyAiMessage(this, \`${safeText}\`)"
+        onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 16px ${col.border}33'"
+        onmouseout="this.style.transform='';this.style.boxShadow=''">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <div style="font-size:12px;font-weight:700;color:${c.icon}">${m.icon} ${m.type}</div>
-          <div style="font-size:11px;color:var(--muted);background:#fff;border:1px solid var(--border);border-radius:6px;padding:3px 10px">
-            <i class="fas fa-copy"></i> 클릭해서 복사
+          <div style="font-size:12px;font-weight:700;color:${col.icon}">${m.icon||'💬'} ${m.type}</div>
+          <div style="display:flex;gap:6px">
+            <button onclick="event.stopPropagation();saveScript(${JSON.stringify(m).replace(/"/g,'&quot;')}, '${bcCode}')"
+              style="background:#fff;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;color:var(--muted)">
+              <i class="fas fa-star"></i>
+            </button>
+            <div style="font-size:11px;color:var(--muted);background:#fff;border:1px solid var(--border);border-radius:6px;padding:3px 10px">
+              <i class="fas fa-copy"></i> 클릭 복사
+            </div>
           </div>
         </div>
-        <div style="font-size:14px;line-height:1.8;color:var(--text)">${m.text}</div>
+        <div style="font-size:14px;line-height:1.9;color:var(--text);white-space:pre-wrap">${m.text}</div>
+        ${m.tip ? `<div style="margin-top:10px;padding:8px 12px;background:#fff;border-radius:8px;font-size:12px;color:var(--muted)">💡 <b>상담 TIP:</b> ${m.tip}</div>` : ''}
       </div>`;
-    }).join('')}
-    <div style="text-align:center;margin-top:8px">
-      <button class="btn btn-ghost btn-sm" onclick="copyAllMessages(${JSON.stringify(messages).replace(/"/g,'&quot;')})">
-        <i class="fas fa-copy"></i> 전체 복사
-      </button>
-    </div>
-  `;
+    }).join('')}`;
+}
+
+// 스크립트 저장 (localStorage)
+function saveScript(msg, bcCode) {
+  const saved = JSON.parse(localStorage.getItem('sm_saved_scripts') || '[]');
+  saved.unshift({ ...msg, bcCode, savedAt: new Date().toISOString() });
+  if (saved.length > 50) saved.pop();
+  localStorage.setItem('sm_saved_scripts', JSON.stringify(saved));
+  toast('스크립트를 저장했습니다 ⭐', 'success');
+}
+
+function saveAllScripts(messages, bcCode, customerName) {
+  messages.forEach(m => saveScript(m, bcCode));
+  toast(`${messages.length}개 스크립트 저장 완료!`, 'success');
+}
+
+function openSavedScripts() {
+  const panel = document.getElementById('saved-scripts-panel');
+  const list  = document.getElementById('saved-scripts-list');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  if (panel.style.display !== 'block') return;
+  const saved = JSON.parse(localStorage.getItem('sm_saved_scripts') || '[]');
+  if (!saved.length) { list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">저장된 스크립트가 없습니다</div>'; return; }
+  list.innerHTML = saved.map((m, i) => `
+    <div style="border:1.5px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:12px;font-weight:700;color:var(--primary)">${m.bcCode||''} · ${m.type||''}</span>
+        <div style="display:flex;gap:6px">
+          <button onclick="copyAiMessage(this.closest('div'), \`${(m.text||'').replace(/`/g,'\\`').replace(/\$/g,'\\$')}\`)" style="border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;background:#fff">복사</button>
+          <button onclick="deleteSavedScript(${i})" style="border:1px solid #FCA5A5;border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;background:#FEF2F2;color:#DC2626">삭제</button>
+        </div>
+      </div>
+      <div style="font-size:13px;color:var(--text);line-height:1.7">${(m.text||'').substring(0,120)}${(m.text||'').length>120?'...':''}</div>
+    </div>`).join('');
+}
+
+function deleteSavedScript(index) {
+  const saved = JSON.parse(localStorage.getItem('sm_saved_scripts') || '[]');
+  saved.splice(index, 1);
+  localStorage.setItem('sm_saved_scripts', JSON.stringify(saved));
+  openSavedScripts();
 }
 
 function copyAiMessage(el, text) {
@@ -3492,6 +3705,173 @@ function closeResultPreview() {
   const overlay = document.getElementById('result-preview-overlay');
   if (panel) { panel.style.transform = 'translateX(100%)'; setTimeout(() => panel.remove(), 350); }
   if (overlay) overlay.remove();
+}
+
+// ══════════════════════════════════════════════════════════
+//  Feature 6: 재진단 알림
+// ══════════════════════════════════════════════════════════
+async function loadRediagnosisAlerts() {
+  const el = document.getElementById('rediagnosis-alert-list');
+  if (!el) return;
+  try {
+    const data = await api('GET', '/consultant/rediagnosis');
+    const alerts = data.alerts || [];
+    if (!alerts.length) {
+      el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">재진단 권유 대상 고객이 없습니다 🎉</div>';
+      return;
+    }
+    const dayBadge = { 30:'🟡 30일', 60:'🟠 60일', 90:'🔴 90일' };
+    el.innerHTML = alerts.map(a => `
+      <div id="rediag-item-${a.id}" style="display:flex;align-items:center;justify-content:space-between;padding:12px;border-radius:10px;border:1px solid #E2E8F0;margin-bottom:8px;background:#FAFBFF">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;color:var(--text)">${a.customer_name||'이름없음'} <span style="font-size:11px;font-weight:500;color:var(--muted)">· ${a.bc_code||'-'}</span></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">진단일: ${(a.diagnosed_at||'').slice(0,10)} · ${dayBadge[a.alert_day]||a.alert_day+'일'} 경과</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;margin-left:8px">
+          <button onclick="sendRediagnosis(${a.id},'${a.session_id}')" class="btn btn-primary btn-sm" style="font-size:11px;padding:6px 10px">🔗 링크 발송</button>
+          <button onclick="dismissRediagnosis(${a.id})" class="btn btn-ghost btn-sm" style="font-size:11px;padding:6px 10px">무시</button>
+        </div>
+      </div>`).join('');
+  } catch(e) {
+    el.innerHTML = `<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">불러오기 실패</div>`;
+  }
+}
+
+async function sendRediagnosis(alertId, sessionId) {
+  const origin = location.origin;
+  const surveyUrl = `${origin}/slimmind?ref=${window._myCode||''}&rediag=${sessionId}`;
+  // 클립보드 복사
+  try { await navigator.clipboard.writeText(surveyUrl); } catch {}
+  // 발송 완료 처리
+  await api('POST', `/consultant/rediagnosis/${alertId}/sent`).catch(()=>{});
+  const item = document.getElementById(`rediag-item-${alertId}`);
+  if (item) {
+    item.style.opacity = '.4';
+    item.querySelector('button').textContent = '✅ 발송완료';
+  }
+  alert(`재진단 링크가 복사되었습니다!\n\n${surveyUrl}\n\n카카오톡이나 문자로 고객에게 전달하세요.`);
+}
+
+async function dismissRediagnosis(alertId) {
+  if (!confirm('이 재진단 알림을 무시하시겠습니까?')) return;
+  await api('POST', `/consultant/rediagnosis/${alertId}/dismiss`).catch(()=>{});
+  const item = document.getElementById(`rediag-item-${alertId}`);
+  if (item) item.remove();
+}
+
+// ══════════════════════════════════════════════════════════
+//  Feature 5: 토스페이먼츠 결제 탭
+// ══════════════════════════════════════════════════════════
+let _selectedPlan = null;
+
+function selectPlan(plan) {
+  _selectedPlan = plan;
+  document.getElementById('plan-monthly').style.border = plan === 'monthly' ? '2px solid #3B82F6' : '2px solid #E2E8F0';
+  document.getElementById('plan-monthly').style.background = plan === 'monthly' ? '#EFF6FF' : '';
+  document.getElementById('plan-yearly').style.border  = plan === 'yearly'  ? '2px solid #7C3AED' : '2px solid #E2E8F0';
+  document.getElementById('plan-yearly').style.background  = plan === 'yearly'  ? '#F5F3FF' : '';
+  const btn = document.getElementById('payment-btn');
+  const labels = { monthly: '월간 구독 30,000원 결제', yearly: '연간 구독 300,000원 결제' };
+  btn.textContent = labels[plan];
+  btn.style.opacity = '1';
+  btn.disabled = false;
+}
+
+async function loadPaymentTab() {
+  // 구독 현황 로드
+  try {
+    const me = await api('GET', '/consultant/me').catch(() => null);
+    const infoEl = document.getElementById('payment-sub-info');
+    const statusEl = document.getElementById('payment-sub-status');
+    if (me && me.subscription_end) {
+      const end = new Date(me.subscription_end);
+      const today = new Date();
+      const daysLeft = Math.ceil((end - today) / 86400000);
+      const isActive = daysLeft > 0;
+      statusEl.style.background = isActive ? '#F0FDF4' : '#FEF2F2';
+      statusEl.style.borderColor = isActive ? '#BBF7D0' : '#FECACA';
+      statusEl.querySelector('div').style.color = isActive ? '#16A34A' : '#DC2626';
+      statusEl.querySelector('div').textContent = isActive ? '✅ 구독 활성' : '❌ 구독 만료';
+      infoEl.style.color = isActive ? '#166534' : '#991B1B';
+      infoEl.textContent = `만료일: ${me.subscription_end} (${daysLeft > 0 ? `D-${daysLeft}` : '만료됨'})`;
+    } else {
+      infoEl.textContent = '구독 정보 없음';
+    }
+  } catch(e) {}
+
+  // 결제 내역 로드
+  try {
+    const data = await api('GET', '/payment/history');
+    const el = document.getElementById('payment-history-list');
+    if (!data.payments || data.payments.length === 0) {
+      el.innerHTML = '<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">결제 내역이 없습니다</div>';
+      return;
+    }
+    const planLabel = { monthly: '월간', yearly: '연간' };
+    const statusBadge = {
+      paid:    '<span style="background:#D1FAE5;color:#065F46;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">결제완료</span>',
+      pending: '<span style="background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">대기중</span>',
+      failed:  '<span style="background:#FEE2E2;color:#991B1B;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">실패</span>',
+    };
+    el.innerHTML = data.payments.map(p => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #F1F5F9">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--text)">${planLabel[p.plan]||p.plan} 구독 ${(p.amount||0).toLocaleString()}원</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${(p.approved_at||p.created_at||'').slice(0,10)} · ${p.method||'-'}</div>
+          ${p.new_end_date ? `<div style="font-size:11px;color:#3B82F6">→ 만료일: ${p.new_end_date}</div>` : ''}
+        </div>
+        <div>${statusBadge[p.status]||p.status}</div>
+      </div>
+    `).join('');
+  } catch(e) {
+    document.getElementById('payment-history-list').innerHTML = '<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">내역을 불러올 수 없습니다</div>';
+  }
+}
+
+async function startPayment() {
+  if (!_selectedPlan) return;
+  const btn = document.getElementById('payment-btn');
+  btn.disabled = true;
+  btn.textContent = '결제 준비 중...';
+
+  try {
+    // 1) 서버에서 주문 생성
+    const order = await api('POST', '/payment/prepare', { plan: _selectedPlan });
+    if (!order.ok) throw new Error(order.error || '주문 생성 실패');
+
+    // 2) 토스페이먼츠 결제창 열기
+    // 토스 클라이언트 키는 환경에 맞게 설정 (테스트키 사용)
+    const TOSS_CLIENT_KEY = 'test_ck_D5GePWvyJnrK0W0k6q8gLzN97Eo3';
+    const tossPayments = await loadTossPayments(TOSS_CLIENT_KEY);
+    const payment = tossPayments.payment({ customerKey: order.order_id });
+
+    await payment.requestPayment({
+      method: 'CARD',
+      amount: { currency: 'KRW', value: order.amount },
+      orderId:    order.order_id,
+      orderName:  order.order_name,
+      customerName: order.customer_name,
+      successUrl: `${location.origin}/payment/success`,
+      failUrl:    `${location.origin}/payment/fail`,
+    });
+  } catch(e) {
+    alert('결제 오류: ' + (e.message || e));
+    btn.disabled = false;
+    const labels = { monthly: '월간 구독 30,000원 결제', yearly: '연간 구독 300,000원 결제' };
+    btn.textContent = labels[_selectedPlan] || '결제하기';
+  }
+}
+
+// 토스페이먼츠 SDK 동적 로드
+function loadTossPayments(clientKey) {
+  return new Promise((resolve, reject) => {
+    if (window.TossPayments) { resolve(window.TossPayments(clientKey)); return; }
+    const s = document.createElement('script');
+    s.src = 'https://js.tosspayments.com/v2/standard';
+    s.onload = () => resolve(window.TossPayments(clientKey));
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
 }
 </script>
 </body>

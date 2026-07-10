@@ -533,6 +533,9 @@
 
         <div class="nav-section-label">정산 · 다운로드</div>
         <div class="nav-item" data-page="settlement"><i class="fas fa-calculator"></i> 수익 정산</div>
+        <div class="nav-item" data-page="payments"><i class="fas fa-credit-card"></i> 결제 관리</div>
+        <div class="nav-item" data-page="rediagnosis"><i class="fas fa-redo"></i> 재진단 알림</div>
+        <div class="nav-item" data-page="growth-dashboard"><i class="fas fa-chart-line"></i> 성장 대시보드</div>
         <div class="nav-item" data-page="excel-export"><i class="fas fa-file-excel"></i> 데이터 다운로드</div>
 
         <div class="nav-section-label">이용 안내</div>
@@ -1233,7 +1236,7 @@ function navigateTo(page) {
     coupons:'쿠폰 관리', notifications:'설문 완료 알림', 'bc-codes':'BC코드 처방 편집',
     settings:'설정', 'kakao-settings':'카카오 설정', 'monthly-report':'월간 AI 리포트',
     analytics:'데이터 인사이트', ranking:'컨설턴트 랭킹', 'revenue-forecast':'매출 예측기',
-    settlement:'수익 정산', 'excel-export':'데이터 다운로드', 'bc-library':'바디코드 도감',
+    settlement:'수익 정산', payments:'결제 관리', rediagnosis:'재진단 알림', 'growth-dashboard':'성장 대시보드', 'excel-export':'데이터 다운로드', 'bc-library':'바디코드 도감',
     'daily-checks':'데일리 체크 현황'
   };
   document.getElementById('topbar-title').textContent = titles[page] || page;
@@ -1258,6 +1261,9 @@ function navigateTo(page) {
   else if (page === 'ranking') loadRanking();
   else if (page === 'revenue-forecast') loadRevenueForecast();
   else if (page === 'settlement') loadSettlement();
+  else if (page === 'payments')   loadAdminPayments();
+  else if (page === 'rediagnosis')     loadAdminRediagnosis();
+  else if (page === 'growth-dashboard') loadGrowthDashboard();
   else if (page === 'excel-export') loadExcelExport();
   else if (page === 'settings') loadSettings();
   else if (page === 'kakao-settings') loadKakaoSettings();
@@ -4564,7 +4570,7 @@ async function saveB2BPartner() {
       // 등록 완료 팝업
       const code = res.code;
       const pw = res.defaultPassword;
-      const surveyUrl = `${location.origin}/s/${code}`;
+      const surveyUrl = `${location.origin}/slimmind?b2b=${code}`;  // Feature 7: ?b2b= 형식
       const dashUrl = `${location.origin}/b2b`;
       document.getElementById('b2b-reg-code').textContent = code;
       document.getElementById('b2b-reg-pw').textContent = pw;
@@ -4895,6 +4901,309 @@ if (TOKEN) {
 
 document.getElementById('login-btn').onclick = doLogin;
 document.getElementById('login-pw').onkeydown = e => { if (e.key === 'Enter') doLogin(); };
+
+// ══════════════════════════════════════════════════════════
+//  Feature 5: 관리자 결제 관리
+// ══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
+//  Feature 9: 성장 대시보드
+// ══════════════════════════════════════════════════════════
+let _growthChart = null, _trendChart = null;
+
+async function loadGrowthDashboard() {
+  setPage('growth-dashboard');
+  const container = document.getElementById('page-content');
+  container.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+      <h2 style="font-size:20px;font-weight:800;color:var(--text);margin:0">📈 실시간 성장 & 매출 대시보드</h2>
+      <button class="btn btn-ghost btn-sm" onclick="loadGrowthDashboard()"><i class="fas fa-sync"></i> 새로고침</button>
+    </div>
+    <!-- KPI 카드 4개 -->
+    <div id="growth-kpi" style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px"></div>
+    <!-- 차트 2개 -->
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:20px">
+      <div class="card">
+        <div style="font-size:14px;font-weight:700;margin-bottom:14px">📊 일별 진단 추이 (최근 30일)</div>
+        <canvas id="daily-diag-chart" height="120"></canvas>
+      </div>
+      <div class="card">
+        <div style="font-size:14px;font-weight:700;margin-bottom:14px">🧬 BC코드 분포 (이번달)</div>
+        <canvas id="bc-dist-chart" height="120"></canvas>
+      </div>
+    </div>
+    <!-- 월별 트렌드 -->
+    <div class="card" style="margin-bottom:20px">
+      <div style="font-size:14px;font-weight:700;margin-bottom:14px">📅 월별 진단 추이 (최근 6개월)</div>
+      <canvas id="monthly-trend-chart" height="80"></canvas>
+    </div>
+    <!-- 하단 카드 3개 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
+      <div class="card" id="growth-cons-card"></div>
+      <div class="card" id="growth-check-card"></div>
+      <div class="card" id="growth-revenue-card"></div>
+    </div>`;
+
+  try {
+    const data = await api('GET', '/admin/growth-dashboard');
+    const s = data.summary || {};
+    const growthPositive = s.growth_rate >= 0;
+
+    // KPI 카드
+    document.getElementById('growth-kpi').innerHTML = [
+      { icon:'🔬', label:'이번달 진단', val: `${(s.this_month_diag||0).toLocaleString()}건`, sub: `지난달 ${s.last_month_diag||0}건`, color:'#3B82F6' },
+      { icon:'📈', label:'전월 대비 성장률', val: `${growthPositive?'+':''}${s.growth_rate||0}%`, sub: growthPositive?'성장 중 🎉':'감소 추세', color: growthPositive?'#10B981':'#EF4444' },
+      { icon:'💰', label:'이번달 결제 매출', val: `${(s.revenue_this||0).toLocaleString()}원`, sub: `지난달 ${(s.revenue_last||0).toLocaleString()}원`, color:'#F59E0B' },
+      { icon:'🏦', label:'누적 총 매출', val: `${(s.revenue_total||0).toLocaleString()}원`, sub: '결제 완료 합계', color:'#7C3AED' },
+    ].map(k => `
+      <div class="card" style="text-align:center;padding:20px">
+        <div style="font-size:32px;margin-bottom:8px">${k.icon}</div>
+        <div style="font-size:22px;font-weight:900;color:${k.color};margin-bottom:4px">${k.val}</div>
+        <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px">${k.label}</div>
+        <div style="font-size:11px;color:var(--muted)">${k.sub}</div>
+      </div>`).join('');
+
+    // 일별 진단 차트
+    const daily = data.daily_diag || [];
+    if (_growthChart) _growthChart.destroy();
+    const ctx1 = document.getElementById('daily-diag-chart').getContext('2d');
+    _growthChart = new Chart(ctx1, {
+      type: 'bar',
+      data: {
+        labels: daily.map(d => d.day.slice(5)),
+        datasets: [{ label:'진단 수', data: daily.map(d => d.count),
+          backgroundColor: '#3B82F620', borderColor: '#3B82F6', borderWidth: 2, borderRadius: 4 }]
+      },
+      options: { plugins:{ legend:{display:false} }, scales:{ y:{beginAtZero:true,ticks:{stepSize:1}} } }
+    });
+
+    // BC분포 도넛 차트
+    const bcDist = data.bc_distribution || [];
+    if (_trendChart) _trendChart.destroy();
+    const ctx2 = document.getElementById('bc-dist-chart').getContext('2d');
+    const bcColors = ['#3B82F6','#EF4444','#F59E0B','#10B981','#8B5CF6','#EC4899','#06B6D4','#84CC16','#F97316'];
+    _trendChart = new Chart(ctx2, {
+      type: 'doughnut',
+      data: {
+        labels: bcDist.map(b => b.bc_code),
+        datasets: [{ data: bcDist.map(b => b.cnt), backgroundColor: bcColors, borderWidth: 2 }]
+      },
+      options: { plugins:{ legend:{position:'right',labels:{font:{size:11}}} } }
+    });
+
+    // 월별 트렌드 차트
+    const monthly = data.monthly_trend || [];
+    const ctx3 = document.getElementById('monthly-trend-chart').getContext('2d');
+    new Chart(ctx3, {
+      type: 'line',
+      data: {
+        labels: monthly.map(m => m.month),
+        datasets: [{ label:'월별 진단', data: monthly.map(m => m.count),
+          borderColor:'#7C3AED', backgroundColor:'#7C3AED10', fill:true, tension:0.4, pointRadius:5 }]
+      },
+      options: { plugins:{ legend:{display:false} }, scales:{ y:{beginAtZero:true} } }
+    });
+
+    // 컨설턴트 현황 카드
+    const cons = data.consultants || {};
+    document.getElementById('growth-cons-card').innerHTML = `
+      <div style="font-size:14px;font-weight:700;margin-bottom:14px">👥 컨설턴트 현황</div>
+      ${[
+        ['전체', cons.total||0, '#64748B'],
+        ['활성', cons.active||0, '#10B981'],
+        ['30일 내 만료', cons.expiring_30d||0, '#F59E0B'],
+        ['신규(30일)', cons.new_30d||0, '#3B82F6'],
+      ].map(([l,v,c]) => `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F1F5F9">
+        <span style="font-size:13px;color:var(--muted)">${l}</span>
+        <span style="font-size:14px;font-weight:700;color:${c}">${v}</span>
+      </div>`).join('')}`;
+
+    // 체크 현황 카드
+    const ck = data.check_stats || {};
+    document.getElementById('growth-check-card').innerHTML = `
+      <div style="font-size:14px;font-weight:700;margin-bottom:14px">✅ 데일리 체크 (30일)</div>
+      ${[
+        ['참여 고객 수', ck.active_users||0, '#3B82F6'],
+        ['총 체크 수', ck.total_checks||0, '#10B981'],
+        ['운동 달성률', `${ck.exercise_rate||0}%`, '#F59E0B'],
+        ['식단 달성률', `${ck.diet_rate||0}%`, '#EF4444'],
+      ].map(([l,v,c]) => `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F1F5F9">
+        <span style="font-size:13px;color:var(--muted)">${l}</span>
+        <span style="font-size:14px;font-weight:700;color:${c}">${v}</span>
+      </div>`).join('')}`;
+
+    // 매출 상세 카드
+    document.getElementById('growth-revenue-card').innerHTML = `
+      <div style="font-size:14px;font-weight:700;margin-bottom:14px">💳 결제 현황</div>
+      ${[
+        ['이번달 매출', `${(s.revenue_this||0).toLocaleString()}원`, '#10B981'],
+        ['지난달 매출', `${(s.revenue_last||0).toLocaleString()}원`, '#64748B'],
+        ['누적 총 매출', `${(s.revenue_total||0).toLocaleString()}원`, '#7C3AED'],
+        ['성장률', `${s.growth_rate>=0?'+':''}${s.growth_rate||0}%`, s.growth_rate>=0?'#10B981':'#EF4444'],
+      ].map(([l,v,c]) => `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F1F5F9">
+        <span style="font-size:13px;color:var(--muted)">${l}</span>
+        <span style="font-size:14px;font-weight:700;color:${c}">${v}</span>
+      </div>`).join('')}`;
+
+  } catch(e) {
+    document.getElementById('growth-kpi').innerHTML = `<div class="card" style="grid-column:1/-1;text-align:center;padding:40px;color:#DC2626">오류: ${e.message||e}</div>`;
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  Feature 6: 관리자 재진단 알림 관리
+// ══════════════════════════════════════════════════════════
+async function loadAdminRediagnosis(status = 'pending') {
+  setPage('rediagnosis');
+  const container = document.getElementById('page-content');
+  container.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+      <h2 style="font-size:20px;font-weight:800;color:var(--text);margin:0">🔄 재진단 알림 관리</h2>
+      <button class="btn btn-primary btn-sm" onclick="scanRediagnosis()" style="margin-left:auto">
+        <i class="fas fa-search"></i> 재진단 대상 스캔
+      </button>
+      <select id="rediag-filter" onchange="loadAdminRediagnosis(this.value)"
+        style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px">
+        <option value="pending">대기중</option>
+        <option value="sent">발송완료</option>
+        <option value="dismissed">무시</option>
+      </select>
+    </div>
+    <div id="rediag-counts" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px"></div>
+    <div class="card" style="overflow:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="border-bottom:2px solid var(--border)">
+          <th style="padding:12px;text-align:left;font-weight:700;color:var(--muted)">고객</th>
+          <th style="padding:12px;text-align:left;font-weight:700;color:var(--muted)">담당 컨설턴트</th>
+          <th style="padding:12px;text-align:left;font-weight:700;color:var(--muted)">BC코드</th>
+          <th style="padding:12px;text-align:center;font-weight:700;color:var(--muted)">경과일</th>
+          <th style="padding:12px;text-align:left;font-weight:700;color:var(--muted)">진단일</th>
+          <th style="padding:12px;text-align:left;font-weight:700;color:var(--muted)">상태</th>
+        </tr></thead>
+        <tbody id="rediag-table-body"><tr><td colspan="6" style="text-align:center;padding:40px;color:var(--muted)"><i class="fas fa-circle-notch fa-spin"></i></td></tr></tbody>
+      </table>
+    </div>`;
+
+  if (status) document.getElementById('rediag-filter').value = status;
+
+  try {
+    const data = await api('GET', `/admin/rediagnosis?status=${status}`);
+    const counts = {};
+    (data.counts||[]).forEach(r => counts[r.status] = r.cnt);
+
+    document.getElementById('rediag-counts').innerHTML = [
+      { label:'대기중',  val: counts.pending||0,   color:'#F59E0B', icon:'⏳' },
+      { label:'발송완료', val: counts.sent||0,      color:'#10B981', icon:'✅' },
+      { label:'무시됨',  val: counts.dismissed||0,  color:'#94A3B8', icon:'🚫' },
+    ].map(s => `
+      <div class="card" style="text-align:center;padding:16px">
+        <div style="font-size:24px;margin-bottom:6px">${s.icon}</div>
+        <div style="font-size:22px;font-weight:800;color:${s.color}">${s.val}</div>
+        <div style="font-size:12px;color:var(--muted)">${s.label}</div>
+      </div>`).join('');
+
+    const dayBadge = { 30:'<span style="background:#FEF9C3;color:#92400E;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">30일</span>', 60:'<span style="background:#FFEDD5;color:#C2410C;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">60일</span>', 90:'<span style="background:#FEE2E2;color:#991B1B;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">90일</span>' };
+    const rows = (data.alerts||[]).map(a => `
+      <tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:12px;font-weight:600">${a.customer_name||'-'}</td>
+        <td style="padding:12px">${a.consultant_name||a.consultant_code||'-'}</td>
+        <td style="padding:12px">${a.bc_code||'-'}</td>
+        <td style="padding:12px;text-align:center">${dayBadge[a.alert_day]||a.alert_day+'일'}</td>
+        <td style="padding:12px;font-size:12px;color:var(--muted)">${(a.diagnosed_at||'').slice(0,10)}</td>
+        <td style="padding:12px;font-size:12px;color:var(--muted)">${a.status}</td>
+      </tr>`).join('');
+
+    document.getElementById('rediag-table-body').innerHTML =
+      rows || '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--muted)">내역 없음</td></tr>';
+  } catch(e) {
+    document.getElementById('rediag-table-body').innerHTML = `<tr><td colspan="6" style="text-align:center;padding:40px;color:#DC2626">오류: ${e.message}</td></tr>`;
+  }
+}
+
+async function scanRediagnosis() {
+  if (!confirm('재진단 대상 고객을 스캔하고 알림을 생성할까요?\n(30/60/90일 경과 고객 자동 감지)')) return;
+  try {
+    const result = await api('POST', '/admin/rediagnosis/scan', {});
+    alert(`스캔 완료!\n✅ 생성: ${result.created}건\n⏭️ 스킵: ${result.skipped}건`);
+    loadAdminRediagnosis('pending');
+  } catch(e) {
+    alert('오류: ' + (e.message||e));
+  }
+}
+
+async function loadAdminPayments(status = '') {
+  setPage('payments');
+  const container = document.getElementById('page-content');
+  container.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+      <h2 style="font-size:20px;font-weight:800;color:var(--text);margin:0">💳 결제 관리</h2>
+      <select id="payment-filter-status" onchange="loadAdminPayments(this.value)"
+        style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px">
+        <option value="">전체</option>
+        <option value="paid">결제완료</option>
+        <option value="pending">대기중</option>
+        <option value="failed">실패</option>
+      </select>
+    </div>
+    <div id="payment-stats-row" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px"></div>
+    <div class="card" style="overflow:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="border-bottom:2px solid var(--border)">
+          <th style="padding:12px;text-align:left;font-weight:700;color:var(--muted)">주문ID</th>
+          <th style="padding:12px;text-align:left;font-weight:700;color:var(--muted)">컨설턴트</th>
+          <th style="padding:12px;text-align:left;font-weight:700;color:var(--muted)">플랜</th>
+          <th style="padding:12px;text-align:right;font-weight:700;color:var(--muted)">금액</th>
+          <th style="padding:12px;text-align:left;font-weight:700;color:var(--muted)">결제수단</th>
+          <th style="padding:12px;text-align:left;font-weight:700;color:var(--muted)">상태</th>
+          <th style="padding:12px;text-align:left;font-weight:700;color:var(--muted)">승인일시</th>
+          <th style="padding:12px;text-align:left;font-weight:700;color:var(--muted)">만료일</th>
+        </tr></thead>
+        <tbody id="payment-table-body"><tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted)"><i class="fas fa-circle-notch fa-spin"></i> 로딩중...</td></tr></tbody>
+      </table>
+    </div>`;
+
+  if (status) document.getElementById('payment-filter-status').value = status;
+
+  try {
+    const data = await api('GET', `/admin/payments?status=${status}&limit=100`);
+    const stats = data.stats || {};
+
+    // 통계 카드
+    document.getElementById('payment-stats-row').innerHTML = [
+      { label:'총 결제 건수',    val: `${stats.total_count||0}건`,                     color:'#3B82F6', icon:'📊' },
+      { label:'누적 매출',       val: `${(stats.total_revenue||0).toLocaleString()}원`, color:'#10B981', icon:'💰' },
+      { label:'이번 달 매출',    val: `${(stats.this_month_revenue||0).toLocaleString()}원`, color:'#F59E0B', icon:'📅' },
+    ].map(s => `
+      <div class="card" style="text-align:center;padding:20px">
+        <div style="font-size:28px;margin-bottom:8px">${s.icon}</div>
+        <div style="font-size:20px;font-weight:800;color:${s.color}">${s.val}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">${s.label}</div>
+      </div>`).join('');
+
+    const statusBadge = {
+      paid:    '<span style="background:#D1FAE5;color:#065F46;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">결제완료</span>',
+      pending: '<span style="background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">대기중</span>',
+      failed:  '<span style="background:#FEE2E2;color:#991B1B;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">실패</span>',
+      cancelled:'<span style="background:#F1F5F9;color:#64748B;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">취소</span>',
+    };
+    const planLabel = { monthly:'월간', yearly:'연간' };
+    const rows = (data.payments||[]).map(p => `
+      <tr style="border-bottom:1px solid var(--border);transition:background .15s" onmouseover="this.style.background='#F8FAFC'" onmouseout="this.style.background=''">
+        <td style="padding:12px;font-family:monospace;font-size:11px;color:var(--muted)">${p.order_id||'-'}</td>
+        <td style="padding:12px;font-weight:600">${p.consultant_name||p.consultant_code||'-'}</td>
+        <td style="padding:12px">${planLabel[p.plan]||p.plan}</td>
+        <td style="padding:12px;text-align:right;font-weight:700">${(p.amount||0).toLocaleString()}원</td>
+        <td style="padding:12px">${p.method||'-'}</td>
+        <td style="padding:12px">${statusBadge[p.status]||p.status}</td>
+        <td style="padding:12px;font-size:12px;color:var(--muted)">${(p.approved_at||'').slice(0,16)||'-'}</td>
+        <td style="padding:12px;font-size:12px;${p.new_end_date?'color:#3B82F6;font-weight:600':''}">${p.new_end_date||'-'}</td>
+      </tr>`).join('');
+
+    document.getElementById('payment-table-body').innerHTML =
+      rows || '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted)">결제 내역이 없습니다</td></tr>';
+  } catch(e) {
+    document.getElementById('payment-table-body').innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted)">오류: ${e.message||e}</td></tr>`;
+  }
+}
 </script>
 </body>
 </html>

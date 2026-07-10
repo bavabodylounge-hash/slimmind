@@ -2246,7 +2246,74 @@ app.get('/bodymap-preview', (c) => c.html(bodymapPreviewHtml))
 // /slimmind_live, /slimmind 는 하위 호환용 (기존 공유 링크 보호)
 app.get('/slimmind_live', (c) => c.html(slimmindLiveHtml))
 app.get('/slimmind_live.html', (c) => c.html(slimmindLiveHtml))
-app.get('/slimmind', (c) => c.html(slimmindLiveHtml))
+
+// Feature 7: /slimmind?b2b=B2B-XXX 또는 ?ref=SC-XXXX 쿼리파라미터 지원
+// → 내부적으로 /s/:code 와 동일한 화이트라벨 처리
+app.get('/slimmind', async (c) => {
+  const b2b  = (c.req.query('b2b')  || '').toUpperCase()
+  const ref  = (c.req.query('ref')  || '').toUpperCase()
+  const rediag = c.req.query('rediag') || ''
+  const code = b2b || ref
+
+  // 코드 없으면 기본 설문지
+  if (!code) {
+    let html = slimmindLiveHtml
+    if (rediag) {
+      html = html.replace('</head>', `<script>window.__REDIAG_SESSION__=${JSON.stringify(rediag)};</script></head>`)
+    }
+    return c.html(html)
+  }
+
+  // 코드 있으면 /s/:code 와 동일 로직으로 리다이렉트 (내부 처리)
+  const db = c.env.DB
+  let brandInject = ''
+
+  if (code.startsWith('B2B-')) {
+    const partner = await db.prepare(
+      'SELECT code, name, brand_name, brand_color, brand_logo_url, status FROM b2b_partners WHERE code = ?'
+    ).bind(code).first<any>()
+
+    if (partner && partner.status !== 'suspended') {
+      await db.prepare(
+        "UPDATE b2b_partners SET qr_scan_count = qr_scan_count + 1, updated_at=datetime('now') WHERE code=?"
+      ).bind(code).run()
+
+      const bColor = partner.brand_color || '#6366f1'
+      const bName  = partner.brand_name  || partner.name
+      const bLogo  = partner.brand_logo_url || ''
+
+      brandInject = `
+<script>
+  window.__BRAND__ = {
+    code: "${code}",
+    type: "B2B",
+    brand_name: ${JSON.stringify(bName)},
+    brand_color: "${bColor}",
+    brand_logo_url: ${JSON.stringify(bLogo)},
+    ref_code: "${code}"
+  };
+  document.documentElement.style.setProperty('--brand-color', "${bColor}");
+  document.documentElement.style.setProperty('--brand-color-light', "${bColor}22");
+</script>
+<style>:root{--brand-color:${bColor};--brand-color-light:${bColor}22}
+.v3-header,.v3-progress-bar .fill{background:var(--brand-color)!important}
+.v3-next-btn.ready,.option-btn.selected{background:var(--brand-color)!important}
+.v3-brand-logo{display:block!important}</style>`
+    }
+  } else if (code.startsWith('SC-') || code === 'MASTER') {
+    brandInject = `<script>window.__BRAND__={code:"${code}",type:"CONSULTANT",ref_code:"${code}"};</script>`
+  }
+
+  if (rediag) {
+    brandInject += `<script>window.__REDIAG_SESSION__=${JSON.stringify(rediag)};</script>`
+  }
+
+  let html = slimmindLiveHtml
+  if (brandInject) {
+    html = html.replace('</head>', `${brandInject}</head>`)
+  }
+  return c.html(html)
+})
 
 // ─── /s/:code — B2B/컨설턴트 화이트라벨 진입 라우트 ────────────
 // 예: /s/B2B-AES-001 → 해당 업체 브랜드가 적용된 설문지
@@ -5551,6 +5618,481 @@ app.post('/api/admin/daily-check/remind', requireRole('MASTER'), async (c) => {
   } catch (e: any) {
     return c.json({ error: String(e) }, 500)
   }
+})
+
+// ══════════════════════════════════════════════════════════════════
+//  Feature 5: 토스페이먼츠 결제 연동
+//  플랜: monthly(30,000원/월), yearly(300,000원/년)
+//  흐름: 결제 요청 생성 → 토스 위젯 → 서버 승인 → 구독 연장
+// ══════════════════════════════════════════════════════════════════
+
+const PLANS: Record<string, { label: string; amount: number; months: number }> = {
+  monthly: { label: '월간 구독', amount: 30000, months: 1 },
+  yearly:  { label: '연간 구독', amount: 300000, months: 12 },
+}
+
+// POST /api/payment/prepare  — 주문 생성 (pending 레코드 삽입)
+app.post('/api/payment/prepare', requireRole('ANY'), async (c) => {
+  try {
+    const db   = c.env.DB
+    const user = (c as any).__user
+    const { plan } = await c.req.json<{ plan: string }>()
+
+    const planInfo = PLANS[plan]
+    if (!planInfo) return c.json({ ok: false, error: '유효하지 않은 플랜입니다.' }, 400)
+
+    const cons = await db.prepare(
+      'SELECT code, name, subscription_end FROM consultants WHERE code=?'
+    ).bind(user.code).first<any>()
+    if (!cons) return c.json({ ok: false, error: '컨설턴트 정보 없음' }, 404)
+
+    // UUID 기반 orderId 생성
+    const orderId = `SM-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
+
+    await db.prepare(`
+      INSERT INTO payments (order_id, consultant_code, plan, amount, status, extend_months, prev_end_date)
+      VALUES (?, ?, ?, ?, 'pending', ?, ?)
+    `).bind(orderId, cons.code, plan, planInfo.amount, planInfo.months, cons.subscription_end || null).run()
+
+    return c.json({
+      ok: true,
+      order_id:     orderId,
+      order_name:   `슬림마인드 ${planInfo.label} — ${cons.name}`,
+      amount:       planInfo.amount,
+      customer_name: cons.name,
+      plan,
+    })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// POST /api/payment/confirm  — 토스 승인 + 구독 연장
+app.post('/api/payment/confirm', requireRole('ANY'), async (c) => {
+  try {
+    const db   = c.env.DB
+    const user = (c as any).__user
+    const { paymentKey, orderId, amount } = await c.req.json<{
+      paymentKey: string; orderId: string; amount: number
+    }>()
+
+    // 1) 내부 주문 검증
+    const order = await db.prepare(
+      'SELECT * FROM payments WHERE order_id=? AND consultant_code=? AND status=?'
+    ).bind(orderId, user.code, 'pending').first<any>()
+    if (!order) return c.json({ ok: false, error: '유효하지 않은 주문입니다.' }, 400)
+    if (order.amount !== amount) return c.json({ ok: false, error: '금액 불일치' }, 400)
+
+    // 2) 토스 서버 승인 API 호출
+    const tossSecretKey = (c.env as any).TOSS_SECRET_KEY || ''
+    const basicAuth = btoa(`${tossSecretKey}:`)
+    const tossRes = await fetch('https://api.tosspayments.com/v1/payments/confirm', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${basicAuth}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ paymentKey, orderId, amount }),
+    })
+
+    const tossData: any = await tossRes.json()
+
+    if (!tossRes.ok || tossData.status !== 'DONE') {
+      // 실패 기록
+      await db.prepare(`UPDATE payments SET status='failed', raw_response=? WHERE order_id=?`)
+        .bind(JSON.stringify(tossData), orderId).run()
+      return c.json({ ok: false, error: tossData.message || '결제 승인 실패' }, 400)
+    }
+
+    // 3) 구독 기간 연장 계산
+    const cons = await db.prepare(
+      'SELECT subscription_end FROM consultants WHERE code=?'
+    ).bind(user.code).first<any>()
+
+    const baseDate = cons?.subscription_end && cons.subscription_end > new Date().toISOString().slice(0,10)
+      ? new Date(cons.subscription_end)
+      : new Date()
+
+    const newEnd = new Date(baseDate)
+    newEnd.setMonth(newEnd.getMonth() + order.extend_months)
+    const newEndStr = newEnd.toISOString().slice(0, 10)
+
+    // 4) DB 업데이트 (payments + consultants)
+    await db.prepare(`
+      UPDATE payments
+      SET status='paid', payment_key=?, method=?, approved_at=?, new_end_date=?, raw_response=?
+      WHERE order_id=?
+    `).bind(
+      paymentKey,
+      tossData.method || null,
+      tossData.approvedAt || new Date().toISOString(),
+      newEndStr,
+      JSON.stringify(tossData),
+      orderId
+    ).run()
+
+    await db.prepare(`
+      UPDATE consultants
+      SET subscription_status='active', subscription_end=?, updated_at=datetime('now')
+      WHERE code=?
+    `).bind(newEndStr, user.code).run()
+
+    return c.json({
+      ok: true,
+      new_end_date: newEndStr,
+      method: tossData.method,
+      approved_at: tossData.approvedAt,
+    })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// GET /api/payment/history  — 내 결제 내역
+app.get('/api/payment/history', requireRole('ANY'), async (c) => {
+  try {
+    const db   = c.env.DB
+    const user = (c as any).__user
+    const list = await db.prepare(`
+      SELECT order_id, plan, amount, status, method, approved_at, new_end_date, created_at
+      FROM payments WHERE consultant_code=? ORDER BY created_at DESC LIMIT 20
+    `).bind(user.code).all<any>()
+    return c.json({ ok: true, payments: list.results })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// GET /api/admin/payments  — 관리자 전체 결제 내역
+app.get('/api/admin/payments', requireRole('MASTER'), async (c) => {
+  try {
+    const db = c.env.DB
+    const limit  = parseInt(c.req.query('limit') || '50')
+    const status = c.req.query('status') || ''
+    let q = `SELECT p.*, c.name as consultant_name
+             FROM payments p
+             LEFT JOIN consultants c ON c.code = p.consultant_code
+             WHERE 1=1`
+    const binds: any[] = []
+    if (status) { q += ' AND p.status=?'; binds.push(status) }
+    q += ` ORDER BY p.created_at DESC LIMIT ?`
+    binds.push(limit)
+    const list = await db.prepare(q).bind(...binds).all<any>()
+
+    const stats = await db.prepare(`
+      SELECT
+        COUNT(*) as total_count,
+        SUM(CASE WHEN status='paid' THEN amount ELSE 0 END) as total_revenue,
+        SUM(CASE WHEN status='paid' AND strftime('%Y-%m', created_at)=strftime('%Y-%m','now') THEN amount ELSE 0 END) as this_month_revenue
+      FROM payments
+    `).first<any>()
+
+    return c.json({ ok: true, payments: list.results, stats })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// ══════════════════════════════════════════════════════════════════
+//  Feature 9: 관리자 실시간 매출 & 성장 대시보드
+// ══════════════════════════════════════════════════════════════════
+
+// GET /api/admin/growth-dashboard  — 성장/매출 종합 지표
+app.get('/api/admin/growth-dashboard', requireRole('MASTER'), async (c) => {
+  try {
+    const db  = c.env.DB
+    const now = new Date()
+    const ym  = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`
+    const prevYm = (() => {
+      const d = new Date(now.getFullYear(), now.getMonth()-1, 1)
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`
+    })()
+
+    // 1) 최근 6개월 진단 추이
+    const monthlyTrend = await db.prepare(`
+      SELECT substr(created_at,1,7) AS month, COUNT(*) AS count
+      FROM diagnosis_results
+      WHERE created_at >= date('now','-6 months')
+      GROUP BY month ORDER BY month
+    `).all<any>()
+
+    // 2) 이번달 vs 지난달 비교
+    const thisMonth  = await db.prepare(`SELECT COUNT(*) as cnt FROM diagnosis_results WHERE substr(created_at,1,7)=?`).bind(ym).first<any>()
+    const lastMonth  = await db.prepare(`SELECT COUNT(*) as cnt FROM diagnosis_results WHERE substr(created_at,1,7)=?`).bind(prevYm).first<any>()
+
+    // 3) 구독 결제 매출 (payments 테이블)
+    const revenueThis = await db.prepare(`SELECT SUM(amount) as total FROM payments WHERE status='paid' AND substr(created_at,1,7)=?`).bind(ym).first<any>()
+    const revenueLast = await db.prepare(`SELECT SUM(amount) as total FROM payments WHERE status='paid' AND substr(created_at,1,7)=?`).bind(prevYm).first<any>()
+    const revenueTotal = await db.prepare(`SELECT SUM(amount) as total FROM payments WHERE status='paid'`).first<any>()
+
+    // 4) 컨설턴트 현황
+    const consStats = await db.prepare(`
+      SELECT
+        COUNT(*) as total,
+        SUM(CASE WHEN subscription_status='active' THEN 1 ELSE 0 END) as active,
+        SUM(CASE WHEN subscription_end BETWEEN date('now') AND date('now','+30 days') THEN 1 ELSE 0 END) as expiring_30d,
+        SUM(CASE WHEN created_at >= date('now','-30 days') THEN 1 ELSE 0 END) as new_30d
+      FROM consultants
+    `).first<any>()
+
+    // 5) 일별 진단 (최근 30일)
+    const dailyDiag = await db.prepare(`
+      SELECT substr(created_at,1,10) as day, COUNT(*) as count
+      FROM diagnosis_results
+      WHERE created_at >= date('now','-30 days')
+      GROUP BY day ORDER BY day
+    `).all<any>()
+
+    // 6) BC코드 분포 (이번달)
+    const bcDist = await db.prepare(`
+      SELECT bc_code, COUNT(*) as cnt
+      FROM diagnosis_results
+      WHERE bc_code IS NOT NULL AND substr(created_at,1,7)=?
+      GROUP BY bc_code ORDER BY cnt DESC LIMIT 9
+    `).bind(ym).all<any>()
+
+    // 7) 데일리 체크 참여율
+    const checkStats = await db.prepare(`
+      SELECT
+        COUNT(DISTINCT session_id) as active_users,
+        COUNT(*) as total_checks,
+        ROUND(AVG(CASE WHEN exercise_done=1 THEN 100.0 ELSE 0 END),1) as exercise_rate,
+        ROUND(AVG(CASE WHEN diet_done=1 THEN 100.0 ELSE 0 END),1) as diet_rate
+      FROM daily_checks
+      WHERE check_date >= date('now','-30 days')
+    `).first<any>()
+
+    const thisMonthCount = thisMonth?.cnt || 0
+    const lastMonthCount = lastMonth?.cnt || 0
+    const growth = lastMonthCount > 0 ? Math.round(((thisMonthCount - lastMonthCount) / lastMonthCount) * 100) : 0
+
+    return c.json({
+      ok: true,
+      summary: {
+        this_month_diag:  thisMonthCount,
+        last_month_diag:  lastMonthCount,
+        growth_rate:      growth,
+        revenue_this:     revenueThis?.total  || 0,
+        revenue_last:     revenueLast?.total  || 0,
+        revenue_total:    revenueTotal?.total || 0,
+      },
+      consultants:    consStats,
+      monthly_trend:  monthlyTrend.results,
+      daily_diag:     dailyDiag.results,
+      bc_distribution: bcDist.results,
+      check_stats:    checkStats,
+    })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// ══════════════════════════════════════════════════════════════════
+//  Feature 6: 고객 재진단 알림 시스템
+//  진단 후 30/60/90일 경과 → 컨설턴트에게 재진단 권유 알림 생성
+// ══════════════════════════════════════════════════════════════════
+
+// POST /api/admin/rediagnosis/scan  — 재진단 대상 스캔 및 알림 생성 (관리자/cron)
+app.post('/api/admin/rediagnosis/scan', requireRole('MASTER'), async (c) => {
+  try {
+    const db = c.env.DB
+    const ALERT_DAYS = [30, 60, 90]
+    let created = 0, skipped = 0
+
+    for (const days of ALERT_DAYS) {
+      // 진단일로부터 정확히 days일 ± 1일인 고객 조회
+      const rows = await db.prepare(`
+        SELECT dr.session_id, dr.consultant_code, dr.bc_code, dr.created_at,
+               r.name as customer_name
+        FROM diagnosis_results dr
+        LEFT JOIN results r ON r.session_id = dr.session_id
+        WHERE date(dr.created_at) = date('now', '-${days} days')
+          AND dr.session_id NOT IN (
+            SELECT session_id FROM rediagnosis_alerts WHERE alert_day = ${days}
+          )
+      `).all<any>()
+
+      for (const row of rows.results) {
+        try {
+          await db.prepare(`
+            INSERT OR IGNORE INTO rediagnosis_alerts
+              (session_id, consultant_code, customer_name, bc_code, diagnosed_at, alert_day, status)
+            VALUES (?, ?, ?, ?, ?, ?, 'pending')
+          `).bind(
+            row.session_id,
+            row.consultant_code || null,
+            row.customer_name   || null,
+            row.bc_code         || null,
+            row.created_at      || null,
+            days
+          ).run()
+          created++
+        } catch { skipped++ }
+      }
+    }
+    return c.json({ ok: true, created, skipped })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// GET /api/admin/rediagnosis  — 재진단 알림 목록 (관리자)
+app.get('/api/admin/rediagnosis', requireRole('MASTER'), async (c) => {
+  try {
+    const db     = c.env.DB
+    const status = c.req.query('status') || 'pending'
+    const limit  = parseInt(c.req.query('limit') || '100')
+    const list   = await db.prepare(`
+      SELECT ra.*, c.name as consultant_name
+      FROM rediagnosis_alerts ra
+      LEFT JOIN consultants c ON c.code = ra.consultant_code
+      WHERE ra.status = ?
+      ORDER BY ra.created_at DESC LIMIT ?
+    `).bind(status, limit).all<any>()
+    const counts = await db.prepare(`
+      SELECT status, COUNT(*) as cnt FROM rediagnosis_alerts GROUP BY status
+    `).all<any>()
+    return c.json({ ok: true, alerts: list.results, counts: counts.results })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// GET /api/consultant/rediagnosis  — 내 담당 고객 재진단 알림
+app.get('/api/consultant/rediagnosis', requireRole('ANY'), async (c) => {
+  try {
+    const db   = c.env.DB
+    const user = (c as any).__user
+    const list = await db.prepare(`
+      SELECT * FROM rediagnosis_alerts
+      WHERE consultant_code = ? AND status = 'pending'
+      ORDER BY created_at DESC LIMIT 50
+    `).bind(user.code).all<any>()
+    return c.json({ ok: true, alerts: list.results })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// POST /api/consultant/rediagnosis/:id/dismiss  — 알림 무시 처리
+app.post('/api/consultant/rediagnosis/:id/dismiss', requireRole('ANY'), async (c) => {
+  try {
+    const db   = c.env.DB
+    const user = (c as any).__user
+    const id   = c.req.param('id')
+    await db.prepare(`
+      UPDATE rediagnosis_alerts
+      SET status='dismissed', dismissed_at=datetime('now')
+      WHERE id=? AND consultant_code=?
+    `).bind(id, user.code).run()
+    return c.json({ ok: true })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// POST /api/consultant/rediagnosis/:id/sent  — 재진단 링크 발송 완료 처리
+app.post('/api/consultant/rediagnosis/:id/sent', requireRole('ANY'), async (c) => {
+  try {
+    const db   = c.env.DB
+    const user = (c as any).__user
+    const id   = c.req.param('id')
+    await db.prepare(`
+      UPDATE rediagnosis_alerts
+      SET status='sent', sent_at=datetime('now')
+      WHERE id=? AND consultant_code=?
+    `).bind(id, user.code).run()
+    return c.json({ ok: true })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// GET /payment/success  — 토스 결제 성공 콜백 페이지
+app.get('/payment/success', async (c) => {
+  const paymentKey = c.req.query('paymentKey') || ''
+  const orderId    = c.req.query('orderId')    || ''
+  const amount     = parseInt(c.req.query('amount') || '0')
+
+  // JWT 없이 접근하므로 orderId로 consultant_code 조회 후 승인
+  const db = c.env.DB
+  try {
+    const order = await db.prepare(
+      'SELECT * FROM payments WHERE order_id=? AND status=?'
+    ).bind(orderId, 'pending').first<any>()
+
+    if (!order) {
+      return c.html(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>결제 오류</title>
+        <script>setTimeout(()=>location.href='/consultant.html',3000)</script></head>
+        <body style="font-family:sans-serif;text-align:center;padding:60px">
+        <div style="font-size:48px">❌</div>
+        <h2>주문 정보를 찾을 수 없습니다</h2>
+        <p>3초 후 대시보드로 이동합니다...</p></body></html>`)
+    }
+
+    const planInfo: Record<string, {months:number}> = { monthly:{months:1}, yearly:{months:12} }
+    const tossSecretKey = (c.env as any).TOSS_SECRET_KEY || ''
+    const basicAuth = btoa(`${tossSecretKey}:`)
+    const tossRes = await fetch('https://api.tosspayments.com/v1/payments/confirm', {
+      method: 'POST',
+      headers: { 'Authorization': `Basic ${basicAuth}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paymentKey, orderId, amount }),
+    })
+    const tossData: any = await tossRes.json()
+
+    if (!tossRes.ok || tossData.status !== 'DONE') {
+      await db.prepare(`UPDATE payments SET status='failed', raw_response=? WHERE order_id=?`)
+        .bind(JSON.stringify(tossData), orderId).run()
+      return c.html(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>결제 실패</title>
+        <script>setTimeout(()=>location.href='/consultant.html#payment',3000)</script></head>
+        <body style="font-family:sans-serif;text-align:center;padding:60px">
+        <div style="font-size:48px">❌</div><h2>결제에 실패했습니다</h2>
+        <p>${tossData.message||'알 수 없는 오류'}</p>
+        <p>3초 후 대시보드로 이동합니다...</p></body></html>`)
+    }
+
+    // 구독 연장
+    const cons = await db.prepare('SELECT subscription_end FROM consultants WHERE code=?')
+      .bind(order.consultant_code).first<any>()
+    const baseDate = cons?.subscription_end && cons.subscription_end > new Date().toISOString().slice(0,10)
+      ? new Date(cons.subscription_end) : new Date()
+    const newEnd = new Date(baseDate)
+    newEnd.setMonth(newEnd.getMonth() + order.extend_months)
+    const newEndStr = newEnd.toISOString().slice(0, 10)
+
+    await db.prepare(`UPDATE payments SET status='paid', payment_key=?, method=?, approved_at=?, new_end_date=?, raw_response=? WHERE order_id=?`)
+      .bind(paymentKey, tossData.method||null, tossData.approvedAt||new Date().toISOString(), newEndStr, JSON.stringify(tossData), orderId).run()
+    await db.prepare(`UPDATE consultants SET subscription_status='active', subscription_end=?, updated_at=datetime('now') WHERE code=?`)
+      .bind(newEndStr, order.consultant_code).run()
+
+    return c.html(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>결제 완료</title>
+      <script>setTimeout(()=>location.href='/consultant.html',4000)</script>
+      <style>body{font-family:'Pretendard',sans-serif;text-align:center;padding:60px;background:#F8FAFC}</style></head>
+      <body>
+        <div style="font-size:64px;margin-bottom:20px">🎉</div>
+        <h2 style="font-size:24px;font-weight:800;color:#1E293B;margin-bottom:12px">결제가 완료되었습니다!</h2>
+        <p style="color:#64748B;font-size:15px">구독 만료일이 <b style="color:#3B82F6">${newEndStr}</b>로 연장되었습니다.</p>
+        <p style="color:#94A3B8;font-size:13px;margin-top:8px">결제 수단: ${tossData.method||'-'}</p>
+        <p style="color:#94A3B8;font-size:13px">4초 후 대시보드로 이동합니다...</p>
+      </body></html>`)
+  } catch (e: any) {
+    return c.html(`<body>오류: ${String(e)}</body>`)
+  }
+})
+
+// GET /payment/fail  — 토스 결제 실패 콜백
+app.get('/payment/fail', (c) => {
+  const msg  = c.req.query('message') || '결제가 취소되었습니다.'
+  const code = c.req.query('code') || ''
+  return c.html(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>결제 취소</title>
+    <script>setTimeout(()=>location.href='/consultant.html',3000)</script>
+    <style>body{font-family:sans-serif;text-align:center;padding:60px;background:#F8FAFC}</style></head>
+    <body>
+      <div style="font-size:48px;margin-bottom:16px">😢</div>
+      <h2 style="color:#1E293B">결제가 취소되었습니다</h2>
+      <p style="color:#64748B">${msg}${code ? ` (${code})` : ''}</p>
+      <p style="color:#94A3B8;font-size:13px">3초 후 대시보드로 이동합니다...</p>
+    </body></html>`)
 })
 
 export default app
