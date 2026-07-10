@@ -1618,7 +1618,7 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
         const ogNameEnc  = encodeURIComponent(ogName.slice(0,20))
         const siteBase   = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.kr' } })()
         const ogUrl      = `${siteBase}/result/${id}`
-        const ogImage    = `${siteBase}/og/result?name=${ogNameEnc}&bc=${encodeURIComponent(ogBcCode)}&nick=${ogNickEnc}`
+        const ogImage    = `${siteBase}/static/og-slimmind.png`
         const ogTitle    = `${ogName}님의 바디코드 분석 완료 — ${ogBcCode} ${ogNickname}`
         const ogDesc     = `반복되는 다이어트 실패, 그 진짜 원인이 밝혀졌습니다. ${ogName}님의 체형 코드는 '${ogNickname}'. 지금 바로 결과를 확인하고 1:1 전문 컨설팅으로 나만의 처방을 받아보세요.`
         const ogMeta = `
@@ -1630,7 +1630,7 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
 <meta property="og:image"          content="${ogImage}">
 <meta property="og:image:width"    content="1200">
 <meta property="og:image:height"   content="630">
-<meta property="og:image:type"     content="image/svg+xml">
+<meta property="og:image:type"     content="image/png">
 <meta name="twitter:card"          content="summary_large_image">
 <meta name="twitter:title"         content="${ogTitle}">
 <meta name="twitter:description"   content="${ogDesc}">
@@ -2180,7 +2180,7 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
   const ogNameEncR    = encodeURIComponent(ogNameR.slice(0,20))
   const siteBaseR     = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.kr' } })()
   const ogUrlR        = `${siteBaseR}/result/${id}`
-  const ogImageR      = `${siteBaseR}/og/result?name=${ogNameEncR}&bc=${encodeURIComponent(ogBcCodeR)}&nick=${ogNickEncR}`
+  const ogImageR      = `${siteBaseR}/static/og-slimmind.png`
   const ogTitleR      = `${ogNameR}님의 바디코드 분석 완료 — ${ogBcCodeR} ${ogNicknameR}`
   const ogDescR       = `반복되는 다이어트 실패, 그 진짜 원인이 밝혀졌습니다. ${ogNameR}님의 체형 코드는 '${ogNicknameR}'. 지금 바로 결과를 확인하고 1:1 전문 컨설팅으로 나만의 처방을 받아보세요.`
   const ogMetaR = `
@@ -2192,7 +2192,7 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
 <meta property="og:image"          content="${ogImageR}">
 <meta property="og:image:width"    content="1200">
 <meta property="og:image:height"   content="630">
-<meta property="og:image:type"     content="image/svg+xml">
+<meta property="og:image:type"     content="image/png">
 <meta name="twitter:card"          content="summary_large_image">
 <meta name="twitter:title"         content="${ogTitleR}">
 <meta name="twitter:description"   content="${ogDescR}">
@@ -2384,7 +2384,7 @@ app.get('/s/:code', async (c) => {
   const siteBaseS = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.kr' } })()
   const ogUrlS    = `${siteBaseS}/s/${rawCode}`
   // 카카오톡 최적화: SVG 대신 PNG 직접 참조 → 흰 여백 없이 가로형 표시
-  const ogImageS  = `${siteBaseS}/static/og_survey.png`
+  const ogImageS  = `${siteBaseS}/static/og-slimmind.png`
 
   // B2B 파트너면 브랜드명 활용, 컨설턴트면 기본 SlimMind 브랜드
   let ogTitleS = 'SlimMind | 바디코드 정밀 진단'
@@ -2649,7 +2649,7 @@ app.get('/favicon.ico', async (c) => {
 // ─── /og/survey — 설문 공유용 OG 이미지 (정적 PNG 리다이렉트, 카카오 최적화) ──
 // SVG 대신 정적 PNG를 직접 서빙 → 카카오톡/SNS에서 흰 여백 없이 가로형으로 표시
 app.get('/og/survey', (c) => {
-  return c.redirect('/static/og_survey.png', 302)
+  return c.redirect('/static/og-slimmind.png', 302)
 })
 
 // ─── /og/survey-svg — SVG 원본 (디버그용) ──
@@ -2759,139 +2759,10 @@ app.get('/og/survey-svg', (c) => {
   })
 })
 
-// ─── /og/result — 결과지 공유용 OG 이미지 (시인성 최우선 개선) ──────────
-// 쿼리: ?name=홍길동&bc=BC-3&nick=하복부+지방형
+// ─── /og/result — og-slimmind.png 리다이렉트 (한글 폰트 깨짐 방지) ──────────
 app.get('/og/result', (c) => {
-  const name = c.req.query('name') || '고객'
-  const bc   = c.req.query('bc')   || 'BC'
-  const nick = c.req.query('nick') || '바디코드'
-  const safe = (s: string) => s.replace(/[<>"'&\\]/g, '').slice(0, 40)
-  const safeName = safe(name)
-  const safeBc   = safe(bc)
-  const safeNick = safe(nick)
-
-  const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg"
-     width="630" height="1200" viewBox="0 0 630 1200">
-  <defs>
-    <linearGradient id="bgR" x1="0" y1="0" x2="0.2" y2="1">
-      <stop offset="0%"   stop-color="#1c1a16"/>
-      <stop offset="100%" stop-color="#0e0c09"/>
-    </linearGradient>
-    <linearGradient id="amberR" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%"   stop-color="#d4923f"/>
-      <stop offset="100%" stop-color="#e8b055"/>
-    </linearGradient>
-    <radialGradient id="glowR" cx="0.9" cy="0.05" r="0.55">
-      <stop offset="0%"   stop-color="#b5452e" stop-opacity="0.28"/>
-      <stop offset="100%" stop-color="#1c1a16" stop-opacity="0"/>
-    </radialGradient>
-  </defs>
-
-  <!-- 배경 -->
-  <rect width="630" height="1200" fill="url(#bgR)"/>
-  <rect width="630" height="1200" fill="url(#glowR)"/>
-
-  <!-- 좌측 클레이 강조선 -->
-  <rect x="0" y="0" width="5" height="1200" fill="#b5452e" opacity="0.85"/>
-
-  <!-- ══ 핵심 영역: y 55~520 (상단 43%) — 카카오 crop 시 온전히 보임 ══ -->
-
-  <!-- 브랜드 -->
-  <text x="72" y="78"
-        font-family="Georgia,'Times New Roman',serif"
-        font-size="11" letter-spacing="7"
-        fill="#c98a3c">SLIMMIND</text>
-  <rect x="72" y="88" width="380" height="0.8" fill="#f6f4ee" opacity="0.15"/>
-  <text x="72" y="106"
-        font-family="'Apple SD Gothic Neo','Malgun Gothic',sans-serif"
-        font-size="11" letter-spacing="2"
-        fill="#c98a3c" opacity="0.60">바디코드 정밀 분석</text>
-
-  <!-- 고객 이름 — y:148 -->
-  <text x="72" y="148"
-        font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
-        font-size="15" letter-spacing="1"
-        fill="#f0ece2" opacity="0.75">${safeName}님의 바디코드 분석이 완료되었습니다</text>
-
-  <!-- BC 코드 배경 블록 -->
-  <rect x="60" y="165" width="510" height="130" rx="6" fill="#b5452e" opacity="0.10"/>
-  <rect x="60" y="165" width="5"   height="130" rx="2" fill="#b5452e" opacity="0.90"/>
-
-  <!-- BC 코드 대형 — y:270 -->
-  <text x="315" y="272"
-        text-anchor="middle"
-        font-family="Georgia,'Times New Roman',serif"
-        font-size="108" font-weight="700" letter-spacing="2"
-        fill="#c9563a">${safeBc}</text>
-
-  <!-- 닉네임 구분선 + 텍스트 — y:310~340 -->
-  <rect x="72" y="308" width="300" height="0.8" fill="#c98a3c" opacity="0.45"/>
-  <text x="72" y="340"
-        font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
-        font-size="24" letter-spacing="3" font-weight="500"
-        fill="#f0ece2">${safeNick}</text>
-
-  <!-- 분석 항목 — y:390~460 -->
-  <rect x="60" y="372" width="510" height="0.8" fill="#f6f4ee" opacity="0.10"/>
-
-  <rect x="72" y="393" width="3" height="20" rx="1.5" fill="#c98a3c"/>
-  <text x="88" y="408"
-        font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
-        font-size="16" fill="#f0ece2">체형 원인 분석 완료</text>
-
-  <rect x="72" y="425" width="3" height="20" rx="1.5" fill="#c98a3c"/>
-  <text x="88" y="440"
-        font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
-        font-size="16" fill="#f0ece2">맞춤 식단 처방 준비 완료</text>
-
-  <rect x="72" y="457" width="3" height="20" rx="1.5" fill="#c98a3c"/>
-  <text x="88" y="472"
-        font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
-        font-size="16" fill="#f0ece2">전문가 1:1 케어 프로그램 연결 가능</text>
-
-  <!-- CTA 버튼 — y:500 (상단 42%) -->
-  <rect x="60" y="492" width="510" height="0.8" fill="#f6f4ee" opacity="0.10"/>
-  <rect x="72" y="510" width="300" height="52" rx="8" fill="url(#amberR)"/>
-  <text x="222" y="542"
-        text-anchor="middle"
-        font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
-        font-size="16" letter-spacing="2" font-weight="700"
-        fill="#1a1a17">컨설팅 바로 예약하기</text>
-
-  <!-- ══ 하단 여백 (잘려도 괜찮음) ══ -->
-  <rect x="60" y="620" width="510" height="0.8" fill="#f6f4ee" opacity="0.08"/>
-
-  <text x="72" y="680"
-        font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
-        font-size="22" font-weight="700"
-        fill="#f0ece2" opacity="0.85">지금 바로 1:1 전문 컨설팅을</text>
-  <text x="72" y="714"
-        font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
-        font-size="22" font-weight="700"
-        fill="#f0ece2" opacity="0.85">예약하고 처방을 받아보세요.</text>
-  <text x="72" y="754"
-        font-family="'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif"
-        font-size="13"
-        fill="#c98a3c" opacity="0.80">반복 실패 없이, 원인부터 해결하는 맞춤 프로그램</text>
-
-  <text x="315" y="1100"
-        text-anchor="middle"
-        font-family="Georgia,'Times New Roman',serif"
-        font-size="11" letter-spacing="6"
-        fill="#c98a3c" opacity="0.35">PREMIUM BODY CODE ANALYSIS</text>
-  <text x="315" y="1150"
-        text-anchor="middle"
-        font-family="Georgia,serif"
-        font-size="10" letter-spacing="4"
-        fill="#f6f4ee" opacity="0.18">slimmind.kr</text>
-
-  <rect x="0" y="1196" width="630" height="4" fill="#b5452e" opacity="0.55"/>
-</svg>`
-  return c.body(svg, 200, {
-    'Content-Type': 'image/svg+xml',
-    'Cache-Control': 'public, max-age=3600',
-  })
+  const origin = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.kr' } })()
+  return c.redirect(`${origin}/static/og-slimmind.png`, 302)
 })
 
 /* ═══════════════════════════════════════════════════════
