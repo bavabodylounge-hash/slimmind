@@ -1937,6 +1937,95 @@ body{background:var(--paper);color:var(--ink);min-height:100vh;}
 }
 /* ===== /기능 6 ===== */
 
+/* ===== Feature 11: 인스타그램 공유 카드 (1080×1920) ===== */
+#instaCardModal {
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(0,0,0,.88); backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity .3s;
+  padding: 16px;
+}
+#instaCardModal.ic-open { opacity: 1; pointer-events: auto; }
+.ic-sheet {
+  width: 100%; max-width: 400px;
+  background: #1a1510;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 24px 80px rgba(0,0,0,.7);
+  display: flex; flex-direction: column;
+  max-height: 92vh;
+}
+.ic-hd {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(245,236,224,.08);
+}
+.ic-hd-title { font-size: 15px; font-weight: 800; color: #f5ece0; }
+.ic-hd-close {
+  background: none; border: none; color: rgba(245,236,224,.5);
+  font-size: 20px; cursor: pointer; padding: 4px; line-height: 1;
+}
+.ic-skin-row {
+  display: flex; gap: 8px; padding: 12px 20px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.ic-skin-btn {
+  flex-shrink: 0;
+  padding: 6px 14px; border-radius: 20px;
+  border: 1.5px solid rgba(245,236,224,.15);
+  background: transparent;
+  color: rgba(245,236,224,.6);
+  font-size: 12px; font-weight: 700;
+  cursor: pointer; transition: all .2s;
+}
+.ic-skin-btn.active {
+  border-color: #e05c3a;
+  color: #e05c3a;
+  background: rgba(224,92,58,.1);
+}
+.ic-preview-wrap {
+  padding: 0 20px;
+  flex: 1; overflow-y: auto;
+  display: flex; justify-content: center;
+}
+.ic-preview-wrap canvas {
+  border-radius: 12px;
+  width: 100%; height: auto;
+  display: block;
+}
+.ic-actions {
+  padding: 16px 20px;
+  display: flex; gap: 10px;
+  border-top: 1px solid rgba(245,236,224,.08);
+}
+.ic-btn {
+  flex: 1; padding: 14px; border-radius: 14px;
+  border: none; cursor: pointer;
+  font-size: 13px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  transition: transform .15s, box-shadow .2s;
+}
+.ic-btn:active { transform: scale(.97); }
+.ic-btn-dl {
+  background: linear-gradient(135deg, #b5452e, #e05c3a);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(181,69,46,.4);
+}
+.ic-btn-dl:hover { box-shadow: 0 6px 22px rgba(181,69,46,.55); transform: translateY(-1px); }
+.ic-btn-copy {
+  background: rgba(245,236,224,.08);
+  color: rgba(245,236,224,.7);
+  border: 1px solid rgba(245,236,224,.12);
+}
+.ic-guide {
+  padding: 8px 20px 16px;
+  font-size: 11px; color: rgba(245,236,224,.35);
+  text-align: center; line-height: 1.5;
+}
+/* ===== /Feature 11 ===== */
+
 /* ===== 기능 5: 익명 통계 비교 카드 ===== */
 #statsCard {
   margin: 24px 0;
@@ -6276,6 +6365,41 @@ p, div, span, h1, h2, h3, h4{
 <!-- 링크 복사 완료 토스트 -->
 <div id="shareCopyToast" role="status" aria-live="polite">🔗 링크가 복사되었어요!</div>
 <!-- ===== /기능 6 ===== -->
+
+<!-- ===== Feature 11: 인스타그램 공유 카드 모달 ===== -->
+<div id="instaCardModal" onclick="if(event.target===this)closeInstaCard()" role="dialog" aria-modal="true" aria-label="인스타그램 공유 카드 만들기">
+  <div class="ic-sheet">
+    <div class="ic-hd">
+      <div class="ic-hd-title">📸 인스타 스토리 카드</div>
+      <button class="ic-hd-close" onclick="closeInstaCard()">✕</button>
+    </div>
+    <!-- 스킨 선택 -->
+    <div class="ic-skin-row" id="icSkinRow">
+      <button class="ic-skin-btn active" onclick="icChangeSkin('dark')" data-skin="dark">🌑 다크</button>
+      <button class="ic-skin-btn" onclick="icChangeSkin('warm')" data-skin="warm">🔥 웜톤</button>
+      <button class="ic-skin-btn" onclick="icChangeSkin('aurora')" data-skin="aurora">🌌 오로라</button>
+      <button class="ic-skin-btn" onclick="icChangeSkin('mint')" data-skin="mint">🌊 민트</button>
+      <button class="ic-skin-btn" onclick="icChangeSkin('gold')" data-skin="gold">✨ 골드</button>
+    </div>
+    <!-- 카드 미리보기 -->
+    <div class="ic-preview-wrap" id="icPreviewWrap">
+      <div style="color:rgba(245,236,224,.4);text-align:center;padding:40px 0;font-size:14px;">생성 중...</div>
+    </div>
+    <!-- 안내 -->
+    <div class="ic-guide">📲 저장 후 인스타그램 스토리에 업로드하세요</div>
+    <!-- 액션 버튼 -->
+    <div class="ic-actions">
+      <button class="ic-btn ic-btn-dl" onclick="icDownload()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 15l-4-4h3V5h2v6h3l-4 4zm-5 4h10v-2H7v2z" fill="#fff"/></svg>
+        이미지 저장
+      </button>
+      <button class="ic-btn ic-btn-copy" onclick="icCopyLink()">
+        🔗 링크 복사
+      </button>
+    </div>
+  </div>
+</div>
+<!-- ===== /Feature 11 ===== -->
 
 <!-- ─── JS ─── -->
 <script>
@@ -15030,18 +15154,365 @@ function p7AnimAgeCount() {
 
 // P7 인스타 스토리 공유
 function p7ShareInsta() {
-  // 결과 링크 복사 후 안내 (인스타 Web API 미지원)
+  openInstaCard();
+}
+
+/* ===== Feature 11: 인스타그램 공유 카드 (1080×1920) ===== */
+let _icSkin = 'dark';
+let _icCanvas = null;
+
+const IC_SKINS = {
+  dark: {
+    bg0: '#0d0a07', bg1: '#1e1208', bg2: '#0a0705',
+    glow1: 'rgba(181,69,46,.22)', glow2: 'rgba(80,140,220,.14)',
+    accent: '#e05c3a', accentEnd: '#f0906a',
+    text: '#f5ece0', textSub: 'rgba(245,236,224,.55)',
+    brand: 'rgba(245,236,224,.25)',
+    barBg: 'rgba(245,236,224,.08)',
+    tagBg: 'rgba(181,69,46,.15)', tagBorder: 'rgba(181,69,46,.3)',
+    frame: 'rgba(181,69,46,.35)',
+  },
+  warm: {
+    bg0: '#180b00', bg1: '#2e1400', bg2: '#120900',
+    glow1: 'rgba(220,120,40,.28)', glow2: 'rgba(180,70,30,.18)',
+    accent: '#f07020', accentEnd: '#ffa060',
+    text: '#fff8f0', textSub: 'rgba(255,248,240,.5)',
+    brand: 'rgba(255,248,240,.22)',
+    barBg: 'rgba(255,248,240,.09)',
+    tagBg: 'rgba(240,112,32,.15)', tagBorder: 'rgba(240,112,32,.35)',
+    frame: 'rgba(240,112,32,.4)',
+  },
+  aurora: {
+    bg0: '#06080f', bg1: '#0d1520', bg2: '#040609',
+    glow1: 'rgba(80,160,255,.2)', glow2: 'rgba(160,80,255,.15)',
+    accent: '#5090e0', accentEnd: '#a070f0',
+    text: '#e8f0ff', textSub: 'rgba(232,240,255,.5)',
+    brand: 'rgba(232,240,255,.22)',
+    barBg: 'rgba(232,240,255,.08)',
+    tagBg: 'rgba(80,144,224,.12)', tagBorder: 'rgba(80,144,224,.3)',
+    frame: 'rgba(100,140,240,.35)',
+  },
+  mint: {
+    bg0: '#040e0c', bg1: '#081a15', bg2: '#030a08',
+    glow1: 'rgba(50,180,140,.22)', glow2: 'rgba(30,120,100,.15)',
+    accent: '#28c09a', accentEnd: '#60e0c0',
+    text: '#e0fff8', textSub: 'rgba(224,255,248,.5)',
+    brand: 'rgba(224,255,248,.22)',
+    barBg: 'rgba(224,255,248,.08)',
+    tagBg: 'rgba(40,192,154,.12)', tagBorder: 'rgba(40,192,154,.3)',
+    frame: 'rgba(40,192,154,.35)',
+  },
+  gold: {
+    bg0: '#100c00', bg1: '#1e1600', bg2: '#0c0900',
+    glow1: 'rgba(220,180,30,.22)', glow2: 'rgba(180,120,20,.14)',
+    accent: '#c8a020', accentEnd: '#f0d060',
+    text: '#fff8e0', textSub: 'rgba(255,248,224,.5)',
+    brand: 'rgba(255,248,224,.22)',
+    barBg: 'rgba(255,248,224,.08)',
+    tagBg: 'rgba(200,160,32,.12)', tagBorder: 'rgba(200,160,32,.3)',
+    frame: 'rgba(200,160,32,.38)',
+  },
+};
+
+// BC 코드별 특성 태그
+const IC_BC_TAGS = {
+  'BC-1': ['🔥 고대사', '💧 수분저류', '⚡ 에너지 기복', '🧊 냉증'],
+  'BC-2': ['🌀 복합형', '🔥 내열↑', '💦 발한多', '⚡ 대사활성'],
+  'BC-3': ['💪 근지구력↑', '🧘 회복력', '🌿 섬유질친화', '❄️ 냉성'],
+  'BC-4': ['🍃 소화예민', '😴 수면影響', '🌾 탄수감수성', '💛 황색대사'],
+  'BC-5': ['⚡ 폭발력', '🔥 발열체질', '💦 수분부족', '🌡️ 체온高'],
+  'BC-6': ['🌊 수분저류', '🍀 복합대사', '⚖️ 균형형', '🌸 순환'],
+  'BC-7': ['🍖 단백친화', '⚡ 빠른대사', '🔥 지방분해↑', '💪 근육발달'],
+  'BC-8': ['🌿 식물성', '🧘 안정형', '💚 저자극', '🌱 섬유질↑'],
+  'BC-9': ['🍭 당질감수성', '😴 수면影響', '🌙 야간대사↓', '🍬 인슐린'],
+  'BC-10':['🔁 순환형', '💦 부종주의', '🌡️ 체온조절', '⚖️ 균형'],
+};
+
+// BC 코드별 슬로건
+const IC_BC_SLOGAN = {
+  'BC-1': '지방 축적 억제, 냉증 개선이 핵심',
+  'BC-2': '내열·발한 조절로 체중 관리',
+  'BC-3': '근지구력과 회복력이 강점',
+  'BC-4': '소화·수면 관리가 다이어트 열쇠',
+  'BC-5': '폭발적 운동 능력, 수분 보충 필수',
+  'BC-6': '수분·순환 균형으로 건강 유지',
+  'BC-7': '단백질 대사 우수, 근육 발달 유리',
+  'BC-8': '식물성 식단과 안정형 대사',
+  'BC-9': '당질 조절과 수면 개선이 핵심',
+  'BC-10':'순환·부종 관리로 체형 개선',
+};
+
+// 11축 정보
+const IC_AXIS_LABELS = {
+  metabolism: '대사율', fat_storage: '지방축적', muscle: '근발달',
+  water_retention: '수분저류', hormonal: '호르몬', digestion: '소화력',
+  stress: '스트레스', sleep: '수면질', cardiovascular: '심혈관',
+  energy: '에너지', inflammation: '염증성',
+};
+
+function openInstaCard() {
+  document.getElementById('instaCardModal').classList.add('ic-open');
+  document.body.style.overflow = 'hidden';
+  _icSkin = 'dark';
+  // 스킨 버튼 초기화
+  document.querySelectorAll('.ic-skin-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.skin === 'dark');
+  });
+  setTimeout(() => buildInstaCanvas(), 50);
+}
+function closeInstaCard() {
+  document.getElementById('instaCardModal').classList.remove('ic-open');
+  document.body.style.overflow = '';
+}
+function icChangeSkin(skin) {
+  _icSkin = skin;
+  document.querySelectorAll('.ic-skin-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.skin === skin);
+  });
+  buildInstaCanvas();
+}
+
+async function buildInstaCanvas() {
+  const W = 1080, H = 1920;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  const s = IC_SKINS[_icSkin] || IC_SKINS.dark;
+
+  // --- 데이터 수집 ---
+  const d = _shareData || {};
+  const rawCode = d.bcCode || 'BC-6';
+  const bcCode = String(rawCode).startsWith('BC-') ? rawCode : 'BC-' + rawCode;
+  const userName = d.userName || '나';
+  const inputData = window.__DIAG_DATA__ || window.__RESULT__ || {};
+  const axisScores = inputData.axis_scores || inputData.axisScores || {};
+  const topAxes = inputData.top_axes || [];
+  const nickname = d.nickname || (IC_BC_TAGS[bcCode] ? bcCode : bcCode);
+  const slogan = IC_BC_SLOGAN[bcCode] || '나만의 바디코드를 발견했어요';
+  const tags = IC_BC_TAGS[bcCode] || ['🔥 체형분석', '💪 맞춤관리', '🌿 건강습관'];
+  const goalWeight = inputData.goal_weight || inputData.target_weight || null;
+  const curWeight = inputData.weight || null;
+
+  // --- 헬퍼 함수 ---
+  const round = (x, r) => { ctx.beginPath(); ctx.moveTo(x[0]+r, x[1]); ctx.lineTo(x[0]+x[2]-r, x[1]); ctx.quadraticCurveTo(x[0]+x[2],x[1],x[0]+x[2],x[1]+r); ctx.lineTo(x[0]+x[2],x[1]+x[3]-r); ctx.quadraticCurveTo(x[0]+x[2],x[1]+x[3],x[0]+x[2]-r,x[1]+x[3]); ctx.lineTo(x[0]+r,x[1]+x[3]); ctx.quadraticCurveTo(x[0],x[1]+x[3],x[0],x[1]+x[3]-r); ctx.lineTo(x[0],x[1]+r); ctx.quadraticCurveTo(x[0],x[1],x[0]+r,x[1]); ctx.closePath(); };
+  const addGlow = (x, y, r, color) => { const g = ctx.createRadialGradient(x,y,0,x,y,r); g.addColorStop(0,color); g.addColorStop(1,'transparent'); ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); };
+
+  // ① 배경
+  const bg = ctx.createLinearGradient(0,0,W,H);
+  bg.addColorStop(0, s.bg0); bg.addColorStop(0.5, s.bg1); bg.addColorStop(1, s.bg2);
+  ctx.fillStyle = bg; ctx.fillRect(0,0,W,H);
+
+  // ② 광원 효과
+  addGlow(W*0.15, H*0.12, 500, s.glow1);
+  addGlow(W*0.85, H*0.88, 420, s.glow2);
+  addGlow(W*0.5,  H*0.5,  350, 'rgba(0,0,0,.15)');
+
+  // ③ 상단 프레임 장식
+  ctx.strokeStyle = s.frame; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(80,80); ctx.lineTo(80,160); ctx.moveTo(80,80); ctx.lineTo(200,80); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(W-80,80); ctx.lineTo(W-80,160); ctx.moveTo(W-80,80); ctx.lineTo(W-200,80); ctx.stroke();
+
+  // ④ 브랜드 로고
+  ctx.font = '600 42px sans-serif';
+  ctx.fillStyle = s.brand;
+  ctx.textAlign = 'center';
+  ctx.fillText('SLIMMIND', W/2, 130);
+
+  // ⑤ 구분선 (상단)
+  const line1 = ctx.createLinearGradient(0,0,W,0);
+  line1.addColorStop(0,'transparent'); line1.addColorStop(0.5,s.frame); line1.addColorStop(1,'transparent');
+  ctx.strokeStyle = line1; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(80,170); ctx.lineTo(W-80,170); ctx.stroke();
+
+  // ⑥ 서브타이틀
+  ctx.font = '500 46px sans-serif';
+  ctx.fillStyle = s.textSub;
+  ctx.fillText('바디코드 분석 결과', W/2, 250);
+
+  // ⑦ 이름
+  ctx.font = '800 64px sans-serif';
+  ctx.fillStyle = s.text;
+  ctx.fillText(`${userName}님`, W/2, 340);
+
+  // ⑧ BC 코드 (메인)
+  ctx.font = '900 260px sans-serif';
+  const codeGrad = ctx.createLinearGradient(W/2-300, 360, W/2+300, 640);
+  codeGrad.addColorStop(0, s.accent); codeGrad.addColorStop(1, s.accentEnd);
+  ctx.fillStyle = codeGrad;
+  ctx.fillText(bcCode, W/2, 640);
+
+  // ⑨ 닉네임
+  ctx.font = '700 52px sans-serif';
+  ctx.fillStyle = s.textSub;
+  ctx.fillText(nickname, W/2, 710);
+
+  // ⑩ 구분선 (중단)
+  const line2 = ctx.createLinearGradient(0,0,W,0);
+  line2.addColorStop(0,'transparent'); line2.addColorStop(0.5,s.frame); line2.addColorStop(1,'transparent');
+  ctx.strokeStyle = line2; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(120,760); ctx.lineTo(W-120,760); ctx.stroke();
+
+  // ⑪ 슬로건 (2줄 처리)
+  ctx.font = '600 40px sans-serif';
+  ctx.fillStyle = s.textSub;
+  const words = slogan.split(' ');
+  const mid = Math.ceil(words.length/2);
+  const line1txt = words.slice(0,mid).join(' ');
+  const line2txt = words.slice(mid).join(' ');
+  ctx.fillText(line1txt, W/2, 820);
+  if (line2txt) ctx.fillText(line2txt, W/2, 870);
+
+  // ⑫ 특성 태그 (가로 배치)
+  const tagY = 940; const tagH = 72; const tagR = 36;
+  const tagPad = 32; const tagGap = 20;
+  ctx.font = '700 34px sans-serif';
+  let tagWidths = tags.map(t => ctx.measureText(t).width + tagPad*2);
+  let totalTagW = tagWidths.reduce((a,b)=>a+b,0) + tagGap*(tags.length-1);
+  let tagStartX = (W - totalTagW)/2;
+  tags.forEach((tag, i) => {
+    const tw = tagWidths[i];
+    const tx = tagStartX;
+    ctx.fillStyle = s.tagBg;
+    round([tx, tagY, tw, tagH], tagR);
+    ctx.fill();
+    ctx.strokeStyle = s.tagBorder; ctx.lineWidth = 1.5;
+    round([tx, tagY, tw, tagH], tagR);
+    ctx.stroke();
+    ctx.fillStyle = s.text;
+    ctx.fillText(tag, tx + tw/2, tagY + tagH*0.65);
+    tagStartX += tw + tagGap;
+  });
+
+  // ⑬ 축 스코어 바 (상위 5개)
+  const axisEntries = Object.entries(axisScores).filter(([k,v])=>v>0).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  if (axisEntries.length > 0) {
+    const barSectionY = 1060;
+    ctx.font = '700 36px sans-serif';
+    ctx.fillStyle = s.textSub;
+    ctx.fillText('진단 축 스코어', W/2, barSectionY);
+
+    const barL = 120, barW = W-240, barH = 30, barGap = 80;
+    axisEntries.forEach(([key, val], idx) => {
+      const by = barSectionY + 50 + idx * barGap;
+      const label = IC_AXIS_LABELS[key] || key;
+      const pct = Math.min(100, Math.max(0, Number(val)));
+
+      // 라벨
+      ctx.font = '600 32px sans-serif';
+      ctx.fillStyle = s.textSub;
+      ctx.textAlign = 'left';
+      ctx.fillText(label, barL, by + 22);
+
+      // 수치
+      ctx.textAlign = 'right';
+      ctx.fillStyle = s.accent;
+      ctx.font = '800 34px sans-serif';
+      ctx.fillText(Math.round(pct), barL+barW, by + 22);
+
+      // 배경 바
+      ctx.fillStyle = s.barBg;
+      round([barL, by+36, barW, barH], barH/2);
+      ctx.fill();
+
+      // 채워진 바
+      const barGrad = ctx.createLinearGradient(barL,0,barL+barW*pct/100,0);
+      barGrad.addColorStop(0, s.accent); barGrad.addColorStop(1, s.accentEnd);
+      ctx.fillStyle = barGrad;
+      round([barL, by+36, Math.max(barH, barW*pct/100), barH], barH/2);
+      ctx.fill();
+
+      ctx.textAlign = 'center';
+    });
+  }
+
+  // ⑭ 목표 정보 (있을 때)
+  if (curWeight || goalWeight) {
+    const goalY = axisEntries.length > 0 ? 1530 : 1200;
+    ctx.fillStyle = s.tagBg;
+    round([120, goalY, W-240, 120], 24);
+    ctx.fill();
+    ctx.strokeStyle = s.tagBorder; ctx.lineWidth = 1.5;
+    round([120, goalY, W-240, 120], 24);
+    ctx.stroke();
+
+    ctx.font = '700 36px sans-serif';
+    ctx.fillStyle = s.textSub;
+    ctx.textAlign = 'center';
+    ctx.fillText('나의 목표', W/2, goalY + 44);
+
+    const parts = [];
+    if (curWeight) parts.push(`현재 ${curWeight}kg`);
+    if (goalWeight) parts.push(`목표 ${goalWeight}kg`);
+    ctx.font = '800 44px sans-serif';
+    ctx.fillStyle = s.text;
+    ctx.fillText(parts.join('  →  '), W/2, goalY + 94);
+  }
+
+  // ⑮ 하단 CTA
+  const ctaY = H - 280;
+  ctx.font = '600 42px sans-serif';
+  ctx.fillStyle = s.textSub;
+  ctx.fillText('나도 내 바디코드 알아보기', W/2, ctaY);
+
+  ctx.font = '700 46px sans-serif';
+  const accentGrad2 = ctx.createLinearGradient(W/2-200,0,W/2+200,0);
+  accentGrad2.addColorStop(0, s.accent); accentGrad2.addColorStop(1, s.accentEnd);
+  ctx.fillStyle = accentGrad2;
+  ctx.fillText('slimmind.kr', W/2, ctaY + 62);
+
+  // ⑯ 하단 프레임 장식
+  ctx.strokeStyle = s.frame; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(80,H-80); ctx.lineTo(80,H-160); ctx.moveTo(80,H-80); ctx.lineTo(200,H-80); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(W-80,H-80); ctx.lineTo(W-80,H-160); ctx.moveTo(W-80,H-80); ctx.lineTo(W-200,H-80); ctx.stroke();
+
+  // ⑰ 워터마크
+  ctx.font = '500 32px sans-serif';
+  ctx.fillStyle = 'rgba(245,236,224,.15)';
+  ctx.fillText('© SlimMind · Bodycode Analysis', W/2, H - 36);
+
+  _icCanvas = canvas;
+
+  // 미리보기 표시
+  const wrap = document.getElementById('icPreviewWrap');
+  wrap.innerHTML = '';
+  // 표시용 축소 캔버스
+  const preview = document.createElement('canvas');
+  const scale = Math.min(1, (wrap.offsetWidth || 320) / W);
+  preview.width = W * scale; preview.height = H * scale;
+  preview.style.width = '100%'; preview.style.height = 'auto';
+  preview.style.borderRadius = '12px';
+  const pctx = preview.getContext('2d');
+  pctx.scale(scale, scale);
+  pctx.drawImage(canvas, 0, 0);
+  wrap.appendChild(preview);
+}
+
+function icDownload() {
+  if (!_icCanvas) return;
+  const d = _shareData || {};
+  const bcCode = (d.bcCode || 'result').toLowerCase().replace('-','');
+  const a = document.createElement('a');
+  a.href = _icCanvas.toDataURL('image/png');
+  a.download = `slimmind-insta-${bcCode}-${_icSkin}.png`;
+  a.click();
+  _showToast('📸 인스타 카드 저장 완료!\n스토리에 업로드해보세요 ✨');
+}
+
+function icCopyLink() {
   const url = window.location.href;
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(url).then(() => {
-      _showToast('📋 링크 복사 완료!\n인스타그램 스토리에 붙여넣기 해보세요 📸');
-    }).catch(() => {
-      _showToast('📸 인스타그램 앱에서 스토리로 직접 공유해보세요!');
+      _showToast('🔗 링크 복사 완료!\n인스타 스토리 문구에 붙여넣기 해보세요');
     });
   } else {
-    _showToast('📸 인스타그램 앱에서 스토리로 직접 공유해보세요!');
+    const ta = document.createElement('textarea');
+    ta.value = url; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    _showToast('🔗 링크 복사 완료!');
   }
+  closeInstaCard();
 }
+/* ===== /Feature 11 ===== */
 
 // P7 링크 복사
 // P1 공유 버튼 (가족코드 대체)

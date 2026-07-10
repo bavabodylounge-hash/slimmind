@@ -536,6 +536,7 @@
         <div class="nav-item" data-page="payments"><i class="fas fa-credit-card"></i> 결제 관리</div>
         <div class="nav-item" data-page="rediagnosis"><i class="fas fa-redo"></i> 재진단 알림</div>
         <div class="nav-item" data-page="growth-dashboard"><i class="fas fa-chart-line"></i> 성장 대시보드</div>
+        <div class="nav-item" data-page="b2b-group-analysis"><i class="fas fa-layer-group"></i> B2B 그룹 분석</div>
         <div class="nav-item" data-page="excel-export"><i class="fas fa-file-excel"></i> 데이터 다운로드</div>
 
         <div class="nav-section-label">이용 안내</div>
@@ -1237,7 +1238,7 @@ function navigateTo(page) {
     settings:'설정', 'kakao-settings':'카카오 설정', 'monthly-report':'월간 AI 리포트',
     analytics:'데이터 인사이트', ranking:'컨설턴트 랭킹', 'revenue-forecast':'매출 예측기',
     settlement:'수익 정산', payments:'결제 관리', rediagnosis:'재진단 알림', 'growth-dashboard':'성장 대시보드', 'excel-export':'데이터 다운로드', 'bc-library':'바디코드 도감',
-    'daily-checks':'데일리 체크 현황'
+    'daily-checks':'데일리 체크 현황', 'b2b-group-analysis':'B2B 그룹 비교 분석'
   };
   document.getElementById('topbar-title').textContent = titles[page] || page;
   const body = document.getElementById('page-body');
@@ -1264,6 +1265,7 @@ function navigateTo(page) {
   else if (page === 'payments')   loadAdminPayments();
   else if (page === 'rediagnosis')     loadAdminRediagnosis();
   else if (page === 'growth-dashboard') loadGrowthDashboard();
+  else if (page === 'b2b-group-analysis') loadB2BGroupAnalysis();
   else if (page === 'excel-export') loadExcelExport();
   else if (page === 'settings') loadSettings();
   else if (page === 'kakao-settings') loadKakaoSettings();
@@ -5203,6 +5205,239 @@ async function loadAdminPayments(status = '') {
   } catch(e) {
     document.getElementById('payment-table-body').innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted)">오류: ${e.message||e}</td></tr>`;
   }
+}
+
+// ═════════════════════════════════════════════
+//  Feature 12: B2B 고객 그룹 비교 분석
+// ═════════════════════════════════════════════
+let _f12Charts = {};
+let _f12SelectedCode = '';
+
+async function loadB2BGroupAnalysis() {
+  setPage('b2b-group-analysis');
+  // B2B 파트너 목록 먼저 불러오기
+  let partners = [];
+  try {
+    const res = await api('GET', '/admin/b2b-partners');
+    partners = res?.partners || [];
+  } catch(e) {}
+
+  const partnerOptions = partners.map(p =>
+    `<option value="${p.code}">${p.name} (${p.code})</option>`
+  ).join('');
+
+  document.getElementById('page-body').innerHTML = `
+    <div style="padding:24px;max-width:1100px;margin:0 auto">
+      <!-- 헤더 -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+        <div>
+          <div style="font-size:22px;font-weight:800;color:var(--dark)">🔬 B2B 그룹 비교 분석</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:4px">B2B 파트너별 고객 데이터를 심층 분석합니다</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select id="f12PartnerSelect" class="form-select" style="min-width:200px;padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:13px">
+            <option value="">-- 파트너 선택 --</option>
+            ${partnerOptions}
+          </select>
+          <button class="btn btn-primary btn-sm" onclick="f12LoadPartner()"><i class="fas fa-search"></i> 분석</button>
+        </div>
+      </div>
+
+      <!-- KPI 카드 -->
+      <div id="f12KpiRow" style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px"></div>
+
+      <!-- 차트 그리드 (2×2) -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px">
+        <!-- BC 분포 -->
+        <div class="card" style="padding:20px">
+          <div style="font-size:14px;font-weight:700;color:var(--dark);margin-bottom:16px">📊 BC 코드 분포</div>
+          <canvas id="f12BcChart" height="220"></canvas>
+        </div>
+        <!-- 월별 유입 추이 -->
+        <div class="card" style="padding:20px">
+          <div style="font-size:14px;font-weight:700;color:var(--dark);margin-bottom:16px">📈 월별 유입 추이</div>
+          <canvas id="f12TrendChart" height="220"></canvas>
+        </div>
+        <!-- 성별 분포 -->
+        <div class="card" style="padding:20px">
+          <div style="font-size:14px;font-weight:700;color:var(--dark);margin-bottom:16px">👥 성별 분포</div>
+          <canvas id="f12GenderChart" height="220"></canvas>
+        </div>
+        <!-- 연령대 분포 -->
+        <div class="card" style="padding:20px">
+          <div style="font-size:14px;font-weight:700;color:var(--dark);margin-bottom:16px">🎂 연령대 분포</div>
+          <canvas id="f12AgeChart" height="220"></canvas>
+        </div>
+      </div>
+
+      <!-- 체형 통계 테이블 -->
+      <div class="card" style="padding:20px;margin-bottom:24px">
+        <div style="font-size:14px;font-weight:700;color:var(--dark);margin-bottom:16px">⚖️ 그룹 체형 통계</div>
+        <div id="f12BodyStats" style="color:var(--muted);text-align:center;padding:20px;font-size:13px">파트너를 선택 후 분석을 클릭하세요</div>
+      </div>
+
+      <!-- 전월 비교 -->
+      <div id="f12PeriodCard" style="display:none" class="card" style="padding:20px">
+        <div style="font-size:14px;font-weight:700;color:var(--dark);margin-bottom:16px">📅 기간 비교</div>
+        <div id="f12PeriodContent"></div>
+      </div>
+    </div>
+  `;
+
+  // 차트 라이브러리 로드
+  await loadChartJs();
+}
+
+async function f12LoadPartner() {
+  const code = document.getElementById('f12PartnerSelect').value;
+  if (!code) { toast('파트너를 선택하세요', 'error'); return; }
+  _f12SelectedCode = code;
+
+  // 기존 차트 파괴
+  Object.values(_f12Charts).forEach(c => { try { c.destroy(); } catch(e){} });
+  _f12Charts = {};
+
+  document.getElementById('f12KpiRow').innerHTML = `
+    <div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--muted)">
+      <i class="fas fa-circle-notch fa-spin"></i> 분석 중...
+    </div>`;
+
+  try {
+    const data = await api('GET', `/admin/group-analysis/${code}`);
+    if (!data?.ok) throw new Error(data?.error || '분석 실패');
+    renderF12(data);
+  } catch(e) {
+    toast('분석 실패: ' + (e.message||e), 'error');
+    document.getElementById('f12KpiRow').innerHTML = '';
+  }
+}
+
+function renderF12(data) {
+  const { bc_distribution=[], gender_distribution=[], age_distribution=[],
+          bmi_stats={}, monthly_trend=[], period_comparison={}, body_avg={} } = data;
+
+  const total = bc_distribution.reduce((s,r)=>s+(r.cnt||0), 0);
+  const thisMonth = period_comparison?.this_month || 0;
+  const lastMonth = period_comparison?.last_month || 0;
+  const growthPct = lastMonth > 0 ? Math.round((thisMonth-lastMonth)/lastMonth*100) : null;
+
+  // KPI
+  document.getElementById('f12KpiRow').innerHTML = [
+    { label:'총 분석 고객', value: total.toLocaleString()+'명', icon:'fas fa-users', color:'#6366f1' },
+    { label:'이번달 유입', value: thisMonth+'명', icon:'fas fa-calendar-check', color:'#22c55e',
+      sub: growthPct !== null ? (growthPct>=0?`+${growthPct}%`:`${growthPct}%`) + ' vs 전월' : '' },
+    { label:'평균 BMI', value: bmi_stats?.avg_bmi || '-', icon:'fas fa-weight', color:'#f59e0b' },
+    { label:'평균 체중', value: body_avg?.avg_weight ? body_avg.avg_weight+'kg' : '-', icon:'fas fa-balance-scale', color:'#ec4899' },
+  ].map(k=>`
+    <div class="card" style="padding:18px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <div style="width:36px;height:36px;background:${k.color}1a;border-radius:10px;display:flex;align-items:center;justify-content:center">
+          <i class="${k.icon}" style="color:${k.color};font-size:16px"></i>
+        </div>
+        <div style="font-size:12px;color:var(--muted);font-weight:600">${k.label}</div>
+      </div>
+      <div style="font-size:26px;font-weight:900;color:var(--dark)">${k.value}</div>
+      ${k.sub ? `<div style="font-size:12px;color:${growthPct>=0?'#22c55e':'#ef4444'};font-weight:700;margin-top:4px">${k.sub}</div>` : ''}
+    </div>
+  `).join('');
+
+  // BC 분포 차트
+  const bcLabels = bc_distribution.map(r=>r.bc_primary||'?');
+  const bcData   = bc_distribution.map(r=>r.cnt||0);
+  const bcColors = ['#e05c3a','#5090e0','#22c55e','#f59e0b','#ec4899','#8b5cf6','#06b6d4','#84cc16','#f97316','#6366f1'];
+  _f12Charts.bc = new Chart(document.getElementById('f12BcChart'), {
+    type: 'doughnut',
+    data: { labels: bcLabels, datasets: [{ data: bcData, backgroundColor: bcColors.slice(0,bcLabels.length), borderWidth: 2, borderColor: '#fff' }] },
+    options: { responsive:true, plugins:{ legend:{ position:'bottom', labels:{ font:{size:11}, boxWidth:12 } } } }
+  });
+
+  // 월별 추이
+  const mLabels = monthly_trend.map(r=>r.month||'');
+  const mData   = monthly_trend.map(r=>r.cnt||0);
+  _f12Charts.trend = new Chart(document.getElementById('f12TrendChart'), {
+    type: 'line',
+    data: { labels: mLabels, datasets: [{ label:'유입 수', data: mData,
+      borderColor:'#6366f1', backgroundColor:'rgba(99,102,241,.12)',
+      fill:true, tension:.35, pointRadius:4, pointBackgroundColor:'#6366f1' }] },
+    options: { responsive:true, scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1 } } },
+      plugins:{ legend:{ display:false } } }
+  });
+
+  // 성별 분포
+  const gLabels = gender_distribution.map(r=> r.gender==='M'?'남성':r.gender==='F'?'여성':(r.gender||'미입력'));
+  const gData   = gender_distribution.map(r=>r.cnt||0);
+  _f12Charts.gender = new Chart(document.getElementById('f12GenderChart'), {
+    type: 'doughnut',
+    data: { labels: gLabels, datasets: [{ data: gData, backgroundColor:['#5090e0','#ec4899','#94a3b8'], borderWidth:2, borderColor:'#fff' }] },
+    options: { responsive:true, plugins:{ legend:{ position:'bottom', labels:{ font:{size:11}, boxWidth:12 } } } }
+  });
+
+  // 연령대 분포
+  const aLabels = age_distribution.map(r=>r.age_group||'?');
+  const aData   = age_distribution.map(r=>r.cnt||0);
+  _f12Charts.age = new Chart(document.getElementById('f12AgeChart'), {
+    type: 'bar',
+    data: { labels: aLabels, datasets: [{ label:'인원', data: aData,
+      backgroundColor:'rgba(34,197,94,.7)', borderColor:'#22c55e', borderWidth:1, borderRadius:6 }] },
+    options: { responsive:true, scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1 } } },
+      plugins:{ legend:{ display:false } } }
+  });
+
+  // 체형 통계
+  const bmi = bmi_stats || {};
+  const ba  = body_avg  || {};
+  document.getElementById('f12BodyStats').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+      ${[
+        { label:'평균 BMI', val: bmi.avg_bmi||'-', sub:`최소 ${bmi.min_bmi||'-'} / 최대 ${bmi.max_bmi||'-'}` },
+        { label:'평균 키', val: ba.avg_height ? ba.avg_height+'cm' : '-', sub:'' },
+        { label:'평균 체중', val: ba.avg_weight ? ba.avg_weight+'kg' : '-', sub: ba.avg_target ? `목표 ${ba.avg_target}kg` : '' },
+      ].map(s=>`
+        <div style="background:var(--bg);border-radius:12px;padding:16px;text-align:center">
+          <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:8px">${s.label}</div>
+          <div style="font-size:28px;font-weight:900;color:var(--dark)">${s.val}</div>
+          ${s.sub ? `<div style="font-size:11px;color:var(--muted);margin-top:4px">${s.sub}</div>` : ''}
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  // 기간 비교
+  const pc = period_comparison || {};
+  if (pc.this_month !== undefined) {
+    document.getElementById('f12PeriodCard').style.display = '';
+    const gPct = pc.last_month > 0 ? Math.round((pc.this_month - pc.last_month) / pc.last_month * 100) : null;
+    document.getElementById('f12PeriodContent').innerHTML = `
+      <div style="display:flex;gap:16px;flex-wrap:wrap">
+        <div style="flex:1;min-width:120px;background:var(--bg);border-radius:12px;padding:16px;text-align:center">
+          <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px">이번달</div>
+          <div style="font-size:32px;font-weight:900;color:var(--dark)">${pc.this_month||0}</div>
+          <div style="font-size:11px;color:var(--muted)">명 유입</div>
+        </div>
+        <div style="flex:1;min-width:120px;background:var(--bg);border-radius:12px;padding:16px;text-align:center">
+          <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px">전월</div>
+          <div style="font-size:32px;font-weight:900;color:var(--dark)">${pc.last_month||0}</div>
+          <div style="font-size:11px;color:var(--muted)">명 유입</div>
+        </div>
+        ${gPct !== null ? `
+        <div style="flex:1;min-width:120px;background:${gPct>=0?'rgba(34,197,94,.08)':'rgba(239,68,68,.08)'};border-radius:12px;padding:16px;text-align:center;border:1px solid ${gPct>=0?'rgba(34,197,94,.2)':'rgba(239,68,68,.2)'}">
+          <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px">전월 대비</div>
+          <div style="font-size:32px;font-weight:900;color:${gPct>=0?'#22c55e':'#ef4444'}">${gPct>=0?'+':''}${gPct}%</div>
+          <div style="font-size:11px;color:var(--muted)">성장률</div>
+        </div>` : ''}
+      </div>
+    `;
+  }
+}
+
+function loadChartJs() {
+  return new Promise(resolve => {
+    if (window.Chart) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+    s.onload = resolve;
+    document.head.appendChild(s);
+  });
 }
 </script>
 </body>

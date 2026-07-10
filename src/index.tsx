@@ -6095,4 +6095,361 @@ app.get('/payment/fail', (c) => {
     </body></html>`)
 })
 
+// ══════════════════════════════════════════════════════════════════
+//  Feature 10: 컨설턴트 자격증 시스템 (1-12강)
+// ══════════════════════════════════════════════════════════════════
+
+// 강의 메타데이터 (12강)
+const LECTURES = [
+  { no:1,  title:'슬림마인드 시스템 개요',          desc:'BC코드 체계와 바디코드 분석 철학 이해', emoji:'🌱' },
+  { no:2,  title:'BC-1·2 코드 완전 이해',           desc:'코끼리다리형·거북이형 원인과 처방 전략', emoji:'🐘' },
+  { no:3,  title:'BC-3·4 코드 완전 이해',           desc:'수박배형·요요형 인슐린·갑상선 메커니즘', emoji:'🍉' },
+  { no:4,  title:'BC-5·6 코드 완전 이해',           desc:'귤껍질형·야식부엉이형 셀룰라이트·부신', emoji:'🍊' },
+  { no:5,  title:'BC-7·8·9 코드 완전 이해',         desc:'산후·하체·마른비만 처방 핵심', emoji:'🎈' },
+  { no:6,  title:'영양 처방 실전 (크로노)',          desc:'시간대별 영양 배분과 간헐적 단식 활용', emoji:'🥗' },
+  { no:7,  title:'운동 처방 실전',                  desc:'BC코드별 최적 운동 루틴 설계', emoji:'🏋️' },
+  { no:8,  title:'AI 상담 스크립트 활용',            desc:'5단계 상담 플로우와 멘트 실전', emoji:'🤖' },
+  { no:9,  title:'고객 심리 & 동기 부여',           desc:'저항 극복, 재방문 유도, 관계 강화', emoji:'💬' },
+  { no:10, title:'데일리 체크 & 마이페이지 운영',   desc:'체크 시스템 활용 및 코칭 댓글 전략', emoji:'✅' },
+  { no:11, title:'B2B 파트너십 & 확장 전략',        desc:'병원·헬스장 제휴 협력 실무', emoji:'🏢' },
+  { no:12, title:'슬림마인드 마스터 종합 실전',     desc:'12강 통합 케이스 스터디 & 최종 평가', emoji:'🏆' },
+]
+
+// 강의별 퀴즈 (3문제씩)
+const QUIZ_BANK: Record<number, Array<{q:string; opts:string[]; ans:number}>> = {
+  1: [
+    { q:'BC코드는 총 몇 가지 유형으로 분류되나요?', opts:['6가지','9가지','12가지','15가지'], ans:1 },
+    { q:'슬림마인드 바디코드 분석의 핵심 철학은?', opts:['칼로리 제한','원인 중심 맞춤 처방','고강도 운동','약물 치료'], ans:1 },
+    { q:'컨설턴트 자격증 취득을 위해 이수해야 하는 강의 수는?', opts:['6강','9강','10강','12강'], ans:3 },
+  ],
+  2: [
+    { q:'BC-1(코끼리다리형)의 주요 원인은?', opts:['인슐린 저항성','하지 림프·정맥 울혈','갑상선 저하','부신 피로'], ans:1 },
+    { q:'BC-2(거북이형)에서 우선시해야 할 처방 부위는?', opts:['복부','하체','경추·흉추 림프','손발'], ans:2 },
+    { q:'두 코드(BC-1·2)의 공통점은?', opts:['내장지방 과다','림프 순환 장애','호르몬 불균형','셀룰라이트'], ans:1 },
+  ],
+  3: [
+    { q:'BC-3(수박배형)의 핵심 문제는?', opts:['림프 울혈','인슐린 저항성·내장 비대','갑상선 셧다운','릴랙신 과다'], ans:1 },
+    { q:'BC-4(요요형)에서 나타나는 "초절전 모드"의 원인은?', opts:['부신 피로','갑상선 셧다운','에스트로겐 과다','인슐린 저항'], ans:1 },
+    { q:'요요 현상을 막기 위한 핵심 전략은?', opts:['강한 칼로리 제한','갑상선 지원 + 점진적 대사 회복','고강도 유산소','단식'], ans:1 },
+  ],
+  4: [
+    { q:'BC-5(귤껍질형) 셀룰라이트의 주 원인은?', opts:['인슐린 저항','바탕질 변성·지방 섬유화','림프 울혈','갑상선 저하'], ans:1 },
+    { q:'BC-6(야식부엉이형)의 자율신경 교란 원인은?', opts:['인슐린 과다','부신 피로','림프 차단','갑상선 항진'], ans:1 },
+    { q:'귤껍질형에 효과적인 처방 방법은?', opts:['유산소 위주','림프 드레나지 + 결합조직 이완','단식','고단백 식이'], ans:1 },
+  ],
+  5: [
+    { q:'BC-7(바람빠진풍선형)과 관련된 호르몬은?', opts:['인슐린','갑상선 호르몬','릴랙신','코티솔'], ans:2 },
+    { q:'BC-8(말벅지형)의 특징은?', opts:['상체 비만','알파수용체 우세·하체 과발달','내장지방','부종'], ans:1 },
+    { q:'BC-9(올챙이배형)의 정확한 명칭은?', opts:['내장비만형','근감소성 이화작용·마른 비만','셀룰라이트형','부신 비만'], ans:1 },
+  ],
+  6: [
+    { q:'크로노 영양 처방에서 탄수화물 섭취 최적 시간대는?', opts:['새벽','점심~오후 초반','저녁','취침 전'], ans:1 },
+    { q:'BC-3(수박배형) 식이 처방의 핵심은?', opts:['고지방 식이','저GI 식사·인슐린 안정화','고단백 간헐적 단식','야간 금식만'], ans:1 },
+    { q:'간헐적 단식이 가장 효과적인 BC코드는?', opts:['BC-1','BC-4','BC-3','BC-7'], ans:2 },
+  ],
+  7: [
+    { q:'BC-1(하지 림프형)에 가장 효과적인 운동은?', opts:['스쿼트','수영·걷기·림프 자극 스트레칭','고강도 인터벌','벤치프레스'], ans:1 },
+    { q:'BC-4(요요형) 초기 운동 처방 원칙은?', opts:['고강도 운동 집중','저강도 유산소로 대사 점진 회복','단식+운동 병행','근력만'], ans:1 },
+    { q:'운동 처방 시 BC-8(말벅지형)에서 피해야 할 것은?', opts:['상체 운동','하체 과부하 근력 운동','유산소','스트레칭'], ans:1 },
+  ],
+  8: [
+    { q:'AI 상담 스크립트 첫 상담 단계의 목표는?', opts:['바로 결제 유도','신뢰 구축과 BC코드 설명','식단 처방','운동 처방'], ans:1 },
+    { q:'반론 대처 멘트에서 가장 중요한 요소는?', opts:['강한 설득','공감 후 원인 재설명','가격 할인 제안','빠른 결론'], ans:1 },
+    { q:'재방문 유도 단계에서 효과적인 전략은?', opts:['새 프로그램 소개','성과 확인 + 다음 목표 설정','이벤트 안내','지인 추천'], ans:1 },
+  ],
+  9: [
+    { q:'고객 저항(반론)을 극복하는 첫 번째 단계는?', opts:['반박','공감과 인정','무시','가격 조정'], ans:1 },
+    { q:'장기 고객 유지에 가장 효과적인 방법은?', opts:['잦은 연락','성과 시각화 + 마이페이지 공유','이벤트 제공','무료 서비스'], ans:1 },
+    { q:'고객 동기 부여를 위해 활용하면 좋은 슬림마인드 기능은?', opts:['QR코드','결과지 공유 + 마이페이지 히트맵','결제 내역','B2B연동'], ans:1 },
+  ],
+  10: [
+    { q:'데일리 체크의 3가지 항목은?', opts:['식사·수면·운동','운동·식단·회복','체중·체지방·근육','수분·칼로리·단백질'], ans:1 },
+    { q:'3일 연속 체크 미달 시 자동으로 발생하는 것은?', opts:['결제 취소','컨설턴트 알림','고객 탈퇴','서비스 중단'], ans:1 },
+    { q:'코칭 댓글 작성 후 고객이 확인하는 경로는?', opts:['이메일','마이페이지(/my/세션ID)','문자','앱 알림'], ans:1 },
+  ],
+  11: [
+    { q:'B2B 파트너 전용 설문지 URL 형식은?', opts:['/b2b/CODE','/survey/CODE','/slimmind?b2b=CODE','/partner/CODE'], ans:2 },
+    { q:'B2B 파트너에게 제공되는 커스터마이징은?', opts:['브랜드명·컬러·로고만','질문 순서만','전체 UI 변경','언어 변경'], ans:0 },
+    { q:'B2B 파트너 대시보드 접속 경로는?', opts:['/admin','/consultant','/b2b','/partner'], ans:2 },
+  ],
+  12: [
+    { q:'슬림마인드 컨설턴트 자격증 취득 조건은?', opts:['6강 이수','9강 이수','12강 전체 이수 + 각 강 퀴즈 합격','비용 결제만'], ans:2 },
+    { q:'자격증 레벨은?', opts:['3급~1급','1급만','골드·실버','마스터·시니어·일반'], ans:0 },
+    { q:'수료 후 자격증 번호 형식은?', opts:['SM-000','SM-CERT-YYYY-XXXX','BC-CERT-01','SL-00000'], ans:1 },
+  ],
+}
+
+// GET /api/consultant/lectures  — 내 강의 진도 조회
+app.get('/api/consultant/lectures', requireRole('ANY'), async (c) => {
+  try {
+    const db   = c.env.DB
+    const user = (c as any).__user
+    const completions = await db.prepare(`
+      SELECT lecture_no, quiz_score, passed, completed_at
+      FROM lecture_completions WHERE consultant_code=?
+      ORDER BY lecture_no
+    `).bind(user.code).all<any>()
+
+    const cert = await db.prepare(
+      'SELECT cert_number, issued_at, level FROM certificates WHERE consultant_code=?'
+    ).bind(user.code).first<any>()
+
+    const cons = await db.prepare(
+      'SELECT lecture_progress, is_certified FROM consultants WHERE code=?'
+    ).bind(user.code).first<any>()
+
+    return c.json({
+      ok: true,
+      completions: completions.results,
+      certificate: cert || null,
+      lecture_progress: cons?.lecture_progress || 0,
+      is_certified:     cons?.is_certified     || 0,
+    })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// POST /api/consultant/lectures/:no/complete  — 퀴즈 제출 & 강의 완료 처리
+app.post('/api/consultant/lectures/:no/complete', requireRole('ANY'), async (c) => {
+  try {
+    const db      = c.env.DB
+    const user    = (c as any).__user
+    const lectNo  = parseInt(c.req.param('no'))
+    const { answers } = await c.req.json<{ answers: number[] }>()
+
+    if (lectNo < 1 || lectNo > 12) return c.json({ ok: false, error: '잘못된 강의 번호' }, 400)
+
+    const quiz = QUIZ_BANK[lectNo] || []
+    let correct = 0
+    answers.forEach((a, i) => { if (quiz[i] && a === quiz[i].ans) correct++ })
+    const score  = quiz.length > 0 ? Math.round((correct / quiz.length) * 100) : 100
+    const passed = score >= 70
+
+    // 완료 기록 저장 (upsert)
+    await db.prepare(`
+      INSERT INTO lecture_completions (consultant_code, lecture_no, quiz_score, passed)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(consultant_code, lecture_no) DO UPDATE SET
+        quiz_score=excluded.quiz_score, passed=excluded.passed, completed_at=datetime('now')
+    `).bind(user.code, lectNo, score, passed ? 1 : 0).run()
+
+    if (passed) {
+      // lecture_progress 업데이트
+      const passedCount = await db.prepare(`
+        SELECT COUNT(*) as cnt FROM lecture_completions WHERE consultant_code=? AND passed=1
+      `).bind(user.code).first<any>()
+      const newProgress = passedCount?.cnt || 0
+
+      await db.prepare(`
+        UPDATE consultants SET lecture_progress=?, updated_at=datetime('now') WHERE code=?
+      `).bind(newProgress, user.code).run()
+
+      // 12강 전부 합격 시 자격증 발급
+      if (newProgress >= 12) {
+        const existing = await db.prepare(
+          'SELECT id FROM certificates WHERE consultant_code=?'
+        ).bind(user.code).first<any>()
+
+        if (!existing) {
+          const year    = new Date().getFullYear()
+          const serial  = String(Math.floor(Math.random() * 9000) + 1000)
+          const certNum = `SM-CERT-${year}-${serial}`
+          await db.prepare(`
+            INSERT OR IGNORE INTO certificates (consultant_code, cert_number, level)
+            VALUES (?, ?, '1급')
+          `).bind(user.code, certNum).run()
+          await db.prepare(`
+            UPDATE consultants SET is_certified=1, certified_at=datetime('now') WHERE code=?
+          `).bind(user.code).run()
+        }
+      }
+    }
+
+    return c.json({ ok: true, score, passed, correct, total: quiz.length })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// GET /api/consultant/certificate  — 내 자격증 조회
+app.get('/api/consultant/certificate', requireRole('ANY'), async (c) => {
+  try {
+    const db   = c.env.DB
+    const user = (c as any).__user
+    const cert = await db.prepare(`
+      SELECT c.*, con.name, con.grade
+      FROM certificates c
+      JOIN consultants con ON con.code = c.consultant_code
+      WHERE c.consultant_code=?
+    `).bind(user.code).first<any>()
+    return c.json({ ok: true, certificate: cert || null })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// GET /api/admin/certificates  — 관리자 자격증 발급 내역
+app.get('/api/admin/certificates', requireRole('MASTER'), async (c) => {
+  try {
+    const db = c.env.DB
+    const list = await db.prepare(`
+      SELECT c.*, con.name, con.grade, con.phone
+      FROM certificates c
+      JOIN consultants con ON con.code = c.consultant_code
+      ORDER BY c.issued_at DESC
+    `).all<any>()
+    return c.json({ ok: true, certificates: list.results })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// ═══════════════════════════════════════════════════════════════
+//  Feature 12: B2B 고객 그룹 비교 분석
+// ═══════════════════════════════════════════════════════════════
+
+// GET /api/b2b/group-analysis — B2B 파트너 그룹 비교 분석 (파트너 전용)
+app.get('/api/b2b/group-analysis', requireB2B(), async (c) => {
+  try {
+    const user = c.get('user') as JwtPayload
+    const db = c.env.DB
+    const code = user.code
+
+    // 1. BC 분포
+    const bcDist = await db.prepare(`
+      SELECT bc_primary, COUNT(*) as cnt
+      FROM results WHERE ref_code=? AND bc_primary IS NOT NULL
+      GROUP BY bc_primary ORDER BY cnt DESC
+    `).bind(code).all<any>()
+
+    // 2. 성별 분포
+    const genderDist = await db.prepare(`
+      SELECT gender, COUNT(*) as cnt
+      FROM results WHERE ref_code=?
+      GROUP BY gender
+    `).bind(code).all<any>()
+
+    // 3. 연령대 분포
+    const ageDist = await db.prepare(`
+      SELECT
+        CASE
+          WHEN CAST(age AS INTEGER) < 30 THEN '20대'
+          WHEN CAST(age AS INTEGER) < 40 THEN '30대'
+          WHEN CAST(age AS INTEGER) < 50 THEN '40대'
+          WHEN CAST(age AS INTEGER) < 60 THEN '50대'
+          ELSE '60대+'
+        END as age_group,
+        COUNT(*) as cnt
+      FROM results WHERE ref_code=? AND age IS NOT NULL AND age != ''
+      GROUP BY age_group ORDER BY age_group
+    `).bind(code).all<any>()
+
+    // 4. BMI 평균 & 분포
+    const bmiStats = await db.prepare(`
+      SELECT
+        ROUND(AVG(CAST(bmi AS REAL)), 1) as avg_bmi,
+        ROUND(MIN(CAST(bmi AS REAL)), 1) as min_bmi,
+        ROUND(MAX(CAST(bmi AS REAL)), 1) as max_bmi,
+        COUNT(*) as cnt
+      FROM results WHERE ref_code=? AND bmi IS NOT NULL AND bmi != '' AND CAST(bmi AS REAL) > 0
+    `).bind(code).first<any>()
+
+    // 5. 월별 유입 추이 (최근 6개월)
+    const monthlyTrend = await db.prepare(`
+      SELECT strftime('%Y-%m', created_at) as month, COUNT(*) as cnt
+      FROM results WHERE ref_code=?
+        AND created_at >= datetime('now', '-6 months')
+      GROUP BY month ORDER BY month
+    `).bind(code).all<any>()
+
+    // 6. 체중 목표 달성률 분포 (weight_loss_pct 있는 경우)
+    const weightGoalDist = await db.prepare(`
+      SELECT
+        CASE
+          WHEN CAST(weight_loss_pct AS REAL) < 5 THEN '5% 미만'
+          WHEN CAST(weight_loss_pct AS REAL) < 10 THEN '5-10%'
+          WHEN CAST(weight_loss_pct AS REAL) < 15 THEN '10-15%'
+          WHEN CAST(weight_loss_pct AS REAL) < 20 THEN '15-20%'
+          ELSE '20% 이상'
+        END as goal_range,
+        COUNT(*) as cnt
+      FROM results WHERE ref_code=? AND weight_loss_pct IS NOT NULL AND weight_loss_pct != ''
+      GROUP BY goal_range
+    `).bind(code).all<any>()
+
+    // 7. 평균 체중·신장
+    const bodyAvg = await db.prepare(`
+      SELECT
+        ROUND(AVG(CAST(weight AS REAL)), 1) as avg_weight,
+        ROUND(AVG(CAST(height AS REAL)), 1) as avg_height,
+        ROUND(AVG(CAST(target_weight AS REAL)), 1) as avg_target
+      FROM results WHERE ref_code=?
+        AND weight IS NOT NULL AND weight != '' AND CAST(weight AS REAL) > 0
+    `).bind(code).first<any>()
+
+    // 8. 상위 축 빈도 (top_axes JSON 파싱은 클라 처리 위해 샘플 전달)
+    const recentSample = await db.prepare(`
+      SELECT bc_primary, axis_scores, top_axes
+      FROM results WHERE ref_code=? AND axis_scores IS NOT NULL
+      ORDER BY created_at DESC LIMIT 50
+    `).bind(code).all<any>()
+
+    // 9. 전월 vs 이번달 비교
+    const periodComp = await db.prepare(`
+      SELECT
+        SUM(CASE WHEN strftime('%Y-%m', created_at)=strftime('%Y-%m','now') THEN 1 ELSE 0 END) as this_month,
+        SUM(CASE WHEN strftime('%Y-%m', created_at)=strftime('%Y-%m','now','-1 month') THEN 1 ELSE 0 END) as last_month,
+        SUM(CASE WHEN date(created_at)=date('now') THEN 1 ELSE 0 END) as today
+      FROM results WHERE ref_code=?
+    `).bind(code).first<any>()
+
+    return c.json({
+      ok: true,
+      bc_distribution: bcDist.results,
+      gender_distribution: genderDist.results,
+      age_distribution: ageDist.results,
+      bmi_stats: bmiStats,
+      monthly_trend: monthlyTrend.results,
+      weight_goal_distribution: weightGoalDist.results,
+      body_avg: bodyAvg,
+      recent_sample: recentSample.results,
+      period_comparison: periodComp,
+    })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// GET /api/admin/group-analysis/:code — 관리자: 특정 B2B 파트너 그룹 분석
+app.get('/api/admin/group-analysis/:code', requireRole('MASTER'), async (c) => {
+  try {
+    const db = c.env.DB
+    const code = c.req.param('code').toUpperCase()
+
+    const [bcDist, genderDist, ageDist, bmiStats, monthlyTrend, periodComp, bodyAvg] = await Promise.all([
+      db.prepare(`SELECT bc_primary, COUNT(*) as cnt FROM results WHERE ref_code=? AND bc_primary IS NOT NULL GROUP BY bc_primary ORDER BY cnt DESC`).bind(code).all<any>(),
+      db.prepare(`SELECT gender, COUNT(*) as cnt FROM results WHERE ref_code=? GROUP BY gender`).bind(code).all<any>(),
+      db.prepare(`SELECT CASE WHEN CAST(age AS INTEGER)<30 THEN '20대' WHEN CAST(age AS INTEGER)<40 THEN '30대' WHEN CAST(age AS INTEGER)<50 THEN '40대' WHEN CAST(age AS INTEGER)<60 THEN '50대' ELSE '60대+' END as age_group, COUNT(*) as cnt FROM results WHERE ref_code=? AND age IS NOT NULL AND age!='' GROUP BY age_group ORDER BY age_group`).bind(code).all<any>(),
+      db.prepare(`SELECT ROUND(AVG(CAST(bmi AS REAL)),1) as avg_bmi, ROUND(MIN(CAST(bmi AS REAL)),1) as min_bmi, ROUND(MAX(CAST(bmi AS REAL)),1) as max_bmi FROM results WHERE ref_code=? AND bmi IS NOT NULL AND bmi!='' AND CAST(bmi AS REAL)>0`).bind(code).first<any>(),
+      db.prepare(`SELECT strftime('%Y-%m', created_at) as month, COUNT(*) as cnt FROM results WHERE ref_code=? AND created_at>=datetime('now','-6 months') GROUP BY month ORDER BY month`).bind(code).all<any>(),
+      db.prepare(`SELECT SUM(CASE WHEN strftime('%Y-%m',created_at)=strftime('%Y-%m','now') THEN 1 ELSE 0 END) as this_month, SUM(CASE WHEN strftime('%Y-%m',created_at)=strftime('%Y-%m','now','-1 month') THEN 1 ELSE 0 END) as last_month FROM results WHERE ref_code=?`).bind(code).first<any>(),
+      db.prepare(`SELECT ROUND(AVG(CAST(weight AS REAL)),1) as avg_weight, ROUND(AVG(CAST(height AS REAL)),1) as avg_height, ROUND(AVG(CAST(target_weight AS REAL)),1) as avg_target FROM results WHERE ref_code=? AND weight IS NOT NULL AND weight!='' AND CAST(weight AS REAL)>0`).bind(code).first<any>(),
+    ])
+
+    return c.json({
+      ok: true, code,
+      bc_distribution: bcDist.results,
+      gender_distribution: genderDist.results,
+      age_distribution: ageDist.results,
+      bmi_stats: bmiStats,
+      monthly_trend: monthlyTrend.results,
+      period_comparison: periodComp,
+      body_avg: bodyAvg,
+    })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
 export default app
