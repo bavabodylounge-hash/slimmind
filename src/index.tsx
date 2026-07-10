@@ -1284,6 +1284,49 @@ app.put('/api/consultant/change-password', requireRole('ANY'), async (c) => {
   return c.json({ success: true, message: '비밀번호가 변경되었습니다.' })
 })
 
+// ─── 컨설턴트 전용 QR 링크 정보 조회 ────────────────────────────────────────
+// GET /api/consultant/my-qr — 내 전용 질문지 링크 + QR SVG 반환
+app.get('/api/consultant/my-qr', requireRole('ANY'), async (c) => {
+  const user = c.get('user') as JwtPayload
+  const db   = c.env.DB
+  const cons = await db.prepare('SELECT code, name, kakao_channel, phone FROM consultants WHERE code=?').bind(user.code).first<any>()
+  if (!cons) return c.json({ error: '컨설턴트 정보를 찾을 수 없습니다.' }, 404)
+
+  const origin  = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.kr' } })()
+  const surveyUrl = `${origin}/slimmind?ref=${cons.code}`
+
+  // QR SVG 생성 (qrcode-svg 없이 순수 SVG path — 서버사이드)
+  // URL을 쿼리파라미터로 넘겨 프론트에서 qrcode.js로 렌더링
+  return c.json({
+    code:        cons.code,
+    name:        cons.name,
+    survey_url:  surveyUrl,
+    kakao_channel: cons.kakao_channel || null,
+    phone:       cons.phone || null,
+  })
+})
+
+// GET /api/consultant/my-qr/stats — 내 링크 유입 통계
+app.get('/api/consultant/my-qr/stats', requireRole('ANY'), async (c) => {
+  const user = c.get('user') as JwtPayload
+  const db   = c.env.DB
+
+  const [total, thisMonth, thisWeek, bcDist] = await Promise.all([
+    db.prepare("SELECT COUNT(*) as cnt FROM results WHERE consultant_code=? OR ref_code=?").bind(user.code, user.code).first<any>(),
+    db.prepare("SELECT COUNT(*) as cnt FROM results WHERE (consultant_code=? OR ref_code=?) AND strftime('%Y-%m', created_at)=strftime('%Y-%m','now')").bind(user.code, user.code).first<any>(),
+    db.prepare("SELECT COUNT(*) as cnt FROM results WHERE (consultant_code=? OR ref_code=?) AND created_at >= datetime('now','-7 days')").bind(user.code, user.code).first<any>(),
+    db.prepare("SELECT bc_primary, COUNT(*) as cnt FROM results WHERE (consultant_code=? OR ref_code=?) GROUP BY bc_primary ORDER BY cnt DESC LIMIT 5").bind(user.code, user.code).all<any>(),
+  ])
+
+  return c.json({
+    total:      total?.cnt      ?? 0,
+    this_month: thisMonth?.cnt  ?? 0,
+    this_week:  thisWeek?.cnt   ?? 0,
+    bc_dist:    bcDist?.results ?? [],
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
 // PUT /api/results/:id/memo — 관리자 메모 저장
 app.put('/api/results/:id/memo', async (c) => {
   const user = await getAuthUser(c)
@@ -1643,6 +1686,14 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
   const b2bTypes: string[] = parseJson(result.b2b_institution_types, []) || []
   const hasB2B = b2bTypes.length > 0
 
+  // 담당 컨설턴트 연락처 조회 (CTA 버튼용)
+  let consultantContact: { name: string|null, phone: string|null, kakao: string|null } = { name: null, phone: null, kakao: null }
+  if (result.consultant_code) {
+    const con = await db.prepare('SELECT name, phone, kakao_channel FROM consultants WHERE code=?')
+      .bind(result.consultant_code).first<any>()
+    if (con) consultantContact = { name: con.name || null, phone: con.phone || null, kakao: con.kakao_channel || null }
+  }
+
   // ─────────────────────────────────────────────────────────────────
   // PHASE 1-A: 인바디 역계산 엔진 (Deurenberg 공식)
   // 실측값(bfr/fat_kg/muscle_kg)이 없을 때 설문 데이터로 자동 추정
@@ -1994,7 +2045,9 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
     is_owner: !!isOwner,
     is_b2b_partner: hasB2B,
     b2b_institution_types: hasB2B ? b2bTypes : [],
-    consultant_name: isOwner ? (authUser?.name || null) : null,
+    consultant_name:  consultantContact.name  || null,
+    consultant_phone: consultantContact.phone || null,
+    consultant_kakao: consultantContact.kakao || null,
   }
 
   // ─── B2B 화이트라벨: 결과지에도 브랜드컬러 주입 ───
@@ -2107,7 +2160,9 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
     is_owner: resultData.is_owner,
     is_b2b_partner: resultData.is_b2b_partner,
     b2b_institution_types: resultData.b2b_institution_types,
-    consultant_name: resultData.consultant_name,
+    consultant_name:   consultantContact.name   || resultData.consultant_name || null,
+    consultant_phone:  consultantContact.phone  || null,
+    consultant_kakao:  consultantContact.kakao  || null,
   };
 
   // result-v4.html을 최신 결과지 템플릿으로 사용
@@ -2316,6 +2371,189 @@ app.get('/s/:code', async (c) => {
   });
 </script>`
   html = html.replace('</body>', `${refScript}\n</body>`)
+
+  return c.html(html)
+})
+
+// ─── 고객 마이페이지 /my/:session_id ────────────────────────────────────────
+// 북마크 가능한 고객 전용 페이지 — 오늘 미션 + 진행률 + 결과지 바로가기
+app.get('/my/:session_id', async (c) => {
+  const db        = c.env.DB
+  const sessionId = c.req.param('session_id')
+
+  // diagnosis_results 에서 세션 정보 조회
+  const diag = await db.prepare(
+    `SELECT id, user_name, bc_primary, bc_nickname, ref_code, created_at, goal_weight, weight_loss_pct
+     FROM diagnosis_results WHERE id=? OR session_id=? LIMIT 1`
+  ).bind(sessionId, sessionId).first<any>()
+
+  // results 테이블 fallback
+  const res = !diag ? await db.prepare(
+    `SELECT id, user_name, bc_primary, consultant_code as ref_code, created_at, target_weight as goal_weight
+     FROM results WHERE id=? LIMIT 1`
+  ).bind(sessionId).first<any>() : null
+
+  const row = diag || res
+  if (!row) {
+    return c.html(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>페이지를 찾을 수 없습니다 | SlimMind</title>
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      <style>body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f6f4ee;margin:0}
+      .box{text-align:center;padding:40px;background:#fff;border-radius:20px;box-shadow:0 4px 24px rgba(0,0,0,.08)}
+      h2{color:#b5452e}p{color:#64748B}</style></head>
+      <body><div class="box"><h2>페이지를 찾을 수 없습니다</h2><p>링크를 다시 확인해주세요.</p>
+      <a href="/slimmind" style="color:#b5452e">새로 시작하기 →</a></div></body></html>`, 404)
+  }
+
+  // 데일리체크 최근 30일
+  const checks = await db.prepare(
+    `SELECT check_date, exercise_done, diet_done, recovery_done
+     FROM daily_checks WHERE session_id=? ORDER BY check_date DESC LIMIT 30`
+  ).bind(sessionId).all<any>()
+
+  // 코칭 코멘트 최신 1개
+  const latestComment = await db.prepare(
+    `SELECT comment, created_at FROM coaching_comments WHERE session_id=? AND is_visible=1 ORDER BY created_at DESC LIMIT 1`
+  ).bind(sessionId).first<any>()
+
+  // 총 체크일수
+  const totalDays  = checks.results?.length || 0
+  const totalDone  = checks.results?.reduce((s: number, r: any) => s + (r.exercise_done + r.diet_done + r.recovery_done), 0) || 0
+  const adherence  = totalDays > 0 ? Math.round((totalDone / (totalDays * 3)) * 100) : 0
+
+  const origin     = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.kr' } })()
+  const resultUrl  = `${origin}/result/${row.id}`
+  const userName   = row.user_name || '고객'
+  const bcCode     = row.bc_primary || ''
+  const bcNick     = row.bc_nickname || bcCode
+
+  const html = `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>${userName}님의 슬림마인드 | 오늘의 미션</title>
+<meta property="og:title" content="${userName}님의 슬림마인드 마이페이지">
+<meta property="og:description" content="오늘의 미션을 확인하고 12주 프로그램을 이어가세요.">
+<meta property="og:image" content="${origin}/static/og-slimmind.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--brand:#b5452e;--cream:#f6f4ee;--card:#fff;--border:#e8e0d4;--muted:#94a3b8;--text:#1e293b}
+body{font-family:'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif;background:var(--cream);min-height:100vh;padding-bottom:80px}
+.header{background:linear-gradient(135deg,#b5452e,#8a3421);padding:32px 20px 24px;text-align:center;color:#fff}
+.header-sub{font-size:11px;font-weight:700;letter-spacing:1.5px;opacity:.7;margin-bottom:8px}
+.header-name{font-size:24px;font-weight:800;margin-bottom:4px}
+.header-bc{font-size:13px;opacity:.85;font-weight:600}
+.container{max-width:480px;margin:0 auto;padding:16px}
+.card{background:var(--card);border-radius:16px;padding:20px;margin-bottom:14px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+.card-title{font-size:13px;font-weight:800;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.progress-bar{background:#F1F5F9;border-radius:99px;height:10px;overflow:hidden;margin-bottom:6px}
+.progress-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#b5452e,#c98a3c);transition:width .6s}
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:4px}
+.stat-box{background:#F8FAFC;border-radius:12px;padding:14px;text-align:center}
+.stat-val{font-size:22px;font-weight:800;color:var(--brand)}
+.stat-lbl{font-size:11px;color:var(--muted);margin-top:3px;font-weight:600}
+.check-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:8px}
+.check-cell{aspect-ratio:1;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700}
+.check-full{background:#10B981;color:#fff}
+.check-part{background:#FDE68A;color:#92400E}
+.check-none{background:#F1F5F9;color:#CBD5E1}
+.comment-box{background:linear-gradient(135deg,#EFF6FF,#DBEAFE);border-radius:12px;padding:14px 16px;border-left:3px solid #2563EB}
+.comment-text{font-size:13px;color:#1e40af;line-height:1.7;font-weight:500}
+.btn-result{display:block;background:linear-gradient(135deg,#b5452e,#8a3421);color:#fff;text-decoration:none;
+  border-radius:14px;padding:16px;text-align:center;font-size:15px;font-weight:800;letter-spacing:.3px;margin-bottom:10px}
+.btn-checkin{display:block;background:#F0FDF4;border:1.5px solid #10B981;color:#065F46;text-decoration:none;
+  border-radius:14px;padding:14px;text-align:center;font-size:14px;font-weight:700}
+.streak{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-top:8px}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-sub">SLIMMIND · 마이페이지</div>
+  <div class="header-name">${userName}님,</div>
+  <div class="header-bc">바디코드 ${bcCode} · ${bcNick}</div>
+</div>
+
+<div class="container">
+  <!-- 오늘의 미션 바로가기 -->
+  <div class="card">
+    <div class="card-title"><span>🎯</span> 오늘의 미션</div>
+    <a class="btn-result" href="${resultUrl}?view=today">
+      <i class="fas fa-play-circle" style="margin-right:8px"></i>오늘 체크 + 결과지 보기
+    </a>
+    <a class="btn-checkin" href="${resultUrl}">
+      <i class="fas fa-file-medical" style="margin-right:6px"></i>전체 결과지 보기
+    </a>
+  </div>
+
+  <!-- 실천 현황 -->
+  <div class="card">
+    <div class="card-title"><span>📊</span> 실천 현황</div>
+    <div class="stat-grid">
+      <div class="stat-box">
+        <div class="stat-val">${totalDays}</div>
+        <div class="stat-lbl">체크한 날</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val">${adherence}%</div>
+        <div class="stat-lbl">전체 달성률</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val">${(() => {
+          // 연속 달성 스트릭
+          const sorted = [...(checks.results || [])].sort((a: any, b: any) => b.check_date.localeCompare(a.check_date))
+          let streak = 0
+          let prev = ''
+          for (const r of sorted) {
+            const done = r.exercise_done + r.diet_done + r.recovery_done
+            if (done === 0) break
+            if (!prev) { streak = 1; prev = r.check_date; continue }
+            const prevD = new Date(prev), curD = new Date(r.check_date)
+            const diffD = Math.round((prevD.getTime() - curD.getTime()) / 86400000)
+            if (diffD === 1) { streak++; prev = r.check_date } else break
+          }
+          return streak
+        })()}</div>
+        <div class="stat-lbl">연속 🔥</div>
+      </div>
+    </div>
+    <div class="progress-bar" style="margin-top:12px">
+      <div class="progress-fill" style="width:${adherence}%"></div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);text-align:right;margin-top:4px">${adherence}% 달성</div>
+
+    <!-- 최근 7일 히트맵 -->
+    ${checks.results && checks.results.length > 0 ? `
+    <div style="margin-top:14px">
+      <div style="font-size:11px;color:var(--muted);font-weight:600;margin-bottom:6px">최근 ${Math.min(checks.results.length, 21)}일</div>
+      <div class="check-grid">
+        ${checks.results.slice(0, 21).map((r: any) => {
+          const done = r.exercise_done + r.diet_done + r.recovery_done
+          const cls = done === 3 ? 'check-full' : done > 0 ? 'check-part' : 'check-none'
+          return `<div class="check-cell ${cls}" title="${r.check_date}">${done}/3</div>`
+        }).join('')}
+      </div>
+    </div>` : '<div style="font-size:12px;color:var(--muted);margin-top:8px;text-align:center">아직 체크 기록이 없어요. 오늘부터 시작해보세요! 💪</div>'}
+  </div>
+
+  <!-- 코칭 코멘트 -->
+  ${latestComment ? `
+  <div class="card">
+    <div class="card-title"><span>💬</span> 컨설턴트 코멘트</div>
+    <div class="comment-box">
+      <div class="comment-text">${latestComment.comment}</div>
+      <div style="font-size:11px;color:#93C5FD;margin-top:6px">${latestComment.created_at?.slice(0,10) || ''}</div>
+    </div>
+  </div>` : ''}
+
+  <!-- 안내 -->
+  <div style="text-align:center;font-size:12px;color:var(--muted);padding:8px 0;line-height:1.8">
+    이 페이지를 <strong>북마크</strong>해두면<br>언제든지 오늘의 미션을 확인할 수 있어요 📌<br>
+    <span style="font-size:10px;opacity:.7">slimmind.kr/my/${sessionId}</span>
+  </div>
+</div>
+</body>
+</html>`
 
   return c.html(html)
 })

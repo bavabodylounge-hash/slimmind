@@ -1359,17 +1359,53 @@ async function loadDashboard() {
     return a.subscription_end.localeCompare(b.subscription_end);
   });
 
-  const consRows = consultants.slice(0, 20).map(c => `
-    <tr onclick="impersonateLogin('${c.code}')" style="cursor:pointer">
+  // 만료 임박(D-7 이하) 또는 만료된 컨설턴트 경보 배너
+  const expiredOrImminent = consultants.filter(c => {
+    if (!c.subscription_end) return false;
+    const diff = Math.ceil((new Date(c.subscription_end) - new Date(today)) / 86400000);
+    return diff <= 7;
+  });
+  if (expiredOrImminent.length > 0) {
+    const alertBanner = document.getElementById('sub-expiry-alert');
+    if (alertBanner) {
+      alertBanner.style.display = 'block';
+      alertBanner.innerHTML = `
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <span style="font-size:20px">⚠️</span>
+          <div style="flex:1">
+            <strong>구독 만료 임박 컨설턴트 ${expiredOrImminent.length}명</strong>
+            <div style="font-size:12px;margin-top:2px;opacity:.85">
+              ${expiredOrImminent.map(c => {
+                const diff = Math.ceil((new Date(c.subscription_end) - new Date(today)) / 86400000);
+                const label = diff < 0 ? `D+${Math.abs(diff)} 만료됨` : diff === 0 ? '오늘 만료' : `D-${diff}`;
+                return `<b>${c.name}</b>(${c.code}) ${label}`;
+              }).join(' &nbsp;·&nbsp; ')}
+            </div>
+          </div>
+          <button class="btn btn-sm" style="background:#fff;color:#b5452e;font-weight:700;flex-shrink:0" onclick="navigateTo('consultants')">
+            <i class="fas fa-sync-alt"></i> 갱신 관리
+          </button>
+        </div>`;
+    }
+  }
+
+  const consRows = consultants.slice(0, 20).map(c => {
+    const diff = c.subscription_end ? Math.ceil((new Date(c.subscription_end) - new Date(today)) / 86400000) : null;
+    const isExpiring = diff !== null && diff <= 7;
+    return `
+    <tr onclick="impersonateLogin('${c.code}')" style="cursor:pointer;${isExpiring ? 'background:rgba(181,69,46,.04)' : ''}">
       <td><code style="font-size:12px;font-weight:700;color:var(--primary);background:rgba(181,69,46,.08);padding:2px 6px;border-radius:5px">${c.code}</code></td>
       <td><span style="font-weight:600">${c.name || '-'}</span></td>
       <td><span style="font-size:12px;color:var(--muted)">${c.job_type || '-'}</span></td>
       <td>${gradeBadge(c.grade)}</td>
       <td>${statusBadge(c.subscription_status)}</td>
       <td>${dDayBadge(c.subscription_end)}</td>
-      <td><button class="btn btn-primary btn-sm" onclick="event.stopPropagation();impersonateLogin('${c.code}')"><i class="fas fa-sign-in-alt"></i> 접속</button></td>
-    </tr>
-  `).join('');
+      <td style="display:flex;gap:4px">
+        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();impersonateLogin('${c.code}')"><i class="fas fa-sign-in-alt"></i></button>
+        ${isExpiring ? `<button class="btn btn-sm" style="background:#10B981;color:#fff;font-size:11px;font-weight:700" onclick="event.stopPropagation();quickRenew('${c.code}','${c.name||c.code}','${c.subscription_end||''}')"><i class="fas fa-sync-alt"></i> 갱신</button>` : ''}
+      </td>
+    </tr>`;
+  }).join('');
 
   const b2bRows = partners.map(p => `
     <tr onclick="impersonateLogin('${p.code}')" style="cursor:pointer">
@@ -1406,6 +1442,9 @@ async function loadDashboard() {
   const bcTop = bc_distribution.slice(0, 8);
 
   document.getElementById('page-body').innerHTML = `
+    <!-- 구독 만료 경보 배너 (JS에서 채워짐) -->
+    <div id="sub-expiry-alert" style="display:none;background:linear-gradient(135deg,#FEF3C7,#FDE68A);border:1.5px solid #F59E0B;border-radius:14px;padding:14px 18px;margin-bottom:16px;color:#92400E"></div>
+
     <!-- KPI 그리드 -->
     <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">${kpiCards}</div>
 
@@ -1556,7 +1595,14 @@ async function loadConsultants(search = '', status = '') {
       <td>${c.job_type || '-'}</td>
       <td>${gradeBadge(c.grade)}</td>
       <td>${statusBadge(c.subscription_status)}</td>
-      <td>${c.subscription_end ? c.subscription_end.slice(0,10) : '-'}</td>
+      <td>
+        ${c.subscription_end ? (() => {
+          const diff = Math.ceil((new Date(c.subscription_end) - new Date()) / 86400000);
+          const color = diff < 0 ? '#DC2626' : diff <= 7 ? '#F59E0B' : '#374151';
+          return `<span style="font-size:12px;font-weight:700;color:${color}">${c.subscription_end.slice(0,10)}</span>
+          ${diff <= 7 ? `<button class="btn btn-sm" style="margin-left:4px;background:#10B981;color:#fff;font-size:10px;padding:2px 6px" onclick="event.stopPropagation();quickRenew('${c.code}','${c.name||c.code}','${c.subscription_end}')"><i class="fas fa-sync-alt"></i> 갱신</button>` : ''}`;
+        })() : '<span style="color:var(--muted)">-</span>'}
+      </td>
       <td style="text-align:center">${c.lecture_progress || 0}/12강</td>
       <td><span class="badge ${c.is_certified ? 'badge-green' : 'badge-gray'}">${c.is_certified ? '인증' : '미인증'}</span></td>
       <td style="text-align:center">
@@ -1791,6 +1837,26 @@ async function activateConsultant(code) {
   await api('PUT', `/admin/consultants/${code}`, { subscription_status: 'active' });
   toast(`${code} 활성화 완료`, 'success');
   loadConsultants();
+}
+
+// ── 구독 빠른 갱신 ─────────────────────────────────────────────────
+async function quickRenew(code, name, currentEnd) {
+  const months = prompt(`${name}(${code}) 구독 갱신\n\n현재 만료일: ${currentEnd || '없음'}\n몇 개월 연장? (1/3/6/12)`, '3');
+  if (!months || isNaN(+months)) return;
+  const m = parseInt(months);
+  if (m <= 0 || m > 24) { toast('1~24개월 사이로 입력하세요.', 'error'); return; }
+
+  // 기준일: 현재 만료일(미래면) 또는 오늘
+  const base = currentEnd && new Date(currentEnd) > new Date() ? new Date(currentEnd) : new Date();
+  base.setMonth(base.getMonth() + m);
+  const newEnd = base.toISOString().slice(0, 10);
+
+  await api('PUT', `/admin/consultants/${code}`, {
+    subscription_status: 'active',
+    subscription_end: newEnd
+  });
+  toast(`✅ ${name} 구독 ${m}개월 갱신 완료 (→ ${newEnd})`, 'success');
+  loadDashboard();
 }
 
 function copySurveyLink(code) {

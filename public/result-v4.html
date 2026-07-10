@@ -20795,6 +20795,65 @@ function renderSurBodyContext(sec, data, region, texture, nicknameDisplay, bcCod
 })();
 </script>
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+
+<!-- ══════════════════════════════════════════════════════
+     CTA 하단 고정 바 — 담당 컨설턴트 상담 연결
+     consultant_phone / consultant_kakao 둘 다 없으면 숨김
+══════════════════════════════════════════════════════ -->
+<div id="cta-consult-bar" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;
+  background:linear-gradient(135deg,#b5452e,#8a3421);
+  padding:14px 20px 20px;box-shadow:0 -4px 24px rgba(0,0,0,.25);
+  safe-area-inset-bottom:env(safe-area-inset-bottom)">
+  <div style="max-width:480px;margin:0 auto">
+    <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.7);letter-spacing:.8px;margin-bottom:6px;text-align:center">
+      담당 컨설턴트 1:1 상담
+    </div>
+    <div id="cta-cons-name" style="font-size:13px;font-weight:800;color:#fff;text-align:center;margin-bottom:10px"></div>
+    <div style="display:flex;gap:8px">
+      <a id="cta-btn-phone" href="#" style="display:none;flex:1;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);
+        border-radius:12px;padding:12px;text-align:center;color:#fff;text-decoration:none;font-size:13px;font-weight:700">
+        📞 전화 상담
+      </a>
+      <a id="cta-btn-kakao" href="#" style="display:none;flex:1;background:#FEE500;border-radius:12px;padding:12px;
+        text-align:center;color:#3C1E1E;text-decoration:none;font-size:13px;font-weight:700">
+        💬 카카오 상담
+      </a>
+    </div>
+    <div style="text-align:center;margin-top:8px">
+      <button onclick="document.getElementById('cta-consult-bar').style.display='none'"
+        style="background:none;border:none;color:rgba(255,255,255,.5);font-size:11px;cursor:pointer;padding:4px 12px">닫기</button>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var r = window.__RESULT__ || {};
+  var phone = r.consultant_phone;
+  var kakao = r.consultant_kakao;
+  var name  = r.consultant_name;
+  if (!phone && !kakao) return; // 연락처 없으면 숨김
+  var bar = document.getElementById('cta-consult-bar');
+  if (!bar) return;
+  bar.style.display = 'block';
+  // 컨설턴트 이름
+  var nameEl = document.getElementById('cta-cons-name');
+  if (nameEl && name) nameEl.textContent = name + ' 컨설턴트';
+  // 전화 버튼
+  if (phone) {
+    var btnP = document.getElementById('cta-btn-phone');
+    btnP.href = 'tel:' + phone.replace(/[^0-9]/g,'');
+    btnP.style.display = 'block';
+  }
+  // 카카오 버튼
+  if (kakao) {
+    var btnK = document.getElementById('cta-btn-kakao');
+    btnK.href = kakao.startsWith('http') ? kakao : 'https://pf.kakao.com/' + kakao;
+    btnK.style.display = 'block';
+  }
+  // 바텀 패딩 확보 (CTA 바에 콘텐츠 가려지지 않게)
+  document.body.style.paddingBottom = '120px';
+})();
+</script>
 </body>
 </html>
 

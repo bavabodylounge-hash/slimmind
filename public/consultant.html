@@ -549,13 +549,40 @@
           </div>
         </div>
 
-        <div style="border-top:1px solid var(--border);padding-top:20px;margin-top:4px">
-          <div class="card-title" style="margin-bottom:10px">📊 링크 작동 방식</div>
-          <div style="font-size:13px;color:var(--muted);line-height:2.2">
-            <div>① 고객이 링크 접속 → 설문 시작 (평균 8~12분)</div>
-            <div>② 설문 완료 → <strong style="color:var(--primary)">'내 고객 목록'</strong>에 자동 등록</div>
-            <div>③ 고객 클릭 → 결과지 확인, 메모 작성, B2B 처방 설정 가능</div>
+        <!-- QR 다운로드 버튼 -->
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-ghost" onclick="downloadQR()"><i class="fas fa-download"></i> PNG 다운로드</button>
+          <button class="btn btn-ghost" onclick="printQR()"><i class="fas fa-print"></i> 인쇄</button>
+        </div>
+      </div>
+
+      <!-- 유입 통계 카드 -->
+      <div class="card" id="qr-stats-card" style="margin-top:0">
+        <div class="card-title"><i class="fas fa-chart-bar" style="color:#10B981"></i> 내 링크 유입 통계</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+          <div style="background:#F0FDF4;border-radius:12px;padding:16px;text-align:center">
+            <div style="font-size:24px;font-weight:800;color:#10B981" id="qr-stat-total">-</div>
+            <div style="font-size:11px;color:#64748B;margin-top:4px;font-weight:600">누적 고객</div>
           </div>
+          <div style="background:#EFF6FF;border-radius:12px;padding:16px;text-align:center">
+            <div style="font-size:24px;font-weight:800;color:#2563EB" id="qr-stat-month">-</div>
+            <div style="font-size:11px;color:#64748B;margin-top:4px;font-weight:600">이번 달</div>
+          </div>
+          <div style="background:#FFF7ED;border-radius:12px;padding:16px;text-align:center">
+            <div style="font-size:24px;font-weight:800;color:#F59E0B" id="qr-stat-week">-</div>
+            <div style="font-size:11px;color:#64748B;margin-top:4px;font-weight:600">이번 주</div>
+          </div>
+        </div>
+        <div id="qr-stat-bc" style="font-size:12px;color:var(--muted)"></div>
+      </div>
+
+      <!-- 링크 작동 방식 -->
+      <div class="card" style="margin-top:0">
+        <div class="card-title" style="margin-bottom:10px">📊 링크 작동 방식</div>
+        <div style="font-size:13px;color:var(--muted);line-height:2.2">
+          <div>① 고객이 링크 접속 → 설문 시작 (평균 8~12분)</div>
+          <div>② 설문 완료 → <strong style="color:var(--primary)">'내 고객 목록'</strong>에 자동 등록</div>
+          <div>③ 고객 클릭 → 결과지 확인, 메모 작성, B2B 처방 설정 가능</div>
         </div>
       </div>
     </div>
@@ -1270,6 +1297,7 @@ function switchTab(t) {
   if (t === 'notifications') { loadNotifications(); loadCheckAlerts(); }
   if (t === 'analytics')     loadAnalyticsTab();
   if (t === 'daily-checks')  loadConsultantDailyChecks();
+  if (t === 'invite')        loadQrStats();
 }
 
 // ══════════════════════════════════════════════════════════
@@ -2851,6 +2879,37 @@ function printQR() {
     <script>window.onload=()=>window.print()<\/script>
     </body></html>`);
   w.document.close();
+}
+
+// QR PNG 다운로드
+async function downloadQR() {
+  if (!ME?.code) return;
+  const url    = `${location.origin}/s/${ME.code}`;
+  const qrUrl  = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(url)}&margin=20&color=1E293B`;
+  try {
+    const res  = await fetch(qrUrl);
+    const blob = await res.blob();
+    const a    = document.createElement('a');
+    a.href     = URL.createObjectURL(blob);
+    a.download = `slimmind_qr_${ME.code}.png`;
+    a.click();
+    toast('✅ QR코드 PNG 다운로드 완료!', 'success');
+  } catch { toast('다운로드 실패. 인쇄를 이용해주세요.', 'error'); }
+}
+
+// 유입 통계 로딩
+async function loadQrStats() {
+  try {
+    const data = await api('GET', '/consultant/my-qr/stats');
+    const el = id => document.getElementById(id);
+    if (el('qr-stat-total')) el('qr-stat-total').textContent = data.total ?? 0;
+    if (el('qr-stat-month')) el('qr-stat-month').textContent = data.this_month ?? 0;
+    if (el('qr-stat-week'))  el('qr-stat-week').textContent  = data.this_week ?? 0;
+    if (el('qr-stat-bc') && data.bc_dist?.length) {
+      el('qr-stat-bc').innerHTML = '<strong style="color:#374151">BC별 분포:</strong> ' +
+        data.bc_dist.map(b => `<span style="background:#F1F5F9;border-radius:6px;padding:2px 8px;margin:2px;display:inline-block">${b.bc_primary} <b>${b.cnt}명</b></span>`).join('');
+    }
+  } catch(e) { console.warn('QR stats load failed', e); }
 }
 
 // ══════════════════════════════════════════════════════════
