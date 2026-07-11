@@ -681,7 +681,8 @@ app.post('/api/admin/consultants', requireRole('MASTER'), async (c) => {
   const body = await c.req.json()
   const { name, email, phone, job_type, grade, subscription_end, memo, custom_code, custom_password } = body
 
-  if (!email) return c.json({ success: false, error: '이메일은 필수입니다.' }, 400)
+  // 이메일 선택사항으로 변경 (없어도 컨설턴트 등록 가능)
+  // if (!email) return c.json({ success: false, error: '이메일은 필수입니다.' }, 400)
 
   let code: string
   if (custom_code && /^SC-/i.test(custom_code)) {
