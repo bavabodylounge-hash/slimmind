@@ -4370,18 +4370,41 @@ app.post('/api/survey/notify', async (c) => {
 
   try {
     const body = await c.req.json().catch(() => ({})) as any
-    const result_id = String(body.result_id || '').trim()
-    const ref_code  = String(body.ref_code  || '').trim()
+    let result_id   = String(body.result_id   || '').trim()
+    const ref_code  = String(body.ref_code    || '').trim()
+    const user_name = String(body.user_name   || '').trim()
+    const session_id = String(body.session_id || '').trim()
 
     if (!ref_code) return c.json({ error: 'ref_code 필요' }, 400)
 
-    // 중복 알림 방지 — 같은 result_id+ref_code 조합 5분 내 재전송 차단
+    // result_id가 없거나 빈 문자열이면 ref_code 기반 최신 diagnosis_results에서 조회
+    if (!result_id) {
+      try {
+        const latest = await db.prepare(
+          `SELECT id FROM diagnosis_results
+           WHERE ref_code = ?
+           ORDER BY created_at DESC LIMIT 1`
+        ).bind(ref_code).first<any>()
+        if (latest?.id) result_id = latest.id
+      } catch (_) {}
+    }
+    // session_id로 재시도
+    if (!result_id && session_id) {
+      try {
+        const bySession = await db.prepare(
+          `SELECT id FROM diagnosis_results WHERE id = ? OR session_id = ? LIMIT 1`
+        ).bind(session_id, session_id).first<any>()
+        if (bySession?.id) result_id = bySession.id
+      } catch (_) {}
+    }
+
+    // 중복 알림 방지 — 같은 ref_code 조합 5분 내 재전송 차단 (result_id 무관)
     const recent = await db.prepare(
       `SELECT id FROM survey_notifications
-       WHERE result_id = ? AND ref_code = ?
+       WHERE ref_code = ?
          AND notified_at >= datetime('now', '-5 minutes')
        LIMIT 1`
-    ).bind(result_id, ref_code).first<any>()
+    ).bind(ref_code).first<any>()
 
     if (recent) {
       return c.json({ ok: true, duplicate: true, message: '이미 알림이 전송되었습니다.' })
@@ -4389,9 +4412,9 @@ app.post('/api/survey/notify', async (c) => {
 
     await db.prepare(
       `INSERT INTO survey_notifications (result_id, ref_code) VALUES (?, ?)`
-    ).bind(result_id, ref_code).run()
+    ).bind(result_id || '', ref_code).run()
 
-    return c.json({ ok: true })
+    return c.json({ ok: true, result_id: result_id || null })
   } catch (e: any) {
     console.error('[survey/notify]', e)
     return c.json({ error: String(e) }, 500)
