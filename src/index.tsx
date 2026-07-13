@@ -1,8 +1,8 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import indexHtml from '../public/index.html?raw'
-import surveyDataJs from '../public/survey-data.js?raw'
-import bcEngineJs from '../public/bc-engine.js?raw'
+// survey-data.js, bc-engine.js → Worker 번들 제외, 정적 파일로 서빙
+// (?raw 인라인 시 번들 4MB 초과 → SyntaxError 원인이었음)
 // bc-definitions.js — BC코드 시스템 폐기로 미사용 (axis 시스템으로 전환)
 // import bcDefinitionsJs from '../public/bc-definitions.js?raw'
 import adminHtml from '../public/admin.html?raw'
@@ -169,17 +169,14 @@ function resultIdGen() {
 // ═══════════════════════════════════════════════════════════════
 //  공개 정적 파일 서빙
 // ═══════════════════════════════════════════════════════════════
-app.get('/survey-data.js', (c) =>
-  c.body(surveyDataJs, 200, { 'Content-Type': 'application/javascript; charset=utf-8' })
-)
+// survey-data.js → 정적 파일 서빙 (Cloudflare Pages가 public/survey-data.js 직접 서빙)
+// Worker 번들에서 제외됨 (_routes.json exclude에 포함)
 // /bc-definitions.js — BC코드 시스템 폐기, 204 No Content 반환
 app.get('/bc-definitions.js', (c) =>
   c.body('/* bc-definitions.js deprecated — axis system */', 200, { 'Content-Type': 'application/javascript; charset=utf-8' })
 )
-// /bc-engine.js — PRD V3.0 BC 코드 연산 엔진
-app.get('/bc-engine.js', (c) =>
-  c.body(bcEngineJs, 200, { 'Content-Type': 'application/javascript; charset=utf-8' })
-)
+// bc-engine.js → 정적 파일 서빙 (Cloudflare Pages가 public/bc-engine.js 직접 서빙)
+// Worker 번들에서 제외됨 (_routes.json exclude에 포함)
 
 // ═══════════════════════════════════════════════════════════════
 //  AUTH API
