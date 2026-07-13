@@ -4312,8 +4312,8 @@ stage2Questions.forEach(q=>{
       <div class="specest"><span class="esticon">⚡</span> <span id="est_${q.no}">허리 30인치 → 체지방률 약 24% 추정</span></div>
     </div>`;
   } else {
-    /* q.no가 문자열('2b')일 수 있으므로 항상 따옴표로 감싸기 */
-    const qnoJs = JSON.stringify(String(q.no));
+    /* q.no가 문자열('2b')일 수 있으므로 단따옴표로 감싸기 — double-quote는 HTML onclick 속성을 끊음 */
+    const qnoJs = "'" + String(q.no) + "'";
     body=`<div class="opts">${q.opts.map((o,i)=>`<div class="opt${q.multi?' multi':''}" onclick="s2pick(${qnoJs},${i},this,${q.multi},${q.max||0})">
       <span class="dot"></span><span class="otext"><b>${o[0]}</b>${o[1]?`<span class="osub">${o[1]}</span>`:''}</span></div>`).join('')}</div>`;
     if(q.multi)body+=`<div class="s2maxhint" id="s2maxhint_${q.no}">${q.max?`최대 ${q.max}개까지 선택`:'해당하는 것 모두'}</div><button class="s2next" id="s2next_${q.no}" onclick="s2next(${qnoJs})" style="display:none">다음 ↓</button>`;
