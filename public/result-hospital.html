@@ -5126,7 +5126,13 @@ window.__HOSPITAL_INIT_PROMISE__ = (async function hospitalInit() {
   var resultId = (typeof window.__HOSPITAL_RESULT_ID__ !== 'undefined')
     ? window.__HOSPITAL_RESULT_ID__ : null;
 
-  // URL 폴백
+  // URL path 폴백: /result-hospital/H-TEST-OBC001-001 → H-TEST-OBC001-001
+  if (!resultId) {
+    var pathMatch = window.location.pathname.match(/\/result-hospital\/([^/?#]+)/);
+    if (pathMatch && pathMatch[1]) resultId = decodeURIComponent(pathMatch[1]);
+  }
+
+  // URL 쿼리 폴백
   if (!resultId) {
     var p = new URLSearchParams(window.location.search);
     resultId = p.get('id') || p.get('result_id') || p.get('hid');
@@ -5134,8 +5140,10 @@ window.__HOSPITAL_INIT_PROMISE__ = (async function hospitalInit() {
 
   if (!resultId) {
     // 데모 모드 — window.__RESULT__ 없으면 demoData()가 처리
+    console.log('[hospital] ID 없음 — 데모 모드');
     return;
   }
+  console.log('[hospital] 병원 결과 ID:', resultId);
 
   try {
     var res  = await fetch('/api/h/result/' + encodeURIComponent(resultId));

@@ -4905,8 +4905,16 @@ app.get('/result-hospital/:id', async (c) => {
   const id = c.req.param('id')
   try {
     let html = await fetchAsset(c.env.ASSETS, '/result-hospital.html')
-    // 결과 ID를 HTML에 주입
-    html = html.replace('</head>', `<script>window.__HOSPITAL_RESULT_ID__ = ${JSON.stringify(id)};</script>\n</head>`)
+    // 결과 ID를 hospitalInit 스크립트 바로 앞에 주입
+    // (</head> 앞 주입 시 hospitalInit보다 뒤에 실행되어 ID를 못 읽는 타이밍 버그 방지)
+    const INJECT_MARKER = '<!-- ══ 병원 전용: API 연동 + __RESULT__ 주입 ══ -->'
+    const idScript = `<script>window.__HOSPITAL_RESULT_ID__ = ${JSON.stringify(id)};</script>\n`
+    if (html.includes(INJECT_MARKER)) {
+      html = html.replace(INJECT_MARKER, idScript + INJECT_MARKER)
+    } else {
+      // 마커 없을 때 폴백: 기존 방식
+      html = html.replace('</head>', idScript + '</head>')
+    }
     return c.html(html)
   } catch (e: any) {
     return c.html('<h2>결과지를 불러올 수 없습니다</h2>', 500)
