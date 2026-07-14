@@ -437,6 +437,14 @@ let USER_INFO = null;
 let BRAND = {};
 let currentPage = 'dashboard';
 
+// survey_category → 올바른 질문지 경로 반환
+function getSurveyUrl() {
+  const catPath = { hospital: '/h', aesthetic: '/a', fitness: '/f', integrated: '/s' };
+  const cat = (BRAND && BRAND.survey_category) ? BRAND.survey_category : 'integrated';
+  const base = catPath[cat] || '/s';
+  return `${location.origin}${base}/${USER_CODE}`;
+}
+
 // ─── API 헬퍼 ────────────────────────────────
 async function api(method, path, body) {
   try {
@@ -496,6 +504,7 @@ async function doLogin() {
       brand_name: data.brand_name,
       brand_color: data.brand_color || '#6366f1',
       brand_logo_url: data.brand_logo_url || '',
+      survey_category: data.survey_category || 'integrated',
     };
     localStorage.setItem('b2b_token', TOKEN);
     localStorage.setItem('b2b_code', USER_CODE);
@@ -897,7 +906,7 @@ function loadGuideB2B() {
         <div style="font-size:14px;font-weight:700;margin-bottom:6px">📱 고객 설문 링크 &amp; QR 활용</div>
         <div style="font-size:13px;opacity:.9;line-height:1.8">
           대시보드의 <b>파트너 전용 설문 링크</b>를 고객에게 카카오톡/문자로 발송하세요.<br>
-          링크: <code style="background:rgba(0,0,0,.2);padding:1px 6px;border-radius:4px">${origin}/s/${USER_CODE}</code><br>
+          링크: <code style="background:rgba(0,0,0,.2);padding:1px 6px;border-radius:4px">${getSurveyUrl()}</code><br>
           QR 코드 메뉴에서 QR을 인쇄하여 원내 안내판·리플릿 등에 활용하세요.<br>
           <span style="color:rgba(255,255,255,.9);font-weight:600">✅ 고객이 설문 완료 후 「담당자에게 완료 알림 보내기」를 누르면 대시보드에 즉시 알림이 전송됩니다.</span>
         </div>
@@ -935,7 +944,7 @@ function loadGuideB2B() {
       <div style="border-left:4px solid rgba(255,255,255,.5);padding:14px 18px;background:rgba(255,255,255,.08);border-radius:0 10px 10px 0;margin-bottom:20px">
         <div style="font-size:11px;font-weight:700;opacity:.7;margin-bottom:5px">FAQ</div>
         <div style="font-size:13px;opacity:.9;line-height:2">
-          <b>Q. 고객 결과가 안 보여요?</b><br>A. 고객이 전용 링크(/s/${USER_CODE})로 접속했는지 확인해주세요.<br>
+          <b>Q. 고객 결과가 안 보여요?</b><br>A. 고객이 전용 링크(${getSurveyUrl()})로 접속했는지 확인해주세요.<br>
           <b>Q. 비밀번호를 바꾸고 싶어요.</b><br>A. 업체 정보 탭에서 변경 가능합니다.<br>
           <b>Q. 브랜드컬러/로고를 바꾸고 싶어요.</b><br>A. 아래 채팅 버튼으로 본사에 문의해주세요.<br>
           <b>Q. MBTI가 실제와 다르게 나와요.</b><br>A. V4.7부터 10문항 가중치 합산 방식으로 개선되었습니다.
@@ -2227,6 +2236,7 @@ if (TOKEN) {
                 brand_name: p.brand_name || p.name,
                 brand_color: p.brand_color || '#6366f1',
                 brand_logo_url: p.brand_logo_url || '',
+                survey_category: p.survey_category || 'integrated',
               };
               localStorage.setItem('b2b_brand', JSON.stringify(BRAND));
             }
