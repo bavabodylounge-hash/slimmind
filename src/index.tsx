@@ -4742,7 +4742,7 @@ app.post('/api/h/diagnosis', async (c) => {
           INSERT INTO survey_notifications
             (ref_code, result_id, user_name, created_at)
           VALUES (?, ?, ?, datetime('now'))
-        `).run()
+        `).bind(ref_code, resultId, user_name).run()
       } catch (_) { /* survey_notifications 없으면 무시 */ }
     }
 

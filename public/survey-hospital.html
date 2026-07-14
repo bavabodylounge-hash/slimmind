@@ -14020,9 +14020,28 @@ async function submitDiagnosis(dispAnswers) {
   const _nicknameMap = (typeof NICKNAME_TO_BC !== 'undefined') ? NICKNAME_TO_BC : _NICKNAME_TO_BC_LOCAL;
   const _bcCodeKey = (f.name && _nicknameMap[f.name]) ? _nicknameMap[f.name] : 'BC-6';
 
+  // ── 신체정보 수집 (병원용 결과지 BMI 계산에 필요) ──
+  const _genderRaw = (userInfo && userInfo.gender) || null;
+  // gender: 한글 → 영문 코드 변환 (result-hospital.html에서 F/M 기준으로 표시)
+  const _genderCode = (_genderRaw === '여' || _genderRaw === '여성' || _genderRaw === 'female') ? 'F'
+                    : (_genderRaw === '남' || _genderRaw === '남성' || _genderRaw === 'male') ? 'M'
+                    : _genderRaw || null;
+  // 나이: pfProfile.birthY 기반 계산
+  const _birthY = (window.pfProfile && window.pfProfile.birthY) ? parseInt(window.pfProfile.birthY, 10) : null;
+  const _ageCalc = _birthY ? (new Date().getFullYear() - _birthY + 1) : null; // 한국 나이
+  // 키/몸무게: DOM 입력값 (BMS 단계에서 사용자가 입력한 값)
+  const _htEl = document.getElementById('kh_r_15') || document.querySelector('[data-field="height"]');
+  const _wtEl = document.getElementById('kw_r_15');
+  const _height = (_htEl && _htEl.dataset.t === '1') ? String(parseInt(_htEl.value, 10)) : null;
+  const _weight = (_wtEl && _wtEl.dataset.t === '1') ? String(parseInt(_wtEl.value, 10)) : (_curWt ? String(_curWt) : null);
+
   const payload = {
     user_name:       name,
     phone:           (userInfo && userInfo.phone) ? userInfo.phone : null,
+    gender:          _genderCode,
+    age:             _ageCalc ? String(_ageCalc) : null,
+    height:          _height,
+    weight:          _weight,
     bc_nickname:     f.name   || null,
     bc_primary:      f.name   || null,   // ✅ BUG-1 수정: 닉네임(한글) 저장 → bc-engine NICKNAME_TO_BC 역매핑 지원
     bc_code_key:     _bcCodeKey,         // ✅ 추가: 'BC-6' 형태 BC코드 직접 저장
@@ -14034,6 +14053,7 @@ async function submitDiagnosis(dispAnswers) {
     bg_filter:       '',
     ohaeng_type,
     mbti_full,
+    disp_type:       ohaeng_type ? (ohaeng_type + '형') : null, // 오행 → 기질 매핑
     goal_weight:     _goalWt,
     weight_loss_pct: _lossPct,
     disp_answers:    (dispAnswers && Object.keys(dispAnswers).length > 0) ? dispAnswers : null,
