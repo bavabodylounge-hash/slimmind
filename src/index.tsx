@@ -901,7 +901,8 @@ app.post('/api/admin/b2b-partners', requireRole('MASTER'), async (c) => {
   const db = c.env.DB
   const body = await c.req.json()
   const { name, type, owner_name, phone, email, address, commission_rate, memo,
-          brand_logo_url, brand_color, brand_name, custom_code, custom_password } = body
+          brand_logo_url, brand_color, brand_name, custom_code, custom_password,
+          survey_category } = body
 
   if (!name) return c.json({ success: false, error: '영업장명은 필수입니다.' }, 400)
   if (!email) return c.json({ success: false, error: '이메일은 필수입니다.' }, 400)
@@ -938,16 +939,27 @@ app.post('/api/admin/b2b-partners', requireRole('MASTER'), async (c) => {
   const defaultPassword = custom_password || `b2b${numSuffix.padStart(3, '0')}`
 
   try {
+    // survey_category 유효성 검사
+    const validCategories = ['integrated', 'hospital', 'aesthetic', 'fitness']
+    const category = validCategories.includes(survey_category) ? survey_category : 'integrated'
+
+    // survey_category 컬럼 없으면 자동 추가 (마이그레이션)
+    try {
+      await db.prepare(
+        "ALTER TABLE b2b_partners ADD COLUMN survey_category TEXT DEFAULT 'integrated'"
+      ).run()
+    } catch (_) { /* 이미 존재 시 무시 */ }
+
     await db.prepare(`
       INSERT INTO b2b_partners
         (code, name, type, owner_name, phone, email, address, commission_rate, memo,
-         brand_logo_url, brand_color, brand_name, password_hash, status)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,'active')
+         brand_logo_url, brand_color, brand_name, password_hash, status, survey_category)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,'active',?)
     `).bind(
       code, name, type || null, owner_name || null, phone || null, email || null,
       address || null, commission_rate || 15.0, memo || null,
       brand_logo_url || null, brand_color || '#6366f1', brand_name || name,
-      defaultPassword
+      defaultPassword, category
     ).run()
   } catch (err: any) {
     const msg = err?.message || String(err)
@@ -957,12 +969,19 @@ app.post('/api/admin/b2b-partners', requireRole('MASTER'), async (c) => {
     return c.json({ success: false, error: msg }, 500)
   }
 
+  // 분류별 설문 URL 결정
+  const catToPath: Record<string, string> = {
+    hospital: '/h', aesthetic: '/a', fitness: '/f', integrated: '/s'
+  }
+  const surveyBase = catToPath[survey_category] || '/s'
+
   return c.json({
     success: true, code,
     password: defaultPassword,
     defaultPassword,
+    survey_category: survey_category || 'integrated',
     message: `B2B 파트너 ${code} 생성 완료. 초기 비밀번호: ${defaultPassword}`,
-    survey_url: `/s/${code}`
+    survey_url: `${surveyBase}/${code}`
   })
 })
 
@@ -972,21 +991,31 @@ app.put('/api/admin/b2b-partners/:code', requireRole('MASTER'), async (c) => {
   const code = c.req.param('code').toUpperCase()
   const body = await c.req.json()
   const { name, type, owner_name, phone, email, address, commission_rate, status, memo,
-          brand_logo_url, brand_color, brand_name } = body
+          brand_logo_url, brand_color, brand_name, survey_category } = body
 
-  await db.prepare(`
-    UPDATE b2b_partners SET
-      name=?, type=?, owner_name=?, phone=?, email=?, address=?,
-      commission_rate=?, status=?, memo=?,
-      brand_logo_url=?, brand_color=?, brand_name=?,
-      updated_at=datetime('now')
-    WHERE code=?
-  `).bind(
+  const validCategories = ['integrated', 'hospital', 'aesthetic', 'fitness']
+  const category = survey_category && validCategories.includes(survey_category) ? survey_category : undefined
+
+  const setClauses = [
+    'name=?', 'type=?', 'owner_name=?', 'phone=?', 'email=?', 'address=?',
+    'commission_rate=?', 'status=?', 'memo=?',
+    'brand_logo_url=?', 'brand_color=?', 'brand_name=?',
+    "updated_at=datetime('now')"
+  ]
+  const binds: any[] = [
     name, type || null, owner_name || null, phone || null, email || null, address || null,
     commission_rate || 15.0, status || 'active', memo || null,
-    brand_logo_url || null, brand_color || '#6366f1', brand_name || name,
-    code
-  ).run()
+    brand_logo_url || null, brand_color || '#6366f1', brand_name || name
+  ]
+  if (category) {
+    setClauses.splice(setClauses.length - 1, 0, 'survey_category=?')
+    binds.push(category)
+  }
+  binds.push(code)
+
+  await db.prepare(
+    `UPDATE b2b_partners SET ${setClauses.join(',')} WHERE code=?`
+  ).bind(...binds).run()
 
   return c.json({ success: true })
 })
@@ -2312,6 +2341,220 @@ app.get('/slimmind', async (c) => {
   return c.html(html)
 })
 
+// ─── DB 마이그레이션 (MASTER 전용) ────────────────────────────────────
+// GET /api/admin/migrate — survey_category 컬럼 + hospital_responses 테이블 생성
+app.get('/api/admin/migrate', requireRole('MASTER'), async (c) => {
+  const db = c.env.DB as D1Database
+  const results: string[] = []
+
+  // 1. b2b_partners.survey_category 컬럼 추가
+  try {
+    await db.prepare(
+      "ALTER TABLE b2b_partners ADD COLUMN survey_category TEXT DEFAULT 'integrated'"
+    ).run()
+    results.push('✅ b2b_partners.survey_category 컬럼 추가')
+  } catch (e: any) {
+    results.push(`ℹ️ survey_category: ${String(e).includes('duplicate') || String(e).includes('already') ? '이미 존재' : String(e)}`)
+  }
+
+  // 2. hospital_responses 테이블 생성
+  try {
+    await db.prepare(`
+      CREATE TABLE IF NOT EXISTS hospital_responses (
+        id          TEXT PRIMARY KEY,
+        b2b_code    TEXT NOT NULL,
+        ref_code    TEXT,
+        user_name   TEXT NOT NULL,
+        gender      TEXT,
+        age         TEXT,
+        height      TEXT,
+        weight      TEXT,
+        phone       TEXT,
+        stage1_json TEXT,
+        stage2_json TEXT,
+        stage3_json TEXT,
+        stage4_json TEXT,
+        ohaeng_type TEXT,
+        disp_type   TEXT,
+        bc_code     TEXT,
+        axis_scores TEXT,
+        raw_answers TEXT,
+        created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run()
+    results.push('✅ hospital_responses 테이블 생성')
+  } catch (e: any) {
+    results.push(`❌ hospital_responses: ${String(e)}`)
+  }
+
+  return c.json({ ok: true, results })
+})
+
+// ─── /h/:code — 병원용 질문지 화이트라벨 진입 라우트 ─────────────
+// 병원 B2B 파트너 전용: survey_category='hospital' 인 B2B 코드만 허용
+app.get('/h/:code', async (c) => {
+  const db = c.env.DB
+  const rawCode = c.req.param('code').toUpperCase()
+
+  const partner = await db.prepare(
+    'SELECT code, name, brand_name, brand_color, brand_logo_url, status, survey_category FROM b2b_partners WHERE code = ?'
+  ).bind(rawCode).first<any>()
+
+  // 코드 없거나 정지된 경우
+  if (!partner || partner.status === 'suspended') {
+    return c.html('<!DOCTYPE html><html><body style="font-family:sans-serif;text-align:center;padding:60px"><h2>유효하지 않은 링크입니다</h2><p>담당자에게 문의해주세요.</p></body></html>', 404)
+  }
+
+  // survey_category가 hospital이 아닌 경우 통합질문지로 리다이렉트
+  if (partner.survey_category && partner.survey_category !== 'hospital') {
+    const catPath: Record<string, string> = { aesthetic: '/a', fitness: '/f', integrated: '/s' }
+    return c.redirect(`${catPath[partner.survey_category] || '/s'}/${rawCode}`, 302)
+  }
+
+  // scan_count 증가
+  await db.prepare(
+    "UPDATE b2b_partners SET qr_scan_count = qr_scan_count + 1, updated_at=datetime('now') WHERE code=?"
+  ).bind(rawCode).run()
+
+  const bColor = partner.brand_color || '#8b6db5'
+  const bName  = partner.brand_name  || partner.name
+  const bLogo  = partner.brand_logo_url || ''
+
+  const brandInject = `
+<script>
+  window.__BRAND__ = {
+    code: ${JSON.stringify(rawCode)},
+    type: 'B2B',
+    brand_name: ${JSON.stringify(bName)},
+    brand_color: ${JSON.stringify(bColor)},
+    brand_logo_url: ${JSON.stringify(bLogo)},
+    ref_code: ${JSON.stringify(rawCode)},
+    survey_category: 'hospital'
+  };
+  // CSS 변수 즉시 적용 (병원용 연보라 기본)
+  document.documentElement.style.setProperty('--c1', ${JSON.stringify(bColor)});
+  document.documentElement.style.setProperty('--c2', ${JSON.stringify(bColor)});
+  document.documentElement.style.setProperty('--c3', ${JSON.stringify(bColor)});
+</script>`
+
+  // ref_code 자동 연동 스크립트 (병원용 질문지 내부 변수 세팅)
+  const refScript = `
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    if (window.__BRAND__ && window.__BRAND__.ref_code) {
+      // 병원용 질문지 URL ?ref= 파라미터 세팅
+      try {
+        var url = new URL(window.location.href);
+        if (!url.searchParams.get('ref')) {
+          url.searchParams.set('ref', window.__BRAND__.ref_code);
+          window.history.replaceState({}, '', url.toString());
+        }
+      } catch(e) {}
+    }
+  });
+</script>`
+
+  let html = await fetchAsset(c.env.ASSETS, '/survey-hospital.html')
+  html = html.replace('</head>', `${brandInject}\n</head>`)
+  html = html.replace('</body>', `${refScript}\n</body>`)
+
+  return c.html(html)
+})
+
+// ─── /a/:code — 에스테틱용 질문지 (파일 준비 후 연결) ────────────
+app.get('/a/:code', async (c) => {
+  const db = c.env.DB
+  const rawCode = c.req.param('code').toUpperCase()
+
+  const partner = await db.prepare(
+    'SELECT code, name, brand_name, brand_color, brand_logo_url, status, survey_category FROM b2b_partners WHERE code = ?'
+  ).bind(rawCode).first<any>()
+
+  if (!partner || partner.status === 'suspended') {
+    return c.html('<!DOCTYPE html><html><body style="font-family:sans-serif;text-align:center;padding:60px"><h2>유효하지 않은 링크입니다</h2><p>담당자에게 문의해주세요.</p></body></html>', 404)
+  }
+
+  // 에스테틱 파일 준비 전: 통합질문지로 임시 서빙 (브랜드 주입 포함)
+  // TODO: survey-aesthetic.html 파일 추가 후 이 블록 교체
+  const bColor = partner.brand_color || '#e879a8'
+  const bName  = partner.brand_name  || partner.name
+  const bLogo  = partner.brand_logo_url || ''
+
+  const brandInject = `
+<script>
+  window.__BRAND__ = {
+    code: ${JSON.stringify(rawCode)},
+    type: 'B2B',
+    brand_name: ${JSON.stringify(bName)},
+    brand_color: ${JSON.stringify(bColor)},
+    brand_logo_url: ${JSON.stringify(bLogo)},
+    ref_code: ${JSON.stringify(rawCode)},
+    survey_category: 'aesthetic'
+  };
+  document.documentElement.style.setProperty('--brand-color', ${JSON.stringify(bColor)});
+</script>`
+
+  await db.prepare(
+    "UPDATE b2b_partners SET qr_scan_count = qr_scan_count + 1, updated_at=datetime('now') WHERE code=?"
+  ).bind(rawCode).run()
+
+  // 에스테틱 전용 파일이 없으면 통합질문지 임시 서빙
+  let html: string
+  try {
+    html = await fetchAsset(c.env.ASSETS, '/survey-aesthetic.html')
+  } catch {
+    html = await fetchAsset(c.env.ASSETS, '/index.html')
+  }
+  html = html.replace('</head>', `${brandInject}\n</head>`)
+  return c.html(html)
+})
+
+// ─── /f/:code — 피트니스용 질문지 (파일 준비 후 연결) ────────────
+app.get('/f/:code', async (c) => {
+  const db = c.env.DB
+  const rawCode = c.req.param('code').toUpperCase()
+
+  const partner = await db.prepare(
+    'SELECT code, name, brand_name, brand_color, brand_logo_url, status, survey_category FROM b2b_partners WHERE code = ?'
+  ).bind(rawCode).first<any>()
+
+  if (!partner || partner.status === 'suspended') {
+    return c.html('<!DOCTYPE html><html><body style="font-family:sans-serif;text-align:center;padding:60px"><h2>유효하지 않은 링크입니다</h2><p>담당자에게 문의해주세요.</p></body></html>', 404)
+  }
+
+  const bColor = partner.brand_color || '#22c55e'
+  const bName  = partner.brand_name  || partner.name
+  const bLogo  = partner.brand_logo_url || ''
+
+  const brandInject = `
+<script>
+  window.__BRAND__ = {
+    code: ${JSON.stringify(rawCode)},
+    type: 'B2B',
+    brand_name: ${JSON.stringify(bName)},
+    brand_color: ${JSON.stringify(bColor)},
+    brand_logo_url: ${JSON.stringify(bLogo)},
+    ref_code: ${JSON.stringify(rawCode)},
+    survey_category: 'fitness'
+  };
+  document.documentElement.style.setProperty('--brand-color', ${JSON.stringify(bColor)});
+</script>`
+
+  await db.prepare(
+    "UPDATE b2b_partners SET qr_scan_count = qr_scan_count + 1, updated_at=datetime('now') WHERE code=?"
+  ).bind(rawCode).run()
+
+  // 피트니스 전용 파일이 없으면 통합질문지 임시 서빙
+  let html: string
+  try {
+    html = await fetchAsset(c.env.ASSETS, '/survey-fitness.html')
+  } catch {
+    html = await fetchAsset(c.env.ASSETS, '/index.html')
+  }
+  html = html.replace('</head>', `${brandInject}\n</head>`)
+  return c.html(html)
+})
+
 // ─── /s/:code — B2B/컨설턴트 화이트라벨 진입 라우트 ────────────
 // 예: /s/B2B-AES-001 → 해당 업체 브랜드가 적용된 설문지
 // 예: /s/SC-0001    → 컨설턴트 ref_code 심어진 설문지
@@ -2324,8 +2567,17 @@ app.get('/s/:code', async (c) => {
   // B2B 코드인 경우 브랜드 데이터 조회
   if (rawCode.startsWith('B2B-')) {
     const partner = await db.prepare(
-      'SELECT code, name, brand_name, brand_color, brand_logo_url, status FROM b2b_partners WHERE code = ?'
+      'SELECT code, name, brand_name, brand_color, brand_logo_url, status, survey_category FROM b2b_partners WHERE code = ?'
     ).bind(rawCode).first<any>()
+
+    // survey_category 에 따라 전용 라우트로 리다이렉트
+    if (partner && partner.status !== 'suspended') {
+      const cat = partner.survey_category || 'integrated'
+      if (cat === 'hospital') return c.redirect(`/h/${rawCode}`, 302)
+      if (cat === 'aesthetic') return c.redirect(`/a/${rawCode}`, 302)
+      if (cat === 'fitness')  return c.redirect(`/f/${rawCode}`, 302)
+      // integrated 는 아래 기존 로직으로 계속 처리
+    }
 
     if (partner && partner.status !== 'suspended') {
       // scan_count 증가
@@ -4377,6 +4629,156 @@ app.get('/api/admin/coupons', requireRole('MASTER'), async (c) => {
   } catch (e: any) {
     console.error('[admin/coupons GET]', e)
     return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ══════════════════════════════════════════════════════════════════
+//  POST /api/h/diagnosis — 병원용 질문지 응답 저장
+//  병원용 전용 엔드포인트 (hospital_responses 테이블에 저장)
+//  Body: { user_name, phone, gender, age, height, weight,
+//          stage1_answers, stage2_answers, stage3_answers, stage4_answers,
+//          ohaeng_type, bc_code, axis_scores, raw_answers,
+//          ref_code, session_id }
+// ══════════════════════════════════════════════════════════════════
+app.post('/api/h/diagnosis', async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not configured' }, 500)
+
+  try {
+    const body = await c.req.json()
+    const {
+      user_name, phone, gender, age, height, weight,
+      stage1_answers, stage2_answers, stage3_answers, stage4_answers,
+      ohaeng_type, disp_type, bc_code, axis_scores, raw_answers,
+      ref_code, session_id
+    } = body
+
+    if (!user_name) return c.json({ error: 'user_name required' }, 400)
+
+    // hospital_responses 테이블 없으면 자동 생성
+    try {
+      await db.prepare(`
+        CREATE TABLE IF NOT EXISTS hospital_responses (
+          id          TEXT PRIMARY KEY,
+          b2b_code    TEXT NOT NULL,
+          ref_code    TEXT,
+          user_name   TEXT NOT NULL,
+          gender      TEXT,
+          age         TEXT,
+          height      TEXT,
+          weight      TEXT,
+          phone       TEXT,
+          stage1_json TEXT,
+          stage2_json TEXT,
+          stage3_json TEXT,
+          stage4_json TEXT,
+          ohaeng_type TEXT,
+          disp_type   TEXT,
+          bc_code     TEXT,
+          axis_scores TEXT,
+          raw_answers TEXT,
+          created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `).run()
+    } catch (_) { /* 이미 존재하면 무시 */ }
+
+    const resultId = session_id ||
+      `H-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`
+    const b2bCode  = ref_code || 'UNKNOWN'
+
+    await db.prepare(`
+      INSERT INTO hospital_responses
+        (id, b2b_code, ref_code, user_name, gender, age, height, weight, phone,
+         stage1_json, stage2_json, stage3_json, stage4_json,
+         ohaeng_type, disp_type, bc_code, axis_scores, raw_answers)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    `).bind(
+      resultId, b2bCode, ref_code || null, user_name,
+      gender || null, age ? String(age) : null,
+      height ? String(height) : null, weight ? String(weight) : null,
+      phone || null,
+      stage1_answers ? JSON.stringify(stage1_answers) : null,
+      stage2_answers ? JSON.stringify(stage2_answers) : null,
+      stage3_answers ? JSON.stringify(stage3_answers) : null,
+      stage4_answers ? JSON.stringify(stage4_answers) : null,
+      ohaeng_type || null, disp_type || null,
+      bc_code || null,
+      axis_scores ? JSON.stringify(axis_scores) : null,
+      raw_answers ? JSON.stringify(raw_answers) : null
+    ).run()
+
+    // 담당자 알림도 함께 발송 시도 (실패해도 응답에 영향 없음)
+    if (ref_code) {
+      try {
+        await db.prepare(`
+          INSERT INTO survey_notifications
+            (ref_code, result_id, user_name, created_at)
+          VALUES (?, ?, ?, datetime('now'))
+        `).run()
+      } catch (_) { /* survey_notifications 없으면 무시 */ }
+    }
+
+    return c.json({
+      ok: true,
+      result_id: resultId,
+      redirect: `/result-hospital/${resultId}`
+    })
+  } catch (e: any) {
+    console.error('[/api/h/diagnosis]', e)
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// GET /api/h/result/:id — 병원용 결과 데이터 JSON 조회
+app.get('/api/h/result/:id', async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not configured' }, 500)
+  const id = c.req.param('id')
+  try {
+    const row = await db.prepare(
+      'SELECT * FROM hospital_responses WHERE id = ?'
+    ).bind(id).first<any>()
+    if (!row) return c.json({ error: 'Not found' }, 404)
+
+    // JSON 필드 파싱
+    const parseJ = (v: any) => { try { return v ? JSON.parse(v) : null } catch { return null } }
+    return c.json({
+      ok: true,
+      id: row.id,
+      b2b_code: row.b2b_code,
+      ref_code: row.ref_code,
+      user_name: row.user_name,
+      gender: row.gender,
+      age: row.age,
+      height: row.height,
+      weight: row.weight,
+      phone: row.phone,
+      ohaeng_type: row.ohaeng_type,
+      disp_type: row.disp_type,
+      bc_code: row.bc_code,
+      axis_scores: parseJ(row.axis_scores),
+      stage1_answers: parseJ(row.stage1_json),
+      stage2_answers: parseJ(row.stage2_json),
+      stage3_answers: parseJ(row.stage3_json),
+      stage4_answers: parseJ(row.stage4_json),
+      raw_answers: parseJ(row.raw_answers),
+      created_at: row.created_at
+    })
+  } catch (e: any) {
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// GET /result-hospital/:id — 병원용 결과지 HTML 서빙
+app.get('/result-hospital/:id', async (c) => {
+  const id = c.req.param('id')
+  try {
+    let html = await fetchAsset(c.env.ASSETS, '/result-hospital.html')
+    // 결과 ID를 HTML에 주입
+    html = html.replace('</head>', `<script>window.__HOSPITAL_RESULT_ID__ = ${JSON.stringify(id)};</script>\n</head>`)
+    return c.html(html)
+  } catch (e: any) {
+    return c.html('<h2>결과지를 불러올 수 없습니다</h2>', 500)
   }
 })
 

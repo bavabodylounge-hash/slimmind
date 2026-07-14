@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>SlimMind 병원용 정밀 분석 결과지</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════════════
+   병원용 결과지 — 연보라(Lavender) 색상 시스템
+   통합결과지와 완전 차별화된 의료적 디자인
+══════════════════════════════════════════════ */
+:root {
+  --lv1: #8b6db5;    /* 주조색 — 연보라 */
+  --lv2: #7a52b0;    /* 강조색 — 진보라 */
+  --lv3: #a584cc;    /* 보조색 — 밝은 보라 */
+  --lv4: #c4a8e0;    /* 연한 보라 */
+  --lv5: #ede5f7;    /* 극연보라 배경 */
+  --lv6: #f7f3fd;    /* 배경 */
+  --med: #4a7c8e;    /* 의료 청록 */
+  --med2: #3a6070;
+  --med3: #e8f4f8;
+  --gold: #c9933a;
+  --text: #1a1625;
+  --sub:  #4a3d5c;
+  --muted:#8577a0;
+  --border:#ddd5ee;
+  --white:#ffffff;
+  --card-shadow: 0 4px 24px rgba(139,109,181,.12);
+  --card-radius: 20px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; }
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background: var(--lv6);
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* ── 로딩 오버레이 ── */
+#loadingOverlay {
+  position: fixed; inset: 0;
+  background: linear-gradient(135deg, #ede5f7, #f7f3fd);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  z-index: 9999;
+  gap: 20px;
+}
+.load-logo {
+  width: 64px; height: 64px;
+  background: var(--lv1);
+  border-radius: 20px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px;
+}
+.load-spinner {
+  width: 44px; height: 44px;
+  border: 4px solid var(--lv4);
+  border-top-color: var(--lv1);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+.load-text { font-size: 14px; color: var(--muted); font-weight: 500; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── 헤더 ── */
+#pageHeader {
+  background: linear-gradient(135deg, #6b4fa3 0%, #8b6db5 50%, #a584cc 100%);
+  color: #fff;
+  padding: 0;
+  position: relative;
+  overflow: hidden;
+}
+#pageHeader::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 80% 20%, rgba(255,255,255,.12), transparent 60%);
+}
+.header-inner {
+  position: relative; z-index: 1;
+  max-width: 700px; margin: 0 auto;
+  padding: 32px 20px 24px;
+}
+.header-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(255,255,255,.18);
+  border: 1px solid rgba(255,255,255,.3);
+  border-radius: 20px;
+  padding: 4px 14px;
+  font-size: 12px; font-weight: 700;
+  margin-bottom: 16px;
+  letter-spacing: .05em;
+}
+.header-title {
+  font-size: 26px; font-weight: 900;
+  line-height: 1.25;
+  margin-bottom: 8px;
+}
+.header-sub {
+  font-size: 14px;
+  opacity: .85;
+  margin-bottom: 20px;
+}
+.header-meta {
+  display: flex; gap: 16px; flex-wrap: wrap;
+}
+.header-chip {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(255,255,255,.15);
+  border-radius: 12px; padding: 6px 12px;
+  font-size: 13px; font-weight: 600;
+}
+.header-chip .ic { font-size: 16px; }
+
+/* ── 섹션 공통 ── */
+.section {
+  max-width: 700px; margin: 0 auto;
+  padding: 0 16px;
+}
+.section + .section { margin-top: 0; }
+
+/* ── 카드 ── */
+.card {
+  background: var(--white);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  padding: 24px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+}
+.card-title {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 16px; font-weight: 800;
+  color: var(--lv2);
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--lv5);
+}
+.card-title .ct-icon {
+  width: 36px; height: 36px;
+  background: var(--lv5);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+}
+.card-title .ct-badge {
+  margin-left: auto;
+  font-size: 11px; font-weight: 600;
+  background: var(--lv5);
+  color: var(--lv2);
+  padding: 3px 10px;
+  border-radius: 12px;
+}
+
+/* ── 오행 카드 ── */
+.ohaeng-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.oh-item {
+  aspect-ratio: 1;
+  border-radius: 16px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 4px;
+  font-size: 11px; font-weight: 700;
+  position: relative;
+  border: 2px solid transparent;
+  transition: all .25s;
+}
+.oh-item .oh-sym { font-size: 24px; }
+.oh-item .oh-name { font-size: 10px; font-weight: 700; }
+.oh-item .oh-pct { font-size: 9px; opacity: .8; }
+.oh-item.active {
+  border-color: var(--lv1);
+  transform: scale(1.06);
+  box-shadow: 0 6px 20px rgba(139,109,181,.3);
+}
+/* 오행별 색상 */
+.oh-목 { background: linear-gradient(135deg,#e8f5e9,#c8e6c9); color: #2e7d32; }
+.oh-화 { background: linear-gradient(135deg,#fce4ec,#f8bbd0); color: #c62828; }
+.oh-토 { background: linear-gradient(135deg,#fff8e1,#ffecb3); color: #f57f17; }
+.oh-금 { background: linear-gradient(135deg,#f3f4f6,#e5e7eb); color: #374151; }
+.oh-수 { background: linear-gradient(135deg,#e3f2fd,#bbdefb); color: #1565c0; }
+
+.ohaeng-result-box {
+  background: var(--lv5);
+  border: 2px solid var(--lv4);
+  border-radius: 14px;
+  padding: 16px 20px;
+  display: flex; align-items: center; gap: 14px;
+}
+.oh-main-symbol { font-size: 40px; }
+.oh-main-info h3 { font-size: 18px; font-weight: 900; color: var(--lv2); }
+.oh-main-info p { font-size: 13px; color: var(--sub); margin-top: 4px; }
+
+/* ── 기질(DISP) 카드 ── */
+.disp-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 12px; margin-bottom: 16px;
+}
+.disp-item {
+  background: var(--lv5);
+  border-radius: 14px;
+  padding: 14px;
+  position: relative;
+}
+.disp-item .di-label { font-size: 11px; color: var(--muted); font-weight: 600; margin-bottom: 6px; }
+.disp-item .di-val { font-size: 20px; font-weight: 900; color: var(--lv2); }
+.disp-item .di-sub { font-size: 11px; color: var(--sub); margin-top: 4px; }
+.disp-badge {
+  display: inline-block; padding: 6px 16px;
+  border-radius: 20px; font-size: 15px; font-weight: 800;
+  background: linear-gradient(135deg, var(--lv1), var(--lv2));
+  color: #fff; margin-bottom: 12px;
+}
+.disp-desc {
+  font-size: 13px; color: var(--sub);
+  background: var(--lv6);
+  border-left: 3px solid var(--lv3);
+  border-radius: 0 10px 10px 0;
+  padding: 10px 14px;
+  line-height: 1.7;
+}
+
+/* ── 축 점수 바 ── */
+.axis-list { display: flex; flex-direction: column; gap: 10px; }
+.axis-row {
+  display: flex; align-items: center; gap: 10px;
+}
+.axis-label {
+  width: 130px; flex-shrink: 0;
+  font-size: 12px; font-weight: 700; color: var(--sub);
+}
+.axis-bar-wrap {
+  flex: 1; height: 10px;
+  background: var(--lv5);
+  border-radius: 99px; overflow: hidden;
+}
+.axis-bar-fill {
+  height: 100%; border-radius: 99px;
+  background: linear-gradient(90deg, var(--lv3), var(--lv1));
+  transition: width .8s cubic-bezier(.4,0,.2,1);
+}
+.axis-score {
+  width: 36px; text-align: right;
+  font-size: 12px; font-weight: 700; color: var(--lv2);
+}
+
+/* ── 처방 그리드 (식단/운동/회복/요법) ── */
+.rx-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.rx-card {
+  background: var(--lv6);
+  border: 1.5px solid var(--border);
+  border-radius: 16px; padding: 16px;
+}
+.rx-card .rx-icon {
+  font-size: 24px; margin-bottom: 8px;
+}
+.rx-card .rx-title {
+  font-size: 13px; font-weight: 800; color: var(--lv2);
+  margin-bottom: 10px;
+}
+.rx-card ul {
+  list-style: none; padding: 0;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.rx-card ul li {
+  font-size: 12px; color: var(--sub);
+  display: flex; align-items: flex-start; gap: 6px;
+  line-height: 1.5;
+}
+.rx-card ul li::before {
+  content: '•';
+  color: var(--lv3); font-weight: 900; flex-shrink: 0;
+  margin-top: 1px;
+}
+.rx-highlight {
+  font-size: 11px; font-weight: 700;
+  background: var(--lv5); color: var(--lv2);
+  border-radius: 8px; padding: 3px 8px;
+  display: inline-block; margin-top: 6px;
+}
+
+/* ── 의료 처방 섹션 ── */
+.med-card {
+  background: linear-gradient(135deg, #e8f4f8, #f0f8fb);
+  border: 1.5px solid #c4dde8;
+  border-radius: 16px; padding: 18px;
+  margin-bottom: 12px;
+}
+.med-card .med-title {
+  font-size: 14px; font-weight: 800; color: var(--med);
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 12px;
+}
+.med-card .med-items {
+  display: flex; flex-direction: column; gap: 8px;
+}
+.med-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  background: rgba(255,255,255,.7);
+  border-radius: 10px; padding: 10px 12px;
+}
+.med-item .mi-icon { font-size: 18px; flex-shrink: 0; }
+.med-item .mi-content .mi-name { font-size: 13px; font-weight: 700; color: var(--med2); }
+.med-item .mi-content .mi-desc { font-size: 11px; color: #5a7a8a; margin-top: 3px; line-height: 1.5; }
+
+/* ── 요약 박스 ── */
+.summary-box {
+  background: linear-gradient(135deg, var(--lv1), var(--lv2));
+  border-radius: 20px; padding: 24px;
+  color: #fff; margin-bottom: 16px;
+}
+.summary-box h3 { font-size: 16px; font-weight: 800; margin-bottom: 12px; opacity: .9; }
+.summary-box p { font-size: 13px; line-height: 1.75; opacity: .9; }
+.summary-box .sum-chips {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px;
+}
+.summary-box .sum-chip {
+  background: rgba(255,255,255,.2);
+  border: 1px solid rgba(255,255,255,.35);
+  border-radius: 20px; padding: 5px 14px;
+  font-size: 12px; font-weight: 700;
+}
+
+/* ── 주의사항 & 면책 ── */
+.notice-box {
+  background: #fffbeb;
+  border: 1.5px solid #fcd34d;
+  border-radius: 14px; padding: 14px 18px;
+  margin-bottom: 16px;
+}
+.notice-box .nb-title {
+  font-size: 12px; font-weight: 800; color: #92400e;
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 8px;
+}
+.notice-box p { font-size: 11px; color: #78350f; line-height: 1.7; }
+
+/* ── 섹션 구분자 ── */
+.sec-divider {
+  height: 8px; background: var(--lv6);
+  margin: 0 -16px;
+}
+
+/* ── 페이지 섹션 타이틀 ── */
+.page-sec-title {
+  font-size: 11px; font-weight: 800;
+  color: var(--muted); letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 20px 0 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.page-sec-title::after {
+  content: ''; flex: 1; height: 1px;
+  background: var(--border);
+}
+
+/* ── 푸터 ── */
+#pageFooter {
+  background: #2d2040; color: rgba(255,255,255,.6);
+  text-align: center; padding: 28px 20px;
+  font-size: 12px; margin-top: 32px;
+}
+#pageFooter strong { color: rgba(255,255,255,.9); }
+
+/* ── 에러 페이지 ── */
+#errorPage {
+  display: none;
+  max-width: 400px; margin: 80px auto; padding: 40px 20px;
+  text-align: center;
+}
+#errorPage .err-icon { font-size: 48px; margin-bottom: 16px; }
+#errorPage h2 { font-size: 20px; font-weight: 800; color: var(--lv2); margin-bottom: 8px; }
+#errorPage p { font-size: 14px; color: var(--muted); }
+
+/* ── 반응형 ── */
+@media (max-width: 480px) {
+  .ohaeng-grid { grid-template-columns: repeat(5,1fr); gap:6px; }
+  .oh-item .oh-sym { font-size: 20px; }
+  .rx-grid { grid-template-columns: 1fr; }
+  .disp-grid { grid-template-columns: 1fr; }
+  .header-title { font-size: 22px; }
+}
+
+/* ── 인쇄 스타일 ── */
+@media print {
+  body { background: #fff; }
+  #pageHeader { background: var(--lv1) !important; -webkit-print-color-adjust: exact; }
+  .card { box-shadow: none; border: 1px solid #ddd; }
+}
+</style>
+</head>
+<body>
+
+<!-- 로딩 오버레이 -->
+<div id="loadingOverlay">
+  <div class="load-logo">🏥</div>
+  <div class="load-spinner"></div>
+  <div class="load-text">병원용 정밀 분석 결과를 불러오는 중...</div>
+</div>
+
+<!-- 에러 페이지 -->
+<div id="errorPage">
+  <div class="err-icon">😢</div>
+  <h2>결과를 찾을 수 없어요</h2>
+  <p>링크가 만료되었거나 잘못된 주소입니다.<br>담당 의료진에게 문의해주세요.</p>
+</div>
+
+<!-- ══ 메인 콘텐츠 ══ -->
+<div id="mainContent" style="display:none">
+
+  <!-- 헤더 -->
+  <header id="pageHeader">
+    <div class="header-inner">
+      <div class="header-badge">🏥 병원용 정밀 분석 · SlimMind Medical</div>
+      <h1 class="header-title" id="hdrTitle">체질·기질 정밀 분석 결과</h1>
+      <p class="header-sub" id="hdrSub">개인 맞춤 의료적 처방을 위한 종합 분석 보고서</p>
+      <div class="header-meta">
+        <div class="header-chip"><span class="ic">👤</span><span id="hdrName">—</span></div>
+        <div class="header-chip"><span class="ic">🗓️</span><span id="hdrDate">—</span></div>
+        <div class="header-chip"><span class="ic">🔖</span><span id="hdrCode">—</span></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── 섹션1: 요약 ── -->
+  <div class="section" style="margin-top:20px">
+    <div class="summary-box" id="summaryBox">
+      <h3>🔬 종합 체질 요약</h3>
+      <p id="summaryText">분석 중...</p>
+      <div class="sum-chips" id="summaryChips"></div>
+    </div>
+
+    <!-- 주의사항 -->
+    <div class="notice-box">
+      <div class="nb-title">⚠️ 의료적 활용 안내</div>
+      <p>본 결과는 의료적 참고 자료로, 최종 진단·처방은 반드시 담당 의료진과 상담하여 결정하시기 바랍니다. 개인별 건강 상태, 복용 약물, 기저질환에 따라 처방이 달라질 수 있습니다.</p>
+    </div>
+  </div>
+
+  <!-- ── 섹션2: 오행 체질 ── -->
+  <div class="sec-divider"></div>
+  <div class="section">
+    <div class="page-sec-title">01 · 오행 체질 분석</div>
+    <div class="card">
+      <div class="card-title">
+        <div class="ct-icon">☯️</div>
+        오행(五行) 체질 진단
+        <span class="ct-badge">병원 특화 분석</span>
+      </div>
+      <div class="ohaeng-grid" id="ohaengGrid">
+        <!-- JS 렌더 -->
+      </div>
+      <div class="ohaeng-result-box" id="ohaengResultBox">
+        <div class="oh-main-symbol" id="ohMainSym">☯️</div>
+        <div class="oh-main-info">
+          <h3 id="ohMainName">분석 중</h3>
+          <p id="ohMainDesc">오행 체질 특성 설명</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 섹션3: 기질(DISP) ── -->
+  <div class="sec-divider"></div>
+  <div class="section">
+    <div class="page-sec-title">02 · 타고난 기질(DISP) 분석</div>
+    <div class="card">
+      <div class="card-title">
+        <div class="ct-icon">🧬</div>
+        기질·성향 유형
+        <span class="ct-badge">정신·행동 패턴</span>
+      </div>
+      <div style="margin-bottom:12px">
+        <div class="disp-badge" id="dispBadge">분석 중</div>
+      </div>
+      <div class="disp-grid" id="dispGrid">
+        <!-- JS 렌더 -->
+      </div>
+      <div class="disp-desc" id="dispDesc">기질 분석 내용을 불러오는 중입니다.</div>
+    </div>
+  </div>
+
+  <!-- ── 섹션4: 원인축 점수 ── -->
+  <div class="sec-divider"></div>
+  <div class="section">
+    <div class="page-sec-title">03 · 주요 원인축 분석</div>
+    <div class="card">
+      <div class="card-title">
+        <div class="ct-icon">📊</div>
+        10대 원인축 점수
+        <span class="ct-badge">의료적 우선순위</span>
+      </div>
+      <div class="axis-list" id="axisList">
+        <!-- JS 렌더 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 섹션5: 식단 처방 ── -->
+  <div class="sec-divider"></div>
+  <div class="section">
+    <div class="page-sec-title">04 · 맞춤 처방 플랜</div>
+    <div class="card">
+      <div class="card-title">
+        <div class="ct-icon">🍽️</div>
+        의료적 식이 처방
+        <span class="ct-badge">영양 치료</span>
+      </div>
+      <div class="rx-grid" id="rxDietGrid">
+        <!-- JS 렌더 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 섹션6: 운동 처방 ── -->
+  <div class="section">
+    <div class="card">
+      <div class="card-title">
+        <div class="ct-icon">🏃</div>
+        운동 치료 처방
+        <span class="ct-badge">재활·치료 관점</span>
+      </div>
+      <div class="rx-grid" id="rxExGrid">
+        <!-- JS 렌더 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 섹션7: 회복 처방 ── -->
+  <div class="section">
+    <div class="card">
+      <div class="card-title">
+        <div class="ct-icon">😴</div>
+        회복·순환 처방
+        <span class="ct-badge">수면·스트레스 관리</span>
+      </div>
+      <div class="rx-grid" id="rxRecGrid">
+        <!-- JS 렌더 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 섹션8: 의료 시술 연계 ── -->
+  <div class="sec-divider"></div>
+  <div class="section">
+    <div class="page-sec-title">05 · 병원 시술 연계 요법</div>
+    <div id="medTherapySection">
+      <!-- JS 렌더 -->
+    </div>
+  </div>
+
+  <!-- ── 푸터 ── -->
+  <footer id="pageFooter">
+    <strong>SlimMind Medical</strong> · 병원용 체질·기질 정밀 분석<br>
+    본 결과지는 의료 참고용이며 진단을 대체하지 않습니다<br>
+    <span id="footerResultId" style="font-family:monospace;font-size:11px;opacity:.5"></span>
+  </footer>
+
+</div><!-- /mainContent -->
+
+<script>
+/* ══════════════════════════════════════════════
+   병원용 결과지 — 데이터 로드 & 렌더 엔진
+   통합결과지와 완전히 다른 계산 로직 적용
+══════════════════════════════════════════════ */
+
+// ── 오행 기본 데이터 (병원 특화 해석) ──
+const OHAENG_DATA = {
+  '목': {
+    sym: '🌿', name: '목(木) — 간담 계열',
+    color: '#2e7d32', bg: 'linear-gradient(135deg,#e8f5e9,#c8e6c9)',
+    desc: '간·담낭 기능이 중심. 해독·순환 능력이 체중 관리의 핵심 키입니다. 봄철 대사가 활발하고 스트레스성 체중 증가에 취약합니다.',
+    pct: 18,
+    medNote: '간기능 검사(AST/ALT) 확인 권장. 담즙산 분비 개선에 집중'
+  },
+  '화': {
+    sym: '🔥', name: '화(火) — 심혈관 계열',
+    color: '#c62828', bg: 'linear-gradient(135deg,#fce4ec,#f8bbd0)',
+    desc: '심장·소장 기능이 중심. 혈액순환과 체온 조절 능력이 다이어트 효과를 좌우합니다. 여름철 부종 및 열성 비만에 유의하세요.',
+    pct: 20,
+    medNote: '심전도·혈압 모니터링. 염증 수치(hsCRP) 확인'
+  },
+  '토': {
+    sym: '🌍', name: '토(土) — 비위 계열',
+    color: '#f57f17', bg: 'linear-gradient(135deg,#fff8e1,#ffecb3)',
+    desc: '비장·위장 기능이 중심. 소화·흡수 능력과 혈당 조절이 체중의 핵심입니다. 인슐린 저항성 및 내장지방 축적에 취약합니다.',
+    pct: 25,
+    medNote: '공복혈당·HbA1c·인슐린 검사 필수. 내장지방 CT 권장'
+  },
+  '금': {
+    sym: '⚙️', name: '금(金) — 폐대장 계열',
+    color: '#374151', bg: 'linear-gradient(135deg,#f3f4f6,#e5e7eb)',
+    desc: '폐·대장 기능이 중심. 호흡 및 배설 능력이 대사 노폐물 처리를 담당합니다. 변비성 비만, 피부 트러블과 연관이 깊습니다.',
+    pct: 17,
+    medNote: '장내 환경 개선, 호흡 패턴 교정 프로그램 연계'
+  },
+  '수': {
+    sym: '💧', name: '수(水) — 신방광 계열',
+    color: '#1565c0', bg: 'linear-gradient(135deg,#e3f2fd,#bbdefb)',
+    desc: '신장·방광 기능이 중심. 수분 대사와 호르몬 분비가 비만의 근본 원인입니다. 부종성 비만, 갱년기 체중 증가에 핵심적 역할을 합니다.',
+    pct: 20,
+    medNote: '신기능(크레아티닌, eGFR), 호르몬 패널(갑상선, 성호르몬) 확인'
+  }
+};
+
+// ── 기질 유형 데이터 (병원 특화 처방 포함) ──
+const DISP_DATA = {
+  '토형': {
+    label: '토형(土型) — 포용·신중형',
+    desc: '안정 지향적이며 규칙적인 생활 패턴을 선호합니다. 스트레스 해소를 음식으로 해결하려는 경향이 강해 폭식·과식에 취약합니다. 혈당 스파이크가 잦아 인슐린 저항성이 높을 가능성이 있습니다.',
+    diet: '저GI 식품, 발효식품, 규칙적인 소식',
+    exercise: '걷기·수영 등 지속성 유산소, 강도 낮게',
+    recovery: '명상·마음챙김으로 정서적 식욕 조절',
+    therapy: '식이요법·행동교정·혈당 모니터링'
+  },
+  '목형': {
+    label: '목형(木型) — 추진·창의형',
+    desc: '에너지가 넘치고 도전적이지만, 과로·스트레스 시 간 기능이 저하되어 독소 축적형 비만이 나타납니다. 음주·야식 습관에 취약하며 복부 내장지방이 쌓이기 쉽습니다.',
+    diet: '해독 식품(브로콜리, 깻잎), 금주 또는 절주',
+    exercise: '스트레칭·요가·필라테스로 간 경락 자극',
+    recovery: '충분한 수면(11pm 전 취침), 간 해독 루틴',
+    therapy: '간기능 개선·독소 배출·NAFLD 관리'
+  },
+  '화형': {
+    label: '화형(火型) — 열정·감성형',
+    desc: '활발하고 감성적이며, 열성 체질로 상열 증상(안면홍조, 불면)이 많습니다. 혈액순환 불균형으로 상체 비만 또는 부종이 나타나고, 심혈관 위험 관리가 중요합니다.',
+    diet: '항산화 식품(블루베리, 토마토), 나트륨 제한',
+    exercise: '저강도 유산소, 수중운동, 심박수 110 이하 유지',
+    recovery: '심호흡, 명상, 과열 방지 쿨링 루틴',
+    therapy: '혈압·지질 관리, 항염 프로토콜'
+  },
+  '금형': {
+    label: '금형(金型) — 원칙·완벽형',
+    desc: '꼼꼼하고 원칙적이며 호흡기·장 기능이 약한 경향이 있습니다. 장 건강이 체중 관리의 핵심 포인트이며, 변비성 비만·피부 트러블과 연관이 깊습니다.',
+    diet: '식이섬유·프리바이오틱스·수분 충분 섭취',
+    exercise: '호흡 운동, 복근 강화, 규칙적인 배변 유도 걷기',
+    recovery: '장 마사지, 규칙적 배변 습관 확립',
+    therapy: '장내 마이크로바이옴 분석, 프로바이오틱스 처방'
+  },
+  '수형': {
+    label: '수형(水型) — 지혜·내향형',
+    desc: '내향적이고 신중하며 신장·부신 기능과 호르몬 분비가 체중을 좌우합니다. 부종성 비만, 갱년기 체중 증가, 대사 저하에 취약하며 호르몬 균형이 다이어트의 핵심 열쇠입니다.',
+    diet: '저염식, 이뇨 식품(수박, 오이), 오메가3',
+    exercise: '가볍고 지속적인 운동, 수중 보행',
+    recovery: '족욕·반신욕으로 신장 경락 자극, 충분한 휴식',
+    therapy: '호르몬 패널 검사, 갑상선·부신 기능 최적화'
+  }
+};
+
+// ── 오행별 병원 식이 처방 ──
+const OHAENG_DIET_RX = {
+  '목': {
+    foods: ['브로콜리·케일 등 십자화과 채소', '레몬·자몽 등 구연산 식품', '강황·울금 (간 보호)', '흑깨·잣 (지방간 예방)'],
+    avoid: ['알코올 완전 금지', '튀긴 음식·트랜스지방', '과도한 동물성 지방'],
+    highlight: '간 해독식 + 저지방 고단백'
+  },
+  '화': {
+    foods: ['블루베리·딸기 등 항산화 베리류', '연어·고등어 (EPA/DHA)', '토마토·비트 (혈행 개선)', '다크초콜릿 소량 (플라보노이드)'],
+    avoid: ['나트륨 2g/일 이하 제한', '포화지방 제한', '카페인 과다 섭취 주의'],
+    highlight: '항산화·항염 식단 + 혈압 관리'
+  },
+  '토': {
+    foods: ['현미·귀리 등 통곡물 (저GI)', '고구마·단호박 (포만감)', '계피 (혈당 안정)', '사과식초 (인슐린 감수성)'],
+    avoid: ['정제 탄수화물·설탕 완전 제한', '액상과당 음료 금지', '야식 금지'],
+    highlight: '저GI 혈당 안정식 + 인슐린 저항성 개선'
+  },
+  '금': {
+    foods: ['다시마·미역 등 해조류 (장 청소)', '요거트·김치·된장 (프로바이오틱스)', '바나나·양파 (프리바이오틱스)', '충분한 수분 (2L 이상/일)'],
+    avoid: ['가공식품·방부제 함유 식품', '밀가루·글루텐 제한 시도', '찬 음식·아이스크림 제한'],
+    highlight: '장 환경 개선식 + 발효·섬유질 강화'
+  },
+  '수': {
+    foods: ['오이·수박·셀러리 (이뇨·부종 완화)', '연어·아마씨 (오메가3·호르몬)', '두부·콩류 (이소플라본)', '해바라기씨 (비타민E)'],
+    avoid: ['나트륨 최소화 (저염식 필수)', '가공식품·인스턴트 식품', '찬 음식 제한 (신장 보호)'],
+    highlight: '저염 이뇨식 + 호르몬 균형 영양'
+  }
+};
+
+// ── 오행별 운동 처방 ──
+const OHAENG_EX_RX = {
+  '목': {
+    type: '스트레칭·유연성 운동',
+    items: ['아침 햇빛 아래 20분 걷기 (간담 경락)', '측면 스트레칭·옆구리 비틀기', '필라테스·요가 (간 경락 자극)', '주 3회 60분 이내 유산소'],
+    intensity: '중강도 (최대심박수 60~70%)',
+    caution: '과음 다음 날 운동 금지'
+  },
+  '화': {
+    type: '저강도 지속 유산소',
+    items: ['수중 걷기·아쿠아로빅 (심장 부담 최소)', '심박수 110 이하 유지 걷기', '자전거·일립티컬 (충격 최소)', '호흡 중심 스트레칭'],
+    intensity: '저강도 (최대심박수 50~60%)',
+    caution: '고강도 HIIT, 무거운 중량 운동 금지'
+  },
+  '토': {
+    type: '규칙적 유산소 + 근력',
+    items: ['식후 15분 후 20분 걷기 (혈당 관리)', '주 2회 근력 운동 (인슐린 감수성)', '복부 코어 강화 운동', '점프·충격 없는 저충격 유산소'],
+    intensity: '중강도 (최대심박수 60~75%)',
+    caution: '공복 운동 주의, 혈당 체크 후 운동'
+  },
+  '금': {
+    type: '호흡 운동 + 장 활성',
+    items: ['복식호흡 운동 10분/회 (폐·대장 활성)', '걷기 + 복부 마사지 병행', '골반저근·복근 강화 운동', '규칙적 기상 후 스트레칭'],
+    intensity: '저~중강도 (최대심박수 55~65%)',
+    caution: '과호흡·무산소 운동 주의'
+  },
+  '수': {
+    type: '부드러운 지속 운동',
+    items: ['온수풀 수중 보행 (부종·관절 보호)', '족욕 후 발·종아리 마사지', '태극권·기공 (신장 경락)', '경사 없는 평지 걷기 30분'],
+    intensity: '저강도 (최대심박수 50~60%)',
+    caution: '찬 곳에서 운동 금지, 체온 유지 중요'
+  }
+};
+
+// ── 오행별 회복 처방 ──
+const OHAENG_REC_RX = {
+  '목': {
+    sleep: ['11pm 이전 취침 필수 (간 해독 골든타임)', '취침 1시간 전 스마트폰 금지', '어두운 환경·측면 수면 자세'],
+    stress: ['분노 감정 일기 쓰기', '녹차·캐모마일 차', '3분 복식호흡 (간 기운 순환)'],
+    circulation: ['아침 따뜻한 레몬물', '목·어깨 스트레칭 (간담 경락 자극)', '좌측 복부 셀프 마사지']
+  },
+  '화': {
+    sleep: ['규칙적 취침·기상 (심장 리듬 안정)', '저녁 카페인 완전 금지', '쿨링 침구·서늘한 환경'],
+    stress: ['심호흡 4-7-8 기법 (부교감 활성)', '자연 음악·명상', '저녁 과식·음주 금지'],
+    circulation: ['반신욕 15분 (혈행 촉진)', '종아리·발 마사지', '냉온 샤워 교대 (혈관 탄력)']
+  },
+  '토': {
+    sleep: ['일정한 식사·취침 시간 유지', '저녁 과식 금지 (소화 방해)', '식후 바로 눕지 않기 (30분 후)'],
+    stress: ['감사 일기 쓰기 (과식 충동 감소)', '꿀차·생강차 (소화 안정)', '감정적 식욕 인식 훈련'],
+    circulation: ['배꼽 주변 시계방향 복부 마사지', '족삼리(무릎 아래) 지압', '따뜻한 물 2L 이상 음수']
+  },
+  '금': {
+    sleep: ['규칙적 기상 (장 운동 활성화)', '아침 공복 물 한 잔 (장 자극)', '과호흡·코골이 교정'],
+    stress: ['복식호흡 10분 (폐 기능 강화)', '향기 요법(라벤더·유칼립투스)', '규칙적 배변 시간 훈련'],
+    circulation: ['장 마사지 하행결장→S상결장 방향', '변비 탈출 걷기 30분/일', '복부 따뜻하게 유지 (냉기 차단)']
+  },
+  '수': {
+    sleep: ['충분한 수면 7~9시간 (신장 회복)', '발 따뜻하게·상체 서늘하게', '수면 중 무릎 쿠션 (순환 개선)'],
+    stress: ['족욕 10~15분 (신장 경락)', '따뜻한 환경 유지 (냉기 차단)', '과로·야근 최소화'],
+    circulation: ['종아리 마사지 (부종 해소)', '다리 올리기 운동 (림프 순환)', '따뜻한 물 충분 음수']
+  }
+};
+
+// ── 축(Axis)별 이름 및 의료적 해석 ──
+const AXIS_INFO = {
+  A01: { name: '인슐린·내장지방', icon: '🍩', desc: '혈당 조절 및 내장지방 축적', med: '공복혈당·인슐린·HbA1c 검사' },
+  A02: { name: '림프·순환', icon: '💧', desc: '림프 흐름 및 혈액 순환', med: '림프 순환 개선, 압박 스타킹 고려' },
+  A03: { name: '호르몬·대사', icon: '⚗️', desc: '갑상선·성호르몬·부신 기능', med: '갑상선 기능 검사, 호르몬 패널' },
+  A04: { name: '근감소', icon: '💪', desc: '근육량 감소 및 근기능 저하', med: '체성분 검사(InBody), 단백질 충분 섭취' },
+  A05: { name: '소화·장', icon: '🫃', desc: '소화기능 및 장내 환경', med: '장내 마이크로바이옴 분석, 소화효소' },
+  A06: { name: '골격·자세', icon: '🦴', desc: '골격 배열 및 자세 불균형', med: '체형 교정, 물리치료 연계' },
+  A07: { name: '스트레스·코르티솔', icon: '😤', desc: '만성 스트레스 및 코르티솔 과다', med: '코르티솔 검사, 부신 지지 영양소' },
+  A08: { name: '심리·식이', icon: '🧠', desc: '감정적 식욕 및 식이 패턴', med: '인지행동치료, 식이 행동 교정' },
+  A09: { name: '대사위험', icon: '⚠️', desc: '대사증후군 복합 위험 인자', med: '대사증후군 종합 패널, 복부 CT' },
+  A10: { name: '기질·성향', icon: '🧬', desc: '타고난 기질 및 행동 패턴', med: '행동 교정 프로그램, 심리 상담' }
+};
+
+// ── 오행별 병원 시술 요법 ──
+const MED_THERAPY = {
+  '목': [
+    { icon: '💉', name: '간 해독 주사 요법', desc: '필수아미노산(메티오닌·글루타치온) 정맥 투여. 간 해독 기능 강화, NAFLD 예방' },
+    { icon: '🌿', name: '한방 침 치료', desc: '간담 경락(간수·담수·태충) 자극으로 간 기능 회복, 스트레스성 복부 지방 개선' },
+    { icon: '🔬', name: '독소 배출 프로그램', desc: '장내 독소 제거 킬레이션 요법. 중금속·활성산소 제거로 대사 개선' }
+  ],
+  '화': [
+    { icon: '💓', name: '혈행 개선 주사', desc: 'L-카르니틴 + 비타민B군 정맥 투여. 심혈관 기능 강화, 지방 연소 촉진' },
+    { icon: '🧊', name: '쿨링 압박 치료', desc: '냉온 교대 치료로 혈관 탄력 개선. 상체 열 분산, 부종 해소' },
+    { icon: '⚡', name: 'EMS 전기 자극', desc: '저주파 전기 자극으로 혈액순환 개선, 근수축 유도로 근위축 예방' }
+  ],
+  '토': [
+    { icon: '💊', name: '인슐린 감수성 개선', desc: '베르베린·크롬·알파리포산 병합 처방. 혈당 스파이크 억제, 내장지방 감소' },
+    { icon: '🔬', name: '장내 환경 재건', desc: '장내 세균 분석 후 맞춤 프로바이오틱스 처방. 소화 흡수 최적화' },
+    { icon: '💉', name: '셀룰라이트 치료', desc: '메조테라피(포스파티딜콜린)로 복부·허리 국소 지방 분해' }
+  ],
+  '금': [
+    { icon: '🫁', name: '호흡기 기능 강화', desc: '폐 용량 검사 후 호흡 재활 프로그램. 산소 공급 최적화로 대사 향상' },
+    { icon: '🌿', name: '장 세정 요법', desc: '수용성 식이섬유 + 오일 장 세정. 변비 해소, 독소 배출 촉진' },
+    { icon: '💆', name: '결장 마사지', desc: '전문 복부 마사지로 대장 운동 활성화. 배변 리듬 회복, 복부 지방 분해 촉진' }
+  ],
+  '수': [
+    { icon: '💧', name: '이뇨·부종 치료', desc: '한방 이뇨 처방(복령·택사) + 림프 드레나지. 부종성 비만 집중 치료' },
+    { icon: '⚗️', name: '호르몬 균형 요법', desc: '갑상선·성호르몬·부신 기능 검사 후 맞춤 호르몬 최적화 프로토콜' },
+    { icon: '🌡️', name: '온열 치료', desc: '원적외선 사우나·족욕 처방으로 신장 경락 자극. 냉증 개선, 대사 활성화' }
+  ]
+};
+
+/* ── 메인 렌더 함수 ── */
+async function loadAndRender() {
+  const resultId = window.__HOSPITAL_RESULT_ID__;
+  if (!resultId) {
+    showError();
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/h/result/${resultId}`);
+    if (!res.ok) { showError(); return; }
+    const data = await res.json();
+    if (!data.ok) { showError(); return; }
+
+    renderAll(data);
+  } catch (e) {
+    console.error('[result-hospital]', e);
+    showError();
+  }
+}
+
+function showError() {
+  document.getElementById('loadingOverlay').style.display = 'none';
+  document.getElementById('errorPage').style.display = 'block';
+}
+
+function renderAll(d) {
+  const ohaeng = d.ohaeng_type || '토';
+  const dispType = d.disp_type || null;
+  const axisScores = d.axis_scores || {};
+  const name = d.user_name || '고객';
+  const createdAt = d.created_at ? d.created_at.slice(0, 10) : '—';
+  const resultId = d.id || '—';
+
+  // 헤더
+  document.getElementById('hdrTitle').textContent = `${name}님의 체질·기질 분석 결과`;
+  document.getElementById('hdrName').textContent = name;
+  document.getElementById('hdrDate').textContent = createdAt;
+  document.getElementById('hdrCode').textContent = resultId.slice(0, 12) + '…';
+  document.getElementById('footerResultId').textContent = resultId;
+
+  // 요약 박스
+  renderSummary(d, ohaeng, dispType);
+
+  // 오행
+  renderOhaeng(ohaeng);
+
+  // 기질
+  renderDisp(ohaeng, dispType);
+
+  // 축 점수
+  renderAxes(axisScores);
+
+  // 처방
+  renderDiet(ohaeng);
+  renderExercise(ohaeng);
+  renderRecovery(ohaeng);
+
+  // 의료 시술
+  renderMedTherapy(ohaeng);
+
+  // 로딩 숨기기
+  document.getElementById('loadingOverlay').style.display = 'none';
+  document.getElementById('mainContent').style.display = 'block';
+}
+
+function renderSummary(d, ohaeng, dispType) {
+  const oh = OHAENG_DATA[ohaeng] || OHAENG_DATA['토'];
+  const gender = d.gender === 'F' ? '여성' : d.gender === 'M' ? '남성' : '';
+  const ageStr = d.age ? `${d.age}세` : '';
+
+  const summaryText = `${d.user_name || '고객'}님은 <strong>${oh.name.split(' — ')[0]}</strong> 체질로, ${oh.desc.split('.')[0]}. ${oh.medNote}`;
+  document.getElementById('summaryText').innerHTML = summaryText;
+
+  const chips = [];
+  if (ohaeng) chips.push(`${OHAENG_DATA[ohaeng]?.sym || '☯'} ${ohaeng}형 체질`);
+  if (dispType) chips.push(`🧬 ${dispType}`);
+  if (gender) chips.push(`${d.gender === 'F' ? '♀️' : '♂️'} ${gender}`);
+  if (ageStr) chips.push(`📅 ${ageStr}`);
+  if (d.height && d.weight) {
+    const bmi = (parseFloat(d.weight) / ((parseFloat(d.height)/100)**2)).toFixed(1);
+    if (!isNaN(bmi)) chips.push(`⚖️ BMI ${bmi}`);
+  }
+  document.getElementById('summaryChips').innerHTML =
+    chips.map(c => `<span class="sum-chip">${c}</span>`).join('');
+}
+
+function renderOhaeng(selected) {
+  const order = ['목','화','토','금','수'];
+  const pctMap = { 목:18, 화:20, 토:25, 금:17, 수:20 };
+  // 선택된 오행 가중치 올리기
+  if (pctMap[selected] !== undefined) {
+    pctMap[selected] = Math.min(35, pctMap[selected] + 15);
+    // 나머지 재조정
+    const others = order.filter(o => o !== selected);
+    const diff = pctMap[selected] - (OHAENG_DATA[selected]?.pct || 20);
+    others.forEach(o => { pctMap[o] = Math.max(8, Math.round(pctMap[o] - diff / others.length)); });
+  }
+
+  const grid = document.getElementById('ohaengGrid');
+  grid.innerHTML = order.map(oh => {
+    const info = OHAENG_DATA[oh];
+    const pct = pctMap[oh] || 20;
+    const isActive = oh === selected;
+    return `<div class="oh-item oh-${oh}${isActive ? ' active' : ''}">
+      <div class="oh-sym">${info.sym}</div>
+      <div class="oh-name">${oh}</div>
+      <div class="oh-pct">${pct}%</div>
+    </div>`;
+  }).join('');
+
+  const ohInfo = OHAENG_DATA[selected] || OHAENG_DATA['토'];
+  document.getElementById('ohMainSym').textContent = ohInfo.sym;
+  document.getElementById('ohMainName').textContent = ohInfo.name;
+  document.getElementById('ohMainDesc').textContent = ohInfo.desc;
+}
+
+function renderDisp(ohaeng, dispType) {
+  // DISP가 없으면 오행 기반으로 추론
+  const typeMap = { 목:'목형', 화:'화형', 토:'토형', 금:'금형', 수:'수형' };
+  const resolvedType = dispType || typeMap[ohaeng] || '토형';
+  const info = DISP_DATA[resolvedType] || DISP_DATA['토형'];
+
+  document.getElementById('dispBadge').textContent = info.label;
+
+  const items = [
+    { label: '식이 성향', val: info.diet },
+    { label: '운동 성향', val: info.exercise },
+    { label: '회복 전략', val: info.recovery },
+    { label: '권장 요법', val: info.therapy }
+  ];
+  document.getElementById('dispGrid').innerHTML = items.map(item => `
+    <div class="disp-item">
+      <div class="di-label">${item.label}</div>
+      <div class="di-sub">${item.val}</div>
+    </div>
+  `).join('');
+
+  document.getElementById('dispDesc').innerHTML =
+    `<strong>[${info.label}]</strong> ${info.val ? info.diet + '. ' : ''}${info.recovery}`;
+  // 기질 상세 설명
+  document.getElementById('dispDesc').textContent = `[${info.label.split('—')[1]?.trim() || info.label}] ${DISP_DATA[resolvedType]?.desc || ''}`;
+}
+
+function renderAxes(axisScores) {
+  const axisOrder = ['A01','A02','A03','A04','A05','A06','A07','A08','A09','A10'];
+  const list = document.getElementById('axisList');
+
+  if (!axisScores || Object.keys(axisScores).length === 0) {
+    list.innerHTML = '<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">축 점수 데이터가 없습니다</div>';
+    return;
+  }
+
+  const maxScore = Math.max(...Object.values(axisScores).map(Number), 1);
+  list.innerHTML = axisOrder.map(ax => {
+    const score = axisScores[ax] || axisScores[ax.toLowerCase()] || 0;
+    const pct = Math.round((Number(score) / maxScore) * 100);
+    const info = AXIS_INFO[ax] || { name: ax, icon: '📊', desc: '' };
+    return `
+      <div class="axis-row">
+        <div class="axis-label">${info.icon} ${info.name}</div>
+        <div class="axis-bar-wrap">
+          <div class="axis-bar-fill" style="width:${pct}%"></div>
+        </div>
+        <div class="axis-score">${Math.round(score)}</div>
+      </div>`;
+  }).join('');
+}
+
+function renderDiet(ohaeng) {
+  const rx = OHAENG_DIET_RX[ohaeng] || OHAENG_DIET_RX['토'];
+  const grid = document.getElementById('rxDietGrid');
+  grid.innerHTML = `
+    <div class="rx-card">
+      <div class="rx-icon">✅</div>
+      <div class="rx-title">권장 식품</div>
+      <ul>${rx.foods.map(f => `<li>${f}</li>`).join('')}</ul>
+      <div class="rx-highlight">${rx.highlight}</div>
+    </div>
+    <div class="rx-card">
+      <div class="rx-icon">🚫</div>
+      <div class="rx-title">제한 식품</div>
+      <ul>${rx.avoid.map(a => `<li>${a}</li>`).join('')}</ul>
+    </div>`;
+}
+
+function renderExercise(ohaeng) {
+  const rx = OHAENG_EX_RX[ohaeng] || OHAENG_EX_RX['토'];
+  const grid = document.getElementById('rxExGrid');
+  grid.innerHTML = `
+    <div class="rx-card">
+      <div class="rx-icon">🏃</div>
+      <div class="rx-title">운동 종류: ${rx.type}</div>
+      <ul>${rx.items.map(i => `<li>${i}</li>`).join('')}</ul>
+      <div class="rx-highlight">강도: ${rx.intensity}</div>
+    </div>
+    <div class="rx-card">
+      <div class="rx-icon">⚠️</div>
+      <div class="rx-title">운동 주의사항</div>
+      <ul>
+        <li>${rx.caution}</li>
+        <li>운동 전 혈압·혈당 체크</li>
+        <li>통증 발생 시 즉시 중단</li>
+        <li>충분한 준비운동 필수</li>
+      </ul>
+    </div>`;
+}
+
+function renderRecovery(ohaeng) {
+  const rx = OHAENG_REC_RX[ohaeng] || OHAENG_REC_RX['토'];
+  const grid = document.getElementById('rxRecGrid');
+  grid.innerHTML = `
+    <div class="rx-card">
+      <div class="rx-icon">😴</div>
+      <div class="rx-title">수면 처방</div>
+      <ul>${rx.sleep.map(s => `<li>${s}</li>`).join('')}</ul>
+    </div>
+    <div class="rx-card">
+      <div class="rx-icon">🩸</div>
+      <div class="rx-title">순환·회복 처방</div>
+      <ul>${rx.circulation.map(s => `<li>${s}</li>`).join('')}</ul>
+    </div>`;
+}
+
+function renderMedTherapy(ohaeng) {
+  const therapies = MED_THERAPY[ohaeng] || MED_THERAPY['토'];
+  const section = document.getElementById('medTherapySection');
+  section.innerHTML = `
+    <div class="med-card">
+      <div class="med-title">🏥 ${ohaeng}형 체질 맞춤 병원 시술 요법</div>
+      <div class="med-items">
+        ${therapies.map(t => `
+          <div class="med-item">
+            <div class="mi-icon">${t.icon}</div>
+            <div class="mi-content">
+              <div class="mi-name">${t.name}</div>
+              <div class="mi-desc">${t.desc}</div>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="notice-box" style="margin-top:0">
+      <div class="nb-title">💊 처방 전 확인 사항</div>
+      <p>모든 시술·약물 처방은 환자의 기저질환, 현재 복용 약물, 알레르기 반응을 확인 후 진행해주세요. 
+      임신·수유 중이거나 심각한 기저질환이 있는 경우 담당 의사의 사전 승인이 필요합니다.</p>
+    </div>`;
+}
+
+// 페이지 시작
+loadAndRender();
+</script>
+</body>
+</html>

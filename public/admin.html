@@ -770,6 +770,41 @@
           </select>
         </div>
       </div>
+
+      <!-- 질문지 분류 (신규) -->
+      <div style="margin-bottom:14px">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">📋 질문지 분류 <span style="font-weight:400;font-size:10px;text-transform:none;letter-spacing:0;color:var(--muted)">(고객에게 제공될 설문 유형)</span></div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px" id="b2b-survey-category-group">
+          <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;cursor:pointer;transition:all .15s" id="cat-label-integrated">
+            <input type="radio" name="b2b_survey_category" value="integrated" checked style="accent-color:#6366f1;width:16px;height:16px">
+            <span style="flex:1">
+              <span style="font-size:13px;font-weight:700;color:#1e293b">🧩 통합질문지</span><br>
+              <span style="font-size:11px;color:var(--muted)">기본 바디코드 설문 (/s/코드)</span>
+            </span>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;cursor:pointer;transition:all .15s" id="cat-label-hospital">
+            <input type="radio" name="b2b_survey_category" value="hospital" style="accent-color:#8b6db5;width:16px;height:16px">
+            <span style="flex:1">
+              <span style="font-size:13px;font-weight:700;color:#1e293b">🏥 병원용</span><br>
+              <span style="font-size:11px;color:var(--muted)">의료 특화 설문 (/h/코드)</span>
+            </span>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;cursor:pointer;transition:all .15s;opacity:.6" id="cat-label-aesthetic">
+            <input type="radio" name="b2b_survey_category" value="aesthetic" disabled style="accent-color:#e879a8;width:16px;height:16px">
+            <span style="flex:1">
+              <span style="font-size:13px;font-weight:700;color:#1e293b">💅 에스테틱용</span><br>
+              <span style="font-size:11px;color:var(--muted)">준비 중 (/a/코드)</span>
+            </span>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;cursor:pointer;transition:all .15s;opacity:.6" id="cat-label-fitness">
+            <input type="radio" name="b2b_survey_category" value="fitness" disabled style="accent-color:#22c55e;width:16px;height:16px">
+            <span style="flex:1">
+              <span style="font-size:13px;font-weight:700;color:#1e293b">💪 피트니스용</span><br>
+              <span style="font-size:11px;color:var(--muted)">준비 중 (/f/코드)</span>
+            </span>
+          </label>
+        </div>
+      </div>
       <div class="form-grid">
         <div class="form-field">
           <label>원장명</label>
@@ -885,6 +920,8 @@
         </div>
       </div>
       <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">공유 링크</div>
+      <!-- 분류 배지 -->
+      <div id="b2b-reg-category-badge" style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;margin-bottom:10px;background:#f0ebff;color:#6d3eb5"></div>
       <div class="reg-link-row">
         <span class="link-label">📋 고객 설문 링크</span>
         <span class="link-val" id="b2b-reg-survey-url" style="font-size:10px"></span>
@@ -1520,7 +1557,7 @@ async function loadDashboard() {
       </div>
       <div class="tbl-wrap">
         <table>
-          <thead><tr><th>코드</th><th>브랜드명</th><th>원장명</th><th>업종</th><th>색상</th><th>상태</th><th></th></tr></thead>
+          <thead><tr><th>코드</th><th>브랜드명</th><th>원장명</th><th>업종</th><th>질문지</th><th>색상</th><th>상태</th><th></th></tr></thead>
           <tbody>${b2bRows || '<tr><td colspan="7"><div class="empty-state"><i class="fas fa-building"></i><p>등록된 B2B 파트너 없음</p></div></td></tr>'}</tbody>
         </table>
       </div>
@@ -4420,33 +4457,39 @@ async function loadB2BPartners(search = '', status = '') {
     return `<span class="badge ${m[s]||'badge-gray'}">${l[s]||s}</span>`;
   };
 
+  const CAT_LABEL = { integrated:'🧩 통합', hospital:'🏥 병원', aesthetic:'💅 에스테틱', fitness:'💪 피트니스' };
+  const CAT_COLOR = { integrated:'#6366f1', hospital:'#8b6db5', aesthetic:'#e879a8', fitness:'#22c55e' };
+  const CAT_PATH  = { integrated:'/s', hospital:'/h', aesthetic:'/a', fitness:'/f' };
   const rows = (data.partners || []).map(p => {
     const color = p.brand_color || '#6366f1';
     const logo = p.brand_logo_url ? `<img src="${p.brand_logo_url}" style="height:24px;max-width:60px;object-fit:contain;border-radius:4px;vertical-align:middle">` : `<span style="color:var(--muted);font-size:11px">로고없음</span>`;
+    const cat = p.survey_category || 'integrated';
+    const catColor = CAT_COLOR[cat] || '#6366f1';
+    const catLabel = CAT_LABEL[cat] || cat;
+    const surveyPath = (CAT_PATH[cat] || '/s') + '/' + p.code;
+    const catBadge = `<span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;background:${catColor}22;color:${catColor};border:1px solid ${catColor}44">${catLabel}</span>`;
     return `<tr>
       <td><code style="font-weight:700;color:#6366f1">${p.code}</code></td>
       <td>
         <div style="font-weight:600">${p.name || '-'}</div>
         <div style="font-size:11px;color:var(--muted)">${p.type || ''} ${p.owner_name ? '· '+p.owner_name : ''}</div>
       </td>
+      <td style="font-size:12px;color:var(--muted)">${p.brand_name || p.name}</td>
+      <td style="font-size:12px;color:var(--muted)">${p.type || '-'}</td>
+      <td>${catBadge}</td>
       <td>
         <div style="display:flex;align-items:center;gap:6px">
-          <div style="width:16px;height:16px;border-radius:4px;background:${color};flex-shrink:0"></div>
-          <span style="font-size:12px;font-family:monospace">${color}</span>
+          <div style="width:14px;height:14px;border-radius:3px;background:${color};flex-shrink:0"></div>
+          <span style="font-size:11px;font-family:monospace">${color}</span>
         </div>
-        <div style="margin-top:3px">${logo}</div>
       </td>
-      <td><div style="font-weight:600;font-size:13px">${p.brand_name || p.name}</div></td>
       <td>${statusBadgeB2B(p.status)}</td>
-      <td style="text-align:center">${p.result_count||0}건</td>
-      <td style="text-align:center">${p.qr_scan_count||0}회</td>
-      <td style="text-align:center;font-weight:600">${p.commission_rate||15}%</td>
       <td style="white-space:nowrap;text-align:right">
         <button class="btn btn-primary btn-sm" onclick="impersonateLogin('${p.code}')" style="margin-right:4px;background:#6D28D9;border-color:#6D28D9" title="B2B 대시보드 대리접속">
           <i class="fas fa-sign-in-alt"></i> 바로가기
         </button>
-        <button class="btn btn-ghost btn-sm" title="설문 링크 복사" onclick="copyText('${location.origin}/s/${p.code}')" style="padding:5px 8px">
-          <i class="fas fa-share-alt" style="color:#6366f1"></i>
+        <button class="btn btn-ghost btn-sm" title="설문 링크 복사" onclick="copyText('${location.origin}${surveyPath}')" style="padding:5px 8px">
+          <i class="fas fa-share-alt" style="color:${catColor}"></i>
         </button>
         <button class="btn btn-ghost btn-sm" onclick="openEditB2B(${JSON.stringify(p).replace(/"/g,'&quot;')})" style="padding:5px 8px;margin-left:2px">수정</button>
         ${p.status !== 'suspended'
@@ -4502,6 +4545,9 @@ function openAddB2B() {
   document.getElementById('b2b-color-hex').value = '#6366f1';
   document.getElementById('b2b-color-picker').value = '#6366f1';
   document.getElementById('b2b-edit-code').value = '';
+  // 질문지 분류 초기화
+  const defCatEl = document.querySelector('input[name="b2b_survey_category"][value="integrated"]');
+  if (defCatEl) defCatEl.checked = true;
   updateColorPreview('#6366f1');
   document.getElementById('b2b-logo-preview').innerHTML = '<i class="fas fa-image" style="color:var(--muted);font-size:16px"></i>';
   openModal('modal-b2b');
@@ -4527,6 +4573,10 @@ function openEditB2B(p) {
   document.getElementById('b2b-color-picker').value = color;
   updateColorPreview(color);
   previewLogo(p.brand_logo_url || '');
+  // 질문지 분류 복원
+  const editCat = p.survey_category || 'integrated';
+  const editCatEl = document.querySelector(`input[name="b2b_survey_category"][value="${editCat}"]`);
+  if (editCatEl) editCatEl.checked = true;
   openModal('modal-b2b');
 }
 
@@ -4539,6 +4589,9 @@ async function saveB2BPartner() {
   const hex = document.getElementById('b2b-color-hex').value.trim();
   const customCodeRaw = (document.getElementById('b2b-custom-code')?.value || '').trim().toUpperCase();
   const customPw = (document.getElementById('b2b-custom-pw')?.value || '').trim();
+  // 질문지 분류 선택값
+  const survCatEl = document.querySelector('input[name="b2b_survey_category"]:checked');
+  const surveyCategory = survCatEl ? survCatEl.value : 'integrated';
   const body = {
     name,
     type: document.getElementById('b2b-type').value,
@@ -4554,6 +4607,7 @@ async function saveB2BPartner() {
     status: 'active',
     custom_code: customCodeRaw || null,
     custom_password: customPw || null,
+    survey_category: surveyCategory,
   };
 
   if (editingB2BCode) {
@@ -4572,8 +4626,22 @@ async function saveB2BPartner() {
       // 등록 완료 팝업
       const code = res.code;
       const pw = res.defaultPassword;
-      const surveyUrl = `${location.origin}/slimmind?b2b=${code}`;  // Feature 7: ?b2b= 형식
+      const resCat = res.survey_category || 'integrated';
+      // 분류별 설문 URL 생성
+      const catPathMap = { integrated:'/s', hospital:'/h', aesthetic:'/a', fitness:'/f' };
+      const catLabelMap = { integrated:'🧩 통합질문지', hospital:'🏥 병원용 질문지', aesthetic:'💅 에스테틱 질문지', fitness:'💪 피트니스 질문지' };
+      const catColorMap = { integrated:'#6366f1', hospital:'#8b6db5', aesthetic:'#e879a8', fitness:'#22c55e' };
+      const surveyPath = (catPathMap[resCat] || '/s') + '/' + code;
+      const surveyUrl = `${location.origin}${surveyPath}`;
       const dashUrl = `${location.origin}/b2b`;
+      // 분류 배지
+      const badge = document.getElementById('b2b-reg-category-badge');
+      if (badge) {
+        badge.textContent = catLabelMap[resCat] || resCat;
+        badge.style.background = (catColorMap[resCat] || '#6366f1') + '22';
+        badge.style.color = catColorMap[resCat] || '#6366f1';
+        badge.style.border = '1px solid ' + (catColorMap[resCat] || '#6366f1') + '44';
+      }
       document.getElementById('b2b-reg-code').textContent = code;
       document.getElementById('b2b-reg-pw').textContent = pw;
       document.getElementById('b2b-reg-survey-url').textContent = surveyUrl;
