@@ -3955,6 +3955,45 @@ app.get('/api/b2b/my-programs/:bc_code', requireB2B(), async (c) => {
   }
 })
 
+// ============================================================
+// GET /api/b2b/programs/:code — 공개 API (결과지에서 호출)
+// B2B 파트너의 시술 프로그램 목록 반환 (인증 불필요 — 결과지 공개용)
+// ============================================================
+app.get('/api/b2b/programs/:code', async (c) => {
+  const db = c.env.DB as D1Database | undefined
+  if (!db) return c.json({ error: 'DB 없음' }, 500)
+  const code = c.req.param('code').toUpperCase()
+
+  try {
+    // 병원 정보 조회
+    const partner = await db.prepare(
+      'SELECT code, name, brand_name, status FROM b2b_partners WHERE code = ?'
+    ).bind(code).first<any>()
+
+    if (!partner || partner.status === 'suspended') {
+      return c.json({ programs: [], hospital_name: '' })
+    }
+
+    // 병원 시술 목록 조회 (가격 오름차순)
+    const programs = await db.prepare(
+      `SELECT id, program_name, price, description, tags
+       FROM b2b_custom_programs
+       WHERE b2b_code = ?
+       ORDER BY price ASC`
+    ).bind(code).all<any>()
+
+    const hospitalName = partner.brand_name || partner.name || ''
+
+    return c.json({
+      hospital_name: hospitalName,
+      b2b_code: code,
+      programs: programs.results || [],
+    })
+  } catch(e) {
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
 // GET /api/b2b/recommend/:resultId
 // B2B 파트너가 고객 결과지 기반으로 매칭 시술 목록 조회
 // ============================================================
