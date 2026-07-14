@@ -2396,9 +2396,16 @@ app.get('/h/:code', async (c) => {
   const db = c.env.DB
   const rawCode = c.req.param('code').toUpperCase()
 
-  const partner = await db.prepare(
-    'SELECT code, name, brand_name, brand_color, brand_logo_url, status, survey_category FROM b2b_partners WHERE code = ?'
-  ).bind(rawCode).first<any>()
+  let partner: any = null
+  try {
+    partner = await db.prepare(
+      'SELECT code, name, brand_name, brand_color, brand_logo_url, status, survey_category FROM b2b_partners WHERE code = ?'
+    ).bind(rawCode).first<any>()
+  } catch (_) {
+    partner = await db.prepare(
+      'SELECT code, name, brand_name, brand_color, brand_logo_url, status FROM b2b_partners WHERE code = ?'
+    ).bind(rawCode).first<any>()
+  }
 
   // 코드 없거나 정지된 경우
   if (!partner || partner.status === 'suspended') {
@@ -2466,9 +2473,16 @@ app.get('/a/:code', async (c) => {
   const db = c.env.DB
   const rawCode = c.req.param('code').toUpperCase()
 
-  const partner = await db.prepare(
-    'SELECT code, name, brand_name, brand_color, brand_logo_url, status, survey_category FROM b2b_partners WHERE code = ?'
-  ).bind(rawCode).first<any>()
+  let partner: any = null
+  try {
+    partner = await db.prepare(
+      'SELECT code, name, brand_name, brand_color, brand_logo_url, status, survey_category FROM b2b_partners WHERE code = ?'
+    ).bind(rawCode).first<any>()
+  } catch (_) {
+    partner = await db.prepare(
+      'SELECT code, name, brand_name, brand_color, brand_logo_url, status FROM b2b_partners WHERE code = ?'
+    ).bind(rawCode).first<any>()
+  }
 
   if (!partner || partner.status === 'suspended') {
     return c.html('<!DOCTYPE html><html><body style="font-family:sans-serif;text-align:center;padding:60px"><h2>유효하지 않은 링크입니다</h2><p>담당자에게 문의해주세요.</p></body></html>', 404)
@@ -2514,9 +2528,16 @@ app.get('/f/:code', async (c) => {
   const db = c.env.DB
   const rawCode = c.req.param('code').toUpperCase()
 
-  const partner = await db.prepare(
-    'SELECT code, name, brand_name, brand_color, brand_logo_url, status, survey_category FROM b2b_partners WHERE code = ?'
-  ).bind(rawCode).first<any>()
+  let partner: any = null
+  try {
+    partner = await db.prepare(
+      'SELECT code, name, brand_name, brand_color, brand_logo_url, status, survey_category FROM b2b_partners WHERE code = ?'
+    ).bind(rawCode).first<any>()
+  } catch (_) {
+    partner = await db.prepare(
+      'SELECT code, name, brand_name, brand_color, brand_logo_url, status FROM b2b_partners WHERE code = ?'
+    ).bind(rawCode).first<any>()
+  }
 
   if (!partner || partner.status === 'suspended') {
     return c.html('<!DOCTYPE html><html><body style="font-family:sans-serif;text-align:center;padding:60px"><h2>유효하지 않은 링크입니다</h2><p>담당자에게 문의해주세요.</p></body></html>', 404)
@@ -2566,9 +2587,16 @@ app.get('/s/:code', async (c) => {
 
   // B2B 코드인 경우 브랜드 데이터 조회
   if (rawCode.startsWith('B2B-')) {
-    const partner = await db.prepare(
-      'SELECT code, name, brand_name, brand_color, brand_logo_url, status, survey_category FROM b2b_partners WHERE code = ?'
-    ).bind(rawCode).first<any>()
+    let partner: any = null
+    try {
+      partner = await db.prepare(
+        'SELECT code, name, brand_name, brand_color, brand_logo_url, status, survey_category FROM b2b_partners WHERE code = ?'
+      ).bind(rawCode).first<any>()
+    } catch (_) {
+      partner = await db.prepare(
+        'SELECT code, name, brand_name, brand_color, brand_logo_url, status FROM b2b_partners WHERE code = ?'
+      ).bind(rawCode).first<any>()
+    }
 
     // survey_category 에 따라 전용 라우트로 리다이렉트
     if (partner && partner.status !== 'suspended') {
