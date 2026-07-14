@@ -1114,6 +1114,34 @@ app.get('/api/b2b/results', requireB2B(), async (c) => {
 app.get('/api/b2b/stats', requireB2B(), async (c) => {
   const user = c.get('user') as JwtPayload
   const db = c.env.DB
+
+  // 파트너 survey_category 확인
+  let partnerInfo: any = null
+  try { partnerInfo = await db.prepare('SELECT survey_category FROM b2b_partners WHERE code=?').bind(user.code).first<any>() } catch (_) {}
+  const isHospital = partnerInfo?.survey_category === 'hospital'
+
+  if (isHospital) {
+    // 병원 파트너: hospital_responses + results 합산
+    const [hospTotal, hospMonth, hospToday, hospWeek, regTotal, nickDist] = await Promise.all([
+      db.prepare('SELECT COUNT(*) as cnt FROM hospital_responses WHERE ref_code=?').bind(user.code).first<any>(),
+      db.prepare("SELECT COUNT(*) as cnt FROM hospital_responses WHERE ref_code=? AND strftime('%Y-%m',created_at)=strftime('%Y-%m','now')").bind(user.code).first<any>(),
+      db.prepare("SELECT COUNT(*) as cnt FROM hospital_responses WHERE ref_code=? AND date(created_at)=date('now')").bind(user.code).first<any>(),
+      db.prepare("SELECT COUNT(*) as cnt FROM hospital_responses WHERE ref_code=? AND created_at>=datetime('now','-7 days')").bind(user.code).first<any>(),
+      db.prepare('SELECT COUNT(*) as cnt FROM results WHERE ref_code=?').bind(user.code).first<any>(),
+      db.prepare("SELECT ohaeng_type AS bc_primary, COUNT(*) as cnt FROM hospital_responses WHERE ref_code=? AND ohaeng_type IS NOT NULL GROUP BY ohaeng_type ORDER BY cnt DESC LIMIT 5").bind(user.code).all<any>(),
+    ])
+    const totalCnt = (hospTotal?.cnt || 0) + (regTotal?.cnt || 0)
+    return c.json({
+      total: totalCnt,
+      this_month: hospMonth?.cnt || 0,
+      today: hospToday?.cnt || 0,
+      this_week: hospWeek?.cnt || 0,
+      nickname_distribution: nickDist.results,
+      hospital_count: hospTotal?.cnt || 0,
+      integrated_count: regTotal?.cnt || 0,
+    })
+  }
+
   const [total, thisMonth, nickDist, today, thisWeek] = await Promise.all([
     db.prepare('SELECT COUNT(*) as cnt FROM results WHERE ref_code=?').bind(user.code).first<any>(),
     db.prepare("SELECT COUNT(*) as cnt FROM results WHERE ref_code=? AND strftime('%Y-%m', created_at)=strftime('%Y-%m','now')").bind(user.code).first<any>(),
@@ -4746,9 +4774,15 @@ app.post('/api/h/diagnosis', async (c) => {
     const {
       user_name, phone, gender, age, height, weight,
       stage1_answers, stage2_answers, stage3_answers, stage4_answers,
-      ohaeng_type, disp_type, bc_code, axis_scores, raw_answers,
+      ohaeng_type, disp_type,
+      bc_code,      // 서버 기대 키
+      bc_code_key,  // survey-hospital.html 전송 키 (fallback)
+      bc_nickname, bc_primary,  // 닉네임 필드도 수용
+      axis_scores, raw_answers,
       ref_code, session_id
     } = body
+    // bc_code 통합: bc_code → bc_code_key → null 순으로 폴백
+    const resolvedBcCode = bc_code || bc_code_key || null
 
     if (!user_name) return c.json({ error: 'user_name required' }, 400)
 
@@ -4799,7 +4833,7 @@ app.post('/api/h/diagnosis', async (c) => {
       stage3_answers ? JSON.stringify(stage3_answers) : null,
       stage4_answers ? JSON.stringify(stage4_answers) : null,
       ohaeng_type || null, disp_type || null,
-      bc_code || null,
+      resolvedBcCode,  // bc_code || bc_code_key || null
       axis_scores ? JSON.stringify(axis_scores) : null,
       raw_answers ? JSON.stringify(raw_answers) : null
     ).run()

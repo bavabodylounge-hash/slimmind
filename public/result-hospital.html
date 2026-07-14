@@ -430,6 +430,7 @@ body {
         <div class="header-chip"><span class="ic">👤</span><span id="hdrName">—</span></div>
         <div class="header-chip"><span class="ic">🗓️</span><span id="hdrDate">—</span></div>
         <div class="header-chip"><span class="ic">🔖</span><span id="hdrCode">—</span></div>
+        <div class="header-chip" id="hdrBcWrap" style="display:none"><span class="ic">🧬</span><span id="hdrBcCode">—</span></div>
       </div>
     </div>
   </header>
@@ -834,6 +835,11 @@ function renderAll(d) {
   document.getElementById('hdrDate').textContent = createdAt;
   document.getElementById('hdrCode').textContent = resultId.slice(0, 12) + '…';
   document.getElementById('footerResultId').textContent = resultId;
+  // BC코드 표시 (bc_code가 있을 경우)
+  if (d.bc_code) {
+    document.getElementById('hdrBcCode').textContent = d.bc_code;
+    document.getElementById('hdrBcWrap').style.display = '';
+  }
 
   // 요약 박스
   renderSummary(d, ohaeng, dispType);
@@ -871,6 +877,7 @@ function renderSummary(d, ohaeng, dispType) {
   const chips = [];
   if (ohaeng) chips.push(`${OHAENG_DATA[ohaeng]?.sym || '☯'} ${ohaeng}형 체질`);
   if (dispType) chips.push(`🧬 ${dispType}`);
+  if (d.bc_code) chips.push(`🔑 BC코드: ${d.bc_code}`);
   if (gender) chips.push(`${d.gender === 'F' ? '♀️' : '♂️'} ${gender}`);
   if (ageStr) chips.push(`📅 ${ageStr}`);
   if (d.height && d.weight) {
