@@ -236,6 +236,7 @@ app.post('/api/auth/login', async (c) => {
         brand_color: partner.brand_color,
         brand_logo_url: partner.brand_logo_url,
         brand_name: partner.brand_name || partner.name,
+        survey_category: partner.survey_category || 'integrated',
       })
     }
 

@@ -986,7 +986,7 @@ async function loadDashboard() {
       <div>
         <div style="font-size:20px;font-weight:800;letter-spacing:-.01em">${BRAND.brand_name || p.name || '-'}</div>
         <div style="font-size:13px;opacity:.8;margin-top:4px">${p.code || USER_CODE} · ${p.type || 'B2B 파트너'}</div>
-        <div style="font-size:12px;opacity:.7;margin-top:3px">설문 링크: ${location.origin}/s/${USER_CODE}</div>
+        <div style="font-size:12px;opacity:.7;margin-top:3px">설문 링크: ${getSurveyUrl()}</div>
       </div>
       <div style="margin-left:auto;display:flex;gap:8px;flex-direction:column;align-items:flex-end">
         <button class="btn" style="background:rgba(255,255,255,.25);color:#fff;border:1px solid rgba(255,255,255,.4);font-size:12px;font-weight:700" onclick="openShareModal()">
@@ -1105,7 +1105,7 @@ function generateMiniQR() {
     qrEl.innerHTML = `<div style="font-size:12px;color:var(--muted);padding:12px;text-align:center">로그인 후 대시보드를 로드하면 QR코드가 생성됩니다</div>`;
     return;
   }
-  const url = `${location.origin}/s/${USER_CODE}`;
+  const url = getSurveyUrl();
   qrEl.innerHTML = `<div style="background:#fff;padding:12px;border:1.5px solid var(--border);border-radius:10px;display:inline-block">
     <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(url)}" 
       alt="QR" style="width:120px;height:120px;display:block">
@@ -1114,7 +1114,7 @@ function generateMiniQR() {
 }
 
 function copyLink(url) {
-  const target = url || (USER_CODE ? `${location.origin}/s/${USER_CODE}` : null);
+  const target = url || (USER_CODE ? getSurveyUrl() : null);
   if (!target) {
     toast('로그인 후 대시보드를 먼저 열어주세요.', 'error');
     return;
@@ -1124,7 +1124,7 @@ function copyLink(url) {
 
 // ── 카카오톡 공유 ──────────────────────────────
 function shareKakao(url, title, desc) {
-  const shareUrl  = url  || (USER_CODE ? `${location.origin}/s/${USER_CODE}` : null);
+  const shareUrl  = url  || (USER_CODE ? getSurveyUrl() : null);
   if (!shareUrl) {
     toast('로그인 후 대시보드를 먼저 열어주세요.', 'error');
     return;
@@ -1143,7 +1143,7 @@ function shareKakao(url, title, desc) {
 
 // ── 문자/이메일 공유 ───────────────────────────
 function shareSMS(url) {
-  const shareUrl = url || (USER_CODE ? `${location.origin}/s/${USER_CODE}` : null);
+  const shareUrl = url || (USER_CODE ? getSurveyUrl() : null);
   if (!shareUrl) {
     toast('로그인 후 대시보드를 먼저 열어주세요.', 'error');
     return;
@@ -1158,7 +1158,7 @@ function openShareModal() {
     toast('로그인 후 대시보드를 먼저 열어주세요.', 'error');
     return;
   }
-  const url   = `${location.origin}/s/${USER_CODE}`;
+  const url   = getSurveyUrl();
   const color = BRAND.brand_color || '#6366f1';
   const name  = BRAND.brand_name  || 'SlimMind';
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}&color=${color.replace('#','')}`;
@@ -1373,7 +1373,7 @@ function loadQR() {
     `;
     return;
   }
-  const url   = `${location.origin}/s/${USER_CODE}`;
+  const url   = getSurveyUrl();
   const color = BRAND.brand_color || '#6366f1';
   const name  = BRAND.brand_name  || '귀사';
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(url)}&color=${color.replace('#','')}`;
@@ -2185,7 +2185,7 @@ async function loadProfile() {
       <!-- URL 박스 -->
       <div style="display:flex;align-items:center;gap:10px;background:#f4f6f8;border:1.5px solid ${color}44;border-radius:12px;padding:12px 16px;margin-bottom:14px">
         <i class="fas fa-link" style="color:${color};flex-shrink:0"></i>
-        <div style="flex:1;font-size:12px;color:#374151;word-break:break-all;font-weight:600">${location.origin}/s/${USER_CODE}</div>
+        <div style="flex:1;font-size:12px;color:#374151;word-break:break-all;font-weight:600">${getSurveyUrl()}</div>
         <button onclick="copyLink()" style="flex-shrink:0;background:${color};color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">
           <i class="fas fa-copy"></i> 복사
         </button>
