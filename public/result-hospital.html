@@ -16005,7 +16005,8 @@ window._updateTdyMissionBadge = _updateTdyMissionBadge;
 
 // 페이지 로드 시 저장된 체크 상태 기반으로 뱃지 초기화
 function _initTdyMissionBadge() {
-  var sid = window.__RESULT__ && window.__RESULT__.id ? window.__RESULT__.id : '';
+  // id → _result_id 순으로 폴백 (result-hospital/:id 경로는 _result_id만 주입됨)
+  var sid = (window.__RESULT__ && (window.__RESULT__.id || window.__RESULT__._result_id)) || '';
   if (!sid) return;
   var todayKey = (new Date()).toISOString().slice(0, 10);
   var checkStorageKey = 'slimmind_daily_check_' + sid;
@@ -16103,8 +16104,10 @@ function renderDailyPage(){
   // 아코디언·기록은 renderRoadmapAccordion/renderLiveRecord가 이미 p10에 채움.
   // 여기선 맨 위 "오늘 할 일" 카드만 그린다.
   // ── sid: URL 파라미터 → window.__RESULT__ 순으로 결정 ──
+  // sid: URL ?id= → __RESULT__.id → __RESULT__._result_id 순으로 결정
+  // (result-hospital/:id 경로는 URL에 ?id= 없고 __RESULT__._result_id만 주입됨)
   var sid = new URLSearchParams(window.location.search).get('id')
-         || (window.__RESULT__ && window.__RESULT__.id ? window.__RESULT__.id : '');
+         || (window.__RESULT__ && (window.__RESULT__.id || window.__RESULT__._result_id || ''));
   var host = document.getElementById('p10-today');
   if (!host) return;
   var weeks = window.__ACTIVE_WEEKS__ || [];
