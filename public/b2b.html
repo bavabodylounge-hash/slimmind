@@ -1302,12 +1302,21 @@ async function loadCustomers(search = '') {
 
   const color = BRAND.brand_color || '#6366f1';
 
-  const rows = (data.results || []).map(r => `
+  const rows = (data.results || []).map(r => {
+    const isHosp = r.result_type === 'hospital' || r.id.startsWith('H-');
+    const typeBadge = isHosp
+      ? `<span style="font-size:10px;font-weight:700;background:#ede5f7;color:#8b6db5;border:1px solid #c4a8e0;border-radius:4px;padding:1px 6px">🏥 병원용</span>`
+      : `<span style="font-size:10px;font-weight:700;background:#eef2ff;color:#6366f1;border:1px solid #c7d2fe;border-radius:4px;padding:1px 6px">🧩 통합</span>`;
+    const bcLabel = r.bc_primary || (isHosp ? r.ohaeng_type || '-' : '-');
+    return `
     <tr id="row-${r.id}">
-      <td><code style="font-size:11px;color:var(--brand)">${r.id.slice(0,14)}…</code></td>
+      <td>
+        <code style="font-size:11px;color:var(--brand)">${r.id.slice(0,14)}…</code><br>
+        ${typeBadge}
+      </td>
       <td style="font-weight:600">${r.user_name || '익명'}</td>
       <td>
-        <span class="badge badge-purple">${r.bc_primary || '-'}</span>
+        <span class="badge badge-purple">${bcLabel}</span>
       </td>
       <td style="font-size:12px;color:var(--muted)">${fmtDate(r.created_at)}</td>
       <td style="white-space:nowrap">
@@ -1318,8 +1327,8 @@ async function loadCustomers(search = '') {
           <i class="fas fa-link"></i>
         </button>
       </td>
-    </tr>
-  `).join('');
+    </tr>`;
+  }).join('');
 
   document.getElementById('page-body').innerHTML = `
     <div class="filter-row">
@@ -1345,8 +1354,13 @@ async function loadCustomers(search = '') {
   `;
 }
 
-// ─── 결과지 토큰 링크 (B2B 전용) ────────────
+// ─── 결과지 열기 (B2B 전용) — 병원용 H- ID는 /result-hospital/ 로 ────────────
 async function openB2bResult(resultId) {
+  // H- 접두사 = 병원용 결과지 → 바로 이동 (API 호출 불필요)
+  if (resultId.startsWith('H-')) {
+    window.open(`/result-hospital/${resultId}`, '_blank');
+    return;
+  }
   try {
     const res = await api('GET', `/b2b/result-link/${resultId}`);
     if (res?.url) {
@@ -1360,6 +1374,12 @@ async function openB2bResult(resultId) {
 }
 
 async function copyB2bResultLink(resultId) {
+  // H- 접두사 = 병원용 결과지
+  if (resultId.startsWith('H-')) {
+    const url = `${location.origin}/result-hospital/${resultId}`;
+    navigator.clipboard.writeText(url).then(() => toast('📋 병원용 결과지 링크가 복사되었습니다.', 'success'));
+    return;
+  }
   try {
     const res = await api('GET', `/b2b/result-link/${resultId}`);
     const url = res?.url || `${location.origin}/result/${resultId}`;

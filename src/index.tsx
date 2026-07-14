@@ -1050,16 +1050,64 @@ app.get('/api/b2b/me', requireB2B(), async (c) => {
 })
 
 // GET /api/b2b/results — B2B 파트너 설문 결과 목록 (자신의 ref_code 기준)
+// hospital 파트너는 hospital_responses 테이블도 UNION해서 반환
 app.get('/api/b2b/results', requireB2B(), async (c) => {
   const user = c.get('user') as JwtPayload
   const db = c.env.DB
   const search = c.req.query('search') || ''
-  let query = 'SELECT id, user_name, bc_primary, axis_primary, created_at, ref_code FROM results WHERE ref_code=?'
+
+  // 파트너 정보 조회 (survey_category 확인)
+  let partner: any = null
+  try {
+    partner = await db.prepare(
+      'SELECT survey_category FROM b2b_partners WHERE code=?'
+    ).bind(user.code).first<any>()
+  } catch (_) {}
+  const isHospital = partner?.survey_category === 'hospital'
+
+  const searchClause = search ? ' AND user_name LIKE ?' : ''
   const params: any[] = [user.code]
-  if (search) { query += ' AND user_name LIKE ?'; params.push(`%${search}%`) }
-  query += ' ORDER BY created_at DESC LIMIT 50'
-  const result = await db.prepare(query).bind(...params).all<any>()
-  return c.json({ results: result.results })
+  if (search) params.push(`%${search}%`)
+
+  if (isHospital) {
+    // 병원 파트너: hospital_responses + results 합쳐서 반환
+    // hospital_responses: id(H-...), result_type='hospital'
+    const hospParams: any[] = [user.code]
+    if (search) hospParams.push(`%${search}%`)
+    const hospQuery = `
+      SELECT id, user_name,
+             bc_code AS bc_primary,
+             ohaeng_type AS axis_primary,
+             created_at, ref_code,
+             'hospital' AS result_type
+      FROM hospital_responses
+      WHERE ref_code=?${search ? ' AND user_name LIKE ?' : ''}
+    `
+    const regParams: any[] = [user.code]
+    if (search) regParams.push(`%${search}%`)
+    const regQuery = `
+      SELECT id, user_name, bc_primary,
+             axis_primary, created_at, ref_code,
+             'integrated' AS result_type
+      FROM results WHERE ref_code=?${search ? ' AND user_name LIKE ?' : ''}
+    `
+    const [hospRes, regRes] = await Promise.all([
+      db.prepare(hospQuery).bind(...hospParams).all<any>(),
+      db.prepare(regQuery).bind(...regParams).all<any>()
+    ])
+    const combined = [
+      ...(hospRes.results || []),
+      ...(regRes.results || [])
+    ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    return c.json({ results: combined.slice(0, 50) })
+  } else {
+    // 일반 파트너: results 테이블만
+    let query = 'SELECT id, user_name, bc_primary, axis_primary, created_at, ref_code, \'integrated\' AS result_type FROM results WHERE ref_code=?'
+    if (search) { query += ' AND user_name LIKE ?'; params.push(`%${search}%`) }
+    query += ' ORDER BY created_at DESC LIMIT 50'
+    const result = await db.prepare(query).bind(...params).all<any>()
+    return c.json({ results: result.results })
+  }
 })
 
 // GET /api/b2b/stats — B2B 파트너 통계
@@ -3795,6 +3843,7 @@ app.delete('/api/b2b/subaccounts/:code', requireB2B(), async (c) => {
 // ══════════════════════════════════════════════════════════════════
 
 // GET /api/b2b/result-link/:id — B2B 파트너용 결과지 접근 토큰 생성
+// H- 접두사 ID는 hospital_responses 테이블에서 확인 후 /result-hospital/ 링크 반환
 app.get('/api/b2b/result-link/:id', requireB2B(), async (c) => {
   const db = c.env.DB as D1Database | undefined
   if (!db) return c.json({ error: 'DB 없음' }, 500)
@@ -3802,12 +3851,23 @@ app.get('/api/b2b/result-link/:id', requireB2B(), async (c) => {
   const partnerCode = user?.code || ''
   const resultId = c.req.param('id')
   try {
-    // 이 파트너 고객인지 확인 (ref_code = 파트너 코드)
+    const isHospitalId = resultId.startsWith('H-')
+
+    if (isHospitalId) {
+      // 병원용 결과: hospital_responses 테이블 확인
+      const result = await db.prepare(
+        "SELECT id FROM hospital_responses WHERE id = ? AND ref_code = ?"
+      ).bind(resultId, partnerCode).first<any>()
+      if (!result) return c.json({ error: '권한 없음' }, 403)
+      // 병원용 결과지 URL 반환 (토큰 불필요 — 공개 접근)
+      return c.json({ url: `/result-hospital/${resultId}` })
+    }
+
+    // 일반 결과: results 테이블 확인
     const result = await db.prepare(
       "SELECT id FROM results WHERE id = ? AND ref_code = ?"
     ).bind(resultId, partnerCode).first<any>()
     if (!result) return c.json({ error: '권한 없음' }, 403)
-    // 기존 파트너 토큰으로 링크 생성
     const secret = c.env.JWT_SECRET || 'slimmind-jwt-secret-change-in-production'
     const payload: JwtPayload = {
       sub: partnerCode,
