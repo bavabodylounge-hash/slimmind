@@ -986,7 +986,7 @@ app.post('/api/admin/b2b-partners', requireRole('MASTER'), async (c) => {
   })
 })
 
-// PUT /api/admin/b2b-partners/:code — 수정
+// PUT /api/admin/b2b-partners/:code — 수정 (부분 업데이트 지원)
 app.put('/api/admin/b2b-partners/:code', requireRole('MASTER'), async (c) => {
   const db = c.env.DB
   const code = c.req.param('code').toUpperCase()
@@ -995,23 +995,31 @@ app.put('/api/admin/b2b-partners/:code', requireRole('MASTER'), async (c) => {
           brand_logo_url, brand_color, brand_name, survey_category } = body
 
   const validCategories = ['integrated', 'hospital', 'aesthetic', 'fitness']
-  const category = survey_category && validCategories.includes(survey_category) ? survey_category : undefined
 
-  const setClauses = [
-    'name=?', 'type=?', 'owner_name=?', 'phone=?', 'email=?', 'address=?',
-    'commission_rate=?', 'status=?', 'memo=?',
-    'brand_logo_url=?', 'brand_color=?', 'brand_name=?',
-    "updated_at=datetime('now')"
-  ]
-  const binds: any[] = [
-    name, type || null, owner_name || null, phone || null, email || null, address || null,
-    commission_rate || 15.0, status || 'active', memo || null,
-    brand_logo_url || null, brand_color || '#6366f1', brand_name || name
-  ]
-  if (category) {
-    setClauses.splice(setClauses.length - 1, 0, 'survey_category=?')
-    binds.push(category)
+  // 부분 업데이트: 전송된 필드만 SET
+  const setClauses: string[] = []
+  const binds: any[] = []
+
+  if (name !== undefined)            { setClauses.push('name=?');            binds.push(name) }
+  if (type !== undefined)            { setClauses.push('type=?');            binds.push(type || null) }
+  if (owner_name !== undefined)      { setClauses.push('owner_name=?');      binds.push(owner_name || null) }
+  if (phone !== undefined)           { setClauses.push('phone=?');           binds.push(phone || null) }
+  if (email !== undefined)           { setClauses.push('email=?');           binds.push(email || null) }
+  if (address !== undefined)         { setClauses.push('address=?');         binds.push(address || null) }
+  if (commission_rate !== undefined) { setClauses.push('commission_rate=?'); binds.push(commission_rate || 15.0) }
+  if (status !== undefined)          { setClauses.push('status=?');          binds.push(status || 'active') }
+  if (memo !== undefined)            { setClauses.push('memo=?');            binds.push(memo || null) }
+  if (brand_logo_url !== undefined)  { setClauses.push('brand_logo_url=?');  binds.push(brand_logo_url || null) }
+  if (brand_color !== undefined)     { setClauses.push('brand_color=?');     binds.push(brand_color || '#6366f1') }
+  if (brand_name !== undefined)      { setClauses.push('brand_name=?');      binds.push(brand_name || name || null) }
+  if (survey_category !== undefined && validCategories.includes(survey_category)) {
+    setClauses.push('survey_category=?')
+    binds.push(survey_category)
   }
+
+  if (setClauses.length === 0) return c.json({ success: false, error: '수정할 필드가 없습니다.' }, 400)
+
+  setClauses.push("updated_at=datetime('now')")
   binds.push(code)
 
   await db.prepare(
