@@ -5825,6 +5825,28 @@ window.__HOSPITAL_INIT_PROMISE__ = (async function hospitalInit() {
       _goalWeight:     (json.raw_answers && json.raw_answers.goal_weight) ? parseFloat(json.raw_answers.goal_weight) : (json.target_weight ? parseFloat(json.target_weight) : 0),
       // ── raw_answers 전달 (loadData() 폴백 체인용) ──
       raw_answers:     json.raw_answers || null,
+      // ── answers 필드: loadData()가 answers['Q02']/answers['Q_MENOPAUSE'] 읽기 위해 필요 ──
+      // s2(stage2_answers) 기반으로 성별/갱년기/기타 항목 매핑
+      answers: (function() {
+        var ans = {};
+        // 성별: s2['q01'] 또는 json.gender
+        var genderRaw = s2['q01'] || s2['q1'] || s2['gender'] || json.gender || '';
+        if (/female|여|woman/i.test(genderRaw)) ans['Q02'] = 'female';
+        else if (/male|남|man/i.test(genderRaw)) ans['Q02'] = 'male';
+        else if (genderRaw) ans['Q02'] = genderRaw;
+        // 갱년기: s2['q12'] 기반
+        var menoRaw = s2['q12'] || s2['q12_menopause'] || s2['menopause'] || '';
+        if (/yes|완경|갱년기|폐경|peri/i.test(String(menoRaw))) {
+          ans['Q_MENOPAUSE'] = 'yes';
+        } else {
+          ans['Q_MENOPAUSE'] = '';
+        }
+        // 이름
+        ans['Q01'] = json.user_name || '고객';
+        // s2 전체를 숫자/문자열 키로도 매핑 (기타 분기 조건 지원)
+        Object.keys(s2).forEach(function(k) { ans[k] = s2[k]; });
+        return ans;
+      })(),
     };
     console.log('[hospital] P11 조건 파싱 완료 | BMI:', _bmi, '| 갱년기:', _isMenopause, '| 과거시술:', _pastProcedures, '| 조건:', _conditions);
   } catch(err) {
@@ -11939,6 +11961,20 @@ function switchPage(num) {
       renderChrono(window._wowData.bcCode);
     }
   }, 100);
+  if (num === 4) setTimeout(function(){
+    // switchPage(4) 시 renderP4 재실행 — 초기 로드 시 display:none 상태에서 컨테이너가 비는 문제 방어
+    if (typeof renderP4 === 'function' && window._wowData) {
+      var d = window._wowData;
+      var r = window.__RESULT__;
+      var s2_ = (r && r._stage2) || d._stage2 || {};
+      var s3_ = (r && r._stage3) || d._stage3 || {};
+      var g_  = (d.answers && d.answers['Q02'])
+                || (s2_['q01'] || s2_['gender'] || (r && r.gender) || '');
+      var m_  = (d.answers && d.answers['Q_MENOPAUSE'])
+                || (/yes|완경|갱년기|폐경|peri/i.test(String(s2_['q12'] || '')) ? 'yes' : '');
+      renderP4(d.userName, d.ohaengType, d.mbtiType, g_, m_, s2_, s3_);
+    }
+  }, 100);
   if (num === 5) setTimeout(function(){ if(typeof ax11Replay==='function') ax11Replay(); }, 250);
   if (num === 8) setTimeout(function(){ if(typeof rxpReset==='function') rxpReset(); }, 300);
   if (num === 6) setTimeout(function(){ if(typeof renderLiveRecord==='function') renderLiveRecord(); }, 200);
@@ -12972,9 +13008,14 @@ function renderAll(data) {
                _stage2: _s2, _stage3: _s3 };  // P10 수면×음주 인사이트용
   wow1Init();   // DNA 카드 준비
   wow2Init();   // 변화 그래프
-  wow3Init(userName, ohaengType, mbtiType, answers['Q02'], answers['Q_MENOPAUSE']); // 경보
+  // ── wow3Init: 성별/갱년기는 answers 우선, 없으면 _s2/_wowData에서 직접 추출 ──
+  var _w3gender = answers['Q02']
+    || (_s2['q01'] || _s2['gender'] || (window.__RESULT__ && window.__RESULT__.gender) || '');
+  var _w3meno   = answers['Q_MENOPAUSE']
+    || (/yes|완경|갱년기|폐경|peri/i.test(String(_s2['q12'] || _s2['q12_menopause'] || '')) ? 'yes' : '');
+  wow3Init(userName, ohaengType, mbtiType, _w3gender, _w3meno); // 경보
   wow4Init();   // 주간 미션
-  wow6Init(bcCode, ohaengType, answers['Q_MENOPAUSE']); // 보충제 궁합
+  wow6Init(bcCode, ohaengType, _w3meno); // 보충제 궁합
   renderChrono(bcCode); // 크로노 영양 처방
 
   // 면책 고지 전 페이지
@@ -14254,6 +14295,7 @@ function renderP3(userName, bcCode, bcMaster, ohaengKey, ohaeng, mbtiType, mbti,
 function renderP4(userName, ohaengKey, mbtiType, gender, menopause, s2, s3) {
   const triggers = getCruelHistoryTriggers(userName, ohaengKey, mbtiType, gender, menopause, s2, s3);
   const container = document.getElementById('p4-triggers');
+  if (!container) { console.warn('[renderP4] #p4-triggers 컨테이너 없음 — 재시도 스킵'); return; }
   const nm = (userName && userName.length >= 3) ? userName.slice(1) : (userName || '회원');
 
   // P4 제목·설명 동적 업데이트 — 오행 라벨 반영
