@@ -6346,7 +6346,7 @@ window.__HOSPITAL_INIT_PROMISE__ = (async function hospitalInit() {
   <!-- 중립 선언 펀치라인 -->
   <div class="ev-punch fade-up" style="transition-delay:.36s">
     <div class="ev-punch-q">11개 영역을 원인과 정밀 매핑하여,<br><em>지금 교정해야 할 3가지 핵심 스위치</em>를 확정했습니다</div>
-    <div class="ev-punch-s">바디코드 진단은 BC-6의 고장 원인을 이미 증명했습니다. 당신의 데이터가 가리키지 않는 영역에 힘 빼지 마세요. 나머지 8개 영역은, 그 원인을 치료하는 것이 진짜 필요해질 때까지 잠시 미뤄두세요.</div>
+    <div class="ev-punch-s" id="p5-punch-s">바디코드 진단은 이미 고장 원인을 증명했습니다. 당신의 데이터가 가리키지 않는 영역에 힘 빼지 마세요. 나머지 8개 영역은, 그 원인을 치료하는 것이 진짜 필요해질 때까지 잠시 미뤄두세요.</div>
   </div>
 
   <button class="next-flow fade-up" style="transition-delay:.5s" onclick="switchPage(8)">
@@ -12977,15 +12977,18 @@ function renderAll(data) {
 
   window.__BC_RM__ = bcCode; // 로드맵 주차별 영양제 카드용 BC 코드
 
-  renderP2(userName, bcCode, firstDomino, axisScores, sorted, _s3, _s2, _s4);
+  try { renderP2(userName, bcCode, firstDomino, axisScores, sorted, _s3, _s2, _s4); } catch(e){ console.error('[renderP2]', e); }
 
-  renderP3(userName, bcCode, bcMaster, ohaengType, ohaeng, mbtiType, mbti, fullCode, prescription, answers, data.bloodType, _s2);
-  renderP4(userName, ohaengType, mbtiType, answers['Q02'], answers['Q_MENOPAUSE'], _s2, _s3);
-  renderP5(metrics, bcCode, axisScores, userName, _s2, _s3);
-  renderP8(metrics, bcCode, axisScores, userName, _s2, data);
-  renderP9(metrics, bcCode, axisScores, data, _s2);
-  renderP6(userName, fullCode, ohaengType, data);
-  renderP7(userName, bcCode, bcMaster, metrics, ohaengType, mbtiType, fullCode, nicknameDisplay, prescription, data);
+  try { renderP3(userName, bcCode, bcMaster, ohaengType, ohaeng, mbtiType, mbti, fullCode, prescription, answers, data.bloodType, _s2); } catch(e){ console.error('[renderP3]', e); }
+  // ── P4: 성별/갱년기 _s2 직접 폴백 ──
+  var _p4gender = answers['Q02'] || (_s2['q01'] || _s2['gender'] || (window.__RESULT__ && window.__RESULT__.gender) || '');
+  var _p4meno   = answers['Q_MENOPAUSE'] || (/yes|완경|갱년기|폐경|peri/i.test(String(_s2['q12'] || '')) ? 'yes' : '');
+  try { renderP4(userName, ohaengType, mbtiType, _p4gender, _p4meno, _s2, _s3); } catch(e){ console.error('[renderP4]', e); }
+  try { renderP5(metrics, bcCode, axisScores, userName, _s2, _s3); } catch(e){ console.error('[renderP5]', e); }
+  try { renderP8(metrics, bcCode, axisScores, userName, _s2, data); } catch(e){ console.error('[renderP8]', e); }
+  try { renderP9(metrics, bcCode, axisScores, data, _s2); } catch(e){ console.error('[renderP9]', e); }
+  try { renderP6(userName, fullCode, ohaengType, data); } catch(e){ console.error('[renderP6]', e); }
+  try { renderP7(userName, bcCode, bcMaster, metrics, ohaengType, mbtiType, fullCode, nicknameDisplay, prescription, data); } catch(e){ console.error('[renderP7]', e); }
 
   // ★ 기능 5: 익명 통계 카드 비동기 로드
   loadBodyTypeStats(bcCode, userName);
@@ -14522,9 +14525,14 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
 
   var lede = document.getElementById('p5-lede');
   if (lede) {
-    lede.innerHTML = '같은 ' + (bcCode||'BC-6') + '<span class="p5-lede-paren">(증상과 원인의 코드)</span> 유형이라도, 사람마다 풀어야 할 실타래는 완전히 다릅니다. ' +
+    lede.innerHTML = '같은 ' + (bcCode||'BC') + '<span class="p5-lede-paren">(증상과 원인의 코드)</span> 유형이라도, 사람마다 풀어야 할 실타래는 완전히 다릅니다. ' +
       '몸을 둘러싼 <b>11개 진단 영역</b>을 전부 추적하고 원인과 매핑하여, ' +
       '<b>지금 가장 먼저 해결이 필요한 3가지 원인</b>을 찾아냈습니다.';
+  }
+  // punch-s: BC코드 동적 업데이트
+  var punchS = document.getElementById('p5-punch-s');
+  if (punchS) {
+    punchS.innerHTML = '바디코드 진단은 <b>' + (bcCode||'BC') + '</b>의 고장 원인을 이미 증명했습니다. 당신의 데이터가 가리키지 않는 영역에 힘 빼지 마세요. 나머지 ' + NONE.length + '개 영역은, 그 원인을 치료하는 것이 진짜 필요해질 때까지 잠시 미뤄두세요.';
   }
 
   // ── 병력·생활습관 위험 배너 (s2 응답 기반) ──
