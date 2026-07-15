@@ -5775,6 +5775,14 @@ window.__HOSPITAL_INIT_PROMISE__ = (async function hospitalInit() {
       _bmiGrade:       _bmiGrade,
       _conditions:     _conditions,
       _pastProcedures: _pastProcedures,
+      // ── desire 개인화 데이터 (raw_answers.desire) ──
+      _desire:         (json.raw_answers && json.raw_answers.desire) ? json.raw_answers.desire : {},
+      _moodLabel:      (json.raw_answers && json.raw_answers.desire && json.raw_answers.desire.moodLabel) ? json.raw_answers.desire.moodLabel : '',
+      _who:            (json.raw_answers && json.raw_answers.desire && json.raw_answers.desire.who) ? json.raw_answers.desire.who : '',
+      _partLabels:     (json.raw_answers && json.raw_answers.desire && Array.isArray(json.raw_answers.desire.partLabels)) ? json.raw_answers.desire.partLabels : [],
+      _zone:           (json.raw_answers && json.raw_answers.desire && json.raw_answers.desire.zone) ? json.raw_answers.desire.zone : '',
+      // ── 목표체중 (raw_answers.goal_weight 또는 stage2에서) ──
+      _goalWeight:     (json.raw_answers && json.raw_answers.goal_weight) ? parseFloat(json.raw_answers.goal_weight) : (json.target_weight ? parseFloat(json.target_weight) : 0),
     };
     console.log('[hospital] P11 조건 파싱 완료 | BMI:', _bmi, '| 갱년기:', _isMenopause, '| 과거시술:', _pastProcedures, '| 조건:', _conditions);
   } catch(err) {
@@ -22440,10 +22448,10 @@ var OHAENG_PHASE_DB = {
 
 
 // ════════════════════════════════════════════════════════
-// renderP11 v5 — 설문 응답 기반 완전 개인화 병원처방 (2026)
-// A: 왜 지금까지 안 됐는지 (실패 근거)
-// B: 이번이 다른 이유 (BC코드 처방 + 게이지 시각화)
-// C: 미경험 시술 발견 (Q9 기반 추가구매 유도)
+// renderP11 v6 — 설문 응답 기반 완전 개인화 병원처방 (2026)
+// A: 왜 지금까지 안 됐는지 (실패 근거 + 목표체중 수치)
+// B: 이번이 다른 이유 (BC코드 처방 + 게이지 + desire 방향카드)
+// C: 미경험 시술 발견 (Q9 + partLabels 기반 우선순위 재정렬)
 // ════════════════════════════════════════════════════════
 function renderP11(data) {
   if (!data) {
@@ -22480,9 +22488,46 @@ function renderP11(data) {
 
   // 체중 / 목표체중
   var weight  = parseFloat(data.weight || data.current_weight || 0);
-  var targetW = parseFloat(data.target_weight || data.targetWeight || 0);
+  var targetW = parseFloat(data._goalWeight || data.target_weight || data.targetWeight || 0);
   var lossKg  = (weight > 0 && targetW > 0 && targetW < weight)
     ? Math.round((weight - targetW) * 10) / 10 : 0;
+
+  // ── desire 개인화 데이터 ──────────────────────────────────
+  var _desire     = data._desire || {};
+  var _moodLabel  = data._moodLabel || _desire.moodLabel || '';
+  var _who        = data._who || _desire.who || '';
+  var _partLabels = data._partLabels || _desire.partLabels || [];
+  var _zone       = data._zone || _desire.zone || '';
+
+  // partLabels → 시술 인덱스 매핑 (허리/배→지방분해/흡입, 허벅지/다리→지방흡입/보톡스, 팔→리프팅, 힙→지방흡입)
+  var PART_TO_PROC_PRIORITY = {
+    '허리라인':    [1, 0, 4],   // 지방분해, 지방흡입, 복부성형
+    '납작한 배':   [1, 4, 0],   // 지방분해, 복부성형, 지방흡입
+    '옆구리':      [1, 0, 2],   // 지방분해, 지방흡입, 리프팅
+    '전체 실루엣': [0, 1, 2],   // 지방흡입, 지방분해, 리프팅
+    '허벅지 라인': [0, 3, 1],   // 지방흡입, 보톡스, 지방분해
+    '엉덩이 위치': [0, 2, 3],   // 지방흡입, 리프팅, 보톡스
+    '다리 길이감': [3, 0, 2],   // 보톡스, 지방흡입, 리프팅
+    '팔뚝 라인':   [2, 1, 0],   // 리프팅, 지방분해, 지방흡입
+    '어깨선':      [2, 3, 1],   // 리프팅, 보톡스, 지방분해
+    '쇄골':        [2, 3, 1],   // 리프팅, 보톡스, 지방분해
+    '엉덩이 라인': [0, 3, 2],   // 지방흡입, 보톡스, 리프팅
+    '힙업 위치':   [0, 2, 3],   // 지방흡입, 리프팅, 보톡스
+    '허벅지 경계': [0, 3, 1],   // 지방흡입, 보톡스, 지방분해
+  };
+
+  // partLabels 기반 시술 우선순위 합산 (점수 낮을수록 우선)
+  var procScore = [0,1,2,3,4].map(function(){ return 99; });
+  if (_partLabels.length > 0) {
+    _partLabels.forEach(function(pl) {
+      var pMap = PART_TO_PROC_PRIORITY[pl];
+      if (pMap) {
+        pMap.forEach(function(procIdx, rank) {
+          if (procScore[procIdx] > rank) procScore[procIdx] = rank;
+        });
+      }
+    });
+  }
 
   // 핵심 원인 축 계산
   var AXIS_META_L = (typeof AXIS_10_META !== 'undefined') ? AXIS_10_META : {};
@@ -22643,6 +22688,26 @@ function renderP11(data) {
     verdictExtra += ' + 갱년기 호르몬 변화';
   }
 
+  // 목표체중 서술 생성
+  var goalWeightLine = '';
+  if (targetW > 0 && weight > 0 && lossKg > 0) {
+    goalWeightLine = ' <strong>목표 ' + targetW + 'kg</strong>까지 <strong>' + lossKg + 'kg</strong>을 빼려면,';
+  } else if (targetW > 0) {
+    goalWeightLine = ' <strong>목표 ' + targetW + 'kg</strong>에 도달하려면,';
+  }
+
+  // desire 방향 한줄 서술
+  var desireOneLiner = '';
+  if (_moodLabel || _partLabels.length > 0) {
+    var dParts = [];
+    if (_moodLabel) dParts.push('"<strong>' + esc2(_moodLabel) + '</strong>" 방향');
+    if (_partLabels.length > 0) dParts.push(esc2(_partLabels.join('·')) + ' 개선');
+    desireOneLiner = '<br><span style="color:#c4a8e8;font-size:.82rem;font-weight:600;">🎯 목표 방향 · ' + dParts.join(' · ') + '</span>';
+  }
+  if (_who && _who.trim() !== '') {
+    desireOneLiner += '<br><span style="color:#a88bc8;font-size:.8rem;">✦ "' + esc2(_who.trim()) + '처럼" — 그 목표를 실현하려면 지금 원인부터 잡아야 합니다.</span>';
+  }
+
   var failHTML = '<div class="p11-fail-hd">'
     + '<div class="p11-fail-hd-icon">⚠️</div>'
     + '<span class="p11-fail-hd-txt">지금까지 안 된 이유</span>'
@@ -22650,8 +22715,9 @@ function renderP11(data) {
     + '<div class="p11-fail-verdict">'
     + '<div class="p11-fail-verdict-name">' + esc2(userName) + '님 · ' + esc2(bcCode) + '</div>'
     + '<div class="p11-fail-verdict-body">'
-    + '<strong>' + esc2(failStory.verdict) + esc2(verdictExtra) + '</strong><br>'
+    + goalWeightLine + (goalWeightLine ? ' ' : '') + '<strong>' + esc2(failStory.verdict) + esc2(verdictExtra) + '</strong><br>'
     + '지금까지의 다이어트가 효과 없었던 건 의지 문제가 아닙니다. 원인 자체에 접근하지 못했기 때문입니다.'
+    + desireOneLiner
     + '</div>'
     + '</div>'
     + '<div class="p11-fail-timeline">';
@@ -22760,6 +22826,56 @@ function renderP11(data) {
     + '<span class="p11-bc-tag">' + esc2(ohaeng) + '형 · ' + esc2(topAxis || '대사 축') + ' ' + topScore + 'pt</span>'
     + '</div>';
 
+  // ── desire 방향 카드 (moodLabel + partLabels + who) ──────
+  if (_moodLabel || _partLabels.length > 0 || (_who && _who.trim())) {
+    diffHTML += '<div class="p11-bc-card" style="border:1px solid rgba(196,168,232,.25);background:rgba(139,109,181,.07);">'
+      + '<div class="p11-bc-label" style="color:#c4a8e8;">🎯 ' + esc2(userName) + '님의 목표 방향</div>';
+
+    if (_moodLabel) {
+      var MOOD_DESC = {
+        '슬림 탄탄한':    '군더더기 없이 탄탄한 몸. 지방을 줄이되 근육감을 살려야 합니다.',
+        '볼륨 있는 라인': '적절한 굴곡이 살아있는 바디라인. 지방과 탄력을 함께 관리해야 합니다.',
+        '곧은 모델핏':    '직선적이고 슬림한 실루엣. 전체적인 볼륨 다운이 핵심입니다.',
+        '가벼운 일상핏':  '부담 없이 날씬한 일상 체형. 내장지방 감소와 부종 개선이 우선입니다.',
+      };
+      var moodDesc = MOOD_DESC[_moodLabel] || _moodLabel + ' 방향으로 처방이 설계됩니다.';
+      diffHTML += '<div class="p11-bc-insight" style="margin-bottom:8px;">'
+        + '<strong style="color:#e0d0f8;">' + esc2(_moodLabel) + '</strong> — ' + esc2(moodDesc)
+        + '</div>';
+    }
+
+    if (_partLabels.length > 0) {
+      diffHTML += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">';
+      _partLabels.forEach(function(pl) {
+        diffHTML += '<span style="background:rgba(139,109,181,.18);border:1px solid rgba(196,168,232,.3);'
+          + 'color:#c4a8e8;font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:20px;">📍 ' + esc2(pl) + '</span>';
+      });
+      diffHTML += '</div>'
+        + '<div style="font-size:.8rem;color:rgba(255,255,255,.5);">집중 개선 부위 · 시술 우선순위에 반영되었습니다.</div>';
+    }
+
+    if (_who && _who.trim() !== '') {
+      diffHTML += '<div style="margin-top:10px;padding:8px 12px;background:rgba(99,64,160,.15);border-left:3px solid #8b6db5;border-radius:0 8px 8px 0;">'
+        + '<span style="font-size:.78rem;color:rgba(255,255,255,.45);">닮고 싶은 모습</span><br>'
+        + '<span style="font-size:.88rem;color:#e0d0f8;font-weight:700;">"' + esc2(_who.trim()) + '"</span>'
+        + '<span style="font-size:.78rem;color:rgba(255,255,255,.5);"> — 처방 방향 설계에 반영</span>'
+        + '</div>';
+    }
+
+    if (targetW > 0) {
+      diffHTML += '<div style="margin-top:10px;display:flex;align-items:center;gap:8px;">'
+        + '<span style="font-size:.78rem;color:rgba(255,255,255,.4);">목표체중</span>'
+        + '<span style="font-size:1.05rem;color:#c4a8e8;font-weight:900;">' + targetW + ' kg</span>';
+      if (lossKg > 0) {
+        diffHTML += '<span style="font-size:.78rem;color:rgba(255,255,255,.35);">· 현재 대비</span>'
+          + '<span style="font-size:.9rem;color:#a88bc8;font-weight:800;">▼ ' + lossKg + ' kg</span>';
+      }
+      diffHTML += '</div>';
+    }
+
+    diffHTML += '</div>';
+  }
+
   // 핵심 변화 게이지
   diffHTML += '<div class="p11-change-gauge">'
     + '<div class="p11-change-gauge-title">📊 이번 처방 예상 효과</div>'
@@ -22865,9 +22981,25 @@ function renderP11(data) {
     'BC-4': [2,1,0], 'BC-5': [1,0,2], 'BC-6': [1,0,2],
     'BC-7': [4,2,0], 'BC-8': [0,3,1], 'BC-9': [1,4,0]
   };
-  var priority = BC_PROC_PRIORITY[bcCode] || [0,1,2];
+  var bcPriority = BC_PROC_PRIORITY[bcCode] || [0,1,2];
 
-  // 안 해본 것 중 BC 우선순위대로 최대 3개
+  // ── partLabels 기반 우선순위와 BC 우선순위 합산 ──────────
+  // partLabels가 있으면 part 점수 40% + BC 점수 60% 혼합
+  var finalPriority = [0,1,2,3,4].map(function(idx){
+    var bcRank = bcPriority.indexOf(idx);
+    var bcScore = (bcRank >= 0) ? bcRank : 10;
+    var partRank = procScore[idx];
+    var partScore = (partRank < 99) ? partRank : 10;
+    // partLabels 있으면 혼합, 없으면 BC만
+    var combined = (_partLabels.length > 0)
+      ? (bcScore * 0.6 + partScore * 0.4)
+      : bcScore;
+    return { idx: idx, score: combined };
+  });
+  finalPriority.sort(function(a,b){ return a.score - b.score; });
+  var priority = finalPriority.map(function(x){ return x.idx; });
+
+  // 안 해본 것 중 최종 우선순위대로 최대 3개
   var recommended = [];
   priority.forEach(function(idx){
     if (notDoneIdxs.indexOf(idx) !== -1 && recommended.length < 3) {
@@ -22881,10 +23013,25 @@ function renderP11(data) {
     if (!already) recommended.push(ALL_PROCS[idx]);
   });
 
+  // C섹션 헤더 텍스트 — partLabels 있으면 맞춤 문구
+  var discoverHdTxt = (_partLabels.length > 0)
+    ? esc2(_partLabels.slice(0,2).join('·')) + ' 집중 처방'
+    : '아직 시도 안 한 처방';
+
   var discoverHTML = '<div class="p11-discover-hd">'
     + '<div class="p11-discover-hd-icon">🔍</div>'
-    + '<span class="p11-discover-hd-txt">아직 시도 안 한 처방</span>'
+    + '<span class="p11-discover-hd-txt">' + discoverHdTxt + '</span>'
     + '</div>';
+
+  // partLabels 배지 표시
+  if (_partLabels.length > 0) {
+    discoverHTML += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">';
+    _partLabels.forEach(function(pl){
+      discoverHTML += '<span style="background:rgba(139,109,181,.15);border:1px solid rgba(196,168,232,.25);'
+        + 'color:#c4a8e8;font-size:.73rem;font-weight:700;padding:3px 10px;border-radius:20px;">📍 ' + esc2(pl) + '</span>';
+    });
+    discoverHTML += '</div>';
+  }
 
   // 이미 해본 것 표시
   if (doneProcNames.length > 0) {
@@ -22894,15 +23041,22 @@ function renderP11(data) {
       discoverHTML += '<div class="p11-done-tag">' + esc2(nm) + '</div>';
     });
     discoverHTML += '</div>';
+
+    var introTail = _partLabels.length > 0
+      ? '<strong>' + esc2(_partLabels.join('·')) + '</strong> 개선에 맞춰 재정렬된 처방입니다.'
+      : esc2(bcCode) + ' 체질에 가장 높은 효과가 예상되는 것들입니다.';
     discoverHTML += '<div class="p11-discover-intro">'
       + '<strong>' + esc2(userName) + '님</strong>은 이미 여러 방법을 시도해보셨군요. '
       + '효과가 제한적이었던 건 <strong>순서와 조합이 맞지 않아서</strong>입니다. '
-      + '아래 처방은 지금까지 안 해보셨지만, ' + esc2(bcCode) + ' 체질에 가장 높은 효과가 예상되는 것들입니다.'
+      + '아래 처방은 지금까지 안 해보셨지만, ' + introTail
       + '</div>';
   } else {
+    var introNoProc = _partLabels.length > 0
+      ? '<strong>' + esc2(_partLabels.join('·')) + '</strong> 집중 개선을 위해 우선순위 순으로 배열했습니다.'
+      : esc2(bcCode) + ' 바디코드 분석 결과, 아래 처방이 <strong>가장 빠른 변화</strong>를 만들 수 있습니다.';
     discoverHTML += '<div class="p11-discover-intro">'
       + '<strong>' + esc2(userName) + '님</strong>은 아직 비만 전문 시술을 경험하지 않으셨습니다. '
-      + esc2(bcCode) + ' 바디코드 분석 결과, 아래 처방이 <strong>가장 빠른 변화</strong>를 만들 수 있습니다.'
+      + introNoProc
       + '</div>';
   }
 
@@ -22910,8 +23064,56 @@ function renderP11(data) {
     discoverHTML += '<div class="p11-loading">모든 주요 시술을 경험하셨습니다. 처방 조합 최적화 상담을 권장합니다.</div>';
   } else {
     discoverHTML += '<div class="p11-proc-grid">';
+    // partLabels → 시술별 부위 맞춤 설명
+    var PROC_PART_REASON = {
+      '지방흡입': {
+        '허리라인':    '허리 라인을 정확하게 빼내려면 지방흡입이 가장 직접적입니다.',
+        '납작한 배':   '복부 지방을 선택적으로 제거해 납작한 배를 만들 수 있습니다.',
+        '옆구리':      '옆구리 군살은 식단·운동으로 잘 빠지지 않습니다. 흡입이 가장 확실합니다.',
+        '전체 실루엣': '전체 실루엣 개선에 지방흡입이 가장 광범위한 효과를 줍니다.',
+        '허벅지 라인': '허벅지 안쪽·바깥쪽 지방은 흡입으로 라인을 정확히 교정할 수 있습니다.',
+        '엉덩이 위치': '엉덩이 아래 지방 제거로 위치감을 개선합니다.',
+        '다리 길이감': '허벅지 볼륨을 줄여 다리 길이감을 시각적으로 늘릴 수 있습니다.',
+        '팔뚝 라인':   '팔뚝 안쪽 지방 흡입으로 라인이 달라집니다.',
+        '엉덩이 라인': '힙 라인 아래 지방 흡입으로 선명한 윤곽을 만듭니다.',
+        '힙업 위치':   '힙 아래 지방을 제거하면 힙업 효과가 자연스럽게 납니다.',
+        '허벅지 경계': '허벅지·엉덩이 경계 지방 흡입으로 경계선이 선명해집니다.',
+      },
+      '지방분해 주사·시술': {
+        '허리라인':   '허리 지방분해 주사는 비수술적으로 허리 사이즈를 줄입니다.',
+        '납작한 배':  '복부 지방분해 처방은 근육 손실 없이 배만 선택적으로 줄입니다.',
+        '옆구리':     '옆구리 국소 지방에 분해 처방을 하면 사이즈 감소가 빠릅니다.',
+        '팔뚝 라인':  '팔뚝 지방분해 시술은 회복이 빠르고 라인 변화가 자연스럽습니다.',
+      },
+      '리프팅 (실·레이저·초음파)': {
+        '전체 실루엣': '감량 후 처진 피부를 리프팅으로 정리하면 전체 실루엣이 달라집니다.',
+        '팔뚝 라인':   '팔뚝 처진 살은 리프팅이 가장 효과적입니다.',
+        '어깨선':      '어깨·쇄골 라인을 살리는 데 리프팅이 도움됩니다.',
+        '쇄골':        '쇄골 주변 리프팅으로 상체 윤곽이 선명해집니다.',
+      },
+      '보톡스·필러': {
+        '허벅지 라인': '허벅지 근육형 두께는 보톡스로 빠르게 줄일 수 있습니다.',
+        '다리 길이감': '종아리 보톡스로 다리 부피를 줄이면 길이감이 살아납니다.',
+        '엉덩이 라인': '힙 보톡스로 라인을 교정할 수 있습니다.',
+        '허벅지 경계': '경계 부위 보톡스로 허벅지 볼륨을 조절합니다.',
+      },
+      '복부성형 (복벽 교정)': {
+        '납작한 배':  '복벽 교정 후 복부 처방이 훨씬 효과적입니다. 진짜 납작한 배의 핵심입니다.',
+        '허리라인':   '복벽 구조 교정 후 허리 라인이 자연스럽게 살아납니다.',
+        '전체 실루엣':'복벽을 잡으면 전체 실루엣이 달라집니다.',
+      }
+    };
+
     recommended.forEach(function(proc, pi){
       var reason = proc.bcReason[bcCode] || proc.bcReason['default'];
+      // partLabels 맞춤 이유 찾기
+      var partReason = '';
+      if (_partLabels.length > 0 && PROC_PART_REASON[proc.name]) {
+        for (var pli = 0; pli < _partLabels.length; pli++) {
+          var pr = PROC_PART_REASON[proc.name][_partLabels[pli]];
+          if (pr) { partReason = pr; break; }
+        }
+      }
       discoverHTML += '<div class="p11-proc-card">'
         + '<div class="p11-proc-accent" style="background:' + proc.accent + '"></div>'
         + '<div class="p11-proc-body">'
@@ -22922,6 +23124,7 @@ function renderP11(data) {
         + '<span class="p11-proc-badge" style="background:' + proc.color + '">' + esc2(proc.badge) + '</span>'
         + '</div></div>'
         + '<div class="p11-proc-why"><strong>' + esc2(bcCode) + ' 적합 이유:</strong> ' + esc2(reason) + '</div>'
+        + (partReason ? '<div style="margin-top:6px;padding:6px 10px;background:rgba(196,168,232,.08);border-left:2px solid rgba(196,168,232,.4);border-radius:0 6px 6px 0;font-size:.79rem;color:rgba(255,255,255,.65);">📍 <strong style="color:#c4a8e8;">' + esc2(_partLabels[0]) + '</strong> — ' + esc2(partReason) + '</div>' : '')
         + '<div class="p11-proc-effect">'
         + '<div class="p11-proc-effect-label">'
         + '<span>예상 개선 효과</span>'
@@ -22930,7 +23133,7 @@ function renderP11(data) {
         + '<div class="p11-proc-track">'
         + '<div class="p11-proc-fill" id="p11-pfill-' + pi + '" data-pct="' + proc.effect + '" style="background:' + proc.accent + '"></div>'
         + '</div>'
-        + '<div class="p11-proc-note">* ' + esc2(bcCode) + ' 맞춤 처방 병행 시 기준</div>'
+        + '<div class="p11-proc-note">* ' + esc2(bcCode) + ' 맞춤 처방' + (_partLabels.length > 0 ? ' · ' + esc2(_partLabels.slice(0,2).join('·')) + ' 집중' : '') + ' 병행 시 기준</div>'
         + '</div>'
         + '</div></div>';
     });
