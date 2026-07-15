@@ -12904,7 +12904,7 @@ function renderAll(data) {
   const _s3 = (window.__RESULT__ && window.__RESULT__._stage3) || data._stage3 || {};
   const _s4 = (window.__RESULT__ && window.__RESULT__._stage4) || data._stage4 || {};
 
-  renderP2(userName, bcCode, firstDomino, axisScores, sorted, _s3);
+  renderP2(userName, bcCode, firstDomino, axisScores, sorted, _s3, _s2);
 
   renderP3(userName, bcCode, bcMaster, ohaengType, ohaeng, mbtiType, mbti, fullCode, prescription, answers, data.bloodType, _s2);
   renderP4(userName, ohaengType, mbtiType, answers['Q02'], answers['Q_MENOPAUSE'], _s2, _s3);
@@ -13084,8 +13084,20 @@ function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nic
     var PARENT_LABELS_P1 = ['상체 비만형','하체 비만형','복부 비만형','균형 체형'];
     var parentLabel_p1 = PARENT_LABELS_P1[q2val_p1] || '';
 
+    // Q5: 탄력측정 서술 (셀룰라이트/지방/근육 구분)
+    var Q5_ELAST_DESC = [
+      '셀룰라이트형 지방 확인 — 림프 울체·순환 저하 패턴. 온열 처방 및 림프 순환 개선 루틴 우선.',
+      '경미한 셀룰라이트 확인 — 림프 순환 보조 처방 포함. 식이 개선과 병행 권장.',
+      '부드러운 지방형 확인 — 인슐린·내장지방 축 비중 높음. 혈당 안정 처방 우선.',
+      '탄탄한 근육형 확인 — 코르티솔·스트레스 축 또는 호르몬 불균형을 우선 점검.'
+    ];
+    // q5p1val: q5_touch 또는 q5_cellu 키로 접근 (0=심한셀룰라이트, 1=약간, 2=부드러운지방, 3=탄탄)
+    // q5raw_p1: q5_elasticity 키로 접근 (동일 의미, 서버 키명 차이)
+    var q5ElastVal = q5p1val >= 0 ? q5p1val : (typeof q5raw_p1 === 'string' && q5raw_p1 !== '' ? Number(q5raw_p1) : -1);
+
     var evidenceLines = [];
     if (q3val >= 0 && Q3_DESC[q3val]) evidenceLines.push('🤚 ' + Q3_DESC[q3val]);
+    if (q5ElastVal >= 0 && Q5_ELAST_DESC[q5ElastVal]) evidenceLines.push('💪 ' + Q5_ELAST_DESC[q5ElastVal]);
     if (parentLabel_p1 && q2val_p1 < 4) evidenceLines.push('👨‍👩‍👧 부모님 체형이 ' + parentLabel_p1 + '으로 확인 — 유전 체형 경향이 일치합니다.');
 
     if (evidenceLines.length > 0) {
@@ -13420,7 +13432,7 @@ function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nic
 }
 
 /* ── P2 ── */
-function renderP2(userName, bcCode, firstDomino, axisScores, sorted, s3) {
+function renderP2(userName, bcCode, firstDomino, axisScores, sorted, s3, s2) {
   // ── 10원인축 표시 (점수는 백엔드가 0~100으로 전달; 프론트는 표시만) ──
   // 정규화/가중: 백엔드에서 0~100으로 전달. 프론트는 받은 값을 그대로 쓰고 0~100 클램프만 한다.
   var meta = (typeof AXIS_10_META !== 'undefined') ? AXIS_10_META : {
@@ -13589,6 +13601,60 @@ function renderP2(userName, bcCode, firstDomino, axisScores, sorted, s3) {
     // p2-gap 뒤에 삽입
     var gapEl2 = document.getElementById('p2-gap');
     if (gapEl2) gapEl2.insertAdjacentHTML('afterend', blockHTML);
+  })();
+
+  // ── [DESIGN_ROADMAP 2차 no:5] 손발냉증 → A02/A03 판별 보조 서술 ──
+  (function buildColdLimbsInsight() {
+    s2 = s2 || {};
+    if (typeof s2 === 'string') { try { s2 = JSON.parse(s2); } catch(e){ s2 = {}; } }
+    var q5raw_p2 = s2['q5'] || s2['q5_cold'] || s2['cold_limbs'] || '';
+    var q5val_p2 = -1;
+    if (Array.isArray(q5raw_p2)) { q5val_p2 = Number(q5raw_p2[0]); }
+    else if (typeof q5raw_p2 === 'string' && q5raw_p2 !== '') { q5val_p2 = Number(q5raw_p2); }
+    if (q5val_p2 < 0 || q5val_p2 > 1) return; // 손발냉증 없으면 스킵 (2=없음)
+
+    // A02(림프순환) vs A03(호르몬교란) 판별: 상위 축 점수 비교
+    var a02score = Number((axisScores || {})['A02'] || 0);
+    var a03score = Number((axisScores || {})['A03'] || 0);
+    var isSevere = (q5val_p2 === 0);
+
+    var coldLabel = isSevere ? '심한 수족냉증' : '경미한 수족냉증';
+    var primaryAxis, primaryColor, primaryIcon, primaryDesc, secondaryDesc;
+
+    if (a02score >= a03score) {
+      // A02(림프·순환) 우위 → 순환 저하 원인
+      primaryAxis = '림프·순환 저하(A02)';
+      primaryColor = '#1A7FC1';
+      primaryIcon = '💧';
+      primaryDesc = isSevere
+        ? '심한 수족냉증은 말초 림프·혈액 순환이 심각하게 저하된 신호입니다. 모세혈관까지 혈류가 도달하지 못하는 상태로, 온열 처방(생강·계피·당귀 기반)과 림프 드레나지 루틴이 즉시 필요합니다.'
+        : '경미한 수족냉증은 림프 순환이 부분적으로 막힌 상태입니다. 저녁 시간대 발·손 온열 케어와 순환 보조 식이가 개선에 효과적입니다.';
+      secondaryDesc = 'A03(호르몬) 점수(' + Math.round(a03score) + '점)보다 A02(림프) 점수(' + Math.round(a02score) + '점)가 높아 — 순환 기능 저하가 주원인으로 판별됩니다.';
+    } else {
+      // A03(호르몬교란) 우위 → 갑상선·에스트로겐 원인
+      primaryAxis = '호르몬 교란(A03)';
+      primaryColor = '#C0397A';
+      primaryIcon = '⚡';
+      primaryDesc = isSevere
+        ? '심한 수족냉증과 호르몬 교란이 함께 나타납니다. 갑상선 기능 저하 또는 에스트로겐 불균형이 체온 조절 능력을 떨어뜨린 패턴입니다. 호르몬 안정화 처방이 냉증 해소의 핵심입니다.'
+        : '경미한 수족냉증이 호르몬 불균형과 연결됩니다. 코르티솔 과다 분비가 말초 혈관을 수축시키는 구조입니다. 스트레스 관리와 호르몬 보조 식이가 병행되어야 합니다.';
+      secondaryDesc = 'A03(호르몬) 점수(' + Math.round(a03score) + '점)가 A02(림프) 점수(' + Math.round(a02score) + '점)보다 높아 — 호르몬 교란이 냉증의 주원인으로 판별됩니다.';
+    }
+
+    var coldHTML = '<div style="margin:18px 0;border-radius:14px;overflow:hidden;border:1px solid rgba(100,120,200,.2);background:var(--card);">' +
+      '<div style="padding:11px 16px;border-bottom:1px solid rgba(100,120,200,.15);background:linear-gradient(90deg,rgba(' + (a02score >= a03score ? '26,127,193' : '192,57,122') + ',.08),transparent);">' +
+        '<div style="font-size:10px;font-weight:800;color:' + primaryColor + ';letter-spacing:.07em;margin-bottom:2px;">' + primaryIcon + ' 수족냉증 원인축 판별</div>' +
+        '<div style="font-size:13px;font-weight:700;color:var(--ink);">' + coldLabel + ' — ' + primaryAxis + ' 패턴</div>' +
+      '</div>' +
+      '<div style="padding:12px 14px 14px;">' +
+        '<div style="font-size:12.5px;line-height:1.7;color:var(--ink);margin-bottom:8px;">' + primaryDesc + '</div>' +
+        '<div style="font-size:11px;line-height:1.55;color:var(--ink-muted,#666);padding:8px 10px;background:rgba(0,0,0,.03);border-radius:8px;">' + secondaryDesc + '</div>' +
+      '</div>' +
+    '</div>';
+
+    // p2-gap 또는 p2 섹션 마지막에 삽입
+    var insertTarget = document.getElementById('p2-gap') || document.querySelector('#p2 .p-body');
+    if (insertTarget) insertTarget.insertAdjacentHTML('afterend', coldHTML);
   })();
 
   // ── 원인의 도미노 (상위 3축 실제 데이터 기반 동적 생성) ──
@@ -13961,6 +14027,60 @@ function renderP3(userName, bcCode, bcMaster, ohaengKey, ohaeng, mbtiType, mbti,
 
     var lockEl = document.getElementById('p3-lock-mount');
     if (lockEl) lockEl.insertAdjacentHTML('beforebegin', familyCardHTML);
+  })();
+
+  // ── [DESIGN_ROADMAP 2차 no:11] 출산/군대 × 오행별 특이사항 카드 ──
+  (function buildBirthMilitaryOhaengCard() {
+    var q11raw = s2['q11'] || s2['q11_birth'] || s2['birth'] || '';
+    var q11val = -1;
+    if (Array.isArray(q11raw)) { q11val = q11raw[0] !== undefined ? Number(q11raw[0]) : -1; }
+    else if (typeof q11raw === 'string' && q11raw !== '') { q11val = Number(q11raw); }
+    // 0=출산경험있음, 1=군복무경험있음, 2=해당없음
+    if (q11val < 0 || q11val >= 2) return; // 해당 없음이면 스킵
+
+    var isBirth = (q11val === 0);
+    var isMilitary = (q11val === 1);
+    var cardTitle = isBirth ? '출산 후 체중 변화' : '군 복무 후 체중 변화';
+    var cardIcon = isBirth ? '🤱' : '🪖';
+
+    // 오행 × 출산/군대 특이사항 사전
+    var OHAENG_BIRTH_MAP = {
+      '목': {
+        birth: '목(木) 기질은 출산 후 "간(肝) 기운 회복"이 가장 느립니다. 임신 중 에스트로겐이 간 해독 부하를 높인 상태에서, 출산 후 호르몬이 급락하면 간의 지방 대사가 일시 마비됩니다. 목 기질 산후 비만의 핵심은 혈당·지질 대사 회복이며, 코르티솔 관리와 충분한 수면이 먼저입니다.',
+        military: '목(木) 기질의 군 복무 후 체중은 "규칙→자유" 전환 충격에서 옵니다. 극도로 통제된 식단·운동이 끝난 후 반동으로 과식·운동 중단이 동시에 일어납니다. 목 기질의 성취욕을 활용해 새로운 루틴·목표를 즉시 설정하는 것이 핵심입니다.'
+      },
+      '화': {
+        birth: '화(火) 기질은 출산 후 "심장·혈관 에너지의 급변"이 특징입니다. 임신 중 늘었던 혈류량이 빠르게 감소하면서 심한 피로와 감정 기복이 동반됩니다. 화 기질 산모는 산후 우울과 폭식 사이클이 강하게 나타나므로, 감정 안정 루틴(일기·명상·사회 지지)이 식이 조절보다 먼저입니다.',
+        military: '화(火) 기질은 군 복무 중 높은 에너지를 집단적으로 발산했는데, 제대 후 그 출구가 막히면 폭식·과음으로 에너지를 해소하는 패턴이 나타납니다. 고강도 운동 루틴을 유지하거나 새로운 열정 대상을 찾는 것이 가장 효과적입니다.'
+      },
+      '토': {
+        birth: '토(土) 기질은 출산 후 "위(胃)·비장 기운 회복"이 핵심입니다. 임신 중 위장이 눌린 상태가 지속되다가, 출산 후 갑작스러운 식욕 회복으로 과식·단 음식 의존이 강해집니다. 토 기질 산후 회복은 소화 기능 재건이 우선으로, 소화 쉬운 따뜻한 식단부터 시작해야 합니다.',
+        military: '토(土) 기질은 군대의 집단 식사 문화에 가장 잘 적응하지만, 제대 후 혼자 먹는 식사에서 규칙이 무너지기 쉽습니다. 함께 먹는 환경·식사 파트너를 만들면 자연스럽게 과식이 줄어드는 기질입니다.'
+      },
+      '금': {
+        birth: '금(金) 기질은 출산 후 "폐(肺)·대장 기운 회복"에 집중해야 합니다. 출산의 극도 긴장이 호흡기·소화기를 수축시킨 채로 회복이 더딘 패턴입니다. 금 기질 산후 비만은 변비·복부 팽만이 동반되는 경우가 많으며, 장 환경 회복이 체중 감소의 선행 조건입니다.',
+        military: '금(金) 기질은 군대의 명확한 규칙에 잘 적응하다가, 제대 후 자율성 속에서 완벽주의 성향이 오히려 "다 아니면 모두" 식이 패턴을 만듭니다. 과학적이고 구조적인 다이어트 계획을 스스로 짜는 방식이 동기 유지에 효과적입니다.'
+      },
+      '수': {
+        birth: '수(水) 기질은 출산 후 "신장(腎)·부신 회복"이 가장 중요합니다. 임신·출산이 신장 에너지를 크게 소모하며, 회복되지 않은 채로 육아 스트레스까지 더해지면 만성 피로→호르몬 불균형→체중 고착 사이클이 형성됩니다. 수 기질 산후는 충분한 수면과 온열 요법이 핵심 처방입니다.',
+        military: '수(水) 기질은 군 복무 중 극도의 에너지 소모로 신장·부신이 소진된 채 제대하는 경우가 많습니다. "잘 먹고 잘 쉬겠다"는 반동이 과식·수면 과다로 나타나고 체중이 빠르게 증가합니다. 회복기에는 기름진 음식보다 미네랄·수분 중심의 회복식이 필요합니다.'
+      }
+    };
+
+    var ohaengKey3 = ohaengKey || '목';
+    var birthMap = OHAENG_BIRTH_MAP[ohaengKey3] || OHAENG_BIRTH_MAP['목'];
+    var bodyText = isBirth ? birthMap.birth : birthMap.military;
+
+    var eventCardHTML = '<div style="margin:16px 0 0;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:var(--card);">' +
+      '<div style="padding:12px 16px;border-bottom:1px solid var(--line);background:linear-gradient(90deg,rgba(80,100,180,.07),transparent);">' +
+        '<div style="font-size:10px;font-weight:800;color:#5a70c0;letter-spacing:.07em;margin-bottom:2px;">' + cardIcon + ' ' + cardTitle + ' × ' + (ohaeng.label||ohaengKey3) + ' 기질 특이사항</div>' +
+        '<div style="font-size:13px;font-weight:700;color:var(--ink);">' + (ohaeng.label||ohaengKey3) + ' 기질은 이 시기를 왜 특히 힘들게 통과하는가</div>' +
+      '</div>' +
+      '<div style="padding:13px 16px;font-size:12.5px;line-height:1.75;color:var(--ink);">' + bodyText + '</div>' +
+    '</div>';
+
+    var lockEl3 = document.getElementById('p3-lock-mount');
+    if (lockEl3) lockEl3.insertAdjacentHTML('beforebegin', eventCardHTML);
   })();
 
   // ── 기질 마무리 멘트 + 한 장 요약 연결 (업셀 제거) ──
