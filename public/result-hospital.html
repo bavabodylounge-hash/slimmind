@@ -22456,7 +22456,17 @@ function renderP11(data) {
 
   // ── 기본 데이터 추출 ─────────────────────────────────────
   var ohaeng   = data.ohaeng_type || '토';
-  var bcCode   = data.bc_code || data.bc_primary || 'BC-6';
+  // BC코드 정규화: WATER_HUMID → BC-1~BC-9 매핑
+  var _rawBcCode = data.bc_code || data.bc_primary || 'BC-6';
+  var BC_CODE_MAP = {
+    'WOOD_DRY':'BC-1','WOOD_HUMID':'BC-2','FIRE_DRY':'BC-3','FIRE_HUMID':'BC-4',
+    'EARTH_DRY':'BC-5','EARTH_HUMID':'BC-6','METAL_DRY':'BC-7','METAL_HUMID':'BC-8',
+    'WATER_DRY':'BC-8','WATER_HUMID':'BC-6',
+    // 기존 BC-N 형식은 그대로
+    'BC-1':'BC-1','BC-2':'BC-2','BC-3':'BC-3','BC-4':'BC-4','BC-5':'BC-5',
+    'BC-6':'BC-6','BC-7':'BC-7','BC-8':'BC-8','BC-9':'BC-9'
+  };
+  var bcCode = BC_CODE_MAP[_rawBcCode] || ((/^BC-[1-9]$/.test(_rawBcCode)) ? _rawBcCode : 'BC-6');
   var userName = data.user_name || data.userName || '환자';
   var b2bCode  = data.b2b_code || data.b2bCode || '';
   var axes     = data.axis_scores || {};
