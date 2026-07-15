@@ -5802,7 +5802,6 @@ window.__HOSPITAL_INIT_PROMISE__ = (async function hospitalInit() {
       height:          json.height    || '',
       weight:          json.weight         || '',
       target_weight:   json.target_weight  || '',
-      height:          json.height         || '',
       // ── 병원 전용 필드 ──
       _hospital:       true,
       _result_id:      resultId,
@@ -8661,9 +8660,10 @@ function getDeepSurveyRoute(top1Axis) {
 // 7. 닉네임 → BC코드 역매핑 테이블
 // (기존 BC_MASTER와 호환, 결과지·처방 엔진 연결용)
 // ──────────────────────────────────────────────
-// [수정 V4.4] BC-6 쏠림 구조 수정
-// - '억제제부작용 배부름마비형' BC-6 → BC-4 (약물/식욕억제제 계열)
-// - '동시다발 다중악순환형' BC-6 → BC-3 (복합군 폴백 기준: 혈당·내장지방 조합이 가장 흔함)
+// [수정 V4.6] NICKNAME_TO_BC 매핑 교정
+// - '억제제부작용 배부름마비형': A01(인슐린) Top1 기반 → BC-3이 의학적으로 정확
+//   (BC-4는 A03 호르몬계 닉네임 '약물부작용 강제축적형'과 구분)
+// - '동시다발 다중악순환형' BC-6 → BC-3 (복합군 폴백: 혈당·내장지방 기반)
 var NICKNAME_TO_BC = {
   // 복부형
   '아빠체형 내장비대형':          'BC-3',
@@ -8671,7 +8671,7 @@ var NICKNAME_TO_BC = {
   '털털한 PCOS형':                'BC-6',
   '약물부작용 강제축적형':        'BC-4',
   '스트레스성 야식부엉이형':      'BC-6',
-  '억제제부작용 배부름마비형':    'BC-4',  // [수정] BC-6 → BC-4 (약물억제제 계열)
+  '억제제부작용 배부름마비형':    'BC-3',  // [수정 V4.6] BC-4→BC-3 (A01 인슐린 Top1 기반, DB 저장값과 일치)
   '출산후 바람빠진 풍선형':       'BC-7',
   '식후임산부 가스풍선형':        'BC-3',
   '팔다리거미 올챙이배형':        'BC-9',
@@ -12220,7 +12220,7 @@ function loadData() {
 function demoData() {
   // ★ 슬이 고객 실제 응답 데이터 (바바성형외과 B2B / H-1784081974777-4QS82 / 2026-07-15)
   // Top1: A01=10.37 (인슐린·내장지방) / Top2: A08=8.45 (심리·식이행동) / Top3: A07=7.27 (코르티솔)
-  // 닉네임: 억제제부작용 배부름마비형 (→ BC-3 식후기절 혈당롤러코스터형)
+  // 닉네임: 억제제부작용 배부름마비형 → NICKNAME_TO_BC → BC-3 (A01 인슐린 기반, DB 저장값과 일치)
   // 오행: 금(金) / MBTI: ENTP / 혈액형: B / 36세 / 161cm / 54kg
   return {
     userName: '슬이',
@@ -12886,9 +12886,10 @@ function renderAll(data) {
   renderP2(userName, bcCode, firstDomino, axisScores, sorted);
   window.__BC_RM__ = bcCode; // 로드맵 주차별 영양제 카드용 BC 코드
   // ── stage2/3/4 원시응답 (70문항 개인화에 사용) ──
-  const _s2 = (window.__RESULT__ && window.__RESULT__._stage2) || {};
-  const _s3 = (window.__RESULT__ && window.__RESULT__._stage3) || {};
-  const _s4 = (window.__RESULT__ && window.__RESULT__._stage4) || {};
+  // window.__RESULT__ (실서버) 우선, 없으면 data 직접(demoData/localStorage 모드) 폴백
+  const _s2 = (window.__RESULT__ && window.__RESULT__._stage2) || data._stage2 || {};
+  const _s3 = (window.__RESULT__ && window.__RESULT__._stage3) || data._stage3 || {};
+  const _s4 = (window.__RESULT__ && window.__RESULT__._stage4) || data._stage4 || {};
 
   renderP3(userName, bcCode, bcMaster, ohaengType, ohaeng, mbtiType, mbti, fullCode, prescription, answers, data.bloodType, _s2);
   renderP4(userName, ohaengType, mbtiType, answers['Q02'], answers['Q_MENOPAUSE'], _s2, _s3);
@@ -15728,7 +15729,10 @@ window.addEventListener('DOMContentLoaded', async () => {
       axisScoreKeys: Object.keys(resultData.axisScores || {})
     });
 
-    renderAll(resultData);
+    // ── 전역 resultData 저장 (renderP11 등 지연 호출 함수에서 참조) ──
+  window.__SLIMMIND_DATA__ = resultData;
+
+  renderAll(resultData);
 
     // ── ?view=today 파라미터 → 표지 스킵 + P10 자동 진입 ─────────
     (function checkViewParam(){
@@ -16022,7 +16026,8 @@ function renderP7(userName, bcCode, bcMaster, metrics, ohaengType, mbtiType, ful
       var _moodLabel  = (data._moodLabel  || (data._desire && data._desire.moodLabel))  || '';
       var _who        = (data._who        || (data._desire && data._desire.who))         || '';
       var _partLabels = (data._partLabels || (data._desire && data._desire.partLabels))  || [];
-      var _s2_q8_raw  = (window.__RESULT__ && window.__RESULT__._stage2 && window.__RESULT__._stage2['q8']) || [];
+      var _s2_q8_raw  = (window.__RESULT__ && window.__RESULT__._stage2 && window.__RESULT__._stage2['q8'])
+                       || (data._stage2 && data._stage2['q8']) || [];
       if (typeof _s2_q8_raw === 'string') { try { _s2_q8_raw = JSON.parse(_s2_q8_raw); } catch(e){ _s2_q8_raw = []; } }
       var Q8_LABELS = ['이직·과로·스트레스','이별·심리적 충격','수술·입원·약물','잦은 회식·음주','금연·생활변화','서서히 자연스럽게'];
       var q8Idxs = Array.isArray(_s2_q8_raw) ? _s2_q8_raw.map(Number) : [];
@@ -23087,7 +23092,11 @@ var OHAENG_PHASE_DB = {
 // ════════════════════════════════════════════════════════
 function renderP11(data) {
   if (!data) {
-    data = (typeof _G !== 'undefined' && _G.data) || window.__RESULT__ || {};
+    // 우선순위: 전역 저장 resultData → window.__RESULT__(실서버) → 빈 객체
+    data = window.__SLIMMIND_DATA__
+        || (typeof _G !== 'undefined' && _G.data)
+        || window.__RESULT__
+        || {};
   }
 
   var esc2 = (typeof esc === 'function') ? esc : function(s){
@@ -24035,7 +24044,8 @@ function renderP11(data) {
     _origSwitch(num);
     if (num === 11) {
       setTimeout(function() {
-        var d = (typeof _G !== 'undefined' && _G.data)
+        var d = window.__SLIMMIND_DATA__
+          || (typeof _G !== 'undefined' && _G.data)
           || window.__RESULT__
           || (typeof resultData !== 'undefined' && resultData)
           || {};
