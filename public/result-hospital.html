@@ -6230,13 +6230,13 @@ window.__HOSPITAL_INIT_PROMISE__ = (async function hospitalInit() {
 <section id="page4" class="page">
 <div class="section-wrap">
   <div class="eyebrow" style="padding-top:8px;">다이어트 잔혹사 리포트</div>
-  <h1 class="page-title fade-up">해법은 보셨습니다.<br>그런데 <em>왜 지금까지</em><br><em>매번 실패했을까요</em></h1>
-  <p class="body-text fade-up" style="transition-delay:.1s;margin-bottom:22px;">
-    여기까지 <strong>핵심 처방·맞춤 비율·12주 로드맵·변화 예측</strong>을 보셨어요. "이렇게 하면 되는구나"가 보이셨을 거예요.
-    하지만 그 길은, <strong>지난 다이어트가 매번 어디서 무너졌는지</strong>를 정확히 알기 전엔 또 같은 자리에서 멈춥니다.
-    의지력 문제가 아니었습니다. 당신의 <strong>기질·호르몬·자율신경</strong> 데이터는,
-    남들과 똑같이 굶고 버틸 때마다 몸이 어느 지점에서 무너지도록 설계돼 있었는지 <strong>이미 알고 있었거든요.</strong>
-    이제 그 무너짐의 뿌리를 하나씩 보여드릴게요. 그동안 "난 왜 이럴까"라며 자책했던 그 시간들이, 여기서 끝납니다.
+  <h1 class="page-title fade-up" id="p4-main-title">그런데 <em>왜 지금까지</em><br><em>매번 실패했을까요</em></h1>
+  <p class="body-text fade-up" id="p4-main-desc" style="transition-delay:.1s;margin-bottom:22px;">
+    방금 확인한 <strong>타고난 기질</strong> — 그 기질이 다이어트할 때마다 정확히 어느 지점에서 당신을 무너뜨렸는지,
+    지금부터 데이터로 보여드립니다.
+    의지력 문제가 아니었습니다. 당신의 <strong>기질·호르몬·자율신경</strong>은,
+    남들과 똑같이 굶고 버틸 때마다 몸이 특정 지점에서 무너지도록 <strong>처음부터 설계돼 있었거든요.</strong>
+    "난 왜 이럴까"라며 자책했던 그 시간들 — 여기서 끝냅니다.
   </p>
 
   <!-- 요약 바: 내 데이터가 가리키는 3가지 무너짐 지점 (클릭 시 아래 상세로) -->
@@ -13376,6 +13376,25 @@ function renderP4(userName, ohaengKey, mbtiType, gender, menopause) {
   const triggers = getCruelHistoryTriggers(userName, ohaengKey, mbtiType, gender, menopause);
   const container = document.getElementById('p4-triggers');
   const nm = (userName && userName.length >= 3) ? userName.slice(1) : (userName || '회원');
+
+  // P4 제목·설명 동적 업데이트 — 오행 라벨 반영
+  const ohaengInfo = SAJU_ELEMENT_DESC[ohaengKey] || SAJU_ELEMENT_DESC['목'];
+  const ohaengLabel = ohaengInfo.label || ohaengKey || '타고난 기질';
+
+  const p4TitleEl = document.getElementById('p4-main-title');
+  if (p4TitleEl) {
+    p4TitleEl.innerHTML = '그런데 <em>왜 지금까지</em><br><em>매번 실패했을까요</em>';
+  }
+
+  const p4DescEl = document.getElementById('p4-main-desc');
+  if (p4DescEl) {
+    p4DescEl.innerHTML = '방금 확인한 <strong>' + ohaengLabel + ' 기질</strong> — 그 기질이 다이어트할 때마다 정확히 어느 지점에서 '
+      + nm + ' 님을 무너뜨렸는지, 지금부터 데이터로 보여드립니다.<br>'
+      + '의지력 문제가 아니었습니다. <strong>' + ohaengLabel + ' 기질·호르몬·자율신경</strong>은, '
+      + '남들과 똑같이 굶고 버틸 때마다 몸이 특정 지점에서 무너지도록 <strong>처음부터 설계돼 있었거든요.</strong><br>'
+      + '"난 왜 이럴까"라며 자책했던 그 시간들 — 여기서 끝냅니다.';
+  }
+
   container.innerHTML = '';
   triggers.forEach(t => {
     const div = document.createElement('div');
