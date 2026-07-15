@@ -12218,18 +12218,71 @@ function loadData() {
 }
 
 function demoData() {
-  // 갱년기형 데모: A03(호르몬) Top1=92, A07(코르티솔) Top2=78 → 호르몬스위치 갱년기형
+  // ★ 슬이 고객 실제 응답 데이터 (바바성형외과 B2B / H-1784081974777-4QS82 / 2026-07-15)
+  // Top1: A01=10.37 (인슐린·내장지방) / Top2: A08=8.45 (심리·식이행동) / Top3: A07=7.27 (코르티솔)
+  // 닉네임: 억제제부작용 배부름마비형 (→ BC-3 식후기절 혈당롤러코스터형)
+  // 오행: 금(金) / MBTI: ENTP / 혈액형: B / 36세 / 161cm / 54kg
   return {
-    userName:'김지현',
-    axisScores:{A01:55,A02:60,A03:92,A04:35,A05:48,A06:62,A07:78,A08:58,A09:30,A10:45},
-    ohaengType:'수', mbtiType:'INFJ', bloodType:'A',
-    answers:{ Q_MENOPAUSE:'meno', Q02:'female', age_group:'50s' },
-    // P6 처방 엔진 테스트: bc_primary(한글닉네임) + 목표체중 + 감량률
-    bc_primary: '호르몬스위치 갱년기형',
-    bc_code: '호르몬스위치 갱년기형',
-    goal_weight: 58,
-    weight_loss_pct: 12,
-    consultant_name:'김예슬', isDemo:true
+    userName: '슬이',
+    axisScores: {A01:10.37, A02:6.74, A03:5.03, A04:6.63, A05:5.80, A06:4.44, A07:7.27, A08:8.45, A09:1.11, A10:0},
+    ohaengType: '금',
+    mbtiType: 'ENTP',
+    bloodType: 'B',
+    age: 36,
+    height: 161,
+    weight: 54,
+    // 배경 필터: stage2[7]=1(식욕억제제 한두번) → '약물' → '억제제부작용 배부름마비형'
+    answers: {
+      Q02: 'female',
+      age_group: '30s',
+      // stage2 실제 응답값 (detectBackground용)
+      7: 1,           // 식욕억제제 한두번
+      9: ['지방흡입','지방분해 주사·시술','리프팅 (실·레이저·초음파)','보톡스·필러'],
+      8: ['잦은 회식·음주'],
+      2: 2,           // 부모체형: 둘 다 조금씩
+      5: 1,           // 냉증: 조금
+      14: 0,          // 음주: 주3회+
+    },
+    // desire 목표
+    _moodLabel: '가벼운 일상핏',
+    _who: '',
+    _partLabels: ['허리라인', '전체 실루엣'],
+    // pfProfile
+    pfProfile: {
+      purpose: '다이어트 방향을 잡으려고',
+      rhythm: '프리랜서·재택 — 리듬이 자유로워요',
+      exp: '다이어트 여러 번 — 늘 돌아왔어요',
+      saju: '금', mbti: 'ENTP', blood: 'B', face: '계란형',
+      birthY: '1991', birthM: '6', birthD: '19'
+    },
+    // stage2/3/4 실제 응답 (P11 야간패턴·갈림길·renderP7 계기 카드용)
+    _stage2: {
+      '1': ['없어요'], '2': 2, '3': ['해당 없어요'], '4': ['없어요'],
+      '5': 1, '6': ['없어요'], '7': 1, '8': ['잦은 회식·음주'],
+      '9': ['지방흡입','지방분해 주사·시술','리프팅 (실·레이저·초음파)','보톡스·필러'],
+      '10': {pat:'down',cyc:0,amp:5,net:-5},
+      '11': 2, '12': 4, '13': 2, '14': 0,
+      // Q8 인덱스 배열 (fillDesireCard Q8계기용): 잦은 회식·음주 = idx 3
+      'q8': [3]
+    },
+    _stage3: {
+      // 0=새벽,1=아침,2=오전,3=점심,4=저녁,5=야간 (6시간대별 배열)
+      bloat:   [0,1,1,2,3,3],   // 저녁·야간 복부팽만 강함
+      tired:   [1,1,2,2,2,2],   // 전반 피로
+      hungry:  [0,0,1,2,3,3],   // 야간 식욕 폭발
+      pain:    [0,0,0,1,1,2],   // 저녁이후 통증
+      sleep:   [0,0,0,0,2,3],   // 야간 수면장애
+      gut:     [0,1,1,2,2,2]    // 저녁이후 장불편감
+    },
+    _stage4: {
+      'A01_A08': 0    // A01(인슐린) 선택
+    },
+    bc_primary: '억제제부작용 배부름마비형',
+    bc_code: 'BC-3',
+    goal_weight: 50,
+    weight_loss_pct: 7.4,
+    consultant_name: '바바성형외과',
+    isDemo: true
   };
 }
 
