@@ -2302,6 +2302,8 @@ body{background:var(--paper);color:var(--ink);min-height:100vh;}
 .p7v4-lid{transform-origin:center;transform:scaleY(0);animation:p7v4Blink 3.5s ease-in-out infinite;}
 .p7v4-lid.r{animation-delay:.04s;}
 @keyframes p7v4Blink{0%,90%,100%{transform:scaleY(0);}93%,96%{transform:scaleY(1);}}
+@keyframes p7MoodPulse{0%,100%{transform:scale(1) rotate(0deg);filter:drop-shadow(0 0 6px rgba(196,168,232,.4));}33%{transform:scale(1.18) rotate(-5deg);filter:drop-shadow(0 0 14px rgba(196,168,232,.8));}66%{transform:scale(1.1) rotate(4deg);filter:drop-shadow(0 0 10px rgba(196,168,232,.6));}}
+@keyframes p7CtaPulse{0%,100%{box-shadow:0 4px 18px rgba(139,109,181,.35),0 0 0 0 rgba(139,109,181,.4);}50%{box-shadow:0 6px 24px rgba(139,109,181,.55),0 0 0 8px rgba(139,109,181,.0);}}
 .p7v4-seal-body{flex:1;min-width:0;}
 .p7v4-codeline{display:flex;align-items:center;gap:9px;margin-bottom:7px;}
 .p7v4-codebadge{display:inline-flex;align-items:baseline;gap:4px;background:linear-gradient(145deg,#3a2c1a,#241c14);border:1px solid rgba(232,200,122,.32);border-radius:9px;padding:5px 11px;}
@@ -2342,6 +2344,26 @@ body{background:var(--paper);color:var(--ink);min-height:100vh;}
 .p7v4-base-card.ex .p7v4-base-k{color:#4a5a30;}
 .p7v4-base-card.di .p7v4-base-k{color:#9a6a1c;}
 .p7v4-base-v{font-size:12.5px;font-weight:600;color:var(--ink);line-height:1.5;word-break:keep-all;}
+
+/* ── desire 목표 카드 ── */
+.p7desire-card{margin:0 0 22px;border-radius:18px;background:linear-gradient(145deg,rgba(99,64,160,.10),rgba(196,168,232,.07));border:1px solid rgba(196,168,232,.28);overflow:hidden;}
+.p7desire-inner{padding:18px 18px 16px;}
+.p7desire-label{display:flex;align-items:center;gap:7px;font-size:10px;font-weight:900;letter-spacing:2px;color:#b8a0e0;margin-bottom:14px;}
+.p7desire-label-dot{width:7px;height:7px;border-radius:50%;background:linear-gradient(135deg,#8b6db5,#c4a8e8);flex-shrink:0;}
+.p7desire-mood{display:flex;align-items:center;gap:12px;background:rgba(139,109,181,.13);border-radius:13px;padding:13px 15px;margin-bottom:10px;}
+.p7desire-mood-emoji{font-size:26px;line-height:1;flex-shrink:0;filter:drop-shadow(0 0 6px rgba(196,168,232,.4));}
+.p7desire-mood-key{font-size:10px;font-weight:800;color:rgba(255,255,255,.45);letter-spacing:.8px;margin-bottom:3px;}
+.p7desire-mood-val{font-size:17px;font-weight:900;color:#e0d0f8;letter-spacing:-.3px;}
+.p7desire-who{display:flex;align-items:flex-start;gap:8px;background:rgba(99,64,160,.12);border-left:3px solid #8b6db5;border-radius:0 10px 10px 0;padding:10px 13px;margin-bottom:10px;}
+.p7desire-who-mark{color:#c4a8e8;font-size:14px;flex-shrink:0;margin-top:1px;}
+.p7desire-who-tx{font-size:13px;font-weight:600;color:rgba(255,255,255,.7);line-height:1.5;word-break:keep-all;}
+.p7desire-who-tx b{color:#e0d0f8;font-weight:900;}
+.p7desire-parts{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+.p7desire-part-tag{background:rgba(139,109,181,.18);border:1px solid rgba(196,168,232,.3);color:#c4a8e8;font-size:12px;font-weight:700;padding:5px 12px;border-radius:20px;transition:background .2s;}
+.p7desire-trigger{display:flex;align-items:flex-start;gap:8px;padding:9px 12px;background:rgba(232,200,122,.06);border:1px solid rgba(232,200,122,.18);border-radius:10px;}
+.p7desire-trigger-ico{font-size:14px;flex-shrink:0;margin-top:1px;}
+.p7desire-trigger-tx{font-size:12px;font-weight:600;color:rgba(255,255,255,.6);line-height:1.5;word-break:keep-all;}
+.p7desire-trigger-tx b{color:#e8c87a;font-weight:800;}
 
 /* ── 어떻게 변한다 (몸나이) ── */
 .p7v4-change{margin:0 0 13px;}
@@ -5694,6 +5716,14 @@ window.__HOSPITAL_INIT_PROMISE__ = (async function hospitalInit() {
     var s2 = json.stage2_answers || {};
     if (typeof s2 === 'string') { try { s2 = JSON.parse(s2); } catch(e){ s2 = {}; } }
 
+    // stage3_answers 파싱 (히트맵 원시 응답: {bloat:[0,1,...], tired:[...], ...})
+    var s3 = json.stage3_answers || {};
+    if (typeof s3 === 'string') { try { s3 = JSON.parse(s3); } catch(e){ s3 = {}; } }
+
+    // stage4_answers 파싱 (갈림길 응답: {A01_A09: 0, A01_A07: 1, ...})
+    var s4 = json.stage4_answers || {};
+    if (typeof s4 === 'string') { try { s4 = JSON.parse(s4); } catch(e){ s4 = {}; } }
+
     // ── BMI 계산 ──────────────────────────────────────
     var _h = parseFloat(json.height) || 0;
     var _w = parseFloat(json.weight) || 0;
@@ -5780,6 +5810,8 @@ window.__HOSPITAL_INIT_PROMISE__ = (async function hospitalInit() {
       _b2b_code:       json.b2b_code  || '',
       // ── P11 처방 분기용 (신규) ──
       _stage2:         s2,
+      _stage3:         s3,   // 히트맵 원시응답 (bloat/tired/hungry/pain/sleep/gut × 6시간대)
+      _stage4:         s4,   // 갈림길 원시응답 (A01_A09 등 경합축 선택)
       _bmi:            _bmi,
       _bmiGrade:       _bmiGrade,
       _conditions:     _conditions,
@@ -5944,8 +5976,8 @@ window.__HOSPITAL_INIT_PROMISE__ = (async function hospitalInit() {
     <button class="nav-tab" data-page="8" onclick="switchPage(8)"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#c98a3c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M5 7h14M7 21h10"/><path d="M5 7l-2.5 6a3 3 0 0 0 5 0L5 7ZM19 7l-2.5 6a3 3 0 0 0 5 0L19 7Z"/></svg></span><span class="nav-text">맞춤 비율</span></button>
     <button class="nav-tab" data-page="6" onclick="switchPage(6)"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#5a6e8c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 9h17M8 3v4M16 3v4"/><path d="M7.5 13h2M11 13h2M14.5 13h2M7.5 16.5h2M11 16.5h2"/></svg></span><span class="nav-text">12주 로드맵</span></button>
     <button class="nav-tab" data-page="9" onclick="switchPage(9)"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#8a5a9c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v3.5M3.25 4.75h3.5M17 16v3M15.25 17.5h3.5"/><path d="M11.5 4l1.7 4.6 4.6 1.7-4.6 1.7L11.5 17l-1.7-4.6L5.2 10.7l4.6-1.7L11.5 4Z"/></svg></span><span class="nav-text">변화 예측</span></button>
-    <button class="nav-tab p7-share-tab" data-page="7" onclick="switchPage(7)"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#3a6b9c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5.5" r="2.8"/><circle cx="6" cy="12" r="2.8"/><circle cx="18" cy="18.5" r="2.8"/><path d="M8.4 10.7l7.2-3.9M8.4 13.3l7.2 3.9"/></svg></span><span class="nav-text">한 장 요약</span></button>
     <button class="nav-tab" data-page="11" onclick="switchPage(11)" style="background:rgba(139,109,181,.12);border:1px solid rgba(139,109,181,.35);"><span class="nav-icon">🏥</span><span class="nav-text" style="color:#c4a8e8;font-weight:800;">병원처방</span></button>
+    <button class="nav-tab p7-share-tab" data-page="7" onclick="switchPage(7)" style="background:rgba(58,107,156,.1);border:1px solid rgba(58,107,156,.3);"><span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#3a6b9c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></span><span class="nav-text">한 장 요약</span></button>
   </div>
   <!-- 💬 코칭 메시지 뱃지 버튼 -->
   <button id="nav-coach-btn" onclick="_openCoachModal()" title="컨설턴트 코칭 메시지" style="display:none;flex-shrink:0;margin-left:6px;align-items:center;gap:4px;background:linear-gradient(135deg,#3f6b3a,#5a8c52);color:#fff;border:none;border-radius:11px;padding:7px 11px;cursor:pointer;font-family:inherit;font-weight:900;font-size:12px;position:relative;box-shadow:0 3px 12px rgba(63,107,58,.35);transition:transform .12s,box-shadow .2s;">
@@ -6603,6 +6635,11 @@ window.__HOSPITAL_INIT_PROMISE__ = (async function hospitalInit() {
         <div class="p7v4-ch-kg" id="p7fork-go-kg"></div>
       </div>
     </div>
+  </div>
+
+  <!-- ★ desire 목표 카드 (renderP7가 fillDesireCard로 채움) -->
+  <div class="p7desire-card fade-up" style="transition-delay:.135s" id="p7-desire-card">
+    <!-- JS가 채움 -->
   </div>
 
   <!-- ④→⑤ 브릿지: 감성 훅을 팩트 증명으로 잇기 -->
@@ -9741,11 +9778,58 @@ function getMbtiOhaengInsights(bcMaster, ohaengKey, mbtiType) {
 // gender: 'M'(남성) | 'F'(여성) | null
 // menopause: 'meno'|'post'|'peri'|'hrt' → 완경·폐경
 // ──────────────────────────────────────────────
-function getCruelHistoryTriggers(userName, ohaengKey, mbtiType, gender, menopause) {
+function getCruelHistoryTriggers(userName, ohaengKey, mbtiType, gender, menopause, s2, s3) {
   const ohaeng = SAJU_ELEMENT_DESC[ohaengKey] || SAJU_ELEMENT_DESC['목'];
   const mbti   = MBTI_DESC[mbtiType] || MBTI_DESC['INFP'];
   // 이름만 (예: 김지현 → 지현)
   const nm = (userName && userName.length >= 3) ? userName.slice(1) : (userName || '회원');
+
+  // ── stage2 응답 파싱 ──
+  s2 = s2 || {};
+  s3 = s3 || {};
+
+  // Q8: 살찐 결정적 계기 (배열 인덱스)
+  var q8raw = s2['q8'] || s2['q8_trigger'] || [];
+  if (typeof q8raw === 'string') { try { q8raw = JSON.parse(q8raw); } catch(e){ q8raw = []; } }
+  var q8Idxs = Array.isArray(q8raw) ? q8raw.map(Number) : [];
+  // 0=이직·과로·스트레스, 1=이별·심리적충격, 2=수술·입원·약물, 3=잦은회식·음주, 4=금연·생활변화, 5=특별한계기없이서서히
+  var Q8_LABELS = ['이직·과로·스트레스','이별·심리적 충격','수술·입원·약물 복용','잦은 회식·음주','금연·생활습관 변화','특별한 계기 없이 서서히'];
+  var q8Labels = q8Idxs.map(function(i){ return Q8_LABELS[i] || ''; }).filter(Boolean);
+  var hasStressTriger   = q8Idxs.indexOf(0) >= 0; // 이직·과로
+  var hasEmotionTrigger = q8Idxs.indexOf(1) >= 0; // 이별·충격
+  var hasDrugTrigger    = q8Idxs.indexOf(2) >= 0; // 수술·약물
+  var hasDrinkTrigger   = q8Idxs.indexOf(3) >= 0; // 회식·음주
+  var hasQuitSmoke      = q8Idxs.indexOf(4) >= 0; // 금연
+  var hasGradual        = q8Idxs.indexOf(5) >= 0; // 서서히
+
+  // Q14: 음주 빈도 (0=거의안마심, 1=월1~2, 2=주1~2, 3=주3~4, 4=매일)
+  var q14raw = s2['q14'] || s2['q14_alcohol'] || s2['alcohol'] || '';
+  var q14val = -1;
+  if (Array.isArray(q14raw)) { q14val = q14raw[0] !== undefined ? Number(q14raw[0]) : -1; }
+  else if (typeof q14raw === 'string' && q14raw !== '') { q14val = Number(q14raw); }
+  var isHeavyDrinker = q14val >= 3; // 주3회 이상
+
+  // Q13: 흡연 (0=비흡연, 1=금연, 2=흡연)
+  var q13raw = s2['q13'] || s2['q13_smoke'] || s2['smoke'] || '';
+  var q13val = -1;
+  if (Array.isArray(q13raw)) { q13val = q13raw[0] !== undefined ? Number(q13raw[0]) : -1; }
+  else if (typeof q13raw === 'string' && q13raw !== '') { q13val = Number(q13raw); }
+
+  // ── stage3 히트맵 야간 패턴 분석 ──
+  // 히트맵 구조: { bloat:[0~3, 0~3, ...] × 6시간대, tired:[], hungry:[], pain:[], sleep:[], gut:[] }
+  // 시간대: 0=새벽(0~6시), 1=아침(6~9시), 2=점심(9~14시), 3=오후(14~18시), 4=저녁(18~22시), 5=야간(22~다음날0시)
+  function getHmNightScore(key) {
+    var arr = s3[key] || [];
+    if (!Array.isArray(arr) || arr.length < 6) return 0;
+    // 야간(22시~): 인덱스 4(저녁)+5(야간) 합산
+    return (Number(arr[4])||0) + (Number(arr[5])||0);
+  }
+  var nightHungryScore = getHmNightScore('hungry'); // 야간 식욕
+  var nightSleepScore  = getHmNightScore('sleep');  // 야간 수면장애
+  var nightBloatScore  = getHmNightScore('bloat');  // 야간 부종
+  var nightTiredScore  = getHmNightScore('tired');  // 야간 피로
+  var hasNightEating   = nightHungryScore >= 3;     // 저녁+야간 식욕 합계 3 이상
+  var hasSleepIssue    = nightSleepScore  >= 3;     // 저녁+야간 수면 합계 3 이상
 
   // ── 트리거 필드 설명 ──
   //  hook     : 카드 상단 한 줄 — "의지가 꺾인 게 아닙니다, ~한 겁니다"
@@ -9755,25 +9839,58 @@ function getCruelHistoryTriggers(userName, ohaengKey, mbtiType, gender, menopaus
   //  dayStart/dayEnd : 다이어트 시작 후 며칠~며칠 구간 (실시간 임박도 계산용)
   //  cycle    : 반복 주기(일). 주기성 트리거(생리 등)는 day 무시하고 cycle로 계산
 
-  // ── 공통 트리거 1: 72시간 금단 반응 ──
+  // ── 트리거 01: 72시간 금단 반응 (살찐 계기 반영) ──
+  var t01Hook = '의지가 꺾인 게 아닙니다. 뇌가 생존 신호를 보낸 겁니다.';
+  var t01Medical = nm + ' 님은 유독 탄수화물 대사 의존도가 높게 나왔습니다. 이 상태에서 남들 하는 방식으로 탄수화물을 갑자기 뚝 끊으면, 혈당이 추락하면서 뇌가 즉시 \'비상사태\' 신호를 보냅니다. 사소한 일에 짜증이 나고 감정이 폭발하는 건 당연한 생리 현상입니다.';
+  var t01Comfort = '계획을 세울 때마다 늘 자신을 가장 마지막 순위에 두고 몰아붙이지 않으셨나요. 72시간 만에 포기했던 건 의지가 약해서가 아니라, 몸을 너무 아끼지 않아서 보내온 SOS였습니다. <em>' + mbti.behaviorTag + '</em> 성향까지 더해지면 이 신호는 더 빨리 옵니다.';
+  var t01Reframe = '억지로 버티는 72시간이 아니라, 몸이 안심하는 환경을 만들어 드릴게요. 탄수화물을 끊는 게 아니라 복합 탄수화물로 천천히 바꿔, "이 정도면 됐어"라고 느끼게 설계합니다.';
+
+  // 살찐 계기 → 트리거01 맞춤 문구 덮어쓰기
+  if (hasStressTriger) {
+    t01Medical = nm + ' 님의 경우, <b>이직·과로·스트레스</b>가 살이 찐 결정적 계기였습니다. 만성 스트레스 상태에서 코르티솔이 높아지면 뇌는 에너지 위기로 인식하고 탄수화물을 강하게 갈구합니다. 다이어트를 시작하자마자 탄수화물을 끊으면 이 갈구 신호가 폭발적으로 증폭됩니다.';
+    t01Comfort = '이직 후 달라진 환경, 몸이 먼저 지쳤을 텐데 거기에 다이어트까지 시도하셨던 거잖아요. <em>' + ohaeng.label + ' 기질</em>은 환경 변화에 에너지를 더 많이 소모합니다. 실패가 아니라 몸이 당연히 보낸 SOS였습니다.';
+    t01Reframe = '스트레스-코르티솔 루프를 먼저 끊어야 합니다. 탄수화물을 갑자기 끊는 게 아니라, 복합 탄수화물과 마그네슘으로 코르티솔 수치를 낮추는 환경부터 만들어드릴게요.';
+  } else if (hasEmotionTrigger) {
+    t01Medical = nm + ' 님의 경우, <b>이별·심리적 충격</b>이 살이 찐 계기였습니다. 감정적 충격은 도파민-세로토닌 시스템을 교란해 음식으로 위로를 찾는 보상 회로를 강화시킵니다. 이 상태에서 억지로 식욕을 억제하면 반동 폭식이 더 심하게 옵니다.';
+    t01Comfort = '그 아픈 시간에 먹는 것으로 버텨온 게 얼마나 힘드셨을지. 감정 식욕은 의지로 끊을 수 없습니다. <em>' + mbti.behaviorTag + '</em> 성향이 감정을 더 깊이 처리하는 방식이라 더 오래 갔을 겁니다.';
+    t01Reframe = '감정 식욕을 억누르지 않고, 뇌의 보상 회로를 안전한 방향으로 전환합니다. 트립토판이 풍부한 식단으로 세로토닌을 자연스럽게 올리는 것부터 시작합니다.';
+  } else if (hasDrugTrigger) {
+    t01Medical = nm + ' 님의 경우, <b>수술·입원·약물 복용</b>이 체중 변화의 계기였습니다. 입원·수술 후 활동량이 급감하고 스테로이드·항생제가 장내 미생물을 교란해 인슐린 저항성이 높아진 상태입니다. 이 시기에 기존 식단 방식은 효과가 절반 이하로 떨어집니다.';
+    t01Comfort = '몸이 아팠던 그 시간, 회복만으로도 충분히 힘드셨을 텐데 체중까지 변해서 얼마나 당황스러우셨나요. 약물 후 체중 변화는 의지와 무관한 신체 반응입니다.';
+    t01Reframe = '약물로 교란된 장내 환경부터 복구합니다. 프로바이오틱스와 식이섬유로 마이크로바이옴을 재건하면서, 인슐린 저항성을 낮추는 방향으로 처방을 설계합니다.';
+  }
+
   const trigger01 = {
     num: '01',
-    title: '시작 후 72시간 — 탄수화물 끊김 반응',
-    hook: '의지가 꺾인 게 아닙니다. 뇌가 생존 신호를 보낸 겁니다.',
-    medical: `${nm} 님은 유독 탄수화물 대사 의존도가 높게 나왔습니다. 이 상태에서 남들 하는 방식으로 탄수화물을 갑자기 뚝 끊으면, 혈당이 추락하면서 뇌가 즉시 '비상사태' 신호를 보냅니다. 사소한 일에 짜증이 나고 감정이 폭발하는 건 당연한 생리 현상입니다.`,
-    comfort: `계획을 세울 때마다 늘 자신을 가장 마지막 순위에 두고 몰아붙이지 않으셨나요. 72시간 만에 포기했던 건 의지가 약해서가 아니라, 몸을 너무 아끼지 않아서 보내온 SOS였습니다. <em>${mbti.behaviorTag}</em> 성향까지 더해지면 이 신호는 더 빨리 옵니다.`,
-    reframe: `억지로 버티는 72시간이 아니라, 몸이 안심하는 환경을 만들어 드릴게요. 탄수화물을 끊는 게 아니라 복합 탄수화물로 천천히 바꿔, "이 정도면 됐어"라고 느끼게 설계합니다.`,
+    title: q8Labels.length > 0
+      ? ('\''+q8Labels[0]+'\' 그 이후 — 시작 후 72시간 금단 반응')
+      : '시작 후 72시간 — 탄수화물 끊김 반응',
+    hook: t01Hook,
+    medical: t01Medical,
+    comfort: t01Comfort,
+    reframe: t01Reframe,
     dayStart: 0, dayEnd: 4,
   };
 
-  // ── 공통 트리거 2: 3주 정체기 ──
+  // ── 트리거 02: 3주 정체기 (야간 식욕 히트맵 반영) ──
+  var t02Medical = '마의 3주차, 몸무게가 멈추는 정체기(Set-point)가 오면 덜컥 겁이 나서 "더 굶어야 하나" 하고 몸을 더 옥죕니다. 하지만 이때는 지방이 안 빠지는 게 아니라, 굳어있던 세포 조직이 분해되며 노폐물 체액이 미처 빠져나가지 못해 잠시 수분이 고여있는 것뿐입니다.';
+  var t02Comfort = '"난 역시 안 돼"라며 여기서 거울을 보고 많이 우셨을 겁니다. 하지만 이 정체기는 실패의 증거가 아니라, 몸이 다음 단계로 넘어가려 대사를 열심히 재조정하고 있다는 신호입니다. <em>' + mbti.behaviorTag + '</em> 성향이 "역시 난 안 돼"라는 인지 왜곡을 만들 뿐입니다.';
+  var t02Reframe = '지금 필요한 건 채찍질이 아니라 깊은 휴식과 따뜻한 위로입니다. 온열 요법과 충분한 수면으로 자율신경을 달래면, 멈춰있던 숫자가 다시 움직이기 시작합니다.';
+
+  // 야간 식욕 높으면 → 3주 정체기에 야간 폭식이 결합되는 구조 추가
+  if (hasNightEating) {
+    t02Medical = '마의 3주차 정체기에 <b>야간 식욕이 폭발하는</b> 패턴이 데이터에서 감지됩니다. 낮에 억눌린 칼로리가 밤 코르티솔-인슐린 리바운드로 터지는 구조입니다. 3주차 정체기와 야간 폭식이 맞물리면 "나는 왜 이럴까"라는 자책이 절정에 달합니다.';
+    t02Comfort = '밤마다 혼자 싸워온 그 시간이 얼마나 외로우셨나요. 낮에 굶고 밤에 폭식하는 패턴은 의지 문제가 아닌 호르몬 명령입니다. <em>' + ohaeng.label + ' 기질</em>은 특히 야간에 에너지 보상 요구가 강하게 옵니다.';
+    t02Reframe = '야간 식욕 차단이 아니라 야간 식욕이 오지 않는 호르몬 환경을 설계합니다. 저녁 마그네슘+트립토판 루틴으로 밤 코르티솔을 낮추고, 야식 충동 자체를 원천적으로 줄여드립니다.';
+  }
+
   const trigger02 = {
     num: '02',
-    title: '시작 후 3주차 — 체중이 멈추는 정체기',
-    hook: '살이 안 빠진 게 아닙니다. 다음 단계를 위해 몸이 버틴 겁니다.',
-    medical: `마의 3주차, 몸무게가 멈추는 정체기(Set-point)가 오면 덜컥 겁이 나서 "더 굶어야 하나" 하고 몸을 더 옥죕니다. 하지만 이때는 지방이 안 빠지는 게 아니라, 굳어있던 세포 조직이 분해되며 노폐물 체액이 미처 빠져나가지 못해 잠시 수분이 고여있는 것뿐입니다.`,
-    comfort: `"난 역시 안 돼"라며 여기서 거울을 보고 많이 우셨을 겁니다. 하지만 이 정체기는 실패의 증거가 아니라, 몸이 다음 단계로 넘어가려 대사를 열심히 재조정하고 있다는 신호입니다. <em>${mbti.behaviorTag}</em> 성향이 "역시 난 안 돼"라는 인지 왜곡을 만들 뿐입니다.`,
-    reframe: `지금 필요한 건 채찍질이 아니라 깊은 휴식과 따뜻한 위로입니다. 온열 요법과 충분한 수면으로 자율신경을 달래면, 멈춰있던 숫자가 다시 움직이기 시작합니다.`,
+    title: hasNightEating ? '3주 정체기 × 야간 식욕 — 이중 함정' : '시작 후 3주차 — 체중이 멈추는 정체기',
+    hook: hasNightEating ? '낮에 굶은 게 밤에 폭발하는 겁니다. 의지와 무관한 호르몬 명령입니다.' : '살이 안 빠진 게 아닙니다. 다음 단계를 위해 몸이 버틴 겁니다.',
+    medical: t02Medical,
+    comfort: t02Comfort,
+    reframe: t02Reframe,
     dayStart: 18, dayEnd: 26,
   };
 
@@ -9818,7 +9935,55 @@ function getCruelHistoryTriggers(userName, ohaengKey, mbtiType, gender, menopaus
     };
   }
 
-  return [trigger01, trigger02, trigger03];
+  // ── 동적 추가 트리거들 (s2/s3 응답 기반) ──
+  var extraTriggers = [];
+
+  // 음주 주3회 이상 → 알코올-야식 루프 트리거
+  if (isHeavyDrinker) {
+    var drinkLabel = q14val === 4 ? '매일' : '주 3~4회';
+    extraTriggers.push({
+      num: String(extraTriggers.length + 4).padStart(2,'0'),
+      title: '음주 ' + drinkLabel + ' — 알코올·야식 악순환 함정',
+      hook: '술 자리 후 야식이 당기는 건 의지가 약한 게 아닙니다. 알코올이 식욕 억제 호르몬을 무력화시킨 겁니다.',
+      medical: nm + ' 님은 ' + drinkLabel + ' 음주 패턴이 확인됩니다. 알코올은 렙틴(포만감 호르몬)을 억제하고 그렐린(식욕 호르몬)을 자극해 음주 후 4~6시간 뒤 극심한 공복감을 유발합니다. 여기에 알코올 대사로 소비된 아연·마그네슘이 코르티솔 상승을 막지 못해, 밤 지방 저장이 가속됩니다.',
+      comfort: '회식도 거절하지 못하고, 거절해도 자책하고. ' + nm + ' 님이 사회적 압박 속에서 얼마나 지쳐왔는지 데이터가 말해줍니다. <em>' + ohaeng.label + ' 기질</em>은 관계 에너지를 중시해 거절이 더 힘든 성향입니다.',
+      reframe: '음주를 금지하는 게 아니라, 음주 전후 아연·아르기닌으로 알코올 대사를 보조하고 음주 당일 야식 루틴을 안전한 대체식으로 교체합니다.',
+      dayStart: 7, dayEnd: 84,
+    });
+  }
+
+  // 금연 계기 → 금연 후 체중 증가 트리거
+  if (hasQuitSmoke || q13val === 1) {
+    extraTriggers.push({
+      num: String(extraTriggers.length + 4).padStart(2,'0'),
+      title: '금연 후 체중 증가 — 니코틴 없는 몸의 혼란',
+      hook: '금연하고 살쪘다고 자책하지 마세요. 니코틴이 억제하던 식욕이 복구된 것뿐입니다.',
+      medical: '니코틴은 식욕 억제 호르몬(렙틴)을 인위적으로 높이고 기초대사량을 약 200kcal 올리는 효과가 있습니다. 금연 후 이 인위적 억제가 해제되면서 식욕이 돌아오고 기초대사가 줄어 같은 양을 먹어도 지방이 더 쌓입니다.',
+      comfort: '건강을 위해 담배를 끊었는데 체중까지 늘어나 억울하셨을 겁니다. 금연 후 체중 증가는 거의 모든 사람에게 나타나는 생리적 반응입니다. 의지력 부족이 아닙니다.',
+      reframe: '금연으로 늘어난 체중은 일반 비만과 기전이 다릅니다. 니코틴 대사 경로를 대체하는 크롬·이노시톨 보충과 대사 촉진 식단으로 접근해야 효과가 납니다.',
+      dayStart: 14, dayEnd: 84,
+    });
+  }
+
+  // 수면 야간 점수 높고 음주 없는 경우 → 수면 부채 트리거
+  if (hasSleepIssue && !isHeavyDrinker) {
+    extraTriggers.push({
+      num: String(extraTriggers.length + 4).padStart(2,'0'),
+      title: '수면 부채 — 잠을 못 잘수록 살이 찌는 구조',
+      hook: '잠이 줄면 의지력이 줄어드는 게 아닙니다. 지방 연소 스위치가 꺼지는 겁니다.',
+      medical: nm + ' 님의 야간 수면 패턴에서 교란 신호가 감지됩니다. 수면 6시간 미만 시 그렐린(식욕 호르몬)이 24% 증가하고 렙틴(포만감)이 18% 감소합니다. 동시에 성장호르몬 분비가 억제되어 수면 중 지방 연소가 멈춥니다. 잠을 못 자면 다음 날 평균 385kcal를 더 먹게 됩니다.',
+      comfort: '잠 못 드는 밤, 그 외로운 시간을 혼자 견뎌오셨군요. <em>' + ohaeng.label + ' 기질</em>은 에너지 소진 후 자율신경 회복에 더 오랜 시간이 필요합니다. 수면이 부족하면 다이어트가 아무리 잘 설계돼도 효과가 절반입니다.',
+      reframe: '수면을 먼저 잡아야 살이 빠집니다. 마그네슘·L-테아닌 루틴으로 수면 진입을 쉽게 하고, 수면 전 2시간 디지털 디톡스를 배치해 드립니다.',
+      dayStart: 0, dayEnd: 84,
+    });
+  }
+
+  // 최대 2개 추가 트리거까지만 포함 (너무 많으면 피로감)
+  var finalExtras = extraTriggers.slice(0, 2);
+  // 번호 재부여
+  finalExtras.forEach(function(t, i) { t.num = String(i + 4).padStart(2, '0'); });
+
+  return [trigger01, trigger02, trigger03].concat(finalExtras);
 }
 
 // ── 실시간 임박도 계산 ──
@@ -11742,7 +11907,12 @@ function switchPage(num) {
   if (num === 8) setTimeout(function(){ if(typeof rxpReset==='function') rxpReset(); }, 300);
   if (num === 6) setTimeout(function(){ if(typeof renderLiveRecord==='function') renderLiveRecord(); }, 200);
   if (num === 9) setTimeout(function(){ if(typeof renderLiveRecord==='function') renderLiveRecord(); }, 200);
-  if (num === 7) setTimeout(p7AnimAgeCount, 400);
+  if (num === 7) {
+    setTimeout(p7AnimAgeCount, 400);
+    setTimeout(p7AnimExtras, 600);
+    setTimeout(p7AnimTimeline, 800);
+    setTimeout(p7AnimDesireCard, 300);
+  }
   if (num === 10) setTimeout(function(){ if(typeof renderDailyPage==='function') renderDailyPage(); }, 150);
   if (num === 11) setTimeout(function(){ if(typeof renderP11==='function') renderP11(); }, 200);
 }
@@ -12662,9 +12832,14 @@ function renderAll(data) {
 
   renderP2(userName, bcCode, firstDomino, axisScores, sorted);
   window.__BC_RM__ = bcCode; // 로드맵 주차별 영양제 카드용 BC 코드
-  renderP3(userName, bcCode, bcMaster, ohaengType, ohaeng, mbtiType, mbti, fullCode, prescription, answers, data.bloodType);
-  renderP4(userName, ohaengType, mbtiType, answers['Q02'], answers['Q_MENOPAUSE']);
-  renderP5(metrics, bcCode, axisScores, userName);
+  // ── stage2/3/4 원시응답 (70문항 개인화에 사용) ──
+  const _s2 = (window.__RESULT__ && window.__RESULT__._stage2) || {};
+  const _s3 = (window.__RESULT__ && window.__RESULT__._stage3) || {};
+  const _s4 = (window.__RESULT__ && window.__RESULT__._stage4) || {};
+
+  renderP3(userName, bcCode, bcMaster, ohaengType, ohaeng, mbtiType, mbti, fullCode, prescription, answers, data.bloodType, _s2);
+  renderP4(userName, ohaengType, mbtiType, answers['Q02'], answers['Q_MENOPAUSE'], _s2, _s3);
+  renderP5(metrics, bcCode, axisScores, userName, _s2);
   renderP8(metrics, bcCode, axisScores, userName);
   renderP9(metrics, bcCode, axisScores, data);
   renderP6(userName, fullCode, ohaengType, data);
@@ -13153,15 +13328,85 @@ function renderP2(userName, bcCode, firstDomino, axisScores, sorted) {
       '<div class="gap-read"><strong>' + hi.label + '</strong>은 한계까지 치솟았는데 <strong>' + lo.label + '</strong>은 거의 멈췄습니다. 한쪽으로만 무너진 몸은 같은 노력으로도 결과가 안 나옵니다.</div>';
   }
 
-  // ── 원인의 도미노 (상위 3축을 인과 사슬로) ──
-  // 도미노 본문: BC코드별 맞춤 처방 체인 표시.
+  // ── 원인의 도미노 (상위 3축 실제 데이터 기반 동적 생성) ──
+  // 10개 축별 도미노 텍스트 사전: 인과 사슬 설명 (전문성 기반)
+  var AXIS_DOMINO_DICT = {
+    'A01': {
+      title: '혈당 스파이크가 먼저 무너졌습니다',
+      desc: '인슐린 저항성이 쌓이면 식후 혈당이 급등·급락하는 롤러코스터 상태가 됩니다. 뇌는 에너지 위기로 인식해 지방 분해를 막고 저장 모드로 전환합니다. 적게 먹어도 혈당 패턴이 이 상태면 살이 빠지지 않습니다.',
+      causal: '혈당·인슐린 저항성 → 지방 저장 우선 → 식욕 폭발 연쇄'
+    },
+    'A02': {
+      title: '림프·순환이 막혀 독소가 쌓였습니다',
+      desc: '림프 순환이 저하되면 지방 세포 주변에 독성 노폐물이 정체합니다. 이 상태에서는 어떤 식단도 지방 분해가 절반 속도로만 진행됩니다. 부종이 고착되면서 체형 변화가 멈추는 구조입니다.',
+      causal: '림프 정체 → 지방 연소 속도 저하 → 부종 고착'
+    },
+    'A03': {
+      title: '코르티솔이 먼저 무너졌습니다',
+      desc: '만성 스트레스로 부신이 지치면서 밤마다 대사 스위치가 강제로 꺼집니다. 코르티솔 과잉은 복부 지방 수용체를 활성화해 배만 선택적으로 찌는 구조를 만듭니다. 적게 먹어도 안 빠지는 출발점입니다.',
+      causal: '만성 스트레스 → 코르티솔 과잉 → 복부 지방 우선 저장'
+    },
+    'A04': {
+      title: '근육량이 임계점 아래로 무너졌습니다',
+      desc: '근감소가 진행되면 기초대사량이 급감해 같은 양을 먹어도 체지방이 쌓입니다. 근육은 24시간 칼로리를 태우는 엔진인데, 이 엔진이 꺼지면 다이어트 효율이 3분의 1로 떨어집니다.',
+      causal: '근감소 → 기초대사 저하 → 지방 축적 가속'
+    },
+    'A05': {
+      title: '장내 환경이 무너졌습니다',
+      desc: '장내 미생물 불균형은 지방 흡수율을 높이고 단쇄지방산(SCFA) 생성을 줄입니다. 장벽이 새면(장 누수) 염증이 전신으로 퍼져 인슐린 저항성을 악화시킵니다. 소화가 안 되는 느낌, 더부룩함이 잦다면 이 신호입니다.',
+      causal: '마이크로바이옴 교란 → 장 누수 → 전신 염증 → 대사 저하'
+    },
+    'A06': {
+      title: '골격·복압이 무너져 체형이 변했습니다',
+      desc: '골반 틀어짐과 코어 복압 저하는 장기를 앞으로 처지게 해 하복부 돌출을 만듭니다. 체형이 변하면 근육 활성 패턴이 바뀌어 운동 효율이 떨어지고, 살이 빠져도 체형이 돌아오지 않습니다.',
+      causal: '골격 불균형 → 복압 저하 → 내장 하수 → 하복부 돌출 고착'
+    },
+    'A07': {
+      title: '수면 호르몬 사이클이 깨졌습니다',
+      desc: '수면 부족 시 그렐린(식욕)이 24% 증가하고 렙틴(포만감)이 18% 감소합니다. 성장호르몬은 수면 중 지방을 태우는데, 수면 사이클이 깨지면 이 연소 시간이 사라집니다. 잠을 못 잘수록 더 먹고 더 쌓이는 악순환입니다.',
+      causal: '수면 교란 → 식욕 호르몬 역전 → 야간 지방 연소 중단'
+    },
+    'A08': {
+      title: '식욕 조절 회로가 과부하 상태입니다',
+      desc: '도파민 보상 회로가 음식에 과민해지면 포만감과 무관하게 먹는 충동이 생깁니다. 스트레스가 오면 즉각 고열량 음식을 갈구하는 반응이 자동화되어, 의지로는 제어할 수 없는 상태가 됩니다.',
+      causal: '도파민 회로 과부하 → 감정적 과식 → 칼로리 잉여 반복'
+    },
+    'A09': {
+      title: '갑상선·기초대사가 저하됐습니다',
+      desc: '갑상선 기능이 저하되면 기초대사량이 15~40% 감소합니다. 같은 양을 먹어도 에너지 소비가 줄어 지방으로 쌓입니다. 추위를 많이 타고 피로가 만성적이며, 억제 식욕약도 이 상태에서는 효과가 절반 이하입니다.',
+      causal: '갑상선 기능 저하 → 기초대사 급감 → 지방 소모 차단'
+    },
+    'A10': {
+      title: '여성 호르몬 불균형이 체형을 재배치했습니다',
+      desc: '에스트로겐 저하 시 지방이 허벅지·엉덩이에서 복부로 강제 이동합니다. 인슐린 저항성도 함께 올라가 혈당 관리가 어려워집니다. 이 상태에서 일반 다이어트는 의미가 없고 호르몬 환경 복구가 선행돼야 합니다.',
+      causal: '에스트로겐 불균형 → 복부 지방 재배치 → 인슐린 저항성 악화'
+    }
+  };
+
   var chain = document.getElementById('p2-chain');
   chain.innerHTML = '';
-  var steps = [
-    { title:'코르티솔이 먼저 무너졌습니다', desc:'만성 스트레스로 부신이 지치면서 밤마다 대사 스위치가 강제로 꺼집니다. 적게 먹어도 안 빠지는 출발점입니다.', isTop:true, link:(top1?top1.label:'코르티솔') },
-    { title:'호르몬 대사가 뒤따라 무너집니다', desc:'갑상선·에스트로겐 균형이 흔들리며 기초대사가 절전 모드로 전환됩니다. 같은 생활인데 살이 찌는 이유입니다.', link:(top2?top2.label:'호르몬') },
-    { title:'복압이 빠지며 체형이 무너집니다', desc:'코어 압력이 떨어지면서 장기가 처지고 하복부가 앞으로 나옵니다. 골반 정렬까지 흔들립니다.', link:(ranked[2]?ranked[2].label:'골격·복압') },
-  ];
+
+  // ranked 상위 3개 축을 실제 도미노 스텝으로 생성
+  var dominoAxes = ranked.slice(0, 3);
+  var steps = dominoAxes.map(function(r, i) {
+    // AXIS_10_META의 key(A01~A10)를 찾아야 함 → label → key 역매핑
+    var axKey = r.key; // 이미 A01~A09 형식
+    var dictEntry = AXIS_DOMINO_DICT[axKey] || {
+      title: r.label + '이 무너졌습니다',
+      desc: r.label + ' 수치가 ' + r.pct + '점으로 높게 나타났습니다. 이 축의 교란이 체중 관리를 어렵게 만드는 핵심 원인입니다.',
+      causal: r.label + ' 교란 → 대사 효율 저하'
+    };
+    return {
+      title: dictEntry.title,
+      desc: dictEntry.desc,
+      causal: dictEntry.causal,
+      isTop: i === 0,
+      link: r.label,
+      score: r.pct,
+      axKey: axKey
+    };
+  });
+
   steps.forEach(function(s, i){
     var div = document.createElement('div');
     div.className = 'domino-step';
@@ -13170,7 +13415,10 @@ function renderP2(userName, bcCode, firstDomino, axisScores, sorted) {
       '<div class="domino-content">' +
         '<div class="domino-title">' + s.title + '</div>' +
         '<div class="domino-desc">' + s.desc + '</div>' +
-        '<div class="dm-link-row"><span class="dm-link-chip">📊 ' + s.link + '축에서</span></div>' +
+        '<div class="dm-link-row">' +
+          '<span class="dm-link-chip">📊 ' + s.link + '축 ' + s.score + '점</span>' +
+          '<span class="dm-causal-chip" style="margin-left:8px;font-size:10.5px;color:var(--muted);opacity:.75">' + s.causal + '</span>' +
+        '</div>' +
       '</div>';
     chain.appendChild(div);
   });
@@ -13225,8 +13473,9 @@ function renderP2(userName, bcCode, firstDomino, axisScores, sorted) {
 }
 
 /* ── P3 ── */
-function renderP3(userName, bcCode, bcMaster, ohaengKey, ohaeng, mbtiType, mbti, fullCode, prescription, answers, bloodType) {
+function renderP3(userName, bcCode, bcMaster, ohaengKey, ohaeng, mbtiType, mbti, fullCode, prescription, answers, bloodType, s2) {
   const nm = (userName && userName.length >= 3) ? userName.slice(1) : (userName || '회원');
+  s2 = s2 || {};
 
   // ── 혈액형 기질 보조 해석 (가벼운 행동 경향 — 재미 요소) ──
   var bt = (bloodType || '').toString().trim().toUpperCase().replace('형','');
@@ -13350,6 +13599,77 @@ function renderP3(userName, bcCode, bcMaster, ohaengKey, ohaeng, mbtiType, mbti,
   // ── 영양 처방 카드 (인사이트 근거 → 영양 매칭) ──
   // (영양제 셀프체크는 식단 카드 내 구매 모달로 이동 — 독립 렌더 제거)
 
+  // ── 살찐 계기 × 오행 연결 카드 (s2.q8 기반 동적 서술) ──
+  (function buildTriggerOhaengCard() {
+    var q8raw = s2['q8'] || s2['q8_trigger'] || [];
+    if (typeof q8raw === 'string') { try { q8raw = JSON.parse(q8raw); } catch(e){ q8raw = []; } }
+    var q8Idxs = Array.isArray(q8raw) ? q8raw.map(Number) : [];
+    if (q8Idxs.length === 0) return; // 응답 없으면 카드 생략
+
+    var Q8_LABELS = ['이직·과로·스트레스','이별·심리적 충격','수술·입원·약물 복용','잦은 회식·음주','금연·생활습관 변화','특별한 계기 없이 서서히'];
+
+    // 오행별 계기 연결 해석 사전
+    var OHAENG_TRIGGER_MAP = {
+      '목': {
+        0: '목(木) 기질은 경쟁과 성취 압박에 코르티솔이 직접 반응합니다. 이직·과로는 목 기질의 가장 예민한 신경을 건드리는 트리거였습니다.',
+        1: '목(木) 기질은 관계에서의 상처를 오래 내면화합니다. 이별·충격이 에너지 흐름을 막아 간(肝) 기운이 울결되면서 체중이 움직이지 않는 상태가 왔습니다.',
+        2: '목(木) 기질은 몸의 이상 신호에 민감하게 반응합니다. 수술·약물로 인한 신체 변화가 자율신경 교란으로 이어져 기초대사를 낮춘 구조입니다.',
+        3: '목(木) 기질은 회식 자리에서 관계 유지를 위해 음주를 거절하지 못하는 경향이 있습니다. 알코올이 간(肝) 기운을 소모해 대사 회복을 더디게 했습니다.',
+        4: '목(木) 기질은 생활 패턴 변화에 예민합니다. 금연 후 달라진 도파민 회로가 식욕으로 보상을 찾는 구조가 강하게 나타납니다.',
+        5: '목(木) 기질은 봄·성장의 에너지라 계절이나 환경 변화에 따라 서서히 대사가 기울어집니다. 특별한 계기 없이 쌓인 것이 이 기질의 특징입니다.'
+      },
+      '화': {
+        0: '화(火) 기질은 열정과 과잉 에너지로 일을 폭발적으로 밀어붙이다 번아웃이 오면 심장·혈관 계통이 가장 먼저 반응합니다. 이직·과로 후 극도의 피로가 체중 증가로 이어지는 패턴입니다.',
+        1: '화(火) 기질은 감정 표현이 강하고 이별·충격이 심화(心火)를 자극해 수면장애와 폭식이 동시에 나타납니다.',
+        2: '화(火) 기질은 활동성이 강해 수술·입원으로 활동이 제한되면 에너지가 내부로 역류해 체중이 빠르게 증가합니다.',
+        3: '화(火) 기질은 사교성이 강해 술자리를 즐기는 편입니다. 음주 후 심화(心火)가 식욕 폭발로 연결되는 패턴이 반복됩니다.',
+        4: '화(火) 기질의 금연 후 과잉 에너지가 음식으로 향하는 보상 욕구는 매우 강하게 나타납니다.',
+        5: '화(火) 기질은 자극이 줄어들면 보상으로 음식을 찾습니다. 서서히 쌓인 체중은 자극-보상 루틴이 음식으로 고착된 신호입니다.'
+      },
+      '토': {
+        0: '토(土) 기질은 남을 돌보고 배려하다 자신의 스트레스를 음식으로 해소하는 패턴이 강합니다. 이직·과로 후 위(胃) 기운이 약해지며 과식이 시작됩니다.',
+        1: '토(土) 기질은 관계를 중시해 이별·충격 후 감정을 음식으로 달래는 경향이 두드러집니다.',
+        2: '토(土) 기질의 소화계는 약물·수술에 민감합니다. 위장 환경 교란이 체중 증가의 기점이 됩니다.',
+        3: '토(土) 기질은 음주 후 소화기 부담이 크고 과식이 쉽게 반복됩니다. 위(胃)의 항진이 식욕 조절을 어렵게 만듭니다.',
+        4: '토(土) 기질의 금연 후 입의 자극 욕구가 간식·과식으로 대체됩니다. 의식하지 못한 채 칼로리가 쌓입니다.',
+        5: '토(土) 기질은 명절·계절·환경 변화마다 소화기 기운이 출렁이며 체중이 서서히 오르는 특성이 있습니다.'
+      },
+      '금': {
+        0: '금(金) 기질은 완벽주의 성향이 강해 이직·과로 스트레스를 겉으로 표현하지 않고 폐(肺)·대장 계통이 먼저 반응합니다. 변비·복부 팽만이 체중 증가의 시작이었을 수 있습니다.',
+        1: '금(金) 기질은 이별·충격을 이성적으로 처리하려다 억눌린 감정이 소화기·호흡기로 나타납니다.',
+        2: '금(金) 기질의 폐·대장은 약물에 민감합니다. 항생제·스테로이드가 장내 환경을 교란해 대사를 낮춥니다.',
+        3: '금(金) 기질은 원칙을 중시하지만 음주 자리의 압박에 취약합니다. 알코올이 대장 기능을 교란해 독소 축적으로 이어집니다.',
+        4: '금(金) 기질의 금연 후 폐 기운이 강해지면서 반동으로 소화기 기능이 불규칙해지는 패턴이 나타납니다.',
+        5: '금(金) 기질은 습도·계절 변화에 폐·대장이 반응해 서서히 체중이 증가하는 특성이 있습니다.'
+      },
+      '수': {
+        0: '수(水) 기질은 신장·부신 에너지를 깊이 쓰는데, 이직·과로가 이 에너지를 고갈시켜 호르몬 대사가 가장 먼저 흔들립니다. 피로가 누적될수록 체중이 오르는 구조입니다.',
+        1: '수(水) 기질은 감정을 깊이 처리합니다. 이별·충격이 신(腎) 기운을 소모해 호르몬 불균형으로 이어지는 패턴이 뚜렷합니다.',
+        2: '수(水) 기질의 신장·내분비 계통은 약물 영향에 민감합니다. 호르몬 교란이 체중 증가의 핵심 기전입니다.',
+        3: '수(水) 기질은 음주 후 신장 부담이 크고 부종이 쉽게 옵니다. 알코올이 신(腎) 기운을 직접 소모합니다.',
+        4: '수(水) 기질의 금연 후 신장 에너지가 재배분되는 과정에서 수분 대사가 불안정해져 부종과 체중 증가가 나타납니다.',
+        5: '수(水) 기질은 겨울·한기에 특히 취약하며 서서히 에너지가 고갈되며 체중이 오르는 구조입니다.'
+      }
+    };
+
+    var ohaengKey2 = ohaengKey || '목';
+    var triggerMap = OHAENG_TRIGGER_MAP[ohaengKey2] || OHAENG_TRIGGER_MAP['목'];
+    var q8Label = Q8_LABELS[q8Idxs[0]] || '';
+    var q8Desc  = triggerMap[q8Idxs[0]] || (ohaeng.label + ' 기질의 에너지 흐름이 이 계기로 교란된 것입니다.');
+
+    var cardHTML = '<div class="p3-trigger-ohaeng-card" style="margin:16px 0 0;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:var(--card);">' +
+      '<div style="background:linear-gradient(90deg,' + (ohaeng.color||'#8b6db5') + '22,' + (ohaeng.color||'#8b6db5') + '08);padding:12px 16px;border-bottom:1px solid var(--line);">' +
+        '<div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.06em;margin-bottom:3px;">🔗 살찐 계기 × ' + ohaeng.label + ' 기질 연결 분석</div>' +
+        '<div style="font-size:14px;font-weight:800;color:var(--ink);">"' + q8Label + '" — 왜 ' + ohaeng.label + ' 기질에게 특히 더 치명적이었는가</div>' +
+      '</div>' +
+      '<div style="padding:14px 16px;font-size:13px;line-height:1.7;color:var(--ink);">' + q8Desc + '</div>' +
+    '</div>';
+
+    // p3-insights 컨테이너 다음에 삽입
+    var insightsEl = document.getElementById('p3-insights');
+    if (insightsEl) insightsEl.insertAdjacentHTML('afterend', cardHTML);
+  })();
+
   // ── 기질 마무리 멘트 + 한 장 요약 연결 (업셀 제거) ──
   const lock = document.getElementById('p3-lock-mount');
   if (lock) {
@@ -13372,8 +13692,8 @@ function renderP3(userName, bcCode, bcMaster, ohaengKey, ohaeng, mbtiType, mbti,
 }
 
 /* ── P4 ── */
-function renderP4(userName, ohaengKey, mbtiType, gender, menopause) {
-  const triggers = getCruelHistoryTriggers(userName, ohaengKey, mbtiType, gender, menopause);
+function renderP4(userName, ohaengKey, mbtiType, gender, menopause, s2, s3) {
+  const triggers = getCruelHistoryTriggers(userName, ohaengKey, mbtiType, gender, menopause, s2, s3);
   const container = document.getElementById('p4-triggers');
   const nm = (userName && userName.length >= 3) ? userName.slice(1) : (userName || '회원');
 
@@ -13444,7 +13764,8 @@ function renderP4(userName, ohaengKey, mbtiType, gender, menopause) {
 }
 
 /* ── P5 ── */
-function renderP5(metrics, bcCode, axisScores, userName) {
+function renderP5(metrics, bcCode, axisScores, userName, s2) {
+  s2 = s2 || {};
   // ════════════════════════════════════════════
   // P5 근거 기반 선별 — 11개 전문 영역 중 BC코드별 근거 있는 것만 표시
   // BC-1~BC-9 각각의 핵심 영역 3개(STRONG) + 비핵심 8개(NONE)를 동적으로 빌드
@@ -13600,6 +13921,91 @@ function renderP5(metrics, bcCode, axisScores, userName) {
       '몸을 둘러싼 <b>11개 진단 영역</b>을 전부 추적하고 원인과 매핑하여, ' +
       '<b>지금 가장 먼저 해결이 필요한 3가지 원인</b>을 찾아냈습니다.';
   }
+
+  // ── 병력·생활습관 위험 배너 (s2 응답 기반) ──
+  (function buildMedicalBanner() {
+    var flags = [];
+
+    // Q1: 가족력 (0=당뇨/고혈압/고지혈증 있음, 1=없음)
+    var q1raw = s2['q1'] || s2['q1_family'] || '';
+    var q1val = -1;
+    if (Array.isArray(q1raw)) { q1val = Number(q1raw[0] !== undefined ? q1raw[0] : -1); }
+    else if (typeof q1raw === 'string' && q1raw !== '') { q1val = Number(q1raw); }
+    if (q1val === 0) {
+      flags.push({ icon:'⚠️', color:'#e85c4a', bg:'rgba(232,92,74,.08)',
+        label:'대사질환 가족력', detail:'당뇨·고혈압·고지혈증 가족력 확인 → 혈당·혈압 관리를 처방 최우선으로 설계했습니다.' });
+    }
+
+    // Q3: 진단 질환 (배열: 0=갑상선, 1=당뇨전단계, 2=다낭성난소, 3=고혈압, 4=고지혈증, 5=없음)
+    var q3raw = s2['q3'] || s2['q3_disease'] || s2['disease'] || [];
+    if (typeof q3raw === 'string') { try { q3raw = JSON.parse(q3raw); } catch(e){ q3raw = []; } }
+    var q3Idxs = Array.isArray(q3raw) ? q3raw.map(Number) : [];
+    var Q3_LABELS = ['갑상선','당뇨전단계','다낭성난소증후군','고혈압','고지혈증'];
+    var Q3_NOTES  = [
+      '갑상선 이력 → 저강도 고빈도 운동 우선, 고강도 운동 제한 처방 적용',
+      '당뇨전단계 → 혈당 스파이크 차단 식단, 식후 10분 걷기 처방 추가',
+      '다낭성난소 → 인슐린 저항성 중심 처방, 정제탄수화물 최소화 설계',
+      '고혈압 → 나트륨 제한, DASH 식이 기반 처방 적용',
+      '고지혈증 → 포화지방 제한, 오메가3·식이섬유 강화 처방 적용'
+    ];
+    var q3Active = q3Idxs.filter(function(i){ return i < 5; });
+    if (q3Active.length > 0) {
+      q3Active.forEach(function(i) {
+        flags.push({ icon:'🔬', color:'#7b4fcf', bg:'rgba(123,79,207,.08)',
+          label:'진단 이력: ' + Q3_LABELS[i],
+          detail: Q3_NOTES[i] || (Q3_LABELS[i] + ' 이력 → 전문의 기반 맞춤 처방 적용') });
+      });
+    }
+
+    // Q4: 건강검진 경계·주의 소견 (배열: 0=혈당, 1=혈압, 2=간수치, 3=콜레스테롤, 4=갑상선, 5=없음)
+    var q4raw = s2['q4'] || s2['q4_checkup'] || s2['checkup'] || [];
+    if (typeof q4raw === 'string') { try { q4raw = JSON.parse(q4raw); } catch(e){ q4raw = []; } }
+    var q4Idxs = Array.isArray(q4raw) ? q4raw.map(Number) : [];
+    var Q4_LABELS = ['혈당 경계','혈압 주의','간수치 주의','콜레스테롤 경계','갑상선 주의'];
+    var q4Active = q4Idxs.filter(function(i){ return i < 5; });
+    if (q4Active.length > 0) {
+      flags.push({ icon:'📋', color:'#c98a3c', bg:'rgba(201,138,60,.08)',
+        label:'건강검진 소견: ' + q4Active.map(function(i){ return Q4_LABELS[i]; }).join('·'),
+        detail:'경계·주의 수치가 있는 항목은 처방 안전 범위 내에서 모니터링 기준을 강화했습니다.' });
+    }
+
+    // Q5: 손발냉증 (0=심하다, 1=조금, 2=없음)
+    var q5raw = s2['q5'] || s2['q5_cold'] || s2['cold_limbs'] || '';
+    var q5val = -1;
+    if (Array.isArray(q5raw)) { q5val = Number(q5raw[0] !== undefined ? q5raw[0] : -1); }
+    else if (typeof q5raw === 'string' && q5raw !== '') { q5val = Number(q5raw); }
+    if (q5val === 0) {
+      flags.push({ icon:'🥶', color:'#2f7d8c', bg:'rgba(47,125,140,.08)',
+        label:'심한 손발냉증', detail:'순환 저하 신호 → 온열 처방 및 말초 순환 개선 루틴을 처방에 포함했습니다.' });
+    } else if (q5val === 1) {
+      flags.push({ icon:'❄️', color:'#2f7d8c', bg:'rgba(47,125,140,.06)',
+        label:'경미한 손발냉증', detail:'순환 보조 처방 포함 — 생강·계피 기반 온열 식단 추가 적용.' });
+    }
+
+    if (flags.length === 0) return; // 플래그 없으면 배너 없음
+
+    // 배너 HTML 생성
+    var bannerHTML = '<div class="p5-medical-banner" style="margin:0 0 18px;border-radius:12px;overflow:hidden;">' +
+      '<div style="background:rgba(139,109,181,.1);border-left:3px solid var(--vis);padding:10px 14px;font-size:12px;font-weight:700;color:var(--vis-d);letter-spacing:.04em;">🩺 개인 병력·건강 데이터 반영 완료</div>';
+
+    flags.forEach(function(f) {
+      bannerHTML += '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;background:' + f.bg + ';border-left:3px solid ' + f.color + ';margin-top:2px;">' +
+        '<span style="font-size:15px;flex-shrink:0;margin-top:1px;">' + f.icon + '</span>' +
+        '<div>' +
+          '<div style="font-size:12px;font-weight:700;color:' + f.color + ';margin-bottom:2px;">' + f.label + '</div>' +
+          '<div style="font-size:11.5px;color:var(--muted);line-height:1.5;">' + f.detail + '</div>' +
+        '</div>' +
+      '</div>';
+    });
+
+    bannerHTML += '</div>';
+
+    // p5-lede 바로 아래에 삽입
+    var ledeEl = document.getElementById('p5-lede');
+    if (ledeEl) {
+      ledeEl.insertAdjacentHTML('afterend', bannerHTML);
+    }
+  })();
 
   // 요약 카드
   var meta = document.getElementById('p5-ev-meta');
@@ -15554,6 +15960,87 @@ function renderP7(userName, bcCode, bcMaster, metrics, ohaengType, mbtiType, ful
       var fwk = document.getElementById('p7v4-fact-week');
       if (fwk) fwk.textContent = freeN + '주';
     })();
+
+    // (D) desire 목표 카드 — _moodLabel / _who / _partLabels / Q8 계기
+    (function fillDesireCard(){
+      var container = document.getElementById('p7-desire-card');
+      if (!container) return;
+
+      var _moodLabel  = (data._moodLabel  || (data._desire && data._desire.moodLabel))  || '';
+      var _who        = (data._who        || (data._desire && data._desire.who))         || '';
+      var _partLabels = (data._partLabels || (data._desire && data._desire.partLabels))  || [];
+      var _s2_q8_raw  = (window.__RESULT__ && window.__RESULT__._stage2 && window.__RESULT__._stage2['q8']) || [];
+      if (typeof _s2_q8_raw === 'string') { try { _s2_q8_raw = JSON.parse(_s2_q8_raw); } catch(e){ _s2_q8_raw = []; } }
+      var Q8_LABELS = ['이직·과로·스트레스','이별·심리적 충격','수술·입원·약물','잦은 회식·음주','금연·생활변화','서서히 자연스럽게'];
+      var q8Idxs = Array.isArray(_s2_q8_raw) ? _s2_q8_raw.map(Number) : [];
+      var triggerText = q8Idxs.map(function(i){ return Q8_LABELS[i] || ''; }).filter(Boolean).join(' · ');
+
+      // 아무 데이터도 없으면 숨김
+      if (!_moodLabel && !_who && !_partLabels.length && !triggerText) {
+        container.style.display = 'none';
+        return;
+      }
+      container.style.display = '';
+
+      // 무드 이모지 매핑
+      var MOOD_EMOJI = {
+        '슬림 탄탄한': '💪', '볼륨 있는 라인': '🌸', '곧은 모델핏': '🖤', '가벼운 일상핏': '🌿'
+      };
+      var moodEmoji = MOOD_EMOJI[_moodLabel] || '✨';
+
+      var html = '<div class="p7desire-inner">';
+
+      // 섹션 라벨
+      html += '<div class="p7desire-label"><span class="p7desire-label-dot"></span>내가 꿈꾸는 몸</div>';
+
+      // 무드 카드
+      if (_moodLabel) {
+        html += '<div class="p7desire-mood">'
+          + '<span class="p7desire-mood-emoji">' + moodEmoji + '</span>'
+          + '<div class="p7desire-mood-body">'
+          + '<div class="p7desire-mood-key">목표 무드</div>'
+          + '<div class="p7desire-mood-val">' + _moodLabel + '</div>'
+          + '</div>'
+          + '</div>';
+      }
+
+      // 롤모델
+      if (_who && _who.trim()) {
+        html += '<div class="p7desire-who">'
+          + '<span class="p7desire-who-mark">✦</span>'
+          + '<span class="p7desire-who-tx">"<b>' + _who.trim() + '</b>처럼" — 그 목표를 향해 설계됐습니다</span>'
+          + '</div>';
+      }
+
+      // 집중 부위 태그
+      if (_partLabels.length > 0) {
+        html += '<div class="p7desire-parts">';
+        _partLabels.forEach(function(pl){
+          html += '<span class="p7desire-part-tag">📍 ' + pl + '</span>';
+        });
+        html += '</div>';
+      }
+
+      // 계기 한 줄
+      if (triggerText) {
+        html += '<div class="p7desire-trigger">'
+          + '<span class="p7desire-trigger-ico">⚡</span>'
+          + '<span class="p7desire-trigger-tx">살찐 계기: <b>' + triggerText + '</b></span>'
+          + '</div>';
+      }
+
+      html += '</div>';
+      container.innerHTML = html;
+
+      // 진입 애니메이션
+      container.style.opacity = '0';
+      container.style.transform = 'translateY(18px)';
+      setTimeout(function(){
+        container.style.transition = 'opacity .55s cubic-bezier(.16,1,.3,1), transform .55s cubic-bezier(.16,1,.3,1)';
+        container.style.opacity = '1';
+        container.style.transform = 'translateY(0)';
+      }, 300);
+    })();
   })();
 
   // ════ 결과 집약 카드 채우기 ════
@@ -15751,6 +16238,77 @@ function p7AnimAgeCount() {
 
   countUp(elB, targetB, 800);
   setTimeout(() => countUp(elA, targetA, 800), 400);
+}
+
+// ── P7 추가 애니메이션 함수들 ─────────────────────────────────
+
+// ① desire 카드 진입 애니메이션 (스캔라인 효과)
+function p7AnimDesireCard() {
+  var card = document.getElementById('p7-desire-card');
+  if (!card || card.style.display === 'none') return;
+  // 파트 태그 순차 등장
+  var tags = card.querySelectorAll('.p7desire-part-tag');
+  tags.forEach(function(tag, i) {
+    tag.style.opacity = '0';
+    tag.style.transform = 'scale(.85)';
+    setTimeout(function() {
+      tag.style.transition = 'opacity .35s ease, transform .35s cubic-bezier(.34,1.56,.64,1)';
+      tag.style.opacity = '1';
+      tag.style.transform = 'scale(1)';
+    }, i * 90 + 100);
+  });
+  // 무드 이모지 펄스
+  var moodEmoji = card.querySelector('.p7desire-mood-emoji');
+  if (moodEmoji) {
+    moodEmoji.style.animation = 'p7MoodPulse 1.2s ease-in-out 3';
+  }
+}
+
+// ② 숫자 카드(목표체중, BMR 등) 카운트업
+function p7AnimExtras() {
+  // p7v4-rcell-dt (−Nkg, −N%p 등) 강조 플래시
+  var dts = document.querySelectorAll('#page7 .p7v4-rcell-dt, #page7 .p7v4-meta-up');
+  dts.forEach(function(el, i) {
+    setTimeout(function() {
+      el.style.transition = 'color .3s ease';
+      el.style.color = '#ffd24a';
+      setTimeout(function() {
+        el.style.color = '';
+      }, 600);
+    }, i * 150);
+  });
+  // CTA 버튼 펄스 어텐션
+  var cta = document.querySelector('#page7 .p7v4-cta');
+  if (cta) {
+    setTimeout(function() {
+      cta.style.animation = 'p7CtaPulse 1s ease-in-out 2';
+    }, 1200);
+  }
+}
+
+// ③ 타임라인 행 순차 슬라이드인
+function p7AnimTimeline() {
+  var rows = document.querySelectorAll('#page7 .p7v4-tl-row');
+  rows.forEach(function(row, i) {
+    row.style.opacity = '0';
+    row.style.transform = 'translateX(-18px)';
+    setTimeout(function() {
+      row.style.transition = 'opacity .4s ease, transform .4s cubic-bezier(.16,1,.3,1)';
+      row.style.opacity = '1';
+      row.style.transform = 'translateX(0)';
+    }, i * 100 + 50);
+  });
+  // 축 칩 순차 팝인
+  var chips = document.querySelectorAll('#page7 .p7v4-axis-chip');
+  chips.forEach(function(chip, i) {
+    chip.style.opacity = '0';
+    chip.style.transform = 'scale(.7)';
+    setTimeout(function() {
+      chip.style.transition = 'opacity .3s ease, transform .3s cubic-bezier(.34,1.56,.64,1)';
+      chip.style.opacity = '1';
+      chip.style.transform = 'scale(1)';
+    }, i * 80 + 200);
+  });
 }
 
 // P7 인스타 스토리 공유
@@ -22508,6 +23066,61 @@ function renderP11(data) {
   var stage2   = data._stage2 || {};
   var pastProcs= data._pastProcedures || [];
 
+  // ── stage3 히트맵 분석 (야간 증상 패턴) ─────────────────────
+  var stage3 = data._stage3 || {};
+  if (typeof stage3 === 'string') { try { stage3 = JSON.parse(stage3); } catch(e){ stage3 = {}; } }
+
+  // HM_SYMPTOMS: 시간대 5=야간(22시~), 4=저녁(18~22시)
+  var HM_KEYS = ['bloat','tired','hungry','pain','sleep','gut'];
+  var HM_LABELS = { bloat:'복부팽만', tired:'피로', hungry:'식욕', pain:'통증/두통', sleep:'수면장애', gut:'장불편감' };
+  // 야간(idx=5) + 저녁(idx=4) 합산으로 야간증상 심각도 계산
+  var nightSymptoms = [];
+  HM_KEYS.forEach(function(k){
+    var arr = stage3[k];
+    if (!Array.isArray(arr)) return;
+    var nightScore = (arr[5]||0) + (arr[4]||0);
+    if (nightScore >= 3) nightSymptoms.push({ key: k, label: HM_LABELS[k], score: nightScore });
+  });
+  nightSymptoms.sort(function(a,b){ return b.score - a.score; });
+  var hasNightPattern = nightSymptoms.length > 0;
+  var topNightSymptom = nightSymptoms[0] || null;
+
+  // 새벽(idx=0) 증상
+  var dawnSymptoms = [];
+  HM_KEYS.forEach(function(k){
+    var arr = stage3[k];
+    if (!Array.isArray(arr)) return;
+    var dawnScore = arr[0]||0;
+    if (dawnScore >= 2) dawnSymptoms.push({ key: k, label: HM_LABELS[k], score: dawnScore });
+  });
+  dawnSymptoms.sort(function(a,b){ return b.score - a.score; });
+
+  // ── stage4 갈림길 응답 분석 ────────────────────────────────
+  var stage4 = data._stage4 || {};
+  if (typeof stage4 === 'string') { try { stage4 = JSON.parse(stage4); } catch(e){ stage4 = {}; } }
+  // stage4 키 예: "A01_A09": 0 → A01 선택, 1 → A09 선택
+  // 선택된 축 집계
+  var s4ChosenAxes = {};
+  Object.keys(stage4).forEach(function(pairKey){
+    var parts = pairKey.split('_');
+    if (parts.length !== 2) return;
+    var choice = Number(stage4[pairKey]);
+    var chosen = (choice === 0) ? parts[0] : parts[1];
+    s4ChosenAxes[chosen] = (s4ChosenAxes[chosen] || 0) + 1;
+  });
+  // 가장 많이 선택된 축 Top3
+  var s4TopAxes = Object.keys(s4ChosenAxes).sort(function(a,b){
+    return s4ChosenAxes[b] - s4ChosenAxes[a];
+  }).slice(0, 3);
+
+  // axis → 한글 레이블 매핑
+  var AXIS_LABEL_MAP = {
+    'A01':'혈당·인슐린', 'A02':'림프·순환', 'A03':'코르티솔·스트레스',
+    'A04':'근육·기초대사', 'A05':'장내 환경', 'A06':'골격·복압',
+    'A07':'수면·호르몬', 'A08':'식욕 조절', 'A09':'갑상선·기초대사', 'A10':'여성 호르몬'
+  };
+  var s4TopAxisLabels = s4TopAxes.map(function(k){ return AXIS_LABEL_MAP[k] || k; });
+
   // 체중 / 목표체중
   var weight  = parseFloat(data.weight || data.current_weight || 0);
   var targetW = parseFloat(data._goalWeight || data.target_weight || data.targetWeight || 0);
@@ -22754,6 +23367,66 @@ function renderP11(data) {
   });
   failHTML += '</div>';
 
+  // ── stage3 야간 증상 패턴 카드 (데이터 있는 경우만) ────────
+  if (hasNightPattern) {
+    failHTML += '<div style="margin-top:14px;background:rgba(30,20,50,.55);border:1px solid rgba(139,109,181,.3);border-radius:14px;padding:14px 16px;">'
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">'
+      + '<span style="font-size:16px;">🌙</span>'
+      + '<span style="font-size:12px;font-weight:900;color:#c4a8e8;letter-spacing:.5px;">야간·저녁 증상 패턴 감지</span>'
+      + '</div>'
+      + '<div style="font-size:12px;color:rgba(255,255,255,.6);line-height:1.6;margin-bottom:10px;word-break:keep-all;">'
+      + esc2(userName) + '님의 히트맵 분석 결과, <strong style="color:#e0d0f8;">저녁~야간 시간대에 집중된 증상</strong>이 확인됩니다. '
+      + '이 패턴은 지방 축적과 직결되는 <strong style="color:#e0d0f8;">호르몬 교란 신호</strong>입니다.'
+      + '</div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:7px;">';
+    nightSymptoms.slice(0, 4).forEach(function(ns){
+      var intensity = ns.score >= 6 ? '심각' : ns.score >= 4 ? '주의' : '경계';
+      var color = ns.score >= 6 ? '#c95a3c' : ns.score >= 4 ? '#c9a24a' : '#8b6db5';
+      failHTML += '<span style="background:rgba(139,109,181,.15);border:1px solid ' + color + '44;'
+        + 'color:' + color + ';font-size:11px;font-weight:800;padding:4px 10px;border-radius:16px;">'
+        + esc2(ns.label) + ' · ' + intensity + '</span>';
+    });
+    failHTML += '</div>';
+    if (topNightSymptom) {
+      var NS_INTERP = {
+        'bloat':  '야간 복부팽만은 인슐린 저항성·장내 환경 교란의 핵심 신호입니다.',
+        'tired':  '저녁 피로 집중은 코르티솔 리듬 역전 — 낮에 지쳐야 할 호르몬이 밤에 올라갑니다.',
+        'hungry': '야간 식욕 급증은 렙틴·그렐린 리듬이 깨진 상태입니다. 의지와 무관합니다.',
+        'pain':   '야간 통증/두통은 교감신경 과부하 → 혈관수축 패턴으로 처방 필요 신호입니다.',
+        'sleep':  '야간 수면장애는 멜라토닌·코르티솔 역전으로 지방 축적 속도가 3배 빨라집니다.',
+        'gut':    '야간 장 불편감은 장내 세균 불균형이 야간에 폭발하는 패턴입니다.'
+      };
+      failHTML += '<div style="margin-top:10px;padding:9px 12px;background:rgba(99,64,160,.15);border-left:3px solid #8b6db5;border-radius:0 8px 8px 0;font-size:12px;color:rgba(255,255,255,.7);line-height:1.5;word-break:keep-all;">'
+        + '💡 ' + esc2(NS_INTERP[topNightSymptom.key] || topNightSymptom.label + ' 패턴 — 처방 우선 반영.')
+        + '</div>';
+    }
+    failHTML += '</div>';
+  }
+
+  // ── stage4 갈림길 Top 축 카드 (데이터 있는 경우만) ─────────
+  if (s4TopAxisLabels.length > 0) {
+    failHTML += '<div style="margin-top:10px;background:rgba(20,30,50,.45);border:1px solid rgba(58,107,156,.25);border-radius:14px;padding:14px 16px;">'
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'
+      + '<span style="font-size:16px;">⚡</span>'
+      + '<span style="font-size:12px;font-weight:900;color:#a8c4e8;letter-spacing:.5px;">갈림길 선택 — 핵심 원인축</span>'
+      + '</div>'
+      + '<div style="font-size:12px;color:rgba(255,255,255,.55);line-height:1.6;margin-bottom:10px;word-break:keep-all;">'
+      + esc2(userName) + '님이 직접 선택한 증상 갈림길 응답을 분석한 결과, 아래 원인 축이 <strong style="color:#d0e4f8;">가장 강하게 작동</strong>하고 있습니다.'
+      + '</div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:7px;">';
+    s4TopAxisLabels.forEach(function(lbl, i){
+      var rankColors = ['#6340a0','#3a6b9c','#5a7040'];
+      failHTML += '<span style="background:rgba(99,64,160,.15);border:1px solid ' + rankColors[i%3] + '55;'
+        + 'color:' + rankColors[i%3] + ';font-size:12px;font-weight:800;padding:4px 12px;border-radius:16px;">'
+        + (i===0?'①':i===1?'②':'③') + ' ' + esc2(lbl) + '</span>';
+    });
+    failHTML += '</div>'
+      + '<div style="margin-top:10px;font-size:11px;color:rgba(255,255,255,.4);word-break:keep-all;">'
+      + '* 이 결과는 처방 우선순위 결정에 반영되었습니다.'
+      + '</div>'
+      + '</div>';
+  }
+
   var secFail = document.getElementById('p11-sec-fail');
   if (secFail) secFail.innerHTML = failHTML;
 
@@ -22845,8 +23518,33 @@ function renderP11(data) {
   diffHTML += '<div class="p11-bc-card">'
     + '<div class="p11-bc-label">🔬 ' + esc2(bcCode) + ' 처방 근거</div>'
     + '<div class="p11-bc-insight">' + esc2(diffData.insight) + '</div>'
-    + '<span class="p11-bc-tag">' + esc2(ohaeng) + '형 · ' + esc2(topAxis || '대사 축') + ' ' + topScore + 'pt</span>'
-    + '</div>';
+    + '<span class="p11-bc-tag">' + esc2(ohaeng) + '형 · ' + esc2(topAxis || '대사 축') + ' ' + topScore + 'pt</span>';
+
+  // stage3 야간패턴 → 처방 보강 메시지
+  if (hasNightPattern && topNightSymptom) {
+    var NIGHT_RX_MSG = {
+      'hungry': '야간 식욕 폭발 → 코르티솔·렙틴 리듬 교정을 처방 1순위로 배치했습니다.',
+      'sleep':  '야간 수면 문제 → 멜라토닌·자율신경 처방을 집중 강화했습니다.',
+      'bloat':  '야간 복부팽만 → 야간 장 환경 처방 및 식이타이밍 조정을 추가했습니다.',
+      'tired':  '저녁 극피로 패턴 → 부신·코르티솔 회복 처방을 1주차부터 배치했습니다.',
+      'pain':   '야간 통증 패턴 → 교감신경 안정·혈관 순환 처방을 추가했습니다.',
+      'gut':    '야간 장 불편감 → 야간 특화 프로바이오틱스 처방을 추가했습니다.'
+    };
+    diffHTML += '<div style="margin-top:10px;padding:9px 12px;background:rgba(30,15,50,.4);border-left:3px solid #8b6db5;border-radius:0 8px 8px 0;font-size:12px;color:rgba(255,255,255,.65);line-height:1.5;word-break:keep-all;">'
+      + '🌙 <strong style="color:#c4a8e8;">야간패턴 보강:</strong> '
+      + esc2(NIGHT_RX_MSG[topNightSymptom.key] || '야간 증상 패턴을 처방에 반영했습니다.')
+      + '</div>';
+  }
+
+  // stage4 갈림길 Top 축 → 처방 우선순위 명시
+  if (s4TopAxisLabels.length > 0) {
+    diffHTML += '<div style="margin-top:8px;padding:9px 12px;background:rgba(20,30,50,.4);border-left:3px solid #3a6b9c;border-radius:0 8px 8px 0;font-size:12px;color:rgba(255,255,255,.6);line-height:1.5;word-break:keep-all;">'
+      + '⚡ <strong style="color:#a8c4e8;">갈림길 분석 반영:</strong> '
+      + esc2(s4TopAxisLabels.join(' → ')) + ' 축 순서로 처방 강도를 배분했습니다.'
+      + '</div>';
+  }
+
+  diffHTML += '</div>';
 
   // ── desire 방향 카드 (moodLabel + partLabels + who) ──────
   if (_moodLabel || _partLabels.length > 0 || (_who && _who.trim())) {
