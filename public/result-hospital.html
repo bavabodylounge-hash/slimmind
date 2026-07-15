@@ -12916,6 +12916,12 @@ function renderAll(data) {
   // [V4.7] MBTI T/F 말투 전역 세팅
   __TONE__ = getToneStyle(mbtiType, data.bloodType);
 
+  // ── stage2/3/4 원시응답 — renderP1 포함 모든 render 함수보다 먼저 선언 ──
+  // window.__RESULT__ (실서버) 우선, 없으면 data 직접(demoData/localStorage 모드) 폴백
+  const _s2 = (window.__RESULT__ && window.__RESULT__._stage2) || data._stage2 || {};
+  const _s3 = (window.__RESULT__ && window.__RESULT__._stage3) || data._stage3 || {};
+  const _s4 = (window.__RESULT__ && window.__RESULT__._stage4) || data._stage4 || {};
+
   renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nicknameDisplay, background,
            isBorderline, borderlineDiff, secondaryBcCode, secondaryNickname, evidenceBadge, _s2);
 
@@ -12928,11 +12934,6 @@ function renderAll(data) {
   }
 
   window.__BC_RM__ = bcCode; // 로드맵 주차별 영양제 카드용 BC 코드
-  // ── stage2/3/4 원시응답 (70문항 개인화에 사용) ── [순서 수정: renderP2 호출 전에 선언]
-  // window.__RESULT__ (실서버) 우선, 없으면 data 직접(demoData/localStorage 모드) 폴백
-  const _s2 = (window.__RESULT__ && window.__RESULT__._stage2) || data._stage2 || {};
-  const _s3 = (window.__RESULT__ && window.__RESULT__._stage3) || data._stage3 || {};
-  const _s4 = (window.__RESULT__ && window.__RESULT__._stage4) || data._stage4 || {};
 
   renderP2(userName, bcCode, firstDomino, axisScores, sorted, _s3, _s2, _s4);
 
