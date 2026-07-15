@@ -5715,6 +5715,37 @@ window.__HOSPITAL_INIT_PROMISE__ = (async function hospitalInit() {
     // stage2_answers 파싱
     var s2 = json.stage2_answers || {};
     if (typeof s2 === 'string') { try { s2 = JSON.parse(s2); } catch(e){ s2 = {}; } }
+    // ★ 키 충돌 근본 해결: stage2Answers는 숫자 키(1,2,3...16)로 저장됨
+    // 결과지는 'q1','q2'... 문자열 키로 읽으므로, 숫자 키→'qN' 문자열 폴백 추가
+    // 두 형식이 공존할 수 있으므로 없는 키만 채운다
+    (function normalizeS2Keys(obj) {
+      for (var n = 1; n <= 16; n++) {
+        var numKey = n, strKey = 'q' + n;
+        // 숫자 키가 있고 문자열 키가 없으면 복사
+        if (obj[numKey] !== undefined && obj[strKey] === undefined) obj[strKey] = obj[numKey];
+        // 문자열 키가 있고 숫자 키가 없으면 복사
+        if (obj[strKey] !== undefined && obj[numKey] === undefined) obj[numKey] = obj[strKey];
+      }
+    })(s2);
+
+    // ── stage1_answers 파싱 (외형 촉진 설문: 숫자 키 1~14+)
+    // raw_answers.stage1 또는 stage1_answers 중 하나에서 읽음
+    var s1raw = (json.raw_answers && json.raw_answers.stage1) || json.stage1_answers || {};
+    if (typeof s1raw === 'string') { try { s1raw = JSON.parse(s1raw); } catch(e){ s1raw = {}; } }
+    // 숫자 키로 정규화 (문자열 "1" → 숫자 1)
+    var s1 = {};
+    Object.keys(s1raw).forEach(function(k) { s1[Number(k)] = s1raw[k]; });
+    // s1 질문 매핑:
+    // 1=고민부위(0=얼굴, 1=윗배, 2=아랫배, 3=허벅지엉덩이, 4=어깨팔뚝등, 5=전체)
+    // 2=살찌는부위(0=배, 1=허벅지엉덩이, 2=어깨팔뚝, 3=얼굴손발, 4=전신)
+    // 3=복부질감(0=안들어가, 1=부드럽게, 2=가스빵빵)
+    // 4=texture(0=단단, 1=말랑, 2=울퉁불퉁, 3=천천히올라옴)
+    // 5=탄력(0=바로, 1=2~3초, 2=한참남음)
+    // 6=배vs팔다리(0=배만나옴, 1=전체통통, 2=아님)
+    // 7=아침저녁차이(0=똑같, 1=다리붓, 2=얼굴붓, 3=체중변동)
+    // 12=자세(0=짝다리, 1=다리꼬기, 2=양발)
+    // 13=종아리(0=발목굵고부음, 1=근육질, 2=가늘)
+    // 14=옆모습(0=잘록, 1=일자통짜, 2=아랫배볼록, 3=배전체앞으로)
 
     // stage3_answers 파싱 (히트맵 원시 응답: {bloat:[0,1,...], tired:[...], ...})
     var s3 = json.stage3_answers || {};
@@ -5825,6 +5856,8 @@ window.__HOSPITAL_INIT_PROMISE__ = (async function hospitalInit() {
       _goalWeight:     (json.raw_answers && json.raw_answers.goal_weight) ? parseFloat(json.raw_answers.goal_weight) : (json.target_weight ? parseFloat(json.target_weight) : 0),
       // ── raw_answers 전달 (loadData() 폴백 체인용) ──
       raw_answers:     json.raw_answers || null,
+      // ── stage1 외형 촉진 응답 (숫자키: {1:선택지인덱스, ...}) ──
+      _stage1:         s1,
       // ── answers 필드: loadData()가 answers['Q02']/answers['Q_MENOPAUSE'] 읽기 위해 필요 ──
       // s2(stage2_answers) 기반으로 성별/갱년기/기타 항목 매핑
       answers: (function() {
@@ -14322,6 +14355,54 @@ function renderP4(userName, ohaengKey, mbtiType, gender, menopause, s2, s3) {
       + '"난 왜 이럴까"라며 자책했던 그 시간들 — 여기서 끝냅니다.';
   }
 
+  // ── P4: stage1 체형 촉진 요약 배너 (결과지에 외형 데이터 반영 표시) ──
+  try {
+    var _s1 = (window.__RESULT__ && window.__RESULT__._stage1) || {};
+    var _s1Region  = (_s1[1]  !== undefined) ? Number(_s1[1])  : -1;
+    var _s1FatArea = (_s1[2]  !== undefined) ? Number(_s1[2])  : -1;
+    var _s1Texture = (_s1[4]  !== undefined) ? Number(_s1[4])  : -1;
+    var _s1Elastic = (_s1[5]  !== undefined) ? Number(_s1[5])  : -1;
+    var _s1Circ    = (_s1[7]  !== undefined) ? Number(_s1[7])  : -1;
+    var _s1Profile = (_s1[14] !== undefined) ? Number(_s1[14]) : -1;
+    var s1chips = [];
+    var _regionNm = ['얼굴·턱선','윗배·복부','아랫배·하복부','허벅지·엉덩이','어깨·팔뚝·등','전체'];
+    var _fatNm    = ['배부터','하체부터','상체부터','얼굴·손발 부종','전신 균등'];
+    var _texNm    = ['단단(섬유화)','말랑(지방)','울퉁불퉁(셀룰라이트)','부종형(느린회복)'];
+    var _elaNm    = ['탄력 양호','탄력 저하','탄력 심각저하'];
+    var _circNm   = ['순환 안정','저녁 다리 부종','아침 얼굴 부종','하루 체중 변동'];
+    var _profNm   = ['잘록','일자 통짜','아랫배 볼록','배 전체 앞으로'];
+    if (_s1Region >= 0  && _s1Region  < _regionNm.length)  s1chips.push('🎯 고민: ' + _regionNm[_s1Region]);
+    if (_s1FatArea >= 0 && _s1FatArea < _fatNm.length)     s1chips.push('📍 지방: ' + _fatNm[_s1FatArea]);
+    if (_s1Texture >= 0 && _s1Texture < _texNm.length)     s1chips.push('👁️ 질감: ' + _texNm[_s1Texture]);
+    if (_s1Elastic >= 0 && _s1Elastic < _elaNm.length)     s1chips.push('🤸 탄력: ' + _elaNm[_s1Elastic]);
+    if (_s1Circ >= 1    && _s1Circ    < _circNm.length)    s1chips.push('💧 순환: ' + _circNm[_s1Circ]);
+    if (_s1Profile >= 1 && _s1Profile < _profNm.length)    s1chips.push('👤 옆모습: ' + _profNm[_s1Profile]);
+
+    if (s1chips.length > 0) {
+      var p4bodyBanner = document.getElementById('p4-body-type-banner');
+      if (!p4bodyBanner) {
+        p4bodyBanner = document.createElement('div');
+        p4bodyBanner.id = 'p4-body-type-banner';
+        p4bodyBanner.style.cssText = 'background:linear-gradient(135deg,rgba(80,50,140,.08),rgba(80,50,140,.04));border:1.5px solid rgba(80,50,140,.18);border-radius:14px;padding:14px 16px;margin-bottom:18px;';
+        var bannerTitle = document.createElement('div');
+        bannerTitle.style.cssText = 'font-size:11.5px;font-weight:700;color:rgba(80,50,140,.9);letter-spacing:.04em;margin-bottom:9px;';
+        bannerTitle.textContent = '📋 1차 외형·촉진 검사 결과 (' + s1chips.length + '가지 반영)';
+        var bannerChips = document.createElement('div');
+        bannerChips.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;';
+        s1chips.forEach(function(chip) {
+          var c = document.createElement('span');
+          c.style.cssText = 'background:rgba(80,50,140,.1);border:1px solid rgba(80,50,140,.2);border-radius:20px;padding:3px 10px;font-size:11px;color:#3a2060;white-space:nowrap;';
+          c.textContent = chip;
+          bannerChips.appendChild(c);
+        });
+        p4bodyBanner.appendChild(bannerTitle);
+        p4bodyBanner.appendChild(bannerChips);
+        // p4-triggers 컨테이너 앞에 삽입
+        container.parentNode.insertBefore(p4bodyBanner, container);
+      }
+    }
+  } catch(e) { console.warn('[renderP4] stage1 배너 실패:', e); }
+
   container.innerHTML = '';
   triggers.forEach(t => {
     const div = document.createElement('div');
@@ -14434,6 +14515,28 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
     window._p5_q13 = getNum(['q13','q13_smoke','smoke']);
     // Q14: 음주 (0=거의안함, 1=주1~2, 2=주3이상)
     window._p5_q14 = getNum(['q14','q14_drink','q14_alcohol','alcohol']);
+
+    // ── stage1 외형 촉진 응답 파싱 ──
+    // window.__RESULT__._stage1 = {1:선택지idx, 2:idx, ...}
+    var _s1 = (window.__RESULT__ && window.__RESULT__._stage1) || {};
+    // s1q1: 고민부위 (0=얼굴, 1=윗배, 2=아랫배, 3=허벅지엉덩이, 4=어깨팔뚝등, 5=전체)
+    window._s1_region   = (_s1[1] !== undefined) ? Number(_s1[1]) : -1;
+    // s1q2: 살찌는 부위 (0=배, 1=허벅지엉덩이, 2=어깨팔뚝, 3=얼굴손발, 4=전신)
+    window._s1_fatArea  = (_s1[2] !== undefined) ? Number(_s1[2]) : -1;
+    // s1q4: 조직 질감 (0=단단, 1=말랑, 2=울퉁불퉁, 3=천천히올라옴=부종)
+    window._s1_texture  = (_s1[4] !== undefined) ? Number(_s1[4]) : -1;
+    // s1q5: 탄력 (0=빠름, 1=2~3초, 2=한참남음)
+    window._s1_elastic  = (_s1[5] !== undefined) ? Number(_s1[5]) : -1;
+    // s1q6: 배vs팔다리 (0=배만나옴, 1=전체통통, 2=아님)
+    window._s1_belly    = (_s1[6] !== undefined) ? Number(_s1[6]) : -1;
+    // s1q7: 순환(아침저녁) (0=똑같, 1=다리붓, 2=얼굴붓, 3=체중변동)
+    window._s1_circ     = (_s1[7] !== undefined) ? Number(_s1[7]) : -1;
+    // s1q12: 자세 (0=짝다리, 1=다리꼬기, 2=양발균형)
+    window._s1_posture  = (_s1[12] !== undefined) ? Number(_s1[12]) : -1;
+    // s1q13: 종아리 (0=발목굵고부음, 1=근육질, 2=가늘)
+    window._s1_calf     = (_s1[13] !== undefined) ? Number(_s1[13]) : -1;
+    // s1q14: 옆모습 (0=잘록, 1=일자통짜, 2=아랫배볼록, 3=배전체앞으로)
+    window._s1_profile  = (_s1[14] !== undefined) ? Number(_s1[14]) : -1;
   })();
 
   // ── s2 데이터 기반 각 도메인 ev_template 동적 생성 함수 ──
@@ -14451,6 +14554,17 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
     var q12 = window._p5_q12 || '';
     var q13 = window._p5_q13;
     var q14 = window._p5_q14;
+
+    // ── stage1 외형 촉진 데이터 ──
+    var s1Region  = window._s1_region;   // 고민부위: 0=얼굴,1=윗배,2=아랫배,3=허벅지,4=어깨팔뚝,5=전체
+    var s1FatArea = window._s1_fatArea;  // 살찌는부위: 0=배,1=허벅지,2=어깨팔뚝,3=얼굴손발,4=전신
+    var s1Texture = window._s1_texture;  // 질감: 0=단단,1=말랑,2=울퉁불퉁,3=부종(천천히)
+    var s1Elastic = window._s1_elastic;  // 탄력: 0=빠름,1=2~3초,2=한참남음
+    var s1Belly   = window._s1_belly;    // 배vs팔다리: 0=배만나옴,1=전체통통,2=아님
+    var s1Circ    = window._s1_circ;     // 순환: 0=똑같,1=다리붓,2=얼굴붓,3=체중변동
+    var s1Posture = window._s1_posture;  // 자세: 0=짝다리,1=다리꼬기,2=양발균형
+    var s1Calf    = window._s1_calf;     // 종아리: 0=발목굵고부음,1=근육질,2=가늘
+    var s1Profile = window._s1_profile;  // 옆모습: 0=잘록,1=일자통짜,2=아랫배볼록,3=배전체앞으로
 
     var Q3_NM = ['갑상선','당뇨전단계','다낭성난소증후군','고혈압','고지혈증'];
     var Q4_NM = ['혈당 경계','혈압 주의','간수치 주의','콜레스테롤 경계','갑상선 주의'];
@@ -14485,6 +14599,10 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
     }
 
     else if (domainKey === '식단') {
+      // stage1 지방 분포·복부 패턴 활용
+      var fatAreaNm = ['복부 우선','하체(허벅지·엉덩이) 우선','상체(어깨·팔뚝) 우선','수분·부종(얼굴·손발) 우선','전신 균등'];
+      if (s1FatArea >= 0 && s1FatArea <= 4) ev.push({k:'촉진: 지방 분포', v:'살이 찌면 『' + fatAreaNm[s1FatArea] + '』 패턴 — 지방 분포 원인에 맞는 맞춤 식단이 설계됩니다.', on:true});
+      if (s1Belly === 0) ev.push({k:'촉진: 복부 우세', v:'팔다리는 가는데 배만 나온 체형 확인 — 내장지방형 복부비만. 혈당 조절 식단이 최우선입니다.', on:true});
       if (q14 >= 2) ev.push({k:'음주 빈도', v:'주 3회 이상 음주 확인 — 알코올 처리 중 지방 산화가 완전히 멈춥니다. 음주 패턴 교정이 식단 처방의 핵심입니다.', on:true});
       else if (q14 === 1) ev.push({k:'음주 빈도', v:'주 1~2회 음주 — 음주 당일 지방 산화 억제. 음주 타이밍·안주 선택 교정이 포함됩니다.', on:true});
       var hungryArr = (s3 && s3['hungry']) || [];
@@ -14497,6 +14615,12 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
     }
 
     else if (domainKey === '운동') {
+      // stage1 탄력·근육 상태 활용
+      var elasticNm = ['즉시 회복(탄력 양호)','2~3초 회복(탄력 저하)','자국 한참 남음(탄력 심각 저하)'];
+      if (s1Elastic === 2) ev.push({k:'촉진: 탄력 심각 저하', v:'탄력 측정에서 회복이 한참 걸림 — 조직 탄력이 심각히 저하되어 있습니다. 근력 운동과 탄력 회복이 우선입니다.', on:true});
+      else if (s1Elastic === 1) ev.push({k:'촉진: 탄력 저하', v:'탄력 측정에서 2~3초 회복 — 조직 탄력이 저하 상태. 저항 운동 프로그램이 필요합니다.', on:true});
+      if (s1Calf === 1) ev.push({k:'촉진: 근육 종아리', v:'근육질 종아리 확인 — 하체 근육이 이미 발달된 상태. 과도한 하체 운동은 오히려 역효과입니다.', on:true});
+      if (s1Posture === 0 || s1Posture === 1) ev.push({k:'촉진: 자세 불균형', v:(s1Posture === 0 ? '짝다리' : '다리꼬기') + ' 습관 — 골반 비대칭 운동 처방이 포함됩니다. 비대칭 교정 없이 하체 운동은 부상 위험입니다.', on:true});
       if (hasMilitary) ev.push({k:'군복무 이력', v:'입대/전역 후 대사 변화 이력 확인 — 근육·기초대사 재건이 1순위로 설계됩니다.', on:true});
       if (q3active.indexOf(0)>=0) ev.push({k:'갑상선 이력', v:'갑상선 이력 — 저강도 고빈도 운동이 원칙. 고강도 운동은 갑상선 호르몬 부하를 높입니다.', on:true});
       if (q3active.indexOf(3)>=0 || q4active.indexOf(1)>=0) ev.push({k:'혈압 이력', v:'고혈압·혈압 주의 소견 — 등척성 운동 주의, METS 기반 안전 강도 설계가 필요합니다.', on:true});
@@ -14523,6 +14647,14 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
     }
 
     else if (domainKey === '체형') {
+      // stage1 체형 외형 촉진 데이터 활용
+      var regionNm = ['얼굴·턱선','윗배·복부','아랫배·하복부','허벅지·엉덩이','어깨·팔뚝·등','전체'];
+      if (s1Region >= 0 && s1Region < 5) ev.push({k:'촉진: 고민부위', v:'주요 고민 부위가 『' + regionNm[s1Region] + '』로 직접 지목되었습니다 — 해당 부위 중심의 체형 교정 처방이 설계됩니다.', on:true});
+      var profileNm = ['잘록(정상)','일자 통짜 — 복직근 이완·복압 저하','아랫배 볼록 — 하복부 복벽 약화','배 전체 앞으로 — 요추 전만·내장지방 복합'];
+      if (s1Profile >= 1) ev.push({k:'촉진: 옆모습', v:'옆모습 『' + profileNm[s1Profile] + '』 패턴 — 골반·척추 정렬 교정이 복부 대사 효율에 직접 영향을 줍니다.', on:true});
+      if (s1Posture === 0 || s1Posture === 1) ev.push({k:'촉진: 자세', v:(s1Posture === 0 ? '짝다리' : '다리꼬기') + ' 습관 확인 — 골반 비대칭이 하체 지방 분포와 연결됩니다. 체형 교정 우선입니다.', on:true});
+      var textureMap = {0:'단단(섬유화)', 1:'말랑(수분/지방)', 2:'울퉁불퉁(셀룰라이트)', 3:'느린 회복(부종/림프)'};
+      if (s1Texture >= 0 && textureMap[s1Texture]) ev.push({k:'촉진: 조직 질감', v:'조직 질감이 『' + textureMap[s1Texture] + '』 — 체형 교정 방향을 결정하는 핵심 촉진 소견입니다.', on:true});
       if (hasBirth) ev.push({k:'출산 이력', v:'출산 이력 확인 — 복벽 이완·골반저근 약화가 체형 불균형의 원인입니다. 체형 교정이 복부 대사와 직결됩니다.', on:true});
       if (q1 === 0) ev.push({k:'가족력', v:'체형 가족력 확인 — 부모 체형 패턴이 골격 취약 부위와 일치합니다.', on:true});
       if (q3active.indexOf(3)>=0) ev.push({k:'고혈압 이력', v:'고혈압 이력 — 복부 지방 축적과 체형 불균형이 혈압과 연동됩니다.', on:true});
@@ -14530,6 +14662,12 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
     }
 
     else if (domainKey === '순환') {
+      // stage1 순환 촉진 데이터 활용
+      if (s1Circ === 1) ev.push({k:'촉진: 다리 부종', v:'저녁 다리 부종·양말 자국 확인 — 하지 림프·정맥 순환 저하의 직접 신호입니다.', on:true});
+      if (s1Circ === 2) ev.push({k:'촉진: 얼굴 부종', v:'아침 얼굴·눈두덩 부종 확인 — 상체 림프 순환 저하, 신장 부담 증가 패턴입니다.', on:true});
+      if (s1Circ === 3) ev.push({k:'촉진: 체중 변동', v:'하루 1~2kg 체중 변동 확인 — 수분 조절 기능 저하로 부종-탈수 사이클이 반복되는 구조입니다.', on:true});
+      if (s1Calf === 0) ev.push({k:'촉진: 발목 부종', v:'발목 굵고 저녁 부종 확인 — 하지 정맥·림프 순환 저하의 핵심 소견입니다. 드레나지 처방이 즉시 필요합니다.', on:true});
+      if (s1Texture === 3) ev.push({k:'촉진: 부종 조직', v:'누르면 천천히 올라오는 부종 질감 — 조직 내 수분 과잉 정체 상태입니다. 순환 처방이 최우선입니다.', on:true});
       if (q5c === 0) ev.push({k:'수족냉증', v:'심한 수족냉증 — 말초 림프·혈액 순환이 심각하게 저하된 신호입니다. 온열 처방과 림프 드레나지가 즉시 필요합니다.', on:true});
       else if (q5c === 1) ev.push({k:'수족냉증', v:'경미한 수족냉증 — 순환 보조 처방이 포함됩니다.', on:true});
       if (q3active.indexOf(3)>=0 || q4active.indexOf(1)>=0) ev.push({k:'혈압 이력', v:'고혈압·혈압 소견 — 말초 혈관 수축 패턴과 연결됩니다. 순환 개선이 혈압 관리에 도움됩니다.', on:true});
