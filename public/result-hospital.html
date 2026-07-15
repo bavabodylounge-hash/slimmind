@@ -12938,7 +12938,7 @@ function renderAll(data) {
 
   renderP3(userName, bcCode, bcMaster, ohaengType, ohaeng, mbtiType, mbti, fullCode, prescription, answers, data.bloodType, _s2);
   renderP4(userName, ohaengType, mbtiType, answers['Q02'], answers['Q_MENOPAUSE'], _s2, _s3);
-  renderP5(metrics, bcCode, axisScores, userName, _s2);
+  renderP5(metrics, bcCode, axisScores, userName, _s2, _s3);
   renderP8(metrics, bcCode, axisScores, userName, _s2, data);
   renderP9(metrics, bcCode, axisScores, data, _s2);
   renderP6(userName, fullCode, ohaengType, data);
@@ -12961,7 +12961,8 @@ function renderAll(data) {
 
   // ★ WOW 기능 초기화 (전역 데이터 세팅 후 호출)
   _wowData = { userName, bcCode, bcMaster, metrics, ohaengType, mbtiType,
-               fullCode, nicknameDisplay, axisScores, answers, sorted };
+               fullCode, nicknameDisplay, axisScores, answers, sorted,
+               _stage2: _s2, _stage3: _s3 };  // P10 수면×음주 인사이트용
   wow1Init();   // DNA 카드 준비
   wow2Init();   // 변화 그래프
   wow3Init(userName, ohaengType, mbtiType, answers['Q02'], answers['Q_MENOPAUSE']); // 경보
@@ -13772,7 +13773,7 @@ function renderP2(userName, bcCode, firstDomino, axisScores, sorted, s3, s2, s4)
         '</div>' +
         '<div style="padding:12px 14px 14px;">' +
           '<div style="font-size:12.5px;line-height:1.7;color:var(--ink);margin-bottom:10px;">' + top1Desc + '</div>' +
-          '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(' + top1Color.replace('#','').match(/.{2}/g).map(function(h){return parseInt(h,16);}).join(',') + ',.07);border-left:3px solid ' + top1Color + ';border-radius:0 8px 8px 0;">' +
+          '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(' + (function(c){var m=(c||'').replace('#','').match(/.{2}/g);return m?m.map(function(h){return parseInt(h,16);}).join(','):'99,99,99';})(top1Color) + ',.07);border-left:3px solid ' + top1Color + ';border-radius:0 8px 8px 0;">' +
             '<span style="font-size:13px;flex-shrink:0;">1위</span>' +
             '<div style="flex:1;">' +
               '<div style="font-size:11px;font-weight:700;color:' + top1Color + ';">' + top1Label + '</div>' +
@@ -14318,8 +14319,9 @@ function renderP4(userName, ohaengKey, mbtiType, gender, menopause, s2, s3) {
 }
 
 /* ── P5 ── */
-function renderP5(metrics, bcCode, axisScores, userName, s2) {
+function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
   s2 = s2 || {};
+  s3 = s3 || {};
   // ════════════════════════════════════════════
   // P5 근거 기반 선별 — 11개 전문 영역 중 BC코드별 근거 있는 것만 표시
   // BC-1~BC-9 각각의 핵심 영역 3개(STRONG) + 비핵심 8개(NONE)를 동적으로 빌드
@@ -14569,7 +14571,7 @@ function renderP5(metrics, bcCode, axisScores, userName, s2) {
     // 야간(저녁idx4 + 야간idx5) 합산 ≥ 3이면 수면 부채 경보
     // 전체 합산 ≥ 4이면 만성 수면 교란으로 더 강한 경고
     (function addSleepFlag() {
-      var s3p5 = (typeof s3 !== 'undefined' && s3) ? s3 : {};
+      var s3p5 = s3 || {};
       if (typeof s3p5 === 'string') { try { s3p5 = JSON.parse(s3p5); } catch(e) { s3p5 = {}; } }
       var sleepArr = s3p5['sleep'] || [];
       if (!Array.isArray(sleepArr) || sleepArr.length < 6) return;
