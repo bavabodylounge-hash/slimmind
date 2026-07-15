@@ -14374,6 +14374,197 @@ function renderP4(userName, ohaengKey, mbtiType, gender, menopause, s2, s3) {
 function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
   s2 = s2 || {};
   s3 = s3 || {};
+
+  // ════════════════════════════════════════════
+  // [핵심] s2 응답에서 개인화 서술 생성 헬퍼
+  // q6(장기복용약), q7(식욕억제제), q9(과거시술), q1(가족력),
+  // q3(진단질환), q4(건강검진), q5(냉증), q8(살찐계기), q10(체중궤적),
+  // q11(출산/군대/폐경), q13(흡연), q14(음주) — 모두 ev_template에 반영
+  // ════════════════════════════════════════════
+  (function buildP5DynamicEvidence() {
+    // s2 데이터 파싱 헬퍼
+    function getVal(keys, defaultVal) {
+      for (var i = 0; i < keys.length; i++) {
+        var v = s2[keys[i]];
+        if (v !== undefined && v !== null && v !== '') return v;
+      }
+      return defaultVal !== undefined ? defaultVal : '';
+    }
+    function getNum(keys) {
+      var raw = getVal(keys, '');
+      if (Array.isArray(raw)) return raw[0] !== undefined ? Number(raw[0]) : -1;
+      if (typeof raw === 'number') return raw;
+      if (typeof raw === 'string' && raw !== '') return Number(raw);
+      return -1;
+    }
+    function getArr(keys) {
+      var raw = getVal(keys, []);
+      if (typeof raw === 'string') { try { raw = JSON.parse(raw); } catch(e){ raw = raw ? [raw] : []; } }
+      return Array.isArray(raw) ? raw.map(Number) : [];
+    }
+
+    // Q1: 가족력 (0=있음, 1=없음)
+    window._p5_q1 = getNum(['q1','q1_family']); // 0=가족력 있음
+    // Q3: 진단질환 배열 (0=갑상선, 1=당뇨전, 2=다낭성, 3=고혈압, 4=고지혈, 5=없음)
+    window._p5_q3 = getArr(['q3','q3_disease','disease']);
+    // Q4: 검진소견 배열 (0=혈당, 1=혈압, 2=간수치, 3=콜레스테롤, 4=갑상선, 5=없음)
+    window._p5_q4 = getArr(['q4','q4_checkup','checkup']);
+    // Q5: 냉증 (0=심함, 1=조금, 2=없음)
+    window._p5_q5cold = getNum(['q5','q5_cold','cold_limbs']);
+    // Q6: 장기복용약 배열
+    var q6raw = getVal(['q6','q6_drugs','long_term_drugs'], []);
+    if (typeof q6raw === 'string') { try { q6raw = JSON.parse(q6raw); } catch(e){ q6raw = q6raw ? [q6raw] : []; } }
+    window._p5_q6 = Array.isArray(q6raw) ? q6raw : [];
+    // Q7: 식욕억제제 여부
+    var q7raw = getVal(['q7','q7_appetite','appetite_suppressant'], '');
+    window._p5_q7 = /yes|있|복용|위고비|마운자로|삭센다/i.test(String(q7raw));
+    // Q8: 살찐계기
+    window._p5_q8 = getArr(['q8','q8_trigger']);
+    // Q9: 과거시술 배열
+    var q9raw = getVal(['q9','q9_procedures','past_procedures'], []);
+    if (typeof q9raw === 'string') { try { q9raw = JSON.parse(q9raw); } catch(e){ q9raw = q9raw ? [q9raw] : []; } }
+    window._p5_q9 = Array.isArray(q9raw) ? q9raw : [];
+    // Q10: 체중궤적 (0=계속증가, 1=요요, 2=최근급증, 3=변화없음)
+    window._p5_q10 = getNum(['q10','q10_history']);
+    // Q11: 특이이력 배열 (0=출산, 1=군대, 2=폐경, 3=없음)
+    window._p5_q11 = getArr(['q11','q11_event']);
+    // Q12: 갱년기 (string)
+    window._p5_q12 = getVal(['q12','q12_menopause','menopause'], '');
+    // Q13: 흡연 (0=피움, 1=금연, 2=안피움)
+    window._p5_q13 = getNum(['q13','q13_smoke','smoke']);
+    // Q14: 음주 (0=거의안함, 1=주1~2, 2=주3이상)
+    window._p5_q14 = getNum(['q14','q14_drink','q14_alcohol','alcohol']);
+  })();
+
+  // ── s2 데이터 기반 각 도메인 ev_template 동적 생성 함수 ──
+  function buildEvidence(domainKey) {
+    var q1  = window._p5_q1;
+    var q3  = window._p5_q3  || [];
+    var q4  = window._p5_q4  || [];
+    var q5c = window._p5_q5cold;
+    var q6  = window._p5_q6  || [];
+    var q7  = window._p5_q7;
+    var q8  = window._p5_q8  || [];
+    var q9  = window._p5_q9  || [];
+    var q10 = window._p5_q10;
+    var q11 = window._p5_q11 || [];
+    var q12 = window._p5_q12 || '';
+    var q13 = window._p5_q13;
+    var q14 = window._p5_q14;
+
+    var Q3_NM = ['갑상선','당뇨전단계','다낭성난소증후군','고혈압','고지혈증'];
+    var Q4_NM = ['혈당 경계','혈압 주의','간수치 주의','콜레스테롤 경계','갑상선 주의'];
+    var Q8_NM = ['이직·과로·스트레스','이별·심리적 충격','수술·입원·약물','잦은 회식·음주','금연·생활변화','특별한 계기 없이'];
+    var isMeno = /yes|완경|갱년기|폐경|peri/i.test(String(q12));
+    var hasBirth = q11.indexOf(0) >= 0;
+    var hasMilitary = q11.indexOf(1) >= 0;
+    var q3active = q3.filter(function(i){ return i < 5; });
+    var q4active = q4.filter(function(i){ return i < 5; });
+    var hasSteroidsOrAD = q6.some(function(d){ return /스테로이드|steroid|항우울|antidepressant|피임약/i.test(String(d)); });
+    var hasLongDrug = q6.length > 0 && !q6.every(function(v){ return Number(v) === 5 || String(v) === 'none'; });
+
+    var ev = [];
+
+    if (domainKey === '회복') {
+      // 수면 히트맵 (s3) 활용
+      var sleepArr = (s3 && s3['sleep']) || [];
+      var totalSleep = Array.isArray(sleepArr) ? sleepArr.reduce(function(a,v){ return a+(Number(v)||0); }, 0) : 0;
+      var nightSleep = Array.isArray(sleepArr) && sleepArr.length>=6 ? (Number(sleepArr[4])||0)+(Number(sleepArr[5])||0) : 0;
+      var tiredArr = (s3 && s3['tired']) || [];
+      var totalTired = Array.isArray(tiredArr) ? tiredArr.reduce(function(a,v){ return a+(Number(v)||0); }, 0) : 0;
+      if (nightSleep >= 3 || totalSleep >= 4) {
+        ev.push({k:'수면 히트맵', v:'야간 수면 교란 신호가 감지됩니다 — 수면 불량 시 그렐린(식욕↑) 24%, 렙틴(포만감↓) 18% 변화로 야간 지방 연소가 차단됩니다.', on:true});
+      }
+      if (totalTired >= 4) {
+        ev.push({k:'피로 히트맵', v:'하루 전반에 걸쳐 피로 신호가 높습니다 — 자율신경 소진 상태로 회복이 최우선입니다.', on:true});
+      }
+      if (q10 === 1) ev.push({k:'체중 궤적', v:'요요 이력 확인 — 반복 요요는 기초대사를 단계적으로 낮춥니다. 회복 없이 다이어트만 반복하면 다음 요요가 더 심해집니다.', on:true});
+      if (q8.indexOf(0)>=0) ev.push({k:'살찐 계기', v:'이직·과로·스트레스가 계기 — 코르티솔 만성 상승으로 자율신경이 소진된 상태입니다. 회복이 가장 먼저입니다.', on:true});
+      if (isMeno) ev.push({k:'갱년기', v:'갱년기 이력 — 에스트로겐 감소로 수면 구조가 깨져 있습니다. 수면 회복이 호르몬 치료와 병행되어야 합니다.', on:true});
+      if (ev.length === 0) ev.push({k:'기질', v:'에너지 고갈형 체질 — 밀어붙이면 더 무너집니다. 회복부터 시작합니다.', on:true});
+    }
+
+    else if (domainKey === '식단') {
+      if (q14 >= 2) ev.push({k:'음주 빈도', v:'주 3회 이상 음주 확인 — 알코올 처리 중 지방 산화가 완전히 멈춥니다. 음주 패턴 교정이 식단 처방의 핵심입니다.', on:true});
+      else if (q14 === 1) ev.push({k:'음주 빈도', v:'주 1~2회 음주 — 음주 당일 지방 산화 억제. 음주 타이밍·안주 선택 교정이 포함됩니다.', on:true});
+      var hungryArr = (s3 && s3['hungry']) || [];
+      var nightHungry = Array.isArray(hungryArr) && hungryArr.length>=6 ? (Number(hungryArr[4])||0)+(Number(hungryArr[5])||0) : 0;
+      if (nightHungry >= 3) ev.push({k:'야간 식욕 히트맵', v:'야간 식욕이 강하게 감지됩니다 — 낮에 억눌린 칼로리가 밤 코르티솔-인슐린 리바운드로 폭발하는 패턴입니다.', on:true});
+      if (q8.indexOf(1)>=0) ev.push({k:'살찐 계기', v:'이별·심리적 충격이 계기 — 감정 식욕이 도파민-세로토닌 회로를 통해 체중에 직접 영향을 줬습니다.', on:true});
+      if (q3active.indexOf(1)>=0) ev.push({k:'당뇨전단계 이력', v:'당뇨 전단계 확인 — 혈당 스파이크 차단 식단, 저GI 식품 중심으로 설계합니다.', on:true});
+      if (q3active.indexOf(2)>=0) ev.push({k:'다낭성난소 이력', v:'다낭성난소증후군 확인 — 인슐린 저항성 중심 식단, 정제탄수화물 최소화가 핵심입니다.', on:true});
+      if (ev.length === 0) ev.push({k:'기질', v:'오행 체질별 맞춤 식품 — 피해야 할 음식과 먹어야 할 음식 패턴을 분석했습니다.', on:true});
+    }
+
+    else if (domainKey === '운동') {
+      if (hasMilitary) ev.push({k:'군복무 이력', v:'입대/전역 후 대사 변화 이력 확인 — 근육·기초대사 재건이 1순위로 설계됩니다.', on:true});
+      if (q3active.indexOf(0)>=0) ev.push({k:'갑상선 이력', v:'갑상선 이력 — 저강도 고빈도 운동이 원칙. 고강도 운동은 갑상선 호르몬 부하를 높입니다.', on:true});
+      if (q3active.indexOf(3)>=0 || q4active.indexOf(1)>=0) ev.push({k:'혈압 이력', v:'고혈압·혈압 주의 소견 — 등척성 운동 주의, METS 기반 안전 강도 설계가 필요합니다.', on:true});
+      if (q10 === 0) ev.push({k:'체중 궤적', v:'체중이 꾸준히 올라온 구조 — 근감소성 비만 패턴. 유산소보다 저항운동 우선입니다.', on:true});
+      if (ev.length === 0) ev.push({k:'기질', v:'체질별 적합 운동 강도 — 과도한 운동이 오히려 코르티솔을 높여 역효과를 낼 수 있는 체질인지 확인했습니다.', on:true});
+    }
+
+    else if (domainKey === '호르몬') {
+      if (isMeno) ev.push({k:'갱년기', v:'갱년기 이력 확인 — 에스트로겐 급감으로 복부지방이 재배치됩니다. 호르몬 지원 처방이 필수입니다.', on:true});
+      if (q3active.indexOf(0)>=0) ev.push({k:'갑상선 이력', v:'갑상선 이력 — 기초대사량을 직접 조절하는 T3/T4 불균형 패턴. 처방 설계에 반영됩니다.', on:true});
+      if (q3active.indexOf(2)>=0) ev.push({k:'다낭성난소 이력', v:'다낭성난소증후군 — 인슐린과 안드로겐 불균형이 복합 작용합니다. 호르몬 중심 처방이 필요합니다.', on:true});
+      if (q1 === 0) ev.push({k:'가족력', v:'대사질환 가족력 확인 — 모계 호르몬 패턴이 체중에 영향을 줄 수 있습니다. 내분비 취약군으로 분류됩니다.', on:true});
+      if (q13 === 0) ev.push({k:'흡연', v:'흡연 중 — 코르티솔 만성 자극으로 복부 내장지방 축적 위험 높음. 호르몬 안정화와 병행이 필요합니다.', on:true});
+      if (ev.length === 0) ev.push({k:'기질', v:'신장·생식 기운 약화형 — 호르몬 축이 먼저 흔들리는 체질입니다.', on:true});
+    }
+
+    else if (domainKey === '심리') {
+      if (q8.indexOf(1)>=0) ev.push({k:'살찐 계기', v:'이별·심리적 충격이 계기 — 감정 식욕(도파민 보상 회로)이 체중에 직접 작용했습니다. 심리 처방이 식단보다 먼저입니다.', on:true});
+      if (q8.indexOf(0)>=0) ev.push({k:'살찐 계기', v:'이직·과로 스트레스가 계기 — 번아웃이 식욕 조절 능력을 소진시켰습니다. 심리적 회복이 필요합니다.', on:true});
+      if (q14 >= 2) ev.push({k:'음주', v:'음주 주 3회 이상 — 알코올 의존 패턴이 심리-식이 행동과 연결됩니다. 행동 교정 처방이 포함됩니다.', on:true});
+      var bingeTried = q9.some(function(v){ return /binge|과식|폭식/i.test(String(v)); });
+      if (bingeTried) ev.push({k:'행동 이력', v:'폭식 이력 감지 — 감정 트리거와 식이 행동 간 연결 고리가 명확합니다.', on:true});
+      if (ev.length === 0) ev.push({k:'기질', v:'번아웃 취약성 — 심리적 에너지 소진 패턴이 감지됩니다.', on:true});
+    }
+
+    else if (domainKey === '체형') {
+      if (hasBirth) ev.push({k:'출산 이력', v:'출산 이력 확인 — 복벽 이완·골반저근 약화가 체형 불균형의 원인입니다. 체형 교정이 복부 대사와 직결됩니다.', on:true});
+      if (q1 === 0) ev.push({k:'가족력', v:'체형 가족력 확인 — 부모 체형 패턴이 골격 취약 부위와 일치합니다.', on:true});
+      if (q3active.indexOf(3)>=0) ev.push({k:'고혈압 이력', v:'고혈압 이력 — 복부 지방 축적과 체형 불균형이 혈압과 연동됩니다.', on:true});
+      if (ev.length === 0) ev.push({k:'기질', v:'체질별 체형 취약 부위 — 선천적으로 약한 체형 영역을 확인했습니다.', on:true});
+    }
+
+    else if (domainKey === '순환') {
+      if (q5c === 0) ev.push({k:'수족냉증', v:'심한 수족냉증 — 말초 림프·혈액 순환이 심각하게 저하된 신호입니다. 온열 처방과 림프 드레나지가 즉시 필요합니다.', on:true});
+      else if (q5c === 1) ev.push({k:'수족냉증', v:'경미한 수족냉증 — 순환 보조 처방이 포함됩니다.', on:true});
+      if (q3active.indexOf(3)>=0 || q4active.indexOf(1)>=0) ev.push({k:'혈압 이력', v:'고혈압·혈압 소견 — 말초 혈관 수축 패턴과 연결됩니다. 순환 개선이 혈압 관리에 도움됩니다.', on:true});
+      if (ev.length === 0) ev.push({k:'기질', v:'순환계 취약 체질 — 하지 부종·냉증이 반복되는 구조입니다.', on:true});
+    }
+
+    else if (domainKey === '약물') {
+      if (hasLongDrug) {
+        var drugList = q6.filter(function(v){ return Number(v) !== 5 && String(v) !== 'none'; });
+        ev.push({k:'장기복용약 이력', v:'장기 복용 약물이 확인됩니다 — 복용 이력과 체중 변화 시점의 일치 여부를 전문의와 확인해야 합니다.', on:true});
+      }
+      if (hasSteroidsOrAD) ev.push({k:'스테로이드·항우울제', v:'스테로이드/항우울제 복용 이력 — 인슐린 저항성·식욕 증가가 약물 유발 비만의 핵심 기전입니다.', on:true});
+      if (q7) ev.push({k:'식욕억제제 이력', v:'과거 식욕억제제(GLP-1 포함) 복용 이력 — 반동 식욕 증가·내성 형성 패턴을 처방에 반영합니다.', on:true});
+      if (q8.indexOf(2)>=0) ev.push({k:'수술·약물 계기', v:'수술·입원·약물 복용이 살찐 계기 — 약물로 인한 장내 환경 교란과 인슐린 저항성 상승이 확인됩니다.', on:true});
+      if (ev.length === 0) ev.push({k:'기질', v:'선천 체질과 약물 반응성 — 복용 약물이 체중 변화를 유발하고 있을 수 있습니다.', on:true});
+    }
+
+    else if (domainKey === '시술') {
+      if (q9.length > 0) {
+        var PROC_NM = {lipo:'지방흡입', fat_dis:'지방분해', lifting:'리프팅', '0':'지방흡입', '1':'지방분해', '2':'리프팅', '3':'실리프팅'};
+        var procNames = q9.map(function(v){ return PROC_NM[String(v)] || String(v); }).filter(Boolean);
+        if (procNames.length > 0) ev.push({k:'과거 시술 이력', v:'과거 시술 이력: ' + procNames.join('·') + ' — 기존 시술 부위와 남아있는 지방 분포를 고려하여 처방이 설계됩니다.', on:true});
+      }
+      if (ev.length === 0) ev.push({k:'기질', v:'지방 분포 패턴 — 시술적 접근이 효과를 낼 수 있는 부위를 분석했습니다.', on:true});
+    }
+
+    else if (domainKey === '한방') {
+      if (q1 === 0) ev.push({k:'가족력', v:'대사질환 가족력 — 한의학적 체질 개선이 유전 취약점 보완에 효과적입니다.', on:true});
+      if (q3active.indexOf(0)>=0) ev.push({k:'갑상선 이력', v:'갑상선 이력 — 한방 처방(황기·당귀 기반)이 갑상선 기능 보조에 도움됩니다.', on:true});
+      if (ev.length === 0) ev.push({k:'기질', v:'오행 체질 — 한의학적 접근이 체질 개선에 직접 부합합니다.', on:true});
+    }
+
+    return ev.length > 0 ? ev : [{k:'기질', v:'개인 데이터 기반 처방이 설계됩니다.', on:true}];
+  }
+
   // ════════════════════════════════════════════
   // P5 근거 기반 선별 — 11개 전문 영역 중 BC코드별 근거 있는 것만 표시
   // BC-1~BC-9 각각의 핵심 영역 3개(STRONG) + 비핵심 8개(NONE)를 동적으로 빌드
@@ -14477,20 +14668,29 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
     }
   });
 
-  // STRONG 배열 빌드 (최대 3개)
+  // STRONG 배열 빌드 (최대 3개) — ev_template을 s2 응답 기반 동적 서술로 교체
   var STRONG = [];
   strongKeys.forEach(function(nm) {
     var d = DOMAIN_DATA[nm];
     if (!d || d.hidden) return;
-    // ev_template에 등급 정보 추가
-    var ev = d.ev_template.map(function(e) {
+    // ★ 핵심: ev_template 대신 buildEvidence(nm)으로 실제 s2 응답 기반 서술 생성
+    var evRaw = buildEvidence(nm);
+    var ev = evRaw.map(function(e) {
       return { k:e.k, t:'진단', tc:'#5a6e3a', tb:'#eef2e4', v:e.v, on:e.on };
     });
+    // conclusion도 s2 데이터 기반으로 보강
+    var concl = d.concl;
+    if (nm === '약물' && (window._p5_q7 || (window._p5_q6 && window._p5_q6.length > 0))) {
+      concl = '장기복용약·식욕억제제 이력이 확인됩니다. 현재 복용 중인 약물이 체중·대사에 영향을 주고 있을 수 있습니다. 전문의 상담이 우선입니다.';
+    }
+    if (nm === '시술' && window._p5_q9 && window._p5_q9.length > 0) {
+      concl = '과거 시술 이력이 처방 설계에 반영됩니다. 기존 시술 부위의 지방 분포와 조직 상태를 고려한 맞춤 처방이 제공됩니다.';
+    }
     STRONG.push({
       ic: d.ic, nm: d.nm, to: d.to, c: d.c, grade: 3, gtx: '근거 강함',
       hit: ev.filter(function(e){ return e.on; }).length,
       ev: ev,
-      concl: d.concl
+      concl: concl
     });
   });
 
@@ -14671,11 +14871,56 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
     })();
     // ── [구현 끝] ────────────────────────────────────────────────────────────
 
+    // ── [추가] Q6 장기복용약, Q7 식욕억제제, Q9 과거시술 배너 추가 ──
+    // 이 3개 문항은 건강검진/흡연/음주보다 위에 먼저 추가
+    (function addDrugAndProcFlags() {
+      // Q6: 장기복용약
+      var q6rawB = s2['q6'] || s2['q6_drugs'] || s2['long_term_drugs'] || [];
+      if (typeof q6rawB === 'string') { try { q6rawB = JSON.parse(q6rawB); } catch(e){ q6rawB = []; } }
+      var q6Arr = Array.isArray(q6rawB) ? q6rawB : [];
+      var hasQ6Drug = q6Arr.length > 0 && !q6Arr.every(function(v){ return Number(v) === 5 || String(v).toLowerCase() === 'none' || String(v) === '5'; });
+      var hasSteroidsB = q6Arr.some(function(d){ return /스테로이드|steroid|항우울|antidepressant|피임약|contraceptive/i.test(String(d)); });
+      var Q6_NM_MAP = { '0':'혈압약','1':'당뇨약','2':'갑상선약','3':'스테로이드','4':'항우울제','5':'없음' };
+      if (hasQ6Drug) {
+        var drugNms = q6Arr.filter(function(v){ return Number(v) < 5 && String(v) !== '5'; })
+                          .map(function(v){ return Q6_NM_MAP[String(v)] || '장기복용약'; });
+        flags.unshift({ icon:'💊', color:'#7a4a38', bg:'rgba(122,74,56,.08)',
+          label:'장기복용약 이력: ' + (drugNms.length > 0 ? drugNms.join('·') : '복용약 있음'),
+          detail: hasSteroidsB
+            ? '스테로이드/항우울제 복용 이력 — 인슐린 저항성·식욕 증가가 약물 유발 비만의 핵심 기전입니다. 약물 조정 없이는 식단·운동 효과가 절반 이하입니다.'
+            : '장기 복용 약물이 체중·대사에 영향을 줄 수 있습니다. 처방 시 복용약과의 상호작용을 고려하여 설계했습니다.' });
+      }
+
+      // Q7: 식욕억제제·GLP-1 이력
+      var q7rawB = s2['q7'] || s2['q7_appetite'] || s2['appetite_suppressant'] || '';
+      var hasGLP1 = /yes|있|복용|위고비|마운자로|삭센다|큐시미아/i.test(String(q7rawB));
+      if (hasGLP1) {
+        flags.unshift({ icon:'💉', color:'#c0397a', bg:'rgba(192,57,122,.07)',
+          label:'식욕억제제·GLP-1 복용 이력',
+          detail:'과거 GLP-1/식욕억제제 복용 이력이 확인됩니다. 반동 식욕 증가·내성 형성 패턴을 처방에 반영하여, 재처방 또는 비약물 대체 루틴을 설계합니다.' });
+      }
+
+      // Q9: 과거 시술
+      var q9rawB = s2['q9'] || s2['q9_procedures'] || s2['past_procedures'] || [];
+      if (typeof q9rawB === 'string') { try { q9rawB = JSON.parse(q9rawB); } catch(e){ q9rawB = []; } }
+      var q9Arr = Array.isArray(q9rawB) ? q9rawB : [];
+      var hasQ9Proc = q9Arr.length > 0 && !q9Arr.every(function(v){ return Number(v) === 5 || String(v) === 'none' || String(v) === '5'; });
+      var Q9_NM_MAP = { '0':'지방흡입','1':'지방분해주사','2':'리프팅','3':'실리프팅','4':'냉동지방분해','5':'없음' };
+      if (hasQ9Proc) {
+        var procNmsB = q9Arr.filter(function(v){ return Number(v) < 5 && String(v) !== '5'; })
+                           .map(function(v){ return Q9_NM_MAP[String(v)] || '비만시술'; });
+        flags.unshift({ icon:'✨', color:'#8a5a18', bg:'rgba(138,90,24,.07)',
+          label:'과거 시술 이력: ' + (procNmsB.length > 0 ? procNmsB.join('·') : '시술 이력 있음'),
+          detail:'기존 시술 부위의 지방 분포와 조직 상태를 고려하여 처방이 설계됩니다. 중복 시술이 아닌, 내부 대사 개선 중심으로 접근합니다.' });
+      }
+    })();
+    // ── [추가 끝] ──
+
     if (flags.length === 0) return; // 플래그 없으면 배너 없음
 
     // 배너 HTML 생성
     var bannerHTML = '<div class="p5-medical-banner" style="margin:0 0 18px;border-radius:12px;overflow:hidden;">' +
-      '<div style="background:rgba(139,109,181,.1);border-left:3px solid var(--vis);padding:10px 14px;font-size:12px;font-weight:700;color:var(--vis-d);letter-spacing:.04em;">🩺 개인 병력·건강 데이터 반영 완료</div>';
+      '<div style="background:rgba(139,109,181,.1);border-left:3px solid var(--vis);padding:10px 14px;font-size:12px;font-weight:700;color:var(--vis-d);letter-spacing:.04em;">🩺 개인 이력 ' + flags.length + '가지 반영 완료</div>';
 
     flags.forEach(function(f) {
       bannerHTML += '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;background:' + f.bg + ';border-left:3px solid ' + f.color + ';margin-top:2px;">' +
