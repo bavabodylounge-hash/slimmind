@@ -4939,6 +4939,67 @@ app.get('/api/h/result/:id', async (c) => {
   }
 })
 
+// ══════════════════════════════════════════════════════════════════
+// GET /api/h/programs — 병원 결과지에서 호출하는 공개 API
+// 쿼리: b2b_code (병원 코드) + bc_code (BC-N 형식)
+// BC 코드에 매칭된 시술 + 전체 공개 시술 반환 (인증 불필요)
+// ══════════════════════════════════════════════════════════════════
+app.get('/api/h/programs', async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json([], 500)
+
+  // 쿼리 파라미터 추출 & 정규화
+  const rawB2b  = (c.req.query('b2b_code') || '').trim().toUpperCase()
+  // BC-3:1 → BC-3 형식으로 정규화 (콜론+숫자 suffix 제거)
+  const rawBc   = (c.req.query('bc_code')  || '').trim()
+  const bcCode  = rawBc.replace(/:.*$/, '').trim()   // "BC-3:1" → "BC-3"
+
+  if (!rawB2b) return c.json([])
+
+  try {
+    // 파트너 존재 및 상태 확인
+    const partner = await db.prepare(
+      'SELECT code, status FROM b2b_partners WHERE code = ?'
+    ).bind(rawB2b).first<any>()
+
+    if (!partner || partner.status === 'suspended') {
+      return c.json([])
+    }
+
+    // 1) BC코드에 매칭된 전용 시술
+    const matched = bcCode
+      ? (await db.prepare(
+          `SELECT id, program_name AS name, price, description, tags, bc_tags,
+                  icon, color, category
+           FROM b2b_custom_programs
+           WHERE b2b_code = ? AND bc_tags LIKE ?
+           ORDER BY price ASC LIMIT 5`
+        ).bind(rawB2b, `%${bcCode}%`).all<any>()).results || []
+      : []
+
+    // 2) 전체 공개 시술 (bc_tags NULL/빈값/'ALL' 포함)
+    const general = (await db.prepare(
+      `SELECT id, program_name AS name, price, description, tags, bc_tags,
+              icon, color, category
+       FROM b2b_custom_programs
+       WHERE b2b_code = ?
+         AND (bc_tags IS NULL OR bc_tags = '' OR bc_tags LIKE '%ALL%')
+       ORDER BY price ASC LIMIT 5`
+    ).bind(rawB2b).all<any>()).results || []
+
+    // 중복 제거 후 합쳐서 최대 5개 반환
+    const matchedIds = new Set(matched.map((m: any) => m.id))
+    const deduped = [
+      ...matched,
+      ...general.filter((g: any) => !matchedIds.has(g.id))
+    ].slice(0, 5)
+
+    return c.json(deduped)
+  } catch(e) {
+    return c.json([])
+  }
+})
+
 // GET /result-hospital/:id — 병원용 결과지 HTML 서빙
 app.get('/result-hospital/:id', async (c) => {
   const id = c.req.param('id')

@@ -5752,9 +5752,11 @@ window.__HOSPITAL_INIT_PROMISE__ = (async function hospitalInit() {
     };
 
     // result-v4 loadData()가 읽는 window.__RESULT__ 구조로 변환
+    // BC 코드 정규화: "BC-3:1" 같은 콜론+숫자 suffix 제거 → "BC-3"
+    var _normBcCode = (json.bc_code || '').replace(/:.*$/, '').trim();
     window.__RESULT__ = {
-      bc_primary:      json.bc_code   || '',
-      bc_code:         json.bc_code   || '',
+      bc_primary:      _normBcCode   || '',
+      bc_code:         _normBcCode   || '',
       user_name:       json.user_name || '고객',
       ohaeng_type:     json.ohaeng_type || '',
       axis_scores:     ax,
@@ -11721,6 +11723,11 @@ function switchPage(num) {
   if (num === 10 && dailyFixed) dailyFixed.classList.add('active');
   window.scrollTo(0, 0);
   setTimeout(triggerAnim, 80);
+  // ── 탭 직접 클릭 시에도 페이지별 애니메이션 실행 ──
+  if (num === 1) {
+    setTimeout(function(){ if(typeof runCertReveal==='function') runCertReveal(); }, 200);
+    setTimeout(function(){ if(typeof countUpMetaAge==='function') countUpMetaAge(); }, 300);
+  }
   if (num === 2) setTimeout(animAxisBars, 300);
   if (num === 5) setTimeout(function(){ if(typeof ax11Replay==='function') ax11Replay(); }, 250);
   if (num === 8) setTimeout(function(){ if(typeof rxpReset==='function') rxpReset(); }, 300);
@@ -11728,6 +11735,7 @@ function switchPage(num) {
   if (num === 9) setTimeout(function(){ if(typeof renderLiveRecord==='function') renderLiveRecord(); }, 200);
   if (num === 7) setTimeout(p7AnimAgeCount, 400);
   if (num === 10) setTimeout(function(){ if(typeof renderDailyPage==='function') renderDailyPage(); }, 150);
+  if (num === 11) setTimeout(function(){ if(typeof renderP11==='function') renderP11(); }, 200);
 }
 
 function enterReport(num){
@@ -22431,7 +22439,8 @@ function renderP11(data) {
   // ── 기본 데이터 추출 ─────────────────────────────────────
   var ohaeng   = data.ohaeng_type || '토';
   // BC코드 정규화: WATER_HUMID → BC-1~BC-9 매핑
-  var _rawBcCode = data.bc_code || data.bc_primary || 'BC-6';
+  // "BC-3:1" 같은 콜론+숫자 suffix 제거 후 처리
+  var _rawBcCode = (data.bc_code || data.bc_primary || 'BC-6').replace(/:.*$/, '').trim();
   var BC_CODE_MAP = {
     'WOOD_DRY':'BC-1','WOOD_HUMID':'BC-2','FIRE_DRY':'BC-3','FIRE_HUMID':'BC-4',
     'EARTH_DRY':'BC-5','EARTH_HUMID':'BC-6','METAL_DRY':'BC-7','METAL_HUMID':'BC-8',
