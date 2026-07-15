@@ -12887,7 +12887,7 @@ function renderAll(data) {
   __TONE__ = getToneStyle(mbtiType, data.bloodType);
 
   renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nicknameDisplay, background,
-           isBorderline, borderlineDiff, secondaryBcCode, secondaryNickname, evidenceBadge);
+           isBorderline, borderlineDiff, secondaryBcCode, secondaryNickname, evidenceBadge, _s2);
 
   // ── B2B 화이트라벨: 브랜드 로고/이름/색상 결과지 전체 반영 ──
   if (window.__BRAND__) { applyB2BBrand(); }
@@ -12993,7 +12993,8 @@ function buildP4ToneOpening(nm, ohaengLabel, isFeeling) {
 
 /* ── P1 ── */
 function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nicknameDisplay, background,
-                 isBorderline, borderlineDiff, secondaryBcCode, secondaryNickname, evidenceBadge) {
+                 isBorderline, borderlineDiff, secondaryBcCode, secondaryNickname, evidenceBadge, s2) {
+  s2 = s2 || {};
   document.getElementById('p1-title').textContent = `${userName}님의 바디코드 리포트`;
   // V3.1: 닉네임 우선 표시 (BC번호 대신)
   const nickEl = document.getElementById('p1-nickname');
@@ -13050,6 +13051,51 @@ function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nic
         </span>
       </div>`);
   }
+
+  // ── [추가] P1: 1차 Q3/Q5 촉진 결과 + 2차 Q2 부모체형 → BC코드 근거 서술 ──
+  (function() {
+    var heroCard = document.querySelector('.bc-hero-card');
+    if (!heroCard) return;
+
+    // Q3: 배꼽 아래 촉진 결과 (0=물렁물렁부종, 1=딱딱지방, 2=탄탄근육, 3=울퉁불퉁셀룰라이트)
+    var q3raw = s2['q3'] || s2['q3_touch'] || s2['touch'] || '';
+    var q3val = -1;
+    if (Array.isArray(q3raw)) { q3val = q3raw[0] !== undefined ? Number(q3raw[0]) : -1; }
+    else if (typeof q3raw === 'string' && q3raw !== '') { q3val = Number(q3raw); }
+    var Q3_DESC = [
+      '복부 질감이 물렁물렁한 부종형으로 확인 — 림프·순환 축 비중이 높습니다.',
+      '복부 질감이 단단한 지방형으로 확인 — 인슐린·내장지방 축이 주요 원인입니다.',
+      '복부 근육이 탄탄한 편 — 코르티솔·스트레스 축 또는 골격 문제를 우선 확인합니다.',
+      '복부에 셀룰라이트가 뚜렷 — 림프 울체와 에스트로겐 불균형이 복합 작용합니다.'
+    ];
+
+    // Q5: 탄력 측정 (0=심한셀룰라이트, 1=약간셀룰라이트, 2=부드러운지방, 3=탄탄한편)
+    var q5raw_p1 = s2['q5_elasticity'] || s2['q5'] || s2['elasticity'] || '';
+    // P1의 Q5는 1차 설문 항목이지만 s2(2차)로 접근 시 키가 다를 수 있음. 별도 키 확인
+    var q5p1raw = s2['q5_touch'] || s2['q5_cellu'] || '';
+    var q5p1val = -1;
+    if (typeof q5p1raw === 'string' && q5p1raw !== '') { q5p1val = Number(q5p1raw); }
+
+    // Q2: 부모 체형 (0=상체, 1=하체, 2=복부, 3=균형, 4=모름)
+    var q2raw_p1 = s2['q2'] || s2['q2_parent'] || '';
+    var q2val_p1 = -1;
+    if (Array.isArray(q2raw_p1)) { q2val_p1 = q2raw_p1[0] !== undefined ? Number(q2raw_p1[0]) : -1; }
+    else if (typeof q2raw_p1 === 'string' && q2raw_p1 !== '') { q2val_p1 = Number(q2raw_p1); }
+    var PARENT_LABELS_P1 = ['상체 비만형','하체 비만형','복부 비만형','균형 체형'];
+    var parentLabel_p1 = PARENT_LABELS_P1[q2val_p1] || '';
+
+    var evidenceLines = [];
+    if (q3val >= 0 && Q3_DESC[q3val]) evidenceLines.push('🤚 ' + Q3_DESC[q3val]);
+    if (parentLabel_p1 && q2val_p1 < 4) evidenceLines.push('👨‍👩‍👧 부모님 체형이 ' + parentLabel_p1 + '으로 확인 — 유전 체형 경향이 일치합니다.');
+
+    if (evidenceLines.length > 0) {
+      var evidEl = document.createElement('div');
+      evidEl.style.cssText = 'margin:0 0 18px;padding:12px 14px;background:rgba(100,80,160,.06);border:1px solid rgba(100,80,160,.18);border-radius:12px;';
+      evidEl.innerHTML = '<div style="font-size:10px;font-weight:800;letter-spacing:.8px;color:#7a60b0;margin-bottom:8px;">📋 BC코드 판정 근거</div>'
+        + evidenceLines.map(function(l){ return '<div style="font-size:12px;color:#4a3880;line-height:1.6;margin-bottom:4px;">' + l + '</div>'; }).join('');
+      heroCard.parentNode.insertBefore(evidEl, heroCard.nextSibling);
+    }
+  })();
 
   // ── V4.2: 경계형 경고 배지 삽입 ─────────────────────────────
   if (isBorderline && secondaryBcCode) {
@@ -13885,6 +13931,36 @@ function renderP3(userName, bcCode, bcMaster, ohaengKey, ohaeng, mbtiType, mbti,
     // p3-insights 컨테이너 다음에 삽입
     var insightsEl = document.getElementById('p3-insights');
     if (insightsEl) insightsEl.insertAdjacentHTML('afterend', cardHTML);
+  })();
+
+  // ── [추가] P3: Q1 가족력 × 오행 유전 경향 카드 ──────────────────
+  (function() {
+    var q1raw_p3 = s2['q1'] || s2['q1_family'] || '';
+    var q1val_p3 = -1;
+    if (Array.isArray(q1raw_p3)) { q1val_p3 = q1raw_p3[0] !== undefined ? Number(q1raw_p3[0]) : -1; }
+    else if (typeof q1raw_p3 === 'string' && q1raw_p3 !== '') { q1val_p3 = Number(q1raw_p3); }
+    if (q1val_p3 !== 0) return; // 가족력 없으면 스킵
+
+    // 오행별 가족력 유전 경향 해석
+    var FAMILY_OHAENG_MAP = {
+      '목': { organ:'간·담낭', tendency:'지방간·고지혈 가족력이 있으면 목(木) 기질에서 간 해독 부하가 가중됩니다. 당류·포화지방 제한이 우선입니다.' },
+      '화': { organ:'심장·혈관', tendency:'고혈압·심혈관 가족력이 있으면 화(火) 기질의 흥분·과부하 성향과 맞물려 혈압 관리가 핵심입니다. 나트륨 제한과 이완 루틴을 강화합니다.' },
+      '토': { organ:'비위·췌장', tendency:'당뇨·고혈당 가족력이 있으면 토(土) 기질의 소화 의존 패턴이 인슐린 저항으로 이어질 수 있습니다. 저GI 식단이 필수입니다.' },
+      '금': { organ:'폐·대장', tendency:'대장·폐 관련 가족력이 있으면 금(金) 기질의 긴장형 대사가 장내 환경에 영향을 줍니다. 식이섬유·프로바이오틱스 강화를 권장합니다.' },
+      '수': { organ:'신장·방광', tendency:'신장·부신 가족력이 있으면 수(水) 기질의 수분 조절 기능이 더 취약해집니다. 나트륨 조절과 충분한 수분 섭취가 중요합니다.' },
+    };
+    var ohaengKey_p3 = ohaengKey;
+    var ohaengMap = FAMILY_OHAENG_MAP[ohaengKey_p3] || null;
+    if (!ohaengMap) return;
+
+    var familyCardHTML = '<div style="margin:16px 0 0;padding:14px 16px;background:rgba(160,100,60,.06);border:1px solid rgba(160,100,60,.2);border-radius:14px;">'
+      + '<div style="font-size:11px;font-weight:700;color:#a06040;letter-spacing:.06em;margin-bottom:6px;">🧬 가족력 × ' + ohaengKey_p3 + '(木·火·土·金·水) 기질 유전 경향</div>'
+      + '<div style="font-size:12px;font-weight:800;color:#6a3a20;margin-bottom:5px;">관련 장기: ' + ohaengMap.organ + '</div>'
+      + '<div style="font-size:13px;color:#5a3020;line-height:1.7;">' + ohaengMap.tendency + '</div>'
+      + '</div>';
+
+    var lockEl = document.getElementById('p3-lock-mount');
+    if (lockEl) lockEl.insertAdjacentHTML('beforebegin', familyCardHTML);
   })();
 
   // ── 기질 마무리 멘트 + 한 장 요약 연결 (업셀 제거) ──
@@ -23630,6 +23706,115 @@ function renderP11(data) {
   // Q12: 갱년기
   var isMenopause = !!cond.menopause;
 
+  // ── [추가] 2차 설문 전체 문항 파싱 (DESIGN_ROADMAP P11 완전 매핑) ──
+
+  // Q1: 가족력 (0=대사질환 있음, 1=없음/모름)
+  var q1raw = stage2['q1'] || stage2['q1_family'] || '';
+  var q1val = -1;
+  if (Array.isArray(q1raw)) { q1val = q1raw[0] !== undefined ? Number(q1raw[0]) : -1; }
+  else if (typeof q1raw === 'string' && q1raw !== '') { q1val = Number(q1raw); }
+  var hasFamilyRisk = (q1val === 0); // 가족력 있음
+
+  // Q2: 부모 체형 (0=상체비만, 1=하체비만, 2=복부비만, 3=균형있음, 4=모름)
+  var q2raw = stage2['q2'] || stage2['q2_parent'] || '';
+  var q2val = -1;
+  if (Array.isArray(q2raw)) { q2val = q2raw[0] !== undefined ? Number(q2raw[0]) : -1; }
+  else if (typeof q2raw === 'string' && q2raw !== '') { q2val = Number(q2raw); }
+  var PARENT_SHAPE_LABELS = ['상체 비만형','하체 비만형','복부 비만형','균형 체형','모름'];
+  var parentShapeLabel = PARENT_SHAPE_LABELS[q2val] || '';
+
+  // Q3: 진단 질환 (배열: 0=다낭성난소, 1=당뇨전단계/당뇨, 2=갑상선기능저하, 3=지방간/고지혈, 4=고혈압, 5=없음)
+  var q3raw = stage2['q3'] || stage2['q3_disease'] || [];
+  if (typeof q3raw === 'string') { try { q3raw = JSON.parse(q3raw); } catch(e){ q3raw = []; } }
+  var q3Idxs = Array.isArray(q3raw) ? q3raw.map(Number) : [];
+  var DISEASE_LABELS = ['다낭성난소증후군','당뇨전단계·당뇨','갑상선기능저하','지방간·고지혈증','고혈압'];
+  var diseaseLabels = q3Idxs.filter(function(i){ return i < 5; }).map(function(i){ return DISEASE_LABELS[i]; }).filter(Boolean);
+  var hasDiagnosis = diseaseLabels.length > 0;
+  var hasPCOS = q3Idxs.indexOf(0) >= 0;
+  var hasDiabetes = q3Idxs.indexOf(1) >= 0;
+  var hasThyroid = q3Idxs.indexOf(2) >= 0;
+
+  // Q4: 건강검진 소견 (배열: 0=혈당, 1=혈압, 2=간수치, 3=콜레스테롤, 4=갑상선, 5=없음)
+  var q4raw = stage2['q4'] || stage2['q4_checkup'] || [];
+  if (typeof q4raw === 'string') { try { q4raw = JSON.parse(q4raw); } catch(e){ q4raw = []; } }
+  var q4Idxs = Array.isArray(q4raw) ? q4raw.map(Number) : [];
+  var Q4_LABELS = ['공복혈당 경계·상승','혈압 경계·상승','간수치 상승','콜레스테롤 경계','갑상선 수치 이상'];
+  var checkupLabels = q4Idxs.filter(function(i){ return i < 5; }).map(function(i){ return Q4_LABELS[i]; }).filter(Boolean);
+  var hasCheckupAlert = checkupLabels.length > 0;
+
+  // Q5: 손발냉증 (0=심하다, 1=약간, 2=없음)
+  var q5raw = stage2['q5'] || stage2['q5_cold'] || '';
+  var q5val = -1;
+  if (Array.isArray(q5raw)) { q5val = q5raw[0] !== undefined ? Number(q5raw[0]) : -1; }
+  else if (typeof q5raw === 'string' && q5raw !== '') { q5val = Number(q5raw); }
+  var hasColdLimbs = (q5val === 0 || q5val === 1);
+  var coldLimbsLabel = q5val === 0 ? '심한 수족냉증' : q5val === 1 ? '경미한 수족냉증' : '';
+
+  // Q6: 장기 복용약 (배열: 0=스테로이드, 1=항우울제/신경안정제, 2=호르몬제, 3=항고혈압, 4=기타, 5=없음)
+  var q6raw = stage2['q6'] || stage2['q6_meds'] || [];
+  if (typeof q6raw === 'string') { try { q6raw = JSON.parse(q6raw); } catch(e){ q6raw = []; } }
+  var q6Idxs = Array.isArray(q6raw) ? q6raw.map(Number) : [];
+  var MED_LABELS = ['스테로이드','항우울제·신경안정제','호르몬제','항고혈압제','기타 장기복용약'];
+  var medLabels = q6Idxs.filter(function(i){ return i < 5; }).map(function(i){ return MED_LABELS[i]; }).filter(Boolean);
+  var hasMeds = medLabels.length > 0;
+  var hasSteroid = q6Idxs.indexOf(0) >= 0;
+  var hasAntidepressant = q6Idxs.indexOf(1) >= 0;
+
+  // Q10: 체중 궤적(요요) (0=올랐다내렸다반복, 1=꾸준히증가, 2=최근갑자기, 3=거의변화없음)
+  var q10raw = stage2['q10'] || stage2['q10_weight_history'] || '';
+  var q10val = -1;
+  if (Array.isArray(q10raw)) { q10val = q10raw[0] !== undefined ? Number(q10raw[0]) : -1; }
+  else if (typeof q10raw === 'string' && q10raw !== '') { q10val = Number(q10raw); }
+  var hasYoyo = (q10val === 0); // 요요 반복
+  var WEIGHT_HISTORY_LABELS = ['요요 반복형','꾸준한 증가형','최근 급증형','거의 변화 없음'];
+  var weightHistoryLabel = WEIGHT_HISTORY_LABELS[q10val] || '';
+
+  // Q11: 출산/군대 이력 (0=출산 경험 있음, 1=군대 있음, 2=해당없음)
+  var q11raw = stage2['q11'] || stage2['q11_birth'] || '';
+  var q11val = -1;
+  if (Array.isArray(q11raw)) { q11val = q11raw[0] !== undefined ? Number(q11raw[0]) : -1; }
+  else if (typeof q11raw === 'string' && q11raw !== '') { q11val = Number(q11raw); }
+  var hasBirth = (q11val === 0);
+  var hasMilitary = (q11val === 1);
+
+  // Q13: 흡연 (0=흡연 중, 1=금연함, 2=비흡연)
+  var q13raw = stage2['q13'] || stage2['q13_smoke'] || '';
+  var q13val = -1;
+  if (Array.isArray(q13raw)) { q13val = q13raw[0] !== undefined ? Number(q13raw[0]) : -1; }
+  else if (typeof q13raw === 'string' && q13raw !== '') { q13val = Number(q13raw); }
+  var isSmoking = (q13val === 0);
+  var isExSmoker = (q13val === 1);
+
+  // Q14: 음주 빈도 (0=거의안마심, 1=월1~2, 2=주1~2, 3=주3~4, 4=매일)
+  var q14raw = stage2['q14'] || stage2['q14_alcohol'] || '';
+  var q14val = -1;
+  if (Array.isArray(q14raw)) { q14val = q14raw[0] !== undefined ? Number(q14raw[0]) : -1; }
+  else if (typeof q14raw === 'string' && q14raw !== '') { q14val = Number(q14raw); }
+  var isHeavyDrinker11 = (q14val >= 3);
+  var DRINK_LABELS = ['거의 안 마심','월 1~2회','주 1~2회','주 3~4회','매일'];
+  var drinkLabel = DRINK_LABELS[q14val] || '';
+
+  // Q16: 옷 사이즈 (0=S이하, 1=M, 2=L, 3=XL, 4=2XL이상)
+  var q16raw = stage2['q16'] || stage2['q16_size'] || '';
+  var q16val = -1;
+  if (Array.isArray(q16raw)) { q16val = q16raw[0] !== undefined ? Number(q16raw[0]) : -1; }
+  else if (typeof q16raw === 'string' && q16raw !== '') { q16val = Number(q16raw); }
+  var SIZE_LABELS = ['S (55 이하)','M (66)','L (77)','XL (88)','2XL 이상'];
+  var currentSizeLabel = SIZE_LABELS[q16val] || '';
+
+  // ── 위험도 종합 점수 계산 (DESIGN_ROADMAP Phase 5) ──
+  var riskScore11 = 0;
+  if (hasFamilyRisk) riskScore11 += 2;
+  if (hasDiabetes) riskScore11 += 3;
+  if (hasPCOS) riskScore11 += 2;
+  if (hasThyroid) riskScore11 += 2;
+  if (hasCheckupAlert) riskScore11 += q4Idxs.filter(function(i){ return i < 5; }).length;
+  if (isSmoking) riskScore11 += 1;
+  if (isHeavyDrinker11) riskScore11 += 2;
+  if (hasMeds) riskScore11 += 1;
+  var riskLevel11 = riskScore11 >= 6 ? '즉시개선' : riskScore11 >= 3 ? '경고' : riskScore11 >= 1 ? '주의' : '양호';
+  var riskColor11 = riskScore11 >= 6 ? '#c0392b' : riskScore11 >= 3 ? '#e67e22' : riskScore11 >= 1 ? '#f39c12' : '#27ae60';
+
   // Q9: 과거 시술 이력 (원시 배열 인덱스 혹은 문자열)
   var PROC_OPTS = ['지방흡입','지방분해 주사·시술','리프팅 (실·레이저·초음파)','보톡스·필러','복부성형 (복벽 교정)','체형 관련 수술은 없어요'];
   var q9raw = stage2['q9'] || stage2['q9_procedures'] || stage2['past_procedures'] || [];
@@ -23975,6 +24160,108 @@ function renderP11(data) {
       diffHTML += '</div>';
     }
 
+    diffHTML += '</div>';
+  }
+
+  // ── [추가] 처방전 프로필 요약 카드 (2차 설문 전체 반영) ──────────────
+  var profileItems = [];
+  if (parentShapeLabel && q2val >= 0 && q2val < 4) {
+    profileItems.push({ icon:'👨‍👩‍👧', label:'부모 체형 경향', val: parentShapeLabel + ' — 유전 체형 패턴이 처방에 반영됩니다.' });
+  }
+  if (weightHistoryLabel) {
+    profileItems.push({ icon: hasYoyo ? '🔄' : '📈', label:'체중 변화 패턴', val: weightHistoryLabel + (hasYoyo ? ' — 요요 차단 처방이 최우선입니다.' : '') });
+  }
+  if (hasBirth) {
+    profileItems.push({ icon:'🤱', label:'출산 이력', val:'출산 후 복벽 이완·골반 변형 고려 — 복근 운동 순서와 강도를 조정합니다.' });
+  }
+  if (hasMilitary) {
+    profileItems.push({ icon:'🪖', label:'군복무 이력', val:'군복무 후 근감소·대사 변화 패턴 — 근육량 회복을 처방 우선순위로 설계합니다.' });
+  }
+  if (currentSizeLabel) {
+    profileItems.push({ icon:'👗', label:'현재 사이즈', val: currentSizeLabel + (targetW > 0 ? ' → 목표 ' + targetW + 'kg 달성 시 1~2사이즈 개선 예상' : '') });
+  }
+
+  if (profileItems.length > 0) {
+    diffHTML += '<div class="p11-bc-card" style="border:1px solid rgba(74,120,120,.2);background:rgba(74,120,120,.04);margin-top:10px;">'
+      + '<div class="p11-bc-label" style="color:#2d7070;">📋 ' + esc2(userName) + '님 맞춤 처방 배경</div>'
+      + '<div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">';
+    profileItems.forEach(function(pi) {
+      diffHTML += '<div style="display:flex;gap:8px;align-items:flex-start;">'
+        + '<span style="font-size:1.1rem;line-height:1.3;">' + pi.icon + '</span>'
+        + '<div><span style="font-size:.75rem;font-weight:800;color:#3a8080;letter-spacing:.3px;">' + pi.label + '</span>'
+        + '<br><span style="font-size:.82rem;color:#4a6060;line-height:1.5;">' + pi.val + '</span></div></div>';
+    });
+    diffHTML += '</div></div>';
+  }
+
+  // ── [추가] 주의사항 카드 (진단질환·복용약·건강검진·가족력·흡연·음주) ──
+  var cautionItems = [];
+  if (hasFamilyRisk) {
+    cautionItems.push({ icon:'🧬', label:'대사질환 가족력', body:'혈당·혈압·지질 관리를 처방 최우선으로 설계합니다. 유전적 대사 취약점을 고려한 식단을 적용합니다.' });
+  }
+  if (hasDiagnosis) {
+    diseaseLabels.forEach(function(dl) {
+      var cautionBody = '';
+      if (dl === '다낭성난소증후군') cautionBody = '인슐린 저항성이 핵심 — 당분 제한·저GI 식단이 필수입니다. 과도한 유산소는 오히려 코르티솔을 높일 수 있어 근력 위주로 설계합니다.';
+      else if (dl === '당뇨전단계·당뇨') cautionBody = '혈당 스파이크 차단이 최우선 — 탄수화물 분배와 식사 순서를 처방에 명시합니다.';
+      else if (dl === '갑상선기능저하') cautionBody = '기초대사량이 낮은 상태 — 요오드 섭취 주의, 과도한 생 십자화과 채소 제한. 처방 강도를 단계적으로 설계합니다.';
+      else if (dl === '지방간·고지혈증') cautionBody = '간 기능 부하 최소화 — 포화지방·알코올 제한, 오메가3·식이섬유 강화 처방을 적용합니다.';
+      else if (dl === '고혈압') cautionBody = '나트륨 제한·DASH 식단 패턴 적용. 고강도 무산소 운동은 단계적으로 진입합니다.';
+      if (cautionBody) cautionItems.push({ icon:'⚕️', label: dl + ' 주의', body: cautionBody });
+    });
+  }
+  if (hasCheckupAlert) {
+    cautionItems.push({ icon:'🩺', label:'건강검진 소견: ' + checkupLabels.join('·'), body:'해당 수치 개선이 처방 목표에 포함됩니다. 의사 소견 기반으로 처방 강도를 조정합니다.' });
+  }
+  if (hasMeds) {
+    var medCaution = hasSteroid ? '스테로이드 복용 중: 인슐린 저항성·부종 증가 가능. ' : '';
+    medCaution += hasAntidepressant ? '항우울제 복용 중: 식욕 조절 회로 영향 가능. ' : '';
+    cautionItems.push({ icon:'💊', label:'장기 복용약: ' + medLabels.join('·'), body: medCaution + '처방 전 담당 의사와 상의 후 적용을 권장합니다.' });
+  }
+  if (isSmoking) {
+    cautionItems.push({ icon:'🚭', label:'흡연 중', body:'코르티솔 만성 자극으로 복부 내장지방 축적 위험이 높습니다. 금연 병행 시 복부 지방 감소 효율이 2배 이상 향상됩니다.' });
+  } else if (isExSmoker) {
+    cautionItems.push({ icon:'✅', label:'금연 이력', body:'금연 후 기초대사 저하로 체중이 증가했을 수 있습니다. 처방에 대사 회복 루틴을 포함합니다.' });
+  }
+  if (isHeavyDrinker11) {
+    cautionItems.push({ icon:'🍺', label:'음주 ' + drinkLabel, body:'음주 후 간의 지방 산화 억제로 식단 효과가 절반 이하로 떨어집니다. 음주 전후 간 보호 루틴을 처방에 포함합니다.' });
+  }
+
+  if (cautionItems.length > 0) {
+    diffHTML += '<div class="p11-bc-card" style="border:1px solid rgba(192,78,50,.2);background:rgba(192,78,50,.04);margin-top:10px;">'
+      + '<div class="p11-bc-label" style="color:#b05030;">⚠️ 처방 시 주의사항 ('
+      + (riskLevel11 === '즉시개선' ? '🔴 즉시 개선 필요' : riskLevel11 === '경고' ? '🟠 경고 단계' : '🟡 주의 단계') + ')</div>'
+      + '<div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">';
+    cautionItems.forEach(function(ci) {
+      diffHTML += '<div style="display:flex;gap:8px;align-items:flex-start;padding:6px 8px;background:rgba(192,78,50,.06);border-radius:6px;">'
+        + '<span style="font-size:1.1rem;line-height:1.3;">' + ci.icon + '</span>'
+        + '<div><span style="font-size:.75rem;font-weight:800;color:#a04020;letter-spacing:.3px;">' + ci.label + '</span>'
+        + '<br><span style="font-size:.82rem;color:#6a4030;line-height:1.5;">' + ci.body + '</span></div></div>';
+    });
+    diffHTML += '</div></div>';
+  }
+
+  // ── [추가] 증상 시간대 처방 요약 (Stage3 히트맵 반영) ──────────────
+  if (hasNightPattern && topNightSymptom) {
+    var hmPrescMap = {
+      hungry: { time:'저녁·야간', rx:'오전 고단백 식사 강화 → 저녁 혈당 완충', icon:'🌙' },
+      bloat:  { time:'저녁·야간', rx:'저녁 나트륨·탄수화물 제한 + 취침 전 스트레칭', icon:'💧' },
+      tired:  { time:'저녁·야간', rx:'마그네슘·B군 저녁 보충 + 회복 루틴 배치', icon:'😴' },
+      sleep:  { time:'야간',      rx:'L-테아닌 + 수면 위생 프로토콜 처방', icon:'🌛' },
+      pain:   { time:'저녁·야간', rx:'이완 스트레칭 + 온열 요법 저녁 루틴', icon:'🔥' },
+      gut:    { time:'저녁',      rx:'저녁 식이섬유 강화 + 프로바이오틱스 취침 전', icon:'🫁' },
+    };
+    var hm = hmPrescMap[topNightSymptom.key] || { time:'야간', rx:'야간 루틴 개선', icon:'⏰' };
+    diffHTML += '<div class="p11-bc-card" style="border:1px solid rgba(74,74,160,.2);background:rgba(74,74,160,.04);margin-top:10px;">'
+      + '<div class="p11-bc-label" style="color:#4040a0;">🕐 증상 시간대 맞춤 처방 포인트</div>'
+      + '<div style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;">'
+      + '<span style="font-size:1.2rem;">' + hm.icon + '</span>'
+      + '<div><span style="font-size:.8rem;font-weight:800;color:#5050b0;">' + topNightSymptom.label + '이(가) ' + hm.time + '에 집중 발생</span>'
+      + '<br><span style="font-size:.82rem;color:#4a4a80;line-height:1.5;">→ ' + hm.rx + '</span></div></div>';
+    if (nightSymptoms.length > 1) {
+      diffHTML += '<div style="font-size:.75rem;color:#8080b0;margin-top:4px;">추가 야간 증상: '
+        + nightSymptoms.slice(1).map(function(s){ return s.label; }).join('·') + '</div>';
+    }
     diffHTML += '</div>';
   }
 
