@@ -5792,6 +5792,8 @@ window.__HOSPITAL_INIT_PROMISE__ = (async function hospitalInit() {
       _zone:           (json.raw_answers && json.raw_answers.desire && json.raw_answers.desire.zone) ? json.raw_answers.desire.zone : '',
       // ── 목표체중 (raw_answers.goal_weight 또는 stage2에서) ──
       _goalWeight:     (json.raw_answers && json.raw_answers.goal_weight) ? parseFloat(json.raw_answers.goal_weight) : (json.target_weight ? parseFloat(json.target_weight) : 0),
+      // ── raw_answers 전달 (loadData() 폴백 체인용) ──
+      raw_answers:     json.raw_answers || null,
     };
     console.log('[hospital] P11 조건 파싱 완료 | BMI:', _bmi, '| 갱년기:', _isMenopause, '| 과거시술:', _pastProcedures, '| 조건:', _conditions);
   } catch(err) {
@@ -11974,12 +11976,15 @@ function loadData() {
       top_axes: Array.isArray(r.top_axes) ? r.top_axes : [],
       axis_primary: r.axis_primary || '',
       // 오행: __RESULT__.ohaeng_type 우선 → raw_answers.pfProfile.saju 폴백
-      ohaengType: r.ohaeng_type
-                  || (r.raw_answers && r.raw_answers.pfProfile && r.raw_answers.pfProfile.saju)
+      // 주의: 빈 문자열도 폴백으로 처리
+      ohaengType: (r.ohaeng_type && r.ohaeng_type.length ? r.ohaeng_type : null)
+                  || (r.raw_answers && r.raw_answers.pfProfile && r.raw_answers.pfProfile.saju ? r.raw_answers.pfProfile.saju : null)
                   || '',
-      // MBTI: __RESULT__.mbti 우선(mbti_full에서 주입됨) → mbti_full 직접 → raw_answers.pfProfile.mbti 폴백
-      mbtiType: r.mbti || r.mbti_full
-                || (r.raw_answers && r.raw_answers.pfProfile && r.raw_answers.pfProfile.mbti)
+      // MBTI: __RESULT__.mbti 우선(mbti_full에서 주입됨) → mbti_full → raw_answers.pfProfile.mbti 폴백
+      // 주의: 빈 문자열도 폴백으로 처리하기 위해 || 체인 사용
+      mbtiType: (r.mbti && r.mbti.length === 4 ? r.mbti : null)
+                || (r.mbti_full && r.mbti_full.length === 4 ? r.mbti_full : null)
+                || (r.raw_answers && r.raw_answers.pfProfile && r.raw_answers.pfProfile.mbti ? r.raw_answers.pfProfile.mbti : null)
                 || '',
       bloodType: r.blood_type || '',
       saju_il_gan: r.saju_il_gan || '',
@@ -12608,7 +12613,10 @@ function loadBodyTypeStats(){ /* 제거됨 */ }
 /* ===== /기능 5 ===== */
 
 function renderAll(data) {
-  const { userName='고객', axisScores={}, ohaengType='목', mbtiType='INFP' } = data;
+  // 빈 문자열도 기본값으로 처리 (구조분해 기본값은 undefined에만 적용되므로 별도 처리)
+  let { userName='고객', axisScores={}, ohaengType, mbtiType } = data;
+  ohaengType = (ohaengType && ohaengType.length) ? ohaengType : '목';
+  mbtiType   = (mbtiType   && mbtiType.length === 4) ? mbtiType : 'INFP';
   const answers = data.answers || {}; try{ injectCoverInfo(userName, data.consultant_name || ''); }catch(e){}
 
   // V4.2: computeBCCodeSafe → TIER2 evidence badge + TIER3 경계형 처리 포함
