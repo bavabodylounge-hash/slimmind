@@ -5747,6 +5747,34 @@ window.__HOSPITAL_INIT_PROMISE__ = (async function hospitalInit() {
     // 13=종아리(0=발목굵고부음, 1=근육질, 2=가늘)
     // 14=옆모습(0=잘록, 1=일자통짜, 2=아랫배볼록, 3=배전체앞으로)
 
+    // ── specState 파싱 (q15 키·체중·목표체중·골격근량·체지방률, q16 허리사이즈)
+    // raw_answers.specState 구조: {15:{kh,kw,kg,km,kf:{v,t}}, 16:{sz,tg:{v,t},fit}}
+    // t===true 인 값만 실제 사용자가 입력한 값으로 취급
+    var _specStateRaw = (json.raw_answers && json.raw_answers.specState) || {};
+    if (typeof _specStateRaw === 'string') { try { _specStateRaw = JSON.parse(_specStateRaw); } catch(e){ _specStateRaw = {}; } }
+    var _spec15 = _specStateRaw['15'] || _specStateRaw[15] || {};
+    var _spec16 = _specStateRaw['16'] || _specStateRaw[16] || {};
+    // 실제 터치(입력)한 값만 추출 (t===true인 경우만 유효)
+    var _specHeight  = (_spec15.kh && _spec15.kh.t) ? parseFloat(_spec15.kh.v) || 0 : 0;
+    var _specWeight  = (_spec15.kw && _spec15.kw.t) ? parseFloat(_spec15.kw.v) || 0 : 0;
+    var _specGoalWt  = (_spec15.kg && _spec15.kg.t) ? parseFloat(_spec15.kg.v) || 0 : 0;
+    var _specMuscle  = (_spec15.km && _spec15.km.t) ? parseFloat(_spec15.km.v) || 0 : 0;
+    var _specBodyFat = (_spec15.kf && _spec15.kf.t) ? parseFloat(_spec15.kf.v) || 0 : 0;
+    var _specWaist   = (_spec16.sz && _spec16.sz.t) ? parseFloat(_spec16.sz.v) || 0 : 0;
+    var _specGoalWaist = (_spec16.tg && _spec16.tg.t) ? parseFloat(_spec16.tg.v) || 0 : 0;
+    var _specFit     = (_spec16.fit !== undefined) ? Number(_spec16.fit) : -1; // 0=꽉껴,1=딱맞음,2=여유
+    // specState 기반 BMI 재계산 (스펙 입력값이 있으면 우선 사용)
+    var _specBMI = 0;
+    if (_specHeight > 0 && _specWeight > 0) {
+      _specBMI = Math.round(_specWeight / ((_specHeight/100)*(_specHeight/100)) * 10) / 10;
+    }
+    // 목표 감량 kg
+    var _specLossKg = (_specWeight > 0 && _specGoalWt > 0 && _specWeight > _specGoalWt)
+      ? Math.round((_specWeight - _specGoalWt) * 10) / 10 : 0;
+    // 허리 감량 인치
+    var _specWaistLoss = (_specWaist > 0 && _specGoalWaist > 0 && _specWaist > _specGoalWaist)
+      ? Math.round((_specWaist - _specGoalWaist) * 10) / 10 : 0;
+
     // stage3_answers 파싱 (히트맵 원시 응답: {bloat:[0,1,...], tired:[...], ...})
     var s3 = json.stage3_answers || {};
     if (typeof s3 === 'string') { try { s3 = JSON.parse(s3); } catch(e){ s3 = {}; } }
@@ -5858,6 +5886,19 @@ window.__HOSPITAL_INIT_PROMISE__ = (async function hospitalInit() {
       raw_answers:     json.raw_answers || null,
       // ── stage1 외형 촉진 응답 (숫자키: {1:선택지인덱스, ...}) ──
       _stage1:         s1,
+      // ── specState: q15(키·체중·목표체중·골격근량·체지방률), q16(허리사이즈·핏감) ──
+      _specState:      _specStateRaw,
+      _specHeight:     _specHeight,   // cm (0=미입력)
+      _specWeight:     _specWeight,   // kg (0=미입력)
+      _specGoalWt:     _specGoalWt,   // 목표체중 kg (0=미입력)
+      _specMuscle:     _specMuscle,   // 골격근량 kg (0=미입력)
+      _specBodyFat:    _specBodyFat,  // 체지방률 % (0=미입력)
+      _specWaist:      _specWaist,    // 현재 허리 인치 (0=미입력)
+      _specGoalWaist:  _specGoalWaist,// 목표 허리 인치 (0=미입력)
+      _specFit:        _specFit,      // 핏감: 0=꽉껴,1=딱맞음,2=여유,-1=미입력
+      _specBMI:        _specBMI,      // specState 기반 BMI (0=계산불가)
+      _specLossKg:     _specLossKg,   // 목표 감량 kg
+      _specWaistLoss:  _specWaistLoss,// 목표 허리 감량 인치
       // ── answers 필드: loadData()가 answers['Q02']/answers['Q_MENOPAUSE'] 읽기 위해 필요 ──
       // s2(stage2_answers) 기반으로 성별/갱년기/기타 항목 매핑
       answers: (function() {
@@ -14505,8 +14546,30 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
     var q9raw = getVal(['q9','q9_procedures','past_procedures'], []);
     if (typeof q9raw === 'string') { try { q9raw = JSON.parse(q9raw); } catch(e){ q9raw = q9raw ? [q9raw] : []; } }
     window._p5_q9 = Array.isArray(q9raw) ? q9raw : [];
-    // Q10: 체중궤적 (0=계속증가, 1=요요, 2=최근급증, 3=변화없음)
-    window._p5_q10 = getNum(['q10','q10_history']);
+    // Q10: 체중궤적 — wtline input으로 {pat, cyc, amp, net, series} 객체로 저장됨
+    // pat: 'yoyo'(요요반복), 'jump'(최근급증), 'creep'(서서히증가), 'down'(감소중), 'stable'(안정)
+    // 숫자 인덱스 폴백: 0=계속증가, 1=요요, 2=최근급증, 3=변화없음
+    (function parseQ10() {
+      var raw = s2['q10'] || s2[10] || s2['q10_history'] || null;
+      if (raw === null || raw === undefined || raw === '') {
+        window._p5_q10 = -1; window._p5_q10pat = ''; return;
+      }
+      // 객체 형태 {pat:'yoyo', ...}
+      if (typeof raw === 'object' && !Array.isArray(raw) && raw.pat) {
+        window._p5_q10pat = raw.pat;   // 'yoyo','jump','creep','down','stable'
+        window._p5_q10cyc = raw.cyc || 0;
+        window._p5_q10amp = raw.amp || 0;
+        // pat → 숫자 인덱스 매핑 (buildEvidence 기존 로직 호환)
+        var PAT_IDX = {creep:0, yoyo:1, jump:2, stable:3, down:3};
+        window._p5_q10 = PAT_IDX[raw.pat] !== undefined ? PAT_IDX[raw.pat] : -1;
+        return;
+      }
+      // 배열/숫자 폴백
+      if (Array.isArray(raw)) { window._p5_q10 = raw[0] !== undefined ? Number(raw[0]) : -1; window._p5_q10pat = ''; return; }
+      if (typeof raw === 'number') { window._p5_q10 = raw; window._p5_q10pat = ''; return; }
+      if (typeof raw === 'string' && raw !== '') { window._p5_q10 = Number(raw); window._p5_q10pat = ''; return; }
+      window._p5_q10 = -1; window._p5_q10pat = '';
+    })();
     // Q11: 특이이력 배열 (0=출산, 1=군대, 2=폐경, 3=없음)
     window._p5_q11 = getArr(['q11','q11_event']);
     // Q12: 갱년기 (string)
@@ -14537,6 +14600,22 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
     window._s1_calf     = (_s1[13] !== undefined) ? Number(_s1[13]) : -1;
     // s1q14: 옆모습 (0=잘록, 1=일자통짜, 2=아랫배볼록, 3=배전체앞으로)
     window._s1_profile  = (_s1[14] !== undefined) ? Number(_s1[14]) : -1;
+
+    // ── specState 전역 변수 파싱 ──
+    var _sp = (window.__RESULT__ && window.__RESULT__._specState) || {};
+    var _sp15 = _sp['15'] || _sp[15] || {};
+    var _sp16 = _sp['16'] || _sp[16] || {};
+    window._spec_height   = (window.__RESULT__ && window.__RESULT__._specHeight)   || 0;
+    window._spec_weight   = (window.__RESULT__ && window.__RESULT__._specWeight)   || 0;
+    window._spec_goalwt   = (window.__RESULT__ && window.__RESULT__._specGoalWt)   || 0;
+    window._spec_muscle   = (window.__RESULT__ && window.__RESULT__._specMuscle)   || 0;
+    window._spec_bodyfat  = (window.__RESULT__ && window.__RESULT__._specBodyFat)  || 0;
+    window._spec_waist    = (window.__RESULT__ && window.__RESULT__._specWaist)    || 0;
+    window._spec_goalwaist= (window.__RESULT__ && window.__RESULT__._specGoalWaist)|| 0;
+    window._spec_fit      = (window.__RESULT__ && window.__RESULT__._specFit !== undefined) ? window.__RESULT__._specFit : -1;
+    window._spec_bmi      = (window.__RESULT__ && window.__RESULT__._specBMI)      || 0;
+    window._spec_losskg   = (window.__RESULT__ && window.__RESULT__._specLossKg)   || 0;
+    window._spec_waistloss= (window.__RESULT__ && window.__RESULT__._specWaistLoss)|| 0;
   })();
 
   // ── s2 데이터 기반 각 도메인 ev_template 동적 생성 함수 ──
@@ -14549,7 +14628,14 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
     var q7  = window._p5_q7;
     var q8  = window._p5_q8  || [];
     var q9  = window._p5_q9  || [];
-    var q10 = window._p5_q10;
+    var q10    = window._p5_q10;              // 숫자 인덱스 (0=증가,1=요요,2=급증,3=안정)
+    var q10pat = window._p5_q10pat || '';    // 'yoyo','jump','creep','down','stable'
+    var q10amp = window._p5_q10amp || 0;     // 진폭(kg)
+    var q10cyc = window._p5_q10cyc || 0;    // 요요 횟수
+    // pat 기반 yoyo/jump 판정 (숫자 인덱스 보완)
+    var isYoyo = (q10 === 1 || q10pat === 'yoyo');
+    var isJump = (q10 === 2 || q10pat === 'jump');
+    var isCreep= (q10 === 0 || q10pat === 'creep');
     var q11 = window._p5_q11 || [];
     var q12 = window._p5_q12 || '';
     var q13 = window._p5_q13;
@@ -14565,6 +14651,27 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
     var s1Posture = window._s1_posture;  // 자세: 0=짝다리,1=다리꼬기,2=양발균형
     var s1Calf    = window._s1_calf;     // 종아리: 0=발목굵고부음,1=근육질,2=가늘
     var s1Profile = window._s1_profile;  // 옆모습: 0=잘록,1=일자통짜,2=아랫배볼록,3=배전체앞으로
+
+    // ── specState 신체 스펙 데이터 ──
+    var spH  = window._spec_height   || 0;   // 키 cm
+    var spW  = window._spec_weight   || 0;   // 현재체중 kg
+    var spGW = window._spec_goalwt   || 0;   // 목표체중 kg
+    var spM  = window._spec_muscle   || 0;   // 골격근량 kg
+    var spBF = window._spec_bodyfat  || 0;   // 체지방률 %
+    var spWS = window._spec_waist    || 0;   // 현재 허리 인치
+    var spGWS= window._spec_goalwaist|| 0;   // 목표 허리 인치
+    var spFit= window._spec_fit;             // 핏감: 0=꽉껴,1=딱맞음,2=여유,-1=미입력
+    var spBMI= window._spec_bmi     || 0;   // specState 기반 BMI
+    var spLoss= window._spec_losskg  || 0;   // 목표 감량 kg
+    var spWL = window._spec_waistloss|| 0;   // 목표 허리 감량 인치
+    // 체지방/근육 해석
+    var isHighBF  = spBF > 0 && spBF >= 30;   // 체지방률 30% 이상 = 비만형
+    var isLowBF   = spBF > 0 && spBF < 20;    // 체지방률 20% 미만 = 저체지방
+    var isLowMuscle = spM > 0 && spM < 20;    // 골격근량 20kg 미만 = 근감소 위험
+    var isHighBMI = spBMI > 0 && spBMI >= 25; // BMI 25 이상
+    var hasSpec   = spH > 0 || spW > 0;       // 스펙 데이터 존재 여부
+    // 핏감 라벨
+    var spFitLabel = spFit === 0 ? '꽉 끼는 핏' : spFit === 1 ? '딱 맞는 핏' : spFit === 2 ? '여유 있는 핏' : '';
 
     var Q3_NM = ['갑상선','당뇨전단계','다낭성난소증후군','고혈압','고지혈증'];
     var Q4_NM = ['혈당 경계','혈압 주의','간수치 주의','콜레스테롤 경계','갑상선 주의'];
@@ -14592,7 +14699,12 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
       if (totalTired >= 4) {
         ev.push({k:'피로 히트맵', v:'하루 전반에 걸쳐 피로 신호가 높습니다 — 자율신경 소진 상태로 회복이 최우선입니다.', on:true});
       }
-      if (q10 === 1) ev.push({k:'체중 궤적', v:'요요 이력 확인 — 반복 요요는 기초대사를 단계적으로 낮춥니다. 회복 없이 다이어트만 반복하면 다음 요요가 더 심해집니다.', on:true});
+      if (isYoyo) {
+        var yoyoV = '요요 이력 확인 — 반복 요요는 기초대사를 단계적으로 낮춥니다. 회복 없이 다이어트만 반복하면 다음 요요가 더 심해집니다.';
+        if (q10cyc >= 2) yoyoV = '요요 ' + q10cyc + '회 반복 이력 — ' + (q10amp > 0 ? '진폭 ' + q10amp + 'kg, ' : '') + '기초대사가 단계적으로 낮아진 상태입니다. 회복 없이 다이어트를 반복하면 다음 요요가 더 심해집니다.';
+        ev.push({k:'체중 궤적(요요)', v:yoyoV, on:true});
+      }
+      if (isJump) ev.push({k:'체중 궤적(급증)', v:'최근 급격한 체중 증가 이력 — 수면·스트레스·호르몬 이상이 동반된 경우가 많습니다. 회복부터 설계합니다.', on:true});
       if (q8.indexOf(0)>=0) ev.push({k:'살찐 계기', v:'이직·과로·스트레스가 계기 — 코르티솔 만성 상승으로 자율신경이 소진된 상태입니다. 회복이 가장 먼저입니다.', on:true});
       if (isMeno) ev.push({k:'갱년기', v:'갱년기 이력 — 에스트로겐 감소로 수면 구조가 깨져 있습니다. 수면 회복이 호르몬 치료와 병행되어야 합니다.', on:true});
       if (ev.length === 0) ev.push({k:'기질', v:'에너지 고갈형 체질 — 밀어붙이면 더 무너집니다. 회복부터 시작합니다.', on:true});
@@ -14603,6 +14715,13 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
       var fatAreaNm = ['복부 우선','하체(허벅지·엉덩이) 우선','상체(어깨·팔뚝) 우선','수분·부종(얼굴·손발) 우선','전신 균등'];
       if (s1FatArea >= 0 && s1FatArea <= 4) ev.push({k:'촉진: 지방 분포', v:'살이 찌면 『' + fatAreaNm[s1FatArea] + '』 패턴 — 지방 분포 원인에 맞는 맞춤 식단이 설계됩니다.', on:true});
       if (s1Belly === 0) ev.push({k:'촉진: 복부 우세', v:'팔다리는 가는데 배만 나온 체형 확인 — 내장지방형 복부비만. 혈당 조절 식단이 최우선입니다.', on:true});
+      // specState 체중·목표 기반 식단 처방 강도 설정
+      if (spLoss > 0) {
+        var lossLabel = spLoss >= 15 ? '고강도' : spLoss >= 8 ? '중강도' : '경도';
+        ev.push({k:'신체 스펙: 감량 목표', v:'목표 감량 ' + spLoss + 'kg (' + lossLabel + ' 감량 플랜) — 식단 칼로리 설계 및 단백질 처방의 기준이 됩니다.', on:true});
+      }
+      if (isHighBF) ev.push({k:'신체 스펙: 고체지방', v:'체지방률 ' + spBF + '% — 저탄·고단백 식단 설계로 지방 산화 극대화가 필요합니다.', on:true});
+      if (isLowMuscle && spLoss > 0) ev.push({k:'신체 스펙: 근감소 위험', v:'골격근량 ' + spM + 'kg으로 근감소 위험 — 감량 중 단백질 처방을 강화해야 근육 손실을 방지합니다.', on:true});
       if (q14 >= 2) ev.push({k:'음주 빈도', v:'주 3회 이상 음주 확인 — 알코올 처리 중 지방 산화가 완전히 멈춥니다. 음주 패턴 교정이 식단 처방의 핵심입니다.', on:true});
       else if (q14 === 1) ev.push({k:'음주 빈도', v:'주 1~2회 음주 — 음주 당일 지방 산화 억제. 음주 타이밍·안주 선택 교정이 포함됩니다.', on:true});
       var hungryArr = (s3 && s3['hungry']) || [];
@@ -14621,10 +14740,16 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
       else if (s1Elastic === 1) ev.push({k:'촉진: 탄력 저하', v:'탄력 측정에서 2~3초 회복 — 조직 탄력이 저하 상태. 저항 운동 프로그램이 필요합니다.', on:true});
       if (s1Calf === 1) ev.push({k:'촉진: 근육 종아리', v:'근육질 종아리 확인 — 하체 근육이 이미 발달된 상태. 과도한 하체 운동은 오히려 역효과입니다.', on:true});
       if (s1Posture === 0 || s1Posture === 1) ev.push({k:'촉진: 자세 불균형', v:(s1Posture === 0 ? '짝다리' : '다리꼬기') + ' 습관 — 골반 비대칭 운동 처방이 포함됩니다. 비대칭 교정 없이 하체 운동은 부상 위험입니다.', on:true});
+      // specState 골격근량·체지방률 기반 운동 처방 방향
+      if (isLowMuscle) ev.push({k:'신체 스펙: 근감소', v:'골격근량 ' + spM + 'kg — 근감소 위험 수준. 유산소보다 저항운동 우선, 단백질 섭취 병행이 필수입니다.', on:true});
+      else if (spM > 0 && !isLowMuscle) ev.push({k:'신체 스펙: 골격근량', v:'골격근량 ' + spM + 'kg — 근육량 기반으로 운동 강도 및 목표 설정이 정밀하게 설계됩니다.', on:true});
+      if (isHighBF && spM > 0) ev.push({k:'신체 스펙: 체지방/근육 비율', v:'체지방 ' + spBF + '%, 근육 ' + spM + 'kg — 지방 제거 중 근육 유지 처방이 핵심입니다.', on:true});
+      if (spWS > 0 && spFitLabel) ev.push({k:'신체 스펙: 체형 핏', v:'허리 ' + spWS + '인치, ' + spFitLabel + ' — 복부 둘레 기준 운동 효과 모니터링이 가능합니다.', on:true});
       if (hasMilitary) ev.push({k:'군복무 이력', v:'입대/전역 후 대사 변화 이력 확인 — 근육·기초대사 재건이 1순위로 설계됩니다.', on:true});
       if (q3active.indexOf(0)>=0) ev.push({k:'갑상선 이력', v:'갑상선 이력 — 저강도 고빈도 운동이 원칙. 고강도 운동은 갑상선 호르몬 부하를 높입니다.', on:true});
       if (q3active.indexOf(3)>=0 || q4active.indexOf(1)>=0) ev.push({k:'혈압 이력', v:'고혈압·혈압 주의 소견 — 등척성 운동 주의, METS 기반 안전 강도 설계가 필요합니다.', on:true});
-      if (q10 === 0) ev.push({k:'체중 궤적', v:'체중이 꾸준히 올라온 구조 — 근감소성 비만 패턴. 유산소보다 저항운동 우선입니다.', on:true});
+      if (isCreep) ev.push({k:'체중 궤적(서서히증가)', v:'체중이 꾸준히 올라온 구조 — 근감소성 비만 패턴. 유산소보다 저항운동 우선입니다.', on:true});
+      if (isYoyo) ev.push({k:'체중 궤적(요요)', v:'요요 이력 — 반복 요요는 근육량을 깎고 기초대사를 낮춥니다. 무산소 근력 운동으로 근육량 회복이 선행되어야 합니다.', on:true});
       if (ev.length === 0) ev.push({k:'기질', v:'체질별 적합 운동 강도 — 과도한 운동이 오히려 코르티솔을 높여 역효과를 낼 수 있는 체질인지 확인했습니다.', on:true});
     }
 
@@ -14643,6 +14768,12 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
       if (q14 >= 2) ev.push({k:'음주', v:'음주 주 3회 이상 — 알코올 의존 패턴이 심리-식이 행동과 연결됩니다. 행동 교정 처방이 포함됩니다.', on:true});
       var bingeTried = q9.some(function(v){ return /binge|과식|폭식/i.test(String(v)); });
       if (bingeTried) ev.push({k:'행동 이력', v:'폭식 이력 감지 — 감정 트리거와 식이 행동 간 연결 고리가 명확합니다.', on:true});
+      // stage1 순환 데이터 → 심리-신체 연결
+      if (s1Circ === 3) ev.push({k:'촉진: 하루 체중 변동', v:'하루 1~2kg 체중 변동 확인 — 수분 조절 실패가 음식 조절 실패로 연결되는 심리-신체 패턴입니다. 체중 집착 완화 처방이 포함됩니다.', on:true});
+      if (s1Circ === 1 || s1Circ === 2) ev.push({k:'촉진: 부종 패턴', v:(s1Circ === 1 ? '저녁 다리 부종' : '아침 얼굴 부종') + ' 확인 — 신체 증상이 심리적 불쾌감과 연결되는 경우가 많습니다. 신체-심리 통합 처방을 설계합니다.', on:true});
+      // specState 감량 목표 심리 부담
+      if (spLoss >= 15) ev.push({k:'신체 스펙: 감량 목표 부담', v:'목표 감량 ' + spLoss + 'kg — 큰 감량 목표는 심리적 부담·조급함·중도 포기로 이어지기 쉽습니다. 단계별 목표 설정과 심리 지원이 동반되어야 합니다.', on:true});
+      if (isYoyo && q10cyc >= 2) ev.push({k:'촉진: 반복 요요 심리', v:'요요 ' + q10cyc + '회 반복 — 반복 실패 경험이 자기효능감을 낮추고 무기력을 강화합니다. 심리 재설정이 선행되어야 지속 가능한 변화가 가능합니다.', on:true});
       if (ev.length === 0) ev.push({k:'기질', v:'번아웃 취약성 — 심리적 에너지 소진 패턴이 감지됩니다.', on:true});
     }
 
@@ -14655,6 +14786,15 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
       if (s1Posture === 0 || s1Posture === 1) ev.push({k:'촉진: 자세', v:(s1Posture === 0 ? '짝다리' : '다리꼬기') + ' 습관 확인 — 골반 비대칭이 하체 지방 분포와 연결됩니다. 체형 교정 우선입니다.', on:true});
       var textureMap = {0:'단단(섬유화)', 1:'말랑(수분/지방)', 2:'울퉁불퉁(셀룰라이트)', 3:'느린 회복(부종/림프)'};
       if (s1Texture >= 0 && textureMap[s1Texture]) ev.push({k:'촉진: 조직 질감', v:'조직 질감이 『' + textureMap[s1Texture] + '』 — 체형 교정 방향을 결정하는 핵심 촉진 소견입니다.', on:true});
+      // specState BMI·체지방률 활용
+      if (spBMI > 0) {
+        var bmiLabel = spBMI < 18.5 ? '저체중' : spBMI < 23 ? '정상' : spBMI < 25 ? '과체중' : spBMI < 30 ? '비만' : '고도비만';
+        ev.push({k:'신체 스펙: BMI', v:'입력 체형 데이터 기준 BMI ' + spBMI + ' (' + bmiLabel + ') — 체형 분류 및 처방 강도 기준으로 사용됩니다.', on:true});
+      }
+      if (isHighBF) ev.push({k:'신체 스펙: 체지방률', v:'체지방률 ' + spBF + '% — 비만 범위. 근육 대비 지방 비율이 높아 체형 교정 우선 처방이 필요합니다.', on:true});
+      else if (spBF > 0 && !isHighBF && !isLowBF) ev.push({k:'신체 스펙: 체지방률', v:'체지방률 ' + spBF + '% — 정상~경계. 지방 분포 패턴이 체형 처방의 핵심 변수입니다.', on:true});
+      if (isLowMuscle) ev.push({k:'신체 스펙: 골격근량', v:'골격근량 ' + spM + 'kg — 근감소 위험 수준. 근육 재건이 체형 교정의 최우선 과제입니다.', on:true});
+      if (spLoss > 0) ev.push({k:'신체 스펙: 감량 목표', v:'목표 감량 ' + spLoss + 'kg — 개인 목표 기반 체형 교정 처방이 설계됩니다.', on:true});
       if (hasBirth) ev.push({k:'출산 이력', v:'출산 이력 확인 — 복벽 이완·골반저근 약화가 체형 불균형의 원인입니다. 체형 교정이 복부 대사와 직결됩니다.', on:true});
       if (q1 === 0) ev.push({k:'가족력', v:'체형 가족력 확인 — 부모 체형 패턴이 골격 취약 부위와 일치합니다.', on:true});
       if (q3active.indexOf(3)>=0) ev.push({k:'고혈압 이력', v:'고혈압 이력 — 복부 지방 축적과 체형 불균형이 혈압과 연동됩니다.', on:true});
@@ -14675,6 +14815,13 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
     }
 
     else if (domainKey === '약물') {
+      // specState BMI → GLP-1 처방 적합성 서술
+      if (spBMI > 0 && spBMI >= 27) {
+        var glpLabel = spBMI >= 30 ? '고도비만(GLP-1 우선 처방 대상)' : 'BMI 27 이상(GLP-1 처방 가능 구간)';
+        ev.push({k:'신체 스펙: GLP-1 적합 BMI', v:'스펙 기반 BMI ' + spBMI + ' — ' + glpLabel + '. 위고비·마운자로 등 GLP-1 계열 처방 적합성이 높습니다.', on:true});
+      } else if (spBMI > 0 && spBMI >= 23) {
+        ev.push({k:'신체 스펙: BMI', v:'스펙 기반 BMI ' + spBMI + ' — 약물 처방 시 용량·강도 기준으로 활용됩니다.', on:true});
+      }
       if (hasLongDrug) {
         var drugList = q6.filter(function(v){ return Number(v) !== 5 && String(v) !== 'none'; });
         ev.push({k:'장기복용약 이력', v:'장기 복용 약물이 확인됩니다 — 복용 이력과 체중 변화 시점의 일치 여부를 전문의와 확인해야 합니다.', on:true});
@@ -14691,12 +14838,39 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
         var procNames = q9.map(function(v){ return PROC_NM[String(v)] || String(v); }).filter(Boolean);
         if (procNames.length > 0) ev.push({k:'과거 시술 이력', v:'과거 시술 이력: ' + procNames.join('·') + ' — 기존 시술 부위와 남아있는 지방 분포를 고려하여 처방이 설계됩니다.', on:true});
       }
+      // specState 허리 목표 → 시술 타깃
+      if (spWS > 0 && spGWS > 0 && spWL > 0) {
+        ev.push({k:'신체 스펙: 허리 감량 목표', v:'현재 허리 ' + spWS + '인치 → 목표 ' + spGWS + '인치 (약 ' + spWL + '인치 감량 목표) — 복부 지방분해 시술의 타깃 부위와 기대 효과 기준으로 활용됩니다.', on:true});
+      } else if (spWS > 0 && spFitLabel) {
+        ev.push({k:'신체 스펙: 현재 체형', v:'허리 ' + spWS + '인치, ' + spFitLabel + ' — 시술 전후 체형 변화 모니터링 기준이 됩니다.', on:true});
+      }
+      // stage1 고민부위 → 시술 타깃
+      if (s1Region >= 0 && s1Region <= 4) {
+        var siRegionNm = ['얼굴·턱선','윗배·복부','아랫배·하복부','허벅지·엉덩이','어깨·팔뚝'];
+        ev.push({k:'촉진: 시술 타깃 부위', v:'고민 부위 『' + siRegionNm[s1Region] + '』 — 해당 부위 중심으로 시술 처방이 설계됩니다.', on:true});
+      }
       if (ev.length === 0) ev.push({k:'기질', v:'지방 분포 패턴 — 시술적 접근이 효과를 낼 수 있는 부위를 분석했습니다.', on:true});
     }
 
     else if (domainKey === '한방') {
       if (q1 === 0) ev.push({k:'가족력', v:'대사질환 가족력 — 한의학적 체질 개선이 유전 취약점 보완에 효과적입니다.', on:true});
       if (q3active.indexOf(0)>=0) ev.push({k:'갑상선 이력', v:'갑상선 이력 — 한방 처방(황기·당귀 기반)이 갑상선 기능 보조에 도움됩니다.', on:true});
+      // stage1 고민부위 → 한방 처방 방향
+      var hanRegionMap = ['얼굴·턱선 부종 — 상초(上焦) 이수(利水) 처방으로 안면 부종을 개선합니다.', '윗배 팽만 — 비위(脾胃) 기능 강화 처방으로 소화·복부 대사를 개선합니다.', '아랫배 — 신(腎)·방광 기능 조절 처방으로 하초(下焦) 순환·지방 분해를 촉진합니다.', '허벅지·엉덩이 — 하체 담습(痰濕) 배출 처방으로 하체 부종·지방을 개선합니다.', '어깨·팔뚝 — 기울(氣鬱) 해소 처방으로 상체 기혈 순환을 개선합니다.', '전신 — 전신 기혈 순환 조절 처방으로 체질 기반 대사를 활성화합니다.'];
+      var hanRegionNm = ['얼굴·턱선','윗배·복부','아랫배','허벅지·엉덩이','어깨·팔뚝','전체'];
+      if (s1Region >= 0 && s1Region <= 5 && hanRegionMap[s1Region]) {
+        ev.push({k:'촉진: 고민부위(한방)', v:'주요 고민 부위 『' + hanRegionNm[s1Region] + '』 — ' + hanRegionMap[s1Region], on:true});
+      }
+      // stage1 조직 질감 → 한방 체질 분류
+      var hanTextureMap = ['단단(기체형) — 행기활혈(行氣活血) 처방으로 기 순환을 풀어야 합니다.', '말랑(담습형) — 화담거습(化痰祛濕) 처방으로 수분·지방 대사를 개선합니다.', '울퉁불퉁(혈어형) — 활혈화어(活血化瘀) 처방으로 혈액 순환과 셀룰라이트를 개선합니다.', '부종(수습형) — 이수삼습(利水滲濕) 처방으로 수분 정체를 해소합니다.'];
+      if (s1Texture >= 0 && s1Texture <= 3 && hanTextureMap[s1Texture]) {
+        ev.push({k:'촉진: 조직 질감(한방)', v:hanTextureMap[s1Texture], on:true});
+      }
+      // stage1 순환 → 한방 방향
+      if (s1Circ === 1) ev.push({k:'촉진: 하지 부종(한방)', v:'저녁 하지 부종 — 이수(利水)·활혈(活血) 복합 처방으로 하체 림프 순환을 개선합니다.', on:true});
+      if (s1Circ === 2) ev.push({k:'촉진: 안면 부종(한방)', v:'아침 안면 부종 — 상초 담음(痰飮) 처방으로 얼굴·눈두덩 부종을 개선합니다.', on:true});
+      // specState 체지방 → 담습 체질
+      if (isHighBF) ev.push({k:'신체 스펙: 담습 체질', v:'체지방률 ' + spBF + '% — 담습 과잉 체질 분류. 화담거습·건비화습(健脾化濕) 처방이 적합합니다.', on:true});
       if (ev.length === 0) ev.push({k:'기질', v:'오행 체질 — 한의학적 접근이 체질 개선에 직접 부합합니다.', on:true});
     }
 
