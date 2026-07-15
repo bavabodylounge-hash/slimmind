@@ -9967,13 +9967,43 @@ function getCruelHistoryTriggers(userName, ohaengKey, mbtiType, gender, menopaus
 
   // 수면 야간 점수 높고 음주 없는 경우 → 수면 부채 트리거
   if (hasSleepIssue && !isHeavyDrinker) {
+    // ── [구현] s3 수면 히트맵 기반 심화 서술 ──
+    var sleepArr_p4 = s3['sleep'] || [];
+    var totalSleepScore = Array.isArray(sleepArr_p4)
+      ? sleepArr_p4.reduce(function(a,v){ return a+(Number(v)||0); }, 0) : 0;
+    var dawnSleepScore  = Array.isArray(sleepArr_p4)
+      ? (Number(sleepArr_p4[0])||0)+(Number(sleepArr_p4[1])||0) : 0;
+
+    // 패턴 분류: ① 새벽각성형 ② 만성교란형 ③ 야간입면곤란형
+    var sleepPatternLabel, sleepMedical, sleepComfort, sleepReframe;
+    if (dawnSleepScore >= 2) {
+      // 새벽각성 패턴 — 코르티솔 비상분비
+      sleepPatternLabel = '새벽각성 수면 부채';
+      sleepMedical = nm + ' 님은 새벽 시간대 수면 교란 신호가 강하게 나타납니다. 새벽 각성은 혈당이 과도하게 떨어질 때 코르티솔이 비상 분비되면서 깨어나는 패턴입니다. 이 상태에서는 수면 중 성장호르몬 분비가 억제되어 야간 지방 연소가 완전히 차단됩니다. 새벽에 깰수록 다음 날 그렐린(식욕 호르몬)이 급등해 평균 385kcal를 더 먹게 됩니다.';
+      sleepComfort = '새벽에 혼자 깨어 있던 그 시간이 얼마나 길고 외로웠을지 압니다. <em>' + ohaeng.label + ' 기질</em>은 자율신경 회복에 더 오랜 시간이 필요합니다. 새벽각성은 의지로 버티는 게 아니라 혈당 조절로 해결해야 합니다.';
+      sleepReframe = '저녁 식사에 복합 탄수화물을 소량 배치해 새벽 혈당 급락을 방지하고, 마그네슘·L-테아닌으로 코르티솔 야간 분비를 안정시킵니다.';
+    } else if (totalSleepScore >= 5) {
+      // 만성 전일 교란형
+      sleepPatternLabel = '만성 수면 교란 — 자율신경 역전';
+      sleepMedical = nm + ' 님의 수면 패턴은 특정 시간대가 아닌 하루 전반에 걸쳐 교란돼 있습니다. 자율신경계가 낮·밤 리듬을 잃은 상태로, 멜라토닌 분비 사이클이 뒤틀려 있습니다. 수면 6시간 미만이 지속되면 그렐린 24% 증가, 렙틴 18% 감소가 만성화되어 식욕 조절 자체가 불가능해집니다. 이 상태에서는 식단을 아무리 잘 짜도 야간 폭식 충동을 억제할 수 없습니다.';
+      sleepComfort = '잠을 자려 해도 잘 수 없었던 밤들이 쌓여왔군요. <em>' + ohaeng.label + ' 기질</em>에 만성 피로가 더해지면 식욕 억제 능력이 완전히 바닥납니다. 이건 의지력이 아니라 신경계 문제입니다.';
+      sleepReframe = '수면을 먼저 잡지 않으면 어떤 처방도 반쪽짜리가 됩니다. 빛 노출 시간 조정(기상 직후 햇빛 10분)으로 코르티솔 리듬부터 재설정합니다.';
+    } else {
+      // 야간 입면곤란 / 중간각성형 (기본 케이스)
+      sleepPatternLabel = '야간 수면 부채';
+      sleepMedical = nm + ' 님의 야간 수면 패턴에서 교란 신호가 감지됩니다. 수면 6시간 미만 시 그렐린(식욕 호르몬)이 24% 증가하고 렙틴(포만감)이 18% 감소합니다. 동시에 성장호르몬 분비가 억제되어 수면 중 지방 연소가 멈춥니다. 잠을 못 자면 다음 날 평균 385kcal를 더 먹게 됩니다.';
+      sleepComfort = '잠 못 드는 밤, 그 외로운 시간을 혼자 견뎌오셨군요. <em>' + ohaeng.label + ' 기질</em>은 에너지 소진 후 자율신경 회복에 더 오랜 시간이 필요합니다. 수면이 부족하면 다이어트가 아무리 잘 설계돼도 효과가 절반입니다.';
+      sleepReframe = '수면을 먼저 잡아야 살이 빠집니다. 마그네슘·L-테아닌 루틴으로 수면 진입을 쉽게 하고, 수면 전 2시간 디지털 디톡스를 배치해 드립니다.';
+    }
+    // ── [구현 끝] ───────────────────────────────────────────────────────────
+
     extraTriggers.push({
       num: String(extraTriggers.length + 4).padStart(2,'0'),
-      title: '수면 부채 — 잠을 못 잘수록 살이 찌는 구조',
+      title: sleepPatternLabel + ' — 잠을 못 잘수록 살이 찌는 구조',
       hook: '잠이 줄면 의지력이 줄어드는 게 아닙니다. 지방 연소 스위치가 꺼지는 겁니다.',
-      medical: nm + ' 님의 야간 수면 패턴에서 교란 신호가 감지됩니다. 수면 6시간 미만 시 그렐린(식욕 호르몬)이 24% 증가하고 렙틴(포만감)이 18% 감소합니다. 동시에 성장호르몬 분비가 억제되어 수면 중 지방 연소가 멈춥니다. 잠을 못 자면 다음 날 평균 385kcal를 더 먹게 됩니다.',
-      comfort: '잠 못 드는 밤, 그 외로운 시간을 혼자 견뎌오셨군요. <em>' + ohaeng.label + ' 기질</em>은 에너지 소진 후 자율신경 회복에 더 오랜 시간이 필요합니다. 수면이 부족하면 다이어트가 아무리 잘 설계돼도 효과가 절반입니다.',
-      reframe: '수면을 먼저 잡아야 살이 빠집니다. 마그네슘·L-테아닌 루틴으로 수면 진입을 쉽게 하고, 수면 전 2시간 디지털 디톡스를 배치해 드립니다.',
+      medical: sleepMedical,
+      comfort: sleepComfort,
+      reframe: sleepReframe,
       dayStart: 0, dayEnd: 84,
     });
   }
@@ -12904,7 +12934,7 @@ function renderAll(data) {
   const _s3 = (window.__RESULT__ && window.__RESULT__._stage3) || data._stage3 || {};
   const _s4 = (window.__RESULT__ && window.__RESULT__._stage4) || data._stage4 || {};
 
-  renderP2(userName, bcCode, firstDomino, axisScores, sorted, _s3, _s2);
+  renderP2(userName, bcCode, firstDomino, axisScores, sorted, _s3, _s2, _s4);
 
   renderP3(userName, bcCode, bcMaster, ohaengType, ohaeng, mbtiType, mbti, fullCode, prescription, answers, data.bloodType, _s2);
   renderP4(userName, ohaengType, mbtiType, answers['Q02'], answers['Q_MENOPAUSE'], _s2, _s3);
@@ -13432,7 +13462,7 @@ function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nic
 }
 
 /* ── P2 ── */
-function renderP2(userName, bcCode, firstDomino, axisScores, sorted, s3, s2) {
+function renderP2(userName, bcCode, firstDomino, axisScores, sorted, s3, s2, s4) {
   // ── 10원인축 표시 (점수는 백엔드가 0~100으로 전달; 프론트는 표시만) ──
   // 정규화/가중: 백엔드에서 0~100으로 전달. 프론트는 받은 값을 그대로 쓰고 0~100 클램프만 한다.
   var meta = (typeof AXIS_10_META !== 'undefined') ? AXIS_10_META : {
@@ -13656,6 +13686,114 @@ function renderP2(userName, bcCode, firstDomino, axisScores, sorted, s3, s2) {
     var insertTarget = document.getElementById('p2-gap') || document.querySelector('#p2 .p-body');
     if (insertTarget) insertTarget.insertAdjacentHTML('afterend', coldHTML);
   })();
+
+  // ── [구현] Stage4 갈림길 응답 → P2 원인축 보정 카드 ──────────────────────
+  (function buildStage4AxisBoost() {
+    s4 = s4 || {};
+    if (typeof s4 === 'string') { try { s4 = JSON.parse(s4); } catch(e) { s4 = {}; } }
+    var s4Keys = Object.keys(s4);
+    if (s4Keys.length === 0) return; // 갈림길 응답 없으면 스킵
+
+    // 각 경합 쌍에서 선택된 축 집계
+    var chosenCount = {};
+    s4Keys.forEach(function(pairKey) {
+      var parts = pairKey.split('_');
+      if (parts.length !== 2) return;
+      var choice = Number(s4[pairKey]);
+      var chosen = (choice === 0) ? parts[0] : parts[1];
+      chosenCount[chosen] = (chosenCount[chosen] || 0) + 1;
+    });
+
+    // Top2 선택 축 추출
+    var sorted4 = Object.keys(chosenCount).sort(function(a,b){
+      return chosenCount[b] - chosenCount[a];
+    });
+    if (sorted4.length === 0) return;
+
+    var AXIS_LBL = {
+      'A01':'혈당·인슐린', 'A02':'림프·순환',    'A03':'코르티솔·스트레스',
+      'A04':'근육·기초대사','A05':'장내 환경',     'A06':'골격·복압',
+      'A07':'수면·호르몬', 'A08':'식욕 조절',     'A09':'갑상선·기초대사',
+      'A10':'여성 호르몬'
+    };
+    var AXIS_COLOR = {
+      'A01':'#E8631A','A02':'#1A7FC1','A03':'#3F51B5','A04':'#4A8C1C',
+      'A05':'#1A8C5B','A06':'#6B4EAA','A07':'#7B1FA2','A08':'#C0397A',
+      'A09':'#E67E22','A10':'#C0397A'
+    };
+    var AXIS_BOOST_DESC = {
+      'A01': '직접 선택하신 증상들이 혈당 롤러코스터 패턴과 일치합니다. 인슐린 저항성이 식욕 조절과 지방 저장을 동시에 망가뜨리고 있습니다.',
+      'A02': '선택하신 증상들이 림프·순환 저하 패턴과 일치합니다. 노폐물 정체가 지방 분해를 절반으로 줄이는 구조입니다.',
+      'A03': '직접 고르신 갈림길들이 코르티솔 과잉 패턴을 명확히 가리킵니다. 만성 스트레스가 복부에만 선택적으로 지방을 쌓는 구조입니다.',
+      'A04': '선택하신 증상이 근감소 패턴과 높은 일치율을 보입니다. 기초대사 엔진이 꺼지면 같은 식사에도 체지방이 쌓입니다.',
+      'A05': '갈림길에서 고르신 항목들이 장내 환경 교란 패턴을 확인해 줍니다. 마이크로바이옴 불균형이 지방 흡수율을 높이고 있습니다.',
+      'A06': '직접 선택하신 항목들이 골격·복압 붕괴 패턴과 일치합니다. 체형이 틀어지면 운동 효율도 함께 무너집니다.',
+      'A07': '선택하신 갈림길이 수면·호르몬 교란 패턴을 확인합니다. 야간 코르티솔이 내려가지 않으면 지방 연소 스위치가 꺼진 채로 아침을 맞습니다.',
+      'A08': '직접 고르신 항목들이 심리·식이행동 패턴과 일치합니다. 배고픔이 아닌 감정이 식욕을 조종하는 구조입니다.',
+      'A09': '선택하신 갈림길이 대사 위험인자 패턴을 확인합니다. 혈당·갑상선 기능이 기초대사를 누르고 있습니다.',
+      'A10': '갈림길에서 고르신 항목들이 여성 호르몬 교란 패턴을 확인합니다. 에스트로겐·프로게스테론 불균형이 체지방 분포를 바꾸고 있습니다.'
+    };
+
+    var top1 = sorted4[0];
+    var top2 = sorted4[1];
+    var totalPairs = s4Keys.length;
+    var top1Cnt = chosenCount[top1] || 0;
+    var top1Pct = Math.round(top1Cnt / totalPairs * 100);
+
+    var top1Label = AXIS_LBL[top1] || top1;
+    var top1Color = AXIS_COLOR[top1] || '#607D8B';
+    var top1Desc  = AXIS_BOOST_DESC[top1] || (top1Label + ' 패턴이 반복적으로 선택되었습니다.');
+
+    // 2위 축 (있을 경우)
+    var top2HTML = '';
+    if (top2) {
+      var top2Cnt = chosenCount[top2] || 0;
+      var top2Pct = Math.round(top2Cnt / totalPairs * 100);
+      var top2Label = AXIS_LBL[top2] || top2;
+      var top2Color = AXIS_COLOR[top2] || '#607D8B';
+      top2HTML = '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(0,0,0,.03);border-radius:8px;margin-top:6px;">' +
+        '<span style="font-size:13px;flex-shrink:0;">2위</span>' +
+        '<div style="flex:1;">' +
+          '<div style="font-size:11px;font-weight:700;color:' + top2Color + ';">' + top2Label + '</div>' +
+          '<div style="height:4px;background:rgba(0,0,0,.07);border-radius:2px;margin-top:3px;">' +
+            '<div style="height:4px;width:' + top2Pct + '%;background:' + top2Color + ';border-radius:2px;"></div>' +
+          '</div>' +
+        '</div>' +
+        '<span style="font-size:11px;font-weight:700;color:' + top2Color + ';flex-shrink:0;">' + top2Pct + '%</span>' +
+      '</div>';
+    }
+
+    var nm_s4 = (userName && userName.length >= 3) ? userName.slice(1) : (userName || '회원');
+    var s4HTML =
+      '<div style="margin:18px 0;border-radius:14px;overflow:hidden;border:1px solid rgba(60,80,180,.18);background:var(--card);">' +
+        '<div style="padding:11px 16px;border-bottom:1px solid rgba(60,80,180,.12);background:linear-gradient(90deg,rgba(63,81,181,.1),rgba(63,81,181,.02));">' +
+          '<div style="font-size:10px;font-weight:800;color:#3F51B5;letter-spacing:.07em;margin-bottom:2px;">🔀 갈림길 선택 — 원인축 자기확인</div>' +
+          '<div style="font-size:13px;font-weight:700;color:var(--ink);">' + nm_s4 + '님이 직접 고른 증상이 ' + top1Label + '을(를) 지목합니다</div>' +
+        '</div>' +
+        '<div style="padding:12px 14px 14px;">' +
+          '<div style="font-size:12.5px;line-height:1.7;color:var(--ink);margin-bottom:10px;">' + top1Desc + '</div>' +
+          '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(' + top1Color.replace('#','').match(/.{2}/g).map(function(h){return parseInt(h,16);}).join(',') + ',.07);border-left:3px solid ' + top1Color + ';border-radius:0 8px 8px 0;">' +
+            '<span style="font-size:13px;flex-shrink:0;">1위</span>' +
+            '<div style="flex:1;">' +
+              '<div style="font-size:11px;font-weight:700;color:' + top1Color + ';">' + top1Label + '</div>' +
+              '<div style="height:4px;background:rgba(0,0,0,.07);border-radius:2px;margin-top:3px;">' +
+                '<div style="height:4px;width:' + top1Pct + '%;background:' + top1Color + ';border-radius:2px;"></div>' +
+              '</div>' +
+            '</div>' +
+            '<span style="font-size:11px;font-weight:700;color:' + top1Color + ';flex-shrink:0;">' + top1Pct + '%</span>' +
+          '</div>' +
+          top2HTML +
+          '<div style="font-size:10.5px;color:var(--muted);margin-top:8px;padding-top:6px;border-top:1px solid var(--line);">' +
+            '총 ' + totalPairs + '쌍의 갈림길 응답을 분석 — 자가 보고 패턴이 원인축 진단과 일치할수록 처방 정밀도가 높아집니다' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
+    // p2-gap 이후 (수족냉증 카드가 있으면 그 뒤) 마지막에 삽입
+    var lastInsert = document.querySelector('#p2 .p-body') || document.getElementById('p2-gap');
+    if (lastInsert) lastInsert.insertAdjacentHTML('afterend', s4HTML);
+  })();
+  // ── [구현 끝] ────────────────────────────────────────────────────────────
 
   // ── 원인의 도미노 (상위 3축 실제 데이터 기반 동적 생성) ──
   // 10개 축별 도미노 텍스트 사전: 인과 사슬 설명 (전문성 기반)
@@ -14425,6 +14563,54 @@ function renderP5(metrics, bcCode, axisScores, userName, s2) {
       flags.push({ icon:'🥂', color:'#c98a3c', bg:'rgba(201,138,60,.07)',
         label:'음주 주 1~2회', detail:'음주 당일은 지방 산화가 억제됩니다. 음주 타이밍과 안주 선택만 바꿔도 주간 감량 효과가 30% 이상 개선됩니다.' });
     }
+
+    // ── [구현] s3 수면 히트맵 → 수면 불량 플래그 ──────────────────────────────
+    // s3.sleep 배열: [새벽, 오전, 낮, 오후, 저녁, 야간] 각 0~3점
+    // 야간(저녁idx4 + 야간idx5) 합산 ≥ 3이면 수면 부채 경보
+    // 전체 합산 ≥ 4이면 만성 수면 교란으로 더 강한 경고
+    (function addSleepFlag() {
+      var s3p5 = (typeof s3 !== 'undefined' && s3) ? s3 : {};
+      if (typeof s3p5 === 'string') { try { s3p5 = JSON.parse(s3p5); } catch(e) { s3p5 = {}; } }
+      var sleepArr = s3p5['sleep'] || [];
+      if (!Array.isArray(sleepArr) || sleepArr.length < 6) return;
+
+      var nightSleep = (Number(sleepArr[4])||0) + (Number(sleepArr[5])||0); // 저녁+야간
+      var totalSleep = sleepArr.reduce(function(s,v){ return s + (Number(v)||0); }, 0);
+      var dawnSleep  = (Number(sleepArr[0])||0) + (Number(sleepArr[1])||0); // 새벽+오전 (수면 역전)
+
+      var isChronic = totalSleep >= 4; // 전일 분포 → 만성 교란
+      var hasDawn   = dawnSleep >= 2;  // 새벽각성 패턴
+
+      if (nightSleep < 3 && !isChronic) return; // 수면 문제 없으면 스킵
+
+      var sleepLabel, sleepDetail;
+      if (isChronic && hasDawn) {
+        sleepLabel = '수면 리듬 역전 — 새벽각성 패턴';
+        sleepDetail = '수면 불량이 하루 전반에 걸쳐 나타나며, 특히 새벽·오전 시간대 각성 패턴이 감지됩니다. 코르티솔이 새벽에 비상 분비되면서 야간 지방 연소가 완전히 차단됩니다. 수면 리듬 정상화가 체중 감량의 선행 조건입니다.';
+      } else if (isChronic) {
+        sleepLabel = '만성 수면 교란 — 전 시간대 분포';
+        sleepDetail = '수면 불량이 특정 시간대에 집중되지 않고 하루 전반에 분산됩니다. 자율신경계 전반이 흔들린 상태로, 식욕 호르몬(그렐린·렙틴) 불균형이 지속되고 있습니다. 수면 개선 없이는 식단 효과가 절반 이하입니다.';
+      } else {
+        // nightSleep >= 3 단독 케이스
+        sleepLabel = '야간 수면 불량 — 지방 연소 차단';
+        sleepDetail = '저녁~야간 시간대 수면 교란 신호가 감지됩니다. 잠드는 데 어려움이 있거나 밤중 각성이 반복되고 있습니다. 수면 6시간 미만 시 그렐린(식욕 호르몬)이 24% 증가하고, 수면 중 성장호르몬 분비가 억제되어 지방 연소가 멈춥니다.';
+      }
+
+      // 음주와 중복 시 복합 경고로 업그레이드
+      var hasAlcohol = (q14val >= 1);
+      if (hasAlcohol && nightSleep >= 3) {
+        sleepDetail += ' 음주와 수면 불량이 동시에 작용하면 코르티솔 억제 실패 × 간 지방산화 정지가 겹쳐 감량 효율이 최대 70%까지 떨어집니다.';
+      }
+
+      flags.push({
+        icon: '💤',
+        color: '#7B1FA2',
+        bg: 'rgba(123,31,162,.07)',
+        label: sleepLabel,
+        detail: sleepDetail
+      });
+    })();
+    // ── [구현 끝] ────────────────────────────────────────────────────────────
 
     if (flags.length === 0) return; // 플래그 없으면 배너 없음
 
@@ -17909,6 +18095,99 @@ function renderDailyPage(){
   // 운동 카드 extraBadge: 요일 태그 + MBTI 힌트
   var exBadgeHTML = '<div class="tdy-day-tags">' + dayTagHTML + '</div>';
 
+  // ── [구현] 수면(s3)×음주(q14) 교차 인사이트 카드 ────────────────────────
+  var sleepDrinkInsightHTML = (function buildSleepDrinkInsight() {
+    // s3 수면 히트맵 읽기
+    var s3p10 = {};
+    try {
+      s3p10 = (window.__RESULT__ && window.__RESULT__._stage3) ||
+               (typeof _wowData !== 'undefined' && _wowData && _wowData._stage3) || {};
+      if (typeof s3p10 === 'string') s3p10 = JSON.parse(s3p10);
+    } catch(e) { s3p10 = {}; }
+
+    var sleepArr10 = s3p10['sleep'] || [];
+    var nightSleep10 = Array.isArray(sleepArr10) && sleepArr10.length >= 6
+      ? (Number(sleepArr10[4])||0) + (Number(sleepArr10[5])||0) : 0;
+    var hasSleepP10 = nightSleep10 >= 3;
+
+    // q14 음주 읽기
+    var s2p10 = {};
+    try {
+      s2p10 = (window.__RESULT__ && window.__RESULT__._stage2) ||
+               (typeof _wowData !== 'undefined' && _wowData && _wowData._stage2) || {};
+      if (typeof s2p10 === 'string') s2p10 = JSON.parse(s2p10);
+    } catch(e) { s2p10 = {}; }
+
+    var q14r10 = s2p10['q14'] || s2p10['q14_drink'] || s2p10['q14_alcohol'] || '';
+    var q14v10 = -1;
+    if (Array.isArray(q14r10)) q14v10 = Number(q14r10[0] !== undefined ? q14r10[0] : -1);
+    else if (typeof q14r10 === 'number') q14v10 = q14r10;
+    else if (q14r10 !== '') q14v10 = Number(q14r10);
+    var hasAlcP10 = (q14v10 >= 1);
+
+    // 둘 다 없으면 카드 없음
+    if (!hasSleepP10 && !hasAlcP10) return '';
+
+    var cardTitle, cardIcon, cardColor, cardBg, cardLines;
+
+    if (hasSleepP10 && hasAlcP10) {
+      // ① 수면 불량 + 음주 → 복합 코르티솔 개입 처방
+      var alcLabel = q14v10 >= 2 ? '주 3회 이상 음주' : '주 1~2회 음주';
+      cardTitle  = '수면 불량 × 음주 — 복합 코르티솔 차단 처방';
+      cardIcon   = '⚠️';
+      cardColor  = '#b5452e';
+      cardBg     = 'rgba(181,69,46,.07)';
+      cardLines  = [
+        '야간 수면 교란과 ' + alcLabel + '가 동시에 작용 중입니다.',
+        '알코올은 REM 수면을 파괴해 수면 중 성장호르몬 분비를 막습니다. 수면 불량 × 음주가 겹치면 코르티솔이 밤새 내려가지 않아 지방 연소 스위치가 이중으로 차단됩니다.',
+        '💡 오늘 운동: 저강도 유산소(20~30분) — 과호흡 피하기. 코르티솔 추가 자극 없이 대사 유지.',
+        '💡 오늘 회복: 음주 예정이라면 물 2:1 비율 보충, 음주 없는 날은 마그네슘 400mg + 취침 2시간 전 디지털 차단.'
+      ];
+    } else if (hasSleepP10) {
+      // ② 수면 불량 단독 → 수면 우선 처방
+      cardTitle  = '수면 불량 감지 — 오늘 회복이 가장 중요한 운동입니다';
+      cardIcon   = '💤';
+      cardColor  = '#7B1FA2';
+      cardBg     = 'rgba(123,31,162,.07)';
+      cardLines  = [
+        '야간 수면 교란 신호가 지속되고 있습니다.',
+        '수면 중 성장호르몬의 70%가 분비됩니다. 잠을 못 자면 근육 회복이 멈추고 지방 연소 효율이 절반 이하로 떨어집니다.',
+        '💡 오늘 운동: 고강도 훈련은 잠시 뒤로 — 가벼운 스트레칭·산책(15분)으로 대체. 과부하가 코르티솔을 더 올립니다.',
+        '💡 오늘 회복: 취침 90분 전 조명 낮추기, L-테아닌 200mg, 실내 온도 18~20°C 설정. 오늘 수면이 내일 지방 연소를 결정합니다.'
+      ];
+    } else {
+      // ③ 음주 단독 → 간 회복 처방
+      var alcLabel2 = q14v10 >= 2 ? '주 3회 이상 음주' : '주 1~2회 음주';
+      cardTitle  = alcLabel2 + ' — 오늘 간 회복 처방';
+      cardIcon   = '🍺';
+      cardColor  = '#E8631A';
+      cardBg     = 'rgba(232,99,26,.07)';
+      cardLines  = [
+        alcLabel2 + ' 패턴이 지속되고 있습니다.',
+        '음주 후 12~24시간 동안 간은 알코올 대사에 집중해 지방 산화를 완전히 멈춥니다. 운동해도 지방이 안 빠지는 날이 여기에 해당합니다.',
+        '💡 오늘 운동: 음주 다음 날이라면 유산소 강도 60~70%로 낮추기. 간이 알코올 처리 중일 때 고강도 운동은 역효과입니다.',
+        '💡 오늘 회복: 밀크시슬 280mg + 물 2L 이상. 음주 당일은 공복 운동 금지 — 저혈당 위험.'
+      ];
+    }
+
+    return '<div style="margin:10px 0 4px;border-radius:12px;overflow:hidden;border:1px solid ' + cardColor + '33;background:var(--card);">' +
+      '<div style="padding:9px 14px;border-bottom:1px solid ' + cardColor + '22;background:' + cardBg + ';">' +
+        '<div style="font-size:10px;font-weight:800;color:' + cardColor + ';letter-spacing:.05em;">' + cardIcon + ' 오늘의 대사 인사이트</div>' +
+        '<div style="font-size:12px;font-weight:700;color:var(--ink);margin-top:2px;">' + cardTitle + '</div>' +
+      '</div>' +
+      '<div style="padding:10px 14px 12px;">' +
+        cardLines.map(function(line, i) {
+          var isHint = line.indexOf('💡') === 0;
+          return '<div style="font-size:' + (isHint ? '11.5' : '12') + 'px;line-height:1.65;color:var(--ink);' +
+            (i > 0 ? 'margin-top:6px;' : '') +
+            (isHint ? 'background:rgba(0,0,0,.03);border-radius:6px;padding:5px 8px;' : '') +
+            '">' + line + '</div>';
+        }).join('') +
+      '</div>' +
+    '</div>';
+  })();
+  // ── [구현 끝] ────────────────────────────────────────────────────────────
+
   host.innerHTML =
     // ══ 오늘 헤더 카드 ══
     '<div class="tdy-card">'+
@@ -17934,6 +18213,9 @@ function renderDailyPage(){
 
     // ══ 회복 섹션 카드 ══
     sectionCard('re','🌙','re','회복', recToday, recFull, null)+
+
+    // ══ [구현] 수면×음주 대사 인사이트 카드 ══
+    sleepDrinkInsightHTML+
 
     // ══ 오행 주의사항 ══
     cautionBadge+
