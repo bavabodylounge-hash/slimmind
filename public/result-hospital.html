@@ -12182,6 +12182,17 @@ function loadData() {
       // PHASE 4-A: 목표체중·감량률
       goal_weight:     r.goal_weight     != null ? Number(r.goal_weight)     : null,
       weight_loss_pct: r.weight_loss_pct != null ? Number(r.weight_loss_pct) : null,
+      // ── stage2/3/4 원시응답 전달 (renderAll에서 _s2/_s3/_s4로 추출) ──
+      _stage2: r._stage2 || {},
+      _stage3: r._stage3 || {},
+      _stage4: r._stage4 || {},
+      // ── desire 개인화 데이터 ──
+      _desire:     r._desire     || {},
+      _moodLabel:  r._moodLabel  || '',
+      _who:        r._who        || '',
+      _partLabels: r._partLabels || [],
+      _zone:       r._zone       || '',
+      _goalWeight: r._goalWeight || 0,
       _from_server: true,
     };
   }
@@ -12886,13 +12897,14 @@ function renderAll(data) {
     renderSurFace(data, nicknameDisplay, bcCode);
   }
 
-  renderP2(userName, bcCode, firstDomino, axisScores, sorted, _s3);
   window.__BC_RM__ = bcCode; // 로드맵 주차별 영양제 카드용 BC 코드
-  // ── stage2/3/4 원시응답 (70문항 개인화에 사용) ──
+  // ── stage2/3/4 원시응답 (70문항 개인화에 사용) ── [순서 수정: renderP2 호출 전에 선언]
   // window.__RESULT__ (실서버) 우선, 없으면 data 직접(demoData/localStorage 모드) 폴백
   const _s2 = (window.__RESULT__ && window.__RESULT__._stage2) || data._stage2 || {};
   const _s3 = (window.__RESULT__ && window.__RESULT__._stage3) || data._stage3 || {};
   const _s4 = (window.__RESULT__ && window.__RESULT__._stage4) || data._stage4 || {};
+
+  renderP2(userName, bcCode, firstDomino, axisScores, sorted, _s3);
 
   renderP3(userName, bcCode, bcMaster, ohaengType, ohaeng, mbtiType, mbti, fullCode, prescription, answers, data.bloodType, _s2);
   renderP4(userName, ohaengType, mbtiType, answers['Q02'], answers['Q_MENOPAUSE'], _s2, _s3);
