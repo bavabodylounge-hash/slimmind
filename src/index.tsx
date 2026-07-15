@@ -4822,11 +4822,39 @@ app.post('/api/h/diagnosis', async (c) => {
     } = body
     // bc_code 통합: bc_code → bc_code_key → null 순으로 폴백
     const resolvedBcCode = bc_code || bc_code_key || null
-    // ohaeng_type 폴백: body 직접값 → raw_answers.pfProfile.saju 순
+
+    // raw_answers 파싱
     const parsedRaw = raw_answers ? (typeof raw_answers === 'string' ? (() => { try { return JSON.parse(raw_answers) } catch { return {} } })() : raw_answers) : {}
-    const resolvedOhaeng = ohaeng_type || (parsedRaw?.pfProfile?.saju) || null
-    // mbti_full 폴백: body 직접값 → raw_answers.pfProfile.mbti 순
-    const resolvedMbti = mbti_full || (parsedRaw?.pfProfile?.mbti) || null
+
+    // 오행값 정규화: "수(水)"→"수", "금(金)"→"금" 등 한자 병기 제거, 앞 1글자만 추출
+    const normalizeOhaeng = (v: any): string | null => {
+      if (!v) return null
+      const s = String(v).trim()
+      // 한자 병기 형식 "수(水)", "금(金)" 등 → 첫 글자만
+      const m = s.match(/^([목화토금수])/)
+      if (m) return m[1]
+      // 영문 혼용 대비 매핑
+      const map: Record<string, string> = { '木':'목','火':'화','土':'토','金':'금','水':'수' }
+      for (const [k, v2] of Object.entries(map)) { if (s.includes(k)) return v2 }
+      return s || null
+    }
+
+    // ohaeng_type 폴백: body 직접값 → raw_answers.pfProfile.saju 순 (양쪽 모두 정규화)
+    const rawOhaeng = ohaeng_type || (parsedRaw?.pfProfile?.saju) || null
+    const resolvedOhaeng = normalizeOhaeng(rawOhaeng)
+
+    // MBTI 정규화: 대문자, 4글자 검증
+    const normalizeMbti = (v: any): string | null => {
+      if (!v) return null
+      const s = String(v).trim().toUpperCase()
+      // 유효한 MBTI 4글자인지 검증
+      if (/^[EI][NS][TF][JP]$/.test(s)) return s
+      return null
+    }
+
+    // mbti_full 폴백: body 직접값 → raw_answers.pfProfile.mbti 순 (양쪽 모두 정규화)
+    const rawMbti = mbti_full || (parsedRaw?.pfProfile?.mbti) || null
+    const resolvedMbti = normalizeMbti(rawMbti)
 
     if (!user_name) return c.json({ error: 'user_name required' }, 400)
 
@@ -4925,6 +4953,31 @@ app.get('/api/h/result/:id', async (c) => {
 
     // JSON 필드 파싱
     const parseJ = (v: any) => { try { return v ? JSON.parse(v) : null } catch { return null } }
+
+    // 오행 정규화 (DB에 "수(水)" 같은 비정규값이 있을 경우 대비)
+    const normOhaeng = (v: any): string => {
+      if (!v) return ''
+      const s = String(v).trim()
+      const m = s.match(/^([목화토금수])/)
+      if (m) return m[1]
+      return s
+    }
+    // MBTI 정규화
+    const normMbti = (v: any): string => {
+      if (!v) return ''
+      const s = String(v).trim().toUpperCase()
+      if (/^[EI][NS][TF][JP]$/.test(s)) return s
+      return ''
+    }
+
+    const parsedRawResult = parseJ(row.raw_answers)
+    // ohaeng: DB 저장값 정규화 → pfProfile.saju 폴백
+    const finalOhaeng = normOhaeng(row.ohaeng_type)
+      || normOhaeng(parsedRawResult?.pfProfile?.saju) || ''
+    // mbti: DB 저장값 → pfProfile.mbti 폴백
+    const finalMbti = normMbti(row.mbti_full)
+      || normMbti(parsedRawResult?.pfProfile?.mbti) || ''
+
     return c.json({
       ok: true,
       id: row.id,
@@ -4936,16 +4989,16 @@ app.get('/api/h/result/:id', async (c) => {
       height: row.height,
       weight: row.weight,
       phone: row.phone,
-      ohaeng_type: row.ohaeng_type,
+      ohaeng_type: finalOhaeng,   // 정규화된 오행 (목/화/토/금/수)
       disp_type: row.disp_type,
-      mbti_full: row.mbti_full,
+      mbti_full: finalMbti,       // 정규화된 MBTI (ENTP/INFP 등)
       bc_code: row.bc_code,
       axis_scores: parseJ(row.axis_scores),
       stage1_answers: parseJ(row.stage1_json),
       stage2_answers: parseJ(row.stage2_json),
       stage3_answers: parseJ(row.stage3_json),
       stage4_answers: parseJ(row.stage4_json),
-      raw_answers: parseJ(row.raw_answers),
+      raw_answers: parsedRawResult,  // 이미 파싱된 객체 재사용
       created_at: row.created_at
     })
   } catch (e: any) {
