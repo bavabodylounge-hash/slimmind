@@ -4813,7 +4813,7 @@ app.post('/api/h/diagnosis', async (c) => {
     const {
       user_name, phone, gender, age, height, weight,
       stage1_answers, stage2_answers, stage3_answers, stage4_answers,
-      ohaeng_type, disp_type,
+      ohaeng_type, disp_type, mbti_full,
       bc_code,      // 서버 기대 키
       bc_code_key,  // survey-hospital.html 전송 키 (fallback)
       bc_nickname, bc_primary,  // 닉네임 필드도 수용
@@ -4822,6 +4822,11 @@ app.post('/api/h/diagnosis', async (c) => {
     } = body
     // bc_code 통합: bc_code → bc_code_key → null 순으로 폴백
     const resolvedBcCode = bc_code || bc_code_key || null
+    // ohaeng_type 폴백: body 직접값 → raw_answers.pfProfile.saju 순
+    const parsedRaw = raw_answers ? (typeof raw_answers === 'string' ? (() => { try { return JSON.parse(raw_answers) } catch { return {} } })() : raw_answers) : {}
+    const resolvedOhaeng = ohaeng_type || (parsedRaw?.pfProfile?.saju) || null
+    // mbti_full 폴백: body 직접값 → raw_answers.pfProfile.mbti 순
+    const resolvedMbti = mbti_full || (parsedRaw?.pfProfile?.mbti) || null
 
     if (!user_name) return c.json({ error: 'user_name required' }, 400)
 
@@ -4844,6 +4849,7 @@ app.post('/api/h/diagnosis', async (c) => {
           stage4_json TEXT,
           ohaeng_type TEXT,
           disp_type   TEXT,
+          mbti_full   TEXT,
           bc_code     TEXT,
           axis_scores TEXT,
           raw_answers TEXT,
@@ -4856,12 +4862,17 @@ app.post('/api/h/diagnosis', async (c) => {
       `H-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`
     const b2bCode  = ref_code || 'UNKNOWN'
 
+    // mbti_full 컬럼이 없는 기존 테이블에도 안전하게 컬럼 추가 (이미 있으면 무시)
+    try {
+      await db.prepare(`ALTER TABLE hospital_responses ADD COLUMN mbti_full TEXT`).run()
+    } catch (_) { /* 이미 존재하면 무시 */ }
+
     await db.prepare(`
       INSERT INTO hospital_responses
         (id, b2b_code, ref_code, user_name, gender, age, height, weight, phone,
          stage1_json, stage2_json, stage3_json, stage4_json,
-         ohaeng_type, disp_type, bc_code, axis_scores, raw_answers)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+         ohaeng_type, disp_type, mbti_full, bc_code, axis_scores, raw_answers)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     `).bind(
       resultId, b2bCode, ref_code || null, user_name,
       gender || null, age ? String(age) : null,
@@ -4871,8 +4882,10 @@ app.post('/api/h/diagnosis', async (c) => {
       stage2_answers ? JSON.stringify(stage2_answers) : null,
       stage3_answers ? JSON.stringify(stage3_answers) : null,
       stage4_answers ? JSON.stringify(stage4_answers) : null,
-      ohaeng_type || null, disp_type || null,
-      resolvedBcCode,  // bc_code || bc_code_key || null
+      resolvedOhaeng,          // ohaeng_type → raw_answers.pfProfile.saju 폴백
+      disp_type || (resolvedOhaeng ? resolvedOhaeng + '형' : null),
+      resolvedMbti,            // mbti_full → raw_answers.pfProfile.mbti 폴백
+      resolvedBcCode,
       axis_scores ? JSON.stringify(axis_scores) : null,
       raw_answers ? JSON.stringify(raw_answers) : null
     ).run()
@@ -4925,6 +4938,7 @@ app.get('/api/h/result/:id', async (c) => {
       phone: row.phone,
       ohaeng_type: row.ohaeng_type,
       disp_type: row.disp_type,
+      mbti_full: row.mbti_full,
       bc_code: row.bc_code,
       axis_scores: parseJ(row.axis_scores),
       stage1_answers: parseJ(row.stage1_json),

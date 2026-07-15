@@ -13938,32 +13938,31 @@ async function submitDiagnosis(dispAnswers) {
   // ── ref_code (URL ?ref= 파라미터) ──
   const refCode = new URLSearchParams(window.location.search).get('ref') || null;
 
-  // ── 오행/MBTI 계산 ──
+  // ── 오행/MBTI 결정 ──
+  // ★ 우선순위: ① pfProfile(사용자 직접 입력) → ② calcDisposition(외부 JS) → ③ BC코드 역산
+  // pfProfile.saju = pfCalcOhaeng(연도)로 계산된 진짜 오행 (항상 신뢰)
+  // pfProfile.mbti = 사용자가 직접 선택한 MBTI (항상 신뢰)
   let ohaeng_type = null, mbti_full = null;
-  if (typeof calcDisposition === 'function' && dispAnswers && Object.keys(dispAnswers).length > 0) {
+
+  // ① pfProfile 최우선 (사용자 직접 입력값)
+  try {
+    const _pf = window.pfProfile;
+    if (_pf && _pf.saju) ohaeng_type = _pf.saju;
+    if (_pf && _pf.mbti) mbti_full   = _pf.mbti;
+  } catch(e) { console.warn('[submitDiagnosis] pfProfile 읽기 실패:', e); }
+
+  // ② calcDisposition 폴백 (외부 JS가 있을 경우만)
+  if ((!ohaeng_type || !mbti_full) && typeof calcDisposition === 'function' && dispAnswers && Object.keys(dispAnswers).length > 0) {
     try {
-      const d    = calcDisposition(dispAnswers);
-      ohaeng_type = d.ohaeng_type || null;
-      mbti_full   = d.mbti_full   || null;
+      const d = calcDisposition(dispAnswers);
+      if (!ohaeng_type) ohaeng_type = d.ohaeng_type || null;
+      if (!mbti_full)   mbti_full   = d.mbti_full   || null;
     } catch(e) {
       console.warn('[submitDiagnosis] calcDisposition 실패:', e);
     }
   }
 
-  /* ★ NEW: pfProfile 폴백 — 사용자가 시작 프로필에서 직접 입력한 값을 우선 사용.
-     예전 버그: calcDisposition()이 파일 어디에도 정의돼 있지 않아 typeof 검사가
-     항상 false였다. 그 결과 ohaeng_type이 null로 떨어지고, 아래 BC코드 역산
-     디폴트('BC-1→수' 같은 하드코딩)가 대신 들어갔다.
-     → 사용자가 생년월일을 입력해 pfCalcOhaeng()으로 계산된 진짜 오행이 있는데도
-       결과지엔 BC코드에서 역산한 가짜 오행이 표시됐고, MBTI는 항상 null로 나갔다.
-     폴백 순서: calcDisposition(외부 JS) → pfProfile(사용자 입력) → BC코드 역산 */
-  try{
-    const _pf = window.pfProfile;
-    if(_pf){
-      if(!ohaeng_type && _pf.saju) ohaeng_type = _pf.saju;
-      if(!mbti_full   && _pf.mbti) mbti_full   = _pf.mbti;
-    }
-  }catch(e){ console.warn('[submitDiagnosis] pfProfile 폴백 실패:', e); }
+  console.log('[submitDiagnosis] 오행:', ohaeng_type, '| MBTI:', mbti_full);
 
   // ✅ BUG-4 수정: DISP 스킵 시 BC코드 기반 오행 기본값 추가
   // BC코드 → 오행 디폴트 매핑 (DISP 없을 때 결과지에서 오행 패널이 비지 않도록)

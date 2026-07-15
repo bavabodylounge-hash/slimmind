@@ -5758,7 +5758,14 @@ window.__HOSPITAL_INIT_PROMISE__ = (async function hospitalInit() {
       bc_primary:      _normBcCode   || '',
       bc_code:         _normBcCode   || '',
       user_name:       json.user_name || '고객',
-      ohaeng_type:     json.ohaeng_type || '',
+      // 오행: DB값(ohaeng_type) 우선 → raw_answers.pfProfile.saju 폴백
+      ohaeng_type:     json.ohaeng_type
+                       || (json.raw_answers && json.raw_answers.pfProfile && json.raw_answers.pfProfile.saju)
+                       || '',
+      // MBTI: DB값(mbti_full) 우선 → raw_answers.pfProfile.mbti 폴백
+      mbti:            json.mbti_full
+                       || (json.raw_answers && json.raw_answers.pfProfile && json.raw_answers.pfProfile.mbti)
+                       || '',
       axis_scores:     ax,
       gender:          json.gender    || '',
       age:             json.age       || '',
@@ -6146,7 +6153,7 @@ window.__HOSPITAL_INIT_PROMISE__ = (async function hospitalInit() {
     </div>
     <div class="p3-owl-cap">
       <span class="p3-owl-cap-tag">밤새 분석 완료</span>
-      <div class="p3-owl-cap-tx">앞에서 본 <b>다이어트 잔혹사</b> — 매번 무너지던 그 순간들의 뿌리는, 결국 타고난 기질에 있었습니다. <b>수(水) 기질</b>이 당신의 감정·식욕·회복 방식을 어떻게 지배해 왔는지, 내 마음의 작동 원리를 아는 것만으로 앞으로의 실천이 훨씬 쉬워집니다.</div>
+      <div class="p3-owl-cap-tx" id="p3-owl-intro-tx">앞에서 본 <b>다이어트 잔혹사</b> — 매번 무너지던 그 순간들의 뿌리는, 결국 타고난 기질에 있었습니다. 내 마음의 작동 원리를 아는 것만으로 앞으로의 실천이 훨씬 쉬워집니다.</div>
     </div>
   </div>
 
@@ -11966,8 +11973,14 @@ function loadData() {
       axisScores: axisScores,
       top_axes: Array.isArray(r.top_axes) ? r.top_axes : [],
       axis_primary: r.axis_primary || '',
-      ohaengType: r.ohaeng_type || '',
-      mbtiType: r.mbti || '',
+      // 오행: __RESULT__.ohaeng_type 우선 → raw_answers.pfProfile.saju 폴백
+      ohaengType: r.ohaeng_type
+                  || (r.raw_answers && r.raw_answers.pfProfile && r.raw_answers.pfProfile.saju)
+                  || '',
+      // MBTI: __RESULT__.mbti 우선(mbti_full에서 주입됨) → mbti_full 직접 → raw_answers.pfProfile.mbti 폴백
+      mbtiType: r.mbti || r.mbti_full
+                || (r.raw_answers && r.raw_answers.pfProfile && r.raw_answers.pfProfile.mbti)
+                || '',
       bloodType: r.blood_type || '',
       saju_il_gan: r.saju_il_gan || '',
       saju_display: r.saju_display || '',
@@ -13216,6 +13229,13 @@ function renderP3(userName, bcCode, bcMaster, ohaengKey, ohaeng, mbtiType, mbti,
     'AB': { tag:'이성·전략형',   desc:'감정과 논리를 분리해 계획하지만, 스스로를 과하게 통제하다 지치는 타입' }
   };
   var blood = BLOOD_TRAIT[bt] || null;
+
+  // ── P3 소개 문구 동적 렌더링 (하드코딩 "수(水) 기질" → 실제 ohaengKey 기질) ──
+  var p3IntroEl = document.getElementById('p3-owl-intro-tx');
+  if (p3IntroEl && ohaeng && ohaeng.label) {
+    p3IntroEl.innerHTML = '앞에서 본 <b>다이어트 잔혹사</b> — 매번 무너지던 그 순간들의 뿌리는, 결국 타고난 기질에 있었습니다. <b>'
+      + ohaeng.label + '</b>이 당신의 감정·식욕·회복 방식을 어떻게 지배해 왔는지, 내 마음의 작동 원리를 아는 것만으로 앞으로의 실천이 훨씬 쉬워집니다.';
+  }
 
   // ── 기질 융합 멘탈 처방 카드 (상단 진단 요약 겸 처방) ──
   // prescription이 있으면 권장/유보 운동·식단을 우선 사용, 없으면 수 기질 기본값
