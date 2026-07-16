@@ -4163,7 +4163,8 @@ app.post('/api/v1/diagnosis', async (c) => {
       goal_weight, weight_loss_pct,
       gender, height, age,              // ✅ BMR·체지방률 개인화 계산용
       ref_code, completed_at,
-      session_id   // ✅ FIX: session_id 수신 (데일리 체크 JOIN 연결용)
+      session_id,  // ✅ FIX: session_id 수신 (데일리 체크 JOIN 연결용)
+      survey_category  // ✅ 에스테틱/병원 등 분류 (aesthetic | hospital | integrated)
     } = body
 
     if (!user_name) return c.json({ error: 'user_name required' }, 400)
@@ -4240,8 +4241,8 @@ app.post('/api/v1/diagnosis', async (c) => {
            mbti_full, disp_answers, raw_answers,
            goal_weight, weight_loss_pct,
            gender, height, age,
-           ref_code, session_id, completed_at, created_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+           ref_code, session_id, survey_category, completed_at, created_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
       `).bind(
         result_id,
         String(user_name || '익명'),
@@ -4272,7 +4273,8 @@ app.post('/api/v1/diagnosis', async (c) => {
         height      != null ? Number(height) : null,
         age         != null ? Number(age)    : null,
         ref_code     || null,
-        session_id   || null,   // ✅ FIX: session_id 저장
+        session_id   || null,
+        survey_category || 'integrated',  // ✅ aesthetic | hospital | integrated
         completed_at || now,
         now
       ).run()
@@ -5192,6 +5194,61 @@ app.get('/result-aesthetic/:id', async (c) => {
     })
   } catch (e: any) {
     return c.html('<h2>결과지를 불러올 수 없습니다</h2>', 500)
+  }
+})
+
+// GET /api/a/result/:id — 에스테틱 결과 데이터 JSON 조회 (diagnosis_results 기반)
+app.get('/api/a/result/:id', async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not configured' }, 500)
+  const id = c.req.param('id')
+  try {
+    const row = await db.prepare(
+      'SELECT * FROM diagnosis_results WHERE id = ?'
+    ).bind(id).first<any>()
+    if (!row) return c.json({ error: 'Not found' }, 404)
+
+    const parseJ = (v: any, fallback: any = null) => {
+      try { return v ? JSON.parse(v) : fallback } catch { return fallback }
+    }
+
+    c.header('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0')
+    c.header('Pragma', 'no-cache')
+    c.header('Expires', '0')
+
+    const rawAnswers = parseJ(row.raw_answers)
+
+    return c.json({
+      ok:             true,
+      id:             row.id,
+      b2b_code:       row.ref_code || null,   // 에스테틱은 ref_code = b2b_code
+      ref_code:       row.ref_code || null,
+      user_name:      row.user_name,
+      gender:         row.gender,
+      age:            row.age,
+      height:         row.height,
+      phone:          row.phone,
+      ohaeng_type:    row.ohaeng_type,
+      mbti_full:      row.mbti_full,
+      bc_code:        row.bc_code_key || row.bc_primary,
+      bc_nickname:    row.bc_nickname,
+      axis_scores:    parseJ(row.axis_scores, {}),
+      top3_axes:      parseJ(row.top3_axes, []),
+      region:         row.region,
+      texture:        row.texture,
+      survey_category: row.survey_category || 'aesthetic',
+      // stage 답변 — raw_answers 안에 stage1/stage2 형태로 저장됨
+      stage1_answers: (rawAnswers && rawAnswers.stage1) ? rawAnswers.stage1 : null,
+      stage2_answers: (rawAnswers && rawAnswers.stage2) ? rawAnswers.stage2 : null,
+      stage3_answers: (rawAnswers && rawAnswers.stage3) ? rawAnswers.stage3 : null,
+      raw_answers:    rawAnswers,
+      disp_answers:   parseJ(row.disp_answers, {}),
+      goal_weight:    row.goal_weight,
+      weight_loss_pct: row.weight_loss_pct,
+      created_at:     row.created_at,
+    })
+  } catch (e: any) {
+    return c.json({ error: String(e) }, 500)
   }
 })
 
