@@ -12104,7 +12104,33 @@ function switchPage(num) {
     setTimeout(p7AnimTimeline, 800);
     setTimeout(p7AnimDesireCard, 300);
   }
-  if (num === 10) setTimeout(function(){ if(typeof renderDailyPage==='function') renderDailyPage(); }, 150);
+  if (num === 10) setTimeout(function(){
+    // 아코디언이 비어 있으면 (P6를 거치지 않고 switchPage(10)으로 바로 온 경우) 채우기
+    var acc = document.getElementById('p10-accordion');
+    if (acc && !acc.hasChildNodes() && typeof renderRoadmapAccordion === 'function') {
+      var _aw = window.__ACTIVE_WEEKS__;
+      if (!_aw || !_aw.length) {
+        // ACTIVE_WEEKS가 아직 없으면 getRoadmapWeeks로 즉시 생성
+        var _d = window.__RESULT__ || {};
+        if (typeof getRoadmapWeeks === 'function') {
+          _aw = getRoadmapWeeks(
+            _d.bc_primary || _d.bc_code || null,
+            _d.goal_weight != null ? Number(_d.goal_weight) : null,
+            _d.weight_loss_pct != null ? Number(_d.weight_loss_pct) : null,
+            _d.user_name || _d.userName || '',
+            _d.ohaengType || _d.ohaeng_type || null
+          );
+          window.__ACTIVE_WEEKS__ = _aw;
+        }
+      }
+      if (_aw && _aw.length) {
+        var _cn = (window.__RESULT__ && window.__RESULT__.consultant_name) || '담당 컨설턴트';
+        var _oh = (window.__RESULT__ && (window.__RESULT__.ohaengType || window.__RESULT__.ohaeng_type)) || null;
+        renderRoadmapAccordion(_aw, _oh, _cn);
+      }
+    }
+    if(typeof renderDailyPage==='function') renderDailyPage();
+  }, 150);
   if (num === 11) setTimeout(function(){ if(typeof renderP11==='function') renderP11(); }, 200);
 }
 
