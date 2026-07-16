@@ -16036,14 +16036,15 @@ function renderP8(metrics, bcCode, axisScores, userName, s2, data) {
     //   1주는 항상 회복(rec) 중심(몸 준비기), 주차가 늘수록 1위 원인 축 비율 극대화
     //   focus 1위가 전체 1위이면 4주차 가장 높은 막대가 focus 1위
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    var FOCUS_KEYS = ['ori', 'proc', 'horm', 'form', 'circ']; // makeWeek 밖으로 이동 — 로그에서도 접근 가능
+    var rank1IsFocus = FOCUS_KEYS.indexOf(rank1) >= 0;
     function makeWeek(w) {
-      var FOCUS_KEYS = ['ori', 'proc', 'horm', 'form', 'circ'];
       var focusVals = {};
 
       // ── 1. focus 키 비율 먼저 결정 ──
       // rank1이 focus 키면 4주차에 가장 높아야 함 → [10, 18, 28, 38]
       // rank1이 base 키면 focus는 보조 → [0, 6, 14, 22]
-      var rank1IsFocus = FOCUS_KEYS.indexOf(rank1) >= 0;
+      // rank1IsFocus는 makeWeek 바깥 스코프에서 이미 계산됨
       FOCUS_KEYS.forEach(function(fk){
         if (rank1IsFocus) {
           // 전체 1위가 focus 키인 경우
@@ -16071,7 +16072,7 @@ function renderP8(metrics, bcCode, axisScores, userName, s2, data) {
       var baseRec, baseDiet, baseEx;
 
       if (rank1IsFocus) {
-        // focus가 1위 → base는 표준 회복 곡선, 단 focus 비율만큼 줄어야 총합 맞음
+        // focus가 1위일 때 (rank1IsFocus는 makeWeek 바깥에서 계산됨)
         // 4주차 focus1위=38 이므로 base 합계 = 100-38-focus2-focus3
         var f2v = focusVals[rank2] || 0;
         var f3v = focusVals[rank3] || 0;
