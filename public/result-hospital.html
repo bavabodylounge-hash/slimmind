@@ -107,6 +107,19 @@ body{background:var(--paper);color:var(--ink);min-height:100vh;}
   display:flex;align-items:center;justify-content:space-between;
   box-shadow:0 2px 8px rgba(42,33,24,.06);
 }
+/* ── 모바일 뒤로가기 버튼 ── */
+#nav-back-btn{
+  display:none; /* 기본 숨김 — 모바일에서만 표시 */
+  align-items:center;gap:4px;flex-shrink:0;
+  background:transparent;border:1.5px solid var(--line);border-radius:10px;
+  padding:6px 10px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700;
+  color:var(--muted);transition:background .15s,color .15s;margin-right:4px;
+}
+#nav-back-btn:active{background:var(--line);}
+#nav-back-btn.visible{display:flex;}
+@media(max-width:640px){
+  #nav-back-btn.visible{display:flex;}
+}
 /* 우측 '오늘의 로드맵' 빠른 버튼 */
 .nav-daily-btn{flex-shrink:0;margin-left:8px;display:flex;align-items:center;gap:5px;background:linear-gradient(135deg,#8b6db5,#c95a3c);color:#fff;border:none;border-radius:11px;padding:7px 12px;cursor:pointer;font-family:inherit;font-weight:900;font-size:12px;position:relative;box-shadow:0 3px 12px rgba(139,109,181,.32);transition:transform .12s,box-shadow .2s;}
 .nav-daily-btn:hover{transform:translateY(-1px);box-shadow:0 5px 16px rgba(139,109,181,.42);}
@@ -6094,6 +6107,7 @@ window.__HOSPITAL_INIT_PROMISE__ = (async function hospitalInit() {
     <span class="nav-home-row"><span class="nav-home-ico">☰</span><span class="nav-home-brand" id="nav-brand-text">SLIM<span style="color:var(--mint);">MIND</span></span><span class="hb-badge">🏥 병원전용</span></span>
     <span class="nav-home-toc"><span class="nav-home-chev">‹</span> 목차보기</span>
   </button>
+  <button id="nav-back-btn" onclick="_goBack()" title="이전 페이지">‹ 뒤로</button>
   <div class="nav-tabs">
     <!-- ✅ 최적 탭 순서: 고객 여정 스토리라인 -->
     <!-- 내 코드 확인 → 타고난 기질(+크로노) → 잔혹사 → 핵심처방 → 맞춤비율 → 12주로드맵 → 변화예측 → 한장요약 -->
@@ -6328,50 +6342,6 @@ window.__HOSPITAL_INIT_PROMISE__ = (async function hospitalInit() {
 
   <!-- 12주 풀 처방 락인(업셀) 카드 -->
   <div id="p3-lock-mount" class="fade-up" style="transition-delay:.34s"></div>
-
-  <!-- ═══ 크로노 영양 처방 인트로 ═══ -->
-  <div class="chrono-intro fade-up" style="transition-delay:.38s">
-    <div class="chrono-intro-eyebrow">⏰ Chrono Nutrition</div>
-    <div class="chrono-intro-title">크로노 영양 처방이란?<br><em>타이밍이 바뀌면 몸이 바뀝니다</em></div>
-    <div class="chrono-intro-desc">
-      "무엇을 먹느냐"보다 <strong>"언제 먹느냐"</strong>가 체형 변화를 결정합니다.<br>
-      크로노 영양 처방은 <strong>내 바디코드의 생체리듬에 맞춰</strong> 하루 6개 시간대별로 먹는 법·피하는 것·핵심 팁을 처방합니다.<br>
-      같은 음식도 시간대에 따라 지방이 되기도, 에너지가 되기도 합니다.
-    </div>
-    <div class="chrono-intro-cards">
-      <div class="chrono-intro-card">
-        <span class="chrono-intro-card-ic">🌅</span>
-        <span class="chrono-intro-card-label">아침 시동</span>
-        <span class="chrono-intro-card-desc">기상 후 호르몬 리듬을 올바르게 시작</span>
-      </div>
-      <div class="chrono-intro-card">
-        <span class="chrono-intro-card-ic">☀️</span>
-        <span class="chrono-intro-card-label">낮 충전</span>
-        <span class="chrono-intro-card-desc">활동·소화 능력이 가장 높은 골든타임</span>
-      </div>
-      <div class="chrono-intro-card">
-        <span class="chrono-intro-card-ic">🌙</span>
-        <span class="chrono-intro-card-label">저녁 회복</span>
-        <span class="chrono-intro-card-desc">수면 중 지방분해·재생을 극대화</span>
-      </div>
-    </div>
-    <div class="chrono-intro-science">
-      <strong>💡 과학적 배경</strong>: 시간생물학(Chronobiology) 연구에 따르면 인슐린 감수성·코르티솔·성장호르몬은 모두 하루 중 특정 시간에 피크를 가집니다. 같은 칼로리라도 <strong>아침에 먹으면 에너지, 밤에 먹으면 지방</strong>으로 저장될 확률이 달라집니다.
-    </div>
-  </div>
-
-  <!-- ═══ 크로노 영양 처방 타임라인 ═══ -->
-  <div class="chrono-section fade-up" style="transition-delay:.42s" id="chrono-section">
-    <div class="chrono-hd">
-      <div class="chrono-title">🗓️ 내 바디코드 하루 처방표</div>
-      <div class="chrono-badge" id="chrono-bc-badge">BC-?</div>
-    </div>
-    <div class="chrono-sub" id="chrono-sub">내 바디코드에 최적화된 시간대별 먹는 법입니다</div>
-    <div class="chrono-timeline" id="chrono-timeline">
-      <!-- JS renderChrono()가 채웁니다 -->
-    </div>
-    <div class="chrono-science" id="chrono-science"></div>
-  </div>
 
   <!-- P3(타고난 기질) → P4(다이어트 잔혹사) 흐름 -->
   <button class="next-flow fade-up" style="transition-delay:.5s" onclick="switchPage(4)">
@@ -12110,7 +12080,34 @@ function switchP10Tab(pane) {
   window.scrollTo(0, 0);
 }
 
+// ── 페이지 히스토리 스택 (뒤로가기 버튼용) ──
+var _pageHistory = [];
+function _updateBackBtn() {
+  var btn = document.getElementById('nav-back-btn');
+  if (!btn) return;
+  if (_pageHistory.length > 0) btn.classList.add('visible');
+  else btn.classList.remove('visible');
+}
+function _goBack() {
+  if (!_pageHistory.length) { openCover(); return; }
+  var prev = _pageHistory.pop();
+  // 히스토리를 직접 팝한 뒤 switchPage를 호출하되, 이 이동은 스택에 다시 쌓지 않음
+  _goingBack = true;
+  switchPage(prev);
+  _goingBack = false;
+  _updateBackBtn();
+}
+var _goingBack = false;
+
 function switchPage(num) {
+  // ── 히스토리 스택 추적 ──
+  if (!_goingBack) {
+    var curTab = document.querySelector('.nav-tab.active, .nav-tab-daily-fixed.active');
+    var cur = curTab ? parseInt(curTab.dataset.page || 0) : 0;
+    if (cur && cur !== num) _pageHistory.push(cur);
+  }
+  _updateBackBtn();
+
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   var dailyFixed = document.querySelector('.nav-tab-daily-fixed');
@@ -13447,7 +13444,7 @@ function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nic
       `<div style="margin-top:14px;padding:10px 14px;background:rgba(251,191,36,0.15);
         border:1px solid rgba(251,191,36,0.5);border-radius:12px;
         font-size:12px;line-height:1.6;color:rgba(255,220,150,.95);">
-        ⚡ <strong>이중 패턴 감지</strong> — Top1·Top2 축 점수 차 <strong>${borderlineDiff}점</strong><br>
+        ⚡ <strong>이중 패턴 감지</strong> — Top1·Top2 축 점수 차 <strong>${Number(borderlineDiff).toFixed(2)}점</strong><br>
         <span style="opacity:.85">${bcCode}와 ${secondaryBcCode} 특성이 공존합니다.
         ${secondaryNickname ? '(보조: ' + secondaryNickname + ')' : ''}</span>
       </div>`);
