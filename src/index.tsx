@@ -1746,6 +1746,23 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
 <meta name="twitter:image"         content="${ogImage}">
 <meta name="description"           content="${ogDesc}">`
 
+        // ── aesthetic 분기: survey_category === 'aesthetic' → result-aesthetic.html 서빙 ──
+        if (diagRow.survey_category === 'aesthetic') {
+          let aestheticHtml = await fetchAsset(c.env.ASSETS, '/result-aesthetic.html')
+          const AESTHETIC_MARKER = '<!-- ══ 에스테틱 전용: API 연동 + __RESULT__ 주입 ══ -->'
+          const idScript = `<script>window.__AESTHETIC_RESULT_ID__ = ${JSON.stringify(id)};window.__RESULT__ = ${injectedData};</script>\n`
+          if (aestheticHtml.includes(AESTHETIC_MARKER)) {
+            aestheticHtml = aestheticHtml.replace(AESTHETIC_MARKER, idScript + AESTHETIC_MARKER)
+          } else {
+            aestheticHtml = aestheticHtml.replace('</head>', idScript + '</head>')
+          }
+          return c.html(aestheticHtml, 200, {
+            'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+          })
+        }
+
         const baseHtml1 = await fetchAsset(c.env.ASSETS, '/result-v4.html')
         const injectedHtml = baseHtml1.replace(
           '</head>',
