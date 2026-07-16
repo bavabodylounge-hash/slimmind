@@ -4978,6 +4978,8 @@ app.get('/api/h/result/:id', async (c) => {
     const finalMbti = normMbti(row.mbti_full)
       || normMbti(parsedRawResult?.pfProfile?.mbti) || ''
 
+    c.header('Cache-Control', 'no-cache, no-store, must-revalidate')
+    c.header('Pragma', 'no-cache')
     return c.json({
       ok: true,
       id: row.id,
@@ -5082,7 +5084,10 @@ app.get('/result-hospital/:id', async (c) => {
       // 마커 없을 때 폴백: 기존 방식
       html = html.replace('</head>', idScript + '</head>')
     }
-    return c.html(html)
+    return c.html(html, 200, {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+    })
   } catch (e: any) {
     return c.html('<h2>결과지를 불러올 수 없습니다</h2>', 500)
   }
