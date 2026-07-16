@@ -3996,14 +3996,14 @@ p, div, span, h1, h2, h3, h4{
 .rxs-sol-divider{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
 .rxs-sol-divider::before,.rxs-sol-divider::after{content:'';flex:1;height:1px;background:var(--line);}
 .rxs-sol-divider span{font-size:11px;font-weight:900;color:var(--evc);letter-spacing:.08em;white-space:nowrap;padding:3px 10px;background:rgba(0,0,0,.04);border-radius:20px;border:1px solid var(--line);}
-.rxs-sol-story{font-size:12.5px;color:var(--ink);line-height:1.65;word-break:keep-all;background:var(--card2);border-radius:10px;padding:12px 13px;margin-bottom:12px;border-left:3px solid var(--evc);}
+.rxs-sol-story{font-size:12.5px;color:var(--ink);line-height:1.65;word-break:keep-all;background:var(--card2);border-radius:10px;padding:12px 13px;margin-bottom:10px;border-left:3px solid var(--evc);}
 .rxs-sol-story b{font-weight:800;color:var(--evc);}
-.rxs-sol-actions{display:flex;flex-direction:column;gap:8px;}
-.sol-action-card{border-radius:11px;padding:12px 14px;}
-.sol-action-when{display:flex;align-items:center;gap:8px;font-size:10.5px;font-weight:900;letter-spacing:.06em;margin-bottom:7px;}
-.sol-action-icon{width:24px;height:24px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
-.sol-action-text{font-size:12px;color:rgba(255,255,255,.85);line-height:1.6;word-break:keep-all;}
-.sol-action-text b{color:#fff;font-weight:800;}
+.rxs-sol-actions{display:flex;flex-direction:column;gap:0;}
+.sol-action-card{border-radius:10px;padding:11px 13px;background:var(--card2);border:1px solid var(--line);border-left:3px solid var(--evc);}
+.sol-action-when{display:flex;align-items:center;gap:7px;font-size:10.5px;font-weight:900;color:var(--evc);letter-spacing:.05em;margin-bottom:6px;}
+.sol-action-icon{width:22px;height:22px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;background:rgba(0,0,0,.06);}
+.sol-action-text{font-size:12px;color:var(--ink);line-height:1.6;word-break:keep-all;}
+.sol-action-text b{font-weight:800;color:var(--evc);}
 .ev-e-ic{font-size:20px;flex-shrink:0;width:24px;display:flex;align-items:center;justify-content:center;}
 .ev-e-ic svg{width:21px;height:21px;display:block;}
 .ev-e-mid{flex:1;min-width:0;}
@@ -15424,10 +15424,15 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
   });
 
   // STRONG 배열 빌드 (최대 3개) — ev_template을 s2 응답 기반 동적 서술로 교체
+  // DOMAIN_DATA에 없는 _top3 영역은 동적으로 보완
+  var EXTRA_DOMAIN_DATA = {
+    '순환': { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#2f7d8c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>', nm:'순환', to:'한의원 · 순환클리닉', c:'#2f7d8c', ev_template:[], concl:'순환 개선이 체지방 분해와 부종 해소의 핵심입니다.' }
+  };
+
   var STRONG = [];
   strongKeys.forEach(function(nm) {
-    var d = DOMAIN_DATA[nm];
-    if (!d || d.hidden) return;
+    var d = DOMAIN_DATA[nm] || EXTRA_DOMAIN_DATA[nm];
+    if (!d) return;
     // ★ 핵심: ev_template 대신 buildEvidence(nm)으로 실제 s2 응답 기반 서술 생성
     var evRaw = buildEvidence(nm);
     var ev = evRaw.map(function(e) {
@@ -15459,7 +15464,7 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
     '관리':   DOMAIN_DATA['관리'],
     '철학':   DOMAIN_DATA['철학']
   };
-  var allNms = ['약물','식단','운동','회복','한방','심리','체형','호르몬','시술','관리','철학'];
+  var allNms = ['약물','식단','운동','회복','한방','심리','체형','호르몬','시술','순환','관리','철학'];
   var NONE = [];
   allNms.forEach(function(nm) {
     if (strongKeys.indexOf(nm) >= 0) return; // STRONG에 있으면 스킵
@@ -15752,7 +15757,7 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
         '</div>';
       }).join('');
 
-      // ── "그래서 뭐해?" 섹션: 원인 스토리 + 행동 3개 ──
+      // ── "그래서 뭐해?" 섹션: 원인 스토리 + 오늘 밤 행동 1개만 ──
       var solHTML = '';
       var domSol = (typeof DOMAIN_SOLUTION !== 'undefined') ? DOMAIN_SOLUTION[e.nm] : null;
       if (domSol) {
@@ -15762,28 +15767,23 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
           storyText = domSol.story(_domainScores, window.__RESULT__._stage1||{}, _solCtx);
         } catch(err) { storyText = ''; }
 
-        // 행동 3개 카드
-        var actionCards = '';
-        var whenColors = {
-          '오늘 밤': { bg:'#1a1a2e', accent:'#8b6db5', icon_bg:'rgba(139,109,181,.2)' },
-          '이번 주': { bg:'#1a2b1a', accent:'#5a6e3a', icon_bg:'rgba(90,110,58,.2)' },
-          '이번 달': { bg:'#2b1a1a', accent:'#c0397a', icon_bg:'rgba(192,57,122,.2)' }
-        };
-        (domSol.actions||[]).forEach(function(act) {
-          var wc = whenColors[act.when] || { bg:'#1e1e1e', accent:'#888', icon_bg:'rgba(136,136,136,.2)' };
-          actionCards += '<div class="sol-action-card" style="background:' + wc.bg + ';border-left:3px solid ' + wc.accent + ';">' +
-            '<div class="sol-action-when" style="color:' + wc.accent + ';">' +
-              '<span class="sol-action-icon" style="background:' + wc.icon_bg + ';">' + act.icon + '</span>' +
-              act.when +
+        // 오늘 밤 행동 1개만 (첫 번째 action)
+        var tonightAct = (domSol.actions && domSol.actions[0]) || null;
+        var tonightHTML = '';
+        if (tonightAct) {
+          tonightHTML = '<div class="sol-action-card">' +
+            '<div class="sol-action-when">' +
+              '<span class="sol-action-icon">' + tonightAct.icon + '</span>' +
+              tonightAct.when +
             '</div>' +
-            '<div class="sol-action-text">' + act.text + '</div>' +
+            '<div class="sol-action-text">' + tonightAct.text + '</div>' +
           '</div>';
-        });
+        }
 
         solHTML = '<div class="rxs-sol-section">' +
           '<div class="rxs-sol-divider"><span>그래서 뭐해?</span></div>' +
           (storyText ? '<div class="rxs-sol-story">' + storyText + '</div>' : '') +
-          '<div class="rxs-sol-actions">' + actionCards + '</div>' +
+          (tonightHTML ? '<div class="rxs-sol-actions">' + tonightHTML + '</div>' : '') +
         '</div>';
       }
 
