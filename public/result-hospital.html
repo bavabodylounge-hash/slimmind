@@ -3991,6 +3991,19 @@ p, div, span, h1, h2, h3, h4{
 .rxs-sum-lb{font-size:10.5px;font-weight:700;color:rgba(255,255,255,.85);}
 .rxs-sum-tx{font-size:12px;font-weight:800;color:#fff;line-height:1.5;word-break:keep-all;}
 .rxs-sum-tx b{color:rgba(255,255,255,.7);}
+/* ── "그래서 뭐해?" 섹션 스타일 ── */
+.rxs-sol-section{margin-top:14px;}
+.rxs-sol-divider{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.rxs-sol-divider::before,.rxs-sol-divider::after{content:'';flex:1;height:1px;background:var(--line);}
+.rxs-sol-divider span{font-size:11px;font-weight:900;color:var(--evc);letter-spacing:.08em;white-space:nowrap;padding:3px 10px;background:rgba(0,0,0,.04);border-radius:20px;border:1px solid var(--line);}
+.rxs-sol-story{font-size:12.5px;color:var(--ink);line-height:1.65;word-break:keep-all;background:var(--card2);border-radius:10px;padding:12px 13px;margin-bottom:12px;border-left:3px solid var(--evc);}
+.rxs-sol-story b{font-weight:800;color:var(--evc);}
+.rxs-sol-actions{display:flex;flex-direction:column;gap:8px;}
+.sol-action-card{border-radius:11px;padding:12px 14px;}
+.sol-action-when{display:flex;align-items:center;gap:8px;font-size:10.5px;font-weight:900;letter-spacing:.06em;margin-bottom:7px;}
+.sol-action-icon{width:24px;height:24px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+.sol-action-text{font-size:12px;color:rgba(255,255,255,.85);line-height:1.6;word-break:keep-all;}
+.sol-action-text b{color:#fff;font-weight:800;}
 .ev-e-ic{font-size:20px;flex-shrink:0;width:24px;display:flex;align-items:center;justify-content:center;}
 .ev-e-ic svg{width:21px;height:21px;display:block;}
 .ev-e-mid{flex:1;min-width:0;}
@@ -14878,11 +14891,437 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
   }
 
   // ════════════════════════════════════════════
+  // ════════════════════════════════════════════
+  // ★ 개인화 점수 계산 엔진
+  // stage1 + stage2 + stage3 + specState 전체 데이터로
+  // 11개 영역 각각 점수 산출 → 높은 순 3개가 실제 1·2·3순위
+  // ════════════════════════════════════════════
+  var _domainScores = (function calcDomainScores() {
+    var sc = { 회복:0, 식단:0, 운동:0, 호르몬:0, 체형:0, 순환:0, 심리:0, 한방:0, 약물:0, 시술:0 };
+
+    // ── stage1 외형 촉진 ──
+    var s1 = window.__RESULT__ && window.__RESULT__._stage1 || {};
+    var s1r = function(k){ return s1[k] !== undefined ? Number(s1[k]) : -1; };
+    var s1Region  = s1r(1);  // 0=얼굴,1=윗배,2=아랫배,3=허벅지,4=어깨팔뚝,5=전체
+    var s1FatArea = s1r(2);  // 0=배,1=허벅지,2=어깨팔뚝,3=얼굴손발,4=전신
+    var s1Texture = s1r(4);  // 0=단단,1=말랑,2=울퉁불퉁,3=부종
+    var s1Elastic = s1r(5);  // 0=빠름,1=2~3초,2=한참남음
+    var s1Belly   = s1r(6);  // 0=배만나옴,1=전체통통,2=아님
+    var s1Circ    = s1r(7);  // 0=똑같,1=다리붓,2=얼굴붓,3=체중변동
+    var s1Posture = s1r(12); // 0=짝다리,1=다리꼬기,2=양발
+    var s1Calf    = s1r(13); // 0=발목굵고부음,1=근육질,2=가늘
+    var s1Profile = s1r(14); // 0=잘록,1=일자통짜,2=아랫배볼록,3=배전체앞으로
+
+    // 체형
+    if (s1Profile >= 1) sc['체형'] += 3;
+    if (s1Posture === 0 || s1Posture === 1) sc['체형'] += 2;
+    if (s1Region === 2 || s1Region === 3) sc['체형'] += 2;
+    if (s1Texture === 2) sc['체형'] += 2; // 셀룰라이트
+    if (s1Texture === 0) sc['체형'] += 1; // 섬유화
+    // 순환
+    if (s1Circ === 1) sc['순환'] += 4; // 다리 부종
+    if (s1Circ === 2) sc['순환'] += 3; // 얼굴 부종
+    if (s1Circ === 3) sc['순환'] += 3; // 체중변동
+    if (s1Calf === 0) sc['순환'] += 3; // 발목굵고부음
+    if (s1Texture === 3) sc['순환'] += 3; // 부종형 조직
+    // 운동
+    if (s1Elastic === 2) sc['운동'] += 3; // 탄력 심각저하
+    if (s1Elastic === 1) sc['운동'] += 2;
+    if (s1Calf === 1) sc['운동'] += 2; // 근육 종아리 → 방향교정
+    if (s1Posture === 0 || s1Posture === 1) sc['운동'] += 2;
+    // 식단
+    if (s1FatArea === 0) sc['식단'] += 3; // 복부 우선 지방
+    if (s1Belly === 0) sc['식단'] += 3;   // 배만 나옴=내장지방
+    if (s1FatArea === 4) sc['식단'] += 2; // 전신
+    // 한방
+    if (s1Texture === 1) sc['한방'] += 2; // 말랑=담습
+    if (s1Texture === 3) sc['한방'] += 2; // 부종=수습
+    if (s1Circ >= 1) sc['한방'] += 1;
+
+    // ── stage2 생활습관 ──
+    var s2 = window.__RESULT__ && window.__RESULT__._stage2 || {};
+    var g2 = function(keys, def) {
+      for (var i=0;i<keys.length;i++){ var v=s2[keys[i]]; if(v!==undefined&&v!==null&&v!=='') return v; }
+      return def!==undefined?def:'';
+    };
+    var gn2 = function(keys) {
+      var v=g2(keys,''); if(Array.isArray(v)) return v[0]!==undefined?Number(v[0]):-1;
+      if(typeof v==='number') return v; if(typeof v==='string'&&v!=='') return Number(v); return -1;
+    };
+    var ga2 = function(keys) {
+      var v=g2(keys,[]); if(typeof v==='string'){try{v=JSON.parse(v);}catch(e){v=v?[v]:[];}} return Array.isArray(v)?v.map(Number):[];
+    };
+
+    var q1  = gn2(['q1','q1_family']);
+    var q3  = ga2(['q3','q3_disease']);
+    var q4  = ga2(['q4','q4_checkup']);
+    var q5  = gn2(['q5','q5_cold']);
+    var q6raw = g2(['q6','q6_drugs'],[]);
+    if(typeof q6raw==='string'){try{q6raw=JSON.parse(q6raw);}catch(e){q6raw=[];}}
+    var q6  = Array.isArray(q6raw)?q6raw:[];
+    var q7  = gn2(['q7','q7_appetite']);
+    var q8raw = g2(['q8','q8_trigger'],[]);
+    if(typeof q8raw==='string'){try{q8raw=JSON.parse(q8raw);}catch(e){q8raw=[];}}
+    var q8  = Array.isArray(q8raw)?q8raw.map(Number):[];
+    var q9raw = g2(['q9','q9_procedures'],[]);
+    if(typeof q9raw==='string'){try{q9raw=JSON.parse(q9raw);}catch(e){q9raw=[];}}
+    var q9  = Array.isArray(q9raw)?q9raw:[];
+    var q10raw = g2(['q10','q10_history'],'');
+    var q10pat = ''; var q10 = -1;
+    if(q10raw&&typeof q10raw==='object'&&q10raw.pat){ q10pat=q10raw.pat; var _pm={creep:0,yoyo:1,jump:2,stable:3,down:3}; q10=_pm[q10pat]!==undefined?_pm[q10pat]:-1; }
+    else { var _v=Array.isArray(q10raw)?q10raw[0]:q10raw; q10=(_v!==''&&_v!==undefined)?Number(_v):-1; }
+    var q11raw = g2(['q11','q11_event'],[]);
+    if(typeof q11raw==='string'){try{q11raw=JSON.parse(q11raw);}catch(e){q11raw=[];}}
+    var q11 = Array.isArray(q11raw)?q11raw.map(Number):[];
+    var q13 = gn2(['q13','q13_smoke']);
+    var q14 = gn2(['q14','q14_drink']);
+    if(typeof g2(['q14'],'') === 'number') q14 = Number(g2(['q14'],''));
+
+    var hasLongDrug = q6.length>0 && !q6.every(function(v){return Number(v)===5||String(v)==='none';});
+    var hasSteroidsOrAD = q6.some(function(d){return /스테로이드|steroid|항우울|antidepressant|피임약/i.test(String(d));});
+    var hasBirth = q11.indexOf(0)>=0;
+    var hasMenopause = q11.indexOf(2)>=0||/yes|완경|갱년기|폐경/i.test(String(g2(['q12'],'q12_menopause','')));
+    var isMeno = hasMenopause;
+    var hasMilitary = q11.indexOf(1)>=0;
+
+    // 회복
+    if (q10===1||q10pat==='yoyo') sc['회복'] += 4;
+    if (q10===2||q10pat==='jump') sc['회복'] += 3;
+    if (q8.indexOf(0)>=0) sc['회복'] += 3; // 스트레스 계기
+    if (q13===0) sc['회복'] += 2; // 흡연
+    if (q14>=2) sc['회복'] += 2;  // 잦은 음주
+    if (q4.some(function(v){return v<5;})) sc['회복'] += 2; // 건강검진 이상소견
+    // 식단
+    if (q14>=2) sc['식단'] += 3;
+    if (q14===1) sc['식단'] += 1;
+    if (q8.indexOf(1)>=0) sc['식단'] += 2; // 감정 식욕 계기
+    if (q3.indexOf(1)>=0) sc['식단'] += 3; // 당뇨전단계
+    if (q3.indexOf(2)>=0) sc['식단'] += 3; // 다낭성난소
+    if (q3.indexOf(4)>=0) sc['식단'] += 2; // 고지혈증
+    // 운동
+    if (q10===0||q10pat==='creep') sc['운동'] += 3; // 서서히증가=근감소성
+    if (hasMilitary) sc['운동'] += 2;
+    if (q3.indexOf(0)>=0) sc['운동'] += 1; // 갑상선→저강도운동
+    // 호르몬
+    if (isMeno) sc['호르몬'] += 5;
+    if (q3.indexOf(0)>=0) sc['호르몬'] += 3; // 갑상선
+    if (q3.indexOf(2)>=0) sc['호르몬'] += 3; // 다낭성난소
+    if (q1===0) sc['호르몬'] += 2; // 가족력
+    if (q13===0) sc['호르몬'] += 1; // 흡연→코르티솔
+    // 심리
+    if (q8.indexOf(1)>=0) sc['심리'] += 4; // 감정 계기
+    if (q8.indexOf(0)>=0) sc['심리'] += 3; // 스트레스 번아웃
+    if (q14>=2) sc['심리'] += 2;
+    if (q10===1||q10pat==='yoyo') sc['심리'] += 2; // 반복요요→자기효능감
+    // 약물
+    if (hasLongDrug) sc['약물'] += 4;
+    if (hasSteroidsOrAD) sc['약물'] += 3;
+    if (q7>=0) sc['약물'] += 3; // 식욕억제제
+    if (q8.indexOf(2)>=0) sc['약물'] += 2; // 수술/약물 계기
+    // 시술
+    if (q9.length>0) sc['시술'] += 3;
+    if (s1Region===2||s1Region===3) sc['시술'] += 2; // 아랫배·허벅지 고민
+    if (s1Region===1) sc['시술'] += 1; // 윗배
+    // 한방
+    if (q1===0) sc['한방'] += 2; // 가족력
+    if (q3.indexOf(0)>=0) sc['한방'] += 2; // 갑상선
+    if (isMeno) sc['한방'] += 2;
+    // 체형
+    if (hasBirth) sc['체형'] += 3;
+    if (q3.indexOf(3)>=0) sc['체형'] += 1; // 고혈압
+
+    // ── stage3 히트맵 ──
+    var s3 = window.__RESULT__ && window.__RESULT__._stage3 || {};
+    var sleepArr  = Array.isArray(s3['sleep'])  ? s3['sleep']  : [];
+    var tiredArr  = Array.isArray(s3['tired'])  ? s3['tired']  : [];
+    var hungryArr = Array.isArray(s3['hungry']) ? s3['hungry'] : [];
+    var painArr   = Array.isArray(s3['pain'])   ? s3['pain']   : [];
+    var bloatArr  = Array.isArray(s3['bloat'])  ? s3['bloat']  : [];
+
+    var nightSleep  = sleepArr.length>=6  ? (Number(sleepArr[4])||0)+(Number(sleepArr[5])||0) : 0;
+    var totalSleep  = sleepArr.reduce(function(a,v){return a+(Number(v)||0);},0);
+    var totalTired  = tiredArr.reduce(function(a,v){return a+(Number(v)||0);},0);
+    var nightHungry = hungryArr.length>=6 ? (Number(hungryArr[4])||0)+(Number(hungryArr[5])||0) : 0;
+    var totalPain   = painArr.reduce(function(a,v){return a+(Number(v)||0);},0);
+    var totalBloat  = bloatArr.reduce(function(a,v){return a+(Number(v)||0);},0);
+
+    if (nightSleep>=3) sc['회복'] += 3;
+    if (totalSleep>=4) sc['회복'] += 2;
+    if (totalTired>=4) sc['회복'] += 2;
+    if (nightHungry>=3) sc['식단'] += 3;
+    if (totalBloat>=3) sc['식단'] += 2;
+    if (totalPain>=3) sc['체형'] += 2;
+
+    // ── specState 신체 스펙 ──
+    var spH  = window._spec_height  || 0;
+    var spW  = window._spec_weight  || 0;
+    var spGW = window._spec_goalwt  || 0;
+    var spBF = window._spec_bodyfat || 0;
+    var spM  = window._spec_muscle  || 0;
+    var spBMI= window._spec_bmi     || 0;
+    var spLoss = (spW>0&&spGW>0&&spW>spGW) ? spW-spGW : 0;
+
+    if (spBMI>=30) { sc['약물']+=3; sc['식단']+=2; sc['회복']+=1; }
+    else if (spBMI>=27) { sc['약물']+=2; sc['식단']+=2; }
+    if (spBF>=30) { sc['식단']+=2; sc['운동']+=2; sc['체형']+=1; }
+    if (spM>0&&spM<20) { sc['운동']+=3; sc['식단']+=1; } // 근감소 위험
+    if (spLoss>=15) { sc['약물']+=2; sc['심리']+=2; } // 큰 감량목표
+
+    // ── BC코드 베이스 보정 (각 BC 특성 반영, 과도한 영향 방지) ──
+    var bc = bcCode || '';
+    var BC_BOOST = {
+      'BC-1': {순환:3, 회복:2, 체형:1},
+      'BC-2': {체형:3, 순환:2, 회복:1},
+      'BC-3': {식단:3, 순환:2, 회복:1},
+      'BC-4': {호르몬:3, 회복:2, 식단:1},
+      'BC-5': {식단:3, 호르몬:2, 회복:1},
+      'BC-6': {회복:3, 심리:2, 호르몬:1},
+      'BC-7': {체형:3, 회복:2, 식단:1},
+      'BC-8': {운동:3, 체형:2, 식단:1},
+      'BC-9': {식단:3, 운동:2, 회복:1}
+    };
+    var boost = BC_BOOST[bc] || {};
+    Object.keys(boost).forEach(function(k){ sc[k] = (sc[k]||0) + boost[k]; });
+
+    return sc;
+  })();
+
+  // 점수 기반 상위 3개 영역 추출 (내림차순)
+  var _sortedDomains = Object.keys(_domainScores)
+    .filter(function(k){ return k !== '관리' && k !== '철학'; })
+    .sort(function(a,b){ return _domainScores[b] - _domainScores[a]; });
+  var _top3 = _sortedDomains.slice(0,3);
+
+  // ════════════════════════════════════════════
+  // ★ 영역별 해결책 데이터 (원인 스토리 + 구체적 행동)
+  // ════════════════════════════════════════════
+  var DOMAIN_SOLUTION = {
+    '회복': {
+      story: function(sc, s1, q) {
+        var lines = [];
+        if (q.yoyo) lines.push('반복된 요요는 기초대사를 단계적으로 낮춥니다. 이번에도 똑같이 굶고 버티면 다음 요요는 더 심해집니다.');
+        if (q.sleep) lines.push('수면 불량 상태에서는 식욕 호르몬(그렐린)이 24% 증가하고 지방 연소가 멈춥니다. 식단을 지켜도 빠지지 않는 이유가 여기 있습니다.');
+        if (q.stress) lines.push('스트레스가 체중 증가의 계기가 됐습니다. 코르티솔이 만성 상승하면 어떤 다이어트도 효율이 절반 이하입니다.');
+        if (q.tired) lines.push('하루 전반에 피로가 깔려 있습니다. 자율신경이 소진된 상태에서 몸을 밀어붙이면 더 무너집니다.');
+        if (!lines.length) lines.push('몸이 먼저 회복할 시간이 필요합니다. 지금 당장 칼로리를 줄이는 것보다 회복 시스템을 살리는 것이 우선입니다.');
+        return lines[0];
+      },
+      actions: [
+        { when:'오늘 밤', icon:'🌙', text:'취침 1시간 전 스마트폰 끄기 + 22시 이전 취침 시도. 수면 시작 시간이 1시간 빨라지면 렙틴(포만감 호르몬)이 정상화됩니다.' },
+        { when:'이번 주', icon:'📅', text:'하루 10분 "아무것도 안 하는 시간" 만들기. 자율신경 회복에 가장 직접적인 방법입니다. 명상 앱(코끼리·마보) 활용.' },
+        { when:'이번 달', icon:'🏥', text:'"자율신경 검사" 또는 "수면다원검사"를 내과·신경과에서 받아보세요. 검색 키워드: 자율신경실조 클리닉' }
+      ]
+    },
+    '식단': {
+      story: function(sc, s1, q) {
+        var lines = [];
+        if (q.belly) lines.push('팔다리는 가는데 배만 나온 체형은 내장지방형 복부비만입니다. 칼로리보다 혈당 스파이크가 원인이고, 식사 순서와 식품 종류를 바꾸는 것이 핵심입니다.');
+        if (q.nightHungry) lines.push('야간 식욕이 강하게 감지됩니다. 낮에 억눌린 칼로리가 밤에 폭발하는 구조입니다. 야식이 의지력 문제가 아닌 낮 식사 설계 문제입니다.');
+        if (q.drink) lines.push('음주 중에는 간이 알코올 처리에 집중해 지방 산화가 완전히 멈춥니다. 식단을 지켜도 살이 안 빠지던 핵심 이유입니다.');
+        if (q.highBF) lines.push('체지방률이 높은 상태에서는 저탄·고단백 식단이 가장 빠른 변화를 만듭니다. 탄수화물 종류와 섭취 타이밍이 핵심입니다.');
+        if (!lines.length) lines.push('지금 먹는 방식 안에 살이 찌는 구조가 숨어 있습니다. 칼로리 계산보다 식품 선택과 식사 순서를 바꾸는 것이 먼저입니다.');
+        return lines[0];
+      },
+      actions: [
+        { when:'오늘 밤', icon:'🥗', text:'식사 순서 바꾸기: 채소→단백질→탄수화물 순으로. 혈당 스파이크를 30% 낮추는 가장 쉬운 방법입니다.' },
+        { when:'이번 주', icon:'📱', text:'식사 사진 찍어두기 3일치. 먹은 것을 시각화하면 무의식 과식이 20~30% 줄어듭니다. 별도 앱 없이 갤러리로 충분합니다.' },
+        { when:'이번 달', icon:'🏥', text:'영양사 상담 또는 비만클리닉 식이치료 상담. 검색 키워드: 비만클리닉 식이상담 / 대학병원 영양상담' }
+      ]
+    },
+    '운동': {
+      story: function(sc, s1, q) {
+        var lines = [];
+        if (q.creep) lines.push('체중이 서서히 꾸준히 올라온 구조는 근감소성 비만 패턴입니다. 유산소로 칼로리를 태우려 할수록 근육이 더 빠지는 악순환이 생깁니다. 저항운동이 먼저입니다.');
+        if (q.elastic2) lines.push('탄력 측정에서 회복이 한참 걸립니다. 조직 탄력이 심각히 저하된 상태로, 지방을 빼도 처지는 현상이 심해집니다. 근력운동과 탄력 회복이 최우선입니다.');
+        if (q.lowMuscle) lines.push('골격근량이 낮은 상태입니다. 근육이 없으면 기초대사가 낮아져 조금만 먹어도 살이 찌는 체질이 됩니다. 근육 재건이 체중 감량의 전제 조건입니다.');
+        if (q.posture) lines.push('골반 비대칭(짝다리·다리꼬기 습관)이 감지됩니다. 불균형 상태로 하체 운동을 하면 한쪽만 발달하고 부상 위험이 높아집니다. 교정 운동이 먼저입니다.');
+        if (!lines.length) lines.push('지금 하는 운동 방식이 체질에 맞지 않을 수 있습니다. 더 열심히 하는 것보다 방향을 바꾸는 것이 훨씬 빠른 결과를 만듭니다.');
+        return lines[0];
+      },
+      actions: [
+        { when:'오늘 밤', icon:'🪑', text:'앉기 전 스쿼트 10개 습관화. 운동 시간 없어도 일상 속 저항운동으로 기초대사를 올릴 수 있습니다.' },
+        { when:'이번 주', icon:'🏃', text:'식후 10분 걷기 시작. 혈당 스파이크를 낮추고 지방 산화를 돕는 가장 간단한 운동입니다. 엘리베이터 대신 계단도 포함.' },
+        { when:'이번 달', icon:'🏥', text:'운동처방사 또는 재활의학과 상담. 검색 키워드: 운동처방 상담 / 재활의학과 비만 운동처방' }
+      ]
+    },
+    '호르몬': {
+      story: function(sc, s1, q) {
+        var lines = [];
+        if (q.meno) lines.push('갱년기·폐경 이후 에스트로겐이 급감하면 지방이 하체에서 복부로 재배치됩니다. 이건 의지로 막을 수 없는 호르몬의 변화입니다. 호르몬 지원 처방이 필수입니다.');
+        if (q.thyroid) lines.push('갑상선 이력이 있습니다. 갑상선 호르몬은 기초대사량을 직접 조절합니다. T3/T4 불균형 상태에서는 아무리 노력해도 대사 속도 자체가 느립니다.');
+        if (q.pcos) lines.push('다낭성난소증후군은 인슐린 저항성과 안드로겐 과잉이 복합 작용합니다. 일반 다이어트가 잘 안 되는 이유가 호르몬에 있습니다.');
+        if (!lines.push) lines.push('호르몬 불균형이 체중 변화를 방해하고 있습니다. 먼저 원인 호르몬을 파악해야 올바른 처방이 가능합니다.');
+        return lines[0];
+      },
+      actions: [
+        { when:'오늘 밤', icon:'🌡️', text:'수면 중 발한·열감 기록 시작. 호르몬 불균형의 가장 직접적인 신호입니다. 메모장에 날짜+증상 기록해 진료 시 지참.' },
+        { when:'이번 주', icon:'📋', text:'최근 혈액검사 결과 찾아보기 (TSH, 에스트로겐, 인슐린 수치). 없다면 이번 주 내 검사 예약.' },
+        { when:'이번 달', icon:'🏥', text:'내분비내과 또는 산부인과 호르몬 전문 상담. 검색 키워드: 내분비내과 비만 호르몬 / 갱년기 호르몬 검사' }
+      ]
+    },
+    '체형': {
+      story: function(sc, s1, q) {
+        var lines = [];
+        if (q.profile2) lines.push('아랫배가 볼록하게 나온 체형은 복압 저하와 하복부 복벽 약화가 원인입니다. 뱃살이 아니라 구조적 문제입니다. 체형 교정 없이는 아무리 빼도 배가 다시 나옵니다.');
+        if (q.profile3) lines.push('배 전체가 앞으로 나온 체형은 요추 전만과 내장지방 복합 패턴입니다. 골반·척추 정렬 교정이 복부 대사 효율에 직접 영향을 줍니다.');
+        if (q.birth) lines.push('출산 이후 복벽 이완과 골반저근 약화가 체형 불균형의 원인입니다. 일반 복근운동이 오히려 역효과가 날 수 있습니다. 산후 체형 교정 전문 처방이 필요합니다.');
+        if (q.posture) lines.push('골반 비대칭(짝다리·다리꼬기)이 체형 불균형과 직결됩니다. 비대칭 상태로는 운동을 해도 한쪽만 발달합니다.');
+        if (!lines.length) lines.push('체형의 구조적 불균형이 대사 효율을 낮추고 있습니다. 운동량보다 정렬 교정이 먼저입니다.');
+        return lines[0];
+      },
+      actions: [
+        { when:'오늘 밤', icon:'🧘', text:'누워서 복식호흡 10회. 복압 회복의 첫 단계입니다. 숨 들이쉬며 배 부풀리고, 내쉬며 배꼽 안으로 당기기.' },
+        { when:'이번 주', icon:'🚶', text:'걸을 때 발뒤꿈치→발바닥→발끝 순서로 걷기 의식. 골반 정렬을 일상에서 교정하는 가장 쉬운 방법.' },
+        { when:'이번 달', icon:'🏥', text:'도수치료 또는 체형교정 전문 한의원·물리치료. 검색 키워드: 체형교정 도수치료 / 산후 골반교정' }
+      ]
+    },
+    '순환': {
+      story: function(sc, s1, q) {
+        var lines = [];
+        if (q.legSwelling) lines.push('저녁마다 다리가 붓는 건 의지 문제가 아닙니다. 림프·정맥 순환이 막혀 체액이 정체되는 구조적 문제입니다. 이걸 풀지 않으면 하체 지방은 절대 빠지지 않습니다.');
+        if (q.faceSwelling) lines.push('아침에 얼굴이 붓는 건 상체 림프 순환 저하와 신장 부담 증가 신호입니다. 부종형 체형은 체중계 숫자보다 수분 관리가 먼저입니다.');
+        if (q.weightFluc) lines.push('하루 1~2kg 체중 변동은 수분 조절 기능 저하입니다. 진짜 지방이 늘고 줄어드는 게 아닙니다. 이 구조를 먼저 잡아야 체중계 숫자가 의미있어집니다.');
+        if (q.coldLimb) lines.push('심한 수족냉증은 말초 순환이 심각하게 저하된 신호입니다. 순환이 안 되는 상태에서는 지방 연소를 위한 영양소 전달 자체가 막힙니다.');
+        if (!lines.length) lines.push('순환 저하가 체지방 감량을 방해하고 있습니다. 아무리 운동해도 순환이 안 되면 지방 분해 산물이 배출되지 않습니다.');
+        return lines[0];
+      },
+      actions: [
+        { when:'오늘 밤', icon:'🦵', text:'다리 올리기 15분 — 누워서 다리를 심장보다 높이. 림프 순환 개선에 가장 빠른 효과. 양말 자국이 다음날 없어지는 것을 확인하세요.' },
+        { when:'이번 주', icon:'💧', text:'나트륨 줄이기: 국물 반만 먹기, 소스 절반. 하루 나트륨 2g 이하로 줄이면 1주일 내 부종이 체감됩니다.' },
+        { when:'이번 달', icon:'🏥', text:'림프 드레나지 마사지 전문점 또는 순환 전문 한의원. 검색 키워드: 림프 마사지 / 하지부종 한의원' }
+      ]
+    },
+    '심리': {
+      story: function(sc, s1, q) {
+        var lines = [];
+        if (q.emotionEat) lines.push('감정이 체중 증가의 계기가 됐습니다. 감정 식욕은 도파민 보상 회로가 음식으로 결핍을 채우려는 뇌의 자동 반응입니다. 의지력으로 막을 수 없고, 회로 자체를 바꿔야 합니다.');
+        if (q.burnout) lines.push('과로·스트레스가 체중 증가의 계기였습니다. 번아웃이 식욕 조절 능력(전두엽 기능)을 소진시킨 것입니다. 심리적 회복 없이는 어떤 다이어트도 지속되지 않습니다.');
+        if (q.yoyoRepeat) lines.push('반복된 실패 경험이 "어차피 또 실패할 거야"라는 무기력을 만들었습니다. 이 패턴을 먼저 끊어야 다음 12주가 달라집니다.');
+        if (!lines.length) lines.push('심리적 요인이 식이 행동과 연결되고 있습니다. 먹는 것보다 왜 먹는지를 먼저 파악해야 변화가 지속됩니다.');
+        return lines[0];
+      },
+      actions: [
+        { when:'오늘 밤', icon:'💭', text:'먹기 전 5초 멈추기 — "지금 배가 고픈가, 감정이 고픈가?" 판단만 해도 감정 식욕의 30%가 줄어듭니다.' },
+        { when:'이번 주', icon:'✍️', text:'식사 일기에 감정 한 줄 추가: "화가 나서 먹었다", "심심해서 먹었다". 패턴이 보이면 트리거를 끊을 수 있습니다.' },
+        { when:'이번 달', icon:'🏥', text:'마음이음 심리상담 예약 (건강보험 지원, 회당 1~2만원). 검색: 마음이음 / 정신건강복지센터 식이상담' }
+      ]
+    },
+    '한방': {
+      story: function(sc, s1, q) {
+        var lines = [];
+        if (q.dampHeat) lines.push('조직이 말랑하고 부종이 잘 생기는 체질은 한의학적으로 담습(痰濕) 과잉입니다. 화담거습 처방으로 수분·지방 대사를 개선해야 서양 의학적 접근이 더 잘 작동합니다.');
+        if (q.circPoor) lines.push('한방적으로 기혈 순환 저하(氣滯血瘀) 체질입니다. 침·뜸·한약으로 기혈 순환을 먼저 풀면 다른 처방의 흡수와 효율이 높아집니다.');
+        if (q.family) lines.push('가족력이 있는 체질 취약점은 한의학적 체질 개선이 유전적 취약점을 보완하는 데 효과적입니다.');
+        if (!lines.length) lines.push('체질 기반 접근이 필요합니다. 오행 체질에 따라 피해야 할 음식, 보완해야 할 장기, 적합한 생활 리듬이 다릅니다.');
+        return lines[0];
+      },
+      actions: [
+        { when:'오늘 밤', icon:'🍵', text:'생강차·계피차 한 잔 — 담습 체질에 온열 음료가 가장 빠른 체질 개선 시작점입니다. 인스턴트 말고 생강 얇게 썰어 끓이기.' },
+        { when:'이번 주', icon:'🌿', text:'냉한 음식·밀가루·유제품 3일 줄여보기. 담습 체질에 가장 먼저 빼야 할 식품군입니다.' },
+        { when:'이번 달', icon:'🏥', text:'비만 전문 한의원 상담. 검색 키워드: 비만 한의원 체성분 검사 / 체질 비만 침치료' }
+      ]
+    },
+    '약물': {
+      story: function(sc, s1, q) {
+        var lines = [];
+        if (q.highBMI) lines.push('BMI 수치가 약물 처방 기준에 해당합니다. GLP-1 계열(위고비·마운자로) 또는 식욕조절제를 전문의와 상담할 수 있는 구간입니다. 혼자 결정하지 말고 내과 전문의와 먼저 검토하세요.');
+        if (q.longDrug) lines.push('장기복용 약물이 체중 증가의 원인일 수 있습니다. 스테로이드·항우울제·피임약은 인슐린 저항성을 높이거나 식욕을 증가시킵니다. 처방 의사와 상담이 먼저입니다.');
+        if (q.prevGLP1) lines.push('과거 식욕억제제를 복용했습니다. 반동 식욕과 내성 형성 패턴이 생겼을 수 있어, 다른 기전의 약물이나 비약물 접근을 검토해야 합니다.');
+        if (!lines.length) lines.push('약물적 접근이 보조 수단으로 고려될 수 있습니다. 반드시 전문의와 상담 후 결정하세요.');
+        return lines[0];
+      },
+      actions: [
+        { when:'오늘 밤', icon:'📋', text:'현재 복용 약물 목록 정리. 복용 시작 시점과 체중 변화 시점을 비교해보세요. 일치한다면 약물 유발 체중 증가 가능성이 높습니다.' },
+        { when:'이번 주', icon:'⚖️', text:'BMI 계산해보기 (체중kg ÷ 키m²). BMI 27 이상이면 GLP-1 처방 상담 가능 구간입니다.' },
+        { when:'이번 달', icon:'🏥', text:'내과 비만 전문 클리닉 상담. 검색 키워드: 비만클리닉 GLP-1 상담 / 비만 내과 약물 처방' }
+      ]
+    },
+    '시술': {
+      story: function(sc, s1, q) {
+        var lines = [];
+        if (q.stubborn) lines.push('식단과 운동을 해도 특정 부위 지방만 남아있는 경우, 그 부위는 인슐린 수용체 밀도가 높아 지방분해 신호가 잘 전달되지 않습니다. 시술적 보조 접근이 효율적입니다.');
+        if (q.waistGoal) lines.push('허리 사이즈 감량 목표가 있습니다. 전체 체중 감량과 함께 특정 부위 지방분해 시술을 병행하면 목표 달성 속도가 빨라집니다.');
+        if (!lines.length) lines.push('완고한 부위 지방은 식단·운동만으로 한계가 있습니다. 시술 보조가 전체 감량의 효율을 높일 수 있습니다.');
+        return lines[0];
+      },
+      actions: [
+        { when:'오늘 밤', icon:'📸', text:'고민 부위 사진 찍어두기. 시술 전후 비교를 위한 기준선입니다. 같은 조명·자세로 찍어야 객관적 비교가 됩니다.' },
+        { when:'이번 주', icon:'🔍', text:'지방분해주사 vs 냉각지방분해 차이 알아보기. 부위와 지방 두께에 따라 적합한 시술이 다릅니다.' },
+        { when:'이번 달', icon:'🏥', text:'비만클리닉·피부과 시술 상담. 검색 키워드: 지방분해주사 상담 / 냉각지방분해 / 체형교정 시술' }
+      ]
+    }
+  };
+
+  // ════════════════════════════════════════════
+  // ★ 해결책 렌더링용 컨텍스트 계산
+  // ════════════════════════════════════════════
+  function buildSolutionContext() {
+    var s1 = window.__RESULT__ && window.__RESULT__._stage1 || {};
+    var s2 = window.__RESULT__ && window.__RESULT__._stage2 || {};
+    var s3 = window.__RESULT__ && window.__RESULT__._stage3 || {};
+    var g2 = function(keys) { for(var i=0;i<keys.length;i++){var v=s2[keys[i]];if(v!==undefined&&v!==null&&v!=='')return v;} return ''; };
+    var gn = function(keys) { var v=g2(keys); if(Array.isArray(v)) return v[0]!==undefined?Number(v[0]):-1; if(typeof v==='number') return v; if(typeof v==='string'&&v!=='') return Number(v); return -1; };
+    var ga = function(keys) { var v=g2(keys); if(typeof v==='string'){try{v=JSON.parse(v);}catch(e){v=v?[v]:[];}} return Array.isArray(v)?v.map(Number):[]; };
+
+    var q8r=g2(['q8','q8_trigger']); if(typeof q8r==='string'){try{q8r=JSON.parse(q8r);}catch(e){q8r=[];}} var q8=Array.isArray(q8r)?q8r.map(Number):[];
+    var q9r=g2(['q9','q9_procedures']); if(typeof q9r==='string'){try{q9r=JSON.parse(q9r);}catch(e){q9r=[];}} var q9=Array.isArray(q9r)?q9r:[];
+    var q10raw=g2(['q10','q10_history']); var q10pat=''; var q10=-1;
+    if(q10raw&&typeof q10raw==='object'&&q10raw.pat){q10pat=q10raw.pat;var pm={creep:0,yoyo:1,jump:2,stable:3,down:3};q10=pm[q10pat]!==undefined?pm[q10pat]:-1;}
+    else{var qv=Array.isArray(q10raw)?q10raw[0]:q10raw;q10=(qv!==''&&qv!==undefined)?Number(qv):-1;}
+    var q11r=g2(['q11','q11_event']); if(typeof q11r==='string'){try{q11r=JSON.parse(q11r);}catch(e){q11r=[];}} var q11=Array.isArray(q11r)?q11r.map(Number):[];
+    var q6r=g2(['q6','q6_drugs']); if(typeof q6r==='string'){try{q6r=JSON.parse(q6r);}catch(e){q6r=[];}} var q6=Array.isArray(q6r)?q6r:[];
+    var sleepArr=Array.isArray(s3['sleep'])?s3['sleep']:[];
+    var hungryArr=Array.isArray(s3['hungry'])?s3['hungry']:[];
+    var nightSleep=sleepArr.length>=6?(Number(sleepArr[4])||0)+(Number(sleepArr[5])||0):0;
+    var nightHungry=hungryArr.length>=6?(Number(hungryArr[4])||0)+(Number(hungryArr[5])||0):0;
+    var spBMI=window._spec_bmi||0;
+    var spBF=window._spec_bodyfat||0;
+    var spM=window._spec_muscle||0;
+    var s1r=function(k){return s1[k]!==undefined?Number(s1[k]):-1;};
+
+    return {
+      yoyo:      q10===1||q10pat==='yoyo',
+      jump:      q10===2||q10pat==='jump',
+      creep:     q10===0||q10pat==='creep',
+      yoyoRepeat:(q10===1||q10pat==='yoyo')&&(window._p5_q10cyc||0)>=2,
+      sleep:     nightSleep>=3,
+      tired:     (s3['tired']||[]).reduce(function(a,v){return a+(Number(v)||0);},0)>=4,
+      stress:    q8.indexOf(0)>=0,
+      emotionEat:q8.indexOf(1)>=0,
+      burnout:   q8.indexOf(0)>=0,
+      drink:     gn(['q14','q14_drink'])>=2,
+      belly:     s1r(6)===0,
+      nightHungry:nightHungry>=3,
+      highBF:    spBF>=30,
+      lowMuscle: spM>0&&spM<20,
+      elastic2:  s1r(5)===2,
+      posture:   s1r(12)===0||s1r(12)===1,
+      birth:     q11.indexOf(0)>=0,
+      meno:      q11.indexOf(2)>=0||/yes|완경|갱년기/.test(String(g2(['q12']))),
+      thyroid:   ga(['q3']).indexOf(0)>=0,
+      pcos:      ga(['q3']).indexOf(2)>=0,
+      legSwelling:s1r(7)===1||s1r(13)===0,
+      faceSwelling:s1r(7)===2,
+      weightFluc:s1r(7)===3,
+      coldLimb:  gn(['q5','q5_cold'])===0,
+      profile2:  s1r(14)===2,
+      profile3:  s1r(14)===3,
+      dampHeat:  s1r(4)===1||s1r(4)===3,
+      circPoor:  s1r(7)>=1,
+      family:    gn(['q1','q1_family'])===0,
+      longDrug:  q6.length>0&&!q6.every(function(v){return Number(v)===5||String(v)==='none';}),
+      prevGLP1:  gn(['q7','q7_appetite'])>=0,
+      highBMI:   spBMI>=27,
+      stubborn:  q9.length>0||(s1r(1)>=1&&s1r(1)<=3),
+      waistGoal: (window._spec_waistloss||0)>0
+    };
+  }
+
   // P5 근거 기반 선별 — 11개 전문 영역 중 BC코드별 근거 있는 것만 표시
   // BC-1~BC-9 각각의 핵심 영역 3개(STRONG) + 비핵심 8개(NONE)를 동적으로 빌드
   // ════════════════════════════════════════════
 
-  // BC코드별 핵심 영역 3개 매핑
+  // BC코드별 핵심 영역 3개 매핑 (점수 보정용으로만 사용, 순위 결정 안 함)
   var BC_P5_MAP = {
     'BC-1': { strong:['순환','회복','체형'],   comment:'BC-1 코끼리다리형: 림프순환+회복+하체체형' },
     'BC-2': { strong:['체형','순환','회복'],   comment:'BC-2 거북이형: 경추체형+상체순환+회복' },
@@ -14964,18 +15403,22 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
     });
   }
 
-  // BC코드별 기본 STRONG 목록 가져오기
-  var bc = bcCode || 'BC-1';
-  var mapEntry = BC_P5_MAP[bc] || BC_P5_MAP['BC-1'];
-  var strongKeys = mapEntry.strong.slice(); // ['회복','호르몬','체형'] 등
+  // ★ _domainScores 기반 동적 순위로 STRONG 결정 (BC코드 하드코딩 제거)
+  // _top3: stage1+2+3+specState 전체 점수 계산 결과 상위 3개 영역
+  var strongKeys = (typeof _top3 !== 'undefined' && _top3.length >= 1)
+    ? _top3.slice()
+    : (function() {
+        // fallback: BC_P5_MAP 기반 (데이터 없을 때만)
+        var bc = bcCode || 'BC-1';
+        var mapEntry = BC_P5_MAP[bc] || BC_P5_MAP['BC-1'];
+        return mapEntry.strong.slice();
+      })();
 
-  // axisScores 상위 축이 strongKeys에 없으면 3번째 자리와 교체 고려
-  // (단, 관리/철학/시술 같은 내부 영역 키가 아닌 DOMAIN_DATA에 있는 것만)
+  // axisScores 고점수 축 보정 (이미 _domainScores에 반영됐지만 혹시 누락된 경우 방어)
   var axisKeyToName = { rec:'회복', diet:'식단', ex:'운동', horm:'호르몬', form:'체형', circ:'순환' };
   highAxes.forEach(function(axKey) {
     var nm = axisKeyToName[axKey];
     if (nm && strongKeys.indexOf(nm) < 0 && strongKeys.length >= 3) {
-      // 3번째 자리 교체 (우선순위 낮은 3번째를 고점수 축으로 교체)
       strongKeys[2] = nm;
     }
   });
@@ -15290,10 +15733,11 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
   var sc = document.getElementById('p5-strong-cnt'); if (sc) sc.textContent = STRONG.length + '개';
   var nc = document.getElementById('p5-none-cnt'); if (nc) nc.textContent = NONE.length + '개';
 
-  // 근거 강한 영역 — 누르면 6개 데이터 교차 근거 펼침
+  // 근거 강한 영역 — 누르면 6개 데이터 교차 근거 + 원인스토리 + 행동3개 펼침
+  var _solCtx = (typeof buildSolutionContext === 'function') ? buildSolutionContext() : {};
   var sl = document.getElementById('p5-strong-list');
   if (sl) {
-    sl.innerHTML = STRONG.map(function(e){
+    sl.innerHTML = STRONG.map(function(e, ei){
       var dots = '';
       for (var i=0;i<3;i++) dots += '<span class="ev-e-dot' + (i>=e.grade?' off':'') + '"></span>';
       var srcRows = (e.ev||[]).map(function(s){
@@ -15307,6 +15751,42 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
           (s.on?'<span class="rxs-hit">적중</span>':'') +
         '</div>';
       }).join('');
+
+      // ── "그래서 뭐해?" 섹션: 원인 스토리 + 행동 3개 ──
+      var solHTML = '';
+      var domSol = (typeof DOMAIN_SOLUTION !== 'undefined') ? DOMAIN_SOLUTION[e.nm] : null;
+      if (domSol) {
+        // 원인 스토리 문단
+        var storyText = '';
+        try {
+          storyText = domSol.story(_domainScores, window.__RESULT__._stage1||{}, _solCtx);
+        } catch(err) { storyText = ''; }
+
+        // 행동 3개 카드
+        var actionCards = '';
+        var whenColors = {
+          '오늘 밤': { bg:'#1a1a2e', accent:'#8b6db5', icon_bg:'rgba(139,109,181,.2)' },
+          '이번 주': { bg:'#1a2b1a', accent:'#5a6e3a', icon_bg:'rgba(90,110,58,.2)' },
+          '이번 달': { bg:'#2b1a1a', accent:'#c0397a', icon_bg:'rgba(192,57,122,.2)' }
+        };
+        (domSol.actions||[]).forEach(function(act) {
+          var wc = whenColors[act.when] || { bg:'#1e1e1e', accent:'#888', icon_bg:'rgba(136,136,136,.2)' };
+          actionCards += '<div class="sol-action-card" style="background:' + wc.bg + ';border-left:3px solid ' + wc.accent + ';">' +
+            '<div class="sol-action-when" style="color:' + wc.accent + ';">' +
+              '<span class="sol-action-icon" style="background:' + wc.icon_bg + ';">' + act.icon + '</span>' +
+              act.when +
+            '</div>' +
+            '<div class="sol-action-text">' + act.text + '</div>' +
+          '</div>';
+        });
+
+        solHTML = '<div class="rxs-sol-section">' +
+          '<div class="rxs-sol-divider"><span>그래서 뭐해?</span></div>' +
+          (storyText ? '<div class="rxs-sol-story">' + storyText + '</div>' : '') +
+          '<div class="rxs-sol-actions">' + actionCards + '</div>' +
+        '</div>';
+      }
+
       return '<div class="ev-erow rxs-card" style="--evc:' + e.c + '">' +
         '<div class="rxs-head" onclick="this.parentElement.classList.toggle(\'open\')">' +
           '<span class="ev-e-ic">' + e.ic + '</span>' +
@@ -15319,6 +15799,7 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
           '<div class="rxs-srcs">' + srcRows + '</div>' +
           '<div class="rxs-sum" style="background:' + e.c + '"><div class="rxs-sum-top"><span class="rxs-sum-n">' + e.hit + '/6</span><span class="rxs-sum-lb">데이터가 한 방향</span></div>' +
             '<div class="rxs-sum-tx">' + e.concl + '</div></div>' +
+          solHTML +
         '</div>' +
       '</div>';
     }).join('');
