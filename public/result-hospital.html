@@ -3832,6 +3832,9 @@ p, div, span, h1, h2, h3, h4{
 .rxp-catch-t{font-size:16px;font-weight:900;color:#fff;line-height:1.4;}
 .rxp-catch-s{font-size:12.5px;color:rgba(245,236,224,.65);line-height:1.6;word-break:keep-all;}
 .rxp-note{font-size:12.5px;line-height:1.7;color:var(--muted);background:var(--card2);border:1px solid var(--line);border-left:3px solid var(--vis);border-radius:0 10px 10px 0;padding:12px 14px;word-break:keep-all;margin-bottom:8px;transition:all .3s;}
+.rxp-note:empty{display:none;}
+#rxp-week-summary{margin-top:14px;margin-bottom:4px;}
+#p8-fail-msg:empty{display:none;}
 .rxp-note b{color:var(--vis-d);}
 .rxp-simhd{font-size:17px;font-weight:900;letter-spacing:-.3px;margin-bottom:6px;display:flex;align-items:center;gap:7px;}
 .rxp-simsub{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:16px;word-break:keep-all;}
@@ -6458,9 +6461,7 @@ window.__HOSPITAL_INIT_PROMISE__ = (async function hospitalInit() {
 <div class="section-wrap">
   <div class="eyebrow" style="padding-top:8px;">처방 비율 · 12주 설계</div>
   <h1 class="page-title fade-up" id="p8-title">의지로 몰아붙일수록,<br><em>원하는 몸은 멀어집니다</em></h1>
-  <p class="body-text fade-up" style="transition-delay:.1s;margin-bottom:8px;">
-    당신의 몸이 먼저 회복할 시간을 주세요. 같은 원인 처방도 주차마다 무게중심이 다릅니다. 12주 동안 비율 중심이 어떻게 옮겨가는지 확인해 보세요.
-  </p>
+  <p class="body-text fade-up" id="p8-fail-msg" style="transition-delay:.1s;margin-bottom:8px;"></p>
   <p class="body-text fade-up" style="transition-delay:.12s;margin-bottom:22px;">
     11개 진단 축의 데이터를 바탕으로, 지금 <b id="p8-name">지현</b> 님에게 가장 안전하고 빠른 감량 가속도를 만들어낼 <b>주차별 황금 비율</b>을 정밀하게 설계했습니다.
   </p>
@@ -6484,7 +6485,10 @@ window.__HOSPITAL_INIT_PROMISE__ = (async function hospitalInit() {
     </div>
   </div>
 
-  <div class="rxp-note fade-up" id="rxp-note" style="transition-delay:.24s">분석 중...</div>
+  <div class="rxp-note fade-up" id="rxp-note" style="transition-delay:.24s"></div>
+
+  <!-- 주차별 top3 요약 테이블 -->
+  <div id="rxp-week-summary" class="fade-up" style="transition-delay:.28s;margin-top:14px;"></div>
 
   <button class="next-flow fade-up" style="transition-delay:.4s" onclick="switchPage(6)">
     <div class="nf-left">
@@ -16312,6 +16316,92 @@ function renderP8(metrics, bcCode, axisScores, userName, s2, data) {
   // 첫 렌더: 빈 막대 + '1주차' 라벨만 (실제 등장·진행은 page8 진입 시 rxpReplay가 구동)
   zeroBars();
   setWeekLabel(1);
+  // ★ rxp-note 초기화: paint(1)로 1주차 내러티브 채우기 (HTML 하드코딩 "분석 중..." 방지)
+  (function initRxpNote(){
+    var nt = document.getElementById('rxp-note');
+    if (nt) nt.innerHTML = noteText(1, DATA[1]);
+  })();
+
+  // ★ 주차별 top3 요약 테이블 생성
+  (function buildWeekSummary(){
+    var container = document.getElementById('rxp-week-summary');
+    if (!container) return;
+    // 축 이름 맵
+    var AXIS_LABEL = { rec:'🌙 회복', diet:'🍽️ 식단', ex:'🏃 운동', ori:'🌿 한방', proc:'✨ 시술', horm:'🌸 호르몬', form:'🦴 체형', circ:'💧 순환' };
+    var WEEK_LABELS = ['1주차','2주차','3주차','4주차'];
+    var WEEK_COLORS = ['#8b6db5','#c98a3c','#5a6e3a','#c0397a'];
+    var html = '<div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.1em;margin-bottom:10px;">📊 주차별 처방 집중 순위</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">';
+    [1,2,3,4].forEach(function(w){
+      var r = DATA[w];
+      var keys = activeKeys(w);
+      // 그 주 점수 기준 상위 3개
+      var sorted = keys.slice().sort(function(a,b){ return (r[b]||0)-(r[a]||0); }).slice(0,3);
+      html += '<div style="background:var(--card2);border:1px solid var(--line);border-top:3px solid '+WEEK_COLORS[w-1]+';border-radius:10px;padding:10px 10px 12px;">';
+      html += '<div style="font-size:10px;font-weight:900;color:'+WEEK_COLORS[w-1]+';letter-spacing:.05em;margin-bottom:8px;">'+WEEK_LABELS[w-1]+'</div>';
+      sorted.forEach(function(k, idx){
+        var pct = r[k] || 0;
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">';
+        html += '<span style="font-size:11.5px;color:var(--ink);font-weight:'+(idx===0?'800':'600')+';">'+['①','②','③'][idx]+' '+(AXIS_LABEL[k]||k)+'</span>';
+        html += '<span style="font-size:11px;font-weight:800;color:'+(idx===0?WEEK_COLORS[w-1]:'var(--muted)')+';">'+pct+'%</span>';
+        html += '</div>';
+      });
+      html += '</div>';
+    });
+    html += '</div>';
+    container.innerHTML = html;
+  })();
+
+  // ★ P8 첫 번째 문구 개인화 — q8(살찐계기)/q10(체중궤적) 기반 실패요인 정곡 문구
+  (function buildP8FailMsg(){
+    var el = document.getElementById('p8-fail-msg');
+    if (!el) return;
+
+    // q8: 살찐 계기 인덱스 배열
+    var q8raw = (s2 && (s2['q8'] || s2['q8_trigger'])) || [];
+    if (typeof q8raw === 'string') { try { q8raw = JSON.parse(q8raw); } catch(e){ q8raw = []; } }
+    var q8Idxs = Array.isArray(q8raw) ? q8raw.map(Number) : [];
+
+    // q10: 체중궤적 패턴
+    var q10raw = (s2 && (s2['q10'] || s2['q10_history'])) || '';
+    var q10pat = '';
+    if (q10raw && typeof q10raw === 'object' && q10raw.pat) { q10pat = q10raw.pat; }
+    else if (typeof q10raw === 'string') { q10pat = q10raw; }
+    var isYoyo   = (q10pat === 'yoyo' || q10pat === '1');
+    var isJump   = (q10pat === 'jump' || q10pat === '2');
+    var isCreep  = (q10pat === 'creep'|| q10pat === '0');
+
+    // q8 → 실패요인 문구 매핑
+    // 0=이직·과로, 1=이별·충격, 2=수술·약물, 3=회식·음주, 4=금연, 5=서서히
+    var Q8_FAIL_MSG = [
+      '스트레스로 찐 살은 코르티솔이 지방 저장을 명령한 결과입니다. <b>의지로 끊는 다이어트가 오히려 코르티솔을 높였던 게 실패의 진짜 이유</b>였습니다.',
+      '감정 식욕은 도파민 보상 회로가 만든 것입니다. <b>억지로 참는 식단이 반동 폭식을 불렀던 게 반복된 실패의 구조</b>였습니다.',
+      '수술·약물 이후 장내 환경과 인슐린 감수성이 바뀌었습니다. <b>이전과 같은 방식의 다이어트가 효과 없었던 게 당연한 이유</b>였습니다.',
+      '잦은 회식·음주는 간 대사와 인슐린 분비 리듬을 흔들었습니다. <b>무조건 굶는 식이요법이 대사 혼란을 키운 게 실패의 원인</b>이었습니다.',
+      '금연 후 니코틴 대사 감소로 기초대사가 낮아졌습니다. <b>예전 식사량 그대로면 쪄야 정상인 몸 상태였던 것</b>이 실패 이유였습니다.',
+      '눈에 띄지 않게 서서히 쌓인 체지방은 기초대사 저하가 누적된 결과입니다. <b>단기 집중 다이어트가 번번이 요요로 끝난 게 바로 이 이유</b>입니다.'
+    ];
+    // 요요 궤적 추가 메시지
+    var yoyoMsg = '요요를 반복할수록 몸은 \'굶주림 모드\'에 더 빨리 진입합니다. <b>이번엔 굶기가 아닌 대사 재설계로 다르게 접근</b>합니다.';
+    var jumpMsg = '최근 급격히 찐 살은 단기 열량 조절로는 해결이 안 됩니다. <b>급증을 만든 원인 축을 먼저 잡아야 감량이 시작</b>됩니다.';
+    var defaultMsg = '지금까지의 다이어트는 <b>원인 축을 모른 채 시도한 것</b>이었습니다. 이번엔 11개 진단 결과로 원인부터 정확히 잡습니다.';
+
+    var msg = '';
+    if (q8Idxs.length > 0) {
+      msg = Q8_FAIL_MSG[q8Idxs[0]] || defaultMsg;
+    } else if (isYoyo) {
+      msg = yoyoMsg;
+    } else if (isJump) {
+      msg = jumpMsg;
+    } else {
+      msg = defaultMsg;
+    }
+    // 요요 궤적이면 q8 뒤에 요요 문구 추가
+    if (isYoyo && q8Idxs.length > 0) {
+      msg += ' ' + yoyoMsg;
+    }
+    el.innerHTML = msg;
+  })();
 }
 
 function renderP9(metrics, bcCode, axisScores, data, s2) {
