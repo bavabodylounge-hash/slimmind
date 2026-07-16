@@ -23933,6 +23933,14 @@ const P3_SELF_SUPPS = [
 var _supbuySel = {};        // 모달 내 선택 상태
 var _supbuyTarget = '';     // 어떤 영양제 '구매'를 눌렀는지
 
+// 영양제별 쿠팡 링크 매핑 테이블 — 없으면 기본 링크(프로바이오틱스)
+var SUPBUY_LINKS = {
+  '프로바이오틱스':   'https://www.coupang.com/vp/products/2638550?itemId=12788104766&vendorItemId=3265972233&src=1191000&spec=10999999&addtag=400&ctag=2638550&lptag=CFM46875551&itime=20260716164747&pageType=PRODUCT&pageValue=2638550&wPcid=17155723835196752269498&wRef=&wTime=20260716164747&redirect=landing&abTestInfo=&mcid=aa26b0d929314b96a525a96a3ce5db4a&sharesource=sharebutton&style=&isshortened=Y',
+  '프리바이오틱스':   'https://www.coupang.com/vp/products/9643470977?itemId=23419713272&vendorItemId=84993541529&src=1191000&spec=10999999&addtag=400&ctag=9643470977&lptag=CFM46875551&itime=20260716165134&pageType=PRODUCT&pageValue=9643470977&wPcid=17155723835196752269498&wRef=&wTime=20260716165134&redirect=landing&abTestInfo=&mcid=7f1bd1980d264f02b166793dfacfde84&sharesource=sharebutton&style=&isshortened=Y',
+  'L-글루타민':       'https://www.coupang.com/vp/products/28261156?itemId=19443149698&vendorItemId=86554126897&src=1191000&spec=10999999&addtag=400&ctag=28261156&lptag=CFM46875551&itime=20260716165222&pageType=PRODUCT&pageValue=28261156&wPcid=17155723835196752269498&wRef=&wTime=20260716165222&redirect=landing&abTestInfo=&mcid=5a4fa2b023f149cb84bc47b755b47e5a&sharesource=sharebutton&style=&isshortened=Y',
+};
+var SUPBUY_DEFAULT = SUPBUY_LINKS['프로바이오틱스'];
+
 function openSuppBuy(targetName){
   _supbuySel = {};
   _supbuyTarget = targetName || '';
@@ -23954,7 +23962,11 @@ function openSuppBuy(targetName){
     '<div class="supbuy-chips">'+chips+'</div>'+
     '<button class="supbuy-done" id="supbuy-done" onclick="supbuyAnalyze()" disabled>완료 — 내 코드랑 궁합 분석</button>'+
     '<div class="supbuy-result" id="supbuy-result"></div>'+
-    '<a class="supbuy-go" href="#" onclick="return false;">'+(targetName?(targetName+' 구매하러 가기'):'구매하러 가기')+' →</a>';
+    (function(){
+      var _url = (targetName && SUPBUY_LINKS[targetName]) ? SUPBUY_LINKS[targetName] : SUPBUY_DEFAULT;
+      var _label = targetName ? (targetName + ' 구매하러 가기') : '구매하러 가기';
+      return '<a class="supbuy-go" href="'+_url+'" target="_blank" rel="noopener">'+_label+' →</a>';
+    })();
 
   modal.classList.add('open');
   document.body.style.overflow = 'hidden';
