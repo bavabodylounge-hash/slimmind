@@ -4168,6 +4168,19 @@ p, div, span, h1, h2, h3, h4{
 .tdy-ohaeng-badge{display:inline-flex;align-items:center;font-size:10.5px;font-weight:800;border-radius:20px;padding:3px 10px;margin-left:8px;vertical-align:middle;letter-spacing:.2px;}
 /* 오행 주의사항 배지 */
 .tdy-caution{background:#fff8e1;border:1.5px solid #ffe082;border-radius:12px;padding:10px 14px;margin-top:12px;font-size:11.5px;font-weight:700;color:#7a5c00;line-height:1.45;word-break:keep-all;}
+/* ══ P10 서브탭 ══ */
+.p10-subtab-bar{display:flex;gap:6px;padding:14px 0 10px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.p10-subtab-bar::-webkit-scrollbar{display:none;}
+.p10-stab{flex:1;min-width:0;padding:8px 10px;border-radius:20px;font-size:13px;font-weight:700;cursor:pointer;transition:all .18s;color:var(--sub);border:1.5px solid transparent;background:var(--card);white-space:nowrap;text-align:center;letter-spacing:-.2px;font-family:inherit;}
+.p10-stab.active{background:var(--mint);color:#fff;border-color:var(--mint);}
+.p10-stab:hover:not(.active){color:var(--mint);border-color:var(--mint-l);}
+.p10-stab-pane{display:none;}
+.p10-stab-pane.active{display:block;}
+/* 1순위 뱃지 — 운동/식단/회복 카드 타이틀 옆 */
+.tdy-rank-badge{display:inline-flex;align-items:center;font-size:10px;font-weight:900;border-radius:10px;padding:2px 7px;margin-left:7px;vertical-align:middle;letter-spacing:.1px;}
+.tdy-rank-badge.rank1{background:#8b6db522;color:#8b6db5;border:1px solid #8b6db555;}
+.tdy-rank-badge.rank2{background:#c98a3c22;color:#c98a3c;border:1px solid #c98a3c55;}
+
 /* ══ C3: 오늘탭 섹션 카드 전면 재설계 ══ */
 /* 헤더 카드 */
 .tdy-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;gap:8px;}
@@ -6665,12 +6678,27 @@ window.__HOSPITAL_INIT_PROMISE__ = (async function hospitalInit() {
 </div>
 </section>
 
-<!-- ═══════════ P10: 오늘 (데일리 실천) — 오늘 할 일 + 아코디언 + 기록 ═══════════ -->
+<!-- ═══════════ P10: 오늘 (데일리 실천) ═══════════ -->
 <section id="page10" class="page">
-  <div class="section-wrap" style="padding-top:12px;">
-    <div id="p10-today" class="fade-up"></div>
-    <div id="p10-accordion" class="fade-up" style="transition-delay:.1s"></div>
-    <div class="liverec fade-up" style="transition-delay:.14s" id="p10-liverec"></div>
+  <div class="section-wrap" style="padding-top:4px;">
+    <!-- 서브탭 바 -->
+    <div class="p10-subtab-bar" id="p10-subtab-bar">
+      <button class="p10-stab active" data-pane="today"   onclick="switchP10Tab('today')">오늘 할 일</button>
+      <button class="p10-stab"        data-pane="roadmap" onclick="switchP10Tab('roadmap')">주간 로드맵</button>
+      <button class="p10-stab"        data-pane="record"  onclick="switchP10Tab('record')">나의 기록</button>
+    </div>
+    <!-- 패널 1: 오늘 할 일 -->
+    <div class="p10-stab-pane active" id="p10-pane-today">
+      <div id="p10-today" class="fade-up"></div>
+    </div>
+    <!-- 패널 2: 주간 로드맵 -->
+    <div class="p10-stab-pane" id="p10-pane-roadmap">
+      <div id="p10-accordion" class="fade-up"></div>
+    </div>
+    <!-- 패널 3: 나의 기록 -->
+    <div class="p10-stab-pane" id="p10-pane-record">
+      <div class="liverec fade-up" id="p10-liverec"></div>
+    </div>
   </div>
 </section>
 
@@ -12053,6 +12081,35 @@ function goDailyCheck(){
 }
 window.goDailyCheck = goDailyCheck;
 
+// ── P10 서브탭 전환 ──────────────────────────────────────────────
+function switchP10Tab(pane) {
+  // 탭 버튼 active
+  document.querySelectorAll('.p10-stab').forEach(function(b){
+    b.classList.toggle('active', b.getAttribute('data-pane') === pane);
+  });
+  // 패널 active
+  document.querySelectorAll('.p10-stab-pane').forEach(function(p){
+    p.classList.toggle('active', p.id === 'p10-pane-' + pane);
+  });
+  // 로드맵 패널로 전환 시 아코디언 보장
+  if (pane === 'roadmap') {
+    var acc = document.getElementById('p10-accordion');
+    if (acc && !acc.hasChildNodes() && typeof renderRoadmapAccordion === 'function') {
+      var _aw = window.__ACTIVE_WEEKS__;
+      if (_aw && _aw.length) {
+        var _cn = (window.__RESULT__ && window.__RESULT__.consultant_name) || '담당 컨설턴트';
+        var _oh = (window.__RESULT__ && (window.__RESULT__.ohaengType || window.__RESULT__.ohaeng_type)) || null;
+        renderRoadmapAccordion(_aw, _oh, _cn);
+      }
+    }
+  }
+  // 기록 패널로 전환 시 renderLiveRecord
+  if (pane === 'record') {
+    if (typeof renderLiveRecord === 'function') setTimeout(renderLiveRecord, 60);
+  }
+  window.scrollTo(0, 0);
+}
+
 function switchPage(num) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
@@ -12127,6 +12184,8 @@ function switchPage(num) {
       }
     }
     if(typeof renderDailyPage==='function') renderDailyPage();
+    // 서브탭 항상 "오늘 할 일"로 리셋
+    if(typeof switchP10Tab==='function') switchP10Tab('today');
   }, 150);
   if (num === 11) setTimeout(function(){ if(typeof renderP11==='function') renderP11(); }, 200);
 }
@@ -19858,17 +19917,11 @@ function renderDailyPage(){
     });
   });
 
-  // "세부 내용 보기" 누르면 → 아코디언으로 스크롤
+  // "주간 로드맵 보기 →" 누르면 → 서브탭 전환
   var progBtn=document.getElementById('tdy-prog');
   if (progBtn){
     progBtn.onclick=function(){
-      var acc=document.getElementById('p10-accordion');
-      if(acc){
-        var navH=56;
-        var rect=acc.getBoundingClientRect();
-        var y=window.pageYOffset+rect.top-navH-10;
-        window.scrollTo({top:y, behavior:'smooth'});
-      }
+      if (typeof switchP10Tab === 'function') switchP10Tab('roadmap');
     };
   }
 
