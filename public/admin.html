@@ -789,11 +789,11 @@
               <span style="font-size:11px;color:var(--muted)">의료 특화 설문 (/h/코드)</span>
             </span>
           </label>
-          <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;cursor:pointer;transition:all .15s;opacity:.6" id="cat-label-aesthetic">
-            <input type="radio" name="b2b_survey_category" value="aesthetic" disabled style="accent-color:#e879a8;width:16px;height:16px">
+          <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;cursor:pointer;transition:all .15s;" id="cat-label-aesthetic">
+            <input type="radio" name="b2b_survey_category" value="aesthetic" style="accent-color:#e879a8;width:16px;height:16px">
             <span style="flex:1">
               <span style="font-size:13px;font-weight:700;color:#1e293b">💅 에스테틱용</span><br>
-              <span style="font-size:11px;color:var(--muted)">준비 중 (/a/코드)</span>
+              <span style="font-size:11px;color:var(--muted)">에스테틱 특화 설문 (/a/코드)</span>
             </span>
           </label>
           <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;cursor:pointer;transition:all .15s;opacity:.6" id="cat-label-fitness">
@@ -943,6 +943,86 @@
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="closeModal('modal-b2b-registered')">닫기</button>
       <button class="btn btn-primary" onclick="copyB2BInfo()"><i class="fas fa-copy"></i> 전체 복사</button>
+    </div>
+  </div>
+</div>
+
+<!-- 에스테틱 프로그램 관리 모달 -->
+<div class="modal-overlay" id="modal-aesthetic-programs">
+  <div class="modal" style="max-width:700px">
+    <div class="modal-head">
+      <h3 id="modal-aesth-title"><i class="fas fa-spa" style="color:#e879a8"></i> 에스테틱 프로그램 관리</h3>
+      <button class="modal-close" onclick="closeModal('modal-aesthetic-programs')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:14px;padding:10px 14px;background:rgba(232,121,168,.08);border-radius:10px;font-size:13px;color:#7c576b">
+        <b>💅 파트너 코드: <span id="aesth-partner-code">-</span></b><br>
+        <span style="color:#a0728a">BC코드별 추천 시술을 등록하면 결과지에 커스텀 프로그램으로 표시됩니다.</span>
+      </div>
+      <!-- 프로그램 목록 -->
+      <div id="aesth-program-list" style="margin-bottom:16px">
+        <div style="text-align:center;color:var(--muted);padding:24px;font-size:13px">로딩 중...</div>
+      </div>
+      <!-- 새 프로그램 추가 폼 -->
+      <div style="border:1.5px solid rgba(232,121,168,.3);border-radius:12px;padding:16px;background:#fdf8fb">
+        <div style="font-size:13px;font-weight:700;color:#b27082;margin-bottom:12px">✨ 새 프로그램 추가</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="form-field" style="margin:0">
+            <label style="font-size:12px">프로그램명 *</label>
+            <input type="text" id="aesth-prog-name" placeholder="예: 림프 드레나지 60분">
+          </div>
+          <div class="form-field" style="margin:0">
+            <label style="font-size:12px">태그 (기간·횟수)</label>
+            <input type="text" id="aesth-prog-tag" placeholder="예: 주 2회 × 8주">
+          </div>
+          <div class="form-field" style="margin:0">
+            <label style="font-size:12px">아이콘 이모지</label>
+            <input type="text" id="aesth-prog-icon" placeholder="💆" maxlength="4" style="width:60px">
+          </div>
+          <div class="form-field" style="margin:0">
+            <label style="font-size:12px">가격 표시</label>
+            <input type="text" id="aesth-prog-price" placeholder="예: 150,000원">
+          </div>
+          <div class="form-field" style="margin:0;grid-column:1/-1">
+            <label style="font-size:12px">대상 부위</label>
+            <input type="text" id="aesth-prog-target" placeholder="예: 하체 부종·셀룰라이트 집중">
+          </div>
+          <div class="form-field" style="margin:0;grid-column:1/-1">
+            <label style="font-size:12px">프로그램 설명</label>
+            <textarea id="aesth-prog-desc" rows="2" placeholder="시술 내용, 효과, 특징 등..."></textarea>
+          </div>
+          <div class="form-field" style="margin:0;grid-column:1/-1">
+            <label style="font-size:12px">홈페이지 URL (결과지 링크 버튼)</label>
+            <input type="url" id="aesth-prog-url" placeholder="https://...">
+          </div>
+          <div class="form-field" style="margin:0;grid-column:1/-1">
+            <label style="font-size:12px">적용 BC코드 (복수 선택 가능)</label>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px" id="aesth-bc-checkboxes">
+              ${['BC-1','BC-2','BC-3','BC-4','BC-5','BC-6','BC-7','BC-8','BC-9'].map(bc => `
+                <label style="display:flex;align-items:center;gap:4px;font-size:12px;padding:4px 8px;border:1px solid #e2e8f0;border-radius:6px;cursor:pointer">
+                  <input type="checkbox" class="aesth-bc-chk" value="${bc}"> ${bc}
+                </label>`).join('')}
+            </div>
+          </div>
+          <div class="form-field" style="margin:0">
+            <label style="font-size:12px">우선순위 (낮을수록 먼저)</label>
+            <input type="number" id="aesth-prog-priority" value="5" min="1" max="99" style="width:80px">
+          </div>
+          <div class="form-field" style="margin:0;display:flex;align-items:flex-end">
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+              <input type="checkbox" id="aesth-prog-signature"> ⭐ 시그니처 프로그램
+            </label>
+          </div>
+        </div>
+        <div style="margin-top:12px;text-align:right">
+          <button class="btn btn-primary" style="background:#b27082;border-color:#b27082" onclick="addAestheticProgram()">
+            <i class="fas fa-plus"></i> 프로그램 추가
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-aesthetic-programs')">닫기</button>
     </div>
   </div>
 </div>
@@ -1463,7 +1543,10 @@ async function loadDashboard() {
       <td><span style="font-size:12px;color:var(--muted)">${p.type || '-'}</span></td>
       <td><span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${p.brand_color||'#6366f1'};vertical-align:middle;margin-right:5px;border:1px solid rgba(0,0,0,.1)"></span><span style="font-size:11px;color:var(--muted)">${p.brand_color||'-'}</span></td>
       <td>${statusBadge(p.status)}</td>
-      <td><button class="btn btn-sm" style="background:#7c3aed;color:#fff" onclick="event.stopPropagation();impersonateLogin('${p.code}')"><i class="fas fa-sign-in-alt"></i> 접속</button></td>
+      <td style="display:flex;gap:6px;align-items:center">
+        <button class="btn btn-sm" style="background:#7c3aed;color:#fff" onclick="event.stopPropagation();impersonateLogin('${p.code}')"><i class="fas fa-sign-in-alt"></i> 접속</button>
+        ${p.survey_category === 'aesthetic' ? `<button class="btn btn-sm" style="background:#b27082;color:#fff" onclick="event.stopPropagation();openAestheticPrograms('${p.code}')"><i class="fas fa-spa"></i> 프로그램</button>` : ''}
+      </td>
     </tr>
   `).join('');
 
@@ -4666,6 +4749,96 @@ function copyB2BInfo() {
   const txt = `[SlimMind B2B 파트너 등록 안내]\n코드: ${code}\n초기비밀번호: ${pw}\n고객설문링크: ${survey}\nB2B대시보드: ${dash}`;
   copyText(txt);
 }
+
+// ── 에스테틱 프로그램 관리 ─────────────────────────────────────────
+let _aestheticPartnerCode = '';
+
+async function openAestheticPrograms(partnerCode) {
+  _aestheticPartnerCode = partnerCode;
+  document.getElementById('aesth-partner-code').textContent = partnerCode;
+  document.getElementById('modal-aesthetic-programs').classList.add('active');
+  await loadAestheticPrograms();
+}
+
+async function loadAestheticPrograms() {
+  const listEl = document.getElementById('aesth-program-list');
+  if (!listEl) return;
+  listEl.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">로딩 중...</div>';
+  try {
+    const data = await api('GET', `/admin/aesthetic-programs?partner_code=${encodeURIComponent(_aestheticPartnerCode)}`);
+    const programs = Array.isArray(data) ? data : (data?.programs || []);
+    if (!programs.length) {
+      listEl.innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px;font-size:13px">등록된 프로그램이 없습니다.<br>아래 폼으로 추가해보세요.</div>';
+      return;
+    }
+    listEl.innerHTML = programs.map(p => {
+      const bcs = (() => { try { return JSON.parse(p.bc_codes||'[]') } catch { return [] } })();
+      return `<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1px solid #f0e6ec;border-radius:10px;margin-bottom:8px;background:#fff">
+        <div style="font-size:22px;line-height:1">${p.program_icon||'💆'}</div>
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:13px">${p.program_name||''} ${p.is_signature?'⭐':''}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${bcs.join(', ')||'모든 BC'} · 우선순위 ${p.priority||5}</div>
+          ${p.price_display?`<div style="font-size:11px;color:#b27082;font-weight:600;margin-top:2px">${p.price_display}</div>`:''}
+          ${p.program_desc?`<div style="font-size:12px;color:#555;margin-top:4px">${p.program_desc}</div>`:''}
+          ${p.homepage_url?`<a href="${p.homepage_url}" target="_blank" style="font-size:11px;color:#b27082;text-decoration:none">🔗 ${p.homepage_url.slice(0,40)}${p.homepage_url.length>40?'...':''}</a>`:''}
+        </div>
+        <button class="btn btn-sm" style="background:#fee2e2;color:#b91c1c;flex-shrink:0" onclick="deleteAestheticProgram(${p.id})">
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    listEl.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">불러오기 실패 (마이그레이션이 적용되지 않았을 수 있습니다)</div>';
+  }
+}
+
+async function addAestheticProgram() {
+  const name = (document.getElementById('aesth-prog-name')?.value || '').trim();
+  if (!name) { toast('프로그램명을 입력하세요.', 'error'); return; }
+  const checkedBCs = [...document.querySelectorAll('.aesth-bc-chk:checked')].map(el => el.value);
+  if (!checkedBCs.length) { toast('적용 BC코드를 1개 이상 선택하세요.', 'error'); return; }
+  const body = {
+    partner_code:  _aestheticPartnerCode,
+    program_name:  name,
+    program_desc:  (document.getElementById('aesth-prog-desc')?.value || '').trim(),
+    program_tag:   (document.getElementById('aesth-prog-tag')?.value || '').trim(),
+    program_icon:  (document.getElementById('aesth-prog-icon')?.value || '💆').trim() || '💆',
+    price_display: (document.getElementById('aesth-prog-price')?.value || '').trim(),
+    target_area:   (document.getElementById('aesth-prog-target')?.value || '').trim(),
+    homepage_url:  (document.getElementById('aesth-prog-url')?.value || '').trim(),
+    bc_codes:      JSON.stringify(checkedBCs),
+    priority:      parseInt(document.getElementById('aesth-prog-priority')?.value || '5') || 5,
+    is_signature:  document.getElementById('aesth-prog-signature')?.checked ? 1 : 0,
+    status:        'active',
+  };
+  try {
+    const res = await api('POST', '/admin/aesthetic-programs', body);
+    if (res?.id || res?.success) {
+      toast('프로그램이 추가되었습니다.', 'success');
+      // 폼 초기화
+      ['aesth-prog-name','aesth-prog-tag','aesth-prog-icon','aesth-prog-price','aesth-prog-target','aesth-prog-desc','aesth-prog-url'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.value = '';
+      });
+      document.querySelectorAll('.aesth-bc-chk').forEach(el => el.checked = false);
+      const sigEl = document.getElementById('aesth-prog-signature'); if (sigEl) sigEl.checked = false;
+      await loadAestheticPrograms();
+    } else {
+      toast(res?.error || '추가 실패', 'error');
+    }
+  } catch (e) {
+    toast('추가 중 오류 발생: ' + String(e), 'error');
+  }
+}
+
+async function deleteAestheticProgram(id) {
+  if (!confirm('이 프로그램을 삭제하시겠습니까?')) return;
+  try {
+    const res = await api('DELETE', `/admin/aesthetic-programs/${id}`);
+    if (res?.success) { toast('삭제 완료', 'success'); await loadAestheticPrograms(); }
+    else toast(res?.error || '삭제 실패', 'error');
+  } catch (e) { toast('삭제 중 오류', 'error'); }
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 async function suspendB2B(code) {
   if (!confirm(`${code} B2B 파트너를 정지하시겠습니까?`)) return;

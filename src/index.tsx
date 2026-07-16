@@ -1037,6 +1037,62 @@ app.delete('/api/admin/b2b-partners/:code', requireRole('MASTER'), async (c) => 
   return c.json({ success: true, message: 'B2B 파트너가 정지되었습니다.' })
 })
 
+// ── 에스테틱 프로그램 관리 API (MASTER 전용) ─────────────────────────────────
+
+// GET /api/admin/aesthetic-programs — 파트너별 목록 조회
+app.get('/api/admin/aesthetic-programs', requireRole('MASTER'), async (c) => {
+  const db = c.env.DB
+  const partnerCode = c.req.query('partner_code') || ''
+  try {
+    const rows = await db.prepare(
+      `SELECT * FROM aesthetic_programs WHERE partner_code=? ORDER BY is_signature DESC, priority ASC`
+    ).bind(partnerCode).all<any>()
+    return c.json(rows.results || [])
+  } catch (e: any) {
+    // 테이블 미존재 시 graceful
+    return c.json([])
+  }
+})
+
+// POST /api/admin/aesthetic-programs — 프로그램 추가
+app.post('/api/admin/aesthetic-programs', requireRole('MASTER'), async (c) => {
+  const db = c.env.DB
+  const body = await c.req.json<any>()
+  const { partner_code, program_name, program_desc, program_tag, program_icon,
+          price_display, target_area, homepage_url, bc_codes,
+          priority, is_signature, status } = body
+  if (!partner_code || !program_name) return c.json({ error: 'partner_code, program_name 필수' }, 400)
+  try {
+    const result = await db.prepare(`
+      INSERT INTO aesthetic_programs
+        (partner_code, program_name, program_desc, program_tag, program_icon,
+         price_display, target_area, homepage_url, bc_codes,
+         priority, is_signature, status, created_at, updated_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),datetime('now'))
+    `).bind(
+      partner_code, program_name, program_desc||'', program_tag||'',
+      program_icon||'💆', price_display||'', target_area||'',
+      homepage_url||'', bc_codes||'[]',
+      priority||5, is_signature?1:0, status||'active'
+    ).run()
+    return c.json({ success: true, id: result.meta.last_row_id })
+  } catch (e: any) {
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// DELETE /api/admin/aesthetic-programs/:id — 프로그램 삭제
+app.delete('/api/admin/aesthetic-programs/:id', requireRole('MASTER'), async (c) => {
+  const db = c.env.DB
+  const id = c.req.param('id')
+  try {
+    await db.prepare('DELETE FROM aesthetic_programs WHERE id=?').bind(id).run()
+    return c.json({ success: true })
+  } catch (e: any) {
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
 // ═══════════════════════════════════════════════════════════════
 //  B2B 파트너 API (/api/b2b/*) — B2B_PARTNER 전용
 // ═══════════════════════════════════════════════════════════════
@@ -5112,6 +5168,61 @@ app.get('/result-hospital/:id', async (c) => {
     })
   } catch (e: any) {
     return c.html('<h2>결과지를 불러올 수 없습니다</h2>', 500)
+  }
+})
+
+// GET /result-aesthetic/:id — 에스테틱 결과지 HTML 서빙
+app.get('/result-aesthetic/:id', async (c) => {
+  const id = c.req.param('id')
+  try {
+    let html = await fetchAsset(c.env.ASSETS, '/result-aesthetic.html')
+    const INJECT_MARKER = '<!-- ══ 에스테틱 전용: API 연동 + __RESULT__ 주입 ══ -->'
+    const idScript = `<script>window.__AESTHETIC_RESULT_ID__ = ${JSON.stringify(id)};</script>\n`
+    if (html.includes(INJECT_MARKER)) {
+      html = html.replace(INJECT_MARKER, idScript + INJECT_MARKER)
+    } else {
+      html = html.replace('</head>', idScript + '</head>')
+    }
+    return c.html(html, 200, {
+      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'Surrogate-Control': 'no-store',
+      'Vary': '*',
+    })
+  } catch (e: any) {
+    return c.html('<h2>결과지를 불러올 수 없습니다</h2>', 500)
+  }
+})
+
+// GET /api/a/programs — 에스테틱 파트너 프로그램 조회 (bc_code 기반)
+app.get('/api/a/programs', async (c) => {
+  const db = c.env.DB
+  const b2bCode = c.req.query('b2b_code') || ''
+  const bcCode  = c.req.query('bc_code')  || ''
+  if (!b2bCode) return c.json([])
+  try {
+    const rows = await db.prepare(`
+      SELECT ap.*,
+             bp.name          AS partner_name,
+             bp.brand_name    AS brand_name,
+             bp.homepage_url  AS partner_homepage
+      FROM aesthetic_programs ap
+      LEFT JOIN b2b_partners bp ON bp.code = ap.partner_code
+      WHERE ap.partner_code = ?
+        AND ap.status = 'active'
+        AND (ap.bc_codes = '[]' OR ap.bc_codes = '' OR ap.bc_codes LIKE ?)
+      ORDER BY ap.is_signature DESC, ap.priority ASC
+      LIMIT 10
+    `).bind(b2bCode, `%${bcCode}%`).all<any>()
+    const programs = (rows.results || []).map((r: any) => ({
+      ...r,
+      bc_codes: (() => { try { return JSON.parse(r.bc_codes) } catch { return [] } })(),
+    }))
+    return c.json(programs)
+  } catch (e: any) {
+    // aesthetic_programs 테이블 없을 경우 빈 배열 반환 (마이그레이션 전 graceful)
+    return c.json([])
   }
 })
 
