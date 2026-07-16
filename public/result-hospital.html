@@ -6504,17 +6504,25 @@ window.__HOSPITAL_INIT_PROMISE__ = (async function hospitalInit() {
 </div>
 </section>
 
-<!-- ═══ P9: 미래 (시뮬레이터 4주 공개 / 12주 잠김 — 업셀링) ═══ -->
+<!-- ═══ P9: 변화 예측 (미래) ═══ -->
 <section id="page9" class="page">
 <div class="section-wrap">
   <div class="eyebrow" style="padding-top:8px;">변화 예측 (After) · 시뮬레이터</div>
   <h1 class="page-title fade-up" id="p9-title">이제, 당신이 상상하던<br><em>그 body로</em> 시뮬레이션합니다</h1>
-  <p class="body-text fade-up" style="transition-delay:.1s;margin-bottom:22px;">
-    바디코드의 처방을 완수했을 때, 데이터가 가리키는 확실한 미래입니다. 4주까지의 압도적인 변화는 지금 즉시 확인하세요.
+  <p class="body-text fade-up" style="transition-delay:.08s;margin-bottom:18px;">
+    바디코드 처방을 완수했을 때, 데이터가 가리키는 확실한 미래입니다.
   </p>
 
+  <!-- ★ 변화 목표 지표 — 대형 카드 (JS로 채움) -->
+  <div class="fade-up" id="p9-goal-card" style="transition-delay:.10s;margin-bottom:16px;"></div>
+
+  <!-- ★ 4주 감량 예측 + 목표 실루엣 카드 (JS로 채움) -->
+  <div class="fade-up" id="p9-predict-card" style="transition-delay:.13s;margin-bottom:16px;"></div>
+
+  <!-- 지표 시뮬레이터 -->
   <div class="rxp-sim2 fade-up" style="transition-delay:.16s" id="rxp-sim2"></div>
 
+  <!-- 12주 완주하기 CTA -->
   <div class="up12 fade-up" style="transition-delay:.26s">
     <div class="up12-eyebrow">12주 풀 처방 · 컨설턴트 1:1</div>
     <div class="up12-title">4주는 시작일 뿐,<br>진짜 변화는 <em>5주부터</em>예요</div>
@@ -6538,17 +6546,20 @@ window.__HOSPITAL_INIT_PROMISE__ = (async function hospitalInit() {
       <div class="up12-li"><span class="up12-ck">✓</span><div><b>매주 1:1 점검</b> — 막히는 구간마다 컨설턴트가 직접 조정</div></div>
       <div class="up12-li"><span class="up12-ck">✓</span><div><b>요요 없는 유지</b> — 12주 뒤에도 지속되는 몸으로</div></div>
     </div>
-    <button class="up12-cta" onclick="(typeof p7BookConsult==='function'?p7BookConsult():sendPrompt('담당 컨설턴트와 12주 풀 처방 상담받고 싶어요'))">담당 컨설턴트와 12주 완주하기 →</button>
-    <div class="up12-note">지금 결과지 데이터로 바로 상담이 진행됩니다</div>
+    <!-- 카카오 채널 링크로 연결 -->
+    <a class="up12-cta" href="http://pf.kakao.com/_xgCgsX" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none;cursor:pointer;">
+      <span style="margin-right:6px;">💬</span>담당 컨설턴트와 12주 완주하기 →
+    </a>
+    <div class="up12-note">카카오채널로 바로 연결 — 지금 결과지 데이터로 상담 진행</div>
   </div>
 
-  <!-- P9(변화예측) → P7(한장요약) — 마지막 마무리 -->
-  <button class="next-flow fade-up" style="transition-delay:.4s" onclick="switchPage(7)">
+  <!-- 다음: 4주의 기적 → 오늘 탭 -->
+  <button class="next-flow fade-up" style="transition-delay:.4s;background:linear-gradient(135deg,var(--vis),#5a6e3a);border:none;" onclick="switchPage(10)">
     <div class="nf-left">
-      <span class="nf-step">다음 — 한 장 요약</span>
-      <span class="nf-name">12주 여정을 한눈에 — 공유하고 시작하기</span>
+      <span class="nf-step" style="color:rgba(255,255,255,.75);">지금 바로 시작</span>
+      <span class="nf-name" style="color:#fff;font-weight:900;">4주의 기적 경험하러 바로가기 — 실패없는 다이어트 건강관리!</span>
     </div>
-    <span class="nf-arrow">→</span>
+    <span class="nf-arrow" style="color:#fff;">→</span>
   </button>
   <div class="disclaimer" id="p9-disclaimer"></div>
 </div>
@@ -16501,52 +16512,258 @@ function renderP9(metrics, bcCode, axisScores, data, s2) {
     '</div>';
   setTimeout(function(){ var fc=document.getElementById('rxp-free-card'); if(fc) fc.classList.add('lit'); }, 400);
 
-  // [V4.7] 옷사이즈 목표 + partLabels 집중 부위 태그 삽입
-  (function buildP9SizeAndParts() {
-    var SIZE_LABELS = ['XS(44)','S(55)','M(66)','L(77)','XL(88)','XXL(99)'];
-    var SIZE_NEXT   = { 'XS(44)':'XS(44)', 'S(55)':'XS(44)', 'M(66)':'S(55)', 'L(77)':'M(66)', 'XL(88)':'L(77)', 'XXL(99)':'XL(88)' };
+  // ══════════════════════════════════════════════════════════════
+  // [V4.8] buildP9GoalCard — 🎯 변화 목표 대형 카드
+  // p9-goal-card 컨테이너에 moodLabel / who / partLabels 대형 표시
+  // ══════════════════════════════════════════════════════════════
+  (function buildP9GoalCard() {
+    var el = document.getElementById('p9-goal-card');
+    if (!el) return;
 
-    // Q16: 옷사이즈 (0=XS/44, 1=S/55, 2=M/66, 3=L/77, 4=XL/88, 5=XXL/99)
-    var q16raw = s2['q16'] || s2['q16_size'] || '';
-    var q16val = -1;
-    if (Array.isArray(q16raw)) { q16val = Number(q16raw[0] !== undefined ? q16raw[0] : -1); }
-    else if (typeof q16raw === 'string' && q16raw !== '') { q16val = Number(q16raw); }
-    if (typeof q16raw === 'number') q16val = q16raw;
+    var moodLabel  = data._moodLabel  || (data._desire && data._desire.moodLabel)  || '';
+    var who        = data._who        || (data._desire && data._desire.who)         || '';
+    var pl         = data._partLabels || (data._desire && data._desire.partLabels)  || [];
 
-    var curSize   = (q16val >= 0 && q16val < SIZE_LABELS.length) ? SIZE_LABELS[q16val] : null;
-    var goalSize  = curSize ? (SIZE_NEXT[curSize] || curSize) : null;
+    if (!moodLabel && !who && !pl.length) return; // 데이터 없으면 숨김
 
-    // partLabels
-    var pl = data._partLabels || (data._desire && data._desire.partLabels) || [];
+    // 무드 → 이모지 / 서술 매핑
+    var MOOD_META = {
+      '슬림 탄탄한':    { emoji: '💪', desc: '군더더기 없이 탄탄한 몸', color: '#5c7a3e' },
+      '볼륨 있는 라인': { emoji: '🌸', desc: '적절한 굴곡이 살아있는 바디라인', color: '#b0506a' },
+      '곧은 모델핏':    { emoji: '🖤', desc: '직선적이고 슬림한 실루엣', color: '#3a3a4a' },
+      '가벼운 일상핏':  { emoji: '🌿', desc: '부담 없이 날씬한 일상 체형', color: '#3a7a5e' },
+      '조각 같은 윤곽': { emoji: '✨', desc: '날카롭고 선명한 얼굴·몸 윤곽', color: '#7c55b0' },
+      '건강한 빛남':    { emoji: '🌟', desc: '내·외면 모두 빛나는 건강미', color: '#b07c35' },
+    };
+    var meta  = MOOD_META[moodLabel] || { emoji: '✨', desc: moodLabel, color: '#7c55b0' };
+    var mcol  = meta.color;
 
-    if (!curSize && (!pl || !pl.length)) return;
+    var html = '<div style="border-radius:16px;overflow:hidden;background:var(--card);border:1.5px solid rgba(139,109,181,.22);box-shadow:0 4px 18px rgba(139,109,181,.10);">';
 
-    var rows = [];
-    if (curSize && goalSize && curSize !== goalSize) {
-      rows.push('<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(139,109,181,.07);border-radius:10px;margin-bottom:6px;">' +
-        '<span style="font-size:16px;">👗</span>' +
-        '<div>' +
-          '<div style="font-size:10.5px;color:var(--muted);font-weight:700;margin-bottom:2px;">옷사이즈 목표</div>' +
-          '<div style="font-size:13.5px;font-weight:800;color:var(--ink);">' + curSize + ' <span style="color:var(--vis);">→</span> ' + goalSize + '</div>' +
-        '</div>' +
-      '</div>');
+    // ── 헤더 배너
+    html += '<div style="background:linear-gradient(135deg,' + mcol + 'ee,' + mcol + '99);padding:14px 18px 10px;">'
+      + '<div style="font-size:11px;font-weight:800;letter-spacing:.1em;color:rgba(255,255,255,.85);margin-bottom:4px;">🎯 변화 목표 지표</div>'
+      + '<div style="display:flex;align-items:center;gap:10px;">'
+        + '<span style="font-size:36px;line-height:1;">' + meta.emoji + '</span>'
+        + '<div>'
+          + '<div style="font-size:22px;font-weight:900;color:#fff;line-height:1.1;">' + moodLabel + '</div>'
+          + '<div style="font-size:12px;color:rgba(255,255,255,.82);margin-top:2px;">' + meta.desc + '</div>'
+        + '</div>'
+      + '</div>'
+    + '</div>';
+
+    // ── 바디
+    html += '<div style="padding:14px 18px;">';
+
+    // 롤모델
+    if (who && who.trim()) {
+      html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;'
+        + 'background:rgba(139,109,181,.07);border-radius:10px;margin-bottom:10px;">'
+        + '<span style="font-size:22px;">🌟</span>'
+        + '<div>'
+          + '<div style="font-size:11px;color:var(--muted);font-weight:700;margin-bottom:2px;">닮고 싶은 롤모델</div>'
+          + '<div style="font-size:20px;font-weight:900;color:var(--ink);">"' + who.trim() + '"처럼</div>'
+        + '</div>'
+      + '</div>';
     }
-    if (pl && pl.length > 0) {
-      rows.push('<div style="padding:8px 14px;margin-bottom:2px;">' +
-        '<div style="font-size:10.5px;color:var(--muted);font-weight:700;margin-bottom:6px;">📍 집중 개선 부위</div>' +
-        '<div style="display:flex;flex-wrap:wrap;gap:5px;">' +
-          pl.map(function(p){ return '<span style="background:rgba(139,109,181,.12);border:1px solid rgba(139,109,181,.25);color:#8b6db5;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:16px;">' + p + '</span>'; }).join('') +
-        '</div>' +
-      '</div>');
+
+    // 집중 개선 부위
+    if (pl.length > 0) {
+      html += '<div style="margin-bottom:4px;">'
+        + '<div style="font-size:12px;color:var(--muted);font-weight:800;margin-bottom:8px;letter-spacing:.04em;">📍 집중 개선 부위</div>'
+        + '<div style="display:flex;flex-wrap:wrap;gap:7px;">'
+        + pl.map(function(p){
+            return '<span style="background:rgba(139,109,181,.14);border:1.5px solid rgba(139,109,181,.35);'
+              + 'color:#6b3fb0;font-size:14px;font-weight:800;padding:6px 16px;border-radius:20px;'
+              + 'letter-spacing:.02em;">' + p + '</span>';
+          }).join('')
+        + '</div>'
+      + '</div>';
     }
 
-    if (!rows.length) return;
-    var blockHTML = '<div style="margin:0 0 14px;border-radius:13px;overflow:hidden;border:1px solid var(--line);background:var(--card);">' +
-      '<div style="padding:10px 14px;border-bottom:1px solid var(--line);font-size:10.5px;font-weight:800;color:var(--vis-d);letter-spacing:.06em;">🎯 변화 목표 지표</div>' +
-      rows.join('') +
-    '</div>';
-    var s2El = document.getElementById('rxp-sim2');
-    if (s2El) s2El.insertAdjacentHTML('beforebegin', blockHTML);
+    html += '</div></div>';
+    el.innerHTML = html;
+  })();
+
+  // ══════════════════════════════════════════════════════════════
+  // [V4.8] buildP9PredictCard — 4주 감량 예측 + 실루엣 카드
+  // p9-predict-card 컨테이너에 수치·실루엣·q10 메시지 표시
+  // ══════════════════════════════════════════════════════════════
+  (function buildP9PredictCard() {
+    var el = document.getElementById('p9-predict-card');
+    if (!el) return;
+
+    // ── 체중 변수 (renderP9 스코프에서 클로저로 참조)
+    // curW, loss4, w4, totalLoss, hasWeight, gw 는 renderP9 함수 내 이미 계산됨
+    var moodLabel = data._moodLabel || (data._desire && data._desire.moodLabel) || '';
+    var who       = data._who       || (data._desire && data._desire.who)        || '';
+
+    // q10 패턴 (window._p5_q10pat / _p5_q10 에서 읽음)
+    var q10pat = window._p5_q10pat || '';
+    var q10idx = (window._p5_q10 != null) ? window._p5_q10 : -1;
+    var q10amp = window._p5_q10amp || 0;
+    var q10cyc = window._p5_q10cyc || 0;
+    var isYoyo = (q10idx === 1 || q10pat === 'yoyo');
+    var isJump = (q10idx === 2 || q10pat === 'jump');
+    var isCreep= (q10idx === 0 || q10pat === 'creep');
+
+    // ── specState 실제 체중/목표 (더 정확한 수치 — renderP9 바깥에서 set됨)
+    var specW    = (window.__RESULT__ && window.__RESULT__._specWeight)  || 0;
+    var specGW   = (window.__RESULT__ && window.__RESULT__._specGoalWt)  || 0;
+    var specH    = (window.__RESULT__ && window.__RESULT__._specHeight)  || 0;
+
+    // 체중 정보 결정: specState 우선, renderP9 계산값 차선
+    var displayCurW   = specW    > 0 ? specW    : (curW   || 0);
+    var displayGoalW  = specGW   > 0 ? specGW   : (gw     || 0);
+    // 4주 감량: specState 기반이면 총 감량의 40%, 없으면 renderP9 loss4
+    var displayLoss4  = (displayCurW > 0 && displayGoalW > 0 && displayCurW > displayGoalW)
+      ? Math.round((displayCurW - displayGoalW) * 0.4 * 10) / 10
+      : (loss4 || 0);
+    var displayW4     = (displayCurW > 0 && displayLoss4 > 0)
+      ? Math.round((displayCurW - displayLoss4) * 10) / 10
+      : (w4 || 0);
+
+    var hasWt = displayCurW > 0 && displayLoss4 > 0;
+
+    // ── moodLabel → 실루엣 SVG 매핑
+    // zone/track에 따라 체형 실루엣 CSS 표현
+    var SILHOUETTES = {
+      '슬림 탄탄한': {
+        svg: '<svg viewBox="0 0 60 120" width="60" height="120" style="display:block;margin:0 auto;">'
+          + '<ellipse cx="30" cy="12" rx="10" ry="11" fill="#c8a0e0" opacity=".9"/>'  // 얼굴
+          + '<rect x="23" y="24" width="14" height="28" rx="7" fill="#a07bc0" opacity=".85"/>'  // 몸통(슬림)
+          + '<rect x="21" y="24" width="6" height="22" rx="3" fill="#b090d0" opacity=".6"/>'  // 왼팔
+          + '<rect x="33" y="24" width="6" height="22" rx="3" fill="#b090d0" opacity=".6"/>'  // 오른팔
+          + '<rect x="25" y="51" width="5" height="38" rx="2.5" fill="#9870b8" opacity=".8"/>'  // 왼다리
+          + '<rect x="30" y="51" width="5" height="38" rx="2.5" fill="#9870b8" opacity=".8"/>'  // 오른다리
+          + '<text x="30" y="106" text-anchor="middle" font-size="7" fill="#7c55b0" font-weight="700">슬림 탄탄</text>'
+          + '</svg>',
+        label: '탄탄하고 슬림한 라인', accent: '#7c55b0'
+      },
+      '볼륨 있는 라인': {
+        svg: '<svg viewBox="0 0 60 120" width="60" height="120" style="display:block;margin:0 auto;">'
+          + '<ellipse cx="30" cy="12" rx="10" ry="11" fill="#e0a0b8" opacity=".9"/>'
+          + '<ellipse cx="30" cy="38" rx="12" ry="15" fill="#c070a0" opacity=".85"/>'  // 볼륨 몸통
+          + '<rect x="19" y="24" width="6" height="24" rx="3" fill="#d090b8" opacity=".6"/>'
+          + '<rect x="35" y="24" width="6" height="24" rx="3" fill="#d090b8" opacity=".6"/>'
+          + '<ellipse cx="27" cy="62" rx="5" ry="18" fill="#b06090" opacity=".8"/>'  // 허벅지 볼륨
+          + '<ellipse cx="33" cy="62" rx="5" ry="18" fill="#b06090" opacity=".8"/>'
+          + '<text x="30" y="106" text-anchor="middle" font-size="7" fill="#b0506a" font-weight="700">볼륨 라인</text>'
+          + '</svg>',
+        label: '굴곡 있는 볼륨 바디', accent: '#b0506a'
+      },
+      '곧은 모델핏': {
+        svg: '<svg viewBox="0 0 60 120" width="60" height="120" style="display:block;margin:0 auto;">'
+          + '<ellipse cx="30" cy="12" rx="9" ry="10" fill="#a0a0b8" opacity=".9"/>'
+          + '<rect x="24" y="23" width="12" height="30" rx="6" fill="#707090" opacity=".85"/>'  // 직선 몸통
+          + '<rect x="22" y="23" width="5" height="25" rx="2.5" fill="#8080a0" opacity=".6"/>'
+          + '<rect x="33" y="23" width="5" height="25" rx="2.5" fill="#8080a0" opacity=".6"/>'
+          + '<rect x="25.5" y="52" width="4" height="40" rx="2" fill="#606080" opacity=".8"/>'  // 직선 다리
+          + '<rect x="30.5" y="52" width="4" height="40" rx="2" fill="#606080" opacity=".8"/>'
+          + '<text x="30" y="106" text-anchor="middle" font-size="7" fill="#3a3a4a" font-weight="700">모델핏</text>'
+          + '</svg>',
+        label: '직선적이고 슬림한 실루엣', accent: '#3a3a4a'
+      },
+      '가벼운 일상핏': {
+        svg: '<svg viewBox="0 0 60 120" width="60" height="120" style="display:block;margin:0 auto;">'
+          + '<ellipse cx="30" cy="12" rx="10" ry="11" fill="#90c8a0" opacity=".9"/>'
+          + '<ellipse cx="30" cy="37" rx="11" ry="14" fill="#60a870" opacity=".85"/>'
+          + '<rect x="20" y="24" width="5" height="24" rx="2.5" fill="#70b880" opacity=".6"/>'
+          + '<rect x="35" y="24" width="5" height="24" rx="2.5" fill="#70b880" opacity=".6"/>'
+          + '<ellipse cx="27" cy="61" rx="4.5" ry="17" fill="#508860" opacity=".8"/>'
+          + '<ellipse cx="33" cy="61" rx="4.5" ry="17" fill="#508860" opacity=".8"/>'
+          + '<text x="30" y="106" text-anchor="middle" font-size="7" fill="#3a7a5e" font-weight="700">일상핏</text>'
+          + '</svg>',
+        label: '날씬하고 가벼운 일상 체형', accent: '#3a7a5e'
+      },
+      '조각 같은 윤곽': {
+        svg: '<svg viewBox="0 0 60 120" width="60" height="120" style="display:block;margin:0 auto;">'
+          + '<ellipse cx="30" cy="13" rx="11" ry="12" fill="#d4b8f0" opacity=".95"/>'  // 얼굴 강조
+          + '<path d="M22 27 Q30 24 38 27 L36 52 Q30 55 24 52 Z" fill="#a87ee8" opacity=".85"/>'  // 각진 몸통
+          + '<rect x="20" y="26" width="5" height="22" rx="2" fill="#c090e0" opacity=".6"/>'
+          + '<rect x="35" y="26" width="5" height="22" rx="2" fill="#c090e0" opacity=".6"/>'
+          + '<rect x="25.5" y="51" width="4.5" height="40" rx="2" fill="#8856c8" opacity=".8"/>'
+          + '<rect x="30" y="51" width="4.5" height="40" rx="2" fill="#8856c8" opacity=".8"/>'
+          + '<text x="30" y="106" text-anchor="middle" font-size="7" fill="#7c55b0" font-weight="700">조각 윤곽</text>'
+          + '</svg>',
+        label: '선명하고 조각 같은 얼굴·몸 윤곽', accent: '#7c55b0'
+      },
+    };
+    var sil = SILHOUETTES[moodLabel] || {
+      svg: '<div style="font-size:48px;text-align:center;padding:10px 0;">🏃‍♀️</div>',
+      label: moodLabel || '목표 체형', accent: '#7c55b0'
+    };
+
+    // ── q10 패턴별 예측 메시지
+    var patMsg = '';
+    if (isJump) {
+      patMsg = '최근 급격히 늘어난 체중 구조 → 초반 2주 내 빠른 반응이 옵니다';
+    } else if (isYoyo) {
+      var cycTxt = q10cyc >= 2 ? q10cyc + '회 반복 요요 이력 → ' : '';
+      patMsg = cycTxt + '회복 구간부터 시작해 안정적인 4주 감량이 가능합니다';
+    } else if (isCreep) {
+      patMsg = '서서히 쌓인 체중은 8주 이후 가속이 붙는 구조입니다';
+    } else {
+      patMsg = '현재 체중 상태에서 4주 집중 관리 시 예측 수치입니다';
+    }
+
+    // ── 롤모델 문구
+    var whoPhrase = (who && who.trim()) ? '"' + who.trim() + '"처럼 변하는 ' : '';
+
+    var html = '<div style="border-radius:16px;overflow:hidden;background:var(--card);'
+      + 'border:1.5px solid rgba(139,109,181,.22);box-shadow:0 4px 18px rgba(139,109,181,.10);">';
+
+    // 헤더
+    html += '<div style="background:linear-gradient(135deg,#4a2d80dd,#8b6db5cc);padding:12px 18px 8px;">'
+      + '<div style="font-size:11px;font-weight:800;letter-spacing:.1em;color:rgba(255,255,255,.85);">⚡ 4주 뒤 변화 예측</div>'
+    + '</div>';
+
+    // 바디: 실루엣 + 수치
+    html += '<div style="padding:14px 18px;display:flex;align-items:flex-start;gap:16px;">';
+
+    // 왼쪽: 실루엣
+    html += '<div style="flex-shrink:0;text-align:center;">'
+      + sil.svg
+      + '<div style="font-size:10px;color:' + sil.accent + ';font-weight:700;margin-top:4px;text-align:center;">' + sil.label + '</div>'
+    + '</div>';
+
+    // 오른쪽: 수치 + 메시지
+    html += '<div style="flex:1;min-width:0;">';
+
+    // 체중 감량 박스
+    if (hasWt) {
+      html += '<div style="background:linear-gradient(135deg,rgba(92,53,160,.12),rgba(139,109,181,.08));'
+        + 'border-radius:12px;padding:12px 14px;margin-bottom:10px;border:1px solid rgba(139,109,181,.2);">'
+        + '<div style="font-size:11px;color:var(--muted);font-weight:700;margin-bottom:4px;">지금 → 4주 후</div>'
+        + '<div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;">'
+          + '<span style="font-size:22px;font-weight:900;color:var(--ink);">' + displayCurW + '<small style="font-size:13px;">kg</small></span>'
+          + '<span style="font-size:18px;color:#7c55b0;font-weight:700;">→</span>'
+          + '<span style="font-size:26px;font-weight:900;color:#5c35a0;">' + displayW4 + '<small style="font-size:13px;">kg</small></span>'
+        + '</div>'
+        + '<div style="margin-top:6px;display:inline-flex;align-items:center;gap:5px;'
+          + 'background:rgba(92,53,160,.15);border-radius:8px;padding:4px 10px;">'
+          + '<span style="font-size:13px;color:#5c35a0;font-weight:900;">▼ ' + displayLoss4 + 'kg 감량 예측</span>'
+        + '</div>'
+      + '</div>';
+    }
+
+    // whoPhrase + 목표 무드
+    if (moodLabel) {
+      html += '<div style="font-size:13px;color:var(--ink);font-weight:700;margin-bottom:8px;line-height:1.5;">'
+        + whoPhrase + '<span style="color:' + sil.accent + ';font-weight:900;">' + moodLabel + '</span> 실루엣으로의 변화'
+      + '</div>';
+    }
+
+    // q10 패턴 메시지
+    if (patMsg) {
+      html += '<div style="font-size:11.5px;color:var(--muted);line-height:1.5;padding:7px 10px;'
+        + 'background:rgba(139,109,181,.06);border-radius:8px;border-left:3px solid rgba(139,109,181,.4);">'
+        + patMsg
+      + '</div>';
+    }
+
+    html += '</div></div></div>';
+    el.innerHTML = html;
   })();
 
   // ── 아래 비교 카드(혼자4주/함께12주)에 체중 kg + 몸 나이 주입 ──
