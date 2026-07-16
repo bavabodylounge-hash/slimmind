@@ -16030,41 +16030,73 @@ function renderP8(metrics, bcCode, axisScores, userName, s2, data) {
     var rank2 = topAx[1] || 'diet';
     var rank3 = topAx[2] || 'ex';
 
-    // 주차별 비율 계산 함수
-    // 원칙: 1주는 회복 비중 높고 원인처방 낮음 → 4주는 원인처방 비중 최대
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 주차별 비율 계산 — 핵심 원칙:
+    //   1위(_top3[0])가 뭐든 4주차에 가장 높은 막대 = P5 카드 순서와 동일하게
+    //   1주는 항상 회복(rec) 중심(몸 준비기), 주차가 늘수록 1위 원인 축 비율 극대화
+    //   focus 1위가 전체 1위이면 4주차 가장 높은 막대가 focus 1위
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     function makeWeek(w) {
-      // 기본 base 비율 (주차별 회복 감소, 식단·운동 증가)
-      var baseRec  = [58, 48, 38, 28][w-1];
-      var baseDiet = [22, 26, 30, 34][w-1];
-      var baseEx   = [20, 26, 26, 24][w-1]; // 운동은 완만하게
-
-      // 1위 base 축이면 해당 비율 +15~+20 (압도적 우위)
-      if (rank1 === 'rec')  { baseRec  = [72, 60, 48, 38][w-1]; baseDiet = [18,22,26,30][w-1]; baseEx=[10,18,20,22][w-1]; }
-      if (rank1 === 'diet') { baseDiet = [38, 40, 42, 44][w-1]; baseRec  = [48,40,32,24][w-1]; }
-      if (rank1 === 'ex')   { baseEx   = [38, 42, 44, 44][w-1]; baseRec  = [46,38,30,24][w-1]; }
-      // 2위 base 축이면 +8
-      if (rank2 === 'diet' && rank1 !== 'diet') { baseDiet += 8; baseRec = Math.max(baseRec-4, 20); }
-      if (rank2 === 'ex'   && rank1 !== 'ex')   { baseEx   += 8; baseRec = Math.max(baseRec-4, 20); }
-      if (rank2 === 'rec'  && rank1 !== 'rec')  { baseRec  += 8; }
-
-      // focus 축 비율: 1위 focus가 있으면 높게, 없으면 낮게
-      // 1주~2주는 focus 비율 0 (회복기), 3주부터 등장, 4주에 최대
-      var focusW = [0, 0, 1, 1][w-1]; // 3~4주에만 활성
-      var focusVals = {};
-      // ※ AX는 이 IIFE 실행 시점에 아직 선언 전일 수 있으므로 인라인 키 배열 사용
       var FOCUS_KEYS = ['ori', 'proc', 'horm', 'form', 'circ'];
+      var focusVals = {};
+
+      // ── 1. focus 키 비율 먼저 결정 ──
+      // rank1이 focus 키면 4주차에 가장 높아야 함 → [10, 18, 28, 38]
+      // rank1이 base 키면 focus는 보조 → [0, 6, 14, 22]
+      var rank1IsFocus = FOCUS_KEYS.indexOf(rank1) >= 0;
       FOCUS_KEYS.forEach(function(fk){
-        var idx = topFocus.indexOf(fk);
-        if (idx === 0)      focusVals[fk] = [0, 0, 14, 22][w-1]; // focus 1위
-        else if (idx === 1) focusVals[fk] = [0, 0,  8, 14][w-1]; // focus 2위
-        else if (idx === 2) focusVals[fk] = [0, 0,  4,  8][w-1]; // focus 3위
-        else                focusVals[fk] = 0;                    // 비선택 focus → 0
+        if (rank1IsFocus) {
+          // 전체 1위가 focus 키인 경우
+          if (fk === rank1)       focusVals[fk] = [10, 18, 28, 38][w-1]; // 전체 1위 focus
+          else if (fk === rank2)  focusVals[fk] = [ 0,  4, 10, 16][w-1]; // 2위 focus
+          else if (fk === rank3)  focusVals[fk] = [ 0,  0,  6, 10][w-1]; // 3위 focus
+          else {
+            var idx = topFocus.indexOf(fk);
+            if (idx === 1)      focusVals[fk] = [ 0,  4, 10, 16][w-1];
+            else if (idx === 2) focusVals[fk] = [ 0,  0,  6, 10][w-1];
+            else                focusVals[fk] = 0;
+          }
+        } else {
+          // 전체 1위가 base 키인 경우 → focus는 보조
+          var idx = topFocus.indexOf(fk);
+          if (idx === 0)      focusVals[fk] = [ 0,  6, 14, 22][w-1]; // focus 1위(보조)
+          else if (idx === 1) focusVals[fk] = [ 0,  0,  8, 14][w-1]; // focus 2위
+          else if (idx === 2) focusVals[fk] = [ 0,  0,  4,  8][w-1]; // focus 3위
+          else                focusVals[fk] = 0;
+        }
       });
 
-      // focus 1위가 horm/circ처럼 중요한데 1~2주에도 살짝 보이게 (0→6→14→22)
-      if (topFocus.length > 0) {
-        var f1 = topFocus[0];
-        if (focusVals[f1] === 0 && w <= 2) focusVals[f1] = [6, 10][w-1] || 0;
+      // ── 2. base(rec/diet/ex) 비율 결정 ──
+      // rank1이 focus면 base는 회복 중심 표준값, rank1이 base면 해당 축 상향
+      var baseRec, baseDiet, baseEx;
+
+      if (rank1IsFocus) {
+        // focus가 1위 → base는 표준 회복 곡선, 단 focus 비율만큼 줄어야 총합 맞음
+        // 4주차 focus1위=38 이므로 base 합계 = 100-38-focus2-focus3
+        var f2v = focusVals[rank2] || 0;
+        var f3v = focusVals[rank3] || 0;
+        var baseTotal = [90, 78, 62, 46][w-1]; // 1주:90 → 4주:46(=100-38-10-6)
+        // base 비중 내에서 rec:diet:ex = 6:2:2
+        baseRec  = Math.round(baseTotal * 0.60);
+        baseDiet = Math.round(baseTotal * 0.22);
+        baseEx   = baseTotal - baseRec - baseDiet;
+        // 2위가 rec이면 rec 비율 올림
+        if (rank2 === 'rec')  { baseRec  = Math.min(baseRec  + 8, baseTotal - 16); baseDiet = Math.round((baseTotal - baseRec) * 0.55); baseEx = baseTotal - baseRec - baseDiet; }
+        if (rank2 === 'diet') { baseDiet = Math.min(baseDiet + 8, baseTotal - 16); baseEx   = baseTotal - baseRec - baseDiet; }
+        if (rank2 === 'ex')   { baseEx   = Math.min(baseEx   + 8, baseTotal - 16); baseDiet = baseTotal - baseRec - baseEx; }
+      } else {
+        // base가 1위
+        baseRec  = [52, 42, 34, 26][w-1];
+        baseDiet = [26, 30, 32, 36][w-1];
+        baseEx   = [22, 28, 28, 26][w-1];
+        // 1위 base 축 강조
+        if (rank1 === 'rec')  { baseRec  = [68, 58, 46, 36][w-1]; baseDiet = [18, 22, 26, 30][w-1]; baseEx = [14, 20, 22, 22][w-1]; }
+        if (rank1 === 'diet') { baseDiet = [36, 40, 42, 44][w-1]; baseRec  = [46, 38, 30, 24][w-1]; baseEx = [18, 22, 22, 20][w-1]; }
+        if (rank1 === 'ex')   { baseEx   = [36, 40, 42, 44][w-1]; baseRec  = [46, 38, 30, 24][w-1]; baseDiet = [18, 22, 22, 20][w-1]; }
+        // 2위 base 축 보조 상향
+        if (rank2 === 'diet' && rank1 !== 'diet') { baseDiet += 6; baseRec = Math.max(baseRec - 3, 18); }
+        if (rank2 === 'ex'   && rank1 !== 'ex')   { baseEx   += 6; baseRec = Math.max(baseRec - 3, 18); }
+        if (rank2 === 'rec'  && rank1 !== 'rec')  { baseRec  += 6; }
       }
 
       return Object.assign({ rec:baseRec, diet:baseDiet, ex:baseEx }, focusVals);
