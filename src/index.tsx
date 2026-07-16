@@ -4978,8 +4978,10 @@ app.get('/api/h/result/:id', async (c) => {
     const finalMbti = normMbti(row.mbti_full)
       || normMbti(parsedRawResult?.pfProfile?.mbti) || ''
 
-    c.header('Cache-Control', 'no-cache, no-store, must-revalidate')
+    c.header('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0')
     c.header('Pragma', 'no-cache')
+    c.header('Expires', '0')
+    c.header('Surrogate-Control', 'no-store')
     return c.json({
       ok: true,
       id: row.id,
@@ -5085,8 +5087,11 @@ app.get('/result-hospital/:id', async (c) => {
       html = html.replace('</head>', idScript + '</head>')
     }
     return c.html(html, 200, {
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
       'Pragma': 'no-cache',
+      'Expires': '0',
+      'Surrogate-Control': 'no-store',
+      'Vary': '*',
     })
   } catch (e: any) {
     return c.html('<h2>결과지를 불러올 수 없습니다</h2>', 500)

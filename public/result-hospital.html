@@ -5733,7 +5733,8 @@ window.__HOSPITAL_INIT_PROMISE__ = (async function hospitalInit() {
     if (typeof ax === 'string') { try { ax = JSON.parse(ax); } catch(e){ ax = {}; } }
 
     // stage2_answers 파싱
-    var s2 = json.stage2_answers || {};
+    // ★ stage2_answers가 null인 경우 raw_answers.stage2로 폴백 (B2B 병원 설문 형식)
+    var s2 = json.stage2_answers || (json.raw_answers && json.raw_answers.stage2) || {};
     if (typeof s2 === 'string') { try { s2 = JSON.parse(s2); } catch(e){ s2 = {}; } }
     // ★ 키 충돌 근본 해결: stage2Answers는 숫자 키(1,2,3...16)로 저장됨
     // 결과지는 'q1','q2'... 문자열 키로 읽으므로, 숫자 키→'qN' 문자열 폴백 추가
@@ -5796,11 +5797,13 @@ window.__HOSPITAL_INIT_PROMISE__ = (async function hospitalInit() {
       ? Math.round((_specWaist - _specGoalWaist) * 10) / 10 : 0;
 
     // stage3_answers 파싱 (히트맵 원시 응답: {bloat:[0,1,...], tired:[...], ...})
-    var s3 = json.stage3_answers || {};
+    // ★ stage3_answers가 null인 경우 raw_answers.stage3로 폴백
+    var s3 = json.stage3_answers || (json.raw_answers && json.raw_answers.stage3) || {};
     if (typeof s3 === 'string') { try { s3 = JSON.parse(s3); } catch(e){ s3 = {}; } }
 
     // stage4_answers 파싱 (갈림길 응답: {A01_A09: 0, A01_A07: 1, ...})
-    var s4 = json.stage4_answers || {};
+    // ★ stage4_answers가 null인 경우 raw_answers.stage4로 폴백
+    var s4 = json.stage4_answers || (json.raw_answers && json.raw_answers.stage4) || {};
     if (typeof s4 === 'string') { try { s4 = JSON.parse(s4); } catch(e){ s4 = {}; } }
 
     // ── BMI 계산 ──────────────────────────────────────
@@ -6554,21 +6557,15 @@ window.__HOSPITAL_INIT_PROMISE__ = (async function hospitalInit() {
 <!-- ═══ P6: 12주 하이퍼 로드맵 ═══ -->
 <section id="page6" class="page">
 
-
 <div class="section-wrap" style="padding-top:12px;">
 
-  <!-- ═══ 도입부 통합 카드: 히어로 + 세 기둥 + 여정맵 한 흐름 ═══ -->
-  <div class="rm-flow fade-up">
-
-  <!-- 로드맵 히어로: 앞 페이지 톤 통일 · 밝은 프리미엄 -->
-  <div class="rmhero">
+  <!-- 히어로 헤더 -->
+  <div class="rmhero fade-up">
     <div class="rmhero-band"></div>
     <div class="rmhero-in">
       <div class="eyebrow" style="padding-top:2px;">12주 로드맵 · 주차별 설계</div>
       <h1 class="rmhero-title">12주의 흐름을<br><em>내 일상으로</em> 가져옵니다</h1>
-
       <p class="rmhero-lead">처방에서 골라낸 핵심 영역을, 맞춤 비율에서 정한 순서대로 — 매주 무엇을 어떻게 할지 <b>일상 속 액션 플랜</b>으로 풀어냅니다.</p>
-
       <div class="rmhero-sign">
         <div class="rmhero-sign-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
         <div class="rmhero-sign-tx">설계·점검 <b id="p6-hero-consultant">담당 컨설턴트</b> · 매 주차 직접 검토 <span id="p6-name" style="display:none"></span><span id="p6-name2b" style="display:none"></span></div>
@@ -6576,10 +6573,30 @@ window.__HOSPITAL_INIT_PROMISE__ = (async function hospitalInit() {
     </div>
   </div>
 
-  <p class="body-text fade-up" style="transition-delay:.08s;margin-bottom:20px;font-size:13px;color:var(--muted);display:none;" id="p6-code-display"></p>
+  <!-- (숨김) JS 호환용 -->
+  <p style="display:none;" id="p6-code-display"></p>
 
-  <!-- 세 기둥 + 12주 여정 아코디언 (JS 렌더) -->
-  <div class="jm-pillars" style="transition-delay:.08s">
+  <!-- ★ 강조 문구 — 이 페이지에서 제일 크게 -->
+  <div class="fade-up" id="p6-priority-msg" style="transition-delay:.06s;margin:18px 0 20px;background:linear-gradient(135deg,var(--vis) 0%,#5a6e3a 100%);border-radius:16px;padding:20px 20px 18px;color:#fff;">
+    <div style="font-size:10px;font-weight:900;letter-spacing:.15em;opacity:.8;margin-bottom:10px;">✦ 슬림마인드 맞춤 설계</div>
+    <div style="font-size:16px;font-weight:900;line-height:1.55;margin-bottom:10px;">
+      <b id="p6-priority-name">고객</b>님의 <b>우선순위</b>와<br>슬림마인드의 <b>가장 전문성이 높은</b><br><span id="p6-priority-axes" style="border-bottom:2px solid rgba(255,255,255,.6);padding-bottom:1px;">운동 · 식단 · 회복</span>이
+    </div>
+    <div style="font-size:13.5px;font-weight:600;line-height:1.6;opacity:.95;">
+      <b id="p6-priority-name2">고객</b>님만의 <b id="p6-priority-bccode">BC코드</b>와<br>체질·기질에 맞춰 <b>4주 플랜이 공개</b>됩니다
+    </div>
+  </div>
+
+  <!-- 여정 지도 인트로 (바로 표시) -->
+  <div class="jm-journey fade-up" style="transition-delay:.09s">
+    <div class="jm-jn-eyebrow">회복기 · 전환기 · 가속기 · 안정기</div>
+    <div class="jm-jn-title">관문을 지날 때마다<br><em>다른 몸</em>으로</div>
+    <div class="jm-jn-sub">한 단계 완료하면 다음 문이 열립니다. 관문을 누르면 그 주차 플랜으로 바로 이동해요.</div>
+    <div id="p6-journeymap"></div>
+  </div>
+
+  <!-- 매주 채우는 세 가지 -->
+  <div class="jm-pillars fade-up" style="transition-delay:.13s">
     <div class="jm-pl-hd">매주 채우는 <span class="jm-pl-hd-em">세 가지</span></div>
     <div class="jm-pl-grid">
       <div class="jm-pl" style="--plc:#5a6e3a">
@@ -6601,22 +6618,8 @@ window.__HOSPITAL_INIT_PROMISE__ = (async function hospitalInit() {
         <div class="jm-pl-dp">매일의 루틴 설계</div>
       </div>
     </div>
-    <div class="jm-pl-line"><b id="p6-name2">지현</b> 님의 대사를 깨울 토대는 <span class="jm-hl">운동·식단·회복</span> — 담당 전문가가 <b>매주 직접 점검</b>합니다. 이 세 가지를, 아래 <b>4단계로 나눠</b> 한 칸씩 밟아갑니다.</div>
+    <div class="jm-pl-line"><b id="p6-name2">고객</b> 님의 대사를 깨울 토대는 <span class="jm-hl">운동·식단·회복</span> — 담당 전문가가 <b>매주 직접 점검</b>합니다. 이 세 가지를, 아래 <b>4단계로 나눠</b> 한 칸씩 밟아갑니다.</div>
   </div>
-
-  <!-- 여정 지도 인트로 -->
-  <div class="jm-journey" style="transition-delay:.1s">
-    <div class="jm-jn-eyebrow">회복기 · 전환기 · 가속기 · 안정기</div>
-    <div class="jm-jn-title">관문을 지날 때마다<br><em>다른 몸</em>으로</div>
-    <div class="jm-jn-sub">한 단계 완료하면 다음 문이 열립니다. 관문을 누르면 그 주차 플랜으로 바로 이동해요.</div>
-    <div id="p6-journeymap"></div>
-  </div>
-
-  </div><!-- /rm-flow 통합 카드 끝 -->
-
-  <!-- 아코디언은 '오늘'(page10)로 이사함 -->
-
-  <!-- ════ 로드맵 업셀링 — 지도에서 끝까지 ════ -->
 
   <!-- (숨김) JS 레거시 호환 -->
   <div style="display:none">
@@ -6630,12 +6633,10 @@ window.__HOSPITAL_INIT_PROMISE__ = (async function hospitalInit() {
     <div id="p6-prog-label"></div>
   </div>
 
-  <!-- 실천 기록은 '오늘'(page10)로 이사함 -->
-
   <button class="next-flow fade-up" style="transition-delay:.4s" onclick="switchPage(9)">
     <div class="nf-left">
       <span class="nf-step">다음 페이지</span>
-      <span class="nf-name">그래서 12주 뒤 당신은 — 미래</span>
+      <span class="nf-name" id="p6-next-btn-text">기대되는 고객님의 미래는?</span>
     </div>
     <span class="nf-arrow">→</span>
   </button>
@@ -16357,10 +16358,28 @@ function renderP8(metrics, bcCode, axisScores, userName, s2, data) {
     var el = document.getElementById('p8-fail-msg');
     if (!el) return;
 
-    // q8: 살찐 계기 인덱스 배열
+    // q8: 살찐 계기 인덱스 배열 (숫자 or 텍스트 모두 처리)
     var q8raw = (s2 && (s2['q8'] || s2['q8_trigger'])) || [];
-    if (typeof q8raw === 'string') { try { q8raw = JSON.parse(q8raw); } catch(e){ q8raw = []; } }
-    var q8Idxs = Array.isArray(q8raw) ? q8raw.map(Number) : [];
+    if (typeof q8raw === 'string') { try { q8raw = JSON.parse(q8raw); } catch(e){ q8raw = [q8raw]; } }
+    var Q8_TEXT_MAP = ['이직','과로','스트레스','이별','심리적','충격','수술','입원','약물','회식','음주','금연','생활습관','특별한 계기 없이','서서히'];
+    var Q8_TEXT_IDX = [
+      /이직|과로|스트레스/i,     // 0
+      /이별|심리|충격/i,          // 1
+      /수술|입원|약물/i,          // 2
+      /회식|음주/i,               // 3
+      /금연|생활습관/i,           // 4
+      /특별한 계기|서서히/i       // 5
+    ];
+    var q8Idxs = [];
+    if (Array.isArray(q8raw)) {
+      q8raw.forEach(function(v) {
+        var n = Number(v);
+        if (!isNaN(n) && n >= 0 && n <= 5) { q8Idxs.push(n); }
+        else if (typeof v === 'string') {
+          Q8_TEXT_IDX.forEach(function(re, i) { if (re.test(v) && q8Idxs.indexOf(i) < 0) q8Idxs.push(i); });
+        }
+      });
+    }
 
     // q10: 체중궤적 패턴
     var q10raw = (s2 && (s2['q10'] || s2['q10_history'])) || '';
@@ -16597,32 +16616,26 @@ function renderP6(userName, fullCode, ohaengType, inputData) {
   if (_p6cd) _p6cd.innerHTML =
     `<strong style="color:var(--vis-d);">${fullCode}</strong> 기준으로 짜인 12주 실행 계획입니다.`;
 
-  // [V4.7] desire 목표 헤더 — moodLabel / partLabels / who 반영
-  (function buildP6DesireHeader() {
-    var d2 = inputData || window.__SLIMMIND_DATA__ || window.__RESULT__ || {};
-    var ml  = d2._moodLabel  || (d2._desire && d2._desire.moodLabel)  || '';
-    var who = d2._who        || (d2._desire && d2._desire.who)         || '';
-    var pl  = d2._partLabels || (d2._desire && d2._desire.partLabels)  || [];
-    if (!ml && !who && (!pl || !pl.length)) return;
-    var MOOD_ICON = {'가벼운 일상핏':'✨','날씬 탄탄핏':'💪','글래머러스':'🌹','건강 자연체':'🌿','슬림 실루엣':'🪄','기타':'💫'};
-    var moodIcon = MOOD_ICON[ml] || '🎯';
-    var headerHTML =
-      '<div style="margin:0 0 20px;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:linear-gradient(135deg,rgba(139,109,181,.10),rgba(196,168,232,.05));">' +
-        '<div style="padding:12px 16px;border-bottom:1px solid rgba(139,109,181,.2);">' +
-          '<div style="font-size:10px;font-weight:900;color:#8b6db5;letter-spacing:2px;margin-bottom:6px;">🎯 이 처방이 겨냥하는 목표</div>' +
-          (ml ? '<div style="display:flex;align-items:center;gap:8px;margin-bottom:' + (pl.length ? '8' : '0') + 'px;">' +
-            '<span style="font-size:22px;">' + moodIcon + '</span>' +
-            '<span style="font-size:16px;font-weight:900;color:var(--ink);">"' + ml + '"한 몸</span>' +
-          '</div>' : '') +
-          (pl.length > 0 ? '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:' + (who ? '8' : '0') + 'px;">' +
-            pl.map(function(p){ return '<span style="background:rgba(139,109,181,.15);border:1px solid rgba(139,109,181,.3);color:#8b6db5;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:20px;">📍 ' + p + '</span>'; }).join('') +
-          '</div>' : '') +
-          (who ? '<div style="font-size:12px;color:var(--muted);padding:6px 10px;background:rgba(0,0,0,.03);border-radius:8px;">💬 ' + who + '</div>' : '') +
-        '</div>' +
-      '</div>';
-    // p6-code-display 다음에 삽입
-    var codeEl = document.getElementById('p6-code-display');
-    if (codeEl) codeEl.insertAdjacentHTML('afterend', headerHTML);
+  // [V4.8] P6 강조 문구 동적 업데이트 — 이름/BC코드/_top3 반영
+  (function buildP6PriorityMsg() {
+    // 이름
+    var nm = (userName && userName.length >= 3) ? userName.slice(1) : (userName || '고객');
+    var nmShort = nm;
+    ['p6-priority-name','p6-priority-name2','p6-name2'].forEach(function(id){
+      var el = document.getElementById(id); if(el) el.textContent = nmShort;
+    });
+    // BC코드 표시
+    var bcEl = document.getElementById('p6-priority-bccode');
+    if (bcEl) bcEl.textContent = bcCode || 'BC';
+    // _top3 기반 축 이름 표시 (없으면 운동·식단·회복 기본값 유지)
+    var top3 = window._top3 && window._top3.length > 0 ? window._top3 : [];
+    var axEl = document.getElementById('p6-priority-axes');
+    if (axEl && top3.length > 0) {
+      axEl.textContent = top3.slice(0,3).join(' · ');
+    }
+    // 다음 버튼 문구 이름 반영
+    var nxtEl = document.getElementById('p6-next-btn-text');
+    if (nxtEl) nxtEl.textContent = '기대되는 ' + nmShort + '님의 미래는?';
   })();
 
   const ohaengData = (typeof SAJU_ELEMENT_DESC !== 'undefined' && SAJU_ELEMENT_DESC[ohaengType])
