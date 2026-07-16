@@ -15091,6 +15091,7 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
     .filter(function(k){ return k !== '관리' && k !== '철학'; })
     .sort(function(a,b){ return _domainScores[b] - _domainScores[a]; });
   var _top3 = _sortedDomains.slice(0,3);
+  window._top3 = _top3; // renderP8 등 외부 함수에서 접근할 수 있도록 전역 노출
 
   // ════════════════════════════════════════════
   // ★ 영역별 해결책 데이터 (원인 스토리 + 구체적 행동)
@@ -16003,13 +16004,16 @@ function renderP8(metrics, bcCode, axisScores, userName, s2, data) {
     '약물':'proc'                                 // 약물은 시술 축에 통합(비침습처방)
   };
   var DATA = (function buildDynamicData() {
-    // _top3가 없으면 BC코드 fallback
-    if (typeof _top3 === 'undefined' || !_top3 || _top3.length === 0) {
+    // renderP5에서 window._top3로 전역 노출한 값 사용 (renderP8은 별도 함수라 지역 _top3 없음)
+    var top3 = (typeof window._top3 !== 'undefined' && window._top3 && window._top3.length > 0)
+      ? window._top3
+      : (typeof _top3 !== 'undefined' ? _top3 : null);
+    if (!top3 || top3.length === 0) {
       return BC_DATA_MAP[bcCode] || BC_DATA_MAP['BC-6'];
     }
 
     // _top3 → AX키 변환
-    var topAx = _top3.map(function(nm){ return DOMAIN_TO_AX[nm] || null; }).filter(Boolean);
+    var topAx = top3.map(function(nm){ return DOMAIN_TO_AX[nm] || null; }).filter(Boolean);
     // 중복 제거 (심리→horm, 약물→proc 등 같은 키가 겹칠 수 있음)
     var seen = {}; topAx = topAx.filter(function(k){ if(seen[k]) return false; seen[k]=true; return true; });
 
@@ -16047,12 +16051,14 @@ function renderP8(metrics, bcCode, axisScores, userName, s2, data) {
       // 1주~2주는 focus 비율 0 (회복기), 3주부터 등장, 4주에 최대
       var focusW = [0, 0, 1, 1][w-1]; // 3~4주에만 활성
       var focusVals = {};
-      AX.filter(function(a){ return a.group==='focus'; }).forEach(function(a){
-        var idx = topFocus.indexOf(a.k);
-        if (idx === 0)      focusVals[a.k] = [0, 0, 14, 22][w-1]; // focus 1위
-        else if (idx === 1) focusVals[a.k] = [0, 0,  8, 14][w-1]; // focus 2위
-        else if (idx === 2) focusVals[a.k] = [0, 0,  4,  8][w-1]; // focus 3위
-        else                focusVals[a.k] = 0;                    // 비선택 focus → 0
+      // ※ AX는 이 IIFE 실행 시점에 아직 선언 전일 수 있으므로 인라인 키 배열 사용
+      var FOCUS_KEYS = ['ori', 'proc', 'horm', 'form', 'circ'];
+      FOCUS_KEYS.forEach(function(fk){
+        var idx = topFocus.indexOf(fk);
+        if (idx === 0)      focusVals[fk] = [0, 0, 14, 22][w-1]; // focus 1위
+        else if (idx === 1) focusVals[fk] = [0, 0,  8, 14][w-1]; // focus 2위
+        else if (idx === 2) focusVals[fk] = [0, 0,  4,  8][w-1]; // focus 3위
+        else                focusVals[fk] = 0;                    // 비선택 focus → 0
       });
 
       // focus 1위가 horm/circ처럼 중요한데 1~2주에도 살짝 보이게 (0→6→14→22)
