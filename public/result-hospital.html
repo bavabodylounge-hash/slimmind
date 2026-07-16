@@ -12186,6 +12186,8 @@ function switchPage(num) {
     if(typeof renderDailyPage==='function') renderDailyPage();
     // 서브탭 항상 "오늘 할 일"로 리셋
     if(typeof switchP10Tab==='function') switchP10Tab('today');
+    // 오늘탭 처음 진입 시 전용 안내 팝업
+    setTimeout(function(){ _showTodayTabGuide(); }, 500);
   }, 150);
   if (num === 11) setTimeout(function(){ if(typeof renderP11==='function') renderP11(); }, 200);
 }
@@ -12196,8 +12198,10 @@ function enterReport(num){
   document.body.style.overflow='';
   switchPage(num || 1);
   if((num||1)===1){ setTimeout(runCertReveal, 200); setTimeout(countUpMetaAge, 300); }
-  // 첫 진입 시 결과지 사용법 안내 팝업
-  setTimeout(function(){ _showResultGuide(); }, 600);
+  // 오늘탭(10)은 결과지 안내 팝업 제외 — 오늘탭 전용 팝업이 별도로 뜸
+  if((num||1) !== 10){
+    setTimeout(function(){ _showResultGuide(); }, 600);
+  }
 }
 
 // 결과지 처음 열 때 "어떻게 보는지" 안내 팝업 (최초 1회)
@@ -12276,6 +12280,50 @@ function _rgClose(){
   if(card && card.parentNode) card.parentNode.removeChild(card);
   try { localStorage.setItem('slimmind_guide_done','1'); } catch(e){}
 }
+// ── 오늘탭 처음 진입 시 전용 안내 팝업 (최초 1회) ──────────────────────
+function _showTodayTabGuide(){
+  try { if(localStorage.getItem('slimmind_today_guide_done')) return; } catch(e){}
+  var overlay = document.getElementById('tg-overlay');
+  if(!overlay){
+    overlay = document.createElement('div');
+    overlay.id = 'tg-overlay';
+    overlay.className = 'obd-overlay';
+    document.body.appendChild(overlay);
+  }
+  overlay.classList.add('show');
+
+  var card = document.getElementById('tg-card');
+  if(!card){
+    card = document.createElement('div');
+    card.id = 'tg-card';
+    card.className = 'obd-card';
+    card.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9202;';
+    document.body.appendChild(card);
+  }
+  card.innerHTML =
+    '<div class="obd-card-icon">📅</div>'+
+    '<div class="obd-card-title">오늘 탭, 이렇게 쓰세요</div>'+
+    '<div class="obd-card-body">'+
+      '매일 <b>운동·식단·회복</b>을 하나씩 체크해 주세요.<br><br>'+
+      '✅ 체크할 때마다 <b>컨설턴트가 실시간 확인</b>해요.<br>'+
+      '🔥 매일 체크하면 <b>연속 달성 스트릭</b>이 올라가요.<br>'+
+      '💬 궁금한 점은 코치 메시지로 바로 물어보세요.'+
+    '</div>'+
+    '<div class="obd-card-foot">'+
+      '<span class="obd-step">오늘 탭 안내</span>'+
+      '<div class="obd-btns">'+
+        '<button class="obd-next" onclick="_closeTodayTabGuide()">시작하기 ✓</button>'+
+      '</div>'+
+    '</div>';
+}
+function _closeTodayTabGuide(){
+  var overlay = document.getElementById('tg-overlay');
+  var card    = document.getElementById('tg-card');
+  if(overlay){ overlay.classList.remove('show'); setTimeout(function(){ if(overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 300); }
+  if(card && card.parentNode) card.parentNode.removeChild(card);
+  try { localStorage.setItem('slimmind_today_guide_done','1'); } catch(e){}
+}
+
 function openCover(){
   var c = document.getElementById('cover-overlay');
   if(c){ c.classList.remove('cover-hidden'); }
