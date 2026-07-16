@@ -19587,16 +19587,30 @@ function renderDailyPage(){
   var weeks = window.__ACTIVE_WEEKS__ || [];
   if (!weeks.length){ host.innerHTML=''; return; }
 
-  // 현재 주차 = 1주차 (열린 주차 중 첫째). 추후 실제 진행주차로 교체 가능.
-  var w = weeks[0];
-  var phaseName = (typeof ROADMAP_PHASES!=='undefined' && ROADMAP_PHASES[0]) ? ROADMAP_PHASES[0].name : '회복기';
-  var weekNo = w.week || 1;
-
-  // 오늘 요일 (월=0 … 일=6)
+  // 오늘 날짜
   var DAYS=['월','화','수','목','금','토','일'];
   var jsDay = new Date().getDay();           // 0=일
   var todayIdx = (jsDay===0) ? 6 : jsDay-1;  // 월0..일6
   var todayNm = DAYS[todayIdx];
+  var todayKeyForWeek = (new Date()).toISOString().slice(0,10); // YYYY-MM-DD
+
+  // ── 현재 주차 자동 계산 ─────────────────────────────────────
+  // 최초 진입일을 localStorage에 저장 → 경과일 기준으로 주차 결정
+  var startKey = 'slimmind_start_' + sid;
+  var startDate = localStorage.getItem(startKey);
+  if (!startDate) {
+    startDate = todayKeyForWeek;
+    try { localStorage.setItem(startKey, startDate); } catch(e) {}
+  }
+  var elapsed = Math.floor((new Date(todayKeyForWeek) - new Date(startDate)) / 86400000);
+  elapsed = Math.max(0, elapsed); // 음수 방지
+  var currentWeekIdx = Math.min(Math.floor(elapsed / 7), weeks.length - 1);
+
+  var w = weeks[currentWeekIdx];
+  var phaseIdx = Math.min(currentWeekIdx, (typeof ROADMAP_PHASES!=='undefined' ? ROADMAP_PHASES.length-1 : 0));
+  var phaseName = (typeof ROADMAP_PHASES!=='undefined' && ROADMAP_PHASES[phaseIdx])
+    ? ROADMAP_PHASES[phaseIdx].name : '회복기';
+  var weekNo = w.week || (currentWeekIdx + 1);
 
   // ── 오행·MBTI 정보 읽기 ──────────────────────────────────────
   var ohaengType = '목';
@@ -19672,7 +19686,7 @@ function renderDailyPage(){
   var isRestDay = (todayIdx>=6); // 일요일만 운동 완전휴식 취급
 
   // ── 오늘 날짜 키 & 저장 키 ──────────────────────────────────────────
-  var todayKey = (new Date()).toISOString().slice(0,10);  // YYYY-MM-DD
+  var todayKey = todayKeyForWeek;  // 위에서 이미 계산한 값 재사용
   var checkStorageKey = 'slimmind_daily_check_' + sid;
   var savedChecks = {};
   try { savedChecks = JSON.parse(localStorage.getItem(checkStorageKey) || '{}'); } catch(e){}
