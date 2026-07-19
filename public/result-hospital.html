@@ -11030,6 +11030,43 @@ function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nic
     ]},
   ];
   var myNick = (typeof nicknameDisplay !== 'undefined' && nicknameDisplay) ? nicknameDisplay : (bcMaster.app_nickname||'').replace(/#/g,'').replace(/_/g,' ');
+  // ── 닉네임 → BC16 카드 정확 매핑 테이블 (24개 닉네임 전체 커버) ──
+  // bc-engine.js NICKNAME_TO_BC의 24개 닉네임을 BC16 카드명에 1:1 대응
+  var NICK_TO_CARD = {
+    // 복부형
+    '아빠체형 내장비대형':    '단단 내장형',
+    '식후기절 혈당롤러코스터형': '단단 내장형',
+    '남산 수박배형':          '단단 내장형',
+    '인슐린저항 복부형':      '단단 내장형',
+    '팔다리거미 올챙이배형':  '올챙이배형',
+    '털털한 PCOS형':          '물렁 피하형',
+    '약물부작용 강제축적형':  '물렁 피하형',
+    '물만마셔도 요요형':      '물렁 피하형',
+    '억제제부작용 배부름마비형': '가스 팽만형',
+    '식후임산부 가스풍선형':  '가스 팽만형',
+    // 하체형
+    '오후만되면 코끼리다리형': '코끼리다리형',
+    '엄마체형 하지정체형':    '코끼리다리형',
+    '셀룰라이트 귤껍질형':    '귤껍질 하체형',
+    '여름에도 시린 얼음장형': '귤껍질 하체형',
+    '운동할수록 말벅지형':    '말벅지형',
+    '상체근육형':             '상체근육형',
+    '골반틀어짐 승마살형':    '승마살형',
+    '지방흡입후 재발형':      '승마살형',
+    // 상체형
+    '목짧아지는 거북이형':    '거북이형',
+    '안 쓰는 팔뚝 부종형':   '팔뚝부종형',
+    '겨드랑이 부유방형':      '부유방형',
+    // 전신형
+    '호르몬스위치 갱년기형':  '갱년기 변환형',
+    '출산후 바람빠진 풍선형': '갱년기 변환형',
+    '스트레스기절 번아웃형':  '번아웃 무기력형',
+    '스트레스성 야식부엉이형': '번아웃 무기력형',
+    '대사증후군 종합형':      '대사증후군형',
+    '동시다발 다중악순환형':  '다중악순환형',
+  };
+  // 정확 매핑 우선, 없으면 기존 부분 문자열 폴백
+  var activeCardName = NICK_TO_CARD[myNick] || null;
   function _norm(s){ return (s||'').replace(/[\s·]/g,''); }
   var myKey = _norm(myNick);
   var ICON16 = {
@@ -11038,13 +11075,18 @@ function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nic
     '거북이형':'\uD83D\uDC22','팔뚝부종형':'\uD83D\uDCA7','상체근육형':'\uD83D\uDCAA','부유방형':'\uD83C\uDF99',
     '갱년기 변환형':'\uD83E\uDD89','번아웃 무기력형':'\uD83D\uDD0B','대사증후군형':'\uD83D\uDEA8','다중악순환형':'\uD83C\uDF00'
   };
-  
+
   bcGrid.innerHTML = BC16.map(function(group){
     var cards = group.cells.map(function(cell){
+      // 정확 매핑 우선, 없으면 부분문자열 폴백(안전망)
       var active = false;
-      var nk = _norm(cell.name);
-      if (myKey && (myKey.indexOf(nk)>=0 || nk.indexOf(myKey)>=0)) active = true;
-      if (!active && myKey.indexOf('갱년기')>=0 && cell.name.indexOf('갱년기')>=0) active = true;
+      if (activeCardName) {
+        active = (cell.name === activeCardName);
+      } else {
+        var nk = _norm(cell.name);
+        if (myKey && (myKey.indexOf(nk)>=0 || nk.indexOf(myKey)>=0)) active = true;
+        if (!active && myKey.indexOf('갱년기')>=0 && cell.name.indexOf('갱년기')>=0) active = true;
+      }
       var icon = (ICON16[cell.name]||'\u25C9');
       return '<div class="cell'+(active?' cell-active':'')+'"'+(active?' style="--cc:'+cell.c+'"':'')+'>'
         + '<span class="cell-bar" style="background:'+cell.c+'"></span>'
