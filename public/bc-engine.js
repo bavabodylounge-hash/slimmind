@@ -111,7 +111,7 @@ var NICKNAME_TABLE = {
     'A10': { 유전: '아빠체형 내장비대형', default: '아빠체형 내장비대형' },
     'A09': { 유전: '아빠체형 내장비대형', default: '식후기절 혈당롤러코스터형' },
     'A08': { 약물: '억제제부작용 배부름마비형', default: '억제제부작용 배부름마비형' },
-    'A07': { default: '스트레스성 야식부엉이형' },
+    'A07': { default: '동시다발 다중악순환형' },
     'A05': { default: '식후임산부 가스풍선형' },
     'default': { default: '식후기절 혈당롤러코스터형' },
   },
@@ -198,69 +198,146 @@ function detectBackground(answers) {
   if (!answers) return null;
 
   // ──────────────────────────────────────────────────────────────────
-  // 실제 survey-data.js 저장 키 기준으로 수정 (2025-06)
-  // answers 객체: { [Q키]: value, [saveAs키]: value } 양쪽 저장됨
-  // Q_MENOPAUSE.saveAs = 'menopause_status'
-  // VQ03.saveAs       = 'birth_history'  (출산 경험)
-  // VQ21.saveAs       = 'procedure'      (시술 이력)
-  // VQ22.saveAs       = 'meds'           (약물 이력)
-  // Q_MEDICAL.saveAs  = 'medical_conditions' (배열 — PCOS/당뇨/대사증후군 등)
-  // Q21 = 스트레스 강도(1~4 숫자) — 시술이력과 무관
+  // 멀티 소스 키 통합 버전 (2026-07)
+  //
+  // [에스테틱/통합 survey-data.js 키]
+  //   Q_MENOPAUSE / menopause_status  → 갱년기
+  //   medical_conditions / Q_MEDICAL  → PCOS·대사증후군 (배열, 문자열)
+  //   procedure                        → 시술 ('none'이면 제외)
+  //   meds                             → 약물 ('none'이면 제외)
+  //   birth_history                    → 출산 ('none'이면 제외)
+  //   stress_level / Q_burnout         → 번아웃
+  //
+  // [병원 survey-hospital.html (slimmind_baba_KO) 키]
+  //   q12_menopause(숫자0~4) / Q_MENOPAUSE(문자, result-hospital에서 매핑됨)
+  //   disease (배열, 인덱스: 0=PCOS,1=당뇨,2=고혈압,3=갑상선,4=지방간)
+  //   past_procedures (배열, 5=없음)
+  //   long_term_drugs (배열, 6=없음)
+  //   appetite_suppressant (숫자: 0=여러번,1=한두번,2=없음)
+  //   q11_event (숫자: 여성 0=출산 후)
+  //   q1_family / q2_parent           → 유전·모계유전
+  //   q8_trigger (배열, 1=이별충격)    → 번아웃
+  //
+  // 우선순위: 갱년기 > PCOS > 시술 > 약물 > 출산 > 유전 > 대사증후군 > 번아웃
   // ──────────────────────────────────────────────────────────────────
 
-  // 갱년기·완경
-  // Q_MENOPAUSE(id키) 또는 menopause_status(saveAs키) 양쪽 확인
+  // 공통 헬퍼: 배열 또는 단일숫자에서 인덱스 포함 여부
+  const hasIdx = (val, idx) => {
+    if (val === undefined || val === null) return false;
+    if (Array.isArray(val)) return val.indexOf(idx) > -1;
+    if (typeof val === 'number') return val === idx;
+    return false;
+  };
+
+  // ── 1. 갱년기 ──
+  // [에스테틱] Q_MENOPAUSE 문자값 / menopause_status
   const meno = answers['Q_MENOPAUSE'] || answers['menopause_status'] || answers['Q_meno'] || '';
   if (meno && meno !== 'not_applicable' && meno !== 'none' && meno !== '') {
     return '갱년기';
   }
+  // [병원] q12_menopause 숫자 0(갱년기 변환형)·1(호르몬 치료형)·2(완경 후) → 갱년기
+  const q12 = answers['q12_menopause'];
+  if (q12 === 0 || q12 === 1 || q12 === 2 || q12 === '0' || q12 === '1' || q12 === '2') {
+    return '갱년기';
+  }
 
-  // PCOS (다낭성 난소 증후군)
-  // Q_MEDICAL 배열 안에 'pcos' 포함 여부 OR 별도 Q_PCOS 키
-  const medCondRaw = answers['medical_conditions'] || answers['Q_MEDICAL'] || answers['Q_PCOS'] || answers['Q_pcos'] || null;
+  // ── 2. PCOS ──
+  // [에스테틱] medical_conditions 배열에 'pcos' 포함
+  const medCondRaw = answers['medical_conditions'] || answers['Q_MEDICAL'] || null;
   const medCondArr = Array.isArray(medCondRaw) ? medCondRaw
     : (typeof medCondRaw === 'string' && medCondRaw !== '' ? [medCondRaw] : []);
   if (medCondArr.some(v => String(v).toLowerCase().includes('pcos'))) return 'PCOS';
-  if (answers['Q_PCOS'] === 'yes' || answers['Q_PCOS'] === 'Y' || answers['Q_pcos'] === 'yes') return 'PCOS';
+  if (answers['Q_PCOS'] === 'yes' || answers['Q_PCOS'] === 'Y') return 'PCOS';
+  // [병원] disease 배열 인덱스 0 = PCOS
+  const disease = answers['disease'];
+  if (hasIdx(disease, 0)) return 'PCOS';
 
-  // 시술 이력 (지방흡입 등)
-  // VQ21.saveAs = 'procedure' : 'none'|'once'|'several'|'regular'
-  // Q_MEDICAL 배열에서도 시술 관련 값 확인
+  // ── 3. 시술 ──
+  // [에스테틱] procedure 문자값 ('none' 제외)
   const surgery = answers['procedure'] || answers['Q_surgery'] || '';
   if (surgery && surgery !== 'none' && surgery !== '없음' && surgery !== '') {
     return '시술';
   }
+  // [병원] past_procedures 배열 (5=없음 제외)
+  const proc = answers['past_procedures'];
+  if (proc !== undefined && proc !== null) {
+    if (Array.isArray(proc) && proc.some(i => i !== 5 && i !== '5')) return '시술';
+    if (typeof proc === 'number' && proc !== 5) return '시술';
+  }
 
-  // 약물 복용력 (식욕억제제·한약 등)
-  // VQ22.saveAs = 'meds' : 'none'|'supplement'|'appetite_med'|'various'
-  const drug = answers['meds'] || answers['Q_drug'] || answers['Q22'] || '';
+  // ── 4. 약물 ──
+  // [에스테틱] meds 문자값 ('none' 제외)
+  const drug = answers['meds'] || answers['Q_drug'] || '';
   if (drug && drug !== 'none' && drug !== '없음' && drug !== '') {
     return '약물';
   }
+  // [병원] long_term_drugs 배열 (6=없음 제외)
+  //   단, 항우울제(1) + q8_trigger[1](이별충격) 동시 → 번아웃으로 상향 (아래에서 처리)
+  const drugs = answers['long_term_drugs'];
+  if (drugs !== undefined && drugs !== null) {
+    if (Array.isArray(drugs)) {
+      const hasBurnoutDrug = drugs.indexOf(1) > -1;        // 항우울제
+      const trigger = answers['q8_trigger'] || [];
+      const hasBurnoutTrigger = hasIdx(trigger, 1);        // 이별·충격
+      if (hasBurnoutDrug && hasBurnoutTrigger) return '번아웃';
+      if (drugs.some(i => i !== 6 && i !== '6')) return '약물';
+    } else if (typeof drugs === 'number' && drugs !== 6) return '약물';
+  }
+  // [병원] appetite_suppressant 0=여러번 / 1=한두번 → 약물 계열
+  const appetite = answers['appetite_suppressant'];
+  if (appetite === 0 || appetite === 1 || appetite === '0' || appetite === '1') return '약물';
 
-  // 출산 경험
-  // VQ03.saveAs = 'birth_history' : 'none'|'post_1y'|'post_1_3y'|'post_3y_plus'|'multi'
+  // ── 5. 출산 ──
+  // [에스테틱] birth_history 문자값 ('none' 제외)
   const birth = answers['birth_history'] || answers['Q_birth'] || answers['Q3'] || '';
   if (birth && birth !== 'none' && birth !== '없음' && birth !== '') {
     return '출산';
   }
+  // [병원] q11_event === 0 (여성만)
+  const q11 = answers['q11_event'];
+  if (q11 === 0 || q11 === '0') {
+    const gender = String(answers['Q02'] || '').toLowerCase();
+    const isMale = gender === '남' || gender === '남성' || gender === 'male' || gender === 'm';
+    if (!isMale) return '출산';
+  }
 
-  // 대사증후군 고위험 (당뇨·고혈압·지방간 등 Q_MEDICAL 배열)
+  // ── 6. 유전·모계유전 ──
+  // [병원] q1_family 배열 (3=없음 제외)
+  const fam = answers['q1_family'];
+  if (fam !== undefined && fam !== null && Array.isArray(fam)) {
+    const noFamily = fam.length === 0 || (fam.length === 1 && (fam[0] === 3 || fam[0] === '3'));
+    if (!noFamily) {
+      const hasMom = fam.indexOf(1) > -1;
+      const hasDad = fam.indexOf(0) > -1;
+      if (hasMom && !hasDad) return '모계유전';
+      return '유전';
+    }
+  }
+  // [병원] q2_parent: 1=엄마 닮아 하체 → 모계유전, 0=아빠 닮아/2=둘다 → 유전
+  const parent = answers['q2_parent'];
+  if (parent === 1 || parent === '1') return '모계유전';
+  if (parent === 0 || parent === '0' || parent === 2 || parent === '2') return '유전';
+
+  // ── 7. 대사증후군 ──
+  // [에스테틱] medical_conditions 배열에 당뇨/고혈압/지방간 포함
   const metabolicFlags = ['diabetes', 'hypertension', 'fatty_liver'];
-  if (medCondArr.some(v => metabolicFlags.includes(String(v).toLowerCase()))) {
-    return '대사증후군';
-  }
+  if (medCondArr.some(v => metabolicFlags.includes(String(v).toLowerCase()))) return '대사증후군';
   const diabetesRisk = answers['Q_diabetes'] || answers['Q_metabolic'] || '';
-  if (diabetesRisk === 'yes' || diabetesRisk === 'Y' || diabetesRisk === '있음') {
-    return '대사증후군';
+  if (diabetesRisk === 'yes' || diabetesRisk === 'Y' || diabetesRisk === '있음') return '대사증후군';
+  // [병원] disease 배열: 1=당뇨, 2=고혈압
+  if (disease && Array.isArray(disease)) {
+    if (disease.indexOf(1) > -1 || disease.indexOf(2) > -1) return '대사증후군';
   }
 
-  // 번아웃 (스트레스 극심 + 피로 복합)
-  // Q21.saveAs = 'stress_level' : 1(낮음)~4(극심). 4='극심'만 해당
+  // ── 8. 번아웃 ──
+  // [에스테틱] stress_level >= 4
   const stressVal = Number(answers['stress_level'] || answers['Q21'] || 0);
   if (stressVal >= 4) return '번아웃';
   const burnout = answers['Q_burnout'] || '';
   if (burnout === 'severe' || burnout === '심각' || burnout === '극심') return '번아웃';
+  // [병원] q8_trigger 배열 인덱스 1 (이별·충격) 단독
+  const trigger = answers['q8_trigger'];
+  if (hasIdx(trigger, 1)) return '번아웃';
 
   return null; // 배경 필터 없음 → default 코드
 }
@@ -337,31 +414,31 @@ function getDeepSurveyRoute(top1Axis) {
 // ──────────────────────────────────────────────
 var NICKNAME_TO_BC = {
   // 복부형
-  '아빠체형 내장비대형':          'BC-3',
+  '아빠체형 내장비대형':          'BC-4',  // BC-3 → BC-4 (유전·대골격 → 갑상선셧다운 요요형)
   '식후기절 혈당롤러코스터형':    'BC-3',
   '털털한 PCOS형':                'BC-6',
   '약물부작용 강제축적형':        'BC-4',
-  '스트레스성 야식부엉이형':      'BC-6',
-  '억제제부작용 배부름마비형':    'BC-6',
+  '스트레스성 야식부엉이형':      'BC-3',  // BC-6 → BC-3 (야식 혈당 패턴 → 인슐린저항 수박배형)
+  '억제제부작용 배부름마비형':    'BC-3',  // BC-6 → BC-3 (억제제 위장마비 → 인슐린저항 수박배형)
   '출산후 바람빠진 풍선형':       'BC-7',
   '식후임산부 가스풍선형':        'BC-3',
   '팔다리거미 올챙이배형':        'BC-9',
   // 하체형
   '오후만되면 코끼리다리형':      'BC-1',
   '엄마체형 하지정체형':          'BC-1',
-  '여름에도 시린 얼음장형':       'BC-4',
+  '여름에도 시린 얼음장형':       'BC-6',  // BC-4 → BC-6 (갑상선저하 → 부신·호르몬 교란형)
   '운동할수록 말벅지형':          'BC-8',
   '골반틀어짐 승마살형':          'BC-7',
-  '지방흡입후 재발형':            'BC-5',
+  '지방흡입후 재발형':            'BC-2',  // BC-5 → BC-2 (지흡재발 → 경추흉추 림프차단형)
   // 상체형
-  '목짧아지는 거북이형':          'BC-2',
+  '목짧아지는 거북이형':          'BC-7',  // BC-2 → BC-7 (거북목 림프차단 → 릴랙신이완 구조정체형)
   '안 쓰는 팔뚝 부종형':         'BC-2',
   '상체근육형':                   'BC-8',
-  '겨드랑이 부유방형':            'BC-2',
+  '겨드랑이 부유방형':            'BC-7',  // BC-2 → BC-7 (흉추무너짐 → 릴랙신이완 구조정체형)
   // 전신·기타형
   '호르몬스위치 갱년기형':        'BC-6',
   '스트레스기절 번아웃형':        'BC-6',
-  '대사증후군 종합형':            'BC-9',
+  '대사증후군 종합형':            'BC-4',  // BC-9 → BC-4 (대사종합 → 갑상선셧다운 초절전형)
   '동시다발 다중악순환형':        'BC-6',
 };
 
