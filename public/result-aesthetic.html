@@ -15578,7 +15578,8 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
       })();
 
   // axisScores 고점수 축 보정 (이미 _domainScores에 반영됐지만 혹시 누락된 경우 방어)
-  var axisKeyToName = { rec:'회복', diet:'식단', ex:'운동', horm:'호르몬', form:'체형', circ:'순환' };
+  var axisKeyToName = { rec:'회복', diet:'식단', ex:'운동', horm:'호르몬', form:'체형',
+                        ori:'한방', psych:'심리', mgmt:'관리', proc:'시술', drug:'약물', phil:'철학' };
   highAxes.forEach(function(axKey) {
     var nm = axisKeyToName[axKey];
     if (nm && strongKeys.indexOf(nm) < 0 && strongKeys.length >= 3) {
@@ -16083,14 +16084,18 @@ function renderP8(metrics, bcCode, axisScores, userName, s2, data) {
   // 축: group 'base'=기본 실천(항상), 'focus'=집중 포인트(개인 원인)
   // ※ 회복·식단·운동은 11축 진단에도 포함 → 원인 점수 높으면 focus에도 중복 노출(dup)
   var AX = [
-    { k:'rec',  nm:'회복', ic:'🌙', c:'#b27082', group:'base'  },
-    { k:'diet', nm:'식단', ic:'🍽️', c:'#c98a3c', group:'base'  },
-    { k:'ex',   nm:'운동', ic:'🏃', c:'#5a6e3a', group:'base'  },
-    { k:'ori',  nm:'한방', ic:'🌿', c:'#2f7d8c', group:'focus' },
-    { k:'proc', nm:'시술', ic:'✨', c:'#7a4a38', group:'focus' },
-    { k:'horm', nm:'호르몬', ic:'🌸', c:'#c0397a', group:'focus' },
-    { k:'form', nm:'체형', ic:'🦴', c:'#6b4eaa', group:'focus' },
-    { k:'circ', nm:'순환', ic:'💧', c:'#3a6b9c', group:'focus' }
+    { k:'rec',   nm:'회복',  ic:'🌙', c:'#b27082', group:'base'  },
+    { k:'diet',  nm:'식단',  ic:'🍽️', c:'#c98a3c', group:'base'  },
+    { k:'ex',    nm:'운동',  ic:'🏃', c:'#5a6e3a', group:'base'  },
+    { k:'horm',  nm:'호르몬',ic:'🌸', c:'#c0397a', group:'focus' },
+    { k:'form',  nm:'체형',  ic:'🦴', c:'#6b4eaa', group:'focus' },
+    { k:'ori',   nm:'한방',  ic:'🌿', c:'#2f7d8c', group:'focus' },
+    { k:'psych', nm:'심리',  ic:'🧠', c:'#9C27B0', group:'focus' },
+    { k:'mgmt',  nm:'관리',  ic:'💆', c:'#3EB8A0', group:'focus' },
+    { k:'proc',  nm:'시술',  ic:'✨', c:'#7a4a38', group:'focus' },
+    { k:'drug',  nm:'약물',  ic:'💊', c:'#7B1FA2', group:'focus' },
+    { k:'phil',  nm:'철학',  ic:'🔮', c:'#607D8B', group:'focus' }
+    // ※ circ(순환/A05)는 P5·P6 11개 영역에 없어 제거
   ];
   // focus 구역 중 회복·식단·운동이 원인으로도 높을 때 중복 노출할 키(데모: 식단을 원인으로도)
   var DUP_FOCUS = ['diet'];
@@ -16159,11 +16164,13 @@ function renderP8(metrics, bcCode, axisScores, userName, s2, data) {
   // ★ _domainScores 기반 동적 DATA 생성 (BC코드 하드코딩 대체)
   // _top3 영역이 12주 무게중심이 되도록 비율을 동적 계산
   // 영역명 → AX키 매핑
+  // 영역명 → AX키 매핑 (P5 _top3 영역명 → P8 AX 키)
   var DOMAIN_TO_AX = {
-    '회복':'rec', '식단':'diet', '운동':'ex',
-    '한방':'ori', '시술':'proc', '호르몬':'horm',
-    '체형':'form', '순환':'circ', '심리':'horm',  // 심리는 호르몬 축에 통합(자율신경)
-    '약물':'proc'                                 // 약물은 시술 축에 통합(비침습처방)
+    '회복':'rec',  '식단':'diet', '운동':'ex',
+    '한방':'ori',  '시술':'proc', '호르몬':'horm',
+    '체형':'form', '심리':'psych','관리':'mgmt',
+    '약물':'drug', '철학':'phil'
+    // ※ circ(순환) 제거 — P5 11개 영역에 없음
   };
   var DATA = (function buildDynamicData() {
     // renderP5에서 window._top3로 전역 노출한 값 사용 (renderP8은 별도 함수라 지역 _top3 없음)
@@ -16198,7 +16205,7 @@ function renderP8(metrics, bcCode, axisScores, userName, s2, data) {
     //   1주는 항상 회복(rec) 중심(몸 준비기), 주차가 늘수록 1위 원인 축 비율 극대화
     //   focus 1위가 전체 1위이면 4주차 가장 높은 막대가 focus 1위
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    var FOCUS_KEYS = ['ori', 'proc', 'horm', 'form', 'circ']; // makeWeek 밖으로 이동 — 로그에서도 접근 가능
+    var FOCUS_KEYS = ['horm', 'form', 'ori', 'psych', 'mgmt', 'proc', 'drug', 'phil']; // 11축 (circ 제거)
     var rank1IsFocus = FOCUS_KEYS.indexOf(rank1) >= 0;
     function makeWeek(w) {
       var focusVals = {};
@@ -16313,14 +16320,17 @@ function renderP8(metrics, bcCode, axisScores, userName, s2, data) {
   }
   // ── 축별 의학 내러티브 사전 (1위 축에 맞춰 본문 조립) ──
   var AXIS_NOTE = {
-    rec:  '코르티솔이 만성 상승한 상태에서는 교감신경 항진으로 지방 저장이 우세합니다. 자율신경 균형을 먼저 회복시켜야 이후 처방이 작동합니다.',
-    diet: '기초대사가 회복되어 에너지 소비가 늘어난 구간이라, 이 시점의 열량·영양소 조정이 체지방 감량으로 직접 전환됩니다.',
-    ex:   '근육이 대사의 엔진입니다. 이 구간의 저항 운동은 기초대사량을 끌어올려, 같은 식사를 해도 더 태우는 몸으로 바꿉니다.',
-    horm: '에스트로겐·인슐린 등 호르몬 축이 흔들리면 같은 양을 먹어도 복부로 재배치됩니다. 호르몬 안정이 모든 감량의 전제입니다.',
-    form: '골격·자세가 틀어지면 특정 부위에 지방·부종이 정체됩니다. 정렬을 회복해야 순환과 대사가 제 길로 흐릅니다.',
-    circ: '말초 순환이 막히면 노폐물과 수분이 정체되어 부종·셀룰라이트로 굳습니다. 순환을 열면 정체가 함께 풀립니다.',
-    ori:  '한방적으로 기혈 순환이 막힌 구간입니다. 온열·순환 보강을 더하면 막혔던 대사 통로가 열립니다.',
-    proc: '시술 축은 정체가 심한 부위의 국소 관리로, 다른 축이 안정된 뒤 더해야 효과가 유지됩니다.'
+    rec:   '코르티솔이 만성 상승한 상태에서는 교감신경 항진으로 지방 저장이 우세합니다. 자율신경 균형을 먼저 회복시켜야 이후 처방이 작동합니다.',
+    diet:  '기초대사가 회복되어 에너지 소비가 늘어난 구간이라, 이 시점의 열량·영양소 조정이 체지방 감량으로 직접 전환됩니다.',
+    ex:    '근육이 대사의 엔진입니다. 이 구간의 저항 운동은 기초대사량을 끌어올려, 같은 식사를 해도 더 태우는 몸으로 바꿉니다.',
+    horm:  '에스트로겐·인슐린 등 호르몬 축이 흔들리면 같은 양을 먹어도 복부로 재배치됩니다. 호르몬 안정이 모든 감량의 전제입니다.',
+    form:  '골격·자세가 틀어지면 특정 부위에 지방·부종이 정체됩니다. 정렬을 회복해야 순환과 대사가 제 길로 흐릅니다.',
+    ori:   '한방적으로 기혈 순환이 막힌 구간입니다. 온열·순환 보강을 더하면 막혔던 대사 통로가 열립니다.',
+    proc:  '시술 축은 정체가 심한 부위의 국소 관리로, 다른 축이 안정된 뒤 더해야 효과가 유지됩니다.',
+    psych: '스트레스·감정 과부하가 지속되면 코르티솔 상승이 복부 지방 축적을 가속합니다. 심리 안정이 대사 회복의 숨겨진 열쇠입니다.',
+    mgmt:  '일상 관리(마사지·스트레칭·냉온 자극)는 협류와 림프 흐름을 직접 활성화해, 다른 처방의 흡수율을 높이는 증폭제입니다.',
+    drug:  '장기 복용약은 대사·호르몬·영양 흡수에 간섭합니다. 약물 영향을 파악하고 처방을 조율해야 실질적 효과가 납니다.',
+    phil:  '식습관·생활 철학이 바뀌지 않으면 모든 처방은 일시적입니다. 장기 지속 가능한 원칙을 이 구간에 내재화합니다.'
   };
   function noteText(w,r){
     var tk = topAxisKey(w);
