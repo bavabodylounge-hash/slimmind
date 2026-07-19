@@ -11552,56 +11552,259 @@ function renderP4(userName, ohaengKey, mbtiType, gender, menopause, redFlags) {
 /* ── P5 ── */
 function renderP5(metrics, bcCode, axisScores, userName) {
   // ════════════════════════════════════════════
-  // P5 근거 기반 선별 — 11개 전문 영역 중 근거 있는 것만
-  // ※ 영역별 근거 등급/켜짐 여부는 백엔드(서우님)가 BC코드별로 채울 자리.
-  //   프론트는 데모(BC-6 갱년기형) 기준 표시 + 디자인만 담당.
-  // 11영역: 약물 식단 운동 회복 한방 심리 체형 호르몬 시술 관리 철학
+  // P5 근거 기반 선별 — 11개 전문 영역 중 axisScores 기반 TOP3 동적 선택
+  // axisScores(A01~A10) → 각 영역 axisRef 점수 → 높은 순 3개 = STRONG
+  // P6 DX_11_BASE와 동일한 axisRef 매핑 사용
   // ════════════════════════════════════════════
 
-  // 데모: BC-6 갱년기형 — 회복·호르몬·체형이 근거 강함, 운동·식단은 아직 이르다
-  // ※ ev = 6개 진단 소스 교차 근거 (기질·성향·가족력·증상 진단·답안속도·체지방률)
-  //   각 소스가 이 영역을 가리키는지/중립인지를 백엔드가 채울 자리. 지금은 데모.
-  var STRONG = [
-    { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#8b6db5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.2 6.2 0 0 0 10.5 10.5Z"/></svg>', nm:'회복', to:'수면·자율신경 클리닉', c:'#8b6db5', grade:3, gtx:'근거 강함',
-      hit:5, ev:[
-        {k:'기질', t:'수(水)', tc:'#2f7d8c', tb:'#e7f0f4', v:'에너지 고갈형 — <b>밀어붙이면 더 무너짐</b>. 회복부터.', on:true},
-        {k:'성향', t:'INFJ', tc:'#6b4eaa', tb:'#efeafa', v:'내향·사색형 — <b>혼자, 내 속도로</b> 회복하는 방식이 맞음.', on:true},
-        {k:'가족력', t:'갱년기·호르몬', tc:'#993556', tb:'#fbeaf0', v:'모계 갱년기 이력 — <b>호르몬·자율신경</b> 흔들림 취약군.', on:true},
-        {k:'증상 진단', t:'수면·무기력', tc:'#8a5a18', tb:'#faf0dc', v:'“밤에 2~3번 깬다” · “오후에 갑자기 무기력” \u2014 진단에서 또렷이 잡힘.', on:true},
-        {k:'답안 속도', t:'빠름', tc:'#3f5022', tb:'#eef2e4', v:'수면 문항에서 <b>즉답</b> — 망설임 없는 확실한 증상.', pt:'빠른 응답 = 이미 또렷이 겪고 있는 신호', on:true},
-        {k:'체지방률', t:'중립', tc:'#5f5e5a', tb:'#f1efe8', v:'31% — 회복 영역과는 직접 연결 약함.', on:false}
-      ],
-      concl:'기질도, 성향도, 가족력도, 증상도, 답하는 속도까지 — <b>전부 회복을 가리킵니다.</b>' },
-    { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#c0397a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5C12 3.5 6 9.5 6 14a6 6 0 0 0 12 0c0-4.5-6-10.5-6-10.5Z"/><path d="M9.5 14.5a2.5 2.5 0 0 0 2.5 2.5"/></svg>', nm:'호르몬', to:'내분비내과 · 산부인과', c:'#c0397a', grade:3, gtx:'근거 강함',
-      hit:4, ev:[
-        {k:'기질', t:'수(水)', tc:'#2f7d8c', tb:'#e7f0f4', v:'신장·생식 기운 약화형 — <b>호르몬 축이 먼저 흔들림</b>.', on:true},
-        {k:'가족력', t:'갱년기·호르몬', tc:'#993556', tb:'#fbeaf0', v:'모계 갱년기 — <b>에스트로겐 급감</b> 가족 패턴.', on:true},
-        {k:'증상 진단', t:'시기·변화', tc:'#8a5a18', tb:'#faf0dc', v:'갱년기 시기 + “체형이 갑자기 바뀜” \u2014 호르몬 변화 신호.', on:true},
-        {k:'답안 속도', t:'느림', tc:'#a35a2d', tb:'#f6ece7', v:'호르몬 문항에서 <b>망설임</b> — 본인도 확신 못 하는 변화.', pt:'느린 응답 = 검사로 확인이 필요한 신호', on:true},
-        {k:'성향', t:'INFJ', tc:'#6b4eaa', tb:'#efeafa', v:'직접 연결은 약함.', on:false},
-        {k:'체지방률', t:'중립', tc:'#5f5e5a', tb:'#f1efe8', v:'31% — 호르몬 단독 지표로는 약함.', on:false}
-      ],
-      concl:'기질·가족력·증상이 모이고, <b>망설인 답이 “검사가 필요하다”를 가리킵니다.</b>' },
-    { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#6b4eaa" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.5" r="2"/><path d="M12 7v6M12 9l-4-1.5M12 9l4-1.5M12 13l-3 7M12 13l3 7"/></svg>', nm:'체형', to:'필라테스 · 도수', c:'#6b4eaa', grade:2, gtx:'근거 보통',
-      hit:3, ev:[
-        {k:'체지방률', t:'31%', tc:'#5f5e5a', tb:'#f1efe8', v:'표준 상한 — <b>근감소·자세 무너짐</b> 동반 가능 구간.', on:true},
-        {k:'증상 진단', t:'체형·자세', tc:'#8a5a18', tb:'#faf0dc', v:'“아랫배·옆구리 집중” + “거북목” \u2014 정렬·코어 약화 패턴.', on:true},
-        {k:'가족력', t:'갱년기', tc:'#993556', tb:'#fbeaf0', v:'갱년기 체형 변화 — <b>골반·코어</b> 관리 필요군.', on:true},
-        {k:'기질', t:'수(水)', tc:'#2f7d8c', tb:'#e7f0f4', v:'저강도·정렬 위주가 맞음 (고강도 ✗).', on:false},
-        {k:'답안 속도', t:'보통', tc:'#5f5e5a', tb:'#f1efe8', v:'체형 문항 응답 속도 평이.', on:false}
-      ],
-      concl:'체지방률·증상·가족력이 <b>체형 관리가 필요함을 가리킵니다.</b>' }
+  var ax = axisScores || {};
+
+  // ── 11개 영역 정의 (axisRef: P6 DX_11_BASE와 동일 매핑) ──
+  var P5_11_DEF = [
+    {
+      nm:'식단', axisRef:'A01', c:'#E8631A',
+      ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#E8631A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v7a2 2 0 0 0 2 2v9M8 3v6M5 3v6M18 3c-1.5 0-2.5 2-2.5 5s1 4 2.5 4v9"/></svg>',
+      to:'영양·식이 클리닉',
+      gradeThresh:65,
+      evFn: function(sc) { return [
+        {k:'증상 진단', t:sc>70?'혈당 과잉':'식이 불균형', tc:'#8a5a18', tb:'#faf0dc', v:sc>70?'혈당 급등-급락 사이클 감지 — <b>탄수화물 타이밍 교정</b> 필요.':'식이 기반은 비교적 안정적.', on:sc>70},
+        {k:'체지방률', t:sc>65?'관리 필요':'양호', tc:'#5f5e5a', tb:'#f1efe8', v:sc>65?'식이 패턴이 체지방 축적에 직결됩니다.':'식이 기반 체지방 위험 낮음.', on:sc>65},
+        {k:'기질', t:'식욕·포만', tc:'#c98a3c', tb:'#fdf3e7', v:'BC 기질별 탄수화물 대사 차이 — 맞춤 타이밍이 중요합니다.', on:sc>60},
+        {k:'답안 속도', t:sc>70?'빠름':'보통', tc:'#3f5022', tb:'#eef2e4', v:sc>70?'식이 문항 즉답 — 본인도 이미 문제를 인식 중.':'식이 패턴 응답 평이.', on:sc>70},
+        {k:'성향', t:'중립', tc:'#6b4eaa', tb:'#efeafa', v:'성향과 식이 영역 직접 연결 약함.', on:false},
+        {k:'가족력', t:'중립', tc:'#993556', tb:'#fbeaf0', v:'가족력과 식이 직접 연결 약함.', on:false}
+      ];},
+      conclFn: function(sc) { return sc>70?'혈당·식이 패턴이 <b>모든 처방보다 먼저 안정되어야 할 1순위</b>입니다.':'식이 패턴 미세 조정으로 대사 효율을 높일 수 있습니다.'; },
+      noneTag: function(sc) { return sc>65?null:'아직 이르다'; },
+      noneStrike: '· 극단 제한'
+    },
+    {
+      nm:'심리', axisRef:'A08', c:'#9C27B0',
+      ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#9C27B0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 4A3.5 3.5 0 0 0 6 7.5 3 3 0 0 0 5 12a3 3 0 0 0 1 5 3 3 0 0 0 3.5 3 2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/><path d="M14.5 4A3.5 3.5 0 0 1 18 7.5 3 3 0 0 1 19 12a3 3 0 0 1-1 5"/></svg>',
+      to:'행동심리·식욕 전문가',
+      gradeThresh:65,
+      evFn: function(sc) { return [
+        {k:'증상 진단', t:sc>65?'스트레스 식욕':'안정', tc:'#8a5a18', tb:'#faf0dc', v:sc>65?'스트레스-식욕 호르몬 연결 고리 감지.':'심리적 식욕 조절 안정적.', on:sc>65},
+        {k:'답안 속도', t:sc>65?'충동적':'보통', tc:'#a35a2d', tb:'#f6ece7', v:sc>65?'심리 문항에서 충동적 응답 패턴 — 감정 식욕 신호.':'심리 문항 응답 안정적.', on:sc>65},
+        {k:'기질', t:'감정 억압', tc:'#6b4eaa', tb:'#efeafa', v:'BC 기질에서 감정 억압 → 보상성 식욕으로 전환되기 쉬운 구조.', on:sc>60},
+        {k:'성향', t:'도파민 패턴', tc:'#5f5e5a', tb:'#f1efe8', v:'성향별 도파민 보상 패턴 참조.', on:sc>55},
+        {k:'체지방률', t:'중립', tc:'#5f5e5a', tb:'#f1efe8', v:'심리 영역과 체지방 직접 연결 약함.', on:false},
+        {k:'가족력', t:'중립', tc:'#993556', tb:'#fbeaf0', v:'가족력과 심리 직접 연결 약함.', on:false}
+      ];},
+      conclFn: function(sc) { return sc>65?'의지 부족이 아니라 <b>스트레스-식욕 호르몬 연결이 문제</b>입니다.':'심리 식욕 조절은 안정적입니다.'; },
+      noneTag: function(sc) { return sc>65?null:'근거 약함'; },
+      noneStrike: ''
+    },
+    {
+      nm:'호르몬', axisRef:'A03', c:'#C0397A',
+      ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#c0397a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5C12 3.5 6 9.5 6 14a6 6 0 0 0 12 0c0-4.5-6-10.5-6-10.5Z"/><path d="M9.5 14.5a2.5 2.5 0 0 0 2.5 2.5"/></svg>',
+      to:'내분비내과 · 산부인과',
+      gradeThresh:65,
+      evFn: function(sc) { return [
+        {k:'증상 진단', t:sc>65?'호르몬 교란':'안정', tc:'#8a5a18', tb:'#faf0dc', v:sc>65?'인슐린 저항·코르티솔 이상 패턴 감지.':'호르몬 기반 안정적.', on:sc>65},
+        {k:'가족력', t:sc>60?'호르몬 이력':'중립', tc:'#993556', tb:'#fbeaf0', v:sc>60?'가족 내 호르몬 이상 이력 — 유전적 취약군.':'가족력과 직접 연결 약함.', on:sc>60},
+        {k:'기질', t:'기질 연결', tc:'#2f7d8c', tb:'#e7f0f4', v:'BC 기질에서 호르몬 축 불균형이 선행 원인으로 작동합니다.', on:sc>55},
+        {k:'답안 속도', t:sc>65?'느림':'보통', tc:'#a35a2d', tb:'#f6ece7', v:sc>65?'호르몬 문항 망설임 — 본인도 확신 못하는 변화, 검사 필요.':'호르몬 문항 응답 안정적.', pt:sc>65?'느린 응답 = 검사로 확인이 필요한 신호':undefined, on:sc>65},
+        {k:'성향', t:'중립', tc:'#6b4eaa', tb:'#efeafa', v:'성향과 호르몬 직접 연결 약함.', on:false},
+        {k:'체지방률', t:'중립', tc:'#5f5e5a', tb:'#f1efe8', v:'체지방률과 호르몬 단독 연결 약함.', on:false}
+      ];},
+      conclFn: function(sc) { return sc>65?'호르몬 지표가 <b>체중 조절의 핵심 병목</b>입니다. 먼저 검사하세요.':'호르몬 기반은 관리 가능 수준입니다.'; },
+      noneTag: function(sc) { return sc>65?null:'지금 불필요'; },
+      noneStrike: ''
+    },
+    {
+      nm:'운동', axisRef:'A04', c:'#4A8C1C',
+      ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#4A8C1C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2"/><path d="M12 7v5M12 12l5 3M12 12l-5 3M8 21l1.5-4M16 21l-1.5-4"/></svg>',
+      to:'운동처방·재활 전문가',
+      gradeThresh:60,
+      evFn: function(sc) { return [
+        {k:'증상 진단', t:sc>60?'근육 부족':'양호', tc:'#8a5a18', tb:'#faf0dc', v:sc>60?'근육량 부족·체형 불균형 패턴 감지.':'운동 기반 양호.', on:sc>60},
+        {k:'기질', t:'운동 기질', tc:'#2f7d8c', tb:'#e7f0f4', v:'BC 기질에 맞지 않는 운동이 염증·식욕을 증가시킬 수 있음.', on:sc>55},
+        {k:'체지방률', t:sc>60?'관리 필요':'양호', tc:'#5f5e5a', tb:'#f1efe8', v:sc>60?'체지방률 관리를 위해 맞춤 운동처방 필요.':'체지방률 안정적.', on:sc>60},
+        {k:'답안 속도', t:'보통', tc:'#3f5022', tb:'#eef2e4', v:'운동 문항 응답 패턴 평이.', on:sc>55},
+        {k:'성향', t:'중립', tc:'#6b4eaa', tb:'#efeafa', v:'성향과 운동 직접 연결 약함.', on:false},
+        {k:'가족력', t:'중립', tc:'#993556', tb:'#fbeaf0', v:'가족력과 운동 직접 연결 약함.', on:false}
+      ];},
+      conclFn: function(sc) { return sc>60?'BC 기질 맞춤 운동 종류·강도 진단이 <b>먼저 필요</b>합니다.':'운동 기반 양호. 최적화로 효율을 높입니다.'; },
+      noneTag: function(sc) { return sc>60?null:'아직 이르다'; },
+      noneStrike: '· 고강도'
+    },
+    {
+      nm:'회복', axisRef:'A07', c:'#3F51B5',
+      ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#3F51B5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.2 6.2 0 0 0 10.5 10.5Z"/></svg>',
+      to:'수면·자율신경 클리닉',
+      gradeThresh:60,
+      evFn: function(sc) { return [
+        {k:'증상 진단', t:sc>60?'수면 교란':'안정', tc:'#8a5a18', tb:'#faf0dc', v:sc>60?'수면 패턴 교란 → 렙틴·그렐린 불균형 → 식욕 폭발.':'수면·회복 기반 양호.', on:sc>60},
+        {k:'기질', t:'에너지 패턴', tc:'#2f7d8c', tb:'#e7f0f4', v:'BC 기질에서 자율신경계 피로 패턴 — 밀어붙이면 더 무너집니다.', on:sc>55},
+        {k:'답안 속도', t:sc>65?'빠름':'보통', tc:'#3f5022', tb:'#eef2e4', v:sc>65?'수면 문항 즉답 — 이미 또렷이 겪고 있는 증상.':'수면 문항 응답 평이.', pt:sc>65?'빠른 응답 = 이미 또렷이 겪고 있는 신호':undefined, on:sc>65},
+        {k:'성향', t:'내향·회복', tc:'#6b4eaa', tb:'#efeafa', v:'내향 성향 — 혼자, 내 속도로 회복하는 방식이 맞음.', on:sc>55},
+        {k:'가족력', t:sc>60?'자율신경':'중립', tc:'#993556', tb:'#fbeaf0', v:sc>60?'가족력에서 자율신경·호르몬 흔들림 취약군.':'가족력과 직접 연결 약함.', on:sc>60},
+        {k:'체지방률', t:'중립', tc:'#5f5e5a', tb:'#f1efe8', v:'회복 영역과 체지방 직접 연결 약함.', on:false}
+      ];},
+      conclFn: function(sc) { return sc>60?'기질·증상·답변 속도까지 — <b>전부 회복을 먼저 가리킵니다.</b>':'수면·회복 기반 양호. 질적 최적화를 진행합니다.'; },
+      noneTag: function(sc) { return sc>60?null:'근거 약함'; },
+      noneStrike: ''
+    },
+    {
+      nm:'체형', axisRef:'A06', c:'#6B4EAA',
+      ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#6b4eaa" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.5" r="2"/><path d="M12 7v6M12 9l-4-1.5M12 9l4-1.5M12 13l-3 7M12 13l3 7"/></svg>',
+      to:'필라테스 · 도수',
+      gradeThresh:60,
+      evFn: function(sc) { return [
+        {k:'증상 진단', t:sc>60?'체형 불균형':'양호', tc:'#8a5a18', tb:'#faf0dc', v:sc>60?'"아랫배·옆구리 집중" + 자세 틀어짐 — 정렬·코어 약화 패턴.':'체형 기반 안정적.', on:sc>60},
+        {k:'체지방률', t:sc>60?'관리 필요':'양호', tc:'#5f5e5a', tb:'#f1efe8', v:sc>60?'체지방률 관리 구간 — 근감소·자세 무너짐 동반 가능.':'체지방률 안정적.', on:sc>60},
+        {k:'가족력', t:sc>55?'체형 이력':'중립', tc:'#993556', tb:'#fbeaf0', v:sc>55?'가족력에서 체형 변화 패턴 — 골반·코어 관리 필요군.':'가족력과 직접 연결 약함.', on:sc>55},
+        {k:'기질', t:'저강도 적합', tc:'#2f7d8c', tb:'#e7f0f4', v:'BC 기질에서 저강도·정렬 위주 운동이 맞음 (고강도 금지).', on:sc>50},
+        {k:'답안 속도', t:'보통', tc:'#3f5022', tb:'#eef2e4', v:'체형 문항 응답 속도 평이.', on:false},
+        {k:'성향', t:'중립', tc:'#6b4eaa', tb:'#efeafa', v:'성향과 체형 직접 연결 약함.', on:false}
+      ];},
+      conclFn: function(sc) { return sc>60?'체지방률·증상·가족력이 <b>체형 관리가 필요함을 가리킵니다.</b>':'체형 기반 안정. 미세 교정으로 최적화합니다.'; },
+      noneTag: function(sc) { return sc>60?null:'근거 약함'; },
+      noneStrike: ''
+    },
+    {
+      nm:'한방', axisRef:'A02', c:'#1A8C5B',
+      ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#1A8C5B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c4-3 7-6 7-10a4 4 0 0 0-7-2.5A4 4 0 0 0 5 11c0 4 3 7 7 10Z"/><path d="M12 8.5V21"/></svg>',
+      to:'한의학 · 동양의학',
+      gradeThresh:55,
+      evFn: function(sc) { return [
+        {k:'기질', t:'오행 기질', tc:'#2f7d8c', tb:'#e7f0f4', v:'오행 기질 분석에서 특정 장부 불균형 패턴 감지.', on:sc>55},
+        {k:'증상 진단', t:sc>55?'기혈 교란':'안정', tc:'#8a5a18', tb:'#faf0dc', v:sc>55?'기혈 순환 저하 패턴 — 체질 기반 처방 보완 필요.':'오행 기질 기반 안정적.', on:sc>55},
+        {k:'성향', t:'체질 연결', tc:'#6b4eaa', tb:'#efeafa', v:'성향과 한방 체질 연결 가능.', on:sc>50},
+        {k:'답안 속도', t:'보통', tc:'#3f5022', tb:'#eef2e4', v:'한방 관련 문항 응답 속도 평이.', on:false},
+        {k:'체지방률', t:'중립', tc:'#5f5e5a', tb:'#f1efe8', v:'체지방률과 한방 직접 연결 약함.', on:false},
+        {k:'가족력', t:'중립', tc:'#993556', tb:'#fbeaf0', v:'가족력과 한방 직접 연결 약함.', on:false}
+      ];},
+      conclFn: function(sc) { return sc>55?'오행 기질 처방으로 <b>기반 처방의 효과를 배가</b>시킬 수 있습니다.':'오행 기질 기반 안정. 계절·시간대 보완에 집중합니다.'; },
+      noneTag: function(sc) { return sc>55?null:'근거 약함'; },
+      noneStrike: ''
+    },
+    {
+      nm:'관리', axisRef:'A04', c:'#3EB8A0',
+      ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#3EB8A0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12c0-2 1.8-3.5 4-3.5s4 1.5 4 3.5M5 13c1.5 1.5 4 2.5 7 2.5s5.5-1 7-2.5"/><circle cx="9.5" cy="11" r=".6" fill="#3EB8A0"/><circle cx="14.5" cy="11" r=".6" fill="#3EB8A0"/></svg>',
+      to:'생활습관 · 코칭 전문가',
+      gradeThresh:50,
+      evFn: function(sc) { return [
+        {k:'기질', t:'습관 패턴', tc:'#2f7d8c', tb:'#e7f0f4', v:'BC 기질에서 처방이 루틴에 녹아들어야 지속됩니다.', on:true},
+        {k:'성향', t:'지속성', tc:'#6b4eaa', tb:'#efeafa', v:'성향별 습관 자동화 방식이 다름 — 맞춤 설계 필요.', on:sc>45},
+        {k:'증상 진단', t:'루틴 부재', tc:'#8a5a18', tb:'#faf0dc', v:'처방 지속을 위한 일상 루틴 설계가 필요합니다.', on:sc>50},
+        {k:'답안 속도', t:'보통', tc:'#3f5022', tb:'#eef2e4', v:'생활습관 문항 응답 평이.', on:false},
+        {k:'체지방률', t:'중립', tc:'#5f5e5a', tb:'#f1efe8', v:'체지방률과 직접 연결 약함.', on:false},
+        {k:'가족력', t:'중립', tc:'#993556', tb:'#fbeaf0', v:'가족력과 직접 연결 약함.', on:false}
+      ];},
+      conclFn: function(sc) { return '습관화 설계 없이는 <b>어떤 처방도 3주를 넘기기 어렵습니다.</b>'; },
+      noneTag: function(sc) { return sc>50?null:'근거 약함'; },
+      noneStrike: ''
+    },
+    {
+      nm:'시술', axisRef:'A09', c:'#E67E22',
+      ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#E67E22" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.6 4.2L18 8l-3 3 .8 4.6L12 13.7 8.2 15.6 9 11 6 8l4.4-.8L12 3Z"/></svg>',
+      to:'미용 · 시술 전문가',
+      gradeThresh:55,
+      evFn: function(sc) { return [
+        {k:'증상 진단', t:sc>55?'시술 적합':'불필요', tc:'#8a5a18', tb:'#faf0dc', v:sc>55?'BC 기질 맞춤 시술이 보조적으로 도움될 수 있는 구간.':'현재 시술 필요성 낮음.', on:sc>55},
+        {k:'기질', t:'시술 적합도', tc:'#2f7d8c', tb:'#e7f0f4', v:'BC 기질에 맞지 않는 시술은 역효과 가능 — 사전 진단 필수.', on:sc>50},
+        {k:'체지방률', t:sc>55?'관리 필요':'중립', tc:'#5f5e5a', tb:'#f1efe8', v:sc>55?'체지방률 관리 보조 수단으로 시술 고려 가능.':'체지방률 기준 시술 필요 낮음.', on:sc>55},
+        {k:'성향', t:'중립', tc:'#6b4eaa', tb:'#efeafa', v:'성향과 시술 직접 연결 약함.', on:false},
+        {k:'답안 속도', t:'중립', tc:'#3f5022', tb:'#eef2e4', v:'시술 관련 문항 응답 평이.', on:false},
+        {k:'가족력', t:'중립', tc:'#993556', tb:'#fbeaf0', v:'가족력과 직접 연결 약함.', on:false}
+      ];},
+      conclFn: function(sc) { return sc>55?'BC 기질 맞춤 시술 선별 및 <b>사전 진단이 필요</b>합니다.':'현재 기반 조건 미충족 — 시술보다 기반 처방이 우선입니다.'; },
+      noneTag: function(sc) { return sc>55?null:'지금 불필요'; },
+      noneStrike: '· 피부과·성형'
+    },
+    {
+      nm:'약물', axisRef:'A08', c:'#7B1FA2',
+      ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#7B1FA2" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="9" width="16" height="6" rx="3" transform="rotate(-40 12 12)"/><path d="M9.5 8.5l5 5"/></svg>',
+      to:'약학 · 보조요법 전문가',
+      gradeThresh:55,
+      evFn: function(sc) { return [
+        {k:'증상 진단', t:sc>55?'복용 점검 필요':'안정', tc:'#8a5a18', tb:'#faf0dc', v:sc>55?'현재 복용 약물·보충제가 대사에 영향 가능 — 점검 필요.':'약물·보충제 영향 낮음.', on:sc>55},
+        {k:'기질', t:'약물 궁합', tc:'#2f7d8c', tb:'#e7f0f4', v:'BC×복용 조합 궁합 점검 후 처방 효과 극대화.', on:sc>50},
+        {k:'성향', t:'중립', tc:'#6b4eaa', tb:'#efeafa', v:'성향과 약물 직접 연결 약함.', on:false},
+        {k:'체지방률', t:'중립', tc:'#5f5e5a', tb:'#f1efe8', v:'체지방률과 약물 직접 연결 약함.', on:false},
+        {k:'답안 속도', t:'중립', tc:'#3f5022', tb:'#eef2e4', v:'약물 관련 문항 응답 평이.', on:false},
+        {k:'가족력', t:'중립', tc:'#993556', tb:'#fbeaf0', v:'가족력과 직접 연결 약함.', on:false}
+      ];},
+      conclFn: function(sc) { return sc>55?'BC×복용 조합 <b>궁합 점검 후 처방 효과를 극대화</b>하세요.':'현재 약물·보충제 영향 낮음. 기반 처방이 우선입니다.'; },
+      noneTag: function(sc) { return sc>55?null:'지금 불필요'; },
+      noneStrike: '· 내과 처방'
+    },
+    {
+      nm:'철학', axisRef:'A10', c:'#607D8B',
+      ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#607D8B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l5 3"/></svg>',
+      to:'목표 설계 · 삶의 방향 코치',
+      gradeThresh:50,
+      evFn: function(sc) { return [
+        {k:'기질', t:'목표 연결', tc:'#2f7d8c', tb:'#e7f0f4', v:'원하는 몸과 삶의 연결고리를 명확히 하는 것이 모든 처방의 마지막 접착제.', on:sc>45},
+        {k:'성향', t:'동기 지속', tc:'#6b4eaa', tb:'#efeafa', v:'성향별 동기 지속 설계 방식 — 장기 유지에 중요합니다.', on:sc>50},
+        {k:'증상 진단', t:sc>50?'목표 불명확':'명확', tc:'#8a5a18', tb:'#faf0dc', v:sc>50?'목표 불명확 패턴 — 철학적 기반 정의 필요.':'목표 명확성 양호.', on:sc>50},
+        {k:'답안 속도', t:'중립', tc:'#3f5022', tb:'#eef2e4', v:'목표 관련 문항 응답 평이.', on:false},
+        {k:'체지방률', t:'중립', tc:'#5f5e5a', tb:'#f1efe8', v:'체지방률과 직접 연결 약함.', on:false},
+        {k:'가족력', t:'중립', tc:'#993556', tb:'#fbeaf0', v:'가족력과 직접 연결 약함.', on:false}
+      ];},
+      conclFn: function(sc) { return '목표를 깊이 정의할수록 <b>습관이 자동화됩니다.</b>'; },
+      noneTag: function(sc) { return sc>50?null:'근거 약함'; },
+      noneStrike: ''
+    }
   ];
-  var NONE = [
-    { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.6 4.2L18 8l-3 3 .8 4.6L12 13.7 8.2 15.6 9 11 6 8l4.4-.8L12 3Z"/></svg>', nm:'시술', strike:'· 피부과·성형', tag:'지금 불필요' },
-    { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="9" width="16" height="6" rx="3" transform="rotate(-40 12 12)"/><path d="M9.5 8.5l5 5"/></svg>', nm:'약물', strike:'· 내과 처방',   tag:'지금 불필요' },
-    { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2"/><path d="M12 7v5M12 12l5 3M12 12l-5 3M8 21l1.5-4M16 21l-1.5-4"/></svg>', nm:'운동', strike:'· 고강도',       tag:'아직 이르다', hidden:true },
-    { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v7a2 2 0 0 0 2 2v9M8 3v6M5 3v6M18 3c-1.5 0-2.5 2-2.5 5s1 4 2.5 4v9"/></svg>', nm:'식단', strike:'· 극단 제한',     tag:'아직 이르다', hidden:true },
-    { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c4-3 7-6 7-10a4 4 0 0 0-7-2.5A4 4 0 0 0 5 11c0 4 3 7 7 10Z"/><path d="M12 8.5V21"/></svg>', nm:'한방', strike:'',               tag:'근거 약함',   hidden:true },
-    { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 4A3.5 3.5 0 0 0 6 7.5 3 3 0 0 0 5 12a3 3 0 0 0 1 5 3 3 0 0 0 3.5 3 2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/><path d="M14.5 4A3.5 3.5 0 0 1 18 7.5 3 3 0 0 1 19 12a3 3 0 0 1-1 5"/></svg>', nm:'심리', strike:'',               tag:'근거 약함',   hidden:true },
-    { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12c0-2 1.8-3.5 4-3.5s4 1.5 4 3.5M5 13c1.5 1.5 4 2.5 7 2.5s5.5-1 7-2.5"/><circle cx="9.5" cy="11" r=".6" fill="#8a8474"/><circle cx="14.5" cy="11" r=".6" fill="#8a8474"/></svg>', nm:'관리', strike:'',               tag:'근거 약함',   hidden:true },
-    { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l5 3"/></svg>', nm:'철학', strike:'',               tag:'근거 약함',   hidden:true }
-  ];
+
+  // ── axisScores로 각 영역 urgency 계산 → 점수 높은 순 정렬 → TOP3 = STRONG ──
+  var scored = P5_11_DEF.map(function(d) {
+    return { def: d, score: ax[d.axisRef] || 0 };
+  });
+  scored.sort(function(a, b) { return b.score - a.score; });
+
+  var TOP3 = scored.slice(0, 3);
+  var REST = scored.slice(3);
+
+  // ── STRONG 배열 동적 생성 ──
+  var STRONG = TOP3.map(function(item) {
+    var d = item.def;
+    var sc = item.score;
+    var gradeNum = sc >= d.gradeThresh + 15 ? 3 : sc >= d.gradeThresh ? 2 : 1;
+    var gtx = gradeNum === 3 ? '근거 강함' : gradeNum === 2 ? '근거 보통' : '근거 있음';
+    var evArr = d.evFn(sc);
+    var hitCount = evArr.filter(function(e){ return e.on; }).length;
+    return {
+      ic: d.ic, nm: d.nm, to: d.to, c: d.c,
+      grade: gradeNum, gtx: gtx,
+      hit: hitCount,
+      ev: evArr,
+      concl: d.conclFn(sc)
+    };
+  });
+
+  // ── NONE 배열 동적 생성 ──
+  // 시술·약물은 항상 앞에 노출, 나머지는 hidden
+  var PRIORITY_SHOWN = ['시술', '약물'];
+  var noneAll = REST.map(function(item) {
+    var d = item.def;
+    var sc = item.score;
+    var tag = d.noneTag(sc) || '보류';
+    var isShown = PRIORITY_SHOWN.indexOf(d.nm) >= 0;
+    return { ic: d.nm, nm: d.nm, strike: d.noneStrike || '', tag: tag, hidden: !isShown };
+  });
+  // 노출 아이콘 매핑 (회색 버전)
+  var NONE_ICONS = {
+    '식단':'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v7a2 2 0 0 0 2 2v9M8 3v6M5 3v6M18 3c-1.5 0-2.5 2-2.5 5s1 4 2.5 4v9"/></svg>',
+    '심리':'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 4A3.5 3.5 0 0 0 6 7.5 3 3 0 0 0 5 12a3 3 0 0 0 1 5 3 3 0 0 0 3.5 3 2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/><path d="M14.5 4A3.5 3.5 0 0 1 18 7.5 3 3 0 0 1 19 12a3 3 0 0 1-1 5"/></svg>',
+    '호르몬':'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5C12 3.5 6 9.5 6 14a6 6 0 0 0 12 0c0-4.5-6-10.5-6-10.5Z"/></svg>',
+    '운동':'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2"/><path d="M12 7v5M12 12l5 3M12 12l-5 3M8 21l1.5-4M16 21l-1.5-4"/></svg>',
+    '회복':'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.2 6.2 0 0 0 10.5 10.5Z"/></svg>',
+    '체형':'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.5" r="2"/><path d="M12 7v6M12 9l-4-1.5M12 9l4-1.5M12 13l-3 7M12 13l3 7"/></svg>',
+    '한방':'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c4-3 7-6 7-10a4 4 0 0 0-7-2.5A4 4 0 0 0 5 11c0 4 3 7 7 10Z"/><path d="M12 8.5V21"/></svg>',
+    '관리':'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12c0-2 1.8-3.5 4-3.5s4 1.5 4 3.5M5 13c1.5 1.5 4 2.5 7 2.5s5.5-1 7-2.5"/><circle cx="9.5" cy="11" r=".6" fill="#8a8474"/><circle cx="14.5" cy="11" r=".6" fill="#8a8474"/></svg>',
+    '시술':'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.6 4.2L18 8l-3 3 .8 4.6L12 13.7 8.2 15.6 9 11 6 8l4.4-.8L12 3Z"/></svg>',
+    '약물':'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="9" width="16" height="6" rx="3" transform="rotate(-40 12 12)"/><path d="M9.5 8.5l5 5"/></svg>',
+    '철학':'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l5 3"/></svg>'
+  };
+  noneAll.forEach(function(e){ e.ic = NONE_ICONS[e.nm] || ''; });
+  // 시술·약물 먼저(노출), 나머지 hidden
+  var NONE = noneAll.filter(function(e){ return !e.hidden; })
+    .concat(noneAll.filter(function(e){ return e.hidden; }));
+
   var TOTAL = STRONG.length + NONE.length;
 
   // 도입부 — 1페이지(바디코드) 결론을 받아서 이어지게
