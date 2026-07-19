@@ -14,9 +14,30 @@ type Bindings = {
 }
 
 // ASSETS에서 HTML 파일 텍스트를 읽어오는 헬퍼
+// ★ no-cache 헤더로 Cloudflare edge 캐시 우회 (수정사항 즉시 반영)
 async function fetchAsset(assets: Fetcher, path: string): Promise<string> {
-  const res = await assets.fetch(new Request(`http://assets${path}`))
+  const req = new Request(`http://assets${path}`, {
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+    }
+  })
+  const res = await assets.fetch(req)
   return res.text()
+}
+
+// ★ no-cache HTML 응답 헬퍼 — 모든 HTML 서빙 라우트에 사용
+// Cloudflare edge / CDN / 브라우저 캐시를 완전 우회하여 수정사항이 새로고침 즉시 반영됨
+function htmlResponse(html: string, status = 200): Response {
+  return new Response(html, {
+    status,
+    headers: {
+      'Content-Type': 'text/html; charset=UTF-8',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+    },
+  })
 }
 
 type JwtPayload = {
@@ -1824,7 +1845,7 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
           '</head>',
           `${ogMeta}\n<script>window.__RESULT__ = ${injectedData};window.__RESULT_FULL__ = {};</script>\n</head>`
         )
-        return c.html(injectedHtml)
+        return htmlResponse(injectedHtml)
       }
 
       // 두 테이블 모두 없음 → 404
@@ -2388,7 +2409,7 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
     `${ogMetaR}\n${brandInjectResult}\n<script>window.__RESULT__ = ${flatJson};window.__RESULT_FULL__ = ${fullJson};</script>\n</head>`
   )
 
-  return c.html(injectedHtml)
+  return htmlResponse(injectedHtml)
 
   } catch (routeErr) {
     // DB 조회 or 직렬화 중 예상치 못한 오류 → 500 에러 페이지
@@ -2410,26 +2431,26 @@ app.get('/', async (c) => {
     // ?ref=SC-0001 → /s/SC-0001 (컨설턴트 링크 보존)
     return c.redirect(`/s/${ref}`, 301)
   }
-  return c.html(await fetchAsset(c.env.ASSETS, '/index.html'))
+  return htmlResponse(await fetchAsset(c.env.ASSETS, '/index.html'))
 })
 
-app.get('/admin', async (c) => c.html(await fetchAsset(c.env.ASSETS, '/admin.html')))
-app.get('/admin.html', async (c) => c.html(await fetchAsset(c.env.ASSETS, '/admin.html')))
-app.get('/admin/*', async (c) => c.html(await fetchAsset(c.env.ASSETS, '/admin.html')))
-app.get('/consultant', async (c) => c.html(await fetchAsset(c.env.ASSETS, '/consultant.html')))
-app.get('/consultant.html', async (c) => c.html(await fetchAsset(c.env.ASSETS, '/consultant.html')))
-app.get('/consultant/*', async (c) => c.html(await fetchAsset(c.env.ASSETS, '/consultant.html')))
-app.get('/b2b', async (c) => c.html(await fetchAsset(c.env.ASSETS, '/b2b.html')))
-app.get('/b2b.html', async (c) => c.html(await fetchAsset(c.env.ASSETS, '/b2b.html')))
-app.get('/b2b/*', async (c) => c.html(await fetchAsset(c.env.ASSETS, '/b2b.html')))
+app.get('/admin', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/admin.html')))
+app.get('/admin.html', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/admin.html')))
+app.get('/admin/*', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/admin.html')))
+app.get('/consultant', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/consultant.html')))
+app.get('/consultant.html', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/consultant.html')))
+app.get('/consultant/*', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/consultant.html')))
+app.get('/b2b', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/b2b.html')))
+app.get('/b2b.html', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/b2b.html')))
+app.get('/b2b/*', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/b2b.html')))
 
 // ─── 임시: 바디맵 미리보기 (개발용) ────────────────────────────
-app.get('/bodymap-preview', async (c) => c.html(await fetchAsset(c.env.ASSETS, '/bodymap_preview.html')))
+app.get('/bodymap-preview', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/bodymap_preview.html')))
 
 // ─── 슬림마인드 라이브 설문지 — 유일한 최신 설문지 ────────────
 // /slimmind_live, /slimmind 는 하위 호환용 (기존 공유 링크 보호)
-app.get('/slimmind_live', async (c) => c.html(await fetchAsset(c.env.ASSETS, '/index.html')))
-app.get('/slimmind_live.html', async (c) => c.html(await fetchAsset(c.env.ASSETS, '/index.html')))
+app.get('/slimmind_live', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/index.html')))
+app.get('/slimmind_live.html', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/index.html')))
 
 // Feature 7: /slimmind?b2b=B2B-XXX 또는 ?ref=SC-XXXX 쿼리파라미터 지원
 // → 내부적으로 /s/:code 와 동일한 화이트라벨 처리
@@ -2445,7 +2466,7 @@ app.get('/slimmind', async (c) => {
     if (rediag) {
       html = html.replace('</head>', `<script>window.__REDIAG_SESSION__=${JSON.stringify(rediag)};</script></head>`)
     }
-    return c.html(html)
+    return htmlResponse(html)
   }
 
   // 코드 있으면 /s/:code 와 동일 로직으로 리다이렉트 (내부 처리)
@@ -2496,7 +2517,7 @@ app.get('/slimmind', async (c) => {
   if (brandInject) {
     html = html.replace('</head>', `${brandInject}</head>`)
   }
-  return c.html(html)
+  return htmlResponse(html)
 })
 
 // ─── DB 마이그레이션 (MASTER 전용) ────────────────────────────────────
@@ -2623,7 +2644,7 @@ app.get('/h/:code', async (c) => {
   html = html.replace('</head>', `${brandInject}\n</head>`)
   html = html.replace('</body>', `${refScript}\n</body>`)
 
-  return c.html(html)
+  return htmlResponse(html)
 })
 
 // ─── /a/:code — 에스테틱용 질문지 (파일 준비 후 연결) ────────────
@@ -2678,7 +2699,7 @@ app.get('/a/:code', async (c) => {
     html = await fetchAsset(c.env.ASSETS, '/index.html')
   }
   html = html.replace('</head>', `${brandInject}\n</head>`)
-  return c.html(html)
+  return htmlResponse(html)
 })
 
 // ─── /f/:code — 피트니스용 질문지 (파일 준비 후 연결) ────────────
@@ -2731,7 +2752,7 @@ app.get('/f/:code', async (c) => {
     html = await fetchAsset(c.env.ASSETS, '/index.html')
   }
   html = html.replace('</head>', `${brandInject}\n</head>`)
-  return c.html(html)
+  return htmlResponse(html)
 })
 
 // ─── /s/:code — B2B/컨설턴트 화이트라벨 진입 라우트 ────────────
@@ -2874,7 +2895,7 @@ app.get('/s/:code', async (c) => {
 </script>`
   html = html.replace('</body>', `${refScript}\n</body>`)
 
-  return c.html(html)
+  return htmlResponse(html)
 })
 
 // ─── 고객 마이페이지 /my/:session_id ────────────────────────────────────────
@@ -3057,20 +3078,20 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif
 </body>
 </html>`
 
-  return c.html(html)
+  return htmlResponse(html)
 })
 
 // ─── result.html 직접 접근 (bc=BC-01&name=... 파라미터 방식) ──────────────
-app.get('/result.html', async (c) => c.html(await fetchAsset(c.env.ASSETS, '/result.html')))
-app.get('/result', async (c) => c.html(await fetchAsset(c.env.ASSETS, '/result.html')))
+app.get('/result.html', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/result.html')))
+app.get('/result', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/result.html')))
 
 // ─── result-v3.html (SlimMind v3.0 11축 결과지) ────────────────────────────
-app.get('/result-v3.html', async (c) => c.html(await fetchAsset(c.env.ASSETS, '/result-v3.html')))
-app.get('/result-v3', async (c) => c.html(await fetchAsset(c.env.ASSETS, '/result-v3.html')))
+app.get('/result-v3.html', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/result-v3.html')))
+app.get('/result-v3', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/result-v3.html')))
 
 // ─── result-v4.html (SlimMind V3.0 PRD 최종 BC코드 결과지) ─────────────────
-app.get('/result-v4.html', async (c) => c.html(await fetchAsset(c.env.ASSETS, '/result-v4.html')))
-app.get('/result-v4', async (c) => c.html(await fetchAsset(c.env.ASSETS, '/result-v4.html')))
+app.get('/result-v4.html', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/result-v4.html')))
+app.get('/result-v4', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/result-v4.html')))
 
 // ─── favicon ───────────────────────────────────────────────────────────────
 app.get('/favicon.ico', async (c) => {
