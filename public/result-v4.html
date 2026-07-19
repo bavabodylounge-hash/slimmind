@@ -7782,7 +7782,7 @@ var NICKNAME_TABLE = {
     'A10': { 유전: '아빠체형 내장비대형', default: '아빠체형 내장비대형' },
     'A09': { 유전: '아빠체형 내장비대형', default: '식후기절 혈당롤러코스터형' },
     'A08': { 약물: '억제제부작용 배부름마비형', default: '억제제부작용 배부름마비형' },
-    'A07': { default: '스트레스성 야식부엉이형' },
+    'A07': { default: '동시다발 다중악순환형' },
     'A05': { default: '식후임산부 가스풍선형' },
     'default': { default: '식후기절 혈당롤러코스터형' },
   },
@@ -7811,6 +7811,8 @@ var NICKNAME_TABLE = {
     'A01': { default: '팔다리거미 올챙이배형' },
     'A02': { default: '운동할수록 말벅지형' },
     'A06': { default: '운동할수록 말벅지형' },
+    'A09': { default: '상체근육형' },
+    'A07': { default: '상체근육형' },
     'default': { default: '팔다리거미 올챙이배형' },
   },
   // ── A05 Top1: 소화·장 → BC-3 소화 계열 ──
@@ -8044,32 +8046,32 @@ function getDeepSurveyRoute(top1Axis) {
 // - '동시다발 다중악순환형' BC-6 → BC-3 (복합군 폴백 기준: 혈당·내장지방 조합이 가장 흔함)
 var NICKNAME_TO_BC = {
   // 복부형
-  '아빠체형 내장비대형':          'BC-3',
+  '아빠체형 내장비대형':          'BC-4',
   '식후기절 혈당롤러코스터형':    'BC-3',
   '털털한 PCOS형':                'BC-6',
   '약물부작용 강제축적형':        'BC-4',
-  '스트레스성 야식부엉이형':      'BC-6',
-  '억제제부작용 배부름마비형':    'BC-4',  // [수정] BC-6 → BC-4 (약물억제제 계열)
+  '스트레스성 야식부엉이형':      'BC-3',
+  '억제제부작용 배부름마비형':    'BC-3',
   '출산후 바람빠진 풍선형':       'BC-7',
   '식후임산부 가스풍선형':        'BC-3',
   '팔다리거미 올챙이배형':        'BC-9',
   // 하체형
   '오후만되면 코끼리다리형':      'BC-1',
   '엄마체형 하지정체형':          'BC-1',
-  '여름에도 시린 얼음장형':       'BC-4',
+  '여름에도 시린 얼음장형':       'BC-6',
   '운동할수록 말벅지형':          'BC-8',
   '골반틀어짐 승마살형':          'BC-7',
-  '지방흡입후 재발형':            'BC-5',
+  '지방흡입후 재발형':            'BC-2',
   // 상체형
-  '목짧아지는 거북이형':          'BC-2',
+  '목짧아지는 거북이형':          'BC-7',
   '안 쓰는 팔뚝 부종형':         'BC-2',
   '상체근육형':                   'BC-8',
-  '겨드랑이 부유방형':            'BC-2',
+  '겨드랑이 부유방형':            'BC-7',
   // 전신·기타형
   '호르몬스위치 갱년기형':        'BC-6',
   '스트레스기절 번아웃형':        'BC-6',
-  '대사증후군 종합형':            'BC-9',
-  '동시다발 다중악순환형':        'BC-3',  // [수정] BC-6 → BC-3 (복합형 폴백은 혈당·내장 기반)
+  '대사증후군 종합형':            'BC-4',
+  '동시다발 다중악순환형':        'BC-6',
 };
 
 // BC코드 → 닉네임 역방향 (기본 대표 닉네임)
@@ -12189,6 +12191,31 @@ function getToneStyle(mbtiType, bloodType) {
   return { isFeeling: isFeeling, bloodHint: bloodHint };
 }
 
+// [V4.8] T/F 말투 — P1/P2/P4 서브 문장 생성 헬퍼
+function buildP1ToneSentence(nm, bcCode, isFeeling) {
+  if (isFeeling) {
+    return '"' + nm + '님, 몸이 오래전부터 이 신호를 보내왔어요. 이제야 제대로 읽혔습니다."';
+  } else {
+    return '데이터가 가리킨 결론: <strong>' + bcCode + '</strong>. 수치와 근거는 아래에서 확인하세요.';
+  }
+}
+
+function buildP2ToneOpening(nm, top1, top2, isFeeling) {
+  if (isFeeling) {
+    return '"새벽에 이유 없이 피곤하고, 밤에 갑자기 당기는 게 반복됐다면 — 그건 ' + nm + '님 잘못이 아니었어요. <strong>' + top1.label + '</strong>과 <strong>' + top2.label + '</strong>이 정확히 그 시간대에 작동한 흔적입니다."';
+  } else {
+    return '<strong>' + top1.label + '·' + top2.label + '</strong> 축이 임계치를 넘었습니다. 이 두 축이 나머지 7축을 끌어내리는 인과 사슬이 형성된 상태입니다.';
+  }
+}
+
+function buildP4ToneOpening(nm, ohaengLabel, isFeeling) {
+  if (isFeeling) {
+    return '"매번 다짐하고도 무너졌던 게 의지력이 아니었어요. ' + ohaengLabel + ' 기질이 특정 순간에 정확히 ' + nm + '님을 무너뜨리도록 설계돼 있었거든요."';
+  } else {
+    return '실패의 원인은 의지력이 아닙니다. <strong>' + ohaengLabel + ' 기질 + BC 조합</strong>에서 발생하는 생리 메커니즘을 데이터로 확인합니다.';
+  }
+}
+
 function renderAll(data) {
   const { userName='고객', axisScores={}, ohaengType='목', mbtiType='INFP' } = data;
   const answers = data.answers || {}; try{ injectCoverInfo(userName, data.consultant_name || ''); }catch(e){}
@@ -12228,13 +12255,241 @@ function renderAll(data) {
 
   // ── stage2/3/4 원시응답 — 모든 renderP 함수보다 먼저 선언 ──
   // window.__RESULT__ (실서버) 우선, 없으면 data 직접 (demoData/localStorage) 폴백
-  const _s2 = (window.__RESULT__ && window.__RESULT__._stage2) || data._stage2 || {};
+  // 신규 설문(slimmind_baba_KO): raw_answers.stage2 = {1:...,2:...} 숫자 키 구조
+  // 병원 결과지(구버전): _stage2 = {q8_trigger:...,q13_smoke:...} 문자 키 구조
+  const _s2raw = (window.__RESULT__ && window.__RESULT__._stage2) || data._stage2 || {};
   const _s3 = (window.__RESULT__ && window.__RESULT__._stage3) || data._stage3 || {};
   const _s4 = (window.__RESULT__ && window.__RESULT__._stage4) || data._stage4 || {};
 
-  // ── P4: 성별/갱년기 _s2 직접 폴백 ──
-  var _p4gender = answers['Q02'] || (_s2['q01'] || _s2['gender'] || (window.__RESULT__ && window.__RESULT__.gender) || '');
-  var _p4meno   = answers['Q_MENOPAUSE'] || (/yes|완경|갱년기|폐경|peri/i.test(String(_s2['q12'] || '')) ? 'yes' : '');
+  // ── [V5.0] 신규 설문 숫자키 + 통합 설문 Q_* 키 → 병원 결과지 문자키 완전 매핑 ──
+  // [경로 A] 신규 병원 설문(slimmind_baba_KO): buildRawAnswers() → raw_answers.stage2 = {1:...,16:...}
+  //           서버가 answers = raw_answers 전체로 주입 → answers.stage2[N] 경로
+  // [경로 B] 구버전 병원 설문: _stage2 = {q8_trigger:...,q13_smoke:...} 문자키 직접
+  // [경로 C] 통합 설문: answers.Q_SMOKING, Q_ALCOHOL 등 Q_* 키
+
+  // 신규 설문 stage2 숫자키 추출 (경로 A)
+  var _s2num = (answers && answers.stage2 && typeof answers.stage2 === 'object') ? answers.stage2 : {};
+
+  // 병원 결과지 문자키 기반 복사 시작 (경로 B 우선)
+  var _s2 = Object.assign({}, _s2raw);
+
+  // ══════════════════════════════════════════════
+  // 신규 설문 숫자키(1~16) → 병원 결과지 문자키 변환
+  // stage2Questions 매핑표:
+  //   1 = q1_family   (가족력: 당뇨/고혈압)
+  //   2 = q2_parent   (부모 체형 유사도)
+  //   3 = disease     (진단 질환)
+  //   4 = checkup     (검진 경계 소견)
+  //   5 = cold_limbs / q5_cellu (냉증)
+  //   6 = long_term_drugs (장기복용약)
+  //   7 = appetite_suppressant (식욕억제제)
+  //   8 = q8_trigger  (살찐 계기)
+  //   9 = past_procedures (시술 이력)
+  //  10 = q10_history (체중 궤적: {pat,cyc,amp,net,series} 객체)
+  //  11 = q11_event / birth (출산/군대)
+  //  12 = q12 / menopause / q12_menopause (갱년기)
+  //  13 = q13_smoke / smoke (흡연)
+  //  14 = q14_drink / alcohol (음주)
+  //  15 = spec (키/체중/인바디 — 'input' 문자열 또는 미응답)
+  //  16 = size (옷사이즈 — 'input' 문자열)
+  // ══════════════════════════════════════════════
+
+  // 1: 가족력 (q1_family)
+  if (!_s2['q1_family'] && _s2num[1] !== undefined) {
+    var _f1 = _s2num[1];
+    _s2['q1_family'] = Array.isArray(_f1) ? _f1.join(',') : String(_f1);
+  }
+
+  // 2: 부모 체형 (q2_parent)
+  if (!_s2['q2_parent'] && _s2num[2] !== undefined) {
+    _s2['q2_parent'] = _s2num[2];
+  }
+
+  // 3: 진단 질환 (disease)
+  if (!_s2['disease'] && _s2num[3] !== undefined) {
+    var _f3 = _s2num[3];
+    _s2['disease'] = Array.isArray(_f3) ? _f3.join(',') : String(_f3);
+  }
+
+  // 4: 검진 경계 소견 (checkup)
+  if (!_s2['checkup'] && _s2num[4] !== undefined) {
+    var _f4 = _s2num[4];
+    _s2['checkup'] = Array.isArray(_f4) ? _f4.join(',') : String(_f4);
+  }
+
+  // 5: 냉증 (cold_limbs / q5_cellu)
+  if (!_s2['cold_limbs'] && !_s2['q5_cellu'] && _s2num[5] !== undefined) {
+    _s2['cold_limbs'] = _s2num[5];
+    _s2['q5_cellu']   = _s2num[5];
+  }
+
+  // 6: 장기복용약 (long_term_drugs)
+  if (!_s2['long_term_drugs'] && _s2num[6] !== undefined) {
+    var _f6 = _s2num[6];
+    _s2['long_term_drugs'] = Array.isArray(_f6) ? _f6.join(',') : String(_f6);
+  }
+
+  // 7: 식욕억제제 (appetite_suppressant)
+  if (!_s2['appetite_suppressant'] && _s2num[7] !== undefined) {
+    _s2['appetite_suppressant'] = _s2num[7];
+  }
+
+  // 8: 살찐 계기 (q8_trigger)
+  if (!_s2['q8_trigger'] && _s2num[8] !== undefined) {
+    var _f8 = _s2num[8];
+    _s2['q8_trigger'] = Array.isArray(_f8) ? _f8.join(',') : String(_f8);
+  }
+
+  // 9: 시술 이력 (past_procedures)
+  if (!_s2['past_procedures'] && _s2num[9] !== undefined) {
+    var _f9 = _s2num[9];
+    _s2['past_procedures'] = Array.isArray(_f9) ? _f9.join(',') : String(_f9);
+  }
+
+  // 10: 체중 궤적 (q10_history) — {pat,cyc,amp,net,series} 객체
+  if (!_s2['q10_history'] && _s2num[10] !== undefined) {
+    _s2['q10_history'] = _s2num[10];
+    // pat 필드 별도 보존 (결과지에서 직접 접근하는 경우)
+    if (_s2num[10] && _s2num[10].pat) {
+      _s2['q10_pat']  = _s2num[10].pat;
+      _s2['q10_cyc']  = _s2num[10].cyc  || 0;
+      _s2['q10_amp']  = _s2num[10].amp  || 0;
+      _s2['q10_net']  = _s2num[10].net  || 0;
+    }
+  }
+
+  // 11: 출산/군대 (q11_event / birth)
+  if (!_s2['q11_event'] && !_s2['birth'] && _s2num[11] !== undefined) {
+    _s2['q11_event'] = _s2num[11];
+    _s2['birth']     = _s2num[11];
+  }
+
+  // 12: 갱년기 (q12 / menopause / q12_menopause)
+  if (!_s2['menopause'] && !_s2['q12_menopause'] && _s2num[12] !== undefined) {
+    _s2['q12']          = _s2num[12];
+    _s2['menopause']    = _s2num[12];
+    _s2['q12_menopause']= _s2num[12];
+  }
+
+  // 13: 흡연 (q13_smoke / smoke)
+  if (!_s2['q13_smoke'] && !_s2['smoke'] && _s2num[13] !== undefined) {
+    _s2['q13_smoke'] = _s2num[13];
+    _s2['smoke']     = _s2num[13];
+  }
+
+  // 14: 음주 (q14_drink / alcohol)
+  if (!_s2['q14_drink'] && !_s2['alcohol'] && _s2num[14] !== undefined) {
+    _s2['q14_drink'] = _s2num[14];
+    _s2['alcohol']   = _s2num[14];
+  }
+
+  // 15: 신체 스펙 (spec — 키/체중/목표체중/인바디)
+  if (!_s2['spec'] && _s2num[15] !== undefined) {
+    _s2['spec'] = _s2num[15];
+  }
+
+  // 16: 옷 사이즈 (size)
+  if (!_s2['size'] && _s2num[16] !== undefined) {
+    _s2['size'] = _s2num[16];
+  }
+
+  // ── 통합 설문 Q_* 폴백 (경로 C: _s2num·_s2raw 모두 비어있을 때) ──
+  // Q04 → q8_trigger
+  if (!_s2['q8_trigger'] && answers['Q04']) _s2['q8_trigger'] = answers['Q04'];
+
+  // Q_SMOKING → q13_smoke / smoke
+  if (!_s2['q13_smoke'] && !_s2['smoke']) {
+    var _sm = answers['Q_SMOKING'] || '';
+    if (_sm) { _s2['q13_smoke'] = _sm; _s2['smoke'] = _sm; }
+  }
+
+  // Q_ALCOHOL → q14_drink / alcohol
+  if (!_s2['q14_drink'] && !_s2['alcohol']) {
+    var _al = answers['Q_ALCOHOL'] || '';
+    if (_al) { _s2['q14_drink'] = _al; _s2['alcohol'] = _al; }
+  }
+
+  // Q_MENOPAUSE → menopause / q12_menopause
+  if (!_s2['menopause'] && !_s2['q12_menopause']) {
+    var _meno = answers['Q_MENOPAUSE'] || '';
+    if (_meno) { _s2['menopause'] = _meno; _s2['q12_menopause'] = _meno; }
+  }
+
+  // Q_SKIN → elasticity
+  if (!_s2['elasticity']) {
+    var _skin = answers['Q_SKIN'] || '';
+    if (_skin) _s2['elasticity'] = _skin;
+  }
+
+  // Q_LEGPOWER / Q_INTOL → cold_limbs / q5_cellu
+  if (!_s2['cold_limbs'] && !_s2['q5_cellu']) {
+    var _cold = answers['Q_LEGPOWER'] || answers['Q_INTOL'] || '';
+    if (_cold) { _s2['cold_limbs'] = _cold; _s2['q5_cellu'] = _cold; }
+  }
+
+  // Q_MEDICAL → q1_family
+  if (!_s2['q1_family']) {
+    var _med = answers['Q_MEDICAL'] || [];
+    if (Array.isArray(_med) && _med.length > 0) _s2['q1_family'] = _med.join(',');
+    else if (typeof _med === 'string' && _med) _s2['q1_family'] = _med;
+  }
+
+  // Q03 / Q_birth → q11_event / birth
+  if (!_s2['q11_event'] && !_s2['birth']) {
+    var _birth = answers['Q03'] || answers['Q_birth'] || '';
+    if (_birth) { _s2['q11_event'] = _birth; _s2['birth'] = _birth; }
+  }
+
+  // Q02 → gender / q01
+  if (!_s2['gender'] && !_s2['q01']) {
+    var _gend = answers['Q02'] || '';
+    if (_gend) { _s2['gender'] = _gend; _s2['q01'] = _gend; }
+  }
+
+  // ── [V5.0] 신규 필드: pfProfile / redFlags / desire / confidence / bfMap ──
+  // raw_answers 전체가 answers로 주입됨 → answers.pfProfile 경로로 접근
+  var _pfProfile   = (answers && answers.pfProfile)   || (window.__RESULT__ && window.__RESULT__.pfProfile)   || {};
+  var _redFlags    = (answers && answers.redFlags)     || (window.__RESULT__ && window.__RESULT__.redFlags)    || [];
+  var _desire      = (answers && answers.desire)       || (window.__RESULT__ && window.__RESULT__.desire)      || {};
+  var _confidence  = (answers && answers.confidence)   || (window.__RESULT__ && window.__RESULT__.confidence)  || {};
+  var _bfMap       = (answers && answers.bfMap)        || (window.__RESULT__ && window.__RESULT__.bfMap)       || {};
+
+  // pfProfile → MBTI/오행 폴백 보강
+  if (_pfProfile.mbti && !mbtiType) {
+    try { var _mb = String(_pfProfile.mbti).toUpperCase(); if(/^[EI][NS][TF][JP]$/.test(_mb)) mbtiType = _mb; } catch(e){}
+  }
+  if (_pfProfile.saju && !ohaengType) {
+    try { ohaengType = _pfProfile.saju; } catch(e){}
+  }
+
+  // desire.moodLabel → P8 헤더 / 개인화 문구에서 data._moodLabel 폴백으로 사용
+  if (_desire.moodLabel && !data._moodLabel) {
+    data._moodLabel = _desire.moodLabel;
+  }
+  // desire 전체 data._desire 폴백
+  if (!data._desire && Object.keys(_desire).length > 0) {
+    data._desire = _desire;
+  }
+
+  // bfMap: 체지방률 데이터 → 결과지 체성분 카드에 활용
+  if (_bfMap && _bfMap.bodyFatPct > 0) {
+    if (!window._spec_bodyfat || window._spec_bodyfat === 0) {
+      window._spec_bodyfat = _bfMap.bodyFatPct;
+    }
+    if (!window._spec_bmi && _bfMap.bmi > 0) {
+      window._spec_bmi = _bfMap.bmi;
+    }
+  }
+
+  // redFlags → window._redFlags (시술 주의 플래그 — renderP5/8에서 경고 표시)
+  if (!window._redFlags && Array.isArray(_redFlags) && _redFlags.length > 0) {
+    window._redFlags = _redFlags;
+  }
+
+  // ── P4: 성별/갱년기 폴백 ──
+  var _p4gender = answers['Q02'] || _pfProfile.gender || (_s2['q01'] || _s2['gender'] || (window.__RESULT__ && window.__RESULT__.gender) || '');
+  var _p4meno   = answers['Q_MENOPAUSE'] || _s2['menopause'] || _s2['q12_menopause'] ||
+                  (/yes|완경|갱년기|폐경|peri/i.test(String(_s2raw['q12'] || '')) ? 'yes' : '');
 
   renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nicknameDisplay, background,
            isBorderline, borderlineDiff, secondaryBcCode, secondaryNickname, evidenceBadge, _s2);
