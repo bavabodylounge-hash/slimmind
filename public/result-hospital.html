@@ -717,6 +717,41 @@ body{
 .p4-ending-sig{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:18px;font-size:11px;font-weight:800;letter-spacing:1px;color:rgba(247,239,228,.5);}
 .p4-ending-sig .dot{width:5px;height:5px;border-radius:50%;background:#8b6db5;}
 
+/* ══════════════════════ redFlags 의학 경고 ══════════════════════ */
+.redflag-banner{margin:18px 0 4px;padding:16px 16px 14px;border-radius:16px;
+  background:rgba(192,57,43,.10);border:1.5px solid rgba(192,57,43,.30);}
+.redflag-banner-hd{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:900;
+  letter-spacing:.5px;color:#e07060;margin-bottom:12px;}
+.redflag-banner-hd::after{content:'';flex:1;height:1px;background:rgba(192,57,43,.25);}
+.redflag-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px;}
+.redflag-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;
+  border-radius:30px;font-size:11.5px;font-weight:800;white-space:nowrap;}
+.redflag-chip.rf-medical{background:rgba(192,57,43,.15);color:#d94f40;border:1px solid rgba(192,57,43,.35);}
+.redflag-chip.rf-procedure{background:rgba(201,138,60,.15);color:#b07030;border:1px solid rgba(201,138,60,.35);}
+.redflag-chip.rf-drug{background:rgba(47,125,140,.15);color:#2a7a90;border:1px solid rgba(47,125,140,.35);}
+.redflag-caution-list{padding:0;margin:0;list-style:none;}
+.redflag-caution-list li{display:flex;align-items:flex-start;gap:8px;font-size:12px;
+  line-height:1.55;color:rgba(247,239,228,.72);padding:5px 0;border-bottom:1px solid rgba(255,255,255,.06);}
+.redflag-caution-list li:last-child{border-bottom:none;}
+.redflag-caution-list li::before{content:'⚠';font-size:11px;margin-top:2px;flex-shrink:0;color:#e07060;}
+/* P4 전용 의학 주의 카드 */
+.p4-redflag-card{margin:24px 0 20px;padding:20px 18px 18px;border-radius:18px;
+  background:rgba(30,20,30,.6);border:1.5px solid rgba(192,57,43,.35);}
+.p4-redflag-title{font-size:14px;font-weight:900;color:#e88878;margin-bottom:4px;
+  display:flex;align-items:center;gap:7px;}
+.p4-redflag-sub{font-size:12px;color:rgba(247,239,228,.55);margin-bottom:16px;line-height:1.5;}
+.p4-redflag-row{display:flex;flex-direction:column;gap:12px;}
+.p4-rf-item{padding:12px 14px;border-radius:13px;border:1px solid rgba(255,255,255,.08);}
+.p4-rf-item.rf-danger{background:rgba(192,57,43,.12);border-color:rgba(192,57,43,.25);}
+.p4-rf-item.rf-warn{background:rgba(201,138,60,.10);border-color:rgba(201,138,60,.22);}
+.p4-rf-item.rf-info{background:rgba(47,125,140,.10);border-color:rgba(47,125,140,.20);}
+.p4-rf-nm{font-size:13px;font-weight:900;margin-bottom:5px;display:flex;align-items:center;gap:6px;}
+.p4-rf-item.rf-danger .p4-rf-nm{color:#e07060;}
+.p4-rf-item.rf-warn .p4-rf-nm{color:#c9923c;}
+.p4-rf-item.rf-info .p4-rf-nm{color:#2f7d8c;}
+.p4-rf-cautions{margin:0;padding-left:16px;font-size:11.5px;color:rgba(247,239,228,.7);line-height:1.7;}
+.p4-rf-ref{margin-top:7px;font-size:11px;color:rgba(247,239,228,.4);font-style:italic;}
+
 /* ══════════════════════ P5 ══════════════════════ */
 /* P5 히어로 블록 */
 .sim-hero-block{
@@ -5186,6 +5221,9 @@ p, div, span, h1, h2, h3, h4{
   <!-- 3대 트리거 카드 (감성 4단 흐름) -->
   <div id="p4-triggers" class="fade-up" style="transition-delay:.15s"></div>
 
+  <!-- 의학적 주의 카드 (redFlags) -->
+  <div id="p4-redflag-mount" class="fade-up" style="transition-delay:.18s"></div>
+
   <!-- 맺음말 엔딩 카드 -->
   <div id="p4-ending-mount" class="fade-up" style="transition-delay:.2s"></div>
 
@@ -7375,70 +7413,137 @@ var NICKNAME_TABLE = {
 
 // ──────────────────────────────────────────────
 // 4. 배경 필터 감지 함수
-// answers: { Q3, Q21, Q22, Q_MENOPAUSE, Q_FAMILY_HISTORY, ... }
+// ★ 병원 질문지(survey-hospital.html) 실제 저장 키 기준으로 전면 재작성
+//
+// 병원 질문지 stage2 → S2_KEY_MAP 변환 후 ans에 세팅된 키:
+//   갱년기  : ans['Q_MENOPAUSE']   (MENO_MAP 변환 완료값: '갱년기 변환형'|'호르몬 치료형'|'완경 후')
+//   PCOS    : ans['disease']       배열, 인덱스 0 = PCOS
+//   진단질환: ans['disease']       배열, 인덱스 1=당뇨 2=고혈압 3=갑상선 4=지방간
+//   시술이력: ans['past_procedures'] 배열, 인덱스 0=지방흡입 1=지방분해 2=리프팅 3=보톡스 4=복부성형
+//   약물    : ans['long_term_drugs'] 배열, 인덱스 0=스테로이드 1=항우울제 2=피임약 (3=항응고제 redFlag전용)
+//   식욕억제: ans['appetite_suppressant'] 단일숫자, 0=여러번 1=한두번
+//   출산    : ans['q11_event']     단일숫자, 여성 0=출산후체형변화 (남성 0=그때부터쪘음)
+//   가족력  : ans['q1_family']     배열, 0=아버지 1=어머니 2=형제
+//   부모체형: ans['q2_parent']     단일숫자, 0=아빠배 1=엄마하체 2=둘다
+//   급증계기: ans['q8_trigger']    배열, 0=이직과로 1=이별충격
+//   성별    : ans['Q02']           '남'|'여'|'male'|'female'
+//
 // 반환: '유전'|'모계유전'|'출산'|'갱년기'|'시술'|'약물'|'PCOS'|'번아웃'|'대사증후군'|null
+// 우선순위: 갱년기 > PCOS > 시술 > 약물 > 출산 > 가족력·유전 > 대사증후군 > 번아웃
 // ──────────────────────────────────────────────
 function detectBackground(answers) {
   if (!answers) return null;
 
-  // 갱년기·완경
+  // ── 헬퍼: 배열 또는 단일값에서 특정 인덱스 포함 여부 ──
+  const hasIdx = (val, idx) => {
+    if (val === undefined || val === null) return false;
+    if (Array.isArray(val)) return val.indexOf(idx) > -1;
+    if (typeof val === 'number') return val === idx;
+    return false;
+  };
+
+  // ── 1. 갱년기·완경 ──
+  // ans['Q_MENOPAUSE']는 DOMContentLoaded 블록의 MENO_MAP이 이미 변환한 값
+  // 값: '갱년기 변환형' | '호르몬 치료형' | '완경 후' → 비어있으면 해당없음
   const meno = answers['Q_MENOPAUSE'] || answers['Q_meno'] || '';
-  if (meno && meno !== 'not_applicable' && meno !== 'none' && meno !== '') {
+  if (meno && meno !== '' && meno !== 'not_applicable' && meno !== 'none') {
     return '갱년기';
   }
 
-  // PCOS (다낭성 난소 증후군)
-  const pcos = answers['Q_PCOS'] || answers['Q_pcos'] || '';
-  if (pcos === 'yes' || pcos === 'Y' || pcos === '있음') return 'PCOS';
+  // ── 2. PCOS (다낭성 난소 증후군) ──
+  // survey-hospital Q3(stage2[3]): disease 배열, 인덱스 0 = PCOS
+  const disease = answers['disease'] || answers['q3_disease'] || answers['Q_PCOS'] || null;
+  if (hasIdx(disease, 0)) return 'PCOS';  // 인덱스 0 = PCOS
 
-  // 시술 이력 (지방흡입 등)
-  const surgery = answers['Q21'] || answers['Q_surgery'] || '';
-  if (surgery && surgery !== 'none' && surgery !== '없음' && surgery !== '') {
-    // 지방흡입 키워드 확인
-    if (String(surgery).includes('지방흡입') || String(surgery).includes('liposuction')) {
+  // ── 3. 시술 이력 (지방흡입 등) ──
+  // survey-hospital Q9(stage2[9]): past_procedures 배열
+  // 0=지방흡입 1=지방분해 2=리프팅 3=보톡스 4=복부성형 5=없음
+  const proc = answers['past_procedures'] || answers['q9_procedures'] || answers['Q21'] || null;
+  if (proc !== null && proc !== undefined) {
+    if (Array.isArray(proc)) {
+      // 배열에 5(없음) 이외의 값이 있으면 시술 이력 있음
+      const hasProcedure = proc.some(i => i !== 5 && i !== '5');
+      if (hasProcedure) return '시술';
+    } else if (typeof proc === 'number' && proc !== 5) {
       return '시술';
     }
-    return '시술';
   }
 
-  // 약물 복용력 (스테로이드·항우울제·식욕억제제 등)
-  const drug = answers['Q22'] || answers['Q_drug'] || '';
-  if (drug && drug !== 'none' && drug !== '없음' && drug !== '') {
-    // 번아웃/부신 고갈 키워드 우선 확인
-    if (String(drug).includes('번아웃') || String(drug).includes('부신')) return '번아웃';
+  // ── 4. 약물 복용력 (스테로이드·항우울제 등) ──
+  // survey-hospital Q6(stage2[6]): long_term_drugs 배열
+  // 0=스테로이드 1=항우울제 2=피임약·호르몬 3=항응고제(redFlag전용) 4=이소트레티노인 5=탈모약 6=없음
+  const drugs = answers['long_term_drugs'] || answers['q6_drugs'] || answers['Q22'] || null;
+  if (drugs !== null && drugs !== undefined) {
+    if (Array.isArray(drugs)) {
+      // 번아웃 선행 체크: 항우울제(인덱스1) + 급증계기 이별충격(q8_trigger 인덱스1)
+      const hasBurnoutDrug = drugs.indexOf(1) > -1;
+      const trigger = answers['q8_trigger'] || answers['Q8'] || [];
+      const hasBurnoutTrigger = hasIdx(trigger, 1); // 인덱스 1 = 이별·충격
+      if (hasBurnoutDrug && hasBurnoutTrigger) return '번아웃';
+      // 약물 복용 있음 (6=없음 제외)
+      const hasAnyDrug = drugs.some(i => i !== 6 && i !== '6');
+      if (hasAnyDrug) return '약물';
+    } else if (typeof drugs === 'number' && drugs !== 6) {
+      return '약물';
+    }
+  }
+
+  // ── 5. 식욕억제제 복용 → 약물 계열 ──
+  // survey-hospital Q7(stage2[7]): appetite_suppressant 단일숫자
+  // 0=여러번 1=한두번 2=없음
+  const appetite = answers['appetite_suppressant'] || answers['q7_appetite'];
+  if (appetite === 0 || appetite === 1 || appetite === '0' || appetite === '1') {
     return '약물';
   }
 
-  // 출산 경험
-  const birth = answers['Q3'] || answers['Q_birth'] || '';
-  if (birth === 'yes' || birth === 'Y' || birth === '있음' || birth === '경험있음' ||
-      (typeof birth === 'string' && birth !== '' && birth !== 'none' && birth !== '없음')) {
-    return '출산';
+  // ── 6. 출산 경험 ──
+  // survey-hospital Q11(stage2[11]): q11_event 단일숫자
+  // 여성: 0=출산후체형변화 1=산후관리했음 / 남성: 0=그때부터쪘음(군대·직장)
+  // 성별 확인: Q02 = '여' | '여성' | 'female' | 'F'
+  const q11 = answers['q11_event'];
+  if (q11 === 0 || q11 === '0') {
+    const gender = String(answers['Q02'] || '').toLowerCase();
+    const isFemale = gender === '여' || gender === '여성' || gender === 'female' || gender === 'f';
+    const isMale   = gender === '남' || gender === '남성' || gender === 'male'   || gender === 'm';
+    // 성별 미확인이거나 여성이면 출산으로 처리 (남성 0은 군대·직장 → 출산 아님)
+    if (!isMale) return '출산';
   }
 
-  // 가족력·유전 (부계 vs 모계)
-  const family = answers['Q_FAMILY'] || answers['Q_family'] || answers['Q_heredity'] || '';
-  if (family) {
-    if (String(family).includes('모') || String(family).includes('엄마') || String(family).includes('이모')) {
-      return '모계유전';
-    }
-    if (String(family).includes('부') || String(family).includes('아빠') || String(family).includes('삼촌')) {
-      return '유전';
-    }
-    if (String(family) !== 'none' && String(family) !== '없음' && String(family) !== '') {
-      return '유전';
+  // ── 7. 가족력·유전 (부계 vs 모계) ──
+  // survey-hospital Q1(stage2[1]): q1_family 배열
+  // 0=아버지 1=어머니 2=형제자매 3=없음
+  const fam = answers['q1_family'] || answers['Q_FAMILY'] || answers['Q_family'] || null;
+  if (fam !== null && fam !== undefined) {
+    if (Array.isArray(fam)) {
+      const hasNoFamily = fam.length === 0 || (fam.length === 1 && fam[0] === 3);
+      if (!hasNoFamily) {
+        const hasMom = fam.indexOf(1) > -1; // 1 = 어머니
+        const hasDad = fam.indexOf(0) > -1; // 0 = 아버지
+        if (hasMom && !hasDad) return '모계유전';
+        return '유전'; // 아버지 or 형제 or 복합
+      }
     }
   }
 
-  // 대사증후군 고위험 (복합 수치)
-  const diabetesRisk = answers['Q_diabetes'] || answers['Q_metabolic'] || '';
-  if (diabetesRisk === 'yes' || diabetesRisk === 'Y' || diabetesRisk === '있음') {
-    return '대사증후군';
+  // survey-hospital Q2(stage2[2]): q2_parent 단일숫자
+  // 0=아빠닮아배 1=엄마닮아하체 2=둘다 3=다름
+  const parent = answers['q2_parent'];
+  if (parent === 1 || parent === '1') return '모계유전'; // 엄마 하체
+  if (parent === 0 || parent === '0') return '유전';     // 아빠 배
+  if (parent === 2 || parent === '2') return '유전';     // 둘 다
+
+  // ── 8. 대사증후군 (당뇨+고혈압 복합) ──
+  // disease 배열: 인덱스 1=당뇨 2=고혈압 → 둘 다 있으면 대사증후군
+  if (disease && Array.isArray(disease)) {
+    const hasDiabetes = disease.indexOf(1) > -1;
+    const hasHTN      = disease.indexOf(2) > -1;
+    if (hasDiabetes && hasHTN) return '대사증후군';
+    if (hasDiabetes || hasHTN) return '대사증후군'; // 단독도 대사증후군으로
   }
 
-  // 번아웃 (별도 질문)
-  const burnout = answers['Q_burnout'] || answers['Q_stress_level'] || '';
-  if (burnout === 'severe' || burnout === '심각' || burnout === '극심') return '번아웃';
+  // ── 9. 번아웃 (급증계기 이별·충격 단독) ──
+  const trigger = answers['q8_trigger'] || answers['Q8'] || null;
+  if (hasIdx(trigger, 1)) return '번아웃'; // 인덱스 1 = 이별·충격
 
   return null; // 배경 필터 없음 → default 코드
 }
@@ -10670,12 +10775,13 @@ function renderAll(data) {
     ? generatePrescription(bcCode, ohaengType, mbtiType)
     : null;
 
+  const redFlags = Array.isArray(data.redFlags) ? data.redFlags : [];
   renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nicknameDisplay, background,
-           isBorderline, borderlineDiff, secondaryBcCode, secondaryNickname, evidenceBadge);
+           isBorderline, borderlineDiff, secondaryBcCode, secondaryNickname, evidenceBadge, redFlags);
   renderP2(userName, bcCode, firstDomino, axisScores, sorted);
   window.__BC_RM__ = bcCode; // 로드맵 주차별 영양제 카드용 BC 코드
   renderP3(userName, bcCode, bcMaster, ohaengType, ohaeng, mbtiType, mbti, fullCode, prescription, answers, data.bloodType);
-  renderP4(userName, ohaengType, mbtiType, answers['Q02'], answers['Q_MENOPAUSE']);
+  renderP4(userName, ohaengType, mbtiType, answers['Q02'], answers['Q_MENOPAUSE'], redFlags);
   renderP5(metrics, bcCode, axisScores, userName);
   renderP8(metrics, bcCode, axisScores, userName);
   renderP9(metrics, bcCode, axisScores, data);
@@ -10712,7 +10818,7 @@ function renderAll(data) {
 
 /* ── P1 ── */
 function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nicknameDisplay, background,
-                 isBorderline, borderlineDiff, secondaryBcCode, secondaryNickname, evidenceBadge) {
+                 isBorderline, borderlineDiff, secondaryBcCode, secondaryNickname, evidenceBadge, redFlags) {
   document.getElementById('p1-title').textContent = `${userName}님의 바디코드 리포트`;
   // V3.1: 닉네임 우선 표시 (BC번호 대신)
   const nickEl = document.getElementById('p1-nickname');
@@ -10842,6 +10948,52 @@ function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nic
 
   document.getElementById('p1-fail-desc').innerHTML =
     `<strong>분석 소견:</strong> ${bcMaster.failed_type_desc}`;
+
+  // ── redFlags 요약 배너 (P1 하단, BC 그리드 위) ──
+  if (Array.isArray(redFlags) && redFlags.length > 0) {
+    const RF_CHIP_MAP = {
+      PCOS:               { label:'PCOS',        cls:'rf-medical' },
+      DIABETES:           { label:'당뇨',          cls:'rf-medical' },
+      HTN:                { label:'고혈압',         cls:'rf-medical' },
+      THYROID:            { label:'갑상선',         cls:'rf-medical' },
+      FATTY_LIVER:        { label:'지방간',         cls:'rf-medical' },
+      STEROID:            { label:'스테로이드',      cls:'rf-drug'    },
+      ANTICOAGULANT:      { label:'항응고제 ⚠',     cls:'rf-drug'    },
+      ISOTRETINOIN:       { label:'이소트레티노인 ⚠', cls:'rf-drug'    },
+      HAIRLOSS_RX:        { label:'탈모약',         cls:'rf-drug'    },
+      APPETITE_SUPP:      { label:'식욕억제제',      cls:'rf-drug'    },
+      LIPO_HX:            { label:'지방흡입 이력',   cls:'rf-procedure'},
+      LIPOLYSIS_HX:       { label:'지방분해 이력',   cls:'rf-procedure'},
+      LIFTING_HX:         { label:'리프팅 이력',     cls:'rf-procedure'},
+      FILLER_HX:          { label:'필러 이력',       cls:'rf-procedure'},
+      ABDOMINOPLASTY_HX:  { label:'복부성형 이력',   cls:'rf-procedure'},
+      YOYO:               { label:'요요 이력',       cls:'rf-medical' },
+    };
+    const chips = redFlags.map(f => {
+      const m = RF_CHIP_MAP[f] || { label: f, cls:'rf-medical' };
+      return `<span class="redflag-chip ${m.cls}">${m.label}</span>`;
+    }).join('');
+    const rfBanner = document.createElement('div');
+    rfBanner.className = 'redflag-banner fade-up';
+    rfBanner.innerHTML = `
+      <div class="redflag-banner-hd">🏥 의학적 주의 항목</div>
+      <div class="redflag-chips">${chips}</div>
+      <ul class="redflag-caution-list">
+        ${redFlags.includes('ANTICOAGULANT') ? '<li>항응고제 복용 중 — 시술·운동 강도 조절 필수 (의사 확인 후 진행)</li>' : ''}
+        ${redFlags.includes('ISOTRETINOIN') ? '<li>이소트레티노인 복용 중 — 레이저·필링 시술 금기, 피부 마찰 운동 제한</li>' : ''}
+        ${redFlags.includes('STEROID') ? '<li>스테로이드 복용 이력 — 혈당·체중 모니터링 강화, 갑작스러운 운동 강도 증가 주의</li>' : ''}
+        ${redFlags.includes('PCOS') ? '<li>PCOS — 저GI 식단 필수, 인슐린 저항성 교정 우선</li>' : ''}
+        ${redFlags.includes('DIABETES') ? '<li>당뇨 — 공복 운동 금지, 운동 전후 혈당 체크 필수</li>' : ''}
+        ${redFlags.includes('HTN') ? '<li>고혈압 — 고강도 무산소 운동 주의, 나트륨 엄격 제한</li>' : ''}
+        ${redFlags.includes('THYROID') ? '<li>갑상선 — 십자화과 채소 과다 섭취 주의, 갑상선 수치 정기 모니터링</li>' : ''}
+        ${redFlags.includes('LIPO_HX') || redFlags.includes('LIPOLYSIS_HX') ? '<li>시술 이력 — 해당 부위 재시술 시 림프 손상 누적 위험, BC 기반 사전 점검 권장</li>' : ''}
+        ${redFlags.includes('YOYO') ? '<li>요요 이력 — 대사 적응 패턴 존재, 급격한 칼로리 제한 금지</li>' : ''}
+      </ul>`;
+    const failDescEl = document.getElementById('p1-fail-desc');
+    if (failDescEl && failDescEl.parentNode) {
+      failDescEl.parentNode.insertBefore(rfBanner, failDescEl.nextSibling);
+    }
+  }
 
   // BC 마스터 9종
   const bcGrid = document.getElementById('p1-bc-grid');
@@ -11188,7 +11340,7 @@ function renderP3(userName, bcCode, bcMaster, ohaengKey, ohaeng, mbtiType, mbti,
 }
 
 /* ── P4 ── */
-function renderP4(userName, ohaengKey, mbtiType, gender, menopause) {
+function renderP4(userName, ohaengKey, mbtiType, gender, menopause, redFlags) {
   const triggers = getCruelHistoryTriggers(userName, ohaengKey, mbtiType, gender, menopause);
   const container = document.getElementById('p4-triggers');
   const nm = (userName && userName.length >= 3) ? userName.slice(1) : (userName || '회원');
@@ -11219,6 +11371,115 @@ function renderP4(userName, ohaengKey, mbtiType, gender, menopause) {
       </div>`;
     container.appendChild(div);
   });
+
+  // ── redFlags 의학적 주의 카드 (P4 전용 상세 버전) ──
+  const rfMount = document.getElementById('p4-redflag-mount');
+  if (rfMount && Array.isArray(redFlags) && redFlags.length > 0) {
+    // 플래그 → 상세 카드 데이터 매핑
+    const RF_DETAIL = {
+      PCOS: {
+        level: 'rf-danger', icon: '🌸', label: '다낭성 난소증후군 (PCOS)',
+        cautions: ['저GI 식단 필수 — 인슐린 저항성 교정이 최우선', '고강도 운동 주의 (코르티솔·안드로겐 상승)', '마그네슘·아연 보충, 규칙적 중강도 유산소 + 근력 병행'],
+        ref: '산부인과·내분비내과 관리 병행 권장'
+      },
+      DIABETES: {
+        level: 'rf-danger', icon: '🩸', label: '당뇨 (혈당 이상)',
+        cautions: ['공복 운동 금지 — 저혈당 위험', '운동 전후 혈당 체크 필수', '저강도~중강도로 시작, 점진적 강도 증가'],
+        ref: '운동·식단 변경 전 담당 의사 상담 필수'
+      },
+      HTN: {
+        level: 'rf-danger', icon: '💓', label: '고혈압',
+        cautions: ['나트륨 하루 2g 이하 엄격 제한', '고강도 무산소 운동 주의 (혈압 급상승)', '운동 전후 혈압 측정 권장'],
+        ref: '운동 시작 전 담당 의사 허가 필수'
+      },
+      THYROID: {
+        level: 'rf-warn', icon: '🦋', label: '갑상선 기능 이상',
+        cautions: ['십자화과 채소 과다 섭취 주의 (갑상선 기능 방해 가능)', '과도한 저칼로리 다이어트 금지', '갑상선 약 복용 시 철분·칼슘 복용 시간 분리'],
+        ref: '갑상선 수치 정기 모니터링 필수'
+      },
+      FATTY_LIVER: {
+        level: 'rf-warn', icon: '🫀', label: '지방간',
+        cautions: ['알코올 완전 금지', '과당·액상과당 엄격 제한', '유산소 운동이 지방간 개선에 직접 효과'],
+        ref: '소화기내과 정기 검진 병행'
+      },
+      STEROID: {
+        level: 'rf-warn', icon: '💊', label: '스테로이드 복용 이력',
+        cautions: ['체중·혈당 변동 모니터링 강화', '갑작스러운 운동 강도 증가 주의', '부신 억제 회복 기간 감안한 점진적 접근'],
+        ref: '처방 의사와 운동 계획 사전 협의'
+      },
+      ANTICOAGULANT: {
+        level: 'rf-danger', icon: '🩺', label: '항응고제 복용 중 ⚠',
+        cautions: ['타박상·출혈 위험이 있는 시술 금기 (지방흡입, 압박 시술)', '고강도 충격 운동 주의', '식단 변경 시 비타민K 섭취량 일정 유지'],
+        ref: '모든 시술·운동 프로그램 변경 전 의사 확인 필수'
+      },
+      ISOTRETINOIN: {
+        level: 'rf-danger', icon: '⚠️', label: '이소트레티노인 복용 중 ⚠',
+        cautions: ['레이저·필링·박피 시술 절대 금기', '피부 마찰이 심한 운동 제한 (러닝, 자전거 안장 마찰 등)', '자외선 차단 필수'],
+        ref: '복용 중단 후 최소 6개월 경과 전까지 피부 시술 금기'
+      },
+      HAIRLOSS_RX: {
+        level: 'rf-info', icon: '💊', label: '탈모약 복용 이력',
+        cautions: ['호르몬 변동 가능성 — BC 코드 재평가 주기 단축 권장', '과도한 저단백 식단 주의'],
+        ref: '처방 의사와 다이어트 식단 병행 여부 확인'
+      },
+      APPETITE_SUPP: {
+        level: 'rf-warn', icon: '💊', label: '식욕억제제 복용 이력',
+        cautions: ['식욕 신호 교란 — 배고픔·포만감 감각 재교육 필요', '요요 위험 증가 — 급격한 칼로리 제한 금지', '수면·심박수 모니터링 권장'],
+        ref: '복용 이력 기간에 따라 대사 회복 기간 차이 있음'
+      },
+      LIPO_HX: {
+        level: 'rf-warn', icon: '✂️', label: '지방흡입 이력',
+        cautions: ['해당 부위 림프 순환 손상 가능 — 재시술 전 림프 기능 점검', '압박·마사지 시술 이전 상처 회복 완전 확인', '재발 방지를 위한 BC 기반 원인 교정 우선'],
+        ref: '재시술 전 BC 기반 진단 필수'
+      },
+      LIPOLYSIS_HX: {
+        level: 'rf-info', icon: '✂️', label: '지방분해 시술 이력',
+        cautions: ['시술 부위 감각 이상 시 추가 시술 전 점검 필요', '원인 교정 없는 반복 시술은 효과 감소'],
+        ref: 'BC 기반 원인 교정 후 보조 시술 권장'
+      },
+      LIFTING_HX: {
+        level: 'rf-info', icon: '✂️', label: '리프팅 시술 이력',
+        cautions: ['고주파·초음파 시술 병행 시 누적 열 손상 주의', '시술 간격 및 강도 의사와 협의'],
+        ref: '피부 과부하 예방을 위한 시술 주기 조절'
+      },
+      FILLER_HX: {
+        level: 'rf-info', icon: '✂️', label: '필러 시술 이력',
+        cautions: ['필러 부위 강한 마사지·압박 운동 주의', '시술 부위 혈행 변화 모니터링'],
+        ref: '필러 흡수 전 해당 부위 과부하 금지'
+      },
+      ABDOMINOPLASTY_HX: {
+        level: 'rf-warn', icon: '✂️', label: '복부성형 이력',
+        cautions: ['복압 상승 운동 (크런치, 플랭크 강도) 주의', '상처 조직 유착 — 코어 운동 전 재활의학과 확인 권장'],
+        ref: '수술 후 경과 기간에 따라 운동 허용 범위 상이'
+      },
+      YOYO: {
+        level: 'rf-warn', icon: '📊', label: '요요 이력',
+        cautions: ['대사 적응(적응성 열생성 감소) 패턴 존재 — 급격한 칼로리 제한 금지', '점진적 체중 감량 (주 0.3~0.5kg 목표)', 'BC 기반 원인 교정 없이 칼로리 제한 단독 처방 비권장'],
+        ref: 'BC 기반 원인 교정 + 식단·운동 병행이 요요 방지 핵심'
+      },
+    };
+
+    const activeFlags = redFlags.filter(f => RF_DETAIL[f]);
+    if (activeFlags.length === 0) { rfMount.innerHTML = ''; }
+    else {
+      const rows = activeFlags.map(f => {
+        const d = RF_DETAIL[f];
+        const lis = d.cautions.map(c => `<li>${c}</li>`).join('');
+        return `
+          <div class="p4-rf-item ${d.level}">
+            <div class="p4-rf-nm">${d.icon} ${d.label}</div>
+            <ul class="p4-rf-cautions">${lis}</ul>
+            <div class="p4-rf-ref">📌 ${d.ref}</div>
+          </div>`;
+      }).join('');
+      rfMount.innerHTML = `
+        <div class="p4-redflag-card">
+          <div class="p4-redflag-title">🏥 의학적 주의사항 — 시술·운동·식단 제한</div>
+          <div class="p4-redflag-sub">진단 데이터에서 확인된 의학적 이력입니다. 아래 주의사항을 반드시 처방에 반영하세요.</div>
+          <div class="p4-redflag-row">${rows}</div>
+        </div>`;
+    }
+  }
 
   // ── 맺음말 엔딩 카드 ──
   const mount = document.getElementById('p4-ending-mount');

@@ -5078,6 +5078,9 @@ app.get('/api/h/result/:id', async (c) => {
       stage3_answers: parseJ(row.stage3_json),
       stage4_answers: parseJ(row.stage4_json),
       raw_answers: parsedRawResult,  // 이미 파싱된 객체 재사용
+      // goal_weight / weight_loss_pct: hospital_responses에 컬럼 없음 → raw_answers 최상위에서 추출
+      goal_weight:     parsedRawResult?.goal_weight     != null ? Number(parsedRawResult.goal_weight)     : null,
+      weight_loss_pct: parsedRawResult?.weight_loss_pct != null ? Number(parsedRawResult.weight_loss_pct) : null,
       created_at: row.created_at
     })
   } catch (e: any) {
