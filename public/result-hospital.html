@@ -11751,8 +11751,12 @@ function renderP5(metrics, bcCode, axisScores, userName) {
   ];
 
   // ── axisScores로 각 영역 urgency 계산 → 점수 높은 순 정렬 → TOP3 = STRONG ──
+  // ⚠️  관리(A04×0.7), 약물(A08×0.8): 중복 axisRef 축은 w 적용 → 운동/심리와 동점 방지
+  // P8 RAW 계산(axisRef×w)과 동일한 가중치 적용으로 P5-P8 순서 완전 일치 보장
+  var P5_WEIGHT = { '관리': 0.7, '약물': 0.8 }; // 나머지는 1.0
   var scored = P5_11_DEF.map(function(d) {
-    return { def: d, score: ax[d.axisRef] || 0 };
+    var w = P5_WEIGHT[d.nm] !== undefined ? P5_WEIGHT[d.nm] : 1.0;
+    return { def: d, score: (ax[d.axisRef] || 0) * w };
   });
   scored.sort(function(a, b) { return b.score - a.score; });
 
