@@ -3798,6 +3798,7 @@ p, div, span, h1, h2, h3, h4{
 /* ── 처방 영역: 6개 데이터 교차 근거 펼침 카드 ── */
 .rxs-card{display:block;padding:0;overflow:hidden;}
 .rxs-head{display:flex;align-items:center;gap:12px;padding:13px 14px;cursor:pointer;}
+.p5-rank-badge{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;font-size:12px;font-weight:900;flex-shrink:0;background:linear-gradient(135deg,#e8c87a,#d4a854);color:#241a36;letter-spacing:-.3px;}
 .rxs-chev{font-size:13px;color:var(--muted);flex-shrink:0;transition:transform .3s;}
 .rxs-card.open .rxs-chev{transform:rotate(180deg);}
 .rxs-body{display:none;padding:0 14px 14px;border-top:1px solid var(--line);}
@@ -11867,7 +11868,8 @@ function renderP5(metrics, bcCode, axisScores, userName) {
   // 근거 강한 영역 — 누르면 6개 데이터 교차 근거 펼침
   var sl = document.getElementById('p5-strong-list');
   if (sl) {
-    sl.innerHTML = STRONG.map(function(e){
+    sl.innerHTML = STRONG.map(function(e, idx){
+      var rankNum = idx + 1;  // 1, 2, 3
       var dots = '';
       for (var i=0;i<3;i++) dots += '<span class="ev-e-dot' + (i>=e.grade?' off':'') + '"></span>';
       var srcRows = (e.ev||[]).map(function(s){
@@ -11883,6 +11885,7 @@ function renderP5(metrics, bcCode, axisScores, userName) {
       }).join('');
       return '<div class="ev-erow rxs-card" style="--evc:' + e.c + '">' +
         '<div class="rxs-head" onclick="this.parentElement.classList.toggle(\'open\')">' +
+          '<span class="p5-rank-badge">' + rankNum + '</span>' +
           '<span class="ev-e-ic">' + e.ic + '</span>' +
           '<div class="ev-e-mid"><div class="ev-e-nm">' + e.nm + '</div><div class="ev-e-to">→ <b>' + e.to + '</b></div></div>' +
           '<div class="ev-e-grade">' + dots + '<span class="ev-e-gtx">' + e.gtx + '</span></div>' +
@@ -12034,18 +12037,42 @@ function renderP8(metrics, bcCode, axisScores, userName) {
       drug:  Math.round(RAW.drug  / MAX_RAW * FOCUS_MAX * fr * 0.8), // A08 중복 — 심리 대비 0.8
       phil:  Math.round(RAW.phil  / MAX_RAW * FOCUS_MAX * fr)
     };
-    // 1주는 focus 전부 0, 2주는 RAW 1위만, 3주는 1~2위만, 4주는 전부(8축)
+    // 1주는 focus 전부 0, 2주는 P5 TOP3 1위만, 3주는 1~2위만, 4주는 전부(8축)
+    // P5 TOP3 순서 우선, 부족하면 RAW 순 보충
     var focusRank = ['horm','form','ori','psych','mgmt','proc','drug','phil']
       .sort(function(a,b){ return (RAW[b]||0)-(RAW[a]||0); });
+    // P5 TOP3 키 순서로 우선 순위 구성
+    var p5nmsForRank = window.__P5_TOP3_NMS__ || [];
+    var p5PriorityKeys = [];
+    for (var pi2 = 0; pi2 < p5nmsForRank.length; pi2++) {
+      var pk2 = P5_NM_TO_P8_KEY[p5nmsForRank[pi2]];
+      if (pk2 && focusRank.indexOf(pk2) >= 0 && p5PriorityKeys.indexOf(pk2) < 0) p5PriorityKeys.push(pk2);
+    }
+    // 나머지는 RAW 순으로 보충 (P5 TOP3 이외 축)
+    for (var ri2 = 0; ri2 < focusRank.length; ri2++) {
+      if (p5PriorityKeys.indexOf(focusRank[ri2]) < 0) p5PriorityKeys.push(focusRank[ri2]);
+    }
     var allowN = { 1:0, 2:1, 3:2, 4:8 }[w] || 0;
     var fActive = {};
-    focusRank.forEach(function(k,i){
+    p5PriorityKeys.forEach(function(k,i){
       fActive[k] = i < allowN ? (fScaled[k] || 0) : 0;
     });
 
-    // base: 표시 6축(base3 + RAW 상위 focus3) 기준으로 남은 공간 배분
+    // base: 표시 6축(base3 + P5 TOP3 focus3) 기준으로 남은 공간 배분
     // basePool = 100 - (표시 focus 3축 합) — 시각적 100% 유지
-    var showFocus3 = focusRank.slice(0, 3);
+    // P5 TOP3 연동: P5가 아직 없으면 RAW 순으로 fallback
+    var p5nmsForBuild = window.__P5_TOP3_NMS__ || [];
+    var allFocusKeysBuild = ['horm','form','ori','psych','mgmt','proc','drug','phil'];
+    var showFocus3 = [];
+    for (var pi = 0; pi < p5nmsForBuild.length; pi++) {
+      var pk = P5_NM_TO_P8_KEY[p5nmsForBuild[pi]];
+      if (pk && allFocusKeysBuild.indexOf(pk) >= 0 && showFocus3.indexOf(pk) < 0) showFocus3.push(pk);
+    }
+    // 부족하면 RAW 순으로 보충
+    for (var ri = 0; ri < focusRank.length; ri++) {
+      if (showFocus3.length >= 3) break;
+      if (showFocus3.indexOf(focusRank[ri]) < 0) showFocus3.push(focusRank[ri]);
+    }
     var showFocusSum = showFocus3.reduce(function(s,k){ return s + (fActive[k]||0); }, 0);
     var basePool = Math.max(55, 100 - showFocusSum);  // base 최소 55 보장
     // 1주 rec 가중치를 더 크게 (회복 선행 강조)
@@ -12094,15 +12121,31 @@ function renderP8(metrics, bcCode, axisScores, userName) {
                         .map(function(a){return a.k;});
     // P5 TOP3 nm → P8 focus 키 변환 (base축 제외, 부족 시 RAW 순으로 자동 보충)
     var p5nms = window.__P5_TOP3_NMS__ || [];
-    var focusFromP5 = p5nms
-      .map(function(nm){ return P5_NM_TO_P8_KEY[nm]; })
-      .filter(function(k){ return k && allFocusKeys.indexOf(k) >= 0; }); // focus 그룹만
+    var focusFromP5 = [];
+    // P5 TOP3 순서 그대로 P8 키로 변환 — P5 1위→P8 1위, 순서 일치
+    for (var i = 0; i < p5nms.length; i++) {
+      var k = P5_NM_TO_P8_KEY[p5nms[i]];
+      if (k && allFocusKeys.indexOf(k) >= 0 && focusFromP5.indexOf(k) < 0) {
+        focusFromP5.push(k);
+      }
+    }
     // 3개 미만이면 RAW 순 focus에서 미포함된 것으로 보충
-    allFocusKeys.forEach(function(k){
-      if (focusFromP5.length >= 3) return;
-      if (focusFromP5.indexOf(k) < 0) focusFromP5.push(k);
-    });
+    for (var j = 0; j < allFocusKeys.length; j++) {
+      if (focusFromP5.length >= 3) break;
+      if (focusFromP5.indexOf(allFocusKeys[j]) < 0) focusFromP5.push(allFocusKeys[j]);
+    }
     return baseKeys.concat(focusFromP5.slice(0,3)); // 기본3 + P5연동focus3 = 6축
+  }
+  // P5 TOP3에서 변환된 focus 키 목록 (paint에서 isActive 강제용)
+  function getP5FocusKeys(){
+    var p5nms = window.__P5_TOP3_NMS__ || [];
+    var allFocusKeys = AX.filter(function(a){return a.group==='focus';}).map(function(a){return a.k;});
+    var keys = [];
+    for (var i = 0; i < p5nms.length; i++) {
+      var k = P5_NM_TO_P8_KEY[p5nms[i]];
+      if (k && allFocusKeys.indexOf(k) >= 0) keys.push(k);
+    }
+    return keys;
   }
   // ── 그 주차에서 점수 1위인 축 키 반환 (표시 6축 중) ──
   function topAxisKey(w){
@@ -12194,11 +12237,16 @@ function renderP8(metrics, bcCode, axisScores, userName) {
   function paint(w){
     var r = DATA[w] || DATA[FREE];
     var act = activeKeys(w);
+    var p5FocusKeys = getP5FocusKeys(); // P5 TOP3 → P8 focus 키 목록
     AX.forEach(function(a){
       if (act.indexOf(a.k) < 0) return;   // 표시 6축만
-      // 회복·식단·운동은 항상 활성, 원인축은 점수>0일 때 활성
+      // 회복·식단·운동은 항상 활성
+      // P5 TOP3 focus 키는 값=0이어도 행 표시 (isActive=false → dim+0% 표시)
+      // 그 외 focus 키는 점수>0 일 때만 활성
       var isBase = a.group==='base';
-      var isActive = isBase ? true : (r[a.k]||0) > 0;
+      var isP5Focus = p5FocusKeys.indexOf(a.k) >= 0;
+      var isActive = isBase ? true : isP5Focus ? (r[a.k]||0) > 0 : (r[a.k]||0) > 0;
+      // P5 TOP3 focus는 값=0이어도 행을 dim으로 표시 (숨기지 않음)
       paintRow(a, (r[a.k]||0), isActive, '');
     });
     var wn=document.getElementById('rxp-wknum'); if(wn) wn.innerHTML=w+'<span>주차</span>';
