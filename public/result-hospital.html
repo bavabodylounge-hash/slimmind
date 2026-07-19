@@ -11763,6 +11763,10 @@ function renderP5(metrics, bcCode, axisScores, userName) {
   var TOP3 = scored.slice(0, 3);
   var REST = scored.slice(3);
 
+  // ── P8 맞춤비율 연동: P5 TOP3 영역명을 전역으로 공유 ──
+  // renderP8()의 activeKeys()가 이 값을 우선 참조 → P5-P8 완전 일치 보장
+  window.__P5_TOP3_NMS__ = TOP3.map(function(item){ return item.def.nm; });
+
   // ── STRONG 배열 동적 생성 ──
   var STRONG = TOP3.map(function(item) {
     var d = item.def;
@@ -12074,17 +12078,31 @@ function renderP8(metrics, bcCode, axisScores, userName) {
 
   var DATA = { 1: buildWeekData(1), 2: buildWeekData(2), 3: buildWeekData(3), 4: buildWeekData(4) };
   // base 3축은 항상 활성. focus는 점수>0인 것 점수순. 전체 최소 6축 보장.
-  // 표시 축 = 회복·식단·운동(기본 3) + 원인 점수 상위 3 = 총 6축 고정.
+  // 표시 축 = 회복·식단·운동(기본 3) + 핵심처방(P5) TOP3와 동일한 focus 3축 = 총 6축
   // 회복·식단·운동은 점수 0이어도 항상 포함(빠질 수 없는 핵심).
-  // ── focus 축을 RAW 원시 점수 기준으로 상위 3 선택 (fScaled 스케일 차이 제거) ──
-  // P5 TOP3와 동일 기준: A02=16 > A09=7.76 > A08=7.55 → 한방>시술>심리 순
+  // ── focus 3축: P5 TOP3 영역명 → P8 키 변환 (P5-P8 완전 연동) ──
+  // P5 TOP3에 base축(회복·식단·운동)이 포함되면 → 해당 축은 이미 base3에 있으므로
+  //   focus 슬롯에서 제외 후 RAW 순으로 보충 → 항상 focus 3축 보장
+  var P5_NM_TO_P8_KEY = {
+    '식단':'diet', '심리':'psych', '호르몬':'horm', '운동':'ex', '관리':'mgmt',
+    '회복':'rec',  '한방':'ori',   '체형':'form',   '시술':'proc','약물':'drug', '철학':'phil'
+  };
   function activeKeys(w){
     var baseKeys = ['rec','diet','ex'];
-    var focus = AX.filter(function(a){return a.group==='focus';})
-                  .sort(function(a,b){return (RAW[b.k]||0)-(RAW[a.k]||0);}) // RAW 기준 정렬
-                  .map(function(a){return a.k;})
-                  .slice(0, 3);   // 원인 RAW 상위 3
-    return baseKeys.concat(focus); // 6축
+    var allFocusKeys = AX.filter(function(a){return a.group==='focus';})
+                        .sort(function(a,b){return (RAW[b.k]||0)-(RAW[a.k]||0);}) // RAW 기준
+                        .map(function(a){return a.k;});
+    // P5 TOP3 nm → P8 focus 키 변환 (base축 제외, 부족 시 RAW 순으로 자동 보충)
+    var p5nms = window.__P5_TOP3_NMS__ || [];
+    var focusFromP5 = p5nms
+      .map(function(nm){ return P5_NM_TO_P8_KEY[nm]; })
+      .filter(function(k){ return k && allFocusKeys.indexOf(k) >= 0; }); // focus 그룹만
+    // 3개 미만이면 RAW 순 focus에서 미포함된 것으로 보충
+    allFocusKeys.forEach(function(k){
+      if (focusFromP5.length >= 3) return;
+      if (focusFromP5.indexOf(k) < 0) focusFromP5.push(k);
+    });
+    return baseKeys.concat(focusFromP5.slice(0,3)); // 기본3 + P5연동focus3 = 6축
   }
   // ── 그 주차에서 점수 1위인 축 키 반환 (표시 6축 중) ──
   function topAxisKey(w){
