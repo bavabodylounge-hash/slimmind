@@ -13139,7 +13139,13 @@ function _forceHideOverlay() {
   const ov = document.getElementById('loading-overlay');
   if (ov && ov.style.display !== 'none') {
     ov.style.opacity = '0';
-    setTimeout(() => { ov.style.display = 'none'; }, 400);
+    ov.style.pointerEvents = 'none';
+    document.body.style.overflow = '';
+    setTimeout(() => {
+      ov.style.display = 'none';
+      if (typeof triggerAnim === 'function') triggerAnim();
+      if (typeof countUpMetaAge === 'function') countUpMetaAge();
+    }, 400);
   }
 }
 const _overlayKillTimer = setTimeout(_forceHideOverlay, 5000);
@@ -18315,6 +18321,7 @@ function wow6CheckItem() {
         ov.style.pointerEvents='none';
         document.body.style.overflow='';
         if(typeof triggerAnim==='function') triggerAnim();
+        if(typeof countUpMetaAge==='function') countUpMetaAge();
       }catch(e){}
       killed=true;
       return true;
