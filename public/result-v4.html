@@ -15116,21 +15116,13 @@ function renderP8(metrics, bcCode, axisScores, userName, s2, data) {
   // 표시 축 = 회복·식단·운동(기본 3) + 원인 점수 상위 3 = 총 6축 고정.
   // 회복·식단·운동은 점수 0이어도 항상 포함(빠질 수 없는 핵심).
   function activeKeys(w){
-    var r = DATA[w] || DATA[FREE];
     var baseKeys = ['rec','diet','ex'];
-    // focus 중 이 주차에 점수>0인 것만, _top3 기반 동적 순서
+    // ── focus 축을 RAW 원시 점수 기준으로 상위 3 선택 (P5 TOP3와 동일 기준) ──
+    // fScaled는 축마다 스케일 계수가 달라 RAW 순위와 역전될 수 있으므로 RAW 사용
     var focus = AX.filter(function(a){ return a.group==='focus'; })
-                  .sort(function(a,b){ return (r[b.k]||0)-(r[a.k]||0); })
-                  .filter(function(a){ return (r[a.k]||0) > 0; })
+                  .sort(function(a,b){ return (RAW[b.k]||0)-(RAW[a.k]||0); })
                   .map(function(a){ return a.k; })
                   .slice(0, 3);
-    // focus가 3개 미만이면 전체 focus 점수순으로 채움 (그래프 빈칸 방지)
-    if (focus.length < 1) {
-      focus = AX.filter(function(a){ return a.group==='focus'; })
-                .sort(function(a,b){ return (r[b.k]||0)-(r[a.k]||0); })
-                .map(function(a){ return a.k; })
-                .slice(0, 3);
-    }
     return baseKeys.concat(focus);
   }
   // ── 그 주차에서 점수 1위인 축 키 반환 (표시 6축 중) ──
