@@ -12039,10 +12039,10 @@ function renderP8(metrics, bcCode, axisScores, userName) {
   function buildWeekData(w) {
     var fr = focusRate[w] || 0;
     // ── focus 축 점수: RAW/MAX_RAW × FOCUS_MAX (단일 스케일로 RAW 비율 직접 반영) ──
-    // MAX_RAW=20: axisScores 최대 기대값(여유 포함)
-    // FOCUS_MAX=20: 4주차 최고점 축이 약 16% 기여 (RAW=16 기준)
+    // MAX_RAW=100: scoreAxes 0~100 스케일 기준 (survey-hospital.html ratio*100으로 통일)
+    // FOCUS_MAX=20: 4주차 최고점 축(RAW≈80)이 약 16% 기여 → P8 그래프 합리적 비율 유지
     // → 스케일 계수가 축마다 달랐던 기존 방식 제거 → P5 TOP3 순위와 P8 막대 순위 일치 보장
-    var MAX_RAW = 20, FOCUS_MAX = 20;
+    var MAX_RAW = 100, FOCUS_MAX = 20;
     var fScaled = {
       horm:  Math.round(RAW.horm  / MAX_RAW * FOCUS_MAX * fr),
       form:  Math.round(RAW.form  / MAX_RAW * FOCUS_MAX * fr),
@@ -12096,6 +12096,7 @@ function renderP8(metrics, bcCode, axisScores, userName) {
     var wDiet = 1.2;
     var wEx   = 1.0;
     // rec/diet/ex 에도 axisScore 반영: 가중 × (1 + rawScore/200)
+    // rawScore는 0~100 스케일 → /200 으로 정규화하면 0~0.5 범위 보정값
     var adjRec  = wRec  * (1 + (RAW.rec  || 50) / 200);
     var adjDiet = wDiet * (1 + (RAW.diet || 50) / 200);
     var adjEx   = wEx   * (1 + (RAW.ex   || 50) / 200);
@@ -12640,9 +12641,12 @@ function renderP6(userName, fullCode, ohaengType, inputData) {
   ];
 
   // axisScores 기반으로 긴급도 점수 계산 후 정렬
+  // ⚠️ 중복 axisRef 처리: 관리(A04)×0.7, 약물(A08)×0.8 → P5 STRONG 순위와 완전 일치 보장
+  const DX_WEIGHT = { '관리': 0.7, '약물': 0.8 }; // 나머지는 1.0
   const dxWithScores = DX_11_BASE.map(dx => {
     const rawScore = axisScoresRef[dx.axisRef] || 0;
-    return { ...dx, urgency: rawScore };
+    const w = DX_WEIGHT[dx.key] !== undefined ? DX_WEIGHT[dx.key] : 1.0;
+    return { ...dx, urgency: rawScore * w };
   });
   // 점수 높은 순 정렬 (= 가장 시급한 진단이 먼저)
   dxWithScores.sort((a, b) => b.urgency - a.urgency);
