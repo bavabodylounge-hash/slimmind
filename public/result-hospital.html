@@ -3930,7 +3930,37 @@ p, div, span, h1, h2, h3, h4{
 .rmup-cta-arr{font-size:17px;font-weight:700;}
 .rmup-note{font-size:10.5px;font-weight:600;color:#8a7e66;text-align:center;margin-top:12px;line-height:1.5;word-break:keep-all;}
 /* ─── 나의 실천 기록 (진행현황) ─── */
-/* ─── 오늘 할 일 카드 (page10 맨 위) ─── */
+/* ─── P10 단계 맞춤 처방 헤더 카드 (오늘 할일 대체) ─── */
+/* phase-hero: 현재 단계(회복기/전환기/가속기/안정기) + 주차 배지 */
+.p10pc{background:linear-gradient(165deg,#1e1825,#2a1e35);border-radius:22px;padding:22px 18px 18px;margin-bottom:16px;box-shadow:0 10px 32px rgba(36,28,20,.28);overflow:hidden;position:relative;}
+.p10pc-glow{position:absolute;top:-50px;right:-40px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,rgba(139,109,181,.35),transparent 70%);pointer-events:none;}
+.p10pc-step{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:800;letter-spacing:1.2px;color:rgba(245,236,224,.7);margin-bottom:11px;}
+.p10pc-phrow{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;}
+.p10pc-phase{font-size:22px;font-weight:900;color:#fff;letter-spacing:-.5px;}
+.p10pc-wkbadge{font-size:12px;font-weight:800;color:#f7efe4;background:rgba(255,255,255,.14);border:1px solid rgba(255,200,165,.3);border-radius:20px;padding:5px 14px;}
+.p10pc-sub{font-size:13px;font-weight:600;color:rgba(245,236,224,.65);line-height:1.55;margin-bottom:18px;word-break:keep-all;}
+/* 맞춤 비율 미니 바 */
+.p10pc-ratiobar{display:flex;flex-direction:column;gap:9px;margin-bottom:18px;}
+.p10pc-rb-row{display:flex;align-items:center;gap:9px;}
+.p10pc-rb-ic{font-size:14px;width:18px;text-align:center;flex-shrink:0;}
+.p10pc-rb-nm{font-size:12.5px;font-weight:700;color:rgba(245,236,224,.85);width:42px;flex-shrink:0;}
+.p10pc-rb-bg{flex:1;height:10px;background:rgba(255,255,255,.1);border-radius:6px;overflow:hidden;}
+.p10pc-rb-fl{height:100%;border-radius:6px;transition:width 1s cubic-bezier(.34,1,.34,1);}
+.p10pc-rb-pct{font-size:12px;font-weight:900;color:#fff;width:32px;text-align:right;flex-shrink:0;}
+/* 처방 3항목 카드 */
+.p10pc-cards{display:flex;flex-direction:column;gap:10px;}
+.p10pc-item{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:13px 14px;border-left:3px solid;}
+.p10pc-item-hd{display:flex;align-items:center;gap:9px;margin-bottom:6px;}
+.p10pc-item-ic{font-size:18px;}
+.p10pc-item-nm{font-size:14px;font-weight:900;color:#fff;}
+.p10pc-item-badge{font-size:10px;font-weight:800;border-radius:10px;padding:2px 8px;margin-left:auto;}
+.p10pc-item-tx{font-size:12.5px;font-weight:600;color:rgba(245,236,224,.72);line-height:1.55;word-break:keep-all;}
+/* 하단 CTA */
+.p10pc-foot{display:flex;align-items:center;justify-content:space-between;margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.1);}
+.p10pc-streak{font-size:13px;font-weight:800;color:rgba(245,236,224,.6);}
+.p10pc-streak b{color:#e8937a;}
+.p10pc-cta{font-size:12.5px;font-weight:900;color:#e8937a;cursor:pointer;display:flex;align-items:center;gap:5px;}
+/* ─── 오늘 할 일 카드 (page10 맨 위) — 레거시 CSS 유지(리셋 방지) ─── */
 .tdy-card{background:linear-gradient(165deg,#fff,#fdf3ea);border:2px solid #e8c5a0;border-radius:22px;padding:20px 18px;box-shadow:0 8px 24px rgba(201,138,60,.16);margin-bottom:22px;}
 .tdy-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;}
 .tdy-day{font-size:12.5px;font-weight:900;letter-spacing:.5px;color:#8b6db5;}
@@ -5469,10 +5499,11 @@ p, div, span, h1, h2, h3, h4{
 </div>
 </section>
 
-<!-- ═══════════ P10: 오늘 (데일리 실천) — 오늘 할 일 + 아코디언 + 기록 ═══════════ -->
+<!-- ═══════════ P10: 오늘 (데일리 실천) — 단계 맞춤 처방 + 아코디언 + 기록 ═══════════ -->
 <section id="page10" class="page">
   <div class="section-wrap" style="padding-top:12px;">
-    <div id="p10-today" class="fade-up"></div>
+    <!-- p10-today: '오늘 할일' 제거 → 단계별 맞춤 처방 헤더 카드로 교체 -->
+    <div id="p10-phase-card" class="fade-up"></div>
     <div id="p10-accordion" class="fade-up" style="transition-delay:.1s"></div>
     <div class="liverec fade-up" style="transition-delay:.14s" id="p10-liverec"></div>
   </div>
@@ -12797,6 +12828,8 @@ function renderP8(metrics, bcCode, axisScores, userName, answers) {
   }
 
   var DATA = { 1: buildWeekData(1), 2: buildWeekData(2), 3: buildWeekData(3), 4: buildWeekData(4) };
+  // ── P10 오늘탭 맞춤비율 DATA 브릿지 ── P8 렌더 직후 P10이 실제 비율을 참조할 수 있도록 저장
+  if (typeof _saveP8RatioDataForP10 === 'function') _saveP8RatioDataForP10(DATA);
   // base 3축은 항상 활성. focus는 점수>0인 것 점수순. 전체 최소 6축 보장.
   // 표시 축 = 회복·식단·운동(기본 3) + 핵심처방(P5) TOP3와 동일한 focus 3축 = 총 6축
   // 회복·식단·운동은 점수 0이어도 항상 포함(빠질 수 없는 핵심).
@@ -15579,93 +15612,197 @@ function consultantLabel(name){
 }
 window.consultantLabel = consultantLabel;
 
-// ════ 오늘 페이지: "오늘 할 일" 카드 (page10 맨 위) ════
+// ════ P10: 단계 맞춤 처방 헤더 카드 (오늘 할일 대체) ════
+// - 회복기(1~2주) / 전환기(3~5주) / 가속기(6~9주) / 안정기(10~12주) 단계 표시
+// - 맞춤비율 P8 DATA와 연동: 해당 단계 주차 대표 비율 미니바
+// - BC코드 + 오행 기반 운동/식단/회복 개인화 텍스트
+// - 하단 CTA: "이 주차 상세 계획 보기" → 아코디언 스크롤
 function renderDailyPage(){
-  // 아코디언·기록은 renderRoadmapAccordion/renderLiveRecord가 이미 p10에 채움.
-  // 여기선 맨 위 "오늘 할 일" 카드만 그린다.
-  var host = document.getElementById('p10-today');
+  var host = document.getElementById('p10-phase-card');
+  // 레거시 호환: p10-today도 체크
+  if (!host) host = document.getElementById('p10-today');
   if (!host) return;
+
   var weeks = window.__ACTIVE_WEEKS__ || [];
   if (!weeks.length){ host.innerHTML=''; return; }
 
-  // 현재 주차 = 1주차 (열린 주차 중 첫째). 추후 실제 진행주차로 교체 가능.
-  var w = weeks[0];
-  var phaseName = (typeof ROADMAP_PHASES!=='undefined' && ROADMAP_PHASES[0]) ? ROADMAP_PHASES[0].name : '회복기';
-  var weekNo = w.week || 1;
+  // ── 현재 단계 결정: 1주차 처방 기준 (실서비스에서는 진행주차로 교체)
+  var w1 = weeks[0]; // 1주차 처방 데이터
+  var weekNo = w1.week || 1;
 
-  // 오늘 요일 (월=0 … 일=6)
-  var DAYS=['월','화','수','목','금','토','일'];
-  var jsDay = new Date().getDay();           // 0=일
-  var todayIdx = (jsDay===0) ? 6 : jsDay-1;  // 월0..일6
-  var todayNm = DAYS[todayIdx];
+  // ── ROADMAP_PHASES에서 현재 주차가 속한 단계 찾기
+  var curPhase = null;
+  if (typeof ROADMAP_PHASES !== 'undefined') {
+    for (var pi = 0; pi < ROADMAP_PHASES.length; pi++) {
+      var ph = ROADMAP_PHASES[pi];
+      if (ph.weeks && ph.weeks.indexOf(weekNo) >= 0) { curPhase = ph; break; }
+    }
+    if (!curPhase) curPhase = ROADMAP_PHASES[0]; // fallback: 회복기
+  }
+  var phaseIcon  = curPhase ? curPhase.icon  : '🔥';
+  var phaseName  = curPhase ? curPhase.name  : '회복기';
+  var phaseStep  = curPhase ? curPhase.step  : 'STEP 1';
+  var phaseColor = curPhase ? curPhase.sc    : '#8b6db5';
+  var phaseSub   = curPhase ? curPhase.sub   : '무너진 코르티솔·수면 리듬부터 다독입니다.';
 
-  // 운동 — 요일별 분리에서 오늘 것
-  var exMain = w.exercise_ok || '운동';
-  var exSplit = (typeof parseExerciseSplit==='function') ? parseExerciseSplit(w.exercise_detail, exMain) : null;
-  var exToday;
-  if (exSplit){
-    if (todayIdx>=5){ exToday = (todayIdx===5 ? (exSplit.sat||exMain) : '완전 휴식 — 회복'); }
-    else if (todayIdx===0||todayIdx===2||todayIdx===4){ exToday = exSplit.mwf.main; }
-    else { exToday = exSplit.tt.main; }
-  } else { exToday = exMain; }
+  // ── P8 맞춤비율 DATA에서 1주차 비율 읽기
+  // window.__P8_DATA__ 없으면 ACTIVE_WEEKS nutrition으로 fallback
+  var ratioData = null;
+  try {
+    // P8 렌더링 시 DATA를 window에 저장해 두는 경우 참조
+    ratioData = (window.__P8_RATIO_DATA__ && window.__P8_RATIO_DATA__[weekNo])
+      ? window.__P8_RATIO_DATA__[weekNo] : null;
+  } catch(e){}
 
-  // 식단 — 끼니 요약
-  var dietShort = '아침 · 점심 · 저녁';
-  // 회복 — 오늘 밤 루틴
-  var recToday = w.recovery_ok || '밤 루틴';
+  // P8 DATA 없으면 ROADMAP_PHASES 단계 기반 기본 비율 사용
+  // 회복기: rec↑ diet= ex↓ / 전환기: diet↑ rec= ex↑ / 가속기: ex↑ diet= rec↓ / 안정기: 균등
+  var defaultRatios = {
+    'recovery': { rec:52, diet:30, ex:18 },
+    'shift':    { rec:30, diet:42, ex:28 },
+    'accel':    { rec:20, diet:32, ex:48 },
+    'stable':   { rec:28, diet:38, ex:34 }
+  };
+  var phaseKey  = curPhase ? curPhase.key : 'recovery';
+  var baseRatio = (ratioData)
+    ? { rec: ratioData.rec||0, diet: ratioData.diet||0, ex: ratioData.ex||0 }
+    : (defaultRatios[phaseKey] || defaultRatios['recovery']);
 
-  var isRestDay = (todayIdx>=6); // 일요일만 운동 완전휴식 취급
+  // ── P8 DATA 사용 시 rec+diet+ex 합산이 100%가 아닐 수 있으므로 정규화
+  (function(){
+    var s = (baseRatio.rec||0) + (baseRatio.diet||0) + (baseRatio.ex||0);
+    if (s > 0 && Math.abs(s - 100) > 2) { // 100에서 2% 이상 벗어나면 정규화
+      baseRatio = {
+        rec:  Math.round((baseRatio.rec  || 0) / s * 100),
+        diet: Math.round((baseRatio.diet || 0) / s * 100),
+        ex:   0
+      };
+      baseRatio.ex = 100 - baseRatio.rec - baseRatio.diet; // 나머지는 운동
+    }
+  })();
 
-  function row(area, ic, color, cl, nm, sub, target){
-    return '<button class="tdy-item '+cl+'" data-tdy-go="'+target+'" type="button">'+
-      '<span class="tdy-ic">'+ic+'</span>'+
-      '<span class="tdy-bd"><span class="tdy-nm">'+nm+'</span><span class="tdy-sub">'+sub+'</span></span>'+
-      '<span class="tdy-arrow">›</span>'+
-    '</button>';
+  // ── 운동/식단/회복 처방 텍스트 — ACTIVE_WEEKS[0] 처방 사용
+  // exercise_ok: BC+오행 오버레이 합산 텍스트 (단계별 개인화 핵심)
+  var exText  = w1.exercise_ok  || '맞춤 운동 처방';
+  if (exText.length > 65) exText = exText.slice(0, 65) + '…';
+  // diet: diet_ok 우선(요약형), meal_plan은 너무 길어 보조용
+  var dietText = w1.diet_ok || w1.meal_plan || '맞춤 식단 처방';
+  if (dietText.length > 65) dietText = dietText.slice(0, 65) + '…';
+  var recText = w1.recovery_ok || '회복 루틴';
+  if (recText.length > 65) recText = recText.slice(0, 65) + '…';
+
+  // ── 오행 기질 레이어 보완 텍스트
+  var ohaengCaution = w1.ohaeng_caution || '';
+  var ohaengKey     = (window.__DIAG_DATA__ && window.__DIAG_DATA__.ohaeng_type)
+                   || (window.__RESULT__ && window.__RESULT__.ohaengType) || '';
+
+  // ── 오행별 운동/식단/회복 보완 한 줄 — P10 전용 간결 버전
+  var OHAENG_P10 = {
+    '목(木)': { ex:'유산소 마무리 후 스트레칭 10분 필수',  diet:'신맛 식품(레몬·식초) 소량 추가',  rec:'눈 피로 해소 온찜질 5분' },
+    '화(火)': { ex:'운동 강도 80% 이하 + 쿨다운 10분',    diet:'쓴맛(케일·다크초콜릿) 소량',       rec:'취침 1시간 전 스마트폰 차단' },
+    '토(土)': { ex:'식후 20분 평지 걷기 최우선',           diet:'단맛 자연식(고구마·호박) 소식다회', rec:'복부 온찜질 10분 / 소화 촉진' },
+    '금(金)': { ex:'호흡 운동 — 4-7-8 호흡 3세트',        diet:'매운맛(생강·고추) 소량, 폐 보강',   rec:'깊은 복식호흡 10분' },
+    '수(水)': { ex:'수영·아쿠아로빅 우선, 무릎 부하 최소', diet:'짠맛 절제, 검은콩·미역 보강',       rec:'족욕 10분 + 발바닥 마사지' }
+  };
+  var ohaengTip = ohaengKey ? (OHAENG_P10[ohaengKey] || null) : null;
+
+  // ── BC 기반 목표 감량 개인화 문구
+  var goalKg    = (window.__DIAG_DATA__ && window.__DIAG_DATA__.goal_weight)
+               || (window.__RESULT__ && window.__RESULT__.goalWeight) || null;
+  var curKg     = (window.__DIAG_DATA__ && window.__DIAG_DATA__.current_weight)
+               || (window.__RESULT__ && window.__RESULT__.currentWeight) || null;
+  var lossKg    = (goalKg && curKg && curKg > goalKg) ? (curKg - goalKg).toFixed(1) : null;
+
+  // 단계별 목표 진도 문구
+  var progressMsg = '';
+  if (lossKg) {
+    var phaseGoalMap = { recovery:'기초 다지기(0.5~1kg)', shift:'대사 점화(1~2kg)', accel:'집중 감량(2~4kg)', stable:'체형 안정' };
+    progressMsg = '목표 -' + lossKg + 'kg 중 ' + (phaseGoalMap[phaseKey] || '') + ' 구간';
   }
 
-  host.innerHTML =
-    '<div class="tdy-card">'+
-      '<div class="tdy-top"><span class="tdy-day">오늘 · '+todayNm+'요일</span>'+
-        '<span class="tdy-week">'+phaseName+' '+weekNo+'주차</span></div>'+
-      '<div class="tdy-title">오늘 할 일</div>'+
-      '<div class="tdy-list">'+
-        row('ex','🏃','#5a6e3a','ex','운동', exToday, 'ex')+
-        row('di','🍽️','#c98a3c','di','식단', dietShort, 'di')+
-        row('re','🌙','#8b6db5','re','회복', recToday, 're')+
+  // ── 스트릭
+  var streakN = 0;
+  try { if(typeof _wgGetStreak==='function') streakN = _wgGetStreak()||0; } catch(e){}
+
+  // ── HTML 조립
+  function ratioBar(ic, nm, color, pct) {
+    return '<div class="p10pc-rb-row">'+
+      '<span class="p10pc-rb-ic">'+ic+'</span>'+
+      '<span class="p10pc-rb-nm">'+nm+'</span>'+
+      '<div class="p10pc-rb-bg"><div class="p10pc-rb-fl" style="width:'+pct+'%;background:'+color+'"></div></div>'+
+      '<span class="p10pc-rb-pct">'+pct+'%</span>'+
+    '</div>';
+  }
+
+  function prescCard(ic, nm, borderColor, bgColor, badgeColor, badgeLabel, mainTx, ohaengTx) {
+    return '<div class="p10pc-item" style="border-left-color:'+borderColor+'">'+
+      '<div class="p10pc-item-hd">'+
+        '<span class="p10pc-item-ic">'+ic+'</span>'+
+        '<span class="p10pc-item-nm">'+nm+'</span>'+
+        '<span class="p10pc-item-badge" style="background:'+bgColor+';color:'+badgeColor+'">'+badgeLabel+'</span>'+
       '</div>'+
-      '<div class="tdy-foot">'+
-        '<span class="tdy-streak"><span class="tdy-fire">🔥</span> <b id="tdy-streak-n">0</b>일 연속</span>'+
-        '<span class="tdy-prog" id="tdy-prog">오늘 체크하러 가기</span>'+
+      '<div class="p10pc-item-tx">'+mainTx+'</div>'+
+      (ohaengTx ? '<div class="p10pc-item-tx" style="margin-top:5px;color:rgba(245,236,224,.5);font-size:11.5px;">'+
+        '🌿 '+ohaengTx+'</div>' : '')+
+    '</div>';
+  }
+
+  // 단계별 비율 배지 레이블
+  var ratioBadgeMap = {
+    'recovery': { ex:'↓ 무리 금지', diet:'↔ 기준 유지', rec:'↑ 최우선' },
+    'shift':    { ex:'↗ 강도 올리기', diet:'↑ 조정 시작', rec:'↔ 유지' },
+    'accel':    { ex:'↑ 정점 가동', diet:'↔ 안정 유지', rec:'↓ 최소화' },
+    'stable':   { ex:'↔ 습관화', diet:'↔ 장기 유지', rec:'↔ 정착' }
+  };
+  var rb = ratioBadgeMap[phaseKey] || ratioBadgeMap['recovery'];
+
+  host.innerHTML =
+    '<div class="p10pc">'+
+      '<div class="p10pc-glow"></div>'+
+      '<div class="p10pc-step">'+phaseStep+' · '+phaseName+'</div>'+
+      '<div class="p10pc-phrow">'+
+        '<div class="p10pc-phase">'+phaseIcon+' '+phaseName+'</div>'+
+        '<div class="p10pc-wkbadge">'+weekNo+'주차</div>'+
+      '</div>'+
+      '<div class="p10pc-sub">'+phaseSub+(progressMsg?'<br><span style="color:'+phaseColor+';font-weight:800;">'+progressMsg+'</span>':'')+'</div>'+
+      // 맞춤비율 미니바
+      '<div class="p10pc-ratiobar">'+
+        ratioBar('🌙','회복','#8b6db5', baseRatio.rec)+
+        ratioBar('🍽️','식단','#c98a3c', baseRatio.diet)+
+        ratioBar('🏃','운동','#5a6e3a', baseRatio.ex)+
+      '</div>'+
+      // 처방 카드 3종
+      '<div class="p10pc-cards">'+
+        prescCard('🏃','운동 처방','#5a6e3a','rgba(90,110,58,.25)','#b8d088',rb.ex, exText, ohaengTip?ohaengTip.ex:'')+
+        prescCard('🍽️','식단 처방','#c98a3c','rgba(201,138,60,.25)','#f0c878',rb.diet, dietText, ohaengTip?ohaengTip.diet:'')+
+        prescCard('🌙','회복 처방','#8b6db5','rgba(139,109,181,.25)','#c4a8e8',rb.rec, recText, ohaengTip?ohaengTip.rec:'')+
+      '</div>'+
+      // 하단
+      '<div class="p10pc-foot">'+
+        '<span class="p10pc-streak">'+
+          (streakN>0 ? '🔥 <b>'+streakN+'일</b> 연속 실천 중' : '오늘부터 시작하세요')+
+        '</span>'+
+        '<span class="p10pc-cta" id="p10-phase-cta">상세 계획 보기 ›</span>'+
       '</div>'+
     '</div>';
 
-  // 항목 누르면 → 아코디언 1주차 펼치고 해당 영역(기둥) 맨 위로
-  host.querySelectorAll('.tdy-item').forEach(function(btn){
-    btn.onclick=function(){
-      var go=btn.getAttribute('data-tdy-go');
-      _scrollToTrack(weekNo, go);
-    };
-  });
-  // "오늘 체크하러 가기" 누르면 → 아래 아코디언으로 스크롤
-  var progBtn=document.getElementById('tdy-prog');
-  if (progBtn){
-    progBtn.style.cursor='pointer';
-    progBtn.onclick=function(){
-      var acc=document.getElementById('p10-accordion');
-      if(acc){
-        var navH=56;
-        var rect=acc.getBoundingClientRect();
-        var y=window.pageYOffset+rect.top-navH-10;
+  // CTA: 아코디언으로 스크롤
+  var ctaBtn = document.getElementById('p10-phase-cta');
+  if (ctaBtn) {
+    ctaBtn.onclick = function(){
+      var acc = document.getElementById('p10-accordion');
+      if (acc) {
+        var navH = 56;
+        var y = window.pageYOffset + acc.getBoundingClientRect().top - navH - 10;
         window.scrollTo({top:y, behavior:'smooth'});
       }
     };
   }
+}
 
-  // 스트릭 동기화 (있으면)
-  if (typeof _wgGetStreak==='function'){
-    try{ var sk=_wgGetStreak(); var el=document.getElementById('tdy-streak-n'); if(el&&sk!=null) el.textContent=sk; }catch(e){}
-  }
+// ── P8 비율 DATA를 P10에서 참조할 수 있도록 저장하는 훅 ──
+// renderP8(renderRxpSection) 내에서 DATA가 생성된 후 이 함수를 호출해 저장
+function _saveP8RatioDataForP10(dataMap) {
+  window.__P8_RATIO_DATA__ = dataMap;
 }
 
 // 오늘 할 일 항목 → 아코디언 펼치고 트랙으로 스크롤
