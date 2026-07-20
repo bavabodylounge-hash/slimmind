@@ -12343,7 +12343,7 @@ function renderP8(metrics, bcCode, axisScores, userName) {
 function renderP9(metrics, bcCode, axisScores, data) {
   // ════════════════════════════════════════════
   // P9 미래 — 시뮬레이터 4주 공개 / 12주 잠김 (업셀링)
-  // ※ 4주/12주 예측값은 백엔드(서우님)가 BC코드별로 채울 자리.
+  // BC코드별 개인화 예측 비율 적용
   // ════════════════════════════════════════════
   // 현재값은 바디코드(P1)와 동일한 실제 지표를 사용 — 나이 불일치 방지
   var curAge = (metrics && metrics.metaAge != null) ? metrics.metaAge : 52;
@@ -12351,6 +12351,32 @@ function renderP9(metrics, bcCode, axisScores, data) {
   var curHorm = (metrics && metrics.metaHormone != null) ? metrics.metaHormone : 88;
   function yr(v){ return v + '세'; }
   function pc(v){ return Math.round(v) + '%'; }
+
+  // ── BC코드별 개인화 예측 비율 테이블 ──
+  // belly4/belly12: 4주/12주 후 복부 위험도 잔존 비율 (낮을수록 개선 크다)
+  // horm4/horm12: 4주/12주 후 호르몬 부하 잔존 비율
+  // age4/age12: 4주/12주 후 몸나이 감소 (세)
+  // loss4Ratio: 4주 감량이 전체의 몇 % (체중 분배)
+  // ─────────────────────────────────────────────────────────────────
+  // 설계 원칙:
+  //   BC-3(인슐린·내장): 복부에 집중 → 복부 개선 빠름, 호르몬은 느림
+  //   BC-4(갑상선·요요): 대사 회복 느림 → 전체 개선 보수적
+  //   BC-1(림프·부종): 순환 개선 → 초기 부종 빠짐, 복부는 중간
+  //   BC-6(스트레스): 호르몬 개선 집중, 복부는 중간
+  //   BC-9(근감소·마른비만): 근육 회복 중심 → 복부 개선 중간, 체중 손실 적음
+  var P9_PREDICT = {
+    'BC-1': { belly4:0.88, belly12:0.50, horm4:0.91, horm12:0.55, age4:3, age12:10, loss4Ratio:0.35 }, // 림프·부종 → 초기 부종 빠르게 감소
+    'BC-2': { belly4:0.90, belly12:0.52, horm4:0.90, horm12:0.53, age4:3, age12:11, loss4Ratio:0.38 }, // 자세·골격 → 표준
+    'BC-3': { belly4:0.85, belly12:0.45, horm4:0.92, horm12:0.55, age4:4, age12:13, loss4Ratio:0.40 }, // 인슐린·내장지방 → 복부 집중 개선
+    'BC-4': { belly4:0.92, belly12:0.58, horm4:0.93, horm12:0.56, age4:2, age12:8,  loss4Ratio:0.30 }, // 갑상선·요요 → 대사 회복 느림 (보수적)
+    'BC-5': { belly4:0.91, belly12:0.55, horm4:0.90, horm12:0.52, age4:3, age12:10, loss4Ratio:0.35 }, // 섬유화·셀룰라이트 → 조직 개선 느림
+    'BC-6': { belly4:0.90, belly12:0.52, horm4:0.87, horm12:0.48, age4:4, age12:12, loss4Ratio:0.42 }, // 스트레스·코르티솔 → 호르몬 집중 개선
+    'BC-7': { belly4:0.90, belly12:0.54, horm4:0.90, horm12:0.54, age4:3, age12:11, loss4Ratio:0.38 }, // 산후·골격 → 표준
+    'BC-8': { belly4:0.91, belly12:0.55, horm4:0.90, horm12:0.52, age4:3, age12:10, loss4Ratio:0.36 }, // 하체 과발달 → 하체 개선 느림
+    'BC-9': { belly4:0.91, belly12:0.56, horm4:0.91, horm12:0.54, age4:2, age12:9,  loss4Ratio:0.32 }, // 근감소·마른비만 → 체중 손실 신중
+  };
+  // BC코드 매칭 (없으면 기본값)
+  var pred = P9_PREDICT[bcCode] || { belly4:0.90, belly12:0.53, horm4:0.90, horm12:0.51, age4:3, age12:11, loss4Ratio:0.40 };
 
   // ── 체중 감량 예측 (goal_weight + weight_loss_pct 기반) ──
   // goal_weight = 목표(after) 체중, weight_loss_pct = 총 감량률(%).
@@ -12361,27 +12387,27 @@ function renderP9(metrics, bcCode, axisScores, data) {
   var hasWeight = (gw != null && lp != null);
   var curW=null, totalLoss=null, loss4=null, w4=null;
   if (hasWeight) {
-    curW = Math.round(gw / (1 - lp/100) * 10) / 10;   // 현재 체중(추정)
-    totalLoss = Math.round((curW - gw) * 10) / 10;     // 12주 총 감량 kg
-    loss4 = Math.round(totalLoss * 0.4 * 10) / 10;     // 4주 감량(초기 약 40%)
-    w4 = Math.round((curW - loss4) * 10) / 10;         // 4주 후 체중
+    curW = Math.round(gw / (1 - lp/100) * 10) / 10;            // 현재 체중(추정)
+    totalLoss = Math.round((curW - gw) * 10) / 10;              // 12주 총 감량 kg
+    loss4 = Math.round(totalLoss * pred.loss4Ratio * 10) / 10;  // 4주 감량 (BC코드별 비율)
+    w4 = Math.round((curW - loss4) * 10) / 10;                  // 4주 후 체중
   }
 
   var SIM = {
     free:[].concat(
       hasWeight ? [{l:'체중', f:kg(curW), t:kg(w4)}] : [],
       [
-        {l:'몸 나이',  f:yr(curAge),  t:yr(Math.max(curAge-3, 30))},
-        {l:'복부 위험도', f:pc(curBelly), t:pc(curBelly*0.9)},
-        {l:'호르몬 부하', f:pc(curHorm),  t:pc(curHorm*0.9)}
+        {l:'몸 나이',    f:yr(curAge),   t:yr(Math.max(curAge - pred.age4,  28))},
+        {l:'복부 위험도', f:pc(curBelly), t:pc(curBelly * pred.belly4)},
+        {l:'호르몬 부하', f:pc(curHorm),  t:pc(curHorm  * pred.horm4)}
       ]
     ),
     lock:[].concat(
       hasWeight ? [{l:'체중', f:kg(curW), t:kg(gw)}] : [],
       [
-        {l:'몸 나이',  f:yr(curAge),  t:yr(Math.max(curAge-11, 28))},
-        {l:'복부 위험도', f:pc(curBelly), t:pc(curBelly*0.53)},
-        {l:'호르몬 부하', f:pc(curHorm),  t:pc(curHorm*0.51)}
+        {l:'몸 나이',    f:yr(curAge),   t:yr(Math.max(curAge - pred.age12, 26))},
+        {l:'복부 위험도', f:pc(curBelly), t:pc(curBelly * pred.belly12)},
+        {l:'호르몬 부하', f:pc(curHorm),  t:pc(curHorm  * pred.horm12)}
       ]
     )
   };
@@ -12419,8 +12445,8 @@ function renderP9(metrics, bcCode, axisScores, data) {
 
   // ── 아래 비교 카드(혼자4주/함께12주)에 체중 kg + 몸 나이 주입 ──
   (function(){
-    var age4 = Math.min(curAge - Math.max(curAge-3,30), 3);   // 4주 몸나이 감소
-    var age12 = Math.min(curAge - Math.max(curAge-11,28), 11); // 12주 몸나이 감소
+    var age4  = Math.min(curAge - Math.max(curAge - pred.age4,  28), pred.age4);  // BC별 4주 몸나이 감소
+    var age12 = Math.min(curAge - Math.max(curAge - pred.age12, 26), pred.age12); // BC별 12주 몸나이 감소
     var k4 = document.getElementById('up12-kg-4w');
     var k12 = document.getElementById('up12-kg-12w');
     var a4 = document.getElementById('up12-age-4w');

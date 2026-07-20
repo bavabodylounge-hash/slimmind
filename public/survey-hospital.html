@@ -13450,43 +13450,48 @@ function scoreAxes(){
      기질 문항은 scores:null이라 got/max에 안 들어가므로,
      여기서는 pfBonus/기질 태그가 넣어준 값만 남는다. */
   sc.A10 = Math.round(sc.A10*0.5*100)/100;   /* 표시용(보조축이므로 반감) */
-  // ★ 기능 10: 컨디션 보정 가산
+  // ★ 기능 10: 컨디션 보정 가산 (구 스케일 0~2 → ×10 변환, 0~100 스케일 통일)
   const condBonus = window._condBonus || {};
   Object.entries(condBonus).forEach(([ax, add]) => {
-    if (sc[ax] !== undefined) sc[ax] += add;
+    if (sc[ax] !== undefined) sc[ax] += add * 10;
   });
-  // ★ 기능 11: 시간대 히트맵 보정 가산
+  // ★ 기능 11: 시간대 히트맵 보정 가산 (구 스케일 0~3 → ×10 변환 후 반감 = ×5)
   const timeBonus = window._timeBonus || {};
   Object.entries(timeBonus).forEach(([ax, add]) => {
-    if (sc[ax] !== undefined) sc[ax] += Math.round(add * 0.5); // 최대 반감 (과보정 방지)
+    if (sc[ax] !== undefined) sc[ax] += Math.round(add * 5); // ×10 스케일 변환 후 0.5 반감
   });
 
-  /* ★ NEW: 2차 병력 → 축 가산 (캡 +4.0)
+  /* ★ NEW: 2차 병력 → 축 가산 (캡 +4.0 → 0~100 스케일에서 ×10 = 최대 40pt)
      예전엔 stage2Answers가 raw 저장만 되고 점수엔 0% 기여했다.
-     PCOS·갑상선·스테로이드 같은 강한 신호가 진단에 전혀 안 잡혔다. */
+     PCOS·갑상선·스테로이드 같은 강한 신호가 진단에 전혀 안 잡혔다.
+     ★ 스케일 수정(v27+): scoreAxes()가 0~100 출력으로 바뀌었으나
+       보너스 함수들은 구 0~10 스케일 기준(캡 4.0=40pt, 2.5=25pt)으로 설계됐다.
+       그대로 더하면 100점 기준으로 4%만 기여 → 의도한 영향력의 1/10.
+       → ×10 변환해서 0~100 스케일과 통일한다.
+       캡도 함께 상향: stage2 ×10=max40pt, pf ×10=max25pt, s1 ×10=max20pt */
   try{
     const s2 = (typeof stage2Bonus === 'function') ? stage2Bonus() : {};
-    Object.entries(s2).forEach(([ax, add]) => { if(sc[ax] !== undefined) sc[ax] += add; });
+    Object.entries(s2).forEach(([ax, add]) => { if(sc[ax] !== undefined) sc[ax] += add * 10; });
   }catch(e){ console.warn('[scoreAxes] stage2Bonus 실패:', e); }
 
-  /* ★ NEW: 시작 프로필(사주·MBTI·얼굴형·리듬·경험) → 축 가산 (캡 +2.5)
+  /* ★ NEW: 시작 프로필(사주·MBTI·얼굴형·리듬·경험) → 축 가산 (캡 +2.5 → ×10 = 25pt)
      혈액형은 근거가 없어 축 가산 0 — 서술·톤에만 사용한다. */
   try{
     const pf = (typeof pfBonus === 'function') ? pfBonus() : {};
-    Object.entries(pf).forEach(([ax, add]) => { if(sc[ax] !== undefined) sc[ax] += add; });
+    Object.entries(pf).forEach(([ax, add]) => { if(sc[ax] !== undefined) sc[ax] += add * 10; });
   }catch(e){ console.warn('[scoreAxes] pfBonus 실패:', e); }
 
   /* ★ NEW: 체지방률 → 축 가산 (현재 _bfMap.enabled=false 라 항상 0)
      매핑 규칙만 정의해 둔 상태. 켜려면 window._bfMap.enabled = true */
   try{
     const bf = (typeof bfBonus === 'function') ? bfBonus() : {};
-    Object.entries(bf).forEach(([ax, add]) => { if(sc[ax] !== undefined) sc[ax] += add; });
+    Object.entries(bf).forEach(([ax, add]) => { if(sc[ax] !== undefined) sc[ax] += add * 10; });
   }catch(e){ console.warn('[scoreAxes] bfBonus 실패:', e); }
 
-  /* ★ v27: 1차(바디맵·촉진·외형) → 축 가산. 캡 +2.0 (자가 촉진이라 2차보다 낮게) */
+  /* ★ v27: 1차(바디맵·촉진·외형) → 축 가산. 캡 +2.0 → ×10 = 20pt */
   try{
     const s1 = (typeof s1Bonus === 'function') ? s1Bonus() : {};
-    Object.entries(s1).forEach(([ax, add]) => { if(sc[ax] !== undefined) sc[ax] += add; });
+    Object.entries(s1).forEach(([ax, add]) => { if(sc[ax] !== undefined) sc[ax] += add * 10; });
   }catch(e){ console.warn('[scoreAxes] s1Bonus 실패:', e); }
 
   Object.keys(sc).forEach(ax => { sc[ax] = Math.round(sc[ax]*100)/100; });
