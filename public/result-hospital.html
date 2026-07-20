@@ -11840,9 +11840,19 @@ function renderP5(metrics, bcCode, axisScores, userName) {
       {nm:'약물',c:'#5f5e5a'},{nm:'철학',c:'#607d8b'}
     ];
     var strongNames = STRONG.map(function(s){return s.nm;});
-    var axBars = AX11.map(function(a,i){
+    // TOP3를 왼쪽부터 1·2·3위 순서로, 나머지 8개는 뒤에 배치
+    var AX11_COLOR = {
+      '회복':'#8b6db5','호르몬':'#c0397a','체형':'#6b4eaa','운동':'#5a6e3a',
+      '식단':'#c98a3c','한방':'#2f7d8c','심리':'#7b1fa2','관리':'#8a8474',
+      '시술':'#7a4a38','약물':'#5f5e5a','철학':'#607d8b'
+    };
+    // TOP3 순서(1위→2위→3위)를 먼저, 나머지 8개를 뒤에
+    var AX11_sorted = STRONG.map(function(s){ return {nm:s.nm, c:AX11_COLOR[s.nm]||'#999'}; })
+      .concat(AX11.filter(function(a){ return strongNames.indexOf(a.nm) < 0; }));
+    var axBars = AX11_sorted.map(function(a,i){
       var on = strongNames.indexOf(a.nm) >= 0;
-      var h = on ? (78 - i*4) : (10 + (i%3)*5); // 최종: 켜진 축은 높게
+      // TOP3(i=0,1,2)는 높이를 순위에 맞게: 1위 78, 2위 68, 3위 58
+      var h = on ? (78 - i*10) : (10 + (i%3)*5);
       // 시작은 전부 회색·비슷한 중간 높이(정체 숨김) → 끝에 reveal
       return '<div class="ax11-col" data-on="' + (on?'1':'0') + '" data-h="' + h + '" style="--axc:' + a.c + ';--axd:' + (i*0.06) + 's">' +
         '<div class="ax11-bar-wrap"><div class="ax11-bar" style="height:42%"></div></div>' +
@@ -12005,6 +12015,12 @@ function renderP8(metrics, bcCode, axisScores, userName) {
     phil:  ax['A10'] || 0   // 철학 (A10)
   };
 
+  // ── P5 영역명 → P8 키 변환 맵 (buildWeekData보다 먼저 선언 필수) ──
+  var P5_NM_TO_P8_KEY = {
+    '식단':'diet', '심리':'psych', '호르몬':'horm', '운동':'ex', '관리':'mgmt',
+    '회복':'rec',  '한방':'ori',   '체형':'form',   '시술':'proc','약물':'drug', '철학':'phil'
+  };
+
   // ── 주차별 DATA 동적 생성 ──
   // 원칙:
   //   1주: base 3축(rec·diet·ex) 만 활성, focus는 0 → rec 비중 최대(회복 선행)
@@ -12110,10 +12126,7 @@ function renderP8(metrics, bcCode, axisScores, userName) {
   // ── focus 3축: P5 TOP3 영역명 → P8 키 변환 (P5-P8 완전 연동) ──
   // P5 TOP3에 base축(회복·식단·운동)이 포함되면 → 해당 축은 이미 base3에 있으므로
   //   focus 슬롯에서 제외 후 RAW 순으로 보충 → 항상 focus 3축 보장
-  var P5_NM_TO_P8_KEY = {
-    '식단':'diet', '심리':'psych', '호르몬':'horm', '운동':'ex', '관리':'mgmt',
-    '회복':'rec',  '한방':'ori',   '체형':'form',   '시술':'proc','약물':'drug', '철학':'phil'
-  };
+  // ※ P5_NM_TO_P8_KEY는 buildWeekData 위에 선언됨 (중복 제거)
   function activeKeys(w){
     var baseKeys = ['rec','diet','ex'];
     var allFocusKeys = AX.filter(function(a){return a.group==='focus';})
