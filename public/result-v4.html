@@ -5026,6 +5026,36 @@ p, div, span, h1, h2, h3, h4{
 .wg-top3-wk-dot{font-size:12px;width:14px;text-align:center;flex-shrink:0;}
 .wg-top3-wk-step.past .wg-top3-wk-dot{color:#5a6e3a;}
 .wg-top3-wk-lbl{flex:1;line-height:1.35;}
+/* ── 주변 추천 섹션 ── */
+.wg-nearby{margin-top:14px;padding-top:13px;border-top:1px dashed #e0d6c8;}
+.wg-nearby-hd{display:flex;align-items:center;gap:7px;margin-bottom:9px;}
+.wg-nearby-ic{font-size:14px;flex-shrink:0;}
+.wg-nearby-tt{font-size:12px;font-weight:800;color:#3a3028;flex:1;}
+.wg-nearby-btn{flex-shrink:0;font-size:11px;font-weight:800;color:#fff;background:linear-gradient(135deg,#c0397a,#8b6db5);border:none;border-radius:20px;padding:5px 13px;cursor:pointer;font-family:inherit;transition:opacity .15s;}
+.wg-nearby-btn:active{opacity:.8;}
+.wg-nearby-btn:disabled{background:#ccc;cursor:default;}
+.wg-nearby-body{font-size:11.5px;color:#8a7e74;line-height:1.5;}
+/* 장소 카드 */
+.wg-place-list{display:flex;flex-direction:column;gap:8px;margin-top:4px;}
+.wg-place-card{display:flex;align-items:flex-start;gap:10px;background:#fff;border:1px solid #ede6d8;border-radius:12px;padding:11px 12px;text-decoration:none;color:inherit;transition:box-shadow .15s;}
+.wg-place-card:active{box-shadow:0 2px 8px rgba(0,0,0,.1);}
+.wg-place-card.featured{border-color:#c0397a;border-width:1.5px;background:linear-gradient(135deg,#fff9fc,#fdf0f5);}
+.wg-place-ic{flex-shrink:0;width:36px;height:36px;border-radius:10px;background:#f5f0ea;display:flex;align-items:center;justify-content:center;font-size:18px;}
+.wg-place-card.featured .wg-place-ic{background:#fce4ec;}
+.wg-place-bd{flex:1;min-width:0;}
+.wg-place-nm{font-size:13px;font-weight:900;color:#241a36;line-height:1.3;margin-bottom:3px;}
+.wg-place-card.featured .wg-place-nm{color:#8c1a4d;}
+.wg-place-desc{font-size:11px;color:#6a6256;line-height:1.45;word-break:keep-all;margin-bottom:4px;}
+.wg-place-meta{display:flex;flex-wrap:wrap;gap:5px;align-items:center;}
+.wg-place-badge{font-size:9.5px;font-weight:800;color:#fff;background:#c0397a;border-radius:20px;padding:2px 8px;}
+.wg-place-badge.kakao{background:#3a6b9c;}
+.wg-place-dist{font-size:10px;font-weight:600;color:#8a7e74;}
+.wg-place-phone{font-size:10px;font-weight:600;color:#5a6e3a;}
+.wg-place-arr{flex-shrink:0;font-size:16px;color:#c0397a;align-self:center;margin-left:4px;}
+.wg-place-card.kakao-card .wg-place-arr{color:#3a6b9c;}
+.wg-nearby-err{font-size:11.5px;color:#a35030;background:#fff3ef;border-radius:8px;padding:9px 11px;line-height:1.5;}
+.wg-nearby-setup{font-size:11.5px;color:#5a5246;background:#f7f4f0;border-radius:8px;padding:9px 11px;line-height:1.55;}
+.wg-nearby-setup b{color:#8b6db5;}
 /* 호르몬 협진 카드 */
 .wg-collab{margin-bottom:14px;background:#eef1f6;border:1px solid #d5dce8;border-left:4px solid #4a7fb5;border-radius:14px;padding:13px 14px;}
 .wg-cl-hd{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
@@ -18978,6 +19008,133 @@ function jumpToPhase(key){
 }
 window.jumpToPhase = jumpToPhase;
 
+// ══════════════════════════════════════════════════════════════
+//  주변 추천 장소 — GPS + 카카오 로컬 + 제휴업체
+// ══════════════════════════════════════════════════════════════
+
+// GPS 캐시 (페이지 내 재사용)
+var _gpsCache = null; // { lat, lng, ts }
+
+function loadNearbyPlaces(slotId, category, btn) {
+  var slot = document.getElementById(slotId);
+  if (!slot) return;
+  var body = slot.querySelector('.wg-nearby-body');
+  if (!body) return;
+
+  btn.disabled = true;
+  btn.textContent = '위치 확인 중…';
+  body.innerHTML = '<div class="wg-nearby-body">📡 위치 정보를 가져오는 중…</div>';
+
+  function fetchPlaces(lat, lng) {
+    var url = '/api/places?type=' + encodeURIComponent(category)
+            + '&lat=' + lat + '&lng=' + lng + '&radius=3000&limit=5';
+    fetch(url)
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        btn.disabled = false;
+        btn.textContent = '새로고침';
+        if (!data.ok) {
+          body.innerHTML = '<div class="wg-nearby-err">⚠️ 장소 조회 실패: ' + (data.error || '잠시 후 다시 시도해주세요') + '</div>';
+          return;
+        }
+        renderPlaceCards(body, data, category);
+      })
+      .catch(function(){
+        btn.disabled = false;
+        btn.textContent = '다시 시도';
+        body.innerHTML = '<div class="wg-nearby-err">⚠️ 네트워크 오류. 잠시 후 다시 시도해주세요.</div>';
+      });
+  }
+
+  // 캐시 유효(5분)하면 재사용
+  var now = Date.now();
+  if (_gpsCache && (now - _gpsCache.ts) < 5 * 60 * 1000) {
+    fetchPlaces(_gpsCache.lat, _gpsCache.lng);
+    return;
+  }
+
+  // GPS 요청
+  if (!navigator.geolocation) {
+    btn.disabled = false;
+    btn.textContent = '위치로 찾기';
+    body.innerHTML = '<div class="wg-nearby-err">⚠️ 이 브라우저는 위치 정보를 지원하지 않습니다.</div>';
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    function(pos) {
+      var lat = pos.coords.latitude;
+      var lng = pos.coords.longitude;
+      _gpsCache = { lat: lat, lng: lng, ts: Date.now() };
+      fetchPlaces(lat, lng);
+    },
+    function(err) {
+      btn.disabled = false;
+      btn.textContent = '위치로 찾기';
+      var msg = err.code === 1
+        ? '위치 권한이 거부됐어요. 브라우저 설정에서 위치 권한을 허용해주세요.'
+        : '위치를 가져오지 못했어요. 잠시 후 다시 시도해주세요.';
+      body.innerHTML = '<div class="wg-nearby-err">📍 ' + msg + '</div>';
+    },
+    { timeout: 10000, maximumAge: 300000 }
+  );
+}
+
+function renderPlaceCards(body, data, category) {
+  var results = data.results || [];
+
+  // 결과 없음 처리
+  if (results.length === 0) {
+    // 카카오 키 없을 때 안내
+    body.innerHTML =
+      '<div class="wg-nearby-setup">' +
+        '<b>📍 주변 ' + category + ' 추천</b><br>' +
+        '아직 등록된 제휴 업체나 카카오 로컬 검색 결과가 없어요.<br>' +
+        '<span style="color:#c0397a;font-weight:700;">어드민 → 설정 → 카카오 REST API 키</span>를 입력하면 주변 업체가 자동으로 표시됩니다.' +
+      '</div>';
+    return;
+  }
+
+  var html = '<div class="wg-place-list">';
+  results.forEach(function(p) {
+    var isFeatured = p.is_featured;
+    var isAffiliate = p.source === 'affiliate';
+    var cardCls = 'wg-place-card' + (isFeatured ? ' featured' : '') + (isAffiliate ? '' : ' kakao-card');
+    var badge = isFeatured
+      ? '<span class="wg-place-badge">🤝 슬리마인드 제휴</span>'
+      : (isAffiliate ? '<span class="wg-place-badge">✅ 추천</span>' : '<span class="wg-place-badge kakao">📍 카카오맵</span>');
+    var distTxt = p.distance ? '<span class="wg-place-dist">📏 ' + (p.distance >= 1000 ? (p.distance/1000).toFixed(1)+'km' : p.distance+'m') + '</span>' : '';
+    var phoneTxt = p.phone ? '<span class="wg-place-phone">📞 ' + p.phone + '</span>' : '';
+
+    var href = p.url || (p.kakao_place_id ? 'https://place.map.kakao.com/' + p.kakao_place_id : '#');
+    var target = href !== '#' ? ' target="_blank" rel="noopener"' : '';
+
+    html +=
+      '<a class="' + cardCls + '" href="' + href + '"' + target + '>'+
+        '<div class="wg-place-ic">' + (p.icon || '🏥') + '</div>'+
+        '<div class="wg-place-bd">'+
+          '<div class="wg-place-nm">' + p.name + '</div>'+
+          (p.description ? '<div class="wg-place-desc">' + p.description + '</div>' : '')+
+          '<div class="wg-place-meta">' + badge + distTxt + phoneTxt + '</div>'+
+        '</div>'+
+        '<div class="wg-place-arr">›</div>'+
+      '</a>';
+  });
+  html += '</div>';
+
+  // 제휴+카카오 카운트 표시
+  var countTxt = '';
+  if (data.affiliate_count > 0 && data.kakao_count > 0) {
+    countTxt = '<div style="font-size:10.5px;color:#8a7e74;margin-top:8px;text-align:right;">🤝 제휴 '+data.affiliate_count+'곳 · 📍 카카오 '+data.kakao_count+'곳</div>';
+  } else if (data.affiliate_count > 0) {
+    countTxt = '<div style="font-size:10.5px;color:#8a7e74;margin-top:8px;text-align:right;">🤝 제휴업체 '+data.affiliate_count+'곳</div>';
+  } else if (data.kakao_count > 0) {
+    countTxt = '<div style="font-size:10.5px;color:#8a7e74;margin-top:8px;text-align:right;">📍 카카오맵 기준 리뷰순</div>';
+  }
+
+  body.innerHTML = html + countTxt;
+}
+
 // ── 상세 플랜 카드 토글 (같은 주차 안에서 한 번에 하나만 펼침) ──
 function togglePlanCard(hd){
   var card = hd.parentElement;
@@ -22171,6 +22328,9 @@ function weeklyGridHTML(w, idx) {
     var rankBadgeColor = _rankColors[ri] || '#8b6db5';
     var keyId = 'top' + rankN;
 
+    // 주변 추천 섹션 고유 ID (카드별로 독립)
+    var placeSlotId = 'top3-places-' + keyId;
+
     var innerHTML =
       '<div class="wg-top3-wrap">'+
         '<div class="wg-top3-rank" style="background:'+rankBadgeColor+'">핵심처방 #'+rankN+'</div>'+
@@ -22194,6 +22354,17 @@ function weeklyGridHTML(w, idx) {
               '</div>';
             }).join('')+
           '</div>'+
+        '</div>'+
+        // ── 주변 추천 섹션 ──
+        '<div class="wg-nearby" id="'+placeSlotId+'">'+
+          '<div class="wg-nearby-hd">'+
+            '<span class="wg-nearby-ic">📍</span>'+
+            '<span class="wg-nearby-tt">내 주변 '+nm+' 추천</span>'+
+            '<button class="wg-nearby-btn" onclick="loadNearbyPlaces(\''+placeSlotId+'\',\''+nm+'\',this)">'+
+              '위치로 찾기'+
+            '</button>'+
+          '</div>'+
+          '<div class="wg-nearby-body">위치 허용 후 주변 추천 장소가 표시됩니다</div>'+
         '</div>'+
       '</div>';
 

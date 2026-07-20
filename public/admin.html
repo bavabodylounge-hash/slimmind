@@ -544,6 +544,7 @@
         <div class="nav-item" data-page="guide-b2b"><i class="fas fa-store"></i> B2B 이용법</div>
 
         <div class="nav-section-label">시스템</div>
+        <div class="nav-item" data-page="affiliate-places"><i class="fas fa-handshake"></i> 제휴업체 관리</div>
         <div class="nav-item" data-page="kakao-settings"><i class="fas fa-comment-dots"></i> 카카오 설정</div>
         <div class="nav-item" data-page="settings"><i class="fas fa-cog"></i> 설정</div>
       </nav>
@@ -1352,7 +1353,7 @@ function navigateTo(page) {
     'guide-consultant':'컨설턴트 이용법', 'guide-b2b':'B2B 파트너 이용법',
     'diagnosis-results':'바디코드 진단 결과지', results:'고객 결과 관리',
     coupons:'쿠폰 관리', notifications:'설문 완료 알림', 'bc-codes':'BC코드 처방 편집',
-    settings:'설정', 'kakao-settings':'카카오 설정', 'monthly-report':'월간 AI 리포트',
+    settings:'설정', 'kakao-settings':'카카오 설정', 'monthly-report':'월간 AI 리포트', 'affiliate-places':'제휴업체 관리',
     analytics:'데이터 인사이트', ranking:'컨설턴트 랭킹', 'revenue-forecast':'매출 예측기',
     settlement:'수익 정산', payments:'결제 관리', rediagnosis:'재진단 알림', 'growth-dashboard':'성장 대시보드', 'excel-export':'데이터 다운로드', 'bc-library':'바디코드 도감',
     'daily-checks':'데일리 체크 현황', 'b2b-group-analysis':'B2B 그룹 비교 분석'
@@ -1386,6 +1387,7 @@ function navigateTo(page) {
   else if (page === 'excel-export') loadExcelExport();
   else if (page === 'settings') loadSettings();
   else if (page === 'kakao-settings') loadKakaoSettings();
+  else if (page === 'affiliate-places') loadAffiliatePlaces();
   else if (page === 'monthly-report') loadMonthlyReport();
 }
 
@@ -4365,6 +4367,275 @@ async function sendKakaoTest() {
   } else {
     el.style.color = '#DC2626';
     el.innerHTML = '❌ 오류: ' + (res?.error || '알 수 없는 오류');
+  }
+}
+
+// ═════════════════════════════════════════════
+//  제휴업체 관리 + 카카오 맵 키 설정
+// ═════════════════════════════════════════════
+
+const PLACE_CATEGORIES = ['한방','시술','심리','호르몬','체형','운동','식단','관리','약물','철학','회복'];
+const PLACE_ICONS = { '한방':'🌿','시술':'⭐','심리':'🧠','호르몬':'🌸','체형':'🦴','운동':'🏋️','식단':'🥗','관리':'📊','약물':'💊','철학':'🎯','회복':'🌙' };
+
+async function loadAffiliatePlaces() {
+  // 카카오 맵 키 상태 조회
+  const kakaoMapData = await api('GET', '/settings/kakao-map').catch(()=>({enabled:false,masked:''}));
+
+  document.getElementById('page-body').innerHTML = `
+    <!-- ① 카카오 맵 API 키 설정 -->
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-title">🗺️ 카카오 로컬 검색 API 설정 <span style="font-size:12px;font-weight:500;color:var(--muted)">(주변 업체 자동 검색)</span></div>
+      <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:14px 18px;margin-bottom:18px;font-size:13px;color:#92400E;line-height:1.7">
+        📌 <b>카카오 REST API 키 발급 방법</b><br>
+        1. <a href="https://developers.kakao.com" target="_blank" style="color:#1d4ed8;font-weight:700">developers.kakao.com</a> 접속 → 로그인<br>
+        2. <b>내 애플리케이션 → 애플리케이션 추가하기</b> (앱 이름 자유)<br>
+        3. 생성된 앱 → <b>앱 키 탭 → REST API 키</b> 복사<br>
+        4. 아래에 붙여넣기 → 저장
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <div style="flex:1">
+          <label style="display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px">REST API 키 ${kakaoMapData?.enabled ? '<span style="color:#16a34a;font-weight:700">✅ 설정됨 ('+kakaoMapData.masked+')</span>' : '<span style="color:#dc2626">❌ 미설정</span>'}</label>
+          <input type="password" id="kakao-map-key" placeholder="카카오 REST API 키 (32자리)" autocomplete="off"
+            style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box">
+        </div>
+        <button class="btn btn-primary" style="flex-shrink:0;margin-top:20px" onclick="saveKakaoMapKey()">저장</button>
+      </div>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:8px">키 저장 후 결과지 → 오늘 탭 → 핵심처방 카드 → "위치로 찾기" 버튼에서 주변 업체가 자동 검색됩니다.</div>
+    </div>
+
+    <!-- ② 제휴업체 목록 -->
+    <div class="card">
+      <div class="card-title" style="display:flex;align-items:center;gap:10px">
+        🤝 제휴업체 관리
+        <span style="font-size:12px;font-weight:500;color:var(--muted);flex:1">GPS 검색 위에 우선 표시 · 슬리마인드 파트너 배지</span>
+        <button class="btn btn-primary btn-sm" onclick="openAffiliateModal(null)">+ 업체 추가</button>
+      </div>
+
+      <!-- 카테고리 필터 -->
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px" id="aff-cat-filter">
+        <button class="aff-cat-btn active" data-cat="" onclick="filterAffCat(this,'')">전체</button>
+        ${PLACE_CATEGORIES.map(c=>`<button class="aff-cat-btn" data-cat="${c}" onclick="filterAffCat(this,'${c}')">${PLACE_ICONS[c]||''} ${c}</button>`).join('')}
+      </div>
+
+      <div id="aff-place-list">
+        <div style="padding:40px;text-align:center;color:var(--muted)"><i class="fas fa-circle-notch fa-spin fa-2x"></i></div>
+      </div>
+    </div>
+
+    <!-- 모달 -->
+    <div id="aff-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;overflow-y:auto">
+      <div style="background:#fff;border-radius:16px;max-width:520px;margin:40px auto;padding:28px 24px;position:relative">
+        <h3 id="aff-modal-title" style="font-size:16px;font-weight:800;margin-bottom:20px;color:#1a1220">업체 추가</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div style="grid-column:1/-1">
+            <label class="aff-lbl">업체명 *</label>
+            <input id="aff-f-name" class="aff-inp" placeholder="예: 강남 ○○한의원">
+          </div>
+          <div>
+            <label class="aff-lbl">카테고리 *</label>
+            <select id="aff-f-cat" class="aff-inp">
+              ${PLACE_CATEGORIES.map(c=>`<option value="${c}">${PLACE_ICONS[c]||''} ${c}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label class="aff-lbl">아이콘 (이모지)</label>
+            <input id="aff-f-icon" class="aff-inp" placeholder="🏥">
+          </div>
+          <div style="grid-column:1/-1">
+            <label class="aff-lbl">한 줄 소개</label>
+            <input id="aff-f-desc" class="aff-inp" placeholder="예: BC-3 내장지방 전문 침·한약">
+          </div>
+          <div style="grid-column:1/-1">
+            <label class="aff-lbl">강조 태그</label>
+            <input id="aff-f-tag" class="aff-inp" placeholder="예: 슬리마인드 제휴 · 첫방문 10% 할인">
+          </div>
+          <div style="grid-column:1/-1">
+            <label class="aff-lbl">도로명 주소</label>
+            <input id="aff-f-addr" class="aff-inp" placeholder="예: 서울 강남구 테헤란로 123">
+          </div>
+          <div>
+            <label class="aff-lbl">위도 (lat)</label>
+            <input id="aff-f-lat" class="aff-inp" type="number" step="0.000001" placeholder="예: 37.4979">
+          </div>
+          <div>
+            <label class="aff-lbl">경도 (lng)</label>
+            <input id="aff-f-lng" class="aff-inp" type="number" step="0.000001" placeholder="예: 127.0276">
+          </div>
+          <div>
+            <label class="aff-lbl">전화번호</label>
+            <input id="aff-f-phone" class="aff-inp" placeholder="02-1234-5678">
+          </div>
+          <div>
+            <label class="aff-lbl">우선순위 (낮을수록 먼저)</label>
+            <input id="aff-f-priority" class="aff-inp" type="number" value="5" min="1" max="99">
+          </div>
+          <div style="grid-column:1/-1">
+            <label class="aff-lbl">홈페이지 / 예약 URL</label>
+            <input id="aff-f-url" class="aff-inp" placeholder="https://...">
+          </div>
+          <div>
+            <label class="aff-lbl">카카오맵 place_id</label>
+            <input id="aff-f-kakao-id" class="aff-inp" placeholder="카카오맵에서 확인">
+          </div>
+          <div>
+            <label class="aff-lbl">BC 코드 (쉼표 구분)</label>
+            <input id="aff-f-bc" class="aff-inp" placeholder="BC-1,BC-3">
+          </div>
+          <div style="grid-column:1/-1;display:flex;align-items:center;gap:10px">
+            <input type="checkbox" id="aff-f-featured">
+            <label for="aff-f-featured" style="font-size:13px;font-weight:700;cursor:pointer">🤝 슬리마인드 공식 파트너 배지 표시</label>
+          </div>
+        </div>
+        <input type="hidden" id="aff-f-id">
+        <div style="display:flex;gap:10px;margin-top:24px">
+          <button class="btn btn-primary" style="flex:1" onclick="saveAffiliatePlace()">저장</button>
+          <button class="btn" style="flex:1" onclick="document.getElementById('aff-modal').style.display='none'">취소</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // CSS 인라인 추가
+  if (!document.getElementById('aff-style')) {
+    const s = document.createElement('style');
+    s.id = 'aff-style';
+    s.textContent = `
+      .aff-cat-btn{font-size:12px;font-weight:700;border:1.5px solid #ddd;border-radius:20px;padding:4px 12px;background:#fff;cursor:pointer;color:#5a5246;transition:all .15s;}
+      .aff-cat-btn.active{background:#c0397a;border-color:#c0397a;color:#fff;}
+      .aff-lbl{display:block;font-size:12px;font-weight:600;color:#6a6256;margin-bottom:5px;}
+      .aff-inp{width:100%;border:1.5px solid #e0d8cc;border-radius:8px;padding:9px 11px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;}
+      .aff-inp:focus{border-color:#c0397a;}
+      .aff-row{display:flex;align-items:flex-start;gap:10px;background:#fff;border:1px solid #ede6d8;border-radius:12px;padding:13px 14px;margin-bottom:8px;}
+      .aff-row.featured{border-color:#c0397a;background:#fff9fc;}
+      .aff-row-ic{font-size:22px;flex-shrink:0;width:36px;text-align:center;}
+      .aff-row-bd{flex:1;min-width:0;}
+      .aff-row-nm{font-size:13.5px;font-weight:900;color:#241a36;}
+      .aff-row-featured .aff-row-nm{color:#8c1a4d;}
+      .aff-row-meta{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;font-size:11px;color:#8a7e74;}
+      .aff-row-actions{display:flex;gap:6px;flex-shrink:0;}
+    `;
+    document.head.appendChild(s);
+  }
+
+  // 목록 로드
+  loadAffPlaceList('');
+}
+
+var _affCurrentCat = '';
+function filterAffCat(btn, cat) {
+  document.querySelectorAll('.aff-cat-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  _affCurrentCat = cat;
+  loadAffPlaceList(cat);
+}
+
+async function loadAffPlaceList(cat) {
+  const listEl = document.getElementById('aff-place-list');
+  if (!listEl) return;
+  listEl.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted)"><i class="fas fa-circle-notch fa-spin"></i></div>';
+  const data = await api('GET', '/admin/affiliate-places' + (cat ? '?category='+encodeURIComponent(cat) : '?status=active')).catch(()=>({ok:false,results:[]}));
+  const rows = data?.results || [];
+  if (!rows.length) {
+    listEl.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted)">등록된 제휴업체가 없습니다.<br><button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="openAffiliateModal(null)">+ 첫 업체 추가하기</button></div>';
+    return;
+  }
+  listEl.innerHTML = rows.map(r => `
+    <div class="aff-row ${r.is_featured?'featured':''}">
+      <div class="aff-row-ic">${r.icon||'🏥'}</div>
+      <div class="aff-row-bd">
+        <div class="aff-row-nm">${r.is_featured?'🤝 ':''}${r.name} <span style="font-size:10.5px;font-weight:600;color:#8b6db5;background:#f3e5f5;border-radius:20px;padding:1px 8px">${r.category}</span></div>
+        <div class="aff-row-meta">
+          ${r.description?`<span>📝 ${r.description}</span>`:''}
+          ${r.address?`<span>📍 ${r.address}</span>`:''}
+          ${r.phone?`<span>📞 ${r.phone}</span>`:''}
+          ${r.tag?`<span style="color:#c0397a">🏷 ${r.tag}</span>`:''}
+          <span style="color:#aaa">우선순위 ${r.priority}</span>
+        </div>
+      </div>
+      <div class="aff-row-actions">
+        <button class="btn btn-sm" onclick='openAffiliateModal(${JSON.stringify(r)})'>수정</button>
+        <button class="btn btn-sm" style="color:#dc2626" onclick="deleteAffPlace(${r.id},'${r.name.replace(/'/g,"\\'")}')">삭제</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function openAffiliateModal(place) {
+  document.getElementById('aff-modal-title').textContent = place ? '업체 수정' : '업체 추가';
+  document.getElementById('aff-f-id').value = place?.id || '';
+  document.getElementById('aff-f-name').value = place?.name || '';
+  document.getElementById('aff-f-cat').value = place?.category || PLACE_CATEGORIES[0];
+  document.getElementById('aff-f-icon').value = place?.icon || '';
+  document.getElementById('aff-f-desc').value = place?.description || '';
+  document.getElementById('aff-f-tag').value = place?.tag || '';
+  document.getElementById('aff-f-addr').value = place?.address || '';
+  document.getElementById('aff-f-lat').value = place?.lat || '';
+  document.getElementById('aff-f-lng').value = place?.lng || '';
+  document.getElementById('aff-f-phone').value = place?.phone || '';
+  document.getElementById('aff-f-priority').value = place?.priority ?? 5;
+  document.getElementById('aff-f-url').value = place?.homepage_url || '';
+  document.getElementById('aff-f-kakao-id').value = place?.kakao_place_id || '';
+  document.getElementById('aff-f-featured').checked = !!place?.is_featured;
+  // BC 코드: JSON 배열 → 쉼표 구분 문자열
+  const bc = place?.bc_codes;
+  document.getElementById('aff-f-bc').value = bc ? (typeof bc === 'string' ? JSON.parse(bc) : bc).join(',') : '';
+  document.getElementById('aff-modal').style.display = 'block';
+}
+
+async function saveAffiliatePlace() {
+  const id = document.getElementById('aff-f-id').value;
+  const bcRaw = document.getElementById('aff-f-bc').value.trim();
+  const body = {
+    name:         document.getElementById('aff-f-name').value.trim(),
+    category:     document.getElementById('aff-f-cat').value,
+    icon:         document.getElementById('aff-f-icon').value.trim() || (PLACE_ICONS[document.getElementById('aff-f-cat').value] || '🏥'),
+    description:  document.getElementById('aff-f-desc').value.trim(),
+    tag:          document.getElementById('aff-f-tag').value.trim(),
+    address:      document.getElementById('aff-f-addr').value.trim(),
+    lat:          parseFloat(document.getElementById('aff-f-lat').value) || null,
+    lng:          parseFloat(document.getElementById('aff-f-lng').value) || null,
+    phone:        document.getElementById('aff-f-phone').value.trim(),
+    priority:     parseInt(document.getElementById('aff-f-priority').value) || 5,
+    homepage_url: document.getElementById('aff-f-url').value.trim(),
+    kakao_place_id: document.getElementById('aff-f-kakao-id').value.trim(),
+    is_featured:  document.getElementById('aff-f-featured').checked,
+    bc_codes:     bcRaw ? bcRaw.split(',').map(s=>s.trim()).filter(Boolean) : [],
+    status: 'active',
+  };
+  if (!body.name || !body.category) { toast('업체명과 카테고리는 필수입니다.', 'error'); return; }
+  const method = id ? 'PUT' : 'POST';
+  const endpoint = id ? `/admin/affiliate-places/${id}` : '/admin/affiliate-places';
+  const res = await api(method, endpoint, body);
+  if (res?.ok) {
+    toast(id ? '✅ 업체가 수정되었습니다.' : '✅ 업체가 등록되었습니다.', 'success');
+    document.getElementById('aff-modal').style.display = 'none';
+    loadAffPlaceList(_affCurrentCat);
+  } else {
+    toast('저장 실패: ' + (res?.error || '오류'), 'error');
+  }
+}
+
+async function deleteAffPlace(id, name) {
+  if (!confirm(`"${name}" 업체를 삭제하시겠습니까?`)) return;
+  const res = await api('DELETE', `/admin/affiliate-places/${id}`);
+  if (res?.ok) {
+    toast('🗑 업체가 삭제되었습니다.', 'success');
+    loadAffPlaceList(_affCurrentCat);
+  } else {
+    toast('삭제 실패: ' + (res?.error || '오류'), 'error');
+  }
+}
+
+async function saveKakaoMapKey() {
+  const key = document.getElementById('kakao-map-key').value.trim();
+  if (!key) { toast('API 키를 입력하세요.', 'error'); return; }
+  const res = await api('PUT', '/settings/kakao-map', { kakao_rest_api_key: key });
+  if (res?.ok) {
+    toast('✅ 카카오 REST API 키가 저장되었습니다. 이제 결과지에서 주변 업체가 검색됩니다!', 'success');
+    document.getElementById('kakao-map-key').value = '';
+    loadAffiliatePlaces();
+  } else {
+    toast('저장 실패: ' + (res?.error || '오류'), 'error');
   }
 }
 

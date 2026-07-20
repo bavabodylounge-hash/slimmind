@@ -7686,4 +7686,280 @@ app.get('/api/admin/group-analysis/:code', requireRole('MASTER'), async (c) => {
   }
 })
 
+// ══════════════════════════════════════════════════════════════
+//  장소 추천 API — 카카오 로컬 + 제휴업체 통합
+// ══════════════════════════════════════════════════════════════
+
+// 카테고리 → 카카오 키워드 매핑
+const KAKAO_KEYWORD_MAP: Record<string, string[]> = {
+  '한방':  ['한의원', '한방병원'],
+  '시술':  ['피부과', '미용클리닉', '피부클리닉'],
+  '심리':  ['심리상담', '심리상담센터', '정신건강의학과'],
+  '호르몬':['내분비내과', '산부인과', '갱년기클리닉'],
+  '체형':  ['도수치료', '필라테스', '카이로프랙틱'],
+  '운동':  ['헬스장', 'PT센터', '퍼스널트레이닝'],
+  '식단':  ['비만클리닉', '영양상담', '다이어트클리닉'],
+  '관리':  ['비만클리닉', '체중관리', '슬리밍'],
+  '약물':  ['약국', '한약방'],
+  '철학':  ['심리상담', '코칭센터', '멘탈코칭'],
+  '회복':  ['스파', '마사지', '재활의학과'],
+}
+
+// GET /api/places — 카카오 로컬 + 제휴업체 통합 조회
+// Query: lat, lng, type(카테고리), radius(m, default 3000), limit(default 5)
+app.get('/api/places', async (c) => {
+  const db = (c.env as any)?.DB as D1Database | undefined
+  const lat    = parseFloat(c.req.query('lat') || '0')
+  const lng    = parseFloat(c.req.query('lng') || '0')
+  const type   = (c.req.query('type') || '').trim()
+  const radius = parseInt(c.req.query('radius') || '3000')
+  const limit  = Math.min(parseInt(c.req.query('limit') || '5'), 15)
+
+  if (!type) return c.json({ ok: false, error: 'type 파라미터 필요' }, 400)
+
+  // ── 1. 제휴업체 조회 (DB에서 — 지역 매칭 또는 전국) ──────────────
+  let affiliates: any[] = []
+  if (db) {
+    try {
+      // GPS 있으면 반경 내 업체 우선, 없으면 전국 우선순위 순
+      let affQuery: any
+      if (lat && lng) {
+        // lat/lng 기반 간이 거리 필터 (±0.05도 ≈ 약 5km)
+        const latD = 0.045, lngD = 0.055
+        affQuery = await db.prepare(`
+          SELECT *, 
+            ROUND((lat - ?) * (lat - ?) + (lng - ?) * (lng - ?), 6) as dist_sq
+          FROM affiliate_places
+          WHERE category = ? AND status = 'active'
+            AND lat BETWEEN ? AND ?
+            AND lng BETWEEN ? AND ?
+          ORDER BY priority ASC, dist_sq ASC
+          LIMIT 3
+        `).bind(lat, lat, lng, lng, type,
+            lat - latD, lat + latD,
+            lng - lngD, lng + lngD
+          ).all()
+      }
+      // 반경 내 결과 없으면 전국 우선순위 순으로 fallback
+      if (!affQuery || !affQuery.results || affQuery.results.length === 0) {
+        affQuery = await db.prepare(`
+          SELECT * FROM affiliate_places
+          WHERE category = ? AND status = 'active'
+          ORDER BY priority ASC LIMIT 3
+        `).bind(type).all()
+      }
+      affiliates = (affQuery?.results || []).map((r: any) => ({
+        source: 'affiliate',
+        id: String(r.id),
+        name: r.name,
+        category: r.category,
+        description: r.description || '',
+        tag: r.tag || '슬리마인드 제휴',
+        icon: r.icon || '🏥',
+        address: r.address || '',
+        phone: r.phone || '',
+        url: r.homepage_url || (r.kakao_place_id ? `https://place.map.kakao.com/${r.kakao_place_id}` : ''),
+        kakao_place_id: r.kakao_place_id || '',
+        lat: r.lat || null,
+        lng: r.lng || null,
+        is_featured: r.is_featured === 1,
+        priority: r.priority,
+      }))
+    } catch (e) {
+      // DB 오류는 무시하고 카카오 결과만 반환
+    }
+  }
+
+  // ── 2. 카카오 로컬 API 호출 (GPS 있을 때만) ──────────────────────
+  let kakaoPlaces: any[] = []
+  if (lat && lng && db) {
+    try {
+      const kakaoKeyRow = await db.prepare(
+        "SELECT value FROM _cf_KV WHERE key = 'kakao_rest_api_key'"
+      ).first<any>()
+      const kakaoKey = kakaoKeyRow?.value || ''
+
+      if (kakaoKey) {
+        const keywords = KAKAO_KEYWORD_MAP[type] || [type]
+        // 첫 번째 키워드로 검색 (대표 키워드)
+        const keyword = keywords[0]
+        const kakaoUrl = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(keyword)}&x=${lng}&y=${lat}&radius=${radius}&sort=accuracy&size=${limit}`
+
+        const kakaoRes = await fetch(kakaoUrl, {
+          headers: { 'Authorization': `KakaoAK ${kakaoKey}` }
+        })
+
+        if (kakaoRes.ok) {
+          const kakaoData: any = await kakaoRes.json()
+          kakaoPlaces = (kakaoData.documents || []).slice(0, limit - affiliates.length).map((p: any) => ({
+            source: 'kakao',
+            id: p.id,
+            name: p.place_name,
+            category: type,
+            description: p.category_name || '',
+            tag: '',
+            icon: KAKAO_KEYWORD_MAP[type] ? '📍' : '📍',
+            address: p.road_address_name || p.address_name || '',
+            phone: p.phone || '',
+            url: p.place_url || '',
+            kakao_place_id: p.id,
+            lat: parseFloat(p.y),
+            lng: parseFloat(p.x),
+            distance: p.distance ? parseInt(p.distance) : null,
+            is_featured: false,
+            rating: null,
+          }))
+        }
+      }
+    } catch (e) {
+      // 카카오 API 오류 무시
+    }
+  }
+
+  // ── 3. 통합 결과: 제휴업체 먼저, 카카오 보조 ──────────────────────
+  const results = [...affiliates, ...kakaoPlaces].slice(0, limit)
+  const hasKakaoKey = !!(() => { try { return true } catch { return false } })()
+
+  return c.json({
+    ok: true,
+    type,
+    has_gps: !!(lat && lng),
+    has_kakao_key: kakaoPlaces.length > 0 || affiliates.length > 0,
+    affiliate_count: affiliates.length,
+    kakao_count: kakaoPlaces.length,
+    results,
+  })
+})
+
+// ── 제휴업체 CRUD (MASTER 전용) ───────────────────────────────
+
+// GET /api/admin/affiliate-places — 전체 조회
+app.get('/api/admin/affiliate-places', requireRole('MASTER'), async (c) => {
+  const db = (c.env as any)?.DB as D1Database | undefined
+  if (!db) return c.json({ ok: false, error: 'DB 없음' }, 500)
+  try {
+    const category = c.req.query('category') || ''
+    const status   = c.req.query('status') || 'active'
+    let q = 'SELECT * FROM affiliate_places WHERE 1=1'
+    const params: any[] = []
+    if (category) { q += ' AND category = ?'; params.push(category) }
+    if (status !== 'all') { q += ' AND status = ?'; params.push(status) }
+    q += ' ORDER BY category ASC, priority ASC, created_at DESC'
+    const rows = await db.prepare(q).bind(...params).all()
+    return c.json({ ok: true, results: rows.results || [] })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// POST /api/admin/affiliate-places — 등록
+app.post('/api/admin/affiliate-places', requireRole('MASTER'), async (c) => {
+  const db = (c.env as any)?.DB as D1Database | undefined
+  if (!db) return c.json({ ok: false, error: 'DB 없음' }, 500)
+  try {
+    const b = await c.req.json() as any
+    if (!b.name || !b.category) return c.json({ ok: false, error: 'name, category 필수' }, 400)
+    const r = await db.prepare(`
+      INSERT INTO affiliate_places
+        (name, category, description, tag, icon, address, lat, lng, region_si, region_gu,
+         phone, homepage_url, kakao_place_id, naver_place_id, bc_codes,
+         priority, is_featured, partner_code, status)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    `).bind(
+      b.name, b.category,
+      b.description || null, b.tag || null, b.icon || '🏥',
+      b.address || null, b.lat || null, b.lng || null,
+      b.region_si || null, b.region_gu || null,
+      b.phone || null, b.homepage_url || null,
+      b.kakao_place_id || null, b.naver_place_id || null,
+      JSON.stringify(b.bc_codes || []),
+      b.priority ?? 5, b.is_featured ? 1 : 0,
+      b.partner_code || null, b.status || 'active'
+    ).run()
+    return c.json({ ok: true, id: r.meta.last_row_id })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// PUT /api/admin/affiliate-places/:id — 수정
+app.put('/api/admin/affiliate-places/:id', requireRole('MASTER'), async (c) => {
+  const db = (c.env as any)?.DB as D1Database | undefined
+  if (!db) return c.json({ ok: false, error: 'DB 없음' }, 500)
+  try {
+    const id = c.req.param('id')
+    const b = await c.req.json() as any
+    await db.prepare(`
+      UPDATE affiliate_places SET
+        name=?, category=?, description=?, tag=?, icon=?,
+        address=?, lat=?, lng=?, region_si=?, region_gu=?,
+        phone=?, homepage_url=?, kakao_place_id=?, naver_place_id=?,
+        bc_codes=?, priority=?, is_featured=?, partner_code=?, status=?,
+        updated_at=CURRENT_TIMESTAMP
+      WHERE id=?
+    `).bind(
+      b.name, b.category,
+      b.description || null, b.tag || null, b.icon || '🏥',
+      b.address || null, b.lat || null, b.lng || null,
+      b.region_si || null, b.region_gu || null,
+      b.phone || null, b.homepage_url || null,
+      b.kakao_place_id || null, b.naver_place_id || null,
+      JSON.stringify(b.bc_codes || []),
+      b.priority ?? 5, b.is_featured ? 1 : 0,
+      b.partner_code || null, b.status || 'active',
+      id
+    ).run()
+    return c.json({ ok: true })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// DELETE /api/admin/affiliate-places/:id — 삭제 (실제론 status=inactive)
+app.delete('/api/admin/affiliate-places/:id', requireRole('MASTER'), async (c) => {
+  const db = (c.env as any)?.DB as D1Database | undefined
+  if (!db) return c.json({ ok: false, error: 'DB 없음' }, 500)
+  try {
+    const id = c.req.param('id')
+    await db.prepare(
+      "UPDATE affiliate_places SET status='inactive', updated_at=CURRENT_TIMESTAMP WHERE id=?"
+    ).bind(id).run()
+    return c.json({ ok: true })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// PUT /api/settings/kakao-map — 카카오 REST API 키 저장 (장소검색용, MASTER 전용)
+app.put('/api/settings/kakao-map', requireRole('MASTER'), async (c) => {
+  const db = (c.env as any)?.DB as D1Database | undefined
+  if (!db) return c.json({ ok: false, error: 'DB 없음' }, 500)
+  try {
+    const body = await c.req.json() as { kakao_rest_api_key?: string }
+    const key = (body.kakao_rest_api_key || '').trim()
+    if (!key) return c.json({ ok: false, error: '키를 입력하세요' }, 400)
+    await db.prepare(
+      "INSERT OR REPLACE INTO _cf_KV (key, value) VALUES ('kakao_rest_api_key', ?)"
+    ).bind(key).run()
+    return c.json({ ok: true, message: '카카오 REST API 키 저장 완료' })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// GET /api/settings/kakao-map — 카카오 REST API 키 상태 조회
+app.get('/api/settings/kakao-map', requireRole('MASTER'), async (c) => {
+  const db = (c.env as any)?.DB as D1Database | undefined
+  if (!db) return c.json({ enabled: false, masked: '' })
+  try {
+    const row = await db.prepare(
+      "SELECT value FROM _cf_KV WHERE key = 'kakao_rest_api_key'"
+    ).first<any>()
+    const key = row?.value || ''
+    return c.json({ enabled: !!key, masked: key ? key.slice(0,4) + '****' + key.slice(-4) : '' })
+  } catch {
+    return c.json({ enabled: false, masked: '' })
+  }
+})
+
 export default app
