@@ -7348,7 +7348,7 @@ var NICKNAME_TABLE = {
   'A02': {
     'A03': { 모계유전: '엄마체형 하지정체형', default: '오후만되면 코끼리다리형' },
     'A10': { 모계유전: '엄마체형 하지정체형', default: '엄마체형 하지정체형' },
-    'A04': { 시술: '지방흡입후 재발형', default: '오후만되면 코끼리다리형' },
+    'A04': { 시술: '지방흡입후 재발형', default: '안 쓰는 팔뚝 부종형' },  // 공식: A02·A04·A06 → 상체 부종형
     'A06': { 시술: '지방흡입후 재발형', default: '안 쓰는 팔뚝 부종형' },
     'default': { default: '오후만되면 코끼리다리형' },
   },
@@ -7365,7 +7365,7 @@ var NICKNAME_TABLE = {
     'A03': { default: '팔다리거미 올챙이배형' },
     'A01': { default: '팔다리거미 올챙이배형' },
     'A02': { default: '운동할수록 말벅지형' },
-    'A06': { default: '운동할수록 말벅지형' },
+    'A06': { default: '상체근육형' },   // 공식: A04·A06·A02 → 상체 근육형(BC-8)
     'A09': { default: '상체근육형' },   // 상체 근발달 + 대사위험 → 상체근육형(BC-8)
     'A07': { default: '상체근육형' },   // 상체 근발달 + 코르티솔 → 상체근육형(BC-8)
     'default': { default: '팔다리거미 올챙이배형' },
@@ -7378,10 +7378,16 @@ var NICKNAME_TABLE = {
     'default': { default: '식후임산부 가스풍선형' },
   },
   // ── A06 Top1: 골격·복압 → BC-7 계열 ──
+  // A06+A02 진입 시 Top3로 3분기:
+  //   Top3=A04 → 골반틀어짐 승마살형 (A06·A02·A04)
+  //   Top3=A07 → 목짧아지는 거북이형  (A06·A02·A07)
+  //   Top3=A03 → 겨드랑이 부유방형    (A06·A02·A03)
+  //   Top3 기타 → 골반틀어짐 승마살형 (default)
+  // → computeNickname()에서 top3 분기로 처리 (A06_A02_top3 플래그)
   'A06': {
     'A04': { 출산: '출산후 바람빠진 풍선형', default: '출산후 바람빠진 풍선형' },
     'A03': { 출산: '출산후 바람빠진 풍선형', default: '겨드랑이 부유방형' },
-    'A02': { default: '목짧아지는 거북이형' },
+    'A02': { _top3split: true, default: '골반틀어짐 승마살형' }, // Top3 분기는 computeNickname에서 처리
     'A07': { default: '목짧아지는 거북이형' },
     'default': { 출산: '출산후 바람빠진 풍선형', default: '골반틀어짐 승마살형' },
   },
@@ -7586,6 +7592,18 @@ function computeNickname(axisScores, answers) {
 
   // 배경 필터 매칭: 정확히 일치하는 키 우선, 없으면 default
   let nickname = t2Entry[background] || t2Entry['default'] || '동시다발 다중악순환형';
+
+  // ④-1. A06+A02 진입 시 Top3로 추가 분기
+  // 공식 설계:
+  //   A06·A02·A04 → 골반틀어짐 승마살형
+  //   A06·A02·A07 → 목짧아지는 거북이형
+  //   A06·A02·A03 → 겨드랑이 부유방형
+  //   A06·A02·기타 → 골반틀어짐 승마살형 (default)
+  if (top1 === 'A06' && top2 === 'A02' && t2Entry._top3split) {
+    if      (top3 === 'A07') nickname = '목짧아지는 거북이형';
+    else if (top3 === 'A03') nickname = '겨드랑이 부유방형';
+    else                     nickname = '골반틀어짐 승마살형'; // A04 포함 기타 전부
+  }
 
   // ⑤ 심층 설문 라우팅 결정 (Top1 축 기반)
   const deepSurveyRoute = getDeepSurveyRoute(isDispositionTop1 ? 'A10' : top1);
