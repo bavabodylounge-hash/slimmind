@@ -4188,6 +4188,8 @@ p, div, span, h1, h2, h3, h4{
 .lradv-great .lradv-t,.lradv-strong .lradv-t,.lradv-cal-good .lradv-t{color:#46562d;}
 .lradv-weak,.lradv-low,.lradv-cal{border-left-color:#c9a23e;}
 .lradv-good,.lradv-mid{border-left-color:#8b6db5;}
+.lradv-personal{border-left-color:#c0397a;background:linear-gradient(135deg,#fff9fc 0%,#fdf0f5 100%);}
+.lradv-personal .lradv-t{color:#8c1a4d;}
 .lradv-go{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;background:linear-gradient(135deg,#8b6db5,#9a3520);color:#fff;border:none;border-radius:12px;padding:14px 16px;cursor:pointer;font-family:inherit;font-size:13.5px;font-weight:900;box-shadow:0 4px 14px rgba(139,109,181,.28);}
 .lradv-go:active{transform:scale(.98);}
 .lradv-go-arr{font-size:16px;}
@@ -11411,24 +11413,75 @@ function renderP2(userName, bcCode, firstDomino, axisScores, sorted, answers) {
   var bcSteps = P2_DOMINO_BC[bcCode];
   var steps;
   if (bcSteps) {
-    // answers에서 살찐 계기·약물 이력으로 1번째 도미노 개인화
-    var hasStepTrigger = answers && (Array.isArray(answers['q8_trigger']) && answers['q8_trigger'].length > 0);
-    var hasDrugStep    = answers && Array.isArray(answers['long_term_drugs']) && answers['long_term_drugs'].length > 0 && !answers['long_term_drugs'].some(function(x){ return x === 6; });
-    var hasProcStep    = answers && Array.isArray(answers['past_procedures']) && answers['past_procedures'].length > 0 && !answers['past_procedures'].some(function(x){ return x === 5; });
+    // ── stage2 answers 전체 활용 컨텍스트 추출 ──
+    var _p2ans = answers || {};
+
+    // q8_trigger: 살찐 계기
+    var hasStepTrigger = Array.isArray(_p2ans['q8_trigger']) && _p2ans['q8_trigger'].length > 0;
+    // long_term_drugs: 장기 복용약 (6=없음)
+    var hasDrugStep    = Array.isArray(_p2ans['long_term_drugs']) && _p2ans['long_term_drugs'].length > 0 && !_p2ans['long_term_drugs'].some(function(x){ return x === 6; });
+    // disease: 대사질환 진단 (7=없음)
+    var _p2disease     = Array.isArray(_p2ans['disease']) ? _p2ans['disease'] : [];
+    var _p2dmap        = {0:'PCOS',1:'당뇨',2:'고혈압',3:'갑상선',4:'지방간',5:'역류성식도염',6:'우울증·불안'};
+    var _p2diseaseNms  = _p2disease.filter(function(x){return x!==7;}).map(function(i){return _p2dmap[i];}).filter(Boolean);
+    // checkup: 건강검진 경계 (4=없음)
+    var _p2checkup     = Array.isArray(_p2ans['checkup']) ? _p2ans['checkup'] : [];
+    var _p2chkmap      = {0:'공복혈당 경계',1:'지방간 소견',2:'콜레스테롤·중성지방',3:'혈압 경계'};
+    var _p2chkNms      = _p2checkup.filter(function(x){return x!==4;}).map(function(i){return _p2chkmap[i];}).filter(Boolean);
+    // cold_limbs: 수족냉증 (0=심함,1=약간,2=더위탐)
+    var _p2cold        = _p2ans['cold_limbs'] !== undefined ? Number(_p2ans['cold_limbs']) : null;
+    var _p2coldTxt     = _p2cold === 0 ? '수족냉증(심함)' : _p2cold === 1 ? '수족냉증(약간)' : null;
+    // q11_event: 출산(0=후변화,1=큰변화없음,2=없음)
+    var _p2birth       = _p2ans['q11_event'] !== undefined ? Number(_p2ans['q11_event']) : null;
+    var _p2birthTxt    = _p2birth === 0 ? '출산 후 체형 변화 이력' : null;
+    // q12_menopause: 갱년기 (3=신호조금,4=해당없음)
+    var _p2meno        = _p2ans['q12_menopause'] || _p2ans['Q_MENOPAUSE'] || '';
+    var _p2menoActive  = (_p2meno && _p2meno !== '해당없음' && _p2meno !== '' && _p2meno !== '4');
+    var _p2menoTxt     = _p2menoActive ? '갱년기·호르몬 변화' : null;
+    // past_procedures: 시술이력 (5=없음)
+    var hasProcStep    = Array.isArray(_p2ans['past_procedures']) && _p2ans['past_procedures'].length > 0 && !_p2ans['past_procedures'].some(function(x){ return x === 5; });
+
     steps = bcSteps.map(function(s, i) {
       var desc = s.desc;
-      // 1번째 도미노에 계기 추가 개인화
-      if (i === 0 && hasStepTrigger) {
-        var tmap = {0:'스트레스·과로', 1:'심리적 충격', 2:'수술·약물', 3:'잦은 회식', 4:'금연'};
-        var tnames = answers['q8_trigger'].map(function(idx){ return tmap[idx]; }).filter(Boolean);
-        if (tnames.length) desc = '<em style="color:var(--vis-d)">' + tnames.join('·') + '</em>이 계기였습니다. ' + desc;
+
+      // ── 1번째 도미노: 계기 + 대사질환 + 건강검진 경계 주입 ──
+      if (i === 0) {
+        if (hasStepTrigger) {
+          var tmap = {0:'스트레스·과로', 1:'심리적 충격', 2:'수술·약물', 3:'잦은 회식', 4:'금연'};
+          var tnames = _p2ans['q8_trigger'].map(function(idx){ return tmap[idx]; }).filter(Boolean);
+          if (tnames.length) desc = '<em style="color:var(--vis-d)">' + tnames.join('·') + '</em>이 계기였습니다. ' + desc;
+        }
+        // 대사질환 진단 이력 주입
+        if (_p2diseaseNms.length) {
+          desc += ' <span style="font-size:11px;color:var(--vis-d);font-weight:700">진단이력: ' + _p2diseaseNms.join('·') + '</span>';
+        }
+        // 건강검진 경계 소견 주입
+        if (_p2chkNms.length) {
+          desc += ' <span style="font-size:11px;opacity:.75">(검진 경계: ' + _p2chkNms.join('·') + ')</span>';
+        }
       }
-      // 약물 이력이 있으면 관련 도미노에 주석 추가
-      if (i === 1 && hasDrugStep) {
-        var dmap = {0:'스테로이드', 1:'항우울제', 2:'피임약·호르몬제', 3:'항응고제', 4:'이소트레티노인', 5:'탈모약'};
-        var dnames = answers['long_term_drugs'].filter(function(x){ return x !== 6; }).map(function(idx){ return dmap[idx]; }).filter(Boolean);
-        if (dnames.length) desc += ' <span style="font-size:11px;opacity:.7">(복용이력: ' + dnames.join('·') + ')</span>';
+
+      // ── 2번째 도미노: 약물 이력 + 수족냉증 + 출산 ──
+      if (i === 1) {
+        if (hasDrugStep) {
+          var dmap = {0:'스테로이드', 1:'항우울제', 2:'피임약·호르몬제', 3:'항응고제', 4:'이소트레티노인', 5:'탈모약'};
+          var dnames = _p2ans['long_term_drugs'].filter(function(x){ return x !== 6; }).map(function(idx){ return dmap[idx]; }).filter(Boolean);
+          if (dnames.length) desc += ' <span style="font-size:11px;opacity:.7">(복용이력: ' + dnames.join('·') + ')</span>';
+        }
+        if (_p2coldTxt) desc += ' <span style="font-size:11px;opacity:.7">(' + _p2coldTxt + ' 확인됨 — 저대사 패턴)</span>';
+        if (_p2birthTxt) desc += ' <span style="font-size:11px;opacity:.7">(' + _p2birthTxt + ')</span>';
       }
+
+      // ── 3번째 도미노: 갱년기·호르몬 변화 + 시술이력 ──
+      if (i === 2) {
+        if (_p2menoTxt) desc += ' <span style="font-size:11px;color:#c0397a;font-weight:700">(' + _p2menoTxt + ' — 회복 전략 조정 필요)</span>';
+        if (hasProcStep) {
+          var pmap = {0:'지방흡입',1:'지방분해주사',2:'리프팅',3:'보톡스·필러',4:'복부성형'};
+          var pnames = _p2ans['past_procedures'].filter(function(x){return x!==5;}).map(function(i){return pmap[i];}).filter(Boolean);
+          if (pnames.length) desc += ' <span style="font-size:11px;opacity:.7">(시술이력: ' + pnames.join('·') + ')</span>';
+        }
+      }
+
       return { title: s.title, desc: desc, isTop: i === 0, link: s.axLabel };
     });
   } else {
@@ -12048,7 +12101,10 @@ function renderP5(metrics, bcCode, axisScores, userName, answers) {
   var _procs         = ans['past_procedures']  || null;  // stage2[9]: 배열 (지방흡입·지방분해·리프팅...)
   var _family        = ans['q1_family']        || null;  // stage2[1]: 배열 (아버지·어머니·형제·없음)
   var _trigger       = ans['q8_trigger']       || null;  // stage2[8]: 배열 (스트레스·충격·수술·회식...)
-  var _meno          = ans['Q_MENOPAUSE']      || '';    // '갱년기 변환형'|'호르몬 치료형'|'완경 후'|''
+  // Q_MENOPAUSE: 변환된 문자열 우선, 없으면 q12_menopause 원본(0/1=갱년기) → fallback 변환
+  var _q12menoRaw = ans['q12_menopause'] !== undefined ? Number(ans['q12_menopause']) : null;
+  var _menoFallback = (_q12menoRaw === 0 ? '갱년기 변환형' : _q12menoRaw === 1 ? '갱년기 변환형' : '');
+  var _meno          = ans['Q_MENOPAUSE'] || _menoFallback || '';    // '갱년기 변환형'|'호르몬 치료형'|'완경 후'|''
   var _coldLimbs     = ans['cold_limbs']       !== undefined ? ans['cold_limbs'] : null; // stage2[5]: 0=여름도차,1=조금,2=더위탐
   var _smoke         = ans['q13_smoke']        !== undefined ? ans['q13_smoke']  : null; // stage2[13]: 0=흡연,1=금연직후,2=안피움
   var _drink         = ans['q14_drink']        !== undefined ? ans['q14_drink']  : null; // stage2[14]: 0=주3+,1=주1~2,2=거의안
@@ -12297,15 +12353,44 @@ function renderP5(metrics, bcCode, axisScores, userName, answers) {
       ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#6b4eaa" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.5" r="2"/><path d="M12 7v6M12 9l-4-1.5M12 9l4-1.5M12 13l-3 7M12 13l3 7"/></svg>',
       to:'필라테스 · 도수',
       gradeThresh:60,
-      evFn: function(sc) { return [
-        {k:'증상 진단', t:sc>60?'체형 불균형':'양호', tc:'#8a5a18', tb:'#faf0dc', v:sc>60?'"아랫배·옆구리 집중" + 자세 틀어짐 — 정렬·코어 약화 패턴.':'체형 기반 안정적.', on:sc>60},
-        {k:'체지방률', t:sc>60?'관리 필요':'양호', tc:'#5f5e5a', tb:'#f1efe8', v:sc>60?'체지방률 관리 구간 — 근감소·자세 무너짐 동반 가능.':'체지방률 안정적.', on:sc>60},
-        {k:'가족력', t:sc>55?'체형 이력':'중립', tc:'#993556', tb:'#fbeaf0', v:sc>55?'가족력에서 체형 변화 패턴 — 골반·코어 관리 필요군.':'가족력과 직접 연결 약함.', on:sc>55},
-        {k:'기질', t:'저강도 적합', tc:'#2f7d8c', tb:'#e7f0f4', v:'BC 기질에서 저강도·정렬 위주 운동이 맞음 (고강도 금지).', on:sc>50},
-        {k:'답안 속도', t:'보통', tc:'#3f5022', tb:'#eef2e4', v:'체형 문항 응답 속도 평이.', on:false},
-        {k:'성향', t:'중립', tc:'#6b4eaa', tb:'#efeafa', v:'성향과 체형 직접 연결 약함.', on:false}
-      ];},
-      conclFn: function(sc) { return sc>60?'체지방률·증상·가족력이 <b>체형 관리가 필요함을 가리킵니다.</b>':'체형 기반 안정. 미세 교정으로 최적화합니다.'; },
+      evFn: function(sc) {
+        // q11_event: 0=출산 후 체형변화, 1=큰변화없음, 2=없음
+        var hasBirthBody = _q11Event === 0 || _q11Event === '0';
+        // checkup: 3=혈압경계
+        var hasHTNCheck  = hasIdx(_checkup, 3);
+        return [
+          {k:'증상 진단',
+           t:sc>60?(hasBirthBody?'출산 후 체형 변화':'체형 불균형'):'양호',
+           tc:'#8a5a18', tb:'#faf0dc',
+           v:sc>60?(hasBirthBody?'출산 후 체형 변화 이력 — 골반저근·복부 이완 패턴, 복압 회복 운동이 필수입니다.':'"아랫배·옆구리 집중" + 자세 틀어짐 — 정렬·코어 약화 패턴.'):'체형 기반 안정적.',
+           on:sc>60 || hasBirthBody},
+          {k:'체지방률',
+           t:sc>60?'관리 필요':'양호',
+           tc:'#5f5e5a', tb:'#f1efe8',
+           v:sc>60?'체지방률 관리 구간 — 근감소·자세 무너짐 동반 가능.':'체지방률 안정적.',
+           on:sc>60},
+          {k:'가족력',
+           t:sc>55?'체형 이력':'중립',
+           tc:'#993556', tb:'#fbeaf0',
+           v:sc>55?'가족력에서 체형 변화 패턴 — 골반·코어 관리 필요군.':'가족력과 직접 연결 약함.',
+           on:sc>55},
+          {k:'기질',
+           t:hasBirthBody?'골반저근 회복':'저강도 적합',
+           tc:'#2f7d8c', tb:'#e7f0f4',
+           v:hasBirthBody?'출산 이력 — 골반저근 재활이 체형 교정의 선행 조건입니다. 고강도 복압 운동은 전문가 확인 후 진행.':'BC 기질에서 저강도·정렬 위주 운동이 맞음 (고강도 금지).',
+           on:sc>50 || hasBirthBody},
+          {k:'답안 속도',
+           t:hasHTNCheck?'혈압 경계':'보통',
+           tc:'#3f5022', tb:'#eef2e4',
+           v:hasHTNCheck?'혈압 경계 소견 — 고강도 운동 시 혈압 급상승 주의, 저강도 유산소 위주로 단계적 진행 권장.':'체형 문항 응답 속도 평이.',
+           on:hasHTNCheck},
+          {k:'성향', t:'중립', tc:'#6b4eaa', tb:'#efeafa', v:'성향과 체형 직접 연결 약함.', on:false}
+        ];
+      },
+      conclFn: function(sc) {
+        var hasBirthBody2 = _q11Event === 0 || _q11Event === '0';
+        return sc>60?(hasBirthBody2?'출산 후 체형 변화·골반저근 약화가 감지됩니다. <b>골반 재활 + 코어 회복이 1순위</b>입니다.':'체지방률·증상·가족력이 <b>체형 관리가 필요함을 가리킵니다.</b>'):'체형 기반 안정. 미세 교정으로 최적화합니다.';
+      },
       noneTag: function(sc) { return sc>60?null:'근거 약함'; },
       noneStrike: ''
     },
@@ -15697,8 +15782,19 @@ function renderDailyPage(){
 
   // ── 오행 기질 레이어 보완 텍스트
   var ohaengCaution = w1.ohaeng_caution || '';
-  var ohaengKey     = (window.__DIAG_DATA__ && window.__DIAG_DATA__.ohaeng_type)
-                   || (window.__RESULT__ && window.__RESULT__.ohaengType) || '';
+  // ── ohaengKey: 4중 fallback — DIAG_DATA → RESULT → _wowData → ACTIVE_WEEKS 오행 caution 키
+  var ohaengKey = (window.__DIAG_DATA__ && (window.__DIAG_DATA__.ohaeng_type || window.__DIAG_DATA__.ohaengType))
+               || (window.__RESULT__ && (window.__RESULT__.ohaengType || window.__RESULT__.ohaeng_type))
+               || (typeof _wowData !== 'undefined' && _wowData && _wowData.ohaengType)
+               || (w1.ohaeng_caution && (function(){
+                    // ohaeng_caution 텍스트에서 오행 키 역추적 ('목(木)' 등)
+                    var ks = ['목(木)','화(火)','토(土)','금(金)','수(水)'];
+                    for (var ki=0; ki<ks.length; ki++) {
+                      if ((w1.ohaeng_caution||'').indexOf(ks[ki].slice(0,1)) >= 0) return ks[ki];
+                    }
+                    return '';
+                  })())
+               || '';
 
   // ── 오행별 운동/식단/회복 보완 한 줄 — P10 전용 간결 버전
   var OHAENG_P10 = {
@@ -16619,8 +16715,62 @@ function renderLiveAdvice(){
   var totalOut=exAll.reduce(function(s,r){return s+r.kcal;},0);
   var net=totalIn-totalOut;
 
+  // ── BC/오행 개인화 컨텍스트 읽기 ──
+  var _laBC = (typeof _wowData !== 'undefined' && _wowData && _wowData.bcCode)
+           || (window.__DIAG_DATA__ && window.__DIAG_DATA__.bc_code)
+           || (window.__RESULT__ && window.__RESULT__.bc_code) || '';
+  var _laOhaeng = (typeof _wowData !== 'undefined' && _wowData && _wowData.ohaengType)
+               || (window.__DIAG_DATA__ && (window.__DIAG_DATA__.ohaengType || window.__DIAG_DATA__.ohaeng_type))
+               || (window.__RESULT__ && (window.__RESULT__.ohaengType || window.__RESULT__.ohaeng_type)) || '';
+
+  // BC코드별 실천 약점 코칭 — 유형마다 실패 이유가 다름
+  var BC_COACHING = {
+    '1': { weak:'BC-1(호르몬 교란형)은 컨디션이 날마다 달라요. 못 한 날을 탓하지 말고, 컨디션 좋은 날에 2배로 쌓는 전략으로 가세요.',
+           great:'BC-1은 호르몬이 안정된 주에 실천률이 폭발적으로 오릅니다. 이 흐름을 절대 놓치지 마세요.' },
+    '2': { weak:'BC-2(대사 저하형)는 에너지가 부족할 때 회복 칸부터 챙기세요. 수면이 대사를 먼저 끌어올립니다.',
+           great:'BC-2는 회복이 쌓이면 대사가 다시 켜집니다. 지금 페이스가 바로 그 신호예요.' },
+    '3': { weak:'BC-3(내장지방형)은 식단 칸이 핵심이에요. 운동보다 식이 타이밍이 내장지방을 줄이는 열쇠입니다.',
+           great:'BC-3은 식단 일관성이 내장지방 감소와 직결돼요. 이 식단 페이스면 4주 후 복부 변화가 체감될 거예요.' },
+    '4': { weak:'BC-4(갑상선·요요형)은 한 번 무너지면 재진입이 어려워요. 오늘 못 했다면 내일 회복 칸 하나만 확실히 잡으세요.',
+           great:'BC-4는 요요 없이 꾸준한 것 자체가 기적이에요. 지금 이 흐름이 과거와 다른 이유입니다.' },
+    '5': { weak:'BC-5(복합 저항형)은 운동 강도를 낮추더라도 매일 소량씩 쌓는 것이 중요해요. 강도보다 빈도가 먼저입니다.',
+           great:'BC-5는 복합 저항을 뚫는 데 가장 많은 에너지가 필요해요. 이 페이스를 유지하면 6주차 이후 변곡점이 옵니다.' },
+    '6': { weak:'BC-6(스트레스 폭식형)은 회복 칸을 놓치면 다음 날 식욕이 올라요. 수면·회복을 식단보다 먼저 잡으세요.',
+           great:'BC-6는 회복이 안정되면 폭식 충동이 자연스럽게 줄어요. 지금 회복 루틴이 잘 자리잡고 있어요.' },
+    '7': { weak:'BC-7(염증·부종형)은 음식 종류가 칼로리보다 중요해요. 식단 칸 체크할 때 처방 음식을 꼭 확인하세요.',
+           great:'BC-7은 처방 식단이 쌓일수록 부종과 염증이 줄어요. 지금 흐름이 정확히 맞습니다.' },
+    '8': { weak:'BC-8(멘탈 기반형)은 의지로 밀어붙이지 말고, 가장 즐거운 칸 하나부터 시작해보세요. 즐거움이 꾸준함을 만들어요.',
+           great:'BC-8은 실천이 즐거워질 때 가장 오래 갑니다. 지금이 바로 그 구간이에요.' },
+    '9': { weak:'BC-9(복합 만성형)은 모두 다 잘하려 하지 말고 3대 영역 중 가장 쉬운 것 하나만 오늘 완료하세요.',
+           great:'BC-9는 모든 요소가 얽혀 있어서 이 실천률 자체가 대단한 성과예요. 절대 속도를 올리지 마세요.' }
+  };
+
+  // 오행별 실천 최우선 보완 팁
+  var OHAENG_COACHING = {
+    '목(木)': { ic:'🌿', k:'간·스트레스 주의', s:'목(木) 기질은 스트레스가 쌓이면 실천 의지가 한 번에 무너져요. 운동 후 스트레칭 10분이 간 기운을 풀어줍니다.' },
+    '화(火)': { ic:'🔥', k:'심장·과열 주의', s:'화(火) 기질은 과도하게 달려들다 번아웃하기 쉬워요. 오늘 80% 강도로 마무리하고, 취침 1시간 전 전자기기를 끄세요.' },
+    '토(土)': { ic:'🌾', k:'소화·습 주의', s:'토(土) 기질은 식후 소화를 못 시키면 대사가 느려져요. 식단 체크 후 식후 20분 걷기 한 번이면 오늘 루틴 완성입니다.' },
+    '금(金)': { ic:'🌬️', k:'폐·호흡 주의', s:'금(金) 기질은 호흡이 얕아지면 회복이 느려요. 회복 칸을 체크할 때 4-7-8 호흡 3세트를 꼭 붙이세요.' },
+    '수(水)': { ic:'💧', k:'신장·냉기 주의', s:'수(水) 기질은 몸이 차가울 때 실천 의욕이 뚝 떨어져요. 운동 전 족욕 5분이나 온수 샤워로 체온을 먼저 올리세요.' }
+  };
+
   // ── 코칭 메시지 생성 ──
   var advs=[];
+
+  // 0) BC/오행 개인화 코칭 (항상 첫 번째로)
+  var bcNum = String(_laBC).replace(/[^0-9]/g,'');
+  var bcCoach = BC_COACHING[bcNum] || null;
+  var ohaengCoach = OHAENG_COACHING[_laOhaeng] || null;
+  if (bcCoach || ohaengCoach) {
+    var bcMsg = bcCoach ? (pct>=60 ? bcCoach.great : bcCoach.weak) : '';
+    var ohaengMsg = ohaengCoach ? ohaengCoach.s : '';
+    var personalTitle = 'BC-' + (bcNum||'?') + ' · ' + (_laOhaeng||'오행') + ' 맞춤 코칭';
+    var personalBody = [bcMsg, ohaengMsg].filter(Boolean).join(' 그리고 ');
+    if (personalBody) {
+      advs.push({ic: ohaengCoach ? ohaengCoach.ic : '🎯', tone:'personal', t: personalTitle, s: personalBody});
+    }
+  }
+
   // 1) 전체 페이스
   if (checkedN===0){
     advs.push({ic:'👋', tone:'start', t:'아직 시작 전이에요', s:'12주 로드맵에서 오늘 칸 하나만 체크해보세요. 여기 어드바이저가 실천을 분석해서 매일 코칭해 드립니다.'});
