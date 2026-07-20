@@ -8172,11 +8172,49 @@ function getMbtiOhaengInsights(bcMaster, ohaengKey, mbtiType) {
 // gender: 'M'(남성) | 'F'(여성) | null
 // menopause: 'meno'|'post'|'peri'|'hrt' → 완경·폐경
 // ──────────────────────────────────────────────
-function getCruelHistoryTriggers(userName, ohaengKey, mbtiType, gender, menopause) {
+function getCruelHistoryTriggers(userName, ohaengKey, mbtiType, gender, menopause, answers) {
   const ohaeng = SAJU_ELEMENT_DESC[ohaengKey] || SAJU_ELEMENT_DESC['목'];
   const mbti   = MBTI_DESC[mbtiType] || MBTI_DESC['INFP'];
   // 이름만 (예: 김지현 → 지현)
   const nm = (userName && userName.length >= 3) ? userName.slice(1) : (userName || '회원');
+
+  // ── answers 기반 stage2 데이터 추출 ──
+  const _ans       = answers || {};
+  const _disease   = _ans['disease']              || null;   // stage2[3] 배열
+  const _drugs     = _ans['long_term_drugs']       || null;  // stage2[6] 배열
+  const _trigger   = _ans['q8_trigger']           || null;  // stage2[8] 배열
+  const _smoke     = _ans['q13_smoke'];                      // stage2[13] 0=흡연중,1=금연,2=비흡연
+  const _drink     = _ans['q14_drink'];                      // stage2[14] 0=음주,1=비음주
+  const _coldLimbs = _ans['cold_limbs'];                     // stage2[5] 0=있음,1=없음
+  const _checkup   = _ans['checkup']              || null;  // stage2[4] 배열
+  // stage2[10] = wtline 객체 {pat,cyc,amp,net,series}
+  // pat 값: 'yoyo'(요요반복) | 'jump'(급증) | 'creep'(완만증가) | 'down'(감소) | 'stable'(안정)
+  const _wtline    = _ans['q10_history']          || null;  // stage2[10] wtline 객체
+  const _family    = _ans['q1_family']            || null;  // stage2[1] 배열
+  const _q12meno   = _ans['q12_menopause']        || null;  // stage2[12] 원본(변환 전)
+
+  // ── 헬퍼 ──
+  const _hasIdx = (arr, i) => Array.isArray(arr) && arr.indexOf(i) > -1;
+  // disease 인덱스: 0=PCOS,1=당뇨,2=고혈압,3=갑상선,4=지방간,5=심혈관,6=우울증,7=없음
+  const _hasDiabetes  = _hasIdx(_disease, 1);
+  const _hasHTN       = _hasIdx(_disease, 2);
+  const _hasThyroid   = _hasIdx(_disease, 3);
+  const _hasFatLiver  = _hasIdx(_disease, 4);
+  const _hasDepression= _hasIdx(_disease, 6);
+  // drug 인덱스: 0=스테로이드,1=항우울제,2=피임약,3=항응고제,4=이소트레티노인,5=탈모약,6=없음
+  const _hasAntidep   = _hasIdx(_drugs, 1);
+  const _hasPill      = _hasIdx(_drugs, 2);
+  const _hasSteroid   = _hasIdx(_drugs, 0);
+  // trigger 인덱스: 0=스트레스·과로,1=심리적충격,2=음식변화,3=활동감소,4=없음
+  const _hasStressTrg = _hasIdx(_trigger, 0) || _hasIdx(_trigger, 1);
+  // checkup 인덱스: 0=고혈당, 1=고지혈, 2=고혈압, 3=지방간, 4=없음
+  const _hasHighBloodSugar = _hasIdx(_checkup, 0);
+  const _hasHighLipid      = _hasIdx(_checkup, 1);
+  // q10 wtline: {pat,cyc,amp,net,series} — pat==='yoyo'이면 요요 반복 이력 확정
+  const _hasYoyo = (_wtline && typeof _wtline === 'object' && _wtline.pat === 'yoyo');
+  // 가족력 인덱스: 0=비만,1=당뇨,2=고혈압,3=심혈관,4=없음
+  const _hasFamDiabetes = _hasIdx(_family, 1);
+  const _hasFamHTN      = _hasIdx(_family, 2);
 
   // ── 트리거 필드 설명 ──
   //  hook     : 카드 상단 한 줄 — "의지가 꺾인 게 아닙니다, ~한 겁니다"
@@ -8186,65 +8224,118 @@ function getCruelHistoryTriggers(userName, ohaengKey, mbtiType, gender, menopaus
   //  dayStart/dayEnd : 다이어트 시작 후 며칠~며칠 구간 (실시간 임박도 계산용)
   //  cycle    : 반복 주기(일). 주기성 트리거(생리 등)는 day 무시하고 cycle로 계산
 
-  // ── 공통 트리거 1: 72시간 금단 반응 ──
+  // ── 공통 트리거 1: 72시간 금단 반응 (answers 개인화) ──
+  // 당뇨·고혈당: 혈당 취약성 강조 / 요요 이력: 반복 패턴 언급 / 가족력 당뇨: 유전 문맥 추가
+  const _t01Medical_base = `${nm} 님은 유독 탄수화물 대사 의존도가 높게 나왔습니다. 이 상태에서 남들 하는 방식으로 탄수화물을 갑자기 뚝 끊으면, 혈당이 추락하면서 뇌가 즉시 '비상사태' 신호를 보냅니다. 사소한 일에 짜증이 나고 감정이 폭발하는 건 당연한 생리 현상입니다.`;
+  const _t01Medical_diabetes = `${nm} 님의 검진 결과에 고혈당 이상이 확인됩니다. 혈당 조절 기능이 약해진 상태에서 탄수화물을 갑자기 끊으면 혈당 낙폭이 더 크고 빠르게 나타납니다. 뇌가 비상사태를 선언하는 속도가 다른 분들보다 훨씬 빠를 수 있어, 72시간 내 포기가 거의 불가피하게 설계된 상황이었습니다.`;
+  const _t01Comfort_yoyo = `계획을 세울 때마다 늘 자신을 가장 마지막 순위에 두고 몰아붙이지 않으셨나요. 요요를 반복하셨다면 그 72시간 고비를 여러 번 넘다 결국 무너진 경험이 있을 겁니다. 의지가 약해서가 아니라, 몸의 구조가 그렇게 반응하도록 세팅되어 있었던 겁니다. <em>${mbti.behaviorTag}</em> 성향까지 더해지면 이 신호는 더 빨리 옵니다.`;
+  const _t01Comfort_base  = `계획을 세울 때마다 늘 자신을 가장 마지막 순위에 두고 몰아붙이지 않으셨나요. 72시간 만에 포기했던 건 의지가 약해서가 아니라, 몸을 너무 아끼지 않아서 보내온 SOS였습니다. <em>${mbti.behaviorTag}</em> 성향까지 더해지면 이 신호는 더 빨리 옵니다.`;
+  const _t01Reframe_diabetes = `혈당이 급락하지 않도록 복합 탄수화물 비율을 천천히 조정하고, 혈당 안정식품(귀리·렌틸콩·아보카도)을 먼저 배치합니다. "얼마나 끊느냐"가 아니라 "혈당을 얼마나 안정시키느냐"로 기준을 바꿔드릴게요.`;
+  const _t01Reframe_base  = `억지로 버티는 72시간이 아니라, 몸이 안심하는 환경을 만들어 드릴게요. 탄수화물을 끊는 게 아니라 복합 탄수화물로 천천히 바꿔, "이 정도면 됐어"라고 느끼게 설계합니다.`;
+
   const trigger01 = {
     num: '01',
-    title: '시작 후 72시간 — 탄수화물 끊김 반응',
+    title: (_hasDiabetes || _hasHighBloodSugar) ? '시작 후 72시간 — 혈당 낙폭과 의지 붕괴' : '시작 후 72시간 — 탄수화물 끊김 반응',
     hook: '의지가 꺾인 게 아닙니다. 뇌가 생존 신호를 보낸 겁니다.',
-    medical: `${nm} 님은 유독 탄수화물 대사 의존도가 높게 나왔습니다. 이 상태에서 남들 하는 방식으로 탄수화물을 갑자기 뚝 끊으면, 혈당이 추락하면서 뇌가 즉시 '비상사태' 신호를 보냅니다. 사소한 일에 짜증이 나고 감정이 폭발하는 건 당연한 생리 현상입니다.`,
-    comfort: `계획을 세울 때마다 늘 자신을 가장 마지막 순위에 두고 몰아붙이지 않으셨나요. 72시간 만에 포기했던 건 의지가 약해서가 아니라, 몸을 너무 아끼지 않아서 보내온 SOS였습니다. <em>${mbti.behaviorTag}</em> 성향까지 더해지면 이 신호는 더 빨리 옵니다.`,
-    reframe: `억지로 버티는 72시간이 아니라, 몸이 안심하는 환경을 만들어 드릴게요. 탄수화물을 끊는 게 아니라 복합 탄수화물로 천천히 바꿔, "이 정도면 됐어"라고 느끼게 설계합니다.`,
+    medical: (_hasDiabetes || _hasHighBloodSugar) ? _t01Medical_diabetes : _t01Medical_base,
+    comfort: _hasYoyo ? _t01Comfort_yoyo : _t01Comfort_base,
+    reframe: (_hasDiabetes || _hasHighBloodSugar) ? _t01Reframe_diabetes : _t01Reframe_base,
     dayStart: 0, dayEnd: 4,
   };
 
-  // ── 공통 트리거 2: 3주 정체기 ──
+  // ── 공통 트리거 2: 3주 정체기 (answers 개인화) ──
+  // 요요 이력: 적응성 열생성 감소 언급 / 우울증·항우울제: 감정 회복 특화 / 흡연: 대사 감소 언급
+  const _t02Medical_yoyo = `요요를 반복하셨다면 마의 3주차 정체기가 더 길고 완강하게 올 수 있습니다. 다이어트를 반복할수록 몸은 '또 굶기 시작했군'이라 판단하고 대사를 더 빠르게 낮추는 적응(Adaptive Thermogenesis)이 일어납니다. 이건 의지나 식단의 문제가 아니라 생리 방어 기제입니다.`;
+  const _t02Medical_base  = `마의 3주차, 몸무게가 멈추는 정체기(Set-point)가 오면 덜컥 겁이 나서 "더 굶어야 하나" 하고 몸을 더 옥죕니다. 하지만 이때는 지방이 안 빠지는 게 아니라, 굳어있던 세포 조직이 분해되며 노폐물 체액이 미처 빠져나가지 못해 잠시 수분이 고여있는 것뿐입니다.`;
+  const _t02Comfort_dep = `"난 역시 안 돼"라며 여기서 거울을 보고 많이 우셨을 겁니다. 우울감이 있는 상태에서는 이 3주차 정체기가 단순한 체중 숫자 이상으로 마음을 무너뜨립니다. 하지만 이 정체기는 실패의 증거가 아니라, 몸이 다음 단계로 넘어가려 대사를 재조정 중이라는 신호입니다. <em>${mbti.behaviorTag}</em> 성향이 "역시 난 안 돼"라는 인지 왜곡을 강화할 뿐입니다.`;
+  const _t02Comfort_base = `"난 역시 안 돼"라며 여기서 거울을 보고 많이 우셨을 겁니다. 하지만 이 정체기는 실패의 증거가 아니라, 몸이 다음 단계로 넘어가려 대사를 열심히 재조정하고 있다는 신호입니다. <em>${mbti.behaviorTag}</em> 성향이 "역시 난 안 돼"라는 인지 왜곡을 만들 뿐입니다.`;
+  const _t02Reframe_yoyo = `요요 이력이 있으면 '더 굶는' 것이 가장 위험한 선택입니다. 대신 단백질을 늘려 근육 소실을 막고, 저강도 운동으로 대사를 깨우는 방향으로 접근합니다. 체중계를 잠시 내려놓고 체성분 변화에 집중하는 전략으로 정체기를 넘깁니다.`;
+  const _t02Reframe_base  = `지금 필요한 건 채찍질이 아니라 깊은 휴식과 따뜻한 위로입니다. 온열 요법과 충분한 수면으로 자율신경을 달래면, 멈춰있던 숫자가 다시 움직이기 시작합니다.`;
+
   const trigger02 = {
     num: '02',
-    title: '시작 후 3주차 — 체중이 멈추는 정체기',
+    title: _hasYoyo ? '시작 후 3주차 — 요요가 만든 더 완강한 정체기' : '시작 후 3주차 — 체중이 멈추는 정체기',
     hook: '살이 안 빠진 게 아닙니다. 다음 단계를 위해 몸이 버틴 겁니다.',
-    medical: `마의 3주차, 몸무게가 멈추는 정체기(Set-point)가 오면 덜컥 겁이 나서 "더 굶어야 하나" 하고 몸을 더 옥죕니다. 하지만 이때는 지방이 안 빠지는 게 아니라, 굳어있던 세포 조직이 분해되며 노폐물 체액이 미처 빠져나가지 못해 잠시 수분이 고여있는 것뿐입니다.`,
-    comfort: `"난 역시 안 돼"라며 여기서 거울을 보고 많이 우셨을 겁니다. 하지만 이 정체기는 실패의 증거가 아니라, 몸이 다음 단계로 넘어가려 대사를 열심히 재조정하고 있다는 신호입니다. <em>${mbti.behaviorTag}</em> 성향이 "역시 난 안 돼"라는 인지 왜곡을 만들 뿐입니다.`,
-    reframe: `지금 필요한 건 채찍질이 아니라 깊은 휴식과 따뜻한 위로입니다. 온열 요법과 충분한 수면으로 자율신경을 달래면, 멈춰있던 숫자가 다시 움직이기 시작합니다.`,
+    medical: _hasYoyo ? _t02Medical_yoyo : _t02Medical_base,
+    comfort: (_hasDepression || _hasAntidep) ? _t02Comfort_dep : _t02Comfort_base,
+    reframe: _hasYoyo ? _t02Reframe_yoyo : _t02Reframe_base,
     dayStart: 18, dayEnd: 26,
   };
 
-  // ── 트리거 3: 성별·완경 분기 ──
+  // ── 트리거 3: 성별·완경 분기 + answers 개인화 ──
   let trigger03;
 
   const isMale = (gender === 'M' || gender === 'male' || gender === '남성' || gender === '남');
   const isMenopause = (menopause && menopause !== 'not_applicable' && menopause !== 'none' && menopause !== null);
 
   if (isMale) {
-    // 남성 전용: 테스토스테론 주기
+    // 남성 전용: 테스토스테론 주기 + 흡연/고혈압/고혈당 개인화
+    const _t03M_smoke   = (_smoke === 0 || _smoke === '0'); // 흡연중
+    const _t03M_htn     = _hasHTN || _hasIdx(_checkup, 2);  // 고혈압
+
     trigger03 = {
       num: '03',
-      title: '과훈련 구간 — 열심히 할수록 빠지는 함정',
+      title: _t03M_htn ? '과훈련 구간 — 혈압이 올라가는 위험한 패턴' : '과훈련 구간 — 열심히 할수록 빠지는 함정',
       hook: '게을러서 안 빠진 게 아닙니다. 몸이 비상 저장 모드에 들어간 겁니다.',
-      medical: `고강도 운동을 회복 없이 계속 밀어붙이면, 코르티솔이 급등하고 테스토스테론이 급락하는 역전이 일어납니다. 이때 몸은 지방을 오히려 복부에 집중해서 쌓습니다. 운동량과 상관없이 복부만 고집스럽게 남는 진짜 이유입니다.`,
-      comfort: `누구보다 열심히 했는데 거울 속 배는 그대로라, 얼마나 억울하고 답답하셨나요. ${ohaeng.label}의 과잉 실행 성향에 <em>${mbti.behaviorTag}</em>가 더해지면 "더 열심히 해야 해"라는 무한 루프에 갇히기 쉽습니다. 잘못은 노력의 방향에 있었을 뿐입니다.`,
-      reframe: `고강도와 저강도 회복을 3:1로 교차합니다. 수면 7시간과 마그네슘·아연으로 테스토스테론이 회복될 환경부터 만들어, 그 고집스러운 복부 지방의 빗장을 풉니다.`,
+      medical: _t03M_htn
+        ? `고강도 운동을 회복 없이 밀어붙이면 코르티솔이 급등하고, ${nm} 님처럼 고혈압이 있는 경우 혈압이 위험하게 치솟을 수 있습니다. 몸이 스스로를 보호하기 위해 운동 강도를 자동으로 제한하면서, 역설적으로 지방 연소보다 저장 모드에 들어갑니다.`
+        : `고강도 운동을 회복 없이 계속 밀어붙이면, 코르티솔이 급등하고 테스토스테론이 급락하는 역전이 일어납니다. 이때 몸은 지방을 오히려 복부에 집중해서 쌓습니다. 운동량과 상관없이 복부만 고집스럽게 남는 진짜 이유입니다.`,
+      comfort: _t03M_smoke
+        ? `누구보다 열심히 했는데 거울 속 배는 그대로라, 얼마나 억울하고 답답하셨나요. 흡연은 조직의 산소 공급을 방해해 같은 운동을 해도 지방 연소 효율이 낮아집니다. ${ohaeng.label}의 과잉 실행 성향에 <em>${mbti.behaviorTag}</em>가 더해지면 "더 열심히 해야 해"라는 무한 루프에 갇히기 쉽습니다.`
+        : `누구보다 열심히 했는데 거울 속 배는 그대로라, 얼마나 억울하고 답답하셨나요. ${ohaeng.label}의 과잉 실행 성향에 <em>${mbti.behaviorTag}</em>가 더해지면 "더 열심히 해야 해"라는 무한 루프에 갇히기 쉽습니다. 잘못은 노력의 방향에 있었을 뿐입니다.`,
+      reframe: _t03M_htn
+        ? `고혈압이 있는 경우 고강도 무산소 운동은 일단 중강도 이하로 제한합니다. 저강도 유산소 + 근력 교차(3:1) 방식과 수면·마그네슘 회복 전략으로 안전하게 복부 지방의 빗장을 풉니다.`
+        : `고강도와 저강도 회복을 3:1로 교차합니다. 수면 7시간과 마그네슘·아연으로 테스토스테론이 회복될 환경부터 만들어, 그 고집스러운 복부 지방의 빗장을 풉니다.`,
       dayStart: 35, dayEnd: 56,
     };
   } else if (isMenopause) {
-    // 완경·폐경 전후: 에스트로겐 급락
+    // 완경·폐경 전후: 에스트로겐 급락 + 수족냉증/피임약/갑상선 개인화
+    const _t03F_cold    = (_coldLimbs === 0 || _coldLimbs === '0');
+    const _t03F_thyroid = _hasThyroid || _hasIdx(_checkup, 3);
+
     trigger03 = {
       num: '03',
-      title: '호르몬 전환기 — 똑같이 먹어도 찌는 서러움',
+      title: _t03F_cold ? '호르몬 전환기 — 손발이 차가워지고 배만 불러오는 이유' : '호르몬 전환기 — 똑같이 먹어도 찌는 서러움',
       hook: '먹는 양이 늘어난 게 아닙니다. 대사 구조 자체가 바뀐 겁니다.',
-      medical: `에스트로겐이 급격히 줄고 인슐린 저항성이 높아지는 시기에는, 슬프게도 예전과 똑같이 먹어도 지방이 허벅지에서 '복부'로 강제 재배치됩니다. 대사 구조가 바뀌었기 때문에 적게 먹고 많이 움직이는 기존 공식은 완전히 무력화됩니다.`,
-      comfort: `남들은 모르는 나만의 몸의 변화, 겉으론 아무렇지 않은 척했지만 속으론 얼마나 답답하고 외로우셨나요. 손발은 차가워지고 배만 자꾸 불러오는 그 서러운 감각을, ${nm} 님의 데이터가 고스란히 증명하고 있습니다. ${ohaeng.label}의 에너지 정체와 만나 더 심해진 것뿐입니다.`,
-      reframe: `에스트로겐 감소를 보완하는 파이토에스트로겐(콩·석류·아마씨)과 저강도 근력을 함께 둡니다. 그리고 기준을 체중계 숫자가 아니라, 복부 둘레와 체성분으로 바꿔드릴게요.`,
+      medical: _t03F_thyroid
+        ? `에스트로겐이 줄고 갑상선 기능 저하까지 겹치는 시기에는 대사가 이중으로 느려집니다. ${nm} 님 데이터에서 갑상선 이상이 확인됩니다. 예전과 똑같이 먹어도 지방이 허벅지에서 복부로 이동하며, 기존 다이어트 공식이 완전히 무력화됩니다.`
+        : `에스트로겐이 급격히 줄고 인슐린 저항성이 높아지는 시기에는, 슬프게도 예전과 똑같이 먹어도 지방이 허벅지에서 '복부'로 강제 재배치됩니다. 대사 구조가 바뀌었기 때문에 적게 먹고 많이 움직이는 기존 공식은 완전히 무력화됩니다.`,
+      comfort: `남들은 모르는 나만의 몸의 변화, 겉으론 아무렇지 않은 척했지만 속으론 얼마나 답답하고 외로우셨나요.${_t03F_cold ? ' 손발이 차가워지고 배만 불러오는 그 서러운 감각은, 단순히 차가운 게 아니라 에스트로겐 감소가 자율신경계를 흔들면서 말초 순환이 떨어진 신호입니다.' : ' 손발은 차가워지고 배만 자꾸 불러오는 그 서러운 감각을, ' + nm + ' 님의 데이터가 고스란히 증명하고 있습니다.'} ${ohaeng.label}의 에너지 정체와 만나 더 심해진 것뿐입니다.`,
+      reframe: _t03F_thyroid
+        ? `갑상선 수치 모니터링을 먼저 챙기면서, 에스트로겐 감소를 보완하는 파이토에스트로겐(콩·석류·아마씨)과 저강도 근력을 함께 둡니다. 기준을 체중계가 아니라 복부 둘레와 체성분으로 바꿉니다.`
+        : `에스트로겐 감소를 보완하는 파이토에스트로겐(콩·석류·아마씨)과 저강도 근력을 함께 둡니다. 그리고 기준을 체중계 숫자가 아니라, 복부 둘레와 체성분으로 바꿔드릴게요.`,
       dayStart: 28, dayEnd: 56,
     };
   } else {
-    // 일반 여성: 생리 주기
+    // 일반 여성: 생리 주기 + 수족냉증/피임약/PCOS 개인화
+    const _t03F_pcos    = _hasIdx(_disease, 0);
+    const _t03F_cold    = (_coldLimbs === 0 || _coldLimbs === '0');
+    const _t03F_pill    = _hasPill;  // 피임약 복용
+
+    let _t03_title  = '생리 직전 7일 — 의지로 못 이기는 식욕';
+    let _t03_medical = `생리 전 일주일은 프로게스테론이 급등해 세포의 인슐린 저항성이 일시적으로 높아지는 시기입니다. 몸 내부는 에너지 결핍을 느끼고, 의지와 상관없이 고열량 탄수화물을 강하게 갈구하는 신경 반응이 나타납니다.`;
+    let _t03_comfort = `생리 전만 되면 자극적인 걸 허겁지겁 먹은 뒤 또 자책하지 않으셨나요. 한의학적으로 이 시기엔 기혈이 하체로 순환해야 하는데, ${ohaeng.label}의 울결된 에너지가 통로를 막아 기혈이 상체로 역류하는 것뿐입니다. ${nm} 님 탓이 아닙니다.`;
+    let _t03_reframe = `이 시기에 식욕을 의지로만 누르면 생리 당일 보상 과식이 더 크게 옵니다. 인슐린 급등을 우회하면서 뇌를 충족시키는 '호르몬 안정 식단'을 바로 이 주간에 배치해 드릴게요.`;
+
+    if (_t03F_pcos) {
+      _t03_title   = '생리 주기 — PCOS가 만드는 식욕의 악순환';
+      _t03_medical = `다낭성 난소증후군(PCOS) 상태에서는 인슐린 저항성이 상시로 높아져, 생리 전뿐만 아니라 주기 내내 식욕 조절이 어려워집니다. 혈당이 쉽게 급등·급락하면서 뇌의 보상 경로가 계속 탄수화물을 요구하게 됩니다.`;
+      _t03_reframe = `PCOS에서는 저GI 식단이 최우선입니다. 인슐린 저항성 교정 없이 칼로리만 줄이면 식욕이 더 강해집니다. 마그네슘·아연 보충과 중강도 유산소 + 근력 병행으로 인슐린 저항성 자체를 낮춰야 식욕 사이클이 끊깁니다.`;
+    } else if (_t03F_pill) {
+      _t03_title   = '피임약이 바꿔놓은 생리 전 7일';
+      _t03_medical = `피임약을 복용 중이거나 복용한 이력이 있으면 외부 호르몬으로 생체 호르몬 패턴이 교란됩니다. 생리 전 프로게스테론 파동이 달라지면서 식욕 패턴이 예측하기 어렵게 변하고, 부종이 더 쉽게 옵니다.`;
+      _t03_reframe = `피임약 복용 중이라면 담당 의사와 식단·운동 처방을 사전 공유하는 것이 중요합니다. 수분 배출을 돕는 칼륨(바나나·시금치)과 마그네슘을 생리 전 주에 집중 보충해 부종·식욕을 함께 조절합니다.`;
+    } else if (_t03F_cold) {
+      _t03_comfort = `생리 전만 되면 자극적인 걸 허겁지겁 먹은 뒤 또 자책하지 않으셨나요. 손발이 차가운 분들은 이 시기 기혈 순환이 더 막혀, 한의학적으로 울결이 심해지고 식욕 충동이 더 강하게 옵니다. ${ohaeng.label}의 울결된 에너지가 겹치면 이 신호는 더 빠르게 터집니다. ${nm} 님 탓이 아닙니다.`;
+    }
+
     trigger03 = {
       num: '03',
-      title: '생리 직전 7일 — 의지로 못 이기는 식욕',
-      hook: '식탐이 터진 게 아닙니다. 호르몬이 뇌에 명령을 내린 겁니다.',
-      medical: `생리 전 일주일은 프로게스테론이 급등해 세포의 인슐린 저항성이 일시적으로 높아지는 시기입니다. 몸 내부는 에너지 결핍을 느끼고, 의지와 상관없이 고열량 탄수화물을 강하게 갈구하는 신경 반응이 나타납니다.`,
-      comfort: `생리 전만 되면 자극적인 걸 허겁지겁 먹은 뒤 또 자책하지 않으셨나요. 한의학적으로 이 시기엔 기혈이 하체로 순환해야 하는데, ${ohaeng.label}의 울결된 에너지가 통로를 막아 기혈이 상체로 역류하는 것뿐입니다. ${nm} 님 탓이 아닙니다.`,
-      reframe: `이 시기에 식욕을 의지로만 누르면 생리 당일 보상 과식이 더 크게 옵니다. 인슐린 급등을 우회하면서 뇌를 충족시키는 '호르몬 안정 식단'을 바로 이 주간에 배치해 드릴게요.`,
+      title: _t03_title,
+      hook: _t03F_pcos ? '식탐이 아닙니다. PCOS가 만든 인슐린 악순환입니다.' : '식탐이 터진 게 아닙니다. 호르몬이 뇌에 명령을 내린 겁니다.',
+      medical: _t03_medical,
+      comfort: _t03_comfort,
+      reframe: _t03_reframe,
       cycle: 28, // 28일 주기, 생리 직전 7일이 위험
     };
   }
@@ -11484,13 +11575,15 @@ function renderP3(userName, bcCode, bcMaster, ohaengKey, ohaeng, mbtiType, mbti,
 
 /* ── P4 ── */
 function renderP4(userName, ohaengKey, mbtiType, gender, menopause, redFlags, answers) {
-  const triggers = getCruelHistoryTriggers(userName, ohaengKey, mbtiType, gender, menopause);
+  // ── getCruelHistoryTriggers에 answers 전달 → 내부 3개 트리거도 개인화 ──
+  const triggers = getCruelHistoryTriggers(userName, ohaengKey, mbtiType, gender, menopause, answers);
   const container = document.getElementById('p4-triggers');
   const nm = (userName && userName.length >= 3) ? userName.slice(1) : (userName || '회원');
   container.innerHTML = '';
 
   // ── answers 기반 P4 추가 트리거 카드 생성 ──
   // stage2[11] 출산, stage2[8] 계기, stage2[6] 약물이 기존 getCruelHistoryTriggers에 없으면 보완
+  // + desire(목표/방향) + q10_history(wtline 객체) + q13_smoke(흡연→금연 전환) 추가 카드
   const extraTriggers = [];
   if (answers) {
     const _q11  = answers['q11_event'];    // 출산: 0=후변화,1=큰변화없음,2=없음
@@ -11498,6 +11591,17 @@ function renderP4(userName, ohaengKey, mbtiType, gender, menopause, redFlags, an
     const _q6   = answers['long_term_drugs']; // 약물: 배열
     const _q7   = answers['appetite_suppressant']; // 식욕억제제
     const _q12  = answers['Q_MENOPAUSE'];  // 갱년기
+    // stage2[10] = wtline 객체 {pat,cyc,amp,net,series}
+    // pat: 'yoyo'|'jump'|'creep'|'down'|'stable'
+    const _wtline4 = answers['q10_history'];  // wtline 객체
+    const _isYoyo4 = (_wtline4 && typeof _wtline4 === 'object' && _wtline4.pat === 'yoyo');
+    const _smoke = answers['q13_smoke'];   // 흡연(0)/금연(1)/비흡연(2)
+    const _drink = answers['q14_drink'];   // 음주(0)/비음주(1)
+    // desire: 목표 방향 (buildRawAnswers에서 구성)
+    const _desire = answers['desire'] || {};
+    const _desireWho   = _desire.who       || '';    // 롤모델/목표 원문
+    const _desireMood  = _desire.moodLabel || '';    // 감정 방향 레이블
+    const _desireParts = _desire.partLabels|| [];    // 집중 부위 레이블 배열
 
     const hasIdx4 = (arr, i) => Array.isArray(arr) && arr.indexOf(i) > -1;
 
@@ -11535,6 +11639,56 @@ function renderP4(userName, ohaengKey, mbtiType, gender, menopause, redFlags, an
         medical: '식욕억제제는 렙틴·그렐린 신호를 인위적으로 눌러 포만감을 조작합니다. 중단 후 이 신호가 과반동하면서 식욕이 폭발하고, 대사율은 약 복용 전보다 낮아진 상태로 남습니다.',
         comfort: `약에 기댄 건 더 빠른 결과를 원했기 때문이지, 나쁜 선택이 아닙니다. 지금 어렵게 느껴지는 건 몸의 신호가 바뀌었기 때문입니다. ${nm} 님의 잘못이 아닙니다.`,
         reframe: '식욕 신호 재교육을 포함한 처방을 설계합니다. 포만감 회복이 먼저 이루어져야 식단 처방이 작동합니다.'
+      });
+    }
+
+    // ── 추가 카드 4: 요요 반복 이력 (wtline.pat === 'yoyo') ──
+    // stage2[10] wtline 그래프에서 tops>=1 && dips>=1 조건으로 yoyo가 감지된 경우
+    if (_isYoyo4) {
+      const _ycyc = (_wtline4 && _wtline4.cyc) ? _wtline4.cyc : 1;
+      extraTriggers.push({
+        num: triggers.length + extraTriggers.length + 1,
+        title: '요요가 반복될수록 몸이 점점 더 안 빠지는 이유',
+        hook: '"뺐다 찌었다를 반복하니까, 예전보다 훨씬 더 안 빠지는 것 같아요."',
+        medical: `체중 그래프에서 ${_ycyc}회 이상의 요요 패턴이 확인됩니다. 다이어트를 반복할수록 몸은 '또 굶기 시작했군'이라 판단해, 다음 번엔 더 빠르게 대사를 낮추는 적응(Adaptive Thermogenesis)이 일어납니다. 또한 요요마다 지방세포 수가 증가하고, 감량 시 근육이 먼저 빠진 뒤 요요 시엔 지방만 돌아와 체성분이 점점 악화됩니다.`,
+        comfort: `${nm} 님이 의지가 약해서 요요가 반복된 게 아닙니다. 몸의 회로가 이미 "더 쉽게 찌고, 더 안 빠지게" 설계가 바뀐 것입니다. 그 회로를 모르고 같은 방법을 반복한 것이 문제였지, ${nm} 님의 노력이 부족한 게 아닙니다.`,
+        reframe: '요요 이력이 있으면 "더 굶는 것"이 가장 위험한 선택입니다. 단백질을 늘려 근육 소실을 막고, 저강도 운동으로 대사를 서서히 깨우는 방향으로 접근합니다. 세트포인트를 단계적으로 낮추는 처방을 설계합니다.'
+      });
+    }
+
+    // ── 추가 카드 5: 음주 이력 (q14_drink idx=0) ──
+    if (_drink === 0 || _drink === '0') {
+      extraTriggers.push({
+        num: triggers.length + extraTriggers.length + 1,
+        title: '음주가 다이어트를 방해하는 진짜 경로',
+        hook: '"술 자체 칼로리는 별로 없는 것 같은데, 왜 마시면 살이 찌나요?"',
+        medical: '알코올은 칼로리 이전에 지방 대사 자체를 차단합니다. 간이 알코올을 우선 처리하는 동안 지방 분해 효소가 완전히 꺼지며, 음주 후 48시간은 지방 연소가 거의 일어나지 않습니다. 또한 알코올은 렙틴(포만 신호)을 억제해 다음 날 과식을 유발합니다.',
+        comfort: `즐거운 자리, 힘든 하루 끝 한 잔이 주는 위안을 부정하는 게 아닙니다. 다만 ${nm} 님이 왜 그날 마신 뒤 며칠씩 체중이 안 빠졌는지 — 이제 그 이유를 알게 되었습니다. 몸이 배신한 게 아니라 알코올의 대사 간섭 메커니즘이 작동한 겁니다.`,
+        reframe: '음주를 무조건 금지하는 대신, "음주일 전후 48시간" 전략을 씁니다. 음주 전날 단백질·수분 부하, 음주 후 저지방 고단백 회복식으로 지방 대사 차단 구간을 최소화합니다.'
+      });
+    }
+
+    // ── 추가 카드 6: 금연 전후 체중 증가 (q13_smoke idx=1) ──
+    if (_smoke === 1 || _smoke === '1') {
+      extraTriggers.push({
+        num: triggers.length + extraTriggers.length + 1,
+        title: '금연 후 찐 살이 왜 안 빠지는지',
+        hook: '"담배 끊고 살이 쪘어요. 그냥 살 찐 게 아닌 것 같은데."',
+        medical: '니코틴은 식욕 억제·대사 촉진 효과가 있어, 금연 후 이 두 가지가 동시에 사라집니다. 평균 금연 후 3~6개월 이내 체중이 3~5kg 증가하며, 특히 니코틴이 담당하던 도파민 자극을 음식으로 보상하려는 경향이 강해집니다.',
+        comfort: `금연을 선택한 건 정말 대단한 결정입니다. 그 이후 찐 살이 그 결정을 후회하게 만들었다면 너무 억울합니다. 하지만 이건 금연 때문에 생긴 대사 변화이지, ${nm} 님의 식탐이나 게으름 때문이 아닙니다.`,
+        reframe: '금연 후 증가한 체중은 일반 체지방과 메커니즘이 다릅니다. 니코틴 도파민 공백을 메울 대체 전략(단백질 고함량 식품, 저강도 운동)을 우선 배치하고, 대사 회복 기간(3개월)을 감안한 장기 처방을 설계합니다.'
+      });
+    }
+
+    // ── 추가 카드 7: desire.who (목표 인물/이미지) ── 3명까지만 카드 생성 방지
+    if (_desireWho && extraTriggers.length < 5) {
+      extraTriggers.push({
+        num: triggers.length + extraTriggers.length + 1,
+        title: `"${_desireWho.length > 20 ? _desireWho.slice(0, 20) + '…' : _desireWho}"처럼 되고 싶은 마음`,
+        hook: `"${_desireParts.length > 0 ? _desireParts.join('·') + ' — 그 라인을 갖고 싶어요.' : '그 모습이 되고 싶어요.'}"`,
+        medical: '목표 이미지가 구체적일수록 동기 지속력이 높아지지만, 동시에 "나는 왜 저렇지 못할까"라는 비교 인지 왜곡도 깊어집니다. BC 기반 처방은 그 모습을 "복사"하는 게 아니라, 내 몸의 원인 구조를 바꿔 내 몸만의 최적 상태로 가는 길입니다.',
+        comfort: `원하는 모습이 선명하다는 건 동기가 살아있다는 증거입니다. 그 마음이 지금 여기까지 ${nm} 님을 데려왔습니다. 그리고 BC 분석은 그 방향으로 가는 가장 정확한 지도입니다.`,
+        reframe: `${_desireParts.length > 0 ? _desireParts.join('·') + ' 라인' : '목표 체형'}에 집중한 부위별 처방을 설계합니다. 원하는 부위의 원인 구조가 무엇인지 BC 코드에서 이미 특정되었습니다.`
       });
     }
   }
@@ -14043,7 +14197,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         7:  'appetite_suppressant', // 식욕억제제 (0=여러번,1=한두번,2=없음)
         8:  'q8_trigger',        // 살찐 계기
         9:  'past_procedures',   // 과거 시술
-        10: 'q10_history',       // 시술 이력 객체 {pat,cyc,amp,net,series}
+        10: 'q10_history',       // 체중 곡선 wtline 객체 {pat,cyc,amp,net,series} — pat:'yoyo'|'jump'|'creep'|'down'|'stable'
         11: 'q11_event',         // 출산/이벤트 (단일선택 숫자)
         12: 'q12_menopause',     // 갱년기
         13: 'q13_smoke',         // 흡연
