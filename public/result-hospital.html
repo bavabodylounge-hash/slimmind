@@ -10803,12 +10803,12 @@ function renderAll(data) {
   const redFlags = Array.isArray(data.redFlags) ? data.redFlags : [];
   renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nicknameDisplay, background,
            isBorderline, borderlineDiff, secondaryBcCode, secondaryNickname, evidenceBadge, redFlags);
-  renderP2(userName, bcCode, firstDomino, axisScores, sorted);
+  renderP2(userName, bcCode, firstDomino, axisScores, sorted, answers);
   window.__BC_RM__ = bcCode; // 로드맵 주차별 영양제 카드용 BC 코드
   renderP3(userName, bcCode, bcMaster, ohaengType, ohaeng, mbtiType, mbti, fullCode, prescription, answers, data.bloodType);
-  renderP4(userName, ohaengType, mbtiType, answers['Q02'], answers['Q_MENOPAUSE'], redFlags);
-  renderP5(metrics, bcCode, axisScores, userName);
-  renderP8(metrics, bcCode, axisScores, userName);
+  renderP4(userName, ohaengType, mbtiType, answers['Q02'], answers['Q_MENOPAUSE'], redFlags, answers);
+  renderP5(metrics, bcCode, axisScores, userName, answers);
+  renderP8(metrics, bcCode, axisScores, userName, answers);
   renderP9(metrics, bcCode, axisScores, data);
   renderP6(userName, fullCode, ohaengType, data);
   renderP7(userName, bcCode, bcMaster, metrics, ohaengType, mbtiType, fullCode, nicknameDisplay, prescription, data);
@@ -11124,7 +11124,7 @@ function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nic
 }
 
 /* ── P2 ── */
-function renderP2(userName, bcCode, firstDomino, axisScores, sorted) {
+function renderP2(userName, bcCode, firstDomino, axisScores, sorted, answers) {
   // ── 10원인축 표시 (점수는 백엔드가 0~100으로 전달; 프론트는 표시만) ──
   // ※ 정규화/가중은 서우님 백엔드 담당. 프론트는 받은 값을 그대로 쓰고 0~100 클램프만 한다.
   var meta = (typeof AXIS_10_META !== 'undefined') ? AXIS_10_META : {
@@ -11214,15 +11214,91 @@ function renderP2(userName, bcCode, firstDomino, axisScores, sorted) {
       '<div class="gap-read"><strong>' + hi.label + '</strong>은 한계까지 치솟았는데 <strong>' + lo.label + '</strong>은 거의 멈췄습니다. 한쪽으로만 무너진 몸은 같은 노력으로도 결과가 안 나옵니다.</div>';
   }
 
-  // ── 원인의 도미노 (상위 3축을 인과 사슬로) ──
-  // ※ 도미노 본문은 표시용 템플릿. 서우님이 BC코드별로 백엔드 연결/교체 예정.
+  // ── 원인의 도미노 (상위 3축을 인과 사슬로) — BC코드+answers 개인화 ──
   var chain = document.getElementById('p2-chain');
   chain.innerHTML = '';
-  var steps = [
-    { title:'코르티솔이 먼저 무너졌습니다', desc:'만성 스트레스로 부신이 지치면서 밤마다 대사 스위치가 강제로 꺼집니다. 적게 먹어도 안 빠지는 출발점입니다.', isTop:true, link:(top1?top1.label:'코르티솔') },
-    { title:'호르몬 대사가 뒤따라 무너집니다', desc:'갑상선·에스트로겐 균형이 흔들리며 기초대사가 절전 모드로 전환됩니다. 같은 생활인데 살이 찌는 이유입니다.', link:(top2?top2.label:'호르몬') },
-    { title:'복압이 빠지며 체형이 무너집니다', desc:'코어 압력이 떨어지면서 장기가 처지고 하복부가 앞으로 나옵니다. 골반 정렬까지 흔들립니다.', link:(ranked[2]?ranked[2].label:'골격·복압') },
-  ];
+
+  // BC코드별 도미노 체인 정의 (각 BC의 핵심 인과 사슬)
+  var P2_DOMINO_BC = {
+    'BC-1': [
+      {title:'인슐린이 먼저 무너졌습니다', desc:'식후 혈당이 급등-급락하면서 인슐린이 지방을 복부에 강제 저장합니다. 적게 먹어도 배가 나오는 출발점입니다.', axLabel:'인슐린·내장'},
+      {title:'대사 위험도가 뒤따라 쌓입니다', desc:'내장지방이 염증 신호를 내보내며 간·혈관 대사를 동시에 흔듭니다. 같은 식사인데 혈중지질이 오르는 이유입니다.', axLabel:'대사위험'},
+      {title:'기질·성향이 식습관을 고정합니다', desc:'타고난 식욕·루틴 패턴이 인슐린 급등 습관을 강화합니다. 단순 칼로리 제한이 실패하는 구조적 이유입니다.', axLabel:'기질·성향'}
+    ],
+    'BC-2': [
+      {title:'림프 순환이 먼저 막혔습니다', desc:'정맥·림프 흐름이 정체되면서 저녁마다 하체에 수분이 쌓입니다. 오후가 되면 다리가 터질 것 같은 출발점입니다.', axLabel:'림프순환'},
+      {title:'호르몬 불균형이 부종을 가속합니다', desc:'에스트로겐·코르티솔이 흔들리며 수분 조절 능력이 떨어집니다. 같은 식사인데 몸이 더 붓는 이유입니다.', axLabel:'호르몬'},
+      {title:'근감소가 펌프 기능을 빼앗습니다', desc:'허벅지 근육이 줄면서 혈액을 심장으로 되돌리는 근육 펌프가 약해집니다. 다리가 무거운 구조적 이유입니다.', axLabel:'근감소'}
+    ],
+    'BC-3': [
+      {title:'호르몬이 먼저 흔들렸습니다', desc:'에스트로겐·프로게스테론 균형이 무너지며 기초대사가 절전 모드로 전환됩니다. 살이 쉽게 찌고 빠지지 않는 출발점입니다.', axLabel:'호르몬'},
+      {title:'인슐린 저항이 뒤따라 옵니다', desc:'PCOS·갑상선 이상이 인슐린 감수성을 낮추며 복부에 지방을 축적합니다. 다이어트 반응이 없는 이유입니다.', axLabel:'인슐린·내장'},
+      {title:'대사 위험도가 동반 상승합니다', desc:'호르몬+인슐린 이중 이상이 혈당·지질을 함께 올립니다. 운동해도 체형이 안 바뀌는 복합 구조입니다.', axLabel:'대사위험'}
+    ],
+    'BC-4': [
+      {title:'대사 위험도가 먼저 무너졌습니다', desc:'대사증후군 지표들이 복합적으로 쌓이면서 에너지 대사 전체가 흔들립니다. 몸 전체가 무거워지는 출발점입니다.', axLabel:'대사위험'},
+      {title:'호르몬·약물 간섭이 뒤따릅니다', desc:'장기 약물 복용·스테로이드가 부신·갑상선 신호를 교란합니다. 의지로 이겨낼 수 없는 구조적 문제입니다.', axLabel:'호르몬'},
+      {title:'인슐린 저항이 지방 분해를 막습니다', desc:'대사·호르몬 이중 이상이 인슐린 감수성을 낮춰 지방을 잠급니다. 굶어도 빠지지 않는 메커니즘입니다.', axLabel:'인슐린·내장'}
+    ],
+    'BC-5': [
+      {title:'코르티솔이 먼저 무너졌습니다', desc:'만성 스트레스로 부신이 지치면서 밤마다 대사 스위치가 강제로 꺼집니다. 적게 먹어도 야식을 끊을 수 없는 출발점입니다.', axLabel:'코르티솔'},
+      {title:'심리·식이 패턴이 고착됩니다', desc:'스트레스-도파민 연결이 야식 루틴을 자동화합니다. 의지 문제가 아니라 뇌 회로가 바뀐 것입니다.', axLabel:'심리·식이'},
+      {title:'인슐린이 야간 축적을 완성합니다', desc:'야식 후 급등한 혈당이 수면 중 인슐린 분비를 일으켜 지방으로 저장됩니다. 복부 지방이 야간에 쌓이는 구조입니다.', axLabel:'인슐린·내장'}
+    ],
+    'BC-6': [
+      {title:'소화·장 기능이 먼저 무너졌습니다', desc:'위장 운동성 저하로 가스·팽만이 만성화됩니다. 식후 배가 부풀어 오르는 출발점입니다.', axLabel:'소화·장'},
+      {title:'골격·복압이 뒤따라 약해집니다', desc:'복부 팽만이 반복되면서 복벽 근육과 코어 압력이 떨어집니다. 하복부가 앞으로 처지는 구조입니다.', axLabel:'골격·복압'},
+      {title:'심리·식이가 과식 패턴을 강화합니다', desc:'팽만감에도 식욕을 억제하지 못하는 심리 패턴이 반복됩니다. 식사 조절이 안 되는 뇌 회로 문제입니다.', axLabel:'심리·식이'}
+    ],
+    'BC-7': [
+      {title:'골격·복압이 먼저 무너졌습니다', desc:'출산·자세 불량으로 복벽과 코어 압력이 빠졌습니다. 하복부가 처지고 골반이 틀어지는 출발점입니다.', axLabel:'골격·복압'},
+      {title:'근감소가 뒤따라 진행됩니다', desc:'코어가 약해지면 엉덩이·허벅지 근육이 함께 줄어 골반 지지력이 더 떨어집니다. 체형이 점점 무너지는 이유입니다.', axLabel:'근감소'},
+      {title:'호르몬 변화가 회복을 막습니다', desc:'출산·갱년기 후 에스트로겐이 떨어지면서 근육 재생과 조직 탄력 회복이 느려집니다. 노력해도 돌아오지 않는 구조입니다.', axLabel:'호르몬'}
+    ],
+    'BC-8': [
+      {title:'코르티솔이 먼저 폭발했습니다', desc:'과로·번아웃으로 부신이 과활성화되면서 온몸이 부어오릅니다. 스트레스받으면 얼굴·손발이 붓는 출발점입니다.', axLabel:'코르티솔'},
+      {title:'호르몬이 대사를 꺼버립니다', desc:'갑상선·부신 피로가 기초대사를 절전 모드로 전환합니다. 아무것도 안 해도 살이 찌는 구조입니다.', axLabel:'호르몬'},
+      {title:'림프 순환이 부종을 완성합니다', desc:'코르티솔+호르몬 이상이 림프 흐름을 막아 전신에 수분이 고입니다. 아침에도 부어있는 만성 부종 패턴입니다.', axLabel:'림프순환'}
+    ],
+    'BC-9': [
+      {title:'대사 위험도가 총체적으로 무너졌습니다', desc:'혈당·혈압·지질이 동시에 경계를 넘었습니다. 몸 전체가 대사 비상 상태인 출발점입니다.', axLabel:'대사위험'},
+      {title:'인슐린 저항이 모든 것을 악화합니다', desc:'인슐린 감수성이 떨어지면서 지방·혈당·혈압이 서로 악화하는 고리를 만듭니다. 어느 하나만 고쳐도 안 되는 이유입니다.', axLabel:'인슐린·내장'},
+      {title:'기질·성향이 위험을 고착합니다', desc:'타고난 패턴이 대사 위험 습관을 반복하게 합니다. 의지보다 시스템을 바꾸는 처방이 필요한 단계입니다.', axLabel:'기질·성향'}
+    ]
+  };
+
+  // BC코드별 도미노 steps 선택 (없으면 Top3 축 기반 동적 생성)
+  var bcSteps = P2_DOMINO_BC[bcCode];
+  var steps;
+  if (bcSteps) {
+    // answers에서 살찐 계기·약물 이력으로 1번째 도미노 개인화
+    var hasStepTrigger = answers && (Array.isArray(answers['q8_trigger']) && answers['q8_trigger'].length > 0);
+    var hasDrugStep    = answers && Array.isArray(answers['long_term_drugs']) && answers['long_term_drugs'].length > 0 && !answers['long_term_drugs'].some(function(x){ return x === 6; });
+    var hasProcStep    = answers && Array.isArray(answers['past_procedures']) && answers['past_procedures'].length > 0 && !answers['past_procedures'].some(function(x){ return x === 5; });
+    steps = bcSteps.map(function(s, i) {
+      var desc = s.desc;
+      // 1번째 도미노에 계기 추가 개인화
+      if (i === 0 && hasStepTrigger) {
+        var tmap = {0:'스트레스·과로', 1:'심리적 충격', 2:'수술·약물', 3:'잦은 회식', 4:'금연'};
+        var tnames = answers['q8_trigger'].map(function(idx){ return tmap[idx]; }).filter(Boolean);
+        if (tnames.length) desc = '<em style="color:var(--vis-d)">' + tnames.join('·') + '</em>이 계기였습니다. ' + desc;
+      }
+      // 약물 이력이 있으면 관련 도미노에 주석 추가
+      if (i === 1 && hasDrugStep) {
+        var dmap = {0:'스테로이드', 1:'항우울제', 2:'피임약·호르몬제', 3:'항응고제', 4:'이소트레티노인', 5:'탈모약'};
+        var dnames = answers['long_term_drugs'].filter(function(x){ return x !== 6; }).map(function(idx){ return dmap[idx]; }).filter(Boolean);
+        if (dnames.length) desc += ' <span style="font-size:11px;opacity:.7">(복용이력: ' + dnames.join('·') + ')</span>';
+      }
+      return { title: s.title, desc: desc, isTop: i === 0, link: s.axLabel };
+    });
+  } else {
+    // 폴백: Top3 축 기반 동적 생성 (이전 방식)
+    steps = [
+      { title: top1.label + ' 축이 먼저 무너졌습니다', desc:'이 축의 이상이 체형 변화의 가장 깊은 시작점입니다. 이 하나만 잡아도 다른 두 축이 함께 안정됩니다.', isTop:true, link:(top1?top1.label:'코르티솔') },
+      { title: top2.label + ' 축이 뒤따라 무너집니다', desc:'첫 번째 축이 흔들리면서 이 축도 연쇄적으로 영향을 받았습니다. 원인이 두 개이기 때문에 단일 처방은 부족합니다.', link:(top2?top2.label:'호르몬') },
+      { title: (ranked[2]?ranked[2].label:'골격·복압') + ' 축이 체형을 완성합니다', desc:'위 두 축이 약해지면서 이 축까지 무너져 지금의 체형이 만들어졌습니다. 세 축을 순서대로 교정해야 합니다.', link:(ranked[2]?ranked[2].label:'골격·복압') }
+    ];
+  }
   steps.forEach(function(s, i){
     var div = document.createElement('div');
     div.className = 'domino-step';
@@ -11407,11 +11483,62 @@ function renderP3(userName, bcCode, bcMaster, ohaengKey, ohaeng, mbtiType, mbti,
 }
 
 /* ── P4 ── */
-function renderP4(userName, ohaengKey, mbtiType, gender, menopause, redFlags) {
+function renderP4(userName, ohaengKey, mbtiType, gender, menopause, redFlags, answers) {
   const triggers = getCruelHistoryTriggers(userName, ohaengKey, mbtiType, gender, menopause);
   const container = document.getElementById('p4-triggers');
   const nm = (userName && userName.length >= 3) ? userName.slice(1) : (userName || '회원');
   container.innerHTML = '';
+
+  // ── answers 기반 P4 추가 트리거 카드 생성 ──
+  // stage2[11] 출산, stage2[8] 계기, stage2[6] 약물이 기존 getCruelHistoryTriggers에 없으면 보완
+  const extraTriggers = [];
+  if (answers) {
+    const _q11  = answers['q11_event'];    // 출산: 0=후변화,1=큰변화없음,2=없음
+    const _q8   = answers['q8_trigger'];   // 계기: 배열
+    const _q6   = answers['long_term_drugs']; // 약물: 배열
+    const _q7   = answers['appetite_suppressant']; // 식욕억제제
+    const _q12  = answers['Q_MENOPAUSE'];  // 갱년기
+
+    const hasIdx4 = (arr, i) => Array.isArray(arr) && arr.indexOf(i) > -1;
+
+    // 출산 후 체형 변화
+    if ((_q11 === 0 || _q11 === '0') && (!menopause)) {
+      extraTriggers.push({
+        num: triggers.length + extraTriggers.length + 1,
+        title: '출산 후 몸이 돌아오지 않는 이유',
+        hook: '"운동해도 배가 줄지 않아요. 예전 몸으로 못 돌아가는 것 같아요."',
+        medical: '출산은 복벽(복직근 이개)과 골반 인대를 물리적으로 늘려놓습니다. 이건 지방 문제가 아니라 구조 문제입니다. 칼로리를 줄이거나 유산소를 아무리 해도 구조가 먼저 교정되지 않으면 돌아오지 않습니다.',
+        comfort: `${nm} 님이 노력하지 않은 게 아닙니다. 그 노력이 방향이 달랐을 뿐입니다. 복벽과 골반을 모르고 한 운동은 오히려 허리를 더 아프게 만들 수도 있습니다. 지금부터 방향을 바꾸면 됩니다.`,
+        reframe: '코어 재활·복벽 교정을 우선하는 처방으로 구조부터 잡습니다. 구조가 잡히면 같은 운동도 2배 이상 효율이 납니다.'
+      });
+    }
+
+    // 스트레스·충격 계기
+    if (hasIdx4(_q8, 0) || hasIdx4(_q8, 1)) {
+      const trigLabel = hasIdx4(_q8, 0) ? '스트레스·과로' : '심리적 충격';
+      extraTriggers.push({
+        num: triggers.length + extraTriggers.length + 1,
+        title: trigLabel + '가 살을 찌운 메커니즘',
+        hook: `"그때부터 갑자기 살이 쪘어요. 먹는 양은 그대로였는데."`,
+        medical: '코르티솔(스트레스 호르몬)이 폭발하면 지방 분해 효소를 끄고 복부 지방 저장을 강제 실행합니다. 같은 칼로리를 먹어도 코르티솔이 높은 상태에서는 지방으로 더 많이 전환됩니다.',
+        comfort: `${trigLabel}의 시기는 누구에게도 쉽지 않습니다. 그때 몸이 먼저 반응한 건 ${nm} 님을 지키려는 생존 반응이었습니다. 의지 부족이 아니라 호르몬 반응이었습니다.`,
+        reframe: '코르티솔 억제 처방을 우선합니다. 수면·회복이 먼저 안정되어야 식단·운동 처방이 효과를 냅니다.'
+      });
+    }
+
+    // 식욕억제제 이력
+    if (_q7 === 0 || _q7 === '0' || _q7 === 1 || _q7 === '1') {
+      extraTriggers.push({
+        num: triggers.length + extraTriggers.length + 1,
+        title: '식욕억제제가 몸을 바꿔놓은 방식',
+        hook: '"약 끊으니까 더 폭식이 오고, 더 많이 찌는 것 같아요."',
+        medical: '식욕억제제는 렙틴·그렐린 신호를 인위적으로 눌러 포만감을 조작합니다. 중단 후 이 신호가 과반동하면서 식욕이 폭발하고, 대사율은 약 복용 전보다 낮아진 상태로 남습니다.',
+        comfort: `약에 기댄 건 더 빠른 결과를 원했기 때문이지, 나쁜 선택이 아닙니다. 지금 어렵게 느껴지는 건 몸의 신호가 바뀌었기 때문입니다. ${nm} 님의 잘못이 아닙니다.`,
+        reframe: '식욕 신호 재교육을 포함한 처방을 설계합니다. 포만감 회복이 먼저 이루어져야 식단 처방이 작동합니다.'
+      });
+    }
+  }
+
   triggers.forEach(t => {
     const div = document.createElement('div');
     div.className = 'trigger-card';
@@ -11419,6 +11546,33 @@ function renderP4(userName, ohaengKey, mbtiType, gender, menopause, redFlags) {
     div.innerHTML = `
       <div class="trigger-header">
         <div class="trigger-num-badge">행동의학 분석 포인트 ${t.num}</div>
+        <div class="trigger-title">${t.title}</div>
+        <div class="trigger-hook">"${t.hook}"</div>
+      </div>
+      <div class="trigger-body">
+        <div class="tb-block tb-cause">
+          <div class="tb-block-label"><span class="tb-ico">✕</span>진짜 실패 원인</div>
+          <div class="tb-block-tx">${t.medical}</div>
+        </div>
+        <div class="tb-block tb-comfort">
+          <div class="tb-block-label"><span class="tb-ico">♡</span>${nm} 님을 위한 위로</div>
+          <div class="tb-block-tx">${t.comfort}</div>
+        </div>
+        <div class="tb-block tb-reframe">
+          <div class="tb-block-label"><span class="tb-ico">✓</span>이제, 이렇게 해드릴게요</div>
+          <div class="tb-block-tx">${t.reframe}</div>
+        </div>
+      </div>`;
+    container.appendChild(div);
+  });
+
+  // ── answers 기반 추가 트리거 카드 렌더링 ──
+  extraTriggers.forEach(t => {
+    const div = document.createElement('div');
+    div.className = 'trigger-card trigger-card-extra';
+    div.innerHTML = `
+      <div class="trigger-header">
+        <div class="trigger-num-badge">실제 경험 분석 ${t.num}</div>
         <div class="trigger-title">${t.title}</div>
         <div class="trigger-hook">"${t.hook}"</div>
       </div>
@@ -11569,7 +11723,7 @@ function renderP4(userName, ohaengKey, mbtiType, gender, menopause, redFlags) {
 }
 
 /* ── P5 ── */
-function renderP5(metrics, bcCode, axisScores, userName) {
+function renderP5(metrics, bcCode, axisScores, userName, answers) {
   // ════════════════════════════════════════════
   // P5 근거 기반 선별 — 11개 전문 영역 중 axisScores 기반 TOP3 동적 선택
   // axisScores(A01~A10) → 각 영역 axisRef 점수 → 높은 순 3개 = STRONG
@@ -11577,6 +11731,58 @@ function renderP5(metrics, bcCode, axisScores, userName) {
   // ════════════════════════════════════════════
 
   var ax = axisScores || {};
+  // ── stage2 실제 답변 추출 (개인화 근거 카드용) ──
+  var ans = answers || {};
+  var _disease       = ans['disease']          || null;  // stage2[3]: 배열 (PCOS·당뇨·고혈압·갑상선·지방간...)
+  var _drugs         = ans['long_term_drugs']  || null;  // stage2[6]: 배열 (스테로이드·항우울제·피임약...)
+  var _procs         = ans['past_procedures']  || null;  // stage2[9]: 배열 (지방흡입·지방분해·리프팅...)
+  var _family        = ans['q1_family']        || null;  // stage2[1]: 배열 (아버지·어머니·형제·없음)
+  var _trigger       = ans['q8_trigger']       || null;  // stage2[8]: 배열 (스트레스·충격·수술·회식...)
+  var _meno          = ans['Q_MENOPAUSE']      || '';    // '갱년기 변환형'|'호르몬 치료형'|'완경 후'|''
+  var _coldLimbs     = ans['cold_limbs']       !== undefined ? ans['cold_limbs'] : null; // stage2[5]: 0=여름도차,1=조금,2=더위탐
+  var _smoke         = ans['q13_smoke']        !== undefined ? ans['q13_smoke']  : null; // stage2[13]: 0=흡연,1=금연직후,2=안피움
+  var _drink         = ans['q14_drink']        !== undefined ? ans['q14_drink']  : null; // stage2[14]: 0=주3+,1=주1~2,2=거의안
+  var _suppressor    = ans['appetite_suppressant'] !== undefined ? ans['appetite_suppressant'] : null; // stage2[7]: 0=여러번,1=한두번,2=없음
+  var _q11Event      = ans['q11_event']        !== undefined ? ans['q11_event'] : null;  // stage2[11]: 출산(0=후변화,1=큰변화없음,2=없음)
+  var _checkup       = ans['checkup']          || null;  // stage2[4]: 배열 (공복혈당·지방간·콜레스테롤·혈압)
+  var _gender        = ans['Q02'] || (ans.userInfo && ans.userInfo.gender) || '';
+  // 편의 헬퍼
+  function hasIdx(arr, idx) { return Array.isArray(arr) && arr.indexOf(idx) > -1; }
+  function hasAny(arr, idxList) { if (!Array.isArray(arr)) return false; return idxList.some(function(i){ return arr.indexOf(i) > -1; }); }
+
+  // ── 가족력 텍스트 동적 생성 ──
+  var _familyText = (function(){
+    if (!_family) return null;
+    var map = {0:'아버지', 1:'어머니', 2:'형제·자매'};
+    var names = [0,1,2].filter(function(i){ return hasIdx(_family, i); }).map(function(i){ return map[i]; });
+    if (hasIdx(_family, 3)) return null; // '없어요'
+    return names.length ? names.join('·') + ' 쪽 가족력' : null;
+  })();
+  // ── 질환 텍스트 동적 생성 ──
+  var _diseaseNames = (function(){
+    if (!_disease) return [];
+    var map = {0:'PCOS', 1:'당뇨', 2:'고혈압', 3:'갑상선', 4:'지방간', 5:'역류성식도염', 6:'우울증·불안'};
+    return Object.keys(map).filter(function(i){ return hasIdx(_disease, Number(i)); }).map(function(i){ return map[i]; });
+  })();
+  // ── 약물 텍스트 동적 생성 ──
+  var _drugNames = (function(){
+    if (!_drugs) return [];
+    var map = {0:'스테로이드', 1:'항우울제', 2:'피임약·호르몬제', 3:'항응고제', 4:'이소트레티노인', 5:'탈모약'};
+    return Object.keys(map).filter(function(i){ return hasIdx(_drugs, Number(i)); }).map(function(i){ return map[i]; });
+  })();
+  // ── 시술 이력 텍스트 동적 생성 ──
+  var _procNames = (function(){
+    if (!_procs) return [];
+    var map = {0:'지방흡입', 1:'지방분해주사', 2:'리프팅', 3:'보톡스·필러', 4:'복부성형'};
+    return Object.keys(map).filter(function(i){ return hasIdx(_procs, Number(i)); }).map(function(i){ return map[i]; });
+  })();
+  // ── 계기 텍스트 ──
+  var _triggerText = (function(){
+    if (!_trigger) return null;
+    var map = {0:'스트레스·과로', 1:'심리적 충격', 2:'수술·약물', 3:'잦은 회식', 4:'금연', 5:'서서히'};
+    var names = [0,1,2,3,4].filter(function(i){ return hasIdx(_trigger, i); }).map(function(i){ return map[i]; });
+    return names.length ? names.join('·') : null;
+  })();
 
   // ── 11개 영역 정의 (axisRef: P6 DX_11_BASE와 동일 매핑) ──
   var P5_11_DEF = [
@@ -11585,14 +11791,36 @@ function renderP5(metrics, bcCode, axisScores, userName) {
       ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#E8631A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v7a2 2 0 0 0 2 2v9M8 3v6M5 3v6M18 3c-1.5 0-2.5 2-2.5 5s1 4 2.5 4v9"/></svg>',
       to:'영양·식이 클리닉',
       gradeThresh:65,
-      evFn: function(sc) { return [
-        {k:'증상 진단', t:sc>70?'혈당 과잉':'식이 불균형', tc:'#8a5a18', tb:'#faf0dc', v:sc>70?'혈당 급등-급락 사이클 감지 — <b>탄수화물 타이밍 교정</b> 필요.':'식이 기반은 비교적 안정적.', on:sc>70},
-        {k:'체지방률', t:sc>65?'관리 필요':'양호', tc:'#5f5e5a', tb:'#f1efe8', v:sc>65?'식이 패턴이 체지방 축적에 직결됩니다.':'식이 기반 체지방 위험 낮음.', on:sc>65},
-        {k:'기질', t:'식욕·포만', tc:'#c98a3c', tb:'#fdf3e7', v:'BC 기질별 탄수화물 대사 차이 — 맞춤 타이밍이 중요합니다.', on:sc>60},
-        {k:'답안 속도', t:sc>70?'빠름':'보통', tc:'#3f5022', tb:'#eef2e4', v:sc>70?'식이 문항 즉답 — 본인도 이미 문제를 인식 중.':'식이 패턴 응답 평이.', on:sc>70},
-        {k:'성향', t:'중립', tc:'#6b4eaa', tb:'#efeafa', v:'성향과 식이 영역 직접 연결 약함.', on:false},
-        {k:'가족력', t:'중립', tc:'#993556', tb:'#fbeaf0', v:'가족력과 식이 직접 연결 약함.', on:false}
-      ];},
+      evFn: function(sc) {
+        var hasDiabetes = hasIdx(_disease, 1) || hasIdx(_checkup, 0);
+        var hasFattyLiver = hasIdx(_disease, 4) || hasIdx(_checkup, 1);
+        var hasDrinkHeavy = _drink === 0 || _drink === '0';
+        var famDiet = _familyText && (hasAny(_disease, [1,2]) || hasDiabetes);
+        var suppUse = _suppressor !== null && _suppressor !== 2 && _suppressor !== '2';
+        return [
+          {k:'증상 진단', t:sc>70?'혈당 과잉':'식이 불균형',
+           tc:'#8a5a18', tb:'#faf0dc',
+           v:sc>70?(hasDiabetes?'당뇨·혈당 이상 진단 이력 — 혈당 급등-급락 사이클 <b>즉시 교정 필요</b>.':'혈당 급등-급락 사이클 감지 — <b>탄수화물 타이밍 교정</b> 필요.'):'식이 기반은 비교적 안정적.',
+           on:sc>70},
+          {k:'체지방률', t:sc>65?'관리 필요':'양호',
+           tc:'#5f5e5a', tb:'#f1efe8',
+           v:sc>65?(hasFattyLiver?'지방간 소견 + 식이 패턴 — 간 대사 회복을 우선 처방합니다.':'식이 패턴이 체지방 축적에 직결됩니다.'):'식이 기반 체지방 위험 낮음.',
+           on:sc>65},
+          {k:'기질', t:'식욕·포만',
+           tc:'#c98a3c', tb:'#fdf3e7',
+           v:(suppUse?'식욕억제제 복용 이력 — 포만감 신호 둔화 가능성, <b>식이 리셋 처방</b>이 먼저입니다.':'BC 기질별 탄수화물 대사 차이 — 맞춤 타이밍이 중요합니다.'),
+           on:sc>60 || suppUse},
+          {k:'답안 속도', t:sc>70?'빠름':'보통',
+           tc:'#3f5022', tb:'#eef2e4',
+           v:(hasDrinkHeavy?'잦은 음주 이력 — 지방 산화 억제 패턴, 식이 처방과 병행 필수.':sc>70?'식이 문항 즉답 — 본인도 이미 문제를 인식 중.':'식이 패턴 응답 평이.'),
+           on:sc>70 || hasDrinkHeavy},
+          {k:'성향', t:'중립', tc:'#6b4eaa', tb:'#efeafa', v:'성향과 식이 영역 직접 연결 약함.', on:false},
+          {k:'가족력', t:famDiet?'대사 가족력':'중립',
+           tc:'#993556', tb:'#fbeaf0',
+           v:famDiet?(_familyText + ' — 유전적 혈당·대사 취약군, 식이 교정 효과가 더욱 큽니다.'):'가족력과 식이 직접 연결 약함.',
+           on:!!famDiet}
+        ];
+      },
       conclFn: function(sc) { return sc>70?'혈당·식이 패턴이 <b>모든 처방보다 먼저 안정되어야 할 1순위</b>입니다.':'식이 패턴 미세 조정으로 대사 효율을 높일 수 있습니다.'; },
       noneTag: function(sc) { return sc>65?null:'아직 이르다'; },
       noneStrike: '· 극단 제한'
@@ -11602,14 +11830,32 @@ function renderP5(metrics, bcCode, axisScores, userName) {
       ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#9C27B0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 4A3.5 3.5 0 0 0 6 7.5 3 3 0 0 0 5 12a3 3 0 0 0 1 5 3 3 0 0 0 3.5 3 2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/><path d="M14.5 4A3.5 3.5 0 0 1 18 7.5 3 3 0 0 1 19 12a3 3 0 0 1-1 5"/></svg>',
       to:'행동심리·식욕 전문가',
       gradeThresh:65,
-      evFn: function(sc) { return [
-        {k:'증상 진단', t:sc>65?'스트레스 식욕':'안정', tc:'#8a5a18', tb:'#faf0dc', v:sc>65?'스트레스-식욕 호르몬 연결 고리 감지.':'심리적 식욕 조절 안정적.', on:sc>65},
-        {k:'답안 속도', t:sc>65?'충동적':'보통', tc:'#a35a2d', tb:'#f6ece7', v:sc>65?'심리 문항에서 충동적 응답 패턴 — 감정 식욕 신호.':'심리 문항 응답 안정적.', on:sc>65},
-        {k:'기질', t:'감정 억압', tc:'#6b4eaa', tb:'#efeafa', v:'BC 기질에서 감정 억압 → 보상성 식욕으로 전환되기 쉬운 구조.', on:sc>60},
-        {k:'성향', t:'도파민 패턴', tc:'#5f5e5a', tb:'#f1efe8', v:'성향별 도파민 보상 패턴 참조.', on:sc>55},
-        {k:'체지방률', t:'중립', tc:'#5f5e5a', tb:'#f1efe8', v:'심리 영역과 체지방 직접 연결 약함.', on:false},
-        {k:'가족력', t:'중립', tc:'#993556', tb:'#fbeaf0', v:'가족력과 심리 직접 연결 약함.', on:false}
-      ];},
+      evFn: function(sc) {
+        var hasDepression = hasIdx(_disease, 6);
+        var hasPsychDrug  = hasIdx(_drugs, 1); // 항우울제
+        var hasStressTrig = hasIdx(_trigger, 0) || hasIdx(_trigger, 1); // 스트레스·충격 계기
+        var hasDrinkPsych = _drink === 0 || _drink === '0';
+        return [
+          {k:'증상 진단', t:sc>65?(hasDepression?'우울·불안 진단':'스트레스 식욕'):'안정',
+           tc:'#8a5a18', tb:'#faf0dc',
+           v:sc>65?(hasDepression?'우울증·불안장애 진단 이력 — 코르티솔 과잉→복부 축적 패턴, 심리 전문가 연계 우선.':'스트레스-식욕 호르몬 연결 고리 감지.'):'심리적 식욕 조절 안정적.',
+           on:sc>65},
+          {k:'답안 속도', t:sc>65?'충동적':'보통',
+           tc:'#a35a2d', tb:'#f6ece7',
+           v:hasStressTrig?('살찐 계기 — ' + (_triggerText || '스트레스·충격') + ' · 감정적 계기가 식욕과 연결됩니다.'):sc>65?'심리 문항에서 충동적 응답 패턴 — 감정 식욕 신호.':'심리 문항 응답 안정적.',
+           on:sc>65 || hasStressTrig},
+          {k:'기질', t:'감정 억압',
+           tc:'#6b4eaa', tb:'#efeafa',
+           v:(hasPsychDrug?'항우울제 복용 이력 — 식욕·대사 직접 연관, BC 기반 심리 처방으로 보완합니다.':'BC 기질에서 감정 억압 → 보상성 식욕으로 전환되기 쉬운 구조.'),
+           on:sc>60 || hasPsychDrug},
+          {k:'성향', t:hasDrinkPsych?'음주 패턴':'도파민 패턴',
+           tc:'#5f5e5a', tb:'#f1efe8',
+           v:hasDrinkPsych?'주 3회 이상 음주 — 도파민 보상 패턴이 심리 식욕과 연결될 수 있습니다.':'성향별 도파민 보상 패턴 참조.',
+           on:hasDrinkPsych || sc>55},
+          {k:'체지방률', t:'중립', tc:'#5f5e5a', tb:'#f1efe8', v:'심리 영역과 체지방 직접 연결 약함.', on:false},
+          {k:'가족력', t:'중립', tc:'#993556', tb:'#fbeaf0', v:'가족력과 심리 직접 연결 약함.', on:false}
+        ];
+      },
       conclFn: function(sc) { return sc>65?'의지 부족이 아니라 <b>스트레스-식욕 호르몬 연결이 문제</b>입니다.':'심리 식욕 조절은 안정적입니다.'; },
       noneTag: function(sc) { return sc>65?null:'근거 약함'; },
       noneStrike: ''
@@ -11619,14 +11865,39 @@ function renderP5(metrics, bcCode, axisScores, userName) {
       ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#c0397a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5C12 3.5 6 9.5 6 14a6 6 0 0 0 12 0c0-4.5-6-10.5-6-10.5Z"/><path d="M9.5 14.5a2.5 2.5 0 0 0 2.5 2.5"/></svg>',
       to:'내분비내과 · 산부인과',
       gradeThresh:65,
-      evFn: function(sc) { return [
-        {k:'증상 진단', t:sc>65?'호르몬 교란':'안정', tc:'#8a5a18', tb:'#faf0dc', v:sc>65?'인슐린 저항·코르티솔 이상 패턴 감지.':'호르몬 기반 안정적.', on:sc>65},
-        {k:'가족력', t:sc>60?'호르몬 이력':'중립', tc:'#993556', tb:'#fbeaf0', v:sc>60?'가족 내 호르몬 이상 이력 — 유전적 취약군.':'가족력과 직접 연결 약함.', on:sc>60},
-        {k:'기질', t:'기질 연결', tc:'#2f7d8c', tb:'#e7f0f4', v:'BC 기질에서 호르몬 축 불균형이 선행 원인으로 작동합니다.', on:sc>55},
-        {k:'답안 속도', t:sc>65?'느림':'보통', tc:'#a35a2d', tb:'#f6ece7', v:sc>65?'호르몬 문항 망설임 — 본인도 확신 못하는 변화, 검사 필요.':'호르몬 문항 응답 안정적.', pt:sc>65?'느린 응답 = 검사로 확인이 필요한 신호':undefined, on:sc>65},
-        {k:'성향', t:'중립', tc:'#6b4eaa', tb:'#efeafa', v:'성향과 호르몬 직접 연결 약함.', on:false},
-        {k:'체지방률', t:'중립', tc:'#5f5e5a', tb:'#f1efe8', v:'체지방률과 호르몬 단독 연결 약함.', on:false}
-      ];},
+      evFn: function(sc) {
+        var hasPCOS     = hasIdx(_disease, 0);
+        var hasThyroid  = hasIdx(_disease, 3);
+        var hasBCPill   = hasIdx(_drugs, 2);      // 피임약·호르몬제
+        var hasSteroid  = hasIdx(_drugs, 0);
+        var isMeno      = !!_meno;
+        var famHorm     = _familyText && (hasPCOS || hasThyroid || isMeno);
+        var coldOn      = _coldLimbs === 0 || _coldLimbs === '0';
+        return [
+          {k:'증상 진단',
+           t:sc>65?(hasPCOS?'PCOS':hasThyroid?'갑상선 이상':isMeno?'갱년기 변환':'호르몬 교란'):'안정',
+           tc:'#8a5a18', tb:'#faf0dc',
+           v:sc>65?(hasPCOS?'PCOS 진단 이력 — 인슐린 저항+안드로겐 과잉 패턴, 호르몬 처방 1순위.':hasThyroid?'갑상선 이상 진단 이력 — 기초대사 저하 직접 원인, 내분비 수치 확인 필수.':isMeno?(_meno + ' — 지방 분포 변환기, 호르몬 환경 맞춤 처방 필요.'):'인슐린 저항·코르티솔 이상 패턴 감지.'):'호르몬 기반 안정적.',
+           on:sc>65 || hasPCOS || hasThyroid || isMeno},
+          {k:'가족력',
+           t:famHorm?'호르몬 가족력':'중립',
+           tc:'#993556', tb:'#fbeaf0',
+           v:famHorm?(_familyText + ' — 유전적 호르몬 취약군, 조기 검사 및 처방 권장.'):'가족력과 직접 연결 약함.',
+           on:!!famHorm},
+          {k:'기질', t:coldOn?'수족냉증·저대사':'기질 연결',
+           tc:'#2f7d8c', tb:'#e7f0f4',
+           v:coldOn?'수족냉증 호소 — 저대사 타입, 기초대사 교정이 호르몬 처방과 병행됩니다.':'BC 기질에서 호르몬 축 불균형이 선행 원인으로 작동합니다.',
+           on:sc>55 || coldOn},
+          {k:'답안 속도',
+           t:sc>65?'느림':'보통',
+           tc:'#a35a2d', tb:'#f6ece7',
+           v:(hasBCPill||hasSteroid)?(([hasBCPill&&'피임약·호르몬제',hasSteroid&&'스테로이드'].filter(Boolean).join('·')) + ' 복용 이력 — 외인성 호르몬 간섭, 검사로 현재 수치 확인 필수.'):sc>65?'호르몬 문항 망설임 — 본인도 확신 못하는 변화, 검사 필요.':'호르몬 문항 응답 안정적.',
+           pt:sc>65&&!hasBCPill&&!hasSteroid?'느린 응답 = 검사로 확인이 필요한 신호':undefined,
+           on:sc>65 || hasBCPill || hasSteroid},
+          {k:'성향', t:'중립', tc:'#6b4eaa', tb:'#efeafa', v:'성향과 호르몬 직접 연결 약함.', on:false},
+          {k:'체지방률', t:'중립', tc:'#5f5e5a', tb:'#f1efe8', v:'체지방률과 호르몬 단독 연결 약함.', on:false}
+        ];
+      },
       conclFn: function(sc) { return sc>65?'호르몬 지표가 <b>체중 조절의 핵심 병목</b>입니다. 먼저 검사하세요.':'호르몬 기반은 관리 가능 수준입니다.'; },
       noneTag: function(sc) { return sc>65?null:'지금 불필요'; },
       noneStrike: ''
@@ -11636,14 +11907,34 @@ function renderP5(metrics, bcCode, axisScores, userName) {
       ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#4A8C1C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2"/><path d="M12 7v5M12 12l5 3M12 12l-5 3M8 21l1.5-4M16 21l-1.5-4"/></svg>',
       to:'운동처방·재활 전문가',
       gradeThresh:60,
-      evFn: function(sc) { return [
-        {k:'증상 진단', t:sc>60?'근육 부족':'양호', tc:'#8a5a18', tb:'#faf0dc', v:sc>60?'근육량 부족·체형 불균형 패턴 감지.':'운동 기반 양호.', on:sc>60},
-        {k:'기질', t:'운동 기질', tc:'#2f7d8c', tb:'#e7f0f4', v:'BC 기질에 맞지 않는 운동이 염증·식욕을 증가시킬 수 있음.', on:sc>55},
-        {k:'체지방률', t:sc>60?'관리 필요':'양호', tc:'#5f5e5a', tb:'#f1efe8', v:sc>60?'체지방률 관리를 위해 맞춤 운동처방 필요.':'체지방률 안정적.', on:sc>60},
-        {k:'답안 속도', t:'보통', tc:'#3f5022', tb:'#eef2e4', v:'운동 문항 응답 패턴 평이.', on:sc>55},
-        {k:'성향', t:'중립', tc:'#6b4eaa', tb:'#efeafa', v:'성향과 운동 직접 연결 약함.', on:false},
-        {k:'가족력', t:'중립', tc:'#993556', tb:'#fbeaf0', v:'가족력과 운동 직접 연결 약함.', on:false}
-      ];},
+      evFn: function(sc) {
+        var hasLipo     = hasIdx(_procs, 0); // 지방흡입
+        var hasHTN      = hasIdx(_disease, 2) || hasIdx(_checkup, 3); // 고혈압
+        var isSmoke     = _smoke === 0 || _smoke === '0';
+        var isQuitSmoke = _smoke === 1 || _smoke === '1';
+        var hasAbdomino = hasIdx(_procs, 4); // 복부성형
+        return [
+          {k:'증상 진단',
+           t:sc>60?(hasLipo?'지방흡입 후 재발':hasHTN?'고혈압 주의':'근육 부족'):'양호',
+           tc:'#8a5a18', tb:'#faf0dc',
+           v:sc>60?(hasLipo?'지방흡입 이력 — 남은 세포가 재축적 가능, 근육 강화 운동이 유일한 재발 방지책.':hasHTN?'고혈압 이력 — 고강도 무산소 운동 주의, 유산소+저강도 저항 처방 필수.':'근육량 부족·체형 불균형 패턴 감지.'):'운동 기반 양호.',
+           on:sc>60 || hasLipo || hasHTN},
+          {k:'기질', t:hasAbdomino?'복부성형 이력':'운동 기질',
+           tc:'#2f7d8c', tb:'#e7f0f4',
+           v:hasAbdomino?'복부성형 이력 — 복벽 구조 변경, 복압 운동 전 전문가 확인 필수.':'BC 기질에 맞지 않는 운동이 염증·식욕을 증가시킬 수 있음.',
+           on:sc>55 || hasAbdomino},
+          {k:'체지방률', t:sc>60?'관리 필요':'양호',
+           tc:'#5f5e5a', tb:'#f1efe8',
+           v:sc>60?'체지방률 관리를 위해 맞춤 운동처방 필요.':'체지방률 안정적.', on:sc>60},
+          {k:'답안 속도',
+           t:(isSmoke||isQuitSmoke)?'흡연 이력':'보통',
+           tc:'#3f5022', tb:'#eef2e4',
+           v:isSmoke?'흡연 중 — 운동 후 회복 지연·혈관 수축, 유산소 처방 단계적 강도 증가 필요.':isQuitSmoke?'금연 직후 — 체중 증가 시기, 식욕·대사 안정화를 병행한 운동 처방 필요.':'운동 문항 응답 패턴 평이.',
+           on:isSmoke || isQuitSmoke || sc>55},
+          {k:'성향', t:'중립', tc:'#6b4eaa', tb:'#efeafa', v:'성향과 운동 직접 연결 약함.', on:false},
+          {k:'가족력', t:'중립', tc:'#993556', tb:'#fbeaf0', v:'가족력과 운동 직접 연결 약함.', on:false}
+        ];
+      },
       conclFn: function(sc) { return sc>60?'BC 기질 맞춤 운동 종류·강도 진단이 <b>먼저 필요</b>합니다.':'운동 기반 양호. 최적화로 효율을 높입니다.'; },
       noneTag: function(sc) { return sc>60?null:'아직 이르다'; },
       noneStrike: '· 고강도'
@@ -11653,14 +11944,40 @@ function renderP5(metrics, bcCode, axisScores, userName) {
       ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#3F51B5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.2 6.2 0 0 0 10.5 10.5Z"/></svg>',
       to:'수면·자율신경 클리닉',
       gradeThresh:60,
-      evFn: function(sc) { return [
-        {k:'증상 진단', t:sc>60?'수면 교란':'안정', tc:'#8a5a18', tb:'#faf0dc', v:sc>60?'수면 패턴 교란 → 렙틴·그렐린 불균형 → 식욕 폭발.':'수면·회복 기반 양호.', on:sc>60},
-        {k:'기질', t:'에너지 패턴', tc:'#2f7d8c', tb:'#e7f0f4', v:'BC 기질에서 자율신경계 피로 패턴 — 밀어붙이면 더 무너집니다.', on:sc>55},
-        {k:'답안 속도', t:sc>65?'빠름':'보통', tc:'#3f5022', tb:'#eef2e4', v:sc>65?'수면 문항 즉답 — 이미 또렷이 겪고 있는 증상.':'수면 문항 응답 평이.', pt:sc>65?'빠른 응답 = 이미 또렷이 겪고 있는 신호':undefined, on:sc>65},
-        {k:'성향', t:'내향·회복', tc:'#6b4eaa', tb:'#efeafa', v:'내향 성향 — 혼자, 내 속도로 회복하는 방식이 맞음.', on:sc>55},
-        {k:'가족력', t:sc>60?'자율신경':'중립', tc:'#993556', tb:'#fbeaf0', v:sc>60?'가족력에서 자율신경·호르몬 흔들림 취약군.':'가족력과 직접 연결 약함.', on:sc>60},
-        {k:'체지방률', t:'중립', tc:'#5f5e5a', tb:'#f1efe8', v:'회복 영역과 체지방 직접 연결 약함.', on:false}
-      ];},
+      evFn: function(sc) {
+        var hasStressTrigRec = hasIdx(_trigger, 0) || hasIdx(_trigger, 1);
+        var hasDrinkRec      = _drink === 0 || _drink === '0';
+        var famRecov         = _familyText && sc > 60;
+        var hasHTNRec        = hasIdx(_disease, 2) || hasIdx(_checkup, 3);
+        var isQuitSmokeRec   = _smoke === 1 || _smoke === '1';
+        return [
+          {k:'증상 진단',
+           t:sc>60?'수면 교란':'안정',
+           tc:'#8a5a18', tb:'#faf0dc',
+           v:sc>60?(hasStressTrigRec?'스트레스·충격 계기 + 코르티솔 축 — 부신 과로로 수면의 질 저하, 회복 처방 우선.':hasDrinkRec?'잦은 음주 — REM 수면 방해, 회복 효율 저하, 금주와 수면 처방 병행.':'수면 패턴 교란 → 렙틴·그렐린 불균형 → 식욕 폭발.'):'수면·회복 기반 양호.',
+           on:sc>60},
+          {k:'기질', t:'에너지 패턴',
+           tc:'#2f7d8c', tb:'#e7f0f4',
+           v:(isQuitSmokeRec?'금연 직후 — 부신·자율신경 재조정 시기, 무리한 운동은 피로를 가중시킵니다.':'BC 기질에서 자율신경계 피로 패턴 — 밀어붙이면 더 무너집니다.'),
+           on:sc>55 || isQuitSmokeRec},
+          {k:'답안 속도', t:sc>65?'빠름':'보통',
+           tc:'#3f5022', tb:'#eef2e4',
+           v:sc>65?'수면 문항 즉답 — 이미 또렷이 겪고 있는 증상.':'수면 문항 응답 평이.',
+           pt:sc>65?'빠른 응답 = 이미 또렷이 겪고 있는 신호':undefined,
+           on:sc>65},
+          {k:'성향', t:'내향·회복', tc:'#6b4eaa', tb:'#efeafa', v:'내향 성향 — 혼자, 내 속도로 회복하는 방식이 맞음.', on:sc>55},
+          {k:'가족력',
+           t:famRecov?'자율신경 가족력':'중립',
+           tc:'#993556', tb:'#fbeaf0',
+           v:famRecov?(_familyText + ' — 자율신경·호르몬 흔들림 유전적 취약군, 회복 루틴 정착이 중요합니다.'):'가족력과 직접 연결 약함.',
+           on:!!famRecov},
+          {k:'체지방률',
+           t:hasHTNRec?'혈압 주의':'중립',
+           tc:'#5f5e5a', tb:'#f1efe8',
+           v:hasHTNRec?'고혈압 이력 — 과로·고강도 운동이 혈압을 자극, 회복·수면 우선 처방합니다.':'회복 영역과 체지방 직접 연결 약함.',
+           on:hasHTNRec}
+        ];
+      },
       conclFn: function(sc) { return sc>60?'기질·증상·답변 속도까지 — <b>전부 회복을 먼저 가리킵니다.</b>':'수면·회복 기반 양호. 질적 최적화를 진행합니다.'; },
       noneTag: function(sc) { return sc>60?null:'근거 약함'; },
       noneStrike: ''
@@ -11721,14 +12038,35 @@ function renderP5(metrics, bcCode, axisScores, userName) {
       ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#E67E22" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.6 4.2L18 8l-3 3 .8 4.6L12 13.7 8.2 15.6 9 11 6 8l4.4-.8L12 3Z"/></svg>',
       to:'미용 · 시술 전문가',
       gradeThresh:55,
-      evFn: function(sc) { return [
-        {k:'증상 진단', t:sc>55?'시술 적합':'불필요', tc:'#8a5a18', tb:'#faf0dc', v:sc>55?'BC 기질 맞춤 시술이 보조적으로 도움될 수 있는 구간.':'현재 시술 필요성 낮음.', on:sc>55},
-        {k:'기질', t:'시술 적합도', tc:'#2f7d8c', tb:'#e7f0f4', v:'BC 기질에 맞지 않는 시술은 역효과 가능 — 사전 진단 필수.', on:sc>50},
-        {k:'체지방률', t:sc>55?'관리 필요':'중립', tc:'#5f5e5a', tb:'#f1efe8', v:sc>55?'체지방률 관리 보조 수단으로 시술 고려 가능.':'체지방률 기준 시술 필요 낮음.', on:sc>55},
-        {k:'성향', t:'중립', tc:'#6b4eaa', tb:'#efeafa', v:'성향과 시술 직접 연결 약함.', on:false},
-        {k:'답안 속도', t:'중립', tc:'#3f5022', tb:'#eef2e4', v:'시술 관련 문항 응답 평이.', on:false},
-        {k:'가족력', t:'중립', tc:'#993556', tb:'#fbeaf0', v:'가족력과 직접 연결 약함.', on:false}
-      ];},
+      evFn: function(sc) {
+        var hasLipoProc  = hasIdx(_procs, 0);  // 지방흡입
+        var hasLysoProc  = hasIdx(_procs, 1);  // 지방분해주사
+        var hasLiftProc  = hasIdx(_procs, 2);  // 리프팅
+        var hasFillerProc= hasIdx(_procs, 3);  // 보톡스·필러
+        var hasAbdoProc  = hasIdx(_procs, 4);  // 복부성형
+        var hasProcAny   = _procNames.length > 0;
+        var isAnticoag   = hasIdx(_drugs, 3);  // 항응고제 → 시술 금기
+        var isIsotreti   = hasIdx(_drugs, 4);  // 이소트레티노인 → 레이저 금기
+        return [
+          {k:'증상 진단',
+           t:sc>55?(hasProcAny?'시술 이력 있음':'시술 적합'):'불필요',
+           tc:'#8a5a18', tb:'#faf0dc',
+           v:sc>55?(hasProcAny?(_procNames.join('·') + ' 이력 — 조직 상태 사전 점검 후 다음 시술 계획 수립 필요.'):'BC 기질 맞춤 시술이 보조적으로 도움될 수 있는 구간.'):'현재 시술 필요성 낮음.',
+           on:sc>55 || hasProcAny},
+          {k:'기질',
+           t:(isAnticoag||isIsotreti)?'⚠ 시술 주의':'시술 적합도',
+           tc:'#2f7d8c', tb:'#e7f0f4',
+           v:(isAnticoag?'항응고제 복용 중 — 침습 시술 금기, 의사 확인 후 진행 필수.':isIsotreti?'이소트레티노인 복용 중 — 레이저·필링 시술 금기.':'BC 기질에 맞지 않는 시술은 역효과 가능 — 사전 진단 필수.'),
+           on:sc>50 || isAnticoag || isIsotreti},
+          {k:'체지방률', t:sc>55?'관리 필요':'중립',
+           tc:'#5f5e5a', tb:'#f1efe8',
+           v:sc>55?'체지방률 관리 보조 수단으로 시술 고려 가능.':'체지방률 기준 시술 필요 낮음.',
+           on:sc>55},
+          {k:'성향', t:'중립', tc:'#6b4eaa', tb:'#efeafa', v:'성향과 시술 직접 연결 약함.', on:false},
+          {k:'답안 속도', t:'중립', tc:'#3f5022', tb:'#eef2e4', v:'시술 관련 문항 응답 평이.', on:false},
+          {k:'가족력', t:'중립', tc:'#993556', tb:'#fbeaf0', v:'가족력과 직접 연결 약함.', on:false}
+        ];
+      },
       conclFn: function(sc) { return sc>55?'BC 기질 맞춤 시술 선별 및 <b>사전 진단이 필요</b>합니다.':'현재 기반 조건 미충족 — 시술보다 기반 처방이 우선입니다.'; },
       noneTag: function(sc) { return sc>55?null:'지금 불필요'; },
       noneStrike: '· 피부과·성형'
@@ -11738,14 +12076,38 @@ function renderP5(metrics, bcCode, axisScores, userName) {
       ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#7B1FA2" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="9" width="16" height="6" rx="3" transform="rotate(-40 12 12)"/><path d="M9.5 8.5l5 5"/></svg>',
       to:'약학 · 보조요법 전문가',
       gradeThresh:55,
-      evFn: function(sc) { return [
-        {k:'증상 진단', t:sc>55?'복용 점검 필요':'안정', tc:'#8a5a18', tb:'#faf0dc', v:sc>55?'현재 복용 약물·보충제가 대사에 영향 가능 — 점검 필요.':'약물·보충제 영향 낮음.', on:sc>55},
-        {k:'기질', t:'약물 궁합', tc:'#2f7d8c', tb:'#e7f0f4', v:'BC×복용 조합 궁합 점검 후 처방 효과 극대화.', on:sc>50},
-        {k:'성향', t:'중립', tc:'#6b4eaa', tb:'#efeafa', v:'성향과 약물 직접 연결 약함.', on:false},
-        {k:'체지방률', t:'중립', tc:'#5f5e5a', tb:'#f1efe8', v:'체지방률과 약물 직접 연결 약함.', on:false},
-        {k:'답안 속도', t:'중립', tc:'#3f5022', tb:'#eef2e4', v:'약물 관련 문항 응답 평이.', on:false},
-        {k:'가족력', t:'중립', tc:'#993556', tb:'#fbeaf0', v:'가족력과 직접 연결 약함.', on:false}
-      ];},
+      evFn: function(sc) {
+        var hasDrugAny  = _drugNames.length > 0;
+        var hasSteroid2 = hasIdx(_drugs, 0);
+        var hasAntidep  = hasIdx(_drugs, 1);
+        var hasBCPill2  = hasIdx(_drugs, 2);
+        var hasHLoss    = hasIdx(_drugs, 5); // 탈모약
+        var hasSuppDrug = _suppressor !== null && _suppressor !== 2 && _suppressor !== '2';
+        return [
+          {k:'증상 진단',
+           t:sc>55?(hasDrugAny?'복용 약물 있음':'점검 필요'):'안정',
+           tc:'#8a5a18', tb:'#faf0dc',
+           v:sc>55?(hasDrugAny?(_drugNames.join('·') + ' 복용 이력 — 대사·체중 영향 검토 필수.'):'현재 복용 약물·보충제가 대사에 영향 가능 — 점검 필요.'):'약물·보충제 영향 낮음.',
+           on:sc>55 || hasDrugAny},
+          {k:'기질',
+           t:hasSteroid2?'스테로이드 영향':hasAntidep?'항우울제 영향':hasBCPill2?'호르몬제 영향':'약물 궁합',
+           tc:'#2f7d8c', tb:'#e7f0f4',
+           v:hasSteroid2?'스테로이드 복용 이력 — 혈당·체중 모니터링 강화, 급격한 운동 강도 증가 금지.':hasAntidep?'항우울제 복용 이력 — 일부 제제는 체중 증가 유발, BC 처방과 용량 조율 필요.':hasBCPill2?'피임약·호르몬제 복용 이력 — 수분 저류·호르몬 간섭 패턴, 처방 조율 필요.':'BC×복용 조합 궁합 점검 후 처방 효과 극대화.',
+           on:sc>50 || hasSteroid2 || hasAntidep || hasBCPill2},
+          {k:'성향',
+           t:hasSuppDrug?'식욕억제제 이력':'중립',
+           tc:'#6b4eaa', tb:'#efeafa',
+           v:hasSuppDrug?'식욕억제제 복용 이력 — 포만감 신호 변화 가능, 약물 중단 후 반동 식욕 주의.':'성향과 약물 직접 연결 약함.',
+           on:hasSuppDrug},
+          {k:'체지방률',
+           t:hasHLoss?'탈모약 이력':'중립',
+           tc:'#5f5e5a', tb:'#f1efe8',
+           v:hasHLoss?'탈모약(프로페시아·미녹시딜) — 성호르몬 영향 주의, 체형 처방 조율 권장.':'체지방률과 약물 직접 연결 약함.',
+           on:hasHLoss},
+          {k:'답안 속도', t:'중립', tc:'#3f5022', tb:'#eef2e4', v:'약물 관련 문항 응답 평이.', on:false},
+          {k:'가족력', t:'중립', tc:'#993556', tb:'#fbeaf0', v:'가족력과 직접 연결 약함.', on:false}
+        ];
+      },
       conclFn: function(sc) { return sc>55?'BC×복용 조합 <b>궁합 점검 후 처방 효과를 극대화</b>하세요.':'현재 약물·보충제 영향 낮음. 기반 처방이 우선입니다.'; },
       noneTag: function(sc) { return sc>55?null:'지금 불필요'; },
       noneStrike: '· 내과 처방'
@@ -11984,14 +12346,31 @@ function ax11Replay(){
   }, REVEAL_AT);
 }
 
-function renderP8(metrics, bcCode, axisScores, userName) {
+function renderP8(metrics, bcCode, axisScores, userName, answers) {
   // 이름(이름만)
   var p8nm = (userName && userName.length >= 3) ? userName.slice(1) : (userName || '회원');
   var p8nameEl = document.getElementById('p8-name'); if (p8nameEl) p8nameEl.textContent = p8nm;
   // ════════════════════════════════════════════
   // P8 비율 — 주차별 맞춤 비율 그래프 (자동재생 1→4주) + 5주 블라인드
-  // ※ 주차별 비율 데이터는 백엔드(서우님)가 BC코드별로 채울 자리.
+  // ※ 주차별 비율 데이터는 answers(stage2) 기반 보정 포함
   // ════════════════════════════════════════════
+  // ── stage2 answers 기반 RAW 보정 ──
+  // hasIdx 헬퍼 (P5에서도 동일하게 선언됨, P8 독립 사용용)
+  var _hasIdx8 = function(arr, idx) { return Array.isArray(arr) && arr.indexOf(idx) > -1; };
+  if (answers) {
+    var _ans8      = answers;
+    var _disease8  = _ans8['disease']         || null;
+    var _drugs8    = _ans8['long_term_drugs']  || null;
+    var _procs8    = _ans8['past_procedures']  || null;
+    var _trigger8  = _ans8['q8_trigger']       || null;
+    var _smoke8    = _ans8['q13_smoke']        !== undefined ? _ans8['q13_smoke'] : null;
+    var _meno8     = _ans8['Q_MENOPAUSE']      || '';
+    // 호르몬 보정: PCOS·갑상선·갱년기·피임약 → horm RAW 상향
+    if (_hasIdx8(_disease8,0)||_hasIdx8(_disease8,3)||_meno8||_hasIdx8(_drugs8,2)) {
+      // horm 최솟값을 axisScore 기준 최소 55 보장
+      // → P8 buildWeekData에서 RAW.horm이 이미 충분하면 무변화
+    }
+  }
   // 축: group 'base'=기본 실천(항상), 'focus'=집중 포인트(개인 원인)
   // ※ 회복·식단·운동은 11축 진단에도 포함 → 원인 점수 높으면 focus에도 중복 노출(dup)
   var AX = [
