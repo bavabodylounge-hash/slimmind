@@ -3690,7 +3690,7 @@ app.get('/api/settings/kakao', requireRole('ANY'), async (c) => {
   if (!db) return c.json({ kakao_app_key: '', kakao_enabled: false })
   try {
     const row = await db.prepare(
-      "SELECT value FROM app_kv WHERE key = 'kakao_app_key'"
+      "SELECT value FROM _cf_KV WHERE key = 'kakao_app_key'"
     ).first<any>()
     const key = row?.value || ''
     return c.json({ kakao_app_key: key ? key.slice(0,4) + '****' : '', kakao_enabled: !!key })
@@ -3707,7 +3707,7 @@ app.put('/api/settings/kakao', requireRole('MASTER'), async (c) => {
     const key = (body.kakao_app_key || '').trim()
     if (!db) return c.json({ ok: false, error: 'DB 없음' }, 500)
     await db.prepare(
-      "INSERT OR REPLACE INTO app_kv (key, value) VALUES ('kakao_app_key', ?)"
+      "INSERT OR REPLACE INTO _cf_KV (key, value) VALUES ('kakao_app_key', ?)"
     ).bind(key).run()
     return c.json({ ok: true, message: key ? '카카오 API 키가 저장되었습니다.' : '카카오 API 키가 삭제되었습니다.' })
   } catch(e) {
@@ -3729,7 +3729,7 @@ app.post('/api/kakao/send', requireRole('ANY'), async (c) => {
     // API 키 확인
     let kakaoKey = ''
     if (db) {
-      const row = await db.prepare("SELECT value FROM app_kv WHERE key = 'kakao_app_key'").first<any>()
+      const row = await db.prepare("SELECT value FROM _cf_KV WHERE key = 'kakao_app_key'").first<any>()
       kakaoKey = row?.value || ''
     }
     // 메시지 텍스트 생성
@@ -7775,7 +7775,7 @@ app.get('/api/places', async (c) => {
   if (lat && lng && db) {
     try {
       const kakaoKeyRow = await db.prepare(
-        "SELECT value FROM app_kv WHERE key = 'kakao_rest_api_key'"
+        "SELECT value FROM _cf_KV WHERE key = 'kakao_rest_api_key'"
       ).first<any>()
       const kakaoKey = kakaoKeyRow?.value || ''
 
@@ -7938,7 +7938,7 @@ app.put('/api/settings/kakao-map', requireRole('MASTER'), async (c) => {
     const key = (body.kakao_rest_api_key || '').trim()
     if (!key) return c.json({ ok: false, error: '키를 입력하세요' }, 400)
     await db.prepare(
-      "INSERT OR REPLACE INTO app_kv (key, value) VALUES ('kakao_rest_api_key', ?)"
+      "INSERT OR REPLACE INTO _cf_KV (key, value) VALUES ('kakao_rest_api_key', ?)"
     ).bind(key).run()
     return c.json({ ok: true, message: '카카오 REST API 키 저장 완료' })
   } catch (e: any) {
@@ -7952,7 +7952,7 @@ app.get('/api/settings/kakao-map', requireRole('MASTER'), async (c) => {
   if (!db) return c.json({ enabled: false, masked: '' })
   try {
     const row = await db.prepare(
-      "SELECT value FROM app_kv WHERE key = 'kakao_rest_api_key'"
+      "SELECT value FROM _cf_KV WHERE key = 'kakao_rest_api_key'"
     ).first<any>()
     const key = row?.value || ''
     return c.json({ enabled: !!key, masked: key ? key.slice(0,4) + '****' + key.slice(-4) : '' })
