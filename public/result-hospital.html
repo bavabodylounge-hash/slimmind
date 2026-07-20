@@ -4755,6 +4755,25 @@ p, div, span, h1, h2, h3, h4{
 .wgu-note-day.diet{background:#c98a3c;}
 .wgu-note-box.done.diet .wgu-note-edit{border-color:#e0b96a;color:#a8701f;}
 /* 호르몬 협진 카드 */
+/* ── TOP3 핵심처방 카드 스타일 ── */
+.wg-top3-wrap{padding:4px 2px 0;}
+.wg-top3-rank{display:inline-block;font-size:10px;font-weight:900;color:#fff;border-radius:20px;padding:3px 11px;margin-bottom:10px;letter-spacing:.3px;}
+.wg-top3-action{font-size:13.5px;font-weight:900;color:#1a1220;line-height:1.45;margin-bottom:8px;word-break:keep-all;}
+.wg-top3-why{font-size:11.5px;font-weight:600;color:#5a5246;line-height:1.55;margin-bottom:9px;word-break:keep-all;}
+.wg-top3-why-lb{font-size:9.5px;font-weight:800;color:#fff;background:#8b6db5;border-radius:4px;padding:1px 6px;margin-right:6px;}
+.wg-top3-row{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px;}
+.wg-top3-tag{font-size:10.5px;font-weight:700;color:#3a5572;background:#e8f0f8;border-radius:20px;padding:3px 10px;}
+.wg-top3-ref{font-size:10.5px;font-weight:700;color:#5a6e3a;background:#eef2e4;border-radius:20px;padding:3px 10px;}
+.wg-top3-wk-prog{background:#f7f4f0;border-radius:12px;padding:11px 13px;border-left:3px solid var(--pcc);}
+.wg-top3-wk-hd{font-size:10px;font-weight:800;color:#7a6e64;margin-bottom:8px;letter-spacing:.2px;}
+.wg-top3-wk-steps{display:flex;flex-direction:column;gap:5px;}
+.wg-top3-wk-step{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:600;color:#7a6e64;}
+.wg-top3-wk-step.now{color:var(--pcc);font-weight:900;}
+.wg-top3-wk-step.past{color:#aaa;}
+.wg-top3-wk-num{font-size:10px;font-weight:900;width:22px;flex-shrink:0;}
+.wg-top3-wk-dot{font-size:12px;width:14px;text-align:center;flex-shrink:0;}
+.wg-top3-wk-step.past .wg-top3-wk-dot{color:#5a6e3a;}
+.wg-top3-wk-lbl{flex:1;line-height:1.35;}
 .wg-collab{margin-bottom:14px;background:#eef1f6;border:1px solid #d5dce8;border-left:4px solid #4a7fb5;border-radius:14px;padding:13px 14px;}
 .wg-cl-hd{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
 .wg-cl-ic{font-size:15px;}
@@ -18956,17 +18975,167 @@ function weeklyGridHTML(w, idx) {
       '<div class="pcard-body">'+inner+'</div>'+
     '</div>';
   }
-  // ── 체형·호르몬 카드: P5 TOP3에 해당 축이 있을 때만 포함 ──
+  // ── P5 TOP3 핵심처방 카드: 주차별 개인화 내용으로 생성 ──
   var _p5nmsGrid = window.__P5_TOP3_NMS__ || [];
-  var _showBody  = _p5nmsGrid.indexOf('체형')  >= 0;
-  var _showHorm  = _p5nmsGrid.indexOf('호르몬') >= 0;
+  var weekNo = w.week || (idx + 1);
+
+  // 영역별 주차 처방 DB — 4주 순환 (1~4주마다 강도·포인트 변화)
+  var TOP3_WEEK_DB = {
+    '한방': {
+      ic:'🌿', color:'#1A8C5B', colorL:'#e8f5ee',
+      sub: function(wk){ return wk<=2?'기혈 순환 기반 잡기':wk<=4?'체질 처방 심화':'한방 처방 유지'; },
+      plans: [
+        { action:'혈자리 지압 — 합곡·족삼리 각 5분/일', why:'기혈 순환 자극, 기초 대사 활성화', tag:'매일', ref:'내원 후 처방 받으면 효과 2배' },
+        { action:'한방 차 — 율무·팥 복합 차 500ml/일', why:'수습 배출, 부종 억제', tag:'식전 30분', ref:'탈감초 처방 원하면 협진 필요' },
+        { action:'침·부항 협진 연계', why:'경락 정체 해소, 국소 순환 회복', tag:'주 1회', ref:'협진 결과 전송 시 다음 주 처방 조정' },
+        { action:'한방 처방 최적화 — 체질별 약재 심화', why:'3주 기반 위에 체질 맞춤 처방 강화', tag:'전문의 처방', ref:'4주차 결과로 5~8주 처방 결정' }
+      ]
+    },
+    '시술': {
+      ic:'⭐', color:'#E67E22', colorL:'#fef5e4',
+      sub: function(wk){ return wk<=2?'시술 전 기반 다지기':wk<=4?'시술 효과 극대화 관리':'시술 후 유지 관리'; },
+      plans: [
+        { action:'시술 전 피부 컨디셔닝 — 수분 크림·자외선 차단 철저', why:'시술 효과를 최대화하는 피부 기반 조성', tag:'매일 아침·저녁', ref:'시술 상담 시 이 기록 지참' },
+        { action:'시술 후 관리 루틴 — 냉찜질 10분 + 자극 자제', why:'시술 부위 염증 최소화, 효과 지속', tag:'시술 당일 ~ +3일', ref:'이상 반응 즉시 협진 팀에 전송' },
+        { action:'시술 효과 극대화 — 처방 식단·운동과 병행', why:'시술 단독보다 식단·운동 병행 시 효과 60% 이상 향상', tag:'주 5일', ref:'비교 사진 찍어두면 피드백 정확해짐' },
+        { action:'유지 관리 체크 — 시술 부위 경과 확인', why:'리터치 타이밍·추가 처방 여부 판단', tag:'4주 점검', ref:'결과 사진 전송 시 다음 처방 결정' }
+      ]
+    },
+    '심리': {
+      ic:'🧠', color:'#9C27B0', colorL:'#f3e5f5',
+      sub: function(wk){ return wk<=2?'스트레스·식욕 패턴 인식':wk<=4?'감정 식욕 차단 루틴':'심리 안정 유지'; },
+      plans: [
+        { action:'식욕 일지 3줄 — 먹고 싶을 때 감정·상황 기록', why:'감정 식욕 트리거 파악 = 재발 방지의 핵심', tag:'매일 저녁', ref:'기록한 일지 전송 시 분석 피드백 제공' },
+        { action:'5분 감정 리셋 — 박스 호흡 + 긍정 확언 3개', why:'코르티솔 즉시 낮추기, 충동 식욕 차단', tag:'과식 충동 시', ref:'반복할수록 차단 속도가 빨라짐' },
+        { action:'보상 시스템 구축 — 음식 외 보상 3가지 확정', why:'도파민 보상 회로를 음식에서 분리', tag:'이번 주 내', ref:'컨설턴트와 함께 설계하면 지속성 3배' },
+        { action:'4주 심리 점검 — 감정 식욕 빈도 vs 1주차 비교', why:'변화 가시화 = 동기 유지의 핵심', tag:'4주차 결산', ref:'결과 공유 시 5~8주 심리 처방 고도화' }
+      ]
+    },
+    '호르몬': {
+      ic:'🌸', color:'#C0397A', colorL:'#fce4ec',
+      sub: function(wk){ return wk<=2?'호르몬 검사·기반 잡기':wk<=4?'처방 반영 단계':'호르몬 안정 유지'; },
+      plans: [
+        { action:'호르몬 기초 검사 예약 — 에스트로겐·갑상선·인슐린', why:'수치 없이는 처방이 추측에 불과함', tag:'1주차 내 예약', ref:'결과지 전송 시 처방 즉시 조정' },
+        { action:'에스트로겐 지지 식품 — 콩·아마씨·브로콜리 매일', why:'식이성 피토에스트로겐으로 호르몬 균형 보조', tag:'매일 식단 포함', ref:'검사 결과와 병행 시 효과 극대화' },
+        { action:'검사 결과 기반 처방 적용 — 의사 소견 반영', why:'개인별 호르몬 수치에 맞는 정밀 처방', tag:'검사 후 즉시', ref:'소견서 전송 필수' },
+        { action:'4주 호르몬 재측정 — 변화 추이 확인', why:'처방 효과 검증 및 5~8주 계획 수립', tag:'4주 후 재검', ref:'비교 수치 전송 시 다음 처방 결정' }
+      ]
+    },
+    '체형': {
+      ic:'🦴', color:'#6B4EAA', colorL:'#efeafa',
+      sub: function(wk){ return wk<=2?'자세 교정·코어 기반':wk<=4?'체형 교정 심화':'체형 유지 관리'; },
+      plans: [
+        { action:'골반 교정 — 고양이·소 자세 + 브릿지 10분/일', why:'골반 전방경사 해소, 코어 활성화', tag:'기상 직후', ref:'도수치료 결과 전송 시 처방 맞춤화' },
+        { action:'근막 이완 — 폼롤러 허리·허벅지·종아리 15분', why:'근막 유착 해소, 혈류 개선', tag:'운동 전·후', ref:'통증 부위 기록해서 전송' },
+        { action:'필라테스 주 2회 + 도수치료 병행', why:'근육 균형 회복, 골격 재정렬', tag:'주 2회', ref:'치료 결과 지참 시 처방 조정' },
+        { action:'4주 체형 사진 비교 + 전문의 점검', why:'변화 측정 및 다음 단계 방향 결정', tag:'4주 결산', ref:'비포/애프터 전송 필수' }
+      ]
+    },
+    '식단': {
+      ic:'🥗', color:'#E8631A', colorL:'#fdf3e7',
+      sub: function(wk){ return wk<=2?'혈당 안정화 기반':wk<=4?'식이 패턴 최적화':'식단 자동화 유지'; },
+      plans: [
+        { action:'혈당 스파이크 차단 — 식사 순서: 채소→단백질→탄수화물', why:'혈당 급등-급락 사이클 차단 = 지방 축적 근본 원인 제거', tag:'매 식사', ref:'혈당 수치 있으면 전송' },
+        { action:'단백질 우선 식단 — 매끼 단백질 30g 이상 확보', why:'근육 유지 + 포만감 지속 = 과식 방지', tag:'매끼 필수', ref:'영양제 처방과 연동' },
+        { action:'식이 타이밍 최적화 — 16:8 간헐적 단식 적용', why:'인슐린 저항성 개선, 지방 산화 극대화', tag:'주 4일 이상', ref:'어지러우면 즉시 중단하고 전송' },
+        { action:'4주 식이 패턴 결산 — 혈당·체중 변화 분석', why:'패턴 자동화 여부 검증, 5~8주 식단 고도화', tag:'4주 결산', ref:'기록 전송 시 맞춤 식단 업데이트' }
+      ]
+    },
+    '운동': {
+      ic:'🏋️', color:'#4A8C1C', colorL:'#eef2e4',
+      sub: function(wk){ return wk<=2?'운동 기초·근육 활성화':wk<=4?'운동 강도 점진 증가':'운동 습관 자동화'; },
+      plans: [
+        { action:'저강도 유산소 기반 — 20분 속보 주 5일', why:'인슐린 감수성 향상, 기초 체력 구축', tag:'주 5일', ref:'심박수 120~130 유지 권장' },
+        { action:'근력 강화 시작 — 스쿼트·런지·플랭크 기초', why:'기초 근육 활성화, 기초대사량 증가', tag:'주 3일 (격일)', ref:'통증 시 즉시 중단·전송' },
+        { action:'운동 강도 증가 — HIIT 20분 주 2회 추가', why:'지방 산화 가속, 체지방 감소 효율 극대화', tag:'주 2회', ref:'체력 테스트 결과 전송 시 조정' },
+        { action:'4주 운동 결산 — 체력 테스트 측정', why:'운동 효과 정량화, 5~8주 프로그램 설계', tag:'4주 완료 시', ref:'측정값 전송 시 다음 처방 결정' }
+      ]
+    },
+    '회복': {
+      ic:'🌙', color:'#3F51B5', colorL:'#e8eaf6',
+      sub: function(wk){ return wk<=2?'수면 리듬 정착':wk<=4?'자율신경 회복 심화':'회복 루틴 자동화'; },
+      plans: [
+        { action:'수면 위생 확립 — 취침·기상 시간 고정 (±30분 내)', why:'코르티솔 리듬 정상화 = 모든 처방의 전제 조건', tag:'매일', ref:'수면 패턴 기록 전송 시 분석' },
+        { action:'수면 전 루틴 — 청색광 차단 + 4·7·8 호흡 3세트', why:'멜라토닌 분비 촉진, 교감신경 이완', tag:'취침 1시간 전', ref:'수면 질 점수 기록해서 전송' },
+        { action:'낮잠 최적화 — 13~15시 사이 20분 이내만 허용', why:'야간 수면 방해 없이 오후 피로 회복', tag:'점심 후', ref:'낮잠 시간 일지에 기록' },
+        { action:'4주 수면 결산 — 수면 효율 vs 1주차 비교', why:'회복 개선 측정, 5~8주 루틴 고도화', tag:'4주 결산', ref:'데이터 전송 시 맞춤 루틴 업데이트' }
+      ]
+    },
+    '관리': {
+      ic:'📊', color:'#3EB8A0', colorL:'#e0f7f4',
+      sub: function(wk){ return wk<=2?'습관 설계·트래킹 시작':wk<=4?'루틴 자동화 심화':'관리 시스템 완성'; },
+      plans: [
+        { action:'일일 체크리스트 3가지만 — 가장 중요한 것 압축', why:'적을수록 지속성 높음 — 3가지 완주 > 10가지 부분 실천', tag:'매일 저녁', ref:'체크 결과 전송 시 분석' },
+        { action:'주간 리뷰 — 이번 주 잘한 것 3개·개선할 것 1개', why:'성공 강화 + 단 하나의 개선점만 집중', tag:'매주 일요일', ref:'리뷰 내용 전송 시 맞춤 코칭' },
+        { action:'환경 설계 — 냉장고·운동기구 접근성 최적화', why:'의지력보다 환경이 행동을 결정함', tag:'이번 주 내 완료', ref:'사진 전송 시 구체적 피드백 제공' },
+        { action:'4주 관리 결산 — 습관 자동화 체크리스트', why:'자동화된 습관 확인, 5~8주 고도화 방향 설정', tag:'4주 결산', ref:'결산 데이터 전송 필수' }
+      ]
+    },
+    '약물': {
+      ic:'💊', color:'#795548', colorL:'#efebe9',
+      sub: function(wk){ return wk<=2?'복용 약물 점검·기반 조율':wk<=4?'처방 최적화':'약물-처방 유지 관리'; },
+      plans: [
+        { action:'복용 중인 모든 약물·보충제 목록 작성', why:'약물-식단-운동 상호작용 파악이 처방 안전성의 전제', tag:'1주차 내 완료', ref:'목록 전송 시 즉시 처방 조율 가능' },
+        { action:'약물 복용 시간 최적화 — 처방 스케줄과 조율', why:'흡수율·부작용 최소화, 처방 효과 극대화', tag:'매일', ref:'부작용 증상 즉시 전송' },
+        { action:'보충제 BC 궁합 체크 — P9 보충제 탭 참조', why:'BC 타입별 맞는 보충제·독이 되는 보충제가 다름', tag:'이번 주 내', ref:'P9 탭에서 직접 조회 가능' },
+        { action:'4주 약물 처방 점검 — 의사 재상담', why:'4주 경과 후 처방 조정이 필요할 수 있음', tag:'4주 후 재상담', ref:'변화 기록 지참 필수' }
+      ]
+    },
+    '철학': {
+      ic:'🎯', color:'#607D8B', colorL:'#eceff1',
+      sub: function(wk){ return wk<=2?'목표 명확화·동기 설계':wk<=4?'가치·행동 연결 강화':'철학 기반 자동화'; },
+      plans: [
+        { action:'나의 "왜" 한 문장 작성 — 다이어트하는 진짜 이유', why:'동기가 명확할수록 포기 확률이 80% 감소함', tag:'이번 주 내', ref:'작성 후 전송 시 처방에 반영' },
+        { action:'비전 보드 만들기 — 원하는 몸·삶 이미지 3개', why:'뇌는 이미지로 목표를 처리 — 가시화가 행동을 만듦', tag:'이번 주 내', ref:'사진 전송 시 피드백 제공' },
+        { action:'정체기 대응 매뉴얼 — 무너질 때 할 행동 3가지', why:'정체기는 반드시 옴 — 미리 대응법을 설계해야 버팀', tag:'3주 내 완성', ref:'매뉴얼 공유 시 함께 수정' },
+        { action:'4주 철학 점검 — 처음의 "왜"와 지금 비교', why:'변화한 동기 재확인, 5~8주 목표 재설정', tag:'4주 결산', ref:'결산 내용 전송 시 다음 처방 방향 결정' }
+      ]
+    }
+  };
+
+  // P5 TOP3 기반 핵심처방 카드 생성
+  var top3Cards = '';
+  var _wkIdx = Math.min(weekNo - 1, 3); // 0~3 (4주 순환)
+  var _rankColors = ['#c0397a','#8b6db5','#3a6b9c']; // 1·2·3순위 배지색
+
+  _p5nmsGrid.forEach(function(nm, ri) {
+    var db = TOP3_WEEK_DB[nm];
+    if (!db) return;
+    var plan = db.plans[_wkIdx] || db.plans[0];
+    var rankN = ri + 1;
+    var rankBadgeColor = _rankColors[ri] || '#8b6db5';
+    var keyId = 'top' + rankN;
+
+    var innerHTML =
+      '<div class="wg-top3-wrap">'+
+        '<div class="wg-top3-rank" style="background:'+rankBadgeColor+'">핵심처방 #'+rankN+'</div>'+
+        '<div class="wg-top3-action">'+plan.action+'</div>'+
+        '<div class="wg-top3-why"><span class="wg-top3-why-lb">왜요?</span>'+plan.why+'</div>'+
+        '<div class="wg-top3-row">'+
+          '<span class="wg-top3-tag">⏰ '+plan.tag+'</span>'+
+          (plan.ref ? '<span class="wg-top3-ref">📡 '+plan.ref+'</span>' : '')+
+        '</div>'+
+        '<div class="wg-top3-wk-prog">'+
+          '<div class="wg-top3-wk-hd">4주 진행 상황</div>'+
+          '<div class="wg-top3-wk-steps">'+
+            [1,2,3,4].map(function(wk){
+              var wkPlan = db.plans[wk-1] || db.plans[0];
+              var isNow = wk === weekNo;
+              var isPast = wk < weekNo;
+              return '<div class="wg-top3-wk-step'+(isNow?' now':'')+(isPast?' past':'')+'">'+'<span class="wg-top3-wk-num">'+wk+'주</span><span class="wg-top3-wk-dot">'+(isPast?'✓':isNow?'●':'○')+'</span><span class="wg-top3-wk-lbl">'+db.sub(wk)+'</span>'+'</div>';
+            }).join('')+
+          '</div>'+
+        '</div>'+
+      '</div>';
+
+    top3Cards += planCard(keyId, db.ic, nm + ' 핵심처방', db.sub(weekNo), db.color, db.colorL, innerHTML);
+  });
 
   var cards =
     planCard('re','🌙','회복','매일 밤 지킨 루틴 체크','#8b6db5','#ede6f7', reHTML) +
     planCard('ex','🏃','운동','한 운동과 칼로리 기록','#5a6e3a','#eef2e4', exHTML) +
     planCard('di','🍽️','식단','끼니별로 먹었는지 체크','#c98a3c','#faf0dc', diHTML) +
-    (_showBody ? planCard('bo','🦴','체형','필라테스 + 전문의 협진','#6b4eaa','#efeafa', boHTML) : '') +
-    (_showHorm ? planCard('co','🌸','호르몬','검사 결과 협진 안내','#3a6b9c','#e8f0f8', collabHTML) : '');
+    top3Cards;
 
   return '<div class="pcard-intro-row">'+
       '<div class="pcard-intro-tx">이번 주 상세 플랜</div>'+
