@@ -4423,6 +4423,8 @@ p, div, span, h1, h2, h3, h4{
 .lradv-great .lradv-t,.lradv-strong .lradv-t,.lradv-cal-good .lradv-t{color:#46562d;}
 .lradv-weak,.lradv-low,.lradv-cal{border-left-color:#c9a23e;}
 .lradv-good,.lradv-mid{border-left-color:#b5452e;}
+.lradv-personal{border-left-color:#c0397a;background:linear-gradient(135deg,#fff9fc 0%,#fdf0f5 100%);}
+.lradv-personal .lradv-t{color:#8c1a4d;}
 .lradv-go{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;background:linear-gradient(135deg,#b5452e,#9a3520);color:#fff;border:none;border-radius:12px;padding:14px 16px;cursor:pointer;font-family:inherit;font-size:13.5px;font-weight:900;box-shadow:0 4px 14px rgba(181,69,46,.28);}
 .lradv-go:active{transform:scale(.98);}
 .lradv-go-arr{font-size:16px;}
@@ -5005,6 +5007,25 @@ p, div, span, h1, h2, h3, h4{
 .wgu-note-box.done.diet .wgu-note-tx b{color:#5a3a10;}
 .wgu-note-day.diet{background:#c98a3c;}
 .wgu-note-box.done.diet .wgu-note-edit{border-color:#e0b96a;color:#a8701f;}
+/* ── TOP3 핵심처방 카드 스타일 ── */
+.wg-top3-wrap{padding:4px 2px 0;}
+.wg-top3-rank{display:inline-block;font-size:10px;font-weight:900;color:#fff;border-radius:20px;padding:3px 11px;margin-bottom:10px;letter-spacing:.3px;}
+.wg-top3-action{font-size:13.5px;font-weight:900;color:#1a1220;line-height:1.45;margin-bottom:8px;word-break:keep-all;}
+.wg-top3-why{font-size:11.5px;font-weight:600;color:#5a5246;line-height:1.55;margin-bottom:9px;word-break:keep-all;}
+.wg-top3-why-lb{font-size:9.5px;font-weight:800;color:#fff;background:#8b6db5;border-radius:4px;padding:1px 6px;margin-right:6px;}
+.wg-top3-row{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px;}
+.wg-top3-tag{font-size:10.5px;font-weight:700;color:#3a5572;background:#e8f0f8;border-radius:20px;padding:3px 10px;}
+.wg-top3-ref{font-size:10.5px;font-weight:700;color:#5a6e3a;background:#eef2e4;border-radius:20px;padding:3px 10px;}
+.wg-top3-wk-prog{background:#f7f4f0;border-radius:12px;padding:11px 13px;border-left:3px solid var(--pcc);}
+.wg-top3-wk-hd{font-size:10px;font-weight:800;color:#7a6e64;margin-bottom:8px;letter-spacing:.2px;}
+.wg-top3-wk-steps{display:flex;flex-direction:column;gap:5px;}
+.wg-top3-wk-step{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:600;color:#7a6e64;}
+.wg-top3-wk-step.now{color:var(--pcc);font-weight:900;}
+.wg-top3-wk-step.past{color:#aaa;}
+.wg-top3-wk-num{font-size:10px;font-weight:900;width:22px;flex-shrink:0;}
+.wg-top3-wk-dot{font-size:12px;width:14px;text-align:center;flex-shrink:0;}
+.wg-top3-wk-step.past .wg-top3-wk-dot{color:#5a6e3a;}
+.wg-top3-wk-lbl{flex:1;line-height:1.35;}
 /* 호르몬 협진 카드 */
 .wg-collab{margin-bottom:14px;background:#eef1f6;border:1px solid #d5dce8;border-left:4px solid #4a7fb5;border-radius:14px;padding:13px 14px;}
 .wg-cl-hd{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
@@ -5086,6 +5107,8 @@ p, div, span, h1, h2, h3, h4{
 .supbuy-go{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;margin-top:16px;padding:15px;border-radius:14px;background:linear-gradient(135deg,#c0392b,#d9533f);color:#fff;font-size:14px;font-weight:900;text-decoration:none;box-shadow:0 6px 18px rgba(192,57,43,.3);transition:transform .15s,box-shadow .2s;}
 .supbuy-go:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(192,57,43,.42);}
 .supbuy-go.ready{animation:supbuyPulse 1.6s ease-in-out infinite;}
+.supbuy-go.disabled{background:linear-gradient(135deg,#999,#bbb);box-shadow:none;cursor:not-allowed;opacity:.6;}
+.supbuy-go.disabled:hover{transform:none;box-shadow:none;}
 @keyframes supbuyPulse{0%,100%{box-shadow:0 6px 18px rgba(192,57,43,.3);}50%{box-shadow:0 6px 26px rgba(192,57,43,.55);}}
 /* 더 보기 접기 */
 .wg-more{width:100%;text-align:center;font-size:11.5px;font-weight:700;color:var(--muted,#7c776b);background:var(--card2,#fbf8f0);border:1px dashed var(--line,#d8d3c6);border-radius:10px;padding:9px;cursor:pointer;margin-bottom:14px;}
@@ -18365,23 +18388,42 @@ function renderDailyPage(){
   var todayIdx = (jsDay===0) ? 6 : jsDay-1;  // 월0..일6
   var todayNm = DAYS[todayIdx];
 
-  // ── 오행·MBTI 정보 읽기 ──────────────────────────────────────
+  // ── 오행·MBTI 정보 읽기 (4중 fallback) ──────────────────────────────────────
   var ohaengType = '목';
   var mbtiType   = '';
   var bcCodeRaw  = 'BC-6';
   try {
+    // 1) _wowData (render 시점 저장)
     if (typeof _wowData !== 'undefined' && _wowData) {
       ohaengType = _wowData.ohaengType || '목';
       mbtiType   = _wowData.mbtiType   || '';
       bcCodeRaw  = 'BC-' + (_wowData.bcCode || '6');
     }
-    // __DIAG_DATA__ 폴백
-    if (ohaengType === '목' && window.__DIAG_DATA__) {
-      ohaengType = window.__DIAG_DATA__.ohaengType || ohaengType;
+    // 2) __DIAG_DATA__ fallback
+    if ((!ohaengType || ohaengType === '목') && window.__DIAG_DATA__) {
+      ohaengType = window.__DIAG_DATA__.ohaeng_type || window.__DIAG_DATA__.ohaengType || ohaengType;
       if (!mbtiType) mbtiType = window.__DIAG_DATA__.mbtiType || '';
       if (bcCodeRaw === 'BC-6' && window.__DIAG_DATA__.bc_code) {
         bcCodeRaw = window.__DIAG_DATA__.bc_code.startsWith('BC-')
           ? window.__DIAG_DATA__.bc_code : 'BC-' + window.__DIAG_DATA__.bc_code;
+      }
+    }
+    // 3) __RESULT__ fallback
+    if ((!ohaengType || ohaengType === '목') && window.__RESULT__) {
+      ohaengType = window.__RESULT__.ohaengType || window.__RESULT__.ohaeng_type || ohaengType;
+      if (!mbtiType) mbtiType = window.__RESULT__.mbtiType || '';
+      if (bcCodeRaw === 'BC-6' && window.__RESULT__.bc_code) {
+        bcCodeRaw = window.__RESULT__.bc_code.startsWith('BC-')
+          ? window.__RESULT__.bc_code : 'BC-' + window.__RESULT__.bc_code;
+      }
+    }
+    // 4) ohaeng_caution 텍스트 역추적 fallback
+    if ((!ohaengType || ohaengType === '목') && w.ohaeng_caution) {
+      var _ohKeys = ['목(木)','화(火)','토(土)','금(金)','수(水)'];
+      for (var _ki = 0; _ki < _ohKeys.length; _ki++) {
+        if (w.ohaeng_caution.indexOf(_ohKeys[_ki].slice(0,1)) >= 0) {
+          ohaengType = _ohKeys[_ki].slice(0,1); break;
+        }
       }
     }
   } catch(e) {}
@@ -19709,8 +19751,62 @@ function renderLiveAdvice(){
   var totalOut=exAll.reduce(function(s,r){return s+r.kcal;},0);
   var net=totalIn-totalOut;
 
+  // ── BC/오행 개인화 컨텍스트 읽기 ──
+  var _laBC = (typeof _wowData !== 'undefined' && _wowData && _wowData.bcCode)
+           || (window.__DIAG_DATA__ && window.__DIAG_DATA__.bc_code)
+           || (window.__RESULT__ && window.__RESULT__.bc_code) || '';
+  var _laOhaeng = (typeof _wowData !== 'undefined' && _wowData && _wowData.ohaengType)
+               || (window.__DIAG_DATA__ && (window.__DIAG_DATA__.ohaengType || window.__DIAG_DATA__.ohaeng_type))
+               || (window.__RESULT__ && (window.__RESULT__.ohaengType || window.__RESULT__.ohaeng_type)) || '';
+
+  // BC코드별 실천 약점 코칭 — 유형마다 실패 이유가 다름
+  var BC_COACHING = {
+    '1': { weak:'BC-1(호르몬 교란형)은 컨디션이 날마다 달라요. 못 한 날을 탓하지 말고, 컨디션 좋은 날에 2배로 쌓는 전략으로 가세요.',
+           great:'BC-1은 호르몬이 안정된 주에 실천률이 폭발적으로 오릅니다. 이 흐름을 절대 놓치지 마세요.' },
+    '2': { weak:'BC-2(대사 저하형)는 에너지가 부족할 때 회복 칸부터 챙기세요. 수면이 대사를 먼저 끌어올립니다.',
+           great:'BC-2는 회복이 쌓이면 대사가 다시 켜집니다. 지금 페이스가 바로 그 신호예요.' },
+    '3': { weak:'BC-3(내장지방형)은 식단 칸이 핵심이에요. 운동보다 식이 타이밍이 내장지방을 줄이는 열쇠입니다.',
+           great:'BC-3은 식단 일관성이 내장지방 감소와 직결돼요. 이 식단 페이스면 4주 후 복부 변화가 체감될 거예요.' },
+    '4': { weak:'BC-4(갑상선·요요형)은 한 번 무너지면 재진입이 어려워요. 오늘 못 했다면 내일 회복 칸 하나만 확실히 잡으세요.',
+           great:'BC-4는 요요 없이 꾸준한 것 자체가 기적이에요. 지금 이 흐름이 과거와 다른 이유입니다.' },
+    '5': { weak:'BC-5(복합 저항형)은 운동 강도를 낮추더라도 매일 소량씩 쌓는 것이 중요해요. 강도보다 빈도가 먼저입니다.',
+           great:'BC-5는 복합 저항을 뚫는 데 가장 많은 에너지가 필요해요. 이 페이스를 유지하면 6주차 이후 변곡점이 옵니다.' },
+    '6': { weak:'BC-6(스트레스 폭식형)은 회복 칸을 놓치면 다음 날 식욕이 올라요. 수면·회복을 식단보다 먼저 잡으세요.',
+           great:'BC-6는 회복이 안정되면 폭식 충동이 자연스럽게 줄어요. 지금 회복 루틴이 잘 자리잡고 있어요.' },
+    '7': { weak:'BC-7(염증·부종형)은 음식 종류가 칼로리보다 중요해요. 식단 칸 체크할 때 처방 음식을 꼭 확인하세요.',
+           great:'BC-7은 처방 식단이 쌓일수록 부종과 염증이 줄어요. 지금 흐름이 정확히 맞습니다.' },
+    '8': { weak:'BC-8(멘탈 기반형)은 의지로 밀어붙이지 말고, 가장 즐거운 칸 하나부터 시작해보세요. 즐거움이 꾸준함을 만들어요.',
+           great:'BC-8은 실천이 즐거워질 때 가장 오래 갑니다. 지금이 바로 그 구간이에요.' },
+    '9': { weak:'BC-9(복합 만성형)은 모두 다 잘하려 하지 말고 3대 영역 중 가장 쉬운 것 하나만 오늘 완료하세요.',
+           great:'BC-9는 모든 요소가 얽혀 있어서 이 실천률 자체가 대단한 성과예요. 절대 속도를 올리지 마세요.' }
+  };
+
+  // 오행별 실천 최우선 보완 팁
+  var OHAENG_COACHING = {
+    '목(木)': { ic:'🌿', k:'간·스트레스 주의', s:'목(木) 기질은 스트레스가 쌓이면 실천 의지가 한 번에 무너져요. 운동 후 스트레칭 10분이 간 기운을 풀어줍니다.' },
+    '화(火)': { ic:'🔥', k:'심장·과열 주의', s:'화(火) 기질은 과도하게 달려들다 번아웃하기 쉬워요. 오늘 80% 강도로 마무리하고, 취침 1시간 전 전자기기를 끄세요.' },
+    '토(土)': { ic:'🌾', k:'소화·습 주의', s:'토(土) 기질은 식후 소화를 못 시키면 대사가 느려져요. 식단 체크 후 식후 20분 걷기 한 번이면 오늘 루틴 완성입니다.' },
+    '금(金)': { ic:'🌬️', k:'폐·호흡 주의', s:'금(金) 기질은 호흡이 얕아지면 회복이 느려요. 회복 칸을 체크할 때 4-7-8 호흡 3세트를 꼭 붙이세요.' },
+    '수(水)': { ic:'💧', k:'신장·냉기 주의', s:'수(水) 기질은 몸이 차가울 때 실천 의욕이 뚝 떨어져요. 운동 전 족욕 5분이나 온수 샤워로 체온을 먼저 올리세요.' }
+  };
+
   // ── 코칭 메시지 생성 ──
   var advs=[];
+
+  // 0) BC/오행 개인화 코칭 (항상 첫 번째로)
+  var bcNum = String(_laBC).replace(/[^0-9]/g,'');
+  var bcCoach = BC_COACHING[bcNum] || null;
+  var ohaengCoach = OHAENG_COACHING[_laOhaeng] || null;
+  if (bcCoach || ohaengCoach) {
+    var bcMsg = bcCoach ? (pct>=60 ? bcCoach.great : bcCoach.weak) : '';
+    var ohaengMsg = ohaengCoach ? ohaengCoach.s : '';
+    var personalTitle = 'BC-' + (bcNum||'?') + ' · ' + (_laOhaeng||'오행') + ' 맞춤 코칭';
+    var personalBody = [bcMsg, ohaengMsg].filter(Boolean).join(' 그리고 ');
+    if (personalBody) {
+      advs.push({ic: ohaengCoach ? ohaengCoach.ic : '🎯', tone:'personal', t: personalTitle, s: personalBody});
+    }
+  }
+
   // 1) 전체 페이스
   if (checkedN===0){
     advs.push({ic:'👋', tone:'start', t:'아직 시작 전이에요', s:'12주 로드맵에서 오늘 칸 하나만 체크해보세요. 여기 어드바이저가 실천을 분석해서 매일 코칭해 드립니다.'});
@@ -21943,7 +22039,169 @@ function weeklyGridHTML(w, idx) {
       '<div class="pcard-body">'+inner+'</div>'+
     '</div>';
   }
+
+  // ── P5 TOP3 핵심처방 카드: 주차별 개인화 내용으로 생성 ──
+  var _p5nmsGrid = window.__P5_TOP3_NMS__ || [];
+  var weekNo = w.week || (idx + 1);
+
+  // 영역별 주차 처방 DB — 4주 순환 (1~4주마다 강도·포인트 변화)
+  var TOP3_WEEK_DB = {
+    '한방': {
+      ic:'🌿', color:'#1A8C5B', colorL:'#e8f5ee',
+      sub: function(wk){ return wk<=2?'기혈 순환 기반 잡기':wk<=4?'체질 처방 심화':'한방 처방 유지'; },
+      plans: [
+        { action:'혈자리 지압 — 합곡·족삼리 각 5분/일', why:'기혈 순환 자극, 기초 대사 활성화', tag:'매일', ref:'내원 후 처방 받으면 효과 2배' },
+        { action:'한방 차 — 율무·팥 복합 차 500ml/일', why:'수습 배출, 부종 억제', tag:'식전 30분', ref:'탈감초 처방 원하면 협진 필요' },
+        { action:'침·부항 협진 연계', why:'경락 정체 해소, 국소 순환 회복', tag:'주 1회', ref:'협진 결과 전송 시 다음 주 처방 조정' },
+        { action:'한방 처방 최적화 — 체질별 약재 심화', why:'3주 기반 위에 체질 맞춤 처방 강화', tag:'전문의 처방', ref:'4주차 결과로 5~8주 처방 결정' }
+      ]
+    },
+    '시술': {
+      ic:'⭐', color:'#E67E22', colorL:'#fef5e4',
+      sub: function(wk){ return wk<=2?'시술 전 기반 다지기':wk<=4?'시술 효과 극대화 관리':'시술 후 유지 관리'; },
+      plans: [
+        { action:'시술 전 피부 컨디셔닝 — 수분 크림·자외선 차단 철저', why:'시술 효과를 최대화하는 피부 기반 조성', tag:'매일 아침·저녁', ref:'시술 상담 시 이 기록 지참' },
+        { action:'시술 후 관리 루틴 — 냉찜질 10분 + 자극 자제', why:'시술 부위 염증 최소화, 효과 지속', tag:'시술 당일 ~ +3일', ref:'이상 반응 즉시 협진 팀에 전송' },
+        { action:'시술 효과 극대화 — 처방 식단·운동과 병행', why:'시술 단독보다 식단·운동 병행 시 효과 60% 이상 향상', tag:'주 5일', ref:'비교 사진 찍어두면 피드백 정확해짐' },
+        { action:'유지 관리 체크 — 시술 부위 경과 확인', why:'리터치 타이밍·추가 처방 여부 판단', tag:'4주 점검', ref:'결과 사진 전송 시 다음 처방 결정' }
+      ]
+    },
+    '심리': {
+      ic:'🧠', color:'#9C27B0', colorL:'#f3e5f5',
+      sub: function(wk){ return wk<=2?'스트레스·식욕 패턴 인식':wk<=4?'감정 식욕 차단 루틴':'심리 안정 유지'; },
+      plans: [
+        { action:'식욕 일지 3줄 — 먹고 싶을 때 감정·상황 기록', why:'감정 식욕 트리거 파악 = 재발 방지의 핵심', tag:'매일 저녁', ref:'기록한 일지 전송 시 분석 피드백 제공' },
+        { action:'5분 감정 리셋 — 박스 호흡 + 긍정 확언 3개', why:'코르티솔 즉시 낮추기, 충동 식욕 차단', tag:'과식 충동 시', ref:'반복할수록 차단 속도가 빨라짐' },
+        { action:'보상 시스템 구축 — 음식 외 보상 3가지 확정', why:'도파민 보상 회로를 음식에서 분리', tag:'이번 주 내', ref:'컨설턴트와 함께 설계하면 지속성 3배' },
+        { action:'4주 심리 점검 — 감정 식욕 빈도 vs 1주차 비교', why:'변화 가시화 = 동기 유지의 핵심', tag:'4주차 결산', ref:'결과 공유 시 5~8주 심리 처방 고도화' }
+      ]
+    },
+    '호르몬': {
+      ic:'🌸', color:'#C0397A', colorL:'#fce4ec',
+      sub: function(wk){ return wk<=2?'호르몬 검사·기반 잡기':wk<=4?'처방 반영 단계':'호르몬 안정 유지'; },
+      plans: [
+        { action:'호르몬 기초 검사 예약 — 에스트로겐·갑상선·인슐린', why:'수치 없이는 처방이 추측에 불과함', tag:'1주차 내 예약', ref:'결과지 전송 시 처방 즉시 조정' },
+        { action:'에스트로겐 지지 식품 — 콩·아마씨·브로콜리 매일', why:'식이성 피토에스트로겐으로 호르몬 균형 보조', tag:'매일 식단 포함', ref:'검사 결과와 병행 시 효과 극대화' },
+        { action:'검사 결과 기반 처방 적용 — 의사 소견 반영', why:'개인별 호르몬 수치에 맞는 정밀 처방', tag:'검사 후 즉시', ref:'소견서 전송 필수' },
+        { action:'4주 호르몬 재측정 — 변화 추이 확인', why:'처방 효과 검증 및 5~8주 계획 수립', tag:'4주 후 재검', ref:'비교 수치 전송 시 다음 처방 결정' }
+      ]
+    },
+    '체형': {
+      ic:'🦴', color:'#6B4EAA', colorL:'#efeafa',
+      sub: function(wk){ return wk<=2?'자세 교정·코어 기반':wk<=4?'체형 교정 심화':'체형 유지 관리'; },
+      plans: [
+        { action:'골반 교정 — 고양이·소 자세 + 브릿지 10분/일', why:'골반 전방경사 해소, 코어 활성화', tag:'기상 직후', ref:'도수치료 결과 전송 시 처방 맞춤화' },
+        { action:'근막 이완 — 폼롤러 허리·허벅지·종아리 15분', why:'근막 유착 해소, 혈류 개선', tag:'운동 전·후', ref:'통증 부위 기록해서 전송' },
+        { action:'필라테스 주 2회 + 도수치료 병행', why:'근육 균형 회복, 골격 재정렬', tag:'주 2회', ref:'치료 결과 지참 시 처방 조정' },
+        { action:'4주 체형 사진 비교 + 전문의 점검', why:'변화 측정 및 다음 단계 방향 결정', tag:'4주 결산', ref:'비포/애프터 전송 필수' }
+      ]
+    },
+    '식단': {
+      ic:'🥗', color:'#E8631A', colorL:'#fdf3e7',
+      sub: function(wk){ return wk<=2?'혈당 안정화 기반':wk<=4?'식이 패턴 최적화':'식단 자동화 유지'; },
+      plans: [
+        { action:'혈당 스파이크 차단 — 식사 순서: 채소→단백질→탄수화물', why:'혈당 급등-급락 사이클 차단 = 지방 축적 근본 원인 제거', tag:'매 식사', ref:'혈당 수치 있으면 전송' },
+        { action:'단백질 우선 식단 — 매끼 단백질 30g 이상 확보', why:'근육 유지 + 포만감 지속 = 과식 방지', tag:'매끼 필수', ref:'영양제 처방과 연동' },
+        { action:'식이 타이밍 최적화 — 16:8 간헐적 단식 적용', why:'인슐린 저항성 개선, 지방 산화 극대화', tag:'주 4일 이상', ref:'어지러우면 즉시 중단하고 전송' },
+        { action:'4주 식이 패턴 결산 — 혈당·체중 변화 분석', why:'패턴 자동화 여부 검증, 5~8주 식단 고도화', tag:'4주 결산', ref:'기록 전송 시 맞춤 식단 업데이트' }
+      ]
+    },
+    '운동': {
+      ic:'🏋️', color:'#4A8C1C', colorL:'#eef2e4',
+      sub: function(wk){ return wk<=2?'운동 기초·근육 활성화':wk<=4?'운동 강도 점진 증가':'운동 습관 자동화'; },
+      plans: [
+        { action:'저강도 유산소 기반 — 20분 속보 주 5일', why:'인슐린 감수성 향상, 기초 체력 구축', tag:'주 5일', ref:'심박수 120~130 유지 권장' },
+        { action:'근력 강화 시작 — 스쿼트·런지·플랭크 기초', why:'기초 근육 활성화, 기초대사량 증가', tag:'주 3일 (격일)', ref:'통증 시 즉시 중단·전송' },
+        { action:'운동 강도 증가 — HIIT 20분 주 2회 추가', why:'지방 산화 가속, 체지방 감소 효율 극대화', tag:'주 2회', ref:'체력 테스트 결과 전송 시 조정' },
+        { action:'4주 운동 결산 — 체력 테스트 측정', why:'운동 효과 정량화, 5~8주 프로그램 설계', tag:'4주 완료 시', ref:'측정값 전송 시 다음 처방 결정' }
+      ]
+    },
+    '회복': {
+      ic:'🌙', color:'#3F51B5', colorL:'#e8eaf6',
+      sub: function(wk){ return wk<=2?'수면 리듬 정착':wk<=4?'자율신경 회복 심화':'회복 루틴 자동화'; },
+      plans: [
+        { action:'수면 위생 확립 — 취침·기상 시간 고정 (±30분 내)', why:'코르티솔 리듬 정상화 = 모든 처방의 전제 조건', tag:'매일', ref:'수면 패턴 기록 전송 시 분석' },
+        { action:'수면 전 루틴 — 청색광 차단 + 4·7·8 호흡 3세트', why:'멜라토닌 분비 촉진, 교감신경 이완', tag:'취침 1시간 전', ref:'수면 질 점수 기록해서 전송' },
+        { action:'낮잠 최적화 — 13~15시 사이 20분 이내만 허용', why:'야간 수면 방해 없이 오후 피로 회복', tag:'점심 후', ref:'낮잠 시간 일지에 기록' },
+        { action:'4주 수면 결산 — 수면 효율 vs 1주차 비교', why:'회복 개선 측정, 5~8주 루틴 고도화', tag:'4주 결산', ref:'데이터 전송 시 맞춤 루틴 업데이트' }
+      ]
+    },
+    '관리': {
+      ic:'📊', color:'#3EB8A0', colorL:'#e0f7f4',
+      sub: function(wk){ return wk<=2?'습관 설계·트래킹 시작':wk<=4?'루틴 자동화 심화':'관리 시스템 완성'; },
+      plans: [
+        { action:'일일 체크리스트 3가지만 — 가장 중요한 것 압축', why:'적을수록 지속성 높음 — 3가지 완주 > 10가지 부분 실천', tag:'매일 저녁', ref:'체크 결과 전송 시 분석' },
+        { action:'주간 리뷰 — 이번 주 잘한 것 3개·개선할 것 1개', why:'성공 강화 + 단 하나의 개선점만 집중', tag:'매주 일요일', ref:'리뷰 내용 전송 시 맞춤 코칭' },
+        { action:'환경 설계 — 냉장고·운동기구 접근성 최적화', why:'의지력보다 환경이 행동을 결정함', tag:'이번 주 내 완료', ref:'사진 전송 시 구체적 피드백 제공' },
+        { action:'4주 관리 결산 — 습관 자동화 체크리스트', why:'자동화된 습관 확인, 5~8주 고도화 방향 설정', tag:'4주 결산', ref:'결산 데이터 전송 필수' }
+      ]
+    },
+    '약물': {
+      ic:'💊', color:'#795548', colorL:'#efebe9',
+      sub: function(wk){ return wk<=2?'복용 약물 점검·기반 조율':wk<=4?'처방 최적화':'약물-처방 유지 관리'; },
+      plans: [
+        { action:'복용 중인 모든 약물·보충제 목록 작성', why:'약물-식단-운동 상호작용 파악이 처방 안전성의 전제', tag:'1주차 내 완료', ref:'목록 전송 시 즉시 처방 조율 가능' },
+        { action:'약물 복용 시간 최적화 — 처방 스케줄과 조율', why:'흡수율·부작용 최소화, 처방 효과 극대화', tag:'매일', ref:'부작용 증상 즉시 전송' },
+        { action:'보충제 BC 궁합 체크 — P9 보충제 탭 참조', why:'BC 타입별 맞는 보충제·독이 되는 보충제가 다름', tag:'이번 주 내', ref:'P9 탭에서 직접 조회 가능' },
+        { action:'4주 약물 처방 점검 — 의사 재상담', why:'4주 경과 후 처방 조정이 필요할 수 있음', tag:'4주 후 재상담', ref:'변화 기록 지참 필수' }
+      ]
+    },
+    '철학': {
+      ic:'🎯', color:'#607D8B', colorL:'#eceff1',
+      sub: function(wk){ return wk<=2?'목표 명확화·동기 설계':wk<=4?'가치·행동 연결 강화':'철학 기반 자동화'; },
+      plans: [
+        { action:'나의 "왜" 한 문장 작성 — 다이어트하는 진짜 이유', why:'동기가 명확할수록 포기 확률이 80% 감소함', tag:'이번 주 내', ref:'작성 후 전송 시 처방에 반영' },
+        { action:'비전 보드 만들기 — 원하는 몸·삶 이미지 3개', why:'뇌는 이미지로 목표를 처리 — 가시화가 행동을 만듦', tag:'이번 주 내', ref:'사진 전송 시 피드백 제공' },
+        { action:'정체기 대응 매뉴얼 — 무너질 때 할 행동 3가지', why:'정체기는 반드시 옴 — 미리 대응법을 설계해야 버팀', tag:'3주 내 완성', ref:'매뉴얼 공유 시 함께 수정' },
+        { action:'4주 철학 점검 — 처음의 "왜"와 지금 비교', why:'변화한 동기 재확인, 5~8주 목표 재설정', tag:'4주 결산', ref:'결산 내용 전송 시 다음 처방 방향 결정' }
+      ]
+    }
+  };
+
+  // P5 TOP3 기반 핵심처방 카드 생성
+  var top3Cards = '';
+  var _wkIdx = Math.min(weekNo - 1, 3); // 0~3 (4주 순환)
+  var _rankColors = ['#c0397a','#8b6db5','#3a6b9c']; // 1·2·3순위 배지색
+
+  _p5nmsGrid.forEach(function(nm, ri) {
+    var db = TOP3_WEEK_DB[nm];
+    if (!db) return;
+    var plan = db.plans[_wkIdx] || db.plans[0];
+    var rankN = ri + 1;
+    var rankBadgeColor = _rankColors[ri] || '#8b6db5';
+    var keyId = 'top' + rankN;
+
+    var innerHTML =
+      '<div class="wg-top3-wrap">'+
+        '<div class="wg-top3-rank" style="background:'+rankBadgeColor+'">핵심처방 #'+rankN+'</div>'+
+        '<div class="wg-top3-action">'+plan.action+'</div>'+
+        '<div class="wg-top3-why"><span class="wg-top3-why-lb">왜요?</span>'+plan.why+'</div>'+
+        '<div class="wg-top3-row">'+
+          '<span class="wg-top3-tag">⏰ '+plan.tag+'</span>'+
+          (plan.ref ? '<span class="wg-top3-ref">📡 '+plan.ref+'</span>' : '')+
+        '</div>'+
+        '<div class="wg-top3-wk-prog">'+
+          '<div class="wg-top3-wk-hd">4주 진행 상황</div>'+
+          '<div class="wg-top3-wk-steps">'+
+            [1,2,3,4].map(function(wk){
+              var wkPlan = db.plans[wk-1] || db.plans[0];
+              var isNow = wk === weekNo;
+              var isPast = wk < weekNo;
+              return '<div class="wg-top3-wk-step'+(isNow?' now':'')+(isPast?' past':'')+'">'+
+                '<span class="wg-top3-wk-num">'+wk+'주</span>'+
+                '<span class="wg-top3-wk-dot">'+(isPast?'✓':isNow?'●':'○')+'</span>'+
+                '<span class="wg-top3-wk-lbl">'+db.sub(wk)+'</span>'+
+              '</div>';
+            }).join('')+
+          '</div>'+
+        '</div>'+
+      '</div>';
+
+    top3Cards += planCard(keyId, db.ic, nm + ' 핵심처방', db.sub(weekNo), db.color, db.colorL, innerHTML);
+  });
+
   var cards =
+    top3Cards +
     planCard('re','🌙','회복','매일 밤 지킨 루틴 체크','#b5452e','#f9ece8', reHTML) +
     planCard('ex','🏃','운동','한 운동과 칼로리 기록','#5a6e3a','#eef2e4', exHTML) +
     planCard('di','🍽️','식단','끼니별로 먹었는지 체크','#c98a3c','#faf0dc', diHTML) +
@@ -22373,65 +22631,65 @@ function wow5TryRender(groupData) {
    ────────────────────────────────────────── */
 const WOW6_SUPP_DB = {
   'BC-1': { // 스트레스·코르티솔형
-    good:    [{ icon:'🧲', name:'마그네슘', desc:'코르티솔 억제 · 부신 지원 · 수면 개선' },
-              { icon:'🌿', name:'아시와간다', desc:'스트레스 호르몬 30% 감소 임상 근거' },
-              { icon:'🐟', name:'오메가3', desc:'염증성 코르티솔 반응 완화' }],
+    good:    [{ icon:'🧲', name:'마그네슘', desc:'코르티솔 억제 · 부신 지원 · 수면 개선', url:'https://www.coupang.com/np/search?q=%EB%A7%88%EA%B7%B8%EB%84%A4%EC%8A%98+%EC%98%81%EC%96%91%EC%A0%9C&channel=user' },
+              { icon:'🌿', name:'아시와간다', desc:'스트레스 호르몬 30% 감소 임상 근거', url:'https://www.coupang.com/np/search?q=%EC%95%84%EC%8B%9C%EC%99%80%EA%B0%84%EB%8B%A4&channel=user' },
+              { icon:'🐟', name:'오메가3', desc:'염증성 코르티솔 반응 완화', url:'https://www.coupang.com/np/search?q=%EC%98%A4%EB%A9%94%EA%B0%803+%EC%98%81%EC%96%91%EC%A0%9C&channel=user' }],
     caution: [{ icon:'☕', name:'카페인(과다)', desc:'코르티솔 추가 자극 가능 — 1잔/일 권장' }],
     danger:  [{ icon:'💊', name:'에너지 드링크류', desc:'아드레날린·코르티솔 급등 위험' }],
   },
   'BC-2': { // 인슐린저항성형
-    good:    [{ icon:'🫐', name:'베르베린', desc:'인슐린 민감도 개선 · 혈당 스파이크 완화' },
-              { icon:'🍵', name:'크롬', desc:'인슐린 수용체 기능 보조' },
-              { icon:'🌾', name:'식이섬유(이눌린)', desc:'혈당 상승 억제 · 장내 균형' }],
+    good:    [{ icon:'🫐', name:'베르베린', desc:'인슐린 민감도 개선 · 혈당 스파이크 완화', url:'https://www.coupang.com/np/search?q=%EB%B2%A0%EB%A5%B4%EB%B2%A0%EB%A6%B0&channel=user' },
+              { icon:'🍵', name:'크롬', desc:'인슐린 수용체 기능 보조', url:'https://www.coupang.com/np/search?q=%ED%81%AC%EB%A1%AC+%EC%98%81%EC%96%91%EC%A0%9C&channel=user' },
+              { icon:'🌾', name:'식이섬유(이눌린)', desc:'혈당 상승 억제 · 장내 균형', url:'https://www.coupang.com/np/search?q=%EC%9D%B4%EB%88%8C%EB%A6%B0+%EC%8B%9D%EC%9D%B4%EC%84%AC%EC%9C%A0&channel=user' }],
     caution: [{ icon:'🍊', name:'과일 비타민C 고용량', desc:'과당 섭취 동반 시 혈당 자극 가능' }],
     danger:  [{ icon:'🍬', name:'고당분 보충제', desc:'혈당 급등 → 인슐린 저항 악화' }],
   },
   'BC-3': { // 갑상선형
-    good:    [{ icon:'🦀', name:'셀레늄', desc:'갑상선 호르몬(T4→T3) 전환 필수 미네랄' },
-              { icon:'🌊', name:'아이오딘(요오드)', desc:'갑상선 호르몬 생성 원료' },
-              { icon:'⚡', name:'비타민D', desc:'갑상선 자가면역 완화 보조' }],
+    good:    [{ icon:'🦀', name:'셀레늄', desc:'갑상선 호르몬(T4→T3) 전환 필수 미네랄', url:'https://www.coupang.com/np/search?q=%EC%85%80%EB%A0%88%EB%8A%84+%EC%98%81%EC%96%91%EC%A0%9C&channel=user' },
+              { icon:'🌊', name:'아이오딘(요오드)', desc:'갑상선 호르몬 생성 원료', url:'https://www.coupang.com/np/search?q=%EC%9A%94%EC%98%A4%EB%93%9C+%EC%98%81%EC%96%91%EC%A0%9C&channel=user' },
+              { icon:'⚡', name:'비타민D', desc:'갑상선 자가면역 완화 보조', url:'https://www.coupang.com/np/search?q=%EB%B9%84%ED%83%80%EB%AF%BCd+%EC%98%81%EC%96%91%EC%A0%9C&channel=user' }],
     caution: [{ icon:'🌿', name:'대두 이소플라본 고용량', desc:'갑상선 호르몬 흡수 방해 가능' }],
     danger:  [{ icon:'🥦', name:'생십자화채소 다량', desc:'고이트로겐 성분 갑상선 기능 억제' }],
   },
   'BC-4': { // 성장호르몬·근감소형
-    good:    [{ icon:'💪', name:'단백질(WPC/WPI)', desc:'근합성 트리거 · 성장호르몬 분비 자극' },
-              { icon:'⚗️', name:'크레아틴', desc:'근력·근육량 증가 가장 근거 높은 보충제' },
-              { icon:'🔬', name:'아연+마그네슘(ZMA)', desc:'테스토스테론·성장호르몬 야간 분비 지원' }],
+    good:    [{ icon:'💪', name:'단백질(WPC/WPI)', desc:'근합성 트리거 · 성장호르몬 분비 자극', url:'https://www.coupang.com/np/search?q=%EB%8B%A8%EB%B0%B1%EC%A7%88+%ED%97%AC%EC%8A%A4+%EB%B3%B4%EC%B6%A9%EC%A0%9C&channel=user' },
+              { icon:'⚗️', name:'크레아틴', desc:'근력·근육량 증가 가장 근거 높은 보충제', url:'https://www.coupang.com/np/search?q=%ED%81%AC%EB%A0%88%EC%95%84%ED%8B%B4+%EB%B3%B4%EC%B6%A9%EC%A0%9C&channel=user' },
+              { icon:'🔬', name:'아연+마그네슘(ZMA)', desc:'테스토스테론·성장호르몬 야간 분비 지원', url:'https://www.coupang.com/np/search?q=ZMA+%EC%95%84%EC%97%B0+%EB%A7%88%EA%B7%B8%EB%84%A4%EC%8A%98&channel=user' }],
     caution: [{ icon:'🌿', name:'소이 프로틴', desc:'식물성 에스트로겐 → 테스토스테론 감소 가능' }],
     danger:  [{ icon:'🚫', name:'과도한 유산소만', desc:'근감소 가속 → 기초대사 저하' }],
   },
   'BC-5': { // 에스트로겐형
-    good:    [{ icon:'🌸', name:'석류 추출물', desc:'식물성 에스트로겐 균형 · 복부지방 완화' },
-              { icon:'🐟', name:'오메가3', desc:'에스트로겐 대사 지원 · 항염' },
-              { icon:'💎', name:'DIM(디인돌릴메탄)', desc:'에스트로겐 과잉 대사 촉진' }],
+    good:    [{ icon:'🌸', name:'석류 추출물', desc:'식물성 에스트로겐 균형 · 복부지방 완화', url:'https://www.coupang.com/np/search?q=%EC%84%9D%EB%A5%98+%EC%B6%94%EC%B6%9C%EB%AC%BC+%EC%98%81%EC%96%91%EC%A0%9C&channel=user' },
+              { icon:'🐟', name:'오메가3', desc:'에스트로겐 대사 지원 · 항염', url:'https://www.coupang.com/np/search?q=%EC%98%A4%EB%A9%94%EA%B0%803+%EC%98%81%EC%96%91%EC%A0%9C&channel=user' },
+              { icon:'💎', name:'DIM(디인돌릴메탄)', desc:'에스트로겐 과잉 대사 촉진', url:'https://www.coupang.com/np/search?q=DIM+%EB%94%94%EC%9D%B8%EB%8F%8C%EB%A6%B4%EB%A9%94%ED%83%84&channel=user' }],
     caution: [{ icon:'🌿', name:'미레나/피임약 복용자', desc:'호르몬 보충제 병용 전 의사 상담 필수' }],
     danger:  [{ icon:'💊', name:'고용량 이소플라본', desc:'에스트로겐 수용체 과잉 자극 위험' }],
   },
   'BC-6': { // 장내환경형
-    good:    [{ icon:'🦠', name:'프로바이오틱스', desc:'장내 유익균 복원 · 식욕 신호 정상화' },
-              { icon:'🌾', name:'프리바이오틱스', desc:'유익균 먹이 · 단쇄지방산 생성' },
-              { icon:'⚗️', name:'L-글루타민', desc:'장 점막 복구 · 장누수 개선' }],
+    good:    [{ icon:'🦠', name:'프로바이오틱스', desc:'장내 유익균 복원 · 식욕 신호 정상화', url:'https://www.coupang.com/np/search?q=%ED%94%84%EB%A1%9C%EB%B0%94%EC%9D%B4%EC%98%A4%ED%8B%B1%EC%8A%A4+%EC%9E%A5&channel=user' },
+              { icon:'🌾', name:'프리바이오틱스', desc:'유익균 먹이 · 단쇄지방산 생성', url:'https://www.coupang.com/np/search?q=%ED%94%84%EB%A6%AC%EB%B0%94%EC%9D%B4%EC%98%A4%ED%8B%B1%EC%8A%A4&channel=user' },
+              { icon:'⚗️', name:'L-글루타민', desc:'장 점막 복구 · 장누수 개선', url:'https://www.coupang.com/np/search?q=L-%EA%B8%80%EB%A3%A8%ED%83%80%EB%AF%BC+%EC%9E%A5&channel=user' }],
     caution: [{ icon:'🍺', name:'알코올', desc:'장내 유해균 급증 · 유익균 사멸' }],
     danger:  [{ icon:'💊', name:'장기 항생제', desc:'장내 미생물 군집 파괴 → 장 생태계 붕괴' }],
   },
   'BC-7': { // 수면교란형
-    good:    [{ icon:'🌙', name:'마그네슘글리시네이트', desc:'GABA 활성화 · 수면 개시 지원' },
-              { icon:'🍒', name:'몬트모렌시 체리', desc:'멜라토닌 천연 공급원' },
-              { icon:'🌿', name:'발레리안루트', desc:'수면 질 개선 · 각성 억제' }],
+    good:    [{ icon:'🌙', name:'마그네슘글리시네이트', desc:'GABA 활성화 · 수면 개시 지원', url:'https://www.coupang.com/np/search?q=%EB%A7%88%EA%B7%B8%EB%84%A4%EC%8A%98+%EA%B8%80%EB%A6%AC%EC%8B%9C%EB%84%A4%EC%9D%B4%ED%8A%B8+%EC%88%98%EB%A9%B4&channel=user' },
+              { icon:'🍒', name:'몬트모렌시 체리', desc:'멜라토닌 천연 공급원', url:'https://www.coupang.com/np/search?q=%ED%83%80%ED%8A%B8%EC%B2%B4%EB%A6%AC+%EB%A9%9C%EB%9D%BC%ED%86%A0%EB%8B%8C&channel=user' },
+              { icon:'🌿', name:'발레리안루트', desc:'수면 질 개선 · 각성 억제', url:'https://www.coupang.com/np/search?q=%EB%B0%9C%EB%A0%88%EB%A6%AC%EC%95%88+%EC%88%98%EB%A9%B4&channel=user' }],
     caution: [{ icon:'☕', name:'오후 카페인', desc:'반감기 6시간 — 오후 2시 이후 금지' }],
     danger:  [{ icon:'📱', name:'취침 전 블루라이트', desc:'멜라토닌 분비 90분 지연' }],
   },
   'BC-8': { // 도파민보상형
-    good:    [{ icon:'🧠', name:'타이로신', desc:'도파민 전구체 · 보상 회로 보완' },
-              { icon:'🌿', name:'5-HTP', desc:'세로토닌 합성 · 음식 갈망 감소' },
-              { icon:'🌊', name:'오메가3(DHA)', desc:'뇌 도파민 수용체 밀도 유지' }],
+    good:    [{ icon:'🧠', name:'타이로신', desc:'도파민 전구체 · 보상 회로 보완', url:'https://www.coupang.com/np/search?q=%ED%83%80%EC%9D%B4%EB%A1%9C%EC%8B%A0+%EC%98%81%EC%96%91%EC%A0%9C&channel=user' },
+              { icon:'🌿', name:'5-HTP', desc:'세로토닌 합성 · 음식 갈망 감소', url:'https://www.coupang.com/np/search?q=5-HTP+%EC%84%B8%EB%A1%9C%ED%86%A0%EB%8B%8C&channel=user' },
+              { icon:'🌊', name:'오메가3(DHA)', desc:'뇌 도파민 수용체 밀도 유지', url:'https://www.coupang.com/np/search?q=%EC%98%A4%EB%A9%94%EA%B0%803+DHA+%EC%98%81%EC%96%91%EC%A0%9C&channel=user' }],
     caution: [{ icon:'🍫', name:'다크초콜릿 과다', desc:'도파민 단기 자극 후 반동 갈망 증가' }],
     danger:  [{ icon:'🍷', name:'음주', desc:'도파민 내성 → 음식 보상 의존 심화' }],
   },
   'BC-9': { // 림프순환형
-    good:    [{ icon:'🍋', name:'비타민C 고용량', desc:'림프관 콜라겐 합성 · 항산화' },
-              { icon:'🫒', name:'쿼세틴', desc:'림프 항염 · 부종 완화' },
-              { icon:'💧', name:'수분(물) 2L+', desc:'림프 흐름 점도 유지 핵심' }],
+    good:    [{ icon:'🍋', name:'비타민C 고용량', desc:'림프관 콜라겐 합성 · 항산화', url:'https://www.coupang.com/np/search?q=%EB%B9%84%ED%83%80%EB%AF%BCC+%EA%B3%A0%EC%9A%A9%EB%9F%89+%EC%98%81%EC%96%91%EC%A0%9C&channel=user' },
+              { icon:'🫒', name:'쿼세틴', desc:'림프 항염 · 부종 완화', url:'https://www.coupang.com/np/search?q=%EC%BF%BC%EC%84%B8%ED%8B%B4+%EC%98%81%EC%96%91%EC%A0%9C&channel=user' },
+              { icon:'💧', name:'수분(물) 2L+', desc:'림프 흐름 점도 유지 핵심', url:'https://www.coupang.com/np/search?q=%EC%A0%95%EC%88%98+2L&channel=user' }],
     caution: [{ icon:'🧂', name:'고나트륨 식품', desc:'림프 체액 농도 증가 → 순환 저해' }],
     danger:  [{ icon:'🚫', name:'장시간 좌식', desc:'림프 펌프 기능 완전 정지' }],
   },
@@ -22527,6 +22785,20 @@ const P3_SELF_SUPPS = [
 var _supbuySel = {};        // 모달 내 선택 상태
 var _supbuyTarget = '';     // 어떤 영양제 '구매'를 눌렀는지
 
+// WOW6_SUPP_DB 전체에서 영양제명으로 쿠팡 URL 조회
+function _getSuppUrl(name) {
+  if (!name || typeof WOW6_SUPP_DB === 'undefined') return '';
+  var keys = Object.keys(WOW6_SUPP_DB);
+  for (var ki = 0; ki < keys.length; ki++) {
+    var bc = WOW6_SUPP_DB[keys[ki]];
+    var arr = (bc && bc.good) || [];
+    for (var ai = 0; ai < arr.length; ai++) {
+      if (arr[ai].name === name && arr[ai].url) return arr[ai].url;
+    }
+  }
+  return 'https://www.coupang.com/np/search?q=' + encodeURIComponent(name) + '&channel=user';
+}
+
 function openSuppBuy(targetName){
   _supbuySel = {};
   _supbuyTarget = targetName || '';
@@ -22534,11 +22806,17 @@ function openSuppBuy(targetName){
   var inner = document.getElementById('supbuyInner');
   if (!modal || !inner) return;
 
+  var suppUrl = targetName ? _getSuppUrl(targetName) : '';
+
   var chips = P3_SELF_SUPPS.map(function(s){
     return '<button class="supbuy-chip" data-supp="'+s.key+'" onclick="supbuyToggle(\''+s.key+'\', this)">'+
         '<span class="supbuy-chip-ic">'+s.icon+'</span><span class="supbuy-chip-nm">'+s.nm+'</span>'+
       '</button>';
   }).join('');
+
+  var goBtn = suppUrl
+    ? '<a class="supbuy-go" href="'+suppUrl+'" target="_blank" rel="noopener noreferrer">'+(targetName?(targetName+' 쿠팡에서 구매하기'):'쿠팡에서 구매하기')+' →</a>'
+    : '<a class="supbuy-go disabled" href="#" onclick="return false;">'+(targetName?(targetName+' 구매하러 가기'):'구매하러 가기')+' →</a>';
 
   inner.innerHTML =
     '<button class="supbuy-x" onclick="closeSuppBuy()" aria-label="닫기">✕</button>'+
@@ -22548,7 +22826,7 @@ function openSuppBuy(targetName){
     '<div class="supbuy-chips">'+chips+'</div>'+
     '<button class="supbuy-done" id="supbuy-done" onclick="supbuyAnalyze()" disabled>완료 — 내 코드랑 궁합 분석</button>'+
     '<div class="supbuy-result" id="supbuy-result"></div>'+
-    '<a class="supbuy-go" href="#" onclick="return false;">'+(targetName?(targetName+' 구매하러 가기'):'구매하러 가기')+' →</a>';
+    goBtn;
 
   modal.classList.add('open');
   document.body.style.overflow = 'hidden';
