@@ -5197,6 +5197,399 @@ app.get('/result-hospital/:id', async (c) => {
   }
 })
 
+// ══════════════════════════════════════════════════════════════════
+// GET /result-hospital/:id/download — 병원용 결과지 HTML 파일 다운로드
+// 개인화 스크립트(__HOSPITAL_RESULT_ID__)가 주입된 완성본을 .html 파일로 반환
+// 파일명: 병원질문지_결과지_{id}.html
+// ══════════════════════════════════════════════════════════════════
+app.get('/result-hospital/:id/download', async (c) => {
+  const id = c.req.param('id')
+  try {
+    let html = await fetchAsset(c.env.ASSETS, '/result-hospital.html')
+    const INJECT_MARKER = '<!-- ══ 병원 전용: API 연동 + __RESULT__ 주입 ══ -->'
+    const idScript = `<script>window.__HOSPITAL_RESULT_ID__ = ${JSON.stringify(id)};</script>\n`
+    if (html.includes(INJECT_MARKER)) {
+      html = html.replace(INJECT_MARKER, idScript + INJECT_MARKER)
+    } else {
+      html = html.replace('</head>', idScript + '</head>')
+    }
+    const fileName = `병원질문지_결과지_${id}.html`
+    return new Response(html, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+      },
+    })
+  } catch (e: any) {
+    return c.html('<h2>다운로드 실패: 결과지를 불러올 수 없습니다</h2>', 500)
+  }
+})
+
+// ══════════════════════════════════════════════════════════════════
+// GET /result-hospital/:id/analysis — 결과지 함수맵 + 백엔드 코드 분석 뷰어
+// 페이지별 함수 매핑 / API 흐름 / DB 스키마를 한눈에 볼 수 있는 HTML 문서
+// ══════════════════════════════════════════════════════════════════
+app.get('/result-hospital/:id/analysis', async (c) => {
+  const id = c.req.param('id')
+
+  const analysisHTML = `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>결과지 코드 분석 — ${id}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Pretendard',system-ui,sans-serif;background:#0f1117;color:#e2e8f0;line-height:1.6;}
+  .wrap{max-width:1100px;margin:0 auto;padding:32px 20px 80px;}
+  h1{font-size:22px;font-weight:900;color:#7dd3fc;margin-bottom:4px;}
+  .subhd{font-size:13px;color:#64748b;margin-bottom:32px;}
+  h2{font-size:16px;font-weight:800;color:#f0abfc;margin:36px 0 14px;padding-bottom:6px;border-bottom:1px solid #1e293b;}
+  h3{font-size:13px;font-weight:700;color:#86efac;margin:18px 0 8px;}
+  .card{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:18px 20px;margin-bottom:12px;}
+  .tag{display:inline-block;font-size:11px;font-weight:700;border-radius:6px;padding:2px 8px;margin-right:6px;margin-bottom:4px;}
+  .tag-api{background:#1e40af;color:#93c5fd;}
+  .tag-fn{background:#14532d;color:#86efac;}
+  .tag-db{background:#3b0764;color:#e9d5ff;}
+  .tag-page{background:#7c2d12;color:#fed7aa;}
+  .tag-ui{background:#0c4a6e;color:#7dd3fc;}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px;}
+  th{background:#0f172a;color:#94a3b8;font-weight:700;padding:8px 10px;text-align:left;border-bottom:1px solid #334155;}
+  td{padding:7px 10px;border-bottom:1px solid #1e293b;vertical-align:top;}
+  td:first-child{color:#7dd3fc;white-space:nowrap;font-family:monospace;font-size:12px;}
+  .code{font-family:'Fira Code',monospace;font-size:12px;background:#0f172a;border:1px solid #334155;border-radius:6px;padding:12px 16px;margin:8px 0;overflow-x:auto;color:#a5f3fc;line-height:1.7;}
+  .badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;background:#1e293b;border:1px solid #334155;border-radius:20px;padding:4px 12px;margin:3px 3px 3px 0;}
+  .flow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:10px 0;}
+  .flow-step{background:#0f172a;border:1px solid #475569;border-radius:8px;padding:6px 14px;font-size:12px;color:#e2e8f0;}
+  .flow-arrow{color:#475569;font-size:16px;}
+  .pill{display:inline-block;border-radius:20px;font-size:11px;font-weight:700;padding:3px 10px;margin:2px;}
+  .pill-green{background:#166534;color:#bbf7d0;}
+  .pill-blue{background:#1e3a5f;color:#93c5fd;}
+  .pill-purple{background:#3b1e6e;color:#d8b4fe;}
+  .pill-orange{background:#7c2d12;color:#fed7aa;}
+  .dl-bar{display:flex;gap:12px;margin-bottom:28px;flex-wrap:wrap;}
+  .dl-btn{display:inline-flex;align-items:center;gap:8px;padding:11px 22px;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;transition:.2s;}
+  .dl-btn-html{background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;}
+  .dl-btn-html:hover{opacity:.85;}
+  .dl-btn-api{background:#1e293b;border:1px solid #475569;color:#94a3b8;}
+  .collapse-hd{cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between;}
+  .collapse-hd::after{content:'▼';font-size:11px;color:#64748b;}
+  .collapse-body{margin-top:10px;}
+  .id-chip{font-family:monospace;background:#0f172a;border:1px solid #334155;border-radius:6px;padding:3px 10px;color:#f0abfc;font-size:13px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📋 병원용 결과지 — 코드 분석 문서</h1>
+  <div class="subhd">대상 ID: <span class="id-chip">${id}</span> &nbsp;|&nbsp; 파일: <code>result-hospital.html</code> + <code>src/index.tsx</code></div>
+
+  <div class="dl-bar">
+    <a class="dl-btn dl-btn-html" href="/result-hospital/${id}/download" download>⬇️ 결과지 HTML 다운로드</a>
+    <a class="dl-btn dl-btn-api" href="/result-hospital/${id}" target="_blank">🔗 결과지 미리보기</a>
+    <a class="dl-btn dl-btn-api" href="/api/h/result/${id}" target="_blank">🗄️ 원본 JSON 데이터</a>
+  </div>
+
+  <!-- ══ 1. 데이터 흐름 ══ -->
+  <h2>① 전체 데이터 흐름</h2>
+  <div class="card">
+    <div class="flow">
+      <div class="flow-step">사용자<br><small>질문지 제출</small></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><span class="tag tag-api">POST</span><br>/api/h/diagnosis</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><span class="tag tag-db">D1</span><br>hospital_responses<br>INSERT</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">H-xxxx ID<br>반환</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><span class="tag tag-api">GET</span><br>/result-hospital/:id</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">HTML 서빙<br>+ID 주입</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">브라우저<br>hospitalInit()</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step"><span class="tag tag-api">GET</span><br>/api/h/result/:id</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">renderAll()<br>각 페이지 렌더</div>
+    </div>
+  </div>
+
+  <!-- ══ 2. 백엔드 API 엔드포인트 ══ -->
+  <h2>② 백엔드 API 엔드포인트 목록 (src/index.tsx)</h2>
+  <div class="card">
+    <table>
+      <tr><th>메서드+경로</th><th>역할</th><th>DB 테이블</th><th>비고</th></tr>
+      <tr><td>POST /api/h/diagnosis</td><td>질문지 응답 저장 + H- ID 생성</td><td>hospital_responses (INSERT)</td><td>BC코드·오행·MBTI 자동계산 후 저장</td></tr>
+      <tr><td>GET /api/h/result/:id</td><td>결과 JSON 반환 (결과지 초기화용)</td><td>hospital_responses (SELECT)</td><td>ohaeng/mbti 정규화, raw_answers 파싱</td></tr>
+      <tr><td>GET /api/h/programs</td><td>b2b 병원 시술 프로그램 목록</td><td>programs</td><td>bc_code 매칭 + 공개 시술 UNION</td></tr>
+      <tr><td>GET /result-hospital/:id</td><td>결과지 HTML 서빙 + ID 주입</td><td>—</td><td>INJECT_MARKER 방식 스크립트 주입</td></tr>
+      <tr><td>GET /result-hospital/:id/download</td><td>결과지 HTML 파일 다운로드</td><td>—</td><td>Content-Disposition attachment 반환</td></tr>
+      <tr><td>GET /result-hospital/:id/analysis</td><td>이 페이지 (코드 분석 뷰어)</td><td>—</td><td>—</td></tr>
+    </table>
+  </div>
+
+  <!-- ══ 3. DB 스키마 ══ -->
+  <h2>③ DB 테이블: hospital_responses</h2>
+  <div class="card">
+    <div class="code">CREATE TABLE hospital_responses (
+  id           TEXT PRIMARY KEY,        -- H-{timestamp}-{random4}
+  ref_code     TEXT,                    -- 병원 파트너 코드 (b2b_code)
+  b2b_code     TEXT,                    -- 동일 (ref_code alias)
+  user_name    TEXT,
+  gender       TEXT,
+  age          INTEGER,
+  height       REAL,
+  weight       REAL,
+  phone        TEXT,
+  ohaeng_type  TEXT,                    -- 목/화/토/금/수 (정규화)
+  disp_type    TEXT,                    -- 체형 타입
+  bc_code      TEXT,                    -- BC-1 ~ BC-9
+  mbti_full    TEXT,                    -- ENTP/INFP 등
+  axis_scores  TEXT,                    -- JSON: {호르몬,대사,스트레스,...}
+  stage1_json  TEXT,                    -- 1단계 응답 JSON
+  stage2_json  TEXT,                    -- 2단계 응답 JSON
+  stage3_json  TEXT,                    -- 3단계 응답 JSON
+  stage4_json  TEXT,                    -- 4단계 응답 JSON
+  raw_answers  TEXT,                    -- 전체 원본 응답 JSON (pfProfile 포함)
+  created_at   DATETIME DEFAULT CURRENT_TIMESTAMP
+);</div>
+    <h3>주요 JSON 필드 구조 (raw_answers)</h3>
+    <div class="code">{
+  goal_weight:     number,         -- 목표 체중
+  weight_loss_pct: number,         -- 감량 목표 %
+  pfProfile: {
+    saju:  "목|화|토|금|수",        -- 오행 (fallback용)
+    mbti:  "ENTP",                 -- MBTI
+  },
+  cold_limbs:      0|1,            -- 수족냉증
+  disease:         number[],       -- 기저질환 코드 배열
+  checkup:         number[],       -- 건강검진 이상소견 배열
+  q11_event:       0|1,            -- 출산이력
+  q12_menopause:   0|1|2,          -- 갱년기 단계
+  past_procedures: number[],       -- 이전 시술 이력
+}</div>
+  </div>
+
+  <!-- ══ 4. 페이지별 함수 매핑 ══ -->
+  <h2>④ 페이지별 렌더 함수 매핑</h2>
+
+  <div class="card">
+    <h3><span class="tag tag-page">진입점</span> renderAll(data) — line 10932</h3>
+    <p style="font-size:13px;color:#94a3b8;margin-bottom:10px;">API 응답 data를 받아 전체 페이지를 순차 렌더. _wowData 전역 세팅 후 각 renderP*() 호출.</p>
+    <div class="code">renderAll(data)
+  ├── injectCoverInfo(userName, consultantName)  // 커버 정보 주입
+  ├── renderP1(...)    // P1: BC코드 진단 결과
+  ├── renderP2(...)    // P2: 도미노 원인 분석
+  ├── renderP3(...)    // P3: 영양 처방 + 오행/MBTI
+  ├── renderP4(...)    // P4: 과거 이력 트리거 분석
+  ├── renderP5(...)    // P5: 핵심처방 11영역 TOP3
+  ├── renderP6(...)    // P6: 12주 로드맵 아코디언
+  ├── renderP7(...)    // P7: 공유/인증 카드
+  ├── renderP8(...)    // P8: 8주 트래킹 그리드
+  ├── renderP9(...)    // P9: 상담 예약 CTA
+  ├── renderDailyPage()  // P10: 오늘 탭 (오행+BC 오늘 가이드)
+  ├── wow1Init()       // WOW1: DNA 카드
+  ├── wow2Init()       // WOW2: AI 데일리 브리핑
+  ├── wow3Init(...)    // WOW3: 위기 트리거 타임라인
+  ├── wow4Init()       // WOW4: 12주 미션 챌린지
+  ├── wow5TryRender()  // WOW5: 그룹 레이더 차트
+  └── wow6Init(...)    // WOW6: 영양제 BC 궁합 체커</div>
+  </div>
+
+  <div class="card">
+    <h3><span class="tag tag-page">P1</span> renderP1() — line 11008</h3>
+    <table>
+      <tr><th>인자</th><th>설명</th></tr>
+      <tr><td>userName</td><td>사용자 이름</td></tr>
+      <tr><td>bcCode</td><td>BC-1~BC-9 (bc_engine 계산)</td></tr>
+      <tr><td>bcMaster</td><td>BC 마스터 데이터 (BC_DEFINITIONS)</td></tr>
+      <tr><td>fullCode</td><td>오행+MBTI 결합 풀코드</td></tr>
+      <tr><td>metrics</td><td>{height, weight, age, gender}</td></tr>
+      <tr><td>axisScores</td><td>8축 점수 객체</td></tr>
+      <tr><td>nicknameDisplay</td><td>computeNickname() 결과</td></tr>
+      <tr><td>background</td><td>detectBackground() 결과</td></tr>
+    </table>
+    <p style="font-size:12px;color:#64748b;margin-top:8px;">→ 축별 레이더 차트, BC 뱃지, 닉네임 카드, animAxisBars() 트리거</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="tag tag-page">P2</span> renderP2() — line 11290</h3>
+    <table>
+      <tr><th>인자</th><th>설명</th></tr>
+      <tr><td>userName</td><td>사용자 이름</td></tr>
+      <tr><td>bcCode</td><td>BC 코드</td></tr>
+      <tr><td>firstDomino</td><td>1순위 도미노 원인</td></tr>
+      <tr><td>axisScores</td><td>8축 점수</td></tr>
+      <tr><td>sorted</td><td>상위축 정렬 배열</td></tr>
+      <tr><td>answers</td><td>stage2 원본 응답 (cold_limbs/disease/checkup/q11_event/q12_menopause/past_procedures 직접 연결)</td></tr>
+    </table>
+    <p style="font-size:12px;color:#64748b;margin-top:8px;">→ stage2 answers 7종 → 도미노 3단계 주입 (Task3 완료)</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="tag tag-page">P3</span> renderP3() — line 11579</h3>
+    <table>
+      <tr><th>인자</th><th>설명</th></tr>
+      <tr><td>bcMaster</td><td>BC 마스터 (WOW6_SUPP_DB 연동)</td></tr>
+      <tr><td>ohaengKey</td><td>오행 키 (목(木)/화(火)/토(土)/금(金)/수(水))</td></tr>
+      <tr><td>mbtiType</td><td>MBTI 유형</td></tr>
+      <tr><td>prescription</td><td>generatePrescription() 결과</td></tr>
+      <tr><td>answers</td><td>stage2 응답 (q12_menopause fallback 포함)</td></tr>
+    </table>
+    <p style="font-size:12px;color:#64748b;margin-top:8px;">→ 오행·MBTI 인사이트, 영양 처방, getMbtiOhaengInsights()</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="tag tag-page">P4</span> renderP4() — line 11700</h3>
+    <p style="font-size:12px;color:#64748b;margin-bottom:8px;">getCruelHistoryTriggers() 호출 → 위기 트리거 타임라인 생성</p>
+    <div class="code">renderP4(userName, ohaengKey, mbtiType, gender, menopause, redFlags, answers)
+  └── getCruelHistoryTriggers(userName, ohaengKey, mbtiType, gender, menopause, answers)
+        ├── disease 코드 → 만성질환 트리거
+        ├── checkup 이상소견 → 검진 경고
+        ├── cold_limbs → 수족냉증 트리거
+        ├── past_procedures → 이전 시술 반등 경고
+        └── _computeTriggerUrgency() → 임박도 배지</div>
+  </div>
+
+  <div class="card">
+    <h3><span class="tag tag-page">P5</span> renderP5() — line 12110</h3>
+    <p style="font-size:12px;color:#64748b;margin-bottom:8px;">11개 영역 점수 계산 → BC/오행 기반 TOP3 결정 → window.__P5_TOP3_NMS__ 세팅</p>
+    <div class="code">11개 영역: 한방 · 시술 · 심리 · 호르몬 · 체형 · 식단 · 운동 · 회복 · 관리 · 약물 · 철학
+TOP3 → window.__P5_TOP3_NMS__ = ['한방','시술','심리']  (예시)
+         → P10 weeklyGridHTML()에서 동적 카드 생성에 사용</div>
+    <p style="font-size:12px;color:#64748b;margin-top:8px;">각 영역 evFn(sc): 점수 기반 진단/기질/처방/답안속도 4개 항목 반환</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="tag tag-page">P6</span> renderP6() — line 13310</h3>
+    <p style="font-size:12px;color:#64748b;margin-bottom:8px;">12주 로드맵 아코디언. getRoadmapWeeks() → renderRoadmapAccordion()</p>
+    <div class="code">renderP6(userName, fullCode, ohaengType, inputData)
+  └── getRoadmapWeeks(bc_primary, goal_weight, weight_loss_pct, user_name, ohaeng_type)
+        └── renderRoadmapAccordion(weeks, ohaengType, consultantName)
+              └── roadmapWeekHeaderHTML(w, ph, n)  // 주차 헤더
+              └── lockedWeekHTML / lockedPhaseHTML  // 잠금 주차</div>
+  </div>
+
+  <div class="card">
+    <h3><span class="tag tag-page">P8</span> renderP8() — line 12765 &nbsp;|&nbsp; <span class="tag tag-page">P10</span> renderDailyPage() — line 15731</h3>
+    <table>
+      <tr><th>함수</th><th>역할</th><th>핵심 데이터</th></tr>
+      <tr><td>renderP8()</td><td>8주 트래킹 그리드 렌더</td><td>bindWeeklyGridEvents(), bindUnifiedGrid()</td></tr>
+      <tr><td>renderDailyPage()</td><td>오늘 탭 — 오행/BC 가이드</td><td>ohaeng_type 4중 fallback, __P5_TOP3_NMS__</td></tr>
+      <tr><td>weeklyGridHTML(w, idx)</td><td>P10 아코디언 주차 HTML</td><td>TOP3_WEEK_DB 11영역×4주, _p5nmsGrid 동적 카드</td></tr>
+    </table>
+  </div>
+
+  <!-- ══ 5. 핵심 계산 함수 ══ -->
+  <h2>⑤ 핵심 계산 함수 (bc-engine inlined)</h2>
+  <div class="card">
+    <table>
+      <tr><th>함수명</th><th>라인</th><th>역할</th></tr>
+      <tr><td>detectBackground(answers)</td><td>7500</td><td>stage1 응답 → 8축 배경 점수 계산</td></tr>
+      <tr><td>computeNickname(axisScores, answers)</td><td>7622</td><td>BC 유형별 닉네임 생성</td></tr>
+      <tr><td>computeBCCode(axisScores, answers)</td><td>7778</td><td>8축 점수 → BC-1~BC-9 코드 결정</td></tr>
+      <tr><td>computeBCCodeSafe(axisScores, answers)</td><td>9885</td><td>try-catch 래퍼 (결과지용)</td></tr>
+      <tr><td>generatePrescription(bc, ohaeng, mbti)</td><td>7965</td><td>BC+오행+MBTI → 처방 텍스트 생성</td></tr>
+      <tr><td>getMbtiOhaengInsights(...)</td><td>8186</td><td>MBTI×오행 교차 인사이트</td></tr>
+      <tr><td>getCruelHistoryTriggers(...)</td><td>8228</td><td>과거 이력 → 위기 트리거 배열</td></tr>
+      <tr><td>_computeTriggerUrgency(t, days)</td><td>8421</td><td>트리거 임박도 계산 (즉시/경계/감시)</td></tr>
+      <tr><td>computeNutrition(...)</td><td>8468</td><td>체중/목표 → 주차별 영양 처방 계산</td></tr>
+      <tr><td>getRoadmapWeeks(...)</td><td>9566</td><td>BC+오행 → 12주 로드맵 데이터 생성</td></tr>
+      <tr><td>getEvidenceBadge(bcCode)</td><td>9853</td><td>BC별 근거 뱃지 텍스트</td></tr>
+    </table>
+  </div>
+
+  <!-- ══ 6. 전역 상태/데이터 변수 ══ -->
+  <h2>⑥ 전역 상태 변수 & 데이터 DB</h2>
+  <div class="card">
+    <table>
+      <tr><th>변수명</th><th>타입</th><th>세팅 시점</th><th>설명</th></tr>
+      <tr><td>window.__HOSPITAL_RESULT_ID__</td><td>string</td><td>서버 주입 (HTML 서빙 시)</td><td>결과 ID (H-xxxx)</td></tr>
+      <tr><td>window.__RESULT__</td><td>object</td><td>hospitalInit() → /api/h/result 응답</td><td>전체 결과 데이터</td></tr>
+      <tr><td>window.__DIAG_DATA__</td><td>object</td><td>렌더 후 세팅</td><td>진단 데이터 캐시</td></tr>
+      <tr><td>window.__BC_RM__</td><td>string</td><td>renderAll() 내</td><td>BC 코드 전역 참조</td></tr>
+      <tr><td>window.__P5_TOP3_NMS__</td><td>string[]</td><td>renderP5() 내</td><td>P5 TOP3 영역명 배열 → P10 전달</td></tr>
+      <tr><td>_wowData</td><td>object</td><td>renderAll() 내</td><td>bcCode/ohaengType/userName 등 전역</td></tr>
+      <tr><td>WOW6_SUPP_DB</td><td>object</td><td>정적 정의</td><td>BC별 영양제 DB (good/caution/danger + url)</td></tr>
+      <tr><td>TOP3_WEEK_DB</td><td>object</td><td>정적 정의 (weeklyGridHTML 내)</td><td>11개 영역×4주 처방 DB</td></tr>
+      <tr><td>BC_COACHING</td><td>object</td><td>정적 정의 (renderLiveAdvice 내)</td><td>BC-1~9 weak/great 코칭 메시지</td></tr>
+      <tr><td>OHAENG_COACHING</td><td>object</td><td>정적 정의 (renderLiveAdvice 내)</td><td>5오행 보완 팁</td></tr>
+    </table>
+  </div>
+
+  <!-- ══ 7. WOW 탭 함수 매핑 ══ -->
+  <h2>⑦ WOW 탭 함수 매핑 (6개)</h2>
+  <div class="card">
+    <table>
+      <tr><th>탭</th><th>초기화 함수</th><th>라인</th><th>주요 서브함수</th></tr>
+      <tr><td>WOW1 DNA카드</td><td>wow1Init()</td><td>15263</td><td>openDnaCard() / closeDnaCard() / dnaChangeSkin() / dnaDownload()</td></tr>
+      <tr><td>WOW2 AI브리핑</td><td>wow2Init()</td><td>15500</td><td>wow2Refresh() / wow2Render(sid)</td></tr>
+      <tr><td>WOW3 위기트리거</td><td>wow3Init()</td><td>15605</td><td>wow3ShowDetail() / wow3ShowSos() / wow3ScrollToCard()</td></tr>
+      <tr><td>WOW4 미션챌린지</td><td>wow4Init()</td><td>19378</td><td>wow4SetDiff() / wow4Complete() / wow4Confetti()</td></tr>
+      <tr><td>WOW5 그룹레이더</td><td>wow5TryRender()</td><td>19552</td><td>wow5RenderRadar(members)</td></tr>
+      <tr><td>WOW6 영양제체커</td><td>wow6Init()</td><td>19820</td><td>wow6CheckItem() / openSuppBuy() / supbuyAnalyze() / _getSuppUrl()</td></tr>
+    </table>
+  </div>
+
+  <!-- ══ 8. 페이지 전환 함수 ══ -->
+  <h2>⑧ 페이지 전환 & UI 제어 함수</h2>
+  <div class="card">
+    <table>
+      <tr><th>함수</th><th>라인</th><th>역할</th></tr>
+      <tr><td>switchPage(num)</td><td>10002</td><td>P1~P10 페이지 전환 (슬라이드)</td></tr>
+      <tr><td>enterReport(num)</td><td>10024</td><td>특정 페이지 번호로 직접 진입</td></tr>
+      <tr><td>openCover()</td><td>10031</td><td>표지 화면 열기</td></tr>
+      <tr><td>goDailyCheck()</td><td>9993</td><td>P10 오늘 탭으로 이동</td></tr>
+      <tr><td>loadData()</td><td>10186</td><td>API 데이터 로드 → renderAll() 호출</td></tr>
+      <tr><td>demoData()</td><td>10266</td><td>데모 데이터로 렌더 (API 없이 테스트)</td></tr>
+      <tr><td>countUpMetaAge()</td><td>10037</td><td>대사나이 카운트업 애니메이션</td></tr>
+      <tr><td>runCertReveal()</td><td>10063</td><td>인증 카드 등장 애니메이션</td></tr>
+      <tr><td>triggerAnim()</td><td>10121</td><td>전체 진입 애니메이션 트리거</td></tr>
+      <tr><td>p1ShareLink()</td><td>15011</td><td>P1 공유 링크 복사</td></tr>
+      <tr><td>p7ShareInsta()</td><td>14995</td><td>P7 인스타 공유</td></tr>
+      <tr><td>shareKakao()</td><td>10466</td><td>카카오 공유</td></tr>
+    </table>
+  </div>
+
+  <!-- ══ 9. renderLiveAdvice/renderLiveRecord ══ -->
+  <h2>⑨ 실시간 트래킹 함수 (P10 오늘탭)</h2>
+  <div class="card">
+    <table>
+      <tr><th>함수</th><th>라인</th><th>역할</th></tr>
+      <tr><td>renderDailyPage()</td><td>15731</td><td>P10 오늘탭 전체 렌더 — ohaeng_type 4중 fallback, __P5_TOP3_NMS__ 연동</td></tr>
+      <tr><td>renderLiveRecord()</td><td>16559</td><td>실시간 체크 현황 집계 렌더</td></tr>
+      <tr><td>renderLiveAdvice()</td><td>16707</td><td>BC/오행 개인화 코칭 메시지 — BC_COACHING + OHAENG_COACHING</td></tr>
+      <tr><td>weeklyGridHTML(w, idx)</td><td>18765</td><td>주차별 그리드 HTML — TOP3_WEEK_DB + _p5nmsGrid 동적 카드</td></tr>
+      <tr><td>bindWeeklyGridEvents(host)</td><td>16355</td><td>그리드 이벤트 바인딩 (질문/실천/미션)</td></tr>
+      <tr><td>bindUnifiedGrid()</td><td>17249</td><td>통합 그리드 이벤트 (식단/운동 매트릭스)</td></tr>
+      <tr><td>openSuppBuy(targetName)</td><td>19734</td><td>영양제 구매 모달 — WOW6_SUPP_DB url 연결 완료</td></tr>
+    </table>
+  </div>
+
+  <!-- ══ 10. 주요 수정 이력 ══ -->
+  <h2>⑩ 최근 주요 수정 이력</h2>
+  <div class="card">
+    <table>
+      <tr><th>커밋</th><th>내용</th></tr>
+      <tr><td>현재</td><td>쿠팡 구매 URL 연결: WOW6_SUPP_DB url 필드 + _getSuppUrl() + openSuppBuy() href 동적 주입</td></tr>
+      <tr><td>62457cd</td><td>P10 오늘탭 핵심처방 TOP3 주차별 개인화 카드 — TOP3_WEEK_DB 11영역×4주 + wg-top3-* CSS</td></tr>
+      <tr><td>d25548d</td><td>120% 개인화: Task1(ohaeng 4중 fallback) + Task2(BC/오행 코칭) + Task3(P2/P5 stage2 연결)</td></tr>
+    </table>
+  </div>
+
+  <div style="margin-top:40px;padding:16px;background:#1e293b;border-radius:10px;font-size:12px;color:#64748b;text-align:center;">
+    생성 시각: ${new Date().toLocaleString('ko-KR', {timeZone:'Asia/Seoul'})} &nbsp;|&nbsp; 대상: ${id} &nbsp;|&nbsp; <a href="/result-hospital/${id}/download" style="color:#7dd3fc;">⬇️ HTML 다운로드</a>
+  </div>
+</div>
+</body>
+</html>`
+
+  return c.html(analysisHTML, 200, {
+    'Cache-Control': 'no-cache',
+  })
+})
+
 // GET /result-aesthetic/:id — 에스테틱 결과지 HTML 서빙
 app.get('/result-aesthetic/:id', async (c) => {
   const id = c.req.param('id')
