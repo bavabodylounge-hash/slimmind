@@ -4,7 +4,7 @@ module.exports = {
     {
       name: 'slimmind',
       script: 'npx',
-      args: 'wrangler pages dev dist --local --ip 0.0.0.0 --port 3000',
+      args: 'wrangler pages dev dist --d1=7ed6c475-8afa-4ef8-9af8-8fab0cf8224b-db --local --ip 0.0.0.0 --port 3000',
       env: {
         NODE_ENV: 'development',
         PORT: 3000
