@@ -11299,6 +11299,26 @@ function getRoadmapWeeks(bc_primary, goal_weight, weight_loss_pct, user_name, oh
   var _whoLabel_v4   = (_desire_v4 && _desire_v4.who)        ? String(_desire_v4.who)        : '';
   var _contraAxes_v4 = (_confidence_v4 && Array.isArray(_confidence_v4.contraAxes))
     ? _confidence_v4.contraAxes : [];
+  // ★ 세션 4: desire 미활용 필드 추가 분해 (v4)
+  var _desireZone_v4   = (_desire_v4 && _desire_v4.zone)   ? String(_desire_v4.zone)   : '';
+  var _desireTrack_v4  = (_desire_v4 && _desire_v4.track)  ? String(_desire_v4.track)  : '';
+  var _desireUpsell_v4 = (_desire_v4 && _desire_v4.upsell) ? String(_desire_v4.upsell) : '';
+  // ★ 세션 4: disp_answers 추가 개인화 데이터 (v4)
+  var _disp_v4 = window.__DISP_ANSWERS__ || _spec.disp_answers || {};
+  var _dispGoal_v4   = (_disp_v4 && _disp_v4.goal)  ? String(_disp_v4.goal)  : '';
+  var _dispHabit_v4  = (_disp_v4 && _disp_v4.habit) ? String(_disp_v4.habit) : '';
+  var _dispBlock_v4  = (_disp_v4 && _disp_v4.block) ? String(_disp_v4.block) : '';
+  // ★ 세션 4: axisScores A01~A10 개별 변수화 (v4, 정규화 후 _axs 기준)
+  var _a01_v4 = Number(_axs['A01']||_axs['a01']||0);
+  var _a02_v4 = Number(_axs['A02']||_axs['a02']||0);
+  var _a03_v4 = Number(_axs['A03']||_axs['a03']||0);
+  var _a04_v4 = Number(_axs['A04']||_axs['a04']||0);
+  var _a05_v4 = Number(_axs['A05']||_axs['a05']||0);
+  var _a06_v4 = Number(_axs['A06']||_axs['a06']||0);
+  var _a07_v4 = Number(_axs['A07']||_axs['a07']||0);
+  var _a08_v4 = Number(_axs['A08']||_axs['a08']||0);
+  var _a09_v4 = Number(_axs['A09']||_axs['a09']||0);
+  var _a10_v4 = Number(_axs['A10']||_axs['a10']||0);
 
   // ① bc_primary → BC 모체 코드 결정
   var bcKey = 'BC-6';
@@ -11544,6 +11564,130 @@ function getRoadmapWeeks(bc_primary, goal_weight, weight_loss_pct, user_name, oh
       if (contraFocuses_v4.length > 0 && item.keyFocus) {
         item.keyFocus = item.keyFocus.slice(0,2).concat([contraFocuses_v4[0]]);
       }
+    }
+
+    // ══════════════════════════════════════════════════
+    // ★ 세션 4-F: axisScores 점수 기반 주차별 처방 직접 강화 (v4)
+    // ══════════════════════════════════════════════════
+
+    // [F1] A01 인슐린 저항성 ≥7
+    if (_a01_v4 >= 7 && (item.week === 1 || item.week === 2)) {
+      if (item.week === 1) {
+        item.keyFocus = ['인슐린 안정화 최우선'].concat((item.keyFocus||[]).slice(0,2));
+        item.diet_ok  = (item.diet_ok||'') + '\n[A01↑ 인슐린 ≥7] 저GI 식품 우선 + 식후 15분 워킹 의무화 + 단순당 완전 차단';
+      }
+      item.exercise_ok = (item.exercise_ok||'') + '\n[인슐린 관리] 식후 30분 이내 유산소 10분 — 혈당 스파이크 억제';
+    }
+
+    // [F2] A03 갑상선 ≥7
+    if (_a03_v4 >= 7) {
+      item.exercise_ok = (item.exercise_ok||'') + '\n[A03↑ 갑상선 ≥7] 최대심박 65% 이하 저강도 유지 — 과부하 금지';
+      if (item.week === 1) {
+        item.diet_ok = (item.diet_ok||'') + '\n[갑상선 관리] 십자화채소 생식 제한 + 요오드 균형 유지';
+        item.keyFocus = ['갑상선 부담 최소화'].concat((item.keyFocus||[]).slice(0,2));
+      }
+    }
+
+    // [F3] A04 근감소 ≥7
+    if (_a04_v4 >= 7) {
+      if (item.week === 1) {
+        item.keyFocus = ['근기능 회복 우선'].concat((item.keyFocus||[]).slice(0,2));
+        item.diet_ok  = (item.diet_ok||'') + '\n[A04↑ 근감소 ≥7] 단백질 1.6g/kg 이상 + 운동 직후 30g 단백질 섭취 의무화';
+      }
+      if (item.week <= 2) {
+        item.exercise_ok = (item.exercise_ok||'') + '\n[근감소 개선] 저항 운동 주 3회 우선 — 유산소 비중 30%로 제한';
+      } else {
+        item.exercise_ok = (item.exercise_ok||'') + '\n[근감소 관리] 점진적 부하 증가 — 체중의 120% 저항 목표';
+      }
+    }
+
+    // [F4] A05 스트레스 ≥7
+    if (_a05_v4 >= 7) {
+      item.recovery_ok = (item.recovery_ok||'') + '\n[A05↑ 스트레스 ≥7] 취침 전 4·7·8 호흡 10분 + 마그네슘(글리시네이트) 검토';
+      if (item.week === 1) {
+        item.exercise_ok = (item.exercise_ok||'') + '\n[고스트레스] HIIT·고강도 인터벌 금지 — 코르티솔 추가 상승 방지';
+        item.keyFocus = ['스트레스 → 코르티솔 조절'].concat((item.keyFocus||[]).slice(0,2));
+      }
+    }
+
+    // [F5] A06 수면 ≥7
+    if (_a06_v4 >= 7 && item.week <= 2) {
+      if (item.week === 1) {
+        item.keyFocus = ['수면 복구 프로토콜'].concat((item.keyFocus||[]).slice(0,2));
+      }
+      item.recovery_ok = (item.recovery_ok||'') + '\n[A06↑ 수면 ≥7] 취침 90분 전 스마트폰 차단 + 22시 이전 취침 목표 + 멜라토닌 고려';
+      item.diet_ok = (item.diet_ok||'') + '\n[수면 개선] 저녁 트립토판 식품(칠면조·우유·바나나) + 카페인 13시 이후 완전 차단';
+    }
+
+    // [F6] A07 자율신경 ≥7
+    if (_a07_v4 >= 7) {
+      if (item.week === 1) item.keyFocus = ['자율신경 안정화'].concat((item.keyFocus||[]).slice(0,2));
+      item.exercise_ok = (item.exercise_ok||'') + '\n[A07↑ 자율신경 ≥7] 운동 전후 5분 횡격막 호흡 필수 + 급격한 온도 변화 회피';
+    }
+
+    // [F7] A08 식이 패턴 ≥7
+    if (_a08_v4 >= 7 && item.week === 1) {
+      item.keyFocus = ['식이 패턴 재설정'].concat((item.keyFocus||[]).slice(0,2));
+      item.diet_ok  = (item.diet_ok||'') + '\n[A08↑ 식이 ≥7] 7일 식사 일지 필수(사진+시간) + 간헐적 단식 일시 중단';
+    }
+
+    // [F8] A09 순환 ≥7
+    if (_a09_v4 >= 7) {
+      if (item.week === 1) {
+        item.keyFocus = ['순환·림프 회복'].concat((item.keyFocus||[]).slice(0,2));
+        item.exercise_ok = (item.exercise_ok||'') + '\n[A09↑ 순환 ≥7] 운동 후 다리 거상(15분) + 압박스타킹 착용 권장';
+      }
+      item.diet_ok = (item.diet_ok||'') + '\n[순환 개선] 수분 2L↑ + 나트륨 1,500mg 이하 + 루틴(메밀·양파) 강화';
+    }
+
+    // [F9] A10 호르몬 ≥7
+    if (_a10_v4 >= 7 && item.week <= 2) {
+      if (item.week === 1) {
+        item.keyFocus = ['호르몬 균형 회복'].concat((item.keyFocus||[]).slice(0,2));
+        item.diet_ok  = (item.diet_ok||'') + '\n[A10↑ 호르몬 ≥7] 식물성 에스트로겐(두부·아마씨·석류) 강화 + 정제당 차단';
+      }
+      item.exercise_ok = (item.exercise_ok||'') + '\n[호르몬 관리] 과도한 공복 유산소 금지 — 코르티솔→호르몬 교란 방지';
+    }
+
+    // ══════════════════════════════════════════════════
+    // ★ 세션 4-G: desire.zone 운동 시간대 맞춤 (v4)
+    // ══════════════════════════════════════════════════
+    if (_desireZone_v4 && item.week === 1) {
+      var ZONE_TIMING_MAP_V4 = {
+        '아침': '아침 기상 직후 공복 운동 — 지방 산화 극대화, 식후 30분 이내 단백질 보충 필수',
+        '점심': '점심 시간 활용 — 실내 유산소 20분 + 점심식사 후 10분 워킹',
+        '저녁': '저녁 퇴근 후 운동 — 취침 3시간 전 종료, 늦은 HIIT 금지',
+        '새벽': '새벽 운동 — 충분한 워밍업 10분 필수 + 수면 부족 시 강도 자동 조절',
+        '주말': '주말 집중형 — 평일 통근 워킹(1만보) 보완 + 주말 60분 운동 집중',
+      };
+      var zoneTip_v4 = ZONE_TIMING_MAP_V4[_desireZone_v4];
+      if (zoneTip_v4) item.exercise_ok = (item.exercise_ok||'') + '\n[운동 시간대: ' + _desireZone_v4 + '] ' + zoneTip_v4;
+    }
+
+    // ★ 세션 4-H: desire.track → 4주차 프로그램 추천 (v4)
+    if (_desireTrack_v4 && item.week === 4 && item.failure_expose) {
+      var TRACK_RECOMMEND_MAP_V4 = {
+        '체중감량':   '4주 후 다음 단계: 슬림마인드 체중감량 집중 트랙(8주) 연계를 권장합니다.',
+        '체형교정':   '4주 후 다음 단계: 슬림마인드 체형교정 필라테스 트랙(8주) 연계를 권장합니다.',
+        '근력강화':   '4주 후 다음 단계: 슬림마인드 근력·탄력 트랙(8주)으로 전환을 권장합니다.',
+        '호르몬균형': '4주 후 다음 단계: 슬림마인드 호르몬 균형 관리 트랙(8주) 연계를 권장합니다.',
+        '유지관리':   '4주 후 다음 단계: 슬림마인드 유지·관리 트랙으로 전환 — 월 1회 체크인 지속.',
+      };
+      var trackTip_v4 = TRACK_RECOMMEND_MAP_V4[_desireTrack_v4];
+      if (trackTip_v4) item.failure_expose = item.failure_expose + '\n\n[다음 트랙 안내] ' + trackTip_v4;
+    }
+
+    // ★ 세션 4-I: disp_answers 개인 맥락 주입 (v4)
+    if (item.week === 1 && item.failure_expose) {
+      if (_dispGoal_v4) {
+        item.failure_expose = '"' + _dispGoal_v4 + '" — 이 목표를 이루기 위해 오늘이 첫날입니다.\n\n' + item.failure_expose;
+      }
+      if (_dispBlock_v4) {
+        item.failure_expose = item.failure_expose + '\n\n[예상 장애요인 대비] ' + _dispBlock_v4 + ' — 이 부분을 먼저 챙깁니다.';
+      }
+    }
+    if (item.week === 2 && _dispHabit_v4 && item.diet_ok) {
+      item.diet_ok = item.diet_ok + '\n[생활습관 맞춤] ' + _dispHabit_v4 + ' 패턴 기준으로 식사 타이밍 조정';
     }
 
     // 칼로리·탄단지 주입 (nutritionData는 항상 존재)

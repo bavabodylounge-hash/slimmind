@@ -10542,6 +10542,147 @@ function getRoadmapWeeks(bc_primary, goal_weight, weight_loss_pct, user_name, oh
       }
     }
 
+    // ══════════════════════════════════════════════════
+    // ★ 세션 4-F: axisScores 점수 기반 주차별 처방 직접 강화
+    // A01(인슐린) A03(갑상선) A04(근감소) A05(스트레스) A06(수면)
+    // A07(자율신경) A08(식이) A09(순환) A10(호르몬) — 7이상 = 위험
+    // ══════════════════════════════════════════════════
+
+    // [F1] A01 인슐린 저항성 ≥7 → 식단·운동 처방 강화 (1~2주차)
+    if (_a01 >= 7 && (item.week === 1 || item.week === 2)) {
+      if (item.week === 1) {
+        item.keyFocus = ['인슐린 안정화 최우선'].concat((item.keyFocus||[]).slice(0,2));
+        item.diet_ok  = (item.diet_ok||'') + '\n[A01↑ 인슐린 ≥7] 저GI 식품 우선 + 식후 15분 워킹 의무화 + 단순당 완전 차단';
+      }
+      item.exercise_ok = (item.exercise_ok||'') + '\n[인슐린 관리] 식후 30분 이내 유산소 10분 — 혈당 스파이크 억제';
+    }
+
+    // [F2] A03 갑상선 ≥7 → 운동 강도 제한 + 식단 요오드 조정 (전 주차)
+    if (_a03 >= 7) {
+      item.exercise_ok = (item.exercise_ok||'') + '\n[A03↑ 갑상선 ≥7] 최대심박 65% 이하 저강도 유지 — 과부하 금지';
+      if (item.week === 1) {
+        item.diet_ok = (item.diet_ok||'') + '\n[갑상선 관리] 십자화채소(브로콜리·양배추) 생식 제한 + 요오드 균형 유지';
+        item.keyFocus = ['갑상선 부담 최소화'].concat((item.keyFocus||[]).slice(0,2));
+      }
+    }
+
+    // [F3] A04 근감소 ≥7 → 저항 운동 우선 + 단백질 강화 (전 주차)
+    if (_a04 >= 7) {
+      if (item.week === 1) {
+        item.keyFocus = ['근기능 회복 우선'].concat((item.keyFocus||[]).slice(0,2));
+        item.diet_ok  = (item.diet_ok||'') + '\n[A04↑ 근감소 ≥7] 단백질 1.6g/kg 이상 + 운동 직후 30g 단백질 섭취 의무화';
+      }
+      if (item.week <= 2) {
+        item.exercise_ok = (item.exercise_ok||'') + '\n[근감소 개선] 저항 운동 주 3회 우선 — 유산소 비중 30%로 제한';
+      }
+      if (item.week === 3 || item.week === 4) {
+        item.exercise_ok = (item.exercise_ok||'') + '\n[근감소 관리] 점진적 부하 증가 — 체중의 120% 저항 목표';
+      }
+    }
+
+    // [F4] A05 스트레스 ≥7 → 회복 처방 강화 + HIIT 금지 (전 주차)
+    if (_a05 >= 7) {
+      item.recovery_ok = (item.recovery_ok||'') + '\n[A05↑ 스트레스 ≥7] 취침 전 4·7·8 호흡 10분 + 마그네슘(글리시네이트) 검토';
+      if (item.week === 1) {
+        item.exercise_ok = (item.exercise_ok||'') + '\n[고스트레스] HIIT·고강도 인터벌 금지 — 코르티솔 추가 상승 방지';
+        item.keyFocus = ['스트레스 → 코르티솔 조절'].concat((item.keyFocus||[]).slice(0,2));
+      }
+    }
+
+    // [F5] A06 수면 ≥7 → 수면 프로토콜 keyFocus + 회복 강화 (1~2주차)
+    if (_a06 >= 7 && item.week <= 2) {
+      if (item.week === 1) {
+        item.keyFocus = ['수면 복구 프로토콜'].concat((item.keyFocus||[]).slice(0,2));
+      }
+      item.recovery_ok = (item.recovery_ok||'') + '\n[A06↑ 수면 ≥7] 취침 90분 전 스마트폰 차단 + 22시 이전 취침 목표 + 멜라토닌 고려';
+      item.diet_ok = (item.diet_ok||'') + '\n[수면 개선] 저녁 트립토판 식품(칠면조·우유·바나나) + 카페인 13시 이후 완전 차단';
+    }
+
+    // [F6] A07 자율신경 ≥7 → 호흡 운동 강조 + 온도 변화 주의 (전 주차)
+    if (_a07 >= 7) {
+      if (item.week === 1) {
+        item.keyFocus = ['자율신경 안정화'].concat((item.keyFocus||[]).slice(0,2));
+      }
+      item.exercise_ok = (item.exercise_ok||'') + '\n[A07↑ 자율신경 ≥7] 운동 전후 5분 횡격막 호흡 필수 + 급격한 온도 변화 회피';
+    }
+
+    // [F7] A08 식이 패턴 ≥7 → 식사 일지 의무화 + 간헐적단식 재검토 (1주차)
+    if (_a08 >= 7 && item.week === 1) {
+      item.keyFocus = ['식이 패턴 재설정'].concat((item.keyFocus||[]).slice(0,2));
+      item.diet_ok  = (item.diet_ok||'') + '\n[A08↑ 식이 ≥7] 7일 식사 일지 필수 작성(사진+시간) → 컨설턴트 리뷰 + 간헐적 단식 일시 중단';
+    }
+
+    // [F8] A09 순환 ≥7 → 림프 드레나쥐 + 압박스타킹 권장 (전 주차)
+    if (_a09 >= 7) {
+      if (item.week === 1) {
+        item.keyFocus = ['순환·림프 회복'].concat((item.keyFocus||[]).slice(0,2));
+        item.exercise_ok = (item.exercise_ok||'') + '\n[A09↑ 순환 ≥7] 운동 후 다리 거상(15분) + 압박스타킹 착용 권장';
+      }
+      item.diet_ok = (item.diet_ok||'') + '\n[순환 개선] 수분 2L↑ + 나트륨 1,500mg 이하 + 루틴(메밀·양파) 강화';
+    }
+
+    // [F9] A10 호르몬 ≥7 → 에스트로겐 식품 + 호르몬 검사 권장 (1~2주차)
+    if (_a10 >= 7 && item.week <= 2) {
+      if (item.week === 1) {
+        item.keyFocus = ['호르몬 균형 회복'].concat((item.keyFocus||[]).slice(0,2));
+        item.diet_ok  = (item.diet_ok||'') + '\n[A10↑ 호르몬 ≥7] 식물성 에스트로겐(두부·아마씨·석류) 강화 + 정제당 차단';
+      }
+      item.exercise_ok = (item.exercise_ok||'') + '\n[호르몬 관리] 과도한 공복 유산소 금지 — 코르티솔→호르몬 교란 방지';
+    }
+
+    // ══════════════════════════════════════════════════
+    // ★ 세션 4-G: desire.zone(운동 시간대) → exercise_ok 타이밍 조정
+    // ══════════════════════════════════════════════════
+    if (_desireZone && item.week === 1) {
+      var ZONE_TIMING_MAP = {
+        '아침': '아침 기상 직후 공복 운동 — 지방 산화 극대화, 식후 30분 이내 단백질 보충 필수',
+        '점심': '점심 시간 활용 — 실내 유산소 20분 + 점심식사 후 10분 워킹',
+        '저녁': '저녁 퇴근 후 운동 — 취침 3시간 전 종료, 늦은 HIIT 금지',
+        '새벽': '새벽 운동 — 충분한 워밍업 10분 필수 + 수면 부족 시 강도 자동 조절',
+        '주말': '주말 집중형 — 평일 통근 워킹(1만보) 보완 + 주말 60분 운동 집중',
+      };
+      var zoneTip = ZONE_TIMING_MAP[_desireZone];
+      if (zoneTip) {
+        item.exercise_ok = (item.exercise_ok||'') + '\n[운동 시간대: ' + _desireZone + '] ' + zoneTip;
+      }
+    }
+
+    // ══════════════════════════════════════════════════
+    // ★ 세션 4-H: desire.track → 4주차 프로그램 추천 안내
+    // ══════════════════════════════════════════════════
+    if (_desireTrack && item.week === 4 && item.failure_expose) {
+      var TRACK_RECOMMEND_MAP = {
+        '체중감량': '4주 후 다음 단계: 슬림마인드 체중감량 집중 트랙(8주) 연계를 권장합니다.',
+        '체형교정': '4주 후 다음 단계: 슬림마인드 체형교정 필라테스 트랙(8주) 연계를 권장합니다.',
+        '근력강화': '4주 후 다음 단계: 슬림마인드 근력·탄력 트랙(8주)으로 전환을 권장합니다.',
+        '호르몬균형': '4주 후 다음 단계: 슬림마인드 호르몬 균형 관리 트랙(8주) 연계를 권장합니다.',
+        '유지관리': '4주 후 다음 단계: 슬림마인드 유지·관리 트랙으로 전환 — 월 1회 체크인 지속.',
+      };
+      var trackTip = TRACK_RECOMMEND_MAP[_desireTrack];
+      if (trackTip) {
+        item.failure_expose = item.failure_expose + '\n\n[다음 트랙 안내] ' + trackTip;
+      }
+    }
+
+    // ══════════════════════════════════════════════════
+    // ★ 세션 4-I: disp_answers.goal/block → 1주차 failure_expose 개인 맥락 주입
+    // ══════════════════════════════════════════════════
+    if (item.week === 1 && item.failure_expose) {
+      // 목표 문장 맥락 (disp_answers.goal 우선, desire.moodLabel fallback)
+      if (_dispGoal) {
+        item.failure_expose = '"' + _dispGoal + '" — 이 목표를 이루기 위해 오늘이 첫날입니다.\n\n' + item.failure_expose;
+      }
+      // 장애요인 사전 대비 문구
+      if (_dispBlock) {
+        item.failure_expose = item.failure_expose + '\n\n[예상 장애요인 대비] ' + _dispBlock + ' — 이 부분을 컨설턴트가 먼저 챙깁니다.';
+      }
+    }
+
+    // disp_answers.habit → 2주차 식단에 생활습관 맞춤 보정
+    if (item.week === 2 && _dispHabit && item.diet_ok) {
+      item.diet_ok = item.diet_ok + '\n[생활습관 맞춤] ' + _dispHabit + ' 패턴 기준으로 식사 타이밍 조정';
+    }
+
     // 칼로리·탄단지 주입 (nutritionData는 항상 존재)
     if (nutritionData) {
       var v = nutritionData.weekVariants.filter(function(x){ return x.week === item.week; })[0]
