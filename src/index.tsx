@@ -4939,6 +4939,7 @@ app.post('/api/h/diagnosis', async (c) => {
       bc_code_key,  // survey-hospital.html 전송 키 (fallback)
       bc_nickname, bc_primary,  // 닉네임 필드도 수용
       axis_scores, raw_answers,
+      goal_weight, weight_loss_pct,  // 목표체중 / 감량률 — 12주 칼로리 계산 핵심
       ref_code, session_id
     } = body
     // bc_code 통합: bc_code → bc_code_key → null 순으로 폴백
@@ -5046,17 +5047,29 @@ app.post('/api/h/diagnosis', async (c) => {
       `H-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`
     const b2bCode  = ref_code || 'UNKNOWN'
 
-    // mbti_full 컬럼이 없는 기존 테이블에도 안전하게 컬럼 추가 (이미 있으면 무시)
-    try {
-      await db.prepare(`ALTER TABLE hospital_responses ADD COLUMN mbti_full TEXT`).run()
-    } catch (_) { /* 이미 존재하면 무시 */ }
+    // 컬럼 추가 — 기존 테이블에 없으면 추가 (이미 있으면 무시)
+    const alterColumns = [
+      `ALTER TABLE hospital_responses ADD COLUMN mbti_full TEXT`,
+      `ALTER TABLE hospital_responses ADD COLUMN goal_weight REAL`,
+      `ALTER TABLE hospital_responses ADD COLUMN weight_loss_pct REAL`,
+    ]
+    for (const sql of alterColumns) {
+      try { await db.prepare(sql).run() } catch (_) { /* 이미 존재하면 무시 */ }
+    }
+
+    // goal_weight / weight_loss_pct: payload 최상위 → raw_answers 최상위 순으로 폴백
+    const resolvedGoalWeight = goal_weight != null ? Number(goal_weight)
+      : (parsedRaw?.goal_weight != null ? Number(parsedRaw.goal_weight) : null)
+    const resolvedWeightLossPct = weight_loss_pct != null ? Number(weight_loss_pct)
+      : (parsedRaw?.weight_loss_pct != null ? Number(parsedRaw.weight_loss_pct) : null)
 
     await db.prepare(`
       INSERT INTO hospital_responses
         (id, b2b_code, ref_code, user_name, gender, age, height, weight, phone,
          stage1_json, stage2_json, stage3_json, stage4_json,
-         ohaeng_type, disp_type, mbti_full, bc_code, axis_scores, raw_answers)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+         ohaeng_type, disp_type, mbti_full, bc_code, axis_scores, raw_answers,
+         goal_weight, weight_loss_pct)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     `).bind(
       resultId, b2bCode, ref_code || null, user_name,
       gender || null, age ? String(age) : null,
@@ -5066,12 +5079,14 @@ app.post('/api/h/diagnosis', async (c) => {
       stage2_answers ? JSON.stringify(stage2_answers) : null,
       stage3_answers ? JSON.stringify(stage3_answers) : null,
       stage4_answers ? JSON.stringify(stage4_answers) : null,
-      resolvedOhaeng,          // ohaeng_type → raw_answers.pfProfile.saju 폴백
+      resolvedOhaeng,
       disp_type || (resolvedOhaeng ? resolvedOhaeng + '형' : null),
-      resolvedMbti,            // mbti_full → raw_answers.pfProfile.mbti 폴백
+      resolvedMbti,
       resolvedBcCode,
-      resolvedAxisScores ? JSON.stringify(resolvedAxisScores) : null,  // 0~100 정규화 완료값 저장
-      raw_answers ? JSON.stringify(raw_answers) : null
+      resolvedAxisScores ? JSON.stringify(resolvedAxisScores) : null,  // 0~100 정규화값
+      raw_answers ? JSON.stringify(raw_answers) : null,
+      resolvedGoalWeight,       // 12주 칼로리 계산용 — 반드시 저장
+      resolvedWeightLossPct     // 12주 감량률 — 반드시 저장
     ).run()
 
     // 담당자 알림도 함께 발송 시도 (실패해도 응답에 영향 없음)
@@ -5163,9 +5178,11 @@ app.get('/api/h/result/:id', async (c) => {
       stage3_answers: parseJ(row.stage3_json),
       stage4_answers: parseJ(row.stage4_json),
       raw_answers: parsedRawResult,  // 이미 파싱된 객체 재사용
-      // goal_weight / weight_loss_pct: hospital_responses에 컬럼 없음 → raw_answers 최상위에서 추출
-      goal_weight:     parsedRawResult?.goal_weight     != null ? Number(parsedRawResult.goal_weight)     : null,
-      weight_loss_pct: parsedRawResult?.weight_loss_pct != null ? Number(parsedRawResult.weight_loss_pct) : null,
+      // goal_weight / weight_loss_pct: DB 컬럼 우선 → raw_answers 최상위 폴백
+      goal_weight:     row.goal_weight     != null ? Number(row.goal_weight)
+                     : (parsedRawResult?.goal_weight != null ? Number(parsedRawResult.goal_weight) : null),
+      weight_loss_pct: row.weight_loss_pct != null ? Number(row.weight_loss_pct)
+                     : (parsedRawResult?.weight_loss_pct != null ? Number(parsedRawResult.weight_loss_pct) : null),
       created_at: row.created_at,
       // 병원 파트너명 — 표지 "담당 컨설턴트" 자리에 표시
       consultant_name: row.partner_display_name || ''
