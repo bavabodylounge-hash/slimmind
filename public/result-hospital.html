@@ -13954,13 +13954,23 @@ async function loadHospitalResult() {
       // (stage2[10]은 체중변화이력 객체 — menopause 아님 주의)
     });
 
-    // 갱년기 처리: stage2[12]가 int 0~4 (병원 질문지 기준)
-    // 0=없음, 1=신호조금, 2=갱년기변환, 3=완경후, 4=호르몬치료
+    // 갱년기 처리: stage2[12] — 병원 질문지 no:12 "갱년기·완경 관련 변화" 응답 인덱스
+    // opts 실제 순서 (survey-hospital.html no:12):
+    //   0 = "체형이 복부 중심으로 바뀌었어요"        → 갱년기 변환형
+    //   1 = "미레나·호르몬 치료·수술로 생리가 없어요" → 호르몬 치료형 (HRT)
+    //   2 = "완경(자연적) 이후예요"                  → 완경 후
+    //   3 = "아직 생리는 해요, 신호가 조금 있어요"   → (갱년기 신호, 단순 참고)
+    //   4 = "해당 없음"                              → 갱년기 아님 → Q_MENOPAUSE 설정 안 함
     const menoIdx = stage2[12];
     if (menoIdx !== undefined && menoIdx !== null && !answers['Q_MENOPAUSE']) {
-      const MENO = { 2: '갱년기 변환형', 3: '완경 후', 4: '호르몬 치료형' };
+      const MENO = {
+        0: '갱년기 변환형',
+        1: '호르몬 치료형',
+        2: '완경 후'
+        // 3(신호조금), 4(해당없음)은 갱년기로 처리하지 않음
+      };
       if (MENO[Number(menoIdx)]) answers['Q_MENOPAUSE'] = MENO[Number(menoIdx)];
-      if (Number(menoIdx) === 4) answers['Q_HRT'] = 'hrt';
+      if (Number(menoIdx) === 1) answers['Q_HRT'] = 'hrt';  // 미레나·호르몬 치료
     }
     // DB 컬럼 stage_answers가 null이 아닌 경우 우선 적용
     if (r.stage2_answers) answers.stage2 = r.stage2_answers;
