@@ -8428,11 +8428,102 @@ function computeBCCode(axisScores, answers) {
   const top2Legacy = sorted[1];
   const firstDomino = CAUSAL_AXIS_META[top1Legacy[0]]?.label || '스트레스';
 
-  // ⑤ 4대 지표
-  const metaAge    = Math.round(40 + (axisScores['A03']||0) * 0.15 + (axisScores['A07']||0) * 0.1);
-  const metaBelly  = Math.min(99, Math.round((axisScores['A01']||0) * 0.8 + (axisScores['A05']||0) * 0.2));
-  const metaHormone= Math.min(99, Math.round((axisScores['A03']||0) * 0.6 + (axisScores['A07']||0) * 0.4));
-  const metaBody   = Math.min(99, Math.round((axisScores['A06']||0) * 0.7 + (axisScores['A02']||0) * 0.3));
+  // ⑤ 4대 지표 — ★ 세션 4: 실제 나이·BC코드·다중축 반영 정교화
+  // ─────────────────────────────────────────────────────────────
+  // realAge: answers에서 실제 나이 추출 (computeBCCode에 answers가 전달됨)
+  var _cbcRealAge = null;
+  if (answers) {
+    // pfProfile.birthY → 계산 나이 우선
+    if (answers.pfProfile && answers.pfProfile.birthY) {
+      _cbcRealAge = new Date().getFullYear() - Number(answers.pfProfile.birthY);
+    } else if (answers.age_group) {
+      // age_group: '20s'|'30s'|'40s'|'50s'|'60s' → 중간값
+      var _agMap = {'20s':25,'30s':35,'40s':45,'50s':55,'60s':65};
+      _cbcRealAge = _agMap[answers.age_group] || null;
+    } else if (answers.Q_AGE || answers.age) {
+      _cbcRealAge = Number(answers.Q_AGE || answers.age) || null;
+    }
+  }
+  var _cbcAge = (_cbcRealAge && _cbcRealAge > 10 && _cbcRealAge < 100) ? _cbcRealAge : 42;
+
+  // BMI 추정 (answers에 weight/height 있으면)
+  var _cbcW = Number((answers||{}).weight || 0);
+  var _cbcH = Number((answers||{}).height || 0);
+  var _cbcBmi = (_cbcW > 30 && _cbcH > 100) ? _cbcW / Math.pow(_cbcH/100, 2) : 23;
+
+  // redFlags 보정
+  var _cbcRfl = (typeof window !== 'undefined' && window._redFlags) ? window._redFlags : [];
+
+  // 몸 나이 (metaAge):
+  //   베이스 = 실제 나이
+  //   + A03(갑상선)×1.2 + A07(자율신경)×0.8 + A05(스트레스)×0.7
+  //   + A06(수면)×0.6 + A01(인슐린)×0.5 + A04(근감소)×0.5
+  //   + BMI>27 ? +2 : 0
+  //   + THYROID redFlag ? +3 : 0
+  //   최소 실제나이-2, 최대 실제나이+20
+  var _metaAgeRaw = _cbcAge
+    + (axisScores['A03']||0) * 1.2
+    + (axisScores['A07']||0) * 0.8
+    + (axisScores['A05']||0) * 0.7
+    + (axisScores['A06']||0) * 0.6
+    + (axisScores['A01']||0) * 0.5
+    + (axisScores['A04']||0) * 0.5
+    + (_cbcBmi > 27 ? 2 : 0)
+    + (_cbcRfl.indexOf('THYROID') >= 0 ? 3 : 0)
+    + (_cbcRfl.indexOf('PCOS')    >= 0 ? 2 : 0);
+  const metaAge = Math.min(_cbcAge + 20, Math.max(_cbcAge - 2, Math.round(_metaAgeRaw)));
+
+  // 복부 위험도 (metaBelly):
+  //   A01(인슐린)×7 + A05(스트레스)×3 + A08(식이)×2.5 + A06(수면)×2 + A04(근감소)×1.5 + A02(염증)×1
+  //   + BMI>25 ? +5 : 0, BMI>30 ? +5 추가
+  //   + DIABETES ? +8, FATTY_LIVER ? +6, PCOS ? +4
+  var _metaBellyRaw =
+      (axisScores['A01']||0) * 7
+    + (axisScores['A05']||0) * 3
+    + (axisScores['A08']||0) * 2.5
+    + (axisScores['A06']||0) * 2
+    + (axisScores['A04']||0) * 1.5
+    + (axisScores['A02']||0) * 1
+    + (_cbcBmi > 25 ? 5 : 0) + (_cbcBmi > 30 ? 5 : 0)
+    + (_cbcRfl.indexOf('DIABETES')    >= 0 ? 8 : 0)
+    + (_cbcRfl.indexOf('FATTY_LIVER') >= 0 ? 6 : 0)
+    + (_cbcRfl.indexOf('PCOS')        >= 0 ? 4 : 0);
+  const metaBelly = Math.min(99, Math.max(10, Math.round(_metaBellyRaw)));
+
+  // 호르몬 부하 (metaHormone):
+  //   A03(갑상선)×6 + A10(호르몬)×5 + A07(자율신경)×4 + A05(스트레스)×3 + A01(인슐린)×2 + A06(수면)×1.5
+  //   + 갱년기(Q_MENOPAUSE) ? +10
+  //   + THYROID ? +8, PCOS ? +7
+  var _menoVal = (answers && (answers['Q_MENOPAUSE']||''));
+  var _isMeno  = (_menoVal === '완경 후' || _menoVal === '완경 중' || _menoVal === 'meno');
+  var _metaHormRaw =
+      (axisScores['A03']||0) * 6
+    + (axisScores['A10']||0) * 5
+    + (axisScores['A07']||0) * 4
+    + (axisScores['A05']||0) * 3
+    + (axisScores['A01']||0) * 2
+    + (axisScores['A06']||0) * 1.5
+    + (_isMeno ? 10 : 0)
+    + (_cbcRfl.indexOf('THYROID') >= 0 ? 8 : 0)
+    + (_cbcRfl.indexOf('PCOS')    >= 0 ? 7 : 0);
+  const metaHormone = Math.min(99, Math.max(10, Math.round(_metaHormRaw)));
+
+  // 체형 불균형 (metaBody):
+  //   A06(수면)×6 + A02(염증)×4 + A04(근감소)×4 + A09(순환)×3 + A07(자율신경)×2 + A08(식이)×1.5
+  //   + STEROID ? +6, HTN ? +4
+  var _metaBodyRaw =
+      (axisScores['A06']||0) * 6
+    + (axisScores['A02']||0) * 4
+    + (axisScores['A04']||0) * 4
+    + (axisScores['A09']||0) * 3
+    + (axisScores['A07']||0) * 2
+    + (axisScores['A08']||0) * 1.5
+    + (_cbcRfl.indexOf('STEROID') >= 0 ? 6 : 0)
+    + (_cbcRfl.indexOf('HTN')     >= 0 ? 4 : 0);
+  const metaBody = Math.min(99, Math.max(10, Math.round(_metaBodyRaw)));
+
+  // realAge를 metrics에 함께 저장 (renderP9에서 비교 문구 생성용)
+  const _metaRealAge = _cbcAge;
 
   return {
     // V3.1 신규
@@ -8444,7 +8535,7 @@ function computeBCCode(axisScores, answers) {
     bcCode, masterKey, bcMaster,
     causalScores, sorted, top1: top1Legacy, top2: top2Legacy,
     firstDomino,
-    metrics: { metaAge, metaBelly, metaHormone, metaBody },
+    metrics: { metaAge, metaBelly, metaHormone, metaBody, realAge: _metaRealAge },
   };
 }
 
@@ -13489,45 +13580,127 @@ function renderP8(metrics, bcCode, axisScores, userName) {
 function renderP9(metrics, bcCode, axisScores, data) {
   // ════════════════════════════════════════════
   // P9 미래 — 시뮬레이터 4주 공개 / 12주 잠김 (업셀링)
-  // ※ 4주/12주 예측값은 백엔드(서우님)가 BC코드별로 채울 자리.
+  // ★ 세션 4: BC코드·axisScores·redFlags 기반 완전 동적 예측값 생성
   // ════════════════════════════════════════════
-  // 현재값은 바디코드(P1)와 동일한 실제 지표를 사용 — 나이 불일치 방지
-  var curAge = (metrics && metrics.metaAge != null) ? metrics.metaAge : 52;
+  var curAge   = (metrics && metrics.metaAge   != null) ? metrics.metaAge   : 52;
   var curBelly = (metrics && metrics.metaBelly != null) ? metrics.metaBelly : 72;
-  var curHorm = (metrics && metrics.metaHormone != null) ? metrics.metaHormone : 88;
+  var curHorm  = (metrics && metrics.metaHormone != null) ? metrics.metaHormone : 88;
+  var realAge  = (metrics && metrics.realAge   != null) ? metrics.realAge   : null;
   function yr(v){ return v + '세'; }
   function pc(v){ return Math.round(v) + '%'; }
 
-  // ── 체중 감량 예측 (goal_weight + weight_loss_pct 기반) ──
-  // goal_weight = 목표(after) 체중, weight_loss_pct = 총 감량률(%).
-  // 현재체중 = goal / (1 - pct/100), 총 감량 kg = 현재 - 목표.
+  // ── axisScores 정규화 (hospital=0~10 그대로) ──
+  var _axs = axisScores || {};
+
+  // ── redFlags 참조 ──
+  var _rfl = window._redFlags || (data && data.redFlags) || [];
+
+  // ── 체중 감량 예측 ──
   function kg(v){ return v + 'kg'; }
   var gw  = (data && data.goal_weight != null && data.goal_weight > 0) ? Number(data.goal_weight) : null;
   var lp  = (data && data.weight_loss_pct != null && data.weight_loss_pct > 0) ? Number(data.weight_loss_pct) : null;
-  var hasWeight = (gw != null && lp != null);
-  var curW=null, totalLoss=null, loss4=null, w4=null;
+  // 현재체중: data.weight(인바디 직접입력) 우선, 없으면 goal/(1-pct) 역산
+  var directW = (data && Number(data.weight) > 30) ? Number(data.weight) : null;
+  var hasWeight = (gw != null && (lp != null || directW != null));
+  var curW = null, totalLoss = null, loss4 = null, w4 = null;
   if (hasWeight) {
-    curW = Math.round(gw / (1 - lp/100) * 10) / 10;   // 현재 체중(추정)
-    totalLoss = Math.round((curW - gw) * 10) / 10;     // 12주 총 감량 kg
-    loss4 = Math.round(totalLoss * 0.4 * 10) / 10;     // 4주 감량(초기 약 40%)
-    w4 = Math.round((curW - loss4) * 10) / 10;         // 4주 후 체중
+    curW      = directW || Math.round(gw / (1 - lp/100) * 10) / 10;
+    lp        = lp || Math.round((curW - gw) / curW * 100);
+    totalLoss = Math.round((curW - gw) * 10) / 10;
+    // ★ 4주 감량 비율: BC별 차등 (순환·호르몬형 초기 느림)
+    var _BC_4W_RATIO = {
+      'BC-1':0.35,'BC-2':0.38,'BC-3':0.42,'BC-4':0.40,'BC-5':0.32,
+      'BC-6':0.40,'BC-7':0.38,'BC-8':0.40,'BC-9':0.40,'BC-10':0.38,
+      'BC-11':0.35,'BC-12':0.35,'BC-13':0.38,'BC-14':0.32,'BC-15':0.38,'BC-16':0.40
+    };
+    var _4wRatio = _BC_4W_RATIO[bcCode] || 0.40;
+    // YOYO 이력 → 초기 감량 더 느리게
+    if (_rfl.indexOf('YOYO') >= 0) _4wRatio = Math.max(0.28, _4wRatio - 0.06);
+    loss4 = Math.round(totalLoss * _4wRatio * 10) / 10;
+    w4    = Math.round((curW - loss4) * 10) / 10;
   }
+
+  // ── BC별 4주/12주 복부위험도·호르몬부하 개선비율 동적 계산 ──
+  // 베이스 개선율(%) — BC별 해당 처방의 특화 효과
+  var _BC_BELLY_IMPROVE_4W = {
+    'BC-1':0.88,'BC-2':0.91,'BC-3':0.85,'BC-4':0.90,'BC-5':0.92,
+    'BC-6':0.90,'BC-7':0.88,'BC-8':0.86,'BC-9':0.91,'BC-10':0.90,
+    'BC-11':0.90,'BC-12':0.87,'BC-13':0.86,'BC-14':0.90,'BC-15':0.90,'BC-16':0.86
+  };
+  var _BC_BELLY_IMPROVE_12W = {
+    'BC-1':0.58,'BC-2':0.65,'BC-3':0.52,'BC-4':0.60,'BC-5':0.68,
+    'BC-6':0.57,'BC-7':0.58,'BC-8':0.54,'BC-9':0.64,'BC-10':0.63,
+    'BC-11':0.62,'BC-12':0.55,'BC-13':0.52,'BC-14':0.60,'BC-15':0.62,'BC-16':0.54
+  };
+  var _BC_HORM_IMPROVE_4W = {
+    'BC-1':0.92,'BC-2':0.91,'BC-3':0.90,'BC-4':0.88,'BC-5':0.88,
+    'BC-6':0.91,'BC-7':0.92,'BC-8':0.90,'BC-9':0.91,'BC-10':0.90,
+    'BC-11':0.90,'BC-12':0.91,'BC-13':0.88,'BC-14':0.87,'BC-15':0.88,'BC-16':0.90
+  };
+  var _BC_HORM_IMPROVE_12W = {
+    'BC-1':0.65,'BC-2':0.64,'BC-3':0.60,'BC-4':0.55,'BC-5':0.55,
+    'BC-6':0.58,'BC-7':0.65,'BC-8':0.62,'BC-9':0.64,'BC-10':0.63,
+    'BC-11':0.62,'BC-12':0.64,'BC-13':0.54,'BC-14':0.52,'BC-15':0.55,'BC-16':0.56
+  };
+
+  // axisScores 보정: 높은 축일수록 개선 효과 더 크게 (처방이 딱 맞으니까)
+  // A01↑ → 복부 개선 추가, A03/A10↑ → 호르몬 개선 추가
+  var _a01n = Math.min(1, (_axs['A01']||0) / 10);  // 0~1 정규화
+  var _a03n = Math.min(1, (_axs['A03']||0) / 10);
+  var _a10n = Math.min(1, (_axs['A10']||0) / 10);
+
+  var belly4w  = (_BC_BELLY_IMPROVE_4W[bcCode]  || 0.90) - _a01n * 0.03;   // A01 높을수록 초기 개선 크게
+  var belly12w = (_BC_BELLY_IMPROVE_12W[bcCode] || 0.57) - _a01n * 0.05;
+  var horm4w   = (_BC_HORM_IMPROVE_4W[bcCode]   || 0.90) - (_a03n + _a10n) * 0.02;
+  var horm12w  = (_BC_HORM_IMPROVE_12W[bcCode]  || 0.58) - (_a03n + _a10n) * 0.04;
+
+  // redFlag 보정: DIABETES → 복부 개선 더 크게, THYROID → 호르몬 개선 더 크게
+  if (_rfl.indexOf('DIABETES') >= 0)   { belly4w -= 0.02; belly12w -= 0.04; }
+  if (_rfl.indexOf('THYROID')  >= 0)   { horm4w  -= 0.02; horm12w  -= 0.04; }
+  if (_rfl.indexOf('PCOS')     >= 0)   { horm4w  -= 0.02; horm12w  -= 0.03; }
+
+  belly4w  = Math.max(0.70, Math.min(0.97, belly4w));
+  belly12w = Math.max(0.40, Math.min(0.80, belly12w));
+  horm4w   = Math.max(0.75, Math.min(0.97, horm4w));
+  horm12w  = Math.max(0.40, Math.min(0.80, horm12w));
+
+  // ── 몸 나이 개선 — 실제 나이 기준으로 계산 ──
+  // curAge = 현재 몸 나이 (지표), realAge = 실제 생물학적 나이
+  // 4주: 몸나이 -2~-4세 (BC별 차이)
+  // 12주: 몸나이 -6~-14세 (처방 완수 시)
+  var _BC_AGE_IMPROVE_4W = {
+    'BC-1':2,'BC-2':2,'BC-3':3,'BC-4':3,'BC-5':2,
+    'BC-6':3,'BC-7':2,'BC-8':3,'BC-9':2,'BC-10':2,
+    'BC-11':2,'BC-12':2,'BC-13':3,'BC-14':3,'BC-15':2,'BC-16':3
+  };
+  var _BC_AGE_IMPROVE_12W = {
+    'BC-1':7,'BC-2':7,'BC-3':10,'BC-4':9,'BC-5':7,
+    'BC-6':8,'BC-7':7,'BC-8':9,'BC-9':7,'BC-10':7,
+    'BC-11':7,'BC-12':7,'BC-13':10,'BC-14':8,'BC-15':7,'BC-16':9
+  };
+  var _ageImprove4  = _BC_AGE_IMPROVE_4W[bcCode]  || 3;
+  var _ageImprove12 = _BC_AGE_IMPROVE_12W[bcCode] || 8;
+  // 몸나이 격차(몸나이-실제나이)가 클수록 개선 폭 더 크게
+  if (realAge && curAge > realAge + 5)  { _ageImprove4 += 1; _ageImprove12 += 2; }
+  if (realAge && curAge > realAge + 10) { _ageImprove4 += 1; _ageImprove12 += 2; }
+  var age4w  = Math.max(realAge || 30, curAge - _ageImprove4);
+  var age12w = Math.max((realAge || 30) - 2, curAge - _ageImprove12);
 
   var SIM = {
     free:[].concat(
       hasWeight ? [{l:'체중', f:kg(curW), t:kg(w4)}] : [],
       [
-        {l:'몸 나이',  f:yr(curAge),  t:yr(Math.max(curAge-3, 30))},
-        {l:'복부 위험도', f:pc(curBelly), t:pc(curBelly*0.9)},
-        {l:'호르몬 부하', f:pc(curHorm),  t:pc(curHorm*0.9)}
+        {l:'몸 나이',     f:yr(curAge),          t:yr(age4w)},
+        {l:'복부 위험도', f:pc(curBelly),         t:pc(Math.round(curBelly * belly4w))},
+        {l:'호르몬 부하', f:pc(curHorm),          t:pc(Math.round(curHorm  * horm4w))}
       ]
     ),
     lock:[].concat(
       hasWeight ? [{l:'체중', f:kg(curW), t:kg(gw)}] : [],
       [
-        {l:'몸 나이',  f:yr(curAge),  t:yr(Math.max(curAge-11, 28))},
-        {l:'복부 위험도', f:pc(curBelly), t:pc(curBelly*0.53)},
-        {l:'호르몬 부하', f:pc(curHorm),  t:pc(curHorm*0.51)}
+        {l:'몸 나이',     f:yr(curAge),          t:yr(age12w)},
+        {l:'복부 위험도', f:pc(curBelly),         t:pc(Math.round(curBelly * belly12w))},
+        {l:'호르몬 부하', f:pc(curHorm),          t:pc(Math.round(curHorm  * horm12w))}
       ]
     )
   };
@@ -13566,12 +13739,13 @@ function renderP9(metrics, bcCode, axisScores, data) {
   setTimeout(function(){ var fc=document.getElementById('rxp-free-card'); if(fc) fc.classList.add('lit'); }, 400);
 
   // ── 아래 비교 카드(혼자4주/함께12주)에 체중 kg + 몸 나이 주입 ──
+  // ★ 세션 4: _ageImprove4/12 (BC별·axis별 동적값) 사용
   (function(){
-    var age4 = Math.min(curAge - Math.max(curAge-3,30), 3);   // 4주 몸나이 감소
-    var age12 = Math.min(curAge - Math.max(curAge-11,28), 11); // 12주 몸나이 감소
-    var k4 = document.getElementById('up12-kg-4w');
+    var age4  = _ageImprove4;    // BC별 동적 감소 세수 (4주)
+    var age12 = _ageImprove12;   // BC별 동적 감소 세수 (12주)
+    var k4  = document.getElementById('up12-kg-4w');
     var k12 = document.getElementById('up12-kg-12w');
-    var a4 = document.getElementById('up12-age-4w');
+    var a4  = document.getElementById('up12-age-4w');
     var a12 = document.getElementById('up12-age-12w');
     if (hasWeight) {
       if (k4)  k4.innerHTML  = '-' + loss4 + '<span>kg</span>';
@@ -15330,27 +15504,44 @@ function renderP7(userName, bcCode, bcMaster, metrics, ohaengType, mbtiType, ful
       var tdee = nut.tdee;
       // 목표체중 기준 BMR — 12주 뒤 대사 상승 계산에만 쓴다.
       // (nut.bmr은 이제 현재 체중 기준이므로 여기서 따로 구한다)
-      var bmrGoal = Math.round(10*goalW + 6.25*height - 5*35 - 161);
+      // ★ 세션 4: 나이 보정 BMR (35 고정 → 실제 나이 사용)
+      var _fgAge = (data && data.age) ? Number(data.age) : 35;
+      var bmrGoal = Math.round(10*goalW + 6.25*height - 5*_fgAge - 161);
       var deficit = nut.deficit!=null ? nut.deficit : Math.max(0, tdee-targetKcal);
 
       // ── 현재 BMR / TDEE ──
-      // computeNutrition과 같은 기준(현재 체중·활동계수 1.44)을 그대로 쓴다.
-      // 여기서 따로 계산하면 STEP1 소비값과 STEP2 결손이 어긋난다.
       var bmrCur = nut.bmr;
       var tdeeCur = nut.tdee;
 
       // ── 체지방률 ──
-      // 우선순위: 질문지 입력(data.body_fat) → 키·몸무게 추정(Deurenberg 여성, 35세)
+      // 우선순위: 인바디 직접입력(data.body_fat) → Deurenberg 나이 보정식
       var bmiCur = curW/Math.pow(height/100,2);
-      function deurenbergFemale(bmi){ return 1.20*bmi + 0.23*35 - 5.4; } // 여성 -5.4
+      // ★ 나이 보정 Deurenberg (여성): BF% = 1.20*BMI + 0.23*Age - 5.4
+      function deurenbergFemale(bmi, age){ return 1.20*bmi + 0.23*(age||35) - 5.4; }
       var bfCur = (data && data.body_fat!=null && Number(data.body_fat)>0)
                 ? Number(data.body_fat)
-                : round1(Math.min(48, Math.max(15, deurenbergFemale(bmiCur))));
+                : round1(Math.min(52, Math.max(14, deurenbergFemale(bmiCur, _fgAge))));
       // 현재 지방량(kg)
       var fatMassCur = round1(curW*bfCur/100);
-      // 12주 후 체지방률: 근손실 없는 감량 가정 → 빠진 무게의 80%를 지방으로 차감
+      // ★ 세션 4: 체지방 낙폭 비율 — BC코드·axisScores·redFlags 기반 동적 계산
+      var _fgBcCode = (data && (data.bc_code || data.bc_primary)) || '';
+      var _fgAxs    = window.__AXIS_SCORES_FINAL__ || (data && data.axisScores) || {};
+      var _fgRfl    = window._redFlags || (data && data.redFlags) || [];
+      var _fgA01    = Number(_fgAxs['A01']||0);
+      var _fgA04    = Number(_fgAxs['A04']||0);
+      var _BC_FAT_RATIO = {
+        'BC-1':0.75,'BC-2':0.78,'BC-3':0.85,'BC-4':0.80,'BC-5':0.78,
+        'BC-6':0.80,'BC-7':0.80,'BC-8':0.85,'BC-9':0.78,'BC-10':0.78,
+        'BC-11':0.68,'BC-12':0.75,'BC-13':0.83,'BC-14':0.78,'BC-15':0.78,'BC-16':0.80
+      };
+      var _fatRatio = _BC_FAT_RATIO[_fgBcCode] || 0.80;
+      _fatRatio += (_fgA01 >= 7 ? 0.04 : _fgA01 >= 5 ? 0.02 : 0);  // 인슐린↑ → 지방연소↑
+      _fatRatio -= (_fgA04 >= 7 ? 0.06 : _fgA04 >= 5 ? 0.03 : 0);  // 근감소↑ → 근손실 보정
+      if (_fgRfl.indexOf('YOYO')    >= 0) _fatRatio -= 0.05;
+      if (_fgRfl.indexOf('STEROID') >= 0) _fatRatio -= 0.04;
+      _fatRatio = Math.max(0.60, Math.min(0.90, _fatRatio));
       var lossKg = round1(curW-goalW);
-      var fatLost = round1(lossKg*0.8);
+      var fatLost = round1(lossKg * _fatRatio);
       var fatMassGoal = Math.max(0, round1(fatMassCur-fatLost));
       var bfGoal = round1(Math.max(12, fatMassGoal/goalW*100));
       var bfDrop = round1(bfCur-bfGoal);
