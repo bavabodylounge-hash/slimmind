@@ -5200,22 +5200,27 @@ app.get('/result-hospital/:id', async (c) => {
   const id = c.req.param('id')
   try {
     let html = await fetchAsset(c.env.ASSETS, '/result-hospital.html')
-    // 결과 ID를 hospitalInit 스크립트 바로 앞에 주입
-    // (</head> 앞 주입 시 hospitalInit보다 뒤에 실행되어 ID를 못 읽는 타이밍 버그 방지)
     const INJECT_MARKER = '<!-- ══ 병원 전용: API 연동 + __RESULT__ 주입 ══ -->'
-    const idScript = `<script>window.__HOSPITAL_RESULT_ID__ = ${JSON.stringify(id)};</script>\n`
+    // __HOSPITAL_RESULT_ID__ + 배포 타임스탬프(캐시 버스팅용) 주입
+    const deployTs = Date.now()
+    const idScript = `<script>window.__HOSPITAL_RESULT_ID__ = ${JSON.stringify(id)};window.__DEPLOY_TS__ = ${deployTs};</script>\n`
     if (html.includes(INJECT_MARKER)) {
       html = html.replace(INJECT_MARKER, idScript + INJECT_MARKER)
     } else {
-      // 마커 없을 때 폴백: 기존 방식
       html = html.replace('</head>', idScript + '</head>')
     }
+    // 새로고침 시 항상 Worker를 통과하도록 — 브라우저·CDN 캐시 완전 차단
+    const now = new Date().toUTCString()
     return c.html(html, 200, {
-      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0, s-maxage=0',
       'Pragma': 'no-cache',
       'Expires': '0',
       'Surrogate-Control': 'no-store',
+      'CDN-Cache-Control': 'no-store',
+      'Cloudflare-CDN-Cache-Control': 'no-store',
       'Vary': '*',
+      'Last-Modified': now,
+      'ETag': `"${id}-${deployTs}"`,
     })
   } catch (e: any) {
     return c.html('<h2>결과지를 불러올 수 없습니다</h2>', 500)
