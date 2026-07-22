@@ -13921,27 +13921,67 @@ async function loadHospitalResult() {
       try { axisScores = JSON.parse(axisScores); } catch(_) { axisScores = {}; }
     }
 
-    // raw_answers → answers 병합
+    // raw_answers 구조 분석
+    // 병원용 질문지 저장 구조:
+    //   raw_answers.userInfo  : { name, gender }
+    //   raw_answers.stage1    : { "1": val, "2": val, ... }  (숫자 index 기반)
+    //   raw_answers.stage2    : { "1": val, ... "10": {체중변화이력 객체}, "12": val(갱년기 int) }
+    //   raw_answers.stage3    : { "0": val, ... }
+    //   raw_answers.pfProfile : { saju, mbti, blood, face, birthY/M/D, ... }
     const rawAns = r.raw_answers || {};
+    const userInfo  = rawAns.userInfo  || {};
+    const pfProfile = rawAns.pfProfile || {};
+    const stage2    = rawAns.stage2    || {};
+    const stage3    = rawAns.stage3    || {};
+
+    // gender 정규화: "여성"/"남성" → bc-engine 호환
+    const genderRaw = r.gender || userInfo.gender || '';
+    const genderNorm = genderRaw;  // bc-engine: '여성'/'남성' 직접 수용
+
+    // bc-engine answers 구조로 변환
     const answers = Object.assign({}, rawAns, {
-      Q01: r.user_name || rawAns.Q01 || '',
-      Q02: r.gender    || rawAns.Q02 || '',
+      // 기본 인적사항
+      Q01:  r.user_name || userInfo.name || '',
+      Q02:  genderNorm,
+      name: r.user_name || userInfo.name || '',
+      // pfProfile 필드 직접 노출 (bc-engine/result 참조용)
+      Q_SAJU:   pfProfile.saju  || '',
+      Q_MBTI:   pfProfile.mbti  || r.mbti_full || '',
+      Q_BLOOD:  pfProfile.blood || '',
+      Q_FACE:   pfProfile.face  || '',
+      // stage 데이터는 raw_answers에 이미 포함되어 있음
+      // stage2[12]가 갱년기 선택값인 경우 Q_MENOPAUSE로 매핑
+      // (stage2[10]은 체중변화이력 객체 — menopause 아님 주의)
     });
 
-    // stage 데이터 병합 (bc-engine용 — stage2, stage3 등)
+    // 갱년기 처리: stage2[12]가 int 0~4 (병원 질문지 기준)
+    // 0=없음, 1=신호조금, 2=갱년기변환, 3=완경후, 4=호르몬치료
+    const menoIdx = stage2[12];
+    if (menoIdx !== undefined && menoIdx !== null && !answers['Q_MENOPAUSE']) {
+      const MENO = { 2: '갱년기 변환형', 3: '완경 후', 4: '호르몬 치료형' };
+      if (MENO[Number(menoIdx)]) answers['Q_MENOPAUSE'] = MENO[Number(menoIdx)];
+      if (Number(menoIdx) === 4) answers['Q_HRT'] = 'hrt';
+    }
+    // DB 컬럼 stage_answers가 null이 아닌 경우 우선 적용
     if (r.stage2_answers) answers.stage2 = r.stage2_answers;
     if (r.stage3_answers) answers.stage3 = r.stage3_answers;
 
+    // 나이 계산 (pfProfile.birthY 기반)
+    const birthY = pfProfile.birthY ? Number(pfProfile.birthY) : null;
+    const calcAge = birthY ? (new Date().getFullYear() - birthY) : (r.age || null);
+
     return {
-      userName:        r.user_name || '고객',
+      userName:        r.user_name || userInfo.name || '고객',
       axisScores:      axisScores,
-      ohaengType:      r.ohaeng_type || '',
-      mbtiType:        r.mbti_full   || '',
+      ohaengType:      r.ohaeng_type || pfProfile.saju || '',
+      mbtiType:        r.mbti_full   || pfProfile.mbti || '',
+      bloodType:       pfProfile.blood || '',
+      faceShape:       pfProfile.face  || '',
       answers:         answers,
       bc_code:         r.bc_code || '',
       bc_primary:      r.bc_code || '',
-      gender:          r.gender  || '',
-      age:             r.age     || '',
+      gender:          genderNorm,
+      age:             calcAge,
       height:          r.height  || '',
       weight:          r.weight  || '',
       goal_weight:     r.goal_weight     != null ? Number(r.goal_weight)     : null,
@@ -13981,7 +14021,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (resultData.answers && (!resultData.axisScores || Object.keys(resultData.axisScores).length === 0)) {
       if (typeof calculateAxisScores === 'function') {
         const calc = calculateAxisScores(resultData.answers);
-        resultData = {
+        // 기존 필드 전부 유지하고 axisScores만 보완 (bloodType/faceShape/bc_code 등 손실 방지)
+        resultData = Object.assign({}, resultData, {
           userName:   resultData.userName
                    || resultData.answers['Q01']
                    || resultData.answers['name']
@@ -13991,8 +14032,7 @@ window.addEventListener('DOMContentLoaded', async () => {
           mbtiType:   resultData.mbtiType
                    || resultData.answers['Q_MBTI']
                    || null,
-          answers:    resultData.answers, consultant_name: resultData.consultant_name || ''
-        };
+        });
       }
     }
 
@@ -14006,9 +14046,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ── raw_answers.stage2 → Q_MENOPAUSE 매핑 ──
-    // stage2[10]의 opt index → Q_MENOPAUSE 키로 변환 (bc-engine용)
-    // opts: 0=갱년기 변환형, 1=호르몬 치료형(미레나/수술), 2=완경(자연적), 3=신호조금, 4=해당없음
-    if (resultData.answers) {
+    // 병원용 플로우(_from_hospital)는 loadHospitalResult()에서 stage2[12]로 이미 처리
+    // 일반 플로우만 stage2[10] 매핑 적용 (stage2[10]은 병원 질문지에서 체중변화이력 객체)
+    if (resultData.answers && !resultData._from_hospital) {
       const ans = resultData.answers;
       // raw_answers 구조 (stage2가 있는 경우)
       const stage2 = ans.stage2 || {};
