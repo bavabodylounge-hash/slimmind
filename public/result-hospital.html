@@ -14003,9 +14003,12 @@ window.addEventListener('DOMContentLoaded', async () => {
   try {
     // 병원용 플로우: __HOSPITAL_RESULT_ID__ 존재 시 전용 API 우선 로드
     let resultData = null;
+    console.log('[INIT] __HOSPITAL_RESULT_ID__=', window.__HOSPITAL_RESULT_ID__, '| path=', location.pathname);
     if (window.__HOSPITAL_RESULT_ID__
         || location.pathname.startsWith('/result-hospital/')) {
+      console.log('[INIT] 병원 플로우 진입');
       resultData = await loadHospitalResult();
+      console.log('[INIT] loadHospitalResult 결과:', resultData ? {userName:resultData.userName, bc:resultData.bc_code, ohaeng:resultData.ohaengType} : 'NULL');
     }
 
     // 일반 플로우 폴백
