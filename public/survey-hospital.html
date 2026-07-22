@@ -17520,11 +17520,17 @@ function showAnalyzing(){
     onDone(){
       if(titleEl) titleEl.textContent=_azTH?`รหัสของคุณ${name}เสร็จสมบูรณ์แล้ว`:`${name}님의 코드가 완성됐습니다`;
       /* ★★ v70 — 결과지 표시 제거(서우님: "마지막에 나오는 결과지 없애라니깐").
-         제출은 콘솔의 "코드가 완성됐습니다"에서 끝난다. 결과지는 상담·전송용으로
-         별도 전달되므로 화면에는 띄우지 않는다. decideCode 는 코드 산출·저장에
-         쓰일 수 있어 계산만 유지한다. */
+         화면에 코드 결과지는 띄우지 않되, decideCode → showCodeResult → submitDiagnosis
+         체인은 반드시 실행해야 DB에 저장됨. showCodeResult 내부에서 DISP 모달 또는
+         바로 submitDiagnosis({}), waitScreen 표시까지 이어진다. */
       setTimeout(()=>{
-        try{ window._smFinalCode = decideCode(); }catch(_){}
+        try{
+          const codeResult = decideCode();
+          window._smFinalCode = codeResult;
+          showCodeResult(codeResult);   // ← 제출 체인 진입점
+        }catch(e){
+          console.error('[showAnalyzing] decideCode/showCodeResult 오류:', e);
+        }
       },700);
     }
   });
