@@ -14013,18 +14013,71 @@ async function loadHospitalResult() {
     const s2 = rawAns.stage2 || {};
     const s3 = rawAns.stage3 || {};
 
-    // ── 헬퍼 함수 ──
-    // multi:true 카드는 배열, single은 숫자
+    // ── stage2 텍스트→인덱스 역매핑 테이블 ──
+    // survey-hospital.html opts 텍스트 순서 그대로 (0-based)
+    const S2_TEXT_MAP = {
+      // no:1 유전 가계력 (multi)
+      1: ['아버지가 그래요', '어머니가 그래요', '형제·자매가 그래요', '없어요'],
+      // no:2 부모 체형
+      2: ['아버지를 닮아 배부터 나와요', '어머니를 닮아 하체부터 쪄요', '둘 다 조금씩', '부모님과 다른 편이에요'],
+      // no:3 진단 질환 (multi)
+      3: ['다낭성난소증후군 (생리불순·여드름)', '당뇨·당뇨 전단계', '고혈압', '갑상선 질환 (기능저하·항진)', '지방간', '역류성 식도염·위장 질환', '우울증·불안장애', '해당 없어요'],
+      // no:5 냉증
+      5: ['네, 여름에도 손발이 차요', '조금 그런 편이에요', '오히려 더위를 타요'],
+      // no:6 장기복용 약물 (multi)
+      6: ['스테로이드 계열', '항우울제·신경정신과 약', '피임약·호르몬제', '아스피린·항응고제', '이소트레티노인(여드름약)', '탈모약 (프로페시아·미녹시딜)', '없어요'],
+      // no:7 식욕억제제
+      7: ['네, 여러 번 먹었어요', '한두 번 시도했어요', '없어요'],
+      // no:8 살찐 계기 (multi)
+      8: ['이직·과로·스트레스', '이별·심리적 충격', '수술·입원·약물', '잦은 회식·음주', '금연·생활변화', '특별한 계기 없이 서서히'],
+      // no:9 시술이력 (multi)
+      9: ['지방흡입', '지방분해 주사·시술', '리프팅 (실·레이저·초음파)', '보톡스·필러', '복부성형 (복벽 교정)', '체형 관련 수술은 없어요'],
+      // no:11 출산
+      11: ['네, 출산 후 체형이 변했어요', '출산했지만 큰 변화는 없어요', '해당 없어요'],
+      // no:12 갱년기
+      12: ['네, 체형이 복부 중심으로 바뀌었어요', '미레나·호르몬 치료·수술로 생리가 없어요', '완경(자연적) 이후예요', '신호가 조금 있어요', '해당 없어요'],
+      // no:13 흡연
+      13: ['피워요', '끊은 지 얼마 안 됐어요', '안 피워요'],
+      // no:14 음주
+      14: ['주 3회 이상', '주 1~2회', '거의 안 마셔요'],
+    };
+
+    // ── 텍스트/숫자 모두 처리하는 헬퍼 ──
+    // survey가 숫자로 저장된 경우도, 한글 텍스트로 저장된 경우도 모두 인덱스(숫자)로 반환
+    const s2ToIdx = (no, val) => {
+      if (val === undefined || val === null) return null;
+      if (typeof val === 'number') return val;
+      if (typeof val === 'string') {
+        const map = S2_TEXT_MAP[no];
+        if (!map) return null;
+        // 완전 일치 우선
+        let idx = map.findIndex(t => t === val);
+        if (idx >= 0) return idx;
+        // 부분 일치 fallback (앞 5글자)
+        const shortVal = val.slice(0, 5);
+        idx = map.findIndex(t => t.startsWith(shortVal));
+        return idx >= 0 ? idx : null;
+      }
+      return null;
+    };
+
     const s2Multi = (no) => {
       const v = s2[no];
       if (v === undefined || v === null) return null;
-      if (Array.isArray(v)) return v.length > 0 ? v.map(Number) : null;
-      return [Number(v)];
+      const arr = Array.isArray(v) ? v : [v];
+      if (arr.length === 0) return null;
+      const idxArr = arr.map(item => s2ToIdx(no, item)).filter(i => i !== null);
+      return idxArr.length > 0 ? idxArr : null;
     };
     const s2Single = (no) => {
       const v = s2[no];
       if (v === undefined || v === null) return null;
-      return Number(v);
+      if (Array.isArray(v)) {
+        // single 카드인데 배열로 왔으면 첫 번째 값 사용
+        if (v.length === 0) return null;
+        return s2ToIdx(no, v[0]);
+      }
+      return s2ToIdx(no, v);
     };
     const s3Val = (gi) => {
       const v = s3[gi];
