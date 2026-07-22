@@ -13587,7 +13587,177 @@ function buildP4ToneOpening(nm, ohaengLabel, isFeeling) {
 
 function renderAll(data) {
   const { userName='고객', axisScores={}, ohaengType='목', mbtiType='INFP' } = data;
-  const answers = data.answers || {}; window.__LAST_ANSWERS__ = answers; // ★ [CRITICAL-FIX] 전역 저장 — 모든 개인화 블록의 answers 소스
+  const answers = data.answers || {}; // raw_answers 전체 구조 = {stage1, stage2, stage3, stage4, desire, pfProfile, ...}
+
+  // ★★★ [v4-MAPPING-ENGINE] stage1/stage2/stage3 → Q_* 키 변환 레이어 ★★★
+  // hospital 결과지와 동일한 매핑 엔진을 v4에도 적용
+  // raw_answers.stage1: {1:val, 2:val, ...} — 1차 외형 관찰
+  // raw_answers.stage2: {1:[], 2:1, 3:[], ..., 10:{체중변화이력}} — 2차 배경분석
+  // raw_answers.stage3: {0:val, ..., 36:val} — 3차 원인분석 (gi 인덱스)
+  (function buildV4AnswerKeys() {
+    try {
+      const rawAns   = answers; // answers === raw_answers 전체
+      const pfProf   = rawAns.pfProfile || {};
+      const s2       = rawAns.stage2 || {};
+      const s3       = rawAns.stage3 || {};
+      const s1       = rawAns.stage1 || {};
+
+      // ── stage2 텍스트→인덱스 역매핑 (survey-hospital.html opts 순서 그대로) ──
+      const S2_TEXT_MAP = {
+        1:  ['아버지가 그래요','어머니가 그래요','형제·자매가 그래요','없어요'],
+        2:  ['아버지를 닮아 배부터 나와요','어머니를 닮아 하체부터 쪄요','둘 다 조금씩','부모님과 다른 편이에요'],
+        3:  ['다낭성난소증후군 (생리불순·여드름)','당뇨·당뇨 전단계','고혈압','갑상선 질환 (기능저하·항진)','지방간','역류성 식도염·위장 질환','우울증·불안장애','해당 없어요'],
+        5:  ['네, 여름에도 손발이 차요','조금 그런 편이에요','오히려 더위를 타요'],
+        6:  ['스테로이드 계열','항우울제·신경정신과 약','피임약·호르몬제','아스피린·항응고제','이소트레티노인(여드름약)','탈모약 (프로페시아·미녹시딜)','없어요'],
+        7:  ['네, 여러 번 먹었어요','한두 번 시도했어요','없어요'],
+        8:  ['이직·과로·스트레스','이별·심리적 충격','수술·입원·약물','잦은 회식·음주','금연·생활변화','특별한 계기 없이 서서히'],
+        9:  ['지방흡입','지방분해 주사·시술','리프팅 (실·레이저·초음파)','보톡스·필러','복부성형 (복벽 교정)','체형 관련 수술은 없어요'],
+        11: ['네, 출산 후 체형이 변했어요','출산했지만 큰 변화는 없어요','해당 없어요'],
+        12: ['네, 체형이 복부 중심으로 바뀌었어요','미레나·호르몬 치료·수술로 생리가 없어요','완경(자연적) 이후예요','신호가 조금 있어요','해당 없어요'],
+        13: ['피워요','끊은 지 얼마 안 됐어요','안 피워요'],
+        14: ['주 3회 이상','주 1~2회','거의 안 마셔요'],
+      };
+      const s2ToIdx = function(no, val) {
+        if (val === undefined || val === null) return null;
+        if (typeof val === 'number') return val;
+        if (typeof val === 'string') {
+          var map = S2_TEXT_MAP[no]; if (!map) return null;
+          var idx = map.findIndex(function(t){ return t === val; });
+          if (idx >= 0) return idx;
+          var sv = val.slice(0,5);
+          idx = map.findIndex(function(t){ return t.startsWith(sv); });
+          return idx >= 0 ? idx : null;
+        }
+        return null;
+      };
+      const s2Multi  = function(no) {
+        var v = s2[no]; if (v === undefined || v === null) return null;
+        var arr = Array.isArray(v) ? v : [v];
+        if (arr.length === 0) return null;
+        var r2 = arr.map(function(item){ return s2ToIdx(no, item); }).filter(function(i){ return i !== null; });
+        return r2.length > 0 ? r2 : null;
+      };
+      const s2Single = function(no) {
+        var v = s2[no]; if (v === undefined || v === null) return null;
+        if (Array.isArray(v)) { if (v.length === 0) return null; return s2ToIdx(no, v[0]); }
+        return s2ToIdx(no, v);
+      };
+      const s3Val = function(gi) {
+        var v = s3[gi]; if (v === undefined || v === null) return undefined;
+        return (typeof v === 'number') ? v : (v === 'unknown' ? undefined : Number(v));
+      };
+
+      // ── bc-engine 호환 flat key 빌드 ──
+      var bc2 = {};
+
+      // pfProfile
+      if (!answers.Q_SAJU  && pfProf.saju)  bc2.Q_SAJU  = pfProf.saju;
+      if (!answers.Q_MBTI  && pfProf.mbti)  bc2.Q_MBTI  = pfProf.mbti;
+      if (!answers.Q_BLOOD && pfProf.blood) bc2.Q_BLOOD = pfProf.blood;
+      if (!answers.Q02) { var graw = answers.userInfo && answers.userInfo.gender ? answers.userInfo.gender : (data.gender||''); if (graw) bc2.Q02 = graw; }
+
+      // stage2 → bc-engine 키
+      if (!answers.q1_family && s2Multi(1))          bc2.q1_family          = s2Multi(1);
+      if (!answers.q2_parent && s2Single(2)!==null)  bc2.q2_parent          = s2Single(2);
+      if (!answers.disease   && s2Multi(3))          bc2.disease            = s2Multi(3);
+      if (!answers.q5_cold   && s2Single(5)!==null)  bc2.q5_cold            = s2Single(5);
+      if (!answers.long_term_drugs && s2Multi(6))    bc2.long_term_drugs    = s2Multi(6);
+      if (!answers.appetite_suppressant && s2Single(7)!==null) bc2.appetite_suppressant = s2Single(7);
+      if (!answers.q8_trigger && s2Multi(8))         bc2.q8_trigger         = s2Multi(8);
+      if (!answers.past_procedures && s2Multi(9))    bc2.past_procedures    = s2Multi(9);
+      if (!answers.q11_event && s2Single(11)!==null) bc2.q11_event          = s2Single(11);
+      var _mIdx = s2Single(12);
+      if (!answers.q12_menopause && _mIdx!==null)    bc2.q12_menopause      = _mIdx;
+      if (!answers.q13_smoke && s2Single(13)!==null) bc2.q13_smoke          = s2Single(13);
+      if (!answers.q14_alcohol && s2Single(14)!==null) bc2.q14_alcohol      = s2Single(14);
+
+      // 갱년기 Q_MENOPAUSE 문자 매핑
+      if (!answers.Q_MENOPAUSE && _mIdx !== null) {
+        var MENO = {0:'갱년기 변환형',1:'호르몬 치료형',2:'완경 후'};
+        if (MENO[_mIdx]) { bc2.Q_MENOPAUSE = MENO[_mIdx]; if (_mIdx===1) bc2.Q_HRT='hrt'; }
+      }
+
+      // stage2 no:4 경계소견 → Q_PRE_DIABETES 등
+      var s2_4 = s2Multi(4);
+      if (s2_4) {
+        if (s2_4.indexOf(0)>-1) bc2.Q_PRE_DIABETES     = 'yes';
+        if (s2_4.indexOf(1)>-1) bc2.Q_BORDERLINE_LIVER = 'yes';
+        if (s2_4.indexOf(2)>-1) bc2.Q_BORDERLINE_CHOL  = 'yes';
+        if (s2_4.indexOf(3)>-1) bc2.Q_BORDERLINE_HTN   = 'yes';
+        bc2.q4_borderline = s2_4;
+      }
+
+      // stage2 no:10 체중 변화 궤적 → Q_WT_PATTERN
+      if (!answers.Q_WT_PATTERN) {
+        var s2_10 = s2[10];
+        if (s2_10 && typeof s2_10 === 'object') {
+          bc2.Q_WT_PATTERN = s2_10.pattern || null;
+          bc2.Q_WT_AMP     = s2_10.amp     || null;
+          bc2.Q_WT_CYC     = s2_10.cyc     || null;
+          if (s2_10.pattern === 'yoyo') bc2.Q_YOYO = 'yes';
+        } else if (typeof s2_10 === 'string') {
+          bc2.Q_WT_PATTERN = s2_10;
+          if (s2_10 === 'yoyo') bc2.Q_YOYO = 'yes';
+        }
+      }
+
+      // stage2 no:16 옷 사이즈 → Q_SIZE_CURRENT / Q_SIZE_GOAL
+      if (!answers.Q_SIZE_CURRENT) {
+        var s2_16 = s2[16];
+        if (s2_16 && typeof s2_16 === 'object') {
+          if (s2_16.sz != null) bc2.Q_SIZE_CURRENT = s2_16.sz;
+          if (s2_16.tg != null) bc2.Q_SIZE_GOAL    = s2_16.tg;
+          if (s2_16.fit != null) bc2.Q_SIZE_FIT    = s2_16.fit;
+        }
+      }
+
+      // stage1 → Q_BODY_CHANGE / Q_TARGET_ZONE / Q_MIRROR_ZONE
+      if (!answers.Q_BODY_CHANGE) {
+        var s1_10 = s1[10]; if (s1_10 !== undefined && s1_10 !== null) bc2.Q_BODY_CHANGE = s1_10;
+      }
+      if (!answers.Q_TARGET_ZONE) {
+        var s1_11 = s1[11]; if (s1_11 !== undefined && s1_11 !== null) bc2.Q_TARGET_ZONE = s1_11;
+      }
+      if (!answers.Q_MIRROR_ZONE) {
+        var s1_1 = s1[1]; if (s1_1 !== undefined && s1_1 !== null) bc2.Q_MIRROR_ZONE = s1_1;
+      }
+
+      // stage3 gi=35(운동스타일) gi=36(계획스타일) → Q_EX_STYLE / Q_PLAN_STYLE
+      if (!answers.Q_EX_STYLE) {
+        var a10_ex = s3Val(35);
+        if (a10_ex !== undefined) bc2.Q_EX_STYLE = a10_ex === 0 ? 'intense' : 'calm';
+      }
+      if (!answers.Q_PLAN_STYLE) {
+        var a10_plan = s3Val(36);
+        if (a10_plan !== undefined) bc2.Q_PLAN_STYLE = a10_plan === 0 ? 'plan' : 'spontaneous';
+      }
+
+      // PCOS / 대사증후군
+      var diseases = bc2.disease || answers.disease;
+      if (Array.isArray(diseases)) {
+        if (diseases.indexOf(0)>-1 && !answers.Q_PCOS) bc2.Q_PCOS = 'yes';
+        if ((diseases.indexOf(1)>-1||diseases.indexOf(2)>-1) && !answers.Q_metabolic) bc2.Q_metabolic = 'yes';
+      }
+
+      // desire → window.__DESIRE__ 보강 (moodLabel/who)
+      var desireRaw = rawAns.desire || {};
+      if (desireRaw.moodLabel && !(window.__DESIRE__ && window.__DESIRE__.moodLabel)) {
+        window.__DESIRE__ = Object.assign({}, window.__DESIRE__ || {}, desireRaw);
+      }
+
+      // ── bc2 → answers에 병합 (기존 Q_* 키 우선, bc2는 폴백) ──
+      Object.assign(answers, bc2);
+      window.__LAST_ANSWERS__ = answers; // 병합 후 다시 저장
+
+      console.log('[v4-MAPPING] Q_BODY_CHANGE:', answers.Q_BODY_CHANGE,
+        '| Q_EX_STYLE:', answers.Q_EX_STYLE, '| Q_PLAN_STYLE:', answers.Q_PLAN_STYLE,
+        '| Q_TARGET_ZONE:', answers.Q_TARGET_ZONE, '| Q_MIRROR_ZONE:', answers.Q_MIRROR_ZONE,
+        '| Q_WT_PATTERN:', answers.Q_WT_PATTERN, '| Q_SIZE_CURRENT:', answers.Q_SIZE_CURRENT,
+        '| q5_cold:', answers.q5_cold, '| desire.moodLabel:', (window.__DESIRE__||{}).moodLabel);
+    } catch(e) { console.warn('[v4-MAPPING] 매핑 엔진 오류:', e); }
+  })();
+  // ★★★ [v4-MAPPING-ENGINE] END ★★★
+
   try{ injectCoverInfo(userName, data.consultant_name || ''); }catch(e){}
 
   // V4.2: computeBCCodeSafe → TIER2 evidence badge + TIER3 경계형 처리 포함
@@ -13815,6 +13985,25 @@ function renderAll(data) {
     var _gend = answers['Q02'] || '';
     if (_gend) { _s2['gender'] = _gend; _s2['q01'] = _gend; }
   }
+
+  // ★ [v4-MAPPING-ENGINE→_s2 반영] 매핑 엔진이 answers에 채운 Q_* / q*_ 키를 _s2에도 반영
+  // renderP5/renderP6/renderP7 등이 _s2를 직접 참조하므로 동기화 필요
+  (function syncMappingToS2(){
+    var _kMap = {
+      q1_family:'q1_family', q2_parent:'q2_parent', disease:'disease',
+      q5_cold:'q5_cold', long_term_drugs:'long_term_drugs', appetite_suppressant:'appetite_suppressant',
+      q8_trigger:'q8_trigger', past_procedures:'past_procedures', q11_event:'q11_event',
+      q12_menopause:'q12_menopause', q13_smoke:'q13_smoke', q14_alcohol:'q14_alcohol',
+      q4_borderline:'q4_borderline', Q_MENOPAUSE:'Q_MENOPAUSE', Q02:'Q02'
+    };
+    Object.keys(_kMap).forEach(function(k){
+      if (_s2[k] === undefined && answers[k] !== undefined) _s2[k] = answers[k];
+    });
+    // cold_limbs 폴백 (q5_cold와 동일)
+    if (_s2['cold_limbs'] === undefined && answers['q5_cold'] !== undefined) _s2['cold_limbs'] = answers['q5_cold'];
+    if (_s2['smoke'] === undefined && answers['q13_smoke'] !== undefined) _s2['smoke'] = answers['q13_smoke'];
+    if (_s2['alcohol'] === undefined && answers['q14_alcohol'] !== undefined) _s2['alcohol'] = answers['q14_alcohol'];
+  })();
 
   // ── [V5.0] 신규 필드: pfProfile / redFlags / desire / confidence / bfMap ──
   // raw_answers 전체가 answers로 주입됨 → answers.pfProfile 경로로 접근
