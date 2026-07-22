@@ -13938,43 +13938,182 @@ async function loadHospitalResult() {
     const genderRaw = r.gender || userInfo.gender || '';
     const genderNorm = genderRaw;  // bc-engine: '여성'/'남성' 직접 수용
 
-    // bc-engine answers 구조로 변환
-    const answers = Object.assign({}, rawAns, {
-      // 기본 인적사항
-      Q01:  r.user_name || userInfo.name || '',
-      Q02:  genderNorm,
-      name: r.user_name || userInfo.name || '',
-      // pfProfile 필드 직접 노출 (bc-engine/result 참조용)
-      Q_SAJU:   pfProfile.saju  || '',
-      Q_MBTI:   pfProfile.mbti  || r.mbti_full || '',
-      Q_BLOOD:  pfProfile.blood || '',
-      Q_FACE:   pfProfile.face  || '',
-      // stage 데이터는 raw_answers에 이미 포함되어 있음
-      // stage2[12]가 갱년기 선택값인 경우 Q_MENOPAUSE로 매핑
-      // (stage2[10]은 체중변화이력 객체 — menopause 아님 주의)
-    });
+    // ═══════════════════════════════════════════════════════════════════
+    // bc-engine 호환 flat key 변환 레이어 (2026-07)
+    //
+    // raw_answers 실제 저장 구조:
+    //   stage1: {1:0, 2:2, ...}           — 1차 외형 관찰 (bms)
+    //   stage2: {1:[], 2:1, 3:[], ...}    — 2차 배경분석 카드 (no 번호가 키)
+    //   stage3: {0:2, 1:1, ..., 36:0}     — 3차 원인분석 (stage3Flat gi 인덱스가 키)
+    //   pfProfile: {saju, mbti, blood, face, ...}
+    //
+    // bc-engine detectBackground()가 읽는 키:
+    //   q1_family, q2_parent, disease, long_term_drugs, appetite_suppressant,
+    //   q8_trigger, past_procedures, q11_event, q12_menopause,
+    //   Q_MENOPAUSE, Q02
+    //
+    // stage2 카드 번호 → bc-engine 키 매핑
+    //   no:1  (유전 가계력, multi)    → q1_family    [0=아버지,1=어머니,2=형제,3=없음]
+    //   no:2  (부모 체형)             → q2_parent    [0=아버지닮아,1=어머니닮아,2=둘다,3=다름]
+    //   no:3  (진단 질환, multi)      → disease      [0=PCOS,1=당뇨,2=고혈압,3=갑상선,4=지방간,5=역류성,6=우울증,7=없음]
+    //   no:6  (장기복용 약물, multi)  → long_term_drugs [0=스테로이드,1=항우울제,2=피임약,3=아스피린,4=이소트레,5=탈모약,6=없음]
+    //   no:7  (식욕억제제)            → appetite_suppressant [0=여러번,1=한두번,2=없음]
+    //   no:8  (살찐 계기, multi)      → q8_trigger   [0=이직과로,1=이별충격,2=수술입원,3=음주,4=금연,5=서서히]
+    //   no:9  (시술이력, multi)       → past_procedures [0=지방흡입,1=주사시술,2=리프팅,3=보톡스,4=복부성형,5=없음]
+    //   no:11 (출산)                  → q11_event    [0=출산후변화,1=출산후변화없음,2=해당없음]
+    //   no:12 (갱년기)                → q12_menopause [0=복부변환,1=호르몬치료,2=완경,3=신호조금,4=해당없음]
+    //   no:13 (흡연)                  → q13_smoke    [0=흡연,1=금연중,2=비흡연]
+    //   no:14 (음주)                  → q14_alcohol  [0=주3회이상,1=주1~2회,2=거의안함]
+    //
+    // stage3 gi 인덱스 → bc-engine 축 점수 계산용 (detectBackground와는 무관)
+    //   gi=0~3:  A01 인슐린·내장지방
+    //   gi=4~6:  A02 림프·순환·부종
+    //   gi=7~11: A03 호르몬·대사
+    //   gi=12~15: A04 근감소·근기능
+    //   gi=16~20: A05 소화·장내세균
+    //   gi=21~23: A06 골격·체형 불균형
+    //   gi=24~27: A07 만성 스트레스·코르티솔
+    //   gi=28~31: A08 심리·식이행동
+    //   gi=32~34: A09 대사 위험인자
+    //   gi=35~36: A10 기질·성향
+    // ═══════════════════════════════════════════════════════════════════
 
-    // 갱년기 처리: stage2[12] — 병원 질문지 no:12 "갱년기·완경 관련 변화" 응답 인덱스
-    // opts 실제 순서 (survey-hospital.html no:12):
-    //   0 = "체형이 복부 중심으로 바뀌었어요"        → 갱년기 변환형
-    //   1 = "미레나·호르몬 치료·수술로 생리가 없어요" → 호르몬 치료형 (HRT)
-    //   2 = "완경(자연적) 이후예요"                  → 완경 후
-    //   3 = "아직 생리는 해요, 신호가 조금 있어요"   → (갱년기 신호, 단순 참고)
-    //   4 = "해당 없음"                              → 갱년기 아님 → Q_MENOPAUSE 설정 안 함
-    const menoIdx = stage2[12];
-    if (menoIdx !== undefined && menoIdx !== null && !answers['Q_MENOPAUSE']) {
-      const MENO = {
-        0: '갱년기 변환형',
-        1: '호르몬 치료형',
-        2: '완경 후'
-        // 3(신호조금), 4(해당없음)은 갱년기로 처리하지 않음
-      };
-      if (MENO[Number(menoIdx)]) answers['Q_MENOPAUSE'] = MENO[Number(menoIdx)];
-      if (Number(menoIdx) === 1) answers['Q_HRT'] = 'hrt';  // 미레나·호르몬 치료
+    // stage2/stage3 파싱
+    const s2 = rawAns.stage2 || {};
+    const s3 = rawAns.stage3 || {};
+
+    // ── 헬퍼 함수 ──
+    // multi:true 카드는 배열, single은 숫자
+    const s2Multi = (no) => {
+      const v = s2[no];
+      if (v === undefined || v === null) return null;
+      if (Array.isArray(v)) return v.length > 0 ? v.map(Number) : null;
+      return [Number(v)];
+    };
+    const s2Single = (no) => {
+      const v = s2[no];
+      if (v === undefined || v === null) return null;
+      return Number(v);
+    };
+    const s3Val = (gi) => {
+      const v = s3[gi];
+      if (v === undefined || v === null) return undefined;
+      return (typeof v === 'number') ? v : (v === 'unknown' ? undefined : Number(v));
+    };
+
+    // ── bc-engine 호환 키 직접 매핑 ──
+    const bcAnswers = {
+      // === 기본 인적사항 ===
+      Q01:    r.user_name || userInfo.name || '',
+      Q02:    genderNorm,
+      name:   r.user_name || userInfo.name || '',
+
+      // === pfProfile ===
+      Q_SAJU:  pfProfile.saju  || '',
+      Q_MBTI:  pfProfile.mbti  || r.mbti_full || '',
+      Q_BLOOD: pfProfile.blood || '',
+      Q_FACE:  pfProfile.face  || '',
+
+      // === stage2 → bc-engine 키 직접 매핑 ===
+
+      // no:1 유전 가계력 (multi) → q1_family
+      // [0=아버지,1=어머니,2=형제,3=없음]
+      q1_family:    s2Multi(1),
+
+      // no:2 부모 체형 → q2_parent
+      // [0=아버지닮아,1=어머니닮아,2=둘다,3=다름]
+      q2_parent:    s2Single(2),
+
+      // no:3 진단 질환 (multi) → disease
+      // [0=PCOS,1=당뇨,2=고혈압,3=갑상선,4=지방간,5=역류성,6=우울증,7=없음]
+      disease:      s2Multi(3),
+
+      // no:5 냉증 → q5_cold
+      q5_cold:      s2Single(5),
+
+      // no:6 장기복용 약물 (multi) → long_term_drugs
+      // [0=스테로이드,1=항우울제,2=피임약,3=아스피린,4=이소트레티노인,5=탈모약,6=없음]
+      long_term_drugs:      s2Multi(6),
+
+      // no:7 식욕억제제 → appetite_suppressant
+      // [0=여러번,1=한두번,2=없음]
+      appetite_suppressant: s2Single(7),
+
+      // no:8 살찐 계기 (multi) → q8_trigger
+      // [0=이직과로,1=이별충격,2=수술입원,3=음주,4=금연,5=서서히]
+      q8_trigger:   s2Multi(8),
+
+      // no:9 시술이력 (multi) → past_procedures
+      // [0=지방흡입,1=주사시술,2=리프팅,3=보톡스,4=복부성형,5=없음]
+      past_procedures: s2Multi(9),
+
+      // no:11 출산 → q11_event
+      // [0=출산후체형변화,1=출산후변화없음,2=해당없음]
+      q11_event:    s2Single(11),
+
+      // no:12 갱년기 → q12_menopause (숫자 그대로 — bc-engine이 0~4 숫자로 읽음)
+      // [0=복부변환=갱년기,1=호르몬치료=갱년기,2=완경=갱년기,3=신호조금,4=해당없음]
+      q12_menopause: s2Single(12),
+
+      // no:13 흡연
+      q13_smoke:    s2Single(13),
+
+      // no:14 음주
+      q14_alcohol:  s2Single(14),
+    };
+
+    // ── 갱년기 Q_MENOPAUSE 문자 매핑 (bc-engine 에스테틱 호환) ──
+    {
+      const menoIdx = s2Single(12);
+      const MENO = { 0: '갱년기 변환형', 1: '호르몬 치료형', 2: '완경 후' };
+      if (menoIdx !== null && MENO[menoIdx]) {
+        bcAnswers['Q_MENOPAUSE'] = MENO[menoIdx];
+        if (menoIdx === 1) bcAnswers['Q_HRT'] = 'hrt';
+      }
     }
+
+    // ── PCOS 별도 플래그 (disease[0] = PCOS) ──
+    {
+      const diseases = s2Multi(3);
+      if (diseases && diseases.indexOf(0) > -1) {
+        bcAnswers['Q_PCOS'] = 'yes';
+      }
+      // 대사증후군 (disease: 당뇨=1, 고혈압=2)
+      if (diseases && (diseases.indexOf(1) > -1 || diseases.indexOf(2) > -1)) {
+        bcAnswers['Q_metabolic'] = 'yes';
+      }
+    }
+
+    // ── 출산 Q3/birth_history 호환 키도 설정 ──
+    {
+      const q11 = s2Single(11);
+      // q11_event: 0=출산후변화, 1=출산후변화없음, 2=해당없음
+      if (q11 === 0 || q11 === 1) {
+        bcAnswers['Q3'] = 'yes';  // 출산 경험 있음
+        bcAnswers['birth_history'] = 'yes';
+      }
+    }
+
+    // ── rawAns 나머지 보존 (혹시 다른 키가 필요한 경우) + bcAnswers 우선 ──
+    const answers = Object.assign({}, rawAns, bcAnswers);
+
     // DB 컬럼 stage_answers가 null이 아닌 경우 우선 적용
     if (r.stage2_answers) answers.stage2 = r.stage2_answers;
     if (r.stage3_answers) answers.stage3 = r.stage3_answers;
+
+    // 디버그 로그
+    console.log('[answers 매핑] q1_family:', answers.q1_family,
+      '| q2_parent:', answers.q2_parent,
+      '| disease:', answers.disease,
+      '| q8_trigger:', answers.q8_trigger,
+      '| past_procedures:', answers.past_procedures,
+      '| long_term_drugs:', answers.long_term_drugs,
+      '| appetite_suppressant:', answers.appetite_suppressant,
+      '| q11_event:', answers.q11_event,
+      '| q12_menopause:', answers.q12_menopause,
+      '| Q_MENOPAUSE:', answers.Q_MENOPAUSE,
+      '| Q02:', answers.Q02
+    );
 
     // 나이 계산 (pfProfile.birthY 기반)
     const birthY = pfProfile.birthY ? Number(pfProfile.birthY) : null;
