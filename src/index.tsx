@@ -2569,6 +2569,31 @@ app.get('/api/admin/migrate', requireRole('MASTER'), async (c) => {
   return c.json({ ok: true, results })
 })
 
+// ─── /survey-hospital.html 직접 접근 차단 ────────────────────────
+// 구버전 직접 URL 접근 완전 차단 — 반드시 /h/:code 를 통해야만 접근 가능
+app.get('/survey-hospital.html', (c) => {
+  return c.html(`<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>잘못된 접근입니다</title>
+  <style>
+    body { font-family: -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #f5f5f5; }
+    .box { background: white; border-radius: 16px; padding: 48px 40px; text-align: center; max-width: 400px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
+    h2 { color: #333; margin: 0 0 12px; font-size: 20px; }
+    p { color: #666; margin: 0; font-size: 15px; line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>⚠️ 잘못된 접근입니다</h2>
+    <p>병원 전용 질문지는 담당자가 발송한<br>링크를 통해서만 이용하실 수 있습니다.</p>
+  </div>
+</body>
+</html>`, 403)
+})
+
 // ─── /h/:code — 병원용 질문지 화이트라벨 진입 라우트 ─────────────
 // 병원 B2B 파트너 전용: survey_category='hospital' 인 B2B 코드만 허용
 app.get('/h/:code', async (c) => {
