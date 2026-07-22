@@ -17146,12 +17146,18 @@ function renderP6(userName, fullCode, ohaengType, inputData, bcCode_p6, redFlags
         nutrition:      w.nutrition      || null,
       };
     });
+    // today.html nutrition 재계산용 신체 스펙 수집 (v4: axisScores 0~100 스케일 그대로 저장)
+    var _specForMetaV4 = window.__RESULT__ || window.__DIAG_DATA__ || {};
     var _meta_v4 = {
       bcCode:    bcCode_p6 || inputData.bc_code || '',
       ohaengKey: ohaengType|| inputData.ohaeng_type || '',
       redFlags:  Array.isArray(redFlags_p6) ? redFlags_p6 : [],
       userName:  userName  || '',
-      goalWeight: inputData.goal_weight || null,
+      // 신체 스펙 (today.html에서 nutrition 재계산에 사용)
+      curWeight:  Number(_specForMetaV4.weight) || Number(_specForMetaV4.current_weight) || Number(_specForMetaV4._specWeight) || null,
+      goalWeight: Number(inputData.goal_weight) || Number(_specForMetaV4.goal_weight) || Number(_specForMetaV4.target_weight) || null,
+      height:     Number(_specForMetaV4.height) || Number(_specForMetaV4._specHeight) || null,
+      age:        Number(_specForMetaV4.age) || null,
       axisScores: inputData.axisScores  || inputData.axis_scores || {},
       dxTop3:    window.__DX_TOP3__ || [],  // 11대 진단 상위 3개 (renderP6 완료 전이면 빈 배열)
       savedAt:   Date.now(),

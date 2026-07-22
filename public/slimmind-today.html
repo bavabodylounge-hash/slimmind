@@ -215,6 +215,16 @@ body{
 .dx-actions{margin-top:7px;display:flex;flex-direction:column;gap:4px;}
 .dx-action-item{font-size:11px;font-weight:700;color:var(--ink);padding-left:10px;position:relative;}
 .dx-action-item::before{content:'→';position:absolute;left:0;color:var(--vis);}
+/* item-sub: item-main 바로 아래 보조 텍스트 (주차·kcal·BC코드 등) */
+.item-sub{font-size:11px;font-weight:700;color:var(--muted);margin-top:5px;letter-spacing:-.2px;line-height:1.4;}
+.item.ex .item-sub{color:#5a6e3a;}
+.item.di .item-sub{color:#a07030;}
+.item.re .item-sub{color:#9b4530;}
+/* P6 딥링크 버튼 */
+.dx-link-btn{flex:1.3;padding:10px 8px;border-radius:11px;border:none;
+  background:var(--vis);color:#fff;font-size:11.5px;font-weight:800;
+  cursor:pointer;font-family:inherit;text-align:center;transition:all .15s;}
+.dx-link-btn:active{opacity:.87;transform:scale(.98);}
 .dx-cta-row{margin-top:10px;display:flex;gap:7px;}
 .dx-cta-btn{flex:1;padding:10px 8px;border-radius:11px;border:1.5px solid var(--line);
   background:#fff;font-size:11.5px;font-weight:800;color:var(--ink);cursor:pointer;
@@ -566,75 +576,243 @@ function renderHead(){
 }
 
 /* ── 오늘 할 일 세 줄 (완전 개인화) ── */
+/* ══════════════════════════════════════════════════════════════
+   todayTasks() — 완전 동적 처방
+   우선순위:
+     ① W(주차 데이터) 존재 → 운동/식단/회복 텍스트 + 요일별 분기
+     ② nutrition: W.nutrition → META 기반 today 재계산
+     ③ axisScores: 경고/alert 동적 주입
+     ④ W=null fallback: BC계열+오행+redFlags 기반 최소 처방
+   ══════════════════════════════════════════════════════════════ */
 function todayTasks(){
+  // ── 공통 헬퍼: axisScore 정규화 (hospital 0~10 / v4 0~100 → 모두 0~10) ──
   var axN = function(k){
     var v = Number(AXIS_SCORES[k] || AXIS_SCORES[k.toLowerCase()] || 0);
-    // v4는 0~100 스케일일 수 있음 → /10 정규화
-    return v > 10 ? v/10 : v;
+    return v > 10 ? v / 10 : v;
   };
-  var _a05 = axN('A05'), _a06 = axN('A06'), _a01 = axN('A01');
+  var _a01 = axN('A01'), _a02 = axN('A02'), _a04 = axN('A04'),
+      _a05 = axN('A05'), _a06 = axN('A06'), _a09 = axN('A09'), _a10 = axN('A10');
 
+  // ── BC 계열 분류 ──
+  var _bc       = (BC_CODE || '').toUpperCase();
+  var _bcIsCirc = /^BC-(1|2|10)$/.test(_bc);
+  var _bcIsMus  = /^BC-(4|7|8|11)$/.test(_bc);
+  var _bcIsHorm = /^BC-(3|5|6|9|12|13|14|15|16)$/.test(_bc);
+
+  // ── nutrition 계산: W.nutrition 우선, 없으면 META 기반 재계산 ──
+  var nutr = _calcNutritionForToday();
+
+  // ── W=null: BC+오행+redFlags 기반 동적 처방 생성 ──
   if (!W){
-    // fallback: BC 코드 기반 최소 처방
-    var _fbEx = BC_CODE ? _bcFallbackExercise() : '오늘의 운동 처방';
-    var _fbDi = BC_CODE ? _bcFallbackDiet()     : '오늘의 끼니 처방';
-    var _fbRe = _a05 >= 7 ? '4·7·8 호흡 10분 + 마그네슘 취침 전' :
-                _a06 >= 7 ? '스마트폰 취침 90분 전 차단 + 22시 취침' : '오늘 밤 회복 루틴';
-    return [
-      {k:'ex', nm:'운동', tx:_fbEx, tags:[], nutr:null, warn:'', alert:''},
-      {k:'di', nm:'식단', tx:_fbDi, tags:[], nutr:null, warn:'', alert:''},
-      {k:'re', nm:'회복', tx:_fbRe, tags:[], nutr:null, warn:'', alert:''},
-    ];
+    return _buildFallbackTasks(_a01, _a05, _a06, nutr);
   }
 
-  // 운동: 요일별 분리
+  // ── 운동: 요일별 분기 (exercise_detail "월·수·금 — xxx / 화·목·토 — yyy") ──
   var ex = W.exercise_ok || '오늘의 운동';
   if (W.exercise_detail){
     var parts = String(W.exercise_detail).split('/');
-    for (var i=0;i<parts.length;i++){
-      if (parts[i].indexOf(DAYS[TODAY]) >= 0){
-        ex = parts[i].replace(/^[^—\-]*[—\-]\s*/,'').trim();
+    for (var pi = 0; pi < parts.length; pi++){
+      if (parts[pi].indexOf(DAYS[TODAY]) >= 0){
+        ex = parts[pi].replace(/^[^—\-]*[—\-]\s*/, '').trim();
         break;
       }
     }
   }
+  // axisScores 기반 운동 조정
+  if (_a05 >= 7) ex = ex.replace(/(HIIT|고강도 인터벌|인터벌)/gi, '저강도 유산소·호흡');
 
-  // 스트레스/수면 경고 텍스트
+  // ── 운동 경고/alert ──
   var exWarn = '', exAlert = '';
-  if (_a05 >= 7) exAlert = '⚡ 코르티솔↑ — HIIT·고강도 인터벌 오늘 금지. 4·7·8 호흡으로 대체';
-  if (W.exercise_ban && W.exercise_ban.length < 50) exWarn = '🚫 ' + trim(W.exercise_ban, 50);
+  if (_a05 >= 7)   exAlert = '⚡ 코르티솔↑ — 오늘 HIIT 금지. 4·7·8 호흡 10분으로 대체';
+  else if (_bcIsCirc && _a09 >= 7) exAlert = '💧 순환↓ — 저강도 + 하지 거상 스트레칭 우선';
+  else if (_bcIsMus && _a04 >= 7) exAlert = '💪 근감소↑ — 오늘 저항운동 필수. 공복 고강도 금지';
+  if (W.exercise_ban) exWarn = '🚫 ' + trim(W.exercise_ban, 55);
 
+  // ── 식단 경고/alert ──
   var diWarn = '', diAlert = '';
-  if (_a01 >= 7) diAlert = '🩸 인슐린↑ — 식후 15분 이내 워킹 의무. 정제당 오늘 완전 차단';
-  if (RED_FLAGS.indexOf('DIABETES') >= 0) diWarn = '⚠ 당뇨 주의: 저GI 식품 우선 + 식후 혈당 측정';
+  if (_a01 >= 7)                          diAlert = '🩸 인슐린↑ — 식후 15분 워킹 의무 · 정제당 완전 차단';
+  else if (RED_FLAGS.indexOf('DIABETES') >= 0) diAlert = '🩸 당뇨 주의 — 저GI 식품 우선 · 식후 혈당 측정';
+  if (RED_FLAGS.indexOf('FATTY_LIVER') >= 0)   diWarn  = '⚠ 지방간 — 액상과당·가공 주스 오늘 금지';
+  else if (RED_FLAGS.indexOf('YOYO') >= 0)     diWarn  = '⚠ 요요 이력 — 극단 결식 금지 · 단백질 우선';
+  if (W.diet_ban && !diWarn) diWarn = '🚫 ' + trim(W.diet_ban, 55);
 
+  // ── 회복 경고/alert ──
   var reWarn = '', reAlert = '';
-  if (_a06 >= 7) reAlert = '😴 수면질↓ — 스마트폰 90분 전 차단 + 22시 이전 취침 오늘 필수';
-  if (_a05 >= 7 && !reAlert) reAlert = '🧘 스트레스↑ — 취침 전 마그네슘(글리시네이트) + 호흡 10분';
+  if (_a06 >= 7)        reAlert = '😴 수면질↓ — 스마트폰 취침 90분 전 차단 · 22시 취침 필수';
+  else if (_a05 >= 7)   reAlert = '🧘 스트레스↑ — 취침 전 마그네슘 + 4·7·8 호흡 10분';
+  if (RED_FLAGS.indexOf('HTN') >= 0 && !reWarn) reWarn = '⚠ 혈압 관리 — 운동 전 준비운동 10분 필수';
 
-  // keyFocus 태그 (W에서)
-  var kFocus = Array.isArray(W.keyFocus) ? W.keyFocus.slice(0,3) : [];
+  // ── keyFocus 태그 (W에서 최대 3개) ──
+  var kFocus = Array.isArray(W.keyFocus) ? W.keyFocus.slice(0, 3) : [];
 
-  // nutrition 배지
-  var nutr = W.nutrition || null;
+  // ── 식단 텍스트: diet_ok + 오행 보정 문구 ──
+  var dietTx = W.diet_ok || '오늘의 균형 식단';
+  if (W.ohaeng_caution) dietTx = dietTx + ' · ' + trim(W.ohaeng_caution, 25);
 
   return [
-    { k:'ex', nm:'운동', tx:trim(ex, 40),
-      tags: kFocus.slice(0,2),
+    { k:'ex', nm:'운동',
+      tx:   trim(ex, 45),
+      sub:  W.phase ? W.phase + ' · ' + WK + '주차' : WK + '주차',
+      tags: kFocus.slice(0, 2),
       nutr: null,
       warn: exWarn, alert: exAlert },
-    { k:'di', nm:'식단', tx:trim(W.diet_ok || '오늘의 끼니 처방', 40),
-      tags: kFocus.slice(0,1),
+    { k:'di', nm:'식단',
+      tx:   trim(dietTx, 45),
+      sub:  nutr ? nutr.kcal + ' kcal · 단백 ' + nutr.proteinG + 'g' : '',
+      tags: kFocus.slice(0, 1),
       nutr: nutr ? [
         nutr.kcal + ' kcal',
         '단백질 ' + nutr.proteinG + 'g',
-        '탄 ' + nutr.carbG + 'g',
+        '탄수 '   + nutr.carbG    + 'g',
+        '지방 '   + nutr.fatG     + 'g',
       ] : [],
       warn: diWarn, alert: diAlert },
-    { k:'re', nm:'회복', tx:trim(W.recovery_ok || '오늘 밤 루틴', 40),
-      tags: kFocus.slice(2,3),
+    { k:'re', nm:'회복',
+      tx:   trim(W.recovery_ok || '오늘 밤 회복 루틴', 45),
+      sub:  W.diet_macro_note ? trim(W.diet_macro_note, 30) : '',
+      tags: kFocus.slice(2, 3),
       nutr: null,
       warn: reWarn, alert: reAlert },
+  ];
+}
+
+/* ── nutrition 재계산: W.nutrition 우선, META 신체스펙 기반 fallback ──
+   hospital.html의 computeNutrition 로직을 경량 버전으로 재현
+   BC_MACRO + redFlags 보정 + 주차별 kcal 배율 적용 */
+function _calcNutritionForToday(){
+  // 1순위: W에 nutrition이 이미 있으면 그대로 사용
+  if (W && W.nutrition && W.nutrition.kcal) return W.nutrition;
+
+  // 2순위: META 신체스펙 기반 재계산
+  if (!META) return null;
+  var cw  = META.curWeight  || 65;
+  var gw  = META.goalWeight || Math.round(cw * 0.9);
+  var h   = META.height     || 162;
+  var ag  = META.age        || 35;
+  var bc  = (META.bcCode || BC_CODE || 'BC-6').toUpperCase();
+  var rfl = RED_FLAGS || [];
+
+  if (cw <= 0 || gw <= 0) return null;
+
+  // BMR (Mifflin-St Jeor 여성 기준)
+  var bmr  = Math.round(10 * cw + 6.25 * h - 5 * ag - 161);
+  // 활동계수: A04(근감소) 축 기반
+  var a04v = Number((AXIS_SCORES['A04'] || AXIS_SCORES['a04'] || 0));
+  if (a04v > 10) a04v = a04v / 10;
+  var actF = a04v >= 7 ? 1.375 : a04v >= 4 ? 1.44 : 1.55;
+  var tdee = Math.round(bmr * actF);
+
+  // 결손 칼로리 (12주 기준)
+  var lossKg  = Math.max(0, cw - gw);
+  var deficit = Math.round(lossKg * 7700 / 84);
+  var MIN_KCAL = 1200;
+  if (tdee - deficit < MIN_KCAL) deficit = Math.max(0, tdee - MIN_KCAL);
+  var baseKcal = Math.max(MIN_KCAL, tdee - deficit);
+
+  // BC별 탄단지 기준 비율
+  var BC_MACRO = {
+    'BC-1':[38,32,30],'BC-2':[40,30,30],'BC-3':[33,33,34],'BC-4':[38,32,30],
+    'BC-5':[40,30,30],'BC-6':[38,32,30],'BC-7':[40,30,30],'BC-8':[42,30,28],
+    'BC-9':[35,35,30],'BC-10':[38,30,32],'BC-11':[40,32,28],'BC-12':[35,33,32],
+    'BC-13':[35,32,33],'BC-14':[38,32,30],'BC-15':[33,35,32],'BC-16':[35,33,32],
+  };
+  var m = BC_MACRO[bc] || [38, 32, 30];
+  var cP = m[0], pP = m[1], fP = m[2];
+
+  // redFlags 보정
+  if (rfl.indexOf('DIABETES')    >= 0){ cP = Math.max(25, cP-5); pP = Math.min(40, pP+3); fP = 100-cP-pP; }
+  if (rfl.indexOf('YOYO')        >= 0){ deficit = Math.round(deficit*0.75); baseKcal = Math.max(MIN_KCAL, tdee-deficit); pP = Math.min(40, pP+3); cP = Math.max(30, cP-2); fP = 100-cP-pP; }
+  if (rfl.indexOf('PCOS')        >= 0){ cP = Math.max(28, cP-5); pP = Math.min(38, pP+2); fP = 100-cP-pP; }
+  if (rfl.indexOf('FATTY_LIVER') >= 0){ cP = Math.max(30, cP-3); fP = Math.min(38, fP+3); pP = 100-cP-fP; }
+  if (rfl.indexOf('STEROID')     >= 0){ pP = Math.min(42, pP+5); fP = Math.max(20, fP-5); cP = 100-pP-fP; }
+
+  // 주차별 kcal 배율 (computeNutrition weekVariants와 동일 로직)
+  var wkMul = 1.0;
+  if      (WK === 1)  wkMul = (rfl.indexOf('YOYO')>=0) ? 1.0 : 0.90;  // 회복기 진입
+  else if (WK === 3)  wkMul = 1.0;
+  else if (WK === 4)  { wkMul = 1.0; cP = Math.max(23, cP-10); pP = Math.min(42, pP+5); fP = 100-cP-pP; }
+  else if (WK === 5)  { wkMul = 0.95; cP = Math.max(23, cP-5);  pP = Math.min(45, pP+2); fP = 100-cP-pP; }
+  else if (WK === 6)  { wkMul = 0.93; cP = Math.max(23, cP-6);  pP = Math.min(45, pP+3); fP = 100-cP-pP; }
+  else if (WK === 7)  { wkMul = 0.91; cP = Math.max(23, cP-7);  pP = Math.min(45, pP+3); fP = 100-cP-pP; }
+  else if (WK === 8)  { wkMul = 0.90; cP = Math.max(23, cP-7);  pP = Math.min(45, pP+3); fP = 100-cP-pP; }
+  else if (WK === 9)  { wkMul = 0.89; cP = Math.max(23, cP-8);  pP = Math.min(45, pP+3); fP = 100-cP-pP; }
+  else if (WK === 10) { wkMul = 1.0;  baseKcal = Math.round(baseKcal*0.93 + (Math.round(10*gw+6.25*h-5*ag-161)*1.44)*0.07); }
+  else if (WK === 11) { wkMul = 1.0;  baseKcal = Math.round(baseKcal*0.7  + (Math.round(10*gw+6.25*h-5*ag-161)*1.44)*0.3);  }
+  else if (WK === 12) { wkMul = 1.0;  baseKcal = Math.round((10*gw+6.25*h-5*ag-161)*1.44); }
+
+  var kcal     = Math.max(MIN_KCAL, Math.round(baseKcal * wkMul));
+  var carbG    = Math.round(kcal * (cP/100) / 4);
+  var proteinG = Math.round(kcal * (pP/100) / 4);
+  var fatG     = Math.round(kcal * (fP/100) / 9);
+
+  return { kcal: kcal, carbG: carbG, proteinG: proteinG, fatG: fatG,
+           note: WK + '주차 · ' + bc + ' · 목표 ' + gw + 'kg 기반 계산' };
+}
+
+/* ── W=null fallback: BC계열 + 오행 + axisScores + redFlags 기반 최소 처방 ── */
+function _buildFallbackTasks(a01, a05, a06, nutr){
+  var _bc    = (BC_CODE || '').toUpperCase();
+  var _oh    = OHAENG_KEY || '';
+  var _rfl   = RED_FLAGS  || [];
+
+  // 오행별 운동 키워드
+  var _ohExMap = {
+    '목':'필라테스·스트레칭 60분 (간기 이완)','화':'유산소 심박 강화 50분',
+    '토':'코어·밸런스 운동 50분','금':'호흡+저항밴드 45분','수':'수영·아쿠아 50분',
+  };
+  // 오행별 식이 키워드
+  var _ohDietMap = {
+    '목':'새콤한 발효식품·사과식초','화':'쓴맛 녹황색채소·셀러리',
+    '토':'고구마·단호박 균형식','금':'생강 소량+폐기 식품','수':'해조류·검은콩',
+  };
+
+  // BC계열 운동 처방
+  var exMap = {
+    'BC-1':'수영 40분 + 하지 거상 스트레칭 15분','BC-2':'경추 교정 필라테스 30분 + 흉추 폼롤러 15분',
+    'BC-3':'식후 15분 워킹 의무 + 저강도 저항운동 30분','BC-4':'아침 공복 산책 30분 + 코어 10분',
+    'BC-5':'힐링 요가 40분 + 한방 온열 병행','BC-6':'중강도 유산소 30분 + 4·7·8 호흡 10분',
+    'BC-7':'저항운동 45분 + 식후 단백질 30g','BC-8':'복합 기능 운동 50분 + 유산소 20분',
+    'BC-9':'식전 10분 워킹 + 필라테스 30분','BC-10':'아쿠아 유산소 40분 + 림프 드레나쥐',
+    'BC-11':'체형 교정 도수 스트레칭 + 코어 30분','BC-12':'저강도 유산소 40분 + 호르몬 요가',
+    'BC-13':'인슐린 저항 개선 — 식후 워킹 20분 + 저항운동 30분',
+    'BC-14':'수면 회복 요가 30분 + 4·7·8 호흡','BC-15':'유산소 40분 + 대사 촉진 써킷',
+    'BC-16':'균형 복합 운동 45분',
+  };
+  // BC계열 식단 처방
+  var diMap = {
+    'BC-1':'저염·수분 식단 — 파인애플·오이·수분 2.5L','BC-2':'항염 식단 — 오메가3·녹색채소 위주',
+    'BC-3':'저GI 식품 우선 — 통곡물·두부·채소 중심','BC-4':'야식 차단 — 저탄 저녁 + 단백질 우선',
+    'BC-5':'한방 균형식 — 비위 보충 + 따뜻한 식사','BC-6':'단백질 강화 — 닭가슴살·두부·달걀',
+    'BC-7':'단백질 1.6g/kg 이상 — 운동 직후 30g','BC-8':'탄수화물 타이밍 — 운동 전후 집중',
+    'BC-9':'단백질 극대화 — 포만감 유지 + 정제당 차단','BC-10':'항염·순환 식단 — 해조류·건강지방',
+    'BC-11':'체형 교정 식단 — 칼슘·마그네슘 강화','BC-12':'저탄 호르몬 식단 — 건강지방+발효식품',
+    'BC-13':'PCOS 식단 — 저탄+이노시톨 함유 식품','BC-14':'수면 식단 — 트립토판+마그네슘',
+    'BC-15':'대사 촉진 식단 — 단백질 극대화+저탄','BC-16':'균형 저탄 식단',
+  };
+
+  var exTx = exMap[_bc] || (_ohExMap[_oh] || '유산소 30분 + 스트레칭 10분');
+  var diTx = diMap[_bc] || (_ohDietMap[_oh] || '균형 영양 식단');
+  // axisScores 보정
+  if (a05 >= 7) exTx = '저강도 유산소 30분 + 4·7·8 호흡 10분 (코르티솔↑)';
+  var reTx = a05 >= 7 ? '4·7·8 호흡 10분 + 마그네슘 취침 전'
+           : a06 >= 7 ? '스마트폰 취침 90분 전 차단 + 22시 취침'
+                      : '전신 스트레칭 15분 + 수분 2L 보충';
+
+  // redFlags 경고
+  var diAlert = '';
+  if (_rfl.indexOf('DIABETES') >= 0) diAlert = '⚠ 당뇨 주의 — 저GI 식품 + 식후 혈당 측정';
+  else if (a01 >= 7)                 diAlert = '🩸 인슐린↑ — 식후 15분 워킹 의무';
+
+  return [
+    { k:'ex', nm:'운동', tx:trim(exTx,45), sub:BC_CODE ? BC_CODE + ' 기질 맞춤' : '',
+      tags: _oh ? [_ohExMap[_oh] ? _oh+'('+['목','화','토','금','수'].indexOf(_oh)+1+') 기질' : ''] : [],
+      nutr: null, warn:'', alert: a05>=7 ? '⚡ 코르티솔↑ — 고강도 금지' : '' },
+    { k:'di', nm:'식단', tx:trim(diTx,45), sub: nutr ? nutr.kcal+' kcal · 단백 '+nutr.proteinG+'g' : '',
+      tags: RED_FLAGS.slice(0,1).map(function(r){ return r; }),
+      nutr: nutr ? [nutr.kcal+' kcal','단백질 '+nutr.proteinG+'g','탄수 '+nutr.carbG+'g','지방 '+nutr.fatG+'g'] : [],
+      warn: '', alert: diAlert },
+    { k:'re', nm:'회복', tx:trim(reTx,45), sub:'',
+      tags:[], nutr: null, warn:'', alert: a06>=7 ? '😴 수면질↓ — 22시 취침 필수' : '' },
   ];
 }
 
@@ -692,6 +870,7 @@ function renderItems(){
         '<span class="item-k">' + t.nm + '</span>' +
       '</div>' +
       '<div class="item-main">' + t.tx + '</div>' +
+      (t.sub ? '<div class="item-sub">' + t.sub + '</div>' : '') +
       tagsHtml + nutrHtml + warnHtml + alertHtml +
       '<div class="item-acts">' +
         '<button class="btn did" onclick="mark(\'' + t.k + '\',\'did\')">' + IC.chk + ' 했어요</button>' +
@@ -887,55 +1066,106 @@ function renderDxPriority(){
   document.getElementById('sec-dx').style.display = '';
   document.getElementById('sec-dx-sub').textContent = 'BC 분석 기반 · 지금 가장 시급한 진단';
 
+  // ── P6 딥링크 URL 생성 (openFull과 동일 로직) ──
+  var _id = sid();
+  var _params = new URLSearchParams(window.location.search);
+  var _isHospital = _params.get('src') === 'hospital' || !!_params.get('hid');
+  var _resultFile = _isHospital ? 'result-hospital.html' : 'slimmind-result.html';
+  var _resultBase = location.href.replace(/[^\/]*$/, '') + _resultFile;
+  // 결과지 기본 URL (id 파라미터 포함)
+  var _resultUrl = (_id && _id !== 'local')
+    ? (_resultBase + '?id=' + encodeURIComponent(_id))
+    : _resultBase;
+  // P6 섹션(맞춤 영양·비율 페이지) 앵커 딥링크
+  // hospital.html → #p6-section / result-v4 → #p6-ratio
+  var _p6Anchor = _isHospital ? '#p6-section' : '#p6-ratio';
+  var _p6Url = _resultUrl + (_resultUrl.indexOf('?') >= 0
+    ? '&ref=today_dx' : '?ref=today_dx') + _p6Anchor;
+
   var rankColors = ['#e8513a','#e06c30','#d88a3c'];
   var html = '<div class="dx-box"><div class="dx-rank-row">';
 
   dxTop3.forEach(function(dx, i){
-    var icon  = DX_KEY_ICON[dx.key] || '📋';
-    var color = dx.color || rankColors[i] || '#888';
-    var urgPct = Math.max(8, Math.round((dx.urgency / 10) * 100));
-    var tags  = Array.isArray(dx.tags) ? dx.tags.slice(0,3) : [];
-    var acts  = Array.isArray(dx.actions) ? dx.actions.slice(0,2) : [];
+    var icon      = DX_KEY_ICON[dx.key] || '📋';
+    var color     = dx.color || rankColors[i] || '#888';
+    var urgPct    = Math.max(8, Math.round((dx.urgency / 10) * 100));
+    var tags      = Array.isArray(dx.tags)    ? dx.tags.slice(0,3)    : [];
+    var acts      = Array.isArray(dx.actions) ? dx.actions.slice(0,2) : [];
     var centerKey = DX_KEY_CENTER[dx.key] || dx.key;
 
-    html += '<div class="dx-rank-item" style="--dx-c:' + color + ';border-left:3px solid ' + color + ';">' +
-      '<div class="dx-rank-badge" style="background:' + color + ';">' + (i+1) + '</div>' +
-      '<div class="dx-rank-bd">' +
-        '<div class="dx-rank-title">' + icon + ' ' + (dx.title || dx.key) + '</div>' +
-        '<div class="dx-rank-expert">' + (dx.expert || '') + '</div>' +
-        (tags.length > 0
-          ? '<div class="dx-rank-tags">' +
-              tags.map(function(t){ return '<span class="dx-rank-tag" style="background:' + color + '18;color:' + color + ';">' + t + '</span>'; }).join('') +
-            '</div>'
-          : '') +
-        '<div class="dx-urgency-bar">' +
-          '<div class="dx-urgency-fill" style="width:' + urgPct + '%;background:' + color + ';"></div>' +
+    // 1순위 카드에만 "처방 전체 보기" primary 딥링크 버튼 노출
+    // 나머지는 센터 찾기 버튼 단독
+    var ctaHtml = '<div class="dx-cta-row">';
+    if (i === 0){
+      // 1순위: 처방 전체 보기(P6) + 센터 찾기
+      ctaHtml +=
+        '<button class="dx-link-btn" onclick="_goP6(\'' + encodeURIComponent(_p6Url) + '\')">' +
+          '전체 처방 보기 →</button>' +
+        '<button class="dx-cta-btn" onclick="searchCenterByDx(\'' + centerKey + '\')" style="margin-left:0;">' +
+          IC.map + ' ' + dx.key + ' 센터</button>';
+    } else {
+      // 2·3순위: 센터 찾기만
+      ctaHtml +=
+        '<button class="dx-cta-btn" onclick="searchCenterByDx(\'' + centerKey + '\')">' +
+          IC.map + ' 주변 ' + dx.key + ' 센터 찾기</button>';
+    }
+    ctaHtml += '</div>';
+
+    html +=
+      '<div class="dx-rank-item" style="border-left:3px solid ' + color + ';">' +
+        '<div class="dx-rank-badge" style="background:' + color + ';">' + (i+1) + '</div>' +
+        '<div class="dx-rank-bd">' +
+          '<div class="dx-rank-title">' + icon + ' ' + (dx.title || dx.key) + '</div>' +
+          '<div class="dx-rank-expert">' + (dx.expert || '') + '</div>' +
+          (tags.length > 0
+            ? '<div class="dx-rank-tags">' +
+                tags.map(function(t){
+                  return '<span class="dx-rank-tag" style="background:' + color + '18;color:' + color + ';">' + t + '</span>';
+                }).join('') +
+              '</div>'
+            : '') +
+          '<div class="dx-urgency-bar">' +
+            '<div class="dx-urgency-fill" style="width:' + urgPct + '%;background:' + color + ';"></div>' +
+          '</div>' +
+          '<div class="dx-rank-urgency">긴급도 ' + dx.urgency + '/10</div>' +
+          (acts.length > 0
+            ? '<div class="dx-actions">' +
+                acts.map(function(a){ return '<div class="dx-action-item">' + a + '</div>'; }).join('') +
+              '</div>'
+            : '') +
+          ctaHtml +
         '</div>' +
-        '<div class="dx-rank-urgency">긴급도 ' + dx.urgency + '/10</div>' +
-        (acts.length > 0
-          ? '<div class="dx-actions">' +
-              acts.map(function(a){ return '<div class="dx-action-item">' + a + '</div>'; }).join('') +
-            '</div>'
-          : '') +
-        '<div class="dx-cta-row">' +
-          '<button class="dx-cta-btn" onclick="searchCenterByDx(\'' + centerKey + '\')">' +
-            IC.map + ' 주변 ' + (dx.key) + ' 센터 찾기</button>' +
-        '</div>' +
-      '</div></div>';
+      '</div>';
   });
 
   html += '</div></div>';
   document.getElementById('dx-area').innerHTML = html;
 }
 
+/* P6 딥링크 이동 (인코딩된 URL 복원 후 이동) */
+function _goP6(encodedUrl){
+  try { location.href = decodeURIComponent(encodedUrl); }
+  catch(e){ location.href = encodedUrl; }
+}
+
 /* dxTop3 항목 클릭 시 해당 카테고리로 센터 검색 */
 function searchCenterByDx(cat){
-  _currentCenterCats = [cat];
+  // cat은 DX_KEY_CENTER 변환값 (한글 카테고리)
+  // DX_TO_CENTER에도 없을 경우 그대로 사용
+  var resolvedCat = DX_KEY_CENTER[cat] || (DX_TO_CENTER[cat] ? DX_TO_CENTER[cat].cat : cat);
+  _currentCenterCats = [resolvedCat];
   var secEl = document.getElementById('sec-center');
   var subEl = document.getElementById('sec-center-sub');
   secEl.style.display = '';
-  subEl.textContent = cat + ' 전문 센터';
-  document.getElementById('center-area').innerHTML = _buildCenterStaticHTML([cat]);
+  // 서브타이틀: "진단명 기반 · 전문 센터"
+  var _dxTop3 = (META && Array.isArray(META.dxTop3)) ? META.dxTop3 : [];
+  var _dxMatch = _dxTop3.filter(function(dx){
+    return DX_KEY_CENTER[dx.key] === resolvedCat || dx.key === cat;
+  })[0];
+  subEl.textContent = (_dxMatch && _dxMatch.title)
+    ? (_dxMatch.title + ' · 주변 전문 센터')
+    : (resolvedCat + ' 전문 센터');
+  document.getElementById('center-area').innerHTML = _buildCenterStaticHTML([resolvedCat]);
   searchNearbyCenters();
   // 화면 스크롤
   setTimeout(function(){ secEl.scrollIntoView({ behavior:'smooth', block:'start' }); }, 200);
@@ -943,18 +1173,63 @@ function searchCenterByDx(cat){
 
 /* 현재 추천 카테고리 저장 (GPS 버튼 클릭 시 재사용) */
 var _currentCenterCats = [];
-function renderCenters(){
-  var centerStr = (W && W.center) ? W.center : '';
-  _currentCenterCats = centerStr
-    ? centerStr.replace(/\s/g,'').split('+').map(function(c){ return c.replace('센터','').trim(); })
-    : (BC_CODE ? (BC_CENTER_MAP[BC_CODE.toUpperCase()] || ['식단','운동']) : []);
 
-  if (_currentCenterCats.length === 0) return;
+/* ── renderCenters: 우선순위
+     ① dxTop3[0].key → DX_TO_CENTER 매핑  (가장 시급한 진단 기반)
+     ② W.center 필드 (컨설턴트 직접 지정)
+     ③ BC_CENTER_MAP[BC_CODE]             (BC기질 기본값)
+     → 최대 2개 카테고리, 중복 제거 후 사용 ── */
+function renderCenters(){
+  var _dxTop3  = (META && Array.isArray(META.dxTop3)) ? META.dxTop3 : [];
+  var _bcKey   = (BC_CODE || '').toUpperCase();
+
+  // ① dxTop3 기반: 상위 2개 dx.key를 DX_TO_CENTER로 변환
+  var dxCats = [];
+  for (var di = 0; di < Math.min(2, _dxTop3.length); di++){
+    var dxK = _dxTop3[di].key || '';
+    // DX_KEY_CENTER(단어→카테고리) 또는 DX_TO_CENTER(영어ID→객체)로 변환
+    var mapped = DX_KEY_CENTER[dxK]
+              || (DX_TO_CENTER[dxK] ? DX_TO_CENTER[dxK].cat : null)
+              || null;
+    if (mapped && dxCats.indexOf(mapped) < 0) dxCats.push(mapped);
+  }
+
+  // ② W.center 필드 파싱 (ex: "순환+체형센터" or "식단 센터")
+  var wCats = [];
+  if (W && W.center){
+    wCats = W.center.replace(/\s/g,'').split('+')
+      .map(function(c){ return c.replace('센터','').trim(); })
+      .filter(function(c){ return c.length > 0; });
+  }
+
+  // ③ BC_CENTER_MAP 기본값
+  var bcCats = _bcKey ? (BC_CENTER_MAP[_bcKey] || ['식단','운동']) : ['식단','운동'];
+
+  // 우선순위 병합: dxCats > wCats > bcCats, 최대 2개 중복 없이
+  var merged = [];
+  var _addCat = function(arr){
+    arr.forEach(function(c){
+      if (merged.length < 2 && merged.indexOf(c) < 0) merged.push(c);
+    });
+  };
+  _addCat(dxCats);
+  _addCat(wCats);
+  _addCat(bcCats);
+
+  _currentCenterCats = merged.length > 0 ? merged : ['식단','운동'];
 
   var secEl = document.getElementById('sec-center');
   var subEl = document.getElementById('sec-center-sub');
   secEl.style.display = '';
-  subEl.textContent = WK + '주차 핵심 센터';
+
+  // subEl: 출처에 따라 다른 텍스트
+  if (dxCats.length > 0){
+    subEl.textContent = '진단 우선순위 기반 · ' + WK + '주차 센터';
+  } else if (wCats.length > 0){
+    subEl.textContent = WK + '주차 컨설턴트 처방 센터';
+  } else {
+    subEl.textContent = _bcKey + ' 기질 · ' + WK + '주차 핵심 센터';
+  }
 
   var areaEl = document.getElementById('center-area');
   areaEl.innerHTML = _buildCenterStaticHTML(_currentCenterCats);
@@ -977,10 +1252,15 @@ function _buildCenterStaticHTML(cats){
     '약물':{ icon:'💊', label:'약물 센터', desc:'약국 · 한약방 · 보조제 상담'},
     '철학':{ icon:'🕊️', label:'철학·멘탈 센터', desc:'라이프 코칭 · 상담 센터 · 명상 클래스'},
   };
+  // 타이틀: cats에서 카테고리 이름 조합
+  var _catsLabel = cats.slice(0,2).map(function(c){
+    var info = catInfoMap[c];
+    return info ? info.label : (c + ' 센터');
+  }).join(' · ');
   var html = '<div class="center-box"><div class="center-hd">' +
     '<div class="center-ic">' + IC.map + '</div>' +
-    '<div><div class="center-title">' + WK + '주차 필수 전문 센터</div>' +
-    '<div class="center-sub">아래 버튼으로 내 주변 센터를 검색하세요</div></div>' +
+    '<div><div class="center-title">' + _catsLabel + '</div>' +
+    '<div class="center-sub">위치 버튼으로 내 주변 ' + WK + '주차 전문 센터를 찾으세요</div></div>' +
     '</div><div class="center-list" id="center-list">';
   cats.slice(0,2).forEach(function(cat){
     var info = catInfoMap[cat] || { icon:'📍', label:cat + ' 센터', desc:'해당 분야 전문 기관' };

@@ -14513,12 +14513,18 @@ function renderP6(userName, fullCode, ohaengType, inputData, bcCode_p6, redFlags
     });
     // 개인화 메타 별도 저장 (slimmind-today.html에서 직접 읽음)
     try {
+      // today.html nutrition 재계산용 신체 스펙 수집
+      var _specForMeta = window.__RESULT__ || window.__DIAG_DATA__ || {};
       var _meta = {
         bcCode:    bcCode_p6 || inputData.bc_code || '',
         ohaengKey: ohaengType|| inputData.ohaeng_type || '',
         redFlags:  Array.isArray(redFlags_p6) ? redFlags_p6 : [],
         userName:  userName  || '',
-        goalWeight: inputData.goal_weight || null,
+        // 신체 스펙 (today.html에서 nutrition 재계산에 사용)
+        curWeight:  Number(_specForMeta.weight) || Number(_specForMeta.current_weight) || Number(_specForMeta._specWeight) || null,
+        goalWeight: Number(inputData.goal_weight) || Number(_specForMeta.goal_weight) || Number(_specForMeta.target_weight) || null,
+        height:     Number(_specForMeta.height) || Number(_specForMeta._specHeight) || null,
+        age:        Number(_specForMeta.age) || null,
         axisScores: inputData.axisScores  || inputData.axis_scores || {},
         dxTop3:    window.__DX_TOP3__ || [],  // 11대 진단 상위 3개 (renderP6 완료 전이면 빈 배열)
         savedAt:   Date.now(),
