@@ -5068,7 +5068,11 @@ app.get('/api/h/result/:id', async (c) => {
   const id = c.req.param('id')
   try {
     const row = await db.prepare(
-      'SELECT * FROM hospital_responses WHERE id = ?'
+      `SELECT hr.*,
+              COALESCE(bp.name, bp.brand_name, '') AS partner_display_name
+       FROM hospital_responses hr
+       LEFT JOIN b2b_partners bp ON bp.code = hr.ref_code
+       WHERE hr.id = ?`
     ).bind(id).first<any>()
     if (!row) return c.json({ error: 'Not found' }, 404)
 
@@ -5127,7 +5131,9 @@ app.get('/api/h/result/:id', async (c) => {
       // goal_weight / weight_loss_pct: hospital_responses에 컬럼 없음 → raw_answers 최상위에서 추출
       goal_weight:     parsedRawResult?.goal_weight     != null ? Number(parsedRawResult.goal_weight)     : null,
       weight_loss_pct: parsedRawResult?.weight_loss_pct != null ? Number(parsedRawResult.weight_loss_pct) : null,
-      created_at: row.created_at
+      created_at: row.created_at,
+      // 병원 파트너명 — 표지 "담당 컨설턴트" 자리에 표시
+      consultant_name: row.partner_display_name || ''
     })
   } catch (e: any) {
     return c.json({ error: String(e) }, 500)

@@ -2,10 +2,10 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SlimMind — 나의 바디코드 결과지</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -13897,14 +13897,82 @@ function _forceHideOverlay() {
 const _overlayKillTimer = setTimeout(_forceHideOverlay, 900);
 
 // ── 초기화 ──────────────────
+// ── 병원용 전용: __HOSPITAL_RESULT_ID__ → /api/h/result/:id 데이터 로드 ──
+async function loadHospitalResult() {
+  // ID 우선순위: 서버주입 __HOSPITAL_RESULT_ID__ → URL 경로 → 쿼리파라미터
+  var hid = window.__HOSPITAL_RESULT_ID__
+         || (location.pathname.match(/\/result-hospital\/([^/?#]+)/) || [])[1]
+         || new URLSearchParams(location.search).get('hid')
+         || new URLSearchParams(location.search).get('id')
+         || '';
+  if (!hid) return null;
+  try {
+    const res = await fetch('/api/h/result/' + encodeURIComponent(hid), {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache' }
+    });
+    if (!res.ok) return null;
+    const r = await res.json();
+    if (!r.ok) return null;
+
+    // axis_scores 파싱 (문자열인 경우)
+    let axisScores = r.axis_scores || {};
+    if (typeof axisScores === 'string') {
+      try { axisScores = JSON.parse(axisScores); } catch(_) { axisScores = {}; }
+    }
+
+    // raw_answers → answers 병합
+    const rawAns = r.raw_answers || {};
+    const answers = Object.assign({}, rawAns, {
+      Q01: r.user_name || rawAns.Q01 || '',
+      Q02: r.gender    || rawAns.Q02 || '',
+    });
+
+    // stage 데이터 병합 (bc-engine용 — stage2, stage3 등)
+    if (r.stage2_answers) answers.stage2 = r.stage2_answers;
+    if (r.stage3_answers) answers.stage3 = r.stage3_answers;
+
+    return {
+      userName:        r.user_name || '고객',
+      axisScores:      axisScores,
+      ohaengType:      r.ohaeng_type || '',
+      mbtiType:        r.mbti_full   || '',
+      answers:         answers,
+      bc_code:         r.bc_code || '',
+      bc_primary:      r.bc_code || '',
+      gender:          r.gender  || '',
+      age:             r.age     || '',
+      height:          r.height  || '',
+      weight:          r.weight  || '',
+      goal_weight:     r.goal_weight     != null ? Number(r.goal_weight)     : null,
+      weight_loss_pct: r.weight_loss_pct != null ? Number(r.weight_loss_pct) : null,
+      created_at:      r.created_at || '',
+      // 병원 파트너명 → 표지 "담당 컨설턴트" 자리
+      consultant_name: r.consultant_name || '',
+      is_b2b_partner:  true,
+      _from_hospital:  true,
+      _hospital_id:    hid,
+    };
+  } catch(e) {
+    console.error('[loadHospitalResult]', e);
+    return null;
+  }
+}
+
 window.addEventListener('DOMContentLoaded', async () => {
   try {
-    // diagnosis_id 파라미터가 있으면 새 API에서 우선 로드
-    const urlParams = new URLSearchParams(window.location.search);
-    const diagId = urlParams.get('diagnosis_id') || urlParams.get('did');
+    // 병원용 플로우: __HOSPITAL_RESULT_ID__ 존재 시 전용 API 우선 로드
     let resultData = null;
-    if (diagId) {
-      resultData = await loadDiagnosisResult();
+    if (window.__HOSPITAL_RESULT_ID__
+        || location.pathname.startsWith('/result-hospital/')) {
+      resultData = await loadHospitalResult();
+    }
+
+    // 일반 플로우 폴백
+    if (!resultData) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const diagId = urlParams.get('diagnosis_id') || urlParams.get('did');
+      if (diagId) resultData = await loadDiagnosisResult();
     }
     if (!resultData) resultData = loadData();
     if (!resultData) { resultData = demoData(); console.log('[SlimMind] 데모 데이터 렌더링'); }
@@ -19460,54 +19528,9 @@ function wow6CheckItem() {
 })();
 </script>
 
-</script>
-<script>
-/* ── 로딩 오버레이 안전장치 (강화): 여러 시점에 반복 시도 ── */
-(function(){
-  var killed=false;
-  function killLoading(force){
-    var ov=document.getElementById('loading-overlay');
-    if(!ov) return true;
-    var cs=getComputedStyle(ov);
-    if(cs.display==='none'){ killed=true; return true; }
-    if(force){
-      try{
-        ov.style.opacity='0';
-        ov.style.display='none';
-        ov.style.pointerEvents='none';
-        document.body.style.overflow='';
-        if(typeof triggerAnim==='function') triggerAnim();
-        if(typeof countUpMetaAge==='function') countUpMetaAge();
-      }catch(e){}
-      killed=true;
-      return true;
-    }
-    return false;
-  }
-  // 여러 시점에 검사: renderAll이 정상 닫으면 그대로 두고, 안 닫으면 강제
-  var checks=[1200,2000,3000,4500,6000];
-  checks.forEach(function(ms){
-    setTimeout(function(){
-      if(killed) return;
-      var ov=document.getElementById('loading-overlay');
-      if(ov && getComputedStyle(ov).display!=='none'){
-        // 마지막 두 번(4.5s,6s)은 무조건 강제 닫기
-        killLoading(ms>=4500);
-      } else { killed=true; }
-    }, ms);
-  });
-  // 사용자가 화면을 터치/클릭하면 즉시 강제 닫기(멈춤 탈출)
-  ['click','touchstart','keydown'].forEach(function(ev){
-    document.addEventListener(ev, function(){
-      var ov=document.getElementById('loading-overlay');
-      if(ov && getComputedStyle(ov).display!=='none') killLoading(true);
-    }, {once:false, passive:true});
-  });
-})();
-</script>
 
 <script>
-/* ── P10 오늘 탭: 링크 복사 / 열기 ── */
+/* ── P10 오늘 탭: 병원용 링크 복사 / 열기 ── */
 (function(){
   function _p10DailyUrl(){
     // 병원용: __HOSPITAL_RESULT_ID__ 우선 → URL 경로의 마지막 세그먼트 → 쿼리 파라미터
@@ -19553,7 +19576,5 @@ function wow6CheckItem() {
   }
 })();
 </script>
-<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
-
 </body>
 </html>
