@@ -11284,7 +11284,21 @@ function getRoadmapWeeks(bc_primary, goal_weight, weight_loss_pct, user_name, oh
   // _redFlags, axisScores, 스펙 데이터 자동 수집
   var _rfl    = window._redFlags || [];
   var _spec   = window.__RESULT__ || window.__DIAG_DATA__ || {};
-  var _axs    = _spec.axisScores || _spec.axis_scores || {};
+  // ★ 세션 3: 보정된 최종 axisScores 우선 참조 (condBonus/pfBonus 포함)
+  var _axsRaw = window.__AXIS_SCORES_FINAL__ || _spec.axisScores || _spec.axis_scores || {};
+  // v4: 0~100 → /10 정규화
+  var _axs = {};
+  Object.keys(_axsRaw).forEach(function(k){ _axs[k] = _axsRaw[k] > 10 ? _axsRaw[k]/10 : _axsRaw[k]; });
+
+  // ── 세션 3: desire/confidence 자동 수집 ──
+  var _desire_v4     = window.__DESIRE__     || _spec.desire     || null;
+  var _confidence_v4 = window.__CONFIDENCE__ || _spec.confidence || null;
+  var _partLabels_v4 = (_desire_v4 && Array.isArray(_desire_v4.partLabels) && _desire_v4.partLabels.length > 0)
+    ? _desire_v4.partLabels : [];
+  var _moodLabel_v4  = (_desire_v4 && _desire_v4.moodLabel) ? String(_desire_v4.moodLabel) : '';
+  var _whoLabel_v4   = (_desire_v4 && _desire_v4.who)        ? String(_desire_v4.who)        : '';
+  var _contraAxes_v4 = (_confidence_v4 && Array.isArray(_confidence_v4.contraAxes))
+    ? _confidence_v4.contraAxes : [];
 
   // ① bc_primary → BC 모체 코드 결정
   var bcKey = 'BC-6';
@@ -11472,6 +11486,63 @@ function getRoadmapWeeks(bc_primary, goal_weight, weight_loss_pct, user_name, oh
       if (_rfl.indexOf('FATTY_LIVER') >= 0)_rfFocuses_v4.push('간 회복 식단');
       if (_rfFocuses_v4.length > 0) {
         item.keyFocus = _rfFocuses_v4.slice(0,2).concat(item.keyFocus || []).slice(0, 3);
+      }
+    }
+
+    // ── 세션 3: desire 레이어 (v4) — 목표 부위·동기·롤모델 주입 ──
+    // (A) 목표 부위 → keyFocus 보정 (1~2주차)
+    if (_partLabels_v4.length > 0 && (item.week === 1 || item.week === 2)) {
+      var PART_EXERCISE_MAP_V4 = {
+        '복부':'복부 코어 드로잉인', '허리':'허리 안정화 플랭크', '허벅지':'하체 스쿼트 루틴',
+        '종아리':'종아리 마사지 + 순환 스트레칭', '팔뚝':'팔 저항밴드 운동', '등':'등 RDL + 풀다운',
+        '전신':'전신 복합 운동 루틴', '얼굴':'림프 드레나쥐 얼굴 마사지',
+        '가슴':'상체 밀기 + 가슴 스트레칭', '엉덩이':'힙힌지 + 브릿지 집중',
+      };
+      var partFocuses_v4 = _partLabels_v4.slice(0,2).map(function(p){ return PART_EXERCISE_MAP_V4[p] || (p + ' 집중 운동'); });
+      if (partFocuses_v4.length > 0) {
+        item.exercise_ok = (item.exercise_ok || '') + '\n[목표 부위: ' + _partLabels_v4.slice(0,2).join('·') + '] ' + partFocuses_v4[0];
+        if ((item.keyFocus || []).length < 3) {
+          item.keyFocus = (item.keyFocus || []).concat([_partLabels_v4[0] + ' 집중 관리']).slice(0,3);
+        }
+      }
+    }
+    // (B) 목표 부위 → 식단 처방 보정
+    if (_partLabels_v4.length > 0 && item.week === 1) {
+      var PART_DIET_MAP_V4 = {
+        '복부':'내장지방 감소: 식이섬유↑ + 정제탄수 최소화', '허벅지':'하체 지방: 저염식 + 칼륨 강화',
+        '종아리':'부종 개선: 이뇨성 채소(오이·셀러리) + 나트륨 제한', '팔뚝':'팔뚝 탄력: 단백질 타이밍 — 운동 직후 30g',
+        '등':'등 근육 회복: BCAA 보충 검토', '얼굴':'얼굴 부기: 나트륨 1,500mg/일 이하 + 수분 2L↑', '엉덩이':'힙업: 고단백(1.6g/kg) + 콜라겐 보충',
+      };
+      var partDietNote_v4 = _partLabels_v4.slice(0,1).map(function(p){ return PART_DIET_MAP_V4[p]; }).filter(Boolean)[0];
+      if (partDietNote_v4) item.diet_ok = (item.diet_ok || '') + '\n[' + _partLabels_v4[0] + ' 부위 식단] ' + partDietNote_v4;
+    }
+    // (C) moodLabel → failure_expose 앞에 감정 맥락 주입 (1주차)
+    if (_moodLabel_v4 && item.week === 1 && item.failure_expose) {
+      var MOOD_PREFIX_MAP_V4 = {
+        '자신감 회복':'자신감을 되찾고 싶은 마음으로 시작하셨죠 — ',
+        '건강이 걱정돼서':'건강이 걱정되어 결단하셨군요 — ',
+        '옷이 안 맞아서':'옷이 편하게 맞길 바라는 마음이 출발점이에요 — ',
+        '누군가에게 보여주고 싶어서':'소중한 누군가를 위한 변화, 진심이 담겼어요 — ',
+        '체력이 떨어져서':'체력 회복을 목표로 하셨군요 — ',
+        '의사 권유':'의료 전문가 권유로 시작하셨으니 더욱 체계적으로 함께 합니다 — ',
+      };
+      var moodPfx_v4 = MOOD_PREFIX_MAP_V4[_moodLabel_v4] || (_moodLabel_v4 + '의 마음으로 시작하셨죠 — ');
+      item.failure_expose = moodPfx_v4 + item.failure_expose;
+    }
+    // (D) who → 4주차 동기부여 문구
+    if (_whoLabel_v4 && item.week === 4 && item.failure_expose) {
+      item.failure_expose = item.failure_expose + '\n\n4주를 완주하셨습니다. ' + _whoLabel_v4 + '처럼 변화한 내 모습을 확인해 보세요.';
+    }
+    // (E) confidence.contraAxes → 1주차 keyFocus 강화
+    if (_contraAxes_v4.length > 0 && item.week === 1) {
+      var AXIS_FOCUS_MAP_V4 = {
+        'A01':'인슐린 안정: 식후 혈당 측정 + 저GI 우선', 'A03':'호르몬 점검: 갑상선·성호르몬 기초 검사 권장',
+        'A04':'근기능 기초: 계단 오르기부터 — 무리 금지', 'A07':'스트레스 측정: 취침 전 3분 호흡 의무화',
+        'A08':'식이 패턴: 식사 일지 1주 작성 → 패턴 파악',
+      };
+      var contraFocuses_v4 = _contraAxes_v4.slice(0,2).map(function(ax){ return AXIS_FOCUS_MAP_V4[ax]; }).filter(Boolean);
+      if (contraFocuses_v4.length > 0 && item.keyFocus) {
+        item.keyFocus = item.keyFocus.slice(0,2).concat([contraFocuses_v4[0]]);
       }
     }
 
@@ -12037,6 +12108,10 @@ async function loadDiagnosisResult() {
       ref_code: d.ref_code || '',
       created_at: d.completed_at || d.created_at || '',
       _from_diagnosis: true,
+      // ── 세션 3: 미활용 응답 필드 매핑 (v4 diagnosis 경로) ──
+      desire:     d.desire     || null,
+      confidence: d.confidence || null,
+      redFlags:   Array.isArray(d.redFlags) ? d.redFlags : [],
     };
   } catch(e) { return null; }
 }
@@ -12087,6 +12162,11 @@ function loadData() {
       // PHASE 4-A: 목표체중·감량률
       goal_weight:     r.goal_weight     != null ? Number(r.goal_weight)     : null,
       weight_loss_pct: r.weight_loss_pct != null ? Number(r.weight_loss_pct) : null,
+      // ── 세션 3: 미활용 응답 필드 매핑 (v4) ──
+      desire:       r.desire       || null,
+      disp_answers: r.disp_answers || null,
+      confidence:   r.confidence   || null,
+      redFlags:     Array.isArray(r.redFlags) ? r.redFlags : [],
       _from_server: true,
     };
   }
@@ -12997,6 +13077,24 @@ function renderAll(data) {
   // redFlags → window._redFlags (시술 주의 플래그 — renderP5/8에서 경고 표시)
   if (!window._redFlags && Array.isArray(_redFlags) && _redFlags.length > 0) {
     window._redFlags = _redFlags;
+  }
+  // 또는 data.redFlags 직접 주입 (세션 3: loadData 경로)
+  if (!window._redFlags && Array.isArray(data.redFlags) && data.redFlags.length > 0) {
+    window._redFlags = data.redFlags;
+  }
+
+  // ── 세션 3: 미활용 응답 필드 → 전역 주입 (v4) ──
+  // desire, confidence → getRoadmapWeeks에서 자동 참조
+  if ((_desire && Object.keys(_desire).length > 0) || (data.desire && typeof data.desire === 'object')) {
+    window.__DESIRE__ = _desire && Object.keys(_desire).length > 0 ? _desire : data.desire;
+  }
+  if ((_confidence && Object.keys(_confidence).length > 0) || (data.confidence && typeof data.confidence === 'object')) {
+    window.__CONFIDENCE__ = _confidence && Object.keys(_confidence).length > 0 ? _confidence : data.confidence;
+  }
+  if (data.disp_answers) window.__DISP_ANSWERS__ = data.disp_answers;
+  // axisScores 보정값 전역 참조 (v4: 0~100 그대로 저장, getRoadmapWeeks에서 /10 처리)
+  if (axisScores && Object.keys(axisScores).length > 0) {
+    window.__AXIS_SCORES_FINAL__ = axisScores;
   }
 
   // ── P4: 성별/갱년기 폴백 ──
@@ -17531,9 +17629,16 @@ function renderP7(userName, bcCode, bcMaster, metrics, ohaengType, mbtiType, ful
       function setT(id,v){ var e=document.getElementById(id); if(e!=null&&v!=null) e.textContent=v; }
       function round1(n){ return Math.round(n*10)/10; }
 
-      // ── 영양 계산 (computeNutrition) — 성별·나이 전달 ──
+      // ── 영양 계산 (computeNutrition) — 세션 3: bcCode/axisScores/redFlags + 성별·나이 완전 전달 ──
       var nut=null;
-      try { if (typeof computeNutrition==='function') nut=computeNutrition(curW,goalW,lossPct,height,p8Gender,p8Age); } catch(e){}
+      try {
+        if (typeof computeNutrition==='function') {
+          var _fillBcCode_v4  = (data && (data.bc_code || data.bc_primary)) || null;
+          var _fillAxs_v4     = window.__AXIS_SCORES_FINAL__ || (data && data.axisScores) || {};
+          var _fillRfl_v4     = window._redFlags || (data && data.redFlags) || [];
+          nut = computeNutrition(curW, goalW, lossPct, height, _fillBcCode_v4, _fillAxs_v4, _fillRfl_v4, p8Gender, p8Age);
+        }
+      } catch(e){}
       if (!nut){ var gc1=document.querySelector('.p7v4-goal'); if(gc1) gc1.style.display='none'; return; }
 
       var targetKcal = nut.targetKcal!=null ? nut.targetKcal : nut.kcal;
@@ -22555,6 +22660,48 @@ function weeklyGridHTML(w, idx) {
   var CON = (window.__CONSULTANT_NAME__||'담당 컨설턴트');
   var todayIdx = (new Date().getDay() + 6) % 7; // 월=0 … 일=6
 
+  // ── 세션 3: BC별 동적 협진 안내 데이터 (v4) ──
+  var _bcRmRaw_v4 = String(window.__BC_RM__ || '');
+  var _wgBcKey_v4 = _bcRmRaw_v4.indexOf('BC-') === 0 ? _bcRmRaw_v4 : (_bcRmRaw_v4 ? 'BC-'+_bcRmRaw_v4 : 'BC-6');
+  var BC_BODY_CONSULT_V4 = {
+    'BC-1':  { pilates:'림프 순환 필라테스 (하지 부종 집중)', btn1:'혈관외과', q1:'근처 혈관외과(하지정맥) 추천해줘', btn2:'한의원', q2:'근처 림프 순환 전문 한의원 추천해줘', note:'하지 정맥·림프 순환 검사 결과를 가져오시면 처방에 반영합니다.' },
+    'BC-2':  { pilates:'경추 안정화 필라테스 (자세 교정 집중)', btn1:'정형외과', q1:'근처 정형외과(경추·자세 교정) 추천해줘', btn2:'도수치료', q2:'근처 도수치료 잘하는 곳 추천해줘', note:'경추 X-ray / 자세 분석 결과를 가져오시면 맞춤 처방이 가능합니다.' },
+    'BC-3':  { pilates:'인슐린 저항 개선 필라테스 (코어 + 호흡)', btn1:'내분비내과', q1:'근처 내분비내과(인슐린 저항성 검사) 추천해줘', btn2:'가정의학과', q2:'근처 가정의학과(혈당 관리) 추천해줘', note:'혈당 검사(공복·HbA1c) 결과를 가져오시면 탄수화물 처방을 정밀 조정합니다.' },
+    'BC-4':  { pilates:'스트레스 해소 필라테스 (호흡 + 이완)', btn1:'정신건강의학과', q1:'근처 정신건강의학과(스트레스 관리) 추천해줘', btn2:'한의원', q2:'근처 스트레스·불면 전문 한의원 추천해줘', note:'코르티솔 검사 결과를 가져오시면 회복 처방을 조정합니다.' },
+    'BC-5':  { pilates:'갑상선 친화적 필라테스 (저강도 지속)', btn1:'내분비내과', q1:'근처 내분비내과(갑상선 검사) 추천해줘', btn2:'산부인과', q2:'근처 산부인과(갑상선·호르몬) 추천해줘', note:'갑상선 기능 검사(T3·T4·TSH) 결과를 가져오시면 운동 강도를 맞춤 조정합니다.' },
+    'BC-6':  { pilates:'체형 균형 필라테스 (전신 밸런스)', btn1:'도수치료', q1:'근처 도수치료 잘하는 곳 추천해줘', btn2:'정형외과', q2:'근처 정형외과(체형·자세 교정) 추천해줘', note:'필라테스는 직접, 도수·정형외과는 협진으로 결과를 가져오시면 처방에 반영합니다.' },
+    'BC-7':  { pilates:'소화 개선 필라테스 (복부 마사지 + 호흡)', btn1:'소화기내과', q1:'근처 소화기내과(장내 환경 검사) 추천해줘', btn2:'한의원', q2:'근처 소화기·한방 전문 한의원 추천해줘', note:'장내 미생물·소화 기능 검사 결과를 가져오시면 식단 처방을 세밀하게 조정합니다.' },
+    'BC-8':  { pilates:'혈당 안정 필라테스 (저강도 유산소 병행)', btn1:'내분비내과', q1:'근처 내분비내과(혈당·인슐린 검사) 추천해줘', btn2:'가정의학과', q2:'근처 가정의학과(대사 종합 검진) 추천해줘', note:'공복 혈당 및 인슐린 검사 결과를 가져오시면 처방에 반영합니다.' },
+    'BC-9':  { pilates:'골격 교정 필라테스 (척추·골반 집중)', btn1:'정형외과', q1:'근처 정형외과(척추·골반 교정) 추천해줘', btn2:'도수치료', q2:'근처 도수치료(골반 교정) 잘하는 곳 추천해줘', note:'척추·골반 MRI/X-ray 결과를 가져오시면 운동 처방을 정밀 조정합니다.' },
+    'BC-10': { pilates:'상체 균형 필라테스 (견갑·흉추 집중)', btn1:'정형외과', q1:'근처 정형외과(어깨·흉추) 추천해줘', btn2:'재활의학과', q2:'근처 재활의학과(체형 교정) 추천해줘', note:'어깨·흉추 검사 결과를 가져오시면 처방에 반영합니다.' },
+    'BC-11': { pilates:'근감소 예방 필라테스 (저항 운동 위주)', btn1:'재활의학과', q1:'근처 재활의학과(근감소·근기능 검사) 추천해줘', btn2:'가정의학과', q2:'근처 가정의학과(근감소 종합 검진) 추천해줘', note:'인바디(근육량·체지방) 검사 결과를 가져오시면 처방 강도를 조정합니다.' },
+    'BC-12': { pilates:'림프 + 순환 필라테스 (전신 드레나쥐)', btn1:'피부과', q1:'근처 피부과(림프·순환 관리) 추천해줘', btn2:'한의원', q2:'근처 림프 순환 전문 한의원 추천해줘', note:'순환·림프 기능 검사 결과를 가져오시면 처방에 반영합니다.' },
+    'BC-13': { pilates:'PCOS 개선 필라테스 (인슐린 민감도 향상)', btn1:'산부인과', q1:'근처 산부인과(PCOS·다낭성난소) 추천해줘', btn2:'내분비내과', q2:'근처 내분비내과(안드로겐·인슐린 검사) 추천해줘', note:'PCOS 관련 호르몬(안드로겐·인슐린) 검사 결과를 가져오시면 처방을 조정합니다.' },
+    'BC-14': { pilates:'갱년기 체형 필라테스 (코어·골반저근)', btn1:'산부인과', q1:'근처 산부인과(갱년기·호르몬 검사) 추천해줘', btn2:'내분비내과', q2:'근처 내분비내과(에스트로겐 검사) 추천해줘', note:'호르몬 패널(에스트로겐·FSH) 검사 결과를 가져오시면 처방 전체를 조정합니다.' },
+    'BC-15': { pilates:'출산 후 체형 회복 필라테스 (골반저근 집중)', btn1:'산부인과', q1:'근처 산부인과(산후 체형 관리) 추천해줘', btn2:'정형외과', q2:'근처 정형외과(골반 교정) 추천해줘', note:'골반저근·골반 교정 검사 결과를 가져오시면 처방에 반영합니다.' },
+    'BC-16': { pilates:'대사 촉진 필라테스 (전신 복합 운동)', btn1:'내분비내과', q1:'근처 내분비내과(대사 종합 검사) 추천해줘', btn2:'가정의학과', q2:'근처 가정의학과(대사증후군 검진) 추천해줘', note:'대사 패널(지질·혈당·갑상선) 검사 결과를 가져오시면 처방을 정밀 조정합니다.' },
+  };
+  var BC_HORMONE_CONSULT_V4 = {
+    'BC-1':  { issue:'하지 정맥·림프 순환 장애', test:'도플러 초음파 · 림프 기능 검사', btn1:'혈관외과', q1:'근처 혈관외과 추천해줘', btn2:'한의원', q2:'근처 림프 전문 한의원 추천해줘' },
+    'BC-2':  { issue:'경추 불균형 → 상부 교차증후군', test:'경추 X-ray · 자세 분석', btn1:'재활의학과', q1:'근처 재활의학과(자세 교정) 추천해줘', btn2:'정형외과', q2:'근처 정형외과(경추) 추천해줘' },
+    'BC-3':  { issue:'인슐린 저항성 · 혈당 불안정', test:'공복 혈당 · HbA1c · 인슐린 저항성(HOMA-IR)', btn1:'내분비내과', q1:'근처 내분비내과(혈당·인슐린) 추천해줘', btn2:'가정의학과', q2:'근처 가정의학과(대사 검진) 추천해줘' },
+    'BC-4':  { issue:'코르티솔 과분비 · 만성 스트레스', test:'타액 코르티솔 검사 · 수면다원검사', btn1:'정신건강의학과', q1:'근처 정신건강의학과(스트레스 관리) 추천해줘', btn2:'한의원', q2:'근처 스트레스·불면 한의원 추천해줘' },
+    'BC-5':  { issue:'갑상선 기능 저하 (명시적/기능성)', test:'갑상선 패널 (T3·T4·TSH·항갑상선항체)', btn1:'내분비내과', q1:'근처 내분비내과(갑상선 검사) 추천해줘', btn2:'산부인과', q2:'근처 산부인과(갑상선·여성호르몬) 추천해줘' },
+    'BC-6':  { issue:'에스트로겐 변화 의심', test:'에스트로겐 · FSH · 프로게스테론 패널', btn1:'내분비내과', q1:'근처 내분비내과(호르몬 검사) 추천해줘', btn2:'산부인과', q2:'근처 산부인과(갱년기·호르몬) 추천해줘' },
+    'BC-7':  { issue:'장내 미생물 불균형 · 소화 장애', test:'장내 미생물 검사 · 수소 호기 검사', btn1:'소화기내과', q1:'근처 소화기내과(장내 환경 검사) 추천해줘', btn2:'한의원', q2:'근처 소화기 전문 한의원 추천해줘' },
+    'BC-8':  { issue:'인슐린 저항성 · 대사 위험', test:'공복 혈당·HbA1c·인슐린·지질 패널', btn1:'내분비내과', q1:'근처 내분비내과(대사 검사) 추천해줘', btn2:'가정의학과', q2:'근처 가정의학과(대사증후군) 추천해줘' },
+    'BC-9':  { issue:'골반 불균형 · 척추 틀어짐', test:'척추·골반 X-ray / MRI', btn1:'정형외과', q1:'근처 정형외과(척추·골반) 추천해줘', btn2:'재활의학과', q2:'근처 재활의학과(골반 교정) 추천해줘' },
+    'BC-10': { issue:'견갑·흉추 불균형', test:'어깨·흉추 X-ray · 자세 분석', btn1:'정형외과', q1:'근처 정형외과(어깨·흉추) 추천해줘', btn2:'재활의학과', q2:'근처 재활의학과(체형 교정) 추천해줘' },
+    'BC-11': { issue:'근감소 · 낮은 골격근량', test:'인바디 (근육량·기초대사량) · 비타민D 수치', btn1:'재활의학과', q1:'근처 재활의학과(근기능 검사) 추천해줘', btn2:'가정의학과', q2:'근처 가정의학과(근감소 검진) 추천해줘' },
+    'BC-12': { issue:'림프 순환 저하 · 만성 부종', test:'림프신티그래피 · 순환 기능 검사', btn1:'피부과', q1:'근처 피부과(림프·부종 관리) 추천해줘', btn2:'한의원', q2:'근처 림프 순환 전문 한의원 추천해줘' },
+    'BC-13': { issue:'PCOS · 안드로겐 과잉', test:'안드로겐 패널 (DHEA·테스토스테론) · 인슐린 저항성', btn1:'산부인과', q1:'근처 산부인과(PCOS 검사) 추천해줘', btn2:'내분비내과', q2:'근처 내분비내과(안드로겐 검사) 추천해줘' },
+    'BC-14': { issue:'에스트로겐 감소 · 갱년기', test:'에스트로겐·FSH·LH 패널', btn1:'산부인과', q1:'근처 산부인과(갱년기 검사) 추천해줘', btn2:'내분비내과', q2:'근처 내분비내과(에스트로겐) 추천해줘' },
+    'BC-15': { issue:'산후 호르몬 불균형 · 골반저근 약화', test:'프로락틴·에스트로겐·갑상선 패널', btn1:'산부인과', q1:'근처 산부인과(산후 호르몬 검사) 추천해줘', btn2:'재활의학과', q2:'근처 재활의학과(골반저근 재활) 추천해줘' },
+    'BC-16': { issue:'대사증후군 복합 위험', test:'지질 패널·혈당·갑상선·코르티솔 종합', btn1:'내분비내과', q1:'근처 내분비내과(대사증후군 검사) 추천해줘', btn2:'가정의학과', q2:'근처 가정의학과(종합 건강검진) 추천해줘' },
+  };
+  var _bcBodyInfo_v4    = BC_BODY_CONSULT_V4[_wgBcKey_v4]    || BC_BODY_CONSULT_V4['BC-6'];
+  var _bcHormoneInfo_v4 = BC_HORMONE_CONSULT_V4[_wgBcKey_v4] || BC_HORMONE_CONSULT_V4['BC-6'];
+
   // 공통 전송 안내 (기둥 하단)
   function consultFoot(extra){
     return '<div class="wg-send-foot"><span class="wg-send-foot-ic">📡</span><div class="wg-send-foot-tx"><b>체크하는 순간 '+CON+'님에게 바로 전송</b>'+(extra?'<span class="wg-send-foot-sub">'+extra+'</span>':'')+'</div></div>';
@@ -22718,27 +22865,27 @@ function weeklyGridHTML(w, idx) {
       consultFoot('못한 밤은 이유까지 전달돼, 다음 주 루틴이 더 쉽게 조정됩니다')+
     '</div>';
 
-  // ══════════ 체형 (협진 안내) ══════════
+  // ══════════ 체형 (협진 안내) — 세션 3: BC별 동적 생성 (v4) ══════════
   var boHTML =
     '<div class="wg-pillar" style="--wgc:#6b4eaa;--wgcl:#efeafa;--wgcd:#4a3578">'+
       '<div class="wg-hd"><div class="wg-hd-ic">🦴</div><div class="wg-hd-tt"><div class="wg-hd-nm">체형</div><div class="wg-hd-sub">직접 운동 + 전문의 협진</div></div><span class="wg-hd-tag">직접 + 협진</span></div>'+
-      '<div class="wg-items"><div class="wg-it"><div class="wg-it-hd"><span class="wg-it-ic">🧘</span><span class="wg-it-nm">프리미엄 영상 필라테스 연결하기</span><span class="wg-it-time">주 1회</span></div><div class="wg-it-tx">갱년기 체형 무너짐 예방 — 슬림마인드 영상필라테스가 직접 지도합니다.</div></div></div>'+
+      '<div class="wg-items"><div class="wg-it"><div class="wg-it-hd"><span class="wg-it-ic">🧘</span><span class="wg-it-nm">프리미엄 영상 필라테스 연결하기</span><span class="wg-it-time">주 1회</span></div><div class="wg-it-tx">'+_bcBodyInfo_v4.pilates+' — 슬림마인드 영상필라테스가 직접 지도합니다.</div></div></div>'+
       '<div class="wg-refer"><div class="wg-refer-hd"><span class="wg-refer-ic">🔗</span>정밀 점검은 전문의 협진으로</div>'+
         '<div class="wg-refer-row">'+
-          '<button class="wg-refer-btn" onclick="sendPrompt(\'근처 도수치료 잘하는 곳 추천해줘\')"><span class="wg-rb-nm">도수치료</span><span class="wg-rb-go">바로가기 →</span></button>'+
-          '<button class="wg-refer-btn" onclick="sendPrompt(\'근처 정형외과(체형·자세 교정) 추천해줘\')"><span class="wg-rb-nm">정형외과</span><span class="wg-rb-go">바로가기 →</span></button>'+
+          '<button class="wg-refer-btn" onclick="sendPrompt(\''+_bcBodyInfo_v4.q1.replace(/'/g,"\\'")+'\')" ><span class="wg-rb-nm">'+_bcBodyInfo_v4.btn1+'</span><span class="wg-rb-go">바로가기 →</span></button>'+
+          '<button class="wg-refer-btn" onclick="sendPrompt(\''+_bcBodyInfo_v4.q2.replace(/'/g,"\\'")+'\')" ><span class="wg-rb-nm">'+_bcBodyInfo_v4.btn2+'</span><span class="wg-rb-go">바로가기 →</span></button>'+
         '</div>'+
-        '<div class="wg-refer-note">필라테스는 직접, 도수·정형외과는 협진으로 결과를 가져오시면 처방에 반영합니다.</div>'+
+        '<div class="wg-refer-note">'+_bcBodyInfo_v4.note+'</div>'+
       '</div>'+
     '</div>';
 
-  // ══════════ 호르몬 (협진 안내) ══════════
+  // ══════════ 호르몬 (협진 안내) — 세션 3: BC별 동적 생성 (v4) ══════════
   var collabHTML =
-    '<div class="wg-collab"><div class="wg-cl-hd"><span class="wg-cl-ic">🌸</span><span class="wg-cl-nm">호르몬</span><span class="wg-cl-tag">협진 안내</span></div>'+
-    '<div class="wg-cl-tx">에스트로겐 변화가 의심됩니다. <b>호르몬 검사 결과</b>를 가져오시면, 그에 맞춰 위 처방 전체를 조정합니다.</div>'+
+    '<div class="wg-collab"><div class="wg-cl-hd"><span class="wg-cl-ic">🌸</span><span class="wg-cl-nm">'+_bcHormoneInfo_v4.issue+'</span><span class="wg-cl-tag">협진 안내</span></div>'+
+    '<div class="wg-cl-tx"><b>'+_bcHormoneInfo_v4.issue+'</b>가 의심됩니다. <b>'+_bcHormoneInfo_v4.test+'</b> 검사 결과를 가져오시면, 그에 맞춰 위 처방 전체를 조정합니다.</div>'+
     '<div class="wg-refer-row" style="margin-top:11px">'+
-      '<button class="wg-refer-btn rb-blue" onclick="sendPrompt(\'근처 내분비내과(호르몬 검사) 추천해줘\')"><span class="wg-rb-nm">내분비내과</span><span class="wg-rb-go">바로가기 →</span></button>'+
-      '<button class="wg-refer-btn rb-blue" onclick="sendPrompt(\'근처 산부인과(갱년기·호르몬) 추천해줘\')"><span class="wg-rb-nm">산부인과</span><span class="wg-rb-go">바로가기 →</span></button>'+
+      '<button class="wg-refer-btn rb-blue" onclick="sendPrompt(\''+_bcHormoneInfo_v4.q1.replace(/'/g,"\\'")+'\')" ><span class="wg-rb-nm">'+_bcHormoneInfo_v4.btn1+'</span><span class="wg-rb-go">바로가기 →</span></button>'+
+      '<button class="wg-refer-btn rb-blue" onclick="sendPrompt(\''+_bcHormoneInfo_v4.q2.replace(/'/g,"\\'")+'\')" ><span class="wg-rb-nm">'+_bcHormoneInfo_v4.btn2+'</span><span class="wg-rb-go">바로가기 →</span></button>'+
     '</div></div>';
 
   // ══════════ 더 보기 ══════════
