@@ -10255,6 +10255,27 @@ function getRoadmapWeeks(bc_primary, goal_weight, weight_loss_pct, user_name, oh
     ? _desire.partLabels : [];
   var _moodLabel  = (_desire && _desire.moodLabel) ? String(_desire.moodLabel) : '';
   var _whoLabel   = (_desire && _desire.who)        ? String(_desire.who)        : '';
+  // ★ 세션 4: desire 미활용 필드 추가 분해
+  var _desireZone   = (_desire && _desire.zone)   ? String(_desire.zone)   : '';   // 운동 시간대/환경
+  var _desireTrack  = (_desire && _desire.track)  ? String(_desire.track)  : '';   // 추천 프로그램 트랙
+  var _desireUpsell = (_desire && _desire.upsell) ? String(_desire.upsell) : '';   // upsell 추천 방향
+  // ★ 세션 4: disp_answers에서 추가 개인화 데이터 추출
+  var _disp = window.__DISP_ANSWERS__ || _spec.disp_answers || {};
+  var _dispGoal   = (_disp && _disp.goal)    ? String(_disp.goal)    : '';  // 목표 문장 요약
+  var _dispHabit  = (_disp && _disp.habit)   ? String(_disp.habit)   : '';  // 생활습관 요약
+  var _dispBlock  = (_disp && _disp.block)   ? String(_disp.block)   : '';  // 주요 장애요인
+  // ★ 세션 4: axisScores 직접 활용 — 주차별 처방 점수 기반 강화
+  // A01(인슐린) A02(염증) A03(갑상선) A04(근감소) A05(스트레스) A06(수면) A07(자율신경) A08(식이) A09(순환) A10(호르몬)
+  var _a01 = Number(_axs['A01']||_axs['a01']||0);  // 인슐린 저항성 (높을수록 나쁨)
+  var _a02 = Number(_axs['A02']||_axs['a02']||0);  // 만성 염증
+  var _a03 = Number(_axs['A03']||_axs['a03']||0);  // 갑상선 기능
+  var _a04 = Number(_axs['A04']||_axs['a04']||0);  // 근감소 (높을수록 나쁨)
+  var _a05 = Number(_axs['A05']||_axs['a05']||0);  // 스트레스
+  var _a06 = Number(_axs['A06']||_axs['a06']||0);  // 수면 질
+  var _a07 = Number(_axs['A07']||_axs['a07']||0);  // 자율신경
+  var _a08 = Number(_axs['A08']||_axs['a08']||0);  // 식이 패턴
+  var _a09 = Number(_axs['A09']||_axs['a09']||0);  // 순환
+  var _a10 = Number(_axs['A10']||_axs['a10']||0);  // 호르몬
   // contraAxes: 신뢰도 낮은 축 목록 → 해당 처방 강조 필요
   var _contraAxes = (_confidence && Array.isArray(_confidence.contraAxes))
     ? _confidence.contraAxes : [];
