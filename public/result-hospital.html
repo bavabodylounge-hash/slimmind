@@ -14520,8 +14520,10 @@ function renderP6(userName, fullCode, ohaengType, inputData, bcCode_p6, redFlags
         userName:  userName  || '',
         goalWeight: inputData.goal_weight || null,
         axisScores: inputData.axisScores  || inputData.axis_scores || {},
+        dxTop3:    window.__DX_TOP3__ || [],  // 11대 진단 상위 3개 (renderP6 완료 전이면 빈 배열)
         savedAt:   Date.now(),
       };
+      window.__SID__ = _sid; // dxTop3 병합 시 키 참조용
       localStorage.setItem('slimmind_meta_' + _sid, JSON.stringify(_meta));
     } catch(e2){}
     localStorage.setItem('slimmind_weeks_' + _sid, JSON.stringify(_slim));
@@ -15013,6 +15015,41 @@ function renderP6(userName, fullCode, ohaengType, inputData, bcCode_p6, redFlags
   });
   // 점수 높은 순 정렬 (= 가장 시급한 진단이 먼저)
   dxWithScores.sort((a, b) => b.urgency - a.urgency);
+
+  // ★ 상위 3개 전역 노출 → slimmind_meta_ 저장 + slimmind-today.html 참조
+  window.__DX_TOP3__ = dxWithScores.slice(0,3).map(function(dx){
+    return {
+      key:     dx.key,
+      title:   dx.title,
+      urgency: dx.urgency,
+      color:   dx.color,
+      expert:  dx.expert,
+      tags:    (dx.tagsFn ? dx.tagsFn(dx.urgency) : []),
+      actions: dx.actions || [],
+    };
+  });
+  // localStorage _meta에 dxTop3 병합 (renderP6 내 _meta 저장보다 나중 실행 → 덮어쓰기)
+  try {
+    var _mRaw = localStorage.getItem('slimmind_meta_' + (window.__SID__ || ''));
+    if (!_mRaw) {
+      // sid 직접 탐색
+      for (var _ki = 0; _ki < localStorage.length; _ki++) {
+        var _kk = localStorage.key(_ki);
+        if (_kk && _kk.startsWith('slimmind_meta_')) { _mRaw = localStorage.getItem(_kk); break; }
+      }
+    }
+    if (_mRaw) {
+      var _mObj = JSON.parse(_mRaw);
+      _mObj.dxTop3 = window.__DX_TOP3__;
+      _mObj.savedAt = Date.now();
+      var _mKey = localStorage.key ? (function(){
+        for (var i=0;i<localStorage.length;i++){
+          var k=localStorage.key(i); if(k&&k.startsWith('slimmind_meta_')) return k;
+        } return null;
+      })() : null;
+      if (_mKey) localStorage.setItem(_mKey, JSON.stringify(_mObj));
+    }
+  } catch(_edx){}
 
   // 배너 업데이트
   const bannerNameEl = document.getElementById('p6-dx-name');

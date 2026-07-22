@@ -17153,8 +17153,10 @@ function renderP6(userName, fullCode, ohaengType, inputData, bcCode_p6, redFlags
       userName:  userName  || '',
       goalWeight: inputData.goal_weight || null,
       axisScores: inputData.axisScores  || inputData.axis_scores || {},
+      dxTop3:    window.__DX_TOP3__ || [],  // 11대 진단 상위 3개 (renderP6 완료 전이면 빈 배열)
       savedAt:   Date.now(),
     };
+    window.__SID_V4__ = _sid_v4; // dxTop3 병합 시 키 참조용
     localStorage.setItem('slimmind_meta_' + _sid_v4,  JSON.stringify(_meta_v4));
     localStorage.setItem('slimmind_weeks_' + _sid_v4, JSON.stringify(_slim_v4));
   } catch(_e_v4){}
@@ -17645,6 +17647,32 @@ function renderP6(userName, fullCode, ohaengType, inputData, bcCode_p6, redFlags
   });
   // 점수 높은 순 정렬 (= 가장 시급한 진단이 먼저)
   dxWithScores.sort((a, b) => b.urgency - a.urgency);
+
+  // ★ 상위 3개 전역 노출 → slimmind_meta_ 저장 + slimmind-today.html 참조
+  window.__DX_TOP3__ = dxWithScores.slice(0,3).map(function(dx){
+    return {
+      key:     dx.key,
+      title:   dx.title,
+      urgency: dx.urgency,
+      color:   dx.color,
+      expert:  dx.expert,
+      tags:    (dx.tagsFn ? dx.tagsFn(dx.urgency) : []),
+      actions: dx.actions || [],
+    };
+  });
+  // localStorage _meta에 dxTop3 병합
+  try {
+    var _mKeyV4 = 'slimmind_meta_' + (window.__SID_V4__ || '');
+    if (window.__SID_V4__) {
+      var _mRawV4 = localStorage.getItem(_mKeyV4);
+      if (_mRawV4) {
+        var _mObjV4 = JSON.parse(_mRawV4);
+        _mObjV4.dxTop3 = window.__DX_TOP3__;
+        _mObjV4.savedAt = Date.now();
+        localStorage.setItem(_mKeyV4, JSON.stringify(_mObjV4));
+      }
+    }
+  } catch(_edxV4){}
 
   // 배너 업데이트
   const bannerNameEl = document.getElementById('p6-dx-name');

@@ -194,6 +194,34 @@ body{
 .center-map-btn.loading{opacity:.6;pointer-events:none;}
 .center-gps-hint{margin-top:7px;font-size:11px;font-weight:600;color:var(--muted);text-align:center;line-height:1.5;}
 
+/* ── 11대 진단 우선순위 카드 ── */
+.dx-box{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:15px;margin-bottom:0;}
+.dx-rank-row{display:flex;flex-direction:column;gap:8px;}
+.dx-rank-item{display:flex;align-items:flex-start;gap:10px;
+  background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px 13px;
+  position:relative;overflow:hidden;}
+.dx-rank-item::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:3px 0 0 3px;}
+.dx-rank-badge{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:11px;font-weight:900;color:#fff;flex-shrink:0;}
+.dx-rank-bd{flex:1;min-width:0;}
+.dx-rank-title{font-size:13px;font-weight:900;color:var(--ink);letter-spacing:-.3px;margin-bottom:2px;}
+.dx-rank-expert{font-size:10.5px;font-weight:700;color:var(--muted);margin-bottom:5px;}
+.dx-rank-tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:5px;}
+.dx-rank-tag{font-size:10px;font-weight:800;padding:2px 7px;border-radius:7px;
+  background:var(--vis-l);color:var(--vis-d);}
+.dx-rank-urgency{font-size:10px;font-weight:700;color:var(--muted);}
+.dx-urgency-bar{height:4px;border-radius:4px;background:var(--line);margin-top:5px;overflow:hidden;}
+.dx-urgency-fill{height:100%;border-radius:4px;transition:width .5s ease;}
+.dx-actions{margin-top:7px;display:flex;flex-direction:column;gap:4px;}
+.dx-action-item{font-size:11px;font-weight:700;color:var(--ink);padding-left:10px;position:relative;}
+.dx-action-item::before{content:'→';position:absolute;left:0;color:var(--vis);}
+.dx-cta-row{margin-top:10px;display:flex;gap:7px;}
+.dx-cta-btn{flex:1;padding:10px 8px;border-radius:11px;border:1.5px solid var(--line);
+  background:#fff;font-size:11.5px;font-weight:800;color:var(--ink);cursor:pointer;
+  font-family:inherit;text-align:center;transition:all .15s;}
+.dx-cta-btn:active{background:#f2ece0;transform:scale(.98);}
+.dx-cta-btn.primary{background:var(--vis);color:#fff;border-color:var(--vis);}
+
 /* ── 컨설턴트 ── */
 .con{background:linear-gradient(165deg,#2a2118,#3a2e20);color:#f2ece0;border-radius:16px;
   padding:18px 16px;margin-top:11px;}
@@ -284,9 +312,18 @@ body{
     <div class="streak-tx" id="streak-tx">오늘 하나만 체크하면 <b>연속 기록이 시작</b>돼요.</div>
   </div>
 
+  <!-- ── 11대 진단 우선순위 (dxTop3) ── -->
+  <div class="sec" id="sec-dx" style="display:none">
+    <span class="sec-n">3</span>
+    <span class="sec-t">전문 진단 우선순위</span>
+    <span class="sec-s" id="sec-dx-sub">BC 분석 기반 맞춤 처방</span>
+    <span class="sec-line"></span>
+  </div>
+  <div id="dx-area"></div>
+
   <!-- ── 오늘의 전문 센터 추천 ── -->
   <div class="sec" id="sec-center" style="display:none">
-    <span class="sec-n">3</span>
+    <span class="sec-n">4</span>
     <span class="sec-t">오늘의 전문 센터</span>
     <span class="sec-s" id="sec-center-sub"></span>
     <span class="sec-line"></span>
@@ -493,6 +530,7 @@ function boot(){
   renderWeek();
   renderCon();
   renderProg();
+  renderDxPriority();  // 11대 진단 우선순위 (dxTop3)
   renderCenters();
   detectPlatform();
 }
@@ -746,14 +784,82 @@ function renderProg(){
   else { t.textContent = '오늘 다 하셨어요'; s.textContent = NAME + ' 님, 오늘 정말 잘하셨습니다.'; }
 }
 
-/* ── 컨설턴트 코멘트 ── */
+/* ── 컨설턴트 코멘트 동적화 (axisScores + BC_CODE + redFlags + dxTop3) ── */
 function renderCon(){
-  var txt = '';
-  try { txt = localStorage.getItem('slimmind_con_reply_wk') || ''; } catch(e){}
+  // 1순위: 컨설턴트가 직접 입력한 메시지
+  var manualTxt = '';
+  try { manualTxt = localStorage.getItem('slimmind_con_reply_wk') || ''; } catch(e){}
+
+  var txt = manualTxt || _genConComment();
   if (!txt) return;
+
   document.getElementById('con-box').style.display = '';
   document.getElementById('con-nm').textContent = (CON ? CON + ' 컨설턴트' : '담당 컨설턴트');
-  document.getElementById('con-tx').textContent = txt;
+  document.getElementById('con-tx').innerHTML = txt;
+}
+
+/* BC_CODE + axisScores + redFlags + dxTop3 기반 동적 코멘트 생성 */
+function _genConComment(){
+  var lines = [];
+  // axisScores 스케일 정규화 (hospital: 0~10 그대로, v4: 0~100 → /10)
+  var _axVal = function(k){
+    var v = AXIS_SCORES[k];
+    if (v == null) return 0;
+    return v > 10 ? v / 10 : v;
+  };
+  var _a01 = _axVal('A01'), _a05 = _axVal('A05'), _a06 = _axVal('A06');
+  var hasDIAB  = RED_FLAGS.indexOf('DIABETES') >= 0;
+  var hasYOYO  = RED_FLAGS.indexOf('YOYO') >= 0;
+  var hasHTN   = RED_FLAGS.indexOf('HTN') >= 0;
+  var dxTop3   = (META && Array.isArray(META.dxTop3)) ? META.dxTop3 : [];
+  var topDx    = dxTop3[0] ? dxTop3[0].key : '';
+
+  // ① 이번 주차 기반 인사
+  var phaseMsg = {
+    '회복기':'회복기엔 몸이 먼저입니다. 강도보다 규칙성이 핵심이에요.',
+    '전환기':'전환기 — 식단과 운동이 맞물리는 시점입니다. 탄수화물 타이밍 집중해요.',
+    '가속기':'가속기에 접어들었어요. 지금 조금 더 조이면 결과가 달라집니다.',
+    '안정기':'안정기 — 감량 유지가 목표입니다. 근육을 지키며 식이를 정착시켜요.',
+  };
+  lines.push(phaseMsg[PHASE] || WK + '주차 잘 이어가고 있어요. 꾸준함이 이 단계의 핵심입니다.');
+
+  // ② redFlags 우선 경고
+  if (hasDIAB)  lines.push('⚠ 당뇨 위험 지표가 있어요. 오늘도 저GI 식품과 식후 워킹 꼭 지켜주세요.');
+  else if (hasHTN) lines.push('⚠ 혈압 관리 중이에요. 고강도 운동 전 준비운동 충분히 해주세요.');
+  else if (hasYOYO) lines.push('요요 이력이 있으니 — 결과보다 루틴 정착이 먼저입니다. 체중은 나중에 따라와요.');
+
+  // ③ axisScores 기반 오늘 핵심 경고
+  if (_a05 >= 7)      lines.push('스트레스 지수가 높게 나타났어요. 오늘은 HIIT보다 걷기·호흡으로 대체하세요.');
+  else if (_a06 >= 7) lines.push('수면 질이 낮아요. 오늘 22시 이전 취침, 스마트폰 90분 전 차단 — 이게 오늘 최고의 처방입니다.');
+  else if (_a01 >= 7) lines.push('혈당 패턴이 불안정해요. 식후 15분 이내 걷기를 오늘 꼭 실천해주세요.');
+
+  // ④ 1순위 진단 기반 전문 코멘트
+  var dxMsg = {
+    '식단':   '식이 패턴이 지금 가장 시급해요. 탄수화물 타이밍과 단백질 목표량 — 이 두 가지만 잡아도 달라집니다.',
+    '심리':   '스트레스·감정 식욕이 체중 관리의 첫 번째 장벽입니다. 오늘 식욕 트리거를 적어보세요.',
+    '호르몬': '호르몬 변동이 감지돼요. 수면과 식이 타이밍이 호르몬 안정의 핵심입니다.',
+    '운동':   'BC 기질에 맞지 않는 운동이 오히려 역효과를 냅니다. 오늘 처방된 운동 종류를 지켜주세요.',
+    '수면':   '수면이 모든 처방의 기반입니다. 오늘 밤 회복 루틴을 최우선으로 지켜주세요.',
+    '순환':   '순환 개선이 이번 주 핵심입니다. 수분 섭취와 하지 거상 스트레칭 챙겨주세요.',
+    '체형':   '체형 교정이 우선입니다. 자세 의식과 코어 활성화를 오늘 운동에 집중해주세요.',
+    '한방':   '한방 접근이 지금 도움이 될 시점이에요. 한의원 상담을 고려해보세요.',
+  };
+  if (topDx && dxMsg[topDx]) lines.push(dxMsg[topDx]);
+
+  // ⑤ BC코드 기반 한 줄 맞춤
+  var bcMsg = {
+    'BC-1':'하지 부종이 오늘 컨디션에 영향줄 수 있어요. 수분과 낮은 강도 유지하세요.',
+    'BC-3':'혈당 스파이크가 오늘의 적입니다. 정제당 차단이 최우선이에요.',
+    'BC-5':'호르몬 흐름을 거스르지 마세요. 무리하지 않는 것이 오늘의 전략입니다.',
+    'BC-6':'근육 회복이 감량의 엔진이에요. 단백질 타이밍 잊지 마세요.',
+    'BC-7':'근육량이 당신의 자산입니다. 오늘 저항운동 빠트리지 마세요.',
+  };
+  var bc = BC_CODE.toUpperCase();
+  if (bcMsg[bc]) lines.push(bcMsg[bc]);
+
+  if (lines.length === 0) return '';
+  // 최대 3줄, HTML 줄바꿈
+  return lines.slice(0,3).join('<br><br>');
 }
 
 /* ══════════════════════════════════════════════════════
@@ -762,68 +868,77 @@ function renderCon(){
    GPS 있을 때 → 실제 주변 센터 검색
    GPS 없을 때 → 카테고리 가이드 + 전화번호 없이 안내
    ══════════════════════════════════════════════════════ */
-function renderCenters(){
-  // 이번 주 center 필드 파싱
-  var centerStr = (W && W.center) ? W.center : '';
-  var centerCats = centerStr
-    ? centerStr.replace(/\s/g,'').split('+').map(function(c){ return c.replace('센터','').trim(); })
-    : (BC_CODE ? (BC_CENTER_MAP[BC_CODE.toUpperCase()] || ['식단','운동']) : []);
+/* ── 11대 진단 우선순위 렌더 (dxTop3) ── */
+var DX_KEY_ICON = {
+  '식단':'🥗','심리':'🧠','호르몬':'⚗️','운동':'💪','수면':'🌙','순환':'💧',
+  '체형':'🦴','한방':'🌿','시술':'✨','약물':'💊','철학':'🕊️'
+};
+var DX_KEY_CENTER = {
+  '식단':'식단','심리':'심리','호르몬':'호르몬','운동':'운동','수면':'회복',
+  '순환':'순환','체형':'체형','한방':'한방','시술':'시술','약물':'약물','철학':'철학'
+};
+function renderDxPriority(){
+  var dxTop3 = (META && Array.isArray(META.dxTop3) && META.dxTop3.length > 0) ? META.dxTop3 : null;
+  if (!dxTop3) {
+    document.getElementById('sec-dx').style.display = 'none';
+    return;
+  }
 
-  if (centerCats.length === 0) return;
+  document.getElementById('sec-dx').style.display = '';
+  document.getElementById('sec-dx-sub').textContent = 'BC 분석 기반 · 지금 가장 시급한 진단';
 
-  var secEl = document.getElementById('sec-center');
-  var subEl = document.getElementById('sec-center-sub');
-  secEl.style.display = '';
-  subEl.textContent = WK + '주차 핵심 센터';
+  var rankColors = ['#e8513a','#e06c30','#d88a3c'];
+  var html = '<div class="dx-box"><div class="dx-rank-row">';
 
-  var areaEl = document.getElementById('center-area');
-  // 기본 카테고리 안내 즉시 렌더
-  areaEl.innerHTML = _buildCenterStaticHTML(centerCats);
+  dxTop3.forEach(function(dx, i){
+    var icon  = DX_KEY_ICON[dx.key] || '📋';
+    var color = dx.color || rankColors[i] || '#888';
+    var urgPct = Math.max(8, Math.round((dx.urgency / 10) * 100));
+    var tags  = Array.isArray(dx.tags) ? dx.tags.slice(0,3) : [];
+    var acts  = Array.isArray(dx.actions) ? dx.actions.slice(0,2) : [];
+    var centerKey = DX_KEY_CENTER[dx.key] || dx.key;
 
-  // GPS 획득 시도 → /api/places 호출
-  _fetchCentersWithGPS(centerCats);
-}
-
-function _buildCenterStaticHTML(cats){
-  var catInfoMap = {
-    '순환':{ icon:'💧', label:'순환 센터', desc:'림프 드레나쥐 · 압박 스타킹 전문 · 하지정맥 클리닉'},
-    '체형':{ icon:'🦴', label:'체형 센터', desc:'도수치료 · 필라테스 · 골반·척추 교정 전문'},
-    '식단':{ icon:'🥗', label:'식단·영양 센터', desc:'영양 상담 · 다이어트 클리닉 · 비만 관리'},
-    '심리':{ icon:'🧠', label:'심리 센터', desc:'심리 상담 · 인지행동치료 · 멘탈 코칭'},
-    '호르몬':{ icon:'⚗️', label:'호르몬 센터', desc:'내분비내과 · 산부인과 · 갱년기 클리닉'},
-    '운동':{ icon:'💪', label:'운동 센터', desc:'퍼스널 트레이닝 · PT센터 · 기능성 트레이닝'},
-    '한방':{ icon:'🌿', label:'한방 센터', desc:'한의원 · 한방 비만 클리닉 · 침·뜸·한약'},
-    '회복':{ icon:'🛁', label:'회복 센터', desc:'스파 · 재활의학과 · 림프 마사지'},
-    '관리':{ icon:'📋', label:'관리 센터', desc:'비만 클리닉 · 체중 관리 · 지방흡입 상담'},
-    '시술':{ icon:'✨', label:'시술 센터', desc:'피부과 · 미용 클리닉 · 비수술 체형 관리'},
-    '약물':{ icon:'💊', label:'약물 센터', desc:'약국 · 한약방 · 보조제 상담'},
-    '철학':{ icon:'🕊️', label:'철학·멘탈 센터', desc:'라이프 코칭 · 상담 센터 · 명상 클래스'},
-  };
-
-  var html = '<div class="center-box"><div class="center-hd">' +
-    '<div class="center-ic">' + IC.map + '</div>' +
-    '<div><div class="center-title">' + WK + '주차 필수 전문 센터</div>' +
-    '<div class="center-sub">아래 버튼으로 내 주변 센터를 검색하세요</div></div>' +
-    '</div><div class="center-list" id="center-list">';
-
-  cats.slice(0,2).forEach(function(cat){
-    var info = catInfoMap[cat] || { icon:'📍', label:cat + ' 센터', desc:'해당 분야 전문 기관' };
-    html += '<div class="center-item">' +
-      '<div class="center-item-ic">' + info.icon + '</div>' +
-      '<div class="center-item-bd">' +
-        '<div class="center-item-nm">' + info.label + '</div>' +
-        '<div class="center-item-info">' + info.desc + '</div>' +
-        '<span class="center-item-tag">' + WK + '주차 우선 센터</span>' +
+    html += '<div class="dx-rank-item" style="--dx-c:' + color + ';border-left:3px solid ' + color + ';">' +
+      '<div class="dx-rank-badge" style="background:' + color + ';">' + (i+1) + '</div>' +
+      '<div class="dx-rank-bd">' +
+        '<div class="dx-rank-title">' + icon + ' ' + (dx.title || dx.key) + '</div>' +
+        '<div class="dx-rank-expert">' + (dx.expert || '') + '</div>' +
+        (tags.length > 0
+          ? '<div class="dx-rank-tags">' +
+              tags.map(function(t){ return '<span class="dx-rank-tag" style="background:' + color + '18;color:' + color + ';">' + t + '</span>'; }).join('') +
+            '</div>'
+          : '') +
+        '<div class="dx-urgency-bar">' +
+          '<div class="dx-urgency-fill" style="width:' + urgPct + '%;background:' + color + ';"></div>' +
+        '</div>' +
+        '<div class="dx-rank-urgency">긴급도 ' + dx.urgency + '/10</div>' +
+        (acts.length > 0
+          ? '<div class="dx-actions">' +
+              acts.map(function(a){ return '<div class="dx-action-item">' + a + '</div>'; }).join('') +
+            '</div>'
+          : '') +
+        '<div class="dx-cta-row">' +
+          '<button class="dx-cta-btn" onclick="searchCenterByDx(\'' + centerKey + '\')">' +
+            IC.map + ' 주변 ' + (dx.key) + ' 센터 찾기</button>' +
+        '</div>' +
       '</div></div>';
   });
 
-  html += '</div>';
-  html += '<button class="center-map-btn" id="center-map-btn" onclick="searchNearbyCenters()">' +
-    IC.map + ' 내 주변 ' + cats.slice(0,2).join('·') + ' 센터 찾기' +
-    '</button>' +
-    '<div class="center-gps-hint" id="center-gps-hint">위치 권한을 허용하면 실시간 주변 센터를 보여드립니다</div>' +
-    '</div>';
-  return html;
+  html += '</div></div>';
+  document.getElementById('dx-area').innerHTML = html;
+}
+
+/* dxTop3 항목 클릭 시 해당 카테고리로 센터 검색 */
+function searchCenterByDx(cat){
+  _currentCenterCats = [cat];
+  var secEl = document.getElementById('sec-center');
+  var subEl = document.getElementById('sec-center-sub');
+  secEl.style.display = '';
+  subEl.textContent = cat + ' 전문 센터';
+  document.getElementById('center-area').innerHTML = _buildCenterStaticHTML([cat]);
+  searchNearbyCenters();
+  // 화면 스크롤
+  setTimeout(function(){ secEl.scrollIntoView({ behavior:'smooth', block:'start' }); }, 200);
 }
 
 /* 현재 추천 카테고리 저장 (GPS 버튼 클릭 시 재사용) */
@@ -844,6 +959,46 @@ function renderCenters(){
   var areaEl = document.getElementById('center-area');
   areaEl.innerHTML = _buildCenterStaticHTML(_currentCenterCats);
   _fetchCentersWithGPS(_currentCenterCats);
+}
+
+/* 카테고리 → 정적 안내 HTML 빌드 */
+function _buildCenterStaticHTML(cats){
+  var catInfoMap = {
+    '순환':{ icon:'💧', label:'순환 센터', desc:'림프 드레나쥐 · 압박 스타킹 전문 · 하지정맥 클리닉'},
+    '체형':{ icon:'🦴', label:'체형 센터', desc:'도수치료 · 필라테스 · 골반·척추 교정 전문'},
+    '식단':{ icon:'🥗', label:'식단·영양 센터', desc:'영양 상담 · 다이어트 클리닉 · 비만 관리'},
+    '심리':{ icon:'🧠', label:'심리 센터', desc:'심리 상담 · 인지행동치료 · 멘탈 코칭'},
+    '호르몬':{ icon:'⚗️', label:'호르몬 센터', desc:'내분비내과 · 산부인과 · 갱년기 클리닉'},
+    '운동':{ icon:'💪', label:'운동 센터', desc:'퍼스널 트레이닝 · PT센터 · 기능성 트레이닝'},
+    '한방':{ icon:'🌿', label:'한방 센터', desc:'한의원 · 한방 비만 클리닉 · 침·뜸·한약'},
+    '회복':{ icon:'🛁', label:'회복 센터', desc:'스파 · 재활의학과 · 림프 마사지'},
+    '관리':{ icon:'📋', label:'관리 센터', desc:'비만 클리닉 · 체중 관리 · 지방흡입 상담'},
+    '시술':{ icon:'✨', label:'시술 센터', desc:'피부과 · 미용 클리닉 · 비수술 체형 관리'},
+    '약물':{ icon:'💊', label:'약물 센터', desc:'약국 · 한약방 · 보조제 상담'},
+    '철학':{ icon:'🕊️', label:'철학·멘탈 센터', desc:'라이프 코칭 · 상담 센터 · 명상 클래스'},
+  };
+  var html = '<div class="center-box"><div class="center-hd">' +
+    '<div class="center-ic">' + IC.map + '</div>' +
+    '<div><div class="center-title">' + WK + '주차 필수 전문 센터</div>' +
+    '<div class="center-sub">아래 버튼으로 내 주변 센터를 검색하세요</div></div>' +
+    '</div><div class="center-list" id="center-list">';
+  cats.slice(0,2).forEach(function(cat){
+    var info = catInfoMap[cat] || { icon:'📍', label:cat + ' 센터', desc:'해당 분야 전문 기관' };
+    html += '<div class="center-item">' +
+      '<div class="center-item-ic">' + info.icon + '</div>' +
+      '<div class="center-item-bd">' +
+        '<div class="center-item-nm">' + info.label + '</div>' +
+        '<div class="center-item-info">' + info.desc + '</div>' +
+        '<span class="center-item-tag">' + WK + '주차 우선 센터</span>' +
+      '</div></div>';
+  });
+  html += '</div>';
+  html += '<button class="center-map-btn" id="center-map-btn" onclick="searchNearbyCenters()">' +
+    IC.map + ' 내 주변 ' + cats.slice(0,2).join('·') + ' 센터 찾기' +
+    '</button>' +
+    '<div class="center-gps-hint" id="center-gps-hint">위치 권한을 허용하면 실시간 주변 센터를 보여드립니다</div>' +
+    '</div>';
+  return html;
 }
 
 /* GPS + /api/places 호출 */
