@@ -4947,6 +4947,41 @@ app.post('/api/h/diagnosis', async (c) => {
     // raw_answers 파싱
     const parsedRaw = raw_answers ? (typeof raw_answers === 'string' ? (() => { try { return JSON.parse(raw_answers) } catch { return {} } })() : raw_answers) : {}
 
+    // ── axis_scores 0~100 정규화 (DB 저장 전 단 한 번만 처리) ──
+    // survey-hospital.html의 scoreAxes()는 0~10 소수점 스케일로 계산한다.
+    // bc-engine(result-hospital.html)은 0~100 정수를 기대한다.
+    // 따라서 저장 전에 백엔드에서 한 번만 정규화해 DB에 깨끗한 값을 넣는다.
+    // → 결과지는 꺼내서 그냥 쓰면 됨. 임시 패치 코드 불필요.
+    const normalizeAxisScores = (raw: any): Record<string, number> | null => {
+      if (!raw) return null
+      let obj: Record<string, number> = {}
+      if (typeof raw === 'string') {
+        try { obj = JSON.parse(raw) } catch { return null }
+      } else if (typeof raw === 'object' && !Array.isArray(raw)) {
+        obj = raw as Record<string, number>
+      } else {
+        return null
+      }
+      const vals = Object.values(obj).map(Number).filter(v => !isNaN(v))
+      if (vals.length === 0) return null
+      const maxVal = Math.max(...vals)
+      // 이미 0~100 범위면 그대로 반환 (재진입 방지)
+      if (maxVal >= 50) {
+        const result: Record<string, number> = {}
+        Object.entries(obj).forEach(([k, v]) => { result[k] = Math.round(Number(v)) })
+        return result
+      }
+      // 0~10(또는 소수점) 스케일 → 0~100으로 변환
+      // sqrt 보정: 낮은 점수도 어느 정도 표현력을 갖도록
+      const result: Record<string, number> = {}
+      Object.entries(obj).forEach(([k, v]) => {
+        const ratio = maxVal > 0 ? Number(v) / maxVal : 0
+        result[k] = Math.min(100, Math.round(Math.sqrt(ratio) * 100))
+      })
+      return result
+    }
+    const resolvedAxisScores = normalizeAxisScores(axis_scores)
+
     // 오행값 정규화: "수(水)"→"수", "금(金)"→"금" 등 한자 병기 제거, 앞 1글자만 추출
     const normalizeOhaeng = (v: any): string | null => {
       if (!v) return null
@@ -5035,7 +5070,7 @@ app.post('/api/h/diagnosis', async (c) => {
       disp_type || (resolvedOhaeng ? resolvedOhaeng + '형' : null),
       resolvedMbti,            // mbti_full → raw_answers.pfProfile.mbti 폴백
       resolvedBcCode,
-      axis_scores ? JSON.stringify(axis_scores) : null,
+      resolvedAxisScores ? JSON.stringify(resolvedAxisScores) : null,  // 0~100 정규화 완료값 저장
       raw_answers ? JSON.stringify(raw_answers) : null
     ).run()
 

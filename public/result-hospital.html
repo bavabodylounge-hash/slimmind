@@ -5543,7 +5543,7 @@ p, div, span, h1, h2, h3, h4{
 .next-flow { background: linear-gradient(135deg,var(--vis),var(--vis-d)) !important; }
 </style>
 
-<!-- ══ 병원 전용: API 연동 + __RESULT__ 주입 ══ v20260722-3 -->
+<!-- ══ 병원 전용: API 연동 + __RESULT__ 주입 ══ v20260722-4 -->
 </head>
 <body>
 <script>
@@ -13947,26 +13947,11 @@ async function loadHospitalResult() {
     if (!r.ok) return null;
 
     // axis_scores 파싱 (문자열인 경우)
+    // ※ DB에는 백엔드 /api/h/diagnosis에서 이미 0~100으로 정규화된 값이 저장됨
+    //   → 여기서 별도 변환 불필요. 꺼내서 그냥 사용.
     let axisScores = r.axis_scores || {};
     if (typeof axisScores === 'string') {
       try { axisScores = JSON.parse(axisScores); } catch(_) { axisScores = {}; }
-    }
-
-    // ── axis_scores 0~100 정규화 ──
-    // DB에 저장된 값이 0~12 범위 소수점인 경우 bc-engine(0~100 기대)에 맞게 스케일 업
-    if (axisScores && typeof axisScores === 'object' && Object.keys(axisScores).length > 0) {
-      const axVals = Object.values(axisScores).map(Number).filter(v => !isNaN(v));
-      const axMax = Math.max(...axVals, 1);
-      // 최대값이 50 미만이면 소수점 스케일로 판단 → 정규화
-      if (axMax < 50) {
-        const normalized = {};
-        Object.entries(axisScores).forEach(([k, v]) => {
-          const ratio = Number(v) / axMax;
-          normalized[k] = Math.min(100, Math.round(Math.sqrt(ratio) * 100));
-        });
-        console.log('[axisScores 정규화] 원본 max=', axMax, '→ 정규화 완료:', normalized);
-        axisScores = normalized;
-      }
     }
 
     // raw_answers 구조 분석
