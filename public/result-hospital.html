@@ -20851,13 +20851,23 @@ function wow6CheckItem() {
 /* ── P10 오늘 탭: 링크 복사 / 열기 ── */
 (function(){
   function _p10DailyUrl(){
-    var sid = (window.__RESULT__ && (window.__RESULT__.session_id || window.__RESULT__.result_id || window.__RESULT__.id))
+    // 병원용: __HOSPITAL_RESULT_ID__ 우선 → URL 경로의 마지막 세그먼트 → 쿼리 파라미터
+    var sid = window.__HOSPITAL_RESULT_ID__
+           || (window.__DIAG_DATA__ && window.__DIAG_DATA__.id)
+           || (window.__RESULT__ && (window.__RESULT__.session_id || window.__RESULT__.result_id || window.__RESULT__.id))
            || new URLSearchParams(window.location.search).get('id')
+           || new URLSearchParams(window.location.search).get('hid')
            || new URLSearchParams(window.location.search).get('diagnosis_id')
            || new URLSearchParams(window.location.search).get('did')
+           // /result-hospital/XXXX 경로에서 ID 추출
+           || (location.pathname.match(/\/result-hospital\/([^/?#]+)/) || [])[1]
            || '';
     var base = location.href.replace(/[?#].*$/, '').replace(/[^/]*$/, '') + 'slimmind-today.html';
-    return sid ? (base + '?id=' + encodeURIComponent(sid)) : base;
+    // ?src=hospital 을 붙여 openFull()이 result-hospital.html로 돌아오도록 함
+    if (sid) {
+      return base + '?src=hospital&id=' + encodeURIComponent(sid);
+    }
+    return base + '?src=hospital';
   }
   window.p10OpenDaily = function(){
     location.href = _p10DailyUrl();

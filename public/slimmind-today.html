@@ -528,8 +528,12 @@ function renderCon(){
 /* ── 전체 결과지로 ── */
 function openFull(){
   var id = sid();
-  var url = location.href.replace(/[^\/]*$/, '') + 'slimmind-result.html';
-  location.href = (id && id !== 'local') ? (url + '?id=' + encodeURIComponent(id)) : url;
+  var params = new URLSearchParams(window.location.search);
+  // ?src=hospital 이거나 ?hid= 파라미터가 있으면 병원 전용 결과지로 이동
+  var isHospital = params.get('src') === 'hospital' || !!params.get('hid');
+  var resultFile = isHospital ? 'result-hospital.html' : 'slimmind-result.html';
+  var base = location.href.replace(/[^\/]*$/, '') + resultFile;
+  location.href = (id && id !== 'local') ? (base + '?id=' + encodeURIComponent(id)) : base;
 }
 
 /* ── 홈 화면 추가 안내: 기기별로 문구가 달라야 한다 ── */

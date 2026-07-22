@@ -2540,6 +2540,11 @@ src:url(data:font/woff2;base64,d09GMgABAAAAANywABEAAAABgEQAANxFAAIAgwAAAAAAAAAAA
   .wait-notify-done{width:100%;padding:14px;background:rgba(76,175,80,.12);border:1.5px solid #4CAF50;
     border-radius:12px;font-size:14px;font-weight:700;color:#2e7d32;text-align:center;
     position:relative;z-index:1;margin-bottom:10px;}
+  .wait-view-result-btn{width:100%;padding:15px;background:linear-gradient(135deg,#8b6db5,#6a4f9a);color:#fff;border:none;
+    border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .2s;
+    position:relative;z-index:1;margin-bottom:10px;animation:wait-slide-up .5s .5s cubic-bezier(.2,.8,.2,1) both;
+    box-shadow:0 4px 14px rgba(139,109,181,.4);}
+  .wait-view-result-btn:active{opacity:.85;}
   .wait-disclaimer{font-size:11px;color:var(--muted);line-height:1.6;margin-top:18px;word-break:keep-all;position:relative;z-index:1;}
 
   /* 목표 감량 배지 */
@@ -6329,6 +6334,11 @@ html.th-mode .cond-eyebrow{
     <div id="waitNotifyDone" class="wait-notify-done" style="display:none;">
       ✅ 담당자에게 알림을 전송했어요!
     </div>
+
+    <!-- ★ 결과지 바로보기 버튼 (result_id 주입 후 표시) -->
+    <button id="waitViewResultBtn" class="wait-view-result-btn" onclick="waitGoResult()" style="display:none;">
+      📋 내 결과지 바로보기
+    </button>
 
     <!-- ★ 코드 복사 대신, 실제로 필요한 행동(채널 추가)으로 바꾼다 -->
     <button class="wait-share-btn" onclick="waitCopyLink()">
@@ -17862,11 +17872,27 @@ function showWaitScreen(resultId, userName) {
     notifyBtn.dataset.refCode  = refCode;
   }
 
+  // ★ 결과지 바로보기 버튼 — result_id 있을 때 항상 표시
+  const viewResultBtn = document.getElementById('waitViewResultBtn');
+  if (viewResultBtn && resultId) {
+    viewResultBtn.style.display = 'block';
+    viewResultBtn.dataset.resultId = resultId;
+  }
+
   // 파티클 배경 생성
   _waitSpawnParticles();
 
   // 상단으로 스크롤
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ─ 결과지 바로보기 ─ */
+function waitGoResult() {
+  const btn = document.getElementById('waitViewResultBtn');
+  const resultId = btn && btn.dataset.resultId;
+  if (resultId) {
+    location.href = '/result-hospital/' + encodeURIComponent(resultId);
+  }
 }
 
 function _waitSpawnParticles() {
