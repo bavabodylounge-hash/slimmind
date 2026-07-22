@@ -16942,6 +16942,113 @@ function outlineProfile(){
   return {region, texture, part, firm};
 }
 
+// ──────────────────────────────────────────────────────────────────
+// determineOutlineBC() — 1차 외형 응답 → BC-1~BC-16 직접 결정
+// ★ BC코드는 22개 닉네임과 독립: 외형 질문지(S1_BASE) 응답만으로 결정
+// ★ 우선순위: ① S1_BASE opts _map 마커 점수합산 → ② bmsSelected+texture 보조
+// ──────────────────────────────────────────────────────────────────
+function determineOutlineBC() {
+  try {
+    // ① S1_BASE opts _map 마커 → BC코드 직접 매핑표
+    const _MAP_TO_BC = {
+      // 복부형 (BC-3~BC-6)
+      '단단 내장형':         'BC-3',
+      '단단내장+마른비만':   'BC-3',
+      '물렁 피하형':         'BC-4',
+      '가스 팽만형':         'BC-5',
+      '올챙이배형':          'BC-6',
+      // 하체형 (BC-1, BC-2, BC-7, BC-8)
+      '코끼리다리형':        'BC-1',
+      '순환 변동형':         'BC-1',   // 저녁 부종 변동 → 순환 우세
+      '귤껍질 하체형':       'BC-2',
+      '말벅지형':            'BC-7',
+      '말벅지+순환정체':     'BC-7',
+      '승마살형':            'BC-8',
+      // 상체형 (BC-9~BC-12)
+      '거북이형':            'BC-9',
+      '팔뚝부종형':          'BC-10',
+      '팔뚝부종+부유방':     'BC-10',  // 겨드랑이까지 이어지는 경우 → BC-10 우선 (복합은 결과에서 분기)
+      '상체근육형':          'BC-11',
+      '부유방형':            'BC-12',
+      // 전신형 (BC-13~BC-16)
+      '갱년기 변환형':       'BC-13',
+      '번아웃 무기력형':     'BC-14',
+      '대사증후군형':        'BC-15',
+    };
+
+    // ② survQuestions를 순회하며 답변의 _map 값 수집 → 점수 집계
+    const bcScore = {};
+    const _incr = (bc) => { if (bc) bcScore[bc] = (bcScore[bc] || 0) + 1; };
+
+    if (typeof survQuestions !== 'undefined' && survQuestions && survQuestions.length) {
+      survQuestions.forEach(function(q) {
+        if (!q || !q.opts) return;
+        const ans = survAnswers[q.no];
+        if (ans === undefined || ans === null) return;
+        const opt = q.opts[ans];
+        if (!opt || !Array.isArray(opt) || opt.length < 2) return;
+        const mapVal = opt[1]; // _map 값 (예: '단단 내장형', '코끼리다리형' ...)
+        const bc = _MAP_TO_BC[mapVal];
+        if (bc) _incr(bc);
+
+        // ③ followup(중첩 opts) 처리 — opt[2]가 {q, opts} 구조인 경우
+        if (opt[2] && typeof opt[2] === 'object' && opt[2].opts) {
+          // followup 답변은 survAnswers에 별도 저장되지 않으므로 부모 _map 점수만 쓴다
+          // (단, 팔뚝부종+부유방 → BC-12 보너스)
+          if (mapVal === '팔뚝부종+부유방') _incr('BC-12');
+        }
+      });
+    }
+
+    // ④ 점수 최다 BC 결정
+    let best = null, bestScore = 0;
+    Object.keys(bcScore).forEach(function(bc) {
+      if (bcScore[bc] > bestScore) {
+        bestScore = bcScore[bc];
+        best = bc;
+      }
+    });
+    if (best) return best;
+
+    // ⑤ 점수 집계 실패 시 → outlineProfile() region+texture로 fallback
+    const prof = (typeof outlineProfile === 'function') ? outlineProfile() : {};
+    const region  = prof.region  || '';
+    const texture = prof.texture || '';
+    const zone    = (typeof bmsSelected !== 'undefined') ? (bmsSelected || '') : '';
+
+    // region+texture 조합 fallback 매핑
+    if (region === '복부') {
+      if (texture === '단단') return 'BC-3';
+      if (texture === '물렁') return 'BC-4';
+      if (texture === '부종') return 'BC-5';
+      return 'BC-6'; // 복부 마른비만 fallback
+    }
+    if (region === '하체') {
+      if (texture === '부종') return 'BC-1';
+      if (texture === '셀룰') return 'BC-2';
+      if (texture === '단단') return 'BC-7';
+      return 'BC-8'; // 하체 골반구조 fallback
+    }
+    if (region === '상체') {
+      if (texture === '단단') return 'BC-11';
+      if (texture === '부종') return 'BC-10';
+      if (texture === '물렁') return 'BC-12';
+      return 'BC-9'; // 상체 자세붕괴 fallback
+    }
+    if (region === '전신') {
+      // bmsSelected zone 기반 세분화
+      if (zone === 'whole') return 'BC-16'; // 전신 복합
+      return 'BC-13'; // 전신 fallback
+    }
+
+    // 최종 fallback — 전신 다중악순환
+    return 'BC-16';
+  } catch(e) {
+    console.warn('[determineOutlineBC] 오류, BC-16 fallback:', e);
+    return 'BC-16';
+  }
+}
+
 // 22개 코드 매칭 규칙
 const CODE_RULES=[
   {i:0, region:['복부'], tex:['단단'],          axis:['A01','A09']},
@@ -18022,13 +18129,18 @@ async function submitDiagnosis(dispAnswers) {
 
   // ✅ BUG-4 수정: DISP 스킵 시 BC코드 기반 오행 기본값 추가
   // BC코드 → 오행 디폴트 매핑 (DISP 없을 때 결과지에서 오행 패널이 비지 않도록)
-  if (!ohaeng_type && _bcCodeKey) {
-    const _BC_OHAENG_DEFAULT = {
-      'BC-1':'수', 'BC-2':'금', 'BC-3':'토', 'BC-4':'수',
-      'BC-5':'목', 'BC-6':'화', 'BC-7':'토', 'BC-8':'금',
-      'BC-9':'토'
-    };
-    ohaeng_type = _BC_OHAENG_DEFAULT[_bcCodeKey] || '토';
+  // _bcCodeKey는 아래 payload 구성 블록에서 결정되므로 여기서는 임시 선결정
+  // (DISP 스킵 시 BC코드 기반 오행 기본값 — 나중에 _bcCodeKey가 확정되면 재적용)
+  const _BC_OHAENG_DEFAULT_MAP = {
+    'BC-1':'수',  'BC-2':'금',  'BC-3':'토',  'BC-4':'수',
+    'BC-5':'목',  'BC-6':'화',  'BC-7':'토',  'BC-8':'금',
+    'BC-9':'토',  'BC-10':'금', 'BC-11':'금', 'BC-12':'화',
+    'BC-13':'수', 'BC-14':'화', 'BC-15':'토', 'BC-16':'수',
+  };
+  // 아직 _bcCodeKey 미결정이므로 outlineProfile 기반 임시 BC 추정
+  const _tmpBC = (typeof determineOutlineBC === 'function') ? determineOutlineBC() : 'BC-16';
+  if (!ohaeng_type) {
+    ohaeng_type = _BC_OHAENG_DEFAULT_MAP[_tmpBC] || '토';
   }
 
   // ── 1~4차 전체 원시 답변 수집 ──
@@ -18061,29 +18173,12 @@ async function submitDiagnosis(dispAnswers) {
     ? Math.round((_curWt - _goalWt) / _curWt * 100)
     : null;
 
-  // ── NICKNAME → BC코드 역매핑 (bc-engine.js NICKNAME_TO_BC 사용, 없으면 로컬 fallback) ──
-  const _NICKNAME_TO_BC_LOCAL = {
-    // BC-1: 림프·부종 계열
-    '오후만되면 코끼리다리형':'BC-1','엄마체형 하지정체형':'BC-1',
-    // BC-2: 골격·자세 계열
-    '목짧아지는 거북이형':'BC-2','안 쓰는 팔뚝 부종형':'BC-2','겨드랑이 부유방형':'BC-2',
-    // BC-3: 인슐린·내장 계열
-    '아빠체형 내장비대형':'BC-3','식후기절 혈당롤러코스터형':'BC-3','식후임산부 가스풍선형':'BC-3','동시다발 다중악순환형':'BC-3',
-    // BC-4: 대사저하·냉증 계열
-    '약물부작용 강제축적형':'BC-4','억제제부작용 배부름마비형':'BC-4','여름에도 시린 얼음장형':'BC-4',
-    // BC-5: 장·소화 계열
-    '지방흡입후 재발형':'BC-5',
-    // BC-6: 호르몬·스트레스 계열
-    '털털한 PCOS형':'BC-6','스트레스성 야식부엉이형':'BC-6','호르몬스위치 갱년기형':'BC-6','스트레스기절 번아웃형':'BC-6',
-    // BC-7: 자율신경·골반 계열
-    '출산후 바람빠진 풍선형':'BC-7','골반틀어짐 승마살형':'BC-7',
-    // BC-8: 근육·심리 계열
-    '운동할수록 말벅지형':'BC-8','상체근육형':'BC-8',
-    // BC-9: 대사증후군·복합 계열
-    '팔다리거미 올챙이배형':'BC-9','대사증후군 종합형':'BC-9',
-  };
-  const _nicknameMap = (typeof NICKNAME_TO_BC !== 'undefined') ? NICKNAME_TO_BC : _NICKNAME_TO_BC_LOCAL;
-  const _bcCodeKey = (f.name && _nicknameMap[f.name]) ? _nicknameMap[f.name] : 'BC-6';
+  // ── BC코드 결정: 1차 외형 응답 직접 결정 (BC코드 ↔ 22개 닉네임 독립 구조) ──
+  // ★ determineOutlineBC(): S1_BASE _map 마커 점수 → BC-1~BC-16 직접 결정
+  // ★ 22개 닉네임(f.name)과 BC코드는 독립 — 닉네임→BC 역매핑 불필요
+  const _bcCodeKey = (typeof determineOutlineBC === 'function')
+    ? determineOutlineBC()
+    : 'BC-16';
 
   const payload = {
     user_name:       name,
