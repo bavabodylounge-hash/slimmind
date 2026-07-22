@@ -12132,64 +12132,222 @@ function renderP4(userName, ohaengKey, mbtiType, gender, menopause) {
 /* ── P5 ── */
 function renderP5(metrics, bcCode, axisScores, userName) {
   // ════════════════════════════════════════════
-  // P5 근거 기반 선별 — 11개 전문 영역 중 근거 있는 것만
-  // ※ 영역별 근거 등급/켜짐 여부는 백엔드(서우님)가 BC코드별로 채울 자리.
-  //   프론트는 데모(BC-6 갱년기형) 기준 표시 + 디자인만 담당.
-  // 11영역: 약물 식단 운동 회복 한방 심리 체형 호르몬 시술 관리 철학
+  // P5 핵심 처방 — axisScores + bcCode + _redFlags 기반 완전 동적 생성 (v2)
+  // 10개 원인축 점수 → 11개 처방 영역 자동 매핑 + BC코드별 강제 + 레드플래그 반영
   // ════════════════════════════════════════════
 
-  // 데모: BC-6 갱년기형 — 회복·호르몬·체형이 근거 강함, 운동·식단은 아직 이르다
-  // ※ ev = 6개 진단 소스 교차 근거 (기질·성향·가족력·증상 진단·답안속도·체지방률)
-  //   각 소스가 이 영역을 가리키는지/중립인지를 백엔드가 채울 자리. 지금은 데모.
-  var STRONG = [
-    { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#b5452e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.2 6.2 0 0 0 10.5 10.5Z"/></svg>', nm:'회복', to:'수면·자율신경 클리닉', c:'#b5452e', grade:3, gtx:'근거 강함',
-      hit:6, ev:[
-        {k:'기질', t:'수(水)', tc:'#2f7d8c', tb:'#e7f0f4', v:'에너지 고갈형 — <b>밀어붙이면 더 무너짐</b>. 회복부터.', on:true},
-        {k:'성향', t:'INFJ', tc:'#6b4eaa', tb:'#efeafa', v:'내향·사색형 — <b>혼자, 내 속도로</b> 회복하는 방식이 맞음.', on:true},
-        {k:'가족력', t:'갱년기·호르몬', tc:'#993556', tb:'#fbeaf0', v:'모계 갱년기 이력 — <b>호르몬·자율신경</b> 흔들림 취약군.', on:true},
-        {k:'증상 진단', t:'수면·무기력', tc:'#8a5a18', tb:'#faf0dc', v:'“밤에 2~3번 깬다” · “오후에 갑자기 무기력” \u2014 진단에서 또렷이 잡힘.', on:true},
-        {k:'답안 속도', t:'빠름', tc:'#3f5022', tb:'#eef2e4', v:'수면 문항에서 <b>즉답</b> — 망설임 없는 확실한 증상.', pt:'빠른 응답 = 이미 또렷이 겪고 있는 신호', on:true},
-        {k:'체지방률', t:'중립', tc:'#5f5e5a', tb:'#f1efe8', v:'31% — 회복 영역과는 직접 연결 약함.', on:false},
-        {k:'혈액형', t:'A형', tc:'#993556', tb:'#fbeaf0', v:'신중·완벽주의 경향 — <b>규칙을 어기면 자책이 큰</b> 타입. 회복 루틴은 느슨하게 잡아야 지속됩니다.', on:true},
-        {k:'얼굴형', t:'둥근형', tc:'#2f7d8c', tb:'#e7f0f4', v:'수분 정체가 잘 드러나는 윤곽 — 수면 부족일 때 <b>얼굴 붓기</b>로 먼저 신호가 옵니다.', on:false}
-      ],
-      concl:'기질도, 성향도, 가족력도, 증상도, 답하는 속도까지 — <b>전부 회복을 가리킵니다.</b>' },
-    { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#c0397a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5C12 3.5 6 9.5 6 14a6 6 0 0 0 12 0c0-4.5-6-10.5-6-10.5Z"/><path d="M9.5 14.5a2.5 2.5 0 0 0 2.5 2.5"/></svg>', nm:'호르몬', to:'내분비내과 · 산부인과', c:'#c0397a', grade:3, gtx:'근거 강함',
-      hit:5, ev:[
-        {k:'기질', t:'수(水)', tc:'#2f7d8c', tb:'#e7f0f4', v:'신장·생식 기운 약화형 — <b>호르몬 축이 먼저 흔들림</b>.', on:true},
-        {k:'가족력', t:'갱년기·호르몬', tc:'#993556', tb:'#fbeaf0', v:'모계 갱년기 — <b>에스트로겐 급감</b> 가족 패턴.', on:true},
-        {k:'증상 진단', t:'시기·변화', tc:'#8a5a18', tb:'#faf0dc', v:'갱년기 시기 + “체형이 갑자기 바뀜” \u2014 호르몬 변화 신호.', on:true},
-        {k:'답안 속도', t:'느림', tc:'#a35a2d', tb:'#f6ece7', v:'호르몬 문항에서 <b>망설임</b> — 본인도 확신 못 하는 변화.', pt:'느린 응답 = 검사로 확인이 필요한 신호', on:true},
-        {k:'성향', t:'INFJ', tc:'#6b4eaa', tb:'#efeafa', v:'직접 연결은 약함.', on:false},
-        {k:'체지방률', t:'중립', tc:'#5f5e5a', tb:'#f1efe8', v:'31% — 호르몬 단독 지표로는 약함.', on:false},
-        {k:'얼굴형', t:'둥근형', tc:'#2f7d8c', tb:'#e7f0f4', v:'갱년기 <b>수분·지방 재배치</b>가 얼굴선에 먼저 나타나는 형태.', on:true},
-        {k:'혈액형', t:'A형', tc:'#993556', tb:'#fbeaf0', v:'호르몬 축과 직접 연결은 약함.', on:false}
-      ],
-      concl:'기질·가족력·증상이 모이고, <b>망설인 답이 “검사가 필요하다”를 가리킵니다.</b>' },
-    { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#6b4eaa" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.5" r="2"/><path d="M12 7v6M12 9l-4-1.5M12 9l4-1.5M12 13l-3 7M12 13l3 7"/></svg>', nm:'체형', to:'필라테스 · 도수', c:'#6b4eaa', grade:2, gtx:'근거 보통',
-      hit:4, ev:[
-        {k:'체지방률', t:'31%', tc:'#5f5e5a', tb:'#f1efe8', v:'표준 상한 — <b>근감소·자세 무너짐</b> 동반 가능 구간.', on:true},
-        {k:'증상 진단', t:'체형·자세', tc:'#8a5a18', tb:'#faf0dc', v:'“아랫배·옆구리 집중” + “거북목” \u2014 정렬·코어 약화 패턴.', on:true},
-        {k:'가족력', t:'갱년기', tc:'#993556', tb:'#fbeaf0', v:'갱년기 체형 변화 — <b>골반·코어</b> 관리 필요군.', on:true},
-        {k:'기질', t:'수(水)', tc:'#2f7d8c', tb:'#e7f0f4', v:'저강도·정렬 위주가 맞음 (고강도 ✗).', on:false},
-        {k:'답안 속도', t:'보통', tc:'#5f5e5a', tb:'#f1efe8', v:'체형 문항 응답 속도 평이.', on:false},
-        {k:'얼굴형', t:'둥근형', tc:'#2f7d8c', tb:'#e7f0f4', v:'볼·턱선에 <b>수분이 잘 고이는</b> 윤곽 — 부기 관리가 체형 라인에 함께 작용합니다.', on:true},
-        {k:'성향', t:'INFJ', tc:'#6b4eaa', tb:'#efeafa', v:'꾸준한 저강도 루틴이 맞는 유형 (단기 고강도 ✗).', on:false},
-        {k:'혈액형', t:'A형', tc:'#993556', tb:'#fbeaf0', v:'체형 영역과는 직접 연결 약함.', on:false}
-      ],
-      concl:'체지방률·증상·가족력에 <b>얼굴 윤곽까지 같은 방향을 가리킵니다.</b>' }
-  ];
-  var NONE = [
-    { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.6 4.2L18 8l-3 3 .8 4.6L12 13.7 8.2 15.6 9 11 6 8l4.4-.8L12 3Z"/></svg>', nm:'시술', strike:'· 피부과·성형', tag:'지금 불필요' },
-    { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="9" width="16" height="6" rx="3" transform="rotate(-40 12 12)"/><path d="M9.5 8.5l5 5"/></svg>', nm:'약물', strike:'· 내과 처방',   tag:'지금 불필요' },
-    { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2"/><path d="M12 7v5M12 12l5 3M12 12l-5 3M8 21l1.5-4M16 21l-1.5-4"/></svg>', nm:'운동', strike:'· 고강도',       tag:'아직 이르다', hidden:true },
-    { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v7a2 2 0 0 0 2 2v9M8 3v6M5 3v6M18 3c-1.5 0-2.5 2-2.5 5s1 4 2.5 4v9"/></svg>', nm:'식단', strike:'· 극단 제한',     tag:'아직 이르다', hidden:true },
-    { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c4-3 7-6 7-10a4 4 0 0 0-7-2.5A4 4 0 0 0 5 11c0 4 3 7 7 10Z"/><path d="M12 8.5V21"/></svg>', nm:'한방', strike:'',               tag:'근거 약함',   hidden:true },
-    { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 4A3.5 3.5 0 0 0 6 7.5 3 3 0 0 0 5 12a3 3 0 0 0 1 5 3 3 0 0 0 3.5 3 2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/><path d="M14.5 4A3.5 3.5 0 0 1 18 7.5 3 3 0 0 1 19 12a3 3 0 0 1-1 5"/></svg>', nm:'심리', strike:'',               tag:'근거 약함',   hidden:true },
-    { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12c0-2 1.8-3.5 4-3.5s4 1.5 4 3.5M5 13c1.5 1.5 4 2.5 7 2.5s5.5-1 7-2.5"/><circle cx="9.5" cy="11" r=".6" fill="#8a8474"/><circle cx="14.5" cy="11" r=".6" fill="#8a8474"/></svg>', nm:'관리', strike:'',               tag:'근거 약함',   hidden:true },
-    { ic:'<svg viewBox="0 0 24 24" fill="none" stroke="#8a8474" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l5 3"/></svg>', nm:'철학', strike:'',               tag:'근거 약함',   hidden:true }
-  ];
-  var TOTAL = STRONG.length + NONE.length;
+  // ── 0. 아이콘 정의 (11개 영역) ──
+  var DOM_IC = {
+    회복:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.2 6.2 0 0 0 10.5 10.5Z"/></svg>',
+    호르몬:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5C12 3.5 6 9.5 6 14a6 6 0 0 0 12 0c0-4.5-6-10.5-6-10.5Z"/><path d="M9.5 14.5a2.5 2.5 0 0 0 2.5 2.5"/></svg>',
+    체형:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.5" r="2"/><path d="M12 7v6M12 9l-4-1.5M12 9l4-1.5M12 13l-3 7M12 13l3 7"/></svg>',
+    식단:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v7a2 2 0 0 0 2 2v9M8 3v6M5 3v6M18 3c-1.5 0-2.5 2-2.5 5s1 4 2.5 4v9"/></svg>',
+    운동:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2"/><path d="M12 7v5M12 12l5 3M12 12l-5 3M8 21l1.5-4M16 21l-1.5-4"/></svg>',
+    심리:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 4A3.5 3.5 0 0 0 6 7.5 3 3 0 0 0 5 12a3 3 0 0 0 1 5 3 3 0 0 0 3.5 3 2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/><path d="M14.5 4A3.5 3.5 0 0 1 18 7.5 3 3 0 0 1 19 12a3 3 0 0 1-1 5"/></svg>',
+    한방:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c4-3 7-6 7-10a4 4 0 0 0-7-2.5A4 4 0 0 0 5 11c0 4 3 7 7 10Z"/><path d="M12 8.5V21"/></svg>',
+    약물:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="9" width="16" height="6" rx="3" transform="rotate(-40 12 12)"/><path d="M9.5 8.5l5 5"/></svg>',
+    시술:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.6 4.2L18 8l-3 3 .8 4.6L12 13.7 8.2 15.6 9 11 6 8l4.4-.8L12 3Z"/></svg>',
+    관리:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12c0-2 1.8-3.5 4-3.5s4 1.5 4 3.5M5 13c1.5 1.5 4 2.5 7 2.5s5.5-1 7-2.5"/><circle cx="9.5" cy="11" r=".6" fill="currentColor"/><circle cx="14.5" cy="11" r=".6" fill="currentColor"/></svg>',
+    철학:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l5 3"/></svg>',
+  };
+
+  // ── 1. AXIS_TO_DOMAIN 매핑 테이블 ──
+  // 10개 원인축 점수 × 가중치 합산 → 영역별 관련도 score 산출
+  var AXIS_TO_DOMAIN = {
+    회복:  { A07:1.5, A08:1.0, A02:0.5 },
+    호르몬:{ A03:1.8, A07:0.8, A01:0.5 },
+    체형:  { A06:1.8, A04:1.2, A02:0.8 },
+    식단:  { A01:1.5, A05:1.3, A08:0.8 },
+    운동:  { A04:1.5, A06:0.8, A02:0.5 },
+    심리:  { A08:1.8, A07:1.2 },
+    한방:  { A02:1.2, A03:0.8, A05:0.8 },
+    약물:  { A09:1.5, A01:0.8, A03:0.5 },
+    시술:  { A02:1.0, A06:0.8, A04:0.5 },
+    관리:  { A09:1.8, A01:1.0, A03:0.8 },
+    철학:  { A10:1.5, A07:0.5 },
+  };
+
+  // ── 2. BC코드별 영역 강제 ON/OFF ──
+  var BC_DOMAIN_OVERRIDE = {
+    'BC-1':  { force_strong:['운동','식단','한방'],    force_none:['심리'] },
+    'BC-2':  { force_strong:['체형','한방'],           force_none:['심리','시술'] },
+    'BC-3':  { force_strong:['식단','관리'],           force_none:['시술'] },
+    'BC-4':  { force_strong:['약물','관리'],           force_none:['운동','시술'] },
+    'BC-5':  { force_strong:['시술','한방'],           force_none:['운동'] },
+    'BC-6':  { force_strong:['회복','심리','식단'],    force_none:['시술'] },
+    'BC-7':  { force_strong:['체형','운동'],           force_none:['시술','약물'] },
+    'BC-8':  { force_strong:['체형','운동'],           force_none:['심리'] },
+    'BC-9':  { force_strong:['식단','운동'],           force_none:['시술'] },
+    'BC-10': { force_strong:['한방','시술'],           force_none:['운동'] },
+    'BC-11': { force_strong:['체형','운동'],           force_none:['약물'] },
+    'BC-12': { force_strong:['호르몬','시술','한방'],  force_none:['운동'] },
+    'BC-13': { force_strong:['호르몬','회복'],         force_none:['운동','식단'] },
+    'BC-14': { force_strong:['회복','심리'],           force_none:['운동','시술'] },
+    'BC-15': { force_strong:['관리','약물','식단'],    force_none:['시술'] },
+    'BC-16': { force_strong:['관리','회복'],           force_none:['시술'] },
+  };
+
+  // ── 3. 영역별 메타 ──
+  var DOMAIN_META = {
+    회복:  { c:'#b5452e', to:'수면·자율신경 클리닉',   key_axes:['A07','A08','A02'] },
+    호르몬:{ c:'#c0397a', to:'내분비내과 · 산부인과',  key_axes:['A03','A07','A01'] },
+    체형:  { c:'#6b4eaa', to:'필라테스 · 도수',        key_axes:['A06','A04','A02'] },
+    식단:  { c:'#c98a3c', to:'영양 컨설팅',            key_axes:['A01','A05','A08'] },
+    운동:  { c:'#5a6e3a', to:'PT · 재활트레이닝',      key_axes:['A04','A06','A02'] },
+    심리:  { c:'#7b1fa2', to:'심리상담 · 정신건강의학',key_axes:['A08','A07'] },
+    한방:  { c:'#2f7d8c', to:'한의원 · 한방비만클리닉',key_axes:['A02','A03','A05'] },
+    약물:  { c:'#5f5e5a', to:'내과 · 기능의학',        key_axes:['A09','A01','A03'] },
+    시술:  { c:'#7a4a38', to:'피부과 · 성형외과',      key_axes:['A02','A06','A04'] },
+    관리:  { c:'#8a8474', to:'기능의학 · 종합건강검진',key_axes:['A09','A01','A03'] },
+    철학:  { c:'#607d8b', to:'라이프스타일 코치',       key_axes:['A10','A07'] },
+  };
+
+  // ── 4. 축 라벨 ──
+  var AXIS_LABEL = {
+    A01:'인슐린·내장지방', A02:'림프·순환', A03:'호르몬·대사', A04:'근감소',
+    A05:'소화·장', A06:'골격·자세', A07:'코르티솔', A08:'심리·식이',
+    A09:'대사위험', A10:'기질·성향',
+  };
+
+  // ── 5. 영역별 관련도 점수 계산 ──
+  var domainScores = {};
+  Object.keys(AXIS_TO_DOMAIN).forEach(function(dom) {
+    var weights = AXIS_TO_DOMAIN[dom];
+    var s = 0;
+    Object.keys(weights).forEach(function(ax) { s += (axisScores[ax]||0) * weights[ax]; });
+    domainScores[dom] = Math.round(s * 10) / 10;
+  });
+
+  // ── 6. BC 오버라이드 + redFlags 반영 ──
+  var override    = BC_DOMAIN_OVERRIDE[bcCode] || {};
+  var forceStrong = (override.force_strong || []).slice();
+  var forceNone   = (override.force_none   || []).slice();
+  var flags       = window._redFlags || [];
+
+  if (flags.indexOf('THYROID')>=0 || flags.indexOf('PCOS')>=0) {
+    if (forceStrong.indexOf('호르몬')<0) forceStrong.push('호르몬');
+  }
+  if (flags.indexOf('DIABETES')>=0 || flags.indexOf('FATTY_LIVER')>=0) {
+    if (forceStrong.indexOf('관리')<0) forceStrong.push('관리');
+    if (forceStrong.indexOf('식단')<0) forceStrong.push('식단');
+  }
+  if (flags.indexOf('HTN')>=0) {
+    if (forceStrong.indexOf('관리')<0) forceStrong.push('관리');
+    if (forceStrong.indexOf('약물')<0) forceStrong.push('약물');
+  }
+  if (flags.indexOf('LIPO_HX')>=0 || flags.indexOf('LIPOLYSIS_HX')>=0) {
+    if (forceStrong.indexOf('시술')<0) forceStrong.push('시술');
+  }
+  if (flags.indexOf('YOYO')>=0) {
+    if (forceStrong.indexOf('식단')<0) forceStrong.push('식단');
+    if (forceStrong.indexOf('심리')<0) forceStrong.push('심리');
+  }
+  if (flags.indexOf('APPETITE_SUPP')>=0) {
+    if (forceStrong.indexOf('심리')<0) forceStrong.push('심리');
+  }
+  if (flags.indexOf('STEROID')>=0 || flags.indexOf('ANTICOAGULANT')>=0) {
+    if (forceStrong.indexOf('약물')<0) forceStrong.push('약물');
+    if (forceNone.indexOf('시술')<0)   forceNone.push('시술');
+  }
+
+  // ── 7. STRONG 3개 결정 ──
+  var allDomains = Object.keys(AXIS_TO_DOMAIN);
+  var sortedByScore = allDomains.slice().sort(function(a,b){ return domainScores[b]-domainScores[a]; });
+  var strongNames = [];
+  forceStrong.forEach(function(d){
+    if (strongNames.indexOf(d)<0 && forceNone.indexOf(d)<0) strongNames.push(d);
+  });
+  sortedByScore.forEach(function(d){
+    if (strongNames.length>=3) return;
+    if (strongNames.indexOf(d)<0 && forceNone.indexOf(d)<0) strongNames.push(d);
+  });
+  strongNames = strongNames.slice(0,3);
+
+  // ── 8. STRONG 카드 동적 생성 ──
+  function axLevel(v){ return v>=8?'매우 높음':v>=6?'높음':v>=4?'보통':'낮음'; }
+  function calcGrade(dom){
+    if (forceStrong.indexOf(dom)>=0) return 3;
+    var s=domainScores[dom]; return s>=8?3:s>=5?2:1;
+  }
+  function gradeText(g){ return g>=3?'근거 강함':g===2?'근거 보통':'관련 있음'; }
+
+  var STRONG = strongNames.map(function(dom) {
+    var meta  = DOMAIN_META[dom];
+    var grade = calcGrade(dom);
+    var evRows = [];
+    var hitCount = 0;
+
+    // key_axes → ev 행
+    (meta.key_axes||[]).forEach(function(ax){
+      var sc  = axisScores[ax]||0;
+      var on  = sc >= 4;
+      if (on) hitCount++;
+      evRows.push({
+        k: AXIS_LABEL[ax],
+        t: axLevel(sc) + ' (' + sc.toFixed(1) + ')',
+        tc: on ? meta.c : '#5f5e5a',
+        tb: on ? meta.c + '22' : '#f1efe8',
+        v:  on
+          ? AXIS_LABEL[ax] + ' 축이 <b>' + axLevel(sc) + '</b> — ' + dom + ' 영역의 핵심 원인입니다.'
+          : AXIS_LABEL[ax] + ' 축 ' + axLevel(sc) + ' — 직접 연결 약함.',
+        on: on,
+      });
+    });
+
+    // BC 오버라이드 ev 행
+    if (forceStrong.indexOf(dom)>=0) {
+      hitCount++;
+      evRows.push({ k:'BC코드 특성', t:bcCode, tc:meta.c, tb:meta.c+'22',
+        v:bcCode+' 유형은 <b>'+dom+'</b> 영역이 핵심 처방 경로입니다.', on:true });
+    }
+    // redFlags ev 행
+    if (dom==='호르몬' && (flags.indexOf('THYROID')>=0||flags.indexOf('PCOS')>=0)) {
+      hitCount++;
+      evRows.push({ k:'진단 이력', t:'호르몬 질환', tc:meta.c, tb:meta.c+'22',
+        v:'갑상선·PCOS 진단 이력 — <b>호르몬 수치 우선 확인</b>이 필요합니다.', on:true });
+    }
+    if (dom==='관리' && (flags.indexOf('DIABETES')>=0||flags.indexOf('HTN')>=0)) {
+      hitCount++;
+      evRows.push({ k:'진단 이력', t:'대사 질환', tc:meta.c, tb:meta.c+'22',
+        v:'당뇨·고혈압 이력 — <b>정기 수치 모니터링</b>이 필수입니다.', on:true });
+    }
+    if (dom==='심리' && flags.indexOf('YOYO')>=0) {
+      hitCount++;
+      evRows.push({ k:'체중 궤적', t:'요요 반복', tc:meta.c, tb:meta.c+'22',
+        v:'반복 요요 패턴 — <b>심리·식이행동 접근</b>이 없으면 재발합니다.', on:true });
+    }
+    if (dom==='시술' && (flags.indexOf('LIPO_HX')>=0||flags.indexOf('LIPOLYSIS_HX')>=0)) {
+      hitCount++;
+      evRows.push({ k:'시술 이력', t:'지방흡입·분해', tc:meta.c, tb:meta.c+'22',
+        v:'시술 후 재배치·섬유화 패턴 — <b>전문 케어 재설계</b>가 필요합니다.', on:true });
+    }
+    if (dom==='식단' && flags.indexOf('APPETITE_SUPP')>=0) {
+      hitCount++;
+      evRows.push({ k:'식욕억제제', t:'복용 이력', tc:meta.c, tb:meta.c+'22',
+        v:'식욕억제제 복용 이력 — <b>포만감 신호 재훈련</b>이 필요합니다.', on:true });
+    }
+
+    var totalEv  = evRows.length || 1;
+    var topAxVal = (meta.key_axes||[]).reduce(function(mx,ax){ return Math.max(mx,axisScores[ax]||0); },0);
+    var concl = '원인 신호 <b>'+hitCount+'/'+totalEv+'개</b>가 <b>'+dom+'</b>을(를) 가리킵니다.';
+
+    return { ic:DOM_IC[dom]||'', nm:dom, to:meta.to, c:meta.c,
+             grade:grade, gtx:gradeText(grade), hit:hitCount, ev:evRows, concl:concl };
+  });
+
+  // ── 9. NONE 목록 — STRONG 아닌 영역 전부 ──
+  var noneNames = allDomains.filter(function(d){ return strongNames.indexOf(d)<0; });
+  var NONE = noneNames.map(function(d, idx) {
+    var isForce = forceNone.indexOf(d)>=0;
+    var s = domainScores[d];
+    var tag = isForce ? '지금 불필요' : (s<2 ? '근거 약함' : '아직 이르다');
+    var hidden = idx >= 2;
+    // 레드플래그 관련 약물 영역은 첫 2개 안에 있어도 노출 유지
+    if (d==='약물' && flags.indexOf('ANTICOAGULANT')>=0) hidden = false;
+    return { ic:DOM_IC[d]||'', nm:d, strike:'', tag:tag, hidden:hidden };
+  });
+
+  var TOTAL = STRONG.length + NONE.length;  var TOTAL = STRONG.length + NONE.length;
   // P6(로드맵)에서 '원인↔실천' 겹치는 축을 계산하는 데 사용
   window.__STRONG_AXES__ = STRONG.map(function(e){ return e.nm; });
 
