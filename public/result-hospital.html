@@ -8301,50 +8301,57 @@ function getDeepSurveyRoute(top1Axis) {
 }
 
 // ──────────────────────────────────────────────
-// 7. 닉네임 → BC코드 역매핑 테이블
-// (기존 BC_MASTER와 호환, 결과지·처방 엔진 연결용)
+// 7. 닉네임 → BC코드 역매핑 테이블 (v2.0 — bc-engine.js 동기화)
+// BC코드는 1차 외형 질문지 _map 마커 점수합산으로 독립 결정됨
+// 이 테이블은 getRoadmapWeeks(한글닉네임) 직접 호출 시 fallback 용도
 // ──────────────────────────────────────────────
 var NICKNAME_TO_BC = {
   // 복부형
-  '아빠체형 내장비대형':          'BC-3',
   '식후기절 혈당롤러코스터형':    'BC-3',
-  '털털한 PCOS형':                'BC-6',
+  '스트레스성 야식부엉이형':      'BC-3',
+  '억제제부작용 배부름마비형':    'BC-3',
+  '식후임산부 가스풍선형':        'BC-5',
   '약물부작용 강제축적형':        'BC-4',
-  '스트레스성 야식부엉이형':      'BC-6',
-  '억제제부작용 배부름마비형':    'BC-6',
-  '출산후 바람빠진 풍선형':       'BC-7',
-  '식후임산부 가스풍선형':        'BC-3',
-  '팔다리거미 올챙이배형':        'BC-9',
+  '아빠체형 내장비대형':          'BC-4',
+  '대사증후군 종합형':            'BC-15',
+  '팔다리거미 올챙이배형':        'BC-6',
   // 하체형
   '오후만되면 코끼리다리형':      'BC-1',
   '엄마체형 하지정체형':          'BC-1',
-  '여름에도 시린 얼음장형':       'BC-4',
-  '운동할수록 말벅지형':          'BC-8',
-  '골반틀어짐 승마살형':          'BC-7',
-  '지방흡입후 재발형':            'BC-5',
+  '지방흡입후 재발형':            'BC-2',
+  '운동할수록 말벅지형':          'BC-7',
+  '골반틀어짐 승마살형':          'BC-8',
   // 상체형
-  '목짧아지는 거북이형':          'BC-2',
-  '안 쓰는 팔뚝 부종형':         'BC-2',
-  '상체근육형':                   'BC-8',
-  '겨드랑이 부유방형':            'BC-2',
-  // 전신·기타형
-  '호르몬스위치 갱년기형':        'BC-6',
-  '스트레스기절 번아웃형':        'BC-6',
-  '대사증후군 종합형':            'BC-9',
-  '동시다발 다중악순환형':        'BC-6',
+  '목짧아지는 거북이형':          'BC-9',
+  '안 쓰는 팔뚝 부종형':         'BC-10',
+  '상체근육형':                   'BC-11',
+  '겨드랑이 부유방형':            'BC-12',
+  // 전신형
+  '호르몬스위치 갱년기형':        'BC-13',
+  '스트레스기절 번아웃형':        'BC-14',
+  '털털한 PCOS형':                'BC-14',
+  '여름에도 시린 얼음장형':       'BC-15',
+  '동시다발 다중악순환형':        'BC-16',
 };
 
-// BC코드 → 닉네임 역방향 (기본 대표 닉네임)
+// BC코드 → 닉네임 역방향 (기본 대표 닉네임) — BC-1~BC-16 전체
 var BC_TO_DEFAULT_NICKNAME = {
   'BC-1': '오후만되면 코끼리다리형',
-  'BC-2': '목짧아지는 거북이형',
+  'BC-2': '지방흡입후 재발형',
   'BC-3': '식후기절 혈당롤러코스터형',
   'BC-4': '약물부작용 강제축적형',
-  'BC-5': '지방흡입후 재발형',
-  'BC-6': '스트레스성 야식부엉이형',
-  'BC-7': '출산후 바람빠진 풍선형',
-  'BC-8': '운동할수록 말벅지형',
-  'BC-9': '팔다리거미 올챙이배형',
+  'BC-5': '식후임산부 가스풍선형',
+  'BC-6': '팔다리거미 올챙이배형',
+  'BC-7': '운동할수록 말벅지형',
+  'BC-8': '골반틀어짐 승마살형',
+  'BC-9': '목짧아지는 거북이형',
+  'BC-10': '안 쓰는 팔뚝 부종형',
+  'BC-11': '상체근육형',
+  'BC-12': '겨드랑이 부유방형',
+  'BC-13': '호르몬스위치 갱년기형',
+  'BC-14': '스트레스기절 번아웃형',
+  'BC-15': '대사증후군 종합형',
+  'BC-16': '동시다발 다중악순환형',
 };
 
 // ──────────────────────────────────────────────
@@ -8394,9 +8401,16 @@ function computeBCCode(axisScores, answers) {
   const { nickname, top1Actual, top2, top3, background, deepSurveyRoute } = nicknameResult;
 
   // ③ 닉네임 → BC코드 역매핑
-  const masterKey = NICKNAME_TO_BC[nickname] || 'BC-6';
+  // [v2.0] 미등록 닉네임 폴백: Top1 축 기반 동적 폴백 → BC-16(다중악순환)
+  const _TOP1_TO_BC_DEFAULT = {
+    'A01':'BC-3','A02':'BC-1','A03':'BC-13','A04':'BC-7',
+    'A05':'BC-5','A06':'BC-8','A07':'BC-14','A08':'BC-14',
+    'A09':'BC-10','A10':'BC-16'
+  };
+  const _fallbackBc = _TOP1_TO_BC_DEFAULT[top1Actual] || 'BC-16';
+  const masterKey = NICKNAME_TO_BC[nickname] || _fallbackBc;
   const bcCode    = masterKey;
-  const bcMaster  = BC_MASTER[masterKey] || BC_MASTER['BC-6'];
+  const bcMaster  = BC_MASTER[masterKey] || BC_MASTER['BC-16'] || BC_MASTER['BC-6'];
 
   // ④ 기존 causalScores 호환용 (CAUSAL_AXIS_META 기반 8축)
   const causalScores = {};
@@ -10081,7 +10095,7 @@ function getRoadmapWeeks(bc_primary, goal_weight, weight_loss_pct, user_name, oh
   if (bc_primary) {
     var s = String(bc_primary).trim();
     // 숫자 코드 형식 (BC-1~BC-9) 직접 입력된 경우
-    var mCode = s.match(/^BC-(\d)$/i);
+    var mCode = s.match(/^BC-(\d{1,2})$/i);
     if (mCode) {
       bcKey = 'BC-' + mCode[1];
     } else {
@@ -10103,7 +10117,7 @@ function getRoadmapWeeks(bc_primary, goal_weight, weight_loss_pct, user_name, oh
   }
 
   // ② BC 모체 처방 로드
-  var baseWeeks = BC_ROADMAP_DB[bcKey] || BC_ROADMAP_DB['BC-6'];
+  var baseWeeks = BC_ROADMAP_DB[bcKey] || BC_ROADMAP_DB['BC-3'] || BC_ROADMAP_DB['BC-6'];
 
   // ③ 닉네임 오버레이 로드
   var nickOv = (bc_primary && typeof NICKNAME_OVERLAY !== 'undefined')
@@ -10117,11 +10131,15 @@ function getRoadmapWeeks(bc_primary, goal_weight, weight_loss_pct, user_name, oh
   // goal_weight가 null이어도 BC 타입별 표준 목표체중 fallback으로 칼로리 항상 계산
   var BC_DEFAULT_GOAL_WEIGHTS = {
     'BC-1':57,'BC-2':55,'BC-3':60,'BC-4':58,
-    'BC-5':56,'BC-6':57,'BC-7':59,'BC-8':56,'BC-9':58
+    'BC-5':56,'BC-6':57,'BC-7':59,'BC-8':56,
+    'BC-9':58,'BC-10':56,'BC-11':57,'BC-12':55,
+    'BC-13':58,'BC-14':57,'BC-15':62,'BC-16':60
   };
   var BC_DEFAULT_LOSS_PCT = {
     'BC-1':12,'BC-2':10,'BC-3':15,'BC-4':13,
-    'BC-5':11,'BC-6':12,'BC-7':14,'BC-8':10,'BC-9':12
+    'BC-5':11,'BC-6':12,'BC-7':14,'BC-8':10,
+    'BC-9':12,'BC-10':10,'BC-11':11,'BC-12':10,
+    'BC-13':13,'BC-14':12,'BC-15':14,'BC-16':13
   };
   var effectiveGoalWeight = (goal_weight != null && goal_weight > 0)
     ? goal_weight
