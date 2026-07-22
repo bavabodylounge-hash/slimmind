@@ -9048,52 +9048,121 @@ var SIMULATOR_METRICS = [
 // curWeight: 현재체중(kg), goalWeight: 목표체중(kg)
 // lossPct: 감량률(%), height: 신장(cm, optional)
 // ──────────────────────────────────────────────
-function computeNutrition(curWeight, goalWeight, lossPct, height) {
-  // 안전 처리
-  var cw  = Number(curWeight)  || 65;
-  var gw  = Number(goalWeight) || Math.round(cw * 0.9);
-  var pct = Number(lossPct)    || Math.round((cw - gw) / cw * 100);
-  var h   = Number(height)     || 162; // 평균 신장 fallback
+function computeNutrition(curWeight, goalWeight, lossPct, height, bcKey, axisScores, redFlags) {
+  // ── 1. 기본 스펙 추출 ──
+  // 우선순위: 파라미터 → window.__RESULT__(서버 flat) → window.__DIAG_DATA__
+  // 필드명 매핑: 서버는 weight/height/bfr/muscle_kg 형태로 저장됨
+  var _spec = window.__RESULT__ || window.__DIAG_DATA__ || {};
+  // 현재체중: 파라미터 → r.weight(인바디 실측) → r.current_weight(호환) → 기본값
+  var cw  = Number(curWeight)  || Number(_spec.weight)  || Number(_spec.current_weight) || Number(_spec._specWeight) || 65;
+  // 목표체중: 파라미터 → r.goal_weight(설문 입력) → r.target_weight(호환) → 기본값
+  var gw  = Number(goalWeight) || Number(_spec.goal_weight) || Number(_spec.target_weight) || Number(_spec._specGoalWt) || Math.round(cw * 0.9);
+  // 감량률: 파라미터 → 실측 계산 → 역산
+  var pct = Number(lossPct) > 0 ? Number(lossPct)
+    : (cw > gw ? Math.round((cw - gw) / cw * 100) : 10);
+  // 키: 파라미터 → r.height → 기본값
+  var h   = Number(height)     || Number(_spec.height)   || Number(_spec._specHeight)   || 162;
+  var ag  = Number(_spec.age)  || 35;
+  // 체지방률: r.bfr(인바디%) → r.body_fat → r.fat_pct → 기본값
+  var bf  = Number(_spec.bfr)  || Number(_spec.body_fat) || Number(_spec.fat_pct) || Number(_spec._specBodyFat) || 0;
+  // 골격근량(kg): r.muscle_kg(인바디) → r.smm → 기본값
+  var mu  = Number(_spec.muscle_kg) || Number(_spec.smm) || Number(_spec._specMuscle)  || 0;
+  var bc  = bcKey || _spec.bc_primary || _spec.bc_code || 'BC-6';
+  var axs = axisScores || _spec.axisScores || _spec.axis_scores || {};
+  var rfl = redFlags || window._redFlags || [];
 
-  // ── BMR: 현재 체중 기준 (Mifflin-St Jeor 여성, 연령 35세 fallback) ──
-  // ※ 결과지 STEP1의 '기초대사량'과 같은 기준이어야 STEP2 결손이 맞아떨어진다.
-  //   (목표체중 기준으로 잡으면 화면상 소비-섭취 차이와 결손 수치가 어긋남)
-  var bmr = Math.round(10 * cw + 6.25 * h - 5 * 35 - 161);
+  // ── 2. BMR (Mifflin-St Jeor, 여성 기준 hospital 기본) ──
+  // 현재체중 기준 (목표체중 기준 시 결손 수치가 화면과 어긋남)
+  var bmr = Math.round(10 * cw + 6.25 * h - 5 * ag - 161);
 
-  // ── 활동계수 1.44: 주 5회 근력 중심 프로그램 ──
-  // 1.375(주 3~5회 가벼운 운동)와 1.55(주 6~7회) 사이.
-  // 이 처방은 주 5회 + 근력 위주라 후자에 가깝다.
-  var activityFactor = 1.44;
+  // ── 3. 활동계수: A04(근감소/운동축) 점수 기반 분기 (hospital 0~10 스케일) ──
+  // 골격근량이 있으면 우선 반영
+  var a04 = Number(axs['A04']) || 0; // 0~10 스케일
+  var activityFactor;
+  if (mu > 0) {
+    // 골격근량 25kg+ → 활동적, 20kg 이하 → 비활동
+    activityFactor = mu >= 25 ? 1.55 : mu >= 22 ? 1.44 : 1.375;
+  } else {
+    // A04 점수 높을수록(근감소 위험) 활동계수 낮게
+    activityFactor = a04 >= 7 ? 1.375 : a04 >= 4 ? 1.44 : 1.55;
+  }
   var tdee = Math.round(bmr * activityFactor);
 
-  // ── 결손: 목표 감량(kg)에서 역산 ──
-  // 지방 1kg ≈ 7,700kcal / 12주 = 84일
-  // 목표체중이 확정값이므로, 결손을 목표에 맞춘다. (반대로 하면 결과지 숫자가 서로 어긋남)
+  // ── 4. 결손 칼로리 (12주=84일 기준) ──
   var TARGET_DAYS = 84, KCAL_PER_KG = 7700, MIN_KCAL = 1200;
   var lossKg  = Math.max(0, cw - gw);
   var deficit = Math.round(lossKg * KCAL_PER_KG / TARGET_DAYS);
-
-  // 안전 하한: 섭취가 1,200kcal 밑으로 내려가지 않도록 결손을 제한
   if (tdee - deficit < MIN_KCAL) deficit = Math.max(0, tdee - MIN_KCAL);
-
   var targetKcal = Math.max(MIN_KCAL, tdee - deficit);
 
-  // 탄수화물 비율: BC별 가중치는 getRoadmapWeeks에서 override 가능
-  // 기본: 탄:단:지 = 40:30:30
-  var carbPct    = pct >= 20 ? 35 : 40; // 고감량 → 저탄
-  var proteinPct = 30;
-  var fatPct     = 100 - carbPct - proteinPct;
+  // ── 5. BC별 탄단지 기준 비율 테이블 ──
+  // 형식: [탄%, 단%, 지%]  (합계 100)
+  var BC_MACRO = {
+    'BC-1':  [38, 32, 30],  // 순환: 저염·수분 중심, 단백질 강화
+    'BC-2':  [40, 30, 30],  // 거북목: 표준
+    'BC-3':  [33, 33, 34],  // 혈당롤러: 저탄 강화, 단백질 높게
+    'BC-4':  [38, 32, 30],  // 야식부엉: 저탄, 단백질 강화
+    'BC-5':  [40, 30, 30],  // 한방: 표준
+    'BC-6':  [38, 32, 30],  // 스트레스: 표준
+    'BC-7':  [40, 30, 30],  // 근감소: 탄수화물 유지, 단백질 필수
+    'BC-8':  [42, 30, 28],  // 운동: 탄수화물 약간 높여 퍼포먼스
+    'BC-9':  [35, 35, 30],  // 식욕: 단백질 극대화, 저탄
+    'BC-10': [38, 30, 32],  // 순환+한방: 건강지방 높게
+    'BC-11': [40, 32, 28],  // 체형: 단백질 중간
+    'BC-12': [35, 33, 32],  // 호르몬2: 저탄, 건강지방
+    'BC-13': [35, 32, 33],  // PCOS형: 저탄+건강지방
+    'BC-14': [38, 32, 30],  // 수면회복: 표준
+    'BC-15': [33, 35, 32],  // 대사위험: 저탄 강화, 단백질 최대
+    'BC-16': [35, 33, 32],  // 복합: 저탄, 단백질 중간 높게
+  };
+  // 기본값: 감량률에 따른 이분법 (BC 미매칭 fallback)
+  var _baseMacro = BC_MACRO[bc] || (pct >= 20 ? [35, 30, 35] : [40, 30, 30]);
+  var carbPct    = _baseMacro[0];
+  var proteinPct = _baseMacro[1];
+  var fatPct     = _baseMacro[2];
+
+  // ── 6. _redFlags 탄단지 보정 ──
+  // DIABETES → 탄수화물 -5%p 강제 감소, 단백질 +3%p
+  if (rfl.indexOf('DIABETES') >= 0) {
+    carbPct    = Math.max(25, carbPct - 5);
+    proteinPct = Math.min(40, proteinPct + 3);
+    fatPct     = 100 - carbPct - proteinPct;
+  }
+  // STEROID → 단백질 +5%p (근육 보호), 지방 -5%p
+  if (rfl.indexOf('STEROID') >= 0) {
+    proteinPct = Math.min(42, proteinPct + 5);
+    fatPct     = Math.max(20, fatPct - 5);
+    carbPct    = 100 - proteinPct - fatPct;
+  }
+  // YOYO → 칼로리 적자 축소 (대사 적응 방지) + 단백질 강화
+  if (rfl.indexOf('YOYO') >= 0) {
+    deficit    = Math.round(deficit * 0.75); // 결손 25% 감소
+    targetKcal = Math.max(MIN_KCAL, tdee - deficit);
+    proteinPct = Math.min(40, proteinPct + 3);
+    carbPct    = Math.max(30, carbPct - 2);
+    fatPct     = 100 - carbPct - proteinPct;
+  }
+  // FATTY_LIVER → 탄수화물 -3%p, 건강지방 +3%p
+  if (rfl.indexOf('FATTY_LIVER') >= 0) {
+    carbPct = Math.max(30, carbPct - 3);
+    fatPct  = Math.min(38, fatPct + 3);
+    proteinPct = 100 - carbPct - fatPct;
+  }
+  // PCOS → 저탄 강화 (인슐린 저항)
+  if (rfl.indexOf('PCOS') >= 0) {
+    carbPct    = Math.max(28, carbPct - 5);
+    proteinPct = Math.min(38, proteinPct + 2);
+    fatPct     = 100 - carbPct - proteinPct;
+  }
 
   var carbG    = Math.round(targetKcal * (carbPct / 100) / 4);
   var proteinG = Math.round(targetKcal * (proteinPct / 100) / 4);
   var fatG     = Math.round(targetKcal * (fatPct / 100) / 9);
 
-  // ── 주차별 변형 헬퍼: 탄단지 비율로 kcal에서 역산 ──
-  // 각 주차는 (carbPct_w, proteinPct_w, fatPct_w) 비율 기준으로
-  // 실제 kcal에서 그램수를 계산 → 합산 오차 원천 차단
+  // ── 7. 주차별 변형 헬퍼 ──
   function _week(wk, kcalMul, cPct, pPct, note) {
     var fPct = 100 - cPct - pPct;
-    var wKcal = Math.max(1200, Math.round(targetKcal * kcalMul));
+    var wKcal = Math.max(MIN_KCAL, Math.round(targetKcal * kcalMul));
     return {
       week:     wk,
       kcal:     wKcal,
@@ -9104,28 +9173,42 @@ function computeNutrition(curWeight, goalWeight, lossPct, height) {
     };
   }
 
-  // 주차별 탄단지 비율 전략
-  // 1주: 저탄 시작 (탄35 단33 지32) — 탄수화물 −5%p, 단백질 +3%p
-  // 2주: 기준 유지 (carbPct : 30 : fatPct)
-  // 3주: 항염 강화 (탄−3%p, 단+3%p, 지동일)
-  // 4주: 탄수화물 사이클링 OFF일 (탄−10%p, 단+5%p, 지+5%p)
-  var w1cPct = Math.max(30, carbPct - 5);
-  var w1pPct = Math.min(38, proteinPct + 3);
-  var w3cPct = Math.max(30, carbPct - 3);
-  var w3pPct = Math.min(38, proteinPct + 3);
-  var w4cPct = Math.max(25, carbPct - 10);
-  var w4pPct = Math.min(40, proteinPct + 5);
+  // ── 8. 주차별 탄단지 비율 전략 (BC 기반 기준비율 → 주차별 조정) ──
+  // 1주: 저탄 진입 (탄 -5%p, 단 +3%p)
+  // 2주: BC 기준 비율 유지
+  // 3주: 항염 강화 (탄 -3%p, 단 +3%p)
+  // 4주: 탄수화물 사이클링 OFF (탄 -10%p, 단 +5%p)
+  var w1cPct = Math.max(28, carbPct - 5);
+  var w1pPct = Math.min(40, proteinPct + 3);
+  var w3cPct = Math.max(28, carbPct - 3);
+  var w3pPct = Math.min(40, proteinPct + 3);
+  var w4cPct = Math.max(23, carbPct - 10);
+  var w4pPct = Math.min(42, proteinPct + 5);
+
+  // YOYO: 1주 과격한 저탄 금지 → 주차별 폭 축소
+  if (rfl.indexOf('YOYO') >= 0) {
+    w1cPct = Math.max(32, carbPct - 3);
+    w1pPct = Math.min(38, proteinPct + 2);
+    w4cPct = Math.max(28, carbPct - 7);
+    w4pPct = Math.min(40, proteinPct + 4);
+  }
+
+  // 1주차 칼로리: YOYO는 유지, 일반은 -10%
+  var w1mul = rfl.indexOf('YOYO') >= 0 ? 1.0 : 0.9;
 
   return {
     targetKcal,
     carbG, proteinG, fatG,
     carbPct, proteinPct, fatPct,
     bmr, tdee, deficit,
+    activityFactor,
+    // 계산에 사용된 스펙 요약 (디버그용)
+    _usedSpec: { cw, gw, pct, h, ag, bf, mu, bc, activityFactor },
     weekVariants: [
-      _week(1, 0.9, w1cPct, w1pPct, '1주: 저탄 진입 — 탄수화물 비율 낮추고 단백질 보충'),
-      _week(2, 1.0, carbPct, proteinPct, '2주: 기준 칼로리 유지, 도파민 안정 식품 추가'),
-      _week(3, 1.0, w3cPct, w3pPct, '3주: 항염 식단 강화 — 단백질 소폭 상향'),
-      _week(4, 1.0, w4cPct, w4pPct, '4주: 탄수화물 사이클링 OFF일 — 탄 -10%p, 단·지 보충'),
+      _week(1, w1mul,  w1cPct, w1pPct, '1주: 저탄 진입 — 탄수화물 비율 낮추고 단백질 보충'),
+      _week(2, 1.0,    carbPct, proteinPct, '2주: BC 기준 칼로리 유지, 균형 식단 안정화'),
+      _week(3, 1.0,    w3cPct, w3pPct, '3주: 항염 식단 강화 — 단백질 소폭 상향'),
+      _week(4, 1.0,    w4cPct, w4pPct, '4주: 탄수화물 사이클링 OFF일 — 탄 -10%p, 단·지 보충'),
     ],
   };
 }
@@ -10158,23 +10241,23 @@ var NICKNAME_OVERLAY = {
 function getRoadmapWeeks(bc_primary, goal_weight, weight_loss_pct, user_name, ohaeng_type) {
   var name    = user_name   || '회원';
   var ohaeng  = ohaeng_type || null;
+  // _redFlags, axisScores, 스펙 데이터 자동 수집
+  var _rfl    = window._redFlags || [];
+  var _spec   = window.__RESULT__ || window.__DIAG_DATA__ || {};
+  var _axs    = _spec.axisScores || _spec.axis_scores || {};
 
   // ① bc_primary → BC 모체 코드 결정
-  //    bc_primary는 한글 닉네임('스트레스성 야식부엉이형') OR BC 숫자코드('BC-6') 둘 다 처리
   var bcKey = 'BC-6';
   if (bc_primary) {
     var s = String(bc_primary).trim();
-    // 숫자 코드 형식 (BC-1~BC-9) 직접 입력된 경우
     var mCode = s.match(/^BC-(\d{1,2})$/i);
     if (mCode) {
       bcKey = 'BC-' + mCode[1];
     } else {
-      // 한글 닉네임 → NICKNAME_TO_BC 역매핑
       var mapped = (typeof NICKNAME_TO_BC !== 'undefined') ? NICKNAME_TO_BC[s] : null;
       if (mapped) {
         bcKey = mapped;
       } else {
-        // 부분 일치 fallback (공백 등 차이 대비)
         var keys = (typeof NICKNAME_TO_BC !== 'undefined') ? Object.keys(NICKNAME_TO_BC) : [];
         for (var i = 0; i < keys.length; i++) {
           if (s.indexOf(keys[i]) !== -1 || keys[i].indexOf(s) !== -1) {
@@ -10197,8 +10280,7 @@ function getRoadmapWeeks(bc_primary, goal_weight, weight_loss_pct, user_name, oh
   var ohaengOv = (ohaeng && typeof OHAENG_OVERLAY !== 'undefined')
     ? (OHAENG_OVERLAY[ohaeng] || null) : null;
 
-  // ⑤ 칼로리 계산
-  // goal_weight가 null이어도 BC 타입별 표준 목표체중 fallback으로 칼로리 항상 계산
+  // ⑤ 칼로리 계산 — window.__RESULT__ 스펙 + BC 기준 fallback
   var BC_DEFAULT_GOAL_WEIGHTS = {
     'BC-1':57,'BC-2':55,'BC-3':60,'BC-4':58,
     'BC-5':56,'BC-6':57,'BC-7':59,'BC-8':56,
@@ -10211,15 +10293,76 @@ function getRoadmapWeeks(bc_primary, goal_weight, weight_loss_pct, user_name, oh
     'BC-9':12,'BC-10':10,'BC-11':11,'BC-12':10,
     'BC-13':13,'BC-14':12,'BC-15':14,'BC-16':13
   };
+  // 목표체중: 파라미터 → r.goal_weight/target_weight → BC 기본값
   var effectiveGoalWeight = (goal_weight != null && goal_weight > 0)
     ? goal_weight
-    : (BC_DEFAULT_GOAL_WEIGHTS[bcKey] || 58);
+    : (Number(_spec.goal_weight) > 0 ? Number(_spec.goal_weight)
+      : (Number(_spec.target_weight) > 0 ? Number(_spec.target_weight)
+      : (Number(_spec._specGoalWt) > 0 ? Number(_spec._specGoalWt) : (BC_DEFAULT_GOAL_WEIGHTS[bcKey] || 58))));
+  // 현재체중: r.weight(인바디) → r.current_weight → 기본값
+  var _rawCurW = Number(_spec.weight) || Number(_spec.current_weight) || Number(_spec._specWeight) || 0;
+  var effectiveCurWeight = _rawCurW > 0 ? _rawCurW : null;
+  // 감량률: 파라미터 → 실측 계산 → BC 기본값
   var effectiveLossPct = (weight_loss_pct != null && weight_loss_pct > 0)
     ? weight_loss_pct
-    : (BC_DEFAULT_LOSS_PCT[bcKey] || 12);
-  var nutritionData = computeNutrition(null, effectiveGoalWeight, effectiveLossPct, null);
-  // fallback 여부 표시 (렌더링에서 참고)
+    : (_rawCurW > 0 && effectiveGoalWeight > 0 && _rawCurW > effectiveGoalWeight
+        ? Math.round((_rawCurW - effectiveGoalWeight) / _rawCurW * 100)
+        : (BC_DEFAULT_LOSS_PCT[bcKey] || 12));
+  // 키: r.height → 기본값
+  var effectiveHeight = Number(_spec.height) || Number(_spec._specHeight) || null;
+
+  // computeNutrition에 BC 코드 + axisScores + _redFlags 전달
+  var nutritionData = computeNutrition(
+    effectiveCurWeight, effectiveGoalWeight, effectiveLossPct, effectiveHeight,
+    bcKey, _axs, _rfl
+  );
   nutritionData._isDefaultGoal = (goal_weight == null || goal_weight <= 0);
+
+  // ── ⑥-A. _redFlags → 주차별 처방 조정 메모 생성 ──
+  var _rfWeekNotes = { 1:'', 2:'', 3:'', 4:'' };
+  var _rfExerciseMod = '';  // 운동 처방 추가 문구
+  var _rfDietMod     = '';  // 식단 추가 문구
+  var _rfRecoveryMod = '';  // 회복 추가 문구
+  if (_rfl.indexOf('DIABETES') >= 0) {
+    _rfWeekNotes[1] += '[당뇨 주의] 1주차: 혈당 모니터링 최우선, 식후 15분 내 가벼운 워킹 의무화. ';
+    _rfWeekNotes[2] += '[당뇨 주의] 2주차: 탄수화물 타이밍 — 운동 전후 집중 배치. ';
+    _rfDietMod      += ' ※ 혈당 관리: 식후 혈당 측정 + 저GI 식품 우선';
+  }
+  if (_rfl.indexOf('YOYO') >= 0) {
+    _rfWeekNotes[1] += '[요요 이력] 1주차: 칼로리 결손 최소화 — 대사 적응 방지가 최우선. ';
+    _rfWeekNotes[3] += '[요요 이력] 3주차: 리피드(refeed)일 1회 추가 — 렙틴 회복. ';
+    _rfDietMod      += ' ※ 요요 방지: 주 1회 탄수화물 리피드(목표 +30%)';
+  }
+  if (_rfl.indexOf('STEROID') >= 0) {
+    _rfWeekNotes[1] += '[스테로이드] 1주차: 단백질 섭취 강화, 부종 모니터링 필수. ';
+    _rfWeekNotes[2] += '[스테로이드] 2주차: 나트륨 엄격 제한, 수분 2.5L+. ';
+    _rfExerciseMod  += ' ※ 스테로이드 복용 시: 고강도 운동 금지, 저항운동 강도 50%로 제한';
+    _rfDietMod      += ' ※ 단백질 강화 필수 (1.8g/kg 이상)';
+  }
+  if (_rfl.indexOf('FATTY_LIVER') >= 0) {
+    _rfWeekNotes[1] += '[지방간] 1주차: 알코올·과당 완전 차단, 간 회복 우선. ';
+    _rfDietMod      += ' ※ 지방간 관리: 과당(액상과당·주스) 완전 차단, 오메가-3 강화';
+  }
+  if (_rfl.indexOf('HTN') >= 0) {
+    _rfExerciseMod  += ' ※ 고혈압: 최대 심박수 75% 이하 유지, 등척성 운동 금지';
+    _rfDietMod      += ' ※ DASH 식단: 나트륨 2g/일 이하, 칼륨(바나나·감자) 강화';
+  }
+  if (_rfl.indexOf('PCOS') >= 0) {
+    _rfWeekNotes[2] += '[PCOS] 2주차: 인슐린 민감도 향상 운동(HIIT 20분) 추가. ';
+    _rfDietMod      += ' ※ PCOS: 저GI 식이 + 이노시톨 보충제 검토';
+  }
+  if (_rfl.indexOf('THYROID') >= 0) {
+    _rfExerciseMod  += ' ※ 갑상선: 공복 운동 금지, 아침 식사 후 운동 원칙';
+    _rfDietMod      += ' ※ 갑상선: 십자화채소 과다 섭취 주의, 요오드 균형';
+  }
+  if (_rfl.indexOf('ANTICOAGULANT') >= 0) {
+    _rfWeekNotes[1] += '[항응고제] 전 주차: 비타민K 함량 급격한 변화 금지. ';
+    _rfDietMod      += ' ※ 항응고제: 녹색채소량 일정하게 유지, 급격한 식단 변경 금지';
+  }
+  if (_rfl.indexOf('LIPO_HX') >= 0 || _rfl.indexOf('ABDOMINOPLASTY_HX') >= 0) {
+    _rfWeekNotes[1] += '[시술 이력] 1주차: 시술 부위 압박 운동 금지, 마사지 금지. ';
+    _rfExerciseMod  += ' ※ 지방흡입/복부성형 이력: 시술 부위 직접 압박 운동 6주 금지';
+  }
 
   // ⑥ 주차별 처방 조합
   var result = baseWeeks.map(function(w) {
@@ -10245,25 +10388,47 @@ function getRoadmapWeeks(bc_primary, goal_weight, weight_loss_pct, user_name, oh
 
     // 오행 기질 레이어 주입
     if (ohaengOv) {
-      // 운동: 오행 추가 처방 append
       if (ohaengOv.exercise_add) {
         item.exercise_ok = (item.exercise_ok || '') + ' · ' + ohaengOv.exercise_add;
       }
-      // 식단: 오행 추가 지침 append
       if (ohaengOv.diet_add) {
         item.diet_ok = (item.diet_ok || '') + '\n[' + ohaeng + ' 기질] ' + ohaengOv.diet_add;
       }
-      // 주의사항
       if (ohaengOv.tone_caution) {
         item.ohaeng_caution = ohaengOv.tone_caution;
       }
-      // 탄단지 비율 메모
       if (ohaengOv.diet_macro_note) {
         item.diet_macro_note = ohaengOv.diet_macro_note;
       }
-      // 회복 추가 (1주차에만)
       if (item.week === 1 && ohaengOv.recovery_add) {
         item.recovery_ok = (item.recovery_ok || '') + ' · ' + ohaengOv.recovery_add;
+      }
+    }
+
+    // ── _redFlags 주차별 처방 조정 레이어 ──
+    var _wkNote = _rfWeekNotes[item.week] || '';
+    if (_wkNote) {
+      item.redFlag_note = _wkNote.trim();
+      // failure_expose 앞에 경고 주입
+      if (item.failure_expose) {
+        item.failure_expose = '[임상 주의사항] ' + _wkNote.trim() + '\n\n' + item.failure_expose;
+      }
+    }
+    if (_rfExerciseMod) {
+      item.exercise_ok = (item.exercise_ok || '') + '\n' + _rfExerciseMod.trim();
+    }
+    if (_rfDietMod) {
+      item.diet_ok = (item.diet_ok || '') + '\n' + _rfDietMod.trim();
+    }
+    // _redFlags keyFocus 상단 주입 (1주차)
+    if (item.week === 1 && _rfl.length > 0) {
+      var _rfFocuses = [];
+      if (_rfl.indexOf('DIABETES') >= 0)   _rfFocuses.push('혈당 모니터링 우선');
+      if (_rfl.indexOf('YOYO') >= 0)       _rfFocuses.push('대사 적응 방지');
+      if (_rfl.indexOf('STEROID') >= 0)    _rfFocuses.push('근육 보호 단백질');
+      if (_rfl.indexOf('FATTY_LIVER') >= 0)_rfFocuses.push('간 회복 식단');
+      if (_rfFocuses.length > 0) {
+        item.keyFocus = _rfFocuses.slice(0,2).concat(item.keyFocus || []).slice(0, 3);
       }
     }
 
@@ -10277,9 +10442,8 @@ function getRoadmapWeeks(bc_primary, goal_weight, weight_loss_pct, user_name, oh
         proteinG: v.proteinG,
         fatG:     v.fatG,
         note:     v.note,
-        // 오행 탄단지 오버라이드 안내
         macro_note: ohaengOv ? ohaengOv.diet_macro_note : null,
-        // fallback 여부 — 목표체중 미입력 시 BC 표준 기반 계산임을 안내
+        redFlag_macro: _rfl.length > 0 ? nutritionData._usedSpec : null,
         isDefaultGoal: nutritionData._isDefaultGoal || false,
         defaultGoalWeight: effectiveGoalWeight,
       };
@@ -13248,7 +13412,7 @@ function renderP6(userName, fullCode, ohaengType, inputData) {
   // axisScores 기반으로 진단 우선순위 자동 정렬
   // ════════════════════════════════════════════
 
-  // axisScores에서 각 진단축 점수 계산 (AXIS_11 axisRef 매핑)
+  // axisScores에서 각 진단축 점수 계산
   // ★ 주의: renderP6()는 renderAll() 내에서 _wowData 세팅 전에 호출되므로
   //   _wowData.axisScores는 항상 undefined → inputData.axisScores를 직접 참조
   const axisScoresRef = (inputData && inputData.axisScores && Object.keys(inputData.axisScores).length > 0)
@@ -13257,16 +13421,54 @@ function renderP6(userName, fullCode, ohaengType, inputData) {
         ? inputData.axis_scores
         : {});
 
-  // 11개 진단 전체 정의 — axisRef 점수로 긴급도 계산
+  // ── 다중축 가중합 urgency 계산 헬퍼 ──
+  // hospital 스케일: axisScores는 0~10 → urgency = Σ(score * weight) / Σ(weight)
+  // 결과는 0~10 스케일 유지
+  const DX_AXIS_WEIGHTS = {
+    식단:  { A01:1.5, A05:1.3, A08:0.8 },
+    심리:  { A08:1.8, A07:1.2 },
+    호르몬:{ A03:1.8, A07:0.8, A01:0.5 },
+    운동:  { A04:1.5, A06:0.8, A02:0.5 },
+    회복:  { A07:1.5, A08:1.0, A02:0.5 },
+    체형:  { A06:1.8, A04:1.2, A02:0.8 },
+    한방:  { A02:1.2, A03:0.8, A05:0.8 },
+    관리:  { A09:1.8, A01:1.0, A03:0.8 },  // A04→A09(대사위험) 수정
+    시술:  { A02:1.0, A06:0.8, A04:0.5 },
+    약물:  { A09:1.5, A01:0.8, A03:0.5 },  // A08→A09(대사위험) 수정
+    철학:  { A10:1.5, A07:0.5 },
+  };
+  function _calcUrgency(key) {
+    var ws = DX_AXIS_WEIGHTS[key] || {};
+    var sumW = 0, sumS = 0;
+    Object.keys(ws).forEach(function(ax) {
+      var s = Number(axisScoresRef[ax]) || 0;
+      sumS += s * ws[ax];
+      sumW += ws[ax];
+    });
+    return sumW > 0 ? Math.round((sumS / sumW) * 10) / 10 : 0;
+  }
+
+  // ── _redFlags 반영: 특정 플래그 → 해당 진단 긴급도 강제 상향 ──
+  const _rfl = window._redFlags || [];
+  const _rfBoost = {};
+  if (_rfl.indexOf('THYROID') >= 0 || _rfl.indexOf('PCOS') >= 0)  { _rfBoost['호르몬'] = 3.0; }
+  if (_rfl.indexOf('DIABETES') >= 0)                               { _rfBoost['식단'] = 2.5; _rfBoost['관리'] = 2.0; }
+  if (_rfl.indexOf('HTN') >= 0 || _rfl.indexOf('FATTY_LIVER') >= 0){ _rfBoost['관리'] = (_rfBoost['관리']||0) + 1.5; }
+  if (_rfl.indexOf('YOYO') >= 0)                                   { _rfBoost['심리'] = 2.0; }
+  if (_rfl.indexOf('STEROID') >= 0)                                { _rfBoost['약물'] = 2.5; _rfBoost['호르몬'] = (_rfBoost['호르몬']||0) + 1.5; }
+  if (_rfl.indexOf('ANTICOAGULANT') >= 0 || _rfl.indexOf('ISOTRETINOIN') >= 0) { _rfBoost['약물'] = (_rfBoost['약물']||0) + 2.0; }
+  if (_rfl.indexOf('LIPO_HX') >= 0 || _rfl.indexOf('ABDOMINOPLASTY_HX') >= 0) { _rfBoost['시술'] = 2.0; }
+
+  // 11개 진단 전체 정의 — 다중축 가중합 긴급도 계산
   const DX_11_BASE = [
     {
       key:'식단',   icon:'<svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:var(--icsz,16px);height:var(--icsz,16px)"><path d="M6 3v7a2.2 2.2 0 0 0 4.4 0V3"/><path d="M8.2 10.5V21"/><path d="M16.5 3c-1.6 1.4-2.2 3.2-2.2 5.2 0 1.7.8 2.8 2.2 3V21"/></svg>', color:'#E8631A',
       expert:'영양·식이 전문가',
       title:'식이 패턴 진단',
-      axisRef:'A01',
-      tagsFn:(score)=>score>70?['탄수화물 과잉','혈당 스파이크','야식 패턴']:['식이 기반 안정','영양 밸런스 점검'],
-      whyFn:(score,name)=>score>70
+      tagsFn:(score)=>score>7?['탄수화물 과잉','혈당 스파이크','야식 패턴']:score>4?['식이 패턴 불안정','혈당 변동성 주의']:['식이 기반 안정','영양 밸런스 점검'],
+      whyFn:(score,name)=>score>7
         ? `<strong>${name}</strong>의 식이 패턴에서 혈당 급등-급락 사이클이 감지됩니다. 탄수화물 타이밍과 양 조절이 다른 어떤 개입보다 먼저 안정되어야 이후 처방 효과가 올라갑니다.`
+        : score>4 ? `식이 패턴에 일부 불안정 요소가 있습니다. BC 기질에 맞는 혈당 관리와 영양 타이밍을 조정합니다.`
         : `식이 기반은 비교적 안정적이지만 BC 기질에 맞는 영양 비율을 미세 조정하면 대사 효율이 달라집니다.`,
       actions:['탄수화물 타이밍 교정','단백질 목표량 설정','야식 패턴 차단'],
     },
@@ -13274,10 +13476,10 @@ function renderP6(userName, fullCode, ohaengType, inputData) {
       key:'심리',   icon:'<svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:var(--icsz,16px);height:var(--icsz,16px)"><path d="M9.5 4.2a2.7 2.7 0 0 0-2.6 2.2 2.6 2.6 0 0 0-1.8 4.2A2.8 2.8 0 0 0 6.4 15a2.7 2.7 0 0 0 2.6 3.4h.5V4.2Z"/><path d="M14.5 4.2a2.7 2.7 0 0 1 2.6 2.2 2.6 2.6 0 0 1 1.8 4.2A2.8 2.8 0 0 1 17.6 15a2.7 2.7 0 0 1-2.6 3.4h-.5V4.2Z"/><path d="M12 4.2v14.2M12 21v-2.6"/></svg>', color:'#9C27B0',
       expert:'행동심리·식욕 전문가',
       title:'심리·식욕 조절 진단',
-      axisRef:'A08',
-      tagsFn:(score)=>score>65?['스트레스 식욕','감정적 폭식','도파민 보상']:['심리 안정','의지력 설계'],
-      whyFn:(score,name)=>score>65
+      tagsFn:(score)=>score>6.5?['스트레스 식욕','감정적 폭식','도파민 보상']:score>4?['심리적 식욕 주의','수면-식욕 연결']:['심리 안정','의지력 설계'],
+      whyFn:(score,name)=>score>6.5
         ? `<strong>${name}</strong>의 체중 문제는 의지 부족이 아니라 스트레스-식욕 호르몬 연결 고리에서 시작됩니다. 행동 패턴을 먼저 진단해야 식단·운동 처방이 지속됩니다.`
+        : score>4 ? `수면 불균형이 야간 식욕과 연결되어 있습니다. 심리·수면 동시 접근으로 식욕 조절이 안정화됩니다.`
         : `심리적 식욕 조절은 안정적입니다. 현재 루틴을 강화하는 방향으로 접근합니다.`,
       actions:['스트레스 식욕 트리거 분석','감정 식사 일지','도파민 보상 대체 루틴'],
     },
@@ -13285,10 +13487,10 @@ function renderP6(userName, fullCode, ohaengType, inputData) {
       key:'호르몬', icon:'<svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:var(--icsz,16px);height:var(--icsz,16px)"><circle cx="12" cy="12" r="2.2"/><path d="M12 9.8c0-2.4-1-4.3-2.6-4.3S6.8 7 8.6 9.4M14.2 12c2.3 0 4.2-1 4.2-2.6s-1.5-2.6-3.9-.8M12 14.2c0 2.4 1 4.3 2.6 4.3s2.6-1.5.8-3.9M9.8 12c-2.4 0-4.3 1-4.3 2.6s1.5 2.6 3.9.8"/></svg>', color:'#C0397A',
       expert:'내분비·호르몬 전문가',
       title:'호르몬 불균형 진단',
-      axisRef:'A03',
-      tagsFn:(score)=>score>65?['인슐린 저항','코르티솔 이상','갑상선 기능']:['호르몬 기반 안정','주기적 모니터링'],
-      whyFn:(score,name)=>score>65
+      tagsFn:(score)=>score>6.5?['인슐린 저항','코르티솔 이상','갑상선 기능']:score>4?['호르몬 변동성 주의','생리 주기 영향']:['호르몬 기반 안정','주기적 모니터링'],
+      whyFn:(score,name)=>score>6.5
         ? `<strong>${name}</strong>의 호르몬 지표가 체중 조절의 핵심 병목입니다. 인슐린 민감도와 코르티솔 패턴을 교정하지 않으면 식이·운동 효과가 반감됩니다.`
+        : score>4 ? `호르몬 변동이 감지됩니다. 생리 주기·코르티솔 리듬에 맞춘 식이·운동 타이밍 최적화가 필요합니다.`
         : `호르몬 기반은 관리 가능한 수준입니다. 생활 패턴으로 최적화할 수 있습니다.`,
       actions:['인슐린 민감도 검사','코르티솔 일주기 체크','갑상선 기능 모니터링'],
     },
@@ -13296,10 +13498,10 @@ function renderP6(userName, fullCode, ohaengType, inputData) {
       key:'운동',   icon:'<svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:var(--icsz,16px);height:var(--icsz,16px)"><circle cx="13.5" cy="4" r="1.6"/><path d="M7.5 21l3-5.8-2.6-3 1-5.2L12 9.5l3.2 1.2"/><path d="M5.5 11.4 9 8.6M15.2 14.8l2 2.6.9 3.6"/></svg>', color:'#4A8C1C',
       expert:'운동처방·재활 전문가',
       title:'운동 처방 진단',
-      axisRef:'A04',
-      tagsFn:(score)=>score>60?['근육량 부족','체형 불균형','운동 부작용']:['운동 기반 양호','강도 최적화 필요'],
-      whyFn:(score,name)=>score>60
+      tagsFn:(score)=>score>6?['근육량 부족','체형 불균형','운동 부작용']:score>3.5?['운동 효율 개선 필요','자세 패턴 주의']:['운동 기반 양호','강도 최적화 필요'],
+      whyFn:(score,name)=>score>6
         ? `<strong>${name}</strong>의 BC 기질에 맞지 않는 운동이 오히려 염증과 식욕을 증가시킬 수 있습니다. BC 맞춤 운동 종류와 강도를 먼저 진단합니다.`
+        : score>3.5 ? `운동 효율에 개선 여지가 있습니다. 체형 정렬과 운동 순서를 교정하면 같은 시간에 더 큰 효과를 냅니다.`
         : `운동 기반은 양호합니다. BC에 맞는 종류와 시간대를 최적화합니다.`,
       actions:['체형별 운동 금지 목록 확인','주간 운동 루틴 설계','근육 활성화 순서 교정'],
     },
@@ -13307,10 +13509,10 @@ function renderP6(userName, fullCode, ohaengType, inputData) {
       key:'회복',   icon:'<svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:var(--icsz,16px);height:var(--icsz,16px)"><path d="M20 14.2A8.1 8.1 0 0 1 9.8 4 8.3 8.3 0 1 0 20 14.2Z"/></svg>', color:'#3F51B5',
       expert:'수면·자율신경 전문가',
       title:'수면·회복 진단',
-      axisRef:'A07',
-      tagsFn:(score)=>score>60?['수면 호르몬 교란','야간 식욕','회복력 저하']:['수면 패턴 안정','회복력 양호'],
-      whyFn:(score,name)=>score>60
+      tagsFn:(score)=>score>6?['수면 호르몬 교란','야간 식욕','회복력 저하']:score>4?['수면 리듬 불안정','자율신경 과부하']:['수면 패턴 안정','회복력 양호'],
+      whyFn:(score,name)=>score>6
         ? `<strong>${name}</strong>의 수면 패턴이 렙틴·그렐린 불균형을 만들어 다음날 식욕 폭발로 이어집니다. 수면 질을 먼저 개선해야 모든 처방 효과가 살아납니다.`
+        : score>4 ? `수면 리듬이 일부 불안정합니다. 자율신경 과부하 차단과 수면 루틴 고정이 우선입니다.`
         : `수면·회복 기반은 양호합니다. 질적 최적화로 대사 회복을 가속합니다.`,
       actions:['수면 단계 분석','야간 코르티솔 패턴 체크','회복 루틴 설계'],
     },
@@ -13318,10 +13520,10 @@ function renderP6(userName, fullCode, ohaengType, inputData) {
       key:'체형',   icon:'<svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:var(--icsz,16px);height:var(--icsz,16px)"><path d="M8.6 15.4 15.4 8.6"/><path d="M8.6 15.4a2.3 2.3 0 1 0-3 3 2.3 2.3 0 1 0 3 3 2.3 2.3 0 0 0 3-3"/><path d="M15.4 8.6a2.3 2.3 0 1 0 3-3 2.3 2.3 0 1 0-3-3 2.3 2.3 0 0 0-3 3"/></svg>', color:'#6B4EAA',
       expert:'체형·자세 전문가',
       title:'체형·자세 교정 진단',
-      axisRef:'A06',
-      tagsFn:(score)=>score>60?['체형 불균형','자세성 비만','림프 순환 저하']:['체형 기반 안정','자세 미세 교정'],
-      whyFn:(score,name)=>score>60
+      tagsFn:(score)=>score>6?['체형 불균형','자세성 비만','림프 순환 저하']:score>4?['자세 패턴 주의','부위별 지방 분포 영향']:['체형 기반 안정','자세 미세 교정'],
+      whyFn:(score,name)=>score>6
         ? `<strong>${name}</strong>의 체형 불균형이 특정 부위 지방 분포에 영향을 줍니다. 자세·체형 교정이 선행되어야 운동 효율과 순환이 개선됩니다.`
+        : score>4 ? `자세 패턴이 부위별 지방 축적에 영향을 주고 있습니다. 골반·척추 정렬 교정으로 대사 효율을 높입니다.`
         : `체형 기반은 양호합니다. 세부 자세 교정으로 대사 효율을 높입니다.`,
       actions:['체형 불균형 부위 분석','자세 교정 루틴','BC 맞춤 스트레칭'],
     },
@@ -13329,55 +13531,65 @@ function renderP6(userName, fullCode, ohaengType, inputData) {
       key:'한방',   icon:'<svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:var(--icsz,16px);height:var(--icsz,16px)"><path d="M12 21V11"/><path d="M12 14c-4 0-7-2.6-7-7 4.4 0 7 2.6 7 7Z"/><path d="M12.5 11.5c0-4 2.6-7 7-7 0 4.4-2.6 7-7 7Z"/></svg>', color:'#1A8C5B',
       expert:'한의학·동양의학 전문가',
       title:'한방 기질 진단',
-      axisRef:'A02',
-      tagsFn:(score)=>score>55?['기혈 순환 저하','체질 불균형','담음 축적']:['기혈 순환 양호','체질 기반 안정'],
-      whyFn:(score,name)=>score>55
+      tagsFn:(score)=>score>5.5?['기혈 순환 저하','체질 불균형','담음 축적']:score>3.5?['기혈 흐름 주의','체질별 식이 조정']:['기혈 순환 양호','체질 기반 안정'],
+      whyFn:(score,name)=>score>5.5
         ? `<strong>${name}</strong>의 오행 기질 분석에서 특정 장부 불균형이 감지됩니다. 한방적 접근으로 체질 기반 처방을 보완하면 효과가 배가됩니다.`
+        : score>3.5 ? `오행 기질에 따른 특이 패턴이 있습니다. 계절·체질별 식이 보완이 전체 처방 효율을 높입니다.`
         : `오행 기질 기반은 안정적입니다. 계절·시간대 맞춤 보완으로 최적화합니다.`,
       actions:['오행 기질 처방 확인','한방 식이 보완 목록','체질별 금기 식품 체크'],
     },
     {
       key:'관리',   icon:'<svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:var(--icsz,16px);height:var(--icsz,16px)"><circle cx="12" cy="8" r="3.4"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/><path d="M4.6 6.5 3 5M19.4 6.5 21 5M4 11H2M22 11h-2"/></svg>', color:'#3EB8A0',
       expert:'생활습관·코칭 전문가',
-      title:'생활 습관 진단',
-      axisRef:'A04',
-      tagsFn:()=>['습관 자동화 설계','데일리 루틴 점검','행동 지속성 강화'],
-      whyFn:(_,name)=>`<strong>${name}</strong>의 처방이 지속되려면 일상 루틴에 녹아들어야 합니다. 습관화 설계 없이는 어떤 처방도 3주를 넘기기 어렵습니다.`,
-      actions:['아침 루틴 설계','습관 트래킹 시스템','환경 설계'],
+      title:'생활 습관·대사 관리 진단',
+      tagsFn:(score)=>score>6?['대사위험 관리 시급','습관 자동화 필요','체중 유지 불안정']:score>4?['생활 루틴 점검 필요','대사 모니터링']:['습관 자동화 설계','데일리 루틴 최적화'],
+      whyFn:(score,name)=>score>6
+        ? `<strong>${name}</strong>의 대사 위험 지표가 높습니다. 혈압·혈당·지방간 등 복합 관리 없이는 체중 감량 효과가 지속되지 않습니다.`
+        : score>4 ? `<strong>${name}</strong>의 처방이 지속되려면 일상 루틴에 녹아들어야 합니다. 대사 모니터링과 습관화 설계를 병행합니다.`
+        : `습관 기반이 안정적입니다. 처방을 일상 루틴에 자동화하는 단계로 진입합니다.`,
+      actions:['대사위험 지표 체크','아침 루틴 설계','습관 트래킹 시스템'],
     },
     {
       key:'시술',   icon:'✨', color:'#E67E22',
       expert:'미용·시술 전문가',
       title:'보조 시술 진단',
-      axisRef:'A09',
-      tagsFn:()=>['BC 맞춤 시술 선별','효과·부작용 점검','시술 타이밍 최적화'],
-      whyFn:(_,name)=>`<strong>${name}</strong>의 체형 목표에 보조적 시술이 도움될 수 있습니다. 단, BC 기질에 맞지 않는 시술은 오히려 역효과가 납니다. 사전 진단이 필요합니다.`,
+      tagsFn:(score)=>score>6?['시술 금기 체크 시급','BC 맞춤 시술 필요','부작용 위험 확인']:score>4?['시술 타이밍 검토','보조 효과 기대']:['BC 맞춤 시술 선별','시술 타이밍 최적화'],
+      whyFn:(score,name)=>score>6
+        ? `<strong>${name}</strong>의 체형 변화에 보조 시술이 유효할 수 있습니다. 단, 기저 순환·체형 문제가 해결되지 않은 상태의 시술은 오히려 역효과가 납니다.`
+        : score>4 ? `보조 시술로 체형 목표를 앞당길 수 있습니다. BC 기질 검토 후 적합한 시술을 선별합니다.`
+        : `기반 처방 효과가 먼저 쌓여야 시술 효율이 최대화됩니다.`,
       actions:['BC 맞춤 시술 목록 확인','시술 금기 체크','시술 전 기반 조건 충족'],
     },
     {
       key:'약물',   icon:'<svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:var(--icsz,16px);height:var(--icsz,16px)"><path d="M10.5 3.9 3.9 10.5a4.7 4.7 0 0 0 6.6 6.6l6.6-6.6a4.7 4.7 0 0 0-6.6-6.6Z"/><path d="M7.2 7.2l6.6 6.6"/></svg>', color:'#7B1FA2',
       expert:'약학·보조요법 전문가',
       title:'약물·보충제 진단',
-      axisRef:'A08',
-      tagsFn:()=>['복용 중인 약물 점검','보충제 궁합 분석','BC 맞춤 보충제'],
-      whyFn:(_,name)=>`<strong>${name}</strong>의 현재 복용 약물 또는 보충제가 대사에 영향을 주고 있을 수 있습니다. BC×복용 조합의 궁합을 먼저 점검해야 처방 효과가 극대화됩니다.`,
+      tagsFn:(score)=>score>6?['복약 대사 충돌 주의','약물-영양소 상호작용','BC 보충제 긴급 점검']:score>4?['보충제 조정 필요','복약 상호작용 체크']:['복용 중인 약물 점검','BC 맞춤 보충제'],
+      whyFn:(score,name)=>score>6
+        ? `<strong>${name}</strong>의 현재 복용 약물이 대사 경로와 충돌할 가능성이 있습니다. BC×복약 조합 점검이 다른 모든 처방보다 우선합니다.`
+        : score>4 ? `보충제와 약물 상호작용을 점검합니다. BC 기질에 맞는 보충제로 교체하면 처방 효율이 높아집니다.`
+        : `복약 이력이 안정적입니다. BC 맞춤 보충제로 처방 효과를 극대화합니다.`,
       actions:['현재 복용 목록 정리','BC 맞춤 보충제 확인','약물-영양소 상호작용 체크'],
     },
     {
       key:'철학',   icon:'🔮', color:'#E67E22',
       expert:'목표 설계·삶의 방향 코치',
       title:'목표·철학 진단',
-      axisRef:'A10',
-      tagsFn:()=>['목표 구체화','동기 지속 설계','장기 유지 철학'],
-      whyFn:(_,name)=>`<strong>${name}</strong>이 원하는 몸과 삶의 연결고리를 명확히 하는 것이 모든 처방의 마지막 접착제입니다. 왜 살을 빼야 하는지를 깊이 정의할수록 습관이 자동화됩니다.`,
+      tagsFn:(score)=>score>6.5?['목표 재정의 필요','동기 지속 설계','요요 차단 마인드셋']:score>4?['목표 구체화','장기 유지 전략']:['목표 명확화','비전 고도화'],
+      whyFn:(score,name)=>score>6.5
+        ? `<strong>${name}</strong>이 원하는 몸과 삶의 연결고리가 아직 명확하지 않습니다. 목표를 깊이 정의하지 않으면 처방을 따르다 포기하는 패턴이 반복됩니다.`
+        : score>4 ? `목표를 더 구체적으로 정의하면 처방 지속력이 올라갑니다. 장기 유지 철학을 구체화합니다.`
+        : `<strong>${name}</strong>이 원하는 몸과 삶의 연결고리를 명확히 하는 것이 모든 처방의 마지막 접착제입니다.`,
       actions:['목표 체중 의미 탐구','장기 유지 비전 설계','요요 차단 마인드셋'],
     },
   ];
 
-  // axisScores 기반으로 긴급도 점수 계산 후 정렬
+  // 다중축 가중합 + _redFlags 보정 → urgency 계산 후 정렬
   const dxWithScores = DX_11_BASE.map(dx => {
-    const rawScore = axisScoresRef[dx.axisRef] || 0;
-    return { ...dx, urgency: rawScore };
+    var urg = _calcUrgency(dx.key);
+    // _redFlags 보정: 최대 10점 clamp
+    if (_rfBoost[dx.key]) urg = Math.min(10, urg + _rfBoost[dx.key]);
+    return { ...dx, urgency: Math.round(urg * 10) / 10 };
   });
   // 점수 높은 순 정렬 (= 가장 시급한 진단이 먼저)
   dxWithScores.sort((a, b) => b.urgency - a.urgency);
@@ -13391,10 +13603,11 @@ function renderP6(userName, fullCode, ohaengType, inputData) {
   }
 
   // 긴급도 바 렌더링 (11칸)
+  // ★ hospital 스케일 수정: axisScores 0~10 → fillPct = (urgency/10)*100
   const urgBar = document.getElementById('p6-dx-urgency-bar');
   if (urgBar) {
     urgBar.innerHTML = dxWithScores.map((dx, i) => {
-      const fillPct = Math.max(10, Math.round((dx.urgency / 100) * 100));
+      const fillPct = Math.max(8, Math.round((dx.urgency / 10) * 100));
       const alpha = i < 3 ? '1' : i < 6 ? '0.55' : '0.3';
       return `<div class="p6-dx-urgency-seg">
         <div class="p6-dx-urgency-seg-fill" style="background:${dx.color};opacity:${alpha};"
@@ -13417,7 +13630,8 @@ function renderP6(userName, fullCode, ohaengType, inputData) {
       if (isLocked) return;               // ★ 4~11번 DOM 추가 자체를 스킵
       const isOpen = i === 0;               // 첫 번째는 기본 펼침
       const score = dx.urgency;
-      const urgPct = Math.max(8, Math.round((score / 100) * 100));
+      // ★ hospital 스케일 수정: 0~10 스케일 → *10 = 0~100%
+      const urgPct = Math.max(8, Math.round((score / 10) * 100));
       const tags = (dx.tagsFn ? dx.tagsFn(score) : []);
       const whyText = dx.whyFn ? dx.whyFn(score, userName) : '';
       const actions = dx.actions || [];
