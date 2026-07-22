@@ -8966,38 +8966,183 @@ var MBTI_DESC = {
 // 7. 기질 융합 인사이트 (MBTI 레이블 완전 제거)
 // P3 통합 인사이트 3개 — 바디코드 × 오행 × 행동 성향 조합
 // ──────────────────────────────────────────────
-function getMbtiOhaengInsights(bcMaster, ohaengKey, mbtiType) {
+function getMbtiOhaengInsights(bcMaster, ohaengKey, mbtiType, axisScores, redFlags) {
+  var _axs = axisScores || window.__AXIS_SCORES_FINAL__ || {};
+  var _a01 = Number(_axs['A01']||0); // 인슐린·내장지방 (0~10)
+  var _a03 = Number(_axs['A03']||0); // 호르몬·대사
+  var _a04 = Number(_axs['A04']||0); // 근감소
+  var _a05 = Number(_axs['A05']||0); // 소화·장
+  var _a06 = Number(_axs['A06']||0); // 골격·자세
+  var _a07 = Number(_axs['A07']||0); // 코르티솔
+  var _a08 = Number(_axs['A08']||0); // 심리·식이
+  var _rfl = Array.isArray(redFlags) ? redFlags : (redFlags ? [redFlags] : (window.__RED_FLAGS__ || []));
+  var hasDIABETES = _rfl.indexOf('DIABETES') >= 0;
+  var hasTHYROID  = _rfl.indexOf('THYROID')  >= 0;
+  var hasPCOS     = _rfl.indexOf('PCOS')     >= 0;
+  var hasYOYO     = _rfl.indexOf('YOYO')     >= 0;
+
   const ohaeng = SAJU_ELEMENT_DESC[ohaengKey] || SAJU_ELEMENT_DESC['목'];
   const mbti   = MBTI_DESC[mbtiType] || MBTI_DESC['INFP'];
   const bcCode = bcMaster.code;
 
+  // ── 인사이트 01: 과식 반복 원인 (A08/A01/DIABETES/A07 분기) ──
+  var ins01_title, ins01_sub, ins01_medical, ins01_personal, ins01_warn, ins01_solution;
+  if (_a08 >= 7) {
+    // 심리·식이 축 고위험 → 감정-식욕 연결 특화
+    ins01_title   = '왜 감정이 흔들릴 때마다 과식이 폭발하는가';
+    ins01_sub     = bcCode + ' × ' + ohaeng.label + '의 감정-식욕 연결 회로';
+    ins01_medical = bcCode + '(' + bcMaster.medical_title + ') 상태에서 심리·식이 축(A08) 위험 점수가 높게 나타났습니다. '
+      + '이는 뇌의 보상-회피 회로가 음식에 강하게 엮여 있는 구조로, 스트레스·감정 자극이 즉각적인 식욕 반응을 유발합니다.';
+    ins01_personal = '타고난 ' + ohaeng.label + '의 감정 처리 방식이 이 회로를 더욱 강화합니다. '
+      + mbti.behaviorTag + ' 성향이 더해져 "감정 → 과식 → 자책 → 억압 → 재폭발" 사이클이 구조적으로 반복됩니다.';
+    ins01_warn    = '의지력으로 이 사이클을 끊으려 할수록, 억압이 쌓여 다음 폭발이 더 강해집니다. 사이클 자체를 바꾸는 접근이 필요합니다.';
+    ins01_solution = '감정이 식욕으로 연결되기 전 "5분 걷기" 등 신체 전환 루틴을 삽입하고, 저녁 트립토판 단백질(닭가슴살·두부)로 세로토닌을 보충합니다.';
+  } else if (hasDIABETES || _a01 >= 7) {
+    // 인슐린 저항 고위험 → 혈당-식욕 연결 특화
+    ins01_title   = '왜 밥을 먹어도 곧 다시 배고픈가';
+    ins01_sub     = bcCode + ' × ' + ohaeng.label + '의 혈당 진동 패턴';
+    ins01_medical = bcCode + '(' + bcMaster.medical_title + ') 상태에서 인슐린·내장지방 축(A01) 위험이 확인됩니다. '
+      + '인슐린 저항이 생기면 혈당이 가파르게 오르고 빠르게 추락하는 진동 패턴이 형성됩니다. '
+      + (hasDIABETES ? '당뇨 전단계 소견이 이 진동을 더욱 심화시킵니다. ' : '')
+      + '가짜 공복감이 반복되면서 과식이 구조적으로 일어납니다.';
+    ins01_personal = '타고난 ' + ohaeng.label + '의 에너지 사용 패턴이 혈당 진동과 맞물려 "늦은 오후~밤" 식욕 급등을 만들어냅니다. '
+      + mbti.behaviorTag + ' 성향이 "이미 망했다"는 자책을 유발해 폭식으로 이어집니다.';
+    ins01_warn    = '혈당 진동이 있는 상태에서 극단적 절식·저탄수는 혈당 추락을 더 심하게 만들어 역효과를 냅니다.';
+    ins01_solution = '저GI 탄수화물(현미·귀리)을 소량씩 4~5회로 나눠 혈당 진동을 줄이고, 식후 10분 가벼운 보행으로 인슐린 민감도를 개선합니다.';
+  } else if (_a07 >= 7) {
+    // 코르티솔 고위험 → 스트레스-야식 특화
+    ins01_title   = '왜 스트레스 받으면 반드시 야식이 당기는가';
+    ins01_sub     = bcCode + ' × ' + ohaeng.label + '의 코르티솔 과잉';
+    ins01_medical = bcCode + '(' + bcMaster.medical_title + ') 상태에서 코르티솔 축(A07)이 만성 과잉 상태입니다. '
+      + '코르티솔은 밤 9시 이후 정상 하강해야 하는데, 과잉 분비 상태에서는 오히려 가짜 허기를 발동시킵니다. '
+      + '뇌가 스트레스를 칼로리로 채우려는 생존 반사를 작동시키는 것입니다.';
+    ins01_personal = '타고난 ' + ohaeng.label + '은 스트레스를 억누르고 내면화하는 경향이 강합니다. '
+      + '낮 동안 쌓인 코르티솔이 밤에 폭발적 야식 충동으로 나타나는 구조이며, ' + mbti.behaviorTag + '가 이 패턴을 더욱 강화합니다.';
+    ins01_warn    = '이 충동은 의지력 부족이 아니라 코르티솔이 만든 생리적 반사입니다. 억제할수록 다음 날 보상 과식이 더 강해집니다.';
+    ins01_solution = '저녁 마그네슘 풍부 식품(아몬드·시금치)과 10분 복식 호흡으로 코르티솔 하강을 돕고, 야식 환경을 원천 차단합니다.';
+  } else {
+    // 기본 — 오행+BC 기반
+    ins01_title   = '왜 밤마다 과식이 반복되는가';
+    ins01_sub     = bcCode + ' × ' + ohaeng.label + '의 감정 억압';
+    ins01_medical = bcCode + '(' + bcMaster.medical_title + ') 상태에서는 자율신경계가 온종일 팽팽한 긴장을 유지합니다. '
+      + '설상가상으로 타고난 ' + ohaeng.label + '은 힘든 감정을 밖으로 표현하기보다 안으로 꾹꾹 억누릅니다.';
+    ins01_personal = '낮 동안 참아온 긴장과 감정 억압이 밤이 되어 느슨해지는 순간, 뇌의 도파민이 급격히 추락합니다. '
+      + '억누를수록 보상 과식은 더 강해집니다. 여기에 <em>' + mbti.behaviorTag + '</em>가 더해지면 '밤 9시 이후 폭발적 식욕'이 구조적으로 만들어집니다.';
+    ins01_warn    = '이 충동은 심리적 나약함이 아니라 신체 구조 + 기질이 만든 생리적 반응입니다. 억제할수록 다음 날 보상 과식이 더 강해집니다.';
+    ins01_solution = '감정 억압을 푸는 '저녁 산책'으로 도파민을 유지하고, 복강 내압 운동을 병행해야 가짜 식욕이 가라앉습니다.';
+  }
+
+  // ── 인사이트 02: 계획 붕괴 원인 (YOYO/A03/A07/MBTI 분기) ──
+  var ins02_title, ins02_sub, ins02_medical, ins02_personal, ins02_warn, ins02_solution;
+  if (hasYOYO) {
+    // 요요 이력 → 방어 체중 특화
+    ins02_title   = '왜 다이어트를 할수록 몸이 더 버티는가';
+    ins02_sub     = bcCode + ' × 방어 체중(대사 적응) 패턴';
+    ins02_medical = '반복적인 다이어트가 몸을 '기아 경계 모드'로 훈련시켰습니다. '
+      + '기초대사율이 낮아진 상태에서 식단을 제한하면 몸은 에너지 소비를 더 줄여 방어합니다. '
+      + bcCode + ' 코드의 대사 불균형이 이 방어 기전을 한층 강화합니다.';
+    ins02_personal = '타고난 ' + ohaeng.label + '의 완벽주의 성향이 "완벽한 식단 → 한번 어기면 전면 포기" 사이클을 반복하며 방어 체중을 더 굳혀왔습니다. '
+      + mbti.behaviorTag + '가 이 극단적 전환을 구조적으로 만들어냅니다.';
+    ins02_warn    = '이 몸에 또다시 극단적 절식을 시도하면, 대사 방어 반응이 더 강해져 오히려 장기 체중 감량을 방해합니다.';
+    ins02_solution = '기초대사 재건을 위해 처음 4주는 오히려 총 칼로리를 유지·소폭 증가시키며 근육 단백질(하루 체중 1g×체중)을 확보합니다.';
+  } else if (_a03 >= 7) {
+    // 호르몬 불균형 → 대사 저하 특화
+    ins02_title   = '왜 같은 식사를 해도 몸무게가 남들보다 더 잘 오르는가';
+    ins02_sub     = bcCode + ' × ' + ohaeng.label + '의 호르몬 대사 저하';
+    ins02_medical = bcCode + '(' + bcMaster.medical_title + ') + 호르몬·대사 축(A03) 고위험이 확인됩니다. '
+      + (hasTHYROID ? '갑상선 기능 저하가 기초대사를 구조적으로 낮추고 있습니다. ' : '')
+      + (hasPCOS ? '다낭성난소증후군이 인슐린 저항과 호르몬 불균형을 복합화시킵니다. ' : '')
+      + '호르몬 불균형 상태에서는 같은 칼로리도 더 많이 저장되는 대사 체질이 됩니다.';
+    ins02_personal = '타고난 ' + ohaeng.label + '의 에너지 관리 방식이 호르몬 불균형과 맞물려 "아무것도 안 해도 체중이 오른다"는 좌절감을 만들어왔습니다. '
+      + mbti.desc;
+    ins02_warn    = '호르몬 불균형 상태에서 수치·규칙 중심 식단을 강행하면 스트레스 호르몬이 추가로 불균형을 악화시킵니다.';
+    ins02_solution = '호르몬 재균형을 위해 마그네슘·아연·오메가3를 우선 보충하고, 취침 2시간 전 단식으로 야간 성장호르몬 분비 환경을 만듭니다.';
+  } else {
+    // 기본 — MBTI 행동 성향 특화
+    ins02_title   = '왜 다이어트 계획이 항상 무너지는가';
+    ins02_sub     = bcCode + ' × ' + mbtiType + '의 행동 성향';
+    ins02_medical = bcCode + ' 상태의 몸은 늘 불안정하여 뇌가 만성 스트레스를 받습니다. '
+      + '이때 완벽주의 성향의 '자기희생적 극단성'이 개입하면 위험해집니다.';
+    ins02_personal = '사소한 규칙 하나만 어겨도 "어차피 망했어"라며 극단적 자책 루프에 빠져 전면 포기로 이어집니다. '
+      + mbti.desc + ' 강박적인 규칙 중심 식단이 늘 독이 되었던 이유입니다.';
+    ins02_warn    = '수치와 규칙 중심 식단이 효과가 크게 제한되는 이유: ' + mbti.warn;
+    ins02_solution = '의지력을 시험하는 규칙 대신, 애초에 무너질 수 없는 '환경'을 바꾸는 전략이 유일한 해답입니다. "무엇을 먹지 말까"가 아니라 "어떤 음식이 눈앞에 없게 할까"로 접근합니다.';
+  }
+
+  // ── 인사이트 03: 운동 무효 원인 (A04/A06/A05/기본 분기) ──
+  var ins03_title, ins03_sub, ins03_medical, ins03_personal, ins03_warn, ins03_solution;
+  if (_a04 >= 7) {
+    // 근감소 고위험 → 근육 우선 특화
+    ins03_title   = '왜 운동을 해도 몸이 탄탄해지지 않는가';
+    ins03_sub     = bcCode + ' × ' + ohaeng.label + '의 근감소 패턴';
+    ins03_medical = bcCode + '(' + bcMaster.medical_title + ') + 근감소 축(A04) 고위험이 확인됩니다. '
+      + '근육량이 부족한 상태에서 유산소 중심 운동을 반복하면 지방보다 근육이 먼저 소모됩니다. '
+      + '기초대사율이 낮아져 운동을 해도 체중 변화가 나타나지 않는 구조입니다.';
+    ins03_personal = '타고난 ' + ohaeng.label + '은 목표를 세우면 과잉 실행하는 경향이 있어 몸을 심하게 다그칩니다. '
+      + '근육 회복 시간 없이 연속 운동을 반복하면 근육 분해가 지방 분해보다 빠르게 진행됩니다.';
+    ins03_warn    = '[유보 지침] 단백질 섭취 부족 상태에서 장시간 유산소(60분 이상)는 근육을 태우는 역효과를 냅니다. 지금 당장 중단이 필요합니다.';
+    ins03_solution = '체중 1kg당 최소 1.2g 단백질을 하루 3~4회 분산 섭취하고, 유산소 전 저항운동(밴드·스쿼트 15회)으로 근육 손실 방어 신호를 보냅니다.';
+  } else if (_a06 >= 7) {
+    // 골격·자세 불균형 → 코어 우선 특화
+    ins03_title   = '왜 운동할수록 특정 부위가 더 커 보이는가';
+    ins03_sub     = bcCode + ' × ' + ohaeng.label + '의 골격·자세 불균형';
+    ins03_medical = bcCode + '(' + bcMaster.medical_title + ') + 골격·자세 축(A06) 고위험입니다. '
+      + '골반·척추 정렬이 어긋난 상태에서 운동하면 보상 근육(허벅지 바깥·어깨)이 과활성화됩니다. '
+      + '코어가 작동하지 않아 겉 근육만 비대해지고 실제 체지방은 감소하지 않습니다.';
+    ins03_personal = '타고난 ' + ohaeng.label + '의 특성상 몸의 불균형 신호를 의지력으로 눌러가며 운동을 강행합니다. '
+      + '이것이 불균형을 더 심화시키는 구조적 악순환입니다.';
+    ins03_warn    = '[유보 지침] 골반 정렬 교정 전 스쿼트·런지·데드리프트는 허리·무릎 부담을 급격히 높여 부상 위험이 큽니다.';
+    ins03_solution = '코어 안정화(데드버그·버드독 10회씩 3세트)로 골반 정렬을 먼저 잡고, 이후 단계적으로 기능성 복합 운동을 추가합니다.';
+  } else if (_a05 >= 7) {
+    // 소화·장 고위험 → 장 환경 특화
+    ins03_title   = '왜 운동 후 오히려 배가 더 부르고 변비가 심해지는가';
+    ins03_sub     = bcCode + ' × ' + ohaeng.label + '의 소화·장 민감';
+    ins03_medical = bcCode + '(' + bcMaster.medical_title + ') + 소화·장 축(A05) 고위험입니다. '
+      + '장 환경이 나쁜 상태에서 고강도 운동을 하면 혈류가 근육으로 집중되어 소화 기능이 더욱 저하됩니다. '
+      + '영양 흡수 불량이 체중 변화를 막고 운동 효율을 떨어뜨립니다.';
+    ins03_personal = '타고난 ' + ohaeng.label + '은 목표를 세우면 과잉 실행하는 경향이 있습니다. '
+      + '운동 후 소화 불량·피로가 심해지는 신호를 무시하며 더 강하게 밀어붙이는 패턴이 반복됩니다.';
+    ins03_warn    = '[유보 지침] 장 환경 회복 전 빈속 고강도 운동은 장 점막을 손상시켜 염증을 악화시킵니다.';
+    ins03_solution = '운동 전 소화 쉬운 바나나·쌀밥 소량으로 혈당을 안정시키고, 운동 후 30분 이내 단백질+탄수화물 4:1 비율 회복식을 섭취합니다.';
+  } else {
+    // 기본 — 오행 과잉 실행 특화
+    ins03_title   = '왜 운동을 해도 몸에 변화가 없는가';
+    ins03_sub     = bcCode + ' × ' + ohaeng.label + '의 과잉 보상';
+    ins03_medical = '몸의 중심 축이 무너진 상태에서 무작정 땀을 흘리면, 보상 작용으로 엉뚱한 겉 근육만 과활성화됩니다. '
+      + '지방 감소 효과는 크지 않고 특정 부위가 오히려 커 보일 수 있습니다.';
+    ins03_personal = '특히 ' + ohaeng.label + '은 목표를 세우면 과잉 실행하는 경향이 있어 몸을 심하게 다그칩니다. '
+      + ''운동을 더 열심히 해야 해'라며 고강도를 반복하면 구조 불안정만 심해집니다.';
+    ins03_warn    = '[유보 지침] 부신과 자율신경이 안정되기 전 고강도 하체 운동(스쿼트·런지·데드리프트)은 체지방 감소는커녕 독이 됩니다.';
+    ins03_solution = '지금 필요한 건 골반저근 이완과 횡격막 활성화로 '복강 내압'을 먼저 회복하는 것입니다. 이후 필라테스 코어 안정화 → 수영 순으로 단계적으로 진입합니다.';
+  }
+
   const insights = [
     {
       num: '01',
-      title: '왜 밤마다 과식이 반복되는가',
-      subtitle: `${bcCode} × ${ohaeng.label}의 감정 억압`,
-      medical: `${bcCode}(${bcMaster.medical_title}) 상태에서는 자율신경계가 온종일 팽팽한 긴장을 유지합니다. 설상가상으로 타고난 ${ohaeng.label}은 힘든 감정을 밖으로 표현하기보다 안으로 꾹꾹 억누릅니다.`,
-      personal: `낮 동안 참아온 긴장과 감정 억압이 밤이 되어 느슨해지는 순간, 뇌의 도파민이 급격히 추락합니다. 억누를수록 보상 과식은 더 강해집니다. 여기에 <em>${mbti.behaviorTag}</em>가 더해지면 '밤 9시 이후 폭발적 식욕'이 구조적으로 만들어집니다.`,
-      warn: '이 충동은 심리적 나약함이 아니라 신체 구조 + 기질이 만든 생리적 반응입니다. 억제할수록 다음 날 보상 과식이 더 강해집니다.',
-      solution: `감정 억압을 푸는 '저녁 산책'으로 도파민을 유지하고, 복강 내압 운동을 병행해야 가짜 식욕이 가라앉습니다.`,
+      title:    ins01_title,
+      subtitle: ins01_sub,
+      medical:  ins01_medical,
+      personal: ins01_personal,
+      warn:     ins01_warn,
+      solution: ins01_solution,
     },
     {
       num: '02',
-      title: '왜 다이어트 계획이 항상 무너지는가',
-      subtitle: `${bcCode} × ${mbtiType}의 행동 성향`,
-      medical: `${bcCode} 상태의 몸은 늘 불안정하여 뇌가 만성 스트레스를 받습니다. 이때 완벽주의 성향의 '자기희생적 극단성'이 개입하면 위험해집니다.`,
-      personal: `사소한 규칙 하나만 어겨도 "어차피 망했어"라며 극단적 자책 루프에 빠져 전면 포기로 이어집니다. ${mbti.desc} 강박적인 규칙 중심 식단이 늘 독이 되었던 이유입니다.`,
-      warn: `수치와 규칙 중심 식단이 효과가 크게 제한되는 이유: ${mbti.warn}`,
-      solution: '의지력을 시험하는 규칙 대신, 애초에 무너질 수 없는 \'환경\'을 바꾸는 전략이 유일한 해답입니다. "무엇을 먹지 말까"가 아니라 "어떤 음식이 눈앞에 없게 할까"로 접근합니다.',
+      title:    ins02_title,
+      subtitle: ins02_sub,
+      medical:  ins02_medical,
+      personal: ins02_personal,
+      warn:     ins02_warn,
+      solution: ins02_solution,
     },
     {
       num: '03',
-      title: '왜 운동을 해도 몸에 변화가 없는가',
-      subtitle: `${bcCode} × ${ohaeng.label}의 과잉 보상`,
-      medical: `몸의 중심 축이 무너진 상태에서 무작정 땀을 흘리면, 보상 작용으로 엉뚱한 겉 근육만 과활성화됩니다. 지방 감소 효과는 크지 않고 특정 부위가 오히려 커 보일 수 있습니다.`,
-      personal: `특히 ${ohaeng.label}은 목표를 세우면 과잉 실행하는 경향이 있어 몸을 심하게 다그칩니다. '운동을 더 열심히 해야 해'라며 고강도를 반복하면 구조 불안정만 심해집니다.`,
-      warn: `[유보 지침] 부신과 자율신경이 안정되기 전 고강도 하체 운동(스쿼트·런지·데드리프트)은 체지방 감소는커녕 독이 됩니다.`,
-      solution: '지금 필요한 건 골반저근 이완과 횡격막 활성화로 \'복강 내압\'을 먼저 회복하는 것입니다. 이후 필라테스 코어 안정화 → 수영 순으로 단계적으로 진입합니다.',
+      title:    ins03_title,
+      subtitle: ins03_sub,
+      medical:  ins03_medical,
+      personal: ins03_personal,
+      warn:     ins03_warn,
+      solution: ins03_solution,
     },
   ];
   return insights;
@@ -12197,7 +12342,7 @@ function renderAll(data) {
            isBorderline, borderlineDiff, secondaryBcCode, secondaryNickname, evidenceBadge);
   renderP2(userName, bcCode, firstDomino, axisScores, sorted);
   window.__BC_RM__ = bcCode; // 로드맵 주차별 영양제 카드용 BC 코드
-  renderP3(userName, bcCode, bcMaster, ohaengType, ohaeng, mbtiType, mbti, fullCode, prescription, answers, data.bloodType, data.faceShape);
+  renderP3(userName, bcCode, bcMaster, ohaengType, ohaeng, mbtiType, mbti, fullCode, prescription, answers, data.bloodType, data.faceShape, axisScores, window.__RED_FLAGS__ || window._redFlags || []);
   renderP4(userName, ohaengType, mbtiType, answers['Q02'], answers['Q_MENOPAUSE'], axisScores, bcCode, window.__RED_FLAGS__ || window._redFlags || [], answers);
   renderP5(metrics, bcCode, axisScores, userName);
   renderP8(metrics, bcCode, axisScores, userName);
@@ -12638,7 +12783,15 @@ function renderP2(userName, bcCode, firstDomino, axisScores, sorted) {
 }
 
 /* ── P3 ── */
-function renderP3(userName, bcCode, bcMaster, ohaengKey, ohaeng, mbtiType, mbti, fullCode, prescription, answers, bloodType, faceShape) {
+function renderP3(userName, bcCode, bcMaster, ohaengKey, ohaeng, mbtiType, mbti, fullCode, prescription, answers, bloodType, faceShape, axisScores, redFlags) {
+  axisScores = axisScores || window.__AXIS_SCORES_FINAL__ || {};
+  redFlags   = redFlags   || window.__RED_FLAGS__ || [];
+  var _a01 = Number(axisScores['A01']||0); // 인슐린·내장지방
+  var _a07 = Number(axisScores['A07']||0); // 코르티솔
+  var _a08 = Number(axisScores['A08']||0); // 심리·식이
+  var _a04 = Number(axisScores['A04']||0); // 근감소
+  var _a06 = Number(axisScores['A06']||0); // 골격·자세
+  var _hasYOYO = (Array.isArray(redFlags)?redFlags:[]).indexOf('YOYO') >= 0;
   const nm = (userName && userName.length >= 3) ? userName.slice(1) : (userName || '회원');
 
   // ── 혈액형 기질 보조 해석 (가벼운 행동 경향 — 재미 요소) ──
@@ -12676,7 +12829,44 @@ function renderP3(userName, bcCode, bcMaster, ohaengKey, ohaeng, mbtiType, mbti,
 
   // ── 기질 융합 멘탈 처방 카드 (상단 진단 요약 겸 처방) ──
   // prescription이 있으면 권장/유보 운동·식단을 우선 사용, 없으면 수 기질 기본값
-  const safeAct   = (prescription && prescription.exerciseOk)  ? prescription.exerciseOk  : '밤 9시 가벼운 야외 산책 + 낮 요가로 신경계 안정';
+  // ── 기질·axis 기반 fallback 처방 ──
+  var _fallSafe, _fallStress, _fallDiet;
+  if (_a07 >= 7) {
+    _fallSafe   = '취침 1시간 전 복식 호흡 10분 + 마그네슘 글리시네이트 섭취로 코르티솔 하강 유도';
+    _fallStress = '야간 고강도 운동·카페인 전면 금지, 스마트폰 블루라이트 차단 필수';
+    _fallDiet   = '저녁 트립토판 단백질(닭가슴살·두부) + 마그네슘 풍부 식품(아몬드·시금치)으로 야식 충동 원천 차단';
+  } else if (_a08 >= 7) {
+    _fallSafe   = '감정 일기 5분 + 저녁 산책으로 도파민 안정, 야식 환경 원천 제거';
+    _fallStress = '감정이 흔들릴 때 즉시 음식 접근 차단 — 냉장고 앞 포스트잇·잠금 도어 활용';
+    _fallDiet   = '감정 식욕 대체를 위한 견과류·무가당 음료 준비 + 저녁 세로토닌 식품(바나나·트립토판 단백질) 배치';
+  } else if (_a01 >= 7) {
+    _fallSafe   = '식후 10분 걷기(인슐린 민감도 향상) + 저GI 탄수화물 소분 섭취';
+    _fallStress = '당지수 높은 음식(흰쌀밥·빵·과자) 야간 섭취 전면 금지';
+    _fallDiet   = '현미·귀리 기반 저GI 식단 + 단백질 선 섭취로 혈당 진동 억제';
+  } else if (ohaengKey === '목') {
+    _fallSafe   = '밤 9시 가벼운 야외 산책으로 간(肝) 기운 이완 + 신맛 식품으로 도파민 안정';
+    _fallStress = '야간 고강도 운동 및 카페인 보충제 전면 금지';
+    _fallDiet   = '도파민 대체 스낵 전략 + 저녁 트립토판 단백질 배치로 야식 환경 원천 차단';
+  } else if (ohaengKey === '화') {
+    _fallSafe   = '저녁 심호흡·명상 10분으로 심화(心火) 진정 + 쓴맛 나물류 섭취';
+    _fallStress = '저녁 자극적 매체·논쟁·고강도 운동 금지 — 과잉 흥분이 야식으로 연결됩니다';
+    _fallDiet   = '율무·보리 기반 식단으로 심장 열 조절 + 저녁 단백질 중심으로 세로토닌 보충';
+  } else if (ohaengKey === '토') {
+    _fallSafe   = '식후 10분 산책으로 비위(脾胃) 기운 활성화 + 단 맛 식품 소량 허용으로 보상 조절';
+    _fallStress = '과식 유발 환경(뷔페·야식 배달) 차단 + 정서적 과식 트리거 일지 기록';
+    _fallDiet   = '소화 쉬운 따뜻한 식단 중심, 찬 음식·생야채 저녁 섭취 최소화';
+  } else if (ohaengKey === '금') {
+    _fallSafe   = '저녁 스트레칭·호흡 운동으로 폐(肺) 긴장 이완 + 식이섬유 충분 섭취';
+    _fallStress = '완벽주의 식단 규칙 강박 차단 — 한 끼 어긋나도 전면 포기 금지';
+    _fallDiet   = '장내 환경 회복을 위한 프리바이오틱스(귀리·마늘) + 발효식품(김치·요거트) 매일 섭취';
+  } else { // 수
+    _fallSafe   = '밤 9시 가벼운 야외 산책 + 낮 요가로 신경계 안정';
+    _fallStress = '야간 고강도 운동 및 카페인 보충제 전면 금지';
+    _fallDiet   = '도파민 대체 스낵 전략 + 저녁 트립토판 단백질 배치로 야식 환경 원천 차단';
+  }
+  const safeAct   = (prescription && prescription.exerciseOk)    ? prescription.exerciseOk    : _fallSafe;
+  const stressAct = (prescription && prescription.exerciseBan)   ? prescription.exerciseBan   : _fallStress;
+  const dietAct   = (prescription && prescription.dietDirection) ? prescription.dietDirection : _fallDiet;
   const stressAct = (prescription && prescription.exerciseBan) ? prescription.exerciseBan : '야간 고강도 운동 및 카페인 보충제 전면 금지';
   const dietAct   = (prescription && prescription.dietDirection) ? prescription.dietDirection : '도파민 대체 스낵 전략 + 저녁 트립토판 단백질 배치로 야식 환경 원천 차단';
   const mrx = document.getElementById('p3-mentalrx-mount');
@@ -12731,7 +12921,7 @@ function renderP3(userName, bcCode, bcMaster, ohaengKey, ohaeng, mbtiType, mbti,
   }
 
   // 인사이트 3개
-  const insights = getMbtiOhaengInsights(bcMaster, ohaengKey, mbtiType);
+  const insights = getMbtiOhaengInsights(bcMaster, ohaengKey, mbtiType, axisScores, redFlags);
   const container = document.getElementById('p3-insights');
   insights.forEach(ins => {
     const div = document.createElement('div');
