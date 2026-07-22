@@ -8141,62 +8141,93 @@ var NICKNAME_TABLE = {
 function detectBackground(answers) {
   if (!answers) return null;
 
-  // 갱년기·완경
+  // ── 병원 플로우 배열 헬퍼 ──
+  // past_procedures, long_term_drugs, disease, q1_family, q8_trigger 는
+  // 병원 플로우에서 숫자 배열로 넘어옴. "없음" 인덱스를 제외한 유효 항목이 있으면 true
+  const hasArr = (arr, noneIdx) => {
+    if (!arr) return false;
+    if (!Array.isArray(arr)) return false;
+    return arr.some(v => Number(v) !== noneIdx);
+  };
+
+  // 1위. 갱년기·완경
+  // 병원: q12_menopause 0=복부변환, 1=호르몬치료, 2=완경, 3=신호조금 → 0~2 = 갱년기
+  const menoNum = answers['q12_menopause'];
+  if (menoNum !== undefined && menoNum !== null && Number(menoNum) <= 2) {
+    return '갱년기';
+  }
+  // 에스테틱 호환: Q_MENOPAUSE 문자값
   const meno = answers['Q_MENOPAUSE'] || answers['Q_meno'] || '';
   if (meno && meno !== 'not_applicable' && meno !== 'none' && meno !== '') {
     return '갱년기';
   }
 
-  // PCOS (다낭성 난소 증후군)
+  // 2위. PCOS (다낭성 난소 증후군)
+  // 병원: disease 배열 인덱스 0 = PCOS
+  const diseases = answers['disease'];
+  if (Array.isArray(diseases) && diseases.map(Number).includes(0)) return 'PCOS';
+  // 호환 키
   const pcos = answers['Q_PCOS'] || answers['Q_pcos'] || '';
   if (pcos === 'yes' || pcos === 'Y' || pcos === '있음') return 'PCOS';
 
-  // 시술 이력 (지방흡입 등)
+  // 3위. 시술 이력
+  // 병원: past_procedures 배열, 5=없음
+  const procs = answers['past_procedures'];
+  if (hasArr(procs, 5)) return '시술';
+  // 에스테틱 호환: Q21, Q_surgery 문자값
   const surgery = answers['Q21'] || answers['Q_surgery'] || '';
-  if (surgery && surgery !== 'none' && surgery !== '없음' && surgery !== '') {
-    // 지방흡입 키워드 확인
-    if (String(surgery).includes('지방흡입') || String(surgery).includes('liposuction')) {
-      return '시술';
-    }
-    return '시술';
-  }
+  if (surgery && surgery !== 'none' && surgery !== '없음' && surgery !== '') return '시술';
 
-  // 약물 복용력 (스테로이드·항우울제·식욕억제제 등)
+  // 4위. 약물 복용력
+  // 병원: long_term_drugs 배열, 6=없음  /  appetite_suppressant 0=여러번,1=한두번,2=없음
+  const drugs = answers['long_term_drugs'];
+  if (hasArr(drugs, 6)) return '약물';
+  const appetiteN = answers['appetite_suppressant'];
+  if (appetiteN !== undefined && appetiteN !== null && Number(appetiteN) <= 1) return '약물';
+  // 에스테틱 호환: Q22, Q_drug 문자값
   const drug = answers['Q22'] || answers['Q_drug'] || '';
   if (drug && drug !== 'none' && drug !== '없음' && drug !== '') {
-    // 번아웃/부신 고갈 키워드 우선 확인
     if (String(drug).includes('번아웃') || String(drug).includes('부신')) return '번아웃';
     return '약물';
   }
 
-  // 출산 경험
-  const birth = answers['Q3'] || answers['Q_birth'] || '';
-  if (birth === 'yes' || birth === 'Y' || birth === '있음' || birth === '경험있음' ||
-      (typeof birth === 'string' && birth !== '' && birth !== 'none' && birth !== '없음')) {
-    return '출산';
-  }
+  // 5위. 출산 경험
+  // 병원: q11_event 0=출산후변화, 1=출산후변화없음 → 2=해당없음 제외
+  const q11 = answers['q11_event'];
+  if (q11 !== undefined && q11 !== null && Number(q11) <= 1) return '출산';
+  // 호환 키
+  const birth = answers['Q3'] || answers['birth_history'] || answers['Q_birth'] || '';
+  if (birth === 'yes' || birth === 'Y' || birth === '있음' || birth === '경험있음') return '출산';
 
-  // 가족력·유전 (부계 vs 모계)
+  // 6위. 가족력·유전
+  // 병원: q1_family 배열 3=없음 제외  /  q2_parent 1=모계유전, 0/2=부계유전
+  const fam = answers['q1_family'];
+  if (hasArr(fam, 3)) {
+    const q2 = answers['q2_parent'];
+    if (q2 !== undefined && q2 !== null && Number(q2) === 1) return '모계유전';
+    return '유전';
+  }
+  // 에스테틱 호환: Q_FAMILY 문자값
   const family = answers['Q_FAMILY'] || answers['Q_family'] || answers['Q_heredity'] || '';
-  if (family) {
+  if (family && family !== 'none' && family !== '없음' && family !== '') {
     if (String(family).includes('모') || String(family).includes('엄마') || String(family).includes('이모')) {
       return '모계유전';
     }
-    if (String(family).includes('부') || String(family).includes('아빠') || String(family).includes('삼촌')) {
-      return '유전';
-    }
-    if (String(family) !== 'none' && String(family) !== '없음' && String(family) !== '') {
-      return '유전';
-    }
+    return '유전';
   }
 
-  // 대사증후군 고위험 (복합 수치)
-  const diabetesRisk = answers['Q_diabetes'] || answers['Q_metabolic'] || '';
-  if (diabetesRisk === 'yes' || diabetesRisk === 'Y' || diabetesRisk === '있음') {
+  // 7위. 대사증후군
+  // 병원: disease 배열 1=당뇨, 2=고혈압
+  if (Array.isArray(diseases) && (diseases.map(Number).includes(1) || diseases.map(Number).includes(2))) {
     return '대사증후군';
   }
+  const diabetesRisk = answers['Q_diabetes'] || answers['Q_metabolic'] || '';
+  if (diabetesRisk === 'yes' || diabetesRisk === 'Y' || diabetesRisk === '있음') return '대사증후군';
 
-  // 번아웃 (별도 질문)
+  // 8위. 번아웃
+  // 병원: q8_trigger 배열 1=이별충격 → 심리적 번아웃 신호
+  const trigger = answers['q8_trigger'];
+  if (Array.isArray(trigger) && trigger.map(Number).includes(1)) return '번아웃';
   const burnout = answers['Q_burnout'] || answers['Q_stress_level'] || '';
   if (burnout === 'severe' || burnout === '심각' || burnout === '극심') return '번아웃';
 
