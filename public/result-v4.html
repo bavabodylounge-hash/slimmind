@@ -24126,6 +24126,43 @@ function renderSurBodyContext(sec, data, region, texture, nicknameDisplay, bcCod
   document.body.style.paddingBottom = '120px';
 })();
 </script>
+<script>
+/* ── P10 오늘 탭: 링크 복사 / 열기 ── */
+(function(){
+  function _p10DailyUrl(){
+    var sid = (window.__RESULT__ && (window.__RESULT__.session_id || window.__RESULT__.result_id || window.__RESULT__.id))
+           || new URLSearchParams(window.location.search).get('id')
+           || new URLSearchParams(window.location.search).get('diagnosis_id')
+           || new URLSearchParams(window.location.search).get('did')
+           || '';
+    var base = location.href.replace(/[?#].*$/, '').replace(/[^/]*$/, '') + 'slimmind-today.html';
+    return sid ? (base + '?id=' + encodeURIComponent(sid)) : base;
+  }
+  window.p10OpenDaily = function(){
+    location.href = _p10DailyUrl();
+  };
+  window.p10CopyDaily = function(){
+    var url = _p10DailyUrl();
+    var hint = document.getElementById('p10-daily-hint');
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(url).then(function(){
+        if (hint){ hint.textContent = '✅ 링크가 복사됐어요 — 카카오톡·메모장에 붙여넣으세요'; }
+      }).catch(function(){ _p10FallbackCopy(url, hint); });
+    } else { _p10FallbackCopy(url, hint); }
+  };
+  function _p10FallbackCopy(url, hint){
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = url; ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+      document.body.removeChild(ta);
+      if (hint){ hint.textContent = '✅ 링크가 복사됐어요 — 카카오톡·메모장에 붙여넣으세요'; }
+    } catch(e) {
+      if (hint){ hint.textContent = '🔗 ' + url; }
+    }
+  }
+})();
+</script>
 </body>
 </html>
 

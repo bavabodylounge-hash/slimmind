@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#b5452e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="오늘">
+<title>오늘 · 슬림마인드</title>
+<style>
+:root{
+  --paper:#f6f4ee; --card:#fffdf8; --card2:#fbf8f0;
+  --ink:#1a1a17; --muted:#7c776b; --line:#d8d3c6;
+  --vis:#b5452e; --vis-d:#8f321e; --vis-l:#f9ece8;
+  --dark:#2a2118;
+  --green:#5a6e3a; --green-l:#eef2e4;
+  --amber:#c98a3c; --amber-l:#fbf2e3;
+  --icsz:16px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{
+  font-family:'Noto Sans KR',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif;
+  background:var(--paper); color:var(--ink);
+  -webkit-font-smoothing:antialiased;
+  padding-bottom:calc(30px + env(safe-area-inset-bottom));
+}
+.lic{display:inline-block;vertical-align:-.16em;flex-shrink:0;}
+
+/* ── 상단 ── */
+.hd{
+  background:linear-gradient(165deg,#2a2118,#3a2e20); color:#f2ece0;
+  padding:calc(22px + env(safe-area-inset-top)) 20px 22px;
+  border-radius:0 0 22px 22px;
+}
+.hd-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:15px;}
+.hd-brand{display:flex;align-items:center;gap:7px;font-size:10.5px;font-weight:900;letter-spacing:1.5px;color:#e8a87c;}
+.hd-full{font-size:10.5px;font-weight:800;color:#a89880;background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.13);border-radius:20px;padding:5px 11px;cursor:pointer;font-family:inherit;}
+.hd-full:active{background:rgba(255,255,255,.15);}
+.hd-day{font-size:25px;font-weight:900;letter-spacing:-.8px;line-height:1.25;margin-bottom:5px;}
+.hd-day .dow{color:#f0b48c;}
+.hd-meta{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#c9bcab;}
+.hd-chip{background:rgba(240,180,140,.16);border:1px solid rgba(240,180,140,.3);
+  border-radius:20px;padding:3px 10px;font-size:11px;color:#f0b48c;font-weight:800;}
+
+/* ── 진행 링 ── */
+.prog{display:flex;align-items:center;gap:14px;margin-top:18px;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+  border-radius:15px;padding:14px 16px;}
+.prog-ring{position:relative;width:52px;height:52px;flex-shrink:0;}
+.prog-ring svg{transform:rotate(-90deg);}
+.prog-ring-tx{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:900;color:#f2ece0;letter-spacing:-.5px;}
+.prog-bd{flex:1;min-width:0;}
+.prog-t{font-size:13.5px;font-weight:900;color:#f2ece0;margin-bottom:3px;letter-spacing:-.3px;}
+.prog-s{font-size:11.5px;font-weight:600;color:#a89880;line-height:1.5;word-break:keep-all;}
+
+/* ── 본문 ── */
+.wrap{padding:0 16px;max-width:620px;margin:0 auto;}
+.sec{display:flex;align-items:center;gap:9px;margin:26px 0 12px;}
+.sec-n{width:21px;height:21px;border-radius:7px;background:var(--vis);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0;}
+.sec-t{font-size:15px;font-weight:900;letter-spacing:-.4px;}
+.sec-s{font-size:11.5px;font-weight:600;color:var(--muted);}
+.sec-line{flex:1;height:1px;background:var(--line);}
+
+/* ── 오늘 카드 ── */
+.item{
+  display:block;width:100%;text-align:left;font-family:inherit;cursor:pointer;
+  background:var(--card);border:1.5px solid var(--line);border-left-width:6px;
+  border-radius:16px;padding:16px 16px 14px;margin-bottom:11px;transition:all .16s;
+}
+.item:active{transform:scale(.99);}
+.item.ex{border-left-color:var(--green);background:linear-gradient(160deg,#fff,#f3f7ea);border-color:#cdd9b0;}
+.item.di{border-left-color:var(--amber);background:linear-gradient(160deg,#fff,#fbf2dd);border-color:#e8cd9a;}
+.item.re{border-left-color:var(--vis);background:linear-gradient(160deg,#fff,#fdeee7);border-color:#f0c4b3;}
+.item-hd{display:flex;align-items:center;gap:9px;margin-bottom:8px;}
+.item-ic{width:29px;height:29px;border-radius:9px;background:rgba(255,255,255,.85);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.item.ex .item-ic{color:var(--green);} .item.di .item-ic{color:var(--amber);} .item.re .item-ic{color:var(--vis);}
+.item-k{flex:1;font-size:11.5px;font-weight:900;letter-spacing:.5px;opacity:.85;}
+.item.ex .item-k{color:#3f5022;} .item.di .item-k{color:#8a5a18;} .item.re .item-k{color:#8f321e;}
+.item-main{font-size:16px;font-weight:900;color:#241c14;line-height:1.45;letter-spacing:-.4px;
+  word-break:keep-all;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.item-acts{display:flex;gap:8px;margin-top:13px;padding-top:12px;border-top:1px dashed rgba(0,0,0,.09);}
+.btn{flex:1;border-radius:11px;padding:12px 8px;font-size:13px;font-weight:800;cursor:pointer;
+  font-family:inherit;letter-spacing:-.3px;border:1.5px solid transparent;transition:transform .13s;
+  display:flex;align-items:center;justify-content:center;gap:5px;}
+.btn:active{transform:scale(.97);}
+.btn.did{color:#fff;}
+.item.ex .btn.did{background:var(--green);box-shadow:0 4px 12px rgba(90,110,58,.32);}
+.item.di .btn.did{background:var(--amber);box-shadow:0 4px 12px rgba(201,138,60,.32);}
+.item.re .btn.did{background:var(--vis);box-shadow:0 4px 12px rgba(181,69,46,.32);}
+.btn.miss{background:#fff;color:#8a7f6e;border-color:#ded4c0;}
+.btn.miss:active{background:#f7f3ea;}
+
+/* 완료 상태 */
+.item.done{opacity:.96;}
+.item.done .item-acts{display:none;}
+.item-note{display:none;align-items:center;gap:8px;margin-top:13px;padding-top:12px;
+  border-top:1px dashed rgba(0,0,0,.09);font-size:12.5px;font-weight:800;}
+.item.done .item-note,.item.missed .item-note{display:flex;}
+.item.done .item-note{color:var(--green);}
+.item.missed .item-note{color:#a3622a;}
+.item.missed .item-acts{display:none;}
+.item-note-x{margin-left:auto;font-size:11px;font-weight:800;color:var(--muted);
+  background:#fff;border:1.5px solid var(--line);border-radius:9px;padding:6px 11px;
+  cursor:pointer;font-family:inherit;}
+
+/* ── 못한 이유 ── */
+.why{display:none;gap:7px;flex-wrap:wrap;margin-top:11px;padding-top:11px;border-top:1px dashed rgba(0,0,0,.09);}
+.item.asking .why{display:flex;}
+.item.asking .item-acts{display:none;}
+.why-q{width:100%;font-size:13px;font-weight:900;color:#241c14;margin-bottom:3px;letter-spacing:-.3px;}
+.why-o{border:1.5px solid var(--line);background:#fff;border-radius:10px;padding:9px 13px;
+  font-size:12px;font-weight:700;color:#6a6252;cursor:pointer;font-family:inherit;transition:all .13s;}
+.why-o:active{background:#f2ece0;transform:scale(.97);}
+
+/* ── 주간 ── */
+.week{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:17px 15px;}
+.week-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;}
+.week-t{font-size:13px;font-weight:900;letter-spacing:-.3px;}
+.week-n{font-size:11.5px;font-weight:800;color:var(--muted);}
+.week-row{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
+.wd{aspect-ratio:1;border-radius:10px;border:1.5px solid var(--line);background:var(--card2);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;}
+.wd-d{font-size:10.5px;font-weight:800;color:var(--muted);}
+.wd-c{font-size:12px;line-height:1;color:transparent;}
+.wd.done{background:var(--green-l);border-color:#9cb36a;}
+.wd.done .wd-d{color:#3f5022;} .wd.done .wd-c{color:var(--green);}
+.wd.part{background:#fdf6e8;border-color:#e0b96a;}
+.wd.part .wd-d{color:#8a5a18;} .wd.part .wd-c{color:var(--amber);}
+.wd.today{border-color:var(--vis);border-width:2.5px;background:linear-gradient(165deg,#fff,#fdeee6);
+  box-shadow:0 3px 10px rgba(181,69,46,.2);}
+.wd.today .wd-d{color:var(--vis-d);font-weight:900;}
+
+/* ── 스트릭 ── */
+.streak{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);
+  border-radius:16px;padding:16px;margin-top:11px;}
+.streak-n{font-size:29px;font-weight:900;color:var(--vis);letter-spacing:-1.5px;line-height:1;}
+.streak-n small{font-size:13px;margin-left:2px;}
+.streak-tx{flex:1;font-size:12.5px;font-weight:700;color:var(--muted);line-height:1.6;word-break:keep-all;}
+.streak-tx b{color:var(--ink);}
+
+/* ── 컨설턴트 ── */
+.con{background:linear-gradient(165deg,#2a2118,#3a2e20);color:#f2ece0;border-radius:16px;
+  padding:18px 16px;margin-top:11px;}
+.con-hd{display:flex;align-items:center;gap:9px;margin-bottom:10px;}
+.con-av{width:33px;height:33px;border-radius:50%;background:rgba(240,180,140,.2);
+  border:1px solid rgba(240,180,140,.35);display:flex;align-items:center;justify-content:center;
+  color:#f0b48c;flex-shrink:0;}
+.con-nm{font-size:13px;font-weight:900;}
+.con-r{font-size:10.5px;font-weight:700;color:#a89880;}
+.con-tx{font-size:12.5px;line-height:1.75;color:#c9bcab;word-break:keep-all;}
+
+/* ── 홈 화면 안내 ── */
+.tip{background:var(--vis-l);border:1px solid rgba(181,69,46,.2);border-radius:14px;
+  padding:15px;margin-top:26px;display:flex;gap:11px;}
+.tip-ic{color:var(--vis);flex-shrink:0;}
+.tip-bd{flex:1;}
+.tip-t{font-size:12.5px;font-weight:900;color:var(--vis-d);margin-bottom:4px;}
+.tip-x{font-size:11.5px;line-height:1.65;color:#8a5a4a;word-break:keep-all;}
+
+/* ── 토스트 ── */
+.toast{position:fixed;left:50%;bottom:calc(26px + env(safe-area-inset-bottom));
+  transform:translate(-50%,14px);background:var(--dark);color:#f2ece0;border-radius:13px;
+  padding:13px 17px;display:flex;align-items:center;gap:10px;max-width:calc(100% - 32px);
+  box-shadow:0 10px 30px rgba(0,0,0,.28);opacity:0;pointer-events:none;
+  transition:opacity .25s,transform .25s;z-index:200;}
+.toast.on{opacity:1;transform:translate(-50%,0);}
+.toast-ic{color:#9db87a;flex-shrink:0;}
+.toast-tx{font-size:12.5px;font-weight:800;line-height:1.45;}
+.toast-sub{display:block;font-size:11px;font-weight:600;opacity:.72;margin-top:2px;}
+
+.foot{text-align:center;font-size:10.5px;color:#a9a396;line-height:1.7;margin-top:30px;padding:0 20px;}
+</style>
+</head>
+<body>
+
+<div class="hd">
+  <div class="hd-top">
+    <div class="hd-brand">SLIMMIND · DAILY</div>
+    <button class="hd-full" onclick="openFull()">전체 결과지</button>
+  </div>
+  <div class="hd-day" id="hd-day">오늘 · <span class="dow">월요일</span></div>
+  <div class="hd-meta">
+    <span class="hd-chip" id="hd-week">회복기 1주차</span>
+    <span id="hd-name">지현 님</span>
+  </div>
+  <div class="prog">
+    <div class="prog-ring">
+      <svg width="52" height="52" viewBox="0 0 52 52">
+        <circle cx="26" cy="26" r="22" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="5"/>
+        <circle id="ring-fl" cx="26" cy="26" r="22" fill="none" stroke="#f0b48c" stroke-width="5"
+                stroke-linecap="round" stroke-dasharray="138.2" stroke-dashoffset="138.2"
+                style="transition:stroke-dashoffset .6s cubic-bezier(.22,1,.36,1)"/>
+      </svg>
+      <div class="prog-ring-tx" id="ring-tx">0/3</div>
+    </div>
+    <div class="prog-bd">
+      <div class="prog-t" id="prog-t">오늘 할 일 세 가지</div>
+      <div class="prog-s" id="prog-s">하나만 체크해도 오늘은 성공이에요.</div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="sec">
+    <span class="sec-n">1</span>
+    <span class="sec-t">오늘 할 일</span>
+    <span class="sec-line"></span>
+  </div>
+  <div id="items"></div>
+
+  <div class="sec">
+    <span class="sec-n">2</span>
+    <span class="sec-t">이번 주</span>
+    <span class="sec-line"></span>
+  </div>
+  <div class="week">
+    <div class="week-hd">
+      <span class="week-t">출석</span>
+      <span class="week-n" id="week-n">0일 체크</span>
+    </div>
+    <div class="week-row" id="week-row"></div>
+  </div>
+
+  <div class="streak">
+    <div class="streak-n" id="streak-n">0<small>일</small></div>
+    <div class="streak-tx" id="streak-tx">오늘 하나만 체크하면 <b>연속 기록이 시작</b>돼요.</div>
+  </div>
+
+  <div class="con" id="con-box" style="display:none">
+    <div class="con-hd">
+      <div class="con-av">
+        <svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+             stroke-linecap="round" stroke-linejoin="round" style="width:17px;height:17px">
+          <circle cx="12" cy="8" r="3.4"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></svg>
+      </div>
+      <div>
+        <div class="con-nm" id="con-nm">담당 컨설턴트</div>
+        <div class="con-r">오늘의 코멘트</div>
+      </div>
+    </div>
+    <div class="con-tx" id="con-tx"></div>
+  </div>
+
+  <div class="tip">
+    <div class="tip-ic">
+      <svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+           stroke-linecap="round" stroke-linejoin="round" style="width:19px;height:19px">
+        <rect x="6" y="2.5" width="12" height="19" rx="2.6"/><path d="M10.5 18.5h3"/></svg>
+    </div>
+    <div class="tip-bd">
+      <div class="tip-t">이 링크를 저장해 두세요</div>
+      <div class="tip-x" id="tip-x">다음에도 이 주소로 들어오시면 오늘 탭이 자동으로 열립니다. 기록은 그대로 이어집니다.</div>
+    </div>
+  </div>
+
+  <div class="foot">
+    본 화면은 라이프스타일 가이드이며 의료 진단·처방을 대체하지 않습니다.
+  </div>
+</div>
+
+<div class="toast" id="toast"><span class="toast-ic" id="toast-ic"></span><span class="toast-tx" id="toast-tx"></span></div>
+
+<script>
+/* ══════════════════════════════════════════════════════
+   오늘 전용 화면 — 결과지(slimmind-result.html)와 저장소를 공유한다.
+   같은 진단 ID면 결과지에서 체크한 것이 여기에도 보이고, 그 반대도 같다.
+   ══════════════════════════════════════════════════════ */
+
+var DAYS = ['월','화','수','목','금','토','일'];
+var IC = {
+  ex:'<svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:17px;height:17px"><circle cx="13.5" cy="4" r="1.6"/><path d="M7.5 21l3-5.8-2.6-3 1-5.2L12 9.5l3.2 1.2"/><path d="M5.5 11.4 9 8.6M15.2 14.8l2 2.6.9 3.6"/></svg>',
+  di:'<svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:17px;height:17px"><path d="M6 3v7a2.2 2.2 0 0 0 4.4 0V3"/><path d="M8.2 10.5V21"/><path d="M16.5 3c-1.6 1.4-2.2 3.2-2.2 5.2 0 1.7.8 2.8 2.2 3V21"/></svg>',
+  re:'<svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:17px;height:17px"><path d="M20 14.2A8.1 8.1 0 0 1 9.8 4 8.3 8.3 0 1 0 20 14.2Z"/></svg>',
+  chk:'<svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px"><path d="M4.5 12.5 9.5 17.5 19.5 7"/></svg>',
+  sent:'<svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M4.5 15.5a9 9 0 0 1 0-9M7.8 13.4a5 5 0 0 1 0-4.8"/><circle cx="11" cy="11" r="1.7"/><path d="M12.2 12.6 17 21"/><path d="M14.2 8.6a5 5 0 0 1 0 4.8M17.5 6.5a9 9 0 0 1 0 9"/></svg>'
+};
+var MISS = ['시간이 없었어요','너무 피곤했어요','깜빡했어요','컨디션이 안 좋았어요'];
+
+/* ── 진단 ID: 결과지와 같은 규약 ── */
+function sid(){
+  try {
+    var q = new URLSearchParams(location.search);
+    return q.get('id') || q.get('diagnosis_id') || q.get('did') || 'local';
+  } catch(e){ return 'local'; }
+}
+function ckKey(){ return 'slimmind_checks_' + sid(); }
+
+/* ── 저장소: 결과지의 _wguChecks와 동일 형식 ──
+   { cellid: {s:'did'|'miss', r:이유, w:부가, e:수정횟수, t:시각} }
+   cellid 규칙도 결과지와 같다: wg{주차}{영역}{요일index}  (예: wg1ex0) */
+var CHECKS = {};
+function loadChecks(){
+  try { CHECKS = JSON.parse(localStorage.getItem(ckKey())) || {}; }
+  catch(e){ CHECKS = {}; }
+  return CHECKS;
+}
+function saveChecks(){
+  try { localStorage.setItem(ckKey(), JSON.stringify(CHECKS)); } catch(e){}
+}
+function cellId(wk, area, di){ return 'wg' + wk + area + di; }
+
+/* ── 데이터 로딩: 결과지와 같은 우선순위 ── */
+function loadData(){
+  try {
+    if (window.__RESULT_DATA__) return window.__RESULT_DATA__;
+    var q = new URLSearchParams(location.search).get('data');
+    if (q) return JSON.parse(decodeURIComponent(q));
+    var keys = ['slimmind_result','surveyResult','survey_result','resultData','sm_result'];
+    for (var i=0;i<keys.length;i++){
+      var raw = localStorage.getItem(keys[i]);
+      if (!raw) continue;
+      var p = JSON.parse(raw);
+      if (p && (p.axisScores || p.answers)) return p;
+    }
+  } catch(e){}
+  return null;
+}
+
+/* ── 주차 데이터: 결과지가 저장해 둔 것을 우선 사용 ── */
+function loadWeeks(){
+  try {
+    if (window.__ACTIVE_WEEKS__ && window.__ACTIVE_WEEKS__.length) return window.__ACTIVE_WEEKS__;
+    var raw = localStorage.getItem('slimmind_weeks_' + sid());
+    if (raw){ var w = JSON.parse(raw); if (w && w.length) return w; }
+  } catch(e){}
+  return null;
+}
+
+/* ── 현재 주차: 시작일 기준 경과 주 ── */
+function startKey(){ return 'slimmind_start_' + sid(); }
+function curWeek(total){
+  var t = total || 12;
+  try {
+    var st = localStorage.getItem(startKey());
+    if (!st){ st = String(Date.now()); localStorage.setItem(startKey(), st); }
+    var days = Math.floor((Date.now() - parseInt(st,10)) / 86400000);
+    return Math.min(t, Math.max(1, Math.floor(days/7) + 1));
+  } catch(e){ return 1; }
+}
+
+/* ── 문구 정리: 괄호 주석 제거 + 길이 컷 ── */
+function trim(s, n){
+  s = String(s||'').split('—')[0].replace(/\([^)]*\)/g,'').replace(/\s+/g,' ').trim();
+  n = n || 30;
+  return s.length > n ? s.slice(0, n-1).trim() + '…' : s;
+}
+
+/* ── 상태 ── */
+var W = null, WK = 1, TODAY = 0, NAME = '회원', PHASE = '회복기', CON = '';
+
+function boot(){
+  loadChecks();
+  var d = loadData() || {};
+  NAME = (d.userName || d.user_name || '회원');
+  if (NAME.length >= 3) NAME = NAME.slice(1);
+  CON = d.consultant_name || d.consultantName || '';
+
+  var jsd = new Date().getDay();
+  TODAY = (jsd === 0) ? 6 : jsd - 1;
+
+  var weeks = loadWeeks();
+  WK = curWeek(weeks ? weeks.length : 12);
+  W = weeks ? (weeks[WK-1] || weeks[0]) : null;
+  if (W && W.phase) PHASE = W.phase;
+
+  renderHead();
+  renderItems();
+  renderWeek();
+  renderCon();
+  renderProg();
+  detectPlatform();
+}
+
+function renderHead(){
+  document.getElementById('hd-day').innerHTML = '오늘 · <span class="dow">' + DAYS[TODAY] + '요일</span>';
+  document.getElementById('hd-week').textContent = PHASE + ' ' + WK + '주차';
+  document.getElementById('hd-name').textContent = NAME + ' 님';
+}
+
+/* ── 오늘 할 일 세 줄 ── */
+function todayTasks(){
+  if (!W){
+    return [
+      {k:'ex', nm:'운동', tx:'오늘의 운동 처방'},
+      {k:'di', nm:'식단', tx:'오늘의 끼니 처방'},
+      {k:'re', nm:'회복', tx:'오늘 밤 루틴'}
+    ];
+  }
+  var ex = W.exercise_ok || '오늘의 운동';
+  // 요일별 분리가 있으면 오늘 것만
+  if (W.exercise_detail){
+    var parts = String(W.exercise_detail).split('/');
+    for (var i=0;i<parts.length;i++){
+      if (parts[i].indexOf(DAYS[TODAY]) >= 0){
+        ex = parts[i].replace(/^[^—-]*[—-]\s*/,'');
+        break;
+      }
+    }
+  }
+  return [
+    {k:'ex', nm:'운동', tx:trim(ex)},
+    {k:'di', nm:'식단', tx:trim(W.diet_ok || '오늘의 끼니 처방')},
+    {k:'re', nm:'회복', tx:trim(W.recovery_ok || '오늘 밤 루틴')}
+  ];
+}
+
+function renderItems(){
+  var host = document.getElementById('items');
+  host.innerHTML = todayTasks().map(function(t){
+    var id = cellId(WK, t.k, TODAY);
+    var rec = CHECKS[id];
+    var cls = rec ? (rec.s === 'miss' ? ' missed' : ' done') : '';
+    var noteTx = rec ? (rec.s === 'miss'
+        ? '못했어요' + (rec.r ? ' · ' + rec.r : '')
+        : '완료 · 컨설턴트에게 전송됨') : '';
+    return '<div class="item ' + t.k + cls + '" id="it-' + t.k + '" data-k="' + t.k + '">' +
+      '<div class="item-hd">' +
+        '<span class="item-ic">' + IC[t.k] + '</span>' +
+        '<span class="item-k">' + t.nm + '</span>' +
+      '</div>' +
+      '<div class="item-main">' + t.tx + '</div>' +
+      '<div class="item-acts">' +
+        '<button class="btn did" onclick="mark(\'' + t.k + '\',\'did\')">' + IC.chk + ' 했어요</button>' +
+        '<button class="btn miss" onclick="ask(\'' + t.k + '\')">못했어요</button>' +
+      '</div>' +
+      '<div class="why">' +
+        '<div class="why-q">어떤 이유였나요?</div>' +
+        MISS.map(function(r){
+          return '<button class="why-o" onclick="mark(\'' + t.k + '\',\'miss\',\'' + r + '\')">' + r + '</button>';
+        }).join('') +
+      '</div>' +
+      '<div class="item-note">' + IC.chk + '<span>' + noteTx + '</span>' +
+        '<button class="item-note-x" onclick="undo(\'' + t.k + '\')">수정</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function ask(k){
+  document.querySelectorAll('.item').forEach(function(el){ el.classList.remove('asking'); });
+  document.getElementById('it-' + k).classList.add('asking');
+}
+
+function mark(k, state, reason){
+  var id = cellId(WK, k, TODAY);
+  CHECKS[id] = { s:state, r:reason||'', w:'', e:(CHECKS[id]&&CHECKS[id].e)||0, t:Date.now() };
+  saveChecks();
+  renderItems(); renderWeek(); renderProg();
+  var nm = (k==='ex'?'운동':k==='di'?'식단':'회복');
+  var who = (CON ? CON + ' 컨설턴트' : '담당 컨설턴트');
+  if (state === 'did'){
+    toast('<b>' + DAYS[TODAY] + '요일 ' + nm + ' 완료</b> 전송됨', who + '님에게 전달됐어요');
+  } else {
+    toast('<b>' + DAYS[TODAY] + '요일 ' + nm + ' 못함</b> 전송됨', who + '님에게 전달됐어요 · ' + reason);
+  }
+}
+
+function undo(k){
+  var id = cellId(WK, k, TODAY);
+  var e = (CHECKS[id] && CHECKS[id].e) || 0;
+  if (e >= 2){ toast('<b>수정 횟수를 다 썼어요</b>', '기록은 2번까지 고칠 수 있어요'); return; }
+  CHECKS[id] = { s:'', r:'', w:'', e:e+1, t:Date.now() };
+  saveChecks();
+  renderItems(); renderWeek(); renderProg();
+  toast('<b>수정할 수 있어요</b>', '다시 선택하면 덮어씁니다 · 앞으로 ' + (1-e) + '번 더');
+}
+
+/* ── 이번 주 출석 ── */
+function dayState(di){
+  var n = 0;
+  ['ex','di','re'].forEach(function(k){
+    var r = CHECKS[cellId(WK,k,di)];
+    if (r && r.s === 'did') n++;
+  });
+  return n;
+}
+function renderWeek(){
+  var row = document.getElementById('week-row'), h = '', full = 0;
+  for (var i=0;i<7;i++){
+    var n = dayState(i);
+    var cls = n>=3 ? 'done' : (n>0 ? 'part' : '');
+    if (i === TODAY) cls += ' today';
+    if (n > 0) full++;
+    h += '<div class="wd ' + cls + '"><span class="wd-d">' + DAYS[i] + '</span>' +
+         '<span class="wd-c">' + (n>0 ? IC.chk : '') + '</span></div>';
+  }
+  row.innerHTML = h;
+  document.getElementById('week-n').textContent = full + '일 체크';
+  var s = streak();
+  document.getElementById('streak-n').innerHTML = s + '<small>일</small>';
+  document.getElementById('streak-tx').innerHTML = s > 0
+    ? '<b>' + s + '일 연속</b>으로 이어가고 있어요. 오늘도 하나만 체크하면 계속됩니다.'
+    : '오늘 하나만 체크하면 <b>연속 기록이 시작</b>돼요.';
+}
+function streak(){
+  var n = 0;
+  for (var i=TODAY;i>=0;i--){ if (dayState(i) > 0) n++; else break; }
+  return n;
+}
+
+/* ── 진행 링 ── */
+function renderProg(){
+  var n = dayState(TODAY), pct = n/3;
+  var C = 2 * Math.PI * 22;
+  document.getElementById('ring-fl').setAttribute('stroke-dashoffset', String(C * (1-pct)));
+  document.getElementById('ring-tx').textContent = n + '/3';
+  var t = document.getElementById('prog-t'), s = document.getElementById('prog-s');
+  if (n === 0){ t.textContent = '오늘 할 일 세 가지'; s.textContent = '하나만 체크해도 오늘은 성공이에요.'; }
+  else if (n < 3){ t.textContent = n + '개 체크했어요'; s.textContent = '남은 것도 편하게, 무리하지 마세요.'; }
+  else { t.textContent = '오늘 다 하셨어요'; s.textContent = NAME + ' 님, 오늘 정말 잘하셨습니다.'; }
+}
+
+/* ── 컨설턴트 코멘트 ── */
+function renderCon(){
+  var txt = '';
+  try { txt = localStorage.getItem('slimmind_con_reply_wk') || ''; } catch(e){}
+  if (!txt) return;
+  document.getElementById('con-box').style.display = '';
+  document.getElementById('con-nm').textContent = (CON ? CON + ' 컨설턴트' : '담당 컨설턴트');
+  document.getElementById('con-tx').textContent = txt;
+}
+
+/* ── 전체 결과지로 ── */
+function openFull(){
+  var id = sid();
+  var url = location.href.replace(/[^\/]*$/, '') + 'slimmind-result.html';
+  location.href = (id && id !== 'local') ? (url + '?id=' + encodeURIComponent(id)) : url;
+}
+
+/* ── 홈 화면 추가 안내: 기기별로 문구가 달라야 한다 ── */
+function detectPlatform(){
+  // 링크를 어디에 둘지만 안내한다. (홈 화면 추가는 단계가 많아 문턱이 높다)
+  var el = document.getElementById('tip-x');
+  if (el) el.innerHTML = '<b>카카오톡 나에게 보내기</b>나 즐겨찾기에 저장해 두세요. 다음에도 이 주소로 들어오시면 기록이 그대로 이어집니다.';
+}
+
+/* ── 토스트 ── */
+function toast(msg, sub){
+  var t = document.getElementById('toast');
+  document.getElementById('toast-ic').innerHTML = IC.sent;
+  document.getElementById('toast-tx').innerHTML = msg + (sub ? '<span class="toast-sub">' + sub + '</span>' : '');
+  t.classList.remove('on'); void t.offsetWidth; t.classList.add('on');
+  clearTimeout(window.__tT__);
+  window.__tT__ = setTimeout(function(){ t.classList.remove('on'); }, 3000);
+}
+
+/* 날짜가 바뀌면 새로 그린다 (탭을 열어둔 채 자정을 넘긴 경우) */
+setInterval(function(){
+  var jsd = new Date().getDay();
+  var t = (jsd === 0) ? 6 : jsd - 1;
+  if (t !== TODAY){ TODAY = t; renderHead(); renderItems(); renderWeek(); renderProg(); }
+}, 60000);
+
+boot();
+</script>
+</body>
+</html>

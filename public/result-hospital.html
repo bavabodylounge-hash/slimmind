@@ -20847,6 +20847,43 @@ function wow6CheckItem() {
   });
 })();
 </script>
+<script>
+/* ── P10 오늘 탭: 링크 복사 / 열기 ── */
+(function(){
+  function _p10DailyUrl(){
+    var sid = (window.__RESULT__ && (window.__RESULT__.session_id || window.__RESULT__.result_id || window.__RESULT__.id))
+           || new URLSearchParams(window.location.search).get('id')
+           || new URLSearchParams(window.location.search).get('diagnosis_id')
+           || new URLSearchParams(window.location.search).get('did')
+           || '';
+    var base = location.href.replace(/[?#].*$/, '').replace(/[^/]*$/, '') + 'slimmind-today.html';
+    return sid ? (base + '?id=' + encodeURIComponent(sid)) : base;
+  }
+  window.p10OpenDaily = function(){
+    location.href = _p10DailyUrl();
+  };
+  window.p10CopyDaily = function(){
+    var url = _p10DailyUrl();
+    var hint = document.getElementById('p10-daily-hint');
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(url).then(function(){
+        if (hint){ hint.textContent = '✅ 링크가 복사됐어요 — 카카오톡·메모장에 붙여넣으세요'; }
+      }).catch(function(){ _p10FallbackCopy(url, hint); });
+    } else { _p10FallbackCopy(url, hint); }
+  };
+  function _p10FallbackCopy(url, hint){
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = url; ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+      document.body.removeChild(ta);
+      if (hint){ hint.textContent = '✅ 링크가 복사됐어요 — 카카오톡·메모장에 붙여넣으세요'; }
+    } catch(e) {
+      if (hint){ hint.textContent = '🔗 ' + url; }
+    }
+  }
+})();
+</script>
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
 </html>
