@@ -16844,37 +16844,31 @@ function renderP8(metrics, bcCode, axisScores, userName, s2, data) {
   function activeKeys(w){
     var r = DATA[w] || DATA[FREE];
     var top3Names = window._top3 || window.__STRONG_AXES__ || [];
-    var focusKeySet = {};
-    AX.filter(function(a){return a.group==='focus';}).forEach(function(a){focusKeySet[a.k]=true;});
+    var allAxKeys = AX.map(function(a){return a.k;});
 
-    // 1) _top3 → focus 키 우선
-    var focusPriority = [];
+    // top3 영역명 → AX키 (rec/diet/ex 포함 전체 AX에서 찾기)
+    var top3Keys = [];
     top3Names.forEach(function(nm){
       var k = _V4_DOMAIN_TO_AXKEY[nm];
-      if (k && focusKeySet[k] && focusPriority.indexOf(k)<0) focusPriority.push(k);
+      if (k && allAxKeys.indexOf(k)>=0 && top3Keys.indexOf(k)<0) top3Keys.push(k);
     });
 
-    // 2) DATA 점수순 보완
+    var basePool = ['rec','diet','ex'];
+    var top3Base  = top3Keys.filter(function(k){ return basePool.indexOf(k)>=0; });
+    var top3Focus = top3Keys.filter(function(k){ return basePool.indexOf(k)<0;  });
+
+    // 기본축 3개: top3 있는 것 앞배치 → 나머지 보완
+    var baseKeys = top3Base.slice();
+    basePool.forEach(function(k){ if(baseKeys.indexOf(k)<0) baseKeys.push(k); });
+    baseKeys = baseKeys.slice(0,3);
+
+    // 집중축 3개: top3 focus 먼저 → DATA 점수순 보완
     var focusRest = AX.filter(function(a){
-      return a.group==='focus' && focusPriority.indexOf(a.k)<0;
-    }).sort(function(a,b){
-      return (r[b.k]||0)-(r[a.k]||0);
-    }).map(function(a){return a.k;});
+      return basePool.indexOf(a.k)<0 && top3Focus.indexOf(a.k)<0;
+    }).sort(function(a,b){ return (r[b.k]||0)-(r[a.k]||0); }).map(function(a){return a.k;});
+    var focusKeys = top3Focus.concat(focusRest).slice(0,3);
 
-    var focus = focusPriority.concat(focusRest).slice(0, 3);
-
-    // 3) base 3축: _top3에 포함된 것 앞에 배치
-    var baseAll = ['rec','diet','ex'];
-    var baseStrong = [], baseNormal = [];
-    baseAll.forEach(function(k){
-      var nm = AX.filter(function(a){return a.k===k;})[0];
-      var nmStr = nm ? nm.nm : '';
-      if (top3Names.indexOf(nmStr) >= 0) baseStrong.push(k);
-      else baseNormal.push(k);
-    });
-    var baseKeys = baseStrong.concat(baseNormal);
-
-    return baseKeys.concat(focus); // 6축
+    return baseKeys.concat(focusKeys); // 6축
   }
   // ── 그 주차에서 점수 1위인 축 키 반환 (표시 6축 중) ──
   function topAxisKey(w){
