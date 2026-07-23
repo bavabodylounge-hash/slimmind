@@ -7518,6 +7518,12 @@ function smCheckResume() {
     }
     // 이름 없으면 무시
     if (!snap.userInfo?.name) return;
+    // ★ 다른 사람 이어하기 방지: 저장된 이름+전화를 보관해 두었다가
+    //    이름/전화 입력 시 비교. 다른 사람이면 draft를 지우고 이어하기 미표시.
+    window._smSavedIdentity = {
+      name:  (snap.userInfo.name  || '').trim(),
+      phone: (snap.userInfo.phone || '').replace(/[^0-9]/g, '')
+    };
 
     const ago = smTimeAgo(snap.ts);
     const stage3Done = Object.keys(snap.stage3Answers || {}).length;
@@ -8165,15 +8171,8 @@ function smDismiss() {
   } catch(e) { console.warn('[smDismiss] 상태 초기화 실패', e); }
 }
 
-// 자동 저장 훅 — s1pick / s3pick / s2pick 등에서 호출
-function smAutoSave() {
-  // 의미있는 진행상태일 때만 저장
-  const hasProgress = userInfo.name ||
-    Object.keys(survAnswers).length > 0 ||
-    Object.keys(stage2Answers).length > 0 ||
-    Object.keys(stage3Answers).length > 0;
-  if (hasProgress) smSave(false);
-}
+// 자동 저장 훅 — 저장 버튼 전용으로 변경됨. 이 함수는 호환성 유지용 빈 함수.
+function smAutoSave() { /* 자동저장 비활성화: 저장 버튼을 눌러야 저장됨 */ }
 
 // 모바일 키보드 표시 감지 → 고정 UI 간섭 방지
 document.addEventListener('focusin', e => {
@@ -8188,12 +8187,8 @@ document.addEventListener('focusout', () => {
 
 // 페이지 로드 시 실행
 document.addEventListener('DOMContentLoaded', smCheckResume);
-// 페이지 이탈 시 자동 저장
-window.addEventListener('beforeunload', () => smSave(false));
-// 모바일 앱 전환 시 자동 저장
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden') smSave(false);
-});
+// ★ 자동저장 제거: 저장 버튼(💾)을 눌러야만 저장됨
+// 이탈/앱 전환 시 자동저장 없음 — smSave(true) 는 버튼 클릭 전용
 /* ===== /기능 4 ===== */
 
 /* ===== 기능 10: 오늘 컨디션 보정 ===== */
@@ -10293,6 +10288,24 @@ function checkName(){
   updateNameNext();
   /* ★ 하프 이식: 입력 상태 따라 이름→전화칸으로 깜빡임 유도 갱신 */
   if(typeof _focusNameInput==='function') _focusNameInput(false);
+  /* ★ 다른 사람 이어하기 방지: 이름+전화가 저장된 사람과 다르면 draft 삭제 */
+  (function(){
+    var saved = window._smSavedIdentity;
+    if (!saved || !saved.name) return;
+    var curName  = userInfo.name.trim();
+    var curPhone = (userInfo.phone || '').replace(/[^0-9]/g, '');
+    // 이름 또는 전화번호 중 하나라도 입력됐으면 비교 시작
+    if (!curName && !curPhone) return;
+    var nameMatch  = !curName  || curName  === saved.name;
+    var phoneMatch = !curPhone || curPhone === saved.phone || saved.phone === '';
+    if (!nameMatch || (curPhone.length >= 10 && !phoneMatch)) {
+      // 다른 사람 → draft 삭제 + 이어하기 배너 숨김
+      try { localStorage.removeItem(SM_KEY); } catch(e) {}
+      window._smSavedIdentity = null;
+      window._smSnap = null;
+      if (typeof _smHideBanner === 'function') _smHideBanner();
+    }
+  })();
 }
 function pickGender(g,el){
   document.querySelectorAll('.genbtn').forEach(b=>b.classList.remove('sel'));

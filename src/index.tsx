@@ -2690,8 +2690,24 @@ app.get('/h/:code', async (c) => {
   });
 </script>`
 
+  const siteBase = 'https://7ed6c475-8afa-4ef8-9af8-8fab0cf8224b.vip.gensparksite.com'
+  const ogInject = `
+<meta property="og:type"         content="website">
+<meta property="og:site_name"    content="SlimMind">
+<meta property="og:title"        content="SlimMind | 바디코드 정밀 진단">
+<meta property="og:description"  content="당신의 몸은 하나의 코드입니다. 반복되는 다이어트 실패엔 반드시 이유가 있어요.">
+<meta property="og:url"          content="${siteBase}/h/${rawCode}">
+<meta property="og:image"        content="${siteBase}/static/og-hospital.png">
+<meta property="og:image:width"  content="1365">
+<meta property="og:image:height" content="768">
+<meta property="og:image:type"   content="image/png">
+<meta name="twitter:card"        content="summary_large_image">
+<meta name="twitter:title"       content="SlimMind | 바디코드 정밀 진단">
+<meta name="twitter:description" content="당신의 몸은 하나의 코드입니다. 반복되는 다이어트 실패엔 반드시 이유가 있어요.">
+<meta name="twitter:image"       content="${siteBase}/static/og-hospital.png">`
+
   let html = await fetchAsset(c.env.ASSETS, '/survey-hospital.html')
-  html = html.replace('</head>', `${brandInject}\n</head>`)
+  html = html.replace('</head>', `${ogInject}\n${brandInject}\n</head>`)
   html = html.replace('</body>', `${refScript}\n</body>`)
 
   return htmlResponse(html)
@@ -5288,10 +5304,28 @@ app.get('/result-hospital/:id', async (c) => {
     // __HOSPITAL_RESULT_ID__ + 배포 타임스탬프(캐시 버스팅용) 주입
     const deployTs = Date.now()
     const idScript = `<script>window.__HOSPITAL_RESULT_ID__ = ${JSON.stringify(id)};window.__DEPLOY_TS__ = ${deployTs};</script>\n`
+    // OG 메타태그 (결과지 공유 시)
+    const rhBase = 'https://7ed6c475-8afa-4ef8-9af8-8fab0cf8224b.vip.gensparksite.com'
+    const rhOg = `
+<meta property="og:type"         content="website">
+<meta property="og:site_name"    content="SlimMind">
+<meta property="og:title"        content="SlimMind | 바디코드 정밀 진단 결과">
+<meta property="og:description"  content="당신의 몸은 하나의 코드입니다. 우리는 그 원인을 해독합니다.">
+<meta property="og:url"          content="${rhBase}/result-hospital/${id}">
+<meta property="og:image"        content="${rhBase}/static/og-hospital.png">
+<meta property="og:image:width"  content="1365">
+<meta property="og:image:height" content="768">
+<meta property="og:image:type"   content="image/png">
+<meta name="twitter:card"        content="summary_large_image">
+<meta name="twitter:title"       content="SlimMind | 바디코드 정밀 진단 결과">
+<meta name="twitter:image"       content="${rhBase}/static/og-hospital.png">`
+    // OG 태그 주입 (</head> 바로 앞)
+    html = html.replace('</head>', `${rhOg}\n</head>`)
+    // ID 스크립트: INJECT_MARKER 위치 우선, 없으면 </head> 앞
     if (html.includes(INJECT_MARKER)) {
       html = html.replace(INJECT_MARKER, idScript + INJECT_MARKER)
     } else {
-      html = html.replace('</head>', idScript + '</head>')
+      html = html.replace('</head>', `${idScript}</head>`)
     }
     // 새로고침 시 항상 Worker를 통과하도록 — 브라우저·CDN 캐시 완전 차단
     const now = new Date().toUTCString()
