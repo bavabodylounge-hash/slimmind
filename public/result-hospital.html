@@ -8511,7 +8511,7 @@ function computeBCCode(axisScores, answers) {
   const sorted = Object.entries(causalScores).sort((a, b) => b[1] - a[1]);
   const top1Legacy = sorted[0];
   const top2Legacy = sorted[1];
-  const firstDomino = CAUSAL_AXIS_META[top1Legacy[0]]?.label || '스트레스';
+  const firstDomino = (CAUSAL_AXIS_META[top1Legacy[0]] && CAUSAL_AXIS_META[top1Legacy[0]].label) || '스트레스';
 
   // ⑤ 4대 지표 — ★ 세션 4: 실제 나이·BC코드·다중축 반영 정교화
   // ─────────────────────────────────────────────────────────────
@@ -12750,7 +12750,7 @@ async function shareGenImage() {
     }
 
     // 2순위: Clipboard API (데스크탑 Chrome 등)
-    if (window.ClipboardItem && navigator.clipboard?.write) {
+    if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
       const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
       _showToast('📋 이미지가 클립보드에 복사됐어요!\n카카오톡·인스타에 붙여넣기 하세요');
@@ -13005,7 +13005,7 @@ async function fcLoadGroup(code) {
 
     const cardsHtml = members.map(m => {
       const top3Html = (m.top3 || []).map(ax => {
-        const isChamp = axis_champs[ax]?.name === m.name;
+        const isChamp = (axis_champs[ax] && axis_champs[ax].name) === m.name;
         return `<span class="fc-axis-chip${isChamp?' champ':''}">${isChamp?'👑 ':''}${ANAME[ax]||ax}</span>`;
       }).join('');
       return `
@@ -13129,7 +13129,7 @@ async function loadAxisRank(axisScores) {
       const barEl   = item.querySelector('.axis-mini-bar');
       if (!scoreEl || !barEl) return;
       const sc   = parseInt(barEl.getAttribute('data-score') || '0');
-      const axRef = [...Object.entries(axisScores)].find(([,v]) => v === sc)?.[0];
+      const axRefEntry = [...Object.entries(axisScores)].find(([,v]) => v === sc); const axRef = axRefEntry ? axRefEntry[0] : undefined;
       if (!axRef) return;
       const r = ranks[axRef];
       if (!r || r.percentile === null) return;
@@ -16404,11 +16404,11 @@ function p6RewardAction(type) {
     try {
       const sid = d.session_id || d.sessionId || '';
       const stored = JSON.parse(localStorage.getItem(`slimmind_checkin_${sid}`) || '{}');
-      const completedWeeks = Object.keys(stored).filter(k => stored[k]?.saved).length;
-      const startWeight = stored['1']?.weight_kg || null;
-      const latestWeight = stored['4']?.weight_kg || stored['3']?.weight_kg || stored['2']?.weight_kg || null;
+      const completedWeeks = Object.keys(stored).filter(k => stored[k] && stored[k].saved).length;
+      const startWeight = (stored['1'] && stored['1'].weight_kg) || null;
+      const latestWeight = (stored['4'] && stored['4'].weight_kg) || (stored['3'] && stored['3'].weight_kg) || (stored['2'] && stored['2'].weight_kg) || null;
       const weightLoss = (startWeight && latestWeight) ? (startWeight - latestWeight) : null;
-      const week4Done = !!stored['4']?.saved;
+      const week4Done = !!(stored['4'] && stored['4'].saved);
       return {
         completedWeeks,
         week4Done,
@@ -17874,7 +17874,7 @@ function renderP7(userName, bcCode, bcMaster, metrics, ohaengType, mbtiType, ful
   }
   const ps3 = document.getElementById('p7-prev-s3');
   if (ps3) {
-    const rarity = bcMaster?.rarity || '상위 5%';
+    const rarity = (bcMaster && bcMaster.rarity) || '상위 5%';
     ps3.textContent = '★ RARE ' + rarity;
   }
 }
@@ -18073,7 +18073,7 @@ function showFcHelp() {
          <div style="font-size:12px;color:#888;margin-bottom:10px;">
            아래 버튼으로 지금 바로 만들어보세요!
          </div>
-         <button onclick="document.querySelector('.help-modal-overlay')?.remove(); fcCreateCodeFromHelp();" style="
+         <button onclick="var _hmo=document.querySelector('.help-modal-overlay'); if(_hmo) _hmo.remove(); fcCreateCodeFromHelp();" style="
            background:#b5452e;color:#fff;border:none;border-radius:10px;
            padding:10px 20px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;">
            코드 생성하기 →

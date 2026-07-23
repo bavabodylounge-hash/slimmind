@@ -667,7 +667,7 @@ function computeBCCode(axisScores, answers) {
   const sorted = Object.entries(causalScores).sort((a, b) => b[1] - a[1]);
   const top1Legacy = sorted[0];
   const top2Legacy = sorted[1];
-  const firstDomino = CAUSAL_AXIS_META[top1Legacy[0]]?.label || '스트레스';
+  const firstDomino = (CAUSAL_AXIS_META[top1Legacy[0]] && CAUSAL_AXIS_META[top1Legacy[0]].label) || '스트레스';
 
   // ⑤ 4대 지표
   const metaAge    = Math.round(40 + (axisScores['A03']||0) * 0.15 + (axisScores['A07']||0) * 0.1);

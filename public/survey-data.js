@@ -2004,8 +2004,8 @@ const TYPE_NAME_TABLE = {
 function generateTypeName(topAxes) {
   if (!topAxes || topAxes.length === 0) return { name: '복합형', emoji: '🌀', desc: '다양한 원인이 복합적으로 작용하는 패턴' };
   
-  const primary   = topAxes[0]?.axis || 'A01';
-  const secondary = topAxes[1]?.axis || 'A07';
+  const primary   = (topAxes[0] && topAxes[0].axis) || 'A01';
+  const secondary = (topAxes[1] && topAxes[1].axis) || 'A07';
   const key = `${primary}+${secondary}`;
   
   if (TYPE_NAME_TABLE[key]) return TYPE_NAME_TABLE[key];
@@ -2023,7 +2023,7 @@ function generateTypeName(topAxes) {
 
 // 도파민 기질 카드 분류
 function getDopamineType(answers) {
-  const mbti = answers['Q42']?.toUpperCase() || '';
+  const mbti = (answers['Q42'] ? answers['Q42'].toUpperCase() : '') || '';
   const motivation = answers['Q38'] || '';
   const compliance = answers['Q37b'] || answers['Q38'] || '';
   
@@ -2054,26 +2054,26 @@ function calculateAxisScores(answers) {
     const weight = q.weight || 1.0;
 
     if (q.type === 'SINGLE_SELECT') {
-      const opt = q.options?.find(o => o.value === answer);
-      if (opt?.axisEffect) {
+      const opt = q.options ? q.options.find(o => o.value === answer) : null;
+      if (opt && opt.axisEffect) {
         Object.entries(opt.axisEffect).forEach(([ax, pts]) => {
           if (axisScores.hasOwnProperty(ax)) axisScores[ax] += pts * weight;
         });
       }
-      if (opt?.ohaengEffect) {
+      if (opt && opt.ohaengEffect) {
         Object.entries(opt.ohaengEffect).forEach(([type, pts]) => {
           ohaengScores[type] = (ohaengScores[type] || 0) + pts * weight;
         });
       }
     } else if (q.type === 'MULTI_SELECT') {
       (Array.isArray(answer) ? answer : []).forEach(val => {
-        const opt = q.options?.find(o => o.value === val);
-        if (opt?.axisEffect) {
+        const opt = q.options ? q.options.find(o => o.value === val) : null;
+        if (opt && opt.axisEffect) {
           Object.entries(opt.axisEffect).forEach(([ax, pts]) => {
             if (axisScores.hasOwnProperty(ax)) axisScores[ax] += pts * weight;
           });
         }
-        if (opt?.ohaengEffect) {
+        if (opt && opt.ohaengEffect) {
           Object.entries(opt.ohaengEffect).forEach(([type, pts]) => {
             ohaengScores[type] = (ohaengScores[type] || 0) + pts * weight;
           });
@@ -3118,8 +3118,8 @@ function getNickname(axisScores, bgFilter) {
   const ranked = Object.entries(axisScores)
     .filter(([k]) => k.startsWith('A'))
     .sort((a, b) => b[1] - a[1]);
-  let top1 = ranked[0]?.[0];
-  const top2 = ranked[1]?.[0];
+  let top1 = ranked[0] ? ranked[0][0] : undefined;
+  const top2 = ranked[1] ? ranked[1][0] : undefined;
   if (!top1) return '스트레스성 야식부엉이형';
 
   // A10이 Top1이면 Top2로 닉네임 결정
@@ -3163,8 +3163,8 @@ function calcBcScores(v3Answers) {
     if (!answer) return;
 
     if (q.type === 'SINGLE_SELECT') {
-      const opt = q.options?.find(o => o.value === answer);
-      if (opt?.bcScore) {
+      const opt = q.options ? q.options.find(o => o.value === answer) : null;
+      if (opt && opt.bcScore) {
         Object.entries(opt.bcScore).forEach(([bc, pts]) => {
           if (scores.hasOwnProperty(bc)) scores[bc] += pts;
         });
