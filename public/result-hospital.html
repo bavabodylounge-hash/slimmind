@@ -13460,23 +13460,24 @@ function renderP5(metrics, bcCode, axisScores, userName) {
   };
 
   // ── 2. BC코드별 영역 강제 ON/OFF ──
+  // ★ HOSPITAL VERSION: 시술 force_none 완화 — 병원에서 시술 상담·연계 가능
   var BC_DOMAIN_OVERRIDE = {
     'BC-1':  { force_strong:['운동','식단','한방'],    force_none:['심리'] },
-    'BC-2':  { force_strong:['체형','한방'],           force_none:['심리','시술'] },
-    'BC-3':  { force_strong:['식단','관리'],           force_none:['시술'] },
-    'BC-4':  { force_strong:['약물','관리'],           force_none:['운동','시술'] },
+    'BC-2':  { force_strong:['체형','한방','시술'],    force_none:['심리'] },          // 병원용: 시술 허용
+    'BC-3':  { force_strong:['식단','관리','시술'],    force_none:[] },                // 병원용: 시술 허용
+    'BC-4':  { force_strong:['약물','관리'],           force_none:['운동'] },          // 병원용: 시술 허용
     'BC-5':  { force_strong:['시술','한방'],           force_none:['운동'] },
-    'BC-6':  { force_strong:['회복','심리','식단'],    force_none:['시술'] },
-    'BC-7':  { force_strong:['체형','운동'],           force_none:['시술','약물'] },
-    'BC-8':  { force_strong:['체형','운동'],           force_none:['심리'] },
-    'BC-9':  { force_strong:['식단','운동'],           force_none:['시술'] },
+    'BC-6':  { force_strong:['회복','심리','식단'],    force_none:[] },                // 병원용: 시술 허용
+    'BC-7':  { force_strong:['체형','운동','시술'],    force_none:['약물'] },          // 병원용: 시술 허용
+    'BC-8':  { force_strong:['체형','운동','시술'],    force_none:['심리'] },          // 병원용: 시술 추가
+    'BC-9':  { force_strong:['식단','운동','시술'],    force_none:[] },                // 병원용: 시술 허용
     'BC-10': { force_strong:['한방','시술'],           force_none:['운동'] },
-    'BC-11': { force_strong:['체형','운동'],           force_none:['약물'] },
+    'BC-11': { force_strong:['체형','운동','시술'],    force_none:['약물'] },          // 병원용: 시술 추가
     'BC-12': { force_strong:['호르몬','시술','한방'],  force_none:['운동'] },
-    'BC-13': { force_strong:['호르몬','회복'],         force_none:['운동','식단'] },
-    'BC-14': { force_strong:['회복','심리'],           force_none:['운동','시술'] },
-    'BC-15': { force_strong:['관리','약물','식단'],    force_none:['시술'] },
-    'BC-16': { force_strong:['관리','회복'],           force_none:['시술'] },
+    'BC-13': { force_strong:['호르몬','회복','시술'],  force_none:['운동'] },          // 병원용: 시술 추가
+    'BC-14': { force_strong:['회복','심리','시술'],    force_none:['운동'] },          // 병원용: 시술 추가
+    'BC-15': { force_strong:['관리','약물','식단'],    force_none:[] },                // 병원용: 시술 허용
+    'BC-16': { force_strong:['관리','회복','시술'],    force_none:[] },                // 병원용: 시술 허용
   };
 
   // ── 3. 영역별 메타 ──
@@ -13990,8 +13991,11 @@ function renderP8(metrics, bcCode, axisScores, userName) {
     var circBase = Math.round(12 + a02 * 8);
     // 한방: A02+A03 중간값
     var oriBase  = Math.round((a02 + a03) * 7);
-    // 시술: LIPO_HX/지방흡입 있으면 4주차에 높게
-    var procBase = (_rfl.indexOf('LIPO_HX')>=0||_rfl.indexOf('LIPOLYSIS_HX')>=0) ? 10 : 5;
+    // 시술: HOSPITAL VERSION — procBase 상향. LIPO_HX시 15, STRONG_AXES에 시술포함시 12, 기본 8
+    var _hospitalStrong = window.__STRONG_AXES__ || [];
+    var _procIsStrong = _hospitalStrong.indexOf('시술') >= 0;
+    var procBase = (_rfl.indexOf('LIPO_HX')>=0||_rfl.indexOf('LIPOLYSIS_HX')>=0) ? 15
+                 : _procIsStrong ? 12 : 8;
 
     // BC코드별 보정 테이블
     var _BC_REC_BOOST = {
@@ -14020,20 +14024,52 @@ function renderP8(metrics, bcCode, axisScores, userName) {
       dietBase = Math.round(dietBase * sf);
       exBase   = 100 - recBase - dietBase; // 나머지 보정
     }
+    // ── STRONG_AXES → 도메인명 → P8 축 키 매핑 ──
+    // P5에서 계산된 핵심처방 top3를 DATA 값 boost에 반영
+    var _sAxes = window.__STRONG_AXES__ || [];
+    var _DOMAIN_TO_AX_KEY = {
+      '한방':'ori', '시술':'proc', '호르몬':'horm', '체형':'form', '순환':'circ',
+      '회복':'rec', '식단':'diet', '운동':'ex'
+    };
+    // STRONG에 포함된 focus 축은 값 boost (기본 × 1.4, 최소 +8)
+    function _strongBoost(val, domNm){
+      if (_sAxes.indexOf(domNm) < 0) return val;
+      return Math.round(Math.max(val + 8, val * 1.4));
+    }
+    // 병원용: 시술이 STRONG에 있으면 2주차부터 시술 값 등장
+    var _procIsHospStrong = _sAxes.indexOf('시술') >= 0;
+
     // 4주차→1주차 점진 감소 (회복 중심 → 식단·운동으로 이동)
     var DATA = {
       1:{ rec: Math.min(70, recBase+10),  diet: Math.max(12, dietBase-8), ex: Math.max(10, exBase-10),
           ori:0, proc:0,
-          horm: Math.min(65, hormBase+8),  form: Math.max(12, formBase-4), circ: Math.max(8, circBase-4) },
-      2:{ rec: Math.min(65, recBase+4),   diet: Math.max(16, dietBase-4), ex: Math.max(14, exBase-4),
-          ori:0, proc:0,
-          horm: Math.min(60, hormBase+4),  form: formBase,                 circ: circBase },
-      3:{ rec: recBase,                   diet: dietBase,                 ex: exBase,
-          ori: Math.max(5, oriBase),       proc: 0,
-          horm: hormBase,                  form: formBase,                 circ: circBase },
-      4:{ rec: Math.max(20, recBase-6),   diet: Math.min(45, dietBase+4), ex: Math.min(40, exBase+4),
-          ori: Math.max(7, oriBase+2),     proc: procBase,
-          horm: Math.max(25, hormBase-4),  form: Math.min(40, formBase+4), circ: Math.min(30, circBase+4) }
+          horm: _strongBoost(Math.min(65, hormBase+8),'호르몬'),
+          form: _strongBoost(Math.max(12, formBase-4),'체형'),
+          circ: _strongBoost(Math.max(8, circBase-4),'순환') },
+      2:{ rec: _strongBoost(Math.min(65, recBase+4),'회복'),
+          diet: _strongBoost(Math.max(16, dietBase-4),'식단'),
+          ex:   _strongBoost(Math.max(14, exBase-4),'운동'),
+          ori:  _strongBoost(0,'한방'),
+          proc: _procIsHospStrong ? Math.round(procBase * 0.6) : 0,
+          horm: _strongBoost(Math.min(60, hormBase+4),'호르몬'),
+          form: _strongBoost(formBase,'체형'),
+          circ: _strongBoost(circBase,'순환') },
+      3:{ rec: _strongBoost(recBase,'회복'),
+          diet: _strongBoost(dietBase,'식단'),
+          ex:   _strongBoost(exBase,'운동'),
+          ori:  _strongBoost(Math.max(5, oriBase),'한방'),
+          proc: _procIsHospStrong ? Math.round(procBase * 0.8) : 0,
+          horm: _strongBoost(hormBase,'호르몬'),
+          form: _strongBoost(formBase,'체형'),
+          circ: _strongBoost(circBase,'순환') },
+      4:{ rec: _strongBoost(Math.max(20, recBase-6),'회복'),
+          diet: _strongBoost(Math.min(45, dietBase+4),'식단'),
+          ex:   _strongBoost(Math.min(40, exBase+4),'운동'),
+          ori:  _strongBoost(Math.max(7, oriBase+2),'한방'),
+          proc: _strongBoost(procBase,'시술'),
+          horm: _strongBoost(Math.max(25, hormBase-4),'호르몬'),
+          form: _strongBoost(Math.min(40, formBase+4),'체형'),
+          circ: _strongBoost(Math.min(30, circBase+4),'순환') }
     };
     // window 공유: DATA가 클로저 밖에서도 참조되므로 직접 재할당
     window.__P8_DATA__ = DATA;
@@ -14044,16 +14080,50 @@ function renderP8(metrics, bcCode, axisScores, userName) {
     3:{rec:38,diet:30,ex:23,ori:9,proc:0, horm:36,form:24,circ:18},
     4:{rec:31,diet:32,ex:22,ori:9,proc:6, horm:33,form:25,circ:18}
   };
-  // base 3축은 항상 활성. focus는 점수>0인 것 점수순. 전체 최소 6축 보장.
-  // 표시 축 = 회복·식단·운동(기본 3) + 원인 점수 상위 3 = 총 6축 고정.
-  // 회복·식단·운동은 점수 0이어도 항상 포함(빠질 수 없는 핵심).
+  // ── activeKeys: P5 STRONG_AXES 우선 + DATA 점수 보완 → 총 6축 ──
+  // 핵심처방 top3(window.__STRONG_AXES__)를 AX키로 변환해 focus 우선 배치.
+  // STRONG_AXES에 없는 나머지는 DATA 점수순으로 보완하여 6축 확보.
+  //
+  // 도메인명 → AX key 매핑 (P5 strongNames ↔ P8 AX)
+  var _STRONG_TO_AXKEY = {
+    '한방':'ori', '시술':'proc', '호르몬':'horm', '체형':'form', '순환':'circ',
+    '회복':'rec', '식단':'diet', '운동':'ex'
+  };
   function activeKeys(w){
     var r = DATA[w] || DATA[FREE];
-    var baseKeys = ['rec','diet','ex'];
-    var focus = AX.filter(function(a){return a.group==='focus';})
-                  .sort(function(a,b){return (r[b.k]||0)-(r[a.k]||0);})
-                  .map(function(a){return a.k;})
-                  .slice(0, 3);   // 원인 상위 3
+    var strongAxes = window.__STRONG_AXES__ || [];
+
+    // STRONG_AXES → AX key 변환 (focus 그룹에 있는 것만)
+    var focusKeySet = {};
+    AX.filter(function(a){return a.group==='focus';}).forEach(function(a){focusKeySet[a.k]=true;});
+
+    // 1) STRONG_AXES 중 focus 키로 변환 가능한 것 먼저 넣기
+    var focusPriority = [];
+    strongAxes.forEach(function(nm){
+      var k = _STRONG_TO_AXKEY[nm];
+      if (k && focusKeySet[k] && focusPriority.indexOf(k)<0) focusPriority.push(k);
+    });
+
+    // 2) 부족하면 DATA 점수 순으로 보완
+    var focusRest = AX.filter(function(a){
+      return a.group==='focus' && focusPriority.indexOf(a.k)<0;
+    }).sort(function(a,b){
+      return (r[b.k]||0)-(r[a.k]||0);
+    }).map(function(a){return a.k;});
+
+    var focus = focusPriority.concat(focusRest).slice(0, 3);
+
+    // 3) base 3축 (rec/diet/ex): STRONG_AXES에 포함된 것 앞에 배치, 나머지 뒤에
+    var baseAll = ['rec','diet','ex'];
+    var baseStrong = [], baseNormal = [];
+    baseAll.forEach(function(k){
+      var nm = AX.filter(function(a){return a.k===k;})[0];
+      var nmStr = nm ? nm.nm : '';
+      if (strongAxes.indexOf(nmStr) >= 0) baseStrong.push(k);
+      else baseNormal.push(k);
+    });
+    var baseKeys = baseStrong.concat(baseNormal); // 항상 3개 (순서만 달라짐)
+
     return baseKeys.concat(focus); // 6축
   }
   // ── 그 주차에서 점수 1위인 축 키 반환 (표시 6축 중) ──
@@ -18231,22 +18301,9 @@ function renderRoadmapAccordion(weeks, ohaengType, consultantName) {
         } else {
           var w = byWeek[n];
           if (!w) return;
-          // 주차 순차 잠금: 1주차만 열림. 나머지는 이전 주 완료 시 해제
-          var isFirstWeek = (n===1);
+          // ★ 전체 주차 오픈: 순차 잠금 없이 모든 주차 처음부터 열림
           var wkInner = roadmapWeekHeaderHTML(w, ph, n) + weeklyGridHTML(w, n-1);
-          if (isFirstWeek) {
-            bodyInner += '<div class="ja-week" data-week="'+n+'" data-wkstate="open">'+wkInner+'</div>';
-          } else {
-            bodyInner += '<div class="ja-week locked" data-week="'+n+'" data-wkstate="locked" data-prevweek="'+(n-1)+'">'+
-              '<div class="ja-wklock" data-week="'+n+'">'+
-                '<div class="ja-wklock-num">'+n+'<span>주차</span></div>'+
-                '<div class="ja-wklock-ic"><svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:var(--icsz,16px);height:var(--icsz,16px)"><rect x="5" y="10.5" width="14" height="9.5" rx="2.4"/><path d="M8.2 10.5V7.6a3.8 3.8 0 0 1 7.6 0v2.9"/></svg></div>'+
-                '<div class="ja-wklock-t">'+(n-1)+'주차를 완료하면 열립니다</div>'+
-                '<div class="ja-wklock-s">한 주씩 차근차근 — 이전 주를 다 체크하면<br>다음 주가 자동으로 열립니다</div>'+
-              '</div>'+
-              '<div class="ja-wkbody" style="display:none">'+wkInner+'</div>'+
-            '</div>';
-          }
+          bodyInner += '<div class="ja-week" data-week="'+n+'" data-wkstate="open">'+wkInner+'</div>';
         }
         if (wi < ph.weeks.length-1) bodyInner += '<div class="ja-wksep"></div>';
       });
@@ -21488,9 +21545,74 @@ function weeklyGridHTML(w, idx) {
     planCard('re','<svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:var(--icsz,16px);height:var(--icsz,16px)"><path d="M20 14.2A8.1 8.1 0 0 1 9.8 4 8.3 8.3 0 1 0 20 14.2Z"/></svg>','회복','매일 밤 지킨 루틴 체크','#b5452e','#f9ece8', reHTML) +
     planCard('ex','<svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:var(--icsz,16px);height:var(--icsz,16px)"><circle cx="13.5" cy="4" r="1.6"/><path d="M7.5 21l3-5.8-2.6-3 1-5.2L12 9.5l3.2 1.2"/><path d="M5.5 11.4 9 8.6M15.2 14.8l2 2.6.9 3.6"/></svg>','운동','한 운동과 칼로리 기록','#5a6e3a','#eef2e4', exHTML) +
     planCard('di','<svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:var(--icsz,16px);height:var(--icsz,16px)"><path d="M6 3v7a2.2 2.2 0 0 0 4.4 0V3"/><path d="M8.2 10.5V21"/><path d="M16.5 3c-1.6 1.4-2.2 3.2-2.2 5.2 0 1.7.8 2.8 2.2 3V21"/></svg>','식단','끼니별로 먹었는지 체크','#c98a3c','#faf0dc', diHTML);
-  var referCards =
-    planCard('bo','<svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:var(--icsz,16px);height:var(--icsz,16px)"><path d="M8.6 15.4 15.4 8.6"/><path d="M8.6 15.4a2.3 2.3 0 1 0-3 3 2.3 2.3 0 1 0 3 3 2.3 2.3 0 0 0 3-3"/><path d="M15.4 8.6a2.3 2.3 0 1 0 3-3 2.3 2.3 0 1 0-3-3 2.3 2.3 0 0 0-3 3"/></svg>','체형','필라테스 + 전문의 협진','#6b4eaa','#efeafa', boHTML) +
-    planCard('co','<svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:var(--icsz,16px);height:var(--icsz,16px)"><circle cx="12" cy="12" r="2.2"/><path d="M12 9.8c0-2.4-1-4.3-2.6-4.3S6.8 7 8.6 9.4M14.2 12c2.3 0 4.2-1 4.2-2.6s-1.5-2.6-3.9-.8M12 14.2c0 2.4 1 4.3 2.6 4.3s2.6-1.5.8-3.9M9.8 12c-2.4 0-4.3 1-4.3 2.6s1.5 2.6 3.9.8"/></svg>','호르몬','검사 결과 협진 안내','#3a6b9c','#e8f0f8', collabHTML);
+  // ── 협진 안내: window.__STRONG_AXES__ 기반 동적 카드 선택 ──
+  // STRONG_AXES top3 중 병원 협진 가능한 도메인 2개를 동적으로 선택
+  // 우선순위: STRONG_AXES 순 → 도메인별 CONSULT_MAP에서 데이터 가져옴
+  var _CONSULT_MAP = {
+    '체형':   { ic:'<svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:var(--icsz,16px);height:var(--icsz,16px)"><path d="M8.6 15.4 15.4 8.6"/><path d="M8.6 15.4a2.3 2.3 0 1 0-3 3 2.3 2.3 0 1 0 3 3 2.3 2.3 0 0 0 3-3"/><path d="M15.4 8.6a2.3 2.3 0 1 0 3-3 2.3 2.3 0 1 0-3-3 2.3 2.3 0 0 0-3 3"/></svg>',
+               sub:'필라테스 + 전문의 협진', c:'#6b4eaa', cl:'#efeafa', inner:boHTML },
+    '호르몬': { ic:'<svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:var(--icsz,16px);height:var(--icsz,16px)"><circle cx="12" cy="12" r="2.2"/><path d="M12 9.8c0-2.4-1-4.3-2.6-4.3S6.8 7 8.6 9.4M14.2 12c2.3 0 4.2-1 4.2-2.6s-1.5-2.6-3.9-.8M12 14.2c0 2.4 1 4.3 2.6 4.3s2.6-1.5.8-3.9M9.8 12c-2.4 0-4.3 1-4.3 2.6s1.5 2.6 3.9.8"/></svg>',
+               sub:'검사 결과 협진 안내', c:'#c0397a', cl:'#fde8f1', inner:collabHTML },
+    '시술':   { ic:'✨',
+               sub:'피부과 · 성형외과 협진', c:'#7a4a38', cl:'#f5ece8',
+               inner:'<div class="wg-collab"><div class="wg-cl-hd"><span class="wg-cl-ic">✨</span><span class="wg-cl-nm">'+(_bcHormoneInfo.issue||'시술 관련 안내')+'</span><span class="wg-cl-tag">협진 안내</span></div>'+
+                 '<div class="wg-cl-tx">병원 시술(지방분해·리프팅 등) 연계가 가능합니다. 담당 컨설턴트에게 상담 후 안내드립니다.</div>'+
+                 '<div class="wg-refer-row" style="margin-top:11px">'+
+                   '<button class="wg-refer-btn" onclick="sendPrompt(\'근처 피부과(지방분해·리프팅) 추천해줘\')" ><span class="wg-rb-nm">피부과</span><span class="wg-rb-go">바로가기 →</span></button>'+
+                   '<button class="wg-refer-btn" onclick="sendPrompt(\'근처 성형외과(체형 시술) 추천해줘\')" ><span class="wg-rb-nm">성형외과</span><span class="wg-rb-go">바로가기 →</span></button>'+
+                 '</div></div>' },
+    '한방':   { ic:'<svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:var(--icsz,16px);height:var(--icsz,16px)"><path d="M12 21V11"/><path d="M12 14c-4 0-7-2.6-7-7 4.4 0 7 2.6 7 7Z"/><path d="M12.5 11.5c0-4 2.6-7 7-7 0 4.4-2.6 7-7 7Z"/></svg>',
+               sub:'한의원 · 한방비만클리닉 협진', c:'#2f7d8c', cl:'#e4f3f5',
+               inner:'<div class="wg-collab"><div class="wg-cl-hd"><span class="wg-cl-ic"><svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:var(--icsz,16px);height:var(--icsz,16px)"><path d="M12 21V11"/><path d="M12 14c-4 0-7-2.6-7-7 4.4 0 7 2.6 7 7Z"/><path d="M12.5 11.5c0-4 2.6-7 7-7 0 4.4-2.6 7-7 7Z"/></svg></span><span class="wg-cl-nm">한방 치료 협진</span><span class="wg-cl-tag">협진 안내</span></div>'+
+                 '<div class="wg-cl-tx">한의원·한방비만클리닉 협진을 통해 침·뜸·한약 처방으로 순환·대사 개선을 도울 수 있습니다.</div>'+
+                 '<div class="wg-refer-row" style="margin-top:11px">'+
+                   '<button class="wg-refer-btn" onclick="sendPrompt(\'근처 한방비만클리닉 추천해줘\')" ><span class="wg-rb-nm">한방비만클리닉</span><span class="wg-rb-go">바로가기 →</span></button>'+
+                   '<button class="wg-refer-btn" onclick="sendPrompt(\'근처 한의원(침·뜸·다이어트) 추천해줘\')" ><span class="wg-rb-nm">한의원</span><span class="wg-rb-go">바로가기 →</span></button>'+
+                 '</div></div>' },
+    '회복':   { ic:'<svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:var(--icsz,16px);height:var(--icsz,16px)"><path d="M20 14.2A8.1 8.1 0 0 1 9.8 4 8.3 8.3 0 1 0 20 14.2Z"/></svg>',
+               sub:'수면·자율신경 클리닉 협진', c:'#b5452e', cl:'#f9ece8',
+               inner:'<div class="wg-collab"><div class="wg-cl-hd"><span class="wg-cl-ic"><svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:var(--icsz,16px);height:var(--icsz,16px)"><path d="M20 14.2A8.1 8.1 0 0 1 9.8 4 8.3 8.3 0 1 0 20 14.2Z"/></svg></span><span class="wg-cl-nm">수면·자율신경 클리닉</span><span class="wg-cl-tag">협진 안내</span></div>'+
+                 '<div class="wg-cl-tx">코르티솔·자율신경 이상이 체중 정체의 핵심입니다. 검사 결과를 가져오시면 회복 처방을 조정합니다.</div>'+
+                 '<div class="wg-refer-row" style="margin-top:11px">'+
+                   '<button class="wg-refer-btn" onclick="sendPrompt(\'근처 수면클리닉 추천해줘\')" ><span class="wg-rb-nm">수면클리닉</span><span class="wg-rb-go">바로가기 →</span></button>'+
+                   '<button class="wg-refer-btn" onclick="sendPrompt(\'근처 정신건강의학과(수면·스트레스) 추천해줘\')" ><span class="wg-rb-nm">정신건강의학과</span><span class="wg-rb-go">바로가기 →</span></button>'+
+                 '</div></div>' },
+    '약물':   { ic:'💊',
+               sub:'내과 · 기능의학 협진', c:'#5f5e5a', cl:'#f0efed',
+               inner:'<div class="wg-collab"><div class="wg-cl-hd"><span class="wg-cl-ic">💊</span><span class="wg-cl-nm">내과 · 기능의학 협진</span><span class="wg-cl-tag">협진 안내</span></div>'+
+                 '<div class="wg-cl-tx">대사 위험 인자가 있습니다. 약물 처방 또는 기능의학 검사를 통해 처방을 정밀 조정합니다.</div>'+
+                 '<div class="wg-refer-row" style="margin-top:11px">'+
+                   '<button class="wg-refer-btn" onclick="sendPrompt(\'근처 기능의학과 추천해줘\')" ><span class="wg-rb-nm">기능의학과</span><span class="wg-rb-go">바로가기 →</span></button>'+
+                   '<button class="wg-refer-btn" onclick="sendPrompt(\'근처 내과(대사 종합 검진) 추천해줘\')" ><span class="wg-rb-nm">내과</span><span class="wg-rb-go">바로가기 →</span></button>'+
+                 '</div></div>' },
+    '관리':   { ic:'🔬',
+               sub:'기능의학 · 종합건강검진', c:'#8a8474', cl:'#f3f2f0',
+               inner:'<div class="wg-collab"><div class="wg-cl-hd"><span class="wg-cl-ic">🔬</span><span class="wg-cl-nm">기능의학 · 종합검진</span><span class="wg-cl-tag">협진 안내</span></div>'+
+                 '<div class="wg-cl-tx">대사증후군 복합 위험이 감지됩니다. 종합 검진 결과를 가져오시면 처방을 정밀화합니다.</div>'+
+                 '<div class="wg-refer-row" style="margin-top:11px">'+
+                   '<button class="wg-refer-btn" onclick="sendPrompt(\'근처 기능의학과(종합 검진) 추천해줘\')" ><span class="wg-rb-nm">기능의학과</span><span class="wg-rb-go">바로가기 →</span></button>'+
+                   '<button class="wg-refer-btn" onclick="sendPrompt(\'근처 건강검진센터 추천해줘\')" ><span class="wg-rb-nm">건강검진센터</span><span class="wg-rb-go">바로가기 →</span></button>'+
+                 '</div></div>' },
+  };
+  // STRONG_AXES에서 협진 가능 도메인 최대 2개 선택 (병원 협진 의미 있는 것)
+  var _HOSPITAL_CONSULT_DOMAINS = ['시술','호르몬','체형','한방','회복','약물','관리','순환'];
+  var _strongAxesRef = window.__STRONG_AXES__ || [];
+  var _selectedConsult = [];
+  // 1순위: STRONG_AXES 중 협진 가능 도메인
+  _strongAxesRef.forEach(function(nm){
+    if (_selectedConsult.length < 2 && _HOSPITAL_CONSULT_DOMAINS.indexOf(nm) >= 0 && _CONSULT_MAP[nm]) {
+      _selectedConsult.push(nm);
+    }
+  });
+  // 2순위: STRONG에 없으면 BC별 기본값 (체형+호르몬) 보완
+  if (_selectedConsult.indexOf('체형') < 0 && _selectedConsult.length < 2) _selectedConsult.push('체형');
+  if (_selectedConsult.indexOf('호르몬') < 0 && _selectedConsult.length < 2) _selectedConsult.push('호르몬');
+
+  var referCards = _selectedConsult.map(function(nm, ci){
+    var d = _CONSULT_MAP[nm];
+    if (!d) return '';
+    return planCard('rc'+ci, d.ic, nm, d.sub, d.c, d.cl, d.inner);
+  }).join('');
 
   return '<div class="pcard-intro-row">'+
       '<div class="pcard-intro-tx">매일 체크</div>'+
