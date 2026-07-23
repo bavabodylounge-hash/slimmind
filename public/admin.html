@@ -1554,7 +1554,7 @@ async function loadDashboard() {
 
   const recentRows = recent_results.map(r => `
     <tr>
-      <td style="font-size:11px;color:var(--muted);font-family:monospace">${r.(id && id.slice)(0,8)}…</td>
+      <td style="font-size:11px;color:var(--muted);font-family:monospace">${(r.id ? r.id.slice(0,8) : '-')}…</td>
       <td><span style="font-weight:600">${r.user_name || '-'}</span></td>
       <td><span style="background:${BC_COLORS[r.bc_primary]||'#888'};color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700">${r.bc_primary||'-'}</span></td>
       <td><span style="font-size:12px;color:var(--muted)">${r.consultant_code || '미배정'}</span></td>
@@ -1564,7 +1564,7 @@ async function loadDashboard() {
   `).join('');
 
   // 월별 트렌드 데이터
-  const trendLabels = trend.map(t => t.(month && month.slice)(5) || '');
+  const trendLabels = trend.map(t => (t.month ? t.month.slice(5) : '') || '');
   const trendData = trend.map(t => t.count || 0);
 
   // BC 분포 Top 8
@@ -1813,7 +1813,7 @@ async function openEditConsultant(code) {
   document.getElementById('f-email').value = c.email || '';
   document.getElementById('f-job').value = c.job_type || '';
   document.getElementById('f-grade').value = c.grade || '일반';
-  document.getElementById('f-sub-end').value = c.(subscription_end && subscription_end.slice)(0,10) || '';
+  document.getElementById('f-sub-end').value = (c.subscription_end ? c.subscription_end.slice(0,10) : '') || '';
   document.getElementById('f-memo').value = c.memo || '';
   document.getElementById('f-edit-code').value = code;
   openModal('modal-consultant');
@@ -3014,7 +3014,7 @@ async function loadAdminCheckAlerts() {
     const ts = a.triggered_at ? a.triggered_at.slice(0,10) : '—';
     return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#fff;border-radius:8px;margin-bottom:6px;border:1px solid #f0ece6;">
       <span style="font-size:13px;">🔴</span>
-      <div style="flex:1;font-size:12px;font-weight:700;color:#241c14;">${a.user_name||a.(session_id && session_id.slice)(0,8)}</div>
+      <div style="flex:1;font-size:12px;font-weight:700;color:#241c14;">${a.user_name||(a.session_id ? a.session_id.slice(0,8) : '')}</div>
       <div style="font-size:11px;color:#8a7e66;">담당: ${a.ref_code||'—'}</div>
       <div style="font-size:11px;color:#b5452e;">${ts}</div>
     </div>`;
@@ -3248,7 +3248,7 @@ async function _adminMainComment(sessionId, userName) {
   if (!inp) return;
   const txt = inp.value.trim();
   if (!txt) { inp.focus(); return; }
-  const btn = inp.(nextElementSibling && nextElementSibling.querySelector)('button') || inp.closest('div').querySelector('button');
+  const btn = (inp.nextElementSibling && inp.nextElementSibling.querySelector('button')) || inp.closest('div').querySelector('button');
   if (btn) { btn.disabled = true; btn.textContent = '...'; }
   const today = new Date().toISOString().slice(0,10);
   const res = await api('POST', '/coaching-comment', { session_id: sessionId, comment: txt, check_date: today }).catch(()=>null);
@@ -3320,7 +3320,7 @@ async function _showDcDayPanel(sessionId, userName, dateKey, checkData, consulta
     cmtHtml = todayCmts.length
       ? todayCmts.map(cm=>`
           <div style="background:#eef4e0;border-radius:10px;padding:10px 12px;margin-bottom:8px;position:relative;">
-            <div style="font-size:10px;color:#5a6e3a;font-weight:800;margin-bottom:3px;">💬 ${cm.(created_at && created_at.slice)(0,10)||''}</div>
+            <div style="font-size:10px;color:#5a6e3a;font-weight:800;margin-bottom:3px;">💬 ${(cm.created_at ? cm.created_at.slice(0,10) : '')||''}</div>
             <div style="font-size:13px;line-height:1.6;">${cm.comment}</div>
             <button onclick="_adminDeleteComment(${cm.id},'${sessionId}','${dateKey}')" style="position:absolute;top:6px;right:8px;background:none;border:none;cursor:pointer;color:#bbb;font-size:14px;">✕</button>
           </div>`).join('')
@@ -3385,7 +3385,7 @@ async function _adminPostComment(sessionId, dateKey, userName) {
       listEl.innerHTML = cmts.length
         ? cmts.map(cm=>`
             <div style="background:#eef4e0;border-radius:10px;padding:10px 12px;margin-bottom:8px;position:relative;">
-              <div style="font-size:10px;color:#5a6e3a;font-weight:800;margin-bottom:3px;">💬 ${cm.(created_at && created_at.slice)(0,10)||''}</div>
+              <div style="font-size:10px;color:#5a6e3a;font-weight:800;margin-bottom:3px;">💬 ${(cm.created_at ? cm.created_at.slice(0,10) : '')||''}</div>
               <div style="font-size:13px;line-height:1.6;">${cm.comment}</div>
               <button onclick="_adminDeleteComment(${cm.id},'${sessionId}','${dateKey}')" style="position:absolute;top:6px;right:8px;background:none;border:none;cursor:pointer;color:#bbb;font-size:14px;">✕</button>
             </div>`).join('')
@@ -3405,7 +3405,7 @@ async function _adminDeleteComment(id, sessionId, dateKey) {
   if (listEl) listEl.innerHTML = cmts.length
     ? cmts.map(cm=>`
         <div style="background:#eef4e0;border-radius:10px;padding:10px 12px;margin-bottom:8px;position:relative;">
-          <div style="font-size:10px;color:#5a6e3a;font-weight:800;margin-bottom:3px;">💬 ${cm.(created_at && created_at.slice)(0,10)||''}</div>
+          <div style="font-size:10px;color:#5a6e3a;font-weight:800;margin-bottom:3px;">💬 ${(cm.created_at ? cm.created_at.slice(0,10) : '')||''}</div>
           <div style="font-size:13px;line-height:1.6;">${cm.comment}</div>
           <button onclick="_adminDeleteComment(${cm.id},'${sessionId}','${dateKey}')" style="position:absolute;top:6px;right:8px;background:none;border:none;cursor:pointer;color:#bbb;font-size:14px;">✕</button>
         </div>`).join('')
@@ -3698,7 +3698,7 @@ async function loadAnalytics() {
       new Chart(tCtx, {
         type: 'bar',
         data: {
-          labels: trend.map(t => t.(month && month.slice)(5)||''),
+          labels: trend.map(t => (t.month ? t.month.slice(5) : '') || ''),
           datasets: [{
             label: '신규 고객',
             data: trend.map(t => t.count||0),

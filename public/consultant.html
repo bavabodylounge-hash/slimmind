@@ -2210,7 +2210,7 @@ async function loadProfile() {
     ['직종', c.job_type || '-'],
     ['등급', c.grade || '브론즈'],
     ['구독 상태', statusMap[c.subscription_status] || c.subscription_status],
-    ['구독 만료일', c.(subscription_end && subscription_end.slice)(0,10) || '-'],
+    ['구독 만료일', (c.subscription_end ? c.subscription_end.slice(0,10) : '-')],
     ['인증 여부', c.is_certified ? '✅ 인증 완료' : '⏳ 미인증'],
     ['가입일', fmtDate(c.created_at)],
   ];
@@ -2351,7 +2351,7 @@ async function loadCheckAlerts() {
     return `<div onclick="markCheckAlertRead(${a.id})" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:${bg};border-bottom:1px solid #f0ece6;cursor:pointer;transition:background .2s;" onmouseover="this.style.background='#fdf8f0'" onmouseout="this.style.background='${bg}'">
       ${dot}
       <div style="flex:1;min-width:0;">
-        <div style="font-size:13px;font-weight:${a.is_read?'600':'800'};color:#241c14;">${a.user_name||a.(session_id && session_id.slice)(0,8)||'—'}</div>
+        <div style="font-size:13px;font-weight:${a.is_read?'600':'800'};color:#241c14;">${a.user_name||(a.session_id ? a.session_id.slice(0,8) : '')||'—'}</div>
         <div style="font-size:11px;color:#8a7e66;margin-top:2px;">${lbl} · ${a.bc_code||''}</div>
         <div style="font-size:11px;color:#aaa;margin-top:1px;">${a.message||''}</div>
       </div>
@@ -3055,7 +3055,7 @@ async function loadQrStats() {
     if (el('qr-stat-total')) el('qr-stat-total').textContent = data.total ||  0;
     if (el('qr-stat-month')) el('qr-stat-month').textContent = data.this_month ||  0;
     if (el('qr-stat-week'))  el('qr-stat-week').textContent  = data.this_week ||  0;
-    if (el('qr-stat-bc') && data.(bc_dist && bc_dist.length)) {
+    if (el('qr-stat-bc') && data.bc_dist && data.bc_dist.length) {
       el('qr-stat-bc').innerHTML = '<strong style="color:#374151">BC별 분포:</strong> ' +
         data.bc_dist.map(b => `<span style="background:#F1F5F9;border-radius:6px;padding:2px 8px;margin:2px;display:inline-block">${b.bc_primary} <b>${b.cnt}명</b></span>`).join('');
     }
@@ -3484,7 +3484,7 @@ async function onWeightCustomerSelect() {
   // 체중 데이터 파싱
   const weights = weightCheckins.map(ch => {
     const m = ch.axis_name.match(/체중:([\d.]+)kg/);
-    return { date: ch.(checked_at && checked_at.slice)(0,10), week: ch.week_range, weight: m ? parseFloat(m[1]) : null, memo: ch.axis_name.replace(/체중:[\d.]+kg\s*\/?/,'') };
+    return { date: (ch.checked_at ? ch.checked_at.slice(0,10) : ''), week: ch.week_range, weight: m ? parseFloat(m[1]) : null, memo: ch.axis_name.replace(/체중:[\d.]+kg\s*\/?/,'') };
   }).filter(w => w.weight !== null);
 
   const initWeight = (customer && customer.weight) || null;

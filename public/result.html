@@ -1454,14 +1454,14 @@ function showPaywall() {
   // CH3로 이동해서 blur 처방 보여줌
   goChapter(3);
   setTimeout(() => {
-    var _el=\$('blurPreviewWrap'); if(_el) _el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    var _el=$('blurPreviewWrap'); if(_el) _el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, 300);
   setTimeout(() => openPaywallSheet(), 600);
 }
 
 function openPaywallSheet() {
-  const name = RESULTS?(.answers && .answers.Q01) || RESULTS?(.answers && .answers.name) || '';
-  const typeName = RESULTS?(.typeInfo && .typeInfo.name) || '다이어트 유형';
+  const name = (RESULTS && RESULTS.answers && RESULTS.answers.Q01) || (RESULTS && RESULTS.answers && RESULTS.answers.name) || '';
+  const typeName = (RESULTS && RESULTS.typeInfo && RESULTS.typeInfo.name) || '다이어트 유형';
 
   const backdrop = $('paywall-backdrop');
   backdrop.innerHTML = `
@@ -1559,8 +1559,8 @@ function goUnlock() {
   } else if (PAYWALL_CONFIG.kakaoChannel) {
     // ── 카카오채널 1:1 문의 방식
     // 결과 URL을 채널 채팅 시작 메시지로 자동 포함
-    const name = RESULTS?(.answers && .answers.Q01) || '';
-    const typeName = RESULTS?(.typeInfo && .typeInfo.name) || '';
+    const name = (RESULTS && RESULTS.answers && RESULTS.answers.Q01) || '';
+    const typeName = (RESULTS && RESULTS.typeInfo && RESULTS.typeInfo.name) || '';
     const msg = encodeURIComponent(`안녕하세요! 슬림마인드 결과 전체 처방 문의드립니다.\n이름: ${name}\n유형: ${typeName}\n결과 URL: ${window.location.origin}/result`);
     window.open(
       `${PAYWALL_CONFIG.kakaoChannel}`,
@@ -1597,7 +1597,7 @@ function unlockPaid() {
 
 // ── 공유 ─────────────────────────────────────────
 function shareResult(type) {
-  const typeName = RESULTS?(.typeInfo && .typeInfo.name) || '나의 다이어트 유형';
+  const typeName = (RESULTS && RESULTS.typeInfo && RESULTS.typeInfo.name) || '나의 다이어트 유형';
   const url = window.location.href;
   const text = `SlimMind에서 ${typeName} 진단을 받았어요! 나의 다이어트 원인을 10축으로 분석해드립니다.`;
 
@@ -4312,7 +4312,7 @@ function initResult() {
         skinReaction: R.skin_reaction || null,
         isMenopause: R.is_menopause || false,
         medicalConditions: R.medical_conditions || [],
-        hasMedicalConditions: !!(R && R.has_medical_conditions)),
+        hasMedicalConditions: !!(R && R.has_medical_conditions),
         answers: serverAnswers,
         // 전문가 결과 데이터 (컨설턴트/B2B 뷰용)
         prescription: R.prescription || null,
