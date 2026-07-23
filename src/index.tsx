@@ -1146,9 +1146,21 @@ app.get('/api/b2b/results', requireB2B(), async (c) => {
   const params: any[] = [user.code]
   if (search) params.push(`%${search}%`)
 
+  // ✅ BUG-FIX: diagnosis_results(신파이프라인) + hospital_responses + results 3테이블 통합
+  // diagnosis_results.ref_code = b2b partner code (= user.code)
+  const drSearchClause = search ? ' AND user_name LIKE ?' : ''
+  const drParams: any[] = [user.code]
+  if (search) drParams.push(`%${search}%`)
+  const drQuery = `
+    SELECT id, user_name, bc_primary, bc_code_key AS axis_primary,
+           completed_at AS created_at, ref_code,
+           survey_category AS result_type
+    FROM diagnosis_results
+    WHERE ref_code=?${drSearchClause}
+  `
+
   if (isHospital) {
-    // 병원 파트너: hospital_responses + results 합쳐서 반환
-    // hospital_responses: id(H-...), result_type='hospital'
+    // 병원 파트너: hospital_responses + results + diagnosis_results 합쳐서 반환
     const hospParams: any[] = [user.code]
     if (search) hospParams.push(`%${search}%`)
     const hospQuery = `
@@ -1168,22 +1180,31 @@ app.get('/api/b2b/results', requireB2B(), async (c) => {
              'integrated' AS result_type
       FROM results WHERE ref_code=?${search ? ' AND user_name LIKE ?' : ''}
     `
-    const [hospRes, regRes] = await Promise.all([
+    const [hospRes, regRes, drRes] = await Promise.all([
       db.prepare(hospQuery).bind(...hospParams).all<any>(),
-      db.prepare(regQuery).bind(...regParams).all<any>()
+      db.prepare(regQuery).bind(...regParams).all<any>(),
+      db.prepare(drQuery).bind(...drParams).all<any>(),
     ])
     const combined = [
       ...(hospRes.results || []),
-      ...(regRes.results || [])
+      ...(regRes.results || []),
+      ...(drRes.results || []),
     ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     return c.json({ results: combined.slice(0, 50) })
   } else {
-    // 일반 파트너: results 테이블만
+    // 일반 파트너: results + diagnosis_results
     let query = 'SELECT id, user_name, bc_primary, axis_primary, created_at, ref_code, \'integrated\' AS result_type FROM results WHERE ref_code=?'
     if (search) { query += ' AND user_name LIKE ?'; params.push(`%${search}%`) }
     query += ' ORDER BY created_at DESC LIMIT 50'
-    const result = await db.prepare(query).bind(...params).all<any>()
-    return c.json({ results: result.results })
+    const [result, drRes] = await Promise.all([
+      db.prepare(query).bind(...params).all<any>(),
+      db.prepare(drQuery).bind(...drParams).all<any>(),
+    ])
+    const combined = [
+      ...(result.results || []),
+      ...(drRes.results || []),
+    ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    return c.json({ results: combined.slice(0, 50) })
   }
 })
 
@@ -1198,16 +1219,18 @@ app.get('/api/b2b/stats', requireB2B(), async (c) => {
   const isHospital = partnerInfo?.survey_category === 'hospital'
 
   if (isHospital) {
-    // 병원 파트너: hospital_responses + results 합산
-    const [hospTotal, hospMonth, hospToday, hospWeek, regTotal, nickDist] = await Promise.all([
+    // 병원 파트너: hospital_responses + results + diagnosis_results 합산
+    const [hospTotal, hospMonth, hospToday, hospWeek, regTotal, drTotal, nickDist] = await Promise.all([
       db.prepare('SELECT COUNT(*) as cnt FROM hospital_responses WHERE ref_code=?').bind(user.code).first<any>(),
       db.prepare("SELECT COUNT(*) as cnt FROM hospital_responses WHERE ref_code=? AND strftime('%Y-%m',created_at)=strftime('%Y-%m','now')").bind(user.code).first<any>(),
       db.prepare("SELECT COUNT(*) as cnt FROM hospital_responses WHERE ref_code=? AND date(created_at)=date('now')").bind(user.code).first<any>(),
       db.prepare("SELECT COUNT(*) as cnt FROM hospital_responses WHERE ref_code=? AND created_at>=datetime('now','-7 days')").bind(user.code).first<any>(),
       db.prepare('SELECT COUNT(*) as cnt FROM results WHERE ref_code=?').bind(user.code).first<any>(),
+      // ✅ BUG-FIX: diagnosis_results 카운트 추가
+      db.prepare('SELECT COUNT(*) as cnt FROM diagnosis_results WHERE ref_code=?').bind(user.code).first<any>(),
       db.prepare("SELECT ohaeng_type AS bc_primary, COUNT(*) as cnt FROM hospital_responses WHERE ref_code=? AND ohaeng_type IS NOT NULL GROUP BY ohaeng_type ORDER BY cnt DESC LIMIT 5").bind(user.code).all<any>(),
     ])
-    const totalCnt = (hospTotal?.cnt || 0) + (regTotal?.cnt || 0)
+    const totalCnt = (hospTotal?.cnt || 0) + (regTotal?.cnt || 0) + (drTotal?.cnt || 0)
     return c.json({
       total: totalCnt,
       this_month: hospMonth?.cnt || 0,
@@ -1215,19 +1238,21 @@ app.get('/api/b2b/stats', requireB2B(), async (c) => {
       this_week: hospWeek?.cnt || 0,
       nickname_distribution: nickDist.results,
       hospital_count: hospTotal?.cnt || 0,
-      integrated_count: regTotal?.cnt || 0,
+      integrated_count: (regTotal?.cnt || 0) + (drTotal?.cnt || 0),
     })
   }
 
-  const [total, thisMonth, nickDist, today, thisWeek] = await Promise.all([
+  // ✅ BUG-FIX: 일반 파트너도 diagnosis_results 포함
+  const [total, thisMonth, nickDist, today, thisWeek, drTotal] = await Promise.all([
     db.prepare('SELECT COUNT(*) as cnt FROM results WHERE ref_code=?').bind(user.code).first<any>(),
     db.prepare("SELECT COUNT(*) as cnt FROM results WHERE ref_code=? AND strftime('%Y-%m', created_at)=strftime('%Y-%m','now')").bind(user.code).first<any>(),
     db.prepare('SELECT bc_primary, COUNT(*) as cnt FROM results WHERE ref_code=? GROUP BY bc_primary ORDER BY cnt DESC LIMIT 5').bind(user.code).all<any>(),
     db.prepare("SELECT COUNT(*) as cnt FROM results WHERE ref_code=? AND date(created_at)=date('now')").bind(user.code).first<any>(),
     db.prepare("SELECT COUNT(*) as cnt FROM results WHERE ref_code=? AND created_at>=datetime('now','-7 days')").bind(user.code).first<any>(),
+    db.prepare('SELECT COUNT(*) as cnt FROM diagnosis_results WHERE ref_code=?').bind(user.code).first<any>(),
   ])
   return c.json({
-    total: total?.cnt || 0,
+    total: (total?.cnt || 0) + (drTotal?.cnt || 0),
     this_month: thisMonth?.cnt || 0,
     today: today?.cnt || 0,
     this_week: thisWeek?.cnt || 0,
@@ -4367,8 +4392,9 @@ app.post('/api/v1/diagnosis', async (c) => {
       ).bind(ref_code).first()
       if (cst) connected_to = 'consultant'
       else {
+        // ✅ BUG-FIX: b2b_partners 테이블엔 ref_code 컬럼 없음 → code 컬럼으로 조회
         const b2b = await db.prepare(
-          `SELECT id FROM b2b_partners WHERE ref_code = ? LIMIT 1`
+          `SELECT id FROM b2b_partners WHERE code = ? LIMIT 1`
         ).bind(ref_code).first()
         if (b2b) connected_to = 'b2b_partner'
       }
