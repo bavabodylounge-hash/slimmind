@@ -4144,19 +4144,19 @@ var DISP_QUESTIONS = [
 function calcDisposition(dispAnswers) {
   // ── 오행 분류 (DISP_OHAENG 단독, 변경 없음) ──
   const ohaengMap = { 0: '목형', 1: '화형', 2: '토형', 3: '금형', 4: '수형' };
-  const ohaengIdx = dispAnswers['DISP_OHAENG'] ?? 0;
-  const ohaeng_type = ohaengMap[ohaengIdx] ?? '목형';
+  const ohaengIdx = dispAnswers['DISP_OHAENG'] || 00;
+  const ohaeng_type = ohaengMap[ohaengIdx] || '목형';
 
   // 각 질문의 답변 인덱스 추출
-  const social    = dispAnswers['DISP_SOCIAL']    ?? 2;  // G04
-  const emotion   = dispAnswers['DISP_EMOTION']   ?? 2;  // G02
-  const energy    = dispAnswers['DISP_ENERGY']    ?? 2;  // G01
-  const burnout   = dispAnswers['DISP_BURNOUT']   ?? 1;  // G08
-  const goal      = dispAnswers['DISP_GOAL']      ?? 1;  // G03
-  const decision  = dispAnswers['DISP_DECISION']  ?? 2;  // G07
-  const plan      = dispAnswers['DISP_PLAN']      ?? 2;  // G05
-  const failMind  = dispAnswers['DISP_FAIL_MIND'] ?? 0;  // G10
-  const night     = dispAnswers['DISP_NIGHT']     ?? 1;  // G09
+  const social    = dispAnswers['DISP_SOCIAL']    || 2;  // G04
+  const emotion   = dispAnswers['DISP_EMOTION']   || 2;  // G02
+  const energy    = dispAnswers['DISP_ENERGY']    || 2;  // G01
+  const burnout   = dispAnswers['DISP_BURNOUT']   || 1;  // G08
+  const goal      = dispAnswers['DISP_GOAL']      || 1;  // G03
+  const decision  = dispAnswers['DISP_DECISION']  || 2;  // G07
+  const plan      = dispAnswers['DISP_PLAN']      || 2;  // G05
+  const failMind  = dispAnswers['DISP_FAIL_MIND'] || 00;  // G10
+  const night     = dispAnswers['DISP_NIGHT']     || 1;  // G09
 
   // ── E/I 축 ──────────────────────────────────────────────────────
   // 양수 → E (외향), 음수 → I (내향)
@@ -4164,19 +4164,19 @@ function calcDisposition(dispAnswers) {
 
   // DISP_SOCIAL (가중치 2.0) — 핵심: 사람과 있을 때 에너지 방향
   // 0=사람많을수록충전(E++), 1=적당히어울림(약E), 2=혼자가편함(I+), 3=소수깊은관계(I++)
-  ei += [2.0, 0.5, -1.0, -2.0][social] ?? 0;
+  ei += [2.0, 0.5, -1.0, -2.0][social] || 00;
 
   // DISP_EMOTION (가중치 1.0) — 감정표현 방식: 외향=바로표현, 내향=혼자삭힘
   // 0=바로표현(E+), 1=티내지만삭힘(약E), 2=혼자삭힘(I+), 3=먹으며잊음(중립I)
-  ei += [1.0, 0.3, -1.0, -0.3][emotion] ?? 0;
+  ei += [1.0, 0.3, -1.0, -0.3][emotion] || 00;
 
   // DISP_ENERGY (가중치 0.5) — 에너지 레벨은 E/I 보조 신호
   // 0=아침부터넘침(E경향), 1=오후달아오름(중립), 2=중간(중립), 3=항상부족(I경향)
-  ei += [0.5, 0.0, 0.0, -0.5][energy] ?? 0;
+  ei += [0.5, 0.0, 0.0, -0.5][energy] || 00;
 
   // DISP_NIGHT (가중치 0.3) — 올빼미=I 경향 보조
   // 0=아침형(E경향), 1=낮중간(중립), 2=저녁형(약I), 3=완전올빼미(I경향)
-  ei += [0.3, 0.0, -0.2, -0.3][night] ?? 0;
+  ei += [0.3, 0.0, -0.2, -0.3][night] || 00;
 
   const mbtiE = ei >= 0 ? 'E' : 'I';
 
@@ -4188,17 +4188,17 @@ function calcDisposition(dispAnswers) {
   // DISP_BURNOUT (가중치 2.0) — 핵심: 번아웃 반응이 N/S를 가장 잘 드러냄
   // 0=더열심히극복(N - 의미·목표 추구), 1=휴식후재시작(S - 현실적 회복)
   // 2=무기력(양쪽모두 가능, 중립), 3=먹쇼핑(S - 감각적 자기위로)
-  ns += [2.0, -0.5, 0.0, -1.5][burnout] ?? 0;
+  ns += [2.0, -0.5, 0.0, -1.5][burnout] || 00;
 
   // DISP_GOAL (가중치 1.0) — 목표 세우는 방식: 비전형vs현실형
   // 0=크고완벽한목표(N - 비전·이상형), 1=단계별목표(S - 현실적실용형)
   // 2=즉흥(S경향), 3=목표자체부담(S경향)
-  ns += [1.0, -0.5, -0.5, -0.8][goal] ?? 0;
+  ns += [1.0, -0.5, -0.5, -0.8][goal] || 00;
 
   // DISP_OHAENG (가중치 0.5) — 성격 자기규정에서 N/S 패턴 추출
   // 0=추진목표지향(N경향), 1=열정즉흥(N경향), 2=따뜻배려(S경향)
   // 3=원칙완벽(약N - 기준·이상추구), 4=신중분석(N경향)
-  ns += [0.5, 0.3, -0.5, 0.3, 0.8][ohaengIdx] ?? 0;
+  ns += [0.5, 0.3, -0.5, 0.3, 0.8][ohaengIdx] || 00;
 
   const mbtiN = ns >= 0 ? 'N' : 'S';
 
@@ -4209,15 +4209,15 @@ function calcDisposition(dispAnswers) {
 
   // DISP_DECISION (가중치 2.0) — 핵심: 결정 방식이 T/F를 직접 반영
   // 0=데이터논리(T++), 1=논리+감정(약T), 2=느낌가치관(F+), 3=타인의견(F++)
-  tf += [2.0, 0.5, -1.0, -2.0][decision] ?? 0;
+  tf += [2.0, 0.5, -1.0, -2.0][decision] || 00;
 
   // DISP_OHAENG (가중치 1.0) — 성격 유형에서 T/F 패턴 추출
   // 0=추진목표(T경향), 1=열정즉흥(중립), 2=따뜻배려(F++), 3=원칙완벽(T+), 4=신중분석(T경향)
-  tf += [0.5, 0.0, -1.0, 1.0, 0.5][ohaengIdx] ?? 0;
+  tf += [0.5, 0.0, -1.0, 1.0, 0.5][ohaengIdx] || 00;
 
   // DISP_EMOTION (가중치 0.3) — 감정처리 방식 보조
   // 0=바로표현(F경향), 1=티내지만삭힘(약F), 2=혼자삭힘(약T-내면정리), 3=먹으며잊음(중립)
-  tf += [-0.3, -0.1, 0.2, 0.0][emotion] ?? 0;
+  tf += [-0.3, -0.1, 0.2, 0.0][emotion] || 00;
 
   const mbtiT = tf >= 0 ? 'T' : 'F';
 
@@ -4228,16 +4228,16 @@ function calcDisposition(dispAnswers) {
 
   // DISP_PLAN (가중치 2.0) — 핵심: 생활 방식이 J/P를 직접 반영
   // 0=계획없으면불안(J++), 1=대략적계획(약J), 2=상황봐가며(P+), 3=계획이스트레스(P++)
-  jp += [2.0, 0.5, -1.0, -2.0][plan] ?? 0;
+  jp += [2.0, 0.5, -1.0, -2.0][plan] || 00;
 
   // DISP_FAIL_MIND (가중치 1.5) — 포기할 때 심리: J특성 매우 잘 드러남
   // 0=오늘만먹고내일부터(P - 유연한타협), 1=완벽아니면포기(J++ - 강한J특성)
   // 2=의욕사라짐(중립), 3=지쳐관심없음(약P)
-  jp += [-0.5, 1.5, 0.0, -0.8][failMind] ?? 0;
+  jp += [-0.5, 1.5, 0.0, -0.8][failMind] || 00;
 
   // DISP_GOAL (가중치 0.8) — 목표 설정 방식에서 J/P 보조 추출
   // 0=전부아니면무(J - 완벽주의 목표), 1=단계별(약J - 체계적), 2=즉흥(P), 3=목표부담(P)
-  jp += [0.8, 0.3, -0.8, -1.0][goal] ?? 0;
+  jp += [0.8, 0.3, -0.8, -1.0][goal] || 00;
 
   const mbtiJ = jp >= 0 ? 'J' : 'P';
 

@@ -677,7 +677,7 @@ async function loadB2bDailyChecks(days = 7) {
   body.innerHTML = `<div style="padding:40px;text-align:center;color:var(--muted)"><i class="fas fa-circle-notch fa-spin fa-2x"></i></div>`;
 
   const data = await api('GET', `/b2b/daily-checks?days=${days}`).catch(() => null);
-  const clients = data?.clients || [];
+  const clients = (data && data.clients) || [];
 
   function bar(pct, color) {
     const p = Math.min(100, pct||0);
@@ -787,8 +787,8 @@ async function loadB2bBcLibrary() {
     </div>`;
 
   const data = await api('GET', '/b2b/bc-list');
-  if (!data?.ok) {
-    document.getElementById('b2b-bc-cards').innerHTML = `<div style="color:#fca5a5;padding:40px">로드 실패: ${data?.error||''}</div>`;
+  if (!(data && data.ok)) {
+    document.getElementById('b2b-bc-cards').innerHTML = `<div style="color:#fca5a5;padding:40px">로드 실패: ${(data && data.error)||''}</div>`;
     return;
   }
   window._b2bBcList = data.list;
@@ -800,7 +800,7 @@ function b2bBcFilter() {
 }
 
 function renderB2bBcCards(list) {
-  const search = (document.getElementById('b2b-bc-search')?.value || '').toLowerCase();
+  const search = (document.getElementById('b2b-bc-search'||{}).value || '').toLowerCase();
   const area = document.getElementById('b2b-bc-cards');
   if (!area) return;
   const filtered = search ? list.filter(bc => `${bc.bc_code} ${bc.brand_name} ${bc.tagline} ${bc.reason||''}`.toLowerCase().includes(search)) : list;
@@ -972,14 +972,14 @@ async function loadDashboard() {
   ]);
   if (!stats) return;
 
-  const p = partner?.partner || {};
+  const p = (partner && partner.partner) || {};
   const color = BRAND.brand_color || '#b5452e';
   const logoHtml = BRAND.brand_logo_url
     ? `<img class="brand-logo-img" src="${BRAND.brand_logo_url}" alt="로고">`
     : `<div style="width:52px;height:52px;border-radius:12px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:22px">🏢</div>`;
 
   // 알림 뱃지 업데이트
-  if (notifData?.notifications) {
+  if ((notifData && notifData.notifications)) {
     const unread = notifData.notifications.filter(n => !n.is_read).length;
     const dot = document.getElementById('b2b-notif-dot');
     const badge = document.getElementById('b2b-notif-badge');
@@ -1025,7 +1025,7 @@ async function loadDashboard() {
       </div>
       <div class="kpi-card" style="--brand:var(--sm-amber)">
         <div class="kpi-icon"><i class="fas fa-bell"></i></div>
-        <div class="kpi-val" id="b2b-kpi-notif">${notifData?.notifications?.filter(n=>!n.is_read).length || 0}</div>
+        <div class="kpi-val" id="b2b-kpi-notif">${(notifData && notifData.notifications||[]).filter(n=>!n.is_read).length || 0}</div>
         <div class="kpi-label">미확인 알림</div>
       </div>
     </div>
@@ -1240,7 +1240,7 @@ async function loadB2bNotifications() {
   const body = document.getElementById('page-body');
 
   const data = await api('GET', `/notifications?ref_code=${USER_CODE}&limit=50`);
-  const notifs = data?.notifications || [];
+  const notifs = (data && data.notifications) || [];
   const unread = notifs.filter(n => !n.is_read).length;
 
   // 뱃지 업데이트
@@ -1380,7 +1380,7 @@ async function openB2bResult(resultId) {
   }
   try {
     const res = await api('GET', `/b2b/result-link/${resultId}`);
-    if (res?.url) {
+    if ((res && res.url)) {
       window.open(res.url, '_blank');
     } else {
       window.open(`/result/${resultId}`, '_blank');
@@ -1759,8 +1759,8 @@ async function loadB2bPartnerRxAuto(bcCode, customerId, color) {
   }
 
   // 2) 업체 등록 프로그램 섹션
-  const matched = myPrograms?.matched_programs || [];
-  const general = myPrograms?.general_programs || [];
+  const matched = (myPrograms && myPrograms.matched_programs) || [];
+  const general = (myPrograms && myPrograms.general_programs) || [];
 
   if (matched.length > 0 || general.length > 0) {
     const programCard = (p) => `
@@ -1936,8 +1936,8 @@ async function loadBcPartnerSection(bcCode, color) {
     html += renderB2bPartnerRxPanel(partnerData, color);
   }
 
-  const matched = myPrograms?.matched_programs || [];
-  const general = myPrograms?.general_programs || [];
+  const matched = (myPrograms && myPrograms.matched_programs) || [];
+  const general = (myPrograms && myPrograms.general_programs) || [];
 
   const programCard = (p) => `
     <div style="background:#fff;border:1.5px solid ${color}33;border-radius:12px;padding:14px 16px;flex:0 0 auto;min-width:180px;max-width:220px">
@@ -2068,7 +2068,7 @@ function renderB2bPartnerRxPanel(data, color) {
 // ═══════════════════════════════════════
 async function loadSubaccounts() {
   const data = await api('GET', '/b2b/subaccounts');
-  const subs = data?.subaccounts || [];
+  const subs = (data && data.subaccounts) || [];
   const color = BRAND.brand_color || '#6366f1';
 
   document.getElementById('page-body').innerHTML = `
@@ -2161,22 +2161,22 @@ async function createSubaccount() {
   if (!password || password.length < 4) { toast('비밀번호는 4자 이상이어야 합니다.', 'error'); return; }
 
   const res = await api('POST', '/b2b/subaccounts', { name, role_label: roleLabel, password });
-  if (res?.success) {
+  if ((res && res.success)) {
     toast(`✅ ${res.code} 계정이 생성되었습니다.`, 'success');
     loadSubaccounts();
   } else {
-    toast('생성 실패: ' + (res?.error || '오류'), 'error');
+    toast('생성 실패: ' + ((res && res.error) || '오류'), 'error');
   }
 }
 
 async function deleteSubaccount(code, name) {
   if (!confirm(`"${name}" (${code}) 계정을 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.`)) return;
   const res = await api('DELETE', `/b2b/subaccounts/${code}`);
-  if (res?.success) {
+  if ((res && res.success)) {
     toast(`🗑️ ${code} 계정이 삭제되었습니다.`, 'success');
     loadSubaccounts();
   } else {
-    toast('삭제 실패: ' + (res?.error || '오류'), 'error');
+    toast('삭제 실패: ' + ((res && res.error) || '오류'), 'error');
   }
 }
 
@@ -2267,7 +2267,7 @@ if (TOKEN) {
         fetch('/api/b2b/me', { headers: { 'Authorization': `Bearer ${TOKEN}` } })
           .then(r => r.json())
           .then(pData => {
-            if (pData?.partner) {
+            if ((pData && pData.partner)) {
               const p = pData.partner;
               BRAND = {
                 brand_name: p.brand_name || p.name,

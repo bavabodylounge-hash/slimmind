@@ -8484,7 +8484,7 @@ function goSurvey(){
     // 축 점 타이머
     DOT_POSITIONS.forEach((pos, i) => {
       setTimeout(() => {
-        if (!document.getElementById('lottieIntro')?.classList.contains('active')) return;
+        var _li1=document.getElementById('lottieIntro'); if (!(_li1 && _li1.classList.contains('active'))) return;
         const dot = document.createElement('div');
         dot.className = 'li-dot';
         dot.style.left  = pos.left;
@@ -8497,7 +8497,7 @@ function goSurvey(){
     // 텍스트 시퀀스 타이머
     SEQUENCES.slice(1).forEach((seq, i) => {
       setTimeout(() => {
-        if (!document.getElementById('lottieIntro')?.classList.contains('active')) return;
+        var _li2=document.getElementById('lottieIntro'); if (!(_li2 && _li2.classList.contains('active'))) return;
         _setSeq(i + 1, headline, sub);
       }, seq.t);
     });
@@ -8741,12 +8741,12 @@ function smSnapshot() {
     stage4Answers: { ...stage4Answers },
     bmsSelected: bmsSelected || null,
     bmsGender: bmsGender || null,
-    bmsPreset: window._bmsPresetSv1 ?? null,
+    bmsPreset: window._bmsPresetSv1 || null,
     /* ★ 누락 필드 추가: 예전엔 bmsSelected/bmsGender만 저장해서
        "이어하기" 후 트랙(hfTrack)이 null이 되고, 고른 고민칩도 사라졌다.
        그 결과 다음 버튼이 계속 disabled라 진행이 막혔다. */
-    bmsZone:    window._bmsZone ?? null,
-    bmsConcern: window._bmsConcern ?? null,
+    bmsZone:    window._bmsZone || null,
+    bmsConcern: window._bmsConcern || null,
     hfTrack:    window.hfTrack || null,
     pfProfile: window.pfProfile || null,  // ★ 통합 프로필 저장구조
     condBonus: window._condBonus || {},  // ★ 기능 10
@@ -8865,7 +8865,7 @@ function smCheckResume() {
       localStorage.removeItem(SM_KEY); return;
     }
     // 이름 없으면 무시
-    if (!snap.userInfo?.name) return;
+    if (!snap.(userInfo && userInfo.name)) return;
     // ★ 다른 사람 이어하기 방지: 저장된 이름+전화를 보관해 두었다가
     //    이름/전화 입력 시 비교. 다른 사람이면 draft를 지우고 이어하기 미표시.
     window._smSavedIdentity = {
@@ -8977,8 +8977,8 @@ function smResume() {
      트랙이 null이 되고 다음 버튼이 영영 안 켜져 진행이 막혔다.
      → 누락 필드를 복원하고, 화면 전환 후 bmsRestoreUI()로 UI를 다시 그린다.
        (실제 렌더 호출은 아래 smGoToStage() 직후에 한다 — DOM이 보여야 하므로) */
-  window._bmsZone   = snap.bmsZone    ?? undefined;
-  window._bmsConcern= snap.bmsConcern ?? undefined;
+  window._bmsZone   = snap.bmsZone    || undefinedundefined;
+  window._bmsConcern= snap.bmsConcern || undefinedundefined;
   if (snap.hfTrack) window.hfTrack = snap.hfTrack;
   if (snap.pfProfile) window.pfProfile = snap.pfProfile;   // 프로필 데이터 복원(완료여부는 아래 stage 기준)
 
@@ -9653,7 +9653,7 @@ function hmSyncCard(symKey) {
   const card = document.getElementById(`symc_${symKey}`);
   if (!card) return;
   const any = hmState[symKey].some(v => v > 0);
-  const noneOn = document.getElementById(`none_${symKey}`)?.classList.contains('on');
+  var _noneEl=document.getElementById('none_'+symKey); const noneOn = _noneEl && _noneEl.classList.contains('on');
   card.classList.toggle('has-sel', any || noneOn);
 }
 
@@ -9663,7 +9663,7 @@ let _hmScrollTimer = null;
 function hmAdvance(symKey) {
   // 방금 만진 카드가 응답 완료 상태가 아니면(전체 해제) 이동 안 함
   const answered = hmState[symKey].some(v => v > 0)
-    || document.getElementById(`none_${symKey}`)?.classList.contains('on');
+    || (function(){ var e=document.getElementById('none_'+symKey); return e && e.classList.contains('on'); })();
   if (!answered) return;
   if (_hmScrollTimer) clearTimeout(_hmScrollTimer);
   _hmScrollTimer = setTimeout(() => {
@@ -9671,7 +9671,7 @@ function hmAdvance(symKey) {
     let target = null;
     for (const sym of HM_SYMPTOMS) {
       const done = hmState[sym.key].some(v => v > 0)
-        || document.getElementById(`none_${sym.key}`)?.classList.contains('on');
+        || (function(){ var e=document.getElementById('none_'+sym.key); return e && e.classList.contains('on'); })();
       if (!done) { target = document.getElementById(`symc_${sym.key}`); break; }
     }
     // 다 응답했으면 확인 버튼으로
@@ -12713,7 +12713,7 @@ function applyGenderAlts(){
     _altAppliedGender[no] = gKey;
     const use = birthGroup ? q
       : {...q, lv:q.altMale.lv, title:q.altMale.title, hint:q.altMale.hint,
-         opts:q.altMale.opts, multi:q.altMale.multi ?? q.multi, max:q.altMale.max ?? q.max};
+         opts:q.altMale.opts, multi:q.altMale.multi || q.multi, max:q.altMale.max || q.max};
     const card = document.getElementById('s2q'+no);
     if(!card) return;
     if(genderChanged) delete stage2Answers[no];  /* 성별이 실제로 바뀐 경우에만 초기화 */
@@ -14703,7 +14703,7 @@ const PATTERN_MSGS = [
     msg: (sc, top) => {
       const _ptR=(window.SMGetLangRaw && window.SMGetLangRaw())||'ko';
       const _ptTX=(window.SMGetLang && window.SMGetLang()==='th'); // en/th 모두 활성사전 사용
-      const nameKo = BM_AXES_INFO[top]?.name || top;
+      const nameKo = (BM_AXES_INFO[top] && BM_AXES_INFO[top].name) || top;
       const n = (_ptTX && window.SM_I18N_TH && window.SM_I18N_TH[nameKo]!==undefined) ? window.SM_I18N_TH[nameKo] : nameKo;
       return _ptR==='th'
         ? `เก็บเบาะแสต้นตอครบ ${TOTAL3} ประการ — อันดับ 1 <b>${top} ${n}</b> ยืนยันแล้ว<br>แกนนี้จะกำหนด<b>คำถามตัดสินสุดท้าย</b>และรหัสสุดท้าย`
@@ -14722,8 +14722,8 @@ function showPatternToast(){
   if(done === 0) return;
 
   const sorted = Object.entries(sc).sort((a,b)=>b[1]-a[1]);
-  const top  = sorted[0]?.[0] || 'A01';
-  const top2 = sorted[1]?.[0] || 'A09';
+  const top  = (sorted[0] ? sorted[0][0] : null) || 'A01';
+  const top2 = (sorted[1] ? sorted[1][0] : null) || 'A09';
 
   /* 해당하는 메시지 찾기 */
   for(const p of PATTERN_MSGS){
@@ -15263,7 +15263,7 @@ function s4pick(i,oi,el){
      그래서 고르는 순간의 축을 그대로 들고 간다. null이면 '잘 모르겠어요' → 가산 없음. */
   const _q4=activeStage4Qs[i];
   const _ax=(_q4&&_q4.scores)?(_q4.scores[oi]!==undefined?_q4.scores[oi]:undefined):undefined;
-  stage4Answers[i]={qi:i,oi,key:_q4?.key,ax:_ax};
+  stage4Answers[i]={qi:i,oi,key:(_q4 && _q4.key),ax:_ax};
   smAutoSave(); /* ★ 기능 4 자동저장 */
   const done=Object.keys(stage4Answers).length;
   setProgress(4,done,'4차 결정');
