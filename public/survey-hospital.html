@@ -7387,12 +7387,12 @@ function smSnapshot() {
     stage4Answers: { ...stage4Answers },
     bmsSelected: bmsSelected || null,
     bmsGender: bmsGender || null,
-    bmsPreset: window._bmsPresetSv1 ?? null,
+    bmsPreset: (window._bmsPresetSv1 !== undefined && window._bmsPresetSv1 !== null) ? window._bmsPresetSv1 : null,
     /* ★ 누락 필드 추가: 예전엔 bmsSelected/bmsGender만 저장해서
        "이어하기" 후 트랙(hfTrack)이 null이 되고, 고른 고민칩도 사라졌다.
        그 결과 다음 버튼이 계속 disabled라 진행이 막혔다. */
-    bmsZone:    window._bmsZone ?? null,
-    bmsConcern: window._bmsConcern ?? null,
+    bmsZone:    (window._bmsZone !== undefined && window._bmsZone !== null) ? window._bmsZone : null,
+    bmsConcern: (window._bmsConcern !== undefined && window._bmsConcern !== null) ? window._bmsConcern : null,
     hfTrack:    window.hfTrack || null,
     pfProfile: window.pfProfile || null,  // ★ 통합 프로필 저장구조
     condBonus: window._condBonus || {},  // ★ 기능 10
@@ -7634,8 +7634,8 @@ function smResume() {
      트랙이 null이 되고 다음 버튼이 영영 안 켜져 진행이 막혔다.
      → 누락 필드를 복원하고, 화면 전환 후 bmsRestoreUI()로 UI를 다시 그린다.
        (실제 렌더 호출은 아래 smGoToStage() 직후에 한다 — DOM이 보여야 하므로) */
-  window._bmsZone   = snap.bmsZone    ?? undefined;
-  window._bmsConcern= snap.bmsConcern ?? undefined;
+  window._bmsZone   = (snap.bmsZone    !== null && snap.bmsZone    !== undefined) ? snap.bmsZone    : undefined;
+  window._bmsConcern= (snap.bmsConcern !== null && snap.bmsConcern !== undefined) ? snap.bmsConcern : undefined;
   if (snap.hfTrack) window.hfTrack = snap.hfTrack;
   if (snap.pfProfile) { window.pfProfile = snap.pfProfile; window._pfDone = true; }  // ★ 통합 프로필 복원
   // ★ 기능 10: 이어하기 시 conditionStep 건너뜀
@@ -12629,7 +12629,7 @@ function applyGenderAlts(){
     _altAppliedGender[no] = gKey;
     const use = birthGroup ? q
       : {...q, lv:q.altMale.lv, title:q.altMale.title, hint:q.altMale.hint,
-         opts:q.altMale.opts, multi:q.altMale.multi ?? q.multi, max:q.altMale.max ?? q.max};
+         opts:q.altMale.opts, multi:(q.altMale.multi !== undefined && q.altMale.multi !== null) ? q.altMale.multi : q.multi, max:(q.altMale.max !== undefined && q.altMale.max !== null) ? q.altMale.max : q.max};
     const card = document.getElementById('s2q'+no);
     if(!card) return;
     if(genderChanged) delete stage2Answers[no];  /* 성별이 실제로 바뀐 경우에만 초기화 */

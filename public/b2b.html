@@ -1122,13 +1122,30 @@ function generateMiniQR() {
   <div style="font-size:11px;color:var(--muted);margin-top:8px">${url}</div>`;
 }
 
+function _copyText(text, msg) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function(){ toast(msg || '링크가 복사되었습니다! 📋', 'success'); }).catch(function(){ _copyFallback(text, msg); });
+  } else {
+    _copyFallback(text, msg);
+  }
+}
+function _copyFallback(text, msg) {
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
+  document.body.appendChild(ta);
+  ta.focus(); ta.select();
+  try { document.execCommand('copy'); toast(msg || '링크가 복사되었습니다! 📋', 'success'); }
+  catch(e) { toast('복사 실패 — 직접 선택해서 복사해 주세요.', 'error'); }
+  document.body.removeChild(ta);
+}
 function copyLink(url) {
   const target = url || (USER_CODE ? getSurveyUrl() : null);
   if (!target) {
     toast('로그인 후 대시보드를 먼저 열어주세요.', 'error');
     return;
   }
-  navigator.clipboard.writeText(target).then(() => toast('링크가 복사되었습니다! 📋', 'success'));
+  _copyText(target, '링크가 복사되었습니다! 📋');
 }
 
 // ── 카카오톡 공유 ──────────────────────────────
@@ -1376,16 +1393,16 @@ async function openB2bResult(resultId) {
 async function copyB2bResultLink(resultId) {
   // H- 접두사 = 병원용 결과지
   if (resultId.startsWith('H-')) {
-    const url = `${location.origin}/result-hospital/${resultId}`;
-    navigator.clipboard.writeText(url).then(() => toast('📋 병원용 결과지 링크가 복사되었습니다.', 'success'));
+    var url = location.origin + '/result-hospital/' + resultId;
+    _copyText(url, '📋 병원용 결과지 링크가 복사되었습니다.');
     return;
   }
   try {
-    const res = await api('GET', `/b2b/result-link/${resultId}`);
-    const url = res?.url || `${location.origin}/result/${resultId}`;
-    navigator.clipboard.writeText(url).then(() => toast('📋 결과지 링크가 복사되었습니다.', 'success'));
+    const res = await api('GET', '/b2b/result-link/' + resultId);
+    var url2 = (res && res.url) ? res.url : (location.origin + '/result/' + resultId);
+    _copyText(url2, '📋 결과지 링크가 복사되었습니다.');
   } catch(e) {
-    navigator.clipboard.writeText(`${location.origin}/result/${resultId}`).then(() => toast('📋 링크 복사 완료!', 'success'));
+    _copyText(location.origin + '/result/' + resultId, '📋 링크 복사 완료!');
   }
 }
 
