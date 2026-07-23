@@ -7927,6 +7927,8 @@ app.get('/api/places', async (c) => {
   }
 
   // ── 2. 카카오 로컬 API 호출 (GPS 있을 때만) ──────────────────────
+  // ※ 카카오 keyword API는 sort=accuracy/distance만 지원 (리뷰순 미지원)
+  //   → 여러 키워드를 병렬로 fetch하고 distance 기반 재정렬 후 중복 제거
   let kakaoPlaces: any[] = []
   if (lat && lng && db) {
     try {
@@ -7937,42 +7939,70 @@ app.get('/api/places', async (c) => {
 
       if (kakaoKey) {
         const keywords = KAKAO_KEYWORD_MAP[type] || [type]
-        // 첫 번째 키워드로 검색 (대표 키워드)
-        const keyword = keywords[0]
-        const kakaoUrl = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(keyword)}&x=${lng}&y=${lat}&radius=${radius}&sort=accuracy&size=${limit}`
-
-        const kakaoRes = await fetch(kakaoUrl, {
-          headers: { 'Authorization': `KakaoAK ${kakaoKey}` }
-        })
-
-        if (kakaoRes.ok) {
-          const kakaoData: any = await kakaoRes.json()
-          kakaoPlaces = (kakaoData.documents || []).slice(0, limit - affiliates.length).map((p: any) => ({
+        // 최대 2개 키워드를 병렬 호출 → 더 많은 후보 확보
+        const fetchKeyword = async (kw: string) => {
+          // size=15 로 더 많이 가져와 정렬 여지 확보
+          const fetchSize = Math.min(15, Math.max(limit * 2, 10))
+          const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(kw)}&x=${lng}&y=${lat}&radius=${radius}&sort=accuracy&size=${fetchSize}`
+          const res = await fetch(url, { headers: { 'Authorization': `KakaoAK ${kakaoKey}` } })
+          if (!res.ok) return []
+          const data: any = await res.json()
+          return (data.documents || []).map((p: any) => ({
             source: 'kakao',
             id: p.id,
             name: p.place_name,
             category: type,
             description: p.category_name || '',
             tag: '',
-            icon: KAKAO_KEYWORD_MAP[type] ? '📍' : '📍',
+            icon: '📍',
             address: p.road_address_name || p.address_name || '',
             phone: p.phone || '',
             url: p.place_url || '',
             kakao_place_id: p.id,
             lat: parseFloat(p.y),
             lng: parseFloat(p.x),
-            distance: p.distance ? parseInt(p.distance) : null,
+            distance: p.distance ? parseInt(p.distance) : 9999,
             is_featured: false,
             rating: null,
           }))
         }
+
+        // 키워드 1~2개 병렬 호출
+        const kwTargets = keywords.slice(0, 2)
+        const kwResults = await Promise.all(kwTargets.map(fetchKeyword))
+
+        // 중복 제거 (kakao_place_id 기준)
+        const seen = new Set<string>()
+        const merged: any[] = []
+        for (const arr of kwResults) {
+          for (const p of arr) {
+            if (!seen.has(p.kakao_place_id)) {
+              seen.add(p.kakao_place_id)
+              merged.push(p)
+            }
+          }
+        }
+
+        // 리뷰 높은 순 근사: distance 오름차순 (가까운 인기 업체 우선)
+        // + 같은 distance 범위(200m 이내)는 이름 길이 짧은 순(대형 프랜차이즈 배제 효과)
+        merged.sort((a, b) => {
+          const da = a.distance ?? 9999
+          const db2 = b.distance ?? 9999
+          // 200m 버킷으로 묶어서 버킷 안에서는 이름 길이 오름차순
+          const bucketA = Math.floor(da / 200)
+          const bucketB = Math.floor(db2 / 200)
+          if (bucketA !== bucketB) return bucketA - bucketB
+          return a.name.length - b.name.length
+        })
+
+        kakaoPlaces = merged.slice(0, limit - affiliates.length)
       }
     } catch (e) {
       // 카카오 API 오류 무시
     }
   }
 
-  // ── 3. 통합 결과: 제휴업체 먼저, 카카오 보조 ──────────────────────
+  // ── 3. 통합 결과: 제휴업체 먼저, 카카오 보조 (리뷰순 근사) ───────
   const results = [...affiliates, ...kakaoPlaces].slice(0, limit)
 
   return c.json({
