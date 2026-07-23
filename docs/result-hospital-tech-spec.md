@@ -4,7 +4,7 @@
 > **작성일**: 2026-07-16  
 > **파일 위치**: `/public/result-hospital.html`  
 > **총 라인**: 26,743 lines  
-> **배포 URL**: `https://7ed6c475-8afa-4ef8-9af8-8fab0cf8224b.vip.gensparksite.com`  
+> **배포 URL**: `https://slimmind.kr`  
 > **용도**: AI 개발자가 이 문서만 보고 다른 결과지 버전과 비교·업데이트할 수 있도록 전체 구조·함수·매핑 흐름을 기술한 완전 기술 명세서
 
 ---

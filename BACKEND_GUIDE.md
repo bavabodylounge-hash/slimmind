@@ -25,7 +25,7 @@ Cloudflare Workers (Hono)  ←──  src/index.tsx → dist/_worker.js
 ```
 
 **기술 스택**: Hono v4 + Cloudflare Pages + D1 SQLite  
-**배포 URL**: `https://7ed6c475-8afa-4ef8-9af8-8fab0cf8224b.vip.gensparksite.com`  
+**배포 URL**: `https://slimmind.kr`  
 **자동 배포**: git commit → `gsk hosted deploy` 자동 실행
 
 ---

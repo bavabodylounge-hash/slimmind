@@ -1324,7 +1324,7 @@ const PHASE1_ITEMS = {
 
 // ── 탄단지 계산 (축별 조합) ───────────────────────
 function calcMacro(topAxes) {
-  const primary = topAxes[0]?.axis || 'A01';
+  const primary = (topAxes[0] && topAxes[0].axis) || 'A01';
   const macros = {
     A01: { p: 35, c: 40, f: 25, desc: '인슐린 저항성 개선을 위해 단백질을 높이고 정제 탄수화물을 줄였습니다. 탄수화물은 복합탄수화물(잡곡·고구마)로만 섭취하세요.' },
     A02: { p: 30, c: 45, f: 25, desc: '림프 순환 활성화를 위해 항염 식품을 중심으로 구성했습니다. 지방은 오메가3가 풍부한 생선·아마씨로 섭취하세요.' },
@@ -1432,7 +1432,7 @@ function goChapter(num) {
   document.querySelectorAll('.chapter').forEach(c => c.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   $('ch' + num).classList.add('active');
-  document.querySelector(`[data-ch="${num}"]`)?.classList.add('active');
+  var _qs=document.querySelector(`[data-ch="${num}"]`); if(_qs) _qs.classList.add('active');
   window.scrollTo(0, 0);
 
   // 차트 초기화 (CH2 처음 열 때)
@@ -1454,14 +1454,14 @@ function showPaywall() {
   // CH3로 이동해서 blur 처방 보여줌
   goChapter(3);
   setTimeout(() => {
-    $('blurPreviewWrap')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    var _el=\$('blurPreviewWrap'); if(_el) _el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, 300);
   setTimeout(() => openPaywallSheet(), 600);
 }
 
 function openPaywallSheet() {
-  const name = RESULTS?.answers?.Q01 || RESULTS?.answers?.name || '';
-  const typeName = RESULTS?.typeInfo?.name || '다이어트 유형';
+  const name = RESULTS?(.answers && .answers.Q01) || RESULTS?(.answers && .answers.name) || '';
+  const typeName = RESULTS?(.typeInfo && .typeInfo.name) || '다이어트 유형';
 
   const backdrop = $('paywall-backdrop');
   backdrop.innerHTML = `
@@ -1559,8 +1559,8 @@ function goUnlock() {
   } else if (PAYWALL_CONFIG.kakaoChannel) {
     // ── 카카오채널 1:1 문의 방식
     // 결과 URL을 채널 채팅 시작 메시지로 자동 포함
-    const name = RESULTS?.answers?.Q01 || '';
-    const typeName = RESULTS?.typeInfo?.name || '';
+    const name = RESULTS?(.answers && .answers.Q01) || '';
+    const typeName = RESULTS?(.typeInfo && .typeInfo.name) || '';
     const msg = encodeURIComponent(`안녕하세요! 슬림마인드 결과 전체 처방 문의드립니다.\n이름: ${name}\n유형: ${typeName}\n결과 URL: ${window.location.origin}/result`);
     window.open(
       `${PAYWALL_CONFIG.kakaoChannel}`,
@@ -1597,14 +1597,14 @@ function unlockPaid() {
 
 // ── 공유 ─────────────────────────────────────────
 function shareResult(type) {
-  const typeName = RESULTS?.typeInfo?.name || '나의 다이어트 유형';
+  const typeName = RESULTS?(.typeInfo && .typeInfo.name) || '나의 다이어트 유형';
   const url = window.location.href;
   const text = `SlimMind에서 ${typeName} 진단을 받았어요! 나의 다이어트 원인을 10축으로 분석해드립니다.`;
 
   if (type === 'kakao') {
     alert('카카오 공유 준비 중입니다!');
   } else if (type === 'link') {
-    navigator.clipboard?.writeText(url).then(() => alert('링크가 복사되었습니다!')).catch(() => {
+    navigator.clipboard && navigator.clipboard.writeText(url).then(() => alert('링크가 복사되었습니다!')).catch(() => {
       prompt('URL을 복사하세요:', url);
     });
   } else if (type === 'image') {
@@ -1743,7 +1743,7 @@ function renderCH1(results, answers) {
 
   // ⑤ 거울효과 체크리스트
   const mirrorEl = $('mirrorList');
-  const primaryAxis = topAxes[0]?.axis || 'A01';
+  const primaryAxis = (topAxes[0] && topAxes[0].axis) || 'A01';
   const items = MIRROR_ITEMS[primaryAxis] || MIRROR_ITEMS['A01'];
   $('mirrorTitle').textContent = `${name}님, 혹시 이런 경험 있으신가요?`;
   items.forEach((text, i) => {
@@ -1835,7 +1835,7 @@ const AXIS_ACADEMIC_DB = {
 // ══════════════════════════════════════════════════════
 function renderCH2(results) {
   const { topAxes, axisScores } = results;
-  const name = results.answers?.name || results.answers?.Q01 || '회원';
+  const name = (results.answers && results.answers.name) || (results.answers && results.answers.Q01) || '회원';
   const sortedAxes = Object.entries(axisScores).sort((a,b) => b[1]-a[1]);
   const top1 = topAxes[0], top2 = topAxes[1], top3 = topAxes[2];
 
@@ -1881,7 +1881,7 @@ function renderCH2(results) {
       });
     }, 800);
   }
-  const primaryMeta = AXIS_META[top1?.axis] || {};
+  const primaryMeta = AXIS_META[(top1 && top1.axis)] || {};
   if ($('radarSub')) $('radarSub').textContent = `${name}님의 1순위 원인 — ${primaryMeta.name||'—'} (항목을 눌러 상세 확인)`;
 
   // ② 탑3 원인 심층 감별 카드
@@ -1977,17 +1977,17 @@ function buildAxisConnection(axis, topAxes, idx) {
   const next = topAxes[idx+1];
   const nextMeta = next ? (AXIS_META[next.axis]||{}) : null;
   const connectionMap = {
-    A01_A07: `인슐린 저항이 높으면 혈당 급등락이 반복됩니다. 이 불안정한 혈당이 코르티솔 분비를 자극해 ${nextMeta?.name||''}을 악화시킵니다.`,
-    A01_A04: `인슐린 저항 상태에서는 단백질 합성(MPS)이 저하됩니다. ${nextMeta?.name||''}(근감소)이 함께 있으면 기초대사 회복이 더욱 어려워집니다.`,
-    A07_A01: `코르티솔 상승은 간 당신생을 촉진해 공복혈당을 올립니다. ${nextMeta?.name||''}(인슐린저항)이 이미 있다면 혈당 관리가 이중으로 어려워집니다.`,
-    A07_A04: `코르티솔은 근육 이화(분해) 호르몬입니다. 만성 스트레스가 계속되면 ${nextMeta?.name||''}(근감소)을 직접 유발합니다.`,
-    A04_A01: `근육량이 줄면 인슐린 수용체 수도 줄어 ${nextMeta?.name||''}(인슐린저항)이 심화됩니다. 악순환 구조입니다.`,
-    A04_A07: `근육이 줄면 혈당 완충 능력이 감소해 혈당 스파이크가 코르티솔을 자극합니다. ${nextMeta?.name||''}과 직결됩니다.`,
-    A02_A01: `림프·순환 정체는 인슐린 수용체 주변 간질액 정체로 이어져 ${nextMeta?.name||''}을 악화시킵니다.`,
-    A05_A01: `장내 미생물 불균형 → 단쇄지방산 감소 → 인슐린 감수성 저하 경로로 ${nextMeta?.name||''}과 직결됩니다.`,
-    A08_A07: `감정적 폭식 → 혈당 급등 → 인슐린 급등 → 코르티솔 반응 순서로 ${nextMeta?.name||''}을 악화시킵니다.`,
+    A01_A07: `인슐린 저항이 높으면 혈당 급등락이 반복됩니다. 이 불안정한 혈당이 코르티솔 분비를 자극해 ${(nextMeta && nextMeta.name)||''}을 악화시킵니다.`,
+    A01_A04: `인슐린 저항 상태에서는 단백질 합성(MPS)이 저하됩니다. ${(nextMeta && nextMeta.name)||''}(근감소)이 함께 있으면 기초대사 회복이 더욱 어려워집니다.`,
+    A07_A01: `코르티솔 상승은 간 당신생을 촉진해 공복혈당을 올립니다. ${(nextMeta && nextMeta.name)||''}(인슐린저항)이 이미 있다면 혈당 관리가 이중으로 어려워집니다.`,
+    A07_A04: `코르티솔은 근육 이화(분해) 호르몬입니다. 만성 스트레스가 계속되면 ${(nextMeta && nextMeta.name)||''}(근감소)을 직접 유발합니다.`,
+    A04_A01: `근육량이 줄면 인슐린 수용체 수도 줄어 ${(nextMeta && nextMeta.name)||''}(인슐린저항)이 심화됩니다. 악순환 구조입니다.`,
+    A04_A07: `근육이 줄면 혈당 완충 능력이 감소해 혈당 스파이크가 코르티솔을 자극합니다. ${(nextMeta && nextMeta.name)||''}과 직결됩니다.`,
+    A02_A01: `림프·순환 정체는 인슐린 수용체 주변 간질액 정체로 이어져 ${(nextMeta && nextMeta.name)||''}을 악화시킵니다.`,
+    A05_A01: `장내 미생물 불균형 → 단쇄지방산 감소 → 인슐린 감수성 저하 경로로 ${(nextMeta && nextMeta.name)||''}과 직결됩니다.`,
+    A08_A07: `감정적 폭식 → 혈당 급등 → 인슐린 급등 → 코르티솔 반응 순서로 ${(nextMeta && nextMeta.name)||''}을 악화시킵니다.`,
   };
-  const key = `${axis}_${next?.axis}`;
+  const key = `${axis}_${(next && next.axis)}`;
   return connectionMap[key] ||
     (nextMeta ? `이 원인이 개선되지 않으면 ${nextMeta.name} 문제가 함께 해결되지 않습니다. 두 원인은 서로 악순환을 형성하고 있습니다.` : '이 원인이 전체 대사 환경에 영향을 미치고 있습니다.');
 }
@@ -2063,12 +2063,12 @@ const DOPAMINE_STRAT = {
 // ── CH3 렌더링 ────────────────────────────────────
 function renderCH3(results) {
   const { ohaengType, ohaengScores, dopamineType, typeInfo, topAxes } = results;
-  const name = results.answers?.name || results.answers?.Q01 || '회원';
+  const name = (results.answers && results.answers.name) || (results.answers && results.answers.Q01) || '회원';
 
   // 통합 총평 배너
   const oh = OHAENG_DATA[ohaengType] || OHAENG_DATA['토'];
   const dp = DOPAMINE_DATA[dopamineType] || DOPAMINE_DATA.achiever;
-  const primaryMeta = AXIS_META[topAxes[0]?.axis] || {};
+  const primaryMeta = AXIS_META[(topAxes[0] && topAxes[0].axis)] || {};
   if ($('ch3SummaryTitle')) {
     $('ch3SummaryTitle').innerHTML = `${name}님은 <span style="color:#FCA67C">${oh.name}</span> + <span style="color:#93C5FD">${dp.emoji}${dp.name}</span><br>복합 체질·기질입니다`;
   }
@@ -2137,7 +2137,7 @@ function renderCH3(results) {
   if (!IS_PAID) {
     const blurWrap = $('blurPreviewWrap');
     if (blurWrap) blurWrap.style.display = 'block';
-    const axisMeta = AXIS_META[topAxes?.[0]?.axis] || {};
+    const axisMeta = AXIS_META[(topAxes && topAxes[0] && topAxes[0].axis)] || {};
     const macro = calcMacro(topAxes || []);
     if ($('blurCardList')) {
       $('blurCardList').innerHTML = `
@@ -2533,7 +2533,7 @@ function calcDirectionPriority(topAxes) {
 // 우선순위별 추천 이유 생성
 function buildDirReason(dirKey, topAxes, rank) {
   const top1 = topAxes[0], top2 = topAxes[1], top3 = topAxes[2];
-  const t1m = AXIS_META[top1?.axis]||{}, t2m = AXIS_META[top2?.axis]||{}, t3m = AXIS_META[top3?.axis]||{};
+  const t1m = AXIS_META[(top1 && top1.axis)]||{}, t2m = AXIS_META[(top2 && top2.axis)]||{}, t3m = AXIS_META[(top3 && top3.axis)]||{};
   const reasonMap = {
     hormone: `${t1m.name||''}의 핵심 기전이 호르몬 이상이기 때문입니다. 검사 없이 식단·운동만 해서는 반응이 없습니다. 수치를 확인하고 개입해야 나머지가 작동합니다.`,
     med:     `${t1m.name||''}이 심각한 수준이라면 생활 개입만으로 한계가 있습니다. 전문의 약물 or 보조제 개입이 토대를 만들어줍니다.`,
@@ -2553,7 +2553,7 @@ function buildDirReason(dirKey, topAxes, rank) {
 // ── CH4 렌더링 — 11방향 우선순위 진단서 ─────────────
 function renderCH4(results) {
   const { axisScores, topAxes } = results;
-  const name = results.answers?.name || results.answers?.Q01 || '회원';
+  const name = (results.answers && results.answers.name) || (results.answers && results.answers.Q01) || '회원';
   window._LAST_TOPAXES = topAxes; // toggleCH4Dir에서 참조
 
   if ($('ch4NextName')) $('ch4NextName').textContent = name;
@@ -2585,9 +2585,9 @@ function renderCH4(results) {
   const priorityDirs = calcDirectionPriority(topAxes); // 우선순위 정렬된 dirKey 배열
 
   // 진단서 헤더 배너
-  const top1m = AXIS_META[topAxes[0]?.axis]||{};
-  const top2m = AXIS_META[topAxes[1]?.axis]||{};
-  const top3m = AXIS_META[topAxes[2]?.axis]||{};
+  const top1m = AXIS_META[(topAxes[0] && topAxes[0].axis)]||{};
+  const top2m = AXIS_META[(topAxes[1] && topAxes[1].axis)]||{};
+  const top3m = AXIS_META[(topAxes[2] && topAxes[2].axis)]||{};
   const headerBanner = document.createElement('div');
   headerBanner.style.cssText = 'margin-bottom:14px;padding:16px 18px;background:linear-gradient(135deg,#0F172A,#1E3A5F);border-radius:14px;color:#fff';
   headerBanner.innerHTML = `
@@ -2622,7 +2622,7 @@ function renderCH4(results) {
     const isMid = rank <= 7 && rank > 3;
 
     // 이 방향에 대한 실제 처방 데이터는 탑1 원인 기준으로 가져오기
-    const primaryAxis = topAxes[0]?.axis || 'A01';
+    const primaryAxis = (topAxes[0] && topAxes[0].axis) || 'A01';
     const primaryDb = AXIS_DIRECTION_DB[primaryAxis];
     const dirObj = primaryDb
       ? primaryDb.directions.find(d => d.key === dirKey)
@@ -2655,7 +2655,7 @@ function renderCH4(results) {
         <!-- 상세 처방 토글 -->
         <div onclick="toggleCH4Dir('${dirKey}', '${primaryAxis}')"
              style="display:flex;align-items:center;justify-content:space-between;padding:11px 16px;background:#FAFAFA;cursor:pointer;user-select:none">
-          <div style="font-size:12px;font-weight:800;color:#475569">📋 상세 처방 보기 (${dirObj ? dirObj.sub?.length||0 : 3}가지 전문 방법)</div>
+          <div style="font-size:12px;font-weight:800;color:#475569">📋 상세 처방 보기 (${dirObj ? (dirObj.sub && dirObj.sub.length)||0 : 3}가지 전문 방법)</div>
           <div id="ch4_arr_${dirKey}" style="font-size:16px;color:#CBD5E1;transition:transform .3s">▼</div>
         </div>
         <div id="ch4_panel_${dirKey}" style="display:none;padding:0 14px 14px;background:#fff">
@@ -2712,7 +2712,7 @@ function renderCH4(results) {
   });
 
   // 오늘 밤 액션
-  const primaryAxis = topAxes[0]?.axis || 'default';
+  const primaryAxis = (topAxes[0] && topAxes[0].axis) || 'default';
   const actions = TONIGHT_DB[primaryAxis] || TONIGHT_DB.default;
   const tonightEl = $('tonightActions');
   if (tonightEl) {
@@ -2905,7 +2905,7 @@ function buildDefaultContent(axis, dirKey, meta) {
     }
   };
   const axisMap = map[axis] || {};
-  return axisMap[dirKey] || `${meta.name||axis} 관련 ${DIRECTION_META[dirKey]?.label||dirKey} 전문가 처방입니다. 전문가 상담을 권장합니다.`;
+  return axisMap[dirKey] || `${meta.name||axis} 관련 ${(DIRECTION_META[dirKey] && DIRECTION_META[dirKey].label)||dirKey} 전문가 처방입니다. 전문가 상담을 권장합니다.`;
 }
 
 // ── 외부 아코디언 토글 (축 단위) ──────────────────
@@ -3795,7 +3795,7 @@ const WEEK_PRESC_DEFAULT = {
 
 // ── buildWeekRatios: 주차별 100분율 + 테마 반환 ─────
 function buildWeekRatios(topAxes) {
-  const primary = topAxes[0]?.axis || 'A01';
+  const primary = (topAxes[0] && topAxes[0].axis) || 'A01';
   const axisDb = WEEK_PRESC_DB[primary] || null;
 
   // 1~4주는 전문 처방 DB, 5~12주는 비율만 제공
@@ -3861,7 +3861,7 @@ function buildWeekRatios(topAxes) {
 
 // ── buildWeekAxisItems: 주차별 전문 처방 상세 반환 ─
 function buildWeekAxisItems(weekNum, topAxes) {
-  const primary = topAxes[0]?.axis || 'A01';
+  const primary = (topAxes[0] && topAxes[0].axis) || 'A01';
   if (weekNum > 4) {
     return [
       { label: '운동', value: '5~12주 처방은 잠금 상태입니다.', color: '#E8631A' },
@@ -3871,14 +3871,14 @@ function buildWeekAxisItems(weekNum, topAxes) {
     ];
   }
   const wKey = `w${weekNum}`;
-  const db = WEEK_PRESC_DB[primary]?.[wKey] || WEEK_PRESC_DEFAULT[wKey];
+  const db = (WEEK_PRESC_DB[primary] && WEEK_PRESC_DB[primary][wKey]) || WEEK_PRESC_DEFAULT[wKey];
   if (!db) return [];
   const p = db.presc;
   return [
-    { label: '🏋️ 운동 처방', value: buildPrescHtml(p.exercise), color: '#E8631A', rawTitle: p.exercise?.title || '' },
-    { label: '🥗 식단 처방', value: buildPrescHtml(p.food),     color: '#16A34A', rawTitle: p.food?.title || '' },
-    { label: '💊 영양제 처방', value: buildPrescHtml(p.supplement), color: '#3B82F6', rawTitle: p.supplement?.title || '' },
-    { label: '🧘 생활습관 처방', value: buildPrescHtml(p.lifestyle), color: '#8B5CF6', rawTitle: p.lifestyle?.title || '' }
+    { label: '🏋️ 운동 처방', value: buildPrescHtml(p.exercise), color: '#E8631A', rawTitle: (p.exercise && p.exercise.title) || '' },
+    { label: '🥗 식단 처방', value: buildPrescHtml(p.food),     color: '#16A34A', rawTitle: (p.food && p.food.title) || '' },
+    { label: '💊 영양제 처방', value: buildPrescHtml(p.supplement), color: '#3B82F6', rawTitle: (p.supplement && p.supplement.title) || '' },
+    { label: '🧘 생활습관 처방', value: buildPrescHtml(p.lifestyle), color: '#8B5CF6', rawTitle: (p.lifestyle && p.lifestyle.title) || '' }
   ];
 }
 
@@ -3900,7 +3900,7 @@ function buildPrescHtml(presc) {
 // ── CH5: 12주 Phase 진단 데이터 생성 ────────────────
 function buildPhasePlan(topAxes) {
   const t1 = topAxes[0], t2 = topAxes[1], t3 = topAxes[2];
-  const t1m = AXIS_META[t1?.axis]||{}, t2m = AXIS_META[t2?.axis]||{}, t3m = AXIS_META[t3?.axis]||{};
+  const t1m = AXIS_META[(t1 && t1.axis)]||{}, t2m = AXIS_META[(t2 && t2.axis)]||{}, t3m = AXIS_META[(t3 && t3.axis)]||{};
 
   // Phase별 비율은 탑1 원인에 따라 다름
   const phaseMap = {
@@ -3940,12 +3940,12 @@ function buildPhasePlan(topAxes) {
           why:`후반 4주는 운동 강도 극대화 구간. 식단은 습관화되어 30%로 내려도 자동 유지가 됩니다. 운동 45%는 저항성 위주로 기초대사를 지속 상승시킵니다.` }
   };
 
-  return phaseMap[t1?.axis] || defaultPlan;
+  return phaseMap[(t1 && t1.axis)] || defaultPlan;
 }
 
 function buildPhaseWeekContent(w, topAxes, weekRatios) {
   const t1 = topAxes[0], t2 = topAxes[1], t3 = topAxes[2];
-  const t1m = AXIS_META[t1?.axis]||{};
+  const t1m = AXIS_META[(t1 && t1.axis)]||{};
   // buildWeekRatios, buildWeekAxisItems는 기존 WEEK_PRESC_DB 기반 상세 처방 생성
   const wr = weekRatios[w-1] || weekRatios[0];
   const axisItems = buildWeekAxisItems(w, topAxes);
@@ -4000,14 +4000,14 @@ function buildPhaseWeekContent(w, topAxes, weekRatios) {
 
 function renderCH5(results) {
   const { topAxes } = results;
-  const name = results.answers?.name || results.answers?.Q01 || '회원';
+  const name = (results.answers && results.answers.name) || (results.answers && results.answers.Q01) || '회원';
   const weekRatios = buildWeekRatios(topAxes);
   const phasePlan  = buildPhasePlan(topAxes);
   const UNLOCKED_WEEKS = 4;
 
-  const t1m = AXIS_META[topAxes[0]?.axis]||{};
-  const t2m = AXIS_META[topAxes[1]?.axis]||{};
-  const t3m = AXIS_META[topAxes[2]?.axis]||{};
+  const t1m = AXIS_META[(topAxes[0] && topAxes[0].axis)]||{};
+  const t2m = AXIS_META[(topAxes[1] && topAxes[1].axis)]||{};
+  const t3m = AXIS_META[(topAxes[2] && topAxes[2].axis)]||{};
 
   const tabsEl    = $('weekTabs');
   const contentEl = $('weekContent');
@@ -4092,7 +4092,7 @@ function renderCH5(results) {
         <!-- 이유 패널 (클릭 시 열림) -->
         <div id="phase_why_${pi}" style="display:none;padding:12px 16px 14px;background:#fff;border-top:1px solid ${ph.color}20">
           <div style="font-size:12px;line-height:1.85;color:#374151;border-left:3px solid ${ph.color};padding-left:12px">
-            <span style="font-weight:800;color:${ph.color}">왜 이 비율인가:</span> ${phasePlan[ph.whyKey]?.why||''}
+            <span style="font-weight:800;color:${ph.color}">왜 이 비율인가:</span> ${(phasePlan[ph.whyKey] && phasePlan[ph.whyKey].why)||''}
           </div>
         </div>
       </div>
@@ -4157,7 +4157,7 @@ const CH6_CLOSING_DB = {
 // ── CH6 렌더링 ────────────────────────────────────
 function renderCH6(results, answers) {
   const { typeInfo, topAxes, eCode } = results;
-  const name = answers?.name || answers?.Q01 || '회원';
+  const name = (answers && answers.name) || (answers && answers.Q01) || '회원';
   const code = eCode || 'E04';
 
   // 골드 선언 카피
@@ -4173,7 +4173,7 @@ function renderCH6(results, answers) {
   }
 
   // 오늘 밤 체크박스 인터랙션
-  const primaryAxis = topAxes[0]?.axis || 'default';
+  const primaryAxis = (topAxes[0] && topAxes[0].axis) || 'default';
   const actions = TONIGHT_DB[primaryAxis] || TONIGHT_DB.default;
   const checksEl = $('ch6TonightChecks');
   if (checksEl) {
@@ -4193,14 +4193,14 @@ function renderCH6(results, answers) {
   }
 
   // SC코드 생성
-  const ax1 = (topAxes[0]?.axis||'A01').replace('A','');
-  const ax2 = (topAxes[1]?.axis||'A07').replace('A','');
-  const scoreDigit = Math.floor((topAxes[0]?.score || 0) / 10);
+  const ax1 = ((topAxes[0] && topAxes[0].axis)||'A01').replace('A','');
+  const ax2 = ((topAxes[1] && topAxes[1].axis)||'A07').replace('A','');
+  const scoreDigit = Math.floor(((topAxes[0] && topAxes[0].score) || 0) / 10);
   const scStr = `SC-${ax1}${ax2}${scoreDigit}`;
   if ($('scCode')) $('scCode').textContent = scStr;
   if ($('b2bDesc')) {
     $('b2bDesc').innerHTML = `
-      <strong>${typeInfo?.name || '복합형'}</strong> 전문 컨설턴트가 배정됩니다.<br>
+      <strong>${(typeInfo && typeInfo.name) || '복합형'}</strong> 전문 컨설턴트가 배정됩니다.<br>
       SC코드 <strong style="color:#C9A84C">${scStr}</strong>를 제시하면 SlimMind 분석 기반 맞춤 상담이 가능합니다.
     `;
   }
@@ -4303,7 +4303,7 @@ function initResult() {
       const prebuilt = {
         axisScores,
         topAxes,
-        eCode: topAxes[0]?.axis || 'A01',
+        eCode: (topAxes[0] && topAxes[0].axis) || 'A01',
         typeInfo: { name: R.bc_primary || '복합형', emoji: '🧬', desc: '' },
         dopamineType: 'achiever',
         ohaengScores: R.ohaeng_scores || {},
@@ -4312,7 +4312,7 @@ function initResult() {
         skinReaction: R.skin_reaction || null,
         isMenopause: R.is_menopause || false,
         medicalConditions: R.medical_conditions || [],
-        hasMedicalConditions: !!(R.has_medical_conditions),
+        hasMedicalConditions: !!(R && R.has_medical_conditions)),
         answers: serverAnswers,
         // 전문가 결과 데이터 (컨설턴트/B2B 뷰용)
         prescription: R.prescription || null,

@@ -30,9 +30,9 @@
 
 **결과지 URL (병원용):**
 ```
-김지현: https://7ed6c475-8afa-4ef8-9af8-8fab0cf8224b.vip.gensparksite.com/result-hospital/H-1784739247465-9Q50I
-이수진: https://7ed6c475-8afa-4ef8-9af8-8fab0cf8224b.vip.gensparksite.com/result-hospital/H-1784739248243-ZGMVS
-박민서: https://7ed6c475-8afa-4ef8-9af8-8fab0cf8224b.vip.gensparksite.com/result-hospital/H-1784739248996-ZI9UC
+김지현: https://slimmind.kr/result-hospital/H-1784739247465-9Q50I
+이수진: https://slimmind.kr/result-hospital/H-1784739248243-ZGMVS
+박민서: https://slimmind.kr/result-hospital/H-1784739248996-ZI9UC
 ```
 
 #### 📱 B2B-BAVA1234 통합 결과지 3명 주입 ✅
@@ -44,9 +44,9 @@
 
 **결과지 URL (통합용):**
 ```
-최서연: https://7ed6c475-8afa-4ef8-9af8-8fab0cf8224b.vip.gensparksite.com/result/92458197-c3b1-4bb5-8b21-7adccbfd7445
-윤하은: https://7ed6c475-8afa-4ef8-9af8-8fab0cf8224b.vip.gensparksite.com/result/ec80ce17-b554-489a-93f6-6200b2ddf924
-정다연: https://7ed6c475-8afa-4ef8-9af8-8fab0cf8224b.vip.gensparksite.com/result/074859dc-34d3-42f2-987e-5b328ec86ff0
+최서연: https://slimmind.kr/result/92458197-c3b1-4bb5-8b21-7adccbfd7445
+윤하은: https://slimmind.kr/result/ec80ce17-b554-489a-93f6-6200b2ddf924
+정다연: https://slimmind.kr/result/074859dc-34d3-42f2-987e-5b328ec86ff0
 ```
 
 #### 📄 작업지시서 파일 생성 ✅
@@ -58,7 +58,7 @@
 ## 🔗 마스터페이지 확인 방법
 
 ```
-URL: https://7ed6c475-8afa-4ef8-9af8-8fab0cf8224b.vip.gensparksite.com/admin.html
+URL: https://slimmind.kr/admin.html
 코드: MASTER
 비밀번호: admin1234
 
@@ -117,7 +117,7 @@ gsk hosted deploy   ← 배포 승인 버튼 클릭
 
 | 항목 | 값 |
 |---|---|
-| 배포 URL | https://7ed6c475-8afa-4ef8-9af8-8fab0cf8224b.vip.gensparksite.com |
+| 배포 URL | https://slimmind.kr |
 | 마스터 코드 | MASTER |
 | 마스터 비밀번호 | admin1234 |
 | B2B 코드 | B2B-BAVA1234 |

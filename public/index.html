@@ -3091,7 +3091,7 @@ function goSurvey(){
     // 축 점 타이머
     DOT_POSITIONS.forEach((pos, i) => {
       setTimeout(() => {
-        if (!document.getElementById('lottieIntro')?.classList.contains('active')) return;
+        if (!(document.getElementById('lottieIntro') && document.getElementById('lottieIntro').classList).contains('active')) return;
         const dot = document.createElement('div');
         dot.className = 'li-dot';
         dot.style.left  = pos.left;
@@ -3104,7 +3104,7 @@ function goSurvey(){
     // 텍스트 시퀀스 타이머
     SEQUENCES.slice(1).forEach((seq, i) => {
       setTimeout(() => {
-        if (!document.getElementById('lottieIntro')?.classList.contains('active')) return;
+        if (!(document.getElementById('lottieIntro') && document.getElementById('lottieIntro').classList).contains('active')) return;
         _setSeq(i + 1, headline, sub);
       }, seq.t);
     });
@@ -3345,7 +3345,7 @@ function smCheckResume() {
       localStorage.removeItem(SM_KEY); return;
     }
     // 이름 없으면 무시
-    if (!snap.userInfo?.name) return;
+    if (!(snap.userInfo && snap.userInfo.name)) return;
 
     const ago = smTimeAgo(snap.ts);
     const stage3Done = Object.keys(snap.stage3Answers || {}).length;
@@ -4878,8 +4878,8 @@ function bmUpdate(){
   const vals = Object.values(sc);
   const maxVal = Math.max(...vals, 1);
   const sorted = Object.entries(sc).sort((a,b)=>b[1]-a[1]);
-  const top1 = sorted[0]?.[0];
-  const top2 = sorted[1]?.[0];
+  const top1 = (sorted[0] ? sorted[0][0] : undefined);
+  const top2 = (sorted[1] ? sorted[1][0] : undefined);
 
   BM_ORDER.forEach(ax => {
     const val   = sc[ax] || 0;
@@ -4908,7 +4908,7 @@ function bmUpdate(){
   const codeEl = document.getElementById('bmTopCode');
   const badgeEl = document.getElementById('bmBadge');
   if(top1 && codeEl){
-    const topName = BM_AXES_INFO[top1]?.name || top1;
+    const topName = (BM_AXES_INFO[top1] && BM_AXES_INFO[top1].name) || top1;
     codeEl.textContent = '🔴 ' + top1 + ' ' + topName + ' 우세';
   }
   if(top1 && badgeEl){
@@ -4939,7 +4939,7 @@ function bmToggle(){
         /* 현재 top1 찾아서 표시 */
         const sc = (typeof scoreAxes === 'function') ? scoreAxes() : {};
         const sorted = Object.entries(sc).sort((a,b)=>b[1]-a[1]);
-        const top1 = sorted[0]?.[0];
+        const top1 = (sorted[0] ? sorted[0][0] : undefined);
         badgeEl.textContent = top1 ? (top1 + ' 우세') : '분석중';
       }
     }
@@ -4961,7 +4961,7 @@ const PATTERN_MSGS = [
     key: 'q5',
     icon: '🌡️',
     axis: null,
-    msg: (sc, top) => `답변 초반부터 <b>${BM_AXES_INFO[top]?.name || top}</b> 신호가 감지됩니다. 계속 답해주세요.`,
+    msg: (sc, top) => `답변 초반부터 <b>${(BM_AXES_INFO[top] && BM_AXES_INFO[top].name) || top}</b> 신호가 감지됩니다. 계속 답해주세요.`,
     axisLabel: (sc, top) => top + ' 신호 감지'
   },
   /* 10문항: 1위 축 경고 */
@@ -4971,7 +4971,7 @@ const PATTERN_MSGS = [
     icon: '⚡',
     axis: null,
     msg: (sc, top) => {
-      const n = BM_AXES_INFO[top]?.name || top;
+      const n = (BM_AXES_INFO[top] && BM_AXES_INFO[top].name) || top;
       return `<b>${n}</b> 축이 빠르게 올라가고 있어요. 이 패턴은 전체 응답자 중 <b>상위 20%</b>에 해당합니다.`;
     },
     axisLabel: (sc, top) => top + ' 상위패턴'
@@ -4983,8 +4983,8 @@ const PATTERN_MSGS = [
     icon: '🔀',
     axis: null,
     msg: (sc, top, top2) => {
-      const n1 = BM_AXES_INFO[top]?.name  || top;
-      const n2 = BM_AXES_INFO[top2]?.name || top2;
+      const n1 = (BM_AXES_INFO[top] && BM_AXES_INFO[top].name)  || top;
+      const n2 = (BM_AXES_INFO[top2] && BM_AXES_INFO[top2].name) || top2;
       const diff = (sc[top]||0) - (sc[top2]||0);
       if(diff <= 2){
         return `<b>${n1}</b>과 <b>${n2}</b>가 단 ${diff}점 차이! 다음 답변이 코드를 결정할 수 있어요.`;
@@ -5000,7 +5000,7 @@ const PATTERN_MSGS = [
     icon: '🎯',
     axis: null,
     msg: (sc, top) => {
-      const n = BM_AXES_INFO[top]?.name || top;
+      const n = (BM_AXES_INFO[top] && BM_AXES_INFO[top].name) || top;
       return `거의 다 왔어요! 현재 <b>${n}</b>형이 유력합니다. 마지막 답변이 코드를 확정합니다.`;
     },
     axisLabel: (sc, top) => '코드 윤곽 잡힘'
@@ -5012,7 +5012,7 @@ const PATTERN_MSGS = [
     icon: '✅',
     axis: null,
     msg: (sc, top) => {
-      const n = BM_AXES_INFO[top]?.name || top;
+      const n = (BM_AXES_INFO[top] && BM_AXES_INFO[top].name) || top;
       return `모든 문항 완료! <b>${n}</b> 우세로 코드가 거의 확정됐어요.`;
     },
     axisLabel: (sc, top) => '분석 완료'
@@ -5026,8 +5026,8 @@ function showPatternToast(){
   if(done === 0) return;
 
   const sorted = Object.entries(sc).sort((a,b)=>b[1]-a[1]);
-  const top  = sorted[0]?.[0] || 'A01';
-  const top2 = sorted[1]?.[0] || 'A09';
+  const top  = (sorted[0] ? sorted[0][0] : undefined) || 'A01';
+  const top2 = (sorted[1] ? sorted[1][0] : undefined) || 'A09';
 
   /* 해당하는 메시지 찾기 */
   for(const p of PATTERN_MSGS){
@@ -5194,7 +5194,7 @@ function s4pick(i,oi,el){
   const card=document.getElementById('s4q'+i);
   card.querySelectorAll('.opt').forEach(o=>o.classList.remove('sel'));
   el.classList.add('sel');
-  stage4Answers[i]={qi:i,oi,key:activeStage4Qs[i]?.key};
+  stage4Answers[i]={qi:i,oi,key:(activeStage4Qs[i] && activeStage4Qs[i].key)};
   smAutoSave(); /* ★ 기능 4 자동저장 */
   const done=Object.keys(stage4Answers).length;
   document.getElementById('pfill').style.width=(done/activeStage4Qs.length*100)+'%';

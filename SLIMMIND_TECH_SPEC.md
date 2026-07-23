@@ -8,7 +8,7 @@
 | 항목 | 내용 |
 |---|---|
 | 서비스명 | SlimMind (슬림마인드) |
-| 배포 URL | https://7ed6c475-8afa-4ef8-9af8-8fab0cf8224b.vip.gensparksite.com |
+| 배포 URL | https://slimmind.kr |
 | 플랫폼 | Cloudflare Pages + D1 (Workers for Platform / gsk hosted) |
 | 프레임워크 | Hono + TypeScript + Vite |
 | DB | Cloudflare D1 (SQLite) — `7ed6c475-8afa-4ef8-9af8-8fab0cf8224b-db` |

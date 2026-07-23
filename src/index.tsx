@@ -2690,7 +2690,7 @@ app.get('/h/:code', async (c) => {
   });
 </script>`
 
-  const siteBase = 'https://7ed6c475-8afa-4ef8-9af8-8fab0cf8224b.vip.gensparksite.com'
+  const siteBase = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.kr' } })()
   const ogInject = `
 <meta property="og:type"         content="website">
 <meta property="og:site_name"    content="SlimMind">
@@ -5313,7 +5313,7 @@ app.get('/result-hospital/:id', async (c) => {
     const deployTs = Date.now()
     const idScript = `<script>window.__HOSPITAL_RESULT_ID__ = ${JSON.stringify(id)};window.__DEPLOY_TS__ = ${deployTs};</script>\n`
     // OG 메타태그 (결과지 공유 시)
-    const rhBase = 'https://7ed6c475-8afa-4ef8-9af8-8fab0cf8224b.vip.gensparksite.com'
+    const rhBase = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.kr' } })()
     const rhOg = `
 <meta property="og:type"         content="website">
 <meta property="og:site_name"    content="SlimMind">

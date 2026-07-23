@@ -384,7 +384,7 @@ partLabel: color:#6b3fb0
 
 | 항목 | 내용 |
 |------|------|
-| 배포 URL | https://7ed6c475-8afa-4ef8-9af8-8fab0cf8224b.vip.gensparksite.com |
+| 배포 URL | https://slimmind.kr |
 | 플랫폼 | Cloudflare Workers (Genspark Hosted) |
 | DB | Cloudflare D1 SQLite |
 | 최종 커밋 | `2988bde` — fix: DESIGN_ROADMAP 미구현 3항목 완성 |

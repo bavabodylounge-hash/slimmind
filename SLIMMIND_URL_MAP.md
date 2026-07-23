@@ -251,6 +251,6 @@
 | 플랫폼 | Cloudflare Workers for Platform |
 | DB | Cloudflare D1 (`7ed6c475-8afa-4ef8-9af8-8fab0cf8224b-db`) |
 | 커스텀 도메인 | `slimmind.kr` |
-| Gensparksite URL | `https://7ed6c475-8afa-4ef8-9af8-8fab0cf8224b.vip.gensparksite.com` (동일 Worker, 병행 접속 가능) |
+| Gensparksite URL | `https://slimmind.kr` (동일 Worker, 병행 접속 가능) |
 | Worker 이름 | `7ed6c475-8afa-4ef8-9af8-8fab0cf8224b` |
 | 빌드 파일 | `dist/_worker.js` (3,913 kB) |
