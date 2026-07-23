@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SlimMind 백엔드 로직 매핑 v1 — 인터랙티브 문서</title>
+<style>
+/* ── Reset & Base ── */
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f0f4f8;color:#2d3748;font-size:14px;line-height:1.6}
+
+/* ── Layout ── */
+.container{max-width:1400px;margin:0 auto;padding:16px}
+h1{font-size:22px;font-weight:700;color:#1a202c;margin-bottom:4px}
+.subtitle{color:#718096;font-size:13px;margin-bottom:20px}
+
+/* ── Tab Nav ── */
+.tab-nav{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:20px;background:#fff;padding:8px;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.tab-btn{padding:7px 14px;border:1.5px solid #e2e8f0;background:#fff;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500;color:#4a5568;transition:all .15s}
+.tab-btn:hover{background:#edf2f7;border-color:#cbd5e0}
+.tab-btn.active{background:#4f46e5;color:#fff;border-color:#4f46e5}
+
+/* ── Panel ── */
+.panel{display:none}.panel.active{display:block}
+
+/* ── Card ── */
+.card{background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:16px;overflow:hidden}
+.card-head{padding:12px 16px;font-weight:600;font-size:14px;display:flex;align-items:center;gap:8px}
+.card-body{padding:14px 16px}
+
+/* ── Table ── */
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{background:#f7fafc;padding:8px 10px;text-align:left;font-weight:600;color:#4a5568;border-bottom:2px solid #e2e8f0;white-space:nowrap}
+td{padding:7px 10px;border-bottom:1px solid #f0f4f8;vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#f7fafc}
+
+/* ── Badge ── */
+.badge{display:inline-block;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:600;white-space:nowrap}
+.badge-ax{background:#eef2ff;color:#4f46e5}
+.badge-bc{background:#fef3c7;color:#92400e;border:1px solid #fde68a}
+.badge-nick{background:#f0fdf4;color:#166534;font-size:12px;border:1px solid #bbf7d0}
+.badge-score{background:#e0f2fe;color:#075985}
+.badge-bg{background:#fce7f3;color:#9d174d}
+.badge-red{background:#fee2e2;color:#991b1b}
+.badge-green{background:#d1fae5;color:#065f46}
+.badge-gray{background:#f1f5f9;color:#475569}
+
+/* ── Axis Pill ── */
+.axis-pill{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:12px;font-size:12px;font-weight:600;margin:2px}
+
+/* ── Weight chip ── */
+.wt-chip{display:inline-block;padding:1px 6px;border-radius:6px;font-size:11px;font-weight:700;color:#fff}
+
+/* ── Q Card ── */
+.q-card{border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:8px;cursor:pointer;transition:all .15s}
+.q-card:hover{border-color:#a5b4fc;background:#fafbff}
+.q-card.selected{border-color:#4f46e5;background:#eef2ff}
+.q-title{font-weight:600;font-size:13px;color:#1a202c;margin-bottom:6px}
+.q-meta{font-size:11.5px;color:#718096;margin-bottom:6px}
+.q-choices{display:flex;flex-direction:column;gap:4px}
+.choice-btn{padding:5px 10px;border:1.5px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer;font-size:12px;text-align:left;transition:all .15s;color:#374151}
+.choice-btn:hover{border-color:#a5b4fc;background:#f5f3ff}
+.choice-btn.selected{border-color:#4f46e5;background:#eef2ff;color:#4f46e5;font-weight:600}
+
+/* ── Score Bar ── */
+.score-bar-wrap{margin:4px 0}
+.score-bar-label{display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px}
+.score-bar{height:10px;background:#e2e8f0;border-radius:5px;overflow:hidden}
+.score-bar-fill{height:100%;border-radius:5px;transition:width .4s ease}
+
+/* ── Result Box ── */
+.result-box{border:2px solid #4f46e5;border-radius:10px;padding:16px;background:#fafbff}
+.result-box .big{font-size:28px;font-weight:800;color:#4f46e5}
+.result-box .sub{font-size:13px;color:#6366f1;margin-top:4px}
+
+/* ── Nutrition Table ── */
+.nutri-phase{border-left:4px solid;padding-left:12px;margin-bottom:12px}
+
+/* ── Code ref ── */
+.code-ref{font-family:monospace;font-size:11px;background:#f1f5f9;padding:1px 5px;border-radius:4px;color:#7c3aed}
+
+/* ── Collapsible ── */
+.collapsible-head{cursor:pointer;user-select:none;display:flex;justify-content:space-between;align-items:center}
+.collapsible-head::after{content:'▼';font-size:10px;color:#a0aec0}
+.collapsible-body{display:none;padding-top:10px}
+.collapsible-body.open{display:block}
+
+/* ── Sticky simulator header ── */
+.sticky-result{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.97);box-shadow:0 2px 8px rgba(0,0,0,.1);padding:10px 16px;border-bottom:2px solid #4f46e5;border-radius:0 0 10px 10px;margin-bottom:12px}
+
+/* ── Grid ── */
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media(max-width:768px){.grid-2,.grid-3{grid-template-columns:1fr}}
+
+/* ── Scrollable table wrapper ── */
+.table-scroll{overflow-x:auto}
+
+/* ── Highlight ── */
+.hl{background:#fef9c3;padding:0 2px;border-radius:3px}
+
+/* ── Sim progress ── */
+.sim-progress{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:8px}
+.sim-step{width:22px;height:6px;border-radius:3px;background:#e2e8f0}
+.sim-step.done{background:#4f46e5}
+.sim-step.current{background:#818cf8}
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- HEADER -->
+<h1>🧬 SlimMind 백엔드 로직 매핑 v1</h1>
+<p class="subtitle">질문지 → 원인축 점수 → 닉네임/BC코드 → 영양·처방 데이터 파이프라인 인터랙티브 문서 | bc-engine.js v3.1 · survey-hospital.html · Last updated 2026-07</p>
+
+<!-- TAB NAV -->
+<nav class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('sim')">🎮 실시간 시뮬레이터</button>
+  <button class="tab-btn" onclick="switchTab('q-map')">📋 Q1~Q20 가중치 매핑</button>
+  <button class="tab-btn" onclick="switchTab('algo')">⚙️ 핵심 계산 함수</button>
+  <button class="tab-btn" onclick="switchTab('bc-table')">🗂️ BC 판정 테이블</button>
+  <button class="tab-btn" onclick="switchTab('nutri')">🥗 영양·식품 매핑</button>
+  <button class="tab-btn" onclick="switchTab('src')">📂 소스코드 위치</button>
+</nav>
+
+<!-- ════════════════════════════════════════ -->
+<!-- PANEL 1: 실시간 시뮬레이터 -->
+<!-- ════════════════════════════════════════ -->
+<div id="panel-sim" class="panel active">
+
+  <div class="sticky-result" id="sticky-result">
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <div>
+        <div style="font-size:11px;color:#6366f1;font-weight:600">현재 BC코드</div>
+        <div class="big" id="r-bccode" style="font-size:22px">—</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#6366f1;font-weight:600">닉네임</div>
+        <div id="r-nickname" style="font-size:15px;font-weight:700;color:#1a202c">응답을 선택하세요</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#6366f1;font-weight:600">Top1 축</div>
+        <div id="r-top1" style="font-size:13px;font-weight:600;color:#4f46e5">—</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#6366f1;font-weight:600">Top2 축</div>
+        <div id="r-top2" style="font-size:13px;font-weight:600;color:#6366f1">—</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#6366f1;font-weight:600">배경필터</div>
+        <div id="r-bg" style="font-size:13px;font-weight:600;color:#c026d3">—</div>
+      </div>
+      <button onclick="resetSim()" style="margin-left:auto;padding:6px 12px;background:#fee2e2;color:#991b1b;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600">초기화</button>
+    </div>
+    <!-- 진행 바 -->
+    <div class="sim-progress" id="sim-progress" style="margin-top:8px"></div>
+  </div>
+
+  <!-- 축 점수 실시간 -->
+  <div class="card">
+    <div class="card-head" style="background:#f0f4ff">📊 원인축 실시간 점수 (0~10 스케일)</div>
+    <div class="card-body">
+      <div id="axis-bars"></div>
+    </div>
+  </div>
+
+  <!-- 문항 시뮬레이터 -->
+  <div id="sim-questions"></div>
+
+  <!-- 결과 영양 출력 -->
+  <div class="card" id="result-nutri-card" style="display:none">
+    <div class="card-head" style="background:#f0fdf4">🥗 맞춤 영양 처방 출력</div>
+    <div class="card-body">
+      <div id="result-nutri-output"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- PANEL 2: Q1~Q20 가중치 매핑 -->
+<!-- ════════════════════════════════════════ -->
+<div id="panel-q-map" class="panel">
+
+  <div class="card">
+    <div class="card-head" style="background:#fff7ed">
+      📋 3차 질문지 (stage3Flat) — Q1~Q32 원인축 가중치 매핑
+      <span class="code-ref">survey-hospital.html L14622~L14820</span>
+    </div>
+    <div class="card-body">
+      <p style="color:#92400e;font-size:12px;margin-bottom:12px">
+        ⚠️ 3차 질문지는 <strong>총 32문항</strong> (A01~A10 각 2~5문항). 
+        일반 문항: 0~3 리커트 스케일. 선택지형: q[4] 배열로 직접 매핑. 역문항(rev): 3-v 반전.
+        A10 기질문항(scores=null): 채점 제외.
+      </p>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>번호</th><th>원인축</th><th>문항 제목</th><th>문항 타입</th><th>선택지 / 점수 배열</th><th>역문항</th><th>소스라인</th>
+            </tr>
+          </thead>
+          <tbody id="q3-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head" style="background:#fff0da">
+      🏥 2차 병력 보너스 — stage2Bonus() Q1~Q14 병력 → 축 가산
+      <span class="code-ref">survey-hospital.html L16526~L16649</span>
+    </div>
+    <div class="card-body">
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr><th>Q번호</th><th>병력 항목</th><th>선택지</th><th>축 가산 값</th><th>레드플래그</th></tr>
+          </thead>
+          <tbody id="s2bonus-table"></tbody>
+        </table>
+      </div>
+      <p style="margin-top:10px;color:#92400e;font-size:12px">⚠️ 개별 축 보너스 캡: <strong>+4.0</strong> (병력만으로 3차를 뒤집지 못하게)</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head" style="background:#f5f3ff">
+      🔮 프로필 보너스 — pfBonus() 오행·MBTI·얼굴형·리듬·경험 → 축 가산
+      <span class="code-ref">survey-hospital.html L16652~L16708</span>
+    </div>
+    <div class="card-body">
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr><th>프로필 항목</th><th>값</th><th>축 가산</th></tr>
+          </thead>
+          <tbody id="pfbonus-table"></tbody>
+        </table>
+      </div>
+      <p style="margin-top:10px;color:#7c3aed;font-size:12px">⚠️ 개별 축 보너스 캡: <strong>+2.5</strong> (기질은 보조 신호)</p>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- PANEL 3: 핵심 계산 함수 -->
+<!-- ════════════════════════════════════════ -->
+<div id="panel-algo" class="panel">
+
+  <div class="card">
+    <div class="card-head" style="background:#f0f4ff">⚙️ scoreAxes() — 핵심 채점 함수 <span class="code-ref">survey-hospital.html L16873~L16975</span></div>
+    <div class="card-body">
+      <div style="background:#1e1e3f;color:#e2e8f0;border-radius:8px;padding:16px;font-family:monospace;font-size:12px;overflow-x:auto;line-height:1.7">
+<pre style="white-space:pre-wrap;word-break:break-all">
+<span style="color:#a5b4fc">function</span> <span style="color:#f9a8d4">scoreAxes</span>(){
+  <span style="color:#6ee7b7">// ① 축별 점수 초기화</span>
+  const sc = {A01:0, A02:0, ..., A10:0};
+  const got = {}, max = {};
+
+  <span style="color:#6ee7b7">// ② 각 문항별 원점수 수집</span>
+  for(let gi=0; gi &lt; AXIS_ORDER.length; gi++){
+    const ax = AXIS_ORDER[gi];          <span style="color:#94a3b8">// 해당 문항의 축 코드</span>
+    const v  = stage3Answers[gi];       <span style="color:#94a3b8">// 사용자 선택 인덱스</span>
+    const q  = stage3Flat[gi];
+
+    <span style="color:#6ee7b7">// 기질문항(scores=null) → 채점 완전 제외</span>
+    if(q.scores === null) continue;
+
+    <span style="color:#6ee7b7">// 선택지형(q.scores = 배열) → 직접 매핑</span>
+    if(Array.isArray(q.scores)){
+      got[ax] += q.scores[v];
+      max[ax] += Math.max(...q.scores);
+      continue;
+    }
+
+    <span style="color:#6ee7b7">// 일반문항 (0~3 리커트)</span>
+    const raw = (typeof v==='number') ? v : 0;
+    const val = (q.rev) ? (3 - raw) : raw;   <span style="color:#94a3b8">// 역문항: 3-v 반전</span>
+    got[ax] += val;
+    max[ax] += 3;
+  }
+
+  <span style="color:#6ee7b7">// ③ 0~10 스케일 정규화</span>
+  Object.keys(sc).forEach(ax =&gt; {
+    if(!max[ax]){ sc[ax]=0; return; }
+    sc[ax] = Math.round(got[ax] / max[ax] * 10 * 100) / 100;
+  });
+
+  <span style="color:#6ee7b7">// ④ A10 기질 반감 (×0.5)</span>
+  sc.A10 = Math.round(sc.A10 * 0.5 * 100) / 100;
+
+  <span style="color:#6ee7b7">// ⑤ 병력 보너스 가산 (캡 +4.0)</span>
+  try {
+    const s2 = stage2Bonus();
+    Object.keys(s2).forEach(ax =&gt; { if(sc[ax]!==undefined) sc[ax] += s2[ax]; });
+  } catch(e) {}
+
+  <span style="color:#6ee7b7">// ⑥ 프로필 보너스 가산 (캡 +2.5)</span>
+  try {
+    const pf = pfBonus();
+    Object.keys(pf).forEach(ax =&gt; { if(sc[ax]!==undefined) sc[ax] += pf[ax]; });
+  } catch(e) {}
+
+  <span style="color:#6ee7b7">// ⑦ 최종 값 저장 → applyDecision() 호출</span>
+  return sc; <span style="color:#94a3b8">// { A01:7.5, A02:3.2, ..., A10:2.1 }</span>
+}
+</pre>
+      </div>
+
+      <div style="margin-top:14px">
+        <h4 style="font-size:13px;margin-bottom:8px;color:#4f46e5">📐 정규화 공식</h4>
+        <table>
+          <tr><th>단계</th><th>공식</th><th>결과 범위</th></tr>
+          <tr><td>원점수 수집</td><td>got[ax] += 선택한 점수값</td><td>0~max</td></tr>
+          <tr><td>0~10 스케일</td><td>sc[ax] = round(got[ax] / max[ax] × 10, 2)</td><td>0.00~10.00</td></tr>
+          <tr><td>A10 반감</td><td>sc.A10 = sc.A10 × 0.5</td><td>0.00~5.00</td></tr>
+          <tr><td>병력보너스(s2)</td><td>sc[ax] += s2[ax] (캡 +4.0)</td><td>최대 +4.0</td></tr>
+          <tr><td>프로필보너스(pf)</td><td>sc[ax] += pf[ax] (캡 +2.5)</td><td>최대 +2.5</td></tr>
+          <tr><td>최종 상한</td><td>약 10 + 4 + 2.5 = 16.5</td><td>이론적 최대</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head" style="background:#f0fdf4">🏷️ computeNickname() — 5단계 퍼널 닉네임 결정 <span class="code-ref">bc-engine.js L481~L521</span></div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px">
+        <div style="background:#eef2ff;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:11px;color:#6366f1;font-weight:600;margin-bottom:4px">① 정렬</div>
+          <div style="font-size:12px">A01~A10 점수 내림차순</div>
+          <div style="font-size:11px;color:#94a3b8">Top1, Top2, Top3 추출</div>
+        </div>
+        <div style="background:#fef3c7;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:11px;color:#92400e;font-weight:600;margin-bottom:4px">② A10 체크</div>
+          <div style="font-size:12px">Top1=A10이면</div>
+          <div style="font-size:11px;color:#94a3b8">Top2를 실질 Top1로 사용</div>
+        </div>
+        <div style="background:#fce7f3;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:11px;color:#9d174d;font-weight:600;margin-bottom:4px">③ 배경필터</div>
+          <div style="font-size:12px">detectBackground()</div>
+          <div style="font-size:11px;color:#94a3b8">갱년기/PCOS/출산 등 9종</div>
+        </div>
+        <div style="background:#f0fdf4;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:11px;color:#166534;font-weight:600;margin-bottom:4px">④ 3단계 룩업</div>
+          <div style="font-size:12px">NICKNAME_TABLE</div>
+          <div style="font-size:11px;color:#94a3b8">[Top1][Top2][배경필터]</div>
+        </div>
+        <div style="background:#ecfdf5;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:11px;color:#065f46;font-weight:600;margin-bottom:4px">⑤ 닉네임</div>
+          <div style="font-size:12px">22개 닉네임 중 1개 결정</div>
+          <div style="font-size:11px;color:#94a3b8">→ BC코드 역매핑</div>
+        </div>
+      </div>
+      <div style="background:#1e1e3f;color:#e2e8f0;border-radius:8px;padding:14px;font-family:monospace;font-size:12px;overflow-x:auto">
+<pre style="white-space:pre-wrap">
+const t1Entry = NICKNAME_TABLE[top1] || NICKNAME_TABLE['A07'];
+const t2Entry = t1Entry[top2] || t1Entry['default'] || { default: '동시다발 다중악순환형' };
+let nickname  = t2Entry[background] || t2Entry['default'] || '동시다발 다중악순환형';
+</pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head" style="background:#fff0da">📊 computeBCCode() — BC코드 + 4대 지표 계산 <span class="code-ref">bc-engine.js L639~L690</span></div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>출력값</th><th>계산 공식</th><th>설명</th></tr></thead>
+        <tbody>
+          <tr><td><code>bcCode</code></td><td>NICKNAME_TO_BC[nickname] || 'BC-16'</td><td>닉네임 → BC코드 역매핑</td></tr>
+          <tr><td><code>causal.약</code></td><td>A08×0.7 + A09×0.3</td><td>약물·식이습관</td></tr>
+          <tr><td><code>causal.식</code></td><td>(A01 + A05) / 2</td><td>식단·지방저장</td></tr>
+          <tr><td><code>causal.복</code></td><td>A07</td><td>코르티솔·회복</td></tr>
+          <tr><td><code>causal.확</code></td><td>A03</td><td>호르몬·대사</td></tr>
+          <tr><td><code>causal.한</code></td><td>(A02 + A05) / 2</td><td>림프·순환</td></tr>
+          <tr><td><code>causal.심</code></td><td>(A08 + A07) / 2</td><td>심리·식이행동</td></tr>
+          <tr><td><code>causal.형</code></td><td>A06</td><td>체형정렬</td></tr>
+          <tr><td><code>causal.관</code></td><td>(A02 + A04) / 2</td><td>관·하체순환</td></tr>
+          <tr><td><code>metaAge</code></td><td>40 + A03×0.15 + A07×0.1</td><td>대사 연령 지수</td></tr>
+          <tr><td><code>metaBelly</code></td><td>min(99, A01×0.8 + A05×0.2)</td><td>복부 위험도 %</td></tr>
+          <tr><td><code>metaHormone</code></td><td>min(99, A03×0.6 + A07×0.4)</td><td>호르몬 불균형 %</td></tr>
+          <tr><td><code>metaBody</code></td><td>min(99, A06×0.7 + A02×0.3)</td><td>체형 불균형 %</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head" style="background:#ecfdf5">🥗 computeNutrition() — 12주 탄단지 계산 <span class="code-ref">bc-engine.js L1240~L1340</span></div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>변수</th><th>공식</th><th>비고</th></tr></thead>
+        <tbody>
+          <tr><td>BMR(여)</td><td>10×목표체중 + 6.25×키 − 5×나이 − 161</td><td>Mifflin-St Jeor</td></tr>
+          <tr><td>BMR(남)</td><td>10×목표체중 + 6.25×키 − 5×나이 + 5</td><td>Mifflin-St Jeor</td></tr>
+          <tr><td>활동계수</td><td>감량률≤10% → 1.375 / 초과 → 1.2</td><td>보통/가벼움</td></tr>
+          <tr><td>TDEE</td><td>BMR × 활동계수</td><td>총에너지 소비</td></tr>
+          <tr><td>결핍칼로리</td><td>5%→200 / 10%→300 / 20%→400 / 30%+→500 kcal</td><td>감량률 비례</td></tr>
+          <tr><td>목표칼로리</td><td>max(1200, TDEE - 결핍)</td><td>최소 1200kcal</td></tr>
+          <tr><td>탄수화물</td><td>감량≥20% → 35% / else → 40%</td><td>고감량 → 저탄</td></tr>
+          <tr><td>단백질</td><td>30% (고정)</td><td></td></tr>
+          <tr><td>지방</td><td>100 - 탄 - 단 = 30~35%</td><td></td></tr>
+          <tr><td>탄수g</td><td>목표kcal × 탄% / 100 / 4</td><td>1g = 4kcal</td></tr>
+          <tr><td>단백g</td><td>목표kcal × 30% / 100 / 4</td><td></td></tr>
+          <tr><td>지방g</td><td>목표kcal × 지방% / 100 / 9</td><td>1g = 9kcal</td></tr>
+        </tbody>
+      </table>
+      <div style="margin-top:12px;font-size:12px">
+        <strong>📅 12주 Phase 구조:</strong>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px">
+          <div class="nutri-phase" style="border-color:#4f46e5"><strong>Phase1 (1~3주)</strong><br>독소·부종 안정화<br>저탄 진입 + 고단백</div>
+          <div class="nutri-phase" style="border-color:#059669"><strong>Phase2 (4~6주)</strong><br>대사 점화<br>탄수화물 사이클링</div>
+          <div class="nutri-phase" style="border-color:#d97706"><strong>Phase3 (7~9주)</strong><br>지방 연소 가속<br>간헐적 단식 연계</div>
+          <div class="nutri-phase" style="border-color:#dc2626"><strong>Phase4 (10~12주)</strong><br>체형 완성<br>근육 보존·유지</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head" style="background:#fce7f3">🎭 detectBackground() — 9종 배경필터 감지 우선순위 <span class="code-ref">bc-engine.js L328~L474</span></div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>우선순위</th><th>배경 키</th><th>감지 조건 (병원 survey 기준)</th></tr></thead>
+        <tbody>
+          <tr><td><span class="badge badge-red">1</span></td><td><strong>갱년기</strong></td><td>q12_menopause === 0,1,2 (복부변환·호르몬치료·완경)</td></tr>
+          <tr><td><span class="badge badge-red">2</span></td><td><strong>PCOS</strong></td><td>disease 배열 인덱스 0 포함</td></tr>
+          <tr><td><span class="badge" style="background:#fef3c7;color:#92400e">3</span></td><td><strong>시술</strong></td><td>past_procedures 배열 (5=없음 제외)</td></tr>
+          <tr><td><span class="badge" style="background:#fef3c7;color:#92400e">4</span></td><td><strong>약물</strong></td><td>long_term_drugs 배열 (6=없음 제외), appetite_suppressant 0,1</td></tr>
+          <tr><td><span class="badge badge-green">5</span></td><td><strong>출산</strong></td><td>q11_event === 0 (여성만)</td></tr>
+          <tr><td><span class="badge badge-green">6</span></td><td><strong>유전</strong></td><td>q1_family 아버지/형제 포함, q2_parent === 0,2</td></tr>
+          <tr><td><span class="badge badge-green">6</span></td><td><strong>모계유전</strong></td><td>q1_family 어머니만, q2_parent === 1</td></tr>
+          <tr><td><span class="badge badge-gray">7</span></td><td><strong>대사증후군</strong></td><td>disease 배열 1(당뇨), 2(고혈압)</td></tr>
+          <tr><td><span class="badge badge-gray">8</span></td><td><strong>번아웃</strong></td><td>q8_trigger 배열 인덱스 1 (이별·충격)</td></tr>
+          <tr><td>—</td><td><em>null (default)</em></td><td>해당 없음 → NICKNAME_TABLE[top1][top2].default 사용</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- PANEL 4: BC 판정 테이블 -->
+<!-- ════════════════════════════════════════ -->
+<div id="panel-bc-table" class="panel">
+
+  <div class="card">
+    <div class="card-head" style="background:#fff7ed">🗂️ 16개 BC 마스터 정의 <span class="code-ref">bc-engine.js L17~L166</span></div>
+    <div class="card-body">
+      <div class="table-scroll">
+        <table id="bc-master-table">
+          <thead>
+            <tr><th>BC코드</th><th>아이콘</th><th>외형카드</th><th>앱닉네임</th><th>의학명</th><th>Top축</th><th>대표 닉네임</th><th>실패 패턴</th></tr>
+          </thead>
+          <tbody id="bc-master-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head" style="background:#f0f4ff">🔗 22개 닉네임 → BC코드 역매핑 <span class="code-ref">bc-engine.js L549~L576</span></div>
+    <div class="card-body">
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>닉네임</th><th>BC코드</th><th>분류</th><th>Top1 축</th></tr></thead>
+          <tbody id="nick-to-bc-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head" style="background:#fce7f3">📊 NICKNAME_TABLE Top1×Top2 매핑 요약 <span class="code-ref">bc-engine.js L191~L321</span></div>
+    <div class="card-body">
+      <p style="font-size:12px;color:#718096;margin-bottom:10px">각 셀 = NICKNAME_TABLE[Top1][Top2].default 값. 배경필터 있으면 해당 키 우선 적용.</p>
+      <div class="table-scroll">
+        <table id="nickname-matrix">
+          <thead id="nickname-matrix-head"></thead>
+          <tbody id="nickname-matrix-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head" style="background:#f0fdf4">💊 BC별 처방 핵심 (BC_PRESCRIPTION_DB) <span class="code-ref">bc-engine.js L695~L786</span></div>
+    <div class="card-body">
+      <div id="bc-prescription-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- PANEL 5: 영양·식품 매핑 -->
+<!-- ════════════════════════════════════════ -->
+<div id="panel-nutri" class="panel">
+
+  <div class="card">
+    <div class="card-head" style="background:#ecfdf5">🌿 오행(사주) × 6대 영양소 식품 매핑 <span class="code-ref">bc-engine.js L939~L1011</span></div>
+    <div class="card-body">
+      <div id="ohaeng-nutri-table"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head" style="background:#fff7ed">⚙️ pfBonus() 오행 → 원인축 가산 <span class="code-ref">survey-hospital.html L16659~L16665</span></div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>오행</th><th>축 가산</th><th>한의학 근거</th></tr></thead>
+        <tbody>
+          <tr><td><span class="axis-pill" style="background:#e8f5e9;color:#388e3c">🌱 목</span></td><td>A07 +0.8</td><td>간담 울결 → 스트레스 코르티솔</td></tr>
+          <tr><td><span class="axis-pill" style="background:#fff3e0;color:#e65100">🔥 화</span></td><td>A07 +0.8, A03 +0.5</td><td>심소장 열기 → 코르티솔·호르몬</td></tr>
+          <tr><td><span class="axis-pill" style="background:#fff9c4;color:#f57f17">🌍 토</span></td><td>A05 +1.0, A01 +0.5</td><td>비위 정체 → 소화·혈당</td></tr>
+          <tr><td><span class="axis-pill" style="background:#ede7f6;color:#512da8">⚡ 금</span></td><td>A02 +0.8</td><td>폐대장 응체 → 림프순환</td></tr>
+          <tr><td><span class="axis-pill" style="background:#e3f2fd;color:#1565c0">💧 수</span></td><td>A03 +0.8, A02 +0.5</td><td>신방광 정체 → 호르몬·순환</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head" style="background:#f0f4ff">🎭 오행 × MBTI 처방 톤 구조 (TONE_DB) <span class="code-ref">bc-engine.js L793~L893</span></div>
+    <div class="card-body">
+      <p style="font-size:12px;color:#718096;margin-bottom:10px">
+        5오행 × 16MBTI + default = 총 85개 처방 톤 세트. generatePrescription(bc_code, ohaeng, mbti)로 교차 생성.
+      </p>
+      <table>
+        <thead><tr><th>TONE_DB 필드</th><th>내용</th></tr></thead>
+        <tbody>
+          <tr><td><code>tone</code></td><td>처방 접근 스타일 (예: "비강박 공감형")</td></tr>
+          <tr><td><code>cta</code></td><td>핵심 동기부여 문구</td></tr>
+          <tr><td><code>approach</code></td><td>행동 변화 접근법</td></tr>
+          <tr><td><code>diet</code></td><td>기질별 맞춤 식이 방향</td></tr>
+          <tr><td><code>exercise</code></td><td>기질별 맞춤 운동 방향</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<!-- PANEL 6: 소스코드 위치 -->
+<!-- ════════════════════════════════════════ -->
+<div id="panel-src" class="panel">
+
+  <div class="card">
+    <div class="card-head" style="background:#f0f4ff">📂 소스코드 위치 일람</div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>기능</th><th>파일</th><th>라인</th><th>설명</th></tr></thead>
+        <tbody>
+          <tr><td>BC 마스터 16종 정의</td><td>bc-engine.js</td><td><span class="code-ref">L17~L166</span></td><td>BC_MASTER — 외형카드·의학명·색상·아이콘</td></tr>
+          <tr><td>10대 원인축 메타</td><td>bc-engine.js</td><td><span class="code-ref">L171~L182</span></td><td>AXIS_10_META — A01~A10 레이블·색상</td></tr>
+          <tr><td>NICKNAME_TABLE</td><td>bc-engine.js</td><td><span class="code-ref">L185~L321</span></td><td>[Top1][Top2][배경필터] 3단계 룩업</td></tr>
+          <tr><td>detectBackground()</td><td>bc-engine.js</td><td><span class="code-ref">L328~L474</span></td><td>9종 배경필터 감지 (우선순위 판정)</td></tr>
+          <tr><td>computeNickname()</td><td>bc-engine.js</td><td><span class="code-ref">L481~L521</span></td><td>5단계 퍼널 닉네임 결정</td></tr>
+          <tr><td>getDeepSurveyRoute()</td><td>bc-engine.js</td><td><span class="code-ref">L526~L540</span></td><td>Top1 → 심층설문 라우팅 매핑</td></tr>
+          <tr><td>NICKNAME_TO_BC</td><td>bc-engine.js</td><td><span class="code-ref">L549~L576</span></td><td>22개 닉네임 → BC코드 역매핑</td></tr>
+          <tr><td>BC_TO_DEFAULT_NICKNAME</td><td>bc-engine.js</td><td><span class="code-ref">L580~L601</span></td><td>BC코드 → 대표 닉네임 (fallback용)</td></tr>
+          <tr><td>computeBCCode()</td><td>bc-engine.js</td><td><span class="code-ref">L639~L690</span></td><td>닉네임→BC역매핑 + 8축 causalScores + 4대 메트릭</td></tr>
+          <tr><td>BC_PRESCRIPTION_DB</td><td>bc-engine.js</td><td><span class="code-ref">L695~L786</span></td><td>BC별 처방(운동금지/허용, 식단방향, 핵심메시지)</td></tr>
+          <tr><td>TONE_DB</td><td>bc-engine.js</td><td><span class="code-ref">L793~L893</span></td><td>오행×MBTI 85개 처방 톤 세트</td></tr>
+          <tr><td>generatePrescription()</td><td>bc-engine.js</td><td><span class="code-ref">L902~L934</span></td><td>BC×오행×MBTI 교차 처방 생성</td></tr>
+          <tr><td>SAJU_ELEMENT_DESC</td><td>bc-engine.js</td><td><span class="code-ref">L939~L1011</span></td><td>오행 5종 × 6대 영양소 식품 매핑</td></tr>
+          <tr><td>computeNutrition()</td><td>bc-engine.js</td><td><span class="code-ref">L1240~L1345</span></td><td>BMR/TDEE/12주 탄단지 계획 계산</td></tr>
+          <tr><td>3차 문항 정의</td><td>survey-hospital.html</td><td><span class="code-ref">L14622~L14703</span></td><td>stage3Axes — A01~A10 각 문항 원본</td></tr>
+          <tr><td>stage3Flat 평탄화</td><td>survey-hospital.html</td><td><span class="code-ref">L14800~L14820</span></td><td>forEach 평탄화 → 32문항 배열</td></tr>
+          <tr><td>AXIS_ORDER 생성</td><td>survey-hospital.html</td><td><span class="code-ref">L16468~L16473</span></td><td>stage3Flat.map(q => q.code)</td></tr>
+          <tr><td>stage2Bonus()</td><td>survey-hospital.html</td><td><span class="code-ref">L16526~L16649</span></td><td>병력 Q1~Q14 → 축 가산 (캡 +4.0)</td></tr>
+          <tr><td>pfBonus()</td><td>survey-hospital.html</td><td><span class="code-ref">L16652~L16708</span></td><td>프로필 오행·MBTI·얼굴·리듬·경험 (캡 +2.5)</td></tr>
+          <tr><td>scoreAxes()</td><td>survey-hospital.html</td><td><span class="code-ref">L16873~L16975</span></td><td>핵심 채점 함수 — 전체 파이프라인 진입점</td></tr>
+          <tr><td>applyDecision()</td><td>survey-hospital.html</td><td><span class="code-ref">L17152+</span></td><td>채점 후 BC 판정 적용</td></tr>
+          <tr><td>bc-engine.js 인라인</td><td>result-hospital.html</td><td><span class="code-ref">L7946~L12292</span></td><td>결과지용 bc-engine 인라인 사본</td></tr>
+          <tr><td>computeBCCodeSafe()</td><td>result-hospital.html</td><td><span class="code-ref">L12192~L12260</span></td><td>TIER3 경계형 처리 (Top1-Top2 diff < threshold)</td></tr>
+          <tr><td>렌더링 함수 호출</td><td>result-hospital.html</td><td><span class="code-ref">L13196~L13280</span></td><td>axisScores → BC → renderP1~P9</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head" style="background:#fff7ed">🔄 전체 데이터 파이프라인 흐름도</div>
+    <div class="card-body">
+      <div style="overflow-x:auto">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;padding:8px 0;min-width:900px">
+          <div style="background:#e0f2fe;border:1.5px solid #7dd3fc;border-radius:8px;padding:10px;text-align:center;min-width:110px">
+            <div style="font-size:11px;color:#0369a1;font-weight:600">1차 외형카드</div>
+            <div style="font-size:12px">16종 선택</div>
+            <div style="font-size:10px;color:#94a3b8">determineOutlineBC()</div>
+          </div>
+          <div style="font-size:18px;color:#94a3b8">→</div>
+          <div style="background:#fef3c7;border:1.5px solid #fde68a;border-radius:8px;padding:10px;text-align:center;min-width:110px">
+            <div style="font-size:11px;color:#92400e;font-weight:600">2차 병력</div>
+            <div style="font-size:12px">Q1~Q14 stage2</div>
+            <div style="font-size:10px;color:#94a3b8">stage2Bonus() +4.0</div>
+          </div>
+          <div style="font-size:18px;color:#94a3b8">→</div>
+          <div style="background:#eef2ff;border:1.5px solid #a5b4fc;border-radius:8px;padding:10px;text-align:center;min-width:110px">
+            <div style="font-size:11px;color:#4f46e5;font-weight:600">프로필 보너스</div>
+            <div style="font-size:12px">오행·MBTI 등</div>
+            <div style="font-size:10px;color:#94a3b8">pfBonus() +2.5</div>
+          </div>
+          <div style="font-size:18px;color:#94a3b8">→</div>
+          <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:8px;padding:10px;text-align:center;min-width:130px">
+            <div style="font-size:11px;color:#166534;font-weight:600">3차 질문지</div>
+            <div style="font-size:12px">32문항 A01~A10</div>
+            <div style="font-size:10px;color:#94a3b8">scoreAxes() 0~10</div>
+          </div>
+          <div style="font-size:18px;color:#94a3b8">→</div>
+          <div style="background:#fce7f3;border:1.5px solid #f9a8d4;border-radius:8px;padding:10px;text-align:center;min-width:130px">
+            <div style="font-size:11px;color:#9d174d;font-weight:600">닉네임 결정</div>
+            <div style="font-size:12px">Top1+Top2+배경</div>
+            <div style="font-size:10px;color:#94a3b8">computeNickname()</div>
+          </div>
+          <div style="font-size:18px;color:#94a3b8">→</div>
+          <div style="background:#fff7ed;border:1.5px solid #fed7aa;border-radius:8px;padding:10px;text-align:center;min-width:110px">
+            <div style="font-size:11px;color:#92400e;font-weight:600">BC코드 확정</div>
+            <div style="font-size:12px">NICKNAME_TO_BC</div>
+            <div style="font-size:10px;color:#94a3b8">BC-1~BC-16</div>
+          </div>
+          <div style="font-size:18px;color:#94a3b8">→</div>
+          <div style="background:#ecfdf5;border:1.5px solid #6ee7b7;border-radius:8px;padding:10px;text-align:center;min-width:130px">
+            <div style="font-size:11px;color:#065f46;font-weight:600">처방 생성</div>
+            <div style="font-size:12px">BC×오행×MBTI</div>
+            <div style="font-size:10px;color:#94a3b8">generatePrescription()</div>
+          </div>
+          <div style="font-size:18px;color:#94a3b8">→</div>
+          <div style="background:#ede9fe;border:1.5px solid #c4b5fd;border-radius:8px;padding:10px;text-align:center;min-width:110px">
+            <div style="font-size:11px;color:#6d28d9;font-weight:600">영양 계산</div>
+            <div style="font-size:12px">12주 탄단지</div>
+            <div style="font-size:10px;color:#94a3b8">computeNutrition()</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<script>
+// ══════════════════════════════════════════════════════════
+// 내장 데이터 (bc-engine.js에서 추출)
+// ══════════════════════════════════════════════════════════
+
+var AXIS_META = {
+  'A01':{label:'인슐린·내장',icon:'🍽️',color:'#E8631A'},
+  'A02':{label:'림프순환',  icon:'💧',color:'#1A7FC1'},
+  'A03':{label:'호르몬',   icon:'🌸',color:'#C0397A'},
+  'A04':{label:'근감소',   icon:'🏃',color:'#4A8C1C'},
+  'A05':{label:'소화·장',  icon:'🌿',color:'#1A8C5B'},
+  'A06':{label:'골격·복압',icon:'🦴',color:'#6B4EAA'},
+  'A07':{label:'코르티솔', icon:'🌙',color:'#3F51B5'},
+  'A08':{label:'심리·식이',icon:'🧠',color:'#7B1FA2'},
+  'A09':{label:'대사위험', icon:'⚠️',color:'#E67E22'},
+  'A10':{label:'기질·성향',icon:'🔮',color:'#607D8B'}
+};
+
+var NICKNAME_TABLE = {
+  'A01':{
+    'A02':{default:'식후기절 혈당롤러코스터형'},
+    'A03':{PCOS:'털털한 PCOS형',갱년기:'호르몬스위치 갱년기형',default:'동시다발 다중악순환형'},
+    'A04':{default:'팔다리거미 올챙이배형'},
+    'A05':{default:'식후임산부 가스풍선형'},
+    'A06':{default:'식후기절 혈당롤러코스터형'},
+    'A07':{번아웃:'스트레스성 야식부엉이형',default:'동시다발 다중악순환형'},
+    'A08':{약물:'억제제부작용 배부름마비형',default:'억제제부작용 배부름마비형'},
+    'A09':{유전:'아빠체형 내장비대형',대사증후군:'대사증후군 종합형',default:'식후기절 혈당롤러코스터형'},
+    'A10':{유전:'아빠체형 내장비대형',default:'아빠체형 내장비대형'},
+    'default':{default:'식후기절 혈당롤러코스터형'}
+  },
+  'A02':{
+    'A01':{default:'오후만되면 코끼리다리형'},
+    'A03':{모계유전:'엄마체형 하지정체형',갱년기:'호르몬스위치 갱년기형',default:'오후만되면 코끼리다리형'},
+    'A04':{시술:'지방흡입후 재발형',default:'오후만되면 코끼리다리형'},
+    'A05':{default:'오후만되면 코끼리다리형'},
+    'A06':{시술:'지방흡입후 재발형',default:'안 쓰는 팔뚝 부종형'},
+    'A07':{default:'스트레스기절 번아웃형'},
+    'A08':{default:'오후만되면 코끼리다리형'},
+    'A09':{default:'대사증후군 종합형'},
+    'A10':{모계유전:'엄마체형 하지정체형',default:'엄마체형 하지정체형'},
+    'default':{default:'오후만되면 코끼리다리형'}
+  },
+  'A03':{
+    'A01':{PCOS:'털털한 PCOS형',갱년기:'호르몬스위치 갱년기형',default:'털털한 PCOS형'},
+    'A02':{갱년기:'호르몬스위치 갱년기형',default:'여름에도 시린 얼음장형'},
+    'A04':{갱년기:'호르몬스위치 갱년기형',default:'팔다리거미 올챙이배형'},
+    'A05':{갱년기:'호르몬스위치 갱년기형',default:'털털한 PCOS형'},
+    'A06':{출산:'출산후 바람빠진 풍선형',갱년기:'호르몬스위치 갱년기형',default:'겨드랑이 부유방형'},
+    'A07':{갱년기:'호르몬스위치 갱년기형',default:'호르몬스위치 갱년기형'},
+    'A08':{갱년기:'호르몬스위치 갱년기형',default:'스트레스성 야식부엉이형'},
+    'A09':{약물:'약물부작용 강제축적형',갱년기:'호르몬스위치 갱년기형',default:'약물부작용 강제축적형'},
+    'A10':{갱년기:'호르몬스위치 갱년기형',default:'여름에도 시린 얼음장형'},
+    'default':{갱년기:'호르몬스위치 갱년기형',default:'털털한 PCOS형'}
+  },
+  'A04':{
+    'A01':{default:'팔다리거미 올챙이배형'},
+    'A02':{default:'운동할수록 말벅지형'},
+    'A03':{default:'팔다리거미 올챙이배형'},
+    'A05':{default:'팔다리거미 올챙이배형'},
+    'A06':{출산:'출산후 바람빠진 풍선형',default:'운동할수록 말벅지형'},
+    'A07':{default:'상체근육형'},
+    'A08':{default:'팔다리거미 올챙이배형'},
+    'A09':{default:'상체근육형'},
+    'A10':{default:'팔다리거미 올챙이배형'},
+    'default':{default:'팔다리거미 올챙이배형'}
+  },
+  'A05':{
+    'A01':{default:'식후임산부 가스풍선형'},
+    'A02':{default:'식후임산부 가스풍선형'},
+    'A03':{default:'식후임산부 가스풍선형'},
+    'A04':{default:'팔다리거미 올챙이배형'},
+    'A06':{출산:'출산후 바람빠진 풍선형',default:'식후임산부 가스풍선형'},
+    'A07':{번아웃:'스트레스성 야식부엉이형',default:'식후임산부 가스풍선형'},
+    'A08':{default:'억제제부작용 배부름마비형'},
+    'A09':{default:'식후임산부 가스풍선형'},
+    'A10':{default:'식후임산부 가스풍선형'},
+    'default':{default:'식후임산부 가스풍선형'}
+  },
+  'A06':{
+    'A01':{출산:'출산후 바람빠진 풍선형',default:'골반틀어짐 승마살형'},
+    'A02':{시술:'지방흡입후 재발형',default:'목짧아지는 거북이형'},
+    'A03':{출산:'출산후 바람빠진 풍선형',default:'겨드랑이 부유방형'},
+    'A04':{출산:'출산후 바람빠진 풍선형',default:'출산후 바람빠진 풍선형'},
+    'A05':{출산:'출산후 바람빠진 풍선형',default:'골반틀어짐 승마살형'},
+    'A07':{출산:'출산후 바람빠진 풍선형',default:'목짧아지는 거북이형'},
+    'A08':{default:'골반틀어짐 승마살형'},
+    'A09':{default:'골반틀어짐 승마살형'},
+    'A10':{출산:'출산후 바람빠진 풍선형',default:'골반틀어짐 승마살형'},
+    'default':{출산:'출산후 바람빠진 풍선형',default:'골반틀어짐 승마살형'}
+  },
+  'A07':{
+    'A01':{default:'스트레스성 야식부엉이형'},
+    'A02':{default:'스트레스기절 번아웃형'},
+    'A03':{갱년기:'호르몬스위치 갱년기형',번아웃:'스트레스기절 번아웃형',default:'스트레스기절 번아웃형'},
+    'A04':{default:'팔다리거미 올챙이배형'},
+    'A05':{번아웃:'스트레스기절 번아웃형',default:'식후임산부 가스풍선형'},
+    'A06':{출산:'출산후 바람빠진 풍선형',default:'골반틀어짐 승마살형'},
+    'A08':{번아웃:'스트레스기절 번아웃형',default:'스트레스성 야식부엉이형'},
+    'A09':{대사증후군:'대사증후군 종합형',default:'동시다발 다중악순환형'},
+    'A10':{번아웃:'스트레스기절 번아웃형',default:'스트레스성 야식부엉이형'},
+    'default':{번아웃:'스트레스기절 번아웃형',default:'스트레스성 야식부엉이형'}
+  },
+  'A08':{
+    'A01':{약물:'억제제부작용 배부름마비형',default:'스트레스성 야식부엉이형'},
+    'A02':{default:'스트레스성 야식부엉이형'},
+    'A03':{갱년기:'호르몬스위치 갱년기형',default:'스트레스성 야식부엉이형'},
+    'A04':{default:'팔다리거미 올챙이배형'},
+    'A05':{약물:'억제제부작용 배부름마비형',default:'억제제부작용 배부름마비형'},
+    'A06':{default:'골반틀어짐 승마살형'},
+    'A07':{번아웃:'스트레스기절 번아웃형',default:'스트레스기절 번아웃형'},
+    'A09':{대사증후군:'대사증후군 종합형',default:'동시다발 다중악순환형'},
+    'A10':{번아웃:'스트레스기절 번아웃형',default:'스트레스성 야식부엉이형'},
+    'default':{약물:'억제제부작용 배부름마비형',default:'스트레스성 야식부엉이형'}
+  },
+  'A09':{
+    'A01':{대사증후군:'대사증후군 종합형',유전:'아빠체형 내장비대형',default:'대사증후군 종합형'},
+    'A02':{대사증후군:'대사증후군 종합형',default:'대사증후군 종합형'},
+    'A03':{대사증후군:'대사증후군 종합형',약물:'약물부작용 강제축적형',default:'약물부작용 강제축적형'},
+    'A04':{default:'대사증후군 종합형'},
+    'A05':{default:'대사증후군 종합형'},
+    'A06':{default:'대사증후군 종합형'},
+    'A07':{대사증후군:'대사증후군 종합형',default:'동시다발 다중악순환형'},
+    'A08':{약물:'약물부작용 강제축적형',default:'동시다발 다중악순환형'},
+    'A10':{대사증후군:'대사증후군 종합형',default:'약물부작용 강제축적형'},
+    'default':{약물:'약물부작용 강제축적형',대사증후군:'대사증후군 종합형',default:'대사증후군 종합형'}
+  },
+  'A10':{
+    'A01':{유전:'아빠체형 내장비대형',default:'식후기절 혈당롤러코스터형'},
+    'A02':{모계유전:'엄마체형 하지정체형',default:'오후만되면 코끼리다리형'},
+    'A03':{갱년기:'호르몬스위치 갱년기형',default:'여름에도 시린 얼음장형'},
+    'A04':{default:'팔다리거미 올챙이배형'},
+    'A05':{default:'식후임산부 가스풍선형'},
+    'A06':{출산:'출산후 바람빠진 풍선형',default:'골반틀어짐 승마살형'},
+    'A07':{번아웃:'스트레스기절 번아웃형',default:'스트레스성 야식부엉이형'},
+    'A08':{번아웃:'스트레스기절 번아웃형',default:'스트레스성 야식부엉이형'},
+    'A09':{대사증후군:'대사증후군 종합형',default:'약물부작용 강제축적형'},
+    'default':{default:'동시다발 다중악순환형'}
+  }
+};
+
+var NICKNAME_TO_BC = {
+  '식후기절 혈당롤러코스터형':'BC-3',
+  '스트레스성 야식부엉이형':'BC-3',
+  '억제제부작용 배부름마비형':'BC-3',
+  '식후임산부 가스풍선형':'BC-5',
+  '약물부작용 강제축적형':'BC-4',
+  '아빠체형 내장비대형':'BC-4',
+  '대사증후군 종합형':'BC-15',
+  '팔다리거미 올챙이배형':'BC-6',
+  '오후만되면 코끼리다리형':'BC-1',
+  '엄마체형 하지정체형':'BC-1',
+  '지방흡입후 재발형':'BC-2',
+  '운동할수록 말벅지형':'BC-7',
+  '골반틀어짐 승마살형':'BC-8',
+  '목짧아지는 거북이형':'BC-9',
+  '안 쓰는 팔뚝 부종형':'BC-10',
+  '상체근육형':'BC-11',
+  '겨드랑이 부유방형':'BC-12',
+  '호르몬스위치 갱년기형':'BC-13',
+  '스트레스기절 번아웃형':'BC-14',
+  '털털한 PCOS형':'BC-14',
+  '여름에도 시린 얼음장형':'BC-15',
+  '동시다발 다중악순환형':'BC-16'
+};
+
+var BC_MASTER_DATA = [
+  {code:'BC-1', outline:'코끼리다리형',nick:'#코끼리다리형',medical:'하지 림프·정맥 울혈성 체형',color:'#1A7FC1',icon:'🐘',axisTop:'관',failed:'하체 순환로 차단. 극단적 다이어트·하체 근력 운동 시 부종 고착화'},
+  {code:'BC-2', outline:'귤껍질 하체형',nick:'#귤껍질하체형',medical:'하체 셀룰라이트·지방 섬유화 체형',color:'#E8631A',icon:'🍊',axisTop:'한',failed:'피하지방 섬유화. 일반 유산소·굶기로 개선 불가'},
+  {code:'BC-3', outline:'단단 내장형',nick:'#단단내장형',medical:'인슐린 저항성·내장 비대형 체형',color:'#C0392B',icon:'🍉',axisTop:'식',failed:'혈당 조절 불균형. 극단적 굶기→인슐린 롤러코스터 심화'},
+  {code:'BC-4', outline:'물렁 피하형',nick:'#물렁피하형',medical:'피하지방 과축적·대사 저하형 체형',color:'#7B1FA2',icon:'🫧',axisTop:'심',failed:'약물·호르몬·스트레스 복합. 같은 식사에도 지방 우선 저장'},
+  {code:'BC-5', outline:'가스 팽만형',nick:'#가스팽만형',medical:'장내 가스·소화 기능 장애형 체형',color:'#1A8C5B',icon:'🎈',axisTop:'식',failed:'장내 발효·부패 가스. 식이섬유 무조건 증가→가스 촉진'},
+  {code:'BC-6', outline:'올챙이배형',nick:'#올챙이배형',medical:'근감소성 이화작용·마른 비만형 체형',color:'#6B4EAA',icon:'🐸',axisTop:'약',failed:'이화작용 활성화. 유산소+단식 반복→사지 가늘고 복부 내장지방만 남음'},
+  {code:'BC-7', outline:'말벅지형',nick:'#말벅지형',medical:'알파 수용체 우세·하체 과발달형 체형',color:'#4A8C1C',icon:'🐎',axisTop:'관',failed:'알파-2 수용체 집중. 고강도 펌핑 운동→근육만 커져 체형 거대화'},
+  {code:'BC-8', outline:'승마살형',nick:'#승마살형',medical:'골반 구조 이완·측면 지방 축적형 체형',color:'#795548',icon:'🏇',axisTop:'형',failed:'골반 이완·대퇴 외측 지방. 스쿼트·런지→골반 불안정 심화'},
+  {code:'BC-9', outline:'거북이형',nick:'#거북이형',medical:'경추·흉추 보상성 림프 차단형 체형',color:'#607D8B',icon:'🐢',axisTop:'형',failed:'거북목·라운드숄더로 액와 림프절 찝힘. 유산소 과도→상체 비대화'},
+  {code:'BC-10',outline:'팔뚝부종형',nick:'#팔뚝부종형',medical:'상체 액와 림프 정체·팔뚝 부종형 체형',color:'#1A7FC1',icon:'💪',axisTop:'관',failed:'겨드랑이 림프절 압박. 팔 운동 강화→림프 압박 심화'},
+  {code:'BC-11',outline:'상체근육형',nick:'#상체근육형',medical:'상체 과발달·승모근 긴장 과적재형 체형',color:'#4A8C1C',icon:'🏋️',axisTop:'형',failed:'팔·어깨·승모근 과사용. 상체 웨이트→승모근 비대·어깨선 확대'},
+  {code:'BC-12',outline:'부유방형',nick:'#부유방형',medical:'흉추 이완·브라라인 피하지방 축적형 체형',color:'#C0397A',icon:'👙',axisTop:'형',failed:'흉추 무너짐·라운드숄더. 식이 제한만→구조 변화 없어 개선 불가'},
+  {code:'BC-13',outline:'갱년기 변환형',nick:'#갱년기변환형',medical:'완경 호르몬 전환·지방 재배치형 체형',color:'#E67E22',icon:'🔄',axisTop:'확',failed:'에스트로겐 급감→지방 복부·전신 강제 재배치. 기존 다이어트법 효과 없음'},
+  {code:'BC-14',outline:'번아웃 무기력형',nick:'#번아웃무기력형',medical:'부신 피로·자율신경 교란형 체형',color:'#3F51B5',icon:'🔋',axisTop:'심',failed:'코르티솔·도파민 불균형. 의지력으로만 참기→보상성 과식 유발'},
+  {code:'BC-15',outline:'대사증후군형',nick:'#대사증후군형',medical:'대사증후군 복합 고위험 체형',color:'#C0392B',icon:'🚨',axisTop:'확',failed:'당뇨·고혈압·고지혈증 복합. 의학적 개입 없는 식이·운동→심혈관 부담 심화'},
+  {code:'BC-16',outline:'다중악순환형',nick:'#다중악순환형',medical:'다중 원인 복합 악순환형 체형',color:'#455A64',icon:'🌪️',axisTop:'복',failed:'여러 원인 동시 악순환. 단일 처방→다른 원인이 보상 반응 상쇄'}
+];
+
+var BC_PRESCRIPTION_DB = {
+  'BC-1':{label:'오후만되면 코끼리다리형',icon:'🦵',exerciseBan:'하체 근력 운동·러닝머신·크로스핏·하이록스',exerciseOk:'수영·걷기·필라테스(저충격 순환 중심)',dietDirection:'저탄고지 + 수분 충분 + 림프 촉진 식품(사과,아보카도,파인애플)',b2b:'에스테틱·뷰티(림프 드레나쥐)',care:'서해부 온열 요법·폼롤러 드레나쥐',coreMessage:'오후 부종은 하체 림프·정맥 순환 장애입니다. 통로를 먼저 열어야 지방이 빠집니다.'},
+  'BC-2':{label:'목짧아지는 거북이형',icon:'🐢',exerciseBan:'목·어깨 압박 웨이트(바벨 스쿼트, 숄더프레스)',exerciseOk:'경추 교정 필라테스 + 겨드랑이 림프 마사지 + 수영',dietDirection:'항염 식단 + 셀러리·파인애플 림프 촉진 + 수분 2L',b2b:'필라테스·정형외과',care:'경추 교정 + 겨드랑이 림프절 케어',coreMessage:'거북목·라운드숄더가 상체 림프를 차단합니다. 척추 정렬이 체형의 출발점입니다.'},
+  'BC-3':{label:'식후기절 혈당롤러코스터형',icon:'🍉',exerciseBan:'공복 고강도 유산소(혈당 스파이크 심화)',exerciseOk:'식후 15분 속보 + 저강도 유산소 + 필라테스',dietDirection:'탄수화물 순서 식단(채소→단백질→탄수화물) + 저GI 식품 + 식후 걷기',b2b:'내과·영양 컨설팅',care:'혈당 측정기 활용 + 식이 패턴 기록',coreMessage:'밥 먹은 뒤 졸음·단것 갈구는 혈당 롤러코스터의 신호입니다. 식사 순서 하나로 바뀝니다.'},
+  'BC-4':{label:'약물부작용 강제축적형',icon:'💊',exerciseBan:'무리한 고강도 운동(면역 저하 심화)',exerciseOk:'저강도 산책 + 요가 + 대사 회복 필라테스',dietDirection:'항염 식단 + 가공식품 배제 + 장 건강 회복 식단',b2b:'내과·약학 상담',care:'주치의와 약물 조정 상담 선행',coreMessage:'약물이 대사를 바꿨습니다. 원인 약물 조정 없는 다이어트는 효과가 제한됩니다.'},
+  'BC-5':{label:'지방흡입후 재발형',icon:'🍊',exerciseBan:'시술 부위 고강도 압박 운동',exerciseOk:'림프 드레나쥐 마사지 + 저충격 수영 + 걷기',dietDirection:'항섬유화 식단 + 비타민C 풍부 + 수분 충분',b2b:'에스테틱·성형외과',care:'림프 회복 + 섬유화 전문 케어',coreMessage:'지방흡입 후 섬유화가 재발의 핵심입니다. 림프 통로 복구가 우선입니다.'},
+  'BC-6':{label:'스트레스성 야식부엉이형',icon:'🦉',exerciseBan:'야간 고강도 운동·카페인 보충제',exerciseOk:'밤 9시 야외 산책 20분 + 낮 요가',dietDirection:'도파민 대체 스낵 전략 + 트립토판 단백질(저녁) + 야식 환경 제거',b2b:'수면클리닉·심리상담',care:'블루라이트 차단 + 자율신경 안정 루틴',coreMessage:'밤에 먹는 것은 의지력 부족이 아닙니다. 뇌의 가짜 허기를 만드는 코르티솔 문제입니다.'},
+  'BC-7':{label:'출산후 바람빠진 풍선형',icon:'🎈',exerciseBan:'복직근 이개 심화 운동(크런치·레그레이즈·버피)',exerciseOk:'골반저근 운동 + 기구 필라테스 + 복압 회복 코어',dietDirection:'복부 장기 압박 식이 제한 + 소식다회 + 소화 돕는 식품',b2b:'필라테스·산부인과',care:'복직근 이개 재활 + 골반저근 전문 케어',coreMessage:'출산 후 코어가 무너지면서 모든 게 처졌습니다. 복압 회복이 체형 변화의 시작입니다.'},
+  'BC-8':{label:'운동할수록 말벅지형',icon:'🏋️',exerciseBan:'하체 고강도 웨이트(스쿼트·레그프레스·런지)',exerciseOk:'수영·요가·저충격 유산소(하체 웨이트 유보)',dietDirection:'근육 이완 지원 식단 + 마그네슘 풍부 + 나트륨 제한',b2b:'필라테스·재활',care:'근육 과발달 이완 스트레칭 + 폼롤러',coreMessage:'하체 운동이 오히려 허벅지를 키우는 역설. 알파 수용체 체형은 다른 접근이 필요합니다.'},
+  'BC-9':{label:'팔다리거미 올챙이배형',icon:'🕷️',exerciseBan:'과도한 유산소 + 단식 반복(근육 분해 심화)',exerciseOk:'고단백 식사 후 저충격 근력 + 필라테스',dietDirection:'고단백 식사(체중×1.6g) + 근육 합성 지원 + 아침 단백질 우선',b2b:'영양 컨설팅·PT',care:'체성분 분석 + 근육량 중심 지표 관리',coreMessage:'몸무게가 아닌 근육량이 기준입니다. 사지 빠지고 배만 남는 이화작용을 역전해야 합니다.'},
+  'BC-10':{label:'안 쓰는 팔뚝 부종형',icon:'💪',exerciseBan:'팔 집중 유산소·팔뚝 집중 운동',exerciseOk:'겨드랑이 림프절 마사지 + 수영 + 어깨 회전 스트레칭',dietDirection:'저나트륨 식단 + 림프 촉진 식품 + 수분 충분',b2b:'에스테틱(림프 드레나쥐)',care:'겨드랑이 림프절 집중 케어',coreMessage:'팔뚝 부종은 겨드랑이 림프 차단이 원인입니다. 림프절 케어가 먼저입니다.'},
+  'BC-11':{label:'상체근육형',icon:'🏋️',exerciseBan:'상체 고강도 웨이트·승모근 자극 운동',exerciseOk:'하체 위주 운동 + 상체 스트레칭 + 승모근 이완',dietDirection:'마그네슘 풍부 식단 + 근육 이완 지원 + 항염 식품',b2b:'스포츠의학·재활',care:'승모근 이완 마사지 + 흉추 교정',coreMessage:'상체 근육 과발달로 몸이 넓어 보입니다. 이완이 성장보다 먼저입니다.'},
+  'BC-12':{label:'겨드랑이 부유방형',icon:'👙',exerciseBan:'라운드숄더 심화 운동(버피·팔굽혀펴기)',exerciseOk:'흉추 신전 운동 + 겨드랑이 림프 마사지 + 수영',dietDirection:'항염 식단 + 호르몬 균형 지원 식품 + 수분 충분',b2b:'에스테틱·성형외과',care:'흉추 교정 + 겨드랑이 림프절 케어',coreMessage:'흉추 이완이 부유방의 근본 원인입니다. 구조 교정 없이 지방만 빼는 건 재발합니다.'},
+  'BC-13':{label:'호르몬스위치 갱년기형',icon:'🔄',exerciseBan:'극단적 칼로리 제한·고강도 인터벌',exerciseOk:'중강도 유산소 + 근력 유지 운동 + 요가',dietDirection:'호르몬 균형 식단 + 파이토에스트로겐(콩류) + 칼슘·비타민D',b2b:'산부인과·내분비과',care:'호르몬 수치 확인 + 갱년기 전문 프로그램',coreMessage:'에스트로겐 감소로 지방이 재배치됩니다. 호르몬 개입 없이 체형만 잡으려 하면 계속 실패합니다.'},
+  'BC-14':{label:'스트레스기절 번아웃형',icon:'🔋',exerciseBan:'고강도 운동·카페인 보충제·야간 운동',exerciseOk:'낮 30분 산책 + 요가 + 명상',dietDirection:'부신 회복 식단 + 마그네슘·비타민B 풍부 + 가공식품 배제',b2b:'수면클리닉·정신건강의학과',care:'부신 기능 검사 + 자율신경 회복 루틴',coreMessage:'번아웃은 의지력 문제가 아닙니다. 부신이 고갈된 상태에서 운동을 강행하면 더 지칩니다.'},
+  'BC-15':{label:'대사증후군 종합형',icon:'🚨',exerciseBan:'고강도 인터벌·단독 식이 강행',exerciseOk:'저강도 유산소 + 의사 감독 하 운동',dietDirection:'저탄·저GI 식단 + 나트륨 제한 + 항산화 식품',b2b:'내과·내분비과(의학적 개입 필수)',care:'정기 혈액검사 + 전문의 관리',coreMessage:'대사증후군은 복합 지표가 얽혀 있습니다. 의학적 개입 없이 다이어트만 강행하면 심혈관 위험이 높아집니다.'},
+  'BC-16':{label:'동시다발 다중악순환형',icon:'🌪️',exerciseBan:'단독 처방으로 한 가지 원인만 타겟',exerciseOk:'복합 접근: 순환+근력+심리 동시 관리',dietDirection:'다축 동시 개입: 혈당+순환+장+심리 동시 타겟',b2b:'통합 의료 접근 권장',care:'다학제 복합 케어',coreMessage:'하나의 원인이 아닙니다. 여러 원인이 동시에 악순환 중이므로 다축 동시 개입이 필요합니다.'}
+};
+
+var SAJU_FOODS = {
+  '목':{icon:'🌱',color:'#4A8C1C',단백질:['닭가슴살','두부','계란흰자','연어','검은콩'],탄수화물:['현미','귀리','고구마','렌틸콩','퀴노아'],지방:['아보카도','들기름','호두','아마씨','올리브유'],식이섬유:['시금치','브로콜리','미역','셀러리','양배추'],미네랄:['굴','바지락','파래','견과류','토마토'],수분:['오이','수박','녹차','허브티','보리차']},
+  '화':{icon:'🔥',color:'#E8631A',단백질:['흰살생선','닭안심','두부','메추리알','무지방 그릭요거트'],탄수화물:['보리밥','율무','팥','콩국수','차조'],지방:['참기름(소량)','잣','해바라기씨','청어','고등어'],식이섬유:['오이','상추','미나리','연근','우엉'],미네랄:['다시마','톳','홍합','연근','수박씨'],수분:['수박','오이즙','연잎차','국화차','박하차']},
+  '토':{icon:'🌍',color:'#E67E22',단백질:['소고기 안심','돼지 뒷다리','두부','병아리콩','아몬드'],탄수화물:['단호박','고구마','기장','메조','율무'],지방:['버터(소량)','코코넛오일','참깨','캐슈넛','달걀노른자'],식이섬유:['당근','단호박','오이','양파','연근'],미네랄:['황기','대추','생강','마','귤껍질'],수분:['옥수수수염차','율무차','홍차(약하게)','생강차','대추차']},
+  '금':{icon:'⚡',color:'#6B4EAA',단백질:['닭가슴살','흰살생선','명태','새우','무지방 코티지치즈'],탄수화물:['현미','배','무','도라지','백합뿌리'],지방:['아몬드','들깨','아마씨유','호박씨','잣'],식이섬유:['배추','무','연근','도라지','더덕'],미네랄:['해산물','파','마늘','콩나물','두부'],수분:['배즙','도라지차','생강차','백합차','따뜻한 물']},
+  '수':{icon:'💧',color:'#1A7FC1',단백질:['검은콩','흑임자','굴','새우','해삼'],탄수화물:['흑미','검은깨 현미밥','밤','마','흑두'],지방:['호두','검은깨','들기름','참치','정어리'],미네랄:['다시마','미역','파래','굴','조개류'],식이섬유:['부추','미나리','파','자색고구마','취나물'],수분:['두충차','구기자차','흑임자차','오미자차','따뜻한 보리차']}
+};
+
+// 3차 문항 데이터 (stage3Flat에서 추출)
+var Q3_DATA = [
+  {idx:0,code:'A01',title:'밥 먹고 딱 30분 뒤, 갑자기 졸음이 쏟아지나요?',type:'리커트',scores:'0,1,2,3',rev:false,line:'L14624'},
+  {idx:1,code:'A01',title:'계획에 없었는데, 빵·디저트 냄새에 이끌려 사 먹은 적 있나요?',type:'리커트',scores:'0,1,2,3',rev:false,line:'L14625'},
+  {idx:2,code:'A01',title:'설탕이 든 음료(주스·커피믹스·에이드·탄산)를 하루 몇 잔 드시나요?',type:'선택지형',scores:'[0,1,2,3]',choices:'거의안마셔요/하루1잔/하루2잔이상/물대신',rev:false,line:'L14626'},
+  {idx:3,code:'A01',title:'팔다리는 그대로인데, 배만 유독 나왔나요?',type:'선택지형',scores:'[0,1,2,3]',choices:'전체비슷/배조금/팔다리가는데배/단단히튀어나옴',rev:false,line:'L14627'},
+  {idx:4,code:'A02',title:'오후에 양말 벗으면, 발목에 자국이 깊게 패어 있나요?',type:'리커트',scores:'0,1,2,3',rev:false,line:'L14630'},
+  {idx:5,code:'A02',title:'오래 서 있거나 앉아 있으면, 다리가 저리거나 핏줄이 도드라지나요?',type:'리커트',scores:'0,1,2,3',rev:false,line:'L14631'},
+  {idx:6,code:'A02',title:'아침에 거울 보면, 얼굴이 유독 부어 있나요?',type:'리커트',scores:'0,1,2,3',rev:false,line:'L14632'},
+  {idx:7,code:'A03',title:'예전과 똑같이 사는데, 이유 없이 살이 잘 찌고 안 빠지나요?',type:'리커트',scores:'0,1,2,3',rev:false,line:'L14635'},
+  {idx:8,code:'A03',title:'작년 바지가, 허벅지는 헐렁한데 허리만 안 잠기나요?',type:'리커트',scores:'0,1,2,3',rev:false,line:'L14636'},
+  {idx:9,code:'A03',title:'턱 끝에 \'꼭 거기\'만 뾰루지가 반복해서 나나요?',type:'리커트',scores:'0,1,2,3',rev:false,line:'L14637'},
+  {idx:10,code:'A03',title:'광대·볼에 갈색 기미·잡티가 있나요?',type:'선택지형',scores:'[0,0,2,3]',choices:'없어요/예전부터그대로/최근새로생김/점점짙어짐',rev:false,line:'L14638'},
+  {idx:11,code:'A03',title:'요즘 베개나 배수구에, 머리카락이 부쩍 많이 빠져 있나요?',type:'리커트',scores:'0,1,2,3',rev:false,line:'L14639'},
+  {idx:12,code:'A04',title:'계단이나 비탈길을 내려갈 때, 무릎이 불안하거나 난간을 찾게 되나요?',type:'선택지형',scores:'[0,1,2,3]',choices:'그냥내려감/빠르면불안/난간잡음/한발씩모아디딤',rev:false,line:'L14661'},
+  {idx:13,code:'A04',title:'머리를 말리거나 높은 선반의 물건을 꺼낼 때, 팔이 먼저 지치나요?',type:'선택지형',scores:'[0,1,2,3]',choices:'아니요/저려서내려요/손바꿔가며/팔올리기피함',rev:false,line:'L14662'},
+  {idx:14,code:'A04',title:'한 발로 서서 양말이나 바지를 입을 수 있나요?',type:'선택지형',scores:'[0,1,2,3]',choices:'서서그냥/비틀거려벽짚음/앉아서편함/몇초도못버팀',rev:false,line:'L14663'},
+  {idx:15,code:'A04',title:'살이 빠진 것도 아닌데, 팔다리만 가늘어진 느낌인가요?',type:'선택지형',scores:'[0,2,3]',choices:'아니요그대로/좀가늘어진것같음/살쪘는데팔다리더가늘',rev:false,line:'L14664'},
+  {idx:16,code:'A05',title:'아침엔 평평한 배가, 저녁엔 임산부처럼 부풀어 오르나요?',type:'리커트',scores:'0,1,2,3',rev:false,line:'L14667'},
+  {idx:17,code:'A05',title:'특정 음식(밀가루·유제품) 먹으면 꼭 더부룩한가요?',type:'리커트',scores:'0,1,2,3',rev:false,line:'L14668'},
+  {idx:18,code:'A05',title:'화장실 가는 리듬이 불규칙하거나, 며칠씩 거르나요?',type:'리커트',scores:'0,1,2,3',rev:false,line:'L14669'},
+  {idx:19,code:'A05',title:'최근 1년 안에 항생제를 복용한 적 있나요?',type:'선택지형',scores:'[0,1,2]',choices:'없어요/한두번/여러번또는장기간',rev:false,line:'L14670'},
+  {idx:20,code:'A05',title:'식사를 마치고 나면, 속이 편안하고 배가 가벼운가요?',type:'역문항',scores:'0,1,2,3(반전)',choices:null,rev:true,line:'L14671'},
+  {idx:21,code:'A06',title:'오래 앉아 있으면, 목·어깨보다 골반·허리가 먼저 뻐근한가요?',type:'리커트',scores:'0,1,2,3',rev:false,line:'L14674'},
+  {idx:22,code:'A06',title:'자주 신는 신발 밑창, 좌우가 다르게 닳아 있나요?',type:'선택지형',scores:'[0,1,2,3]',choices:'좌우비슷/살짝다름/눈에띄게한쪽/확연히기울음',rev:false,line:'L14675'},
+  {idx:23,code:'A06',title:'거울 앞에 힘 빼고 서면, 양쪽 어깨 높이가 같나요?',type:'선택지형',scores:'[0,1,2,3]',choices:'양쪽같음/사진으로살짝/눈에띄게한쪽낮음/옷이흘러내림',rev:false,line:'L14676'},
+  {idx:24,code:'A07',title:'분명히 잤는데, 자고 일어나면 더 피곤한가요?',type:'리커트',scores:'0,1,2,3',rev:false,line:'L14679'},
+  {idx:25,code:'A07',title:'스트레스 받은 날, 꼭 \'밤 10시 이후\'에 폭식하나요?',type:'리커트',scores:'0,1,2,3',rev:false,line:'L14680'},
+  {idx:26,code:'A07',title:'하루에 커피·에너지드링크를 몇 잔이나 드시나요?',type:'선택지형',scores:'[0,1,2]',choices:'1잔이하/2~3잔/4잔이상',rev:false,line:'L14681'},
+  {idx:27,code:'A07',title:'아침에 개운하게 눈이 떠지고, 몸이 가볍게 일어나지나요?',type:'역문항',scores:'0,1,2,3(반전)',choices:null,rev:true,line:'L14682'},
+  {idx:28,code:'A08',title:'"아까운데, 조금 남은 거 그냥 다 먹자" — 평소 식사할 때 자주 하는 생각인가요?',type:'선택지형',scores:'[2,1,0]',choices:'배불러도다먹음/맛있으면끝까지/배부르면수저놓음',rev:false,line:'L14685'},
+  {idx:29,code:'A08',title:'기분 나쁜 날, 맵거나 단 걸로 \'나를 달래\'주나요?',type:'리커트',scores:'0,1,2,3',rev:false,line:'L14686'},
+  {idx:30,code:'A08',title:'밥을 남들보다 확실히 빨리 먹는 편인가요?',type:'리커트',scores:'0,1,2,3',rev:false,line:'L14687'},
+  {idx:31,code:'A08',title:'잠들기 2~3시간 안에 뭔가를 먹는 날이 많나요?',type:'리커트',scores:'0,1,2,3',rev:false,line:'L14688'},
+  {idx:32,code:'A09',title:'식사 후에 유난히 목이 마르거나, 화장실이 잦아지나요?',type:'리커트',scores:'0,1,2,3',rev:false,line:'L14691'},
+  {idx:33,code:'A09',title:'상처나 염증이, 예전보다 잘 안 아물고 오래가나요?',type:'선택지형',scores:'[0,1,2,3]',choices:'예전과비슷/조금더디게/눈에띄게오래감/자주덧나거나잘안나음',rev:false,line:'L14697'},
+  {idx:34,code:'A09',title:'목 뒤나 겨드랑이 피부가, 거뭇하고 두껍게 변한 곳이 있나요?',type:'선택지형',scores:'[0,1,2,3]',choices:'없어요/살짝어두움/거뭇두톰/벨벳처럼두껍고밀어도안지워짐',rev:false,line:'L14698'},
+  {idx:35,code:'A10',title:'둘 중 뭐가 더 끌려요? (기질문항 — 채점 제외)',type:'기질(제외)',scores:'null',choices:'땀쫙빼는격렬운동/차분한스트레칭요가',rev:false,line:'L14701'},
+  {idx:36,code:'A10',title:'계획대로 vs 그때그때, 어느 쪽이세요? (기질문항 — 채점 제외)',type:'기질(제외)',scores:'null',choices:'계획세워착착/내키는대로즉흥',rev:false,line:'L14702'}
+];
+
+// ══════════════════════════════════════════════════════════
+// 시뮬레이터 로직
+// ══════════════════════════════════════════════════════════
+
+var simAnswers = {};  // {0: 선택인덱스, ...}
+
+function getMaxScore(q){
+  if(q.type==='기질(제외)') return 0;
+  if(q.scores==='null') return 0;
+  if(q.type==='선택지형'){
+    var arr = q.scores.replace(/[\[\]]/g,'').split(',').map(Number);
+    return Math.max.apply(null, arr);
+  }
+  if(q.type==='역문항') return 3;
+  return 3; // 리커트
+}
+
+function getActualScore(q, vi){
+  if(q.type==='기질(제외)' || q.scores==='null') return 0;
+  if(q.type==='선택지형'){
+    var arr = q.scores.replace(/[\[\]]/g,'').split(',').map(Number);
+    return arr[vi] !== undefined ? arr[vi] : 0;
+  }
+  if(q.type==='역문항') return 3 - vi;
+  return vi; // 리커트
+}
+
+function computeSimAxes(){
+  var got = {A01:0,A02:0,A03:0,A04:0,A05:0,A06:0,A07:0,A08:0,A09:0,A10:0};
+  var max = {A01:0,A02:0,A03:0,A04:0,A05:0,A06:0,A07:0,A08:0,A09:0,A10:0};
+  Q3_DATA.forEach(function(q){
+    if(q.type==='기질(제외)') return;
+    var ax = q.code;
+    var vi = simAnswers[q.idx];
+    if(vi === undefined || vi === null) return;
+    got[ax] += getActualScore(q, vi);
+    max[ax] += getMaxScore(q);
+  });
+  var sc = {};
+  Object.keys(got).forEach(function(ax){
+    sc[ax] = max[ax] > 0 ? Math.round(got[ax]/max[ax]*10*100)/100 : 0;
+  });
+  sc.A10 = Math.round(sc.A10 * 0.5 * 100) / 100;
+  return sc;
+}
+
+function detectBgSim(){
+  // 시뮬레이터용 배경 필터 (간소화)
+  return null;
+}
+
+function computeNicknameSim(sc){
+  var entries = Object.entries(sc).filter(function(e){ return e[0].startsWith('A'); });
+  entries.sort(function(a,b){ return b[1]-a[1]; });
+  var top1 = entries[0] ? entries[0][0] : 'A07';
+  var top2 = entries[1] ? entries[1][0] : 'A08';
+  var isA10 = (top1 === 'A10');
+  if(isA10) top1 = top2;
+  var bg = detectBgSim();
+  var t1e = NICKNAME_TABLE[top1] || NICKNAME_TABLE['A07'];
+  var t2e = t1e[top2] || t1e['default'] || {default:'동시다발 다중악순환형'};
+  var nick = (bg && t2e[bg]) || t2e['default'] || '동시다발 다중악순환형';
+  return {nick:nick, top1:isA10?'A10':top1, top1Actual:top1, top2:top2, bg:bg||'없음', sorted:entries};
+}
+
+function updateSimResult(){
+  var sc = computeSimAxes();
+  var r = computeNicknameSim(sc);
+  var bc = NICKNAME_TO_BC[r.nick] || 'BC-16';
+  var bcData = BC_MASTER_DATA.find(function(d){ return d.code===bc; }) || BC_MASTER_DATA[15];
+
+  document.getElementById('r-bccode').textContent = bc;
+  document.getElementById('r-bccode').style.color = bcData ? bcData.color : '#4f46e5';
+  document.getElementById('r-nickname').textContent = r.nick;
+  document.getElementById('r-top1').textContent = r.top1Actual + ' (' + AXIS_META[r.top1Actual].label + ')';
+  document.getElementById('r-top2').textContent = r.top2 + ' (' + AXIS_META[r.top2].label + ')';
+  document.getElementById('r-bg').textContent = r.bg;
+
+  // 축 점수 바 업데이트
+  var barsHtml = '';
+  r.sorted.forEach(function(e){
+    var ax = e[0], val = e[1];
+    var meta = AXIS_META[ax];
+    var pct = Math.min(100, Math.round(val / 14 * 100));
+    barsHtml += '<div class="score-bar-wrap">';
+    barsHtml += '<div class="score-bar-label"><span>'+ meta.icon +' '+ ax +' '+ meta.label +'</span><span style="font-weight:700;color:'+ meta.color +'">'+ val.toFixed(2) +'</span></div>';
+    barsHtml += '<div class="score-bar"><div class="score-bar-fill" style="width:'+ pct +'%;background:'+ meta.color +'"></div></div>';
+    barsHtml += '</div>';
+  });
+  document.getElementById('axis-bars').innerHTML = barsHtml;
+
+  // 진행 표시
+  var total = Q3_DATA.filter(function(q){ return q.type !== '기질(제외)'; }).length;
+  var answered = Object.keys(simAnswers).length;
+  var pgHtml = '';
+  for(var i=0;i<total;i++){
+    var cls = (simAnswers[i] !== undefined) ? 'done' : (i === answered ? 'current' : '');
+    pgHtml += '<div class="sim-step '+ cls +'"></div>';
+  }
+  document.getElementById('sim-progress').innerHTML = pgHtml;
+
+  // 영양 처방 카드
+  var pres = BC_PRESCRIPTION_DB[bc];
+  if(pres && answered > 5){
+    var nutCard = document.getElementById('result-nutri-card');
+    nutCard.style.display = 'block';
+    var html = '<div class="result-box" style="border-color:'+(bcData?bcData.color:'#4f46e5')+'">';
+    html += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">';
+    html += '<span style="font-size:36px">'+ (bcData?bcData.icon:'') +'</span>';
+    html += '<div><div class="big" style="color:'+(bcData?bcData.color:'#4f46e5')+'">'+ bc +'</div>';
+    html += '<div style="font-size:14px;font-weight:600;color:#1a202c">'+ r.nick +'</div></div></div>';
+    html += '<p style="color:#374151;margin-bottom:10px;font-size:13px">'+ pres.coreMessage +'</p>';
+    html += '<div class="grid-2">';
+    html += '<div style="background:#fee2e2;border-radius:8px;padding:10px"><div style="font-size:11px;font-weight:700;color:#991b1b;margin-bottom:4px">🚫 금지 운동</div><div style="font-size:12px;color:#7f1d1d">'+ pres.exerciseBan +'</div></div>';
+    html += '<div style="background:#d1fae5;border-radius:8px;padding:10px"><div style="font-size:11px;font-weight:700;color:#065f46;margin-bottom:4px">✅ 권장 운동</div><div style="font-size:12px;color:#064e3b">'+ pres.exerciseOk +'</div></div>';
+    html += '<div style="background:#fef3c7;border-radius:8px;padding:10px"><div style="font-size:11px;font-weight:700;color:#92400e;margin-bottom:4px">🥗 식단 방향</div><div style="font-size:12px;color:#78350f">'+ pres.dietDirection +'</div></div>';
+    html += '<div style="background:#ede9fe;border-radius:8px;padding:10px"><div style="font-size:11px;font-weight:700;color:#6d28d9;margin-bottom:4px">💆 전문 케어</div><div style="font-size:12px;color:#4c1d95">'+ pres.care +'</div></div>';
+    html += '</div></div>';
+    document.getElementById('result-nutri-output').innerHTML = html;
+  }
+}
+
+function buildSimQuestions(){
+  var html = '';
+  Q3_DATA.forEach(function(q){
+    var axMeta = AXIS_META[q.code];
+    html += '<div class="q-card" id="qcard-'+q.idx+'">';
+    html += '<div class="q-title">Q'+(q.idx+1)+'. '+q.title+'</div>';
+    html += '<div class="q-meta">';
+    html += '<span class="badge badge-ax">'+q.code+' '+axMeta.label+'</span> ';
+    html += '<span class="badge" style="background:#f1f5f9;color:#64748b">'+q.type+'</span> ';
+    html += '<span class="code-ref">'+q.line+'</span>';
+    html += '</div>';
+    html += '<div class="q-choices" id="qchoices-'+q.idx+'">';
+
+    if(q.type === '기질(제외)'){
+      var cArr = q.choices ? q.choices.split('/') : ['선택A','선택B'];
+      cArr.forEach(function(c,ci){
+        html += '<button class="choice-btn" onclick="pickChoice('+q.idx+','+ci+',this,\''+q.code+'\')">'+c+'</button>';
+      });
+    } else {
+      var cArr2;
+      if(q.choices){
+        cArr2 = q.choices.split('/');
+      } else {
+        cArr2 = ['거의 없음 (0점)','한 달에 몇 번 (1점)','주 1~2회 (2점)','거의 매일 (3점)'];
+      }
+      cArr2.forEach(function(c,ci){
+        var scoreVal = getActualScore(q, ci);
+        html += '<button class="choice-btn" onclick="pickChoice('+q.idx+','+ci+',this,\''+q.code+'\')">';
+        html += c + ' <span class="wt-chip" style="background:'+axMeta.color+'">+'+scoreVal+'</span>';
+        html += '</button>';
+      });
+    }
+    html += '</div></div>';
+  });
+  document.getElementById('sim-questions').innerHTML = html;
+}
+
+function pickChoice(idx, ci, btn, axCode){
+  simAnswers[idx] = ci;
+  // 해당 문항 모든 버튼 선택 해제
+  var btns = document.querySelectorAll('#qchoices-'+idx+' .choice-btn');
+  btns.forEach(function(b){ b.classList.remove('selected'); });
+  btn.classList.add('selected');
+  document.getElementById('qcard-'+idx).classList.add('selected');
+  updateSimResult();
+}
+
+function resetSim(){
+  simAnswers = {};
+  document.querySelectorAll('.choice-btn').forEach(function(b){ b.classList.remove('selected'); });
+  document.querySelectorAll('.q-card').forEach(function(c){ c.classList.remove('selected'); });
+  updateSimResult();
+  document.getElementById('result-nutri-card').style.display='none';
+}
+
+// ══════════════════════════════════════════════════════════
+// PANEL 2: 문항 테이블 렌더링
+// ══════════════════════════════════════════════════════════
+
+function buildQ3Table(){
+  var tbody = document.getElementById('q3-table-body');
+  if(!tbody) return;
+  var html = '';
+  Q3_DATA.forEach(function(q){
+    var ax = AXIS_META[q.code];
+    var isExcluded = q.type==='기질(제외)';
+    html += '<tr style="'+(isExcluded?'opacity:.55;':'')+'">';
+    html += '<td>Q'+(q.idx+1)+'</td>';
+    html += '<td><span class="axis-pill" style="background:'+ ax.color+'22;color:'+ ax.color +'">'+ ax.icon +' '+ q.code +' '+ ax.label +'</span></td>';
+    html += '<td style="max-width:280px;font-size:12px">'+ q.title +'</td>';
+    html += '<td><span class="badge '+(isExcluded?'badge-gray':(q.type==='역문항'?'badge-red':'badge-score'))+'">'+q.type+'</span></td>';
+    html += '<td style="font-family:monospace;font-size:11px">'+(isExcluded?'채점제외':q.scores)+'</td>';
+    html += '<td>'+(q.rev?'<span class="badge badge-red">역문항</span>':'')+'</td>';
+    html += '<td><span class="code-ref">'+q.line+'</span></td>';
+    html += '</tr>';
+  });
+  tbody.innerHTML = html;
+}
+
+// ══════════════════════════════════════════════════════════
+// stage2Bonus 테이블
+// ══════════════════════════════════════════════════════════
+
+var S2_DATA = [
+  {q:'Q1',label:'가족력(당뇨·고혈압·고지혈)',choices:'0아버지/1어머니/2형제',bonus:'A09 +1.0 (각 항목)'},
+  {q:'Q2',label:'부모 체형',choices:'0아빠닮아배/1엄마닮아하체/2둘다/3다름',bonus:'0→A01+1.0 / 1→A02+1.0 / 2→A01+0.5,A02+0.5'},
+  {q:'Q3',label:'진단 질환',choices:'0PCOS/1당뇨/2고혈압/3갑상선/4지방간/5역류위장/6우울불안/7없음',bonus:'0→A03+2.5(PCOS) / 1→A01+2.0,A09+1.5 / 2→A09+2.0 / 3→A03+2.5 / 4→A01+2.0,A09+1.0 / 5→A05+2.0 / 6→A08+2.0,A07+1.0'},
+  {q:'Q4',label:'경계·주의 소견',choices:'0공복혈당/1간수치/2콜레스테롤/3혈압/4없음',bonus:'0→A01+1.2 / 1→A01+1.0 / 2→A09+1.2 / 3→A09+1.2'},
+  {q:'Q5',label:'냉증',choices:'0여름에도차가움/1조금/2더위탐',bonus:'0→A03+1.5 / 1→A03+0.7'},
+  {q:'Q6',label:'장기 복용약',choices:'0스테로이드/1항우울제/2피임호르몬/3항응고제/4이소트레티노인/5탈모약/6없음',bonus:'0→A03+1.5,A01+1.0(STEROID🚩) / 1→A08+1.2,A03+0.8 / 2→A03+1.5 / 3→ANTICOAGULANT🚩 / 4→ISOTRETINOIN🚩 / 5→HAIRLOSS_RX🚩'},
+  {q:'Q7',label:'식욕억제제',choices:'0여러번/1한두번/2없음',bonus:'0→A08+2.0(APPETITE_SUPP🚩) / 1→A08+1.0'},
+  {q:'Q8',label:'급증 계기',choices:'0이직과로/1이별충격/2수술약물/3회식음주/4금연/5서서히',bonus:'0→A07+1.5 / 1→A08+1.5,A07+0.5 / 2→A03+1.2 / 3→A01+1.2 / 4→A01+0.8 / 5→A04+0.8'},
+  {q:'Q9',label:'수술·시술 이력',choices:'0지방흡입/1지방분해/2리프팅/3보톡스필러/4복부성형/5없음',bonus:'0→A04+1.0(LIPO_HX🚩) / 1→A04+0.5 / 2→LIFTING_HX🚩 / 3→FILLER_HX🚩 / 4→A06+1.5(ABDOMINOPLASTY🚩)'},
+  {q:'Q10',label:'체중 변화 궤적 (그래프)',choices:'pat: creep/jump/down/yoyo',bonus:'creep→A04+1.0,A01+0.5 / jump→A07+1.2,A01+0.8 / yoyo→A03+1.2~2.0,A08×0.6 / 진폭≥25→A03+1.0 / 진폭≥15→A03+0.5'},
+  {q:'Q11',label:'출산/군대직장 (성별분기)',choices:'여성:0출산후체형변함/1임신없음 | 남성:0그때부터확쪘음',bonus:'여성0→A06+1.5,A03+1.0 / 여성1→A06+0.3 / 남성0→A01+1.0,A07+0.8 / 남성1→A01+0.4'},
+  {q:'Q12',label:'갱년기·완경',choices:'0복부중심변화/1미레나수술/2완경/3신호조금/4없음',bonus:'0→A03+2.0,A01+1.0 / 1→A03+1.5 / 2→A03+2.0,A04+0.8 / 3→A03+0.8'},
+  {q:'Q13',label:'흡연',choices:'0피움/1끊은지얼마/2안피움',bonus:'0→A07+1.2,A02+0.8 / 1→A01+0.8'},
+  {q:'Q14',label:'음주',choices:'0주3회이상/1주1~2/2거의안마심',bonus:'0→A01+1.5,A05+0.8 / 1→A01+0.6'}
+];
+
+function buildS2Table(){
+  var tbody = document.getElementById('s2bonus-table');
+  if(!tbody) return;
+  tbody.innerHTML = S2_DATA.map(function(d){
+    return '<tr><td><strong>'+d.q+'</strong></td><td>'+d.label+'</td><td style="font-size:11px;color:#64748b">'+d.choices+'</td><td style="font-size:12px;max-width:280px">'+d.bonus+'</td><td></td></tr>';
+  }).join('');
+}
+
+var PF_DATA = [
+  {item:'오행(사주)',values:'목/화/토/금/수',bonus:'목→A07+0.8 / 화→A07+0.8,A03+0.5 / 토→A05+1.0,A01+0.5 / 금→A02+0.8 / 수→A03+0.8,A02+0.5'},
+  {item:'MBTI J/P',values:'J/P',bonus:'P→A08+1.0 / J→A04+0.4'},
+  {item:'MBTI T/F',values:'T/F (2번째 자리)',bonus:'F→A08+0.8,A07+0.5'},
+  {item:'얼굴형',values:'둥근형/각진형/긴형/계란형/역삼각형',bonus:'둥근형→A01+0.5 / 각진형→A07+0.5 / 긴형→A04+0.5 / 나머지 0'},
+  {item:'생활 리듬',values:'0직장인(앉아)/1자영업(불규칙)/2학생(야식)/3주부육아/4재택/5교대야간',bonus:'5→A07+1.5,A03+1.0 / 1→A07+0.8 / 0→A06+0.6,A02+0.5 / 2→A01+0.8,A08+0.5 / 3→A07+0.6'},
+  {item:'경험 이력',values:'0다이어트여러번(요요)/1시술받았는데돌아옴/2시술만족/3둘다처음',bonus:'0→A04+1.5,A08+1.0 / 1→A04+0.8,A03+0.5'}
+];
+
+function buildPfTable(){
+  var tbody = document.getElementById('pfbonus-table');
+  if(!tbody) return;
+  tbody.innerHTML = PF_DATA.map(function(d){
+    return '<tr><td><strong>'+d.item+'</strong></td><td style="font-size:11px;color:#64748b">'+d.values+'</td><td style="font-size:12px">'+d.bonus+'</td></tr>';
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════════
+// PANEL 4: BC 테이블 렌더링
+// ══════════════════════════════════════════════════════════
+
+function buildBCMasterTable(){
+  var tbody = document.getElementById('bc-master-tbody');
+  if(!tbody) return;
+  tbody.innerHTML = BC_MASTER_DATA.map(function(d){
+    return '<tr><td><span class="badge" style="background:'+d.color+'22;color:'+d.color+';border:1px solid '+d.color+'44;font-size:12px">'+d.code+'</span></td>'
+      +'<td style="font-size:20px">'+d.icon+'</td>'
+      +'<td>'+d.outline+'</td>'
+      +'<td>'+d.nick+'</td>'
+      +'<td style="font-size:12px;color:#64748b">'+d.medical+'</td>'
+      +'<td><span class="badge badge-ax">'+d.axisTop+'</span></td>'
+      +'<td style="font-size:12px"></td>'
+      +'<td style="font-size:11px;color:#ef4444;max-width:200px">'+d.failed+'</td>'
+      +'</tr>';
+  }).join('');
+}
+
+function buildNickToBCTable(){
+  var tbody = document.getElementById('nick-to-bc-tbody');
+  if(!tbody) return;
+  var categories = {
+    '복부형':['식후기절 혈당롤러코스터형','스트레스성 야식부엉이형','억제제부작용 배부름마비형','식후임산부 가스풍선형','약물부작용 강제축적형','아빠체형 내장비대형','대사증후군 종합형','팔다리거미 올챙이배형'],
+    '하체형':['오후만되면 코끼리다리형','엄마체형 하지정체형','지방흡입후 재발형','운동할수록 말벅지형','골반틀어짐 승마살형'],
+    '상체형':['목짧아지는 거북이형','안 쓰는 팔뚝 부종형','상체근육형','겨드랑이 부유방형'],
+    '전신형':['호르몬스위치 갱년기형','스트레스기절 번아웃형','털털한 PCOS형','여름에도 시린 얼음장형','동시다발 다중악순환형']
+  };
+  var topAxis = {'BC-1':'A02','BC-2':'A02','BC-3':'A01','BC-4':'A03','BC-5':'A05','BC-6':'A04','BC-7':'A04','BC-8':'A06','BC-9':'A06','BC-10':'A02','BC-11':'A04','BC-12':'A06','BC-13':'A03','BC-14':'A07','BC-15':'A09','BC-16':'복합'};
+  var html = '';
+  Object.keys(categories).forEach(function(cat){
+    var nicks = categories[cat];
+    nicks.forEach(function(nick, i){
+      var bc = NICKNAME_TO_BC[nick] || 'BC-16';
+      var bcData = BC_MASTER_DATA.find(function(d){ return d.code===bc; });
+      var tax = topAxis[bc] || '복합';
+      if(i===0) html += '<tr><td rowspan="'+nicks.length+'" style="font-weight:700;color:#4f46e5;vertical-align:middle">'+cat+'</td>';
+      else html += '<tr>';
+      html += '<td><span class="badge badge-nick">'+nick+'</span></td>';
+      html += '<td><span class="badge" style="background:'+(bcData?bcData.color:'#ccc')+'22;color:'+(bcData?bcData.color:'#666')+';border:1px solid '+(bcData?bcData.color:'#ccc')+'44">'+bc+'</span></td>';
+      html += '<td>'+cat+'</td>';
+      html += '<td><span class="badge badge-ax">'+tax+'</span></td>';
+      html += '</tr>';
+    });
+  });
+  tbody.innerHTML = html;
+}
+
+function buildNicknameMatrix(){
+  var axes = ['A01','A02','A03','A04','A05','A06','A07','A08','A09','A10'];
+  var thead = document.getElementById('nickname-matrix-head');
+  var tbody = document.getElementById('nickname-matrix-body');
+  if(!thead || !tbody) return;
+  var headHtml = '<tr><th>Top1 \\ Top2</th>';
+  axes.forEach(function(ax){ headHtml += '<th style="font-size:11px;writing-mode:vertical-rl;padding:4px 2px;min-width:60px">'+ax+'<br>'+AXIS_META[ax].label+'</th>'; });
+  thead.innerHTML = headHtml + '</tr>';
+
+  var bodyHtml = '';
+  axes.forEach(function(t1){
+    bodyHtml += '<tr>';
+    var ax1 = AXIS_META[t1];
+    bodyHtml += '<td style="font-weight:700;white-space:nowrap"><span style="color:'+ax1.color+'">'+ax1.icon+' '+t1+'</span><br><span style="font-size:11px;color:#94a3b8">'+ax1.label+'</span></td>';
+    axes.forEach(function(t2){
+      if(t1 === t2){
+        bodyHtml += '<td style="background:#f1f5f9;text-align:center;color:#94a3b8;font-size:11px">—</td>';
+        return;
+      }
+      var t1e = NICKNAME_TABLE[t1];
+      var nick = '—';
+      if(t1e){
+        var t2e = t1e[t2] || t1e['default'];
+        if(t2e) nick = t2e['default'] || '—';
+      }
+      var bc = NICKNAME_TO_BC[nick] || '';
+      var bcData = bc ? BC_MASTER_DATA.find(function(d){ return d.code===bc; }) : null;
+      var cellColor = bcData ? bcData.color : '#94a3b8';
+      bodyHtml += '<td style="font-size:10.5px;border:1px solid #f0f4f8">';
+      if(nick !== '—'){
+        bodyHtml += '<div style="color:'+cellColor+';font-weight:600;margin-bottom:2px;line-height:1.3">'+nick+'</div>';
+        bodyHtml += '<span class="badge" style="background:'+cellColor+'22;color:'+cellColor+';font-size:10px">'+bc+'</span>';
+      }
+      bodyHtml += '</td>';
+    });
+    bodyHtml += '</tr>';
+  });
+  tbody.innerHTML = bodyHtml;
+}
+
+function buildBCPrescription(){
+  var el = document.getElementById('bc-prescription-list');
+  if(!el) return;
+  var html = '<div class="grid-2">';
+  Object.keys(BC_PRESCRIPTION_DB).forEach(function(bc){
+    var d = BC_PRESCRIPTION_DB[bc];
+    var bcData = BC_MASTER_DATA.find(function(x){ return x.code===bc; });
+    var color = bcData ? bcData.color : '#6366f1';
+    html += '<div style="border:1.5px solid '+color+'44;border-radius:8px;padding:12px;border-left:4px solid '+color+'">';
+    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
+    html += '<span style="font-size:22px">'+(bcData?bcData.icon:'')+'</span>';
+    html += '<span class="badge" style="background:'+color+'22;color:'+color+';font-size:12px">'+bc+'</span>';
+    html += '<span style="font-weight:700;font-size:13px">'+d.label+'</span></div>';
+    html += '<div style="font-size:12px;color:#374151;margin-bottom:6px">💬 '+d.coreMessage+'</div>';
+    html += '<div style="font-size:11px;background:#fee2e2;border-radius:6px;padding:5px 8px;margin-bottom:4px">🚫 <strong>금지:</strong> '+d.exerciseBan+'</div>';
+    html += '<div style="font-size:11px;background:#d1fae5;border-radius:6px;padding:5px 8px;margin-bottom:4px">✅ <strong>권장:</strong> '+d.exerciseOk+'</div>';
+    html += '<div style="font-size:11px;background:#fef3c7;border-radius:6px;padding:5px 8px;margin-bottom:4px">🥗 <strong>식단:</strong> '+d.dietDirection+'</div>';
+    html += '<div style="font-size:11px;color:#94a3b8">💆 '+d.care+'</div>';
+    html += '</div>';
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+// ══════════════════════════════════════════════════════════
+// PANEL 5: 영양 매핑 렌더링
+// ══════════════════════════════════════════════════════════
+
+function buildOhaengNutri(){
+  var el = document.getElementById('ohaeng-nutri-table');
+  if(!el) return;
+  var cats = ['단백질','탄수화물','지방','식이섬유','미네랄','수분'];
+  var ohaengs = ['목','화','토','금','수'];
+  var iconMap = {목:'🌱',화:'🔥',토:'🌍',금:'⚡',수:'💧'};
+  var descMap = {
+    목:'간담 울결 해소. 신맛+녹색 채소 중심. 트립토판 단백질(저녁 야식 억제).',
+    화:'심소장 열 진정. 쓴맛+붉은계열 채소. 자극적·뜨거운 음식 일시 감소.',
+    토:'비위 운화 지원. 단맛(자연당)+발효식품. 차갑고 기름진 음식·밀가루 감소.',
+    금:'폐대장 소통. 매운맛(순한)+흰색 채소. 인스턴트·가공식품 감소.',
+    수:'신장 기운 보충. 짠맛(자연염)+검은색 식품. 차갑고 생것보다 따뜻하게.'
+  };
+  var html = '';
+  ohaengs.forEach(function(oh){
+    var foods = SAJU_FOODS[oh];
+    if(!foods) return;
+    html += '<div style="margin-bottom:16px">';
+    html += '<h4 style="font-size:13px;font-weight:700;color:'+foods.color+';margin-bottom:6px">'+iconMap[oh]+' '+oh+'('+oh+') 기질 식품군</h4>';
+    html += '<p style="font-size:12px;color:#718096;margin-bottom:8px">'+descMap[oh]+'</p>';
+    html += '<table><thead><tr>';
+    cats.forEach(function(c){ if(foods[c]) html += '<th>'+c+'</th>'; });
+    html += '</tr></thead><tbody><tr>';
+    cats.forEach(function(c){
+      if(!foods[c]) return;
+      html += '<td>';
+      foods[c].forEach(function(f){ html += '<span class="badge badge-green" style="margin:1px">'+f+'</span>'; });
+      html += '</td>';
+    });
+    html += '</tr></tbody></table></div>';
+  });
+  el.innerHTML = html;
+}
+
+// ══════════════════════════════════════════════════════════
+// 탭 전환
+// ══════════════════════════════════════════════════════════
+
+function switchTab(name){
+  document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('active'); });
+  document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+  document.getElementById('panel-'+name).classList.add('active');
+  event.currentTarget.classList.add('active');
+
+  // 해당 패널 데이터 빌드 (lazy)
+  if(name === 'q-map'){
+    buildQ3Table();
+    buildS2Table();
+    buildPfTable();
+  } else if(name === 'bc-table'){
+    buildBCMasterTable();
+    buildNickToBCTable();
+    buildNicknameMatrix();
+    buildBCPrescription();
+  } else if(name === 'nutri'){
+    buildOhaengNutri();
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// 초기화
+// ══════════════════════════════════════════════════════════
+
+window.addEventListener('load', function(){
+  buildSimQuestions();
+  updateSimResult();
+});
+</script>
+</body>
+</html>
