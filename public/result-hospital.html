@@ -11255,6 +11255,65 @@ function getRoadmapWeeks(bc_primary, goal_weight, weight_loss_pct, user_name, oh
   // ② BC 모체 처방 로드
   var baseWeeks = BC_ROADMAP_DB[bcKey] || BC_ROADMAP_DB['BC-3'] || BC_ROADMAP_DB['BC-6'];
 
+  // ★ 12주 확장: 4주 base → 3사이클 12주로 동적 생성 ★
+  // Cycle 1 (1-4주): 원본 base (기초 확립)
+  // Cycle 2 (5-8주): 원본 base + BC_CYCLE c2 오버레이 (심화)
+  // Cycle 3 (9-12주): 원본 base + BC_CYCLE c3 오버레이 (최적화)
+  var BC_CYCLE = {
+    'BC-1':  {c2_ex:'수중 근력 + 인터벌 수영', c2_diet:'단백질 강화 + 콜라겐 식품', c3_ex:'타바타 수영 + 간헐적 단식 준비', c3_diet:'저염 강화 + 칼륨 3,500mg 목표'},
+    'BC-2':  {c2_ex:'경추 안전 코어 강화 루틴', c2_diet:'항염 식단 심화 (오메가3 강화)', c3_ex:'상체 근력 점진 증가 + 안정성', c3_diet:'지중해식 + 오메가3 지속'},
+    'BC-3':  {c2_ex:'HIIT 단계적 도입 (혈당 안정 후)', c2_diet:'탄수화물 사이클링 심화', c3_ex:'복합 운동 + 근력 통합', c3_diet:'간헐적 단식 16:8 적용'},
+    'BC-4':  {c2_ex:'체온 유지 저강도 근력 강화', c2_diet:'요오드·셀레늄 강화 식단', c3_ex:'중등도 복합 운동 도입', c3_diet:'영양 밀도 극대화 식단'},
+    'BC-5':  {c2_ex:'인터벌 + 드라이 브러싱 병행', c2_diet:'콜라겐 + 항산화 강화', c3_ex:'하체 집중 근력 루틴', c3_diet:'저인슐린 식단 확립'},
+    'BC-6':  {c2_ex:'스트레스 해소 운동 (요가+산책)', c2_diet:'아다포젠 허브 식단 추가', c3_ex:'규칙적 유산소 + 이완 루틴', c3_diet:'저당 + 마그네슘 강화'},
+    'BC-7':  {c2_ex:'기구 필라테스 주 3회 루틴', c2_diet:'철분 + 단백질 강화', c3_ex:'전신 복합 운동 통합', c3_diet:'지중해식 영속 식단'},
+    'BC-8':  {c2_ex:'수영 인터벌 + 사이클 병행', c2_diet:'항산화 + 콜라겐 강화', c3_ex:'저항 운동 심화 + 체형 재구성', c3_diet:'저염 + 칼륨 강화'},
+    'BC-9':  {c2_ex:'근력 복합 운동 주 4회', c2_diet:'단백질 1.8g/kg 목표', c3_ex:'전신 근력 최대화 루틴', c3_diet:'탄수화물 사이클링 적용'},
+    'BC-10': {c2_ex:'팔뚝 슬리밍 서킷 심화', c2_diet:'단백질 타이밍 최적화', c3_ex:'전신 균형 운동 완성', c3_diet:'저염 + 항염 식단'},
+    'BC-11': {c2_ex:'하체 심화 + 상체 저강도 병행', c2_diet:'저탄수화물 + 단백질 강화', c3_ex:'균형 전신 루틴 완성', c3_diet:'지중해식 영속'},
+    'BC-12': {c2_ex:'등·어깨 슬리밍 심화 루틴', c2_diet:'에스트로겐 균형 식단 강화', c3_ex:'전신 운동 통합', c3_diet:'항염 + 피토에스트로겐 강화'},
+    'BC-13': {c2_ex:'근력 중등도 + 스트레스 관리 병행', c2_diet:'식물성 에스트로겐 강화', c3_ex:'호르몬 친화적 운동 루틴', c3_diet:'저당 + 피토에스트로겐'},
+    'BC-14': {c2_ex:'저강도 유산소 점진 증가', c2_diet:'B군 비타민 강화 식단', c3_ex:'중등도 복합 운동 도입', c3_diet:'지중해식 + 마그네슘 강화'},
+    'BC-15': {c2_ex:'유산소 + 저항 복합 루틴', c2_diet:'탄수화물 사이클링 적용', c3_ex:'고강도 인터벌 도입', c3_diet:'간헐적 단식 16:8'},
+    'BC-16': {c2_ex:'2~3가지 축 동시 관리 운동', c2_diet:'복합 전략 심화 식단', c3_ex:'시스템 구축 운동 자동화', c3_diet:'영속 식단 자동화'},
+  };
+  var WEEK_CYCLE_META = {
+    5:  {phase_suffix:'심화',      cue:'기초 완성 위에 강도를 올릴 시기입니다.',          target_suffix:'→ 5~8주 심화 구간 시작'},
+    6:  {phase_suffix:'가속',      cue:'회복 능력이 강해졌으니 빈도를 높입니다.',         target_suffix:'→ 6주차 분해 가속'},
+    7:  {phase_suffix:'통합',      cue:'운동·식단·회복이 통합되는 시기입니다.',           target_suffix:'→ 체형 재구성 가시화'},
+    8:  {phase_suffix:'재보정',    cue:'8주 성과를 측정하고 다음 전략을 수립합니다.',      target_suffix:'→ 8주 점검 + 최종 사이클 진입',   b2b:true},
+    9:  {phase_suffix:'최적화',    cue:'몸이 가장 효율적으로 지방을 태우는 시기입니다.',   target_suffix:'→ 9~12주 최적화 구간'},
+    10: {phase_suffix:'집중 타깃', cue:'남은 완강한 지방을 집중 타깃합니다.',            target_suffix:'→ 잔여 지방 분해 집중'},
+    11: {phase_suffix:'자동화',    cue:'66일을 넘었습니다. 이제 자동화가 시작됩니다.',    target_suffix:'→ 라이프스타일 자동화'},
+    12: {phase_suffix:'완성',      cue:'12주를 완주한 상위 3%입니다.',                   target_suffix:'→ 새로운 기준점 설정',             b2b:true},
+  };
+  // baseWeeks(4주) → expandedWeeks(12주) 동적 생성
+  var expandedWeeks = baseWeeks.slice();
+  for (var _wk = 5; _wk <= 12; _wk++) {
+    var _srcIdx = (_wk - 1) % 4;  // 5→0, 6→1, 7→2, 8→3, 9→0, 10→1, 11→2, 12→3
+    var _base = JSON.parse(JSON.stringify(baseWeeks[_srcIdx]));
+    var _cm = WEEK_CYCLE_META[_wk];
+    var _bc2 = BC_CYCLE[bcKey] || {};
+    _base.week = _wk;
+    _base.weekLabel = _wk + '주차';
+    _base.phase = (_base.phase || '') + ' · ' + _cm.phase_suffix;
+    _base.weekly_target = (_base.weekly_target || '') + ' ' + _cm.target_suffix;
+    _base.axis_logic = _cm.cue + ' ' + (_base.axis_logic || '');
+    if (_wk >= 5 && _wk <= 8) {
+      if (_bc2.c2_ex)   _base.exercise_ok = (_base.exercise_ok   || '') + '\n[' + _wk + '주 심화] ' + _bc2.c2_ex;
+      if (_bc2.c2_diet) _base.diet_ok     = (_base.diet_ok       || '') + '\n[' + _wk + '주 심화] ' + _bc2.c2_diet;
+    }
+    if (_wk >= 9) {
+      if (_bc2.c3_ex)   _base.exercise_ok = (_base.exercise_ok   || '') + '\n[' + _wk + '주 최적화] ' + _bc2.c3_ex;
+      if (_bc2.c3_diet) _base.diet_ok     = (_base.diet_ok       || '') + '\n[' + _wk + '주 최적화] ' + _bc2.c3_diet;
+    }
+    if (_base.failure_expose) _base.failure_expose = _base.failure_expose.replace(/\{USER_NAME\}/g, name);
+    delete _base.b2b;
+    if (_cm.b2b) _base.b2b = true;
+    expandedWeeks.push(_base);
+  }
+  baseWeeks = expandedWeeks;  // 이후 모든 로직은 12주 배열을 사용
+
   // ③ 닉네임 오버레이 로드
   var nickOv = (bc_primary && typeof NICKNAME_OVERLAY !== 'undefined')
     ? (NICKNAME_OVERLAY[String(bc_primary).trim()] || null) : null;
