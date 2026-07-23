@@ -8026,6 +8026,62 @@ var BC_MASTER = {
     color: '#7B1FA2', bg: '#EDE7F6', icon: '🕷️',
     failed_type_desc: '근육을 에너지로 전환하는 이화작용이 활성화된 상태입니다. 몸무게 숫자에만 집착하여 유산소와 단식을 반복하면 사지는 더 가늘어지고 복부 내장지방만 남는 불균형 체형으로 진행될 수 있습니다.',
     axis_top: '약',
+  },
+  'BC-10': {
+    code: 'BC-10',
+    app_nickname: '#안쓰는_팔뚝부종형',
+    medical_title: '상지 림프 정체·팔뚝 부종형 체형',
+    color: '#1A7FC1', bg: '#E3F1FB', icon: '💧',
+    failed_type_desc: '겨드랑이 림프절이 차단되어 팔뚝에 체액이 정체된 상태입니다. 팔뚝 고중량 웨이트를 강행하면 림프 정체가 심화되어 팔 라인이 오히려 굵어지는 경향이 있습니다.',
+    axis_top: '관',
+  },
+  'BC-11': {
+    code: 'BC-11',
+    app_nickname: '#상체근육형',
+    medical_title: '상체 근육 과발달·불균형 체형',
+    color: '#4A8C1C', bg: '#E8F3DC', icon: '💪',
+    failed_type_desc: '상체 근육이 과발달하여 체형 불균형이 발생한 상태입니다. 상체 고중량 복합 운동을 지속하면 불균형이 심화되어 하체 대비 상체만 비대해지는 경향이 있습니다.',
+    axis_top: '형',
+  },
+  'BC-12': {
+    code: 'BC-12',
+    app_nickname: '#겨드랑이_부유방형',
+    medical_title: '겨드랑이 림프 정체·부유방형 체형',
+    color: '#C0397A', bg: '#FCE4EE', icon: '🌺',
+    failed_type_desc: '겨드랑이 림프절 정체와 호르몬 불균형이 결합되어 부유방이 형성된 상태입니다. 브라 라인 압박 운동을 강행하면 림프 순환이 더욱 차단되어 부유방이 악화될 수 있습니다.',
+    axis_top: '확',
+  },
+  'BC-13': {
+    code: 'BC-13',
+    app_nickname: '#호르몬스위치_갱년기형',
+    medical_title: '에스트로겐 저하·갱년기 대사 전환형 체형',
+    color: '#C0397A', bg: '#FFF0F5', icon: '🦋',
+    failed_type_desc: '에스트로겐 급감으로 지방 분포가 하체에서 복부로 이동하고 기초대사량이 저하된 상태입니다. 고강도 유산소와 단식을 반복하면 호르몬 교란이 심화되어 복부 비만이 고착화될 수 있습니다.',
+    axis_top: '확',
+  },
+  'BC-14': {
+    code: 'BC-14',
+    app_nickname: '#스트레스기절_번아웃형',
+    medical_title: '부신 기능 저하·번아웃 대사 붕괴형 체형',
+    color: '#6B4EAA', bg: '#EDE7F6', icon: '🔋',
+    failed_type_desc: '만성 스트레스와 번아웃으로 부신 기능이 저하되고 에너지 생산 시스템이 고갈된 상태입니다. 야간 고강도 운동과 카페인 의존을 지속하면 부신 피로가 심화되어 체중 조절 능력 자체가 무너질 수 있습니다.',
+    axis_top: '심',
+  },
+  'BC-15': {
+    code: 'BC-15',
+    app_nickname: '#대사증후군_종합형',
+    medical_title: '복합 대사 이상·대사증후군형 체형',
+    color: '#E8631A', bg: '#FFE3D3', icon: '🚨',
+    failed_type_desc: '혈압·혈당·중성지방·복부비만이 동시 이상인 대사증후군 상태입니다. 단기 극단 다이어트와 무감독 고강도 운동은 혈관·심장에 급성 위험을 초래할 수 있습니다.',
+    axis_top: '식',
+  },
+  'BC-16': {
+    code: 'BC-16',
+    app_nickname: '#동시다발_다중악순환형',
+    medical_title: '다인성 복합 비만·다중 악순환형 체형',
+    color: '#5D4037', bg: '#EFEBE9', icon: '🌀',
+    failed_type_desc: '여러 원인이 동시에 맞물려 상호 악화되는 복잡계 비만 상태입니다. 단일 해법에 집중하면 나머지 연결 고리들이 반동을 일으켜 오히려 역효과가 날 수 있습니다.',
+    axis_top: '심',
   }
 };
 
@@ -8256,9 +8312,13 @@ function detectBackground(answers) {
 // ──────────────────────────────────────────────
 function computeNickname(axisScores, answers) {
   // ① 10개 원인축 점수 정렬 (Top1, Top2, Top3)
+  // [v2.1] tie-breaking 안정화: 동점 시 축 번호 오름차순(A01 우선) — DB 키 삽입 순서 불확실성 제거
   const sorted = Object.entries(axisScores)
     .filter(([k]) => k.startsWith('A'))
-    .sort((a, b) => b[1] - a[1]);
+    .sort((a, b) => {
+      if (b[1] !== a[1]) return b[1] - a[1];          // 점수 내림차순
+      return a[0].localeCompare(b[0]);                 // 동점이면 축 번호 오름차순 (A01 < A02 ...)
+    });
 
   let top1 = sorted[0] ? sorted[0][0] : 'A07'; // 'A01'~'A10'
   const top2 = sorted[1] ? sorted[1][0] : 'A08';
@@ -8335,6 +8395,7 @@ var NICKNAME_TO_BC = {
   '엄마체형 하지정체형':          'BC-1',
   '지방흡입후 재발형':            'BC-2',
   '운동할수록 말벅지형':          'BC-7',
+  '출산후 바람빠진 풍선형':       'BC-7',
   '골반틀어짐 승마살형':          'BC-8',
   // 상체형
   '목짧아지는 거북이형':          'BC-9',

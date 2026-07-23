@@ -5008,10 +5008,18 @@ app.post('/api/h/diagnosis', async (c) => {
       const vals = Object.values(obj).map(Number).filter(v => !isNaN(v))
       if (vals.length === 0) return null
       const maxVal = Math.max(...vals)
-      // 이미 0~100 범위면 그대로 반환 (재진입 방지)
-      if (maxVal >= 50) {
+
+      // [v2.1] 스케일 판단 개선: maxVal>=50 휴리스틱 대신 실제 키 구조 기반 판단
+      // 축 키(A01~A10)가 존재하는 경우, 값이 모두 정수이고 최소 1개라도 10 초과이면
+      // 이미 0~100 스케일로 저장된 것으로 판단 (백엔드 정규화 완료 상태)
+      const hasAxisKeys = Object.keys(obj).some(k => /^A\d{2}$/.test(k))
+      const anyAbove10 = vals.some(v => v > 10)
+      const isAlready0to100 = hasAxisKeys ? anyAbove10 : (maxVal >= 50)
+
+      if (isAlready0to100) {
+        // 이미 0~100 범위 — 클램프만 적용
         const result: Record<string, number> = {}
-        Object.entries(obj).forEach(([k, v]) => { result[k] = Math.round(Number(v)) })
+        Object.entries(obj).forEach(([k, v]) => { result[k] = Math.min(100, Math.max(0, Math.round(Number(v)))) })
         return result
       }
       // 0~10(또는 소수점) 스케일 → 0~100으로 변환
