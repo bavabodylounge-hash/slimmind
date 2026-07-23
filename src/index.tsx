@@ -2667,10 +2667,8 @@ app.get('/h/:code', async (c) => {
     ref_code: ${JSON.stringify(rawCode)},
     survey_category: 'hospital'
   };
-  // CSS 변수 즉시 적용 (병원용 연보라 기본)
-  document.documentElement.style.setProperty('--c1', ${JSON.stringify(bColor)});
-  document.documentElement.style.setProperty('--c2', ${JSON.stringify(bColor)});
-  document.documentElement.style.setProperty('--c3', ${JSON.stringify(bColor)});
+  // brand_color는 --brand-color 전용 변수에만 주입 (--c1/c2/c3는 원본 보라색 유지)
+  document.documentElement.style.setProperty('--brand-color', ${JSON.stringify(bColor)});
 </script>`
 
   // ref_code 자동 연동 스크립트 (병원용 질문지 내부 변수 세팅)
