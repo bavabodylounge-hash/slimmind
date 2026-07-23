@@ -6685,7 +6685,7 @@ try{ ['log','info','warn','debug'].forEach(function(k){ console[k]=function(){};
 //  갱년기·부종 특이사항 포함
 // ════════════════════════════════════════════════════════════════
 
-const BC_DEFINITIONS = {
+var BC_DEFINITIONS = {
 
   'BC-01': {
     code: 'BC-01',
@@ -7613,7 +7613,7 @@ const BC_DEFINITIONS = {
 // ────────────────────────────────────────────────────────────────
 //  부종 전용 프로토콜 (BC 코드별 edema_level 기반)
 // ────────────────────────────────────────────────────────────────
-const EDEMA_PROTOCOL = {
+var EDEMA_PROTOCOL = {
   // 1단계: 경미 (edema_level 1~2)
   mild: {
     label: '경미한 부종',
@@ -7665,7 +7665,7 @@ const EDEMA_PROTOCOL = {
 // ────────────────────────────────────────────────────────────────
 //  갱년기 특별 모드
 // ────────────────────────────────────────────────────────────────
-const MENOPAUSE_PROTOCOL = {
+var MENOPAUSE_PROTOCOL = {
   description: '에스트로겐 감소로 인한 대사 변화. 일반 다이어트 접근과 전략이 달라야 합니다.',
 
   common_challenges: [
@@ -7727,7 +7727,7 @@ const MENOPAUSE_PROTOCOL = {
 // ────────────────────────────────────────────────────────────────
 //  병적 요소별 다이어트 주의사항
 // ────────────────────────────────────────────────────────────────
-const MEDICAL_CONDITIONS = {
+var MEDICAL_CONDITIONS = {
   diabetes: {
     label: '당뇨 (2형)',
     icon: '🩸',
@@ -7924,7 +7924,7 @@ const MEDICAL_CONDITIONS = {
 // ────────────────────────────────────────────────────────────────
 //  개인정보 동의 필요 여부 판단
 // ────────────────────────────────────────────────────────────────
-const PRIVACY_POLICY = {
+var PRIVACY_POLICY = {
   required: true,
   reason: '설문은 건강 관련 민감 정보(체중, 질환, 생년월일 등)를 수집합니다. 개인정보보호법 제23조(민감정보 처리)에 따라 별도 동의가 필요합니다.',
   items: [
@@ -8218,48 +8218,48 @@ function detectBackground(answers) {
   // ── 병원 플로우 배열 헬퍼 ──
   // past_procedures, long_term_drugs, disease, q1_family, q8_trigger 는
   // 병원 플로우에서 숫자 배열로 넘어옴. "없음" 인덱스를 제외한 유효 항목이 있으면 true
-  const hasArr = (arr, noneIdx) => {
+  var hasArr = function(arr, noneIdx){
     if (!arr) return false;
     if (!Array.isArray(arr)) return false;
-    return arr.some(v => Number(v) !== noneIdx);
+    return arr.some(function(v) { return Number(v) !== noneIdx; });
   };
 
   // 1위. 갱년기·완경
   // 병원: q12_menopause 0=복부변환, 1=호르몬치료, 2=완경, 3=신호조금 → 0~2 = 갱년기
-  const menoNum = answers['q12_menopause'];
+  var menoNum = answers['q12_menopause'];
   if (menoNum !== undefined && menoNum !== null && Number(menoNum) <= 2) {
     return '갱년기';
   }
   // 에스테틱 호환: Q_MENOPAUSE 문자값
-  const meno = answers['Q_MENOPAUSE'] || answers['Q_meno'] || '';
+  var meno = answers['Q_MENOPAUSE'] || answers['Q_meno'] || '';
   if (meno && meno !== 'not_applicable' && meno !== 'none' && meno !== '') {
     return '갱년기';
   }
 
   // 2위. PCOS (다낭성 난소 증후군)
   // 병원: disease 배열 인덱스 0 = PCOS
-  const diseases = answers['disease'];
+  var diseases = answers['disease'];
   if (Array.isArray(diseases) && diseases.map(Number).includes(0)) return 'PCOS';
   // 호환 키
-  const pcos = answers['Q_PCOS'] || answers['Q_pcos'] || '';
+  var pcos = answers['Q_PCOS'] || answers['Q_pcos'] || '';
   if (pcos === 'yes' || pcos === 'Y' || pcos === '있음') return 'PCOS';
 
   // 3위. 시술 이력
   // 병원: past_procedures 배열, 5=없음
-  const procs = answers['past_procedures'];
+  var procs = answers['past_procedures'];
   if (hasArr(procs, 5)) return '시술';
   // 에스테틱 호환: Q21, Q_surgery 문자값
-  const surgery = answers['Q21'] || answers['Q_surgery'] || '';
+  var surgery = answers['Q21'] || answers['Q_surgery'] || '';
   if (surgery && surgery !== 'none' && surgery !== '없음' && surgery !== '') return '시술';
 
   // 4위. 약물 복용력
   // 병원: long_term_drugs 배열, 6=없음  /  appetite_suppressant 0=여러번,1=한두번,2=없음
-  const drugs = answers['long_term_drugs'];
+  var drugs = answers['long_term_drugs'];
   if (hasArr(drugs, 6)) return '약물';
-  const appetiteN = answers['appetite_suppressant'];
+  var appetiteN = answers['appetite_suppressant'];
   if (appetiteN !== undefined && appetiteN !== null && Number(appetiteN) <= 1) return '약물';
   // 에스테틱 호환: Q22, Q_drug 문자값
-  const drug = answers['Q22'] || answers['Q_drug'] || '';
+  var drug = answers['Q22'] || answers['Q_drug'] || '';
   if (drug && drug !== 'none' && drug !== '없음' && drug !== '') {
     if (String(drug).includes('번아웃') || String(drug).includes('부신')) return '번아웃';
     return '약물';
@@ -8267,22 +8267,22 @@ function detectBackground(answers) {
 
   // 5위. 출산 경험
   // 병원: q11_event 0=출산후체형변화(실제 변화 있음)만 '출산' → 1=변화없음은 제외
-  const q11 = answers['q11_event'];
+  var q11 = answers['q11_event'];
   if (q11 !== undefined && q11 !== null && Number(q11) === 0) return '출산'; // ★ <= 1 → === 0 으로 수정 (체형변화 있는 경우만)
   // 호환 키
-  const birth = answers['Q3'] || answers['birth_history'] || answers['Q_birth'] || '';
+  var birth = answers['Q3'] || answers['birth_history'] || answers['Q_birth'] || '';
   if (birth === 'yes' || birth === 'Y' || birth === '있음' || birth === '경험있음') return '출산';
 
   // 6위. 가족력·유전
   // 병원: q1_family 배열 3=없음 제외  /  q2_parent 1=모계유전, 0/2=부계유전
-  const fam = answers['q1_family'];
+  var fam = answers['q1_family'];
   if (hasArr(fam, 3)) {
-    const q2 = answers['q2_parent'];
+    var q2 = answers['q2_parent'];
     if (q2 !== undefined && q2 !== null && Number(q2) === 1) return '모계유전';
     return '유전';
   }
   // 에스테틱 호환: Q_FAMILY 문자값
-  const family = answers['Q_FAMILY'] || answers['Q_family'] || answers['Q_heredity'] || '';
+  var family = answers['Q_FAMILY'] || answers['Q_family'] || answers['Q_heredity'] || '';
   if (family && family !== 'none' && family !== '없음' && family !== '') {
     if (String(family).includes('모') || String(family).includes('엄마') || String(family).includes('이모')) {
       return '모계유전';
@@ -8295,20 +8295,20 @@ function detectBackground(answers) {
   if (Array.isArray(diseases) && (diseases.map(Number).includes(1) || diseases.map(Number).includes(2))) {
     return '대사증후군';
   }
-  const diabetesRisk = answers['Q_diabetes'] || answers['Q_metabolic'] || '';
+  var diabetesRisk = answers['Q_diabetes'] || answers['Q_metabolic'] || '';
   if (diabetesRisk === 'yes' || diabetesRisk === 'Y' || diabetesRisk === '있음') return '대사증후군';
 
   // 8위. 번아웃
   // 병원: q8_trigger 배열 0=이직·과로(가장 흔한 번아웃 원인) 또는 1=이별충격 → 심리적 번아웃 신호
-  const trigger = answers['q8_trigger'];
+  var trigger = answers['q8_trigger'];
   if (Array.isArray(trigger) && (trigger.map(Number).includes(0) || trigger.map(Number).includes(1))) return '번아웃'; // ★ 0(이직과로) 추가
-  const burnout = answers['Q_burnout'] || answers['Q_stress_level'] || '';
+  var burnout = answers['Q_burnout'] || answers['Q_stress_level'] || '';
   if (burnout === 'severe' || burnout === '심각' || burnout === '극심') return '번아웃';
 
   // [v2.2] 9위. 냉증 (q5_cold=0: 냉증 있음)
   // A03(호르몬)·A02(림프순환) 높고 냉증이 있으면 '냉증' 배경 필터 추가
   // NICKNAME_TABLE에서 '냉증' 키를 지원하는 경로에서 '여름에도 시린 얼음장형'으로 분기
-  const coldVal = answers['q5_cold'];
+  var coldVal = answers['q5_cold'];
   if (coldVal !== undefined && coldVal !== null && Number(coldVal) === 0) return '냉증';
 
   return null; // 배경 필터 없음 → default 코드
@@ -8322,45 +8322,45 @@ function detectBackground(answers) {
 function computeNickname(axisScores, answers) {
   // ① 10개 원인축 점수 정렬 (Top1, Top2, Top3)
   // [v2.1] tie-breaking 안정화: 동점 시 축 번호 오름차순(A01 우선) — DB 키 삽입 순서 불확실성 제거
-  const sorted = Object.entries(axisScores)
-    .filter(([k]) => k.startsWith('A'))
-    .sort((a, b) => {
-      if (b[1] !== a[1]) return b[1] - a[1];          // 점수 내림차순
-      return a[0].localeCompare(b[0]);                 // 동점이면 축 번호 오름차순 (A01 < A02 ...)
-    });
+  var _allEntries = [];
+  for (var _k in axisScores) { if (_k.indexOf('A') === 0) _allEntries.push([_k, axisScores[_k]]); }
+  var sorted = _allEntries.sort(function(a, b) {
+    if (b[1] !== a[1]) return b[1] - a[1];
+    return a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0;
+  });
 
-  let top1 = sorted[0] ? sorted[0][0] : 'A07'; // 'A01'~'A10'
-  const top2 = sorted[1] ? sorted[1][0] : 'A08';
-  const top3 = sorted[2] ? sorted[2][0] : 'A01';
+  var top1 = sorted[0] ? sorted[0][0] : 'A07'; // 'A01'~'A10'
+  var top2 = sorted[1] ? sorted[1][0] : 'A08';
+  var top3 = sorted[2] ? sorted[2][0] : 'A01';
 
   // ② A10이 Top1이면 → 기질 설문 분기 플래그 + Top2로 닉네임 재결정
-  const isDispositionTop1 = (top1 === 'A10');
+  var isDispositionTop1 = (top1 === 'A10');
   if (isDispositionTop1) {
     // A10이 Top1 → Top2를 실질 Top1로 사용
     top1 = top2;
   }
 
   // ③ 배경 필터 감지
-  const background = detectBackground(answers);
+  var background = detectBackground(answers);
 
   // ④ NICKNAME_TABLE 3단계 룩업
-  const t1Entry = NICKNAME_TABLE[top1] || NICKNAME_TABLE['A07'];
-  const t2Entry = t1Entry[top2] || t1Entry['default'] || { default: '동시다발 다중악순환형' };
+  var t1Entry = NICKNAME_TABLE[top1] || NICKNAME_TABLE['A07'];
+  var t2Entry = t1Entry[top2] || t1Entry['default'] || { default: '동시다발 다중악순환형' };
 
   // 배경 필터 매칭: 정확히 일치하는 키 우선, 없으면 default
-  let nickname = t2Entry[background] || t2Entry['default'] || '동시다발 다중악순환형';
+  var nickname = t2Entry[background] || t2Entry['default'] || '동시다발 다중악순환형';
 
   // ⑤ 심층 설문 라우팅 결정 (Top1 축 기반)
-  const deepSurveyRoute = getDeepSurveyRoute(isDispositionTop1 ? 'A10' : top1);
+  var deepSurveyRoute = getDeepSurveyRoute(isDispositionTop1 ? 'A10' : top1);
 
   return {
-    nickname,
-    top1: isDispositionTop1 ? 'A10' : top1, // 원래 Top1 (A10 포함)
-    top1Actual: top1,  // 닉네임 결정에 실제 사용한 축
-    top2, top3,
-    background,
-    isDispositionTop1,
-    deepSurveyRoute,
+    nickname: nickname,
+    top1: isDispositionTop1 ? 'A10' : top1,
+    top1Actual: top1,
+    top2: top2, top3: top3,
+    background: background,
+    isDispositionTop1: isDispositionTop1,
+    deepSurveyRoute: deepSurveyRoute,
     sortedAxes: sorted,
   };
 }
@@ -8369,7 +8369,7 @@ function computeNickname(axisScores, answers) {
 // 6. Top1 축 → 심층 설문 라우팅 매핑
 // ──────────────────────────────────────────────
 function getDeepSurveyRoute(top1Axis) {
-  const routeMap = {
+  var routeMap = {
     'A01': { bcRef: 'BC-3', routeKey: 'BC3',  label: '혈당·내장지방 심층',   desc: 'BC-3 수박배형 심층 설문' },
     'A02': { bcRef: 'BC-1', routeKey: 'BC1',  label: '림프순환 심층',        desc: 'BC-1 코끼리다리형 심층 설문' },
     'A03': { bcRef: 'BC-6', routeKey: 'BC6',  label: '호르몬 심층',          desc: 'BC-6 야식부엉이형 심층 설문 (호르몬 파트)' },
@@ -8477,28 +8477,33 @@ var AXIS_11 = [
 // ──────────────────────────────────────────────
 function computeBCCode(axisScores, answers) {
   // ① 10개 축 점수 직접 정렬
-  const sortedAxes = Object.entries(axisScores)
-    .filter(([k]) => k.startsWith('A'))
-    .sort((a, b) => b[1] - a[1]);
+  var _axEntries = [];
+  for (var _ak in axisScores) { if (_ak.indexOf('A') === 0) _axEntries.push([_ak, axisScores[_ak]]); }
+  var sortedAxes = _axEntries.sort(function(a, b) { return b[1] - a[1]; });
 
   // ② computeNickname()으로 닉네임 + 배경 필터 + 라우팅 결정
-  const nicknameResult = computeNickname(axisScores, answers || {});
-  const { nickname, top1Actual, top2, top3, background, deepSurveyRoute } = nicknameResult;
+  var nicknameResult = computeNickname(axisScores, answers || {});
+  var nickname = nicknameResult.nickname;
+  var top1Actual = nicknameResult.top1Actual;
+  var top2 = nicknameResult.top2;
+  var top3 = nicknameResult.top3;
+  var background = nicknameResult.background;
+  var deepSurveyRoute = nicknameResult.deepSurveyRoute;
 
   // ③ 닉네임 → BC코드 역매핑
   // [v2.0] 미등록 닉네임 폴백: Top1 축 기반 동적 폴백 → BC-16(다중악순환)
-  const _TOP1_TO_BC_DEFAULT = {
+  var _TOP1_TO_BC_DEFAULT = {
     'A01':'BC-3','A02':'BC-1','A03':'BC-13','A04':'BC-7',
     'A05':'BC-5','A06':'BC-8','A07':'BC-14','A08':'BC-14',
     'A09':'BC-10','A10':'BC-16'
   };
-  const _fallbackBc = _TOP1_TO_BC_DEFAULT[top1Actual] || 'BC-16';
-  const masterKey = NICKNAME_TO_BC[nickname] || _fallbackBc;
-  const bcCode    = masterKey;
-  const bcMaster  = BC_MASTER[masterKey] || BC_MASTER['BC-16'] || BC_MASTER['BC-6'];
+  var _fallbackBc = _TOP1_TO_BC_DEFAULT[top1Actual] || 'BC-16';
+  var masterKey = NICKNAME_TO_BC[nickname] || _fallbackBc;
+  var bcCode    = masterKey;
+  var bcMaster  = BC_MASTER[masterKey] || BC_MASTER['BC-16'] || BC_MASTER['BC-6'];
 
   // ④ 기존 causalScores 호환용 (CAUSAL_AXIS_META 기반 8축)
-  const causalScores = {};
+  var causalScores = {};
   causalScores['약'] = Math.round(((axisScores['A08']||0)*0.7 + (axisScores['A09']||0)*0.3));
   causalScores['식'] = Math.round(((axisScores['A01']||0) + (axisScores['A05']||0)) / 2);
   causalScores['복'] = axisScores['A07'] || 0;
@@ -8508,10 +8513,12 @@ function computeBCCode(axisScores, answers) {
   causalScores['형'] = axisScores['A06'] || 0;
   causalScores['관'] = Math.round(((axisScores['A02']||0) + (axisScores['A04']||0)) / 2);
 
-  const sorted = Object.entries(causalScores).sort((a, b) => b[1] - a[1]);
-  const top1Legacy = sorted[0];
-  const top2Legacy = sorted[1];
-  const firstDomino = (CAUSAL_AXIS_META[top1Legacy[0]] && CAUSAL_AXIS_META[top1Legacy[0]].label) || '스트레스';
+  var _csEntries = [];
+  for (var _ck in causalScores) { _csEntries.push([_ck, causalScores[_ck]]); }
+  var sorted = _csEntries.sort(function(a, b) { return b[1] - a[1]; });
+  var top1Legacy = sorted[0];
+  var top2Legacy = sorted[1];
+  var firstDomino = (CAUSAL_AXIS_META[top1Legacy[0]] && CAUSAL_AXIS_META[top1Legacy[0]].label) || '스트레스';
 
   // ⑤ 4대 지표 — ★ 세션 4: 실제 나이·BC코드·다중축 반영 정교화
   // ─────────────────────────────────────────────────────────────
@@ -8556,7 +8563,7 @@ function computeBCCode(axisScores, answers) {
     + (_cbcBmi > 27 ? 2 : 0)
     + (_cbcRfl.indexOf('THYROID') >= 0 ? 3 : 0)
     + (_cbcRfl.indexOf('PCOS')    >= 0 ? 2 : 0);
-  const metaAge = Math.min(_cbcAge + 20, Math.max(_cbcAge - 2, Math.round(_metaAgeRaw)));
+  var metaAge = Math.min(_cbcAge + 20, Math.max(_cbcAge - 2, Math.round(_metaAgeRaw)));
 
   // 복부 위험도 (metaBelly):
   //   A01(인슐린)×7 + A05(스트레스)×3 + A08(식이)×2.5 + A06(수면)×2 + A04(근감소)×1.5 + A02(염증)×1
@@ -8573,7 +8580,7 @@ function computeBCCode(axisScores, answers) {
     + (_cbcRfl.indexOf('DIABETES')    >= 0 ? 8 : 0)
     + (_cbcRfl.indexOf('FATTY_LIVER') >= 0 ? 6 : 0)
     + (_cbcRfl.indexOf('PCOS')        >= 0 ? 4 : 0);
-  const metaBelly = Math.min(99, Math.max(10, Math.round(_metaBellyRaw)));
+  var metaBelly = Math.min(99, Math.max(10, Math.round(_metaBellyRaw)));
 
   // 호르몬 부하 (metaHormone):
   //   A03(갑상선)×6 + A10(호르몬)×5 + A07(자율신경)×4 + A05(스트레스)×3 + A01(인슐린)×2 + A06(수면)×1.5
@@ -8591,7 +8598,7 @@ function computeBCCode(axisScores, answers) {
     + (_isMeno ? 10 : 0)
     + (_cbcRfl.indexOf('THYROID') >= 0 ? 8 : 0)
     + (_cbcRfl.indexOf('PCOS')    >= 0 ? 7 : 0);
-  const metaHormone = Math.min(99, Math.max(10, Math.round(_metaHormRaw)));
+  var metaHormone = Math.min(99, Math.max(10, Math.round(_metaHormRaw)));
 
   // 체형 불균형 (metaBody):
   //   A06(수면)×6 + A02(염증)×4 + A04(근감소)×4 + A09(순환)×3 + A07(자율신경)×2 + A08(식이)×1.5
@@ -8605,22 +8612,20 @@ function computeBCCode(axisScores, answers) {
     + (axisScores['A08']||0) * 1.5
     + (_cbcRfl.indexOf('STEROID') >= 0 ? 6 : 0)
     + (_cbcRfl.indexOf('HTN')     >= 0 ? 4 : 0);
-  const metaBody = Math.min(99, Math.max(10, Math.round(_metaBodyRaw)));
+  var metaBody = Math.min(99, Math.max(10, Math.round(_metaBodyRaw)));
 
   // realAge를 metrics에 함께 저장 (renderP9에서 비교 문구 생성용)
-  const _metaRealAge = _cbcAge;
+  var _metaRealAge = _cbcAge;
 
   return {
-    // V3.1 신규
-    nickname,          // '스트레스성 야식부엉이형'
-    nicknameResult,    // computeNickname() 전체 결과
-    background,        // '갱년기'|'출산'|null ...
-    deepSurveyRoute,   // 심층설문 라우팅
-    // 기존 호환
-    bcCode, masterKey, bcMaster,
-    causalScores, sorted, top1: top1Legacy, top2: top2Legacy,
-    firstDomino,
-    metrics: { metaAge, metaBelly, metaHormone, metaBody, realAge: _metaRealAge },
+    nickname: nickname,
+    nicknameResult: nicknameResult,
+    background: background,
+    deepSurveyRoute: deepSurveyRoute,
+    bcCode: bcCode, masterKey: masterKey, bcMaster: bcMaster,
+    causalScores: causalScores, sorted: sorted, top1: top1Legacy, top2: top2Legacy,
+    firstDomino: firstDomino,
+    metrics: { metaAge: metaAge, metaBelly: metaBelly, metaHormone: metaHormone, metaBody: metaBody, realAge: _metaRealAge },
   };
 }
 
@@ -8832,15 +8837,15 @@ var TONE_DB = {
 // ──────────────────────────────────────────────
 function generatePrescription(bc_code, ohaeng_type, mbti_full) {
   // 처방 핵심 (기질 무관 공통)
-  const core = BC_PRESCRIPTION_DB[bc_code] || BC_PRESCRIPTION_DB['BC-6'];
+  var core = BC_PRESCRIPTION_DB[bc_code] || BC_PRESCRIPTION_DB['BC-6'];
 
   // 처방 톤 (기질별)
-  const ohaengTone = TONE_DB[ohaeng_type] || TONE_DB['목'];
-  const tone = ohaengTone[mbti_full] || ohaengTone['default'];
+  var ohaengTone = TONE_DB[ohaeng_type] || TONE_DB['목'];
+  var tone = ohaengTone[mbti_full] || ohaengTone['default'];
 
   // 닉네임 (BC_MASTER app_nickname 활용)
-  const bcMaster = BC_MASTER[bc_code] || BC_MASTER['BC-6'];
-  const nicknameDisplay = BC_TO_DEFAULT_NICKNAME[bc_code] || core.label;
+  var bcMaster = BC_MASTER[bc_code] || BC_MASTER['BC-6'];
+  var nicknameDisplay = BC_TO_DEFAULT_NICKNAME[bc_code] || core.label;
 
   return {
     // 핵심 처방 (BC 공통)
@@ -9066,9 +9071,9 @@ function getMbtiOhaengInsights(bcMaster, ohaengKey, mbtiType, axisScores, redFla
   var hasPCOS     = _rfl.indexOf('PCOS')     >= 0;
   var hasYOYO     = _rfl.indexOf('YOYO')     >= 0;
 
-  const ohaeng = SAJU_ELEMENT_DESC[ohaengKey] || SAJU_ELEMENT_DESC['목'];
-  const mbti   = MBTI_DESC[mbtiType] || MBTI_DESC['INFP'];
-  const bcCode = bcMaster.code;
+  var ohaeng = SAJU_ELEMENT_DESC[ohaengKey] || SAJU_ELEMENT_DESC['목'];
+  var mbti   = MBTI_DESC[mbtiType] || MBTI_DESC['INFP'];
+  var bcCode = bcMaster.code;
 
   // ── 인사이트 01: 과식 반복 원인 (A08/A01/DIABETES/A07 분기) ──
   var ins01_title, ins01_sub, ins01_medical, ins01_personal, ins01_warn, ins01_solution;
@@ -9201,7 +9206,7 @@ function getMbtiOhaengInsights(bcMaster, ohaengKey, mbtiType, axisScores, redFla
     ins03_solution = '지금 필요한 건 골반저근 이완과 횡격막 활성화로 &#8216;복강 내압&#8217;을 먼저 회복하는 것입니다. 이후 필라테스 코어 안정화 → 수영 순으로 단계적으로 진입합니다.';
   }
 
-  const insights = [
+  var insights = [
     {
       num: '01',
       title:    ins01_title,
@@ -9261,10 +9266,10 @@ function getCruelHistoryTriggers(userName, ohaengKey, mbtiType, gender, menopaus
   var hasSTEROID  = _rfl.indexOf('STEROID')     >= 0;
   var hasFATTY    = _rfl.indexOf('FATTY_LIVER') >= 0;
 
-  const ohaeng = SAJU_ELEMENT_DESC[ohaengKey] || SAJU_ELEMENT_DESC['목'];
-  const mbti   = MBTI_DESC[mbtiType] || MBTI_DESC['INFP'];
+  var ohaeng = SAJU_ELEMENT_DESC[ohaengKey] || SAJU_ELEMENT_DESC['목'];
+  var mbti   = MBTI_DESC[mbtiType] || MBTI_DESC['INFP'];
   // 이름만 (예: 김지현 → 지현)
-  const nm = (userName && userName.length >= 3) ? userName.slice(1) : (userName || '회원');
+  var nm = (userName && userName.length >= 3) ? userName.slice(1) : (userName || '회원');
 
   // ── 트리거 필드 설명 ──
   //  hook     : 카드 상단 한 줄 — "의지가 꺾인 게 아닙니다, ~한 겁니다"
@@ -9323,7 +9328,7 @@ function getCruelHistoryTriggers(userName, ohaengKey, mbtiType, gender, menopaus
       t01Title = _trigLabel + ' 이후 — ' + t01Title;
     }
   }
-  const trigger01 = {
+  var trigger01 = {
     num: '01',
     title: t01Title,
     hook: t01Hook,
@@ -9363,7 +9368,7 @@ function getCruelHistoryTriggers(userName, ohaengKey, mbtiType, gender, menopaus
     t02Reframe = '장 환경 재건이 최우선입니다. 프로바이오틱스(락토바실러스+비피도박테리움) + 프리바이오틱스(식이섬유 25g)로 마이크로바이옴을 재설정하면 3~4주 안에 대사 효율이 회복됩니다.';
   }
 
-  const trigger02 = {
+  var trigger02 = {
     num: '02',
     title: t02Title,
     hook: t02Hook,
@@ -9375,8 +9380,8 @@ function getCruelHistoryTriggers(userName, ohaengKey, mbtiType, gender, menopaus
 
   // ── 트리거 03: isMale(A04/A07 반영) / isMenopause(A03/THYROID/PCOS) / 일반여성(PCOS/A03) ──
   var trigger03;
-  const isMale = (gender === 'M' || gender === 'male' || gender === '남성' || gender === '남');
-  const isMenopause = (menopause && menopause !== 'not_applicable' && menopause !== 'none' && menopause !== null);
+  var isMale = (gender === 'M' || gender === 'male' || gender === '남성' || gender === '남');
+  var isMenopause = (menopause && menopause !== 'not_applicable' && menopause !== 'none' && menopause !== null);
 
   if (isMale) {
     // 남성 전용: A04(근감소) / A07(코르티솔) 반영
@@ -9716,13 +9721,12 @@ function computeNutrition(curWeight, goalWeight, lossPct, height, bcKey, axisSco
   var w1mul = rfl.indexOf('YOYO') >= 0 ? 1.0 : 0.9;
 
   return {
-    targetKcal,
-    carbG, proteinG, fatG,
-    carbPct, proteinPct, fatPct,
-    bmr, tdee, deficit,
-    activityFactor,
-    // 계산에 사용된 스펙 요약 (디버그용)
-    _usedSpec: { cw, gw, pct, h, ag, bf, mu, bc, activityFactor },
+    targetKcal: targetKcal,
+    carbG: carbG, proteinG: proteinG, fatG: fatG,
+    carbPct: carbPct, proteinPct: proteinPct, fatPct: fatPct,
+    bmr: bmr, tdee: tdee, deficit: deficit,
+    activityFactor: activityFactor,
+    _usedSpec: { cw: cw, gw: gw, pct: pct, h: h, ag: ag, bf: bf, mu: mu, bc: bc, activityFactor: activityFactor },
     weekVariants: (function(){
       // ── 회복기(1~2w) / 전환기(3~4w) ──
       var wv = [
@@ -10085,6 +10089,8 @@ var BC_ROADMAP_DB = {
       science_note: '갑상선 저하 체형에서 주당 0.5kg 이상 감량 시 T3 수치가 추가 하락합니다. 0.3~0.5kg/주 속도 유지 시 T3 수치를 보호하면서 체지방을 선택적으로 감량할 수 있습니다.',
       b2b: true,
     },
+  ],
+
   // ── BC-5: 바탕질 변성·지방 섬유화형 ──
   'BC-5': [
     {
@@ -10160,6 +10166,8 @@ var BC_ROADMAP_DB = {
       science_note: '4주 림프 드레나쥐 마사지(주 2회) + 항섬유화 식단 복합 프로토콜은 셀룰라이트 중증도 점수(CSS)를 평균 1.7포인트 개선합니다(Dermatology Research, 2021).',
       b2b: true,
     },
+  ],
+
   // ── BC-6: 부신 피로·자율신경 교란형 ──
   'BC-6': [
     {
@@ -10312,6 +10320,8 @@ var BC_ROADMAP_DB = {
       science_note: '산후 골반저근 재활+필라테스 4주 복합 프로그램은 허리 통증 53% 감소, 아랫배 돌출 1.8cm 개선, 삶의 질 점수 27% 향상을 보인 무작위 대조 시험이 있습니다(J Midwifery, 2020).',
       b2b: true,
     },
+  ],
+
   // ── BC-8: 알파 수용체 우세·하체 과발달형 ──
   'BC-8': [
     {
@@ -10387,6 +10397,8 @@ var BC_ROADMAP_DB = {
       science_note: '하체 알파-2 수용체 우세 체형에서 수영 주 3회 8주 수행 시 허벅지 둘레 평균 2.1cm 감소, 체지방 4.3% 감소가 보고되었습니다. 같은 기간 스쿼트 그룹에서는 허벅지 둘레가 오히려 1.2cm 증가했습니다.',
       b2b: true,
     },
+  ],
+
   // ── BC-9: 근감소성 이화작용·마른비만형 ──
   'BC-9': [
     {
@@ -10462,6 +10474,7 @@ var BC_ROADMAP_DB = {
       science_note: '근감소성 비만(근육↓+체지방↑)은 고단백 식단(1.6g/kg)과 근력 운동만으로 4주 내 체지방 1~2kg 감소+근육량 0.5~1kg 증가가 가능합니다. 유산소 단독 그룹 대비 근력+식단 복합 그룹에서 내장지방 감소 효과가 2.1배 높습니다.',
       b2b: true,
     },
+  ],
 
   // ── BC-10: 안쓰는 팔뚝 부종·순환 정체형 ──
   'BC-10': [
@@ -12181,9 +12194,9 @@ function computeBCCodeSafe(axisScores, answers) {
   var primary = computeBCCode(axisScores, answers || {});
 
   // ② 10개 축 점수 정렬 (실제 10D 축 기반)
-  var sortedAxes = Object.entries(axisScores)
-    .filter(function(kv) { return kv[0].startsWith('A'); })
-    .sort(function(a, b) { return b[1] - a[1]; });
+  var _saEntries = [];
+  for (var _saK in axisScores) { if (_saK.indexOf('A') === 0) _saEntries.push([_saK, axisScores[_saK]]); }
+  var sortedAxes = _saEntries.sort(function(a, b) { return b[1] - a[1]; });
 
   var top1Score = sortedAxes[0] ? sortedAxes[0][1] : 0;
   var top2Score = sortedAxes[1] ? sortedAxes[1][1] : 0;
@@ -12262,21 +12275,17 @@ var DISCLAIMER = '본 결과지는 바디코드 정밀 진단을 기반으로 �
 // ──────────────────────────────────────────────
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    // V3.1 신규
-    AXIS_10_META, NICKNAME_TABLE, NICKNAME_TO_BC, BC_TO_DEFAULT_NICKNAME,
-    BC_PRESCRIPTION_DB, TONE_DB,
-    computeNickname, detectBackground, getDeepSurveyRoute, generatePrescription,
-    // V4.1 신규 (PHASE 4-A/B)
-    BC_ROADMAP_DB, OHAENG_OVERLAY, NICKNAME_OVERLAY,
-    computeNutrition, getRoadmapWeeks,
-    // V4.2 신규 (TIER 2/3)
-    BC_EVIDENCE_DB, getEvidenceBadge,
-    computeBCCodeSafe, BORDERLINE_THRESHOLD,
-    // 기존 유지
-    BC_MASTER, CAUSAL_AXIS_META, AXIS_11,
-    SAJU_ELEMENT_DESC, MBTI_DESC,
-    SIMULATOR_METRICS, ROADMAP_WEEKS, DISCLAIMER,
-    computeBCCode, getMbtiOhaengInsights, getCruelHistoryTriggers,
+    AXIS_10_META: AXIS_10_META, NICKNAME_TABLE: NICKNAME_TABLE, NICKNAME_TO_BC: NICKNAME_TO_BC, BC_TO_DEFAULT_NICKNAME: BC_TO_DEFAULT_NICKNAME,
+    BC_PRESCRIPTION_DB: BC_PRESCRIPTION_DB, TONE_DB: TONE_DB,
+    computeNickname: computeNickname, detectBackground: detectBackground, getDeepSurveyRoute: getDeepSurveyRoute, generatePrescription: generatePrescription,
+    BC_ROADMAP_DB: BC_ROADMAP_DB, OHAENG_OVERLAY: OHAENG_OVERLAY, NICKNAME_OVERLAY: NICKNAME_OVERLAY,
+    computeNutrition: computeNutrition, getRoadmapWeeks: getRoadmapWeeks,
+    BC_EVIDENCE_DB: BC_EVIDENCE_DB, getEvidenceBadge: getEvidenceBadge,
+    computeBCCodeSafe: computeBCCodeSafe, BORDERLINE_THRESHOLD: BORDERLINE_THRESHOLD,
+    BC_MASTER: BC_MASTER, CAUSAL_AXIS_META: CAUSAL_AXIS_META, AXIS_11: AXIS_11,
+    SAJU_ELEMENT_DESC: SAJU_ELEMENT_DESC, MBTI_DESC: MBTI_DESC,
+    SIMULATOR_METRICS: SIMULATOR_METRICS, ROADMAP_WEEKS: ROADMAP_WEEKS, DISCLAIMER: DISCLAIMER,
+    computeBCCode: computeBCCode, getMbtiOhaengInsights: getMbtiOhaengInsights, getCruelHistoryTriggers: getCruelHistoryTriggers,
   };
 }
 
@@ -12610,7 +12619,7 @@ function demoData() {
 // ── 메인 렌더 ──────────────────
 /* ===== 기능 6: 1초 공유 Canvas 카드 ===== */
 // 전역 공유 상태
-let _shareData = null; // { bcCode, nickname, userName, pct, top1Axis }
+var _shareData = null; // { bcCode, nickname, userName, pct, top1Axis }
 
 // renderAll 이후 shareData 세팅 (renderP1 호출 시 연동)
 function shareSetData(bcCode, nickname, userName) {
@@ -12892,8 +12901,8 @@ async function shareNative() {
 /* ===== /기능 6 ===== */
 
 /* ===== 기능 8: 가족 코드 비교 ===== */
-const FC_KEY = 'slimmind_fc'; // localStorage 키: { result_id, family_code }
-let _fcResultId = null;       // 현재 result_id
+var FC_KEY = 'slimmind_fc'; // localStorage 키: { result_id, family_code }
+var _fcResultId = null;       // 현재 result_id
 
 // renderAll 후 result_id 세팅
 function fcInit(resultId) {
@@ -13037,17 +13046,17 @@ async function fcLoadGroup(code) {
 /* ===== /기능 8 ===== */
 
 /* ===== 기능 7: 축 랭킹 배지 ===== */
-const AXIS_COLORS = {
+var AXIS_COLORS = {
   A01:'#e05c3a', A02:'#3b82f6', A03:'#a78bfa',
   A04:'#34d399', A05:'#fbbf24', A06:'#f472b6',
   A07:'#fb923c', A08:'#60a5fa', A09:'#4ade80', A10:'#e879f9',
 };
-const AXIS_NAMES = {
+var AXIS_NAMES = {
   A01:'인슐린저항', A02:'림프순환', A03:'호르몬교란',
   A04:'근감소', A05:'소화기능', A06:'골격불균형',
   A07:'스트레스', A08:'심리식이', A09:'대사위험', A10:'기질성향',
 };
-const AXIS_ICONS = {
+var AXIS_ICONS = {
   A01:'🍬', A02:'💧', A03:'⚡', A04:'💪',
   A05:'🫁', A06:'<svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:var(--icsz,16px);height:var(--icsz,16px)"><path d="M8.6 15.4 15.4 8.6"/><path d="M8.6 15.4a2.3 2.3 0 1 0-3 3 2.3 2.3 0 1 0 3 3 2.3 2.3 0 0 0 3-3"/><path d="M15.4 8.6a2.3 2.3 0 1 0 3-3 2.3 2.3 0 1 0-3-3 2.3 2.3 0 0 0-3 3"/></svg>', A07:'😤', A08:'<svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:var(--icsz,16px);height:var(--icsz,16px)"><path d="M9.5 4.2a2.7 2.7 0 0 0-2.6 2.2 2.6 2.6 0 0 0-1.8 4.2A2.8 2.8 0 0 0 6.4 15a2.7 2.7 0 0 0 2.6 3.4h.5V4.2Z"/><path d="M14.5 4.2a2.7 2.7 0 0 1 2.6 2.2 2.6 2.6 0 0 1 1.8 4.2A2.8 2.8 0 0 1 17.6 15a2.7 2.7 0 0 1-2.6 3.4h-.5V4.2Z"/><path d="M12 4.2v14.2M12 21v-2.6"/></svg>', A09:'<svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:var(--icsz,16px);height:var(--icsz,16px)"><path d="M12 3.2s4.8 4.1 4.8 8.8a4.8 4.8 0 0 1-9.6 0c0-1.9 1-3.3 1.9-4.3.4 1.2 1.2 1.9 1.9 1.9 0-2.9 1-5.3 1-6.4Z"/></svg>', A10:'🌀',
 };
@@ -16832,7 +16841,7 @@ function _forceHideOverlay() {
     setTimeout(() => { ov.style.display = 'none'; }, 400);
   }
 }
-const _overlayKillTimer = setTimeout(_forceHideOverlay, 900);
+var _overlayKillTimer = setTimeout(_forceHideOverlay, 900);
 
 // ── 초기화 ──────────────────
 // ── 병원용 전용: __HOSPITAL_RESULT_ID__ → /api/h/result/:id 데이터 로드 ──
@@ -17391,7 +17400,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 // ══════════════════════════════════════════════
 // P7: 종합 요약 렌더 + 공유 함수
 // ══════════════════════════════════════════════
-let _p7Data = {};
+var _p7Data = {};
 
 function renderP7(userName, bcCode, bcMaster, metrics, ohaengType, mbtiType, fullCode, nicknameDisplay, prescription, data) {
   // 데이터 캐싱 (공유용)
@@ -18196,9 +18205,9 @@ function showCheckinHelp() {
 /* ══════════════════════════════════════════════════════════
    WOW FEATURES — 전역 데이터 & 공통 유틸
    ══════════════════════════════════════════════════════════ */
-let _wowData = {};
-let _dnaCurrentSkin = 'dark';
-let _wow3Triggers = [];
+var _wowData = {};
+var _dnaCurrentSkin = 'dark';
+var _wow3Triggers = [];
 
 /* ──────────────────────────────────────────
    WOW-1: BC DNA 공유 카드
@@ -18438,7 +18447,7 @@ function dnaDownload() {
 /* ──────────────────────────────────────────
    WOW-2: BC 변화 타임라인 그래프
    ────────────────────────────────────────── */
-let _wow2Chart = null;
+var _wow2Chart = null;
 
 function wow2Init() {
   const sid = new URLSearchParams(window.location.search).get('id')
@@ -18632,7 +18641,7 @@ function wow3CloseDetail() {
 /* ──────────────────────────────────────────
    WOW-4: 주간 미션 카드 (HTML 생성 함수 — renderP6 내에서 호출)
    ────────────────────────────────────────── */
-const WOW4_MISSIONS = {
+var WOW4_MISSIONS = {
   easy:   ['아침 공복에 물 한 잔 마시기', '저녁 식사 후 10분 산책하기', '취침 전 스트레칭 3분', '간식 대신 견과류 한 줌'],
   normal: ['탄수화물 저녁 절반 줄이기', '걷기 30분 + 공복 1시간', '단백질 2끼에 포함하기', '수면 11시 전 취침'],
   hard:   ['간헐적 단식 16:8 실천', '하루 단백질 체중×1.5g 달성', '저강도 운동 45분', '밀가루·설탕 하루 제로'],
@@ -22575,14 +22584,14 @@ function wow4Confetti() {
    WOW-5: 가족 BC 레이더 차트
    (fcResult 렌더 후 자동 호출)
    ────────────────────────────────────────── */
-let _wow5Chart = null;
-const BC_AXIS_RADAR = {
+var _wow5Chart = null;
+var BC_AXIS_RADAR = {
   'BC-1': [9,3,4,3,5,3], 'BC-2': [4,9,3,4,4,2], 'BC-3': [3,3,9,3,3,4],
   'BC-4': [4,3,3,9,3,3], 'BC-5': [3,4,3,3,9,3], 'BC-6': [3,3,4,3,3,9],
   'BC-7': [5,4,3,5,4,3], 'BC-8': [4,3,5,3,4,4], 'BC-9': [3,5,3,4,3,5],
 };
-const BC_AXIS_LABELS = ['스트레스축','인슐린축','갑상선축','호르몬축','에스트로겐축','장내환경축'];
-const RADAR_COLORS  = ['rgba(181,69,46,', 'rgba(90,110,58,', 'rgba(47,125,140,',
+var BC_AXIS_LABELS = ['스트레스축','인슐린축','갑상선축','호르몬축','에스트로겐축','장내환경축'];
+var RADAR_COLORS  = ['rgba(181,69,46,', 'rgba(90,110,58,', 'rgba(47,125,140,',
                        'rgba(201,138,60,', 'rgba(130,80,180,', 'rgba(80,160,180,'];
 
 function wow5RenderRadar(members) {
@@ -22660,7 +22669,7 @@ function wow5TryRender(groupData) {
 /* ──────────────────────────────────────────
    WOW-6: BC 보충제 궁합 체크리스트
    ────────────────────────────────────────── */
-const WOW6_SUPP_DB = {
+var WOW6_SUPP_DB = {
   'BC-1': { // 스트레스·코르티솔형
     good:    [{ icon:'🧲', name:'마그네슘', desc:'코르티솔 억제 · 부신 지원 · 수면 개선' },
               { icon:'<svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:var(--icsz,16px);height:var(--icsz,16px)"><path d="M12 21V11"/><path d="M12 14c-4 0-7-2.6-7-7 4.4 0 7 2.6 7 7Z"/><path d="M12.5 11.5c0-4 2.6-7 7-7 0 4.4-2.6 7-7 7Z"/></svg>', name:'아시와간다', desc:'스트레스 호르몬 30% 감소 임상 근거' },
@@ -22727,7 +22736,7 @@ const WOW6_SUPP_DB = {
 };
 
 // 보충제 체커 매핑 (선택 보충제 → 모든 BC 타입 궁합)
-const WOW6_CHECKER_MAP = {
+var WOW6_CHECKER_MAP = {
   protein:     { ok:['BC-4','BC-3','BC-7'], warn:['BC-5'], msg_ok:'근합성·대사 촉진에 적합한 보충제입니다. BC 타입에 잘 맞아요.', msg_warn:'단백질 보충제 자체는 좋지만 소이 단백질은 에스트로겐 축 자극 가능 — WPC/WPI 권장.' },
   omega3:      { ok:['BC-1','BC-5','BC-8','BC-9'], warn:[], msg_ok:'모든 BC 타입에 유익한 범용 보충제입니다. 계속 드세요.', msg_warn:'' },
   vitd:        { ok:['BC-3','BC-5','BC-6'], warn:[], msg_ok:'면역·갑상선·에스트로겐 균형에 도움이 됩니다.', msg_warn:'' },
@@ -22742,7 +22751,7 @@ const WOW6_CHECKER_MAP = {
 
 // ── 진단 → 영양 연결 근거 (각 BC가 어떤 증상축 때문에 이 영양을 필요로 하는가) ──
 // from: 결과지 인사이트/증상에서 도출된 "원인", 영양은 WOW6_SUPP_DB.good에서 가져옴
-const P3_NUTRI_REASON = {
+var P3_NUTRI_REASON = {
   'BC-1': ['코르티솔 과잉', '부신 피로', '수면 분절'],
   'BC-2': ['혈당 스파이크', '인슐린 저항', '식후 졸림'],
   'BC-3': ['대사 저하', '갑상선 전환 부족', '체온 저하'],
@@ -22755,7 +22764,7 @@ const P3_NUTRI_REASON = {
 };
 
 // 자가 체크용 영양제 목록 (아이콘 포함 — 커스텀 칩)
-const P3_SELF_SUPPS = [
+var P3_SELF_SUPPS = [
   { key:'protein',    icon:'💪', nm:'단백질' },
   { key:'omega3',     icon:'🐟', nm:'오메가3' },
   { key:'vitd',       icon:'⚡', nm:'비타민D' },
