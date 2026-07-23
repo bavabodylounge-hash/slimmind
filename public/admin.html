@@ -1188,7 +1188,7 @@ async function doLogin() {
   btn.disabled = false;
 
   if (!data || !data.token) {
-    showErr(data?.error || '로그인 실패');
+    showErr((data && data.error) || '로그인 실패');
     return;
   }
   if (data.role !== 'MASTER') {
@@ -1400,7 +1400,7 @@ function navigateTo(page) {
 async function impersonateLogin(code) {
   try {
     const res = await api('GET', `/admin/impersonate/${code}`);
-    if (!res?.token) { toast('대리접속 실패: ' + (res?.error || '알 수 없는 오류'), 'error'); return; }
+    if (!(res && res.token)) { toast('대리접속 실패: ' + ((res && res.error) || '알 수 없는 오류'), 'error'); return; }
     // 해당 역할 localStorage 키에 저장
     if (res.role === 'B2B_PARTNER') {
       localStorage.setItem('sm_b2b_token', res.token);
@@ -1433,7 +1433,7 @@ async function loadDashboard() {
   ]);
 
   // 알림 배지 업데이트
-  const unreadCount = notifData?.unread_count || 0;
+  const unreadCount = (notifData && notifData.unread_count) || 0;
   const badge = document.getElementById('adminNotifBadge');
   const topBadge = document.getElementById('topbar-notif-count');
   if (badge) { badge.style.display = unreadCount > 0 ? '' : 'none'; badge.textContent = unreadCount; }
@@ -1441,10 +1441,10 @@ async function loadDashboard() {
 
   if (!data) return;
   const { kpi, recent_results, bc_distribution } = data;
-  const summary = monthReport?.summary || {};
-  const trend = monthReport?.monthly_trend || [];
-  const consultants = (consData?.consultants || []).filter(c => c.code !== 'MASTER');
-  const partners = (b2bData?.partners || []);
+  const summary = (monthReport && monthReport.summary) || {};
+  const trend = (monthReport && monthReport.monthly_trend) || [];
+  const consultants = ((consData && consData.consultants) || []).filter(c => c.code !== 'MASTER');
+  const partners = ((b2bData && b2bData.partners) || []);
   const today = new Date().toISOString().slice(0,10);
 
   // KPI 성장률
@@ -1554,7 +1554,7 @@ async function loadDashboard() {
 
   const recentRows = recent_results.map(r => `
     <tr>
-      <td style="font-size:11px;color:var(--muted);font-family:monospace">${r.id?.slice(0,8)}…</td>
+      <td style="font-size:11px;color:var(--muted);font-family:monospace">${r.(id && id.slice)(0,8)}…</td>
       <td><span style="font-weight:600">${r.user_name || '-'}</span></td>
       <td><span style="background:${BC_COLORS[r.bc_primary]||'#888'};color:#fff;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700">${r.bc_primary||'-'}</span></td>
       <td><span style="font-size:12px;color:var(--muted)">${r.consultant_code || '미배정'}</span></td>
@@ -1564,7 +1564,7 @@ async function loadDashboard() {
   `).join('');
 
   // 월별 트렌드 데이터
-  const trendLabels = trend.map(t => t.month?.slice(5) || '');
+  const trendLabels = trend.map(t => t.(month && month.slice)(5) || '');
   const trendData = trend.map(t => t.count || 0);
 
   // BC 분포 Top 8
@@ -1802,7 +1802,7 @@ function openAddConsultant() {
 
 async function openEditConsultant(code) {
   const data = await api('GET', `/admin/consultants?search=${code}`);
-  const c = data?.consultants?.find(x => x.code === code);
+  const c = (data && data.consultants||"").find(x => x.code === code);
   if (!c) return;
   editingConsCode = code;
   document.getElementById('modal-cons-title').textContent = `${code} 수정`;
@@ -1813,7 +1813,7 @@ async function openEditConsultant(code) {
   document.getElementById('f-email').value = c.email || '';
   document.getElementById('f-job').value = c.job_type || '';
   document.getElementById('f-grade').value = c.grade || '일반';
-  document.getElementById('f-sub-end').value = c.subscription_end?.slice(0,10) || '';
+  document.getElementById('f-sub-end').value = c.(subscription_end && subscription_end.slice)(0,10) || '';
   document.getElementById('f-memo').value = c.memo || '';
   document.getElementById('f-edit-code').value = code;
   openModal('modal-consultant');
@@ -1824,8 +1824,8 @@ async function saveConsultant() {
   const isEdit = document.getElementById('f-is-edit').value === '1';
   const email = document.getElementById('f-email').value.trim();
   if (!isEdit && !email) { toast('이메일은 필수입니다.', 'error'); return; }
-  const customCode = document.getElementById('f-custom-code')?.value.trim().toUpperCase() || '';
-  const customPw = document.getElementById('f-custom-pw')?.value.trim() || '';
+  const customCode = document.getElementById('f-custom-code'||{}).value.trim().toUpperCase() || '';
+  const customPw = document.getElementById('f-custom-pw'||{}).value.trim() || '';
   const body = {
     name: document.getElementById('f-name').value.trim(),
     email,
@@ -1847,12 +1847,12 @@ async function saveConsultant() {
     loadConsultants();
   } else {
     const res = await api('POST', '/admin/consultants', body);
-    if (res?.success) {
+    if ((res && res.success)) {
       closeModal('modal-consultant');
       showRegisteredPopup(res.code, res.initialPassword || res.message);
       loadConsultants();
     } else {
-      toast(res?.message || '등록 실패', 'error');
+      toast((res && res.message) || '등록 실패', 'error');
     }
   }
 }
@@ -2469,7 +2469,7 @@ async function markCouponUsed(id, code) {
       toast(`쿠폰 ${code} 사용 처리 완료`, 'success');
       loadCoupons();
     } else {
-      toast('처리 실패: ' + (res?.error || '알 수 없는 오류'), 'error');
+      toast('처리 실패: ' + ((res && res.error) || '알 수 없는 오류'), 'error');
     }
   } catch(e) {
     toast('오류: ' + e.message, 'error');
@@ -2777,7 +2777,7 @@ async function saveBcCode() {
     change_note: document.getElementById('bc-change-note').value,
   };
   const res = await api('PUT', `/admin/bc-codes/${code}`, body);
-  if (res?.success) {
+  if ((res && res.success)) {
     toast(`${code} 처방 저장 완료`, 'success');
     closeModal('modal-bc');
     loadBcCodes();
@@ -2819,7 +2819,7 @@ async function loadBcLibrary(filterCode='') {
 
   const data = await api('GET', '/bc/list');
   if (!data || !data.ok) {
-    document.getElementById('bc-cards-area').innerHTML = `<div style="color:red;padding:40px">오류: ${data?.error||'로드 실패'}</div>`;
+    document.getElementById('bc-cards-area').innerHTML = `<div style="color:red;padding:40px">오류: ${(data && data.error)||'로드 실패'}</div>`;
     return;
   }
 
@@ -2829,7 +2829,7 @@ async function loadBcLibrary(filterCode='') {
 }
 
 function renderBcCards(list, filterCode='') {
-  const search = (document.getElementById('bc-search')?.value || '').toLowerCase();
+  const search = (document.getElementById('bc-search'||{}).value || '').toLowerCase();
   const filtered = list.filter(bc => {
     if (filterCode && bc.bc_code !== filterCode) return false;
     if (search) {
@@ -3002,8 +3002,8 @@ async function loadAdminCheckAlerts() {
   }
 
   const data = await api('GET', '/admin/check-alerts?unread_only=1&type=missed_3days').catch(() => null);
-  const alerts = data?.alerts || [];
-  const counts = data?.counts || {};
+  const alerts = (data && data.alerts) || [];
+  const counts = (data && data.counts) || {};
 
   if (!alerts.length) {
     alertPanel.innerHTML = '';
@@ -3014,7 +3014,7 @@ async function loadAdminCheckAlerts() {
     const ts = a.triggered_at ? a.triggered_at.slice(0,10) : '—';
     return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#fff;border-radius:8px;margin-bottom:6px;border:1px solid #f0ece6;">
       <span style="font-size:13px;">🔴</span>
-      <div style="flex:1;font-size:12px;font-weight:700;color:#241c14;">${a.user_name||a.session_id?.slice(0,8)}</div>
+      <div style="flex:1;font-size:12px;font-weight:700;color:#241c14;">${a.user_name||a.(session_id && session_id.slice)(0,8)}</div>
       <div style="font-size:11px;color:#8a7e66;">담당: ${a.ref_code||'—'}</div>
       <div style="font-size:11px;color:#b5452e;">${ts}</div>
     </div>`;
@@ -3049,9 +3049,9 @@ async function adminMarkAllCheckAlertsRead() {
 let _dcDays = 7, _dcConsultant = '', _dcSignal = '', _dcSelected = new Set();
 
 async function loadDailyChecks(days, consultantFilter, signalFilter) {
-  days             = days             ?? _dcDays;
-  consultantFilter = consultantFilter ?? _dcConsultant;
-  signalFilter     = signalFilter     ?? _dcSignal;
+  days             = days             ||  _dcDays;
+  consultantFilter = consultantFilter ||  _dcConsultant;
+  signalFilter     = signalFilter     ||  _dcSignal;
   _dcDays = days; _dcConsultant = consultantFilter; _dcSignal = signalFilter;
   _dcSelected.clear();
 
@@ -3064,9 +3064,9 @@ async function loadDailyChecks(days, consultantFilter, signalFilter) {
     api('GET', '/admin/consultants').catch(() => null)
   ]);
 
-  const clients     = checkData?.clients || [];
-  const stats       = checkData?.stats   || {};
-  const consultants = consData?.consultants || [];
+  const clients     = (checkData && checkData.clients) || [];
+  const stats       = (checkData && checkData.stats)   || {};
+  const consultants = (consData && consData.consultants) || [];
 
   // 신호등 뱃지
   const SIG = {
@@ -3236,7 +3236,7 @@ async function _dcSendReminder() {
   let ok=0, fail=0;
   for (const sid of _dcSelected) {
     const res = await api('POST', '/admin/daily-check/remind', { session_id: sid }).catch(() => null);
-    if (res?.ok) ok++; else fail++;
+    if ((res && res.ok)) ok++; else fail++;
   }
   alert(`발송 완료: ${ok}명 성공${fail?', '+fail+'명 실패':''}`);
   _dcClearSel();
@@ -3248,11 +3248,11 @@ async function _adminMainComment(sessionId, userName) {
   if (!inp) return;
   const txt = inp.value.trim();
   if (!txt) { inp.focus(); return; }
-  const btn = inp.nextElementSibling?.querySelector('button') || inp.closest('div').querySelector('button');
+  const btn = inp.(nextElementSibling && nextElementSibling.querySelector)('button') || inp.closest('div').querySelector('button');
   if (btn) { btn.disabled = true; btn.textContent = '...'; }
   const today = new Date().toISOString().slice(0,10);
   const res = await api('POST', '/coaching-comment', { session_id: sessionId, comment: txt, check_date: today }).catch(()=>null);
-  if (res?.ok) {
+  if ((res && res.ok)) {
     inp.value = '';
     await _adminRefreshMainCmtList(sessionId);
   } else { alert('전송 실패. 다시 시도해주세요.'); }
@@ -3264,7 +3264,7 @@ async function _adminRefreshMainCmtList(sessionId) {
   const listEl = document.getElementById(`admin-cmt-main-list-${sessionId}`);
   if (!listEl) return;
   const cmtData = await api('GET', `/coaching-comment/${sessionId}?limit=20`).catch(()=>null);
-  const cmts = cmtData?.comments || [];
+  const cmts = (cmtData && cmtData.comments) || [];
   listEl.innerHTML = cmts.length ? cmts.map(cm => {
     const ts = cm.created_at ? cm.created_at.slice(0,16).replace('T',' ') : '';
     const dateBadge = cm.check_date
@@ -3315,12 +3315,12 @@ async function _showDcDayPanel(sessionId, userName, dateKey, checkData, consulta
   let cmtHtml = '';
   try {
     const cmtData = await api('GET', `/coaching-comment/${sessionId}?limit=5`).catch(()=>null);
-    const cmts = cmtData?.comments || [];
+    const cmts = (cmtData && cmtData.comments) || [];
     const todayCmts = cmts.filter(cm => cm.check_date === dateKey);
     cmtHtml = todayCmts.length
       ? todayCmts.map(cm=>`
           <div style="background:#eef4e0;border-radius:10px;padding:10px 12px;margin-bottom:8px;position:relative;">
-            <div style="font-size:10px;color:#5a6e3a;font-weight:800;margin-bottom:3px;">💬 ${cm.created_at?.slice(0,10)||''}</div>
+            <div style="font-size:10px;color:#5a6e3a;font-weight:800;margin-bottom:3px;">💬 ${cm.(created_at && created_at.slice)(0,10)||''}</div>
             <div style="font-size:13px;line-height:1.6;">${cm.comment}</div>
             <button onclick="_adminDeleteComment(${cm.id},'${sessionId}','${dateKey}')" style="position:absolute;top:6px;right:8px;background:none;border:none;cursor:pointer;color:#bbb;font-size:14px;">✕</button>
           </div>`).join('')
@@ -3375,17 +3375,17 @@ async function _adminPostComment(sessionId, dateKey, userName) {
   const txt = inp.value.trim();
   if (!txt) return;
   const res = await api('POST', '/coaching-comment', { session_id: sessionId, comment: txt, check_date: dateKey }).catch(()=>null);
-  if (res?.ok) {
+  if ((res && res.ok)) {
     inp.value = '';
     // 코멘트 목록 새로고침
     const cmtData = await api('GET', `/coaching-comment/${sessionId}?limit=5`).catch(()=>null);
-    const cmts = (cmtData?.comments||[]).filter(cm=>cm.check_date===dateKey);
+    const cmts = ((cmtData && cmtData.comments)||[]).filter(cm=>cm.check_date===dateKey);
     const listEl = document.getElementById(`admin-cmt-list-${dateKey}`);
     if (listEl) {
       listEl.innerHTML = cmts.length
         ? cmts.map(cm=>`
             <div style="background:#eef4e0;border-radius:10px;padding:10px 12px;margin-bottom:8px;position:relative;">
-              <div style="font-size:10px;color:#5a6e3a;font-weight:800;margin-bottom:3px;">💬 ${cm.created_at?.slice(0,10)||''}</div>
+              <div style="font-size:10px;color:#5a6e3a;font-weight:800;margin-bottom:3px;">💬 ${cm.(created_at && created_at.slice)(0,10)||''}</div>
               <div style="font-size:13px;line-height:1.6;">${cm.comment}</div>
               <button onclick="_adminDeleteComment(${cm.id},'${sessionId}','${dateKey}')" style="position:absolute;top:6px;right:8px;background:none;border:none;cursor:pointer;color:#bbb;font-size:14px;">✕</button>
             </div>`).join('')
@@ -3400,12 +3400,12 @@ async function _adminDeleteComment(id, sessionId, dateKey) {
   if (!confirm('코멘트를 숨기겠습니까?')) return;
   await api('DELETE', `/coaching-comment/${id}`).catch(()=>null);
   const cmtData = await api('GET', `/coaching-comment/${sessionId}?limit=5`).catch(()=>null);
-  const cmts = (cmtData?.comments||[]).filter(cm=>cm.check_date===dateKey);
+  const cmts = ((cmtData && cmtData.comments)||[]).filter(cm=>cm.check_date===dateKey);
   const listEl = document.getElementById(`admin-cmt-list-${dateKey}`);
   if (listEl) listEl.innerHTML = cmts.length
     ? cmts.map(cm=>`
         <div style="background:#eef4e0;border-radius:10px;padding:10px 12px;margin-bottom:8px;position:relative;">
-          <div style="font-size:10px;color:#5a6e3a;font-weight:800;margin-bottom:3px;">💬 ${cm.created_at?.slice(0,10)||''}</div>
+          <div style="font-size:10px;color:#5a6e3a;font-weight:800;margin-bottom:3px;">💬 ${cm.(created_at && created_at.slice)(0,10)||''}</div>
           <div style="font-size:13px;line-height:1.6;">${cm.comment}</div>
           <button onclick="_adminDeleteComment(${cm.id},'${sessionId}','${dateKey}')" style="position:absolute;top:6px;right:8px;background:none;border:none;cursor:pointer;color:#bbb;font-size:14px;">✕</button>
         </div>`).join('')
@@ -3418,8 +3418,8 @@ async function loadDailyCheckDetail(sessionId, userName, sig) {
   detail.innerHTML = `<div style="text-align:center;padding:20px;color:var(--muted);"><i class="fas fa-circle-notch fa-spin"></i></div>`;
 
   const data = await api('GET', `/admin/daily-checks/${sessionId}`).catch(() => null);
-  const checks  = data?.checks     || [];
-  const wkStats = data?.week_stats || [];
+  const checks  = (data && data.checks)     || [];
+  const wkStats = (data && data.week_stats) || [];
 
   if (!checks.length) {
     detail.innerHTML = `<div style="background:#fff;border:1.5px solid #e8ddd0;border-radius:14px;padding:30px;text-align:center;color:var(--muted);font-size:13px;">아직 체크 데이터가 없습니다</div>`;
@@ -3470,8 +3470,8 @@ async function loadDailyCheckDetail(sessionId, userName, sig) {
     }
     const wn = w+1;
     const ws = wkStats.find(x=>x.week_number===wn);
-    const wr = ws?.rate||0;
-    const exS = ws?.ex||0, diS = ws?.di||0, reS = ws?.re||0;
+    const wr = (ws && ws.rate)||0;
+    const exS = (ws && ws.ex)||0, diS = (ws && ws.di)||0, reS = (ws && ws.re)||0;
     weekRows.push(`
       <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
         <span style="font-size:10px;font-weight:800;color:#8a7e66;width:28px;flex-shrink:0;">${wn}주</span>
@@ -3563,10 +3563,10 @@ async function loadAnalytics() {
     api('GET', '/admin/dashboard').catch(() => null),
   ]);
 
-  const summary = monthly?.summary || {};
-  const trend = monthly?.monthly_trend || [];
-  const bcDistData = monthly?.bc_distribution || bcDist?.bc_distribution || [];
-  const consRanking = monthly?.consultant_ranking || [];
+  const summary = (monthly && monthly.summary) || {};
+  const trend = (monthly && monthly.monthly_trend) || [];
+  const bcDistData = (monthly && monthly.bc_distribution) || (bcDist && bcDist.bc_distribution) || [];
+  const consRanking = (monthly && monthly.consultant_ranking) || [];
   const growthRate = summary.growth_rate || 0;
   const growthColor = growthRate >= 0 ? 'var(--success)' : 'var(--danger)';
 
@@ -3623,7 +3623,7 @@ async function loadAnalytics() {
         <div class="card-title"><i class="fas fa-trophy" style="color:var(--warn)"></i> 이달 컨설턴트 실적 TOP 5</div>
         ${consRanking.length ? consRanking.map((c, i) => {
           const medals = ['🥇','🥈','🥉','4','5'];
-          const barW = consRanking[0]?.result_cnt > 0 ? Math.round(c.result_cnt / consRanking[0].result_cnt * 100) : 0;
+          const barW = (consRanking[0] && consRanking[0].result_cnt) > 0 ? Math.round(c.result_cnt / consRanking[0].result_cnt * 100) : 0;
           return `<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
             <div style="font-size:18px;width:28px;text-align:center">${medals[i]}</div>
             <div style="flex:1">
@@ -3698,7 +3698,7 @@ async function loadAnalytics() {
       new Chart(tCtx, {
         type: 'bar',
         data: {
-          labels: trend.map(t => t.month?.slice(5)||''),
+          labels: trend.map(t => t.(month && month.slice)(5)||''),
           datasets: [{
             label: '신규 고객',
             data: trend.map(t => t.count||0),
@@ -4240,8 +4240,8 @@ function genLink() {
 // ═════════════════════════════════════════════
 async function loadKakaoSettings() {
   const data = await api('GET', '/settings/kakao');
-  const configured = data?.configured;
-  const talkEnabled = data?.talk_enabled;
+  const configured = (data && data.configured);
+  const talkEnabled = (data && data.talk_enabled);
   document.getElementById('page-body').innerHTML = `
     <div class="card">
       <div class="card-title"><i class="fas fa-comment-dots" style="color:#FEE500"></i> 카카오 연동 설정</div>
@@ -4256,22 +4256,22 @@ async function loadKakaoSettings() {
           <h4 style="font-size:14px;font-weight:700;margin-bottom:16px;color:var(--text)">🔑 API 키 설정</h4>
           <div style="margin-bottom:14px">
             <label style="display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px">REST API 키</label>
-            <input type="password" id="kk-rest-key" placeholder="카카오 REST API 키 입력" value="${data?.rest_api_key||''}"
+            <input type="password" id="kk-rest-key" placeholder="카카오 REST API 키 입력" value="${(data && data.rest_api_key)||''}"
               style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;font-family:inherit;outline:none">
           </div>
           <div style="margin-bottom:14px">
             <label style="display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px">Admin 키</label>
-            <input type="password" id="kk-admin-key" placeholder="카카오 Admin 키 입력" value="${data?.admin_key||''}"
+            <input type="password" id="kk-admin-key" placeholder="카카오 Admin 키 입력" value="${(data && data.admin_key)||''}"
               style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;font-family:inherit;outline:none">
           </div>
           <div style="margin-bottom:14px">
             <label style="display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px">카카오 채널 ID</label>
-            <input type="text" id="kk-channel-id" placeholder="_xgCgsX (채널 고유 ID)" value="${data?.channel_id||''}"
+            <input type="text" id="kk-channel-id" placeholder="_xgCgsX (채널 고유 ID)" value="${(data && data.channel_id)||''}"
               style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;font-family:inherit;outline:none">
           </div>
           <div style="margin-bottom:18px">
             <label style="display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px">알림톡 센더키</label>
-            <input type="text" id="kk-sender-key" placeholder="알림톡 발송용 Sender Key" value="${data?.sender_key||''}"
+            <input type="text" id="kk-sender-key" placeholder="알림톡 발송용 Sender Key" value="${(data && data.sender_key)||''}"
               style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;font-family:inherit;outline:none">
           </div>
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
@@ -4342,11 +4342,11 @@ async function saveKakaoSettings() {
     talk_enabled: document.getElementById('kk-talk-enabled').checked
   };
   const res = await api('PUT', '/settings/kakao', body);
-  if (res?.success) {
+  if ((res && res.success)) {
     toast('✅ 카카오 설정이 저장되었습니다.', 'success');
     loadKakaoSettings();
   } else {
-    toast('저장 실패: ' + (res?.error || '오류'), 'error');
+    toast('저장 실패: ' + ((res && res.error) || '오류'), 'error');
   }
 }
 
@@ -4357,16 +4357,16 @@ async function sendKakaoTest() {
   const res = await api('POST', '/kakao/send', { phone, message, type: 'test' });
   const el = document.getElementById('kk-test-result');
   el.style.display = 'block';
-  if (res?.sent) {
+  if ((res && res.sent)) {
     el.style.color = '#16A34A';
     el.innerHTML = '✅ 발송 완료! (알림톡 API 경유)';
-  } else if (res?.clipboard_text) {
+  } else if ((res && res.clipboard_text)) {
     el.style.color = '#2563EB';
     el.innerHTML = `📋 API 미설정 — 클립보드 방식:<br><code style="word-break:break-all;font-size:11px">${res.clipboard_text}</code>`;
     navigator.clipboard.writeText(res.clipboard_text).catch(()=>{});
   } else {
     el.style.color = '#DC2626';
-    el.innerHTML = '❌ 오류: ' + (res?.error || '알 수 없는 오류');
+    el.innerHTML = '❌ 오류: ' + ((res && res.error) || '알 수 없는 오류');
   }
 }
 
@@ -4394,7 +4394,7 @@ async function loadAffiliatePlaces() {
       </div>
       <div style="display:flex;gap:10px;align-items:center">
         <div style="flex:1">
-          <label style="display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px">REST API 키 ${kakaoMapData?.enabled ? '<span style="color:#16a34a;font-weight:700">✅ 설정됨 ('+kakaoMapData.masked+')</span>' : '<span style="color:#dc2626">❌ 미설정</span>'}</label>
+          <label style="display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px">REST API 키 ${(kakaoMapData && kakaoMapData.enabled) ? '<span style="color:#16a34a;font-weight:700">✅ 설정됨 ('+kakaoMapData.masked+')</span>' : '<span style="color:#dc2626">❌ 미설정</span>'}</label>
           <input type="password" id="kakao-map-key" placeholder="카카오 REST API 키 (32자리)" autocomplete="off"
             style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box">
         </div>
@@ -4534,7 +4534,7 @@ async function loadAffPlaceList(cat) {
   if (!listEl) return;
   listEl.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted)"><i class="fas fa-circle-notch fa-spin"></i></div>';
   const data = await api('GET', '/admin/affiliate-places' + (cat ? '?category='+encodeURIComponent(cat) : '?status=active')).catch(()=>({ok:false,results:[]}));
-  const rows = data?.results || [];
+  const rows = (data && data.results) || [];
   if (!rows.length) {
     listEl.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted)">등록된 제휴업체가 없습니다.<br><button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="openAffiliateModal(null)">+ 첫 업체 추가하기</button></div>';
     return;
@@ -4562,22 +4562,22 @@ async function loadAffPlaceList(cat) {
 
 function openAffiliateModal(place) {
   document.getElementById('aff-modal-title').textContent = place ? '업체 수정' : '업체 추가';
-  document.getElementById('aff-f-id').value = place?.id || '';
-  document.getElementById('aff-f-name').value = place?.name || '';
-  document.getElementById('aff-f-cat').value = place?.category || PLACE_CATEGORIES[0];
-  document.getElementById('aff-f-icon').value = place?.icon || '';
-  document.getElementById('aff-f-desc').value = place?.description || '';
-  document.getElementById('aff-f-tag').value = place?.tag || '';
-  document.getElementById('aff-f-addr').value = place?.address || '';
-  document.getElementById('aff-f-lat').value = place?.lat || '';
-  document.getElementById('aff-f-lng').value = place?.lng || '';
-  document.getElementById('aff-f-phone').value = place?.phone || '';
-  document.getElementById('aff-f-priority').value = place?.priority ?? 5;
-  document.getElementById('aff-f-url').value = place?.homepage_url || '';
-  document.getElementById('aff-f-kakao-id').value = place?.kakao_place_id || '';
-  document.getElementById('aff-f-featured').checked = !!place?.is_featured;
+  document.getElementById('aff-f-id').value = (place && place.id) || '';
+  document.getElementById('aff-f-name').value = (place && place.name) || '';
+  document.getElementById('aff-f-cat').value = (place && place.category) || PLACE_CATEGORIES[0];
+  document.getElementById('aff-f-icon').value = (place && place.icon) || '';
+  document.getElementById('aff-f-desc').value = (place && place.description) || '';
+  document.getElementById('aff-f-tag').value = (place && place.tag) || '';
+  document.getElementById('aff-f-addr').value = (place && place.address) || '';
+  document.getElementById('aff-f-lat').value = (place && place.lat) || '';
+  document.getElementById('aff-f-lng').value = (place && place.lng) || '';
+  document.getElementById('aff-f-phone').value = (place && place.phone) || '';
+  document.getElementById('aff-f-priority').value = (place && place.priority) || 5;
+  document.getElementById('aff-f-url').value = (place && place.homepage_url) || '';
+  document.getElementById('aff-f-kakao-id').value = (place && place.kakao_place_id) || '';
+  document.getElementById('aff-f-featured').checked = !!(place && place.is_featured);
   // BC 코드: JSON 배열 → 쉼표 구분 문자열
-  const bc = place?.bc_codes;
+  const bc = (place && place.bc_codes);
   document.getElementById('aff-f-bc').value = bc ? (typeof bc === 'string' ? JSON.parse(bc) : bc).join(',') : '';
   document.getElementById('aff-modal').style.display = 'block';
 }
@@ -4606,23 +4606,23 @@ async function saveAffiliatePlace() {
   const method = id ? 'PUT' : 'POST';
   const endpoint = id ? `/admin/affiliate-places/${id}` : '/admin/affiliate-places';
   const res = await api(method, endpoint, body);
-  if (res?.ok) {
+  if ((res && res.ok)) {
     toast(id ? '✅ 업체가 수정되었습니다.' : '✅ 업체가 등록되었습니다.', 'success');
     document.getElementById('aff-modal').style.display = 'none';
     loadAffPlaceList(_affCurrentCat);
   } else {
-    toast('저장 실패: ' + (res?.error || '오류'), 'error');
+    toast('저장 실패: ' + ((res && res.error) || '오류'), 'error');
   }
 }
 
 async function deleteAffPlace(id, name) {
   if (!confirm(`"${name}" 업체를 삭제하시겠습니까?`)) return;
   const res = await api('DELETE', `/admin/affiliate-places/${id}`);
-  if (res?.ok) {
+  if ((res && res.ok)) {
     toast('🗑 업체가 삭제되었습니다.', 'success');
     loadAffPlaceList(_affCurrentCat);
   } else {
-    toast('삭제 실패: ' + (res?.error || '오류'), 'error');
+    toast('삭제 실패: ' + ((res && res.error) || '오류'), 'error');
   }
 }
 
@@ -4630,12 +4630,12 @@ async function saveKakaoMapKey() {
   const key = document.getElementById('kakao-map-key').value.trim();
   if (!key) { toast('API 키를 입력하세요.', 'error'); return; }
   const res = await api('PUT', '/settings/kakao-map', { kakao_rest_api_key: key });
-  if (res?.ok) {
+  if ((res && res.ok)) {
     toast('✅ 카카오 REST API 키가 저장되었습니다. 이제 결과지에서 주변 업체가 검색됩니다!', 'success');
     document.getElementById('kakao-map-key').value = '';
     loadAffiliatePlaces();
   } else {
-    toast('저장 실패: ' + (res?.error || '오류'), 'error');
+    toast('저장 실패: ' + ((res && res.error) || '오류'), 'error');
   }
 }
 
@@ -4659,7 +4659,7 @@ async function loadMonthlyReport() {
 }
 
 async function fetchMonthlyReport() {
-  const month = document.getElementById('report-month')?.value || '';
+  const month = document.getElementById('report-month'||{}).value || '';
   const url = month ? `/admin/monthly-report?month=${month}` : '/admin/monthly-report';
   const data = await api('GET', url);
   const body = document.getElementById('monthly-report-body');
@@ -4774,18 +4774,18 @@ async function fetchMonthlyReport() {
 }
 
 function copyReportText() {
-  const month = document.getElementById('report-month')?.value || '';
+  const month = document.getElementById('report-month'||{}).value || '';
   const text = `[SlimMind ${month} 월간 리포트]\n관리자 대시보드에서 확인하세요.\n${location.origin}/admin`;
   navigator.clipboard.writeText(text).then(() => toast('리포트 텍스트 복사 완료!', 'success'));
 }
 
 async function shareReportKakao() {
-  const month = document.getElementById('report-month')?.value || '';
+  const month = document.getElementById('report-month'||{}).value || '';
   const message = `[SlimMind ${month} 월간 리포트] 이번 달 분석 결과를 확인하세요.`;
   const res = await api('POST', '/kakao/send', { message, type: 'report', month });
-  if (res?.sent) {
+  if ((res && res.sent)) {
     toast('✅ 카카오 알림톡 발송 완료!', 'success');
-  } else if (res?.clipboard_text) {
+  } else if ((res && res.clipboard_text)) {
     navigator.clipboard.writeText(res.clipboard_text).catch(()=>{});
     toast('📋 클립보드에 복사되었습니다. 카카오톡에서 붙여넣기 하세요.', 'success');
   } else {
@@ -4941,8 +4941,8 @@ async function saveB2BPartner() {
   if (!editingB2BCode && !email) { toast('이메일은 필수입니다.', 'error'); return; }
 
   const hex = document.getElementById('b2b-color-hex').value.trim();
-  const customCodeRaw = (document.getElementById('b2b-custom-code')?.value || '').trim().toUpperCase();
-  const customPw = (document.getElementById('b2b-custom-pw')?.value || '').trim();
+  const customCodeRaw = (document.getElementById('b2b-custom-code'||{}).value || '').trim().toUpperCase();
+  const customPw = (document.getElementById('b2b-custom-pw'||{}).value || '').trim();
   // 질문지 분류 선택값
   const survCatEl = document.querySelector('input[name="b2b_survey_category"]:checked');
   const surveyCategory = survCatEl ? survCatEl.value : 'integrated';
@@ -4966,16 +4966,16 @@ async function saveB2BPartner() {
 
   if (editingB2BCode) {
     const res = await api('PUT', `/admin/b2b-partners/${editingB2BCode}`, body);
-    if (res?.success) {
+    if ((res && res.success)) {
       toast('B2B 파트너 정보가 수정되었습니다.', 'success');
       closeModal('modal-b2b');
       loadB2BPartners();
     } else {
-      toast(res?.error || '수정 실패', 'error');
+      toast((res && res.error) || '수정 실패', 'error');
     }
   } else {
     const res = await api('POST', '/admin/b2b-partners', body);
-    if (res?.success) {
+    if ((res && res.success)) {
       closeModal('modal-b2b');
       // 등록 완료 팝업
       const code = res.code;
@@ -5007,7 +5007,7 @@ async function saveB2BPartner() {
       openModal('modal-b2b-registered');
       loadB2BPartners();
     } else {
-      toast(res?.error || '등록 실패', 'error');
+      toast((res && res.error) || '등록 실패', 'error');
     }
   }
 }
@@ -5037,7 +5037,7 @@ async function loadAestheticPrograms() {
   listEl.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">로딩 중...</div>';
   try {
     const data = await api('GET', `/admin/aesthetic-programs?partner_code=${encodeURIComponent(_aestheticPartnerCode)}`);
-    const programs = Array.isArray(data) ? data : (data?.programs || []);
+    const programs = Array.isArray(data) ? data : ((data && data.programs) || []);
     if (!programs.length) {
       listEl.innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px;font-size:13px">등록된 프로그램이 없습니다.<br>아래 폼으로 추가해보세요.</div>';
       return;
@@ -5064,27 +5064,27 @@ async function loadAestheticPrograms() {
 }
 
 async function addAestheticProgram() {
-  const name = (document.getElementById('aesth-prog-name')?.value || '').trim();
+  const name = (document.getElementById('aesth-prog-name'||{}).value || '').trim();
   if (!name) { toast('프로그램명을 입력하세요.', 'error'); return; }
   const checkedBCs = [...document.querySelectorAll('.aesth-bc-chk:checked')].map(el => el.value);
   if (!checkedBCs.length) { toast('적용 BC코드를 1개 이상 선택하세요.', 'error'); return; }
   const body = {
     partner_code:  _aestheticPartnerCode,
     program_name:  name,
-    program_desc:  (document.getElementById('aesth-prog-desc')?.value || '').trim(),
-    program_tag:   (document.getElementById('aesth-prog-tag')?.value || '').trim(),
-    program_icon:  (document.getElementById('aesth-prog-icon')?.value || '💆').trim() || '💆',
-    price_display: (document.getElementById('aesth-prog-price')?.value || '').trim(),
-    target_area:   (document.getElementById('aesth-prog-target')?.value || '').trim(),
-    homepage_url:  (document.getElementById('aesth-prog-url')?.value || '').trim(),
+    program_desc:  (document.getElementById('aesth-prog-desc'||{}).value || '').trim(),
+    program_tag:   (document.getElementById('aesth-prog-tag'||{}).value || '').trim(),
+    program_icon:  (document.getElementById('aesth-prog-icon'||{}).value || '💆').trim() || '💆',
+    price_display: (document.getElementById('aesth-prog-price'||{}).value || '').trim(),
+    target_area:   (document.getElementById('aesth-prog-target'||{}).value || '').trim(),
+    homepage_url:  (document.getElementById('aesth-prog-url'||{}).value || '').trim(),
     bc_codes:      JSON.stringify(checkedBCs),
-    priority:      parseInt(document.getElementById('aesth-prog-priority')?.value || '5') || 5,
-    is_signature:  document.getElementById('aesth-prog-signature')?.checked ? 1 : 0,
+    priority:      parseInt(document.getElementById('aesth-prog-priority'||{}).value || '5') || 5,
+    is_signature:  document.getElementById('aesth-prog-signature'||{}).checked ? 1 : 0,
     status:        'active',
   };
   try {
     const res = await api('POST', '/admin/aesthetic-programs', body);
-    if (res?.id || res?.success) {
+    if ((res && res.id) || (res && res.success)) {
       toast('프로그램이 추가되었습니다.', 'success');
       // 폼 초기화
       ['aesth-prog-name','aesth-prog-tag','aesth-prog-icon','aesth-prog-price','aesth-prog-target','aesth-prog-desc','aesth-prog-url'].forEach(id => {
@@ -5094,7 +5094,7 @@ async function addAestheticProgram() {
       const sigEl = document.getElementById('aesth-prog-signature'); if (sigEl) sigEl.checked = false;
       await loadAestheticPrograms();
     } else {
-      toast(res?.error || '추가 실패', 'error');
+      toast((res && res.error) || '추가 실패', 'error');
     }
   } catch (e) {
     toast('추가 중 오류 발생: ' + String(e), 'error');
@@ -5105,8 +5105,8 @@ async function deleteAestheticProgram(id) {
   if (!confirm('이 프로그램을 삭제하시겠습니까?')) return;
   try {
     const res = await api('DELETE', `/admin/aesthetic-programs/${id}`);
-    if (res?.success) { toast('삭제 완료', 'success'); await loadAestheticPrograms(); }
-    else toast(res?.error || '삭제 실패', 'error');
+    if ((res && res.success)) { toast('삭제 완료', 'success'); await loadAestheticPrograms(); }
+    else toast((res && res.error) || '삭제 실패', 'error');
   } catch (e) { toast('삭제 중 오류', 'error'); }
 }
 // ─────────────────────────────────────────────────────────────────────────────
@@ -5114,12 +5114,12 @@ async function deleteAestheticProgram(id) {
 async function suspendB2B(code) {
   if (!confirm(`${code} B2B 파트너를 정지하시겠습니까?`)) return;
   const res = await api('DELETE', `/admin/b2b-partners/${code}`);
-  if (res?.success) { toast('정지 완료', 'success'); loadB2BPartners(); }
+  if ((res && res.success)) { toast('정지 완료', 'success'); loadB2BPartners(); }
 }
 
 async function activateB2B(code) {
   const res = await api('PUT', `/admin/b2b-partners/${code}`, { status: 'active' });
-  if (res?.success) { toast('활성화 완료', 'success'); loadB2BPartners(); }
+  if ((res && res.success)) { toast('활성화 완료', 'success'); loadB2BPartners(); }
 }
 
 function updateColorPreview(hex) {
@@ -5731,7 +5731,7 @@ async function loadB2BGroupAnalysis() {
   let partners = [];
   try {
     const res = await api('GET', '/admin/b2b-partners');
-    partners = res?.partners || [];
+    partners = (res && res.partners) || [];
   } catch(e) {}
 
   const partnerOptions = partners.map(p =>
@@ -5816,7 +5816,7 @@ async function f12LoadPartner() {
 
   try {
     const data = await api('GET', `/admin/group-analysis/${code}`);
-    if (!data?.ok) throw new Error(data?.error || '분석 실패');
+    if (!(data && data.ok)) throw new Error((data && data.error) || '분석 실패');
     renderF12(data);
   } catch(e) {
     toast('분석 실패: ' + (e.message||e), 'error');
@@ -5829,8 +5829,8 @@ function renderF12(data) {
           bmi_stats={}, monthly_trend=[], period_comparison={}, body_avg={} } = data;
 
   const total = bc_distribution.reduce((s,r)=>s+(r.cnt||0), 0);
-  const thisMonth = period_comparison?.this_month || 0;
-  const lastMonth = period_comparison?.last_month || 0;
+  const thisMonth = (period_comparison && period_comparison.this_month) || 0;
+  const lastMonth = (period_comparison && period_comparison.last_month) || 0;
   const growthPct = lastMonth > 0 ? Math.round((thisMonth-lastMonth)/lastMonth*100) : null;
 
   // KPI
@@ -5838,8 +5838,8 @@ function renderF12(data) {
     { label:'총 분석 고객', value: total.toLocaleString()+'명', icon:'fas fa-users', color:'#6366f1' },
     { label:'이번달 유입', value: thisMonth+'명', icon:'fas fa-calendar-check', color:'#22c55e',
       sub: growthPct !== null ? (growthPct>=0?`+${growthPct}%`:`${growthPct}%`) + ' vs 전월' : '' },
-    { label:'평균 BMI', value: bmi_stats?.avg_bmi || '-', icon:'fas fa-weight', color:'#f59e0b' },
-    { label:'평균 체중', value: body_avg?.avg_weight ? body_avg.avg_weight+'kg' : '-', icon:'fas fa-balance-scale', color:'#ec4899' },
+    { label:'평균 BMI', value: (bmi_stats && bmi_stats.avg_bmi) || '-', icon:'fas fa-weight', color:'#f59e0b' },
+    { label:'평균 체중', value: (body_avg && body_avg.avg_weight) ? body_avg.avg_weight+'kg' : '-', icon:'fas fa-balance-scale', color:'#ec4899' },
   ].map(k=>`
     <div class="card" style="padding:18px">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">

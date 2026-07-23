@@ -1374,7 +1374,7 @@ async function doLogin() {
   btn.innerHTML = '로그인';
   btn.disabled = false;
 
-  if (!data?.token) { showErr(data?.error || '로그인 실패. 코드와 비밀번호를 확인하세요.'); return; }
+  if (!(data && data.token)) { showErr((data && data.error) || '로그인 실패. 코드와 비밀번호를 확인하세요.'); return; }
   if (data.role === 'MASTER') { showErr('관리자 계정은 /admin 페이지를 이용하세요.'); return; }
   if (data.role === 'B2B_PARTNER') { showErr('B2B 파트너는 /b2b 페이지를 이용하세요.'); return; }
 
@@ -1562,7 +1562,7 @@ let _dashBcChart = null;
 async function loadDashboard() {
   const [stats, notifData] = await Promise.all([
     api('GET', '/consultant/stats'),
-    api('GET', `/notifications?ref_code=${ME?.code}&limit=99`)
+    api('GET', `/notifications?ref_code=${(ME && ME.code)}&limit=99`)
   ]);
 
   if (stats) {
@@ -1574,7 +1574,7 @@ async function loadDashboard() {
   }
 
   // 알림 뱃지 업데이트
-  if (notifData?.notifications) {
+  if ((notifData && notifData.notifications)) {
     const unread = notifData.notifications.filter(n => !n.is_read).length;
     const dot = document.getElementById('notif-dot-top');
     const badge = document.getElementById('notif-badge-tab');
@@ -1706,8 +1706,8 @@ function renderGradeStatus(total, month) {
 //  고객 목록
 // ══════════════════════════════════════════════════════════
 async function loadMyResults() {
-  const search = document.getElementById('cust-search')?.value || '';
-  const bc = document.getElementById('cust-bc')?.value || '';
+  const search = document.getElementById('cust-search'||{}).value || '';
+  const bc = document.getElementById('cust-bc'||{}).value || '';
   let url = '/consultant/results?';
   if (search) url += `search=${encodeURIComponent(search)}&`;
   if (bc) url += `bc=${bc}`;
@@ -2096,7 +2096,7 @@ async function preloadBcForModal() {
   const panel = document.getElementById('detail-rx-panel');
   if (panel) panel.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)"><i class="fas fa-circle-notch fa-spin fa-2x"></i></div>';
   const data = await api('GET', '/bc/list');
-  if (data?.list) {
+  if ((data && data.list)) {
     window._consBcList = data.list;
     if (CURRENT_DETAIL) renderDetailRx(CURRENT_DETAIL);
   } else {
@@ -2122,7 +2122,7 @@ async function saveMemo() {
   if (!CURRENT_DETAIL) return;
   const memo = document.getElementById('detail-memo').value;
   const data = await api('PUT', `/results/${CURRENT_DETAIL.id}/memo`, { memo });
-  if (data?.success) {
+  if ((data && data.success)) {
     CURRENT_DETAIL.admin_memo = memo;
     document.getElementById('memo-saved-badge').style.display = 'inline-block';
     toast('📝 메모가 저장되었습니다', 'success');
@@ -2131,7 +2131,7 @@ async function saveMemo() {
     if (idx >= 0) ALL_RESULTS[idx].admin_memo = memo;
     loadMyResults();
   } else {
-    toast('저장 실패: ' + (data?.error||'오류'), 'error');
+    toast('저장 실패: ' + ((data && data.error)||'오류'), 'error');
   }
 }
 
@@ -2142,13 +2142,13 @@ function clearMemo() {
 async function saveB2bTypes() {
   if (!CURRENT_DETAIL) return;
   const types = ['병원','에스테틱','헬스장','필라테스'];
-  const selected = types.filter(t => document.getElementById(`dchk-${t}`)?.checked);
+  const selected = types.filter(t => document.getElementById(`dchk-${t}`||{}).checked);
   const data = await api('PUT', `/results/${CURRENT_DETAIL.id}/b2b`, { institution_types: selected });
-  if (data?.success) {
+  if ((data && data.success)) {
     toast(`B2B 설정 저장 완료 (${selected.length ? selected.join(', ') : '없음'})`, 'success');
     loadMyResults();
   } else {
-    toast('저장 실패: ' + (data?.error||'오류'), 'error');
+    toast('저장 실패: ' + ((data && data.error)||'오류'), 'error');
   }
 }
 
@@ -2174,9 +2174,9 @@ function closeB2bModal() {
 async function saveLegacyB2b() {
   if (!_legacyB2bId) return;
   const types = ['병원','에스테틱','헬스장','필라테스'];
-  const selected = types.filter(t => document.getElementById(`b2b-chk-${t}`)?.checked);
+  const selected = types.filter(t => document.getElementById(`b2b-chk-${t}`||{}).checked);
   const data = await api('PUT', `/results/${_legacyB2bId}/b2b`, { institution_types: selected });
-  if (data?.success) {
+  if ((data && data.success)) {
     toast('B2B 설정 저장 완료', 'success');
     closeB2bModal();
     loadMyResults();
@@ -2198,7 +2198,7 @@ function toggleB2bLabel(t) {
 // ══════════════════════════════════════════════════════════
 async function loadProfile() {
   const data = await api('GET', '/consultant/me');
-  if (!data?.consultant) return;
+  if (!(data && data.consultant)) return;
   const c = data.consultant;
 
   const statusMap = { active:'✅ 활성', pending:'⏳ 대기', expired:'❌ 만료', suspended:'🚫 정지' };
@@ -2210,7 +2210,7 @@ async function loadProfile() {
     ['직종', c.job_type || '-'],
     ['등급', c.grade || '브론즈'],
     ['구독 상태', statusMap[c.subscription_status] || c.subscription_status],
-    ['구독 만료일', c.subscription_end?.slice(0,10) || '-'],
+    ['구독 만료일', c.(subscription_end && subscription_end.slice)(0,10) || '-'],
     ['인증 여부', c.is_certified ? '✅ 인증 완료' : '⏳ 미인증'],
     ['가입일', fmtDate(c.created_at)],
   ];
@@ -2251,12 +2251,12 @@ async function loadProfile() {
 //  알림 탭
 // ══════════════════════════════════════════════════════════
 async function loadNotifications() {
-  if (!ME?.code) return;
+  if (!(ME && ME.code)) return;
   const el = document.getElementById('notif-list');
   if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)"><i class="fas fa-circle-notch fa-spin fa-2x"></i></div>';
 
   const data = await api('GET', `/notifications?ref_code=${ME.code}&limit=50`);
-  if (!data?.notifications) {
+  if (!(data && data.notifications)) {
     if (el) el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)"><i class="fas fa-bell-slash fa-2x" style="margin-bottom:12px;display:block"></i>알림이 없습니다</div>';
     return;
   }
@@ -2306,7 +2306,7 @@ async function markNotifRead(id, el) {
 }
 
 async function markAllNotifRead() {
-  if (!ME?.code) return;
+  if (!(ME && ME.code)) return;
   await api('POST', `/notifications/read-all?ref_code=${ME.code}`);
   toast('✅ 전체 읽음 처리됨', 'success');
   loadNotifications();
@@ -2324,8 +2324,8 @@ async function loadCheckAlerts() {
   el.innerHTML = `<div style="text-align:center;padding:24px;color:#aaa;font-size:13px;"><i class="fas fa-circle-notch fa-spin"></i></div>`;
 
   const data = await api('GET', '/check-alerts?limit=30').catch(() => null);
-  const alerts = data?.alerts || [];
-  const unread = data?.unread_count || 0;
+  const alerts = (data && data.alerts) || [];
+  const unread = (data && data.unread_count) || 0;
 
   // 알림 뱃지 업데이트
   const badge = document.getElementById('notif-badge-tab');
@@ -2351,7 +2351,7 @@ async function loadCheckAlerts() {
     return `<div onclick="markCheckAlertRead(${a.id})" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:${bg};border-bottom:1px solid #f0ece6;cursor:pointer;transition:background .2s;" onmouseover="this.style.background='#fdf8f0'" onmouseout="this.style.background='${bg}'">
       ${dot}
       <div style="flex:1;min-width:0;">
-        <div style="font-size:13px;font-weight:${a.is_read?'600':'800'};color:#241c14;">${a.user_name||a.session_id?.slice(0,8)||'—'}</div>
+        <div style="font-size:13px;font-weight:${a.is_read?'600':'800'};color:#241c14;">${a.user_name||a.(session_id && session_id.slice)(0,8)||'—'}</div>
         <div style="font-size:11px;color:#8a7e66;margin-top:2px;">${lbl} · ${a.bc_code||''}</div>
         <div style="font-size:11px;color:#aaa;margin-top:1px;">${a.message||''}</div>
       </div>
@@ -2376,8 +2376,8 @@ async function markAllCheckAlertsRead() {
 let _cDays = 7, _cSig = '';
 
 async function loadConsultantDailyChecks(days, sigFilter) {
-  days      = days      ?? _cDays;
-  sigFilter = sigFilter ?? _cSig;
+  days      = days      ||  _cDays;
+  sigFilter = sigFilter ||  _cSig;
   _cDays = days; _cSig = sigFilter;
 
   let host = document.getElementById('tab-daily-checks');
@@ -2391,8 +2391,8 @@ async function loadConsultantDailyChecks(days, sigFilter) {
 
   const qs = `days=${days}${sigFilter?'&signal='+sigFilter:''}`;
   const data    = await api('GET', `/consultant/daily-checks?${qs}`).catch(() => null);
-  const clients = data?.clients || [];
-  const counts  = data?.counts  || {};
+  const clients = (data && data.clients) || [];
+  const counts  = (data && data.counts)  || {};
 
   const SIG = {
     red:    {icon:'🔴', label:'위험',  bg:'#fdeee7', border:'#f0b4a0', text:'#8f321e'},
@@ -2498,8 +2498,8 @@ async function _cShowDetail(sessionId, userName, sig) {
   panel.innerHTML = `<div style="text-align:center;padding:20px;color:#aaa;"><i class="fas fa-circle-notch fa-spin"></i></div>`;
 
   const data = await api('GET', `/admin/daily-checks/${sessionId}`).catch(() => null);
-  const checks  = data?.checks     || [];
-  const wkStats = data?.week_stats || [];
+  const checks  = (data && data.checks)     || [];
+  const wkStats = (data && data.week_stats) || [];
 
   if (!checks.length) {
     panel.innerHTML = `<div style="background:#fff;border:1.5px solid #e8ddd0;border-radius:14px;padding:24px;text-align:center;color:#aaa;font-size:13px;">아직 체크 데이터가 없습니다</div>`;
@@ -2550,7 +2550,7 @@ async function _cShowDetail(sessionId, userName, sig) {
         : `title="${tooltip}" style="cursor:${cursor}"`;
       cells2.push(`<div ${clickAttr} style="width:18px;height:18px;border-radius:3px;background:${bg4};border:${brd4};flex-shrink:0;${hasData?'box-shadow:0 0 0 1px rgba(0,0,0,0.08);':''}"></div>`);
     }
-    const wn2=w+1; const ws2=wkStats.find(x=>x.week_number===wn2); const wr2=ws2?.rate||0;
+    const wn2=w+1; const ws2=wkStats.find(x=>x.week_number===wn2); const wr2=(ws2 && ws2.rate)||0;
     weekRows2.push(`<div style="display:flex;align-items:center;gap:3px;margin-bottom:3px;">
       <span style="font-size:10px;font-weight:800;color:#8a7e66;width:26px;flex-shrink:0;">${wn2}주</span>
       ${cells2.join('')}
@@ -2634,7 +2634,7 @@ async function _cShowDcDayPanel(sessionId, userName, dateKey, checkData) {
 
   // 해당 날짜 코멘트 로드
   const cmtData = await api('GET', `/coaching-comment/${sessionId}?limit=50`).catch(() => null);
-  const allCmts = cmtData?.comments || [];
+  const allCmts = (cmtData && cmtData.comments) || [];
   const dayCmts = allCmts.filter(c => c.check_date && c.check_date.slice(0,10) === dateKey);
 
   const dayCmtRows = dayCmts.map(cm => {
@@ -2698,11 +2698,11 @@ async function _cSendDayComment(sessionId, dateKey) {
     comment,
     check_date: dateKey
   }).catch(() => null);
-  if (res?.ok) {
+  if ((res && res.ok)) {
     inp.value = '';
     // 날짜 패널 코멘트 새로고침
     const cmtData = await api('GET', `/coaching-comment/${sessionId}?limit=50`).catch(() => null);
-    const allCmts = cmtData?.comments || [];
+    const allCmts = (cmtData && cmtData.comments) || [];
     const dayCmts = allCmts.filter(c => c.check_date && c.check_date.slice(0,10) === dateKey);
     const listEl = document.getElementById(`cons-day-cmt-list-${sessionId}-${dateKey}`);
     if (listEl) {
@@ -2728,7 +2728,7 @@ async function _cRefreshCommentList(sessionId) {
   const listEl = document.getElementById(`cmt-list-${sessionId}`);
   if (!listEl) return;
   const cmtData = await api('GET', `/coaching-comment/${sessionId}?limit=20`).catch(() => null);
-  const cmts = cmtData?.comments || [];
+  const cmts = (cmtData && cmtData.comments) || [];
   listEl.innerHTML = cmts.length ? cmts.map(cm => {
     const ts = cm.created_at ? cm.created_at.slice(0,16).replace('T',' ') : '';
     const dateBadge = cm.check_date ? `<span style="margin-left:6px;font-size:10px;background:#faf0dc;color:#8a5a18;border-radius:6px;padding:1px 6px;">${cm.check_date.slice(0,10)}</span>` : '';
@@ -2757,7 +2757,7 @@ async function _cSendComment(sessionId) {
     check_date: new Date().toISOString().slice(0,10)
   }).catch(() => null);
 
-  if (res?.ok) {
+  if ((res && res.ok)) {
     inp.value = '';
     await _cRefreshCommentList(sessionId);
   } else {
@@ -2919,13 +2919,13 @@ async function changePassword() {
     new_password: nw
   });
 
-  if (data?.success) {
+  if ((data && data.success)) {
     toast('🔒 비밀번호가 변경되었습니다!', 'success');
     document.getElementById('pw-current').value = '';
     document.getElementById('pw-new').value = '';
     document.getElementById('pw-confirm').value = '';
   } else {
-    toast(data?.error || '비밀번호 변경 실패', 'error');
+    toast((data && data.error) || '비밀번호 변경 실패', 'error');
   }
 }
 
@@ -2960,7 +2960,7 @@ function shareResultKakao(resultId, userName, bcPrimary, bcSecondary) {
 }
 
 function showKakaoPreview(message) {
-  document.getElementById('kakao-preview-modal')?.remove();
+  document.getElementById('kakao-preview-modal'||{remove:function(){}}).remove();
   const modal = document.createElement('div');
   modal.id = 'kakao-preview-modal';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
@@ -2995,7 +2995,7 @@ function copyInviteLink() {
 }
 
 function copyTopbarSurveyLink() {
-  if (!ME?.code) return;
+  if (!(ME && ME.code)) return;
   const url = `${location.origin}/s/${ME.code}`;
   navigator.clipboard.writeText(url).then(() => toast('📋 설문 링크 복사 완료!', 'success'));
 }
@@ -3004,7 +3004,7 @@ function copyTopbarSurveyLink() {
 //  QR코드 생성
 // ══════════════════════════════════════════════════════════
 function generateQR() {
-  if (!ME?.code) return;
+  if (!(ME && ME.code)) return;
   const url = `${location.origin}/s/${ME.code}`;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(url)}&margin=10&color=1E293B`;
   const el = document.getElementById('qr-placeholder');
@@ -3013,7 +3013,7 @@ function generateQR() {
 }
 
 function printQR() {
-  if (!ME?.code) return;
+  if (!(ME && ME.code)) return;
   const url = `${location.origin}/s/${ME.code}`;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(url)}&margin=20`;
   const w = window.open('', '_blank', 'width=600,height=700');
@@ -3033,7 +3033,7 @@ function printQR() {
 
 // QR PNG 다운로드
 async function downloadQR() {
-  if (!ME?.code) return;
+  if (!(ME && ME.code)) return;
   const url    = `${location.origin}/s/${ME.code}`;
   const qrUrl  = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(url)}&margin=20&color=1E293B`;
   try {
@@ -3052,10 +3052,10 @@ async function loadQrStats() {
   try {
     const data = await api('GET', '/consultant/my-qr/stats');
     const el = id => document.getElementById(id);
-    if (el('qr-stat-total')) el('qr-stat-total').textContent = data.total ?? 0;
-    if (el('qr-stat-month')) el('qr-stat-month').textContent = data.this_month ?? 0;
-    if (el('qr-stat-week'))  el('qr-stat-week').textContent  = data.this_week ?? 0;
-    if (el('qr-stat-bc') && data.bc_dist?.length) {
+    if (el('qr-stat-total')) el('qr-stat-total').textContent = data.total ||  0;
+    if (el('qr-stat-month')) el('qr-stat-month').textContent = data.this_month ||  0;
+    if (el('qr-stat-week'))  el('qr-stat-week').textContent  = data.this_week ||  0;
+    if (el('qr-stat-bc') && data.(bc_dist && bc_dist.length)) {
       el('qr-stat-bc').innerHTML = '<strong style="color:#374151">BC별 분포:</strong> ' +
         data.bc_dist.map(b => `<span style="background:#F1F5F9;border-radius:6px;padding:2px 8px;margin:2px;display:inline-block">${b.bc_primary} <b>${b.cnt}명</b></span>`).join('');
     }
@@ -3104,7 +3104,7 @@ async function loadAiMessageTab() {
   const data = await api('GET', '/consultant/results?limit=8');
   const container = document.getElementById('ai-quick-customers');
   if (!container) return;
-  const results = data?.results || [];
+  const results = (data && data.results) || [];
   if (results.length === 0) {
     container.innerHTML = '<span style="font-size:12px;color:var(--muted)">아직 고객이 없습니다</span>';
     return;
@@ -3130,9 +3130,9 @@ function quickSelectCustomer(name, bcCode) {
 async function generateAiMessages(mode) {
   const bcCode       = document.getElementById('ai-bc-code').value;
   const customerName = document.getElementById('ai-customer-name').value.trim() || '고객님';
-  const curWeight    = document.getElementById('ai-current-weight')?.value || '';
-  const goalWeight   = document.getElementById('ai-goal-weight')?.value   || '';
-  const durationWks  = document.getElementById('ai-duration-weeks')?.value || '';
+  const curWeight    = document.getElementById('ai-current-weight'||{}).value || '';
+  const goalWeight   = document.getElementById('ai-goal-weight'||{}).value   || '';
+  const durationWks  = document.getElementById('ai-duration-weeks'||{}).value || '';
   if (!bcCode) { toast('BC코드를 선택해주세요.', 'error'); return; }
 
   const area = document.getElementById('ai-messages-area');
@@ -3152,7 +3152,7 @@ async function generateAiMessages(mode) {
   };
   const data = await api('POST', '/consultant/ai-message', payload);
   if (!data || data.error) {
-    area.innerHTML = `<div class="card"><div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>${data?.error||'스크립트 생성 실패'}</p></div></div>`;
+    area.innerHTML = `<div class="card"><div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>${(data && data.error)||'스크립트 생성 실패'}</p></div></div>`;
     return;
   }
 
@@ -3297,7 +3297,7 @@ async function loadBcLibraryTab() {
   if (!area) return;
   if (window._consBcList) { renderConsBcCards(window._consBcList); return; }
   const data = await api('GET', '/bc/list');
-  if (!data?.ok) { area.innerHTML = `<div style="color:red;padding:40px">로드 실패</div>`; return; }
+  if (!(data && data.ok)) { area.innerHTML = `<div style="color:red;padding:40px">로드 실패</div>`; return; }
   window._consBcList = data.list;
   renderConsBcCards(data.list);
 }
@@ -3307,7 +3307,7 @@ function consBcFilter() {
 }
 
 function renderConsBcCards(list) {
-  const search = (document.getElementById('cons-bc-search')?.value || '').toLowerCase();
+  const search = (document.getElementById('cons-bc-search'||{}).value || '').toLowerCase();
   const area = document.getElementById('cons-bc-cards');
   if (!area) return;
   const filtered = search ? list.filter(bc => `${bc.bc_code} ${bc.brand_name} ${bc.tagline} ${bc.reason||''}`.toLowerCase().includes(search)) : list;
@@ -3484,11 +3484,11 @@ async function onWeightCustomerSelect() {
   // 체중 데이터 파싱
   const weights = weightCheckins.map(ch => {
     const m = ch.axis_name.match(/체중:([\d.]+)kg/);
-    return { date: ch.checked_at?.slice(0,10), week: ch.week_range, weight: m ? parseFloat(m[1]) : null, memo: ch.axis_name.replace(/체중:[\d.]+kg\s*\/?/,'') };
+    return { date: ch.(checked_at && checked_at.slice)(0,10), week: ch.week_range, weight: m ? parseFloat(m[1]) : null, memo: ch.axis_name.replace(/체중:[\d.]+kg\s*\/?/,'') };
   }).filter(w => w.weight !== null);
 
-  const initWeight = customer?.weight || null;
-  const targetWeight = customer?.target_weight || null;
+  const initWeight = (customer && customer.weight) || null;
+  const targetWeight = (customer && customer.target_weight) || null;
   const latestWeight = weights.length > 0 ? weights[weights.length-1].weight : initWeight;
   const totalLoss = (initWeight && latestWeight) ? (initWeight - latestWeight).toFixed(1) : null;
   const remaining = (latestWeight && targetWeight) ? (latestWeight - targetWeight).toFixed(1) : null;
@@ -3568,11 +3568,11 @@ async function onWeightCustomerSelect() {
       <!-- 고객 정보 헤더 -->
       <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #F3F4F6">
         <div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;font-weight:700;flex-shrink:0">
-          ${(customer?.user_name||'?')[0]}
+          ${((customer && customer.user_name)||'?')[0]}
         </div>
         <div style="flex:1">
-          <div style="font-size:17px;font-weight:700">${customer?.user_name||''}</div>
-          <div style="font-size:12px;color:var(--muted)">${customer?.bc_primary||''} · 등록 ${customer?.created_at?.slice(0,10)||''}</div>
+          <div style="font-size:17px;font-weight:700">${(customer && customer.user_name)||''}</div>
+          <div style="font-size:12px;color:var(--muted)">${(customer && customer.bc_primary)||''} · 등록 ${(customer && customer.created_at||"").slice(0,10)||''}</div>
         </div>
       </div>
       <!-- 체중 KPI -->
@@ -3663,7 +3663,7 @@ async function submitWeightCheckin() {
     document.getElementById('wt-input-area').style.display = 'block';
     document.getElementById('wt-detail-area').style.display = 'block';
   } else {
-    toast('저장 실패: ' + (res?.error || '오류'), 'error');
+    toast('저장 실패: ' + ((res && res.error) || '오류'), 'error');
   }
 }
 
@@ -3812,9 +3812,9 @@ async function loadCertificateTab() {
     // 강의 목록
     lectList.innerHTML = LECTURE_META.map(lm => {
       const comp = completions[lm.no];
-      const isPassed  = comp?.passed;
+      const isPassed  = (comp && comp.passed);
       const isFailed  = comp && !comp.passed;
-      const isLocked  = !isPassed && lm.no > 1 && !completions[lm.no - 1]?.passed && lm.no !== 1;
+      const isLocked  = !isPassed && lm.no > 1 && !(completions[lm.no - 1] && completions[lm.no - 1].passed) && lm.no !== 1;
 
       let statusBadge = '<span style="font-size:11px;color:var(--muted);background:#F1F5F9;padding:3px 10px;border-radius:20px">미수강</span>';
       if (isPassed)  statusBadge = `<span style="font-size:11px;color:#065F46;background:#D1FAE5;padding:3px 10px;border-radius:20px">✅ 합격 ${comp.quiz_score}점</span>`;
@@ -3996,7 +3996,7 @@ function downloadCertificate() {
 
   ctx.font = '28px sans-serif';
   ctx.fillStyle = '#374151';
-  ctx.fillText(`${ME?.name || ''}`, 600, 360);
+  ctx.fillText(`${(ME && ME.name) || ''}`, 600, 360);
 
   ctx.font = '22px sans-serif';
   ctx.fillStyle = '#6B7280';
@@ -4013,7 +4013,7 @@ function downloadCertificate() {
 
   // 다운로드
   const a = document.createElement('a');
-  a.download = `슬림마인드_자격증_${ME?.name||''}.png`;
+  a.download = `슬림마인드_자격증_${(ME && ME.name)||''}.png`;
   a.href = canvas.toDataURL('image/png');
   a.click();
 }
