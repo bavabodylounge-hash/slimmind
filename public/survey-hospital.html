@@ -2054,6 +2054,8 @@ src:url(data:font/woff2;base64,d09GMgABAAAAANywABEAAAABgEQAANxFAAIAgwAAAAAAAAAAA
   .opt.sel .dot:after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--c3)}
   .opt .otext{font-size:14.5px}.opt .otext b{font-weight:700}
   .opt .osub{font-size:12px;color:var(--muted);display:block;margin-top:1px}
+  .opt .oexp{font-size:12.5px;color:var(--muted);display:none;margin-top:4px;line-height:1.5;padding:6px 8px;background:rgba(0,0,0,.03);border-radius:6px}
+  .opt.sel .oexp{display:block}
   /* ★ 문항 라벨 개편(A) — 카운터 + 부위 칩 + 진행선 */
   /* ★ v30 — 고민칩 미선택 안내 */
   .bms-nextwrap{display:block}
@@ -5251,9 +5253,12 @@ html.th-mode .cond-eyebrow{
     </div>
   </section>
 
-  <!-- ===== 5차 ===== -->
-  <section id="s5">
-    <div class="shead"><div class="sbadge" style="background:var(--c5)">5</div><div class="stitle">충돌 쐐기 · 갈라치기</div></div>
+  <!-- ===== 5차 [DEPRECATED 2026-07] ===== -->
+  <!-- ⚠️ DEPRECATED: 5차 쐐기(충돌 갈라치기) 독립 분기 로직 폐기 예정.
+       메디컬 하이패스·라이프 잔혹사 쐐기 규칙은 현재 실제 채점에 적용되지 않음.
+       scoreAxes()+applyDecision() 통합 흐름으로 대체됨. UI 표시용으로만 유지. -->
+  <section id="s5" style="opacity:.55">
+    <div class="shead"><div class="sbadge" style="background:var(--c5)">5</div><div class="stitle">충돌 쐐기 · 갈라치기 <span style="font-size:11px;font-weight:400;color:#c00;margin-left:6px">[DEPRECATED]</span></div></div>
     <div class="ssub">코드가 경계에서 동점·충돌할 때, 다른 점수를 무시하고 단일 신호로 칼같이 판정을 끝내는 독립 치트키 로직.</div>
     <div class="wedge"><b>쐐기 규칙 1 (메디컬 하이패스):</b> Q63에서 당뇨/고혈압 2개↑ 또는 스테로이드 장기복용 → 외형 무시하고 메디컬 특수 체형으로 즉시 확정</div>
     <div class="wedge"><b>쐐기 규칙 2 (라이프 잔혹사):</b> Q52 포기 10회↑ + Q65 비만클리닉 약물 ON → 억제제 부작용 체형으로 확정</div>
@@ -12120,7 +12125,7 @@ const stage2Questions=[
  {no:10,grp:"라이프 계기",lv:"배경 분석 · 10",input:"wtline",
   title:"체중이 어떻게 움직여왔는지 그려주세요.",
   hint:"시기별로 대략 몇 kg이었는지 톡 찍어주세요. 정확하지 않아도 됩니다 — 오르내린 모양이 단서입니다.",
-  tease:"이제 생활 습관을 봅니다.",
+  tease:"이제 몸의 큰 변화들을 짚어봅니다.",
   opts:[]},
 
  {no:11,grp:"라이프 계기",lv:"배경 분석 · 11",
@@ -12130,7 +12135,9 @@ const stage2Questions=[
   opts:[["네, 출산 후 체형이 변했어요","","출산은 <b>복벽과 골반 구조 자체</b>를 바꿔놔요. 굶어서는 안 돌아오는 <b>구조의 문제</b>라, 정확한 진단이 답이 되는 대표적인 경우예요. 의지 문제가 전혀 아닙니다."],["출산했지만 큰 변화는 없어요","","잘 회복하신 편이에요. 그래도 복벽은 미세하게 달라지니, 지금 상태를 확인해두면 오래 지켜집니다."],["해당 없어요","","네, 다음으로 넘어가요."]],
   altMale:{lv:"배경 분석 · 11",title:"군대·직장 생활 이후, 갑자기 살이 찐 시기가 있었나요?",
     hint:"생활 패턴이 크게 바뀌는 시기에는 체중 변화가 함께 나타나는 경우가 많습니다.",
-    opts:[["네, 그때부터 확 쪘어요",""],["조금 변했어요",""],["별 차이 없어요",""]]}},
+    opts:[["네, 그때부터 확 쪘어요","","생활 패턴이 바뀐 그 시점이 출발점입니다. 무엇이 달라졌는지 짚어내면 되돌리는 순서가 보여요."],
+          ["조금 변했어요","","완만한 변화라면 아직 여유가 있는 상태예요. 지금 잡아두면 훨씬 수월합니다."],
+          ["별 차이 없어요","","생활 변화와 무관하다면 원인이 다른 축에 있습니다. 다음 문항에서 좁혀갑니다."]]}},
 
  {no:12,grp:"라이프 계기",lv:"배경 분석 · 12",
   title:"갱년기·완경, 또는 생리 관련 변화가 있나요?",
@@ -12140,7 +12147,9 @@ const stage2Questions=[
         ["완경(자연적) 이후예요","","완경 이후엔 <b>복부 중심</b>으로 재편되는 게 자연스러운 흐름이에요. 나이 탓이 아니라 호르몬 축의 문제입니다."],["신호가 조금 있어요","","변환기의 초입일 수 있어요. 지금부터 챙기면 급격한 변화를 <b>완만하게</b> 넘길 수 있습니다."],["해당 없어요","","네, 다음으로 넘어가요."]],
   altMale:{lv:"배경 분석 · 12",title:"40대 이후, 체형이 복부 중심으로 바뀌었나요?",
     hint:"테스토스테론이 줄면 근육량이 감소하고 복부 지방이 늘어나는 경향이 있습니다.",
-    opts:[["네, 확실히 배부터 나와요",""],["조금 그런 편이에요",""],["아니에요 / 해당 없어요",""]]}},
+    opts:[["네, 확실히 배부터 나와요","","테스토스테론이 줄면 근육이 빠지고 복부로 몰립니다. 나이 탓이 아니라 호르몬 축의 문제예요. 근육량부터 확인합니다."],
+          ["조금 그런 편이에요","","초기 신호일 수 있습니다. 지금 근육을 지켜두면 진행 속도가 크게 달라집니다."],
+          ["아니에요 / 해당 없어요","","복부 중심 변화가 없다면 호르몬 축은 아직 여유가 있는 편입니다. 다른 원인을 봅니다."]]}},
 
  {no:13,grp:"라이프스타일",lv:"배경 분석 · 13",
   title:"담배는 어떤가요?",
@@ -12422,7 +12431,7 @@ stage2Questions.forEach((q,qi)=>{
     </div>`;
   } else {
     body=`<div class="opts">${q.opts.map((o,i)=>`<div class="opt${q.multi?' multi':''}" onclick="s2pick(${q.no},${i},this,${q.multi},${q.max||0})">
-      <span class="dot"></span><span class="otext"><b>${o[0]}</b>${o[1]?`<span class="osub">${o[1]}</span>`:''}</span></div>`).join('')}</div>`;
+      <span class="dot"></span><span class="otext"><b>${o[0]}</b>${o[1]?`<span class="osub">${o[1]}</span>`:''}</span>${o[2]?`<span class="oexp">${o[2]}</span>`:''}</div>`).join('')}</div>`;
     if(q.multi)body+=`<div class="s2maxhint" id="s2maxhint_${q.no}">${q.max?`최대 ${q.max}개까지 선택`:'해당하는 것 모두'}</div>`;
   }
   const tease=q.tease?`<div class="tease" id="tease2_${q.no}">${q.tease} <span class="teasearrow">↓</span></div>`:'';
@@ -12671,7 +12680,7 @@ function applyGenderAlts(){
     if(hiEl) hiEl.innerHTML = (use.multi ? (use.max ? `☑ 최대 ${use.max}개까지 — ` : '☑ 해당하는 것 모두 — ') : '') + use.hint;
     const opts = card.querySelector('.opts');
     if(opts) opts.innerHTML = use.opts.map((o,i)=>`<div class="opt" onclick="s2pick(${no},${i},this,${!!use.multi})">
-      <span class="dot"></span><span class="otext"><b>${o[0]}</b>${o[1]?`<span class="osub">${o[1]}</span>`:''}</span></div>`).join('');
+      <span class="dot"></span><span class="otext"><b>${o[0]}</b>${o[1]?`<span class="osub">${o[1]}</span>`:''}</span>${o[2]?`<span class="oexp">${o[2]}</span>`:''}</div>`).join('');
     /* 이어하기 등으로 저장된 답이 있으면 선택 표시 복원 */
     if(!genderChanged && opts){
       const a = stage2Answers[no];
@@ -15194,12 +15203,12 @@ function warnMissing(stageKey,idPrefix,total,answers,start){
   setTimeout(function(){ try{ qhintScanClamp(); }catch(_){} }, 260);
 })();
 
-/* ★ v35 — 3차 감정 문구 접기/펼치기.
-   렌더 직후 실제 높이를 재서, 3줄을 넘는 문항에만 '더 보기'를 띄운다.
-   짧은 문항에까지 버튼이 붙으면 그게 더 지저분하다. */
-function qhintToggle(gi){
-  const h=document.getElementById('qhint3_'+gi);
-  const b=document.getElementById('qhintmore_'+gi);
+/* ★ v35/v49 — hint 접기/펼치기 공통 패턴 (smHintToggle).
+   1·2·3차 전 구간 hint 접기를 동일 로직으로 처리한다.
+   hintId: 힌트 요소 id, btnId: 더보기 버튼 id */
+function smHintToggle(hintId, btnId){
+  const h=document.getElementById(hintId);
+  const b=document.getElementById(btnId);
   if(!h||!b)return;
   const open=h.classList.toggle('open');
   b.classList.toggle('open',open);
@@ -15208,20 +15217,10 @@ function qhintToggle(gi){
     ? (L==='th'?'ย่อ':(L==='en'?'Show less':'접기'))
     : (L==='th'?'ดูเพิ่ม':(L==='en'?'Show more':'더 보기'));
 }
-/* ★★ v49 — 2차 감정 문구 접기/펼치기 (서우님 지적: "2차 질문밑에 3줄
-   감정설명 더보기가 없네?"). 3차에만 있던 것을 2차에도 넣는다.
-   규칙은 같다 — 렌더 후 실제 높이를 재서 3줄을 넘는 문항에만 버튼을 띄운다. */
-function qhint2Toggle(no){
-  const h=document.getElementById('qhint2_'+no);
-  const b=document.getElementById('qhintmore2_'+no);
-  if(!h||!b)return;
-  const open=h.classList.toggle('open');
-  b.classList.toggle('open',open);
-  const L=(window.SMGetLangRaw&&window.SMGetLangRaw())||'ko';
-  b.textContent = open
-    ? (L==='th'?'ย่อ':(L==='en'?'Show less':'접기'))
-    : (L==='th'?'ดูเพิ่ม':(L==='en'?'Show more':'더 보기'));
-}
+/* 3차 wrapper — qhintToggle(gi) → smHintToggle 위임 */
+function qhintToggle(gi){ smHintToggle('qhint3_'+gi,'qhintmore_'+gi); }
+/* 2차 wrapper — qhint2Toggle(no) → smHintToggle 위임 */
+function qhint2Toggle(no){ smHintToggle('qhint2_'+no,'qhintmore2_'+no); }
 function qhint2ScanClamp(){
   try{
     const hs=document.querySelectorAll('[id^=qhint2_]');
@@ -15831,7 +15830,26 @@ const PT_SHOWN = new Set(); /* 이미 보여준 메시지 키 */
 let ptTimer = null;
 
 const PATTERN_MSGS = [
-  /* 전체 완료 시에만 — 거울이 중간 우세축을 실시간 표시하므로 중복 제거 */
+  /* ★ 7번 — 3차 9개 문항 완료 시: 3차 축 완료 안내 */
+  {
+    trigger: (sc, done) => done === 9,
+    key: 'axDone9',
+    icon: '<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm1 14H11v-5h2zm0-7H11V7h2z"/></svg>',
+    axis: null,
+    msg: (sc, top) => {
+      const _ptR=(window.SMGetLangRaw && window.SMGetLangRaw())||'ko';
+      const _ptTX=(window.SMGetLang && window.SMGetLang()==='th');
+      const nameKo = (BM_AXES_INFO[top] && BM_AXES_INFO[top].name) || top;
+      const n = (_ptTX && window.SM_I18N_TH && window.SM_I18N_TH[nameKo]!==undefined) ? window.SM_I18N_TH[nameKo] : nameKo;
+      return _ptR==='th'
+        ? `ผ่าน 9 แกนแล้ว — <b>${top} ${n}</b> นำอยู่<br>เหลืออีกแกนเดียว แล้วจะได้<b>คำถามตัดสินสุดท้าย</b>`
+        : _ptR==='en'
+        ? `9 axes done — <b>${top} ${n}</b> is leading.<br>One axis left, then the <b>final decision question</b> kicks in.`
+        : `9개 축 분석 완료 — 현재 1위 <b>${top} ${n}</b>.<br>마지막 축 하나 남았어요. 끝나면 <b>결정질문</b>이 시작됩니다.`;
+    },
+    axisLabel: (sc, top) => { const _r=(window.SMGetLangRaw&&window.SMGetLangRaw())||'ko'; return _r==='th'?'เหลืออีก 1 แกน':(_r==='en'?'1 axis remaining':'1축 남음'); }
+  },
+  /* ★ 7번 — 전체 완료 시: 4차 축 확정 안내 업셀링 */
   {
     trigger: (sc, done) => done >= TOTAL3,
     key: 'qDone',
@@ -17206,6 +17224,10 @@ function applyDecision(scores){
   });
 }
 
+/* @deprecated 2026-07 — 5차 쐐기(충돌 갈라치기) 독립 로직은 폐기 예정.
+   현재 decideCode()는 scoreAxes()+applyDecision()+outlineProfile() 통합 흐름으로 동작하며,
+   별도 쐐기 규칙(메디컬 하이패스·라이프 잔혹사)은 더 이상 독립 분기로 작동하지 않음.
+   결과지 리다이렉트(showAnalyzing → submitDiagnosis)에서 여전히 호출되므로 함수 자체는 유지. */
 function decideCode(){
   const scores=scoreAxes();
   applyDecision(scores);
