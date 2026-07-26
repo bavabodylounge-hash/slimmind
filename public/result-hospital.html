@@ -15589,6 +15589,41 @@ function renderP6(userName, fullCode, ohaengType, inputData, bcCode_p6, redFlags
         // ★ FIX: strongAxes 저장 — slimmind-today.html이 협진 카드 렌더링에 참조
         strongAxes: window.__STRONG_AXES__ || [],
         savedAt:   Date.now(),
+        // ── V6.0: TagEngine 결과 저장 — slimmind-today.html이 동기부여·환경 렌더링에 참조 ──
+        tagResult: (function() {
+          try {
+            var _tr = window.__TAG_RESULT__;
+            if (_tr && Array.isArray(_tr.tags)) {
+              return {
+                tags:        _tr.tags        || [],
+                motivation:  _tr.motivation  || 'self',
+                mealEnv:     _tr.mealEnv     || [],
+                goalType:    _tr.goalType    || 'health_balance',
+                triggerType: _tr.triggerType || 'none',
+                shiftWork:   !!_tr.shiftWork,
+              };
+            }
+            // TagEngine 아직 실행 안 됐으면 지금 실행
+            if (typeof extractTags === 'function') {
+              var _rawAns = window.__RESULT__ || window.__DIAG_DATA__ || {};
+              var _freshTr = extractTags(_rawAns);
+              window.__TAG_RESULT__ = _freshTr;
+              return {
+                tags:        _freshTr.tags        || [],
+                motivation:  _freshTr.motivation  || 'self',
+                mealEnv:     _freshTr.mealEnv     || [],
+                goalType:    _freshTr.goalType    || 'health_balance',
+                triggerType: _freshTr.triggerType || 'none',
+                shiftWork:   !!_freshTr.shiftWork,
+              };
+            }
+          } catch(e) {}
+          return { tags: [], motivation: 'self', mealEnv: [], goalType: 'health_balance', triggerType: 'none', shiftWork: false };
+        })(),
+        // 동기부여 개별 키 (빠른 접근용)
+        motivation:  (window.__TAG_RESULT__ && window.__TAG_RESULT__.motivation) || 'self',
+        goalType:    (window.__TAG_RESULT__ && window.__TAG_RESULT__.goalType)   || 'health_balance',
+        triggerType: (window.__TAG_RESULT__ && window.__TAG_RESULT__.triggerType)|| 'none',
       };
       window.__SID__ = _sid; // dxTop3 병합 시 키 참조용
       localStorage.setItem('slimmind_meta_' + _sid, JSON.stringify(_meta));

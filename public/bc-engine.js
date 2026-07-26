@@ -5905,37 +5905,120 @@ function extractTags(answers) {
   if (tags.indexOf('TAG_HYPERTENSION') > -1) addTag('TAG_JOINT', '관절·근감소', 'physical', 2);
 
   // ── 동기부여 대상 ──
-  var purposeRaw = pfProfile.purpose || ans.purpose || ans.goal_target || '';
-  if (/자녀|아이|child/i.test(String(purposeRaw)))  motivation = 'child';
-  else if (/연인|파트너|partner|남자친구|여자친구/i.test(String(purposeRaw))) motivation = 'partner';
-  else if (/가족|family|부모|부부/i.test(String(purposeRaw))) motivation = 'family';
-  else if (/건강|health/i.test(String(purposeRaw))) motivation = 'health';
-  else motivation = 'self';
+  // V6.1: _purposeIdx 인덱스 분기 우선 + desire.who 텍스트 보조
+  // PF_PRACTICAL.purpose.opts 인덱스:
+  //   0=시술·관리 상담  1=내 몸의 원인  2=다이어트 방향  3=피부·윤곽  4=지인 추천·이벤트
+  var purposeIdx = pfProfile._purposeIdx !== undefined ? pfProfile._purposeIdx :
+                   (ans._purposeIdx !== undefined ? ans._purposeIdx : -1);
+  var desireWho   = (ans.desire && ans.desire.who) ? String(ans.desire.who) : '';
+  var purposeRaw  = pfProfile.purpose || ans.purpose || ans.goal_target || '';
+  var purposeAll  = String(purposeRaw) + ' ' + desireWho;
+
+  if (purposeIdx === 0 || purposeIdx === 3) {
+    // 시술·관리 or 피부·윤곽 상담 → appearance(외모) 동기
+    motivation = 'appearance';
+  } else if (purposeIdx === 1) {
+    // 내 몸의 원인 → health 동기
+    motivation = 'health';
+  } else if (purposeIdx === 2) {
+    // 다이어트 방향 → self 동기 (기본)
+    motivation = 'self';
+  } else if (purposeIdx === 4) {
+    // 지인 추천·이벤트 → self
+    motivation = 'self';
+  } else {
+    // 인덱스 없음 → 텍스트 매칭 (폴백)
+    if (/자녀|아이|child/i.test(purposeAll))                   motivation = 'child';
+    else if (/연인|파트너|partner|남자친구|여자친구/i.test(purposeAll)) motivation = 'partner';
+    else if (/가족|family|부모|부부/i.test(purposeAll))         motivation = 'family';
+    else if (/건강|health/i.test(purposeAll))                    motivation = 'health';
+    else if (/시술|에스테틱|피부|윤곽|aesthetic/i.test(purposeAll)) motivation = 'appearance';
+    else                                                          motivation = 'self';
+  }
+  // desire.who 텍스트로 자녀·연인 오버라이드 (purposeIdx보다 구체적인 경우)
+  if (desireWho) {
+    if (/자녀|아이|아들|딸|child|kids/i.test(desireWho))           motivation = 'child';
+    else if (/연인|남자친구|여자친구|파트너|partner|남편|와이프|배우자/i.test(desireWho)) motivation = 'partner';
+    else if (/가족|부모|엄마|아빠|family/i.test(desireWho))        motivation = 'family';
+  }
   // TAG로도 추가
-  if (motivation === 'child')   addTag('TAG_TARGET_CHILD', '자녀를 위한 동기', 'motivation', 1);
-  if (motivation === 'partner') addTag('TAG_TARGET_PARTNER', '연인을 위한 동기', 'motivation', 1);
-  if (motivation === 'family')  addTag('TAG_TARGET_FAMILY', '가족을 위한 동기', 'motivation', 1);
-  if (motivation === 'health')  addTag('TAG_TARGET_HEALTH', '건강 중심 동기', 'motivation', 1);
-  if (motivation === 'self')    addTag('TAG_TARGET_SELF', '자기 자신을 위한 동기', 'motivation', 1);
+  if (motivation === 'child')      addTag('TAG_TARGET_CHILD', '자녀를 위한 동기', 'motivation', 1);
+  if (motivation === 'partner')    addTag('TAG_TARGET_PARTNER', '연인을 위한 동기', 'motivation', 1);
+  if (motivation === 'family')     addTag('TAG_TARGET_FAMILY', '가족을 위한 동기', 'motivation', 1);
+  if (motivation === 'health')     addTag('TAG_TARGET_HEALTH', '건강 중심 동기', 'motivation', 1);
+  if (motivation === 'appearance') addTag('TAG_TARGET_APPEARANCE', '외모·시술 동기', 'motivation', 1);
+  if (motivation === 'self')       addTag('TAG_TARGET_SELF', '자기 자신을 위한 동기', 'motivation', 1);
 
-  // ── 식사 환경 ──
+  // ── 식사 환경 ── V6.1: desire.zone/track + pfProfile 리듬 인덱스 기반 파생
+  // 실제 payload에 meal_env 필드 없음 → 다중 소스에서 파생
   var mealRaw = ans.meal_env || pfProfile.meal_env || ans.mealEnv || '';
-  if (/배달|delivery/i.test(String(mealRaw)))       { mealEnv.push('delivery');     addTag('TAG_DELIVERY', '배달앱 의존', 'diet_env', 1); }
-  if (/편의점|convenience/i.test(String(mealRaw))) { mealEnv.push('convenience'); addTag('TAG_CONVENIENCE', '편의점 식사', 'diet_env', 1); }
-  if (/혼자|자취|single/i.test(String(mealRaw)))  { mealEnv.push('single');       addTag('TAG_SINGLE', '자취·혼밥', 'diet_env', 1); }
-  if (/구내식당|canteen/i.test(String(mealRaw)))   { mealEnv.push('canteen');      addTag('TAG_CANTEEN', '구내식당', 'diet_env', 1); }
-  if (/직접|요리|cooking/i.test(String(mealRaw))) { mealEnv.push('cooking');       addTag('TAG_COOKING', '직접 요리', 'diet_env', 1); }
-  // pfProfile 생활리듬 1(자영업·현장=불규칙) → 불규칙 식사
-  if (rhythmIdx === 2) addTag('TAG_NIGHT_EATING', '야식·불규칙 식사', 'diet_env', 1);
-  // 교대근무 → 야식 환경
+  // (A) 기존 meal_env 필드가 있으면 텍스트 매칭 (폴백 호환)
+  if (mealRaw) {
+    if (/배달|delivery/i.test(String(mealRaw)))      { mealEnv.push('delivery');    addTag('TAG_DELIVERY',    '배달앱 의존',  'diet_env', 1); }
+    if (/편의점|convenience/i.test(String(mealRaw))) { mealEnv.push('convenience'); addTag('TAG_CONVENIENCE', '편의점 식사', 'diet_env', 1); }
+    if (/혼자|자취|single/i.test(String(mealRaw)))   { mealEnv.push('single');      addTag('TAG_SINGLE',      '자취·혼밥',  'diet_env', 1); }
+    if (/구내식당|canteen/i.test(String(mealRaw)))   { mealEnv.push('canteen');     addTag('TAG_CANTEEN',     '구내식당',   'diet_env', 1); }
+    if (/직접|요리|cooking/i.test(String(mealRaw)))  { mealEnv.push('cooking');     addTag('TAG_COOKING',     '직접 요리',  'diet_env', 1); }
+  }
+  // (B) pfProfile._rhythmIdx 인덱스로 식사 환경 파생
+  // rhythm.opts: 0=직장인(앉음) 1=자영업·현장 2=학생 3=주부·육아 4=프리랜서·재택 5=교대·야간
+  if (rhythmIdx === 0) {
+    // 직장인 → 구내식당 or 배달 (도시 직장인 기본)
+    if (mealEnv.indexOf('canteen') < 0) { mealEnv.push('canteen'); addTag('TAG_CANTEEN', '구내식당', 'diet_env', 1); }
+  } else if (rhythmIdx === 1) {
+    // 자영업·현장 → 편의점·불규칙
+    if (mealEnv.indexOf('convenience') < 0) { mealEnv.push('convenience'); addTag('TAG_CONVENIENCE', '편의점 식사', 'diet_env', 1); }
+  } else if (rhythmIdx === 2) {
+    // 학생 → 편의점 + 야식
+    if (mealEnv.indexOf('convenience') < 0) { mealEnv.push('convenience'); addTag('TAG_CONVENIENCE', '편의점 식사', 'diet_env', 1); }
+    addTag('TAG_NIGHT_EATING', '야식·불규칙 식사', 'diet_env', 1);
+  } else if (rhythmIdx === 3) {
+    // 주부·육아 → 직접 요리 위주
+    if (mealEnv.indexOf('cooking') < 0) { mealEnv.push('cooking'); addTag('TAG_COOKING', '직접 요리', 'diet_env', 1); }
+  } else if (rhythmIdx === 4) {
+    // 프리랜서·재택 → 자취·혼밥 + 배달 가능성
+    if (mealEnv.indexOf('single') < 0)   { mealEnv.push('single');   addTag('TAG_SINGLE',   '자취·혼밥', 'diet_env', 1); }
+    if (mealEnv.indexOf('delivery') < 0) { mealEnv.push('delivery'); addTag('TAG_DELIVERY', '배달앱 의존', 'diet_env', 1); }
+  }
+  // (C) 교대근무 → 야식 환경 (shiftWork는 이미 위에서 처리됨)
   if (shiftWork) addTag('TAG_NIGHT_EATING', '야식·불규칙 식사', 'diet_env', 2);
+  // (D) 자영업·현장(rhythmIdx=1) → 불규칙 식사
+  if (rhythmIdx === 1) addTag('TAG_NIGHT_EATING', '야식·불규칙 식사', 'diet_env', 1);
+  // (E) pfProfile.rhythm 텍스트 보조 (인덱스 없을 때 폴백)
+  if (rhythmIdx < 0) {
+    var rhythmTxt = pfProfile.rhythm || ans.rhythm || '';
+    if (/자취|혼자|재택|프리랜서/i.test(String(rhythmTxt))) {
+      if (mealEnv.indexOf('single') < 0) { mealEnv.push('single'); addTag('TAG_SINGLE', '자취·혼밥', 'diet_env', 1); }
+    }
+    if (/학생|야식/i.test(String(rhythmTxt))) addTag('TAG_NIGHT_EATING', '야식·불규칙 식사', 'diet_env', 1);
+    if (/주부|육아/i.test(String(rhythmTxt))) {
+      if (mealEnv.indexOf('cooking') < 0) { mealEnv.push('cooking'); addTag('TAG_COOKING', '직접 요리', 'diet_env', 1); }
+    }
+  }
 
-  // ── 목표 유형 ──
-  var goalRaw = pfProfile.purpose || ans.goal_type || ans.goalType || '';
-  if (/슬림|탄탄|slim|tight/i.test(String(goalRaw)))       goalType = 'slim_tight';
-  else if (/건강|균형|health|balance/i.test(String(goalRaw))) goalType = 'health_balance';
-  else if (/시술|에스테틱|aesthetic/i.test(String(goalRaw))) goalType = 'aesthetic';
-  else if (/근육|muscle/i.test(String(goalRaw)))              goalType = 'muscle';
+  // ── 목표 유형 ── V6.1: desire.track + desire.zone 활용
+  // track: 'obesity'|'skin'|'plastic'  zone: 'upper'|'belly'|'lower'|'whole'|'face'|null
+  var desireTrack = (ans.desire && ans.desire.track) ? String(ans.desire.track) : '';
+  var desireZone  = (ans.desire && ans.desire.zone)  ? String(ans.desire.zone)  : '';
+  var goalRaw     = pfProfile.purpose || ans.goal_type || ans.goalType || '';
+
+  if (desireTrack === 'skin' || desireTrack === 'plastic') {
+    // 피부·시술 트랙 → aesthetic
+    goalType = 'aesthetic';
+  } else if (desireTrack === 'obesity') {
+    // 비만 트랙 → zone으로 세분화
+    if (desireZone === 'belly' || desireZone === 'upper' || desireZone === 'lower') {
+      goalType = 'slim_tight';  // 특정 부위 집중 슬림
+    } else {
+      goalType = 'health_balance';  // 전신(whole) or 미선택
+    }
+  } else if (goalRaw) {
+    // 텍스트 폴백
+    if (/슬림|탄탄|slim|tight/i.test(String(goalRaw)))          goalType = 'slim_tight';
+    else if (/건강|균형|health|balance/i.test(String(goalRaw))) goalType = 'health_balance';
+    else if (/시술|에스테틱|aesthetic/i.test(String(goalRaw)))  goalType = 'aesthetic';
+    else if (/근육|muscle/i.test(String(goalRaw)))               goalType = 'muscle';
+  }
 
   return {
     tags: tags,
