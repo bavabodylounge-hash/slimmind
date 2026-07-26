@@ -381,9 +381,18 @@ body{
   </div>
   <div id="dx-area"></div>
 
+  <!-- ── 이번 주 협진 안내 (strongAxes 기반 동적 카드) ── -->
+  <div class="sec" id="sec-consult" style="display:none">
+    <span class="sec-n">4</span>
+    <span class="sec-t">이번 주 협진 안내</span>
+    <span class="sec-s" id="sec-consult-sub">핵심 처방 기반 · 읽어만 보세요</span>
+    <span class="sec-line"></span>
+  </div>
+  <div id="consult-area"></div>
+
   <!-- ── 오늘의 전문 센터 추천 ── -->
   <div class="sec" id="sec-center" style="display:none">
-    <span class="sec-n">4</span>
+    <span class="sec-n">5</span>
     <span class="sec-t">오늘의 전문 센터</span>
     <span class="sec-s" id="sec-center-sub"></span>
     <span class="sec-line"></span>
@@ -591,6 +600,7 @@ function boot(){
   renderCon();
   renderProg();
   renderDxPriority();  // 11대 진단 우선순위 (dxTop3)
+  renderConsult();     // 이번 주 협진 안내 (strongAxes 기반)
   renderCenters();
   detectPlatform();
 }
@@ -1638,6 +1648,100 @@ function renderDxPriority(){
 function _goP6(encodedUrl){
   try { location.href = decodeURIComponent(encodedUrl); }
   catch(e){ location.href = encodedUrl; }
+}
+
+/* ── 이번 주 협진 안내: META.strongAxes 기반 동적 카드 ──
+   result-hospital.html renderP6에서 slimmind_meta_에 strongAxes 저장 →
+   여기서 읽어 협진 도메인 2개 선택 → 카드 렌더링                    ── */
+var _TODAY_CONSULT_MAP = {
+  '체형':   { color:'#6b4eaa', bg:'#efeafa', icon:'🔧',
+              title:'체형 교정 협진',   sub:'필라테스 · 도수치료',
+              desc:'체형 불균형이 체지방 대사를 방해합니다. 필라테스·도수치료 협진으로 정렬을 회복하세요.',
+              btn1:'필라테스', btn2:'도수치료' },
+  '호르몬': { color:'#c0397a', bg:'#fde8f1', icon:'⚗️',
+              title:'호르몬 검사 협진', sub:'내분비내과 · 여성의학과',
+              desc:'호르몬 불균형이 식욕과 체중 정체의 핵심 원인입니다. 검사 결과를 가져오시면 처방을 정밀화합니다.',
+              btn1:'내분비내과', btn2:'여성의학과' },
+  '시술':   { color:'#7a4a38', bg:'#f5ece8', icon:'✨',
+              title:'시술 연계 협진',   sub:'피부과 · 성형외과',
+              desc:'체지방 분해·리프팅 시술 연계가 가능합니다. 담당 컨설턴트에게 상담 후 안내드립니다.',
+              btn1:'피부과', btn2:'성형외과' },
+  '한방':   { color:'#2f7d8c', bg:'#e4f3f5', icon:'🌿',
+              title:'한방 비만 클리닉', sub:'한의원 · 한방비만클리닉',
+              desc:'침·뜸·한약 처방으로 순환·대사 개선을 도울 수 있습니다.',
+              btn1:'한방비만클리닉', btn2:'한의원' },
+  '회복':   { color:'#b5452e', bg:'#f9ece8', icon:'🌙',
+              title:'수면·자율신경 클리닉', sub:'수면의학 · 정신건강의학과',
+              desc:'코르티솔·자율신경 이상이 체중 정체의 핵심입니다. 검사 결과를 가져오시면 회복 처방을 조정합니다.',
+              btn1:'수면클리닉', btn2:'정신건강의학과' },
+  '순환':   { color:'#1565c0', bg:'#e3f0fb', icon:'💧',
+              title:'림프·혈액순환 클리닉', sub:'순환기내과 · 림프클리닉',
+              desc:'하지 부종·냉증·혈액 점도 이상이 체지방 대사를 방해합니다. 순환 전문 클리닉 협진으로 회복하세요.',
+              btn1:'순환기내과', btn2:'림프클리닉' },
+  '약물':   { color:'#5f5e5a', bg:'#f0efed', icon:'💊',
+              title:'내과·기능의학 협진', sub:'내과 · 기능의학과',
+              desc:'대사 위험 인자가 있습니다. 약물 처방 또는 기능의학 검사를 통해 처방을 정밀 조정합니다.',
+              btn1:'기능의학과', btn2:'내과' },
+  '관리':   { color:'#8a8474', bg:'#f3f2f0', icon:'🔬',
+              title:'종합건강검진·기능의학', sub:'기능의학 · 건강검진센터',
+              desc:'대사증후군 복합 위험이 감지됩니다. 종합 검진 결과를 가져오시면 처방을 정밀화합니다.',
+              btn1:'기능의학과', btn2:'건강검진센터' },
+  '심리':   { color:'#7b1fa2', bg:'#f3e8fb', icon:'🧠',
+              title:'심리·식이행동 클리닉', sub:'심리상담 · 정신건강의학과',
+              desc:'스트레스·감정 반응이 식이행동과 연결됩니다. 심리상담 또는 정신건강의학과 협진으로 근본 패턴을 끊습니다.',
+              btn1:'심리상담센터', btn2:'정신건강의학과' },
+  '철학':   { color:'#607d8b', bg:'#e8ecf0', icon:'🕊️',
+              title:'라이프스타일 코칭',  sub:'웰니스 코치',
+              desc:'기질·성향에 맞는 생활 패턴 설계가 필요합니다. 전문 코치와의 협진으로 지속 가능한 루틴을 만듭니다.',
+              btn1:'웰니스 센터', btn2:null },
+};
+var _TODAY_CONSULT_DOMAINS = ['시술','호르몬','체형','한방','회복','약물','관리','순환','심리','철학'];
+
+function renderConsult(){
+  var strongAxes = (META && Array.isArray(META.strongAxes)) ? META.strongAxes : [];
+  var secEl  = document.getElementById('sec-consult');
+  var areaEl = document.getElementById('consult-area');
+  if (!secEl || !areaEl) return;
+
+  // strongAxes에서 협진 가능 도메인 최대 2개 선택
+  var selected = [];
+  strongAxes.forEach(function(nm){
+    if (selected.length < 2 && _TODAY_CONSULT_DOMAINS.indexOf(nm) >= 0 && _TODAY_CONSULT_MAP[nm]) {
+      selected.push(nm);
+    }
+  });
+  // 데이터 없으면 기본 체형+호르몬
+  if (selected.indexOf('체형')   < 0 && selected.length < 2) selected.push('체형');
+  if (selected.indexOf('호르몬') < 0 && selected.length < 2) selected.push('호르몬');
+
+  if (selected.length === 0) {
+    secEl.style.display = 'none';
+    return;
+  }
+
+  secEl.style.display = '';
+  var topDomainName = selected[0];
+  document.getElementById('sec-consult-sub').textContent =
+    topDomainName + ' · 이번 주 전문 케어';
+
+  var html = '';
+  selected.forEach(function(nm){
+    var c = _TODAY_CONSULT_MAP[nm];
+    if (!c) return;
+    var btns = '<button class="dx-cta-btn" style="background:' + c.color + '18;color:' + c.color + ';border:1px solid ' + c.color + '44;" onclick="sendPrompt(\'근처 ' + c.btn1 + ' 추천해줘\')">' + c.btn1 + ' →</button>';
+    if (c.btn2) btns += '<button class="dx-cta-btn" style="background:' + c.color + '18;color:' + c.color + ';border:1px solid ' + c.color + '44;margin-left:6px;" onclick="sendPrompt(\'근처 ' + c.btn2 + ' 추천해줘\')">' + c.btn2 + ' →</button>';
+    html +=
+      '<div style="background:' + c.bg + ';border:1px solid ' + c.color + '30;border-radius:14px;padding:15px 16px;margin-bottom:10px;">' +
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">' +
+          '<span style="font-size:18px">' + c.icon + '</span>' +
+          '<strong style="font-size:14px;color:' + c.color + ';">' + c.title + '</strong>' +
+          '<span style="font-size:11px;background:' + c.color + ';color:#fff;padding:2px 7px;border-radius:20px;margin-left:auto;">협진 안내</span>' +
+        '</div>' +
+        '<div style="font-size:12px;color:#555;margin-bottom:10px;line-height:1.6;">' + c.desc + '</div>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:6px;">' + btns + '</div>' +
+      '</div>';
+  });
+  areaEl.innerHTML = html;
 }
 
 /* dxTop3 항목 클릭 시 해당 카테고리로 센터 검색 */

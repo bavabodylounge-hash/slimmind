@@ -14589,15 +14589,29 @@ function renderP8(metrics, bcCode, axisScores, userName) {
     }
     // ── STRONG_AXES → 도메인명 → P8 축 키 매핑 ──
     // P5에서 계산된 핵심처방 top3를 DATA 값 boost에 반영
+    // ★ FIX: 심리·약물·관리·철학 누락 도메인 추가 (P5 11개 ↔ P8 AX 완전 매핑)
     var _sAxes = window.__STRONG_AXES__ || [];
     var _DOMAIN_TO_AX_KEY = {
       '한방':'ori', '시술':'proc', '호르몬':'horm', '체형':'form', '순환':'circ',
-      '회복':'rec', '식단':'diet', '운동':'ex'
+      '회복':'rec', '식단':'diet', '운동':'ex',
+      // 누락 4종: P8 AX에 직접 대응 없는 경우 가장 가까운 키로 흡수
+      '심리':'rec',   // 심리·식이 → 회복 축으로 흡수 (코르티솔 연동)
+      '약물':'horm',  // 약물·내과 → 호르몬 축으로 흡수 (대사 수치 연동)
+      '관리':'horm',  // 기능의학·종합검진 → 호르몬 축으로 흡수
+      '철학':'rec',   // 라이프스타일 → 회복 축으로 흡수
     };
     // STRONG에 포함된 focus 축은 값 boost (기본 × 1.4, 최소 +8)
+    // ★ FIX: 심리→rec, 약물/관리→horm, 철학→rec 흡수 도메인도 boost 반영
+    var _ABSORBED_BOOST = { '심리':'rec', '약물':'horm', '관리':'horm', '철학':'rec' };
     function _strongBoost(val, domNm){
-      if (_sAxes.indexOf(domNm) < 0) return val;
-      return Math.round(Math.max(val + 8, val * 1.4));
+      if (_sAxes.indexOf(domNm) >= 0) return Math.round(Math.max(val + 8, val * 1.4));
+      // 흡수된 도메인: STRONG에 심리가 있으면 rec boost, 약물/관리 있으면 horm boost
+      for (var _absNm in _ABSORBED_BOOST) {
+        if (_ABSORBED_BOOST[_absNm] === domNm && _sAxes.indexOf(_absNm) >= 0) {
+          return Math.round(Math.max(val + 6, val * 1.25)); // 흡수 boost (직접보다 약하게)
+        }
+      }
+      return val;
     }
     // 병원용: 시술이 STRONG에 있으면 2주차부터 시술 값 등장
     var _procIsHospStrong = _sAxes.indexOf('시술') >= 0;
@@ -14648,26 +14662,43 @@ function renderP8(metrics, bcCode, axisScores, userName) {
   // STRONG_AXES에 없는 나머지는 DATA 점수순으로 보완하여 6축 확보.
   //
   // 도메인명 → AX key 매핑 (P5 strongNames ↔ P8 AX)
+  // ★ FIX: 심리·약물·관리·철학 누락 도메인 추가 — P5 11개 도메인 완전 매핑
   var _STRONG_TO_AXKEY = {
     '한방':'ori', '시술':'proc', '호르몬':'horm', '체형':'form', '순환':'circ',
-    '회복':'rec', '식단':'diet', '운동':'ex'
+    '회복':'rec', '식단':'diet', '운동':'ex',
+    // 누락 4종: P8 AX에 직접 없는 경우 가장 가까운 키로 흡수
+    '심리':'rec',   // 심리·식이행동 → 회복 축 (코르티솔·자율신경 경로)
+    '약물':'horm',  // 내과·기능의학 → 호르몬 축 (대사 수치 경로)
+    '관리':'horm',  // 종합검진·기능의학 → 호르몬 축
+    '철학':'rec',   // 라이프스타일·기질 → 회복 축
   };
   function activeKeys(w){
     var r = DATA[w] || DATA[FREE];
     var strongAxes = window.__STRONG_AXES__ || [];
     // 모든 AX 키 집합
     var allAxKeys = AX.map(function(a){return a.k;});
+    var basePool = ['rec','diet','ex'];
 
     // ── 핵심 설계: top3 → 6축 직접 선택 ──
+    // ★ FIX: P5 도메인명 → P8 AX키 변환 시 중복/누락 정밀 처리
     // top3 영역명을 AX키로 변환 (rec/diet/ex 포함 — group 구분 없이 ALL AX에서 찾기)
+    // 심리/약물/관리/철학은 rec/horm으로 흡수 — focus 슬롯에 반영되도록 별도 집합 유지
     var top3Keys = [];
+    // 원본 도메인명별 매핑 결과 추적 (흡수된 키가 base에 있어도 focus 의미로 boost 반영)
+    var absorbedToBase = []; // 심리→rec 같은 경우: base 키지만 TOP3 origin이 있음을 표시
     strongAxes.forEach(function(nm){
       var k = _STRONG_TO_AXKEY[nm];
-      if (k && allAxKeys.indexOf(k) >= 0 && top3Keys.indexOf(k) < 0) top3Keys.push(k);
+      if (!k || allAxKeys.indexOf(k) < 0) return;
+      if (top3Keys.indexOf(k) < 0) {
+        top3Keys.push(k);
+      }
+      // 흡수된(원래 focus 도메인인데 base키로 매핑된) 경우 기록
+      if (basePool.indexOf(k) >= 0 && ['심리','약물','관리','철학'].indexOf(nm) >= 0) {
+        if (absorbedToBase.indexOf(k) < 0) absorbedToBase.push(k);
+      }
     });
 
     // top3에서 나온 키 중 rec/diet/ex 인지 focus 인지 분리
-    var basePool = ['rec','diet','ex'];
     var top3Base  = top3Keys.filter(function(k){ return basePool.indexOf(k)>=0; });  // top3 중 기본축
     var top3Focus = top3Keys.filter(function(k){ return basePool.indexOf(k)<0;  });  // top3 중 집중축
 
@@ -14676,11 +14707,16 @@ function renderP8(metrics, bcCode, axisScores, userName) {
     basePool.forEach(function(k){ if(baseKeys.indexOf(k)<0) baseKeys.push(k); });
     baseKeys = baseKeys.slice(0,3);
 
-    // 집중축 3개: top3 focus 먼저 → 부족하면 DATA 점수 순
+    // ★ FIX: top3Focus가 비거나 1개일 때 DATA 점수 기반으로 올바르게 채우기
+    // 흡수된 base 키(심리→rec 등)가 있어도 focus 슬롯은 남은 focus AX에서 채움
     var focusRest = AX.filter(function(a){
       return basePool.indexOf(a.k)<0 && top3Focus.indexOf(a.k)<0;
     }).sort(function(a,b){
-      return (r[b.k]||0)-(r[a.k]||0);
+      // ★ SAFE FIX: filter(...)[0]이 undefined일 때 _STRONG_TO_AXKEY[undefined] 참조 방지
+      // → some()으로 변환: STRONG_AXES에 해당 AX키로 매핑되는 도메인이 있으면 +50 보너스
+      var bonusB = strongAxes.some(function(nm){ return _STRONG_TO_AXKEY[nm] === b.k; }) ? 50 : 0;
+      var bonusA = strongAxes.some(function(nm){ return _STRONG_TO_AXKEY[nm] === a.k; }) ? 50 : 0;
+      return ((r[b.k]||0) + bonusB) - ((r[a.k]||0) + bonusA);
     }).map(function(a){return a.k;});
     var focusKeys = top3Focus.concat(focusRest).slice(0,3);
 
@@ -15431,6 +15467,8 @@ function renderP6(userName, fullCode, ohaengType, inputData, bcCode_p6, redFlags
         age:        Number(_specForMeta.age) || null,
         axisScores: inputData.axisScores  || inputData.axis_scores || {},
         dxTop3:    window.__DX_TOP3__ || [],  // 11대 진단 상위 3개 (renderP6 완료 전이면 빈 배열)
+        // ★ FIX: strongAxes 저장 — slimmind-today.html이 협진 카드 렌더링에 참조
+        strongAxes: window.__STRONG_AXES__ || [],
         savedAt:   Date.now(),
       };
       window.__SID__ = _sid; // dxTop3 병합 시 키 참조용
@@ -22225,9 +22263,35 @@ function weeklyGridHTML(w, idx) {
                    '<button class="wg-refer-btn" onclick="sendPrompt(\'근처 기능의학과(종합 검진) 추천해줘\')" ><span class="wg-rb-nm">기능의학과</span><span class="wg-rb-go">바로가기 →</span></button>'+
                    '<button class="wg-refer-btn" onclick="sendPrompt(\'근처 건강검진센터 추천해줘\')" ><span class="wg-rb-nm">건강검진센터</span><span class="wg-rb-go">바로가기 →</span></button>'+
                  '</div></div>' },
+    // ★ FIX: 순환 도메인 — _HOSPITAL_CONSULT_DOMAINS에 있었으나 _CONSULT_MAP에 누락되어 카드 미출력
+    '순환':   { ic:'<svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:var(--icsz,16px);height:var(--icsz,16px)"><path d="M12 2a10 10 0 0 1 0 20"/><path d="M12 2a10 10 0 0 0 0 20"/><path d="M12 6v6l4 2"/></svg>',
+               sub:'혈액순환 · 림프순환 클리닉 협진', c:'#1565c0', cl:'#e3f0fb',
+               inner:'<div class="wg-collab"><div class="wg-cl-hd"><span class="wg-cl-ic"><svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:var(--icsz,16px);height:var(--icsz,16px)"><path d="M12 2a10 10 0 0 1 0 20"/><path d="M12 2a10 10 0 0 0 0 20"/><path d="M12 6v6l4 2"/></svg></span><span class="wg-cl-nm">혈액순환 · 림프순환 클리닉</span><span class="wg-cl-tag">협진 안내</span></div>'+
+                 '<div class="wg-cl-tx">하지 부종·냉증·혈액 점도 이상이 체지방 대사를 방해합니다. 순환 전문 클리닉 협진으로 림프·혈류 흐름을 회복합니다.</div>'+
+                 '<div class="wg-refer-row" style="margin-top:11px">'+
+                   '<button class="wg-refer-btn" onclick="sendPrompt(\'근처 순환기내과(혈액순환·부종) 추천해줘\')" ><span class="wg-rb-nm">순환기내과</span><span class="wg-rb-go">바로가기 →</span></button>'+
+                   '<button class="wg-refer-btn" onclick="sendPrompt(\'근처 림프부종 클리닉·물리치료 추천해줘\')" ><span class="wg-rb-nm">림프클리닉</span><span class="wg-rb-go">바로가기 →</span></button>'+
+                 '</div></div>' },
+    // ★ FIX: P5 TOP3에 심리/철학이 선택될 때 협진 카드 누락 — 항목 추가
+    '심리':   { ic:'<svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:var(--icsz,16px);height:var(--icsz,16px)"><path d="M9.5 4A3.5 3.5 0 0 0 6 7.5 3 3 0 0 0 5 12a3 3 0 0 0 1 5 3 3 0 0 0 3.5 3 2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/><path d="M14.5 4A3.5 3.5 0 0 1 18 7.5 3 3 0 0 1 19 12a3 3 0 0 1-1 5"/></svg>',
+               sub:'심리상담 · 정신건강의학 협진', c:'#7b1fa2', cl:'#f3e8fb',
+               inner:'<div class="wg-collab"><div class="wg-cl-hd"><span class="wg-cl-ic"><svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:var(--icsz,16px);height:var(--icsz,16px)"><path d="M9.5 4A3.5 3.5 0 0 0 6 7.5 3 3 0 0 0 5 12a3 3 0 0 0 1 5 3 3 0 0 0 3.5 3 2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/><path d="M14.5 4A3.5 3.5 0 0 1 18 7.5 3 3 0 0 1 19 12a3 3 0 0 1-1 5"/></svg></span><span class="wg-cl-nm">심리·식이행동 클리닉</span><span class="wg-cl-tag">협진 안내</span></div>'+
+                 '<div class="wg-cl-tx">스트레스·감정 반응이 식이행동과 연결됩니다. 심리상담 또는 정신건강의학과 협진으로 근본 패턴을 끊습니다.</div>'+
+                 '<div class="wg-refer-row" style="margin-top:11px">'+
+                   '<button class="wg-refer-btn" onclick="sendPrompt(\'근처 심리상담센터 추천해줘\')" ><span class="wg-rb-nm">심리상담센터</span><span class="wg-rb-go">바로가기 →</span></button>'+
+                   '<button class="wg-refer-btn" onclick="sendPrompt(\'근처 정신건강의학과(스트레스·수면) 추천해줘\')" ><span class="wg-rb-nm">정신건강의학과</span><span class="wg-rb-go">바로가기 →</span></button>'+
+                 '</div></div>' },
+    '철학':   { ic:'<svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:var(--icsz,16px);height:var(--icsz,16px)"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l5 3"/></svg>',
+               sub:'라이프스타일 코칭 협진', c:'#607d8b', cl:'#e8ecf0',
+               inner:'<div class="wg-collab"><div class="wg-cl-hd"><span class="wg-cl-ic"><svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:var(--icsz,16px);height:var(--icsz,16px)"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l5 3"/></svg></span><span class="wg-cl-nm">라이프스타일 코칭</span><span class="wg-cl-tag">협진 안내</span></div>'+
+                 '<div class="wg-cl-tx">기질·성향에 맞는 생활 패턴 설계가 필요합니다. 전문 코치와의 협진으로 지속 가능한 루틴을 만듭니다.</div>'+
+                 '<div class="wg-refer-row" style="margin-top:11px">'+
+                   '<button class="wg-refer-btn" onclick="sendPrompt(\'근처 라이프스타일 코치·웰니스 센터 추천해줘\')" ><span class="wg-rb-nm">웰니스 센터</span><span class="wg-rb-go">바로가기 →</span></button>'+
+                 '</div></div>' },
   };
   // STRONG_AXES에서 협진 가능 도메인 최대 2개 선택 (병원 협진 의미 있는 것)
-  var _HOSPITAL_CONSULT_DOMAINS = ['시술','호르몬','체형','한방','회복','약물','관리','순환'];
+  // ★ FIX: 심리·철학 추가 — P5 TOP3 전체 도메인 커버
+  var _HOSPITAL_CONSULT_DOMAINS = ['시술','호르몬','체형','한방','회복','약물','관리','순환','심리','철학'];
   var _strongAxesRef = window.__STRONG_AXES__ || [];
   var _selectedConsult = [];
   // 1순위: STRONG_AXES 중 협진 가능 도메인
