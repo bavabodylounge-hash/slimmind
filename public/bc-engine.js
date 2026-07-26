@@ -5745,9 +5745,647 @@ function computeTop3Prescriptions(axisScores, answers, track) {
   };
 }
 
-// ──────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+// 11-B. TagEngine — 설문 응답 → TAG 배열 + 4대 지표 독립 연산
+// ══════════════════════════════════════════════════════════════════
+
+/**
+ * extractTags(answers)
+ * raw_answers(stage2/pfProfile/stage3 포함) 또는 bc-engine answers 객체를 받아
+ * TAG 배열 및 메타정보를 반환한다.
+ *
+ * 반환값:
+ *   tags        : string[]  — TAG_* 식별자 배열
+ *   tagMeta     : object    — { TAG_*: { label, category, severity } }
+ *   motivation  : string    — 'child'|'partner'|'self'|'health'|'appearance'
+ *   mealEnv     : string[]  — ['delivery','convenience','cooking','single','canteen']
+ *   goalType    : string    — 'slim_tight'|'health_balance'|'aesthetic'|'muscle'
+ *   triggerType : string    — 'burnout'|'stress_event'|'postpartum'|'yoyo'|'gradual'|'none'
+ *   shiftWork   : boolean   — 교대·야간근무 여부
+ */
+function extractTags(answers) {
+  var tags = [];
+  var tagMeta = {};
+  var motivation = 'self';
+  var mealEnv = [];
+  var goalType = 'health_balance';
+  var triggerType = 'none';
+  var shiftWork = false;
+
+  function addTag(t, label, category, severity) {
+    if (tags.indexOf(t) < 0) {
+      tags.push(t);
+      tagMeta[t] = { label: label || t, category: category || 'general', severity: severity || 1 };
+    }
+  }
+
+  var ans = answers || {};
+  // raw_answers 구조 지원 (survey-hospital 저장 형태)
+  var stage2 = ans.stage2 || {};
+  var pfProfile = ans.pfProfile || ans.pf_profile || {};
+  var rawStage3 = ans.stage3 || {};
+
+  // ── 헬퍼: 2차 카드 인덱스 포함 여부 ──
+  function s2Has(qno, idx) {
+    var v = stage2[qno] !== undefined ? stage2[qno] : (ans['q' + qno] !== undefined ? ans['q' + qno] : undefined);
+    if (v === undefined) {
+      // flat 키도 지원 (disease, long_term_drugs 등)
+      return false;
+    }
+    if (Array.isArray(v)) return v.indexOf(idx) > -1;
+    return v === idx;
+  }
+
+  // ── Q3: 진단 질환 ──
+  // 0=PCOS 1=당뇨 2=고혈압 3=갑상선 4=지방간 5=역류위장 6=우울불안 7=없음
+  var disease = ans.disease || (Array.isArray(stage2[3]) ? stage2[3] : null);
+  if (Array.isArray(disease)) {
+    if (disease.indexOf(0) > -1) addTag('TAG_PCOS', '다낭성난소증후군', 'hormone', 3);
+    if (disease.indexOf(1) > -1) addTag('TAG_DIABETES', '당뇨·전당뇨', 'metabolic', 3);
+    if (disease.indexOf(2) > -1) addTag('TAG_HYPERTENSION', '고혈압', 'cardiovascular', 3);
+    if (disease.indexOf(3) > -1) addTag('TAG_THYROID', '갑상선 질환', 'hormone', 3);
+    if (disease.indexOf(4) > -1) addTag('TAG_FATTY_LIVER', '지방간', 'metabolic', 2);
+    if (disease.indexOf(5) > -1) addTag('TAG_GERD', '역류성식도염', 'digestive', 2);
+    if (disease.indexOf(6) > -1) addTag('TAG_DEPRESSION', '우울·불안장애', 'mental', 3);
+  }
+  // redFlags 배열도 지원
+  var redFlags = ans.redFlags || ans.red_flags || (typeof window !== 'undefined' && window._redFlags) || [];
+  if (redFlags.indexOf('PCOS') > -1)         addTag('TAG_PCOS', '다낭성난소증후군', 'hormone', 3);
+  if (redFlags.indexOf('DIABETES') > -1)     addTag('TAG_DIABETES', '당뇨·전당뇨', 'metabolic', 3);
+  if (redFlags.indexOf('HTN') > -1)          addTag('TAG_HYPERTENSION', '고혈압', 'cardiovascular', 3);
+  if (redFlags.indexOf('THYROID') > -1)      addTag('TAG_THYROID', '갑상선 질환', 'hormone', 3);
+  if (redFlags.indexOf('FATTY_LIVER') > -1)  addTag('TAG_FATTY_LIVER', '지방간', 'metabolic', 2);
+  if (redFlags.indexOf('YOYO') > -1)         addTag('TAG_YOYO', '요요 반복', 'history', 2);
+  if (redFlags.indexOf('STEROID') > -1)      addTag('TAG_STEROID', '스테로이드 복용', 'medication', 2);
+
+  // ── Q6: 장기 복용약 ──
+  var drugs = ans.long_term_drugs || (Array.isArray(stage2[6]) ? stage2[6] : null);
+  if (Array.isArray(drugs)) {
+    if (drugs.indexOf(0) > -1) addTag('TAG_STEROID', '스테로이드', 'medication', 2);
+    if (drugs.indexOf(1) > -1) addTag('TAG_ANTIDEPRESSANT', '항우울제', 'medication', 2);
+    if (drugs.indexOf(2) > -1) addTag('TAG_HORMONE_MED', '피임약·호르몬제', 'medication', 2);
+    if (drugs.indexOf(3) > -1) addTag('TAG_ANTICOAGULANT', '항응고제', 'medication', 2);
+    if (drugs.indexOf(4) > -1) addTag('TAG_ISOTRETINOIN', '이소트레티노인', 'medication', 2);
+    if (drugs.indexOf(5) > -1) addTag('TAG_HAIRLOSS_RX', '탈모약', 'medication', 1);
+  }
+  // 고혈압 + 약물: 이뇨제 포함 여부는 HTN+복용약으로 유추
+  if (tags.indexOf('TAG_HYPERTENSION') > -1) {
+    addTag('TAG_DIURETICS', '혈압약·이뇨제', 'medication', 2);
+  }
+
+  // ── Q7: 식욕억제제 ──
+  var appSupp = ans.appetite_suppressant !== undefined ? ans.appetite_suppressant : stage2[7];
+  if (appSupp === 0 || appSupp === '여러 번 먹었어요')
+    addTag('TAG_APPETITE_SUPP', '식욕억제제 다수', 'history', 2);
+
+  // ── Q8: 살찐 계기 ──
+  var trigger = ans.q8_trigger !== undefined ? ans.q8_trigger : stage2[8];
+  var trigArr = Array.isArray(trigger) ? trigger : (trigger !== undefined ? [trigger] : []);
+  if (trigArr.indexOf(0) > -1) { addTag('TAG_BURNOUT', '번아웃·과로', 'psychological', 2); triggerType = 'burnout'; }
+  if (trigArr.indexOf(1) > -1) { addTag('TAG_STRESS_EVENT', '이별·심리 충격', 'psychological', 2); triggerType = 'stress_event'; }
+  if (trigArr.indexOf(2) > -1)   addTag('TAG_SURGERY_TRIGGER', '수술·입원 계기', 'medical', 2);
+  if (trigArr.indexOf(3) > -1)   addTag('TAG_ALCOHOL_HABIT', '잦은 회식·음주', 'lifestyle', 1);
+  if (trigArr.indexOf(4) > -1)   addTag('TAG_QUIT_SMOKING', '금연 후 증가', 'lifestyle', 1);
+  if (trigArr.indexOf(5) > -1) { if (triggerType === 'none') triggerType = 'gradual'; }
+
+  // ── Q10: 요요 패턴 ──
+  var wtData = ans.wtline || stage2[10];
+  if (wtData && typeof wtData === 'object') {
+    if (wtData.pat === 'yoyo') { addTag('TAG_YOYO', '요요 반복', 'history', 2); triggerType = 'yoyo'; }
+    if ((wtData.cyc || 0) >= 3) addTag('TAG_YOYO_SEVERE', '요요 3회 이상', 'history', 3);
+  }
+
+  // ── Q11: 출산 (여성) ──
+  var birth = ans.q11_event !== undefined ? ans.q11_event : stage2[11];
+  var isMale = (ans.gender === '남' || ans.gender === '남성' ||
+    (pfProfile.gender === '남') || (pfProfile.gender === '남성'));
+  if (!isMale && birth === 0) {
+    addTag('TAG_POSTPARTUM', '출산 후 체형 변화', 'history', 2);
+    triggerType = 'postpartum';
+  }
+
+  // ── Q12: 갱년기 / 남성 복부 변화 ──
+  var meno = ans.q12_menopause !== undefined ? ans.q12_menopause :
+             (ans.Q_MENOPAUSE !== undefined ? ans.Q_MENOPAUSE : stage2[12]);
+  if (!isMale) {
+    if (meno === 0 || meno === 2 || meno === '완경 후' || meno === '완경 중') {
+      addTag('TAG_MENOPAUSE', '갱년기·완경', 'hormone', 2);
+    }
+  } else {
+    if (meno === 0) addTag('TAG_MALE_ANDROPAUSE', '남성 갱년기(복부 변화)', 'hormone', 2);
+  }
+
+  // ── 생활 리듬: 교대·야간 근무 ──
+  var rhythmIdx = pfProfile._rhythmIdx !== undefined ? pfProfile._rhythmIdx :
+                  (ans._rhythmIdx !== undefined ? ans._rhythmIdx : -1);
+  // 리듬 텍스트로도 감지
+  var rhythmText = pfProfile.rhythm || ans.rhythm || '';
+  if (rhythmIdx === 5 || /교대|야간|shift/i.test(String(rhythmText))) {
+    addTag('TAG_SHIFT_WORK', '교대·야간 근무', 'lifestyle', 2);
+    addTag('TAG_SLEEP_DISORDER', '수면 리듬 장애', 'sleep', 2);
+    shiftWork = true;
+  }
+
+  // ── 수면 장애: A07 고점 or 불면 응답 ──
+  // A07(코르티솔·스트레스) 축 점수가 높거나, stage3 수면 관련 답변이 심할 때
+  var axisScores = ans.axisScores || ans.axis_scores || {};
+  var a07 = Number(axisScores['A07'] || 0);
+  var a06 = Number(axisScores['A06'] || 0);  // 수면 포함
+  // 0~10 스케일에서 7 이상 = 수면 문제
+  if (a07 >= 7 || a06 >= 7) addTag('TAG_SLEEP_DISORDER', '수면·회복 장애', 'sleep', 2);
+  // 우울증 동반
+  if (tags.indexOf('TAG_DEPRESSION') > -1) {
+    addTag('TAG_SLEEP_DISORDER', '수면·회복 장애', 'sleep', 2);
+  }
+
+  // ── 관절 문제: A04 고점 또는 진단 ──
+  var a04 = Number(axisScores['A04'] || 0);
+  if (a04 >= 7) addTag('TAG_JOINT', '관절·근감소', 'physical', 2);
+  // 고혈압+고령 조합도 관절 위험
+  if (tags.indexOf('TAG_HYPERTENSION') > -1) addTag('TAG_JOINT', '관절·근감소', 'physical', 2);
+
+  // ── 동기부여 대상 ──
+  var purposeRaw = pfProfile.purpose || ans.purpose || ans.goal_target || '';
+  if (/자녀|아이|child/i.test(String(purposeRaw)))  motivation = 'child';
+  else if (/연인|파트너|partner|남자친구|여자친구/i.test(String(purposeRaw))) motivation = 'partner';
+  else if (/가족|family|부모|부부/i.test(String(purposeRaw))) motivation = 'family';
+  else if (/건강|health/i.test(String(purposeRaw))) motivation = 'health';
+  else motivation = 'self';
+  // TAG로도 추가
+  if (motivation === 'child')   addTag('TAG_TARGET_CHILD', '자녀를 위한 동기', 'motivation', 1);
+  if (motivation === 'partner') addTag('TAG_TARGET_PARTNER', '연인을 위한 동기', 'motivation', 1);
+  if (motivation === 'family')  addTag('TAG_TARGET_FAMILY', '가족을 위한 동기', 'motivation', 1);
+  if (motivation === 'health')  addTag('TAG_TARGET_HEALTH', '건강 중심 동기', 'motivation', 1);
+  if (motivation === 'self')    addTag('TAG_TARGET_SELF', '자기 자신을 위한 동기', 'motivation', 1);
+
+  // ── 식사 환경 ──
+  var mealRaw = ans.meal_env || pfProfile.meal_env || ans.mealEnv || '';
+  if (/배달|delivery/i.test(String(mealRaw)))       { mealEnv.push('delivery');     addTag('TAG_DELIVERY', '배달앱 의존', 'diet_env', 1); }
+  if (/편의점|convenience/i.test(String(mealRaw))) { mealEnv.push('convenience'); addTag('TAG_CONVENIENCE', '편의점 식사', 'diet_env', 1); }
+  if (/혼자|자취|single/i.test(String(mealRaw)))  { mealEnv.push('single');       addTag('TAG_SINGLE', '자취·혼밥', 'diet_env', 1); }
+  if (/구내식당|canteen/i.test(String(mealRaw)))   { mealEnv.push('canteen');      addTag('TAG_CANTEEN', '구내식당', 'diet_env', 1); }
+  if (/직접|요리|cooking/i.test(String(mealRaw))) { mealEnv.push('cooking');       addTag('TAG_COOKING', '직접 요리', 'diet_env', 1); }
+  // pfProfile 생활리듬 1(자영업·현장=불규칙) → 불규칙 식사
+  if (rhythmIdx === 2) addTag('TAG_NIGHT_EATING', '야식·불규칙 식사', 'diet_env', 1);
+  // 교대근무 → 야식 환경
+  if (shiftWork) addTag('TAG_NIGHT_EATING', '야식·불규칙 식사', 'diet_env', 2);
+
+  // ── 목표 유형 ──
+  var goalRaw = pfProfile.purpose || ans.goal_type || ans.goalType || '';
+  if (/슬림|탄탄|slim|tight/i.test(String(goalRaw)))       goalType = 'slim_tight';
+  else if (/건강|균형|health|balance/i.test(String(goalRaw))) goalType = 'health_balance';
+  else if (/시술|에스테틱|aesthetic/i.test(String(goalRaw))) goalType = 'aesthetic';
+  else if (/근육|muscle/i.test(String(goalRaw)))              goalType = 'muscle';
+
+  return {
+    tags: tags,
+    tagMeta: tagMeta,
+    motivation: motivation,
+    mealEnv: mealEnv,
+    goalType: goalType,
+    triggerType: triggerType,
+    shiftWork: shiftWork,
+  };
+}
+
+// ──────────────────────────────────────────────────────────────────
+// 11-C. computeBodyMetrics() — 4대 바디 지표 독립 연산 (스케일 수정)
+//
+// 수정 이유:
+//   axisScores 는 0~10 스케일인데 기존 가중치(×7 등)가 0~100 스케일을
+//   가정하고 있어 항상 99%로 클램프됨.
+//   → 정규화: axisScore ÷ 10 → 0~1 변환 후 ×100 스케일로 산출
+//   → 결과: 0~100 범위에서 의미 있는 분포 (보통 20~85 범위)
+// ──────────────────────────────────────────────────────────────────
+function computeBodyMetrics(axisScores, answers, redFlags) {
+  var _a = axisScores || {};
+  var _ans = answers || {};
+  var _rf  = redFlags || (typeof window !== 'undefined' && window._redFlags) || [];
+
+  // 정규화 헬퍼: 0~10 → 0~1
+  function n(key) { return Math.min(1, Math.max(0, Number(_a[key] || 0) / 10)); }
+
+  // 나이 추출
+  var realAge = 42;
+  if (_ans.pfProfile && _ans.pfProfile.birthY) {
+    realAge = new Date().getFullYear() - Number(_ans.pfProfile.birthY);
+  } else if (_ans.age_group) {
+    var agMap = {'20s':25,'30s':35,'40s':45,'50s':55,'60s':65};
+    realAge = agMap[_ans.age_group] || 42;
+  } else if (_ans.Q_AGE || _ans.age) {
+    realAge = Number(_ans.Q_AGE || _ans.age) || 42;
+  }
+  if (realAge < 10 || realAge > 100) realAge = 42;
+
+  // BMI 추정
+  var w = Number((_ans.weight || _ans.curWeight || 0));
+  var h = Number((_ans.height || 0));
+  var bmi = (w > 30 && h > 100) ? w / Math.pow(h / 100, 2) : 23;
+
+  // 갱년기 여부
+  var menoVal = _ans['Q_MENOPAUSE'] || _ans.q12_menopause || '';
+  var isMeno  = (menoVal === '완경 후' || menoVal === '완경 중' || menoVal === 'meno' ||
+                 menoVal === 2 || menoVal === 0);
+
+  // ─────────────────────────────────────────────────────────
+  // 1. 대사 효율 나이 (Metabolic Age)
+  //    베이스 = 실제 나이
+  //    각 축(0~1) × 가중치를 더해 나이 편차를 산출 (최대 +20세)
+  //    클램프: [실제나이-2, 실제나이+20]
+  // ─────────────────────────────────────────────────────────
+  var metaAgeRaw = realAge
+    + n('A03') * 12    // 호르몬 저하 → 대사 노화
+    + n('A07') * 8     // 코르티솔 만성 → 노화 가속
+    + n('A05') * 7     // 스트레스 → 산화 스트레스
+    + n('A06') * 6     // 수면 부족 → 노화
+    + n('A01') * 5     // 인슐린 저항 → 대사 노화
+    + n('A04') * 5     // 근감소 → 기초대사↓
+    + (bmi > 27 ? 2 : 0)
+    + (_rf.indexOf('THYROID') >= 0 ? 3 : 0)
+    + (_rf.indexOf('PCOS')    >= 0 ? 2 : 0);
+  var metaAge = Math.min(realAge + 20, Math.max(realAge - 2, Math.round(metaAgeRaw)));
+
+  // ─────────────────────────────────────────────────────────
+  // 2. 복부 위험도 (Abdominal Fat Index)  0~100
+  //    기여: 인슐린(A01) > 스트레스(A05) > 식이(A08) > 수면(A06) > 근감소(A04) > 순환(A02)
+  //    BMI, 진단 질환(DIABETES/FATTY_LIVER/PCOS) 보정
+  //    구간: ≥80 고위험 / ≥60 경고 / ≥40 주의 / <40 양호
+  // ─────────────────────────────────────────────────────────
+  var bellyRaw =
+      n('A01') * 35    // 인슐린 저항 — 내장지방 직결
+    + n('A05') * 20    // 코르티솔·스트레스 → 복부 축적
+    + n('A08') * 15    // 식이행동 → 과잉 칼로리
+    + n('A06') * 12    // 수면 부족 → 그렐린↑
+    + n('A04') * 10    // 근감소 → 기초대사↓
+    + n('A02') * 8     // 순환 저하 → 지방 고착
+    + (bmi > 25 ? 5 : 0) + (bmi > 30 ? 5 : 0)
+    + (_rf.indexOf('DIABETES')    >= 0 ? 8 : 0)
+    + (_rf.indexOf('FATTY_LIVER') >= 0 ? 6 : 0)
+    + (_rf.indexOf('PCOS')        >= 0 ? 4 : 0);
+  var metaBelly = Math.min(99, Math.max(8, Math.round(bellyRaw)));
+  var bellyLevel = metaBelly >= 80 ? '고위험' : (metaBelly >= 60 ? '경고' : (metaBelly >= 40 ? '주의' : '양호'));
+
+  // ─────────────────────────────────────────────────────────
+  // 3. 호르몬 과부하 (Hormone Load Score)  0~100
+  //    기여: 갑상선(A03) > 호르몬(A10) > 자율신경(A07) > 스트레스(A05) > 인슐린(A01) > 수면(A06)
+  //    갱년기 +12, THYROID/PCOS 레드플래그 보정
+  // ─────────────────────────────────────────────────────────
+  var hormRaw =
+      n('A03') * 30    // 갑상선·내분비 직결
+    + n('A10') * 20    // 호르몬 기질 (기질 축이나 보조지표로 활용)
+    + n('A07') * 20    // 자율신경·코르티솔 과부하
+    + n('A05') * 15    // 스트레스 → HPA 과활성
+    + n('A01') * 10    // 인슐린 저항 → 호르몬 불균형
+    + n('A06') * 8     // 수면 → 멜라토닌·성장호르몬 교란
+    + (isMeno ? 12 : 0)
+    + (_rf.indexOf('THYROID') >= 0 ? 8 : 0)
+    + (_rf.indexOf('PCOS')    >= 0 ? 7 : 0);
+  var metaHormone = Math.min(99, Math.max(8, Math.round(hormRaw)));
+  var hormLevel = metaHormone >= 80 ? '고위험' : (metaHormone >= 60 ? '경고' : (metaHormone >= 40 ? '주의' : '양호'));
+
+  // ─────────────────────────────────────────────────────────
+  // 4. 체형/순환 불균형 (Body Imbalance Index)  0~100
+  //    기여: 수면(A06) > 순환(A02) > 근감소(A04) > 대사위험(A09) > 자율신경(A07) > 식이(A08)
+  //    STEROID/HTN 레드플래그 보정
+  // ─────────────────────────────────────────────────────────
+  var bodyRaw =
+      n('A06') * 28    // 골격·체형 불균형 직결
+    + n('A02') * 22    // 림프·순환 정체 → 부종·비대칭
+    + n('A04') * 22    // 근감소 → 체형 붕괴
+    + n('A09') * 15    // 대사 위험인자 → 혈관·조직
+    + n('A07') * 10    // 자율신경 → 순환 조절
+    + n('A08') * 8     // 식이 → 영양 불균형
+    + (_rf.indexOf('STEROID') >= 0 ? 6 : 0)
+    + (_rf.indexOf('HTN')     >= 0 ? 4 : 0);
+  var metaBody = Math.min(99, Math.max(8, Math.round(bodyRaw)));
+  var bodyLevel = metaBody >= 80 ? '고위험' : (metaBody >= 60 ? '경고' : (metaBody >= 40 ? '주의' : '양호'));
+
+  return {
+    metaAge:     metaAge,
+    realAge:     realAge,
+    metaBelly:   metaBelly,
+    bellyLevel:  bellyLevel,
+    metaHormone: metaHormone,
+    hormLevel:   hormLevel,
+    metaBody:    metaBody,
+    bodyLevel:   bodyLevel,
+  };
+}
+
+// ──────────────────────────────────────────────────────────────────
+// 11-D. getMedicalFilters(tags) → 처방 필터링 규칙 반환
+//   반환: { banExercise[], banDiet[], requireDiet[], requireExercise[], safetyChip }
+// ──────────────────────────────────────────────────────────────────
+function getMedicalFilters(tags) {
+  var t = tags || [];
+  function has(tag) { return t.indexOf(tag) > -1; }
+
+  var banExercise  = [];   // 이 운동 방식 금지
+  var banDiet      = [];   // 이 식이 방식 금지
+  var requireDiet  = [];   // 이 식이 방식 필수 적용
+  var requireExercise = []; // 이 운동 방식 필수 적용
+  var safetyChips  = [];   // 상단 메디컬 안전 칩
+
+  // ── 고혈압 / 이뇨제 ──
+  if (has('TAG_HYPERTENSION') || has('TAG_DIURETICS')) {
+    banExercise.push('HIIT', 'HIGH_INTENSITY', 'FASTING_CARDIO');
+    requireExercise.push('LOW_INTENSITY_INTERVAL', 'WALKING', 'LIGHT_STRETCH');
+    requireDiet.push('LOW_SODIUM', 'POTASSIUM_RICH');
+    safetyChips.push({ key:'HTN', label:'메디컬 안전 다이어트 모드', color:'#c0392b',
+      desc:'고혈압 동반 — 고강도 운동·공복 유산소 제한 · 저염식 우선 적용' });
+  }
+
+  // ── 관절 문제 ──
+  if (has('TAG_JOINT')) {
+    banExercise.push('HIIT', 'HIGH_IMPACT_JUMP', 'DEEP_SQUAT');
+    requireExercise.push('AQUA_EXERCISE', 'CHAIR_EXERCISE', 'GENTLE_STRETCH', 'LOW_IMPACT');
+    safetyChips.push({ key:'JOINT', label:'관절 보호 모드', color:'#e67e22',
+      desc:'관절·근감소 동반 — 충격 운동 금지 · 관절 부하 최소 운동 적용' });
+  }
+
+  // ── PCOS ──
+  if (has('TAG_PCOS')) {
+    requireDiet.push('LOW_GI', 'HIGH_FIBER', 'BLOOD_SUGAR_DEFENSE');
+    banDiet.push('HIGH_CARB_SPIKE', 'SUGARY_DRINKS');
+    safetyChips.push({ key:'PCOS', label:'PCOS 혈당 방어 식단 모드', color:'#8e44ad',
+      desc:'다낭성난소 — 혈당 스파이크 방어 · 저GI/식이섬유 우선 식단 적용' });
+  }
+
+  // ── 당뇨·전당뇨 ──
+  if (has('TAG_DIABETES')) {
+    requireDiet.push('LOW_GI', 'POST_MEAL_WALK', 'BLOOD_SUGAR_DEFENSE');
+    banDiet.push('INTERMITTENT_FASTING_LONG', 'SUGARY_DRINKS');
+    safetyChips.push({ key:'DIABETES', label:'혈당 관리 다이어트 모드', color:'#d35400',
+      desc:'당뇨 전단계 동반 — 혈당 급상승 식품 제한 · 식후 산책 프로토콜 적용' });
+  }
+
+  // ── 우울증 ──
+  if (has('TAG_DEPRESSION')) {
+    banDiet.push('STRICT_DIARY', 'CALORIE_OBSESSION', 'EXTREME_RESTRICTION');
+    banExercise.push('HIGH_INTENSITY_FORCED', 'COMPETITION_BASED');
+    requireDiet.push('SEROTONIN_FRIENDLY', 'COMFORT_FOOD_HEALTHY');
+    requireExercise.push('WALK_SUNLIGHT', 'GENTLE_YOGA', 'ULTRA_LOW_BARRIER');
+    safetyChips.push({ key:'DEPRESSION', label:'멘탈 회복 우선 모드', color:'#2980b9',
+      desc:'우울·불안 동반 — 강박적 식단 기록 금지 · 세로토닌 회복형 식단 · 초저난이도 미션 적용' });
+  }
+
+  // ── 수면 장애 ──
+  if (has('TAG_SLEEP_DISORDER')) {
+    banDiet.push('LATE_NIGHT_CARB');
+    requireDiet.push('SLEEP_FRIENDLY', 'MAGNESIUM_RICH');
+    requireExercise.push('MORNING_SUNLIGHT', 'EVENING_STRETCH');
+    safetyChips.push({ key:'SLEEP', label:'수면 회복 우선 모드', color:'#1abc9c',
+      desc:'수면 장애 동반 — 야간 탄수화물 제한 · 수면 개선 루틴 우선 적용' });
+  }
+
+  // ── 교대·야간 근무 ──
+  if (has('TAG_SHIFT_WORK')) {
+    banDiet.push('FIXED_EVENING_FAST', 'STANDARD_MEAL_TIMING');
+    requireDiet.push('CIRCADIAN_MEAL', 'SHIFT_ADAPTED_TIMING');
+    safetyChips.push({ key:'SHIFT', label:'생체시계 맞춤 식사 모드', color:'#16a085',
+      desc:'야간·교대근무 — 저녁 6시 이후 금식 규칙 해제 · 개인 취침기준 식사 타임라인 적용' });
+  }
+
+  // ── 항응고제 ──
+  if (has('TAG_ANTICOAGULANT')) {
+    banExercise.push('HIGH_IMPACT_CONTACT');
+    safetyChips.push({ key:'ANTICOAG', label:'출혈 위험 주의 모드', color:'#e74c3c',
+      desc:'항응고제 복용 — 충격·접촉 운동 주의 · 시술 전 의료진 확인 필수' });
+  }
+
+  return {
+    banExercise:     banExercise,
+    banDiet:         banDiet,
+    requireDiet:     requireDiet,
+    requireExercise: requireExercise,
+    safetyChips:     safetyChips,
+    hasMedicalMode:  safetyChips.length > 0,
+  };
+}
+
+// ──────────────────────────────────────────────────────────────────
+// 11-E. getRoadmapRatioOverride(tags, weekNum) → 주차별 비율 오버라이드
+//   명세: TAG_SLEEP_DISORDER or TAG_DEPRESSION 존재 시
+//         1~4주차: [운동 20%, 식단 30%, 회복 50%]
+// ──────────────────────────────────────────────────────────────────
+function getRoadmapRatioOverride(tags, weekNum) {
+  var t = tags || [];
+  var w = weekNum || 1;
+
+  var needRecoveryFirst = (t.indexOf('TAG_SLEEP_DISORDER') > -1 ||
+                           t.indexOf('TAG_DEPRESSION') > -1);
+  var isShift = t.indexOf('TAG_SHIFT_WORK') > -1;
+  var isPcos  = t.indexOf('TAG_PCOS') > -1;
+  var isJoint = t.indexOf('TAG_JOINT') > -1;
+
+  if (needRecoveryFirst && w <= 4) {
+    return { workout: 20, diet: 30, recovery: 50,
+             note: '수면·멘탈 회복 우선 (1~4주차)',
+             missionPriority: ['recovery', 'diet', 'workout'] };
+  }
+  if (isJoint && w <= 6) {
+    return { workout: 25, diet: 40, recovery: 35,
+             note: '관절 보호 — 저충격 운동 위주 (1~6주차)',
+             missionPriority: ['diet', 'recovery', 'workout'] };
+  }
+  if (isPcos) {
+    return { workout: 35, diet: 45, recovery: 20,
+             note: 'PCOS — 혈당 방어 식단 우선',
+             missionPriority: ['diet', 'workout', 'recovery'] };
+  }
+  if (isShift) {
+    return { workout: 30, diet: 40, recovery: 30,
+             note: '교대근무 — 생체시계 맞춤 루틴',
+             missionPriority: ['diet', 'recovery', 'workout'] };
+  }
+  // 기본값
+  return { workout: 40, diet: 40, recovery: 20,
+           note: '기본 균형 비율',
+           missionPriority: ['workout', 'diet', 'recovery'] };
+}
+
+// ──────────────────────────────────────────────────────────────────
+// 11-F. getMotivationBanner(tags, motivation, weekNum, dayNum) → 오늘탭 상단 배너
+// ──────────────────────────────────────────────────────────────────
+function getMotivationBanner(tags, motivation, weekNum, dayNum) {
+  var mot = motivation || 'self';
+  var w   = weekNum || 1;
+  var d   = dayNum || 1;
+  var t   = tags || [];
+
+  var targetStr = '';
+  var suffix    = '';
+  if (mot === 'child')   { targetStr = '자녀'; suffix = '에게 더 멋진 모습을 보여주기 위한'; }
+  else if (mot === 'partner') { targetStr = '연인'; suffix = '에게 더 사랑받는 나를 위한'; }
+  else if (mot === 'family')  { targetStr = '가족'; suffix = '을 위해 건강해지려는'; }
+  else if (mot === 'health')  { targetStr = '건강'; suffix = '을 되찾기 위한'; }
+  else                         { targetStr = '나 자신'; suffix = '을 위한'; }
+
+  // 특수 메시지 (회복 우선 모드)
+  var needRecovery = (t.indexOf('TAG_SLEEP_DISORDER') > -1 || t.indexOf('TAG_DEPRESSION') > -1);
+  if (needRecovery && w <= 4) {
+    return {
+      headline: '오늘은 쉬는 게 처방입니다',
+      subline:  targetStr + suffix + ' ' + w + '주 차 ' + d + '일 차 — 회복이 먼저입니다.',
+      icon: '🌙',
+      accent: '#1abc9c',
+    };
+  }
+
+  // 기본 배너
+  return {
+    headline: targetStr + (mot === 'health' ? suffix : '을(를) 위해 오늘도 한 걸음'),
+    subline:  '사랑하는 ' + (mot !== 'self' ? targetStr : '나') + suffix + ' ' + w + '주 차 ' + d + '일 차 미션입니다.',
+    icon: mot === 'child' ? '👨‍👧' : (mot === 'partner' ? '💑' : (mot === 'health' ? '❤️' : '⭐')),
+    accent: mot === 'child' ? '#e67e22' : (mot === 'partner' ? '#e91e8c' : '#3498db'),
+  };
+}
+
+// ──────────────────────────────────────────────────────────────────
+// 11-G. getMealEnvMissions(tags, mealEnv) → 식사 환경별 오늘 미션 블록
+// ──────────────────────────────────────────────────────────────────
+function getMealEnvMissions(tags, mealEnv) {
+  var env = mealEnv || [];
+  var t   = tags || [];
+  var missions = [];
+
+  if (env.indexOf('delivery') > -1 || t.indexOf('TAG_DELIVERY') > -1) {
+    missions.push({
+      category: 'diet_env',
+      icon: '📱',
+      title: '배달앱 혈당 방어 룰',
+      steps: [
+        '주문 전: "한식 도시락 > 샐러드 > 치킨(무 먼저)" 검색 필터 적용',
+        '수령 후: 채소·단백질 먼저 → 탄수화물 나중에 먹기',
+        '음료: 제로/아메리카노 교체, 단 음료 제거',
+        '소스: 마요·케첩 절반만 사용',
+      ],
+      tag: 'TAG_DELIVERY',
+    });
+  }
+  if (env.indexOf('convenience') > -1 || t.indexOf('TAG_CONVENIENCE') > -1) {
+    missions.push({
+      category: 'diet_env',
+      icon: '🏪',
+      title: '편의점 꿀조합 가이드',
+      steps: [
+        '단백질 먼저: 닭가슴살 바 / 삶은달걀 / 그릭요거트',
+        '탄수 파트너: 삶은옥수수 / 고구마 / 현미 삼각김밥',
+        '피해야 할 조합: 빵 + 주스 + 과자 (혈당 폭탄)',
+        '추천 조합: 닭가슴살 + 달걀 + 아메리카노',
+      ],
+      tag: 'TAG_CONVENIENCE',
+    });
+  }
+  if (env.indexOf('single') > -1 || t.indexOf('TAG_SINGLE') > -1) {
+    missions.push({
+      category: 'diet_env',
+      icon: '🏠',
+      title: '자취생 영양 밸런스 미션',
+      steps: [
+        '냉장고 필수템: 달걀·두부·브로콜리·방울토마토 상시 구비',
+        '전자레인지 단백질: 두부 200g 3분 → 간장 한 방울',
+        '아침 5분 루틴: 삶은달걀 2개 + 바나나 1개',
+        '오늘 미션: 햇빛 10분 쬐기 (비타민D·세로토닌 생성)',
+      ],
+      tag: 'TAG_SINGLE',
+    });
+  }
+
+  // 야식·교대근무 → 야식 방어 미션
+  if (t.indexOf('TAG_NIGHT_EATING') > -1 || t.indexOf('TAG_SHIFT_WORK') > -1) {
+    missions.push({
+      category: 'diet_env',
+      icon: '🌙',
+      title: '야간 근무·야식 방어 루틴',
+      steps: [
+        '근무 전 식사: 단백질 + 복합탄수 위주로 포만감 확보',
+        '야식 대체: 아몬드 10알 + 따뜻한 카모마일차',
+        '취침 2시간 전 마지막 식사 (본인 취침 기준)',
+        '기상 후 30분 내 단백질 식사로 생체시계 리셋',
+      ],
+      tag: 'TAG_SHIFT_WORK',
+    });
+  }
+
+  return missions;
+}
+
+// ──────────────────────────────────────────────────────────────────
+// 11-H. getPsychologicalTriggerNarrative(triggerType, axisScores, tags)
+//         P1 심리 원인 분석 문구 생성
+// ──────────────────────────────────────────────────────────────────
+function getPsychologicalTriggerNarrative(triggerType, axisScores, tags) {
+  var _t = triggerType || 'none';
+  var _a = axisScores || {};
+  var t  = tags || [];
+  var n  = function(k) { return Number(_a[k] || 0); };
+
+  var cortisol    = n('A07');   // 코르티솔 / 스트레스
+  var hormone     = n('A03');   // 호르몬
+  var psychology  = n('A08');   // 심리·식이행동
+
+  // 핵심 원인 문장 + 보조 문장 조합
+  var mainCause = '';
+  var detail    = '';
+  var emphasis  = '';
+
+  if (_t === 'burnout') {
+    mainCause = '번아웃';
+    detail    = '번아웃 당시 폭발한 코르티솔 호르몬과 대사 정체';
+    emphasis  = '스트레스가 "먹어야 살 것 같은" 충동으로 전환되고, 코르티솔이 복부에 지방을 쌓았습니다.';
+  } else if (_t === 'stress_event') {
+    mainCause = '심리적 충격·이별';
+    detail    = '심리 충격 이후 무너진 세로토닌과 코르티솔 교란';
+    emphasis  = '감정적 허기(Emotional Hunger)가 칼로리 과잉의 실제 원인이었습니다.';
+  } else if (_t === 'postpartum') {
+    mainCause = '출산 후 호르몬 급변';
+    detail    = '출산 후 에스트로겐 급감과 복벽 구조 변화';
+    emphasis  = '의지의 문제가 아니라, 골반·복벽 구조와 호르몬 축이 바뀐 것입니다.';
+  } else if (_t === 'yoyo') {
+    mainCause = '반복적 요요';
+    detail    = '요요가 반복되며 기초대사가 낮아진 대사 적응';
+    emphasis  = '몸이 굶주림을 기억하고, 적게 먹어도 저장하도록 적응한 상태입니다.';
+  } else if (cortisol >= 7) {
+    mainCause = '만성 스트레스·코르티솔 과잉';
+    detail    = '만성 스트레스로 인한 코르티솔 과분비와 복부 지방 축적';
+    emphasis  = '스트레스 호르몬이 복부에 특이적으로 지방을 쌓는 패턴입니다.';
+  } else if (hormone >= 7) {
+    mainCause = '호르몬 불균형';
+    detail    = '갑상선·성호르몬 불균형으로 인한 대사 저하';
+    emphasis  = '호르몬이 "살찌는 체질"을 만든 것이며, 의지로 극복하기 어렵습니다.';
+  } else if (psychology >= 7) {
+    mainCause = '심리·식이행동 패턴';
+    detail    = '감정 조절 도구로 음식을 사용하는 심리·식이 패턴';
+    emphasis  = '음식이 감정의 도피처가 되면, 배고픔이 아니라 마음이 먹는 상태가 됩니다.';
+  } else {
+    mainCause = '복합 원인';
+    detail    = '다양한 원인이 복합적으로 작용한 체중 증가';
+    emphasis  = '단일 원인이 아니라 여러 축이 얽혀 있어, 정밀한 순서로 접근해야 합니다.';
+  }
+
+  // PCOS 추가 문구
+  var medicalNote = '';
+  if (t.indexOf('TAG_PCOS') > -1) {
+    medicalNote = 'PCOS(다낭성난소증후군)로 인한 인슐린 저항과 안드로겐 과잉이 복부 지방을 고착시켰습니다. 혈당 방어 없이는 어떤 식단도 한계가 있습니다.';
+  } else if (t.indexOf('TAG_THYROID') > -1) {
+    medicalNote = '갑상선 기능 저하로 기초대사가 구조적으로 낮아진 상태입니다. 대사를 올리는 처방이 식단보다 우선해야 합니다.';
+  } else if (t.indexOf('TAG_DEPRESSION') > -1) {
+    medicalNote = '우울·불안 상태에서 세로토닌이 부족해지면 탄수화물·당류 갈망이 강해집니다. 심리 회복이 식이 조절의 선행 조건입니다.';
+  }
+
+  return {
+    mainCause:   mainCause,
+    detail:      detail,
+    emphasis:    emphasis,
+    medicalNote: medicalNote,
+    narrative:   'OOO 님이 살이 찐 진짜 원인은 의지 부족이 아닌, <b>' + detail + '</b> 때문입니다. ' + emphasis,
+  };
+}
+
+// ──────────────────────────────────────────────────────────────────
 // 12. export
-// ──────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     // V3.1 신규
@@ -5763,6 +6401,10 @@ if (typeof module !== 'undefined' && module.exports) {
     // V5.0 신규: 공통 TOP3 처방 산출 파이프라인
     computeTop3Prescriptions,
     _DOMAIN_AXIS_WEIGHTS_HOSPITAL, _DOMAIN_AXIS_WEIGHTS_AESTHETIC, _DOMAIN_META,
+    // V6.0 신규: TagEngine + 4대 바디 지표 + 의료 필터 + 로드맵 비율
+    extractTags, computeBodyMetrics, getMedicalFilters,
+    getRoadmapRatioOverride, getMotivationBanner, getMealEnvMissions,
+    getPsychologicalTriggerNarrative,
     // 기존 유지
     BC_MASTER, CAUSAL_AXIS_META, AXIS_11,
     SAJU_ELEMENT_DESC, MBTI_DESC,

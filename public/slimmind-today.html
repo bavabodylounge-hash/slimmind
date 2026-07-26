@@ -347,11 +347,16 @@ body{
 </div>
 
 <div class="wrap">
+  <!-- V6.0: 동기부여 배너 — getMotivationBanner() 동적 렌더링 -->
+  <div id="motivation-banner" style="display:none;"></div>
+
   <div class="sec">
     <span class="sec-n">1</span>
     <span class="sec-t">오늘 할 일</span>
     <span class="sec-line"></span>
   </div>
+  <!-- V6.0: 로드맵 비율 오버라이드 안내 칩 -->
+  <div id="ratio-override-note" style="display:none;"></div>
   <div id="items"></div>
 
   <div class="sec">
@@ -595,6 +600,7 @@ function boot(){
   if (W && W.phase) PHASE = W.phase;
 
   renderHead();
+  renderMotivationBanner(); // V6.0: 동기부여 배너 + 로드맵 비율 오버라이드
   renderItems();
   renderWeek();
   renderCon();
@@ -651,6 +657,94 @@ function renderHead(){
         '<span class="ms-est">현재 추정 <b>' + estNow + 'kg</b> (' + WK + '주차 ' + pct + '% 달성)</span>' +
         '<span class="ms-next">4주 뒤 예상 → <b>' + nextMile + 'kg</b></span>';
       msEl.style.display = 'flex';
+    }
+  }
+}
+
+/* ── V6.0: 동기부여 배너 렌더링 (getMotivationBanner) ─────────────────── */
+function renderMotivationBanner() {
+  var _bannerEl = document.getElementById('motivation-banner');
+  var _ratioEl  = document.getElementById('ratio-override-note');
+  if (!_bannerEl) return;
+
+  // TagEngine 접근
+  var _hasBanner  = (typeof getMotivationBanner === 'function');
+  var _hasRatio   = (typeof getRoadmapRatioOverride === 'function');
+  var _hasTags    = (typeof extractTags === 'function');
+
+  // META에 저장된 tags/tagMeta 우선, 없으면 추출
+  var _tagResult  = (META && META.tagResult) ? META.tagResult : null;
+  var _motivation = (META && META.motivation) ? META.motivation
+                  : (META && META.desire && META.desire.motivation ? META.desire.motivation : 'self');
+  var _tags       = (_tagResult && _tagResult.tags) ? _tagResult.tags : [];
+
+  // tagResult가 없으면 localStorage에서 answers 재추출 시도
+  if (_tags.length === 0 && _hasTags) {
+    try {
+      var _rawAns = localStorage.getItem('slimmind_answers_' + (function(){ try{ var d=loadData()||{}; return (d.userId||d.user_id||''); }catch(e){ return ''; } })());
+      if (!_rawAns) {
+        // result-hospital.html에서 저장한 __LAST_ANSWERS__ 시도
+        var _ld = loadData() || {};
+        if (_ld.answers) {
+          _tagResult = extractTags(_ld.answers);
+          _tags = _tagResult.tags || [];
+          _motivation = _tagResult.motivation || _motivation;
+        }
+      } else {
+        _tagResult = extractTags(JSON.parse(_rawAns));
+        _tags = _tagResult.tags || [];
+        _motivation = _tagResult.motivation || _motivation;
+      }
+    } catch(e) {}
+  }
+
+  // ① 동기부여 배너 생성
+  if (_hasBanner) {
+    var _dayNum = TODAY + 1; // 0-based → 1-based
+    var _banner = getMotivationBanner(_tags, _motivation, WK, _dayNum);
+    if (_banner && _banner.headline) {
+      // 회복 우선 모드 여부
+      var _isRecovery = (_tags.indexOf('TAG_SLEEP_DISORDER') >= 0 || _tags.indexOf('TAG_DEPRESSION') >= 0) && WK <= 4;
+      var _accentColor = _isRecovery ? '#2f7d8c' : '#b5452e';
+      _bannerEl.innerHTML =
+        '<div style="margin-bottom:12px;padding:14px 16px;border-radius:14px;'
+        + 'background:linear-gradient(135deg,rgba(181,69,46,0.12),rgba(47,125,140,0.08));'
+        + 'border:1px solid rgba(181,69,46,0.2);">'
+        + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">'
+        + '<span style="font-size:18px;">' + (_banner.icon || '💪') + '</span>'
+        + '<span style="font-size:11px;font-weight:800;letter-spacing:1px;'
+        + 'color:' + _accentColor + ';text-transform:uppercase;">오늘의 동기</span></div>'
+        + '<div style="font-size:15px;font-weight:900;color:#1a1410;line-height:1.4;margin-bottom:4px;word-break:keep-all;">'
+        + _banner.headline + '</div>'
+        + (_banner.subline ? '<div style="font-size:12.5px;color:#5a5248;line-height:1.5;word-break:keep-all;">' + _banner.subline + '</div>' : '')
+        + '</div>';
+      _bannerEl.style.display = 'block';
+    }
+  }
+
+  // ② 로드맵 비율 오버라이드 안내
+  if (_hasRatio && _ratioEl) {
+    var _ratioOverride = getRoadmapRatioOverride(_tags, WK);
+    // 기본값(운동:40, 식단:40, 회복:20)과 다를 때만 표시
+    var _isDefault = (_ratioOverride.workout === 40 && _ratioOverride.diet === 40 && _ratioOverride.recovery === 20);
+    if (!_isDefault && _ratioOverride.note) {
+      _ratioEl.innerHTML =
+        '<div style="margin-bottom:10px;padding:10px 13px;border-radius:11px;'
+        + 'background:rgba(47,125,140,0.1);border:1px solid rgba(47,125,140,0.25);'
+        + 'display:flex;align-items:flex-start;gap:8px;">'
+        + '<span style="font-size:15px;flex-shrink:0;">📊</span>'
+        + '<div>'
+        + '<div style="font-size:11.5px;font-weight:800;color:#1a5060;margin-bottom:2px;">'
+        + _ratioOverride.note + '</div>'
+        + '<div style="font-size:11px;color:#2f7d8c;font-weight:700;">'
+        + '운동 ' + _ratioOverride.workout + '% · 식단 ' + _ratioOverride.diet + '% · 회복 ' + _ratioOverride.recovery + '%'
+        + '</div></div></div>';
+      _ratioEl.style.display = 'block';
+
+      // missionPriority가 있으면 window에 저장 (renderItems에서 참조)
+      if (_ratioOverride.missionPriority) {
+        window.__MISSION_PRIORITY__ = _ratioOverride.missionPriority;
+      }
     }
   }
 }
@@ -1069,7 +1163,7 @@ function todayTasks(){
     if (ohLabel) kFocus = kFocus.concat([ohLabel]).slice(0, 3);
   }
 
-  return [
+  var _tasks = [
     { k:'ex', nm:'운동',
       tx:   exMainTx,
       detail: exDetail,
@@ -1098,6 +1192,24 @@ function todayTasks(){
       nutr: null,
       warn: reWarn, alert: reAlert },
   ];
+
+  // V6.0: missionPriority(window.__MISSION_PRIORITY__) 기반 미션 순서 재정렬
+  // TAG_SLEEP_DISORDER/TAG_DEPRESSION + w<=4 → 회복 카드를 최상단으로
+  var _prio = window.__MISSION_PRIORITY__;
+  if (_prio === 're' || _prio === 'recovery') {
+    // 회복(re) 카드를 맨 앞으로
+    var _reIdx = _tasks.findIndex ? _tasks.findIndex(function(t){ return t.k === 're'; })
+               : (function(){ for(var i=0;i<_tasks.length;i++){ if(_tasks[i].k==='re') return i; } return -1; })();
+    if (_reIdx > 0) {
+      var _reCard = _tasks.splice(_reIdx, 1)[0];
+      // 회복 카드 헤더에 '우선 처방' 표시 추가
+      _reCard.nm = '🌿 회복 [우선]';
+      _reCard.alert = (_reCard.alert ? _reCard.alert + ' | ' : '') + '💙 회복 우선 모드: 운동보다 수면·멘탈 회복이 이번 주 핵심입니다.';
+      _tasks.unshift(_reCard);
+    }
+  }
+
+  return _tasks;
 }
 
 function coupangClick(bc){

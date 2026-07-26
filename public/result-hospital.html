@@ -8520,102 +8520,25 @@ function computeBCCode(axisScores, answers) {
   var top2Legacy = sorted[1];
   var firstDomino = (CAUSAL_AXIS_META[top1Legacy[0]] && CAUSAL_AXIS_META[top1Legacy[0]].label) || '스트레스';
 
-  // ⑤ 4대 지표 — ★ 세션 4: 실제 나이·BC코드·다중축 반영 정교화
-  // ─────────────────────────────────────────────────────────────
-  // realAge: answers에서 실제 나이 추출 (computeBCCode에 answers가 전달됨)
-  var _cbcRealAge = null;
-  if (answers) {
-    // pfProfile.birthY → 계산 나이 우선
-    if (answers.pfProfile && answers.pfProfile.birthY) {
-      _cbcRealAge = new Date().getFullYear() - Number(answers.pfProfile.birthY);
-    } else if (answers.age_group) {
-      // age_group: '20s'|'30s'|'40s'|'50s'|'60s' → 중간값
-      var _agMap = {'20s':25,'30s':35,'40s':45,'50s':55,'60s':65};
-      _cbcRealAge = _agMap[answers.age_group] || null;
-    } else if (answers.Q_AGE || answers.age) {
-      _cbcRealAge = Number(answers.Q_AGE || answers.age) || null;
-    }
-  }
-  var _cbcAge = (_cbcRealAge && _cbcRealAge > 10 && _cbcRealAge < 100) ? _cbcRealAge : 42;
+  // ⑤ 4대 지표 — V6.0: computeBodyMetrics() 공통 함수 사용 (스케일 버그 수정)
+  // ─────────────────────────────────────────────────────────────────────────
+  // 기존 버그: axisScores가 0~10 스케일인데 가중치를 0~100 기준으로 적용 → 항상 99 클램프
+  // 수정: computeBodyMetrics()에서 n(key)=value/10 정규화 후 가중치 ×최대100 단위로 재설계
+  var _cbcBodyMetrics = (typeof computeBodyMetrics === 'function')
+    ? computeBodyMetrics(axisScores, answers, window._redFlags || [])
+    : { metaAge: 42, realAge: 42,
+        metaBelly: 45,   bellyLevel:  '주의',
+        metaHormone: 45, hormLevel:   '주의',
+        metaBody: 45,    bodyLevel:   '주의' };
 
-  // BMI 추정 (answers에 weight/height 있으면)
-  var _cbcW = Number((answers||{}).weight || 0);
-  var _cbcH = Number((answers||{}).height || 0);
-  var _cbcBmi = (_cbcW > 30 && _cbcH > 100) ? _cbcW / Math.pow(_cbcH/100, 2) : 23;
+  var metaAge     = _cbcBodyMetrics.metaAge;
+  var metaBelly   = _cbcBodyMetrics.metaBelly;
+  var metaHormone = _cbcBodyMetrics.metaHormone;
+  var metaBody    = _cbcBodyMetrics.metaBody;
+  var _metaRealAge = _cbcBodyMetrics.realAge;
 
-  // redFlags 보정
-  var _cbcRfl = (typeof window !== 'undefined' && window._redFlags) ? window._redFlags : [];
-
-  // 몸 나이 (metaAge):
-  //   베이스 = 실제 나이
-  //   + A03(갑상선)×1.2 + A07(자율신경)×0.8 + A05(스트레스)×0.7
-  //   + A06(수면)×0.6 + A01(인슐린)×0.5 + A04(근감소)×0.5
-  //   + BMI>27 ? +2 : 0
-  //   + THYROID redFlag ? +3 : 0
-  //   최소 실제나이-2, 최대 실제나이+20
-  var _metaAgeRaw = _cbcAge
-    + (axisScores['A03']||0) * 1.2
-    + (axisScores['A07']||0) * 0.8
-    + (axisScores['A05']||0) * 0.7
-    + (axisScores['A06']||0) * 0.6
-    + (axisScores['A01']||0) * 0.5
-    + (axisScores['A04']||0) * 0.5
-    + (_cbcBmi > 27 ? 2 : 0)
-    + (_cbcRfl.indexOf('THYROID') >= 0 ? 3 : 0)
-    + (_cbcRfl.indexOf('PCOS')    >= 0 ? 2 : 0);
-  var metaAge = Math.min(_cbcAge + 20, Math.max(_cbcAge - 2, Math.round(_metaAgeRaw)));
-
-  // 복부 위험도 (metaBelly):
-  //   A01(인슐린)×7 + A05(스트레스)×3 + A08(식이)×2.5 + A06(수면)×2 + A04(근감소)×1.5 + A02(염증)×1
-  //   + BMI>25 ? +5 : 0, BMI>30 ? +5 추가
-  //   + DIABETES ? +8, FATTY_LIVER ? +6, PCOS ? +4
-  var _metaBellyRaw =
-      (axisScores['A01']||0) * 7
-    + (axisScores['A05']||0) * 3
-    + (axisScores['A08']||0) * 2.5
-    + (axisScores['A06']||0) * 2
-    + (axisScores['A04']||0) * 1.5
-    + (axisScores['A02']||0) * 1
-    + (_cbcBmi > 25 ? 5 : 0) + (_cbcBmi > 30 ? 5 : 0)
-    + (_cbcRfl.indexOf('DIABETES')    >= 0 ? 8 : 0)
-    + (_cbcRfl.indexOf('FATTY_LIVER') >= 0 ? 6 : 0)
-    + (_cbcRfl.indexOf('PCOS')        >= 0 ? 4 : 0);
-  var metaBelly = Math.min(99, Math.max(10, Math.round(_metaBellyRaw)));
-
-  // 호르몬 부하 (metaHormone):
-  //   A03(갑상선)×6 + A10(호르몬)×5 + A07(자율신경)×4 + A05(스트레스)×3 + A01(인슐린)×2 + A06(수면)×1.5
-  //   + 갱년기(Q_MENOPAUSE) ? +10
-  //   + THYROID ? +8, PCOS ? +7
-  var _menoVal = (answers && (answers['Q_MENOPAUSE']||''));
-  var _isMeno  = (_menoVal === '완경 후' || _menoVal === '완경 중' || _menoVal === 'meno');
-  var _metaHormRaw =
-      (axisScores['A03']||0) * 6
-    + (axisScores['A10']||0) * 5
-    + (axisScores['A07']||0) * 4
-    + (axisScores['A05']||0) * 3
-    + (axisScores['A01']||0) * 2
-    + (axisScores['A06']||0) * 1.5
-    + (_isMeno ? 10 : 0)
-    + (_cbcRfl.indexOf('THYROID') >= 0 ? 8 : 0)
-    + (_cbcRfl.indexOf('PCOS')    >= 0 ? 7 : 0);
-  var metaHormone = Math.min(99, Math.max(10, Math.round(_metaHormRaw)));
-
-  // 체형 불균형 (metaBody):
-  //   A06(수면)×6 + A02(염증)×4 + A04(근감소)×4 + A09(순환)×3 + A07(자율신경)×2 + A08(식이)×1.5
-  //   + STEROID ? +6, HTN ? +4
-  var _metaBodyRaw =
-      (axisScores['A06']||0) * 6
-    + (axisScores['A02']||0) * 4
-    + (axisScores['A04']||0) * 4
-    + (axisScores['A09']||0) * 3
-    + (axisScores['A07']||0) * 2
-    + (axisScores['A08']||0) * 1.5
-    + (_cbcRfl.indexOf('STEROID') >= 0 ? 6 : 0)
-    + (_cbcRfl.indexOf('HTN')     >= 0 ? 4 : 0);
-  var metaBody = Math.min(99, Math.max(10, Math.round(_metaBodyRaw)));
-
-  // realAge를 metrics에 함께 저장 (renderP9에서 비교 문구 생성용)
-  var _metaRealAge = _cbcAge;
+  // 전역 공유: P1/P3/P6 렌더링에서 레벨 값 참조
+  window.__BODY_METRICS__ = _cbcBodyMetrics;
 
   return {
     nickname: nickname,
@@ -8625,7 +8548,16 @@ function computeBCCode(axisScores, answers) {
     bcCode: bcCode, masterKey: masterKey, bcMaster: bcMaster,
     causalScores: causalScores, sorted: sorted, top1: top1Legacy, top2: top2Legacy,
     firstDomino: firstDomino,
-    metrics: { metaAge: metaAge, metaBelly: metaBelly, metaHormone: metaHormone, metaBody: metaBody, realAge: _metaRealAge },
+    metrics: {
+      metaAge:     metaAge,
+      metaBelly:   metaBelly,
+      metaHormone: metaHormone,
+      metaBody:    metaBody,
+      realAge:     _metaRealAge,
+      bellyLevel:  _cbcBodyMetrics.bellyLevel  || '주의',
+      hormLevel:   _cbcBodyMetrics.hormLevel   || '주의',
+      bodyLevel:   _cbcBodyMetrics.bodyLevel   || '주의',
+    },
   };
 }
 
@@ -13224,7 +13156,7 @@ function renderAll(data) {
     : null;
 
   renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nicknameDisplay, background,
-           isBorderline, borderlineDiff, secondaryBcCode, secondaryNickname, evidenceBadge);
+           isBorderline, borderlineDiff, secondaryBcCode, secondaryNickname, evidenceBadge, answers);
   renderP2(userName, bcCode, firstDomino, axisScores, sorted);
   window.__BC_RM__ = bcCode; // 로드맵 주차별 영양제 카드용 BC 코드
   renderP3(userName, bcCode, bcMaster, ohaengType, ohaeng, mbtiType, mbti, fullCode, prescription, answers, data.bloodType, data.faceShape, axisScores, window.__RED_FLAGS__ || window._redFlags || []);
@@ -13263,7 +13195,7 @@ function renderAll(data) {
 
 /* ── P1 ── */
 function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nicknameDisplay, background,
-                 isBorderline, borderlineDiff, secondaryBcCode, secondaryNickname, evidenceBadge) {
+                 isBorderline, borderlineDiff, secondaryBcCode, secondaryNickname, evidenceBadge, answers) {
   // 표지에 이미 '○○님의 바디코드 리포트'가 있으므로 P1 제목은 챕터명 고정
   // V3.1: 닉네임 우선 표시 (BC번호 대신)
   const nickEl = document.getElementById('p1-nickname');
@@ -13510,6 +13442,82 @@ function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nic
     }).join('');
     return '<div class="bc16-group"><div class="rowlabel">'+group.part+'</div><div class="cells">'+cards+'</div></div>';
   }).join('');
+
+  // ── V6.0: 메디컬 안전 모드 칩 + 심리 원인 분석 문구 (TagEngine 연동) ────────
+  (function() {
+    var _ans     = answers || window.__LAST_ANSWERS__ || {};
+    var _redF    = window._redFlags || window.__RED_FLAGS__ || [];
+    var _axs     = axisScores || {};
+    var _bm      = window.__BODY_METRICS__ || {};
+
+    // TagEngine 함수 가용 여부 확인
+    var _hasTags = (typeof extractTags === 'function');
+    var _hasMed  = (typeof getMedicalFilters === 'function');
+    var _hasPsych = (typeof getPsychologicalTriggerNarrative === 'function');
+
+    // ① TAG 추출
+    var _tagResult = _hasTags ? extractTags(_ans) : { tags: [], tagMeta: {}, triggerType: 'none', motivation: 'self' };
+    var _tags       = _tagResult.tags || [];
+    var _triggerType= _tagResult.triggerType || 'none';
+    var _motivation = _tagResult.motivation || 'self';
+
+    // ② 메디컬 필터 → safetyChips 배열
+    var _medResult  = _hasMed ? getMedicalFilters(_tags) : { safetyChips: [], hasMedicalMode: false };
+    var _chips      = _medResult.safetyChips || [];
+    var _medMode    = _medResult.hasMedicalMode || false;
+
+    // ③ 메디컬 안전 모드 칩 삽입 — p1-metrics 상단
+    if (_medMode && _chips.length > 0) {
+      var mGrid = document.getElementById('p1-metrics');
+      if (mGrid) {
+        var _chipHTML = _chips.map(function(chip) {
+          return '<span style="display:inline-flex;align-items:center;gap:5px;'
+            + 'background:rgba(255,80,80,0.12);color:#ff5050;'
+            + 'border:1px solid rgba(255,80,80,0.35);'
+            + 'font-size:12px;font-weight:700;padding:5px 12px;'
+            + 'border-radius:20px;letter-spacing:0.3px;">'
+            + '🏥 ' + chip + '</span>';
+        }).join('');
+        var _medBanner = document.createElement('div');
+        _medBanner.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;'
+          + 'padding:12px 14px;background:rgba(255,80,80,0.07);'
+          + 'border:1px solid rgba(255,80,80,0.25);border-radius:12px;';
+        _medBanner.innerHTML = '<div style="width:100%;font-size:11px;font-weight:800;'
+          + 'color:#ff5050;letter-spacing:1px;margin-bottom:6px;">'
+          + '⚕️ 메디컬 안전 다이어트 모드 활성화</div>' + _chipHTML;
+        mGrid.insertAdjacentElement('beforebegin', _medBanner);
+      }
+    }
+
+    // ④ 심리 원인 분석 문구 삽입 — p1-story 아래에 추가
+    if (_hasPsych) {
+      var _psychResult = getPsychologicalTriggerNarrative(_triggerType, _axs, _tags);
+      var _storyEl = document.getElementById('p1-story');
+      if (_storyEl && _psychResult && _psychResult.narrative) {
+        // 기존 story 뒤에 원인 분석 카드 추가 (innerHTML append)
+        var _revealDiv = document.createElement('p');
+        _revealDiv.className = 'story-reveal';
+        _revealDiv.style.marginTop = '14px';
+        _revealDiv.innerHTML = _psychResult.narrative;
+        _storyEl.appendChild(_revealDiv);
+
+        // medicalNote가 있으면 별도 칩으로 추가
+        if (_psychResult.medicalNote) {
+          var _noteDiv = document.createElement('div');
+          _noteDiv.style.cssText = 'margin-top:10px;padding:10px 14px;'
+            + 'background:rgba(192,57,122,0.1);border:1px solid rgba(192,57,122,0.3);'
+            + 'border-radius:10px;font-size:12.5px;line-height:1.6;'
+            + 'color:rgba(255,180,220,.95);';
+          _noteDiv.innerHTML = '💊 <strong>의학적 참고</strong><br>' + _psychResult.medicalNote;
+          _storyEl.appendChild(_noteDiv);
+        }
+      }
+    }
+
+    // ⑤ 전역 TagResult 저장 (P3/P6에서 재사용)
+    window.__TAG_RESULT__ = _tagResult;
+    window.__MED_FILTER__ = _medResult;
+  })();
 
   // ★ 기능 6: 공유 데이터 세팅
   shareSetData(bcCode, nicknameDisplay, userName);
@@ -13826,9 +13834,97 @@ function renderP3(userName, bcCode, bcMaster, ohaengKey, ohaeng, mbtiType, mbti,
     // _mz==4(전신)는 별도 힌트 없음 — BC 처방이 이미 전신 커버
     if (_mzNote) dietAct += _mzNote;
   })();
+
+  // ── V6.0: Medical Filter-Out — TAG 기반 운동/식단 처방 오버라이드 ────────────
+  // 우선순위: 1) banExercise 차단 → 저강도 대체 / 2) requireDiet 우선 적용
+  (function() {
+    // TAG 결과 재사용 (renderP1에서 window.__TAG_RESULT__에 저장됨)
+    var _tagResult = window.__TAG_RESULT__;
+    var _medFilter = window.__MED_FILTER__;
+    if (!_tagResult || !_medFilter) {
+      var _lastAns = answers || window.__LAST_ANSWERS__ || {};
+      if (typeof extractTags === 'function') {
+        _tagResult = extractTags(_lastAns);
+        window.__TAG_RESULT__ = _tagResult;
+      }
+      if (typeof getMedicalFilters === 'function' && _tagResult) {
+        _medFilter = getMedicalFilters(_tagResult.tags || []);
+        window.__MED_FILTER__ = _medFilter;
+      }
+    }
+    if (!_tagResult || !_medFilter) return;
+
+    var _tags    = _tagResult.tags    || [];
+    var _mealEnv = _tagResult.mealEnv || [];
+    var _banEx   = _medFilter.banExercise  || [];
+    var _banDiet = _medFilter.banDiet      || [];
+    var _reqDiet = _medFilter.requireDiet  || [];
+    var _chips   = _medFilter.safetyChips  || [];
+
+    // ① banExercise → safeAct에 차단 알림 + 저강도 대체 삽입
+    if (_banEx.length > 0) {
+      var _banNote = '';
+      var _hasHT = (_tags.indexOf('TAG_HYPERTENSION') >= 0);
+      var _hasJT = (_tags.indexOf('TAG_JOINT') >= 0);
+      if (_hasHT && _hasJT) {
+        _banNote = '⚠️ 고혈압·관절 보호 모드: 고강도 HIIT, 공복 유산소, 점프 동작 제외. '
+          + '→ 저강도 인터벌(속보+휴식), 수중 유산소, 앉아서 하는 저항운동으로 대체.';
+      } else if (_hasHT) {
+        _banNote = '⚠️ 고혈압 안전 모드: HIIT·고강도·공복 유산소 제외. '
+          + '→ 혈압 안전 범위(40~60% 최대심박수) 속보, 스트레칭·밴드 운동으로 대체.';
+      } else if (_hasJT) {
+        _banNote = '⚠️ 관절 보호 모드: 점프스쿼트·HIIT·깊은 스쿼트 제외. '
+          + '→ 수중 운동, 의자 스쿼트, 발목 강화 밴드 운동으로 대체.';
+      }
+      if (_banNote) {
+        safeAct = _banNote + ' | ' + safeAct;
+        stressAct = '🚫 제외 동작: ' + _banEx.join(', ') + ' | ' + stressAct;
+      }
+    }
+
+    // ② DEPRESSION → 강박 차단 + 세로토닌 식단 우선
+    if (_tags.indexOf('TAG_DEPRESSION') >= 0) {
+      stressAct = '⚠️ 우울증 보호: 칼로리 계산 강박·식단 일기 강요 차단. '
+        + '→ 음식을 숫자가 아닌 색깔/질감으로 인식하는 세로토닌 회복 식단 우선. | ' + stressAct;
+      dietAct = '💙 세로토닌 우선: 트립토판(바나나·달걀·두부) + 오메가3(연어·고등어) + 발효식품(요거트·김치) 기본 구성. | ' + dietAct;
+    }
+
+    // ③ PCOS → 혈당 방어 식단 삽입
+    if (_tags.indexOf('TAG_PCOS') >= 0) {
+      dietAct = '🩸 PCOS 혈당 방어: 저GI 탄수화물(귀리·현미) + 채소→단백질→탄수화물 순서 + 계피·크롬 보충 권장. | ' + dietAct;
+    }
+
+    // ④ 식사 환경 맞춤 미션 삽입
+    if (typeof getMealEnvMissions === 'function') {
+      var _envMissions = getMealEnvMissions(_tags, _mealEnv);
+      if (_envMissions && _envMissions.length > 0) {
+        var _envNote = _envMissions.slice(0, 2).map(function(m) {
+          return '[' + m.title + '] ' + (m.steps || []).slice(0, 2).join(' → ');
+        }).join(' | ');
+        if (_envNote) dietAct += ' | 📍 환경 맞춤: ' + _envNote;
+      }
+    }
+
+    // ⑤ 메디컬 칩 → 처방 카드 상단 노출 (mrx 전 삽입)
+    if (_chips.length > 0) {
+      var _mountEl = document.getElementById('p3-mentalrx-mount');
+      if (_mountEl && _mountEl.innerHTML === '') {
+        var _medChipHTML = '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">'
+          + _chips.map(function(c) {
+              return '<span style="display:inline-flex;align-items:center;gap:4px;'
+                + 'background:rgba(255,80,80,0.1);color:#ff5050;'
+                + 'border:1px solid rgba(255,80,80,0.3);font-size:11.5px;'
+                + 'font-weight:700;padding:4px 10px;border-radius:16px;">🏥 ' + c + '</span>';
+            }).join('')
+          + '</div>';
+        _mountEl.insertAdjacentHTML('afterbegin', _medChipHTML);
+      }
+    }
+  })();
+
   const mrx = document.getElementById('p3-mentalrx-mount');
   if (mrx) {
-    mrx.innerHTML = `
+    mrx.innerHTML += `
       <div class="p3-mentalrx">
         <div class="p3-mentalrx-glow"></div>
         <div class="p3-mentalrx-in">
