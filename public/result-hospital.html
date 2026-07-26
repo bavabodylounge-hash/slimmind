@@ -8527,8 +8527,19 @@ function computeBCCode(axisScores, answers) {
   // ─────────────────────────────────────────────────────────────────────────
   // 기존 버그: axisScores가 0~10 스케일인데 가중치를 0~100 기준으로 적용 → 항상 99 클램프
   // 수정: computeBodyMetrics()에서 n(key)=value/10 정규화 후 가중치 ×최대100 단위로 재설계
+  //
+  // V6.2 버그 수정: answers에 weight/height/pfProfile/age가 없어 BMI·나이가 항상 기본값(42세, BMI23)
+  //   → 모든 사람이 동일한 복부/호르몬/체형 점수를 받는 문제
+  //   수정: _cbcFullAnswers를 만들어 data 최상위의 weight/height/age와 pfProfile을 주입
+  var _specForCbc = window.__RESULT__ || window.__DIAG_DATA__ || {};
+  var _cbcFullAnswers = Object.assign({}, answers, {
+    weight:    answers.weight    || Number(_specForCbc.weight)  || Number(_specForCbc._specWeight)  || 0,
+    height:    answers.height    || Number(_specForCbc.height)  || Number(_specForCbc._specHeight)  || 0,
+    age:       answers.age       || Number(_specForCbc.age)     || 0,
+    pfProfile: answers.pfProfile || _specForCbc.pfProfile       || null,
+  });
   var _cbcBodyMetrics = (typeof computeBodyMetrics === 'function')
-    ? computeBodyMetrics(axisScores, answers, window._redFlags || [])
+    ? computeBodyMetrics(axisScores, _cbcFullAnswers, window._redFlags || [])
     : { metaAge: 42, realAge: 42,
         metaBelly: 45,   bellyLevel:  '주의',
         metaHormone: 45, hormLevel:   '주의',
@@ -13102,7 +13113,16 @@ function loadBodyTypeStats(){ /* 제거됨 */ }
 
 function renderAll(data) {
   const { userName='고객', axisScores={}, ohaengType='목', mbtiType='INFP' } = data;
-  const answers = data.answers || {}; try{ injectCoverInfo(userName, data.consultant_name || '', data.created_at || ''); }catch(e){}
+  // V6.2: data 최상위의 weight/height/age/pfProfile을 answers 안에 주입
+  // → computeBodyMetrics()가 BMI·나이를 정확히 계산 (이 전달 없으면 모두 기본값 고착)
+  const _baseAnswers = data.answers || {};
+  const answers = Object.assign({}, _baseAnswers, {
+    weight:    _baseAnswers.weight    || Number(data.weight)  || 0,
+    height:    _baseAnswers.height    || Number(data.height)  || 0,
+    age:       _baseAnswers.age       || Number(data.age)     || 0,
+    pfProfile: _baseAnswers.pfProfile || data.pfProfile       || null,
+  });
+  try{ injectCoverInfo(userName, data.consultant_name || '', data.created_at || ''); }catch(e){}
 
   // ── 세션 3: 미활용 응답 필드 → 전역 주입 ──
   // desire, confidence, redFlags를 전역 window 변수로 주입해
