@@ -1572,6 +1572,54 @@ function mark(k, state, reason){
   } else {
     toast('<b>' + DAYS[TODAY] + '요일 ' + nm + ' 못함</b> 전송됨', who + '님에게 전달됐어요 · ' + reason);
   }
+  // ── V8.1: 관리자 DB 동기화 ──────────────────────────────
+  syncDailyCheckToDB();
+}
+
+/* ── DB 동기화: POST /api/daily-check ── */
+function syncDailyCheckToDB(){
+  try {
+    var _sid = sid();
+    if (!_sid || _sid === 'local') return; // sid 없으면 skip
+
+    // 오늘 날짜 YYYY-MM-DD
+    var now = new Date();
+    var checkDate = now.getFullYear() + '-'
+      + String(now.getMonth()+1).padStart(2,'0') + '-'
+      + String(now.getDate()).padStart(2,'0');
+
+    // 오늘 ex/di/re 체크 상태 수집
+    var exId = cellId(WK,'ex',TODAY), diId = cellId(WK,'di',TODAY), reId = cellId(WK,'re',TODAY);
+    var exDone = (CHECKS[exId] && CHECKS[exId].s === 'did') ? 1 : 0;
+    var diDone = (CHECKS[diId] && CHECKS[diId].s === 'did') ? 1 : 0;
+    var reDone = (CHECKS[reId] && CHECKS[reId].s === 'did') ? 1 : 0;
+
+    // meta에서 ref_code(consultant_code), b2b_code 추출
+    var _meta = META || {};
+    var _refCode  = _meta.ref_code  || _meta.consultant_code || null;
+    var _b2bCode  = _meta.b2b_code  || null;
+    var _bcCode   = BC_CODE || _meta.bcCode || _meta.bc_primary || 'BC-6';
+
+    var payload = {
+      session_id:       _sid,
+      check_date:       checkDate,
+      week_number:      WK,
+      day_of_week:      TODAY,
+      bc_code:          _bcCode,
+      consultant_code:  _refCode,
+      b2b_code:         _b2bCode,
+      exercise_done:    exDone,
+      diet_done:        diDone,
+      recovery_done:    reDone
+    };
+
+    fetch('/api/daily-check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).catch(function(e){ console.warn('[daily-check sync]', e); });
+
+  } catch(e){ console.warn('[syncDailyCheckToDB]', e); }
 }
 
 function undo(k){
