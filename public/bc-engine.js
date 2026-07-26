@@ -5629,6 +5629,123 @@ var ROADMAP_WEEKS = BC_ROADMAP_DB['BC-6'];
 var DISCLAIMER = '본 결과지는 설문 응답을 기반으로 한 라이프스타일 참고 가이드이며, 의료 진단·처방·치료를 대체하지 않습니다. 제시된 수치는 통계적 참고 지표이며 개인에 따라 차이가 있습니다. 건강 문제는 반드시 자격을 갖춘 의료 전문가와 상담하시기 바랍니다.';
 
 // ──────────────────────────────────────────────
+// 11-A. 공통 TOP3 처방 산출 파이프라인
+//
+// computeTop3Prescriptions(axisScores, answers, track)
+//   axisScores : { A01~A10 } — 설문 채점 결과 (0~100 or 0~10 공통 처리)
+//   answers    : 설문 원문 응답 객체 (optional)
+//   track      : 'hospital' | 'aesthetic' | 'fitness' (default: 'hospital')
+//
+// 반환값:
+//   {
+//     top3      : ['회복','식단','심리'],     // 도메인명 배열 (최대 3개)
+//     top3Scores: { '회복':82, '식단':67 },  // 도메인별 점수 (0~100 정규화)
+//     top3Full  : [{ key:'회복', score:82, icon:'🌙', color:'#3F51B5' }, ...],
+//     allScores : { '회복':82, '식단':67, ... },   // 11개 전체 점수
+//   }
+//
+// 설계 원칙:
+//   - hospital/aesthetic 공통: axisScores A01~A10 가중합으로 도메인 점수 산출
+//   - track 파라미터로 에스테틱 특화 가중치(체형/순환/시술) 보정
+//   - 결과지가 이 함수를 호출해 window.__STRONG_AXES__ / window._top3 세팅
+//   - slimmind_meta_ 저장 포함 → slimmind-today.html 자동 연동
+// ──────────────────────────────────────────────
+
+// 도메인별 axisScores 가중합 정의 (병원/공통)
+var _DOMAIN_AXIS_WEIGHTS_HOSPITAL = {
+  '식단':  { A01:1.8, A05:1.2, A08:0.5 },
+  '심리':  { A08:1.8, A07:1.2, A05:0.5 },
+  '호르몬':{ A03:1.8, A07:0.8, A01:0.5 },
+  '운동':  { A04:1.5, A06:0.8, A02:0.5 },
+  '회복':  { A07:1.5, A08:1.0, A02:0.5 },
+  '체형':  { A06:1.8, A04:1.2, A02:0.8 },
+  '한방':  { A02:1.2, A03:0.8, A05:0.8 },
+  '관리':  { A09:1.8, A01:1.0, A03:0.8 },
+  '시술':  { A02:1.0, A06:0.8, A09:0.5 },
+  '약물':  { A09:1.5, A01:0.8, A03:0.5 },
+  '철학':  { A10:1.5, A07:0.5 },
+};
+
+// 도메인별 가중치 정의 (에스테틱 특화 — 체형/순환/시술 강조)
+var _DOMAIN_AXIS_WEIGHTS_AESTHETIC = {
+  '식단':  { A01:1.5, A05:1.0, A08:0.4 },
+  '심리':  { A08:1.5, A07:1.0, A05:0.4 },
+  '호르몬':{ A03:1.5, A07:0.7, A01:0.4 },
+  '운동':  { A04:1.2, A06:1.0, A02:0.5 },
+  '회복':  { A07:1.2, A08:0.9, A02:0.4 },
+  '체형':  { A06:2.0, A04:1.5, A02:1.0 },  // 에스테틱: 체형 강조
+  '한방':  { A02:1.0, A03:0.7, A05:0.7 },
+  '관리':  { A09:1.5, A01:0.8, A03:0.7 },
+  '시술':  { A02:1.2, A06:1.0, A09:0.8 },  // 에스테틱: 시술 강조
+  '약물':  { A09:1.2, A01:0.6, A03:0.4 },
+  '철학':  { A10:1.2, A07:0.4 },
+  '순환':  { A02:2.0, A05:1.2, A07:0.6 },  // 에스테틱: 순환 강조
+};
+
+// 도메인 메타 (아이콘·색상)
+var _DOMAIN_META = {
+  '식단':  { icon:'🍽️', color:'#E8631A' },
+  '심리':  { icon:'🧠', color:'#7B1FA2' },
+  '호르몬':{ icon:'⚗️', color:'#C0397A' },
+  '운동':  { icon:'💪', color:'#4A8C1C' },
+  '회복':  { icon:'🌙', color:'#3F51B5' },
+  '체형':  { icon:'🦴', color:'#6B4EAA' },
+  '한방':  { icon:'🌿', color:'#1A8C5B' },
+  '관리':  { icon:'🔬', color:'#3EB8A0' },
+  '시술':  { icon:'✨', color:'#E67E22' },
+  '약물':  { icon:'💊', color:'#5F5E5A' },
+  '철학':  { icon:'🕊️', color:'#607D8B' },
+  '순환':  { icon:'💧', color:'#1565C0' },
+};
+
+function computeTop3Prescriptions(axisScores, answers, track) {
+  var _track = track || 'hospital';
+  var _weights = (_track === 'aesthetic')
+    ? _DOMAIN_AXIS_WEIGHTS_AESTHETIC
+    : _DOMAIN_AXIS_WEIGHTS_HOSPITAL;
+
+  // axisScores 스케일 정규화 (0~10 → 0~100, 이미 0~100이면 그대로)
+  var _ax = {};
+  Object.keys(axisScores || {}).forEach(function(k) {
+    var v = Number(axisScores[k]) || 0;
+    _ax[k] = (v <= 10 && v > 0) ? v * 10 : v; // 0~10 → ×10
+  });
+
+  // 도메인별 가중합 산출 (0~100 스케일)
+  var allScores = {};
+  Object.keys(_weights).forEach(function(dom) {
+    var ws = _weights[dom];
+    var sumW = 0, sumS = 0;
+    Object.keys(ws).forEach(function(axKey) {
+      var s = _ax[axKey] || 0;
+      sumS += s * ws[axKey];
+      sumW += ws[axKey];
+    });
+    allScores[dom] = sumW > 0 ? Math.round(sumS / sumW) : 0;
+  });
+
+  // 점수순 정렬 → TOP3 추출
+  var sorted = Object.keys(allScores)
+    .sort(function(a, b) { return allScores[b] - allScores[a]; });
+  var top3 = sorted.slice(0, 3);
+
+  var top3Scores = {};
+  top3.forEach(function(k) { top3Scores[k] = allScores[k]; });
+
+  var top3Full = top3.map(function(k) {
+    var meta = _DOMAIN_META[k] || { icon:'📋', color:'#888' };
+    return { key: k, score: allScores[k], icon: meta.icon, color: meta.color };
+  });
+
+  return {
+    top3:       top3,       // ['회복','식단','심리']
+    top3Scores: top3Scores, // { '회복': 82, ... }
+    top3Full:   top3Full,   // [{ key, score, icon, color }, ...]
+    allScores:  allScores,  // 전체 도메인 점수
+  };
+}
+
+// ──────────────────────────────────────────────
 // 12. export
 // ──────────────────────────────────────────────
 if (typeof module !== 'undefined' && module.exports) {
@@ -5643,6 +5760,9 @@ if (typeof module !== 'undefined' && module.exports) {
     // V4.2 신규 (TIER 2/3)
     BC_EVIDENCE_DB, getEvidenceBadge,
     computeBCCodeSafe, BORDERLINE_THRESHOLD,
+    // V5.0 신규: 공통 TOP3 처방 산출 파이프라인
+    computeTop3Prescriptions,
+    _DOMAIN_AXIS_WEIGHTS_HOSPITAL, _DOMAIN_AXIS_WEIGHTS_AESTHETIC, _DOMAIN_META,
     // 기존 유지
     BC_MASTER, CAUSAL_AXIS_META, AXIS_11,
     SAJU_ELEMENT_DESC, MBTI_DESC,

@@ -14285,9 +14285,32 @@ function renderP5(metrics, bcCode, axisScores, userName) {
     return { ic:DOM_IC[d]||'', nm:d, strike:'', tag:tag, hidden:hidden };
   });
 
-  var TOTAL = STRONG.length + NONE.length;  var TOTAL = STRONG.length + NONE.length;
+  var TOTAL = STRONG.length + NONE.length;
+  // ── 공통 TOP3 파이프라인 (bc-engine.js computeTop3Prescriptions) ──
+  // STRONG 배열이 주 소스(P5 렌더링 기반) → 엔진 결과로 교차검증 및 fallback 보정
+  var _engineTop3 = (typeof computeTop3Prescriptions === 'function')
+    ? computeTop3Prescriptions(axisScores, null, 'hospital')
+    : null;
+  var _strongFromP5 = STRONG.map(function(e){ return e.nm; });
+  // P5 STRONG 배열 우선 사용 (설문 흐름 기반). 비어있으면 엔진 결과로 fallback
+  var _top3Final = (_strongFromP5.length > 0)
+    ? _strongFromP5.slice(0, 3)
+    : (_engineTop3 ? _engineTop3.top3 : []);
   // P6(로드맵)에서 '원인↔실천' 겹치는 축을 계산하는 데 사용
-  window.__STRONG_AXES__ = STRONG.map(function(e){ return e.nm; });
+  // 전역 변수 2종 동시 세팅 — hospital은 __STRONG_AXES__, 공통 접근자는 __TOP3_PRESCRIPTIONS__
+  window.__STRONG_AXES__      = _top3Final;  // hospital 결과지 내부 참조
+  window.__TOP3_PRESCRIPTIONS__ = {           // 양 트랙 공통 접근자
+    top3:      _top3Final,
+    top3Full:  _top3Final.map(function(nm) {
+      var meta = (typeof _DOMAIN_META !== 'undefined' && _DOMAIN_META[nm])
+        ? _DOMAIN_META[nm] : { icon:'📋', color:'#888' };
+      return { key: nm, icon: meta.icon, color: meta.color };
+    }),
+    allScores: _engineTop3 ? _engineTop3.allScores : {},
+    track:     'hospital',
+    source:    'renderP5',
+  };
+  console.log('[P5→ENGINE] TOP3 파이프라인:', _top3Final, '| 엔진 검증:', _engineTop3 ? _engineTop3.top3 : 'N/A');
 
   // 도입부 — 1페이지(바디코드) 결론을 받아서 이어지게
   var p5nm = (userName && userName.length >= 3) ? userName.slice(1) : (userName || '회원');

@@ -15283,7 +15283,33 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
     .filter(function(k){ return k !== '관리' && k !== '철학'; })
     .sort(function(a,b){ return _domainScores[b] - _domainScores[a]; });
   var _top3 = _sortedDomains.slice(0,3);
-  window._top3 = _top3; // renderP8 등 외부 함수에서 접근할 수 있도록 전역 노출
+
+  // ── 공통 TOP3 파이프라인 (bc-engine.js computeTop3Prescriptions) ──
+  // aesthetic 특화 track='aesthetic' → 체형/순환/시술 가중치 강조
+  var _axisScoresForEngine = (window.__RESULT__ && window.__RESULT__.axisScores)
+    || (window.__RESULT__ && window.__RESULT__.axis_scores) || {};
+  var _engineTop3Ae = (typeof computeTop3Prescriptions === 'function' && Object.keys(_axisScoresForEngine).length > 0)
+    ? computeTop3Prescriptions(_axisScoresForEngine, null, 'aesthetic')
+    : null;
+  // P5 _domainScores 기반 결과 우선(설문 응답 직접 반영), 비어있으면 엔진 fallback
+  var _top3Final_ae = (_top3.length > 0)
+    ? _top3.slice(0, 3)
+    : (_engineTop3Ae ? _engineTop3Ae.top3 : []);
+  // 전역 변수 통일: aesthetic은 _top3, 공통은 __STRONG_AXES__ + __TOP3_PRESCRIPTIONS__
+  window._top3          = _top3Final_ae;  // aesthetic 결과지 내부 기존 참조 유지
+  window.__STRONG_AXES__ = _top3Final_ae; // hospital과 동일한 키 — today.html 공통 참조
+  window.__TOP3_PRESCRIPTIONS__ = {       // 양 트랙 공통 접근자
+    top3:      _top3Final_ae,
+    top3Full:  _top3Final_ae.map(function(nm) {
+      var meta = (typeof _DOMAIN_META !== 'undefined' && _DOMAIN_META[nm])
+        ? _DOMAIN_META[nm] : { icon:'📋', color:'#888' };
+      return { key: nm, icon: meta.icon, color: meta.color };
+    }),
+    allScores: _engineTop3Ae ? _engineTop3Ae.allScores : _domainScores,
+    track:     'aesthetic',
+    source:    'renderP5',
+  };
+  console.log('[AE P5→ENGINE] TOP3 파이프라인:', _top3Final_ae, '| 엔진 검증:', _engineTop3Ae ? _engineTop3Ae.top3 : 'N/A');
 
   // ════════════════════════════════════════════
   // ★ 영역별 해결책 데이터 (원인 스토리 + 구체적 행동)
@@ -17082,6 +17108,47 @@ function renderP6(userName, fullCode, ohaengType, inputData) {
     ? getRoadmapWeeks(bcPrimary, goalWeight, weightLossPct, userName, ohaengForRoadmap)
     : (typeof ROADMAP_WEEKS !== 'undefined' ? ROADMAP_WEEKS : []);
   window.__ACTIVE_WEEKS__ = ACTIVE_WEEKS;
+  // ── slimmind_meta_ 저장 (slimmind-today.html 자동 연동) ──
+  // hospital renderP6와 동일한 구조로 저장 → today.html이 양 트랙 구분 없이 읽음
+  try {
+    var _sidAe = (new URLSearchParams(window.location.search).get('id')
+               || new URLSearchParams(window.location.search).get('diagnosis_id')
+               || new URLSearchParams(window.location.search).get('did') || 'local');
+    window.__SID__ = _sidAe;
+    var _specForMetaAe = window.__RESULT__ || window.__DIAG_DATA__ || {};
+    var _metaAe = {
+      bcCode:     (d.bc_code || d.bc_primary || bcPrimary || ''),
+      ohaengKey:  (ohaengType || d.ohaeng_type || ''),
+      redFlags:   Array.isArray(window.__RED_FLAGS__) ? window.__RED_FLAGS__ : [],
+      userName:   userName || '',
+      curWeight:  Number(_specForMetaAe.weight) || Number(_specForMetaAe.current_weight) || null,
+      goalWeight: Number(d.goal_weight) || Number(_specForMetaAe.goal_weight) || null,
+      height:     Number(_specForMetaAe.height) || null,
+      age:        Number(_specForMetaAe.age) || null,
+      axisScores: (d.axisScores || d.axis_scores || {}),
+      dxTop3:     window.__DX_TOP3__ || [],
+      // ★ 핵심: strongAxes 저장 — today.html renderConsult()가 협진 카드 생성에 사용
+      strongAxes: window.__STRONG_AXES__ || window._top3 || [],
+      track:      'aesthetic',  // today.html이 트랙 구분 가능
+      savedAt:    Date.now(),
+    };
+    localStorage.setItem('slimmind_meta_' + _sidAe, JSON.stringify(_metaAe));
+    // ACTIVE_WEEKS 저장 (today.html 로드맵 참조)
+    var _slimAe = ACTIVE_WEEKS.map(function(w){
+      return {
+        week: w.week, phase: w.phase, icon: w.icon||'', title: w.title||'',
+        weekly_target: w.weekly_target||'', center: w.center||'',
+        keyFocus: w.keyFocus||[], exercise_ok: w.exercise_ok||'',
+        exercise_ban: w.exercise_ban||'', diet_ok: w.diet_ok||'',
+        diet_ban: w.diet_ban||'', recovery_ok: w.recovery_ok||'',
+        ohaeng_caution: w.ohaeng_caution||'', science_note: w.science_note||'',
+        nutrition: w.nutrition||null,
+      };
+    });
+    localStorage.setItem('slimmind_weeks_' + _sidAe, JSON.stringify(_slimAe));
+    console.log('[AE P6→META] slimmind_meta_ 저장 완료. strongAxes:', _metaAe.strongAxes);
+  } catch(_eAe){}
+
   console.log('[P6] ACTIVE_WEEKS 생성:', ACTIVE_WEEKS.length + '주차', ACTIVE_WEEKS[0] ? '1주차:' + ACTIVE_WEEKS[0].title : '없음');
   if (ACTIVE_WEEKS[0]) {
     console.log('[P6] 1주차 오행레이어:', { ohaeng_caution: ACTIVE_WEEKS[0].ohaeng_caution, diet_macro_note: ACTIVE_WEEKS[0].diet_macro_note });
@@ -23552,7 +23619,43 @@ function weeklyGridHTML(w, idx) {
                    '<button class="wg-refer-btn" onclick="sendPrompt(\'근처 정신건강의학과(수면) 추천해줘\')" ><span class="wg-rb-nm">정신건강의학과</span><span class="wg-rb-go">바로가기 →</span></button>'+
                  '</div></div>' },
   };
-  var _aeConsultDomains = ['시술','호르몬','체형','한방','회복'];
+  // ★ FIX: 에스테틱 특화 도메인 확장 — 순환/약물/관리/심리/철학 5종 추가
+  // 에스테틱 트랙은 체형/순환/시술 중심, hospital과 다른 맥락으로 설명
+  Object.assign(_AE_CONSULT_MAP, {
+    '순환': { ic:'💧', sub:'림프·순환 케어 협진', c:'#1565c0', cl:'#e3f0fb',
+              inner:'<div class="wg-collab"><div class="wg-cl-hd"><span class="wg-cl-ic">💧</span><span class="wg-cl-nm">림프·혈액순환 케어</span><span class="wg-cl-tag">협진 안내</span></div>'+
+                '<div class="wg-cl-tx">하지 부종·림프 순환 저하가 셀룰라이트와 체지방 대사를 막습니다. 림프드레나쥐·순환 클리닉 협진으로 흐름을 회복하세요.</div>'+
+                '<div class="wg-refer-row" style="margin-top:11px">'+
+                  '<button class="wg-refer-btn" onclick="sendPrompt(\'근처 림프드레나쥐 에스테틱·클리닉 추천해줘\')" ><span class="wg-rb-nm">림프케어</span><span class="wg-rb-go">바로가기 →</span></button>'+
+                  '<button class="wg-refer-btn" onclick="sendPrompt(\'근처 순환기내과(부종·냉증) 추천해줘\')" ><span class="wg-rb-nm">순환기내과</span><span class="wg-rb-go">바로가기 →</span></button>'+
+                '</div></div>' },
+    '약물': { ic:'💊', sub:'내과·기능의학 협진',  c:'#5f5e5a', cl:'#f0efed',
+              inner:'<div class="wg-collab"><div class="wg-cl-hd"><span class="wg-cl-ic">💊</span><span class="wg-cl-nm">내과·기능의학 협진</span><span class="wg-cl-tag">협진 안내</span></div>'+
+                '<div class="wg-cl-tx">대사 위험 인자가 감지됩니다. 기능의학 검사로 원인을 특정하고 에스테틱 케어 효과를 극대화합니다.</div>'+
+                '<div class="wg-refer-row" style="margin-top:11px">'+
+                  '<button class="wg-refer-btn" onclick="sendPrompt(\'근처 기능의학과·대사클리닉 추천해줘\')" ><span class="wg-rb-nm">기능의학과</span><span class="wg-rb-go">바로가기 →</span></button>'+
+                '</div></div>' },
+    '관리': { ic:'🔬', sub:'종합건강검진·기능의학', c:'#8a8474', cl:'#f3f2f0',
+              inner:'<div class="wg-collab"><div class="wg-cl-hd"><span class="wg-cl-ic">🔬</span><span class="wg-cl-nm">종합검진·기능의학</span><span class="wg-cl-tag">협진 안내</span></div>'+
+                '<div class="wg-cl-tx">대사증후군 복합 위험이 감지됩니다. 검진 결과를 가져오시면 에스테틱 처방을 정밀화합니다.</div>'+
+                '<div class="wg-refer-row" style="margin-top:11px">'+
+                  '<button class="wg-refer-btn" onclick="sendPrompt(\'근처 건강검진센터·기능의학과 추천해줘\')" ><span class="wg-rb-nm">건강검진센터</span><span class="wg-rb-go">바로가기 →</span></button>'+
+                '</div></div>' },
+    '심리': { ic:'🧠', sub:'심리·식이행동 클리닉', c:'#7b1fa2', cl:'#f3e8fb',
+              inner:'<div class="wg-collab"><div class="wg-cl-hd"><span class="wg-cl-ic">🧠</span><span class="wg-cl-nm">심리·식이행동 클리닉</span><span class="wg-cl-tag">협진 안내</span></div>'+
+                '<div class="wg-cl-tx">감정·스트레스 식욕이 체형 관리의 첫 번째 장벽입니다. 심리상담 협진으로 근본 패턴을 끊고 에스테틱 효과를 지속시킵니다.</div>'+
+                '<div class="wg-refer-row" style="margin-top:11px">'+
+                  '<button class="wg-refer-btn" onclick="sendPrompt(\'근처 심리상담센터 추천해줘\')" ><span class="wg-rb-nm">심리상담센터</span><span class="wg-rb-go">바로가기 →</span></button>'+
+                '</div></div>' },
+    '철학': { ic:'🕊️', sub:'라이프스타일 코칭', c:'#607d8b', cl:'#e8ecf0',
+              inner:'<div class="wg-collab"><div class="wg-cl-hd"><span class="wg-cl-ic">🕊️</span><span class="wg-cl-nm">라이프스타일 코칭</span><span class="wg-cl-tag">협진 안내</span></div>'+
+                '<div class="wg-cl-tx">기질에 맞는 루틴 설계가 에스테틱 효과를 지속시킵니다. 코치와 함께 지속 가능한 생활 패턴을 만드세요.</div>'+
+                '<div class="wg-refer-row" style="margin-top:11px">'+
+                  '<button class="wg-refer-btn" onclick="sendPrompt(\'근처 웰니스·라이프스타일 코칭 센터 추천해줘\')" ><span class="wg-rb-nm">웰니스 센터</span><span class="wg-rb-go">바로가기 →</span></button>'+
+                '</div></div>' },
+  });
+  // 에스테틱 협진 가능 전체 도메인 (10개 — 운동/식단은 직접 실천, 협진 불필요)
+  var _aeConsultDomains = ['시술','호르몬','체형','한방','회복','순환','약물','관리','심리','철학'];
   var _aeStrongAxes = window._top3 || window.__STRONG_AXES__ || [];
   var _aeSelConsult = [];
   _aeStrongAxes.forEach(function(nm){
