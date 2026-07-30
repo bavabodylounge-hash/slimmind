@@ -2711,13 +2711,14 @@ app.get('/h/:code', async (c) => {
   return htmlResponse(html)
 })
 
-// ─── /survey-hospital-3lang.html 직접 접근 차단 ─────────────────
-app.get('/survey-hospital-3lang.html', (c) => {
-  return c.html(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>잘못된 접근입니다</title></head>
+// ─── /survey-hospital-3lang(.html) 직접 접근 차단 ─────────────────
+// 플랫폼이 .html → 확장자 없음으로 307 리다이렉트하므로 두 경로 모두 차단
+const _block3lang = (c: any) => c.html(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>잘못된 접근입니다</title></head>
 <body style="font-family:sans-serif;text-align:center;padding:60px">
 <h2>⚠️ 잘못된 접근입니다</h2><p>병원 전용 질문지는 담당자가 발송한 링크를 통해서만 이용하실 수 있습니다.</p>
 </body></html>`, 403)
-})
+app.get('/survey-hospital-3lang.html', _block3lang)
+app.get('/survey-hospital-3lang', _block3lang)
 
 // ─── /h3/:code — 병원용 3개국어(KO+EN+TH) 질문지 진입 라우트 ─────
 // survey_category='hospital' B2B 파트너 전용 — ?lang=en|th 로 초기 언어 설정 가능
