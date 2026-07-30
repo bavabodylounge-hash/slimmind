@@ -8286,11 +8286,11 @@ async function encryptPush(
   return { ciphertext: encrypted, salt, serverPublicKey: serverPubRaw }
 }
 
-/* Web Push 발송 */
+/* Web Push 발송 — 반환값: 201/200=성공(true), 410=만료(-1), 그외 오류(false) */
 async function sendWebPush(
   sub: { endpoint: string; keys: { p256dh: string; auth: string } },
   payload: string
-): Promise<boolean> {
+): Promise<boolean | -1> {
   try {
     const url      = new URL(sub.endpoint)
     const audience = `${url.protocol}//${url.host}`
@@ -8321,10 +8321,11 @@ async function sendWebPush(
       },
       body: body.buffer
     })
+    if (res.status === 410 || res.status === 404) return -1  // 만료된 구독
     return res.status === 201 || res.status === 200
   } catch (e) {
     console.error('[push] sendWebPush error:', e)
-    return false
+    return false  // 일시적 오류 — 삭제 안 함
   }
 }
 
@@ -8412,10 +8413,11 @@ async function handleCron(event: ScheduledEvent, env: any): Promise<void> {
   const db = env?.DB as D1Database | undefined
   if (!db) { console.error('[cron] DB 없음'); return }
 
-  const cron  = event.cron  // e.g. "30 8 * * *"
+  const cron  = event.cron  // Cloudflare UTC 기준 cron 문자열
+  // UTC 크론: "30 23 * * *"=KST 08:30(morning), "30 3 * * *"=KST 12:30(lunch), "30 10 * * *"=KST 19:30(evening)
   let msgKey: keyof typeof PUSH_MESSAGES = 'morning'
-  if (cron.startsWith('30 12')) msgKey = 'lunch'
-  else if (cron.startsWith('30 19')) msgKey = 'evening'
+  if (cron.startsWith('30 3'))  msgKey = 'lunch'
+  else if (cron.startsWith('30 10')) msgKey = 'evening'
 
   const msg = PUSH_MESSAGES[msgKey]
   const payload = JSON.stringify({
@@ -8439,25 +8441,27 @@ async function handleCron(event: ScheduledEvent, env: any): Promise<void> {
   const staleEndpoints: string[] = []
 
   await Promise.allSettled(subs.map(async (sub) => {
-    const success = await sendWebPush(
+    const result = await sendWebPush(
       { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
       payload
     )
-    if (success) { ok++ }
-    else {
-      fail++
-      /* 410 Gone = 구독 만료 → 삭제 대상 수집 */
+    if (result === true)  { ok++ }
+    else if (result === -1) {
+      gone++
+      /* 410/404 = 구독 만료 → 삭제 대상 수집 */
       staleEndpoints.push(sub.endpoint)
+    } else {
+      fail++ /* 일시적 오류 — 삭제 안 함 */
     }
   }))
 
-  /* 만료된 구독 일괄 삭제 */
+  /* 만료된 구독만 일괄 삭제 (일시 오류 구독은 보존) */
   for (const ep of staleEndpoints) {
     await db.prepare('DELETE FROM push_subscriptions WHERE endpoint=?').bind(ep).run()
       .catch(() => {})
   }
 
-  console.log(`[cron ${cron}] 완료 — 성공:${ok} 실패:${fail} 만료삭제:${staleEndpoints.length}`)
+  console.log(`[cron ${cron}] 완료 — 성공:${ok} 일시오류:${fail} 만료삭제:${gone}`)
 }
 
 /* Cloudflare Workers scheduled export */
