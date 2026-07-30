@@ -8457,4 +8457,142 @@ async function handleCron(event: ScheduledEvent, env: any): Promise<void> {
 /* Cloudflare Workers scheduled export */
 export const scheduled = handleCron
 
+// ══════════════════════════════════════════════════════════════
+//  Task C — 1:1 채팅 메신저 API
+// ══════════════════════════════════════════════════════════════
+
+/* POST /api/chat/send — 메시지 전송 (고객·컨설턴트 공통) */
+app.post('/api/chat/send', async (c) => {
+  const db = (c.env as any)?.DB as D1Database | undefined
+  if (!db) return c.json({ ok: false, error: 'DB 없음' }, 500)
+  try {
+    const body = await c.req.json() as {
+      session_id: string
+      sender: 'client' | 'consultant'
+      message: string
+      b2b_code?: string
+      consultant_code?: string
+    }
+    if (!body.session_id || !body.message || !body.sender) {
+      return c.json({ ok: false, error: '필수 파라미터 누락' }, 400)
+    }
+    if (!['client','consultant'].includes(body.sender)) {
+      return c.json({ ok: false, error: 'sender 값 오류' }, 400)
+    }
+    const result = await db.prepare(`
+      INSERT INTO chat_messages (session_id, b2b_code, consultant_code, sender, message)
+      VALUES (?,?,?,?,?)
+    `).bind(
+      body.session_id,
+      body.b2b_code        || null,
+      body.consultant_code || null,
+      body.sender,
+      body.message.trim()
+    ).run()
+    return c.json({ ok: true, id: result.meta.last_row_id })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+/* GET /api/chat/messages?session_id=&limit=&before_id= — 메시지 목록 */
+app.get('/api/chat/messages', async (c) => {
+  const db = (c.env as any)?.DB as D1Database | undefined
+  if (!db) return c.json({ messages: [] })
+  try {
+    const sid      = c.req.query('session_id') || ''
+    const limit    = Math.min(parseInt(c.req.query('limit') || '50'), 100)
+    const beforeId = c.req.query('before_id')
+
+    if (!sid) return c.json({ ok: false, error: 'session_id 필수' }, 400)
+
+    let sql = 'SELECT * FROM chat_messages WHERE session_id=?'
+    const binds: any[] = [sid]
+    if (beforeId) { sql += ' AND id < ?'; binds.push(parseInt(beforeId)) }
+    sql += ' ORDER BY id DESC LIMIT ?'
+    binds.push(limit)
+
+    const rows = await db.prepare(sql).bind(...binds).all<any>()
+    const messages = (rows.results || []).reverse()
+    return c.json({ ok: true, messages })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+/* POST /api/chat/read — 메시지 읽음 처리 */
+app.post('/api/chat/read', async (c) => {
+  const db = (c.env as any)?.DB as D1Database | undefined
+  if (!db) return c.json({ ok: false, error: 'DB 없음' }, 500)
+  try {
+    const { session_id, reader } = await c.req.json() as {
+      session_id: string
+      reader: 'client' | 'consultant'
+    }
+    if (!session_id) return c.json({ ok: false, error: 'session_id 필수' }, 400)
+    // 상대방이 보낸 메시지를 읽음으로 표시
+    const opposite = reader === 'client' ? 'consultant' : 'client'
+    await db.prepare(
+      'UPDATE chat_messages SET is_read=1 WHERE session_id=? AND sender=? AND is_read=0'
+    ).bind(session_id, opposite).run()
+    return c.json({ ok: true })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+/* GET /api/chat/unread?b2b_code= — 관리자용 미읽음 건수 (고객별) */
+app.get('/api/chat/unread', requireRole('ANY'), async (c) => {
+  const db = (c.env as any)?.DB as D1Database | undefined
+  if (!db) return c.json({ total: 0, clients: [] })
+  try {
+    const b2bCode = c.req.query('b2b_code') || (c as any).get('b2b_code') || ''
+    if (!b2bCode) return c.json({ total: 0, clients: [] })
+
+    const rows = await db.prepare(`
+      SELECT session_id, COUNT(*) as cnt
+      FROM chat_messages
+      WHERE b2b_code=? AND sender='client' AND is_read=0
+      GROUP BY session_id
+      ORDER BY cnt DESC
+    `).bind(b2bCode).all<{ session_id: string; cnt: number }>()
+
+    const clients = rows.results || []
+    const total   = clients.reduce((s, r) => s + r.cnt, 0)
+    return c.json({ ok: true, total, clients })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+/* GET /api/chat/clients?b2b_code= — 관리자용 대화 고객 목록 */
+app.get('/api/chat/clients', requireRole('ANY'), async (c) => {
+  const db = (c.env as any)?.DB as D1Database | undefined
+  if (!db) return c.json({ clients: [] })
+  try {
+    const b2bCode = c.req.query('b2b_code') || ''
+    if (!b2bCode) return c.json({ ok: false, error: 'b2b_code 필수' }, 400)
+
+    // 각 고객의 마지막 메시지 + 미읽음 수 집계
+    const rows = await db.prepare(`
+      SELECT
+        m.session_id,
+        MAX(m.created_at) as last_at,
+        MAX(m.message)    as last_msg,
+        SUM(CASE WHEN m.sender='client' AND m.is_read=0 THEN 1 ELSE 0 END) as unread,
+        d.name, d.phone, d.bc_code
+      FROM chat_messages m
+      LEFT JOIN diagnosis_results d ON d.session_id = m.session_id
+      WHERE m.b2b_code=?
+      GROUP BY m.session_id
+      ORDER BY last_at DESC
+      LIMIT 200
+    `).bind(b2bCode).all<any>()
+
+    return c.json({ ok: true, clients: rows.results || [] })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
 export default app
