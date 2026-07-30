@@ -2624,6 +2624,8 @@ app.get('/survey-hospital.html', (c) => {
 app.get('/h/:code', async (c) => {
   const db = c.env.DB
   const rawCode = c.req.param('code').toUpperCase()
+  const langParam = c.req.query('lang') || ''
+  const validLang = (langParam === 'en' || langParam === 'th') ? langParam : ''
 
   let partner: any = null
   try {
@@ -2665,11 +2667,32 @@ app.get('/h/:code', async (c) => {
     brand_color: ${JSON.stringify(bColor)},
     brand_logo_url: ${JSON.stringify(bLogo)},
     ref_code: ${JSON.stringify(rawCode)},
-    survey_category: 'hospital'
+    survey_category: 'hospital',
+    lang: ${JSON.stringify(validLang || 'ko')}
   };
   // brand_color는 --brand-color 전용 변수에만 주입 (--c1/c2/c3는 원본 보라색 유지)
   document.documentElement.style.setProperty('--brand-color', ${JSON.stringify(bColor)});
 </script>`
+
+  // ?lang=en|th 로 링크 생성 시 스플래시에서 해당 언어 미리 선택
+  const langInitScript = validLang ? `
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    try {
+      if (typeof window.SMSetLang === 'function') {
+        window.SMSetLang(${JSON.stringify(validLang)});
+      } else {
+        var _ri = setInterval(function() {
+          if (typeof window.SMSetLang === 'function') {
+            window.SMSetLang(${JSON.stringify(validLang)});
+            clearInterval(_ri);
+          }
+        }, 200);
+        setTimeout(function() { clearInterval(_ri); }, 5000);
+      }
+    } catch(e) {}
+  });
+</script>` : ''
 
   // ref_code 자동 연동 스크립트 (병원용 질문지 내부 변수 세팅)
   const refScript = `
@@ -2705,7 +2728,7 @@ app.get('/h/:code', async (c) => {
 <meta name="twitter:image"       content="${siteBase}/static/og-hospital.png">`
 
   let html = await fetchAsset(c.env.ASSETS, '/survey-hospital.html')
-  html = html.replace('</head>', `${ogInject}\n${brandInject}\n</head>`)
+  html = html.replace('</head>', `${ogInject}\n${brandInject}\n${langInitScript}\n</head>`)
   html = html.replace('</body>', `${refScript}\n</body>`)
 
   return htmlResponse(html)

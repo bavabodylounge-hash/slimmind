@@ -5279,10 +5279,9 @@ html.th-mode .cond-eyebrow{
     <div class="splashbrand">SlimMind</div>
     <div class="splashrule"></div>
     <div class="splashtag">당신의 몸은 하나의 코드입니다.<br>우리는 그 원인을 해독합니다.</div>
-    <button class="splashbtn" onclick="enterSurvey()">시작하기</button>
-    <!-- KO판: 언어 선택 제거 -->
-    <div class="sm-lang-label" data-i18n-skip="1" style="display:none">Select Language</div>
-    <div class="sm-lang-wrap" data-i18n-skip="1" style="display:none">
+    <!-- 언어 선택 후 시작하기 버튼 활성화 -->
+    <div class="sm-lang-label" data-i18n-skip="1">Select Language</div>
+    <div class="sm-lang-wrap" data-i18n-skip="1">
       <button type="button" class="sm-lang-btn active" id="smLangKR" onclick="SMSetLang('ko')">
         <span class="lang-flag">
           <svg viewBox="0 0 36 36" aria-hidden="true">
@@ -5346,6 +5345,7 @@ html.th-mode .cond-eyebrow{
       });
     })();
     </script>
+    <button class="splashbtn" id="splashStartBtn" onclick="enterSurvey()" style="margin-top:36px">시작하기</button>
   </div>
   <div class="splashfoot">SlimMind Body Code™</div>
 </div>
@@ -25453,8 +25453,23 @@ function pfApplyLang(){
   }
   window._smSwapNamedDicts = swapNamedDicts;
   window.SMSetLang = function(lang){
-    lang = 'ko';   /* KO판: 항상 한국어 */
+    /* 3개국어 활성: ko | en | th */
     applyLang(lang);        // 내부에서 KO복원→사전스왑(selectDict/swapNamedDicts)→번역 순으로 처리
+    /* 스플래시 시작버튼 + 태그라인 텍스트 언어 반영 */
+    try{
+      var sb=document.getElementById('splashStartBtn');
+      if(sb){
+        if(lang==='en') sb.textContent='Start';
+        else if(lang==='th') sb.textContent='เริ่มต้น';
+        else sb.textContent='시작하기';
+      }
+      var st=document.querySelector('#introSplash .splashtag');
+      if(st){
+        if(lang==='en') st.innerHTML='Your body is a code.<br>We decode the cause.';
+        else if(lang==='th') st.innerHTML='ร่างกายของคุณคือรหัส<br>เราถอดรหัสสาเหตุ';
+        else st.innerHTML='당신의 몸은 하나의 코드입니다.<br>우리는 그 원인을 해독합니다.';
+      }
+    }catch(e){}
     /* ★ v29: 학술 화면은 트랙별 카피를 innerHTML 통짜로 주입한다.
        applyLang()은 DOM에 이미 있는 텍스트만 번역하므로, 언어를 바꾸면
        이전 언어의 카피가 그대로 남는다 → 여기서 직접 다시 그린다. */
