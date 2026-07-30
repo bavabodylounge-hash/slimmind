@@ -2408,10 +2408,11 @@ var B2B_CHAT_MSGS      = [];
 var B2B_CHAT_POLL      = null;
 var B2B_CLIENTS        = [];
 
-/* b2b_code는 로그인 후 window.B2B_INFO에서 가져옴 */
+/* b2b_code는 로그인 후 localStorage 또는 window.B2B_INFO에서 가져옴 */
 function b2bChatGetCode() {
   return (window.B2B_INFO && window.B2B_INFO.b2b_code)
       || (window.B2B_INFO && window.B2B_INFO.code)
+      || localStorage.getItem('b2b_code')
       || B2B_CHAT_CODE || '';
 }
 
@@ -2590,7 +2591,7 @@ async function b2bChatSend() {
         sender:          'consultant',
         message:         msg,
         b2b_code:        B2B_CHAT_CODE || b2bChatGetCode(),
-        consultant_code: window.B2B_INFO && window.B2B_INFO.consultant_code || null
+        consultant_code: USER_CODE || null
       })
     });
     await b2bChatLoadMsgs();

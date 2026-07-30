@@ -241,14 +241,29 @@
       var subJson  = sub.toJSON();
       var keys     = subJson.keys || {};
       var _meta    = {};
-      try { _meta = JSON.parse(localStorage.getItem('slimmind_meta_') || '{}'); } catch(e){}
-      var _sid     = _meta.session_id || localStorage.getItem('slimmind_sid') || 'anon';
+      /* slimmind_meta_ 키는 suffix로 sid를 붙여 저장됨 — 가장 최신 키 탐색 */
+      try {
+        var _sid = '';
+        for (var i = 0; i < localStorage.length; i++) {
+          var k = localStorage.key(i);
+          if (k && k.startsWith('slimmind_meta_')) {
+            var v = JSON.parse(localStorage.getItem(k) || '{}');
+            if (!_meta.savedAt || (v.savedAt && v.savedAt > _meta.savedAt)) {
+              _meta = v;
+              _sid  = k.replace('slimmind_meta_', '');
+            }
+          }
+        }
+        if (!_sid) _sid = localStorage.getItem('slimmind_sid') || 'anon';
+        _meta._resolved_sid = _sid;
+      } catch(e) {}
+      var _sid2 = _meta._resolved_sid || _meta.session_id || localStorage.getItem('slimmind_sid') || 'anon';
 
       fetch('/api/push/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          session_id:       _sid,
+          session_id:       _sid2,
           endpoint:         subJson.endpoint,
           p256dh:           keys.p256dh   || '',
           auth:             keys.auth     || '',

@@ -8478,6 +8478,7 @@ app.post('/api/chat/send', async (c) => {
       message: string
       b2b_code?: string
       consultant_code?: string
+      client_name?: string
     }
     if (!body.session_id || !body.message || !body.sender) {
       return c.json({ ok: false, error: '필수 파라미터 누락' }, 400)
@@ -8486,14 +8487,15 @@ app.post('/api/chat/send', async (c) => {
       return c.json({ ok: false, error: 'sender 값 오류' }, 400)
     }
     const result = await db.prepare(`
-      INSERT INTO chat_messages (session_id, b2b_code, consultant_code, sender, message)
-      VALUES (?,?,?,?,?)
+      INSERT INTO chat_messages (session_id, b2b_code, consultant_code, sender, message, client_name)
+      VALUES (?,?,?,?,?,?)
     `).bind(
       body.session_id,
       body.b2b_code        || null,
       body.consultant_code || null,
       body.sender,
-      body.message.trim()
+      body.message.trim(),
+      body.client_name     || null
     ).run()
     return c.json({ ok: true, id: result.meta.last_row_id })
   } catch (e: any) {
@@ -8580,15 +8582,19 @@ app.get('/api/chat/clients', requireRole('ANY'), async (c) => {
     if (!b2bCode) return c.json({ ok: false, error: 'b2b_code 필수' }, 400)
 
     // 각 고객의 마지막 메시지 + 미읽음 수 집계
+    // client_name: chat_messages에 직접 저장된 이름 우선, 없으면 diagnosis_results JOIN
     const rows = await db.prepare(`
       SELECT
         m.session_id,
         MAX(m.created_at) as last_at,
         MAX(m.message)    as last_msg,
         SUM(CASE WHEN m.sender='client' AND m.is_read=0 THEN 1 ELSE 0 END) as unread,
-        d.user_name as name, d.phone, d.bc_primary as bc_code
+        COALESCE(MAX(m.client_name), d.user_name) as name,
+        d.phone,
+        COALESCE(MAX(m.client_name), d.user_name) as display_name,
+        d.bc_primary as bc_code
       FROM chat_messages m
-      LEFT JOIN diagnosis_results d ON d.id = m.session_id
+      LEFT JOIN diagnosis_results d ON (d.id = m.session_id OR d.session_id = m.session_id)
       WHERE m.b2b_code=?
       GROUP BY m.session_id
       ORDER BY last_at DESC
