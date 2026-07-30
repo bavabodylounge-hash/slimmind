@@ -8150,8 +8150,8 @@ app.get('/api/settings/kakao-map', requireRole('MASTER'), async (c) => {
 // ══════════════════════════════════════════════════════════════
 
 /* ── VAPID 헬퍼: Cloudflare Workers Web Crypto 전용 구현 ── */
-const VAPID_PUBLIC  = 'BO7X_F7Rd3eTIvEoEufAC3aBykoQkiLyrlQOezgFoudqqiJWnUZBxf-ChM0eo2n9Ir54YKUq_4P6lyHjN2tlKGA'
-const VAPID_PRIVATE = 'qiJWnUZBxf-ChM0eo2n9Ir54YKUq_4P6lyHjN2tlKGA'
+const VAPID_PUBLIC  = 'BB-zOfjwgZ1G9vuZmY9QUc93a5HRusfSmPA2_eHmU0k2P7Xm-Z56QUbKyM81BwPxuOE6dGx2qSdL0G6BUjH3slk'
+const VAPID_PRIVATE = 'gpEv6aDavSr2WmndpYeIcuuvTg3UpDSAWvF1BH78uHI'
 const VAPID_SUBJECT = 'mailto:admin@slimmind.kr'
 
 function b64urlToUint8(b64: string): Uint8Array {
@@ -8189,19 +8189,25 @@ async function makeVapidJwt(audience: string): Promise<string> {
 
 /* 32바이트 raw scalar → PKCS#8 DER 래퍼 */
 function buildPkcs8(raw32: Uint8Array): ArrayBuffer {
-  // PKCS#8 EC P-256 private key DER (고정 헤더 + 32바이트 스칼라)
+  // 표준 PKCS#8 EC P-256 DER: prefix(36) + scalar(32) = 68바이트
+  // prefix hex: 308187020100301306072a8648ce3d020106082a8648ce3d030107046d306b0201010420
+  // 단, 총 SEQUENCE 길이 0x87=135 이므로 뒤에 공개키 포함 구조가 맞음
+  // 공개키 없는 최소 구조: 0x4b(75)바이트 전체
+  //   30 49 02 01 00 30 13 ... 04 35 30 33 02 01 01 04 20 <scalar32>
   const prefix = new Uint8Array([
-    0x30,0x81,0x87,0x02,0x01,0x00,0x30,0x13,
-    0x06,0x07,0x2a,0x86,0x48,0xce,0x3d,0x02,
-    0x01,0x06,0x08,0x2a,0x86,0x48,0xce,0x3d,
-    0x03,0x01,0x07,0x04,0x6d,0x30,0x6b,0x02,
-    0x01,0x01,0x04,0x20
+    0x30,0x41,          // SEQUENCE, length=65
+    0x02,0x01,0x00,     // INTEGER version=0
+    0x30,0x13,          // SEQUENCE (algorithm)
+      0x06,0x07,0x2a,0x86,0x48,0xce,0x3d,0x02,0x01, // OID ecPublicKey
+      0x06,0x08,0x2a,0x86,0x48,0xce,0x3d,0x03,0x01,0x07, // OID prime256v1
+    0x04,0x27,          // OCTET STRING, length=39
+      0x30,0x25,        // SEQUENCE ECPrivateKey, length=37
+        0x02,0x01,0x01, // INTEGER version=1
+        0x04,0x20       // OCTET STRING, length=32 (scalar follows)
   ])
-  const buf = new Uint8Array(prefix.length + 32 + 36)
+  const buf = new Uint8Array(prefix.length + 32) // 36 + 32 = 68바이트
   buf.set(prefix)
   buf.set(raw32, prefix.length)
-  // trailing: a1 44 03 42 00 + 65-byte public point (생략해도 import 가능)
-  // 대신 끝 패딩 36바이트는 0으로 채움
   return buf.buffer
 }
 
@@ -8580,9 +8586,9 @@ app.get('/api/chat/clients', requireRole('ANY'), async (c) => {
         MAX(m.created_at) as last_at,
         MAX(m.message)    as last_msg,
         SUM(CASE WHEN m.sender='client' AND m.is_read=0 THEN 1 ELSE 0 END) as unread,
-        d.name, d.phone, d.bc_code
+        d.user_name as name, d.phone, d.bc_primary as bc_code
       FROM chat_messages m
-      LEFT JOIN diagnosis_results d ON d.session_id = m.session_id
+      LEFT JOIN diagnosis_results d ON d.id = m.session_id
       WHERE m.b2b_code=?
       GROUP BY m.session_id
       ORDER BY last_at DESC
