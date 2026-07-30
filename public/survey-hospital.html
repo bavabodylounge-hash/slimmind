@@ -3273,6 +3273,40 @@ src:url(data:font/woff2;base64,d09GMgABAAAAANywABEAAAABgEQAANxFAAIAgwAAAAAAAAAAA
   .cr-ext{display:inline-block;font-size:12px;font-weight:700;color:var(--muted);background:var(--paper);
     border:1px solid var(--line);border-radius:20px;padding:6px 14px;margin-bottom:22px}
   .cr-note{font-size:13px;color:#5a5448;line-height:1.7;margin-bottom:24px}
+  /* ── EN: word-break (결과지 긴 영어 텍스트 줄바꿈) ── */
+  html.en-mode .cr-name,
+  html.en-mode .cr-chain,
+  html.en-mode .cr-section,
+  html.en-mode .cr-ext,
+  html.en-mode .rsname { word-break: break-word; overflow-wrap: break-word; }
+  html.en-mode .cr-name { font-size: 22px; line-height: 1.35; }
+  html.en-mode .cr-chain { font-size: 13px; line-height: 1.75; }
+  /* ── TH: 성조·모음 기호 짤림 방지 (line-height + padding 보강) ── */
+  html.th-mode .cr-name,
+  html.th-mode .cr-chain,
+  html.th-mode .cr-section,
+  html.th-mode .cr-ext,
+  html.th-mode .rsname {
+    line-height: 1.8 !important;
+    overflow-y: visible !important;
+    padding-top: 5px;
+    word-break: normal;
+  }
+  html.th-mode .cr-name { font-size: 22px; padding-top: 6px; }
+  html.th-mode .cr-chain { padding-top: 6px; padding-bottom: 6px; }
+  /* TH: 설문 질문/선택지 내 성조 기호 */
+  html.th-mode .qtitle,
+  html.th-mode .qopt-label,
+  html.th-mode .qopt span,
+  html.th-mode .az-title {
+    line-height: 1.85 !important;
+    overflow-y: visible !important;
+    padding-top: 4px;
+  }
+  /* TH: 반응거울·축 라벨 */
+  html.th-mode .rsname,
+  html.th-mode .az-glbl,
+  html.th-mode .smaxis-name { line-height: 1.8 !important; overflow-y: visible !important; }
   .cr-btn{width:100%;padding:16px;background:var(--c3);color:#fff;border:none;border-radius:12px;
     font-size:15.5px;font-weight:700;font-family:inherit;cursor:pointer}
 
@@ -18901,12 +18935,21 @@ async function submitDiagnosis(dispAnswers) {
   const stepsEl      = document.getElementById('analyzeSteps');
   if (analyzingEl)  analyzingEl.style.display  = 'block';
   if (codeScreenEl) codeScreenEl.style.display = 'none';
-  if (titleEl)      titleEl.textContent         = '결과지를 안전하게 저장하는 중…';
-  if (pctEl)        pctEl.textContent           = '';
-  if (stepsEl)      stepsEl.innerHTML           = `
-    <div class="astep active"><span class="astepic"></span><span>서버에 분석 결과 저장 중</span></div>
-    <div class="astep"><span class="astepic"></span><span>결과지 ID 생성 중</span></div>
-    <div class="astep"><span class="astepic"></span><span>개인화 페이지 준비 중</span></div>`;
+  // ★ 로딩 UI 3개국어 분기
+  const _sdLang = (window.SMGetLangRaw && window.SMGetLangRaw()) || 'ko';
+  if (titleEl) titleEl.textContent =
+    _sdLang === 'en' ? 'Securely saving your results…'
+    : _sdLang === 'th' ? 'กำลังบันทึกผลลัพธ์อย่างปลอดภัย…'
+    : '결과지를 안전하게 저장하는 중…';
+  if (pctEl) pctEl.textContent = '';
+  const _sdSteps = _sdLang === 'en'
+    ? ['Saving analysis to server', 'Generating result ID', 'Preparing personalized page']
+    : _sdLang === 'th'
+    ? ['บันทึกผลการวิเคราะห์ไปยังเซิร์ฟเวอร์', 'สร้างรหัสผลลัพธ์', 'เตรียมหน้าส่วนตัวของคุณ']
+    : ['서버에 분석 결과 저장 중', '결과지 ID 생성 중', '개인화 페이지 준비 중'];
+  if (stepsEl) stepsEl.innerHTML = _sdSteps.map((s, i) =>
+    `<div class="astep${i===0?' active':''}"><span class="astepic"></span><span>${s}</span></div>`
+  ).join('');
   window.scrollTo({ top: 0, behavior: 'smooth' });
 
   // ── 페이로드 구성 ──
@@ -18968,30 +19011,46 @@ async function submitDiagnosis(dispAnswers) {
   // ── 실패 폴백: 인라인 결과 표시 ──
   window._sdBusy=false; /* 실패 시 재시도 버튼이 다시 동작하도록 해제 */
   console.error('[submitDiagnosis] 최종 실패:', result.error);
-  const AXIS_NAMES = {
-    A01:'인슐린·내장지방', A02:'림프·순환',   A03:'호르몬·대사',
-    A04:'근감소',          A05:'소화·장',      A06:'골격·자세',
-    A07:'스트레스·코르티솔',A08:'심리·식이',   A09:'대사위험',   A10:'기질'
-  };
+  // ★ 언어별 축 이름 — SM_AXIS_NAMES_ML 우선, 없으면 한국어 폴백
+  const _fbLang = (window.SMGetLangRaw && window.SMGetLangRaw()) || 'ko';
+  const _fbAML  = (window.SM_AXIS_NAMES_ML && window.SM_AXIS_NAMES_ML[_fbLang])
+                   || window.SM_AXIS_NAMES_ML && window.SM_AXIS_NAMES_ML.ko
+                   || {A01:'인슐린·내장지방',A02:'림프·순환',A03:'호르몬·대사',A04:'근감소',A05:'소화·장',A06:'골격·자세',A07:'스트레스·코르티솔',A08:'심리·식이',A09:'대사위험',A10:'기질'};
+  // ★ fins name/chain 번역: 활성 사전(SM_I18N_TH는 EN모드 시 EN사전으로 스왑됨)
+  const _fbD = (_fbLang !== 'ko') ? (window.SM_I18N_TH || {}) : null;
+  const _fbT = (s) => (_fbD && _fbD[s] !== undefined) ? _fbD[s] : s;
+  // ★ 언어별 UI 문구
+  const _fbLabel = _fbLang==='en' ? `${name}'s Body Code`
+                 : _fbLang==='th' ? `บอดี้โค้ดของ ${name}`
+                 : `${name}님의 바디코드`;
+  const _fbSection = _fbLang==='en' ? 'Top 3 Core Causes'
+                   : _fbLang==='th' ? 'สาเหตุหลัก 3 อันดับ'
+                   : '당신을 움직인 핵심 원인 TOP 3';
+  const _fbExt = _fbLang==='en' ? `Body signal · ${prof.region||''}${prof.texture?' '+prof.texture:''}`
+               : _fbLang==='th' ? `สัญญาณร่างกาย · ${prof.region||''}${prof.texture?' '+prof.texture:''}`
+               : `외형 신호 · ${prof.region||''}${prof.texture?' '+prof.texture:''}형`;
+  const _fbNote = _fbLang==='en'
+    ? `⚠️ Result save is delayed due to a network issue.<br><button style="margin-top:8px;padding:8px 18px;background:#b5452e;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700" onclick="submitDiagnosis(_dispAnswers||{})">Retry</button>`
+    : _fbLang==='th'
+    ? `⚠️ การบันทึกผลล่าช้าเนื่องจากปัญหาเครือข่าย<br><button style="margin-top:8px;padding:8px 18px;background:#b5452e;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700" onclick="submitDiagnosis(_dispAnswers||{})">ลองอีกครั้ง</button>`
+    : `⚠️ 잠시 네트워크 문제가 있어 결과지 저장이 지연됩니다.<br><button style="margin-top:8px;padding:8px 18px;background:#b5452e;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700" onclick="submitDiagnosis(_dispAnswers||{})">다시 저장하기</button>`;
   const maxS = Math.max(...top3.map(x => x[1]), 1);
   const bars = top3.map(([ax, s]) => `
     <div class="rsbar">
-      <span class="rsname">${ax} ${AXIS_NAMES[ax] || ax}</span>
+      <span class="rsname">${ax} ${_fbAML[ax] || ax}</span>
       <span class="rstrack"><span class="rsfill" style="width:${Math.round(s / maxS * 100)}%"></span></span>
     </div>`).join('');
   const el = document.getElementById('codeResult');
   if (el) el.innerHTML = `
     <div class="cr-emoji">${f.e || '🔬'}</div>
-    <div class="cr-label">${name}님의 바디코드</div>
-    <div class="cr-name">${f.name}</div>
-    <div class="cr-chain">${f.chain}</div>
-    <div class="cr-section">당신을 움직인 핵심 원인 TOP 3</div>
+    <div class="cr-label">${_fbLabel}</div>
+    <div class="cr-name">${_fbT(f.name)}</div>
+    <div class="cr-chain">${_fbT(f.chain)}</div>
+    <div class="cr-section">${_fbSection}</div>
     <div class="rsbars">${bars}</div>
-    <div class="cr-ext">외형 신호 · ${prof.region || ''}${prof.texture ? ' ' + prof.texture : ''}형</div>
+    <div class="cr-ext">${_fbExt}</div>
     <div class="cr-note" style="background:#fff3cd;color:#856404;border-radius:8px;padding:10px 14px;font-size:13px;margin-top:12px">
-      ⚠️ 잠시 네트워크 문제가 있어 결과지 저장이 지연됩니다.<br>
-      <button style="margin-top:8px;padding:8px 18px;background:#b5452e;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700"
-        onclick="submitDiagnosis(_dispAnswers||{})">다시 저장하기</button>
+      ${_fbNote}
     </div>`;
   if (analyzingEl)  analyzingEl.style.display  = 'none';
   if (codeScreenEl) codeScreenEl.style.display = 'block';
@@ -23206,6 +23265,140 @@ Object.assign(window.SM_I18N_TH, {
   "건너뛰고 바로 시작": "ข้ามแล้วเริ่มเลย"
 });
 
+// ── fins[] 22개 타입명 / chain / ext 번역 (EN + TH) ──────────────────
+// 폴백 인라인 결과지 및 MutationObserver 번역 시스템에서 사용
+window.SM_I18N_EN = Object.assign(window.SM_I18N_EN || {}, {
+  // ── 타입명 ──
+  "아빠체형 내장비대형": "Paternal Visceral Fat Type",
+  "식후기절 혈당롤러형": "Post-Meal Blood Sugar Roller",
+  "털털한 PCOS형": "Casual PCOS Type",
+  "약물부작용 강제축적형": "Drug-Induced Accumulation Type",
+  "스트레스성 야식부엉이형": "Stress Night-Owl Type",
+  "억제제부작용 배부름마비형": "Suppressant-Side-Effect Type",
+  "출산후 바람빠진 풍선형": "Post-Birth Deflated Balloon",
+  "식후임산부 가스풍선형": "Post-Meal Gas Balloon Type",
+  "팔다리거미 올챙이배형": "Spider-Limb Tadpole Belly",
+  "오후만되면 코끼리다리형": "Afternoon Elephant Legs Type",
+  "엄마체형 하지정체형": "Maternal Lower-Body Stasis",
+  "여름에도 시린 얼음장형": "Ice-Cold Even in Summer",
+  "운동할수록 말벅지형": "Horse Thighs from Exercise",
+  "골반틀어짐 승마살형": "Pelvic-Tilt Saddlebag Type",
+  "목짧아지는 거북이형": "Turtle-Neck Shrink Type",
+  "안 쓰는 팔뚝 부종형": "Unused-Arm Swelling Type",
+  "상체근육형": "Upper-Body Muscle Type",
+  "겨드랑이 부유방형": "Axillary Accessory Breast",
+  "호르몬스위치 갱년기형": "Hormonal Switch Menopause",
+  "스트레스기절 번아웃형": "Stress-Collapse Burnout Type",
+  "대사증후군 종합형": "Metabolic Syndrome Complex",
+  "동시다발 다중악순환형": "Multi-Vicious-Cycle Type",
+  // ── chain (원인 체인) ──
+  "성인병 가계력 + 대골격 → 단단 복부": "Family history of metabolic disease + large frame → firm abdomen",
+  "가당음료 역사 + 식후 졸음": "History of sugary drinks + post-meal drowsiness",
+  "다낭성난소 진단 + 안드로겐": "PCOS diagnosis + androgen excess",
+  "스테로이드·항우울제 복용력": "History of steroids / antidepressants",
+  "야근 + 밤 10시 폭식": "Late shifts + binge eating after 10 pm",
+  "비만클리닉 약물 장기복용": "Long-term weight-clinic medication",
+  "출산 + 하복부 압력소실": "Childbirth + loss of lower abdominal pressure",
+  "장내 부패 + 식후 가스": "Gut fermentation + post-meal gas",
+  "근육량 낮음 + 마른비만": "Low muscle mass + skinny-fat",
+  "하지 림프·정맥 울혈": "Lower-limb lymphatic/venous congestion",
+  "엄마 하체비만 + 알파수용체": "Maternal lower-body obesity + alpha receptors",
+  "갑상선 대사저하 + 손발 시림": "Thyroid hypometabolism + cold hands and feet",
+  "하체 과발달 + 스쿼트 과거력": "Overdeveloped lower body + squat history",
+  "짝다리·다리꼬기 → 골반 벌어짐": "Weight shifting / leg crossing → pelvic widening",
+  "거북목·라운드숄더 → 림프차단": "Forward head / rounded shoulders → lymph blockage",
+  "운동량 부족 + 림프 정체": "Insufficient activity + lymphatic stasis",
+  "팔·어깨 과사용 + 승모근 뭉침": "Overuse of arms/shoulders + trapezius tightness",
+  "흉추 무너짐 + 브라라인 피하": "Thoracic collapse + sub-bra subcutaneous tissue",
+  "완경 + 지방 강제이동": "Menopause + forced fat redistribution",
+  "부신 고갈 + 방전": "Adrenal depletion + burnout",
+  "당뇨+고혈압 + 내장축적": "Diabetes + hypertension + visceral accumulation",
+  "상위 축 점수 동점": "Top-axis scores are tied",
+  // ── ext (외형 신호) ──
+  "복부 단단": "Firm abdomen",
+  "복부 물렁": "Soft abdomen",
+  "복부 팽만": "Abdominal bloating",
+  "복부 마른": "Flat/thin abdomen",
+  "하복부 이완": "Lower abdominal laxity",
+  "하체 부종": "Lower-body edema",
+  "하체 셀룰": "Lower-body cellulite",
+  "하체 근육": "Lower-body muscle bulk",
+  "하체 골반": "Hip/pelvic widening",
+  "상체 자세": "Upper-body posture",
+  "상체 근육": "Upper-body muscle",
+  "상체 흉추": "Upper-back / thoracic",
+  "상체 부종": "Upper-body swelling",
+  "전신 변환": "Whole-body redistribution",
+  "전신 부종": "Whole-body edema",
+  "전신 고위험": "High metabolic risk",
+  "전신 복합": "Whole-body complex"
+});
+window.SM_I18N_TH = Object.assign(window.SM_I18N_TH || {}, {
+  // ── 타입명 ──
+  "아빠체형 내장비대형": "ไขมันในช่องท้องแบบพ่อ",
+  "식후기절 혈당롤러형": "ระดับน้ำตาลวูบวาบหลังอาหาร",
+  "털털한 PCOS형": "PCOS แบบไม่แสดงอาการชัด",
+  "약물부작용 강제축적형": "สะสมไขมันจากผลข้างเคียงยา",
+  "스트레스성 야식부엉이형": "นกฮูกทานมื้อดึกเพราะเครียด",
+  "억제제부작용 배부름마비형": "ยาสลายความอยากทำให้อิ่มไม่เป็น",
+  "출산후 바람빠진 풍선형": "บอลลูนแฟบหลังคลอด",
+  "식후임산부 가스풍선형": "ท้องอืดหลังอาหาร",
+  "팔다리거미 올챙이배형": "แขนขาเรียวบางท้องโป่ง",
+  "오후만되면 코끼리다리형": "ขาบวมช่วงบ่าย",
+  "엄마체형 하지정체형": "ไขมันสะโพกขาแบบแม่",
+  "여름에도 시린 얼음장형": "หนาวเย็นแม้กลางฤดูร้อน",
+  "운동할수록 말벅지형": "ต้นขาใหญ่ยิ่งออกกำลังกาย",
+  "골반틀어짐 승마살형": "ไขมันสะโพกจากกระดูกเชิงกรานบิด",
+  "목짧아지는 거북이형": "คอเต่า ต้นคอสั้นลง",
+  "안 쓰는 팔뚝 부종형": "แขนบวมเพราะไม่ขยับ",
+  "상체근육형": "กล้ามเนื้อส่วนบนเกิน",
+  "겨드랑이 부유방형": "ต่อมน้ำนมส่วนเกินบริเวณรักแร้",
+  "호르몬스위치 갱년기형": "วัยหมดประจำเดือน สวิตช์ฮอร์โมน",
+  "스트레스기절 번아웃형": "หมดไฟ ต่อมหมวกไตหมดแรง",
+  "대사증후군 종합형": "กลุ่มอาการเมตาบอลิกรวม",
+  "동시다발 다중악순환형": "วงจรอุบาทว์หลายทิศทาง",
+  // ── chain ──
+  "성인병 가계력 + 대골격 → 단단 복부": "ประวัติโรคไม่ติดต่อในครอบครัว + โครงใหญ่ → ท้องแข็ง",
+  "가당음료 역사 + 식후 졸음": "ประวัติดื่มเครื่องดื่มหวาน + ง่วงหลังอาหาร",
+  "다낭성난소 진단 + 안드로겐": "วินิจฉัย PCOS + แอนโดรเจนสูง",
+  "스테로이드·항우울제 복용력": "ประวัติใช้สเตียรอยด์ / ยาต้านซึมเศร้า",
+  "야근 + 밤 10시 폭식": "ทำงานดึก + กินจุกช่วงดึก",
+  "비만클리닉 약물 장기복용": "ใช้ยาคลินิกลดน้ำหนักระยะยาว",
+  "출산 + 하복부 압력소실": "คลอดบุตร + แรงดันท้องน้อยลดลง",
+  "장내 부패 + 식후 가스": "การหมักในลำไส้ + แก๊สหลังอาหาร",
+  "근육량 낮음 + 마른비만": "มวลกล้ามเนื้อน้อย + ผอมแต่ไขมันสูง",
+  "하지 림프·정맥 울혈": "การคั่งของน้ำเหลือง/เส้นเลือดดำที่ขา",
+  "엄마 하체비만 + 알파수용체": "สะโพกขาใหญ่แบบแม่ + ตัวรับอัลฟา",
+  "갑상선 대사저하 + 손발 시림": "ไทรอยด์ทำงานช้า + มือเท้าเย็น",
+  "하체 과발달 + 스쿼트 과거력": "ขาพัฒนาเกินขนาด + ประวัติสควอต",
+  "짝다리·다리꼬기 → 골반 벌어짐": "การยืนเท้าเดียว / ไขว้ขา → กระดูกเชิงกรานกว้าง",
+  "거북목·라운드숄더 → 림프차단": "คอเต่า / ไหล่ห่อ → น้ำเหลืองอุดตัน",
+  "운동량 부족 + 림프 정체": "ออกกำลังกายน้อย + น้ำเหลืองค้าง",
+  "팔·어깨 과사용 + 승모근 뭉침": "ใช้แขน/ไหล่มากเกิน + กล้ามเนื้อสะบักตึง",
+  "흉추 무너짐 + 브라라인 피하": "กระดูกสันอกยุบ + ไขมันใต้รักแร้",
+  "완경 + 지방 강제이동": "วัยหมดประจำเดือน + ไขมันย้ายตำแหน่ง",
+  "부신 고갈 + 방전": "ต่อมหมวกไตหมดแรง + หมดไฟ",
+  "당뇨+고혈압 + 내장축적": "เบาหวาน + ความดันโลหิตสูง + ไขมันในช่องท้อง",
+  "상위 축 점수 동점": "คะแนนแกนสูงสุดเท่ากัน",
+  // ── ext ──
+  "복부 단단": "ท้องแข็ง",
+  "복부 물렁": "ท้องนิ่ม",
+  "복부 팽만": "ท้องอืด",
+  "복부 마른": "ท้องแบน/ผอม",
+  "하복부 이완": "ท้องน้อยหย่อน",
+  "하체 부종": "ขาบวม",
+  "하체 셀룰": "เซลลูไลต์ขา",
+  "하체 근육": "กล้ามเนื้อขาใหญ่",
+  "하체 골반": "สะโพก/กระดูกเชิงกรานกว้าง",
+  "상체 자세": "ท่าทางส่วนบน",
+  "상체 근육": "กล้ามเนื้อส่วนบน",
+  "상체 흉추": "กระดูกสันอก/หลังบน",
+  "상체 부종": "บวมส่วนบน",
+  "전신 변환": "ไขมันกระจายทั่วร่างกาย",
+  "전신 부종": "บวมทั่วร่างกาย",
+  "전신 고위험": "ความเสี่ยงเมตาบอลิกสูง",
+  "전신 복합": "ปัญหารวมทั่วร่างกาย"
+});
 // ── CORE part 2: Stage 3/4 · 결과생성 · 기질 인트로 ──
 Object.assign(window.SM_I18N_TH, {
   // ── 진행바 차수 배지 ──
