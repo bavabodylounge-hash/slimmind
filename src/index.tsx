@@ -2711,6 +2711,127 @@ app.get('/h/:code', async (c) => {
   return htmlResponse(html)
 })
 
+// ─── /survey-hospital-3lang.html 직접 접근 차단 ─────────────────
+app.get('/survey-hospital-3lang.html', (c) => {
+  return c.html(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>잘못된 접근입니다</title></head>
+<body style="font-family:sans-serif;text-align:center;padding:60px">
+<h2>⚠️ 잘못된 접근입니다</h2><p>병원 전용 질문지는 담당자가 발송한 링크를 통해서만 이용하실 수 있습니다.</p>
+</body></html>`, 403)
+})
+
+// ─── /h3/:code — 병원용 3개국어(KO+EN+TH) 질문지 진입 라우트 ─────
+// survey_category='hospital' B2B 파트너 전용 — ?lang=en|th 로 초기 언어 설정 가능
+app.get('/h3/:code', async (c) => {
+  const db = c.env.DB
+  const rawCode = c.req.param('code').toUpperCase()
+  const langParam = c.req.query('lang') || 'ko'  // ?lang=en|th|ko
+
+  let partner: any = null
+  try {
+    partner = await db.prepare(
+      'SELECT code, name, brand_name, brand_color, brand_logo_url, status, survey_category FROM b2b_partners WHERE code = ?'
+    ).bind(rawCode).first<any>()
+  } catch (_) {
+    partner = await db.prepare(
+      'SELECT code, name, brand_name, brand_color, brand_logo_url, status FROM b2b_partners WHERE code = ?'
+    ).bind(rawCode).first<any>()
+  }
+
+  if (!partner || partner.status === 'suspended') {
+    return c.html('<!DOCTYPE html><html><body style="font-family:sans-serif;text-align:center;padding:60px"><h2>유효하지 않은 링크입니다</h2><p>담당자에게 문의해주세요.</p></body></html>', 404)
+  }
+
+  // hospital 이외 카테고리는 적합한 라우트로 리다이렉트
+  if (partner.survey_category && partner.survey_category !== 'hospital') {
+    const catPath: Record<string, string> = { aesthetic: '/a', fitness: '/f', integrated: '/s' }
+    return c.redirect(`${catPath[partner.survey_category] || '/s'}/${rawCode}`, 302)
+  }
+
+  // scan_count 증가
+  await db.prepare(
+    "UPDATE b2b_partners SET qr_scan_count = qr_scan_count + 1, updated_at=datetime('now') WHERE code=?"
+  ).bind(rawCode).run()
+
+  const bColor = partner.brand_color || '#8b6db5'
+  const bName  = partner.brand_name  || partner.name
+  const bLogo  = partner.brand_logo_url || ''
+
+  // 초기 언어 설정 스크립트 (URL ?lang= 파라미터 반영)
+  const validLang = (langParam === 'en' || langParam === 'th') ? langParam : 'ko'
+  const langInitScript = validLang !== 'ko' ? `
+<script>
+  // 서버에서 주입: ?lang=${validLang} → 초기 언어 설정
+  document.addEventListener('DOMContentLoaded', function() {
+    try {
+      if (typeof window.SMSetLang === 'function') {
+        window.SMSetLang('${validLang}');
+      } else {
+        // SMSetLang 로드 전이면 이벤트 대기
+        var _retryLang = setInterval(function() {
+          if (typeof window.SMSetLang === 'function') {
+            window.SMSetLang('${validLang}');
+            clearInterval(_retryLang);
+          }
+        }, 200);
+        setTimeout(function() { clearInterval(_retryLang); }, 5000);
+      }
+    } catch(e) {}
+  });
+</script>` : ''
+
+  const brandInject = `
+<script>
+  window.__BRAND__ = {
+    code: ${JSON.stringify(rawCode)},
+    type: 'B2B',
+    brand_name: ${JSON.stringify(bName)},
+    brand_color: ${JSON.stringify(bColor)},
+    brand_logo_url: ${JSON.stringify(bLogo)},
+    ref_code: ${JSON.stringify(rawCode)},
+    survey_category: 'hospital',
+    lang: ${JSON.stringify(validLang)}
+  };
+  document.documentElement.style.setProperty('--brand-color', ${JSON.stringify(bColor)});
+</script>`
+
+  const refScript = `
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    if (window.__BRAND__ && window.__BRAND__.ref_code) {
+      try {
+        var url = new URL(window.location.href);
+        if (!url.searchParams.get('ref')) {
+          url.searchParams.set('ref', window.__BRAND__.ref_code);
+          window.history.replaceState({}, '', url.toString());
+        }
+      } catch(e) {}
+    }
+  });
+</script>`
+
+  const siteBase = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.kr' } })()
+  const ogInject = `
+<meta property="og:type"         content="website">
+<meta property="og:site_name"    content="SlimMind">
+<meta property="og:title"        content="SlimMind | 바디코드 정밀 진단">
+<meta property="og:description"  content="당신의 몸은 하나의 코드입니다. 반복되는 다이어트 실패엔 반드시 이유가 있어요.">
+<meta property="og:url"          content="${siteBase}/h3/${rawCode}">
+<meta property="og:image"        content="${siteBase}/static/og-hospital.png">
+<meta property="og:image:width"  content="1365">
+<meta property="og:image:height" content="768">
+<meta property="og:image:type"   content="image/png">
+<meta name="twitter:card"        content="summary_large_image">
+<meta name="twitter:title"       content="SlimMind | 바디코드 정밀 진단">
+<meta name="twitter:description" content="당신의 몸은 하나의 코드입니다. 반복되는 다이어트 실패엔 반드시 이유가 있어요.">
+<meta name="twitter:image"       content="${siteBase}/static/og-hospital.png">`
+
+  let html = await fetchAsset(c.env.ASSETS, '/survey-hospital-3lang.html')
+  html = html.replace('</head>', `${ogInject}\n${brandInject}\n${langInitScript}\n</head>`)
+  html = html.replace('</body>', `${refScript}\n</body>`)
+
+  return htmlResponse(html)
+})
+
 // ─── /a/:code — 에스테틱용 질문지 (파일 준비 후 연결) ────────────
 app.get('/a/:code', async (c) => {
   const db = c.env.DB
