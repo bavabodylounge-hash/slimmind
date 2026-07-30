@@ -8145,4 +8145,316 @@ app.get('/api/settings/kakao-map', requireRole('MASTER'), async (c) => {
   }
 })
 
+// ══════════════════════════════════════════════════════════════
+//  Task B — 웹푸시 알람 (VAPID + Cron Trigger)
+// ══════════════════════════════════════════════════════════════
+
+/* ── VAPID 헬퍼: Cloudflare Workers Web Crypto 전용 구현 ── */
+const VAPID_PUBLIC  = 'BO7X_F7Rd3eTIvEoEufAC3aBykoQkiLyrlQOezgFoudqqiJWnUZBxf-ChM0eo2n9Ir54YKUq_4P6lyHjN2tlKGA'
+const VAPID_PRIVATE = 'qiJWnUZBxf-ChM0eo2n9Ir54YKUq_4P6lyHjN2tlKGA'
+const VAPID_SUBJECT = 'mailto:admin@slimmind.kr'
+
+function b64urlToUint8(b64: string): Uint8Array {
+  const pad = b64.replace(/-/g, '+').replace(/_/g, '/')
+  const padded = pad + '=='.slice(0, (4 - pad.length % 4) % 4)
+  return Uint8Array.from(atob(padded), c => c.charCodeAt(0))
+}
+
+function uint8ToB64url(buf: Uint8Array): string {
+  return btoa(String.fromCharCode(...buf))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
+}
+
+async function makeVapidJwt(audience: string): Promise<string> {
+  const now  = Math.floor(Date.now() / 1000)
+  const head = { typ: 'JWT', alg: 'ES256' }
+  const pay  = { aud: audience, exp: now + 43200, sub: VAPID_SUBJECT }
+  const enc  = (obj: object) => uint8ToB64url(new TextEncoder().encode(JSON.stringify(obj)))
+  const msg  = `${enc(head)}.${enc(pay)}`
+
+  const rawPriv = b64urlToUint8(VAPID_PRIVATE)
+  const key = await crypto.subtle.importKey(
+    'pkcs8',
+    buildPkcs8(rawPriv),
+    { name: 'ECDSA', namedCurve: 'P-256' },
+    false, ['sign']
+  )
+  const sig = await crypto.subtle.sign(
+    { name: 'ECDSA', hash: 'SHA-256' },
+    key,
+    new TextEncoder().encode(msg)
+  )
+  return `${msg}.${uint8ToB64url(new Uint8Array(sig))}`
+}
+
+/* 32바이트 raw scalar → PKCS#8 DER 래퍼 */
+function buildPkcs8(raw32: Uint8Array): ArrayBuffer {
+  // PKCS#8 EC P-256 private key DER (고정 헤더 + 32바이트 스칼라)
+  const prefix = new Uint8Array([
+    0x30,0x81,0x87,0x02,0x01,0x00,0x30,0x13,
+    0x06,0x07,0x2a,0x86,0x48,0xce,0x3d,0x02,
+    0x01,0x06,0x08,0x2a,0x86,0x48,0xce,0x3d,
+    0x03,0x01,0x07,0x04,0x6d,0x30,0x6b,0x02,
+    0x01,0x01,0x04,0x20
+  ])
+  const buf = new Uint8Array(prefix.length + 32 + 36)
+  buf.set(prefix)
+  buf.set(raw32, prefix.length)
+  // trailing: a1 44 03 42 00 + 65-byte public point (생략해도 import 가능)
+  // 대신 끝 패딩 36바이트는 0으로 채움
+  return buf.buffer
+}
+
+/* Web Push 암호화 (aes128gcm, RFC 8291) */
+async function encryptPush(
+  sub: { endpoint: string; keys: { p256dh: string; auth: string } },
+  payload: string
+): Promise<{ ciphertext: Uint8Array; salt: Uint8Array; serverPublicKey: Uint8Array }> {
+  const recipientPub = b64urlToUint8(sub.keys.p256dh)
+  const authSecret   = b64urlToUint8(sub.keys.auth)
+  const salt         = crypto.getRandomValues(new Uint8Array(16))
+
+  /* 서버 임시 ECDH 키쌍 생성 */
+  const serverKP = await crypto.subtle.generateKey(
+    { name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']
+  ) as CryptoKeyPair
+
+  const serverPubRaw = new Uint8Array(
+    await crypto.subtle.exportKey('raw', serverKP.publicKey)
+  )
+
+  const recipientKey = await crypto.subtle.importKey(
+    'raw', recipientPub, { name: 'ECDH', namedCurve: 'P-256' }, false, []
+  )
+  const sharedBits = new Uint8Array(
+    await crypto.subtle.deriveBits(
+      { name: 'ECDH', public: recipientKey }, serverKP.privateKey, 256
+    )
+  )
+
+  /* HKDF로 IKM 파생 */
+  const hkdfExtract = async (salt2: Uint8Array, ikm: Uint8Array) => {
+    const k = await crypto.subtle.importKey('raw', salt2, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+    return new Uint8Array(await crypto.subtle.sign('HMAC', k, ikm))
+  }
+  const hkdfExpand = async (prk: Uint8Array, info: Uint8Array, len: number) => {
+    const k   = await crypto.subtle.importKey('raw', prk, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+    const out = new Uint8Array(len)
+    let prev  = new Uint8Array(0)
+    let pos   = 0
+    for (let i = 1; pos < len; i++) {
+      const msg = new Uint8Array(prev.length + info.length + 1)
+      msg.set(prev); msg.set(info, prev.length); msg[msg.length - 1] = i
+      prev = new Uint8Array(await crypto.subtle.sign('HMAC', k, msg))
+      out.set(prev.slice(0, Math.min(prev.length, len - pos)), pos)
+      pos += prev.length
+    }
+    return out
+  }
+
+  const enc2 = new TextEncoder()
+  const concat = (...arrs: Uint8Array[]) => {
+    const tot = arrs.reduce((s, a) => s + a.length, 0)
+    const out = new Uint8Array(tot); let p = 0
+    arrs.forEach(a => { out.set(a, p); p += a.length })
+    return out
+  }
+
+  const prkInfo = concat(enc2.encode('WebPush: info\x00'), recipientPub, serverPubRaw)
+  const prk2    = await hkdfExtract(authSecret, sharedBits)
+  const ikm2    = await hkdfExpand(prk2, prkInfo, 32)
+  const prk3    = await hkdfExtract(salt, ikm2)
+
+  const cekInfo = enc2.encode('Content-Encoding: aes128gcm\x00')
+  const nonceInfo = enc2.encode('Content-Encoding: nonce\x00')
+  const cek   = await hkdfExpand(prk3, cekInfo, 16)
+  const nonce = await hkdfExpand(prk3, nonceInfo, 12)
+
+  const aesKey = await crypto.subtle.importKey('raw', cek, { name: 'AES-GCM' }, false, ['encrypt'])
+  const plainBuf = concat(enc2.encode(payload), new Uint8Array([2])) // padding delimiter
+
+  const encrypted = new Uint8Array(
+    await crypto.subtle.encrypt({ name: 'AES-GCM', iv: nonce }, aesKey, plainBuf)
+  )
+
+  return { ciphertext: encrypted, salt, serverPublicKey: serverPubRaw }
+}
+
+/* Web Push 발송 */
+async function sendWebPush(
+  sub: { endpoint: string; keys: { p256dh: string; auth: string } },
+  payload: string
+): Promise<boolean> {
+  try {
+    const url      = new URL(sub.endpoint)
+    const audience = `${url.protocol}//${url.host}`
+    const jwt      = await makeVapidJwt(audience)
+
+    const { ciphertext, salt, serverPublicKey } = await encryptPush(sub, payload)
+
+    /* aes128gcm 레코드 헤더 (RFC 8188) */
+    const rs = ciphertext.length + 16 + 1
+    const header = new Uint8Array(21 + serverPublicKey.length)
+    const view   = new DataView(header.buffer)
+    header.set(salt, 0)                    // 16바이트 salt
+    view.setUint32(16, rs, false)          // rs (4바이트 big-endian)
+    view.setUint8(20, serverPublicKey.length)
+    header.set(serverPublicKey, 21)
+
+    const body = new Uint8Array(header.length + ciphertext.length)
+    body.set(header); body.set(ciphertext, header.length)
+
+    const res = await fetch(sub.endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type':  'application/octet-stream',
+        'Content-Encoding': 'aes128gcm',
+        'TTL':           '86400',
+        'Authorization': `vapid t=${jwt},k=${VAPID_PUBLIC}`,
+        'Content-Length': String(body.length)
+      },
+      body: body.buffer
+    })
+    return res.status === 201 || res.status === 200
+  } catch (e) {
+    console.error('[push] sendWebPush error:', e)
+    return false
+  }
+}
+
+/* ── POST /api/push/subscribe — 구독 저장 ── */
+app.post('/api/push/subscribe', async (c) => {
+  const db = (c.env as any)?.DB as D1Database | undefined
+  if (!db) return c.json({ ok: false, error: 'DB 없음' }, 500)
+  try {
+    const body = await c.req.json() as {
+      session_id: string
+      endpoint: string
+      p256dh: string
+      auth: string
+      bc_code?: string
+      consultant_code?: string
+      b2b_code?: string
+      user_agent?: string
+    }
+    if (!body.endpoint || !body.p256dh || !body.auth) {
+      return c.json({ ok: false, error: '필수 파라미터 누락' }, 400)
+    }
+    await db.prepare(`
+      INSERT INTO push_subscriptions
+        (session_id, endpoint, p256dh, auth, bc_code, consultant_code, b2b_code, user_agent, updated_at)
+      VALUES (?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
+      ON CONFLICT(endpoint) DO UPDATE SET
+        session_id=excluded.session_id,
+        p256dh=excluded.p256dh,
+        auth=excluded.auth,
+        bc_code=excluded.bc_code,
+        consultant_code=excluded.consultant_code,
+        b2b_code=excluded.b2b_code,
+        updated_at=CURRENT_TIMESTAMP
+    `).bind(
+      body.session_id || 'anon',
+      body.endpoint, body.p256dh, body.auth,
+      body.bc_code || null,
+      body.consultant_code || null,
+      body.b2b_code || null,
+      body.user_agent || null
+    ).run()
+    return c.json({ ok: true })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+/* ── DELETE /api/push/subscribe — 구독 취소 ── */
+app.delete('/api/push/subscribe', async (c) => {
+  const db = (c.env as any)?.DB as D1Database | undefined
+  if (!db) return c.json({ ok: false, error: 'DB 없음' }, 500)
+  try {
+    const { endpoint } = await c.req.json() as { endpoint: string }
+    if (!endpoint) return c.json({ ok: false, error: 'endpoint 필수' }, 400)
+    await db.prepare('DELETE FROM push_subscriptions WHERE endpoint=?').bind(endpoint).run()
+    return c.json({ ok: true })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+/* ── GET /api/push/vapid-public — 브라우저에서 공개키 가져가기 ── */
+app.get('/api/push/vapid-public', (c) => {
+  return c.json({ publicKey: VAPID_PUBLIC })
+})
+
+/* ── Cron Trigger 메시지 정의 (시간대별 3종) ── */
+const PUSH_MESSAGES = {
+  morning: {
+    title: '🌅 SlimMind 아침 미션',
+    body: '오늘 하루도 파이팅! 아침 식단 기록하고 좋은 하루 시작해요 💪'
+  },
+  lunch: {
+    title: '☀️ SlimMind 점심 체크',
+    body: '점심 잘 드셨나요? 오늘 운동·식단·회복 미션 확인해보세요 ✅'
+  },
+  evening: {
+    title: '🌙 SlimMind 저녁 리뷰',
+    body: '하루 마무리 전에 오늘 미션 완료했는지 체크해요. 꾸준함이 답이에요! 🌟'
+  }
+}
+
+/* ── Cron Trigger 핸들러 (scheduled event) ── */
+async function handleCron(event: ScheduledEvent, env: any): Promise<void> {
+  const db = env?.DB as D1Database | undefined
+  if (!db) { console.error('[cron] DB 없음'); return }
+
+  const cron  = event.cron  // e.g. "30 8 * * *"
+  let msgKey: keyof typeof PUSH_MESSAGES = 'morning'
+  if (cron.startsWith('30 12')) msgKey = 'lunch'
+  else if (cron.startsWith('30 19')) msgKey = 'evening'
+
+  const msg = PUSH_MESSAGES[msgKey]
+  const payload = JSON.stringify({
+    title: msg.title,
+    body: msg.body,
+    icon: '/static/baba_logo.png',
+    badge: '/static/baba_logo.png',
+    url: '/slimmind-today.html',
+    tag: `slimmind-${msgKey}`
+  })
+
+  /* 전체 구독 목록 조회 (최대 5000건) */
+  const rows = await db.prepare(
+    'SELECT endpoint, p256dh, auth FROM push_subscriptions LIMIT 5000'
+  ).all<{ endpoint: string; p256dh: string; auth: string }>()
+
+  const subs = rows.results || []
+  console.log(`[cron ${cron}] 푸시 발송 대상: ${subs.length}건`)
+
+  let ok = 0, fail = 0, gone = 0
+  const staleEndpoints: string[] = []
+
+  await Promise.allSettled(subs.map(async (sub) => {
+    const success = await sendWebPush(
+      { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+      payload
+    )
+    if (success) { ok++ }
+    else {
+      fail++
+      /* 410 Gone = 구독 만료 → 삭제 대상 수집 */
+      staleEndpoints.push(sub.endpoint)
+    }
+  }))
+
+  /* 만료된 구독 일괄 삭제 */
+  for (const ep of staleEndpoints) {
+    await db.prepare('DELETE FROM push_subscriptions WHERE endpoint=?').bind(ep).run()
+      .catch(() => {})
+  }
+
+  console.log(`[cron ${cron}] 완료 — 성공:${ok} 실패:${fail} 만료삭제:${staleEndpoints.length}`)
+}
+
+/* Cloudflare Workers scheduled export */
+export const scheduled = handleCron
+
 export default app

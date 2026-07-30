@@ -1,8 +1,9 @@
 /* =========================================================
-   SlimMind PWA Install Helper  v1.0
+   SlimMind PWA Install Helper  v1.1
    ─ 카카오 인앱브라우저 → "외부 브라우저로 열기" 툴팁
    ─ iOS Safari       → "홈 화면에 추가" 안내 모달
    ─ Android Chrome   → BeforeInstallPrompt 원클릭 배너
+   ─ 웹푸시 구독      → SW 등록 후 알림 권한 요청 + 서버 저장
    ========================================================= */
 (function () {
   'use strict';
@@ -197,6 +198,79 @@
     document.getElementById('pwa-close-btn').addEventListener('click', function () {
       banner.remove();
     });
+  }
+
+  /* ============================================================
+     4. 웹푸시 구독 — SW 등록 완료 후 알림 권한 요청
+  ============================================================ */
+  if ('serviceWorker' in navigator && 'PushManager' in window) {
+    /* SW 등록이 완료된 시점에 구독 시도 */
+    navigator.serviceWorker.ready.then(function (reg) {
+      /* 이미 구독돼 있으면 서버에 재전송만 */
+      reg.pushManager.getSubscription().then(function (existing) {
+        if (existing) {
+          sendSubToServer(existing);
+          return;
+        }
+        /* 알림 권한이 없으면 사용자에게 묻기 */
+        Notification.requestPermission().then(function (perm) {
+          if (perm !== 'granted') return;
+          fetch('/api/push/vapid-public')
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              var appServerKey = urlBase64ToUint8Array(data.publicKey);
+              return reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: appServerKey
+              });
+            })
+            .then(function (sub) {
+              sendSubToServer(sub);
+            })
+            .catch(function (err) {
+              console.warn('[push] 구독 실패:', err);
+            });
+        });
+      });
+    });
+  }
+
+  /* 구독 정보를 서버로 전송 */
+  function sendSubToServer(sub) {
+    try {
+      var subJson  = sub.toJSON();
+      var keys     = subJson.keys || {};
+      var _meta    = {};
+      try { _meta = JSON.parse(localStorage.getItem('slimmind_meta_') || '{}'); } catch(e){}
+      var _sid     = _meta.session_id || localStorage.getItem('slimmind_sid') || 'anon';
+
+      fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id:       _sid,
+          endpoint:         subJson.endpoint,
+          p256dh:           keys.p256dh   || '',
+          auth:             keys.auth     || '',
+          bc_code:          _meta.bcCode  || _meta.bc_primary || null,
+          consultant_code:  _meta.ref_code || null,
+          b2b_code:         _meta.b2b_code || null,
+          user_agent:       navigator.userAgent.slice(0, 200)
+        })
+      }).catch(function (e) { console.warn('[push] 서버 전송 실패:', e); });
+    } catch (e) {
+      console.warn('[push] sendSubToServer 오류:', e);
+    }
+  }
+
+  /* VAPID 공개키 변환 헬퍼 */
+  function urlBase64ToUint8Array(base64String) {
+    var padding = '='.repeat((4 - base64String.length % 4) % 4);
+    var base64  = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    var raw     = window.atob(base64);
+    var output  = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; ++i) { output[i] = raw.charCodeAt(i); }
+    return output;
   }
 
 })();

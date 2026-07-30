@@ -95,3 +95,45 @@ function cacheFirst(req) {
     });
   });
 }
+
+/* ── Push: 알림 표시 ── */
+self.addEventListener('push', function (e) {
+  var data = {};
+  try { data = e.data ? e.data.json() : {}; } catch (_) {}
+
+  var title   = data.title  || 'SlimMind';
+  var options = {
+    body:    data.body  || '오늘 미션을 확인해보세요 💪',
+    icon:    data.icon  || '/static/baba_logo.png',
+    badge:   data.badge || '/static/baba_logo.png',
+    tag:     data.tag   || 'slimmind',
+    data:    { url: data.url || '/slimmind-today.html' },
+    vibrate: [200, 100, 200],
+    actions: [
+      { action: 'open',    title: '미션 확인' },
+      { action: 'dismiss', title: '닫기' }
+    ]
+  };
+  e.waitUntil(self.registration.showNotification(title, options));
+});
+
+/* ── NotificationClick: 알림 클릭 시 페이지 열기 ── */
+self.addEventListener('notificationclick', function (e) {
+  e.notification.close();
+  if (e.action === 'dismiss') return;
+
+  var targetUrl = (e.notification.data && e.notification.data.url)
+    ? e.notification.data.url
+    : '/slimmind-today.html';
+
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
+      for (var i = 0; i < list.length; i++) {
+        if (list[i].url.includes(targetUrl) && 'focus' in list[i]) {
+          return list[i].focus();
+        }
+      }
+      return clients.openWindow(targetUrl);
+    })
+  );
+});
