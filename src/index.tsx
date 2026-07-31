@@ -5004,6 +5004,7 @@ app.get('/api/v1/diagnosis/:id', async (c) => {
       weight_loss_pct: row.weight_loss_pct ?? null,   // ✅ 추가
       ref_code:        row.ref_code,
       consultant_code: row.ref_code,   // ✅ FIX: result-v4.html daily-check용 (consultant_code = ref_code)
+      survey_category: row.survey_category,  // ✅ 결과지 라우팅용
       completed_at:    row.completed_at,
       created_at:      row.created_at
     })
