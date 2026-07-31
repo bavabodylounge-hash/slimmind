@@ -18491,23 +18491,60 @@ function showAnalyzing(){
     },
     onDone(){
       if(titleEl) titleEl.textContent=_azTH?`รหัสของคุณ${name}เสร็จสมบูรณ์แล้ว`:`${name}님의 코드가 완성됐습니다`;
-      /* ★★ v70 — 결과지 표시 제거(서우님: "마지막에 나오는 결과지 없애라니깐").
-         결과지는 상담·전송용으로 별도 전달되므로 화면에는 띄우지 않는다.
-         ★★ v71 BUG-FIX — showCodeResult()가 호출되지 않아 submitDiagnosis()도
-         호출되지 않아 DB 저장이 누락되는 버그 수정.
-         onDone에서 decideCode() → showCodeResult() → submitDiagnosis() 체인 복구. */
+      /* ★★ v72 BUG-FIX (완전판) — 100% 후 무한 멈춤 완전 차단.
+         1) _sdBusy 플래그 강제 리셋 (이전 세션/중복 호출 방지)
+         2) decideCode() 실패해도 폴백 코드로 submitDiagnosis 강제 실행
+         3) submitDiagnosis가 10초 안에 showWaitScreen을 호출 안 하면 타임아웃 폴백으로 직접 이동
+            ▶ 폴백은 showWaitScreen(null)이 아닌 waitScreen UI만 표시 + 대기 메시지로 처리
+         4) window._sdSubmitCalled 플래그로 타임아웃과 정상경로 충돌 방지 */
+      window._sdBusy = false;          /* ★ 핵심: 이전 잔류 _sdBusy 강제 해제 */
+      window._sdSubmitCalled = false;
+      if(window._sdTimeoutId){ clearTimeout(window._sdTimeoutId); window._sdTimeoutId=null; }
+
+      /* ── 10초 타임아웃 폴백: submitDiagnosis/showWaitScreen이 작동 안 할 때 대기화면 강제 표시 ── */
+      window._sdTimeoutId = setTimeout(()=>{
+        if(!window._sdSubmitCalled){
+          console.warn('[v72-timeout] 10초 내 submit 미완료 — 대기화면 강제 표시 후 이동 시도');
+          window._sdSubmitCalled = true;
+          /* 대기화면 직접 표시 (resultId 없음 → 이동은 못하지만 멈춤은 해제) */
+          try{
+            const surveyApp=document.getElementById('surveyApp');
+            if(surveyApp) surveyApp.style.display='none';
+            const waitEl=document.getElementById('waitScreen');
+            if(waitEl) waitEl.style.display='block';
+            const waitTitleEl=document.getElementById('waitTitle');
+            if(waitTitleEl) waitTitleEl.innerHTML=`<span class="wait-name-hl">${name}</span>님,<br>분석이 <span>완료됐어요!</span>`;
+            window.scrollTo({top:0,behavior:'smooth'});
+            /* localStorage에서 마지막 result_id 복구 시도 */
+            try{
+              const lastId=localStorage.getItem('sm_last_result_id');
+              if(lastId && lastId.length > 10){
+                setTimeout(()=>{ window.location.replace('/result/'+lastId); }, 2000);
+              }
+            }catch(_){}
+          }catch(e2){ console.error('[v72-timeout] 대기화면 표시 실패:', e2); }
+        }
+      }, 10000);
+
       setTimeout(()=>{
         try{
           const _code = decideCode();
           window._smFinalCode = _code;
-          /* showCodeResult → DISP 모달 또는 바로 submitDiagnosis 호출 */
+          /* showCodeResult → DISP 모달(survey-data.js 로드 시) 또는 바로 submitDiagnosis 호출 */
           if(typeof showCodeResult === 'function') showCodeResult(_code);
+          else { _dispCodeResult = _code; submitDiagnosis({}); }
         }catch(e){
-          console.error('[onDone v71] showCodeResult 호출 실패, 직접 submit 시도:', e);
+          console.error('[onDone v72] decideCode/showCodeResult 실패, 폴백 submit:', e);
           try{
-            if(!_dispCodeResult && window._smFinalCode) _dispCodeResult = window._smFinalCode;
-            if(_dispCodeResult && typeof submitDiagnosis === 'function') submitDiagnosis({});
-          }catch(_){}
+            /* 폴백: _dispCodeResult 없으면 더미 코드로 채워서 강제 제출 */
+            if(!_dispCodeResult){
+              _dispCodeResult = window._smFinalCode || {
+                code:{name:'동시다발 다중악순환형',chain:'',ax:'A07·A05',e:'🔄',ext:''},
+                scores:{}, topAxis:'A07', prof:{region:'전신',texture:'물렁'}, candCount:1
+              };
+            }
+            if(typeof submitDiagnosis === 'function') submitDiagnosis({});
+          }catch(_2){ console.error('[onDone v72] 폴백 submit도 실패:', _2); }
         }
       },700);
     }
@@ -18817,6 +18854,10 @@ async function postDiagnosisWithRetry(payload, maxRetry = 3) {
    대기 화면 표시 함수 — 제출 성공 후 결과지 전달 대기
    ───────────────────────────────────────────────────────── */
 function showWaitScreen(resultId, userName) {
+  /* ★ v72: 타임아웃 폴백 취소 (정상 경로로 도달했으므로) */
+  if(window._sdTimeoutId){ clearTimeout(window._sdTimeoutId); window._sdTimeoutId=null; }
+  window._sdSubmitCalled = true;
+
   // 설문 영역 숨기기
   const surveyApp = document.getElementById('surveyApp');
   if (surveyApp) surveyApp.style.display = 'none';
@@ -18861,6 +18902,25 @@ function showWaitScreen(resultId, userName) {
 
   // 상단으로 스크롤
   window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  /* ★★ v72 핵심: resultId 있으면 2초 후 병원용 결과지로 자동 이동
+     - /result/:id → 서버가 survey_category=hospital 감지 → /result-hospital/:id 302 리다이렉트
+     - 이동 전 waitStep2 UI를 "완료" 로 업데이트 */
+  if (resultId) {
+    try {
+      const step2El = document.getElementById('waitStep2');
+      if(step2El){ step2El.textContent='✓'; step2El.className='wait-cs-num done'; }
+      const step3El = document.querySelector('.wait-cs-num.wait');
+      if(step3El){ step3El.className='wait-cs-num active'; step3El.textContent='↻'; }
+    } catch(_){}
+    setTimeout(()=>{
+      try{
+        window.location.replace('/result/' + resultId);
+      }catch(e){
+        window.location.href = '/result/' + resultId;
+      }
+    }, 2000);
+  }
 }
 
 function _waitSpawnParticles() {

@@ -2081,16 +2081,19 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
 <meta name="twitter:image"         content="${ogImage}">
 <meta name="description"           content="${ogDesc}">`
 
-        // ── hospital 분기: survey_category === 'hospital' → /result-hospital/:id 리다이렉트 ──
-        // diagnosis_results에 저장된 병원용 결과는 result-hospital.html이 처리
-        // survey_category가 NULL인 경우: ref_code로 파트너 조회하여 hospital 여부 판단 (구 데이터 대응)
+        // ── hospital 분기: survey_category === 'hospital' OR ref_code 파트너가 hospital → /result-hospital/:id 리다이렉트 ──
+        // ★ v72 FIX: survey_category가 잘못 저장된 경우('integrated'로 저장된 hospital 데이터)에도
+        //   ref_code 파트너 조회로 hospital 여부를 최종 판단하여 올바른 결과지로 라우팅
         let effectiveCategory = diagRow.survey_category
-        if (!effectiveCategory && diagRow.ref_code) {
+        if (diagRow.ref_code) {
           try {
             const partnerRow = await db.prepare(
               `SELECT survey_category FROM b2b_partners WHERE code = ? LIMIT 1`
             ).bind(diagRow.ref_code).first<any>()
-            if (partnerRow?.survey_category) {
+            // 파트너가 hospital이면 survey_category 저장값과 무관하게 hospital로 강제
+            if (partnerRow?.survey_category === 'hospital') {
+              effectiveCategory = 'hospital'
+            } else if (!effectiveCategory && partnerRow?.survey_category) {
               effectiveCategory = partnerRow.survey_category
             }
           } catch(_) {}
@@ -4925,8 +4928,8 @@ app.post('/api/v1/diagnosis', async (c) => {
             (id, user_name, bc_nickname, bc_primary, bc_secondary,
              top3_axes, axis_scores, region, texture, bg_filter,
              ohaeng_type, mbti_full, disp_answers,
-             ref_code, completed_at, created_at)
-          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             ref_code, survey_category, completed_at, created_at)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         `).bind(
           result_id,
           String(user_name || '익명'),
@@ -4942,6 +4945,7 @@ app.post('/api/v1/diagnosis', async (c) => {
           mbti_full   || null,
           disp_answers ? JSON.stringify(disp_answers) : null,
           ref_code     || null,
+          survey_category || 'integrated',  // ✅ FIX: 폴백 INSERT에도 survey_category 포함
           completed_at || now,
           now
         ).run()
