@@ -2083,7 +2083,20 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
 
         // ── hospital 분기: survey_category === 'hospital' → /result-hospital/:id 리다이렉트 ──
         // diagnosis_results에 저장된 병원용 결과는 result-hospital.html이 처리
-        if (diagRow.survey_category === 'hospital') {
+        // survey_category가 NULL인 경우: ref_code로 파트너 조회하여 hospital 여부 판단 (구 데이터 대응)
+        let effectiveCategory = diagRow.survey_category
+        if (!effectiveCategory && diagRow.ref_code) {
+          try {
+            const partnerRow = await db.prepare(
+              `SELECT survey_category FROM b2b_partners WHERE code = ? LIMIT 1`
+            ).bind(diagRow.ref_code).first<any>()
+            if (partnerRow?.survey_category) {
+              effectiveCategory = partnerRow.survey_category
+            }
+          } catch(_) {}
+        }
+
+        if (effectiveCategory === 'hospital') {
           return c.redirect(`/result-hospital/${id}`, 302)
         }
 
