@@ -2081,6 +2081,12 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
 <meta name="twitter:image"         content="${ogImage}">
 <meta name="description"           content="${ogDesc}">`
 
+        // ── hospital 분기: survey_category === 'hospital' → /result-hospital/:id 리다이렉트 ──
+        // diagnosis_results에 저장된 병원용 결과는 result-hospital.html이 처리
+        if (diagRow.survey_category === 'hospital') {
+          return c.redirect(`/result-hospital/${id}`, 302)
+        }
+
         // ── aesthetic 분기: survey_category === 'aesthetic' → result-aesthetic.html 서빙 ──
         if (diagRow.survey_category === 'aesthetic') {
           let aestheticHtml = await fetchAsset(c.env.ASSETS, '/result-aesthetic.html')
@@ -5698,19 +5704,10 @@ app.get('/api/h/result/:id', async (c) => {
   if (!db) return c.json({ error: 'DB not configured' }, 500)
   const id = c.req.param('id')
   try {
-    const row = await db.prepare(
-      `SELECT hr.*,
-              COALESCE(bp.name, bp.brand_name, '') AS partner_display_name
-       FROM hospital_responses hr
-       LEFT JOIN b2b_partners bp ON bp.code = hr.ref_code
-       WHERE hr.id = ?`
-    ).bind(id).first<any>()
-    if (!row) return c.json({ error: 'Not found' }, 404)
-
     // JSON 필드 파싱
     const parseJ = (v: any) => { try { return v ? JSON.parse(v) : null } catch { return null } }
 
-    // 오행 정규화 (DB에 "수(水)" 같은 비정규값이 있을 경우 대비)
+    // 오행 정규화
     const normOhaeng = (v: any): string => {
       if (!v) return ''
       const s = String(v).trim()
@@ -5726,13 +5723,94 @@ app.get('/api/h/result/:id', async (c) => {
       return ''
     }
 
-    const parsedRawResult = parseJ(row.raw_answers)
-    // ohaeng: DB 저장값 정규화 → pfProfile.saju 폴백
-    const finalOhaeng = normOhaeng(row.ohaeng_type)
-      || normOhaeng(parsedRawResult?.pfProfile?.saju) || ''
-    // mbti: DB 저장값 → pfProfile.mbti 폴백
-    const finalMbti = normMbti(row.mbti_full)
-      || normMbti(parsedRawResult?.pfProfile?.mbti) || ''
+    // ── 1순위: hospital_responses 테이블 ──────────────────────────────
+    // ref_code 컬럼이 없는 구버전 스키마 대비: 단순 SELECT 후 JOIN 시도
+    let row: any = null
+    try {
+      row = await db.prepare(
+        `SELECT hr.*,
+                COALESCE(bp.name, bp.brand_name, '') AS partner_display_name
+         FROM hospital_responses hr
+         LEFT JOIN b2b_partners bp ON bp.code = hr.ref_code
+         WHERE hr.id = ?`
+      ).bind(id).first<any>()
+    } catch(_joinErr) {
+      // ref_code 컬럼 없는 구버전 — JOIN 없이 단순 조회
+      try {
+        row = await db.prepare(`SELECT * FROM hospital_responses WHERE id = ?`).bind(id).first<any>()
+        if (row) row.partner_display_name = ''
+      } catch(_) { row = null }
+    }
+
+    if (row) {
+      // hospital_responses 데이터 정상 처리
+      const parsedRawResult = parseJ(row.raw_answers)
+      const finalOhaeng = normOhaeng(row.ohaeng_type)
+        || normOhaeng(parsedRawResult?.pfProfile?.saju) || ''
+      const finalMbti = normMbti(row.mbti_full)
+        || normMbti(parsedRawResult?.pfProfile?.mbti) || ''
+
+      c.header('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0')
+      c.header('Pragma', 'no-cache')
+      c.header('Expires', '0')
+      c.header('Surrogate-Control', 'no-store')
+      return c.json({
+        ok: true,
+        id: row.id,
+        b2b_code: row.b2b_code,
+        ref_code: row.ref_code,
+        user_name: row.user_name,
+        gender: row.gender,
+        age: row.age,
+        height: row.height,
+        weight: row.weight,
+        phone: row.phone,
+        ohaeng_type: finalOhaeng,
+        disp_type: row.disp_type,
+        mbti_full: finalMbti,
+        bc_code: row.bc_code,
+        axis_scores: parseJ(row.axis_scores),
+        stage1_answers: parseJ(row.stage1_json),
+        stage2_answers: parseJ(row.stage2_json),
+        stage3_answers: parseJ(row.stage3_json),
+        stage4_answers: parseJ(row.stage4_json),
+        raw_answers: parsedRawResult,
+        goal_weight:     row.goal_weight     != null ? Number(row.goal_weight)
+                       : (parsedRawResult?.goal_weight != null ? Number(parsedRawResult.goal_weight) : null),
+        weight_loss_pct: row.weight_loss_pct != null ? Number(row.weight_loss_pct)
+                       : (parsedRawResult?.weight_loss_pct != null ? Number(parsedRawResult.weight_loss_pct) : null),
+        created_at: row.created_at,
+        consultant_name: row.partner_display_name || ''
+      })
+    }
+
+    // ── 2순위: diagnosis_results 테이블 폴백 (survey-hospital.html v71+ 파이프라인) ──
+    // survey_category='hospital' 인 경우 diagnosis_results에 저장됨
+    const diagRow = await db.prepare(
+      `SELECT dr.*,
+              COALESCE(bp.name, bp.brand_name, '') AS partner_display_name
+       FROM diagnosis_results dr
+       LEFT JOIN b2b_partners bp ON bp.code = dr.ref_code
+       WHERE dr.id = ? AND dr.survey_category = 'hospital'`
+    ).bind(id).first<any>()
+
+    if (!diagRow) return c.json({ error: 'Not found' }, 404)
+
+    // diagnosis_results → /api/h/result 응답 구조로 변환
+    const rawAnswers = parseJ(diagRow.raw_answers)
+    const diagOhaeng = normOhaeng(diagRow.ohaeng_type)
+      || normOhaeng(rawAnswers?.pfProfile?.saju) || ''
+    const diagMbti = normMbti(diagRow.mbti_full)
+      || normMbti(rawAnswers?.pfProfile?.mbti) || ''
+
+    // axis_scores: diagnosis_results는 A01~A10 키 형태로 저장됨
+    const rawAxisScores = parseJ(diagRow.axis_scores)
+
+    // stage1~4 answers: raw_answers 안에 stage1/stage2/stage3/stage4 키로 저장됨
+    const stage1 = rawAnswers?.stage1 || null
+    const stage2 = rawAnswers?.stage2 || null
+    const stage3 = rawAnswers?.stage3 || null
+    const stage4 = rawAnswers?.stage4 || null
 
     c.header('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0')
     c.header('Pragma', 'no-cache')
@@ -5740,33 +5818,29 @@ app.get('/api/h/result/:id', async (c) => {
     c.header('Surrogate-Control', 'no-store')
     return c.json({
       ok: true,
-      id: row.id,
-      b2b_code: row.b2b_code,
-      ref_code: row.ref_code,
-      user_name: row.user_name,
-      gender: row.gender,
-      age: row.age,
-      height: row.height,
-      weight: row.weight,
-      phone: row.phone,
-      ohaeng_type: finalOhaeng,   // 정규화된 오행 (목/화/토/금/수)
-      disp_type: row.disp_type,
-      mbti_full: finalMbti,       // 정규화된 MBTI (ENTP/INFP 등)
-      bc_code: row.bc_code,
-      axis_scores: parseJ(row.axis_scores),
-      stage1_answers: parseJ(row.stage1_json),
-      stage2_answers: parseJ(row.stage2_json),
-      stage3_answers: parseJ(row.stage3_json),
-      stage4_answers: parseJ(row.stage4_json),
-      raw_answers: parsedRawResult,  // 이미 파싱된 객체 재사용
-      // goal_weight / weight_loss_pct: DB 컬럼 우선 → raw_answers 최상위 폴백
-      goal_weight:     row.goal_weight     != null ? Number(row.goal_weight)
-                     : (parsedRawResult?.goal_weight != null ? Number(parsedRawResult.goal_weight) : null),
-      weight_loss_pct: row.weight_loss_pct != null ? Number(row.weight_loss_pct)
-                     : (parsedRawResult?.weight_loss_pct != null ? Number(parsedRawResult.weight_loss_pct) : null),
-      created_at: row.created_at,
-      // 병원 파트너명 — 표지 "담당 컨설턴트" 자리에 표시
-      consultant_name: row.partner_display_name || ''
+      id: diagRow.id,
+      b2b_code: diagRow.ref_code,    // diagnosis_results에는 b2b_code가 없으므로 ref_code 사용
+      ref_code: diagRow.ref_code,
+      user_name: diagRow.user_name,
+      gender: diagRow.gender || rawAnswers?.userInfo?.gender || null,
+      age: diagRow.age != null ? Number(diagRow.age) : null,
+      height: diagRow.height != null ? Number(diagRow.height) : null,
+      weight: null,                  // diagnosis_results에는 weight 컬럼 없음
+      phone: null,
+      ohaeng_type: diagOhaeng,
+      disp_type: null,
+      mbti_full: diagMbti,
+      bc_code: diagRow.bc_code_key || diagRow.bc_primary || null,
+      axis_scores: rawAxisScores,
+      stage1_answers: stage1,
+      stage2_answers: stage2,
+      stage3_answers: stage3,
+      stage4_answers: stage4,
+      raw_answers: rawAnswers,
+      goal_weight:     diagRow.goal_weight     != null ? Number(diagRow.goal_weight)     : null,
+      weight_loss_pct: diagRow.weight_loss_pct != null ? Number(diagRow.weight_loss_pct) : null,
+      created_at: diagRow.completed_at || diagRow.created_at,
+      consultant_name: diagRow.partner_display_name || ''
     })
   } catch (e: any) {
     return c.json({ error: String(e) }, 500)
