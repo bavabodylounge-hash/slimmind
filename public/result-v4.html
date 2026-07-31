@@ -12934,7 +12934,7 @@ function runCertReveal(){
   }, 70);
 }
 
-function injectCoverInfo(userName, consultantName){
+function injectCoverInfo(userName, consultantName, createdAt){
   var u = document.getElementById('cover-username');
   if(u && userName){ u.textContent = userName; }
   var sn = document.getElementById('cover-sub-name');
@@ -12947,6 +12947,33 @@ function injectCoverInfo(userName, consultantName){
   var cn = document.getElementById('cover-consultant');
   if(consultantName){ if(cn) cn.textContent = (typeof consultantLabel==='function'?consultantLabel(consultantName):consultantName); if(cw) cw.style.display=''; }
   else { if(cw) cw.style.display='none'; }
+  // ★ 진단일 세팅 (FIX: cover-date에 값이 주입되지 않던 버그 수정)
+  var cd = document.getElementById('cover-date');
+  if(cd){
+    if(createdAt){
+      try{
+        // ISO 문자열 또는 'YYYY-MM-DD HH:mm:ss' 모두 처리
+        var _raw = String(createdAt).replace(' ','T');
+        // 타임존 없으면 UTC로 파싱되므로 한국 오프셋(+9) 적용
+        var _d = new Date(_raw);
+        if(!isNaN(_d.getTime())){
+          var y = _d.getFullYear();
+          var mo = String(_d.getMonth()+1).padStart(2,'0');
+          var dy = String(_d.getDate()).padStart(2,'0');
+          cd.textContent = y+'.'+mo+'.'+dy;
+        } else {
+          // 슬래시/점 형식 그대로 사용
+          cd.textContent = String(createdAt).slice(0,10).replace(/-/g,'.');
+        }
+      }catch(_){ cd.textContent = String(createdAt).slice(0,10).replace(/-/g,'.'); }
+    } else {
+      // createdAt이 없으면 오늘 날짜
+      var _today = new Date();
+      cd.textContent = _today.getFullYear()+'.'
+        +String(_today.getMonth()+1).padStart(2,'0')+'.'
+        +String(_today.getDate()).padStart(2,'0');
+    }
+  }
 }
 
 function triggerAnim() {
@@ -13854,7 +13881,7 @@ function renderAll(data) {
   })();
   // ★★★ [v4-MAPPING-ENGINE] END ★★★
 
-  try{ injectCoverInfo(userName, data.consultant_name || ''); }catch(e){}
+  try{ injectCoverInfo(userName, data.consultant_name || '', data.created_at || ''); }catch(e){}
 
   // V4.2: computeBCCodeSafe → TIER2 evidence badge + TIER3 경계형 처리 포함
   // 방어: bc-engine.js 로드 실패 시 fallback

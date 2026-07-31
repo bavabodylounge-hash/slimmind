@@ -2036,7 +2036,7 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
           texture:         diagRow.texture,
           bg_filter:       diagRow.bg_filter || '',
           ref_code:        diagRow.ref_code,
-          created_at:      diagRow.created_at,
+          created_at:      diagRow.completed_at || diagRow.created_at,
           answers:         parseJsonSafe(diagRow.raw_answers, null),
           disp_answers:    parseJsonSafe(diagRow.disp_answers, {}),
           goal_weight:     diagRow.goal_weight     ?? null,
@@ -2084,12 +2084,15 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
         // ── aesthetic 분기: survey_category === 'aesthetic' → result-aesthetic.html 서빙 ──
         if (diagRow.survey_category === 'aesthetic') {
           let aestheticHtml = await fetchAsset(c.env.ASSETS, '/result-aesthetic.html')
+          // PWA manifest + localStorage 저장 스크립트
+          const aeManifestLink = `<link rel="manifest" href="/api/manifest.json?for=${encodeURIComponent('/result/' + id)}">`
+          const aePwaScript = `<script>(function(){try{localStorage.setItem('sm_last_result_id',${JSON.stringify(id)});}catch(e){}})();<\/script>`
+          const idScript = `${aeManifestLink}\n${aePwaScript}\n<script>window.__AESTHETIC_RESULT_ID__ = ${JSON.stringify(id)};window.__RESULT__ = ${injectedData};</script>\n`
           const AESTHETIC_MARKER = '<!-- ══ 에스테틱 전용: API 연동 + __RESULT__ 주입 ══ -->'
-          const idScript = `<script>window.__AESTHETIC_RESULT_ID__ = ${JSON.stringify(id)};window.__RESULT__ = ${injectedData};</script>\n`
           if (aestheticHtml.includes(AESTHETIC_MARKER)) {
             aestheticHtml = aestheticHtml.replace(AESTHETIC_MARKER, idScript + AESTHETIC_MARKER)
           } else {
-            aestheticHtml = aestheticHtml.replace('</head>', idScript + '</head>')
+            aestheticHtml = aestheticHtml.replace('</head>', `${ogMeta}\n${idScript}</head>`)
           }
           return c.html(aestheticHtml, 200, {
             'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
@@ -3117,6 +3120,8 @@ app.get('/h3/:code', async (c) => {
 app.get('/a/:code', async (c) => {
   const db = c.env.DB
   const rawCode = c.req.param('code').toUpperCase()
+  const langParam = c.req.query('lang') || ''
+  const validLang = (langParam === 'en' || langParam === 'th') ? langParam : ''
 
   let partner: any = null
   try {
@@ -3133,8 +3138,6 @@ app.get('/a/:code', async (c) => {
     return c.html('<!DOCTYPE html><html><body style="font-family:sans-serif;text-align:center;padding:60px"><h2>유효하지 않은 링크입니다</h2><p>담당자에게 문의해주세요.</p></body></html>', 404)
   }
 
-  // 에스테틱 파일 준비 전: 통합질문지로 임시 서빙 (브랜드 주입 포함)
-  // TODO: survey-aesthetic.html 파일 추가 후 이 블록 교체
   const bColor = partner.brand_color || '#e879a8'
   const bName  = partner.brand_name  || partner.name
   const bLogo  = partner.brand_logo_url || ''
@@ -3148,14 +3151,86 @@ app.get('/a/:code', async (c) => {
     brand_color: ${JSON.stringify(bColor)},
     brand_logo_url: ${JSON.stringify(bLogo)},
     ref_code: ${JSON.stringify(rawCode)},
-    survey_category: 'aesthetic'
+    survey_category: 'aesthetic',
+    lang: ${JSON.stringify(validLang || 'ko')}
   };
   document.documentElement.style.setProperty('--brand-color', ${JSON.stringify(bColor)});
 </script>`
 
+  // ── ?lang=en|th 언어 초기화 스크립트 (병원용 동일 로직) ──
+  const langInitScript = validLang ? `
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    try {
+      if (typeof window.SMSetLang === 'function') {
+        window.SMSetLang(${JSON.stringify(validLang)});
+      } else {
+        var _ri = setInterval(function() {
+          if (typeof window.SMSetLang === 'function') {
+            window.SMSetLang(${JSON.stringify(validLang)});
+            clearInterval(_ri);
+          }
+        }, 200);
+        setTimeout(function() { clearInterval(_ri); }, 5000);
+      }
+    } catch(e) {}
+  });
+</script>` : ''
+
+  // ── ref_code 자동 주입 스크립트 (병원용 동일 로직) ──
+  const refScript = `
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    if (window.__BRAND__ && window.__BRAND__.ref_code) {
+      try {
+        var url = new URL(window.location.href);
+        if (!url.searchParams.get('ref')) {
+          url.searchParams.set('ref', window.__BRAND__.ref_code);
+          window.history.replaceState({}, '', url.toString());
+        }
+      } catch(e) {}
+    }
+  });
+</script>`
+
+  // ── 카카오톡 인앱 브라우저 → 외부 브라우저 강제 오픈 ──
+  const kakaoEscapeScript = `<script>
+(function(){
+  var ua = navigator.userAgent || '';
+  var isInApp = /KAKAOTALK|Line\\/|Instagram|FBAN|FBAV/i.test(ua);
+  if (!isInApp) return;
+  var isIOS     = /iPhone|iPad|iPod/i.test(ua);
+  var isAndroid = /Android/i.test(ua);
+  var href      = location.href;
+  if (isIOS) {
+    location.replace('safari-' + href);
+  } else if (isAndroid) {
+    location.replace('intent://' + href.replace(/^https?:\\/\\//, '') +
+      '#Intent;scheme=https;action=android.intent.action.VIEW;package=com.android.chrome;end');
+  }
+})();
+<\/script>`
+
   await db.prepare(
     "UPDATE b2b_partners SET qr_scan_count = qr_scan_count + 1, updated_at=datetime('now') WHERE code=?"
   ).bind(rawCode).run()
+
+  // OG 메타태그
+  const siteBase = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.kr' } })()
+  const ogInject = `
+<meta property="og:type"         content="website">
+<meta property="og:site_name"    content="SlimMind">
+<meta property="og:title"        content="SlimMind | 에스테틱 바디코드 진단">
+<meta property="og:description"  content="당신의 몸은 하나의 코드입니다. 반복되는 다이어트 실패엔 반드시 이유가 있어요.">
+<meta property="og:url"          content="${siteBase}/a/${rawCode}">
+<meta property="og:image"        content="${siteBase}/static/og-slimmind.png">
+<meta property="og:image:width"  content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:type"   content="image/png">
+<meta name="twitter:card"        content="summary_large_image">
+<meta name="twitter:title"       content="SlimMind | 에스테틱 바디코드 진단">
+<meta name="twitter:description" content="당신의 몸은 하나의 코드입니다. 반복되는 다이어트 실패엔 반드시 이유가 있어요.">
+<meta name="twitter:image"       content="${siteBase}/static/og-slimmind.png">`
 
   // 에스테틱 전용 파일이 없으면 통합질문지 임시 서빙
   let html: string
@@ -3164,7 +3239,9 @@ app.get('/a/:code', async (c) => {
   } catch {
     html = await fetchAsset(c.env.ASSETS, '/index.html')
   }
-  html = html.replace('</head>', `${brandInject}\n</head>`)
+  html = html.replace('<head>', `<head>${kakaoEscapeScript}`)
+  html = html.replace('</head>', `${ogInject}\n${brandInject}\n${langInitScript}\n</head>`)
+  html = html.replace('</body>', `${refScript}\n</body>`)
   return htmlResponse(html)
 })
 

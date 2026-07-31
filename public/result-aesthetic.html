@@ -6052,6 +6052,9 @@ window.__AESTHETIC_INIT_PROMISE__ = (async function aestheticInit() {
       <div class="cvx-consult" id="cover-consultant-wrap">
         <div class="cvx-consult-box"><span class="cvx-cc-l">담당 컨설턴트</span><span class="cvx-cc-dot"></span><span class="cvx-cc-n" id="cover-consultant">김예슬 컨설턴트</span></div>
       </div>
+      <div class="cvx-consult" id="cover-date-wrap" style="margin-top:6px;">
+        <div class="cvx-consult-box"><span class="cvx-cc-l">진단일</span><span class="cvx-cc-dot"></span><span class="cvx-cc-n" id="cover-date">—</span></div>
+      </div>
     </div>
 
     <!-- ── 결과지 장점 4가지 — 삭제됨 ── -->
@@ -12428,7 +12431,7 @@ function runCertReveal(){
   }, 70);
 }
 
-function injectCoverInfo(userName, consultantName){
+function injectCoverInfo(userName, consultantName, createdAt){
   var u = document.getElementById('cover-username');
   if(u && userName){ u.textContent = userName; }
   var sn = document.getElementById('cover-sub-name');
@@ -12441,6 +12444,29 @@ function injectCoverInfo(userName, consultantName){
   var cn = document.getElementById('cover-consultant');
   if(consultantName){ if(cn) cn.textContent = (typeof consultantLabel==='function'?consultantLabel(consultantName):consultantName); if(cw) cw.style.display=''; }
   else { if(cw) cw.style.display='none'; }
+  // ★ 진단일 세팅 (FIX: cover-date에 값이 주입되지 않던 버그 수정)
+  var cd = document.getElementById('cover-date');
+  if(cd){
+    if(createdAt){
+      try{
+        var _raw = String(createdAt).replace(' ','T');
+        var _d = new Date(_raw);
+        if(!isNaN(_d.getTime())){
+          var y = _d.getFullYear();
+          var mo = String(_d.getMonth()+1).padStart(2,'0');
+          var dy = String(_d.getDate()).padStart(2,'0');
+          cd.textContent = y+'.'+mo+'.'+dy;
+        } else {
+          cd.textContent = String(createdAt).slice(0,10).replace(/-/g,'.');
+        }
+      }catch(_){ cd.textContent = String(createdAt).slice(0,10).replace(/-/g,'.'); }
+    } else {
+      var _today = new Date();
+      cd.textContent = _today.getFullYear()+'.'
+        +String(_today.getMonth()+1).padStart(2,'0')+'.'
+        +String(_today.getDate()).padStart(2,'0');
+    }
+  }
 }
 
 function triggerAnim() {
@@ -13202,7 +13228,7 @@ function renderAll(data) {
   let { userName='고객', axisScores={}, ohaengType, mbtiType } = data;
   ohaengType = (ohaengType && ohaengType.length) ? ohaengType : '목';
   mbtiType   = (mbtiType   && mbtiType.length === 4) ? mbtiType : 'INFP';
-  const answers = data.answers || {}; try{ injectCoverInfo(userName, data.consultant_name || ''); }catch(e){}
+  const answers = data.answers || {}; try{ injectCoverInfo(userName, data.consultant_name || '', data.created_at || ''); }catch(e){}
 
   // V4.2: computeBCCodeSafe → TIER2 evidence badge + TIER3 경계형 처리 포함
   // 방어: bc-engine.js 로드 실패 시 fallback
