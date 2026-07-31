@@ -475,156 +475,170 @@ app.delete('/api/survey/draft', async (c) => {
 
 // POST /api/survey/submit
 app.post('/api/survey/submit', async (c) => {
-  const body = await c.req.json()
-  const {
-    consultant_code, user_name, answers,
-    bc_primary, bc_secondary, bc_primary_score, bc_secondary_score,
-    bc_scores, ohaeng_type, ohaeng_scores,
-    // V4.6 오행 확장 필드 (results 테이블은 ohaeng_type + ohaeng_scores_json만 저장 — source/confidence는 survey_answers_json에 포함)
-    ohaeng_source, ohaeng_confidence, ohaeng_lacking, ohaeng_score,
-    mbti, blood_type, saju_il_gan, saju_ohaeng,
-    // v5.0 사주 확장 필드
-    saju_il_ji, saju_yin_yang, birth_hour,
-    saju_hour_stem, saju_hour_branch, saju_display,
-    gender, birth_date, height, weight, target_weight,
-    bmi, bfr, fat_kg, muscle_kg,
-    top_size, bottom_size, target_top_size, target_bottom_size,
-    emotional_state, main_goal, priority_value,
-    survey_summary,
-    // v2.0 추가 필드
-    aerobic_response, massage_swells, sauna_response,
-    current_facility, context_type, current_medications,
-    target_body_part, psych_state, monthly_budget, muscle_soreness_level,
-    // v3.0 섹션 L 필드 (알레르기/피부반응/갱년기/병적요소)
-    food_allergy, allergy_exclude, skin_reaction,
-    menopause_status, is_menopause,
-    medical_conditions, has_medical_conditions,
-    // v4.0 10축 분석 결과
-    axis_scores, top_axes,
-    // v4.1 axis_primary (migration 0024)
-    axis_primary, axis_secondary, axis_primary_score,
-    // v5.0 B2B/컨설턴트 추적 (migration 0025)
-    ref_code, ref_type
-  } = body
-
-  const result_id = resultIdGen()
-  const db = c.env.DB
-
-  // 배열/객체 필드 안전 변환 (D1은 primitive 타입만 허용)
-  const toStr = (v: any) => {
-    if (v === null || v === undefined) return null
-    if (Array.isArray(v)) return v.join(',')
-    if (typeof v === 'object') return JSON.stringify(v)
-    return String(v)
-  }
-
-  // user_name 폴백: payload.user_name → answers.name → '익명'
-  const resolvedUserName = toStr(user_name) || toStr(answers?.name) || '익명'
-
-  // birth_date 오염 방지: "T00:00:00", "shoulderT..." 등 비정상 값 차단
-  // YYYY-MM-DD 형식만 허용, 범위 1920-01-01 ~ 오늘
-  const sanitizeBirthDate = (raw: any): string | null => {
-    if (!raw) return null
-    const s = String(raw).trim()
-    // "T00:00:00" suffix가 붙은 경우 날짜 부분만 추출
-    const dateOnly = s.split('T')[0]
-    // YYYY-MM-DD 형식 검증
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) return null
-    const d = new Date(dateOnly)
-    if (isNaN(d.getTime())) return null
-    const year = d.getFullYear()
-    // 1920~현재 연도 범위 검증
-    const thisYear = new Date().getFullYear()
-    if (year < 1920 || year > thisYear) return null
-    return dateOnly
-  }
-  const cleanBirthDate = sanitizeBirthDate(birth_date)
-
-  let validConsultantCode = null
-  if (consultant_code) {
-    const cons = await db.prepare('SELECT code FROM consultants WHERE code = ?').bind(consultant_code).first<any>()
-    validConsultantCode = cons?.code || null
-  }
-
-  // D1은 undefined를 허용하지 않으므로 모든 값을 null-safe 처리
-  const n = (v: any): number | null => (v !== undefined && v !== null && !isNaN(Number(v))) ? Number(v) : null
-  const nz = (v: any): number => n(v) ?? 0
-  const b = (v: any): number => (v ? 1 : 0)
-
-  // bc_primary는 NOT NULL — 없으면 axis_primary 또는 기본값 'UNKNOWN' 폴백
-  const safeBcPrimary = toStr(bc_primary) || toStr(axis_primary) || 'UNKNOWN'
-
-  await db.prepare(`
-    INSERT INTO results (
-      id, user_name, consultant_code,
+  // ✅ [LIVE-CHECK] try-catch 전체 래핑 — DB INSERT 실패 시 500 JSON 안전 반환
+  let result_id = ''
+  try {
+    const body = await c.req.json()
+    const {
+      consultant_code, user_name, answers,
       bc_primary, bc_secondary, bc_primary_score, bc_secondary_score,
-      bc_scores_json, ohaeng_type, ohaeng_scores_json,
+      bc_scores, ohaeng_type, ohaeng_scores,
+      // V4.6 오행 확장 필드 (results 테이블은 ohaeng_type + ohaeng_scores_json만 저장 — source/confidence는 survey_answers_json에 포함)
+      ohaeng_source, ohaeng_confidence, ohaeng_lacking, ohaeng_score,
       mbti, blood_type, saju_il_gan, saju_ohaeng,
+      // v5.0 사주 확장 필드
       saju_il_ji, saju_yin_yang, birth_hour,
       saju_hour_stem, saju_hour_branch, saju_display,
       gender, birth_date, height, weight, target_weight,
       bmi, bfr, fat_kg, muscle_kg,
       top_size, bottom_size, target_top_size, target_bottom_size,
       emotional_state, main_goal, priority_value,
-      survey_answers_json, survey_summary_json,
+      survey_summary,
+      // v2.0 추가 필드
       aerobic_response, massage_swells, sauna_response,
       current_facility, context_type, current_medications,
       target_body_part, psych_state, monthly_budget, muscle_soreness_level,
-      prescription_version,
-      food_allergy_json, allergy_exclude_json, skin_reaction,
+      // v3.0 섹션 L 필드 (알레르기/피부반응/갱년기/병적요소)
+      food_allergy, allergy_exclude, skin_reaction,
       menopause_status, is_menopause,
-      medical_conditions_json, has_medical_conditions,
-      axis_scores_json, top_axes_json,
+      medical_conditions, has_medical_conditions,
+      // v4.0 10축 분석 결과
+      axis_scores, top_axes,
+      // v4.1 axis_primary (migration 0024)
       axis_primary, axis_secondary, axis_primary_score,
+      // v5.0 B2B/컨설턴트 추적 (migration 0025)
       ref_code, ref_type
-    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-  `).bind(
-    result_id, resolvedUserName, validConsultantCode,
-    safeBcPrimary, toStr(bc_secondary), nz(bc_primary_score), nz(bc_secondary_score),
-    // V4.6: ohaeng_scores에 source/confidence/lacking 메타 병합 저장 (results 테이블 ohaeng_scores_json 활용)
-    JSON.stringify(bc_scores || {}), toStr(ohaeng_type), JSON.stringify({
-      ...(ohaeng_scores || {}),
-      ...(ohaeng_source ? { _source: ohaeng_source } : {}),
-      ...(ohaeng_confidence != null ? { _confidence: Number(ohaeng_confidence) } : {}),
-      ...(ohaeng_lacking ? { _lacking: ohaeng_lacking } : {}),
-      ...(Array.isArray(ohaeng_score) ? { _score: ohaeng_score } : {}),
-    }),
-    // 위 라인이 ohaeng_scores_json에 해당하는 bind 값임
-    toStr(mbti), toStr(blood_type), toStr(saju_il_gan), toStr(saju_ohaeng),
-    toStr(saju_il_ji), toStr(saju_yin_yang), toStr(birth_hour),
-    toStr(saju_hour_stem), toStr(saju_hour_branch), toStr(saju_display),
-    toStr(gender), cleanBirthDate,
-    n(height), n(weight), n(target_weight),
-    n(bmi), n(bfr),
-    n(fat_kg), n(muscle_kg),
-    toStr(top_size), toStr(bottom_size), toStr(target_top_size), toStr(target_bottom_size),
-    toStr(emotional_state), toStr(main_goal), toStr(priority_value),
-    JSON.stringify(answers || {}), JSON.stringify(survey_summary || {}),
-    toStr(aerobic_response), b(massage_swells), toStr(sauna_response),
-    toStr(current_facility), toStr(context_type), toStr(current_medications),
-    toStr(target_body_part), toStr(psych_state), toStr(monthly_budget), toStr(muscle_soreness_level),
-    'v5.0',
-    // v3.0 섹션 L
-    JSON.stringify(Array.isArray(food_allergy) ? food_allergy : []),
-    JSON.stringify(Array.isArray(allergy_exclude) ? allergy_exclude : []),
-    toStr(skin_reaction),
-    toStr(menopause_status),
-    b(is_menopause),
-    JSON.stringify(Array.isArray(medical_conditions) ? medical_conditions : []),
-    b(has_medical_conditions),
-    // v4.0 10축 분석
-    JSON.stringify(axis_scores || {}),
-    JSON.stringify(Array.isArray(top_axes) ? top_axes : []),
-    // v4.1 axis_primary (migration 0024) — bc_primary 폴백
-    toStr(axis_primary) || safeBcPrimary,
-    toStr(axis_secondary) || toStr(bc_secondary),
-    n(axis_primary_score) ?? n(bc_primary_score),
-    // v5.0 B2B/컨설턴트 추적 (migration 0025)
-    toStr(ref_code) || null,
-    toStr(ref_type) || 'DIRECT'
-  ).run()
+    } = body
 
-  return c.json({ success: true, result_id, message: '설문이 제출되었습니다.' })
+    result_id = resultIdGen()
+    const db = c.env.DB
+
+    // 배열/객체 필드 안전 변환 (D1은 primitive 타입만 허용)
+    const toStr = (v: any) => {
+      if (v === null || v === undefined) return null
+      if (Array.isArray(v)) return v.join(',')
+      if (typeof v === 'object') return JSON.stringify(v)
+      return String(v)
+    }
+
+    // user_name 폴백: payload.user_name → answers.name → '익명'
+    const resolvedUserName = toStr(user_name) || toStr(answers?.name) || '익명'
+
+    // birth_date 오염 방지: "T00:00:00", "shoulderT..." 등 비정상 값 차단
+    // YYYY-MM-DD 형식만 허용, 범위 1920-01-01 ~ 오늘
+    const sanitizeBirthDate = (raw: any): string | null => {
+      if (!raw) return null
+      const s = String(raw).trim()
+      // "T00:00:00" suffix가 붙은 경우 날짜 부분만 추출
+      const dateOnly = s.split('T')[0]
+      // YYYY-MM-DD 형식 검증
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) return null
+      const d = new Date(dateOnly)
+      if (isNaN(d.getTime())) return null
+      const year = d.getFullYear()
+      // 1920~현재 연도 범위 검증
+      const thisYear = new Date().getFullYear()
+      if (year < 1920 || year > thisYear) return null
+      return dateOnly
+    }
+    const cleanBirthDate = sanitizeBirthDate(birth_date)
+
+    let validConsultantCode = null
+    if (consultant_code) {
+      const cons = await db.prepare('SELECT code FROM consultants WHERE code = ?').bind(consultant_code).first<any>()
+      validConsultantCode = cons?.code || null
+    }
+
+    // D1은 undefined를 허용하지 않으므로 모든 값을 null-safe 처리
+    const n = (v: any): number | null => (v !== undefined && v !== null && !isNaN(Number(v))) ? Number(v) : null
+    const nz = (v: any): number => n(v) ?? 0
+    const b = (v: any): number => (v ? 1 : 0)
+
+    // bc_primary는 NOT NULL — 없으면 axis_primary 또는 기본값 'UNKNOWN' 폴백
+    const safeBcPrimary = toStr(bc_primary) || toStr(axis_primary) || 'UNKNOWN'
+
+    await db.prepare(`
+      INSERT INTO results (
+        id, user_name, consultant_code,
+        bc_primary, bc_secondary, bc_primary_score, bc_secondary_score,
+        bc_scores_json, ohaeng_type, ohaeng_scores_json,
+        mbti, blood_type, saju_il_gan, saju_ohaeng,
+        saju_il_ji, saju_yin_yang, birth_hour,
+        saju_hour_stem, saju_hour_branch, saju_display,
+        gender, birth_date, height, weight, target_weight,
+        bmi, bfr, fat_kg, muscle_kg,
+        top_size, bottom_size, target_top_size, target_bottom_size,
+        emotional_state, main_goal, priority_value,
+        survey_answers_json, survey_summary_json,
+        aerobic_response, massage_swells, sauna_response,
+        current_facility, context_type, current_medications,
+        target_body_part, psych_state, monthly_budget, muscle_soreness_level,
+        prescription_version,
+        food_allergy_json, allergy_exclude_json, skin_reaction,
+        menopause_status, is_menopause,
+        medical_conditions_json, has_medical_conditions,
+        axis_scores_json, top_axes_json,
+        axis_primary, axis_secondary, axis_primary_score,
+        ref_code, ref_type
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    `).bind(
+      result_id, resolvedUserName, validConsultantCode,
+      safeBcPrimary, toStr(bc_secondary), nz(bc_primary_score), nz(bc_secondary_score),
+      // V4.6: ohaeng_scores에 source/confidence/lacking 메타 병합 저장 (results 테이블 ohaeng_scores_json 활용)
+      JSON.stringify(bc_scores || {}), toStr(ohaeng_type), JSON.stringify({
+        ...(ohaeng_scores || {}),
+        ...(ohaeng_source ? { _source: ohaeng_source } : {}),
+        ...(ohaeng_confidence != null ? { _confidence: Number(ohaeng_confidence) } : {}),
+        ...(ohaeng_lacking ? { _lacking: ohaeng_lacking } : {}),
+        ...(Array.isArray(ohaeng_score) ? { _score: ohaeng_score } : {}),
+      }),
+      // 위 라인이 ohaeng_scores_json에 해당하는 bind 값임
+      toStr(mbti), toStr(blood_type), toStr(saju_il_gan), toStr(saju_ohaeng),
+      toStr(saju_il_ji), toStr(saju_yin_yang), toStr(birth_hour),
+      toStr(saju_hour_stem), toStr(saju_hour_branch), toStr(saju_display),
+      toStr(gender), cleanBirthDate,
+      n(height), n(weight), n(target_weight),
+      n(bmi), n(bfr),
+      n(fat_kg), n(muscle_kg),
+      toStr(top_size), toStr(bottom_size), toStr(target_top_size), toStr(target_bottom_size),
+      toStr(emotional_state), toStr(main_goal), toStr(priority_value),
+      JSON.stringify(answers || {}), JSON.stringify(survey_summary || {}),
+      toStr(aerobic_response), b(massage_swells), toStr(sauna_response),
+      toStr(current_facility), toStr(context_type), toStr(current_medications),
+      toStr(target_body_part), toStr(psych_state), toStr(monthly_budget), toStr(muscle_soreness_level),
+      'v5.0',
+      // v3.0 섹션 L
+      JSON.stringify(Array.isArray(food_allergy) ? food_allergy : []),
+      JSON.stringify(Array.isArray(allergy_exclude) ? allergy_exclude : []),
+      toStr(skin_reaction),
+      toStr(menopause_status),
+      b(is_menopause),
+      JSON.stringify(Array.isArray(medical_conditions) ? medical_conditions : []),
+      b(has_medical_conditions),
+      // v4.0 10축 분석
+      JSON.stringify(axis_scores || {}),
+      JSON.stringify(Array.isArray(top_axes) ? top_axes : []),
+      // v4.1 axis_primary (migration 0024) — bc_primary 폴백
+      toStr(axis_primary) || safeBcPrimary,
+      toStr(axis_secondary) || toStr(bc_secondary),
+      n(axis_primary_score) ?? n(bc_primary_score),
+      // v5.0 B2B/컨설턴트 추적 (migration 0025)
+      toStr(ref_code) || null,
+      toStr(ref_type) || 'DIRECT'
+    ).run()
+
+    return c.json({ success: true, result_id, message: '설문이 제출되었습니다.' })
+
+  } catch (e: any) {
+    // ✅ [LIVE-CHECK] DB 장애 / 스키마 불일치 / 네트워크 단절 모두 안전 처리
+    console.error('[survey/submit] fatal error:', e?.message || String(e), { result_id })
+    return c.json({
+      success: false,
+      error: 'server_error',
+      result_id: result_id || null,
+      message: '서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
+    }, 500)
+  }
 })
 
 // ═══════════════════════════════════════════════════════════════
@@ -633,23 +647,28 @@ app.post('/api/survey/submit', async (c) => {
 
 // GET /api/b2b/brand/:code — 화이트라벨 브랜드 데이터 (공개)
 app.get('/api/b2b/brand/:code', async (c) => {
-  const db = c.env.DB
-  const code = c.req.param('code').toUpperCase()
-  const partner = await db.prepare(
-    'SELECT code, name, brand_name, brand_color, brand_logo_url, status FROM b2b_partners WHERE code = ?'
-  ).bind(code).first<any>()
+  try {
+    const db = c.env.DB
+    const code = c.req.param('code').toUpperCase()
+    const partner = await db.prepare(
+      'SELECT code, name, brand_name, brand_color, brand_logo_url, status FROM b2b_partners WHERE code = ?'
+    ).bind(code).first<any>()
 
-  if (!partner || partner.status === 'suspended') {
-    return c.json({ found: false })
+    if (!partner || partner.status === 'suspended') {
+      return c.json({ found: false })
+    }
+
+    return c.json({
+      found: true,
+      code: partner.code,
+      brand_name: partner.brand_name || partner.name,
+      brand_color: partner.brand_color || '#6366f1',
+      brand_logo_url: partner.brand_logo_url || null,
+    })
+  } catch (e: any) {
+    console.error('[b2b/brand] error:', e?.message)
+    return c.json({ found: false, error: 'server_error' }, 500)
   }
-
-  return c.json({
-    found: true,
-    code: partner.code,
-    brand_name: partner.brand_name || partner.name,
-    brand_color: partner.brand_color || '#6366f1',
-    brand_logo_url: partner.brand_logo_url || null,
-  })
 })
 
 // ═══════════════════════════════════════════════════════════════
@@ -658,23 +677,28 @@ app.get('/api/b2b/brand/:code', async (c) => {
 
 // GET /api/admin/dashboard
 app.get('/api/admin/dashboard', requireRole('MASTER'), async (c) => {
-  const db = c.env.DB
-  const [totalResults, totalConsultants, activeConsultants, recentResults, bcDist] = await Promise.all([
-    db.prepare('SELECT COUNT(*) as cnt FROM results').first<any>(),
-    db.prepare('SELECT COUNT(*) as cnt FROM consultants WHERE code != ?').bind('MASTER').first<any>(),
-    db.prepare("SELECT COUNT(*) as cnt FROM consultants WHERE subscription_status='active' AND code != ?").bind('MASTER').first<any>(),
-    db.prepare('SELECT id, user_name, bc_primary, consultant_code, created_at FROM results ORDER BY created_at DESC LIMIT 10').all<any>(),
-    db.prepare('SELECT bc_primary, COUNT(*) as cnt FROM results GROUP BY bc_primary ORDER BY cnt DESC').all<any>(),
-  ])
-  return c.json({
-    kpi: {
-      total_results: totalResults?.cnt || 0,
-      total_consultants: totalConsultants?.cnt || 0,
-      active_consultants: activeConsultants?.cnt || 0,
-    },
-    recent_results: recentResults.results,
-    bc_distribution: bcDist.results,
-  })
+  try {
+    const db = c.env.DB
+    const [totalResults, totalConsultants, activeConsultants, recentResults, bcDist] = await Promise.all([
+      db.prepare('SELECT COUNT(*) as cnt FROM results').first<any>(),
+      db.prepare('SELECT COUNT(*) as cnt FROM consultants WHERE code != ?').bind('MASTER').first<any>(),
+      db.prepare("SELECT COUNT(*) as cnt FROM consultants WHERE subscription_status='active' AND code != ?").bind('MASTER').first<any>(),
+      db.prepare('SELECT id, user_name, bc_primary, consultant_code, created_at FROM results ORDER BY created_at DESC LIMIT 10').all<any>(),
+      db.prepare('SELECT bc_primary, COUNT(*) as cnt FROM results GROUP BY bc_primary ORDER BY cnt DESC').all<any>(),
+    ])
+    return c.json({
+      kpi: {
+        total_results: totalResults?.cnt || 0,
+        total_consultants: totalConsultants?.cnt || 0,
+        active_consultants: activeConsultants?.cnt || 0,
+      },
+      recent_results: recentResults.results,
+      bc_distribution: bcDist.results,
+    })
+  } catch (e: any) {
+    console.error('[admin/dashboard] error:', e?.message)
+    return c.json({ error: 'server_error', message: '대시보드 조회 중 오류가 발생했습니다.' }, 500)
+  }
 })
 
 // GET /api/admin/consultants
@@ -748,157 +772,187 @@ app.post('/api/admin/consultants', requireRole('MASTER'), async (c) => {
 
 // PUT /api/admin/consultants/:code — 수정
 app.put('/api/admin/consultants/:code', requireRole('MASTER'), async (c) => {
-  const db = c.env.DB
-  const code = c.req.param('code')
-  const body = await c.req.json()
-  const { name, email, phone, job_type, grade, subscription_status, subscription_end, lecture_progress, is_certified, memo } = body
+  try {
+    const db = c.env.DB
+    const code = c.req.param('code')
+    const body = await c.req.json()
+    const { name, email, phone, job_type, grade, subscription_status, subscription_end, lecture_progress, is_certified, memo } = body
 
-  await db.prepare(`
-    UPDATE consultants SET
-      name=?, email=?, phone=?, job_type=?, grade=?,
-      subscription_status=?, subscription_end=?,
-      lecture_progress=?, is_certified=?, memo=?,
-      updated_at=datetime('now')
-    WHERE code=?
-  `).bind(name, email||null, phone||null, job_type||null, grade||'일반',
-    subscription_status||'active', subscription_end||null,
-    lecture_progress||0, is_certified?1:0, memo||null, code).run()
+    await db.prepare(`
+      UPDATE consultants SET
+        name=?, email=?, phone=?, job_type=?, grade=?,
+        subscription_status=?, subscription_end=?,
+        lecture_progress=?, is_certified=?, memo=?,
+        updated_at=datetime('now')
+      WHERE code=?
+    `).bind(name, email||null, phone||null, job_type||null, grade||'일반',
+      subscription_status||'active', subscription_end||null,
+      lecture_progress||0, is_certified?1:0, memo||null, code).run()
 
-  return c.json({ success: true })
+    return c.json({ success: true })
+  } catch (e: any) {
+    console.error('[admin/consultants PUT] error:', e?.message)
+    return c.json({ success: false, error: 'server_error', message: '컨설턴트 수정 중 오류가 발생했습니다.' }, 500)
+  }
 })
 
 // DELETE /api/admin/consultants/:code — 정지(소프트)
 app.delete('/api/admin/consultants/:code', requireRole('MASTER'), async (c) => {
-  const db = c.env.DB
-  const code = c.req.param('code')
-  await db.prepare("UPDATE consultants SET subscription_status='suspended', updated_at=datetime('now') WHERE code=?").bind(code).run()
-  return c.json({ success: true, message: '계정이 정지되었습니다.' })
+  try {
+    const db = c.env.DB
+    const code = c.req.param('code')
+    await db.prepare("UPDATE consultants SET subscription_status='suspended', updated_at=datetime('now') WHERE code=?").bind(code).run()
+    return c.json({ success: true, message: '계정이 정지되었습니다.' })
+  } catch (e: any) {
+    console.error('[admin/consultants DELETE] error:', e?.message)
+    return c.json({ success: false, error: 'server_error', message: '계정 정지 처리 중 오류가 발생했습니다.' }, 500)
+  }
 })
 
 // DELETE /api/admin/consultants/:code/hard — 영구 삭제(하드, 관련 결과지 포함)
 app.delete('/api/admin/consultants/:code/hard', requireRole('MASTER'), async (c) => {
-  const db = c.env.DB
-  const code = c.req.param('code')
-  // 컨설턴트 존재 확인
-  const existing = await db.prepare("SELECT code, name FROM consultants WHERE code=?").bind(code).first()
-  if (!existing) {
-    return c.json({ success: false, message: '존재하지 않는 컨설턴트입니다.' }, 404)
+  try {
+    const db = c.env.DB
+    const code = c.req.param('code')
+    // 컨설턴트 존재 확인
+    const existing = await db.prepare("SELECT code, name FROM consultants WHERE code=?").bind(code).first()
+    if (!existing) {
+      return c.json({ success: false, message: '존재하지 않는 컨설턴트입니다.' }, 404)
+    }
+    // 관련 결과지 먼저 삭제 (외래키 제약 해소)
+    await db.prepare("DELETE FROM results WHERE consultant_code=?").bind(code).run()
+    // 컨설턴트 영구 삭제
+    await db.prepare("DELETE FROM consultants WHERE code=?").bind(code).run()
+    return c.json({ success: true, message: `${code} 컨설턴트가 영구 삭제되었습니다.` })
+  } catch (e: any) {
+    console.error('[admin/consultants HARD DELETE] error:', e?.message)
+    return c.json({ success: false, error: 'server_error', message: '영구 삭제 중 오류가 발생했습니다.' }, 500)
   }
-  // 관련 결과지 먼저 삭제 (외래키 제약 해소)
-  await db.prepare("DELETE FROM results WHERE consultant_code=?").bind(code).run()
-  // 컨설턴트 영구 삭제
-  await db.prepare("DELETE FROM consultants WHERE code=?").bind(code).run()
-  return c.json({ success: true, message: `${code} 컨설턴트가 영구 삭제되었습니다.` })
 })
 
 // GET /api/admin/results
 // ✅ BUG-2 수정: diagnosis_results(V4 신버전) + results(구버전) 두 테이블 UNION 조회
 app.get('/api/admin/results', requireRole('MASTER'), async (c) => {
-  const db = c.env.DB
-  const bc = c.req.query('bc') || ''
-  const cons = c.req.query('consultant') || ''
-  const search = c.req.query('search') || ''
+  try {
+    const db = c.env.DB
+    const bc = c.req.query('bc') || ''
+    const cons = c.req.query('consultant') || ''
+    const search = c.req.query('search') || ''
 
-  // 조건절 파라미터 (구버전 + 신버전 각각)
-  const oldParams: any[] = []
-  const newParams: any[] = []
+    // 조건절 파라미터 (구버전 + 신버전 각각)
+    const oldParams: any[] = []
+    const newParams: any[] = []
 
-  // ── 구버전 results 테이블 조건 ──
-  let oldWhere = ' WHERE 1=1'
-  if (bc) { oldWhere += ' AND r.bc_primary = ?'; oldParams.push(bc) }
-  if (cons) { oldWhere += ' AND r.consultant_code = ?'; oldParams.push(cons) }
-  if (search) { oldWhere += ' AND (r.user_name LIKE ? OR r.id LIKE ?)'; oldParams.push(`%${search}%`, `%${search}%`) }
+    // ── 구버전 results 테이블 조건 ──
+    let oldWhere = ' WHERE 1=1'
+    if (bc) { oldWhere += ' AND r.bc_primary = ?'; oldParams.push(bc) }
+    if (cons) { oldWhere += ' AND r.consultant_code = ?'; oldParams.push(cons) }
+    if (search) { oldWhere += ' AND (r.user_name LIKE ? OR r.id LIKE ?)'; oldParams.push(`%${search}%`, `%${search}%`) }
 
-  // ── 신버전 diagnosis_results 테이블 조건 ──
-  // bc 필터는 bc_code_key(BC-N) 또는 bc_primary(닉네임) 둘 다 검색
-  let newWhere = ' WHERE 1=1'
-  if (bc) { newWhere += ' AND (d.bc_code_key = ? OR d.bc_primary = ?)'; newParams.push(bc, bc) }
-  if (cons) { newWhere += ' AND d.ref_code = ?'; newParams.push(cons) }
-  if (search) { newWhere += ' AND (d.user_name LIKE ? OR d.id LIKE ?)'; newParams.push(`%${search}%`, `%${search}%`) }
+    // ── 신버전 diagnosis_results 테이블 조건 ──
+    // bc 필터는 bc_code_key(BC-N) 또는 bc_primary(닉네임) 둘 다 검색
+    let newWhere = ' WHERE 1=1'
+    if (bc) { newWhere += ' AND (d.bc_code_key = ? OR d.bc_primary = ?)'; newParams.push(bc, bc) }
+    if (cons) { newWhere += ' AND d.ref_code = ?'; newParams.push(cons) }
+    if (search) { newWhere += ' AND (d.user_name LIKE ? OR d.id LIKE ?)'; newParams.push(`%${search}%`, `%${search}%`) }
 
-  // ── UNION ALL 쿼리 ──
-  // 구버전 results: 컨설턴트명 JOIN 포함, _source 태그 추가
-  // ※ results 테이블은 axis_scores_json 컬럼명 사용 (diagnosis_results는 axis_scores)
-  const unionQuery = `
-    SELECT
-      r.id, r.user_name,
-      COALESCE(r.bc_primary, '') as bc_primary,
-      NULL as bc_code_key,
-      NULL as bc_nickname,
-      r.axis_scores_json as axis_scores,
-      r.consultant_code,
-      c.name as consultant_name,
-      r.ref_code,
-      r.created_at,
-      'results_v3' as _source
-    FROM results r
-    LEFT JOIN consultants c ON r.consultant_code = c.code
-    ${oldWhere}
+    // ── UNION ALL 쿼리 ──
+    // 구버전 results: 컨설턴트명 JOIN 포함, _source 태그 추가
+    // ※ results 테이블은 axis_scores_json 컬럼명 사용 (diagnosis_results는 axis_scores)
+    const unionQuery = `
+      SELECT
+        r.id, r.user_name,
+        COALESCE(r.bc_primary, '') as bc_primary,
+        NULL as bc_code_key,
+        NULL as bc_nickname,
+        r.axis_scores_json as axis_scores,
+        r.consultant_code,
+        c.name as consultant_name,
+        r.ref_code,
+        r.created_at,
+        'results_v3' as _source
+      FROM results r
+      LEFT JOIN consultants c ON r.consultant_code = c.code
+      ${oldWhere}
 
-    UNION ALL
+      UNION ALL
 
-    SELECT
-      d.id, d.user_name,
-      COALESCE(d.bc_primary, d.bc_nickname, '') as bc_primary,
-      d.bc_code_key,
-      d.bc_nickname,
-      d.axis_scores,
-      NULL as consultant_code,
-      NULL as consultant_name,
-      d.ref_code,
-      d.created_at,
-      'diagnosis_v4' as _source
-    FROM diagnosis_results d
-    ${newWhere}
+      SELECT
+        d.id, d.user_name,
+        COALESCE(d.bc_primary, d.bc_nickname, '') as bc_primary,
+        d.bc_code_key,
+        d.bc_nickname,
+        d.axis_scores,
+        NULL as consultant_code,
+        NULL as consultant_name,
+        d.ref_code,
+        d.created_at,
+        'diagnosis_v4' as _source
+      FROM diagnosis_results d
+      ${newWhere}
 
-    ORDER BY created_at DESC
-    LIMIT 200
-  `
+      ORDER BY created_at DESC
+      LIMIT 200
+    `
 
-  const allParams = [...oldParams, ...newParams]
-  const stmt = db.prepare(unionQuery)
-  const result = allParams.length
-    ? await stmt.bind(...allParams).all<any>()
-    : await stmt.all<any>()
+    const allParams = [...oldParams, ...newParams]
+    const stmt = db.prepare(unionQuery)
+    const result = allParams.length
+      ? await stmt.bind(...allParams).all<any>()
+      : await stmt.all<any>()
 
-  return c.json({ results: result.results })
+    return c.json({ results: result.results })
+  } catch (e: any) {
+    console.error('[admin/results] error:', e?.message)
+    return c.json({ results: [], error: 'server_error' }, 500)
+  }
 })
 
 // GET /api/admin/bc-codes
 app.get('/api/admin/bc-codes', requireRole('MASTER'), async (c) => {
-  const db = c.env.DB
-  const rows = await db.prepare('SELECT * FROM bc_prescriptions ORDER BY bc_code').all<any>()
-  return c.json({ bc_codes: rows.results })
+  try {
+    const db = c.env.DB
+    const rows = await db.prepare('SELECT * FROM bc_prescriptions ORDER BY bc_code').all<any>()
+    return c.json({ bc_codes: rows.results })
+  } catch (e: any) {
+    console.error('[admin/bc-codes] error:', e?.message)
+    return c.json({ bc_codes: [], error: 'server_error' }, 500)
+  }
 })
 
 // PUT /api/admin/bc-codes/:code — BC 처방 수정
 app.put('/api/admin/bc-codes/:code', requireRole('MASTER'), async (c) => {
-  const db = c.env.DB
-  const bcCode = c.req.param('code')
-  const body = await c.req.json()
-  const user = c.get('user') as JwtPayload
+  try {
+    const db = c.env.DB
+    const bcCode = c.req.param('code')
+    const body = await c.req.json()
+    const user = c.get('user') as JwtPayload
 
-  const current = await db.prepare('SELECT * FROM bc_prescriptions WHERE bc_code=?').bind(bcCode).first<any>()
-  if (current) {
-    await db.prepare(`
-      INSERT INTO bc_prescription_versions (bc_code, version, snapshot_json, changed_by, change_note)
-      VALUES (?, ?, ?, ?, ?)
-    `).bind(bcCode, current.version, JSON.stringify(current), user.name, body.change_note || '').run()
+    const current = await db.prepare('SELECT * FROM bc_prescriptions WHERE bc_code=?').bind(bcCode).first<any>()
+    if (current) {
+      await db.prepare(`
+        INSERT INTO bc_prescription_versions (bc_code, version, snapshot_json, changed_by, change_note)
+        VALUES (?, ?, ?, ?, ?)
+      `).bind(bcCode, current.version, JSON.stringify(current), user.name, body.change_note || '').run()
+    }
+
+    const fields = ['brand_name','tagline','fat_area','bc_primary_oneline_reason','bc_cause_story',
+      'bc_worsen_word','closing_copy','symptom_checklist_json','wrong_methods_json',
+      'correct_principles_json','recommended_exercises_json','forbidden_exercises_json',
+      'recommended_foods_json','forbidden_foods_json','supplement_list_json','lifestyle_rules_json',
+      'monthly_goals_json','zone2_bpm','forbidden_bpm','hiit_available_week']
+
+    const sets = fields.map(f => `${f}=?`).join(',')
+    const vals = fields.map(f => body[f] ?? null)
+
+    await db.prepare(`UPDATE bc_prescriptions SET ${sets}, updated_at=datetime('now'), updated_by=? WHERE bc_code=?`)
+      .bind(...vals, user.name, bcCode).run()
+
+    return c.json({ success: true })
+  } catch (e: any) {
+    console.error('[admin/bc-codes PUT] error:', e?.message)
+    return c.json({ success: false, error: 'server_error', message: 'BC 처방 수정 중 오류가 발생했습니다.' }, 500)
   }
-
-  const fields = ['brand_name','tagline','fat_area','bc_primary_oneline_reason','bc_cause_story',
-    'bc_worsen_word','closing_copy','symptom_checklist_json','wrong_methods_json',
-    'correct_principles_json','recommended_exercises_json','forbidden_exercises_json',
-    'recommended_foods_json','forbidden_foods_json','supplement_list_json','lifestyle_rules_json',
-    'monthly_goals_json','zone2_bpm','forbidden_bpm','hiit_available_week']
-
-  const sets = fields.map(f => `${f}=?`).join(',')
-  const vals = fields.map(f => body[f] ?? null)
-
-  await db.prepare(`UPDATE bc_prescriptions SET ${sets}, updated_at=datetime('now'), updated_by=? WHERE bc_code=?`)
-    .bind(...vals, user.name, bcCode).run()
-
-  return c.json({ success: true })
 })
 
 // ─── B2B 파트너 관리 CRUD ──────────────────────────────────────
@@ -1346,123 +1400,138 @@ app.get('/api/consultant/results', requireRole('ANY'), async (c) => {
 
 // GET /api/survey/result/public/:id — 공개 결과 조회 (result.html에서 ?id= 파라미터용)
 app.get('/api/survey/result/public/:id', async (c) => {
-  const db = c.env.DB
-  const id = c.req.param('id')
-  const result = await db.prepare('SELECT * FROM results WHERE id=?').bind(id).first<any>()
-  if (!result) return c.json({ success: false, error: '결과를 찾을 수 없습니다.' }, 404)
+  try {
+    const db = c.env.DB
+    const id = c.req.param('id')
+    const result = await db.prepare('SELECT * FROM results WHERE id=?').bind(id).first<any>()
+    if (!result) return c.json({ success: false, error: '결과를 찾을 수 없습니다.' }, 404)
 
-  const answers = parseJson(result.survey_answers_json, {})
+    const answers = parseJson(result.survey_answers_json, {})
 
-  return c.json({
-    success: true,
-    result_id: result.id,
-    user_name: result.user_name,
-    bc_primary: result.bc_primary,
-    bc_secondary: result.bc_secondary,
-    axis_primary: result.axis_primary,
-    axis_primary_score: result.axis_primary_score,
-    consultant_code: result.consultant_code,
-    created_at: result.created_at,
-    answers,
-    // 결과지 렌더에 필요한 신체 정보 answers에 병합
-    merged_answers: {
-      ...answers,
-      _bc_primary: result.bc_primary,
-      _bc_secondary: result.bc_secondary,
-      _axis_primary: result.axis_primary,
-      _result_id: result.id,
-    }
-  })
+    return c.json({
+      success: true,
+      result_id: result.id,
+      user_name: result.user_name,
+      bc_primary: result.bc_primary,
+      bc_secondary: result.bc_secondary,
+      axis_primary: result.axis_primary,
+      axis_primary_score: result.axis_primary_score,
+      consultant_code: result.consultant_code,
+      created_at: result.created_at,
+      answers,
+      // 결과지 렌더에 필요한 신체 정보 answers에 병합
+      merged_answers: {
+        ...answers,
+        _bc_primary: result.bc_primary,
+        _bc_secondary: result.bc_secondary,
+        _axis_primary: result.axis_primary,
+        _result_id: result.id,
+      }
+    })
+  } catch (e: any) {
+    console.error('[survey/result/public] error:', e?.message)
+    return c.json({ success: false, error: 'server_error' }, 500)
+  }
 })
 
 // GET /api/results/:id — 결과 상세 JSON (컨설턴트 본인 또는 MASTER)
 app.get('/api/results/:id', async (c) => {
-  const user = await getAuthUser(c)
-  if (!user) return c.json({ error: '인증이 필요합니다.' }, 401)
+  try {
+    const user = await getAuthUser(c)
+    if (!user) return c.json({ error: '인증이 필요합니다.' }, 401)
 
-  const db = c.env.DB
-  const id = c.req.param('id')
-  const result = await db.prepare('SELECT * FROM results WHERE id=?').bind(id).first<any>()
-  if (!result) return c.json({ error: '결과를 찾을 수 없습니다.' }, 404)
+    const db = c.env.DB
+    const id = c.req.param('id')
+    const result = await db.prepare('SELECT * FROM results WHERE id=?').bind(id).first<any>()
+    if (!result) return c.json({ error: '결과를 찾을 수 없습니다.' }, 404)
 
-  if (user.role !== 'MASTER' && result.consultant_code !== user.code) {
-    return c.json({ error: '접근 권한이 없습니다.' }, 403)
+    if (user.role !== 'MASTER' && result.consultant_code !== user.code) {
+      return c.json({ error: '접근 권한이 없습니다.' }, 403)
+    }
+
+    const prescription = await db.prepare('SELECT * FROM bc_prescriptions WHERE bc_code=?').bind(result.bc_primary).first<any>()
+
+    return c.json({
+      result: {
+        ...result,
+        bc_scores: parseJson(result.bc_scores_json, {}),
+        ohaeng_scores: parseJson(result.ohaeng_scores_json, {}),
+        survey_answers: parseJson(result.survey_answers_json, {}),
+        survey_summary: parseJson(result.survey_summary_json, {}),
+        b2b_institution_types: parseJson(result.b2b_institution_types, []),
+      },
+      prescription: prescription ? {
+        ...prescription,
+        symptom_checklist: parseJson(prescription.symptom_checklist_json, []),
+        wrong_methods: parseJson(prescription.wrong_methods_json, []),
+        correct_principles: parseJson(prescription.correct_principles_json, []),
+        recommended_exercises: parseJson(prescription.recommended_exercises_json, []),
+        forbidden_exercises: parseJson(prescription.forbidden_exercises_json, []),
+        recommended_foods: parseJson(prescription.recommended_foods_json, []),
+        forbidden_foods: parseJson(prescription.forbidden_foods_json, []),
+        supplement_list: parseJson(prescription.supplement_list_json, []),
+        lifestyle_rules: parseJson(prescription.lifestyle_rules_json, []),
+        monthly_goals: parseJson(prescription.monthly_goals_json, {}),
+        weekly_schedule: parseJson(prescription.weekly_schedule_json, {}),
+        recommended_sports: parseJson(prescription.recommended_sports_json, []),
+        forbidden_sports: parseJson(prescription.forbidden_sports_json, []),
+        recovery_priority: parseJson(prescription.recovery_priority_json, []),
+        macro_ratio: parseJson(prescription.macro_ratio_json, {}),
+        meal_timing_rule: parseJson(prescription.meal_timing_rule_json, {}),
+        forbidden_foods_reason: parseJson(prescription.forbidden_foods_reason_json, []),
+        b2b_treatments: parseJson(prescription.b2b_treatments_json, {}),
+        hospital_tests: parseJson(prescription.hospital_tests_json, []),
+        reassessment_schedule: parseJson(prescription.reassessment_schedule_json, {}),
+        partner_hints: parseJson(prescription.partner_hints_json, []),
+      } : null,
+    })
+  } catch (e: any) {
+    console.error('[results/:id] error:', e?.message)
+    return c.json({ error: 'server_error', message: '결과 조회 중 오류가 발생했습니다.' }, 500)
   }
-
-  const prescription = await db.prepare('SELECT * FROM bc_prescriptions WHERE bc_code=?').bind(result.bc_primary).first<any>()
-
-  return c.json({
-    result: {
-      ...result,
-      bc_scores: parseJson(result.bc_scores_json, {}),
-      ohaeng_scores: parseJson(result.ohaeng_scores_json, {}),
-      survey_answers: parseJson(result.survey_answers_json, {}),
-      survey_summary: parseJson(result.survey_summary_json, {}),
-      b2b_institution_types: parseJson(result.b2b_institution_types, []),
-    },
-    prescription: prescription ? {
-      ...prescription,
-      symptom_checklist: parseJson(prescription.symptom_checklist_json, []),
-      wrong_methods: parseJson(prescription.wrong_methods_json, []),
-      correct_principles: parseJson(prescription.correct_principles_json, []),
-      recommended_exercises: parseJson(prescription.recommended_exercises_json, []),
-      forbidden_exercises: parseJson(prescription.forbidden_exercises_json, []),
-      recommended_foods: parseJson(prescription.recommended_foods_json, []),
-      forbidden_foods: parseJson(prescription.forbidden_foods_json, []),
-      supplement_list: parseJson(prescription.supplement_list_json, []),
-      lifestyle_rules: parseJson(prescription.lifestyle_rules_json, []),
-      monthly_goals: parseJson(prescription.monthly_goals_json, {}),
-      weekly_schedule: parseJson(prescription.weekly_schedule_json, {}),
-      recommended_sports: parseJson(prescription.recommended_sports_json, []),
-      forbidden_sports: parseJson(prescription.forbidden_sports_json, []),
-      recovery_priority: parseJson(prescription.recovery_priority_json, []),
-      macro_ratio: parseJson(prescription.macro_ratio_json, {}),
-      meal_timing_rule: parseJson(prescription.meal_timing_rule_json, {}),
-      forbidden_foods_reason: parseJson(prescription.forbidden_foods_reason_json, []),
-      b2b_treatments: parseJson(prescription.b2b_treatments_json, {}),
-      hospital_tests: parseJson(prescription.hospital_tests_json, []),
-      reassessment_schedule: parseJson(prescription.reassessment_schedule_json, {}),
-      partner_hints: parseJson(prescription.partner_hints_json, []),
-    } : null,
-  })
 })
 
 // GET /api/consultant/stats — 컨설턴트 대시보드 통계
 app.get('/api/consultant/stats', requireRole('ANY'), async (c) => {
-  const user = c.get('user') as JwtPayload
-  const db = c.env.DB
+  try {
+    const user = c.get('user') as JwtPayload
+    const db = c.env.DB
 
-  let whereClause = user.role === 'MASTER' ? '1=1' : 'consultant_code=?'
-  const bindParams: any[] = user.role === 'MASTER' ? [] : [user.code]
+    let whereClause = user.role === 'MASTER' ? '1=1' : 'consultant_code=?'
+    const bindParams: any[] = user.role === 'MASTER' ? [] : [user.code]
 
-  // diagnosis_results 기반 where절 (컨설턴트별 필터)
-  const drWhere = user.role === 'MASTER' ? '1=1' : 'ref_code=?'
-  const drParams: any[] = user.role === 'MASTER' ? [] : [user.code]
+    // diagnosis_results 기반 where절 (컨설턴트별 필터)
+    const drWhere = user.role === 'MASTER' ? '1=1' : 'ref_code=?'
+    const drParams: any[] = user.role === 'MASTER' ? [] : [user.code]
 
-  const [total, thisMonth, bcDist, recentResults, totalCheckins] = await Promise.all([
-    db.prepare(`SELECT COUNT(*) as cnt FROM results WHERE ${whereClause}`)
-      .bind(...bindParams).first<any>(),
-    db.prepare(`SELECT COUNT(*) as cnt FROM results WHERE ${whereClause} AND strftime('%Y-%m', created_at)=strftime('%Y-%m','now')`)
-      .bind(...bindParams).first<any>(),
-    // diagnosis_results 기반 BC 분포 (최신 파이프라인)
-    db.prepare(`SELECT bc_primary, COUNT(*) as cnt FROM diagnosis_results WHERE ${drWhere} AND bc_primary IS NOT NULL GROUP BY bc_primary ORDER BY cnt DESC`)
-      .bind(...drParams).all<any>(),
-    db.prepare(`SELECT id, user_name, bc_primary, created_at, admin_memo FROM results WHERE ${whereClause} ORDER BY created_at DESC LIMIT 5`)
-      .bind(...bindParams).all<any>(),
-    // checkin_log 기반 체크인 완료 수
-    db.prepare(user.role === 'MASTER'
-      ? `SELECT COUNT(DISTINCT result_id) as cnt FROM checkin_log`
-      : `SELECT COUNT(DISTINCT cl.result_id) as cnt FROM checkin_log cl INNER JOIN diagnosis_results d ON d.id = cl.result_id WHERE d.ref_code = ?`
-    ).bind(...drParams).first<any>(),
-  ])
+    const [total, thisMonth, bcDist, recentResults, totalCheckins] = await Promise.all([
+      db.prepare(`SELECT COUNT(*) as cnt FROM results WHERE ${whereClause}`)
+        .bind(...bindParams).first<any>(),
+      db.prepare(`SELECT COUNT(*) as cnt FROM results WHERE ${whereClause} AND strftime('%Y-%m', created_at)=strftime('%Y-%m','now')`)
+        .bind(...bindParams).first<any>(),
+      // diagnosis_results 기반 BC 분포 (최신 파이프라인)
+      db.prepare(`SELECT bc_primary, COUNT(*) as cnt FROM diagnosis_results WHERE ${drWhere} AND bc_primary IS NOT NULL GROUP BY bc_primary ORDER BY cnt DESC`)
+        .bind(...drParams).all<any>(),
+      db.prepare(`SELECT id, user_name, bc_primary, created_at, admin_memo FROM results WHERE ${whereClause} ORDER BY created_at DESC LIMIT 5`)
+        .bind(...bindParams).all<any>(),
+      // checkin_log 기반 체크인 완료 수
+      db.prepare(user.role === 'MASTER'
+        ? `SELECT COUNT(DISTINCT result_id) as cnt FROM checkin_log`
+        : `SELECT COUNT(DISTINCT cl.result_id) as cnt FROM checkin_log cl INNER JOIN diagnosis_results d ON d.id = cl.result_id WHERE d.ref_code = ?`
+      ).bind(...drParams).first<any>(),
+    ])
 
-  return c.json({
-    total: total?.cnt || 0,
-    this_month: thisMonth?.cnt || 0,
-    bc_distribution: bcDist.results,
-    recent_results: recentResults.results,
-    total_checkins: totalCheckins?.cnt || 0,
-  })
+    return c.json({
+      total: total?.cnt || 0,
+      this_month: thisMonth?.cnt || 0,
+      bc_distribution: bcDist.results,
+      recent_results: recentResults.results,
+      total_checkins: totalCheckins?.cnt || 0,
+    })
+  } catch (e: any) {
+    console.error('[consultant/stats] error:', e?.message)
+    return c.json({ total: 0, this_month: 0, bc_distribution: [], recent_results: [], total_checkins: 0, error: 'server_error' }, 500)
+  }
 })
 
 // PUT /api/consultant/change-password — 비밀번호 변경
@@ -1519,22 +1588,27 @@ app.get('/api/consultant/my-qr', requireRole('ANY'), async (c) => {
 
 // GET /api/consultant/my-qr/stats — 내 링크 유입 통계
 app.get('/api/consultant/my-qr/stats', requireRole('ANY'), async (c) => {
-  const user = c.get('user') as JwtPayload
-  const db   = c.env.DB
+  try {
+    const user = c.get('user') as JwtPayload
+    const db   = c.env.DB
 
-  const [total, thisMonth, thisWeek, bcDist] = await Promise.all([
-    db.prepare("SELECT COUNT(*) as cnt FROM results WHERE consultant_code=? OR ref_code=?").bind(user.code, user.code).first<any>(),
-    db.prepare("SELECT COUNT(*) as cnt FROM results WHERE (consultant_code=? OR ref_code=?) AND strftime('%Y-%m', created_at)=strftime('%Y-%m','now')").bind(user.code, user.code).first<any>(),
-    db.prepare("SELECT COUNT(*) as cnt FROM results WHERE (consultant_code=? OR ref_code=?) AND created_at >= datetime('now','-7 days')").bind(user.code, user.code).first<any>(),
-    db.prepare("SELECT bc_primary, COUNT(*) as cnt FROM results WHERE (consultant_code=? OR ref_code=?) GROUP BY bc_primary ORDER BY cnt DESC LIMIT 5").bind(user.code, user.code).all<any>(),
-  ])
+    const [total, thisMonth, thisWeek, bcDist] = await Promise.all([
+      db.prepare("SELECT COUNT(*) as cnt FROM results WHERE consultant_code=? OR ref_code=?").bind(user.code, user.code).first<any>(),
+      db.prepare("SELECT COUNT(*) as cnt FROM results WHERE (consultant_code=? OR ref_code=?) AND strftime('%Y-%m', created_at)=strftime('%Y-%m','now')").bind(user.code, user.code).first<any>(),
+      db.prepare("SELECT COUNT(*) as cnt FROM results WHERE (consultant_code=? OR ref_code=?) AND created_at >= datetime('now','-7 days')").bind(user.code, user.code).first<any>(),
+      db.prepare("SELECT bc_primary, COUNT(*) as cnt FROM results WHERE (consultant_code=? OR ref_code=?) GROUP BY bc_primary ORDER BY cnt DESC LIMIT 5").bind(user.code, user.code).all<any>(),
+    ])
 
-  return c.json({
-    total:      total?.cnt      ?? 0,
-    this_month: thisMonth?.cnt  ?? 0,
-    this_week:  thisWeek?.cnt   ?? 0,
-    bc_dist:    bcDist?.results ?? [],
-  })
+    return c.json({
+      total:      total?.cnt      ?? 0,
+      this_month: thisMonth?.cnt  ?? 0,
+      this_week:  thisWeek?.cnt   ?? 0,
+      bc_dist:    bcDist?.results ?? [],
+    })
+  } catch (e: any) {
+    console.error('[consultant/my-qr/stats] error:', e?.message)
+    return c.json({ total: 0, this_month: 0, this_week: 0, bc_dist: [], error: 'server_error' }, 500)
+  }
 })
 
 // ─────────────────────────────────────────────────────────────────────────────

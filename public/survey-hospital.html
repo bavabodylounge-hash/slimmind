@@ -6539,7 +6539,7 @@ html.th-mode .cond-eyebrow{
     </div>
 
     <!-- ★ 코드 복사 대신, 실제로 필요한 행동(채널 추가)으로 바꾼다 -->
-    <button class="wait-share-btn" onclick="waitCopyLink()">
+    <button class="wait-share-btn" id="waitShareBtn" onclick="waitCopyLink()">
       💬 카카오톡 채널 추가하고 결과지 받기
     </button>
 
@@ -18816,15 +18816,26 @@ function waitCopyLink() {
      채널 주소는 배포 시 병원 계정으로 교체할 것. */
   const CH = (window.SM_KAKAO_CHANNEL || '');
   const btn = document.querySelector('.wait-share-btn');
+  const _wcLang = (window.SMGetLangRaw && window.SMGetLangRaw()) || 'ko';
+  const doneLabel =
+    _wcLang === 'en' ? '✓ Channel opened'
+    : _wcLang === 'th' ? '✓ เปิดช่องทางแล้ว'
+    : '✓ 채널을 열었어요';
+  const alertMsg =
+    _wcLang === 'en'
+      ? 'Please search and add our KakaoTalk channel.\nYour consultant will send the result via channel.'
+    : _wcLang === 'th'
+      ? 'กรุณาค้นหาและเพิ่มช่อง KakaoTalk ของเรา\nที่ปรึกษาจะส่งผลลัพธ์ผ่านช่องนั้น'
+    : '카카오톡에서 채널을 검색해 추가해 주세요.\n결과지는 담당 컨설턴트가 채널로 보내드립니다.';
   const done = () => {
     if (!btn) return;
     const prev = btn.textContent;
-    btn.textContent = '✓ 채널을 열었어요';
+    btn.textContent = doneLabel;
     setTimeout(() => { btn.textContent = prev; }, 2200);
   };
   if (CH) { window.open(CH, '_blank', 'noopener'); done(); return; }
   /* 채널 주소가 아직 설정되지 않은 경우 — 안내만 */
-  alert('카카오톡에서 채널을 검색해 추가해 주세요.\n결과지는 담당 컨설턴트가 채널로 보내드립니다.');
+  alert(alertMsg);
 }
 
 /* 설문 완료 알림 전송 — 담당자(ref_code 보유)에게 알림 */
@@ -21370,7 +21381,8 @@ window.SM_I18N_EN = Object.assign(window.SM_I18N_EN || {}, {
   "3차": "Stage 3",
   "다시 보기 →": "Review →",
   "📋 내 분석 코드 복사하기": "📋 Copy my analysis code",
-  "🔔 담당자에게 완료 알림 보내기": "🔔 Notify my consultant it's done"
+  "🔔 담당자에게 완료 알림 보내기": "🔔 Notify my consultant it's done",
+  "💬 카카오톡 채널 추가하고 결과지 받기": "💬 Add KakaoTalk Channel & Get Results"
 
 });
 
@@ -24979,6 +24991,7 @@ Object.assign(window.SM_I18N_TH, {
   "🔔 담당자에게 완료 알림 보내기": "🔔 ส่งแจ้งเตือนว่าเสร็จให้ผู้ดูแล",
   "✅ 담당자에게 알림을 전송했어요!": "✅ ส่งแจ้งเตือนให้ผู้ดูแลแล้ว!",
   "📋 내 분석 코드 복사하기": "📋 คัดลอกรหัสวิเคราะห์ของฉัน",
+  "💬 카카오톡 채널 추가하고 결과지 받기": "💬 เพิ่มช่อง KakaoTalk & รับผลลัพธ์",
   // ── 기질(DISP) 인트로 ──
   "마지막으로,": "สุดท้าย",
   "당신의 타고난 기질을": "ลักษณะนิสัยที่ติดตัวคุณมา",
