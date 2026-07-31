@@ -8,6 +8,25 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>슬림마인드 — 바디코드 진단</title>
+<script>
+/* ── PWA 홈 화면 추가 → 고객 개인 결과지 자동 복원 ──────────────────
+   고객이 결과지에서 "홈 화면에 추가" 후 바탕화면 아이콘 클릭 시
+   메인 스플래시 대신 마지막으로 본 개인 결과지로 즉시 이동합니다.
+──────────────────────────────────────────────────────────────────────── */
+(function(){
+  try {
+    var isStandalone = (
+      window.navigator.standalone === true ||
+      window.matchMedia('(display-mode: standalone)').matches
+    );
+    if (!isStandalone) return;
+    var lastId = localStorage.getItem('sm_last_result_id');
+    if (!lastId) return;
+    if (location.pathname.indexOf('/result/') === 0) return;
+    location.replace('/result/' + lastId);
+  } catch(e) {}
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant:wght@400;500;600&family=Italiana&family=Gowun+Batang:wght@400;700&display=swap" rel="stylesheet">

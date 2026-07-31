@@ -473,6 +473,58 @@ app.delete('/api/survey/draft', async (c) => {
 })
 // ─────────────────────────────────────────────────────────────────────
 
+// ── GET /api/manifest.json?for=/result/:id — PWA 동적 manifest ──────
+// 고객이 결과지 페이지에서 "홈 화면에 추가" 시 start_url을 결과지 URL로 고정
+// 기존 /manifest.json (정적 파일)보다 이 라우트가 우선 처리됨
+app.get('/api/manifest.json', (c) => {
+  const forUrl = c.req.query('for') || '/'
+  // 허용 경로만 start_url로 사용 (보안: 외부 URL 주입 차단)
+  const allowedPrefixes = ['/result/', '/slimmind-today', '/']
+  const safeStartUrl = allowedPrefixes.some(p => forUrl.startsWith(p)) ? forUrl : '/'
+
+  const manifest = {
+    name: 'SlimMind — 나의 바디코드 결과지',
+    short_name: '슬림마인드',
+    description: '담당 컨설턴트가 보낸 나만의 바디코드 결과지 & 매일 미션 코칭',
+    start_url: safeStartUrl,
+    scope: '/',
+    display: 'standalone',
+    orientation: 'portrait',
+    background_color: '#f7f5f2',
+    theme_color: '#5a6e3a',
+    lang: 'ko',
+    icons: [
+      {
+        src: '/static/baba_logo.png',
+        sizes: '192x192',
+        type: 'image/png',
+        purpose: 'any maskable',
+      },
+      {
+        src: '/static/baba_logo.png',
+        sizes: '512x512',
+        type: 'image/png',
+        purpose: 'any maskable',
+      },
+    ],
+    shortcuts: [
+      {
+        name: '오늘 미션 체크',
+        short_name: '오늘탭',
+        description: '오늘의 운동·식단·회복 미션을 확인하세요',
+        url: '/slimmind-today.html',
+        icons: [{ src: '/static/baba_logo.png', sizes: '192x192' }],
+      },
+    ],
+    categories: ['health', 'fitness', 'lifestyle'],
+  }
+
+  return c.json(manifest, 200, {
+    'Content-Type': 'application/manifest+json',
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+  })
+})
+
 // POST /api/survey/submit
 app.post('/api/survey/submit', async (c) => {
   // ✅ [LIVE-CHECK] try-catch 전체 래핑 — DB INSERT 실패 시 500 JSON 안전 반환
@@ -1940,9 +1992,20 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
         }
 
         const baseHtml1 = await fetchAsset(c.env.ASSETS, '/result-v4.html')
+
+        // ── PWA 동적 manifest + localStorage 저장 스크립트 (diagnosis_results 경로) ──
+        const pwaManifestLink1 = `<link rel="manifest" href="/api/manifest.json?for=${encodeURIComponent('/result/' + id)}">`
+        const pwaLocalStorageScript1 = `<script>
+(function(){
+  try {
+    localStorage.setItem('sm_last_result_id', ${JSON.stringify(id)});
+  } catch(e) {}
+})();
+<\/script>`
+
         const injectedHtml = baseHtml1.replace(
           '</head>',
-          `${ogMeta}\n<script>window.__RESULT__ = ${injectedData};window.__RESULT_FULL__ = {};</script>\n</head>`
+          `${ogMeta}\n${pwaManifestLink1}\n<script>window.__RESULT__ = ${injectedData};window.__RESULT_FULL__ = {};</script>\n${pwaLocalStorageScript1}\n</head>`
         )
         return htmlResponse(injectedHtml)
       }
@@ -2503,9 +2566,22 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
 <meta name="description"           content="${ogDescR}">`
 
   const baseHtml2 = await fetchAsset(c.env.ASSETS, '/result-v4.html')
+
+  // ── PWA 동적 manifest + localStorage 저장 스크립트 ─────────────────────
+  // 고객이 이 결과지 페이지에서 "홈 화면에 추가" 시 start_url이 해당 결과지 URL로 지정됨
+  const pwaManifestLink = `<link rel="manifest" href="/api/manifest.json?for=${encodeURIComponent('/result/' + id)}">`
+  const pwaLocalStorageScript = `<script>
+(function(){
+  try {
+    // PWA 홈 화면 추가 시 복원용: 마지막 조회한 결과지 ID 저장
+    localStorage.setItem('sm_last_result_id', ${JSON.stringify(id)});
+  } catch(e) {}
+})();
+<\/script>`
+
   const injectedHtml = baseHtml2.replace(
     '</head>',
-    `${ogMetaR}\n${brandInjectResult}\n<script>window.__RESULT__ = ${flatJson};window.__RESULT_FULL__ = ${fullJson};</script>\n</head>`
+    `${ogMetaR}\n${pwaManifestLink}\n${brandInjectResult}\n<script>window.__RESULT__ = ${flatJson};window.__RESULT_FULL__ = ${fullJson};</script>\n${pwaLocalStorageScript}\n</head>`
   )
 
   return htmlResponse(injectedHtml)
