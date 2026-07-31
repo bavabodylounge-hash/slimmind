@@ -4,6 +4,37 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>슬림마인드 — 바디코드 진단</title>
+<script>
+/* ── 카카오톡 인앱 브라우저 → 외부 브라우저 강제 오픈 ──────────────────
+   iOS   : safari-https://... 스킴으로 Safari 직접 실행
+   Android: intent:// 스킴으로 Chrome/기본브라우저 실행
+   그 외 인앱(라인, 인스타 등)도 동일 처리
+──────────────────────────────────────────────────────────────────────── */
+(function(){
+  var ua = navigator.userAgent || '';
+  var isKakao   = /KAKAOTALK/i.test(ua);
+  var isLine    = /Line\//i.test(ua);
+  var isInsta   = /Instagram/i.test(ua);
+  var isFB      = /FBAN|FBAV/i.test(ua);
+  var isInApp   = isKakao || isLine || isInsta || isFB;
+  if (!isInApp) return;
+
+  var isIOS     = /iPhone|iPad|iPod/i.test(ua);
+  var isAndroid = /Android/i.test(ua);
+  var href      = location.href;
+
+  if (isIOS) {
+    // Safari 스킴: safari-https://... 로 교체하면 Safari가 직접 열림
+    location.replace('safari-' + href);
+  } else if (isAndroid) {
+    // Android: intent 스킴으로 Chrome 실행
+    var intentUrl = 'intent://' + href.replace(/^https?:\/\//, '') +
+      '#Intent;scheme=https;action=android.intent.action.VIEW;' +
+      'package=com.android.chrome;end';
+    location.replace(intentUrl);
+  }
+})();
+</script>
 <style id="smEmbeddedFonts">
 /* ★ 웹폰트 내장 — 외부 CDN 의존 제거 (병원 폐쇄망 대응)
    실제 화면에 쓰이는 글자만 서브셋: 한글 886 / 라틴 95 / 태국 64. 합계 약 248KB.

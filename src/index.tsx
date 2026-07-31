@@ -3147,6 +3147,25 @@ app.get('/s/:code', async (c) => {
 
   html = html.replace('<head>', `<head>${ogMetaS}`)
 
+  // ── 카카오톡 인앱 브라우저 → 외부 브라우저 강제 오픈 (결과지 공유 시)
+  const kakaoRedirectScript = `<script>
+(function(){
+  var ua = navigator.userAgent || '';
+  var isInApp = /KAKAOTALK|Line\\/|Instagram|FBAN|FBAV/i.test(ua);
+  if (!isInApp) return;
+  var isIOS     = /iPhone|iPad|iPod/i.test(ua);
+  var isAndroid = /Android/i.test(ua);
+  var href      = location.href;
+  if (isIOS) {
+    location.replace('safari-' + href);
+  } else if (isAndroid) {
+    location.replace('intent://' + href.replace(/^https?:\\/\\//, '') +
+      '#Intent;scheme=https;action=android.intent.action.VIEW;package=com.android.chrome;end');
+  }
+})();
+<\/script>`
+  html = html.replace('<head>', `<head>${kakaoRedirectScript}`)
+
   // ref 쿼리 파라미터도 함께 전달 (기존 URL 방식 호환)
   if (brandInject) {
     html = html.replace('</head>', `${brandInject}\n</head>`)
