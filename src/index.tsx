@@ -1237,7 +1237,12 @@ app.get('/api/b2b/me', requireB2B(), async (c) => {
 app.get('/api/b2b/results', requireB2B(), async (c) => {
   const user = c.get('user') as JwtPayload
   const db = c.env.DB
-  const search = c.req.query('search') || ''
+  const search    = c.req.query('search')    || ''
+  const fromDate  = c.req.query('from_date') || ''   // YYYY-MM-DD
+  const toDate    = c.req.query('to_date')   || ''   // YYYY-MM-DD
+  const page      = Math.max(1, parseInt(c.req.query('page') || '1', 10))
+  const pageSize  = Math.min(200, Math.max(10, parseInt(c.req.query('limit') || '50', 10)))
+  const offset    = (page - 1) * pageSize
 
   // 파트너 정보 조회 (survey_category 확인)
   let partner: any = null
@@ -1248,27 +1253,28 @@ app.get('/api/b2b/results', requireB2B(), async (c) => {
   } catch (_) {}
   const isHospital = partner?.survey_category === 'hospital'
 
-  const searchClause = search ? ' AND user_name LIKE ?' : ''
-  const params: any[] = [user.code]
-  if (search) params.push(`%${search}%`)
+  // ── 공통 필터 빌더 ──────────────────────────────────────────
+  const buildFilters = (baseParams: any[]): { clause: string; params: any[] } => {
+    let clause = ''
+    const p = [...baseParams]
+    if (search)    { clause += ' AND user_name LIKE ?'; p.push(`%${search}%`) }
+    if (fromDate)  { clause += ' AND date(created_at) >= ?'; p.push(fromDate) }
+    if (toDate)    { clause += ' AND date(created_at) <= ?'; p.push(toDate) }
+    return { clause, params: p }
+  }
 
-  // ✅ BUG-FIX: diagnosis_results(신파이프라인) + hospital_responses + results 3테이블 통합
-  // diagnosis_results.ref_code = b2b partner code (= user.code)
-  const drSearchClause = search ? ' AND user_name LIKE ?' : ''
-  const drParams: any[] = [user.code]
-  if (search) drParams.push(`%${search}%`)
+  // diagnosis_results (신파이프라인)
+  const drFilter = buildFilters([user.code])
   const drQuery = `
     SELECT id, user_name, bc_primary, bc_code_key AS axis_primary,
            completed_at AS created_at, ref_code,
            survey_category AS result_type
     FROM diagnosis_results
-    WHERE ref_code=?${drSearchClause}
+    WHERE ref_code=?${drFilter.clause}
   `
 
   if (isHospital) {
-    // 병원 파트너: hospital_responses + results + diagnosis_results 합쳐서 반환
-    const hospParams: any[] = [user.code]
-    if (search) hospParams.push(`%${search}%`)
+    const hospFilter = buildFilters([user.code])
     const hospQuery = `
       SELECT id, user_name,
              bc_code AS bc_primary,
@@ -1276,41 +1282,142 @@ app.get('/api/b2b/results', requireB2B(), async (c) => {
              created_at, ref_code,
              'hospital' AS result_type
       FROM hospital_responses
-      WHERE ref_code=?${search ? ' AND user_name LIKE ?' : ''}
+      WHERE ref_code=?${hospFilter.clause}
     `
-    const regParams: any[] = [user.code]
-    if (search) regParams.push(`%${search}%`)
+    const regFilter = buildFilters([user.code])
     const regQuery = `
       SELECT id, user_name, bc_primary,
              axis_primary, created_at, ref_code,
              'integrated' AS result_type
-      FROM results WHERE ref_code=?${search ? ' AND user_name LIKE ?' : ''}
+      FROM results WHERE ref_code=?${regFilter.clause}
     `
     const [hospRes, regRes, drRes] = await Promise.all([
-      db.prepare(hospQuery).bind(...hospParams).all<any>(),
-      db.prepare(regQuery).bind(...regParams).all<any>(),
-      db.prepare(drQuery).bind(...drParams).all<any>(),
+      db.prepare(hospQuery).bind(...hospFilter.params).all<any>(),
+      db.prepare(regQuery).bind(...regFilter.params).all<any>(),
+      db.prepare(drQuery).bind(...drFilter.params).all<any>(),
     ])
     const combined = [
       ...(hospRes.results || []),
       ...(regRes.results || []),
       ...(drRes.results || []),
     ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    return c.json({ results: combined.slice(0, 50) })
+    const total = combined.length
+    return c.json({
+      results: combined.slice(offset, offset + pageSize),
+      total,
+      page,
+      page_size: pageSize,
+      total_pages: Math.ceil(total / pageSize),
+    })
   } else {
-    // 일반 파트너: results + diagnosis_results
-    let query = 'SELECT id, user_name, bc_primary, axis_primary, created_at, ref_code, \'integrated\' AS result_type FROM results WHERE ref_code=?'
-    if (search) { query += ' AND user_name LIKE ?'; params.push(`%${search}%`) }
-    query += ' ORDER BY created_at DESC LIMIT 50'
-    const [result, drRes] = await Promise.all([
-      db.prepare(query).bind(...params).all<any>(),
-      db.prepare(drQuery).bind(...drParams).all<any>(),
+    const regFilter = buildFilters([user.code])
+    const regQuery = `SELECT id, user_name, bc_primary, axis_primary, created_at, ref_code, 'integrated' AS result_type
+      FROM results WHERE ref_code=?${regFilter.clause}`
+    const [regRes, drRes] = await Promise.all([
+      db.prepare(regQuery).bind(...regFilter.params).all<any>(),
+      db.prepare(drQuery).bind(...drFilter.params).all<any>(),
     ])
     const combined = [
-      ...(result.results || []),
+      ...(regRes.results || []),
       ...(drRes.results || []),
     ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    return c.json({ results: combined.slice(0, 50) })
+    const total = combined.length
+    return c.json({
+      results: combined.slice(offset, offset + pageSize),
+      total,
+      page,
+      page_size: pageSize,
+      total_pages: Math.ceil(total / pageSize),
+    })
+  }
+})
+
+// ── GET /api/b2b/export-csv — B2B 고객 데이터 CSV 내보내기 ────────
+// UTF-8 BOM 포함 → 엑셀에서 한글/태국어 깨짐 없이 바로 열림
+app.get('/api/b2b/export-csv', requireB2B(), async (c) => {
+  const user      = c.get('user') as JwtPayload
+  const db        = c.env.DB
+  const fromDate  = c.req.query('from_date') || ''
+  const toDate    = c.req.query('to_date')   || ''
+  const search    = c.req.query('search')    || ''
+
+  try {
+    // 파트너 유형 확인
+    let partner: any = null
+    try { partner = await db.prepare('SELECT survey_category, brand_name FROM b2b_partners WHERE code=?').bind(user.code).first<any>() } catch(_) {}
+    const isHospital = partner?.survey_category === 'hospital'
+    const brandName  = partner?.brand_name || user.code
+
+    // 공통 필터 빌더
+    const buildF = (base: any[]) => {
+      let cl = ''; const p = [...base]
+      if (search)   { cl += ' AND user_name LIKE ?'; p.push(`%${search}%`) }
+      if (fromDate) { cl += ' AND date(created_at) >= ?'; p.push(fromDate) }
+      if (toDate)   { cl += ' AND date(created_at) <= ?'; p.push(toDate) }
+      return { cl, p }
+    }
+
+    let allRows: any[] = []
+
+    if (isHospital) {
+      const hf = buildF([user.code])
+      const rf = buildF([user.code])
+      const df = buildF([user.code])
+      const [hRes, rRes, dRes] = await Promise.all([
+        db.prepare(`SELECT id, user_name, bc_code AS bc_primary, ohaeng_type AS axis_primary,
+                    created_at, '병원' AS source FROM hospital_responses WHERE ref_code=?${hf.cl}`).bind(...hf.p).all<any>(),
+        db.prepare(`SELECT id, user_name, bc_primary, axis_primary,
+                    created_at, '통합' AS source FROM results WHERE ref_code=?${rf.cl}`).bind(...rf.p).all<any>(),
+        db.prepare(`SELECT id, user_name, bc_primary, bc_code_key AS axis_primary,
+                    completed_at AS created_at, survey_category AS source FROM diagnosis_results WHERE ref_code=?${df.cl}`).bind(...df.p).all<any>(),
+      ])
+      allRows = [...(hRes.results||[]), ...(rRes.results||[]), ...(dRes.results||[])]
+    } else {
+      const rf = buildF([user.code])
+      const df = buildF([user.code])
+      const [rRes, dRes] = await Promise.all([
+        db.prepare(`SELECT id, user_name, bc_primary, axis_primary,
+                    created_at, '통합' AS source FROM results WHERE ref_code=?${rf.cl}`).bind(...rf.p).all<any>(),
+        db.prepare(`SELECT id, user_name, bc_primary, bc_code_key AS axis_primary,
+                    completed_at AS created_at, survey_category AS source FROM diagnosis_results WHERE ref_code=?${df.cl}`).bind(...df.p).all<any>(),
+      ])
+      allRows = [...(rRes.results||[]), ...(dRes.results||[])]
+    }
+
+    allRows.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+    // CSV 생성 — UTF-8 BOM(\uFEFF) 포함으로 엑셀 한글·태국어 깨짐 방지
+    const escape = (v: any) => {
+      const s = String(v ?? '')
+      return s.includes(',') || s.includes('"') || s.includes('\n')
+        ? `"${s.replace(/"/g, '""')}"`
+        : s
+    }
+    const headers = ['결과ID', '고객이름', 'BC코드', '축코드', '진단일시', '유형']
+    const lines = [
+      headers.map(escape).join(','),
+      ...allRows.map(r => [
+        r.id, r.user_name, r.bc_primary || '', r.axis_primary || '',
+        r.created_at ? r.created_at.slice(0, 19).replace('T', ' ') : '',
+        r.source || ''
+      ].map(escape).join(',')),
+    ]
+    const csvContent = '\uFEFF' + lines.join('\r\n')  // UTF-8 BOM
+
+    const now = new Date().toISOString().slice(0, 10)
+    const filename = `slimmind_${brandName}_${now}.csv`
+
+    return new Response(csvContent, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
+        'Cache-Control': 'no-cache',
+      },
+    })
+  } catch(e: any) {
+    console.error('[b2b/export-csv] error:', e?.message)
+    return c.json({ error: 'csv_export_failed', message: 'CSV 생성 중 오류가 발생했습니다.' }, 500)
   }
 })
 
@@ -4341,6 +4448,41 @@ app.delete('/api/b2b/subaccounts/:code', requireB2B(), async (c) => {
 // ══════════════════════════════════════════════════════════════════
 //  B2B 결과지 토큰 포함 접근 링크
 // ══════════════════════════════════════════════════════════════════
+
+// ── DELETE /api/b2b/customer/:id — 고객 개인정보 삭제 (개인정보보호법 대응) ─
+// 자기 파트너 코드에 속한 고객만 삭제 가능 (타 파트너 데이터 침범 불가)
+app.delete('/api/b2b/customer/:id', requireB2B(), async (c) => {
+  const user  = c.get('user') as JwtPayload
+  const db    = c.env.DB
+  const id    = c.req.param('id')
+  try {
+    // 1) 본인 파트너 소속 여부 확인 (3테이블 모두 체크)
+    const [r, dr, hr] = await Promise.all([
+      db.prepare('SELECT id FROM results WHERE id=? AND ref_code=?').bind(id, user.code).first<any>(),
+      db.prepare('SELECT id FROM diagnosis_results WHERE id=? AND ref_code=?').bind(id, user.code).first<any>(),
+      db.prepare('SELECT id FROM hospital_responses WHERE id=? AND ref_code=?').bind(id, user.code).first<any>(),
+    ])
+    const owned = r || dr || hr
+    if (!owned) return c.json({ error: 'not_found', message: '해당 고객 데이터를 찾을 수 없거나 권한이 없습니다.' }, 404)
+
+    // 2) 관련 데이터 모두 삭제 (체크인, 코칭 댓글 포함)
+    await Promise.all([
+      db.prepare('DELETE FROM results WHERE id=? AND ref_code=?').bind(id, user.code).run(),
+      db.prepare('DELETE FROM diagnosis_results WHERE id=? AND ref_code=?').bind(id, user.code).run(),
+      db.prepare('DELETE FROM hospital_responses WHERE id=? AND ref_code=?').bind(id, user.code).run(),
+      db.prepare('DELETE FROM checkin_log WHERE result_id=?').bind(id).run(),
+      db.prepare('DELETE FROM coaching_comments WHERE result_id=?').bind(id).run(),
+      db.prepare('DELETE FROM daily_checks WHERE result_id=?').bind(id).run(),
+      db.prepare('DELETE FROM survey_notifications WHERE result_id=?').bind(id).run(),
+    ])
+
+    console.log(`[b2b/customer/delete] partner=${user.code} deleted id=${id}`)
+    return c.json({ success: true, message: '고객 데이터가 삭제되었습니다.' })
+  } catch(e: any) {
+    console.error('[b2b/customer/delete] error:', e?.message)
+    return c.json({ error: 'delete_failed', message: '삭제 중 오류가 발생했습니다.' }, 500)
+  }
+})
 
 // GET /api/b2b/result-link/:id — B2B 파트너용 결과지 접근 토큰 생성
 // H- 접두사 ID는 hospital_responses 테이블에서 확인 후 /result-hospital/ 링크 반환

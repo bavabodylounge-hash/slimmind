@@ -438,6 +438,59 @@ let USER_INFO = null;
 let BRAND = {};
 let currentPage = 'dashboard';
 
+// ── 대시보드 자동 폴링 (신규 고객 감지) ────────────────────
+var _dashPollTimer   = null;   // setInterval 핸들
+var _dashLastTotal   = -1;     // 마지막으로 확인한 누적 고객 수
+var _dashLastToday   = -1;     // 마지막으로 확인한 오늘 신규 수
+var DASH_POLL_MS     = 45000;  // 45초 주기
+
+function startDashPoll() {
+  if (_dashPollTimer) return;  // 중복 방지
+  _dashPollTimer = setInterval(async function() {
+    if (currentPage !== 'dashboard') return;  // 다른 탭이면 스킵
+    try {
+      const stats = await api('GET', '/b2b/stats');
+      if (!stats) return;
+      const newTotal = stats.total   || 0;
+      const newToday = stats.today   || 0;
+      // 첫 실행이면 기준값만 저장
+      if (_dashLastTotal === -1) { _dashLastTotal = newTotal; _dashLastToday = newToday; return; }
+      // 신규 고객 감지
+      const addedTotal = newTotal - _dashLastTotal;
+      const addedToday = newToday - _dashLastToday;
+      if (addedToday > 0 || addedTotal > 0) {
+        _dashLastTotal = newTotal;
+        _dashLastToday = newToday;
+        // 뱃지 즉시 반영
+        const kpiVals = document.querySelectorAll('.kpi-val');
+        if (kpiVals.length >= 1) kpiVals[0].textContent = newTotal;
+        // 토스트 알림
+        showDashToast(`🎉 신규 고객 ${addedToday > 0 ? addedToday + '명' : ''}이 설문을 완료했습니다! 새로고침 합니다.`);
+        // 3초 후 대시보드 자동 리로드
+        setTimeout(loadDashboard, 3000);
+      }
+    } catch(e) { /* 폴링 오류 무시 */ }
+  }, DASH_POLL_MS);
+}
+
+function stopDashPoll() {
+  if (_dashPollTimer) { clearInterval(_dashPollTimer); _dashPollTimer = null; }
+}
+
+function showDashToast(msg) {
+  let toast = document.getElementById('_dash-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = '_dash-toast';
+    toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(40px);z-index:9999;background:#2a2118;color:#fff;border-radius:12px;padding:12px 20px;font-size:13px;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.3);opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;white-space:nowrap;';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  toast.style.transform = 'translateX(-50%) translateY(0)';
+  setTimeout(() => { toast.style.opacity='0'; toast.style.transform='translateX(-50%) translateY(40px)'; }, 4000);
+}
+
 // survey_category → 올바른 질문지 경로 반환
 function getSurveyUrl() {
   const catPath = { hospital: '/h', aesthetic: '/a', fitness: '/f', integrated: '/s' };
@@ -640,8 +693,16 @@ document.querySelectorAll('.nav-item').forEach(el => {
 });
 
 function navigateTo(page) {
+  const prevPage = currentPage;
   currentPage = page;
   document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.page === page));
+  // 대시보드 자동 폴링 제어
+  if (page === 'dashboard') {
+    _dashLastTotal = -1; _dashLastToday = -1;  // 기준값 리셋
+    startDashPoll();
+  } else if (prevPage === 'dashboard') {
+    stopDashPoll();
+  }
   const titles = {
     dashboard: '대시보드',
     customers: '고객 결과 조회',
@@ -1314,13 +1375,26 @@ async function markAllB2bNotifRead() {
 }
 
 // ─── 고객 결과 조회 ──────────────────────────
-async function loadCustomers(search = '') {
-  let url = '/b2b/results';
-  if (search) url += `?search=${encodeURIComponent(search)}`;
-  const data = await api('GET', url);
+// ─── 고객 목록 현재 필터 상태 (페이지 이동 시 유지) ─────────────
+let _custFilter = { search: '', from_date: '', to_date: '', page: 1 };
+
+async function loadCustomers(opts = {}) {
+  // opts: { search, from_date, to_date, page } — 생략 시 현재 필터 유지
+  _custFilter = Object.assign(_custFilter, opts);
+  const { search, from_date, to_date, page } = _custFilter;
+
+  const params = new URLSearchParams({ limit: '50', page: String(page || 1) });
+  if (search)    params.set('search', search);
+  if (from_date) params.set('from_date', from_date);
+  if (to_date)   params.set('to_date', to_date);
+
+  const data = await api('GET', `/b2b/results?${params}`);
   if (!data) return;
 
-  const color = BRAND.brand_color || '#6366f1';
+  const color    = BRAND.brand_color || '#6366f1';
+  const total    = data.total || (data.results || []).length;
+  const curPage  = data.page || 1;
+  const totPages = data.total_pages || 1;
 
   const rows = (data.results || []).map(r => {
     const isHosp = r.result_type === 'hospital' || r.id.startsWith('H-');
@@ -1335,9 +1409,7 @@ async function loadCustomers(search = '') {
         ${typeBadge}
       </td>
       <td style="font-weight:600">${r.user_name || '익명'}</td>
-      <td>
-        <span class="badge badge-purple">${bcLabel}</span>
-      </td>
+      <td><span class="badge badge-purple">${bcLabel}</span></td>
       <td style="font-size:12px;color:var(--muted)">${fmtDate(r.created_at)}</td>
       <td style="white-space:nowrap">
         <button class="btn btn-primary btn-sm" onclick="openB2bResult('${r.id}')" style="margin-right:4px">
@@ -1346,23 +1418,51 @@ async function loadCustomers(search = '') {
         <button class="btn btn-ghost btn-sm" onclick="copyB2bResultLink('${r.id}')" title="링크 복사">
           <i class="fas fa-link"></i>
         </button>
+        <button class="btn btn-ghost btn-sm" style="color:#e53e3e" onclick="deleteB2bCustomer('${r.id}','${(r.user_name||'').replace(/'/g,'')}')" title="삭제">
+          <i class="fas fa-trash-alt"></i>
+        </button>
       </td>
     </tr>`;
   }).join('');
 
+  // 페이지네이션 UI
+  const pgBtns = totPages > 1 ? Array.from({length: totPages}, (_, i) => i + 1).map(p =>
+    `<button onclick="loadCustomers({page:${p}})" style="padding:4px 10px;border-radius:6px;border:1.5px solid ${p===curPage?'var(--brand)':'#e0d8cc'};background:${p===curPage?'var(--brand)':'transparent'};color:${p===curPage?'#fff':'#555'};font-size:12px;font-weight:700;cursor:pointer;margin:0 2px">${p}</button>`
+  ).join('') : '';
+
+  // CSV 다운로드 URL 생성
+  const csvParams = new URLSearchParams({ limit: '9999' });
+  if (search)    csvParams.set('search', search);
+  if (from_date) csvParams.set('from_date', from_date);
+  if (to_date)   csvParams.set('to_date', to_date);
+  const csvUrl = `/b2b/export-csv?${csvParams}`;
+
   document.getElementById('page-body').innerHTML = `
-    <div class="filter-row">
-      <input type="text" id="cust-search" placeholder="이름 검색..." style="width:200px"
-        onkeydown="if(event.key==='Enter') loadCustomers(this.value)">
-      <button class="btn btn-primary" onclick="loadCustomers(document.getElementById('cust-search').value)">
+    <!-- 검색 · 날짜 필터 바 -->
+    <div class="filter-row" style="flex-wrap:wrap;gap:8px;margin-bottom:12px">
+      <input type="text" id="cust-search" placeholder="이름 검색..." style="width:160px"
+        value="${search}" onkeydown="if(event.key==='Enter') loadCustomers({search:this.value,page:1})">
+      <input type="date" id="cust-from" value="${from_date}" style="width:140px;border:1.5px solid #e0d8cc;border-radius:8px;padding:8px 10px;font-size:13px" title="시작일">
+      <span style="font-size:13px;color:#999;align-self:center">~</span>
+      <input type="date" id="cust-to" value="${to_date}" style="width:140px;border:1.5px solid #e0d8cc;border-radius:8px;padding:8px 10px;font-size:13px" title="종료일">
+      <button class="btn btn-primary" onclick="loadCustomers({search:document.getElementById('cust-search').value,from_date:document.getElementById('cust-from').value,to_date:document.getElementById('cust-to').value,page:1})">
         <i class="fas fa-search"></i> 검색
       </button>
-      <button class="btn btn-ghost" onclick="loadCustomers()"><i class="fas fa-sync"></i> 전체</button>
+      <button class="btn btn-ghost" onclick="_custFilter={search:'',from_date:'',to_date:'',page:1};loadCustomers()">
+        <i class="fas fa-times"></i> 초기화
+      </button>
+      <!-- ★ CSV 다운로드 버튼 — UTF-8 BOM으로 한글/태국어 엑셀 깨짐 없음 -->
+      <a href="${csvUrl}" download class="btn btn-ghost" style="margin-left:auto;color:#2f7d8c;border-color:#2f7d8c">
+        <i class="fas fa-file-csv"></i> 엑셀(CSV) 다운로드
+      </a>
     </div>
-    <div style="font-size:13px;color:var(--muted);margin-bottom:12px">
-      총 <strong style="color:var(--text)">${(data.results||[]).length}명</strong>
-      <span style="margin-left:8px;font-size:12px;color:var(--muted)">· 결과지를 클릭하거나 링크를 복사해 고객에게 공유하세요</span>
+
+    <div style="font-size:13px;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:12px">
+      총 <strong style="color:var(--text)">${total}명</strong>
+      <span style="font-size:12px">· ${curPage}/${totPages} 페이지</span>
+      <span style="font-size:12px;color:var(--muted)">· 결과지를 클릭하거나 링크를 복사해 고객에게 공유하세요</span>
     </div>
+
     <div class="card" style="padding:0">
       <div class="tbl-wrap">
         <table>
@@ -1371,7 +1471,30 @@ async function loadCustomers(search = '') {
         </table>
       </div>
     </div>
+    ${pgBtns ? `<div style="text-align:center;margin-top:16px">${pgBtns}</div>` : ''}
   `;
+}
+
+// ─── 고객 개인정보 삭제 ────────────────────────────────────────────
+async function deleteB2bCustomer(id, name) {
+  if (!confirm(`"${name}" 고객의 데이터를 영구 삭제할까요?\n삭제된 데이터는 복구할 수 없습니다.`)) return;
+  try {
+    const r = await fetch(`/api/b2b/customer/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${TOKEN}` }
+    });
+    const data = await r.json().catch(() => ({}));
+    if (r.ok && data.success) {
+      // 해당 행만 즉시 제거
+      const row = document.getElementById(`row-${id}`);
+      if (row) row.remove();
+      _showToast('✅ 고객 데이터가 삭제되었습니다.');
+    } else {
+      _showToast('❌ 삭제 실패: ' + (data.message || '오류가 발생했습니다.'));
+    }
+  } catch(e) {
+    _showToast('❌ 네트워크 오류로 삭제에 실패했습니다.');
+  }
 }
 
 // ─── 결과지 열기 (B2B 전용) — 병원용 H- ID는 /result-hospital/ 로 ────────────

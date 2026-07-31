@@ -5623,6 +5623,104 @@ p, div, span, h1, h2, h3, h4{
 .wg-st-ic{font-size:16px;flex-shrink:0;}
 .wg-st-tx{font-size:12.5px;font-weight:600;line-height:1.4;word-break:keep-all;}
 .wg-st-tx b{font-weight:900;color:#ffb89a;}
+
+/* ════════════════════════════════════════════
+   @media print — PDF/인쇄 레이아웃 최적화
+   • 네비게이션·모달·오버레이·플로팅 버튼 숨김
+   • 페이지 여백/색상 보정
+   • 현재 활성 page만 출력
+   ════════════════════════════════════════════ */
+@media print {
+  /* 1) 기본 인쇄 설정 */
+  @page {
+    size: A4 portrait;
+    margin: 12mm 10mm 14mm 10mm;
+  }
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  html, body {
+    background: #fff !important;
+    font-size: 13px;
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  /* 2) UI 요소 완전 숨김 */
+  /* 상단 네비게이션 */
+  #top-nav,
+  .nav-tabs,
+  .nav-bar,
+  .nav-tab-daily-fixed { display: none !important; }
+
+  /* 플로팅 공유 버튼 */
+  #shareFloatBtn { display: none !important; }
+
+  /* 공유 모달 / 미리보기 */
+  #shareModal,
+  #shareCopyToast { display: none !important; }
+
+  /* 체크인 모달 */
+  .checkin-modal-overlay { display: none !important; }
+
+  /* DNA 카드 모달 */
+  .dna-card-modal-overlay { display: none !important; }
+
+  /* WOW3 상세 모달 */
+  .wow3-detail-modal { display: none !important; }
+
+  /* JA 그라데이션 오버레이 */
+  .ja-grad-overlay { display: none !important; }
+
+  /* 식단 캘린더 오버레이 */
+  .excal-overlay { display: none !important; }
+
+  /* 구매 모달 */
+  .supbuy-modal { display: none !important; }
+
+  /* 알림 토스트 */
+  .wg-send-toast { display: none !important; }
+
+  /* 고정(fixed/sticky) 위치 요소 일괄 해제 */
+  .p6-seg-sticky {
+    position: static !important;
+    top: auto !important;
+  }
+
+  /* 3) 비활성 페이지 숨김 — 활성 페이지만 인쇄 */
+  .page { display: none !important; }
+  .page.active { display: block !important; }
+
+  /* 4) 페이지 넘김 방지 (섹션 안에서 잘리지 않도록) */
+  .section-wrap,
+  .card,
+  .bc-hero-card,
+  .chap-head,
+  .prescription-card,
+  .ratio-card,
+  .roadmap-card {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* 5) 링크 URL 출력 억제 (브라우저 기본 동작 차단) */
+  a[href]::after { content: none !important; }
+
+  /* 6) 스크롤 컨테이너 높이 해제 */
+  body, .page.active {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* 7) 그림자·블러 효과 단순화 (인쇄 성능) */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
 </style>
 </style>
 
