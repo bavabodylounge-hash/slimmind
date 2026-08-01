@@ -12586,6 +12586,16 @@ function countUpMetaAge(){
     }, { threshold:0.5 });
     io.observe(el);
   }catch(err){ run(); }
+  // ── Fallback: IO 미발화 대비 안전장치 (V4.9) ──────────────────
+  // 2초 후에도 카운트업이 실행되지 않았으면 data-target 값을 즉시 표시
+  setTimeout(function(){
+    if(!done){
+      var t = parseInt(el.getAttribute('data-target')||'0',10);
+      el.textContent = t || el.getAttribute('data-target') || '0';
+      done = true;
+    }
+  }, 2000);
+  // ──────────────────────────────────────────────────────────────
 }
 function runCertReveal(){
   var cert = document.getElementById('bc-cert');
@@ -13441,10 +13451,25 @@ function renderAll(data) {
   const bc = (typeof computeBCCodeSafe === 'function')
     ? computeBCCodeSafe(axisScores, answers)
     : computeBCCode(axisScores, answers);
-  const { bcCode, bcMaster, causalScores, sorted, firstDomino, metrics,
+  let { bcCode, bcMaster, causalScores, sorted, firstDomino, metrics,
           nickname, background,
           isBorderline, borderlineDiff, secondaryBcCode, secondaryNickname,
           blendingHint, evidenceBadge } = bc;
+
+  // ── DB bc_primary 우선 고정 (V4.9) ──────────────────────────────
+  // computeBCCode()는 axis_scores 기반 재계산이므로 저장 시점과 달라질 수 있음.
+  // DB에 bc_primary가 명시되어 있으면(BC-X 형식) 해당 값을 신뢰·고정하고
+  // bcMaster도 BC_MASTER 테이블에서 해당 코드로 다시 조회한다.
+  const _dbBcCode = (data.bc_primary || data.bc_code || '').trim();
+  if (_dbBcCode && /^BC-\d+$/.test(_dbBcCode)) {
+    if (_dbBcCode !== bcCode) {
+      console.log('[result-v4] BC 코드 DB 고정:', bcCode, '→', _dbBcCode);
+      bcCode = _dbBcCode;
+    }
+    const _dbMaster = BC_MASTER[_dbBcCode];
+    if (_dbMaster) bcMaster = _dbMaster;
+  }
+  // ──────────────────────────────────────────────────────────────────
 
   const ohaeng = SAJU_ELEMENT_DESC[ohaengType] || SAJU_ELEMENT_DESC['목'];
   const mbti   = MBTI_DESC[mbtiType] || MBTI_DESC['INFP'];
