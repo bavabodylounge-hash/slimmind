@@ -12993,12 +12993,26 @@ function injectCoverInfo(userName, consultantName, createdAt){
     var nm = userName.length >= 3 ? userName.slice(1) : userName;
     sn.textContent = nm;
   }
-  // 진단일
+  // 진단일 (FIX: SQLite "2026-08-01 03:00:00" 공백 포맷 → T 치환으로 NaN 방지)
   var dEl = document.getElementById('cover-date');
   if(dEl){
-    var d = createdAt ? new Date(createdAt) : new Date();
-    if(isNaN(d.getTime())) d = new Date();
-    dEl.textContent = d.getFullYear()+'년 '+(d.getMonth()+1)+'월 '+d.getDate()+'일';
+    if(createdAt){
+      try{
+        var _raw = String(createdAt).replace(' ','T');
+        var _d = new Date(_raw);
+        if(!isNaN(_d.getTime())){
+          var y = _d.getFullYear();
+          var mo = String(_d.getMonth()+1).padStart(2,'0');
+          var dy = String(_d.getDate()).padStart(2,'0');
+          dEl.textContent = y+'년 '+(_d.getMonth()+1)+'월 '+_d.getDate()+'일';
+        } else {
+          dEl.textContent = String(createdAt).slice(0,10).replace(/-/g,'.');
+        }
+      }catch(_){ dEl.textContent = String(createdAt).slice(0,10).replace(/-/g,'.'); }
+    } else {
+      var _today = new Date();
+      dEl.textContent = _today.getFullYear()+'년 '+(_today.getMonth()+1)+'월 '+_today.getDate()+'일';
+    }
   }
   var cw = document.getElementById('cover-consultant-wrap');
   var cn = document.getElementById('cover-consultant');
