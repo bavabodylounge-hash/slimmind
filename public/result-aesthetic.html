@@ -6026,6 +6026,10 @@ window.__AESTHETIC_INIT_PROMISE__ = (async function aestheticInit() {
   padding: 3px 10px; border-radius: 20px; margin-left: 8px;
 }
 </style>
+<!-- sm_survey_category: aesthetic — PWA 세션 복원 분기용 -->
+<script>try { localStorage.setItem('sm_survey_category', 'aesthetic'); } catch(e) {}</script>
+<!-- PWA 공통 모듈 v2.0 (세션 복원 + UA 모달 + SW 등록 + 웹푸시) -->
+<script src="/static/pwa-common.js?v=20260801" defer></script>
 
 </head>
 <body>
@@ -18289,6 +18293,17 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     // ── 전역 resultData 저장 (renderP11 등 지연 호출 함수에서 참조) ──
   window.__SLIMMIND_DATA__ = resultData;
+
+    // ── PWA 세션 복원용 localStorage 갱신 ──
+    // result-aesthetic 페이지 진입 시 항상 최신 결과 ID + category 저장
+    try {
+      var _aid = window.__AESTHETIC_RESULT_ID__
+        || (location.pathname.match(/\/result-aesthetic\/([^/?#]+)/) || [])[1] || '';
+      if (_aid) {
+        localStorage.setItem('sm_last_result_id', _aid);
+        localStorage.setItem('sm_survey_category', 'aesthetic');
+      }
+    } catch(_e) {}
 
   renderAll(resultData);
 

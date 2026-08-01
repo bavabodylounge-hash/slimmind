@@ -6468,6 +6468,10 @@ input[type=range].slider,
   60%{ transform:translateX(-3px) } 80%{ transform:translateX(3px) }
 }
 </style>
+<!-- sm_survey_category: aesthetic — PWA 세션 복원 분기용 -->
+<script>try { localStorage.setItem('sm_survey_category', 'aesthetic'); } catch(e) {}</script>
+<!-- PWA 공통 모듈 v2.0 (세션 복원 + UA 모달 + SW 등록 + 웹푸시) -->
+<script src="/static/pwa-common.js?v=20260801" defer></script>
 </head>
 <body>
 
@@ -16626,8 +16630,11 @@ function showWaitScreen(resultId, userName) {
   const idEl = document.getElementById('waitResultId');
   if (idEl) idEl.textContent = resultId ? resultId.split('-')[0].toUpperCase() : '—';
 
-  // localStorage에 result_id 저장
-  try { localStorage.setItem('sm_last_result_id', resultId); } catch(e) {}
+  // localStorage에 result_id + category 저장 (PWA 세션 복원용)
+  try {
+    localStorage.setItem('sm_last_result_id', resultId);
+    localStorage.setItem('sm_survey_category', 'aesthetic');
+  } catch(e) {}
 
   // 완료 알림 버튼 — ref_code 있을 때만 표시
   const refCode = new URLSearchParams(window.location.search).get('ref') || null;

@@ -5555,7 +5555,8 @@ p, div, span, h1, h2, h3, h4{
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="슬림마인드">
 <link rel="apple-touch-icon" href="/static/baba_logo.png">
-<script src="/static/pwa-install.js" defer></script>
+<!-- PWA 공통 모듈 v2.0 (세션 복원 + UA 모달 + SW 등록 + 웹푸시) -->
+<script src="/static/pwa-common.js?v=20260801" defer></script>
 </head>
 <body>
 <script>
@@ -17889,6 +17890,17 @@ window.addEventListener('DOMContentLoaded', async () => {
       mbtiType: resultData.mbtiType,
       axisScoreKeys: Object.keys(resultData.axisScores || {})
     });
+
+    // ── PWA 세션 복원용 localStorage 갱신 ──
+    // result-hospital 페이지 진입 시 항상 최신 결과 ID + category 저장
+    try {
+      var _hid = window.__HOSPITAL_RESULT_ID__
+        || (location.pathname.match(/\/result-hospital\/([^/?#]+)/) || [])[1] || '';
+      if (_hid) {
+        localStorage.setItem('sm_last_result_id', _hid);
+        localStorage.setItem('sm_survey_category', 'hospital');
+      }
+    } catch(_e) {}
 
     renderAll(resultData);
 

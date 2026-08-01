@@ -36,30 +36,9 @@
 })();
 </script>
 <script>
-/* ── PWA 홈 화면 추가 → 고객 개인 결과지 자동 복원 ──────────────────
-   고객이 결과지(/result/:id)에서 "홈 화면에 추가" 후 아이콘 클릭 시
-   메인 스플래시 대신 마지막으로 본 개인 결과지로 즉시 이동합니다.
-   조건: PWA standalone 모드 + localStorage에 sm_last_result_id 있을 때만 동작
-──────────────────────────────────────────────────────────────────────── */
-(function(){
-  try {
-    // PWA standalone 모드 감지 (iOS Safari "홈 화면에 추가" 후 실행 환경)
-    var isStandalone = (
-      window.navigator.standalone === true ||
-      window.matchMedia('(display-mode: standalone)').matches
-    );
-    if (!isStandalone) return;  // 일반 브라우저에서는 동작하지 않음
-
-    var lastId = localStorage.getItem('sm_last_result_id');
-    if (!lastId) return;  // 저장된 결과지 ID 없으면 패스
-
-    // 이미 결과지 페이지에 있으면 리다이렉트 불필요
-    if (location.pathname.indexOf('/result/') === 0) return;
-
-    // 메인 스플래시(/) 또는 survey 페이지에서만 리다이렉트
-    location.replace('/result/' + lastId);
-  } catch(e) {}
-})();
+/* ── sm_survey_category 저장 — PWA 세션 복원 시 결과지 URL 분기용 ── */
+try { localStorage.setItem('sm_survey_category', 'hospital'); } catch(e) {}
+/* ── PWA 세션 자동 복원은 pwa-common.js [A]에서 처리 ── */
 </script>
 <style id="smEmbeddedFonts">
 /* ★ 웹폰트 내장 — 외부 CDN 의존 제거 (병원 폐쇄망 대응)
@@ -5299,6 +5278,8 @@ html.th-mode .cond-eyebrow{
   .sm2-cue svg{width:34px;height:16px;stroke:var(--scB,#b291de);stroke-width:3;
     stroke-linecap:round;stroke-linejoin:round;fill:none;animation:sscFlow 1.5s ease-in-out infinite}
 </style>
+<!-- PWA 공통 모듈 v2.0 (세션 복원 + UA 모달 + SW 등록 + 웹푸시) -->
+<script src="/static/pwa-common.js?v=20260801" defer></script>
 </head>
 <body>
 
@@ -18885,8 +18866,11 @@ function showWaitScreen(resultId, userName) {
   const idEl = document.getElementById('waitResultId');
   if (idEl) idEl.textContent = resultId ? resultId.split('-')[0].toUpperCase() : '—';
 
-  // localStorage에 result_id 저장
-  try { localStorage.setItem('sm_last_result_id', resultId); } catch(e) {}
+  // localStorage에 result_id + category 저장 (PWA 세션 복원용)
+  try {
+    localStorage.setItem('sm_last_result_id', resultId);
+    localStorage.setItem('sm_survey_category', 'hospital');
+  } catch(e) {}
 
   // 완료 알림 버튼 — ref_code 있을 때만 표시
   const refCode = new URLSearchParams(window.location.search).get('ref') || null;

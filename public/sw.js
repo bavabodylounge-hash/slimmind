@@ -1,34 +1,34 @@
 /* =========================================================
-   SlimMind Service Worker  v1.0
-   - Static / HTML  → Cache First  (오프라인 지원)
-   - API (/api/*)   → Network First (최신 데이터 우선)
+   SlimMind Service Worker  v2.0  (2026-08-01)
+   ─────────────────────────────────────────────────────────
+   - 캐시명 slimmind-v2 (v1 자동 삭제)
+   - HTML/API → Network First (캐시 무효화 강화)
+   - Static   → Cache First  (오프라인 지원)
+   - Push     → 알림 표시 (D+28 체크)
+   - NotificationClick → 오늘탭 이동
+   - skipWaiting 메시지 수신 지원
    ========================================================= */
 
-const CACHE_NAME = 'slimmind-v1';
+const CACHE_NAME = 'slimmind-v2';
 
-/* 앱 설치 시 반드시 캐시할 파일 목록 */
+/* 앱 설치 시 프리캐시 목록 */
 const PRE_CACHE = [
-  '/',
-  '/result-hospital.html',
-  '/slimmind-today.html',
-  '/manifest.json',
   '/static/baba_logo.png',
-  '/static/style.css'
+  '/static/pwa-common.js'
 ];
 
-/* ── Install: 필수 파일 프리캐시 ── */
+/* ── Install ── */
 self.addEventListener('install', function (e) {
   e.waitUntil(
     caches.open(CACHE_NAME).then(function (cache) {
       return cache.addAll(PRE_CACHE.map(function (url) {
         return new Request(url, { cache: 'reload' });
       })).catch(function (err) {
-        /* 일부 파일 미존재 시 조용히 무시하고 설치 계속 */
-        console.warn('[SW] pre-cache 일부 실패 (무시됨):', err);
+        /* 일부 파일 미존재 시 무시 */
+        void err;
       });
     })
   );
-  /* 구버전 SW 대기 없이 즉시 활성화 */
   self.skipWaiting();
 });
 
@@ -46,40 +46,50 @@ self.addEventListener('activate', function (e) {
   );
 });
 
-/* ── Fetch: 전략 분기 ── */
+/* ── Message: skipWaiting 지원 ── */
+self.addEventListener('message', function (e) {
+  if (e.data && e.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
+/* ── Fetch ── */
 self.addEventListener('fetch', function (e) {
   var req = e.request;
   var url = new URL(req.url);
 
-  /* 같은 오리진만 처리 (외부 CDN 등 제외) */
   if (url.origin !== location.origin) return;
-
-  /* POST / PUT / DELETE → 캐시 없이 네트워크 그대로 */
   if (req.method !== 'GET') return;
 
-  /* API 요청 → Network First */
-  if (url.pathname.startsWith('/api/')) {
+  /* API + HTML 동적 라우트 → Network First (항상 최신 데이터) */
+  if (
+    url.pathname.startsWith('/api/') ||
+    url.pathname.startsWith('/result-hospital/') ||
+    url.pathname.startsWith('/result-aesthetic/') ||
+    url.pathname.startsWith('/result/') ||
+    url.pathname.startsWith('/h/') ||
+    url.pathname.startsWith('/a/') ||
+    url.pathname === '/'
+  ) {
     e.respondWith(networkFirst(req));
     return;
   }
 
-  /* Static / HTML → Cache First */
+  /* Static 파일 → Cache First */
   e.respondWith(cacheFirst(req));
 });
 
 /* ── Network First ── */
 function networkFirst(req) {
-  return fetch(req)
-    .then(function (res) {
-      if (res && res.ok) {
-        var clone = res.clone();
-        caches.open(CACHE_NAME).then(function (c) { c.put(req, clone); });
-      }
-      return res;
-    })
-    .catch(function () {
-      return caches.match(req);
-    });
+  return fetch(req.clone()).then(function (res) {
+    if (res && res.ok && res.type === 'basic') {
+      var clone = res.clone();
+      caches.open(CACHE_NAME).then(function (c) { c.put(req, clone); });
+    }
+    return res;
+  }).catch(function () {
+    return caches.match(req);
+  });
 }
 
 /* ── Cache First ── */
@@ -87,7 +97,7 @@ function cacheFirst(req) {
   return caches.match(req).then(function (cached) {
     if (cached) return cached;
     return fetch(req).then(function (res) {
-      if (res && res.ok) {
+      if (res && res.ok && res.type === 'basic') {
         var clone = res.clone();
         caches.open(CACHE_NAME).then(function (c) { c.put(req, clone); });
       }
@@ -96,7 +106,7 @@ function cacheFirst(req) {
   });
 }
 
-/* ── Push: 알림 표시 ── */
+/* ── Push: 알림 수신 ── */
 self.addEventListener('push', function (e) {
   var data = {};
   try { data = e.data ? e.data.json() : {}; } catch (_) {}
@@ -117,7 +127,7 @@ self.addEventListener('push', function (e) {
   e.waitUntil(self.registration.showNotification(title, options));
 });
 
-/* ── NotificationClick: 알림 클릭 시 페이지 열기 ── */
+/* ── NotificationClick: 오늘탭 이동 ── */
 self.addEventListener('notificationclick', function (e) {
   e.notification.close();
   if (e.action === 'dismiss') return;
@@ -128,12 +138,16 @@ self.addEventListener('notificationclick', function (e) {
 
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
+      /* 이미 열린 탭 포커스 */
       for (var i = 0; i < list.length; i++) {
-        if (list[i].url.includes(targetUrl) && 'focus' in list[i]) {
+        if (list[i].url.indexOf(targetUrl) !== -1 && 'focus' in list[i]) {
           return list[i].focus();
         }
       }
-      return clients.openWindow(targetUrl);
+      /* 새 탭 열기 */
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
     })
   );
 });

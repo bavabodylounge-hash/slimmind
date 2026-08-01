@@ -8970,14 +8970,16 @@ app.post('/api/push/subscribe', async (c) => {
       consultant_code?: string
       b2b_code?: string
       user_agent?: string
+      pwa_start_date?: string   // ★ D+28 스케줄러용 최초 설치 시점 (ISO 8601)
     }
     if (!body.endpoint || !body.p256dh || !body.auth) {
       return c.json({ ok: false, error: '필수 파라미터 누락' }, 400)
     }
+    // pwa_start_date: 이미 저장된 값은 유지 (ON CONFLICT 시 UPDATE 제외)
     await db.prepare(`
       INSERT INTO push_subscriptions
-        (session_id, endpoint, p256dh, auth, bc_code, consultant_code, b2b_code, user_agent, updated_at)
-      VALUES (?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
+        (session_id, endpoint, p256dh, auth, bc_code, consultant_code, b2b_code, user_agent, pwa_start_date, updated_at)
+      VALUES (?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
       ON CONFLICT(endpoint) DO UPDATE SET
         session_id=excluded.session_id,
         p256dh=excluded.p256dh,
@@ -8985,6 +8987,8 @@ app.post('/api/push/subscribe', async (c) => {
         bc_code=excluded.bc_code,
         consultant_code=excluded.consultant_code,
         b2b_code=excluded.b2b_code,
+        user_agent=excluded.user_agent,
+        pwa_start_date=COALESCE(push_subscriptions.pwa_start_date, excluded.pwa_start_date),
         updated_at=CURRENT_TIMESTAMP
     `).bind(
       body.session_id || 'anon',
@@ -8992,7 +8996,8 @@ app.post('/api/push/subscribe', async (c) => {
       body.bc_code || null,
       body.consultant_code || null,
       body.b2b_code || null,
-      body.user_agent || null
+      body.user_agent || null,
+      body.pwa_start_date || null
     ).run()
     return c.json({ ok: true })
   } catch (e: any) {
@@ -9042,9 +9047,12 @@ async function handleCron(event: ScheduledEvent, env: any): Promise<void> {
 
   const cron  = event.cron  // Cloudflare UTC 기준 cron 문자열
   // UTC 크론: "30 23 * * *"=KST 08:30(morning), "30 3 * * *"=KST 12:30(lunch), "30 10 * * *"=KST 19:30(evening)
+  // KST 09:00 = UTC 00:00 → "0 0 * * *"
+  // KST 12:00 = UTC 03:00 → "0 3 * * *"
+  // KST 18:00 = UTC 09:00 → "0 9 * * *"
   let msgKey: keyof typeof PUSH_MESSAGES = 'morning'
-  if (cron.startsWith('30 3'))  msgKey = 'lunch'
-  else if (cron.startsWith('30 10')) msgKey = 'evening'
+  if (cron.includes('3 ') || cron.startsWith('0 3'))  msgKey = 'lunch'
+  else if (cron.includes('9 ') || cron.startsWith('0 9')) msgKey = 'evening'
 
   const msg = PUSH_MESSAGES[msgKey]
   const payload = JSON.stringify({
@@ -9056,10 +9064,16 @@ async function handleCron(event: ScheduledEvent, env: any): Promise<void> {
     tag: `slimmind-${msgKey}`
   })
 
-  /* 전체 구독 목록 조회 (최대 5000건) */
-  const rows = await db.prepare(
-    'SELECT endpoint, p256dh, auth FROM push_subscriptions LIMIT 5000'
-  ).all<{ endpoint: string; p256dh: string; auth: string }>()
+  /* 전체 구독 목록 조회 — D+28 경과 구독 제외 (최대 5000건)
+   * KST = UTC+9. pwa_start_date + 28일(2419200초)을 UTC 기준으로 비교.
+   * pwa_start_date가 NULL인 구독은 기존 레코드이므로 포함(발송 허용). */
+  const rows = await db.prepare(`
+    SELECT endpoint, p256dh, auth, pwa_start_date
+    FROM push_subscriptions
+    WHERE pwa_start_date IS NULL
+       OR (julianday('now') - julianday(pwa_start_date)) <= 28
+    LIMIT 5000
+  `).all<{ endpoint: string; p256dh: string; auth: string; pwa_start_date: string | null }>()
 
   const subs = rows.results || []
   console.log(`[cron ${cron}] 푸시 발송 대상: ${subs.length}건`)

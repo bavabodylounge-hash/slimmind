@@ -238,7 +238,7 @@ admin.html 내 결과 행 클릭 시:
 2. **질문지 라우팅 파일**: `/h/:code` → `survey-hospital.html`, `/a/:code` → `survey-aesthetic.html` 고정
 3. **결과지 라우팅 분기**: `/result/:id`의 `effectiveCategory` 판별 로직 변경 시 반드시 양방향 테스트
 4. **UNION 쿼리 컬럼 수**: `results_v3`와 `diagnosis_v4` SELECT 컬럼 수 항상 일치 유지
-5. **마이그레이션 번호**: 0056번 이후부터 순번 부여 (현재 최신: `0056_fix_hospital_survey_category.sql`)
+5. **마이그레이션 번호**: 0057번 이후부터 순번 부여 (현재 최신: `0057_push_pwa_start_date.sql`)
 
 ---
 
@@ -253,3 +253,88 @@ admin.html 내 결과 행 클릭 시:
 | 빌드 | `npm run build` → `dist/_worker.js` (~280KB) |
 | 배포 | `gsk hosted deploy` (승인 후 자동 적용) |
 | Git 태그 | `v1.0-STABLE` = commit `0de04a8` (2026-08-01) |
+
+---
+
+## 9. 캐시 방지 정책 (Cache-Busting)
+
+### 서버 응답 헤더
+모든 HTML 서빙 라우트는 `htmlResponse()` 헬퍼를 통해 아래 헤더를 포함한다:
+```
+Cache-Control: no-cache, no-store, must-revalidate
+Pragma: no-cache
+Expires: 0
+```
+
+`fetchAsset()` 헬퍼도 내부적으로 동일 헤더를 Cloudflare ASSETS에 전달한다.
+
+### 클라이언트 사이드 캐시 버스팅
+- `/static/pwa-common.js?v=20260801` — HTML 4개(`survey-hospital`, `survey-aesthetic`, `result-hospital`, `result-aesthetic`) 전수 적용
+- SW 캐시명을 `slimmind-v1` → `slimmind-v2`로 갱신하여 구버전 캐시 자동 삭제
+- Activate 시 이전 캐시 키(`slimmind-v1`) 삭제
+
+### HTML 동적 라우트 Network-First
+서비스 워커 fetch 핸들러에서 아래 경로는 항상 **Network First** 전략:
+`/api/*`, `/result-hospital/*`, `/result-aesthetic/*`, `/result/*`, `/h/*`, `/a/*`, `/`
+
+---
+
+## 10. PWA 세션 자동 복원 규칙
+
+### 저장 규칙
+| localStorage 키 | 저장 시점 | 값 |
+|---|---|---|
+| `sm_last_result_id` | 설문 완료(대기화면 진입) + 결과지 진입 | 결과 UUID |
+| `sm_survey_category` | 설문 완료 + 결과지 진입 | `'hospital'` 또는 `'aesthetic'` |
+| `sm_pwa_start_date` | 웹푸시 최초 구독 시 | ISO 8601 타임스탬프 |
+
+### 복원 로직 (`pwa-common.js` [A] 블록)
+1. `(display-mode: standalone)` 또는 `navigator.standalone === true` 감지
+2. `sm_last_result_id` 없으면 종료
+3. 현재 경로가 이미 `/result-hospital/`, `/result-aesthetic/`, `/result/`이면 종료
+4. `sm_survey_category === 'aesthetic'` → `/result-aesthetic/:id`로 `location.replace()`
+5. 그 외 → `/result-hospital/:id`로 `location.replace()`
+
+---
+
+## 11. UA/PC 분기 PWA 설치 안내 모달 구조
+
+**파일**: `/public/static/pwa-common.js` ([B] 블록)  
+**발동 조건**: `isStandalone === false` && DOMContentLoaded 후 3초
+
+| Case | 감지 조건 | 모달 형태 | 안내 내용 |
+|---|---|---|---|
+| 1 | iOS + `KAKAOTALK` UA | 바텀시트 | ① ··· → ② 공유 → ③ 더 보기 → ④ 홈 화면에 추가 |
+| 2 | iOS + Safari (비Chrome/CriOS) | 바텀시트 | ① 하단 공유 ⬆ → ② 홈 화면에 추가 → ③ 추가 |
+| 3 | Android + `KAKAOTALK` UA | 상단 노란 툴팁 | ··· → 다른 브라우저(Chrome)로 열기 → 홈 화면 추가 |
+| 4 | Android + `beforeinstallprompt` | 하단 배너 | 원클릭 [설치] 버튼 (`deferredPrompt.prompt()`) |
+| 5 | PC (비iOS/Android) | 중앙 모달 | `beforeinstallprompt` 있으면 원클릭 / 없으면 ··· 수동 안내 |
+
+---
+
+## 12. KST D+28 푸시 스케줄러 명세
+
+### 아키텍처
+- **클라이언트**: `pwa-common.js` [D] 블록 — 웹푸시 구독 시 `sm_pwa_start_date`(ISO 8601) 저장 및 서버 전송
+- **서버**: `push_subscriptions.pwa_start_date` 컬럼 저장 (마이그레이션 `0057`)
+- **배치**: Cloudflare Cron Trigger (`handleCron`) — UTC 기준 3개 cron 등록
+
+### Cron 스케줄 (KST 기준)
+| 발송 시각 (KST) | UTC cron 표현식 | `msgKey` |
+|---|---|---|
+| 09:00 (아침) | `0 0 * * *` | `morning` |
+| 12:00 (점심) | `0 3 * * *` | `lunch` |
+| 18:00 (저녁) | `0 9 * * *` | `evening` |
+
+### D+28 자동 종료 조건
+```sql
+WHERE pwa_start_date IS NULL                           -- 기존 구독 (발송 허용)
+   OR (julianday('now') - julianday(pwa_start_date)) <= 28  -- 28일 이내
+```
+- `pwa_start_date`가 NULL인 구독(기존 데이터)은 발송 허용
+- `pwa_start_date + 28일` 경과 구독은 자동 제외 (구독 삭제 아님)
+
+### 알림 클릭 동작
+서비스 워커 `notificationclick` 이벤트:
+1. 이미 열린 `/slimmind-today.html` 탭 있으면 포커스
+2. 없으면 `clients.openWindow('/slimmind-today.html')` 신규 탭 열기
