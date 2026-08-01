@@ -922,7 +922,8 @@ app.get('/api/admin/results', requireRole('MASTER'), async (c) => {
         c.name as consultant_name,
         r.ref_code,
         r.created_at,
-        'results_v3' as _source
+        'results_v3' as _source,
+        NULL as survey_category
       FROM results r
       LEFT JOIN consultants c ON r.consultant_code = c.code
       ${oldWhere}
@@ -939,7 +940,8 @@ app.get('/api/admin/results', requireRole('MASTER'), async (c) => {
         NULL as consultant_name,
         d.ref_code,
         d.created_at,
-        'diagnosis_v4' as _source
+        'diagnosis_v4' as _source,
+        d.survey_category
       FROM diagnosis_results d
       ${newWhere}
 
