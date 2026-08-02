@@ -7041,23 +7041,53 @@ app.post('/api/daily-check', async (c) => {
     return c.json({ error: 'check_date must be YYYY-MM-DD' }, 400)
   }
 
-  // result_id 조회 (있으면 연결)
-  // ✅ FIX: result-v4.html에서 session_id = ?id= URL 파라미터 = diagnosis_results.id (UUID)
-  // diagnosis_results.id와 직접 매핑하여 연결
+  // result_id 조회 + b2b_code/consultant_code 서버 자동 채우기
+  // ✅ FIX: diagnosis_results에 b2b_code 컬럼이 없고 ref_code에 B2B-/SC- 코드가 혼재 저장됨
+  // 서버에서 session_id → diagnosis_results 조회 후 ref_code로 b2b/consultant 자동 분류
   let resultId: string | null = null
+  let serverB2bCode: string | null = b2b_code || null
+  let serverConsultantCode: string | null = consultant_code || null
   try {
     // 1순위: session_id가 diagnosis_results.id(UUID)와 일치하는 경우 (신버전 파이프라인)
     const diagRowById = await db.prepare(
-      `SELECT id FROM diagnosis_results WHERE id = ? LIMIT 1`
+      `SELECT id, ref_code FROM diagnosis_results WHERE id = ? LIMIT 1`
     ).bind(session_id).first<any>()
     if (diagRowById) {
       resultId = diagRowById.id
+      // ref_code로 b2b_code / consultant_code 자동 추론
+      if (diagRowById.ref_code) {
+        const rc: string = diagRowById.ref_code
+        if (rc.startsWith('B2B-')) {
+          // B2B 코드: B2B-BAVA1234 형태
+          if (!serverB2bCode) serverB2bCode = rc
+          // B2B 파트너 테이블에서 consultant_code(담당자) 조회 (없으면 무시)
+          if (!serverConsultantCode) {
+            try {
+              const bp = await db.prepare(
+                `SELECT partner_code FROM b2b_partners WHERE partner_code = ? LIMIT 1`
+              ).bind(rc).first<any>()
+              // b2b_partners에 매핑된 컨설턴트 코드가 있을 경우 사용
+              // (없으면 consultant_code null 유지 — B2B는 컨설턴트 없을 수 있음)
+            } catch (_) {}
+          }
+        } else if (rc.startsWith('SC-')) {
+          // 컨설턴트 코드
+          if (!serverConsultantCode) serverConsultantCode = rc
+        }
+      }
     } else {
       // 2순위: session_id 컬럼으로 조회 (구버전 호환)
       const diagRowBySid = await db.prepare(
-        `SELECT id FROM diagnosis_results WHERE session_id = ? LIMIT 1`
+        `SELECT id, ref_code FROM diagnosis_results WHERE session_id = ? LIMIT 1`
       ).bind(session_id).first<any>()
-      if (diagRowBySid) resultId = diagRowBySid.id
+      if (diagRowBySid) {
+        resultId = diagRowBySid.id
+        if (diagRowBySid.ref_code) {
+          const rc: string = diagRowBySid.ref_code
+          if (rc.startsWith('B2B-') && !serverB2bCode) serverB2bCode = rc
+          else if (rc.startsWith('SC-') && !serverConsultantCode) serverConsultantCode = rc
+        }
+      }
     }
   } catch (_) {}
 
@@ -7077,9 +7107,9 @@ app.post('/api/daily-check', async (c) => {
         recovery_done    = excluded.recovery_done,
         week_number      = excluded.week_number,
         day_of_week      = excluded.day_of_week,
-        bc_code          = excluded.bc_code,
-        consultant_code  = excluded.consultant_code,
-        b2b_code         = excluded.b2b_code,
+        bc_code          = COALESCE(excluded.bc_code, daily_checks.bc_code),
+        consultant_code  = COALESCE(excluded.consultant_code, daily_checks.consultant_code),
+        b2b_code         = COALESCE(excluded.b2b_code, daily_checks.b2b_code),
         memo             = excluded.memo,
         exercise_detail  = COALESCE(excluded.exercise_detail, daily_checks.exercise_detail),
         diet_detail      = COALESCE(excluded.diet_detail,     daily_checks.diet_detail),
@@ -7089,7 +7119,7 @@ app.post('/api/daily-check', async (c) => {
         memo_diet        = COALESCE(excluded.memo_diet,       daily_checks.memo_diet),
         updated_at       = datetime('now')
     `).bind(
-      session_id, resultId, consultant_code || null, b2b_code || null, bc_code,
+      session_id, resultId, serverConsultantCode || null, serverB2bCode || null, bc_code,
       check_date, week_number || 1, day_of_week || null,
       exercise_done ? 1 : 0, diet_done ? 1 : 0, recovery_done ? 1 : 0,
       memo || null,
