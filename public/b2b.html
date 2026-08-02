@@ -738,29 +738,39 @@ function navigateTo(page) {
 // ══════════════════════════════════════════════════════════
 async function loadB2bDailyChecks(days = 7) {
   const body = document.getElementById('page-body');
-  body.innerHTML = `<div style="padding:40px;text-align:center;color:var(--muted)"><i class="fas fa-circle-notch fa-spin fa-2x"></i></div>`;
+  body.innerHTML = `<div style="padding:40px;text-align:center;color:var(--muted)"><i class="fas fa-spinner fa-spin"></i> 불러오는 중...</div>`;
 
   const data = await api('GET', `/b2b/daily-checks?days=${days}`).catch(() => null);
   const clients = (data && data.clients) || [];
 
   function bar(pct, color) {
     const p = Math.min(100, pct||0);
-    return `<div style="background:#f0ece6;border-radius:5px;height:6px;width:70px;overflow:hidden;display:inline-block;vertical-align:middle;"><div style="background:${color};width:${p}%;height:100%;border-radius:5px;"></div></div><span style="font-size:11px;font-weight:700;color:#555;margin-left:4px;">${p}%</span>`;
+    return `<div style="background:#f0ece6;border-radius:5px;height:6px;width:70px;overflow:hidden;display:inline-block"><div style="width:${p}%;height:100%;background:${color};border-radius:5px"></div></div><span style="font-size:11px;color:${color};font-weight:700;margin-left:4px">${p}%</span>`;
   }
 
   const rows = clients.map((cl, i) => {
     const rate = cl.adherence_rate || 0;
     const color = rate >= 80 ? '#5a6e3a' : rate >= 50 ? '#c98a3c' : '#b5452e';
     const daysSince = cl.last_check ? Math.floor((Date.now()-new Date(cl.last_check).getTime())/86400000) : 999;
-    const alert = daysSince >= 3 ? `<span style="color:#b5452e;font-size:11px" title="${daysSince}일 전 마지막 체크">⚠️</span>` : '';
-    return `<tr style="border-bottom:1px solid #f0ece6;">
+    const alert = daysSince >= 3 ? `<span style="color:#b5452e;font-size:11px" title="${daysSince}일 전 마지막 기록">⚠</span>` : '';
+    const lastDate = cl.last_check ? cl.last_check.slice(0,10) : '-';
+    return `<tr style="border-bottom:1px solid #f0ece6;cursor:pointer;transition:background 0.15s"
+      onmouseover="this.style.background='#fffbf3'"
+      onmouseout="this.style.background=''"
+      onclick="openDailyDetailModal('${cl.session_id||''}','${lastDate}','${(cl.user_name||'이름없음').replace(/'/g,"\\'")}')">
       <td style="padding:10px 12px;font-weight:700;font-size:13px">${cl.user_name||'이름없음'} ${alert}</td>
-      <td style="padding:10px 12px"><span style="background:#faf0dc;color:#8a5a18;border-radius:8px;padding:2px 8px;font-size:11px;font-weight:700">${cl.bc_code||'—'}</span></td>
-      <td style="padding:10px 12px;text-align:center;font-size:13px;font-weight:800;color:#5a6e3a">${cl.ex_days||0}</td>
-      <td style="padding:10px 12px;text-align:center;font-size:13px;font-weight:800;color:#c98a3c">${cl.di_days||0}</td>
-      <td style="padding:10px 12px;text-align:center;font-size:13px;font-weight:800;color:#b5452e">${cl.re_days||0}</td>
+      <td style="padding:10px 12px"><span style="background:#faf0dc;color:#8a5a18;border-radius:8px;padding:2px 8px;font-size:11px;font-weight:700">${cl.bc_code||cl.consultant_code||'-'}</span></td>
+      <td style="padding:10px 12px;text-align:center;font-size:13px;font-weight:800;color:#5a6e3a">${cl.exercise_count||0}</td>
+      <td style="padding:10px 12px;text-align:center;font-size:13px;font-weight:800;color:#c98a3c">${cl.diet_count||0}</td>
+      <td style="padding:10px 12px;text-align:center;font-size:13px;font-weight:800;color:#b5452e">${cl.recovery_count||0}</td>
       <td style="padding:10px 12px">${bar(rate, color)}</td>
-      <td style="padding:10px 12px;font-size:11px;color:#aaa">${cl.last_check ? cl.last_check.slice(0,10) : '—'}</td>
+      <td style="padding:10px 12px;font-size:11px;color:#aaa">${lastDate}</td>
+      <td style="padding:10px 12px;text-align:center">
+        <button onclick="event.stopPropagation();openDailyDetailModal('${cl.session_id||''}','${lastDate}','${(cl.user_name||'이름없음').replace(/'/g,"\\'")}');"
+          style="background:linear-gradient(135deg,#5a6e3a,#7a8f55);color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer">
+          📋 상세보기
+        </button>
+      </td>
     </tr>`;
   }).join('');
 
@@ -772,27 +782,27 @@ async function loadB2bDailyChecks(days = 7) {
   body.innerHTML = `
     <div style="padding:20px 24px">
       <div style="font-size:18px;font-weight:900;color:#241c14;margin-bottom:6px">📊 소속 고객 데일리 체크 현황</div>
-      <div style="font-size:12px;color:#aaa;margin-bottom:18px">고객이 결과지 "오늘" 탭에서 체크한 운동·식단·회복 실천 현황</div>
+      <div style="font-size:12px;color:#aaa;margin-bottom:18px">고객이 결과지 "오늘" 탭에서 체크한 운동·식단·회복 실천 현황 · 행 클릭 시 상세 내역 확인</div>
 
       <!-- 요약 -->
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px">
-        <div style="background:linear-gradient(135deg,#fdfaf4,#fff8ee);border:1.5px solid #e8c07a;border-radius:12px;padding:14px 16px">
+        <div style="background:linear-gradient(135deg,#fdfaf4,#fff8ee);border:1.5px solid #e8c07a;border-radius:12px;padding:16px">
           <div style="font-size:11px;font-weight:800;color:#8a7e66;margin-bottom:4px">체크 고객수</div>
-          <div style="font-size:26px;font-weight:900;color:#241c14">${clients.length}<span style="font-size:13px;color:#aaa;font-weight:600"> 명</span></div>
+          <div style="font-size:26px;font-weight:900;color:#241c14">${clients.length}<span style="font-size:13px;color:#aaa;margin-left:4px">명</span></div>
         </div>
-        <div style="background:linear-gradient(135deg,#eef4e0,#f3f7ea);border:1.5px solid #cdd9b0;border-radius:12px;padding:14px 16px">
+        <div style="background:linear-gradient(135deg,#eef4e0,#f3f7ea);border:1.5px solid #cdd9b0;border-radius:12px;padding:16px">
           <div style="font-size:11px;font-weight:800;color:#5a7040;margin-bottom:4px">평균 실천율</div>
-          <div style="font-size:26px;font-weight:900;color:#3f5022">${avgRate}<span style="font-size:13px;color:#aaa;font-weight:600"> %</span></div>
+          <div style="font-size:26px;font-weight:900;color:#3f5022">${avgRate}<span style="font-size:13px;color:#aaa;margin-left:2px">%</span></div>
         </div>
-        <div style="background:linear-gradient(135deg,#fdeee7,#fdf0eb);border:1.5px solid #f0c4b3;border-radius:12px;padding:14px 16px">
+        <div style="background:linear-gradient(135deg,#fdeee7,#fdf0eb);border:1.5px solid #f0c4b3;border-radius:12px;padding:16px">
           <div style="font-size:11px;font-weight:800;color:#8f321e;margin-bottom:4px">⚠️ 주의 고객</div>
-          <div style="font-size:26px;font-weight:900;color:#b5452e">${clients.filter(c => (c.last_check ? Math.floor((Date.now()-new Date(c.last_check).getTime())/86400000) : 999) >= 3).length}<span style="font-size:13px;color:#aaa;font-weight:600"> 명</span></div>
+          <div style="font-size:26px;font-weight:900;color:#b5452e">${clients.filter(c => (c.last_check ? Math.floor((Date.now()-new Date(c.last_check).getTime())/86400000) : 999) >= 3).length}<span style="font-size:13px;color:#aaa;margin-left:4px">명</span></div>
         </div>
       </div>
 
       <!-- 기간 필터 -->
       <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-        ${[3,7,14,30].map(d => `<button onclick="loadB2bDailyChecks(${d})" style="padding:6px 16px;border-radius:20px;border:1.5px solid ${days===d?'var(--sm-green)':'#e0d8cc'};background:${days===d?'var(--sm-green,#5a6e3a)':'transparent'};color:${days===d?'#fff':'#555'};font-size:12px;font-weight:800;cursor:pointer">${d}일</button>`).join('')}
+        ${[3,7,14,30].map(d => `<button onclick="loadB2bDailyChecks(${d})" style="padding:6px 16px;border-radius:20px;border:1.5px solid ${d===days?'#5a6e3a':'#e0d9d0'};background:${d===days?'#5a6e3a':'#fff'};color:${d===days?'#fff':'#8a7e66'};font-size:12px;font-weight:700;cursor:pointer">${d}일</button>`).join('')}
       </div>
 
       <!-- 테이블 -->
@@ -801,22 +811,256 @@ async function loadB2bDailyChecks(days = 7) {
           <thead>
             <tr style="background:linear-gradient(135deg,#fdfaf4,#fff8ee)">
               <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:800;color:#8a7e66">고객명</th>
-              <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:800;color:#8a7e66">BC</th>
-              <th style="padding:10px 12px;text-align:center;font-size:11px;font-weight:800;color:#5a6e3a">🏃운동</th>
-              <th style="padding:10px 12px;text-align:center;font-size:11px;font-weight:800;color:#c98a3c">🍽식단</th>
-              <th style="padding:10px 12px;text-align:center;font-size:11px;font-weight:800;color:#b5452e">🌙회복</th>
+              <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:800;color:#8a7e66">담당</th>
+              <th style="padding:10px 12px;text-align:center;font-size:11px;font-weight:800;color:#5a6e3a">🏃 운동</th>
+              <th style="padding:10px 12px;text-align:center;font-size:11px;font-weight:800;color:#c98a3c">🥗 식단</th>
+              <th style="padding:10px 12px;text-align:center;font-size:11px;font-weight:800;color:#b5452e">💤 회복</th>
               <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:800;color:#8a7e66">실천율</th>
-              <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:800;color:#8a7e66">마지막</th>
+              <th style="padding:10px 12px;text-align:left;font-size:11px;font-weight:800;color:#8a7e66">최근 기록</th>
+              <th style="padding:10px 12px;text-align:center;font-size:11px;font-weight:800;color:#8a7e66">상세</th>
             </tr>
           </thead>
           <tbody>
-            ${rows || `<tr><td colspan="7" style="padding:40px;text-align:center;color:#aaa;font-size:13px">아직 체크 데이터가 없습니다<br><span style="font-size:11px">고객이 결과지 "오늘" 탭에서 체크하면 여기에 표시됩니다</span></td></tr>`}
+            ${rows || `<tr><td colspan="8" style="padding:40px;text-align:center;color:#aaa;font-size:13px">아직 데일리 체크 데이터가 없습니다</td></tr>`}
           </tbody>
         </table>
       </div>
     </div>
   `;
 }
+
+// ══════════════════════════════════════════════════════════
+//  데일리 체크 상세 보기 모달 (Task 1 + Task 2 피드백)
+// ══════════════════════════════════════════════════════════
+async function openDailyDetailModal(session_id, date, user_name) {
+  if (!session_id) { _b2bToast('session_id가 없습니다', '#b5452e'); return; }
+
+  // 오버레이 생성
+  let overlay = document.getElementById('daily-detail-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'daily-detail-overlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box';
+    overlay.onclick = function(e){ if(e.target===this) closeDailyDetailModal(); };
+    document.body.appendChild(overlay);
+  }
+
+  overlay.innerHTML = `<div style="background:#fff;border-radius:20px;max-width:700px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+    <div style="padding:20px 24px;border-bottom:1.5px solid #f0ece6;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:1;border-radius:20px 20px 0 0">
+      <div>
+        <div style="font-size:16px;font-weight:900;color:#241c14">📋 ${user_name} 데일리 체크 상세</div>
+        <div style="font-size:11px;color:#aaa;margin-top:2px">${date} 기준</div>
+      </div>
+      <button onclick="closeDailyDetailModal()" style="background:#f5f0ea;border:none;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer;color:#8a7e66">✕</button>
+    </div>
+    <div id="daily-detail-body" style="padding:20px 24px">
+      <div style="text-align:center;padding:40px;color:#aaa"><i class="fas fa-spinner fa-spin"></i> 불러오는 중...</div>
+    </div>
+  </div>`;
+  overlay.style.display = 'flex';
+
+  // API 호출
+  const data = await api('GET', `/b2b/daily-check/detail?session_id=${encodeURIComponent(session_id)}&date=${encodeURIComponent(date)}`).catch(e => ({error: e.message}));
+  const detailBody = document.getElementById('daily-detail-body');
+  if (!detailBody) return;
+
+  if (data && data.error) {
+    detailBody.innerHTML = `<div style="text-align:center;padding:40px;color:#b5452e">❌ 데이터 로드 실패: ${data.error}</div>`;
+    return;
+  }
+
+  const dc = data && data.check;
+  const customer = data && data.customer;
+  const history = (data && data.history) || [];
+  const feedbacks = (data && data.feedbacks) || [];
+
+  // ─── 운동 상세
+  let exerciseHtml = '<div style="color:#aaa;font-size:12px">기록 없음</div>';
+  if (dc && dc.exercise_detail) {
+    try {
+      const ex = typeof dc.exercise_detail === 'string' ? JSON.parse(dc.exercise_detail) : dc.exercise_detail;
+      if (Array.isArray(ex) && ex.length > 0) {
+        exerciseHtml = ex.map(e => `
+          <div style="background:#f3f7ea;border-radius:10px;padding:10px 14px;margin-bottom:8px">
+            <div style="font-weight:800;color:#3f5022;font-size:13px">🏃 ${e.name || e.type || '운동'}</div>
+            ${e.duration ? `<div style="font-size:12px;color:#5a7040;margin-top:3px">⏱ ${e.duration}분</div>` : ''}
+            ${e.kcal ? `<div style="font-size:12px;color:#5a7040">🔥 ${e.kcal} kcal 소모</div>` : ''}
+            ${e.sets ? `<div style="font-size:12px;color:#5a7040">세트: ${e.sets}</div>` : ''}
+          </div>`).join('');
+      }
+    } catch(e) {}
+  }
+  if (dc && dc.memo_exercise) {
+    exerciseHtml += `<div style="font-size:12px;color:#5a7040;margin-top:6px;padding:8px;background:#eef4e0;border-radius:8px">📝 ${dc.memo_exercise}</div>`;
+  }
+
+  // ─── 식단 상세
+  let dietHtml = '<div style="color:#aaa;font-size:12px">기록 없음</div>';
+  if (dc && dc.diet_detail) {
+    try {
+      const dt = typeof dc.diet_detail === 'string' ? JSON.parse(dc.diet_detail) : dc.diet_detail;
+      if (Array.isArray(dt) && dt.length > 0) {
+        const totalKcal = dt.reduce((s,d)=> s + ((d.kcal||0)*(d.qty||1)), 0);
+        dietHtml = dt.map(d => `
+          <div style="background:#fff8ee;border-radius:10px;padding:10px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-weight:800;color:#6b4c1e;font-size:13px">🥗 ${d.name || d.food || '음식'}</div>
+              ${d.qty ? `<div style="font-size:11px;color:#8a5a18;margin-top:2px">${d.qty}인분</div>` : ''}
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:13px;font-weight:800;color:#c98a3c">${((d.kcal||0)*(d.qty||1)).toLocaleString()} kcal</div>
+              ${d.kcal ? `<div style="font-size:10px;color:#aaa">단위: ${d.kcal} kcal</div>` : ''}
+            </div>
+          </div>`).join('') +
+          `<div style="background:#faf0dc;border-radius:8px;padding:8px 14px;font-weight:800;color:#8a5a18;font-size:13px;text-align:right">총 섭취 칼로리: ${totalKcal.toLocaleString()} kcal</div>`;
+      }
+    } catch(e) {}
+  }
+  if (dc && dc.memo_diet) {
+    dietHtml += `<div style="font-size:12px;color:#8a5a18;margin-top:6px;padding:8px;background:#fff8ee;border-radius:8px">📝 ${dc.memo_diet}</div>`;
+  }
+
+  // ─── 고객 메모 (customer_memo)
+  const customerMemoHtml = (dc && dc.customer_memo)
+    ? `<div style="background:#e8f4fd;border:1.5px solid #90c8f0;border-radius:12px;padding:12px 16px;margin-top:4px">
+        <div style="font-size:11px;font-weight:800;color:#1a6fa0;margin-bottom:4px">💬 고객 질문/메모</div>
+        <div style="font-size:13px;color:#1a3c5e">${dc.customer_memo}</div>
+       </div>`
+    : `<div style="color:#aaa;font-size:12px">질문 없음</div>`;
+
+  // ─── 14일 히스토리 미니 차트
+  const historyHtml = history.length > 0 ? history.slice(0,14).map(h => {
+    const exDone = h.exercise_done ? '🟢' : '⭕';
+    const dtDone = h.diet_done ? '🟢' : '⭕';
+    const rcDone = h.recovery_done ? '🟢' : '⭕';
+    return `<div style="display:flex;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid #f5f0ea;font-size:12px">
+      <div style="min-width:80px;color:#8a7e66">${h.check_date}</div>
+      <div title="운동">${exDone}</div>
+      <div title="식단">${dtDone}</div>
+      <div title="회복">${rcDone}</div>
+      ${h.customer_memo ? `<div style="color:#1a6fa0;font-size:11px;flex:1" title="고객메모">💬 ${h.customer_memo.slice(0,30)}${h.customer_memo.length>30?'...':''}</div>` : ''}
+    </div>`;
+  }).join('') : '<div style="color:#aaa;font-size:12px">기록 없음</div>';
+
+  // ─── 피드백 이력
+  const feedbackHistoryHtml = feedbacks.length > 0
+    ? feedbacks.map(fb => `
+        <div style="background:#f0f7ff;border-radius:10px;padding:10px 14px;margin-bottom:6px;border-left:3px solid #4a90d9">
+          <div style="font-size:12px;color:#333">${fb.content}</div>
+          <div style="font-size:10px;color:#aaa;margin-top:4px">${fb.created_at ? fb.created_at.slice(0,16) : ''} · ${fb.is_read ? '✅ 읽음' : '📩 미읽음'}</div>
+        </div>`).join('')
+    : '<div style="color:#aaa;font-size:12px;padding:8px 0">전송한 피드백이 없습니다</div>';
+
+  detailBody.innerHTML = `
+    <!-- 고객 기본정보 -->
+    <div style="background:linear-gradient(135deg,#fdfaf4,#fff8ee);border-radius:12px;padding:14px 16px;margin-bottom:16px;border:1.5px solid #e8c07a">
+      <div style="font-size:13px;font-weight:800;color:#241c14">${customer && customer.user_name ? customer.user_name : user_name}</div>
+      ${customer && customer.ref_code ? `<div style="font-size:11px;color:#8a7e66;margin-top:2px">코드: ${customer.ref_code}</div>` : ''}
+      ${dc ? `<div style="display:flex;gap:16px;margin-top:8px;font-size:12px">
+        <span style="color:#5a6e3a;font-weight:700">🏃 운동 ${dc.exercise_done?'✅':'⭕'}</span>
+        <span style="color:#c98a3c;font-weight:700">🥗 식단 ${dc.diet_done?'✅':'⭕'}</span>
+        <span style="color:#b5452e;font-weight:700">💤 회복 ${dc.recovery_done?'✅':'⭕'}</span>
+        ${dc.total_kcal_in ? `<span style="color:#8a5a18">📊 섭취 ${dc.total_kcal_in} kcal</span>` : ''}
+        ${dc.total_kcal_out ? `<span style="color:#5a7040">🔥 소모 ${dc.total_kcal_out} kcal</span>` : ''}
+      </div>` : ''}
+    </div>
+
+    <!-- 탭 -->
+    <div style="display:flex;gap:8px;margin-bottom:16px;border-bottom:2px solid #f0ece6;padding-bottom:0">
+      ${['exercise','diet','memo','history','feedback'].map((tab,i) => {
+        const labels = ['🏃 운동','🥗 식단','💬 메모/질문','📅 14일 히스토리','✉️ 피드백'];
+        return `<button onclick="switchDetailTab('${tab}')" id="dtab-${tab}"
+          style="padding:8px 14px;border:none;border-bottom:3px solid ${i===0?'#5a6e3a':'transparent'};background:transparent;font-size:12px;font-weight:700;color:${i===0?'#5a6e3a':'#8a7e66'};cursor:pointer;white-space:nowrap">${labels[i]}</button>`;
+      }).join('')}
+    </div>
+
+    <div id="detail-tab-exercise" class="detail-tab">${exerciseHtml}</div>
+    <div id="detail-tab-diet" class="detail-tab" style="display:none">${dietHtml}</div>
+    <div id="detail-tab-memo" class="detail-tab" style="display:none">${customerMemoHtml}</div>
+    <div id="detail-tab-history" class="detail-tab" style="display:none">
+      <div style="font-size:11px;color:#8a7e66;margin-bottom:8px;font-weight:700">최근 14일 (운동🟢/식단🟢/회복🟢)</div>
+      ${historyHtml}
+    </div>
+    <div id="detail-tab-feedback" class="detail-tab" style="display:none">
+      <div style="font-size:12px;font-weight:800;color:#241c14;margin-bottom:10px">✉️ 피드백 전송 이력</div>
+      ${feedbackHistoryHtml}
+
+      <!-- 피드백 작성 폼 -->
+      <div style="margin-top:16px;background:#f8f4ee;border-radius:12px;padding:16px;border:1.5px solid #e8ddd0">
+        <div style="font-size:12px;font-weight:800;color:#241c14;margin-bottom:8px">📝 새 피드백 전송</div>
+        <textarea id="feedback-content-input" rows="3" placeholder="고객에게 보낼 응원/피드백 메시지를 입력하세요..."
+          style="width:100%;border:1.5px solid #e0d9d0;border-radius:8px;padding:10px;font-size:12px;resize:vertical;box-sizing:border-box;font-family:inherit"></textarea>
+        <div style="display:flex;justify-content:flex-end;margin-top:8px">
+          <button onclick="sendConsultantFeedback('${session_id}','${user_name.replace(/'/g,"\\'")}')"
+            style="background:linear-gradient(135deg,#4a90d9,#5ba3e8);color:#fff;border:none;border-radius:10px;padding:8px 20px;font-size:12px;font-weight:800;cursor:pointer">
+            💌 피드백 전송
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function switchDetailTab(tab) {
+  ['exercise','diet','memo','history','feedback'].forEach(t => {
+    const el = document.getElementById('detail-tab-' + t);
+    const btn = document.getElementById('dtab-' + t);
+    if (el) el.style.display = t === tab ? 'block' : 'none';
+    if (btn) {
+      btn.style.borderBottomColor = t === tab ? '#5a6e3a' : 'transparent';
+      btn.style.color = t === tab ? '#5a6e3a' : '#8a7e66';
+    }
+  });
+}
+
+function closeDailyDetailModal() {
+  const overlay = document.getElementById('daily-detail-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+async function sendConsultantFeedback(session_id, user_name) {
+  const inp = document.getElementById('feedback-content-input');
+  if (!inp) return;
+  const content = inp.value.trim();
+  if (!content) { _b2bToast('피드백 내용을 입력해주세요', '#c98a3c'); return; }
+
+  const btn = document.querySelector('#daily-detail-overlay button[onclick*="sendConsultantFeedback"]');
+  if (btn) { btn.disabled = true; btn.textContent = '전송 중...'; }
+
+  const res = await api('POST', '/b2b/feedback', { session_id, content }).catch(e => ({ error: e.message }));
+
+  if (btn) { btn.disabled = false; btn.innerHTML = '💌 피드백 전송'; }
+
+  if (res && !res.error) {
+    inp.value = '';
+    _b2bToast(`✅ ${user_name}님께 피드백을 전송했습니다!`, '#5a6e3a');
+    // 모달 피드백 탭 새로고침
+    const lastDate = document.querySelector('#daily-detail-overlay .detail-tab')?.dataset?.date || new Date().toISOString().slice(0,10);
+    setTimeout(() => openDailyDetailModal(session_id, lastDate, user_name), 800);
+  } else {
+    _b2bToast('❌ 전송 실패: ' + (res && res.error ? res.error : '알 수 없는 오류'), '#b5452e');
+  }
+}
+
+function _b2bToast(msg, color = '#5a6e3a') {
+  let toast = document.getElementById('b2b-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'b2b-toast';
+    toast.style.cssText = 'position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(60px);background:#241c14;color:#fff;padding:12px 24px;border-radius:30px;font-size:13px;font-weight:700;z-index:99999;opacity:0;transition:all 0.3s ease;white-space:nowrap;max-width:90vw;text-align:center';
+    document.body.appendChild(toast);
+  }
+  toast.style.background = color;
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  toast.style.transform = 'translateX(-50%) translateY(0)';
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(-50%) translateY(60px)';
+  }, 3200);
+}
+
 
 // ═══════════════════════════════════════
 //  B2B 바디코드 도감 (파트너 힌트 포함)

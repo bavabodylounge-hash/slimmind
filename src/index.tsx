@@ -7068,7 +7068,8 @@ app.post('/api/daily-check', async (c) => {
     total_kcal_out = null,   // 운동 소모 칼로리 합계
     total_kcal_in = null,    // 식단 섭취 칼로리 합계
     memo_exercise = null,    // 운동 자유 메모
-    memo_diet = null         // 식단 자유 메모
+    memo_diet = null,        // 식단 자유 메모
+    customer_memo = null     // ✅ V4.9: 고객 질문/메모
   } = body
 
   if (!session_id || !check_date) {
@@ -7137,9 +7138,9 @@ app.post('/api/daily-check', async (c) => {
          check_date, week_number, day_of_week,
          exercise_done, diet_done, recovery_done, memo,
          exercise_detail, diet_detail, total_kcal_out, total_kcal_in,
-         memo_exercise, memo_diet,
+         memo_exercise, memo_diet, customer_memo,
          updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
       ON CONFLICT (session_id, check_date) DO UPDATE SET
         exercise_done    = excluded.exercise_done,
         diet_done        = excluded.diet_done,
@@ -7156,6 +7157,7 @@ app.post('/api/daily-check', async (c) => {
         total_kcal_in    = COALESCE(excluded.total_kcal_in,   daily_checks.total_kcal_in),
         memo_exercise    = COALESCE(excluded.memo_exercise,   daily_checks.memo_exercise),
         memo_diet        = COALESCE(excluded.memo_diet,       daily_checks.memo_diet),
+        customer_memo    = COALESCE(excluded.customer_memo,   daily_checks.customer_memo),
         updated_at       = datetime('now')
     `).bind(
       session_id, resultId, serverConsultantCode || null, serverB2bCode || null, bc_code,
@@ -7167,7 +7169,8 @@ app.post('/api/daily-check', async (c) => {
       total_kcal_out  ?? null,
       total_kcal_in   ?? null,
       memo_exercise   || null,
-      memo_diet       || null
+      memo_diet       || null,
+      customer_memo   || null
     ).run()
 
     // ── 자동 트리거: 3일 연속 미체크 감지 ─────────────────────
@@ -7557,6 +7560,188 @@ app.get('/api/b2b/daily-checks', requireRole('ANY'), async (c) => {
     })
   } catch (e: any) {
     return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ══════════════════════════════════════════════════════════════════
+//  GET /api/b2b/daily-check/detail  — B2B 파트너: 특정 고객 특정 날짜 상세 내역
+//  query: session_id, date (YYYY-MM-DD, 생략 시 오늘)
+// ══════════════════════════════════════════════════════════════════
+app.get('/api/b2b/daily-check/detail', requireRole('ANY'), async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not available' }, 503)
+
+  const user = (c as any).get('user')
+  const myCode = user?.code || ''
+  const session_id = c.req.query('session_id') || ''
+  const date = c.req.query('date') || new Date().toISOString().slice(0, 10)
+
+  if (!session_id) return c.json({ error: 'session_id required' }, 400)
+
+  try {
+    // 소속 검증: 해당 세션이 이 B2B 파트너 소속인지 확인
+    const ownership = await db.prepare(`
+      SELECT session_id FROM daily_checks
+      WHERE session_id = ? AND b2b_code = ? LIMIT 1
+    `).bind(session_id, myCode).first<any>()
+    if (!ownership) return c.json({ error: '권한 없음 또는 데이터 없음' }, 403)
+
+    // 고객 정보
+    const userInfo = await db.prepare(`
+      SELECT user_name, bc_code FROM diagnosis_results
+      WHERE id = ? OR session_id = ? LIMIT 1
+    `).bind(session_id, session_id).first<any>()
+
+    // 특정 날짜 체크 상세
+    const check = await db.prepare(`
+      SELECT check_date, week_number, exercise_done, diet_done, recovery_done,
+             exercise_detail, diet_detail, total_kcal_out, total_kcal_in,
+             memo_exercise, memo_diet, customer_memo, updated_at
+      FROM daily_checks
+      WHERE session_id = ? AND check_date = ? LIMIT 1
+    `).bind(session_id, date).first<any>()
+
+    // 최근 7일 체크 히스토리
+    const history = await db.prepare(`
+      SELECT check_date, exercise_done, diet_done, recovery_done,
+             total_kcal_out, total_kcal_in
+      FROM daily_checks
+      WHERE session_id = ?
+      ORDER BY check_date DESC LIMIT 14
+    `).bind(session_id).all<any>()
+
+    // 해당 고객에게 보낸 피드백 목록
+    const feedbacks = await db.prepare(`
+      SELECT id, content, created_at, is_read
+      FROM consultant_feedbacks
+      WHERE session_id = ? AND b2b_code = ?
+      ORDER BY created_at DESC LIMIT 10
+    `).bind(session_id, myCode).all<any>()
+
+    return c.json({
+      ok: true,
+      session_id,
+      date,
+      user_name: userInfo?.user_name || '이름없음',
+      bc_code: userInfo?.bc_code || check?.bc_code || 'BC-1',
+      check: check ? {
+        ...check,
+        exercise_detail: check.exercise_detail ? JSON.parse(check.exercise_detail) : [],
+        diet_detail: check.diet_detail ? JSON.parse(check.diet_detail) : [],
+      } : null,
+      history: history.results || [],
+      feedbacks: feedbacks.results || [],
+    })
+  } catch (e: any) {
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ══════════════════════════════════════════════════════════════════
+//  POST /api/b2b/feedback  — 컨설턴트 → 고객 피드백 전송
+//  body: { session_id, content }
+// ══════════════════════════════════════════════════════════════════
+app.post('/api/b2b/feedback', requireRole('ANY'), async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not available' }, 503)
+
+  const user = (c as any).get('user')
+  const myCode = user?.code || ''
+
+  try {
+    // consultant_feedbacks 테이블 자동 생성 (없으면)
+    await db.prepare(`
+      CREATE TABLE IF NOT EXISTS consultant_feedbacks (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id   TEXT NOT NULL,
+        b2b_code     TEXT NOT NULL,
+        content      TEXT NOT NULL,
+        is_read      INTEGER NOT NULL DEFAULT 0,
+        created_at   DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run()
+
+    const { session_id, content } = await c.req.json() as any
+    if (!session_id || !content?.trim()) {
+      return c.json({ error: 'session_id, content 필수' }, 400)
+    }
+
+    // 소속 검증
+    const ownership = await db.prepare(`
+      SELECT session_id FROM daily_checks
+      WHERE session_id = ? AND b2b_code = ? LIMIT 1
+    `).bind(session_id, myCode).first<any>()
+    if (!ownership) return c.json({ error: '권한 없음' }, 403)
+
+    await db.prepare(`
+      INSERT INTO consultant_feedbacks (session_id, b2b_code, content)
+      VALUES (?, ?, ?)
+    `).bind(session_id, myCode, content.trim()).run()
+
+    return c.json({ ok: true })
+  } catch (e: any) {
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ══════════════════════════════════════════════════════════════════
+//  GET /api/feedback  — 고객: 내 피드백 조회 (결과지 알림배너용)
+//  query: session_id
+// ══════════════════════════════════════════════════════════════════
+app.get('/api/feedback', async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not available' }, 503)
+
+  const session_id = c.req.query('session_id') || ''
+  if (!session_id) return c.json({ error: 'session_id required' }, 400)
+
+  try {
+    // 테이블 없으면 0건 반환
+    const feedbacks = await db.prepare(`
+      SELECT id, content, created_at, is_read
+      FROM consultant_feedbacks
+      WHERE session_id = ?
+      ORDER BY created_at DESC LIMIT 20
+    `).bind(session_id).all<any>().catch(() => ({ results: [] }))
+
+    const unread = (feedbacks.results || []).filter((f: any) => !f.is_read).length
+    return c.json({
+      ok: true,
+      feedbacks: feedbacks.results || [],
+      unread_count: unread
+    })
+  } catch (e: any) {
+    // 테이블 미존재 등 에러 시 빈 결과
+    return c.json({ ok: true, feedbacks: [], unread_count: 0 })
+  }
+})
+
+// ══════════════════════════════════════════════════════════════════
+//  POST /api/feedback/read  — 고객: 피드백 읽음 처리
+//  body: { session_id, feedback_id? }  (id 없으면 전체 읽음)
+// ══════════════════════════════════════════════════════════════════
+app.post('/api/feedback/read', async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not available' }, 503)
+
+  try {
+    const { session_id, feedback_id } = await c.req.json() as any
+    if (!session_id) return c.json({ error: 'session_id required' }, 400)
+
+    if (feedback_id) {
+      await db.prepare(`
+        UPDATE consultant_feedbacks SET is_read = 1
+        WHERE id = ? AND session_id = ?
+      `).bind(feedback_id, session_id).run().catch(() => {})
+    } else {
+      await db.prepare(`
+        UPDATE consultant_feedbacks SET is_read = 1
+        WHERE session_id = ?
+      `).bind(session_id).run().catch(() => {})
+    }
+    return c.json({ ok: true })
+  } catch (e: any) {
+    return c.json({ ok: true }) // 테이블 없어도 ok 반환
   }
 })
 
@@ -9208,13 +9393,14 @@ async function handleCron(event: ScheduledEvent, env: any): Promise<void> {
   if (!db) { console.error('[cron] DB 없음'); return }
 
   const cron  = event.cron  // Cloudflare UTC 기준 cron 문자열
-  // UTC 크론: "30 23 * * *"=KST 08:30(morning), "30 3 * * *"=KST 12:30(lunch), "30 10 * * *"=KST 19:30(evening)
-  // KST 09:00 = UTC 00:00 → "0 0 * * *"
-  // KST 12:00 = UTC 03:00 → "0 3 * * *"
-  // KST 18:00 = UTC 09:00 → "0 9 * * *"
+  // wrangler.jsonc Cron 정의 (UTC 기준):
+  //   "30 23 * * *" → KST 08:30 (아침)
+  //   "30 3 * * *"  → KST 12:30 (점심)
+  //   "30 10 * * *" → KST 19:30 (저녁)
+  // KST = UTC+9, 따라서 저녁은 UTC 10시 = "30 10"으로 분기
   let msgKey: keyof typeof PUSH_MESSAGES = 'morning'
-  if (cron.includes('3 ') || cron.startsWith('0 3'))  msgKey = 'lunch'
-  else if (cron.includes('9 ') || cron.startsWith('0 9')) msgKey = 'evening'
+  if (cron === '30 3 * * *'  || cron.startsWith('0 3'))  msgKey = 'lunch'
+  else if (cron === '30 10 * * *' || cron.startsWith('0 10')) msgKey = 'evening'
 
   const msg = PUSH_MESSAGES[msgKey]
   const payload = JSON.stringify({
