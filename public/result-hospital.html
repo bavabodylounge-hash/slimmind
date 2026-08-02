@@ -21354,6 +21354,79 @@ function _loadFoodCalorieLog(){
 function _saveFoodCalorieLog(){ try{ localStorage.setItem(_foodStorageKey(), JSON.stringify(_foodCalorieLog)); }catch(e){} }
 try { _loadFoodCalorieLog(); } catch(e){}
 
+// ════════ 오늘 탭 기록 → 서버 DB 동기화 헬퍼 ════════
+// mealSendAll() / excalSendAll() 완료 시 호출
+// diet_detail / exercise_detail 상세 데이터를 포함해 POST /api/daily-check 전송
+function _syncDailyCheckDB(opts){
+  try {
+    // session_id 수집 (window.__HOSPITAL_RESULT_ID__ 최우선)
+    var _sid = window.__HOSPITAL_RESULT_ID__
+            || (location.pathname.match(/\/result-hospital\/([^/?#]+)/) || [])[1]
+            || new URLSearchParams(location.search).get('id')
+            || new URLSearchParams(location.search).get('hid')
+            || '';
+    if (!_sid || _sid === 'local') return; // ID 없으면 skip
+
+    // meta에서 ref_code / b2b_code 수집
+    var _meta = {};
+    try {
+      // slimmind_meta_ 키에서 가장 최근 저장본 탐색
+      var _rawMeta = localStorage.getItem('slimmind_meta_' + _sid);
+      if (!_rawMeta) {
+        // 키에 sid가 없는 경우 전체 탐색
+        for (var _i = 0; _i < localStorage.length; _i++) {
+          var _k = localStorage.key(_i);
+          if (_k && _k.startsWith('slimmind_meta_')) { _rawMeta = localStorage.getItem(_k); break; }
+        }
+      }
+      if (_rawMeta) _meta = JSON.parse(_rawMeta);
+    } catch(_) {}
+
+    var _refCode = _meta.ref_code || _meta.consultant_code
+                || (window.__RESULT__ && window.__RESULT__.ref_code)
+                || (window.__DIAG_DATA__ && window.__DIAG_DATA__.ref_code)
+                || null;
+    var _b2bCode = _meta.b2b_code
+                || (window.__RESULT__ && window.__RESULT__.b2b_code)
+                || (window.__DIAG_DATA__ && window.__DIAG_DATA__.b2b_code)
+                || null;
+    var _bcCode  = _meta.bcCode || _meta.bc_primary
+                || (window.__RESULT__ && (window.__RESULT__.bc_code || window.__RESULT__.bc_primary))
+                || (window.__DIAG_DATA__ && (window.__DIAG_DATA__.bc_code || window.__DIAG_DATA__.bc_primary))
+                || 'BC-6';
+
+    var now = new Date();
+    var checkDate = now.getFullYear() + '-'
+      + String(now.getMonth()+1).padStart(2,'0') + '-'
+      + String(now.getDate()).padStart(2,'0');
+
+    var payload = {
+      session_id:       _sid,
+      check_date:       checkDate,
+      week_number:      opts.wk || 1,
+      bc_code:          _bcCode,
+      consultant_code:  _refCode,
+      b2b_code:         _b2bCode,
+      exercise_done:    opts.exercise_done  || 0,
+      diet_done:        opts.diet_done      || 0,
+      recovery_done:    opts.recovery_done  || 0,
+      exercise_detail:  opts.exercise_detail || null,
+      diet_detail:      opts.diet_detail     || null,
+      total_kcal_out:   opts.total_kcal_out  || null,
+      total_kcal_in:    opts.total_kcal_in   || null,
+    };
+
+    fetch('/api/daily-check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(function(r){ return r.json(); })
+      .then(function(j){ if(!j.ok) console.warn('[daily-check sync] server err:', j); })
+      .catch(function(e){ console.warn('[daily-check sync]', e); });
+
+  } catch(e){ console.warn('[_syncDailyCheckDB]', e); }
+}
+
 // 음식 선택 시트 열기
 function closeFoodModal(){ var ov=document.getElementById('food-cal-modal'); if(ov) ov.classList.remove('show'); }
 function filterFood(q){
@@ -21582,7 +21655,13 @@ function mealSendAll(){
       '</div>';
     ov.classList.add('show');
   }
-
+  // ── 서버 DB 동기화: 식단 상세 포함 POST /api/daily-check ──
+  _syncDailyCheckDB({
+    wk: parseInt(String(wk).replace(/\D/g,''),10) || 1,
+    diet_done: 1,
+    diet_detail: pend.map(function(p){ return {nm:p.nm, kcal:p.kcal, amt:p.amt, unit:p.unit, meal:window.__foodMealName__||''}; }),
+    total_kcal_in: totalK
+  });
 }
 
 // ✕ 전체 취소
@@ -22277,6 +22356,13 @@ function excalSendAll(){
       '</div>';
     ov.classList.add('show');
   }
+  // ── 서버 DB 동기화: 운동 상세 포함 POST /api/daily-check ──
+  _syncDailyCheckDB({
+    wk: parseInt(String(wk).replace(/\D/g,''),10) || 1,
+    exercise_done: 1,
+    exercise_detail: pend.map(function(p){ return {nm:p.nm, min:p.min, kcal:p.kcal}; }),
+    total_kcal_out: totalK
+  });
 }
 
 // ✕ 전체 취소 (담던 거 지움)

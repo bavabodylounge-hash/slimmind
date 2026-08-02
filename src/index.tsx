@@ -7456,6 +7456,8 @@ app.get('/api/b2b/daily-checks', requireRole('ANY'), async (c) => {
   const myCode = user?.code || ''
   const days = parseInt(c.req.query('days') || '7', 10)
 
+  // days 범위 제한 (보안)
+  const safeDays = Math.min(Math.max(1, days), 90)
   try {
     const rows = await db.prepare(`
       SELECT
@@ -7472,11 +7474,11 @@ app.get('/api/b2b/daily-checks', requireRole('ANY'), async (c) => {
       FROM daily_checks dc
       LEFT JOIN diagnosis_results dr ON (dr.id = dc.session_id OR dr.session_id = dc.session_id)
       WHERE dc.b2b_code = ?
-        AND dc.check_date >= date('now', '-${days} days')
+        AND dc.check_date >= date('now', '-' || ? || ' days')
       GROUP BY dc.session_id
       ORDER BY last_check DESC
       LIMIT 100
-    `).bind(myCode).all<any>()
+    `).bind(myCode, safeDays).all<any>()
 
     return c.json({
       ok: true,

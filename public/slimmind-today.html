@@ -1601,10 +1601,27 @@ function syncDailyCheckToDB(){
     var reDone = (CHECKS[reId] && CHECKS[reId].s === 'did') ? 1 : 0;
 
     // meta에서 ref_code(consultant_code), b2b_code 추출
+    // META가 null이거나 b2b_code 없으면 localStorage 전체 탐색으로 fallback
     var _meta = META || {};
     var _refCode  = _meta.ref_code  || _meta.consultant_code || null;
     var _b2bCode  = _meta.b2b_code  || null;
     var _bcCode   = BC_CODE || _meta.bcCode || _meta.bc_primary || 'BC-6';
+    // ── fallback: META 로드 실패 시 localStorage 전체 slimmind_meta_ 탐색
+    if (!_b2bCode || !_refCode) {
+      try {
+        for (var _fi = 0; _fi < localStorage.length; _fi++) {
+          var _fk = localStorage.key(_fi);
+          if (_fk && _fk.startsWith('slimmind_meta_')) {
+            var _fm = JSON.parse(localStorage.getItem(_fk) || '{}');
+            if (!_b2bCode && _fm.b2b_code)  _b2bCode = _fm.b2b_code;
+            if (!_refCode && (_fm.ref_code || _fm.consultant_code))
+              _refCode = _fm.ref_code || _fm.consultant_code;
+            if (!_bcCode || _bcCode === 'BC-6') _bcCode = _fm.bcCode || _fm.bc_primary || _bcCode;
+            if (_b2bCode && _refCode) break;
+          }
+        }
+      } catch(_) {}
+    }
 
     var payload = {
       session_id:       _sid,
