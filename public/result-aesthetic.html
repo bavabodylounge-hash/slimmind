@@ -25362,6 +25362,7 @@ function renderPersonalizationLayer(data, axisScores, answers, bcCode, ohaengTyp
     }
 
     // ── [P6] 로드맵 주차별 수면·스트레스·활동 개인화 배너 주입 ──
+    // ★ 실제 렌더 타겟: p10-accordion 내 .ja-week[data-week="n"]
     (function() {
       try {
         var hasSleep    = (sleep_hours !== null && sleep_hours <= 1);
@@ -25385,7 +25386,7 @@ function renderPersonalizationLayer(data, axisScores, answers, bcCode, ohaengTyp
             '.p6-personal-banner{',
             '  background:linear-gradient(135deg,rgba(178,112,130,.08),rgba(140,80,100,.04));',
             '  border:1.5px solid rgba(178,112,130,.3);',
-            '  border-radius:14px;padding:14px 16px;margin:0 0 18px 0;',
+            '  border-radius:14px;padding:14px 16px;margin:0 0 14px 0;',
             '}',
             '.p6-personal-banner-title{',
             '  font-size:13px;font-weight:700;color:#b27082;',
@@ -25422,50 +25423,60 @@ function renderPersonalizationLayer(data, axisScores, answers, bcCode, ohaengTyp
         });
         bannerHtml += '</div>';
 
-        var panel1 = document.getElementById('p6-panel-1');
-        if (panel1) {
-          var weekCard1 = panel1.querySelector('.week-card');
-          if (weekCard1) weekCard1.insertAdjacentHTML('beforebegin', bannerHtml);
-          else panel1.insertAdjacentHTML('afterbegin', bannerHtml);
-        }
+        var _snapHasSleep   = hasSleep;
+        var _snapHasStress  = hasStress;
+        var _snapBannerHtml = bannerHtml;
 
-        if (hasSleep) {
-          var panel2 = document.getElementById('p6-panel-2');
-          if (panel2) {
-            var sleepMiniHtml = '<div class="p6-personal-banner" style="border-color:rgba(33,101,192,.25);background:rgba(21,101,192,.05);">'
-              + '<div class="p6-personal-banner-title" style="color:#1565c0;">'
-              + '  <span style="font-size:16px;">😴</span><span>2주차 수면 미션 지속</span>'
-              + '</div>'
-              + '<div class="p6-personal-banner-item">'
-              + '<div class="p6-pb-icon">🌙</div>'
-              + '<div>'
-              + '  <div class="p6-pb-label" style="color:#1565c0;background:rgba(21,101,192,.1);">수면 루틴 강화</div>'
-              + '  <div class="p6-pb-desc">취침 전 마그네슘(견과류·다크초콜릿) 섭취 + 취침 시간 30분 앞당기기</div>'
-              + '</div></div></div>';
-            var weekCard2 = panel2.querySelector('.week-card');
-            if (weekCard2) weekCard2.insertAdjacentHTML('beforebegin', sleepMiniHtml);
-            else panel2.insertAdjacentHTML('afterbegin', sleepMiniHtml);
+        function _injectP6Banners() {
+          try {
+            var host = document.getElementById('p10-accordion') || document.getElementById('p6-accordion');
+            if (!host) return;
+
+            var wk1 = host.querySelector('.ja-week[data-week="1"]');
+            if (wk1 && !wk1.querySelector('.p6-personal-banner')) {
+              wk1.insertAdjacentHTML('afterbegin', _snapBannerHtml);
+            }
+
+            if (_snapHasSleep) {
+              var wk2 = host.querySelector('.ja-week[data-week="2"]');
+              if (wk2 && !wk2.querySelector('.p6-personal-banner')) {
+                var sleepMiniHtml = '<div class="p6-personal-banner" style="border-color:rgba(33,101,192,.25);background:rgba(21,101,192,.05);">'
+                  + '<div class="p6-personal-banner-title" style="color:#1565c0;">'
+                  + '  <span style="font-size:16px;">😴</span><span>2주차 수면 미션 지속</span>'
+                  + '</div>'
+                  + '<div class="p6-personal-banner-item">'
+                  + '<div class="p6-pb-icon">🌙</div>'
+                  + '<div>'
+                  + '  <div class="p6-pb-label" style="color:#1565c0;background:rgba(21,101,192,.1);">수면 루틴 강화</div>'
+                  + '  <div class="p6-pb-desc">취침 전 마그네슘(견과류·다크초콜릿) 섭취 + 취침 시간 30분 앞당기기</div>'
+                  + '</div></div></div>';
+                wk2.insertAdjacentHTML('afterbegin', sleepMiniHtml);
+              }
+            }
+
+            if (_snapHasStress) {
+              var wk3 = host.querySelector('.ja-week[data-week="3"]');
+              if (wk3 && !wk3.querySelector('.p6-personal-banner')) {
+                var stressMiniHtml = '<div class="p6-personal-banner" style="border-color:rgba(230,81,0,.3);background:rgba(255,152,0,.05);">'
+                  + '<div class="p6-personal-banner-title" style="color:#e65100;">'
+                  + '  <span style="font-size:16px;">😰</span><span>3주차 스트레스 관리 심화</span>'
+                  + '</div>'
+                  + '<div class="p6-personal-banner-item">'
+                  + '<div class="p6-pb-icon">🧘</div>'
+                  + '<div>'
+                  + '  <div class="p6-pb-label" style="color:#e65100;background:rgba(230,81,0,.1);">코르티솔 억제</div>'
+                  + '  <div class="p6-pb-desc">주 3회 이상 유산소(걷기·수영) + 스트레칭 15분 → 코르티솔 피크 억제로 복부 지방 분해 가속</div>'
+                  + '</div></div></div>';
+                wk3.insertAdjacentHTML('afterbegin', stressMiniHtml);
+              }
+            }
+          } catch(ep6inner) {
+            console.warn('[PersonalizationLayer:P6] 배너 삽입 오류:', ep6inner && ep6inner.message);
           }
         }
 
-        if (hasStress) {
-          var panel3 = document.getElementById('p6-panel-3');
-          if (panel3) {
-            var stressMiniHtml = '<div class="p6-personal-banner" style="border-color:rgba(230,81,0,.3);background:rgba(255,152,0,.05);">'
-              + '<div class="p6-personal-banner-title" style="color:#e65100;">'
-              + '  <span style="font-size:16px;">😰</span><span>3주차 스트레스 관리 심화</span>'
-              + '</div>'
-              + '<div class="p6-personal-banner-item">'
-              + '<div class="p6-pb-icon">🧘</div>'
-              + '<div>'
-              + '  <div class="p6-pb-label" style="color:#e65100;background:rgba(230,81,0,.1);">코르티솔 억제</div>'
-              + '  <div class="p6-pb-desc">주 3회 이상 유산소(걷기·수영) + 스트레칭 15분 → 코르티솔 피크 억제로 복부 지방 분해 가속</div>'
-              + '</div></div></div>';
-            var weekCard3 = panel3.querySelector('.week-card');
-            if (weekCard3) weekCard3.insertAdjacentHTML('beforebegin', stressMiniHtml);
-            else panel3.insertAdjacentHTML('afterbegin', stressMiniHtml);
-          }
-        }
+        setTimeout(_injectP6Banners, 150);
+        setTimeout(_injectP6Banners, 500);
 
       } catch(ep6) {
         console.warn('[PersonalizationLayer:P6] P6 배너 주입 오류 (무시됨):', ep6 && ep6.message);
