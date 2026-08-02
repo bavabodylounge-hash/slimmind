@@ -6428,34 +6428,58 @@ app.get('/result-aesthetic/:id', async (c) => {
   try {
     let html = await fetchAsset(c.env.ASSETS, '/result-aesthetic.html')
     const INJECT_MARKER = '<!-- ══ 에스테틱 전용: API 연동 + __RESULT__ 주입 ══ -->'
-    // localStorage 즉시 저장 (API 응답 대기 없이 진입 즉시 저장 → PWA 세션 복원 보장)
+    // __AESTHETIC_RESULT_ID__ + 배포 타임스탬프(캐시 버스팅용) 주입
+    // + localStorage 즉시 저장 (API 응답 대기 없이 진입 즉시 저장 → PWA 세션 복원 보장)
+    const deployTs = Date.now()
     const idScript = `<script>
 window.__AESTHETIC_RESULT_ID__ = ${JSON.stringify(id)};
+window.__DEPLOY_TS__ = ${deployTs};
 try {
   localStorage.setItem('sm_last_result_id', ${JSON.stringify(id)});
   localStorage.setItem('sm_survey_category', 'aesthetic');
 } catch(e) {}
 <\/script>\n`
-    if (html.includes(INJECT_MARKER)) {
-      html = html.replace(INJECT_MARKER, idScript + INJECT_MARKER)
-    } else {
-      html = html.replace('</head>', idScript + '</head>')
-    }
+    // OG 메타태그 동적 덮어쓰기 (하드코딩 URL → 서버 origin 기반 동적 URL + og:url 추가)
+    const raBase = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.kr' } })()
+    const raOg = `
+<meta property="og:type"         content="website">
+<meta property="og:site_name"    content="SlimMind">
+<meta property="og:title"        content="SlimMind | 에스테틱 바디코드 맞춤 케어 결과지">
+<meta property="og:description"  content="당신의 몸은 하나의 코드입니다. 에스테틱 맞춤 케어 방법을 확인하세요.">
+<meta property="og:url"          content="${raBase}/result-aesthetic/${id}">
+<meta property="og:image"        content="${raBase}/static/og-slimmind.png">
+<meta property="og:image:width"  content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:type"   content="image/png">
+<meta name="twitter:card"        content="summary_large_image">
+<meta name="twitter:title"       content="SlimMind | 에스테틱 바디코드 맞춤 케어 결과지">
+<meta name="twitter:image"       content="${raBase}/static/og-slimmind.png">`
     // 동적 manifest: start_url을 현재 에스테틱 결과지 URL로 교체
     const dynamicManifestHref = `/api/manifest.json?for=${encodeURIComponent('/result-aesthetic/' + id)}`
-    // KAKAO_ESCAPE_SCRIPT → <head> 바로 뒤 최우선 주입 (ID 스크립트보다 먼저 실행)
-    html = html.replace('<head>', `<head>${KAKAO_ESCAPE_SCRIPT}`)
-    // manifest 링크 교체 (static manifest.json의 start_url="/" → 동적 결과지 URL로)
+    // ① KAKAO_ESCAPE_SCRIPT + idScript → <head> 최상단 첫 번째로 주입 (가장 먼저 실행)
+    html = html.replace('<head>', `<head>\n${KAKAO_ESCAPE_SCRIPT}\n${idScript}`)
+    // ② manifest 링크 교체 (static manifest.json의 start_url="/" → 동적 결과지 URL로)
     html = html.replace(
       /<link[^>]+rel=["']manifest["'][^>]*>/i,
       `<link rel="manifest" href="${dynamicManifestHref}">`
     )
+    // ③ OG 메타태그 전체 교체 (기존 하드코딩 제거 후 동적 주입) → </head> 바로 앞
+    html = html.replace(
+      /<!-- ── OG \/ SNS 링크 미리보기 ─+-->([\s\S]*?)<!-- ─+-->/,
+      `<!-- ── OG / SNS 링크 미리보기 ───────────────────────────── -->${raOg}\n<!-- ─────────────────────────────────────────────────────── -->`
+    )
+    // 새로고침 시 항상 Worker를 통과하도록 — 브라우저·CDN 캐시 완전 차단
+    const now = new Date().toUTCString()
     return c.html(html, 200, {
-      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0, s-maxage=0',
       'Pragma': 'no-cache',
       'Expires': '0',
       'Surrogate-Control': 'no-store',
+      'CDN-Cache-Control': 'no-store',
+      'Cloudflare-CDN-Cache-Control': 'no-store',
       'Vary': '*',
+      'Last-Modified': now,
+      'ETag': `"${id}-${deployTs}"`,
     })
   } catch (e: any) {
     return c.html('<h2>결과지를 불러올 수 없습니다</h2>', 500)
