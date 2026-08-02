@@ -7618,16 +7618,36 @@ app.get('/api/b2b/daily-check/detail', requireRole('ANY'), async (c) => {
       ORDER BY created_at DESC LIMIT 10
     `).bind(session_id, myCode).all<any>()
 
+    // exercise_detail / diet_detail JSON 파싱 (이미 파싱된 경우 그대로 사용)
+    let parsedExercise: any[] = []
+    let parsedDiet: any[] = []
+    if (check) {
+      try { parsedExercise = check.exercise_detail ? JSON.parse(check.exercise_detail) : [] } catch {}
+      try { parsedDiet = check.diet_detail ? JSON.parse(check.diet_detail) : [] } catch {}
+    }
+
     return c.json({
       ok: true,
       session_id,
       date,
-      user_name: userInfo?.user_name || '이름없음',
-      bc_code: userInfo?.bc_code || check?.bc_code || 'BC-1',
+      customer: {
+        user_name: userInfo?.user_name || '이름없음',
+        bc_code_key: userInfo?.bc_code_key || '',
+      },
       check: check ? {
-        ...check,
-        exercise_detail: check.exercise_detail ? JSON.parse(check.exercise_detail) : [],
-        diet_detail: check.diet_detail ? JSON.parse(check.diet_detail) : [],
+        check_date: check.check_date,
+        week_number: check.week_number,
+        exercise_done: check.exercise_done,
+        diet_done: check.diet_done,
+        recovery_done: check.recovery_done,
+        total_kcal_in: check.total_kcal_in,
+        total_kcal_out: check.total_kcal_out,
+        memo_exercise: check.memo_exercise,
+        memo_diet: check.memo_diet,
+        customer_memo: check.customer_memo,
+        updated_at: check.updated_at,
+        exercise_detail: parsedExercise,
+        diet_detail: parsedDiet,
       } : null,
       history: history.results || [],
       feedbacks: feedbacks.results || [],
