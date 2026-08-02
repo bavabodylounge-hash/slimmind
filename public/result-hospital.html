@@ -23799,140 +23799,153 @@ function wow6CheckItem() {
 // renderPersonalizationLayer() — 설문 전 항목 100% 개인화 매핑 (2026-08 신규)
 //
 // [아키텍처]
-//  raw_answers.stage1 = {숫자no: optionIndex}
-//  raw_answers.stage2 = {숫자no: optionIndex or array}
+//  raw_answers.stage1 = survAnswers {동적rno: optionIndex}  ← S1_BASE+적응형 합산 후 1번부터 재배정
+//  raw_answers.stage2 = stage2Answers {no: optionIndex or array}  ← no:1~16 고정
+//  raw_answers.stage3 = stage3Answers {gi: optionIndex}           ← 전역 gi 0~36
+//  raw_answers.disp   = dispAnswers {key: optionIndex}            ← DISP_QUESTIONS key
 //
-// [stage1 no → saveAs 매핑 (주요 미반영 항목)]
-//  0→expectation, 4→yoyo_count, 6→worst_season, 9→morning_evening_diff
-//  19→sleep_time, 20→sleep_hours, 21→stress_level, 24→past_diets
-//  25→quit_reason, 27→weak_season, 28→organ_stress_signal, 31→body_temp_type
-//  35→max_exercise_duration, 37→diet_compliance, 39→info_processing
-//  40→late_night_eating, 48→main_goal, 50→priority_value, 54→stress_appetite
-//  56→fullness_timing, 61→breathing_type, 63→walking_foot_angle
-//  66→eating_speed, 73→daily_activity, 76→caffeine_intake
-//  77→bowel_health, 80→dream_action
-//  섹션 L: 85→thyroid_signal, 86→insulin_signal, 89→skinnyfat_flag
-//  90→leg_power, 91→muscle_response, 92→bloating_level, 94→sleep_wake
-//  95→fatigue_level, 98→soda_intake
+// [stage3 gi 전역 인덱스 매핑]
+//  A01(gi:0~3)   인슐린·내장지방: 0=식후졸음, 1=충동디저트, 2=당음료, 3=허리조임
+//  A02(gi:4~6)   림프·순환·부종: 4=저녁신발꽉낌, 5=야간종아리쥐, 6=베개자국
+//  A03(gi:7~11)  호르몬·대사: 7=이유없이찜, 8=허리만안잠김, 9=턱여드름, 10=기미, 11=탈모
+//  A04(gi:12~15) 근감소·근기능: 12=계단내려가기, 13=팔지구력, 14=한발서기, 15=팔다리가늘어짐
+//  A05(gi:16~20) 소화·장내세균: 16=아침평평저녁팽만, 17=특정음식더부룩, 18=화장실불규칙, 19=항생제, 20=식후편안(역)
+//  A06(gi:21~23) 골격·체형: 21=골반허리뻐근, 22=신발밑창, 23=어깨높이
+//  A07(gi:24~27) 만성스트레스·코르티솔: 24=자고나도피곤, 25=스트레스야식폭식, 26=카페인잔수, 27=아침개운(역)
+//  A08(gi:28~31) 심리·식이행동: 28=음식남기기(역,건강할수록0높음), 29=감정식이, 30=먹는속도, 31=야식빈도
+//  A09(gi:32~34) 대사위험: 32=식후갈증, 33=상처회복지연, 34=목뒤거뭇
+//  A10(gi:35~36) 기질·성향: 35=운동스타일, 36=계획vs즉흥
+//
+// [stage2 no 매핑 (no:1~16)]
+//  no:8  = 살찐계기 (multi: 이직과로/이별/수술/회식/금연/서서히)
+//  no:13 = 담배 (0=흡연중, 1=금연얼마안됨, 2=비흡연)
+//  no:14 = 음주빈도 (0=주3↑, 1=주1~2, 2=거의안마심)
 // ═══════════════════════════════════════════════════════════════════════════
 function renderPersonalizationLayer(data, axisScores, answers, bcCode, ohaengType) {
   try {
     var raw = (data && data.raw_answers) ? data.raw_answers : {};
-    var s1  = raw.stage1 || {};
 
-    var _s1 = function(no) {
-      var v = s1[no];
-      if (v === undefined || v === null) return null;
-      return (typeof v === 'number') ? v : (isNaN(Number(v)) ? null : Number(v));
+    // stage3 gi 기반 헬퍼 (전역 인덱스로 답변 접근)
+    var s3raw = raw.stage3 || {};
+    var _s3v = function(gi) {
+      var v = s3raw[gi];
+      if (v === undefined || v === null || v === 'unknown') return null;
+      return (typeof v === 'number') ? v : Number(v);
     };
 
-    // 핵심 값 추출
-    var yoyo_count      = _s1(4);
-    var sleep_time      = _s1(19);
-    var sleep_hours     = _s1(20);
-    var stress_level    = _s1(21);
-    var quit_reason     = _s1(25);
-    var body_temp       = _s1(31);
-    var max_exercise    = _s1(35);
-    var diet_compliance = _s1(37);
-    var late_night_eat  = _s1(40);
-    var main_goal       = _s1(48);
-    var priority_value  = _s1(50);
-    var stress_appetite = _s1(54);
-    var fullness_timing = _s1(56);
-    var breathing_type  = _s1(61);
-    var walking_angle   = _s1(63);
-    var eating_speed    = _s1(66);
-    var daily_activity  = _s1(73);
-    var caffeine_intake = _s1(76);
-    var bowel_health    = _s1(77);
-    var dream_action    = _s1(80);
-    var thyroid_signal  = _s1(85);
-    var insulin_signal  = _s1(86);
-    var bloating_level  = _s1(92);
-    var sleep_wake      = _s1(94);
-    var fatigue_level   = _s1(95);
+    // stage2 no 기반 헬퍼
+    var s2raw = raw.stage2 || {};
+    var _s2v = function(no) {
+      var v = s2raw[no];
+      if (v === undefined || v === null) return null;
+      return v; // 단일선택: number, 복수선택: array
+    };
+
+    // ── stage3 gi 매핑으로 핵심 변수 추출 ──
+    // A07 수면·스트레스: gi:24=자고나도피곤(0=아님,1=가끔,2=자주,3=항상), gi:27=아침개운역(0=항상개운,3=항상피곤→3-v가 피로도)
+    var fatigue_after_sleep = _s3v(24);  // 0=아님~3=항상피곤 (자고나도피곤)
+    var morning_freshness   = _s3v(27);  // 역문항: 0=항상개운, 3=항상피곤 (높을수록 문제)
+    var stress_late_eat     = _s3v(25);  // 스트레스성 야식폭식: 0=없음, 1=가끔, 2=거의매번
+    var caffeine_cups       = _s3v(26);  // 카페인: 0=1잔↓, 1=2~3잔, 2=4잔↑
+
+    // A08 식이행동: gi:28=음식남기기(역,0=배불러도다먹음=문제), gi:29=감정식이, gi:30=먹는속도, gi:31=야식빈도
+    var overeating_flag   = _s3v(28);  // 역: 0=배불러도다먹음(문제), 1=맛있으면더먹음, 2=배부르면멈춤(건강)
+    var emotional_eating  = _s3v(29);  // 0=없음, 1=가끔, 2=자주
+    var eating_speed_s3   = _s3v(30);  // 0=20분↑(느림), 1=15분, 2=10분↓(빠름)
+    var late_eat_freq     = _s3v(31);  // 야식빈도: 0=거의없음, 1=주1~2회, 2=주3회↑
+
+    // A05 장건강: gi:18=화장실불규칙
+    var bowel_irregular   = _s3v(18);  // 0=매일규칙, 1=하루이틀거름, 2=3일↑
+
+    // A01 인슐린: gi:0=식후졸음, gi:2=당음료
+    var postmeal_drowsy = _s3v(0);
+    var sugary_drinks   = _s3v(2);
+
+    // A05 팽만: gi:16=아침평평저녁팽만
+    var bloating_pm     = _s3v(16);
+
+    // A09 대사위험: gi:33=상처회복, gi:34=목뒤거뭇
+    var slow_healing    = _s3v(33);
+    var acanthosis      = _s3v(34);
 
     var insights = [];
 
-    // [1] 수면
-    var sleepHourLabel = ['4시간 이하','5시간','6시간','7시간','8시간 이상'][sleep_hours] || null;
-    var sleepTimeLabel = ['밤 10시 이전','밤 11~12시','새벽 1~2시','새벽 2시 이후','불규칙'][sleep_time] || null;
-    if (sleep_hours !== null && sleep_hours <= 1) {
-      insights.push({ icon: '😴', tag: '수면 부족', msg: '수면 ' + (sleepHourLabel || '부족') + ' — 렙틴 감소·그렐린 증가로 식욕 30% 상승. 로드맵 1주차에 수면 회복 루틴 우선 배치됩니다.', type: 'warn' });
-    } else if (sleep_time !== null && sleep_time >= 2) {
-      insights.push({ icon: '🌙', tag: '늦은 취침', msg: '취침 시간: ' + (sleepTimeLabel || '새벽') + ' — 야간 코르티솔 상승으로 복부 지방 축적에 영향을 줍니다.', type: 'info' });
+    var insights = [];
+
+    // [1] 수면 질 (stage3 A07 gi:24 자고나도피곤 + gi:27 아침개운 역문항)
+    // fatigue_after_sleep: 0=아님, 1=가끔, 2=자주, 3=항상
+    // morning_freshness(역): 0=항상개운(건강), 1=그런편, 2=가끔피곤, 3=항상피곤(문제)
+    var sleepFatigue = fatigue_after_sleep;
+    var morningBad   = (morning_freshness !== null) ? (3 - morning_freshness) : null; // 역 변환: 높을수록 문제
+    if (sleepFatigue !== null && sleepFatigue >= 2) {
+      insights.push({ icon: '😴', tag: '수면 질 저하', msg: '자고 일어나도 피곤한 패턴' + (sleepFatigue >= 3 ? '(거의 매일)' : '(자주)') + ' — 코르티솔이 밤에도 안 떨어지면 수면 중에도 경계 모드가 유지됩니다. 로드맵 1주차에 수면 회복 루틴이 우선 배치됩니다.', type: 'warn' });
+    } else if (morningBad !== null && morningBad >= 2) {
+      insights.push({ icon: '🌙', tag: '기상 피로', msg: '아침에 개운하게 일어나지 못하는 패턴 — 스트레스 호르몬 리듬이 어긋난 신호입니다. 취침 루틴 정비가 권장됩니다.', type: 'info' });
     }
 
-    // [2] 스트레스
-    var stressLabel = ['거의 없음','보통','높음','매우 높음'][stress_level] || null;
-    if (stress_level !== null && stress_level >= 2) {
-      var sMsg = '스트레스 강도: ' + (stressLabel || '높음') + ' — 코르티솔을 통해 복부 지방이 우선 축적됩니다.';
-      if (stress_appetite === 0) sMsg += ' 스트레스 시 폭식 패턴이 확인됩니다. 감정 식이 관리 전략이 추가됩니다.';
-      insights.push({ icon: '🌡️', tag: '스트레스', msg: sMsg, type: stress_level >= 3 ? 'warn' : 'info' });
+    // [2] 스트레스 (stage3 A07 gi:24,25 복합 — 자고나도피곤 + 스트레스야식)
+    if (stress_late_eat !== null && stress_late_eat >= 1) {
+      var sMsg = '스트레스 시 야식·폭식 패턴' + (stress_late_eat >= 2 ? '(거의 매번)' : '(가끔)') + ' — 낮에 눌러둔 긴장이 밤에 보상 식이로 터지는 코르티솔 반동입니다. 낮 스트레스 관리 전략이 로드맵에 반영됩니다.';
+      insights.push({ icon: '🌡️', tag: '스트레스성 폭식', msg: sMsg, type: stress_late_eat >= 2 ? 'warn' : 'info' });
+    } else if (sleepFatigue !== null && sleepFatigue >= 2 && (emotional_eating !== null && emotional_eating >= 1)) {
+      insights.push({ icon: '🌡️', tag: '스트레스 패턴', msg: '수면 후 피로 + 감정 식이가 함께 감지됩니다 — 만성 코르티솔 상승 패턴입니다. 부신 회복 루틴이 로드맵에 포함됩니다.', type: 'warn' });
     }
 
-    // [3] 야식
-    var lateLabel = ['거의 없음','주 1~2회','주 3~4회','거의 매일','매일 2회↑'][late_night_eat] || null;
-    if (late_night_eat !== null && late_night_eat >= 2) {
-      insights.push({ icon: '🌙', tag: '야식 습관', msg: '야식 빈도: ' + (lateLabel || '잦음') + ' — 야간 인슐린 분비는 낮 대비 지방 전환율이 높습니다. 야식 차단 루틴이 로드맵에 반영됩니다.', type: late_night_eat >= 3 ? 'warn' : 'info' });
+    // [3] 야식 (stage3 A08 gi:31 야식빈도: 0=거의없음, 1=주1~2회, 2=주3회↑)
+    var lateLabel = ['거의 없음','주 1~2회','주 3회 이상'][late_eat_freq] || null;
+    if (late_eat_freq !== null && late_eat_freq >= 1) {
+      insights.push({ icon: '🌙', tag: '야식 습관', msg: '야식 빈도: ' + (lateLabel || '있음') + ' — 밤에 들어온 열량은 활동 없이 저장되고 수면 질도 떨어뜨립니다. 야식 차단 루틴이 로드맵에 반영됩니다.', type: late_eat_freq >= 2 ? 'warn' : 'info' });
     }
 
-    // [4] 식사 속도
-    if (eating_speed !== null && eating_speed <= 1) {
-      var speedLabel = ['매우 빠름','빠른 편'][eating_speed];
-      insights.push({ icon: '⚡', tag: '식사 속도', msg: '식사 속도: ' + speedLabel + ' — 포만 신호 지연으로 과식 위험 2배. 20분 이상 천천히 먹는 루틴이 권장됩니다.', type: 'warn' });
+    // [4] 식사 속도 (stage3 A08 gi:30: 0=20분↑느림, 1=15분, 2=10분↓빠름)
+    if (eating_speed_s3 !== null && eating_speed_s3 >= 2) {
+      insights.push({ icon: '⚡', tag: '식사 속도', msg: '식사 속도: 10분 이내 — 포만 신호(15~20분 후 도달)가 오기 전 이미 과식 상태가 됩니다. 천천히 먹기 루틴이 권장됩니다.', type: 'warn' });
+    } else if (eating_speed_s3 !== null && eating_speed_s3 === 1) {
+      insights.push({ icon: '⚡', tag: '식사 속도', msg: '식사 속도: 보통(15분) — 조금 더 천천히 먹으면 포만감 조절이 개선됩니다.', type: 'info' });
     }
 
-    // [5] 포만 신호
-    if (fullness_timing !== null && (fullness_timing === 1 || fullness_timing === 2)) {
-      var fullLabel = ['','다 먹고 나서야','포만감이 늦게 옴'][fullness_timing] || '';
-      insights.push({ icon: '🧠', tag: '포만 신호', msg: '포만감: ' + fullLabel + ' — 식사량 조절이 어려운 패턴입니다. 식사 중간 잠깐 멈추기 기법이 도움이 됩니다.', type: 'info' });
+    // [5] 감정 식이 (stage3 A08 gi:29: 0=없음, 1=가끔, 2=자주)
+    if (emotional_eating !== null && emotional_eating >= 2) {
+      insights.push({ icon: '🧠', tag: '감정 식이', msg: '기분 나쁜 날 단·매운 것으로 달래는 패턴이 자주 감지됩니다 — 음식이 감정 조절 도구가 된 상태입니다. 감정 대체 루틴이 로드맵에 포함됩니다.', type: 'warn' });
+    } else if (emotional_eating !== null && emotional_eating === 1) {
+      if (overeating_flag !== null && overeating_flag <= 1) {
+        insights.push({ icon: '🧠', tag: '포만 신호 약화', msg: '배불러도 먹게 되거나 기분에 따라 먹는 패턴이 감지됩니다 — 포만 호르몬 둔화 신호입니다. 식사 루틴 정비가 도움이 됩니다.', type: 'info' });
+      }
     }
 
-    // [6] 호흡
-    if (breathing_type === 1) {
-      insights.push({ icon: '💨', tag: '흉식 호흡', msg: '흉식 호흡 패턴 — 복근 활성화 감소와 연관됩니다. 복식 호흡 훈련이 로드맵에 포함됩니다.', type: 'info' });
+    // [6] 카페인 (stage3 A07 gi:26: 0=1잔↓, 1=2~3잔, 2=4잔↑)
+    if (caffeine_cups !== null && caffeine_cups >= 2) {
+      insights.push({ icon: '☕', tag: '카페인 과다', msg: '카페인 하루 4잔 이상 — 부신이 지쳐 코르티솔이 고갈된 신호입니다. 줄이기보다 왜 필요해졌는지를 먼저 봐야 합니다. 오후 2시 이후 제한이 권장됩니다.', type: 'warn' });
+    } else if (caffeine_cups !== null && caffeine_cups === 1) {
+      insights.push({ icon: '☕', tag: '카페인 의존', msg: '카페인 2~3잔 — 적정 범위이지만 수면이 나쁘다면 오후 카페인을 줄여보는 것이 효과적입니다.', type: 'info' });
     }
 
-    // [7] 활동량
-    var actLabel = ['매우 적음','적음','보통','활동적','매우 활동적'][daily_activity] || null;
-    if (daily_activity !== null && daily_activity <= 1) {
-      insights.push({ icon: '🚶', tag: '활동량 부족', msg: '일상 활동량: ' + (actLabel || '적음') + ' — NEAT(비운동 활동 열소비)가 낮아 기초대사량 개선이 필요합니다.', type: 'warn' });
+    // [7] 장 건강 (stage3 A05 gi:18 화장실불규칙: 0=매일규칙, 1=하루이틀거름, 2=3일↑)
+    if (bowel_irregular !== null && bowel_irregular >= 2) {
+      insights.push({ icon: '🦠', tag: '장 건강', msg: '배변 리듬: 3일 이상 거르는 경향 — 노폐물 체류 시간이 길어져 아랫배 팽만과 독소 재흡수가 증가합니다. 식이섬유·발효식품 강화 전략이 로드맵에 반영됩니다.', type: 'warn' });
+    } else if (bowel_irregular !== null && bowel_irregular === 1) {
+      insights.push({ icon: '🦠', tag: '장 리듬', msg: '배변이 불규칙한 편 — 장 리듬을 잡아주는 식이섬유·수분 섭취 루틴이 권장됩니다.', type: 'info' });
     }
 
-    // [8] 카페인
-    if (caffeine_intake !== null && caffeine_intake >= 3) {
-      insights.push({ icon: '☕', tag: '카페인 과다', msg: '카페인 하루 3잔 이상 — 수면 질 저하·코르티솔 상승과 연관됩니다. 오후 2시 이후 카페인 제한 권장.', type: 'info' });
+    // [8] 인슐린 패턴 (stage3 A01 gi:0 식후졸음, gi:2 당음료)
+    var insulinFlags = [];
+    if (postmeal_drowsy !== null && postmeal_drowsy >= 2) insulinFlags.push('식후 졸음 심함');
+    if (sugary_drinks !== null && sugary_drinks >= 2) insulinFlags.push('당음료 하루 2잔↑');
+    if (insulinFlags.length >= 1) {
+      insights.push({ icon: '🍬', tag: '혈당 패턴', msg: '감지: ' + insulinFlags.join(', ') + ' — 혈당 출렁임이 내장지방 축적을 가속합니다. 저GI 식단·식후 10분 걷기 전략이 로드맵에 우선 배치됩니다.', type: insulinFlags.length >= 2 ? 'warn' : 'info' });
     }
 
-    // [9] 장 건강
-    var bowelLabel = ['변비 심함','변비 경향','보통','묽은 편','설사 잦음','과민성 장증후군'][bowel_health] || null;
-    if (bowel_health !== null && (bowel_health === 0 || bowel_health === 1 || bowel_health === 5)) {
-      insights.push({ icon: '🦠', tag: '장 건강', msg: '장 상태: ' + (bowelLabel || '불균형') + ' — 장내 미생물 다양성 저하가 감량 속도에 영향을 줍니다. 식이섬유·발효식품 강화 전략이 로드맵에 반영됩니다.', type: 'warn' });
+    // [9] 복부 팽만 (stage3 A05 gi:16: 0=없음, 1=가끔, 2=자주, 3=항상)
+    if (bloating_pm !== null && bloating_pm >= 2) {
+      insights.push({ icon: '💨', tag: '저녁 팽만', msg: '아침에 평평했던 배가 저녁에 심하게 부풀어오르는 패턴 — 장내세균 과발효 신호입니다. 특정 음식(밀가루·유제품) 섭취 제한 전략이 검토됩니다.', type: 'warn' });
     }
 
-    // [10] 요요 이력
-    var yoyoLabel = ['처음 도전','2~3번','5번 이상','셀 수 없이'][yoyo_count] || null;
-    if (yoyo_count !== null && yoyo_count >= 2) {
-      insights.push({ icon: '🔄', tag: '요요 패턴', msg: '다이어트 경험: ' + (yoyoLabel || '반복') + ' — 반복 다이어트는 기초대사량 저하와 지방세포 민감화를 유발합니다. 단기 감량보다 대사 회복이 우선입니다.', type: yoyo_count >= 3 ? 'warn' : 'info' });
-    }
-
-    // [11] 드림 액션
-    var dreamLabel = ['좋아하는 옷 입기','여행·액티비티','관계·데이트','자신감 회복','건강검진 정상','기타'][dream_action] || null;
-    if (dreamLabel) {
-      insights.push({ icon: '🌟', tag: '목표', msg: '6개월 목표: ' + dreamLabel + ' — 이 목표를 기준으로 동기부여 체크포인트가 매주 설정됩니다.', type: 'ok' });
-    }
-
-    // [12] 안전 신호 (섹션 L)
-    var safetyFlags = [];
-    if (thyroid_signal === 0) safetyFlags.push('갑상선 저하 가능성');
-    if (insulin_signal === 0) safetyFlags.push('인슐린 저항성 신호');
-    if (bloating_level === 0) safetyFlags.push('복부 팽만 심함');
-    if (fatigue_level === 0) safetyFlags.push('만성 피로');
-    if (sleep_wake === 0) safetyFlags.push('수면 중 각성');
-    if (safetyFlags.length > 0) {
-      insights.push({ icon: '🔴', tag: '주의 신호', msg: '감지된 신체 신호: ' + safetyFlags.join(', ') + '. 해당 항목은 의료진 확인 후 맞춤 처방이 강화됩니다.', type: 'warn' });
+    // [10] 대사 위험 신호 (stage3 A09 gi:33 상처회복, gi:34 목뒤거뭇)
+    var metaFlags = [];
+    if (slow_healing !== null && slow_healing >= 2) metaFlags.push('상처 회복 지연');
+    if (acanthosis !== null && acanthosis >= 2) metaFlags.push('목뒤/겨드랑이 거뭇함');
+    if (metaFlags.length >= 1) {
+      insights.push({ icon: '🔴', tag: '대사 위험 신호', msg: '감지: ' + metaFlags.join(', ') + ' — 인슐린 저항성 또는 대사 이상의 피부 신호입니다. 의료진 확인 후 정밀 검사가 권장됩니다.', type: 'warn' });
     }
 
     // [13] 보행 패턴
@@ -24052,8 +24065,10 @@ function renderPersonalizationLayer(data, axisScores, answers, bcCode, ohaengTyp
     }
 
     // [20] 야간 활동 패턴 기반 수면 위험 경고
-    if (d_night !== null && d_night >= 2 && sleep_hours !== null && sleep_hours <= 2) {
-      insights.push({ icon: '🦉', tag: '올빼미+수면 부족', msg: '저녁·올빼미형이면서 수면이 6시간 이하입니다. 생체리듬 불일치(Social Jetlag)로 대사율이 15~20% 저하됩니다. 취침 시간 30분 앞당기기부터 시작합니다.', type: 'warn' });
+    // d_night: 0=아침형, 1=낮중간형, 2=저녁형, 3=올빼미
+    // fatigue_after_sleep: 0=아님~3=항상 (자고나도피곤)
+    if (d_night !== null && d_night >= 2 && fatigue_after_sleep !== null && fatigue_after_sleep >= 2) {
+      insights.push({ icon: '🦉', tag: '올빼미+수면 질 저하', msg: '저녁·올빼미형이면서 자고 일어나도 피로가 회복되지 않는 패턴입니다. 생체리듬 불일치(Social Jetlag)로 대사율이 15~20% 저하됩니다. 취침 시간 30분 앞당기기부터 시작합니다.', type: 'warn' });
     }
 
     if (insights.length === 0) return;
@@ -24083,16 +24098,16 @@ function renderPersonalizationLayer(data, axisScores, answers, bcCode, ohaengTyp
     html += '</div></div>';
     mountEl.innerHTML = (mountEl.innerHTML || '') + html;
 
-    // P5 메타 배지 주입
+    // P5 메타 배지 주입 (stage3 gi 기반으로 교체)
     var p5meta = document.getElementById('p5-ev-meta');
     if (p5meta) {
       var metaBadges = [];
-      if (sleep_hours !== null && sleep_hours <= 1) metaBadges.push('수면 부족');
-      if (stress_level !== null && stress_level >= 2) metaBadges.push('고스트레스');
-      if (late_night_eat !== null && late_night_eat >= 2) metaBadges.push('야식 빈번');
-      if (daily_activity !== null && daily_activity <= 1) metaBadges.push('활동 부족');
-      if (bowel_health !== null && bowel_health <= 1) metaBadges.push('장 불균형');
-      if (safetyFlags.length > 0) metaBadges.push('신체 신호 (' + safetyFlags.length + ')');
+      if (fatigue_after_sleep !== null && fatigue_after_sleep >= 2) metaBadges.push('수면 질 저하');
+      if (stress_late_eat !== null && stress_late_eat >= 1) metaBadges.push('고스트레스성 야식');
+      if (late_eat_freq !== null && late_eat_freq >= 2) metaBadges.push('야식 빈번');
+      if (caffeine_cups !== null && caffeine_cups >= 2) metaBadges.push('카페인 과다');
+      if (bowel_irregular !== null && bowel_irregular >= 2) metaBadges.push('장 불균형');
+      if (metaFlags.length > 0) metaBadges.push('대사 위험신호');
       if (metaBadges.length > 0) {
         p5meta.innerHTML = (p5meta.innerHTML || '')
           + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;">'
@@ -24107,19 +24122,18 @@ function renderPersonalizationLayer(data, axisScores, answers, bcCode, ohaengTyp
     //    해당 DOM이 완성된 뒤 삽입해야 함 → setTimeout 150ms 지연)
     (function() {
       try {
-        var hasSleep    = (sleep_hours !== null && sleep_hours <= 1);
-        var hasStress   = (stress_level !== null && stress_level >= 2);
-        var hasLateNight= (late_night_eat !== null && late_night_eat >= 2);
-        var hasLowAct   = (daily_activity !== null && daily_activity <= 1);
-        var hasBowel    = (bowel_health !== null && bowel_health <= 1);
-        if (!hasSleep && !hasStress && !hasLateNight && !hasLowAct && !hasBowel) return;
+        // stage3 gi 기반으로 교체된 조건 변수
+        var hasSleep    = (fatigue_after_sleep !== null && fatigue_after_sleep >= 2);
+        var hasStress   = (stress_late_eat !== null && stress_late_eat >= 1);
+        var hasLateNight= (late_eat_freq !== null && late_eat_freq >= 1);
+        var hasBowel    = (bowel_irregular !== null && bowel_irregular >= 1);
+        if (!hasSleep && !hasStress && !hasLateNight && !hasBowel) return;
 
         // 배너 메시지 구성
         var bannerItems = [];
-        if (hasSleep)     bannerItems.push({ icon: '😴', label: '수면 부족', desc: '1~2주차: 취침 1시간 전 블루라이트 차단, 22:30 이전 취침 습관 우선 확립' });
-        if (hasStress)    bannerItems.push({ icon: '😰', label: '고스트레스', desc: '1~2주차: 10분 복식호흡·명상 루틴 삽입 — 코르티솔 억제가 지방 분해 선행 조건' });
+        if (hasSleep)     bannerItems.push({ icon: '😴', label: '수면 질 회복', desc: '1~2주차: 취침 1시간 전 블루라이트 차단, 22:30 이전 취침 습관 — 자고 일어나도 피곤한 패턴 개선 우선' });
+        if (hasStress)    bannerItems.push({ icon: '😰', label: '스트레스성 야식 차단', desc: '1~2주차: 10분 복식호흡·명상 루틴 삽입, 스트레스 시 음식 대신 5분 걷기 — 코르티솔 반동 억제' });
         if (hasLateNight) bannerItems.push({ icon: '🌙', label: '야식 패턴', desc: '1주차: 20:00 이후 음식 섭취 차단 훈련 — 공복 인슐린 정상화의 핵심 스텝' });
-        if (hasLowAct)    bannerItems.push({ icon: '🚶', label: '활동 부족', desc: '1~3주차: 식후 15분 가벼운 보행 → 혈당 스파이크 억제 & 대사 활성화' });
         if (hasBowel)     bannerItems.push({ icon: '🌿', label: '장 건강', desc: '전 주차: 프리바이오틱 식품(귀리·바나나·마늘) 매일 1회 이상 포함 권장' });
 
         // CSS 주입 (중복 방지)
@@ -24172,8 +24186,8 @@ function renderPersonalizationLayer(data, axisScores, answers, bcCode, ohaengTyp
 
         // ★ 핵심 수정: p10-accordion 내 .ja-week[data-week] 타겟
         // renderRoadmapAccordion이 DOM을 완성하는 setTimeout(~100ms) 이후 삽입
-        var _snapHasSleep    = hasSleep;
-        var _snapHasStress   = hasStress;
+        var _snapHasSleep    = hasSleep;   // fatigue_after_sleep >= 2
+        var _snapHasStress   = hasStress;  // stress_late_eat >= 1
         var _snapBannerHtml  = bannerHtml;
 
         function _injectP6Banners() {
