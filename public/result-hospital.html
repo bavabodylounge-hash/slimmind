@@ -23942,6 +23942,120 @@ function renderPersonalizationLayer(data, axisScores, answers, bcCode, ohaengTyp
       insights.push({ icon: '🦿', tag: '보행 패턴', msg: '안짱걸음 — 무릎·고관절 부하가 높습니다. 운동 선택 시 무릎 보호 프로그램이 권장됩니다.', type: 'info' });
     }
 
+    // ── [14~16] stage3 축별 인사이트 (gi 인덱스 → 축 점수 패턴 해석) ──
+    // stage3는 axisEffect로 A01~A10 점수에 간접 반영되지만,
+    // 여기서는 개별 응답값으로 추가 텍스트 개인화를 생성합니다.
+    var s3 = raw.stage3 || {};
+    var _s3 = function(gi) {
+      var v = s3[gi];
+      if (v === undefined || v === null) return null;
+      return (typeof v === 'number') ? v : (v === 'unknown' ? null : Number(v));
+    };
+
+    // [14] A01 인슐린·내장지방 (gi:0~3)
+    // gi:0=식후졸음, gi:1=충동적 디저트, gi:2=당음료, gi:3=허리만 조임
+    var gi0 = _s3(0); var gi1 = _s3(1); var gi2 = _s3(2); var gi3 = _s3(3);
+    var a01flags = [];
+    if (gi0 !== null && gi0 >= 2) a01flags.push('식후 졸음 심함');
+    if (gi1 !== null && gi1 >= 2) a01flags.push('충동적 단 음식 섭취');
+    if (gi2 !== null && gi2 >= 2) a01flags.push('당음료 하루 2잔↑');
+    if (gi3 !== null && gi3 >= 2) a01flags.push('허리만 집중 증가');
+    if (a01flags.length >= 2) {
+      insights.push({ icon: '🍬', tag: '인슐린 패턴', msg: '인슐린 저항성 신호: ' + a01flags.join(', ') + '. 혈당 안정화 전략(저GI 식단, 식후 10분 걷기)이 로드맵에 우선 배치됩니다.', type: 'warn' });
+    }
+
+    // [15] A05 소화·장내세균 (gi:16~20)
+    // gi:16=아침평평저녁팽만, gi:17=특정음식더부룩, gi:18=화장실불규칙, gi:19=항생제, gi:20=식후편안(역)
+    var gi16 = _s3(16); var gi17 = _s3(17); var gi18 = _s3(18);
+    var a05flags = [];
+    if (gi16 !== null && gi16 >= 1) a05flags.push('식후 복부 팽만');
+    if (gi17 !== null && gi17 >= 1) a05flags.push('특정 음식 불내성');
+    if (gi18 !== null && gi18 >= 1) a05flags.push('배변 불규칙');
+    if (a05flags.length >= 2) {
+      insights.push({ icon: '🦠', tag: '소화 패턴', msg: '장 기능 저하 패턴: ' + a05flags.join(', ') + '. 식이섬유 증가·가공식품 감소 전략이 우선 적용됩니다.', type: 'warn' });
+    }
+
+    // [16] A07 만성 스트레스·코르티솔 (gi:24~27)
+    // gi:24=자고일어나도피곤, gi:25=스트레스폭식, gi:26=카페인잔수, gi:27=아침개운(역)
+    var gi24 = _s3(24); var gi25 = _s3(25); var gi26 = _s3(26);
+    var a07flags = [];
+    if (gi24 !== null && gi24 >= 1) a07flags.push('수면 후에도 피로');
+    if (gi25 !== null && gi25 >= 1) a07flags.push('스트레스성 야식');
+    if (gi26 !== null && gi26 >= 1) a07flags.push('카페인 의존 높음');
+    if (a07flags.length >= 2) {
+      insights.push({ icon: '😓', tag: '코르티솔 패턴', msg: '만성 스트레스 패턴: ' + a07flags.join(', ') + '. 부신 회복·수면 루틴 강화가 로드맵 3~4주차에 집중 배치됩니다.', type: 'warn' });
+    }
+
+    // ── [17~20] DISP G01~G10 기질 개인화 메시지 ──
+    // raw_answers.disp = {DISP_ENERGY: optIdx, DISP_EMOTION: optIdx, ...}
+    var disp = raw.disp || {};
+    var _disp = function(key) {
+      var v = disp[key];
+      if (v === undefined || v === null) return null;
+      return (typeof v === 'number') ? v : Number(v);
+    };
+
+    var d_energy   = _disp('DISP_ENERGY');    // G01: 0=아침형↑, 1=오후형, 2=중간, 3=항상부족
+    var d_emotion  = _disp('DISP_EMOTION');   // G02: 0=즉시표현, 1=티+삭힘, 2=혼자삭힘, 3=먹고잊음
+    var d_goal     = _disp('DISP_GOAL');      // G03: 0=완벽목표, 1=단계별, 2=즉흥, 3=목표부담
+    var d_plan     = _disp('DISP_PLAN');      // G05: 0=철저계획, 1=대략계획, 2=그때그때, 3=즉흥
+    var d_burnout  = _disp('DISP_BURNOUT');   // G08: 0=더열심히, 1=휴식후재시작, 2=무기력, 3=먹고달래
+    var d_night    = _disp('DISP_NIGHT');     // G09: 0=아침형, 1=낮중간형, 2=저녁형, 3=올빼미
+    var d_failMind = _disp('DISP_FAIL_MIND'); // G10: 0=오늘만, 1=완벽아니면포기, 2=의욕사라짐, 3=지쳐서
+
+    // [17] 에너지 리듬 기반 운동 시간대 추천
+    if (d_energy !== null && d_night !== null) {
+      var timeRec = '';
+      if ((d_energy === 0 || d_night === 0)) {
+        timeRec = '아침 기상 직후 20~30분 운동이 가장 효과적입니다. 공복 유산소로 지방 연소를 극대화합니다.';
+      } else if (d_energy === 1 || d_night === 2) {
+        timeRec = '오후 3~6시 운동이 체온이 높아 퍼포먼스가 가장 좋습니다. 이 시간대를 운동 골든타임으로 설정합니다.';
+      } else if (d_night === 3) {
+        timeRec = '올빼미형 — 저녁 운동이 가장 지속 가능합니다. 단, 수면 2시간 전 종료를 지켜 수면 질 보호가 필요합니다.';
+      } else if (d_energy === 3) {
+        timeRec = '에너지가 항상 부족한 패턴 — 운동 강도보다 회복이 먼저입니다. 처음 2주는 15분 이하 저강도 워킹부터 시작합니다.';
+      }
+      if (timeRec) {
+        insights.push({ icon: '⏰', tag: '운동 타이밍', msg: timeRec, type: 'ok' });
+      }
+    }
+
+    // [18] 번아웃·실패 대응 패턴 기반 맞춤 전략
+    if (d_burnout !== null || d_failMind !== null) {
+      var burnoutMsg = '';
+      if (d_failMind === 1 || d_goal === 0) {
+        // 완벽주의 → all-or-nothing
+        burnoutMsg = '완벽주의 패턴(전부 아니면 포기)이 감지됩니다. 80% 달성도 성공으로 인정하는 "충분히 좋은(Good Enough)" 기준이 장기 지속의 핵심입니다.';
+      } else if (d_burnout === 2 || d_failMind === 2) {
+        // 무기력·의욕 상실
+        burnoutMsg = '번아웃 시 무기력 패턴이 감지됩니다. 목표를 더 잘게 쪼개고, 연속 3일 이상 쉬기보다 "최소 1가지" 행동 규칙이 효과적입니다.';
+      } else if (d_emotion === 3 || d_burnout === 3) {
+        // 감정 식이
+        burnoutMsg = '스트레스·번아웃 시 음식으로 달래는 패턴이 감지됩니다. 감정 식이 대체 루틴(5분 걷기, 물 한 컵)이 로드맵에 포함됩니다.';
+      }
+      if (burnoutMsg) {
+        insights.push({ icon: '🔋', tag: '번아웃 대응', msg: burnoutMsg, type: 'info' });
+      }
+    }
+
+    // [19] 계획 스타일 기반 식단·운동 포맷 추천
+    if (d_plan !== null) {
+      var planMsg = '';
+      if (d_plan === 0) {
+        planMsg = '철저한 계획형 — 주간 식단표 + 운동 스케줄 방식이 가장 잘 맞습니다. 세부 가이드가 로드맵에 포함됩니다.';
+      } else if (d_plan === 2 || d_plan === 3) {
+        planMsg = '즉흥형 — 복잡한 식단 계획보다 "이것만은 안 먹는다" 2~3가지 규칙이 더 오래 지속됩니다. 유연한 방식으로 로드맵을 설계합니다.';
+      }
+      if (planMsg) {
+        insights.push({ icon: '📋', tag: '실천 스타일', msg: planMsg, type: 'ok' });
+      }
+    }
+
+    // [20] 야간 활동 패턴 기반 수면 위험 경고
+    if (d_night !== null && d_night >= 2 && sleep_hours !== null && sleep_hours <= 2) {
+      insights.push({ icon: '🦉', tag: '올빼미+수면 부족', msg: '저녁·올빼미형이면서 수면이 6시간 이하입니다. 생체리듬 불일치(Social Jetlag)로 대사율이 15~20% 저하됩니다. 취침 시간 30분 앞당기기부터 시작합니다.', type: 'warn' });
+    }
+
     if (insights.length === 0) return;
 
     // ── DOM 렌더링 ──
@@ -23986,6 +24100,131 @@ function renderPersonalizationLayer(data, axisScores, answers, bcCode, ohaengTyp
           + '</div>';
       }
     }
+
+    // ── [P6] 로드맵 주차별 수면·스트레스·활동 개인화 배너 주입 ──
+    (function() {
+      try {
+        // 수면 부족·고스트레스·야식·활동 부족 중 하나라도 해당이면 P6 배너 노출
+        var hasSleep    = (sleep_hours !== null && sleep_hours <= 1);
+        var hasStress   = (stress_level !== null && stress_level >= 2);
+        var hasLateNight= (late_night_eat !== null && late_night_eat >= 2);
+        var hasLowAct   = (daily_activity !== null && daily_activity <= 1);
+        var hasBowel    = (bowel_health !== null && bowel_health <= 1);
+        if (!hasSleep && !hasStress && !hasLateNight && !hasLowAct && !hasBowel) return;
+
+        // 배너 메시지 구성
+        var bannerItems = [];
+        if (hasSleep)     bannerItems.push({ icon: '😴', label: '수면 부족', desc: '1~2주차: 취침 1시간 전 블루라이트 차단, 22:30 이전 취침 습관 우선 확립' });
+        if (hasStress)    bannerItems.push({ icon: '😰', label: '고스트레스', desc: '1~2주차: 10분 복식호흡·명상 루틴 삽입 — 코르티솔 억제가 지방 분해 선행 조건' });
+        if (hasLateNight) bannerItems.push({ icon: '🌙', label: '야식 패턴', desc: '1주차: 20:00 이후 음식 섭취 차단 훈련 — 공복 인슐린 정상화의 핵심 스텝' });
+        if (hasLowAct)    bannerItems.push({ icon: '🚶', label: '활동 부족', desc: '1~3주차: 식후 15분 가벼운 보행 → 혈당 스파이크 억제 & 대사 활성화' });
+        if (hasBowel)     bannerItems.push({ icon: '🌿', label: '장 건강', desc: '전 주차: 프리바이오틱 식품(귀리·바나나·마늘) 매일 1회 이상 포함 권장' });
+
+        // CSS 주입 (중복 방지)
+        if (!document.getElementById('p6-personal-banner-style')) {
+          var styleEl = document.createElement('style');
+          styleEl.id = 'p6-personal-banner-style';
+          styleEl.textContent = [
+            '.p6-personal-banner{',
+            '  background:linear-gradient(135deg,rgba(181,69,46,.08),rgba(143,50,30,.04));',
+            '  border:1.5px solid rgba(181,69,46,.25);',
+            '  border-radius:14px;',
+            '  padding:14px 16px;',
+            '  margin:0 0 18px 0;',
+            '}',
+            '.p6-personal-banner-title{',
+            '  font-size:13px;font-weight:700;color:#b5452e;',
+            '  display:flex;align-items:center;gap:6px;margin-bottom:10px;',
+            '}',
+            '.p6-personal-banner-item{',
+            '  display:flex;gap:10px;align-items:flex-start;',
+            '  padding:7px 0;border-top:1px solid rgba(181,69,46,.1);',
+            '}',
+            '.p6-personal-banner-item:first-of-type{border-top:none;}',
+            '.p6-pb-icon{font-size:18px;flex-shrink:0;margin-top:1px;}',
+            '.p6-pb-label{font-size:11px;font-weight:700;color:#b5452e;',
+            '  background:rgba(181,69,46,.1);border-radius:8px;',
+            '  padding:2px 7px;display:inline-block;margin-bottom:3px;}',
+            '.p6-pb-desc{font-size:12.5px;color:#4a3728;line-height:1.5;}'
+          ].join('');
+          document.head.appendChild(styleEl);
+        }
+
+        // 배너 HTML 생성
+        var bannerHtml = '<div class="p6-personal-banner">'
+          + '<div class="p6-personal-banner-title">'
+          + '  <span style="font-size:16px;">🎯</span>'
+          + '  <span>내 맞춤 로드맵 우선 실천 항목</span>'
+          + '  <span style="font-size:11px;color:#888;font-weight:400;margin-left:auto;">설문 기반 개인화</span>'
+          + '</div>';
+        bannerItems.forEach(function(item) {
+          bannerHtml += '<div class="p6-personal-banner-item">'
+            + '<div class="p6-pb-icon">' + item.icon + '</div>'
+            + '<div>'
+            + '  <div class="p6-pb-label">' + item.label + '</div>'
+            + '  <div class="p6-pb-desc">' + item.desc + '</div>'
+            + '</div>'
+            + '</div>';
+        });
+        bannerHtml += '</div>';
+
+        // 각 주차 패널에 배너 삽입 (1주차 우선 강조)
+        // p6-panel-1 상단에 삽입
+        var panel1 = document.getElementById('p6-panel-1');
+        if (panel1) {
+          var weekCard1 = panel1.querySelector('.week-card');
+          if (weekCard1) {
+            // week-card 앞에 배너 삽입
+            weekCard1.insertAdjacentHTML('beforebegin', bannerHtml);
+          } else {
+            panel1.insertAdjacentHTML('afterbegin', bannerHtml);
+          }
+        }
+
+        // 수면 부족이면 2주차에도 수면 전용 배너 추가
+        if (hasSleep) {
+          var panel2 = document.getElementById('p6-panel-2');
+          if (panel2) {
+            var sleepMiniHtml = '<div class="p6-personal-banner" style="border-color:rgba(33,101,192,.25);background:rgba(21,101,192,.05);">'
+              + '<div class="p6-personal-banner-title" style="color:#1565c0;">'
+              + '  <span style="font-size:16px;">😴</span><span>2주차 수면 미션 지속</span>'
+              + '</div>'
+              + '<div class="p6-personal-banner-item">'
+              + '<div class="p6-pb-icon">🌙</div>'
+              + '<div>'
+              + '  <div class="p6-pb-label" style="color:#1565c0;background:rgba(21,101,192,.1);">수면 루틴 강화</div>'
+              + '  <div class="p6-pb-desc">취침 전 마그네슘(견과류·다크초콜릿) 섭취 + 취침 시간 30분 앞당기기</div>'
+              + '</div></div></div>';
+            var weekCard2 = panel2.querySelector('.week-card');
+            if (weekCard2) weekCard2.insertAdjacentHTML('beforebegin', sleepMiniHtml);
+            else panel2.insertAdjacentHTML('afterbegin', sleepMiniHtml);
+          }
+        }
+
+        // 고스트레스이면 3주차에도 코르티솔 관리 배너 추가
+        if (hasStress) {
+          var panel3 = document.getElementById('p6-panel-3');
+          if (panel3) {
+            var stressMiniHtml = '<div class="p6-personal-banner" style="border-color:rgba(230,81,0,.3);background:rgba(255,152,0,.05);">'
+              + '<div class="p6-personal-banner-title" style="color:#e65100;">'
+              + '  <span style="font-size:16px;">😰</span><span>3주차 스트레스 관리 심화</span>'
+              + '</div>'
+              + '<div class="p6-personal-banner-item">'
+              + '<div class="p6-pb-icon">🧘</div>'
+              + '<div>'
+              + '  <div class="p6-pb-label" style="color:#e65100;background:rgba(230,81,0,.1);">코르티솔 억제</div>'
+              + '  <div class="p6-pb-desc">주 3회 이상 유산소(걷기·수영) + 스트레칭 15분 → 코르티솔 피크 억제로 복부 지방 분해 가속</div>'
+              + '</div></div></div>';
+            var weekCard3 = panel3.querySelector('.week-card');
+            if (weekCard3) weekCard3.insertAdjacentHTML('beforebegin', stressMiniHtml);
+            else panel3.insertAdjacentHTML('afterbegin', stressMiniHtml);
+          }
+        }
+
+      } catch(ep6) {
+        console.warn('[PersonalizationLayer:P6] P6 배너 주입 오류 (무시됨):', ep6 && ep6.message);
+      }
+    })();
 
   } catch(e) {
     // Fallback: 기존 DB payload 구버전 안전 처리
