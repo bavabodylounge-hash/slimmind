@@ -5973,15 +5973,38 @@ app.get('/result-hospital/:id', async (c) => {
   try {
     let html = await fetchAsset(c.env.ASSETS, '/result-hospital.html')
     const INJECT_MARKER = '<!-- ══ 병원 전용: API 연동 + __RESULT__ 주입 ══ -->'
+    // ── DB에서 ref_code 조회 → 클라이언트에 주입 (b2b_code 자동 추적용) ──
+    const db = (c.env as any).DB as D1Database | undefined
+    let injectedRefCode: string | null = null
+    if (db) {
+      try {
+        const diagRow = await db.prepare(
+          `SELECT ref_code FROM diagnosis_results WHERE id = ? LIMIT 1`
+        ).bind(id).first<any>()
+        if (diagRow?.ref_code) injectedRefCode = diagRow.ref_code
+        // 구버전 H- 접두어 ID: hospital_responses에서도 조회
+        if (!injectedRefCode && id.startsWith('H-')) {
+          const hospRow = await db.prepare(
+            `SELECT ref_code FROM hospital_responses WHERE id = ? LIMIT 1`
+          ).bind(id).first<any>()
+          if (hospRow?.ref_code) injectedRefCode = hospRow.ref_code
+        }
+      } catch (_) {}
+    }
     // __HOSPITAL_RESULT_ID__ + 배포 타임스탬프(캐시 버스팅용) 주입
     // + localStorage 즉시 저장 (API 응답 대기 없이 진입 즉시 저장 → PWA 세션 복원 보장)
+    // + __REF_CODE__ 주입 → _syncDailyCheckDB()가 b2b_code/ref_code를 클라이언트에서 직접 사용
     const deployTs = Date.now()
     const idScript = `<script>
 window.__HOSPITAL_RESULT_ID__ = ${JSON.stringify(id)};
 window.__DEPLOY_TS__ = ${deployTs};
+window.__REF_CODE__ = ${JSON.stringify(injectedRefCode)};
 try {
   localStorage.setItem('sm_last_result_id', ${JSON.stringify(id)});
   localStorage.setItem('sm_survey_category', 'hospital');
+  if (${JSON.stringify(injectedRefCode)}) {
+    localStorage.setItem('sm_ref_code_' + ${JSON.stringify(id)}, ${JSON.stringify(injectedRefCode)});
+  }
 } catch(e) {}
 <\/script>\n`
     // OG 메타태그 (결과지 공유 시)
@@ -6428,15 +6451,31 @@ app.get('/result-aesthetic/:id', async (c) => {
   try {
     let html = await fetchAsset(c.env.ASSETS, '/result-aesthetic.html')
     const INJECT_MARKER = '<!-- ══ 에스테틱 전용: API 연동 + __RESULT__ 주입 ══ -->'
+    // ── DB에서 ref_code 조회 → 클라이언트에 주입 (b2b_code 자동 추적용) ──
+    const db = (c.env as any).DB as D1Database | undefined
+    let injectedRefCode: string | null = null
+    if (db) {
+      try {
+        const diagRow = await db.prepare(
+          `SELECT ref_code FROM diagnosis_results WHERE id = ? LIMIT 1`
+        ).bind(id).first<any>()
+        if (diagRow?.ref_code) injectedRefCode = diagRow.ref_code
+      } catch (_) {}
+    }
     // __AESTHETIC_RESULT_ID__ + 배포 타임스탬프(캐시 버스팅용) 주입
     // + localStorage 즉시 저장 (API 응답 대기 없이 진입 즉시 저장 → PWA 세션 복원 보장)
+    // + __REF_CODE__ 주입 → _syncDailyCheckDB()가 b2b_code/ref_code를 클라이언트에서 직접 사용
     const deployTs = Date.now()
     const idScript = `<script>
 window.__AESTHETIC_RESULT_ID__ = ${JSON.stringify(id)};
 window.__DEPLOY_TS__ = ${deployTs};
+window.__REF_CODE__ = ${JSON.stringify(injectedRefCode)};
 try {
   localStorage.setItem('sm_last_result_id', ${JSON.stringify(id)});
   localStorage.setItem('sm_survey_category', 'aesthetic');
+  if (${JSON.stringify(injectedRefCode)}) {
+    localStorage.setItem('sm_ref_code_' + ${JSON.stringify(id)}, ${JSON.stringify(injectedRefCode)});
+  }
 } catch(e) {}
 <\/script>\n`
     // OG 메타태그 동적 덮어쓰기 (하드코딩 URL → 서버 origin 기반 동적 URL + og:url 추가)

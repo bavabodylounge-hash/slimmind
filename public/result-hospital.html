@@ -21357,43 +21357,67 @@ try { _loadFoodCalorieLog(); } catch(e){}
 // ════════ 오늘 탭 기록 → 서버 DB 동기화 헬퍼 ════════
 // mealSendAll() / excalSendAll() 완료 시 호출
 // diet_detail / exercise_detail 상세 데이터를 포함해 POST /api/daily-check 전송
+// ★ 서버가 session_id → diagnosis_results.ref_code 로 b2b_code를 자동 채워주므로
+//   클라이언트는 session_id만 정확히 전송하면 됨 (b2b_code null이어도 서버에서 보정)
 function _syncDailyCheckDB(opts){
   try {
-    // session_id 수집 (window.__HOSPITAL_RESULT_ID__ 최우선)
+    // ── session_id 수집 (우선순위: 서버주입 > URL경로 > URL쿼리 > localStorage) ──
     var _sid = window.__HOSPITAL_RESULT_ID__
             || (location.pathname.match(/\/result-hospital\/([^/?#]+)/) || [])[1]
             || new URLSearchParams(location.search).get('id')
             || new URLSearchParams(location.search).get('hid')
+            || localStorage.getItem('sm_last_result_id')
             || '';
-    if (!_sid || _sid === 'local') return; // ID 없으면 skip
+    if (!_sid || _sid === 'local') return;
 
-    // meta에서 ref_code / b2b_code 수집
-    var _meta = {};
-    try {
-      // slimmind_meta_ 키에서 가장 최근 저장본 탐색
-      var _rawMeta = localStorage.getItem('slimmind_meta_' + _sid);
-      if (!_rawMeta) {
-        // 키에 sid가 없는 경우 전체 탐색
-        for (var _i = 0; _i < localStorage.length; _i++) {
-          var _k = localStorage.key(_i);
-          if (_k && _k.startsWith('slimmind_meta_')) { _rawMeta = localStorage.getItem(_k); break; }
+    // ── ref_code 수집 (우선순위: 서버주입 __REF_CODE__ > localStorage sm_ref_code_ > slimmind_meta_ > __RESULT__) ──
+    var _refCode = window.__REF_CODE__  // 서버가 DB에서 조회해 주입한 값 (가장 신뢰)
+                || localStorage.getItem('sm_ref_code_' + _sid)
+                || null;
+
+    // localStorage fallback: slimmind_meta_ 키 탐색
+    if (!_refCode) {
+      try {
+        var _rawMeta = localStorage.getItem('slimmind_meta_' + _sid);
+        if (!_rawMeta) {
+          for (var _i = 0; _i < localStorage.length; _i++) {
+            var _k = localStorage.key(_i);
+            if (_k && _k.startsWith('slimmind_meta_')) {
+              _rawMeta = localStorage.getItem(_k); break;
+            }
+          }
         }
-      }
-      if (_rawMeta) _meta = JSON.parse(_rawMeta);
-    } catch(_) {}
+        if (_rawMeta) {
+          var _meta = JSON.parse(_rawMeta);
+          _refCode = _meta.ref_code || _meta.consultant_code || _meta.b2b_code || null;
+        }
+      } catch(_) {}
+    }
 
-    var _refCode = _meta.ref_code || _meta.consultant_code
-                || (window.__RESULT__ && window.__RESULT__.ref_code)
-                || (window.__DIAG_DATA__ && window.__DIAG_DATA__.ref_code)
-                || null;
-    var _b2bCode = _meta.b2b_code
-                || (window.__RESULT__ && window.__RESULT__.b2b_code)
-                || (window.__DIAG_DATA__ && window.__DIAG_DATA__.b2b_code)
-                || null;
-    var _bcCode  = _meta.bcCode || _meta.bc_primary
-                || (window.__RESULT__ && (window.__RESULT__.bc_code || window.__RESULT__.bc_primary))
-                || (window.__DIAG_DATA__ && (window.__DIAG_DATA__.bc_code || window.__DIAG_DATA__.bc_primary))
-                || 'BC-6';
+    // __RESULT__ / __DIAG_DATA__ fallback
+    if (!_refCode) {
+      _refCode = (window.__RESULT__ && window.__RESULT__.ref_code)
+              || (window.__DIAG_DATA__ && window.__DIAG_DATA__.ref_code)
+              || null;
+    }
+
+    // ── b2b_code / consultant_code 분류 ──
+    // 서버 /api/daily-check 에서도 자동 보정하지만, 알 수 있으면 명시 전송
+    var _b2bCode = null;
+    var _consultantCode = null;
+    if (_refCode) {
+      if (_refCode.indexOf('B2B-') === 0) _b2bCode = _refCode;
+      else if (_refCode.indexOf('SC-') === 0) _consultantCode = _refCode;
+      else _consultantCode = _refCode; // 기타 코드는 consultant로 처리
+    }
+
+    // ── bc_code 수집 ──
+    var _bcCode = (window.__RESULT__ && (window.__RESULT__.bc_code_key || window.__RESULT__.bc_primary))
+               || (window.__DIAG_DATA__ && (window.__DIAG_DATA__.bc_code_key || window.__DIAG_DATA__.bc_primary))
+               || localStorage.getItem('sm_bc_code_' + _sid)
+               || 'BC-1';
+    // bc_code가 BC-N 형식이 아니면 BC-1로 정규화
+    if (!/^BC-[1-9]$/.test(String(_bcCode))) _bcCode = 'BC-1';
 
     var now = new Date();
     var checkDate = now.getFullYear() + '-'
@@ -21405,24 +21429,29 @@ function _syncDailyCheckDB(opts){
       check_date:       checkDate,
       week_number:      opts.wk || 1,
       bc_code:          _bcCode,
-      consultant_code:  _refCode,
-      b2b_code:         _b2bCode,
-      exercise_done:    opts.exercise_done  || 0,
-      diet_done:        opts.diet_done      || 0,
-      recovery_done:    opts.recovery_done  || 0,
+      consultant_code:  _consultantCode,
+      b2b_code:         _b2bCode,  // null이어도 서버에서 자동 보정
+      exercise_done:    opts.exercise_done  ? 1 : 0,
+      diet_done:        opts.diet_done      ? 1 : 0,
+      recovery_done:    opts.recovery_done  ? 1 : 0,
       exercise_detail:  opts.exercise_detail || null,
       diet_detail:      opts.diet_detail     || null,
       total_kcal_out:   opts.total_kcal_out  || null,
       total_kcal_in:    opts.total_kcal_in   || null,
     };
 
+    console.log('[_syncDailyCheckDB] payload:', JSON.stringify({sid:_sid, b2b:_b2bCode, ref:_refCode, date:checkDate}));
+
     fetch('/api/daily-check', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     }).then(function(r){ return r.json(); })
-      .then(function(j){ if(!j.ok) console.warn('[daily-check sync] server err:', j); })
-      .catch(function(e){ console.warn('[daily-check sync]', e); });
+      .then(function(j){
+        if(j.ok) console.log('[daily-check sync] ✅ saved:', j.session_id, j.check_date);
+        else console.warn('[daily-check sync] ❌ server err:', j);
+      })
+      .catch(function(e){ console.warn('[daily-check sync] ❌ fetch err:', e); });
 
   } catch(e){ console.warn('[_syncDailyCheckDB]', e); }
 }

@@ -20302,16 +20302,25 @@ function _scheduleDailyCheckSave(sid, checkDate, checks, weekNumber){
 
 async function _saveDailyCheckToDB(sid, checkDate, checks, weekNumber){
   if(!sid) return;
-  // 담당 컨설턴트 코드 추출
+  // ── ref_code / b2b_code 추출 (서버주입 __REF_CODE__ 최우선) ──
   var consultantCode='';
+  var b2bCodeVal='';
   try{
-    if(window.__DIAG_DATA__ && window.__DIAG_DATA__.consultant_code)
-      consultantCode=window.__DIAG_DATA__.consultant_code;
+    var _rc = window.__REF_CODE__
+           || (window.__RESULT__ && (window.__RESULT__.ref_code || window.__RESULT__.b2b_code || window.__RESULT__._b2b_code))
+           || (window.__DIAG_DATA__ && window.__DIAG_DATA__.consultant_code)
+           || localStorage.getItem('sm_ref_code_' + sid)
+           || '';
+    if (_rc.indexOf('B2B-') === 0) b2bCodeVal = _rc;
+    else if (_rc) consultantCode = _rc;
   }catch(e){}
   var bcCode='BC-1';
   try{
     if(window._wowData && window._wowData.bcCode) bcCode='BC-'+window._wowData.bcCode;
+    else if(window.__RESULT__ && (window.__RESULT__.bc_code || window.__RESULT__.bc_primary))
+      bcCode = window.__RESULT__.bc_code || window.__RESULT__.bc_primary;
     else if(window.__DIAG_DATA__ && window.__DIAG_DATA__.bc_code) bcCode=window.__DIAG_DATA__.bc_code;
+    if(!/^BC-[1-9]$/.test(String(bcCode))) bcCode='BC-1';
   }catch(e){}
   // 요일
   var days=['일','월','화','수','목','금','토'];
@@ -20361,7 +20370,8 @@ async function _saveDailyCheckToDB(sid, checkDate, checks, weekNumber){
         week_number:     weekNumber||1,
         day_of_week:     dow,
         bc_code:         bcCode,
-        consultant_code: consultantCode,
+        consultant_code: consultantCode || null,
+        b2b_code:        b2bCodeVal || null,
         exercise_done:   checks.ex?1:0,
         diet_done:       checks.di?1:0,
         recovery_done:   checks.re?1:0,
@@ -22530,6 +22540,97 @@ function openFoodPicker(weekKey){
 // 뒤로: 식단 시트로 복귀
 function reopenMealSheet(){ _renderMealSheet({}); }
 
+// ── DB 전송 헬퍼: 에스테틱 전용 _syncDailyCheckDB ──────────────────────
+// mealSendAll() / excalSendAll() 완료 시 호출
+// ★ 서버 /api/daily-check 에서 session_id → diagnosis_results.ref_code 로
+//    b2b_code를 자동 보정하므로, 클라이언트는 session_id만 정확히 보내면 됨
+function _syncDailyCheckDB(opts){
+  try {
+    // ── session_id 수집 (우선순위: 서버주입 > URL경로 > URL쿼리 > localStorage) ──
+    var _sid = window.__AESTHETIC_RESULT_ID__
+            || (location.pathname.match(/\/result-aesthetic\/([^/?#]+)/) || [])[1]
+            || new URLSearchParams(location.search).get('id')
+            || new URLSearchParams(location.search).get('aid')
+            || localStorage.getItem('sm_last_result_id')
+            || '';
+    if (!_sid || _sid === 'local') return;
+
+    // ── ref_code 수집 (우선순위: 서버주입 __REF_CODE__ > __RESULT__.b2b_code > localStorage) ──
+    var _refCode = window.__REF_CODE__
+                || (window.__RESULT__ && (window.__RESULT__.ref_code || window.__RESULT__.b2b_code || window.__RESULT__._b2b_code))
+                || localStorage.getItem('sm_ref_code_' + _sid)
+                || null;
+
+    // localStorage slimmind_meta_ 전체 탐색 fallback
+    if (!_refCode) {
+      try {
+        var _rawMeta = localStorage.getItem('slimmind_meta_' + _sid);
+        if (!_rawMeta) {
+          for (var _i = 0; _i < localStorage.length; _i++) {
+            var _k = localStorage.key(_i);
+            if (_k && _k.startsWith('slimmind_meta_')) {
+              _rawMeta = localStorage.getItem(_k); break;
+            }
+          }
+        }
+        if (_rawMeta) {
+          var _meta = JSON.parse(_rawMeta);
+          _refCode = _meta.ref_code || _meta.b2b_code || _meta.consultant_code || null;
+        }
+      } catch(_) {}
+    }
+
+    // ── b2b_code / consultant_code 분류 ──
+    var _b2bCode = null;
+    var _consultantCode = null;
+    if (_refCode) {
+      if (_refCode.indexOf('B2B-') === 0) _b2bCode = _refCode;
+      else if (_refCode.indexOf('SC-') === 0) _consultantCode = _refCode;
+      else _consultantCode = _refCode;
+    }
+
+    // ── bc_code 수집 ──
+    var _bcCode = (window.__RESULT__ && (window.__RESULT__.bc_code || window.__RESULT__.bc_primary))
+               || 'BC-1';
+    if (!/^BC-[1-9]$/.test(String(_bcCode))) _bcCode = 'BC-1';
+
+    var now = new Date();
+    var checkDate = now.getFullYear() + '-'
+      + String(now.getMonth()+1).padStart(2,'0') + '-'
+      + String(now.getDate()).padStart(2,'0');
+
+    var payload = {
+      session_id:       _sid,
+      check_date:       checkDate,
+      week_number:      opts.wk || 1,
+      bc_code:          _bcCode,
+      consultant_code:  _consultantCode,
+      b2b_code:         _b2bCode,
+      exercise_done:    opts.exercise_done  ? 1 : 0,
+      diet_done:        opts.diet_done      ? 1 : 0,
+      recovery_done:    opts.recovery_done  ? 1 : 0,
+      exercise_detail:  opts.exercise_detail || null,
+      diet_detail:      opts.diet_detail     || null,
+      total_kcal_out:   opts.total_kcal_out  || null,
+      total_kcal_in:    opts.total_kcal_in   || null,
+    };
+
+    console.log('[AE _syncDailyCheckDB] payload:', JSON.stringify({sid:_sid, b2b:_b2bCode, ref:_refCode, date:checkDate}));
+
+    fetch('/api/daily-check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(function(r){ return r.json(); })
+      .then(function(j){
+        if(j.ok) console.log('[AE daily-check sync] ✅ saved:', j.session_id, j.check_date);
+        else console.warn('[AE daily-check sync] ❌ server err:', j);
+      })
+      .catch(function(e){ console.warn('[AE daily-check sync] ❌ fetch err:', e); });
+
+  } catch(e){ console.warn('[AE _syncDailyCheckDB]', e); }
+}
+
 // 전송: 먹은 음식 전체 저장 + 칸 완료
 function mealSendAll(){
   var pend=window.__foodPending__||[]; var wk=window.__foodPickWeek__||'wk';
@@ -22565,6 +22666,13 @@ function mealSendAll(){
       '</div>';
     ov.classList.add('show');
   }
+  // ── B2B DB 전송 ──
+  _syncDailyCheckDB({
+    wk: parseInt(String(wk).replace(/\D/g,''),10) || 1,
+    diet_done: 1,
+    diet_detail: pend.map(function(p){ return {nm:p.nm, kcal:p.kcal, amt:p.amt, unit:p.unit, meal:window.__foodMealName__||''}; }),
+    total_kcal_in: totalK
+  });
 
 }
 
@@ -23260,6 +23368,13 @@ function excalSendAll(){
       '</div>';
     ov.classList.add('show');
   }
+  // ── B2B DB 전송 ──
+  _syncDailyCheckDB({
+    wk: parseInt(String(wk).replace(/\D/g,''),10) || 1,
+    exercise_done: 1,
+    exercise_detail: pend.map(function(p){ return {nm:p.nm, min:p.min, kcal:p.kcal}; }),
+    total_kcal_out: totalK
+  });
 }
 
 // ✕ 전체 취소 (담던 거 지움)
