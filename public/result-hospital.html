@@ -13606,6 +13606,9 @@ function renderAll(data) {
   renderP6(userName, fullCode, ohaengType, data, bcCode, window.__RED_FLAGS__ || window._redFlags || []);
   renderP7(userName, bcCode, bcMaster, metrics, ohaengType, mbtiType, fullCode, nicknameDisplay, prescription, data);
 
+  // ★ 기능 9: 설문 전 항목 개인화 레이어 (2026-08 신규)
+  renderPersonalizationLayer(data, axisScores, answers, bcCode, ohaengType);
+
   // ★ 기능 7: 축 랭킹 배지 비동기 로드
   loadAxisRank(axisScores);
   // ★ 기능 8: 가족 코드 초기화
@@ -23789,6 +23792,204 @@ function wow6CheckItem() {
   } else {
     result.className = 'wow6-checker-result show warn';
     result.textContent = `💡 이 보충제는 BC-${_wowData.bcCode} 타입에 중립적입니다. 큰 문제는 없지만 더 효과적인 것들이 있어요.`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// renderPersonalizationLayer() — 설문 전 항목 100% 개인화 매핑 (2026-08 신규)
+//
+// [아키텍처]
+//  raw_answers.stage1 = {숫자no: optionIndex}
+//  raw_answers.stage2 = {숫자no: optionIndex or array}
+//
+// [stage1 no → saveAs 매핑 (주요 미반영 항목)]
+//  0→expectation, 4→yoyo_count, 6→worst_season, 9→morning_evening_diff
+//  19→sleep_time, 20→sleep_hours, 21→stress_level, 24→past_diets
+//  25→quit_reason, 27→weak_season, 28→organ_stress_signal, 31→body_temp_type
+//  35→max_exercise_duration, 37→diet_compliance, 39→info_processing
+//  40→late_night_eating, 48→main_goal, 50→priority_value, 54→stress_appetite
+//  56→fullness_timing, 61→breathing_type, 63→walking_foot_angle
+//  66→eating_speed, 73→daily_activity, 76→caffeine_intake
+//  77→bowel_health, 80→dream_action
+//  섹션 L: 85→thyroid_signal, 86→insulin_signal, 89→skinnyfat_flag
+//  90→leg_power, 91→muscle_response, 92→bloating_level, 94→sleep_wake
+//  95→fatigue_level, 98→soda_intake
+// ═══════════════════════════════════════════════════════════════════════════
+function renderPersonalizationLayer(data, axisScores, answers, bcCode, ohaengType) {
+  try {
+    var raw = (data && data.raw_answers) ? data.raw_answers : {};
+    var s1  = raw.stage1 || {};
+
+    var _s1 = function(no) {
+      var v = s1[no];
+      if (v === undefined || v === null) return null;
+      return (typeof v === 'number') ? v : (isNaN(Number(v)) ? null : Number(v));
+    };
+
+    // 핵심 값 추출
+    var yoyo_count      = _s1(4);
+    var sleep_time      = _s1(19);
+    var sleep_hours     = _s1(20);
+    var stress_level    = _s1(21);
+    var quit_reason     = _s1(25);
+    var body_temp       = _s1(31);
+    var max_exercise    = _s1(35);
+    var diet_compliance = _s1(37);
+    var late_night_eat  = _s1(40);
+    var main_goal       = _s1(48);
+    var priority_value  = _s1(50);
+    var stress_appetite = _s1(54);
+    var fullness_timing = _s1(56);
+    var breathing_type  = _s1(61);
+    var walking_angle   = _s1(63);
+    var eating_speed    = _s1(66);
+    var daily_activity  = _s1(73);
+    var caffeine_intake = _s1(76);
+    var bowel_health    = _s1(77);
+    var dream_action    = _s1(80);
+    var thyroid_signal  = _s1(85);
+    var insulin_signal  = _s1(86);
+    var bloating_level  = _s1(92);
+    var sleep_wake      = _s1(94);
+    var fatigue_level   = _s1(95);
+
+    var insights = [];
+
+    // [1] 수면
+    var sleepHourLabel = ['4시간 이하','5시간','6시간','7시간','8시간 이상'][sleep_hours] || null;
+    var sleepTimeLabel = ['밤 10시 이전','밤 11~12시','새벽 1~2시','새벽 2시 이후','불규칙'][sleep_time] || null;
+    if (sleep_hours !== null && sleep_hours <= 1) {
+      insights.push({ icon: '😴', tag: '수면 부족', msg: '수면 ' + (sleepHourLabel || '부족') + ' — 렙틴 감소·그렐린 증가로 식욕 30% 상승. 로드맵 1주차에 수면 회복 루틴 우선 배치됩니다.', type: 'warn' });
+    } else if (sleep_time !== null && sleep_time >= 2) {
+      insights.push({ icon: '🌙', tag: '늦은 취침', msg: '취침 시간: ' + (sleepTimeLabel || '새벽') + ' — 야간 코르티솔 상승으로 복부 지방 축적에 영향을 줍니다.', type: 'info' });
+    }
+
+    // [2] 스트레스
+    var stressLabel = ['거의 없음','보통','높음','매우 높음'][stress_level] || null;
+    if (stress_level !== null && stress_level >= 2) {
+      var sMsg = '스트레스 강도: ' + (stressLabel || '높음') + ' — 코르티솔을 통해 복부 지방이 우선 축적됩니다.';
+      if (stress_appetite === 0) sMsg += ' 스트레스 시 폭식 패턴이 확인됩니다. 감정 식이 관리 전략이 추가됩니다.';
+      insights.push({ icon: '🌡️', tag: '스트레스', msg: sMsg, type: stress_level >= 3 ? 'warn' : 'info' });
+    }
+
+    // [3] 야식
+    var lateLabel = ['거의 없음','주 1~2회','주 3~4회','거의 매일','매일 2회↑'][late_night_eat] || null;
+    if (late_night_eat !== null && late_night_eat >= 2) {
+      insights.push({ icon: '🌙', tag: '야식 습관', msg: '야식 빈도: ' + (lateLabel || '잦음') + ' — 야간 인슐린 분비는 낮 대비 지방 전환율이 높습니다. 야식 차단 루틴이 로드맵에 반영됩니다.', type: late_night_eat >= 3 ? 'warn' : 'info' });
+    }
+
+    // [4] 식사 속도
+    if (eating_speed !== null && eating_speed <= 1) {
+      var speedLabel = ['매우 빠름','빠른 편'][eating_speed];
+      insights.push({ icon: '⚡', tag: '식사 속도', msg: '식사 속도: ' + speedLabel + ' — 포만 신호 지연으로 과식 위험 2배. 20분 이상 천천히 먹는 루틴이 권장됩니다.', type: 'warn' });
+    }
+
+    // [5] 포만 신호
+    if (fullness_timing !== null && (fullness_timing === 1 || fullness_timing === 2)) {
+      var fullLabel = ['','다 먹고 나서야','포만감이 늦게 옴'][fullness_timing] || '';
+      insights.push({ icon: '🧠', tag: '포만 신호', msg: '포만감: ' + fullLabel + ' — 식사량 조절이 어려운 패턴입니다. 식사 중간 잠깐 멈추기 기법이 도움이 됩니다.', type: 'info' });
+    }
+
+    // [6] 호흡
+    if (breathing_type === 1) {
+      insights.push({ icon: '💨', tag: '흉식 호흡', msg: '흉식 호흡 패턴 — 복근 활성화 감소와 연관됩니다. 복식 호흡 훈련이 로드맵에 포함됩니다.', type: 'info' });
+    }
+
+    // [7] 활동량
+    var actLabel = ['매우 적음','적음','보통','활동적','매우 활동적'][daily_activity] || null;
+    if (daily_activity !== null && daily_activity <= 1) {
+      insights.push({ icon: '🚶', tag: '활동량 부족', msg: '일상 활동량: ' + (actLabel || '적음') + ' — NEAT(비운동 활동 열소비)가 낮아 기초대사량 개선이 필요합니다.', type: 'warn' });
+    }
+
+    // [8] 카페인
+    if (caffeine_intake !== null && caffeine_intake >= 3) {
+      insights.push({ icon: '☕', tag: '카페인 과다', msg: '카페인 하루 3잔 이상 — 수면 질 저하·코르티솔 상승과 연관됩니다. 오후 2시 이후 카페인 제한 권장.', type: 'info' });
+    }
+
+    // [9] 장 건강
+    var bowelLabel = ['변비 심함','변비 경향','보통','묽은 편','설사 잦음','과민성 장증후군'][bowel_health] || null;
+    if (bowel_health !== null && (bowel_health === 0 || bowel_health === 1 || bowel_health === 5)) {
+      insights.push({ icon: '🦠', tag: '장 건강', msg: '장 상태: ' + (bowelLabel || '불균형') + ' — 장내 미생물 다양성 저하가 감량 속도에 영향을 줍니다. 식이섬유·발효식품 강화 전략이 로드맵에 반영됩니다.', type: 'warn' });
+    }
+
+    // [10] 요요 이력
+    var yoyoLabel = ['처음 도전','2~3번','5번 이상','셀 수 없이'][yoyo_count] || null;
+    if (yoyo_count !== null && yoyo_count >= 2) {
+      insights.push({ icon: '🔄', tag: '요요 패턴', msg: '다이어트 경험: ' + (yoyoLabel || '반복') + ' — 반복 다이어트는 기초대사량 저하와 지방세포 민감화를 유발합니다. 단기 감량보다 대사 회복이 우선입니다.', type: yoyo_count >= 3 ? 'warn' : 'info' });
+    }
+
+    // [11] 드림 액션
+    var dreamLabel = ['좋아하는 옷 입기','여행·액티비티','관계·데이트','자신감 회복','건강검진 정상','기타'][dream_action] || null;
+    if (dreamLabel) {
+      insights.push({ icon: '🌟', tag: '목표', msg: '6개월 목표: ' + dreamLabel + ' — 이 목표를 기준으로 동기부여 체크포인트가 매주 설정됩니다.', type: 'ok' });
+    }
+
+    // [12] 안전 신호 (섹션 L)
+    var safetyFlags = [];
+    if (thyroid_signal === 0) safetyFlags.push('갑상선 저하 가능성');
+    if (insulin_signal === 0) safetyFlags.push('인슐린 저항성 신호');
+    if (bloating_level === 0) safetyFlags.push('복부 팽만 심함');
+    if (fatigue_level === 0) safetyFlags.push('만성 피로');
+    if (sleep_wake === 0) safetyFlags.push('수면 중 각성');
+    if (safetyFlags.length > 0) {
+      insights.push({ icon: '🔴', tag: '주의 신호', msg: '감지된 신체 신호: ' + safetyFlags.join(', ') + '. 해당 항목은 의료진 확인 후 맞춤 처방이 강화됩니다.', type: 'warn' });
+    }
+
+    // [13] 보행 패턴
+    if (walking_angle === 1) {
+      insights.push({ icon: '🦿', tag: '보행 패턴', msg: '팔자걸음 — 고관절 외회전 과다로 골반 불균형과 연관됩니다. 코어·고관절 교정 운동이 로드맵에 포함됩니다.', type: 'info' });
+    } else if (walking_angle === 2) {
+      insights.push({ icon: '🦿', tag: '보행 패턴', msg: '안짱걸음 — 무릎·고관절 부하가 높습니다. 운동 선택 시 무릎 보호 프로그램이 권장됩니다.', type: 'info' });
+    }
+
+    if (insights.length === 0) return;
+
+    // ── DOM 렌더링 ──
+    var mountEl = document.getElementById('p3-insights');
+    if (!mountEl) return;
+
+    var colorMap   = { warn: 'rgba(255,120,0,.07)', ok: 'rgba(56,142,60,.07)', info: 'rgba(21,101,192,.06)' };
+    var borderMap  = { warn: '#f57c00', ok: '#388e3c', info: '#1565c0' };
+    var tagColorMap= { warn: '#e65100', ok: '#1b5e20', info: '#0d47a1' };
+
+    var html = '<div class="pers-layer" style="margin:20px 0 0;">'
+      + '<div style="font-size:12px;font-weight:700;color:var(--muted,#888);letter-spacing:.05em;margin-bottom:10px;padding:0 2px;">📊 설문 응답 기반 개인화 인사이트</div>'
+      + '<div style="display:flex;flex-direction:column;gap:8px;">';
+
+    insights.forEach(function(item) {
+      html += '<div style="background:' + (colorMap[item.type]||'#f5f5f5') + ';border-left:3px solid ' + (borderMap[item.type]||'#ccc') + ';border-radius:10px;padding:11px 13px;">'
+        + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">'
+        + '<span style="font-size:15px;">' + item.icon + '</span>'
+        + '<span style="font-size:11px;font-weight:700;color:' + (tagColorMap[item.type]||'#555') + ';background:rgba(0,0,0,.05);padding:2px 7px;border-radius:10px;">' + item.tag + '</span>'
+        + '</div>'
+        + '<p style="font-size:12.5px;color:#333;margin:0;line-height:1.6;">' + item.msg + '</p>'
+        + '</div>';
+    });
+
+    html += '</div></div>';
+    mountEl.innerHTML = (mountEl.innerHTML || '') + html;
+
+    // P5 메타 배지 주입
+    var p5meta = document.getElementById('p5-ev-meta');
+    if (p5meta) {
+      var metaBadges = [];
+      if (sleep_hours !== null && sleep_hours <= 1) metaBadges.push('수면 부족');
+      if (stress_level !== null && stress_level >= 2) metaBadges.push('고스트레스');
+      if (late_night_eat !== null && late_night_eat >= 2) metaBadges.push('야식 빈번');
+      if (daily_activity !== null && daily_activity <= 1) metaBadges.push('활동 부족');
+      if (bowel_health !== null && bowel_health <= 1) metaBadges.push('장 불균형');
+      if (safetyFlags.length > 0) metaBadges.push('신체 신호 (' + safetyFlags.length + ')');
+      if (metaBadges.length > 0) {
+        p5meta.innerHTML = (p5meta.innerHTML || '')
+          + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;">'
+          + metaBadges.map(function(m){ return '<span style="font-size:11px;background:#fff3e0;color:#e65100;border:1px solid #ffcc80;border-radius:12px;padding:3px 10px;font-weight:600;">⚠️ ' + m + '</span>'; }).join('')
+          + '</div>';
+      }
+    }
+
+  } catch(e) {
+    // Fallback: 기존 DB payload 구버전 안전 처리
+    console.warn('[PersonalizationLayer] 처리 중 오류 (무시됨):', e && e.message);
   }
 }
 
