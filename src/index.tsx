@@ -7116,7 +7116,7 @@ app.post('/api/daily-check', async (c) => {
         }
       }
     } else {
-      // 2순위: session_id 컬럼으로 조회 (구버전 호환)
+      // 2순위: session_id 컬럼으로 조회 (구버전 호환 - diagnosis_results.session_id)
       const diagRowBySid = await db.prepare(
         `SELECT id, ref_code FROM diagnosis_results WHERE session_id = ? LIMIT 1`
       ).bind(session_id).first<any>()
@@ -7127,6 +7127,23 @@ app.post('/api/daily-check', async (c) => {
           if (rc.startsWith('B2B-') && !serverB2bCode) serverB2bCode = rc
           else if (rc.startsWith('SC-') && !serverConsultantCode) serverConsultantCode = rc
         }
+      } else {
+        // 3순위: hospital_responses 조회 (H- 접두어 기존 고객 하위 호환)
+        // H-XXXXXX 형태의 레거시 ID는 diagnosis_results에 없고 hospital_responses에 존재
+        try {
+          const hospRow = await db.prepare(
+            `SELECT id, ref_code FROM hospital_responses WHERE id = ? LIMIT 1`
+          ).bind(session_id).first<any>()
+          if (hospRow) {
+            resultId = hospRow.id
+            if (hospRow.ref_code) {
+              const rc: string = hospRow.ref_code
+              if (rc.startsWith('B2B-') && !serverB2bCode) serverB2bCode = rc
+              else if (rc.startsWith('SC-') && !serverConsultantCode) serverConsultantCode = rc
+              else if (!serverConsultantCode) serverConsultantCode = rc
+            }
+          }
+        } catch (_hospErr) {}
       }
     }
   } catch (_) {}

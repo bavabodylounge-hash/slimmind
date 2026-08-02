@@ -22697,11 +22697,13 @@ function _syncDailyCheckDB(opts){
       else _consultantCode = _refCode;
     }
 
-    // ── bc_code 수집 ──
-    var _bcCode = (window.__RESULT__ && (window.__RESULT__.bc_code || window.__RESULT__.bc_primary))
+    // ── bc_code 수집 (hospital과 동일 로직으로 동기화) ──
+    var _bcCode = (window.__RESULT__ && (window.__RESULT__.bc_code_key || window.__RESULT__.bc_code || window.__RESULT__.bc_primary))
+               || (window.__DIAG_DATA__ && (window.__DIAG_DATA__.bc_code_key || window.__DIAG_DATA__.bc_code || window.__DIAG_DATA__.bc_primary))
+               || localStorage.getItem('sm_bc_code_' + _sid)
                || 'BC-1';
+    // bc_code가 BC-N 형식이 아니면 BC-1로 정규화
     if (!/^BC-[1-9]$/.test(String(_bcCode))) _bcCode = 'BC-1';
-
     var now = new Date();
     var checkDate = now.getFullYear() + '-'
       + String(now.getMonth()+1).padStart(2,'0') + '-'
