@@ -5965,8 +5965,16 @@ app.get('/result-hospital/:id', async (c) => {
     let html = await fetchAsset(c.env.ASSETS, '/result-hospital.html')
     const INJECT_MARKER = '<!-- ══ 병원 전용: API 연동 + __RESULT__ 주입 ══ -->'
     // __HOSPITAL_RESULT_ID__ + 배포 타임스탬프(캐시 버스팅용) 주입
+    // + localStorage 즉시 저장 (API 응답 대기 없이 진입 즉시 저장 → PWA 세션 복원 보장)
     const deployTs = Date.now()
-    const idScript = `<script>window.__HOSPITAL_RESULT_ID__ = ${JSON.stringify(id)};window.__DEPLOY_TS__ = ${deployTs};</script>\n`
+    const idScript = `<script>
+window.__HOSPITAL_RESULT_ID__ = ${JSON.stringify(id)};
+window.__DEPLOY_TS__ = ${deployTs};
+try {
+  localStorage.setItem('sm_last_result_id', ${JSON.stringify(id)});
+  localStorage.setItem('sm_survey_category', 'hospital');
+} catch(e) {}
+<\/script>\n`
     // OG 메타태그 (결과지 공유 시)
     const rhBase = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.kr' } })()
     const rhOg = `
@@ -6407,7 +6415,14 @@ app.get('/result-aesthetic/:id', async (c) => {
   try {
     let html = await fetchAsset(c.env.ASSETS, '/result-aesthetic.html')
     const INJECT_MARKER = '<!-- ══ 에스테틱 전용: API 연동 + __RESULT__ 주입 ══ -->'
-    const idScript = `<script>window.__AESTHETIC_RESULT_ID__ = ${JSON.stringify(id)};</script>\n`
+    // localStorage 즉시 저장 (API 응답 대기 없이 진입 즉시 저장 → PWA 세션 복원 보장)
+    const idScript = `<script>
+window.__AESTHETIC_RESULT_ID__ = ${JSON.stringify(id)};
+try {
+  localStorage.setItem('sm_last_result_id', ${JSON.stringify(id)});
+  localStorage.setItem('sm_survey_category', 'aesthetic');
+} catch(e) {}
+<\/script>\n`
     if (html.includes(INJECT_MARKER)) {
       html = html.replace(INJECT_MARKER, idScript + INJECT_MARKER)
     } else {
