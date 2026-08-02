@@ -9584,7 +9584,11 @@ app.get('/api/chat/unread', requireRole('ANY'), async (c) => {
   const db = (c.env as any)?.DB as D1Database | undefined
   if (!db) return c.json({ total: 0, clients: [] })
   try {
-    const b2bCode = c.req.query('b2b_code') || (c as any).get('b2b_code') || ''
+    const user = (c as any).get('user')
+    // 보안: MASTER만 임의 b2b_code 조회 가능, B2B_PARTNER/CONSULTANT는 자신의 code만
+    const b2bCode = (user?.role === 'MASTER')
+      ? (c.req.query('b2b_code') || user?.code || '')
+      : (user?.code || '')
     if (!b2bCode) return c.json({ total: 0, clients: [] })
 
     const rows = await db.prepare(`
@@ -9608,7 +9612,11 @@ app.get('/api/chat/clients', requireRole('ANY'), async (c) => {
   const db = (c.env as any)?.DB as D1Database | undefined
   if (!db) return c.json({ clients: [] })
   try {
-    const b2bCode = c.req.query('b2b_code') || ''
+    const user = (c as any).get('user')
+    // 보안: MASTER만 임의 b2b_code 조회 가능, B2B_PARTNER/CONSULTANT는 자신의 code만
+    const b2bCode = (user?.role === 'MASTER')
+      ? (c.req.query('b2b_code') || user?.code || '')
+      : (user?.code || '')
     if (!b2bCode) return c.json({ ok: false, error: 'b2b_code 필수' }, 400)
 
     // 각 고객의 마지막 메시지 + 미읽음 수 집계

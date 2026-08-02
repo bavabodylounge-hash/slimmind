@@ -20293,7 +20293,7 @@ function renderLiveRecord(){
   else { fbT='부담 없이 다시 시작해요'; fbS='한 번에 다 하려 마세요. 오늘은 가장 쉬운 칸 하나만. 작은 기록도 큰 신호예요.'; }
 
   var savedReply = '';
-  try { savedReply = localStorage.getItem('slimmind_con_reply_wk')||''; } catch(e){}
+  try { savedReply = localStorage.getItem('slimmind_con_reply_' + (window.__HOSPITAL_RESULT_ID__ || window.__AESTHETIC_RESULT_ID__ || 'wk'))||''; } catch(e){}
   var fbHTML = '<div class="lr2-fb">'+
     '<div class="lr2-fb-hd"><span class="lr2-fb-ava">SM</span>'+
       '<div class="lr2-fb-meta"><div class="lr2-fb-name">'+CON+'</div><div class="lr2-fb-tag">이번 주 피드백</div></div></div>'+
@@ -20313,14 +20313,14 @@ function renderLiveRecord(){
 
 // 답장 입력 변화 저장
 function lr2ReplyChanged(el){
-  try { localStorage.setItem('slimmind_con_reply_wk', el.value); } catch(e){}
+  try { localStorage.setItem('slimmind_con_reply_' + (window.__HOSPITAL_RESULT_ID__ || window.__AESTHETIC_RESULT_ID__ || 'wk'), el.value); } catch(e){}
   var done=document.getElementById('lr2-reply-done'); if(done) done.style.display='none';
 }
 function lr2SendReply(){
   var el=document.getElementById('lr2-reply-in'); if(!el) return;
   var txt=(el.value||'').trim();
   if(!txt){ el.focus(); return; }
-  try { localStorage.setItem('slimmind_con_reply_wk', txt); } catch(e){}
+  try { localStorage.setItem('slimmind_con_reply_' + (window.__HOSPITAL_RESULT_ID__ || window.__AESTHETIC_RESULT_ID__ || 'wk'), txt); } catch(e){}
   var done=document.getElementById('lr2-reply-done'); if(done) done.style.display='block';
   var CON=(window.__CONSULTANT_NAME__||'담당 컨설턴트');
   if(typeof _wgSendToast==='function') _wgSent('답장');
@@ -21552,18 +21552,48 @@ function _syncDailyCheckDB(opts){
 
     console.log('[_syncDailyCheckDB] payload:', JSON.stringify({sid:_sid, b2b:_b2bCode, ref:_refCode, date:checkDate}));
 
-    fetch('/api/daily-check', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    }).then(function(r){ return r.json(); })
-      .then(function(j){
-        if(j.ok) console.log('[daily-check sync] ✅ saved:', j.session_id, j.check_date);
-        else console.warn('[daily-check sync] ❌ server err:', j);
-      })
-      .catch(function(e){ console.warn('[daily-check sync] ❌ fetch err:', e); });
+    // ── 재시도 로직 (최대 3회, 지수 백오프) ──────────────────────────────
+    var _dcRetry = 0;
+    function _dcSend() {
+      fetch('/api/daily-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).then(function(r){ return r.json(); })
+        .then(function(j){
+          if(j.ok) {
+            console.log('[daily-check sync] ✅ saved:', j.session_id, j.check_date);
+          } else {
+            console.warn('[daily-check sync] ❌ server err:', j);
+            if (_dcRetry < 2) { _dcRetry++; setTimeout(_dcSend, _dcRetry * 2000); }
+            else { _dcShowFailToast('기록 전송 실패 (서버 오류)'); }
+          }
+        })
+        .catch(function(e){
+          console.warn('[daily-check sync] ❌ fetch err:', e);
+          if (_dcRetry < 2) { _dcRetry++; setTimeout(_dcSend, _dcRetry * 2000); }
+          else { _dcShowFailToast(navigator.onLine ? '기록 전송 실패 (서버 응답 없음)' : '오프라인 상태입니다. 다시 시도해주세요.'); }
+        });
+    }
+    _dcSend();
 
   } catch(e){ console.warn('[_syncDailyCheckDB]', e); }
+}
+
+// ── 전송 실패 토스트 알림 ──────────────────────────────────────────
+function _dcShowFailToast(msg) {
+  try {
+    var t = document.getElementById('_dc-fail-toast');
+    if (!t) {
+      t = document.createElement('div');
+      t.id = '_dc-fail-toast';
+      t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#c0392b;color:#fff;padding:11px 20px;border-radius:10px;font-size:13.5px;font-weight:700;z-index:99999;box-shadow:0 4px 20px rgba(0,0,0,.3);pointer-events:none;opacity:0;transition:opacity .3s;max-width:88vw;text-align:center;';
+      document.body.appendChild(t);
+    }
+    t.textContent = '⚠ ' + msg;
+    t.style.opacity = '1';
+    setTimeout(function(){ t.style.opacity = '0'; }, 3500);
+  } catch(_){}
 }
 
 // 음식 선택 시트 열기
