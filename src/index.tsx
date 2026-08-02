@@ -48,6 +48,29 @@ type JwtPayload = {
   exp: number
 }
 
+// ─── 카카오톡 인앱 → 외부 브라우저 강제 오픈 공통 스크립트 ──────────
+// iOS: safari-{url}?_kref=1 스킴으로 Safari 강제 오픈
+//      ?_kref=1 파라미터: sessionStorage와 달리 새로고침 후에도 유지
+//      → pwa-common.js가 이 파라미터를 읽어 카카오 경유임을 인식 (Case 1 모달)
+// Android: intent:// Chrome 강제 오픈
+// 이미 _kref=1 파라미터가 있으면(Safari 재진입) 재실행하지 않음
+const KAKAO_ESCAPE_SCRIPT = `<script>
+(function(){
+  var ua = navigator.userAgent || '';
+  if (!/KAKAOTALK|Line\\/|Instagram|FBAN|FBAV/i.test(ua)) return;
+  var href = location.href;
+  if (/iPhone|iPad|iPod/i.test(ua)) {
+    // _kref=1 이 이미 붙어있으면 Safari 재진입이므로 중복 redirect 방지
+    if (href.indexOf('_kref=1') !== -1) return;
+    var sep = href.indexOf('?') !== -1 ? '&' : '?';
+    location.replace('safari-' + href + sep + '_kref=1');
+  } else if (/Android/i.test(ua)) {
+    location.replace('intent://' + href.replace(/^https?:\\/\\//, '') +
+      '#Intent;scheme=https;action=android.intent.action.VIEW;package=com.android.chrome;end');
+  }
+})();
+<\/script>`
+
 const app = new Hono<{ Bindings: Bindings }>()
 
 // ─── CORS ────────────────────────────────────────────────────
@@ -2740,7 +2763,39 @@ app.get('/', async (c) => {
     // ?ref=SC-0001 → /s/SC-0001 (컨설턴트 링크 보존)
     return c.redirect(`/s/${ref}`, 301)
   }
-  return htmlResponse(await fetchAsset(c.env.ASSETS, '/index.html'))
+
+  let html = await fetchAsset(c.env.ASSETS, '/index.html')
+
+  // ── PWA standalone 진입 시 개인 결과지 즉시 복원 ──────────────────
+  // pwa-common.js보다 먼저 실행되어야 하므로 <head> 최상단 인라인 주입.
+  // 카카오→Safari 경유 플래그(sm_from_kakao)는 sessionStorage에 저장되어
+  // 탭이 닫히면 사라지므로, standalone 재진입 시에는 localStorage만 사용.
+  const pwaRestoreScript = `<script>
+(function(){
+  try {
+    var isStandalone = (
+      window.navigator.standalone === true ||
+      window.matchMedia('(display-mode: standalone)').matches
+    );
+    if (!isStandalone) return;
+    var lastId   = localStorage.getItem('sm_last_result_id') || '';
+    var category = localStorage.getItem('sm_survey_category') || 'hospital';
+    if (!lastId) return;
+    var p = location.pathname;
+    if (p.indexOf('/result-hospital/') === 0 ||
+        p.indexOf('/result-aesthetic/') === 0 ||
+        p.indexOf('/result/') === 0 ||
+        p.indexOf('/slimmind-today') === 0) return;
+    var target = (category === 'aesthetic')
+      ? '/result-aesthetic/' + lastId
+      : '/result-hospital/' + lastId;
+    location.replace(target);
+  } catch(e) {}
+})();
+<\/script>`
+
+  html = html.replace('<head>', `<head>${pwaRestoreScript}`)
+  return htmlResponse(html)
 })
 
 app.get('/admin', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/admin.html')))
@@ -3227,24 +3282,6 @@ app.get('/a/:code', async (c) => {
   });
 </script>`
 
-  // ── 카카오톡 인앱 브라우저 → 외부 브라우저 강제 오픈 ──
-  const kakaoEscapeScript = `<script>
-(function(){
-  var ua = navigator.userAgent || '';
-  var isInApp = /KAKAOTALK|Line\\/|Instagram|FBAN|FBAV/i.test(ua);
-  if (!isInApp) return;
-  var isIOS     = /iPhone|iPad|iPod/i.test(ua);
-  var isAndroid = /Android/i.test(ua);
-  var href      = location.href;
-  if (isIOS) {
-    location.replace('safari-' + href);
-  } else if (isAndroid) {
-    location.replace('intent://' + href.replace(/^https?:\\/\\//, '') +
-      '#Intent;scheme=https;action=android.intent.action.VIEW;package=com.android.chrome;end');
-  }
-})();
-<\/script>`
-
   await db.prepare(
     "UPDATE b2b_partners SET qr_scan_count = qr_scan_count + 1, updated_at=datetime('now') WHERE code=?"
   ).bind(rawCode).run()
@@ -3273,7 +3310,7 @@ app.get('/a/:code', async (c) => {
   } catch {
     html = await fetchAsset(c.env.ASSETS, '/index.html')
   }
-  html = html.replace('<head>', `<head>${kakaoEscapeScript}`)
+  html = html.replace('<head>', `<head>${KAKAO_ESCAPE_SCRIPT}`)
   html = html.replace('</head>', `${ogInject}\n${brandInject}\n${langInitScript}\n</head>`)
   html = html.replace('</body>', `${refScript}\n</body>`)
   return htmlResponse(html)
@@ -3441,24 +3478,7 @@ app.get('/s/:code', async (c) => {
 
   html = html.replace('<head>', `<head>${ogMetaS}`)
 
-  // ── 카카오톡 인앱 브라우저 → 외부 브라우저 강제 오픈 (결과지 공유 시)
-  const kakaoRedirectScript = `<script>
-(function(){
-  var ua = navigator.userAgent || '';
-  var isInApp = /KAKAOTALK|Line\\/|Instagram|FBAN|FBAV/i.test(ua);
-  if (!isInApp) return;
-  var isIOS     = /iPhone|iPad|iPod/i.test(ua);
-  var isAndroid = /Android/i.test(ua);
-  var href      = location.href;
-  if (isIOS) {
-    location.replace('safari-' + href);
-  } else if (isAndroid) {
-    location.replace('intent://' + href.replace(/^https?:\\/\\//, '') +
-      '#Intent;scheme=https;action=android.intent.action.VIEW;package=com.android.chrome;end');
-  }
-})();
-<\/script>`
-  html = html.replace('<head>', `<head>${kakaoRedirectScript}`)
+  html = html.replace('<head>', `<head>${KAKAO_ESCAPE_SCRIPT}`)
 
   // ref 쿼리 파라미터도 함께 전달 (기존 URL 방식 호환)
   if (brandInject) {
@@ -5962,26 +5982,8 @@ app.get('/result-hospital/:id', async (c) => {
 <meta name="twitter:card"        content="summary_large_image">
 <meta name="twitter:title"       content="SlimMind | 바디코드 정밀 진단 결과">
 <meta name="twitter:image"       content="${rhBase}/static/og-hospital.png">`
-    // ── 카카오톡 인앱 → 외부 브라우저(Safari/Chrome) 강제 오픈 ──
-    // 결과지를 카카오 채널에서 공유받아 열 때 인앱 브라우저에 갇히지 않도록
-    // iOS: safari- 스킴으로 Safari 강제 오픈 + sessionStorage에 sm_from_kakao 플래그 기록
-    //      → Safari로 열린 후에도 pwa-common.js가 카카오 경유임을 인식해 Case 1 모달 표시
-    const kakaoEscape = `<script>
-(function(){
-  var ua = navigator.userAgent || '';
-  if (!/KAKAOTALK|Line\\/|Instagram|FBAN|FBAV/i.test(ua)) return;
-  var href = location.href;
-  if (/iPhone|iPad|iPod/i.test(ua)) {
-    try { sessionStorage.setItem('sm_from_kakao', '1'); } catch(e) {}
-    location.replace('safari-' + href);
-  } else if (/Android/i.test(ua)) {
-    location.replace('intent://' + href.replace(/^https?:\\/\\//, '') +
-      '#Intent;scheme=https;action=android.intent.action.VIEW;package=com.android.chrome;end');
-  }
-})();
-<\/script>`
-    // OG + kakaoEscape → </head> 바로 앞 주입
-    html = html.replace('</head>', `${rhOg}\n${kakaoEscape}\n</head>`)
+    // OG + KAKAO_ESCAPE_SCRIPT → </head> 바로 앞 주입
+    html = html.replace('</head>', `${rhOg}\n${KAKAO_ESCAPE_SCRIPT}\n</head>`)
     // ID 스크립트: INJECT_MARKER 위치 우선, 없으면 </head> 앞
     if (html.includes(INJECT_MARKER)) {
       html = html.replace(INJECT_MARKER, idScript + INJECT_MARKER)
@@ -6406,29 +6408,13 @@ app.get('/result-aesthetic/:id', async (c) => {
     let html = await fetchAsset(c.env.ASSETS, '/result-aesthetic.html')
     const INJECT_MARKER = '<!-- ══ 에스테틱 전용: API 연동 + __RESULT__ 주입 ══ -->'
     const idScript = `<script>window.__AESTHETIC_RESULT_ID__ = ${JSON.stringify(id)};</script>\n`
-    // ── 카카오톡 인앱 → 외부 브라우저(Safari/Chrome) 강제 오픈 ──
-    // iOS: safari- 스킴으로 Safari 강제 오픈 + sessionStorage에 sm_from_kakao 플래그 기록
-    const kakaoEscape = `<script>
-(function(){
-  var ua = navigator.userAgent || '';
-  if (!/KAKAOTALK|Line\\/|Instagram|FBAN|FBAV/i.test(ua)) return;
-  var href = location.href;
-  if (/iPhone|iPad|iPod/i.test(ua)) {
-    try { sessionStorage.setItem('sm_from_kakao', '1'); } catch(e) {}
-    location.replace('safari-' + href);
-  } else if (/Android/i.test(ua)) {
-    location.replace('intent://' + href.replace(/^https?:\\/\\//, '') +
-      '#Intent;scheme=https;action=android.intent.action.VIEW;package=com.android.chrome;end');
-  }
-})();
-<\/script>`
     if (html.includes(INJECT_MARKER)) {
       html = html.replace(INJECT_MARKER, idScript + INJECT_MARKER)
     } else {
       html = html.replace('</head>', idScript + '</head>')
     }
-    // kakaoEscape → <head> 바로 뒤 최우선 주입 (ID 스크립트보다 먼저 실행)
-    html = html.replace('<head>', `<head>${kakaoEscape}`)
+    // KAKAO_ESCAPE_SCRIPT → <head> 바로 뒤 최우선 주입 (ID 스크립트보다 먼저 실행)
+    html = html.replace('<head>', `<head>${KAKAO_ESCAPE_SCRIPT}`)
     return c.html(html, 200, {
       'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
       'Pragma': 'no-cache',

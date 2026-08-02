@@ -59,10 +59,13 @@
         주입해 두면 이 쪽에서 읽어 Case 1로 올바르게 분기한다.
   ───────────────────────────────────────────────────── */
   var ua          = navigator.userAgent || '';
+  // ?_kref=1 파라미터: iOS 카카오 인앱에서 safari- 스킴으로 강제 오픈될 때 URL에 추가됨
+  // sessionStorage와 달리 새로고침 후에도 URL에 남아있어 카카오 경유를 지속 인식 가능
   var isKakao     = /KAKAOTALK/i.test(ua) ||
                     (function() {
-                      try { return sessionStorage.getItem('sm_from_kakao') === '1'; }
-                      catch(e) { return false; }
+                      try {
+                        return new URLSearchParams(location.search).get('_kref') === '1';
+                      } catch(e) { return false; }
                     })();
   var isIOS       = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
   var isAndroid   = /Android/.test(ua);
@@ -338,19 +341,19 @@
      모달/팁 렌더 함수
   ════════════════════════════════════════════════════ */
 
-  /* Case 1: iOS 카카오톡 인앱 */
+  /* Case 1: iOS 카카오톡 → Safari 경유 (5단계) */
   function showIOSKakaoTip() {
     if (document.getElementById('pwa-modal-overlay')) return;
     var overlay = document.createElement('div');
     overlay.id = 'pwa-modal-overlay';
     overlay.innerHTML =
       '<div id="pwa-modal">' +
-        '<div class="pwa-modal-title">📲 앱으로 저장하기</div>' +
-        '<div class="pwa-modal-desc">카카오톡 인앱 브라우저에서 아래 순서로 진행하세요.</div>' +
+        '<div class="pwa-modal-title">📲 홈 화면에 앱으로 저장</div>' +
+        '<div class="pwa-modal-desc">나의 결과지를 언제든 바로 열 수 있어요.</div>' +
 
         '<div class="pwa-step">' +
           '<div class="pwa-num">1</div>' +
-          '<div>화면 <b>오른쪽 하단 ···</b> 버튼을 탭하세요</div>' +
+          '<div>화면 <b>오른쪽 하단 [···]</b> 버튼을 탭하세요</div>' +
         '</div>' +
         '<div class="pwa-step">' +
           '<div class="pwa-num">2</div>' +
@@ -358,11 +361,15 @@
         '</div>' +
         '<div class="pwa-step">' +
           '<div class="pwa-num">3</div>' +
-          '<div>오른쪽 하단 <b>[더 보기 ···]</b>를 탭하세요</div>' +
+          '<div>우측 하단 <b>[더보기]</b>를 탭하세요</div>' +
         '</div>' +
         '<div class="pwa-step">' +
           '<div class="pwa-num">4</div>' +
-          '<div><b>[홈 화면에 추가]</b>를 탭하면 완료!</div>' +
+          '<div><b>[홈 화면에 추가]</b>를 탭하세요</div>' +
+        '</div>' +
+        '<div class="pwa-step">' +
+          '<div class="pwa-num">5</div>' +
+          '<div>바탕화면에 생긴 <b>아이콘을 눌러</b> 앱을 실행합니다</div>' +
         '</div>' +
 
         '<button class="pwa-modal-close" id="pwa-modal-close-btn">닫기</button>' +
