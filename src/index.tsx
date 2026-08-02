@@ -7588,7 +7588,7 @@ app.get('/api/b2b/daily-check/detail', requireRole('ANY'), async (c) => {
 
     // 고객 정보
     const userInfo = await db.prepare(`
-      SELECT user_name, bc_code FROM diagnosis_results
+      SELECT user_name, bc_code_key FROM diagnosis_results
       WHERE id = ? OR session_id = ? LIMIT 1
     `).bind(session_id, session_id).first<any>()
 
@@ -7604,7 +7604,7 @@ app.get('/api/b2b/daily-check/detail', requireRole('ANY'), async (c) => {
     // 최근 7일 체크 히스토리
     const history = await db.prepare(`
       SELECT check_date, exercise_done, diet_done, recovery_done,
-             total_kcal_out, total_kcal_in
+             total_kcal_out, total_kcal_in, customer_memo
       FROM daily_checks
       WHERE session_id = ?
       ORDER BY check_date DESC LIMIT 14
