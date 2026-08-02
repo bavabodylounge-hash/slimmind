@@ -5962,8 +5962,26 @@ app.get('/result-hospital/:id', async (c) => {
 <meta name="twitter:card"        content="summary_large_image">
 <meta name="twitter:title"       content="SlimMind | 바디코드 정밀 진단 결과">
 <meta name="twitter:image"       content="${rhBase}/static/og-hospital.png">`
-    // OG 태그 주입 (</head> 바로 앞)
-    html = html.replace('</head>', `${rhOg}\n</head>`)
+    // ── 카카오톡 인앱 → 외부 브라우저(Safari/Chrome) 강제 오픈 ──
+    // 결과지를 카카오 채널에서 공유받아 열 때 인앱 브라우저에 갇히지 않도록
+    // iOS: safari- 스킴으로 Safari 강제 오픈 + sessionStorage에 sm_from_kakao 플래그 기록
+    //      → Safari로 열린 후에도 pwa-common.js가 카카오 경유임을 인식해 Case 1 모달 표시
+    const kakaoEscape = `<script>
+(function(){
+  var ua = navigator.userAgent || '';
+  if (!/KAKAOTALK|Line\\/|Instagram|FBAN|FBAV/i.test(ua)) return;
+  var href = location.href;
+  if (/iPhone|iPad|iPod/i.test(ua)) {
+    try { sessionStorage.setItem('sm_from_kakao', '1'); } catch(e) {}
+    location.replace('safari-' + href);
+  } else if (/Android/i.test(ua)) {
+    location.replace('intent://' + href.replace(/^https?:\\/\\//, '') +
+      '#Intent;scheme=https;action=android.intent.action.VIEW;package=com.android.chrome;end');
+  }
+})();
+<\/script>`
+    // OG + kakaoEscape → </head> 바로 앞 주입
+    html = html.replace('</head>', `${rhOg}\n${kakaoEscape}\n</head>`)
     // ID 스크립트: INJECT_MARKER 위치 우선, 없으면 </head> 앞
     if (html.includes(INJECT_MARKER)) {
       html = html.replace(INJECT_MARKER, idScript + INJECT_MARKER)
@@ -6388,11 +6406,29 @@ app.get('/result-aesthetic/:id', async (c) => {
     let html = await fetchAsset(c.env.ASSETS, '/result-aesthetic.html')
     const INJECT_MARKER = '<!-- ══ 에스테틱 전용: API 연동 + __RESULT__ 주입 ══ -->'
     const idScript = `<script>window.__AESTHETIC_RESULT_ID__ = ${JSON.stringify(id)};</script>\n`
+    // ── 카카오톡 인앱 → 외부 브라우저(Safari/Chrome) 강제 오픈 ──
+    // iOS: safari- 스킴으로 Safari 강제 오픈 + sessionStorage에 sm_from_kakao 플래그 기록
+    const kakaoEscape = `<script>
+(function(){
+  var ua = navigator.userAgent || '';
+  if (!/KAKAOTALK|Line\\/|Instagram|FBAN|FBAV/i.test(ua)) return;
+  var href = location.href;
+  if (/iPhone|iPad|iPod/i.test(ua)) {
+    try { sessionStorage.setItem('sm_from_kakao', '1'); } catch(e) {}
+    location.replace('safari-' + href);
+  } else if (/Android/i.test(ua)) {
+    location.replace('intent://' + href.replace(/^https?:\\/\\//, '') +
+      '#Intent;scheme=https;action=android.intent.action.VIEW;package=com.android.chrome;end');
+  }
+})();
+<\/script>`
     if (html.includes(INJECT_MARKER)) {
       html = html.replace(INJECT_MARKER, idScript + INJECT_MARKER)
     } else {
       html = html.replace('</head>', idScript + '</head>')
     }
+    // kakaoEscape → <head> 바로 뒤 최우선 주입 (ID 스크립트보다 먼저 실행)
+    html = html.replace('<head>', `<head>${kakaoEscape}`)
     return c.html(html, 200, {
       'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
       'Pragma': 'no-cache',

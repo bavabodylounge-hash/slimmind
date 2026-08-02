@@ -53,9 +53,17 @@
 
   /* ─────────────────────────────────────────────────────
      환경 감지
+     ※ iOS 카카오 인앱에서 safari- 스킴으로 Safari로 이동한 경우
+        UA는 이미 Safari UA로 바뀌어 있으므로
+        sessionStorage 플래그(sm_from_kakao)를 결과지 페이지에서
+        주입해 두면 이 쪽에서 읽어 Case 1로 올바르게 분기한다.
   ───────────────────────────────────────────────────── */
   var ua          = navigator.userAgent || '';
-  var isKakao     = /KAKAOTALK/i.test(ua);
+  var isKakao     = /KAKAOTALK/i.test(ua) ||
+                    (function() {
+                      try { return sessionStorage.getItem('sm_from_kakao') === '1'; }
+                      catch(e) { return false; }
+                    })();
   var isIOS       = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
   var isAndroid   = /Android/.test(ua);
   var isSafari    = /Safari/.test(ua) && !/Chrome/.test(ua) && !/CriOS/.test(ua);
