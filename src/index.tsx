@@ -49,23 +49,30 @@ type JwtPayload = {
 }
 
 // ─── 카카오톡 인앱 → 외부 브라우저 강제 오픈 공통 스크립트 ──────────
-// iOS: safari-{url}?_kref=1 스킴으로 Safari 강제 오픈
-//      ?_kref=1 파라미터: sessionStorage와 달리 새로고침 후에도 유지
-//      → pwa-common.js가 이 파라미터를 읽어 카카오 경유임을 인식 (Case 1 모달)
-// Android: intent:// Chrome 강제 오픈
-// 이미 _kref=1 파라미터가 있으면(Safari 재진입) 재실행하지 않음
+// iOS 카카오톡 인앱에서 외부 브라우저(Safari)로 강제 이동시키는 스크립트
+// 방법 1: location.href = 'kakaotalk://web/openExternal?url=...' (카카오 공식 스킴)
+// 방법 2: safari- 스킴 (구버전 호환)
+// ?_kref=1 파라미터: Safari로 열린 후에도 카카오 경유임을 pwa-common.js가 인식
 const KAKAO_ESCAPE_SCRIPT = `<script>
 (function(){
   var ua = navigator.userAgent || '';
   if (!/KAKAOTALK|Line\\/|Instagram|FBAN|FBAV/i.test(ua)) return;
   var href = location.href;
+  // 이미 _kref=1이면 외부 브라우저에서 재진입 → 중복 실행 방지
+  if (href.indexOf('_kref=1') !== -1) return;
+  var sep = href.indexOf('?') !== -1 ? '&' : '?';
+  var target = href + sep + '_kref=1';
   if (/iPhone|iPad|iPod/i.test(ua)) {
-    // _kref=1 이 이미 붙어있으면 Safari 재진입이므로 중복 redirect 방지
-    if (href.indexOf('_kref=1') !== -1) return;
-    var sep = href.indexOf('?') !== -1 ? '&' : '?';
-    location.replace('safari-' + href + sep + '_kref=1');
+    // 방법1: 카카오 공식 외부 브라우저 열기 스킴 (최신 카카오톡 대응)
+    location.href = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(target);
+    // 방법2: 300ms 후에도 여전히 카카오 인앱이면 safari- 스킴으로 재시도
+    setTimeout(function() {
+      if (/KAKAOTALK/i.test(navigator.userAgent)) {
+        location.replace('safari-' + target);
+      }
+    }, 300);
   } else if (/Android/i.test(ua)) {
-    location.replace('intent://' + href.replace(/^https?:\\/\\//, '') +
+    location.replace('intent://' + target.replace(/^https?:\\/\\//, '') +
       '#Intent;scheme=https;action=android.intent.action.VIEW;package=com.android.chrome;end');
   }
 })();
@@ -5990,14 +5997,10 @@ try {
 <meta name="twitter:card"        content="summary_large_image">
 <meta name="twitter:title"       content="SlimMind | 바디코드 정밀 진단 결과">
 <meta name="twitter:image"       content="${rhBase}/static/og-hospital.png">`
-    // OG + KAKAO_ESCAPE_SCRIPT → </head> 바로 앞 주입
-    html = html.replace('</head>', `${rhOg}\n${KAKAO_ESCAPE_SCRIPT}\n</head>`)
-    // ID 스크립트: INJECT_MARKER 위치 우선, 없으면 </head> 앞
-    if (html.includes(INJECT_MARKER)) {
-      html = html.replace(INJECT_MARKER, idScript + INJECT_MARKER)
-    } else {
-      html = html.replace('</head>', `${idScript}</head>`)
-    }
+    // KAKAO_ESCAPE_SCRIPT + idScript → <head> 최상단 첫 번째로 주입 (가장 먼저 실행)
+    html = html.replace('<head>', `<head>\n${KAKAO_ESCAPE_SCRIPT}\n${idScript}`)
+    // OG → </head> 바로 앞
+    html = html.replace('</head>', `${rhOg}\n</head>`)
     // 새로고침 시 항상 Worker를 통과하도록 — 브라우저·CDN 캐시 완전 차단
     const now = new Date().toUTCString()
     return c.html(html, 200, {
