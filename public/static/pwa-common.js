@@ -61,12 +61,18 @@
   var ua          = navigator.userAgent || '';
   // ?_kref=1 파라미터: iOS 카카오 인앱에서 safari- 스킴으로 강제 오픈될 때 URL에 추가됨
   // sessionStorage와 달리 새로고침 후에도 URL에 남아있어 카카오 경유를 지속 인식 가능
-  var isKakao     = /KAKAOTALK/i.test(ua) ||
-                    (function() {
-                      try {
-                        return new URLSearchParams(location.search).get('_kref') === '1';
-                      } catch(e) { return false; }
-                    })();
+  // sm_from_kakao localStorage: 결과지 페이지 진입 시 저장되는 영구 플래그
+  var _krefInUrl = (function() {
+    try { return new URLSearchParams(location.search).get('_kref') === '1'; } catch(e) { return false; }
+  })();
+  // _kref=1 URL 파라미터가 있으면 localStorage에 영구 저장 (이후 새 탭 열어도 인식)
+  if (_krefInUrl) {
+    try { localStorage.setItem('sm_from_kakao', '1'); } catch(e) {}
+  }
+  var _fromKakaoLS = (function() {
+    try { return localStorage.getItem('sm_from_kakao') === '1'; } catch(e) { return false; }
+  })();
+  var isKakao     = /KAKAOTALK/i.test(ua) || _krefInUrl || _fromKakaoLS;
   var isIOS       = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
   var isAndroid   = /Android/.test(ua);
   var isSafari    = /Safari/.test(ua) && !/Chrome/.test(ua) && !/CriOS/.test(ua);

@@ -509,7 +509,7 @@ app.delete('/api/survey/draft', async (c) => {
 app.get('/api/manifest.json', (c) => {
   const forUrl = c.req.query('for') || '/'
   // 허용 경로만 start_url로 사용 (보안: 외부 URL 주입 차단)
-  const allowedPrefixes = ['/result/', '/slimmind-today', '/']
+  const allowedPrefixes = ['/result-hospital/', '/result-aesthetic/', '/result/', '/slimmind-today', '/']
   const safeStartUrl = allowedPrefixes.some(p => forUrl.startsWith(p)) ? forUrl : '/'
 
   const manifest = {
@@ -2796,6 +2796,8 @@ app.get('/', async (c) => {
     var target = (category === 'aesthetic')
       ? '/result-aesthetic/' + lastId
       : '/result-hospital/' + lastId;
+    // DOM 렌더링 완전 차단 후 즉시 결과지로 이동 (시작 화면 잠깐도 안 보이게)
+    document.documentElement.style.display = 'none';
     location.replace(target);
   } catch(e) {}
 })();
@@ -5997,8 +5999,16 @@ try {
 <meta name="twitter:card"        content="summary_large_image">
 <meta name="twitter:title"       content="SlimMind | 바디코드 정밀 진단 결과">
 <meta name="twitter:image"       content="${rhBase}/static/og-hospital.png">`
+    // 동적 manifest: start_url을 현재 결과지 URL로 교체
+    // iOS "홈 화면에 추가" 시 저장되는 start_url이 결과지 URL이 되도록
+    const dynamicManifestHref = `/api/manifest.json?for=${encodeURIComponent('/result-hospital/' + id)}`
     // KAKAO_ESCAPE_SCRIPT + idScript → <head> 최상단 첫 번째로 주입 (가장 먼저 실행)
     html = html.replace('<head>', `<head>\n${KAKAO_ESCAPE_SCRIPT}\n${idScript}`)
+    // manifest 링크 교체 (static manifest.json의 start_url="/" → 동적 결과지 URL로)
+    html = html.replace(
+      /<link[^>]+rel=["']manifest["'][^>]*>/i,
+      `<link rel="manifest" href="${dynamicManifestHref}">`
+    )
     // OG → </head> 바로 앞
     html = html.replace('</head>', `${rhOg}\n</head>`)
     // 새로고침 시 항상 Worker를 통과하도록 — 브라우저·CDN 캐시 완전 차단
@@ -6431,8 +6441,15 @@ try {
     } else {
       html = html.replace('</head>', idScript + '</head>')
     }
+    // 동적 manifest: start_url을 현재 에스테틱 결과지 URL로 교체
+    const dynamicManifestHref = `/api/manifest.json?for=${encodeURIComponent('/result-aesthetic/' + id)}`
     // KAKAO_ESCAPE_SCRIPT → <head> 바로 뒤 최우선 주입 (ID 스크립트보다 먼저 실행)
     html = html.replace('<head>', `<head>${KAKAO_ESCAPE_SCRIPT}`)
+    // manifest 링크 교체 (static manifest.json의 start_url="/" → 동적 결과지 URL로)
+    html = html.replace(
+      /<link[^>]+rel=["']manifest["'][^>]*>/i,
+      `<link rel="manifest" href="${dynamicManifestHref}">`
+    )
     return c.html(html, 200, {
       'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
       'Pragma': 'no-cache',
