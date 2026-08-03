@@ -5557,6 +5557,8 @@ p, div, span, h1, h2, h3, h4{
 <link rel="apple-touch-icon" href="/static/baba_logo.png">
 <!-- PWA 공통 모듈 v2.0 (세션 복원 + UA 모달 + SW 등록 + 웹푸시) -->
 <script src="/static/pwa-common.js?v=20260801" defer></script>
+<!-- Core Mapping Engine v1.0 — Live Refresh 핸드셰이크 + 파이프라인 모듈 -->
+<script src="/mapping-engine.js?v=20260803"></script>
 </head>
 <body>
 <!-- ✅ V4.9: 컨설턴트 피드백 알림 배너 -->
@@ -17480,6 +17482,112 @@ function _forceHideOverlay() {
 var _overlayKillTimer = setTimeout(_forceHideOverlay, 900);
 
 // ── 초기화 ──────────────────
+
+// ══════════════════════════════════════════════════════════════════════════
+// Live Refresh & Schema Version Handshake
+// ──────────────────────────────────────────────────────────────────────────
+// [동작 원리]
+//   1. 서버 /api/h/result/:id 응답에 schema_version 필드 포함 (v1.0)
+//   2. window.__MAPPING_ENGINE_VERSION__ (mapping-engine.js 로드 시 세팅) 와 비교
+//   3. 불일치 → wasRecomputed = true → MappingEngine.run()으로 raw_answers 기반 재연산
+//   4. 일치   → 서버 저장값(axisScores, redFlags, bcCode) 신뢰 사용
+//
+// [기존 고객 데이터]
+//   raw_answers는 DB에 영구 저장 → 매 조회 시 최신 매핑 엔진으로 재연산됨
+//   = 설문 응시 당시 버전과 무관하게 항상 최신 결과지 렌더링 보장
+// ══════════════════════════════════════════════════════════════════════════
+
+/**
+ * mapping-engine.js가 로드되었는지 확인.
+ * <script src="/mapping-engine.js">가 result-hospital.html <head>에 포함됨.
+ */
+function _isMappingEngineLoaded() {
+  return typeof window.MappingEngine !== 'undefined'
+    && typeof window.MappingEngine.run === 'function';
+}
+
+/**
+ * Live Refresh 핸드셰이크 — 서버 응답 스냅샷과 클라이언트 엔진 버전 비교 후
+ * 필요시 MappingEngine.run()으로 재연산하여 resultData를 보강.
+ *
+ * @param {Object} serverResponse  - /api/h/result/:id 원본 응답
+ * @param {Object} resultData      - loadHospitalResult()가 구성한 결과 객체
+ * @returns {Object} 보강된 resultData (재연산 시 axisScores/redFlags가 최신값으로 교체)
+ */
+function applyLiveRefresh(serverResponse, resultData) {
+  if (!_isMappingEngineLoaded()) {
+    console.warn('[LiveRefresh] MappingEngine not loaded — 서버 저장값 사용');
+    return resultData;
+  }
+
+  var hs = window.MappingEngine.checkVersionHandshake(serverResponse.schema_version || null);
+  console.log('[LiveRefresh] handshake:', hs);
+
+  if (!hs.needsRefresh) {
+    // 버전 일치 — 서버 저장값 신뢰
+    console.log('[LiveRefresh] OK — 서버 axisScores/redFlags 신뢰 사용');
+    return resultData;
+  }
+
+  // 버전 불일치 또는 schema_version 없음 → 재연산
+  console.log('[LiveRefresh] 재연산 시작 (reason=' + hs.reason + ')');
+  try {
+    var rawAns = serverResponse.raw_answers || {};
+    var engineResult = window.MappingEngine.run(
+      rawAns,
+      {
+        axisScores    : serverResponse.axis_scores || {},
+        redFlags      : resultData.redFlags        || [],
+        age           : resultData.age,
+        desire        : serverResponse.desire      || rawAns.desire || null,
+        schema_version: serverResponse.schema_version || null,
+      },
+      { surveyType: 'hospital', forceRecompute: (hs.reason !== 'ok') }
+    );
+
+    // axisScores 교체 (재연산값 우선, 단 서버 저장값이 0이 아닌 경우 최대값 취함)
+    var newAxis = engineResult.axisScores || {};
+    var mergedAxis = Object.assign({}, resultData.axisScores || {});
+    Object.keys(newAxis).forEach(function(ax) {
+      // 서버값이 없거나 0이면 재연산값 사용
+      if (!mergedAxis[ax] || mergedAxis[ax] === 0) {
+        mergedAxis[ax] = newAxis[ax];
+      } else {
+        // 둘 다 있으면 재연산값으로 교체 (최신 매핑 로직 우선)
+        mergedAxis[ax] = newAxis[ax];
+      }
+    });
+
+    // redFlags 병합 (양쪽 합집합)
+    var mergedFlags = (resultData.redFlags || []).slice();
+    (engineResult.redFlags || []).forEach(function(f) {
+      if (mergedFlags.indexOf(f) < 0) mergedFlags.push(f);
+    });
+
+    // bcAnswers 보강 (재연산에서 새로 추출된 키 추가)
+    var mergedAnswers = Object.assign({}, resultData.answers || {}, engineResult.bcAnswers || {});
+
+    // desire 보강
+    var mergedDesire = engineResult.desire || resultData.desire || null;
+
+    console.log('[LiveRefresh] 재연산 완료 — mergedAxis:', mergedAxis,
+      '| mergedFlags:', mergedFlags,
+      '| wasRecomputed:', engineResult.wasRecomputed);
+
+    return Object.assign({}, resultData, {
+      axisScores   : mergedAxis,
+      redFlags     : mergedFlags,
+      answers      : mergedAnswers,
+      desire       : mergedDesire,
+      _liveRefreshed: true,
+      _mappingVer  : engineResult.mappingVersion,
+    });
+  } catch (lrErr) {
+    console.warn('[LiveRefresh] 재연산 오류 (무시됨):', lrErr && lrErr.message);
+    return resultData;
+  }
+}
+
 // ── 병원용 전용: __HOSPITAL_RESULT_ID__ → /api/h/result/:id 데이터 로드 ──
 async function loadHospitalResult() {
   // ID 우선순위: 서버주입 __HOSPITAL_RESULT_ID__ → URL 경로 → 쿼리파라미터
@@ -17914,6 +18022,13 @@ async function loadHospitalResult() {
       confidence:   r.confidence   || null,   // { unknownCount, uncertainty, contraAxes }
       redFlags:     computedRedFlags,
     };
+
+    // ── Live Refresh 핸드셰이크 ──
+    // mapping-engine.js의 최신 파이프라인으로 재연산 여부 판단 후 적용
+    // 서버 응답(r)의 schema_version vs window.__MAPPING_ENGINE_VERSION__ 비교
+    result = applyLiveRefresh(r, result);
+
+    return result;
   } catch(e) {
     console.error('[loadHospitalResult]', e);
     return null;

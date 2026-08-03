@@ -5839,7 +5839,10 @@ app.get('/api/h/result/:id', async (c) => {
         weight_loss_pct: row.weight_loss_pct != null ? Number(row.weight_loss_pct)
                        : (parsedRawResult?.weight_loss_pct != null ? Number(parsedRawResult.weight_loss_pct) : null),
         created_at: row.created_at,
-        consultant_name: row.partner_display_name || ''
+        consultant_name: row.partner_display_name || '',
+        // ── Schema Versioning (mapping-engine.js Live Refresh 핸드셰이크용) ──
+        schema_version: 'v1.0',   // mapping-engine.js MAPPING_ENGINE_VERSION과 비교
+        survey_type: 'hospital',
       })
     }
 
@@ -5899,7 +5902,10 @@ app.get('/api/h/result/:id', async (c) => {
       goal_weight:     diagRow.goal_weight     != null ? Number(diagRow.goal_weight)     : null,
       weight_loss_pct: diagRow.weight_loss_pct != null ? Number(diagRow.weight_loss_pct) : null,
       created_at: diagRow.completed_at || diagRow.created_at,
-      consultant_name: diagRow.partner_display_name || ''
+      consultant_name: diagRow.partner_display_name || '',
+      // ── Schema Versioning (mapping-engine.js Live Refresh 핸드셰이크용) ──
+      schema_version: 'v1.0',
+      survey_type: 'hospital',
     })
   } catch (e: any) {
     return c.json({ error: String(e) }, 500)
@@ -6574,6 +6580,9 @@ app.get('/api/a/result/:id', async (c) => {
       goal_weight:    row.goal_weight,
       weight_loss_pct: row.weight_loss_pct,
       created_at:     row.created_at,
+      // ── Schema Versioning (mapping-engine.js Live Refresh 핸드셰이크용) ──
+      schema_version: 'v1.0',
+      survey_type: row.survey_category || 'aesthetic',
     })
   } catch (e: any) {
     return c.json({ error: String(e) }, 500)
