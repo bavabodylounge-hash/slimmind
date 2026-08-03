@@ -6013,21 +6013,30 @@ try {
   }
 } catch(e) {}
 <\/script>\n`
-    // OG 메타태그 (결과지 공유 시)
-    const rhBase = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.kr' } })()
+    // OG 메타태그 (결과지 공유 시) — BABA 파트너 여부에 따라 분기
+    const rhBase   = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.kr' } })()
+    const BABA_CODES = ['B2B-BAVA1234', 'B2B-SUR-001']
+    const isRhBaba   = injectedRefCode ? BABA_CODES.includes(injectedRefCode) : false
+    const rhOgTitle  = isRhBaba ? 'BABA 성형외과 | 바디코드 정밀 진단 결과'  : 'SlimMind | 바디코드 정밀 진단 결과'
+    const rhOgDesc   = isRhBaba ? '당신의 몸을 읽다 — 눈으로 보이지 않는 몸의 설계까지, 정밀하게'
+                                : '당신의 몸은 하나의 코드입니다. 우리는 그 원인을 해독합니다.'
+    const rhOgImg    = isRhBaba ? `${rhBase}/static/og-baba.png` : `${rhBase}/static/og-hospital.png`
+    const rhOgImgW   = isRhBaba ? '1200' : '1365'
+    const rhOgImgH   = isRhBaba ? '630'  : '768'
+    const rhOgSite   = isRhBaba ? 'BABA 성형외과' : 'SlimMind'
     const rhOg = `
 <meta property="og:type"         content="website">
-<meta property="og:site_name"    content="SlimMind">
-<meta property="og:title"        content="SlimMind | 바디코드 정밀 진단 결과">
-<meta property="og:description"  content="당신의 몸은 하나의 코드입니다. 우리는 그 원인을 해독합니다.">
+<meta property="og:site_name"    content="${rhOgSite}">
+<meta property="og:title"        content="${rhOgTitle}">
+<meta property="og:description"  content="${rhOgDesc}">
 <meta property="og:url"          content="${rhBase}/result-hospital/${id}">
-<meta property="og:image"        content="${rhBase}/static/og-hospital.png">
-<meta property="og:image:width"  content="1365">
-<meta property="og:image:height" content="768">
+<meta property="og:image"        content="${rhOgImg}">
+<meta property="og:image:width"  content="${rhOgImgW}">
+<meta property="og:image:height" content="${rhOgImgH}">
 <meta property="og:image:type"   content="image/png">
 <meta name="twitter:card"        content="summary_large_image">
-<meta name="twitter:title"       content="SlimMind | 바디코드 정밀 진단 결과">
-<meta name="twitter:image"       content="${rhBase}/static/og-hospital.png">`
+<meta name="twitter:title"       content="${rhOgTitle}">
+<meta name="twitter:image"       content="${rhOgImg}">`
     // 동적 manifest: start_url을 현재 결과지 URL로 교체
     // iOS "홈 화면에 추가" 시 저장되는 start_url이 결과지 URL이 되도록
     const dynamicManifestHref = `/api/manifest.json?for=${encodeURIComponent('/result-hospital/' + id)}`
