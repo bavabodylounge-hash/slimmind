@@ -24071,6 +24071,167 @@ function renderPersonalizationLayer(data, axisScores, answers, bcCode, ohaengTyp
       insights.push({ icon: '🦉', tag: '올빼미+수면 질 저하', msg: '저녁·올빼미형이면서 자고 일어나도 피로가 회복되지 않는 패턴입니다. 생체리듬 불일치(Social Jetlag)로 대사율이 15~20% 저하됩니다. 취침 시간 30분 앞당기기부터 시작합니다.', type: 'warn' });
     }
 
+    // ── [DISP-FB] DISP 없는 병원용 설문 fallback: Stage3 gi proxy로 [17]~[20] 대체 ──
+    // 병원용 설문에는 DISP(G01~G10)가 없어 d_energy/d_plan/d_burnout/d_night 전부 null
+    // → Stage3 A10(gi:35=운동스타일, gi:36=계획vs즉흥) + A07(gi:24=피로, gi:25=야식, gi:26=카페인)로 추론
+    var _isHospital = (Object.keys(disp).length === 0); // DISP 미사용 = 병원용
+    if (_isHospital) {
+      // [DISP-FB-17] 운동 스타일 기반 추천 (gi:35: 0=격렬형, 1=차분형)
+      var _exStyle = _s3v(35);
+      if (_exStyle !== null) {
+        var _exMsg = (_exStyle === 0)
+          ? '격렬한 운동을 선호하신다고 하셨습니다 — 고강도 인터벌(HIIT)·근력 위주 루틴이 지방 연소에 효과적입니다. 주 3회 이상 강도 있게 진행하는 것을 권장합니다.'
+          : '차분한 운동을 선호하신다고 하셨습니다 — 요가·필라테스·저강도 유산소 조합이 장기 지속에 가장 유리합니다. 꾸준함이 강도보다 중요합니다.';
+        insights.push({ icon: '⏰', tag: '운동 스타일', msg: _exMsg, type: 'ok' });
+      }
+
+      // [DISP-FB-18] 스트레스 야식 패턴 기반 번아웃 대응 (gi:25: 0=없음, 1=가끔, 2=거의매번)
+      var _sl = _s3v(25); // stress_late_eat (이미 변수 있지만 재확인)
+      var _fatigue = _s3v(24);
+      if (_sl !== null && _sl >= 1) {
+        var _burnFb = (_sl >= 2)
+          ? '스트레스 시 야식·폭식이 거의 매번 나타나는 패턴입니다. 음식으로 감정을 달래는 코르티솔 반동 사이클이 형성된 상태 — 감정 식이 대체 루틴(5분 걷기, 따뜻한 물 한 컵)이 로드맵에 포함됩니다.'
+          : '스트레스 시 가끔 야식·폭식 패턴이 감지됩니다. 계속 방치하면 습관화될 수 있습니다. 낮 스트레스 관리 루틴을 먼저 잡아야 합니다.';
+        insights.push({ icon: '🔋', tag: '번아웃 대응', msg: _burnFb, type: _sl >= 2 ? 'warn' : 'info' });
+      } else if (_fatigue !== null && _fatigue >= 2) {
+        insights.push({ icon: '🔋', tag: '만성 피로 패턴', msg: '자고 일어나도 피곤한 패턴이 지속됩니다. 부신 피로(Adrenal Fatigue) 초기 신호일 수 있습니다. 무리한 운동보다 수면 회복을 먼저 잡는 전략이 권장됩니다.', type: 'info' });
+      }
+
+      // [DISP-FB-19] 계획 스타일 기반 실천 포맷 (gi:36: 0=계획형, 1=즉흥형)
+      var _ps = _s3v(36);
+      if (_ps !== null) {
+        var _planFb = (_ps === 0)
+          ? '계획형 — 주간 식단표 + 운동 스케줄 방식이 가장 잘 맞습니다. 세부 체크리스트 형태의 로드맵이 동기부여에 효과적입니다.'
+          : '즉흥형 — 복잡한 식단 계획보다 "이것만은 안 먹는다" 2~3가지 규칙이 더 오래 지속됩니다. 유연하게 적응하는 방식으로 로드맵을 설계합니다.';
+        insights.push({ icon: '📋', tag: '실천 스타일', msg: _planFb, type: 'ok' });
+      }
+
+      // [DISP-FB-20] 카페인 + 피로 복합: 올빼미 패턴 추론 (gi:26: 0=1잔↓, 1=2~3잔, 2=4잔↑)
+      var _caff = _s3v(26);
+      if (_caff !== null && _caff >= 2 && _fatigue !== null && _fatigue >= 2) {
+        insights.push({ icon: '🦉', tag: '야간 각성 + 수면 질 저하', msg: '카페인 4잔↑ + 자고나도 피곤한 패턴이 함께 감지됩니다. 카페인으로 버티는 만성 수면 부채 사이클 — 오후 2시 이후 카페인 제한이 수면 회복의 첫 단계입니다.', type: 'warn' });
+      }
+    }
+
+    // ── [21] Stage4 DEFAULT 문항 — 직접 지목 축 ──
+    // raw.stage4[i].key === 'DEFAULT', ax = 선택 축 코드
+    // "그 사람이 '이거 내 얘기네'라고 한 축" → 처방 최우선 축으로 강조
+    var s4raw = raw.stage4 || {};
+    var _s4Keys = Object.keys(s4raw);
+
+    // DEF_HOOK 라벨 (survey-hospital.html과 동일하게 유지)
+    var _HOOK_MAP = {
+      A01: '혈당·식후 졸음',   A02: '붓기·순환',      A03: '호르몬·갱년기',
+      A04: '근력·계단·팔다리', A05: '소화·배 팽만',    A06: '자세·체형 틀어짐',
+      A07: '스트레스·야식',    A08: '폭식·식습관',     A09: '갈증·혈당 위험'
+    };
+
+    // 축 코드 → 처방 방향 한 줄 설명
+    var _AXIS_DESC = {
+      A01: '혈당 안정화·인슐린 저항성 개선을 처방 최우선 축으로 설정합니다',
+      A02: '림프 순환·부종 관리를 처방 최우선 축으로 설정합니다',
+      A03: '호르몬·대사 균형 회복을 처방 최우선 축으로 설정합니다',
+      A04: '근감소 회복·근기능 강화를 처방 최우선 축으로 설정합니다',
+      A05: '장내 환경·소화 기능 회복을 처방 최우선 축으로 설정합니다',
+      A06: '골격·체형 교정 및 자세 균형 회복을 처방 최우선 축으로 설정합니다',
+      A07: '만성 스트레스·코르티솔 관리를 처방 최우선 축으로 설정합니다',
+      A08: '식이행동 패턴 교정·폭식 사이클 차단을 처방 최우선 축으로 설정합니다',
+      A09: '대사 위험 지표 관리를 처방 최우선 축으로 설정합니다'
+    };
+
+    var _s4Default = null;
+    _s4Keys.forEach(function(i) {
+      var ans = s4raw[i];
+      if (ans && ans.key === 'DEFAULT' && ans.ax) _s4Default = ans.ax;
+    });
+
+    if (_s4Default) {
+      var _hookLabel = _HOOK_MAP[_s4Default] || _s4Default;
+      var _axisDesc  = _AXIS_DESC[_s4Default] || (_s4Default + ' 축을 처방 최우선으로 설정합니다');
+      insights.push({
+        icon: '💬', tag: '직접 지목',
+        msg: '"' + _hookLabel + '" 부분이 가장 와닿는다고 직접 말씀해주셨습니다 — ' + _axisDesc + '.',
+        type: 'ok'
+      });
+    }
+
+    // ── [22] Stage4 갈림문항 — 두 축 중 어느 쪽 선택했는지 ──
+    // key !== 'DEFAULT', ax = 선택 축 코드 (null이면 "잘 모르겠어요" 선택)
+    var _AXIS_NAME = {
+      A01: '인슐린·혈당',  A02: '림프·순환',    A03: '호르몬·대사',
+      A04: '근감소·근기능', A05: '소화·장',      A06: '골격·체형',
+      A07: '스트레스',     A08: '식이·심리',    A09: '대사위험',  A10: '기질·유전'
+    };
+
+    var _s4PairCount = 0; // 갈림문항 최대 2개까지만 렌더
+    _s4Keys.forEach(function(i) {
+      var ans = s4raw[i];
+      if (!ans || ans.key === 'DEFAULT') return;
+      if (_s4PairCount >= 2) return;
+      var key = ans.key || '';
+      var parts = key.split('_');
+      if (parts.length < 2) return;
+      var axA = parts[0], axB = parts[1];
+      var nameA = _AXIS_NAME[axA] || axA;
+      var nameB = _AXIS_NAME[axB] || axB;
+
+      if (ans.ax) {
+        // 명확한 선택
+        var selectedName = _AXIS_NAME[ans.ax] || ans.ax;
+        var otherName = (ans.ax === axA) ? nameB : nameA;
+        insights.push({
+          icon: '🎯', tag: '갈림 선택',
+          msg: '"' + nameA + ' vs ' + nameB + '" 갈림에서 <strong>' + selectedName + '</strong> 쪽을 선택하셨습니다. ' + selectedName + ' 방향으로 접근 전략을 조정합니다.',
+          type: 'info'
+        });
+      } else {
+        // "잘 모르겠어요" 선택
+        insights.push({
+          icon: '🤔', tag: '갈림 미확정',
+          msg: '"' + nameA + ' vs ' + nameB + '" 갈림에서 확정을 유보하셨습니다. 두 축 모두 균형 있게 검토하여 처방에 반영합니다.',
+          type: 'info'
+        });
+      }
+      _s4PairCount++;
+    });
+
+    // ── [23] desire(방향성) 개인화 — who + moodLabel + partLabels ──
+    // window.__DESIRE__ = {moodIdx, moodLabel, who, partIdx, partLabels, upsell, track, zone}
+    var _desire = window.__DESIRE__ || (data && data.desire) || {};
+    var _who       = _desire.who       || null; // 예) "작년의 나처럼 되고 싶어요"
+    var _moodLabel = _desire.moodLabel || null; // 예) "가볍고 활기차게"
+    var _parts     = _desire.partLabels || null; // 예) ["배", "허벅지"] 또는 문자열
+
+    // who(롤모델/목표 인물) 기반 개인화 메시지
+    if (_who && _who.length > 0 && _who !== '선택 안 함' && _who !== 'skip') {
+      insights.push({
+        icon: '🌟', tag: '목표 방향',
+        msg: '"' + _who + '" — 처음에 말씀해주신 그 목표를 기준으로 로드맵의 모든 전략이 맞춰집니다.',
+        type: 'ok'
+      });
+    }
+
+    // moodLabel(원하는 컨디션) 기반 개인화 메시지
+    if (_moodLabel && _moodLabel.length > 0) {
+      insights.push({
+        icon: '✨', tag: '원하는 컨디션',
+        msg: '"' + _moodLabel + '" — 이 상태에 도달하는 것을 최종 목표로 전략의 우선순위를 배열합니다.',
+        type: 'ok'
+      });
+    }
+
+    // partLabels(신경 쓰이는 부위) 기반 메시지
+    if (_parts) {
+      var _partsText = Array.isArray(_parts) ? _parts.join(', ') : String(_parts);
+      if (_partsText.length > 0) {
+        insights.push({
+          icon: '📍', tag: '관리 집중 부위',
+          msg: '가장 신경 쓰이는 부위: <strong>' + _partsText + '</strong> — 해당 부위에 효과적인 운동·식이 전략이 로드맵에 우선 배치됩니다.',
+          type: 'info'
+        });
+      }
+    }
+
     if (insights.length === 0) return;
 
     // ── DOM 렌더링 ──
