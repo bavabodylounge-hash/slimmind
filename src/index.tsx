@@ -6638,28 +6638,53 @@ app.post('/api/survey/notify', async (c) => {
 
     if (!ref_code) return c.json({ error: 'ref_code 필요' }, 400)
 
-    // result_id가 없거나 빈 문자열이면 ref_code 기반 최신 diagnosis_results에서 조회
+    // result_id가 없거나 빈 문자열이면 ref_code 기반 최신 레코드에서 조회
+    // 우선순위: hospital_responses → diagnosis_results
+    let resolved_user_name = user_name
     if (!result_id) {
       try {
-        const latest = await db.prepare(
-          `SELECT id FROM diagnosis_results
+        const latestH = await db.prepare(
+          `SELECT id, name FROM hospital_responses
            WHERE ref_code = ?
            ORDER BY created_at DESC LIMIT 1`
         ).bind(ref_code).first<any>()
-        if (latest?.id) result_id = latest.id
+        if (latestH?.id) { result_id = latestH.id; if (!resolved_user_name && latestH.name) resolved_user_name = latestH.name }
+      } catch (_) {}
+    }
+    if (!result_id) {
+      try {
+        const latest = await db.prepare(
+          `SELECT id, user_name FROM diagnosis_results
+           WHERE ref_code = ?
+           ORDER BY created_at DESC LIMIT 1`
+        ).bind(ref_code).first<any>()
+        if (latest?.id) { result_id = latest.id; if (!resolved_user_name && latest.user_name) resolved_user_name = latest.user_name }
       } catch (_) {}
     }
     // session_id로 재시도
     if (!result_id && session_id) {
       try {
         const bySession = await db.prepare(
-          `SELECT id FROM diagnosis_results WHERE id = ? OR session_id = ? LIMIT 1`
+          `SELECT id, user_name FROM diagnosis_results WHERE id = ? OR session_id = ? LIMIT 1`
         ).bind(session_id, session_id).first<any>()
-        if (bySession?.id) result_id = bySession.id
+        if (bySession?.id) { result_id = bySession.id; if (!resolved_user_name && bySession.user_name) resolved_user_name = bySession.user_name }
       } catch (_) {}
     }
+    // result_id로 user_name 보강 (hospital_responses 우선)
+    if (result_id && !resolved_user_name) {
+      try {
+        const r = await db.prepare(`SELECT name FROM hospital_responses WHERE id = ? LIMIT 1`).bind(result_id).first<any>()
+        if (r?.name) resolved_user_name = r.name
+      } catch (_) {}
+      if (!resolved_user_name) {
+        try {
+          const r = await db.prepare(`SELECT user_name FROM diagnosis_results WHERE id = ? LIMIT 1`).bind(result_id).first<any>()
+          if (r?.user_name) resolved_user_name = r.user_name
+        } catch (_) {}
+      }
+    }
 
-    // 중복 알림 방지 — 같은 ref_code 조합 5분 내 재전송 차단 (result_id 무관)
+    // 중복 알림 방지 — 같은 result_id 5분 내 재전송 차단
     const recent = await db.prepare(
       `SELECT id FROM survey_notifications
        WHERE ref_code = ?
@@ -6671,9 +6696,14 @@ app.post('/api/survey/notify', async (c) => {
       return c.json({ ok: true, duplicate: true, message: '이미 알림이 전송되었습니다.' })
     }
 
+    // survey_notifications 테이블에 user_name 컬럼 없으면 자동 추가
+    try {
+      await db.prepare(`ALTER TABLE survey_notifications ADD COLUMN user_name TEXT`).run()
+    } catch (_) { /* 이미 있으면 무시 */ }
+
     await db.prepare(
-      `INSERT INTO survey_notifications (result_id, ref_code) VALUES (?, ?)`
-    ).bind(result_id || '', ref_code).run()
+      `INSERT INTO survey_notifications (result_id, ref_code, user_name) VALUES (?, ?, ?)`
+    ).bind(result_id || '', ref_code, resolved_user_name || '').run()
 
     return c.json({ ok: true, result_id: result_id || null })
   } catch (e: any) {
@@ -6697,11 +6727,13 @@ app.get('/api/notifications', async (c) => {
   try {
     const limit = Math.min(Number(c.req.query('limit') || 50), 200)
 
-    // 알림 목록 (최신순)
+    // 알림 목록 (최신순) — hospital_responses, diagnosis_results 양쪽에서 user_name 조회
     const { results } = await db.prepare(
       `SELECT n.id, n.result_id, n.ref_code, n.is_read, n.notified_at,
-              d.user_name, d.phone
+              COALESCE(n.user_name, h.name, d.user_name) AS user_name,
+              COALESCE(d.phone, h.phone) AS phone
        FROM survey_notifications n
+       LEFT JOIN hospital_responses h ON h.id = n.result_id
        LEFT JOIN diagnosis_results d ON d.id = n.result_id
        WHERE n.ref_code = ?
        ORDER BY n.notified_at DESC

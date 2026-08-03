@@ -2278,16 +2278,23 @@ async function loadNotifications() {
   if (el) el.innerHTML = notifs.map(n => {
     const dt = n.notified_at ? n.notified_at.replace('T',' ').slice(0,16) : '-';
     const isNew = !n.is_read;
-    return `<div class="notif-item${isNew ? ' unread' : ''}" onclick="markNotifRead('${n.id}', this)">
-      <div class="notif-item-dot"></div>
-      <div class="notif-item-body">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-          ${isNew ? '<span style="background:var(--sm-clay);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px">NEW</span>' : ''}
-          <span style="font-size:13px;font-weight:700">고객 설문 완료</span>
-          <span style="font-size:12px;color:var(--muted);margin-left:auto">${dt}</span>
+    const resultUrl = n.result_id ? `/result/${n.result_id}` : '';
+    return `<div class="notif-item${isNew ? ' unread' : ''}" style="cursor:default">
+      <div class="notif-dot${isNew ? '' : ' read'}"></div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap">
+          ${isNew ? '<span style="background:var(--sm-clay);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;flex-shrink:0">NEW</span>' : '<span style="background:var(--border);color:var(--muted);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;flex-shrink:0">읽음</span>'}
+          <span style="font-size:14px;font-weight:800;color:var(--ink)">📋 고객 설문 완료</span>
+          <span style="font-size:11px;color:var(--muted);margin-left:auto;white-space:nowrap">${dt}</span>
         </div>
-        ${n.user_name ? `<div style="font-size:13px;font-weight:600;margin-bottom:2px">👤 ${n.user_name}${n.phone ? ' · '+n.phone : ''}</div>` : ''}
-        <div style="font-size:13px;color:var(--muted)">결과 ID: ${n.result_id ? `<a href="/result/${n.result_id}" target="_blank" style="color:var(--sm-clay);text-decoration:underline"><code style="background:var(--bg);padding:1px 6px;border-radius:4px;font-size:12px">${n.result_id.split('-')[0].toUpperCase()}</code></a>` : '<code style="background:var(--bg);padding:1px 6px;border-radius:4px;font-size:12px">-</code>'}</div>
+        <div style="font-size:14px;font-weight:700;color:var(--primary);margin-bottom:6px">
+          👤 ${n.user_name || '이름 미입력'}${n.phone ? ' <span style="color:var(--muted);font-weight:500;font-size:13px">· '+n.phone+'</span>' : ''}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          ${resultUrl ? `<a href="${resultUrl}" target="_blank" onclick="markNotifRead('${n.id}',this.closest('.notif-item'))" style="display:inline-flex;align-items:center;gap:5px;background:var(--sm-clay);color:#fff;font-size:12px;font-weight:700;padding:6px 14px;border-radius:8px;text-decoration:none;transition:opacity .15s" onmouseenter="this.style.opacity='.85'" onmouseleave="this.style.opacity='1'">결과지 보기 →</a>` : ''}
+          <span style="font-size:11px;color:var(--muted)">ID: ${n.result_id ? n.result_id.split('-')[0].toUpperCase() : '-'}</span>
+          ${isNew ? `<button onclick="markNotifRead('${n.id}',this.closest('.notif-item'))" style="margin-left:auto;background:none;border:1px solid var(--border);color:var(--muted);font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer;font-family:inherit">읽음</button>` : ''}
+        </div>
       </div>
     </div>`;
   }).join('');
