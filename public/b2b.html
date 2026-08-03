@@ -1769,6 +1769,9 @@ async function loadCustomers(opts = {}) {
         <button class="btn btn-primary btn-sm" onclick="openB2bResult('${r.id}')" style="margin-right:4px">
           <i class="fas fa-external-link-alt"></i> 결과지
         </button>
+        <button class="btn btn-ghost btn-sm" onclick="openSummaryModal('${r.id}','${(r.user_name||'익명').replace(/'/g,'')}')" title="초기 문진 요약" style="margin-right:2px;color:#7c3aed;border-color:#7c3aed22">
+          <i class="fas fa-clipboard-list"></i> 문진요약
+        </button>
         <button class="btn btn-ghost btn-sm" onclick="copyB2bResultLink('${r.id}')" title="링크 복사">
           <i class="fas fa-link"></i>
         </button>
@@ -1827,6 +1830,121 @@ async function loadCustomers(opts = {}) {
     </div>
     ${pgBtns ? `<div style="text-align:center;margin-top:16px">${pgBtns}</div>` : ''}
   `;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ─── 초기 문진 요약 모달 ──────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+async function openSummaryModal(sessionId, userName) {
+  // 모달 오버레이 생성 (기존 제거 후 재생성)
+  const existing = document.getElementById('summary-modal-overlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'summary-modal-overlay';
+  overlay.style.cssText = [
+    'position:fixed;inset:0;z-index:99999;',
+    'background:rgba(0,0,0,.55);',
+    'display:flex;align-items:center;justify-content:center;',
+    'animation:smFadeIn .2s ease;padding:16px'
+  ].join('');
+
+  overlay.innerHTML = `
+    <div id="summary-modal" style="
+      background:#fff;border-radius:20px;
+      padding:28px 24px 24px;width:100%;max-width:480px;
+      box-shadow:0 12px 48px rgba(0,0,0,.22);
+      font-family:'Noto Sans KR',sans-serif;
+      animation:smSlideUp .25s ease;
+      max-height:90vh;overflow-y:auto;
+    ">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">초기 문진 프로필 요약</div>
+          <div style="font-size:18px;font-weight:800;color:#1a1a17">
+            <span id="sm-username" style="color:#5a1e96">${userName}</span>님
+          </div>
+        </div>
+        <button onclick="document.getElementById('summary-modal-overlay').remove()"
+          style="background:none;border:none;font-size:22px;color:#aaa;cursor:pointer;line-height:1;padding:4px">✕</button>
+      </div>
+      <div id="sm-body">
+        <div style="text-align:center;padding:32px 0;color:#999;font-size:14px">
+          <div style="font-size:28px;margin-bottom:10px">⏳</div>
+          불러오는 중...
+        </div>
+      </div>
+    </div>`;
+
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) overlay.remove();
+  });
+
+  // API 호출
+  try {
+    const res = await fetch(
+      `/api/b2b/customer-summary?session_id=${encodeURIComponent(sessionId)}`,
+      { headers: { 'Authorization': `Bearer ${TOKEN}` } }
+    );
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok || !data.ok) {
+      document.getElementById('sm-body').innerHTML = `
+        <div style="text-align:center;padding:24px;color:#e53e3e;font-size:14px">
+          <div style="font-size:28px;margin-bottom:8px">⚠️</div>
+          ${data.error || '데이터를 불러올 수 없습니다.'}
+        </div>`;
+      return;
+    }
+
+    const s = data.summary || {};
+    const typeLabel = data.survey_type === 'hospital' ? '병원' : '에스테틱';
+    const typeColor = data.survey_type === 'hospital' ? '#0891b2' : '#db2777';
+
+    // 7가지 항목 렌더링
+    const items = [
+      {
+        icon: '🌙',
+        label: '사주오행 & 생년월일',
+        value: [
+          s.birth_date ? `${s.birth_date}${s.birth_hour ? ' ' + s.birth_hour : ''}` : '',
+          s.saju ? `${s.saju}형 (${s.saju === '목' ? '木' : s.saju === '화' ? '火' : s.saju === '토' ? '土' : s.saju === '금' ? '金' : s.saju === '수' ? '水' : s.saju})` : ''
+        ].filter(Boolean).join(' · ')
+      },
+      { icon: '🧠', label: '기질 (MBTI)',  value: s.mbti  || '-' },
+      { icon: '🩸', label: '혈액형',        value: s.blood ? s.blood + '형' : '-' },
+      { icon: '🪞', label: '얼굴형',        value: s.face  || '-' },
+      { icon: '🎯', label: '방문 목적',     value: s.purpose || '-' },
+      { icon: '⏰', label: '생활 리듬',     value: s.rhythm  || '-' },
+      { icon: '📖', label: '경험 이력',     value: s.exp     || '-' },
+    ];
+
+    const rows = items.map(it => `
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:11px 0;border-bottom:1px solid #f3f0ea">
+        <span style="font-size:20px;width:28px;flex-shrink:0;text-align:center;margin-top:1px">${it.icon}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;font-weight:700;color:#9991a4;margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em">${it.label}</div>
+          <div style="font-size:14px;font-weight:600;color:${it.value === '-' ? '#ccc' : '#1a1a17'};word-break:keep-all;line-height:1.5">${it.value || '-'}</div>
+        </div>
+      </div>`).join('');
+
+    document.getElementById('sm-body').innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+        <span style="background:${typeColor}18;color:${typeColor};font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px">${typeLabel} 설문</span>
+        ${data.bc_code ? `<span style="background:#7c3aed18;color:#7c3aed;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px">BC: ${data.bc_code}</span>` : ''}
+        <span style="font-size:11px;color:#bbb;margin-left:auto">ID: ${(data.id||'').slice(0,10)}…</span>
+      </div>
+      ${rows}
+      <div style="margin-top:16px;padding:12px 14px;background:#f9f6f0;border-radius:10px;font-size:12px;color:#9991a4;line-height:1.6">
+        💡 초기 문진 응답 기준 · 실제 상담 전 사전 참고용 요약입니다.
+      </div>`;
+  } catch(e) {
+    document.getElementById('sm-body').innerHTML = `
+      <div style="text-align:center;padding:24px;color:#e53e3e;font-size:14px">
+        네트워크 오류가 발생했습니다.
+      </div>`;
+  }
 }
 
 // ─── 고객 개인정보 삭제 ────────────────────────────────────────────
@@ -2872,6 +2990,10 @@ if (TOKEN) {
     width:32px;height:32px;border:none;background:none;font-size:20px;cursor:pointer;}
 }
 @media(min-width:601px){ .ph-back{display:none;} }
+
+/* ── 문진요약 모달 애니메이션 ── */
+@keyframes smFadeIn  { from{opacity:0}  to{opacity:1} }
+@keyframes smSlideUp { from{transform:translateY(20px);opacity:0} to{transform:translateY(0);opacity:1} }
 </style>
 
 <script>

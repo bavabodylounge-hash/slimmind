@@ -1915,6 +1915,177 @@ app.get('/api/b2b/customer-lookup', requireB2B(), async (c) => {
   })
 })
 
+// ─── B2B 고객 초기 문진 요약 조회 ────────────────────────────────
+// GET /api/b2b/customer-summary?session_id={id}
+// 병원(hospital_responses) / 에스테틱·통합(diagnosis_results / results) 모두 지원
+// 파싱 항목: ①사주오행 ②MBTI ③혈액형 ④얼굴형 ⑤방문목적 ⑥생활리듬 ⑦경험이력
+app.get('/api/b2b/customer-summary', requireB2B(), async (c) => {
+  const user = c.get('user') as JwtPayload
+  const db = c.env.DB
+  const id = c.req.query('session_id') || ''
+  if (!id) return c.json({ error: 'session_id가 필요합니다.' }, 400)
+
+  const parseJ = (v: any) => { try { return v ? JSON.parse(v) : null } catch { return null } }
+
+  /* ─── 공통 pfProfile 파서 ────────────────────────────────────────
+     raw_answers JSON 안에 pfProfile 오브젝트가 있는 경우 (병원·에스테틱 공통)
+     pfProfile 키:
+       birthY/birthM/birthD  — 생년월일
+       birthH                — 태어난 시간 (시간 이름 또는 숫자)
+       saju                  — 오행 결과 (목/화/토/금/수)
+       mbti                  — MBTI 4축 (INFP 등)
+       blood                 — 혈액형 (A/B/O/AB)
+       face                  — 얼굴형 (계란형 등)
+       purpose               — 방문 목적 한국어 텍스트
+       rhythm                — 생활 리듬 한국어 텍스트
+       exp                   — 경험 이력 한국어 텍스트
+  ─────────────────────────────────────────────────────────────────── */
+  const extractFromPf = (raw: any) => {
+    const pf = raw?.pfProfile || {}
+    // 생년월일 조합
+    const birthY = pf.birthY || ''
+    const birthM = pf.birthM || ''
+    const birthD = pf.birthD || ''
+    const birthH = pf.birthH || ''
+    const birthDate = (birthY && birthM && birthD)
+      ? `${birthY}년 ${birthM}월 ${birthD}일`
+      : ''
+    return {
+      birth_date: birthDate,
+      birth_hour: birthH ? String(birthH) : '',
+      saju:    pf.saju   || '',
+      mbti:    pf.mbti   || '',
+      blood:   pf.blood  || '',
+      face:    pf.face   || '',
+      purpose: pf.purpose || '',
+      rhythm:  pf.rhythm  || '',
+      exp:     pf.exp     || '',
+    }
+  }
+
+  /* ─── stage1_json / stage2_json 폴백 파서 ─────────────────────── */
+  const extractFromStages = (row: any) => {
+    const s1 = parseJ(row.stage1_json) || {}
+    const s2 = parseJ(row.stage2_json) || {}
+    const s3 = parseJ(row.stage3_json) || {}
+    // 필드명은 설문 버전별로 다양 — 여러 키 시도
+    const pick = (...objs: any[]) => (keys: string[]) => {
+      for (const o of objs) {
+        for (const k of keys) {
+          if (o?.[k] != null && String(o[k]).trim()) return String(o[k]).trim()
+        }
+      }
+      return ''
+    }
+    const p = pick(s1, s2, s3)
+    return {
+      birth_date: p(['birthDate','birth_date','생년월일']),
+      birth_hour: p(['birthHour','birth_hour','태어난시간','birthH']),
+      saju:    p(['saju','ohaeng','ohaeng_type','사주오행']),
+      mbti:    p(['mbti','mbti_full','MBTI']),
+      blood:   p(['blood','blood_type','bloodType','혈액형']),
+      face:    p(['face','face_type','faceType','얼굴형']),
+      purpose: p(['purpose','visit_purpose','visitPurpose','방문목적']),
+      rhythm:  p(['rhythm','life_rhythm','lifeRhythm','생활리듬']),
+      exp:     p(['exp','diet_history','dietHistory','경험이력']),
+    }
+  }
+
+  /* ─── hospital_responses 우선 조회 ───────────────────────────── */
+  let row: any = null
+  let source = 'unknown'
+
+  // H- prefix: hospital_responses
+  if (id.startsWith('H-') || id.startsWith('h-')) {
+    try {
+      row = await db.prepare(
+        `SELECT * FROM hospital_responses WHERE id=? LIMIT 1`
+      ).bind(id).first<any>()
+      if (row) source = 'hospital'
+    } catch (_) {}
+  }
+
+  // hospital_responses 시도 (병원 파트너 전체)
+  if (!row) {
+    try {
+      row = await db.prepare(
+        `SELECT * FROM hospital_responses WHERE id=? AND ref_code=? LIMIT 1`
+      ).bind(id, user.code).first<any>()
+      if (row) source = 'hospital'
+    } catch (_) {}
+  }
+
+  // diagnosis_results 시도
+  if (!row) {
+    try {
+      row = await db.prepare(
+        `SELECT * FROM diagnosis_results WHERE id=? AND ref_code=? LIMIT 1`
+      ).bind(id, user.code).first<any>()
+      if (row) source = 'diagnosis'
+    } catch (_) {}
+  }
+
+  // 구버전 results 테이블 시도
+  if (!row) {
+    try {
+      row = await db.prepare(
+        `SELECT * FROM results WHERE id=? AND ref_code=? LIMIT 1`
+      ).bind(id, user.code).first<any>()
+      if (row) source = 'results'
+    } catch (_) {}
+  }
+
+  if (!row) return c.json({ error: '데이터를 찾을 수 없습니다.', id }, 404)
+
+  // raw_answers → pfProfile 우선 파싱
+  const rawAnswers = parseJ(row.raw_answers) || parseJ(row.response_data)
+  let extracted = extractFromPf(rawAnswers)
+
+  // pfProfile 데이터 부족하면 stage JSON 폴백
+  const hasCore = extracted.saju || extracted.mbti || extracted.blood
+  if (!hasCore) {
+    const fromStages = extractFromStages(row)
+    extracted = { ...fromStages, ...Object.fromEntries(
+      Object.entries(extracted).filter(([, v]) => v !== '')
+    )}
+  }
+
+  // DB 직접 컬럼 보강 (오행/MBTI는 컬럼에도 저장됨)
+  if (!extracted.saju && row.ohaeng_type) {
+    extracted.saju = String(row.ohaeng_type).replace(/[()（）]/g,'').trim()
+  }
+  if (!extracted.mbti && row.mbti_full) {
+    extracted.mbti = String(row.mbti_full).trim()
+  }
+  // 생년월일: hospital_responses에는 직접 age만 있는 경우
+  if (!extracted.birth_date && row.birth_date) {
+    extracted.birth_date = String(row.birth_date)
+  }
+  if (!extracted.birth_hour && row.birth_hour) {
+    extracted.birth_hour = String(row.birth_hour)
+  }
+
+  return c.json({
+    ok: true,
+    id,
+    source,
+    user_name: row.user_name || '',
+    bc_code:   row.bc_code || row.bc_primary || '',
+    survey_type: source === 'hospital' ? 'hospital' : (row.survey_category || 'integrated'),
+    summary: {
+      birth_date: extracted.birth_date,
+      birth_hour: extracted.birth_hour,
+      saju:       extracted.saju,
+      mbti:       extracted.mbti,
+      blood:      extracted.blood,
+      face:       extracted.face,
+      purpose:    extracted.purpose,
+      rhythm:     extracted.rhythm,
+      exp:        extracted.exp,
+    }
+  })
+})
+
 // ─── 정산 API ────────────────────────────────────────────────────
 // GET /api/admin/settlement?month=2025-06 — 컨설턴트별 월 정산 내역
 app.get('/api/admin/settlement', requireRole('MASTER'), async (c) => {
