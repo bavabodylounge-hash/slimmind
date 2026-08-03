@@ -3235,22 +3235,23 @@ app.get('/h/:code', async (c) => {
   // ─── 바바 성형외과 전용 OG 분기 ───────────────────────────────────
   const BABA_CODES = ['B2B-BAVA1234', 'B2B-SUR-001']
   const isBaba = BABA_CODES.includes(rawCode)
-  const ogTitle   = isBaba ? 'BABA 성형외과 | 바디코드 정밀 진단'                            : 'SlimMind | 바디코드 정밀 진단'
+  const ogTitle   = isBaba ? 'BAVA 성형외과 | 바디코드 정밀 진단'                            : 'SlimMind | 바디코드 정밀 진단'
   const ogDesc    = isBaba ? '당신의 몸을 읽다 — 눈으로 보이지 않는 몸의 설계까지, 정밀하게' : '당신의 몸은 하나의 코드입니다. 반복되는 다이어트 실패엔 반드시 이유가 있어요.'
   const ogImg     = isBaba ? `${siteBase}/static/og-baba.png`                                 : `${siteBase}/static/og-hospital.png`
-  const ogImgW    = isBaba ? '1024'                                                            : '1365'
+  const ogImgW    = isBaba ? '1024'                                                            : '1376'
   const ogImgH    = isBaba ? '538'                                                             : '768'
+  const ogImgType = 'image/jpeg'
 
   const ogInject = `
 <meta property="og:type"         content="website">
-<meta property="og:site_name"    content="${isBaba ? 'BABA 성형외과' : 'SlimMind'}">
+<meta property="og:site_name"    content="${isBaba ? 'BAVA 성형외과' : 'SlimMind'}">
 <meta property="og:title"        content="${ogTitle}">
 <meta property="og:description"  content="${ogDesc}">
 <meta property="og:url"          content="${siteBase}/h/${rawCode}">
 <meta property="og:image"        content="${ogImg}">
 <meta property="og:image:width"  content="${ogImgW}">
 <meta property="og:image:height" content="${ogImgH}">
-<meta property="og:image:type"   content="image/png">
+<meta property="og:image:type"   content="${ogImgType}">
 <meta name="twitter:card"        content="summary_large_image">
 <meta name="twitter:title"       content="${ogTitle}">
 <meta name="twitter:description" content="${ogDesc}">
@@ -6188,13 +6189,13 @@ try {
     const rhBase   = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.kr' } })()
     const BABA_CODES = ['B2B-BAVA1234', 'B2B-SUR-001']
     const isRhBaba   = injectedRefCode ? BABA_CODES.includes(injectedRefCode) : false
-    const rhOgTitle  = isRhBaba ? 'BABA 성형외과 | 바디코드 정밀 진단 결과'  : 'SlimMind | 바디코드 정밀 진단 결과'
+    const rhOgTitle  = isRhBaba ? 'BAVA 성형외과 | 바디코드 정밀 진단 결과'  : 'SlimMind | 바디코드 정밀 진단 결과'
     const rhOgDesc   = isRhBaba ? '당신의 몸을 읽다 — 눈으로 보이지 않는 몸의 설계까지, 정밀하게'
                                 : '당신의 몸은 하나의 코드입니다. 우리는 그 원인을 해독합니다.'
     const rhOgImg    = isRhBaba ? `${rhBase}/static/og-baba.png` : `${rhBase}/static/og-hospital.png`
-    const rhOgImgW   = isRhBaba ? '1200' : '1365'
-    const rhOgImgH   = isRhBaba ? '630'  : '768'
-    const rhOgSite   = isRhBaba ? 'BABA 성형외과' : 'SlimMind'
+    const rhOgImgW   = isRhBaba ? '1024' : '1376'
+    const rhOgImgH   = isRhBaba ? '538'  : '768'
+    const rhOgSite   = isRhBaba ? 'BAVA 성형외과' : 'SlimMind'
     const rhOg = `
 <meta property="og:type"         content="website">
 <meta property="og:site_name"    content="${rhOgSite}">
@@ -6204,7 +6205,7 @@ try {
 <meta property="og:image"        content="${rhOgImg}">
 <meta property="og:image:width"  content="${rhOgImgW}">
 <meta property="og:image:height" content="${rhOgImgH}">
-<meta property="og:image:type"   content="image/png">
+<meta property="og:image:type"   content="image/jpeg">
 <meta name="twitter:card"        content="summary_large_image">
 <meta name="twitter:title"       content="${rhOgTitle}">
 <meta name="twitter:image"       content="${rhOgImg}">`
