@@ -281,8 +281,18 @@
   /* ─────────────────────────────────────────────────────
      [B] UA 감지 기반 PWA 설치 안내
          이미 standalone이면 표시 안 함
+         설문 페이지(/h/, /a/, /survey-)에서는 설치 안내 완전 비활성
   ───────────────────────────────────────────────────── */
   if (_skipModal) return; /* 이미 설치된 상태 */
+
+  /* 설문 페이지에서는 beforeinstallprompt 이벤트도 조용히 차단 */
+  var _isSurveyPath = /^\/(?:h|a)\/|\/survey-/.test(location.pathname);
+  if (_isSurveyPath) {
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault(); /* 브라우저 기본 설치 배너도 억제 */
+    });
+    return; /* 설치 안내 모달/배너 전혀 표시 안 함 */
+  }
 
   /* ── 딜레이 후 케이스별 표시 ── */
   var SHOW_DELAY = 3000; /* 3초 후 */
@@ -320,6 +330,10 @@
 
     /* ── Case 5: PC (Chrome / Edge / Whale) ── */
     if (isPC) {
+      /* 설문 페이지(survey-)에서는 PC 설치 안내 팝업 표시 안 함 */
+      var _isSurveyPage = /\/survey-|\/h\/|\/a\//.test(location.pathname);
+      if (_isSurveyPage) return;
+
       /* beforeinstallprompt 지원 시 버튼 제공, 미지원 시 수동 안내 */
       var _pcInstallShown = false;
       window.addEventListener('beforeinstallprompt', function (e) {
