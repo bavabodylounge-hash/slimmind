@@ -2991,6 +2991,9 @@ app.get('/b2b/*', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/b2b
 // ─── 임시: 바디맵 미리보기 (개발용) ────────────────────────────
 app.get('/bodymap-preview', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/bodymap_preview.html')))
 
+// ─── 병원용 매핑 명세서 v2 ─────────────────────────────────────
+app.get('/hospital_survey_mapping_spec_v2.html', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/hospital_survey_mapping_spec_v2.html')))
+
 // ─── 슬림마인드 라이브 설문지 — 유일한 최신 설문지 ────────────
 // /slimmind_live, /slimmind 는 하위 호환용 (기존 공유 링크 보호)
 app.get('/slimmind_live', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/index.html')))

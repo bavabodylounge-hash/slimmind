@@ -1,0 +1,1870 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>병원용 질문지 ↔ 결과지 전체 1:1 매핑 명세서 v2 (병원 전용)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; font-size: 13px; color: #1a1a2e; background: #f4f6fb; }
+
+  /* 헤더 */
+  .doc-header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%); color: #fff; padding: 36px 40px 28px; }
+  .doc-header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 8px; }
+  .doc-header .meta { font-size: 12px; opacity: 0.7; }
+  .doc-header .badge-row { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .badge-s1 { background: #e8f4fd; color: #1565c0; }
+  .badge-s2 { background: #e8f5e9; color: #2e7d32; }
+  .badge-s3 { background: #fff3e0; color: #e65100; }
+  .badge-d  { background: #f3e5f5; color: #6a1b9a; }
+
+  /* TOC */
+  .toc { background: #fff; border-left: 4px solid #0f3460; margin: 24px 32px; padding: 16px 20px; border-radius: 0 8px 8px 0; }
+  .toc h2 { font-size: 13px; font-weight: 700; margin-bottom: 10px; color: #0f3460; }
+  .toc ul { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 24px; }
+  .toc a { color: #1565c0; text-decoration: none; font-size: 12px; }
+  .toc a:hover { text-decoration: underline; }
+
+  /* 섹션 */
+  .section { margin: 0 32px 40px; }
+  .section-title { font-size: 16px; font-weight: 700; padding: 10px 16px; border-radius: 6px 6px 0 0; color: #fff; display: flex; align-items: center; gap: 8px; }
+  .s1-color  { background: #1565c0; }
+  .s2-color  { background: #2e7d32; }
+  .s3-color  { background: #e65100; }
+  .sd-color  { background: #6a1b9a; }
+
+  /* 서브 섹션 타이틀 */
+  .sub-title { font-size: 13px; font-weight: 700; background: #e8eaf6; color: #283593; padding: 7px 14px; margin: 0; border-left: 3px solid #3949ab; }
+
+  /* 테이블 */
+  .tbl-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; background: #fff; }
+  th { background: #eceff1; color: #37474f; font-size: 11px; font-weight: 700; padding: 7px 10px; text-align: left; border: 1px solid #cfd8dc; white-space: nowrap; }
+  td { padding: 7px 10px; border: 1px solid #e0e0e0; vertical-align: top; font-size: 12px; line-height: 1.55; }
+  tr:hover td { background: #f9fbe7; }
+  tr:nth-child(even) td { background: #fafafa; }
+  tr:nth-child(even):hover td { background: #f9fbe7; }
+
+  /* 셀 스타일 */
+  .qid  { font-weight: 700; color: #1565c0; white-space: nowrap; }
+  .qtxt { color: #212121; }
+  .opts { color: #424242; }
+  .opts li { margin-left: 14px; list-style: decimal; margin-bottom: 2px; }
+  .key  { font-family: 'Consolas', monospace; font-size: 11px; background: #e3f2fd; color: #0d47a1; padding: 1px 5px; border-radius: 3px; white-space: nowrap; }
+  .pages { display: flex; flex-wrap: wrap; gap: 3px; }
+  .pg { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+  .pg-p1  { background: #e8f5e9; color: #1b5e20; }
+  .pg-p2  { background: #e3f2fd; color: #0d47a1; }
+  .pg-p3  { background: #fce4ec; color: #880e4f; }
+  .pg-p4  { background: #fff3e0; color: #bf360c; }
+  .pg-p5  { background: #f3e5f5; color: #4a148c; }
+  .pg-p6  { background: #e0f7fa; color: #006064; }
+  .pg-p7  { background: #f9fbe7; color: #33691e; }
+  .pg-p8  { background: #fbe9e7; color: #bf360c; }
+  .pg-p9  { background: #ede7f6; color: #311b92; }
+  .pg-p10 { background: #fff8e1; color: #f57f17; }
+  .pg-bc  { background: #e8eaf6; color: #283593; }
+  .pg-rf  { background: #ffebee; color: #b71c1c; }
+  .condition { font-size: 11px; color: #5d4037; background: #fff8e1; padding: 4px 7px; border-radius: 4px; border-left: 2px solid #f9a825; }
+  .fallback  { font-size: 11px; color: #37474f; background: #eceff1; padding: 3px 7px; border-radius: 4px; }
+  .note { font-size: 11px; color: #757575; font-style: italic; }
+
+  /* 범례 */
+  .legend { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 14px; background: #fff; border: 1px solid #e0e0e0; border-top: none; }
+  .legend span { font-size: 11px; color: #555; }
+
+  /* 미사용 행 강조 */
+  .unused td { background: #fff9c4 !important; }
+
+  @media print {
+    body { background: #fff; font-size: 11px; }
+    .section { margin: 0 8px 24px; }
+    .doc-header { padding: 16px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════
+     HEADER
+═══════════════════════════════════════════════════════════ -->
+<div class="doc-header">
+  <h1>병원용 질문지 ↔ 결과지 전체 1:1 매핑 명세서 <span style="font-size:14px;font-weight:400;opacity:0.7;">v2 · 병원 전용</span></h1>
+  <div class="meta">Hospital Survey (병원 전용) → Result Pages (P1~P10) · DISP 제거 · Stage4 추가 · dispProxy 반영 · 생성일 2026-08-06</div>
+  <div class="badge-row">
+    <span class="badge badge-s1">Stage 1 · S1_BASE 11문항 + HF 분기</span>
+    <span class="badge badge-s2">Stage 2 · 16문항</span>
+    <span class="badge badge-s3">Stage 3 · A01~A10 · gi:0~36 · 37문항</span>
+    <span class="badge" style="background:#e3f2fd;color:#1565c0;">Stage 4 · 갈림질문 · 경합축 +3 가산</span>
+
+  </div>
+</div>
+
+<!-- TOC -->
+<div class="toc">
+  <h2>📋 목차</h2>
+  <ul>
+    <li><a href="#s1base">§1. Stage 1 — S1_BASE (Q01~Q11)</a></li>
+    <li><a href="#s1deep">§2. Stage 1-B — HF_S1_DEEP (고민칩별 심화)</a></li>
+    <li><a href="#s1bank">§3. Stage 1-C — HF_S1_BANK (트랙별)</a></li>
+    <li><a href="#s1zone">§4. Stage 1-D — HF_S1_ZONE_Q (존별 조건부)</a></li>
+    <li><a href="#s2">§5. Stage 2 — S2-Q01~S2-Q16</a></li>
+    <li><a href="#s3">§6. Stage 3 — A01~A10 (gi:0~36)</a></li>
+
+    <li><a href="#s4">§7. Stage 4 — STAGE4_BANK 갈림 질문</a></li>
+    <li><a href="#dispproxy">NOTE. dispProxy 메커니즘</a></li>
+    <li><a href="#legend">§8. 범례 및 키 설명</a></li>
+  </ul>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     §1. STAGE 1 — S1_BASE
+═══════════════════════════════════════════════════════════ -->
+<div class="section" id="s1base">
+  <div class="section-title s1-color">§1. Stage 1 — S1_BASE · Q01~Q11 (바디코드 판별 기본 11문항)</div>
+  <div class="tbl-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th style="width:60px">문항 ID</th>
+        <th style="width:55px">저장 키</th>
+        <th style="width:180px">질문 내용</th>
+        <th style="width:200px">선택지 (값 → 판정태그)</th>
+        <th style="width:130px">매핑 결과지 영역</th>
+        <th style="width:200px">조건별 표출 문구 / 배지</th>
+        <th style="width:120px">미응답 Fallback</th>
+      </tr>
+    </thead>
+    <tbody>
+
+      <!-- Q01 -->
+      <tr>
+        <td class="qid">Q01<br><span class="note">no:1</span></td>
+        <td><span class="key">stage1[1]</span><br><span class="key">Q_MIRROR_ZONE</span></td>
+        <td class="qtxt">거울 앞에 섰을 때 — 요즘 가장 먼저 눈길이 닿는 곳은?</td>
+        <td>
+          <ul class="opts">
+            <li>복부 → <code>복부형</code></li>
+            <li>하체 → <code>하체형</code></li>
+            <li>상체 → <code>상체형</code></li>
+            <li>얼굴 → <code>얼굴형</code></li>
+            <li>전신 → <code>전신형</code></li>
+          </ul>
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-p3">P3</span>
+            <span class="pg pg-bc">BC판별</span>
+          </div>
+        </td>
+        <td>
+          <div class="condition">P3 <code>p3-rx-lead</code> — 거울 앞 부위 직접 언급:<br>
+          ▸ 복부형 → "배가 먼저 눈에 들어오는 당신"<br>
+          ▸ 하체형 → "하체가 먼저 눈에 들어오는 당신"<br>
+          ▸ 상체형 → "상체가 먼저 눈에 들어오는 당신"<br>
+          ▸ 얼굴형 → "얼굴이 먼저 눈에 들어오는 당신"<br>
+          ▸ 전신형 → "전체적인 라인이 눈에 들어오는 당신"</div>
+          <div class="condition" style="margin-top:4px">BC코드 판별 입력값 (존 트랙 결정)</div>
+        </td>
+        <td><div class="fallback">zone=core, 복부형 기본값 적용</div></td>
+      </tr>
+
+      <!-- Q02 -->
+      <tr>
+        <td class="qid">Q02<br><span class="note">no:2</span></td>
+        <td><span class="key">stage1[2]</span><br><span class="note">belly 판별</span></td>
+        <td class="qtxt">매일 힘주어 감추던 그 배 — 손끝으로 가만히 눌러볼게요. (단단 / 말랑 / 빵빵)</td>
+        <td>
+          <ul class="opts">
+            <li>단단한 벽처럼 → <code>단단내장형</code></li>
+            <li>↳ 팔다리 가는편? → <code>단단내장+마른비만</code></li>
+            <li>말랑하게 쑥 → <code>물렁피하형</code></li>
+            <li>빵빵하게 부푼 → <code>가스팽만형</code></li>
+          </ul>
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-bc">BC판별</span>
+            <span class="pg pg-p1">P1</span>
+          </div>
+        </td>
+        <td>
+          <div class="condition">BC-1~5 복부 계열 코드 결정에 사용<br>P1 바디코드 그리드 하이라이트</div>
+        </td>
+        <td><div class="fallback">belly 존 미판별 시 물렁피하형 기본</div></td>
+      </tr>
+
+      <!-- Q03 -->
+      <tr>
+        <td class="qid">Q03<br><span class="note">no:3</span></td>
+        <td><span class="key">stage1[3]</span><br><span class="note">올챙이배 판별</span></td>
+        <td class="qtxt">'난 살 안 쪘는데 배만 나왔어' — 이 말, 해본 적 있나요?</td>
+        <td>
+          <ul class="opts">
+            <li>팔다리 가는데 배만 → <code>올챙이배형</code></li>
+            <li>팔다리도 배도 통통 → <code>전신균형형</code></li>
+            <li>배가 도드라지지 않음 → <code>복부비돌출</code></li>
+          </ul>
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-bc">BC판별</span>
+            <span class="pg pg-p1">P1</span>
+          </div>
+        </td>
+        <td><div class="condition">BC코드 복부형 세분화 (올챙이배 vs 전신형) 결정</div></td>
+        <td><div class="fallback">전신균형형 기본</div></td>
+      </tr>
+
+      <!-- Q04 -->
+      <tr>
+        <td class="qid">Q04<br><span class="note">no:4</span></td>
+        <td><span class="key">stage1[4]</span><br><span class="note">코끼리다리 판별</span></td>
+        <td class="qtxt">하루를 버텨낸 저녁 — 양말 자국이 유난히 깊게 파인 적 있나요?</td>
+        <td>
+          <ul class="opts">
+            <li>저녁엔 확실히 무겁고 부어 → <code>코끼리다리형</code></li>
+            <li>부을 때도 아닐 때도 → <code>순환변동형</code></li>
+            <li>자국이 거의 안 남음 → <code>순환양호</code></li>
+          </ul>
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-bc">BC판별</span>
+            <span class="pg pg-p1">P1</span>
+          </div>
+        </td>
+        <td><div class="condition">BC 하체 순환 계열 코드 판별 입력값</div></td>
+        <td><div class="fallback">순환변동형 기본</div></td>
+      </tr>
+
+      <!-- Q05 -->
+      <tr>
+        <td class="qid">Q05<br><span class="note">no:5</span></td>
+        <td><span class="key">stage1[5]</span><br><span class="note">셀/말벅지 판별</span></td>
+        <td class="qtxt">늘 가장 먼저 미워했던 그 허벅지 — 모아 쥐어볼게요. (표면 결)</td>
+        <td>
+          <ul class="opts">
+            <li>오돌토돌 굴곡 → <code>귤껍질하체형</code></li>
+            <li>단단하고 매끈 → <code>말벅지형</code></li>
+            <li>↳ 저녁에 붓고 무거움? → <code>말벅지+순환정체</code></li>
+            <li>부드럽고 매끈 → <code>하체피하형</code></li>
+          </ul>
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-bc">BC판별</span>
+            <span class="pg pg-p1">P1</span>
+          </div>
+        </td>
+        <td><div class="condition">BC 하체 셀룰라이트 / 근육형 판별</div></td>
+        <td><div class="fallback">하체피하형 기본</div></td>
+      </tr>
+
+      <!-- Q06 -->
+      <tr>
+        <td class="qid">Q06<br><span class="note">no:6</span></td>
+        <td><span class="key">stage1[6]</span><br><span class="note">승마살 판별</span></td>
+        <td class="qtxt">바지 옆선이 유독 걸리던 골반 옆 — 바깥으로 툭 튀어나와 있나요?<br><span class="note">(남성판: 벨트/바지 허리선 좌우 기울기)</span></td>
+        <td>
+          <ul class="opts">
+            <li>주머니 자리 옆으로 불룩 → <code>승마살형</code></li>
+            <li>약간 있지만 심하진 않음 → <code>골반경미</code></li>
+            <li>옆선 매끈 → <code>골반양호</code></li>
+          </ul>
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-bc">BC판별</span>
+            <span class="pg pg-p1">P1</span>
+          </div>
+        </td>
+        <td><div class="condition">BC-7 골반 불균형형 판별 입력값</div></td>
+        <td><div class="fallback">골반경미 기본</div></td>
+      </tr>
+
+      <!-- Q07 -->
+      <tr>
+        <td class="qid">Q07<br><span class="note">no:7</span></td>
+        <td><span class="key">stage1[7]</span><br><span class="note">팔뚝부종 판별</span></td>
+        <td class="qtxt">반팔마다 신경 쓰이던 팔 뒤쪽 — 힘을 꽉 준 채로 흔들어볼게요.</td>
+        <td>
+          <ul class="opts">
+            <li>힘을 줘도 출렁 → <code>팔뚝부종형</code></li>
+            <li>↳ 겨드랑이·브라라인까지? → <code>팔뚝부종+부유방</code></li>
+            <li>힘 주면 출렁 딱 멈춤 → <code>상체근육형</code></li>
+          </ul>
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-bc">BC판별</span>
+            <span class="pg pg-p1">P1</span>
+          </div>
+        </td>
+        <td><div class="condition">BC 상체 순환/부유방 계열 판별</div></td>
+        <td><div class="fallback">팔뚝부종형 기본</div></td>
+      </tr>
+
+      <!-- Q08 -->
+      <tr>
+        <td class="qid">Q08<br><span class="note">no:8</span></td>
+        <td><span class="key">stage1[8]</span><br><span class="note">거북이 판별</span></td>
+        <td class="qtxt">하루 종일 화면을 보느라 굳어 있던 목 — 목덜미 아래를 만져볼게요.</td>
+        <td>
+          <ul class="opts">
+            <li>두툼하게 잡힘 / 뒤로 잘 안 젖혀짐 → <code>거북이형</code></li>
+            <li>약간 잡힘 / 조금 뻐근 → <code>자세경미</code></li>
+            <li>매끈 / 부드럽게 잘 젖혀짐 → <code>자세양호</code></li>
+          </ul>
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-bc">BC판별</span>
+            <span class="pg pg-p1">P1</span>
+          </div>
+        </td>
+        <td><div class="condition">BC 거북목/자세형 판별</div></td>
+        <td><div class="fallback">자세경미 기본</div></td>
+      </tr>
+
+      <!-- Q09 -->
+      <tr>
+        <td class="qid">Q09<br><span class="note">no:9</span></td>
+        <td><span class="key">stage1[9]</span><br><span class="note">부유방 판별</span></td>
+        <td class="qtxt">팔을 들 때 유독 신경 쓰이던 겨드랑이 앞 — 브라라인 위쪽을 만져볼게요.<br><span class="note">(남성판: 가슴 옆 라인)</span></td>
+        <td>
+          <ul class="opts">
+            <li>브라 위로 도톰하게 접혀 잡힘 → <code>부유방형</code></li>
+            <li>약간 잡히지만 심하진 않음 → <code>흉추경미</code></li>
+            <li>거의 안 잡힘 → <code>흉추양호</code></li>
+          </ul>
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-bc">BC판별</span>
+            <span class="pg pg-p1">P1</span>
+          </div>
+        </td>
+        <td><div class="condition">BC 흉추/부유방형 판별</div></td>
+        <td><div class="fallback">흉추경미 기본</div></td>
+      </tr>
+
+      <!-- Q10 -->
+      <tr>
+        <td class="qid">Q10<br><span class="note">no:10</span></td>
+        <td><span class="key">stage1[10]</span><br><span class="key">Q_BODY_CHANGE</span></td>
+        <td class="qtxt">요즘 몸이 어떻게 달라졌나요? — 몸 변화 인식</td>
+        <td>
+          <ul class="opts">
+            <li>0: 살이 배·윗몸으로 옮겨간 느낌 → <code>갱년기변환형</code></li>
+            <li>1: 자고 일어나도 무겁고 부어 → <code>번아웃무기력형</code></li>
+            <li>2: 잘 안 빠지고 금방 다시 붙음 → <code>대사증후군형</code></li>
+            <li>3: 특별히 달라진 건 모르겠음 → <code>변화특이없음</code></li>
+          </ul>
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-p1">P1</span>
+            <span class="pg pg-p3">P3</span>
+          </div>
+        </td>
+        <td>
+          <div class="condition">P1 <code>p1-story story-lead</code> 3가지 문구 분기:<br>
+          ▸ 0(갱년기) → "체형 변화의 시기" 스토리<br>
+          ▸ 1(번아웃) → "회복이 먼저" 스토리<br>
+          ▸ 2(대사) → "대사 재설계" 스토리<br>
+          ▸ 3(모름) → 기본 스토리<br><br>
+          P3 dietAct에 몸변화 맥락 추가<br>
+          P1 background <code>cert-meta</code> 배지 조건 (0=갱년기배지)</div>
+        </td>
+        <td><div class="fallback">값 없음 → 기본 스토리 출력</div></td>
+      </tr>
+
+      <!-- Q11 -->
+      <tr>
+        <td class="qid">Q11<br><span class="note">no:11</span></td>
+        <td><span class="key">stage1[11]</span><br><span class="key">Q_TARGET_ZONE</span></td>
+        <td class="qtxt">솔직히, 가장 먼저 달라지고 싶은 곳은 어디인가요?</td>
+        <td>
+          <ul class="opts">
+            <li>0: 뱃살·복부 라인 → <code>복부우선</code></li>
+            <li>1: 처지고 늘어진 피부·탄력 → <code>탄력우선</code></li>
+            <li>2: 붓고 무거운 느낌·순환 → <code>순환우선</code></li>
+            <li>3: 얼굴 윤곽·목선·이중턱 → <code>얼굴우선</code></li>
+            <li>4: 전체적인 라인 → <code>전신우선</code></li>
+          </ul>
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-p3">P3</span>
+            <span class="pg pg-p5">P5</span>
+            <span class="pg pg-p6">P6</span>
+          </div>
+        </td>
+        <td>
+          <div class="condition">P3 safeAct / dietAct 끝에 목표부위 힌트 추가:<br>
+          ▸ 0 → "복부 집중 전략 포인트"<br>
+          ▸ 1 → "탄력 회복 전략 포인트"<br>
+          ▸ 2 → "순환 개선 전략 포인트"<br>
+          ▸ 3 → "얼굴 윤곽 전략 포인트"<br>
+          ▸ 4 → "전체 라인 전략 포인트"<br><br>
+          P5 <code>_targetZone</code> 참조 → 처방영역 보정<br>
+          P6 주차별 목표부위 운동/식단 보강</div>
+        </td>
+        <td><div class="fallback">_targetZone = null, 타겟 힌트 미출력</div></td>
+      </tr>
+
+    </tbody>
+  </table>
+  </div>
+  <div class="legend">
+    <span>📌 Q01(zone→트랙결정) · Q02~Q09(bcCode 판별) · Q10(Q_BODY_CHANGE) · Q11(Q_TARGET_ZONE)이 P1~P6 전반에 걸쳐 사용됨</span>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     §2. STAGE 1-B — HF_S1_DEEP
+═══════════════════════════════════════════════════════════ -->
+<div class="section" id="s1deep">
+  <div class="section-title s1-color">§2. Stage 1-B — HF_S1_DEEP · 고민칩별 심화 문항</div>
+  <div class="sub-title">▸ 고민칩(존:칩인덱스) → BC코드 세분화 입력값으로 사용 | 결과지 직접 표출은 bcCode 경로를 통해 P1·P2에 반영</div>
+  <div class="tbl-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>고민칩 키</th>
+        <th>심화 문항 내용</th>
+        <th>선택지 (→ 판정태그)</th>
+        <th>결과지 반영 경로</th>
+        <th>Fallback</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="qid">belly:0<br><span class="note">뱃살·내장</span></td>
+        <td>① 식후 윗배 vs 아랫배<br>② 스트레스 시 배 변화</td>
+        <td>
+          ① 식후 윗배 나옴→내장우세 / 아랫배→순환 / 무관→피하우세<br>
+          ② 스트레스→배 나옴→코르티솔반응형
+        </td>
+        <td><span class="pg pg-bc">BC판별</span> → <span class="pg pg-p1">P1</span> 그리드</td>
+        <td><div class="fallback">피하우세 기본</div></td>
+      </tr>
+      <tr>
+        <td class="qid">belly:1<br><span class="note">아랫배·탄력</span></td>
+        <td>① 옷 자국 오래 남음 여부<br>② 뱃살 처짐 시작 계기</td>
+        <td>
+          ① 자국 오래→탄력저하 / 금방→탄력양호<br>
+          ② 출산→출산후처짐 / 감량→감량후처짐
+        </td>
+        <td><span class="pg pg-bc">BC판별</span> → <span class="pg pg-p1">P1</span></td>
+        <td><div class="fallback">탄력저하 기본</div></td>
+      </tr>
+      <tr>
+        <td class="qid">belly:2<br><span class="note">복부피부</span></td>
+        <td>① 튼살 색 (붉은/은빛/없음)<br>② 요요 후 피부 얇아짐</td>
+        <td>
+          ① 붉은→초기튼살 / 은빛→성숙튼살<br>
+          ② 얇고쭈글→요요피부손상
+        </td>
+        <td><span class="pg pg-bc">BC판별</span> → <span class="pg pg-p1">P1</span></td>
+        <td><div class="fallback">관찰필요 기본</div></td>
+      </tr>
+      <tr>
+        <td class="qid">lower:0<br><span class="note">하체</span></td>
+        <td>① 운동 시 하체 반응<br>② 하체 많이 쓰는 활동</td>
+        <td>
+          ① 운동→굵어짐→근육형 / 잘빠짐→지방형<br>
+          ② 등산·러닝→하체지구력 / 장시간서기→순환
+        </td>
+        <td><span class="pg pg-bc">BC판별</span> → <span class="pg pg-p1">P1</span> <span class="pg pg-p2">P2</span></td>
+        <td><div class="fallback">하체피하형 기본</div></td>
+      </tr>
+      <tr>
+        <td class="qid">lower:1<br><span class="note">부종</span></td>
+        <td>① 좌우 다리 부종 차이<br>② 오래 앉으면 무겁고 저림</td>
+        <td>
+          ① 한쪽 더 굵음→편측순환정체<br>
+          ② 자주 무겁고 저림→순환정체
+        </td>
+        <td><span class="pg pg-bc">BC판별</span> → <span class="pg pg-p1">P1</span></td>
+        <td><div class="fallback">경미 기본</div></td>
+      </tr>
+      <tr>
+        <td class="qid">lower:2<br><span class="note">셀룰라이트</span></td>
+        <td>① 셀룰라이트 시작 시점<br>② 해당 부위 냉감 여부</td>
+        <td>
+          ① 체중변동후→체중변동후<br>
+          ② 차가움→순환형셀룰라이트 / 아님→표면형
+        </td>
+        <td><span class="pg pg-bc">BC판별</span> → <span class="pg pg-p1">P1</span></td>
+        <td><div class="fallback">표면형 기본</div></td>
+      </tr>
+      <tr>
+        <td class="qid">upper:0<br><span class="note">팔뚝</span></td>
+        <td>① 팔 사용량 감소 여부<br>② 저녁 팔 부종 여부</td>
+        <td>
+          ① 급감→팔사용급감<br>
+          ② 저녁 부음→순환부종형
+        </td>
+        <td><span class="pg pg-bc">BC판별</span> → <span class="pg pg-p1">P1</span></td>
+        <td><div class="fallback">사용량유지 기본</div></td>
+      </tr>
+      <tr>
+        <td class="qid">upper:1<br><span class="note">등</span></td>
+        <td>① 어깨 끈 파고듦·등 상부 도톰<br>② 라운드숄더·등 굽음</td>
+        <td>
+          ① 도톰 잡힘→등상부축적<br>
+          ② 어깨 말림·등 굽음→라운드숄더자세
+        </td>
+        <td><span class="pg pg-bc">BC판별</span> → <span class="pg pg-p1">P1</span></td>
+        <td><div class="fallback">경미 기본</div></td>
+      </tr>
+      <tr>
+        <td class="qid">upper:2<br><span class="note">팔피부</span></td>
+        <td>① 팔 안쪽 잔주름·세로선<br>② 요요 후 팔 피부 쭈글</td>
+        <td>
+          ① 잔주름→이완진행 / 희미→이완초기<br>
+          ② 얇고쭈글→요요피부손상
+        </td>
+        <td><span class="pg pg-bc">BC판별</span> → <span class="pg pg-p1">P1</span></td>
+        <td><div class="fallback">표면양호 기본</div></td>
+      </tr>
+      <tr>
+        <td class="qid">whole:0<br><span class="note">전신·대사</span></td>
+        <td>① 예전보다 안 빠짐 여부<br>② 조금만 먹어도 붙음 여부</td>
+        <td>
+          ① 확실히 안빠짐→대사저하형<br>
+          ② 조금만 먹어도 붙음→대사저하고착
+        </td>
+        <td><span class="pg pg-bc">BC판별</span> → <span class="pg pg-p1">P1</span> <span class="pg pg-p9">P9</span></td>
+        <td><div class="fallback">대사양호 기본</div></td>
+      </tr>
+      <tr>
+        <td class="qid">whole:1<br><span class="note">전신·부종</span></td>
+        <td>① 자도 붓고 무겁고 개운치 않음<br>② 정강이 눌림 자국</td>
+        <td>
+          ① 자도 붓고 무거움→번아웃방전형<br>
+          ② 움푹 파여 한참→압흔성부종
+        </td>
+        <td><span class="pg pg-bc">BC판별</span> → <span class="pg pg-p1">P1</span> <span class="pg pg-p9">P9</span></td>
+        <td><div class="fallback">회복양호 기본</div></td>
+      </tr>
+      <tr>
+        <td class="qid">whole:2<br><span class="note">전신·갱년기</span></td>
+        <td>① 살이 배·윗몸으로 옮겨간 느낌<br>② 전신 처짐 시작 여부</td>
+        <td>
+          ① 살이 위로 이동→갱년기변환형<br>
+          ② 처짐 보임→전신탄력저하
+        </td>
+        <td><span class="pg pg-bc">BC판별</span> → <span class="pg pg-p1">P1</span></td>
+        <td><div class="fallback">변화없음 기본</div></td>
+      </tr>
+      <tr>
+        <td class="qid">face:0<br><span class="note">피부</span></td>
+        <td>① 오후 피부 칙칙·결 거칠어짐<br>② 스트레스·불규칙 시 트러블</td>
+        <td>
+          ① 칙칙+거칠→톤결저하<br>
+          ② 스트레스 시 트러블→컨디션성트러블
+        </td>
+        <td><span class="pg pg-bc">BC판별</span> → <span class="pg pg-p1">P1</span></td>
+        <td><div class="fallback">피부양호 기본</div></td>
+      </tr>
+      <tr>
+        <td class="qid">face:1<br><span class="note">윤곽</span></td>
+        <td>① 아침 얼굴 붓기 여부<br>② 이중턱 자세 의존성</td>
+        <td>
+          ① 아침붓고오후빠짐→부기형윤곽<br>
+          ② 고개숙일때만→자세성이중턱
+        </td>
+        <td><span class="pg pg-bc">BC판별</span> → <span class="pg pg-p1">P1</span></td>
+        <td><div class="fallback">지방처짐형 기본</div></td>
+      </tr>
+      <tr>
+        <td class="qid">face:2<br><span class="note">목</span></td>
+        <td>① 목 가로 주름 여부<br>② 화면 오래 보면 목 앞으로</td>
+        <td>
+          ① 주름눈에띔→목주름진행<br>
+          ② 화면후목앞으로→자세성목선저하
+        </td>
+        <td><span class="pg pg-bc">BC판별</span> → <span class="pg pg-p1">P1</span></td>
+        <td><div class="fallback">목주름경미 기본</div></td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     §3. STAGE 1-C — HF_S1_BANK
+═══════════════════════════════════════════════════════════ -->
+<div class="section" id="s1bank">
+  <div class="section-title s1-color">§3. Stage 1-C — HF_S1_BANK · 트랙별 적응형 문항</div>
+  <div class="sub-title">▸ 트랙(obesity / skin / plastic)별로 S1_BASE 뒤에 추가 노출 | 결과지 반영: bcCode 세분화 → P1·P2·P4</div>
+  <div class="tbl-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>트랙</th>
+        <th>no</th>
+        <th>질문</th>
+        <th>선택지</th>
+        <th>결과지 반영</th>
+        <th>Fallback</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="qid" rowspan="2">obesity<br><span class="note">비만 트랙</span></td>
+        <td><span class="key">no:1</span><br>시작시점</td>
+        <td>지금의 몸이 된 게 — 언제부터였다고 기억하시나요?</td>
+        <td>서서히 조금씩→점진축적형 / 특정계기→계기발생형 / 빠졌다쪘다→요요반복형 / 원래이런편→체질지속형</td>
+        <td><span class="pg pg-p4">P4</span> getCruelHistoryTriggers t01 계기 맥락</td>
+        <td><div class="fallback">점진축적형 기본</div></td>
+      </tr>
+      <tr>
+        <td><span class="key">no:4</span><br>변화계기</td>
+        <td>그 무렵 생활에서 가장 크게 달라진 건 무엇이었나요?</td>
+        <td>앉아있는시간증가→활동량급감 / 식사불규칙→식이리듬붕괴 / 수면수면스트레스→수면스트레스 / 출산수술→신체이벤트 / 딱히없음→계기불명</td>
+        <td><span class="pg pg-p4">P4</span> t01 계기 세부 맥락</td>
+        <td><div class="fallback">계기불명 기본</div></td>
+      </tr>
+      <tr>
+        <td class="qid" rowspan="4">skin<br><span class="note">피부·탄력 트랙</span></td>
+        <td><span class="key">no:1</span><br>시작시점</td>
+        <td>피부 표면이 달라졌다고 느낀 건 — 언제부터였나요?</td>
+        <td>체중변동후 / 출산·수술후 / 나이들면서 / 기억없음</td>
+        <td><span class="pg pg-p1">P1</span> BC판별 세분화</td>
+        <td><div class="fallback">시점불명 기본</div></td>
+      </tr>
+      <tr>
+        <td><span class="key">no:2</span><br>회복경험</td>
+        <td>관리나 시술을 받았을 때 — 그 부위는 어떻게 반응했나요?</td>
+        <td>일시반응형 / 반응지속형 / 저반응형 / 이력없음</td>
+        <td><span class="pg pg-p1">P1</span> <span class="pg pg-p5">P5</span> 처방영역 반응도 참고</td>
+        <td><div class="fallback">이력없음 기본</div></td>
+      </tr>
+      <tr>
+        <td><span class="key">no:3</span><br>생활요인</td>
+        <td>표면이 유독 안 좋아 보이는 날 — 전날 무엇이 겹쳤나요?</td>
+        <td>염분음주→염분알코올 / 수면부족 / 활동량부족 / 일관유지</td>
+        <td><span class="pg pg-p1">P1</span> BC 세분화</td>
+        <td><div class="fallback">일관유지 기본</div></td>
+      </tr>
+      <tr>
+        <td><span class="key">no:4</span><br>누적습관</td>
+        <td>몇 년째 이어온 습관 중 — 피부에 부담이 됐을 만한 게 있나요?</td>
+        <td>반복감량 / 수분부족 / 자외선무방비 / 흡연이력 / 없음</td>
+        <td><span class="pg pg-p1">P1</span> BC 세분화</td>
+        <td><div class="fallback">없음 기본</div></td>
+      </tr>
+      <tr>
+        <td class="qid" rowspan="2">plastic<br><span class="note">얼굴·윤곽 트랙</span></td>
+        <td><span class="key">no:1</span><br>시작시점</td>
+        <td>얼굴선이 달라졌다고 느낀 건 — 언제부터였나요?</td>
+        <td>체중증가와함께 / 체중무관 / 나이들면서 / 출산수술이후</td>
+        <td><span class="pg pg-p1">P1</span> BC 세분화</td>
+        <td><div class="fallback">점진변화 기본</div></td>
+      </tr>
+      <tr>
+        <td><span class="key">no:2</span><br>생활습관</td>
+        <td>평소 습관 중 — 얼굴선에 영향을 줬을 만한 게 있나요?</td>
+        <td>한쪽씹기·턱괴기→편측습관 / 수면자세 / 이갈이저작근과사용 / 없음</td>
+        <td><span class="pg pg-p1">P1</span> BC 세분화</td>
+        <td><div class="fallback">없음 기본</div></td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     §4. STAGE 1-D — HF_S1_ZONE_Q
+═══════════════════════════════════════════════════════════ -->
+<div class="section" id="s1zone">
+  <div class="section-title s1-color">§4. Stage 1-D — HF_S1_ZONE_Q · 존별 조건부 문항 (obesity 트랙 전용)</div>
+  <div class="tbl-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>존</th>
+        <th>no</th>
+        <th>질문</th>
+        <th>선택지 (→ 판정태그)</th>
+        <th>결과지 반영</th>
+        <th>Fallback</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="qid">upper<br><span class="note">상체 존</span></td>
+        <td><span class="key">no:5</span></td>
+        <td>하루 중 상체를 가장 많이 쓰는 건 — 어떤 상황인가요?</td>
+        <td>종일 앉아 화면→상체저사용 / 아이·무거운것→상체과부하 / 운동으로 상체→상체트레이닝 / 한쪽만→편측사용</td>
+        <td><span class="pg pg-bc">BC판별</span> → <span class="pg pg-p1">P1</span> 상체형 세분화</td>
+        <td><div class="fallback">상체저사용 기본</div></td>
+      </tr>
+      <tr>
+        <td class="qid">lower<br><span class="note">하체 존</span></td>
+        <td><span class="key">no:5</span></td>
+        <td>하루 대부분을 — 어떤 자세로 보내시나요?</td>
+        <td>거의 앉아있음→장시간좌위 / 거의 서있거나 걸음→장시간입위 / 앉았다섰다→혼합 / 다리꼬기·한쪽기댐→편측압박</td>
+        <td><span class="pg pg-bc">BC판별</span> → <span class="pg pg-p1">P1</span> 하체형 세분화</td>
+        <td><div class="fallback">장시간좌위 기본</div></td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     §5. STAGE 2
+═══════════════════════════════════════════════════════════ -->
+<div class="section" id="s2">
+  <div class="section-title s2-color">§5. Stage 2 — S2-Q01~S2-Q16 · 병력·배경 16문항</div>
+  <div class="tbl-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th style="width:60px">문항 ID</th>
+        <th style="width:55px">저장 키</th>
+        <th style="width:160px">질문 내용</th>
+        <th style="width:200px">선택지 (값 → 내부 키)</th>
+        <th style="width:130px">매핑 결과지 영역</th>
+        <th style="width:200px">조건별 표출 문구 / 배지</th>
+        <th style="width:110px">미응답 Fallback</th>
+      </tr>
+    </thead>
+    <tbody>
+
+      <tr>
+        <td class="qid">S2-Q01<br><span class="note">no:1</span></td>
+        <td><span class="key">stage2[1]</span><br><span class="note">q1_family<br>multi max:2</span></td>
+        <td class="qtxt">부모님이나 형제 중, 당뇨·고혈압·고지혈증이 있는 분이 계신가요?</td>
+        <td>
+          <ul class="opts">
+            <li>0: 아버지</li>
+            <li>1: 어머니</li>
+            <li>2: 형제·자매</li>
+            <li>3: 없어요</li>
+          </ul>
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-p1">P1</span>
+            <span class="pg pg-p5">P5</span>
+          </div>
+        </td>
+        <td>
+          <div class="condition">P1 extractTags() → 메디컬 안전모드 칩 판단 보조<br>P5 처방 영역 가중치 보조 (유전요인)</div>
+        </td>
+        <td><div class="fallback">가족력 없음으로 처리</div></td>
+      </tr>
+
+      <tr>
+        <td class="qid">S2-Q02<br><span class="note">no:2</span></td>
+        <td><span class="key">stage2[2]</span><br><span class="note">q2_parent</span></td>
+        <td class="qtxt">부모님 중 누구와 체형이 더 비슷한가요?</td>
+        <td>
+          <ul class="opts">
+            <li>0: 아버지를 닮아 배부터</li>
+            <li>1: 어머니를 닮아 하체부터</li>
+            <li>2: 둘 다 조금씩</li>
+            <li>3: 부모님과 다른 편</li>
+          </ul>
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-bc">BC판별</span>
+            <span class="pg pg-p1">P1</span>
+          </div>
+        </td>
+        <td><div class="condition">bcCode 유전 요인 보조 (복부형 vs 하체형 경향)</div></td>
+        <td><div class="fallback">둘다 기본</div></td>
+      </tr>
+
+      <tr>
+        <td class="qid">S2-Q03<br><span class="note">no:3</span></td>
+        <td><span class="key">stage2[3]</span><br><span class="note">disease<br>→ redFlags<br>multi max:4</span></td>
+        <td class="qtxt">진단받은 적 있는 질환을 골라주세요.</td>
+        <td>
+          <ul class="opts">
+            <li>0: 다낭성난소증후군(PCOS)</li>
+            <li>1: 당뇨·당뇨 전단계</li>
+            <li>2: 고혈압</li>
+            <li>3: 갑상선 질환</li>
+            <li>4: 지방간</li>
+            <li>5: 역류성·위장질환</li>
+            <li>6: 우울증·불안장애</li>
+            <li>7: 해당 없어요</li>
+          </ul>
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-p1">P1</span>
+            <span class="pg pg-p3">P3</span>
+            <span class="pg pg-p4">P4</span>
+            <span class="pg pg-p5">P5</span>
+            <span class="pg pg-p6">P6</span>
+            <span class="pg pg-rf">redFlags</span>
+          </div>
+        </td>
+        <td>
+          <div class="condition">→ <code>redFlags</code> 배열 파생:<br>
+          ▸ 0(PCOS) → PCOS 플래그 → P3 PCOS 처방 / P5 호르몬 영역↑<br>
+          ▸ 1(당뇨) → DIABETES 플래그 → P4 트리거 / P5 식단영역↑ / P6 경고배너<br>
+          ▸ 3(갑상선) → THYROID 플래그 → P4 트리거 / P5 대사영역↑<br>
+          ▸ 4(지방간) → FATTY_LIVER 플래그 → P4 트리거<br>
+          P1 메디컬 안전모드 칩 표시</div>
+        </td>
+        <td><div class="fallback">redFlags 해당없음, 메디컬 칩 미표시</div></td>
+      </tr>
+
+      <tr>
+        <td class="qid">S2-Q04<br><span class="note">no:4</span></td>
+        <td><span class="key">stage2[4]</span><br><span class="note">border<br>→ redFlags<br>multi max:4</span></td>
+        <td class="qtxt">건강검진에서 '경계'나 '주의' 소견을 들은 항목이 있나요?</td>
+        <td>
+          <ul class="opts">
+            <li>0: 공복혈당이 높대요</li>
+            <li>1: 간 수치(지방간)</li>
+            <li>2: 콜레스테롤·중성지방</li>
+            <li>3: 혈압</li>
+            <li>4: 없어요</li>
+          </ul>
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-p1">P1</span>
+            <span class="pg pg-p5">P5</span>
+            <span class="pg pg-rf">redFlags</span>
+          </div>
+        </td>
+        <td>
+          <div class="condition">경계소견 → redFlags 보조 플래그<br>P5 처방영역 가중치 보정<br>P1 안전모드 칩 판단 보조</div>
+        </td>
+        <td><div class="fallback">경계없음으로 처리</div></td>
+      </tr>
+
+      <tr>
+        <td class="qid">S2-Q05<br><span class="note">no:5</span></td>
+        <td><span class="key">stage2[5]</span><br><span class="note">q5_cold</span></td>
+        <td class="qtxt">손발이 유독 차고, 남보다 추위를 많이 타나요?</td>
+        <td>
+          <ul class="opts">
+            <li>0: 네, 여름에도 손발이 차요</li>
+            <li>1: 조금 그런 편이에요</li>
+            <li>2: 오히려 더위를 타요</li>
+          </ul>
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-p3">P3</span>
+            <span class="pg pg-p5">P5</span>
+          </div>
+        </td>
+        <td>
+          <div class="condition">P5: q5_cold=0 → 한방/시술 domain 강화 (냉증 → 한방·순환 처방↑)<br>P3: 냉증 여부 멘탈 처방 보조</div>
+        </td>
+        <td><div class="fallback">조금 그런 편(1) 기본값</div></td>
+      </tr>
+
+      <tr>
+        <td class="qid">S2-Q06<br><span class="note">no:6</span></td>
+        <td><span class="key">stage2[6]</span><br><span class="note">long_term_drugs<br>→ redFlags<br>multi max:4</span></td>
+        <td class="qtxt">장기간 복용했거나 복용 중인 약이 있나요?</td>
+        <td>
+          <ul class="opts">
+            <li>0: 스테로이드 계열</li>
+            <li>1: 항우울제·신경정신과 약</li>
+            <li>2: 피임약·호르몬제</li>
+            <li>3: 아스피린·항응고제</li>
+            <li>4: 이소트레티노인(여드름약)</li>
+            <li>5: 탈모약</li>
+            <li>6: 없어요</li>
+          </ul>
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-p1">P1</span>
+            <span class="pg pg-p5">P5</span>
+            <span class="pg pg-p6">P6</span>
+            <span class="pg pg-rf">redFlags</span>
+          </div>
+        </td>
+        <td>
+          <div class="condition">▸ 0(스테로이드) → STEROID 플래그 → P4 트리거 / P5 약물영역↑<br>▸ 1(항우울제) → 심리 영역 보강<br>▸ 2(피임약·호르몬) → HORMONE 플래그<br>P1 메디컬 안전모드 칩<br>P6 경고배너 표시</div>
+        </td>
+        <td><div class="fallback">약물없음, redFlag 미적용</div></td>
+      </tr>
+
+      <tr>
+        <td class="qid">S2-Q07<br><span class="note">no:7</span></td>
+        <td><span class="key">stage2[7]</span><br><span class="note">appetite_suppressant<br>→ APPETITE_SUPP</span></td>
+        <td class="qtxt">다이어트 약(식욕억제제)을 먹어본 적 있나요?</td>
+        <td>
+          <ul class="opts">
+            <li>0: 네, 여러 번 먹었어요</li>
+            <li>1: 한두 번 시도했어요</li>
+            <li>2: 없어요</li>
+          </ul>
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-p1">P1</span>
+            <span class="pg pg-p5">P5</span>
+            <span class="pg pg-rf">redFlags</span>
+          </div>
+        </td>
+        <td>
+          <div class="condition">▸ 0 또는 1 → APPETITE_SUPP redFlag → P5 심리/식이 영역↑<br>P1 메디컬 안전모드 칩</div>
+        </td>
+        <td><div class="fallback">미복용, 플래그 없음</div></td>
+      </tr>
+
+      <tr>
+        <td class="qid">S2-Q08<br><span class="note">no:8</span></td>
+        <td><span class="key">stage2[8]</span><br><span class="note">q8_trigger<br>multi max:2</span></td>
+        <td class="qtxt">최근 1~2년 안에, 갑자기 살이 찐 결정적 계기가 있었나요?</td>
+        <td>
+          <ul class="opts">
+            <li>0: 이직·과로·스트레스</li>
+            <li>1: 이별·심리적 충격</li>
+            <li>2: 수술·입원·약물</li>
+            <li>3: 잦은 회식·음주</li>
+            <li>4: 금연·생활변화</li>
+            <li>5: 특별한 계기 없이 서서히</li>
+          </ul>
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-p4">P4</span>
+          </div>
+        </td>
+        <td>
+          <div class="condition">P4 getCruelHistoryTriggers:<br>▸ q8_trigger → t01Title 앞 계기 맥락 prefix 추가<br>▸ 0(과로) → "과로가 방아쇠였던 당신"<br>▸ 1(이별) → "심리적 충격이 방아쇠였던 당신"<br>▸ 2(수술) → "신체 이벤트가 계기였던 당신"</div>
+        </td>
+        <td><div class="fallback">prefix 없이 기본 트리거 텍스트</div></td>
+      </tr>
+
+      <tr>
+        <td class="qid">S2-Q09<br><span class="note">no:9</span></td>
+        <td><span class="key">stage2[9]</span><br><span class="note">past_procedures<br>→ redFlags<br>multi max:4</span></td>
+        <td class="qtxt">체형·피부와 관련해 받아본 시술이나 수술이 있나요?</td>
+        <td>
+          <ul class="opts">
+            <li>0: 지방흡입</li>
+            <li>1: 지방분해 주사·시술</li>
+            <li>2: 리프팅(실·레이저·초음파)</li>
+            <li>3: 보톡스·필러</li>
+            <li>4: 복부성형(복벽교정)</li>
+            <li>5: 체형 관련 수술은 없어요</li>
+          </ul>
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-p1">P1</span>
+            <span class="pg pg-p5">P5</span>
+            <span class="pg pg-rf">redFlags</span>
+          </div>
+        </td>
+        <td>
+          <div class="condition">past_procedures → PROCEDURE 플래그<br>P1 메디컬 안전모드 칩<br>P5 시술영역 강화 여부 결정</div>
+        </td>
+        <td><div class="fallback">시술없음, 플래그 없음</div></td>
+      </tr>
+
+      <tr>
+        <td class="qid">S2-Q10<br><span class="note">no:10</span></td>
+        <td><span class="key">stage2[10]</span><br><span class="note">Q_WT_PATTERN<br>input:wtline</span></td>
+        <td class="qtxt">체중이 어떻게 움직여왔는지 그려주세요. (체중 궤적 그래프)</td>
+        <td>
+          시스템이 자동 산출:<br>
+          <span class="key">pat</span>: 요요형 (빠졌다 쪘다 반복)<br>
+          <span class="key">cyc</span>: 급증형 (특정시기 급등)<br>
+          <span class="key">amp</span>: 완만증가형<br>
+          <span class="key">net</span>: 감량유지형 / 안정형
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-p4">P4</span>
+          </div>
+        </td>
+        <td>
+          <div class="condition">P4 getCruelHistoryTriggers t01Medical:<br>▸ pat(요요) → "요요가 반복된 몸" 맥락 추가<br>▸ cyc(급증) → "특정 시기 이후 체중 급등" 맥락<br>▸ amp(완만) → "서서히 쌓인 대사 변화" 맥락</div>
+        </td>
+        <td><div class="fallback">궤적 미입력 시 Q_WT_PATTERN=null, 맥락 미추가</div></td>
+      </tr>
+
+      <tr>
+        <td class="qid">S2-Q11<br><span class="note">no:11</span></td>
+        <td><span class="key">stage2[11]</span><br><span class="note">q11_event<br>birth_history</span></td>
+        <td class="qtxt">출산 경험이 있나요?<br><span class="note">(남성판: 군대·직장 후 체형 변화)</span></td>
+        <td>
+          <ul class="opts">
+            <li>0: 출산 후 체형 변화 → <code>Q3='yes'</code>, <code>birth_history='yes'</code></li>
+            <li>1: 출산했지만 변화 없음 → <code>birth_history='yes'</code></li>
+            <li>2: 해당 없어요</li>
+          </ul>
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-p1">P1</span>
+            <span class="pg pg-p3">P3</span>
+          </div>
+        </td>
+        <td>
+          <div class="condition">parseAnswersFromRaw:<br>▸ 0 → <code>Q3='yes'</code>, <code>birth_history='yes'</code><br>▸ 1 → <code>birth_history='yes'</code><br>P1 background → 출산배지 표시:<br>"출산 경험 · 산후 체형 변화 이력"<br>P3 dietAct 출산 맥락 보조</div>
+        </td>
+        <td><div class="fallback">birth_history 없음, 배지 미표시</div></td>
+      </tr>
+
+      <tr>
+        <td class="qid">S2-Q12<br><span class="note">no:12</span></td>
+        <td><span class="key">stage2[12]</span><br><span class="note">Q_MENOPAUSE<br>q12_menopause</span></td>
+        <td class="qtxt">갱년기·완경, 또는 생리 관련 변화가 있나요?<br><span class="note">(남성판: 40대 이후 복부 중심 체형 변화)</span></td>
+        <td>
+          <ul class="opts">
+            <li>0: 체형이 복부 중심으로 → <code>갱년기변환형</code></li>
+            <li>1: 호르몬치료·미레나·수술 → <code>호르몬치료형</code></li>
+            <li>2: 완경(자연적) → <code>완경후</code></li>
+            <li>3: 신호가 조금 있음</li>
+            <li>4: 해당 없어요</li>
+          </ul>
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-p1">P1</span>
+            <span class="pg pg-p3">P3</span>
+          </div>
+        </td>
+        <td>
+          <div class="condition">parseAnswersFromRaw → <code>Q_MENOPAUSE</code>:<br>▸ 0 → '갱년기변환형' → P1 cert-meta 갱년기배지<br>▸ 1 → '호르몬치료형' → P1 호르몬치료 배지<br>▸ 2 → '완경후' → P1 완경 배지<br>P3 갱년기 특화 처방 분기</div>
+        </td>
+        <td><div class="fallback">Q_MENOPAUSE=null, 갱년기배지 미표시</div></td>
+      </tr>
+
+      <tr>
+        <td class="qid">S2-Q13<br><span class="note">no:13</span></td>
+        <td><span class="key">stage2[13]</span><br><span class="note">q13_smoke</span></td>
+        <td class="qtxt">담배는 어떤가요?</td>
+        <td>
+          <ul class="opts">
+            <li>0: 피워요</li>
+            <li>1: 끊은 지 얼마 안 됐어요</li>
+            <li>2: 안 피워요</li>
+          </ul>
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-p3">P3</span>
+            <span class="pg pg-p6">P6</span>
+          </div>
+        </td>
+        <td>
+          <div class="condition">P3 dietAct: q13_smoke=0 → "흡연 주의사항" 추가<br>P6 diet_ok 보강 (흡연 시 항산화·순환 주의)</div>
+        </td>
+        <td><div class="fallback">비흡연 처리, 흡연 주의사항 미표시</div></td>
+      </tr>
+
+      <tr>
+        <td class="qid">S2-Q14<br><span class="note">no:14</span></td>
+        <td><span class="key">stage2[14]</span><br><span class="note">q14_alcohol</span></td>
+        <td class="qtxt">술은 일주일에 얼마나 마시나요?</td>
+        <td>
+          <ul class="opts">
+            <li>0: 주 3회 이상</li>
+            <li>1: 주 1~2회</li>
+            <li>2: 거의 안 마셔요</li>
+          </ul>
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-p3">P3</span>
+            <span class="pg pg-p6">P6</span>
+          </div>
+        </td>
+        <td>
+          <div class="condition">P3 dietAct: q14_alcohol=0 → "음주 주의사항" 추가<br>P6 diet_ok 보강 (주 3회 이상 → 알코올 억제 주의)</div>
+        </td>
+        <td><div class="fallback">거의 안 마심으로 처리, 음주 주의사항 미표시</div></td>
+      </tr>
+
+      <tr>
+        <td class="qid">S2-Q15<br><span class="note">no:15</span></td>
+        <td><span class="key">stage2[15]</span><br><span class="note">metrics<br>input:spec</span></td>
+        <td class="qtxt">키와 현재 체중을 알려주세요. (인바디 선택 입력)</td>
+        <td>
+          입력값: 키(cm), 체중(kg), 골격근량(kg), 체지방률(%)<br>
+          → 자동 산출: BMI, BMR, 체지방률, RFM, WHtR
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-p1">P1</span>
+            <span class="pg pg-p9">P9</span>
+          </div>
+        </td>
+        <td>
+          <div class="condition">P9 metrics 기반 예측:<br>▸ 대사효율나이 / 복부위험도 / 호르몬부하 / 체형불균형 4가지 지표 시각화<br>P1 체중·BMI 수치 표시</div>
+        </td>
+        <td><div class="fallback">metrics 없음 → P9 추정 모드, BMI 미표시</div></td>
+      </tr>
+
+      <tr>
+        <td class="qid">S2-Q16<br><span class="note">no:16</span></td>
+        <td><span class="key">stage2[16]</span><br><span class="note">size<br>input:size</span></td>
+        <td class="qtxt">평소 입는 옷 사이즈와, 되고 싶은 목표 사이즈는?</td>
+        <td>
+          현재 사이즈 / 목표 사이즈 → 내부적으로 체지방률 추정 보조
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-p1">P1</span>
+            <span class="pg pg-p9">P9</span>
+          </div>
+        </td>
+        <td>
+          <div class="condition">P1 목표 사이즈 표시<br>P9 4주 변화 시뮬레이션 기준값 보조</div>
+        </td>
+        <td><div class="fallback">사이즈 없음 → 체지방 추정값 fallback 사용</div></td>
+      </tr>
+
+    </tbody>
+  </table>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     §6. STAGE 3
+═══════════════════════════════════════════════════════════ -->
+<div class="section" id="s3">
+  <div class="section-title s3-color">§6. Stage 3 — A01~A10 · gi:0~36 전 37문항</div>
+  <div class="sub-title">▸ 저장 키: <code>stage3Answers[gi]</code> · 헬퍼: <code>_s3v(gi)</code> · axisScores A01~A10 산출 → P2·P3·P5·P8·P9 전반</div>
+  <div class="tbl-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th style="width:55px">축 / gi</th>
+        <th style="width:200px">질문 내용</th>
+        <th style="width:160px">선택지 (값·점수)</th>
+        <th style="width:130px">매핑 결과지 영역</th>
+        <th style="width:230px">조건별 표출 문구 / 배지</th>
+        <th style="width:100px">Fallback</th>
+      </tr>
+    </thead>
+    <tbody>
+
+      <!-- A01 -->
+      <tr>
+        <td class="qid">A01<br>gi:0</td>
+        <td>밥 먹고 딱 30분 뒤, 갑자기 졸음이 쏟아지나요?</td>
+        <td>거의 안 그럼(0) / 가끔(1) / 자주(2) / 거의 매번(3)</td>
+        <td><div class="pages"><span class="pg pg-p2">P2</span><span class="pg pg-p3">P3</span><span class="pg pg-p5">P5</span><span class="pg pg-p10">P10</span></div></td>
+        <td>
+          <div class="condition">P10 renderPersonalizationLayer [8] 혈당패턴 인사이트<br>(gi:0+gi:2 조합 → 혈당롤러코스터 인사이트)<br>A01 axisScore 기여</div>
+        </td>
+        <td><div class="fallback">null → 점수 0</div></td>
+      </tr>
+      <tr>
+        <td class="qid">A01<br>gi:1</td>
+        <td>계획에 없었는데, 빵·디저트 냄새에 이끌려 사 먹은 적 있나요?</td>
+        <td>없음(0) / 가끔(1) / 자주(2) / 거의 매번(3)</td>
+        <td><div class="pages"><span class="pg pg-p2">P2</span><span class="pg pg-p3">P3</span><span class="pg pg-p5">P5</span></div></td>
+        <td><div class="condition">A01 axisScore 기여 → P2 원인축 순위·P3 인슐린 처방(A01≥7)</div></td>
+        <td><div class="fallback">null → 점수 0</div></td>
+      </tr>
+      <tr>
+        <td class="qid">A01<br>gi:2</td>
+        <td>설탕이 든 음료(주스·커피믹스·에이드·탄산)를 하루 몇 잔 드시나요?</td>
+        <td>거의 안 마심(0) / 1잔(1) / 2잔 이상(2) / 물 대신(3)</td>
+        <td><div class="pages"><span class="pg pg-p2">P2</span><span class="pg pg-p3">P3</span><span class="pg pg-p5">P5</span><span class="pg pg-p10">P10</span></div></td>
+        <td>
+          <div class="condition">P10 [8] 혈당패턴 인사이트 (gi:0+gi:2 조합)<br>A01 axisScore 기여</div>
+        </td>
+        <td><div class="fallback">null → 점수 0</div></td>
+      </tr>
+      <tr>
+        <td class="qid">A01<br>gi:3</td>
+        <td>바지 허리가 조일 때 — 허리둘레만 늘고 다른 치수는 그대로인가요?</td>
+        <td>전체같이 늘어남(0) / 허리 조금더(1) / 허리만 조임(2) / 허리조이고 다리는 헐렁(3)</td>
+        <td><div class="pages"><span class="pg pg-p2">P2</span><span class="pg pg-p3">P3</span><span class="pg pg-p5">P5</span><span class="pg pg-p10">P10</span></div></td>
+        <td>
+          <div class="condition">P10 [14] A01 인슐린 복합패턴 인사이트 (gi:0~3 조합)</div>
+        </td>
+        <td><div class="fallback">null → 점수 0</div></td>
+      </tr>
+
+      <!-- A02 -->
+      <tr>
+        <td class="qid">A02<br>gi:4</td>
+        <td>아침에 신던 신발이 — 저녁엔 유독 꽉 끼나요?</td>
+        <td>없음(0) / 가끔(1) / 자주(2) / 거의 매번(3)</td>
+        <td><div class="pages"><span class="pg pg-p2">P2</span><span class="pg pg-p5">P5</span></div></td>
+        <td><div class="condition">A02 axisScore 기여 → P2 원인축 순위·P5 순환 처방 영역</div></td>
+        <td><div class="fallback">null → 점수 0</div></td>
+      </tr>
+      <tr>
+        <td class="qid">A02<br>gi:5</td>
+        <td>밤에 자다가 종아리에 쥐가 나서 깬 적 있나요?</td>
+        <td>없음(0) / 가끔(1) / 자주(2) / 거의 매번(3)</td>
+        <td><div class="pages"><span class="pg pg-p2">P2</span><span class="pg pg-p5">P5</span></div></td>
+        <td><div class="condition">A02 axisScore 기여</div></td>
+        <td><div class="fallback">null → 점수 0</div></td>
+      </tr>
+      <tr>
+        <td class="qid">A02<br>gi:6</td>
+        <td>아침에 얼굴에 남은 베개 자국이 — 한참 지나도 안 사라지나요?</td>
+        <td>없음(0) / 가끔(1) / 자주(2) / 거의 매번(3)</td>
+        <td><div class="pages"><span class="pg pg-p2">P2</span><span class="pg pg-p5">P5</span></div></td>
+        <td><div class="condition">A02 axisScore 기여</div></td>
+        <td><div class="fallback">null → 점수 0</div></td>
+      </tr>
+
+      <!-- A03 -->
+      <tr>
+        <td class="qid">A03<br>gi:7</td>
+        <td>예전과 똑같이 사는데, 이유 없이 살이 잘 찌고 안 빠지나요?</td>
+        <td>없음(0) / 가끔(1) / 자주(2) / 거의 매번(3)</td>
+        <td><div class="pages"><span class="pg pg-p2">P2</span><span class="pg pg-p5">P5</span></div></td>
+        <td><div class="condition">A03 axisScore 기여 → P5 호르몬 처방영역</div></td>
+        <td><div class="fallback">null → 점수 0</div></td>
+      </tr>
+      <tr>
+        <td class="qid">A03<br>gi:8</td>
+        <td>작년 바지가, 허벅지는 헐렁한데 허리만 안 잠기나요?</td>
+        <td>없음(0) / 가끔(1) / 자주(2) / 거의 매번(3)</td>
+        <td><div class="pages"><span class="pg pg-p2">P2</span><span class="pg pg-p5">P5</span></div></td>
+        <td><div class="condition">A03 axisScore 기여</div></td>
+        <td><div class="fallback">null → 점수 0</div></td>
+      </tr>
+      <tr>
+        <td class="qid">A03<br>gi:9</td>
+        <td>턱 끝에 '꼭 거기'만 뾰루지가 반복해서 나나요?</td>
+        <td>없음(0) / 가끔(1) / 자주(2) / 거의 매번(3)</td>
+        <td><div class="pages"><span class="pg pg-p2">P2</span><span class="pg pg-p5">P5</span></div></td>
+        <td><div class="condition">A03 axisScore 기여</div></td>
+        <td><div class="fallback">null → 점수 0</div></td>
+      </tr>
+      <tr>
+        <td class="qid">A03<br>gi:10</td>
+        <td>광대·볼에 갈색 기미·잡티가 있나요?</td>
+        <td>없음(0) / 예전부터있고그대로(0) / 최근새로생김(2) / 최근생기고짙어짐(3)</td>
+        <td><div class="pages"><span class="pg pg-p2">P2</span><span class="pg pg-p5">P5</span></div></td>
+        <td><div class="condition">A03 axisScore 기여 (가중 채점: 0=0, 0=0, 2=2, 3=3)</div></td>
+        <td><div class="fallback">null → 점수 0</div></td>
+      </tr>
+      <tr>
+        <td class="qid">A03<br>gi:11</td>
+        <td>요즘 베개나 배수구에, 머리카락이 부쩍 많이 빠져 있나요?</td>
+        <td>평소와비슷(0) / 조금늘어남(1) / 눈에띄게많이빠짐(2)</td>
+        <td><div class="pages"><span class="pg pg-p2">P2</span><span class="pg pg-p5">P5</span></div></td>
+        <td><div class="condition">A03 axisScore 기여</div></td>
+        <td><div class="fallback">null → 점수 0</div></td>
+      </tr>
+
+      <!-- A04 -->
+      <tr>
+        <td class="qid">A04<br>gi:12</td>
+        <td>계단이나 비탈길을 내려갈 때, 무릎이 불안하거나 난간을 찾게 되나요?</td>
+        <td>안그럼(0) / 빨리내려가면불안(1) / 난간잡고내려감(2) / 한발씩모아디딤(3)</td>
+        <td><div class="pages"><span class="pg pg-p2">P2</span><span class="pg pg-p5">P5</span></div></td>
+        <td><div class="condition">A04 axisScore 기여 → P5 체형/운동 처방 영역</div></td>
+        <td><div class="fallback">null → 점수 0</div></td>
+      </tr>
+      <tr>
+        <td class="qid">A04<br>gi:13</td>
+        <td>머리를 말리거나 높은 선반의 물건을 꺼낼 때, 팔이 먼저 지치나요?</td>
+        <td>아니요(0) / 팔저려내려옴(1) / 반대손바꿔가며(2) / 팔올리는일피함(3)</td>
+        <td><div class="pages"><span class="pg pg-p2">P2</span><span class="pg pg-p5">P5</span></div></td>
+        <td><div class="condition">A04 axisScore 기여</div></td>
+        <td><div class="fallback">null → 점수 0</div></td>
+      </tr>
+      <tr>
+        <td class="qid">A04<br>gi:14</td>
+        <td>한 발로 서서 양말이나 바지를 입을 수 있나요?</td>
+        <td>서서그냥입음(0) / 비틀거려벽짚음(1) / 앉아서입음(2) / 몇초도못서있음(3)</td>
+        <td><div class="pages"><span class="pg pg-p2">P2</span><span class="pg pg-p5">P5</span></div></td>
+        <td><div class="condition">A04 axisScore 기여</div></td>
+        <td><div class="fallback">null → 점수 0</div></td>
+      </tr>
+      <tr>
+        <td class="qid">A04<br>gi:15</td>
+        <td>살이 빠진 것도 아닌데, 팔다리만 가늘어진 느낌인가요?</td>
+        <td>아니요(0) / 좀가늘어진것같음(2) / 살은쪘는데팔다리가늘(3)</td>
+        <td><div class="pages"><span class="pg pg-p2">P2</span><span class="pg pg-p5">P5</span></div></td>
+        <td><div class="condition">A04 axisScore 기여 (가중 채점)</div></td>
+        <td><div class="fallback">null → 점수 0</div></td>
+      </tr>
+
+      <!-- A05 -->
+      <tr>
+        <td class="qid">A05<br>gi:16</td>
+        <td>아침엔 평평한 배가, 저녁엔 임산부처럼 부풀어 오르나요?</td>
+        <td>없음(0) / 가끔(1) / 자주(2) / 거의 매번(3)</td>
+        <td><div class="pages"><span class="pg pg-p2">P2</span><span class="pg pg-p5">P5</span><span class="pg pg-p10">P10</span></div></td>
+        <td>
+          <div class="condition">P10 [9] 복부팽만 인사이트 (gi:16)<br>P10 [15] A05 소화패턴 (gi:16~18)<br>P10 P5 metaBadge: 장불균형</div>
+        </td>
+        <td><div class="fallback">null → 점수 0</div></td>
+      </tr>
+      <tr>
+        <td class="qid">A05<br>gi:17</td>
+        <td>특정 음식(밀가루·유제품) 먹으면 꼭 더부룩한가요?</td>
+        <td>없음(0) / 가끔(1) / 자주(2) / 거의 매번(3)</td>
+        <td><div class="pages"><span class="pg pg-p2">P2</span><span class="pg pg-p5">P5</span><span class="pg pg-p10">P10</span></div></td>
+        <td>
+          <div class="condition">P10 [15] A05 소화패턴 (gi:16~18)<br>A05 axisScore 기여</div>
+        </td>
+        <td><div class="fallback">null → 점수 0</div></td>
+      </tr>
+      <tr>
+        <td class="qid">A05<br>gi:18</td>
+        <td>화장실 가는 리듬이 불규칙하거나, 며칠씩 거르나요?</td>
+        <td>매일규칙(0) / 하루이틀거름(1) / 3일이상거름(2)</td>
+        <td><div class="pages"><span class="pg pg-p2">P2</span><span class="pg pg-p5">P5</span><span class="pg pg-p10">P10</span></div></td>
+        <td>
+          <div class="condition">P10 [7] 장건강 인사이트 (gi:18)<br>P10 P5 metaBadge: 장불균형 조건 판단</div>
+        </td>
+        <td><div class="fallback">null → 점수 0</div></td>
+      </tr>
+      <tr>
+        <td class="qid">A05<br>gi:19</td>
+        <td>최근 1년 안에 항생제를 복용한 적 있나요?</td>
+        <td>없음(0) / 한두번(1) / 여러번·장기간(2)</td>
+        <td><div class="pages"><span class="pg pg-p2">P2</span><span class="pg pg-p5">P5</span></div></td>
+        <td><div class="condition">A05 axisScore 기여</div></td>
+        <td><div class="fallback">null → 점수 0</div></td>
+      </tr>
+      <tr>
+        <td class="qid">A05<br>gi:20</td>
+        <td>식사를 마치고 나면, 속이 편안하고 배가 가벼운가요? (역문항)</td>
+        <td>매우편안(0) / 보통(1) / 불편(2) / 매우불편(3) → rev:true 역산</td>
+        <td><div class="pages"><span class="pg pg-p2">P2</span><span class="pg pg-p5">P5</span></div></td>
+        <td><div class="condition">A05 axisScore 기여 (rev:true → 편안할수록 낮은 점수)</div></td>
+        <td><div class="fallback">null → 점수 0</div></td>
+      </tr>
+
+      <!-- A06 -->
+      <tr>
+        <td class="qid">A06<br>gi:21</td>
+        <td>오래 앉아 있으면, 목·어깨보다 골반·허리가 먼저 뻐근한가요?</td>
+        <td>없음(0) / 가끔(1) / 자주(2) / 거의 매번(3)</td>
+        <td><div class="pages"><span class="pg pg-p2">P2</span><span class="pg pg-p5">P5</span></div></td>
+        <td><div class="condition">A06 axisScore 기여 → P5 체형/골격 처방 영역</div></td>
+        <td><div class="fallback">null → 점수 0</div></td>
+      </tr>
+      <tr>
+        <td class="qid">A06<br>gi:22</td>
+        <td>자주 신는 신발 밑창, 좌우가 다르게 닳아 있나요?</td>
+        <td>좌우비슷(0) / 살짝다름(1) / 눈에띄게다름(2) / 한쪽확연히기울어짐(3)</td>
+        <td><div class="pages"><span class="pg pg-p2">P2</span><span class="pg pg-p5">P5</span></div></td>
+        <td><div class="condition">A06 axisScore 기여</div></td>
+        <td><div class="fallback">null → 점수 0</div></td>
+      </tr>
+      <tr>
+        <td class="qid">A06<br>gi:23</td>
+        <td>거울 앞에 힘 빼고 서면, 양쪽 어깨 높이가 같나요?</td>
+        <td>같음(0) / 사진보면살짝기움(1) / 눈에띄게낮음(2) / 가방·옷이늘흘러내림(3)</td>
+        <td><div class="pages"><span class="pg pg-p2">P2</span><span class="pg pg-p5">P5</span></div></td>
+        <td><div class="condition">A06 axisScore 기여<br><br>
+        <span class="note">※ P10 [13] 보행패턴 인사이트(walking_angle 변수 참조) — 코드상 구조만 있고 현재 미구현 상태</span></div></td>
+        <td><div class="fallback">null → 점수 0</div></td>
+      </tr>
+
+      <!-- A07 -->
+      <tr>
+        <td class="qid">A07<br>gi:24</td>
+        <td>분명히 잤는데, 자고 일어나면 더 피곤한가요?</td>
+        <td>없음(0) / 가끔(1) / 자주(2) / 거의 매번(3)</td>
+        <td><div class="pages"><span class="pg pg-p2">P2</span><span class="pg pg-p3">P3</span><span class="pg pg-p5">P5</span><span class="pg pg-p10">P10</span></div></td>
+        <td>
+          <div class="condition">P10 [1] 수면질 인사이트 (gi:24+gi:27 조합)<br>P10 [20] 올빼미+수면질저하 경고<br>P10 P5 metaBadge: 수면질저하 조건<br>A07 axisScore 기여 → P3 코르티솔 처방(A07≥7)</div>
+        </td>
+        <td><div class="fallback">null → 점수 0</div></td>
+      </tr>
+      <tr>
+        <td class="qid">A07<br>gi:25</td>
+        <td>스트레스 받은 날, 밤 10시 이후에 폭식하게 되나요?</td>
+        <td>그런적없음(0) / 가끔(1) / 거의매번(2)</td>
+        <td><div class="pages"><span class="pg pg-p2">P2</span><span class="pg pg-p3">P3</span><span class="pg pg-p5">P5</span><span class="pg pg-p10">P10</span></div></td>
+        <td>
+          <div class="condition">P10 [2] 스트레스성폭식 인사이트 (gi:25)<br>P10 P5 metaBadge: 고스트레스성야식 조건<br>A07 axisScore 기여</div>
+        </td>
+        <td><div class="fallback">null → 점수 0</div></td>
+      </tr>
+      <tr>
+        <td class="qid">A07<br>gi:26</td>
+        <td>하루에 커피·에너지드링크를 몇 잔이나 드시나요?</td>
+        <td>1잔이하(0) / 2~3잔(1) / 4잔이상(2)</td>
+        <td><div class="pages"><span class="pg pg-p2">P2</span><span class="pg pg-p5">P5</span><span class="pg pg-p10">P10</span></div></td>
+        <td>
+          <div class="condition">P10 [6] 카페인 인사이트 (gi:26)<br>P10 P5 metaBadge: 카페인과다 조건<br>P10 [16] A07 코르티솔패턴 (gi:24~26)<br>A07 axisScore 기여</div>
+        </td>
+        <td><div class="fallback">null → 점수 0</div></td>
+      </tr>
+      <tr>
+        <td class="qid">A07<br>gi:27</td>
+        <td>아침에 개운하게 눈이 떠지고, 몸이 가볍게 일어나지나요? (역문항)</td>
+        <td>매우개운(0) / 보통(1) / 무거움(2) / 매우무거움(3) → rev:true</td>
+        <td><div class="pages"><span class="pg pg-p2">P2</span><span class="pg pg-p5">P5</span><span class="pg pg-p10">P10</span></div></td>
+        <td>
+          <div class="condition">P10 [1] 수면질 인사이트 (gi:24+gi:27 조합)<br>A07 axisScore 기여 (rev:true)</div>
+        </td>
+        <td><div class="fallback">null → 점수 0</div></td>
+      </tr>
+
+      <!-- A08 -->
+      <tr>
+        <td class="qid">A08<br>gi:28</td>
+        <td>"아까운데, 조금 남은 거 그냥 다 먹자" — 평소 자주 하는 생각인가요?</td>
+        <td>배불러도다먹음(2) / 맛있으면끝까지(1) / 배부르면수저놓음(0) → 역배점</td>
+        <td><div class="pages"><span class="pg pg-p2">P2</span><span class="pg pg-p5">P5</span><span class="pg pg-p10">P10</span></div></td>
+        <td>
+          <div class="condition">P10 [5] 감정식이/포만신호 인사이트 (gi:29+gi:28)<br>A08 axisScore 기여</div>
+        </td>
+        <td><div class="fallback">null → 점수 0</div></td>
+      </tr>
+      <tr>
+        <td class="qid">A08<br>gi:29</td>
+        <td>기분 나쁜 날, 맵거나 단 걸로 '나를 달래'주나요?</td>
+        <td>없음(0) / 가끔(1) / 자주(2) / 거의 매번(3)</td>
+        <td><div class="pages"><span class="pg pg-p2">P2</span><span class="pg pg-p3">P3</span><span class="pg pg-p5">P5</span><span class="pg pg-p10">P10</span></div></td>
+        <td>
+          <div class="condition">P10 [5] 감정식이/포만신호 인사이트 (gi:29+gi:28)<br>A08 axisScore 기여 → P3 감정식이 처방(A08≥7)</div>
+        </td>
+        <td><div class="fallback">null → 점수 0</div></td>
+      </tr>
+      <tr>
+        <td class="qid">A08<br>gi:30</td>
+        <td>한 끼 먹는 데, 보통 얼마나 걸리나요?</td>
+        <td>20분이상천천히(0) / 15분정도(1) / 10분안에끝(2)</td>
+        <td><div class="pages"><span class="pg pg-p2">P2</span><span class="pg pg-p5">P5</span><span class="pg pg-p10">P10</span></div></td>
+        <td>
+          <div class="condition">P10 [4] 식사속도 인사이트 (gi:30)<br>A08 axisScore 기여</div>
+        </td>
+        <td><div class="fallback">null → 점수 0</div></td>
+      </tr>
+      <tr>
+        <td class="qid">A08<br>gi:31</td>
+        <td>잠들기 2~3시간 안에 뭔가를 먹는 날, 일주일에 며칠인가요?</td>
+        <td>거의없음(0) / 주1~2회(1) / 주3회이상(2)</td>
+        <td><div class="pages"><span class="pg pg-p2">P2</span><span class="pg pg-p5">P5</span><span class="pg pg-p10">P10</span></div></td>
+        <td>
+          <div class="condition">P10 [3] 야식빈도 인사이트 (gi:31)<br>P10 P5 metaBadge: 야식빈번 / 고스트레스성야식 조건<br>A08 axisScore 기여</div>
+        </td>
+        <td><div class="fallback">null → 점수 0</div></td>
+      </tr>
+
+      <!-- A09 -->
+      <tr>
+        <td class="qid">A09<br>gi:32</td>
+        <td>식사 후에 유난히 목이 마르거나, 화장실이 잦아지나요?</td>
+        <td>평소와같음(0) / 가끔(1) / 식사때마다(2)</td>
+        <td><div class="pages"><span class="pg pg-p2">P2</span><span class="pg pg-p5">P5</span><span class="pg pg-p10">P10</span></div></td>
+        <td>
+          <div class="condition">P10 [10] 대사위험신호 인사이트 (gi:33+gi:34)<br>A09 axisScore 기여</div>
+        </td>
+        <td><div class="fallback">null → 점수 0</div></td>
+      </tr>
+      <tr>
+        <td class="qid">A09<br>gi:33</td>
+        <td>상처나 염증이, 예전보다 잘 안 아물고 오래가나요?</td>
+        <td>예전과비슷(0) / 조금더디게(1) / 눈에띄게오래감(2) / 자주덧나거나잘안나음(3)</td>
+        <td><div class="pages"><span class="pg pg-p2">P2</span><span class="pg pg-p5">P5</span><span class="pg pg-p10">P10</span></div></td>
+        <td>
+          <div class="condition">P10 [10] 대사위험신호 인사이트 (gi:33+gi:34)<br>P10 P5 metaBadge: 대사위험신호 조건<br>A09 axisScore 기여</div>
+        </td>
+        <td><div class="fallback">null → 점수 0</div></td>
+      </tr>
+      <tr>
+        <td class="qid">A09<br>gi:34</td>
+        <td>목 뒤나 겨드랑이 피부가, 거뭇하고 두껍게 변한 곳이 있나요?</td>
+        <td>없음(0) / 살짝어두운곳(1) / 거뭇하고도톰(2) / 벨벳처럼두꺼움(3)</td>
+        <td><div class="pages"><span class="pg pg-p2">P2</span><span class="pg pg-p5">P5</span><span class="pg pg-p10">P10</span></div></td>
+        <td>
+          <div class="condition">P10 [10] 대사위험신호 인사이트 (gi:33+gi:34)<br>P10 P5 metaBadge: 대사위험신호 조건<br>A09 axisScore 기여</div>
+        </td>
+        <td><div class="fallback">null → 점수 0</div></td>
+      </tr>
+
+      <!-- A10 -->
+      <tr>
+        <td class="qid">A10<br>gi:35</td>
+        <td><strong>Q_EX_STYLE</strong> — 둘 중 뭐가 더 끌려요?</td>
+        <td>땀 쫙 빼는 격렬한 운동(0=<code>'intense'</code>) / 차분한 스트레칭·요가(1=<code>'calm'</code>)</td>
+        <td><div class="pages"><span class="pg pg-p5">P5</span><span class="pg pg-p6">P6</span><span class="pg pg-p8">P8</span></div></td>
+        <td>
+          <div class="condition">parseAnswersFromRaw → <code>Q_EX_STYLE</code><br>P5: intense/calm → 운동 ev행 개인화<br>P6: 주차별 exercise_ok 보강<br>P8: exBase 보정<br>▸ intense → 고강도 운동 중심 처방<br>▸ calm → 저강도·스트레칭 중심 처방</div>
+        </td>
+        <td><div class="fallback">null → 기본 운동 처방</div></td>
+      </tr>
+      <tr>
+        <td class="qid">A10<br>gi:36</td>
+        <td><strong>Q_PLAN_STYLE</strong> — 계획대로 vs 그때그때, 어느 쪽이세요?</td>
+        <td>계획 세워 착착(0=<code>'plan'</code>) / 내키는 대로 즉흥(1=<code>'spontaneous'</code>)</td>
+        <td><div class="pages"><span class="pg pg-p5">P5</span><span class="pg pg-p6">P6</span></div></td>
+        <td>
+          <div class="condition">parseAnswersFromRaw → <code>Q_PLAN_STYLE</code><br>P5: plan/spontaneous → 철학 ev행 개인화<br>P6: 주차별 diet_ok 보강<br>▸ plan → 구체적 계획표 형식<br>▸ spontaneous → 유연한 원칙 제안 형식</div>
+        </td>
+        <td><div class="fallback">null → 기본 계획 처방</div></td>
+      </tr>
+
+    </tbody>
+  </table>
+  </div>
+  <div class="legend">
+    <span>📌 axisScores 요약: A01~A10 각 축 점수(0~9) → P2 원인축 순위 → P3 상위축 처방 (A07≥7 코르티솔 / A08≥7 감정식이 / A01≥7 인슐린) → P5 처방영역 가중 → P8 주간 비율 → P9 4주 시뮬레이션</span>
+  </div>
+</div>
+<!-- ══════════════════════════════════════════════════════════
+     §7. STAGE 4 — STAGE4_BANK 갈림 질문
+═══════════════════════════════════════════════════════════ -->
+<div class="section" id="s4">
+  <div class="section-title" style="background:#1565c0;">§7. Stage 4 — STAGE4_BANK · 축 경합 갈림 질문 (동적 1~N문항)</div>
+  <div class="sub-title">▸ 저장 키: <code>stage4Answers[key]</code> · 선택된 축 → axisScores[ax] += 3 (applyStage4Decision) · 결과지 영향: axisScores 경유 전 페이지</div>
+  <div class="tbl-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th style="width:80px">질문 키</th>
+        <th style="width:65px">경합 축</th>
+        <th style="width:180px">질문 내용</th>
+        <th style="width:220px">선택지 (인덱스 → 가산 축)</th>
+        <th style="width:130px">매핑 결과지 영역</th>
+        <th style="width:120px">발동 조건</th>
+        <th style="width:80px">Fallback</th>
+      </tr>
+    </thead>
+    <tbody>
+
+      <tr>
+        <td class="qid">A01_A09</td>
+        <td><span class="key">A01</span> vs <span class="key">A09</span></td>
+        <td class="qtxt">밥 먹고 2시간 뒤, 오히려 더 배고프고 손이 떨리나요?</td>
+        <td>
+          <ul class="opts">
+            <li>0: 네, 2시간 뒤 더 허기지고 떨려요 → <strong>A01 +3</strong></li>
+            <li>1: 그냥 피곤하고 무기력해요 → <strong>A09 +3</strong></li>
+            <li>2: 별로 안 그래요 → 가산 없음</li>
+          </ul>
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-p2">P2</span>
+            <span class="pg pg-p3">P3</span>
+            <span class="pg pg-p5">P5</span>
+            <span class="pg pg-p8">P8</span>
+            <span class="pg pg-p9">P9</span>
+          </div>
+        </td>
+        <td><div class="condition">3차 후 A01·A09 점수 차 ≤2 (경합 감지)</div></td>
+        <td><div class="fallback">가산 없음</div></td>
+      </tr>
+
+      <tr>
+        <td class="qid">A01_A07</td>
+        <td><span class="key">A01</span> vs <span class="key">A07</span></td>
+        <td class="qtxt">과식하는 게 '배가 고파서'인가요, '스트레스 받아서'인가요?</td>
+        <td>
+          <ul class="opts">
+            <li>0: 배가 진짜 고파서 먹어요 → <strong>A01 +3</strong></li>
+            <li>1: 스트레스·감정 때문에 먹어요 → <strong>A07 +3</strong></li>
+            <li>2: 둘 다 비슷해요 → 가산 없음</li>
+          </ul>
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-p2">P2</span>
+            <span class="pg pg-p3">P3</span>
+            <span class="pg pg-p5">P5</span>
+            <span class="pg pg-p8">P8</span>
+            <span class="pg pg-p9">P9</span>
+          </div>
+        </td>
+        <td><div class="condition">3차 후 A01·A07 점수 차 ≤2</div></td>
+        <td><div class="fallback">가산 없음</div></td>
+      </tr>
+
+      <tr>
+        <td class="qid">A02_A06</td>
+        <td><span class="key">A02</span> vs <span class="key">A06</span></td>
+        <td class="qtxt">가장 신경 쓰이는 부위, 꽉 쥐면 유독 차갑게 느껴지나요?</td>
+        <td>
+          <ul class="opts">
+            <li>0: 네, 유독 차가워요 → <strong>A02 +3</strong></li>
+            <li>1: 비슷해요 → 가산 없음</li>
+            <li>2: 오히려 따뜻하고 뭉쳐있어요 → <strong>A06 +3</strong></li>
+          </ul>
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-p2">P2</span>
+            <span class="pg pg-p3">P3</span>
+            <span class="pg pg-p5">P5</span>
+            <span class="pg pg-p8">P8</span>
+            <span class="pg pg-p9">P9</span>
+          </div>
+        </td>
+        <td><div class="condition">3차 후 A02·A06 점수 차 ≤2</div></td>
+        <td><div class="fallback">가산 없음</div></td>
+      </tr>
+
+      <tr>
+        <td class="qid">A02_A03</td>
+        <td><span class="key">A02</span> vs <span class="key">A03</span></td>
+        <td class="qtxt">살이 찐 게 특정 '사건(임신·완경·약물)' 이후인가요, 아니면 원래 늘 그랬나요?<br><span class="note">altMale: "검진 수치·몸이 확 바뀐 시기 이후"</span></td>
+        <td>
+          <ul class="opts">
+            <li>0: 완경·임신·출산·약물 이후 → <strong>A03 +3</strong></li>
+            <li>1: 스트레스 받은 시기 이후 → <strong>A03 +3</strong></li>
+            <li>2: 원래 늘 이랬어요 → <strong>A02 +3</strong></li>
+          </ul>
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-p2">P2</span>
+            <span class="pg pg-p3">P3</span>
+            <span class="pg pg-p5">P5</span>
+          </div>
+        </td>
+        <td><div class="condition">3차 후 A02·A03 점수 차 ≤2</div></td>
+        <td><div class="fallback">가산 없음</div></td>
+      </tr>
+
+      <tr>
+        <td class="qid">A03_A07</td>
+        <td><span class="key">A03</span> vs <span class="key">A07</span></td>
+        <td class="qtxt">몸이 가장 힘들 때, 어떤 증상이 먼저 오나요?<br><span class="note">altMale: "성욕 저하·탈모·피부 변화" vs "불면·야식·두근거림"</span></td>
+        <td>
+          <ul class="opts">
+            <li>0: 생리 불규칙·갱년기 증상·피부 변화 → <strong>A03 +3</strong></li>
+            <li>1: 불면·야식 충동·두근거림 → <strong>A07 +3</strong></li>
+            <li>2: 둘 다 비슷해요 → 가산 없음</li>
+          </ul>
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-p2">P2</span>
+            <span class="pg pg-p3">P3</span>
+            <span class="pg pg-p5">P5</span>
+          </div>
+        </td>
+        <td><div class="condition">3차 후 A03·A07 점수 차 ≤2</div></td>
+        <td><div class="fallback">가산 없음</div></td>
+      </tr>
+
+      <tr>
+        <td class="qid">A07_A08</td>
+        <td><span class="key">A07</span> vs <span class="key">A08</span></td>
+        <td class="qtxt">야식이나 폭식, '배가 고파서'인가요 '먹어야 마음이 진정되어서'인가요?</td>
+        <td>
+          <ul class="opts">
+            <li>0: 신체적으로 허기져서 먹어요 → <strong>A07 +3</strong></li>
+            <li>1: 먹어야 마음이 진정돼요 → <strong>A08 +3</strong></li>
+            <li>2: 습관적으로 먹어요 → 가산 없음</li>
+          </ul>
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-p2">P2</span>
+            <span class="pg pg-p3">P3</span>
+            <span class="pg pg-p5">P5</span>
+            <span class="pg pg-p8">P8</span>
+          </div>
+        </td>
+        <td><div class="condition">3차 후 A07·A08 점수 차 ≤2</div></td>
+        <td><div class="fallback">가산 없음</div></td>
+      </tr>
+
+      <tr>
+        <td class="qid">A04_A06</td>
+        <td><span class="key">A04</span> vs <span class="key">A06</span></td>
+        <td class="qtxt">운동을 하면 몸이 어떻게 변하던가요?</td>
+        <td>
+          <ul class="opts">
+            <li>0: 근력운동 후 부피가 줄었어요 → <strong>A04 +3</strong></li>
+            <li>1: 자세 교정·스트레칭으로 변했어요 → <strong>A06 +3</strong></li>
+            <li>2: 운동 효과를 별로 못 봤어요 → 가산 없음</li>
+          </ul>
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-p2">P2</span>
+            <span class="pg pg-p5">P5</span>
+            <span class="pg pg-p8">P8</span>
+          </div>
+        </td>
+        <td><div class="condition">3차 후 A04·A06 점수 차 ≤2</div></td>
+        <td><div class="fallback">가산 없음</div></td>
+      </tr>
+
+      <tr>
+        <td class="qid">A09_A10</td>
+        <td><span class="key">A09</span> vs <span class="key">A10</span></td>
+        <td class="qtxt">가족 중 당뇨·고혈압·대사증후군이 있나요?</td>
+        <td>
+          <ul class="opts">
+            <li>0: 가족 중 당뇨·고혈압 있어요 → <strong>A10 +3</strong></li>
+            <li>1: 본인이 당뇨전단계·고혈압 진단받았어요 → <strong>A09 +3</strong></li>
+            <li>2: 가족력도 본인 진단도 없어요 → 가산 없음</li>
+          </ul>
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-p2">P2</span>
+            <span class="pg pg-p5">P5</span>
+            <span class="pg pg-p9">P9</span>
+          </div>
+        </td>
+        <td><div class="condition">3차 후 A09·A10 점수 차 ≤2</div></td>
+        <td><div class="fallback">가산 없음</div></td>
+      </tr>
+
+      <tr>
+        <td class="qid">DEFAULT<br><span class="note">(폴백)</span></td>
+        <td>상위 4축<br><span class="note">동적생성</span></td>
+        <td class="qtxt">지금까지 답하면서, '어? 이거 완전 내 얘기네' 싶었던 순간이 있었나요?<br><span class="note">★ v26: 경합 없을 때만 폴백. 실제는 buildDefaultQuestion()이 상위 4축 기준으로 동적 선택지 생성 (A01~A10 어느 조합이든 가능)</span></td>
+        <td>
+          <div class="condition">고정값(폴백): 혈당·식후졸음(→A01+3) / 붓기·순환(→A02+3) / 스트레스·야식(→A07+3) / 호르몬·갱년기(→A03+3)<br><br>
+          <strong>실제(동적)</strong>: buildDefaultQuestion()이 그 사람의 상위 4축 기반 선택지 구성 → 해당 축 +3<br>
+          A04/A05/A06/A08/A09 1등인 경우에도 정확한 선택지 제공</div>
+        </td>
+        <td>
+          <div class="pages">
+            <span class="pg pg-p2">P2</span>
+            <span class="pg pg-p3">P3</span>
+            <span class="pg pg-p5">P5</span>
+            <span class="pg pg-p8">P8</span>
+            <span class="pg pg-p9">P9</span>
+          </div>
+        </td>
+        <td><div class="condition">경합(점수차≤2)이 없거나 모든 축 동점일 때 항상 출력</div></td>
+        <td><div class="fallback">가산 없음</div></td>
+      </tr>
+
+    </tbody>
+  </table>
+  </div>
+  <div class="legend">
+    <span>📌 applyStage4Decision: stage4Answers[key].ax → axisScores[ax] += 3 (단, ax=null이면 가산 없음)</span>
+    <span>|</span>
+    <span>📌 A10(유전기질) 축은 RANK_EXCLUDE로 경합 순위에서 제외 — 표시용 점수만 보존. Stage4에서만 직접 경합 키(A09_A10)로 진입 가능</span>
+    <span>|</span>
+    <span>📌 확장 갈림질문: 위 9개 기본 키 외에 37개 추가(A02_A04, A01_A02, A02_A05 ... A08_A10 등) — 동일 원리로 해당 축 +3</span>
+    <span>|</span>
+    <span>📌 dwell 불확실성: 응답 체류시간 ≥8초 또는 'undefined' 답변 → 축 불확실성 점수 가산 → 4차 재질문 대상 선별</span>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     NOTE: dispProxy 메커니즘
+═══════════════════════════════════════════════════════════ -->
+<div class="section" id="dispproxy">
+  <div class="section-title" style="background:#5c6bc0;">⚡ NOTE — dispProxy 메커니즘 (병원 전용 · DISP 대체)</div>
+  <div class="tbl-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th style="width:120px">항목</th>
+        <th>설명</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>발동 조건</strong></td>
+        <td>
+          <code>typeof DISP_QUESTIONS !== 'undefined'</code> 체크 → 병원용(<code>survey-hospital.html</code>)은 <code>survey-data.js</code>를 로드하지 않으므로 항상 <code>false</code><br>
+          → <code>dispAnswers = {}</code> (빈 객체) → <code>extractDispProxy(s3, disp)</code> 호출 시 <code>isHospital = true</code>
+        </td>
+      </tr>
+      <tr>
+        <td><strong>proxy 값 매핑</strong></td>
+        <td>
+          <table style="width:auto;border:none;">
+            <tr><td style="border:none;padding:2px 8px;"><span class="key">ex</span></td><td style="border:none;">gi:35 → <code>Q_EX_STYLE</code> (intense/calm 운동스타일)</td></tr>
+            <tr><td style="border:none;padding:2px 8px;"><span class="key">plan</span></td><td style="border:none;">gi:36 → <code>Q_PLAN_STYLE</code> (plan/spontaneous 계획스타일)</td></tr>
+            <tr><td style="border:none;padding:2px 8px;"><span class="key">fatigue</span></td><td style="border:none;">gi:24 (A07) — 피로도 proxy (0~3)</td></tr>
+            <tr><td style="border:none;padding:2px 8px;"><span class="key">stress</span></td><td style="border:none;">gi:25 (A07) — 야식스트레스 proxy (0~2)</td></tr>
+            <tr><td style="border:none;padding:2px 8px;"><span class="key">caffeine</span></td><td style="border:none;">gi:26 (A07) — 카페인 proxy (0~2)</td></tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td><strong>결과지 영향</strong></td>
+        <td>
+          <span class="pg pg-p10">P10</span> renderPersonalizationLayer 인사이트 (20개 중 4개):<br>
+          &nbsp;&nbsp;▸ [17] 운동타이밍 → <code>dispProxy.fatigue</code> + <code>dispProxy.ex</code> 조합<br>
+          &nbsp;&nbsp;▸ [18] 번아웃 대응 → <code>dispProxy.stress</code> + <code>dispProxy.fatigue</code> 조합<br>
+          &nbsp;&nbsp;▸ [19] 실천스타일 → <code>dispProxy.plan</code> (Q_PLAN_STYLE proxy)<br>
+          &nbsp;&nbsp;▸ [20] 올빼미+수면질 경고 → <code>dispProxy.fatigue</code> + gi:27 조합<br>
+          <span class="pg pg-p3">P3</span> ohaengType — Stage3 gi proxy 또는 서버 저장값 사용 (B2C DISP_OHAENG 불필요)<br>
+          <span class="pg pg-p3">P3</span> mbtiType — dispProxy 복합 추론 (ex/plan/fatigue/stress 조합)
+        </td>
+      </tr>
+      <tr>
+        <td><strong>B2C와 차이</strong></td>
+        <td>
+          B2C: <code>survey-data.js</code> 로드 → <code>DISP_QUESTIONS</code> 정의 → G01~G10 10문항 직접 응답 → <code>ohaengType</code>, <code>mbtiType</code> 정밀 산출<br>
+          <strong>병원(B2B)</strong>: <code>survey-data.js</code> 미로드 → DISP 없음 → Stage3 gi로 proxy 추론 → 결과지 동일 렌더링 경로 사용 (정밀도 소폭 차이 있음)
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     §8. 범례
+═══════════════════════════════════════════════════════════ -->
+<div class="section" id="legend">
+  <div class="section-title" style="background:#37474f;">§8. 범례 및 핵심 키 설명</div>
+  <div class="tbl-wrap">
+  <table>
+    <thead>
+      <tr><th>항목</th><th>설명</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><span class="pg pg-p1">P1</span></td><td>renderP1 — 바디코드 정체 (BC그리드·스토리·배지·안전모드칩)</td></tr>
+      <tr><td><span class="pg pg-p2">P2</span></td><td>renderP2 — 원인 분석 (axisScores A01~A09 순위·3구역)</td></tr>
+      <tr><td><span class="pg pg-p3">P3</span></td><td>renderP3 — 기질 처방 (오행·MBTI·목표부위·혈액형·얼굴형·인사이트3) ※ 병원: ohaengType/mbtiType은 dispProxy 추론값 사용</td></tr>
+      <tr><td><span class="pg pg-p4">P4</span></td><td>renderP4 — 체중 역사 트리거 (BC별 트리거2개·체중궤적·계기·redFlags)</td></tr>
+      <tr><td><span class="pg pg-p5">P5</span></td><td>renderP5 — 11개 처방영역 점수·STRONG3 결정 (운동·식단·한방·시술·호르몬 등)</td></tr>
+      <tr><td><span class="pg pg-p6">P6</span></td><td>renderP6 — 12주 로드맵 (오행별·BC별·redFlags경고·운동/식단)</td></tr>
+      <tr><td><span class="pg pg-p7">P7</span></td><td>renderP7 — 주차별 처방 상세 가이드</td></tr>
+      <tr><td><span class="pg pg-p8">P8</span></td><td>renderP8 — 주간 회복 비율 차트 (axisScores·Q_EX_STYLE·BC부스트)</td></tr>
+      <tr><td><span class="pg pg-p9">P9</span></td><td>renderP9 — 4주 변화 시뮬레이션 (metrics·axisScores)</td></tr>
+      <tr><td><span class="pg pg-p10">P10</span></td><td>renderPersonalizationLayer — 개인화 인사이트 20개 (stage3 gi 직접 참조 · dispProxy(gi:24~26, gi:35~36) 추론)</td></tr>
+      <tr><td><span class="pg pg-bc">BC판별</span></td><td>bcCode = BC-1~BC-16 결정. Stage1 응답으로 산출. 모든 페이지 공통 파라미터</td></tr>
+      <tr><td><span class="pg pg-rf">redFlags</span></td><td>PCOS / DIABETES / THYROID / STEROID / FATTY_LIVER / YOYO / APPETITE_SUPP 등 의료위험플래그. P1 안전칩·P4 트리거·P5 영역↑·P6 경고배너에 사용</td></tr>
+      <tr><td><span class="key">_s3v(gi)</span></td><td>stage3Answers[gi] 접근 헬퍼. undefined/null/'unknown' → null 반환</td></tr>
+      <tr><td><span class="key">_s2v(no)</span></td><td>stage2Answers[no] 접근 헬퍼. 단일/복수선택 모두 처리</td></tr>
+      <tr><td><span class="key">Q_MIRROR_ZONE</span></td><td>stage1[1] → P3 거울앞 부위 언급</td></tr>
+      <tr><td><span class="key">Q_BODY_CHANGE</span></td><td>stage1[10] → P1 스토리·P3 맥락</td></tr>
+      <tr><td><span class="key">Q_TARGET_ZONE</span></td><td>stage1[11] → P3·P5·P6 목표부위</td></tr>
+      <tr><td><span class="key">Q_EX_STYLE</span></td><td>stage3[35]/gi:35 → P5·P6·P8 운동스타일 (병원: dispProxy.ex로도 접근)</td></tr>
+      <tr><td><span class="key">Q_PLAN_STYLE</span></td><td>stage3[36]/gi:36 → P5·P6 계획스타일 (병원: dispProxy.plan으로도 접근)</td></tr>
+      <tr><td><span class="key">axisScores</span></td><td>A01~A10 각 0~12점. stage3 gi 응답(0~9) + Stage4 가산(+3). P2 전체·P3 상위축 처방·P5 가중·P8 비율·P9 시뮬</td></tr>
+      <tr><td><span class="key">dispProxy</span></td><td>병원 전용 — DISP 없이 Stage3 gi(24·25·26·35·36)로 오행/기질 추론. <code>isProxy:true</code>일 때 활성. P3·P10 [17][18][19][20] 인사이트에 사용</td></tr>
+      <tr><td><span class="key">GI_AXIS_MAP</span></td><td>gi:0~3→A01 / gi:4~6→A02 / gi:7~11→A03 / gi:12~15→A04 / gi:16~20→A05 / gi:21~23→A06 / gi:24~27→A07 / gi:28~31→A08 / gi:32~34→A09 / gi:35~36→A10</td></tr>
+      <tr><td><span class="key">GI_WEIGHT 역문항</span></td><td>gi:20(A05) · gi:27(A07) · gi:28(A08) → score = 3 − val (rev:true)</td></tr>
+      <tr><td><span class="key">RANK_EXCLUDE</span></td><td>['A10'] — 경합 순위 계산에서 제외. A10은 표시·Stage4(A09_A10 키) 경유로만 경합</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div style="text-align:center; padding:20px; color:#888; font-size:11px; margin-top:8px;">
+    병원용 질문지 ↔ 결과지 전체 1:1 매핑 명세서 v2 | 병원 전용 (DISP 제거 · Stage4 추가) | 생성일: 2026-08-06
+  </div>
+</div>
+
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
+</body>
+</html>
