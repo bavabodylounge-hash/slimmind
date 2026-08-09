@@ -123,26 +123,177 @@ header{position:sticky;top:0;z-index:100;background:rgba(246,244,238,0.95);backd
 .problem-card.before .problem-list li::before{content:"✕ ";color:var(--vis);font-weight:800}
 .problem-card.after .problem-list li::before{content:"✓ ";color:var(--circ);font-weight:800}
 
-/* ===== 업종별 탭 ===== */
+/* ===== 업종별 탭 (전면 재개발) ===== */
+@keyframes fadeSlideUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes popIn{from{opacity:0;transform:scale(0.92)}to{opacity:1;transform:scale(1)}}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+@keyframes shimmer{0%{background-position:200% center}100%{background-position:-200% center}}
+@keyframes pulse2{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+
+/* AI 배지 */
+.ai-badge{display:inline-flex;align-items:center;gap:7px;background:linear-gradient(135deg,#0a2540,#1a4060);color:#5DCAA5;padding:8px 18px;border-radius:30px;font-size:13px;font-weight:800;border:1px solid rgba(93,202,165,0.35);letter-spacing:.3px}
+.ai-badge .bolt{font-size:15px;animation:pulse2 1.6s infinite}
+
+/* 공통 비교 배너 */
+.ai-compare-banner{background:linear-gradient(135deg,#0F1D30,#1a3040);border-radius:20px;padding:28px 32px;margin-bottom:36px;display:grid;grid-template-columns:1fr auto 1fr;gap:20px;align-items:center;border:1px solid rgba(255,255,255,0.08)}
+.ai-compare-banner .col{display:flex;flex-direction:column;gap:8px}
+.ai-compare-banner .col-label{font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;opacity:.6;margin-bottom:4px}
+.ai-compare-banner .col-title{font-size:15px;font-weight:800;line-height:1.4}
+.col-bad .col-label{color:#ff8080}
+.col-bad .col-title{color:#ffcccc}
+.col-good .col-label{color:#5DCAA5}
+.col-good .col-title{color:#b8f0e0}
+.col-bad .col-item{font-size:13px;color:rgba(255,180,180,.8);padding:5px 0;display:flex;gap:7px;align-items:flex-start}
+.col-bad .col-item::before{content:"✕";color:#ff6b6b;font-weight:800;flex-shrink:0;margin-top:1px}
+.col-good .col-item{font-size:13px;color:rgba(180,255,220,.85);padding:5px 0;display:flex;gap:7px;align-items:flex-start}
+.col-good .col-item::before{content:"✓";color:#5DCAA5;font-weight:800;flex-shrink:0;margin-top:1px}
+.compare-vs{width:44px;height:44px;background:var(--circ);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:900;flex-shrink:0;box-shadow:0 4px 16px rgba(47,125,140,.4)}
+
+/* 탭 네비게이션 */
 .industry-section{padding:90px 24px;background:var(--paper)}
-.industry-tabs{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:40px}
-.ind-tab{padding:10px 22px;border-radius:30px;font-size:14px;font-weight:700;cursor:pointer;border:1.5px solid var(--line);background:var(--card);color:var(--muted);transition:all .2s}
-.ind-tab.active{background:var(--circ);color:#fff;border-color:var(--circ)}
-.ind-content{display:none;max-width:900px;margin:0 auto;animation:fadeIn .3s ease}
-.ind-content.active{display:grid;grid-template-columns:1fr 1fr;gap:28px}
-@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.ind-info{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:32px}
-.ind-info h3{font-size:20px;font-weight:800;margin-bottom:14px}
-.ind-info p{font-size:14px;color:var(--muted);line-height:1.8;margin-bottom:20px}
-.ind-benefits{list-style:none}
-.ind-benefits li{font-size:14px;padding:9px 0;border-bottom:1px solid var(--line);display:flex;gap:10px}
+.ind-tabs-wrap{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:40px;padding:0 12px}
+.ind-tab{padding:11px 22px;border-radius:30px;font-size:14px;font-weight:700;cursor:pointer;border:1.5px solid var(--line);background:var(--card);color:var(--muted);transition:all .25s;white-space:nowrap}
+.ind-tab:hover{border-color:var(--circ);color:var(--circ);transform:translateY(-2px)}
+.ind-tab.active{background:var(--circ);color:#fff;border-color:var(--circ);box-shadow:0 6px 20px rgba(47,125,140,.35);transform:translateY(-2px)}
+
+/* 탭 콘텐츠 */
+.ind-content{display:none}
+.ind-content.active{display:block;animation:fadeSlideUp .35s ease}
+
+/* 탭 내부 레이아웃 */
+.ind-body{display:grid;grid-template-columns:1.1fr .9fr;gap:28px;max-width:1100px;margin:0 auto;align-items:start}
+@media(max-width:900px){.ind-body{grid-template-columns:1fr}.ai-compare-banner{grid-template-columns:1fr;gap:14px}.compare-vs{display:none}}
+
+/* 스토리 카드 */
+.ind-story-card{background:var(--card);border:1px solid var(--line);border-radius:20px;overflow:hidden}
+.ind-story-header{padding:24px 28px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px}
+.ind-story-icon{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0}
+.ind-story-header h3{font-size:19px;font-weight:800;margin-bottom:3px}
+.ind-story-header .story-sub{font-size:13px;color:var(--muted)}
+.ind-story-body{padding:24px 28px}
+.ind-story-quote{font-size:15px;font-weight:700;color:var(--ink);line-height:1.65;margin-bottom:20px;padding-left:14px;border-left:3px solid var(--circ)}
+.ind-benefits{list-style:none;margin-bottom:22px}
+.ind-benefits li{font-size:13.5px;padding:9px 0;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:flex-start;line-height:1.5}
 .ind-benefits li:last-child{border-bottom:none}
-.ind-benefits li::before{content:"✓";color:var(--circ);font-weight:800;flex-shrink:0}
-.ind-numbers{background:var(--circ);color:#fff;border-radius:20px;padding:32px;display:flex;flex-direction:column;gap:20px;justify-content:center}
-.ind-num-item .num{font-size:38px;font-weight:800;line-height:1}
-.ind-num-item .label{font-size:13px;color:rgba(255,255,255,0.7);margin-top:4px}
-.ind-num-item .desc{font-size:12px;color:rgba(255,255,255,0.55);margin-top:3px}
-.ind-num-divider{height:1px;background:rgba(255,255,255,0.15)}
+.ind-benefits li .ck{color:var(--circ);font-weight:800;flex-shrink:0;margin-top:1px}
+
+/* AI 자동화 프로세스 플로우 */
+.ai-flow{background:linear-gradient(135deg,#0F1D30,#1a3040);border-radius:14px;padding:20px 22px}
+.ai-flow-title{font-size:11px;font-weight:800;color:#5DCAA5;letter-spacing:2px;text-transform:uppercase;margin-bottom:14px}
+.flow-step{display:flex;gap:12px;align-items:flex-start;margin-bottom:10px}
+.flow-step:last-child{margin-bottom:0}
+.flow-num{width:26px;height:26px;border-radius:50%;background:var(--circ);color:#fff;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.flow-text{flex:1}
+.flow-text strong{font-size:13px;color:#fff;display:block;margin-bottom:2px}
+.flow-text span{font-size:12px;color:rgba(255,255,255,.55)}
+.flow-arrow{text-align:center;color:rgba(255,255,255,.25);font-size:14px;margin:4px 0 4px 13px}
+
+/* ROI + 미리보기 사이드 */
+.ind-side{display:flex;flex-direction:column;gap:20px}
+
+/* ROI 수치 카드 */
+.ind-roi-card{background:var(--navy);border-radius:20px;padding:28px;color:#fff}
+.ind-roi-title{font-size:12px;font-weight:800;color:rgba(255,255,255,.45);letter-spacing:2px;text-transform:uppercase;margin-bottom:18px}
+.roi-nums{display:flex;flex-direction:column;gap:14px}
+.roi-num-row{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+.roi-num-row:last-child{border-bottom:none}
+.roi-num-val{font-size:32px;font-weight:900;color:var(--circ);line-height:1;min-width:80px;letter-spacing:-1px}
+.roi-num-info .lbl{font-size:13px;color:rgba(255,255,255,.75);margin-bottom:2px}
+.roi-num-info .sub{font-size:11px;color:rgba(255,255,255,.38)}
+
+/* 실물 미리보기 카드 */
+.ind-preview-card{background:var(--ink);border-radius:20px;overflow:hidden;cursor:pointer;position:relative;group}
+.ind-preview-card:hover .preview-hover-tip{opacity:1}
+.preview-img-wrap{position:relative;overflow:hidden}
+.preview-mock{padding:20px;min-height:200px;display:flex;flex-direction:column;gap:0}
+.preview-mock-hdr{padding:12px 16px;background:var(--circ);display:flex;align-items:center;justify-content:space-between;border-radius:10px 10px 0 0}
+.preview-mock-hdr span{font-size:12px;font-weight:800;color:#fff}
+.preview-mock-body{background:#fff;border-radius:0 0 10px 10px;padding:16px}
+.preview-mock-q{font-size:12px;font-weight:700;color:var(--ink);margin-bottom:10px}
+.preview-mock-opts{display:flex;flex-direction:column;gap:6px}
+.preview-mock-opt{padding:7px 11px;border:1.5px solid var(--line);border-radius:8px;font-size:11px;color:var(--muted)}
+.preview-mock-opt.sel{border-color:var(--circ);background:var(--circ-l);color:var(--circ);font-weight:700}
+.preview-hover-tip{
+  position:absolute;inset:0;background:rgba(47,125,140,.88);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+  opacity:0;transition:opacity .25s;
+}
+.preview-hover-tip i{font-size:32px;color:#fff}
+.preview-hover-tip span{font-size:13px;font-weight:700;color:#fff}
+.ind-preview-label{padding:14px 18px;font-size:12px;font-weight:700;color:rgba(255,255,255,.6);display:flex;align-items:center;justify-content:space-between}
+.ind-preview-label .open-btn{font-size:11px;background:rgba(255,255,255,.1);padding:4px 12px;border-radius:20px;color:rgba(255,255,255,.8)}
+
+/* 결과지 슬라이더 */
+.result-slider{background:var(--card);border:1px solid var(--line);border-radius:20px;overflow:hidden}
+.result-slider-hdr{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+.result-slider-hdr h4{font-size:14px;font-weight:800}
+.rs-nav{display:flex;gap:6px}
+.rs-btn{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--line);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;transition:all .2s}
+.rs-btn:hover{background:var(--circ);color:#fff;border-color:var(--circ)}
+.rs-track-wrap{overflow:hidden}
+.rs-track{display:flex;transition:transform .4s cubic-bezier(.4,0,.2,1)}
+.rs-slide{min-width:100%;padding:18px 20px}
+.rs-slide-inner{background:linear-gradient(135deg,var(--circ-l),rgba(255,255,255,0));border-radius:12px;padding:16px}
+.rs-bc-code{font-size:11px;font-weight:800;color:var(--circ);letter-spacing:1px;margin-bottom:6px}
+.rs-bc-name{font-size:15px;font-weight:800;margin-bottom:8px}
+.rs-bc-axes{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
+.rs-bc-axis{font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px}
+.rs-bc-desc{font-size:12px;color:var(--muted);line-height:1.6}
+.rs-dots{display:flex;gap:5px;justify-content:center;padding:10px 0}
+.rs-dot{width:7px;height:7px;border-radius:50%;background:var(--line);cursor:pointer;transition:all .2s}
+.rs-dot.active{background:var(--circ);width:20px;border-radius:4px}
+
+/* 장바구니 토스트 */
+.cart-toast{
+  position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--muscle);color:#fff;border-radius:14px;
+  padding:14px 24px;font-size:14px;font-weight:700;
+  display:flex;align-items:center;gap:10px;
+  box-shadow:0 8px 28px rgba(0,0,0,.25);
+  opacity:0;transition:all .35s;z-index:500;pointer-events:none;white-space:nowrap;
+}
+.cart-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* 레이더 차트 모듈 */
+.radar-module{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px}
+.radar-title{font-size:13px;font-weight:800;margin-bottom:14px;color:var(--ink)}
+.radar-bars{display:flex;flex-direction:column;gap:8px}
+.radar-bar-row{display:flex;align-items:center;gap:10px}
+.radar-bar-label{font-size:11px;color:var(--muted);min-width:68px;text-align:right;flex-shrink:0}
+.radar-bar-track{flex:1;height:7px;background:var(--line);border-radius:4px;overflow:hidden}
+.radar-bar-fill{height:100%;border-radius:4px;transition:width 1.2s cubic-bezier(.4,0,.2,1)}
+
+/* Sticky 파일럿 CTA */
+.pilot-sticky{
+  position:fixed;bottom:0;left:0;right:0;z-index:95;
+  background:linear-gradient(135deg,#0F1D30,#1a3040);
+  padding:12px 24px;padding-bottom:calc(12px + env(safe-area-inset-bottom));
+  display:flex;align-items:center;justify-content:center;gap:16px;
+  transform:translateY(100%);transition:transform .3s ease;
+  box-shadow:0 -4px 24px rgba(0,0,0,.3);
+  border-top:1px solid rgba(255,255,255,.08);
+}
+.pilot-sticky.visible{transform:translateY(0)}
+.pilot-sticky-text{font-size:14px;color:rgba(255,255,255,.7);display:none}
+@media(min-width:640px){.pilot-sticky-text{display:block}}
+.pilot-sticky-badge{font-size:12px;font-weight:800;color:#5DCAA5;background:rgba(93,202,165,.12);padding:4px 12px;border-radius:20px;border:1px solid rgba(93,202,165,.25);white-space:nowrap}
+.btn-kakao-pilot{background:#FEE500;color:#3C1E1E;font-weight:900;font-size:14px;padding:12px 24px;border-radius:12px;border:none;cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .2s;white-space:nowrap}
+.btn-kakao-pilot:hover{background:#f5d800;transform:translateY(-2px);box-shadow:0 6px 20px rgba(254,229,0,.4)}
+
+/* Lightbox (업종별) */
+.ind-lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:600;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
+.ind-lightbox.show{display:flex}
+.ind-lb-inner{background:#fff;border-radius:22px;max-width:92vw;max-height:92vh;overflow:auto;position:relative;padding:32px;width:760px}
+.ind-lb-close{position:absolute;top:14px;right:18px;font-size:22px;cursor:pointer;background:none;border:none;color:var(--muted);z-index:1;line-height:1}
+.ind-lb-title{font-size:18px;font-weight:800;margin-bottom:6px}
+.ind-lb-sub{font-size:13px;color:var(--muted);margin-bottom:22px}
+.ind-lb-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:600px){.ind-lb-grid{grid-template-columns:1fr}}
+.lb-mock-card{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:18px}
+.lb-mock-section{font-size:11px;font-weight:800;margin-bottom:10px;letter-spacing:1px}
+.lb-mock-q{font-size:12px;font-weight:700;margin-bottom:8px}
+.lb-mock-opt{padding:7px 11px;border:1.5px solid var(--line);border-radius:8px;font-size:11px;color:var(--muted);margin-bottom:5px}
+.lb-mock-opt.sel{border-color:var(--circ);background:var(--circ-l);color:var(--circ);font-weight:700}
 
 /* ===== 인터랙티브 ROI 계산기 ===== */
 .roi-section{padding:80px 24px;background:var(--card);border-top:1px solid var(--line)}
@@ -461,183 +612,656 @@ footer a{color:rgba(255,255,255,0.5)}
   </div>
 </section>
 
-<!-- ===== 업종별 탭 ===== -->
-<section class="industry-section">
+<!-- ===== 업종별 탭 (전면 재개발) ===== -->
+<section class="industry-section" id="industry">
   <div class="wrap">
     <div class="section-head">
-      <div class="section-eyebrow">업종별 활용 사례</div>
-      <h2>내 매장에 어떻게 적용될까요?</h2>
-      <p>업종별로 슬림마인드가 만드는 변화를 확인하세요</p>
+      <div class="ai-badge" style="margin-bottom:16px"><span class="bolt">⚡</span> AI 초고속 자동화 (귀찮음 0%)</div>
+      <div class="section-eyebrow">5대 업종별 완전 맞춤</div>
+      <h2>내 업종에 어떻게 적용될까요?</h2>
+      <p style="font-size:15px;font-weight:600;color:var(--ink);max-width:620px;margin:0 auto">"직원 교육 0분, 상담 피로도 0% — AI가 대기실에서 진단부터 설득, 결제까지 <span style="color:var(--circ)">7분 만에 자동화</span>합니다."</p>
     </div>
-    <div class="industry-tabs">
-      <button class="ind-tab active" onclick="switchIndustry('hospital',this)">🏥 병원·의원</button>
-      <button class="ind-tab" onclick="switchIndustry('beauty',this)">💆 뷰티·에스테틱</button>
-      <button class="ind-tab" onclick="switchIndustry('fitness',this)">🏋️ 피트니스·PT샵</button>
+
+    <!-- 공통 AI 자동화 비교 배너 -->
+    <div class="ai-compare-banner" style="max-width:1100px;margin:0 auto 36px">
+      <div class="col col-bad">
+        <div class="col-label">❌ 기존 방식</div>
+        <div class="col-title">원장·직원이 입 아프게 설명</div>
+        <div class="col-item">긴 설명 20분 + 직원 피로 극대화</div>
+        <div class="col-item">고객 의심·설득 실패율 높음</div>
+        <div class="col-item">신입 직원은 상담 불가능</div>
+      </div>
+      <div class="compare-vs">VS</div>
+      <div class="col col-good">
+        <div class="col-label">✅ 슬림마인드 AI</div>
+        <div class="col-title">AI가 7분 만에 데이터로 설득 완료</div>
+        <div class="col-item">대기 7분 자동 진단 → 즉시 처방</div>
+        <div class="col-item">업무 부담 0% · 컴플레인 방어 자동</div>
+        <div class="col-item">신입도 전문 상담 즉시 가능</div>
+      </div>
+    </div>
+
+    <!-- 탭 네비게이션 -->
+    <div class="ind-tabs-wrap">
+      <button class="ind-tab active" onclick="switchIndustry('supplement',this)">💊 건기식·영양제</button>
+      <button class="ind-tab" onclick="switchIndustry('hospital',this)">🏥 병원·의원</button>
+      <button class="ind-tab" onclick="switchIndustry('beauty',this)">💄 뷰티·에스테틱</button>
+      <button class="ind-tab" onclick="switchIndustry('fitness',this)">🏋️ PT·필라테스</button>
       <button class="ind-tab" onclick="switchIndustry('korean',this)">🌿 한의원·한방</button>
     </div>
 
-    <!-- 병원·의원 -->
-    <div class="ind-content active" id="ind-hospital">
-      <div class="ind-info">
-        <h3>🏥 비만클리닉·내과</h3>
-        <p>고객이 "왜 이 약이 나한테 필요한지"를 결과지로 먼저 납득하고 들어옵니다. 번아웃형에게 "지금 칼로리를 줄이면 역효과"를 데이터로 설명하면 원장 신뢰도가 즉시 올라갑니다.</p>
-        <ul class="ind-benefits">
-          <li>감정반응형·인슐린집중형 → GLP-1 적합성 자동 안내</li>
-          <li>번아웃형 → "칼로리 제한 역효과" 사전 설명 → 컴플레인 사전 방지</li>
-          <li>4주 재진단 사이클 → 자연스러운 내원 유지</li>
-          <li>비급여 진단 비용 3~5만원 자체 책정 가능</li>
-        </ul>
-        <div style="background:linear-gradient(135deg,var(--navy),#1a2e4a);border-radius:12px;padding:20px;margin-top:20px">
-          <div style="font-size:12px;font-weight:700;color:var(--circ);margin-bottom:12px;letter-spacing:1px">▶ 실제 상담 흐름</div>
-          <div style="font-size:13px;color:rgba(255,255,255,0.8);padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1)">① 대기 중 7분 바디코드 진단</div>
-          <div style="font-size:13px;color:rgba(255,255,255,0.8);padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1)">② 결과지: "감정반응형 — 코르티솔이 복부에 지방 축적"</div>
-          <div style="font-size:13px;color:rgba(255,255,255,0.8);padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1)">③ 원장: "이 체형에 GLP-1이 맞는 이유는…" (데이터로)</div>
-          <div style="font-size:13px;font-weight:700;color:var(--sub);padding:6px 0">→ 고객이 먼저 "이거 맞아요!" 동의 → 처방 수락</div>
+    <!-- ══ TAB 1: 건기식·영양제 ══ -->
+    <div class="ind-content active" id="ind-supplement">
+      <div class="ind-body">
+        <div class="ind-story-card">
+          <div class="ind-story-header">
+            <div class="ind-story-icon" style="background:#fff3e0">💊</div>
+            <div>
+              <h3>건기식·영양제·식단 커머스</h3>
+              <div class="story-sub">온라인몰 · 오프라인 매장 · 드럭스토어 완전 호환</div>
+            </div>
+          </div>
+          <div class="ind-story-body">
+            <div class="ind-story-quote">"광고로 파는 시대는 끝났습니다. 40년 임상 데이터로 '살이 안 빠지는 진짜 원인'을 진단하고 자사 제품을 <strong>필수 처방전</strong>으로 제시합니다."</div>
+            <ul class="ind-benefits">
+              <li><span class="ck">✓</span>영양사·상담원 없이 AI가 1초 만에 개인 맞춤 장바구니 자동 세팅</li>
+              <li><span class="ck">✓</span>카카오/QR 7분 진단 → AI 맞춤 처방 → 자사몰 즉시 결제 원클릭</li>
+              <li><span class="ck">✓</span>단품 구매 → 3/6개월 패키지 자동 전환 유도 (객단가 +65%)</li>
+              <li><span class="ck">✓</span>반품률 0% 수렴 — "내 진단 결과에 맞는 제품"이라 납득하고 구매</li>
+            </ul>
+
+            <div class="ai-flow">
+              <div class="ai-flow-title">⚡ AI 초고속 UX 구매 루틴</div>
+              <div class="flow-step">
+                <div class="flow-num">1</div>
+                <div class="flow-text"><strong>카카오/QR 7분 AI 진단</strong><span>온라인 또는 매장 내 QR 스캔</span></div>
+              </div>
+              <div class="flow-arrow">↓</div>
+              <div class="flow-step">
+                <div class="flow-num">2</div>
+                <div class="flow-text"><strong>AI 맞춤 결과지 자동 생성</strong><span>바디코드 기반 처방 근거 1초 생성</span></div>
+              </div>
+              <div class="flow-arrow">↓</div>
+              <div class="flow-step">
+                <div class="flow-num">3</div>
+                <div class="flow-text"><strong>나만의 맞춤 장바구니 자동 담기</strong><span>처방 제품이 자동 세팅됨</span></div>
+              </div>
+              <div class="flow-arrow">↓</div>
+              <div class="flow-step">
+                <div class="flow-num">4</div>
+                <div class="flow-text"><strong>자사몰/카운터 즉시 결제 완료</strong><span>온라인: 1클릭 / 오프라인: 바코드 스캔</span></div>
+              </div>
+            </div>
+
+            <!-- 장바구니 시연 버튼 -->
+            <div style="margin-top:20px;padding:18px;background:linear-gradient(135deg,#e8f5e9,#f1f8e9);border-radius:14px;border:1px solid #c8e6c9">
+              <div style="font-size:12px;font-weight:800;color:#2e7d32;margin-bottom:10px">🛒 AI 맞춤 장바구니 자동 세팅 시연</div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px" id="cartItems">
+                <span style="background:#fff;border:1px solid #c8e6c9;border-radius:20px;font-size:12px;font-weight:700;padding:5px 12px;color:#2e7d32">💊 마그네슘 (BC-03 부신형)</span>
+                <span style="background:#fff;border:1px solid #c8e6c9;border-radius:20px;font-size:12px;font-weight:700;padding:5px 12px;color:#2e7d32">🌿 아답토젠 복합 (스트레스 처방)</span>
+                <span style="background:#fff;border:1px solid #c8e6c9;border-radius:20px;font-size:12px;font-weight:700;padding:5px 12px;color:#2e7d32">🫚 오메가3 (항염 지원)</span>
+              </div>
+              <button onclick="addToCart()" style="background:#2e7d32;color:#fff;border:none;padding:11px 22px;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:7px;transition:all .2s" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
+                🛒 3개월 맞춤 패키지 장바구니 담기
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
-      <div class="ind-numbers">
-        <div class="ind-num-item">
-          <div class="num">+41%</div>
-          <div class="label">재진 예약률 상승</div>
-          <div class="desc">12주 로드맵 연계 효과</div>
-        </div>
-        <div class="ind-num-divider"></div>
-        <div class="ind-num-item">
-          <div class="num">50%↓</div>
-          <div class="label">상담 시간 단축</div>
-          <div class="desc">대기 중 진단 완료 효과</div>
-        </div>
-        <div class="ind-num-divider"></div>
-        <div class="ind-num-item">
-          <div class="num">+28%</div>
-          <div class="label">추가 비급여 수익</div>
-          <div class="desc">진단 서비스 자체 운영</div>
+
+        <div class="ind-side">
+          <!-- ROI 수치 -->
+          <div class="ind-roi-card">
+            <div class="ind-roi-title">📈 도입 효과 ROI</div>
+            <div class="roi-nums">
+              <div class="roi-num-row">
+                <div class="roi-num-val">+65%</div>
+                <div class="roi-num-info"><div class="lbl">객단가 상승</div><div class="sub">단품→3/6개월 패키지 전환</div></div>
+              </div>
+              <div class="roi-num-row">
+                <div class="roi-num-val">≈0%</div>
+                <div class="roi-num-info"><div class="lbl">반품률</div><div class="sub">AI 처방 기반 구매 납득</div></div>
+              </div>
+              <div class="roi-num-row">
+                <div class="roi-num-val">7분</div>
+                <div class="roi-num-info"><div class="lbl">진단→결제 소요 시간</div><div class="sub">기존 상담 대비 65% 단축</div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 실물 미리보기 -->
+          <div class="ind-preview-card" onclick="openIndLightbox('supplement')">
+            <div class="preview-img-wrap" style="position:relative">
+              <div class="preview-mock">
+                <div class="preview-mock-hdr"><span>💊 바디코드 맞춤 처방 결과지</span><span style="font-size:10px;opacity:.7">BC-03 부신스트레스형</span></div>
+                <div class="preview-mock-body">
+                  <div class="preview-mock-q">🎯 핵심 처방 영양소</div>
+                  <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px">
+                    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)">
+                      <span>마그네슘 비스글리시네이트</span><span style="color:var(--muscle);font-weight:800">★★★★★</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)">
+                      <span>아쉬와간다 (아답토젠)</span><span style="color:var(--muscle);font-weight:800">★★★★★</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)">
+                      <span>오메가3 (EPA:DHA 3:2)</span><span style="color:var(--muscle);font-weight:800">★★★★☆</span>
+                    </div>
+                  </div>
+                  <div style="background:#e8f5e9;border-radius:8px;padding:8px 10px;font-size:11px;color:#2e7d32;font-weight:700">✓ AI 맞춤 3개월 패키지 자동 구성 완료</div>
+                </div>
+              </div>
+              <div class="preview-hover-tip">
+                <i class="fas fa-expand-alt"></i>
+                <span>🔎 클릭하여 실물 결과지 크게 보기</span>
+              </div>
+            </div>
+            <div class="ind-preview-label">
+              <span>💊 영양제 맞춤 처방 결과지 샘플</span>
+              <span class="open-btn">전체화면 보기 →</span>
+            </div>
+          </div>
+
+          <!-- 레이더 차트 -->
+          <div class="radar-module">
+            <div class="radar-title">📊 BC-03 부신스트레스형 — 원인축 분석</div>
+            <div class="radar-bars">
+              <div class="radar-bar-row"><div class="radar-bar-label">스트레스 축</div><div class="radar-bar-track"><div class="radar-bar-fill" style="width:92%;background:linear-gradient(90deg,#b5452e,#e8734a)"></div></div></div>
+              <div class="radar-bar-row"><div class="radar-bar-label">수면 회복</div><div class="radar-bar-track"><div class="radar-bar-fill" style="width:78%;background:linear-gradient(90deg,#2f7d8c,#5ab8cc)"></div></div></div>
+              <div class="radar-bar-row"><div class="radar-bar-label">호르몬 균형</div><div class="radar-bar-track"><div class="radar-bar-fill" style="width:65%;background:linear-gradient(90deg,#5b4a86,#8b78c6)"></div></div></div>
+              <div class="radar-bar-row"><div class="radar-bar-label">대사·소화</div><div class="radar-bar-track"><div class="radar-bar-fill" style="width:55%;background:linear-gradient(90deg,#5a6e3a,#7a9e5a)"></div></div></div>
+              <div class="radar-bar-row"><div class="radar-bar-label">순환·림프</div><div class="radar-bar-track"><div class="radar-bar-fill" style="width:40%;background:linear-gradient(90deg,#c98a3c,#e8b46c)"></div></div></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- 뷰티·에스테틱 -->
+    <!-- ══ TAB 2: 병원·의원 ══ -->
+    <div class="ind-content" id="ind-hospital">
+      <div class="ind-body">
+        <div class="ind-story-card">
+          <div class="ind-story-header">
+            <div class="ind-story-icon" style="background:#e3f2fd">🏥</div>
+            <div>
+              <h3>병원·의원 (비만클리닉·내과)</h3>
+              <div class="story-sub">비만클리닉 · 내과 · 가정의학과 · 피부과 완전 호환</div>
+            </div>
+          </div>
+          <div class="ind-story-body">
+            <div class="ind-story-quote">"원장님의 진료 실력 문제가 아닙니다. <strong>16가지 특허 바디코드</strong>로 환자가 직접 눈으로 보는 비급여 설득 근거를 만들어드립니다."</div>
+            <ul class="ind-benefits">
+              <li><span class="ck">✓</span>간호사 가이드 부담 0% — AI 태블릿이 대기실 7분 자동 진단 완료</li>
+              <li><span class="ck">✓</span>원장님의 긴 비급여 설명 0% — AI 리포트가 환자를 먼저 납득시킴</li>
+              <li><span class="ck">✓</span>진료실 입장 전 AI 브리핑 → 비급여 처방 1분 만에 완료</li>
+              <li><span class="ck">✓</span>4주 재진단 사이클 자동 설계 → 재내원율 +41% 상승</li>
+            </ul>
+
+            <div class="ai-flow">
+              <div class="ai-flow-title">⚡ 대기실→진료실 AI 자동화 흐름</div>
+              <div class="flow-step">
+                <div class="flow-num">1</div>
+                <div class="flow-text"><strong>대기실 태블릿 7분 AI 진단</strong><span>간호사 안내 없이 자동 완료</span></div>
+              </div>
+              <div class="flow-arrow">↓</div>
+              <div class="flow-step">
+                <div class="flow-num">2</div>
+                <div class="flow-text"><strong>진료실 모니터 AI 브리핑 자동 송출</strong><span>원장 화면 + 환자 결과지 동시 연동</span></div>
+              </div>
+              <div class="flow-arrow">↓</div>
+              <div class="flow-step">
+                <div class="flow-num">3</div>
+                <div class="flow-text"><strong>원장: "AI 리포트 보셨죠?" 1분 브리핑</strong><span>기존 20분 설명 → 3분으로 단축</span></div>
+              </div>
+              <div class="flow-arrow">↓</div>
+              <div class="flow-step">
+                <div class="flow-num">4</div>
+                <div class="flow-text"><strong>비급여 패키지 즉시 처방 완료</strong><span>환자가 먼저 "이거 맞아요!" 동의</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ind-side">
+          <div class="ind-roi-card">
+            <div class="ind-roi-title">📈 병원 도입 ROI</div>
+            <div class="roi-nums">
+              <div class="roi-num-row">
+                <div class="roi-num-val">+41%</div>
+                <div class="roi-num-info"><div class="lbl">비급여 추가 처방 전환율</div><div class="sub">상담 시간 20분→7분 단축 효과</div></div>
+              </div>
+              <div class="roi-num-row">
+                <div class="roi-num-val">7분</div>
+                <div class="roi-num-info"><div class="lbl">대기실 진단 완료</div><div class="sub">기존 상담 시간의 35%</div></div>
+              </div>
+              <div class="roi-num-row">
+                <div class="roi-num-val">+68%</div>
+                <div class="roi-num-info"><div class="lbl">12주 재내원 완주율</div><div class="sub">4주 재진단 사이클 연계</div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ind-preview-card" onclick="openIndLightbox('hospital')">
+            <div class="preview-img-wrap" style="position:relative">
+              <div class="preview-mock">
+                <div class="preview-mock-hdr"><span>🏥 병원용 대기실 진단 화면</span><span style="font-size:10px;opacity:.7">진행률 40%</span></div>
+                <div class="preview-mock-body">
+                  <div style="height:5px;background:#eee;border-radius:3px;margin-bottom:12px;overflow:hidden"><div style="width:40%;height:100%;background:linear-gradient(90deg,var(--circ),#5ab8cc);border-radius:3px"></div></div>
+                  <div class="preview-mock-q">Q4. 스트레스를 받으면 주로?</div>
+                  <div class="preview-mock-opts">
+                    <div class="preview-mock-opt">폭식하거나 야식이 당긴다</div>
+                    <div class="preview-mock-opt sel">소화가 안 되고 속이 불편하다</div>
+                    <div class="preview-mock-opt">잠을 못 자고 예민해진다</div>
+                    <div class="preview-mock-opt">몸이 무겁고 부기가 심해진다</div>
+                  </div>
+                </div>
+              </div>
+              <div class="preview-hover-tip">
+                <i class="fas fa-expand-alt"></i>
+                <span>🔎 클릭하여 실물 결과지 크게 보기</span>
+              </div>
+            </div>
+            <div class="ind-preview-label">
+              <span>🏥 병원용 질문지 & 결과지 샘플</span>
+              <span class="open-btn">전체화면 보기 →</span>
+            </div>
+          </div>
+
+          <!-- 결과지 슬라이더 -->
+          <div class="result-slider">
+            <div class="result-slider-hdr">
+              <h4>📋 병원용 결과지 16종 샘플</h4>
+              <div class="rs-nav">
+                <button class="rs-btn" onclick="rsPrev('hosp')">‹</button>
+                <button class="rs-btn" onclick="rsNext('hosp')">›</button>
+              </div>
+            </div>
+            <div class="rs-track-wrap">
+              <div class="rs-track" id="rs-hosp">
+                <div class="rs-slide"><div class="rs-slide-inner">
+                  <div class="rs-bc-code">BC-03 · 병원용</div>
+                  <div class="rs-bc-name">부신 스트레스 만성 코르티솔형</div>
+                  <div class="rs-bc-axes">
+                    <span class="rs-bc-axis" style="background:#fce4ec;color:#c2185b">스트레스 고위험</span>
+                    <span class="rs-bc-axis" style="background:#e3f2fd;color:#1565c0">수면 회복 필요</span>
+                  </div>
+                  <div class="rs-bc-desc">만성 스트레스로 코르티솔 과분비 → 복부 비만. GLP-1 병행 처방 시 효과 극대화.</div>
+                </div></div>
+                <div class="rs-slide"><div class="rs-slide-inner">
+                  <div class="rs-bc-code">BC-04 · 병원용</div>
+                  <div class="rs-bc-name">인슐린 저항 대사 교란형</div>
+                  <div class="rs-bc-axes">
+                    <span class="rs-bc-axis" style="background:#fff3e0;color:#e65100">혈당 관리 핵심</span>
+                    <span class="rs-bc-axis" style="background:#e8f5e9;color:#2e7d32">식이 처방 우선</span>
+                  </div>
+                  <div class="rs-bc-desc">탄수화물 처리 능력 저하. 비급여 혈당 관리 패키지 연결 시 재진율 극대화.</div>
+                </div></div>
+                <div class="rs-slide"><div class="rs-slide-inner">
+                  <div class="rs-bc-code">BC-06 · 병원용</div>
+                  <div class="rs-bc-name">에스트로겐 우세 호르몬 불균형형</div>
+                  <div class="rs-bc-axes">
+                    <span class="rs-bc-axis" style="background:#fce4ec;color:#c2185b">호르몬 처방</span>
+                    <span class="rs-bc-axis" style="background:#f3e5f5;color:#7b1fa2">디톡스 병행</span>
+                  </div>
+                  <div class="rs-bc-desc">갱년기·PMS 환자 호소 증상과 100% 일치. 호르몬 비급여 처방 전환율 최고.</div>
+                </div></div>
+              </div>
+            </div>
+            <div class="rs-dots" id="rs-hosp-dots"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ TAB 3: 뷰티·에스테틱 ══ -->
     <div class="ind-content" id="ind-beauty">
-      <div class="ind-info">
-        <h3>✨ 에스테틱·피부과·성형</h3>
-        <p>"이 시술이 왜 당신에게 맞는지"를 데이터로 설명할 수 있습니다. 림프정체형에게 고주파 시술, 냉증부종형에게 온열 관리를 결과지가 먼저 설명합니다.</p>
-        <ul class="ind-benefits">
-          <li>림프정체형 → 림프 배농·고주파 시술 자동 연결</li>
-          <li>냉증부종형 → 온열 관리 적합성 데이터로 설명</li>
-          <li>시술 후 재진단 리포트 → 효과 데이터로 재방문 유도</li>
-          <li>관리사도 결과지 보고 전문 상담 가능 — 숙련도 의존 탈출</li>
-        </ul>
-        <div style="background:linear-gradient(135deg,var(--navy),#1a2e4a);border-radius:12px;padding:20px;margin-top:20px">
-          <div style="font-size:12px;font-weight:700;color:var(--circ);margin-bottom:12px;letter-spacing:1px">▶ 실제 상담 흐름</div>
-          <div style="font-size:13px;color:rgba(255,255,255,0.8);padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1)">① 대기 7분 → "림프정체형" 결과지 출력</div>
-          <div style="font-size:13px;color:rgba(255,255,255,0.8);padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1)">② 실장: "셀룰라이트는 지방 아닌 순환 문제입니다"</div>
-          <div style="font-size:13px;color:rgba(255,255,255,0.8);padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1)">③ 고주파+림프 배농 패키지 자연스럽게 연결</div>
-          <div style="font-size:13px;font-weight:700;color:var(--sub);padding:6px 0">→ 당일 결제 + 4주 후 재진단 예약</div>
+      <div class="ind-body">
+        <div class="ind-story-card">
+          <div class="ind-story-header">
+            <div class="ind-story-icon" style="background:#fce4ec">💄</div>
+            <div>
+              <h3>뷰티·에스테틱 (슬리밍·바디케어)</h3>
+              <div class="story-sub">에스테틱 · 피부샵 · 슬리밍샵 · 바디케어센터 완전 호환</div>
+            </div>
+          </div>
+          <div class="ind-story-body">
+            <div class="ind-story-quote">"1회성 고객을 <strong>300만원 고가 티켓팅 고객</strong>으로. 독소 배출과 체질 케어가 선행되어야 하는 이유를 데이터로 증명합니다."</div>
+            <ul class="ind-benefits">
+              <li><span class="ck">✓</span>원장님이 입 아프게 장기 티켓팅 설득할 필요 없음 — AI 진단 리포트가 대변</li>
+              <li><span class="ck">✓</span>탈의·대기 7분 AI 진단 → AI 추천 12주 패키지 3초 만에 결제</li>
+              <li><span class="ck">✓</span>AI가 10개 원인축 다차원 분석 → 고가 슬리밍 패키지 필요성 자동 입증</li>
+              <li><span class="ck">✓</span>고가 티켓팅 전환율 +48%, 감성 상담 완전 탈피</li>
+            </ul>
+
+            <div class="ai-flow">
+              <div class="ai-flow-title">⚡ 탈의실→고가 패키지 자동 전환 흐름</div>
+              <div class="flow-step">
+                <div class="flow-num">1</div>
+                <div class="flow-text"><strong>탈의/대기 7분 AI 바디코드 진단</strong><span>태블릿 또는 QR 자동 안내</span></div>
+              </div>
+              <div class="flow-arrow">↓</div>
+              <div class="flow-step">
+                <div class="flow-num">2</div>
+                <div class="flow-text"><strong>10개 원인축 AI 분석 리포트 출력</strong><span>"셀룰라이트는 지방이 아닌 순환 문제"</span></div>
+              </div>
+              <div class="flow-arrow">↓</div>
+              <div class="flow-step">
+                <div class="flow-num">3</div>
+                <div class="flow-text"><strong>고가 장기 케어 + 홈케어 패키지 연결</strong><span>AI 데이터로 업셀링 명분 자동 생성</span></div>
+              </div>
+              <div class="flow-arrow">↓</div>
+              <div class="flow-step">
+                <div class="flow-num">4</div>
+                <div class="flow-text"><strong>당일 결제 + 4주 재진단 예약 자동</strong><span>12주 재방문 사이클 완성</span></div>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-      <div class="ind-numbers">
-        <div class="ind-num-item">
-          <div class="num">+38%</div>
-          <div class="label">객단가 상승</div>
-          <div class="desc">프리미엄 패키지 전환</div>
-        </div>
-        <div class="ind-num-divider"></div>
-        <div class="ind-num-item">
-          <div class="num">+52%</div>
-          <div class="label">재방문율 상승</div>
-          <div class="desc">12주 케어 패키지 연계</div>
-        </div>
-        <div class="ind-num-divider"></div>
-        <div class="ind-num-item">
-          <div class="num">2.3배</div>
-          <div class="label">추천 고객 증가</div>
-          <div class="desc">"데이터 있는 관리샵" 입소문</div>
+
+        <div class="ind-side">
+          <div class="ind-roi-card">
+            <div class="ind-roi-title">📈 에스테틱 도입 ROI</div>
+            <div class="roi-nums">
+              <div class="roi-num-row">
+                <div class="roi-num-val">+48%</div>
+                <div class="roi-num-info"><div class="lbl">고가 티켓팅 전환율</div><div class="sub">AI 처방 근거 기반 업셀링</div></div>
+              </div>
+              <div class="roi-num-row">
+                <div class="roi-num-val">×1.8</div>
+                <div class="roi-num-info"><div class="lbl">객단가 증가</div><div class="sub">데이터 처방 근거 → 프리미엄화</div></div>
+              </div>
+              <div class="roi-num-row">
+                <div class="roi-num-val">12주</div>
+                <div class="roi-num-info"><div class="lbl">자동 재방문 사이클</div><div class="sub">4주 간격 재진단 자동 설계</div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ind-preview-card" onclick="openIndLightbox('beauty')">
+            <div class="preview-img-wrap" style="position:relative">
+              <div class="preview-mock">
+                <div class="preview-mock-hdr" style="background:linear-gradient(135deg,#ad1457,#e91e8c)"><span>💄 에스테틱 전용 바디코드 분석</span><span style="font-size:10px;opacity:.7">BC-02 림프형</span></div>
+                <div class="preview-mock-body">
+                  <div class="preview-mock-q">🌊 수독 림프 순환 저하형 분석</div>
+                  <div style="display:flex;flex-direction:column;gap:4px">
+                    <div style="display:flex;justify-content:space-between;font-size:11px">
+                      <span style="color:var(--muted)">림프 순환 지수</span><span style="color:#ad1457;font-weight:800">위험 82점</span>
+                    </div>
+                    <div style="height:6px;background:#f8bbd0;border-radius:3px;overflow:hidden"><div style="width:82%;height:100%;background:linear-gradient(90deg,#ad1457,#e91e8c);border-radius:3px"></div></div>
+                    <div style="font-size:11px;color:var(--muted);margin-top:6px">→ 드라이브러싱 + 고주파 + 림프 배농 패키지 처방 권고</div>
+                  </div>
+                </div>
+              </div>
+              <div class="preview-hover-tip">
+                <i class="fas fa-expand-alt"></i>
+                <span>🔎 클릭하여 실물 결과지 크게 보기</span>
+              </div>
+            </div>
+            <div class="ind-preview-label">
+              <span>💄 에스테틱 전용 결과지 샘플</span>
+              <span class="open-btn">전체화면 보기 →</span>
+            </div>
+          </div>
+
+          <!-- 레이더 차트 -->
+          <div class="radar-module">
+            <div class="radar-title">📊 BC-02 림프형 — 에스테틱 처방 우선순위</div>
+            <div class="radar-bars">
+              <div class="radar-bar-row"><div class="radar-bar-label">림프 순환</div><div class="radar-bar-track"><div class="radar-bar-fill" style="width:88%;background:linear-gradient(90deg,#ad1457,#e91e8c)"></div></div></div>
+              <div class="radar-bar-row"><div class="radar-bar-label">수분 대사</div><div class="radar-bar-track"><div class="radar-bar-fill" style="width:82%;background:linear-gradient(90deg,#1565c0,#42a5f5)"></div></div></div>
+              <div class="radar-bar-row"><div class="radar-bar-label">독소 배출</div><div class="radar-bar-track"><div class="radar-bar-fill" style="width:75%;background:linear-gradient(90deg,#5b4a86,#8b78c6)"></div></div></div>
+              <div class="radar-bar-row"><div class="radar-bar-label">체형 균형</div><div class="radar-bar-track"><div class="radar-bar-fill" style="width:60%;background:linear-gradient(90deg,#5a6e3a,#7a9e5a)"></div></div></div>
+              <div class="radar-bar-row"><div class="radar-bar-label">호르몬 균형</div><div class="radar-bar-track"><div class="radar-bar-fill" style="width:45%;background:linear-gradient(90deg,#c98a3c,#e8b46c)"></div></div></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- 피트니스·PT샵 -->
+    <!-- ══ TAB 4: 피트니스·PT ══ -->
     <div class="ind-content" id="ind-fitness">
-      <div class="ind-info">
-        <h3>🏋️ 피트니스·필라테스</h3>
-        <p>"왜 이 운동이 당신에게 맞는지"를 결과지가 설명합니다. 금기 운동 안내가 트레이너 전문성을 높이고 부상 컴플레인을 줄입니다.</p>
-        <ul class="ind-benefits">
-          <li>바디코드별 권장 운동 + 금기 운동 자동 생성</li>
-          <li>마른비만형 → 체중보다 체지방률 우선 전략 설명</li>
-          <li>번아웃형 → "더 열심히하면 역효과" 데이터로 납득</li>
-          <li>12주 로드맵 → 3개월 PT 계약 자연 연결</li>
-        </ul>
-        <div style="background:linear-gradient(135deg,var(--navy),#1a2e4a);border-radius:12px;padding:20px;margin-top:20px">
-          <div style="font-size:12px;font-weight:700;color:var(--circ);margin-bottom:12px;letter-spacing:1px">▶ 실제 상담 흐름</div>
-          <div style="font-size:13px;color:rgba(255,255,255,0.8);padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1)">① 체험 회원 바디코드 진단</div>
-          <div style="font-size:13px;color:rgba(255,255,255,0.8);padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1)">② "번아웃형 — 지금 고강도는 역효과입니다"</div>
-          <div style="font-size:13px;color:rgba(255,255,255,0.8);padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1)">③ 트레이너: "이 체형엔 Zone2 걷기가 먼저입니다 (이유: …)"</div>
-          <div style="font-size:13px;font-weight:700;color:var(--sub);padding:6px 0">→ "이 트레이너가 다르다" → 12주 PT 계약</div>
+      <div class="ind-body">
+        <div class="ind-story-card">
+          <div class="ind-story-header">
+            <div class="ind-story-icon" style="background:#e8f5e9">🏋️</div>
+            <div>
+              <h3>피트니스·PT·필라테스</h3>
+              <div class="story-sub">개인 트레이너 · 필라테스 강사 · 피트니스 센터 완전 호환</div>
+            </div>
+          </div>
+          <div class="ind-story-body">
+            <div class="ind-story-quote">"인바디가 말해주지 않는 살 안 빠지는 진짜 이유. <strong>호르몬/번아웃/체질 관점의 독점적 1:1 코칭 명분</strong>을 줍니다."</div>
+            <ul class="ind-benefits">
+              <li><span class="ck">✓</span>트레이너가 식단·체질 공부하느라 밤샐 필요 0% — AI가 1초 가이드 생성</li>
+              <li><span class="ck">✓</span>회원 컴플레인 완벽 방어 — "번아웃형에겐 고강도가 역효과"를 데이터로</li>
+              <li><span class="ck">✓</span>수업 전 7분 AI 진단 → 30초 AI 브리핑 → 맞춤 운동 즉시 진행</li>
+              <li><span class="ck">✓</span>PT 재등록률 +35%, 트레이너 단가 상승, 12주 완주율 급증</li>
+            </ul>
+
+            <div class="ai-flow">
+              <div class="ai-flow-title">⚡ 수업 전→코칭 AI 자동화 흐름</div>
+              <div class="flow-step">
+                <div class="flow-num">1</div>
+                <div class="flow-text"><strong>수업 전 7분 AI 바디코드 진단</strong><span>회원 QR 스캔 또는 태블릿 진단</span></div>
+              </div>
+              <div class="flow-arrow">↓</div>
+              <div class="flow-step">
+                <div class="flow-num">2</div>
+                <div class="flow-text"><strong>트레이너용 AI 코칭 가이드 30초 생성</strong><span>권장 운동 + 금기 운동 자동 분류</span></div>
+              </div>
+              <div class="flow-arrow">↓</div>
+              <div class="flow-step">
+                <div class="flow-num">3</div>
+                <div class="flow-text"><strong>체질 맞춤 운동&식단 즉시 제공</strong><span>"이 트레이너가 다르다" 즉시 인지</span></div>
+              </div>
+              <div class="flow-arrow">↓</div>
+              <div class="flow-step">
+                <div class="flow-num">4</div>
+                <div class="flow-text"><strong>12주 PT 계약 자연 연결</strong><span>재등록률 +35% 자동 달성</span></div>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-      <div class="ind-numbers">
-        <div class="ind-num-item">
-          <div class="num">+45%</div>
-          <div class="label">PT 계약 전환율</div>
-          <div class="desc">진단 후 상담 연계</div>
-        </div>
-        <div class="ind-num-divider"></div>
-        <div class="ind-num-item">
-          <div class="num">+31%</div>
-          <div class="label">회원 갱신율</div>
-          <div class="desc">12주 목표 달성 확인</div>
-        </div>
-        <div class="ind-num-divider"></div>
-        <div class="ind-num-item">
-          <div class="num">4.8/5</div>
-          <div class="label">트레이너 만족도</div>
-          <div class="desc">근거 있는 처방 제공</div>
+
+        <div class="ind-side">
+          <div class="ind-roi-card">
+            <div class="ind-roi-title">📈 피트니스 도입 ROI</div>
+            <div class="roi-nums">
+              <div class="roi-num-row">
+                <div class="roi-num-val">×3</div>
+                <div class="roi-num-info"><div class="lbl">시급 대비 수익</div><div class="sub">바디컨설턴트 전문성 프리미엄</div></div>
+              </div>
+              <div class="roi-num-row">
+                <div class="roi-num-val">+74%</div>
+                <div class="roi-num-info"><div class="lbl">12주 완주율</div><div class="sub">데이터 기반 동기부여 효과</div></div>
+              </div>
+              <div class="roi-num-row">
+                <div class="roi-num-val">+35%</div>
+                <div class="roi-num-info"><div class="lbl">재등록률 향상</div><div class="sub">체질 맞춤 운동으로 성과 가시화</div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ind-preview-card" onclick="openIndLightbox('fitness')">
+            <div class="preview-img-wrap" style="position:relative">
+              <div class="preview-mock">
+                <div class="preview-mock-hdr" style="background:linear-gradient(135deg,#2e7d32,#43a047)"><span>🏋️ 트레이너용 코칭 가이드</span><span style="font-size:10px;opacity:.7">AI 30초 자동생성</span></div>
+                <div class="preview-mock-body">
+                  <div class="preview-mock-q">BC-09 교감 항진형 — 트레이너 지침</div>
+                  <div style="display:flex;flex-direction:column;gap:5px">
+                    <div style="background:#e8f5e9;padding:6px 10px;border-radius:7px;font-size:11px;color:#2e7d32;font-weight:700">✓ 권장: Zone2 걷기 30분, 요가 니드라</div>
+                    <div style="background:#ffebee;padding:6px 10px;border-radius:7px;font-size:11px;color:#c62828;font-weight:700">✕ 금기: HIIT, 고강도 인터벌 (역효과)</div>
+                    <div style="background:#e3f2fd;padding:6px 10px;border-radius:7px;font-size:11px;color:#1565c0">→ 3개월 Zone2 집중 → 체중 자연감소</div>
+                  </div>
+                </div>
+              </div>
+              <div class="preview-hover-tip">
+                <i class="fas fa-expand-alt"></i>
+                <span>🔎 클릭하여 실물 결과지 크게 보기</span>
+              </div>
+            </div>
+            <div class="ind-preview-label">
+              <span>🏋️ 회원 결과지 + 트레이너 코칭 가이드</span>
+              <span class="open-btn">전체화면 보기 →</span>
+            </div>
+          </div>
+
+          <div class="radar-module">
+            <div class="radar-title">📊 BC-09 교감항진형 — 운동 처방 우선순위</div>
+            <div class="radar-bars">
+              <div class="radar-bar-row"><div class="radar-bar-label">자율신경</div><div class="radar-bar-track"><div class="radar-bar-fill" style="width:90%;background:linear-gradient(90deg,#c62828,#ef5350)"></div></div></div>
+              <div class="radar-bar-row"><div class="radar-bar-label">수면 회복</div><div class="radar-bar-track"><div class="radar-bar-fill" style="width:80%;background:linear-gradient(90deg,#1565c0,#42a5f5)"></div></div></div>
+              <div class="radar-bar-row"><div class="radar-bar-label">스트레스</div><div class="radar-bar-track"><div class="radar-bar-fill" style="width:70%;background:linear-gradient(90deg,#b5452e,#e8734a)"></div></div></div>
+              <div class="radar-bar-row"><div class="radar-bar-label">근기능</div><div class="radar-bar-track"><div class="radar-bar-fill" style="width:50%;background:linear-gradient(90deg,#2e7d32,#66bb6a)"></div></div></div>
+              <div class="radar-bar-row"><div class="radar-bar-label">대사</div><div class="radar-bar-track"><div class="radar-bar-fill" style="width:35%;background:linear-gradient(90deg,#c98a3c,#e8b46c)"></div></div></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- 한의원 -->
+    <!-- ══ TAB 5: 한의원·한방 ══ -->
     <div class="ind-content" id="ind-korean">
-      <div class="ind-info">
-        <h3>🌿 한의원·한방</h3>
-        <p>슬림마인드는 사주 오행·사상체질·MBTI를 통합 분석합니다. 한의원의 체질 진단과 바디코드를 결합하면 현대 데이터와 전통 한의학의 시너지가 만들어집니다.</p>
-        <ul class="ind-benefits">
-          <li>오행·사상체질 + 바디코드 교차 분석 제공</li>
-          <li>비만침·한약 처방 전 데이터 보완</li>
-          <li>소양인·소음인별 처방 언어 자동 조정</li>
-          <li>젊은 고객층 유입 — "데이터 있는 한의원" 포지셔닝</li>
-        </ul>
-        <div style="background:linear-gradient(135deg,var(--navy),#1a2e4a);border-radius:12px;padding:20px;margin-top:20px">
-          <div style="font-size:12px;font-weight:700;color:var(--circ);margin-bottom:12px;letter-spacing:1px">▶ 실제 상담 흐름</div>
-          <div style="font-size:13px;color:rgba(255,255,255,0.8);padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1)">① 진단: "土 오행 + 소양인 + 대사저하형"</div>
-          <div style="font-size:13px;color:rgba(255,255,255,0.8);padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1)">② 원장: "환절기마다 소화기 약해지는 게 이 체질"</div>
-          <div style="font-size:13px;color:rgba(255,255,255,0.8);padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.1)">③ 체질 한약 + 12주 식이 처방 연결</div>
-          <div style="font-size:13px;font-weight:700;color:var(--sub);padding:6px 0">→ "이 한의원은 다르다" → SNS 후기 바이럴</div>
+      <div class="ind-body">
+        <div class="ind-story-card">
+          <div class="ind-story-header">
+            <div class="ind-story-icon" style="background:#e8f5e9">🌿</div>
+            <div>
+              <h3>한의원·한방병원</h3>
+              <div class="story-sub">한의원 · 한방병원 · 한방 비만클리닉 완전 호환</div>
+            </div>
+          </div>
+          <div class="ind-story-body">
+            <div class="ind-story-quote">"젊은 세대에게 한방 체질 의학을 <strong>10개 원인축 현대적 데이터 리포트</strong>로 시각화하여 압도적 신뢰를 줍니다."</div>
+            <ul class="ind-benefits">
+              <li><span class="ck">✓</span>40년 한방 데이터 × 10개 원인축 → AI가 현대적 시각화 리포트로 1초 번역</li>
+              <li><span class="ck">✓</span>2030 젊은 환자에게 한방 체질 길게 설명할 필요 0%</li>
+              <li><span class="ck">✓</span>"AI 리포트 보셨죠?" 1분 만에 3개월 한약 처방 결제 완료</li>
+              <li><span class="ck">✓</span>2030 한약 처방 수락률 +50%, 4주 재진단 사이클 자동 구축</li>
+            </ul>
+
+            <div class="ai-flow">
+              <div class="ai-flow-title">⚡ 한방 대기→한약 처방 AI 자동화 흐름</div>
+              <div class="flow-step">
+                <div class="flow-num">1</div>
+                <div class="flow-text"><strong>한약 대기시간 7분 AI 진단</strong><span>오행·사상체질·바디코드 동시 분석</span></div>
+              </div>
+              <div class="flow-arrow">↓</div>
+              <div class="flow-step">
+                <div class="flow-num">2</div>
+                <div class="flow-text"><strong>바디코드 × 한방 체질 매핑 리포트</strong><span>"土 오행 + 소양인 + 대사저하형" 시각화</span></div>
+              </div>
+              <div class="flow-arrow">↓</div>
+              <div class="flow-step">
+                <div class="flow-num">3</div>
+                <div class="flow-text"><strong>원장: 현대 데이터 + 한방 체질 1분 설명</strong><span>2030도 한번에 이해하는 비주얼 리포트</span></div>
+              </div>
+              <div class="flow-arrow">↓</div>
+              <div class="flow-step">
+                <div class="flow-num">4</div>
+                <div class="flow-text"><strong>다이어트 한약 3개월 이상 처방 결제</strong><span>SNS 후기 바이럴 + 재진 사이클 완성</span></div>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-      <div class="ind-numbers">
-        <div class="ind-num-item">
-          <div class="num">+33%</div>
-          <div class="label">신규 고객 유입</div>
-          <div class="desc">디지털 진단 차별화</div>
-        </div>
-        <div class="ind-num-divider"></div>
-        <div class="ind-num-item">
-          <div class="num">+27%</div>
-          <div class="label">패키지 전환율</div>
-          <div class="desc">데이터 기반 처방 설득</div>
-        </div>
-        <div class="ind-num-divider"></div>
-        <div class="ind-num-item">
-          <div class="num">89%</div>
-          <div class="label">재진 만족도</div>
-          <div class="desc">한의학+현대 데이터 조합</div>
+
+        <div class="ind-side">
+          <div class="ind-roi-card">
+            <div class="ind-roi-title">📈 한의원 도입 ROI</div>
+            <div class="roi-nums">
+              <div class="roi-num-row">
+                <div class="roi-num-val">+50%</div>
+                <div class="roi-num-info"><div class="lbl">2030 한약 처방 수락률</div><div class="sub">현대적 데이터 리포트 신뢰 효과</div></div>
+              </div>
+              <div class="roi-num-row">
+                <div class="roi-num-val">+33%</div>
+                <div class="roi-num-info"><div class="lbl">신규 고객 유입</div><div class="sub">"데이터 있는 한의원" 포지셔닝</div></div>
+              </div>
+              <div class="roi-num-row">
+                <div class="roi-num-val">4주</div>
+                <div class="roi-num-info"><div class="lbl">재진단 사이클 자동 설계</div><div class="sub">4주 후 변화 데이터로 재방문 유도</div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ind-preview-card" onclick="openIndLightbox('korean')">
+            <div class="preview-img-wrap" style="position:relative">
+              <div class="preview-mock">
+                <div class="preview-mock-hdr" style="background:linear-gradient(135deg,#2e7d32,#558b2f)"><span>🌿 한방 체질 × 바디코드 매핑</span><span style="font-size:10px;opacity:.7">土 오행 · 소양인</span></div>
+                <div class="preview-mock-body">
+                  <div class="preview-mock-q">🔗 한방 체질 × 현대 원인축 매핑</div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+                    <div style="background:#e8f5e9;padding:8px;border-radius:8px;text-align:center">
+                      <div style="font-size:10px;color:#2e7d32;font-weight:800">사상체질</div>
+                      <div style="font-size:13px;font-weight:900;color:#1b5e20">소양인</div>
+                    </div>
+                    <div style="background:#e3f2fd;padding:8px;border-radius:8px;text-align:center">
+                      <div style="font-size:10px;color:#1565c0;font-weight:800">오행</div>
+                      <div style="font-size:13px;font-weight:900;color:#0d47a1">土 비위형</div>
+                    </div>
+                    <div style="background:#f3e5f5;padding:8px;border-radius:8px;text-align:center">
+                      <div style="font-size:10px;color:#7b1fa2;font-weight:800">바디코드</div>
+                      <div style="font-size:13px;font-weight:900;color:#4a148c">BC-07 소화형</div>
+                    </div>
+                    <div style="background:#fff3e0;padding:8px;border-radius:8px;text-align:center">
+                      <div style="font-size:10px;color:#e65100;font-weight:800">한약 처방</div>
+                      <div style="font-size:13px;font-weight:900;color:#bf360c">방풍통성산</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="preview-hover-tip">
+                <i class="fas fa-expand-alt"></i>
+                <span>🔎 클릭하여 실물 결과지 크게 보기</span>
+              </div>
+            </div>
+            <div class="ind-preview-label">
+              <span>🌿 한방 체질 × 현대 데이터 매핑 결과지</span>
+              <span class="open-btn">전체화면 보기 →</span>
+            </div>
+          </div>
+
+          <div class="radar-module">
+            <div class="radar-title">📊 土오행 소양인 — 한방 원인축 분석</div>
+            <div class="radar-bars">
+              <div class="radar-bar-row"><div class="radar-bar-label">소화·흡수</div><div class="radar-bar-track"><div class="radar-bar-fill" style="width:88%;background:linear-gradient(90deg,#2e7d32,#66bb6a)"></div></div></div>
+              <div class="radar-bar-row"><div class="radar-bar-label">대사 기능</div><div class="radar-bar-track"><div class="radar-bar-fill" style="width:75%;background:linear-gradient(90deg,#c98a3c,#e8b46c)"></div></div></div>
+              <div class="radar-bar-row"><div class="radar-bar-label">수독·부종</div><div class="radar-bar-track"><div class="radar-bar-fill" style="width:65%;background:linear-gradient(90deg,#1565c0,#42a5f5)"></div></div></div>
+              <div class="radar-bar-row"><div class="radar-bar-label">기력·피로</div><div class="radar-bar-track"><div class="radar-bar-fill" style="width:55%;background:linear-gradient(90deg,#5b4a86,#8b78c6)"></div></div></div>
+              <div class="radar-bar-row"><div class="radar-bar-label">심리·기질</div><div class="radar-bar-track"><div class="radar-bar-fill" style="width:40%;background:linear-gradient(90deg,#b5452e,#e8734a)"></div></div></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
   </div>
 </section>
+
+<!-- ===== 업종별 Lightbox 모달 ===== -->
+<div class="ind-lightbox" id="indLightbox">
+  <div class="ind-lb-inner">
+    <button class="ind-lb-close" onclick="closeIndLightbox()">✕</button>
+    <div class="ind-lb-title" id="lbTitle"></div>
+    <div class="ind-lb-sub" id="lbSub"></div>
+    <div class="ind-lb-grid" id="lbGrid"></div>
+    <div style="text-align:center;margin-top:24px">
+      <a href="http://pf.kakao.com/_xgCgsX" target="_blank" class="btn btn-primary btn-lg">무료 파일럿 신청 →</a>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 장바구니 토스트 ===== -->
+<div class="cart-toast" id="cartToast">
+  🛒 맞춤 3개월 패키지가 장바구니에 담겼습니다!
+</div>
+
+<!-- ===== Sticky 파일럿 신청 CTA ===== -->
+<div class="pilot-sticky" id="pilotSticky">
+  <span class="pilot-sticky-badge">🎁 1개월 무료 파일럿</span>
+  <span class="pilot-sticky-text">리스크 없이 먼저 경험하세요 · 7일 이내 취소 가능</span>
+  <a href="http://pf.kakao.com/_xgCgsX" target="_blank" class="btn-kakao-pilot">
+    <span style="font-size:18px">💬</span> 카카오로 파일럿 신청
+  </a>
+</div>
 
 <!-- ===== 인터랙티브 ROI 계산기 ===== -->
 <section class="roi-section" id="roi">
@@ -1030,12 +1654,200 @@ function toggleFaq(el){
 }
 
 // ===== 업종별 탭 =====
-function switchIndustry(id,btn){
-  document.querySelectorAll('.ind-tab').forEach(t=>t.classList.remove('active'));
-  document.querySelectorAll('.ind-content').forEach(c=>c.classList.remove('active'));
+function switchIndustry(id, btn){
+  document.querySelectorAll('.ind-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.ind-content').forEach(c => c.classList.remove('active'));
   btn.classList.add('active');
-  document.getElementById('ind-'+id).classList.add('active');
+  const target = document.getElementById('ind-' + id);
+  if(target){ target.classList.add('active'); }
+  // 레이더 바 애니메이션 트리거
+  setTimeout(() => animateRadarBars(id), 80);
+  // 슬라이더 dots 초기화
+  if(id === 'hospital') initSliderDots('hosp');
 }
+
+// ===== 업종별 Lightbox =====
+const lbData = {
+  supplement: {
+    title: '💊 건기식·영양제 — 바디코드 맞춤 처방 결과지',
+    sub: 'AI가 1초 만에 개인 맞춤 영양 처방을 자동 생성합니다',
+    cards: [
+      { code:'BC-03', name:'부신 스트레스형', desc:'마그네슘·아답토젠·오메가3 처방. 만성 스트레스 복부지방 집중 공략.', tag:'스트레스 고위험', color:'#b5452e' },
+      { code:'BC-07', name:'수면 부족 대사저하형', desc:'멜라토닌 전구체·L-트립토판·마그네슘 처방. 수면 개선 후 체중 감량.', tag:'수면 회복 필요', color:'#2f7d8c' },
+      { code:'BC-11', name:'호르몬 불균형 에스트로겐형', desc:'DIM·오메가3·비타민D3+K2 처방. 여성 체질 맞춤 패키지.', tag:'호르몬 밸런스', color:'#5b4a86' },
+      { code:'BC-14', name:'대사 인슐린 저항형', desc:'크롬·베르베린·알파리포산 처방. 혈당 조절 6개월 집중 코스.', tag:'혈당 관리', color:'#5a6e3a' },
+    ]
+  },
+  hospital: {
+    title: '🏥 병원·의원 — 비급여 처방 AI 리포트',
+    sub: '대기실 7분 진단 → 원장 모니터 자동 브리핑 → 비급여 처방 1분 완료',
+    cards: [
+      { code:'BC-03', name:'부신 스트레스 만성 코르티솔형', desc:'GLP-1 병행 처방 시 효과 극대화. 복부 비만 핵심 원인 데이터 제공.', tag:'스트레스 고위험', color:'#b5452e' },
+      { code:'BC-04', name:'인슐린 저항 대사 교란형', desc:'비급여 혈당 관리 패키지 연결. 재진율 극대화 설계.', tag:'혈당 관리 핵심', color:'#5a6e3a' },
+      { code:'BC-06', name:'에스트로겐 우세 호르몬형', desc:'갱년기·PMS 호소 증상 100% 일치. 호르몬 비급여 전환율 최고.', tag:'호르몬 처방', color:'#5b4a86' },
+      { code:'BC-09', name:'수면 번아웃 자율신경 교란형', desc:'수면 비급여 패키지 + 재진단 4주 사이클 자동 설계.', tag:'수면·자율신경', color:'#2f7d8c' },
+    ]
+  },
+  beauty: {
+    title: '💄 뷰티·에스테틱 — 슬리밍 바디코드 분석 결과지',
+    sub: '10개 원인축 다차원 분석 → 고가 패키지 티켓팅 자동 설득',
+    cards: [
+      { code:'BC-02', name:'림프 순환 부종형', desc:'림프 드레나지 + 압박 세라피 패키지. 부종 원인 데이터로 장기 티켓팅 설득.', tag:'순환·림프', color:'#c98a3c' },
+      { code:'BC-05', name:'독소 정체 체지방 축적형', desc:'디톡스 프로그램 선행 필수. 데이터 기반 3개월 케어 코스 유도.', tag:'독소 배출', color:'#b5452e' },
+      { code:'BC-08', name:'지방 셀룰라이트 과형성형', desc:'RF·HIFU 복합 처방 명분. 시술 전 원인 데이터 제공으로 신뢰 극대화.', tag:'체지방 집중', color:'#5b4a86' },
+      { code:'BC-12', name:'체질 냉증 순환 저하형', desc:'온열 케어 + 홈케어 건기식 세트 연계. 고가 패키지 +48% 전환.', tag:'냉증·순환', color:'#2f7d8c' },
+    ]
+  },
+  fitness: {
+    title: '🏋️ PT·필라테스 — 트레이너 코칭 가이드',
+    sub: 'AI가 회원별 원인 분석 → 트레이너 전용 맞춤 코칭 가이드 1초 생성',
+    cards: [
+      { code:'BC-01', name:'근육 과부하 번아웃형', desc:'저강도 회복 운동 우선. 인바디로 모르는 번아웃 원인 시각화.', tag:'운동 번아웃', color:'#5a6e3a' },
+      { code:'BC-07', name:'수면 부족 회복 불가형', desc:'수면 개선 프로토콜 선행. 식단+운동 조합 가이드 자동 생성.', tag:'수면 회복', color:'#2f7d8c' },
+      { code:'BC-10', name:'호르몬 저하 근손실형', desc:'단백질 타이밍 + 호르몬 지원 보충제 처방. PT 단가 상승 명분.', tag:'근손실 방지', color:'#5b4a86' },
+      { code:'BC-13', name:'스트레스 폭식 체지방 축적형', desc:'식이 행동 교정 코칭 가이드. 재등록률 +35% 연계 전략.', tag:'식이 행동', color:'#b5452e' },
+    ]
+  },
+  korean: {
+    title: '🌿 한의원·한방 — 바디코드 × 한방 체질 매핑 결과지',
+    sub: '40년 한방 데이터 × 현대적 원인축 시각화 → 2030 환자 신뢰 극대화',
+    cards: [
+      { code:'BC-03', name:'태음인 스트레스 복부형', desc:'한방 체질 + 코르티솔 데이터 매핑. 다이어트 한약 3개월 처방 자동 설득.', tag:'태음인 매핑', color:'#5a6e3a' },
+      { code:'BC-06', name:'소음인 호르몬 불균형형', desc:'소음인 체질 × 에스트로겐 데이터. 여성 갱년기 한약 처방 전환율 최고.', tag:'소음인 매핑', color:'#5b4a86' },
+      { code:'BC-09', name:'소양인 번아웃 자율신경형', desc:'소양인 화병 패턴 × 수면/자율신경 축. 2030 공감 포인트 최대 활용.', tag:'소양인 매핑', color:'#2f7d8c' },
+      { code:'BC-14', name:'태양인 대사 기허형', desc:'태양인 기허 × 대사 저하 데이터. 장기 한약 처방 + 4주 재진단 자동 설계.', tag:'태양인 매핑', color:'#b5452e' },
+    ]
+  }
+};
+
+function openIndLightbox(type){
+  const d = lbData[type];
+  if(!d) return;
+  const lb = document.getElementById('indLightbox');
+  document.getElementById('lbTitle').textContent = d.title;
+  document.getElementById('lbSub').textContent = d.sub;
+  const grid = document.getElementById('lbGrid');
+  grid.innerHTML = d.cards.map(c => `
+    <div style="background:#fff;border-radius:14px;padding:18px;box-shadow:0 2px 12px rgba(0,0,0,.08);border-top:4px solid ${c.color}">
+      <div style="font-size:11px;font-weight:800;color:${c.color};background:${c.color}18;padding:4px 10px;border-radius:20px;display:inline-block;margin-bottom:8px">${c.code}</div>
+      <div style="font-size:15px;font-weight:800;margin-bottom:6px;color:#1a1a17">${c.name}</div>
+      <div style="font-size:12px;color:#7c776b;line-height:1.6;margin-bottom:10px">${c.desc}</div>
+      <span style="font-size:11px;font-weight:700;background:${c.color}15;color:${c.color};padding:3px 10px;border-radius:20px">${c.tag}</span>
+    </div>
+  `).join('');
+  lb.classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+function closeIndLightbox(){
+  document.getElementById('indLightbox').classList.remove('show');
+  document.body.style.overflow = '';
+}
+document.getElementById('indLightbox').addEventListener('click', function(e){
+  if(e.target === this) closeIndLightbox();
+});
+
+// ===== 장바구니 토스트 =====
+function addToCart(){
+  const t = document.getElementById('cartToast');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+// ===== 결과지 슬라이더 =====
+const rsState = {};
+
+function initSliderDots(id){
+  const track = document.getElementById('rs-' + id);
+  const dotsWrap = document.getElementById('rs-' + id + '-dots');
+  if(!track || !dotsWrap) return;
+  const slides = track.querySelectorAll('.rs-slide');
+  const count = slides.length;
+  if(!rsState[id]) rsState[id] = 0;
+  dotsWrap.innerHTML = '';
+  for(let i = 0; i < count; i++){
+    const d = document.createElement('button');
+    d.className = 'rs-dot' + (i === rsState[id] ? ' active' : '');
+    d.setAttribute('aria-label', 'slide ' + (i+1));
+    d.onclick = () => goSlide(id, i);
+    dotsWrap.appendChild(d);
+  }
+}
+
+function goSlide(id, idx){
+  const track = document.getElementById('rs-' + id);
+  if(!track) return;
+  const slides = track.querySelectorAll('.rs-slide');
+  const count = slides.length;
+  rsState[id] = Math.max(0, Math.min(idx, count - 1));
+  track.style.transform = 'translateX(-' + (rsState[id] * 100) + '%)';
+  // dots 업데이트
+  const dotsWrap = document.getElementById('rs-' + id + '-dots');
+  if(dotsWrap){
+    dotsWrap.querySelectorAll('.rs-dot').forEach((d, i) => {
+      d.classList.toggle('active', i === rsState[id]);
+    });
+  }
+}
+
+function rsPrev(id){
+  if(!rsState[id]) rsState[id] = 0;
+  goSlide(id, rsState[id] - 1);
+}
+function rsNext(id){
+  if(!rsState[id]) rsState[id] = 0;
+  const track = document.getElementById('rs-' + id);
+  if(!track) return;
+  const count = track.querySelectorAll('.rs-slide').length;
+  goSlide(id, rsState[id] + 1 >= count ? 0 : rsState[id] + 1);
+}
+
+// 병원 탭 dots 초기화 (첫 로드 시)
+initSliderDots('hosp');
+
+// ===== Sticky 파일럿 CTA 스크롤 =====
+window.addEventListener('scroll', function(){
+  const ps = document.getElementById('pilotSticky');
+  if(ps) ps.classList.toggle('visible', window.scrollY > 400);
+});
+
+// ===== Radar bar 애니메이션 =====
+function animateRadarBars(tabId){
+  const content = document.getElementById('ind-' + tabId);
+  if(!content) return;
+  const fills = content.querySelectorAll('.radar-bar-fill');
+  fills.forEach(fill => {
+    const target = fill.getAttribute('data-width') || fill.style.width;
+    fill.setAttribute('data-width', target);
+    fill.style.width = '0%';
+    requestAnimationFrame(() => {
+      setTimeout(() => { fill.style.width = target; }, 30);
+    });
+  });
+}
+
+// 페이지 로드 시 초기 탭(supplement) 레이더 바 애니메이션
+document.addEventListener('DOMContentLoaded', function(){
+  setTimeout(() => animateRadarBars('supplement'), 300);
+});
+
+// IntersectionObserver — 섹션 진입 시 현재 탭 바 애니메이션
+(function(){
+  const sec = document.getElementById('industry');
+  if(!sec || !window.IntersectionObserver) return;
+  let triggered = false;
+  const obs = new IntersectionObserver(entries => {
+    if(entries[0].isIntersecting && !triggered){
+      triggered = true;
+      const activeTab = document.querySelector('.ind-tab.active');
+      const activeContent = document.querySelector('.ind-content.active');
+      if(activeContent){
+        const id = activeContent.id.replace('ind-', '');
+        setTimeout(() => animateRadarBars(id), 200);
+      }
+    }
+  }, { threshold: 0.15 });
+  obs.observe(sec);
+})();
 
 // ===== B2B ROI 계산기 =====
 function calcB2BROI(){
