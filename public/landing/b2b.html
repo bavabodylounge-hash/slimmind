@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- ★ 캐시 완전 무효화 — 새로고침 시 항상 최신 버전 서빙 -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>슬림마인드 파트너 입점 — 화이트라벨 바디코드 진단 솔루션</title>
 <meta name="description" content="병원·뷰티·피트니스·한의원 전용 화이트라벨 바디코드 진단 솔루션. 고객 상담 전환율 +34%, 추가 수익 창출. 무료 30분 데모 신청.">
 <style>
@@ -49,18 +53,8 @@ header{position:sticky;top:0;z-index:100;background:rgba(246,244,238,0.95);backd
 .mobile-nav .close-btn{position:absolute;top:20px;right:24px;font-size:28px;cursor:pointer;background:none;border:none;color:var(--ink)}
 @media(max-width:900px){.hamburger{display:flex}.nav-links{display:none}}
 
-/* ===== Sticky CTA 바 ===== */
-.sticky-cta-bar{
-  position:fixed;bottom:0;left:0;right:0;z-index:90;
-  background:var(--navy);padding:14px 24px;
-  display:flex;align-items:center;justify-content:center;gap:16px;
-  transform:translateY(100%);transition:transform .3s ease;
-  box-shadow:0 -4px 20px rgba(0,0,0,0.2);
-  padding-bottom:calc(14px + env(safe-area-inset-bottom));
-}
-.sticky-cta-bar.visible{transform:translateY(0)}
-.sticky-cta-bar p{font-size:14px;color:rgba(255,255,255,0.8);display:none}
-@media(min-width:600px){.sticky-cta-bar p{display:block}}
+/* ===== Sticky CTA 바 (pilotSticky로 통합됨, 이 클래스는 미사용) ===== */
+.sticky-cta-bar{display:none!important}
 
 /* ===== 카카오 플로팅 버튼 ===== */
 .kakao-float{position:fixed;bottom:90px;right:24px;z-index:89;width:56px;height:56px;background:#FEE500;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,0.18);cursor:pointer;transition:transform .2s}
@@ -1876,11 +1870,7 @@ footer a{color:rgba(255,255,255,0.5)}
   </div>
 </footer>
 
-<!-- ===== Sticky CTA 바 ===== -->
-<div class="sticky-cta-bar" id="stickyCta">
-  <p>🏢 내 매장에 바디코드 진단을 도입하고 싶으신가요?</p>
-  <a href="http://pf.kakao.com/_xgCgsX" target="_blank" class="btn btn-primary">무료 30분 데모 신청 →</a>
-</div>
+<!-- ===== Sticky CTA 바 (pilotSticky로 통합 완료, 이 엘리먼트 제거) ===== -->
 
 <!-- ===== 카카오 플로팅 버튼 ===== -->
 <a href="http://pf.kakao.com/_xgCgsX" target="_blank" class="kakao-float" title="카카오톡 상담">
@@ -1927,11 +1917,7 @@ footer a{color:rgba(255,255,255,0.5)}
 function openMobileNav(){document.getElementById('mobileNav').classList.add('open');document.body.style.overflow='hidden'}
 function closeMobileNav(){document.getElementById('mobileNav').classList.remove('open');document.body.style.overflow=''}
 
-// ===== Sticky CTA =====
-const stickyCta=document.getElementById('stickyCta');
-window.addEventListener('scroll',()=>{
-  stickyCta.classList.toggle('visible',window.scrollY>400);
-});
+// ===== Sticky CTA (pilotSticky로 통합) =====
 
 // ===== FAQ 아코디언 =====
 function toggleFaq(el){
@@ -2095,7 +2081,7 @@ initSliderDots('hosp');
 // ===== Sticky 파일럿 CTA 스크롤 =====
 window.addEventListener('scroll', function(){
   const ps = document.getElementById('pilotSticky');
-  if(ps) ps.classList.toggle('visible', window.scrollY > 400);
+  if(ps) ps.classList.toggle('visible', window.scrollY > 300);
 });
 
 // ===== Radar bar 애니메이션 =====

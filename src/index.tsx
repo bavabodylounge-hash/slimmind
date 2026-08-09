@@ -10129,41 +10129,19 @@ app.get('/api/admin/stats', requireRole('MASTER'), async (c) => {
   }
 })
 
-// ■ 샘플 PDF 다운로드 (회원가입 완료 후 권한 부여)
+// ■ 샘플 PDF 다운로드 (회원가입 완료 후) → 인쇄 가능 HTML 페이지로 리다이렉트
 app.get('/api/download-sample-pdf', async (c) => {
-  // 실제 환경: JWT 토큰 검증 후 has_pdf_access 확인
-  // 여기서는 샘플 PDF redirect (실제 파일로 교체 필요)
-  const samplePdfNote = `슬림마인드 16가지 바디코드 샘플 리포트 PDF
-
-이 파일은 샘플입니다.
-실제 파일은 /public/static/sample-report.pdf 에 업로드해주세요.
-
-바디코드 유형:
-BC-01 과활성 내장지방형
-BC-02 수독 림프 순환 저하형
-BC-03 부신 스트레스 만성 코르티솔형
-BC-04 인슐린 저항 대사 교란형
-BC-05 갑상선 기능 저하 대사 둔화형
-BC-06 에스트로겐 우세 호르몬 불균형형
-BC-07 소화 흡수 기능 저하형
-BC-08 T-PLATEAU 적응성 정체기형
-BC-09 교감 항진 자율신경 불균형형
-BC-10 근감소 노화 대사 저하형
-BC-11 수면 회복 기능 저하형
-BC-12 체형 불균형 근골격 비대칭형
-BC-13 면역·염증 만성 활성화형
-BC-14 복부 지방 집중 축적형
-BC-15 심리·기질 감정 식욕 조절형
-BC-16 복합 체질 최적화형
-
-© 2026 SLIMMIND. 특허출원중.`
-
-  return new Response(samplePdfNote, {
-    headers: {
-      'Content-Type': 'text/plain; charset=UTF-8',
-      'Content-Disposition': 'attachment; filename="slimmind-sample-bodycode-report.txt"',
-    }
-  })
+  // 실제 PDF 파일(/public/static/sample-report.pdf)이 존재하면 그것을 반환
+  // 없으면 브라우저 인쇄→PDF 저장 가능한 전용 HTML 페이지로 리다이렉트
+  return c.redirect('/landing/sample-report', 302)
 })
+
+// ■ 샘플 리포트 전용 HTML 페이지 (인쇄 → PDF 저장)
+app.get('/landing/sample-report', async (c) =>
+  htmlResponse(await fetchAsset(c.env.ASSETS, '/landing/sample-report.html'))
+)
+app.get('/landing/sample-report.html', async (c) =>
+  htmlResponse(await fetchAsset(c.env.ASSETS, '/landing/sample-report.html'))
+)
 
 export default app

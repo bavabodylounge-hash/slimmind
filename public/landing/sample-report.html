@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<title>슬림마인드 16가지 바디코드 샘플 리포트 — 파트너 전용</title>
+<link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+<style>
+:root{
+  --vis:#b5452e;--vis-l:#f6e3df;
+  --circ:#2f7d8c;--circ-l:#d8eef2;
+  --whole:#5b4a86;--whole-l:#eeeaf6;
+  --muscle:#5a6e3a;--muscle-l:#ecf0e8;
+  --sub:#c98a3c;--sub-l:#fdf6ee;
+  --navy:#0F1D30;
+  --ink:#1a1a17;--muted:#7c776b;--line:#d8d3c6;
+  --paper:#f6f4ee;--card:#fffdf8;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Apple SD Gothic Neo","Noto Sans KR",-apple-system,sans-serif;background:#f0ede6;color:var(--ink);-webkit-font-smoothing:antialiased}
+
+/* ── 인쇄 CTA 바 (화면에만 표시) ── */
+.print-bar{
+  position:fixed;top:0;left:0;right:0;z-index:999;
+  background:var(--navy);color:#fff;
+  padding:14px 24px;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  box-shadow:0 4px 20px rgba(0,0,0,.3);
+}
+.print-bar-left{display:flex;align-items:center;gap:12px}
+.print-bar h2{font-size:15px;font-weight:800;letter-spacing:-.3px}
+.print-bar p{font-size:12px;color:rgba(255,255,255,.6);margin-top:2px}
+.print-bar-right{display:flex;gap:8px;flex-shrink:0}
+.btn-pdf{background:#FEE500;color:#3C1E1E;font-weight:900;font-size:13px;padding:10px 20px;border-radius:10px;border:none;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .2s;white-space:nowrap}
+.btn-pdf:hover{background:#f5d800;transform:translateY(-1px)}
+.btn-back{background:rgba(255,255,255,.1);color:#fff;font-size:13px;padding:10px 16px;border-radius:10px;border:1px solid rgba(255,255,255,.2);cursor:pointer;white-space:nowrap;transition:all .2s}
+.btn-back:hover{background:rgba(255,255,255,.2)}
+
+/* ── 메인 래퍼 ── */
+.page-wrap{max-width:960px;margin:0 auto;padding:90px 24px 60px}
+
+/* ── 커버 페이지 ── */
+.cover{background:linear-gradient(135deg,var(--navy),#1A3050);border-radius:24px;padding:60px 48px;color:#fff;margin-bottom:32px;position:relative;overflow:hidden}
+.cover::before{content:"";position:absolute;top:-40%;right:-10%;width:500px;height:500px;background:radial-gradient(circle,rgba(47,125,140,.25),transparent 70%);pointer-events:none}
+.cover-eyebrow{font-size:11px;font-weight:800;color:#5DCAA5;letter-spacing:3px;text-transform:uppercase;margin-bottom:16px}
+.cover h1{font-size:32px;font-weight:800;line-height:1.3;letter-spacing:-.8px;margin-bottom:20px}
+.cover h1 span{color:#5DCAA5}
+.cover-sub{font-size:14px;color:rgba(255,255,255,.65);line-height:1.8;margin-bottom:32px;max-width:560px}
+.cover-badges{display:flex;flex-wrap:wrap;gap:10px}
+.cover-badge{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.85);font-size:12px;font-weight:700;padding:7px 16px;border-radius:30px}
+.cover-note{margin-top:32px;padding:16px 20px;background:rgba(93,202,165,.12);border:1px solid rgba(93,202,165,.3);border-radius:12px;font-size:13px;color:rgba(255,255,255,.75);line-height:1.7}
+.cover-note strong{color:#5DCAA5}
+
+/* ── 섹션 헤더 ── */
+.sec-hdr{margin:40px 0 20px;padding-bottom:14px;border-bottom:2px solid var(--line)}
+.sec-hdr h2{font-size:18px;font-weight:800;color:var(--navy);display:flex;align-items:center;gap:10px}
+.sec-hdr p{font-size:13px;color:var(--muted);margin-top:6px;line-height:1.6}
+
+/* ── BC 카드 그리드 ── */
+.bc-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:32px}
+.bc-card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px;position:relative;overflow:hidden}
+.bc-card::before{content:"";position:absolute;top:0;left:0;right:0;height:4px}
+.bc-card.type-vis::before{background:linear-gradient(90deg,var(--vis),#e8734a)}
+.bc-card.type-circ::before{background:linear-gradient(90deg,var(--circ),#5ab8cc)}
+.bc-card.type-whole::before{background:linear-gradient(90deg,var(--whole),#8b78c6)}
+.bc-card.type-muscle::before{background:linear-gradient(90deg,var(--muscle),#7a9e5a)}
+.bc-card.type-sub::before{background:linear-gradient(90deg,var(--sub),#e8b46c)}
+.bc-card.type-navy::before{background:linear-gradient(90deg,#1a3a5c,#2f5c8c)}
+.bc-num{font-size:10px;font-weight:800;letter-spacing:2px;opacity:.5;margin-bottom:8px}
+.bc-name{font-size:15px;font-weight:800;margin-bottom:6px;line-height:1.35}
+.bc-tags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
+.bc-tag{font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px}
+.bc-desc{font-size:12px;color:var(--muted);line-height:1.65;margin-bottom:12px}
+.bc-b2b{font-size:11px;font-weight:700;padding:7px 12px;border-radius:8px;line-height:1.5}
+
+/* ── 축 설명 섹션 ── */
+.axis-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:32px}
+.axis-item{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:flex;gap:12px;align-items:flex-start}
+.axis-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.axis-name{font-size:13px;font-weight:800;margin-bottom:3px}
+.axis-desc{font-size:11.5px;color:var(--muted);line-height:1.5}
+
+/* ── ROI 배너 ── */
+.roi-banner{background:linear-gradient(135deg,var(--navy),#1a3050);border-radius:20px;padding:36px 40px;color:#fff;margin-bottom:32px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;text-align:center}
+.roi-num{font-size:36px;font-weight:900;color:#5DCAA5;line-height:1}
+.roi-lbl{font-size:12px;color:rgba(255,255,255,.6);margin-top:6px}
+.roi-sub{font-size:11px;color:rgba(255,255,255,.4);margin-top:3px}
+
+/* ── CTA 푸터 ── */
+.cta-footer{background:var(--circ);border-radius:20px;padding:40px;color:#fff;text-align:center;margin-bottom:40px}
+.cta-footer h3{font-size:22px;font-weight:800;margin-bottom:10px;line-height:1.4}
+.cta-footer p{font-size:14px;color:rgba(255,255,255,.8);margin-bottom:24px;line-height:1.7}
+.cta-footer-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.cta-btn-kakao{background:#FEE500;color:#3C1E1E;font-weight:900;font-size:14px;padding:14px 28px;border-radius:12px;border:none;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all .2s}
+.cta-btn-kakao:hover{background:#f5d800;transform:translateY(-2px)}
+.cta-btn-white{background:rgba(255,255,255,.15);color:#fff;font-size:14px;font-weight:700;padding:14px 24px;border-radius:12px;border:1px solid rgba(255,255,255,.3);text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all .2s}
+.cta-btn-white:hover{background:rgba(255,255,255,.25)}
+
+/* ── 반응형 ── */
+@media(max-width:768px){
+  .print-bar{flex-direction:column;align-items:flex-start;gap:8px;padding:12px 16px}
+  .print-bar-right{width:100%}
+  .btn-pdf,.btn-back{flex:1;justify-content:center}
+  .page-wrap{padding:80px 14px 40px}
+  .cover{padding:36px 24px}
+  .cover h1{font-size:24px}
+  .bc-grid{grid-template-columns:1fr}
+  .axis-grid{grid-template-columns:1fr}
+  .roi-banner{grid-template-columns:1fr;gap:16px;padding:28px 24px}
+  .cta-footer{padding:28px 20px}
+}
+
+/* ── 인쇄 스타일 ── */
+@media print{
+  .print-bar{display:none!important}
+  .page-wrap{padding:0;max-width:100%}
+  body{background:#fff}
+  .cover{break-after:page;border-radius:0;margin-bottom:0}
+  .bc-card{break-inside:avoid}
+  .bc-grid{grid-template-columns:repeat(2,1fr)}
+  .roi-banner{break-inside:avoid}
+  .cta-footer{display:none}
+  @page{margin:15mm 12mm;size:A4}
+}
+</style>
+</head>
+<body>
+
+<!-- ── 인쇄/저장 바 ── -->
+<div class="print-bar">
+  <div class="print-bar-left">
+    <div>
+      <h2>📑 슬림마인드 16가지 바디코드 샘플 리포트</h2>
+      <p>파트너·컨설턴트 전용 — B2B 원장님·대표님께 제공되는 실물 결과지 샘플</p>
+    </div>
+  </div>
+  <div class="print-bar-right">
+    <button class="btn-back" onclick="history.back()">← 돌아가기</button>
+    <button class="btn-pdf" onclick="window.print()">
+      <i class="fas fa-file-pdf"></i> PDF로 저장 (인쇄)
+    </button>
+  </div>
+</div>
+
+<div class="page-wrap">
+
+  <!-- 커버 -->
+  <div class="cover">
+    <div class="cover-eyebrow">SLIMMIND B2B PARTNER · 파트너 전용</div>
+    <h1>16가지 <span>바디코드</span> 샘플 리포트<br>파트너 도입 가이드 2026</h1>
+    <div class="cover-sub">
+      40년 임상 데이터 기반의 체형·체질 분류 시스템. 고객의 살이 안 빠지는 <strong style="color:#fff">진짜 원인</strong>을 10개 원인축으로 진단하고, 16가지 바디코드로 분류합니다. 병원·뷰티·피트니스·한의원 어디서든 그대로 적용됩니다.
+    </div>
+    <div class="cover-badges">
+      <span class="cover-badge">🏥 비만클리닉·내과</span>
+      <span class="cover-badge">💄 뷰티·에스테틱</span>
+      <span class="cover-badge">🏋️ PT·필라테스</span>
+      <span class="cover-badge">🌿 한의원·한방</span>
+      <span class="cover-badge">💊 건기식·영양제</span>
+    </div>
+    <div class="cover-note">
+      <strong>이 문서 활용법</strong> — 본 샘플 리포트는 실제 고객에게 제공되는 결과지의 B2B 파트너 전용 요약본입니다. 각 바디코드의 원인 메커니즘, 추천 처방/시술/영양소, B2B 적용 포인트를 확인하실 수 있습니다. PDF로 저장하려면 상단의 <strong>「PDF로 저장」</strong> 버튼을 눌러 인쇄 → PDF로 저장하세요.
+    </div>
+  </div>
+
+  <!-- ROI 요약 -->
+  <div class="roi-banner">
+    <div>
+      <div class="roi-num">+34%</div>
+      <div class="roi-lbl">평균 전환율 상승</div>
+      <div class="roi-sub">비급여 상담 적용 시</div>
+    </div>
+    <div>
+      <div class="roi-num">7분</div>
+      <div class="roi-lbl">대기실 진단 완료</div>
+      <div class="roi-sub">기존 상담 65% 단축</div>
+    </div>
+    <div>
+      <div class="roi-num">16종</div>
+      <div class="roi-lbl">바디코드 분류</div>
+      <div class="roi-sub">10개 원인축 × AI 진단</div>
+    </div>
+  </div>
+
+  <!-- 10개 원인축 -->
+  <div class="sec-hdr">
+    <h2><i class="fas fa-sitemap" style="color:var(--circ)"></i> 10개 원인축 — 체형 분류의 근거</h2>
+    <p>단순 인바디와 다릅니다. 10개 원인축이 교차하여 16가지 고유한 체형 유형을 만들어냅니다.</p>
+  </div>
+  <div class="axis-grid">
+    <div class="axis-item">
+      <div class="axis-icon" style="background:var(--vis-l)">🔥</div>
+      <div><div class="axis-name">① 내장지방·복부 축적 축</div><div class="axis-desc">코르티솔·인슐린 저항에 의한 복부 지방 우선 축적 경향 분석</div></div>
+    </div>
+    <div class="axis-item">
+      <div class="axis-icon" style="background:var(--circ-l)">💧</div>
+      <div><div class="axis-name">② 수분·림프 순환 축</div><div class="axis-desc">체내 수분 대사 및 림프 순환 기능, 부종·셀룰라이트 원인 축</div></div>
+    </div>
+    <div class="axis-item">
+      <div class="axis-icon" style="background:var(--whole-l)">⚖️</div>
+      <div><div class="axis-name">③ 호르몬 균형 축</div><div class="axis-desc">에스트로겐·갑상선·코르티솔 불균형이 체중에 미치는 영향 분석</div></div>
+    </div>
+    <div class="axis-item">
+      <div class="axis-icon" style="background:var(--muscle-l)">🦷</div>
+      <div><div class="axis-name">④ 소화·흡수 대사 축</div><div class="axis-desc">위장관 기능, 영양소 흡수 효율, 장내 환경 분석</div></div>
+    </div>
+    <div class="axis-item">
+      <div class="axis-icon" style="background:var(--sub-l)">😴</div>
+      <div><div class="axis-name">⑤ 수면·자율신경 축</div><div class="axis-desc">수면 질·자율신경 균형이 체중 조절 호르몬에 미치는 영향</div></div>
+    </div>
+    <div class="axis-item">
+      <div class="axis-icon" style="background:#fff3e0">💪</div>
+      <div><div class="axis-name">⑥ 근기능·근감소 축</div><div class="axis-desc">근육량·기초대사율 저하, 노화성 근감소증 리스크 분석</div></div>
+    </div>
+    <div class="axis-item">
+      <div class="axis-icon" style="background:var(--vis-l)">🧠</div>
+      <div><div class="axis-name">⑦ 스트레스·심리 축</div><div class="axis-desc">만성 스트레스, 감정적 식욕, 코르티솔 과분비 패턴 분석</div></div>
+    </div>
+    <div class="axis-item">
+      <div class="axis-icon" style="background:#fce4ec)">🔄</div>
+      <div><div class="axis-name">⑧ 염증·면역 축</div><div class="axis-desc">만성 저등급 염증, 면역 과활성이 체지방 분포에 미치는 영향</div></div>
+    </div>
+    <div class="axis-item">
+      <div class="axis-icon" style="background:var(--circ-l)">🦴</div>
+      <div><div class="axis-name">⑨ 체형·근골격 균형 축</div><div class="axis-desc">좌우 비대칭, 체형 불균형, 특정 부위 지방 집중 패턴 분석</div></div>
+    </div>
+    <div class="axis-item">
+      <div class="axis-icon" style="background:var(--whole-l)">🔋</div>
+      <div><div class="axis-name">⑩ 에너지·대사 효율 축</div><div class="axis-desc">기초대사량, 에너지 이용 효율, 정체기 패턴 분석</div></div>
+    </div>
+  </div>
+
+  <!-- 16가지 바디코드 -->
+  <div class="sec-hdr">
+    <h2><i class="fas fa-dna" style="color:var(--vis)"></i> 16가지 바디코드 — 상세 분류 & B2B 적용 포인트</h2>
+    <p>각 코드는 복수의 원인축이 교차하여 생성됩니다. 같은 비만이라도 전혀 다른 처방이 필요합니다.</p>
+  </div>
+  <div class="bc-grid">
+
+    <div class="bc-card type-vis">
+      <div class="bc-num">BC-01</div>
+      <div class="bc-name">과활성 내장지방형</div>
+      <div class="bc-tags">
+        <span class="bc-tag" style="background:var(--vis-l);color:var(--vis)">내장지방</span>
+        <span class="bc-tag" style="background:#fff3e0;color:#e65100">인슐린 저항</span>
+      </div>
+      <div class="bc-desc">복부 우선 축적. 혈당 관리 실패 패턴. 탄수화물 섭취→내장 지방 직행. 운동 효과가 느린 유형.</div>
+      <div class="bc-b2b" style="background:var(--vis-l);color:var(--vis)">🏥 병원: GLP-1 비급여 처방 + 혈당 관리 패키지<br>💊 건기식: 베르베린·크롬·알파리포산<br>🏋️ PT: 저탄 식단 + HIIT 복합 프로토콜</div>
+    </div>
+
+    <div class="bc-card type-circ">
+      <div class="bc-num">BC-02</div>
+      <div class="bc-name">수독 림프 순환 저하형</div>
+      <div class="bc-tags">
+        <span class="bc-tag" style="background:var(--circ-l);color:var(--circ)">부종</span>
+        <span class="bc-tag" style="background:#e3f2fd;color:#1565c0">림프 정체</span>
+      </div>
+      <div class="bc-desc">전신 부종, 셀룰라이트 주원인. 지방보다 수분·독소 정체. 다이어트해도 살이 빠지지 않는 패턴.</div>
+      <div class="bc-b2b" style="background:var(--circ-l);color:var(--circ-d,#256a77)">💄 에스테틱: 림프 드레나지 + 압박 케어 장기 패키지<br>🌿 한의원: 이뇨·해독 한약 처방<br>💊 건기식: 댄디라이온·마그네슘·오메가3</div>
+    </div>
+
+    <div class="bc-card type-vis">
+      <div class="bc-num">BC-03</div>
+      <div class="bc-name">부신 스트레스 만성 코르티솔형</div>
+      <div class="bc-tags">
+        <span class="bc-tag" style="background:var(--vis-l);color:var(--vis)">스트레스 고위험</span>
+        <span class="bc-tag" style="background:#fce4ec;color:#c2185b">코르티솔 과분비</span>
+      </div>
+      <div class="bc-desc">만성 스트레스→코르티솔 과분비→복부 지방 집중. 야식·폭식 충동 강함. 운동해도 배만 안 빠짐.</div>
+      <div class="bc-b2b" style="background:var(--vis-l);color:var(--vis)">🏥 병원: GLP-1 + 부신 지원 비급여 패키지<br>💊 건기식: 마그네슘·아답토젠·아쉬와간다<br>🌿 한의원: 태음인 스트레스형 한약</div>
+    </div>
+
+    <div class="bc-card type-sub">
+      <div class="bc-num">BC-04</div>
+      <div class="bc-name">인슐린 저항 대사 교란형</div>
+      <div class="bc-tags">
+        <span class="bc-tag" style="background:var(--sub-l);color:var(--sub)">혈당 관리</span>
+        <span class="bc-tag" style="background:#e8f5e9;color:#2e7d32">대사 교란</span>
+      </div>
+      <div class="bc-desc">식후 혈당 급등→인슐린 과분비→지방 저장 가속. 탄수화물 의존성 강함. 공복감 조절 어려움.</div>
+      <div class="bc-b2b" style="background:var(--sub-l);color:var(--sub)">🏥 병원: 비급여 혈당 관리 패키지 연결 · 재진율 극대화<br>💊 건기식: 크롬·베르베린·계피 추출물<br>🏋️ PT: 저GI 식단 설계 + 인터벌 트레이닝</div>
+    </div>
+
+    <div class="bc-card type-whole">
+      <div class="bc-num">BC-05</div>
+      <div class="bc-name">갑상선 기능 저하 대사 둔화형</div>
+      <div class="bc-tags">
+        <span class="bc-tag" style="background:var(--whole-l);color:var(--whole)">갑상선</span>
+        <span class="bc-tag" style="background:#e3f2fd;color:#1565c0">기초대사 저하</span>
+      </div>
+      <div class="bc-desc">기초대사량 현저히 낮음. 소식해도 살찜. 추위 타고 피로함. 정상 TSH여도 기능 저하 패턴.</div>
+      <div class="bc-b2b" style="background:var(--whole-l);color:var(--whole)">🏥 병원: 기능의학 갑상선 비급여 패키지<br>💊 건기식: 아이오딘·셀레늄·아연·L-타이로신<br>🌿 한의원: 소음인 기허형 한약</div>
+    </div>
+
+    <div class="bc-card type-whole">
+      <div class="bc-num">BC-06</div>
+      <div class="bc-name">에스트로겐 우세 호르몬 불균형형</div>
+      <div class="bc-tags">
+        <span class="bc-tag" style="background:#fce4ec;color:#c2185b">에스트로겐 우세</span>
+        <span class="bc-tag" style="background:var(--whole-l);color:var(--whole)">호르몬 처방</span>
+      </div>
+      <div class="bc-desc">여성 갱년기·PMS 호소 증상과 일치. 복부·허벅지·엉덩이 집중 지방. 디톡스로 에스트로겐 배출 필요.</div>
+      <div class="bc-b2b" style="background:#fce4ec;color:#880e4f">🏥 병원: 호르몬 비급여 처방 전환율 최고<br>💊 건기식: DIM·오메가3·비타민D3+K2<br>🌿 한의원: 소음인 호르몬 불균형형 한약</div>
+    </div>
+
+    <div class="bc-card type-muscle">
+      <div class="bc-num">BC-07</div>
+      <div class="bc-name">소화 흡수 기능 저하형</div>
+      <div class="bc-tags">
+        <span class="bc-tag" style="background:var(--muscle-l);color:var(--muscle)">소화 기능</span>
+        <span class="bc-tag" style="background:#fff3e0;color:#e65100">영양 흡수</span>
+      </div>
+      <div class="bc-desc">먹어도 영양소 흡수 안 됨. 장누수·IBS 동반 多. 단백질 소화 어려움. 프로바이오틱스 우선 처방.</div>
+      <div class="bc-b2b" style="background:var(--muscle-l);color:var(--muscle)">🏥 병원: 기능의학 장 기능 패키지<br>💊 건기식: 프로바이오틱스·소화효소·L-글루타민<br>🌿 한의원: 소음인 소화 허약형</div>
+    </div>
+
+    <div class="bc-card type-sub">
+      <div class="bc-num">BC-08</div>
+      <div class="bc-name">T-PLATEAU 적응성 정체기형</div>
+      <div class="bc-tags">
+        <span class="bc-tag" style="background:var(--sub-l);color:var(--sub)">정체기</span>
+        <span class="bc-tag" style="background:#e8f5e9;color:#2e7d32">대사 적응</span>
+      </div>
+      <div class="bc-desc">같은 방법 반복→몸이 적응→정체기 고착. 새로운 자극 없이는 체중 변화 없음. 주기적 변화 필수.</div>
+      <div class="bc-b2b" style="background:var(--sub-l);color:var(--sub)">🏥 병원: 주기적 재진단 4주 사이클 자동 설계<br>🏋️ PT: 주기화 훈련 + 식단 리셋 프로토콜<br>💄 에스테틱: 복합 시술 교대 적용</div>
+    </div>
+
+    <div class="bc-card type-vis">
+      <div class="bc-num">BC-09</div>
+      <div class="bc-name">교감 항진 자율신경 불균형형</div>
+      <div class="bc-tags">
+        <span class="bc-tag" style="background:var(--vis-l);color:var(--vis)">자율신경</span>
+        <span class="bc-tag" style="background:#fce4ec;color:#c2185b">교감 항진</span>
+      </div>
+      <div class="bc-desc">항상 긴장 상태. 수면 얕고 잠들기 어려움. 심박수 높고 소화 불량. 수면 회복이 최우선.</div>
+      <div class="bc-b2b" style="background:var(--vis-l);color:var(--vis)">🏥 병원: 수면 비급여 패키지 + 자율신경 조절<br>💊 건기식: 마그네슘·L-테아닌·멜라토닌 전구체<br>🌿 한의원: 소양인 화병·번아웃형</div>
+    </div>
+
+    <div class="bc-card type-muscle">
+      <div class="bc-num">BC-10</div>
+      <div class="bc-name">근감소 노화 대사 저하형</div>
+      <div class="bc-tags">
+        <span class="bc-tag" style="background:var(--muscle-l);color:var(--muscle)">근감소</span>
+        <span class="bc-tag" style="background:#e3f2fd;color:#1565c0">노화 대사</span>
+      </div>
+      <div class="bc-desc">40대 이상 多. 체중은 정상이나 체지방률 높음. 근육량 감소→기초대사 저하의 악순환.</div>
+      <div class="bc-b2b" style="background:var(--muscle-l);color:var(--muscle)">🏋️ PT: 근력 우선 프로토콜 + 단백질 타이밍<br>🏥 병원: 근감소증 예방 비급여 패키지<br>💊 건기식: 류신·크레아틴·콜라겐 펩타이드</div>
+    </div>
+
+    <div class="bc-card type-circ">
+      <div class="bc-num">BC-11</div>
+      <div class="bc-name">수면 회복 기능 저하형</div>
+      <div class="bc-tags">
+        <span class="bc-tag" style="background:var(--circ-l);color:var(--circ)">수면 부족</span>
+        <span class="bc-tag" style="background:#fce4ec;color:#c2185b">회복 불가</span>
+      </div>
+      <div class="bc-desc">수면 부족→그렐린 증가→식욕 폭증. 살을 빼기 전에 수면 먼저 고쳐야 하는 유형. 운동 효과 반감.</div>
+      <div class="bc-b2b" style="background:var(--circ-l);color:var(--circ)">💊 건기식: 멜라토닌·마그네슘·L-트립토판<br>🏥 병원: 수면 기능의학 패키지<br>🏋️ PT: 수면 개선 후 운동 강도 단계적 증가</div>
+    </div>
+
+    <div class="bc-card type-muscle">
+      <div class="bc-num">BC-12</div>
+      <div class="bc-name">체형 불균형 근골격 비대칭형</div>
+      <div class="bc-tags">
+        <span class="bc-tag" style="background:var(--muscle-l);color:var(--muscle)">체형 불균형</span>
+        <span class="bc-tag" style="background:#fff3e0;color:#e65100">비대칭</span>
+      </div>
+      <div class="bc-desc">골반 틀어짐·척추 측만이 원인. 한쪽 몸만 두꺼운 유형. 균형 교정 없이는 체형 개선 불가.</div>
+      <div class="bc-b2b" style="background:var(--muscle-l);color:var(--muscle)">🏋️ PT: 체형 교정 특화 필라테스 프로그램<br>💄 에스테틱: 체형 균형 바디케어 세션<br>🌿 한의원: 침·추나 병행 한약 처방</div>
+    </div>
+
+    <div class="bc-card type-vis">
+      <div class="bc-num">BC-13</div>
+      <div class="bc-name">면역·염증 만성 활성화형</div>
+      <div class="bc-tags">
+        <span class="bc-tag" style="background:var(--vis-l);color:var(--vis)">만성 염증</span>
+        <span class="bc-tag" style="background:#e8f5e9;color:#2e7d32">면역 과활성</span>
+      </div>
+      <div class="bc-desc">저등급 만성 염증이 지방 세포 비대화. 알레르기·자가면역 경향. 항염 식단 없이는 체중 조절 어려움.</div>
+      <div class="bc-b2b" style="background:var(--vis-l);color:var(--vis)">💊 건기식: 오메가3·커큐민·비타민D·NAC<br>🌿 한의원: 항염·면역 조절 한약<br>🏥 병원: 항염 기능의학 패키지</div>
+    </div>
+
+    <div class="bc-card type-vis">
+      <div class="bc-num">BC-14</div>
+      <div class="bc-name">복부 지방 집중 축적형</div>
+      <div class="bc-tags">
+        <span class="bc-tag" style="background:var(--vis-l);color:var(--vis)">복부 집중</span>
+        <span class="bc-tag" style="background:#fce4ec;color:#c2185b">체형 개선</span>
+      </div>
+      <div class="bc-desc">복부만 특이하게 튀어나옴. 사지는 정상인데 배만 나온 유형. 내장지방+수분 복합 원인.</div>
+      <div class="bc-b2b" style="background:var(--vis-l);color:var(--vis)">🏥 병원: 지방분해 주사 + 식이 비급여 처방<br>💄 에스테틱: 복부 집중 LPG·HIFU 시술<br>💊 건기식: 베르베린·인지질·오메가3</div>
+    </div>
+
+    <div class="bc-card type-whole">
+      <div class="bc-num">BC-15</div>
+      <div class="bc-name">심리·기질 감정 식욕 조절형</div>
+      <div class="bc-tags">
+        <span class="bc-tag" style="background:var(--whole-l);color:var(--whole)">감정적 식욕</span>
+        <span class="bc-tag" style="background:#fce4ec;color:#c2185b">심리 요인</span>
+      </div>
+      <div class="bc-desc">스트레스·감정 기복→폭식 패턴. 다이어트 의지 문제가 아닌 신경전달물질 불균형. 행동 코칭 필수.</div>
+      <div class="bc-b2b" style="background:var(--whole-l);color:var(--whole)">🏋️ PT: 식이 행동 교정 코칭 포함 프로그램<br>💊 건기식: 5-HTP·L-티로신·마그네슘<br>🌿 한의원: 기울·화병형 한약 처방</div>
+    </div>
+
+    <div class="bc-card type-navy">
+      <div class="bc-num">BC-16</div>
+      <div class="bc-name">복합 체질 최적화형</div>
+      <div class="bc-tags">
+        <span class="bc-tag" style="background:#e3f2fd;color:#1565c0">복합 원인</span>
+        <span class="bc-tag" style="background:var(--muscle-l);color:var(--muscle)">최적화 필요</span>
+      </div>
+      <div class="bc-desc">여러 원인축이 동시에 관여하는 복합형. 단일 처방으로 해결 불가. 우선순위 설정 후 단계적 접근 필수.</div>
+      <div class="bc-b2b" style="background:#e8edf2;color:#1a3a5c">모든 업종 공통: 단계별 처방 로드맵 자동 생성<br>4주 단위 재진단 → 우선순위 조정 사이클<br>복합형일수록 장기 패키지 전환율 높음</div>
+    </div>
+
+  </div>
+
+  <!-- 최종 CTA -->
+  <div class="cta-footer">
+    <h3>지금 바로 파일럿 신청하세요</h3>
+    <p>1개월 무료 파일럿으로 실제 고객에게 적용해보세요. 리스크 없이 효과를 먼저 경험하실 수 있습니다.<br>설치 0원 · 교육 0분 · 7일 이내 취소 가능</p>
+    <div class="cta-footer-btns">
+      <a href="http://pf.kakao.com/_xgCgsX" target="_blank" class="cta-btn-kakao">
+        💬 카카오로 파일럿 신청
+      </a>
+      <a href="/landing/b2b" class="cta-btn-white">
+        <i class="fas fa-arrow-left"></i> 파트너 입점 페이지로
+      </a>
+    </div>
+    <div style="font-size:12px;color:rgba(255,255,255,.45);margin-top:20px">© 2026 SLIMMIND. 특허출원중. 본 자료는 파트너·컨설턴트 전용입니다.</div>
+  </div>
+
+</div>
+
+<script>
+// PDF 인쇄 안내
+document.addEventListener('DOMContentLoaded', function(){
+  // 인쇄 시 안내
+  window.addEventListener('beforeprint', function(){
+    document.title = '슬림마인드_16바디코드_샘플리포트_2026';
+  });
+  window.addEventListener('afterprint', function(){
+    document.title = '슬림마인드 16가지 바디코드 샘플 리포트 — 파트너 전용';
+  });
+});
+</script>
+</body>
+</html>
