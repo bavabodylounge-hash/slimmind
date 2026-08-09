@@ -92,14 +92,14 @@ header{position:sticky;top:0;z-index:100;background:rgba(246,244,238,0.95);backd
 /* ===== 공통 섹션 헤더 ===== */
 .section-head{text-align:center;margin-bottom:48px}
 .section-eyebrow{font-size:12px;font-weight:800;color:var(--circ);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px}
-.section-head h2{font-size:32px;font-weight:800;letter-spacing:-0.5px;margin-bottom:12px;line-height:1.4}
+.section-head h2{font-size:clamp(19px,3.5vw,32px);font-weight:800;letter-spacing:-0.5px;margin-bottom:12px;line-height:1.4}
 .section-head p{font-size:15px;color:var(--muted)}
 
 /* ===== 히어로 ===== */
 .hero{padding:80px 24px 60px;background:linear-gradient(135deg,#0F1D30 0%,#1A2E4A 60%,#0d3040 100%);color:#fff;text-align:center;position:relative;overflow:hidden}
 .hero::before{content:"";position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:radial-gradient(circle at 70% 30%,rgba(47,125,140,0.2),transparent 60%);pointer-events:none}
 .hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.1);color:#9fd4e0;padding:7px 16px;border-radius:30px;font-size:13px;font-weight:700;margin-bottom:24px;border:1px solid rgba(255,255,255,0.15)}
-.hero h1{font-size:46px;font-weight:800;line-height:1.25;letter-spacing:-1.5px;margin-bottom:18px}
+.hero h1{font-size:clamp(22px,5vw,46px);font-weight:800;line-height:1.25;letter-spacing:-1.5px;margin-bottom:18px}
 .hero h1 .accent{color:#5DCAA5}
 .hero-sub{font-size:16px;color:rgba(255,255,255,0.7);max-width:660px;margin:0 auto 32px;line-height:1.8}
 .hero-cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:40px}
@@ -150,7 +150,7 @@ header{position:sticky;top:0;z-index:100;background:rgba(246,244,238,0.95);backd
 .compare-vs{width:44px;height:44px;background:var(--circ);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:900;flex-shrink:0;box-shadow:0 4px 16px rgba(47,125,140,.4)}
 
 /* 탭 네비게이션 */
-.industry-section{padding:90px 24px;background:var(--paper)}
+.industry-section{padding:clamp(48px,8vw,90px) 24px;background:var(--paper)}
 .ind-tabs-wrap{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:40px;padding:0 12px}
 .ind-tab{padding:11px 22px;border-radius:30px;font-size:14px;font-weight:700;cursor:pointer;border:1.5px solid var(--line);background:var(--card);color:var(--muted);transition:all .25s;white-space:nowrap}
 .ind-tab:hover{border-color:var(--circ);color:var(--circ);transform:translateY(-2px)}
@@ -314,7 +314,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;heigh
 /* ===== 화이트라벨 ===== */
 .whitelabel{padding:90px 24px;background:var(--paper);border-top:1px solid var(--line)}
 .wl-grid{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;max-width:1100px;margin:0 auto}
-.wl-text h2{font-size:30px;font-weight:800;margin-bottom:16px;letter-spacing:-0.5px;line-height:1.4}
+.wl-text h2{font-size:clamp(20px,3vw,30px);font-weight:800;margin-bottom:16px;letter-spacing:-0.5px;line-height:1.4}
 .wl-text p{font-size:14px;color:var(--muted);margin-bottom:26px;line-height:1.8}
 .wl-features{display:flex;flex-direction:column;gap:16px}
 .wl-feat{display:flex;gap:14px;align-items:flex-start}
@@ -423,24 +423,312 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;heigh
 
 /* ===== 최종 CTA ===== */
 .final-cta{padding:90px 24px;text-align:center;background:linear-gradient(135deg,#0F1D30,#1A2E4A);color:#fff}
-.final-cta h2{font-size:36px;font-weight:800;letter-spacing:-1px;margin-bottom:16px;line-height:1.35}
+.final-cta h2{font-size:clamp(20px,4vw,36px);font-weight:800;letter-spacing:-1px;margin-bottom:16px;line-height:1.35}
 .final-cta p{font-size:16px;color:rgba(255,255,255,0.7);margin-bottom:36px;line-height:1.7}
 
 footer{background:var(--ink);color:rgba(255,255,255,0.5);padding:50px 24px 120px;text-align:center;font-size:12px;line-height:1.8}
 footer a{color:rgba(255,255,255,0.5)}
 
-@media(max-width:900px){
-  .hero h1{font-size:30px}
-  .problem-compare,.wl-grid,.price-grid{grid-template-columns:1fr}
-  .ind-content.active{grid-template-columns:1fr}
-  .process-steps{grid-template-columns:repeat(2,1fr)}
-  .process-steps::before{display:none}
-  .roi-result{grid-template-columns:1fr}
-  .hero-stats{gap:24px}
+/* ── 반응형 유틸 그리드 클래스 ── */
+.resp-grid-2{display:grid;grid-template-columns:repeat(2,1fr)}
+.resp-grid-3{display:grid;grid-template-columns:repeat(3,1fr)}
+.resp-grid-4{display:grid;grid-template-columns:repeat(4,1fr)}
+
+/* =====================================================
+   반응형 — 노트북(1200px↓) / 태블릿(900px↓) / 모바일(600px↓)
+   ===================================================== */
+
+/* ── 노트북/중간 화면 (1200px 이하) ── */
+@media(max-width:1200px){
+  .wrap{padding:0 20px}
+  .ind-body{grid-template-columns:1fr .9fr;gap:20px}
+  .value-grid{grid-template-columns:repeat(2,1fr)}
+  .wl-grid{gap:36px}
+  .ind-tabs-wrap{gap:6px}
+  .ind-tab{padding:9px 18px;font-size:13px}
 }
+
+/* ── 태블릿 (900px 이하) ── */
+@media(max-width:900px){
+  /* 네비 */
+  .hamburger{display:flex}
+  .nav-links{display:none}
+
+  /* 히어로 */
+  .hero{padding:60px 20px 48px}
+  .hero-sub{font-size:14px}
+  .hero-stats{gap:20px;flex-wrap:wrap}
+  .hero-stat-num{font-size:26px}
+
+  /* 공통 섹션 */
+  .section-head{margin-bottom:32px}
+  .section-head p{font-size:14px}
+
+  /* 유틸 그리드 */
+  .resp-grid-4{grid-template-columns:repeat(2,1fr)}
+  .resp-grid-3{grid-template-columns:repeat(2,1fr)}
+
+  /* Before/After 비교 */
+  .problem-compare{grid-template-columns:1fr;gap:16px}
+  .problem-card{padding:24px 20px}
+
+  /* 업종별 탭 */
+  .industry-section{padding:64px 16px}
+  .ai-compare-banner{
+    grid-template-columns:1fr;
+    gap:0;
+    padding:20px;
+  }
+  .compare-vs{display:none}
+  .ai-compare-banner .col{padding:14px 0;border-bottom:1px solid rgba(255,255,255,.1)}
+  .ai-compare-banner .col:last-child{border-bottom:none;padding-bottom:0}
+  .ai-compare-banner .col-title{font-size:14px}
+  .ind-tabs-wrap{gap:6px;margin-bottom:28px}
+  .ind-tab{padding:8px 14px;font-size:12px}
+  .ind-body{
+    grid-template-columns:1fr;
+    gap:16px;
+    max-width:100%;
+  }
+  /* 스토리 카드 */
+  .ind-story-header{padding:18px 20px;gap:12px}
+  .ind-story-icon{width:44px;height:44px;font-size:22px}
+  .ind-story-header h3{font-size:17px}
+  .ind-story-body{padding:18px 20px}
+  .ind-story-quote{font-size:14px}
+  .ind-benefits li{font-size:13px;padding:8px 0}
+  /* 사이드 패널 */
+  .ind-side{gap:14px}
+  /* AI 플로우 */
+  .ai-flow{padding:16px 18px}
+  .flow-text strong{font-size:12.5px}
+  /* ROI 카드 */
+  .ind-roi-card{padding:20px}
+  .roi-num-val{font-size:26px;min-width:68px}
+  .roi-num-info .lbl{font-size:12px}
+  /* 미리보기 카드 */
+  .preview-mock{min-height:160px}
+  /* 레이더 */
+  .radar-module{padding:16px}
+  .radar-bar-label{min-width:60px;font-size:10.5px}
+
+  /* 화이트라벨 */
+  .whitelabel{padding:60px 20px}
+  .wl-grid{grid-template-columns:1fr;gap:28px}
+
+  /* 비교표 — 가로 스크롤 허용 */
+  .compare-section{padding:60px 16px}
+  .compare-table{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .compare-table table{min-width:560px}
+  .compare-table th,.compare-table td{padding:12px 14px;font-size:13px}
+
+  /* 가격 */
+  .pricing-section{padding:60px 20px}
+  .price-grid{grid-template-columns:1fr;gap:16px}
+  .price-card{padding:32px 28px}
+  .price-row{grid-template-columns:1fr 1fr;gap:16px}
+  .price-item-num{font-size:26px}
+
+  /* 4 Core Values */
+  .value-section{padding:60px 20px}
+  .value-grid{grid-template-columns:repeat(2,1fr);gap:14px}
+  .value-card{padding:22px 18px}
+
+  /* 시뮬레이션 */
+  .revenue-sim{padding:60px 20px}
+  .sim-grid{grid-template-columns:1fr;gap:14px;max-width:480px}
+
+  /* 도입 프로세스 */
+  .process-section{padding:60px 20px}
+  .process-steps{grid-template-columns:repeat(2,1fr);gap:16px}
+  .process-steps::before{display:none}
+
+  /* ROI 계산기 */
+  .roi-section{padding:60px 20px}
+  .roi-box{padding:28px 24px}
+  .roi-result{grid-template-columns:1fr;gap:12px}
+  .roi-result-item .value{font-size:20px}
+
+  /* FAQ */
+  .faq{padding:60px 20px}
+  .faq-q{font-size:15px;padding:18px 0}
+
+  /* 최종 CTA */
+  .final-cta{padding:64px 20px}
+  .final-cta p{font-size:14px}
+
+  /* Sticky / Lightbox */
+  .pilot-sticky{padding:10px 16px;padding-bottom:calc(10px + env(safe-area-inset-bottom));gap:10px;flex-wrap:wrap;justify-content:center}
+  .ind-lb-inner{padding:24px 20px}
+  .ind-lb-title{font-size:16px}
+  .ind-lb-grid{grid-template-columns:1fr}
+}
+
+/* ── 모바일 (600px 이하) ── */
 @media(max-width:600px){
-  .process-steps{grid-template-columns:1fr}
-  .price-row{grid-template-columns:1fr}
+  .wrap{padding:0 16px}
+
+  /* 히어로 */
+  .hero{padding:48px 16px 40px}
+  .hero-sub{font-size:13px;line-height:1.7}
+  .hero-badge{font-size:12px;padding:6px 12px}
+  .hero-cta{flex-direction:column;align-items:stretch;gap:10px}
+  .hero-cta .btn{justify-content:center}
+  .hero-stats{gap:16px}
+  .hero-stat-num{font-size:22px}
+  .hero-stat-label{font-size:11px}
+
+  /* 공통 섹션 */
+  .section-head{margin-bottom:24px}
+  .industry-section{padding:48px 12px}
+
+  /* AI 비교 배너 */
+  .ai-compare-banner{padding:16px;margin-bottom:20px}
+  .ai-compare-banner .col-item{font-size:12px}
+
+  /* 탭 — 2열 그리드로 */
+  .ind-tabs-wrap{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:6px;
+    margin-bottom:20px;
+    padding:0;
+  }
+  .ind-tab{
+    padding:9px 8px;
+    font-size:11.5px;
+    border-radius:10px;
+    text-align:center;
+    white-space:normal;
+    line-height:1.3;
+  }
+
+  /* 스토리 카드 */
+  .ind-story-header{padding:14px 16px;gap:10px}
+  .ind-story-icon{width:38px;height:38px;font-size:18px;border-radius:10px}
+  .ind-story-header h3{font-size:15px}
+  .ind-story-header .story-sub{font-size:11.5px}
+  .ind-story-body{padding:14px 16px}
+  .ind-story-quote{font-size:13px;padding-left:12px}
+  .ind-benefits li{font-size:12.5px;gap:8px}
+
+  /* AI 플로우 */
+  .ai-flow{padding:14px 16px;border-radius:12px}
+  .ai-flow-title{font-size:10.5px;margin-bottom:10px}
+  .flow-num{width:22px;height:22px;font-size:10px}
+  .flow-text strong{font-size:12px}
+  .flow-text span{font-size:11px}
+  .flow-arrow{font-size:12px;margin:2px 0 2px 11px}
+
+  /* ROI 카드 */
+  .ind-roi-card{padding:16px}
+  .roi-nums{gap:10px}
+  .roi-num-row{gap:10px;padding:10px 0}
+  .roi-num-val{font-size:22px;min-width:58px;letter-spacing:-0.5px}
+  .roi-num-info .lbl{font-size:11.5px}
+  .roi-num-info .sub{font-size:10.5px}
+
+  /* 미리보기 카드 */
+  .preview-mock-hdr span{font-size:11px}
+  .preview-mock-body{padding:12px}
+
+  /* 레이더 바 */
+  .radar-module{padding:14px}
+  .radar-bar-label{min-width:52px;font-size:10px}
+
+  /* 결과지 슬라이더 */
+  .result-slider-hdr{padding:12px 14px}
+  .result-slider-hdr h4{font-size:13px}
+  .rs-slide{padding:14px 14px}
+  .rs-bc-name{font-size:14px}
+
+  /* 유틸 그리드 모바일 */
+  .resp-grid-4{grid-template-columns:1fr}
+  .resp-grid-3{grid-template-columns:1fr}
+  .resp-grid-2{grid-template-columns:1fr}
+
+  /* 화이트라벨 */
+  .whitelabel{padding:48px 16px}
+  .wl-text p{font-size:13px}
+  .wl-feat-text strong{font-size:13px}
+  .wl-feat-text span{font-size:12px}
+
+  /* 비교표 */
+  .compare-section{padding:48px 12px}
+  .compare-table th,.compare-table td{padding:10px 12px;font-size:12px}
+
+  /* 가격 */
+  .pricing-section{padding:48px 16px}
+  .price-card{padding:28px 22px}
+  .price-row{grid-template-columns:1fr;gap:12px}
+  .price-item-num{font-size:24px}
+  .demo-card{padding:28px 22px}
+  .demo-card h3{font-size:18px}
+
+  /* Values */
+  .value-section{padding:48px 16px}
+  .value-grid{grid-template-columns:repeat(2,1fr);gap:12px}
+  .value-card{padding:18px 14px}
+  .value-card h4{font-size:14px}
+  .value-card p{font-size:12px}
+
+  /* 시뮬레이션 */
+  .revenue-sim{padding:48px 16px}
+  .sim-grid{max-width:100%}
+  .sim-customers{font-size:32px}
+  .sim-revenue{font-size:24px}
+
+  /* 프로세스 */
+  .process-section{padding:48px 16px}
+  .process-steps{grid-template-columns:1fr;gap:12px}
+  .process-step h4{font-size:14px}
+  .process-step p{font-size:12.5px}
+
+  /* ROI 계산기 */
+  .roi-section{padding:48px 16px}
+  .roi-box{padding:22px 18px}
+  .roi-box h3{font-size:18px}
+  .roi-slider-wrap label{font-size:14px}
+  .roi-payback{font-size:13px}
+
+  /* FAQ */
+  .faq{padding:48px 16px}
+  .faq-q{font-size:14px;padding:16px 0}
+  .faq-a{font-size:13px}
+
+  /* 최종 CTA */
+  .final-cta{padding:48px 16px}
+  .final-cta p{font-size:13px}
+
+  /* 푸터 */
+  footer{padding:40px 16px 120px;font-size:11.5px}
+
+  /* Sticky CTA */
+  .pilot-sticky{padding:8px 12px;padding-bottom:calc(8px + env(safe-area-inset-bottom));gap:6px}
+  .pilot-sticky-badge{font-size:11px;padding:3px 10px}
+  .btn-kakao-pilot{font-size:13px;padding:10px 16px}
+  .pilot-sticky-text{display:none!important}
+
+  /* Lightbox */
+  .ind-lb-inner{padding:20px 16px;border-radius:18px}
+  .ind-lb-title{font-size:15px}
+  .ind-lb-sub{font-size:12px}
+
+  /* 장바구니 토스트 */
+  .cart-toast{font-size:13px;padding:12px 18px;white-space:normal;text-align:center;width:calc(100% - 48px);max-width:320px}
+
+  /* Exit 모달 */
+  .exit-modal{padding:32px 24px}
+  .exit-modal h3{font-size:19px}
+  .exit-modal p{font-size:13px}
+}
+
+/* ── 초소형 모바일 (380px 이하) ── */
+@media(max-width:380px){
+  .ind-tab{font-size:10.5px;padding:7px 6px}
+  .ind-tabs-wrap{gap:4px}
+  .roi-num-val{font-size:20px;min-width:50px}
+  .value-grid{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -502,7 +790,7 @@ footer a{color:rgba(255,255,255,0.5)}
       <h2>이 장면이 익숙하지 않으신가요</h2>
       <p>슬림마인드는 이 4가지 문제를 구조적으로 해결합니다.</p>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:20px">
+    <div class="resp-grid-2" style="gap:20px">
       <div style="background:var(--vis-l);border-left:4px solid var(--vis);border-radius:14px;padding:24px">
         <div style="font-size:15px;font-weight:700;color:var(--vis-d);margin-bottom:8px">시술 후 요요 → "병원 탓"</div>
         <div style="font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:12px">원인이 체형·체질에 있다는 걸 처음부터 설명했어야 하는데 그러지 못했습니다. 데이터 없이 말로만 설명하니 고객이 납득하지 못합니다.</div>
@@ -532,7 +820,7 @@ footer a{color:rgba(255,255,255,0.5)}
   <div class="wrap">
     <div style="font-size:clamp(18px,2.5vw,26px);font-weight:800;color:#fff;margin-bottom:8px">실제 상담 시나리오 — 에스테틱·피부과</div>
     <div style="font-size:14px;color:rgba(255,255,255,0.5);margin-bottom:32px">슬림마인드 도입 전과 후, 상담실 풍경이 이렇게 달라집니다</div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
+    <div class="resp-grid-4" style="gap:16px">
       <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:20px">
         <div style="font-size:10px;font-weight:700;color:var(--circ);letter-spacing:1px;margin-bottom:10px">STEP 01</div>
         <div style="font-size:13px;color:rgba(255,255,255,0.8);line-height:1.65">고객 대기 중 태블릿으로 7분 진단 완료</div>
@@ -565,7 +853,7 @@ footer a{color:rgba(255,255,255,0.5)}
       <h2>슬림마인드가 B2B에서<br>절대 관리해줄 수 없는 것을 줍니다</h2>
       <p>운동·식단·회복·기질 전 영역의 전문 지식을 자동화 시스템으로 고객에게 전달합니다.</p>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px">
+    <div class="resp-grid-3" style="gap:20px">
       <div class="value-card">
         <div class="value-num">BENEFIT 01</div>
         <div class="value-icon">🤖</div>
@@ -701,7 +989,7 @@ footer a{color:rgba(255,255,255,0.5)}
                 <span style="background:#fff;border:1px solid #c8e6c9;border-radius:20px;font-size:12px;font-weight:700;padding:5px 12px;color:#2e7d32">🌿 아답토젠 복합 (스트레스 처방)</span>
                 <span style="background:#fff;border:1px solid #c8e6c9;border-radius:20px;font-size:12px;font-weight:700;padding:5px 12px;color:#2e7d32">🫚 오메가3 (항염 지원)</span>
               </div>
-              <button onclick="addToCart()" style="background:#2e7d32;color:#fff;border:none;padding:11px 22px;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:7px;transition:all .2s" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
+              <button onclick="addToCart()" style="background:#2e7d32;color:#fff;border:none;padding:11px 22px;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:7px;transition:all .2s;width:100%;justify-content:center">
                 🛒 3개월 맞춤 패키지 장바구니 담기
               </button>
             </div>
