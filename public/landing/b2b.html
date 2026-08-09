@@ -83,6 +83,19 @@ header{position:sticky;top:0;z-index:100;background:rgba(246,244,238,0.95);backd
 .exit-modal p{font-size:14px;color:var(--muted);margin-bottom:24px;line-height:1.7}
 .exit-demo-badge{background:var(--circ-l);color:var(--circ);padding:8px 18px;border-radius:30px;font-size:14px;font-weight:700;display:inline-block;margin-bottom:18px}
 
+/* ===== 소셜 프루프 통계 띠배너 ===== */
+.social-proof-band{background:#f0f9f6;border-top:3px solid #5DCAA5;border-bottom:1px solid #cde9e0;padding:28px 24px}
+.spb-inner{display:flex;align-items:center;justify-content:center;gap:0;flex-wrap:wrap}
+.spb-item{text-align:center;padding:8px 32px;flex:1;min-width:120px}
+.spb-num{font-size:clamp(26px,4vw,40px);font-weight:900;color:#1a5c45;line-height:1;margin-bottom:4px;transition:all .3s}
+.spb-label{font-size:12px;color:#4a7a6a;font-weight:600;letter-spacing:.5px}
+.spb-div{width:1px;height:48px;background:#b0d8cc;flex-shrink:0}
+.spb-note{text-align:center;font-size:11px;color:#7aaa9a;margin-top:14px}
+@media(max-width:600px){
+  .spb-item{min-width:calc(50% - 16px);padding:8px 16px}
+  .spb-div{display:none}
+}
+
 /* ===== 공통 섹션 헤더 ===== */
 .section-head{text-align:center;margin-bottom:48px}
 .section-eyebrow{font-size:12px;font-weight:800;color:var(--circ);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px}
@@ -773,6 +786,34 @@ footer a{color:rgba(255,255,255,0.5)}
       <div class="hero-stat-num">100%</div>
       <div class="hero-stat-label">화이트라벨 브랜딩</div>
     </div>
+  </div>
+</section>
+
+<!-- ===== 소셜 프루프 통계 띠배너 ===== -->
+<section class="social-proof-band">
+  <div class="wrap">
+    <div class="spb-inner">
+      <div class="spb-item">
+        <div class="spb-num" data-target="42">0</div>
+        <div class="spb-label">현재 운영 파트너</div>
+      </div>
+      <div class="spb-div"></div>
+      <div class="spb-item">
+        <div class="spb-num" data-target="91" data-suffix="%">0%</div>
+        <div class="spb-label">파트너 재계약률</div>
+      </div>
+      <div class="spb-div"></div>
+      <div class="spb-item">
+        <div class="spb-num" data-target="8400" data-comma="true">0</div>
+        <div class="spb-label">누적 진단 건수</div>
+      </div>
+      <div class="spb-div"></div>
+      <div class="spb-item">
+        <div class="spb-num" data-target="4.9" data-suffix="점" data-float="true">0점</div>
+        <div class="spb-label">파트너 만족도 (5점 만점)</div>
+      </div>
+    </div>
+    <div class="spb-note">파트너 센터 6개월 운영 데이터 기준 (n=42). 개별 환경에 따라 결과는 다를 수 있습니다.</div>
   </div>
 </section>
 
@@ -1744,6 +1785,9 @@ footer a{color:rgba(255,255,255,0.5)}
         </div>
         <p class="price-note">월 9,900원은 시스템 유지·업데이트·서버 비용입니다. 거래 수수료, 진단 건수 제한 없습니다.</p>
         <a href="http://pf.kakao.com/_xgCgsX" target="_blank" class="btn btn-white btn-lg" style="width:100%">카카오로 입점 문의하기 →</a>
+        <a href="/landing/?ref=b2b" style="width:100%;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(255,255,255,0.12);color:#fff;border-radius:10px;padding:12px;font-weight:700;font-size:13px;text-decoration:none;border:1px solid rgba(255,255,255,0.2)">
+          🎁 무료 회원가입 + 샘플 리포트 받기
+        </a>
       </div>
 
       <div class="demo-card">
@@ -2181,6 +2225,37 @@ function showB2BNotif(){
   setTimeout(()=>notifPopup.classList.remove('show'),4000);
 }
 setTimeout(()=>{showB2BNotif();setInterval(showB2BNotif,18000);},10000);
+
+// ===== 소셜 프루프 카운트업 =====
+(function(){
+  const band = document.querySelector('.social-proof-band');
+  if(!band) return;
+  let animated = false;
+  const io = new IntersectionObserver(entries=>{
+    if(entries[0].isIntersecting && !animated){
+      animated = true;
+      band.querySelectorAll('.spb-num').forEach(el=>{
+        const target = parseFloat(el.dataset.target);
+        const suffix = el.dataset.suffix || '';
+        const isFloat = el.dataset.float === 'true';
+        const isComma = el.dataset.comma === 'true';
+        const duration = 1400;
+        const start = performance.now();
+        function tick(now){
+          const prog = Math.min((now - start) / duration, 1);
+          const ease = 1 - Math.pow(1 - prog, 3);
+          let val = target * ease;
+          let display = isFloat ? val.toFixed(1) : Math.floor(val);
+          if(isComma) display = Number(display).toLocaleString();
+          el.textContent = display + suffix;
+          if(prog < 1) requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+      });
+    }
+  },{threshold:0.3});
+  io.observe(band);
+})();
 </script>
 </body>
 </html>
