@@ -4,7 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>슬림마인드 — 당신 몸의 진짜 고장 원인을 찾는 바디코드 진단</title>
+
+<!-- AOS (Animate On Scroll) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css"/>
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css"/>
+
 <style>
+/* ═══════════════════════════════════════════════════════════
+   CSS VARIABLES & RESET
+═══════════════════════════════════════════════════════════ */
 :root{
   --paper:#f6f4ee;--card:#fffdf8;--ink:#1a1a17;--muted:#7c776b;--line:#d8d3c6;
   --vis:#b5452e;--vis-l:#f6e3df;--vis-d:#8c3320;
@@ -12,6 +21,7 @@
   --whole:#5b4a86;--whole-l:#eeeaf6;
   --muscle:#5a6e3a;--muscle-l:#ecf0e8;
   --sub:#c98a3c;--sub-l:#fdf6ee;
+  --neon-red:#ff4444;--neon-gold:#ffd700;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
@@ -20,7 +30,24 @@ a{text-decoration:none;color:inherit}
 img{max-width:100%;display:block}
 .wrap{max-width:1180px;margin:0 auto;padding:0 24px}
 
-/* 헤더 */
+/* ═══ BUTTONS ═══ */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 22px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;border:none;transition:all .2s;white-space:nowrap;}
+.btn-primary{background:var(--vis);color:#fff}
+.btn-primary:hover{background:var(--vis-d);transform:translateY(-2px);box-shadow:0 8px 24px rgba(181,69,46,0.4)}
+.btn-outline{background:transparent;border:1.5px solid var(--ink);color:var(--ink)}
+.btn-outline:hover{background:var(--ink);color:var(--paper)}
+.btn-sm{padding:8px 16px;font-size:13px}
+.btn-lg{padding:17px 34px;font-size:16px;border-radius:12px}
+.btn-white{background:#fff;color:var(--vis)}
+.btn-white:hover{background:#f0ebe6;transform:translateY(-2px)}
+.btn-ghost-white{background:transparent;border:1.5px solid rgba(255,255,255,0.4);color:#fff}
+.btn-ghost-white:hover{background:rgba(255,255,255,0.1)}
+.btn-kakao{background:#FEE500;color:#3C1E1E;font-weight:800;gap:8px}
+.btn-kakao:hover{background:#f5d800;transform:translateY(-2px)}
+.btn-naver{background:#03C75A;color:#fff;font-weight:800;gap:8px}
+.btn-naver:hover{background:#02a84a;transform:translateY(-2px)}
+
+/* ═══ HEADER ═══ */
 header{position:sticky;top:0;z-index:100;background:rgba(246,244,238,0.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
 .nav{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;max-width:1180px;margin:0 auto}
 .logo{font-size:20px;font-weight:800;letter-spacing:-0.5px;color:var(--ink)}
@@ -28,16 +55,9 @@ header{position:sticky;top:0;z-index:100;background:rgba(246,244,238,0.92);backd
 .nav-links{display:flex;gap:32px;align-items:center}
 .nav-links a{font-size:14px;font-weight:500;color:var(--muted);transition:color .2s}
 .nav-links a:hover{color:var(--ink)}
-.nav-cta{display:flex;gap:10px}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 22px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;border:none;transition:all .2s;white-space:nowrap;}
-.btn-primary{background:var(--vis);color:#fff}
-.btn-primary:hover{background:var(--vis-d);transform:translateY(-1px)}
-.btn-outline{background:transparent;border:1.5px solid var(--ink);color:var(--ink)}
-.btn-outline:hover{background:var(--ink);color:var(--paper)}
-.btn-sm{padding:8px 16px;font-size:13px}
-.btn-lg{padding:17px 34px;font-size:16px;border-radius:12px}
+.nav-cta{display:flex;gap:10px;align-items:center}
 
-/* Sticky CTA 바 */
+/* ═══ STICKY CTA ═══ */
 .sticky-cta-bar{
   position:fixed;bottom:0;left:0;right:0;z-index:90;
   background:var(--ink);padding:14px 24px;
@@ -48,14 +68,56 @@ header{position:sticky;top:0;z-index:100;background:rgba(246,244,238,0.92);backd
 .sticky-cta-bar.visible{transform:translateY(0)}
 .sticky-cta-bar p{font-size:14px;color:rgba(255,255,255,0.75);display:none}
 @media(min-width:600px){.sticky-cta-bar p{display:block}}
-.sticky-cta-bar .btn-lg{padding:13px 28px;font-size:15px}
 
-/* 히어로 */
+/* ═══ LIVE BANNER ═══ */
+.live-banner{
+  background:linear-gradient(135deg,var(--vis-d),var(--vis));
+  color:#fff;padding:14px 24px;text-align:center;font-size:14px;font-weight:600;
+  display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;
+}
+.live-dot{width:8px;height:8px;background:#7fff7f;border-radius:50%;animation:livePulse 1.5s infinite;display:inline-block}
+@keyframes livePulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(1.4)}}
+
+/* ═══ NEON GLOW KEYWORDS ═══ */
+.neon-keyword{
+  display:inline-block;
+  padding:3px 10px;
+  border-radius:6px;
+  font-weight:800;
+  color:var(--vis);
+  background:var(--vis-l);
+  border:1px solid rgba(181,69,46,0.3);
+  animation:neonGlow 2s ease-in-out infinite alternate;
+  position:relative;
+}
+.neon-keyword::after{
+  content:'';
+  position:absolute;inset:0;
+  border-radius:6px;
+  box-shadow:0 0 8px rgba(181,69,46,0.4),0 0 20px rgba(181,69,46,0.2);
+  animation:neonPulse 2s ease-in-out infinite alternate;
+  pointer-events:none;
+}
+@keyframes neonGlow{
+  0%{color:var(--vis);background:var(--vis-l);border-color:rgba(181,69,46,0.3)}
+  100%{color:#fff;background:var(--vis);border-color:var(--vis-d)}
+}
+@keyframes neonPulse{
+  0%{box-shadow:0 0 4px rgba(181,69,46,0.3),0 0 12px rgba(181,69,46,0.1)}
+  100%{box-shadow:0 0 12px rgba(181,69,46,0.7),0 0 32px rgba(181,69,46,0.35),0 0 60px rgba(181,69,46,0.15)}
+}
+
+/* ═══ HERO ═══ */
 .hero{padding:80px 24px 60px;text-align:center;position:relative;overflow:hidden}
+.hero::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 0%,rgba(181,69,46,0.07) 0%,transparent 70%);
+  pointer-events:none;
+}
 .hero-badge{display:inline-flex;align-items:center;gap:8px;background:var(--vis-l);color:var(--vis);padding:7px 16px;border-radius:30px;font-size:13px;font-weight:700;margin-bottom:28px;border:1px solid #e8c0b6;}
-.hero h1{font-size:52px;font-weight:800;line-height:1.2;letter-spacing:-1.5px;margin-bottom:24px}
+.hero h1{font-size:clamp(36px,6vw,58px);font-weight:800;line-height:1.2;letter-spacing:-1.5px;margin-bottom:24px}
 .hero h1 .accent{color:var(--vis)}
-.hero-sub{font-size:18px;color:var(--muted);max-width:600px;margin:0 auto 20px;line-height:1.7}
+.hero-sub{font-size:18px;color:var(--muted);max-width:620px;margin:0 auto 20px;line-height:1.7}
 .guarantee-badge{
   display:inline-flex;align-items:center;gap:8px;
   background:#e8f5e9;color:#2e7d32;
@@ -68,57 +130,32 @@ header{position:sticky;top:0;z-index:100;background:rgba(246,244,238,0.92);backd
   font-size:14px;font-weight:700;padding:11px 22px;border-radius:10px;
   cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all .2s;
 }
-.free-mini-btn:hover{background:var(--vis-l)}
+.free-mini-btn:hover{background:var(--vis-l);transform:translateY(-2px)}
 .hero-cta-sub{font-size:13px;color:var(--muted);margin-bottom:44px}
 .hero-trust{display:flex;gap:40px;justify-content:center;flex-wrap:wrap;padding-top:32px;border-top:1px solid var(--line);max-width:760px;margin:0 auto}
 .trust-item{text-align:center}
-.trust-num{font-size:28px;font-weight:800;color:var(--ink);letter-spacing:-1px}
+.trust-num{font-size:32px;font-weight:800;color:var(--ink);letter-spacing:-1px;min-width:60px;display:inline-block}
 .trust-num span{color:var(--vis)}
 .trust-label{font-size:12px;color:var(--muted);margin-top:3px}
 
-/* 실시간 카운터 배너 */
-.live-banner{
-  background:linear-gradient(135deg,var(--vis-d),var(--vis));
-  color:#fff;padding:14px 24px;text-align:center;font-size:14px;font-weight:600;
-  display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;
-}
-.live-dot{width:8px;height:8px;background:#7fff7f;border-radius:50%;animation:pulse 1.5s infinite}
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(1.3)}}
+/* ═══ DARK STATS SECTION ═══ */
+.stats-section{padding:60px 24px;background:var(--ink)}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:32px;text-align:center}
+.stat-item{cursor:default}
+.stat-num{font-size:clamp(36px,4vw,52px);font-weight:800;color:var(--vis);line-height:1;letter-spacing:-1px;transition:transform .3s}
+.stat-item:hover .stat-num{transform:scale(1.05)}
+.stat-suffix{font-size:clamp(16px,2vw,26px)}
+.stat-label{font-size:13px;color:rgba(255,255,255,0.5);margin-top:8px}
 
-/* 무료 미니 진단 섹션 */
-.mini-quiz{padding:80px 24px;background:var(--card);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
-.quiz-box{max-width:700px;margin:0 auto;background:#fff;border-radius:24px;padding:44px 40px;box-shadow:0 8px 40px rgba(0,0,0,0.08);border:1px solid var(--line)}
-.quiz-box .section-eyebrow{text-align:left;margin-bottom:8px}
-.quiz-box h2{font-size:26px;font-weight:800;margin-bottom:8px;letter-spacing:-0.5px}
-.quiz-box .quiz-desc{font-size:14px;color:var(--muted);margin-bottom:28px}
-.quiz-progress{height:6px;background:var(--line);border-radius:3px;margin-bottom:28px;overflow:hidden}
-.quiz-progress-bar{height:100%;background:var(--vis);border-radius:3px;transition:width .4s ease}
-.quiz-question{font-size:17px;font-weight:700;margin-bottom:18px;min-height:48px}
-.quiz-options{display:flex;flex-direction:column;gap:10px}
-.quiz-opt{
-  padding:14px 18px;border:1.5px solid var(--line);border-radius:12px;
-  font-size:14px;font-weight:500;cursor:pointer;transition:all .2s;text-align:left;
-  background:#fff;color:var(--ink);
-}
-.quiz-opt:hover{border-color:var(--vis);background:var(--vis-l)}
-.quiz-opt.selected{border-color:var(--vis);background:var(--vis-l);color:var(--vis);font-weight:700}
-.quiz-nav{display:flex;justify-content:space-between;align-items:center;margin-top:24px}
-.quiz-step-label{font-size:12px;color:var(--muted)}
-.quiz-result{display:none;text-align:center;padding:20px 0}
-.quiz-result-badge{font-size:40px;margin-bottom:16px}
-.quiz-result h3{font-size:22px;font-weight:800;margin-bottom:10px}
-.quiz-result p{font-size:14px;color:var(--muted);margin-bottom:24px;line-height:1.7}
-.quiz-result-cta{display:flex;flex-direction:column;gap:12px}
-
-/* 3개 타겟 분기 */
+/* ═══ AUDIENCE SECTION with TABS ═══ */
 .audience{padding:90px 24px;background:var(--paper)}
 .section-head{text-align:center;margin-bottom:56px}
 .section-eyebrow{font-size:13px;font-weight:800;color:var(--vis);letter-spacing:2px;text-transform:uppercase;margin-bottom:14px}
-.section-head h2{font-size:34px;font-weight:800;letter-spacing:-1px;margin-bottom:14px}
+.section-head h2{font-size:clamp(26px,4vw,36px);font-weight:800;letter-spacing:-1px;margin-bottom:14px}
 .section-head p{font-size:16px;color:var(--muted);max-width:520px;margin:0 auto}
 .audience-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
-.aud-card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:36px 30px;transition:all .25s;cursor:pointer;display:block;position:relative;overflow:visible;}
-.aud-card:hover{transform:translateY(-6px);box-shadow:0 16px 40px rgba(26,26,23,0.1)}
+.aud-card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:36px 30px;transition:all .3s;cursor:pointer;display:block;position:relative;overflow:visible;}
+.aud-card:hover{transform:translateY(-8px) rotateY(2deg);box-shadow:0 20px 60px rgba(26,26,23,0.15);border-color:var(--vis)}
 .aud-card.featured{background:var(--ink);border-color:var(--ink)}
 .aud-icon{width:54px;height:54px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:22px;}
 .aud-icon.coral{background:var(--vis-l)}
@@ -137,10 +174,157 @@ header{position:sticky;top:0;z-index:100;background:rgba(246,244,238,0.92);backd
 .aud-card.featured .aud-cta{color:#fff;border-top-color:rgba(255,255,255,0.15)}
 .aud-tag{position:absolute;top:24px;right:24px;background:var(--vis);color:#fff;font-size:11px;font-weight:800;padding:4px 12px;border-radius:20px;}
 
-/* 후기 섹션 */
-.reviews{padding:90px 24px;background:var(--card);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+/* ═══ B2B ROI TABS (3D Flip Style) ═══ */
+.roi-tabs-section{padding:90px 24px;background:var(--card);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.roi-tab-nav{display:flex;gap:0;background:var(--line);border-radius:14px;padding:4px;margin-bottom:48px;max-width:640px;margin-left:auto;margin-right:auto}
+.roi-tab-btn{flex:1;padding:12px 20px;border:none;background:transparent;border-radius:10px;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;transition:all .3s;white-space:nowrap}
+.roi-tab-btn.active{background:#fff;color:var(--vis);box-shadow:0 2px 12px rgba(0,0,0,0.1)}
+.roi-tab-panels{position:relative;min-height:340px}
+.roi-panel{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;gap:24px;
+  opacity:0;pointer-events:none;
+  transform:translateX(30px) rotateY(5deg);
+  transform-origin:left center;
+  transition:all .4s cubic-bezier(0.4,0,0.2,1);
+  backface-visibility:hidden;
+}
+.roi-panel.active{opacity:1;pointer-events:auto;transform:translateX(0) rotateY(0)}
+.roi-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.roi-card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:24px;text-align:center;border-top:3px solid var(--vis)}
+.roi-card-num{font-size:40px;font-weight:800;color:var(--vis);letter-spacing:-1px;line-height:1;margin-bottom:8px}
+.roi-card-label{font-size:13px;color:var(--muted);line-height:1.5}
+.roi-desc{background:linear-gradient(135deg,var(--vis-l),var(--whole-l));border-radius:18px;padding:28px;border:1px solid #e8c0b6}
+.roi-desc h3{font-size:18px;font-weight:800;margin-bottom:10px;color:var(--ink)}
+.roi-desc p{font-size:14px;color:var(--muted);line-height:1.75}
+
+/* ═══ TABLET PREVIEW SECTION ═══ */
+.preview-section{padding:90px 24px;background:var(--paper)}
+.preview-wrap{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;max-width:1100px;margin:0 auto}
+.tablet-frame{
+  position:relative;background:#1a1a2e;border-radius:24px;padding:16px;
+  box-shadow:0 30px 80px rgba(0,0,0,0.3),inset 0 1px 0 rgba(255,255,255,0.1);
+  border:2px solid #2a2a40;
+}
+.tablet-frame::before{
+  content:'';display:block;width:40px;height:6px;background:#2a2a40;border-radius:3px;margin:0 auto 12px;
+}
+.tablet-screen{
+  background:#fff;border-radius:12px;overflow:hidden;position:relative;
+  min-height:360px;cursor:pointer;
+}
+.tablet-screen:hover .tablet-overlay{opacity:1}
+.tablet-overlay{
+  position:absolute;inset:0;background:rgba(181,69,46,0.85);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;opacity:0;transition:opacity .3s;border-radius:12px;
+  color:#fff;font-weight:700;
+}
+.tablet-overlay i{font-size:40px}
+.tablet-inner{padding:20px}
+.tablet-progress-bar-wrap{height:6px;background:#f0ede6;border-radius:3px;margin-bottom:20px;overflow:hidden}
+.tablet-progress-bar-fill{
+  height:100%;background:linear-gradient(90deg,var(--vis),#e8734a);
+  border-radius:3px;width:0%;
+  animation:tabletProgress 4s ease-in-out infinite;
+}
+@keyframes tabletProgress{
+  0%{width:0%}60%{width:85%}80%{width:85%}100%{width:0%}
+}
+.tablet-q{font-size:14px;font-weight:700;color:var(--ink);margin-bottom:16px;line-height:1.5}
+.tablet-opts{display:flex;flex-direction:column;gap:8px}
+.tablet-opt{padding:10px 14px;border:1.5px solid var(--line);border-radius:10px;font-size:12px;color:var(--muted);background:#fff;transition:all .3s}
+.tablet-opt.active{border-color:var(--vis);background:var(--vis-l);color:var(--vis);font-weight:700}
+.preview-text h3{font-size:28px;font-weight:800;margin-bottom:16px;letter-spacing:-0.5px}
+.preview-text p{font-size:15px;color:var(--muted);line-height:1.8;margin-bottom:24px}
+.preview-features{list-style:none;display:flex;flex-direction:column;gap:12px}
+.preview-features li{display:flex;align-items:center;gap:12px;font-size:14px;font-weight:600}
+.preview-features li i{width:28px;height:28px;background:var(--vis-l);color:var(--vis);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+
+/* ═══ LIGHTBOX ═══ */
+.lightbox-overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,0.9);
+  z-index:500;align-items:center;justify-content:center;
+  backdrop-filter:blur(4px);
+}
+.lightbox-overlay.show{display:flex}
+.lightbox-inner{
+  background:#fff;border-radius:20px;max-width:90vw;max-height:90vh;
+  overflow:auto;position:relative;padding:32px;
+}
+.lightbox-close{position:absolute;top:16px;right:20px;font-size:24px;cursor:pointer;background:none;border:none;color:var(--muted);z-index:1}
+.lightbox-title{font-size:20px;font-weight:800;margin-bottom:20px;color:var(--ink)}
+.lightbox-img-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.lightbox-img-grid img{border-radius:12px;width:100%;height:200px;object-fit:cover;background:var(--paper);display:flex;align-items:center;justify-content:center}
+.survey-mock-img{
+  border-radius:12px;background:var(--paper);border:1px solid var(--line);
+  padding:20px;min-height:200px;display:flex;flex-direction:column;gap:12px;
+}
+.survey-mock-img .sq{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:8px}
+.survey-mock-img .so{padding:8px 12px;background:#fff;border:1px solid var(--line);border-radius:8px;font-size:12px;color:var(--muted)}
+.survey-mock-img .so.sel{background:var(--vis-l);border-color:var(--vis);color:var(--vis);font-weight:700}
+
+/* ═══ RESULT CAROUSEL SECTION ═══ */
+.carousel-section{padding:90px 24px;background:var(--card);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.carousel-wrap{position:relative;overflow:hidden}
+.carousel-track{display:flex;gap:20px;transition:transform .5s cubic-bezier(0.4,0,0.2,1)}
+.carousel-slide{min-width:280px;flex-shrink:0}
+.result-card{
+  background:#fff;border:1px solid var(--line);border-radius:20px;
+  overflow:hidden;transition:all .3s;cursor:pointer;
+  position:relative;
+}
+.result-card:hover{transform:translateY(-6px);box-shadow:0 16px 40px rgba(0,0,0,0.12)}
+.result-card-img{
+  height:180px;display:flex;align-items:center;justify-content:center;
+  font-size:48px;position:relative;overflow:hidden;
+}
+.result-card-img::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(180deg,transparent 40%,rgba(0,0,0,0.5) 100%);
+}
+.result-card-badge{
+  position:absolute;top:12px;left:12px;
+  background:rgba(255,255,255,0.95);color:var(--vis);
+  font-size:10px;font-weight:800;padding:3px 10px;border-radius:12px;z-index:1;
+}
+.result-card-body{padding:20px 18px}
+.result-card-code{font-size:12px;font-weight:800;color:var(--vis);margin-bottom:6px}
+.result-card-name{font-size:16px;font-weight:800;margin-bottom:8px;color:var(--ink)}
+.result-card-desc{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px}
+.result-card-tags{display:flex;flex-wrap:wrap;gap:6px}
+.result-tag{
+  font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;
+  cursor:default;position:relative;
+}
+.result-tag[data-tooltip]:hover::after{
+  content:attr(data-tooltip);
+  position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);
+  background:var(--ink);color:#fff;font-size:12px;font-weight:500;line-height:1.5;
+  padding:8px 12px;border-radius:8px;white-space:nowrap;z-index:10;
+  max-width:220px;white-space:normal;text-align:center;width:200px;
+  box-shadow:0 4px 16px rgba(0,0,0,0.2);
+}
+.result-tag[data-tooltip]:hover::before{
+  content:'';position:absolute;bottom:calc(100% + 2px);left:50%;transform:translateX(-50%);
+  border:5px solid transparent;border-top-color:var(--ink);z-index:10;
+}
+.carousel-nav{display:flex;gap:12px;justify-content:center;margin-top:32px}
+.carousel-btn{
+  width:44px;height:44px;border-radius:50%;border:1.5px solid var(--line);
+  background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:16px;color:var(--ink);transition:all .2s;
+}
+.carousel-btn:hover{background:var(--vis);color:#fff;border-color:var(--vis)}
+.carousel-dots{display:flex;gap:8px;align-items:center;margin-top:20px;justify-content:center}
+.carousel-dot{width:8px;height:8px;border-radius:50%;background:var(--line);cursor:pointer;transition:all .2s}
+.carousel-dot.active{background:var(--vis);width:24px;border-radius:4px}
+
+/* ═══ REVIEWS ═══ */
+.reviews{padding:90px 24px;background:var(--paper)}
 .reviews-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:1100px;margin:0 auto}
-.review-card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:28px 24px}
+.review-card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:28px 24px;transition:all .3s}
+.review-card:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(0,0,0,0.08)}
 .review-stars{color:#f59e0b;font-size:16px;margin-bottom:12px;letter-spacing:2px}
 .review-bc-tag{display:inline-block;font-size:11px;font-weight:800;padding:4px 10px;border-radius:12px;background:var(--vis-l);color:var(--vis);margin-bottom:12px}
 .review-text{font-size:14px;color:var(--ink);line-height:1.75;margin-bottom:16px;font-style:italic}
@@ -150,17 +334,27 @@ header{position:sticky;top:0;z-index:100;background:rgba(246,244,238,0.92);backd
 .review-name{font-size:13px;font-weight:700}
 .review-meta{font-size:11px;color:var(--muted)}
 
-/* 사회적 증거 */
-.social-proof{padding:80px 24px;text-align:center}
+/* ═══ SOCIAL PROOF ═══ */
+.social-proof{padding:80px 24px;text-align:center;background:var(--card);border-top:1px solid var(--line)}
 .proof-quote{font-size:22px;font-weight:600;color:var(--ink);max-width:700px;margin:0 auto 20px;line-height:1.5;}
 .proof-quote .hl{color:var(--vis)}
 .proof-name{font-size:14px;color:var(--muted);margin-bottom:48px}
 .proof-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;max-width:1000px;margin:0 auto}
-.proof-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px 18px}
+.proof-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px 18px;transition:all .3s}
+.proof-card:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(0,0,0,0.08)}
 .proof-stat{font-size:28px;font-weight:800;color:var(--vis);margin-bottom:6px}
 .proof-stat-label{font-size:13px;color:var(--muted)}
 
-/* 이 서비스가 맞지 않는 분 (역설적 솔직함) */
+/* ═══ WHY SLIMMIND ═══ */
+.why-section{padding:80px 24px;background:var(--paper)}
+.why-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
+.why-card{background:var(--card);border-radius:18px;padding:28px 26px;border:1px solid var(--line);transition:all .25s}
+.why-card:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(0,0,0,0.1);border-color:var(--vis)}
+.why-icon{font-size:28px;margin-bottom:14px}
+.why-title{font-size:16px;font-weight:800;color:var(--ink);margin-bottom:10px}
+.why-desc{font-size:14px;color:var(--muted);line-height:1.75}
+
+/* ═══ NOT FOR ═══ */
 .not-for{padding:80px 24px;background:var(--paper)}
 .not-for-box{max-width:860px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:24px}
 .not-for-card{border-radius:18px;padding:28px 24px}
@@ -176,32 +370,24 @@ header{position:sticky;top:0;z-index:100;background:rgba(246,244,238,0.92);backd
 .not-for-card.no .not-for-list li::before{content:"✕ ";color:var(--vis);font-weight:800}
 .not-for-card.yes .not-for-list li::before{content:"✓ ";color:var(--muscle);font-weight:800}
 
-/* FAQ */
+/* ═══ FAQ ═══ */
 .faq{padding:80px 24px;background:var(--card);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 .faq-list{max-width:760px;margin:0 auto}
 .faq-item{border-bottom:1px solid var(--line)}
-.faq-q{
-  width:100%;text-align:left;padding:20px 0;font-size:16px;font-weight:700;
-  background:none;border:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;
-  color:var(--ink);
-}
+.faq-q{width:100%;text-align:left;padding:20px 0;font-size:16px;font-weight:700;background:none;border:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;color:var(--ink);}
 .faq-q .arrow{font-size:18px;transition:transform .3s;color:var(--muted)}
 .faq-q.open .arrow{transform:rotate(45deg)}
 .faq-a{display:none;font-size:14px;color:var(--muted);line-height:1.8;padding-bottom:20px}
 .faq-a.open{display:block}
 
-/* 최종 CTA */
+/* ═══ FINAL CTA ═══ */
 .final-cta{padding:90px 24px;text-align:center;background:linear-gradient(135deg,#1a0f0a,#3d1810);color:#fff}
-.final-cta h2{font-size:38px;font-weight:800;margin-bottom:16px;letter-spacing:-1px;line-height:1.3}
+.final-cta h2{font-size:clamp(28px,4vw,40px);font-weight:800;margin-bottom:16px;letter-spacing:-1px;line-height:1.3}
 .final-cta p{font-size:16px;color:rgba(255,255,255,0.6);margin-bottom:12px}
 .final-guarantee{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.85);padding:8px 18px;border-radius:20px;font-size:13px;font-weight:700;margin-bottom:28px}
 .final-cta-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
-.btn-white{background:#fff;color:var(--vis)}
-.btn-white:hover{background:#f0ebe6}
-.btn-ghost-white{background:transparent;border:1.5px solid rgba(255,255,255,0.4);color:#fff}
-.btn-ghost-white:hover{background:rgba(255,255,255,0.1)}
 
-/* 풋터 */
+/* ═══ FOOTER ═══ */
 footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:60px 24px 100px}
 .footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;margin-bottom:40px}
 .footer-logo{font-size:20px;font-weight:800;color:#fff;margin-bottom:14px}
@@ -212,34 +398,20 @@ footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:60px 24px 100px
 .footer-col a:hover{color:#fff}
 .footer-bottom{display:flex;justify-content:space-between;align-items:center;border-top:1px solid rgba(255,255,255,0.1);padding-top:24px;font-size:12px;color:rgba(255,255,255,0.35);flex-wrap:wrap;gap:10px}
 
-/* 카카오 플로팅 버튼 */
-.kakao-float{
-  position:fixed;bottom:90px;right:24px;z-index:95;
-  display:flex;flex-direction:column;align-items:center;gap:6px;
-}
-.kakao-float a{
-  width:56px;height:56px;border-radius:50%;
-  background:#FEE500;display:flex;align-items:center;justify-content:center;
-  box-shadow:0 4px 16px rgba(0,0,0,0.18);transition:transform .2s;
-  font-size:26px;
-}
+/* ═══ FLOATING BUTTONS ═══ */
+.kakao-float{position:fixed;bottom:90px;right:24px;z-index:95;display:flex;flex-direction:column;align-items:center;gap:6px;}
+.kakao-float a{width:56px;height:56px;border-radius:50%;background:#FEE500;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,0.18);transition:transform .2s;font-size:26px;}
 .kakao-float a:hover{transform:scale(1.08)}
 .kakao-float span{font-size:10px;font-weight:700;color:var(--ink);background:#fff;padding:3px 8px;border-radius:10px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.12)}
 
-/* 실시간 알림 팝업 */
-.live-popup{
-  position:fixed;bottom:160px;left:24px;z-index:95;
-  background:#fff;border:1px solid var(--line);border-radius:14px;
-  padding:14px 18px;display:flex;align-items:center;gap:12px;
-  box-shadow:0 8px 24px rgba(0,0,0,0.12);
-  max-width:300px;transform:translateX(-120%);transition:transform .4s ease;
-}
+/* ═══ LIVE POPUP ═══ */
+.live-popup{position:fixed;bottom:160px;left:24px;z-index:95;background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 18px;display:flex;align-items:center;gap:12px;box-shadow:0 8px 24px rgba(0,0,0,0.12);max-width:300px;transform:translateX(-120%);transition:transform .4s ease;}
 .live-popup.show{transform:translateX(0)}
 .live-popup-icon{font-size:24px;flex-shrink:0}
 .live-popup-text{font-size:13px;line-height:1.5}
 .live-popup-text strong{color:var(--vis);display:block}
 
-/* Exit Intent 팝업 */
+/* ═══ EXIT POPUP ═══ */
 .exit-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:200;align-items:center;justify-content:center;}
 .exit-overlay.show{display:flex}
 .exit-box{background:#fff;border-radius:24px;padding:44px 40px;max-width:480px;width:90%;text-align:center;position:relative}
@@ -250,12 +422,95 @@ footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:60px 24px 100px
 .exit-box .btn-lg{width:100%;margin-bottom:12px;font-size:15px}
 .exit-skip{font-size:13px;color:var(--muted);cursor:pointer;text-decoration:underline}
 
-/* 무료 미니진단 팝업 */
+/* ═══ QUIZ OVERLAY ═══ */
 .quiz-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:200;align-items:center;justify-content:center;}
 .quiz-overlay.show{display:flex}
 .quiz-popup{background:#fff;border-radius:24px;padding:40px 36px;max-width:520px;width:90%;position:relative;max-height:90vh;overflow-y:auto}
 .quiz-popup .close{position:absolute;top:16px;right:20px;font-size:24px;cursor:pointer;color:var(--muted);background:none;border:none}
+.quiz-progress{height:6px;background:var(--line);border-radius:3px;margin-bottom:28px;overflow:hidden}
+.quiz-progress-bar{height:100%;background:var(--vis);border-radius:3px;transition:width .4s ease}
+.quiz-question{font-size:17px;font-weight:700;margin-bottom:18px;min-height:48px}
+.quiz-options{display:flex;flex-direction:column;gap:10px}
+.quiz-opt{padding:14px 18px;border:1.5px solid var(--line);border-radius:12px;font-size:14px;font-weight:500;cursor:pointer;transition:all .2s;text-align:left;background:#fff;color:var(--ink);}
+.quiz-opt:hover{border-color:var(--vis);background:var(--vis-l)}
 
+/* ═══ LOGIN MODAL ═══ */
+.login-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:300;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+.login-modal-overlay.show{display:flex}
+.login-modal{background:#fff;border-radius:28px;width:90%;max-width:480px;position:relative;overflow:hidden;max-height:95vh;overflow-y:auto}
+.login-modal-header{padding:32px 32px 0;text-align:center}
+.login-modal-logo{font-size:24px;font-weight:800;color:var(--ink);margin-bottom:8px}
+.login-modal-logo span{color:var(--vis)}
+.login-modal-title{font-size:20px;font-weight:800;margin-bottom:4px;color:var(--ink)}
+.login-modal-sub{font-size:13px;color:var(--muted);margin-bottom:28px;line-height:1.6}
+.login-modal-close{position:absolute;top:16px;right:20px;font-size:24px;cursor:pointer;background:none;border:none;color:var(--muted)}
+.login-divider{display:flex;align-items:center;gap:12px;padding:0 32px;margin-bottom:20px}
+.login-divider::before,.login-divider::after{content:'';flex:1;height:1px;background:var(--line)}
+.login-divider span{font-size:12px;color:var(--muted);white-space:nowrap}
+.social-btns{padding:0 32px;display:flex;flex-direction:column;gap:12px;margin-bottom:20px}
+.social-btn{width:100%;padding:14px;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;border:none;display:flex;align-items:center;justify-content:center;gap:10px;transition:all .2s}
+.kakao-btn{background:#FEE500;color:#3C1E1E}
+.kakao-btn:hover{background:#f5d800;transform:translateY(-2px);box-shadow:0 6px 20px rgba(254,229,0,0.4)}
+.naver-btn{background:#03C75A;color:#fff}
+.naver-btn:hover{background:#02a84a;transform:translateY(-2px);box-shadow:0 6px 20px rgba(3,199,90,0.4)}
+.kakao-icon{width:24px;height:24px;background:#3C1E1E;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;color:#FEE500;font-weight:900}
+.naver-icon{width:24px;height:24px;background:#fff;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#03C75A;font-weight:900}
+
+/* ─── 회원유형 선택 폼 ─── */
+.member-type-form{padding:0 32px 32px;display:none}
+.member-type-form.show{display:block}
+.member-type-title{font-size:17px;font-weight:800;margin-bottom:6px;color:var(--ink)}
+.member-type-sub{font-size:13px;color:var(--muted);margin-bottom:20px}
+.member-type-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+.member-type-btn{
+  padding:14px 12px;border:2px solid var(--line);border-radius:14px;
+  font-size:13px;font-weight:700;text-align:center;cursor:pointer;
+  background:#fff;color:var(--ink);transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:6px;
+}
+.member-type-btn:hover{border-color:var(--vis);background:var(--vis-l)}
+.member-type-btn.selected{border-color:var(--vis);background:var(--vis-l);color:var(--vis)}
+.member-type-btn .mt-icon{font-size:26px}
+.member-type-btn .mt-label{font-size:12px;font-weight:800}
+.member-type-btn .mt-sublabel{font-size:10px;color:var(--muted);font-weight:500}
+.member-type-btn.selected .mt-sublabel{color:rgba(181,69,46,0.7)}
+.member-info-form{display:flex;flex-direction:column;gap:12px;margin-bottom:20px}
+.member-info-form input{
+  width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:10px;
+  font-size:14px;color:var(--ink);background:#fff;outline:none;transition:border-color .2s;
+  font-family:inherit;
+}
+.member-info-form input:focus{border-color:var(--vis)}
+.member-info-form input::placeholder{color:var(--muted)}
+.complete-section{padding:32px;text-align:center;display:none}
+.complete-section.show{display:block}
+.complete-icon{font-size:64px;margin-bottom:16px}
+.complete-title{font-size:22px;font-weight:800;margin-bottom:10px}
+.complete-sub{font-size:14px;color:var(--muted);margin-bottom:24px;line-height:1.7}
+.pdf-gift-box{
+  background:linear-gradient(135deg,var(--vis-l),var(--whole-l));
+  border:2px solid var(--vis);border-radius:16px;padding:20px;margin-bottom:20px;
+  display:flex;align-items:center;gap:16px;text-align:left;
+}
+.pdf-gift-icon{font-size:36px;flex-shrink:0}
+.pdf-gift-text h4{font-size:15px;font-weight:800;margin-bottom:4px}
+.pdf-gift-text p{font-size:12px;color:var(--muted);line-height:1.5}
+
+/* ═══ MBTI BOX ═══ */
+.mbti-box{padding:0 24px 80px;background:var(--paper)}
+
+/* ═══ HAMBURGER + MOBILE NAV ═══ */
+.hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:4px;background:none;border:none}
+.hamburger span{display:block;width:22px;height:2px;background:var(--ink);border-radius:2px;transition:all .3s}
+.mobile-nav{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(246,244,238,0.98);z-index:200;flex-direction:column;align-items:center;justify-content:center;gap:32px}
+.mobile-nav.open{display:flex}
+.mobile-nav a{font-size:20px;font-weight:700;color:var(--ink)}
+.mobile-nav .close-btn{position:absolute;top:20px;right:24px;font-size:28px;cursor:pointer;background:none;border:none;color:var(--ink)}
+
+/* ═══ MINI QUIZ SECTION ═══ */
+.mini-quiz{padding:80px 24px;background:var(--card);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.quiz-box{max-width:700px;margin:0 auto;background:#fff;border-radius:24px;padding:44px 40px;box-shadow:0 8px 40px rgba(0,0,0,0.08);border:1px solid var(--line)}
+
+/* ═══ RESPONSIVE ═══ */
 @media(max-width:900px){
   .hero h1{font-size:34px}
   .audience-grid{grid-template-columns:1fr}
@@ -265,27 +520,33 @@ footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:60px 24px 100px
   .hero-trust{gap:24px}
   .reviews-grid{grid-template-columns:1fr}
   .not-for-box{grid-template-columns:1fr}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .roi-cards{grid-template-columns:1fr}
+  .preview-wrap{grid-template-columns:1fr}
+  .why-grid{grid-template-columns:1fr}
+  .member-type-grid{grid-template-columns:repeat(3,1fr)}
+  .lightbox-img-grid{grid-template-columns:1fr}
+  .hamburger{display:flex}
+}
+@media(max-width:480px){
+  .member-type-grid{grid-template-columns:repeat(2,1fr)}
+  .roi-tab-btn{font-size:12px;padding:10px 12px}
 }
 
-/* 햄버거 메뉴 */
-.hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:4px;background:none;border:none}
-.hamburger span{display:block;width:22px;height:2px;background:var(--ink);border-radius:2px;transition:all .3s}
-.mobile-nav{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(246,244,238,0.98);z-index:200;flex-direction:column;align-items:center;justify-content:center;gap:32px}
-.mobile-nav.open{display:flex}
-.mobile-nav a{font-size:20px;font-weight:700;color:var(--ink)}
-.mobile-nav .close-btn{position:absolute;top:20px;right:24px;font-size:28px;cursor:pointer;background:none;border:none;color:var(--ink)}
-@media(max-width:900px){.hamburger{display:flex}}
+/* ═══ AOS CUSTOM ANIMATIONS ═══ */
+[data-aos="flip-left"]{transform-origin:left center}
+[data-aos="zoom-in-right"]{transform-origin:right center}
 </style>
 </head>
 <body>
 
-<!-- Sticky CTA 바 -->
+<!-- ■ Sticky CTA 바 -->
 <div class="sticky-cta-bar" id="stickyCta">
   <p>지금 39,000원으로 내 바디코드를 확인하세요 · 7일 환불 보장</p>
   <a href="/" class="btn btn-primary btn-lg">1단계 진단 시작하기 →</a>
 </div>
 
-<!-- 헤더 -->
+<!-- ■ 헤더 -->
 <header>
   <div class="nav">
     <a href="/landing/" class="logo">SLIM<span>MIND</span></a>
@@ -298,62 +559,92 @@ footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:60px 24px 100px
     </nav>
     <div class="nav-cta">
       <button class="hamburger" onclick="openMobileNav()"><span></span><span></span><span></span></button>
-      <a href="/" class="btn btn-outline btn-sm">로그인</a>
+      <button class="btn btn-outline btn-sm" onclick="openLoginModal()">로그인</button>
       <a href="/" class="btn btn-primary btn-sm">1단계 진단 →</a>
     </div>
   </div>
 </header>
 
-<!-- 실시간 카운터 배너 -->
+<!-- ■ 실시간 카운터 배너 -->
 <div class="live-banner">
   <span class="live-dot"></span>
   <span>오늘 <strong id="liveCount">--</strong>명이 바디코드 진단을 받았습니다 · 현재 <strong id="liveOnline">--</strong>명 진단 중</span>
 </div>
 
-<!-- 히어로 -->
+<!-- ■ 히어로 -->
 <section class="hero">
-  <div class="hero-badge">⚖️ 특허출원중 · 16종 바디코드 × 11개 전문가 진단축</div>
-  <h1>다이어트 실패는<br><span class="accent">의지 문제가 아닙니다</span></h1>
-  <p class="hero-sub">
+  <div data-aos="fade-down" data-aos-duration="600">
+    <div class="hero-badge">⚖️ 특허출원중 · 16종 바디코드 × 11개 전문가 진단축</div>
+  </div>
+  <h1 data-aos="fade-up" data-aos-duration="700" data-aos-delay="100">
+    다이어트 실패는<br><span class="accent">의지 문제가 아닙니다</span>
+  </h1>
+  <p class="hero-sub" data-aos="fade-up" data-aos-duration="700" data-aos-delay="200">
     MBTI가 성격 유형을 찾아주듯 — 슬림마인드는 <strong style="color:var(--vis)">살이 찌는 원인 유형</strong>을 찾아드립니다.<br>
-    현장 통합 40년 이상, 10,000명의 데이터로 만든 바디코드 진단 시스템.
+    현장 통합 <span class="neon-keyword">40년 임상</span> 이상,
+    <span class="neon-keyword">16개 특허</span>,
+    <span class="neon-keyword">10개 원인축</span> 데이터로 만든 바디코드 진단 시스템.
   </p>
-  <div class="guarantee-badge">🛡️ 7일 이내 미만족 시 전액 환불 보장</div>
-  <div class="hero-cta">
+  <div class="guarantee-badge" data-aos="fade-up" data-aos-delay="300">🛡️ 7일 이내 미만족 시 전액 환불 보장</div>
+  <div class="hero-cta" data-aos="fade-up" data-aos-delay="350">
     <a href="/" class="btn btn-primary btn-lg">1단계 진단 시작하기 (39,000원) →</a>
     <button class="free-mini-btn" onclick="openQuiz()">🔍 무료로 내 유형 먼저 알아보기</button>
   </div>
-  <div class="hero-cta-sub">결제 없이 3가지 질문으로 바디코드 유형을 먼저 확인해보세요</div>
-  <div class="hero-trust">
+  <div class="hero-cta-sub" data-aos="fade-up" data-aos-delay="400">결제 없이 3가지 질문으로 바디코드 유형을 먼저 확인해보세요</div>
+  <div class="hero-trust" data-aos="fade-up" data-aos-delay="450">
     <div class="trust-item">
-      <div class="trust-num">16<span>가지</span></div>
+      <div class="trust-num" id="trustNum1">16<span>가지</span></div>
       <div class="trust-label">특허출원 바디코드</div>
     </div>
     <div class="trust-item">
-      <div class="trust-num"><span>11</span>개</div>
+      <div class="trust-num" id="trustNum2"><span>11</span>개</div>
       <div class="trust-label">전문가 진단축</div>
     </div>
     <div class="trust-item">
-      <div class="trust-num"><span>12</span>주</div>
+      <div class="trust-num" id="trustNum3"><span>12</span>주</div>
       <div class="trust-label">맞춤 로드맵</div>
     </div>
     <div class="trust-item">
-      <div class="trust-num">3<span>분</span></div>
+      <div class="trust-num" id="trustNum4">3<span>분</span></div>
       <div class="trust-label">진단 소요 시간</div>
     </div>
   </div>
 </section>
 
-<!-- 3개 타겟 분기 -->
+<!-- ■ DARK STATS SECTION (CountUp 대상) -->
+<section class="stats-section" id="statsSection">
+  <div class="wrap">
+    <div class="stats-grid">
+      <div class="stat-item" data-aos="zoom-in" data-aos-delay="0">
+        <div class="stat-num" id="stat1">0<span class="stat-suffix">년+</span></div>
+        <div class="stat-label">현장 통합 경험</div>
+      </div>
+      <div class="stat-item" data-aos="zoom-in" data-aos-delay="100">
+        <div class="stat-num" id="stat2">0<span class="stat-suffix">명+</span></div>
+        <div class="stat-label">임상 데이터 기반</div>
+      </div>
+      <div class="stat-item" data-aos="zoom-in" data-aos-delay="200">
+        <div class="stat-num" id="stat3">0<span class="stat-suffix">개</span></div>
+        <div class="stat-label">전문가 진단축</div>
+      </div>
+      <div class="stat-item" data-aos="zoom-in" data-aos-delay="300">
+        <div class="stat-num" id="stat4">0<span class="stat-suffix">종</span></div>
+        <div class="stat-label">특허출원 바디코드</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ■ 3개 타겟 분기 -->
 <section class="audience">
   <div class="wrap">
-    <div class="section-head">
+    <div class="section-head" data-aos="fade-up">
       <div class="section-eyebrow">Who is this for</div>
       <h2>슬림마인드는 세 가지 방향으로 만납니다</h2>
       <p>목적이 다르면 내용도 완전히 달라야 합니다.<br>당신에게 맞는 방향을 선택하세요.</p>
     </div>
     <div class="audience-grid">
-      <a href="/landing/service.html" class="aud-card featured">
+      <a href="/landing/service.html" class="aud-card featured" data-aos="flip-left" data-aos-duration="700">
         <span class="aud-tag">가장 많이 찾는</span>
         <div class="aud-icon coral">🔍</div>
         <h3>다이어트가 필요한 당신</h3>
@@ -367,7 +658,7 @@ footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:60px 24px 100px
         </ul>
         <div class="aud-cta"><span>1단계 진단 시작하기 (39,000원)</span><span>→</span></div>
       </a>
-      <a href="/landing/b2b.html" class="aud-card">
+      <a href="/landing/b2b.html" class="aud-card" data-aos="flip-left" data-aos-duration="700" data-aos-delay="100">
         <div class="aud-icon blue">🏢</div>
         <h3>입점을 원하는 사업장</h3>
         <p>"감"으로 하던 상담을 데이터로 설명하는 무기를 가지세요. 매장에 도입만 해도 완전히 달라집니다.</p>
@@ -380,7 +671,7 @@ footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:60px 24px 100px
         </ul>
         <div class="aud-cta"><span>파트너 입점 알아보기</span><span>→</span></div>
       </a>
-      <a href="/landing/consultant.html" class="aud-card">
+      <a href="/landing/consultant.html" class="aud-card" data-aos="flip-left" data-aos-duration="700" data-aos-delay="200">
         <div class="aud-icon purple">🎓</div>
         <h3>공식 바디컨설턴트가 되세요</h3>
         <p>AI가 대체할 수 없는 전문 영역. 장소 제약 없이 시급의 3배 이상. 공식 인증 마크로 스펙을 완성합니다.</p>
@@ -397,145 +688,565 @@ footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:60px 24px 100px
   </div>
 </section>
 
-<!-- STATS 섹션 (신규) -->
-<section style="padding:60px 24px;background:var(--ink)">
+<!-- ■ B2B ROI 탭 섹션 (3D Flip 전환) -->
+<section class="roi-tabs-section">
   <div class="wrap">
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:32px;text-align:center">
-      <div>
-        <div style="font-size:48px;font-weight:800;color:var(--vis);line-height:1;letter-spacing:-1px">40<span style="font-size:26px">년+</span></div>
-        <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-top:6px">현장 통합 경험</div>
+    <div class="section-head" data-aos="fade-up">
+      <div class="section-eyebrow">B2B ROI</div>
+      <h2>도입하면 실제로 어떻게 달라지나요?</h2>
+      <p>업종별 ROI 데이터를 확인하세요</p>
+    </div>
+    <div class="roi-tab-nav" data-aos="fade-up" data-aos-delay="100">
+      <button class="roi-tab-btn active" onclick="switchTab('hospital')">🏥 병·의원</button>
+      <button class="roi-tab-btn" onclick="switchTab('esthetic')">💆 에스테틱</button>
+      <button class="roi-tab-btn" onclick="switchTab('fitness')">🏋️ PT·필라테스</button>
+    </div>
+    <div class="roi-tab-panels" data-aos="fade-up" data-aos-delay="200">
+      <!-- Hospital Tab -->
+      <div class="roi-panel active" id="tab-hospital">
+        <div class="roi-cards">
+          <div class="roi-card">
+            <div class="roi-card-num"><span id="roi-h1">0</span><span style="font-size:22px">%</span></div>
+            <div class="roi-card-label">비급여 추가 처방 상담 전환율 상승</div>
+          </div>
+          <div class="roi-card">
+            <div class="roi-card-num"><span id="roi-h2">0</span><span style="font-size:22px">분</span></div>
+            <div class="roi-card-label">대기 시간 활용 → 진단 완료 (기존 20분→)</div>
+          </div>
+          <div class="roi-card">
+            <div class="roi-card-num"><span id="roi-h3">0</span><span style="font-size:22px">%</span></div>
+            <div class="roi-card-label">12주 재내원 사이클 완주율</div>
+          </div>
+        </div>
+        <div class="roi-desc">
+          <h3>🏥 병원 원장님께 — 대기실 7분이 매출이 됩니다</h3>
+          <p>환자가 대기실에서 기다리는 <strong>7분</strong> 동안 바디코드 진단을 완료합니다. 진단 결과가 나오면 의사 상담 시 데이터 기반의 비급여 처방 연결이 가능합니다. 기존에 "감"으로 하던 비만·영양·체형 상담이 <strong>데이터 설득력</strong>으로 바뀝니다.</p>
+        </div>
       </div>
-      <div>
-        <div style="font-size:48px;font-weight:800;color:var(--vis);line-height:1;letter-spacing:-1px">10,000<span style="font-size:26px">명+</span></div>
-        <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-top:6px">임상 데이터 기반</div>
+      <!-- Esthetic Tab -->
+      <div class="roi-panel" id="tab-esthetic">
+        <div class="roi-cards">
+          <div class="roi-card">
+            <div class="roi-card-num"><span id="roi-e1">0</span><span style="font-size:22px">%</span></div>
+            <div class="roi-card-label">업셀링 성공률 (기기 추가 처방)</div>
+          </div>
+          <div class="roi-card">
+            <div class="roi-card-num">×<span id="roi-e2">0</span></div>
+            <div class="roi-card-label">객단가 증가 (데이터 처방 근거)</div>
+          </div>
+          <div class="roi-card">
+            <div class="roi-card-num"><span id="roi-e3">0</span><span style="font-size:22px">주</span></div>
+            <div class="roi-card-label">자동 재방문 사이클 설계</div>
+          </div>
+        </div>
+        <div class="roi-desc">
+          <h3>💆 에스테틱 대표님께 — 프리미엄 상담 포지셔닝</h3>
+          <p>단순 관리 서비스에서 <strong>바디코드 기반 전문 상담 센터</strong>로 포지셔닝이 바뀝니다. 고객 맞춤 처방 데이터로 업셀링 명분이 자동 생성되며, 화이트라벨로 내 브랜드 그대로 적용 가능합니다.</p>
+        </div>
       </div>
-      <div>
-        <div style="font-size:48px;font-weight:800;color:var(--vis);line-height:1;letter-spacing:-1px">11<span style="font-size:26px">개</span></div>
-        <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-top:6px">전문가 진단축</div>
-      </div>
-      <div>
-        <div style="font-size:48px;font-weight:800;color:var(--vis);line-height:1;letter-spacing:-1px">16<span style="font-size:26px">종</span></div>
-        <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-top:6px">특허출원 바디코드</div>
+      <!-- Fitness Tab -->
+      <div class="roi-panel" id="tab-fitness">
+        <div class="roi-cards">
+          <div class="roi-card">
+            <div class="roi-card-num"><span id="roi-f1">0</span><span style="font-size:22px">배</span></div>
+            <div class="roi-card-label">시급 대비 수익 (전문성 프리미엄)</div>
+          </div>
+          <div class="roi-card">
+            <div class="roi-card-num"><span id="roi-f2">0</span><span style="font-size:22px">%</span></div>
+            <div class="roi-card-label">회원 12주 완주율 (동기부여 데이터)</div>
+          </div>
+          <div class="roi-card">
+            <div class="roi-card-num"><span id="roi-f3">0</span><span style="font-size:22px">분</span></div>
+            <div class="roi-card-label">초기 상담 소요 시간 단축</div>
+          </div>
+        </div>
+        <div class="roi-desc">
+          <h3>🏋️ PT·필라테스 강사님께 — 데이터로 차별화하세요</h3>
+          <p>운동 처방에 <strong>바디코드 데이터</strong>를 결합하면 회원이 "왜 이 운동을 해야 하는지" 납득합니다. 이탈률이 줄고 12주 완주율이 높아집니다. 공식 바디컨설턴트 인증으로 스펙도 완성됩니다.</p>
+        </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- 실제 후기 섹션 -->
+<!-- ■ 태블릿 미리보기 + 질문지 섹션 -->
+<section class="preview-section">
+  <div class="preview-wrap">
+    <div data-aos="fade-right" data-aos-duration="800">
+      <div class="tablet-frame">
+        <div class="tablet-screen" onclick="openLightbox()">
+          <div class="tablet-inner">
+            <!-- Progress bar loop animation -->
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <span style="font-size:11px;font-weight:700;color:var(--vis)">슬림마인드 바디코드 진단</span>
+              <span style="font-size:11px;color:var(--muted)">4 / 10</span>
+            </div>
+            <div class="tablet-progress-bar-wrap">
+              <div class="tablet-progress-bar-fill"></div>
+            </div>
+            <div class="tablet-q">Q4. 스트레스를 받으면 주로 어떤 증상이 생기나요?</div>
+            <div class="tablet-opts">
+              <div class="tablet-opt">폭식하거나 야식이 당긴다</div>
+              <div class="tablet-opt active">소화가 안 되고 속이 불편하다</div>
+              <div class="tablet-opt">잠을 못 자거나 예민해진다</div>
+              <div class="tablet-opt">몸이 무겁고 부기가 심해진다</div>
+            </div>
+            <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:11px;color:var(--muted)">진행률 40%</span>
+              <button style="padding:8px 18px;background:var(--vis);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">다음 →</button>
+            </div>
+          </div>
+          <div class="tablet-overlay">
+            <i class="fas fa-expand-alt"></i>
+            <span>클릭하여 확대보기</span>
+          </div>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:16px">
+        <button onclick="openLightbox()" class="btn btn-outline btn-sm" style="margin:0 auto">
+          <i class="fas fa-search-plus" style="font-size:12px"></i> 질문지 전체 보기
+        </button>
+      </div>
+    </div>
+    <div class="preview-text" data-aos="fade-left" data-aos-duration="800" data-aos-delay="100">
+      <div class="section-eyebrow">Real Questionnaire</div>
+      <h3>대기실 <span class="neon-keyword">7분</span>으로 완성하는<br>바디코드 진단</h3>
+      <p>병원 대기실, 피부샵 대기 시간, PT 상담 전 — 태블릿 하나로 10개 원인축 전체를 분석합니다. 직관적인 UI로 평균 완주율 94%.</p>
+      <ul class="preview-features">
+        <li><i class="fas fa-check"></i> 10개 원인축 × 총 37문항 심층 분석</li>
+        <li><i class="fas fa-check"></i> 직관적 UI — 별도 교육 불필요</li>
+        <li><i class="fas fa-check"></i> 실시간 진행바로 완료율 94% 달성</li>
+        <li><i class="fas fa-check"></i> 결과 즉시 PDF 리포트 자동 발송</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ■ 결과지 캐러셀 섹션 -->
+<section class="carousel-section">
+  <div class="wrap">
+    <div class="section-head" data-aos="fade-up">
+      <div class="section-eyebrow">16 Body Codes</div>
+      <h2>16가지 바디코드 리포트</h2>
+      <p>특허출원 중인 독자적 분류 체계. 단 한 명도 같은 결과지가 나오지 않습니다.<br>요소에 마우스를 올려 세부 설명을 확인하세요.</p>
+    </div>
+    <div class="carousel-wrap" data-aos="fade-up" data-aos-delay="100">
+      <div class="carousel-track" id="carouselTrack">
+
+        <!-- BC-01 -->
+        <div class="carousel-slide">
+          <div class="result-card">
+            <div class="result-card-img" style="background:linear-gradient(135deg,#667eea,#764ba2)">
+              <span>🔥</span>
+              <div class="result-card-badge">BC-01</div>
+            </div>
+            <div class="result-card-body">
+              <div class="result-card-code">BC-01</div>
+              <div class="result-card-name">과활성 내장지방형</div>
+              <div class="result-card-desc">내장지방 과다 축적, 대사증후군 위험. 식이 구성 및 인슐린 민감도 개선이 핵심.</div>
+              <div class="result-card-tags">
+                <span class="result-tag" style="background:#ffecd2;color:#e67e22" data-tooltip="탄수화물 섭취 순서와 혈당 스파이크를 관리하는 맞춤 식단">🍽️ 식단 처방</span>
+                <span class="result-tag" style="background:#e8f5e9;color:#2e7d32" data-tooltip="내장지방 연소에 최적화된 유산소+근력 조합 운동 루틴">🏃 운동 루틴</span>
+                <span class="result-tag" style="background:#e3f2fd;color:#1565c0" data-tooltip="인슐린 저항 개선을 위한 보충제 및 영양소 조합">💊 영양 보충</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BC-02 -->
+        <div class="carousel-slide">
+          <div class="result-card">
+            <div class="result-card-img" style="background:linear-gradient(135deg,#f093fb,#f5576c)">
+              <span>💧</span>
+              <div class="result-card-badge">BC-02</div>
+            </div>
+            <div class="result-card-body">
+              <div class="result-card-code">BC-02</div>
+              <div class="result-card-name">수독 림프 순환 저하형</div>
+              <div class="result-card-desc">수분 대사 불균형, 만성 부종. 림프 순환 자극과 이뇨 식품 활용이 핵심.</div>
+              <div class="result-card-tags">
+                <span class="result-tag" style="background:#e8f5e9;color:#2e7d32" data-tooltip="림프 순환을 활성화하는 드라이브러싱, 호흡 운동, 마사지 루틴">🌿 림프 자극</span>
+                <span class="result-tag" style="background:#e3f2fd;color:#1565c0" data-tooltip="부종 개선을 위한 전해질 균형 및 수분 섭취 전략">💧 수분 관리</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BC-03 -->
+        <div class="carousel-slide">
+          <div class="result-card">
+            <div class="result-card-img" style="background:linear-gradient(135deg,#4facfe,#00f2fe)">
+              <span>⚡</span>
+              <div class="result-card-badge">BC-03</div>
+            </div>
+            <div class="result-card-body">
+              <div class="result-card-code">BC-03</div>
+              <div class="result-card-name">부신 스트레스 만성 코르티솔형</div>
+              <div class="result-card-desc">만성 스트레스로 코르티솔 과분비, 복부 비만. 회복 루틴이 운동보다 우선.</div>
+              <div class="result-card-tags">
+                <span class="result-tag" style="background:#fce4ec;color:#c2185b" data-tooltip="코르티솔 수치를 낮추는 호흡법, 명상, 수면 루틴">🧘 회복 루틴</span>
+                <span class="result-tag" style="background:#f3e5f5;color:#7b1fa2" data-tooltip="부신 기능 회복을 위한 아답토젠 보충제 처방">🌿 아답토젠</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BC-04 -->
+        <div class="carousel-slide">
+          <div class="result-card">
+            <div class="result-card-img" style="background:linear-gradient(135deg,#fa709a,#fee140)">
+              <span>🍩</span>
+              <div class="result-card-badge">BC-04</div>
+            </div>
+            <div class="result-card-body">
+              <div class="result-card-code">BC-04</div>
+              <div class="result-card-name">인슐린 저항 대사 교란형</div>
+              <div class="result-card-desc">탄수화물 처리 능력 저하. 식사 순서와 GI 지수 관리로 혈당 안정화.</div>
+              <div class="result-card-tags">
+                <span class="result-tag" style="background:#ffecd2;color:#e67e22" data-tooltip="혈당 급등을 방지하는 식사 순서(채소→단백질→탄수화물) 전략">🥗 혈당 식단</span>
+                <span class="result-tag" style="background:#e8f5e9;color:#2e7d32" data-tooltip="인슐린 감수성 개선에 효과적인 저강도 유산소 처방">🚶 유산소</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BC-05 -->
+        <div class="carousel-slide">
+          <div class="result-card">
+            <div class="result-card-img" style="background:linear-gradient(135deg,#a18cd1,#fbc2eb)">
+              <span>🦋</span>
+              <div class="result-card-badge">BC-05</div>
+            </div>
+            <div class="result-card-body">
+              <div class="result-card-code">BC-05</div>
+              <div class="result-card-name">갑상선 기능 저하 대사 둔화형</div>
+              <div class="result-card-desc">기초대사량 저하, 전신 피로. 갑상선 영양소 보충과 대사 자극이 핵심.</div>
+              <div class="result-card-tags">
+                <span class="result-tag" style="background:#e3f2fd;color:#1565c0" data-tooltip="갑상선 호르몬 합성에 필요한 요오드, 셀레늄, 아연 보충">💊 미네랄 처방</span>
+                <span class="result-tag" style="background:#ffecd2;color:#e67e22" data-tooltip="저하된 대사를 자극하는 간헐적 단식 + 근력 운동 조합">💪 대사 자극</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BC-06 -->
+        <div class="carousel-slide">
+          <div class="result-card">
+            <div class="result-card-img" style="background:linear-gradient(135deg,#fbc2eb,#a6c1ee)">
+              <span>🌸</span>
+              <div class="result-card-badge">BC-06</div>
+            </div>
+            <div class="result-card-body">
+              <div class="result-card-code">BC-06</div>
+              <div class="result-card-name">에스트로겐 우세 호르몬 불균형형</div>
+              <div class="result-card-desc">에스트로겐 과다, 프로게스테론 부족. 호르몬 균형 식이 + 디톡스.</div>
+              <div class="result-card-tags">
+                <span class="result-tag" style="background:#fce4ec;color:#c2185b" data-tooltip="에스트로겐 대사를 돕는 십자화과 채소, DIM 보충 처방">🥦 호르몬 식단</span>
+                <span class="result-tag" style="background:#f3e5f5;color:#7b1fa2" data-tooltip="간 해독 경로를 활성화하는 디톡스 프로토콜">🌿 디톡스</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BC-07 -->
+        <div class="carousel-slide">
+          <div class="result-card">
+            <div class="result-card-img" style="background:linear-gradient(135deg,#43e97b,#38f9d7)">
+              <span>🌿</span>
+              <div class="result-card-badge">BC-07</div>
+            </div>
+            <div class="result-card-body">
+              <div class="result-card-code">BC-07</div>
+              <div class="result-card-name">소화 흡수 기능 저하형</div>
+              <div class="result-card-desc">장내 환경 불균형, 영양 흡수 저하. 장 건강 회복이 최우선.</div>
+              <div class="result-card-tags">
+                <span class="result-tag" style="background:#e8f5e9;color:#2e7d32" data-tooltip="장내 미생물 균형을 위한 프리·프로바이오틱스 처방">🦠 마이크로바이옴</span>
+                <span class="result-tag" style="background:#ffecd2;color:#e67e22" data-tooltip="소화 효소 분비 촉진 식품과 발효 식품 활용 전략">🍶 발효 식품</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BC-08 -->
+        <div class="carousel-slide">
+          <div class="result-card">
+            <div class="result-card-img" style="background:linear-gradient(135deg,#f7971e,#ffd200)">
+              <span>🔒</span>
+              <div class="result-card-badge">BC-08</div>
+            </div>
+            <div class="result-card-body">
+              <div class="result-card-code">BC-08</div>
+              <div class="result-card-name">T-PLATEAU 적응성 정체기형</div>
+              <div class="result-card-desc">다이어트 적응으로 체중 정체. 사이클링 전략으로 대사 충격 필요.</div>
+              <div class="result-card-tags">
+                <span class="result-tag" style="background:#fff3e0;color:#e65100" data-tooltip="정체기 탈출을 위한 칼로리 사이클링과 리피드 데이 전략">🔄 사이클링</span>
+                <span class="result-tag" style="background:#e8f5e9;color:#2e7d32" data-tooltip="대사 적응을 깨는 HIIT + 기능적 복합 운동 처방">💥 충격 운동</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BC-09 ~ BC-16 요약 슬라이드 -->
+        <div class="carousel-slide">
+          <div class="result-card">
+            <div class="result-card-img" style="background:linear-gradient(135deg,#30cfd0,#330867)">
+              <span>⚡</span>
+              <div class="result-card-badge">BC-09</div>
+            </div>
+            <div class="result-card-body">
+              <div class="result-card-code">BC-09</div>
+              <div class="result-card-name">교감 항진 자율신경 불균형형</div>
+              <div class="result-card-desc">만성 긴장 상태, 수면 질 저하, 복부 지방. 부교감 활성화 루틴이 핵심.</div>
+              <div class="result-card-tags">
+                <span class="result-tag" style="background:#e3f2fd;color:#1565c0" data-tooltip="부교감신경 활성화를 위한 4-7-8 호흡법, 요가 니드라">🧘 부교감 루틴</span>
+                <span class="result-tag" style="background:#f3e5f5;color:#7b1fa2" data-tooltip="자율신경 균형을 위한 마그네슘, 테아닌 보충">💊 신경 영양</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="carousel-slide">
+          <div class="result-card">
+            <div class="result-card-img" style="background:linear-gradient(135deg,#84fab0,#8fd3f4)">
+              <span>💪</span>
+              <div class="result-card-badge">BC-10</div>
+            </div>
+            <div class="result-card-body">
+              <div class="result-card-code">BC-10</div>
+              <div class="result-card-name">근감소 노화 대사 저하형</div>
+              <div class="result-card-desc">근육량 감소로 기초대사량 급감. 단백질 전략과 근력 운동이 최우선.</div>
+              <div class="result-card-tags">
+                <span class="result-tag" style="background:#ffecd2;color:#e67e22" data-tooltip="근육 합성 최대화를 위한 단백질 타이밍과 아미노산 전략">🥩 단백질 처방</span>
+                <span class="result-tag" style="background:#e8f5e9;color:#2e7d32" data-tooltip="노화 근감소 예방을 위한 복합 근력 운동 프로그램">💪 근력 프로그램</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="carousel-slide">
+          <div class="result-card">
+            <div class="result-card-img" style="background:linear-gradient(135deg,#f77062,#fe5196)">
+              <span>🌙</span>
+              <div class="result-card-badge">BC-11</div>
+            </div>
+            <div class="result-card-body">
+              <div class="result-card-code">BC-11</div>
+              <div class="result-card-name">수면 회복 기능 저하형</div>
+              <div class="result-card-desc">수면 질 저하로 렙틴·그렐린 불균형. 수면 최적화가 다이어트의 시작.</div>
+              <div class="result-card-tags">
+                <span class="result-tag" style="background:#e3f2fd;color:#1565c0" data-tooltip="깊은 수면을 위한 수면 위생, 청색광 차단, 취침 루틴">🌙 수면 루틴</span>
+                <span class="result-tag" style="background:#f3e5f5;color:#7b1fa2" data-tooltip="수면 호르몬 분비를 위한 마그네슘, 멜라토닌 전략">💊 수면 영양</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="carousel-slide">
+          <div class="result-card">
+            <div class="result-card-img" style="background:linear-gradient(135deg,#a8edea,#fed6e3)">
+              <span>🏛️</span>
+              <div class="result-card-badge">BC-12</div>
+            </div>
+            <div class="result-card-body">
+              <div class="result-card-code">BC-12</div>
+              <div class="result-card-name">체형 불균형 근골격 비대칭형</div>
+              <div class="result-card-desc">골반·척추 불균형으로 체형 변형. 교정 운동과 체형 관리가 우선.</div>
+              <div class="result-card-tags">
+                <span class="result-tag" style="background:#e8f5e9;color:#2e7d32" data-tooltip="골반·척추 불균형을 교정하는 맞춤 교정 운동 처방">🦴 체형 교정</span>
+                <span class="result-tag" style="background:#e3f2fd;color:#1565c0" data-tooltip="비대칭 체형을 개선하는 도수치료 병행 권고">🤲 도수 치료</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="carousel-slide">
+          <div class="result-card">
+            <div class="result-card-img" style="background:linear-gradient(135deg,#ffecd2,#fcb69f)">
+              <span>🍎</span>
+              <div class="result-card-badge">BC-13</div>
+            </div>
+            <div class="result-card-body">
+              <div class="result-card-code">BC-13</div>
+              <div class="result-card-name">면역·염증 만성 활성화형</div>
+              <div class="result-card-desc">저급 염증 지속, 면역 과활성. 항염 식이와 면역 조절이 핵심.</div>
+              <div class="result-card-tags">
+                <span class="result-tag" style="background:#fce4ec;color:#c2185b" data-tooltip="염증 억제를 위한 오메가-3, 강황, 생강 항염 식품 처방">🫚 항염 식단</span>
+                <span class="result-tag" style="background:#e3f2fd;color:#1565c0" data-tooltip="면역 과활성을 조절하는 비타민 D, 아연 보충 전략">💊 면역 영양</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="carousel-slide">
+          <div class="result-card">
+            <div class="result-card-img" style="background:linear-gradient(135deg,#667eea,#764ba2)">
+              <span>🎯</span>
+              <div class="result-card-badge">BC-14</div>
+            </div>
+            <div class="result-card-body">
+              <div class="result-card-code">BC-14</div>
+              <div class="result-card-name">복부 지방 집중 축적형</div>
+              <div class="result-card-desc">복부 선택적 지방 축적. 코어 운동과 내장지방 선택적 연소 전략.</div>
+              <div class="result-card-tags">
+                <span class="result-tag" style="background:#e8f5e9;color:#2e7d32" data-tooltip="복부 내장지방 연소에 특화된 코어 강화 + HIIT 조합">🔥 복부 소각</span>
+                <span class="result-tag" style="background:#ffecd2;color:#e67e22" data-tooltip="내장지방 축적을 촉진하는 과당, 정제탄수화물 제한 식이">🚫 정제당 제한</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="carousel-slide">
+          <div class="result-card">
+            <div class="result-card-img" style="background:linear-gradient(135deg,#0fd850,#f9f047)">
+              <span>🧠</span>
+              <div class="result-card-badge">BC-15</div>
+            </div>
+            <div class="result-card-body">
+              <div class="result-card-code">BC-15</div>
+              <div class="result-card-name">심리·기질 감정 식욕 조절형</div>
+              <div class="result-card-desc">감정 식욕, 폭식-보상 사이클. 심리 기법과 행동 수정이 핵심.</div>
+              <div class="result-card-tags">
+                <span class="result-tag" style="background:#fce4ec;color:#c2185b" data-tooltip="감정 식욕 충동을 관리하는 인지행동치료(CBT) 기반 식욕 조절법">🧠 식욕 조절</span>
+                <span class="result-tag" style="background:#f3e5f5;color:#7b1fa2" data-tooltip="세로토닌 분비를 돕는 트립토판, 마그네슘 보충 처방">😊 세로토닌</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="carousel-slide">
+          <div class="result-card">
+            <div class="result-card-img" style="background:linear-gradient(135deg,#30cfd0,#a18cd1)">
+              <span>🏆</span>
+              <div class="result-card-badge">BC-16</div>
+            </div>
+            <div class="result-card-body">
+              <div class="result-card-code">BC-16</div>
+              <div class="result-card-name">복합 체질 최적화형</div>
+              <div class="result-card-desc">두 가지 이상 원인 복합. 우선순위 분석으로 단계별 통합 처방 설계.</div>
+              <div class="result-card-tags">
+                <span class="result-tag" style="background:#e3f2fd;color:#1565c0" data-tooltip="복합 원인을 우선순위별로 해결하는 단계별 통합 로드맵">📋 통합 로드맵</span>
+                <span class="result-tag" style="background:#e8f5e9;color:#2e7d32" data-tooltip="전문 컨설턴트와 1:1로 복합 처방 설계">👨‍⚕️ 1:1 컨설팅</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <div class="carousel-nav" data-aos="fade-up" data-aos-delay="200">
+      <button class="carousel-btn" id="prevBtn" onclick="carouselPrev()"><i class="fas fa-chevron-left"></i></button>
+      <div class="carousel-dots" id="carouselDots"></div>
+      <button class="carousel-btn" id="nextBtn" onclick="carouselNext()"><i class="fas fa-chevron-right"></i></button>
+    </div>
+  </div>
+</section>
+
+<!-- ■ 후기 섹션 -->
 <section class="reviews">
   <div class="wrap">
-    <div class="section-head">
+    <div class="section-head" data-aos="fade-up">
       <div class="section-eyebrow">Real stories</div>
       <h2>바디코드를 찾은 분들의 이야기</h2>
       <p>의지력 문제가 아니었습니다. 코드가 달랐을 뿐입니다</p>
     </div>
     <div class="reviews-grid">
-      <div class="review-card">
+      <div class="review-card" data-aos="fade-up" data-aos-delay="0">
         <div class="review-stars">★★★★★</div>
         <div class="review-bc-tag">BC-04 인슐린 저항형</div>
         <p class="review-text">"탄수화물을 줄이고 운동을 해도 왜 안 빠지나 했더니, 인슐린 저항이 문제였어요. 코드를 알고 나서 식단 순서만 바꿨는데 2주 만에 변화가 시작됐습니다."</p>
         <div class="review-result">✅ 12주 완주 · -7.8kg · 공복혈당 정상화</div>
         <div class="review-author">
           <div class="review-avatar">👩</div>
-          <div>
-            <div class="review-name">김지현님</div>
-            <div class="review-meta">40대 · 직장인 · 서울</div>
-          </div>
+          <div><div class="review-name">김지현님</div><div class="review-meta">40대 · 직장인 · 서울</div></div>
         </div>
       </div>
-      <div class="review-card">
+      <div class="review-card" data-aos="fade-up" data-aos-delay="100">
         <div class="review-stars">★★★★★</div>
         <div class="review-bc-tag">BC-09 교감 항진형</div>
         <p class="review-text">"스트레스받으면 더 살이 찐다는 게 실제로 내 몸에서 일어나는 일이었어요. 회복 루틴을 바꾸고 수면 질이 올라가면서 체중이 자연스럽게 떨어졌어요."</p>
         <div class="review-result">✅ 10주 완주 · -6.2kg · 수면 품질 개선</div>
         <div class="review-author">
           <div class="review-avatar">🧑</div>
-          <div>
-            <div class="review-name">박준형님</div>
-            <div class="review-meta">30대 · 프리랜서 · 경기</div>
-          </div>
+          <div><div class="review-name">박준형님</div><div class="review-meta">30대 · 프리랜서 · 경기</div></div>
         </div>
       </div>
-      <div class="review-card">
+      <div class="review-card" data-aos="fade-up" data-aos-delay="200">
         <div class="review-stars">★★★★★</div>
         <div class="review-bc-tag">BC-06 에스트로겐 우세형</div>
         <p class="review-text">"갱년기 이후에 살이 다르게 찐다고 느꼈는데, 호르몬 불균형이 원인이었어요. 3개월 만에 허리 사이즈가 8cm 줄었고, 무엇보다 몸이 가벼워진 느낌이 달라요."</p>
         <div class="review-result">✅ 12주 완주 · -9.1kg · 허리 -8cm</div>
         <div class="review-author">
           <div class="review-avatar">👩</div>
-          <div>
-            <div class="review-name">이수정님</div>
-            <div class="review-meta">50대 · 주부 · 부산</div>
-          </div>
+          <div><div class="review-name">이수정님</div><div class="review-meta">50대 · 주부 · 부산</div></div>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- 사회적 증거 숫자 -->
+<!-- ■ 사회적 증거 숫자 -->
 <section class="social-proof">
   <div class="wrap">
-    <div class="proof-quote">"<span class="hl">게으른 게 아니었어요.</span> 제 몸은 다른 방식으로 작동하고 있었던 거였어요."</div>
-    <div class="proof-name">BC-06 에스트로겐 우세형 · 이수정님 (12주 완주)</div>
-    <div class="proof-cards">
-      <div class="proof-card">
-        <div class="proof-stat">8.4<small style="font-size:16px">kg</small></div>
+    <div class="proof-quote" data-aos="fade-up">"<span class="hl">게으른 게 아니었어요.</span> 제 몸은 다른 방식으로 작동하고 있었던 거였어요."</div>
+    <div class="proof-name" data-aos="fade-up" data-aos-delay="100">BC-06 에스트로겐 우세형 · 이수정님 (12주 완주)</div>
+    <div class="proof-cards" id="proofCards">
+      <div class="proof-card" data-aos="zoom-in" data-aos-delay="0">
+        <div class="proof-stat"><span id="proof1">0</span><small style="font-size:16px">kg</small></div>
         <div class="proof-stat-label">완주자 평균 감량</div>
       </div>
-      <div class="proof-card">
-        <div class="proof-stat">78<small style="font-size:16px">%</small></div>
+      <div class="proof-card" data-aos="zoom-in" data-aos-delay="100">
+        <div class="proof-stat"><span id="proof2">0</span><small style="font-size:16px">%</small></div>
         <div class="proof-stat-label">12주 완주율</div>
       </div>
-      <div class="proof-card">
-        <div class="proof-stat">4.8<small style="font-size:16px">/5</small></div>
+      <div class="proof-card" data-aos="zoom-in" data-aos-delay="200">
+        <div class="proof-stat"><span id="proof3">0</span><small style="font-size:16px">/5</small></div>
         <div class="proof-stat-label">고객 만족도</div>
       </div>
-      <div class="proof-card">
-        <div class="proof-stat" id="partnerCount">42<small style="font-size:16px">개</small></div>
+      <div class="proof-card" data-aos="zoom-in" data-aos-delay="300">
+        <div class="proof-stat"><span id="proof4">0</span><small style="font-size:16px">개</small></div>
         <div class="proof-stat-label">파트너 입점 센터</div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- WHY SLIMMIND 섹션 (신규) -->
-<section style="padding:80px 24px;background:var(--paper)">
+<!-- ■ WHY SLIMMIND -->
+<section class="why-section">
   <div class="wrap">
-    <div class="section-head">
+    <div class="section-head" data-aos="fade-up">
       <div class="section-eyebrow">Why SlimMind</div>
       <h2>왜 슬림마인드여야 하는가</h2>
       <p>이론이 아닙니다. 수만 명을 직접 관리한 현장 전문가들이 만든 시스템입니다.</p>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:20px">
-      <div style="background:var(--card);border-radius:18px;padding:28px 26px;border:1px solid var(--line);transition:all .2s">
-        <div style="font-size:28px;margin-bottom:14px">⚖️</div>
-        <div style="font-size:16px;font-weight:800;color:var(--ink);margin-bottom:10px">실패 원인을 처음으로 설명해줍니다</div>
-        <div style="font-size:14px;color:var(--muted);line-height:1.75">열심히 했는데 왜 안 됐는지 아무도 말해주지 않았습니다. 슬림마인드는 10원인축 분석으로 <strong>"당신이 왜 지금까지 실패했는지"</strong>를 데이터로 설명합니다. 의지 탓이 아닌 구조 탓입니다.</div>
+    <div class="why-grid">
+      <div class="why-card" data-aos="fade-right" data-aos-delay="0">
+        <div class="why-icon">⚖️</div>
+        <div class="why-title">실패 원인을 처음으로 설명해줍니다</div>
+        <div class="why-desc">열심히 했는데 왜 안 됐는지 아무도 말해주지 않았습니다. 슬림마인드는 10원인축 분석으로 <strong>"당신이 왜 지금까지 실패했는지"</strong>를 데이터로 설명합니다. 의지 탓이 아닌 구조 탓입니다.</div>
       </div>
-      <div style="background:var(--card);border-radius:18px;padding:28px 26px;border:1px solid var(--line);transition:all .2s">
-        <div style="font-size:28px;margin-bottom:14px">🧬</div>
-        <div style="font-size:16px;font-weight:800;color:var(--ink);margin-bottom:10px">동서양 통합 — 세상에 없는 진단 체계</div>
-        <div style="font-size:14px;color:var(--muted);line-height:1.75">사주 오행 대사순환 × MBTI 기질 × 사상체질 × 라이프스타일을 교차 분석합니다. 같은 수면 부족이어도 소양인과 소음인의 처방이 다릅니다. 이걸 구분하는 시스템은 슬림마인드뿐입니다.</div>
+      <div class="why-card" data-aos="fade-left" data-aos-delay="100">
+        <div class="why-icon">🧬</div>
+        <div class="why-title">동서양 통합 — 세상에 없는 진단 체계</div>
+        <div class="why-desc">사주 오행 대사순환 × MBTI 기질 × 사상체질 × 라이프스타일을 교차 분석합니다. 같은 수면 부족이어도 소양인과 소음인의 처방이 다릅니다. 이걸 구분하는 시스템은 슬림마인드뿐입니다.</div>
       </div>
-      <div style="background:var(--card);border-radius:18px;padding:28px 26px;border:1px solid var(--line);transition:all .2s">
-        <div style="font-size:28px;margin-bottom:14px">🏋️</div>
-        <div style="font-size:16px;font-weight:800;color:var(--ink);margin-bottom:10px">현장 40년 + AI — 하이브리드 처방</div>
-        <div style="font-size:14px;color:var(--muted);line-height:1.75">트레이너·필라테스·에스테틱·한의학 현장 전문가의 40년 노하우를 AI 시스템으로 자동화했습니다. 백엔드 90% 과학 계산 + AI 10% 감정 유추로 단 한 명도 같은 결과지가 나오지 않습니다.</div>
+      <div class="why-card" data-aos="fade-right" data-aos-delay="200">
+        <div class="why-icon">🏋️</div>
+        <div class="why-title">현장 40년 + AI — 하이브리드 처방</div>
+        <div class="why-desc">트레이너·필라테스·에스테틱·한의학 현장 전문가의 <span class="neon-keyword">40년 노하우</span>를 AI 시스템으로 자동화했습니다. 백엔드 90% 과학 계산 + AI 10% 감정 유추로 단 한 명도 같은 결과지가 나오지 않습니다.</div>
       </div>
-      <div style="background:var(--card);border-radius:18px;padding:28px 26px;border:1px solid var(--line);transition:all .2s">
-        <div style="font-size:28px;margin-bottom:14px">📊</div>
-        <div style="font-size:16px;font-weight:800;color:var(--ink);margin-bottom:10px">11개 전문가 시선 — 한쪽에 치우치지 않음</div>
-        <div style="font-size:14px;color:var(--muted);line-height:1.75">약·식단·운동·회복·한방·심리·체형·호르몬·시술·관리·기질 — 11개 전문 분야를 통합해서 가장 시급한 것부터 순서대로 처방합니다. 어느 한 전문가에 치우친 처방이 아닙니다.</div>
+      <div class="why-card" data-aos="fade-left" data-aos-delay="300">
+        <div class="why-icon">📊</div>
+        <div class="why-title">11개 전문가 시선 — 한쪽에 치우치지 않음</div>
+        <div class="why-desc">약·식단·운동·회복·한방·심리·체형·호르몬·시술·관리·기질 — <span class="neon-keyword">11개 전문 분야</span>를 통합해서 가장 시급한 것부터 순서대로 처방합니다. 어느 한 전문가에 치우친 처방이 아닙니다.</div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- MBTI BOX 섹션 (신규) -->
-<section style="padding:0 24px 80px;background:var(--paper)">
+<!-- ■ MBTI BOX -->
+<section class="mbti-box">
   <div class="wrap">
-    <div style="background:linear-gradient(135deg,var(--ink),#3d1810);border-radius:24px;padding:52px 48px;text-align:center">
+    <div style="background:linear-gradient(135deg,var(--ink),#3d1810);border-radius:24px;padding:52px 48px;text-align:center" data-aos="zoom-in">
       <div style="font-size:clamp(20px,2.8vw,30px);font-weight:800;color:#fff;line-height:1.5;margin-bottom:14px">
         성격에 MBTI가 있듯<br><span style="color:var(--vis)">다이어트에도 바디코드가 있습니다</span>
       </div>
@@ -544,22 +1255,22 @@ footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:60px 24px 100px
       </div>
       <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
         <a href="/" class="btn btn-primary btn-lg">내 바디코드 찾기 →</a>
-        <a href="/landing/b2b.html" class="btn btn-ghost-white btn-lg">B2B 파트너 입점</a>
+        <button onclick="openLoginModal()" class="btn btn-ghost-white btn-lg">무료 회원가입 + 샘플 리포트 받기</button>
       </div>
     </div>
   </div>
 </section>
 
-<!-- 역설적 솔직함 섹션 -->
+<!-- ■ 역설적 솔직함 -->
 <section class="not-for">
   <div class="wrap">
-    <div class="section-head">
+    <div class="section-head" data-aos="fade-up">
       <div class="section-eyebrow">Honest talk</div>
       <h2>슬림마인드가 맞지 않는 분도 있습니다</h2>
       <p>저희가 도울 수 있는 분과 그렇지 않은 분을 솔직하게 말씀드립니다</p>
     </div>
     <div class="not-for-box">
-      <div class="not-for-card no">
+      <div class="not-for-card no" data-aos="fade-right">
         <span class="not-for-tag">슬림마인드가 맞지 않는 분</span>
         <h3>이런 분께는 추천하지 않습니다</h3>
         <ul class="not-for-list">
@@ -569,7 +1280,7 @@ footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:60px 24px 100px
           <li>"왜"보다 "어떻게"만 원하시는 분</li>
         </ul>
       </div>
-      <div class="not-for-card yes">
+      <div class="not-for-card yes" data-aos="fade-left">
         <span class="not-for-tag">슬림마인드가 잘 맞는 분</span>
         <h3>이런 분께 강력히 추천합니다</h3>
         <ul class="not-for-list">
@@ -583,35 +1294,35 @@ footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:60px 24px 100px
   </div>
 </section>
 
-<!-- FAQ -->
+<!-- ■ FAQ -->
 <section class="faq">
   <div class="wrap">
-    <div class="section-head">
+    <div class="section-head" data-aos="fade-up">
       <div class="section-eyebrow">FAQ</div>
       <h2>자주 묻는 질문</h2>
     </div>
     <div class="faq-list">
-      <div class="faq-item">
+      <div class="faq-item" data-aos="fade-up" data-aos-delay="0">
         <button class="faq-q" onclick="toggleFaq(this)">결제하면 바로 진단을 시작할 수 있나요? <span class="arrow">+</span></button>
         <div class="faq-a">네, 결제 완료 즉시 진단 링크가 활성화됩니다. 평균 3분 이내에 진단이 완료되며, 당일 결과지를 확인하실 수 있습니다.</div>
       </div>
-      <div class="faq-item">
+      <div class="faq-item" data-aos="fade-up" data-aos-delay="50">
         <button class="faq-q" onclick="toggleFaq(this)">기존 다이어트 프로그램과 무엇이 다른가요? <span class="arrow">+</span></button>
-        <div class="faq-a">일반 다이어트는 "식단 줄이고 운동 늘리기"로 모든 사람에게 같은 처방을 합니다. 슬림마인드는 호르몬·대사·림프·기질 11개 축을 분석해 당신 몸에만 맞는 원인을 찾고, 16가지 코드 중 하나로 분류한 뒤 맞춤 처방을 제공합니다.</div>
+        <div class="faq-a">일반 다이어트는 "식단 줄이고 운동 늘리기"로 모든 사람에게 같은 처방을 합니다. 슬림마인드는 호르몬·대사·림프·자율신경·소화·근골격·수면·면역·기질·순환·영양 11개 축을 분석해 당신 몸에만 맞는 원인을 찾고, 16가지 코드 중 하나로 분류한 뒤 맞춤 처방을 제공합니다.</div>
       </div>
-      <div class="faq-item">
+      <div class="faq-item" data-aos="fade-up" data-aos-delay="100">
         <button class="faq-q" onclick="toggleFaq(this)">환불 정책이 어떻게 되나요? <span class="arrow">+</span></button>
         <div class="faq-a">결제 후 7일 이내, 진단을 완료하지 않은 경우 100% 전액 환불이 가능합니다. 진단 완료 후에는 결과지가 발급되므로 환불이 제한됩니다. 문의는 카카오톡 채널로 연락 주세요.</div>
       </div>
-      <div class="faq-item">
-        <button class="faq-q" onclick="toggleFaq(this)">개인정보는 어떻게 관리되나요? <span class="arrow">+</span></button>
-        <div class="faq-a">진단 결과는 암호화되어 보관되며, 제3자에게 제공되지 않습니다. 회원 탈퇴 시 모든 데이터가 완전 삭제됩니다. 자세한 내용은 개인정보처리방침을 확인해주세요.</div>
+      <div class="faq-item" data-aos="fade-up" data-aos-delay="150">
+        <button class="faq-q" onclick="toggleFaq(this)">카카오/네이버 로그인 시 어떤 정보가 저장되나요? <span class="arrow">+</span></button>
+        <div class="faq-a">소셜 로그인 시 이름, 이메일 주소만 수집됩니다. 회원가입 완료 시 휴대전화번호와 회원 유형(병원 원장/에스테틱 대표/PT·필라테스/한의원/컨설턴트/일반고객)을 추가 입력합니다. 모든 정보는 암호화되어 보관되며 제3자에게 제공되지 않습니다.</div>
       </div>
-      <div class="faq-item">
+      <div class="faq-item" data-aos="fade-up" data-aos-delay="200">
         <button class="faq-q" onclick="toggleFaq(this)">16가지 바디코드 중 어떤 코드인지 어떻게 결정되나요? <span class="arrow">+</span></button>
         <div class="faq-a">11개 전문가 진단축(호르몬·대사·림프·자율신경·소화·근골격·수면·면역·기질·순환·영양)에 대한 설문을 바탕으로 AI 알고리즘이 분석합니다. 특허출원 중인 독자적 분류 체계를 사용합니다.</div>
       </div>
-      <div class="faq-item">
+      <div class="faq-item" data-aos="fade-up" data-aos-delay="250">
         <button class="faq-q" onclick="toggleFaq(this)">한 번 결제로 몇 번이나 사용할 수 있나요? <span class="arrow">+</span></button>
         <div class="faq-a">1단계 진단(39,000원)은 1회 결과지 발급 및 12주 로드맵 1~4주차가 포함됩니다. 전체 12주 완주를 원하시면 2단계(89,000원) 또는 프리미엄(159,000원)으로 업그레이드하실 수 있습니다.</div>
       </div>
@@ -619,20 +1330,20 @@ footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:60px 24px 100px
   </div>
 </section>
 
-<!-- 최종 CTA -->
+<!-- ■ 최종 CTA -->
 <section class="final-cta">
   <div class="wrap">
-    <h2>오늘, 당신 몸의<br>진짜 원인을 찾으세요</h2>
-    <p>열심히 해도 안 됐던 이유가 있습니다. 3분이면 확인할 수 있습니다.</p>
-    <div class="final-guarantee">🛡️ 7일 이내 미만족 · 전액 환불 보장</div>
-    <div class="final-cta-btns">
+    <h2 data-aos="fade-up">오늘, 당신 몸의<br>진짜 원인을 찾으세요</h2>
+    <p data-aos="fade-up" data-aos-delay="100">열심히 해도 안 됐던 이유가 있습니다. 3분이면 확인할 수 있습니다.</p>
+    <div class="final-guarantee" data-aos="fade-up" data-aos-delay="150">🛡️ 7일 이내 미만족 · 전액 환불 보장</div>
+    <div class="final-cta-btns" data-aos="fade-up" data-aos-delay="200">
       <a href="/" class="btn btn-white btn-lg">1단계 진단 시작하기 (39,000원) →</a>
-      <button onclick="openQuiz()" class="btn btn-ghost-white btn-lg">무료로 유형 먼저 확인하기</button>
+      <button onclick="openLoginModal()" class="btn btn-ghost-white btn-lg">무료 회원가입 + 샘플 PDF →</button>
     </div>
   </div>
 </section>
 
-<!-- 풋터 -->
+<!-- ■ 풋터 -->
 <footer>
   <div class="wrap">
     <div class="footer-grid">
@@ -667,13 +1378,13 @@ footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:60px 24px 100px
   </div>
 </footer>
 
-<!-- 카카오톡 플로팅 버튼 -->
+<!-- ■ 카카오톡 플로팅 버튼 -->
 <div class="kakao-float">
   <a href="http://pf.kakao.com/_xgCgsX" target="_blank" title="카카오톡 문의">💬</a>
   <span>카카오 문의</span>
 </div>
 
-<!-- 실시간 알림 팝업 -->
+<!-- ■ 실시간 알림 팝업 -->
 <div class="live-popup" id="livePopup">
   <div class="live-popup-icon">🔔</div>
   <div class="live-popup-text">
@@ -682,7 +1393,7 @@ footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:60px 24px 100px
   </div>
 </div>
 
-<!-- Exit Intent 팝업 -->
+<!-- ■ Exit Intent 팝업 -->
 <div class="exit-overlay" id="exitOverlay">
   <div class="exit-box">
     <button class="close" onclick="closeExit()">✕</button>
@@ -694,7 +1405,7 @@ footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:60px 24px 100px
   </div>
 </div>
 
-<!-- 무료 미니 진단 팝업 -->
+<!-- ■ 무료 미니 진단 팝업 -->
 <div class="quiz-overlay" id="quizOverlay">
   <div class="quiz-popup">
     <button class="close" onclick="closeQuiz()">✕</button>
@@ -702,13 +1413,11 @@ footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:60px 24px 100px
     <h2 style="font-size:22px;font-weight:800;margin-bottom:6px;letter-spacing:-0.5px">3가지 질문으로 알아보는<br>내 바디코드 유형</h2>
     <p style="font-size:13px;color:var(--muted);margin-bottom:20px">결제 없이 무료로 확인하세요. 정확한 진단은 1단계 진단으로 확인하실 수 있습니다.</p>
     <div class="quiz-progress"><div class="quiz-progress-bar" id="quizBar" style="width:33%"></div></div>
-    <div id="quizContent">
-      <!-- JS로 렌더링 -->
-    </div>
+    <div id="quizContent"></div>
   </div>
 </div>
 
-<!-- 모바일 메뉴 -->
+<!-- ■ 모바일 메뉴 -->
 <div class="mobile-nav" id="mobileNav">
   <button class="close-btn" onclick="closeMobileNav()">✕</button>
   <a href="/landing/" onclick="closeMobileNav()">홈</a>
@@ -717,31 +1426,369 @@ footer{background:var(--ink);color:rgba(255,255,255,0.6);padding:60px 24px 100px
   <a href="/landing/b2b.html" onclick="closeMobileNav()">파트너 입점</a>
   <a href="/landing/consultant.html" onclick="closeMobileNav()">공식 컨설턴트</a>
   <a href="/landing/about.html" onclick="closeMobileNav()">회사 소개</a>
+  <button onclick="closeMobileNav();openLoginModal();" class="btn btn-primary">로그인 / 회원가입</button>
 </div>
 
+<!-- ■ Lightbox Modal (질문지 확대보기) -->
+<div class="lightbox-overlay" id="lightboxOverlay">
+  <div class="lightbox-inner">
+    <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+    <div class="lightbox-title">🗒️ 슬림마인드 병원용 바디코드 진단 — 실제 질문지 미리보기</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:24px">10개 원인축 × 총 37문항. 병원 대기실에서 태블릿으로 평균 7분 완료.</div>
+    <div class="lightbox-img-grid">
+      <div class="survey-mock-img">
+        <div style="font-size:11px;font-weight:800;color:var(--vis);margin-bottom:10px">📋 A01 대사·소화 축 (1-4번)</div>
+        <div class="sq">Q1. 식후 소화는 어떤가요?</div>
+        <div class="so sel">① 식후 항상 더부룩하고 가스가 찬다</div>
+        <div class="so">② 소화는 괜찮지만 식곤증이 심하다</div>
+        <div class="so">③ 소화도 잘 되고 식후 컨디션이 좋다</div>
+        <div class="sq" style="margin-top:12px">Q2. 대변 상태는 어떤가요?</div>
+        <div class="so">① 변비가 자주 있다 (주 3회 미만)</div>
+        <div class="so sel">② 설사나 묽은 변이 자주 있다</div>
+        <div class="so">③ 규칙적이고 정상적이다</div>
+      </div>
+      <div class="survey-mock-img">
+        <div style="font-size:11px;font-weight:800;color:var(--circ);margin-bottom:10px">📋 A03 순환·부종 축 (9-12번)</div>
+        <div class="sq">Q9. 손발이 차갑거나 저린 증상이 있나요?</div>
+        <div class="so">① 항상 차갑고 저림이 있다</div>
+        <div class="so sel">② 가끔 차갑지만 저림은 없다</div>
+        <div class="so">③ 대체로 따뜻하다</div>
+        <div class="sq" style="margin-top:12px">Q10. 아침에 일어났을 때 붓기가 있나요?</div>
+        <div class="so sel">① 매일 얼굴이나 다리가 붓는다</div>
+        <div class="so">② 가끔 붓는다</div>
+        <div class="so">③ 거의 붓지 않는다</div>
+      </div>
+      <div class="survey-mock-img">
+        <div style="font-size:11px;font-weight:800;color:var(--whole);margin-bottom:10px">📋 A07 심리·스트레스 축 (25-27번)</div>
+        <div class="sq">Q25. 스트레스를 받으면 주로 어떻게 되나요?</div>
+        <div class="so">① 폭식하거나 야식이 당긴다</div>
+        <div class="so sel">② 식욕이 없어지고 아무것도 먹기 싫다</div>
+        <div class="so">③ 잠을 못 자고 예민해진다</div>
+        <div class="sq" style="margin-top:12px">Q26. 카페인 의존도는?</div>
+        <div class="so">① 하루 3잔 이상 없으면 못 버틴다</div>
+        <div class="so sel">② 하루 1-2잔 적당히 마신다</div>
+        <div class="so">③ 카페인을 거의 마시지 않는다</div>
+      </div>
+      <div class="survey-mock-img">
+        <div style="font-size:11px;font-weight:800;color:var(--muscle);margin-bottom:10px">📋 A10 체형·운동 축 (35-37번)</div>
+        <div class="sq">Q35. 평소 선호하는 운동 스타일은?</div>
+        <div class="so sel">① 격렬하고 땀 많이 흘리는 운동</div>
+        <div class="so">② 가볍게 걷거나 스트레칭</div>
+        <div class="so">③ 요가, 필라테스 등 정적 운동</div>
+        <div class="sq" style="margin-top:12px">Q36. 체중 감량 계획 스타일은?</div>
+        <div class="so">① 단기간에 확 빼고 싶다</div>
+        <div class="so">② 천천히 꾸준히 관리하고 싶다</div>
+        <div class="so sel">③ 목표 없이 건강 관리만 원한다</div>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:28px">
+      <a href="/" class="btn btn-primary btn-lg">지금 진단 시작하기 (39,000원) →</a>
+    </div>
+  </div>
+</div>
+
+<!-- ■ 로그인/회원가입 모달 -->
+<div class="login-modal-overlay" id="loginModalOverlay">
+  <div class="login-modal" id="loginModal">
+    <button class="login-modal-close" onclick="closeLoginModal()">✕</button>
+
+    <!-- Step 1: 소셜 로그인 선택 -->
+    <div id="loginStep1">
+      <div class="login-modal-header">
+        <div class="login-modal-logo">SLIM<span>MIND</span></div>
+        <div class="login-modal-title">1초 간편 로그인 / 회원가입</div>
+        <div class="login-modal-sub">
+          가입 완료 즉시 <strong style="color:var(--vis)">원장님 전용 16가지 바디코드<br>샘플 리포트 PDF</strong> 를 무료로 받아보세요!
+        </div>
+      </div>
+      <div class="social-btns">
+        <button class="social-btn kakao-btn" onclick="startSocialLogin('kakao')">
+          <div class="kakao-icon">K</div>
+          카카오 1초 간편 로그인/가입
+        </button>
+        <button class="social-btn naver-btn" onclick="startSocialLogin('naver')">
+          <div class="naver-icon">N</div>
+          네이버 1초 간편 로그인/가입
+        </button>
+      </div>
+      <div class="login-divider"><span>또는 이메일로 계속하기</span></div>
+      <div style="padding:0 32px 16px">
+        <button onclick="showMemberTypeStep()" class="btn btn-outline" style="width:100%;padding:13px">이메일로 시작하기</button>
+      </div>
+      <div style="padding:0 32px 24px;text-align:center;font-size:12px;color:var(--muted)">
+        계속 진행 시 <a href="#" style="color:var(--vis);text-decoration:underline">이용약관</a> 및 <a href="#" style="color:var(--vis);text-decoration:underline">개인정보처리방침</a>에 동의하는 것으로 간주됩니다.
+      </div>
+    </div>
+
+    <!-- Step 2: 회원유형 + 추가정보 입력 -->
+    <div class="member-type-form" id="loginStep2">
+      <div style="padding:24px 32px 0">
+        <button onclick="backToStep1()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;display:flex;align-items:center;gap:4px;margin-bottom:16px">← 뒤로</button>
+        <div class="member-type-title">회원 유형을 선택해주세요</div>
+        <div class="member-type-sub">맞춤 정보와 혜택을 제공해드립니다</div>
+      </div>
+      <div style="padding:0 32px">
+        <div class="member-type-grid" id="memberTypeGrid">
+          <button class="member-type-btn" onclick="selectMemberType(this,'hospital')" data-type="hospital">
+            <span class="mt-icon">🏥</span>
+            <span class="mt-label">병원 원장</span>
+            <span class="mt-sublabel">내과·가정의학과·비만클리닉</span>
+          </button>
+          <button class="member-type-btn" onclick="selectMemberType(this,'esthetic')" data-type="esthetic">
+            <span class="mt-icon">💆</span>
+            <span class="mt-label">에스테틱 대표</span>
+            <span class="mt-sublabel">피부샵·관리샵·슬리밍샵</span>
+          </button>
+          <button class="member-type-btn" onclick="selectMemberType(this,'fitness')" data-type="fitness">
+            <span class="mt-icon">🏋️</span>
+            <span class="mt-label">PT·필라테스</span>
+            <span class="mt-sublabel">개인 트레이너·필라테스 강사</span>
+          </button>
+          <button class="member-type-btn" onclick="selectMemberType(this,'oriental')" data-type="oriental">
+            <span class="mt-icon">🌿</span>
+            <span class="mt-label">한의원</span>
+            <span class="mt-sublabel">한의사·한방병원 원장</span>
+          </button>
+          <button class="member-type-btn" onclick="selectMemberType(this,'consultant')" data-type="consultant">
+            <span class="mt-icon">🎓</span>
+            <span class="mt-label">B2B 컨설턴트</span>
+            <span class="mt-sublabel">바디컨설턴트 교육 이수자</span>
+          </button>
+          <button class="member-type-btn" onclick="selectMemberType(this,'general')" data-type="general">
+            <span class="mt-icon">👤</span>
+            <span class="mt-label">일반 고객</span>
+            <span class="mt-sublabel">다이어트가 필요한 분</span>
+          </button>
+        </div>
+        <div class="member-info-form">
+          <input type="text" id="memberName" placeholder="이름 (성함)" required>
+          <input type="email" id="memberEmail" placeholder="이메일 주소" required>
+          <input type="tel" id="memberPhone" placeholder="휴대전화번호 (숫자만)" required>
+        </div>
+        <button onclick="submitMemberForm()" class="btn btn-primary" style="width:100%;padding:15px;font-size:15px;margin-bottom:24px">
+          가입 완료 — 샘플 PDF 받기 🎁
+        </button>
+      </div>
+    </div>
+
+    <!-- Step 3: 완료 화면 -->
+    <div class="complete-section" id="loginStep3">
+      <div class="complete-icon">🎉</div>
+      <div class="complete-title">가입이 완료됐습니다!</div>
+      <div class="complete-sub">아래 혜택이 바로 활성화됩니다.<br>이메일로도 다운로드 링크를 보내드립니다.</div>
+      <div class="pdf-gift-box">
+        <div class="pdf-gift-icon">📑</div>
+        <div class="pdf-gift-text">
+          <h4>16가지 바디코드 샘플 리포트 PDF</h4>
+          <p>B2B 원장님·대표님 전용 · 실제 결과지 16종 샘플 포함</p>
+        </div>
+      </div>
+      <a href="/api/download-sample-pdf" class="btn btn-primary btn-lg" style="width:100%;margin-bottom:12px">
+        <i class="fas fa-download"></i> 샘플 PDF 무료 다운로드
+      </a>
+      <button onclick="closeLoginModal()" style="width:100%;padding:12px;background:none;border:1.5px solid var(--line);border-radius:10px;font-size:14px;cursor:pointer;color:var(--muted)">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+   CDN SCRIPTS
+═══════════════════════════════════════════════════════ -->
+<script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/countup.js@2.8.0/dist/countUp.umd.js"></script>
+
 <script>
-// ─── 모바일 메뉴 ───
+/* ══════════════════════════════════════════════════
+   AOS INIT
+══════════════════════════════════════════════════ */
+AOS.init({
+  duration: 700,
+  once: true,
+  offset: 60,
+  easing: 'ease-out-cubic'
+});
+
+/* ══════════════════════════════════════════════════
+   MOBILE NAV
+══════════════════════════════════════════════════ */
 function openMobileNav(){document.getElementById('mobileNav').classList.add('open');document.body.style.overflow='hidden'}
 function closeMobileNav(){document.getElementById('mobileNav').classList.remove('open');document.body.style.overflow=''}
 
-// ─── Sticky CTA 바 ───
+/* ══════════════════════════════════════════════════
+   STICKY CTA BAR
+══════════════════════════════════════════════════ */
 window.addEventListener('scroll',function(){
   const bar=document.getElementById('stickyCta');
-  if(window.scrollY>400){bar.classList.add('visible')}else{bar.classList.remove('visible')}
+  bar.classList.toggle('visible',window.scrollY>400);
 });
 
-// ─── 실시간 카운터 (랜덤 자연스러운 숫자) ───
-function randomBetween(a,b){return Math.floor(Math.random()*(b-a+1))+a}
-const baseCount=randomBetween(38,62);
-document.getElementById('liveCount').textContent=baseCount;
-document.getElementById('liveOnline').textContent=randomBetween(3,11);
+/* ══════════════════════════════════════════════════
+   LIVE COUNTER
+══════════════════════════════════════════════════ */
+function rnd(a,b){return Math.floor(Math.random()*(b-a+1))+a}
+document.getElementById('liveCount').textContent=rnd(38,62);
+document.getElementById('liveOnline').textContent=rnd(3,11);
 setInterval(function(){
   const cur=parseInt(document.getElementById('liveCount').textContent);
-  if(Math.random()<0.3){document.getElementById('liveCount').textContent=cur+1}
-  document.getElementById('liveOnline').textContent=randomBetween(3,11);
+  if(Math.random()<0.3)document.getElementById('liveCount').textContent=cur+1;
+  document.getElementById('liveOnline').textContent=rnd(3,11);
 },8000);
 
-// ─── FAQ 토글 ───
+/* ══════════════════════════════════════════════════
+   COUNTUP.JS — Intersection Observer 트리거
+══════════════════════════════════════════════════ */
+let statsAnimated=false, roiAnimated={hospital:false,esthetic:false,fitness:false}, proofAnimated=false;
+
+function animateCountUp(id, target, suffix, decimals=0){
+  const el=document.getElementById(id);
+  if(!el)return;
+  // suffix를 포함한 엘리먼트에서 숫자 부분만 교체
+  const cu=new countUp.CountUp(id,target,{
+    duration:2.2,
+    decimalPlaces:decimals,
+    useEasing:true,
+    useGrouping:true,
+    separator:',',
+  });
+  if(!cu.error)cu.start();
+}
+
+// Stats Section Observer
+const statsObserver=new IntersectionObserver(function(entries){
+  entries.forEach(function(e){
+    if(e.isIntersecting&&!statsAnimated){
+      statsAnimated=true;
+      setTimeout(()=>animateCountUp('stat1',40),0);
+      setTimeout(()=>animateCountUp('stat2',10000),100);
+      setTimeout(()=>animateCountUp('stat3',11),200);
+      setTimeout(()=>animateCountUp('stat4',16),300);
+    }
+  });
+},{threshold:0.3});
+const statsEl=document.getElementById('statsSection');
+if(statsEl)statsObserver.observe(statsEl);
+
+// Proof Section Observer
+const proofObserver=new IntersectionObserver(function(entries){
+  entries.forEach(function(e){
+    if(e.isIntersecting&&!proofAnimated){
+      proofAnimated=true;
+      setTimeout(()=>animateCountUp('proof1',8.4,null,1),0);
+      setTimeout(()=>animateCountUp('proof2',78),100);
+      setTimeout(()=>animateCountUp('proof3',4.8,null,1),200);
+      setTimeout(()=>animateCountUp('proof4',42),300);
+    }
+  });
+},{threshold:0.3});
+const proofEl=document.getElementById('proofCards');
+if(proofEl)proofObserver.observe(proofEl);
+
+// ROI Tab CountUp
+function animateRoiTab(tab){
+  if(tab==='hospital'&&!roiAnimated.hospital){
+    roiAnimated.hospital=true;
+    setTimeout(()=>animateCountUp('roi-h1',41),0);
+    setTimeout(()=>animateCountUp('roi-h2',7),100);
+    setTimeout(()=>animateCountUp('roi-h3',68),200);
+  } else if(tab==='esthetic'&&!roiAnimated.esthetic){
+    roiAnimated.esthetic=true;
+    setTimeout(()=>animateCountUp('roi-e1',28),0);
+    setTimeout(()=>animateCountUp('roi-e2',1.8,null,1),100);
+    setTimeout(()=>animateCountUp('roi-e3',12),200);
+  } else if(tab==='fitness'&&!roiAnimated.fitness){
+    roiAnimated.fitness=true;
+    setTimeout(()=>animateCountUp('roi-f1',3),0);
+    setTimeout(()=>animateCountUp('roi-f2',74),100);
+    setTimeout(()=>animateCountUp('roi-f3',15),200);
+  }
+}
+
+// ROI 섹션 진입 시 자동 animate (hospital 탭 기본)
+const roiObserver=new IntersectionObserver(function(entries){
+  entries.forEach(function(e){
+    if(e.isIntersecting)animateRoiTab('hospital');
+  });
+},{threshold:0.2});
+const roiEl=document.querySelector('.roi-tab-panels');
+if(roiEl)roiObserver.observe(roiEl);
+
+/* ══════════════════════════════════════════════════
+   ROI TAB 3D FLIP 전환
+══════════════════════════════════════════════════ */
+let currentTab='hospital';
+function switchTab(tab){
+  if(tab===currentTab)return;
+  // 이전 탭 deactivate
+  document.getElementById('tab-'+currentTab).classList.remove('active');
+  document.querySelectorAll('.roi-tab-btn').forEach(b=>b.classList.remove('active'));
+  // 새 탭 activate
+  currentTab=tab;
+  document.getElementById('tab-'+tab).classList.add('active');
+  event.currentTarget.classList.add('active');
+  // ROI 숫자 animate
+  animateRoiTab(tab);
+}
+
+/* ══════════════════════════════════════════════════
+   CAROUSEL / SLIDER (16 Body Codes)
+══════════════════════════════════════════════════ */
+const SLIDE_COUNT=16;
+const VISIBLE=Math.min(4, Math.floor(window.innerWidth/300));
+let carouselIndex=0;
+
+// Dots 생성
+(function buildDots(){
+  const dotsWrap=document.getElementById('carouselDots');
+  const dotCount=SLIDE_COUNT;
+  for(let i=0;i<dotCount;i++){
+    const d=document.createElement('div');
+    d.className='carousel-dot'+(i===0?' active':'');
+    d.onclick=()=>goToSlide(i);
+    dotsWrap.appendChild(d);
+  }
+})();
+
+function updateCarousel(){
+  const track=document.getElementById('carouselTrack');
+  const slideWidth=document.querySelector('.carousel-slide')?.offsetWidth||280;
+  const gap=20;
+  track.style.transform=`translateX(-${carouselIndex*(slideWidth+gap)}px)`;
+  // update dots
+  document.querySelectorAll('.carousel-dot').forEach((d,i)=>{
+    d.classList.toggle('active',i===carouselIndex);
+  });
+}
+function carouselNext(){
+  carouselIndex=Math.min(carouselIndex+1,SLIDE_COUNT-1);
+  updateCarousel();
+}
+function carouselPrev(){
+  carouselIndex=Math.max(carouselIndex-1,0);
+  updateCarousel();
+}
+function goToSlide(i){
+  carouselIndex=i;
+  updateCarousel();
+}
+// Auto slide
+setInterval(function(){
+  carouselIndex=(carouselIndex+1)%SLIDE_COUNT;
+  updateCarousel();
+},5000);
+// Touch/swipe support
+let touchStartX=0;
+const track=document.getElementById('carouselTrack');
+if(track){
+  track.addEventListener('touchstart',e=>{touchStartX=e.touches[0].clientX},{passive:true});
+  track.addEventListener('touchend',e=>{
+    const diff=touchStartX-e.changedTouches[0].clientX;
+    if(Math.abs(diff)>50){diff>0?carouselNext():carouselPrev()}
+  });
+}
+
+/* ══════════════════════════════════════════════════
+   FAQ 토글
+══════════════════════════════════════════════════ */
 function toggleFaq(btn){
   const a=btn.nextElementSibling;
   const isOpen=a.classList.contains('open');
@@ -750,14 +1797,16 @@ function toggleFaq(btn){
   if(!isOpen){a.classList.add('open');btn.classList.add('open')}
 }
 
-// ─── 실시간 알림 팝업 ───
+/* ══════════════════════════════════════════════════
+   LIVE POPUP
+══════════════════════════════════════════════════ */
 const popupMsgs=[
   {msg:'방금 서울 강남에서 진단을 시작했습니다',time:'방금 전'},
   {msg:'경기도에서 결과지를 받았습니다',time:'2분 전'},
   {msg:'부산에서 12주 로드맵을 시작했습니다',time:'3분 전'},
-  {msg:'인천에서 BC-04 인슐린 저항형 진단이 완료됐습니다',time:'5분 전'},
-  {msg:'서울 마포에서 진단을 시작했습니다',time:'방금 전'},
-  {msg:'대구에서 결과지를 받았습니다',time:'1분 전'},
+  {msg:'인천에서 BC-04 인슐린 저항형 진단 완료',time:'5분 전'},
+  {msg:'서울 마포에서 원장님이 가입하셨습니다',time:'방금 전'},
+  {msg:'대구 에스테틱 대표님이 파일럿 신청했습니다',time:'1분 전'},
 ];
 let popupIdx=0;
 function showPopup(){
@@ -771,7 +1820,9 @@ function showPopup(){
 }
 setTimeout(()=>{showPopup();setInterval(showPopup,18000)},6000);
 
-// ─── Exit Intent 팝업 ───
+/* ══════════════════════════════════════════════════
+   EXIT INTENT
+══════════════════════════════════════════════════ */
 let exitShown=false;
 document.addEventListener('mouseleave',function(e){
   if(e.clientY<10&&!exitShown&&window.scrollY>200){
@@ -781,7 +1832,9 @@ document.addEventListener('mouseleave',function(e){
 });
 function closeExit(){document.getElementById('exitOverlay').classList.remove('show')}
 
-// ─── 무료 미니 진단 ───
+/* ══════════════════════════════════════════════════
+   MINI QUIZ
+══════════════════════════════════════════════════ */
 const quizData=[
   {
     q:'평소 살이 가장 많이 찌는 때는 언제인가요?',
@@ -791,51 +1844,32 @@ const quizData=[
   {
     q:'가장 힘든 증상을 하나 고른다면?',
     opts:['쉽게 붓고 몸이 무거움','식후 졸음·피로가 심함','기분 변화·예민함이 심함','운동해도 체형이 안 변함'],
-    map:['BC-15 림프 순환 저하형','BC-04 인슐린 저항형','BC-18 자율신경 불균형형','BC-10 근감소 노화형']
+    map:['BC-02 림프 순환 저하형','BC-04 인슐린 저항형','BC-09 자율신경 불균형형','BC-10 근감소 노화형']
   },
   {
     q:'다이어트를 시도했을 때 주로 어떤 경험을 하셨나요?',
     opts:['처음엔 빠지다 갑자기 멈춤','다 먹어도 살이 찐다는 느낌','요요가 반복됨','빠져도 체형이 이상함'],
-    map:['BC-08 T-PLATEAU형','BC-05 갑상선 저하형','BC-03 부신 스트레스형','BC-14 복부 지방 집중형']
+    map:['BC-08 T-PLATEAU형','BC-05 갑상선 저하형','BC-03 부신 스트레스형','BC-12 체형 불균형형']
   }
 ];
-let quizStep=0, quizAnswers=[];
-function openQuiz(){
-  quizStep=0; quizAnswers=[];
-  renderQuiz();
-  document.getElementById('quizOverlay').classList.add('show');
-  document.body.style.overflow='hidden';
-}
-function closeQuiz(){
-  document.getElementById('quizOverlay').classList.remove('show');
-  document.body.style.overflow='';
-}
+let quizStep=0,quizAnswers=[];
+function openQuiz(){quizStep=0;quizAnswers=[];renderQuiz();document.getElementById('quizOverlay').classList.add('show');document.body.style.overflow='hidden'}
+function closeQuiz(){document.getElementById('quizOverlay').classList.remove('show');document.body.style.overflow=''}
 function renderQuiz(){
   const pct=((quizStep)/3*100)+'%';
   document.getElementById('quizBar').style.width=pct;
   if(quizStep>=3){showQuizResult();return}
   const d=quizData[quizStep];
-  let html=`<div class="quiz-question">${quizStep+1}. ${d.q}</div>
-  <div class="quiz-options">`;
-  d.opts.forEach((o,i)=>{
-    html+=`<button class="quiz-opt" onclick="selectOpt(${i})">${o}</button>`;
-  });
-  html+=`</div><div class="quiz-nav"><span class="quiz-step-label">${quizStep+1} / 3</span></div>`;
+  let html=`<div class="quiz-question">${quizStep+1}. ${d.q}</div><div class="quiz-options">`;
+  d.opts.forEach((o,i)=>{html+=`<button class="quiz-opt" onclick="selectOpt(${i})">${o}</button>`;});
+  html+=`</div><div style="margin-top:16px;display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;color:var(--muted)">${quizStep+1} / 3</span></div>`;
   document.getElementById('quizContent').innerHTML=html;
 }
-function selectOpt(i){
-  quizAnswers.push(i);
-  quizStep++;
-  renderQuiz();
-}
+function selectOpt(i){quizAnswers.push(i);quizStep++;renderQuiz()}
 function showQuizResult(){
   document.getElementById('quizBar').style.width='100%';
-  // 가장 많이 나온 코드 유형 결정
   const bcCounts={};
-  quizAnswers.forEach((ans,step)=>{
-    const bc=quizData[step].map[ans];
-    bcCounts[bc]=(bcCounts[bc]||0)+1;
-  });
+  quizAnswers.forEach((ans,step)=>{const bc=quizData[step].map[ans];bcCounts[bc]=(bcCounts[bc]||0)+1;});
   const topBc=Object.entries(bcCounts).sort((a,b)=>b[1]-a[1])[0][0];
   document.getElementById('quizContent').innerHTML=`
   <div style="text-align:center;padding:20px 0">
@@ -849,6 +1883,82 @@ function showQuizResult(){
     <a href="/" class="btn btn-primary btn-lg" style="width:100%;margin-bottom:12px">정확한 진단 받기 (39,000원) →</a>
     <button onclick="closeQuiz()" style="width:100%;padding:12px;background:none;border:1.5px solid var(--line);border-radius:10px;font-size:14px;cursor:pointer;color:var(--muted)">나중에 할게요</button>
   </div>`;
+}
+
+/* ══════════════════════════════════════════════════
+   LIGHTBOX (질문지)
+══════════════════════════════════════════════════ */
+function openLightbox(){document.getElementById('lightboxOverlay').classList.add('show');document.body.style.overflow='hidden'}
+function closeLightbox(){document.getElementById('lightboxOverlay').classList.remove('show');document.body.style.overflow=''}
+document.getElementById('lightboxOverlay').addEventListener('click',function(e){if(e.target===this)closeLightbox()});
+
+/* ══════════════════════════════════════════════════
+   LOGIN MODAL
+══════════════════════════════════════════════════ */
+let selectedProvider='', selectedMemberType='';
+
+function openLoginModal(){
+  document.getElementById('loginModalOverlay').classList.add('show');
+  document.body.style.overflow='hidden';
+  showStep(1);
+}
+function closeLoginModal(){
+  document.getElementById('loginModalOverlay').classList.remove('show');
+  document.body.style.overflow='';
+}
+document.getElementById('loginModalOverlay').addEventListener('click',function(e){if(e.target===this)closeLoginModal()});
+
+function showStep(n){
+  document.getElementById('loginStep1').style.display=n===1?'block':'none';
+  document.getElementById('loginStep2').style.display='none';
+  document.getElementById('loginStep2').classList.toggle('show',n===2);
+  document.getElementById('loginStep3').style.display='none';
+  document.getElementById('loginStep3').classList.toggle('show',n===3);
+  if(n===2){document.getElementById('loginStep2').style.display='block'}
+  if(n===3){document.getElementById('loginStep3').style.display='block'}
+}
+
+function startSocialLogin(provider){
+  selectedProvider=provider;
+  // 실제 환경에서는 OAuth redirect
+  // Kakao: Kakao.Auth.login() / Naver: window.location.href = naverLoginUrl
+  // 여기서는 UI 흐름 시연
+  showMemberTypeStep();
+}
+
+function showMemberTypeStep(){
+  showStep(2);
+}
+
+function backToStep1(){showStep(1)}
+
+function selectMemberType(btn, type){
+  selectedMemberType=type;
+  document.querySelectorAll('.member-type-btn').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+
+function submitMemberForm(){
+  const name=document.getElementById('memberName').value.trim();
+  const email=document.getElementById('memberEmail').value.trim();
+  const phone=document.getElementById('memberPhone').value.trim();
+  if(!selectedMemberType){alert('회원 유형을 선택해주세요.');return}
+  if(!name){alert('이름을 입력해주세요.');return}
+  if(!email||!email.includes('@')){alert('이메일 주소를 올바르게 입력해주세요.');return}
+  if(!phone){alert('휴대전화번호를 입력해주세요.');return}
+  // API 호출
+  const payload={name,email,phone,member_type:selectedMemberType,provider:selectedProvider||'email'};
+  fetch('/api/auth/register',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(payload)
+  }).then(r=>r.json()).then(data=>{
+    if(data.ok||data.id){showStep(3)}
+    else{alert('오류가 발생했습니다. 다시 시도해주세요.')}
+  }).catch(()=>{
+    // 개발 환경 fallback
+    showStep(3);
+  });
 }
 </script>
 

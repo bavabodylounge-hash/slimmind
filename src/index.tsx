@@ -9870,4 +9870,300 @@ app.get('/api/chat/clients', requireRole('ANY'), async (c) => {
   }
 })
 
+// ═══════════════════════════════════════════════════════════════════
+// ■ 랜딩페이지 라우트
+// ═══════════════════════════════════════════════════════════════════
+app.get('/landing/admin', async (c) =>
+  htmlResponse(await fetchAsset(c.env.ASSETS, '/landing/admin.html')))
+app.get('/landing/admin.html', async (c) =>
+  htmlResponse(await fetchAsset(c.env.ASSETS, '/landing/admin.html')))
+
+// ═══════════════════════════════════════════════════════════════════
+// ■ 회원가입 API (users 테이블)
+// ═══════════════════════════════════════════════════════════════════
+app.post('/api/auth/register', async (c) => {
+  const db = (c.env as any)?.DB as D1Database | undefined
+  try {
+    const body = await c.req.json<{
+      name: string
+      email: string
+      phone?: string
+      member_type: string
+      provider?: string
+      provider_id?: string
+    }>()
+    if (!body.name || !body.email) {
+      return c.json({ ok: false, error: '이름과 이메일은 필수입니다' }, 400)
+    }
+    const ip = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || '0.0.0.0'
+
+    if (db) {
+      // users 테이블 보장
+      await db.prepare(`
+        CREATE TABLE IF NOT EXISTS users (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          email TEXT UNIQUE NOT NULL,
+          phone TEXT,
+          member_type TEXT DEFAULT 'general',
+          provider TEXT DEFAULT 'email',
+          provider_id TEXT,
+          is_active INTEGER DEFAULT 1,
+          has_pdf_access INTEGER DEFAULT 0,
+          last_login_ip TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `).run()
+
+      // B2B 회원(병원/에스테틱/한의원/컨설턴트)은 PDF 권한 자동 부여
+      const hasPdf = ['hospital','esthetic','oriental','consultant','fitness'].includes(body.member_type) ? 1 : 0
+
+      const result = await db.prepare(`
+        INSERT OR IGNORE INTO users (name, email, phone, member_type, provider, provider_id, is_active, has_pdf_access, last_login_ip)
+        VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)
+      `).bind(
+        body.name, body.email, body.phone || '', body.member_type,
+        body.provider || 'email', body.provider_id || '',
+        hasPdf, ip
+      ).run()
+
+      return c.json({ ok: true, id: result.meta.last_row_id, has_pdf_access: hasPdf === 1 })
+    }
+    // DB 없는 경우 fallback
+    return c.json({ ok: true, id: Date.now(), has_pdf_access: true })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// ═══════════════════════════════════════════════════════════════════
+// ■ 파일럿 신청 API (pilot_requests 테이블)
+// ═══════════════════════════════════════════════════════════════════
+app.post('/api/pilot-request', async (c) => {
+  const db = (c.env as any)?.DB as D1Database | undefined
+  try {
+    const body = await c.req.json<{
+      organization_name: string
+      contact_name: string
+      member_type: string
+      phone: string
+      email: string
+    }>()
+
+    if (db) {
+      await db.prepare(`
+        CREATE TABLE IF NOT EXISTS pilot_requests (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER,
+          organization_name TEXT NOT NULL,
+          contact_name TEXT NOT NULL,
+          member_type TEXT,
+          phone TEXT,
+          email TEXT,
+          status TEXT DEFAULT 'pending',
+          memo TEXT,
+          admin_memo TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `).run()
+
+      const result = await db.prepare(`
+        INSERT INTO pilot_requests (organization_name, contact_name, member_type, phone, email)
+        VALUES (?, ?, ?, ?, ?)
+      `).bind(body.organization_name, body.contact_name, body.member_type, body.phone, body.email).run()
+
+      return c.json({ ok: true, id: result.meta.last_row_id })
+    }
+    return c.json({ ok: true, id: Date.now() })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// ═══════════════════════════════════════════════════════════════════
+// ■ 컨설턴트 신청 API (consultant_applies 테이블)
+// ═══════════════════════════════════════════════════════════════════
+app.post('/api/consultant-apply', async (c) => {
+  const db = (c.env as any)?.DB as D1Database | undefined
+  try {
+    const body = await c.req.json<{
+      user_id?: number
+      specialty: string
+      experience_years: number
+      background: string
+      motivation: string
+    }>()
+
+    if (db) {
+      await db.prepare(`
+        CREATE TABLE IF NOT EXISTS consultant_applies (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER,
+          specialty TEXT,
+          experience_years INTEGER DEFAULT 0,
+          background TEXT,
+          motivation TEXT,
+          status TEXT DEFAULT 'pending',
+          admin_memo TEXT,
+          approved_at DATETIME,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `).run()
+
+      const result = await db.prepare(`
+        INSERT INTO consultant_applies (user_id, specialty, experience_years, background, motivation)
+        VALUES (?, ?, ?, ?, ?)
+      `).bind(body.user_id || null, body.specialty, body.experience_years, body.background, body.motivation).run()
+
+      return c.json({ ok: true, id: result.meta.last_row_id })
+    }
+    return c.json({ ok: true, id: Date.now() })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// ═══════════════════════════════════════════════════════════════════
+// ■ Admin API — 회원 목록 조회
+// ═══════════════════════════════════════════════════════════════════
+app.get('/api/admin/users', requireRole('MASTER'), async (c) => {
+  const db = (c.env as any)?.DB as D1Database | undefined
+  if (!db) return c.json({ ok: true, data: [] })
+  try {
+    const rows = await db.prepare(`
+      SELECT id, name, email, phone, member_type, provider, is_active, has_pdf_access, last_login_ip, created_at
+      FROM users ORDER BY created_at DESC LIMIT 500
+    `).all<any>()
+    return c.json({ ok: true, data: rows.results || [] })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// ■ Admin API — 파일럿 신청 목록
+app.get('/api/admin/pilot-requests', requireRole('MASTER'), async (c) => {
+  const db = (c.env as any)?.DB as D1Database | undefined
+  if (!db) return c.json({ ok: true, data: [] })
+  try {
+    const rows = await db.prepare(`
+      SELECT * FROM pilot_requests ORDER BY created_at DESC LIMIT 500
+    `).all<any>()
+    return c.json({ ok: true, data: rows.results || [] })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// ■ Admin API — 파일럿 상태 변경
+app.patch('/api/admin/pilot-requests/:id', requireRole('MASTER'), async (c) => {
+  const db = (c.env as any)?.DB as D1Database | undefined
+  if (!db) return c.json({ ok: false, error: 'DB 없음' }, 500)
+  try {
+    const id = c.req.param('id')
+    const body = await c.req.json<{ status: string; admin_memo?: string }>()
+    await db.prepare(`
+      UPDATE pilot_requests SET status=?, admin_memo=?, updated_at=CURRENT_TIMESTAMP WHERE id=?
+    `).bind(body.status, body.admin_memo || '', id).run()
+    return c.json({ ok: true })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// ■ Admin API — 컨설턴트 신청 목록
+app.get('/api/admin/consultant-applies', requireRole('MASTER'), async (c) => {
+  const db = (c.env as any)?.DB as D1Database | undefined
+  if (!db) return c.json({ ok: true, data: [] })
+  try {
+    const rows = await db.prepare(`
+      SELECT ca.*, u.name, u.email FROM consultant_applies ca
+      LEFT JOIN users u ON ca.user_id = u.id
+      ORDER BY ca.created_at DESC LIMIT 500
+    `).all<any>()
+    return c.json({ ok: true, data: rows.results || [] })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// ■ Admin API — 컨설턴트 상태 변경
+app.patch('/api/admin/consultant-applies/:id', requireRole('MASTER'), async (c) => {
+  const db = (c.env as any)?.DB as D1Database | undefined
+  if (!db) return c.json({ ok: false, error: 'DB 없음' }, 500)
+  try {
+    const id = c.req.param('id')
+    const body = await c.req.json<{ status: string; admin_memo?: string }>()
+    const approvedAt = body.status === 'approved' ? 'CURRENT_TIMESTAMP' : 'NULL'
+    await db.prepare(`
+      UPDATE consultant_applies SET status=?, admin_memo=?, approved_at=${approvedAt}, updated_at=CURRENT_TIMESTAMP WHERE id=?
+    `).bind(body.status, body.admin_memo || '', id).run()
+    return c.json({ ok: true })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// ■ Admin API — 전체 통계
+app.get('/api/admin/stats', requireRole('MASTER'), async (c) => {
+  const db = (c.env as any)?.DB as D1Database | undefined
+  if (!db) return c.json({ ok: true, stats: {} })
+  try {
+    const [users, pilots, consultants] = await Promise.all([
+      db.prepare('SELECT COUNT(*) as cnt FROM users').first<{ cnt: number }>(),
+      db.prepare("SELECT COUNT(*) as cnt FROM pilot_requests WHERE status='pending'").first<{ cnt: number }>(),
+      db.prepare("SELECT COUNT(*) as cnt FROM consultant_applies WHERE status='approved'").first<{ cnt: number }>(),
+    ])
+    return c.json({
+      ok: true,
+      stats: {
+        total_users: users?.cnt || 0,
+        pending_pilots: pilots?.cnt || 0,
+        approved_consultants: consultants?.cnt || 0,
+      }
+    })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// ■ 샘플 PDF 다운로드 (회원가입 완료 후 권한 부여)
+app.get('/api/download-sample-pdf', async (c) => {
+  // 실제 환경: JWT 토큰 검증 후 has_pdf_access 확인
+  // 여기서는 샘플 PDF redirect (실제 파일로 교체 필요)
+  const samplePdfNote = `슬림마인드 16가지 바디코드 샘플 리포트 PDF
+
+이 파일은 샘플입니다.
+실제 파일은 /public/static/sample-report.pdf 에 업로드해주세요.
+
+바디코드 유형:
+BC-01 과활성 내장지방형
+BC-02 수독 림프 순환 저하형
+BC-03 부신 스트레스 만성 코르티솔형
+BC-04 인슐린 저항 대사 교란형
+BC-05 갑상선 기능 저하 대사 둔화형
+BC-06 에스트로겐 우세 호르몬 불균형형
+BC-07 소화 흡수 기능 저하형
+BC-08 T-PLATEAU 적응성 정체기형
+BC-09 교감 항진 자율신경 불균형형
+BC-10 근감소 노화 대사 저하형
+BC-11 수면 회복 기능 저하형
+BC-12 체형 불균형 근골격 비대칭형
+BC-13 면역·염증 만성 활성화형
+BC-14 복부 지방 집중 축적형
+BC-15 심리·기질 감정 식욕 조절형
+BC-16 복합 체질 최적화형
+
+© 2026 SLIMMIND. 특허출원중.`
+
+  return new Response(samplePdfNote, {
+    headers: {
+      'Content-Type': 'text/plain; charset=UTF-8',
+      'Content-Disposition': 'attachment; filename="slimmind-sample-bodycode-report.txt"',
+    }
+  })
+})
+
 export default app

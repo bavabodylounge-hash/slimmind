@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>슬림마인드 Admin Dashboard</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css"/>
+<style>
+:root{
+  --bg:#f0f2f5;--card:#fff;--sidebar:#1a1a17;--sidebar-hover:#2e2e2a;
+  --vis:#b5452e;--vis-l:#f6e3df;--vis-d:#8c3320;
+  --ink:#1a1a17;--muted:#6b7280;--line:#e5e7eb;
+  --green:#10b981;--yellow:#f59e0b;--blue:#3b82f6;--red:#ef4444;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Apple SD Gothic Neo","Noto Sans KR",-apple-system,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+a{text-decoration:none;color:inherit}
+
+/* ── LAYOUT ── */
+.admin-layout{display:flex;min-height:100vh}
+.sidebar{width:240px;background:var(--sidebar);position:fixed;top:0;left:0;bottom:0;z-index:100;display:flex;flex-direction:column;overflow-y:auto}
+.sidebar-logo{padding:24px 20px;border-bottom:1px solid rgba(255,255,255,0.08)}
+.sidebar-logo .logo-text{font-size:18px;font-weight:800;color:#fff}
+.sidebar-logo .logo-text span{color:var(--vis)}
+.sidebar-logo .admin-badge{font-size:10px;background:var(--vis);color:#fff;padding:2px 8px;border-radius:10px;margin-top:4px;display:inline-block}
+.sidebar-nav{flex:1;padding:16px 0}
+.nav-section{margin-bottom:24px}
+.nav-section-label{font-size:10px;font-weight:800;color:rgba(255,255,255,0.3);letter-spacing:2px;padding:0 20px;margin-bottom:8px;text-transform:uppercase}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;font-size:14px;font-weight:500;color:rgba(255,255,255,0.6);cursor:pointer;transition:all .2s;border-left:3px solid transparent}
+.nav-item:hover,.nav-item.active{background:var(--sidebar-hover);color:#fff;border-left-color:var(--vis)}
+.nav-item i{width:18px;text-align:center;font-size:14px}
+.sidebar-bottom{padding:20px;border-top:1px solid rgba(255,255,255,0.08)}
+.sidebar-user{display:flex;align-items:center;gap:10px}
+.sidebar-avatar{width:36px;height:36px;background:var(--vis);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;font-weight:800;flex-shrink:0}
+.sidebar-user-info{flex:1}
+.sidebar-user-name{font-size:13px;font-weight:700;color:#fff}
+.sidebar-user-role{font-size:11px;color:rgba(255,255,255,0.4)}
+
+.main-content{margin-left:240px;flex:1;display:flex;flex-direction:column;min-height:100vh}
+.topbar{background:#fff;border-bottom:1px solid var(--line);padding:16px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.topbar-title{font-size:20px;font-weight:800}
+.topbar-actions{display:flex;gap:12px;align-items:center}
+.content{padding:28px;flex:1}
+
+/* ── CARDS ── */
+.stat-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-bottom:28px}
+.stat-card{background:var(--card);border-radius:16px;padding:20px 22px;border:1px solid var(--line);transition:all .2s}
+.stat-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.08)}
+.stat-card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px}
+.stat-card-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.stat-card-badge{font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px}
+.stat-card-num{font-size:28px;font-weight:800;letter-spacing:-1px;margin-bottom:4px}
+.stat-card-label{font-size:13px;color:var(--muted)}
+.stat-card-change{font-size:12px;font-weight:600;margin-top:8px}
+
+/* ── TABLE ── */
+.table-card{background:var(--card);border-radius:16px;border:1px solid var(--line);overflow:hidden}
+.table-header{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+.table-title{font-size:16px;font-weight:800}
+.table-actions{display:flex;gap:10px;align-items:center}
+.search-input{padding:8px 14px;border:1.5px solid var(--line);border-radius:10px;font-size:13px;outline:none;width:220px;transition:border-color .2s;font-family:inherit}
+.search-input:focus{border-color:var(--vis)}
+.filter-select{padding:8px 12px;border:1.5px solid var(--line);border-radius:10px;font-size:13px;outline:none;cursor:pointer;font-family:inherit;background:#fff}
+.btn{padding:9px 18px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;border:none;transition:all .2s;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn-primary{background:var(--vis);color:#fff}
+.btn-primary:hover{background:var(--vis-d)}
+.btn-outline{background:transparent;border:1.5px solid var(--line);color:var(--ink)}
+.btn-outline:hover{background:var(--bg)}
+.btn-green{background:#dcfce7;color:#166534;font-weight:700}
+.btn-green:hover{background:#bbf7d0}
+.btn-sm{padding:6px 12px;font-size:12px}
+table{width:100%;border-collapse:collapse}
+th{padding:12px 16px;font-size:12px;font-weight:700;color:var(--muted);text-align:left;background:#f9fafb;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:14px 16px;font-size:13px;border-bottom:1px solid #f3f4f6;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafafa}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700}
+.badge-green{background:#dcfce7;color:#166534}
+.badge-yellow{background:#fef3c7;color:#92400e}
+.badge-blue{background:#dbeafe;color:#1e40af}
+.badge-red{background:#fee2e2;color:#991b1b}
+.badge-gray{background:#f3f4f6;color:#6b7280}
+.badge-vis{background:var(--vis-l);color:var(--vis-d)}
+.member-type-badge{font-size:10px;font-weight:800;padding:3px 8px;border-radius:8px}
+.avatar-sm{width:32px;height:32px;border-radius:50%;background:var(--vis-l);display:inline-flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.user-cell{display:flex;align-items:center;gap:10px}
+.user-cell-info{flex:1}
+.user-name{font-weight:700;font-size:13px}
+.user-email{font-size:11px;color:var(--muted)}
+
+/* ── TABS ── */
+.page-tabs{display:flex;gap:0;background:var(--bg);border-radius:12px;padding:4px;margin-bottom:24px;width:fit-content}
+.page-tab{padding:10px 20px;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer;border-radius:8px;transition:all .2s;border:none;background:transparent}
+.page-tab.active{background:#fff;color:var(--ink);box-shadow:0 2px 8px rgba(0,0,0,0.08);font-weight:800}
+
+/* ── SECTION PANELS ── */
+.section-panel{display:none}
+.section-panel.active{display:block}
+
+/* ── STATUS CHANGE ── */
+.status-select{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;outline:none;font-family:inherit;background:#fff;transition:all .2s}
+
+/* ── EXPORT AREA ── */
+.export-card{background:var(--card);border-radius:16px;padding:28px;border:1px solid var(--line);margin-bottom:24px}
+.export-card-title{font-size:16px;font-weight:800;margin-bottom:6px}
+.export-card-desc{font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.7}
+.export-actions{display:flex;gap:12px;flex-wrap:wrap}
+.export-btn{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:13px 22px;border-radius:12px;font-size:14px;font-weight:700;
+  cursor:pointer;border:none;transition:all .2s;
+}
+.export-btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,0.12)}
+.export-btn-csv{background:#10b981;color:#fff}
+.export-btn-excel{background:#1d6f42;color:#fff}
+.export-btn-json{background:#3b82f6;color:#fff}
+
+/* ── MODAL ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:200;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal-box{background:#fff;border-radius:20px;padding:36px;max-width:500px;width:90%;position:relative}
+.modal-close{position:absolute;top:16px;right:16px;background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted)}
+.modal-title{font-size:18px;font-weight:800;margin-bottom:20px}
+.form-group{margin-bottom:16px}
+.form-label{font-size:13px;font-weight:700;color:var(--muted);margin-bottom:6px;display:block}
+.form-input{width:100%;padding:11px 14px;border:1.5px solid var(--line);border-radius:10px;font-size:14px;outline:none;transition:border-color .2s;font-family:inherit}
+.form-input:focus{border-color:var(--vis)}
+.form-select{width:100%;padding:11px 14px;border:1.5px solid var(--line);border-radius:10px;font-size:14px;outline:none;font-family:inherit;background:#fff;cursor:pointer}
+
+/* ── PAGINATION ── */
+.pagination{display:flex;gap:6px;align-items:center;padding:16px 22px;border-top:1px solid var(--line)}
+.page-btn{width:34px;height:34px;border-radius:8px;border:1.5px solid var(--line);background:#fff;cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);display:flex;align-items:center;justify-content:center;transition:all .2s}
+.page-btn:hover,.page-btn.active{background:var(--vis);color:#fff;border-color:var(--vis)}
+.page-info{font-size:12px;color:var(--muted);margin-left:auto}
+
+/* ── CHART BAR ── */
+.mini-chart{display:flex;gap:8px;align-items:flex-end;height:60px;margin-top:12px}
+.chart-bar{flex:1;border-radius:4px 4px 0 0;background:linear-gradient(180deg,var(--vis),var(--vis-d));opacity:0.8;min-width:6px;transition:opacity .2s}
+.chart-bar:hover{opacity:1}
+
+@media(max-width:1100px){
+  .stat-cards{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:768px){
+  .sidebar{width:0;overflow:hidden}
+  .main-content{margin-left:0}
+}
+</style>
+</head>
+<body>
+
+<div class="admin-layout">
+
+<!-- ■ 사이드바 -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-text">SLIM<span>MIND</span></div>
+    <div class="admin-badge">MASTER ADMIN</div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section">
+      <div class="nav-section-label">대시보드</div>
+      <div class="nav-item active" onclick="showSection('dashboard')">
+        <i class="fas fa-chart-pie"></i> 전체 현황
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-label">회원 관리</div>
+      <div class="nav-item" onclick="showSection('users')">
+        <i class="fas fa-users"></i> 회원 목록
+      </div>
+      <div class="nav-item" onclick="showSection('pilots')">
+        <i class="fas fa-flask"></i> 파일럿 신청
+      </div>
+      <div class="nav-item" onclick="showSection('consultants')">
+        <i class="fas fa-graduation-cap"></i> 컨설턴트 신청
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-label">데이터</div>
+      <div class="nav-item" onclick="showSection('export')">
+        <i class="fas fa-download"></i> 백업 & Export
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-label">시스템</div>
+      <div class="nav-item" onclick="window.location.href='/landing/'">
+        <i class="fas fa-arrow-left"></i> 랜딩페이지로
+      </div>
+    </div>
+  </nav>
+  <div class="sidebar-bottom">
+    <div class="sidebar-user">
+      <div class="sidebar-avatar">A</div>
+      <div class="sidebar-user-info">
+        <div class="sidebar-user-name">관리자</div>
+        <div class="sidebar-user-role">Master Admin</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- ■ 메인 콘텐츠 -->
+<main class="main-content">
+  <div class="topbar">
+    <div class="topbar-title" id="topbarTitle">전체 현황</div>
+    <div class="topbar-actions">
+      <span style="font-size:13px;color:var(--muted)" id="lastUpdate">마지막 업데이트: 로딩중...</span>
+      <button class="btn btn-primary" onclick="refreshData()"><i class="fas fa-sync-alt"></i> 새로고침</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ════════════ DASHBOARD SECTION ════════════ -->
+    <div class="section-panel active" id="section-dashboard">
+      <div class="stat-cards">
+        <div class="stat-card">
+          <div class="stat-card-top">
+            <div class="stat-card-icon" style="background:#fff3e0"><i class="fas fa-users" style="color:#f59e0b"></i></div>
+            <span class="stat-card-badge" style="background:#fef3c7;color:#92400e">전체</span>
+          </div>
+          <div class="stat-card-num" id="totalUsers">--</div>
+          <div class="stat-card-label">전체 회원</div>
+          <div class="stat-card-change" style="color:var(--green)"><i class="fas fa-arrow-up" style="font-size:10px"></i> 오늘 <span id="todayUsers">--</span>명 신규 가입</div>
+          <div class="mini-chart" id="userChart"></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-top">
+            <div class="stat-card-icon" style="background:#dcfce7"><i class="fas fa-flask" style="color:var(--green)"></i></div>
+            <span class="stat-card-badge badge-green">파일럿</span>
+          </div>
+          <div class="stat-card-num" id="totalPilots">--</div>
+          <div class="stat-card-label">파일럿 신청</div>
+          <div class="stat-card-change" style="color:var(--yellow)"><i class="fas fa-clock" style="font-size:10px"></i> 대기 <span id="pendingPilots">--</span>건</div>
+          <div class="mini-chart" id="pilotChart"></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-top">
+            <div class="stat-card-icon" style="background:#dbeafe"><i class="fas fa-graduation-cap" style="color:var(--blue)"></i></div>
+            <span class="stat-card-badge badge-blue">컨설턴트</span>
+          </div>
+          <div class="stat-card-num" id="totalConsultants">--</div>
+          <div class="stat-card-label">컨설턴트 신청</div>
+          <div class="stat-card-change" style="color:var(--blue)"><i class="fas fa-user-check" style="font-size:10px"></i> 승인 완료 <span id="approvedConsultants">--</span>명</div>
+          <div class="mini-chart" id="consultantChart"></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-top">
+            <div class="stat-card-icon" style="background:var(--vis-l)"><i class="fas fa-hospital" style="color:var(--vis)"></i></div>
+            <span class="stat-card-badge badge-vis">B2B</span>
+          </div>
+          <div class="stat-card-num" id="totalB2B">--</div>
+          <div class="stat-card-label">B2B 파트너 (병원/에스테틱)</div>
+          <div class="stat-card-change" style="color:var(--vis)"><i class="fas fa-plus" style="font-size:10px"></i> 이번 달 <span id="monthB2B">--</span>개소 신규</div>
+          <div class="mini-chart" id="b2bChart"></div>
+        </div>
+      </div>
+
+      <!-- 회원 유형 분포 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div class="table-card">
+          <div class="table-header">
+            <div class="table-title">회원 유형 분포</div>
+          </div>
+          <div style="padding:20px" id="memberTypeChart">
+            <!-- JS 렌더 -->
+          </div>
+        </div>
+        <div class="table-card">
+          <div class="table-header">
+            <div class="table-title">최근 신규 가입</div>
+            <button class="btn btn-outline btn-sm" onclick="showSection('users')">전체 보기</button>
+          </div>
+          <table>
+            <thead><tr><th>회원</th><th>유형</th><th>가입일</th></tr></thead>
+            <tbody id="recentUsers">
+              <tr><td colspan="3" style="text-align:center;color:var(--muted);padding:20px">로딩중...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════ USERS SECTION ════════════ -->
+    <div class="section-panel" id="section-users">
+      <div class="table-card">
+        <div class="table-header">
+          <div class="table-title">회원 목록</div>
+          <div class="table-actions">
+            <input class="search-input" placeholder="이름, 이메일, 전화번호 검색..." id="userSearch" oninput="filterUsers()">
+            <select class="filter-select" id="typeFilter" onchange="filterUsers()">
+              <option value="">전체 유형</option>
+              <option value="hospital">병원 원장</option>
+              <option value="esthetic">에스테틱 대표</option>
+              <option value="fitness">PT·필라테스</option>
+              <option value="oriental">한의원</option>
+              <option value="consultant">B2B 컨설턴트</option>
+              <option value="general">일반 고객</option>
+            </select>
+            <button class="btn btn-green btn-sm" onclick="exportTable('users','csv')">
+              <i class="fas fa-file-csv"></i> CSV
+            </button>
+            <button class="btn btn-primary btn-sm" onclick="openAddUserModal()">
+              <i class="fas fa-plus"></i> 회원 추가
+            </button>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th>
+                <th>회원</th>
+                <th>유형</th>
+                <th>가입 경로</th>
+                <th>휴대폰</th>
+                <th>가입일</th>
+                <th>접속 IP</th>
+                <th>상태</th>
+                <th>액션</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody">
+              <tr><td colspan="9" style="text-align:center;color:var(--muted);padding:32px">데이터 로딩중...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination" id="usersPagination"></div>
+      </div>
+    </div>
+
+    <!-- ════════════ PILOTS SECTION ════════════ -->
+    <div class="section-panel" id="section-pilots">
+      <div class="table-card">
+        <div class="table-header">
+          <div class="table-title">파일럿 무료 체험 신청 내역</div>
+          <div class="table-actions">
+            <input class="search-input" placeholder="기관명, 담당자 검색..." id="pilotSearch" oninput="filterPilots()">
+            <select class="filter-select" id="pilotStatusFilter" onchange="filterPilots()">
+              <option value="">전체 상태</option>
+              <option value="pending">대기중</option>
+              <option value="in_progress">상담중</option>
+              <option value="completed">완료</option>
+              <option value="rejected">거절</option>
+            </select>
+            <button class="btn btn-green btn-sm" onclick="exportTable('pilots','csv')">
+              <i class="fas fa-file-csv"></i> CSV
+            </button>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>기관명</th>
+                <th>담당자</th>
+                <th>유형</th>
+                <th>연락처</th>
+                <th>신청일</th>
+                <th>상담 상태</th>
+                <th>메모</th>
+                <th>액션</th>
+              </tr>
+            </thead>
+            <tbody id="pilotsTableBody">
+              <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:32px">데이터 로딩중...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination" id="pilotsPagination"></div>
+      </div>
+    </div>
+
+    <!-- ════════════ CONSULTANTS SECTION ════════════ -->
+    <div class="section-panel" id="section-consultants">
+      <div class="table-card">
+        <div class="table-header">
+          <div class="table-title">컨설턴트 신청 내역</div>
+          <div class="table-actions">
+            <input class="search-input" placeholder="이름, 이메일 검색..." id="consultantSearch" oninput="filterConsultants()">
+            <select class="filter-select" id="consultantStatusFilter" onchange="filterConsultants()">
+              <option value="">전체 상태</option>
+              <option value="pending">심사중</option>
+              <option value="approved">승인</option>
+              <option value="rejected">거절</option>
+            </select>
+            <button class="btn btn-green btn-sm" onclick="exportTable('consultants','csv')">
+              <i class="fas fa-file-csv"></i> CSV
+            </button>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>신청자</th>
+                <th>이메일</th>
+                <th>전문 분야</th>
+                <th>경력</th>
+                <th>신청일</th>
+                <th>상태</th>
+                <th>액션</th>
+              </tr>
+            </thead>
+            <tbody id="consultantsTableBody">
+              <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">데이터 로딩중...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination" id="consultantsPagination"></div>
+      </div>
+    </div>
+
+    <!-- ════════════ EXPORT SECTION ════════════ -->
+    <div class="section-panel" id="section-export">
+      <div style="display:flex;flex-direction:column;gap:20px">
+
+        <div class="export-card">
+          <div class="export-card-title">👥 회원 데이터 백업 (users)</div>
+          <div class="export-card-desc">
+            전체 회원 데이터 (이름, 이메일, 전화번호, 회원유형, 가입경로, 가입일, 접속IP)를 내보냅니다.<br>
+            <strong>DB 스키마:</strong> id, name, email, phone, member_type, provider, created_at, last_login_ip
+          </div>
+          <div class="export-actions">
+            <button class="export-btn export-btn-csv" onclick="exportData('users','csv')">
+              <i class="fas fa-file-csv"></i> CSV 다운로드
+            </button>
+            <button class="export-btn export-btn-excel" onclick="exportData('users','excel')">
+              <i class="fas fa-file-excel"></i> Excel 다운로드
+            </button>
+            <button class="export-btn export-btn-json" onclick="exportData('users','json')">
+              <i class="fas fa-file-code"></i> JSON 다운로드
+            </button>
+          </div>
+        </div>
+
+        <div class="export-card">
+          <div class="export-card-title">🧪 파일럿 신청 데이터 백업 (pilot_requests)</div>
+          <div class="export-card-desc">
+            파일럿 무료 체험 신청 내역 (기관명, 담당자, 유형, 연락처, 신청일, 상담상태, 메모)을 내보냅니다.<br>
+            <strong>DB 스키마:</strong> id, organization_name, contact_name, member_type, phone, email, status, memo, created_at, updated_at
+          </div>
+          <div class="export-actions">
+            <button class="export-btn export-btn-csv" onclick="exportData('pilot_requests','csv')">
+              <i class="fas fa-file-csv"></i> CSV 다운로드
+            </button>
+            <button class="export-btn export-btn-excel" onclick="exportData('pilot_requests','excel')">
+              <i class="fas fa-file-excel"></i> Excel 다운로드
+            </button>
+            <button class="export-btn export-btn-json" onclick="exportData('pilot_requests','json')">
+              <i class="fas fa-file-code"></i> JSON 다운로드
+            </button>
+          </div>
+        </div>
+
+        <div class="export-card">
+          <div class="export-card-title">🎓 컨설턴트 신청 데이터 백업 (consultant_applies)</div>
+          <div class="export-card-desc">
+            바디컨설턴트 지원 내역 (신청자 정보, 전문분야, 경력, 심사상태)을 내보냅니다.<br>
+            <strong>DB 스키마:</strong> id, user_id, specialty, experience_years, background, status, admin_memo, created_at, updated_at
+          </div>
+          <div class="export-actions">
+            <button class="export-btn export-btn-csv" onclick="exportData('consultant_applies','csv')">
+              <i class="fas fa-file-csv"></i> CSV 다운로드
+            </button>
+            <button class="export-btn export-btn-excel" onclick="exportData('consultant_applies','excel')">
+              <i class="fas fa-file-excel"></i> Excel 다운로드
+            </button>
+            <button class="export-btn export-btn-json" onclick="exportData('consultant_applies','json')">
+              <i class="fas fa-file-code"></i> JSON 다운로드
+            </button>
+          </div>
+        </div>
+
+        <div class="export-card">
+          <div class="export-card-title">🗃️ 전체 DB 풀 백업</div>
+          <div class="export-card-desc">
+            users + pilot_requests + consultant_applies 전체 테이블 합본 백업입니다. 정기 백업에 사용하세요.
+          </div>
+          <div class="export-actions">
+            <button class="export-btn export-btn-excel" onclick="exportData('all','excel')" style="background:linear-gradient(135deg,var(--vis-d),var(--vis))">
+              <i class="fas fa-database"></i> 전체 Excel 백업 (3 sheets)
+            </button>
+            <button class="export-btn export-btn-json" onclick="exportData('all','json')">
+              <i class="fas fa-file-archive"></i> 전체 JSON 백업
+            </button>
+          </div>
+        </div>
+
+        <!-- DB 스키마 뷰어 -->
+        <div class="table-card" style="margin-top:4px">
+          <div class="table-header"><div class="table-title">📐 DB 스키마 명세</div></div>
+          <div style="padding:24px;display:grid;grid-template-columns:repeat(3,1fr);gap:20px">
+            <div>
+              <div style="font-size:13px;font-weight:800;color:var(--vis);margin-bottom:12px">📋 users</div>
+              <div style="font-size:12px;font-family:monospace;line-height:2;color:var(--muted);background:#f9fafb;padding:12px;border-radius:10px">
+                id INTEGER PK<br>
+                name TEXT NOT NULL<br>
+                email TEXT UNIQUE<br>
+                phone TEXT<br>
+                member_type TEXT<br>
+                provider TEXT<br>
+                provider_id TEXT<br>
+                is_active INTEGER<br>
+                has_pdf_access INTEGER<br>
+                last_login_ip TEXT<br>
+                created_at DATETIME<br>
+                updated_at DATETIME
+              </div>
+            </div>
+            <div>
+              <div style="font-size:13px;font-weight:800;color:var(--blue);margin-bottom:12px">🧪 pilot_requests</div>
+              <div style="font-size:12px;font-family:monospace;line-height:2;color:var(--muted);background:#f9fafb;padding:12px;border-radius:10px">
+                id INTEGER PK<br>
+                user_id INTEGER FK<br>
+                organization_name TEXT<br>
+                contact_name TEXT<br>
+                member_type TEXT<br>
+                phone TEXT<br>
+                email TEXT<br>
+                status TEXT<br>
+                memo TEXT<br>
+                admin_memo TEXT<br>
+                created_at DATETIME<br>
+                updated_at DATETIME
+              </div>
+            </div>
+            <div>
+              <div style="font-size:13px;font-weight:800;color:var(--green);margin-bottom:12px">🎓 consultant_applies</div>
+              <div style="font-size:12px;font-family:monospace;line-height:2;color:var(--muted);background:#f9fafb;padding:12px;border-radius:10px">
+                id INTEGER PK<br>
+                user_id INTEGER FK<br>
+                specialty TEXT<br>
+                experience_years INTEGER<br>
+                background TEXT<br>
+                motivation TEXT<br>
+                status TEXT<br>
+                admin_memo TEXT<br>
+                approved_at DATETIME<br>
+                created_at DATETIME<br>
+                updated_at DATETIME
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</main>
+</div>
+
+<!-- ■ 회원 추가 모달 -->
+<div class="modal-overlay" id="addUserModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="document.getElementById('addUserModal').classList.remove('show')">✕</button>
+    <div class="modal-title">회원 직접 추가</div>
+    <div class="form-group">
+      <label class="form-label">이름</label>
+      <input class="form-input" id="newUserName" placeholder="이름">
+    </div>
+    <div class="form-group">
+      <label class="form-label">이메일</label>
+      <input class="form-input" id="newUserEmail" type="email" placeholder="email@example.com">
+    </div>
+    <div class="form-group">
+      <label class="form-label">휴대전화</label>
+      <input class="form-input" id="newUserPhone" placeholder="010-0000-0000">
+    </div>
+    <div class="form-group">
+      <label class="form-label">회원 유형</label>
+      <select class="form-select" id="newUserType">
+        <option value="hospital">병원 원장</option>
+        <option value="esthetic">에스테틱 대표</option>
+        <option value="fitness">PT·필라테스</option>
+        <option value="oriental">한의원</option>
+        <option value="consultant">B2B 컨설턴트</option>
+        <option value="general">일반 고객</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" style="width:100%" onclick="addUser()">추가하기</button>
+  </div>
+</div>
+
+<!-- ■ 상태 변경 모달 -->
+<div class="modal-overlay" id="statusModal">
+  <div class="modal-box" style="max-width:400px">
+    <button class="modal-close" onclick="document.getElementById('statusModal').classList.remove('show')">✕</button>
+    <div class="modal-title" id="statusModalTitle">상태 변경</div>
+    <div class="form-group">
+      <label class="form-label">상담 상태</label>
+      <select class="form-select" id="statusModalSelect">
+        <option value="pending">대기중</option>
+        <option value="in_progress">상담중</option>
+        <option value="completed">완료</option>
+        <option value="rejected">거절</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">메모</label>
+      <input class="form-input" id="statusModalMemo" placeholder="관리자 메모 입력...">
+    </div>
+    <button class="btn btn-primary" style="width:100%" onclick="submitStatusChange()">변경 저장</button>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════
+   MOCK DATA (실제 환경에서는 API 호출로 교체)
+══════════════════════════════════════════════════ */
+const MEMBER_TYPE_LABELS={hospital:'🏥 병원 원장',esthetic:'💆 에스테틱',fitness:'🏋️ PT·필라테스',oriental:'🌿 한의원',consultant:'🎓 컨설턴트',general:'👤 일반고객'};
+const MEMBER_TYPE_COLORS={hospital:'badge-vis',esthetic:'badge-blue',fitness:'badge-green',oriental:'badge-yellow',consultant:'badge-red',general:'badge-gray'};
+
+// 목 데이터 생성
+function genUsers(n){
+  const types=Object.keys(MEMBER_TYPE_LABELS);
+  const providers=['kakao','naver','email'];
+  const names=['김원장','이대표','박트레이너','최원장','정에스','한트레이너','유한의','강컨설턴트','배원장','조대표'];
+  return Array.from({length:n},(_,i)=>({
+    id:i+1,
+    name:names[i%names.length]+(i+1),
+    email:`user${i+1}@example.com`,
+    phone:`010-${String(Math.floor(Math.random()*9000)+1000)}-${String(Math.floor(Math.random()*9000)+1000)}`,
+    member_type:types[i%types.length],
+    provider:providers[i%providers.length],
+    created_at:new Date(Date.now()-Math.random()*30*86400000).toLocaleDateString('ko-KR'),
+    last_login_ip:`${Math.floor(Math.random()*256)}.${Math.floor(Math.random()*256)}.${Math.floor(Math.random()*256)}.${Math.floor(Math.random()*256)}`,
+    is_active:Math.random()>0.1
+  }));
+}
+function genPilots(n){
+  const orgs=['강남연세의원','리베라에스테틱','필라테스 365','동인당한의원','바디랩클리닉','하남뷰티케어'];
+  const statuses=['pending','in_progress','completed','rejected'];
+  const types=['hospital','esthetic','fitness','oriental'];
+  return Array.from({length:n},(_,i)=>({
+    id:i+1,
+    organization_name:orgs[i%orgs.length],
+    contact_name:`담당자${i+1}`,
+    member_type:types[i%types.length],
+    phone:`010-${String(Math.floor(Math.random()*9000)+1000)}-${String(Math.floor(Math.random()*9000)+1000)}`,
+    email:`pilot${i+1}@example.com`,
+    status:statuses[i%statuses.length],
+    memo:'',
+    created_at:new Date(Date.now()-Math.random()*20*86400000).toLocaleDateString('ko-KR'),
+  }));
+}
+function genConsultants(n){
+  const specs=['다이어트·비만','체형 교정','호르몬 건강','한방 체질','스포츠 영양'];
+  const statuses=['pending','approved','rejected'];
+  return Array.from({length:n},(_,i)=>({
+    id:i+1,
+    name:`컨설턴트${i+1}`,
+    email:`consultant${i+1}@example.com`,
+    specialty:specs[i%specs.length],
+    experience_years:Math.floor(Math.random()*15)+1,
+    status:statuses[i%statuses.length],
+    created_at:new Date(Date.now()-Math.random()*15*86400000).toLocaleDateString('ko-KR'),
+  }));
+}
+
+let allUsers=genUsers(48);
+let allPilots=genPilots(22);
+let allConsultants=genConsultants(15);
+
+let currentStatusTarget={type:'',id:0};
+
+/* ══════════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded',function(){
+  updateLastUpdate();
+  renderDashboard();
+  renderUsers(allUsers);
+  renderPilots(allPilots);
+  renderConsultants(allConsultants);
+  // 실제에서는 fetchData() 호출
+});
+
+function updateLastUpdate(){
+  document.getElementById('lastUpdate').textContent='마지막 업데이트: '+new Date().toLocaleTimeString('ko-KR');
+}
+function refreshData(){
+  updateLastUpdate();
+  renderDashboard();
+}
+
+/* ══════════════════════════════════════════════════
+   NAVIGATION
+══════════════════════════════════════════════════ */
+const SECTION_TITLES={dashboard:'전체 현황',users:'회원 목록',pilots:'파일럿 신청',consultants:'컨설턴트 신청',export:'백업 & Export'};
+function showSection(name){
+  document.querySelectorAll('.section-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('section-'+name).classList.add('active');
+  document.getElementById('topbarTitle').textContent=SECTION_TITLES[name]||name;
+  event.currentTarget.classList.add('active');
+}
+
+/* ══════════════════════════════════════════════════
+   DASHBOARD
+══════════════════════════════════════════════════ */
+function renderDashboard(){
+  // 통계 카드
+  document.getElementById('totalUsers').textContent=allUsers.length;
+  document.getElementById('todayUsers').textContent=Math.floor(Math.random()*8)+1;
+  document.getElementById('totalPilots').textContent=allPilots.length;
+  document.getElementById('pendingPilots').textContent=allPilots.filter(p=>p.status==='pending').length;
+  document.getElementById('totalConsultants').textContent=allConsultants.length;
+  document.getElementById('approvedConsultants').textContent=allConsultants.filter(c=>c.status==='approved').length;
+  document.getElementById('totalB2B').textContent=allUsers.filter(u=>['hospital','esthetic','oriental'].includes(u.member_type)).length;
+  document.getElementById('monthB2B').textContent=Math.floor(Math.random()*6)+1;
+
+  // Mini Charts
+  ['userChart','pilotChart','consultantChart','b2bChart'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    const heights=[20,35,45,30,50,60,55,70,65,80,75,90];
+    el.innerHTML=heights.map(h=>`<div class="chart-bar" style="height:${h}%" title="${h}%"></div>`).join('');
+  });
+
+  // 회원 유형 분포
+  const typeCounts={};
+  allUsers.forEach(u=>{typeCounts[u.member_type]=(typeCounts[u.member_type]||0)+1});
+  const typeChartEl=document.getElementById('memberTypeChart');
+  if(typeChartEl){
+    typeChartEl.innerHTML=Object.entries(typeCounts).map(([type,count])=>`
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+        <span style="font-size:13px;font-weight:600;width:120px;flex-shrink:0">${MEMBER_TYPE_LABELS[type]||type}</span>
+        <div style="flex:1;height:10px;background:var(--line);border-radius:5px;overflow:hidden">
+          <div style="height:100%;background:var(--vis);border-radius:5px;width:${(count/allUsers.length*100).toFixed(0)}%;transition:width .6s ease"></div>
+        </div>
+        <span style="font-size:12px;font-weight:700;color:var(--vis);width:30px;text-align:right">${count}</span>
+      </div>
+    `).join('');
+  }
+
+  // 최근 가입
+  const recent=allUsers.slice(-5).reverse();
+  document.getElementById('recentUsers').innerHTML=recent.map(u=>`
+    <tr>
+      <td><div class="user-cell"><div class="avatar-sm">${u.name.charAt(0)}</div><div class="user-cell-info"><div class="user-name">${u.name}</div><div class="user-email">${u.email}</div></div></div></td>
+      <td><span class="badge ${MEMBER_TYPE_COLORS[u.member_type]||'badge-gray'}">${MEMBER_TYPE_LABELS[u.member_type]||u.member_type}</span></td>
+      <td style="color:var(--muted);font-size:12px">${u.created_at}</td>
+    </tr>
+  `).join('');
+}
+
+/* ══════════════════════════════════════════════════
+   USERS TABLE
+══════════════════════════════════════════════════ */
+function renderUsers(users){
+  const tbody=document.getElementById('usersTableBody');
+  if(!users.length){tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--muted)">검색 결과가 없습니다</td></tr>';return}
+  tbody.innerHTML=users.map(u=>`
+    <tr>
+      <td><input type="checkbox" class="row-check" value="${u.id}"></td>
+      <td><div class="user-cell"><div class="avatar-sm">${u.name.charAt(0)}</div><div class="user-cell-info"><div class="user-name">${u.name}</div><div class="user-email">${u.email}</div></div></div></td>
+      <td><span class="badge ${MEMBER_TYPE_COLORS[u.member_type]||'badge-gray'}">${MEMBER_TYPE_LABELS[u.member_type]||u.member_type}</span></td>
+      <td><span class="badge ${u.provider==='kakao'?'badge-yellow':u.provider==='naver'?'badge-green':'badge-gray'}">${u.provider==='kakao'?'카카오':u.provider==='naver'?'네이버':'이메일'}</span></td>
+      <td style="font-size:12px;color:var(--muted)">${u.phone}</td>
+      <td style="font-size:12px;color:var(--muted)">${u.created_at}</td>
+      <td style="font-size:11px;color:var(--muted);font-family:monospace">${u.last_login_ip}</td>
+      <td><span class="badge ${u.is_active?'badge-green':'badge-gray'}">${u.is_active?'활성':'비활성'}</span></td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick="deleteUser(${u.id})" style="color:var(--red)"><i class="fas fa-trash"></i></button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function filterUsers(){
+  const q=document.getElementById('userSearch').value.toLowerCase();
+  const type=document.getElementById('typeFilter').value;
+  const filtered=allUsers.filter(u=>{
+    const matchQ=!q||(u.name.toLowerCase().includes(q)||u.email.toLowerCase().includes(q)||u.phone.includes(q));
+    const matchT=!type||u.member_type===type;
+    return matchQ&&matchT;
+  });
+  renderUsers(filtered);
+}
+
+function toggleSelectAll(){
+  const checks=document.querySelectorAll('.row-check');
+  const allChecked=document.getElementById('selectAll').checked;
+  checks.forEach(c=>c.checked=allChecked);
+}
+
+function deleteUser(id){
+  if(!confirm('이 회원을 삭제하시겠습니까?'))return;
+  allUsers=allUsers.filter(u=>u.id!==id);
+  filterUsers();
+  renderDashboard();
+}
+
+function openAddUserModal(){
+  document.getElementById('addUserModal').classList.add('show');
+}
+function addUser(){
+  const name=document.getElementById('newUserName').value.trim();
+  const email=document.getElementById('newUserEmail').value.trim();
+  const phone=document.getElementById('newUserPhone').value.trim();
+  const member_type=document.getElementById('newUserType').value;
+  if(!name||!email){alert('이름과 이메일은 필수입니다.');return}
+  allUsers.push({id:allUsers.length+1,name,email,phone,member_type,provider:'admin',created_at:new Date().toLocaleDateString('ko-KR'),last_login_ip:'-',is_active:true});
+  document.getElementById('addUserModal').classList.remove('show');
+  filterUsers();
+  renderDashboard();
+}
+
+/* ══════════════════════════════════════════════════
+   PILOTS TABLE
+══════════════════════════════════════════════════ */
+const STATUS_LABELS={pending:'대기중',in_progress:'상담중',completed:'완료',rejected:'거절'};
+const STATUS_BADGE={pending:'badge-yellow',in_progress:'badge-blue',completed:'badge-green',rejected:'badge-red'};
+
+function renderPilots(pilots){
+  const tbody=document.getElementById('pilotsTableBody');
+  if(!pilots.length){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted)">검색 결과가 없습니다</td></tr>';return}
+  tbody.innerHTML=pilots.map(p=>`
+    <tr>
+      <td style="font-weight:700">${p.organization_name}</td>
+      <td>${p.contact_name}</td>
+      <td><span class="badge ${MEMBER_TYPE_COLORS[p.member_type]||'badge-gray'}">${MEMBER_TYPE_LABELS[p.member_type]||p.member_type}</span></td>
+      <td style="font-size:12px;color:var(--muted)">${p.phone}</td>
+      <td style="font-size:12px;color:var(--muted)">${p.created_at}</td>
+      <td><span class="badge ${STATUS_BADGE[p.status]||'badge-gray'}">${STATUS_LABELS[p.status]||p.status}</span></td>
+      <td style="font-size:12px;color:var(--muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.memo||'-'}</td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick="openStatusModal('pilot',${p.id},'${p.status}')"><i class="fas fa-edit"></i> 상태변경</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function filterPilots(){
+  const q=document.getElementById('pilotSearch').value.toLowerCase();
+  const status=document.getElementById('pilotStatusFilter').value;
+  const filtered=allPilots.filter(p=>{
+    const matchQ=!q||(p.organization_name.toLowerCase().includes(q)||p.contact_name.toLowerCase().includes(q));
+    const matchS=!status||p.status===status;
+    return matchQ&&matchS;
+  });
+  renderPilots(filtered);
+}
+
+/* ══════════════════════════════════════════════════
+   CONSULTANTS TABLE
+══════════════════════════════════════════════════ */
+const CONS_STATUS_LABELS={pending:'심사중',approved:'승인',rejected:'거절'};
+const CONS_STATUS_BADGE={pending:'badge-yellow',approved:'badge-green',rejected:'badge-red'};
+
+function renderConsultants(consultants){
+  const tbody=document.getElementById('consultantsTableBody');
+  if(!consultants.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted)">검색 결과가 없습니다</td></tr>';return}
+  tbody.innerHTML=consultants.map(c=>`
+    <tr>
+      <td><div class="user-cell"><div class="avatar-sm">${c.name.charAt(0)}</div><div class="user-cell-info"><div class="user-name">${c.name}</div></div></div></td>
+      <td style="font-size:12px;color:var(--muted)">${c.email}</td>
+      <td><span class="badge badge-blue">${c.specialty}</span></td>
+      <td style="font-size:13px">${c.experience_years}년</td>
+      <td style="font-size:12px;color:var(--muted)">${c.created_at}</td>
+      <td><span class="badge ${CONS_STATUS_BADGE[c.status]||'badge-gray'}">${CONS_STATUS_LABELS[c.status]||c.status}</span></td>
+      <td style="display:flex;gap:6px">
+        ${c.status==='pending'?`<button class="btn btn-green btn-sm" onclick="approveConsultant(${c.id})"><i class="fas fa-check"></i> 승인</button>
+        <button class="btn btn-sm" style="background:#fee2e2;color:#991b1b" onclick="rejectConsultant(${c.id})"><i class="fas fa-times"></i> 거절</button>`
+        :`<button class="btn btn-outline btn-sm" onclick="openStatusModal('consultant',${c.id},'${c.status}')"><i class="fas fa-edit"></i></button>`}
+      </td>
+    </tr>
+  `).join('');
+}
+
+function filterConsultants(){
+  const q=document.getElementById('consultantSearch').value.toLowerCase();
+  const status=document.getElementById('consultantStatusFilter').value;
+  const filtered=allConsultants.filter(c=>{
+    const matchQ=!q||(c.name.toLowerCase().includes(q)||c.email.toLowerCase().includes(q));
+    const matchS=!status||c.status===status;
+    return matchQ&&matchS;
+  });
+  renderConsultants(filtered);
+}
+
+function approveConsultant(id){
+  const c=allConsultants.find(c=>c.id===id);
+  if(c){c.status='approved';filterConsultants();renderDashboard()}
+}
+function rejectConsultant(id){
+  const c=allConsultants.find(c=>c.id===id);
+  if(c&&confirm('이 신청을 거절하시겠습니까?')){c.status='rejected';filterConsultants()}
+}
+
+/* ══════════════════════════════════════════════════
+   STATUS CHANGE MODAL
+══════════════════════════════════════════════════ */
+function openStatusModal(type,id,currentStatus){
+  currentStatusTarget={type,id};
+  document.getElementById('statusModalTitle').textContent=type==='pilot'?'상담 상태 변경':'심사 상태 변경';
+  const sel=document.getElementById('statusModalSelect');
+  if(type==='consultant'){
+    sel.innerHTML='<option value="pending">심사중</option><option value="approved">승인</option><option value="rejected">거절</option>';
+  } else {
+    sel.innerHTML='<option value="pending">대기중</option><option value="in_progress">상담중</option><option value="completed">완료</option><option value="rejected">거절</option>';
+  }
+  sel.value=currentStatus;
+  document.getElementById('statusModalMemo').value='';
+  document.getElementById('statusModal').classList.add('show');
+}
+function submitStatusChange(){
+  const {type,id}=currentStatusTarget;
+  const status=document.getElementById('statusModalSelect').value;
+  const memo=document.getElementById('statusModalMemo').value;
+  if(type==='pilot'){
+    const p=allPilots.find(p=>p.id===id);
+    if(p){p.status=status;if(memo)p.memo=memo}
+    filterPilots();
+  } else {
+    const c=allConsultants.find(c=>c.id===id);
+    if(c){c.status=status}
+    filterConsultants();
+  }
+  document.getElementById('statusModal').classList.remove('show');
+  renderDashboard();
+}
+
+/* ══════════════════════════════════════════════════
+   EXPORT (CSV / Excel / JSON)
+══════════════════════════════════════════════════ */
+function exportData(table,format){
+  let data,filename;
+  if(table==='users'){data=allUsers;filename='slimmind_users'}
+  else if(table==='pilot_requests'){data=allPilots;filename='slimmind_pilot_requests'}
+  else if(table==='consultant_applies'){data=allConsultants;filename='slimmind_consultant_applies'}
+  else{data={users:allUsers,pilot_requests:allPilots,consultant_applies:allConsultants};filename='slimmind_full_backup'}
+
+  if(format==='json'){
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+    downloadBlob(blob,filename+'.json');
+  } else if(format==='csv'){
+    const arr=table==='all'?allUsers:data;
+    const csv=arrayToCSV(arr);
+    const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+    downloadBlob(blob,filename+'.csv');
+  } else if(format==='excel'){
+    // Excel: CSV with BOM (실제 환경에서는 SheetJS 사용 권장)
+    if(table==='all'){
+      // 3 sheets simulation: 각 CSV를 별도로 제공
+      ['users','pilot_requests','consultant_applies'].forEach((t,i)=>{
+        const d=t==='users'?allUsers:t==='pilot_requests'?allPilots:allConsultants;
+        setTimeout(()=>{
+          const blob=new Blob(['\uFEFF'+arrayToCSV(d)],{type:'text/csv;charset=utf-8'});
+          downloadBlob(blob,`slimmind_${t}.csv`);
+        },i*300);
+      });
+    } else {
+      const arr=table==='all'?allUsers:data;
+      const blob=new Blob(['\uFEFF'+arrayToCSV(arr)],{type:'text/csv;charset=utf-8'});
+      downloadBlob(blob,filename+'.csv');
+    }
+    return;
+  }
+}
+
+function exportTable(section,format){
+  exportData(section==='users'?'users':section==='pilots'?'pilot_requests':'consultant_applies',format);
+}
+
+function arrayToCSV(arr){
+  if(!arr||!arr.length)return '';
+  const keys=Object.keys(arr[0]);
+  const header=keys.join(',');
+  const rows=arr.map(row=>keys.map(k=>{
+    const v=String(row[k]||'').replace(/"/g,'""');
+    return `"${v}"`;
+  }).join(','));
+  return [header,...rows].join('\n');
+}
+
+function downloadBlob(blob,filename){
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=filename;
+  document.body.appendChild(a);a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// 모달 외부 클릭 닫기
+document.querySelectorAll('.modal-overlay').forEach(m=>{
+  m.addEventListener('click',function(e){if(e.target===this)this.classList.remove('show')});
+});
+
+// 실제 API 연동 함수 (백엔드 구현 후 연동)
+async function fetchDataFromAPI(){
+  try{
+    const [users,pilots,consultants]=await Promise.all([
+      fetch('/api/admin/users').then(r=>r.json()),
+      fetch('/api/admin/pilot-requests').then(r=>r.json()),
+      fetch('/api/admin/consultant-applies').then(r=>r.json()),
+    ]);
+    if(users.data)allUsers=users.data;
+    if(pilots.data)allPilots=pilots.data;
+    if(consultants.data)allConsultants=consultants.data;
+    renderDashboard();
+    renderUsers(allUsers);
+    renderPilots(allPilots);
+    renderConsultants(allConsultants);
+  }catch(e){
+    // fallback to mock data
+    console.log('API not available, using mock data');
+  }
+}
+// fetchDataFromAPI(); // 백엔드 준비 후 주석 해제
+</script>
+</body>
+</html>
