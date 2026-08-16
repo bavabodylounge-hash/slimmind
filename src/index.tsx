@@ -174,35 +174,244 @@ const parseJson = (s: string | null, fallback: any = null) => {
   try { return s ? JSON.parse(s) : fallback } catch { return fallback }
 }
 
-// ─── BC 코드 정규화 ─────────────────────────────────────────────
-// DB에 저장된 다양한 형태를 BC_MASTER 키(BC-1~BC-9)로 통일
-// BC-09 → BC-9, BC-01 → BC-1, BC01 → BC-1, A01/A07 → 축코드 기반 매핑
-const AXIS_TO_BC: Record<string, string> = {
-  'A01': 'BC-3',  // 인슐린·내장 → 내장지방형
-  'A02': 'BC-1',  // 림프순환 → 코끼리다리형
-  'A03': 'BC-6',  // 호르몬 → 갱년기형
-  'A04': 'BC-4',  // 근감소 → 올챙이배형
-  'A05': 'BC-5',  // 소화·장 → 가스팽만형
-  'A06': 'BC-2',  // 골격·복압 → 거북이형
-  'A07': 'BC-6',  // 코르티솔 → 야식부엉이형(BC-6)
-  'A08': 'BC-8',  // 심리·식이 → 심리식이형
-  'A09': 'BC-9',  // 대사위험 → 대사증후군형
-  'A10': 'BC-7',  // 기질 → 기질형
+// ═══════════════════════════════════════════════════════════════
+//  BC 도출 엔진 v2 — 설계도 기준 (BC-1~BC-16, 25아형 결정표)
+//  [G-2] AXIS_TO_BC 단순 매핑 → decideSubtype + computeIndicators
+//        + computeDomainScores + computePrediction 완전 교체
+// ═══════════════════════════════════════════════════════════════
+
+// ─── 25아형 결정표 (설계도 v2 기준) ──────────────────────────────
+// 각 Rule: regions(부위), textures(질감), axes(서명축 가중 3·2·1), bc(최종 BC코드)
+interface SubtypeRule {
+  regions: string[]
+  textures: string[]
+  axes: string[]   // [0]=가중3, [1]=가중2, [2]=가중1
+  name: string
+  bc: string
 }
+const SUBTYPE_RULES: SubtypeRule[] = [
+  // ── BC-1: 림프·부종 계열 ─────────────────────────────────────
+  { regions:['ABD','LEG'], textures:['soft','edema'],       axes:['A02','A01','A05'], name:'코끼리다리형',    bc:'BC-1'  },
+  // ── BC-3: 인슐린·내장 계열 ──────────────────────────────────
+  { regions:['ABD'],       textures:['firm','visceral'],    axes:['A01','A09','A05'], name:'단단내장형',      bc:'BC-3'  },
+  { regions:['ABD'],       textures:['firm','hard'],        axes:['A01','A05','A07'], name:'가스팽만형',      bc:'BC-3'  },
+  // ── BC-4: 대사저하·냉증 계열 ────────────────────────────────
+  { regions:['ABD'],       textures:['soft','flabby'],      axes:['A01','A04','A09'], name:'올챙이배형',      bc:'BC-4'  },
+  { regions:['WHOLE'],     textures:['cold','dense'],       axes:['A04','A01','A07'], name:'대사저하형',      bc:'BC-4'  },
+  // ── BC-5: 장·소화 계열 ──────────────────────────────────────
+  { regions:['ABD','WAIST'],textures:['bloat','gas'],       axes:['A05','A01','A03'], name:'소화기팽만형',    bc:'BC-5'  },
+  // ── BC-6: PCOS·호르몬 계열 ──────────────────────────────────
+  { regions:['ABD','LEG'], textures:['soft','cellulite'],   axes:['A02','A05','A01'], name:'귤껍질하체형',    bc:'BC-6'  },
+  { regions:['ABD','HIP'], textures:['soft','hormone'],     axes:['A03','A07','A02'], name:'PCOS호르몬형',    bc:'BC-6'  },
+  // ── BC-7: 코르티솔·스트레스 계열 ────────────────────────────
+  { regions:['ABD','SHOULDER'],textures:['stress','hard'],  axes:['A07','A03','A08'], name:'스트레스복부형',  bc:'BC-7'  },
+  { regions:['LEG','GLUTE'],textures:['firm','muscle'],     axes:['A04','A06','A02'], name:'말벅지형',        bc:'BC-7'  },
+  // ── BC-9: 골격·자세 계열 ────────────────────────────────────
+  { regions:['NECK','BACK'],textures:['firm','posture'],    axes:['A06','A04','A02'], name:'거북이형',        bc:'BC-9'  },
+  // ── BC-10: 팔뚝부종 계열 ────────────────────────────────────
+  { regions:['ARM'],        textures:['soft','edema'],      axes:['A02','A06','A01'], name:'팔뚝부종형',      bc:'BC-10' },
+  // ── BC-11: 상체근육 계열 ────────────────────────────────────
+  { regions:['SHOULDER','ARM'],textures:['firm','bulk'],    axes:['A04','A06','A08'], name:'상체근육형',      bc:'BC-11' },
+  // ── BC-12: 부유방 계열 ──────────────────────────────────────
+  { regions:['CHEST','BACK'],textures:['soft','loose'],     axes:['A06','A02','A03'], name:'부유방형',        bc:'BC-12' },
+  // ── BC-13: 갱년기 계열 (MENOPAUSE 플래그 강제) ──────────────
+  { regions:['ABD','HIP'],  textures:['soft','meno'],       axes:['A03','A07','A06'], name:'갱년기변환형',    bc:'BC-13' },
+  // ── BC-14: 번아웃·무기력 계열 ───────────────────────────────
+  { regions:['WHOLE'],      textures:['binge','emotional'],  axes:['A08','A07','A03'], name:'번아웃무기력형',  bc:'BC-14' },
+  // ── BC-15: 대사증후군 계열 ──────────────────────────────────
+  { regions:['ABD','WHOLE'],textures:['visceral','multi'],  axes:['A09','A01','A07'], name:'대사증후군형',    bc:'BC-15' },
+  // ── BC-16: 다중악순환 계열 ──────────────────────────────────
+  { regions:['WHOLE'],      textures:['multi','complex'],   axes:['A09','A01','A08'], name:'다중악순환형',    bc:'BC-16' },
+]
+
+// ─── decideSubtype: 25아형 결정 함수 ──────────────────────────────
+// 입력: axisScores(A01~A10 점수), bodyRegions(부위 배열), textures(질감 배열), flags({menopause:bool,...})
+// 출력: { bc: string, name: string, signatureAxes: string[] }
+function decideSubtype(
+  axisScores: Record<string, number>,
+  bodyRegions: string[],
+  textures: string[],
+  flags: Record<string, boolean> = {}
+): { bc: string; name: string; signatureAxes: string[] } {
+  // MENOPAUSE 플래그 강제: 즉시 BC-13으로 좁힘
+  if (flags.menopause) {
+    return { bc: 'BC-13', name: '갱년기변환형', signatureAxes: ['A03','A07','A06'] }
+  }
+
+  const normRegions = bodyRegions.map(r => r.toUpperCase())
+  const normTextures = textures.map(t => t.toLowerCase())
+
+  // 부위·질감 필터: 교집합이 있는 후보군 수집
+  const candidates = SUBTYPE_RULES.filter(rule => {
+    const hasRegion  = rule.regions.some(r => normRegions.includes(r))
+    const hasTexture = rule.textures.some(t => normTextures.includes(t))
+    return hasRegion && hasTexture
+  })
+
+  // 후보 0이면 BC-3 폴백
+  if (candidates.length === 0) {
+    return { bc: 'BC-3', name: '단단내장형(폴백)', signatureAxes: ['A01','A09','A05'] }
+  }
+
+  // 서명축 가중 점수 합산 (가중 3·2·1) → 최대 후보 선택
+  let best = candidates[0]
+  let bestScore = -Infinity
+  for (const rule of candidates) {
+    const score =
+      (axisScores[rule.axes[0]] ?? 5) * 3 +
+      (axisScores[rule.axes[1]] ?? 5) * 2 +
+      (axisScores[rule.axes[2]] ?? 5) * 1
+    if (score > bestScore) { bestScore = score; best = rule }
+  }
+
+  return { bc: best.bc, name: best.name, signatureAxes: best.axes }
+}
+
+// ─── computeIndicators: 4대 지표 공식 ─────────────────────────────
+// 복부위험도%, 호르몬부하%, 체형불균형%, 대사효율나이
+function computeIndicators(
+  A: Record<string, number>,  // A01~A10 축 점수
+  age: number
+): {
+  abdominalRisk: number;    // 복부위험도%
+  hormoneLoad: number;      // 호르몬부하%
+  bodyImbalance: number;    // 체형불균형%
+  metaAge: number;          // 대사효율나이
+} {
+  const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
+  const a = (k: string) => A[k] ?? 5
+
+  // 복부위험도% = (A01×0.45 + A09×0.25 + A07×0.15 + A05×0.15) × 75 + 8
+  const rawAbdominal = (a('A01')*0.45 + a('A09')*0.25 + a('A07')*0.15 + a('A05')*0.15) * 75 + 8
+  const abdominalRisk = clamp(Math.round(rawAbdominal), 8, 99)
+
+  // 호르몬부하% = (A03×0.45 + A07×0.30 + A02×0.25) × 75 + 8
+  const rawHormone = (a('A03')*0.45 + a('A07')*0.30 + a('A02')*0.25) * 75 + 8
+  const hormoneLoad = clamp(Math.round(rawHormone), 8, 99)
+
+  // 체형불균형% = (A06×0.50 + A02×0.30 + A04×0.20) × 75 + 8
+  const rawBody = (a('A06')*0.50 + a('A02')*0.30 + a('A04')*0.20) * 75 + 8
+  const bodyImbalance = clamp(Math.round(rawBody), 8, 99)
+
+  // 대사효율나이 = 실나이 + (10축평균 - 0.5) × 20  [상한+12세, 하한-4세]
+  const axes = ['A01','A02','A03','A04','A05','A06','A07','A08','A09','A10']
+  const avgAxis = axes.reduce((s, k) => s + (A[k] ?? 5), 0) / axes.length
+  const rawMeta = age + (avgAxis - 0.5) * 20
+  const metaAge = clamp(Math.round(rawMeta), age - 4, age + 12)
+
+  return { abdominalRisk, hormoneLoad, bodyImbalance, metaAge }
+}
+
+// ─── BC별 강제/배제 도메인 (설계도 기준) ────────────────────────────
+const BC_DOMAIN_RULES: Record<string, { force: string[]; exclude: string[] }> = {
+  'BC-1':  { force:['lymph','recovery'],            exclude:['aesthetic'] },
+  'BC-2':  { force:['posture','recovery'],           exclude:[] },
+  'BC-3':  { force:['diet','recovery'],              exclude:[] },
+  'BC-4':  { force:['metabolism','oriental'],        exclude:[] },
+  'BC-5':  { force:['diet','recovery'],              exclude:[] },
+  'BC-6':  { force:['hormone','diet'],               exclude:[] },
+  'BC-7':  { force:['psychology','recovery'],        exclude:[] },
+  'BC-8':  { force:['psychology','exercise'],        exclude:[] },
+  'BC-9':  { force:['posture','exercise'],           exclude:[] },
+  'BC-10': { force:['lymph','recovery'],             exclude:['aesthetic'] },
+  'BC-11': { force:['exercise','posture'],           exclude:[] },
+  'BC-12': { force:['posture','recovery'],           exclude:[] },
+  'BC-13': { force:['hormone','recovery','oriental'],exclude:['aesthetic'] },
+  'BC-14': { force:['psychology','recovery'],        exclude:['exercise'] },
+  'BC-15': { force:['metabolism','diet'],            exclude:[] },
+  'BC-16': { force:['metabolism','recovery'],        exclude:[] },
+}
+
+// ─── computeDomainScores: 11영역 처방 점수 ───────────────────────────
+// 11영역: recovery/hormone/posture/diet/exercise/psychology/oriental/drug/aesthetic/care/philosophy
+function computeDomainScores(
+  A: Record<string, number>,
+  bcCode: string,
+  _flags: Record<string, boolean> = {}
+): Record<string, number> {
+  const a = (k: string) => A[k] ?? 5
+  const raw: Record<string, number> = {
+    recovery:    a('A01') * 0.3 + a('A02') * 0.2 + a('A09') * 0.3 + a('A05') * 0.2,
+    hormone:     a('A03') * 0.5 + a('A07') * 0.3 + a('A02') * 0.2,
+    posture:     a('A06') * 0.5 + a('A04') * 0.3 + a('A02') * 0.2,
+    diet:        a('A01') * 0.35 + a('A05') * 0.35 + a('A03') * 0.3,
+    exercise:    a('A04') * 0.4 + a('A06') * 0.35 + a('A09') * 0.25,
+    psychology:  a('A08') * 0.5 + a('A07') * 0.3 + a('A10') * 0.2,
+    oriental:    a('A03') * 0.35 + a('A02') * 0.35 + a('A05') * 0.3,
+    drug:        a('A09') * 0.4 + a('A01') * 0.35 + a('A07') * 0.25,
+    aesthetic:   a('A02') * 0.4 + a('A06') * 0.35 + a('A04') * 0.25,
+    care:        a('A02') * 0.4 + a('A01') * 0.3 + a('A06') * 0.3,
+    philosophy:  a('A10') * 0.5 + a('A08') * 0.3 + a('A07') * 0.2,
+  }
+
+  // BC별 강제/배제 반영
+  const rules = BC_DOMAIN_RULES[bcCode] ?? { force: [], exclude: [] }
+  const result = { ...raw }
+  for (const d of rules.force)   result[d] = Math.min(10, (result[d] ?? 5) + 2)
+  for (const d of rules.exclude) result[d] = 0
+
+  // 0~10 클램프
+  for (const k of Object.keys(result)) {
+    result[k] = Math.min(10, Math.max(0, Math.round(result[k] * 10) / 10))
+  }
+  return result
+}
+
+// ─── computePrediction: 전체 결과 조립 ──────────────────────────────
+function computePrediction(payload: {
+  axisScores: Record<string, number>
+  bodyRegions: string[]
+  textures: string[]
+  flags: Record<string, boolean>
+  age: number
+  gender?: string
+  weight?: number
+  height?: number
+}): {
+  bc: string
+  bcName: string
+  signatureAxes: string[]
+  indicators: ReturnType<typeof computeIndicators>
+  domains: Record<string, number>
+  top3Axes: string[]
+} {
+  const { axisScores, bodyRegions, textures, flags, age } = payload
+
+  // 1. 아형 결정
+  const { bc, name: bcName, signatureAxes } = decideSubtype(axisScores, bodyRegions, textures, flags)
+
+  // 2. 4대 지표
+  const indicators = computeIndicators(axisScores, age)
+
+  // 3. 11영역 점수
+  const domains = computeDomainScores(axisScores, bc, flags)
+
+  // 4. Top3 축 (점수 내림차순)
+  const top3Axes = Object.entries(axisScores)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([k]) => k)
+
+  return { bc, bcName, signatureAxes, indicators, domains, top3Axes }
+}
+
+// ─── normalizeBcCode: BC-1~BC-16 지원 ─────────────────────────────
+// DB에 저장된 다양한 형태를 BC_MASTER 키(BC-1~BC-16)로 통일
+// BC-09→BC-9, BC-01→BC-1, BC01→BC-1, BC-13→BC-13 (그대로)
 function normalizeBcCode(raw: string | null): string {
   if (!raw) return 'BC-6'
   const s = raw.trim()
-  // 이미 BC-N 단일자리 형태 (BC-1 ~ BC-9)
-  if (/^BC-[1-9]$/.test(s)) return s
-  // BC-09, BC-01 등 두자리 0패딩
-  if (/^BC-0([1-9])$/.test(s)) return `BC-${s[4]}`
+  // BC-1 ~ BC-16 (정상 형태) — 이미 올바른 형태
+  if (/^BC-([1-9]|1[0-6])$/.test(s)) return s
+  // BC-09, BC-01 등 두자리 0패딩 (BC-01~BC-09)
+  const mPad = s.match(/^BC-0([1-9])$/)
+  if (mPad) return `BC-${mPad[1]}`
+  // BC-010~BC-016 형태 (세자리)
+  const mPad3 = s.match(/^BC-0(1[0-6])$/)
+  if (mPad3) return `BC-${mPad3[1]}`
   // BC01 형태 (하이픈 없음)
-  if (/^BC0?([1-9])$/.test(s)) {
-    const m = s.match(/^BC0?([1-9])$/)
-    return m ? `BC-${m[1]}` : 'BC-6'
-  }
-  // 축 코드 (A01~A10) → BC 매핑
-  if (/^A\d{2}$/.test(s)) return AXIS_TO_BC[s] || 'BC-6'
+  const mNoDash = s.match(/^BC0?([1-9]|1[0-6])$/)
+  if (mNoDash) return `BC-${mNoDash[1]}`
   // 닉네임 그대로 (diagnosis_results의 bc_nickname 형태)
   return s
 }
@@ -5025,44 +5234,65 @@ app.post('/api/v1/diagnosis', async (c) => {
 
     if (!user_name) return c.json({ error: 'user_name required' }, 400)
 
-    // ✅ BUG-1 대응: bc_primary가 닉네임(한글)이므로 bc_code_key(BC-N 형태) 도 저장
-    // bc_code_key가 없으면 NICKNAME_TO_BC 로컬 테이블로 역매핑
-    // [수정 V4.6] 전체 닉네임 21개 완비 — 누락 닉네임으로 인한 bc_code_key null 방지
+    // ✅ [G-1 v5.0] NICKNAME_TO_BC_BACKEND — 25아형 완전판 (BC-1~BC-16 커버)
+    // 구버전 닉네임도 하위 호환 포함, 신규 16종 특허 아형 완비
     const NICKNAME_TO_BC_BACKEND: Record<string, string> = {
-      // BC-1: 림프·부종 계열
+      // ── BC-1: 림프·부종 계열 ──────────────────────────────────
+      '코끼리다리형':           'BC-1',
       '오후만되면 코끼리다리형':'BC-1',
-      '엄마체형 하지정체형':'BC-1',
-      // BC-2: 골격·자세 계열
-      '목짧아지는 거북이형':'BC-2',
-      '안 쓰는 팔뚝 부종형':'BC-2',
-      '겨드랑이 부유방형':'BC-2',
-      // BC-3: 인슐린·내장 계열
-      '아빠체형 내장비대형':'BC-3',
+      '엄마체형 하지정체형':    'BC-1',
+      '귤껍질하체형':           'BC-1',   // BC-1 하위 (림프+셀룰라이트)
+      // ── BC-3: 인슐린·내장 계열 ──────────────────────────────
+      '단단내장형':             'BC-3',
+      '아빠체형 내장비대형':    'BC-3',
+      '가스팽만형':             'BC-3',
       '식후기절 혈당롤러코스터형':'BC-3',
-      '식후임산부 가스풍선형':'BC-3',
-      '동시다발 다중악순환형':'BC-3',
-      // BC-4: 대사저하·냉증 계열
-      '약물부작용 강제축적형':'BC-4',
+      '식후임산부 가스풍선형':  'BC-3',
+      // ── BC-4: 대사저하·냉증 계열 ────────────────────────────
+      '올챙이배형':             'BC-4',
+      '대사저하형':             'BC-4',
+      '팔다리거미 올챙이배형':  'BC-4',
+      '약물부작용 강제축적형':  'BC-4',
       '억제제부작용 배부름마비형':'BC-4',
-      '여름에도 시린 얼음장형':'BC-4',
-      // BC-5: 장·소화 계열
-      '지방흡입후 재발형':'BC-5',
-      // BC-6: 호르몬·스트레스 계열
-      '털털한 PCOS형':'BC-6',
+      '여름에도 시린 얼음장형': 'BC-4',
+      // ── BC-5: 장·소화 계열 ──────────────────────────────────
+      '소화기팽만형':           'BC-5',
+      '지방흡입후 재발형':      'BC-5',
+      // ── BC-6: PCOS·호르몬 계열 ──────────────────────────────
+      'PCOS호르몬형':           'BC-6',
+      '털털한 PCOS형':          'BC-6',
       '스트레스성 야식부엉이형':'BC-6',
-      '호르몬스위치 갱년기형':'BC-6',
-      '스트레스기절 번아웃형':'BC-6',
-      // BC-7: 자율신경·골반 계열
-      '출산후 바람빠진 풍선형':'BC-7',
-      '골반틀어짐 승마살형':'BC-7',
-      // BC-8: 근육·심리 계열
-      '운동할수록 말벅지형':'BC-8',
-      '상체근육형':'BC-8',
-      // BC-9: 대사증후군·복합 계열
-      '팔다리거미 올챙이배형':'BC-9',
-      '대사증후군 종합형':'BC-9',
+      '호르몬스위치 갱년기형':  'BC-6',   // 구버전 닉네임 호환
+      '스트레스기절 번아웃형':  'BC-6',   // 구버전 닉네임 호환
+      // ── BC-7: 코르티솔·스트레스 계열 ───────────────────────
+      '스트레스복부형':         'BC-7',
+      '말벅지형':               'BC-7',
+      '출산후 바람빠진 풍선형': 'BC-7',
+      '골반틀어짐 승마살형':    'BC-7',
+      // ── BC-9: 골격·자세 계열 ────────────────────────────────
+      '거북이형':               'BC-9',
+      '목짧아지는 거북이형':    'BC-9',
+      '대사증후군 종합형':      'BC-9',   // 구버전 닉네임 호환
+      // ── BC-10: 팔뚝부종 계열 ────────────────────────────────
+      '팔뚝부종형':             'BC-10',
+      '안 쓰는 팔뚝 부종형':   'BC-10',
+      // ── BC-11: 상체근육 계열 ────────────────────────────────
+      '상체근육형':             'BC-11',
+      '운동할수록 말벅지형':    'BC-11',  // 구버전 닉네임 호환
+      // ── BC-12: 부유방 계열 ──────────────────────────────────
+      '부유방형':               'BC-12',
+      '겨드랑이 부유방형':      'BC-12',
+      // ── BC-13: 갱년기변환 계열 ──────────────────────────────
+      '갱년기변환형':           'BC-13',
+      // ── BC-14: 번아웃무기력 계열 ────────────────────────────
+      '번아웃무기력형':         'BC-14',
+      '동시다발 다중악순환형':  'BC-14',  // 구버전 닉네임 호환
+      // ── BC-15: 대사증후군 계열 ──────────────────────────────
+      '대사증후군형':           'BC-15',
+      // ── BC-16: 다중악순환 계열 ──────────────────────────────
+      '다중악순환형':           'BC-16',
     }
-    // ✅ [수정 V4.4] bc_primary에 raw 축코드(A07, A02 등)가 들어올 경우 정규화 적용
+    // ✅ [수정 V5.0] bc_primary에 raw 축코드(A07, A02 등)가 들어올 경우 정규화 적용
     // normalizeBcCode()가 A0X 패턴을 BC코드로 변환함
     const safeBcPrimaryForKey = bc_primary
       ? (/^A\d{2}$/.test(String(bc_primary).trim()) ? normalizeBcCode(bc_primary) : bc_primary)
@@ -5072,9 +5302,10 @@ app.post('/api/v1/diagnosis', async (c) => {
       : null
 
     // bc_code_key가 없으면 bc_primary(닉네임)로 역매핑, 그것도 없으면 null
+    // BC-1~BC-16 모두 지원하도록 정규식 확장
     const resolvedBcCodeKey = bc_code_key ||
       (safeBcPrimaryForKey && NICKNAME_TO_BC_BACKEND[safeBcPrimaryForKey]) ||
-      (safeBcPrimaryForKey && /^BC-[1-9]$/.test(safeBcPrimaryForKey) ? safeBcPrimaryForKey : null) ||
+      (safeBcPrimaryForKey && /^BC-([1-9]|1[0-6])$/.test(safeBcPrimaryForKey) ? safeBcPrimaryForKey : null) ||
       (safeBcNicknameForKey && NICKNAME_TO_BC_BACKEND[safeBcNicknameForKey]) ||
       null
 
