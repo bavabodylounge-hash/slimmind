@@ -3,13 +3,13 @@
  *
  * SlimMind 질문지 QA — 기능 및 로직 검증 테스트
  *
- * 검증 대상: 슬림마인드 질문지 HTML (병원/에스테틱/피트니스) 실제 로직 분석 기반
+ * 검증 대상: 슬림마인드 질문지 HTML (병원/에스테틱/미용실) 실제 로직 분석 기반
  *
  * 테스트 범위:
  *  1. 도메인별 특화 로직 — 조건부 분기 (showStage / warnMissing / goStage*)
  *  2. 데이터 유효성 검사 — 필수 입력값 누락 시 차단 로직
  *  3. submitDiagnosis 페이로드 — 필드 완결성 및 데이터 연동
- *  4. survey_category 채널 분리 — hospital/aesthetic/fitness
+ *  4. survey_category 채널 분리 — hospital/aesthetic/salon
  *  5. 3개국어 분기 — ko/en/th
  *  6. 중복 제출 방지 — _sdBusy 플래그
  *  7. 폴백 로직 — bc_code_key, ohaeng_type, completed_at 자동 채움
@@ -20,7 +20,7 @@
 // 테스트용 타입/상수 정의 (HTML 소스에서 추출)
 // ─────────────────────────────────────────────────────────────────────────────
 
-type SurveyCategory = 'hospital' | 'aesthetic' | 'fitness';
+type SurveyCategory = 'hospital' | 'aesthetic' | 'salon';
 type LangCode       = 'ko' | 'en' | 'th';
 type AxisKey        = 'A01'|'A02'|'A03'|'A04'|'A05'|'A06'|'A07'|'A08'|'A09'|'A10'|'A11';
 
@@ -51,7 +51,7 @@ interface DiagnosisPayload {
   disp_answers:    Record<string, unknown> | null;
   raw_answers:     Record<string, unknown>;
   ref_code:        string | null;
-  survey_category: SurveyCategory;  // hospital만 명시; aesthetic/fitness 미설정 — 버그
+  survey_category: SurveyCategory;  // hospital/aesthetic/salon 모두 명시 — BUG-7 수정 완료
   completed_at:    string;
 }
 
@@ -401,12 +401,12 @@ describe('[3] 페이로드 필드 완결성 및 DB 연동 준비', () => {
     expect(payload?.survey_category).toBe('aesthetic');
   });
 
-  test('3-4 [피트니스] survey_category = "fitness" — HTML 소스 미설정 버그 확인', () => {
+  test('3-4 [미용실] survey_category = "salon" — BUG-7 수정: fitness→salon 채널 코드 변경', () => {
     const payload = buildPayload({
       userInfo: SAMPLE_USER, codeResult: SAMPLE_CODE_RESULT,
-      dispAnswers: {}, rawAnswers: {}, channel: 'fitness',
+      dispAnswers: {}, rawAnswers: {}, channel: 'salon',
     });
-    expect(payload?.survey_category).toBe('fitness');
+    expect(payload?.survey_category).toBe('salon');
   });
 
   test('3-5 top3_axes — 점수 기준 상위 3개 정렬', () => {
@@ -477,7 +477,7 @@ describe('[3] 페이로드 필드 완결성 및 DB 연동 준비', () => {
 
 describe('[4] 채널별 특화 로직', () => {
 
-  const CHANNELS: SurveyCategory[] = ['hospital', 'aesthetic', 'fitness'];
+  const CHANNELS: SurveyCategory[] = ['hospital', 'aesthetic', 'salon'];
 
   for (const ch of CHANNELS) {
     test(`4-${CHANNELS.indexOf(ch)+1} [${ch}] payload 생성 성공 및 survey_category 일치`, () => {
@@ -499,7 +499,7 @@ describe('[4] 채널별 특화 로직', () => {
 
   test('4-5 [병원] /api/survey/notify 추가 알림 API 사용 (병원 전용)', () => {
     // 병원 HTML에서 /api/survey/notify, /api/coupon/issue 추가 확인
-    // 에스테틱/피트니스는 해당 API 미사용
+    // 에스테틱/미용실은 해당 API 미사용
     const hospitalApis = ['/api/survey/notify', '/api/coupon/issue', '/api/v1/diagnosis'];
     const aestheticApis = ['/api/survey/notify', '/api/v1/diagnosis'];
     expect(hospitalApis).toContain('/api/coupon/issue');
@@ -561,7 +561,7 @@ describe('[5] 3개국어 분기 (ko/en/th)', () => {
   });
 
   test('5-7 [병원] 3개국어 분기 조건 12회 이상 존재 확인', () => {
-    // HTML 소스 분석 결과: 병원 12회, 에스테틱/피트니스 0회 (언어 사전은 존재)
+    // HTML 소스 분석 결과: 병원 12회, 에스테틱/미용실 0회 (언어 사전은 존재)
     const hospitalLangBranches = 12;
     expect(hospitalLangBranches).toBeGreaterThanOrEqual(12);
   });
@@ -753,17 +753,17 @@ describe('[8] 기존 버그 수정 검증 (소스 주석 기반)', () => {
     expect(heroVisible).toBe(true);
   });
 
-  test('8-6 [BUG-6 수정 완료] 에스테틱/피트니스 survey_category 명시 — 배포 코드 검증', () => {
+  test('8-6 [BUG-7 수정 완료] 에스테틱/미용실 survey_category 명시 — 배포 코드 검증', () => {
     // ─────────────────────────────────────────────────────────────
     // [수정 이력]
-    //  - 구버전(qa_work/): survey_category 필드 누락 → DB NULL 위험
-    //  - 배포본(public/):  명시적으로 설정 완료
+    //  - BUG-6 (세션4): 구버전(qa_work/) survey_category 필드 누락 → 배포본에서 수정 완료
+    //  - BUG-7 (세션4): survey-fitness.html은 실제로 미용실 파일 → 'fitness'→'salon' 변경
     //
     // [배포본 실제 코드 — survey-aesthetic.html:16860]
     //   survey_category: (window.__BRAND__ && window.__BRAND__.survey_category) || 'aesthetic',
     //
-    // [배포본 실제 코드 — survey-fitness.html:20135]
-    //   survey_category: (window.__BRAND__ && window.__BRAND__.survey_category) || 'fitness',
+    // [배포본 실제 코드 — survey-fitness.html:20135] ✅ BUG-7 수정
+    //   survey_category: (window.__BRAND__ && window.__BRAND__.survey_category) || 'salon',
     //
     // [배포본 실제 코드 — survey-hospital.html:19176]
     //   survey_category: 'hospital',  // ✅ FIX 주석 명시
@@ -779,21 +779,21 @@ describe('[8] 기존 버그 수정 검증 (소스 주석 기반)', () => {
 
     // 1) __BRAND__ 없음(undefined) → fallback 사용
     expect(resolveCategory(null, 'aesthetic')).toBe('aesthetic');
-    expect(resolveCategory(null, 'fitness')).toBe('fitness');
+    expect(resolveCategory(null, 'salon')).toBe('salon');    // ✅ BUG-7: 'fitness'→'salon'
     expect(resolveCategory(null, 'hospital')).toBe('hospital');
 
     // 2) __BRAND__.survey_category 설정됨 → 해당 값 사용
     expect(resolveCategory({ survey_category: 'aesthetic' }, 'hospital')).toBe('aesthetic');
-    expect(resolveCategory({ survey_category: 'fitness' },   'hospital')).toBe('fitness');
+    expect(resolveCategory({ survey_category: 'salon' },     'hospital')).toBe('salon');   // ✅ BUG-7
 
     // 3) buildPayload를 통한 채널별 survey_category 최종 검증
     const aestheticPayload = buildPayload({
       userInfo: SAMPLE_USER, codeResult: SAMPLE_CODE_RESULT,
       dispAnswers: {}, rawAnswers: {}, channel: 'aesthetic',
     });
-    const fitnessPayload = buildPayload({
+    const salonPayload = buildPayload({
       userInfo: SAMPLE_USER, codeResult: SAMPLE_CODE_RESULT,
-      dispAnswers: {}, rawAnswers: {}, channel: 'fitness',
+      dispAnswers: {}, rawAnswers: {}, channel: 'salon',     // ✅ BUG-7: 'fitness'→'salon'
     });
     const hospitalPayload = buildPayload({
       userInfo: SAMPLE_USER, codeResult: SAMPLE_CODE_RESULT,
@@ -801,7 +801,7 @@ describe('[8] 기존 버그 수정 검증 (소스 주석 기반)', () => {
     });
 
     expect(aestheticPayload?.survey_category).toBe('aesthetic');
-    expect(fitnessPayload?.survey_category).toBe('fitness');
+    expect(salonPayload?.survey_category).toBe('salon');     // ✅ BUG-7: 'fitness'→'salon'
     expect(hospitalPayload?.survey_category).toBe('hospital');
   });
 });

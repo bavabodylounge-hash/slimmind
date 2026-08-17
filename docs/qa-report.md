@@ -1,10 +1,10 @@
 # SlimMind 질문지 QA 테스트 리포트 (최종본)
 
 **작성일**: 2025-08-17  
-**최종 업데이트**: 2025-08-17 (BUG-6 수정 완료 재검증)  
+**최종 업데이트**: 2026-08-17 (BUG-7 채널 오분류 수정 완료)  
 **작성자**: SlimMind 개발팀  
 **리포지토리**: https://github.com/bavabodylounge-hash/slimmind  
-**검증 대상**: 슬림마인드 질문지 HTML (병원 / 에스테틱 / 피트니스)  
+**검증 대상**: 슬림마인드 질문지 HTML (병원 / 에스테틱 / 미용실)  
 **테스트 실행 환경**: Node.js 20 / Jest 30 / TypeScript 5.8.3
 
 ---
@@ -19,10 +19,10 @@
 | **유닛 테스트 (fileParser.spec.ts)** | 62/62 PASS |
 | **E2E 기능 테스트 (survey-logic.spec.ts)** | 58/58 PASS |
 | **소요 시간** | 4.901 s |
-| **발견 버그** | 6건 — **BUG-1~6 전원 수정 완료** ✅ |
+| **발견 버그** | 7건 — **BUG-1~7 전원 수정 완료** ✅ |
 
-> **결론**: 모든 핵심 기능 로직이 정상 동작하며, 소스 분석을 통해 발견된 버그 6건 모두 수정 완료되었습니다.  
-> BUG-6(`survey_category` 미설정)는 배포 코드(`public/`)에 이미 수정 반영되어 있음을 재검증 완료했습니다.
+> **결론**: 모든 핵심 기능 로직이 정상 동작하며, 소스 분석을 통해 발견된 버그 7건 모두 수정 완료되었습니다.  
+> BUG-7(`survey-fitness.html`이 실제 미용실 채널임에도 `'fitness'`로 오분류됨)이 추가 발견되어 `'salon'`으로 수정 완료했습니다.
 
 ---
 
@@ -30,24 +30,24 @@
 
 ### 발견 경위
 - 세션4 QA 수행 시 `qa_work/survey/` 경로의 **구버전 HTML**을 분석 대상으로 사용
-- 구버전(세션4 업로드 ZIP)에는 에스테틱·피트니스 `submitDiagnosis` payload에 `survey_category` 필드 미존재
+- 구버전(세션4 업로드 ZIP)에는 에스테틱·미용실 `submitDiagnosis` payload에 `survey_category` 필드 미존재
 - 이를 BUG-6으로 리포트
 
 ### 재검증 결과 — 배포 코드 기준 ✅
 
-실제 운영 중인 배포 파일(`public/`)을 검증한 결과 **이미 수정 완료** 상태:
+실제 운영 중인 배포 파일(`public/`)을 검증한 결과 **이미 수정 완료** 상태 (단, BUG-7 오분류 포함):
 
 ```
 [구버전 qa_work/ — survey_category 검색 결과]
-  슬림마인드 에스테틱 3개국어.html: 0건 ← BUG 존재
-  슬림마인드 미용실 3개국어.html:   0건 ← BUG 존재
+  슬림마인드 에스테틱 3개국어.html: 0건 ← BUG-6 존재
+  슬림마인드 미용실 3개국어.html:   0건 ← BUG-6 존재 + BUG-7 (survey_category 미포함)
 
-[배포본 public/ — survey_category 검색 결과]
+[배포본 public/ — survey_category 검색 결과 — BUG-7 수정 후]
   survey-aesthetic.html:16860
     survey_category: (window.__BRAND__ && window.__BRAND__.survey_category) || 'aesthetic',
 
-  survey-fitness.html:20135
-    survey_category: (window.__BRAND__ && window.__BRAND__.survey_category) || 'fitness',
+  survey-fitness.html:20135  ← 실제 파일 내용은 미용실(salon)
+    survey_category: (window.__BRAND__ && window.__BRAND__.survey_category) || 'salon',  ✅ BUG-7 수정
 
   survey-hospital.html:19176
     survey_category: 'hospital',  // ✅ FIX 주석 명시
@@ -58,7 +58,7 @@
 ```javascript
 // 배포 코드의 survey_category 결정 로직:
 // 1순위: window.__BRAND__.survey_category (B2B 커스텀 브랜드 설정)
-// 2순위: 채널 기본값 ('aesthetic' / 'fitness' / 'hospital')
+// 2순위: 채널 기본값 ('aesthetic' / 'salon' / 'hospital')
 survey_category: (window.__BRAND__ && window.__BRAND__.survey_category) || 'aesthetic',
 ```
 
@@ -75,16 +75,83 @@ test('8-6 [에스테틱/피트니스] survey_category 미설정 — DB 저장 �
   // ⚠️ 권고만 있었음
 });
 
-// 수정 후 (배포 코드 실제 패턴 재현 + 3채널 전수 검증):
-test('8-6 [BUG-6 수정 완료] 에스테틱/피트니스 survey_category 명시 — 배포 코드 검증', () => {
+// 수정 후 BUG-7 포함 (배포 코드 실제 패턴 재현 + 3채널 전수 검증):
+test('8-6 [BUG-7 수정 완료] 에스테틱/미용실 survey_category 명시 — 배포 코드 검증', () => {
   // resolveCategory 함수로 (window.__BRAND__?.survey_category) || fallback 패턴 재현
   // 1) __BRAND__ null → fallback 사용 ✅
   // 2) __BRAND__.survey_category 설정 시 해당 값 사용 ✅
-  // 3) 3채널 모두 buildPayload 통해 최종 검증 ✅
+  // 3) 3채널(hospital/aesthetic/salon) 모두 buildPayload 통해 최종 검증 ✅
 });
 ```
 
 **테스트 8-6 결과**: ✅ PASS
+
+---
+
+## BUG-7 채널 오분류 수정 (세션4 신규 발견)
+
+### 문제 요약
+
+| 항목 | 내용 |
+|---|---|
+| **버그 ID** | BUG-7 |
+| **발견 경위** | 세션4 신규 v4 ZIP(`슬림마인드질문지 (4).zip`) 분석 중 |
+| **영향 파일** | `public/survey-fitness.html`, `qa_work_v4/survey_v4/슬림마인드 미용실 3개국어.html` |
+| **심각도** | High — DB `survey_category` 컬럼에 잘못된 채널 코드 저장 |
+
+### 근거
+
+```
+[확인 방법 1] survey-fitness.html CSS 주석]
+  "미용실=모카금 빛" → 이 파일이 미용실 HTML임을 명시
+
+[확인 방법 2] v4 미용실 HTML 내 'i18nSalon' 스크립트 존재]
+  line 33695: <script id="i18nSalonLetter">
+  line 33748: <script id="i18nSalonHairline">
+  → 'salon' 코드를 내부적으로 사용하는 미용실 전용 스크립트
+
+[확인 방법 3] v4 미용실 HTML 내 텍스트 검색]
+  "살롱에서 함께 봅니다", "salon shampoo bowl", "at the salon"
+  → 미용실(살롱) 채널 전용 문구 다수 존재
+```
+
+### 수정 내용
+
+#### 1. `public/survey-fitness.html` — 채널 코드 변경
+
+```diff
+- <!-- sm_survey_category: fitness — PWA 세션 복원 분기용 -->
+- <script>try { localStorage.setItem('sm_survey_category', 'fitness'); } catch(e) {}</script>
++ <!-- sm_survey_category: salon — PWA 세션 복원 분기용 -->
++ <script>try { localStorage.setItem('sm_survey_category', 'salon'); } catch(e) {}</script>
+
+- survey_category: (window.__BRAND__ && window.__BRAND__.survey_category) || 'fitness',
++ survey_category: (window.__BRAND__ && window.__BRAND__.survey_category) || 'salon',
+```
+
+#### 2. `qa_work_v4/survey_v4/슬림마인드 미용실 3개국어.html` — `survey_category` 필드 추가
+
+```diff
+  const payload = {
+    ...
+    ref_code:        refCode,
++   survey_category: (window.__BRAND__ && window.__BRAND__.survey_category) || 'salon',  // ✅ BUG-7 수정
+    completed_at:    new Date().toISOString()
+  };
+```
+
+#### 3. `tests/e2e/survey-logic.spec.ts` — 타입 및 테스트 케이스 변경
+
+```diff
+- type SurveyCategory = 'hospital' | 'aesthetic' | 'fitness';
++ type SurveyCategory = 'hospital' | 'aesthetic' | 'salon';
+
+- const CHANNELS: SurveyCategory[] = ['hospital', 'aesthetic', 'fitness'];
++ const CHANNELS: SurveyCategory[] = ['hospital', 'aesthetic', 'salon'];
+
+- test('3-4 [피트니스] survey_category = "fitness"...')  // channel: 'fitness'
++ test('3-4 [미용실] survey_category = "salon"...')     // channel: 'salon'
+```
 
 ---
 
@@ -96,7 +163,7 @@ test('8-6 [BUG-6 수정 완료] 에스테틱/피트니스 survey_category 명시
 |---|---|---|---|
 | public/survey-hospital.html | hospital | ✅ `'hospital'` (하드코딩) | 3개국어(ko/en/th), /api/coupon/issue 포함 |
 | public/survey-aesthetic.html | aesthetic | ✅ `\|\| 'aesthetic'` (폴백) | B2B 브랜드 오버라이드 지원 |
-| public/survey-fitness.html | fitness | ✅ `\|\| 'fitness'` (폴백) | B2B 브랜드 오버라이드 지원 |
+| public/survey-fitness.html | **salon (미용실)** | ✅ `\|\| 'salon'` (폴백) | **BUG-7 수정**: 파일명과 달리 실제 미용실 채널 |
 
 ### 1.2 테스트 구성
 
@@ -165,7 +232,7 @@ node_modules/.bin/jest --config jest.config.cjs --verbose tests/e2e/survey-logic
 | 3-1 | [병원] 정상 payload — 7개 필수 필드 모두 존재 | ✅ PASS |
 | 3-2 | [병원] survey_category = "hospital" 명시 확인 | ✅ PASS |
 | 3-3 | [에스테틱] survey_category = "aesthetic" | ✅ PASS |
-| 3-4 | [피트니스] survey_category = "fitness" | ✅ PASS |
+| 3-4 | [미용실] survey_category = "salon" — BUG-7 수정 반영 | ✅ PASS |
 | 3-5 | top3_axes — 점수 기준 내림차순 상위 3개 정렬 | ✅ PASS |
 | 3-6 | axis_scores — A01~A11 전체 11개 키 존재 | ✅ PASS |
 | 3-7 | 목표체중/감량률 계산 — 65kg→55kg = 15% | ✅ PASS |
@@ -183,7 +250,7 @@ node_modules/.bin/jest --config jest.config.cjs --verbose tests/e2e/survey-logic
 |---|---|---|
 | 4-1 | [hospital] payload 생성 성공 및 survey_category 일치 | ✅ PASS |
 | 4-2 | [aesthetic] payload 생성 성공 및 survey_category 일치 | ✅ PASS |
-| 4-3 | [fitness] payload 생성 성공 및 survey_category 일치 | ✅ PASS |
+| 4-3 | [salon] payload 생성 성공 및 survey_category 일치 — BUG-7 수정 반영 | ✅ PASS |
 | 4-4 | [병원] API 엔드포인트 `/api/v1/diagnosis` 확인 | ✅ PASS |
 | 4-5 | [병원] `/api/coupon/issue` 병원 전용 추가 API | ✅ PASS |
 | 4-6 | [병원] `hfTrack = "obesity"` 비만 트랙 설정 | ✅ PASS |
@@ -246,9 +313,10 @@ node_modules/.bin/jest --config jest.config.cjs --verbose tests/e2e/survey-logic
 | 8-3 | BUG-3 | 기질설문 건너뜀 시 전체 제출 중단 | ✅ 수정 완료 |
 | 8-4 | BUG-4 | DISP 스킵 시 ohaeng_type null | ✅ 수정 완료 |
 | 8-5 | BUG-5 | goSurvey 재진입 시 hero 화면 미복구 | ✅ 수정 완료 |
-| 8-6 | **BUG-6** | **에스테틱/피트니스 survey_category 미설정** | ✅ **수정 완료 (배포본 재검증)** |
+| 8-6 | **BUG-6** | **에스테틱/미용실 survey_category 미설정** | ✅ **수정 완료 (배포본 재검증)** |
+| — | **BUG-7** | **`survey-fitness.html` 미용실 파일 채널 오분류 (`'fitness'`→`'salon'`)** | ✅ **수정 완료** |
 
-**소계: 6/6 PASS**
+**소계: 7/7 PASS (BUG-7 포함)**
 
 ---
 
@@ -276,7 +344,7 @@ PASS tests/e2e/survey-logic.spec.ts
 Test Suites: 2 passed, 2 total
 Tests:       120 passed, 120 total
 Snapshots:   0 total
-Time:        4.901 s
+Time:        5.056 s
 ```
 
 ### 커밋 이력
@@ -284,7 +352,8 @@ Time:        4.901 s
 | 커밋 해시 | 내용 |
 |---|---|
 | `b62159b` | test(e2e): QA 기능 검증 테스트 + 공식 QA 리포트 작성 |
-| `fix/bug6` | fix(e2e): BUG-6 배포 코드 검증 — survey_category 수정 완료 재검증 |
+| `5780341` | fix(e2e/qa): BUG-6 배포 코드 기준 재검증 완료 |
+| *(신규)* | fix(bug7/qa): 미용실 채널 오분류 수정 — survey-fitness.html 'fitness'→'salon' |
 
 ---
 
@@ -314,4 +383,4 @@ Time:        4.901 s
 ---
 
 *본 리포트는 배포 중인 `public/` 파일 직접 소스 분석 + TypeScript 로직 재현 + Jest 자동화 테스트를 통해 작성되었습니다.*  
-*마지막 검증 일시: 2025-08-17*
+*마지막 검증 일시: 2026-08-17 (BUG-7 채널 오분류 수정 완료)*
