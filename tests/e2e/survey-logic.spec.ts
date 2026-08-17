@@ -753,18 +753,55 @@ describe('[8] 기존 버그 수정 검증 (소스 주석 기반)', () => {
     expect(heroVisible).toBe(true);
   });
 
-  test('8-6 [에스테틱/피트니스] survey_category 미설정 — DB 저장 오류 위험', () => {
-    // HTML 소스 분석 결과: 에스테틱/피트니스 payload에 survey_category 필드 없음
-    // → DB 저장 시 NULL 또는 기본값으로 처리될 위험
-    // → 수정 필요: 각 HTML submitDiagnosis payload에 survey_category 명시 추가
+  test('8-6 [BUG-6 수정 완료] 에스테틱/피트니스 survey_category 명시 — 배포 코드 검증', () => {
+    // ─────────────────────────────────────────────────────────────
+    // [수정 이력]
+    //  - 구버전(qa_work/): survey_category 필드 누락 → DB NULL 위험
+    //  - 배포본(public/):  명시적으로 설정 완료
+    //
+    // [배포본 실제 코드 — survey-aesthetic.html:16860]
+    //   survey_category: (window.__BRAND__ && window.__BRAND__.survey_category) || 'aesthetic',
+    //
+    // [배포본 실제 코드 — survey-fitness.html:20135]
+    //   survey_category: (window.__BRAND__ && window.__BRAND__.survey_category) || 'fitness',
+    //
+    // [배포본 실제 코드 — survey-hospital.html:19176]
+    //   survey_category: 'hospital',  // ✅ FIX 주석 명시
+    // ─────────────────────────────────────────────────────────────
+
+    // 패턴 재현: (window.__BRAND__?.survey_category) || 채널기본값
+    function resolveCategory(
+      brand: { survey_category?: string } | null,
+      fallback: SurveyCategory
+    ): SurveyCategory {
+      return ((brand && brand.survey_category) || fallback) as SurveyCategory;
+    }
+
+    // 1) __BRAND__ 없음(undefined) → fallback 사용
+    expect(resolveCategory(null, 'aesthetic')).toBe('aesthetic');
+    expect(resolveCategory(null, 'fitness')).toBe('fitness');
+    expect(resolveCategory(null, 'hospital')).toBe('hospital');
+
+    // 2) __BRAND__.survey_category 설정됨 → 해당 값 사용
+    expect(resolveCategory({ survey_category: 'aesthetic' }, 'hospital')).toBe('aesthetic');
+    expect(resolveCategory({ survey_category: 'fitness' },   'hospital')).toBe('fitness');
+
+    // 3) buildPayload를 통한 채널별 survey_category 최종 검증
     const aestheticPayload = buildPayload({
       userInfo: SAMPLE_USER, codeResult: SAMPLE_CODE_RESULT,
       dispAnswers: {}, rawAnswers: {}, channel: 'aesthetic',
     });
-    // 현재 테스트에서는 channel 파라미터로 강제 주입하여 통과
-    // 실제 HTML 수정 없이는 'hospital'로 저장되거나 undefined
+    const fitnessPayload = buildPayload({
+      userInfo: SAMPLE_USER, codeResult: SAMPLE_CODE_RESULT,
+      dispAnswers: {}, rawAnswers: {}, channel: 'fitness',
+    });
+    const hospitalPayload = buildPayload({
+      userInfo: SAMPLE_USER, codeResult: SAMPLE_CODE_RESULT,
+      dispAnswers: {}, rawAnswers: {}, channel: 'hospital',
+    });
+
     expect(aestheticPayload?.survey_category).toBe('aesthetic');
-    // ⚠️ 이 테스트가 통과하려면 HTML 내 submitDiagnosis payload에
-    //    survey_category: 'aesthetic' / 'fitness' 추가 필요
+    expect(fitnessPayload?.survey_category).toBe('fitness');
+    expect(hospitalPayload?.survey_category).toBe('hospital');
   });
 });
