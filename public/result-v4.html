@@ -15,6 +15,8 @@
 <meta http-equiv="Expires" content="0">
 <title>SlimMind — 나의 바디코드 결과지</title>
 <!-- ── OG / SNS 링크 미리보기 ─────────────────────────────── -->
+<!-- ✅ 실제 공유 시 서버(/result/:id)에서 survey_category에 맞는 OG 메타태그로 동적 교체됨 -->
+<!-- salon 채널: "SlimMind · 미용실 바디코드 분석" / 기타: "SlimMind · 바디코드 분석" -->
 <meta property="og:type"        content="website">
 <meta property="og:site_name"   content="SlimMind">
 <meta property="og:title"       content="SlimMind — 나의 바디코드 결과지">
@@ -25947,7 +25949,10 @@ function applyB2BBrand() {
   var bName  = brand.brand_name  || 'SlimMind';
   var bColor = brand.brand_color || '#b5452e';
   var bLogo  = brand.brand_logo_url || '';
-  var isSur  = window.__SUR_MODE__ === true;
+  var isSur  = window.__SUR_MODE__  === true;
+  var isSalon = window.__SALON_MODE__ === true ||
+                (brand.survey_category === 'salon') ||
+                (window.__BRAND_CHANNEL__ === 'salon');  // ✅ 미용실 전용 모드 판별
 
   // ① 커버 로고 교체
   var cvxLogo = document.getElementById('cvx-logo-text');
@@ -25992,10 +25997,32 @@ function applyB2BBrand() {
     }
   }
 
+  // ③-b 커버 eyebrow/서브타이틀 변경 (SALON 모드: 미용실 전용 문구)
+  if (isSalon) {
+    var salonEyebrow = document.querySelector('.cvx-eyebrow');
+    if (salonEyebrow) salonEyebrow.textContent = bName + ' · 헤어·두피 바디코드 분석';
+
+    var salonSub = document.querySelector('.cvx-sub');
+    if (salonSub) salonSub.innerHTML =
+      '단순한 다이어트가 아닙니다. 헤어·두피 건강과 체형까지 — <b>'+bName+'</b>의 전문 분석이 당신 몸의 진짜 원인을 찾아냈습니다.';
+
+    // 컨설턴트 라벨 → 담당 살롱으로 변경
+    var salonLabel = document.querySelector('.cvx-cc-l');
+    if (salonLabel) salonLabel.textContent = '담당 살롱';
+    var salonName = document.getElementById('cover-consultant');
+    if (salonName && (!salonName.textContent || salonName.textContent === '김예슬 컨설턴트')) {
+      salonName.textContent = bName;
+    }
+  }
+
   // ⑥ P1 섹션 eyebrow 업데이트
   if (isSur) {
     var p1Eyebrow = document.querySelector('#page1 .eyebrow');
     if (p1Eyebrow) p1Eyebrow.textContent = bName + ' · 맞춤 바디코드';
+  }
+  if (isSalon) {
+    var p1SalonEyebrow = document.querySelector('#page1 .eyebrow');
+    if (p1SalonEyebrow) p1SalonEyebrow.textContent = bName + ' · 미용실 맞춤 바디코드';
   }
 }
 

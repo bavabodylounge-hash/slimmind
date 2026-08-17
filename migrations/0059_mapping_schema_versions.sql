@@ -13,14 +13,14 @@
 --   4. 일치 → 기존 연산값 신뢰 사용
 --
 -- [확장 규칙]
---   - survey_type: 'hospital' | 'aesthetic' | 'fitness' | 'common'
+--   - survey_type: 'hospital' | 'aesthetic' | 'fitness' | 'salon' | 'common'
 --   - version: 'v1.0' 형식 (major.minor)
 --   - pipeline_hash: 파이프라인 변경 감지용 체크섬 (선택)
 -- ═══════════════════════════════════════════════════════════════════════════
 
 CREATE TABLE IF NOT EXISTS mapping_schema_versions (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
-  survey_type   TEXT    NOT NULL DEFAULT 'hospital',  -- 'hospital'|'aesthetic'|'fitness'|'common'
+  survey_type   TEXT    NOT NULL DEFAULT 'hospital',  -- 'hospital'|'aesthetic'|'fitness'|'salon'|'common'
   version       TEXT    NOT NULL,                     -- 'v1.0', 'v1.1', ...
   label         TEXT    NOT NULL,                     -- 사람이 읽는 이름
   description   TEXT,                                 -- 변경 내역 요약
@@ -61,6 +61,14 @@ VALUES
     'Fitness Survey Standard v1.0',
     'result-fitness.html 기반 파이프라인. Hospital v1.0 프레임워크 계승 예정.',
     'c5d2e8b3',
+    1
+  ),
+  (
+    'salon',
+    'v1.0',
+    'Salon Survey Standard v1.0',
+    'survey-salon.html + result-v4.html 기반 미용실 전용 파이프라인. /salon/:code 전용 라우트. salon __BRAND__ 주입, __SALON_MODE__ 플래그, 미용실 전용 OG 메타태그 분기.',
+    'e6b3c9f1',
     1
   ),
   (

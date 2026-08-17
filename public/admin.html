@@ -797,11 +797,11 @@
               <span style="font-size:11px;color:var(--muted)">에스테틱 특화 설문 (/a/코드)</span>
             </span>
           </label>
-          <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;cursor:pointer;transition:all .15s;opacity:.6" id="cat-label-fitness">
-            <input type="radio" name="b2b_survey_category" value="fitness" disabled style="accent-color:#22c55e;width:16px;height:16px">
+          <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;cursor:pointer;transition:all .15s" id="cat-label-salon">
+            <input type="radio" name="b2b_survey_category" value="salon" style="accent-color:#ec4899;width:16px;height:16px">
             <span style="flex:1">
-              <span style="font-size:13px;font-weight:700;color:#1e293b">💪 피트니스용</span><br>
-              <span style="font-size:11px;color:var(--muted)">준비 중 (/f/코드)</span>
+              <span style="font-size:13px;font-weight:700;color:#1e293b">💇 미용실용</span><br>
+              <span style="font-size:11px;color:var(--muted)">미용실 전용 설문 (/salon/코드)</span>
             </span>
           </label>
         </div>
@@ -4811,9 +4811,9 @@ async function loadB2BPartners(search = '', status = '') {
     return `<span class="badge ${m[s]||'badge-gray'}">${l[s]||s}</span>`;
   };
 
-  const CAT_LABEL = { integrated:'🧩 통합', hospital:'🏥 병원', aesthetic:'💅 에스테틱', fitness:'💪 피트니스' };
-  const CAT_COLOR = { integrated:'#6366f1', hospital:'#8b6db5', aesthetic:'#e879a8', fitness:'#22c55e' };
-  const CAT_PATH  = { integrated:'/s', hospital:'/h', aesthetic:'/a', fitness:'/f' };
+  const CAT_LABEL = { integrated:'🧩 통합', hospital:'🏥 병원', aesthetic:'💅 에스테틱', fitness:'💪 피트니스', salon:'💇 미용실' };
+  const CAT_COLOR = { integrated:'#6366f1', hospital:'#8b6db5', aesthetic:'#e879a8', fitness:'#22c55e', salon:'#ec4899' };
+  const CAT_PATH  = { integrated:'/s', hospital:'/h', aesthetic:'/a', fitness:'/f', salon:'/salon' };  // ✅ salon 전용 경로
   const rows = (data.partners || []).map(p => {
     const color = p.brand_color || '#6366f1';
     const logo = p.brand_logo_url ? `<img src="${p.brand_logo_url}" style="height:24px;max-width:60px;object-fit:contain;border-radius:4px;vertical-align:middle">` : `<span style="color:var(--muted);font-size:11px">로고없음</span>`;
@@ -4982,9 +4982,9 @@ async function saveB2BPartner() {
       const pw = res.defaultPassword;
       const resCat = res.survey_category || 'integrated';
       // 분류별 설문 URL 생성
-      const catPathMap = { integrated:'/s', hospital:'/h', aesthetic:'/a', fitness:'/f' };
-      const catLabelMap = { integrated:'🧩 통합질문지', hospital:'🏥 병원용 질문지', aesthetic:'💅 에스테틱 질문지', fitness:'💪 피트니스 질문지' };
-      const catColorMap = { integrated:'#6366f1', hospital:'#8b6db5', aesthetic:'#e879a8', fitness:'#22c55e' };
+      const catPathMap = { integrated:'/s', hospital:'/h', aesthetic:'/a', fitness:'/f', salon:'/salon' };  // ✅ salon 전용 경로
+      const catLabelMap = { integrated:'🧩 통합질문지', hospital:'🏥 병원용 질문지', aesthetic:'💅 에스테틱 질문지', fitness:'💪 피트니스 질문지', salon:'💇 미용실 전용 질문지' };
+      const catColorMap = { integrated:'#6366f1', hospital:'#8b6db5', aesthetic:'#e879a8', fitness:'#22c55e', salon:'#ec4899' };
       const surveyPath = (catPathMap[resCat] || '/s') + '/' + code;
       const surveyUrl = `${location.origin}${surveyPath}`;
       const dashUrl = `${location.origin}/b2b`;

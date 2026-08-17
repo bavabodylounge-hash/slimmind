@@ -9,13 +9,13 @@
  *
  * 테스트 그룹:
  *  SIM-1: B2B 파트너 등록 로직 — typeAbbr / validCategories / catToPath
- *  SIM-2: 질문지 URL 분기 — /h/:code, /a/:code, /f/:code 라우팅
+ *  SIM-2: 질문지 URL 분기 — /h/:code, /a/:code, /salon/:code 라우팅 (구조 분리 완료)
  *  SIM-3: window.__BRAND__ 주입 — survey_category 정확성
  *  SIM-4: submitDiagnosis payload — 3채널 payload 필드 완결성
  *  SIM-5: /api/v1/diagnosis POST — 저장 로직 입력값 검증
  *  SIM-6: /api/survey/submit POST — results 테이블 저장 검증
  *  SIM-7: /result/:id 결과 분기 — hospital/aesthetic/salon 라우팅
- *  SIM-8: BUG-8 수정 검증 — salon 채널 코드 6곳 백엔드 적용 확인
+ *  SIM-8: REFACTOR 검증 — salon 전용 경로 /salon/:code 구조 분리 + 하위호환 /f/ 리다이렉트
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -87,13 +87,13 @@ const validCategories = ['integrated', 'hospital', 'aesthetic', 'fitness', 'salo
 /** catToPath: survey_category → 질문지 URL prefix (src/index.tsx line 1411) */
 const catToPath: Record<string, string> = {
   hospital: '/h', aesthetic: '/a', fitness: '/f', integrated: '/s',
-  salon: '/f'  // ✅ BUG-8 FIX
+  salon: '/salon'  // ✅ REFACTOR: salon 전용 경로 /salon/:code 분리
 };
 
 /** catPath: /h/:code, /s/:code 리다이렉트용 (src/index.tsx line ~3447) */
 const catPath: Record<string, string> = {
   aesthetic: '/a', fitness: '/f', integrated: '/s',
-  salon: '/f'  // ✅ BUG-8 FIX
+  salon: '/salon'  // ✅ REFACTOR: salon 전용 경로 /salon/:code 분리
 };
 
 /**
@@ -141,7 +141,7 @@ function resolveSurveyRedirect(code: string, cat: string): string | null {
   if (cat === 'hospital') return `/h/${code}`;
   if (cat === 'aesthetic') return `/a/${code}`;
   if (cat === 'fitness') return `/f/${code}`;
-  if (cat === 'salon') return `/f/${code}`;   // ✅ BUG-8 FIX
+  if (cat === 'salon') return `/salon/${code}`;  // ✅ REFACTOR: 전용 경로
   return null; // integrated는 /s/:code 그대로
 }
 
@@ -149,10 +149,11 @@ function resolveSurveyRedirect(code: string, cat: string): string | null {
  * window.__BRAND__.survey_category 시뮬레이션
  * 각 라우트별 하드코딩 값 반환
  */
-function getBrandSurveyCategory(route: '/h/:code' | '/a/:code' | '/f/:code'): string {
-  if (route === '/h/:code') return 'hospital';    // line ~3490
-  if (route === '/a/:code') return 'aesthetic';   // line ~3720
-  if (route === '/f/:code') return 'salon';       // line 3815 (BUG-7/8 FIX)
+function getBrandSurveyCategory(route: '/h/:code' | '/a/:code' | '/f/:code' | '/salon/:code'): string {
+  if (route === '/h/:code')     return 'hospital';    // line ~3490
+  if (route === '/a/:code')     return 'aesthetic';   // line ~3720
+  if (route === '/f/:code')     return 'salon';       // legacy /f/ → /salon/ 301 리다이렉트 후 salon 서빙
+  if (route === '/salon/:code') return 'salon';       // ✅ REFACTOR: /salon/:code 전용 라우트
   return 'integrated';
 }
 
@@ -340,22 +341,24 @@ describe('SIM-1: B2B 파트너 등록 로직', () => {
 
       if (channel === 'hospital') expect(url).toBe(`/h/${partner.code}`);
       if (channel === 'aesthetic') expect(url).toBe(`/a/${partner.code}`);
-      if (channel === 'salon') expect(url).toBe(`/f/${partner.code}`);  // BUG-8 수정 검증
+      if (channel === 'salon') expect(url).toBe(`/salon/${partner.code}`);  // ✅ REFACTOR: 전용 경로
     }
   );
 
-  test('SIM-1-8 catToPath — salon → /f (BUG-8 수정 검증)', () => {
-    expect(catToPath['salon']).toBe('/f');
+  test('SIM-1-8 catToPath — salon → /salon (REFACTOR: 전용 경로 분리)', () => {
+    expect(catToPath['salon']).toBe('/salon');  // 구조 분리 완료
     const url = resolveB2BSurveyUrl('B2B-SAL-001', 'salon');
-    expect(url).toBe('/f/B2B-SAL-001');
-    // BUG-8 수정 전에는 catToPath에 'salon'이 없어 '/s/B2B-SAL-001'로 잘못 생성됨
+    expect(url).toBe('/salon/B2B-SAL-001');    // /f/ 잔재 완전 제거
+    // BUG-8 수정 전: catToPath에 'salon' 없어 '/s/B2B-SAL-001' 생성
+    // REFACTOR 전: '/f/B2B-SAL-001' (임시 경로)
+    // REFACTOR 후: '/salon/B2B-SAL-001' (전용 경로 — 완료)
   });
 
   test('SIM-1-9 B2B 등록 결과 — 3채널 전수 URL 확인', () => {
     const expected: Record<ChannelCode, string> = {
       hospital: '/h/B2B-HOS-001',
       aesthetic: '/a/B2B-AES-001',
-      salon: '/f/B2B-SAL-001',
+      salon: '/salon/B2B-SAL-001',
     };
     for (const [ch, partner] of Object.entries(SAMPLE_PARTNERS) as [ChannelCode, B2BPartner][]) {
       const url = resolveB2BSurveyUrl(partner.code, partner.survey_category);
@@ -377,7 +380,7 @@ describe('SIM-2: 질문지 URL 분기 — /h/:code, /a/:code, /f/:code 라우팅
   test('SIM-2-2 [병원] /h/:code — salon 파트너 접근 시 /f/:code로 리다이렉트 (BUG-8)', () => {
     // 미용실 파트너가 실수로 /h/코드로 접근한 경우
     const redirect = resolveHospitalRedirect('B2B-SAL-001', 'salon');
-    expect(redirect).toBe('/f/B2B-SAL-001');
+    expect(redirect).toBe('/salon/B2B-SAL-001');
   });
 
   test('SIM-2-3 [병원] /h/:code — aesthetic 파트너는 /a/:code로 리다이렉트', () => {
@@ -397,7 +400,7 @@ describe('SIM-2: 질문지 URL 분기 — /h/:code, /a/:code, /f/:code 라우팅
 
   test('SIM-2-6 [통합] /s/:code — 미용실 파트너 → /f/:code 리다이렉트 (BUG-8 수정)', () => {
     const redirect = resolveSurveyRedirect('B2B-SAL-001', 'salon');
-    expect(redirect).toBe('/f/B2B-SAL-001');
+    expect(redirect).toBe('/salon/B2B-SAL-001');
     // BUG-8 수정 전에는 'salon' 분기가 없어 null 반환 → 통합 질문지 서빙
   });
 
@@ -416,7 +419,7 @@ describe('SIM-2: 질문지 URL 분기 — /h/:code, /a/:code, /f/:code 라우팅
     const expectedRoutes: Record<ChannelCode, string> = {
       hospital: '/h/B2B-HOS-001',
       aesthetic: '/a/B2B-AES-001',
-      salon: '/f/B2B-SAL-001',
+      salon: '/salon/B2B-SAL-001',
     };
 
     for (const ch of channels) {
@@ -770,7 +773,7 @@ describe('SIM-7: /result/:id 결과 분기 — hospital/aesthetic/salon 라우�
 // SIM-8: BUG-8 수정 종합 검증
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('SIM-8: BUG-8 수정 종합 검증 — salon 채널 코드 백엔드 적용', () => {
+describe('SIM-8: REFACTOR 종합 검증 — salon 전용 경로 /salon/:code 구조 분리', () => {
 
   test('SIM-8-1 typeAbbr["미용실"] === "SAL" — B2B 코드 생성 정상', () => {
     expect(typeAbbr['미용실']).toBe('SAL');
@@ -780,21 +783,21 @@ describe('SIM-8: BUG-8 수정 종합 검증 — salon 채널 코드 백엔드 �
     expect((validCategories as readonly string[]).includes('salon')).toBe(true);
   });
 
-  test('SIM-8-3 catToPath["salon"] === "/f" — B2B 등록 결과 URL 정확', () => {
-    expect(catToPath['salon']).toBe('/f');
+  test('SIM-8-3 catToPath["salon"] === "/salon" — REFACTOR 후 전용 경로 확인', () => {
+    expect(catToPath['salon']).toBe('/salon');  // /f/ 임시 경로 제거 완료
   });
 
-  test('SIM-8-4 catPath["salon"] === "/f" — /h/:code 리다이렉트 정확', () => {
-    expect(catPath['salon']).toBe('/f');
+  test('SIM-8-4 catPath["salon"] === "/salon" — /h/:code 리다이렉트 정확', () => {
+    expect(catPath['salon']).toBe('/salon');    // /h/:code 리다이렉트도 /salon/로
   });
 
-  test('SIM-8-5 /s/:code salon 분기 → /f/:code — /s/:code 리다이렉트 정확', () => {
+  test('SIM-8-5 /s/:code salon 분기 → /salon/:code — 전용 라우트 정확', () => {
     const redirect = resolveSurveyRedirect('B2B-SAL-001', 'salon');
-    expect(redirect).toBe('/f/B2B-SAL-001');
+    expect(redirect).toBe('/salon/B2B-SAL-001');  // ✅ REFACTOR
   });
 
-  test('SIM-8-6 /f/:code window.__BRAND__.survey_category === "salon" — 프론트엔드 전달', () => {
-    const cat = getBrandSurveyCategory('/f/:code');
+  test('SIM-8-6 /salon/:code window.__BRAND__.survey_category === "salon" — 프론트엔드 전달', () => {
+    const cat = getBrandSurveyCategory('/salon/:code');
     expect(cat).toBe('salon');
   });
 
@@ -823,12 +826,12 @@ describe('SIM-8: BUG-8 수정 종합 검증 — salon 채널 코드 백엔드 �
     const category = isValid ? 'salon' : 'integrated';
     expect(category).toBe('salon');
 
-    // Step 3: 질문지 URL 생성
+    // Step 3: 질문지 URL 생성 (구조 분리 후 전용 경로)
     const surveyUrl = resolveB2BSurveyUrl(code, category);
-    expect(surveyUrl).toBe('/f/B2B-SAL-001');
+    expect(surveyUrl).toBe('/salon/B2B-SAL-001');  // ✅ REFACTOR: /f/ 없음
 
     // Step 4: 질문지 접속 시 window.__BRAND__.survey_category
-    const brandCat = getBrandSurveyCategory('/f/:code');
+    const brandCat = getBrandSurveyCategory('/salon/:code');
     expect(brandCat).toBe('salon');
 
     // Step 5: 제출 payload
@@ -850,7 +853,7 @@ describe('SIM-8: BUG-8 수정 종합 검증 — salon 채널 코드 백엔드 �
     const expectedUrls: Record<ChannelCode, string> = {
       hospital: '/h/B2B-HOS-001',
       aesthetic: '/a/B2B-AES-001',
-      salon: '/f/B2B-SAL-001',
+      salon: '/salon/B2B-SAL-001',  // ✅ REFACTOR: 전용 경로
     };
     const expectedResults: Record<ChannelCode, string> = {
       hospital: '/result-hospital/mock-id',

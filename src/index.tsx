@@ -1410,7 +1410,7 @@ app.post('/api/admin/b2b-partners', requireRole('MASTER'), async (c) => {
   // 분류별 설문 URL 결정
   const catToPath: Record<string, string> = {
     hospital: '/h', aesthetic: '/a', fitness: '/f', integrated: '/s',
-    salon: '/f'  // ✅ BUG-8 FIX: salon → /f/:code (미용실 라우트)
+    salon: '/salon'  // ✅ REFACTOR: salon 전용 경로 /salon/:code 분리
   }
   const surveyBase = catToPath[survey_category] || '/s'
 
@@ -2537,19 +2537,26 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
         try { injectedData = JSON.stringify(diagResult) } catch { injectedData = '{}' }
 
         // OG 메타태그 생성 (카카오/SNS 공유용 — 세로형 대형 이미지)
-        const ogNickname = diagResult.bc_nickname || diagResult.bc_primary || '바디코드'
-        const ogName     = diagResult.user_name   || '고객'
-        const ogBcCode   = (diagResult.bc_primary || diagResult.bc_code || 'BC').replace(/[<>"'&\\]/g,'').slice(0,10)
-        const ogNickEnc  = encodeURIComponent(ogNickname.slice(0,30))
-        const ogNameEnc  = encodeURIComponent(ogName.slice(0,20))
-        const siteBase   = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.kr' } })()
-        const ogUrl      = `${siteBase}/result/${id}`
-        const ogImage    = `${siteBase}/static/og-slimmind.png`
-        const ogTitle    = `${ogName}님의 바디코드 분석 완료 — ${ogBcCode} ${ogNickname}`
-        const ogDesc     = `반복되는 다이어트 실패, 그 진짜 원인이 밝혀졌습니다. ${ogName}님의 체형 코드는 '${ogNickname}'. 지금 바로 결과를 확인하고 1:1 전문 컨설팅으로 나만의 처방을 받아보세요.`
+        const ogNickname   = diagResult.bc_nickname || diagResult.bc_primary || '바디코드'
+        const ogName       = diagResult.user_name   || '고객'
+        const ogBcCode     = (diagResult.bc_primary || diagResult.bc_code || 'BC').replace(/[<>"'&\\]/g,'').slice(0,10)
+        const ogNickEnc    = encodeURIComponent(ogNickname.slice(0,30))
+        const ogNameEnc    = encodeURIComponent(ogName.slice(0,20))
+        const siteBase     = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.kr' } })()
+        const ogUrl        = `${siteBase}/result/${id}`
+        const ogImage      = `${siteBase}/static/og-slimmind.png`
+        // ── salon 전용 OG 텍스트 분기 ──
+        const isSalonOg    = diagRow.survey_category === 'salon'
+        const ogSiteName   = isSalonOg ? 'SlimMind · 미용실 바디코드 분석' : 'SlimMind · 바디코드 분석'
+        const ogTitle      = isSalonOg
+          ? `${ogName}님의 헤어·두피 맞춤 바디코드 — ${ogBcCode} ${ogNickname}`
+          : `${ogName}님의 바디코드 분석 완료 — ${ogBcCode} ${ogNickname}`
+        const ogDesc       = isSalonOg
+          ? `${ogName}님의 체형 코드 '${ogNickname}' 분석 완료. 헤어·두피 건강과 체형을 함께 케어하는 맞춤 솔루션을 확인해보세요.`
+          : `반복되는 다이어트 실패, 그 진짜 원인이 밝혀졌습니다. ${ogName}님의 체형 코드는 '${ogNickname}'. 지금 바로 결과를 확인하고 1:1 전문 컨설팅으로 나만의 처방을 받아보세요.`
         const ogMeta = `
 <meta property="og:type"           content="website">
-<meta property="og:site_name"      content="SlimMind · 바디코드 분석">
+<meta property="og:site_name"      content="${ogSiteName}">
 <meta property="og:title"          content="${ogTitle}">
 <meta property="og:description"    content="${ogDesc}">
 <meta property="og:url"            content="${ogUrl}">
@@ -2605,6 +2612,10 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
           })
         }
 
+        // ── salon 분기: effectiveCategory === 'salon' → result-v4.html 서빙 (미용실 전용 OG 주입) ──
+        // ✅ salon은 범용 result-v4.html을 사용하나 OG 메타태그에 미용실 전용 컨텍스트 주입
+        const isSalon = effectiveCategory === 'salon' || diagRow.survey_category === 'salon'
+
         const baseHtml1 = await fetchAsset(c.env.ASSETS, '/result-v4.html')
 
         // ── PWA 동적 manifest + localStorage 저장 스크립트 (diagnosis_results 경로) ──
@@ -2617,9 +2628,14 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
 })();
 <\/script>`
 
+        // ── salon 전용 모드 플래그 주입 ──
+        const salonModeScript = isSalon
+          ? `<script>window.__SALON_MODE__ = true; window.__BRAND_CHANNEL__ = 'salon';</script>\n`
+          : ''
+
         const injectedHtml = baseHtml1.replace(
           '</head>',
-          `${ogMeta}\n${pwaManifestLink1}\n<script>window.__RESULT__ = ${injectedData};window.__RESULT_FULL__ = {};</script>\n${pwaLocalStorageScript1}\n</head>`
+          `${ogMeta}\n${pwaManifestLink1}\n<script>window.__RESULT__ = ${injectedData};window.__RESULT_FULL__ = {};</script>\n${salonModeScript}${pwaLocalStorageScript1}\n</head>`
         )
         return htmlResponse(injectedHtml)
       }
@@ -3444,9 +3460,9 @@ app.get('/h/:code', async (c) => {
     return c.html('<!DOCTYPE html><html><body style="font-family:sans-serif;text-align:center;padding:60px"><h2>유효하지 않은 링크입니다</h2><p>담당자에게 문의해주세요.</p></body></html>', 404)
   }
 
-  // survey_category가 hospital이 아닌 경우 통합질문지로 리다이렉트
+  // survey_category가 hospital이 아닌 경우 전용 라우트로 리다이렉트
   if (partner.survey_category && partner.survey_category !== 'hospital') {
-    const catPath: Record<string, string> = { aesthetic: '/a', fitness: '/f', integrated: '/s' }
+    const catPath: Record<string, string> = { aesthetic: '/a', fitness: '/f', integrated: '/s', salon: '/salon' }  // ✅ salon 전용 경로
     return c.redirect(`${catPath[partner.survey_category] || '/s'}/${rawCode}`, 302)
   }
 
@@ -3577,9 +3593,9 @@ app.get('/h3/:code', async (c) => {
     return c.html('<!DOCTYPE html><html><body style="font-family:sans-serif;text-align:center;padding:60px"><h2>유효하지 않은 링크입니다</h2><p>담당자에게 문의해주세요.</p></body></html>', 404)
   }
 
-  // hospital 이외 카테고리는 적합한 라우트로 리다이렉트
+  // hospital 이외 카테고리는 전용 라우트로 리다이렉트
   if (partner.survey_category && partner.survey_category !== 'hospital') {
-    const catPath: Record<string, string> = { aesthetic: '/a', fitness: '/f', integrated: '/s' }
+    const catPath: Record<string, string> = { aesthetic: '/a', fitness: '/f', integrated: '/s', salon: '/salon' }  // ✅ salon 전용 경로
     return c.redirect(`${catPath[partner.survey_category] || '/s'}/${rawCode}`, 302)
   }
 
@@ -3779,8 +3795,17 @@ app.get('/a/:code', async (c) => {
   return htmlResponse(html)
 })
 
-// ─── /f/:code — 피트니스용 질문지 (파일 준비 후 연결) ────────────
+// ─── /f/:code — 하위 호환 리다이렉트 (구 피트니스/미용실 URL → /salon/:code) ──
+// ⚠️ LEGACY: 기존 QR코드/북마크 하위 호환을 위해 301 영구 리다이렉트만 처리
+// 신규 등록은 모두 /salon/:code 로 발급됩니다.
 app.get('/f/:code', async (c) => {
+  const rawCode = c.req.param('code').toUpperCase()
+  return c.redirect(`/salon/${rawCode}`, 301)
+})
+
+// ─── /salon/:code — 미용실(살롱) 전용 질문지 ────────────────────────
+// B2B 미용실 파트너 전용: survey_category='salon' 인 B2B 코드만 허용
+app.get('/salon/:code', async (c) => {
   const db = c.env.DB
   const rawCode = c.req.param('code').toUpperCase()
 
@@ -3799,7 +3824,13 @@ app.get('/f/:code', async (c) => {
     return c.html('<!DOCTYPE html><html><body style="font-family:sans-serif;text-align:center;padding:60px"><h2>유효하지 않은 링크입니다</h2><p>담당자에게 문의해주세요.</p></body></html>', 404)
   }
 
-  const bColor = partner.brand_color || '#22c55e'
+  // salon 이외 카테고리가 /salon/:code 로 잘못 접근 시 적합한 라우트로 리다이렉트
+  if (partner.survey_category && partner.survey_category !== 'salon') {
+    const catPath: Record<string, string> = { hospital: '/h', aesthetic: '/a', integrated: '/s', fitness: '/f' }
+    return c.redirect(`${catPath[partner.survey_category] || '/s'}/${rawCode}`, 302)
+  }
+
+  const bColor = partner.brand_color || '#ec4899'   // 미용실 기본 브랜드 색상 (핑크)
   const bName  = partner.brand_name  || partner.name
   const bLogo  = partner.brand_logo_url || ''
 
@@ -3812,7 +3843,7 @@ app.get('/f/:code', async (c) => {
     brand_color: ${JSON.stringify(bColor)},
     brand_logo_url: ${JSON.stringify(bLogo)},
     ref_code: ${JSON.stringify(rawCode)},
-    survey_category: 'salon'  // ✅ BUG-7/8 FIX: fitness→salon (미용실 채널 코드 정정)
+    survey_category: 'salon'  // ✅ 미용실(살롱) 전용 채널 코드
   };
   document.documentElement.style.setProperty('--brand-color', ${JSON.stringify(bColor)});
 </script>`
@@ -3821,10 +3852,10 @@ app.get('/f/:code', async (c) => {
     "UPDATE b2b_partners SET qr_scan_count = qr_scan_count + 1, updated_at=datetime('now') WHERE code=?"
   ).bind(rawCode).run()
 
-  // 피트니스 전용 파일이 없으면 통합질문지 임시 서빙
+  // 미용실 전용 설문 파일 서빙
   let html: string
   try {
-    html = await fetchAsset(c.env.ASSETS, '/survey-fitness.html')
+    html = await fetchAsset(c.env.ASSETS, '/survey-salon.html')
   } catch {
     html = await fetchAsset(c.env.ASSETS, '/index.html')
   }
@@ -3835,6 +3866,7 @@ app.get('/f/:code', async (c) => {
 // ─── /s/:code — B2B/컨설턴트 화이트라벨 진입 라우트 ────────────
 // 예: /s/B2B-AES-001 → 해당 업체 브랜드가 적용된 설문지
 // 예: /s/SC-0001    → 컨설턴트 ref_code 심어진 설문지
+// 예: /s/B2B-SAL-001 → 미용실 코드일 시 /salon/B2B-SAL-001 으로 리다이렉트
 app.get('/s/:code', async (c) => {
   const db = c.env.DB
   const rawCode = c.req.param('code').toUpperCase()
@@ -3857,10 +3889,10 @@ app.get('/s/:code', async (c) => {
     // survey_category 에 따라 전용 라우트로 리다이렉트
     if (partner && partner.status !== 'suspended') {
       const cat = partner.survey_category || 'integrated'
-      if (cat === 'hospital') return c.redirect(`/h/${rawCode}`, 302)
+      if (cat === 'hospital')  return c.redirect(`/h/${rawCode}`, 302)
       if (cat === 'aesthetic') return c.redirect(`/a/${rawCode}`, 302)
-      if (cat === 'fitness')  return c.redirect(`/f/${rawCode}`, 302)
-      if (cat === 'salon')    return c.redirect(`/f/${rawCode}`, 302)  // ✅ BUG-8 FIX: salon → /f/:code
+      if (cat === 'fitness')   return c.redirect(`/f/${rawCode}`, 302)
+      if (cat === 'salon')     return c.redirect(`/salon/${rawCode}`, 302)  // ✅ REFACTOR: salon 전용 경로 /salon/:code
       // integrated 는 아래 기존 로직으로 계속 처리
     }
 
@@ -10218,8 +10250,8 @@ app.post('/api/auth/register', async (c) => {
         )
       `).run()
 
-      // B2B 회원(병원/에스테틱/한의원/컨설턴트)은 PDF 권한 자동 부여
-      const hasPdf = ['hospital','esthetic','oriental','consultant','fitness'].includes(body.member_type) ? 1 : 0
+      // B2B 회원(병원/에스테틱/한의원/컨설턴트/미용실)은 PDF 권한 자동 부여
+      const hasPdf = ['hospital','esthetic','oriental','consultant','fitness','salon'].includes(body.member_type) ? 1 : 0  // ✅ salon 추가
 
       const result = await db.prepare(`
         INSERT OR IGNORE INTO users (name, email, phone, member_type, provider, provider_id, is_active, has_pdf_access, last_login_ip)
