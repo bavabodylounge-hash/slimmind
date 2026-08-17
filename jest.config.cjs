@@ -1,7 +1,12 @@
 /** @type {import('jest').Config} */
 module.exports = {
   testEnvironment: 'node',
-  testMatch: ['**/tests/unit/**/*.spec.ts', '**/tests/unit/**/*.test.ts'],
+  testMatch: [
+    '**/tests/unit/**/*.spec.ts',
+    '**/tests/unit/**/*.test.ts',
+    '**/tests/e2e/**/*.spec.ts',
+    '**/tests/e2e/**/*.test.ts',
+  ],
   transform: {
     '^.+\\.tsx?$': ['ts-jest', {
       useESM: false,
