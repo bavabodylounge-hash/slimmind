@@ -5917,7 +5917,13 @@ var _DOMAIN_META = {
   '순환':  { icon:'💧', color:'#1565C0' },
 };
 
-function computeTop3Prescriptions(axisScores, answers, track) {
+// ★ BUG-C 수정 (2026-08-17): 에스테틱 안전핀 — BC_DOMAIN_RULES exclude:['aesthetic'] 반영
+// 설계도: BC-1/BC-10/BC-13/BC-14 → 시술(aesthetic) 도메인 top5 진입 불가
+// computeTop3Prescriptions(axisScores, answers, track, bcCode)
+//   bcCode: 'BC-1'~'BC-16' (옵셔널) — 에스테틱 안전핀 적용 기준
+var _BC_AESTHETIC_EXCLUDE = ['BC-1', 'BC-10', 'BC-13', 'BC-14'];
+
+function computeTop3Prescriptions(axisScores, answers, track, bcCode) {
   var _track = track || 'hospital';
   var _weights = (_track === 'aesthetic')
     ? _DOMAIN_AXIS_WEIGHTS_AESTHETIC
@@ -5942,6 +5948,16 @@ function computeTop3Prescriptions(axisScores, answers, track) {
     });
     allScores[dom] = sumW > 0 ? Math.round(sumS / sumW) : 0;
   });
+
+  // ★ 에스테틱 안전핀: BC-1/BC-10/BC-13/BC-14 → 시술 도메인 점수 0 강제
+  // BC_DOMAIN_RULES exclude:['aesthetic'] 설계도 규칙 프론트 반영
+  var _bcCode = (bcCode || '').toString().trim().toUpperCase().replace(/\s/g, '');
+  if (_track === 'aesthetic' && _bcCode && _BC_AESTHETIC_EXCLUDE.indexOf(_bcCode) >= 0) {
+    if (allScores['시술'] !== undefined) {
+      console.log('[bc-engine] 안전핀 적용: ' + _bcCode + ' → 시술 점수 ' + allScores['시술'] + '→0 (exclude:aesthetic)');
+      allScores['시술'] = 0;
+    }
+  }
 
   // 점수순 정렬 → TOP3 추출
   var sorted = Object.keys(allScores)

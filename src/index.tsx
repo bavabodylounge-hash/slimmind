@@ -240,8 +240,8 @@ const SUBTYPE_RULES: SubtypeRule[] = [
   { regions:['LEG','GLUTE'],   textures:['firm','muscle'],       axes:['A04','A06','A02'], name:'운동할수록 말벅지형',        bc:'BC-7' },
 
   // ── BC-8: 승마살·골반 계열 (2행) ────────────────────────────────
-  // 골반틀어짐 승마살형 — 하체·셀룰·골격/림프
-  { regions:['HIP','LEG'],     textures:['cellulite','posture'], axes:['A06','A02','A04'], name:'골반틀어짐 승마살형',        bc:'BC-8' },
+  // 골반틀어짐 승마살형 — 하체·셀룰·골격/근감소 [★서명축: A06·A04·A02 — BC-2(A06·A02·A04)와 2·3번 축 교체로 A04 고점 시 BC-8 우선 선택]
+  { regions:['HIP','LEG'],     textures:['cellulite','posture'], axes:['A06','A04','A02'], name:'골반틀어짐 승마살형',        bc:'BC-8' },
   // 하체골반 기본형 — 하체·단단·골격
   { regions:['HIP'],           textures:['firm','posture'],      axes:['A06','A04','A02'], name:'하체골반 기본형',            bc:'BC-8' },
 
@@ -3845,6 +3845,9 @@ app.get('/salon/:code', async (c) => {
     ref_code: ${JSON.stringify(rawCode)},
     survey_category: 'salon'  // ✅ 미용실(살롱) 전용 채널 코드
   };
+  // ★ BUG-D2 수정: 미용실(살롱) 전용 모드 플래그 — result-v4.html applyB2BBrand() isSalon 분기 기준
+  window.__SALON_MODE__ = true;
+  window.__BRAND_CHANNEL__ = 'salon';
   document.documentElement.style.setProperty('--brand-color', ${JSON.stringify(bColor)});
 </script>`
 
@@ -5358,9 +5361,10 @@ app.post('/api/v1/diagnosis', async (c) => {
       '약물부작용 강제축적형':  'BC-4',
       '억제제부작용 배부름마비형':'BC-4',
       '여름에도 시린 얼음장형': 'BC-4',
+      // ── BC-2: 귤껍질하체·재발 계열 ─────────────────────────
+      '지방흡입후 재발형':      'BC-2',   // ★BUG-B 수정: BC-5→BC-2 (SUBTYPE_RULES bc:'BC-2')
       // ── BC-5: 장·소화 계열 ──────────────────────────────────
       '소화기팽만형':           'BC-5',
-      '지방흡입후 재발형':      'BC-5',
       // ── BC-6: PCOS·호르몬 계열 ──────────────────────────────
       'PCOS호르몬형':           'BC-6',
       '털털한 PCOS형':          'BC-6',
@@ -5371,7 +5375,8 @@ app.post('/api/v1/diagnosis', async (c) => {
       '스트레스복부형':         'BC-7',
       '말벅지형':               'BC-7',
       '출산후 바람빠진 풍선형': 'BC-7',
-      '골반틀어짐 승마살형':    'BC-7',
+      // ── BC-8: 승마살·골반 계열 ──────────────────────────────
+      '골반틀어짐 승마살형':    'BC-8',   // ★BUG-A 수정: BC-7→BC-8 (SUBTYPE_RULES bc:'BC-8')
       // ── BC-9: 골격·자세 계열 ────────────────────────────────
       '거북이형':               'BC-9',
       '목짧아지는 거북이형':    'BC-9',

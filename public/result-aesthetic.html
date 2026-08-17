@@ -15426,6 +15426,17 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
     return sc;
   })();
 
+  // ★ BUG-C 수정: 에스테틱 안전핀 — BC-1/BC-10/BC-13/BC-14 → 시술 도메인 top5 진입 불가
+  // BC_DOMAIN_RULES exclude:['aesthetic'] 설계도 규칙 프론트 반영
+  var _BC_AES_EXCLUDE_P5 = ['BC-1', 'BC-10', 'BC-13', 'BC-14'];
+  var _bcCodeForPin = (bcCode || '').toString().trim().toUpperCase().replace(/\s/g, '');
+  if (_bcCodeForPin && _BC_AES_EXCLUDE_P5.indexOf(_bcCodeForPin) >= 0) {
+    if (_domainScores['시술'] !== undefined) {
+      console.log('[AE P5 안전핀] ' + _bcCodeForPin + ' → 시술 점수 ' + _domainScores['시술'] + '→0 강제');
+      _domainScores['시술'] = 0;
+    }
+  }
+
   // 점수 기반 상위 3개 영역 추출 (내림차순)
   var _sortedDomains = Object.keys(_domainScores)
     .filter(function(k){ return k !== '관리' && k !== '철학'; })
@@ -15434,10 +15445,11 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
 
   // ── 공통 TOP3 파이프라인 (bc-engine.js computeTop3Prescriptions) ──
   // aesthetic 특화 track='aesthetic' → 체형/순환/시술 가중치 강조
+  // ★ bcCode를 4번째 인수로 전달 → bc-engine.js 안전핀 연동
   var _axisScoresForEngine = (window.__RESULT__ && window.__RESULT__.axisScores)
     || (window.__RESULT__ && window.__RESULT__.axis_scores) || {};
   var _engineTop3Ae = (typeof computeTop3Prescriptions === 'function' && Object.keys(_axisScoresForEngine).length > 0)
-    ? computeTop3Prescriptions(_axisScoresForEngine, null, 'aesthetic')
+    ? computeTop3Prescriptions(_axisScoresForEngine, null, 'aesthetic', bcCode)
     : null;
   // P5 _domainScores 기반 결과 우선(설문 응답 직접 반영), 비어있으면 엔진 fallback
   var _top3Final_ae = (_top3.length > 0)
@@ -15457,7 +15469,7 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
     track:     'aesthetic',
     source:    'renderP5',
   };
-  console.log('[AE P5→ENGINE] TOP3 파이프라인:', _top3Final_ae, '| 엔진 검증:', _engineTop3Ae ? _engineTop3Ae.top3 : 'N/A');
+  console.log('[AE P5→ENGINE] TOP3 파이프라인:', _top3Final_ae, '| 엔진 검증:', _engineTop3Ae ? _engineTop3Ae.top3 : 'N/A', '| 안전핀 BC:', _bcCodeForPin);
 
   // ════════════════════════════════════════════
   // ★ 영역별 해결책 데이터 (원인 스토리 + 구체적 행동)
