@@ -2,6 +2,9 @@
   "name": "webapp",
   "type": "module",
   "scripts": {
+    "lint": "tsc --noEmit",
+    "test": "node_modules/.bin/jest --config jest.config.cjs --passWithNoTests",
+    "test:unit": "node_modules/.bin/jest --config jest.config.cjs",
     "dev": "vite",
     "build": "vite build && node -e \"const fs=require('fs');const r=JSON.parse(fs.readFileSync('dist/_routes.json','utf8'));r.exclude=r.exclude.filter(e=>e!=='/index.html');if(!r.exclude.includes('/landing/*'))r.exclude.push('/landing/*');if(!r.exclude.includes('/survey-data.js'))r.exclude.push('/survey-data.js');if(!r.exclude.includes('/bc-engine.js'))r.exclude.push('/bc-engine.js');if(!r.exclude.includes('/mapping-engine.js'))r.exclude.push('/mapping-engine.js');if(!r.exclude.includes('/survey-aesthetic.html'))r.exclude.push('/survey-aesthetic.html');if(!r.exclude.includes('/survey-fitness.html'))r.exclude.push('/survey-fitness.html');if(!r.exclude.includes('/slimmind-today.html'))r.exclude.push('/slimmind-today.html');if(!r.exclude.includes('/sw.js'))r.exclude.push('/sw.js');if(!r.exclude.includes('/manifest.json'))r.exclude.push('/manifest.json');r.exclude=r.exclude.filter(e=>e!=='/survey-hospital.html');r.exclude=r.exclude.filter(e=>e!=='/survey-hospital-3lang.html');fs.writeFileSync('dist/_routes.json',JSON.stringify(r));console.log('_routes.json patched:',r.exclude)\"",
     "preview": "wrangler pages dev",
@@ -14,11 +17,17 @@
     "logs:watch": "pm2 logs watch-build --nostream --lines 30"
   },
   "dependencies": {
-    "hono": "^4.12.23"
+    "hono": "^4.12.23",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260817.1",
     "@hono/vite-build": "^1.2.0",
     "@hono/vite-dev-server": "^0.25.2",
+    "@types/jest": "^30.0.0",
+    "jest": "^30.4.2",
+    "ts-jest": "^29.4.12",
+    "typescript": "~5.8.3",
     "vite": "^6.3.5",
     "wrangler": "^4.4.0"
   }
