@@ -1350,7 +1350,8 @@ app.post('/api/admin/b2b-partners', requireRole('MASTER'), async (c) => {
     '헬스장': 'GYM', '뷰티샵': 'BTY', '병원': 'HOS', '기타': 'ETC',
     '성형외과': 'SUR', '피부과': 'DRM', '성형외과피부과': 'SUR', '성형': 'SUR',
     '요가': 'YGA', 'PT샵': 'PTS', '다이어트샵': 'DTS', '비만클리닉': 'OBC',
-    '웰니스': 'WEL', '스파': 'SPA', '뷰티숍': 'BTY'
+    '웰니스': 'WEL', '스파': 'SPA', '뷰티숍': 'BTY',
+    '미용실': 'SAL'  // ✅ BUG-8 FIX: 미용실(salon) 업종 코드 추가
   }
 
   let code: string
@@ -1377,7 +1378,7 @@ app.post('/api/admin/b2b-partners', requireRole('MASTER'), async (c) => {
 
   try {
     // survey_category 유효성 검사
-    const validCategories = ['integrated', 'hospital', 'aesthetic', 'fitness']
+    const validCategories = ['integrated', 'hospital', 'aesthetic', 'fitness', 'salon']  // ✅ BUG-8 FIX: 'salon' 추가
     const category = validCategories.includes(survey_category) ? survey_category : 'integrated'
 
     // survey_category 컬럼 없으면 자동 추가 (마이그레이션)
@@ -1408,7 +1409,8 @@ app.post('/api/admin/b2b-partners', requireRole('MASTER'), async (c) => {
 
   // 분류별 설문 URL 결정
   const catToPath: Record<string, string> = {
-    hospital: '/h', aesthetic: '/a', fitness: '/f', integrated: '/s'
+    hospital: '/h', aesthetic: '/a', fitness: '/f', integrated: '/s',
+    salon: '/f'  // ✅ BUG-8 FIX: salon → /f/:code (미용실 라우트)
   }
   const surveyBase = catToPath[survey_category] || '/s'
 
@@ -1430,7 +1432,7 @@ app.put('/api/admin/b2b-partners/:code', requireRole('MASTER'), async (c) => {
   const { name, type, owner_name, phone, email, address, commission_rate, status, memo,
           brand_logo_url, brand_color, brand_name, survey_category } = body
 
-  const validCategories = ['integrated', 'hospital', 'aesthetic', 'fitness']
+  const validCategories = ['integrated', 'hospital', 'aesthetic', 'fitness', 'salon']  // ✅ BUG-8 FIX: 'salon' 추가
 
   // 부분 업데이트: 전송된 필드만 SET
   const setClauses: string[] = []
@@ -3810,7 +3812,7 @@ app.get('/f/:code', async (c) => {
     brand_color: ${JSON.stringify(bColor)},
     brand_logo_url: ${JSON.stringify(bLogo)},
     ref_code: ${JSON.stringify(rawCode)},
-    survey_category: 'fitness'
+    survey_category: 'salon'  // ✅ BUG-7/8 FIX: fitness→salon (미용실 채널 코드 정정)
   };
   document.documentElement.style.setProperty('--brand-color', ${JSON.stringify(bColor)});
 </script>`
@@ -3858,6 +3860,7 @@ app.get('/s/:code', async (c) => {
       if (cat === 'hospital') return c.redirect(`/h/${rawCode}`, 302)
       if (cat === 'aesthetic') return c.redirect(`/a/${rawCode}`, 302)
       if (cat === 'fitness')  return c.redirect(`/f/${rawCode}`, 302)
+      if (cat === 'salon')    return c.redirect(`/f/${rawCode}`, 302)  // ✅ BUG-8 FIX: salon → /f/:code
       // integrated 는 아래 기존 로직으로 계속 처리
     }
 
@@ -5297,7 +5300,7 @@ app.post('/api/v1/diagnosis', async (c) => {
       gender, height, age,              // ✅ BMR·체지방률 개인화 계산용
       ref_code, completed_at,
       session_id,  // ✅ FIX: session_id 수신 (데일리 체크 JOIN 연결용)
-      survey_category  // ✅ 에스테틱/병원 등 분류 (aesthetic | hospital | integrated)
+      survey_category  // ✅ 에스테틱/병원/미용실 등 분류 (aesthetic | hospital | salon | integrated)
     } = body
 
     if (!user_name) return c.json({ error: 'user_name required' }, 400)
@@ -5429,7 +5432,7 @@ app.post('/api/v1/diagnosis', async (c) => {
         age         != null ? Number(age)    : null,
         ref_code     || null,
         session_id   || null,
-        survey_category || 'integrated',  // ✅ aesthetic | hospital | integrated
+        survey_category || 'integrated',  // ✅ aesthetic | hospital | salon | integrated
         completed_at || now,
         now
       ).run()
@@ -5460,7 +5463,7 @@ app.post('/api/v1/diagnosis', async (c) => {
           mbti_full   || null,
           disp_answers ? JSON.stringify(disp_answers) : null,
           ref_code     || null,
-          survey_category || 'integrated',  // ✅ FIX: 폴백 INSERT에도 survey_category 포함
+          survey_category || 'integrated',  // ✅ FIX: 폴백 INSERT에도 survey_category 포함 (aesthetic | hospital | salon | integrated)
           completed_at || now,
           now
         ).run()

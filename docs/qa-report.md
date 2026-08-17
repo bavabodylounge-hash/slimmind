@@ -1,7 +1,7 @@
 # SlimMind 질문지 QA 테스트 리포트 (최종본)
 
 **작성일**: 2025-08-17  
-**최종 업데이트**: 2026-08-17 (BUG-7 채널 오분류 수정 완료)  
+**최종 업데이트**: 2026-08-17 (BUG-8 백엔드 salon 채널 미등록 수정 + E2E 통합 시뮬레이션 완료)  
 **작성자**: SlimMind 개발팀  
 **리포지토리**: https://github.com/bavabodylounge-hash/slimmind  
 **검증 대상**: 슬림마인드 질문지 HTML (병원 / 에스테틱 / 미용실)  
@@ -13,16 +13,52 @@
 
 | 항목 | 결과 |
 |---|---|
-| **전체 테스트 수** | **120** |
-| **통과** | **120 ✅** |
+| **전체 테스트 수** | **194** |
+| **통과** | **194 ✅** |
 | **실패** | **0** |
 | **유닛 테스트 (fileParser.spec.ts)** | 62/62 PASS |
 | **E2E 기능 테스트 (survey-logic.spec.ts)** | 58/58 PASS |
-| **소요 시간** | 4.901 s |
-| **발견 버그** | 7건 — **BUG-1~7 전원 수정 완료** ✅ |
+| **E2E 통합 시뮬레이션 (integration-simulation.spec.ts)** | 74/74 PASS ✅ **신규** |
+| **소요 시간** | ~4.0 s |
+| **발견 버그** | 8건 — **BUG-1~8 전원 수정 완료** ✅ |
 
-> **결론**: 모든 핵심 기능 로직이 정상 동작하며, 소스 분석을 통해 발견된 버그 7건 모두 수정 완료되었습니다.  
-> BUG-7(`survey-fitness.html`이 실제 미용실 채널임에도 `'fitness'`로 오분류됨)이 추가 발견되어 `'salon'`으로 수정 완료했습니다.
+> **결론**: 전체 3채널(병원/에스테틱/미용실) 마스터 Admin B2B 등록 → QR/URL 생성 → 질문지 분기 → 제출 → 결과 반환까지  
+> 전체 데이터 플로우에 오류가 없음을 E2E 통합 시뮬레이션 테스트로 검증 완료했습니다.  
+> BUG-8(`src/index.tsx` 백엔드에 `'salon'` 채널 코드 미등록)이 신규 발견되어 6곳 모두 수정 완료했습니다.
+
+---
+
+## BUG-8 백엔드 salon 채널 코드 미등록 (세션5 E2E 통합 시뮬레이션 중 발견)
+
+### 문제 요약
+
+| 항목 | 내용 |
+|---|---|
+| **버그 ID** | BUG-8 |
+| **발견 경위** | 세션5 E2E 통합 시뮬레이션 테스트 수행 중 `src/index.tsx` 소스 분석 |
+| **영향 파일** | `src/index.tsx` — B2B 등록/수정 API, 라우트 리다이렉트, 질문지 브랜드 주입 |
+| **심각도** | Critical — `'salon'` 카테고리로 B2B 파트너 등록 시 `'integrated'`로 오분류 저장 |
+
+### 발견된 6곳의 미등록 위치
+
+| 위치 | Line | 수정 전 | 수정 후 |
+|---|---|---|---|
+| `POST /api/admin/b2b-partners` `typeAbbr` | 1348 | `'미용실'` 없음 | `'미용실': 'SAL'` 추가 |
+| `POST /api/admin/b2b-partners` `validCategories` | 1381 | `fitness`까지만 | `'salon'` 추가 |
+| `POST /api/admin/b2b-partners` `catToPath` | 1411 | `salon` 없음 → `/s` 폴백 | `salon: '/f'` 추가 |
+| `PUT /api/admin/b2b-partners/:code` `validCategories` | 1435 | `'salon'` 없음 | `'salon'` 추가 |
+| `/h/:code` `/s/:code` `catPath` | 3447, 3580, 3863 | `salon` 없음 → `/s` 오리다이렉트 | `salon: '/f'` 추가 |
+| `/f/:code` `window.__BRAND__.survey_category` | 3815 | `'fitness'` 하드코딩 | `'salon'`으로 수정 |
+
+### 수정 후 정상 데이터 플로우
+
+```
+Admin B2B 등록(미용실) → category: 'salon' 정상 저장
+  → QR URL: /f/B2B-SAL-001 (미용실 질문지)
+  → 접속: window.__BRAND__.survey_category = 'salon'
+  → 제출: survey_category: 'salon' DB 저장
+  → 결과: /result/:id → result-v4.html 서빙
+```
 
 ---
 
@@ -170,26 +206,63 @@ test('8-6 [BUG-7 수정 완료] 에스테틱/미용실 survey_category 명시 �
 ```
 tests/
 ├── unit/
-│   └── fileParser.spec.ts     ← 62개 유닛 테스트 (파일 파싱/검증 레이어)
+│   └── fileParser.spec.ts              ← 62개 유닛 테스트 (파일 파싱/검증 레이어)
 └── e2e/
-    └── survey-logic.spec.ts   ← 58개 E2E 기능 테스트 (질문지 로직 레이어)
+    ├── survey-logic.spec.ts            ← 58개 E2E 기능 테스트 (질문지 로직 레이어)
+    └── integration-simulation.spec.ts  ← 74개 통합 시뮬레이션 (전체 플로우) ✅ 신규
 ```
 
 ### 1.3 실행 커맨드
 
 ```bash
-# 전체 실행
+# 전체 실행 (194개)
 npm run test
 
 # E2E 단독 실행
 node_modules/.bin/jest --config jest.config.cjs --verbose tests/e2e/survey-logic.spec.ts
+
+# 통합 시뮬레이션 단독 실행 (신규)
+npx jest --config jest.config.cjs --testPathPatterns="integration-simulation"
 ```
 
 ---
 
-## 2. QA 검증 항목별 결과
+## 2. E2E 통합 시뮬레이션 결과 (세션5 신규)
 
-### 2.1 도메인별 특화 로직 — 조건부 분기 검증
+### 2.0 전체 3채널 통합 시뮬레이션 — 74/74 ALL PASS ✅
+
+`tests/e2e/integration-simulation.spec.ts` — 실제 운영 환경과 동일한 전체 데이터 플로우 검증
+
+| 그룹 | 테스트 항목 | 결과 |
+|---|---|---|
+| **SIM-1** | B2B 파트너 등록 로직 (typeAbbr/validCategories/catToPath) | 15/15 ✅ |
+| **SIM-2** | 질문지 URL 분기 (/h/:code, /a/:code, /f/:code) | 9/9 ✅ |
+| **SIM-3** | window.__BRAND__.survey_category 주입 정확성 | 7/7 ✅ |
+| **SIM-4** | submitDiagnosis payload 3채널 전수 검증 | 6/6 ✅ |
+| **SIM-5** | /api/v1/diagnosis POST DB 저장 로직 | 8/8 ✅ |
+| **SIM-6** | /api/survey/submit POST results 테이블 저장 | 7/7 ✅ |
+| **SIM-7** | /result/:id 결과 분기 라우팅 | 6/6 ✅ |
+| **SIM-8** | BUG-8 수정 종합 검증 + 전체 파이프라인 | 10/10 ✅ |
+| **합계** | | **74/74 ✅** |
+
+### 전체 파이프라인 시뮬레이션 결과
+
+| 단계 | 병원 | 에스테틱 | 미용실(salon) |
+|---|---|---|---|
+| **1. B2B 등록** | B2B-HOS-001 | B2B-AES-001 | B2B-SAL-001 |
+| **2. QR/URL 생성** | `/h/B2B-HOS-001` | `/a/B2B-AES-001` | `/f/B2B-SAL-001` |
+| **3. 질문지 매칭** | survey-hospital.html | survey-aesthetic.html | survey-fitness.html(salon) |
+| **4. __BRAND__ 주입** | `survey_category:'hospital'` | `survey_category:'aesthetic'` | `survey_category:'salon'` |
+| **5. 제출 payload** | `survey_category:'hospital'` | `survey_category:'aesthetic'` | `survey_category:'salon'` |
+| **6. DB 저장** | `survey_category='hospital'` | `survey_category='aesthetic'` | `survey_category='salon'` |
+| **7. 결과 라우팅** | `/result-hospital/:id` | `result-aesthetic.html` | `result-v4.html` |
+| **오류** | ✅ 없음 | ✅ 없음 | ✅ 없음 |
+
+---
+
+## 3. QA 검증 항목별 결과 (기존)
+
+### 3.1 도메인별 특화 로직 — 조건부 분기 검증
 
 | ID | 테스트 케이스 | 결과 |
 |---|---|---|
