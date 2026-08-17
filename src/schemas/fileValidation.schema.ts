@@ -15,7 +15,7 @@
  *  region, texture, ohaeng_type, mbti_full, goal_weight, raw_answers, ...
  */
 
-import { z } from 'zod';
+import { z, type ZodIssue } from 'zod';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 공통 상수 — SlimMind 도메인 값 목록
@@ -284,8 +284,8 @@ export function parseDiagnosisPayload(raw: unknown): {
   if (result.success) {
     return { success: true, data: result.data };
   }
-  const errors = (result.error as any).issues.map(
-    (e: any) => `[${e.path?.join('.') ?? ''}] ${e.message}`
+  const errors = result.error.issues.map(
+    (e: ZodIssue) => `[${e.path.map(String).join('.')}] ${e.message}`
   );
   return { success: false, errors };
 }

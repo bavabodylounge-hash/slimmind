@@ -5,14 +5,7 @@ module.exports = {
   transform: {
     '^.+\\.tsx?$': ['ts-jest', {
       useESM: false,
-      tsconfig: {
-        module: 'CommonJS',
-        moduleResolution: 'node',
-        esModuleInterop: true,
-        allowSyntheticDefaultImports: true,
-        strict: true,
-        types: ['node', '@types/jest'],
-      },
+      tsconfig: './tsconfig.test.json',
     }],
   },
   moduleNameMapper: {

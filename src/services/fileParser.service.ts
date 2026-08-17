@@ -15,7 +15,7 @@
  *  - 최대 CPU 시간 10ms (무료) / 30ms (유료) per request
  */
 
-import { z } from 'zod';
+import { z, type ZodIssue } from 'zod';
 import {
   DiagnosisPayloadSchema,
   FileUploadSchema,
@@ -237,8 +237,9 @@ export function analyzeZipEntries(
 
   const validated = ZipParseResultSchema.safeParse(result);
   if (!validated.success) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    errors.push(...(validated.error as any).issues.map((e: any) => `[${e.path?.join('.') ?? ''}] ${e.message}`));
+    errors.push(...validated.error.issues.map(
+      (e: ZodIssue) => `[${e.path.map(String).join('.')}] ${e.message}`
+    ));
   }
 
   return {
@@ -438,8 +439,9 @@ export function validateUploadMetadata(
 
   const result = FileUploadSchema.safeParse(obj);
   if (!result.success) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    errors.push(...(result.error as any).issues.map((e: any) => `[${e.path?.join('.') ?? ''}] ${e.message}`));
+    errors.push(...result.error.issues.map(
+      (e: ZodIssue) => `[${e.path.map(String).join('.')}] ${e.message}`
+    ));
   }
 
   const filename = (typeof obj['filename'] === 'string') ? obj['filename'] : 'unknown';
