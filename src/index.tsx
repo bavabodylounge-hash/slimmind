@@ -2628,10 +2628,37 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
 })();
 <\/script>`
 
-        // ── salon 전용 모드 플래그 주입 ──
-        const salonModeScript = isSalon
-          ? `<script>window.__SALON_MODE__ = true; window.__BRAND_CHANNEL__ = 'salon';</script>\n`
-          : ''
+        // ── salon 전용 모드 플래그 + __BRAND__ 주입 ──
+        // applyB2BBrand()가 window.__BRAND__ 없으면 실행 안 됨 → replaceSalonText 미실행
+        // diagRow.ref_code로 파트너 정보 조회하여 __BRAND__ 주입
+        let salonModeScript = ''
+        if (isSalon) {
+          let salonBrandName  = 'SlimMind'
+          let salonBrandColor = '#8a6a4e'
+          let salonBrandLogo  = ''
+          let salonRefCode    = diagRow.ref_code || ''
+          if (salonRefCode) {
+            try {
+              const salonPartner = await db.prepare(
+                'SELECT name, brand_name, brand_color, brand_logo_url FROM b2b_partners WHERE code=? LIMIT 1'
+              ).bind(salonRefCode).first<any>()
+              if (salonPartner) {
+                salonBrandName  = salonPartner.brand_name  || salonPartner.name  || 'SlimMind'
+                salonBrandColor = salonPartner.brand_color || '#8a6a4e'
+                salonBrandLogo  = salonPartner.brand_logo_url || ''
+              }
+            } catch(_) {}
+          }
+          const salonBrandJson = JSON.stringify({
+            code:          salonRefCode,
+            type:          'B2B',
+            brand_name:    salonBrandName,
+            brand_color:   salonBrandColor,
+            brand_logo_url: salonBrandLogo,
+            survey_category: 'salon',
+          })
+          salonModeScript = `<script>window.__SALON_MODE__ = true; window.__BRAND_CHANNEL__ = 'salon'; window.__BRAND__ = ${salonBrandJson};</script>\n`
+        }
 
         const injectedHtml = baseHtml1.replace(
           '</head>',
@@ -3830,7 +3857,7 @@ app.get('/salon/:code', async (c) => {
     return c.redirect(`${catPath[partner.survey_category] || '/s'}/${rawCode}`, 302)
   }
 
-  const bColor = partner.brand_color || '#ec4899'   // 미용실 기본 브랜드 색상 (핑크)
+  const bColor = partner.brand_color || '#8a6a4e'   // ★미용실판 확정 규칙 ①: brand_color 미설정 시 모카색 기본값
   const bName  = partner.brand_name  || partner.name
   const bLogo  = partner.brand_logo_url || ''
 
