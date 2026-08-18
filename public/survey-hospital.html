@@ -3071,6 +3071,10 @@ src:url(data:font/woff2;base64,d09GMgABAAAAANywABEAAAABgEQAANxFAAIAgwAAAAAAAAAAA
   .wtl-cell.on .wtl-pad{border-style:solid;border-color:#8b5cf6;background:#f3eefc;box-shadow:0 4px 14px -5px #8b5cf6}
   .wtl-cell.on .wtl-plus{display:none}
   .wtl-cell.on .wtl-val{display:flex}
+  /* ★ skip(기억 안 남) 상태 — 회색 빗금 배경, 라벨도 흐리게 */
+  .wtl-cell.skip .wtl-pad{border-style:dashed;border-color:#ccc;background:repeating-linear-gradient(135deg,#f5f5f5 0,#f5f5f5 4px,#ebebeb 4px,#ebebeb 8px)}
+  .wtl-cell.skip .wtl-plus{opacity:.3}
+  .wtl-cell.skip .wtl-lbl{opacity:.45;text-decoration:line-through}
   .spgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .spcard{background:#fdfbff;border:1px solid var(--line);border-radius:15px;
     padding:13px 13px 14px;position:relative;overflow:hidden;box-shadow:0 4px 18px -12px rgba(90,60,130,.22)}
@@ -13797,10 +13801,15 @@ function wtCommit(qno){
     st.pick[k]=_wtY2Kg(ys[Math.floor(ys.length/2)]);
     st.skip[k]=false;
   });
+  /* ★★ 버그 수정: skip 처리된 칸은 보간에서 제외한다.
+     예전엔 skip[i]=true여도 pick[i]===null이면 무조건 보간으로 채워져
+     "선택하지 않은 나이대에 값이 자동 처리되는" 문제가 생겼다.
+     보간은 오직 skip=false인 빈 칸(나이대를 건너뛰지 않고 그냥 안 그린 칸)에만 적용한다. */
   for(let i=0;i<WT_COLS.length;i++){
     if(st.pick[i]!==null)continue;
-    let L=i-1; while(L>=0 && st.pick[L]===null) L--;
-    let R=i+1; while(R<WT_COLS.length && st.pick[R]===null) R++;
+    if(st.skip[i])continue;            /* ★ skip 마크된 칸은 보간 금지 */
+    let L=i-1; while(L>=0 && (st.pick[L]===null||st.skip[L])) L--;
+    let R=i+1; while(R<WT_COLS.length && (st.pick[R]===null||st.skip[R])) R++;
     if(L>=0&&R<WT_COLS.length) st.pick[i]=Math.round(st.pick[L]+(st.pick[R]-st.pick[L])*(i-L)/(R-L));
   }
   _wtRaw[qno]=[]; _wtPaint(qno);
@@ -13926,14 +13935,20 @@ function _wtLaserInit(qno){
     var val=document.getElementById('wtlval_'+qno+'_'+i);
     sel.onchange=function(){
       if(sel.value===''){
+        /* ★ 빈값 선택 = 이 나이대 "기억 안 남 / 해당 없음" → pick=null + skip=true
+           wtCommit 보간 로직도 skip=true면 건드리지 않으므로 0처리가 완전히 된다 */
         try{ wtState[qno].pick[i]=null; wtState[qno].skip[i]=true; }catch(_){}
-        cell.classList.remove('on'); val.textContent='';
+        cell.classList.remove('on');
+        cell.classList.add('skip');          /* ★ skip 시각 표시 */
+        val.textContent='';
       } else {
+        try{ wtState[qno].skip[i]=false; }catch(_){}  /* ★ 값을 다시 고르면 skip 해제 */
+        cell.classList.remove('skip');
         try{ wtSlide(qno,i,+sel.value); }catch(_){}
         cell.classList.add('on'); val.textContent=sel.value;
       }
       _wtLaserDraw(qno, sel.value===''?null:i);
-      try{ _wtLaserAnalyze(qno); }catch(_){}
+      try{ _wtLaserAnalyze(qno, true); }catch(_){}   /* ★ 사용자 직접 입력 플래그 */
     };
   });
   _wtLaserDraw(qno,null);
@@ -13955,12 +13970,19 @@ function _wtLaserRestore(qno){
   try{ _wtLaserDraw(qno,null); }catch(_){}
   try{ _wtLaserAnalyze(qno); }catch(_){}
 }
-function _wtLaserAnalyze(qno){
-  // 판독: 채워진 나이대 idx로 wtAnalyze 호출
+/* ★ _wtLaserAnalyze — 드롭다운에서 직접 입력한 경우에만 판독 카드(wtread)를 펼친다.
+   복원(_wtLaserRestore) 경로에서는 판독 데이터만 업데이트하고 카드는 열지 않는다.
+   isUserInput=true 이면 사용자가 직접 드롭다운을 조작한 것. */
+function _wtLaserAnalyze(qno, isUserInput){
   try{
     var st=wtState[qno]; if(!st)return;
     var idx=[]; for(var i=0;i<st.pick.length;i++) if(st.pick[i]!=null) idx.push(i);
-    if(idx.length>=2 && typeof wtAnalyze==='function') wtAnalyze(qno, idx);
+    if(idx.length>=2 && typeof wtAnalyze==='function'){
+      /* ★ 복원 경로에서는 wtread를 열지 않도록 플래그 전달 */
+      window._wtLaserUserInput = !!isUserInput;
+      wtAnalyze(qno, idx);
+      window._wtLaserUserInput = false;
+    }
   }catch(_){}
 }
 function _wtLaserDraw(qno, flashCol){
@@ -14144,7 +14166,10 @@ function wtDraw(qno){
   if(rs)rs.style.display=(idx.length||st.skip.some(Boolean))?'block':'none';
 
   if(done){
+    /* ★ wtDraw는 사용자가 직접 조작한 결과(손그림·슬라이더)이므로 wtread 카드를 펼친다 */
+    window._wtLaserUserInput = true;
     wtAnalyze(qno,idx);
+    window._wtLaserUserInput = false;
     /* ★ 2026-07-27 — 손 떼도 자동으로 내려가지 않는다(서우님).
        대신 그래프 아래 안내 화살표를 깜빡여 다음 동작을 유도한다. */
     _wtSafe(function(){
@@ -14243,7 +14268,17 @@ function wtRender(qno){
   const l2=document.querySelector('#wtread_'+qno+' .wt-rnl2');
   if(l1)l1.textContent=_wtT('lab_amp',L);
   if(l2)l2.textContent=_wtT('lab_cyc',L);
-  if(rd)rd.classList.add('on');
+  /* ★ 버그2 수정: 사용자가 직접 드롭다운을 조작한 경우에만 wtread 카드를 펼친다.
+     복원(_wtLaserRestore) 경로나 초기화 시 자동으로 열리지 않게 한다.
+     window._wtLaserUserInput 플래그가 true일 때만 .on을 추가한다. */
+  if(rd){
+    if(window._wtLaserUserInput){
+      rd.classList.add('on');
+    } else {
+      /* 복원 경로: 이미 열려있었다면 유지, 아니면 열지 않는다 */
+      /* (rd에 이미 .on이 있으면 텍스트만 업데이트하고 상태 유지) */
+    }
+  }
 }
 function s2progress(){
   const done=Object.keys(stage2Answers).length;
