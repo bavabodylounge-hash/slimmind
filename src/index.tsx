@@ -1,5 +1,13 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
+// [FIX v3.1] Zod API 응답 스키마 검증
+import {
+  AxisRankResponseSchema,
+  ProgramsResponseSchema,
+  DiagnosisSaveResponseSchema,
+  DiagnosisResultSchema,
+  validateResponse,
+} from './schemas/api.schema'
 // ★★★ 모든 HTML/JS 파일을 ?raw 번들 인라인에서 ASSETS 정적 서빙으로 전환 ★★★
 // ?raw 인라인 시 번들 3.4MB 초과 → Cloudflare 한도 초과 → 파일 잘림 → SyntaxError
 // 이제 ASSETS.fetch()로 정적 파일을 읽어서 서빙함
@@ -5933,7 +5941,9 @@ app.get('/api/v1/stats/axis-rank', async (c) => {
       ranks[ax] = { my: myVal, percentile: pct, top, count: arr.length, simulated: false }
     }
 
-    return c.json({ total, ranks, simulated: false }, 200, {
+    // [FIX v3.1] Zod 응답 스키마 검증
+    const validated = validateResponse(AxisRankResponseSchema, { total, ranks, simulated: false }, 'axis-rank')
+    return c.json(validated, 200, {
       'Cache-Control': 'public, max-age=120',
     })
   } catch (e) {
