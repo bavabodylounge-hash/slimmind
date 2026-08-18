@@ -30,7 +30,7 @@ var BC_MASTER = {
     outline_card: '귤껍질 하체형',
     app_nickname: '#귤껍질하체형',
     medical_title: '하체 셀룰라이트·지방 섬유화 체형',
-    color: '#E8631A', bg: '#FFF0DA', icon: '🍊',
+    color: '#c98a3c', bg: '#FFF0DA', icon: '🍊',
     failed_type_desc: '하체 피하지방층이 만성 림프 정체로 섬유화되어 셀룰라이트가 굳은 상태입니다. 일반적인 유산소나 단순 굶기로는 이 섬유화된 지방 구조를 개선하기 어렵습니다.',
     axis_top: '한',
   },
@@ -48,7 +48,7 @@ var BC_MASTER = {
     outline_card: '물렁 피하형',
     app_nickname: '#물렁피하형',
     medical_title: '피하지방 과축적·대사 저하형 체형',
-    color: '#7B1FA2', bg: '#EDE7F6', icon: '🫧',
+    color: '#2e7d32', bg: '#EDE7F6', icon: '🫧',
     failed_type_desc: '복부 피하지방이 물렁하게 축적된 상태로, 약물·호르몬·스트레스 복합 원인으로 대사가 저하되어 지방 분해 속도가 현저히 낮아진 체형입니다. 같은 식사량에도 지방이 우선 저장되는 경향이 있습니다.',
     axis_top: '심',
   },
@@ -57,7 +57,7 @@ var BC_MASTER = {
     outline_card: '가스 팽만형',
     app_nickname: '#가스팽만형',
     medical_title: '장내 가스·소화 기능 장애형 체형',
-    color: '#1A8C5B', bg: '#DEF3EA', icon: '🎈',
+    color: '#00695c', bg: '#DEF3EA', icon: '🎈',
     failed_type_desc: '장내 발효·부패 가스로 인해 복부가 팽창된 상태입니다. 이 상태에서 식이섬유를 무조건 늘리거나 유산균만 보충하면 오히려 가스 생성이 촉진되어 복부가 더 팽창될 수 있습니다.',
     axis_top: '식',
   },
@@ -66,7 +66,7 @@ var BC_MASTER = {
     outline_card: '올챙이배형',
     app_nickname: '#올챙이배형',
     medical_title: '근감소성 이화작용·마른 비만형 체형',
-    color: '#6B4EAA', bg: '#EEEAF7', icon: '🐸',
+    color: '#00acc1', bg: '#EEEAF7', icon: '🐸',
     failed_type_desc: '근육을 에너지로 전환하는 이화작용이 활성화된 상태입니다. 몸무게 숫자에만 집착하여 유산소와 단식을 반복하면 사지는 더 가늘어지고 복부 내장지방만 남는 불균형 체형으로 진행됩니다.',
     axis_top: '약',
   },
@@ -76,7 +76,7 @@ var BC_MASTER = {
     outline_card: '말벅지형',
     app_nickname: '#말벅지형',
     medical_title: '알파 수용체 우세·하체 과발달형 체형',
-    color: '#4A8C1C', bg: '#E8F3DC', icon: '🐎',
+    color: '#ef6c00', bg: '#E8F3DC', icon: '🐎',
     failed_type_desc: '하체 부위에 지방 분해를 방해하는 알파-2 수용체가 집중된 체형입니다. 고강도 펌핑 운동을 과도하게 하면 지방 밑에 근육만 커져 체형이 거대화되는 경향이 있습니다.',
     axis_top: '관',
   },
@@ -95,7 +95,7 @@ var BC_MASTER = {
     outline_card: '거북이형',
     app_nickname: '#거북이형',
     medical_title: '경추·흉추 보상성 림프 차단형 체형',
-    color: '#607D8B', bg: '#ECEFF1', icon: '🐢',
+    color: '#607d8b', bg: '#ECEFF1', icon: '🐢',
     failed_type_desc: '거북목, 라운드 숄더로 인해 상체 액와(겨드랑이) 림프절이 물리적으로 찝힌 상태입니다. 척추 정렬 없이 유산소만 과도하게 하면 팔뚝과 쇄골 주변에 노폐물이 갇혀 상체 비대화가 진행될 수 있습니다.',
     axis_top: '형',
   },
@@ -113,7 +113,7 @@ var BC_MASTER = {
     outline_card: '상체근육형',
     app_nickname: '#상체근육형',
     medical_title: '상체 과발달·승모근 긴장 과적재형 체형',
-    color: '#4A8C1C', bg: '#E8F3DC', icon: '🏋️',
+    color: '#ef6c00', bg: '#E8F3DC', icon: '🏋️',
     failed_type_desc: '팔·어깨·승모근이 과사용으로 과발달된 상태입니다. 추가적인 상체 웨이트 트레이닝은 승모근 비대와 어깨선 확대로 이어지며, 몸통이 더 넓어 보이는 역효과를 냅니다.',
     axis_top: '형',
   },
@@ -132,7 +132,7 @@ var BC_MASTER = {
     outline_card: '갱년기 변환형',
     app_nickname: '#갱년기변환형',
     medical_title: '완경 호르몬 전환·지방 재배치형 체형',
-    color: '#E67E22', bg: '#FEF3E2', icon: '🔄',
+    color: '#1565c0', bg: '#FEF3E2', icon: '🔄',
     failed_type_desc: '완경 전후 에스트로겐 급감으로 지방이 하체에서 복부·전신으로 강제 재배치되는 체형입니다. 기존에 효과 있던 다이어트법이 갑자기 안 통하는 이유가 호르몬 전환 때문입니다.',
     axis_top: '확',
   },
@@ -141,7 +141,7 @@ var BC_MASTER = {
     outline_card: '번아웃 무기력형',
     app_nickname: '#번아웃무기력형',
     medical_title: '부신 피로·자율신경 교란형 체형',
-    color: '#3F51B5', bg: '#E8EAF6', icon: '🔋',
+    color: '#6a4fb0', bg: '#E8EAF6', icon: '🔋',
     failed_type_desc: '극심한 스트레스로 코르티솔/도파민 호르몬 체계가 불균형한 상태입니다. 밤 9시 이후 호르몬 역류로 인해 가짜 허기가 발생하며, 의지력으로만 참으려 하면 보상성 과식을 유발합니다.',
     axis_top: '심',
   },
@@ -169,16 +169,16 @@ var BC_MASTER = {
 // 2. 10대 원인축 정의 (A01~A10)
 // ──────────────────────────────────────────────
 var AXIS_10_META = {
-  'A01': { label: '인슐린·내장', icon: '🍽️', color: '#E8631A', desc: '식후 혈당 반응 + 복부 내장지방 패턴' },
+  'A01': { label: '인슐린·내장', icon: '🍽️', color: '#c98a3c', desc: '식후 혈당 반응 + 복부 내장지방 패턴' },
   'A02': { label: '림프순환',   icon: '💧', color: '#1A7FC1', desc: '하체·상체 림프 및 정맥 순환 상태' },
   'A03': { label: '호르몬',     icon: '🌸', color: '#C0397A', desc: '에스트로겐·갑상선·성호르몬 균형' },
-  'A04': { label: '근감소',     icon: '🏃', color: '#4A8C1C', desc: '근육량·기초대사량·이화작용 패턴' },
-  'A05': { label: '소화·장',    icon: '🌿', color: '#1A8C5B', desc: '장내 환경·소화 기능·가스 팽만' },
-  'A06': { label: '골격·복압',  icon: '🦴', color: '#6B4EAA', desc: '골반 정렬·복압·코어 안정성' },
-  'A07': { label: '코르티솔',   icon: '🌙', color: '#3F51B5', desc: '부신·스트레스 호르몬·자율신경 상태' },
-  'A08': { label: '심리·식이',  icon: '🧠', color: '#7B1FA2', desc: '감정적 섭식·식욕 조절·행동 패턴' },
-  'A09': { label: '대사위험',   icon: '⚠️', color: '#E67E22', desc: '대사증후군·혈압·혈당 복합 위험도' },
-  'A10': { label: '기질·성향',  icon: '🔮', color: '#607D8B', desc: '오행 기질 + MBTI 행동 패턴 (처방 톤 필터)' },
+  'A04': { label: '근감소',     icon: '🏃', color: '#ef6c00', desc: '근육량·기초대사량·이화작용 패턴' },
+  'A05': { label: '소화·장',    icon: '🌿', color: '#00695c', desc: '장내 환경·소화 기능·가스 팽만' },
+  'A06': { label: '골격·복압',  icon: '🦴', color: '#00acc1', desc: '골반 정렬·복압·코어 안정성' },
+  'A07': { label: '코르티솔',   icon: '🌙', color: '#6a4fb0', desc: '부신·스트레스 호르몬·자율신경 상태' },
+  'A08': { label: '심리·식이',  icon: '🧠', color: '#2e7d32', desc: '감정적 섭식·식욕 조절·행동 패턴' },
+  'A09': { label: '대사위험',   icon: '⚠️', color: '#1565c0', desc: '대사증후군·혈압·혈당 복합 위험도' },
+  'A10': { label: '기질·성향',  icon: '🔮', color: '#607d8b', desc: '오행 기질 + MBTI 행동 패턴 (처방 톤 필터)' },
 };
 
 // ──────────────────────────────────────────────
@@ -632,13 +632,13 @@ var BC_TO_DEFAULT_NICKNAME = {
 // 8. 8대 원인축 메타 (약·식·복·확·한·심·형·관) — 기존 유지
 // ──────────────────────────────────────────────
 var CAUSAL_AXIS_META = {
-  '약': { label: '약물·식이습관', icon: '💊', color: '#7B1FA2', axisKeys: ['A08','A09'], bcNum: 9 },
-  '식': { label: '식단·지방저장', icon: '🍽️', color: '#E8631A', axisKeys: ['A01','A05'], bcNum: 3 },
-  '복': { label: '복신·회복',    icon: '🌙', color: '#3F51B5', axisKeys: ['A07'],       bcNum: 7 },
+  '약': { label: '약물·식이습관', icon: '💊', color: '#d32f2f', axisKeys: ['A08','A09'], bcNum: 9 },
+  '식': { label: '식단·지방저장', icon: '🍽️', color: '#c98a3c', axisKeys: ['A01','A05'], bcNum: 3 },
+  '복': { label: '복신·회복',    icon: '🌙', color: '#6a4fb0', axisKeys: ['A07'],       bcNum: 7 },
   '확': { label: '호르몬·대사',  icon: '🌸', color: '#C0397A', axisKeys: ['A03'],       bcNum: 4 },
-  '한': { label: '한방·순환',    icon: '🌿', color: '#1A8C5B', axisKeys: ['A02','A05'], bcNum: 5 },
-  '심': { label: '심리·식이행동',icon: '🧠', color: '#6B4EAA', axisKeys: ['A08','A07'], bcNum: 6 },
-  '형': { label: '체형정렬',     icon: '🦴', color: '#6B4EAA', axisKeys: ['A06'],       bcNum: 2 },
+  '한': { label: '한방·순환',    icon: '🌿', color: '#00695c', axisKeys: ['A02','A05'], bcNum: 5 },
+  '심': { label: '심리·식이행동',icon: '🧠', color: '#00acc1', axisKeys: ['A08','A07'], bcNum: 6 },
+  '형': { label: '체형정렬',     icon: '🦴', color: '#00acc1', axisKeys: ['A06'],       bcNum: 2 },
   '관': { label: '관·하체순환',  icon: '💧', color: '#1A7FC1', axisKeys: ['A02','A04'], bcNum: 1 },
 };
 
@@ -646,17 +646,17 @@ var CAUSAL_AXIS_META = {
 // 3. 11대 전문 진단축
 // ──────────────────────────────────────────────
 var AXIS_11 = [
-  { key: '약물',   label: '약물',   icon: '💊', color: '#7B1FA2', axisRef: 'A08' },
-  { key: '식단',   label: '식단',   icon: '🍽️', color: '#E8631A', axisRef: 'A01' },
-  { key: '운동',   label: '운동',   icon: '🏃', color: '#4A8C1C', axisRef: 'A04' },
-  { key: '회복',   label: '회복',   icon: '🌙', color: '#3F51B5', axisRef: 'A07' },
-  { key: '한방',   label: '한방',   icon: '🌿', color: '#1A8C5B', axisRef: 'A02' },
-  { key: '심리',   label: '심리',   icon: '🧠', color: '#7B1FA2', axisRef: 'A08' },
-  { key: '체형',   label: '체형',   icon: '🦴', color: '#6B4EAA', axisRef: 'A06' },
+  { key: '약물',   label: '약물',   icon: '💊', color: '#d32f2f', axisRef: 'A08' },
+  { key: '식단',   label: '식단',   icon: '🍽️', color: '#c98a3c', axisRef: 'A01' },
+  { key: '운동',   label: '운동',   icon: '🏃', color: '#ef6c00', axisRef: 'A04' },
+  { key: '회복',   label: '회복',   icon: '🌙', color: '#6a4fb0', axisRef: 'A07' },
+  { key: '한방',   label: '한방',   icon: '🌿', color: '#00695c', axisRef: 'A02' },
+  { key: '심리',   label: '심리',   icon: '🧠', color: '#2e7d32', axisRef: 'A08' },
+  { key: '체형',   label: '체형',   icon: '🦴', color: '#00acc1', axisRef: 'A06' },
   { key: '호르몬', label: '호르몬', icon: '🌸', color: '#C0397A', axisRef: 'A03' },
-  { key: '시술',   label: '시술',   icon: '✨', color: '#E67E22', axisRef: 'A09' },
-  { key: '관리',   label: '관리',   icon: '💆', color: '#3EB8A0', axisRef: 'A04' },
-  { key: '철학',   label: '철학',   icon: '🔮', color: '#E67E22', axisRef: 'A10' },
+  { key: '시술',   label: '시술',   icon: '✨', color: '#1565c0', axisRef: 'A09' },
+  { key: '관리',   label: '관리',   icon: '💆', color: '#795548', axisRef: 'A04' },
+  { key: '철학',   label: '철학',   icon: '🔮', color: '#607d8b', axisRef: 'A10' },
 ];
 
 // ──────────────────────────────────────────────
@@ -992,7 +992,7 @@ function generatePrescription(bc_code, ohaeng_type, mbti_full) {
 // ──────────────────────────────────────────────
 var SAJU_ELEMENT_DESC = {
   '목': {
-    label: '목 기질', icon: '🌱', color: '#4A8C1C', bg: '#E8F3DC',
+    label: '목 기질', icon: '🌱', color: '#ef6c00', bg: '#E8F3DC',
     desc: '스트레스를 표현하지 않고 내면으로 억누르는 경향이 강합니다. 이 억눌린 긴장이 낮 동안 쌓이다가 밤에 교감신경이 이완되는 순간 도파민이 급격히 추락하여 야식 충동으로 나타납니다.',
     insight: '목 기질 × 나의 바디코드 조합 시, 감정 억압 해소를 위한 저녁 산책이 핵심 처방입니다.',
     // 6대 영양소 맞춤 식품군
@@ -1007,7 +1007,7 @@ var SAJU_ELEMENT_DESC = {
     nutriTip: '간(肝)의 울결을 풀어주는 신맛 식품과 녹색 채소를 중심으로, 저녁 도파민 안정을 위한 트립토판 단백질을 우선 섭취하세요.',
   },
   '화': {
-    label: '화 기질', icon: '🔥', color: '#E8631A', bg: '#FFE3D3',
+    label: '화 기질', icon: '🔥', color: '#c98a3c', bg: '#FFE3D3',
     desc: '심장과 소장의 열기가 과잉된 상태로, 상체는 뜨겁고 하체는 차가운 상열하한이 전형적으로 나타납니다. 과도한 자극과 흥분으로 부신 피로가 빠르게 누적되는 경향이 있습니다.',
     insight: '화 기질은 흥분-소진 사이클을 반복합니다. 활성도 관리와 충분한 회복이 핵심입니다.',
     nutriFoods: {
@@ -1021,7 +1021,7 @@ var SAJU_ELEMENT_DESC = {
     nutriTip: '심(心)의 열을 내려주는 쓴맛 식품과 붉은 계열 채소류로 상열을 진정시키세요. 자극적·맵고 뜨거운 음식은 일시적으로 줄이는 방향이 도움됩니다.',
   },
   '토': {
-    label: '토 기질', icon: '🌍', color: '#E67E22', bg: '#FFF0DA',
+    label: '토 기질', icon: '🌍', color: '#1565c0', bg: '#FFF0DA',
     desc: '소화계가 정체되어 영양 흡수가 불균형합니다. 단 것과 습한 음식에 강하게 끌리며, 순환계 정체로 전신 부종이 쉽게 고착화되는 경향이 있습니다.',
     insight: '토 기질은 소화·흡수 개선이 우선입니다. 과식보다 소식다회 전략이 효과적입니다.',
     nutriFoods: {
@@ -1035,7 +1035,7 @@ var SAJU_ELEMENT_DESC = {
     nutriTip: '비위(脾胃)의 운화 기능을 돕는 단맛(자연당) 식품으로 소화력을 지원하세요. 차갑고 기름진 음식, 밀가루는 일시적으로 줄이는 방향이 좋습니다.',
   },
   '금': {
-    label: '금 기질', icon: '⚡', color: '#6B4EAA', bg: '#EEEAF7',
+    label: '금 기질', icon: '⚡', color: '#00acc1', bg: '#EEEAF7',
     desc: '폐와 대장 기운이 응체된 상태입니다. 독소 배출이 느리고 변비와 피부 트러블이 동반됩니다. 완벽주의 성향으로 다이어트 실패 시 극심한 보상 과식을 유발하는 경향이 있습니다.',
     insight: '금 기질은 완벽주의 인지 왜곡 차단이 핵심입니다. 점진적 접근이 효과적입니다.',
     nutriFoods: {
@@ -5910,7 +5910,7 @@ var DISCLAIMER = '본 결과지는 설문 응답을 기반으로 한 라이프�
 //   {
 //     top3      : ['회복','식단','심리'],     // 도메인명 배열 (최대 3개)
 //     top3Scores: { '회복':82, '식단':67 },  // 도메인별 점수 (0~100 정규화)
-//     top3Full  : [{ key:'회복', score:82, icon:'🌙', color:'#3F51B5' }, ...],
+//     top3Full  : [{ key:'회복', score:82, icon:'🌙', color:'#6a4fb0' }, ...],
 //     allScores : { '회복':82, '식단':67, ... },   // 11개 전체 점수
 //   }
 //
@@ -5957,17 +5957,17 @@ var _DOMAIN_AXIS_WEIGHTS_AESTHETIC = {
 
 // 도메인 메타 (아이콘·색상)
 var _DOMAIN_META = {
-  '식단':  { icon:'🍽️', color:'#E8631A' },
-  '심리':  { icon:'🧠', color:'#7B1FA2' },
+  '식단':  { icon:'🍽️', color:'#c98a3c' },
+  '심리':  { icon:'🧠', color:'#2e7d32' },
   '호르몬':{ icon:'⚗️', color:'#C0397A' },
-  '운동':  { icon:'💪', color:'#4A8C1C' },
-  '회복':  { icon:'🌙', color:'#3F51B5' },
-  '체형':  { icon:'🦴', color:'#6B4EAA' },
-  '한방':  { icon:'🌿', color:'#1A8C5B' },
-  '관리':  { icon:'🔬', color:'#3EB8A0' },
-  '시술':  { icon:'✨', color:'#E67E22' },
-  '약물':  { icon:'💊', color:'#5F5E5A' },
-  '철학':  { icon:'🕊️', color:'#607D8B' },
+  '운동':  { icon:'💪', color:'#ef6c00' },
+  '회복':  { icon:'🌙', color:'#6a4fb0' },
+  '체형':  { icon:'🦴', color:'#00acc1' },
+  '한방':  { icon:'🌿', color:'#00695c' },
+  '관리':  { icon:'🔬', color:'#795548' },
+  '시술':  { icon:'✨', color:'#1565c0' },
+  '약물':  { icon:'💊', color:'#d32f2f' },
+  '철학':  { icon:'🕊️', color:'#607d8b' },
   '순환':  { icon:'💧', color:'#1565C0' },
 };
 
@@ -6534,7 +6534,7 @@ function getMedicalFilters(tags) {
   if (has('TAG_JOINT')) {
     banExercise.push('HIIT', 'HIGH_IMPACT_JUMP', 'DEEP_SQUAT');
     requireExercise.push('AQUA_EXERCISE', 'CHAIR_EXERCISE', 'GENTLE_STRETCH', 'LOW_IMPACT');
-    safetyChips.push({ key:'JOINT', label:'관절 보호 모드', color:'#e67e22',
+    safetyChips.push({ key:'JOINT', label:'관절 보호 모드', color:'#1565c0',
       desc:'관절·근감소 동반 — 충격 운동 금지 · 관절 부하 최소 운동 적용' });
   }
 
@@ -6672,7 +6672,7 @@ function getMotivationBanner(tags, motivation, weekNum, dayNum) {
     headline: targetStr + (mot === 'health' ? suffix : '을(를) 위해 오늘도 한 걸음'),
     subline:  '사랑하는 ' + (mot !== 'self' ? targetStr : '나') + suffix + ' ' + w + '주 차 ' + d + '일 차 미션입니다.',
     icon: mot === 'child' ? '👨‍👧' : (mot === 'partner' ? '💑' : (mot === 'health' ? '❤️' : '⭐')),
-    accent: mot === 'child' ? '#e67e22' : (mot === 'partner' ? '#e91e8c' : '#3498db'),
+    accent: mot === 'child' ? '#1565c0' : (mot === 'partner' ? '#e91e8c' : '#3498db'),
   };
 }
 

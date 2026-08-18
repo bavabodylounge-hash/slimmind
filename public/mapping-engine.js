@@ -29,8 +29,8 @@
   'use strict';
 
   // ─── 버전 상수 ───────────────────────────────────────────────────────────
-  var MAPPING_ENGINE_VERSION = 'v1.0';
-  var MAPPING_ENGINE_DATE    = '2026-08-03';
+  var MAPPING_ENGINE_VERSION = 'v1.1';
+  var MAPPING_ENGINE_DATE    = '2026-08-18'; // GAP-11: 2차 배경 배점 applyStage2Bonus 추가
 
   // 전역 노출 (결과지에서 window.__MAPPING_ENGINE_VERSION__ 로 비교)
   root.__MAPPING_ENGINE_VERSION__ = MAPPING_ENGINE_VERSION;
@@ -289,6 +289,204 @@
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // §4-B. 2차 배경 배점 — applyStage2Bonus()
+  //        설계도 표 C (2차 Q1~Q12) 기반 축 점수 직접 가산
+  //        캡: 병력 합산 전체 +4.0 (설계도 확정값)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * 2차 배경 응답(Stage2)에서 축 점수 보너스를 계산해 axisScores에 직접 가산.
+   * 설계도 표 C Q1~Q12 전량 구현. 병력 캡 +4.0.
+   *
+   * @param {Object} axisScores - 현재 축 점수 (in-place 수정)
+   * @param {Object} s2         - raw_answers.stage2 {no: val|Array}
+   * @param {Object} bcAnswers  - extractFromStage2 결과 (disease, appetite_suppressant 등)
+   */
+  function applyStage2Bonus(axisScores, s2, bcAnswers) {
+    s2        = s2        || {};
+    bcAnswers = bcAnswers || {};
+
+    // 보너스 누적용 (축 이름: 설계도 표기)
+    // A01=인슐린, A02=림프, A03=호르몬, A04=근감소, A05=소화, A06=골격
+    // A07=코르티솔, A08=심리·식이, A09=대사위험
+    var bonus = { A01:0, A02:0, A03:0, A04:0, A05:0, A06:0, A07:0, A08:0, A09:0 };
+    var CAP   = 4.0;
+
+    // ─── helper ──────────────────────────────────────────────────────────────
+    var single = function(no) {
+      var v = s2[no];
+      if (v === undefined || v === null) return null;
+      return typeof v === 'number' ? v : parseInt(v, 10);
+    };
+    var multi = function(no) {
+      var v = s2[no];
+      if (!v) return [];
+      if (Array.isArray(v)) return v.map(Number);
+      if (typeof v === 'number') return [v];
+      return [];
+    };
+    var add = function(ax, val) {
+      if (bonus[ax] !== undefined) bonus[ax] += val;
+    };
+
+    // ─── Q1 유전 가계력(당뇨·고혈압) ─────────────────────────────────────────
+    // 아버지/어머니/형제 중 하나라도 → 대사위험(A09) +1.0
+    // s2[1]: Array, 각 항목 = 0(아버지) 1(어머니) 2(형제) 3(없음)
+    var q1 = multi(1);
+    var q1HasFamily = q1.length > 0 && q1.some(function(v) { return v !== 3; });
+    if (q1HasFamily) { add('A09', 1.0); }
+
+    // ─── Q2 부모 체형 ────────────────────────────────────────────────────────
+    // 0=아빠(배) → 인슐린 +1.0 · 1=엄마(하체) → 림프 +1.0 · 2=둘다 → 각 +0.5
+    var q2 = single(2);
+    if (q2 === 0) { add('A01', 1.0); }
+    else if (q2 === 1) { add('A02', 1.0); }
+    else if (q2 === 2) { add('A01', 0.5); add('A02', 0.5); }
+
+    // ─── Q3 진단 질환 ★최강 ─────────────────────────────────────────────────
+    // PCOS(0) → 호르몬 +2.5
+    // 당뇨(1) → 인슐린 +2.0·대사위험 +1.5
+    // 고혈압(2) → 대사위험 +2.0
+    // 갑상선(3) → 호르몬 +2.5
+    // 지방간(4) → 인슐린 +2.0·대사위험 +1.0
+    // 역류·위장(5) → 소화 +2.0
+    // 우울·불안(6) → 심리 +2.0·코르티솔 +1.0
+    var q3 = multi(3);
+    if (q3.length === 0 && Array.isArray(bcAnswers.disease)) q3 = bcAnswers.disease;
+    if (q3.indexOf(0) > -1) { add('A03', 2.5); }                       // PCOS
+    if (q3.indexOf(1) > -1) { add('A01', 2.0); add('A09', 1.5); }      // 당뇨
+    if (q3.indexOf(2) > -1) { add('A09', 2.0); }                       // 고혈압
+    if (q3.indexOf(3) > -1) { add('A03', 2.5); }                       // 갑상선
+    if (q3.indexOf(4) > -1) { add('A01', 2.0); add('A09', 1.0); }      // 지방간
+    if (q3.indexOf(5) > -1) { add('A05', 2.0); }                       // 역류·위장
+    if (q3.indexOf(6) > -1) { add('A08', 2.0); add('A07', 1.0); }      // 우울·불안
+
+    // ─── Q4 경계 소견 ────────────────────────────────────────────────────────
+    // 공복혈당(0) → 인슐린 +1.2 · 간수치(1) → 인슐린 +1.0
+    // 콜레스테롤(2) → 대사위험 +1.2 · 혈압(3) → 대사위험 +1.2
+    var q4 = multi(4);
+    if (q4.indexOf(0) > -1) { add('A01', 1.2); }   // 공복혈당
+    if (q4.indexOf(1) > -1) { add('A01', 1.0); }   // 간수치
+    if (q4.indexOf(2) > -1) { add('A09', 1.2); }   // 콜레스테롤
+    if (q4.indexOf(3) > -1) { add('A09', 1.2); }   // 혈압
+
+    // ─── Q5 냉증 ─────────────────────────────────────────────────────────────
+    // 여름에도 차가움(0) → 호르몬 +1.5 · 조금(1) → 호르몬 +0.7
+    var q5 = single(5);
+    if (q5 === 0) { add('A03', 1.5); }
+    else if (q5 === 1) { add('A03', 0.7); }
+
+    // ─── Q6 장기 복용약 ──────────────────────────────────────────────────────
+    // 스테로이드(0) → 호르몬 +1.5·인슐린 +1.0
+    // 항우울제(1) → 심리 +1.2·호르몬 +0.8
+    // 피임·호르몬(2) → 호르몬 +1.5
+    // 항응고·이소트레티노인·탈모약(3,4,5) → 축 0(시술 안전 플래그만)
+    var q6 = multi(6);
+    if (q6.indexOf(0) > -1) { add('A03', 1.5); add('A01', 1.0); }   // 스테로이드
+    if (q6.indexOf(1) > -1) { add('A08', 1.2); add('A03', 0.8); }   // 항우울제
+    if (q6.indexOf(2) > -1) { add('A03', 1.5); }                    // 피임·호르몬
+
+    // ─── Q7 식욕억제제 ───────────────────────────────────────────────────────
+    // 여러 번(0) → 심리 +2.0 · 한두 번(1) → 심리 +1.0
+    var q7 = single(7);
+    if (q7 === null && bcAnswers.appetite_suppressant !== undefined) {
+      q7 = bcAnswers.appetite_suppressant;
+    }
+    if (q7 === 0) { add('A08', 2.0); }
+    else if (q7 === 1) { add('A08', 1.0); }
+
+    // ─── Q8 급증 계기 ────────────────────────────────────────────────────────
+    // 이직·과로(0) → 코르티솔 +1.5
+    // 이별·충격(1) → 심리 +1.5·코르티솔 +0.5
+    // 수술·약물(2) → 호르몬 +1.2
+    // 회식·음주(3) → 인슐린 +1.2
+    // 금연(4) → 인슐린 +0.8
+    // 서서히(5) → 근감소 +0.8
+    var q8 = multi(8);
+    if (q8.length === 0 && Array.isArray(bcAnswers.q8_trigger)) q8 = bcAnswers.q8_trigger;
+    if (q8.indexOf(0) > -1) { add('A07', 1.5); }                    // 이직·과로
+    if (q8.indexOf(1) > -1) { add('A08', 1.5); add('A07', 0.5); }   // 이별·충격
+    if (q8.indexOf(2) > -1) { add('A03', 1.2); }                    // 수술·약물
+    if (q8.indexOf(3) > -1) { add('A01', 1.2); }                    // 회식·음주
+    if (q8.indexOf(4) > -1) { add('A01', 0.8); }                    // 금연
+    if (q8.indexOf(5) > -1) { add('A04', 0.8); }                    // 서서히 → 근감소
+
+    // ─── Q9 시술 이력 ────────────────────────────────────────────────────────
+    // 지방흡입(0) → 근감소 +1.0(+플래그) · 지방분해(1) → 근감소 +0.5
+    // 그 외 → 축 최소·플래그 위주
+    var q9 = multi(9);
+    if (q9.length === 0 && Array.isArray(bcAnswers.past_procedures)) q9 = bcAnswers.past_procedures;
+    if (q9.indexOf(0) > -1) { add('A04', 1.0); }   // 지방흡입
+    if (q9.indexOf(1) > -1) { add('A04', 0.5); }   // 지방분해
+
+    // ─── Q10 체중 궤적 (요요 패턴) ──────────────────────────────────────────
+    // 요요 패턴(정점 2회+) → 호르몬 +1.2~2.0 · 심리 ×0.6 적용 안 함(가산만)
+    // 진폭 25kg+ → 호르몬 +1.0 / 15kg+ → 호르몬 +0.5
+    var s2_10 = s2[10];
+    var wtPattern = null, wtAmp = null;
+    if (s2_10 && typeof s2_10 === 'object') {
+      wtPattern = s2_10.pattern || null;
+      wtAmp     = s2_10.amp     || null;
+    } else if (typeof s2_10 === 'string') {
+      wtPattern = s2_10;
+    }
+    // bcAnswers 폴백
+    if (!wtPattern && bcAnswers.Q_WT_PATTERN) wtPattern = bcAnswers.Q_WT_PATTERN;
+    if (wtAmp === null && bcAnswers.Q_WT_AMP !== undefined) wtAmp = bcAnswers.Q_WT_AMP;
+
+    if (wtPattern === 'yoyo') {
+      // 정점 2회+ 기본 가산: 호르몬 +1.2 (설계도: 1.2~2.0, 기본값 적용)
+      add('A03', 1.2);
+    }
+    // 진폭 기반 추가 가산
+    if (wtAmp !== null) {
+      var ampNum = typeof wtAmp === 'number' ? wtAmp : Number(wtAmp);
+      if (!isNaN(ampNum)) {
+        if (ampNum >= 25) { add('A03', 1.0); }
+        else if (ampNum >= 15) { add('A03', 0.5); }
+      }
+    }
+
+    // ─── Q11 출산 (축 보너스 없음 — redFlags·bcAnswers만) ────────────────────
+    // 설계도 표 C에 Q11 출산 배점 없음(골격·림프는 3차에서 담당)
+
+    // ─── Q12 갱년기·완경 ─────────────────────────────────────────────────────
+    // 복부 변환(0)·호르몬 치료(1)·완경(2) → 호르몬 +2.0
+    // 신호 조금(3) → 호르몬 +0.5 (설계도: "배경 갱년기도 여기서")
+    var q12 = single(12);
+    if (q12 === null && bcAnswers.q12_menopause !== undefined) q12 = bcAnswers.q12_menopause;
+    if (q12 === 0 || q12 === 1 || q12 === 2) { add('A03', 2.0); }
+    else if (q12 === 3) { add('A03', 0.5); }
+
+    // ─── 병력 캡 +4.0 적용 ──────────────────────────────────────────────────
+    // 2차 전체 보너스 합계가 4.0 초과 시 비례 축소
+    var totalBonus = Object.keys(bonus).reduce(function(sum, k) {
+      return sum + (bonus[k] > 0 ? bonus[k] : 0);
+    }, 0);
+
+    if (totalBonus > CAP) {
+      var ratio = CAP / totalBonus;
+      Object.keys(bonus).forEach(function(k) {
+        bonus[k] = Math.round(bonus[k] * ratio * 100) / 100;
+      });
+    }
+
+    // ─── axisScores에 가산 (0~12 상한 유지) ─────────────────────────────────
+    Object.keys(bonus).forEach(function(ax) {
+      if (bonus[ax] > 0 && axisScores[ax] !== undefined) {
+        axisScores[ax] = Math.min(12, Math.round((axisScores[ax] + bonus[ax]) * 100) / 100);
+      }
+    });
+
+    // 디버그 로그 (콘솔에서 보너스 내역 확인 가능)
+    console.log('[MappingEngine] applyStage2Bonus | totalBonus=' + totalBonus.toFixed(2)
+      + (totalBonus > CAP ? ' → capped@' + CAP : '')
+      + ' | bonus=' + JSON.stringify(bonus));
+
+    return bonus; // 참조용 반환 (테스트 가능)
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // §5. Stage1 → bcAnswers 보강
   // ═══════════════════════════════════════════════════════════════════════════
 
@@ -412,9 +610,13 @@
       axisScores = serverValues.axisScores;
     }
 
-    // ─── redFlags 결정 ─────────────────────────────────────────────────────
+    // ─── redFlags + bcAnswers 결정 ────────────────────────────────────────
     var s2Result = extractFromStage2(s2, serverValues.redFlags || rawAnswers.redFlags);
     var redFlags = s2Result.redFlags;
+
+    // ─── 2차 배경 배점 가산 (설계도 표 C Q1~Q12, 병력 캡 +4.0) ─────────────
+    // extractFromStage2 이후 호출해야 bcAnswers(disease 등)를 활용 가능
+    applyStage2Bonus(axisScores, s2, s2Result.bcAnswers);
 
     // ─── bcAnswers 구성 (공통 flat key 매핑) ───────────────────────────────
     var bcAnswers = {};
@@ -536,6 +738,7 @@
     // 개별 단계 (테스트 / 확장용)
     computeAxisScores   : computeAxisScoresFromS3,
     applyStage4Decision : applyStage4Decision,
+    applyStage2Bonus    : applyStage2Bonus,       // GAP-11: 2차 배경 배점
     extractFromStage2   : extractFromStage2,
     extractFromStage1   : extractFromStage1,
     extractA10FromS3    : extractA10FromS3,

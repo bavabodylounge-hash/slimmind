@@ -6471,7 +6471,7 @@ app.get('/api/h/result/:id', async (c) => {
         created_at: row.created_at,
         consultant_name: row.partner_display_name || '',
         // ── Schema Versioning (mapping-engine.js Live Refresh 핸드셰이크용) ──
-        schema_version: 'v1.0',   // mapping-engine.js MAPPING_ENGINE_VERSION과 비교
+        schema_version: 'v1.1',   // mapping-engine.js MAPPING_ENGINE_VERSION과 비교
         survey_type: 'hospital',
         // ── GAP-09 (2026-08-18): 이력 비교 — 동일 전화번호 직전 1회차 축 점수 변화량 ──
         axis_history: await (async () => {
@@ -6560,7 +6560,7 @@ app.get('/api/h/result/:id', async (c) => {
       created_at: diagRow.completed_at || diagRow.created_at,
       consultant_name: diagRow.partner_display_name || '',
       // ── Schema Versioning (mapping-engine.js Live Refresh 핸드셰이크용) ──
-      schema_version: 'v1.0',
+      schema_version: 'v1.1',
       survey_type: 'hospital',
       // ── GAP-09 (2026-08-18): 이력 비교 — 동일 전화번호 직전 1회차 축 점수 변화량 ──
       axis_history: await (async () => {
@@ -7274,7 +7274,7 @@ app.get('/api/a/result/:id', async (c) => {
       weight_loss_pct: row.weight_loss_pct,
       created_at:     row.created_at,
       // ── Schema Versioning (mapping-engine.js Live Refresh 핸드셰이크용) ──
-      schema_version: 'v1.0',
+      schema_version: 'v1.1',
       survey_type: row.survey_category || 'aesthetic',
     })
   } catch (e: any) {
