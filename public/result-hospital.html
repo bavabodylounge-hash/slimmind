@@ -4124,6 +4124,16 @@ p, div, span, h1, h2, h3, h4{
 .rxp-sca-s{font-size:12px;color:rgba(245,236,224,.6);line-height:1.5;}
 .rxp-sca-arr{width:32px;height:32px;border-radius:50%;background:var(--vis);color:#fff;font-size:16px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 /* ── 밝은 12주 업셀 (다크 없이) ── */
+/* ── rxp-compare: 두 미래의 분기 SVG 애니 ── */
+.rxp-compare{background:linear-gradient(145deg,#faf8ff,#fff9f5,#fef6fa);border:1.5px solid rgba(181,69,46,.14);border-radius:16px;padding:18px 16px;margin-bottom:14px;box-shadow:0 4px 20px rgba(181,69,46,.08);}
+.rxp-compare-eyebrow{text-align:center;font-size:11px;font-weight:900;letter-spacing:2px;color:var(--vis);margin-bottom:10px;}
+.rxp-compare-legend{display:flex;justify-content:center;gap:16px;margin-top:10px;}
+.rxp-compare-leg{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;color:#4a4266;}
+.rxp-compare-dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
+.rxp-compare-dot.go{background:linear-gradient(135deg,#ef6c00,#c0397a);}
+.rxp-compare-dot.stay{background:#bbb;}
+.rxp-compare-upsell{margin-top:10px;font-size:12.5px;line-height:1.55;color:#6a5a4a;text-align:center;padding:8px 10px;background:rgba(181,69,46,.06);border-radius:10px;}
+.rxp-compare-upsell b{color:#b5452e;}
 .up12{background:#fdf6ec;border:1.5px solid #e6cfa6;border-radius:16px;padding:18px 16px;margin-bottom:14px;}
 .up12-eyebrow{font-size:11px;font-weight:900;letter-spacing:.5px;color:#b07a28;margin-bottom:7px;}
 .up12-title{font-size:19px;font-weight:900;color:#3a2c1a;line-height:1.4;margin-bottom:16px;}
@@ -6197,6 +6207,19 @@ try{ ['log','info','warn','debug'].forEach(function(k){ console[k]=function(){};
     <span class="sub-pay">4주까지의 변화는 지금 바로 확인하세요.</span></p>
 
   <div class="rxp-sim2 fade-up" id="rxp-sim2"></div>
+
+  <!-- ── 두 미래의 분기 SVG 애니 (rxp-compare) ── -->
+  <div class="rxp-compare fade-up" id="rxp-compare">
+    <div class="rxp-compare-eyebrow">같은 12주, 다른 결과</div>
+    <svg id="rxpSvg" viewBox="0 0 320 148" preserveAspectRatio="xMidYMid meet" style="width:100%;display:block;border-radius:14px;overflow:visible"></svg>
+    <div class="rxp-compare-legend">
+      <span class="rxp-compare-leg go"><span class="rxp-compare-dot go"></span>진단대로</span>
+      <span class="rxp-compare-leg stay"><span class="rxp-compare-dot stay"></span>원인과 안 맞게</span>
+    </div>
+    <div class="rxp-compare-upsell">
+      체중은 굶어도 빠지지만, <b>지방을 태우고 몸 나이를 되돌리는 건</b> 진단이 정확할 때만
+    </div>
+  </div>
 
   <div class="up12 fade-up">
     <div class="up12-eyebrow">12주 풀 처방 · 컨설턴트 1:1</div>
@@ -13695,6 +13718,8 @@ function renderAll(data) {
   renderP5(metrics, bcCode, axisScores, userName);
   renderP8(metrics, bcCode, axisScores, userName);
   renderP9(metrics, bcCode, axisScores, data);
+  // ── 두 미래의 분기 SVG 애니 초기화 (P9 하단 rxp-compare 컨테이너)
+  if (typeof initRxpCompare === 'function') initRxpCompare(metrics);
   renderP6(userName, fullCode, ohaengType, data, bcCode, window.__RED_FLAGS__ || window._redFlags || []);
   renderP7(userName, bcCode, bcMaster, metrics, ohaengType, mbtiType, fullCode, nicknameDisplay, prescription, data);
 
@@ -16067,6 +16092,124 @@ function p9GoConsult(){
   btn.style.boxShadow = '0 0 0 4px rgba(181,69,46,.35), 0 10px 26px rgba(181,69,46,.3)';
   btn.style.transform = 'scale(1.02)';
   setTimeout(function(){ btn.style.boxShadow = prevSh||''; btn.style.transform = prevTr||''; }, 1200);
+}
+
+/* ── rxpCompare: 두 미래의 분기 SVG 애니 ── */
+function initRxpCompare(metrics) {
+  var svg = document.getElementById('rxpSvg');
+  if (!svg) return;
+  var W = 320, H = 148;
+
+  // 수치 규칙: 진단대로=체지방−5.7%p·몸나이−6 / 안맞게=×0.28→−1.6%p·×0.33→−2세
+  // Y축: 높을수록 개선(위로 솟구침)
+  // 공통 시작점 (왼쪽 중간)
+  var sx = 28, sy = H * 0.78;
+  // 진단대로 끝점 (오른쪽 위)
+  var gx = W - 28, gy = H * 0.16;
+  // 안맞게 끝점 (오른쪽 중간 아래)
+  var bx = W - 28, by = H * 0.60;
+
+  // bezier 제어점
+  var gc1x = sx + (gx-sx)*0.35, gc1y = sy;
+  var gc2x = sx + (gx-sx)*0.65, gc2y = gy;
+  var bc1x = sx + (bx-sx)*0.4,  bc1y = sy;
+  var bc2x = sx + (bx-sx)*0.7,  bc2y = by;
+
+  var goD  = 'M '+sx+' '+sy+' C '+gc1x+' '+gc1y+' '+gc2x+' '+gc2y+' '+gx+' '+gy;
+  var badD = 'M '+sx+' '+sy+' C '+bc1x+' '+bc1y+' '+bc2x+' '+bc2y+' '+bx+' '+by;
+
+  // SVG 내부 구성
+  svg.innerHTML = [
+    // 배경 gradient
+    '<defs>',
+    '<linearGradient id="goGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#ef6c00"/><stop offset="100%" stop-color="#c0397a"/></linearGradient>',
+    '</defs>',
+    // Y축 라벨
+    '<text x="'+(gx+6)+'" y="'+(gy+4)+'" font-size="10" font-weight="900" fill="#c0397a" font-family="inherit">진단대로</text>',
+    '<text x="'+(bx+6)+'" y="'+(by+4)+'" font-size="10" font-weight="700" fill="#999" font-family="inherit">안 맞게</text>',
+    // 시작점 흰 마커
+    '<circle cx="'+sx+'" cy="'+sy+'" r="5" fill="#fff" stroke="#ddd" stroke-width="1.5"/>',
+    // 안맞게 경로 (회색 먼저 — 아래 레이어)
+    '<path id="rxpBadPath" d="'+badD+'" fill="none" stroke="#ccc" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="300" stroke-dashoffset="300" opacity="0.8"/>',
+    '<circle id="rxpBadDot" cx="'+sx+'" cy="'+sy+'" r="5" fill="#bbb"/>',
+    // 진단대로 경로 (오렌지→핑크 그라디언트)
+    '<path id="rxpGoPath" d="'+goD+'" fill="none" stroke="url(#goGrad)" stroke-width="3" stroke-linecap="round" stroke-dasharray="400" stroke-dashoffset="400"/>',
+    '<text id="rxpGoStar" x="'+sx+'" y="'+sy+'" font-size="14" text-anchor="middle" dominant-baseline="middle" fill="#ef6c00" opacity="0">★</text>',
+  ].join('');
+
+  // 길이 계산
+  var goPath  = document.getElementById('rxpGoPath');
+  var badPath = document.getElementById('rxpBadPath');
+  if (!goPath || !badPath) return;
+  var goLen  = goPath.getTotalLength  ? goPath.getTotalLength()  : 400;
+  var badLen = badPath.getTotalLength ? badPath.getTotalLength() : 300;
+  goPath.setAttribute('stroke-dasharray',  goLen);
+  goPath.setAttribute('stroke-dashoffset', goLen);
+  badPath.setAttribute('stroke-dasharray',  badLen);
+  badPath.setAttribute('stroke-dashoffset', badLen);
+
+  var played = false;
+  function animate() {
+    if (played) return;
+    played = true;
+    var start = null;
+    var duration = 1600; // ms
+    var goStar  = document.getElementById('rxpGoStar');
+    var badDot  = document.getElementById('rxpBadDot');
+
+    function step(ts) {
+      if (!start) start = ts;
+      var t = Math.min((ts - start) / duration, 1);
+      // easeInOut cubic
+      var e = t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2;
+
+      // 진단대로 경로
+      goPath.setAttribute('stroke-dashoffset', goLen * (1-e));
+      // 안맞게 경로 (약간 늦게 시작)
+      var bt = Math.max(0, (t - 0.1) / 0.9);
+      var be = bt < 0.5 ? 4*bt*bt*bt : 1 - Math.pow(-2*bt+2,3)/2;
+      badPath.setAttribute('stroke-dashoffset', badLen * (1-be));
+
+      // 별 아이콘 진단대로 경로 따라 이동
+      if (goPath.getPointAtLength && goStar) {
+        try {
+          var pt = goPath.getPointAtLength(goLen * e);
+          goStar.setAttribute('x', pt.x);
+          goStar.setAttribute('y', pt.y);
+          goStar.setAttribute('opacity', t > 0.1 ? '1' : '0');
+        } catch(err) {}
+      }
+      // 안맞게 점
+      if (badPath.getPointAtLength && badDot) {
+        try {
+          var bp = badPath.getPointAtLength(badLen * be);
+          badDot.setAttribute('cx', bp.x);
+          badDot.setAttribute('cy', bp.y);
+        } catch(err) {}
+      }
+
+      if (t < 1) {
+        requestAnimationFrame(step);
+      } else {
+        // 착지 후 별 반짝임
+        if (goStar) { goStar.setAttribute('font-size','18'); }
+      }
+    }
+    requestAnimationFrame(step);
+  }
+
+  // IntersectionObserver로 진입 시 1회 실행
+  if ('IntersectionObserver' in window) {
+    var obs = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if (en.isIntersecting) { animate(); obs.disconnect(); }
+      });
+    }, { threshold: 0.4 });
+    var wrap = document.getElementById('rxp-compare');
+    if (wrap) obs.observe(wrap);
+  } else {
+    animate();
+  }
 }
 
 /* ── P6 ── */
