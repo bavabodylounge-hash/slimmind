@@ -2,12 +2,8 @@
 -- 기존 BC-11~22 구버전 데이터를 DELETE 후 BC-1~16 신규 시드로 교체
 -- BC-1~9 기존 행은 REPLACE(UPDATE)로 덮어씀
 
--- ── 컬럼 호환성 보장: 없는 컬럼은 추가 (IF NOT EXISTS 대신 조건부 처리)
--- exercise_type, diet_type, core_supplement, lifestyle_tip 컬럼 추가 (미존재 시)
-ALTER TABLE bc_prescriptions ADD COLUMN exercise_type TEXT;
-ALTER TABLE bc_prescriptions ADD COLUMN diet_type TEXT;
-ALTER TABLE bc_prescriptions ADD COLUMN core_supplement TEXT;
-ALTER TABLE bc_prescriptions ADD COLUMN lifestyle_tip TEXT;
+-- ── 컬럼 호환성 보장: exercise_type, diet_type, core_supplement, lifestyle_tip
+-- 이 컬럼들은 이전 migration에서 이미 추가됨 → ALTER TABLE 불필요 (중복 제거)
 
 -- 구버전 BC-11~22 삭제 (신규 BC-11~16으로 교체)
 DELETE FROM bc_prescriptions WHERE bc_code IN (
