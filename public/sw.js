@@ -1,10 +1,17 @@
 /* =========================================================
-   SlimMind Service Worker  v2.0  (2026-08-01)
+   SlimMind Service Worker  v2.1  (2026-08-18)
+   ─────────────────────────────────────────────────────────
+   v2.1 변경:
+   - [FIX] Vary:* 헤더 포함 응답 cache.put() 차단
+     (TypeError: Failed to execute 'put' on 'Cache': Vary header contains '*')
+   - [FIX] networkFirst / cacheFirst null 반환 방지
+     (TypeError: Failed to convert value to 'Response')
+   - [FIX] FetchEvent promise rejection 완전 억제
    ─────────────────────────────────────────────────────────
    - 캐시명 slimmind-v2 (v1 자동 삭제)
    - HTML/API → Network First (캐시 무효화 강화)
    - Static   → Cache First  (오프라인 지원)
-   - Push     → 알림 표시 (D+28 체크)
+   - Push     → 알림 표시
    - NotificationClick → 오늘탭 이동
    - skipWaiting 메시지 수신 지원
    ========================================================= */
@@ -16,6 +23,29 @@ const PRE_CACHE = [
   '/static/baba_logo.png',
   '/static/pwa-common.js'
 ];
+
+/* ── 캐시 저장 가능 여부 판단 ──────────────────────────────
+   Vary: * 헤더가 있으면 cache.put()이 TypeError를 던진다.
+   또한 opaque(cross-origin), error 응답도 저장 불가.
+   ──────────────────────────────────────────────────────── */
+function isCacheable(res) {
+  if (!res || !res.ok) return false;
+  // cross-origin opaque 응답 차단
+  if (res.type !== 'basic' && res.type !== 'cors') return false;
+  // Vary: * 헤더 차단 — 이 헤더가 있으면 cache.put()이 TypeError
+  var vary = res.headers ? res.headers.get('Vary') : null;
+  if (vary && vary.indexOf('*') !== -1) return false;
+  return true;
+}
+
+/* ── 안전한 캐시 저장 ── */
+function safeCachePut(cache, req, res) {
+  try {
+    if (isCacheable(res)) {
+      cache.put(req, res.clone()).catch(function() {/* ignore */});
+    }
+  } catch (_) { /* ignore */ }
+}
 
 /* ── Install ── */
 self.addEventListener('install', function (e) {
@@ -56,10 +86,16 @@ self.addEventListener('message', function (e) {
 /* ── Fetch ── */
 self.addEventListener('fetch', function (e) {
   var req = e.request;
-  var url = new URL(req.url);
+  var url;
+  try {
+    url = new URL(req.url);
+  } catch (_) { return; }
 
   if (url.origin !== location.origin) return;
   if (req.method !== 'GET') return;
+
+  /* cdn-cgi/* 는 완전히 패스스루 (캐시 없음) */
+  if (url.pathname.startsWith('/cdn-cgi/')) return;
 
   /* API + HTML 동적 라우트 → Network First (항상 최신 데이터) */
   if (
@@ -79,29 +115,63 @@ self.addEventListener('fetch', function (e) {
   e.respondWith(cacheFirst(req));
 });
 
-/* ── Network First ── */
+/* ── Network First ──────────────────────────────────────────
+   [FIX v2.1]
+   1. cache.put()을 safeCachePut()으로 교체 → Vary:* 차단
+   2. fetch 실패 시 caches.match() null일 수 있음 → 404 Response 반환
+   3. 전체를 try-catch로 감싸 promise rejection 완전 억제
+   ──────────────────────────────────────────────────────────── */
 function networkFirst(req) {
   return fetch(req.clone()).then(function (res) {
-    if (res && res.ok && res.type === 'basic') {
-      var clone = res.clone();
-      caches.open(CACHE_NAME).then(function (c) { c.put(req, clone); });
+    if (res) {
+      caches.open(CACHE_NAME).then(function (c) {
+        safeCachePut(c, req, res);
+      }).catch(function() {/* ignore */});
     }
     return res;
   }).catch(function () {
-    return caches.match(req);
+    return caches.match(req).then(function(cached) {
+      /* 캐시도 없으면 오프라인 응답 — null 반환 방지 */
+      return cached || new Response('Network error — offline', {
+        status: 503,
+        headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+      });
+    }).catch(function() {
+      return new Response('Network error — offline', {
+        status: 503,
+        headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+      });
+    });
   });
 }
 
-/* ── Cache First ── */
+/* ── Cache First ──────────────────────────────────────────
+   [FIX v2.1]
+   1. safeCachePut() 사용
+   2. fetch 실패 / null 반환 방지
+   ────────────────────────────────────────────────────────── */
 function cacheFirst(req) {
   return caches.match(req).then(function (cached) {
     if (cached) return cached;
     return fetch(req).then(function (res) {
-      if (res && res.ok && res.type === 'basic') {
-        var clone = res.clone();
-        caches.open(CACHE_NAME).then(function (c) { c.put(req, clone); });
+      if (res) {
+        caches.open(CACHE_NAME).then(function (c) {
+          safeCachePut(c, req, res);
+        }).catch(function() {/* ignore */});
       }
-      return res;
+      return res || new Response('Not found', { status: 404 });
+    }).catch(function() {
+      return new Response('Network error — offline', {
+        status: 503,
+        headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+      });
+    });
+  }).catch(function() {
+    return fetch(req).catch(function() {
+      return new Response('Network error — offline', {
+        status: 503,
+        headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+      });
     });
   });
 }

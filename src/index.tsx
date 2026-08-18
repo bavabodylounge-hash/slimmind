@@ -6742,9 +6742,8 @@ try {
       'Surrogate-Control': 'no-store',
       'CDN-Cache-Control': 'no-store',
       'Cloudflare-CDN-Cache-Control': 'no-store',
-      'Vary': '*',
+      // [FIX v2.1] Vary:* 제거 — SW cache.put()이 Vary:* 헤더 응답을 TypeError로 거부함
       'Last-Modified': now,
-      'ETag': `"${id}-${deployTs}"`,
     })
   } catch (e: any) {
     return c.html('<h2>결과지를 불러올 수 없습니다</h2>', 500)
@@ -7215,9 +7214,8 @@ try {
       'Surrogate-Control': 'no-store',
       'CDN-Cache-Control': 'no-store',
       'Cloudflare-CDN-Cache-Control': 'no-store',
-      'Vary': '*',
+      // [FIX v2.1] Vary:* 제거 — SW cache.put()이 Vary:* 헤더 응답을 TypeError로 거부함
       'Last-Modified': now,
-      'ETag': `"${id}-${deployTs}"`,
     })
   } catch (e: any) {
     return c.html('<h2>결과지를 불러올 수 없습니다</h2>', 500)

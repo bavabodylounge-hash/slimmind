@@ -577,6 +577,7 @@
    * @returns {MappingResult}
    */
   function runMappingPipeline(rawAnswers, serverValues, opts) {
+    try {
     rawAnswers   = rawAnswers   || {};
     serverValues = serverValues || {};
     opts         = opts         || {};
@@ -651,6 +652,21 @@
       wasRecomputed : needRecompute,
       surveyType    : surveyType,
     };
+    } catch (e) {
+      // [Safe] 파이프라인 내부 오류 시 빈 결과 반환 — 스크립트 전체 중단 방지
+      console.warn('[MappingEngine] runMappingPipeline error:', e && e.message || e);
+      return {
+        axisScores    : {},
+        redFlags      : [],
+        bcAnswers     : {},
+        desire        : null,
+        dispProxy     : {},
+        mappingVersion: MAPPING_ENGINE_VERSION,
+        wasRecomputed : false,
+        surveyType    : opts && opts.surveyType || 'hospital',
+        _error        : e && e.message || String(e),
+      };
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
