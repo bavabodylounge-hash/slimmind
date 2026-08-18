@@ -14211,7 +14211,12 @@ function injectCoverInfo(userName, consultantName, createdAt){
   }
   var cw = document.getElementById('cover-consultant-wrap');
   var cn = document.getElementById('cover-consultant');
-  if(consultantName){ if(cn) cn.textContent = (typeof consultantLabel==='function'?consultantLabel(consultantName):consultantName); if(cw) cw.style.display=''; }
+  // [v3.1 FIX] consultantLabel이 '' 반환 시 (병원명/기관명) 섹션 숨김
+  if(consultantName){
+    var _clabel = (typeof consultantLabel==='function') ? consultantLabel(consultantName) : consultantName;
+    if(_clabel){ if(cn) cn.textContent = _clabel; if(cw) cw.style.display=''; }
+    else { if(cn) cn.textContent=''; if(cw) cw.style.display='none'; }
+  }
   else { if(cw) cw.style.display='none'; }
 }
 
@@ -21464,10 +21469,23 @@ var ROADMAP_PHASES = [
 ];
 
 // ── 컨설턴트 호칭 통일: 이름 → 컨설턴트 (이미 직함 있으면 유지) ──
+// [v3.1 FIX] consultantLabel — 병원명/기관명은 컨설턴트 표시 제외
+// 개인명 판별: 성(1자) + 이름(1~3자) = 2~4글자, 또는 ' 컨설턴트' 등 직함이 이미 포함
+function isPersonName(n) {
+  if (!n) return false;
+  // 이미 직함이 포함된 경우
+  if (/(컨설턴트|전문가|선생|코치|트레이너|쌤|원장|대표|매니저|디렉터|팀장|부장|과장|실장)/.test(n)) return true;
+  // 한글 2~4자 = 개인 이름 범주
+  if (/^[가-힣]{2,4}$/.test(n)) return true;
+  // 영문 이름 (First Last 패턴)
+  if (/^[A-Za-z]+([\s][A-Za-z]+)?$/.test(n) && n.length <= 20) return true;
+  return false;
+}
 function consultantLabel(name){
   var n = (name || '').trim();
-  if (!n) return '담당 컨설턴트';
-  if (/(컨설턴트|전문가|선생|코치|트레이너|쌤|원장|대표)$/.test(n)) return n;
+  if (!n) return '';  // 빈 문자열 반환 → 호출부에서 숨김 처리
+  if (!isPersonName(n)) return '';  // 병원명·기관명 → 숨김 처리
+  if (/(컨설턴트|전문가|선생|코치|트레이너|쌤|원장|대표|매니저|디렉터|팀장|부장|과장|실장)$/.test(n)) return n;
   return n + ' 컨설턴트';
 }
 window.consultantLabel = consultantLabel;
