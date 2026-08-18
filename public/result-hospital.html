@@ -10585,7 +10585,9 @@ function getMbtiOhaengInsights(bcMaster, ohaengKey, mbtiType, axisScores, redFla
 function getCruelHistoryTriggers(userName, ohaengKey, mbtiType, gender, menopause, axisScores, bcCode, redFlags, answers) {
   var _axs = axisScores || window.__AXIS_SCORES_FINAL__ || {};
   // ══ 데모 폴백(최상단): 축·답 전무하면 김지현 데모값 → 새 로직 시연 ══
-  if (!_axs || !_axs['A03']) {
+  // ★ 버그 수정: 실제 병원 데이터(_from_hospital)가 있으면 데모값 주입 안 함
+  var _hasRealDataTop = !!(window.__SM_DATA__ && window.__SM_DATA__._from_hospital);
+  if (!_hasRealDataTop && (!_axs || !_axs['A03'])) {
     _axs = { A01:5.5, A02:6.0, A03:9.2, A04:3.5, A05:4.8, A06:6.2, A07:7.8, A08:5.8, A09:3.0, A10:4.5 };
     axisScores = _axs;
     answers = answers || {};
@@ -11163,7 +11165,9 @@ function getCruelHistoryTriggers(userName, ohaengKey, mbtiType, gender, menopaus
   // ══ 잔혹사 재설계 v2: 14범주 후보 → 답 있는 것만 → 강도순 상위 3 ══
   var _s2 = _ans['stage2'] || {};
   // ══ 데모 폴백: 답·축 주입 없을 때 김지현 데모값으로 새 로직 시연 ══
-  var _demoMode = (!_ans['q8_trigger'] && (!_s2 || !_s2['12']) && !(_axs && _axs['A03']));
+  // ★ 버그 수정: 실제 병원 데이터(_from_hospital)가 있으면 데모값 주입 안 함
+  var _hasRealData = !!(window.__SM_DATA__ && window.__SM_DATA__._from_hospital);
+  var _demoMode = !_hasRealData && (!_ans['q8_trigger'] && (!_s2 || !_s2['12']) && !(_axs && _axs['A03']));
   if (_demoMode) {
     _q8Trigger = [1,0,0,0];        // q8: 수술·입원
     _s2 = { '12': 1 };             // 배경12: 완경
@@ -19984,7 +19988,9 @@ window.addEventListener('DOMContentLoaded', async () => {
       }
     } catch(_e) {}
 
-    /* 시연본: 재렌더 끔 — 구운 김지현 화면 고정(중복 방지) */
+    /* ★ 버그 수정: "시연본: 재렌더 끔" 주석이 renderAll 호출을 막고 있었음.
+       실제 데이터(resultData)로 정상 렌더링 복원. */
+    renderAll(resultData);
 
   } catch (initErr) {
     // 초기화 중 예외 발생 → 콘솔 기록 + 오버레이 즉시 해제
@@ -26679,6 +26685,18 @@ function __smDemoBootP8(){
   try{
     var btn=document.getElementById('rxp-play');
     if(!btn || btn.onclick) return;
+    /* ★ 버그 수정: 실제 사용자 데이터가 로드된 경우 데모 렌더링 전체 스킵
+       __SM_DATA__._from_hospital = true → loadHospitalResult()가 실제 데이터 로드 성공
+       이 경우 renderP4/P8/P9/P3를 김지현 하드코딩 값으로 재렌더하면 안 됨 */
+    if (window.__SM_DATA__ && window.__SM_DATA__._from_hospital) {
+      console.log('[__smDemoBootP8] 실제 병원 데이터 감지 → 데모 렌더링 스킵');
+      // P8 rxp-play 버튼 바인딩만 수행 (데모값 없이)
+      var _btn2 = document.getElementById('rxp-play');
+      if (_btn2 && !_btn2.onclick) {
+        _btn2.onclick = function(){ try{ if(window.rxpReplay) window.rxpReplay(true); }catch(e){} };
+      }
+      return;
+    }
     window._redFlags = (window._redFlags && window._redFlags.length) ? window._redFlags : ['THYROID'];
     window.__LAST_ANSWERS__ = window.__LAST_ANSWERS__ || {};
 function renderP8(metrics, bcCode, axisScores, userName) {
@@ -27327,38 +27345,49 @@ function renderP8(metrics, bcCode, axisScores, userName) {
        사람마다 [질문→축 점수→영역 환산]으로 달라지며, 시술은 상위 5위 내 진입 시 핵심 개방(병원판 문턱 규칙).
        아래는 김지현 P5 계산 결과(시연값). */
     window.__STRONG_AXES__ = (window.__P5_TOP3__ || ['호르몬','시술','회복']);  // 실제 P5 순서
-    renderP8(null, 'BC-13', {A01:5.5,A02:6.0,A03:9.2,A04:3.5,A05:4.8,A06:6.2,A07:7.8,A08:5.8,A09:3.0,A10:4.5}, '김지현');  // demoData와 동일 정본 축값
-    /* [시연본] 5장 변화예측 시동 — renderAll이 시연본에선 안 돌아 P9가 안 그려지던 문제 해결.
-       김지현 정본: 몸나이 53(1P와 동일)·복부46·호르몬68, 체중66.2·목표59·키160·나이52 */
+    /* ★ 수정: 실데이터 있으면 실데이터 축값 사용, 없으면 김지현 시연값 */
+    var _demoAxs = (window.__AXIS_SCORES_FINAL__ && Object.keys(window.__AXIS_SCORES_FINAL__).length >= 5)
+      ? window.__AXIS_SCORES_FINAL__
+      : {A01:5.5,A02:6.0,A03:9.2,A04:3.5,A05:4.8,A06:6.2,A07:7.8,A08:5.8,A09:3.0,A10:4.5};
+    var _demoD = window.__SM_DATA__ || {};
+    var _demoNm = _demoD.userName || '김지현';
+    var _demoBC = _demoD.bc_code || 'BC-13';
+    var _demoOh = _demoD.ohaengType || '수';
+    var _demoMB = _demoD.mbtiType || 'INFJ';
+    var _demoGn = _demoD.gender || 'female';
+    var _demoMeno = (_demoD.answers && _demoD.answers['Q_MENOPAUSE']) || 'meno';
+    var _demoRF = (_demoD.redFlags && _demoD.redFlags.length) ? _demoD.redFlags : ['THYROID','MENOPAUSE'];
+    var _demoAns = (_demoD.answers) || { Q_MENOPAUSE:'meno', Q02:'female', age_group:'50s', age:52 };
+    renderP8(null, _demoBC, _demoAxs, _demoNm);
+    /* [시연본] 5장 변화예측 시동 */
     try{
-      window.__AXIS_SCORES_FINAL__ = {A01:5.5,A02:6.0,A03:9.2,A04:3.5,A05:4.8,A06:6.2,A07:7.8,A08:5.8,A09:3.0,A10:4.5};
+      window.__AXIS_SCORES_FINAL__ = _demoAxs;
+      var _demoWt  = _demoD.weight      || 66.2;
+      var _demoGwt = _demoD.goal_weight || 59;
+      var _demoHt  = _demoD.height      || 160;
+      var _demoAge = _demoD.age         || 52;
       renderP9(
-        { metaAge:53, metaBelly:46, metaHormone:68, realAge:52, height:160 },
-        'BC-13',
-        {A01:5.5,A02:6.0,A03:9.2,A04:3.5,A05:4.8,A06:6.2,A07:7.8,A08:5.8,A09:3.0,A10:4.5},
-        { goal_weight:59, weight:66.2, height:160, bc_code:'BC-13',
-          axisScores:{A01:5.5,A02:6.0,A03:9.2,A04:3.5,A05:4.8,A06:6.2,A07:7.8,A08:5.8,A09:3.0,A10:4.5},
-          answers:{ height:160, weight:66.2, age:52 } }
+        { metaAge:(_demoD._metaAge||53), metaBelly:(_demoD._metaBelly||46), metaHormone:(_demoD._metaHormone||68), realAge:_demoAge, height:_demoHt },
+        _demoBC,
+        _demoAxs,
+        { goal_weight:_demoGwt, weight:_demoWt, height:_demoHt, bc_code:_demoBC,
+          axisScores:_demoAxs,
+          answers:{ height:_demoHt, weight:_demoWt, age:_demoAge } }
       );
     }catch(e){ console.warn('[demo renderP9]', e&&e.message); }
-    /* [시연본] 6장 잔혹사 시동 — renderAll이 시연본에선 안 돌아 P4가 안 그려지던 문제 해결.
-       김지현: 갑상선+호르몬 이중저하·생존모드·밤 무너짐(엔진 상위3). 박제도 이 결과로 갱신됨. */
+    /* [시연본] 6장 잔혹사 시동 */
     try{
-      renderP4('김지현','수','INFJ','female','meno',
-        {A01:5.5,A02:6.0,A03:9.2,A04:3.5,A05:4.8,A06:6.2,A07:7.8,A08:5.8,A09:3.0,A10:4.5},
-        'BC-13', ['THYROID','MENOPAUSE'],
-        { Q_MENOPAUSE:'meno', Q02:'female', age_group:'50s', age:52 });
+      renderP4(_demoNm, _demoOh, _demoMB, _demoGn, _demoMeno,
+        _demoAxs, _demoBC, _demoRF, _demoAns);
     }catch(e){ console.warn('[demo renderP4]', e&&e.message); }
-    /* [시연본] 7장 기질 시동 — renderAll이 시연본에선 안 돌아 P3가 renderAll에만 의존하던 문제.
-       김지현: BC-13·수·INFJ·A형·둥근형(5근거 교차). 박제도 이 결과와 일치 확인됨. */
+    /* [시연본] 7장 기질 시동 */
     try{
-      var _p3bcM = (window.BC_MASTER && window.BC_MASTER['BC-13']) || {code:'BC-13'};
-      var _p3oh  = (window.SAJU_ELEMENT_DESC && window.SAJU_ELEMENT_DESC['수']) || {label:'수 기질'};
-      var _p3mb  = (window.MBTI_DESC && window.MBTI_DESC['INFJ']) || {};
+      var _p3bcM = (window.BC_MASTER && window.BC_MASTER[_demoBC]) || {code:_demoBC};
+      var _p3oh  = (window.SAJU_ELEMENT_DESC && window.SAJU_ELEMENT_DESC[_demoOh]) || {label:_demoOh+' 기질'};
+      var _p3mb  = (window.MBTI_DESC && window.MBTI_DESC[_demoMB]) || {};
       window.triggers = window.triggers || [];
-      renderP3('김지현','BC-13',_p3bcM,'수',_p3oh,'INFJ',_p3mb,'female','meno',
-        {A01:5.5,A02:6.0,A03:9.2,A04:3.5,A05:4.8,A06:6.2,A07:7.8,A08:5.8,A09:3.0,A10:4.5},
-        ['THYROID','MENOPAUSE'], {});
+      renderP3(_demoNm, _demoBC, _p3bcM, _demoOh, _p3oh, _demoMB, _p3mb, _demoGn, _demoMeno,
+        _demoAxs, _demoRF, _demoAns);
     }catch(e){ console.warn('[demo renderP3]', e&&e.message); }
     try{ if(typeof window.bindUnifiedGrid==='function') window.bindUnifiedGrid(); }catch(e){ console.warn('[demo bindGrid]', e&&e.message); }
     try{ if(typeof window.bindMealMatrix==='function') window.bindMealMatrix(); }catch(e){}
