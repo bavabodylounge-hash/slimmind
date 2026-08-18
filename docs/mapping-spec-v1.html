@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SlimMind — window.__RESULT__ ↔ DOM 1:1 매핑 명세서 v1.1</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Apple SD Gothic Neo',Pretendard,'Noto Sans KR',sans-serif;font-size:13px;line-height:1.6;background:#f9f7f4;color:#2d2a26}
+.wrap{max-width:1100px;margin:0 auto;padding:24px 16px 80px}
+h1{font-size:20px;font-weight:800;color:#5a3fa0;margin-bottom:4px}
+.subtitle{font-size:12px;color:#8c7f70;margin-bottom:24px}
+h2{font-size:15px;font-weight:700;color:#3d2d8a;margin:32px 0 10px;border-left:4px solid #8b7fd4;padding-left:10px}
+h3{font-size:13px;font-weight:700;color:#5a3fa0;margin:18px 0 6px}
+table{width:100%;border-collapse:collapse;margin-bottom:18px;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+th{background:#5a3fa0;color:#fff;font-weight:700;padding:8px 10px;text-align:left;font-size:12px}
+td{padding:7px 10px;border-bottom:1px solid #ede8e0;font-size:12px;vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr:nth-child(even) td{background:#faf8f5}
+.dom-id{font-family:'SF Mono',Consolas,monospace;font-size:11px;background:#eee8ff;color:#4a2d9a;padding:1px 5px;border-radius:3px;white-space:nowrap}
+.data-key{font-family:'SF Mono',Consolas,monospace;font-size:11px;background:#e8f4ff;color:#1a5fa0;padding:1px 5px;border-radius:3px;white-space:nowrap}
+.func-name{font-family:'SF Mono',Consolas,monospace;font-size:11px;background:#e8ffe8;color:#1a6a1a;padding:1px 5px;border-radius:3px}
+.badge{display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-right:3px}
+.badge-ok{background:#d4edda;color:#155724}
+.badge-warn{background:#fff3cd;color:#856404}
+.badge-err{background:#f8d7da;color:#721c24}
+.badge-note{background:#d1ecf1;color:#0c5460}
+.section-note{background:#fffbe6;border-left:3px solid #f0c040;padding:10px 14px;border-radius:5px;margin-bottom:16px;font-size:12px;color:#6b5000}
+.legend{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px}
+code{font-family:'SF Mono',Consolas,monospace;font-size:11px;background:#f0edf8;padding:0 4px;border-radius:3px}
+.toc{background:#fff;border-radius:8px;padding:16px 20px;margin-bottom:28px;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+.toc li{margin:3px 0}
+.toc a{color:#5a3fa0;text-decoration:none;font-size:12px}
+.toc a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>🗂️ SlimMind window.__RESULT__ ↔ DOM 1:1 매핑 명세서</h1>
+<div class="subtitle">v1.1 · 2026-08-18 · result-hospital.html 기준 · 병원 플로우(loadHospitalResult) 전용</div>
+
+<div class="section-note">
+  <strong>목적:</strong> 서버 API <code>/api/h/result/:id</code> 응답 → <code>loadHospitalResult()</code> 변환 → <code>renderAll(data)</code> 진입 → 각 섹션 render 함수가 DOM에 실제 바인딩하는 경로를 1:1로 문서화.<br>
+  <strong>범위:</strong> P1(바디코드 진단) ~ P9(대사나이 시뮬레이터) + 커버/TOC/WOW 섹션.<br>
+  <strong>표기 규칙:</strong> <code>__RESULT__</code>는 <code>loadHospitalResult()</code>가 반환하는 <code>resultData</code> 객체 기준 (API 응답이 아닌 변환 후 값).
+</div>
+
+<div class="legend">
+  <span class="badge badge-ok">✅ 정상</span><span class="legend-item">동적 주입 완료</span>
+  <span class="badge badge-warn">⚠️ 주의</span><span class="legend-item">조건부/fallback 처리</span>
+  <span class="badge badge-err">❌ 누락</span><span class="legend-item">미바인딩·하드코딩 잔존</span>
+  <span class="badge badge-note">ℹ️ 참고</span><span class="legend-item">내부 계산 결과 바인딩</span>
+</div>
+
+<div class="toc">
+  <strong>목차</strong>
+  <ol>
+    <li><a href="#cover">표 ① 커버·TOC 섹션</a></li>
+    <li><a href="#p1">표 ② P1 바디코드 진단</a></li>
+    <li><a href="#p2">표 ③ P2 원인 분석</a></li>
+    <li><a href="#p3">표 ④ P3 기질 처방</a></li>
+    <li><a href="#p4">표 ⑤ P4 트리거 3개</a></li>
+    <li><a href="#p5">표 ⑥ P5 강점/약점 축</a></li>
+    <li><a href="#p6">표 ⑦ P6 병원 진단 요약</a></li>
+    <li><a href="#p7">표 ⑧ P7 결론 페이지</a></li>
+    <li><a href="#p8">표 ⑨ P8 운동 처방</a></li>
+    <li><a href="#p9">표 ⑩ P9 대사나이 시뮬레이터</a></li>
+    <li><a href="#subtype">표 ⑪ 25종 아형 SUBTYPE_NARR 전수 검사</a></li>
+    <li><a href="#dataflow">표 ⑫ __RESULT__ 전체 필드 소스 트레이스</a></li>
+  </ol>
+</div>
+
+<!-- ① 커버 -->
+<h2 id="cover">표 ① 커버·TOC 섹션 — <code>injectCoverInfo(userName, consultantName, createdAt)</code></h2>
+<table>
+  <tr><th>DOM ID</th><th>__RESULT__ 필드</th><th>처리 함수</th><th>바인딩 방식</th><th>상태</th></tr>
+  <tr>
+    <td><span class="dom-id">cover-username</span></td>
+    <td><span class="data-key">userName</span></td>
+    <td><span class="func-name">injectCoverInfo()</span></td>
+    <td>textContent = userName</td>
+    <td><span class="badge badge-ok">✅</span> Fix-10 완료</td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">cover-sub-name</span></td>
+    <td><span class="data-key">userName</span></td>
+    <td><span class="func-name">injectCoverInfo()</span></td>
+    <td>textContent = userName + "님의 바디코드 리포트"</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">cover-date</span></td>
+    <td><span class="data-key">created_at</span></td>
+    <td><span class="func-name">injectCoverInfo()</span></td>
+    <td>textContent = 날짜 포맷 (YYYY.MM.DD)</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">cover-consultant</span></td>
+    <td><span class="data-key">consultant_name</span></td>
+    <td><span class="func-name">injectCoverInfo()</span></td>
+    <td>textContent = consultantName; wrap 표시/숨김</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">cover-consultant-wrap</span></td>
+    <td><span class="data-key">consultant_name</span></td>
+    <td><span class="func-name">injectCoverInfo()</span></td>
+    <td>style.display = consultantName ? '' : 'none'</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">cvx-step-bc-desc</span></td>
+    <td><span class="data-key">userName</span></td>
+    <td><span class="func-name">injectCoverInfo()</span></td>
+    <td>textContent = "{userName}님이 들려준 88개의 대답이, 하나의 이름이 됩니다 — 1장에서 만나요"</td>
+    <td><span class="badge badge-ok">✅</span> Fix-19 완료</td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">cvx-toc</span></td>
+    <td><span class="data-key">userName</span>, <span class="data-key">bc_code</span></td>
+    <td><span class="func-name">injectCoverInfo()</span> → TOC 내부 텍스트</td>
+    <td>TOC 항목 innerText 교체</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+</table>
+
+<!-- ② P1 -->
+<h2 id="p1">표 ② P1 바디코드 진단 — <code>renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nicknameDisplay, background, ...)</code></h2>
+<div class="section-note">
+  <strong>핵심 입력:</strong> <code>userName</code> · <code>bcCode</code>(DB 고정) · <code>bcMaster</code>(BC_MASTER 테이블) · <code>metrics</code>(computeBodyMetrics) · <code>axisScores</code> · <code>fullCode</code>(nickname·오행·MBTI 조합) · <code>background</code>(detectBackground) · <code>answers</code>(bc-engine 호환키)
+</div>
+<table>
+  <tr><th>DOM ID</th><th>__RESULT__ 필드</th><th>처리 함수</th><th>바인딩 방식</th><th>상태</th></tr>
+  <tr>
+    <td><span class="dom-id">p1-nickname</span></td>
+    <td><span class="data-key">bc_code</span> → bcMaster.app_nickname</td>
+    <td><span class="func-name">renderP1()</span></td>
+    <td>innerHTML = nicknameDisplay (이모지 포함)</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p1-bc-code</span></td>
+    <td><span class="data-key">bc_code</span></td>
+    <td><span class="func-name">renderP1()</span></td>
+    <td>textContent = bcCode; data-code 속성</td>
+    <td><span class="badge badge-ok">✅</span> Fix-6 완료</td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p1-medical-title</span></td>
+    <td><span class="data-key">bc_code</span> → bcMaster.medical_title</td>
+    <td><span class="func-name">renderP1()</span></td>
+    <td>textContent = bcMaster.medical_title</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p1-subtitle</span></td>
+    <td><span class="data-key">bc_code</span> → bcMaster.subtitle</td>
+    <td><span class="func-name">renderP1()</span></td>
+    <td>innerHTML = bcMaster.subtitle</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p1-leadin-nick</span></td>
+    <td><span class="data-key">userName</span></td>
+    <td><span class="func-name">renderP1()</span></td>
+    <td>textContent = userName + "님"</td>
+    <td><span class="badge badge-ok">✅</span> Fix-4 완료</td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p1-full-code</span></td>
+    <td><span class="data-key">bc_code</span> + <span class="data-key">ohaengType</span> + <span class="data-key">mbtiType</span></td>
+    <td><span class="func-name">renderP1()</span></td>
+    <td>textContent = "{nickname} · {오행라벨} · {MBTI}"</td>
+    <td><span class="badge badge-ok">✅</span> Fix-5 완료</td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p1-metrics</span></td>
+    <td><span class="data-key">axisScores</span> → computeBodyMetrics() → metaAge, metaBelly, metaHormone</td>
+    <td><span class="func-name">renderP1()</span></td>
+    <td>innerHTML='' 후 appendChild (메트릭 카드 동적 생성)</td>
+    <td><span class="badge badge-ok">✅</span> Fix-1,7 완료 (이중표시 해결)</td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p1-meta-age</span></td>
+    <td><span class="data-key">axisScores</span> → metrics.metaAge</td>
+    <td><span class="func-name">renderP1()</span> 내부</td>
+    <td>textContent = metaAge + "세"</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p1-story</span></td>
+    <td><span class="data-key">bc_code</span> → SUBTYPE_NARR[subtype].story (decideSubtype 결과)</td>
+    <td><span class="func-name">renderP1()</span></td>
+    <td>innerHTML = _fillSlots(subtypeNarr.story, ctx)</td>
+    <td><span class="badge badge-ok">✅</span> Fix-2 완료</td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p1-fail-desc</span></td>
+    <td><span class="data-key">bc_code</span> → SUBTYPE_NARR[subtype].desc</td>
+    <td><span class="func-name">renderP1()</span></td>
+    <td>innerHTML = _fillSlots(subtypeNarr.desc, ctx)</td>
+    <td><span class="badge badge-ok">✅</span> Fix-3 완료</td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p1-bc-grid</span></td>
+    <td><span class="data-key">axisScores</span></td>
+    <td><span class="func-name">renderP1()</span></td>
+    <td>축 점수 바(bar) 동적 생성</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+</table>
+
+<!-- ③ P2 -->
+<h2 id="p2">표 ③ P2 원인 분석 — <code>renderP2(userName, bcCode, firstDomino, axisScores, sorted)</code></h2>
+<div class="section-note"><strong>입력:</strong> <code>bc_code</code>(DB 고정) · <code>firstDomino</code>(가장 높은 축) · <code>axisScores</code> · <code>sorted</code>(축 점수 내림차순 배열)</div>
+<table>
+  <tr><th>DOM ID</th><th>__RESULT__ 필드</th><th>처리 함수</th><th>바인딩 방식</th><th>상태</th></tr>
+  <tr>
+    <td><span class="dom-id">p2-title</span></td>
+    <td><span class="data-key">bc_code</span></td>
+    <td><span class="func-name">renderP2()</span></td>
+    <td>innerHTML = "당신이 &lt;em&gt;{bcCode}&lt;/em&gt;인 이유"</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p2-story</span></td>
+    <td><span class="data-key">bc_code</span> → bcMaster.story 또는 background</td>
+    <td><span class="func-name">renderP2()</span></td>
+    <td>innerHTML = 배경 서사 HTML</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p2-axis-zones</span></td>
+    <td><span class="data-key">axisScores</span></td>
+    <td><span class="func-name">renderP2()</span></td>
+    <td>축 바(bar) 동적 생성 + data-axis 속성</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p2-gap</span></td>
+    <td><span class="data-key">axisScores</span> → sorted[0] - sorted[1]</td>
+    <td><span class="func-name">renderP2()</span></td>
+    <td>gv-diff 텍스트 업데이트</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p2-chain</span></td>
+    <td><span class="data-key">axisScores</span> → 도미노 체인</td>
+    <td><span class="func-name">renderP2()</span></td>
+    <td>domino-step 동적 연결 (hover 연동)</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+</table>
+
+<!-- ④ P3 -->
+<h2 id="p3">표 ④ P3 기질 처방 — <code>renderP3(userName, bcCode, bcMaster, ohaengKey, ohaeng, mbtiType, mbti, fullCode, prescription, answers, bloodType, faceShape, axisScores, redFlags)</code></h2>
+<table>
+  <tr><th>DOM ID</th><th>__RESULT__ 필드</th><th>처리 함수</th><th>바인딩 방식</th><th>상태</th></tr>
+  <tr>
+    <td><span class="dom-id">p3-insights</span></td>
+    <td><span class="data-key">ohaengType</span> · <span class="data-key">mbtiType</span> · <span class="data-key">answers.Q_BLOOD</span></td>
+    <td><span class="func-name">renderP3()</span></td>
+    <td>인사이트 카드 동적 생성</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p3-mentalrx-mount</span></td>
+    <td><span class="data-key">bc_code</span> · <span class="data-key">answers</span> → redFlags</td>
+    <td><span class="func-name">renderP3()</span></td>
+    <td>심리 처방 카드 innerHTML 교체</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p3-lock-mount</span></td>
+    <td><span class="data-key">bc_code</span></td>
+    <td><span class="func-name">renderP3()</span></td>
+    <td>잠금 카드 동적 생성</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">wow3-main-title</span></td>
+    <td><span class="data-key">userName</span></td>
+    <td><span class="func-name">renderP3()/renderP4()</span></td>
+    <td>innerHTML = "{userName} 님의 데이터가 가리키는 3가지 무너짐 지점"</td>
+    <td><span class="badge badge-ok">✅</span> Fix-11 완료</td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">wow3-risk-list</span></td>
+    <td><span class="data-key">axisScores</span> · <span class="data-key">bc_code</span> · <span class="data-key">answers</span></td>
+    <td><span class="func-name">renderP3()/renderP4()</span></td>
+    <td>wow3-risk-item × 3 동적 생성</td>
+    <td><span class="badge badge-ok">✅</span> Fix-12 완료</td>
+  </tr>
+</table>
+
+<!-- ⑤ P4 -->
+<h2 id="p4">표 ⑤ P4 트리거 3개 — <code>renderP4(userName, ohaengKey, mbtiType, gender, menopause, axisScores, bcCode, redFlags, answers)</code></h2>
+<div class="section-note"><strong>입력:</strong> <code>userName</code> · <code>ohaengType</code> · <code>mbtiType</code> · <code>answers.Q02</code>(gender) · <code>answers.Q_MENOPAUSE</code> · <code>axisScores</code> · <code>bc_code</code> · <code>redFlags</code> · <code>answers</code></div>
+<table>
+  <tr><th>DOM ID</th><th>__RESULT__ 필드</th><th>처리 함수</th><th>바인딩 방식</th><th>상태</th></tr>
+  <tr>
+    <td><span class="dom-id">p4-triggers</span></td>
+    <td><span class="data-key">axisScores</span> · <span class="data-key">bc_code</span> · <span class="data-key">answers</span>(q8_trigger 등)</td>
+    <td><span class="func-name">renderP4()</span></td>
+    <td>container.innerHTML='' → 트리거 카드 3개 appendChild</td>
+    <td><span class="badge badge-ok">✅</span> Fix-9 완료</td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p4-ending-mount</span></td>
+    <td><span class="data-key">userName</span> · <span class="data-key">bc_code</span></td>
+    <td><span class="func-name">renderP4()</span></td>
+    <td>mount.innerHTML = 엔딩 문장 템플릿 리터럴</td>
+    <td><span class="badge badge-ok">✅</span> Fix-13 완료</td>
+  </tr>
+</table>
+
+<!-- ⑥ P5 -->
+<h2 id="p5">표 ⑥ P5 강점/약점 축 — <code>renderP5(metrics, bcCode, axisScores, userName)</code></h2>
+<div class="section-note"><strong>입력:</strong> <code>metrics</code>(computeBodyMetrics 결과) · <code>bc_code</code> · <code>axisScores</code> · <code>userName</code></div>
+<table>
+  <tr><th>DOM ID</th><th>__RESULT__ 필드</th><th>처리 함수</th><th>바인딩 방식</th><th>상태</th></tr>
+  <tr>
+    <td><span class="dom-id">p5-title</span></td>
+    <td><span class="data-key">userName</span></td>
+    <td><span class="func-name">renderP5()</span></td>
+    <td>innerHTML = "그래서, &lt;em&gt;{userName}님&lt;/em&gt;은&lt;br&gt;무엇부터 시작해야 할까요?"</td>
+    <td><span class="badge badge-ok">✅</span> Fix-14 완료</td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p5-strong-sub</span></td>
+    <td><span class="data-key">bc_code</span></td>
+    <td><span class="func-name">renderP5()</span></td>
+    <td>innerHTML = "같은 {bcCode}... " (강점 부제목)</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p5-strong-cnt</span></td>
+    <td><span class="data-key">axisScores</span> → STRONG 축 수</td>
+    <td><span class="func-name">renderP5()</span></td>
+    <td>textContent = STRONG.length + "개"</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p5-none-cnt</span></td>
+    <td><span class="data-key">axisScores</span> → NONE 축 수</td>
+    <td><span class="func-name">renderP5()</span></td>
+    <td>textContent = NONE.length + "개"</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p5-strong-list</span></td>
+    <td><span class="data-key">axisScores</span> · <span class="data-key">bc_code</span></td>
+    <td><span class="func-name">renderP5()</span></td>
+    <td>강점 축 카드 동적 생성</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p5-none-list</span></td>
+    <td><span class="data-key">axisScores</span> · <span class="data-key">bc_code</span></td>
+    <td><span class="func-name">renderP5()</span></td>
+    <td>약점 축 카드 동적 생성</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p5-ev-meta</span></td>
+    <td><span class="data-key">axisScores</span></td>
+    <td><span class="func-name">renderP5()</span></td>
+    <td>evidence meta 텍스트</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p5-next-name</span></td>
+    <td><span class="data-key">userName</span></td>
+    <td><span class="func-name">renderP5()</span></td>
+    <td>textContent = userName</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+</table>
+
+<!-- ⑦ P6 -->
+<h2 id="p6">표 ⑦ P6 병원 진단 요약 — <code>renderP6(userName, fullCode, ohaengType, inputData, bcCode_p6, redFlags_p6)</code></h2>
+<div class="section-note"><strong>입력:</strong> <code>userName</code> · <code>fullCode</code>(nickname·오행·MBTI) · <code>ohaengType</code> · <code>inputData</code>(전체 resultData) · <code>bc_code</code> · <code>redFlags</code></div>
+<table>
+  <tr><th>DOM ID</th><th>__RESULT__ 필드</th><th>처리 함수</th><th>바인딩 방식</th><th>상태</th></tr>
+  <tr>
+    <td><span class="dom-id">p6-name</span></td>
+    <td><span class="data-key">userName</span></td>
+    <td><span class="func-name">renderP6()</span></td>
+    <td>textContent = p6nm (성 제거된 이름)</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p6-name2</span></td>
+    <td><span class="data-key">userName</span></td>
+    <td><span class="func-name">renderP6()</span></td>
+    <td>textContent = p6nm</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p6-name2b</span></td>
+    <td><span class="data-key">userName</span></td>
+    <td><span class="func-name">renderP6()</span></td>
+    <td>textContent = p6nm</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p6-name3</span></td>
+    <td><span class="data-key">userName</span></td>
+    <td><span class="func-name">renderP6()</span></td>
+    <td>textContent = p6nm</td>
+    <td><span class="badge badge-ok">✅</span> Fix-16 완료</td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p6-strong-axes</span></td>
+    <td><span class="data-key">axisScores</span></td>
+    <td><span class="func-name">renderP6()</span></td>
+    <td>강점 축 배지 innerHTML</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p6-diag-desc</span></td>
+    <td><span class="data-key">bc_code</span> · <span class="data-key">ohaengType</span></td>
+    <td><span class="func-name">renderP6()</span></td>
+    <td>진단 설명 innerHTML</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p6-hero-initial</span></td>
+    <td><span class="data-key">userName</span></td>
+    <td><span class="func-name">renderP6()</span></td>
+    <td>textContent = userName[0] (성 이니셜)</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p6-hero-consultant</span></td>
+    <td><span class="data-key">consultant_name</span></td>
+    <td><span class="func-name">renderP6()</span></td>
+    <td>textContent = consultant_name (빈 시 숨김)</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p6-bridge-note</span></td>
+    <td><span class="data-key">bc_code</span> · <span class="data-key">ohaengType</span></td>
+    <td><span class="func-name">renderP6()</span></td>
+    <td>브리지 노트 innerHTML</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p6-code-display</span></td>
+    <td><span class="data-key">bc_code</span></td>
+    <td><span class="func-name">renderP6()</span></td>
+    <td>textContent = bcCode_p6</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p6-dx-name</span></td>
+    <td><span class="data-key">userName</span></td>
+    <td><span class="func-name">renderP6()</span> 내부 dx 배너</td>
+    <td>textContent = userName</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p6-dx-banner-sub</span></td>
+    <td><span class="data-key">bc_code</span></td>
+    <td><span class="func-name">renderP6()</span></td>
+    <td>진단 배너 부제 innerHTML</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p6-dx-urgency-bar</span></td>
+    <td><span class="data-key">axisScores</span> · <span class="data-key">redFlags</span></td>
+    <td><span class="func-name">renderP6()</span></td>
+    <td>urgency 세그먼트 fill 조정</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p6-dx-timeline</span></td>
+    <td><span class="data-key">answers</span>(q8_trigger 등) · <span class="data-key">redFlags</span></td>
+    <td><span class="func-name">renderP6()</span></td>
+    <td>타임라인 아이템 동적 생성</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p6-accordion</span></td>
+    <td><span class="data-key">bc_code</span> · <span class="data-key">ohaengType</span></td>
+    <td><span class="func-name">renderP6()</span></td>
+    <td>아코디언 항목 동적 생성</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+</table>
+
+<!-- ⑧ P7 -->
+<h2 id="p7">표 ⑧ P7 결론 페이지 — <code>renderP7(userName, bcCode, bcMaster, metrics, ohaengType, mbtiType, fullCode, nicknameDisplay, prescription, data)</code></h2>
+<div class="section-note"><strong>입력:</strong> <code>userName</code> · <code>bc_code</code> · <code>bcMaster</code> · <code>metrics</code>(metaAge 포함) · <code>ohaengType</code> · <code>mbtiType</code> · <code>fullCode</code> · <code>nicknameDisplay</code> · <code>prescription</code> · <code>data</code>(전체 resultData)</div>
+<table>
+  <tr><th>DOM ID</th><th>__RESULT__ 필드</th><th>처리 함수</th><th>바인딩 방식</th><th>상태</th></tr>
+  <tr>
+    <td><span class="dom-id">p7-opening-title</span></td>
+    <td><span class="data-key">bc_code</span> → bcMaster.app_nickname</td>
+    <td><span class="func-name">renderP7()</span> → fillP7Up()</td>
+    <td>innerHTML = nicknameDisplay</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p7-opening-name</span></td>
+    <td><span class="data-key">userName</span></td>
+    <td><span class="func-name">renderP7()</span> → fillP7Up()</td>
+    <td>textContent = "— {userName}님 —"</td>
+    <td><span class="badge badge-ok">✅</span> Fix-17 완료</td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p7-truth-code</span></td>
+    <td><span class="data-key">bc_code</span></td>
+    <td><span class="func-name">renderP7()</span> → fillP7Final()</td>
+    <td>textContent = bcCode</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p7-age-before</span></td>
+    <td><span class="data-key">age</span> (pfProfile.birthY 기반)</td>
+    <td><span class="func-name">renderP7()</span></td>
+    <td>textContent = ageBefore + "세"</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p7-age-after</span></td>
+    <td><span class="data-key">axisScores</span> → metrics.metaAge</td>
+    <td><span class="func-name">renderP7()</span></td>
+    <td>textContent = ageAfter + "세"</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p7-age-badge</span></td>
+    <td><span class="data-key">axisScores</span> → delta(실나이 - 대사나이)</td>
+    <td><span class="func-name">renderP7()</span></td>
+    <td>innerHTML = "{delta}세 젊은 대사" 또는 "{delta}세 노화"</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p7-age-card</span></td>
+    <td><span class="data-key">axisScores</span> → metrics.metaAge</td>
+    <td><span class="func-name">renderP7()</span></td>
+    <td>style.display = metaAge ? '' : 'none'</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p7-prev-nickname</span></td>
+    <td><span class="data-key">bc_code</span> → bcMaster.app_nickname</td>
+    <td><span class="func-name">renderP7()</span></td>
+    <td>textContent = nicknameDisplay</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p7-prev-tagline</span></td>
+    <td><span class="data-key">bc_code</span> → bcMaster.tagline</td>
+    <td><span class="func-name">renderP7()</span></td>
+    <td>textContent = bcMaster.tagline</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p7-prev-s1</span></td>
+    <td><span class="data-key">axisScores</span> → metrics.metaAge</td>
+    <td><span class="func-name">renderP7()</span></td>
+    <td>innerHTML = 대사나이 서술 문장</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p7-prev-s1-num</span></td>
+    <td><span class="data-key">axisScores</span> → metrics.metaAge</td>
+    <td><span class="func-name">renderP7()</span></td>
+    <td>textContent = mAge</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p7-prev-codenum</span></td>
+    <td><span class="data-key">bc_code</span></td>
+    <td><span class="func-name">renderP7()</span></td>
+    <td>textContent = bcNum(숫자 부분)</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p7up-sub</span></td>
+    <td><span class="data-key">bc_code</span> · <span class="data-key">ohaengType</span> · <span class="data-key">mbtiType</span></td>
+    <td><span class="func-name">renderP7()</span> → fillP7Up()</td>
+    <td>innerHTML = BC×기질 처방 요약</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p7close-name</span></td>
+    <td><span class="data-key">userName</span></td>
+    <td><span class="func-name">renderP7()</span></td>
+    <td>textContent = nmShort + "님"</td>
+    <td><span class="badge badge-ok">✅</span> Fix-18 완료</td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">p7-bridge-nm</span></td>
+    <td><span class="data-key">userName</span></td>
+    <td><span class="func-name">renderP7()</span></td>
+    <td>textContent = nmShort</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+</table>
+
+<!-- ⑨ P8 -->
+<h2 id="p8">표 ⑨ P8 운동 처방 — <code>renderP8(metrics, bcCode, axisScores, userName)</code></h2>
+<div class="section-note"><strong>가드:</strong> <code>__smDemoBootP8()</code>는 <code>window.__SM_DATA__._from_hospital === true</code> 시 전체 스킵. 즉, 병원 플로우에서는 renderP8만 동작.</div>
+<table>
+  <tr><th>DOM ID</th><th>__RESULT__ 필드</th><th>처리 함수</th><th>바인딩 방식</th><th>상태</th></tr>
+  <tr>
+    <td><span class="dom-id">p8-name</span></td>
+    <td><span class="data-key">userName</span></td>
+    <td><span class="func-name">renderP8()</span></td>
+    <td>textContent = p8nm (이름 단어)</td>
+    <td><span class="badge badge-ok">✅</span> Fix-15 완료</td>
+  </tr>
+  <tr>
+    <td><span class="dom-id">proc-reason-tx</span></td>
+    <td><span class="data-key">axisScores</span></td>
+    <td><span class="func-name">renderP8()</span></td>
+    <td>시술 권장 이유 텍스트 (A06/A02/A03/A04 기준)</td>
+    <td><span class="badge badge-ok">✅</span></td>
+  </tr>
+</table>
+
+<!-- ⑩ P9 -->
+<h2 id="p9">표 ⑩ P9 대사나이 시뮬레이터 — <code>renderP9(metrics, bcCode, axisScores, data)</code></h2>
+<div class="section-note">
+  <strong>핵심 가드:</strong> <code>curAge == null || realAge == null</code> 시 <code>early return</code> (Fix-8). height=null·weight=null일 때 BMI 계산 스킵, metaAge도 null → 시뮬레이터 블록 자체를 렌더링하지 않음.
+</div>
+<table>
+  <tr><th>DOM ID</th><th>__RESULT__ 필드</th><th>처리 함수</th><th>바인딩 방식</th><th>상태</th></tr>
+  <tr>
+    <td><span class="dom-id">p9-liveadvice</span></td>
+    <td><span class="data-key">axisScores</span> → metrics</td>
+    <td><span class="func-name">renderP9()</span> → renderLiveAdvice()</td>
+    <td>라이브 조언 카드 동적 생성</td>
+    <td><span class="badge badge-warn">⚠️</span> height/weight null이면 시뮬레이터 스킵 (Fix-8)</td>
+  </tr>
+  <tr>
+    <td>대사나이 카드 전체</td>
+    <td><span class="data-key">axisScores</span> → metrics.metaAge, .realAge</td>
+    <td><span class="func-name">renderP9()</span></td>
+    <td>시뮬레이터 카드 동적 생성 (null이면 렌더링 안 함)</td>
+    <td><span class="badge badge-ok">✅</span> Fix-8 (0세 버그 해결)</td>
+  </tr>
+</table>
+
+<!-- ⑪ 25종 아형 -->
+<h2 id="subtype">표 ⑪ 25종 아형 SUBTYPE_NARR 전수 검사</h2>
+<div class="section-note">
+  <strong>판정 경로:</strong> stage1[1](Q_MIRROR_ZONE→region) + stage1 질감(→texture) → <code>decideSubtype(region, texture, axisScores, bcCode, answers)</code> → SUBTYPE_RULES 매칭 → SUBTYPE_NARR[key] 조회.<br>
+  <strong>폴백:</strong> 부위/질감 매칭 실패 → SUBTYPE_BASE[bcCode] → '동시다발 다중악순환형'(BC-16).<br>
+  <strong>BC-17~BC-25:</strong> SUBTYPE_RULES에 없음 → 폴백으로 '동시다발 다중악순환형' 처리됨 (설계 의도 확인 필요).
+</div>
+<table>
+  <tr><th>아형명</th><th>BC코드</th><th>SUBTYPE_NARR</th><th>SUBTYPE_RULES</th><th>상태</th></tr>
+  <tr><td>오후만되면 코끼리다리형</td><td>BC-1</td><td><span class="badge badge-ok">✅</span></td><td><span class="badge badge-ok">✅</span></td><td>정상</td></tr>
+  <tr><td>엄마체형 하지정체형</td><td>BC-1</td><td><span class="badge badge-ok">✅</span></td><td><span class="badge badge-ok">✅</span></td><td>정상</td></tr>
+  <tr><td>목짧아지는 거북이형</td><td>BC-2</td><td><span class="badge badge-ok">✅</span></td><td><span class="badge badge-ok">✅</span></td><td>정상</td></tr>
+  <tr><td>남산수박배 기본형</td><td>BC-3</td><td><span class="badge badge-ok">✅</span></td><td><span class="badge badge-ok">✅</span> [BASE]</td><td>정상</td></tr>
+  <tr><td>식후기절 혈당롤러형</td><td>BC-3</td><td><span class="badge badge-ok">✅</span></td><td><span class="badge badge-ok">✅</span></td><td>정상</td></tr>
+  <tr><td>아빠체형 내장비대형</td><td>BC-3</td><td><span class="badge badge-ok">✅</span></td><td><span class="badge badge-ok">✅</span></td><td>정상</td></tr>
+  <tr><td>털털한 PCOS형</td><td>BC-3</td><td><span class="badge badge-ok">✅</span></td><td><span class="badge badge-ok">✅</span></td><td>정상</td></tr>
+  <tr><td>물만마셔도요요 기본형</td><td>BC-4</td><td><span class="badge badge-ok">✅</span></td><td><span class="badge badge-ok">✅</span> [BASE]</td><td>정상</td></tr>
+  <tr><td>약물부작용 강제축적형</td><td>BC-4</td><td><span class="badge badge-ok">✅</span></td><td><span class="badge badge-ok">✅</span></td><td>정상</td></tr>
+  <tr><td>억제제부작용 배부름마비형</td><td>BC-4</td><td><span class="badge badge-ok">✅</span></td><td><span class="badge badge-ok">✅</span></td><td>정상</td></tr>
+  <tr><td>셀룰라이트귤껍질 기본형</td><td>BC-5</td><td><span class="badge badge-ok">✅</span></td><td><span class="badge badge-ok">✅</span> [BASE]</td><td>정상</td></tr>
+  <tr><td>여름에도 시린 얼음장형</td><td>BC-5</td><td><span class="badge badge-ok">✅</span></td><td><span class="badge badge-ok">✅</span></td><td>정상</td></tr>
+  <tr><td>스트레스성 야식부엉이형</td><td>BC-6</td><td><span class="badge badge-ok">✅</span></td><td><span class="badge badge-ok">✅</span></td><td>정상</td></tr>
+  <tr><td>출산후 바람빠진 풍선형</td><td>BC-7</td><td><span class="badge badge-ok">✅</span></td><td><span class="badge badge-ok">✅</span></td><td>정상</td></tr>
+  <tr><td>식후임산부 가스풍선형</td><td>BC-7</td><td><span class="badge badge-ok">✅</span></td><td><span class="badge badge-ok">✅</span></td><td>정상</td></tr>
+  <tr><td>골반틀어짐 승마살형</td><td>BC-8</td><td><span class="badge badge-ok">✅</span></td><td><span class="badge badge-ok">✅</span></td><td>정상</td></tr>
+  <tr><td>운동할수록 말벅지형</td><td>BC-8</td><td><span class="badge badge-ok">✅</span></td><td><span class="badge badge-ok">✅</span></td><td>정상</td></tr>
+  <tr><td>팔다리거미 올챙이배형</td><td>BC-9</td><td><span class="badge badge-ok">✅</span></td><td><span class="badge badge-ok">✅</span></td><td>정상</td></tr>
+  <tr><td>안 쓰는 팔뚝 부종형</td><td>BC-10</td><td><span class="badge badge-ok">✅</span></td><td><span class="badge badge-ok">✅</span></td><td>정상</td></tr>
+  <tr><td>상체근육형</td><td>BC-11</td><td><span class="badge badge-ok">✅</span></td><td><span class="badge badge-ok">✅</span></td><td>정상</td></tr>
+  <tr><td>겨드랑이 부유방형</td><td>BC-12</td><td><span class="badge badge-ok">✅</span></td><td><span class="badge badge-ok">✅</span></td><td>정상</td></tr>
+  <tr><td>호르몬스위치 갱년기형</td><td>BC-13</td><td><span class="badge badge-ok">✅</span></td><td><span class="badge badge-ok">✅</span></td><td>정상</td></tr>
+  <tr><td>스트레스기절 번아웃형</td><td>BC-14</td><td><span class="badge badge-ok">✅</span></td><td><span class="badge badge-ok">✅</span></td><td>정상</td></tr>
+  <tr><td>대사증후군 종합형</td><td>BC-15</td><td><span class="badge badge-ok">✅</span></td><td><span class="badge badge-ok">✅</span></td><td>정상</td></tr>
+  <tr><td>동시다발 다중악순환형</td><td>BC-16</td><td><span class="badge badge-ok">✅</span></td><td><span class="badge badge-ok">✅</span></td><td>정상 + 폴백 기본값</td></tr>
+  <tr><td colspan="2"><em>BC-17 ~ BC-25</em></td><td>N/A</td><td><span class="badge badge-warn">⚠️ 없음</span></td><td><span class="badge badge-warn">⚠️ RULES 미등재</span> → '동시다발 다중악순환형' 폴백</td></tr>
+</table>
+<div class="section-note">
+  <strong>⚠️ BC-17~BC-25 미처리:</strong> SUBTYPE_RULES에 BC-17~25 항목이 없어 해당 고객은 항상 '동시다발 다중악순환형(BC-16)'으로 표시됩니다. 설계도상 BC-17~25가 실제 서비스 대상인 경우 SUBTYPE_RULES·SUBTYPE_NARR 추가 필요.
+</div>
+
+<!-- ⑫ 필드 소스 트레이스 -->
+<h2 id="dataflow">표 ⑫ __RESULT__ 전체 필드 소스 트레이스</h2>
+<div class="section-note">
+  소스: DB <code>hospital_responses</code> 테이블 → <code>loadHospitalResult()</code> 변환 → <code>renderAll(data)</code> 진입점.<br>
+  <code>axisScores</code>는 <strong>DB 저장값 우선</strong> (백엔드에서 0~100 정규화 완료). <code>bc_code</code>는 <strong>DB bc_primary 고정</strong> (computeBCCode 재계산 결과보다 우선).
+</div>
+<table>
+  <tr><th>__RESULT__ 필드</th><th>DB 컬럼</th><th>변환/계산</th><th>renderAll 경유 사용처</th></tr>
+  <tr>
+    <td><span class="data-key">userName</span></td>
+    <td>user_name</td>
+    <td>raw_answers.userInfo.name 폴백</td>
+    <td>injectCoverInfo · renderP1/P4/P5/P6/P7/P8</td>
+  </tr>
+  <tr>
+    <td><span class="data-key">bc_code / bc_primary</span></td>
+    <td>bc_code</td>
+    <td>DB 값 고정 (computeBCCode 우선적용 차단)</td>
+    <td>renderAll → 모든 renderPX</td>
+  </tr>
+  <tr>
+    <td><span class="data-key">axisScores</span></td>
+    <td>axis_scores (JSON)</td>
+    <td>DB 저장값 직접 사용 (A01~A10, 0~100 정규화)</td>
+    <td>computeBCCodeSafe · computeBodyMetrics · renderP1/P2/P5/P6/P7/P9</td>
+  </tr>
+  <tr>
+    <td><span class="data-key">ohaengType</span></td>
+    <td>ohaeng_type</td>
+    <td>pfProfile.saju 폴백</td>
+    <td>renderP3/P4/P6/P7/P8</td>
+  </tr>
+  <tr>
+    <td><span class="data-key">mbtiType</span></td>
+    <td>mbti_full</td>
+    <td>pfProfile.mbti 폴백 · 없으면 'INFP'</td>
+    <td>renderP3/P7/P8</td>
+  </tr>
+  <tr>
+    <td><span class="data-key">age</span></td>
+    <td>age (DB null 가능)</td>
+    <td>pfProfile.birthY 기반 계산 우선: <code>new Date().getFullYear() - birthY</code></td>
+    <td>computeBodyMetrics → metrics.realAge → renderP7/P9</td>
+  </tr>
+  <tr>
+    <td><span class="data-key">height</span></td>
+    <td>height (DB null 가능)</td>
+    <td>없으면 computeBodyMetrics BMI 계산 스킵</td>
+    <td>renderP9 (null 시 시뮬레이터 스킵)</td>
+  </tr>
+  <tr>
+    <td><span class="data-key">weight</span></td>
+    <td>weight (DB null 가능)</td>
+    <td>없으면 BMI 계산 스킵</td>
+    <td>renderP9 (null 시 시뮬레이터 스킵)</td>
+  </tr>
+  <tr>
+    <td><span class="data-key">goal_weight</span></td>
+    <td>goal_weight</td>
+    <td>Number() 변환</td>
+    <td>renderP5/P6/P7 (목표 체중 카드)</td>
+  </tr>
+  <tr>
+    <td><span class="data-key">weight_loss_pct</span></td>
+    <td>weight_loss_pct</td>
+    <td>Number() 변환</td>
+    <td>renderP5/P6 (감량률 카드)</td>
+  </tr>
+  <tr>
+    <td><span class="data-key">bloodType</span></td>
+    <td>-</td>
+    <td>pfProfile.blood</td>
+    <td>renderP3 (혈액형 기질 카드)</td>
+  </tr>
+  <tr>
+    <td><span class="data-key">faceShape</span></td>
+    <td>-</td>
+    <td>pfProfile.face</td>
+    <td>renderP3 (얼굴형 카드)</td>
+  </tr>
+  <tr>
+    <td><span class="data-key">consultant_name</span></td>
+    <td>-</td>
+    <td>r.consultant_name (API 응답에서)</td>
+    <td>injectCoverInfo · renderP6</td>
+  </tr>
+  <tr>
+    <td><span class="data-key">redFlags</span></td>
+    <td>-</td>
+    <td>loadHospitalResult에서 stage2 no:4/9/6/3 기반 동적 계산</td>
+    <td>renderP3/P4/P5/P6/P7 (경고 배지·처방)</td>
+  </tr>
+  <tr>
+    <td><span class="data-key">answers</span></td>
+    <td>raw_answers (JSON)</td>
+    <td>stage2/stage3/pfProfile → bc-engine 호환 키 변환 (bcAnswers)</td>
+    <td>renderP3/P4/P6/P7 (배경 분석, 트리거, 진단 요약)</td>
+  </tr>
+  <tr>
+    <td><span class="data-key">is_menopause</span></td>
+    <td>is_menopause</td>
+    <td>answers.Q_MENOPAUSE 매핑</td>
+    <td>renderP4 (갱년기 트리거 카드)</td>
+  </tr>
+  <tr>
+    <td><span class="data-key">_from_hospital</span></td>
+    <td>-</td>
+    <td>loadHospitalResult 성공 시 true 고정</td>
+    <td>__smDemoBootP8() 가드 · renderAll 데모 분기 차단</td>
+  </tr>
+  <tr>
+    <td><span class="data-key">created_at</span></td>
+    <td>created_at</td>
+    <td>ISO 문자열 → YYYY.MM.DD 포맷</td>
+    <td>injectCoverInfo (커버 날짜)</td>
+  </tr>
+</table>
+
+<!-- 특이사항 -->
+<h2>특이사항 및 주의점</h2>
+<table>
+  <tr><th>항목</th><th>내용</th><th>우선순위</th></tr>
+  <tr>
+    <td>BC-17~BC-25 아형 누락</td>
+    <td>SUBTYPE_RULES에 BC-17~25 미등재. 해당 고객은 '동시다발 다중악순환형'으로 폴백 표시됨. 설계도상 실서비스 범위면 SUBTYPE_RULES + SUBTYPE_NARR 추가 필요.</td>
+    <td><span class="badge badge-warn">⚠️ 확인필요</span></td>
+  </tr>
+  <tr>
+    <td>height/weight DB null (김예슬 등)</td>
+    <td>P9 시뮬레이터가 early return. P7 대사나이 카드에도 metaAge null이면 age-card 숨김. 신체정보 미입력 고객 예상 렌더링: P9 없음, P7 age-card 숨김.</td>
+    <td><span class="badge badge-warn">⚠️ 정상 처리 확인</span></td>
+  </tr>
+  <tr>
+    <td>__smDemoBootP8 중복 renderP8</td>
+    <td>line 26653에 renderP8 복사본 존재. _from_hospital 가드로 실데이터 시 스킵됨. 단, 가드 우회 시 이중 렌더링 위험.</td>
+    <td><span class="badge badge-note">ℹ️ 주의</span></td>
+  </tr>
+  <tr>
+    <td>wow3-risk-list 이중 렌더링</td>
+    <td>renderP3()와 renderP4() 양쪽에서 #wow3-risk-list를 덮어씀. 두 번째 renderP4 실행이 최종값 결정. renderP3 호출 순서가 선행이므로 문제 없으나 중복 로직.</td>
+    <td><span class="badge badge-note">ℹ️ 참고</span></td>
+  </tr>
+  <tr>
+    <td>DB bc_primary 고정 (V4.9)</td>
+    <td>computeBCCode 재계산 결과보다 DB bc_primary 우선. axis_scores 변경 시에도 BC코드 변경 없음. 의도적 설계.</td>
+    <td><span class="badge badge-ok">✅ 정상</span></td>
+  </tr>
+</table>
+
+<div style="margin-top:40px;padding:16px;background:#f0edf8;border-radius:8px;font-size:11px;color:#5a3fa0">
+  <strong>Generated by:</strong> SlimMind B2B MappingEngine auto-doc v1.1 · 2026-08-18<br>
+  <strong>Source file:</strong> /home/user/webapp/public/result-hospital.html (27,538 lines)<br>
+  <strong>Verified against:</strong> 김예슬 고객 레코드 H-1784803880840-LPVSC (BC-5, 오행:금, MBTI:ENTP, birthY:1991)
+</div>
+</div>
+</body>
+</html>
