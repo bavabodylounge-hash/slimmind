@@ -1,5 +1,24 @@
 <!DOCTYPE html><html lang="ko"><head>
-
+<!-- [FIX v2.2] /cdn-cgi/* 리소스 404 에러 콘솔 억제 (Cloudflare RUM 등) -->
+<script>
+(function(){
+  window.addEventListener('error', function(e) {
+    if (!e) return;
+    var src = (e.target && (e.target.src || e.target.href)) || (e.filename) || '';
+    if (src && src.indexOf('/cdn-cgi/') !== -1) {
+      e.stopImmediatePropagation();
+      e.preventDefault();
+      return false;
+    }
+  }, true);
+  window.addEventListener('unhandledrejection', function(e) {
+    if (e && e.reason && String(e.reason).indexOf('cdn-cgi') !== -1) {
+      e.preventDefault();
+      return false;
+    }
+  });
+})();
+</script>
 <meta charset="UTF-8">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -7,7 +26,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SlimMind — 나의 바디코드 결과지</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
-<script defer="" src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- [FIX v2.2] chart.js 로컬 번들 전환 (CDN Tracking Prevention 차단 대비) -->
+<script defer="" src="/static/chart.umd.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Cormorant:wght@500;600;700&display=swap');
@@ -5570,8 +5590,8 @@ p, div, span, h1, h2, h3, h4{
 <!-- PWA 공통 모듈 v2.0 (세션 복원 + UA 모달 + SW 등록 + 웹푸시) -->
 
 <!-- Core Mapping Engine v1.0 — Live Refresh 핸드셰이크 + 파이프라인 모듈 -->
-<script src="/static/pwa-common.js?v=20260801" defer></script>
-<script src="/mapping-engine.js?v=20260803"></script>
+<script src="/static/pwa-common.js?v=20260818" defer></script>
+<script src="/mapping-engine.js?v=20260818"></script>
 
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="BAVA 성형외과">

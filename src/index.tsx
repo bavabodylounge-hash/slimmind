@@ -54,6 +54,27 @@ type JwtPayload = {
 // 방법 2: safari- 스킴 (구버전 호환)
 // ?_kref=1 파라미터: Safari로 열린 후에도 카카오 경유임을 pwa-common.js가 인식
 const KAKAO_ESCAPE_SCRIPT = `<script>
+/* [FIX v2.2] /cdn-cgi/* 리소스 404 에러 콘솔 억제
+   Cloudflare RUM(/cdn-cgi/rum) 등 내부 요청이 404로 콘솔에 빨간 에러를 남기는 문제 방지.
+   캡처 단계(true)에서 가장 먼저 잡아 stopImmediatePropagation()으로 전파 차단. */
+(function(){
+  window.addEventListener('error', function(e) {
+    if (!e) return;
+    var src = (e.target && (e.target.src || e.target.href)) || (e.filename) || '';
+    if (src && src.indexOf('/cdn-cgi/') !== -1) {
+      e.stopImmediatePropagation();
+      e.preventDefault();
+      return false;
+    }
+  }, true);
+  /* fetch 레벨 /cdn-cgi/* 응답 오류도 unhandledrejection으로 뜨지 않도록 */
+  window.addEventListener('unhandledrejection', function(e) {
+    if (e && e.reason && String(e.reason).indexOf('cdn-cgi') !== -1) {
+      e.preventDefault();
+      return false;
+    }
+  });
+})();
 (function(){
   var ua = navigator.userAgent || '';
   if (!/KAKAOTALK|Line\\/|Instagram|FBAN|FBAV/i.test(ua)) return;

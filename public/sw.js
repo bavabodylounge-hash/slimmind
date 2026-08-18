@@ -1,22 +1,27 @@
 /* =========================================================
-   SlimMind Service Worker  v2.1  (2026-08-18)
+   SlimMind Service Worker  v2.2  (2026-08-18)
    ─────────────────────────────────────────────────────────
+   v2.2 변경:
+   - [FIX] CACHE_NAME slimmind-v2 → slimmind-v3
+     구버전 캐시(v1, v2) 배포 즉시 자동 삭제 보장
+   - [FIX] 파일 최상단 self.skipWaiting() 즉시 실행
+     새 SW 설치 즉시 대기 없이 활성화
    v2.1 변경:
    - [FIX] Vary:* 헤더 포함 응답 cache.put() 차단
-     (TypeError: Failed to execute 'put' on 'Cache': Vary header contains '*')
    - [FIX] networkFirst / cacheFirst null 반환 방지
-     (TypeError: Failed to convert value to 'Response')
    - [FIX] FetchEvent promise rejection 완전 억제
    ─────────────────────────────────────────────────────────
-   - 캐시명 slimmind-v2 (v1 자동 삭제)
+   - 캐시명 slimmind-v3 (v1·v2 자동 삭제)
    - HTML/API → Network First (캐시 무효화 강화)
    - Static   → Cache First  (오프라인 지원)
    - Push     → 알림 표시
    - NotificationClick → 오늘탭 이동
-   - skipWaiting 메시지 수신 지원
    ========================================================= */
 
-const CACHE_NAME = 'slimmind-v2';
+/* ── 즉시 skipWaiting: 새 SW 설치 즉시 대기 없이 활성화 ── */
+self.skipWaiting();
+
+const CACHE_NAME = 'slimmind-v3';
 
 /* 앱 설치 시 프리캐시 목록 */
 const PRE_CACHE = [
@@ -59,6 +64,7 @@ self.addEventListener('install', function (e) {
       });
     })
   );
+  /* install 이벤트에서도 skipWaiting 재호출 (호환성) */
   self.skipWaiting();
 });
 
@@ -76,7 +82,7 @@ self.addEventListener('activate', function (e) {
   );
 });
 
-/* ── Message: skipWaiting 지원 ── */
+/* ── Message: skipWaiting 지원 (레거시 호환) ── */
 self.addEventListener('message', function (e) {
   if (e.data && e.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
