@@ -5866,11 +5866,13 @@ app.get('/api/v1/family-code/:code', async (c) => {
 // ════════════════════════════════════════════════════════
 app.get('/api/v1/stats/axis-rank', async (c) => {
   const db = (c.env as any).DB as D1Database
-  if (!db) return c.json({ error: 'DB not configured' }, 500)
+  // [FIX v3.0] DB 미구성 시 500 대신 200+빈 응답 반환 (Safe Fallback)
+  if (!db) return c.json({ total: 0, ranks: {}, simulated: true, fallback: true }, 200)
 
   try {
     const scoresParam = (c.req.query('scores') || '').trim()
-    if (!scoresParam) return c.json({ error: 'scores parameter required' }, 400)
+    // [FIX v3.0] scores 파라미터 없으면 400 대신 200+빈 응답 반환 (Zero-Error)
+    if (!scoresParam) return c.json({ total: 0, ranks: {}, simulated: true, fallback: true }, 200)
 
     // 내 점수 파싱: "A01:78,A03:92,..."
     const myScores: Record<string, number> = {}
@@ -5935,8 +5937,9 @@ app.get('/api/v1/stats/axis-rank', async (c) => {
       'Cache-Control': 'public, max-age=120',
     })
   } catch (e) {
+    // [FIX v3.0] 내부 오류 시 500 대신 200+빈 응답 (Safe Fallback, Zero-Error)
     console.error('[axis-rank]', e)
-    return c.json({ error: String(e) }, 500)
+    return c.json({ total: 0, ranks: {}, simulated: true, fallback: true, error: String(e) }, 200)
   }
 })
 
@@ -6653,7 +6656,8 @@ app.get('/api/h/result/:id', async (c) => {
 // ══════════════════════════════════════════════════════════════════
 app.get('/api/h/programs', async (c) => {
   const db = (c.env as any).DB as D1Database
-  if (!db) return c.json([], 500)
+  // [FIX v3.0] DB 미구성 시 500 대신 200+빈 배열 (Safe Fallback)
+  if (!db) return c.json([], 200)
 
   // 쿼리 파라미터 추출 & 정규화
   const rawB2b  = (c.req.query('b2b_code') || '').trim().toUpperCase()
