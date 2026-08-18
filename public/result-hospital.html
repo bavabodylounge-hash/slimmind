@@ -14896,7 +14896,15 @@ function loadBodyTypeStats(){ /* 제거됨 */ }
 /* ===== /기능 5 ===== */
 
 function renderAll(data) {
-  const { userName='고객', axisScores={}, ohaengType='수', mbtiType='INFJ' } = data;
+  // [FIX v2.4] API snake_case → camelCase 정규화
+  // API 응답: ohaeng_type, mbti_full, user_name, axis_scores, blood_type, face_shape
+  // renderAll 내부는 camelCase 변수로 통일하여 폴백값 방지
+  const userName   = data.userName   || data.user_name   || data.name || '고객';
+  const axisScores = data.axisScores || data.axis_scores || {};
+  const ohaengType = data.ohaengType || data.ohaeng_type || '';
+  const mbtiType   = data.mbtiType   || data.mbti_full   || data.mbti || '';
+  const bloodType  = data.bloodType  || data.blood_type  || '';
+  const faceShape  = data.faceShape  || data.face_shape  || '';
   // V6.2: data 최상위의 weight/height/age/pfProfile을 answers 안에 주입
   // → computeBodyMetrics()가 BMI·나이를 정확히 계산 (이 전달 없으면 모두 기본값 고착)
   const _baseAnswers = data.answers || {};
@@ -14964,8 +14972,10 @@ function renderAll(data) {
   }
   // ──────────────────────────────────────────────────────────────────
 
-  const ohaeng = SAJU_ELEMENT_DESC[ohaengType] || SAJU_ELEMENT_DESC['수'];
-  const mbti   = MBTI_DESC[mbtiType] || MBTI_DESC['INFJ'];
+  // ohaengType/mbtiType이 빈 문자열이면 [''] = undefined → DB값 우선 폴백
+  const ohaeng = (ohaengType && SAJU_ELEMENT_DESC[ohaengType]) || SAJU_ELEMENT_DESC['토'] || SAJU_ELEMENT_DESC['수'];
+  const mbti   = (mbtiType   && MBTI_DESC[mbtiType])           || MBTI_DESC['ENTP']       || MBTI_DESC['INFJ'];
+  console.log('[renderAll FIX v2.4] ohaengType:', ohaengType, '/ mbtiType:', mbtiType, '/ bcCode:', bcCode, '/ bloodType:', bloodType, '/ faceShape:', faceShape);
 
   // V3.1: fullCode = 닉네임 우선 (BC번호 대신)
   const nicknameDisplay = nickname
@@ -14981,7 +14991,7 @@ function renderAll(data) {
            isBorderline, borderlineDiff, secondaryBcCode, secondaryNickname, evidenceBadge, answers);
   renderP2(userName, bcCode, firstDomino, axisScores, sorted);
   window.__BC_RM__ = bcCode; // 로드맵 주차별 영양제 카드용 BC 코드
-  renderP3(userName, bcCode, bcMaster, ohaengType, ohaeng, mbtiType, mbti, fullCode, prescription, answers, data.bloodType, data.faceShape, axisScores, window.__RED_FLAGS__ || window._redFlags || []);
+  renderP3(userName, bcCode, bcMaster, ohaengType, ohaeng, mbtiType, mbti, fullCode, prescription, answers, bloodType, faceShape, axisScores, window.__RED_FLAGS__ || window._redFlags || []);
   renderP4(userName, ohaengType, mbtiType, answers['Q02'], answers['Q_MENOPAUSE'], axisScores, bcCode, window.__RED_FLAGS__ || window._redFlags || [], answers);
   renderP5(metrics, bcCode, axisScores, userName);
   renderP8(metrics, bcCode, axisScores, userName);
@@ -19852,13 +19862,22 @@ async function loadHospitalResult() {
     const birthY = pfProfile.birthY ? Number(pfProfile.birthY) : null;
     const calcAge = birthY ? (new Date().getFullYear() - birthY) : (r.age || null);
 
+    // [FIX v2.4] blood_type/face_shape: API 응답(r) 우선 → pfProfile 폴백
+    const _bloodType = (r.blood_type || pfProfile.blood || pfProfile.bloodType || '').toString().trim().replace('형','');
+    const _faceShape = (r.face_shape || pfProfile.face  || pfProfile.faceShape  || '').toString().trim();
+    console.log('[loadHospitalResult FIX v2.4]',
+      '| ohaeng_type:', r.ohaeng_type, '| mbti_full:', r.mbti_full,
+      '| blood_type(r):', r.blood_type, '| blood(pf):', pfProfile.blood,
+      '| face_shape(r):', r.face_shape, '| face(pf):', pfProfile.face,
+      '→ bloodType:', _bloodType, '| faceShape:', _faceShape);
+
     return {
       userName:        r.user_name || userInfo.name || '고객',
       axisScores:      axisScores,
       ohaengType:      r.ohaeng_type || pfProfile.saju || '',
       mbtiType:        r.mbti_full   || pfProfile.mbti || '',
-      bloodType:       pfProfile.blood || '',
-      faceShape:       pfProfile.face  || '',
+      bloodType:       _bloodType,
+      faceShape:       _faceShape,
       answers:         answers,
       bc_code:         r.bc_code || '',
       bc_primary:      r.bc_code || '',

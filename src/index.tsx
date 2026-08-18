@@ -6477,6 +6477,11 @@ app.get('/api/h/result/:id', async (c) => {
       const finalMbti = normMbti(row.mbti_full)
         || normMbti(parsedRawResult?.pfProfile?.mbti) || ''
 
+      // [FIX v2.4] blood_type / face_shape 추출
+      // hospital_responses 테이블에 별도 컬럼 없음 → row 직접값 우선, 없으면 raw_answers 하위 필드 폴백
+      const finalBloodType = (row.blood_type || parsedRawResult?.blood_type || parsedRawResult?.pfProfile?.blood || parsedRawResult?.pfProfile?.bloodType || '').toString().trim().replace('형','')
+      const finalFaceShape = (row.face_shape || parsedRawResult?.face_shape || parsedRawResult?.pfProfile?.face || parsedRawResult?.pfProfile?.faceShape || '').toString().trim()
+
       c.header('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0')
       c.header('Pragma', 'no-cache')
       c.header('Expires', '0')
@@ -6495,6 +6500,8 @@ app.get('/api/h/result/:id', async (c) => {
         ohaeng_type: finalOhaeng,
         disp_type: row.disp_type,
         mbti_full: finalMbti,
+        blood_type: finalBloodType,
+        face_shape: finalFaceShape,
         bc_code: row.bc_code,
         axis_scores: parseJ(row.axis_scores),
         stage1_answers: parseJ(row.stage1_json),
@@ -6558,6 +6565,9 @@ app.get('/api/h/result/:id', async (c) => {
       || normOhaeng(rawAnswers?.pfProfile?.saju) || ''
     const diagMbti = normMbti(diagRow.mbti_full)
       || normMbti(rawAnswers?.pfProfile?.mbti) || ''
+    // [FIX v2.4] blood_type / face_shape 추출
+    const diagBloodType = (diagRow.blood_type || rawAnswers?.blood_type || rawAnswers?.pfProfile?.blood || rawAnswers?.pfProfile?.bloodType || '').toString().trim().replace('형','')
+    const diagFaceShape = (diagRow.face_shape || rawAnswers?.face_shape || rawAnswers?.pfProfile?.face || rawAnswers?.pfProfile?.faceShape || '').toString().trim()
 
     // axis_scores: diagnosis_results는 A01~A10 키 형태로 저장됨
     const rawAxisScores = parseJ(diagRow.axis_scores)
@@ -6586,6 +6596,8 @@ app.get('/api/h/result/:id', async (c) => {
       ohaeng_type: diagOhaeng,
       disp_type: null,
       mbti_full: diagMbti,
+      blood_type: diagBloodType,
+      face_shape: diagFaceShape,
       bc_code: diagRow.bc_code_key || diagRow.bc_primary || null,
       axis_scores: rawAxisScores,
       stage1_answers: stage1,
