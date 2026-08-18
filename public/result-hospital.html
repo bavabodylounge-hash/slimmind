@@ -6045,6 +6045,8 @@ try{ ['log','info','warn','debug'].forEach(function(k){ console[k]=function(){};
   <p class="section-sub fade-up">기질·성향·혈액형·얼굴형을 교차해, 반복되던 세 장면의 기전을 풀었습니다.</p>
   <!-- [v3.3 FIX] 정적 하드코딩 완전 제거 — renderP3()가 innerHTML = 로 동적 주입 -->
   <div id="p3-insights" class="fade-up"></div>
+  <!-- renderPersonalizationLayer 개인화 레이어 (p3-insights와 분리) -->
+  <div id="p3-pers-mount" class="fade-up"></div>
 
   <!-- 12주 풀 처방 락인(업셀) 카드 -->
   <div id="p3-lock-mount" class="fade-up">
@@ -26381,7 +26383,7 @@ function renderPersonalizationLayer(data, axisScores, answers, bcCode, ohaengTyp
     if (insights.length === 0) return;
 
     // ── DOM 렌더링 ──
-    var mountEl = document.getElementById('p3-insights');
+    var mountEl = document.getElementById('p3-pers-mount') || document.getElementById('p3-insights');
     if (!mountEl) return;
 
     var colorMap   = { warn: 'rgba(255,120,0,.07)', ok: 'rgba(56,142,60,.07)', info: 'rgba(21,101,192,.06)' };
@@ -26403,7 +26405,7 @@ function renderPersonalizationLayer(data, axisScores, answers, bcCode, ohaengTyp
     });
 
     html += '</div></div>';
-    mountEl.innerHTML = (mountEl.innerHTML || '') + html;
+    mountEl.innerHTML = html;
 
     // P5 메타 배지 주입 (stage3 gi 기반으로 교체)
     var p5meta = document.getElementById('p5-ev-meta');
