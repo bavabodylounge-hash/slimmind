@@ -16027,7 +16027,9 @@ function renderP3(userName, bcCode, bcMaster, ohaengKey, ohaeng, mbtiType, mbti,
       // ── 요약 목록(wow3-risk-list) 동기화 + 클릭 스크롤 ──
       var _riskList = document.getElementById('wow3-risk-list');
       if (_riskList) {
-        _riskList.innerHTML = triggers.map(function(t){
+        /* ★ 수정: triggers는 renderP4 지역변수 → window.triggers 폴백 사용 */
+        var _trigList = (typeof triggers !== 'undefined' ? triggers : null) || window.triggers || [];
+        _riskList.innerHTML = _trigList.map(function(t){
           return '<div class="wow3-risk-item" onclick="(function(){var el=document.getElementById(\'p4-trigger-'+t.num+'\');if(el&&el.scrollIntoView)el.scrollIntoView({behavior:\'smooth\',block:\'center\'});})()" style="cursor:pointer;">'
             + '<div class="wow3-risk-num">'+t.num+'</div>'
             + '<div class="wow3-risk-body"><div class="wow3-risk-top"><span class="wow3-risk-title">'+(t.title||'')+'</span></div></div>'
@@ -16063,6 +16065,8 @@ function renderP3(userName, bcCode, bcMaster, ohaengKey, ohaeng, mbtiType, mbti,
 function renderP4(userName, ohaengKey, mbtiType, gender, menopause, axisScores, bcCode, redFlags, answers) {
   axisScores = axisScores || {}; bcCode = bcCode || ''; redFlags = redFlags || [];
   const triggers = getCruelHistoryTriggers(userName, ohaengKey, mbtiType, gender, menopause, axisScores, bcCode, redFlags, answers);
+  /* ★ 수정: wow3-risk-list(renderP3 내)가 참조할 수 있도록 전역에도 저장 */
+  window.triggers = triggers;
   const container = document.getElementById('p4-triggers');
   const nm = (userName && userName.length >= 3) ? userName.slice(1) : (userName || '회원');
   container.innerHTML = '';
@@ -16095,7 +16099,9 @@ function renderP4(userName, ohaengKey, mbtiType, gender, menopause, axisScores, 
       // ── 요약 목록(wow3-risk-list) 동기화 + 클릭 스크롤 ──
       var _riskList = document.getElementById('wow3-risk-list');
       if (_riskList) {
-        _riskList.innerHTML = triggers.map(function(t){
+        /* ★ 수정: triggers는 renderP4 지역변수 → window.triggers 폴백 사용 */
+        var _trigList = (typeof triggers !== 'undefined' ? triggers : null) || window.triggers || [];
+        _riskList.innerHTML = _trigList.map(function(t){
           return '<div class="wow3-risk-item" onclick="(function(){var el=document.getElementById(\'p4-trigger-'+t.num+'\');if(el&&el.scrollIntoView)el.scrollIntoView({behavior:\'smooth\',block:\'center\'});})()" style="cursor:pointer;">'
             + '<div class="wow3-risk-num">'+t.num+'</div>'
             + '<div class="wow3-risk-body"><div class="wow3-risk-top"><span class="wow3-risk-title">'+(t.title||'')+'</span></div></div>'
