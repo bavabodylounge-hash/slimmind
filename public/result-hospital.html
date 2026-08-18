@@ -5549,6 +5549,80 @@ p, div, span, h1, h2, h3, h4{
 .next-flow .nf-step  { color: rgba(255,255,255,.65) !important; }
 .next-flow .nf-name  { color: #ffffff !important; }
 .next-flow .nf-arrow { background: rgba(255,255,255,.18) !important; color: #ffffff !important; }
+
+/* ═══════════════════════════════════════════════════════
+   GAP-09 (2026-08-18): 이력 비교 delta 배지 스타일
+═══════════════════════════════════════════════════════ */
+.p5-delta-badge {
+  display: inline-flex; align-items: center; gap: 1px;
+  font-size: 11px; font-weight: 800; line-height: 1;
+  padding: 2px 6px; border-radius: 20px;
+  vertical-align: middle; margin-left: 4px;
+}
+.p5-delta-badge.delta-up   { background: rgba(34,197,94,.15);  color: #16a34a; }
+.p5-delta-badge.delta-down { background: rgba(239,68,68,.13);  color: #dc2626; }
+
+/* P5 이력 비교 배너 */
+.p5-history-banner {
+  background: linear-gradient(135deg, rgba(44,123,229,.08) 0%, rgba(44,123,229,.04) 100%);
+  border: 1px solid rgba(44,123,229,.2);
+  border-radius: 14px; padding: 14px 16px; margin-bottom: 18px;
+  font-size: 13px; color: var(--ink);
+}
+.p5h-header {
+  display: flex; align-items: center; gap: 7px;
+  font-weight: 700; color: #2c7be5; margin-bottom: 10px;
+}
+.p5h-stats {
+  display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 8px;
+}
+.p5h-stat {
+  font-size: 12px; font-weight: 700; padding: 3px 10px;
+  border-radius: 20px; background: rgba(0,0,0,.04);
+}
+.p5h-stat.delta-up   { color: #16a34a; background: rgba(34,197,94,.12); }
+.p5h-stat.delta-down { color: #dc2626; background: rgba(239,68,68,.10); }
+.p5h-stat.p5h-stay   { color: var(--muted); }
+.p5h-deltas {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;
+}
+.p5h-delta-item {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: rgba(0,0,0,.04); border-radius: 8px;
+  padding: 3px 8px;
+}
+.p5h-ax { font-size: 11px; color: var(--muted); font-weight: 600; }
+
+/* ═══════════════════════════════════════════════════════
+   GAP-10 (2026-08-18): Print CSS — 브라우저 PDF 저장 최적화
+═══════════════════════════════════════════════════════ */
+@media print {
+  /* 네비게이션 · 플로팅 버튼 숨김 */
+  .bottom-nav, #shareFloatBtn, #shareModal, #loading-overlay,
+  .next-flow, .p7-share-section, .p7v4-share-btns,
+  .dna-share-btns, #shareCopyToast, .axis-rank-badge,
+  .fc-section, .fc-btn { display: none !important; }
+
+  /* 모든 페이지 노출 (숨긴 탭 포함) */
+  .page { display: block !important; visibility: visible !important;
+          opacity: 1 !important; page-break-after: always; }
+  .page:last-child { page-break-after: auto; }
+
+  /* 배경색 인쇄 허용 */
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+  /* 여백 */
+  @page { margin: 12mm 10mm; }
+
+  body { background: #fff !important; }
+
+  /* 카드 그림자 제거 */
+  .rxs-card, .ev-erow { box-shadow: none !important; }
+
+  /* 인쇄 시 이미지 크기 조정 */
+  img, canvas, svg { max-width: 100% !important; height: auto !important; }
+}
+
 </style>
 
 <!-- ══ 병원 전용: API 연동 + __RESULT__ 주입 ══ v20260722-4 -->
@@ -6022,6 +6096,8 @@ try{ ['log','info','warn','debug'].forEach(function(k){ console[k]=function(){};
 
   <!-- 분석 요약 (질문 바로 뒤 근거) -->
   <div class="ev-meta fade-up" id="p5-ev-meta"></div>
+  <!-- GAP-09 (2026-08-18): 이전 검사 이력 비교 배너 -->
+  <div class="p5-history-banner fade-up" id="p5-history-banner" style="display:none"></div>
 
   <!-- 지금 집중할 영역 -->
   <div class="section-title has-sub fade-up"><svg class="sec-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>지금 집중할 영역<span class="ev-gcnt" id="p5-strong-cnt"></span></div>
@@ -13556,6 +13632,10 @@ function renderAll(data) {
   if (axisScores && Object.keys(axisScores).length > 0) {
     window.__AXIS_SCORES_FINAL__ = axisScores;
   }
+  // GAP-09 (2026-08-18): 이력 비교 데이터 전역 주입 → renderP5 delta 배지 참조용
+  if (data.axis_history && data.axis_history.axis_deltas) {
+    window.__AXIS_HISTORY__ = data.axis_history;
+  }
   // answers 전역 저장 → renderP5/P6에서 Q_EX_STYLE/Q_PLAN_STYLE/Q_TARGET_ZONE 등 참조
   if (answers && Object.keys(answers).length > 0) {
     window.__LAST_ANSWERS__ = answers;
@@ -14572,6 +14652,44 @@ function renderP5(metrics, bcCode, axisScores, userName) {
     철학:  { A10:1.5, A07:0.5 },
   };
 
+  // ── GAP-09 (2026-08-18): 이력 비교 delta 배지 ──
+  // window.__AXIS_HISTORY__.axis_deltas (A01~A10) → 영역별 대표 delta 집계
+  var _axHistory  = window.__AXIS_HISTORY__ || null;
+  var _axDeltas   = _axHistory ? (_axHistory.axis_deltas || {}) : {};
+  var _prevDate   = _axHistory ? (_axHistory.prev_created_at || '') : '';
+
+  // 영역별 대표 delta = key_axes 중 절댓값 최대 delta 사용
+  var DOMAIN_KEY_AXES = {
+    회복:  ['A07','A08','A02'], 호르몬:['A03','A07','A01'], 체형: ['A06','A04','A02'],
+    식단:  ['A01','A05','A08'], 운동:  ['A04','A06','A02'], 심리: ['A08','A07'],
+    한방:  ['A02','A03','A05'], 약물:  ['A09','A01','A03'], 시술: ['A02','A06','A04'],
+    관리:  ['A09','A01','A03'], 철학:  ['A10','A07'],
+  };
+  // 각 영역의 대표 delta 계산 (없으면 null)
+  var _domainDelta = {};
+  if (Object.keys(_axDeltas).length > 0) {
+    Object.keys(DOMAIN_KEY_AXES).forEach(function(dm) {
+      var axes = DOMAIN_KEY_AXES[dm];
+      var best = null;
+      axes.forEach(function(ax) {
+        var v = _axDeltas[ax];
+        if (v !== undefined && v !== null) {
+          if (best === null || Math.abs(v) > Math.abs(best)) best = v;
+        }
+      });
+      _domainDelta[dm] = best;
+    });
+  }
+  // delta 배지 HTML 생성 함수
+  function _deltaBadge(domainNm) {
+    var v = _domainDelta[domainNm];
+    if (v === null || v === undefined || v === 0) return '';
+    var sign = v > 0 ? '▲' : '▼';
+    var cls  = v > 0 ? 'delta-up' : 'delta-down';
+    var abs  = Math.abs(v).toFixed(1);
+    return '<span class="p5-delta-badge ' + cls + '">' + sign + abs + '</span>';
+  }
+
   // ── 2. BC코드별 영역 강제 ON/OFF ──
   // ★ HOSPITAL VERSION: 시술 force_none 완화 — 병원에서 시술 상담·연계 가능
   var BC_DOMAIN_OVERRIDE = {
@@ -14912,6 +15030,53 @@ function renderP5(metrics, bcCode, axisScores, userName) {
         '<div class="ev-verdict-warn">나머지 ' + NONE.length + '개 영역은 지금 신경 쓰지 마세요. <b>돈과 시간만 낭비될 뿐입니다.</b></div>' +
       '</div>';
     // 룰렛 연출은 page5 진입 시 ax11Replay()가 실행 (switchPage에서 호출)
+
+    // ── GAP-09 (2026-08-18): 이력 비교 배너 렌더 ──
+    var _histBanner = document.getElementById('p5-history-banner');
+    if (_histBanner && Object.keys(_axDeltas).length > 0) {
+      // 개선 / 악화 / 유지 집계
+      var _impCnt = 0, _detCnt = 0;
+      Object.values(_axDeltas).forEach(function(v) {
+        if (v >= 1) _impCnt++;
+        else if (v <= -1) _detCnt++;
+      });
+      // 이전 검사일 포맷
+      var _prevFmt = '';
+      if (_prevDate) {
+        try {
+          var _pd = new Date(_prevDate);
+          _prevFmt = (_pd.getFullYear()) + '년 ' + (_pd.getMonth()+1) + '월 ' + _pd.getDate() + '일';
+        } catch(e) { _prevFmt = _prevDate.slice(0,10); }
+      }
+      // delta 상위 3개 추출 (절댓값 기준)
+      var _topDeltas = Object.entries(_axDeltas)
+        .filter(function(e){ return e[1] !== 0; })
+        .sort(function(a,b){ return Math.abs(b[1]) - Math.abs(a[1]); })
+        .slice(0, 3);
+      var _AXIS_LABEL = {
+        A01:'인슐린·내장지방', A02:'림프·순환', A03:'호르몬·대사', A04:'근감소',
+        A05:'소화·장', A06:'골격·자세', A07:'코르티솔', A08:'심리·식이',
+        A09:'대사위험', A10:'기질·성향'
+      };
+      var _deltaRows = _topDeltas.map(function(e){
+        var k = e[0], v = e[1];
+        var sign = v > 0 ? '▲' : '▼';
+        var cls  = v > 0 ? 'delta-up' : 'delta-down';
+        return '<span class="p5h-delta-item"><span class="p5h-ax">' + (_AXIS_LABEL[k]||k) + '</span><span class="p5-delta-badge ' + cls + '">' + sign + Math.abs(v).toFixed(1) + '</span></span>';
+      }).join('');
+      _histBanner.innerHTML =
+        '<div class="p5h-header">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;flex-shrink:0"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>' +
+          '<span>이전 검사 대비 변화량' + (_prevFmt ? ' · <b>' + _prevFmt + '</b>' : '') + '</span>' +
+        '</div>' +
+        '<div class="p5h-stats">' +
+          '<span class="p5h-stat delta-up">▲ 개선 ' + _impCnt + '축</span>' +
+          '<span class="p5h-stat delta-down">▼ 악화 ' + _detCnt + '축</span>' +
+          '<span class="p5h-stat p5h-stay">— 유지 ' + (10 - _impCnt - _detCnt) + '축</span>' +
+        '</div>' +
+        (_deltaRows ? '<div class="p5h-deltas">' + _deltaRows + '</div>' : '');
+      _histBanner.style.display = '';
+    }
   }
 
   var sc = document.getElementById('p5-strong-cnt'); if (sc) sc.textContent = STRONG.length + '개';
@@ -14938,7 +15103,7 @@ function renderP5(metrics, bcCode, axisScores, userName) {
         '<div class="rxs-head" onclick="this.parentElement.classList.toggle(\'open\')">' +
           '<div class="rxs-head-top">' +
             '<span class="ev-e-ic">' + e.ic + '</span>' +
-            '<div class="ev-e-mid"><div class="ev-e-nm">' + e.nm + '</div><div class="ev-e-to">→ <b>' + e.to + '</b></div></div>' +
+            '<div class="ev-e-mid"><div class="ev-e-nm">' + e.nm + '</div>' + _deltaBadge(e.nm) + '<div class="ev-e-to">→ <b>' + e.to + '</b></div></div>' +
             '<div class="ev-e-grade">' + dots + '<span class="ev-e-gtx">' + e.gtx + '</span></div>' +
           '</div>' +
           '<div class="rxs-head-foot">' +
@@ -18031,6 +18196,8 @@ async function loadHospitalResult() {
       disp_answers: r.disp_answers || null,   // 진단 대화 응답 요약
       confidence:   r.confidence   || null,   // { unknownCount, uncertainty, contraAxes }
       redFlags:     computedRedFlags,
+      // GAP-09 (2026-08-18): 이력 비교 데이터 — /api/h/result/:id 응답에서 수신
+      axis_history: r.axis_history || null,
     };
 
     // ── Live Refresh 핸드셰이크 ──
