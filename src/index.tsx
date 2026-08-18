@@ -3211,6 +3211,70 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
 
       return Math.min(95, 70 + compBonus + certBonus + bgBonus);
     })(),
+    // GAP-08 (2026-08-18): AI 소견문 — BC코드 + 10축 점수 조합 템플릿 치환 생성
+    ai_opinion: (() => {
+      try {
+        const bcCode  = (resultData.result as any)?.bc_primary || '';
+        const axScores = (resultData.result?.axis_scores as any) || {};
+        const uName   = (resultData.result as any)?.user_name || '';
+        const ohaeng  = (resultData.result as any)?.ohaeng_type || '';
+        const bc = bcCode.toUpperCase().replace(/\s/g,'');
+        if (!bc.startsWith('BC-')) return null;
+
+        const AXIS_LABEL: Record<string,string> = {
+          A01:'인슐린·내장지방', A02:'림프·순환', A03:'호르몬·대사', A04:'근감소',
+          A05:'소화·장', A06:'골격·자세', A07:'코르티솔', A08:'심리·식이',
+          A09:'대사위험', A10:'기질·성향'
+        };
+        const BC_MECHANISM: Record<string,string> = {
+          'BC-1':'하체 림프·정맥 순환 저하로 오후 부종이 반복되는 구조',
+          'BC-2':'목·어깨 근막 긴장 + 자세 불균형이 경추 압박을 만드는 구조',
+          'BC-3':'인슐린 과잉 반응으로 식후 혈당 진동이 반복되는 내장지방 고착 구조',
+          'BC-4':'갑상선·기초대사 저하로 같은 칼로리도 더 많이 저장되는 저대사 구조',
+          'BC-5':'셀룰라이트·말초 순환 저하로 피하지방이 산소 공급 없이 고착된 구조',
+          'BC-6':'만성 코르티솔 과잉으로 야식 충동과 복부 지방 축적이 반복되는 구조',
+          'BC-7':'소화·가스 팽만 + 호르몬 불균형으로 식후 복부가 임산부처럼 팽창하는 구조',
+          'BC-8':'골반 틀어짐·승마살 고착으로 하체 지방이 마지막까지 남는 체형 구조',
+          'BC-9':'마른 팔다리 + 올챙이배의 근감소형 복부비만 구조',
+          'BC-10':'팔뚝·어깨 부종형 순환 저하 구조',
+          'BC-11':'상체 근육 과발달·어깨 라인 불균형 구조',
+          'BC-12':'겨드랑이 부유방·흉추 압박 피하지방 고착 구조',
+          'BC-13':'갱년기 호르몬 스위치 전환으로 복부 지방 재배치가 시작된 구조',
+          'BC-14':'번아웃·자율신경 소진으로 대사 전반이 정지 상태에 가까운 구조',
+          'BC-15':'인슐린·혈압·지질 3중 복합 대사증후군 고위험 구조',
+          'BC-16':'다발성 악순환 동시 진행으로 단일 원인 처방이 무효한 복합 구조',
+        };
+        const OHAENG_ADJ: Record<string,string> = {
+          '목':'도전적인', '화':'열정적인', '토':'안정 지향의', '금':'완벽주의적인', '수':'감성적인'
+        };
+
+        const sorted = Object.entries(axScores)
+          .filter(([k]) => k.startsWith('A'))
+          .sort((a:any, b:any) => Number(b[1]) - Number(a[1]));
+        const top1 = sorted[0]?.[0] || 'A01';
+        const top2 = sorted[1]?.[0] || 'A03';
+        const top1Label = AXIS_LABEL[top1] || top1;
+        const top2Label = AXIS_LABEL[top2] || top2;
+        const top1Score = Number(sorted[0]?.[1] || 5);
+        const top2Score = Number(sorted[1]?.[1] || 5);
+
+        const mechanism = BC_MECHANISM[bc] || BC_MECHANISM['BC-6'];
+        const riskLabel = top1Score >= 9 ? '극고위험' : top1Score >= 7 ? '고위험' : top1Score >= 5 ? '주의' : '경계';
+        const ohaengAdj = OHAENG_ADJ[ohaeng] || '';
+        const nm = uName.length >= 2 ? uName : '회원';
+
+        return {
+          opening: `${nm} 님의 바디코드는 ${bc}(${mechanism})로 판정되었습니다.`,
+          body: `원인축 분석 결과, ${top1Label}(${top1}) 축이 ${riskLabel} 수준(${top1Score.toFixed(1)}/12)으로 우선 개입이 필요하며, ${top2Label}(${top2}) 축(${top2Score.toFixed(1)}/12)이 이를 복합적으로 악화시키는 구조입니다.${ohaengAdj ? ` ${ohaengAdj} 기질이 이 패턴을 심화할 수 있습니다.` : ''}`,
+          closing: `단일 처방이 아닌 ${top1Label} → ${top2Label} 순서의 2단계 접근이 핵심이며, 지금 당장 시작해야 할 1가지는 ${top1Label} 축 완화입니다.`,
+          top_axes_text: `${top1Label} + ${top2Label}`,
+          bc_code: bc,
+          risk_level: riskLabel,
+          top_axis: top1,
+          top_axis_score: top1Score,
+        };
+      } catch { return null; }
+    })(),
   };
 
   // result-v4.html을 최신 결과지 템플릿으로 사용
@@ -6409,6 +6473,32 @@ app.get('/api/h/result/:id', async (c) => {
         // ── Schema Versioning (mapping-engine.js Live Refresh 핸드셰이크용) ──
         schema_version: 'v1.0',   // mapping-engine.js MAPPING_ENGINE_VERSION과 비교
         survey_type: 'hospital',
+        // ── GAP-09 (2026-08-18): 이력 비교 — 동일 전화번호 직전 1회차 축 점수 변화량 ──
+        axis_history: await (async () => {
+          try {
+            if (!row.phone) return null
+            const prev = await db.prepare(
+              `SELECT id, created_at, axis_scores FROM hospital_responses
+               WHERE phone = ? AND id != ?
+               ORDER BY created_at DESC LIMIT 1`
+            ).bind(row.phone, row.id).first<any>()
+            if (!prev) return null
+            const prevAx: Record<string,number> = parseJ(prev.axis_scores) || {}
+            const curAx:  Record<string,number> = parseJ(row.axis_scores)  || {}
+            const AXES = ['A01','A02','A03','A04','A05','A06','A07','A08','A09','A10']
+            const deltas: Record<string,number> = {}
+            AXES.forEach(k => {
+              const cur = Number(curAx[k]  || 0)
+              const prv = Number(prevAx[k] || 0)
+              deltas[k] = Math.round((cur - prv) * 10) / 10
+            })
+            return {
+              prev_result_id:  prev.id,
+              prev_created_at: prev.created_at,
+              axis_deltas:     deltas,
+            }
+          } catch { return null }
+        })(),
       })
     }
 
@@ -6472,6 +6562,34 @@ app.get('/api/h/result/:id', async (c) => {
       // ── Schema Versioning (mapping-engine.js Live Refresh 핸드셰이크용) ──
       schema_version: 'v1.0',
       survey_type: 'hospital',
+      // ── GAP-09 (2026-08-18): 이력 비교 — 동일 전화번호 직전 1회차 축 점수 변화량 ──
+      axis_history: await (async () => {
+        try {
+          const phoneVal = diagRow.phone || rawAnswers?.userInfo?.phone || null
+          if (!phoneVal) return null
+          const prev = await db.prepare(
+            `SELECT id, completed_at AS created_at, axis_scores AS axis_scores_raw
+             FROM diagnosis_results
+             WHERE phone = ? AND id != ? AND survey_category = 'hospital'
+             ORDER BY completed_at DESC LIMIT 1`
+          ).bind(phoneVal, diagRow.id).first<any>()
+          if (!prev) return null
+          const prevAx: Record<string,number> = parseJ(prev.axis_scores_raw) || {}
+          const curAx:  Record<string,number> = rawAxisScores || {}
+          const AXES = ['A01','A02','A03','A04','A05','A06','A07','A08','A09','A10']
+          const deltas: Record<string,number> = {}
+          AXES.forEach(k => {
+            const cur = Number(curAx[k]  || 0)
+            const prv = Number(prevAx[k] || 0)
+            deltas[k] = Math.round((cur - prv) * 10) / 10
+          })
+          return {
+            prev_result_id:  prev.id,
+            prev_created_at: prev.created_at,
+            axis_deltas:     deltas,
+          }
+        } catch { return null }
+      })(),
     })
   } catch (e: any) {
     return c.json({ error: String(e) }, 500)

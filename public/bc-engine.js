@@ -6821,6 +6821,88 @@ function getPsychologicalTriggerNarrative(triggerType, axisScores, tags) {
 // ──────────────────────────────────────────────────────────────────
 // 12. export
 // ──────────────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────
+// GAP-08 (2026-08-18): generateAIOpinion — BC코드 + 10축 점수 조합 기반 소견문 텍스트 생성
+// 템플릿 치환 방식: BC_MASTER 의학 제목 + 상위 2개 원인축 → 소견 텍스트 조합
+// 반환: { opening, body, closing, top_axes_text }
+// ──────────────────────────────────────────────
+function generateAIOpinion(bcCode, axisScores, userName, ohaengType) {
+  var bc = (bcCode || '').toUpperCase().replace(/\s/g,'');
+  if (!bc.startsWith('BC-')) bc = 'BC-6';
+
+  var ax = axisScores || {};
+  var nm = (userName || '').length >= 2 ? userName : '회원';
+
+  // 상위 2개 원인축 탐색
+  var AXIS_LABEL = {
+    A01:'인슐린·내장지방', A02:'림프·순환', A03:'호르몬·대사', A04:'근감소',
+    A05:'소화·장', A06:'골격·자세', A07:'코르티솔', A08:'심리·식이',
+    A09:'대사위험', A10:'기질·성향'
+  };
+  var sorted = Object.entries(ax)
+    .filter(function(e){ return e[0].startsWith('A'); })
+    .sort(function(a,b){ return Number(b[1]) - Number(a[1]); });
+  var top1 = sorted[0] ? sorted[0][0] : 'A01';
+  var top2 = sorted[1] ? sorted[1][0] : 'A03';
+  var top1Label = AXIS_LABEL[top1] || top1;
+  var top2Label = AXIS_LABEL[top2] || top2;
+  var top1Score = sorted[0] ? Number(sorted[0][1]) : 5;
+  var top2Score = sorted[1] ? Number(sorted[1][1]) : 5;
+
+  // BC별 핵심 의학 기전 텍스트 (단문 템플릿)
+  var BC_MECHANISM = {
+    'BC-1':  '하체 림프·정맥 순환 저하로 오후 부종이 반복되는 구조',
+    'BC-2':  '목·어깨 근막 긴장 + 자세 불균형이 경추 압박을 만드는 구조',
+    'BC-3':  '인슐린 과잉 반응으로 식후 혈당 진동이 반복되는 내장지방 고착 구조',
+    'BC-4':  '갑상선·기초대사 저하로 같은 칼로리도 더 많이 저장되는 저대사 구조',
+    'BC-5':  '셀룰라이트·말초 순환 저하로 피하지방이 산소 공급 없이 고착된 구조',
+    'BC-6':  '만성 코르티솔 과잉으로 야식 충동과 복부 지방 축적이 반복되는 구조',
+    'BC-7':  '소화·가스 팽만 + 호르몬 불균형으로 식후 복부가 임산부처럼 팽창하는 구조',
+    'BC-8':  '골반 틀어짐·승마살 고착으로 하체 지방이 마지막까지 남는 체형 구조',
+    'BC-9':  '마른 팔다리 + 올챙이배의 근감소형 복부비만 구조',
+    'BC-10': '팔뚝·어깨 부종형 순환 저하 구조',
+    'BC-11': '상체 근육 과발달·어깨 라인 불균형 구조',
+    'BC-12': '겨드랑이 부유방·흉추 압박 피하지방 고착 구조',
+    'BC-13': '갱년기 호르몬 스위치 전환으로 복부 지방 재배치가 시작된 구조',
+    'BC-14': '번아웃·자율신경 소진으로 대사 전반이 정지 상태에 가까운 구조',
+    'BC-15': '인슐린·혈압·지질 3중 복합 대사증후군 고위험 구조',
+    'BC-16': '다발성 악순환 동시 진행으로 단일 원인 처방이 무효한 복합 구조',
+  };
+
+  var mechanism = BC_MECHANISM[bc] || BC_MECHANISM['BC-6'];
+
+  // 위험 등급 라벨
+  var riskLabel = top1Score >= 9 ? '극고위험' : top1Score >= 7 ? '고위험' : top1Score >= 5 ? '주의' : '경계';
+
+  // 오행 텍스트
+  var OHAENG_ADJ = { '목':'도전적인','화':'열정적인','토':'안정 지향의','금':'완벽주의적인','수':'감성적인' };
+  var ohaengAdj = OHAENG_ADJ[ohaengType] || '';
+
+  // 소견문 3단 구조: 개요 + 근거 + 처방 방향
+  var opening = nm + ' 님의 바디코드는 <b>' + bc + '</b>(' + mechanism + ')로 판정되었습니다.';
+
+  var body = '원인축 분석 결과, <b>' + top1Label + '(' + top1 + ')</b> 축이 ' +
+    riskLabel + ' 수준(' + top1Score.toFixed(1) + '/12)으로 우선 개입이 필요하며, ' +
+    '<b>' + top2Label + '(' + top2 + ')</b> 축(' + top2Score.toFixed(1) + '/12)이 이를 ' +
+    '복합적으로 악화시키는 구조입니다.' +
+    (ohaengAdj ? ' ' + ohaengAdj + ' 기질이 이 패턴을 심화할 수 있습니다.' : '');
+
+  var closing = '단일 처방이 아닌 <b>' + top1Label + ' → ' + top2Label + '</b> 순서의 ' +
+    '2단계 접근이 핵심이며, 지금 당장 시작해야 할 1가지는 ' +
+    top1Label + ' 축 완화입니다.';
+
+  return {
+    opening: opening,
+    body: body,
+    closing: closing,
+    top_axes_text: top1Label + ' + ' + top2Label,
+    bc_code: bc,
+    risk_level: riskLabel,
+    top_axis: top1,
+    top_axis_score: top1Score,
+  };
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     // V3.1 신규
@@ -6838,6 +6920,8 @@ if (typeof module !== 'undefined' && module.exports) {
     _DOMAIN_AXIS_WEIGHTS_HOSPITAL, _DOMAIN_AXIS_WEIGHTS_AESTHETIC, _DOMAIN_AXIS_WEIGHTS_SALON, _DOMAIN_META,
     // GAP-05/06 (2026-08-18): 신뢰도 동적 계산 + 헤어샵 가중치
     computeConfidenceScore,
+    // GAP-08 (2026-08-18): AI 소견문 템플릿 치환 생성
+    generateAIOpinion,
     // V6.0 신규: TagEngine + 4대 바디 지표 + 의료 필터 + 로드맵 비율
     extractTags, computeBodyMetrics, getMedicalFilters,
     getRoadmapRatioOverride, getMotivationBanner, getMealEnvMissions,
