@@ -101,20 +101,23 @@ describe('[GAP-01~03] NICKNAME_TO_BC 설계도 25개 아형 1:1 매핑 검증', 
     expect(engineCode).toContain('목짧아지는 거북이형')
   })
 
-  // 설계도 25개 아형 전수 검증
+  // 설계도 25개 아형 전수 검증 — NICKNAME_TO_BC 블록 범위로 검색 제한
   DESIGN_SPEC_25.forEach(({ name, bc, note }) => {
     it(`[${bc}] "${name}" → ${bc} 매핑 확인 (${note})`, () => {
       const engineCode = readFileSync(resolve(__dirname, '../public/bc-engine.js'), 'utf-8')
-      // 아형명이 코드에 존재하는지 확인
-      expect(engineCode).toContain(`'${name}'`)
-      // BC 코드 매핑이 올바른지 확인 (해당 아형명 뒤에 올바른 BC 코드)
-      const nameIdx = engineCode.indexOf(`'${name}'`)
-      expect(nameIdx).toBeGreaterThan(0)
-      // 해당 줄에서 BC 코드 추출
-      const lineStart = engineCode.lastIndexOf('\n', nameIdx)
-      const lineEnd   = engineCode.indexOf('\n', nameIdx)
-      const line      = engineCode.slice(lineStart, lineEnd)
-      expect(line).toContain(`'${bc}'`)
+      // ① NICKNAME_TO_BC 블록만 추출 (NICKNAME_TABLE보다 뒤에 있음)
+      const blockStart = engineCode.indexOf('var NICKNAME_TO_BC = {')
+      expect(blockStart).toBeGreaterThan(0)
+      const blockEnd = engineCode.indexOf('};', blockStart)
+      const block    = engineCode.slice(blockStart, blockEnd + 2)
+      // ② 블록 내에서 아형명 위치 탐색
+      const nameIdx = block.indexOf(`'${name}'`)
+      expect(nameIdx, `"${name}" 키가 NICKNAME_TO_BC 블록에 없음`).toBeGreaterThan(0)
+      // ③ 해당 줄에서 BC 코드 확인
+      const lineStart = block.lastIndexOf('\n', nameIdx)
+      const lineEnd   = block.indexOf('\n', nameIdx)
+      const line      = block.slice(lineStart, lineEnd)
+      expect(line, `"${name}" 줄에 '${bc}' 없음 — 실제 줄: ${line.trim()}`).toContain(`'${bc}'`)
     })
   })
 
@@ -223,8 +226,11 @@ describe('[GAP-05] 신뢰도 동적 계산 함수 검증', () => {
 
   it('배경 일치 보정 +3이 있어야 한다', () => {
     const engineCode = readFileSync(resolve(__dirname, '../public/bc-engine.js'), 'utf-8')
-    expect(engineCode).toContain('bgBonus')
+    // bc-engine.js는 bgAxis 변수명 사용 (bgBonus 아님)
     expect(engineCode).toContain('BG_AXIS_MAP')
+    expect(engineCode).toContain('bgAxis')
+    // 배경 일치 시 +3 보정
+    expect(engineCode).toContain('bgAxis === topAxis') // 조건
   })
 
   it('신뢰도 계산: 만점 케이스 (50/50 응답, 격차 4점, 배경 일치) → 95 상한', () => {
