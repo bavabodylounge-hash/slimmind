@@ -1,17 +1,20 @@
 /* =========================================================
-   SlimMind Service Worker  v2.2  (2026-08-18)
+   SlimMind Service Worker  v2.3  (2026-08-18)
    ─────────────────────────────────────────────────────────
+   v2.3 변경:
+   - [FIX] CACHE_NAME slimmind-v3 → slimmind-v4
+     타로/구버전 앱 캐시 완전 파기 (activate에서 ALL 삭제)
+   - [FIX] activate 단계에서 caches.keys() 전체 삭제
+     CACHE_NAME 불일치 여부 무관하게 모든 캐시 제거
    v2.2 변경:
    - [FIX] CACHE_NAME slimmind-v2 → slimmind-v3
-     구버전 캐시(v1, v2) 배포 즉시 자동 삭제 보장
    - [FIX] 파일 최상단 self.skipWaiting() 즉시 실행
-     새 SW 설치 즉시 대기 없이 활성화
    v2.1 변경:
    - [FIX] Vary:* 헤더 포함 응답 cache.put() 차단
    - [FIX] networkFirst / cacheFirst null 반환 방지
    - [FIX] FetchEvent promise rejection 완전 억제
    ─────────────────────────────────────────────────────────
-   - 캐시명 slimmind-v3 (v1·v2 자동 삭제)
+   - 캐시명 slimmind-v4 (v1·v2·v3 자동 삭제)
    - HTML/API → Network First (캐시 무효화 강화)
    - Static   → Cache First  (오프라인 지원)
    - Push     → 알림 표시
@@ -21,7 +24,7 @@
 /* ── 즉시 skipWaiting: 새 SW 설치 즉시 대기 없이 활성화 ── */
 self.skipWaiting();
 
-const CACHE_NAME = 'slimmind-v3';
+const CACHE_NAME = 'slimmind-v4';
 
 /* 앱 설치 시 프리캐시 목록 */
 const PRE_CACHE = [

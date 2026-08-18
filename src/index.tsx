@@ -54,9 +54,27 @@ type JwtPayload = {
 // 방법 2: safari- 스킴 (구버전 호환)
 // ?_kref=1 파라미터: Safari로 열린 후에도 카카오 경유임을 pwa-common.js가 인식
 const KAKAO_ESCAPE_SCRIPT = `<script>
-/* [FIX v2.2] /cdn-cgi/* 리소스 404 에러 콘솔 억제
-   Cloudflare RUM(/cdn-cgi/rum) 등 내부 요청이 404로 콘솔에 빨간 에러를 남기는 문제 방지.
-   캡처 단계(true)에서 가장 먼저 잡아 stopImmediatePropagation()으로 전파 차단. */
+/* [FIX v2.3] 구버전 SW 강제 언레지스터 + 전체 캐시 삭제 (타로/구앱 잔여 캐시 근본 제거) */
+(function(){
+  var PURGED = 'sm_sw_purged_v3';
+  if (sessionStorage.getItem(PURGED)) return;
+  var needReload = false;
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(regs) {
+      return Promise.all(regs.map(function(r) {
+        return r.unregister().then(function(ok){ if(ok) needReload=true; });
+      }));
+    }).then(function() {
+      if (!('caches' in window)) return;
+      return caches.keys().then(function(keys) {
+        return Promise.all(keys.map(function(k){ return caches.delete(k); }));
+      });
+    }).then(function() {
+      if (needReload) { sessionStorage.setItem(PURGED,'1'); location.reload(true); }
+    }).catch(function(){});
+  }
+})();
+/* [FIX v2.2] /cdn-cgi/* 리소스 404 에러 콘솔 억제 */
 (function(){
   window.addEventListener('error', function(e) {
     if (!e) return;
@@ -67,7 +85,6 @@ const KAKAO_ESCAPE_SCRIPT = `<script>
       return false;
     }
   }, true);
-  /* fetch 레벨 /cdn-cgi/* 응답 오류도 unhandledrejection으로 뜨지 않도록 */
   window.addEventListener('unhandledrejection', function(e) {
     if (e && e.reason && String(e.reason).indexOf('cdn-cgi') !== -1) {
       e.preventDefault();

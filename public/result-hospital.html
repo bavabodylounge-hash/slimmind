@@ -1,7 +1,46 @@
 <!DOCTYPE html><html lang="ko"><head>
-<!-- [FIX v2.2] /cdn-cgi/* 리소스 404 에러 콘솔 억제 (Cloudflare RUM 등) -->
+<!-- [FIX v2.3] SW 강제 언레지스터 + 전체 캐시 삭제 + /cdn-cgi/* 에러 억제 -->
 <script>
+/* ═══════════════════════════════════════════════════════════════
+   [CRITICAL FIX v2.3] 구버전 Service Worker 강제 제거 + 캐시 전체 삭제
+   이전 앱(타로/연애 등)의 SW가 캐시를 내려주는 문제를 근본 해결.
+   1) 등록된 모든 SW 즉시 언레지스터
+   2) caches.keys()로 모든 캐시 스토리지 전체 삭제
+   3) 완료 후 페이지 강제 리로드 (단 1회, 루프 방지)
+   ═══════════════════════════════════════════════════════════════ */
 (function(){
+  var RELOADED_KEY = 'sm_sw_purged_v3';
+  // 이미 한번 퍼지+리로드 했으면 건너뜀 (무한루프 방지)
+  if (sessionStorage.getItem(RELOADED_KEY)) return;
+
+  var needReload = false;
+
+  // 1) SW 언레지스터
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(regs) {
+      var tasks = regs.map(function(reg) {
+        return reg.unregister().then(function(ok) {
+          if (ok) needReload = true;
+        });
+      });
+      return Promise.all(tasks);
+    }).then(function() {
+      // 2) 전체 캐시 삭제
+      if (!('caches' in self)) return;
+      return caches.keys().then(function(keys) {
+        return Promise.all(keys.map(function(k) {
+          return caches.delete(k);
+        }));
+      });
+    }).then(function() {
+      if (needReload) {
+        sessionStorage.setItem(RELOADED_KEY, '1');
+        location.reload(true);
+      }
+    }).catch(function(){});
+  }
+
+  // 3) /cdn-cgi/* 리소스 404 에러 콘솔 억제
   window.addEventListener('error', function(e) {
     if (!e) return;
     var src = (e.target && (e.target.src || e.target.href)) || (e.filename) || '';
