@@ -5797,7 +5797,7 @@ try{ ['log','info','warn','debug'].forEach(function(k){ console[k]=function(){};
       <div class="cvx-cover-foot">
         <div class="cvx-meta">
           <div class="cvx-meta-row"><span class="cvx-meta-k">진단일</span><span class="cvx-meta-v" id="cover-date">2026년 8월 2일</span></div>
-          <div class="cvx-meta-row" id="cover-consultant-wrap" style=""><span class="cvx-meta-k">담당 컨설턴트</span><span class="cvx-meta-v" id="cover-consultant">바바성형외과 컨설턴트</span></div><div class="cvx-meta-row" id="cover-basis"><span class="cvx-meta-k">분석 근거</span><span class="cvx-meta-v">4단계 정밀 문진 · 88개 응답 · 11축 교차 판정</span></div>
+          <div class="cvx-meta-row" id="cover-consultant-wrap" style="display:none"><span class="cvx-meta-k">담당 컨설턴트</span><span class="cvx-meta-v" id="cover-consultant"></span></div><div class="cvx-meta-row" id="cover-basis"><span class="cvx-meta-k">분석 근거</span><span class="cvx-meta-v">4단계 정밀 문진 · 88개 응답 · 11축 교차 판정</span></div>
         </div>
         <button class="cvx-scroll-cue" onclick="gotoToc()" aria-label="목차로 이동">
           <span class="cvx-cue-tx">아래로 넘겨주세요</span>
@@ -6381,7 +6381,7 @@ try{ ['log','info','warn','debug'].forEach(function(k){ console[k]=function(){};
 
   <div class="rm-sign fade-up">
     <span class="rm-sign-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg></span>
-    <span class="rm-sign-tx">설계·점검 <b id="p6-hero-consultant">바바성형외과 컨설턴트</b> · 매 주차 직접 검토</span>
+    <span class="rm-sign-tx">설계·점검 <b id="p6-hero-consultant"></b><span id="p6-hero-consultant-suffix" style="display:none"> · 매 주차 직접 검토</span></span>
     <span id="p6-name" style="display:none"></span><span id="p6-name2b" style="display:none"></span>
   </div>
 
@@ -17866,13 +17866,22 @@ function renderP6(userName, fullCode, ohaengType, inputData, bcCode_p6, redFlags
   // 히어로 이니셜 (이름 첫 글자)
   var _p6init = document.getElementById('p6-hero-initial');
   if (_p6init) _p6init.textContent = (p6nm && p6nm.length) ? p6nm.charAt(0) : '나';
-  // 히어로 서명란 컨설턴트명
+  // 히어로 서명란 컨설턴트명 — consultant_name 없으면 서명란 전체 숨김
   var _p6hc = document.getElementById('p6-hero-consultant');
+  var _p6hcSuffix = document.getElementById('p6-hero-consultant-suffix');
   if (_p6hc){
     var _cnRaw = (inputData && (inputData.consultant_name)) || (window.__DIAG_DATA__ && window.__DIAG_DATA__.consultant_name) || (window.__RESULT__ && window.__RESULT__.consultant_name) || '';
-    var cn = (typeof consultantLabel==='function') ? consultantLabel(_cnRaw) : (window.__CONSULTANT_NAME__ || '담당 컨설턴트');
-    window.__CONSULTANT_NAME__ = cn;
-    _p6hc.textContent = cn;
+    var _cnTrimmed = (_cnRaw || '').trim();
+    if (_cnTrimmed) {
+      var cn = (typeof consultantLabel==='function') ? consultantLabel(_cnTrimmed) : _cnTrimmed;
+      window.__CONSULTANT_NAME__ = cn;
+      _p6hc.textContent = cn;
+      if (_p6hcSuffix) _p6hcSuffix.style.display = '';
+    } else {
+      // 컨설턴트 없음 → 서명란 전체 숨김
+      var _p6signWrap = _p6hc.closest('.rm-sign');
+      if (_p6signWrap) _p6signWrap.style.display = 'none';
+    }
   }
   // ── 원인 3축 ↔ 실천 3축 다리 문구: 겹치는 축을 실제 데이터에서 계산 ──
   (function(){
