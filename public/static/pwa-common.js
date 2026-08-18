@@ -406,7 +406,22 @@
 
   /* Case 2: iOS Safari */
   function showIOSSafariModal() {
-    if (document.getElementById('pwa-modal-overlay')) return;
+    /* ★ 정적 HTML에 이미 #pwa-modal-overlay가 있으면 그것을 활성화 (중복 생성 방지) */
+    var existing = document.getElementById('pwa-modal-overlay');
+    if (existing) {
+      existing.classList.add('on');
+      /* 닫기 버튼 이벤트 재연결 */
+      var closeBtn = document.getElementById('pwa-modal-close-btn');
+      if (closeBtn && !closeBtn._pwaEvt) {
+        closeBtn._pwaEvt = true;
+        closeBtn.addEventListener('click', function () {
+          existing.classList.remove('on');
+          existing.style.display = 'none';
+        });
+      }
+      return;
+    }
+    /* 정적 DOM이 없으면 동적 생성 */
     var overlay = document.createElement('div');
     overlay.id = 'pwa-modal-overlay';
     overlay.innerHTML =
@@ -493,8 +508,7 @@
     injectStyles();
 
     /* 브라우저별 안내 문구 분기 */
-    var browserName = isEdge ? 'Edge' : (isWhale ? 'Whale' : 'Chrome');
-    var hasPrompt   = !!_deferredPrompt;
+    var hasPrompt = !!_deferredPrompt;
 
     var overlay = document.createElement('div');
     overlay.id = 'pwa-pc-overlay';
@@ -505,29 +519,63 @@
       stepsHtml =
         '<div class="pwa-step">' +
           '<div class="pwa-num">1</div>' +
-          '<div>아래 <b>[PC에 앱 설치]</b> 버튼을 클릭하세요</div>' +
-        '</div>';
-    } else {
-      /* 수동 안내 */
-      stepsHtml =
-        '<div class="pwa-step">' +
-          '<div class="pwa-num">1</div>' +
-          '<div>' + browserName + ' 주소창 오른쪽 <b>앱 설치(⊕) 아이콘</b>을 클릭하세요</div>' +
+          '<div>아래 <b>[바탕화면에 설치]</b> 버튼을 클릭하세요</div>' +
         '</div>' +
         '<div class="pwa-step">' +
           '<div class="pwa-num">2</div>' +
-          '<div>또는 오른쪽 상단 <b>⋮ 메뉴</b> → <b>[저장 및 공유]</b> → <b>[바로가기 만들기]</b></div>' +
+          '<div>팝업창에서 <b>[설치]</b>를 클릭하면 완료!</div>' +
+        '</div>';
+    } else if (isEdge) {
+      /* Edge 수동 안내 */
+      stepsHtml =
+        '<div class="pwa-step">' +
+          '<div class="pwa-num">1</div>' +
+          '<div>오른쪽 상단 <b>⋯ 메뉴</b>를 클릭하세요</div>' +
+        '</div>' +
+        '<div class="pwa-step">' +
+          '<div class="pwa-num">2</div>' +
+          '<div><b>[앱]</b> → <b>[이 사이트를 앱으로 설치]</b>를 클릭하세요</div>' +
         '</div>' +
         '<div class="pwa-step">' +
           '<div class="pwa-num">3</div>' +
-          '<div><b>[설치]</b> 또는 <b>[추가]</b>를 클릭하면 바탕화면에 앱이 생성됩니다</div>' +
+          '<div><b>[설치]</b>를 클릭하면 바탕화면에 앱이 생성됩니다</div>' +
+        '</div>';
+    } else if (isWhale) {
+      /* Whale 수동 안내 */
+      stepsHtml =
+        '<div class="pwa-step">' +
+          '<div class="pwa-num">1</div>' +
+          '<div>오른쪽 상단 <b>≡ 메뉴</b>를 클릭하세요</div>' +
+        '</div>' +
+        '<div class="pwa-step">' +
+          '<div class="pwa-num">2</div>' +
+          '<div><b>[사이트를 앱으로 설치]</b>를 클릭하세요</div>' +
+        '</div>' +
+        '<div class="pwa-step">' +
+          '<div class="pwa-num">3</div>' +
+          '<div><b>[설치]</b>를 클릭하면 바탕화면에 앱이 생성됩니다</div>' +
+        '</div>';
+    } else {
+      /* Chrome 수동 안내 — 실제 작동하는 방법 */
+      stepsHtml =
+        '<div class="pwa-step">' +
+          '<div class="pwa-num">1</div>' +
+          '<div>Chrome 오른쪽 상단 <b>⋮ 메뉴</b>를 클릭하세요</div>' +
+        '</div>' +
+        '<div class="pwa-step">' +
+          '<div class="pwa-num">2</div>' +
+          '<div><b>[저장 및 공유]</b> → <b>[바탕화면에 바로가기 만들기]</b>를 클릭하세요</div>' +
+        '</div>' +
+        '<div class="pwa-step">' +
+          '<div class="pwa-num">3</div>' +
+          '<div><b>[만들기]</b>를 클릭하면 바탕화면에 아이콘이 생성됩니다</div>' +
         '</div>';
     }
 
     var installBtn = hasPrompt
       ? '<button id="pwa-pc-install-btn" style="width:100%;margin-top:4px;padding:13px;' +
         'background:#5a6e3a;border:none;border-radius:12px;font-size:15px;' +
-        'font-weight:700;color:#fff;cursor:pointer;">PC에 앱 설치</button>'
+        'font-weight:700;color:#fff;cursor:pointer;">🖥️ 바탕화면에 설치</button>'
       : '';
 
     overlay.innerHTML =
