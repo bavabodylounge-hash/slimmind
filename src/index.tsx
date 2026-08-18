@@ -3186,6 +3186,31 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
     consultant_name:   consultantContact.name   || resultData.consultant_name || null,
     consultant_phone:  consultantContact.phone  || null,
     consultant_kakao:  consultantContact.kakao  || null,
+    // GAP-05 (2026-08-18): 신뢰도 동적 계산 — 설계도 공식 서버사이드 계산
+    // 기본70 + 완성도(답/전체×15) + 확신(격차≥3→+10/≥1.5→+6/else→+3) + 배경+3, 상한95
+    confidence_score: (() => {
+      const ax = (resultData.result?.axis_scores as any) || {};
+      const topAxes = (resultData.result?.top_axes as any[]) || [];
+      const topAxisKey = topAxes[0] || 'A01';
+      const surveyAns = (resultData.result?.survey_answers as any) || {};
+      const answered = Number(surveyAns.answered_count || Object.keys(surveyAns).filter(k => k.startsWith('Q')).length || 0);
+      const total = Number(surveyAns.total_count || 50);
+      const background = surveyAns.background || surveyAns.bg_filter || '';
+
+      // 판정 확신도: 1등~2등 축 격차
+      const sortedAx = Object.entries(ax).filter(([k]) => k.startsWith('A')).sort((a:any,b:any) => b[1]-a[1]);
+      const gap = sortedAx.length >= 2 ? (Number(sortedAx[0][1])||0) - (Number(sortedAx[1][1])||0) : 0;
+      const certBonus = gap >= 3 ? 10 : gap >= 1.5 ? 6 : 3;
+
+      // 배경 일치 보정
+      const BG_MAP: Record<string,string> = { '갱년기':'A03','출산':'A06','약물':'A08','PCOS':'A03','번아웃':'A07' };
+      const bgBonus = (BG_MAP[background] && BG_MAP[background] === topAxisKey) ? 3 : 0;
+
+      // 완성도
+      const compBonus = total > 0 ? Math.round((Math.min(answered, total) / total) * 15) : 7;
+
+      return Math.min(95, 70 + compBonus + certBonus + bgBonus);
+    })(),
   };
 
   // result-v4.html을 최신 결과지 템플릿으로 사용

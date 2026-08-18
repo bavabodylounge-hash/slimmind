@@ -546,50 +546,78 @@ function getDeepSurveyRoute(top1Axis) {
 //   이 테이블은 getRoadmapWeeks(bc_primary=한글닉네임) 직접 호출 시 fallback 용도로만 유지.
 //   22개 닉네임은 1~5단계 전체 점수로 독립 결정 — BC코드와 1:1 연결 불필요.
 // ──────────────────────────────────────────────────────────────────
+// ★ GAP-01~03 수정 (2026-08-18): 설계도 슬림마인드_결과지_설계도.html 아형 25벌 테이블 1:1 매핑
+// 변경 내용:
+//   [GAP-02] 오매핑 9건 수정: 목짧아지는거북이형 BC-9→BC-2, 아빠체형내장비대형 BC-4→BC-3,
+//             털털한PCOS형 BC-14→BC-3, 억제제부작용배부름마비형 BC-3→BC-4,
+//             여름에도시린얼음장형 BC-15→BC-5, 스트레스성야식부엉이형 BC-3→BC-6,
+//             식후임산부가스풍선형 BC-5→BC-7, 운동할수록말벅지형 BC-7→BC-8,
+//             팔다리거미올챙이배형 BC-6→BC-9
+//   [GAP-01] 누락 4건 추가: 남산수박배기본형→BC-3, 물만마셔도요요기본형→BC-4,
+//             셀룰라이트귤껍질기본형→BC-5, 출산후바람빠진풍선형→BC-7
+//   [GAP-02] 이름 통일: 혈당롤러코스터형 → 혈당롤러형 (설계도 기준)
+//   [GAP-03] 삭제: 지방흡입후재발형 (설계 외 항목, BC-2는 목짧아지는거북이형 단독)
 var NICKNAME_TO_BC = {
-  // ── 복부형 ────────────────────────────────────────────
-  '식후기절 혈당롤러코스터형':    'BC-3',  // 복부·단단·내장 → BC-3 단단내장형
-  '스트레스성 야식부엉이형':      'BC-3',  // 복부·단단·코르티솔 → BC-3
-  '억제제부작용 배부름마비형':    'BC-3',  // 복부·가스·소화 → BC-3(BC-5 fallback)
-  '식후임산부 가스풍선형':        'BC-5',  // 복부·가스·팽만 → BC-5 가스팽만형
-  '약물부작용 강제축적형':        'BC-4',  // 복부·물렁·갑상선 → BC-4 물렁피하형
-  '아빠체형 내장비대형':          'BC-4',  // 복부·물렁·대사저하 → BC-4
-  '대사증후군 종합형':            'BC-15', // 복부·전신·고위험 → BC-15 대사증후군형
-  '팔다리거미 올챙이배형':        'BC-6',  // 복부·마른비만·올챙이 → BC-6 올챙이배형
-  // ── 하체형 ────────────────────────────────────────────
-  '오후만되면 코끼리다리형':      'BC-1',  // 하체·부종·림프 → BC-1 코끼리다리형
-  '엄마체형 하지정체형':          'BC-1',  // 하체·부종·정맥 → BC-1
-  '지방흡입후 재발형':            'BC-2',  // 하체·셀룰라이트·재발 → BC-2 귤껍질하체형
-  '운동할수록 말벅지형':          'BC-7',  // 하체·단단·근육 → BC-7 말벅지형
-  '골반틀어짐 승마살형':          'BC-8',  // 하체·골반·셀룰 → BC-8 승마살형
-  // ── 상체형 ────────────────────────────────────────────
-  '목짧아지는 거북이형':          'BC-9',  // 상체·자세·거북목 → BC-9 거북이형
-  '안 쓰는 팔뚝 부종형':         'BC-10', // 상체·부종·팔뚝 → BC-10 팔뚝부종형
-  '상체근육형':                   'BC-11', // 상체·단단·근육 → BC-11 상체근육형
-  '겨드랑이 부유방형':            'BC-12', // 상체·흉추·피하 → BC-12 부유방형
-  // ── 전신형 ────────────────────────────────────────────
-  '호르몬스위치 갱년기형':        'BC-13', // 전신·갱년기·변환 → BC-13 갱년기변환형
-  '스트레스기절 번아웃형':        'BC-14', // 전신·부신·번아웃 → BC-14 번아웃무기력형
-  '털털한 PCOS형':                'BC-14', // 전신·호르몬·무기력 → BC-14
-  '여름에도 시린 얼음장형':       'BC-15', // 전신·대사저하·순환 → BC-15
-  '동시다발 다중악순환형':        'BC-16', // 전신·복합·다중악순환 → BC-16
+  // ── BC-1: 하지정체·부종형 ─────────────────────────────
+  '엄마체형 하지정체형':            'BC-1',  // 설계도 ✅ BC-1
+  '오후만되면 코끼리다리형':        'BC-1',  // 설계도 ✅ BC-1
+  // ── BC-2: 자세·거북목형 ──────────────────────────────
+  '목짧아지는 거북이형':            'BC-2',  // 설계도 ✅ BC-2 (구:BC-9 → 수정)
+  // ── BC-3: 내장·인슐린저항형 ─────────────────────────
+  '남산수박배 기본형':              'BC-3',  // 설계도 ✅ BC-3 (신규 추가)
+  '식후기절 혈당롤러형':            'BC-3',  // 설계도 ✅ BC-3 (이름 통일: 코스터형→롤러형)
+  '아빠체형 내장비대형':            'BC-3',  // 설계도 ✅ BC-3 (구:BC-4 → 수정)
+  '털털한 PCOS형':                  'BC-3',  // 설계도 ✅ BC-3 (구:BC-14 → 수정)
+  // ── BC-4: 대사저하·약물형 ────────────────────────────
+  '물만마셔도요요 기본형':          'BC-4',  // 설계도 ✅ BC-4 (신규 추가)
+  '약물부작용 강제축적형':          'BC-4',  // 설계도 ✅ BC-4
+  '억제제부작용 배부름마비형':      'BC-4',  // 설계도 ✅ BC-4 (구:BC-3 → 수정)
+  // ── BC-5: 순환저하·냉체형 ────────────────────────────
+  '셀룰라이트귤껍질 기본형':        'BC-5',  // 설계도 ✅ BC-5 (신규 추가)
+  '여름에도 시린 얼음장형':         'BC-5',  // 설계도 ✅ BC-5 (구:BC-15 → 수정)
+  // ── BC-6: 코르티솔·야식형 ────────────────────────────
+  '스트레스성 야식부엉이형':        'BC-6',  // 설계도 ✅ BC-6 (구:BC-3 → 수정)
+  // ── BC-7: 호르몬·출산형 ──────────────────────────────
+  '식후임산부 가스풍선형':          'BC-7',  // 설계도 ✅ BC-7 (구:BC-5 → 수정)
+  '출산후 바람빠진 풍선형':         'BC-7',  // 설계도 ✅ BC-7 (신규 추가)
+  // ── BC-8: 골반·체형형 ────────────────────────────────
+  '골반틀어짐 승마살형':            'BC-8',  // 설계도 ✅ BC-8
+  '운동할수록 말벅지형':            'BC-8',  // 설계도 ✅ BC-8 (구:BC-7 → 수정)
+  // ── BC-9: 마른비만·올챙이형 ─────────────────────────
+  '팔다리거미 올챙이배형':          'BC-9',  // 설계도 ✅ BC-9 (구:BC-6 → 수정)
+  // ── BC-10: 팔뚝부종형 ────────────────────────────────
+  '안 쓰는 팔뚝 부종형':           'BC-10', // 설계도 ✅ BC-10
+  // ── BC-11: 상체근육형 ────────────────────────────────
+  '상체근육형':                     'BC-11', // 설계도 ✅ BC-11
+  // ── BC-12: 부유방형 ──────────────────────────────────
+  '겨드랑이 부유방형':              'BC-12', // 설계도 ✅ BC-12
+  // ── BC-13: 갱년기변환형 ──────────────────────────────
+  '호르몬스위치 갱년기형':          'BC-13', // 설계도 ✅ BC-13
+  // ── BC-14: 번아웃·무기력형 ──────────────────────────
+  '스트레스기절 번아웃형':          'BC-14', // 설계도 ✅ BC-14
+  // ── BC-15: 대사증후군형 ──────────────────────────────
+  '대사증후군 종합형':              'BC-15', // 설계도 ✅ BC-15
+  // ── BC-16: 다중악순환형 ──────────────────────────────
+  '동시다발 다중악순환형':          'BC-16', // 설계도 ✅ BC-16
+  // ── 하위 호환: 구 이름 별칭 (혈당롤러코스터형 검색 대응) ──
+  '식후기절 혈당롤러코스터형':      'BC-3',  // 구버전 호환 (설계명: 혈당롤러형)
 };
 
 // BC코드 → 대표 한글 닉네임 (getRoadmapWeeks fallback·결과지 표시용)
-// ★ BC-1~BC-16 전체 커버 (외형 카드 16개 각 대표 닉네임)
+// ★ BC-1~BC-16 전체 커버 — 설계도 기준 대표 아형 (GAP-01~03 반영, 2026-08-18)
 var BC_TO_DEFAULT_NICKNAME = {
   // 하체형
   'BC-1': '오후만되면 코끼리다리형',
-  'BC-2': '지방흡입후 재발형',
-  'BC-7': '운동할수록 말벅지형',
+  'BC-2': '목짧아지는 거북이형',      // 설계도 기준: BC-2 = 목짧아지는 거북이형 (구:지방흡입후 재발형 삭제)
+  'BC-7': '식후임산부 가스풍선형',     // 설계도 기준: BC-7 대표
   'BC-8': '골반틀어짐 승마살형',
   // 복부형
-  'BC-3': '식후기절 혈당롤러코스터형',
+  'BC-3': '식후기절 혈당롤러형',       // 설계도 기준 이름 통일
   'BC-4': '약물부작용 강제축적형',
-  'BC-5': '식후임산부 가스풍선형',
-  'BC-6': '팔다리거미 올챙이배형',
+  'BC-5': '셀룰라이트귤껍질 기본형',   // 설계도 기준: BC-5 대표
+  'BC-6': '스트레스성 야식부엉이형',   // 설계도 기준: BC-6 대표
   // 상체형
-  'BC-9':  '목짧아지는 거북이형',
+  'BC-9':  '팔다리거미 올챙이배형',    // 설계도 기준: BC-9 = 팔다리거미 올챙이배형
   'BC-10': '안 쓰는 팔뚝 부종형',
   'BC-11': '상체근육형',
   'BC-12': '겨드랑이 부유방형',
@@ -669,11 +697,37 @@ function computeBCCode(axisScores, answers) {
   const top2Legacy = sorted[1];
   const firstDomino = (CAUSAL_AXIS_META[top1Legacy[0]] && CAUSAL_AXIS_META[top1Legacy[0]].label) || '스트레스';
 
-  // ⑤ 4대 지표
-  const metaAge    = Math.round(40 + (axisScores['A03']||0) * 0.15 + (axisScores['A07']||0) * 0.1);
-  const metaBelly  = Math.min(99, Math.round((axisScores['A01']||0) * 0.8 + (axisScores['A05']||0) * 0.2));
-  const metaHormone= Math.min(99, Math.round((axisScores['A03']||0) * 0.6 + (axisScores['A07']||0) * 0.4));
-  const metaBody   = Math.min(99, Math.round((axisScores['A06']||0) * 0.7 + (axisScores['A02']||0) * 0.3));
+  // ⑤ 4대 지표 — GAP-04 수정: 설계도 공식 100% 적용 (2026-08-18)
+  // 대사효율나이: 실나이 + (10축 평균부담 − 0.5) × 20, clamp 상한+12/하한-4
+  const _realAge4 = (function() {
+    var ans = answers || {};
+    if (ans.birth_date) {
+      var y = parseInt((ans.birth_date||'').split('-')[0]);
+      if (y > 1900 && y < 2020) return new Date().getFullYear() - y;
+    }
+    if (ans.age) return Number(ans.age) || 42;
+    return 42;
+  })();
+  const _allAxes4 = ['A01','A02','A03','A04','A05','A06','A07','A08','A09','A10'];
+  const _axSum4   = _allAxes4.reduce((s,k) => s + (axisScores[k]||0), 0);
+  const _axAvg4   = _axSum4 / 10;  // 0~12 스케일 평균
+  const _ageDelta = (_axAvg4 / 12 - 0.5) * 20;  // 정규화(0~1) 후 공식 적용
+  const metaAge    = Math.min(_realAge4 + 12, Math.max(_realAge4 - 4, Math.round(_realAge4 + _ageDelta)));
+  // 복부위험도: (A01×45% + A09×25% + A07×15% + A05×15%) × 75 + 8
+  const metaBelly  = Math.min(99, Math.max(8, Math.round(
+    ((axisScores['A01']||0)*0.45 + (axisScores['A09']||0)*0.25 +
+     (axisScores['A07']||0)*0.15 + (axisScores['A05']||0)*0.15) / 12 * 75 + 8
+  )));
+  // 호르몬부하: (A03×45% + A07×30% + A02×25%) × 75 + 8
+  const metaHormone= Math.min(99, Math.max(8, Math.round(
+    ((axisScores['A03']||0)*0.45 + (axisScores['A07']||0)*0.30 +
+     (axisScores['A02']||0)*0.25) / 12 * 75 + 8
+  )));
+  // 체형불균형: (A06×50% + A02×30% + A04×20%) × 75 + 8
+  const metaBody   = Math.min(99, Math.max(8, Math.round(
+    ((axisScores['A06']||0)*0.50 + (axisScores['A02']||0)*0.30 +
+     (axisScores['A04']||0)*0.20) / 12 * 75 + 8
+  )));
 
   return {
     // V3.1 신규
@@ -5917,6 +5971,63 @@ var _DOMAIN_META = {
   '순환':  { icon:'💧', color:'#1565C0' },
 };
 
+// ──────────────────────────────────────────────────────────────────
+// GAP-05 (2026-08-18): 처방 신뢰도 동적 계산 함수
+// 설계도 공식: 기본70 + 응답완성도(답/전체×15) + 판정확신(격차≥3→+10/≥1.5→+6/else→+3)
+//              + 배경일치+3 (배경답과 1등축 동방향), 상한 95
+// ──────────────────────────────────────────────────────────────────
+function computeConfidenceScore(opts) {
+  // opts: { answeredQ, totalQ, axisScores, topAxis, background }
+  var answered = Number(opts.answeredQ || 0);
+  var total    = Number(opts.totalQ || 50);
+  var ax       = opts.axisScores || {};
+  var topAxis  = opts.topAxis || '';      // 1등 축 키 (e.g. 'A01')
+  var bg       = opts.background || '';   // '갱년기'|'출산'|'약물'|null
+
+  // 1) 기본 70
+  var score = 70;
+
+  // 2) 응답 완성도: (답한 문항 / 전체) × 15
+  if (total > 0) score += Math.round((answered / total) * 15);
+
+  // 3) 판정 확신도: 1등축과 2등축 점수 격차
+  var sortedAxes = Object.entries(ax)
+    .filter(function(e) { return e[0].startsWith('A'); })
+    .sort(function(a,b) { return b[1] - a[1]; });
+  var gap = 0;
+  if (sortedAxes.length >= 2) gap = (sortedAxes[0][1] || 0) - (sortedAxes[1][1] || 0);
+  if (gap >= 3)   score += 10;
+  else if (gap >= 1.5) score += 6;
+  else            score += 3;
+
+  // 4) 배경 일치 보정 +3
+  // 배경과 1등축 동방향 매핑
+  var BG_AXIS_MAP = { '갱년기': 'A03', '출산': 'A06', '약물': 'A08', 'PCOS': 'A03', '번아웃': 'A07' };
+  var bgAxis = BG_AXIS_MAP[bg] || null;
+  if (bgAxis && topAxis && bgAxis === topAxis) score += 3;
+
+  // 상한 95 (자기보고 데이터 한계)
+  return Math.min(95, Math.round(score));
+}
+
+// ──────────────────────────────────────────────────────────────────
+// GAP-06 (2026-08-18): 헤어샵 전용 도메인 가중치 테이블 독립 정의
+// 설계도: 헤어샵 채널 특화 — 관리(두피/탈모) A09×1.8 핵심, 채널 간섭 차단
+// ──────────────────────────────────────────────────────────────────
+var _DOMAIN_AXIS_WEIGHTS_SALON = {
+  '식단':  { A01:1.2, A05:1.0, A08:0.6 },           // 헤어샵: 식단 영향 축소
+  '심리':  { A08:1.5, A07:1.0 },                     // 헤어샵: 심리 영향
+  '호르몬':{ A03:1.5, A07:0.7, A01:0.4 },            // 헤어샵: 호르몬 (탈모 관련)
+  '운동':  { A04:1.2, A06:0.8, A02:0.5 },            // 헤어샵: 운동
+  '회복':  { A07:1.3, A08:0.9, A02:0.4 },            // 헤어샵: 회복
+  '체형':  { A06:1.5, A04:1.0, A02:0.8 },            // 헤어샵: 체형 (병원보다 낮춤)
+  '한방':  { A02:1.2, A03:0.8, A05:0.8 },            // 헤어샵: 한방 (병원과 동일)
+  '관리':  { A09:1.8, A01:1.0, A03:0.8 },            // ★ 헤어샵 핵심: 두피·탈모 관리 A09×1.8
+  '시술':  { A02:1.0, A06:0.8, A04:0.6, A03:0.5 },  // 헤어샵: 시술 가중치 축소
+  '약물':  { A09:1.5, A01:0.8, A03:0.5 },            // 헤어샵: 약물 (탈모 약 포함)
+  '철학':  { A10:1.2, A07:0.4 },                     // 헤어샵: 기질 (낮춤)
+};
+
 // ★ BUG-C 수정 (2026-08-17): 에스테틱 안전핀 — BC_DOMAIN_RULES exclude:['aesthetic'] 반영
 // 설계도: BC-1/BC-10/BC-13/BC-14 → 시술(aesthetic) 도메인 top5 진입 불가
 // computeTop3Prescriptions(axisScores, answers, track, bcCode)
@@ -5925,9 +6036,15 @@ var _BC_AESTHETIC_EXCLUDE = ['BC-1', 'BC-10', 'BC-13', 'BC-14'];
 
 function computeTop3Prescriptions(axisScores, answers, track, bcCode) {
   var _track = track || 'hospital';
+  // GAP-06 (2026-08-18): 채널별 독립 가중치 완전 분리
+  // hospital → _DOMAIN_AXIS_WEIGHTS_HOSPITAL
+  // aesthetic → _DOMAIN_AXIS_WEIGHTS_AESTHETIC
+  // salon → _DOMAIN_AXIS_WEIGHTS_SALON (헤어샵 전용, A09×1.8 관리 핵심)
   var _weights = (_track === 'aesthetic')
     ? _DOMAIN_AXIS_WEIGHTS_AESTHETIC
-    : _DOMAIN_AXIS_WEIGHTS_HOSPITAL;
+    : (_track === 'salon')
+      ? _DOMAIN_AXIS_WEIGHTS_SALON
+      : _DOMAIN_AXIS_WEIGHTS_HOSPITAL;
 
   // axisScores 스케일 정규화 (0~10 → 0~100, 이미 0~100이면 그대로)
   var _ax = {};
@@ -6718,7 +6835,9 @@ if (typeof module !== 'undefined' && module.exports) {
     computeBCCodeSafe, BORDERLINE_THRESHOLD,
     // V5.0 신규: 공통 TOP3 처방 산출 파이프라인
     computeTop3Prescriptions,
-    _DOMAIN_AXIS_WEIGHTS_HOSPITAL, _DOMAIN_AXIS_WEIGHTS_AESTHETIC, _DOMAIN_META,
+    _DOMAIN_AXIS_WEIGHTS_HOSPITAL, _DOMAIN_AXIS_WEIGHTS_AESTHETIC, _DOMAIN_AXIS_WEIGHTS_SALON, _DOMAIN_META,
+    // GAP-05/06 (2026-08-18): 신뢰도 동적 계산 + 헤어샵 가중치
+    computeConfidenceScore,
     // V6.0 신규: TagEngine + 4대 바디 지표 + 의료 필터 + 로드맵 비율
     extractTags, computeBodyMetrics, getMedicalFilters,
     getRoadmapRatioOverride, getMotivationBanner, getMealEnvMissions,
