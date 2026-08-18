@@ -3068,17 +3068,39 @@ src:url(data:font/woff2;base64,d09GMgABAAAAANywABEAAAABgEQAANxFAAIAgwAAAAAAAAAAA
 #introSplash .splashbrand{animation:splashUp .95s cubic-bezier(.2,.7,.2,1) both}
 #introSplash .splashrule{animation:splashUp .95s cubic-bezier(.2,.7,.2,1) .18s both}
 #introSplash .splashtag{animation:splashUp .95s cubic-bezier(.2,.7,.2,1) .32s both}
-#introSplash .splashbtn{animation:splashUp .95s cubic-bezier(.2,.7,.2,1) .48s both}
+#introSplash @keyframes splashBtnGlow{
+  0%,100%{border-color:rgba(255,255,255,.45);box-shadow:0 0 0 0 rgba(255,255,255,0)}
+  50%{border-color:rgba(255,255,255,.95);box-shadow:0 0 16px 2px rgba(255,255,255,.4),0 0 0 1px rgba(255,255,255,.6) inset}
+}
+/* 별똥별 (제목 SlimMind 쪽) */
+.splashbrand-wrap{position:relative;display:inline-block}
+.shootstar{position:absolute;width:2px;height:2px;border-radius:50%;
+  background:#fff;box-shadow:0 0 6px 2px rgba(255,255,255,.9);
+  opacity:0;pointer-events:none;z-index:2}
+.shootstar::after{content:'';position:absolute;right:1px;top:0;
+  width:38px;height:1px;transform-origin:right center;transform:rotate(28deg);
+  background:linear-gradient(270deg,rgba(255,255,255,.85),transparent)}
+.shootstar.s1{top:-14px;left:8%;animation:shoot 2.4s ease-in 1.2s infinite}
+.shootstar.s2{top:-4px;left:64%;animation:shoot 2.8s ease-in 2.6s infinite}
+.shootstar.s3{top:6px;left:34%;animation:shoot 3.2s ease-in 4.1s infinite}
+@keyframes shoot{
+  0%{opacity:0;transform:translate(0,0) scale(.6)}
+  8%{opacity:1}
+  30%{opacity:1}
+  55%{opacity:0;transform:translate(60px,42px) scale(1)}
+  100%{opacity:0}
+}
+#introSplash .splashbtn{animation:splashUp .95s cubic-bezier(.2,.7,.2,1) .48s both, splashBtnGlow 2.2s ease-in-out 1.6s infinite}
 @media (prefers-reduced-motion:reduce){
   #introSplash .splashbrand,#introSplash .splashrule,
   #introSplash .splashtag,#introSplash .splashbtn{animation:none}
 }
   /* 글자체(Italiana)는 그대로 두고 크기·자간만 키웠다 */
-.splashbrand{font-family:'Italiana',Georgia,serif;font-size:clamp(38px,14vw,58px);font-weight:400;letter-spacing:.13em;color:#ffffff;line-height:1.05;white-space:nowrap;
+.splashbrand{font-family:'Italiana',Georgia,serif;font-size:clamp(28px,10.5vw,42px);font-weight:400;letter-spacing:.2em;color:#ffffff;line-height:1.05;white-space:nowrap;
     text-shadow:0 2px 24px rgba(60,40,90,.28)}
   .splashrule{width:46px;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.75),transparent);margin:22px 0 0}
   .splashtag{font-size:14.5px;color:rgba(255,255,255,.9);margin-top:26px;font-weight:400;line-height:2;letter-spacing:.03em}
-  .splashbtn{margin-top:46px;background:transparent;color:#ffffff;border:1px solid rgba(255,255,255,.55);border-radius:2px;
+  .splashbtn{margin-top:46px;background:transparent;color:#ffffff;border:1px solid rgba(255,255,255,.55);border-radius:2px;animation:splashUp .95s cubic-bezier(.2,.7,.2,1) .48s both, splashBtnGlow 2.2s ease-in-out 1.6s infinite;
     padding:14px 48px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;letter-spacing:.16em;
     text-transform:uppercase;transition:background .22s,color .22s,border-color .22s}
   .splashbtn:hover,.splashbtn:active{background:#ffffff;color:#7559a0;border-color:#ffffff}
@@ -5185,7 +5207,7 @@ html.th-mode .cond-eyebrow{
   transform:scale(1.1);
 }
 .sm-lang-btn.active .code{
-  color:#f8eed9; text-shadow:0 0 14px rgba(235,205,145,.6);
+  color:#e7e4ed; text-shadow:0 0 14px rgba(235,205,145,.6);
 }
 .sm-lang-btn.active .lname{ color:rgba(248,238,217,.85); }
 
@@ -5353,7 +5375,7 @@ html.th-mode .cond-eyebrow{
 
 <div id="introSplash">
   <div class="splashinner">
-    <div class="splashbrand">SlimMind</div>
+    <div class="splashbrand-wrap"><span class="shootstar s1"></span><span class="shootstar s2"></span><span class="shootstar s3"></span><div class="splashbrand">SlimMind</div></div>
     <div class="splashrule"></div>
     <div class="splashtag">당신의 몸은 하나의 코드입니다.<br>우리는 그 원인을 해독합니다.</div>
     <!-- 언어 선택 후 시작하기 버튼 활성화 -->
