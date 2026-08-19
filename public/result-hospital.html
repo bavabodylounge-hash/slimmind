@@ -21480,9 +21480,15 @@ function _p10DailyURL(){
   try {
     var q = new URLSearchParams(window.location.search);
     var sid = q.get('id') || q.get('diagnosis_id') || q.get('did') || '';
-    var base = window.location.href.replace(/[^\/]*$/, '') + 'slimmind-today.html';
+    // ★ pathname에서 UUID 추출 (/result-hospital/UUID 형태)
+    if (!sid) {
+      var m = location.pathname.match(/\/(?:result-hospital|result-aesthetic|result)\/([0-9a-f\-]{20,})/i);
+      if (m && m[1]) sid = m[1];
+    }
+    // ★ base URL을 루트 기준으로 생성 (result-hospital/ 하위가 아닌 /slimmind-today.html)
+    var base = location.protocol + '//' + location.host + '/slimmind-today.html';
     return sid ? (base + '?id=' + encodeURIComponent(sid)) : base;
-  } catch(e){ return 'slimmind-today.html'; }
+  } catch(e){ return '/slimmind-today.html'; }
 }
 function _p10DailyHint(msg){
   var el = document.getElementById('p10-daily-hint');
@@ -26692,7 +26698,8 @@ function renderPersonalizationLayer(data, axisScores, answers, bcCode, ohaengTyp
            // /result-hospital/XXXX 경로에서 ID 추출
            || (location.pathname.match(/\/result-hospital\/([^/?#]+)/) || [])[1]
            || '';
-    var base = location.href.replace(/[?#].*$/, '').replace(/[^/]*$/, '') + 'slimmind-today.html';
+    // ★ base URL을 루트 기준으로 생성 (result-hospital/ 하위가 아닌 /slimmind-today.html)
+    var base = location.protocol + '//' + location.host + '/slimmind-today.html';
     // ?src=hospital 을 붙여 openFull()이 result-hospital.html로 돌아오도록 함
     if (sid) {
       return base + '?src=hospital&id=' + encodeURIComponent(sid);
