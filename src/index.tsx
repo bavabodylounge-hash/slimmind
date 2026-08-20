@@ -5561,6 +5561,36 @@ app.post('/api/v1/diagnosis', async (c) => {
       '대사증후군형':           'BC-15',
       // ── BC-16: 다중악순환 계열 ──────────────────────────────
       '다중악순환형':           'BC-16',
+      // ── v3.3 신설 24아형 (2026-08-20 추가) ─────────────────────
+      // 복부 신설 3종
+      '배만 붓는 복부 정체형':               'BC-7',
+      '배부터 무너지는 남성 호르몬 저하형':  'BC-3',
+      '복압 빠진 맥주배형':                  'BC-7',
+      // 하체 신설 5종
+      '당이 하체로 가는 저장형':             'BC-3',
+      '장이 막혀 다리가 무거운 형':          'BC-1',
+      '밤에 굳는 하체 정체형':               'BC-14',
+      '습관이 하체에 쌓인 형':               'BC-4',
+      '다리부터 신호 오는 대사 경고형':      'BC-15',
+      // 상체 신설 7종
+      '등살부터 차오르는 저장형':            'BC-3',
+      '어깨 뒤부터 바뀌는 호르몬 전환형':   'BC-13',
+      '장이 눌러 상체가 굳는 형':            'BC-7',
+      '어깨에 얹힌 긴장 축적형':             'BC-14',
+      '습관이 팔뚝에 쌓인 형':               'BC-4',
+      '목 뒤부터 신호 오는 대사 경고형':     'BC-15',
+      '가슴 아래 접히는 흉부 정체형':        'BC-12',
+      // 전신 신설 4종
+      '온몸이 무거운 전신 정체형':           'BC-13',
+      '장에서 시작된 전신 염증형':           'BC-15',
+      '축이 무너진 전신 불균형형':           'BC-16',
+      '습관이 온몸에 쌓인 형':               'BC-4',
+      // 기본형·남성전용·기본형5 신설 5종
+      '짊어진어깨형':                        'BC-2',
+      '전체적으로둔해진형':                  'BC-16',
+      '남산수박배형':                        'BC-3',
+      '셀룰라이트귤껍질형':                  'BC-5',
+      '물만마셔도요요형':                    'BC-4',
     }
     // ✅ [수정 V5.0] bc_primary에 raw 축코드(A07, A02 등)가 들어올 경우 정규화 적용
     // normalizeBcCode()가 A0X 패턴을 BC코드로 변환함
@@ -6379,6 +6409,7 @@ app.post('/api/h/diagnosis', async (c) => {
       `ALTER TABLE hospital_responses ADD COLUMN mbti_full TEXT`,
       `ALTER TABLE hospital_responses ADD COLUMN goal_weight REAL`,
       `ALTER TABLE hospital_responses ADD COLUMN weight_loss_pct REAL`,
+      `ALTER TABLE hospital_responses ADD COLUMN bc_nickname TEXT`,  // v3.3: 아형명 저장
     ]
     for (const sql of alterColumns) {
       try { await db.prepare(sql).run() } catch (_) { /* 이미 존재하면 무시 */ }
@@ -6390,13 +6421,16 @@ app.post('/api/h/diagnosis', async (c) => {
     const resolvedWeightLossPct = weight_loss_pct != null ? Number(weight_loss_pct)
       : (parsedRaw?.weight_loss_pct != null ? Number(parsedRaw.weight_loss_pct) : null)
 
+    // bc_nickname: survey-hospital.html이 전송한 아형명 (한글 닉네임)
+    const resolvedBcNickname = bc_nickname || bc_primary || null
+
     await db.prepare(`
       INSERT INTO hospital_responses
         (id, b2b_code, ref_code, user_name, gender, age, height, weight, phone,
          stage1_json, stage2_json, stage3_json, stage4_json,
-         ohaeng_type, disp_type, mbti_full, bc_code, axis_scores, raw_answers,
+         ohaeng_type, disp_type, mbti_full, bc_code, bc_nickname, axis_scores, raw_answers,
          goal_weight, weight_loss_pct)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     `).bind(
       resultId, b2bCode, ref_code || null, user_name,
       gender || null, age ? String(age) : null,
@@ -6410,6 +6444,7 @@ app.post('/api/h/diagnosis', async (c) => {
       disp_type || (resolvedOhaeng ? resolvedOhaeng + '형' : null),
       resolvedMbti,
       resolvedBcCode,
+      resolvedBcNickname,  // v3.3: 아형명 저장
       resolvedAxisScores ? JSON.stringify(resolvedAxisScores) : null,  // 0~100 정규화값
       raw_answers ? JSON.stringify(raw_answers) : null,
       resolvedGoalWeight,       // 12주 칼로리 계산용 — 반드시 저장
@@ -6516,6 +6551,8 @@ app.get('/api/h/result/:id', async (c) => {
         blood_type: finalBloodType,
         face_shape: finalFaceShape,
         bc_code: row.bc_code,
+        bc_nickname: row.bc_nickname || null,  // v3.3: 아형명 반환 (SUBTYPE_NARR 조회 키)
+        bc_primary: row.bc_nickname || row.bc_code || null,  // v3.3: 아형명 우선 반환
         axis_scores: parseJ(row.axis_scores),
         stage1_answers: parseJ(row.stage1_json),
         stage2_answers: parseJ(row.stage2_json),
