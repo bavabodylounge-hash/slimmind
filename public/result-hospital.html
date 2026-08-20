@@ -7111,6 +7111,34 @@ function render(){
   document.getElementById('app').innerHTML=h;
   renderFloats();
   setTimeout(function(){document.querySelectorAll('.hpf,.pfl').forEach(function(el){});},50);
+
+  // [Bug#6 FIX v3] render() 호출 후 w12-ban 배너 즉시 BC코드별 동적 교체
+  // render()가 app.innerHTML을 교체할 때마다 w12-ban 하드코딩이 복원되므로, 여기서도 교체
+  (function(){
+    try {
+      var _banEl2 = document.getElementById('w12-ban');
+      if (!_banEl2) return;
+      var _bc2 = window.__RENDER_BC_CODE__ || (window.__SM_DATA__ && window.__SM_DATA__.bc_code) || USER.code || '';
+      // normalizeBcCode: 'BC-03' → 'BC-3' 등 표준화 (BC_PRESCRIPTION_DB 키: non-padded)
+      if (typeof normalizeBcCode === 'function') { var _n2 = normalizeBcCode(_bc2); if (_n2) _bc2 = _n2.plain; }
+      var _pres2 = (typeof BC_PRESCRIPTION_DB !== 'undefined' && _bc2) ? BC_PRESCRIPTION_DB[_bc2] : null;
+      if (_pres2 && _pres2.exerciseBan) {
+        var _nm2 = USER.name || (window.__SM_DATA__ && window.__SM_DATA__.userName) || '';
+        var _shortNm2 = (_nm2.length > 2) ? _nm2.slice(1) : _nm2;
+        var _bans2 = _pres2.exerciseBan.split('·').map(function(s){ return s.trim(); }).filter(Boolean);
+        var _nmEl2 = _banEl2.querySelector('#w12-ban-nm');
+        if (!_nmEl2) { _nmEl2 = document.createElement('span'); _nmEl2.id = 'w12-ban-nm'; }
+        _nmEl2.textContent = _shortNm2;
+        var _suf2;
+        if (_bans2.length >= 3)      { _suf2 = '님 금지 3가지 — ① ' + _bans2[0] + ' ② ' + _bans2[1] + ' ③ ' + _bans2[2]; }
+        else if (_bans2.length === 2) { _suf2 = '님 금지 — ① ' + _bans2[0] + ' ② ' + _bans2[1]; }
+        else                          { _suf2 = '님 금지 — ' + _pres2.exerciseBan; }
+        _banEl2.textContent = '';
+        _banEl2.appendChild(_nmEl2);
+        _banEl2.appendChild(document.createTextNode(_suf2));
+      }
+    } catch(_be2) {}
+  })();
 }
 function cardName(k){return k==='recover'?'회복':(k==='move'?'운동':'식단');}
 
@@ -26910,27 +26938,47 @@ function renderPersonalizationLayer(data, axisScores, answers, bcCode, ohaengTyp
         _fill('w12-ban-nm', _shortNm);
         _fill('w12-ph-nm1', _shortNm);
 
-        // [Bug#6 FIX] w12-ban 본문 BC코드별 동적 교체
-        // BC_PRESCRIPTION_DB.exerciseBan 사전 값을 #w12-ban 배너에 주입
+        // [Bug#6 FIX v2] w12-ban 본문 BC코드별 동적 교체
+        // 수정 근거:
+        //   ① _d 변수가 이 스코프에 없음 → bcCode(함수 파라미터) 직접 사용
+        //   ② _fill('w12-ban-nm', ...) 후 innerHTML 교체 금지 → textNode 분리 방식
         (function(){
           var _banEl = document.getElementById('w12-ban');
           if (!_banEl) return;
-          var _bc = _d.bc_code || (_d.full_code ? _d.full_code.split('-').slice(0,2).join('-') : '');
-          var _pres = (typeof BC_PRESCRIPTION_DB !== 'undefined') ? BC_PRESCRIPTION_DB[_bc] : null;
+          // bcCode = renderPersonalizationLayer의 4번째 파라미터 (normalizeBcCode 적용된 plain 형식)
+          var _bc = (typeof bcCode !== 'undefined' && bcCode) ? bcCode
+                  : (window.__RENDER_BC_CODE__ || (window.__SM_DATA__ && window.__SM_DATA__.bc_code) || '');
+          // normalizeBcCode로 'BC-03' → 'BC-3' 등 표준화 (BC_PRESCRIPTION_DB 키가 non-padded)
+          if (typeof normalizeBcCode === 'function') {
+            var _norm = normalizeBcCode(_bc);
+            if (_norm) _bc = _norm.plain; // 'BC-3' 형식
+          }
+          var _pres = (typeof BC_PRESCRIPTION_DB !== 'undefined' && _bc) ? BC_PRESCRIPTION_DB[_bc] : null;
           if (_pres && _pres.exerciseBan) {
-            // exerciseBan을 3개 항목으로 분리 (·구분자 기준)
             var _bans = _pres.exerciseBan.split('·').map(function(s){ return s.trim(); }).filter(Boolean);
-            var _nmSpan = '<span id="w12-ban-nm">' + _shortNm + '</span>';
-            if (_bans.length >= 3) {
-              _banEl.innerHTML = _nmSpan + '님 금지 3가지 — ① ' + _bans[0] + ' ② ' + _bans[1] + ' ③ ' + _bans[2];
-            } else if (_bans.length === 2) {
-              _banEl.innerHTML = _nmSpan + '님 금지 — ① ' + _bans[0] + ' ② ' + _bans[1];
-            } else if (_bans.length === 1) {
-              _banEl.innerHTML = _nmSpan + '님 금지 — ' + _bans[0];
+            // innerHTML 교체 대신 textContent 분리 방식으로 이름 span 보존
+            // 1) 이름 span 확보 (이미 _fill로 채워진 것 재사용, 없으면 생성)
+            var _nmEl = _banEl.querySelector('#w12-ban-nm');
+            if (!_nmEl) {
+              _nmEl = document.createElement('span');
+              _nmEl.id = 'w12-ban-nm';
+              _nmEl.textContent = _shortNm;
             } else {
-              // fallback: exerciseBan 전체 텍스트 그대로
-              _banEl.innerHTML = _nmSpan + '님 금지 — ' + _pres.exerciseBan;
+              _nmEl.textContent = _shortNm;
             }
+            // 2) 배너 내용 재구성
+            var _suffix;
+            if (_bans.length >= 3) {
+              _suffix = '님 금지 3가지 — ① ' + _bans[0] + ' ② ' + _bans[1] + ' ③ ' + _bans[2];
+            } else if (_bans.length === 2) {
+              _suffix = '님 금지 — ① ' + _bans[0] + ' ② ' + _bans[1];
+            } else {
+              _suffix = '님 금지 — ' + _pres.exerciseBan;
+            }
+            // 3) DOM 직접 조작 (innerHTML 사용 않음 → w12-ban-nm span 보존)
+            _banEl.textContent = '';                 // 하드코딩 텍스트 완전 제거
+            _banEl.appendChild(_nmEl);               // 이름 span 삽입
+            _banEl.appendChild(document.createTextNode(_suffix)); // 나머지 텍스트 추가
           }
         })();
 
