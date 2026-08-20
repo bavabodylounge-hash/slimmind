@@ -11,10 +11,21 @@ const path = require('path');
 const TARGET = path.join(__dirname, '../public/result-hospital.html');
 
 const PATTERNS = [
-  { id: 'HC-01', regex: /함께한 지 3일째(?!<\/span>)/, desc: 'N일째 하드코딩 — id=together-days-span 없이 노출' },
-  // HC-02: id="w12-golden-time-div" 없이 골든타임 문구가 노출되는 경우만 검출
-  // (id 포함된 원본 div 또는 GOLDEN_TIME_MAP 내부는 정상)
-  { id: 'HC-02', regex: /골든타임 — 운동은 저녁 식후 90분[^'"]/, desc: 'A08 골든타임 하드코딩 — w12-golden-time-div 없이 노출 여부 확인 필요' },
+  // HC-01: HTML DOM 안에 id 없이 하드코딩된 경우만 검출
+  //   정상: <span id="together-days-span">함께한 지 3일째</span>  → 검출 제외
+  //   정상: JS 문자열 리터럴 안 '함께한 지 3일째' / "함께한 지 3일째"  → 검출 제외
+  //   정상: 정규식 패턴 /함께한 지 3일째/  → 검출 제외
+  //   오류: <span>함께한 지 3일째</span> (id 없음)  → 검출
+  { id: 'HC-01',
+    regex: /함께한 지 3일째(?!<\/span>)(?!['"\/])/,
+    desc: 'N일째 하드코딩 — id=together-days-span 없이 HTML DOM에 노출' },
+  // HC-02: id="w12-golden-time-div" 없이 골든타임 문구가 HTML DOM에 노출되는 경우만 검출
+  //   정상: GOLDEN_TIME_MAP 사전 내 '⏰ 골든타임...' (따옴표로 시작)  → 검출 제외
+  //   정상: <div id="w12-golden-time-div">⏰ 골든타임...  → id= 포함이므로 제외
+  //   오류: <div>⏰ 골든타임...</div> (id 없이 DOM 직접 노출)
+  { id: 'HC-02',
+    regex: /(?<!id="w12-golden-time-div">)(?<![':])⏰ 골든타임 — 운동은 저녁 식후 90분/,
+    desc: 'A08 골든타임 하드코딩 — w12-golden-time-div 없이 HTML DOM에 노출' },
   { id: 'HC-03', regex: /SUBTYPE_NARR\s*=\s*\{\s*\}/, desc: 'SUBTYPE_NARR 빈 사전' },
   { id: 'HC-04', regex: /exOptions:\s*\[\s*\]/, desc: 'exOptions 빈 배열' },
   { id: 'HC-05', regex: /exercise_response.*undefined/, desc: 'exercise_response undefined 접근' },

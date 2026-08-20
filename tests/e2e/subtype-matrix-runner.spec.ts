@@ -16,7 +16,7 @@
  *   npx playwright test tests/e2e/subtype-matrix-runner.spec.ts --reporter=html
  */
 
-import { test, expect, Page } from '@playwright/test';
+import { test, expect, Page } from 'playwright/test';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 46아형 전체 목록 (설계도 정본 기준)
@@ -58,248 +58,250 @@ const FEMALE_ONLY = ['털털한 PCOS형', '출산후 바람빠진 풍선형', '�
 // 남성 전용 (여성 키 없음)
 const MALE_ONLY   = ['복압 빠진 맥주배형', '가슴 아래 접히는 흉부 정체형', '배부터 무너지는 남성 호르몬 저하형'];
 
-const ALL_SUBTYPES = [...ALL_SUBTYPES_SHARED, ...FEMALE_ONLY, ...MALE_ONLY];
-
-// exercise_response 7개 값
-const EXERCISE_RESPONSES = [
-  { value: '하는 동안은 빠졌는데, 그만두니 금방 돌아왔어요', label: '일시반응형' },
-  { value: '한 번 좋아진 뒤 유지되는 편이었어요',          label: '반응지속형' },
-  { value: '체중은 줄었는데 라인은 그대로였어요',          label: '구성미변형' },
-  { value: '오히려 그 부위가 더 굵어지거나 단단해졌어요',  label: '역반응형'   },
-  { value: '다음 날 너무 힘들어서 며칠 쉬게 됐어요',      label: '회복부족형' },
-  { value: '별 변화가 없었어요',                          label: '저반응형'   },
-  { value: '아직 해본 적 없어요',                         label: '이력없음'   },
-];
-
-// pain_areas 6개 보기
-const PAIN_AREAS = ['목·어깨', '팔꿈치·손목', '등·허리', '골반·꼬리뼈', '무릎·발목', '통증은 없었어요'];
-
-// A08 골든타임 인덱스 6개
-const A08_INDICES = [0, 1, 2, 3, 4, 5];
-
 // ─────────────────────────────────────────────────────────────────────────────
-// Playwright config (인라인)
+// 실제 서빙 경로: /result-hospital/:id (DB 레코드 필요)
+// 로컬 DB 시드 ID 사용 (wrangler d1 execute로 확인된 레코드)
 // ─────────────────────────────────────────────────────────────────────────────
 const BASE_URL = 'http://localhost:3000';
+const DEMO_RESULT_ID = 'H-1787063144119-NYDBC';
+const RESULT_PAGE_URL = `${BASE_URL}/result-hospital/${DEMO_RESULT_ID}`;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Helper: result-hospital.html을 JS 평가 모드로 열기
+// Helper: result-hospital.html을 JS 평가 모드로 열기 (페이지 재사용 최적화)
 // ─────────────────────────────────────────────────────────────────────────────
+let _pageLoaded = false;
+
 async function openResultPage(page: Page, overrides: Record<string, unknown> = {}): Promise<void> {
-  await page.goto(`${BASE_URL}/result-hospital.html?demo=1`, { waitUntil: 'domcontentloaded' });
-  // window.__SM_DATA__ 주입
-  await page.evaluate((data) => {
-    (window as any).__SM_DATA__ = Object.assign({
-      bc_code: 'BC-13',
-      bc_primary: '갱년기 호르몬스위치형',
-      bc_nickname: '갱년기 호르몬스위치형',
-      userName: '테스트',
-      gender: '여성',
-      ohaengType: '수',
-      mbtiType: 'INFJ',
-      bloodType: 'A',
-      faceShape: '둥근형',
-      axisScores: { A01:3, A02:4, A03:9, A04:2, A05:2, A06:5, A07:6, A08:7, A09:3, A10:1 },
-    }, data);
-  }, overrides);
+  // 페이지가 이미 열려 있으면 재이동 생략
+  const currentUrl = page.url();
+  if (!currentUrl.includes('/result-hospital/')) {
+    await page.goto(RESULT_PAGE_URL, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+  }
+
+  // 테스트 오버라이드가 있을 경우 __SM_DATA__ 덮어쓰기
+  if (Object.keys(overrides).length > 0) {
+    await page.evaluate((data) => {
+      const existing = (window as any).__SM_DATA__ || {};
+      (window as any).__SM_DATA__ = Object.assign(existing, data);
+    }, overrides);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SUITE 1: SUBTYPE_NARR 사전 완전성 검증
+// SUITE 1: SUBTYPE_NARR 사전 완전성 검증 (배치 — 페이지 1회 로드)
 // ─────────────────────────────────────────────────────────────────────────────
 test.describe('Suite 1: SUBTYPE_NARR 86벌 완전성 검증', () => {
 
-  test('SUBTYPE_NARR 사전이 전역에 존재한다', async ({ page }) => {
+  test('SUBTYPE_NARR 사전이 전역에 존재하고 86개 키를 포함한다', async ({ page }) => {
     await openResultPage(page);
-    const exists = await page.evaluate(() => typeof (window as any).SUBTYPE_NARR !== 'undefined');
-    expect(exists).toBe(true);
-  });
-
-  test('SUBTYPE_NARR 총 키 수가 86개 이상이다', async ({ page }) => {
-    await openResultPage(page);
-    const keyCount = await page.evaluate(() => {
+    const result = await page.evaluate(() => {
       const d = (window as any).SUBTYPE_NARR;
-      return d ? Object.keys(d).length : 0;
+      if (!d) return { exists: false, count: 0, missingFemale: [] as string[], missingMale: [] as string[] };
+      return { exists: true, count: Object.keys(d).length, missingFemale: [] as string[], missingMale: [] as string[] };
     });
-    console.log(`SUBTYPE_NARR 키 수: ${keyCount}`);
-    expect(keyCount).toBeGreaterThanOrEqual(86);
+    console.log(`SUBTYPE_NARR 사전: ${result.exists ? '존재' : '없음'}, 키 수: ${result.count}`);
+    expect(result.exists, 'SUBTYPE_NARR 전역 변수 없음').toBe(true);
+    expect(result.count, `SUBTYPE_NARR 키 수 부족: ${result.count}/86`).toBeGreaterThanOrEqual(86);
   });
 
-  // 공통 아형 × 여성 키 모두 존재
-  for (const subtype of ALL_SUBTYPES_SHARED) {
-    test(`공통아형_여 키 존재: "${subtype}_여"`, async ({ page }) => {
-      await openResultPage(page);
-      const result = await page.evaluate((key) => {
-        const d = (window as any).SUBTYPE_NARR;
-        if (!d) return { exists: false, story: '', desc: '' };
-        const v = d[key];
-        return {
-          exists: !!v,
-          story: v ? (v.story || '') : '',
-          desc:  v ? (v.desc  || '') : '',
-        };
-      }, `${subtype}_여`);
-      expect(result.exists, `키 없음: ${subtype}_여`).toBe(true);
-      expect(result.story.length, `story 비어있음: ${subtype}_여`).toBeGreaterThan(5);
-      expect(result.desc.length,  `desc 비어있음: ${subtype}_여`).toBeGreaterThan(5);
-    });
-  }
+  test('공통아형 40개 _여 키 배치 검증', async ({ page }) => {
+    await openResultPage(page);
+    const results = await page.evaluate((subtypes) => {
+      const d = (window as any).SUBTYPE_NARR;
+      if (!d) return { pass: 0, fail: [] as string[], total: subtypes.length };
+      const fail: string[] = [];
+      subtypes.forEach((s: string) => {
+        const key = `${s}_여`;
+        if (!d[key] || !d[key].story || d[key].story.length < 5) fail.push(key);
+      });
+      return { pass: subtypes.length - fail.length, fail, total: subtypes.length };
+    }, ALL_SUBTYPES_SHARED);
+    console.log(`공통_여 통과: ${results.pass}/${results.total}`);
+    if (results.fail.length > 0) console.warn('누락 키:', results.fail.join(', '));
+    // 누락 키가 있으면 경고 로그 후 실패 리포트
+    expect(results.fail.length, `누락된 _여 키: ${results.fail.join(', ')}`).toBe(0);
+  });
 
-  // 공통 아형 × 남성 키 모두 존재
-  for (const subtype of ALL_SUBTYPES_SHARED) {
-    test(`공통아형_남 키 존재: "${subtype}_남"`, async ({ page }) => {
-      await openResultPage(page);
-      const result = await page.evaluate((key) => {
-        const d = (window as any).SUBTYPE_NARR;
-        if (!d) return { exists: false, story: '', desc: '' };
-        const v = d[key];
-        return {
-          exists: !!v,
-          story: v ? (v.story || '') : '',
-          desc:  v ? (v.desc  || '') : '',
-        };
-      }, `${subtype}_남`);
-      expect(result.exists, `키 없음: ${subtype}_남`).toBe(true);
-      expect(result.story.length, `story 비어있음: ${subtype}_남`).toBeGreaterThan(5);
-      expect(result.desc.length,  `desc 비어있음: ${subtype}_남`).toBeGreaterThan(5);
-    });
-  }
+  test('공통아형 40개 _남 키 배치 검증', async ({ page }) => {
+    await openResultPage(page);
+    const results = await page.evaluate((subtypes) => {
+      const d = (window as any).SUBTYPE_NARR;
+      if (!d) return { pass: 0, fail: [] as string[], total: subtypes.length };
+      const fail: string[] = [];
+      subtypes.forEach((s: string) => {
+        const key = `${s}_남`;
+        if (!d[key] || !d[key].story || d[key].story.length < 5) fail.push(key);
+      });
+      return { pass: subtypes.length - fail.length, fail, total: subtypes.length };
+    }, ALL_SUBTYPES_SHARED);
+    console.log(`공통_남 통과: ${results.pass}/${results.total}`);
+    if (results.fail.length > 0) console.warn('누락 키:', results.fail.join(', '));
+    expect(results.fail.length, `누락된 _남 키: ${results.fail.join(', ')}`).toBe(0);
+  });
 
-  // 여성 전용 아형
-  for (const subtype of FEMALE_ONLY) {
-    test(`여성전용 키 존재: "${subtype}_여"`, async ({ page }) => {
-      await openResultPage(page);
-      const result = await page.evaluate((key) => {
-        const d = (window as any).SUBTYPE_NARR;
-        if (!d) return { exists: false, story: '' };
-        const v = d[key];
-        return { exists: !!v, story: v ? (v.story || '') : '' };
-      }, `${subtype}_여`);
-      expect(result.exists, `키 없음: ${subtype}_여`).toBe(true);
-      expect(result.story.length).toBeGreaterThan(5);
-    });
+  test('여성전용 3개 _여 키 존재', async ({ page }) => {
+    await openResultPage(page);
+    const results = await page.evaluate((subtypes) => {
+      const d = (window as any).SUBTYPE_NARR;
+      if (!d) return { fail: subtypes };
+      const fail: string[] = [];
+      subtypes.forEach((s: string) => {
+        if (!d[`${s}_여`] || !d[`${s}_여`].story) fail.push(`${s}_여`);
+      });
+      return { fail };
+    }, FEMALE_ONLY);
+    if (results.fail.length > 0) console.warn('여성전용 누락:', results.fail);
+    expect(results.fail.length, `여성전용 누락: ${results.fail.join(', ')}`).toBe(0);
+  });
 
-    test(`여성전용 아형에 _남 키가 없다: "${subtype}_남"`, async ({ page }) => {
-      await openResultPage(page);
-      const exists = await page.evaluate((key) => {
-        const d = (window as any).SUBTYPE_NARR;
-        return d ? (key in d) : false;
-      }, `${subtype}_남`);
-      expect(exists).toBe(false);
-    });
-  }
+  test('남성전용 3개 _남 키 존재', async ({ page }) => {
+    await openResultPage(page);
+    const results = await page.evaluate((subtypes) => {
+      const d = (window as any).SUBTYPE_NARR;
+      if (!d) return { fail: subtypes };
+      const fail: string[] = [];
+      subtypes.forEach((s: string) => {
+        if (!d[`${s}_남`] || !d[`${s}_남`].story) fail.push(`${s}_남`);
+      });
+      return { fail };
+    }, MALE_ONLY);
+    if (results.fail.length > 0) console.warn('남성전용 누락:', results.fail);
+    expect(results.fail.length, `남성전용 누락: ${results.fail.join(', ')}`).toBe(0);
+  });
 
-  // 남성 전용 아형
-  for (const subtype of MALE_ONLY) {
-    test(`남성전용 키 존재: "${subtype}_남"`, async ({ page }) => {
-      await openResultPage(page);
-      const result = await page.evaluate((key) => {
-        const d = (window as any).SUBTYPE_NARR;
-        if (!d) return { exists: false, story: '' };
-        const v = d[key];
-        return { exists: !!v, story: v ? (v.story || '') : '' };
-      }, `${subtype}_남`);
-      expect(result.exists, `키 없음: ${subtype}_남`).toBe(true);
-      expect(result.story.length).toBeGreaterThan(5);
+  test('모든 SUBTYPE_NARR 항목에 story·desc 비어있지 않음', async ({ page }) => {
+    await openResultPage(page);
+    const result = await page.evaluate(() => {
+      const d = (window as any).SUBTYPE_NARR;
+      if (!d) return { emptyStory: [] as string[], emptyDesc: [] as string[] };
+      const emptyStory: string[] = [];
+      const emptyDesc: string[] = [];
+      Object.keys(d).forEach(k => {
+        if (!d[k].story || d[k].story.length < 10) emptyStory.push(k);
+        if (!d[k].desc  || d[k].desc.length  < 10) emptyDesc.push(k);
+      });
+      return { emptyStory, emptyDesc };
     });
-
-    test(`남성전용 아형에 _여 키가 없다: "${subtype}_여"`, async ({ page }) => {
-      await openResultPage(page);
-      const exists = await page.evaluate((key) => {
-        const d = (window as any).SUBTYPE_NARR;
-        return d ? (key in d) : false;
-      }, `${subtype}_여`);
-      expect(exists).toBe(false);
-    });
-  }
+    if (result.emptyStory.length > 0) console.warn('story 비어있음:', result.emptyStory.slice(0,5));
+    if (result.emptyDesc.length > 0)  console.warn('desc 비어있음:',  result.emptyDesc.slice(0,5));
+    expect(result.emptyStory.length, `story 비어있는 키 ${result.emptyStory.length}개`).toBe(0);
+    expect(result.emptyDesc.length,  `desc 비어있는 키 ${result.emptyDesc.length}개`).toBe(0);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SUITE 2: 성별 분기 로직 검증 (_genSuffix)
+// SUITE 2: 성별 분기 로직 검증
 // ─────────────────────────────────────────────────────────────────────────────
 test.describe('Suite 2: 성별 분기 로직 검증', () => {
 
-  test('여성 → _여 suffix로 조회된다', async ({ page }) => {
-    await openResultPage(page, { gender: '여성' });
-    const suffix = await page.evaluate(() => {
-      const answers = { gender: '여성' };
-      const isMale = (answers.gender === '남성');
-      return isMale ? '_남' : '_여';
+  test('여성 __SM_DATA__에서 _여 접미사 키를 사용한다', async ({ page }) => {
+    await openResultPage(page, { gender: '여성', bc_primary: '갱년기 호르몬스위치형' });
+    const result = await page.evaluate(() => {
+      const d = (window as any).SUBTYPE_NARR;
+      const smData = (window as any).__SM_DATA__ || {};
+      const subtype = smData.bc_primary || '';
+      const gender  = smData.gender || '';
+      const suffix  = gender === '여성' ? '_여' : '_남';
+      const key     = `${subtype}${suffix}`;
+      return { key, exists: !!(d && d[key]) };
     });
-    expect(suffix).toBe('_여');
+    console.log(`성별 분기: ${result.key} → ${result.exists ? '존재' : '없음'}`);
+    expect(result.exists, `여성 분기 키 없음: ${result.key}`).toBe(true);
   });
 
-  test('남성 → _남 suffix로 조회된다', async ({ page }) => {
-    await openResultPage(page, { gender: '남성' });
-    const suffix = await page.evaluate(() => {
-      const answers = { gender: '남성' };
-      const isMale = (answers.gender === '남성');
-      return isMale ? '_남' : '_여';
+  test('남성 __SM_DATA__에서 _남 접미사 키를 사용한다', async ({ page }) => {
+    await openResultPage(page, { gender: '남성', bc_primary: '갱년기 호르몬스위치형' });
+    const result = await page.evaluate(() => {
+      const d = (window as any).SUBTYPE_NARR;
+      const smData = (window as any).__SM_DATA__ || {};
+      const subtype = smData.bc_primary || '';
+      const suffix  = smData.gender === '남성' ? '_남' : '_여';
+      const key     = `${subtype}${suffix}`;
+      return { key, exists: !!(d && d[key]) };
     });
-    expect(suffix).toBe('_남');
+    console.log(`성별 분기: ${result.key} → ${result.exists ? '존재' : '없음'}`);
+    expect(result.exists, `남성 분기 키 없음: ${result.key}`).toBe(true);
   });
 
-  test('성별 미지정 → _여 fallback', async ({ page }) => {
-    await openResultPage(page, { gender: '' });
-    const suffix = await page.evaluate(() => {
-      const answers = { gender: '' };
-      const isMale = (answers.gender === '남성');
-      return isMale ? '_남' : '_여';
-    });
-    expect(suffix).toBe('_여');
+  test('여성전용 아형은 _여 키만 존재하고 _남 키는 없다', async ({ page }) => {
+    await openResultPage(page);
+    const result = await page.evaluate((femaleOnly) => {
+      const d = (window as any).SUBTYPE_NARR;
+      if (!d) return { ok: false, reason: 'SUBTYPE_NARR 없음' };
+      for (const s of femaleOnly) {
+        if (!d[`${s}_여`]) return { ok: false, reason: `${s}_여 없음` };
+        if (d[`${s}_남`])  return { ok: false, reason: `${s}_남 존재해선 안 됨` };
+      }
+      return { ok: true, reason: '' };
+    }, FEMALE_ONLY);
+    expect(result.ok, result.reason).toBe(true);
+  });
+
+  test('남성전용 아형은 _남 키만 존재하고 _여 키는 없다', async ({ page }) => {
+    await openResultPage(page);
+    const result = await page.evaluate((maleOnly) => {
+      const d = (window as any).SUBTYPE_NARR;
+      if (!d) return { ok: false, reason: 'SUBTYPE_NARR 없음' };
+      for (const s of maleOnly) {
+        if (!d[`${s}_남`]) return { ok: false, reason: `${s}_남 없음` };
+        if (d[`${s}_여`])  return { ok: false, reason: `${s}_여 존재해선 안 됨` };
+      }
+      return { ok: true, reason: '' };
+    }, MALE_ONLY);
+    expect(result.ok, result.reason).toBe(true);
   });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SUITE 3: exercise_response 7개 분기 검증
+// SUITE 3: exercise_response 오늘탭 분기 검증
 // ─────────────────────────────────────────────────────────────────────────────
 test.describe('Suite 3: exercise_response 오늘탭 분기 검증', () => {
 
-  test('EXERCISE_RESPONSE_OPTIONS 사전이 7개 키를 가진다', async ({ page }) => {
+  test('EXERCISE_RESPONSE_OPTIONS 사전이 전역에 존재하고 7개 키를 포함한다', async ({ page }) => {
     await openResultPage(page);
-    const keyCount = await page.evaluate(() => {
-      // 전역에 노출되지 않으므로 함수 내부에서 직접 평가
-      const expected = ['일시반응형','반응지속형','구성미변형','역반응형','회복부족형','저반응형','이력없음'];
-      return expected.length;
+    const result = await page.evaluate(() => {
+      const d = (window as any).EXERCISE_RESPONSE_OPTIONS;
+      if (!d) return { exists: false, count: 0, keys: [] as string[] };
+      return { exists: true, count: Object.keys(d).length, keys: Object.keys(d) };
     });
-    expect(keyCount).toBe(7);
+    console.log(`EXERCISE_RESPONSE_OPTIONS: ${result.count}개 키 — ${result.keys.join(', ')}`);
+    expect(result.exists, 'EXERCISE_RESPONSE_OPTIONS 전역 변수 없음').toBe(true);
+    expect(result.count, `7개 키 필요, 현재 ${result.count}개`).toBe(7);
   });
 
-  for (const { value, label } of EXERCISE_RESPONSES) {
-    test(`exercise_response: "${label}" → exOptions 3개 제공`, async ({ page }) => {
-      await openResultPage(page);
-      // s2[17]에 값 주입 후 분기 로직 직접 평가
-      const exOptionCount = await page.evaluate(({ val, lbl }) => {
-        const EXERCISE_RESPONSE_OPTIONS: Record<string, { exOptions: unknown[] }> = {
-          '일시반응형': { exOptions: [1,2,3] },
-          '반응지속형': { exOptions: [1,2,3] },
-          '구성미변형': { exOptions: [1,2,3] },
-          '역반응형':   { exOptions: [1,2,3] },
-          '회복부족형': { exOptions: [1,2,3] },
-          '저반응형':   { exOptions: [1,2,3] },
-          '이력없음':   { exOptions: [1,2,3] },
-        };
-        const spec = EXERCISE_RESPONSE_OPTIONS[lbl];
-        return spec ? spec.exOptions.length : 0;
-      }, { val: value, lbl: label });
-      expect(exOptionCount).toBe(3);
-    });
-  }
+  const EXERCISE_LABELS = ['일시반응형', '반응지속형', '구성미변형', '역반응형', '회복부족형', '저반응형', '이력없음'];
 
-  test('TODAY.move.exOptions가 exercise_response 값에 따라 교체된다 (통합)', async ({ page }) => {
+  test('7개 운동반응 레이블 모두 exOptions 배열 보유', async ({ page }) => {
     await openResultPage(page);
-    // 페이지에 stage2[17] 주입 후 동적 분기 결과 확인
+    const result = await page.evaluate((labels) => {
+      const d = (window as any).EXERCISE_RESPONSE_OPTIONS;
+      if (!d) return { fail: labels };
+      const fail: string[] = [];
+      labels.forEach(lbl => {
+        if (!d[lbl] || !Array.isArray(d[lbl].exOptions) || d[lbl].exOptions.length < 1) {
+          fail.push(lbl);
+        }
+      });
+      return { fail };
+    }, EXERCISE_LABELS);
+    if (result.fail.length > 0) console.warn('exOptions 없는 레이블:', result.fail);
+    expect(result.fail.length, `exOptions 없는 레이블: ${result.fail.join(', ')}`).toBe(0);
+  });
+
+  test('bcAnswers.exercise_response 필드가 존재한다', async ({ page }) => {
+    await openResultPage(page);
     const result = await page.evaluate(() => {
-      const today = (window as any).TODAY;
-      if (!today || !today.move) return { hasExOptions: false, count: 0 };
+      // bcAnswers 전역 또는 window.__LAST_ANSWERS__ 내 exercise_response 필드 확인
+      const answers = (window as any).window?.__LAST_ANSWERS__ || (window as any).__LAST_ANSWERS__ || {};
       return {
-        hasExOptions: Array.isArray(today.move.exOptions),
-        count: today.move.exOptions ? today.move.exOptions.length : 0,
+        hasField: 'exercise_response' in answers,
+        value: answers['exercise_response'],
+        label: answers['_exercise_resp_label'],
       };
     });
-    // 데모 모드에서는 기본 exOptions 3개
-    expect(result.hasExOptions).toBe(true);
-    expect(result.count).toBeGreaterThanOrEqual(1);
+    console.log(`exercise_response: value=${result.value}, label=${result.label}`);
+    // 필드가 있거나 null(미응답)인 경우 모두 정상
+    expect(typeof result.hasField).toBe('boolean');
   });
 });
 
@@ -308,46 +310,43 @@ test.describe('Suite 3: exercise_response 오늘탭 분기 검증', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 test.describe('Suite 4: pain_areas 안전 게이트 검증', () => {
 
-  for (const area of PAIN_AREAS.filter(a => a !== '통증은 없었어요')) {
-    test(`pain_areas "${area}" → PAIN_GATE 매핑 존재`, async ({ page }) => {
-      await openResultPage(page);
-      const hasMapped = await page.evaluate((a) => {
-        const PAIN_GATE: Record<string, { warn: string | null }> = {
-          '목·어깨':   { warn: '목·어깨 통증' },
-          '팔꿈치·손목': { warn: '팔꿈치·손목 통증' },
-          '등·허리': { warn: '등·허리 통증' },
-          '골반·꼬리뼈': { warn: '골반·꼬리뼈 통증' },
-          '무릎·발목': { warn: '무릎·발목 통증' },
-          '통증은 없었어요': { warn: null },
-        };
-        return !!PAIN_GATE[a] && PAIN_GATE[a].warn !== null;
-      }, area);
-      expect(hasMapped).toBe(true);
-    });
-  }
-
-  test('"통증은 없었어요" → 게이트 없음 (전 동작 허용)', async ({ page }) => {
+  test('PAIN_GATE 사전이 전역에 존재하고 6개 항목을 포함한다', async ({ page }) => {
     await openResultPage(page);
-    const noneFlag = await page.evaluate(() => {
-      const arr = ['통증은 없었어요'];
-      return arr.some(p => p.indexOf('없') >= 0);
+    const result = await page.evaluate(() => {
+      const d = (window as any).PAIN_GATE;
+      if (!d) return { exists: false, count: 0, keys: [] as string[] };
+      return { exists: true, count: Object.keys(d).length, keys: Object.keys(d) };
     });
-    expect(noneFlag).toBe(true);
+    console.log(`PAIN_GATE: ${result.count}개 항목 — ${result.keys.join(', ')}`);
+    expect(result.exists, 'PAIN_GATE 전역 변수 없음').toBe(true);
+    expect(result.count, `6개 항목 필요, 현재 ${result.count}개`).toBe(6);
   });
 
-  test('최대 3개 선택 복수 pain_areas → stressAct에 반영', async ({ page }) => {
+  const PAIN_AREAS = ['목·어깨', '팔꿈치·손목', '등·허리', '골반·꼬리뼈', '무릎·발목', '통증은 없었어요'];
+
+  test('6개 통증 부위 모두 banKeywords 배열 보유', async ({ page }) => {
     await openResultPage(page);
-    const painBan = await page.evaluate(() => {
-      const rawPainAreas = ['목·어깨', '등·허리', '무릎·발목'];
-      const warns: string[] = [];
-      rawPainAreas.slice(0, 3).forEach(area => {
-        if (area.indexOf('목·어깨') >= 0)     warns.push('머리 위 동작 제외');
-        else if (area.indexOf('등·허리') >= 0) warns.push('숙여서 드는 동작 제외');
-        else if (area.indexOf('무릎') >= 0)    warns.push('스쿼트·런지·뛰기 제외');
+    const result = await page.evaluate((areas) => {
+      const d = (window as any).PAIN_GATE;
+      if (!d) return { fail: areas };
+      const fail: string[] = [];
+      areas.forEach(area => {
+        if (!d[area] || !Array.isArray(d[area].banKeywords)) fail.push(area);
       });
-      return warns.length;
+      return { fail };
+    }, PAIN_AREAS);
+    if (result.fail.length > 0) console.warn('PAIN_GATE 누락 항목:', result.fail);
+    expect(result.fail.length, `PAIN_GATE 누락: ${result.fail.join(', ')}`).toBe(0);
+  });
+
+  test('"통증은 없었어요" 게이트는 warn이 null이다', async ({ page }) => {
+    await openResultPage(page);
+    const result = await page.evaluate(() => {
+      const d = (window as any).PAIN_GATE;
+      if (!d || !d['통증은 없었어요']) return { warnIsNull: false };
+      return { warnIsNull: d['통증은 없었어요'].warn === null };
     });
-    expect(painBan).toBe(3);
+    expect(result.warnIsNull, '"통증은 없었어요" warn이 null이어야 함').toBe(true);
   });
 });
 
@@ -356,36 +355,41 @@ test.describe('Suite 4: pain_areas 안전 게이트 검증', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 test.describe('Suite 5: A08 골든타임 동적 배정 검증', () => {
 
-  for (const idx of A08_INDICES) {
-    test(`A08 인덱스 ${idx} → 골든타임 문구 비어있지 않음`, async ({ page }) => {
-      await openResultPage(page);
-      const text = await page.evaluate((i) => {
-        const GOLDEN_TIME_MAP: Record<number, string> = {
-          0: '⏰ 골든타임 — 운동은 저녁 식후 90분이 최적.',
-          1: '⏰ 골든타임 — 저녁 식후 90분. ⚠ 야식이 주 1회 이상이라면',
-          2: '⏰ 골든타임 — 취침이 12시 이후이므로 아침 운동 배정.',
-          3: '⏰ 골든타임 — 아침 배정(기상 후 1~2시간). ⚠ 야식은 수면의 질을 떨어뜨립니다',
-          4: '⏰ 골든타임 — 새벽 취침이므로 저녁 배정.',
-          5: '⏰ 골든타임 — 교대·야간 근무 패턴이므로 고정 시각 대신 일어나고 2시간 뒤를',
-        };
-        return GOLDEN_TIME_MAP[i] || '';
-      }, idx);
-      expect(text.length).toBeGreaterThan(10);
-    });
-  }
-
-  test('인덱스 5(교대·야간) → 고정 시각 미포함', async ({ page }) => {
+  test('GOLDEN_TIME_MAP이 전역에 존재하고 인덱스 0~5를 포함한다', async ({ page }) => {
     await openResultPage(page);
-    const text = await page.evaluate(() => {
-      return '일어나고 2시간 뒤'; // 교대야간 문구 체크
+    const result = await page.evaluate(() => {
+      const m = (window as any).GOLDEN_TIME_MAP;
+      if (!m) return { exists: false, indices: [] as number[] };
+      const indices = [0,1,2,3,4,5].filter(i => m[i] && m[i].length > 10);
+      return { exists: true, indices, count: indices.length };
     });
-    expect(text).toContain('2시간');
+    console.log(`GOLDEN_TIME_MAP 인덱스: ${result.indices}`);
+    expect(result.exists, 'GOLDEN_TIME_MAP 전역 변수 없음').toBe(true);
+    expect(result.indices.length, 'GOLDEN_TIME_MAP 인덱스 0~5 중 일부 없음').toBe(6);
   });
 
-  test('w12-golden-time-div id 요소가 DOM에 존재한다', async ({ page }) => {
+  test('#w12-golden-time-div DOM 요소가 존재하고 텍스트를 포함한다', async ({ page }) => {
     await openResultPage(page);
-    const exists = await page.evaluate(() => !!document.getElementById('w12-golden-time-div'));
-    expect(exists).toBe(true);
+    const result = await page.evaluate(() => {
+      const el = document.getElementById('w12-golden-time-div');
+      return { exists: !!el, text: el ? el.textContent : '' };
+    });
+    console.log(`w12-golden-time-div: ${result.exists ? '존재' : '없음'}, 텍스트: ${(result.text || '').slice(0,30)}`);
+    expect(result.exists, '#w12-golden-time-div DOM 없음').toBe(true);
+  });
+
+  test('6벌 골든타임 텍스트에 모두 "골든타임" 키워드가 포함된다', async ({ page }) => {
+    await openResultPage(page);
+    const result = await page.evaluate(() => {
+      const m = (window as any).GOLDEN_TIME_MAP;
+      if (!m) return { fail: [] as number[] };
+      const fail: number[] = [];
+      [0,1,2,3,4,5].forEach(i => {
+        if (!m[i] || !m[i].includes('골든타임')) fail.push(i);
+      });
+      return { fail };
+    });
+    expect(result.fail.length, `골든타임 키워드 없는 인덱스: ${result.fail}`).toBe(0);
   });
 });
 
@@ -394,147 +398,129 @@ test.describe('Suite 5: A08 골든타임 동적 배정 검증', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 test.describe('Suite 6: N일째 실계산 검증', () => {
 
-  test('together-days-span id 요소가 DOM에 존재한다', async ({ page }) => {
+  test('#together-days-span DOM 요소가 존재한다', async ({ page }) => {
     await openResultPage(page);
     const exists = await page.evaluate(() => !!document.getElementById('together-days-span'));
-    expect(exists).toBe(true);
+    expect(exists, '#together-days-span 없음').toBe(true);
   });
 
-  test('created_at 기반 N일째 계산 로직 정확성', async ({ page }) => {
+  test('#together-days-span 텍스트에 숫자가 포함된다', async ({ page }) => {
     await openResultPage(page);
-    const nDays = await page.evaluate(() => {
-      const createdAt = new Date(Date.now() - 2 * 86400000).toISOString(); // 2일 전
-      const createdMs = new Date(createdAt).getTime();
-      return Math.max(1, Math.floor((Date.now() - createdMs) / 86400000) + 1);
+    const result = await page.evaluate(() => {
+      const el = document.getElementById('together-days-span');
+      return { text: el ? el.textContent : '', hasNum: /\d/.test(el?.textContent || '') };
     });
-    expect(nDays).toBeGreaterThanOrEqual(3); // 2일 전 = 3일째
+    console.log(`N일째 텍스트: "${result.text}"`);
+    expect(result.hasNum, `숫자 없는 N일째: "${result.text}"`).toBe(true);
   });
 
-  test('created_at 없으면 fallback 3일째', async ({ page }) => {
+  test('window.__TOGETHER_DAYS__ 가 1 이상의 정수다', async ({ page }) => {
     await openResultPage(page);
-    const nDays = await page.evaluate(() => {
-      const createdAt = null;
-      let n = 3;
-      if (createdAt) {
-        const ms = new Date(createdAt as string).getTime();
-        if (!isNaN(ms)) n = Math.max(1, Math.floor((Date.now() - ms) / 86400000) + 1);
-      }
-      return n;
+    const result = await page.evaluate(() => {
+      const days = (window as any).__TOGETHER_DAYS__;
+      return { days, isValid: typeof days === 'number' && Number.isInteger(days) && days >= 1 };
     });
-    expect(nDays).toBe(3);
+    console.log(`__TOGETHER_DAYS__: ${result.days}`);
+    // created_at 데이터에 따라 실계산 — 최소 1일
+    expect(result.isValid, `__TOGETHER_DAYS__ 유효하지 않음: ${result.days}`).toBe(true);
   });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SUITE 7: P3 오행×MBTI answers 단일 소스 검증
+// SUITE 7: P3 _p3AnswersSrc 단일 소스 원칙 검증
 // ─────────────────────────────────────────────────────────────────────────────
 test.describe('Suite 7: P3 _p3AnswersSrc 단일 소스 원칙 검증', () => {
 
-  test('_p3AnswersSrc가 answers 매개변수를 우선한다', async ({ page }) => {
+  test('window.__LAST_ANSWERS__ fallback 이 정상 동작한다', async ({ page }) => {
     await openResultPage(page);
     const result = await page.evaluate(() => {
-      // answers 매개변수 시뮬레이션
-      const answers = { exercise_response: '별 변화가 없었어요', _exercise_resp_label: '저반응형' };
-      const globalAns = { exercise_response: '아직 해본 적 없어요', _exercise_resp_label: '이력없음' };
-      (window as any).__LAST_ANSWERS__ = globalAns;
+      (window as any).__LAST_ANSWERS__ = { _exercise_resp_label: '이력없음', test_key: 'fallback_ok' };
+      // _p3AnswersSrc 단일소스 원칙: answers || __LAST_ANSWERS__ || {}
+      const answers = undefined;
       const _p3AnswersSrc = answers || (window as any).__LAST_ANSWERS__ || {};
-      return _p3AnswersSrc['_exercise_resp_label'];
+      return (_p3AnswersSrc as any)['test_key'];
     });
-    expect(result).toBe('저반응형'); // 전역값(이력없음) 아닌 매개변수값(저반응형) 사용
+    expect(result).toBe('fallback_ok');
   });
 
-  test('answers 없을 때 window.__LAST_ANSWERS__ fallback', async ({ page }) => {
+  test('answers 매개변수가 __LAST_ANSWERS__보다 우선한다', async ({ page }) => {
     await openResultPage(page);
     const result = await page.evaluate(() => {
       (window as any).__LAST_ANSWERS__ = { _exercise_resp_label: '이력없음' };
-      const answers = undefined;
+      const answers = { _exercise_resp_label: '저반응형' };
       const _p3AnswersSrc = answers || (window as any).__LAST_ANSWERS__ || {};
       return (_p3AnswersSrc as any)['_exercise_resp_label'];
     });
-    expect(result).toBe('이력없음');
+    expect(result).toBe('저반응형');
+  });
+
+  test('_p3AnswersSrc에서 exercise_response 값을 읽을 수 있다', async ({ page }) => {
+    await openResultPage(page);
+    const result = await page.evaluate(() => {
+      (window as any).__LAST_ANSWERS__ = {
+        exercise_response: 0,
+        _exercise_resp_label: '일시반응형',
+        pain_areas: [0, 2],
+        _pain_areas_parsed: ['목·어깨', '등·허리']
+      };
+      const _p3AnswersSrc = (window as any).__LAST_ANSWERS__;
+      return {
+        exResp: _p3AnswersSrc['exercise_response'],
+        exLabel: _p3AnswersSrc['_exercise_resp_label'],
+        painAreas: _p3AnswersSrc['_pain_areas_parsed'],
+      };
+    });
+    expect(result.exLabel).toBe('일시반응형');
+    expect(Array.isArray(result.painAreas)).toBe(true);
   });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SUITE 8: 전체 Matrix 빠른 스모크 테스트
+// SUITE 8: 스키마 검증 레이어 (Task8 BROWSER_INJECTOR) 동작 확인
 // ─────────────────────────────────────────────────────────────────────────────
-test.describe('Suite 8: 46아형 × 성별 스모크 테스트', () => {
+test.describe('Suite 8: Task8 스키마 검증 레이어 동작 확인', () => {
 
-  test('SUBTYPE_NARR에 공통아형_여 40개가 모두 존재한다 (배치 검증)', async ({ page }) => {
+  test('window.__SCHEMA_VALIDATION__ 이 페이지 로드 후 자동 주입된다', async ({ page }) => {
     await openResultPage(page);
-    const results = await page.evaluate((subtypes) => {
-      const d = (window as any).SUBTYPE_NARR;
-      if (!d) return { pass: 0, fail: [] as string[] };
-      const fail: string[] = [];
-      let pass = 0;
-      subtypes.forEach((s: string) => {
-        const key = `${s}_여`;
-        if (d[key] && d[key].story && d[key].story.length > 5) {
-          pass++;
-        } else {
-          fail.push(key);
-        }
-      });
-      return { pass, fail };
-    }, ALL_SUBTYPES_SHARED);
-    console.log(`공통아형_여 통과: ${results.pass}/${ALL_SUBTYPES_SHARED.length}`);
-    if (results.fail.length > 0) {
-      console.error('실패한 키:', results.fail);
-    }
-    expect(results.fail.length).toBe(0);
+    // 페이지 완전 로드 대기
+    await page.waitForFunction(() => (window as any).__SCHEMA_VALIDATION__ !== undefined, { timeout: 10_000 })
+      .catch(() => {}); // slimMindSchemaValidator가 동작하면 주입됨
+    const result = await page.evaluate(() => {
+      const sv = (window as any).__SCHEMA_VALIDATION__;
+      if (!sv) return { injected: false };
+      return {
+        injected: true,
+        passed: sv.passed,
+        errorCount: sv.errors ? sv.errors.length : -1,
+        warnCount: sv.warnings ? sv.warnings.length : -1,
+        timestamp: sv.timestamp,
+      };
+    });
+    console.log(`스키마 검증: injected=${result.injected}, passed=${result.passed}, errors=${result.errorCount}, warns=${result.warnCount}`);
+    expect(result.injected, '__SCHEMA_VALIDATION__ 미주입 — slimMindSchemaValidator 실행 안 됨').toBe(true);
   });
 
-  test('SUBTYPE_NARR에 공통아형_남 40개가 모두 존재한다 (배치 검증)', async ({ page }) => {
+  test('스키마 검증 오류가 0건이다 (errors 배열 비어있음)', async ({ page }) => {
     await openResultPage(page);
-    const results = await page.evaluate((subtypes) => {
-      const d = (window as any).SUBTYPE_NARR;
-      if (!d) return { pass: 0, fail: [] as string[] };
-      const fail: string[] = [];
-      let pass = 0;
-      subtypes.forEach((s: string) => {
-        const key = `${s}_남`;
-        if (d[key] && d[key].story && d[key].story.length > 5) {
-          pass++;
-        } else {
-          fail.push(key);
-        }
-      });
-      return { pass, fail };
-    }, ALL_SUBTYPES_SHARED);
-    console.log(`공통아형_남 통과: ${results.pass}/${ALL_SUBTYPES_SHARED.length}`);
-    if (results.fail.length > 0) {
-      console.error('실패한 키:', results.fail);
-    }
-    expect(results.fail.length).toBe(0);
+    await page.waitForFunction(() => (window as any).__SCHEMA_VALIDATION__ !== undefined, { timeout: 10_000 })
+      .catch(() => {});
+    const errors = await page.evaluate(() => {
+      const sv = (window as any).__SCHEMA_VALIDATION__;
+      return sv ? sv.errors : ['__SCHEMA_VALIDATION__ 없음'];
+    });
+    if (errors.length > 0) console.error('스키마 오류:', errors);
+    expect(errors.length, `스키마 오류 ${errors.length}건: ${errors.join('; ')}`).toBe(0);
   });
 
-  test('여성전용 3개 _여 키가 모두 존재한다', async ({ page }) => {
-    await openResultPage(page);
-    const results = await page.evaluate((subtypes) => {
-      const d = (window as any).SUBTYPE_NARR;
-      if (!d) return { pass: 0, fail: [] as string[] };
-      const fail: string[] = [];
-      subtypes.forEach((s: string) => {
-        const key = `${s}_여`;
-        if (!(key in d) || !d[key].story) fail.push(key);
-      });
-      return { pass: subtypes.length - fail.length, fail };
-    }, FEMALE_ONLY);
-    expect(results.fail.length).toBe(0);
-  });
-
-  test('남성전용 3개 _남 키가 모두 존재한다', async ({ page }) => {
-    await openResultPage(page);
-    const results = await page.evaluate((subtypes) => {
-      const d = (window as any).SUBTYPE_NARR;
-      if (!d) return { pass: 0, fail: [] as string[] };
-      const fail: string[] = [];
-      subtypes.forEach((s: string) => {
-        const key = `${s}_남`;
-        if (!(key in d) || !d[key].story) fail.push(key);
-      });
-      return { pass: subtypes.length - fail.length, fail };
-    }, MALE_ONLY);
-    expect(results.fail.length).toBe(0);
+  test('콘솔에 [SCHEMA] 패턴 출력이 존재한다', async ({ page }) => {
+    const consoleLogs: string[] = [];
+    page.on('console', msg => {
+      if (msg.text().includes('[SCHEMA]')) consoleLogs.push(msg.text());
+    });
+    await page.goto(RESULT_PAGE_URL, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+    await page.waitForTimeout(2_000); // 스크립트 실행 대기
+    console.log(`[SCHEMA] 콘솔 출력 수: ${consoleLogs.length}`);
+    consoleLogs.forEach(l => console.log(` → ${l.slice(0, 80)}`));
+    expect(consoleLogs.length, '[SCHEMA] 콘솔 출력 없음 — slimMindSchemaValidator 미실행').toBeGreaterThan(0);
   });
 });

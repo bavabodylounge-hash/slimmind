@@ -20313,6 +20313,7 @@ async function loadHospitalResult() {
           ]
         }
       };
+      window.EXERCISE_RESPONSE_OPTIONS = EXERCISE_RESPONSE_OPTIONS; // [Task7] Playwright E2E 전역 노출
 
       // exercise_response 값 → 라벨 매핑
       // (survey에 저장되는 값이 보기 원문이므로 라벨로 변환)
@@ -20408,6 +20409,7 @@ async function loadHospitalResult() {
           banKeywords: []
         }
       };
+      window.PAIN_GATE = PAIN_GATE; // [Task7] Playwright E2E 전역 노출
 
       var rawPainAreas = answers.pain_areas || s2[18] || [];
       if (!Array.isArray(rawPainAreas)) rawPainAreas = rawPainAreas ? [rawPainAreas] : [];
@@ -20493,6 +20495,7 @@ async function loadHospitalResult() {
         4: '⏰ 골든타임 — 새벽 취침이므로 저녁 배정. 저녁 6~8시, 식후 90분 이후가 최적입니다.',
         5: '⏰ 골든타임 — 교대·야간 근무 패턴이므로 고정 시각 대신 일어나고 2시간 뒤를 기준으로 잡으세요.'
       };
+      window.GOLDEN_TIME_MAP = GOLDEN_TIME_MAP; // [Task7] Playwright E2E 전역 노출
 
       var idx = (typeof a08Raw === 'number') ? a08Raw : parseInt(a08Raw, 10);
       var goldenText = (!isNaN(idx) && GOLDEN_TIME_MAP[idx] !== undefined)
@@ -27866,5 +27869,167 @@ window.buildSogyeon = function(topAxisKey, bgKey){
   return ax.body + ' ' + bg + ' ' + wn;
 };
 
+</script>
+<script>
+/* ─────────────────────────────────────────────────────────────────────────
+   [Task8] 슬림마인드 데이터 바인딩 스키마 검증 레이어
+   · 브라우저 콘솔에서 자동 실행되어 불일치를 즉시 경고
+   · window.__SCHEMA_VALIDATION__ = { errors, warnings } 에 결과 저장
+   ───────────────────────────────────────────────────────────────────────── */
+(function slimMindSchemaValidator() {
+  'use strict';
+  var errors = [], warnings = [];
+
+  /* ── 1. SUBTYPE_NARR 86벌 완전성 검증 ─────────────────────────────── */
+  if (typeof SUBTYPE_NARR !== 'undefined') {
+    var sKeys = Object.keys(SUBTYPE_NARR);
+    if (sKeys.length < 86) {
+      errors.push('[SCHEMA] SUBTYPE_NARR 키 수 부족: ' + sKeys.length + '/86');
+    }
+    sKeys.forEach(function(k) {
+      var entry = SUBTYPE_NARR[k];
+      if (!entry || typeof entry !== 'object') {
+        errors.push('[SCHEMA] SUBTYPE_NARR 항목 비정상: ' + k);
+        return;
+      }
+      if (!entry.story || entry.story.length < 10) {
+        errors.push('[SCHEMA] SUBTYPE_NARR.story 비어있음: ' + k);
+      }
+      if (!entry.desc || entry.desc.length < 10) {
+        warnings.push('[SCHEMA] SUBTYPE_NARR.desc 짧음: ' + k);
+      }
+      // 접미사키 패턴 검증 (_여 / _남)
+      if (k.endsWith('_여') || k.endsWith('_남')) {
+        // OK: 성별 접미사 정상
+      } else {
+        warnings.push('[SCHEMA] SUBTYPE_NARR 접미사키 미적용: ' + k);
+      }
+    });
+  } else {
+    errors.push('[SCHEMA] SUBTYPE_NARR 전역 변수 없음');
+  }
+
+  /* ── 2. TODAY.move.exOptions 검증 (Task2: exercise_response 분기) ── */
+  if (typeof TODAY !== 'undefined') {
+    if (!TODAY.move) {
+      errors.push('[SCHEMA][Task2] TODAY.move 없음');
+    } else {
+      if (!Array.isArray(TODAY.move.exOptions) || TODAY.move.exOptions.length < 1) {
+        errors.push('[SCHEMA][Task2] TODAY.move.exOptions 비어있음 (exercise_response 분기 미작동)');
+      } else {
+        TODAY.move.exOptions.forEach(function(opt, i) {
+          if (!opt.label) errors.push('[SCHEMA][Task2] exOptions[' + i + '].label 없음');
+          if (typeof opt.k !== 'number') errors.push('[SCHEMA][Task2] exOptions[' + i + '].k 숫자 아님');
+          if (!opt.detail) warnings.push('[SCHEMA][Task2] exOptions[' + i + '].detail 없음');
+        });
+      }
+    }
+  } else {
+    warnings.push('[SCHEMA][Task2] TODAY 전역 변수 없음 (렌더링 전일 수 있음)');
+  }
+
+  /* ── 3. PAIN_GATE 검증 (Task3: pain_areas 안전 게이트) ─────────────── */
+  if (typeof window.PAIN_GATE !== 'undefined') {
+    var pgKeys = Object.keys(window.PAIN_GATE);
+    if (pgKeys.length < 6) {
+      errors.push('[SCHEMA][Task3] PAIN_GATE 항목 부족: ' + pgKeys.length + '/6');
+    }
+    pgKeys.forEach(function(k) {
+      var gate = window.PAIN_GATE[k];
+      if (!gate || typeof gate !== 'object') {
+        errors.push('[SCHEMA][Task3] PAIN_GATE 항목 비정상: ' + k);
+        return;
+      }
+      if (!Array.isArray(gate.banKeywords)) {
+        errors.push('[SCHEMA][Task3] PAIN_GATE[' + k + '].banKeywords 배열 아님');
+      }
+    });
+  } else {
+    errors.push('[SCHEMA][Task3] PAIN_GATE 전역 변수 없음 (window.PAIN_GATE 미설정)');
+  }
+
+  /* ── 4. GOLDEN_TIME_MAP 검증 (Task4: A08 골든타임 6벌) ───────────── */
+  if (typeof window.GOLDEN_TIME_MAP !== 'undefined') {
+    for (var idx = 0; idx <= 5; idx++) {
+      if (!window.GOLDEN_TIME_MAP[idx] || window.GOLDEN_TIME_MAP[idx].length < 10) {
+        errors.push('[SCHEMA][Task4] GOLDEN_TIME_MAP[' + idx + '] 없거나 너무 짧음');
+      }
+    }
+  } else {
+    errors.push('[SCHEMA][Task4] GOLDEN_TIME_MAP 전역 변수 없음 (window.GOLDEN_TIME_MAP 미설정)');
+  }
+
+  /* ── 5. A08 골든타임 DOM 검증 ──────────────────────────────────────── */
+  var gtDiv = document.getElementById('w12-golden-time-div');
+  if (!gtDiv) {
+    warnings.push('[SCHEMA][Task4] #w12-golden-time-div DOM 요소 없음');
+  } else if (!gtDiv.textContent || gtDiv.textContent.trim().length < 5) {
+    warnings.push('[SCHEMA][Task4] #w12-golden-time-div 텍스트 비어있음');
+  }
+
+  /* ── 6. N일째 DOM 검증 (Task5) ─────────────────────────────────────── */
+  var daysEl = document.getElementById('together-days-span');
+  if (!daysEl) {
+    warnings.push('[SCHEMA][Task5] #together-days-span DOM 요소 없음');
+  } else {
+    var daysText = daysEl.textContent || '';
+    if (!/\d/.test(daysText)) {
+      warnings.push('[SCHEMA][Task5] N일째 숫자 없음: "' + daysText + '"');
+    } else if (/함께한 지 3일째/.test(daysText) && !window.__TOGETHER_DAYS__) {
+      warnings.push('[SCHEMA][Task5] N일째 실계산 미작동 (fallback 3일째 고정값)');
+    }
+  }
+
+  /* ── 7. _p3AnswersSrc 단일소스 검증 (Task6) ────────────────────────── */
+  if (typeof window.__LAST_ANSWERS__ !== 'undefined') {
+    // 전역에 남아있으면 단일소스 원칙 위반은 아니지만 경고
+    warnings.push('[SCHEMA][Task6] window.__LAST_ANSWERS__ 전역 노출됨 (단일소스: _p3AnswersSrc 사용 확인 필요)');
+  }
+
+  /* ── 8. EXERCISE_RESPONSE_OPTIONS 검증 ─────────────────────────────── */
+  if (typeof window.EXERCISE_RESPONSE_OPTIONS !== 'undefined') {
+    var erKeys = Object.keys(window.EXERCISE_RESPONSE_OPTIONS);
+    if (erKeys.length < 7) {
+      errors.push('[SCHEMA][Task2] EXERCISE_RESPONSE_OPTIONS 항목 부족: ' + erKeys.length + '/7');
+    }
+    erKeys.forEach(function(k) {
+      var opt = window.EXERCISE_RESPONSE_OPTIONS[k];
+      if (!opt || !Array.isArray(opt.exOptions)) {
+        errors.push('[SCHEMA][Task2] EXERCISE_RESPONSE_OPTIONS[' + k + '].exOptions 배열 아님');
+      }
+    });
+  } else {
+    errors.push('[SCHEMA][Task2] EXERCISE_RESPONSE_OPTIONS 전역 변수 없음 (window.EXERCISE_RESPONSE_OPTIONS 미설정)');
+  }
+
+  /* ── 결과 출력 ─────────────────────────────────────────────────────── */
+  errors.forEach(function(e) { console.error(e); });
+  warnings.forEach(function(w) { console.warn(w); });
+
+  if (errors.length === 0 && warnings.length === 0) {
+    console.log(
+      '%c[SCHEMA] ✅ 슬림마인드 데이터 바인딩 검증 완전 통과 — 오류 0건, 경고 0건',
+      'color:#22c55e;font-weight:bold;font-size:13px'
+    );
+  } else if (errors.length === 0) {
+    console.log(
+      '%c[SCHEMA] ⚠ 검증 완료 — 오류 0건, 경고 ' + warnings.length + '건',
+      'color:#f59e0b;font-weight:bold'
+    );
+  } else {
+    console.log(
+      '%c[SCHEMA] ❌ 검증 실패 — 오류 ' + errors.length + '건, 경고 ' + warnings.length + '건',
+      'color:#ef4444;font-weight:bold'
+    );
+  }
+
+  /* ── 전역 결과 저장 ─────────────────────────────────────────────────── */
+  window.__SCHEMA_VALIDATION__ = {
+    errors: errors,
+    warnings: warnings,
+    passed: errors.length === 0,
+    timestamp: new Date().toISOString()
+  };
+})();
 </script>
 </body></html>
