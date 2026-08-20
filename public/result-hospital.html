@@ -15182,7 +15182,24 @@ var SUBTYPE_RULES=[
   ['하체',['무관'],['림프·순환','호르몬·대사','기질'],'셀룰라이트귤껍질형','BC-5'],
   [['복부','하체','상체','전신'],['무관'],['호르몬·대사','심리·식이','근감소'],'물만마셔도요요형','BC-4']
 ];
-var SUBTYPE_BASE={'BC-3':'남산수박배 기본형','BC-4':'물만마셔도요요 기본형','BC-5':'셀룰라이트귤껍질 기본형'};
+var SUBTYPE_BASE={
+  'BC-1':'엄마체형 하지정체형',
+  'BC-2':'목짧아지는 거북이형',
+  'BC-3':'남산수박배 기본형',
+  'BC-4':'물만마셔도요요 기본형',
+  'BC-5':'셀룰라이트귤껍질 기본형',
+  'BC-6':'호르몬스위치 갱년기형',
+  'BC-7':'출산후 바람빠진 풍선형',
+  'BC-8':'스트레스성 야식부엉이형',
+  'BC-9':'운동할수록 말벅지형',
+  'BC-10':'털털한 PCOS형',
+  'BC-11':'스트레스기절 번아웃형',
+  'BC-12':'대사증후군 종합형',
+  'BC-13':'약물부작용 강제축적형',
+  'BC-14':'상체근육형',
+  'BC-15':'겨드랑이 부유방형',
+  'BC-16':'동시다발 다중악순환형'
+};
 
 // ★ EVIDENCE_TAG_MAP — 46아형별 화면 표기어 (피트니스 설계도 v4 정본) v4.0
 // 형식: '아형명': '근거: 부위 · 질감·상태 · 표기어'
@@ -15248,6 +15265,9 @@ function decideSubtype(region, texture, axisScores, bcCode, answers){
   }
   if(cands.length===0){
     if(bcCode&&SUBTYPE_BASE[bcCode]) return {subtype:SUBTYPE_BASE[bcCode],bc:bcCode};
+    // [추가 폴백] bc_primary(nick) 이 SUBTYPE_NARR 에 직접 존재하면 그 이름 그대로 반환
+    var _nick=(window.__SM_DATA__&&window.__SM_DATA__.bc_primary)||'';
+    if(_nick&&SUBTYPE_NARR&&SUBTYPE_NARR[_nick]) return {subtype:_nick,bc:bcCode||'BC-16'};
     return {subtype:'동시다발 다중악순환형',bc:bcCode||'BC-16'};
   }
   if(cands.length===1) return {subtype:cands[0][3],bc:cands[0][4]};
@@ -16358,8 +16378,8 @@ function renderP3(userName, bcCode, bcMaster, ohaengKey, ohaeng, mbtiType, mbti,
       <div class="p3-lock">
         <div class="p3-lock-top">
           <div class="p3-lock-seal">나를 아는 순간</div>
-          <div class="p3-lock-h">이제 ${nm} 님은,<br><em>자신을 아는 사람</em>이 되었습니다</div>
-          <div class="p3-lock-p">밤마다 무너지던 것도, 계획이 자꾸 어긋나던 것도 — ${nm} 님 탓이 아니었어요. 타고난 <b>${ohaeng.label}</b>의 결과, <b>${mbtiType}</b>의 마음이 그렇게 움직였을 뿐입니다. 나를 알면, 더는 같은 자리에서 무너지지 않습니다. 이게 평생 가는 변화의 시작이에요.</div>
+          <div class="p3-lock-h">이제 <span id="p3-lock-nm">${nm}</span> 님은,<br><em>자신을 아는 사람</em>이 되었습니다</div>
+          <div class="p3-lock-p">밤마다 무너지던 것도, 계획이 자꾸 어긋나던 것도 — <span id="p3-lock-nm2">${nm}</span> 님 탓이 아니었어요. 타고난 <b id="p3-lock-ohaeng">${ohaeng.label}</b> 기질의 결과, <b id="p3-lock-mbti">${mbtiType}</b>의 마음이 그렇게 움직였을 뿐입니다. 나를 알면, 더는 같은 자리에서 무너지지 않습니다. 이게 평생 가는 변화의 시작이에요.</div>
         </div>
       </div>
       <button class="next-flow fade-up" style="transition-delay:.06s" onclick="switchPage(7)">
@@ -18151,7 +18171,7 @@ function renderP6(userName, fullCode, ohaengType, inputData, bcCode_p6, redFlags
 
   var _p6cd = document.getElementById('p6-code-display');
   if (_p6cd) _p6cd.innerHTML =
-    `<strong style="color:var(--vis-d);">${fullCode}</strong> 기준으로 짜인 12주 실행 계획입니다.`;
+    `<strong id="p6-fullcode-strong" style="color:var(--vis-d);">${fullCode}</strong> 기준으로 짜인 12주 실행 계획입니다.`;
 
   const ohaengData = (typeof SAJU_ELEMENT_DESC !== 'undefined' && SAJU_ELEMENT_DESC[ohaengType])
     ? SAJU_ELEMENT_DESC[ohaengType] : null;
