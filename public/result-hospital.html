@@ -26910,6 +26910,30 @@ function renderPersonalizationLayer(data, axisScores, answers, bcCode, ohaengTyp
         _fill('w12-ban-nm', _shortNm);
         _fill('w12-ph-nm1', _shortNm);
 
+        // [Bug#6 FIX] w12-ban 본문 BC코드별 동적 교체
+        // BC_PRESCRIPTION_DB.exerciseBan 사전 값을 #w12-ban 배너에 주입
+        (function(){
+          var _banEl = document.getElementById('w12-ban');
+          if (!_banEl) return;
+          var _bc = _d.bc_code || (_d.full_code ? _d.full_code.split('-').slice(0,2).join('-') : '');
+          var _pres = (typeof BC_PRESCRIPTION_DB !== 'undefined') ? BC_PRESCRIPTION_DB[_bc] : null;
+          if (_pres && _pres.exerciseBan) {
+            // exerciseBan을 3개 항목으로 분리 (·구분자 기준)
+            var _bans = _pres.exerciseBan.split('·').map(function(s){ return s.trim(); }).filter(Boolean);
+            var _nmSpan = '<span id="w12-ban-nm">' + _shortNm + '</span>';
+            if (_bans.length >= 3) {
+              _banEl.innerHTML = _nmSpan + '님 금지 3가지 — ① ' + _bans[0] + ' ② ' + _bans[1] + ' ③ ' + _bans[2];
+            } else if (_bans.length === 2) {
+              _banEl.innerHTML = _nmSpan + '님 금지 — ① ' + _bans[0] + ' ② ' + _bans[1];
+            } else if (_bans.length === 1) {
+              _banEl.innerHTML = _nmSpan + '님 금지 — ' + _bans[0];
+            } else {
+              // fallback: exerciseBan 전체 텍스트 그대로
+              _banEl.innerHTML = _nmSpan + '님 금지 — ' + _pres.exerciseBan;
+            }
+          }
+        })();
+
         // [FIX v3.1] w12 컨설턴트명 동적 주입 (하드코딩 3곳 대체)
         var _cnLabel = (typeof consultantLabel === 'function')
           ? consultantLabel(_d.consultant_name || window.__CONSULTANT_NAME__ || '')
