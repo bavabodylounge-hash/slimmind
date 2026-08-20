@@ -7042,6 +7042,18 @@ function todayDone(){return ['recover','move','food'].filter(cardDone).length;}
 
 /* ═══════════ 렌더 ═══════════ */
 function render(){
+  // ★ USER 재동기화: resultData가 로드된 후에 render()가 호출될 때 최신 BC코드 반영
+  try {
+    var _rd = window.__SM_DATA__ || window.__HOSPITAL_RESULT_DATA__;
+    if (_rd) {
+      USER.code     = _rd.bc_code    || _rd.bc_primary || USER.code     || 'BC-?';
+      USER.codeName = _rd.bc_primary || _rd.bc_code    || USER.codeName || '분석 중';
+      USER.name     = _rd.userName   || USER.name     || '고객';
+      USER.element  = _rd.ohaengType || _rd.ohaeng_type || USER.element || '';
+      USER.mbti     = _rd.mbtiType   || _rd.mbti_full   || USER.mbti   || '';
+      USER.hospital = _rd.consultant_name || USER.hospital || '담당병원';
+    }
+  } catch(_e){}
   var n=todayDone(), net=S.eat-S.burn, next=firstUndone();
   var h='';
   /* HERO */
@@ -13971,7 +13983,10 @@ function switchPage(num) {
   if (num === 6) setTimeout(function(){ if(typeof renderLiveRecord==='function') renderLiveRecord(); }, 200);
   if (num === 9) setTimeout(function(){ if(typeof renderLiveRecord==='function') renderLiveRecord(); }, 200);
   if (num === 7) setTimeout(p7AnimAgeCount, 400);
-  if (num === 10) setTimeout(function(){ if(typeof renderDailyPage==='function') renderDailyPage(); }, 150);
+  if (num === 10) setTimeout(function(){
+    if(typeof render==='function') render(); // ★ P10 내부 render() 재호출 — BC코드 최신화
+    if(typeof renderDailyPage==='function') renderDailyPage();
+  }, 150);
 }
 
 function enterReport(num){
