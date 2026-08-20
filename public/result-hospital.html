@@ -16142,9 +16142,60 @@ function renderP3(userName, bcCode, bcMaster, ohaengKey, ohaeng, mbtiType, mbti,
   let safeAct   = (prescription && prescription.exerciseOk)    ? prescription.exerciseOk    : _fallSafe;
   let stressAct = (prescription && prescription.exerciseBan)   ? prescription.exerciseBan   : _fallStress;
   let dietAct   = (prescription && prescription.dietDirection) ? prescription.dietDirection : _fallDiet;
+  // ── [Task6 리팩] P3 answers 단일 소스 원칙 — 매개변수 우선, 전역 fallback
+  // renderP3(answers 매개변수)가 있으면 그것만 쓴다. 미들웨어 4곳 통일.
+  var _p3AnswersSrc = answers || window.__LAST_ANSWERS__ || {};
+
+  // ── [Task6] exercise_response → P3 처방 safeAct 운동반응 맥락 보강
+  (function(){
+    var _exResp  = _p3AnswersSrc['exercise_response'] || null;
+    var _exLabel = _p3AnswersSrc['_exercise_resp_label'] || null;
+    if (!_exResp && !_exLabel) return;
+    var _exNote = '';
+    var _labelToNote = {
+      '일시반응형':  ' 이전에 그만두고 나서 돌아왔다면, 이번엔 유지 장치를 먼저 설계합니다 — 멈추지 않는 리듬 자체가 처방의 핵심입니다.',
+      '반응지속형':  ' 한 번 좋아지면 유지되는 편이라면 방향만 맞으면 효율이 높습니다 — 강도보다 방향을 먼저 잡겠습니다.',
+      '구성미변형':  ' 체중은 줄었지만 라인이 안 바뀌었다면 태우는 것보다 지키는 쪽 비중을 올려야 합니다 — 근육 유지 운동 우선.',
+      '역반응형':    ' 그 부위가 오히려 굵어진 경험이 있다면, 해당 부위에 무게를 얹지 않는 방식으로만 다시 짭니다 — 바꾸는 것이 빠집니다.',
+      '회복부족형':  ' 다음 날이 너무 힘들었다면 회복 예산 안에서 움직이는 것이 먼저입니다 — 강도를 낮추고 회복이 따라오면 올립니다.',
+      '저반응형':    ' 변화가 없었다면 자극의 종류가 안 맞았을 가능성이 높습니다 — 익숙하지 않은 자극으로 바꾸는 것이 처방입니다.',
+      '이력없음':    ' 처음 시작하는 분이라면 가장 쉬운 것부터 순서대로 쌓는 것이 최적 경로입니다 — 고치려는 습관이 없다는 게 장점입니다.'
+    };
+    _exNote = _labelToNote[_exLabel] || '';
+    if (!_exNote && _exResp) {
+      // 원문으로 fallback 매핑
+      if (_exResp.indexOf('그만두니') >= 0) _exNote = _labelToNote['일시반응형'];
+      else if (_exResp.indexOf('유지되는') >= 0) _exNote = _labelToNote['반응지속형'];
+      else if (_exResp.indexOf('라인은 그대로') >= 0) _exNote = _labelToNote['구성미변형'];
+      else if (_exResp.indexOf('굵어지') >= 0) _exNote = _labelToNote['역반응형'];
+      else if (_exResp.indexOf('너무 힘들') >= 0) _exNote = _labelToNote['회복부족형'];
+      else if (_exResp.indexOf('별 변화') >= 0) _exNote = _labelToNote['저반응형'];
+      else if (_exResp.indexOf('해본 적') >= 0) _exNote = _labelToNote['이력없음'];
+    }
+    if (_exNote) safeAct += _exNote;
+  })();
+
+  // ── [Task6] pain_areas → P3 처방 stressAct 통증 게이트 보강
+  (function(){
+    var _pa   = _p3AnswersSrc['pain_areas'] || _p3AnswersSrc['_pain_areas_parsed'] || [];
+    if (!Array.isArray(_pa)) _pa = _pa ? [_pa] : [];
+    var _painNone = _pa.some(function(p){ return p && p.indexOf('없') >= 0; });
+    if (_painNone || _pa.length === 0) return;
+    var _painNote = ' ⚠ 통증 게이트 — ';
+    var _warns = _pa.filter(function(p){ return p && p.indexOf('없') < 0; }).slice(0, 3);
+    _warns.forEach(function(area){
+      if (area.indexOf('목·어깨') >= 0)     _painNote += '머리 위 동작 제외(어깨 아래 높이로). ';
+      else if (area.indexOf('팔꿈치') >= 0)  _painNote += '손목 버팀 동작 제외(팔뚝 받치기로). ';
+      else if (area.indexOf('등·허리') >= 0) _painNote += '숙여서 드는 동작 제외(눕거나 엎드려). ';
+      else if (area.indexOf('골반') >= 0)    _painNote += '앉아서 버티기 제외(누워서 엉덩이 들기). ';
+      else if (area.indexOf('무릎') >= 0)    _painNote += '스쿼트·런지·뛰기 제외(체중 미부하 자세). ';
+    });
+    if (_warns.length > 0) stressAct = _painNote.trim() + ' | ' + stressAct;
+  })();
+
   // ★ M5: Q_TARGET_ZONE → safeAct/dietAct 끝에 목표 부위 언급 보강
   (function(){
-    var _p3Ans  = window.__LAST_ANSWERS__ || {};
+    var _p3Ans  = _p3AnswersSrc;
     var _tz     = _p3Ans['Q_TARGET_ZONE'];
     var _tzMap  = { 0:'뱃살', 1:'탄력', 2:'순환', 3:'얼굴윤곽', 4:'전체라인' };
     var _tzLbl  = (_tz != null && _tzMap[Number(_tz)]) ? _tzMap[Number(_tz)] : null;
@@ -16172,7 +16223,7 @@ function renderP3(userName, bcCode, bcMaster, ohaengKey, ohaeng, mbtiType, mbti,
   })();
   // ★ M2: q13_smoke/q14_alcohol → dietAct 끝에 흡연·음주 주의사항 보강
   (function(){
-    var _p3Ans2 = window.__LAST_ANSWERS__ || {};
+    var _p3Ans2 = _p3AnswersSrc;
     var _smoke  = _p3Ans2['q13_smoke'];   // 0=피움, 1=끊은지얼마, 2=안피움
     var _alc    = _p3Ans2['q14_alcohol']; // 0=주3회+, 1=주1~2, 2=거의안마심
     var _smokeNote = '';
@@ -16186,7 +16237,7 @@ function renderP3(userName, bcCode, bcMaster, ohaengKey, ohaeng, mbtiType, mbti,
   })();
   // [v2.2] Q_BODY_CHANGE → P3 처방 dietAct 끝에 몸 변화 맥락 보강
   (function(){
-    var _bcAns = window.__LAST_ANSWERS__ || {};
+    var _bcAns = _p3AnswersSrc;
     var _chg = _bcAns['Q_BODY_CHANGE'];
     var _chgNote = '';
     if (_chg === 0 || _chg === '0')      _chgNote = ' 갱년기 이후 달라진 몸에는 이전과 같은 방법이 통하지 않습니다 — 호르몬 변화를 먼저 이해하고 접근해야 효과가 납니다.';
@@ -16196,7 +16247,7 @@ function renderP3(userName, bcCode, bcMaster, ohaengKey, ohaeng, mbtiType, mbti,
   })();
   // [v2.3] Q_MIRROR_ZONE → P3 dietAct 관심 부위별 식단 힌트 추가
   (function(){
-    var _mzAns = window.__LAST_ANSWERS__ || {};
+    var _mzAns = _p3AnswersSrc;
     var _mz = _mzAns['Q_MIRROR_ZONE'];
     var _mzNote = '';
     if (_mz == 0 || _mz === '0')      _mzNote = ' 복부 집중 목표라면 인슐린 스파이크를 줄이는 저GI 식단과 식사 순서(채소→단백질→탄수화물) 조절이 핵심입니다.';
@@ -16214,7 +16265,7 @@ function renderP3(userName, bcCode, bcMaster, ohaengKey, ohaeng, mbtiType, mbti,
     var _tagResult = window.__TAG_RESULT__;
     var _medFilter = window.__MED_FILTER__;
     if (!_tagResult || !_medFilter) {
-      var _lastAns = answers || window.__LAST_ANSWERS__ || {};
+      var _lastAns = _p3AnswersSrc;
       if (typeof extractTags === 'function') {
         _tagResult = extractTags(_lastAns);
         window.__TAG_RESULT__ = _tagResult;
