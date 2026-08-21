@@ -19575,14 +19575,14 @@ async function postDiagnosisWithRetry(payload, maxRetry = 3) {
   let lastErr = null;
   for (let attempt = 1; attempt <= maxRetry; attempt++) {
     try {
-      const res = await fetch('/api/v1/diagnosis', {
+      const res = await fetch('/api/f/diagnosis', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify(payload)
       });
       if (res.ok) {
         const data = await res.json();
-        if (data.result_id) return { ok: true, result_id: data.result_id, data };
+        if (data.id || data.result_id) return { ok: true, result_id: data.id || data.result_id, data };
         lastErr = new Error('result_id missing in response');
       } else {
         const errTxt = await res.text().catch(() => res.status);
@@ -19686,9 +19686,9 @@ function showWaitScreen(resultId, userName) {
     } catch(_){}
     setTimeout(()=>{
       try{
-        window.location.replace('/result/' + resultId);
+        window.location.replace('/result-fitness/' + resultId);
       }catch(e){
-        window.location.href = '/result/' + resultId;
+        window.location.href = '/result-fitness/' + resultId;
       }
     }, 2000);
   }
@@ -19929,7 +19929,7 @@ async function submitDiagnosis(dispAnswers) {
     disp_answers:    (dispAnswers && Object.keys(dispAnswers).length > 0) ? dispAnswers : null,
     raw_answers:     rawAnswers,
     ref_code:        refCode,
-    survey_category: 'hospital',  // ✅ FIX: 병원용 결과지 라우팅을 위해 명시적 설정
+    survey_category: 'fitness',   // 피트니스 트랙 라우팅
     completed_at:    new Date().toISOString()
   };
 

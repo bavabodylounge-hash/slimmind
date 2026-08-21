@@ -2638,6 +2638,11 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
           return c.redirect(`/result-hospital/${id}`, 302)
         }
 
+        // ── fitness 분기: survey_category === 'fitness' → result-fitness.html 서빙 ──
+        if (effectiveCategory === 'fitness' || diagRow.survey_category === 'fitness') {
+          return c.redirect(`/result-fitness/${id}`, 302)
+        }
+
         // ── aesthetic 분기: survey_category === 'aesthetic' → result-aesthetic.html 서빙 ──
         if (diagRow.survey_category === 'aesthetic') {
           let aestheticHtml = await fetchAsset(c.env.ASSETS, '/result-aesthetic.html')
@@ -7730,9 +7735,9 @@ app.post('/api/f/diagnosis', async (c) => {
       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     `).bind(
       id,
-      body.b2b_code    || null,
+      body.b2b_code    || 'DIRECT',   // b2b_code NOT NULL — 직접 접근 시 DIRECT
       body.ref_code    || null,
-      body.user_name   || '고객',
+      body.user_name   || body.name   || '고객',
       body.gender      || null,
       String(body.age  || ''),
       String(height    || ''),
