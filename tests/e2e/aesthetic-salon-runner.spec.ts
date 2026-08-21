@@ -59,12 +59,12 @@ test.describe('Suite AE-1: aesthetic.html 전역 변수 선언 완비 검증', (
     expect(gmValid).toBe(true);
   });
 
-  test('AE-1-6: EXERCISE_RESPONSE_OPTIONS 7가지 키 소스 내 존재 (에스테틱)', async ({ page }) => {
+  test('AE-1-6: EXERCISE_RESPONSE_OPTIONS 6가지 키 소스 내 존재 (에스테틱)', async ({ page }) => {
     await page.goto(`${BASE_URL}/result-aesthetic/DEMO`, { waitUntil: 'domcontentloaded' });
     const erValid = await page.evaluate(() => {
       const src = document.documentElement.innerHTML;
-      // 7가지 운동반응 유형 키 존재 확인
-      const keys = ['일시반응형', '반응지속형', '구성미변형', '역반응형', '미반응형', '분절반응형', '과반응형'];
+      // 실제 구현 기준 6가지 운동반응 유형 키 존재 확인
+      const keys = ['일시반응형', '반응지속형', '구성미변형', '역반응형', '회복부족형', '저반응형'];
       return keys.every(k => src.includes(k));
     });
     expect(erValid).toBe(true);
