@@ -5761,7 +5761,7 @@ p, div, span, h1, h2, h3, h4{
 
 <!-- ══ 피트니스 전용: API 연동 + __RESULT__ 주입 ══ -->
 <script>
-// 에스테틱 초기화 완료를 DOMContentLoaded에서 await할 수 있도록 Promise 노출
+// 피트니스 초기화 완료를 DOMContentLoaded에서 await할 수 있도록 Promise 노출
 window.__FITNESS_INIT_PROMISE__ = (async function fitnessInit() {
   // index.tsx가 주입한 window.__FITNESS_RESULT_ID__ 확인
   var resultId = (typeof window.__FITNESS_RESULT_ID__ !== 'undefined')
@@ -5785,7 +5785,7 @@ window.__FITNESS_INIT_PROMISE__ = (async function fitnessInit() {
     console.log('[aesthetic] ID 없음 — 데모 모드');
     return;
   }
-  console.log('[aesthetic] 에스테틱 결과 ID:', resultId);
+  console.log('[fitness] 피트니스 결과 ID:', resultId);
 
   try {
     var res  = await fetch('/api/f/result/' + encodeURIComponent(resultId));
@@ -5797,7 +5797,7 @@ window.__FITNESS_INIT_PROMISE__ = (async function fitnessInit() {
     if (typeof ax === 'string') { try { ax = JSON.parse(ax); } catch(e){ ax = {}; } }
 
     // stage2_answers 파싱
-    // ★ stage2_answers가 null인 경우 raw_answers.stage2로 폴백 (B2B 에스테틱 설문 형식)
+    // ★ stage2_answers가 null인 경우 raw_answers.stage2로 폴백 (B2B 피트니스 설문 형식)
     var s2 = json.stage2_answers || (json.raw_answers && json.raw_answers.stage2) || {};
     if (typeof s2 === 'string') { try { s2 = JSON.parse(s2); } catch(e){ s2 = {}; } }
     // ★ 키 충돌 근본 해결: stage2Answers는 숫자 키(1,2,3...16)로 저장됨
@@ -5892,11 +5892,17 @@ window.__FITNESS_INIT_PROMISE__ = (async function fitnessInit() {
       _isMenopause = q12raw.some(function(v){ return /yes|완경|갱년기|폐경|peri/i.test(String(v)); });
     }
 
-    // ── Q9: 과거 시술 이력 ────────────────────────────
-    // survey-hospital Q9: 배열 ['liposuction','fat_dissolve','lifting',...]
-    var q9raw = s2['q9'] || s2['q9_procedures'] || s2['past_procedures'] || [];
+    // ── Q9: 피트니스 운동이력 (병원판과 인덱스 의미 다름) ─────────────
+    // 피트니스판: idx0=지방흡입, idx1=지방분해, idx2=리프팅, idx3=보톡스,
+    //             idx4=PT·필라테스·운동 프로그램, idx5=다이어트약·보조제, idx6=없음
+    var q9raw = s2['q9'] || s2['q9_procedures'] || s2['past_procedures']
+              || s2['exercise_history'] || [];
     if (typeof q9raw === 'string') { try { q9raw = JSON.parse(q9raw); } catch(e){ q9raw = q9raw ? [q9raw] : []; } }
     var _pastProcedures = Array.isArray(q9raw) ? q9raw.map(function(v){ return String(v).toLowerCase(); }) : [];
+    // 피트니스 전용: 숫자 인덱스로 변환
+    var _exerciseHistoryIdxs = Array.isArray(q9raw) ? q9raw.map(Number).filter(function(n){ return !isNaN(n); }) : [];
+    var _hadPT          = _exerciseHistoryIdxs.indexOf(4) >= 0;  // PT·필라테스 이력
+    var _hadSupplement  = _exerciseHistoryIdxs.indexOf(5) >= 0;  // 다이어트약·보조제
 
     // ── Q6: 장기복용약 / Q7: 식욕억제제 이력 ─────────
     var q6raw = s2['q6'] || s2['q6_drugs'] || s2['long_term_drugs'] || [];
@@ -5904,7 +5910,7 @@ window.__FITNESS_INIT_PROMISE__ = (async function fitnessInit() {
     var _longTermDrugs = Array.isArray(q6raw) ? q6raw.map(function(v){ return String(v).toLowerCase(); }) : [];
 
     var q7raw = s2['q7'] || s2['q7_appetite'] || s2['appetite_suppressant'] || '';
-    var _hadGLP1 = false; // 과거 GLP-1/식욕억제제 복용 여부
+    var _hadGLP1 = false;
     if (typeof q7raw === 'string') {
       _hadGLP1 = /yes|있|복용|위고비|마운자로|삭센다|큐시미아|appetite/i.test(q7raw);
     } else if (Array.isArray(q7raw)) {
@@ -5914,17 +5920,21 @@ window.__FITNESS_INIT_PROMISE__ = (async function fitnessInit() {
       return /steroid|스테로이드|항우울|antidepressant|피임약|contraceptive/i.test(d);
     });
 
-    // ── 처방 조건 플래그 종합 ──────────────────────────
+    // ── 처방 조건 플래그 종합 (피트니스 전용 플래그 추가) ──────────────
     var _conditions = {
-      bmiOver27:        _bmiGrade === 'obese2' || _bmiGrade === 'obese3',
-      bmiOver30:        _bmiGrade === 'obese3',
-      glp1Eligible:     (_bmiGrade === 'obese2' || _bmiGrade === 'obese3') && !_hadGLP1,
-      glp1Adjust:       (_bmiGrade === 'obese2' || _bmiGrade === 'obese3') && _hadGLP1,
-      menopause:        _isMenopause,
-      hadLiposuction:   _pastProcedures.some(function(p){ return /lipo|지방흡입|suction/i.test(p); }),
-      hadFatDissolve:   _pastProcedures.some(function(p){ return /fat_dis|지방분해|dissolv|윤곽/i.test(p); }),
-      hadLifting:       _pastProcedures.some(function(p){ return /lifting|리프팅|실리프|ulthera|울쎄라/i.test(p); }),
+      bmiOver27:          _bmiGrade === 'obese2' || _bmiGrade === 'obese3',
+      bmiOver30:          _bmiGrade === 'obese3',
+      glp1Eligible:       (_bmiGrade === 'obese2' || _bmiGrade === 'obese3') && !_hadGLP1,
+      glp1Adjust:         (_bmiGrade === 'obese2' || _bmiGrade === 'obese3') && _hadGLP1,
+      menopause:          _isMenopause,
+      // ── 피트니스 전용 플래그 ──
+      hadPT:              _hadPT,           // PT·필라테스 이력 → 방향 교정 필요
+      hadSupplement:      _hadSupplement,   // 다이어트약·보조제 이력 → 약물 도메인 강화
+      hadLiposuction:     _pastProcedures.some(function(p){ return /lipo|지방흡입|suction/i.test(p); }),
+      hadFatDissolve:     _pastProcedures.some(function(p){ return /fat_dis|지방분해|dissolv|윤곽/i.test(p); }),
+      hadLifting:         _pastProcedures.some(function(p){ return /lifting|리프팅|실리프|ulthera|울쎄라/i.test(p); }),
       drugInducedObesity: _hasSteroidsOrAD,
+      needsDirectionFix:  _hadPT,  // PT 해봤는데 안 됐다 → 방향 교정 처방 필요
     };
 
     // result-v4 loadData()가 읽는 window.__RESULT__ 구조로 변환
@@ -5963,6 +5973,10 @@ window.__FITNESS_INIT_PROMISE__ = (async function fitnessInit() {
       _pastProcedures: _pastProcedures,
       // ── 피트니스 전용: 운동반응형 / 통증게이트 / BMR·TDEE ──
       _exerciseResponse: json.exercise_response || (json.raw_answers && json.raw_answers.exercise_response) || '',
+      // ── 피트니스 전용: 운동이력 숫자 배열 (Q9 인덱스, hadPT/hadSupplement 판단에 사용) ──
+      _exerciseHistory: _exerciseHistoryIdxs,
+      _hadPT:           _hadPT,
+      _hadSupplement:   _hadSupplement,
       _painGate:        (function(){
         var pg = json.pain_gate || (json.raw_answers && json.raw_answers.pain_gate) || '[]';
         if (typeof pg === 'string') { try { return JSON.parse(pg); } catch(e){ return []; } }
@@ -6103,7 +6117,7 @@ window.__FITNESS_INIT_PROMISE__ = (async function fitnessInit() {
       var respLabel = null;
       if (rawResp) {
         respLabel = RESP_TEXT_TO_LABEL[rawResp] || rawResp;
-        // TODO: 에스테틱 결과지 TODAY.move.exOptions 패치 (DOM 준비 후 적용)
+        // TODO: 피트니스 결과지 TODAY.move.exOptions 패치 (DOM 준비 후 적용)
         window.__AE_EXERCISE_RESP_LABEL__ = respLabel;
         window.__AE_EXERCISE_RESP_RAW__   = rawResp;
         console.log('[AE-Task2] exercise_response:', rawResp, '→', respLabel);
@@ -6115,23 +6129,34 @@ window.__FITNESS_INIT_PROMISE__ = (async function fitnessInit() {
     // ══════════════════════════════════════════════════════
     (function _aeGatePatchPainGate() {
       var _aeAnswers2 = json.raw_answers || {};
+      // ★ 피트니스 설계도 기준 6항목: 목·어깨 / 팔꿈치·손목 / 등·허리 / 골반·꼬리뼈 / 무릎·발목 / 없었어요
       var PAIN_GATE = {
         '목·어깨': {
           warn: '목·어깨 통증',
-          alt:  '목·어깨에 부담을 주는 오버헤드 동작 대신 코어와 하체 중심 운동으로 대체합니다.',
-          banKeywords: ['오버헤드', '밀리터리 프레스', '숄더 프레스', '풀업', '턱걸이']
+          alt:  '목·어깨에 부담을 주는 오버헤드 동작 대신 코어와 하체 중심 운동으로 대체합니다. 흉추 가동성 운동(캣카우·오픈북)으로 원인 부위를 풀어줍니다.',
+          banKeywords: ['오버헤드', '밀리터리 프레스', '숄더 프레스', '풀업', '턱걸이', '레터럴 레이즈']
+        },
+        '팔꿈치·손목': {
+          warn: '팔꿈치·손목 통증',
+          alt:  '손목 굴곡·과신전이 필요한 동작을 피하고, 케틀벨 스윙·레그 프레스 등 손목 비개입 운동으로 대체합니다.',
+          banKeywords: ['푸시업', '바벨 컬', '트라이셉스 딥', '풀다운', '로프 트라이셉스']
         },
         '등·허리': {
           warn: '등·허리 통증',
-          alt:  '허리 굴곡·신전 부하를 줄이고 코어 안정화 위주로 전환합니다. 플랭크·버드독 계열 추천.',
-          banKeywords: ['데드리프트', '바벨 로우', '굿모닝', '하이퍼익스텐션']
+          alt:  '허리 굴곡·신전 부하를 줄이고 코어 안정화 위주로 전환합니다. 플랭크·버드독 계열 추천. 무릎 아프다고 하체를 빼면 근육이 더 빠져 무릎이 더 아파짐 — 같은 원리로 허리도 코어가 답입니다.',
+          banKeywords: ['데드리프트', '바벨 로우', '굿모닝', '하이퍼익스텐션', '레그 레이즈 (복부 버전)']
+        },
+        '골반·꼬리뼈': {
+          warn: '골반·꼬리뼈 통증',
+          alt:  '골반 전방 경사를 악화시키는 힙플렉서 자극 동작을 제한합니다. 글루트 브릿지·사이드라잉 클램 계열로 골반 안정화를 먼저 잡아야 합니다.',
+          banKeywords: ['레그 레이즈', '힙플렉서 스트레칭 (과도)', '바벨 스쿼트 광폭', '힙 쓰러스트 고중량']
         },
         '무릎·발목': {
           warn: '무릎·발목 통증',
-          alt:  '스쿼트·런지·뛰기 대신 체중이 관절에 안 실리는 자세로 같은 근육을 씁니다.',
-          banKeywords: ['스쿼트', '런지', '뛰기', '점프', '달리기']
+          alt:  '스쿼트·런지·뛰기 대신 체중이 관절에 안 실리는 자세로 같은 근육을 씁니다. 무릎 아프다고 하체를 빼면 근육이 더 빠져 무릎이 더 아파집니다.',
+          banKeywords: ['스쿼트', '런지', '뛰기', '점프', '달리기', '레그 익스텐션 고중량']
         },
-        '통증은 없었어요': {
+        '없었어요': {
           warn: null,
           alt:  '통증 이력이 없다면 동작 선택의 폭이 넓어요. 강도를 올릴 때 기준이 명확해집니다.',
           banKeywords: []
@@ -6452,7 +6477,7 @@ function dismissFeedbackBanner() {
 <!-- 네비게이션 -->
 <nav id="top-nav">
   <button class="nav-logo nav-home" onclick="openCover()" title="목차 보기">
-    <span class="nav-home-row"><span class="nav-home-ico">☰</span><span class="nav-home-brand" id="nav-brand-text">SLIM<span style="color:var(--mint);">MIND</span></span><span class="hb-badge">💅 에스테틱</span></span>
+    <span class="nav-home-row"><span class="nav-home-ico">☰</span><span class="nav-home-brand" id="nav-brand-text">SLIM<span style="color:var(--mint);">MIND</span></span><span class="hb-badge">🏋️ 피트니스</span></span>
     <span class="nav-home-toc"><span class="nav-home-chev">‹</span> 목차보기</span>
   </button>
   <button id="nav-back-btn" onclick="_goBack()" title="이전 페이지">‹ 뒤로</button>
@@ -9304,7 +9329,7 @@ var BC_PRESCRIPTION_DB = {
     exerciseBan: '하체 근력 운동·러닝머신·크로스핏·하이록스',
     exerciseOk: '수영·걷기·필라테스 (저충격 순환 중심)',
     dietDirection: '저탄고지 + 수분 충분 + 림프 촉진 식품 (사과, 아보카도, 파인애플)',
-    b2b: '에스테틱·뷰티 (림프 드레나쥐)',
+    b2b: '피트니스·수영센터 (수중 유산소)',
     care: '서해부 온열 요법·폼롤러 드레나쥐',
     coreMessage: '오후 부종은 하체 림프·정맥 순환 장애입니다. 통로를 먼저 열어야 지방이 빠집니다.',
   },
@@ -9314,7 +9339,7 @@ var BC_PRESCRIPTION_DB = {
     exerciseBan: '목·어깨 압박 웨이트 (바벨 스쿼트, 숄더프레스)',
     exerciseOk: '경추 교정 필라테스 + 겨드랑이 림프 마사지 + 수영',
     dietDirection: '항염 식단 + 셀러리·파인애플 림프 촉진 + 수분 2L',
-    b2b: '필라테스·정형외과',
+    b2b: '기구 필라테스·척추 전문 PT',
     care: '경추 교정 + 겨드랑이 림프절 케어',
     coreMessage: '거북목·라운드숄더가 상체 림프를 차단합니다. 척추 정렬이 체형의 출발점입니다.',
   },
@@ -9324,7 +9349,7 @@ var BC_PRESCRIPTION_DB = {
     exerciseBan: '공복 고강도 유산소 (혈당 스파이크 심화)',
     exerciseOk: '식후 15분 속보 + 저강도 유산소 + 필라테스',
     dietDirection: '탄수화물 순서 식단 (채소→단백질→탄수화물) + 저GI 식품 + 식후 걷기',
-    b2b: '내과·영양 컨설팅',
+    b2b: 'PT 센터·영양 컨설팅',
     care: '혈당 측정기 활용 + 식이 패턴 기록',
     coreMessage: '밥 먹은 뒤 졸음·단것 갈구는 혈당 롤러코스터의 신호입니다. 식사 순서 하나로 바뀝니다.',
   },
@@ -9334,7 +9359,7 @@ var BC_PRESCRIPTION_DB = {
     exerciseBan: '무리한 고강도 운동 (면역 저하 심화)',
     exerciseOk: '저강도 산책 + 요가 + 대사 회복 필라테스',
     dietDirection: '항염 식단 + 가공식품 배제 + 장 건강 회복 식단',
-    b2b: '내과·약학 상담',
+    b2b: '기능의학·영양 상담 PT',
     care: '주치의와 약물 조정 상담 선행',
     coreMessage: '약물이 대사를 바꿨습니다. 원인 약물 조정 없는 다이어트는 효과가 제한됩니다.',
   },
@@ -9344,7 +9369,7 @@ var BC_PRESCRIPTION_DB = {
     exerciseBan: '시술 부위 고강도 압박 운동',
     exerciseOk: '림프 드레나쥐 마사지 + 저충격 수영 + 걷기',
     dietDirection: '항섬유화 식단 + 비타민C 풍부 + 수분 충분',
-    b2b: '에스테틱·성형외과',
+    b2b: 'PT 센터·재활 피트니스',
     care: '림프 회복 + 섬유화 전문 케어',
     coreMessage: '지방흡입 후 섬유화가 재발의 핵심입니다. 림프 통로 복구가 우선입니다.',
   },
@@ -9354,7 +9379,7 @@ var BC_PRESCRIPTION_DB = {
     exerciseBan: '야간 고강도 운동·카페인 보충제',
     exerciseOk: '밤 9시 야외 산책 20분 + 낮 요가',
     dietDirection: '도파민 대체 스낵 전략 + 트립토판 단백질 (저녁) + 야식 환경 제거',
-    b2b: '수면클리닉·심리상담',
+    b2b: '요가·명상 센터',
     care: '블루라이트 차단 + 자율신경 안정 루틴',
     coreMessage: '밤에 먹는 것은 의지력 부족이 아닙니다. 뇌의 가짜 허기를 만드는 코르티솔 문제입니다.',
   },
@@ -9364,7 +9389,7 @@ var BC_PRESCRIPTION_DB = {
     exerciseBan: '복직근 이개 심화 운동 (크런치·레그레이즈·버피)',
     exerciseOk: '골반저근 운동 + 기구 필라테스 + 복압 회복 코어',
     dietDirection: '복부 장기 압박 식이 제한 + 소식다회 + 소화 돕는 식품',
-    b2b: '필라테스·산부인과',
+    b2b: '기구 필라테스·산후 코어 PT',
     care: '복직근 이개 재활 + 골반저근 전문 케어',
     coreMessage: '출산 후 코어가 무너지면서 모든 게 처졌습니다. 복압 회복이 체형 변화의 시작입니다.',
   },
@@ -9374,7 +9399,7 @@ var BC_PRESCRIPTION_DB = {
     exerciseBan: '하체 고강도 웨이트 (스쿼트·레그프레스·런지)',
     exerciseOk: '수영·요가·저충격 유산소 (하체 웨이트 유보)',
     dietDirection: '근육 이완 지원 식단 + 마그네슘 풍부 + 나트륨 제한',
-    b2b: '필라테스·재활',
+    b2b: '기구 필라테스·스포츠 재활',
     care: '근육 과발달 이완 스트레칭 + 폼롤러',
     coreMessage: '하체 운동이 오히려 허벅지를 키우는 역설. 알파 수용체 체형은 다른 접근이 필요합니다.',
   },
@@ -9384,7 +9409,7 @@ var BC_PRESCRIPTION_DB = {
     exerciseBan: '과도한 유산소 + 단식 반복 (근육 분해 심화)',
     exerciseOk: '고단백 식사 후 저충격 근력 + 필라테스',
     dietDirection: '고단백 식사 (체중×1.6g) + 근육 합성 지원 + 아침 단백질 우선',
-    b2b: '영양 컨설팅·PT',
+    b2b: '영양 컨설팅·퍼스널 트레이닝',
     care: '체성분 분석 + 근육량 중심 지표 관리',
     coreMessage: '몸무게가 아닌 근육량이 기준입니다. 사지 빠지고 배만 남는 이화작용을 역전해야 합니다.',
   },
@@ -12604,7 +12629,7 @@ function switchPage(num) {
     // 오늘탭 처음 진입 시 전용 안내 팝업
     setTimeout(function(){ _showTodayTabGuide(); }, 500);
   }, 150);
-  if (num === 11) setTimeout(function(){ if(typeof renderP11Aesthetic==='function') renderP11Aesthetic(); }, 200);
+  if (num === 11) setTimeout(function(){ if(typeof renderP11Fitness==='function') renderP11Fitness(); }, 200);
 }
 
 function enterReport(num){
@@ -15510,7 +15535,7 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
   // 11개 영역 각각 점수 산출 → 높은 순 3개가 실제 1·2·3순위
   // ════════════════════════════════════════════
   var _domainScores = (function calcDomainScores() {
-    var sc = { 회복:0, 식단:0, 운동:0, 호르몬:0, 체형:0, 순환:0, 심리:0, 한방:0, 약물:0, 시술:0 };
+    var sc = { 회복:0, 식단:0, 운동:0, 호르몬:0, 체형:0, 순환:0, 심리:0, 한방:0, 약물:0 };  // 피트니스: 시술 도메인 제거
 
     // ── stage1 외형 촉진 ──
     var s1 = window.__RESULT__ && window.__RESULT__._stage1 || {};
@@ -15631,10 +15656,12 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
     if (hasSteroidsOrAD) sc['약물'] += 3;
     if (q7>=0) sc['약물'] += 3; // 식욕억제제
     if (q8.indexOf(2)>=0) sc['약물'] += 2; // 수술/약물 계기
-    // 시술
-    if (q9.length>0) sc['시술'] += 3;
-    if (s1Region===2||s1Region===3) sc['시술'] += 2; // 아랫배·허벅지 고민
-    if (s1Region===1) sc['시술'] += 1; // 윗배
+    // ── 피트니스 전용: Q9 운동이력 → 운동 점수 보정 ──
+    // PT·필라테스 이력(idx4): 자극은 줬으나 반응 없었다는 정보 → 방향교정 필요 → 운동+1
+    // 다이어트약·보조제 이력(idx5): A08+1 → 약물 도메인
+    var _fitnessQ9 = (window.__RESULT__ && window.__RESULT__._exerciseHistory) || [];
+    if (_fitnessQ9.indexOf(4) >= 0) { sc['운동'] += 1; }  // PT·필라테스 이력 → 방향교정
+    if (_fitnessQ9.indexOf(5) >= 0) { sc['약물'] += 1; }  // 다이어트약 이력
     // 한방
     if (q1===0) sc['한방'] += 2; // 가족력
     if (q3.indexOf(0)>=0) sc['한방'] += 2; // 갑상선
@@ -15699,39 +15726,48 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
     return sc;
   })();
 
-  // ★ BUG-C 수정: 에스테틱 안전핀 — BC-1/BC-10/BC-13/BC-14 → 시술 도메인 top5 진입 불가
-  // BC_DOMAIN_RULES exclude:['aesthetic'] 설계도 규칙 프론트 반영
-  var _BC_AES_EXCLUDE_P5 = ['BC-1', 'BC-10', 'BC-13', 'BC-14'];
+  // ★ 피트니스 5위 보장: 운동이 상위 5위 안에 없으면 4번 인덱스(5위)로 끌어올림
+  // 설계도: 병원판 '시술 5위 보장' → 피트니스판 '운동 5위 보장'
   var _bcCodeForPin = (bcCode || '').toString().trim().toUpperCase().replace(/\s/g, '');
-  if (_bcCodeForPin && _BC_AES_EXCLUDE_P5.indexOf(_bcCodeForPin) >= 0) {
-    if (_domainScores['시술'] !== undefined) {
-      console.log('[AE P5 안전핀] ' + _bcCodeForPin + ' → 시술 점수 ' + _domainScores['시술'] + '→0 강제');
-      _domainScores['시술'] = 0;
-    }
-  }
+  console.log('[FIT P5] BC코드:', _bcCodeForPin, '| 도메인 점수:', JSON.stringify(_domainScores));
 
-  // 점수 기반 상위 3개 영역 추출 (내림차순)
+  // 점수 기반 전체 영역 정렬 (내림차순)
   var _sortedDomains = Object.keys(_domainScores)
     .filter(function(k){ return k !== '관리' && k !== '철학'; })
     .sort(function(a,b){ return _domainScores[b] - _domainScores[a]; });
+
+  // ★ 피트니스 운동 5위 보장 (설계도 정본)
+  // 병원판 「시술 5위 보장」과 동일 메커니즘, 피트니스에서는 「운동」이 대신
+  var _fitExIdx = _sortedDomains.indexOf('운동');
+  if (_fitExIdx < 0) {
+    // 운동이 목록에 없으면 끝에 추가
+    _domainScores['운동'] = _domainScores['운동'] || 1;
+    _sortedDomains.push('운동');
+    _fitExIdx = _sortedDomains.length - 1;
+  }
+  if (_fitExIdx > 4) {
+    // 운동이 5위(인덱스 4) 밖이면 4번으로 끌어올림
+    _sortedDomains.splice(_fitExIdx, 1);
+    _sortedDomains.splice(4, 0, '운동');
+    console.log('[FIT P5 운동보장] 운동 → 5위 보장 적용');
+  }
   var _top3 = _sortedDomains.slice(0,3);
 
-  // ── 공통 TOP3 파이프라인 (bc-engine.js computeTop3Prescriptions) ──
-  // aesthetic 특화 track='aesthetic' → 체형/순환/시술 가중치 강조
-  // ★ bcCode를 4번째 인수로 전달 → bc-engine.js 안전핀 연동
+  // ── 피트니스 TOP3 파이프라인 ──
+  // fitness 특화 track='fitness' → 운동/체형/식단 가중치 강조
   var _axisScoresForEngine = (window.__RESULT__ && window.__RESULT__.axisScores)
     || (window.__RESULT__ && window.__RESULT__.axis_scores) || {};
   var _engineTop3Ae = (typeof computeTop3Prescriptions === 'function' && Object.keys(_axisScoresForEngine).length > 0)
-    ? computeTop3Prescriptions(_axisScoresForEngine, null, 'aesthetic', bcCode)
+    ? computeTop3Prescriptions(_axisScoresForEngine, null, 'fitness', bcCode)
     : null;
   // P5 _domainScores 기반 결과 우선(설문 응답 직접 반영), 비어있으면 엔진 fallback
   var _top3Final_ae = (_top3.length > 0)
     ? _top3.slice(0, 3)
     : (_engineTop3Ae ? _engineTop3Ae.top3 : []);
-  // 전역 변수 통일: aesthetic은 _top3, 공통은 __STRONG_AXES__ + __TOP3_PRESCRIPTIONS__
-  window._top3          = _top3Final_ae;  // aesthetic 결과지 내부 기존 참조 유지
-  window.__STRONG_AXES__ = _top3Final_ae; // hospital과 동일한 키 — today.html 공통 참조
-  window.__TOP3_PRESCRIPTIONS__ = {       // 양 트랙 공통 접근자
+  // 전역 변수 통일
+  window._top3          = _top3Final_ae;
+  window.__STRONG_AXES__ = _top3Final_ae;
+  window.__TOP3_PRESCRIPTIONS__ = {
     top3:      _top3Final_ae,
     top3Full:  _top3Final_ae.map(function(nm) {
       var meta = (typeof _DOMAIN_META !== 'undefined' && _DOMAIN_META[nm])
@@ -15739,10 +15775,10 @@ function renderP5(metrics, bcCode, axisScores, userName, s2, s3) {
       return { key: nm, icon: meta.icon, color: meta.color };
     }),
     allScores: _engineTop3Ae ? _engineTop3Ae.allScores : _domainScores,
-    track:     'aesthetic',
+    track:     'fitness',
     source:    'renderP5',
   };
-  console.log('[AE P5→ENGINE] TOP3 파이프라인:', _top3Final_ae, '| 엔진 검증:', _engineTop3Ae ? _engineTop3Ae.top3 : 'N/A', '| 안전핀 BC:', _bcCodeForPin);
+  console.log('[FIT P5→ENGINE] TOP3 파이프라인:', _top3Final_ae, '| 운동보장 순위:', _fitExIdx, '| BC:', _bcCodeForPin);
 
   // ════════════════════════════════════════════
   // ★ 영역별 해결책 데이터 (원인 스토리 + 구체적 행동)
@@ -26102,8 +26138,11 @@ function renderSurBodyContext(sec, data, region, texture, nicknameDisplay, bcCod
     <!-- ══ B섹션: 이번이 다른 이유 ══ -->
     <div id="p11-sec-diff" class="p11-diff-section p11-reveal"></div>
 
-    <!-- ══ C섹션: 미경험 시술 발견 ══ -->
+    <!-- ══ C섹션: 아직 안 해본 운동 처방 발견 (피트니스 전용) ══ -->
     <div id="p11-sec-discover" class="p11-discover-section p11-reveal"></div>
+
+    <!-- ══ D섹션: BMR/TDEE/칼로리 목표 (피트니스 전용) ══ -->
+    <div id="p11-sec-bmr" class="p11-reveal"></div>
 
     <!-- ── 처방 로드맵 (기존 유지 / renderP11에서 주입) ── -->
     <div class="p11-section p11-reveal">
@@ -26251,7 +26290,7 @@ var BC_AESTHETIC_THERAPY_DB = {
       tag: '주 1회 × 6주',
       target: '코르티솔 완화·전신 이완',
       desc: '코르티솔 완화에 특화된 라벤더·클라리세이지·로즈 블렌드 오일로 복부→등→어깨 순서로 관리합니다. 부교감신경 활성화로 스트레스 호르몬이 낮아지고, 지방 축적의 심리적 원인이 완화됩니다.',
-      care_note: '스트레스가 많을수록 에스테틱 케어가 효과적인 이유입니다.',
+      care_note: '스트레스 해소가 운동 효과를 높이는 핵심 이유입니다.',
       tip: '오일 알레르기 패치 테스트 후 진행',
     },
     {
@@ -26873,12 +26912,12 @@ var OHAENG_PHASE_DB = {
 
 
 // ════════════════════════════════════════════════════════
-// renderP11Aesthetic v1 — 설문 응답 기반 에스테틱 케어 처방 (2026)
+// renderP11Fitness v1 — 설문 응답 기반 에스테틱 케어 처방 (2026)
 // A: 왜 지금까지 안 됐는지 (실패 근거 + 목표체중 수치)
 // B: 이번이 다른 이유 (BC코드 처방 + 게이지 + desire 방향카드)
 // C: 미경험 시술 발견 (Q9 + partLabels 기반 우선순위 재정렬)
 // ════════════════════════════════════════════════════════
-function renderP11Aesthetic(data) {
+function renderP11Fitness(data) {
   if (!data) {
     // 우선순위: 전역 저장 resultData → window.__RESULT__(실서버) → 빈 객체
     data = window.__SLIMMIND_DATA__
@@ -27207,14 +27246,23 @@ function renderP11Aesthetic(data) {
   var riskLevel11 = riskScore11 >= 6 ? '즉시개선' : riskScore11 >= 3 ? '경고' : riskScore11 >= 1 ? '주의' : '양호';
   var riskColor11 = riskScore11 >= 6 ? '#c0392b' : riskScore11 >= 3 ? '#e67e22' : riskScore11 >= 1 ? '#f39c12' : '#27ae60';
 
-  // Q9: 과거 시술 이력 (원시 배열 인덱스 혹은 문자열)
-  var PROC_OPTS = ['지방흡입','지방분해 주사·시술','리프팅 (실·레이저·초음파)','보톡스·필러','복부성형 (복벽 교정)','체형 관련 수술은 없어요'];
-  var q9raw = stage2['q9'] || stage2['q9_procedures'] || stage2['past_procedures'] || [];
+  // Q9: 피트니스 운동이력 (병원판과 인덱스 의미 다름)
+  // 피트니스: idx0=지방흡입, idx1=지방분해, idx2=리프팅, idx3=보톡스,
+  //           idx4=PT·필라테스·운동 프로그램, idx5=다이어트약·보조제, idx6=없음
+  // C섹션 ALL_PROCS 5종: 0=PT, 1=기구필라테스, 2=저강도유산소, 3=복합근력, 4=코어재활
+  // → Q9 idx4(PT이력)만 → ALL_PROCS idx0(PT) done으로 매핑
+  var PROC_OPTS = ['PT·퍼스널 트레이닝','기구 필라테스','저강도 유산소 (수영·걷기)','복합 근력 (웨이트·서킷)','코어 재활·골반 안정화','다이어트약·보조제 복용','없어요'];
+  var q9raw = stage2['q9'] || stage2['q9_procedures'] || stage2['past_procedures']
+            || stage2['exercise_history'] || [];
   if (typeof q9raw === 'string') { try { q9raw = JSON.parse(q9raw); } catch(e){ q9raw = q9raw ? [q9raw] : []; } }
-  var doneIdxs = Array.isArray(q9raw) ? q9raw.map(Number).filter(function(n){ return !isNaN(n) && n < 5; }) : [];
+  // 피트니스 Q9 idx4(PT)→PROCS idx0(PT), idx5(보조제)→제외, 나머지는 시술류→제외
+  var _q9Nums = Array.isArray(q9raw) ? q9raw.map(Number).filter(function(n){ return !isNaN(n); }) : [];
+  var _fitnessDoneMap = { 4: 0 }; // Q9 idx4(PT이력) → ALL_PROCS idx0(PT·퍼스널 트레이닝)
+  var doneIdxs = [];
+  _q9Nums.forEach(function(n){ if (_fitnessDoneMap[n] !== undefined) doneIdxs.push(_fitnessDoneMap[n]); });
   var doneProcNames = doneIdxs.map(function(i){ return PROC_OPTS[i]; }).filter(Boolean);
 
-  // 아직 안 해본 시술 후보 풀 (0~4번, "없어요" 제외)
+  // 아직 안 해본 운동 처방 후보 풀 (ALL_PROCS 5종)
   var allProcIdxs = [0,1,2,3,4];
   var notDoneIdxs = allProcIdxs.filter(function(i){ return doneIdxs.indexOf(i) === -1; });
 
@@ -27692,61 +27740,69 @@ function renderP11Aesthetic(data) {
   }, 400);
 
   // ═══════════════════════════════════════════════════════
-  // ── C섹션: 미경험 시술 발견 ────────────────────────────
+  // ── C섹션: 아직 안 해본 운동 처방 발견 (피트니스 전용) ────
   // ═══════════════════════════════════════════════════════
 
-  // 전체 시술 카탈로그 (개인화 이유 포함)
+  // 피트니스: 운동 프로그램 카탈로그 (ALL_PROCS → 운동처방 5종)
   var ALL_PROCS = [
     {
-      name: '지방흡입', emoji: '🩺', color: '#1f3a61', accent: 'linear-gradient(90deg,#1f3a61,#d4a0ad)',
-      badge: '수술적 접근', badgeColor: '#1f3a61',
+      name: 'PT·퍼스널 트레이닝', emoji: '🏋️', color: '#1f3a61', accent: 'linear-gradient(90deg,#1f3a61,#4a7fc1)',
+      badge: '1:1 맞춤 운동', badgeColor: '#1f3a61',
       bcReason: {
-        'BC-1':'하체 림프 순환이 막혀 고착된 부위는 식단·운동으로 빠지지 않습니다. 지방흡입 후 순환 처방을 병행하면 재발이 줄어듭니다.',
-        'BC-5':'셀룰라이트형 지방은 섬유화가 진행됐습니다. 항염 처방으로 조직 상태를 먼저 개선한 후 흡입하면 효과가 지속됩니다.',
-        'BC-8':'말벅지 지방은 근막에 끼어있어 시술 효과가 좋습니다. 근막 이완 후 흡입하면 라인이 정리됩니다.',
-        'default':'고착된 부위 지방을 직접 제거하는 가장 확실한 방법입니다. 바디코드 처방과 병행 시 재발이 최소화됩니다.'
+        'BC-8':'말벅지형은 하체 고중량 운동이 역효과입니다. PT로 방향을 교정하면 같은 노력으로 전혀 다른 결과가 납니다.',
+        'BC-1':'하체 순환형은 어떤 운동을 해도 순서가 맞아야 합니다. PT가 자극 순서와 강도를 잡아드립니다.',
+        'BC-2':'경추·자세 교정 없이 일반 운동을 계속하면 부상 위험이 높습니다. PT로 정렬 먼저 잡아야 합니다.',
+        'BC-7':'출산 후 코어 불안정 상태에서는 코어 처방 순서가 틀리면 오히려 악화됩니다. PT 지도가 필수입니다.',
+        'BC-9':'팔다리만 빠지고 배만 남는 구조는 식단+PT 복합 설계가 아니면 역전이 어렵습니다.',
+        'default':'개인화된 1:1 운동 지도로 잘못된 패턴을 교정하고 동일 시간 대비 효과를 극대화합니다.'
+      },
+      effect: 88
+    },
+    {
+      name: '기구 필라테스', emoji: '🤸', color: '#2f7d8c', accent: 'linear-gradient(90deg,#2f7d8c,#4dd0e1)',
+      badge: '코어·체형 교정', badgeColor: '#2f7d8c',
+      bcReason: {
+        'BC-2':'거북목·라운드숄더 체형은 필라테스 리포머로 척추 정렬부터 잡아야 상체 라인이 살아납니다.',
+        'BC-7':'복직근 이개 재활에는 기구 필라테스의 복압 회복 시퀀스가 임상적으로 검증됐습니다.',
+        'BC-1':'하체 부종형은 고충격 운동 대신 필라테스의 저충격 정렬 운동이 순환 개선에 효과적입니다.',
+        'BC-4':'면역·체력이 약한 상태에서는 필라테스의 저강도 대사 회복 시퀀스가 안전한 출발점입니다.',
+        'default':'전신 코어 강화와 자세 교정을 동시에 — 체형 변화의 기반을 만드는 처방입니다.'
       },
       effect: 82
     },
     {
-      name: '지방분해 주사·시술', emoji: '💉', color: '#1a5fa0', accent: 'linear-gradient(90deg,#1a5fa0,#e91e8c)',
-      badge: '비침습 처방', badgeColor: '#1a5fa0',
+      name: '저강도 유산소 (수영·걷기)', emoji: '🏊', color: '#1a5fa0', accent: 'linear-gradient(90deg,#1a5fa0,#42a5f5)',
+      badge: '순환·지방 산화', badgeColor: '#1a5fa0',
       bcReason: {
-        'BC-3':'내장지방 주변 피하지방에 지방분해 처방을 병행하면 혈당 안정화 효과가 배가됩니다.',
-        'BC-6':'코르티솔형 복부 지방은 스트레스 호르몬이 만든 것입니다. 지방분해 처방 + 코르티솔 조절 처방을 함께 하면 시너지가 납니다.',
-        'BC-9':'올챙이배 특화 지방분해 처방은 근육 손실 없이 복부만 선택적으로 줄입니다.',
-        'default':'비수술적으로 특정 부위 지방을 선택 분해합니다. 식단·운동과 병행 시 감량 속도가 빠릅니다.'
+        'BC-1':'림프·정맥 순환 회복에 수영의 수압 마사지 효과가 임상적으로 가장 효과적입니다.',
+        'BC-5':'섬유화 조직은 고충격 운동으로 더 굳습니다. 저충격 수영·걷기가 회복 국면 운동입니다.',
+        'BC-8':'하체 웨이트를 쉬는 동안 수영으로 지방 산화를 유지하면 근비대 없이 체중이 빠집니다.',
+        'BC-4':'관절 부담 없이 대사를 깨우는 가장 안전한 시작입니다. 매일 30분이 목표입니다.',
+        'default':'관절 부담 최소화 + 지방 산화 + 심폐 기능 향상 — 모든 체형에 안전한 기본 운동입니다.'
       },
-      effect: 75
+      effect: 74
     },
     {
-      name: '리프팅 (실·레이저·초음파)', emoji: '✨', color: '#8b4513', accent: 'linear-gradient(90deg,#8b4513,#d2691e)',
-      badge: '체형 교정', badgeColor: '#2b4a74',
+      name: '복합 근력 (웨이트·서킷)', emoji: '💪', color: '#5a3e7a', accent: 'linear-gradient(90deg,#5a3e7a,#9c6fbb)',
+      badge: '근육·기초대사 향상', badgeColor: '#5a3e7a',
       bcReason: {
-        'BC-2':'체중이 줄어도 피부 탄력이 따라오지 않으면 처진 느낌이 납니다. 리프팅으로 상체 윤곽을 함께 잡아줍니다.',
-        'BC-4':'갑상선형 요요로 살이 빠졌다 쪘다를 반복하면 피부 탄력이 특히 빠르게 떨어집니다.',
-        'BC-7':'산후 처진 복부·팔뚝 피부는 식단·운동으로 회복이 어렵습니다. 리프팅이 빠른 해결책입니다.',
-        'default':'체중 감량 후 처진 피부와 윤곽을 정리합니다. 탄력 회복과 체형 완성에 효과적입니다.'
+        'BC-3':'식후 근력 운동은 혈당 스파이크를 즉시 낮춥니다. 식후 15~30분 내 10분 저강도 근력이 핵심입니다.',
+        'BC-6':'야간 고강도는 피하고, 낮 시간대 복합 근력으로 도파민·세로토닌을 늘려 야식 충동을 줄입니다.',
+        'BC-9':'팔다리 근육량 회복이 최우선입니다. 고단백 + 저중량 고반복 근력 세트로 이화작용을 역전합니다.',
+        'BC-3':'혈당 조절형에는 식후 근력 운동이 메트포르민만큼 효과적이라는 연구가 있습니다.',
+        'default':'기초대사량을 높이고 지방을 근육으로 교체합니다. 요요의 근본 원인을 해결하는 처방입니다.'
       },
-      effect: 72
+      effect: 85
     },
     {
-      name: '보톡스·필러', emoji: '💊', color: '#2f7d8c', accent: 'linear-gradient(90deg,#2f7d8c,#4db6ac)',
-      badge: '부분 교정', badgeColor: '#2f7d8c',
+      name: '코어 재활·골반 안정화', emoji: '🧘', color: '#5a6e3a', accent: 'linear-gradient(90deg,#5a6e3a,#8bc34a)',
+      badge: '코어·부상 예방', badgeColor: '#5a6e3a',
       bcReason: {
-        'BC-1':'종아리 보톡스는 하체 라인 개선에 즉각적인 효과를 줍니다. 순환 처방과 병행 시 더 오래 유지됩니다.',
-        'BC-8':'말벅지형은 보톡스로 종아리·허벅지 근육 부피를 줄이면 다리 라인이 달라집니다.',
-        'default':'특정 부위 근육 크기를 줄이거나 윤곽을 더해 전체적인 체형 밸런스를 맞춥니다.'
-      },
-      effect: 68
-    },
-    {
-      name: '복부성형 (복벽 교정)', emoji: '🩻', color: '#5a6e3a', accent: 'linear-gradient(90deg,#5a6e3a,#7a9a50)',
-      badge: '구조 교정', badgeColor: '#5a6e3a',
-      bcReason: {
-        'BC-7':'출산 후 벌어진 복직근(배꼽 주변 세로 근육)은 운동으로 붙일 수 없습니다. 복벽 교정 후 코어 운동 효과가 2배 납니다.',
-        'BC-9':'복벽 구조 이완이 올챙이배를 더 심하게 만듭니다. 구조 교정 후 복부 처방이 훨씬 효과적입니다.',
-        'default':'늘어진 복벽 구조를 교정해 복부 돌출을 근본적으로 해결합니다.'
+        'BC-7':'복직근 이개·골반저근 약화는 코어 재활 없이는 어떤 복부 운동도 역효과입니다. 전문 재활이 먼저입니다.',
+        'BC-2':'거북목 체형의 진짜 원인은 흉추 가동성 부족입니다. 코어·흉추 재활로 자세가 잡히면 상체 라인이 달라집니다.',
+        'BC-9':'올챙이배의 핵심은 복압 부족입니다. 코어 안정화 훈련으로 복압을 회복하면 배가 들어갑니다.',
+        'BC-1':'골반 안정화 없이 하체 운동을 하면 순환이 더 막힙니다. 코어부터 잡아야 합니다.',
+        'default':'부상 없이 운동하려면 코어가 먼저입니다. 운동 효율을 2배 높이는 기반 처방입니다.'
       },
       effect: 79
     }
@@ -27755,14 +27811,16 @@ function renderP11Aesthetic(data) {
   var secDiscover = document.getElementById('p11-sec-discover');
   if (!secDiscover) return;
 
-  // 이미 해본 것 vs 추천할 것 분류
-  // BC코드별 우선 추천 시술 순서
-  var BC_PROC_PRIORITY = {
-    'BC-1': [0,1,3], 'BC-2': [2,1,3], 'BC-3': [1,0,2],
-    'BC-4': [2,1,0], 'BC-5': [1,0,2], 'BC-6': [1,0,2],
-    'BC-7': [4,2,0], 'BC-8': [0,3,1], 'BC-9': [1,4,0]
+  // 피트니스: BC코드별 우선 추천 운동 프로그램 순서
+  // idx: 0=PT, 1=기구필라테스, 2=저강도유산소, 3=복합근력, 4=코어재활
+  var BC_EXERCISE_PRIORITY = {
+    'BC-1': [2,1,4], 'BC-2': [1,4,0], 'BC-3': [3,2,0],
+    'BC-4': [2,1,0], 'BC-5': [2,1,4], 'BC-6': [3,2,1],
+    'BC-7': [4,1,0], 'BC-8': [2,1,4], 'BC-9': [3,0,4],
+    'BC-10':[0,3,1], 'BC-11':[1,4,0], 'BC-12':[3,0,2],
+    'BC-13':[2,4,1], 'BC-14':[1,0,4], 'BC-15':[3,2,0], 'BC-16':[0,1,3]
   };
-  var bcPriority = BC_PROC_PRIORITY[bcCode] || [0,1,2];
+  var bcPriority = BC_EXERCISE_PRIORITY[bcCode] || [0,1,2];
 
   // ── partLabels 기반 우선순위와 BC 우선순위 합산 ──────────
   // partLabels가 있으면 part 점수 40% + BC 점수 60% 혼합
@@ -27794,10 +27852,10 @@ function renderP11Aesthetic(data) {
     if (!already) recommended.push(ALL_PROCS[idx]);
   });
 
-  // C섹션 헤더 텍스트 — partLabels 있으면 맞춤 문구
+  // C섹션 헤더 텍스트 — partLabels 있으면 맞춤 문구 (피트니스 전용)
   var discoverHdTxt = (_partLabels.length > 0)
-    ? esc2(_partLabels.slice(0,2).join('·')) + ' 집중 처방'
-    : '아직 시도 안 한 처방';
+    ? esc2(_partLabels.slice(0,2).join('·')) + ' 집중 운동 처방'
+    : '아직 안 해본 운동 처방';
 
   var discoverHTML = '<div class="p11-discover-hd">'
     + '<div class="p11-discover-hd-icon">🔍</div>'
@@ -27814,9 +27872,9 @@ function renderP11Aesthetic(data) {
     discoverHTML += '</div>';
   }
 
-  // 이미 해본 것 표시
+  // 이미 해본 운동 표시 (피트니스 전용)
   if (doneProcNames.length > 0) {
-    discoverHTML += '<div class="p11-done-badge">✅ 이미 경험하신 것</div>'
+    discoverHTML += '<div class="p11-done-badge">✅ 이미 경험하신 운동</div>'
       + '<div class="p11-done-list">';
     doneProcNames.forEach(function(nm){
       discoverHTML += '<div class="p11-done-tag">' + esc2(nm) + '</div>';
@@ -27824,64 +27882,69 @@ function renderP11Aesthetic(data) {
     discoverHTML += '</div>';
 
     var introTail = _partLabels.length > 0
-      ? '<strong>' + esc2(_partLabels.join('·')) + '</strong> 개선에 맞춰 재정렬된 처방입니다.'
-      : esc2(bcCode) + ' 체질에 가장 높은 효과가 예상되는 것들입니다.';
+      ? '<strong>' + esc2(_partLabels.join('·')) + '</strong> 개선에 맞춰 재정렬된 운동 처방입니다.'
+      : esc2(bcCode) + ' 바디코드에 가장 높은 효과가 예상되는 운동들입니다.';
     discoverHTML += '<div class="p11-discover-intro">'
       + '<strong>' + esc2(userName) + '님</strong>은 이미 여러 방법을 시도해보셨군요. '
-      + '효과가 제한적이었던 건 <strong>순서와 조합이 맞지 않아서</strong>입니다. '
-      + '아래 처방은 지금까지 안 해보셨지만, ' + introTail
+      + '효과가 제한적이었던 건 <strong>운동 방향과 순서가 체질에 맞지 않아서</strong>입니다. '
+      + '아래 운동 처방은 지금까지 안 해보셨지만, ' + introTail
       + '</div>';
   } else {
     var introNoProc = _partLabels.length > 0
       ? '<strong>' + esc2(_partLabels.join('·')) + '</strong> 집중 개선을 위해 우선순위 순으로 배열했습니다.'
-      : esc2(bcCode) + ' 바디코드 분석 결과, 아래 처방이 <strong>가장 빠른 변화</strong>를 만들 수 있습니다.';
+      : esc2(bcCode) + ' 바디코드 분석 결과, 아래 운동 처방이 <strong>가장 빠른 체형 변화</strong>를 만들 수 있습니다.';
     discoverHTML += '<div class="p11-discover-intro">'
-      + '<strong>' + esc2(userName) + '님</strong>은 아직 비만 전문 시술을 경험하지 않으셨습니다. '
+      + '<strong>' + esc2(userName) + '님</strong>은 아직 체계적인 피트니스 처방을 경험하지 않으셨습니다. '
       + introNoProc
       + '</div>';
   }
 
   if (recommended.length === 0) {
-    discoverHTML += '<div class="p11-loading">모든 주요 시술을 경험하셨습니다. 처방 조합 최적화 상담을 권장합니다.</div>';
+    discoverHTML += '<div class="p11-loading">모든 주요 운동 처방을 경험하셨습니다. 처방 조합 최적화 PT 상담을 권장합니다.</div>';
   } else {
     discoverHTML += '<div class="p11-proc-grid">';
-    // partLabels → 시술별 부위 맞춤 설명
+    // 피트니스: 운동별 부위 맞춤 설명 (시술 PROC_PART_REASON → 운동 처방 이유)
     var PROC_PART_REASON = {
-      '지방흡입': {
-        '허리라인':    '허리 라인을 정확하게 빼내려면 지방흡입이 가장 직접적입니다.',
-        '납작한 배':   '복부 지방을 선택적으로 제거해 납작한 배를 만들 수 있습니다.',
-        '옆구리':      '옆구리 군살은 식단·운동으로 잘 빠지지 않습니다. 흡입이 가장 확실합니다.',
-        '전체 실루엣': '전체 실루엣 개선에 지방흡입이 가장 광범위한 효과를 줍니다.',
-        '허벅지 라인': '허벅지 안쪽·바깥쪽 지방은 흡입으로 라인을 정확히 교정할 수 있습니다.',
-        '엉덩이 위치': '엉덩이 아래 지방 제거로 위치감을 개선합니다.',
-        '다리 길이감': '허벅지 볼륨을 줄여 다리 길이감을 시각적으로 늘릴 수 있습니다.',
-        '팔뚝 라인':   '팔뚝 안쪽 지방 흡입으로 라인이 달라집니다.',
-        '엉덩이 라인': '힙 라인 아래 지방 흡입으로 선명한 윤곽을 만듭니다.',
-        '힙업 위치':   '힙 아래 지방을 제거하면 힙업 효과가 자연스럽게 납니다.',
-        '허벅지 경계': '허벅지·엉덩이 경계 지방 흡입으로 경계선이 선명해집니다.',
+      'PT·퍼스널 트레이닝': {
+        '허리라인':    '허리 라인은 코어 안정화 + 랫풀다운 복합 처방으로 잡습니다. PT가 정확한 순서를 설계합니다.',
+        '납작한 배':   '복부 지방은 식단+코어 복합 설계가 필요합니다. PT가 배 운동 순서를 잘못 짜면 오히려 역효과납니다.',
+        '옆구리':      '옆구리 군살은 코어 회전 운동+식단의 조합이 핵심입니다. PT로 방향을 맞춥니다.',
+        '전체 실루엣': '전체 실루엣 개선은 전신 복합 운동 설계가 필요합니다. PT가 가장 효율적입니다.',
+        '허벅지 라인': '허벅지 라인 교정은 BC코드별로 처방이 완전히 달라집니다. 전문 PT 지도가 필수입니다.',
+        '팔뚝 라인':   '팔뚝 군살은 유산소+식단이지 팔 운동이 아닙니다. PT가 방향을 잡아줍니다.',
+        '엉덩이 라인': '힙업은 글루트 브릿지·RDL 순서와 횟수가 중요합니다. PT 지도로 효과가 배가됩니다.',
+        '힙업 위치':   '힙업 포지션 교정은 골반 안정화+근력 복합 설계입니다. PT 처방이 최적입니다.',
+        '허벅지 경계': '허벅지·엉덩이 경계는 글루트 미디어스+내전근 복합 처방으로 잡습니다.',
       },
-      '지방분해 주사·시술': {
-        '허리라인':   '허리 지방분해 주사는 비수술적으로 허리 사이즈를 줄입니다.',
-        '납작한 배':  '복부 지방분해 처방은 근육 손실 없이 배만 선택적으로 줄입니다.',
-        '옆구리':     '옆구리 국소 지방에 분해 처방을 하면 사이즈 감소가 빠릅니다.',
-        '팔뚝 라인':  '팔뚝 지방분해 시술은 회복이 빠르고 라인 변화가 자연스럽습니다.',
+      '기구 필라테스': {
+        '전체 실루엣': '전체 실루엣은 코어·자세 교정이 기반입니다. 필라테스 리포머가 가장 직접적입니다.',
+        '팔뚝 라인':   '팔뚝 처진 살은 트라이셉스 강화+유산소 복합이 답입니다. 필라테스 암 서클이 효과적입니다.',
+        '어깨선':      '어깨·쇄골 라인은 흉추 가동성+어깨 안정화가 핵심입니다. 필라테스가 정확합니다.',
+        '허리라인':    '허리 라인은 골반 전방경사 교정 없이 만들 수 없습니다. 필라테스가 교정에 최적입니다.',
+        '허벅지 라인': '하체 라인은 필라테스 리포머의 풋바 시리즈로 내전근·외전근을 균형있게 잡습니다.',
+        '엉덩이 라인': '힙 라인은 필라테스의 사이드라잉 시리즈가 표적 자극에 탁월합니다.',
       },
-      '리프팅 (실·레이저·초음파)': {
-        '전체 실루엣': '감량 후 처진 피부를 리프팅으로 정리하면 전체 실루엣이 달라집니다.',
-        '팔뚝 라인':   '팔뚝 처진 살은 리프팅이 가장 효과적입니다.',
-        '어깨선':      '어깨·쇄골 라인을 살리는 데 리프팅이 도움됩니다.',
-        '쇄골':        '쇄골 주변 리프팅으로 상체 윤곽이 선명해집니다.',
+      '저강도 유산소 (수영·걷기)': {
+        '다리 길이감': '하체 부피를 줄이려면 저충격 유산소가 핵심입니다. 수영의 수압이 하체 순환을 개선합니다.',
+        '허벅지 라인': '말벅지형은 웨이트 대신 수영·걷기가 정답입니다. 부피 없이 순환으로 지방을 뺍니다.',
+        '전체 실루엣': '전체적인 지방 감소는 저강도 장시간 유산소(LISS)가 지방 산화율이 가장 높습니다.',
+        '납작한 배':   '식후 10분 걷기만으로 혈당 스파이크를 40% 낮춥니다. 복부 지방 감소 직결 처방입니다.',
+        '옆구리':      '옆구리 지방은 전신 지방 감소 없이는 줄지 않습니다. 꾸준한 저강도 유산소가 기반입니다.',
       },
-      '보톡스·필러': {
-        '허벅지 라인': '허벅지 근육형 두께는 보톡스로 빠르게 줄일 수 있습니다.',
-        '다리 길이감': '종아리 보톡스로 다리 부피를 줄이면 길이감이 살아납니다.',
-        '엉덩이 라인': '힙 보톡스로 라인을 교정할 수 있습니다.',
-        '허벅지 경계': '경계 부위 보톡스로 허벅지 볼륨을 조절합니다.',
+      '복합 근력 (웨이트·서킷)': {
+        '납작한 배':   '기초대사량을 높여야 복부 지방이 빠집니다. 복합 근력으로 근육을 늘리는 것이 핵심입니다.',
+        '전체 실루엣': '전신 근력 운동이 체성분을 바꿉니다. 같은 체중이라도 근육 비율에 따라 실루엣이 달라집니다.',
+        '허리라인':    '허리 라인은 복부+등 근력 균형입니다. 데드리프트·루마니안 데드리프트가 핵심 처방입니다.',
+        '팔뚝 라인':   '팔 근력 + 유산소 복합으로 팔뚝 라인을 만듭니다. 반복수 높은 케이블 운동이 효과적입니다.',
+        '엉덩이 라인': '힙업 근력은 글루트 브릿지·힙 쓰러스트 고반복으로 만듭니다.',
+        '허벅지 경계': '레그 컬+내전근 강화 복합으로 허벅지·엉덩이 경계를 선명하게 만듭니다.',
       },
-      '복부성형 (복벽 교정)': {
-        '납작한 배':  '복벽 교정 후 복부 처방이 훨씬 효과적입니다. 진짜 납작한 배의 핵심입니다.',
-        '허리라인':   '복벽 구조 교정 후 허리 라인이 자연스럽게 살아납니다.',
-        '전체 실루엣':'복벽을 잡으면 전체 실루엣이 달라집니다.',
+      '코어 재활·골반 안정화': {
+        '납작한 배':   '복압 부족이 올챙이배의 원인입니다. 코어 재활로 복압을 회복하면 배가 들어갑니다.',
+        '허리라인':    '허리 라인은 요추 안정화 + 코어 근력이 기반입니다. 코어 재활이 선행돼야 합니다.',
+        '전체 실루엣': '코어가 안정돼야 모든 운동의 효율이 오릅니다. 실루엣 개선의 기반 처방입니다.',
+        '엉덩이 라인': '골반 안정화가 힙 라인의 기반입니다. 코어·골반 재활 후 힙 운동 효과가 2배 납니다.',
+        '허벅지 경계': '골반 정렬 없이 하체 운동을 하면 잘못된 근육만 발달합니다. 코어 재활이 먼저입니다.',
       }
     };
 
@@ -27938,6 +28001,97 @@ function renderP11Aesthetic(data) {
   }, 600);
 
   // ═══════════════════════════════════════════════════════
+  // ── D섹션: BMR / TDEE / 칼로리 목표 UI 카드 (피트니스 전용)
+  // ═══════════════════════════════════════════════════════
+  (function renderBmrSection() {
+    var secBmr = document.getElementById('p11-sec-bmr');
+    if (!secBmr) return;
+
+    var _bmrVal  = (window.__RESULT__ && window.__RESULT__._bmr)          || 0;
+    var _tdeeVal = (window.__RESULT__ && window.__RESULT__._tdee)         || 0;
+    var _calTgt  = (window.__RESULT__ && window.__RESULT__._calorieTarget)|| 0;
+    var _bfrCur  = (window.__RESULT__ && window.__RESULT__._bfrCurrent)   || 0;
+    var _bfrTgt  = (window.__RESULT__ && window.__RESULT__._bfrTarget)    || 0;
+    var _actLvl  = (window.__RESULT__ && window.__RESULT__._activityLevel)|| '';
+    var _deficit = (_tdeeVal > 0 && _calTgt > 0) ? _tdeeVal - _calTgt : 0;
+
+    // 수치가 없으면 섹션 숨김
+    if (_bmrVal <= 0 && _tdeeVal <= 0) { secBmr.style.display = 'none'; return; }
+
+    var actLabel = {
+      'sedentary':'좌식 생활 (운동 거의 없음)',
+      'light':'가벼운 활동 (주 1~2회)',
+      'moderate':'보통 활동 (주 3~4회)',
+      'active':'활발한 활동 (주 5~6회)',
+      'very_active':'매우 활발 (매일 고강도)'
+    }[_actLvl] || (_actLvl || '보통 활동');
+
+    var html = '<div class="p11-section">'
+      + '<div class="p11-section-hd"><span class="p11-section-dot" style="background:#1a4a7a;"></span>'
+      + '<span>🔥 대사 기초 데이터 · 칼로리 목표</span></div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;">';
+
+    // BMR 카드
+    if (_bmrVal > 0) {
+      html += '<div style="background:linear-gradient(135deg,#1f3a61,#2b6cb0);border-radius:14px;padding:14px 12px;text-align:center;">'
+        + '<div style="font-size:.68rem;color:rgba(255,255,255,.6);font-weight:600;letter-spacing:.04em;margin-bottom:4px;">기초대사량 (BMR)</div>'
+        + '<div style="font-size:1.7rem;font-weight:900;color:#fff;line-height:1;">' + _bmrVal.toLocaleString() + '</div>'
+        + '<div style="font-size:.68rem;color:rgba(255,255,255,.5);margin-top:3px;">kcal / 일</div>'
+        + '<div style="font-size:.67rem;color:rgba(255,255,255,.4);margin-top:6px;">Mifflin-St Jeor 공식</div>'
+        + '</div>';
+    }
+    // TDEE 카드
+    if (_tdeeVal > 0) {
+      html += '<div style="background:linear-gradient(135deg,#2b6cb0,#4a7fc1);border-radius:14px;padding:14px 12px;text-align:center;">'
+        + '<div style="font-size:.68rem;color:rgba(255,255,255,.6);font-weight:600;letter-spacing:.04em;margin-bottom:4px;">총 에너지 소비 (TDEE)</div>'
+        + '<div style="font-size:1.7rem;font-weight:900;color:#fff;line-height:1;">' + _tdeeVal.toLocaleString() + '</div>'
+        + '<div style="font-size:.68rem;color:rgba(255,255,255,.5);margin-top:3px;">kcal / 일</div>'
+        + '<div style="font-size:.67rem;color:rgba(255,255,255,.4);margin-top:6px;">' + actLabel + '</div>'
+        + '</div>';
+    }
+    html += '</div>';
+
+    // 칼로리 목표 + 적자 카드
+    if (_calTgt > 0) {
+      html += '<div style="background:rgba(26,74,122,.12);border:1px solid rgba(74,127,193,.25);border-radius:14px;padding:14px 16px;margin-top:10px;">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'
+        + '<span style="font-size:.78rem;font-weight:700;color:rgba(255,255,255,.8);">🎯 하루 섭취 목표</span>'
+        + '<span style="font-size:1.3rem;font-weight:900;color:#4a7fc1;">' + _calTgt.toLocaleString() + ' kcal</span>'
+        + '</div>';
+      if (_deficit > 0) {
+        html += '<div style="display:flex;align-items:center;gap:6px;font-size:.75rem;color:rgba(255,255,255,.55);">'
+          + '<span>📉 칼로리 적자:</span>'
+          + '<span style="color:#6ec6f5;font-weight:700;">−' + _deficit.toLocaleString() + ' kcal/일</span>'
+          + '<span>·</span>'
+          + '<span>주간 −' + ((_deficit * 7) / 1000).toFixed(1) + 'kg 상당</span>'
+          + '</div>';
+      }
+      html += '</div>';
+    }
+
+    // 체지방률 목표 카드
+    if (_bfrCur > 0 || _bfrTgt > 0) {
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">';
+      if (_bfrCur > 0) {
+        html += '<div style="background:rgba(90,62,122,.2);border:1px solid rgba(90,62,122,.3);border-radius:12px;padding:12px;text-align:center;">'
+          + '<div style="font-size:.67rem;color:rgba(255,255,255,.5);margin-bottom:4px;">현재 체지방률</div>'
+          + '<div style="font-size:1.4rem;font-weight:900;color:#c084fc;">' + _bfrCur + '%</div>'
+          + '</div>';
+      }
+      if (_bfrTgt > 0) {
+        html += '<div style="background:rgba(31,58,97,.2);border:1px solid rgba(74,127,193,.3);border-radius:12px;padding:12px;text-align:center;">'
+          + '<div style="font-size:.67rem;color:rgba(255,255,255,.5);margin-bottom:4px;">목표 체지방률</div>'
+          + '<div style="font-size:1.4rem;font-weight:900;color:#60a5fa;">' + _bfrTgt + '%</div>'
+          + '</div>';
+      }
+      html += '</div>';
+    }
+
+    html += '</div>';
+    secBmr.innerHTML = html;
+  })();
+
+  // ═══════════════════════════════════════════════════════
   // ── 처방 로드맵 ─────────────────────────────────────────
   // ═══════════════════════════════════════════════════════
 
@@ -27953,24 +28107,25 @@ function renderP11Aesthetic(data) {
   var phaseEl = document.getElementById('p11Phases');
   if (phaseEl) {
     var roadmap;
+    // 피트니스 전용 로드맵 (hospital → fitness 레이블)
     if (lossKg >= 10) {
       roadmap = [
-        { color:'#1f3a61', badge:'PHASE 1', weeks:'1 – 4주', title:'기저 교란 해소', desc: oCtx + ' · 식욕 호르몬 안정화 · 기초 대사 점화', hospital:'호르몬 검사 + 기초 처방 설계' },
-        { color:'#7a52b0', badge:'PHASE 2', weeks:'5 – 8주', title:'케어 집중 관리',  desc:'케어 강도 상향 · ' + (recommended[0] ? recommended[0].name : '기기 케어') + ' 병행 · 주간 모니터링', hospital:(recommended[0] ? recommended[0].name + ' 집중 시작' : 'RF/캐비테이션 집중') },
-        { color:'#2b4a74', badge:'PHASE 3', weeks:'9 – 12주', title:'체형 완성·유지', desc:'목표 체형 달성 · 홈케어 루틴 설계 · 유지 관리 플랜', hospital:'체형 재측정 + 유지 케어 전환' },
-        { color:'#d4a0ad', badge:'COMPLETE', weeks:'12주 이후', title:'슬림마인드 유지 관리', desc:'월 1~2회 유지 관리 + SlimMind 앱 트래킹 · 바디코드 재분석 권장', hospital:'장기 유지 케어 패키지 전환' }
+        { color:'#1f3a61', badge:'PHASE 1', weeks:'1 – 4주', title:'원인 교란 해소', desc: oCtx + ' · 식욕 호르몬 안정화 · 기초 대사 점화', hospital:'🏋️ 체성분 측정 + 운동 처방 설계' },
+        { color:'#2b6cb0', badge:'PHASE 2', weeks:'5 – 8주', title:'운동 집중 관리',  desc:'운동 강도 상향 · ' + (recommended[0] ? recommended[0].name : 'PT 처방') + ' 병행 · 주간 모니터링', hospital:'🏋️ ' + (recommended[0] ? recommended[0].name + ' 집중 시작' : 'PT 집중 처방') },
+        { color:'#1a4a7a', badge:'PHASE 3', weeks:'9 – 12주', title:'체형 완성·유지', desc:'목표 체형 달성 · 홈트 루틴 설계 · 유지 운동 플랜', hospital:'🏋️ 체형 재측정 + 유지 운동 전환' },
+        { color:'#4a7fc1', badge:'COMPLETE', weeks:'12주 이후', title:'슬림마인드 유지 관리', desc:'월 1~2회 체성분 점검 + SlimMind 앱 트래킹 · 바디코드 재분석 권장', hospital:'🏋️ 장기 피트니스 유지 플랜 전환' }
       ];
     } else if (lossKg >= 5) {
       roadmap = [
-        { color:'#1f3a61', badge:'PHASE 1', weeks:'1 – 3주', title:'기저 교란 해소', desc: oCtx + ' · 순환 정상화 · 케어 시작', hospital:'상담 + 기초 케어 설계' },
-        { color:'#7a52b0', badge:'PHASE 2', weeks:'4 – 8주', title:'집중 케어', desc:'케어 최적화 · 주간 모니터링 · ' + (recommended[0] ? recommended[0].name + ' 병행' : '기기 케어 조정'), hospital:'중간 체형 측정 + 케어 조율' },
-        { color:'#d4a0ad', badge:'COMPLETE', weeks:'9 – 12주', title:'목표 달성·유지', desc:'목표 체형 도달 · 재발 방지 홈케어 · SlimMind 자기관리 전환', hospital:'최종 체형 측정 + 유지 케어' }
+        { color:'#1f3a61', badge:'PHASE 1', weeks:'1 – 3주', title:'원인 교란 해소', desc: oCtx + ' · 순환 정상화 · 운동 시작', hospital:'🏋️ 상담 + 기초 운동 처방 설계' },
+        { color:'#2b6cb0', badge:'PHASE 2', weeks:'4 – 8주', title:'집중 운동 처방', desc:'운동 최적화 · 주간 모니터링 · ' + (recommended[0] ? recommended[0].name + ' 병행' : 'PT 처방 조정'), hospital:'🏋️ 중간 체성분 측정 + 운동 조율' },
+        { color:'#4a7fc1', badge:'COMPLETE', weeks:'9 – 12주', title:'목표 달성·유지', desc:'목표 체형 도달 · 재발 방지 홈트 · SlimMind 자기관리 전환', hospital:'🏋️ 최종 체성분 측정 + 유지 플랜' }
       ];
     } else {
       roadmap = [
-        { color:'#1f3a61', badge:'STEP 1', weeks:'1 – 2주', title:'원인 교정', desc: oCtx + ' · ' + (failStory ? failStory.verdict : '원인 해소') + ' · 케어 시작', hospital:'상담 + 케어 설계' },
-        { color:'#2b4a74', badge:'STEP 2', weeks:'3 – 6주', title:'빠른 변화', desc:'케어 효과 확인 · 생활 습관 코칭 · ' + (recommended[0] ? recommended[0].name + ' 검토' : '기기 케어 안정화'), hospital:'중간 점검 + 케어 미세 조정' },
-        { color:'#d4a0ad', badge:'COMPLETE', weeks:'7 – 8주', title:'목표 완성', desc:'목표 도달 확인 · 유지 케어로 전환 · 홈케어 가이드', hospital:'완료 체형 측정 + 유지 플랜' }
+        { color:'#1f3a61', badge:'STEP 1', weeks:'1 – 2주', title:'원인 교정', desc: oCtx + ' · ' + (failStory ? failStory.verdict : '원인 해소') + ' · 운동 시작', hospital:'🏋️ 상담 + 운동 처방 설계' },
+        { color:'#2b6cb0', badge:'STEP 2', weeks:'3 – 6주', title:'빠른 변화', desc:'운동 효과 확인 · 생활 습관 코칭 · ' + (recommended[0] ? recommended[0].name + ' 검토' : 'PT 처방 안정화'), hospital:'🏋️ 중간 점검 + 운동 미세 조정' },
+        { color:'#4a7fc1', badge:'COMPLETE', weeks:'7 – 8주', title:'목표 완성', desc:'목표 도달 확인 · 유지 운동으로 전환 · 홈트 가이드', hospital:'🏋️ 완료 체성분 측정 + 유지 플랜' }
       ];
     }
 
@@ -27986,21 +28141,36 @@ function renderP11Aesthetic(data) {
         + '</div>'
         + '<div class="p11-rm-title">' + esc2(rm.title) + '</div>'
         + '<div class="p11-rm-desc">' + esc2(rm.desc) + '</div>'
-        + '<div class="p11-rm-studio">💅 ' + esc2(rm.hospital) + '</div>'
+        + '<div class="p11-rm-studio">' + esc2(rm.hospital) + '</div>'
         + '</div></div>';
     });
     phaseEl.innerHTML = rmHTML;
   }
 
-  // ── 에스테틱 케어 처방 카드 렌더링 ──────────────────────
+  // ── 피트니스 케어 처방 카드 렌더링 ──────────────────────
   // Step 1: 기본 BC코드별 일반 케어 DB 먼저 렌더링
   // Step 2: 입점 업체 커스텀 프로그램이 있으면 상단에 오버레이
   var b2bContainer = document.getElementById('p11-b2b-programs');
   if (!b2bContainer) return;
 
-  var basePrograms = (typeof BC_AESTHETIC_THERAPY_DB !== 'undefined')
-    ? (BC_AESTHETIC_THERAPY_DB[bcCode] || BC_AESTHETIC_THERAPY_DB['BC-6'] || [])
-    : [];
+  // 피트니스: BC_AESTHETIC_THERAPY_DB 대신 BC_PRESCRIPTION_DB 기반 운동 프로그램 활용
+  var basePrograms = [];
+  if (typeof BC_AESTHETIC_THERAPY_DB !== 'undefined' && BC_AESTHETIC_THERAPY_DB[bcCode]) {
+    basePrograms = BC_AESTHETIC_THERAPY_DB[bcCode];
+  } else if (typeof BC_PRESCRIPTION_DB !== 'undefined' && BC_PRESCRIPTION_DB[bcCode]) {
+    var _bpdb = BC_PRESCRIPTION_DB[bcCode];
+    basePrograms = [
+      {
+        icon: '🏋️',
+        name: (_bpdb.label || bcCode) + ' 운동 처방',
+        tag: '주 3~4회 권장',
+        target: '체형 개선 · 대사 향상',
+        desc: _bpdb.coreMessage || '바디코드 기반 맞춤 운동 처방입니다.',
+        care_note: '금지 운동: ' + (_bpdb.exerciseBan || '없음') + ' | 권장 운동: ' + (_bpdb.exerciseOk || '전신 유산소'),
+        tip: _bpdb.dietDirection || ''
+      }
+    ];
+  }
 
   function _buildAestheticCard(p, isCustom) {
     var accentColor = isCustom ? '#2b4a74' : '#1f3a61';
@@ -28058,13 +28228,13 @@ function renderP11Aesthetic(data) {
 
   // 입점 업체 커스텀 프로그램 오버레이 (b2bCode 있을 때만)
   if (b2bCode && b2bCode !== '') {
-    fetch('/api/a/programs?b2b_code=' + encodeURIComponent(b2bCode) + '&bc_code=' + encodeURIComponent(bcCode))
+    fetch('/api/f/programs?b2b_code=' + encodeURIComponent(b2bCode) + '&bc_code=' + encodeURIComponent(bcCode))
       .then(function(r){ return r.ok ? r.json() : []; })
       .then(function(programs){
         if (!programs || programs.length === 0) return;
         var customHTML = '<div class="p11-section" style="border:1.5px solid rgba(43,74,116,.25);border-radius:18px;padding:16px;background:rgba(43,74,116,.04);">'
           + '<div class="p11-section-hd"><span class="p11-section-dot" style="background:#2b4a74;"></span>'
-          + '<span style="color:#2b4a74;">💅 ' + esc2(programs[0].partner_name || '파트너 샵') + ' 추천 프로그램</span>'
+          + '<span style="color:#2b4a74;">🏋️ ' + esc2(programs[0].partner_name || '파트너 센터') + ' 추천 프로그램</span>'
           + '</div><div class="p11-therapy-list">';
         programs.slice(0, 3).forEach(function(p){
           customHTML += _buildAestheticCard(p, true);
@@ -28072,7 +28242,7 @@ function renderP11Aesthetic(data) {
         customHTML += '</div></div>';
         b2bContainer.innerHTML = customHTML + b2bContainer.innerHTML;
       })
-      .catch(function(e){ console.warn('[aesthetic] 커스텀 프로그램 로드 실패', e); });
+      .catch(function(e){ console.warn('[fitness] 커스텀 프로그램 로드 실패', e); });
   }
 
   // ── 스크롤 진입 애니메이션 ───────────────────────────────
@@ -28099,7 +28269,7 @@ function renderP11Aesthetic(data) {
           || window.__RESULT__
           || (typeof resultData !== 'undefined' && resultData)
           || {};
-        renderP11Aesthetic(d);
+        renderP11Fitness(d);
       }, 150);
     }
   };
