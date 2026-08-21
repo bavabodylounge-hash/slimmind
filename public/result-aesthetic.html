@@ -6010,6 +6010,189 @@ window.__AESTHETIC_INIT_PROMISE__ = (async function aestheticInit() {
       })(),
     };
     console.log('[aesthetic] P11 조건 파싱 완료 | BMI:', _bmi, '| 갱년기:', _isMenopause, '| 과거시술:', _pastProcedures, '| 조건:', _conditions);
+
+    // ══════════════════════════════════════════════════════
+    // [AE-Task2] exercise_response → TODAY.move.exOptions 동적 분기 (hospital v4.1 이식)
+    // ══════════════════════════════════════════════════════
+    (function _aeGatePatchExOptions() {
+      // aesthetic: json = API 응답, s2 = stage2_answers, json.raw_answers.exercise_response 폴백
+      var _aeAnswers = json.raw_answers || {};
+      var EXERCISE_RESPONSE_OPTIONS = {
+        '일시반응형': {
+          flip: '운동을 그만뒀을 때 체중이 돌아왔다면, 지속 가능한 운동 구조가 없었던 겁니다.',
+          exOptions: [
+            {label:'인터벌 근력 20분', k:90, rec:true, detail:'근육량 증가가 기초대사량을 높여 요요를 막습니다. 월·수·금 상체/하체 분할.'},
+            {label:'계단 오르기 15분', k:80, rec:true, detail:'이동 동선에서 자연스럽게 — 별도 시간 없이 매일 반복 가능.'},
+            {label:'저항 밴드 스트레칭 10분', k:30, alt:true, detail:'근육 유지 + 유연성 동시 향상 — 운동 종료 후 루틴화.'}
+          ]
+        },
+        '반응지속형': {
+          flip: '운동이 체질에 맞습니다. 루틴이 흔들렸을 때 복귀 속도가 관건입니다.',
+          exOptions: [
+            {label:'주 3회 복합 근력', k:100, rec:true, detail:'스쿼트+데드리프트+푸시업 세트 — 한 번에 상하체 전체 자극.'},
+            {label:'LISS 유산소 30분', k:110, rec:true, detail:'저강도 장시간 — 지방 산화 유지. 근력 후 이어서.'},
+            {label:'요가 or 필라테스 40분', k:80, alt:true, detail:'유연성·코어 강화 — 부상 예방 + 자세 교정.'}
+          ]
+        },
+        '구성미변형': {
+          flip: '체중보다 체성분이 문제입니다. 같은 몸무게라도 근육 비율이 높으면 라인이 달라집니다.',
+          exOptions: [
+            {label:'고볼륨 근력 40분', k:120, rec:true, detail:'무게보다 반복수 — 12~15회 × 3세트. 근비대 자극.'},
+            {label:'케틀벨 서킷 25분', k:100, rec:true, detail:'전신 근력+심폐 동시 자극 — 체성분 개선에 최적.'},
+            {label:'탄력밴드 힙/허벅지', k:60, alt:true, detail:'하체 집중 — 라인 개선 목표 있는 경우 보조 운동.'}
+          ]
+        },
+        '역반응형': {
+          flip: '근육이 굵어지는 것이 걱정이라면, 방향이 맞습니다. 부위·자세·강도를 조정하면 해결됩니다.',
+          exOptions: [
+            {label:'가벼운 유산소 30분', k:80, rec:true, detail:'빠르게 걷기 or 자전거 — 근비대 없이 체지방 소모.'},
+            {label:'코어·스트레칭 20분', k:40, rec:true, detail:'속근 자극 없이 자세 교정과 라인 정리.'},
+            {label:'수영 30분', k:100, alt:true, detail:'전신 근육 쓰되 부피 증가 최소 — 수영이 가능하면 최선택.'}
+          ]
+        },
+        '회복부족형': {
+          flip: '다음 날 힘들었던 건 강도 문제가 아니라 회복 지원이 부족했던 겁니다.',
+          exOptions: [
+            {label:'가벼운 걷기 20분', k:55, rec:true, detail:'DOMS(지연성 근육통) 중에도 가능 — 혈류 촉진으로 오히려 회복 빠름.'},
+            {label:'폼롤러 자가근막이완 15분', k:20, rec:true, detail:'큰 근육군 위주 — 허벅지·종아리·등. 운동 전후 세트.'},
+            {label:'저강도 요가 30분', k:35, alt:true, detail:'부교감신경 활성 — 수면의 질 높여 회복 가속.'}
+          ]
+        },
+        '저반응형': {
+          flip: '별 변화가 없었다면, 같은 자극에 몸이 익숙해진 겁니다. 패턴을 바꾸는 게 핵심입니다.',
+          exOptions: [
+            {label:'편심성 근력 운동 20분', k:90, rec:true, detail:'천천히 내려가는 것에 집중 — 스쿼트 3초 내리기 × 12.'},
+            {label:'고강도 인터벌 (HIIT) 15분', k:130, rec:true, detail:'30초 전력·30초 쉬기 × 10라운드 — 저반응 몸엔 단시간 고강도.'},
+            {label:'수영 or 자전거 30분', k:120, alt:true, detail:'유산소 방식을 바꾸는 것만으로 자극 패턴이 달라집니다.'}
+          ]
+        },
+        '이력없음': {
+          flip: '처음이라면 고쳐야 할 습관이 없다는 뜻이에요. 가장 쉬운 것부터 순서대로 쌓습니다.',
+          exOptions: [
+            {label:'누워서 하는 몸 깨우기 20분', k:66, rec:true, detail:'갈비뼈로 숨쉬기 5분 → 엉덩이 들어 올리기 10번 → 팔다리 반대로 뻗기.'},
+            {label:'천천히 걷기 20분', k:60, rec:true, detail:'속도 신경 쓰지 말고 20분 채우기 — 첫 습관은 지속이 전부.'},
+            {label:'스트레칭 전신 10분', k:20, alt:true, detail:'목→어깨→허리→허벅지→종아리 순서.'}
+          ]
+        }
+      };
+      window.EXERCISE_RESPONSE_OPTIONS = EXERCISE_RESPONSE_OPTIONS; // [AE-Task2] Playwright E2E 전역 노출
+
+      var RESP_TEXT_TO_LABEL = {
+        '하는 동안은 빠졌는데, 그만두니 금방 돌아왔어요': '일시반응형',
+        '한 번 좋아진 뒤 유지되는 편이었어요': '반응지속형',
+        '체중은 줄었는데 라인은 그대로였어요': '구성미변형',
+        '오히려 그 부위가 더 굵어지거나 단단해졌어요': '역반응형',
+        '다음 날 너무 힘들어서 며칠 쉬게 됐어요': '회복부족형',
+        '별 변화가 없었어요': '저반응형',
+        '아직 해본 적 없어요': '이력없음'
+      };
+      var rawResp = _aeAnswers.exercise_response || s2[17] || null;
+      var respLabel = null;
+      if (rawResp) {
+        respLabel = RESP_TEXT_TO_LABEL[rawResp] || rawResp;
+        // TODO: 에스테틱 결과지 TODAY.move.exOptions 패치 (DOM 준비 후 적용)
+        window.__AE_EXERCISE_RESP_LABEL__ = respLabel;
+        window.__AE_EXERCISE_RESP_RAW__   = rawResp;
+        console.log('[AE-Task2] exercise_response:', rawResp, '→', respLabel);
+      }
+    })();
+
+    // ══════════════════════════════════════════════════════
+    // [AE-Task3] pain_areas[] → 안전 게이트 동적 적용 (hospital v4.1 이식)
+    // ══════════════════════════════════════════════════════
+    (function _aeGatePatchPainGate() {
+      var _aeAnswers2 = json.raw_answers || {};
+      var PAIN_GATE = {
+        '목·어깨': {
+          warn: '목·어깨 통증',
+          alt:  '목·어깨에 부담을 주는 오버헤드 동작 대신 코어와 하체 중심 운동으로 대체합니다.',
+          banKeywords: ['오버헤드', '밀리터리 프레스', '숄더 프레스', '풀업', '턱걸이']
+        },
+        '등·허리': {
+          warn: '등·허리 통증',
+          alt:  '허리 굴곡·신전 부하를 줄이고 코어 안정화 위주로 전환합니다. 플랭크·버드독 계열 추천.',
+          banKeywords: ['데드리프트', '바벨 로우', '굿모닝', '하이퍼익스텐션']
+        },
+        '무릎·발목': {
+          warn: '무릎·발목 통증',
+          alt:  '스쿼트·런지·뛰기 대신 체중이 관절에 안 실리는 자세로 같은 근육을 씁니다.',
+          banKeywords: ['스쿼트', '런지', '뛰기', '점프', '달리기']
+        },
+        '통증은 없었어요': {
+          warn: null,
+          alt:  '통증 이력이 없다면 동작 선택의 폭이 넓어요. 강도를 올릴 때 기준이 명확해집니다.',
+          banKeywords: []
+        }
+      };
+      window.PAIN_GATE = PAIN_GATE; // [AE-Task3] Playwright E2E 전역 노출
+
+      var rawPainAreas = _aeAnswers2.pain_areas || s2[18] || [];
+      if (!Array.isArray(rawPainAreas)) rawPainAreas = rawPainAreas ? [rawPainAreas] : [];
+      var painNone = rawPainAreas.some(function(p){ return p && (p.indexOf('없') >= 0); });
+      var activeWarns = [], activeAlts = [];
+      if (!painNone && rawPainAreas.length > 0) {
+        rawPainAreas.slice(0, 3).forEach(function(area) {
+          var gate = PAIN_GATE[area] || null;
+          if (!gate) {
+            for (var k in PAIN_GATE) {
+              if (area && area.indexOf(k.split('·')[0]) >= 0) { gate = PAIN_GATE[k]; break; }
+            }
+          }
+          if (gate && gate.warn) {
+            activeWarns.push(gate.warn);
+            if (gate.alt) activeAlts.push(gate.alt);
+          }
+        });
+      }
+      window.__AE_PAIN_WARNS__  = activeWarns;
+      window.__AE_PAIN_ALTS__   = activeAlts;
+      window.__AE_PAIN_AREAS__  = rawPainAreas;
+      console.log('[AE-Task3] pain_areas:', rawPainAreas, '→ warns:', activeWarns.length);
+    })();
+
+    // ══════════════════════════════════════════════════════
+    // [AE-Task4] A08 골든타임 동적 배정 (hospital v4.1 이식)
+    // ══════════════════════════════════════════════════════
+    (function _aeGatePatchGoldenTime() {
+      var GOLDEN_TIME_MAP = {
+        0: '⏰ 골든타임 — 운동은 저녁 식후 90분이 최적. 공복 운동은 피하세요.',
+        1: '⏰ 골든타임 — 저녁 식후 90분. ⚠ 야식이 주 1회 이상이라면 야식 후 30분 이상 지나서 가볍게 걸으세요.',
+        2: '⏰ 골든타임 — 취침이 12시 이후이므로 아침 운동 배정. 기상 후 1~2시간 내, 식사 후 30분 이상 뒤.',
+        3: '⏰ 골든타임 — 아침 배정(기상 후 1~2시간). ⚠ 야식은 수면의 질을 떨어뜨립니다.',
+        4: '⏰ 골든타임 — 새벽 취침이므로 저녁 배정. 저녁 6~8시, 식후 90분 이후가 최적입니다.',
+        5: '⏰ 골든타임 — 교대·야간 근무 패턴이므로 고정 시각 대신 일어나고 2시간 뒤를 기준으로 잡으세요.'
+      };
+      window.GOLDEN_TIME_MAP = GOLDEN_TIME_MAP; // [AE-Task4] Playwright E2E 전역 노출
+
+      var _aeAx = json.axis_scores || {};
+      if (typeof _aeAx === 'string') { try { _aeAx = JSON.parse(_aeAx); } catch(e){ _aeAx = {}; } }
+      var a08Raw = _aeAx['A08'] !== undefined ? _aeAx['A08'] : null;
+      var idx = (typeof a08Raw === 'number') ? a08Raw : parseInt(a08Raw, 10);
+      var goldenText = (!isNaN(idx) && GOLDEN_TIME_MAP[idx] !== undefined)
+        ? GOLDEN_TIME_MAP[idx] : GOLDEN_TIME_MAP[0];
+      window.__GOLDEN_TIME_TEXT__ = goldenText;
+      window.__A08_IDX__ = idx;
+      console.log('[AE-Task4] A08 골든타임 인덱스:', idx, '→', goldenText.slice(0, 40) + '...');
+    })();
+
+    // ══════════════════════════════════════════════════════
+    // [AE-Task5] N일째 실계산 — DOM 주입 (hospital v4.1 이식)
+    // ══════════════════════════════════════════════════════
+    (function _aeGatePatchTogetherDays() {
+      var createdAt = json.created_at || null;
+      var nDays = 3; // fallback
+      if (createdAt) {
+        var createdMs = new Date(createdAt).getTime();
+        if (!isNaN(createdMs)) {
+          nDays = Math.max(1, Math.floor((Date.now() - createdMs) / 86400000) + 1);
+        }
+      }
+      var el = document.getElementById('together-days-span');
+      if (el) el.textContent = '함께한 지 ' + nDays + '일째';
+      window.__TOGETHER_DAYS__ = nDays;
+      console.log('[AE-Task5] N일째 실계산:', nDays, '일 (created_at:', createdAt, ')');
+    })();
+
   } catch(err) {
     console.error('[aesthetic] API 실패:', err.message);
     // 실패 시 로딩 오버레이에 에러 표시
@@ -27831,6 +28014,173 @@ function renderP11Aesthetic(data) {
     }
   };
 })();
+</script>
+
+<script>
+// ══════════════════════════════════════════════════════
+// [AE-Task8] slimMindSchemaValidator — 에스테틱 버전 (hospital v4.1 이식)
+// ══════════════════════════════════════════════════════
+function slimMindSchemaValidator() {
+  'use strict';
+  var errors = [], warnings = [];
+
+  /* ── 1. SUBTYPE_NARR 86벌 완전성 검증 ─────────────────────────────── */
+  if (typeof SUBTYPE_NARR !== 'undefined') {
+    var sKeys = Object.keys(SUBTYPE_NARR);
+    if (sKeys.length < 86) {
+      errors.push('[AE-SCHEMA] SUBTYPE_NARR 키 수 부족: ' + sKeys.length + '/86');
+    }
+    sKeys.forEach(function(k) {
+      var entry = SUBTYPE_NARR[k];
+      if (!entry || typeof entry !== 'object') {
+        errors.push('[AE-SCHEMA] SUBTYPE_NARR 항목 비정상: ' + k);
+        return;
+      }
+      if (!entry.story || entry.story.length < 10) {
+        errors.push('[AE-SCHEMA] SUBTYPE_NARR.story 비어있음: ' + k);
+      }
+      if (!entry.desc || entry.desc.length < 10) {
+        warnings.push('[AE-SCHEMA] SUBTYPE_NARR.desc 짧음: ' + k);
+      }
+      // 접미사키 패턴 검증 (_여 / _남)
+      if (k.endsWith('_여') || k.endsWith('_남')) {
+        // OK: 성별 접미사 정상
+      } else {
+        warnings.push('[AE-SCHEMA] SUBTYPE_NARR 접미사키 미적용: ' + k);
+      }
+    });
+  } else {
+    errors.push('[AE-SCHEMA] SUBTYPE_NARR 전역 변수 없음');
+  }
+
+  /* ── 2. TODAY.move.exOptions 검증 (Task2: exercise_response 분기) ── */
+  if (typeof TODAY !== 'undefined') {
+    if (!TODAY.move) {
+      errors.push('[AE-SCHEMA][Task2] TODAY.move 없음');
+    } else {
+      if (!Array.isArray(TODAY.move.exOptions) || TODAY.move.exOptions.length < 1) {
+        errors.push('[AE-SCHEMA][Task2] TODAY.move.exOptions 비어있음 (exercise_response 분기 미작동)');
+      } else {
+        TODAY.move.exOptions.forEach(function(opt, i) {
+          if (!opt.label) errors.push('[AE-SCHEMA][Task2] exOptions[' + i + '].label 없음');
+          if (typeof opt.k !== 'number') errors.push('[AE-SCHEMA][Task2] exOptions[' + i + '].k 숫자 아님');
+          if (!opt.detail) warnings.push('[AE-SCHEMA][Task2] exOptions[' + i + '].detail 없음');
+        });
+      }
+    }
+  } else {
+    warnings.push('[AE-SCHEMA][Task2] TODAY 전역 변수 없음 (렌더링 전일 수 있음)');
+  }
+
+  /* ── 3. PAIN_GATE 검증 (Task3: pain_areas 안전 게이트) ─────────────── */
+  if (typeof window.PAIN_GATE !== 'undefined') {
+    var pgKeys = Object.keys(window.PAIN_GATE);
+    if (pgKeys.length < 6) {
+      errors.push('[AE-SCHEMA][Task3] PAIN_GATE 항목 부족: ' + pgKeys.length + '/6');
+    }
+    pgKeys.forEach(function(k) {
+      var gate = window.PAIN_GATE[k];
+      if (!gate || typeof gate !== 'object') {
+        errors.push('[AE-SCHEMA][Task3] PAIN_GATE 항목 비정상: ' + k);
+        return;
+      }
+      if (!Array.isArray(gate.banKeywords)) {
+        errors.push('[AE-SCHEMA][Task3] PAIN_GATE[' + k + '].banKeywords 배열 아님');
+      }
+    });
+  } else {
+    errors.push('[AE-SCHEMA][Task3] PAIN_GATE 전역 변수 없음 (window.PAIN_GATE 미설정)');
+  }
+
+  /* ── 4. GOLDEN_TIME_MAP 검증 (Task4: A08 골든타임 6벌) ───────────── */
+  if (typeof window.GOLDEN_TIME_MAP !== 'undefined') {
+    for (var idx = 0; idx <= 5; idx++) {
+      if (!window.GOLDEN_TIME_MAP[idx] || window.GOLDEN_TIME_MAP[idx].length < 10) {
+        errors.push('[AE-SCHEMA][Task4] GOLDEN_TIME_MAP[' + idx + '] 없거나 너무 짧음');
+      }
+    }
+  } else {
+    errors.push('[AE-SCHEMA][Task4] GOLDEN_TIME_MAP 전역 변수 없음 (window.GOLDEN_TIME_MAP 미설정)');
+  }
+
+  /* ── 5. A08 골든타임 DOM 검증 ──────────────────────────────────────── */
+  var gtDiv = document.getElementById('w12-golden-time-div');
+  if (!gtDiv) {
+    warnings.push('[AE-SCHEMA][Task4] #w12-golden-time-div DOM 요소 없음');
+  } else if (!gtDiv.textContent || gtDiv.textContent.trim().length < 5) {
+    warnings.push('[AE-SCHEMA][Task4] #w12-golden-time-div 텍스트 비어있음');
+  }
+
+  /* ── 6. N일째 DOM 검증 (Task5) ─────────────────────────────────────── */
+  var daysEl = document.getElementById('together-days-span');
+  if (!daysEl) {
+    warnings.push('[AE-SCHEMA][Task5] #together-days-span DOM 요소 없음');
+  } else {
+    var daysText = daysEl.textContent || '';
+    if (!/\d/.test(daysText)) {
+      warnings.push('[AE-SCHEMA][Task5] N일째 숫자 없음: "' + daysText + '"');
+    } else if (/함께한 지 3일째/.test(daysText) && !window.__TOGETHER_DAYS__) {
+      warnings.push('[AE-SCHEMA][Task5] N일째 실계산 미작동 (fallback 3일째 고정값)');
+    }
+  }
+
+  /* ── 7. _p3AnswersSrc 단일소스 검증 (Task6) ────────────────────────── */
+  if (typeof window.__LAST_ANSWERS__ !== 'undefined') {
+    // 전역에 남아있으면 단일소스 원칙 위반은 아니지만 경고
+    warnings.push('[AE-SCHEMA][Task6] window.__LAST_ANSWERS__ 전역 노출됨 (단일소스: _p3AnswersSrc 사용 확인 필요)');
+  }
+
+  /* ── 8. EXERCISE_RESPONSE_OPTIONS 검증 ─────────────────────────────── */
+  if (typeof window.EXERCISE_RESPONSE_OPTIONS !== 'undefined') {
+    var erKeys = Object.keys(window.EXERCISE_RESPONSE_OPTIONS);
+    if (erKeys.length < 7) {
+      errors.push('[AE-SCHEMA][Task2] EXERCISE_RESPONSE_OPTIONS 항목 부족: ' + erKeys.length + '/7');
+    }
+    erKeys.forEach(function(k) {
+      var opt = window.EXERCISE_RESPONSE_OPTIONS[k];
+      if (!opt || !Array.isArray(opt.exOptions)) {
+        errors.push('[AE-SCHEMA][Task2] EXERCISE_RESPONSE_OPTIONS[' + k + '].exOptions 배열 아님');
+      }
+    });
+  } else {
+    errors.push('[AE-SCHEMA][Task2] EXERCISE_RESPONSE_OPTIONS 전역 변수 없음 (window.EXERCISE_RESPONSE_OPTIONS 미설정)');
+  }
+
+  /* ── 결과 출력 ─────────────────────────────────────────────────────── */
+  errors.forEach(function(e) { console.error(e); });
+  warnings.forEach(function(w) { console.warn(w); });
+
+  if (errors.length === 0 && warnings.length === 0) {
+    console.log(
+      '%c[AE-SCHEMA] ✅ 슬림마인드 데이터 바인딩 검증 완전 통과 — 오류 0건, 경고 0건',
+      'color:#22c55e;font-weight:bold;font-size:13px'
+    );
+  } else if (errors.length === 0) {
+    console.log(
+      '%c[AE-SCHEMA] ⚠ 검증 완료 — 오류 0건, 경고 ' + warnings.length + '건',
+      'color:#f59e0b;font-weight:bold'
+    );
+  } else {
+    console.log(
+      '%c[AE-SCHEMA] ❌ 검증 실패 — 오류 ' + errors.length + '건, 경고 ' + warnings.length + '건',
+      'color:#ef4444;font-weight:bold'
+    );
+  }
+
+  /* ── 전역 결과 저장 ─────────────────────────────────────────────────── */
+  window.__SCHEMA_VALIDATION__ = {
+    errors: errors,
+    warnings: warnings,
+    passed: errors.length === 0,
+    timestamp: new Date().toISOString()
+  };
+}
+// [AE-Task8] loadAestheticResult (async fetch + render) 완료 후 검증
+// load 이벤트 이후 2000ms 대기 — fetch 완료 보장 (v4.1.1 2026-08-21)
+window.addEventListener('load', function() {
+  setTimeout(slimMindSchemaValidator, 2000);
+});
+
 </script>
 
 </body>

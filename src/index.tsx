@@ -7413,6 +7413,466 @@ app.get('/api/a/programs', async (c) => {
 })
 
 // ══════════════════════════════════════════════════════════════════
+//  SALON (살롱/미용실) 라우트 — hospital v4.1 1:1 복제 (salon_responses 테이블)
+// ══════════════════════════════════════════════════════════════════
+
+// POST /api/a/diagnosis — 에스테틱 설문 응답 aesthetic_responses 테이블에 저장
+app.post('/api/a/diagnosis', async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not configured' }, 500)
+  try {
+    const body = await c.req.json()
+    const {
+      user_name, phone, gender, age, height, weight,
+      stage1_answers, stage2_answers, stage3_answers, stage4_answers,
+      ohaeng_type, disp_type, mbti_full,
+      bc_code, bc_code_key, bc_nickname, bc_primary,
+      axis_scores, raw_answers,
+      goal_weight, weight_loss_pct,
+      ref_code, session_id
+    } = body
+    const resolvedBcCode = bc_code || bc_code_key || null
+    const parsedRaw = raw_answers ? (typeof raw_answers === 'string' ? (() => { try { return JSON.parse(raw_answers) } catch { return {} } })() : raw_answers) : {}
+
+    // axis_scores 0~100 정규화
+    const normalizeAx = (raw: any): Record<string, number> | null => {
+      if (!raw) return null
+      let obj: Record<string, number> = {}
+      if (typeof raw === 'string') { try { obj = JSON.parse(raw) } catch { return null } }
+      else if (typeof raw === 'object' && !Array.isArray(raw)) { obj = raw as Record<string, number> }
+      else return null
+      const vals = Object.values(obj).map(Number).filter(v => !isNaN(v))
+      if (vals.length === 0) return null
+      const hasAxisKeys = Object.keys(obj).some(k => /^A\d{2}$/.test(k))
+      const anyAbove10 = vals.some(v => v > 10)
+      const isAlready = hasAxisKeys ? anyAbove10 : (Math.max(...vals) >= 50)
+      const result: Record<string, number> = {}
+      if (isAlready) {
+        Object.entries(obj).forEach(([k, v]) => { result[k] = Math.min(100, Math.max(0, Math.round(Number(v)))) })
+      } else {
+        const maxVal = Math.max(...vals)
+        Object.entries(obj).forEach(([k, v]) => {
+          const ratio = maxVal > 0 ? Number(v) / maxVal : 0
+          result[k] = Math.min(100, Math.round(Math.sqrt(ratio) * 100))
+        })
+      }
+      return result
+    }
+    const resolvedAxisScores = normalizeAx(axis_scores)
+
+    const normOhaeng = (v: any): string | null => {
+      if (!v) return null
+      const s = String(v).trim()
+      const m = s.match(/^([목화토금수])/)
+      if (m) return m[1]
+      const map: Record<string, string> = { '木':'목','火':'화','土':'토','金':'금','水':'수' }
+      for (const [k, v2] of Object.entries(map)) { if (s.includes(k)) return v2 }
+      return s || null
+    }
+    const resolvedOhaeng = normOhaeng(ohaeng_type || parsedRaw?.pfProfile?.saju)
+    const normMbti = (v: any): string | null => {
+      if (!v) return null
+      const s = String(v).trim().toUpperCase()
+      return /^[EI][NS][TF][JP]$/.test(s) ? s : null
+    }
+    const resolvedMbti = normMbti(mbti_full || parsedRaw?.pfProfile?.mbti)
+    if (!user_name) return c.json({ error: 'user_name required' }, 400)
+
+    // aesthetic_responses 테이블 자동 생성 (마이그레이션 미적용 환경 대비)
+    try {
+      await db.prepare(`
+        CREATE TABLE IF NOT EXISTS aesthetic_responses (
+          id TEXT PRIMARY KEY,
+          b2b_code TEXT NOT NULL,
+          ref_code TEXT,
+          user_name TEXT NOT NULL,
+          gender TEXT, age TEXT, height TEXT, weight TEXT, phone TEXT,
+          stage1_json TEXT, stage2_json TEXT, stage3_json TEXT, stage4_json TEXT,
+          ohaeng_type TEXT, disp_type TEXT, mbti_full TEXT,
+          bc_code TEXT, bc_nickname TEXT,
+          axis_scores TEXT, raw_answers TEXT,
+          goal_weight REAL, weight_loss_pct REAL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `).run()
+    } catch (_) {}
+
+    const resultId = session_id || `A-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`
+    const b2bCode = ref_code || 'UNKNOWN'
+    const resolvedGoalWeight = goal_weight != null ? Number(goal_weight) : (parsedRaw?.goal_weight != null ? Number(parsedRaw.goal_weight) : null)
+    const resolvedWeightLossPct = weight_loss_pct != null ? Number(weight_loss_pct) : (parsedRaw?.weight_loss_pct != null ? Number(parsedRaw.weight_loss_pct) : null)
+    const resolvedBcNickname = bc_nickname || bc_primary || null
+
+    await db.prepare(`
+      INSERT INTO aesthetic_responses
+        (id, b2b_code, ref_code, user_name, gender, age, height, weight, phone,
+         stage1_json, stage2_json, stage3_json, stage4_json,
+         ohaeng_type, disp_type, mbti_full, bc_code, bc_nickname, axis_scores, raw_answers,
+         goal_weight, weight_loss_pct)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    `).bind(
+      resultId, b2bCode, ref_code || null, user_name,
+      gender || null, age ? String(age) : null,
+      height ? String(height) : null, weight ? String(weight) : null, phone || null,
+      stage1_answers ? JSON.stringify(stage1_answers) : null,
+      stage2_answers ? JSON.stringify(stage2_answers) : null,
+      stage3_answers ? JSON.stringify(stage3_answers) : null,
+      stage4_answers ? JSON.stringify(stage4_answers) : null,
+      resolvedOhaeng,
+      disp_type || (resolvedOhaeng ? resolvedOhaeng + '형' : null),
+      resolvedMbti, resolvedBcCode, resolvedBcNickname,
+      resolvedAxisScores ? JSON.stringify(resolvedAxisScores) : null,
+      raw_answers ? JSON.stringify(raw_answers) : null,
+      resolvedGoalWeight, resolvedWeightLossPct
+    ).run()
+
+    if (ref_code) {
+      try {
+        await db.prepare(`INSERT INTO survey_notifications (ref_code, result_id, user_name, created_at) VALUES (?, ?, ?, datetime('now'))`).bind(ref_code, resultId, user_name).run()
+      } catch (_) {}
+    }
+    return c.json({ ok: true, result_id: resultId, redirect: `/result-aesthetic/${resultId}` })
+  } catch (e: any) {
+    console.error('[/api/a/diagnosis]', e)
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// GET /result-salon/:id — 살롱 결과지 HTML 서빙
+app.get('/result-salon/:id', async (c) => {
+  const id = c.req.param('id')
+  try {
+    let html = await fetchAsset(c.env.ASSETS, '/result-salon.html')
+    const deployTs = Date.now()
+    // result-salon.html은 result-hospital.html 복제본으로 __HOSPITAL_RESULT_ID__ 참조 유지
+    const idScript = `<script>\nwindow.__HOSPITAL_RESULT_ID__ = ${JSON.stringify(id)};\nwindow.__SALON_RESULT_ID__ = ${JSON.stringify(id)};\nwindow.__DEPLOY_TS__ = ${deployTs};\ntry {\n  localStorage.setItem('sm_last_result_id', ${JSON.stringify(id)});\n  localStorage.setItem('sm_survey_category', 'salon');\n} catch(e) {}\n<\/script>\n`
+    const rsBase = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.kr' } })()
+    const rsOg = `
+<meta property="og:type"         content="website">
+<meta property="og:site_name"    content="SlimMind">
+<meta property="og:title"        content="SlimMind | 살롱 케어 맞춤 결과지">
+<meta property="og:description"  content="당신의 몸은 하나의 코드입니다. 살롱 맞춤 케어 방법을 확인하세요.">
+<meta property="og:url"          content="${rsBase}/result-salon/${id}">
+<meta property="og:image"        content="${rsBase}/static/og-slimmind.png">
+<meta property="og:image:width"  content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:type"   content="image/png">
+<meta name="twitter:card"        content="summary_large_image">
+<meta name="twitter:title"       content="SlimMind | 살롱 케어 맞춤 결과지">
+<meta name="twitter:image"       content="${rsBase}/static/og-slimmind.png">`
+    const dynamicManifestHref = `/api/manifest.json?for=${encodeURIComponent('/result-salon/' + id)}`
+    html = html.replace('<head>', `<head>\n${KAKAO_ESCAPE_SCRIPT}\n${idScript}`)
+    html = html.replace(
+      /<link[^>]+rel=["']manifest["'][^>]*>/i,
+      `<link rel="manifest" href="${dynamicManifestHref}">`
+    )
+    html = html.replace(
+      /<!-- ── OG \/ SNS 링크 미리보기 ─+-->([\\s\\S]*?)<!-- ─+-->/,
+      `<!-- ── OG / SNS 링크 미리보기 ───────────────────────────── -->${rsOg}\n<!-- ─────────────────────────────────────────────────────── -->`
+    )
+    const now = new Date().toUTCString()
+    return c.html(html, 200, {
+      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0, s-maxage=0',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'Surrogate-Control': 'no-store',
+      'CDN-Cache-Control': 'no-store',
+      'Cloudflare-CDN-Cache-Control': 'no-store',
+      'Last-Modified': now,
+    })
+  } catch (e: any) {
+    return c.html('<h2>살롱 결과지를 불러올 수 없습니다</h2>', 500)
+  }
+})
+
+// GET /api/s/result/:id — 살롱 결과 데이터 JSON 조회 (salon_responses 테이블 기반)
+app.get('/api/s/result/:id', async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not configured' }, 500)
+  const id = c.req.param('id')
+  try {
+    const parseJ = (v: any) => { try { return v ? JSON.parse(v) : null } catch { return null } }
+    const normOhaeng = (v: any): string => {
+      if (!v) return ''
+      const s = String(v).trim()
+      const m = s.match(/^([목화토금수])/)
+      if (m) return m[1]
+      return s
+    }
+    const normMbti = (v: any): string => {
+      if (!v) return ''
+      const s = String(v).trim().toUpperCase()
+      return /^[EI][NS][TF][JP]$/.test(s) ? s : ''
+    }
+
+    // 1순위: salon_responses 테이블
+    let row: any = null
+    try {
+      row = await db.prepare(
+        `SELECT sr.*, COALESCE(bp.name, bp.brand_name, '') AS partner_display_name
+         FROM salon_responses sr
+         LEFT JOIN b2b_partners bp ON bp.code = sr.ref_code
+         WHERE sr.id = ?`
+      ).bind(id).first<any>()
+    } catch (_) {
+      try {
+        row = await db.prepare(`SELECT * FROM salon_responses WHERE id = ?`).bind(id).first<any>()
+        if (row) row.partner_display_name = ''
+      } catch (_) { row = null }
+    }
+
+    if (row) {
+      const parsedRaw = parseJ(row.raw_answers)
+      const finalOhaeng = normOhaeng(row.ohaeng_type) || normOhaeng(parsedRaw?.pfProfile?.saju) || ''
+      const finalMbti   = normMbti(row.mbti_full) || normMbti(parsedRaw?.pfProfile?.mbti) || ''
+      c.header('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0')
+      c.header('Pragma', 'no-cache')
+      c.header('Expires', '0')
+      c.header('Surrogate-Control', 'no-store')
+      return c.json({
+        ok: true,
+        id: row.id,
+        b2b_code:      row.b2b_code || row.ref_code || null,
+        ref_code:      row.ref_code || null,
+        user_name:     row.user_name,
+        gender:        row.gender,
+        age:           row.age != null ? Number(row.age) : null,
+        height:        row.height != null ? Number(row.height) : null,
+        weight:        row.weight != null ? Number(row.weight) : null,
+        phone:         row.phone || null,
+        ohaeng_type:   finalOhaeng,
+        disp_type:     row.disp_type || null,
+        mbti_full:     finalMbti,
+        bc_code:       row.bc_code || null,
+        bc_nickname:   row.bc_nickname || null,
+        axis_scores:   parseJ(row.axis_scores) || {},
+        stage1_answers: parseJ(row.stage1_json),
+        stage2_answers: parseJ(row.stage2_json),
+        stage3_answers: parseJ(row.stage3_json),
+        stage4_answers: parseJ(row.stage4_json),
+        raw_answers:   parsedRaw,
+        goal_weight:   row.goal_weight != null ? Number(row.goal_weight) : null,
+        weight_loss_pct: row.weight_loss_pct != null ? Number(row.weight_loss_pct) : null,
+        created_at:    row.created_at,
+        consultant_name: row.partner_display_name || '',
+        schema_version: 'v1.1',
+        survey_type: 'salon',
+        axis_history: await (async () => {
+          try {
+            if (!row.phone) return null
+            const prev = await db.prepare(
+              `SELECT id, created_at, axis_scores FROM salon_responses WHERE phone = ? AND id != ? ORDER BY created_at DESC LIMIT 1`
+            ).bind(row.phone, row.id).first<any>()
+            if (!prev) return null
+            const prevAx: Record<string,number> = parseJ(prev.axis_scores) || {}
+            const curAx:  Record<string,number> = parseJ(row.axis_scores)  || {}
+            const AXES = ['A01','A02','A03','A04','A05','A06','A07','A08','A09','A10']
+            const deltas: Record<string,number> = {}
+            AXES.forEach(k => { deltas[k] = Math.round((Number(curAx[k]||0) - Number(prevAx[k]||0)) * 10) / 10 })
+            return { prev_result_id: prev.id, prev_created_at: prev.created_at, axis_deltas: deltas }
+          } catch { return null }
+        })(),
+      })
+    }
+
+    // 2순위: diagnosis_results 폴백 (survey_category='salon')
+    const diagRow = await db.prepare(
+      `SELECT dr.*, COALESCE(bp.name, bp.brand_name, '') AS partner_display_name
+       FROM diagnosis_results dr
+       LEFT JOIN b2b_partners bp ON bp.code = dr.ref_code
+       WHERE dr.id = ? AND dr.survey_category = 'salon'`
+    ).bind(id).first<any>()
+
+    if (!diagRow) return c.json({ error: 'Not found' }, 404)
+
+    const rawAnswers = parseJ(diagRow.raw_answers)
+    c.header('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0')
+    c.header('Pragma', 'no-cache')
+    c.header('Expires', '0')
+    c.header('Surrogate-Control', 'no-store')
+    return c.json({
+      ok: true,
+      id: diagRow.id,
+      b2b_code: diagRow.ref_code,
+      ref_code: diagRow.ref_code,
+      user_name: diagRow.user_name,
+      gender: diagRow.gender,
+      age: diagRow.age != null ? Number(diagRow.age) : null,
+      height: diagRow.height != null ? Number(diagRow.height) : null,
+      weight: null,
+      phone: null,
+      ohaeng_type: normOhaeng(diagRow.ohaeng_type) || normOhaeng(rawAnswers?.pfProfile?.saju) || '',
+      disp_type: null,
+      mbti_full: normMbti(diagRow.mbti_full) || normMbti(rawAnswers?.pfProfile?.mbti) || '',
+      bc_code: diagRow.bc_code_key || diagRow.bc_primary || null,
+      bc_nickname: diagRow.bc_nickname || null,
+      axis_scores: parseJ(diagRow.axis_scores) || {},
+      stage1_answers: rawAnswers?.stage1 || null,
+      stage2_answers: rawAnswers?.stage2 || null,
+      stage3_answers: rawAnswers?.stage3 || null,
+      stage4_answers: rawAnswers?.stage4 || null,
+      raw_answers: rawAnswers,
+      goal_weight: diagRow.goal_weight != null ? Number(diagRow.goal_weight) : null,
+      weight_loss_pct: diagRow.weight_loss_pct != null ? Number(diagRow.weight_loss_pct) : null,
+      created_at: diagRow.completed_at || diagRow.created_at,
+      consultant_name: diagRow.partner_display_name || '',
+      schema_version: 'v1.1',
+      survey_type: 'salon',
+      axis_history: null,
+    })
+  } catch (e: any) {
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// POST /api/s/diagnosis — 살롱 설문 응답 salon_responses 테이블에 저장
+app.post('/api/s/diagnosis', async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not configured' }, 500)
+  try {
+    const body = await c.req.json()
+    const {
+      user_name, phone, gender, age, height, weight,
+      stage1_answers, stage2_answers, stage3_answers, stage4_answers,
+      ohaeng_type, disp_type, mbti_full,
+      bc_code, bc_code_key, bc_nickname, bc_primary,
+      axis_scores, raw_answers,
+      goal_weight, weight_loss_pct,
+      ref_code, session_id
+    } = body
+    const resolvedBcCode = bc_code || bc_code_key || null
+    const parsedRaw = raw_answers ? (typeof raw_answers === 'string' ? (() => { try { return JSON.parse(raw_answers) } catch { return {} } })() : raw_answers) : {}
+
+    const normalizeAx = (raw: any): Record<string, number> | null => {
+      if (!raw) return null
+      let obj: Record<string, number> = {}
+      if (typeof raw === 'string') { try { obj = JSON.parse(raw) } catch { return null } }
+      else if (typeof raw === 'object' && !Array.isArray(raw)) { obj = raw as Record<string, number> }
+      else return null
+      const vals = Object.values(obj).map(Number).filter(v => !isNaN(v))
+      if (vals.length === 0) return null
+      const hasAxisKeys = Object.keys(obj).some(k => /^A\d{2}$/.test(k))
+      const anyAbove10 = vals.some(v => v > 10)
+      const isAlready = hasAxisKeys ? anyAbove10 : (Math.max(...vals) >= 50)
+      const result: Record<string, number> = {}
+      if (isAlready) {
+        Object.entries(obj).forEach(([k, v]) => { result[k] = Math.min(100, Math.max(0, Math.round(Number(v)))) })
+      } else {
+        const maxVal = Math.max(...vals)
+        Object.entries(obj).forEach(([k, v]) => {
+          const ratio = maxVal > 0 ? Number(v) / maxVal : 0
+          result[k] = Math.min(100, Math.round(Math.sqrt(ratio) * 100))
+        })
+      }
+      return result
+    }
+    const resolvedAxisScores = normalizeAx(axis_scores)
+
+    const normOhaeng = (v: any): string | null => {
+      if (!v) return null
+      const s = String(v).trim()
+      const m = s.match(/^([목화토금수])/)
+      if (m) return m[1]
+      const map: Record<string, string> = { '木':'목','火':'화','土':'토','金':'금','水':'수' }
+      for (const [k, v2] of Object.entries(map)) { if (s.includes(k)) return v2 }
+      return s || null
+    }
+    const resolvedOhaeng = normOhaeng(ohaeng_type || parsedRaw?.pfProfile?.saju)
+    const normMbti = (v: any): string | null => {
+      if (!v) return null
+      const s = String(v).trim().toUpperCase()
+      return /^[EI][NS][TF][JP]$/.test(s) ? s : null
+    }
+    const resolvedMbti = normMbti(mbti_full || parsedRaw?.pfProfile?.mbti)
+    if (!user_name) return c.json({ error: 'user_name required' }, 400)
+
+    // salon_responses 테이블 자동 생성
+    try {
+      await db.prepare(`
+        CREATE TABLE IF NOT EXISTS salon_responses (
+          id TEXT PRIMARY KEY,
+          b2b_code TEXT NOT NULL,
+          ref_code TEXT,
+          user_name TEXT NOT NULL,
+          gender TEXT, age TEXT, height TEXT, weight TEXT, phone TEXT,
+          stage1_json TEXT, stage2_json TEXT, stage3_json TEXT, stage4_json TEXT,
+          ohaeng_type TEXT, disp_type TEXT, mbti_full TEXT,
+          bc_code TEXT, bc_nickname TEXT,
+          axis_scores TEXT, raw_answers TEXT,
+          goal_weight REAL, weight_loss_pct REAL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `).run()
+    } catch (_) {}
+
+    const resultId = session_id || `S-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`
+    const b2bCode = ref_code || 'UNKNOWN'
+    const resolvedGoalWeight = goal_weight != null ? Number(goal_weight) : (parsedRaw?.goal_weight != null ? Number(parsedRaw.goal_weight) : null)
+    const resolvedWeightLossPct = weight_loss_pct != null ? Number(weight_loss_pct) : (parsedRaw?.weight_loss_pct != null ? Number(parsedRaw.weight_loss_pct) : null)
+    const resolvedBcNickname = bc_nickname || bc_primary || null
+
+    await db.prepare(`
+      INSERT INTO salon_responses
+        (id, b2b_code, ref_code, user_name, gender, age, height, weight, phone,
+         stage1_json, stage2_json, stage3_json, stage4_json,
+         ohaeng_type, disp_type, mbti_full, bc_code, bc_nickname, axis_scores, raw_answers,
+         goal_weight, weight_loss_pct)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    `).bind(
+      resultId, b2bCode, ref_code || null, user_name,
+      gender || null, age ? String(age) : null,
+      height ? String(height) : null, weight ? String(weight) : null, phone || null,
+      stage1_answers ? JSON.stringify(stage1_answers) : null,
+      stage2_answers ? JSON.stringify(stage2_answers) : null,
+      stage3_answers ? JSON.stringify(stage3_answers) : null,
+      stage4_answers ? JSON.stringify(stage4_answers) : null,
+      resolvedOhaeng,
+      disp_type || (resolvedOhaeng ? resolvedOhaeng + '형' : null),
+      resolvedMbti, resolvedBcCode, resolvedBcNickname,
+      resolvedAxisScores ? JSON.stringify(resolvedAxisScores) : null,
+      raw_answers ? JSON.stringify(raw_answers) : null,
+      resolvedGoalWeight, resolvedWeightLossPct
+    ).run()
+
+    if (ref_code) {
+      try {
+        await db.prepare(`INSERT INTO survey_notifications (ref_code, result_id, user_name, created_at) VALUES (?, ?, ?, datetime('now'))`).bind(ref_code, resultId, user_name).run()
+      } catch (_) {}
+    }
+    return c.json({ ok: true, result_id: resultId, redirect: `/result-salon/${resultId}` })
+  } catch (e: any) {
+    console.error('[/api/s/diagnosis]', e)
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// GET /api/s/programs — 살롱 파트너 프로그램 조회 (bc_code 기반)
+app.get('/api/s/programs', async (c) => {
+  const db = c.env.DB
+  const b2bCode = c.req.query('b2b_code') || ''
+  const bcCode  = c.req.query('bc_code')  || ''
+  if (!b2bCode) return c.json([])
+  try {
+    // salon_programs 테이블이 없으면 빈 배열 반환 (graceful)
+    const rows = await db.prepare(`
+      SELECT * FROM salon_programs
+      WHERE partner_code = ?
+        AND status = 'active'
+        AND (bc_codes = '[]' OR bc_codes = '' OR bc_codes LIKE ?)
+      ORDER BY is_signature DESC, priority ASC
+      LIMIT 10
+    `).bind(b2bCode, `%${bcCode}%`).all<any>()
+    const programs = (rows.results || []).map((r: any) => ({
+      ...r,
+      bc_codes: (() => { try { return JSON.parse(r.bc_codes) } catch { return [] } })(),
+    }))
+    return c.json(programs)
+  } catch (e: any) {
+    return c.json([])
+  }
+})
+
+// ══════════════════════════════════════════════════════════════════
 //  POST /api/survey/notify
 //  설문 완료 후 담당자(ref_code)에게 알림 전송 (공개 API)
 //  Body: { result_id: string, ref_code: string }
