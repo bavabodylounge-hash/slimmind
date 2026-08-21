@@ -2718,7 +2718,24 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
         return htmlResponse(injectedHtml)
       }
 
-      // 두 테이블 모두 없음 → 404
+      // ★ 3순위: hospital_responses 조회 (H- 접두사 ID 또는 hospital_responses 저장 데이터)
+      // survey-hospital.html의 showWaitScreen()이 /result/{H-ID}로 이동하는 경우 처리
+      const hospRow = await db.prepare('SELECT * FROM hospital_responses WHERE id=?').bind(id).first<any>()
+      if (hospRow) {
+        // hospital_responses → /result-hospital/:id 302 리다이렉트
+        return c.redirect(`/result-hospital/${id}`, 302)
+      }
+
+      // ★ 4순위: fitness_responses 조회 (F- 접두사 ID)
+      // survey-fitness.html이 /result/{F-ID}로 이동하는 경우 처리 (fallback)
+      if (id.startsWith('F-')) {
+        const fitRow = await db.prepare('SELECT id FROM fitness_responses WHERE id=?').bind(id).first<any>()
+        if (fitRow) {
+          return c.redirect(`/result-fitness/${id}`, 302)
+        }
+      }
+
+      // 모든 테이블에 없음 → 404
       return _errorHtml('결과지를 찾을 수 없습니다', '링크가 만료되었거나<br>잘못된 주소입니다.', 404)
     }
 
@@ -7750,7 +7767,7 @@ app.post('/api/f/diagnosis', async (c) => {
       body.ohaeng_type || null,
       body.disp_type   || null,
       body.mbti_full   || null,
-      body.bc_code     || null,
+      body.bc_code || body.bc_code_key || null,   // ✅ FIX: 클라이언트가 bc_code_key로 보내는 경우 폴백
       body.bc_nickname || null,
       axisJson,
       body.raw_answers ? JSON.stringify(body.raw_answers) : null,
