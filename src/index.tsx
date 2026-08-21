@@ -6790,6 +6790,17 @@ app.get('/result-hospital/:id', async (c) => {
     const db = (c.env as any).DB as D1Database | undefined
     let injectedRefCode: string | null = null
     if (db) {
+      // ★ Zero-Bug: ID 유효성 검사 — DB에 없는 ID면 404 반환
+      try {
+        const existRow = await db.prepare(
+          `SELECT id FROM hospital_responses WHERE id = ? LIMIT 1`
+        ).bind(id).first<any>()
+        if (!existRow) {
+          return c.html(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+<title>결과지를 찾을 수 없습니다 | SlimMind</title>
+<style>body{font-family:'Pretendard',sans-serif;background:#f6f4ee;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}.box{text-align:center;padding:48px 32px;background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08);max-width:420px}h2{font-size:22px;color:#1a1a17;margin-bottom:12px}p{color:#7c776b;font-size:14px;line-height:1.7;margin-bottom:0}a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;color:#fff;border-radius:10px;text-decoration:none;font-weight:700}</style></head><body><div class="box"><h2>결과지를 찾을 수 없습니다</h2><p>링크가 만료되었거나<br>잘못된 주소입니다.</p><a href="/">새로 시작하기</a></div></body></html>`, 404)
+        }
+      } catch (_) {}
       try {
         const diagRow = await db.prepare(
           `SELECT ref_code FROM diagnosis_results WHERE id = ? LIMIT 1`
@@ -7574,6 +7585,17 @@ app.get('/result-fitness/:id', async (c) => {
     const db = (c.env as any).DB as D1Database | undefined
     let injectedRefCode: string | null = null
     if (db) {
+      // ★ Zero-Bug: ID 유효성 검사 — DB에 없는 F-ID면 404 반환
+      try {
+        const existRow = await db.prepare(
+          `SELECT id FROM fitness_responses WHERE id = ? LIMIT 1`
+        ).bind(id).first<any>()
+        if (!existRow) {
+          return c.html(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+<title>결과지를 찾을 수 없습니다 | SlimMind</title>
+<style>body{font-family:'Pretendard',sans-serif;background:#f6f4ee;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}.box{text-align:center;padding:48px 32px;background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08);max-width:420px}h2{font-size:22px;color:#1a1a17;margin-bottom:12px}p{color:#7c776b;font-size:14px;line-height:1.7;margin-bottom:0}a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;color:#fff;border-radius:10px;text-decoration:none;font-weight:700}</style></head><body><div class="box"><h2>결과지를 찾을 수 없습니다</h2><p>링크가 만료되었거나<br>잘못된 주소입니다.</p><a href="/">새로 시작하기</a></div></body></html>`, 404)
+        }
+      } catch (_) {}
       try {
         const fitRow = await db.prepare(
           `SELECT ref_code FROM fitness_responses WHERE id = ? LIMIT 1`
