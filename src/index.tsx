@@ -7538,6 +7538,243 @@ app.post('/api/a/diagnosis', async (c) => {
   }
 })
 
+// ════════════════════════════════════════════════════════════════════════
+// ████  피트니스 라우트  — /result-fitness/:id · /api/f/result/:id · /api/f/diagnosis
+// ════════════════════════════════════════════════════════════════════════
+
+// GET /result-fitness/:id — 피트니스 결과지 HTML 서빙
+app.get('/result-fitness/:id', async (c) => {
+  const id = c.req.param('id')
+  try {
+    let html = await fetchAsset(c.env.ASSETS, '/result-fitness.html')
+    const INJECT_MARKER = '<!-- ══ 피트니스 전용: API 연동 + __RESULT__ 주입 ══ -->'
+    // ── DB에서 ref_code 조회 (fitness_responses 테이블) ──
+    const db = (c.env as any).DB as D1Database | undefined
+    let injectedRefCode: string | null = null
+    if (db) {
+      try {
+        const fitRow = await db.prepare(
+          `SELECT ref_code FROM fitness_responses WHERE id = ? LIMIT 1`
+        ).bind(id).first<any>()
+        if (fitRow?.ref_code) injectedRefCode = fitRow.ref_code
+      } catch (_) {}
+    }
+    const deployTs = Date.now()
+    const idScript = `<script>
+window.__FITNESS_RESULT_ID__ = ${JSON.stringify(id)};
+window.__DEPLOY_TS__ = ${deployTs};
+window.__REF_CODE__ = ${JSON.stringify(injectedRefCode)};
+try {
+  localStorage.setItem('sm_last_result_id', ${JSON.stringify(id)});
+  localStorage.setItem('sm_survey_category', 'fitness');
+  if (${JSON.stringify(injectedRefCode)}) {
+    localStorage.setItem('sm_ref_code_' + ${JSON.stringify(id)}, ${JSON.stringify(injectedRefCode)});
+  }
+} catch(e) {}
+<\/script>\n`
+    // OG 메타
+    const rfBase = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.kr' } })()
+    const rfOg = `
+<meta property="og:type"         content="website">
+<meta property="og:site_name"    content="SlimMind">
+<meta property="og:title"        content="SlimMind | 피트니스 바디코드 맞춤 결과지">
+<meta property="og:description"  content="당신의 몸은 하나의 코드입니다. 피트니스 맞춤 트레이닝 방법을 확인하세요.">
+<meta property="og:url"          content="${rfBase}/result-fitness/${id}">
+<meta property="og:image"        content="${rfBase}/static/og-slimmind.png">
+<meta property="og:image:width"  content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:type"   content="image/png">
+<meta name="twitter:card"        content="summary_large_image">
+<meta name="twitter:title"       content="SlimMind | 피트니스 바디코드 맞춤 결과지">
+<meta name="twitter:image"       content="${rfBase}/static/og-slimmind.png">`
+    const dynamicManifestHref = `/api/manifest.json?for=${encodeURIComponent('/result-fitness/' + id)}`
+    html = html.replace('<head>', `<head>\n${KAKAO_ESCAPE_SCRIPT}\n${idScript}`)
+    html = html.replace(
+      /<link[^>]+rel=["']manifest["'][^>]*>/i,
+      `<link rel="manifest" href="${dynamicManifestHref}">`
+    )
+    html = html.replace(
+      /<!-- ── OG \/ SNS 링크 미리보기 ─+-->([\s\S]*?)<!-- ─+-->/,
+      `<!-- ── OG / SNS 링크 미리보기 ───────────────────────────── -->${rfOg}\n<!-- ─────────────────────────────────────────────────────── -->`
+    )
+    const now = new Date().toUTCString()
+    return c.html(html, 200, {
+      'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0, s-maxage=0',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'Surrogate-Control': 'no-store',
+      'CDN-Cache-Control': 'no-store',
+      'Cloudflare-CDN-Cache-Control': 'no-store',
+      'Last-Modified': now,
+    })
+  } catch (e: any) {
+    return c.html('<h2>피트니스 결과지를 불러올 수 없습니다</h2>', 500)
+  }
+})
+
+// GET /api/f/result/:id — 피트니스 결과 데이터 JSON 조회 (fitness_responses 테이블)
+app.get('/api/f/result/:id', async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not configured' }, 500)
+  const id = c.req.param('id')
+  try {
+    const row = await db.prepare(
+      'SELECT * FROM fitness_responses WHERE id = ?'
+    ).bind(id).first<any>()
+    if (!row) return c.json({ error: 'Not found', ok: false }, 404)
+
+    const parseJ = (v: any, fallback: any = null) => {
+      try { return v ? JSON.parse(v) : fallback } catch { return fallback }
+    }
+
+    c.header('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0')
+    c.header('Pragma', 'no-cache')
+    c.header('Expires', '0')
+
+    const rawAnswers = parseJ(row.raw_answers)
+
+    return c.json({
+      ok:               true,
+      id:               row.id,
+      b2b_code:         row.b2b_code || null,
+      ref_code:         row.ref_code || null,
+      user_name:        row.user_name,
+      gender:           row.gender,
+      age:              row.age,
+      height:           row.height,
+      weight:           row.weight,
+      phone:            row.phone,
+      ohaeng_type:      row.ohaeng_type,
+      mbti_full:        row.mbti_full,
+      bc_code:          row.bc_code,
+      bc_nickname:      row.bc_nickname,
+      axis_scores:      parseJ(row.axis_scores, {}),
+      survey_category:  'fitness',
+      // 피트니스 전용 필드
+      exercise_response: row.exercise_response,
+      pain_gate:         parseJ(row.pain_gate, []),
+      bmr:              row.bmr,
+      tdee:             row.tdee,
+      calorie_target:   row.calorie_target,
+      activity_level:   row.activity_level,
+      bfr_current:      row.bfr_current,
+      bfr_target:       row.bfr_target,
+      // stage 답변
+      stage1_answers:   (rawAnswers && rawAnswers.stage1) ? rawAnswers.stage1 : null,
+      stage2_answers:   (rawAnswers && rawAnswers.stage2) ? rawAnswers.stage2 : null,
+      stage3_answers:   (rawAnswers && rawAnswers.stage3) ? rawAnswers.stage3 : null,
+      raw_answers:      rawAnswers,
+      goal_weight:      row.goal_weight,
+      weight_loss_pct:  row.weight_loss_pct,
+      created_at:       row.created_at,
+      schema_version:   'v1.1',
+      survey_type:      'fitness',
+    })
+  } catch (e: any) {
+    return c.json({ error: String(e), ok: false }, 500)
+  }
+})
+
+// POST /api/f/diagnosis — 피트니스 진단 결과 저장 (fitness_responses 테이블)
+app.post('/api/f/diagnosis', async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not configured' }, 500)
+  try {
+    const body = await c.req.json()
+
+    // ID 생성: F-{timestamp}-{5자리 랜덤}
+    const ts  = Date.now().toString()
+    const rnd = Math.random().toString(36).substring(2, 7).toUpperCase()
+    const id  = `F-${ts}-${rnd}`
+
+    // BMR 계산 (Mifflin-St Jeor)
+    const height = parseFloat(body.height) || 0
+    const weight = parseFloat(body.weight) || 0
+    const age    = parseInt(body.age)      || 30
+    const gender = (body.gender || '').toLowerCase()
+    let bmr = 0
+    if (height > 0 && weight > 0) {
+      bmr = gender.includes('f') || gender.includes('여')
+        ? 10 * weight + 6.25 * height - 5 * age - 161  // 여성
+        : 10 * weight + 6.25 * height - 5 * age + 5    // 남성
+      bmr = Math.round(bmr)
+    }
+
+    // 활동계수 매핑
+    const activityMap: Record<string, number> = {
+      '거의 안 함': 1.2, '주 1~2회': 1.375, '주 3~4회': 1.55,
+      '주 5회 이상': 1.725, '운동선수급': 1.9,
+    }
+    const activityLevel = body.activity_level || '주 3~4회'
+    const actFactor = activityMap[activityLevel] || 1.55
+    const tdee = bmr > 0 ? Math.round(bmr * actFactor) : 0
+    const calorieTarget = tdee > 0 ? tdee - 500 : 0  // 500kcal 적자
+
+    // axis_scores JSON 직렬화
+    const axisScores = body.axis_scores || {}
+    const axisJson   = JSON.stringify(axisScores)
+
+    // pain_gate 배열 직렬화
+    const painGate = Array.isArray(body.pain_gate) ? JSON.stringify(body.pain_gate) : '[]'
+
+    await db.prepare(`
+      INSERT INTO fitness_responses
+        (id, b2b_code, ref_code, user_name, gender, age, height, weight, phone,
+         stage1_json, stage2_json, stage3_json, stage4_json,
+         ohaeng_type, disp_type, mbti_full,
+         bc_code, bc_nickname, axis_scores, raw_answers,
+         goal_weight, weight_loss_pct,
+         exercise_response, pain_gate,
+         bmr, tdee, calorie_target, activity_level,
+         bfr_current, bfr_target)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    `).bind(
+      id,
+      body.b2b_code    || null,
+      body.ref_code    || null,
+      body.user_name   || '고객',
+      body.gender      || null,
+      String(body.age  || ''),
+      String(height    || ''),
+      String(weight    || ''),
+      body.phone       || null,
+      body.stage1_json ? JSON.stringify(body.stage1_json) : null,
+      body.stage2_json ? JSON.stringify(body.stage2_json) : null,
+      body.stage3_json ? JSON.stringify(body.stage3_json) : null,
+      body.stage4_json ? JSON.stringify(body.stage4_json) : null,
+      body.ohaeng_type || null,
+      body.disp_type   || null,
+      body.mbti_full   || null,
+      body.bc_code     || null,
+      body.bc_nickname || null,
+      axisJson,
+      body.raw_answers ? JSON.stringify(body.raw_answers) : null,
+      parseFloat(body.goal_weight)    || null,
+      parseFloat(body.weight_loss_pct)|| null,
+      body.exercise_response || null,
+      painGate,
+      bmr   || null,
+      tdee  || null,
+      calorieTarget || null,
+      activityLevel,
+      parseFloat(body.bfr_current) || null,
+      parseFloat(body.bfr_target)  || null,
+    ).run()
+
+    return c.json({
+      ok:     true,
+      id,
+      result_url: `/result-fitness/${id}`,
+      bmr,
+      tdee,
+      calorie_target: calorieTarget,
+    })
+  } catch (e: any) {
+    console.error('[/api/f/diagnosis] 오류:', e)
+    return c.json({ error: String(e), ok: false }, 500)
+  }
+})
+
 // GET /result-salon/:id — 살롱 결과지 HTML 서빙
 app.get('/result-salon/:id', async (c) => {
   const id = c.req.param('id')
