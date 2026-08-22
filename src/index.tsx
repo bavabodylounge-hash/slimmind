@@ -5285,6 +5285,10 @@ app.post('/api/b2b/subaccounts', requireB2B(), async (c) => {
   if (!db) return c.json({ ok: false, error: 'DB 없음' }, 500)
   const user = c.get('user') as JwtPayload
   const partnerCode = user?.code || ''
+
+  // ✅ parent_code 컬럼 선제 추가 (없으면) — 첫 시도부터 성공하도록
+  try { await db.prepare("ALTER TABLE b2b_partners ADD COLUMN parent_code TEXT DEFAULT NULL").run() } catch (_) {}
+
   try {
     const body = await c.req.json() as {
       name?: string
@@ -8586,11 +8590,11 @@ app.post('/api/survey/notify', async (c) => {
     if (!result_id) {
       try {
         const latestH = await db.prepare(
-          `SELECT id, name FROM hospital_responses
+          `SELECT id, user_name FROM hospital_responses
            WHERE ref_code = ?
            ORDER BY created_at DESC LIMIT 1`
         ).bind(ref_code).first<any>()
-        if (latestH?.id) { result_id = latestH.id; if (!resolved_user_name && latestH.name) resolved_user_name = latestH.name }
+        if (latestH?.id) { result_id = latestH.id; if (!resolved_user_name && latestH.user_name) resolved_user_name = latestH.user_name }
       } catch (_) {}
     }
     if (!result_id) {
@@ -8615,8 +8619,8 @@ app.post('/api/survey/notify', async (c) => {
     // result_id로 user_name 보강 (hospital_responses 우선)
     if (result_id && !resolved_user_name) {
       try {
-        const r = await db.prepare(`SELECT name FROM hospital_responses WHERE id = ? LIMIT 1`).bind(result_id).first<any>()
-        if (r?.name) resolved_user_name = r.name
+        const r = await db.prepare(`SELECT user_name FROM hospital_responses WHERE id = ? LIMIT 1`).bind(result_id).first<any>()
+        if (r?.user_name) resolved_user_name = r.user_name
       } catch (_) {}
       if (!resolved_user_name) {
         try {
