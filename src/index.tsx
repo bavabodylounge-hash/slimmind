@@ -3979,12 +3979,104 @@ app.get('/a/:code', async (c) => {
   return htmlResponse(html)
 })
 
-// ─── /f/:code — 하위 호환 리다이렉트 (구 피트니스/미용실 URL → /salon/:code) ──
-// ⚠️ LEGACY: 기존 QR코드/북마크 하위 호환을 위해 301 영구 리다이렉트만 처리
-// 신규 등록은 모두 /salon/:code 로 발급됩니다.
+// ─── /f/:code — 피트니스 전용 질문지 ────────────────────────
+// B2B 피트니스 파트너 전용: survey_category='fitness' 인 B2B 코드만 허용
+// ⚠️ BUG-FIX: 구 코드가 /salon/:code 로 301 리다이렉트 → /salon/:code 에서 다시 /f/:code 로 302 → 무한 루프
+//    → survey-fitness.html 직접 서빙으로 교체
 app.get('/f/:code', async (c) => {
+  const db = c.env.DB
   const rawCode = c.req.param('code').toUpperCase()
-  return c.redirect(`/salon/${rawCode}`, 301)
+
+  let partner: any = null
+  try {
+    partner = await db.prepare(
+      'SELECT code, name, brand_name, brand_color, brand_logo_url, status, survey_category FROM b2b_partners WHERE code = ?'
+    ).bind(rawCode).first<any>()
+  } catch (_) {
+    partner = await db.prepare(
+      'SELECT code, name, brand_name, brand_color, brand_logo_url, status FROM b2b_partners WHERE code = ?'
+    ).bind(rawCode).first<any>()
+  }
+
+  // 코드 없거나 정지된 경우
+  if (!partner || partner.status === 'suspended') {
+    return c.html('<!DOCTYPE html><html><body style="font-family:sans-serif;text-align:center;padding:60px"><h2>유효하지 않은 링크입니다</h2><p>담당자에게 문의해주세요.</p></body></html>', 404)
+  }
+
+  // fitness 이외 카테고리가 /f/:code 로 잘못 접근 시 올바른 라우트로 리다이렉트
+  // ※ salon 은 /salon/, hospital 은 /h/, aesthetic 은 /a/, integrated 는 /s/ 로 보냄
+  if (partner.survey_category && partner.survey_category !== 'fitness') {
+    const catPath: Record<string, string> = { hospital: '/h', aesthetic: '/a', salon: '/salon', integrated: '/s' }
+    return c.redirect(`${catPath[partner.survey_category] || '/s'}/${rawCode}`, 302)
+  }
+
+  // scan_count 증가
+  try {
+    await db.prepare(
+      "UPDATE b2b_partners SET qr_scan_count = qr_scan_count + 1, updated_at=datetime('now') WHERE code=?"
+    ).bind(rawCode).run()
+  } catch (_) {}
+
+  const bColor = partner.brand_color || '#22c55e'   // 피트니스 기본 그린
+  const bName  = partner.brand_name  || partner.name
+  const bLogo  = partner.brand_logo_url || ''
+
+  const brandInject = `
+<script>
+  window.__BRAND__ = {
+    code: ${JSON.stringify(rawCode)},
+    type: 'B2B',
+    brand_name: ${JSON.stringify(bName)},
+    brand_color: ${JSON.stringify(bColor)},
+    brand_logo_url: ${JSON.stringify(bLogo)},
+    ref_code: ${JSON.stringify(rawCode)},
+    survey_category: 'fitness'
+  };
+  document.documentElement.style.setProperty('--brand-color', ${JSON.stringify(bColor)});
+</script>`
+
+  // ref_code 자동 주입 스크립트
+  const refScript = `
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    if (window.__BRAND__ && window.__BRAND__.ref_code) {
+      try {
+        var url = new URL(window.location.href);
+        if (!url.searchParams.get('ref')) {
+          url.searchParams.set('ref', window.__BRAND__.ref_code);
+          window.history.replaceState({}, '', url.toString());
+        }
+      } catch(e) {}
+    }
+  });
+</script>`
+
+  const siteBase = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.kr' } })()
+  const ogInject = `
+<meta property="og:type"         content="website">
+<meta property="og:site_name"    content="SlimMind">
+<meta property="og:title"        content="SlimMind | 피트니스 바디코드 진단">
+<meta property="og:description"  content="당신의 몸은 하나의 코드입니다. 피트니스 전문 분석으로 최적의 운동 처방을 받아보세요.">
+<meta property="og:url"          content="${siteBase}/f/${rawCode}">
+<meta property="og:image"        content="${siteBase}/static/og-slimmind.png">
+<meta property="og:image:width"  content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:type"   content="image/png">
+<meta name="twitter:card"        content="summary_large_image">
+<meta name="twitter:title"       content="SlimMind | 피트니스 바디코드 진단">
+<meta name="twitter:description" content="당신의 몸은 하나의 코드입니다. 피트니스 전문 분석으로 최적의 운동 처방을 받아보세요.">
+<meta name="twitter:image"       content="${siteBase}/static/og-slimmind.png">`
+
+  // 피트니스 전용 질문지 서빙
+  let html: string
+  try {
+    html = await fetchAsset(c.env.ASSETS, '/survey-fitness.html')
+  } catch {
+    html = await fetchAsset(c.env.ASSETS, '/index.html')
+  }
+  html = html.replace('</head>', `${ogInject}\n${brandInject}\n</head>`)
+  html = html.replace('</body>', `${refScript}\n</body>`)
+  return htmlResponse(html)
 })
 
 // ─── /salon/:code — 미용실(살롱) 전용 질문지 ────────────────────────
