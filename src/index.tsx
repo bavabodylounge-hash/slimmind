@@ -1056,7 +1056,7 @@ app.get('/api/b2b/brand/:code', async (c) => {
     const db = c.env.DB
     const code = c.req.param('code').toUpperCase()
     const partner = await db.prepare(
-      'SELECT code, name, brand_name, brand_color, brand_logo_url, status FROM b2b_partners WHERE code = ?'
+      'SELECT code, name, brand_name, brand_color, brand_logo_url, status, survey_category FROM b2b_partners WHERE code = ?'
     ).bind(code).first<any>()
 
     if (!partner || partner.status === 'suspended') {
@@ -1069,6 +1069,7 @@ app.get('/api/b2b/brand/:code', async (c) => {
       brand_name: partner.brand_name || partner.name,
       brand_color: partner.brand_color || '#6366f1',
       brand_logo_url: partner.brand_logo_url || null,
+      survey_category: partner.survey_category || 'integrated',
     })
   } catch (e: any) {
     console.error('[b2b/brand] error:', e?.message)
@@ -6991,6 +6992,23 @@ app.get('/result-hospital/:id', async (c) => {
     // __HOSPITAL_RESULT_ID__ + 배포 타임스탬프(캐시 버스팅용) 주입
     // + localStorage 즉시 저장 (API 응답 대기 없이 진입 즉시 저장 → PWA 세션 복원 보장)
     // + __REF_CODE__ 주입 → _syncDailyCheckDB()가 b2b_code/ref_code를 클라이언트에서 직접 사용
+
+    // ── B2B 화이트라벨: 결과지에도 브랜드컬러 서버사이드 주입 ──
+    let rhBrandScript = ''
+    if (db && injectedRefCode && injectedRefCode.startsWith('B2B-')) {
+      try {
+        const bp = await db.prepare(
+          'SELECT brand_name, brand_color, brand_logo_url FROM b2b_partners WHERE code=? AND status!=\'suspended\' LIMIT 1'
+        ).bind(injectedRefCode).first<any>()
+        if (bp) {
+          const bColor = (bp.brand_color || '#8b6db5').replace(/[^#0-9a-fA-F]/g, '')
+          const bName  = (bp.brand_name  || '').replace(/[<>"]/g, '')
+          const bLogo  = (bp.brand_logo_url || '').replace(/[<>"]/g, '')
+          rhBrandScript = `<script>window.__BRAND__={code:"${injectedRefCode}",type:"B2B",brand_name:"${bName}",brand_color:"${bColor}",brand_logo_url:"${bLogo}",ref_code:"${injectedRefCode}",survey_category:"hospital"};</script>\n<style>:root{--brand-color:${bColor};--brand-color-light:${bColor}22;}.result-header,.v4-header{background:var(--brand-color)!important;}.result-action-btn,.download-btn,.share-btn{background:var(--brand-color)!important;border-color:var(--brand-color)!important;}.bc-badge,.section-title-bar{background:var(--brand-color)!important;}.progress-fill,.score-bar-fill{background:var(--brand-color)!important;}</style>\n`
+        }
+      } catch (_) {}
+    }
+
     const deployTs = Date.now()
     const idScript = `<script>
 window.__HOSPITAL_RESULT_ID__ = ${JSON.stringify(id)};
@@ -7031,8 +7049,8 @@ try {
     // 동적 manifest: start_url을 현재 결과지 URL로 교체
     // iOS "홈 화면에 추가" 시 저장되는 start_url이 결과지 URL이 되도록
     const dynamicManifestHref = `/api/manifest.json?for=${encodeURIComponent('/result-hospital/' + id)}`
-    // KAKAO_ESCAPE_SCRIPT + idScript → <head> 최상단 첫 번째로 주입 (가장 먼저 실행)
-    html = html.replace('<head>', `<head>\n${KAKAO_ESCAPE_SCRIPT}\n${idScript}`)
+    // KAKAO_ESCAPE_SCRIPT + idScript + __BRAND__ → <head> 최상단 첫 번째로 주입 (가장 먼저 실행)
+    html = html.replace('<head>', `<head>\n${KAKAO_ESCAPE_SCRIPT}\n${idScript}${rhBrandScript}`)
     // manifest 링크 교체 (static manifest.json의 start_url="/" → 동적 결과지 URL로)
     html = html.replace(
       /<link[^>]+rel=["']manifest["'][^>]*>/i,
@@ -7470,6 +7488,23 @@ app.get('/result-aesthetic/:id', async (c) => {
     // __AESTHETIC_RESULT_ID__ + 배포 타임스탬프(캐시 버스팅용) 주입
     // + localStorage 즉시 저장 (API 응답 대기 없이 진입 즉시 저장 → PWA 세션 복원 보장)
     // + __REF_CODE__ 주입 → _syncDailyCheckDB()가 b2b_code/ref_code를 클라이언트에서 직접 사용
+
+    // ── B2B 화이트라벨: 에스테틱 결과지에도 브랜드컬러 서버사이드 주입 ──
+    let aeBrandScript = ''
+    if (db && injectedRefCode && injectedRefCode.startsWith('B2B-')) {
+      try {
+        const bpAe = await db.prepare(
+          'SELECT brand_name, brand_color, brand_logo_url FROM b2b_partners WHERE code=? AND status!=\'suspended\' LIMIT 1'
+        ).bind(injectedRefCode).first<any>()
+        if (bpAe) {
+          const bColor = (bpAe.brand_color || '#b56d7f').replace(/[^#0-9a-fA-F]/g, '')
+          const bName  = (bpAe.brand_name  || '').replace(/[<>"]/g, '')
+          const bLogo  = (bpAe.brand_logo_url || '').replace(/[<>"]/g, '')
+          aeBrandScript = `<script>window.__BRAND__={code:"${injectedRefCode}",type:"B2B",brand_name:"${bName}",brand_color:"${bColor}",brand_logo_url:"${bLogo}",ref_code:"${injectedRefCode}",survey_category:"aesthetic"};</script>\n<style>:root{--brand-color:${bColor};--brand-color-light:${bColor}22;}.result-header,.v4-header{background:var(--brand-color)!important;}.result-action-btn,.download-btn,.share-btn{background:var(--brand-color)!important;border-color:var(--brand-color)!important;}.bc-badge,.section-title-bar{background:var(--brand-color)!important;}.progress-fill,.score-bar-fill{background:var(--brand-color)!important;}</style>\n`
+        }
+      } catch (_) {}
+    }
+
     const deployTs = Date.now()
     const idScript = `<script>
 window.__AESTHETIC_RESULT_ID__ = ${JSON.stringify(id)};
@@ -7500,8 +7535,8 @@ try {
 <meta name="twitter:image"       content="${raBase}/static/og-slimmind.png">`
     // 동적 manifest: start_url을 현재 에스테틱 결과지 URL로 교체
     const dynamicManifestHref = `/api/manifest.json?for=${encodeURIComponent('/result-aesthetic/' + id)}`
-    // ① KAKAO_ESCAPE_SCRIPT + idScript → <head> 최상단 첫 번째로 주입 (가장 먼저 실행)
-    html = html.replace('<head>', `<head>\n${KAKAO_ESCAPE_SCRIPT}\n${idScript}`)
+    // ① KAKAO_ESCAPE_SCRIPT + idScript + __BRAND__ → <head> 최상단 첫 번째로 주입 (가장 먼저 실행)
+    html = html.replace('<head>', `<head>\n${KAKAO_ESCAPE_SCRIPT}\n${idScript}${aeBrandScript}`)
     // ② manifest 링크 교체 (static manifest.json의 start_url="/" → 동적 결과지 URL로)
     html = html.replace(
       /<link[^>]+rel=["']manifest["'][^>]*>/i,
@@ -7876,11 +7911,29 @@ app.get('/result-fitness/:id', async (c) => {
       } catch (_) {}
       try {
         const fitRow = await db.prepare(
-          `SELECT ref_code FROM fitness_responses WHERE id = ? LIMIT 1`
+          `SELECT ref_code, b2b_code FROM fitness_responses WHERE id = ? LIMIT 1`
         ).bind(id).first<any>()
+        // ref_code 우선, 없으면 b2b_code 폴백 (fitness_responses는 b2b_code 필드 사용)
         if (fitRow?.ref_code) injectedRefCode = fitRow.ref_code
+        else if (fitRow?.b2b_code) injectedRefCode = fitRow.b2b_code
       } catch (_) {}
     }
+    // ── B2B 화이트라벨: 피트니스 결과지에도 브랜드컬러 서버사이드 주입 ──
+    let fitBrandScript = ''
+    if (db && injectedRefCode && injectedRefCode.startsWith('B2B-')) {
+      try {
+        const bpFit = await db.prepare(
+          'SELECT brand_name, brand_color, brand_logo_url FROM b2b_partners WHERE code=? AND status!=\'suspended\' LIMIT 1'
+        ).bind(injectedRefCode).first<any>()
+        if (bpFit) {
+          const bColor = (bpFit.brand_color || '#6d89b5').replace(/[^#0-9a-fA-F]/g, '')
+          const bName  = (bpFit.brand_name  || '').replace(/[<>"]/g, '')
+          const bLogo  = (bpFit.brand_logo_url || '').replace(/[<>"]/g, '')
+          fitBrandScript = `<script>window.__BRAND__={code:"${injectedRefCode}",type:"B2B",brand_name:"${bName}",brand_color:"${bColor}",brand_logo_url:"${bLogo}",ref_code:"${injectedRefCode}",survey_category:"fitness"};</script>\n<style>:root{--brand-color:${bColor};--brand-color-light:${bColor}22;}.result-header,.v4-header{background:var(--brand-color)!important;}.result-action-btn,.download-btn,.share-btn{background:var(--brand-color)!important;border-color:var(--brand-color)!important;}.bc-badge,.section-title-bar{background:var(--brand-color)!important;}.progress-fill,.score-bar-fill{background:var(--brand-color)!important;}</style>\n`
+        }
+      } catch (_) {}
+    }
+
     const deployTs = Date.now()
     const idScript = `<script>
 window.__FITNESS_RESULT_ID__ = ${JSON.stringify(id)};
@@ -7910,7 +7963,7 @@ try {
 <meta name="twitter:title"       content="SlimMind | 피트니스 바디코드 맞춤 결과지">
 <meta name="twitter:image"       content="${rfBase}/static/og-slimmind.png">`
     const dynamicManifestHref = `/api/manifest.json?for=${encodeURIComponent('/result-fitness/' + id)}`
-    html = html.replace('<head>', `<head>\n${KAKAO_ESCAPE_SCRIPT}\n${idScript}`)
+    html = html.replace('<head>', `<head>\n${KAKAO_ESCAPE_SCRIPT}\n${idScript}${fitBrandScript}`)
     html = html.replace(
       /<link[^>]+rel=["']manifest["'][^>]*>/i,
       `<link rel="manifest" href="${dynamicManifestHref}">`
@@ -8198,9 +8251,44 @@ app.get('/result-salon/:id', async (c) => {
   const id = c.req.param('id')
   try {
     let html = await fetchAsset(c.env.ASSETS, '/result-salon.html')
+    const db = (c.env as any).DB as D1Database | undefined
+
+    // ── DB에서 ref_code 조회 → B2B 브랜드 주입 ──
+    let salonRefCode: string | null = null
+    if (db) {
+      try {
+        const sRow = await db.prepare(
+          `SELECT ref_code FROM salon_responses WHERE id=? LIMIT 1`
+        ).bind(id).first<any>()
+        if (sRow?.ref_code) salonRefCode = sRow.ref_code
+        if (!salonRefCode) {
+          const dRow = await db.prepare(
+            `SELECT ref_code FROM diagnosis_results WHERE id=? LIMIT 1`
+          ).bind(id).first<any>()
+          if (dRow?.ref_code) salonRefCode = dRow.ref_code
+        }
+      } catch (_) {}
+    }
+
+    // ── B2B 화이트라벨: 살롱 결과지에도 브랜드컬러 서버사이드 주입 ──
+    let salonBrandScript = ''
+    if (db && salonRefCode && salonRefCode.startsWith('B2B-')) {
+      try {
+        const bpSalon = await db.prepare(
+          'SELECT brand_name, brand_color, brand_logo_url FROM b2b_partners WHERE code=? AND status!=\'suspended\' LIMIT 1'
+        ).bind(salonRefCode).first<any>()
+        if (bpSalon) {
+          const bColor = (bpSalon.brand_color || '#b19371').replace(/[^#0-9a-fA-F]/g, '')
+          const bName  = (bpSalon.brand_name  || '').replace(/[<>"]/g, '')
+          const bLogo  = (bpSalon.brand_logo_url || '').replace(/[<>"]/g, '')
+          salonBrandScript = `<script>window.__BRAND__={code:"${salonRefCode}",type:"B2B",brand_name:"${bName}",brand_color:"${bColor}",brand_logo_url:"${bLogo}",ref_code:"${salonRefCode}",survey_category:"salon"};</script>\n<style>:root{--brand-color:${bColor};--brand-color-light:${bColor}22;}.result-header,.v4-header{background:var(--brand-color)!important;}.result-action-btn,.download-btn,.share-btn{background:var(--brand-color)!important;border-color:var(--brand-color)!important;}.bc-badge,.section-title-bar{background:var(--brand-color)!important;}.progress-fill,.score-bar-fill{background:var(--brand-color)!important;}</style>\n`
+        }
+      } catch (_) {}
+    }
+
     const deployTs = Date.now()
     // result-salon.html은 result-hospital.html 복제본으로 __HOSPITAL_RESULT_ID__ 참조 유지
-    const idScript = `<script>\nwindow.__HOSPITAL_RESULT_ID__ = ${JSON.stringify(id)};\nwindow.__SALON_RESULT_ID__ = ${JSON.stringify(id)};\nwindow.__DEPLOY_TS__ = ${deployTs};\ntry {\n  localStorage.setItem('sm_last_result_id', ${JSON.stringify(id)});\n  localStorage.setItem('sm_survey_category', 'salon');\n} catch(e) {}\n<\/script>\n`
+    const idScript = `<script>\nwindow.__HOSPITAL_RESULT_ID__ = ${JSON.stringify(id)};\nwindow.__SALON_RESULT_ID__ = ${JSON.stringify(id)};\nwindow.__DEPLOY_TS__ = ${deployTs};\nwindow.__REF_CODE__ = ${JSON.stringify(salonRefCode)};\ntry {\n  localStorage.setItem('sm_last_result_id', ${JSON.stringify(id)});\n  localStorage.setItem('sm_survey_category', 'salon');\n  if (${JSON.stringify(salonRefCode)}) {\n    localStorage.setItem('sm_ref_code_' + ${JSON.stringify(id)}, ${JSON.stringify(salonRefCode)});\n  }\n} catch(e) {}\n<\/script>\n`
     const rsBase = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.kr' } })()
     const rsOg = `
 <meta property="og:type"         content="website">
@@ -8216,7 +8304,7 @@ app.get('/result-salon/:id', async (c) => {
 <meta name="twitter:title"       content="SlimMind | 살롱 케어 맞춤 결과지">
 <meta name="twitter:image"       content="${rsBase}/static/og-slimmind.png">`
     const dynamicManifestHref = `/api/manifest.json?for=${encodeURIComponent('/result-salon/' + id)}`
-    html = html.replace('<head>', `<head>\n${KAKAO_ESCAPE_SCRIPT}\n${idScript}`)
+    html = html.replace('<head>', `<head>\n${KAKAO_ESCAPE_SCRIPT}\n${idScript}${salonBrandScript}`)
     html = html.replace(
       /<link[^>]+rel=["']manifest["'][^>]*>/i,
       `<link rel="manifest" href="${dynamicManifestHref}">`
