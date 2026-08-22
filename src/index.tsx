@@ -1670,13 +1670,37 @@ app.get('/api/b2b/results', requireB2B(), async (c) => {
     const regFilter = buildFilters([user.code])
     const regQuery = `SELECT id, user_name, bc_primary, axis_primary, created_at, ref_code, 'integrated' AS result_type
       FROM results WHERE ref_code=?${regFilter.clause}`
-    const [regRes, drRes] = await Promise.all([
+    // ✅ CRITICAL FIX: fitness_responses도 UNION — 피트니스 파트너 대시보드 미수신 버그 수정
+    const fitFilter = buildFilters([user.code])
+    const fitFilterDate = (() => {
+      // fitness_responses는 completed_at 컬럼이 없고 created_at 사용
+      let clause = ''; const p = [user.code]
+      if (search)   { clause += ' AND user_name LIKE ?'; p.push(`%${search}%`) }
+      if (fromDate) { clause += ' AND date(created_at) >= ?'; p.push(fromDate) }
+      if (toDate)   { clause += ' AND date(created_at) <= ?'; p.push(toDate) }
+      return { clause, params: p }
+    })()
+    const fitQuery = `
+      SELECT id, user_name,
+             bc_code AS bc_primary,
+             bc_code AS axis_primary,
+             created_at, ref_code,
+             'fitness' AS result_type
+      FROM fitness_responses
+      WHERE ref_code=?${fitFilterDate.clause}
+    `
+    const [regRes, drRes, fitRes] = await Promise.all([
       db.prepare(regQuery).bind(...regFilter.params).all<any>(),
       db.prepare(drQuery).bind(...drFilter.params).all<any>(),
+      db.prepare(fitQuery).bind(...fitFilterDate.params).all<any>(),
     ])
+    // diagnosis_results에 이미 있는 F- ID는 fitness_responses에서 중복 제거
+    const drIds = new Set((drRes.results||[]).map((r:any)=>r.id))
+    const fitUniq = (fitRes.results||[]).filter((r:any)=>!drIds.has(r.id))
     const combined = [
       ...(regRes.results || []),
       ...(drRes.results || []),
+      ...fitUniq,
     ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     const total = combined.length
     return c.json({
@@ -1812,20 +1836,28 @@ app.get('/api/b2b/stats', requireB2B(), async (c) => {
     })
   }
 
-  // ✅ BUG-FIX: 일반 파트너도 diagnosis_results 포함
-  const [total, thisMonth, nickDist, today, thisWeek, drTotal] = await Promise.all([
+  // ✅ CRITICAL FIX: 일반 파트너 — diagnosis_results + fitness_responses 모두 포함
+  const [total, thisMonth, nickDist, today, thisWeek, drTotal, fitTotal, fitMonth, fitToday, fitWeek] = await Promise.all([
     db.prepare('SELECT COUNT(*) as cnt FROM results WHERE ref_code=?').bind(user.code).first<any>(),
     db.prepare("SELECT COUNT(*) as cnt FROM results WHERE ref_code=? AND strftime('%Y-%m', created_at)=strftime('%Y-%m','now')").bind(user.code).first<any>(),
     db.prepare('SELECT bc_primary, COUNT(*) as cnt FROM results WHERE ref_code=? GROUP BY bc_primary ORDER BY cnt DESC LIMIT 5').bind(user.code).all<any>(),
     db.prepare("SELECT COUNT(*) as cnt FROM results WHERE ref_code=? AND date(created_at)=date('now')").bind(user.code).first<any>(),
     db.prepare("SELECT COUNT(*) as cnt FROM results WHERE ref_code=? AND created_at>=datetime('now','-7 days')").bind(user.code).first<any>(),
     db.prepare('SELECT COUNT(*) as cnt FROM diagnosis_results WHERE ref_code=?').bind(user.code).first<any>(),
+    // ✅ CRITICAL FIX: fitness_responses 카운트 추가 (피트니스 파트너 대시보드 0건 버그 수정)
+    db.prepare('SELECT COUNT(*) as cnt FROM fitness_responses WHERE ref_code=?').bind(user.code).first<any>(),
+    db.prepare("SELECT COUNT(*) as cnt FROM fitness_responses WHERE ref_code=? AND strftime('%Y-%m', created_at)=strftime('%Y-%m','now')").bind(user.code).first<any>(),
+    db.prepare("SELECT COUNT(*) as cnt FROM fitness_responses WHERE ref_code=? AND date(created_at)=date('now')").bind(user.code).first<any>(),
+    db.prepare("SELECT COUNT(*) as cnt FROM fitness_responses WHERE ref_code=? AND created_at>=datetime('now','-7 days')").bind(user.code).first<any>(),
   ])
+  // 신규 저장은 diagnosis_results+fitness_responses 둘 다 들어가므로 드중복:
+  // fitTotal에서 drTotal에 이미 포함된 분(신규 저장)은 제외, 구데이터만 합산
+  const fitOnlyCnt = Math.max(0, (fitTotal?.cnt || 0) - (drTotal?.cnt || 0))
   return c.json({
-    total: (total?.cnt || 0) + (drTotal?.cnt || 0),
-    this_month: thisMonth?.cnt || 0,
-    today: today?.cnt || 0,
-    this_week: thisWeek?.cnt || 0,
+    total: (total?.cnt || 0) + (drTotal?.cnt || 0) + fitOnlyCnt,
+    this_month: (thisMonth?.cnt || 0) + (fitMonth?.cnt || 0),
+    today: (today?.cnt || 0) + (fitToday?.cnt || 0),
+    this_week: (thisWeek?.cnt || 0) + (fitWeek?.cnt || 0),
     nickname_distribution: nickDist.results,
   })
 })
@@ -5441,7 +5473,18 @@ app.get('/api/b2b/result-link/:id', requireB2B(), async (c) => {
       }
     }
 
-    // ── 3) 구버전 results 테이블 ──
+    // ── 3) F- 접두사: fitness_responses (구데이터 — diagnosis_results 동기화 전 저장분) ──
+    if (resultId.startsWith('F-')) {
+      const fitRow = await db.prepare(
+        "SELECT id, ref_code FROM fitness_responses WHERE id = ? LIMIT 1"
+      ).bind(resultId).first<any>()
+      if (fitRow) {
+        if (fitRow.ref_code !== partnerCode) return c.json({ error: '권한 없음' }, 403)
+        return c.json({ url: `/result-fitness/${resultId}` })
+      }
+    }
+
+    // ── 4) 구버전 results 테이블 ──
     const result = await db.prepare(
       "SELECT id FROM results WHERE id = ? AND ref_code = ?"
     ).bind(resultId, partnerCode).first<any>()
@@ -7939,6 +7982,50 @@ app.post('/api/f/diagnosis', async (c) => {
       parseFloat(body.bfr_current) || null,
       parseFloat(body.bfr_target)  || null,
     ).run()
+
+    // ══════════════════════════════════════════════════════════════════
+    // ✅ CRITICAL FIX: diagnosis_results에도 동시 저장
+    // B2B 대시보드(/api/b2b/results)는 diagnosis_results만 조회하므로
+    // fitness_responses에만 저장하면 대시보드에 데이터가 절대 뜨지 않음.
+    // ══════════════════════════════════════════════════════════════════
+    try {
+      const top3Axes = (() => {
+        try {
+          const ax = typeof body.axis_scores === 'object' && body.axis_scores
+            ? Object.entries(body.axis_scores as Record<string,number>)
+                .sort((a,b)=>(b[1] as number)-(a[1] as number))
+                .slice(0,3).map(([k])=>k)
+            : []
+          return ax.length ? JSON.stringify(ax) : null
+        } catch { return null }
+      })()
+      await db.prepare(`
+        INSERT OR IGNORE INTO diagnosis_results
+          (id, user_name, bc_primary, bc_code_key, bc_secondary, bc_nickname,
+           top3_axes, axis_scores, region, texture, ohaeng_type, mbti_full,
+           ref_code, survey_category, completed_at, created_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
+      `).bind(
+        id,
+        body.user_name  || body.name || '고객',
+        body.bc_primary || body.bc_nickname || null,
+        body.bc_code_key || body.bc_code || null,
+        body.bc_secondary || null,
+        body.bc_nickname  || null,
+        top3Axes,
+        axisJson,
+        body.region  || null,
+        body.texture || null,
+        body.ohaeng_type || null,
+        body.mbti_full   || null,
+        body.ref_code    || null,
+        'fitness',
+        body.completed_at || new Date().toISOString(),
+      ).run()
+    } catch (drErr: any) {
+      // diagnosis_results INSERT 실패는 무시 (fitness_responses는 이미 성공)
+      console.warn('[/api/f/diagnosis] diagnosis_results 동기화 실패(무시):', drErr?.message)
+    }
 
     return c.json({
       ok:     true,
