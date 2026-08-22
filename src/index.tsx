@@ -1667,41 +1667,54 @@ app.get('/api/b2b/results', requireB2B(), async (c) => {
       total_pages: Math.ceil(total / pageSize),
     })
   } else {
-    const regFilter = buildFilters([user.code])
-    const regQuery = `SELECT id, user_name, bc_primary, axis_primary, created_at, ref_code, 'integrated' AS result_type
-      FROM results WHERE ref_code=?${regFilter.clause}`
-    // ✅ CRITICAL FIX: fitness_responses도 UNION — 피트니스 파트너 대시보드 미수신 버그 수정
-    const fitFilter = buildFilters([user.code])
-    const fitFilterDate = (() => {
-      // fitness_responses는 completed_at 컬럼이 없고 created_at 사용
-      let clause = ''; const p = [user.code]
+    // ── 비병원 파트너: diagnosis_results(1순위) + 구데이터 전용 테이블 UNION ──
+    // diagnosis_results에 없는 구데이터(F-/S-/A- 접두사)만 전용 테이블에서 보완
+    const buildLegacyFilter = (baseParams: any[]) => {
+      let clause = ''; const p = [...baseParams]
       if (search)   { clause += ' AND user_name LIKE ?'; p.push(`%${search}%`) }
       if (fromDate) { clause += ' AND date(created_at) >= ?'; p.push(fromDate) }
       if (toDate)   { clause += ' AND date(created_at) <= ?'; p.push(toDate) }
       return { clause, params: p }
-    })()
-    const fitQuery = `
-      SELECT id, user_name,
-             bc_code AS bc_primary,
-             bc_code AS axis_primary,
-             created_at, ref_code,
-             'fitness' AS result_type
-      FROM fitness_responses
-      WHERE ref_code=?${fitFilterDate.clause}
-    `
-    const [regRes, drRes, fitRes] = await Promise.all([
+    }
+    const regFilter   = buildLegacyFilter([user.code])
+    const fitFilter   = buildLegacyFilter([user.code])
+    const salonFilter = buildLegacyFilter([user.code])
+    const aeFilter    = buildLegacyFilter([user.code])
+
+    const regQuery = `SELECT id, user_name, bc_primary, axis_primary, created_at, ref_code,
+      'integrated' AS result_type FROM results WHERE ref_code=?${regFilter.clause}`
+    const fitQuery = `SELECT id, user_name, bc_code AS bc_primary, bc_code AS axis_primary,
+      created_at, ref_code, 'fitness' AS result_type
+      FROM fitness_responses WHERE ref_code=?${fitFilter.clause}`
+    const salonQuery = `SELECT id, user_name, bc_code AS bc_primary, bc_code AS axis_primary,
+      created_at, ref_code, 'salon' AS result_type
+      FROM salon_responses WHERE ref_code=?${salonFilter.clause}`
+    const aeQuery = `SELECT id, user_name, bc_code AS bc_primary, bc_code AS axis_primary,
+      created_at, ref_code, 'aesthetic' AS result_type
+      FROM aesthetic_responses WHERE ref_code=?${aeFilter.clause}`
+
+    const [regRes, drRes, fitRes, salonRes, aeRes] = await Promise.all([
       db.prepare(regQuery).bind(...regFilter.params).all<any>(),
       db.prepare(drQuery).bind(...drFilter.params).all<any>(),
-      db.prepare(fitQuery).bind(...fitFilterDate.params).all<any>(),
+      db.prepare(fitQuery).bind(...fitFilter.params).all<any>().catch(() => ({ results: [] as any[] })),
+      db.prepare(salonQuery).bind(...salonFilter.params).all<any>().catch(() => ({ results: [] as any[] })),
+      db.prepare(aeQuery).bind(...aeFilter.params).all<any>().catch(() => ({ results: [] as any[] })),
     ])
-    // diagnosis_results에 이미 있는 F- ID는 fitness_responses에서 중복 제거
+
+    // diagnosis_results에 이미 있는 ID는 전용 테이블에서 중복 제거
     const drIds = new Set((drRes.results||[]).map((r:any)=>r.id))
-    const fitUniq = (fitRes.results||[]).filter((r:any)=>!drIds.has(r.id))
+    const fitUniq   = (fitRes.results||[]).filter((r:any)=>!drIds.has(r.id))
+    const salonUniq = (salonRes.results||[]).filter((r:any)=>!drIds.has(r.id))
+    const aeUniq    = (aeRes.results||[]).filter((r:any)=>!drIds.has(r.id))
+
     const combined = [
       ...(regRes.results || []),
       ...(drRes.results || []),
       ...fitUniq,
+      ...salonUniq,
+      ...aeUniq,
     ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
     const total = combined.length
     return c.json({
       results: combined.slice(offset, offset + pageSize),
@@ -1836,29 +1849,44 @@ app.get('/api/b2b/stats', requireB2B(), async (c) => {
     })
   }
 
-  // ✅ CRITICAL FIX: 일반 파트너 — diagnosis_results + fitness_responses 모두 포함
-  const [total, thisMonth, nickDist, today, thisWeek, drTotal, fitTotal, fitMonth, fitToday, fitWeek] = await Promise.all([
+  // ── 일반 파트너 통계: diagnosis_results(1순위) + 구데이터 전용 테이블 합산 ──
+  const [
+    regTotal, drTotal, drMonth, drToday, drWeek,
+    fitTotal, fitMonth, fitToday, fitWeek,
+    salonTotal, salonMonth, salonToday, salonWeek,
+    aeTotal, aeMonth, aeToday, aeWeek,
+    nickDist
+  ] = await Promise.all([
     db.prepare('SELECT COUNT(*) as cnt FROM results WHERE ref_code=?').bind(user.code).first<any>(),
-    db.prepare("SELECT COUNT(*) as cnt FROM results WHERE ref_code=? AND strftime('%Y-%m', created_at)=strftime('%Y-%m','now')").bind(user.code).first<any>(),
-    db.prepare('SELECT bc_primary, COUNT(*) as cnt FROM results WHERE ref_code=? GROUP BY bc_primary ORDER BY cnt DESC LIMIT 5').bind(user.code).all<any>(),
-    db.prepare("SELECT COUNT(*) as cnt FROM results WHERE ref_code=? AND date(created_at)=date('now')").bind(user.code).first<any>(),
-    db.prepare("SELECT COUNT(*) as cnt FROM results WHERE ref_code=? AND created_at>=datetime('now','-7 days')").bind(user.code).first<any>(),
     db.prepare('SELECT COUNT(*) as cnt FROM diagnosis_results WHERE ref_code=?').bind(user.code).first<any>(),
-    // ✅ CRITICAL FIX: fitness_responses 카운트 추가 (피트니스 파트너 대시보드 0건 버그 수정)
-    db.prepare('SELECT COUNT(*) as cnt FROM fitness_responses WHERE ref_code=?').bind(user.code).first<any>(),
-    db.prepare("SELECT COUNT(*) as cnt FROM fitness_responses WHERE ref_code=? AND strftime('%Y-%m', created_at)=strftime('%Y-%m','now')").bind(user.code).first<any>(),
-    db.prepare("SELECT COUNT(*) as cnt FROM fitness_responses WHERE ref_code=? AND date(created_at)=date('now')").bind(user.code).first<any>(),
-    db.prepare("SELECT COUNT(*) as cnt FROM fitness_responses WHERE ref_code=? AND created_at>=datetime('now','-7 days')").bind(user.code).first<any>(),
+    db.prepare("SELECT COUNT(*) as cnt FROM diagnosis_results WHERE ref_code=? AND strftime('%Y-%m',COALESCE(completed_at,created_at))=strftime('%Y-%m','now')").bind(user.code).first<any>(),
+    db.prepare("SELECT COUNT(*) as cnt FROM diagnosis_results WHERE ref_code=? AND date(COALESCE(completed_at,created_at))=date('now')").bind(user.code).first<any>(),
+    db.prepare("SELECT COUNT(*) as cnt FROM diagnosis_results WHERE ref_code=? AND COALESCE(completed_at,created_at)>=datetime('now','-7 days')").bind(user.code).first<any>(),
+    db.prepare('SELECT COUNT(*) as cnt FROM fitness_responses WHERE ref_code=?').bind(user.code).first<any>().catch(()=>({cnt:0})),
+    db.prepare("SELECT COUNT(*) as cnt FROM fitness_responses WHERE ref_code=? AND strftime('%Y-%m',created_at)=strftime('%Y-%m','now')").bind(user.code).first<any>().catch(()=>({cnt:0})),
+    db.prepare("SELECT COUNT(*) as cnt FROM fitness_responses WHERE ref_code=? AND date(created_at)=date('now')").bind(user.code).first<any>().catch(()=>({cnt:0})),
+    db.prepare("SELECT COUNT(*) as cnt FROM fitness_responses WHERE ref_code=? AND created_at>=datetime('now','-7 days')").bind(user.code).first<any>().catch(()=>({cnt:0})),
+    db.prepare('SELECT COUNT(*) as cnt FROM salon_responses WHERE ref_code=?').bind(user.code).first<any>().catch(()=>({cnt:0})),
+    db.prepare("SELECT COUNT(*) as cnt FROM salon_responses WHERE ref_code=? AND strftime('%Y-%m',created_at)=strftime('%Y-%m','now')").bind(user.code).first<any>().catch(()=>({cnt:0})),
+    db.prepare("SELECT COUNT(*) as cnt FROM salon_responses WHERE ref_code=? AND date(created_at)=date('now')").bind(user.code).first<any>().catch(()=>({cnt:0})),
+    db.prepare("SELECT COUNT(*) as cnt FROM salon_responses WHERE ref_code=? AND created_at>=datetime('now','-7 days')").bind(user.code).first<any>().catch(()=>({cnt:0})),
+    db.prepare('SELECT COUNT(*) as cnt FROM aesthetic_responses WHERE ref_code=?').bind(user.code).first<any>().catch(()=>({cnt:0})),
+    db.prepare("SELECT COUNT(*) as cnt FROM aesthetic_responses WHERE ref_code=? AND strftime('%Y-%m',created_at)=strftime('%Y-%m','now')").bind(user.code).first<any>().catch(()=>({cnt:0})),
+    db.prepare("SELECT COUNT(*) as cnt FROM aesthetic_responses WHERE ref_code=? AND date(created_at)=date('now')").bind(user.code).first<any>().catch(()=>({cnt:0})),
+    db.prepare("SELECT COUNT(*) as cnt FROM aesthetic_responses WHERE ref_code=? AND created_at>=datetime('now','-7 days')").bind(user.code).first<any>().catch(()=>({cnt:0})),
+    db.prepare('SELECT bc_primary, COUNT(*) as cnt FROM diagnosis_results WHERE ref_code=? AND bc_primary IS NOT NULL GROUP BY bc_primary ORDER BY cnt DESC LIMIT 5').bind(user.code).all<any>(),
   ])
-  // 신규 저장은 diagnosis_results+fitness_responses 둘 다 들어가므로 드중복:
-  // fitTotal에서 drTotal에 이미 포함된 분(신규 저장)은 제외, 구데이터만 합산
-  const fitOnlyCnt = Math.max(0, (fitTotal?.cnt || 0) - (drTotal?.cnt || 0))
+  // diagnosis_results 1순위 기준 — 구데이터 전용 테이블은 diagnosis_results에 없는 것만 추가
+  const drCnt    = drTotal?.cnt    || 0
+  const fitOnly  = Math.max(0, (fitTotal?.cnt   ||0) - drCnt)
+  const salOnly  = Math.max(0, (salonTotal?.cnt ||0) - drCnt)
+  const aeOnly   = Math.max(0, (aeTotal?.cnt    ||0) - drCnt)
   return c.json({
-    total: (total?.cnt || 0) + (drTotal?.cnt || 0) + fitOnlyCnt,
-    this_month: (thisMonth?.cnt || 0) + (fitMonth?.cnt || 0),
-    today: (today?.cnt || 0) + (fitToday?.cnt || 0),
-    this_week: (thisWeek?.cnt || 0) + (fitWeek?.cnt || 0),
-    nickname_distribution: nickDist.results,
+    total:      (regTotal?.cnt||0) + drCnt + fitOnly + salOnly + aeOnly,
+    this_month: (drMonth?.cnt||0) + (fitMonth?.cnt||0) + (salonMonth?.cnt||0) + (aeMonth?.cnt||0),
+    today:      (drToday?.cnt||0) + (fitToday?.cnt||0) + (salonToday?.cnt||0) + (aeToday?.cnt||0),
+    this_week:  (drWeek?.cnt||0)  + (fitWeek?.cnt||0)  + (salonWeek?.cnt||0)  + (aeWeek?.cnt||0),
+    nickname_distribution: nickDist.results || [],
   })
 })
 
@@ -5396,21 +5424,23 @@ app.get('/api/b2b/result-link/:id', requireB2B(), async (c) => {
     ).bind(resultId).first<any>()
 
     if (drRow) {
-      // 권한 확인: ref_code가 파트너 코드와 일치하거나 MASTER
+      // 권한 확인: ref_code가 파트너 코드와 일치
       if (drRow.ref_code !== partnerCode) {
         return c.json({ error: '권한 없음' }, 403)
       }
-      // survey_category에 따라 올바른 결과지 URL 반환
+      // ★ survey_category 1:1 강제 매핑 — result-v4.html 폴백 완전 제거
       const cat = drRow.survey_category || 'integrated'
       if (cat === 'hospital') {
         return c.json({ url: `/result-hospital/${resultId}` })
       } else if (cat === 'aesthetic') {
-        return c.json({ url: `/result/${resultId}` })
+        return c.json({ url: `/result-aesthetic/${resultId}` })
       } else if (cat === 'fitness') {
         return c.json({ url: `/result-fitness/${resultId}` })
+      } else if (cat === 'salon') {
+        return c.json({ url: `/result-salon/${resultId}` })
       } else {
-        // salon, integrated, etc. → /result/:id (result-v4.html)
-        return c.json({ url: `/result/${resultId}` })
+        // integrated / 미분류 → hospital 결과지 (범용 v4.1)
+        return c.json({ url: `/result-hospital/${resultId}` })
       }
     }
 
@@ -5422,6 +5452,28 @@ app.get('/api/b2b/result-link/:id', requireB2B(), async (c) => {
       if (fitRow) {
         if (fitRow.ref_code !== partnerCode) return c.json({ error: '권한 없음' }, 403)
         return c.json({ url: `/result-fitness/${resultId}` })
+      }
+    }
+
+    // ── 3-2) S- 접두사: salon_responses (구데이터 — diagnosis_results 동기화 전 저장분) ──
+    if (resultId.startsWith('S-')) {
+      const salRow = await db.prepare(
+        "SELECT id, ref_code FROM salon_responses WHERE id = ? LIMIT 1"
+      ).bind(resultId).first<any>().catch(() => null)
+      if (salRow) {
+        if (salRow.ref_code !== partnerCode) return c.json({ error: '권한 없음' }, 403)
+        return c.json({ url: `/result-salon/${resultId}` })
+      }
+    }
+
+    // ── 3-3) A- 접두사: aesthetic_responses (구데이터 — diagnosis_results 동기화 전 저장분) ──
+    if (resultId.startsWith('A-')) {
+      const aeRow = await db.prepare(
+        "SELECT id, ref_code FROM aesthetic_responses WHERE id = ? LIMIT 1"
+      ).bind(resultId).first<any>().catch(() => null)
+      if (aeRow) {
+        if (aeRow.ref_code !== partnerCode) return c.json({ error: '권한 없음' }, 403)
+        return c.json({ url: `/result-aesthetic/${resultId}` })
       }
     }
 
@@ -8383,6 +8435,45 @@ app.post('/api/s/diagnosis', async (c) => {
       resolvedGoalWeight, resolvedWeightLossPct
     ).run()
 
+    // ── diagnosis_results 1순위 동시 저장 (살롱 B2B 대시보드 + 결과지 API 파이프라인) ──
+    // ★ 단일 DB 구조: 대시보드/결과지는 diagnosis_results만 조회하므로 여기서 반드시 저장
+    try {
+      const axJson  = resolvedAxisScores ? JSON.stringify(resolvedAxisScores) : null
+      const top3Axes: string[] = resolvedAxisScores
+        ? Object.entries(resolvedAxisScores as Record<string,number>)
+            .sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k]) => k)
+        : []
+      const rawForDr: Record<string,any> = { ...(parsedRaw || {}) }
+      if (stage1_answers && !rawForDr.stage1) rawForDr.stage1 = stage1_answers
+      if (stage2_answers && !rawForDr.stage2) rawForDr.stage2 = stage2_answers
+      if (stage3_answers && !rawForDr.stage3) rawForDr.stage3 = stage3_answers
+      if (stage4_answers && !rawForDr.stage4) rawForDr.stage4 = stage4_answers
+      await db.prepare(`
+        INSERT OR IGNORE INTO diagnosis_results
+          (id, user_name, bc_primary, bc_code_key, bc_secondary, bc_nickname,
+           top3_axes, axis_scores, region, texture, ohaeng_type, mbti_full,
+           ref_code, survey_category, raw_answers, gender, height, age,
+           goal_weight, weight_loss_pct, completed_at, created_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
+      `).bind(
+        resultId, user_name,
+        resolvedBcCode || resolvedBcNickname || null,
+        resolvedBcCode || null, null,
+        resolvedBcNickname || null,
+        JSON.stringify(top3Axes), axJson,
+        null, null,
+        resolvedOhaeng, resolvedMbti,
+        ref_code || null, 'salon',
+        JSON.stringify(rawForDr),
+        gender || null, height ? String(height) : null, age ? String(age) : null,
+        resolvedGoalWeight, resolvedWeightLossPct,
+        new Date().toISOString(),
+      ).run()
+      console.log('[/api/s/diagnosis] diagnosis_results 동기화 완료:', resultId)
+    } catch (drErr: any) {
+      console.warn('[/api/s/diagnosis] diagnosis_results 동기화 실패(무시):', drErr?.message)
+    }
+
     if (ref_code) {
       try {
         await db.prepare(`INSERT INTO survey_notifications (ref_code, result_id, user_name, created_at) VALUES (?, ?, ?, datetime('now'))`).bind(ref_code, resultId, user_name).run()
@@ -8528,16 +8619,27 @@ app.get('/api/notifications', async (c) => {
   try {
     const limit = Math.min(Number(c.req.query('limit') || 50), 200)
 
-    // 알림 목록 (최신순) — hospital_responses, diagnosis_results 양쪽에서 user_name 조회
+    // ★ FIX: survey_notifications.user_name 컬럼 없으면 500 발생 → 컬럼 자동 추가
+    try {
+      await db.prepare(`ALTER TABLE survey_notifications ADD COLUMN user_name TEXT`).run()
+    } catch (_) { /* 이미 있으면 무시 */ }
+    try {
+      await db.prepare(`ALTER TABLE survey_notifications ADD COLUMN notified_at DATETIME`).run()
+      await db.prepare(`UPDATE survey_notifications SET notified_at = created_at WHERE notified_at IS NULL`).run()
+    } catch (_) {}
+
+    // 알림 목록 (최신순) — diagnosis_results + hospital_responses에서 user_name/phone JOIN
+    // n.user_name이 NULL이면 JOIN 테이블에서 폴백
     const { results } = await db.prepare(
-      `SELECT n.id, n.result_id, n.ref_code, n.is_read, n.notified_at,
-              COALESCE(n.user_name, h.name, d.user_name) AS user_name,
+      `SELECT n.id, n.result_id, n.ref_code, n.is_read,
+              COALESCE(n.notified_at, n.created_at) AS notified_at,
+              COALESCE(n.user_name, d.user_name, h.name) AS user_name,
               COALESCE(d.phone, h.phone) AS phone
        FROM survey_notifications n
-       LEFT JOIN hospital_responses h ON h.id = n.result_id
        LEFT JOIN diagnosis_results d ON d.id = n.result_id
+       LEFT JOIN hospital_responses h ON h.id = n.result_id
        WHERE n.ref_code = ?
-       ORDER BY n.notified_at DESC
+       ORDER BY COALESCE(n.notified_at, n.created_at) DESC
        LIMIT ?`
     ).bind(ref_code, limit).all<any>()
 
