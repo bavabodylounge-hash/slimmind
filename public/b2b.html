@@ -1751,11 +1751,22 @@ async function loadCustomers(opts = {}) {
   const totPages = data.total_pages || 1;
 
   const rows = (data.results || []).map(r => {
-    const isHosp = r.result_type === 'hospital' || r.id.startsWith('H-');
-    const typeBadge = isHosp
-      ? `<span style="font-size:10px;font-weight:700;background:#ede5f7;color:#8b6db5;border:1px solid #c4a8e0;border-radius:4px;padding:1px 6px">🏥 병원용</span>`
-      : `<span style="font-size:10px;font-weight:700;background:#eef2ff;color:#6366f1;border:1px solid #c7d2fe;border-radius:4px;padding:1px 6px">🧩 통합</span>`;
-    const bcLabel = r.bc_primary || (isHosp ? r.ohaeng_type || '-' : '-');
+    // 업종 배지: result_type 또는 ID 접두사로 판별
+    const rType = r.result_type || (
+      r.id.startsWith('H-') ? 'hospital' :
+      r.id.startsWith('S-') ? 'salon' :
+      r.id.startsWith('A-') ? 'aesthetic' :
+      r.id.startsWith('F-') ? 'fitness' : 'integrated'
+    );
+    const typeBadgeMap = {
+      hospital:   `<span style="font-size:10px;font-weight:700;background:#ede5f7;color:#8b6db5;border:1px solid #c4a8e0;border-radius:4px;padding:1px 6px">🏥 병원</span>`,
+      salon:      `<span style="font-size:10px;font-weight:700;background:#fef9e7;color:#b7791f;border:1px solid #f6e05e;border-radius:4px;padding:1px 6px">💇 미용실</span>`,
+      aesthetic:  `<span style="font-size:10px;font-weight:700;background:#fce4ec;color:#c2185b;border:1px solid #f48fb1;border-radius:4px;padding:1px 6px">✨ 에스테틱</span>`,
+      fitness:    `<span style="font-size:10px;font-weight:700;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;border-radius:4px;padding:1px 6px">💪 피트니스</span>`,
+      integrated: `<span style="font-size:10px;font-weight:700;background:#eef2ff;color:#6366f1;border:1px solid #c7d2fe;border-radius:4px;padding:1px 6px">🧩 통합</span>`,
+    };
+    const typeBadge = typeBadgeMap[rType] || typeBadgeMap.integrated;
+    const bcLabel = r.bc_primary || r.ohaeng_type || '-';
     return `
     <tr id="row-${r.id}">
       <td>
@@ -1969,16 +1980,29 @@ async function deleteB2bCustomer(id, name) {
   }
 }
 
-// ─── 결과지 열기 (B2B 전용) — 병원용 H- ID는 /result-hospital/ 로 ────────────
+// ─── 결과지 열기 (B2B 전용) — ID 접두사로 업종 직접 분기 ────────────────────
 async function openB2bResult(resultId) {
-  // H- 접두사 = 병원용 결과지 → 바로 이동 (API 호출 불필요)
+  // 접두사로 직접 결과지 URL 결정 (API 호출 없이 즉시 이동)
   if (resultId.startsWith('H-')) {
     window.open(`/result-hospital/${resultId}`, '_blank');
     return;
   }
+  if (resultId.startsWith('S-')) {
+    window.open(`/result-salon/${resultId}`, '_blank');
+    return;
+  }
+  if (resultId.startsWith('A-')) {
+    window.open(`/result-aesthetic/${resultId}`, '_blank');
+    return;
+  }
+  if (resultId.startsWith('F-')) {
+    window.open(`/result-fitness/${resultId}`, '_blank');
+    return;
+  }
+  // UUID (신파이프라인): API로 survey_category 확인 후 이동
   try {
     const res = await api('GET', `/b2b/result-link/${resultId}`);
-    if ((res && res.url)) {
+    if (res && res.url) {
       window.open(res.url, '_blank');
     } else {
       window.open(`/result/${resultId}`, '_blank');
@@ -1989,15 +2013,21 @@ async function openB2bResult(resultId) {
 }
 
 async function copyB2bResultLink(resultId) {
-  // H- 접두사 = 병원용 결과지
-  if (resultId.startsWith('H-')) {
-    var url = location.origin + '/result-hospital/' + resultId;
-    _copyText(url, '📋 병원용 결과지 링크가 복사되었습니다.');
+  // 접두사로 직접 URL 결정 (API 호출 없이)
+  var directUrl = null;
+  if (resultId.startsWith('H-')) directUrl = location.origin + '/result-hospital/' + resultId;
+  else if (resultId.startsWith('S-')) directUrl = location.origin + '/result-salon/' + resultId;
+  else if (resultId.startsWith('A-')) directUrl = location.origin + '/result-aesthetic/' + resultId;
+  else if (resultId.startsWith('F-')) directUrl = location.origin + '/result-fitness/' + resultId;
+
+  if (directUrl) {
+    _copyText(directUrl, '📋 결과지 링크가 복사되었습니다.');
     return;
   }
+  // UUID: API로 확인
   try {
     const res = await api('GET', '/b2b/result-link/' + resultId);
-    var url2 = (res && res.url) ? res.url : (location.origin + '/result/' + resultId);
+    var url2 = (res && res.url) ? (location.origin + res.url) : (location.origin + '/result/' + resultId);
     _copyText(url2, '📋 결과지 링크가 복사되었습니다.');
   } catch(e) {
     _copyText(location.origin + '/result/' + resultId, '📋 링크 복사 완료!');
