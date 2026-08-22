@@ -8625,7 +8625,7 @@ app.get('/api/notifications', async (c) => {
     // 알림 목록: result_id로 diagnosis_results + hospital_responses JOIN해서 user_name 보완
     const { results } = await db.prepare(
       `SELECT n.id, n.result_id, n.ref_code, n.is_read, n.notified_at,
-              COALESCE(n.user_name, d.user_name, h.name, '(이름없음)') AS user_name,
+              COALESCE(n.user_name, d.user_name, h.user_name, '(이름없음)') AS user_name,
               COALESCE(d.phone, h.phone) AS phone
        FROM survey_notifications n
        LEFT JOIN diagnosis_results d ON d.id = n.result_id
