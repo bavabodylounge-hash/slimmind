@@ -5676,7 +5676,7 @@ p, div, span, h1, h2, h3, h4{
 // ── 피드백 배너 로직 (V4.9) ──────────────────────────────
 (function initFeedbackBanner() {
   var sid = window.__HOSPITAL_RESULT_ID__
-    || (location.pathname.match(/\/result-hospital\/([^/?#]+)/) || [])[1]
+    || (location.pathname.match(/\/result-salon\/([^/?#]+)/) || [])[1]
     || new URLSearchParams(location.search).get('id')
     || '';
   if (!sid || sid === 'local') return;
@@ -19888,7 +19888,7 @@ function applyLiveRefresh(serverResponse, resultData) {
 async function loadSalonResult() {
   // ID 우선순위: 서버주입 __HOSPITAL_RESULT_ID__ → URL 경로 → 쿼리파라미터
   var hid = window.__HOSPITAL_RESULT_ID__
-         || (location.pathname.match(/\/result-hospital\/([^/?#]+)/) || [])[1]
+         || (location.pathname.match(/\/result-salon\/([^/?#]+)/) || [])[1]
          || new URLSearchParams(location.search).get('hid')
          || new URLSearchParams(location.search).get('id')
          || '';
@@ -20811,7 +20811,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     // result-hospital 페이지 진입 시 항상 최신 결과 ID + category 저장
     try {
       var _hid = window.__HOSPITAL_RESULT_ID__
-        || (location.pathname.match(/\/result-hospital\/([^/?#]+)/) || [])[1] || '';
+        || (location.pathname.match(/\/result-salon\/([^/?#]+)/) || [])[1] || '';
       if (_hid) {
         localStorage.setItem('sm_last_result_id', _hid);
         localStorage.setItem('sm_survey_category', 'hospital');
@@ -22169,7 +22169,7 @@ function _p10DailyURL(){
     var sid = q.get('id') || q.get('diagnosis_id') || q.get('did') || '';
     // ★ pathname에서 UUID 추출 (/result-salon/UUID 형태)
     if (!sid) {
-      var m = location.pathname.match(/\/(?:result-hospital|result-aesthetic|result)\/([0-9a-f\-]{20,})/i);
+      var m = location.pathname.match(/\/(?:result-salon|result-hospital|result-aesthetic|result)\/([0-9a-f\-]{20,})/i);
       if (m && m[1]) sid = m[1];
     }
     // ★ base URL을 루트 기준으로 생성 (result-salon/ 하위가 아닌 /slimmind-today.html)
@@ -24311,7 +24311,7 @@ function _syncDailyCheckDB(opts){
   try {
     // ── session_id 수집 (우선순위: 서버주입 > URL경로 > URL쿼리 > localStorage) ──
     var _sid = window.__HOSPITAL_RESULT_ID__
-            || (location.pathname.match(/\/result-hospital\/([^/?#]+)/) || [])[1]
+            || (location.pathname.match(/\/result-salon\/([^/?#]+)/) || [])[1]
             || new URLSearchParams(location.search).get('id')
             || new URLSearchParams(location.search).get('hid')
             || localStorage.getItem('sm_last_result_id')
@@ -27427,7 +27427,7 @@ function renderPersonalizationLayer(data, axisScores, answers, bcCode, ohaengTyp
            || new URLSearchParams(window.location.search).get('diagnosis_id')
            || new URLSearchParams(window.location.search).get('did')
            // /result-salon/XXXX 경로에서 ID 추출
-           || (location.pathname.match(/\/result-hospital\/([^/?#]+)/) || [])[1]
+           || (location.pathname.match(/\/result-salon\/([^/?#]+)/) || [])[1]
            || '';
     // ★ base URL을 루트 기준으로 생성 (result-salon/ 하위가 아닌 /slimmind-today.html)
     var base = location.protocol + '//' + location.host + '/slimmind-today.html';

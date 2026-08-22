@@ -7936,10 +7936,61 @@ app.get('/api/f/result/:id', async (c) => {
   if (!db) return c.json({ error: 'DB not configured' }, 500)
   const id = c.req.param('id')
   try {
-    const row = await db.prepare(
+    let row = await db.prepare(
       'SELECT * FROM fitness_responses WHERE id = ?'
     ).bind(id).first<any>()
-    if (!row) return c.json({ error: 'Not found', ok: false }, 404)
+
+    // ── 폴백: fitness_responses에 없으면 diagnosis_results 조회 ──
+    // 신파이프라인(/api/f/diagnosis)은 diagnosis_results에도 저장하므로
+    // F- ID가 fitness_responses에 누락된 경우에도 결과를 반환할 수 있어야 함
+    if (!row) {
+      const diagRow = await db.prepare(
+        `SELECT * FROM diagnosis_results WHERE id = ? AND survey_category = 'fitness' LIMIT 1`
+      ).bind(id).first<any>().catch(() => null)
+      if (!diagRow) return c.json({ error: 'Not found', ok: false }, 404)
+      // diagnosis_results 컬럼 → fitness_responses 포맷으로 변환
+      const parseJd = (v: any, fb: any = null) => { try { return v ? JSON.parse(v) : fb } catch { return fb } }
+      c.header('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0')
+      c.header('Pragma', 'no-cache')
+      c.header('Expires', '0')
+      return c.json({
+        ok:              true,
+        id:              diagRow.id,
+        result_id:       diagRow.id,
+        b2b_code:        diagRow.ref_code || null,
+        ref_code:        diagRow.ref_code || null,
+        user_name:       diagRow.user_name,
+        gender:          diagRow.gender   || null,
+        age:             diagRow.age      || null,
+        height:          diagRow.height   || null,
+        weight:          diagRow.weight   || null,
+        phone:           diagRow.phone    || null,
+        ohaeng_type:     diagRow.ohaeng_type || null,
+        mbti_full:       diagRow.mbti_full   || null,
+        bc_code:         diagRow.bc_code_key || null,
+        bc_nickname:     diagRow.bc_nickname || null,
+        axis_scores:     parseJd(diagRow.axis_scores, {}),
+        survey_category: 'fitness',
+        exercise_response: null,
+        pain_gate:       [],
+        bmr:             diagRow.bmr           || null,
+        tdee:            diagRow.tdee          || null,
+        calorie_target:  diagRow.calorie_target|| null,
+        activity_level:  diagRow.activity_level|| null,
+        bfr_current:     null,
+        bfr_target:      null,
+        stage1_answers:  null,
+        stage2_answers:  null,
+        stage3_answers:  null,
+        raw_answers:     parseJd(diagRow.raw_answers, null),
+        goal_weight:     diagRow.goal_weight    || null,
+        weight_loss_pct: diagRow.weight_loss_pct|| null,
+        created_at:      diagRow.created_at || diagRow.completed_at,
+        schema_version:  'v1.1',
+        survey_type:     'fitness',
+        _source:         'diagnosis_results',
+      })
+    }
 
     const parseJ = (v: any, fallback: any = null) => {
       try { return v ? JSON.parse(v) : fallback } catch { return fallback }
@@ -8124,9 +8175,10 @@ app.post('/api/f/diagnosis', async (c) => {
     }
 
     return c.json({
-      ok:     true,
+      ok:          true,
       id,
-      result_url: `/result-fitness/${id}`,
+      result_id:   id,          // ✅ 다른 3개 업종(hospital/aesthetic/salon)과 포맷 통일
+      result_url:  `/result-fitness/${id}`,
       bmr,
       tdee,
       calorie_target: calorieTarget,
