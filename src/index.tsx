@@ -2682,80 +2682,21 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
           return c.redirect(`/result-fitness/${id}`, 302)
         }
 
-        // ── aesthetic 분기: survey_category === 'aesthetic' → result-aesthetic.html 서빙 ──
-        // ✅ BUG-FIX: effectiveCategory도 함께 확인 (파트너 카테고리 우선 적용)
+        // ── aesthetic 분기: survey_category === 'aesthetic' → /result-aesthetic/:id 302 리다이렉트 ──
+        // ✅ 강제 매핑: result-v4.html 서빙 절대 금지. 전용 URL로 리다이렉트하여 result-aesthetic.html 보장
         if (effectiveCategory === 'aesthetic' || diagRow.survey_category === 'aesthetic') {
-          let aestheticHtml = await fetchAsset(c.env.ASSETS, '/result-aesthetic.html')
-          // PWA manifest + localStorage 저장 스크립트
-          const aeManifestLink = `<link rel="manifest" href="/api/manifest.json?for=${encodeURIComponent('/result/' + id)}">`
-          const aePwaScript = `<script>(function(){try{localStorage.setItem('sm_last_result_id',${JSON.stringify(id)});}catch(e){}})();<\/script>`
-          const idScript = `${aeManifestLink}\n${aePwaScript}\n<script>window.__AESTHETIC_RESULT_ID__ = ${JSON.stringify(id)};window.__RESULT__ = ${injectedData};</script>\n`
-          const AESTHETIC_MARKER = '<!-- ══ 에스테틱 전용: API 연동 + __RESULT__ 주입 ══ -->'
-          if (aestheticHtml.includes(AESTHETIC_MARKER)) {
-            aestheticHtml = aestheticHtml.replace(AESTHETIC_MARKER, idScript + AESTHETIC_MARKER)
-          } else {
-            aestheticHtml = aestheticHtml.replace('</head>', `${ogMeta}\n${idScript}</head>`)
-          }
-          return c.html(aestheticHtml, 200, {
-            'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
-            'Pragma': 'no-cache',
-            'Expires': '0',
-          })
+          return c.redirect(`/result-aesthetic/${id}`, 302)
         }
 
-        // ── salon 분기: effectiveCategory === 'salon' → result-v4.html 서빙 (미용실 전용 OG 주입) ──
-        // ✅ salon은 범용 result-v4.html을 사용하나 OG 메타태그에 미용실 전용 컨텍스트 주입
-        const isSalon = effectiveCategory === 'salon' || diagRow.survey_category === 'salon'
-
-        const baseHtml1 = await fetchAsset(c.env.ASSETS, '/result-v4.html')
-
-        // ── PWA 동적 manifest + localStorage 저장 스크립트 (diagnosis_results 경로) ──
-        const pwaManifestLink1 = `<link rel="manifest" href="/api/manifest.json?for=${encodeURIComponent('/result/' + id)}">`
-        const pwaLocalStorageScript1 = `<script>
-(function(){
-  try {
-    localStorage.setItem('sm_last_result_id', ${JSON.stringify(id)});
-  } catch(e) {}
-})();
-<\/script>`
-
-        // ── salon 전용 모드 플래그 + __BRAND__ 주입 ──
-        // applyB2BBrand()가 window.__BRAND__ 없으면 실행 안 됨 → replaceSalonText 미실행
-        // diagRow.ref_code로 파트너 정보 조회하여 __BRAND__ 주입
-        let salonModeScript = ''
-        if (isSalon) {
-          let salonBrandName  = 'SlimMind'
-          let salonBrandColor = '#8a6a4e'
-          let salonBrandLogo  = ''
-          let salonRefCode    = diagRow.ref_code || ''
-          if (salonRefCode) {
-            try {
-              const salonPartner = await db.prepare(
-                'SELECT name, brand_name, brand_color, brand_logo_url FROM b2b_partners WHERE code=? LIMIT 1'
-              ).bind(salonRefCode).first<any>()
-              if (salonPartner) {
-                salonBrandName  = salonPartner.brand_name  || salonPartner.name  || 'SlimMind'
-                salonBrandColor = salonPartner.brand_color || '#8a6a4e'
-                salonBrandLogo  = salonPartner.brand_logo_url || ''
-              }
-            } catch(_) {}
-          }
-          const salonBrandJson = JSON.stringify({
-            code:          salonRefCode,
-            type:          'B2B',
-            brand_name:    salonBrandName,
-            brand_color:   salonBrandColor,
-            brand_logo_url: salonBrandLogo,
-            survey_category: 'salon',
-          })
-          salonModeScript = `<script>window.__SALON_MODE__ = true; window.__BRAND_CHANNEL__ = 'salon'; window.__BRAND__ = ${salonBrandJson};</script>\n`
+        // ── salon 분기: effectiveCategory === 'salon' → /result-salon/:id 302 리다이렉트 ──
+        // ✅ 강제 매핑: result-v4.html 폴백 완전 제거. 전용 result-salon.html로만 서빙
+        if (effectiveCategory === 'salon' || diagRow.survey_category === 'salon') {
+          return c.redirect(`/result-salon/${id}`, 302)
         }
 
-        const injectedHtml = baseHtml1.replace(
-          '</head>',
-          `${ogMeta}\n${pwaManifestLink1}\n<script>window.__RESULT__ = ${injectedData};window.__RESULT_FULL__ = {};</script>\n${salonModeScript}${pwaLocalStorageScript1}\n</head>`
-        )
-        return htmlResponse(injectedHtml)
+        // ── integrated / 기타 분기: /result-hospital/:id 리다이렉트 (범용 결과지) ──
+        // result-v4.html 폴백 완전 제거 — 업종 미분류 데이터는 hospital 결과지로 라우팅
+        return c.redirect(`/result-hospital/${id}`, 302)
       }
 
       // ★ 3순위: hospital_responses 조회 (H- 접두사 ID 또는 hospital_responses 저장 데이터)
@@ -7534,17 +7475,13 @@ try {
   }
 })
 
-// GET /api/a/result/:id — 에스테틱 결과 데이터 JSON 조회 (diagnosis_results 기반)
+// GET /api/a/result/:id — 에스테틱 결과 데이터 JSON 조회
+// ★ 조회 우선순위: 1) diagnosis_results (신버전 동기화 저장분) → 2) aesthetic_responses (구데이터 A- 접두사)
 app.get('/api/a/result/:id', async (c) => {
   const db = (c.env as any).DB as D1Database
   if (!db) return c.json({ error: 'DB not configured' }, 500)
   const id = c.req.param('id')
   try {
-    const row = await db.prepare(
-      'SELECT * FROM diagnosis_results WHERE id = ?'
-    ).bind(id).first<any>()
-    if (!row) return c.json({ error: 'Not found' }, 404)
-
     const parseJ = (v: any, fallback: any = null) => {
       try { return v ? JSON.parse(v) : fallback } catch { return fallback }
     }
@@ -7553,40 +7490,97 @@ app.get('/api/a/result/:id', async (c) => {
     c.header('Pragma', 'no-cache')
     c.header('Expires', '0')
 
-    const rawAnswers = parseJ(row.raw_answers)
+    // 1순위: diagnosis_results (신버전 파이프라인)
+    let row = await db.prepare(
+      'SELECT * FROM diagnosis_results WHERE id = ?'
+    ).bind(id).first<any>()
 
-    return c.json({
-      ok:             true,
-      id:             row.id,
-      b2b_code:       row.ref_code || null,   // 에스테틱은 ref_code = b2b_code
-      ref_code:       row.ref_code || null,
-      user_name:      row.user_name,
-      gender:         row.gender,
-      age:            row.age,
-      height:         row.height,
-      phone:          row.phone,
-      ohaeng_type:    row.ohaeng_type,
-      mbti_full:      row.mbti_full,
-      bc_code:        row.bc_code_key || row.bc_primary,
-      bc_nickname:    row.bc_nickname,
-      axis_scores:    parseJ(row.axis_scores, {}),
-      top3_axes:      parseJ(row.top3_axes, []),
-      region:         row.region,
-      texture:        row.texture,
-      survey_category: row.survey_category || 'aesthetic',
-      // stage 답변 — raw_answers 안에 stage1/stage2 형태로 저장됨
-      stage1_answers: (rawAnswers && rawAnswers.stage1) ? rawAnswers.stage1 : null,
-      stage2_answers: (rawAnswers && rawAnswers.stage2) ? rawAnswers.stage2 : null,
-      stage3_answers: (rawAnswers && rawAnswers.stage3) ? rawAnswers.stage3 : null,
-      raw_answers:    rawAnswers,
-      disp_answers:   parseJ(row.disp_answers, {}),
-      goal_weight:    row.goal_weight,
-      weight_loss_pct: row.weight_loss_pct,
-      created_at:     row.created_at,
-      // ── Schema Versioning (mapping-engine.js Live Refresh 핸드셰이크용) ──
-      schema_version: 'v1.1',
-      survey_type: row.survey_category || 'aesthetic',
-    })
+    if (row) {
+      const rawAnswers = parseJ(row.raw_answers)
+      return c.json({
+        ok:             true,
+        id:             row.id,
+        b2b_code:       row.ref_code || null,
+        ref_code:       row.ref_code || null,
+        user_name:      row.user_name,
+        gender:         row.gender,
+        age:            row.age,
+        height:         row.height,
+        phone:          row.phone,
+        ohaeng_type:    row.ohaeng_type,
+        mbti_full:      row.mbti_full,
+        bc_code:        row.bc_code_key || row.bc_primary,
+        bc_nickname:    row.bc_nickname,
+        axis_scores:    parseJ(row.axis_scores, {}),
+        top3_axes:      parseJ(row.top3_axes, []),
+        region:         row.region,
+        texture:        row.texture,
+        survey_category: row.survey_category || 'aesthetic',
+        stage1_answers: (rawAnswers && rawAnswers.stage1) ? rawAnswers.stage1 : null,
+        stage2_answers: (rawAnswers && rawAnswers.stage2) ? rawAnswers.stage2 : null,
+        stage3_answers: (rawAnswers && rawAnswers.stage3) ? rawAnswers.stage3 : null,
+        raw_answers:    rawAnswers,
+        disp_answers:   parseJ(row.disp_answers, {}),
+        goal_weight:    row.goal_weight,
+        weight_loss_pct: row.weight_loss_pct,
+        created_at:     row.created_at,
+        schema_version: 'v1.1',
+        survey_type: row.survey_category || 'aesthetic',
+        _source: 'diagnosis_results',
+      })
+    }
+
+    // 2순위: aesthetic_responses (구데이터 — diagnosis_results 동기화 전 저장분)
+    let aeRow: any = null
+    try {
+      aeRow = await db.prepare(
+        'SELECT * FROM aesthetic_responses WHERE id = ?'
+      ).bind(id).first<any>()
+    } catch (_) {}
+
+    if (aeRow) {
+      const rawAnswers = parseJ(aeRow.raw_answers)
+      const s1 = parseJ(aeRow.stage1_json)
+      const s2 = parseJ(aeRow.stage2_json)
+      const s3 = parseJ(aeRow.stage3_json)
+      const rawForAe = rawAnswers || {}
+      if (s1 && !rawForAe.stage1) rawForAe.stage1 = s1
+      if (s2 && !rawForAe.stage2) rawForAe.stage2 = s2
+      if (s3 && !rawForAe.stage3) rawForAe.stage3 = s3
+      return c.json({
+        ok:             true,
+        id:             aeRow.id,
+        b2b_code:       aeRow.b2b_code || aeRow.ref_code || null,
+        ref_code:       aeRow.ref_code || null,
+        user_name:      aeRow.user_name,
+        gender:         aeRow.gender,
+        age:            aeRow.age,
+        height:         aeRow.height,
+        phone:          aeRow.phone,
+        ohaeng_type:    aeRow.ohaeng_type,
+        mbti_full:      aeRow.mbti_full,
+        bc_code:        aeRow.bc_code,
+        bc_nickname:    aeRow.bc_nickname,
+        axis_scores:    parseJ(aeRow.axis_scores, {}),
+        top3_axes:      [],
+        region:         null,
+        texture:        null,
+        survey_category: 'aesthetic',
+        stage1_answers: s1,
+        stage2_answers: s2,
+        stage3_answers: s3,
+        raw_answers:    rawForAe,
+        disp_answers:   {},
+        goal_weight:    aeRow.goal_weight,
+        weight_loss_pct: aeRow.weight_loss_pct,
+        created_at:     aeRow.created_at,
+        schema_version: 'v1.1',
+        survey_type: 'aesthetic',
+        _source: 'aesthetic_responses',
+      })
+    }
+
+    return c.json({ error: 'Not found' }, 404)
   } catch (e: any) {
     return c.json({ error: String(e) }, 500)
   }
@@ -7736,6 +7730,58 @@ app.post('/api/a/diagnosis', async (c) => {
       raw_answers ? JSON.stringify(raw_answers) : null,
       resolvedGoalWeight, resolvedWeightLossPct
     ).run()
+
+    // ── diagnosis_results 동시 저장 (에스테틱 B2B 대시보드 파이프라인 + /api/a/result/:id 조회 대상) ──
+    // ★ FIX: /api/a/result/:id가 diagnosis_results만 조회하므로, 여기서 동기화하지 않으면 404 발생
+    try {
+      const axJson  = resolvedAxisScores ? JSON.stringify(resolvedAxisScores) : null
+      const top3Axes: string[] = resolvedAxisScores
+        ? Object.entries(resolvedAxisScores as Record<string,number>)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3)
+            .map(([k]) => k)
+        : []
+      const top3Json = JSON.stringify(top3Axes)
+      // raw_answers 재직렬화 (stage1/stage2/stage3 포함)
+      const rawForDr: Record<string,any> = { ...(parsedRaw || {}) }
+      if (stage1_answers && !rawForDr.stage1) rawForDr.stage1 = stage1_answers
+      if (stage2_answers && !rawForDr.stage2) rawForDr.stage2 = stage2_answers
+      if (stage3_answers && !rawForDr.stage3) rawForDr.stage3 = stage3_answers
+      if (stage4_answers && !rawForDr.stage4) rawForDr.stage4 = stage4_answers
+      await db.prepare(`
+        INSERT OR IGNORE INTO diagnosis_results
+          (id, user_name, bc_primary, bc_code_key, bc_secondary, bc_nickname,
+           top3_axes, axis_scores, region, texture, ohaeng_type, mbti_full,
+           ref_code, survey_category, raw_answers, gender, height, age,
+           goal_weight, weight_loss_pct, completed_at, created_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
+      `).bind(
+        resultId,
+        user_name,
+        resolvedBcCode || bc_nickname || bc_primary || null,
+        resolvedBcCode || null,
+        null,
+        resolvedBcNickname || null,
+        top3Json,
+        axJson,
+        (parsedRaw as any)?.region || null,
+        (parsedRaw as any)?.texture || null,
+        resolvedOhaeng,
+        resolvedMbti,
+        ref_code || null,
+        'aesthetic',
+        JSON.stringify(rawForDr),
+        gender || null,
+        height ? String(height) : null,
+        age ? String(age) : null,
+        resolvedGoalWeight,
+        resolvedWeightLossPct,
+        new Date().toISOString(),
+      ).run()
+      console.log('[/api/a/diagnosis] diagnosis_results 동기화 완료:', resultId)
+    } catch (drErr: any) {
+      console.warn('[/api/a/diagnosis] diagnosis_results 동기화 실패(무시):', drErr?.message)
+    }
 
     if (ref_code) {
       try {
