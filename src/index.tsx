@@ -6634,11 +6634,9 @@ app.post('/api/h/diagnosis', async (c) => {
     // 담당자 알림도 함께 발송 시도 (실패해도 응답에 영향 없음)
     if (ref_code) {
       try {
-        await db.prepare(`
-          INSERT INTO survey_notifications
-            (ref_code, result_id, user_name, created_at)
-          VALUES (?, ?, ?, datetime('now'))
-        `).bind(ref_code, resultId, user_name).run()
+        await db.prepare(
+          `INSERT INTO survey_notifications (ref_code, result_id, user_name, notified_at) VALUES (?, ?, ?, datetime('now'))`
+        ).bind(ref_code, resultId, user_name || null).run()
       } catch (_) { /* survey_notifications 없으면 무시 */ }
     }
 
@@ -7837,7 +7835,7 @@ app.post('/api/a/diagnosis', async (c) => {
 
     if (ref_code) {
       try {
-        await db.prepare(`INSERT INTO survey_notifications (ref_code, result_id, user_name, created_at) VALUES (?, ?, ?, datetime('now'))`).bind(ref_code, resultId, user_name).run()
+        await db.prepare(`INSERT INTO survey_notifications (ref_code, result_id, user_name, notified_at) VALUES (?, ?, ?, datetime('now'))`).bind(ref_code, resultId, user_name || null).run()
       } catch (_) {}
     }
     return c.json({ ok: true, result_id: resultId, redirect: `/result-aesthetic/${resultId}` })
@@ -8476,7 +8474,7 @@ app.post('/api/s/diagnosis', async (c) => {
 
     if (ref_code) {
       try {
-        await db.prepare(`INSERT INTO survey_notifications (ref_code, result_id, user_name, created_at) VALUES (?, ?, ?, datetime('now'))`).bind(ref_code, resultId, user_name).run()
+        await db.prepare(`INSERT INTO survey_notifications (ref_code, result_id, user_name, notified_at) VALUES (?, ?, ?, datetime('now'))`).bind(ref_code, resultId, user_name || null).run()
       } catch (_) {}
     }
     return c.json({ ok: true, result_id: resultId, redirect: `/result-salon/${resultId}` })
@@ -8594,8 +8592,8 @@ app.post('/api/survey/notify', async (c) => {
     } catch (_) { /* 이미 있으면 무시 */ }
 
     await db.prepare(
-      `INSERT INTO survey_notifications (result_id, ref_code, user_name) VALUES (?, ?, ?)`
-    ).bind(result_id || '', ref_code, resolved_user_name || '').run()
+      `INSERT INTO survey_notifications (result_id, ref_code, user_name, notified_at) VALUES (?, ?, ?, datetime('now'))`
+    ).bind(result_id || '', ref_code, resolved_user_name || null).run()
 
     return c.json({ ok: true, result_id: result_id || null })
   } catch (e: any) {
@@ -8619,31 +8617,24 @@ app.get('/api/notifications', async (c) => {
   try {
     const limit = Math.min(Number(c.req.query('limit') || 50), 200)
 
-    // ★ FIX: survey_notifications.user_name 컬럼 없으면 500 발생 → 컬럼 자동 추가
-    try {
-      await db.prepare(`ALTER TABLE survey_notifications ADD COLUMN user_name TEXT`).run()
-    } catch (_) { /* 이미 있으면 무시 */ }
-    try {
-      await db.prepare(`ALTER TABLE survey_notifications ADD COLUMN notified_at DATETIME`).run()
-      await db.prepare(`UPDATE survey_notifications SET notified_at = created_at WHERE notified_at IS NULL`).run()
-    } catch (_) {}
+    // ★ survey_notifications 실제 스키마: id, result_id, ref_code, is_read, read_at, notified_at
+    // user_name/created_at 컬럼 없음 → diagnosis_results / hospital_responses JOIN으로 보완
+    // 컬럼 자동 추가 (user_name이 없는 구버전 DB 대비)
+    try { await db.prepare(`ALTER TABLE survey_notifications ADD COLUMN user_name TEXT`).run() } catch (_) {}
 
-    // 알림 목록 (최신순) — diagnosis_results + hospital_responses에서 user_name/phone JOIN
-    // n.user_name이 NULL이면 JOIN 테이블에서 폴백
+    // 알림 목록: result_id로 diagnosis_results + hospital_responses JOIN해서 user_name 보완
     const { results } = await db.prepare(
-      `SELECT n.id, n.result_id, n.ref_code, n.is_read,
-              COALESCE(n.notified_at, n.created_at) AS notified_at,
-              COALESCE(n.user_name, d.user_name, h.name) AS user_name,
+      `SELECT n.id, n.result_id, n.ref_code, n.is_read, n.notified_at,
+              COALESCE(n.user_name, d.user_name, h.name, '(이름없음)') AS user_name,
               COALESCE(d.phone, h.phone) AS phone
        FROM survey_notifications n
        LEFT JOIN diagnosis_results d ON d.id = n.result_id
        LEFT JOIN hospital_responses h ON h.id = n.result_id
        WHERE n.ref_code = ?
-       ORDER BY COALESCE(n.notified_at, n.created_at) DESC
+       ORDER BY n.notified_at DESC
        LIMIT ?`
     ).bind(ref_code, limit).all<any>()
 
-    // 미읽은 알림 수
     const unread = await db.prepare(
       `SELECT COUNT(*) as cnt FROM survey_notifications WHERE ref_code = ? AND is_read = 0`
     ).bind(ref_code).first<any>()
