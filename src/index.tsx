@@ -2625,9 +2625,16 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
             const partnerRow = await db.prepare(
               `SELECT survey_category FROM b2b_partners WHERE code = ? LIMIT 1`
             ).bind(diagRow.ref_code).first<any>()
-            // 파트너가 hospital이면 survey_category 저장값과 무관하게 hospital로 강제
+            // 파트너 카테고리가 명시된 경우 저장값보다 파트너 카테고리 우선 적용
+            // (survey_category가 'integrated'로 잘못 저장된 경우 복구)
             if (partnerRow?.survey_category === 'hospital') {
               effectiveCategory = 'hospital'
+            } else if (partnerRow?.survey_category === 'aesthetic') {
+              effectiveCategory = effectiveCategory || 'aesthetic'
+            } else if (partnerRow?.survey_category === 'fitness') {
+              effectiveCategory = effectiveCategory || 'fitness'
+            } else if (partnerRow?.survey_category === 'salon') {
+              effectiveCategory = effectiveCategory || 'salon'
             } else if (!effectiveCategory && partnerRow?.survey_category) {
               effectiveCategory = partnerRow.survey_category
             }
@@ -2644,7 +2651,8 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
         }
 
         // ── aesthetic 분기: survey_category === 'aesthetic' → result-aesthetic.html 서빙 ──
-        if (diagRow.survey_category === 'aesthetic') {
+        // ✅ BUG-FIX: effectiveCategory도 함께 확인 (파트너 카테고리 우선 적용)
+        if (effectiveCategory === 'aesthetic' || diagRow.survey_category === 'aesthetic') {
           let aestheticHtml = await fetchAsset(c.env.ASSETS, '/result-aesthetic.html')
           // PWA manifest + localStorage 저장 스크립트
           const aeManifestLink = `<link rel="manifest" href="/api/manifest.json?for=${encodeURIComponent('/result/' + id)}">`
@@ -5391,7 +5399,8 @@ app.delete('/api/b2b/customer/:id', requireB2B(), async (c) => {
 })
 
 // GET /api/b2b/result-link/:id — B2B 파트너용 결과지 접근 토큰 생성
-// H- 접두사 ID는 hospital_responses 테이블에서 확인 후 /result-hospital/ 링크 반환
+// ✅ BUG-FIX (2026-08-22): diagnosis_results UUID를 받았을 때 결과지 URL을 survey_category에 맞게 반환
+// 조회 우선순위: H- 접두사 → hospital_responses / UUID → diagnosis_results → results
 app.get('/api/b2b/result-link/:id', requireB2B(), async (c) => {
   const db = c.env.DB as D1Database | undefined
   if (!db) return c.json({ error: 'DB 없음' }, 500)
@@ -5399,19 +5408,40 @@ app.get('/api/b2b/result-link/:id', requireB2B(), async (c) => {
   const partnerCode = user?.code || ''
   const resultId = c.req.param('id')
   try {
-    const isHospitalId = resultId.startsWith('H-')
-
-    if (isHospitalId) {
-      // 병원용 결과: hospital_responses 테이블 확인
+    // ── 1) H- 접두사: 구버전 hospital_responses ID ──
+    if (resultId.startsWith('H-')) {
       const result = await db.prepare(
         "SELECT id FROM hospital_responses WHERE id = ? AND ref_code = ?"
       ).bind(resultId, partnerCode).first<any>()
       if (!result) return c.json({ error: '권한 없음' }, 403)
-      // 병원용 결과지 URL 반환 (토큰 불필요 — 공개 접근)
       return c.json({ url: `/result-hospital/${resultId}` })
     }
 
-    // 일반 결과: results 테이블 확인
+    // ── 2) diagnosis_results UUID (신파이프라인 — 에스테틱·병원·살롱·피트니스 통합) ──
+    const drRow = await db.prepare(
+      "SELECT id, survey_category, ref_code FROM diagnosis_results WHERE id = ? LIMIT 1"
+    ).bind(resultId).first<any>()
+
+    if (drRow) {
+      // 권한 확인: ref_code가 파트너 코드와 일치하거나 MASTER
+      if (drRow.ref_code !== partnerCode) {
+        return c.json({ error: '권한 없음' }, 403)
+      }
+      // survey_category에 따라 올바른 결과지 URL 반환
+      const cat = drRow.survey_category || 'integrated'
+      if (cat === 'hospital') {
+        return c.json({ url: `/result-hospital/${resultId}` })
+      } else if (cat === 'aesthetic') {
+        return c.json({ url: `/result/${resultId}` })
+      } else if (cat === 'fitness') {
+        return c.json({ url: `/result-fitness/${resultId}` })
+      } else {
+        // salon, integrated, etc. → /result/:id (result-v4.html)
+        return c.json({ url: `/result/${resultId}` })
+      }
+    }
+
+    // ── 3) 구버전 results 테이블 ──
     const result = await db.prepare(
       "SELECT id FROM results WHERE id = ? AND ref_code = ?"
     ).bind(resultId, partnerCode).first<any>()
@@ -6882,24 +6912,37 @@ app.get('/result-hospital/:id', async (c) => {
     const db = (c.env as any).DB as D1Database | undefined
     let injectedRefCode: string | null = null
     if (db) {
-      // ★ Zero-Bug: ID 유효성 검사 — DB에 없는 ID면 404 반환
+      // ★ BUG-FIX (2026-08-22): 구버전 hospital_responses(H- 접두사)와
+      //   신버전 diagnosis_results(UUID, survey_category='hospital') 양쪽에서 존재 확인
+      //   이전 코드는 hospital_responses만 확인 → diagnosis_results UUID 접근 시 항상 404
+      let existsInHospResp = false
+      let existsInDiagResults = false
       try {
         const existRow = await db.prepare(
           `SELECT id FROM hospital_responses WHERE id = ? LIMIT 1`
         ).bind(id).first<any>()
-        if (!existRow) {
-          return c.html(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
-<title>결과지를 찾을 수 없습니다 | SlimMind</title>
-<style>body{font-family:'Pretendard',sans-serif;background:#f6f4ee;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}.box{text-align:center;padding:48px 32px;background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08);max-width:420px}h2{font-size:22px;color:#1a1a17;margin-bottom:12px}p{color:#7c776b;font-size:14px;line-height:1.7;margin-bottom:0}a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;color:#fff;border-radius:10px;text-decoration:none;font-weight:700}</style></head><body><div class="box"><h2>결과지를 찾을 수 없습니다</h2><p>링크가 만료되었거나<br>잘못된 주소입니다.</p><a href="/">새로 시작하기</a></div></body></html>`, 404)
-        }
+        if (existRow) existsInHospResp = true
       } catch (_) {}
       try {
+        const drExist = await db.prepare(
+          `SELECT id FROM diagnosis_results WHERE id = ? LIMIT 1`
+        ).bind(id).first<any>()
+        if (drExist) existsInDiagResults = true
+      } catch (_) {}
+
+      if (!existsInHospResp && !existsInDiagResults) {
+        return c.html(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+<title>결과지를 찾을 수 없습니다 | SlimMind</title>
+<style>body{font-family:'Pretendard',sans-serif;background:#f6f4ee;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}.box{text-align:center;padding:48px 32px;background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08);max-width:420px}h2{font-size:22px;color:#1a1a17;margin-bottom:12px}p{color:#7c776b;font-size:14px;line-height:1.7;margin-bottom:0}a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;color:#fff;border-radius:10px;text-decoration:none;font-weight:700}</style></head><body><div class="box"><h2>결과지를 찾을 수 없습니다</h2><p>링크가 만료되었거나<br>잘못된 주소입니다.</p><a href="/">새로 시작하기</a></div></body></html>`, 404)
+      }
+      try {
+        // diagnosis_results에서 ref_code 조회 (신파이프라인 우선)
         const diagRow = await db.prepare(
           `SELECT ref_code FROM diagnosis_results WHERE id = ? LIMIT 1`
         ).bind(id).first<any>()
         if (diagRow?.ref_code) injectedRefCode = diagRow.ref_code
         // 구버전 H- 접두어 ID: hospital_responses에서도 조회
-        if (!injectedRefCode && id.startsWith('H-')) {
+        if (!injectedRefCode) {
           const hospRow = await db.prepare(
             `SELECT ref_code FROM hospital_responses WHERE id = ? LIMIT 1`
           ).bind(id).first<any>()

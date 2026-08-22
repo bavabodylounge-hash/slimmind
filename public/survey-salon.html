@@ -19523,10 +19523,19 @@ function showAnalyzing(){
     onDone(){
       if(titleEl) titleEl.textContent = (_azLang==='th') ? `รหัสของคุณ${name}เสร็จสมบูรณ์แล้ว`
         : ((_azLang==='en') ? `${name}'s code is complete` : `${name}님의 코드가 완성됐습니다`);
-      /* ★★ 에스테틱 이식 v1 — 결과지 표시 제거(서우님 확정: 콘솔에서 종료).
-         decideCode 는 계산·저장만 유지. (병원용 v70 동일) */
+      /* ★★ BUG-FIX (2026-08-22): decideCode() 후 showCodeResult()를 반드시 호출해야
+         DISP 모달 → submitDiagnosis() 흐름으로 이어진다.
+         이전 코드는 decideCode()만 호출하고 showCodeResult()를 누락하여
+         100% 완료 후 화면 멈춤 + API 미전송 → B2B 대시보드 결과 미수신 버그 발생. */
       setTimeout(()=>{
-        try{ window._smFinalCode = decideCode(); }catch(_){}
+        try{
+          const _r = decideCode();
+          window._smFinalCode = _r;
+          showCodeResult(_r);
+        }catch(_e){
+          console.error('[showAnalyzing/salon] decideCode/showCodeResult 실패:', _e);
+          try{ submitDiagnosis({}); }catch(_){}
+        }
       },700);
     }
   });
@@ -20105,6 +20114,7 @@ async function submitDiagnosis(dispAnswers) {
     disp_answers:    (dispAnswers && Object.keys(dispAnswers).length > 0) ? dispAnswers : null,
     raw_answers:     rawAnswers,
     ref_code:        refCode,
+    survey_category: 'salon',        // ✅ BUG-FIX: 결과지 라우팅용 카테고리 (누락 시 'integrated'로 저장됨)
     completed_at:    new Date().toISOString()
   };
 
