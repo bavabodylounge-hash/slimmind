@@ -6230,7 +6230,7 @@ async function callClaude(
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-3-5-haiku-20241022',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 800,
       temperature,
       system: systemPrompt,
@@ -6466,7 +6466,7 @@ app.get('/api/ai/debug-claude', async (c) => {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-3-5-haiku-20241022',
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 100,
         temperature: 0.5,
         messages: [{ role: 'user', content: '{"story_lead":"테스트","clinical_ctx":"소견"} 형식으로 짧게 답해주세요.' }],
