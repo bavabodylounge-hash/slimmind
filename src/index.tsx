@@ -8112,48 +8112,64 @@ app.get('/api/a/result/:id', async (c) => {
       'SELECT * FROM diagnosis_results WHERE id = ?'
     ).bind(id).first<any>()
 
+    // 2순위: aesthetic_responses — diagnosis_results가 없거나 raw_answers가 비어있을 때 사용
+    let aeRow: any = null
+    try {
+      // [BUG-FIX] diagnosis_results raw_answers가 비어있는 구데이터 케이스:
+      // aesthetic_responses에 stage_json 데이터가 있을 수 있으므로 함께 조회
+      aeRow = await db.prepare(
+        'SELECT * FROM aesthetic_responses WHERE id = ?'
+      ).bind(id).first<any>()
+    } catch (_) {}
+
     if (row) {
       const rawAnswers = parseJ(row.raw_answers)
+      // [BUG-FIX] diagnosis_results raw_answers가 비어있는 구데이터 보완:
+      // aesthetic_responses의 stage_json 데이터로 보완
+      let s1 = (rawAnswers && rawAnswers.stage1) ? rawAnswers.stage1 : null
+      let s2 = (rawAnswers && rawAnswers.stage2) ? rawAnswers.stage2 : null
+      let s3 = (rawAnswers && rawAnswers.stage3) ? rawAnswers.stage3 : null
+      let mergedRaw = rawAnswers || {}
+      if (aeRow && (!s1 || !s2)) {
+        const aeS1 = parseJ(aeRow.stage1_json)
+        const aeS2 = parseJ(aeRow.stage2_json)
+        const aeS3 = parseJ(aeRow.stage3_json)
+        if (aeS1 && !s1) { s1 = aeS1; mergedRaw = { ...mergedRaw, stage1: aeS1 } }
+        if (aeS2 && !s2) { s2 = aeS2; mergedRaw = { ...mergedRaw, stage2: aeS2 } }
+        if (aeS3 && !s3) { s3 = aeS3; mergedRaw = { ...mergedRaw, stage3: aeS3 } }
+      }
       return c.json({
         ok:             true,
         id:             row.id,
-        b2b_code:       row.ref_code || null,
+        b2b_code:       row.ref_code || (aeRow?.b2b_code) || null,
         ref_code:       row.ref_code || null,
         user_name:      row.user_name,
-        gender:         row.gender,
-        age:            row.age,
-        height:         row.height,
-        phone:          maskPhone(row.phone),  // [BUG-FIX v4.3] PII 마스킹
-        ohaeng_type:    row.ohaeng_type,
-        mbti_full:      row.mbti_full,
-        bc_code:        row.bc_code_key || row.bc_primary,
-        bc_nickname:    row.bc_nickname,
-        axis_scores:    parseJ(row.axis_scores, {}),
+        gender:         row.gender || (aeRow?.gender) || null,
+        age:            row.age || (aeRow?.age) || null,
+        height:         row.height || (aeRow?.height) || null,
+        phone:          maskPhone(row.phone || aeRow?.phone),  // [BUG-FIX v4.3] PII 마스킹
+        ohaeng_type:    row.ohaeng_type || (aeRow?.ohaeng_type) || null,
+        mbti_full:      row.mbti_full || (aeRow?.mbti_full) || null,
+        bc_code:        row.bc_code_key || row.bc_primary || (aeRow?.bc_code) || null,
+        bc_nickname:    row.bc_nickname || (aeRow?.bc_nickname) || null,
+        axis_scores:    parseJ(row.axis_scores, parseJ(aeRow?.axis_scores, {})),
         top3_axes:      parseJ(row.top3_axes, []),
         region:         row.region,
         texture:        row.texture,
         survey_category: row.survey_category || 'aesthetic',
-        stage1_answers: (rawAnswers && rawAnswers.stage1) ? rawAnswers.stage1 : null,
-        stage2_answers: (rawAnswers && rawAnswers.stage2) ? rawAnswers.stage2 : null,
-        stage3_answers: (rawAnswers && rawAnswers.stage3) ? rawAnswers.stage3 : null,
-        raw_answers:    rawAnswers,
+        stage1_answers: s1,
+        stage2_answers: s2,
+        stage3_answers: s3,
+        raw_answers:    mergedRaw,
         disp_answers:   parseJ(row.disp_answers, {}),
-        goal_weight:    row.goal_weight,
-        weight_loss_pct: row.weight_loss_pct,
+        goal_weight:    row.goal_weight || (aeRow?.goal_weight) || null,
+        weight_loss_pct: row.weight_loss_pct || (aeRow?.weight_loss_pct) || null,
         created_at:     row.created_at,
         schema_version: 'v1.1',
         survey_type: row.survey_category || 'aesthetic',
         _source: 'diagnosis_results',
       })
     }
-
-    // 2순위: aesthetic_responses (구데이터 — diagnosis_results 동기화 전 저장분)
-    let aeRow: any = null
-    try {
-      aeRow = await db.prepare(
-        'SELECT * FROM aesthetic_responses WHERE id = ?'
-      ).bind(id).first<any>()
-    } catch (_) {}
 
     if (aeRow) {
       const rawAnswers = parseJ(aeRow.raw_answers)
@@ -8763,12 +8779,19 @@ app.post('/api/f/diagnosis', async (c) => {
           return ax.length ? JSON.stringify(ax) : null
         } catch { return null }
       })()
+      // [BUG-FIX] 피트니스 diagnosis_results 동기화 — raw_answers/gender/height/age/goal_weight 누락 수정
+      const fitRawForDr: Record<string,any> = { ...(typeof body.raw_answers === 'object' && body.raw_answers ? body.raw_answers : {}) }
+      if (body.stage1_json && !fitRawForDr.stage1) fitRawForDr.stage1 = body.stage1_json
+      if (body.stage2_json && !fitRawForDr.stage2) fitRawForDr.stage2 = body.stage2_json
+      if (body.stage3_json && !fitRawForDr.stage3) fitRawForDr.stage3 = body.stage3_json
+      if (body.stage4_json && !fitRawForDr.stage4) fitRawForDr.stage4 = body.stage4_json
       await db.prepare(`
         INSERT OR IGNORE INTO diagnosis_results
           (id, user_name, bc_primary, bc_code_key, bc_secondary, bc_nickname,
            top3_axes, axis_scores, region, texture, ohaeng_type, mbti_full,
-           ref_code, survey_category, completed_at, created_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
+           ref_code, survey_category, raw_answers, gender, height, age,
+           goal_weight, weight_loss_pct, completed_at, created_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
       `).bind(
         id,
         body.user_name  || body.name || '고객',
@@ -8784,6 +8807,12 @@ app.post('/api/f/diagnosis', async (c) => {
         body.mbti_full   || null,
         body.ref_code    || null,
         'fitness',
+        JSON.stringify(fitRawForDr),
+        body.gender || null,
+        String(height || ''),
+        String(body.age || ''),
+        parseFloat(body.goal_weight)     || null,
+        parseFloat(body.weight_loss_pct) || null,
         body.completed_at || new Date().toISOString(),
       ).run()
     } catch (drErr: any) {
