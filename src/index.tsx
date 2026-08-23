@@ -8631,6 +8631,27 @@ app.get('/api/f/result/:id', async (c) => {
     const parseJ = (v: any, fallback: any = null) => {
       try { return v ? JSON.parse(v) : fallback } catch { return fallback }
     }
+    // [BUG-FIX v4.6] 반환 시 axis_scores 0~100 정규화 (기존 raw 데이터 하위호환 처리)
+    const normalizeAxFRead = (raw: any): Record<string, number> => {
+      if (!raw) return {}
+      const obj: Record<string, number> = typeof raw === 'string' ? (() => { try { return JSON.parse(raw) } catch { return {} } })() : (raw as Record<string, number>)
+      const vals = Object.values(obj).map(Number).filter(v => !isNaN(v))
+      if (vals.length === 0) return {}
+      const hasAxisKeys = Object.keys(obj).some(k => /^A\d{2}$/.test(k))
+      const anyAbove10 = vals.some(v => v > 10)
+      const isAlready = hasAxisKeys ? anyAbove10 : (Math.max(...vals) >= 50)
+      const result: Record<string, number> = {}
+      if (isAlready) {
+        Object.entries(obj).forEach(([k, v]) => { result[k] = Math.min(100, Math.max(0, Math.round(Number(v)))) })
+      } else {
+        const maxVal = Math.max(...vals)
+        Object.entries(obj).forEach(([k, v]) => {
+          const ratio = maxVal > 0 ? Number(v) / maxVal : 0
+          result[k] = Math.min(100, Math.round(Math.sqrt(ratio) * 100))
+        })
+      }
+      return result
+    }
 
     c.header('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0')
     c.header('Pragma', 'no-cache')
@@ -8653,7 +8674,7 @@ app.get('/api/f/result/:id', async (c) => {
       mbti_full:        row.mbti_full,
       bc_code:          row.bc_code,
       bc_nickname:      row.bc_nickname,
-      axis_scores:      parseJ(row.axis_scores, {}),
+      axis_scores:      normalizeAxFRead(parseJ(row.axis_scores, {})), // [BUG-FIX v4.6] 반환 시 정규화
       survey_category:  'fitness',
       // 피트니스 전용 필드
       exercise_response: row.exercise_response,
@@ -8715,8 +8736,35 @@ app.post('/api/f/diagnosis', async (c) => {
     const tdee = bmr > 0 ? Math.round(bmr * actFactor) : 0
     const calorieTarget = tdee > 0 ? tdee - 500 : 0  // 500kcal 적자
 
-    // axis_scores JSON 직렬화
-    const axisScores = body.axis_scores || {}
+    // [BUG-FIX v4.6] axis_scores 0~100 정규화 (병원/에스테틱/살롱과 동일하게 처리)
+    // survey-fitness.html이 0~10 소수점 스케일로 계산한 값을 전송 → 백엔드에서 0~100 정수로 변환
+    const normalizeAxF = (raw: any): Record<string, number> | null => {
+      if (!raw) return null
+      let obj: Record<string, number> = {}
+      if (typeof raw === 'string') { try { obj = JSON.parse(raw) } catch { return null } }
+      else if (typeof raw === 'object' && !Array.isArray(raw)) { obj = raw as Record<string, number> }
+      else return null
+      const vals = Object.values(obj).map(Number).filter(v => !isNaN(v))
+      if (vals.length === 0) return null
+      const hasAxisKeys = Object.keys(obj).some(k => /^A\d{2}$/.test(k))
+      const anyAbove10 = vals.some(v => v > 10)
+      const isAlready0to100 = hasAxisKeys ? anyAbove10 : (Math.max(...vals) >= 50)
+      const result: Record<string, number> = {}
+      if (isAlready0to100) {
+        // 이미 0~100 — 클램프만
+        Object.entries(obj).forEach(([k, v]) => { result[k] = Math.min(100, Math.max(0, Math.round(Number(v)))) })
+      } else {
+        // 0~10 소수점 → 0~100 (sqrt 보정)
+        const maxVal = Math.max(...vals)
+        Object.entries(obj).forEach(([k, v]) => {
+          const ratio = maxVal > 0 ? Number(v) / maxVal : 0
+          result[k] = Math.min(100, Math.round(Math.sqrt(ratio) * 100))
+        })
+      }
+      return result
+    }
+    const normalizedAxisScores = normalizeAxF(body.axis_scores)
+    const axisScores = normalizedAxisScores || body.axis_scores || {}
     const axisJson   = JSON.stringify(axisScores)
 
     // pain_gate 배열 직렬화
