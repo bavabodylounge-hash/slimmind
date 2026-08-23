@@ -1538,6 +1538,14 @@ app.delete('/api/admin/b2b-partners/:code', requireRole('MASTER'), async (c) => 
   return c.json({ success: true, message: 'B2B 파트너가 정지되었습니다.' })
 })
 
+// DELETE /api/admin/b2b-partners/:code/destroy — 완전 삭제 (MASTER 전용)
+app.delete('/api/admin/b2b-partners/:code/destroy', requireRole('MASTER'), async (c) => {
+  const db = c.env.DB
+  const code = c.req.param('code').toUpperCase()
+  await db.prepare('DELETE FROM b2b_partners WHERE code=?').bind(code).run()
+  return c.json({ success: true, message: `${code} 파트너가 완전 삭제되었습니다.` })
+})
+
 // ── 에스테틱 프로그램 관리 API (MASTER 전용) ─────────────────────────────────
 
 // GET /api/admin/aesthetic-programs — 파트너별 목록 조회

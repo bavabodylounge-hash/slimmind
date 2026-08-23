@@ -4856,6 +4856,7 @@ async function loadB2BPartners(search = '', status = '') {
         ${p.status !== 'suspended'
           ? `<button class="btn btn-danger btn-sm" style="margin-left:4px" onclick="suspendB2B('${p.code}')">정지</button>`
           : `<button class="btn btn-success btn-sm" style="margin-left:4px" onclick="activateB2B('${p.code}')">활성화</button>`}
+        <button class="btn btn-sm" style="margin-left:4px;background:#7F1D1D;color:#fff;border-color:#7F1D1D" onclick="deleteB2B('${p.code}','${(p.brand_name||p.name||'').replace(/'/g,"\\'")}')">삭제</button>
       </td>
     </tr>`;
   }).join('');
@@ -5122,6 +5123,23 @@ async function suspendB2B(code) {
   if (!confirm(`${code} B2B 파트너를 정지하시겠습니까?`)) return;
   const res = await api('DELETE', `/admin/b2b-partners/${code}`);
   if ((res && res.success)) { toast('정지 완료', 'success'); loadB2BPartners(); }
+}
+
+async function deleteB2B(code, name) {
+  const confirmMsg = `⚠️ B2B 파트너 완전 삭제\n\n코드: ${code}\n업체: ${name}\n\n삭제하면 복구할 수 없습니다.\n정말 삭제하시겠습니까?\n\n확인하려면 코드(${code})를 입력하세요:`;
+  const input = prompt(confirmMsg);
+  if (input === null) return;
+  if (input.trim().toUpperCase() !== code.toUpperCase()) {
+    toast('코드가 일치하지 않아 삭제를 취소했습니다.', 'error');
+    return;
+  }
+  const res = await api('DELETE', `/admin/b2b-partners/${code}/destroy`);
+  if (res && res.success) {
+    toast(`${code} (${name}) 삭제 완료`, 'success');
+    loadB2BPartners();
+  } else {
+    toast('삭제 중 오류가 발생했습니다.', 'error');
+  }
 }
 
 async function activateB2B(code) {
