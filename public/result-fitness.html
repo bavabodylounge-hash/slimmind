@@ -22500,7 +22500,7 @@ function renderLiveRecord(){
   else { fbT='부담 없이 다시 시작해요'; fbS='한 번에 다 하려 마세요. 오늘은 가장 쉬운 칸 하나만. 작은 기록도 큰 신호예요.'; }
 
   var savedReply = '';
-  try { savedReply = localStorage.getItem('slimmind_con_reply_' + (window.__FITNESS_RESULT_ID__ || window.__AESTHETIC_RESULT_ID__ || 'wk'))||''; } catch(e){}
+  try { savedReply = localStorage.getItem('slimmind_con_reply_' + (window.__FITNESS_RESULT_ID__ || 'wk'))||''; } catch(e){} // [BUG-FIX v4.5] __AESTHETIC_RESULT_ID__ 잘못된 폴백 제거
   var fbHTML = '<div class="lr2-fb">'+
     '<div class="lr2-fb-hd"><span class="lr2-fb-ava">SM</span>'+
       '<div class="lr2-fb-meta"><div class="lr2-fb-name">'+CON+'</div><div class="lr2-fb-tag">이번 주 피드백</div></div></div>'+
@@ -22520,14 +22520,14 @@ function renderLiveRecord(){
 
 // 답장 입력 변화 저장
 function lr2ReplyChanged(el){
-  try { localStorage.setItem('slimmind_con_reply_' + (window.__FITNESS_RESULT_ID__ || window.__AESTHETIC_RESULT_ID__ || 'wk'), el.value); } catch(e){}
+  try { localStorage.setItem('slimmind_con_reply_' + (window.__FITNESS_RESULT_ID__ || 'wk'), el.value); } catch(e){} // [BUG-FIX v4.5]
   var done=document.getElementById('lr2-reply-done'); if(done) done.style.display='none';
 }
 window.lr2SendReply = lr2SendReply; function lr2SendReply(){
   var el=document.getElementById('lr2-reply-in'); if(!el) return;
   var txt=(el.value||'').trim();
   if(!txt){ el.focus(); return; }
-  try { localStorage.setItem('slimmind_con_reply_' + (window.__FITNESS_RESULT_ID__ || window.__AESTHETIC_RESULT_ID__ || 'wk'), txt); } catch(e){}
+  try { localStorage.setItem('slimmind_con_reply_' + (window.__FITNESS_RESULT_ID__ || 'wk'), txt); } catch(e){} // [BUG-FIX v4.5]
   var done=document.getElementById('lr2-reply-done'); if(done) done.style.display='block';
   var CON=(window.__CONSULTANT_NAME__||'담당 컨설턴트');
   if(typeof _wgSendToast==='function') _wgSent('답장');
