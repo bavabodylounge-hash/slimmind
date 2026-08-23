@@ -6142,8 +6142,8 @@ const AI_WRITER_SYSTEM = `당신은 슬림마인드 결과지의 "첫 사람 목
 §4 DATA CONTRACT: JSON이 유일한 현실. 없는 사실·숫자·방법 창작 금지. 숫자는 trajectory.points(체중 궤적 %)에서만 — 절대 kg 표기 금지. 진단명·치료·완치·보장 금지. 빈 필드는 조용히 우회. 개인값을 못 쓰면 그 소절을 아예 빼세요.
 
 §5 OUTPUT (JSON만 출력):
-- 서사: {"story_lead":"..."} 250~350자 한 문단
-- 소견 맥락: {"clinical_ctx":"..."} 80~140자, 임상 단어 금지, 주어는 사람·시간·행동·경험만
+- 서사: {"story_lead":"..."} 180~400자 한 문단
+- 소견 맥락: {"clinical_ctx":"..."} 60~180자, 임상 단어 금지, 주어는 사람·시간·행동·경험만
 - 두 키를 하나의 JSON 객체로: {"story_lead":"...","clinical_ctx":"..."}
 - 코드·아형 라벨은 story_lead에 0회 (방금 화면에 떴음)
 - "게을렀던 게 아닙니다"·"다른 구조" 앵커 문장은 AI 생성분에 쓰지 마세요 (시스템 소유)
@@ -6171,8 +6171,8 @@ function validateAiStory(
   // 2. 길이 검사
   const sl = String(story_lead)
   const cc = String(clinical_ctx)
-  if (sl.length < 200 || sl.length > 400) return { ok: false, reason: `story_lead 길이 오류: ${sl.length}자` }
-  if (cc.length < 60 || cc.length > 180) return { ok: false, reason: `clinical_ctx 길이 오류: ${cc.length}자` }
+  if (sl.length < 150 || sl.length > 450) return { ok: false, reason: `story_lead 길이 오류: ${sl.length}자` }
+  if (cc.length < 50 || cc.length > 200) return { ok: false, reason: `clinical_ctx 길이 오류: ${cc.length}자` }
 
   // 3. 금지어 검사 (§6 FORBIDDEN)
   const FORBIDDEN_STORY = ['상담', '예약', '가격', '업소', '컨설턴트', '효소', '수용체', '호르몬 경로',
