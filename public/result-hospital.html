@@ -20026,7 +20026,14 @@ window.addEventListener('DOMContentLoaded', async () => {
       }
     } catch(_e) {}
 
-    /* 시연본: 재렌더 끔 — 구운 김지현 화면 고정(중복 방지) */
+    // ── 실제 데이터 렌더링 (병원 플로우 or 일반 플로우) ──
+    if (resultData && typeof renderAll === 'function') {
+      try {
+        renderAll(resultData);
+      } catch(renderErr) {
+        console.error('[result-v4] renderAll 오류:', renderErr);
+      }
+    }
 
   } catch (initErr) {
     // 초기화 중 예외 발생 → 콘솔 기록 + 오버레이 즉시 해제
@@ -27369,6 +27376,10 @@ function renderP8(metrics, bcCode, axisScores, userName) {
        사람마다 [질문→축 점수→영역 환산]으로 달라지며, 시술은 상위 5위 내 진입 시 핵심 개방(병원판 문턱 규칙).
        아래는 김지현 P5 계산 결과(시연값). */
     window.__STRONG_AXES__ = (window.__P5_TOP3__ || ['호르몬','시술','회복']);  // 실제 P5 순서
+    // ── 시연본 단독 렌더 가드: 실제 결과지(__HOSPITAL_RESULT_ID__ 존재)에선 DOMContentLoaded의 renderAll이 담당 ──
+    var _isRealResult = !!(window.__HOSPITAL_RESULT_ID__
+      || (location.pathname.startsWith('/result-hospital/') && location.pathname.length > '/result-hospital/'.length));
+    if (!_isRealResult) {
     renderP8(null, 'BC-13', {A01:5.5,A02:6.0,A03:9.2,A04:3.5,A05:4.8,A06:6.2,A07:7.8,A08:5.8,A09:3.0,A10:4.5}, '김지현');  // demoData와 동일 정본 축값
     /* [시연본] 5장 변화예측 시동 — renderAll이 시연본에선 안 돌아 P9가 안 그려지던 문제 해결.
        김지현 정본: 몸나이 53(1P와 동일)·복부46·호르몬68, 체중66.2·목표59·키160·나이52 */
@@ -27404,6 +27415,7 @@ function renderP8(metrics, bcCode, axisScores, userName) {
     }catch(e){ console.warn('[demo renderP3]', e&&e.message); }
     try{ if(typeof window.bindUnifiedGrid==='function') window.bindUnifiedGrid(); }catch(e){ console.warn('[demo bindGrid]', e&&e.message); }
     try{ if(typeof window.bindMealMatrix==='function') window.bindMealMatrix(); }catch(e){}
+    } // end if (!_isRealResult)
 
 /* [시연본] 4장 세 카드: 핵심축(STRONG_AXES) 시안 레이저 강조 + 기본/핵심 배지 */
 try{
