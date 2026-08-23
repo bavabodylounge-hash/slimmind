@@ -6349,12 +6349,17 @@ ${inputJson}`
           console.log(`[AI story] Claude 생성 성공: ${result_id}`)
         } else {
           console.warn(`[AI story] 재생성도 불합격: ${validation.reason} → 옷장v4 폴백`)
+          // [DIAG] 임시 디버그: 검증 실패 이유 응답에 포함
+          return c.json({ story_lead: null, clinical_ctx: null, src: 'wardrobe_v4', cached: false, _debug_fail_reason: validation.reason, _debug_raw: rawText.slice(0,300) })
         }
       } catch (claudeErr) {
         console.error('[AI story] Claude 호출 오류 → 폴백:', claudeErr)
+        // [DIAG] 임시 디버그: Claude 오류 응답에 포함
+        return c.json({ story_lead: null, clinical_ctx: null, src: 'wardrobe_v4', cached: false, _debug_claude_error: String(claudeErr) })
       }
     } else {
       console.warn('[AI story] ANTHROPIC_API_KEY 없음 → 옷장v4 폴백')
+      return c.json({ story_lead: null, clinical_ctx: null, src: 'wardrobe_v4', cached: false, _debug_no_key: true })
     }
 
     // ── 폴백: 옷장 v4 (결과지 bc_nickname 기반으로 간단 안내) ──
