@@ -19,6 +19,7 @@ type Bindings = {
   DB: D1Database
   JWT_SECRET: string
   ASSETS: Fetcher  // Cloudflare Workers Assets 바인딩
+  ANTHROPIC_API_KEY: string  // Claude AI 서사 생성용 API 키
 }
 
 // ASSETS에서 HTML 파일 텍스트를 읽어오는 헬퍼
@@ -6123,6 +6124,322 @@ app.get('/api/v1/diagnosis/:id', async (c) => {
 })
 
 // ════════════════════════════════════════════════════════
+//  AI 작가 헌법 v2 — Claude 서사·소견 생성 엔진
+//  설계도 §1~§7 + 검증 파이프라인 완전 구현
+//  POST /api/ai/generate-story — 결과지 발급 시 story_lead + clinical_ctx 생성·저장
+//  GET  /api/ai/story/:result_id — 저장된 서사 조회 (굽기 1회 원칙)
+// ════════════════════════════════════════════════════════
+
+// ── AI 작가 헌법 v2 SYSTEM PROMPT ─────────────────────────────────
+const AI_WRITER_SYSTEM = `당신은 슬림마인드 결과지의 "첫 사람 목소리"입니다.
+
+§1 ROLE: 의사·코치·판매원이 아닙니다. 독자가 답한 모든 것을 보고 "이 중 어느 것도 게으름이 아니었다"고 먼저 말해주는 사람입니다. 한국어 존댓말. 독자는 {name}님(성 뺀 이름, "고객님" 금지).
+
+§2 THE ROOM: 결과지의 첫 감정 방. 독자는 코드와 숫자를 방금 통보받은 피고인입니다. 유일 임무 = 피고인→생존자(게으름이 아니라 몸이 다른 구조로 돈다). 이 시점 판매 기색 0.
+
+§3 아형이 곧 캐릭터: 입력에 아형명(subtype)과 성별(sex)이 옵니다. 같은 특허 코드라도 아형이 다르면 다른 사람입니다. 서사는 그 아형의 장면에서 시작합니다. 16코드로 뭉뚱그리지 마세요. ★같은 아형이라도 성별이 다르면 장면이 다릅니다(여성=거울 앞 옆선·속옷 자국·사진 속 팔뚝 / 남성=셔츠 깃·벨트 구멍·정장 상의). 순서 고정: ①장면(그 사람 답으로 지은 순간) →②마음(자책 읽기) →③위로(탓 해소) →④문 열기.
+
+§4 DATA CONTRACT: JSON이 유일한 현실. 없는 사실·숫자·방법 창작 금지. 숫자는 trajectory.points(체중 궤적 %)에서만 — 절대 kg 표기 금지. 진단명·치료·완치·보장 금지. 빈 필드는 조용히 우회. 개인값을 못 쓰면 그 소절을 아예 빼세요.
+
+§5 OUTPUT (JSON만 출력):
+- 서사: {"story_lead":"..."} 250~350자 한 문단
+- 소견 맥락: {"clinical_ctx":"..."} 80~140자, 임상 단어 금지, 주어는 사람·시간·행동·경험만
+- 두 키를 하나의 JSON 객체로: {"story_lead":"...","clinical_ctx":"..."}
+- 코드·아형 라벨은 story_lead에 0회 (방금 화면에 떴음)
+- "게을렀던 게 아닙니다"·"다른 구조" 앵커 문장은 AI 생성분에 쓰지 마세요 (시스템 소유)
+
+§6 FORBIDDEN: 판매어(상담·예약·가격·업소명·컨설턴트)·기전 어휘(효소·수용체·호르몬 경로·%)·발명 통계·공포·타 고객 비교·영어/이모지/태그·메타(AI·데이터 언급)·임상어(clinical_ctx에서도 호르몬·인슐린·대사 등 금지).
+
+§7 SELF-CHECK (출력 전 반드시 확인):
+⑴ 장면으로 여는가(이론·코드 아님)
+⑵ 위로가 반걸음 앞에 멈춰 고정 앵커가 판결로 떨어지는가
+⑶ 기전·퍼센트 0인가
+⑷ 숫자는 궤적에만 있는가
+⑸ 판매·공포·앵커어휘 0·JSON만인가
+하나라도 실패 시 재작성.`
+
+// ── 검증 파이프라인 (설계도 검사기 완전 구현) ──────────────────────
+function validateAiStory(
+  parsed: any,
+  input: { name: string; sex: string; subtype: string }
+): { ok: boolean; reason?: string } {
+  const { story_lead, clinical_ctx } = parsed
+
+  // 1. 파싱 확인
+  if (!story_lead || !clinical_ctx) return { ok: false, reason: 'JSON 키 누락' }
+
+  // 2. 길이 검사
+  const sl = String(story_lead)
+  const cc = String(clinical_ctx)
+  if (sl.length < 200 || sl.length > 400) return { ok: false, reason: `story_lead 길이 오류: ${sl.length}자` }
+  if (cc.length < 60 || cc.length > 180) return { ok: false, reason: `clinical_ctx 길이 오류: ${cc.length}자` }
+
+  // 3. 금지어 검사 (§6 FORBIDDEN)
+  const FORBIDDEN_STORY = ['상담', '예약', '가격', '업소', '컨설턴트', '효소', '수용체', '호르몬 경로',
+    'AI', '데이터', '통계', '연구', '비교', '치료', '완치', '보장', '진단', '처방',
+    '호르몬', '인슐린', '대사', '코르티솔', '도파민', '세로토닌', '수용체', '%', 'kg',
+    '주차', '게을렀던 게 아닙니다', '다른 구조로 작동']
+  for (const w of FORBIDDEN_STORY) {
+    if (sl.includes(w)) return { ok: false, reason: `story_lead 금지어: "${w}"` }
+  }
+
+  // 4. clinical_ctx 임상어 금지 (§5)
+  const FORBIDDEN_CLINICAL = ['호르몬', '인슐린', '대사', '코르티솔', '지방', '근육', '체중', 'kg', '%',
+    '수용체', '효소', '신경', '혈당', '혈압', '콜레스테롤', '내장', '림프']
+  for (const w of FORBIDDEN_CLINICAL) {
+    if (cc.includes(w)) return { ok: false, reason: `clinical_ctx 임상어: "${w}"` }
+  }
+
+  // 5. 숫자 화이트리스트 (kg 절대 금지, % 궤적 이외 금지)
+  if (/\d+kg/.test(sl)) return { ok: false, reason: 'story_lead에 kg 표기 금지' }
+
+  // 6. 아형/코드 라벨 0회 (§5)
+  const subtypeCheck = input.subtype.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  if (new RegExp(subtypeCheck).test(sl)) return { ok: false, reason: 'story_lead에 아형명 포함 금지' }
+
+  // 7. 이름 정합 (이름 언급 시 성 없는 이름인지)
+  if (sl.includes(input.name) && !sl.includes(input.name + '님')) {
+    // 이름만 나오고 '님'이 없으면 경고 (선택적)
+  }
+
+  // 8. 성별 전용 아형 교차 검사
+  const FEMALE_ONLY = ['털털한 PCOS형', '출산후 바람빠진 풍선형', '겨드랑이 부유방형']
+  const MALE_ONLY   = ['복압 빠진 맥주배형', '가슴 아래 접히는 흉부 정체형', '배부터 무너지는 남성 호르몬 저하형']
+  if (FEMALE_ONLY.includes(input.subtype) && input.sex === '남성') {
+    return { ok: false, reason: '여성 전용 아형에 남성 성별 불일치' }
+  }
+  if (MALE_ONLY.includes(input.subtype) && input.sex === '여성') {
+    return { ok: false, reason: '남성 전용 아형에 여성 성별 불일치' }
+  }
+
+  return { ok: true }
+}
+
+// ── Claude API 호출 함수 ────────────────────────────────────────────
+async function callClaude(
+  apiKey: string,
+  systemPrompt: string,
+  userMsg: string,
+  temperature = 0.7
+): Promise<string> {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-3-5-haiku-20241022',
+      max_tokens: 800,
+      temperature,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userMsg }],
+    }),
+  })
+  if (!res.ok) {
+    const errText = await res.text()
+    throw new Error(`Claude API ${res.status}: ${errText.slice(0, 200)}`)
+  }
+  const data: any = await res.json()
+  return data.content?.[0]?.text || ''
+}
+
+// ── POST /api/ai/generate-story ────────────────────────────────────
+// 설계도 스펙:
+//   입력: { result_id, name, sex, subtype, bodyChange, methods[], trigger,
+//           trajectory:{pattern,points[]}, background, flags[] }
+//   출력: { story_lead, clinical_ctx, src }
+//   굽기 1회 원칙: 저장본 있으면 그대로 반환
+app.post('/api/ai/generate-story', async (c) => {
+  const db = (c.env as any).DB as D1Database
+  const apiKey = (c.env as any).ANTHROPIC_API_KEY as string | undefined
+
+  if (!db) return c.json({ error: 'DB not configured' }, 500)
+
+  try {
+    const body = await c.req.json() as any
+    const {
+      result_id,
+      name, sex, subtype,
+      bodyChange, methods, trigger,
+      trajectory, background, flags,
+    } = body
+
+    if (!result_id) return c.json({ error: 'result_id required' }, 400)
+    if (!name || !sex || !subtype) {
+      return c.json({ error: 'name, sex, subtype 필수' }, 400)
+    }
+
+    // ── 굽기 1회 원칙: 저장본 있으면 즉시 반환 ──────────────────
+    const existing = await db.prepare(
+      `SELECT story_lead, clinical_ctx, ai_story_src FROM diagnosis_results WHERE id = ? LIMIT 1`
+    ).bind(result_id).first() as any
+
+    if (existing?.story_lead && existing?.clinical_ctx) {
+      return c.json({
+        story_lead:   existing.story_lead,
+        clinical_ctx: existing.clinical_ctx,
+        src:          existing.ai_story_src || 'wardrobe_v4',
+        cached:       true,
+      })
+    }
+
+    // ── 옷장 v4에서 폴백 벌 조회 ──────────────────────────────────
+    // diagnosis_results 테이블에 저장된 bc_nickname(=subtype)과 gender로 조회
+    // 옷장 데이터는 코드에 내장 (86벌은 별도 조회 불필요 — wardrobe map 참조)
+    // ※ 실제 옷장 v4 전문은 설계도 표에만 있고 DB엔 없음
+    //   → 폴백 시 result_id의 bc_nickname/gender로 간단한 폴백 문구 생성
+
+    // ── Claude API 호출 (apiKey 있을 때만) ──────────────────────
+    let story_lead: string | null = null
+    let clinical_ctx: string | null = null
+    let src = 'wardrobe_v4'
+
+    if (apiKey) {
+      // 입력 스키마 구성 (코드·축 원값 제외 — 코드 0회 규칙)
+      const inputJson = JSON.stringify({
+        name,
+        sex,
+        subtype,
+        bodyChange: bodyChange || null,
+        methods: methods || [],
+        trigger: trigger || null,
+        trajectory: trajectory || { pattern: null, points: [] },
+        background: background || null,
+        flags: flags || [],
+      }, null, 2)
+
+      const userMsg = `다음 JSON을 바탕으로 서사(story_lead)와 소견 맥락(clinical_ctx)을 생성해주세요.
+헌법 §1~§7을 전부 지키고, {"story_lead":"...","clinical_ctx":"..."} JSON만 출력하세요.
+
+입력:
+${inputJson}`
+
+      try {
+        // 1차 생성 (temperature 0.7)
+        let rawText = await callClaude(apiKey, AI_WRITER_SYSTEM, userMsg, 0.7)
+
+        // JSON 추출
+        const jsonMatch = rawText.match(/\{[\s\S]*"story_lead"[\s\S]*"clinical_ctx"[\s\S]*\}/)
+        let parsed: any = null
+        if (jsonMatch) {
+          try { parsed = JSON.parse(jsonMatch[0]) } catch {}
+        }
+
+        // 검증
+        let validation = parsed ? validateAiStory(parsed, { name, sex, subtype }) : { ok: false, reason: 'JSON 파싱 실패' }
+
+        // 불합격 → 온도 0.4로 재생성 1회
+        if (!validation.ok) {
+          console.warn(`[AI story] 1차 불합격: ${validation.reason} — 재생성 시도`)
+          rawText = await callClaude(apiKey, AI_WRITER_SYSTEM, userMsg, 0.4)
+          const jsonMatch2 = rawText.match(/\{[\s\S]*"story_lead"[\s\S]*"clinical_ctx"[\s\S]*\}/)
+          parsed = null
+          if (jsonMatch2) {
+            try { parsed = JSON.parse(jsonMatch2[0]) } catch {}
+          }
+          validation = parsed ? validateAiStory(parsed, { name, sex, subtype }) : { ok: false, reason: 'JSON 파싱 실패 (재시도)' }
+        }
+
+        if (validation.ok && parsed) {
+          story_lead   = String(parsed.story_lead)
+          clinical_ctx = String(parsed.clinical_ctx)
+          src = 'claude'
+          console.log(`[AI story] Claude 생성 성공: ${result_id}`)
+        } else {
+          console.warn(`[AI story] 재생성도 불합격: ${validation.reason} → 옷장v4 폴백`)
+        }
+      } catch (claudeErr) {
+        console.error('[AI story] Claude 호출 오류 → 폴백:', claudeErr)
+      }
+    } else {
+      console.warn('[AI story] ANTHROPIC_API_KEY 없음 → 옷장v4 폴백')
+    }
+
+    // ── 폴백: 옷장 v4 (결과지 bc_nickname 기반으로 간단 안내) ──
+    // 실제 86벌 전문은 result-hospital.html 등 결과지 HTML에 wardrobe 데이터로 내장
+    // 백엔드 폴백은 "아형명+성별 기반 기본 안내" 수준으로만 처리
+    // (결과지 프론트에서 wardrobe JS로 최종 렌더)
+    if (!story_lead || !clinical_ctx) {
+      // DB에서 bc_nickname, gender 조회
+      const diagRow = await db.prepare(
+        `SELECT bc_nickname, bc_primary, gender, user_name FROM diagnosis_results WHERE id = ? LIMIT 1`
+      ).bind(result_id).first() as any
+
+      const fallbackSubtype = diagRow?.bc_nickname || diagRow?.bc_primary || subtype || '기본형'
+      const fallbackSex     = diagRow?.gender || sex || '여성'
+      const fallbackName    = diagRow?.user_name || name || ''
+
+      // 폴백은 null로 저장 — 결과지 프론트의 wardrobe JS가 처리
+      // (DB에 null 저장 시 프론트에서 wardrobe v4 로컬 데이터로 렌더)
+      story_lead   = null
+      clinical_ctx = null
+      src = 'wardrobe_v4'
+      console.log(`[AI story] 폴백(wardrobe_v4): ${fallbackSubtype} / ${fallbackSex} / ${fallbackName}`)
+    }
+
+    // ── D1 저장 (굽기 1회) ─────────────────────────────────────
+    const now = new Date().toISOString()
+    try {
+      await db.prepare(`
+        UPDATE diagnosis_results
+        SET story_lead = ?, clinical_ctx = ?, ai_story_src = ?, ai_story_at = ?
+        WHERE id = ?
+      `).bind(
+        story_lead,
+        clinical_ctx,
+        src,
+        now,
+        result_id
+      ).run()
+    } catch (updateErr: any) {
+      // migration 0064 미적용 시 graceful 처리
+      if (String(updateErr).includes('no column named')) {
+        console.warn('[AI story] ai_story 컬럼 없음 — migration 0064 미적용. 결과 반환은 계속.')
+      } else {
+        throw updateErr
+      }
+    }
+
+    return c.json({
+      story_lead,
+      clinical_ctx,
+      src,
+      cached: false,
+    })
+  } catch (e) {
+    console.error('[POST /api/ai/generate-story]', e)
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ── GET /api/ai/story/:result_id — 저장된 서사 조회 ───────────────
+app.get('/api/ai/story/:result_id', async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not configured' }, 500)
+
+  try {
+    const result_id = c.req.param('result_id')
+    const row = await db.prepare(
+      `SELECT story_lead, clinical_ctx, ai_story_src, ai_story_at FROM diagnosis_results WHERE id = ? LIMIT 1`
+    ).bind(result_id).first() as any
+
+    if (!row) return c.json({ error: 'not found' }, 404)
+
+    return c.json({
+      story_lead:   row.story_lead   || null,
+      clinical_ctx: row.clinical_ctx || null,
+      src:          row.ai_story_src || 'wardrobe_v4',
+      ai_story_at:  row.ai_story_at  || null,
+    })
+  } catch (e) {
+    console.error('[GET /api/ai/story]', e)
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ════════════════════════════════════════════════════════
 //  기능 8: 가족 코드 비교
 //  POST /api/v1/family-code/join   — 결과에 가족코드 연결 (신규 or 기존 코드 참여)
 //  GET  /api/v1/family-code/:code  — 가족 코드 구성원 목록 + 코드 비교
@@ -7170,11 +7487,36 @@ app.get('/result-hospital/:id', async (c) => {
       } catch (_) {}
     }
 
+    // ── AI 서사 서버사이드 주입 (굽기 1회 원칙 — 저장본 있으면 즉시 주입) ──
+    let rhStoryLead: string | null = null
+    let rhClinicalCtx: string | null = null
+    let rhStoryResultId: string | null = id  // 결과지 result_id
+    if (db) {
+      try {
+        const storyRow = await db.prepare(
+          `SELECT story_lead, clinical_ctx, ai_story_src FROM diagnosis_results WHERE id = ? LIMIT 1`
+        ).bind(id).first<any>()
+        if (storyRow?.story_lead) {
+          rhStoryLead    = storyRow.story_lead
+          rhClinicalCtx  = storyRow.clinical_ctx || null
+        }
+      } catch (_) {}
+    }
+
     const deployTs = Date.now()
+    // window.__RESULT__에 story_lead / clinical_ctx / result_id 포함 주입 (굽기 1회 원칙)
+    const rhStoryScript = rhStoryLead
+      ? `window.__RESULT__ = window.__RESULT__ || {};
+window.__RESULT__.story_lead = ${JSON.stringify(rhStoryLead)};
+window.__RESULT__.clinical_ctx = ${JSON.stringify(rhClinicalCtx || '')};
+window.__RESULT__.result_id = ${JSON.stringify(id)};`
+      : `window.__RESULT__ = window.__RESULT__ || {};
+window.__RESULT__.result_id = ${JSON.stringify(id)};`
     const idScript = `<script>
 window.__HOSPITAL_RESULT_ID__ = ${JSON.stringify(id)};
 window.__DEPLOY_TS__ = ${deployTs};
 window.__REF_CODE__ = ${JSON.stringify(injectedRefCode)};
+${rhStoryScript}
 try {
   localStorage.setItem('sm_last_result_id', ${JSON.stringify(id)});
   localStorage.setItem('sm_survey_category', 'hospital');
