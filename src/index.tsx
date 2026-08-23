@@ -8583,6 +8583,8 @@ app.get('/api/f/result/:id', async (c) => {
       if (!diagRow) return c.json({ error: 'Not found', ok: false }, 404)
       // diagnosis_results 컬럼 → fitness_responses 포맷으로 변환
       const parseJd = (v: any, fb: any = null) => { try { return v ? JSON.parse(v) : fb } catch { return fb } }
+      // [BUG-FIX v4.4] raw_answers 한 번만 파싱 후 stage 분리 (중복 파싱 제거)
+      const diagRaw = parseJd(diagRow.raw_answers, {})
       c.header('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0')
       c.header('Pragma', 'no-cache')
       c.header('Expires', '0')
@@ -8612,10 +8614,11 @@ app.get('/api/f/result/:id', async (c) => {
         activity_level:  diagRow.activity_level|| null,
         bfr_current:     null,
         bfr_target:      null,
-        stage1_answers:  null,
-        stage2_answers:  null,
-        stage3_answers:  null,
-        raw_answers:     parseJd(diagRow.raw_answers, null),
+        // [BUG-FIX v4.4] diagnosis_results 폴백 시 raw_answers에서 stage 파싱 (Live Refresh 재연산 가능)
+        stage1_answers:  diagRaw?.stage1 || null,
+        stage2_answers:  diagRaw?.stage2 || null,
+        stage3_answers:  diagRaw?.stage3 || null,
+        raw_answers:     Object.keys(diagRaw).length ? diagRaw : null,
         goal_weight:     diagRow.goal_weight    || null,
         weight_loss_pct: diagRow.weight_loss_pct|| null,
         created_at:      diagRow.created_at || diagRow.completed_at,
@@ -8989,7 +8992,7 @@ app.get('/api/s/result/:id', async (c) => {
         age:           row.age != null ? Number(row.age) : null,
         height:        row.height != null ? Number(row.height) : null,
         weight:        row.weight != null ? Number(row.weight) : null,
-        phone:         row.phone || null,
+        phone:         maskPhone(row.phone),  // [BUG-FIX v4.4] PII 마스킹: 살롱 API 전화번호 노출 방지
         ohaeng_type:   finalOhaeng,
         disp_type:     row.disp_type || null,
         mbti_full:     finalMbti,
