@@ -220,6 +220,22 @@ const parseJson = (s: string | null, fallback: any = null) => {
   try { return s ? JSON.parse(s) : fallback } catch { return fallback }
 }
 
+// ─── 개인정보 마스킹 유틸 (공개 API 응답용) ─────────────────────
+// 전화번호: 010-1234-5678 → 010-****-5678 (앞 3자리 + 뒤 4자리 유지, 중간 마스킹)
+// [BUG-FIX v4.3] 공개 결과 API(/api/h/result, /api/a/result, /api/f/result)는
+//                UUID 기반 공유 링크 모델 — 인증 불필요하나 전화번호 PII는 마스킹 필수
+function maskPhone(phone: string | null | undefined): string | null {
+  if (!phone) return null
+  const s = String(phone).trim()
+  // 숫자만 추출
+  const digits = s.replace(/\D/g, '')
+  if (digits.length < 7) return '***'
+  // 앞 3자리-****-뒤 4자리
+  const last4 = digits.slice(-4)
+  const first = digits.slice(0, 3)
+  return `${first}-****-${last4}`
+}
+
 // ═══════════════════════════════════════════════════════════════
 //  BC 도출 엔진 v2 — 설계도 기준 (BC-1~BC-16, 25아형 결정표)
 //  [G-2] AXIS_TO_BC 단순 매핑 → decideSubtype + computeIndicators
@@ -1622,13 +1638,19 @@ app.get('/api/b2b/results', requireB2B(), async (c) => {
   }
 
   // diagnosis_results (신파이프라인)
+  // [BUG-FIX v4.3] bc_code_key IS NOT NULL — NULL 레코드 대시보드 노출 방지
+  // [BUG-FIX v4.3] 이상 bc_code_key(MO_YANG, WW-01, WF-01 등) → NULL 처리(CASE WHEN)
   const drFilter = buildFilters([user.code])
   const drQuery = `
-    SELECT id, user_name, bc_primary, bc_code_key AS axis_primary,
+    SELECT id, user_name, bc_primary,
+           CASE
+             WHEN bc_code_key GLOB 'BC-[0-9]*' THEN bc_code_key
+             ELSE NULL
+           END AS axis_primary,
            completed_at AS created_at, ref_code,
            survey_category AS result_type
     FROM diagnosis_results
-    WHERE ref_code=?${drFilter.clause}
+    WHERE ref_code=? AND bc_code_key IS NOT NULL${drFilter.clause}
   `
 
   if (isHospital) {
@@ -1654,11 +1676,20 @@ app.get('/api/b2b/results', requireB2B(), async (c) => {
       db.prepare(regQuery).bind(...regFilter.params).all<any>(),
       db.prepare(drQuery).bind(...drFilter.params).all<any>(),
     ])
-    const combined = [
-      ...(hospRes.results || []),
-      ...(regRes.results || []),
-      ...(drRes.results || []),
-    ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    // [BUG-FIX v4.3] Hospital UNION 중복 ID 제거 — 동일 ID가 여러 테이블에 존재 시 중복 카운트 방지
+    // 우선순위: diagnosis_results > hospital_responses > results (신파이프라인 우선)
+    const seenIds = new Set<string>()
+    const combined: any[] = []
+    for (const row of (drRes.results || [])) {
+      if (!seenIds.has(row.id)) { seenIds.add(row.id); combined.push(row) }
+    }
+    for (const row of (hospRes.results || [])) {
+      if (!seenIds.has(row.id)) { seenIds.add(row.id); combined.push(row) }
+    }
+    for (const row of (regRes.results || [])) {
+      if (!seenIds.has(row.id)) { seenIds.add(row.id); combined.push(row) }
+    }
+    combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     const total = combined.length
     return c.json({
       results: combined.slice(offset, offset + pageSize),
@@ -1682,15 +1713,21 @@ app.get('/api/b2b/results', requireB2B(), async (c) => {
     const salonFilter = buildLegacyFilter([user.code])
     const aeFilter    = buildLegacyFilter([user.code])
 
-    const regQuery = `SELECT id, user_name, bc_primary, axis_primary, created_at, ref_code,
+    // [BUG-FIX v4.3] 레거시 테이블 bc_code도 BC-N 형식만 axis_primary로 표시 (이상값 NULL 처리)
+    const regQuery = `SELECT id, user_name, bc_primary,
+      CASE WHEN axis_primary GLOB 'BC-[0-9]*' THEN axis_primary ELSE NULL END AS axis_primary,
+      created_at, ref_code,
       'integrated' AS result_type FROM results WHERE ref_code=?${regFilter.clause}`
-    const fitQuery = `SELECT id, user_name, bc_code AS bc_primary, bc_code AS axis_primary,
+    const fitQuery = `SELECT id, user_name, bc_code AS bc_primary,
+      CASE WHEN bc_code GLOB 'BC-[0-9]*' THEN bc_code ELSE NULL END AS axis_primary,
       created_at, ref_code, 'fitness' AS result_type
       FROM fitness_responses WHERE ref_code=?${fitFilter.clause}`
-    const salonQuery = `SELECT id, user_name, bc_code AS bc_primary, bc_code AS axis_primary,
+    const salonQuery = `SELECT id, user_name, bc_code AS bc_primary,
+      CASE WHEN bc_code GLOB 'BC-[0-9]*' THEN bc_code ELSE NULL END AS axis_primary,
       created_at, ref_code, 'salon' AS result_type
       FROM salon_responses WHERE ref_code=?${salonFilter.clause}`
-    const aeQuery = `SELECT id, user_name, bc_code AS bc_primary, bc_code AS axis_primary,
+    const aeQuery = `SELECT id, user_name, bc_code AS bc_primary,
+      CASE WHEN bc_code GLOB 'BC-[0-9]*' THEN bc_code ELSE NULL END AS axis_primary,
       created_at, ref_code, 'aesthetic' AS result_type
       FROM aesthetic_responses WHERE ref_code=?${aeFilter.clause}`
 
@@ -5688,6 +5725,32 @@ app.post('/api/v1/diagnosis', async (c) => {
 
     if (!user_name) return c.json({ error: 'user_name required' }, 400)
 
+    // ✅ [BUG-FIX v4.3] answers/axis_scores 최소 유효성 검사
+    // answers 없이(또는 빈 객체로) 제출 시 bc_code_key=null 쓰레기 레코드 생성 방지
+    // 규칙: answers OR axis_scores OR bc_code_key 중 하나 이상 있어야 저장 허용
+    //       answers가 있을 경우 최소 5개 이상의 유효 숫자 답변 포함 필수
+    const hasAnswers = answers && typeof answers === 'object' && !Array.isArray(answers)
+    const hasAxisScores = axis_scores && typeof axis_scores === 'object'
+    const hasBcCodeKey = !!bc_code_key
+    if (!hasAnswers && !hasAxisScores && !hasBcCodeKey) {
+      return c.json({
+        error: 'answers, axis_scores, 또는 bc_code_key 중 하나 이상 필요합니다.',
+        code: 'MISSING_DIAGNOSIS_DATA'
+      }, 400)
+    }
+    // answers가 있으면 유효 숫자 답변 최소 5개 이상 체크
+    if (hasAnswers && !hasAxisScores && !hasBcCodeKey) {
+      const validAnswerCount = Object.values(answers as Record<string,any>)
+        .filter(v => typeof v === 'number' || (typeof v === 'string' && !isNaN(Number(v))))
+        .length
+      if (validAnswerCount < 5) {
+        return c.json({
+          error: `유효한 답변이 너무 적습니다. (${validAnswerCount}개 / 최소 5개 필요)`,
+          code: 'INSUFFICIENT_ANSWERS'
+        }, 400)
+      }
+    }
+
     // ✅ [채점엔진 복구 v1.0] 서버사이드 axis_scores 계산
     // answers = {q1:3, q2:2, ...} 형태가 오고 axis_scores가 없을 때 서버에서 채점
     // 설계도 q→axis 매핑 테이블 (병원/에스테틱/살롱 공통 30문항 기준)
@@ -6804,7 +6867,7 @@ app.get('/api/h/result/:id', async (c) => {
         age: row.age,
         height: row.height,
         weight: row.weight,
-        phone: row.phone,
+        phone: maskPhone(row.phone),  // [BUG-FIX v4.3] PII 마스킹: 공개 API 전화번호 노출 방지
         ohaeng_type: finalOhaeng,
         disp_type: row.disp_type,
         mbti_full: finalMbti,
@@ -7674,7 +7737,7 @@ app.get('/api/a/result/:id', async (c) => {
         gender:         row.gender,
         age:            row.age,
         height:         row.height,
-        phone:          row.phone,
+        phone:          maskPhone(row.phone),  // [BUG-FIX v4.3] PII 마스킹
         ohaeng_type:    row.ohaeng_type,
         mbti_full:      row.mbti_full,
         bc_code:        row.bc_code_key || row.bc_primary,
@@ -7724,7 +7787,7 @@ app.get('/api/a/result/:id', async (c) => {
         gender:         aeRow.gender,
         age:            aeRow.age,
         height:         aeRow.height,
-        phone:          aeRow.phone,
+        phone:          maskPhone(aeRow.phone),  // [BUG-FIX v4.3] PII 마스킹
         ohaeng_type:    aeRow.ohaeng_type,
         mbti_full:      aeRow.mbti_full,
         bc_code:        aeRow.bc_code,
@@ -8113,7 +8176,7 @@ app.get('/api/f/result/:id', async (c) => {
         age:             diagRow.age      || null,
         height:          diagRow.height   || null,
         weight:          diagRow.weight   || null,
-        phone:           diagRow.phone    || null,
+        phone:           maskPhone(diagRow.phone),  // [BUG-FIX v4.3] PII 마스킹
         ohaeng_type:     diagRow.ohaeng_type || null,
         mbti_full:       diagRow.mbti_full   || null,
         bc_code:         diagRow.bc_code_key || null,
@@ -8161,7 +8224,7 @@ app.get('/api/f/result/:id', async (c) => {
       age:              row.age,
       height:           row.height,
       weight:           row.weight,
-      phone:            row.phone,
+      phone:            maskPhone(row.phone),  // [BUG-FIX v4.3] PII 마스킹
       ohaeng_type:      row.ohaeng_type,
       mbti_full:        row.mbti_full,
       bc_code:          row.bc_code,
