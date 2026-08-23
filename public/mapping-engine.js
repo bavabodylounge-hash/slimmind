@@ -166,10 +166,13 @@
    * @param {Object} existingRedFlags - 기존 redFlags (병합 대상)
    * @returns {{ redFlags: Array, bcAnswers: Object }}
    */
-  function extractFromStage2(s2, existingRedFlags) {
+  function extractFromStage2(s2, existingRedFlags, gender) {
     s2 = s2 || {};
     var redFlags = (existingRedFlags || []).slice();
     var bc = {};
+    // ★성별 판별 — 남성이면 여성 전용 문항(Q11 출산·Q12 갱년기) 무시
+    var _isMale = (gender === 'M' || gender === 'male' || gender === '남성' || gender === '남'
+      || gender === 'MALE' || gender === '트랜스 남성');
 
     // ─ helper ─
     var single = function(no) {
@@ -251,17 +254,17 @@
       if (s2_10 === 'yoyo') { bc.Q_YOYO = 'yes'; addFlag('YOYO'); }
     }
 
-    // no:11 출산
+    // no:11 출산 — ★남성 제외(남성 Q11=군대/직장계기 별도 문항, 출산 없음)
     var q11 = single(11);
-    if (q11 !== null) {
+    if (q11 !== null && !_isMale) {
       bc.q11_event = q11;
       if (q11 === 0 || q11 === 1) { bc.Q3 = 'yes'; bc.birth_history = 'yes'; }
     }
 
-    // no:12 갱년기
+    // no:12 갱년기 — ★남성 제외(남성 Q12=복부화 계기 별도 문항, 갱년기 아님)
     var MENO = { 0:'갱년기 변환형', 1:'호르몬 치료형', 2:'완경 후' };
     var menoIdx = single(12);
-    if (menoIdx !== null) {
+    if (menoIdx !== null && !_isMale) {
       bc.q12_menopause = menoIdx;
       if (MENO[menoIdx]) {
         bc.Q_MENOPAUSE = MENO[menoIdx];
@@ -614,7 +617,12 @@
     }
 
     // ─── redFlags + bcAnswers 결정 ────────────────────────────────────────
-    var s2Result = extractFromStage2(s2, serverValues.redFlags || rawAnswers.redFlags);
+    // ─── gender 추출 (userInfo.gender 우선, serverValues.gender 폴백) ─────────
+    var _gender = (rawAnswers.userInfo && rawAnswers.userInfo.gender)
+      || serverValues.gender
+      || rawAnswers.gender
+      || null;
+    var s2Result = extractFromStage2(s2, serverValues.redFlags || rawAnswers.redFlags, _gender);
     var redFlags = s2Result.redFlags;
 
     // ─── 2차 배경 배점 가산 (설계도 표 C Q1~Q12, 병력 캡 +4.0) ─────────────

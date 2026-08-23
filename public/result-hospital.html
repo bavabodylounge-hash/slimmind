@@ -9552,8 +9552,13 @@ var NICKNAME_TABLE = {
 // answers: { Q3, Q21, Q22, Q_MENOPAUSE, Q_FAMILY_HISTORY, ... }
 // 반환: '유전'|'모계유전'|'출산'|'갱년기'|'시술'|'약물'|'PCOS'|'번아웃'|'대사증후군'|null
 // ──────────────────────────────────────────────
-function detectBackground(answers) {
+// ★ gender 파라미터 추가 (2026-08-23 버그 수정 — 남성에게 갱년기·출산 콘텐츠 노출 차단)
+function detectBackground(answers, gender) {
   if (!answers) return null;
+
+  // ── 성별 판별 (남성이면 갱년기·출산 관련 배경 반환 금지) ──
+  var _isMale = (gender === 'M' || gender === 'male' || gender === '남성' || gender === '남'
+    || gender === 'MALE' || gender === '트랜스 남성');
 
   // ── 병원 플로우 배열 헬퍼 ──
   // past_procedures, long_term_drugs, disease, q1_family, q8_trigger 는
@@ -9564,16 +9569,19 @@ function detectBackground(answers) {
     return arr.some(function(v) { return Number(v) !== noneIdx; });
   };
 
-  // 1위. 갱년기·완경
+  // 1위. 갱년기·완경 — ★남성에게는 절대 반환 금지
   // 병원: q12_menopause 0=복부변환, 1=호르몬치료, 2=완경, 3=신호조금 → 0~2 = 갱년기
-  var menoNum = answers['q12_menopause'];
-  if (menoNum !== undefined && menoNum !== null && Number(menoNum) <= 2) {
-    return '갱년기';
-  }
-  // 에스테틱 호환: Q_MENOPAUSE 문자값
-  var meno = answers['Q_MENOPAUSE'] || answers['Q_meno'] || '';
-  if (meno && meno !== 'not_applicable' && meno !== 'none' && meno !== '') {
-    return '갱년기';
+  // 남성 Q12 = "40대 이후 복부화" 질문으로 값이 동일(0~2)하게 저장되므로 반드시 성별 체크 필요
+  if (!_isMale) {
+    var menoNum = answers['q12_menopause'];
+    if (menoNum !== undefined && menoNum !== null && Number(menoNum) <= 2) {
+      return '갱년기';
+    }
+    // 에스테틱 호환: Q_MENOPAUSE 문자값
+    var meno = answers['Q_MENOPAUSE'] || answers['Q_meno'] || '';
+    if (meno && meno !== 'not_applicable' && meno !== 'none' && meno !== '') {
+      return '갱년기';
+    }
   }
 
   // 2위. PCOS (다낭성 난소 증후군)
@@ -9659,7 +9667,7 @@ function detectBackground(answers) {
 // axisScores: { A01: 75, A02: 60, ... }
 // answers: 설문 응답 객체
 // ──────────────────────────────────────────────
-function computeNickname(axisScores, answers) {
+function computeNickname(axisScores, answers, gender) {
   // ① 10개 원인축 점수 정렬 (Top1, Top2, Top3)
   // [v2.1] tie-breaking 안정화: 동점 시 축 번호 오름차순(A01 우선) — DB 키 삽입 순서 불확실성 제거
   var _allEntries = [];
@@ -9680,8 +9688,8 @@ function computeNickname(axisScores, answers) {
     top1 = top2;
   }
 
-  // ③ 배경 필터 감지
-  var background = detectBackground(answers);
+  // ③ 배경 필터 감지 — ★ gender 전달 (남성에게 갱년기·출산 배경 반환 차단)
+  var background = detectBackground(answers, gender);
 
   // ④ NICKNAME_TABLE 3단계 룩업
   var t1Entry = NICKNAME_TABLE[top1] || NICKNAME_TABLE['A07'];
@@ -9860,14 +9868,14 @@ var AXIS_11 = [
 // axisScores: { A01~A10 } 직접 사용
 // answers: 설문 응답 (배경 필터 감지용) — optional
 // ──────────────────────────────────────────────
-function computeBCCode(axisScores, answers) {
+function computeBCCode(axisScores, answers, gender) {
   // ① 10개 축 점수 직접 정렬
   var _axEntries = [];
   for (var _ak in axisScores) { if (_ak.indexOf('A') === 0) _axEntries.push([_ak, axisScores[_ak]]); }
   var sortedAxes = _axEntries.sort(function(a, b) { return b[1] - a[1]; });
 
-  // ② computeNickname()으로 닉네임 + 배경 필터 + 라우팅 결정
-  var nicknameResult = computeNickname(axisScores, answers || {});
+  // ② computeNickname()으로 닉네임 + 배경 필터 + 라우팅 결정 — ★ gender 전달
+  var nicknameResult = computeNickname(axisScores, answers || {}, gender);
   var nickname = nicknameResult.nickname;
   var top1Actual = nicknameResult.top1Actual;
   var top2 = nicknameResult.top2;
@@ -13905,9 +13913,9 @@ function getEvidenceBadge(bcCode) {
 // ──────────────────────────────────────────────
 var BORDERLINE_THRESHOLD = 10; // 점수 차 기준 (임상적으로 10점 미만 = 불명확)
 
-function computeBCCodeSafe(axisScores, answers) {
-  // ① 기존 1차 처리
-  var primary = computeBCCode(axisScores, answers || {});
+function computeBCCodeSafe(axisScores, answers, gender) {
+  // ① 기존 1차 처리 — ★ gender 전달
+  var primary = computeBCCode(axisScores, answers || {}, gender);
 
   // ② 10개 축 점수 정렬 (실제 10D 축 기반)
   var _saEntries = [];
@@ -13931,7 +13939,7 @@ function computeBCCodeSafe(axisScores, answers) {
     // Top1도 약간 반영 (혼합형 특성 보존)
     fakeScores[sortedAxes[0][0]] = Math.round(top2Score * 0.3);
     try {
-      var secondaryResult = computeBCCode(fakeScores, answers || {});
+      var secondaryResult = computeBCCode(fakeScores, answers || {}, gender);
       secondaryBcCode     = secondaryResult.bcCode;
       secondaryNickname   = secondaryResult.nickname;
     } catch(e) {
@@ -14896,6 +14904,8 @@ function loadBodyTypeStats(){ /* 제거됨 */ }
 
 function renderAll(data) {
   const { userName='고객', axisScores={}, ohaengType='수', mbtiType='INFJ' } = data;
+  // ★ gender 추출 — computeBCCode 체인 전체에 전달하여 갱년기·출산 콘텐츠 남성 차단
+  const _gender = data.gender || (data.answers && data.answers.Q02) || null;
   // V6.2: data 최상위의 weight/height/age/pfProfile을 answers 안에 주입
   // → computeBodyMetrics()가 BMI·나이를 정확히 계산 (이 전달 없으면 모두 기본값 고착)
   const _baseAnswers = data.answers || {};
@@ -14941,9 +14951,10 @@ function renderAll(data) {
     return;
   }
   // computeBCCodeSafe가 있으면 사용 (경계형 + evidence badge 포함), 없으면 기존 fallback
+  // ★ _gender 전달 — 함수 체인 전체(computeBCCode→computeNickname→detectBackground)에서 성별 분기 적용
   const bc = (typeof computeBCCodeSafe === 'function')
-    ? computeBCCodeSafe(axisScores, answers)
-    : computeBCCode(axisScores, answers);
+    ? computeBCCodeSafe(axisScores, answers, _gender)
+    : computeBCCode(axisScores, answers, _gender);
   let { bcCode, bcMaster, causalScores, sorted, firstDomino, metrics,
           nickname, background,
           isBorderline, borderlineDiff, secondaryBcCode, secondaryNickname,
