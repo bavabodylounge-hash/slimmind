@@ -4004,14 +4004,14 @@ app.get('/a/:code', async (c) => {
 <meta property="og:title"        content="SlimMind | 에스테틱 바디코드 진단">
 <meta property="og:description"  content="당신의 몸은 하나의 코드입니다. 반복되는 다이어트 실패엔 반드시 이유가 있어요.">
 <meta property="og:url"          content="${siteBase}/a/${rawCode}">
-<meta property="og:image"        content="${siteBase}/static/og-slimmind.png">
+<meta property="og:image"        content="${siteBase}/static/og-aesthetic.png">
 <meta property="og:image:width"  content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:type"   content="image/png">
 <meta name="twitter:card"        content="summary_large_image">
 <meta name="twitter:title"       content="SlimMind | 에스테틱 바디코드 진단">
 <meta name="twitter:description" content="당신의 몸은 하나의 코드입니다. 반복되는 다이어트 실패엔 반드시 이유가 있어요.">
-<meta name="twitter:image"       content="${siteBase}/static/og-slimmind.png">`
+<meta name="twitter:image"       content="${siteBase}/static/og-aesthetic.png">`
 
   // 에스테틱 전용 파일이 없으면 통합질문지 임시 서빙
   let html: string
@@ -4105,14 +4105,14 @@ app.get('/f/:code', async (c) => {
 <meta property="og:title"        content="SlimMind | 피트니스 바디코드 진단">
 <meta property="og:description"  content="당신의 몸은 하나의 코드입니다. 피트니스 전문 분석으로 최적의 운동 처방을 받아보세요.">
 <meta property="og:url"          content="${siteBase}/f/${rawCode}">
-<meta property="og:image"        content="${siteBase}/static/og-slimmind.png">
+<meta property="og:image"        content="${siteBase}/static/og-fitness.png">
 <meta property="og:image:width"  content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:type"   content="image/png">
 <meta name="twitter:card"        content="summary_large_image">
 <meta name="twitter:title"       content="SlimMind | 피트니스 바디코드 진단">
 <meta name="twitter:description" content="당신의 몸은 하나의 코드입니다. 피트니스 전문 분석으로 최적의 운동 처방을 받아보세요.">
-<meta name="twitter:image"       content="${siteBase}/static/og-slimmind.png">`
+<meta name="twitter:image"       content="${siteBase}/static/og-fitness.png">`
 
   // 피트니스 전용 질문지 서빙
   let html: string
@@ -4179,13 +4179,29 @@ app.get('/salon/:code', async (c) => {
   ).bind(rawCode).run()
 
   // 미용실 전용 설문 파일 서빙
+  const siteBaseSalon = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.kr' } })()
+  const ogInjectSalon = `
+<meta property="og:type"         content="website">
+<meta property="og:site_name"    content="SlimMind">
+<meta property="og:title"        content="SlimMind | 미용실 바디코드 진단">
+<meta property="og:description"  content="당신의 몸은 하나의 코드입니다. 헤어·두피 건강과 체형을 함께 케어하는 맞춤 솔루션을 받아보세요.">
+<meta property="og:url"          content="${siteBaseSalon}/salon/${rawCode}">
+<meta property="og:image"        content="${siteBaseSalon}/static/og-salon.png">
+<meta property="og:image:width"  content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:type"   content="image/png">
+<meta name="twitter:card"        content="summary_large_image">
+<meta name="twitter:title"       content="SlimMind | 미용실 바디코드 진단">
+<meta name="twitter:description" content="당신의 몸은 하나의 코드입니다. 헤어·두피 건강과 체형을 함께 케어하는 맞춤 솔루션을 받아보세요.">
+<meta name="twitter:image"       content="${siteBaseSalon}/static/og-salon.png">`
+
   let html: string
   try {
     html = await fetchAsset(c.env.ASSETS, '/survey-salon.html')
   } catch {
     html = await fetchAsset(c.env.ASSETS, '/index.html')
   }
-  html = html.replace('</head>', `${brandInject}\n</head>`)
+  html = html.replace('</head>', `${ogInjectSalon}\n${brandInject}\n</head>`)
   return htmlResponse(html)
 })
 
