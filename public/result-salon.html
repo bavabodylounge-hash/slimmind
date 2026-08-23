@@ -15125,15 +15125,83 @@ function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nic
     if (_bodyChg === 0 || _bodyChg === '0') _p1Lead = '갱년기 이후 분명 달라진 몸 — ' + _codeLead;
     else if (_bodyChg === 1 || _bodyChg === '1') _p1Lead = '번아웃이 쌓이던 시간 — ' + _codeLead;
   }
-  document.getElementById('p1-story').innerHTML =
-    `<p class="story-lead">${_p1Lead}</p>
-      <p class="story-bang"><strong>${userName}</strong>님, 당신은 게을렀던 게 아닙니다.</p>
-      <p class="story-hook">당신의 몸이 <strong>다른 구조</strong>로 작동하고 있을 뿐입니다.</p>`;
 
   // ★소견도 아형 통문장 우선 — 없으면 16코드 failed_type_desc 폴백
   var _sgTxt = (_sub && _sub.desc) ? _fillSlots(_sub.desc, _slotCtx) : (bcMaster && bcMaster.failed_type_desc ? bcMaster.failed_type_desc : '');
-  document.getElementById('p1-fail-desc').innerHTML =
-    `<strong>분석 소견:</strong> ${_sgTxt}`;
+
+  // ── AI 서사 렌더링 함수 (재사용) ────────────────────────────────
+  function _renderStory(leadText, failText, animateIn) {
+    var storyEl = document.getElementById('p1-story');
+    var failEl  = document.getElementById('p1-fail-desc');
+    if (storyEl) {
+      storyEl.innerHTML =
+        `<p class="story-lead">${leadText}</p>
+          <p class="story-bang"><strong>${userName}</strong>님, 당신은 게을렀던 게 아닙니다.</p>
+          <p class="story-hook">당신의 몸이 <strong>다른 구조</strong>로 작동하고 있을 뿐입니다.</p>`;
+      if (animateIn) { storyEl.style.opacity='0'; setTimeout(function(){ storyEl.style.transition='opacity .6s'; storyEl.style.opacity='1'; }, 50); }
+    }
+    if (failEl && failText) {
+      failEl.innerHTML = `<strong>분석 소견:</strong> ${failText}`;
+    }
+  }
+
+  // ── AI 서사 우선 로직 (굽기 1회 원칙 — 살롱) ────────────────────
+  // 우선순위: ① window.__RESULT__.story_lead (서버 주입) → ② /api/ai/story/:id 조회
+  //           → ③ 없으면 /api/ai/generate-story 생성 요청 → ④ 폴백(옷장v3 아형25)
+  var _resultId = (window.__RESULT__ && window.__RESULT__.result_id) ||
+                  (window.__RESULT__ && window.__RESULT__.id) ||
+                  (new URLSearchParams(window.location.search)).get('id') || null;
+
+  if (window.__RESULT__ && window.__RESULT__.story_lead) {
+    // ① 서버가 이미 주입한 경우 (가장 빠름)
+    _renderStory(window.__RESULT__.story_lead,
+                 window.__RESULT__.clinical_ctx || _sgTxt, false);
+  } else {
+    // 일단 폴백으로 먼저 렌더 (UX: 빈 화면 방지)
+    _renderStory(_p1Lead, _sgTxt, false);
+
+    if (_resultId) {
+      // ② /api/ai/story/:id 조회 — 저장본 있으면 교체
+      fetch('/api/ai/story/' + _resultId)
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(d){
+          if (d && d.story_lead) {
+            // 저장본 있음 → 교체 (fade 애니)
+            _renderStory(d.story_lead, d.clinical_ctx || _sgTxt, true);
+          } else {
+            // ③ 저장본 없음 → Claude 생성 요청
+            var _p1Ans2 = window.__LAST_ANSWERS__ || {};
+            var _traj2  = _p1Ans2['trajectory'] || {};
+            var _methods2 = _p1Ans2['methods'] || _p1Ans2['Q_METHOD'] || [];
+            fetch('/api/ai/generate-story', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                result_id:   _resultId,
+                name:        userName,
+                sex:         (window.__RESULT__ && window.__RESULT__.gender) || '여성',
+                subtype:     _subKey || nicknameDisplay || bcCode,
+                bodyChange:  _p1Ans2['Q_BODY_CHANGE'] || null,
+                methods:     Array.isArray(_methods2) ? _methods2 : [],
+                trigger:     _p1Ans2['trigger'] || _p1Ans2['Q_TRIGGER_LABEL'] || null,
+                trajectory:  _traj2,
+                background:  _p1Ans2['background'] || null,
+                flags:       _p1Ans2['flags'] || [],
+              })
+            })
+            .then(function(r2){ return r2.ok ? r2.json() : null; })
+            .then(function(d2){
+              if (d2 && d2.story_lead) {
+                _renderStory(d2.story_lead, d2.clinical_ctx || _sgTxt, true);
+              }
+              // d2.story_lead 없으면 폴백(이미 렌더됨) 유지
+            })
+            .catch(function(){ /* 생성 실패 → 폴백 유지 */ });
+          }
+        })
+        .catch(function(){ /* 조회 실패 → 폴백 유지 */ });
+    }
+  }
 
   // BC 마스터 9종
   const bcGrid = document.getElementById('p1-bc-grid');

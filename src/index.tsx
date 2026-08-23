@@ -8008,11 +8008,34 @@ app.get('/result-aesthetic/:id', async (c) => {
       } catch (_) {}
     }
 
+    // ── AI 서사 서버사이드 주입 (굽기 1회 원칙 — 에스테틱) ──
+    let aeStoryLead: string | null = null
+    let aeClinicalCtx: string | null = null
+    if (db) {
+      try {
+        const aeStoryRow = await db.prepare(
+          `SELECT story_lead, clinical_ctx FROM diagnosis_results WHERE id = ? LIMIT 1`
+        ).bind(id).first<any>()
+        if (aeStoryRow?.story_lead) {
+          aeStoryLead   = aeStoryRow.story_lead
+          aeClinicalCtx = aeStoryRow.clinical_ctx || null
+        }
+      } catch (_) {}
+    }
+    const aeStoryScript = aeStoryLead
+      ? `window.__RESULT__ = window.__RESULT__ || {};
+window.__RESULT__.story_lead = ${JSON.stringify(aeStoryLead)};
+window.__RESULT__.clinical_ctx = ${JSON.stringify(aeClinicalCtx || '')};
+window.__RESULT__.result_id = ${JSON.stringify(id)};`
+      : `window.__RESULT__ = window.__RESULT__ || {};
+window.__RESULT__.result_id = ${JSON.stringify(id)};`
+
     const deployTs = Date.now()
     const idScript = `<script>
 window.__AESTHETIC_RESULT_ID__ = ${JSON.stringify(id)};
 window.__DEPLOY_TS__ = ${deployTs};
 window.__REF_CODE__ = ${JSON.stringify(injectedRefCode)};
+${aeStoryScript}
 try {
   localStorage.setItem('sm_last_result_id', ${JSON.stringify(id)});
   localStorage.setItem('sm_survey_category', 'aesthetic');
@@ -8450,11 +8473,30 @@ app.get('/result-fitness/:id', async (c) => {
       } catch (_) {}
     }
 
+    // ── AI 서사 서버사이드 주입 (굽기 1회 원칙 — 피트니스) ──
+    let fitStoryLead: string | null = null
+    let fitClinicalCtx: string | null = null
+    if (db) {
+      try {
+        const fitStoryRow = await db.prepare(
+          `SELECT story_lead, clinical_ctx FROM diagnosis_results WHERE id = ? LIMIT 1`
+        ).bind(id).first<any>()
+        if (fitStoryRow?.story_lead) {
+          fitStoryLead   = fitStoryRow.story_lead
+          fitClinicalCtx = fitStoryRow.clinical_ctx || null
+        }
+      } catch (_) {}
+    }
+    const fitStoryScript = fitStoryLead
+      ? `window.__RESULT__ = window.__RESULT__ || {};\nwindow.__RESULT__.story_lead = ${JSON.stringify(fitStoryLead)};\nwindow.__RESULT__.clinical_ctx = ${JSON.stringify(fitClinicalCtx || '')};\nwindow.__RESULT__.result_id = ${JSON.stringify(id)};`
+      : `window.__RESULT__ = window.__RESULT__ || {};\nwindow.__RESULT__.result_id = ${JSON.stringify(id)};`
+
     const deployTs = Date.now()
     const idScript = `<script>
 window.__FITNESS_RESULT_ID__ = ${JSON.stringify(id)};
 window.__DEPLOY_TS__ = ${deployTs};
 window.__REF_CODE__ = ${JSON.stringify(injectedRefCode)};
+${fitStoryScript}
 try {
   localStorage.setItem('sm_last_result_id', ${JSON.stringify(id)});
   localStorage.setItem('sm_survey_category', 'fitness');
@@ -8802,9 +8844,27 @@ app.get('/result-salon/:id', async (c) => {
       } catch (_) {}
     }
 
+    // ── AI 서사 서버사이드 주입 (굽기 1회 원칙 — 살롱) ──
+    let salonStoryLead: string | null = null
+    let salonClinicalCtx: string | null = null
+    if (db) {
+      try {
+        const salonStoryRow = await db.prepare(
+          `SELECT story_lead, clinical_ctx FROM diagnosis_results WHERE id = ? LIMIT 1`
+        ).bind(id).first<any>()
+        if (salonStoryRow?.story_lead) {
+          salonStoryLead   = salonStoryRow.story_lead
+          salonClinicalCtx = salonStoryRow.clinical_ctx || null
+        }
+      } catch (_) {}
+    }
+    const salonStoryScript = salonStoryLead
+      ? `window.__RESULT__ = window.__RESULT__ || {};\nwindow.__RESULT__.story_lead = ${JSON.stringify(salonStoryLead)};\nwindow.__RESULT__.clinical_ctx = ${JSON.stringify(salonClinicalCtx || '')};\nwindow.__RESULT__.result_id = ${JSON.stringify(id)};`
+      : `window.__RESULT__ = window.__RESULT__ || {};\nwindow.__RESULT__.result_id = ${JSON.stringify(id)};`
+
     const deployTs = Date.now()
     // result-salon.html은 result-hospital.html 복제본으로 __HOSPITAL_RESULT_ID__ 참조 유지
-    const idScript = `<script>\nwindow.__HOSPITAL_RESULT_ID__ = ${JSON.stringify(id)};\nwindow.__SALON_RESULT_ID__ = ${JSON.stringify(id)};\nwindow.__DEPLOY_TS__ = ${deployTs};\nwindow.__REF_CODE__ = ${JSON.stringify(salonRefCode)};\ntry {\n  localStorage.setItem('sm_last_result_id', ${JSON.stringify(id)});\n  localStorage.setItem('sm_survey_category', 'salon');\n  if (${JSON.stringify(salonRefCode)}) {\n    localStorage.setItem('sm_ref_code_' + ${JSON.stringify(id)}, ${JSON.stringify(salonRefCode)});\n  }\n} catch(e) {}\n<\/script>\n`
+    const idScript = `<script>\nwindow.__HOSPITAL_RESULT_ID__ = ${JSON.stringify(id)};\nwindow.__SALON_RESULT_ID__ = ${JSON.stringify(id)};\nwindow.__DEPLOY_TS__ = ${deployTs};\nwindow.__REF_CODE__ = ${JSON.stringify(salonRefCode)};\n${salonStoryScript}\ntry {\n  localStorage.setItem('sm_last_result_id', ${JSON.stringify(id)});\n  localStorage.setItem('sm_survey_category', 'salon');\n  if (${JSON.stringify(salonRefCode)}) {\n    localStorage.setItem('sm_ref_code_' + ${JSON.stringify(id)}, ${JSON.stringify(salonRefCode)});\n  }\n} catch(e) {}\n<\/script>\n`
     const rsBase = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.kr' } })()
     const rsOg = `
 <meta property="og:type"         content="website">
