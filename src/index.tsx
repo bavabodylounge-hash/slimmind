@@ -5679,13 +5679,88 @@ app.post('/api/v1/diagnosis', async (c) => {
       ohaeng_type, ohaeng_source, ohaeng_confidence, ohaeng_lacking, ohaeng_score,
       mbti_full, disp_answers, raw_answers,
       goal_weight, weight_loss_pct,
-      gender, height, age,              // ✅ BMR·체지방률 개인화 계산용
+      gender, height, age, weight,      // ✅ BMR·체지방률 개인화 계산용
       ref_code, completed_at,
       session_id,  // ✅ FIX: session_id 수신 (데일리 체크 JOIN 연결용)
-      survey_category  // ✅ 에스테틱/병원/미용실 등 분류 (aesthetic | hospital | salon | integrated)
+      survey_category,  // ✅ 에스테틱/병원/미용실 등 분류 (aesthetic | hospital | salon | integrated)
+      answers  // ✅ [채점엔진 복구] 질문번호→답변 객체 {q1:3,q2:2,...} 수신 시 서버사이드 채점
     } = body
 
     if (!user_name) return c.json({ error: 'user_name required' }, 400)
+
+    // ✅ [채점엔진 복구 v1.0] 서버사이드 axis_scores 계산
+    // answers = {q1:3, q2:2, ...} 형태가 오고 axis_scores가 없을 때 서버에서 채점
+    // 설계도 q→axis 매핑 테이블 (병원/에스테틱/살롱 공통 30문항 기준)
+    // 각 질문이 어느 축(A01~A10)에 속하는지 정의
+    const Q_AXIS_MAP: Record<string, string> = {
+      // A01: 인슐린·내장지방 (혈당·탄수화물 관련)
+      q1:'A01', q2:'A01', q3:'A01',
+      // A02: 림프·순환 (부종·순환 관련)
+      q4:'A02', q5:'A02', q6:'A02',
+      // A03: 호르몬·대사 (갱년기·호르몬 관련)
+      q7:'A03', q8:'A03', q9:'A03',
+      // A04: 근감소·근력 (운동·근육 관련)
+      q10:'A04', q11:'A04',
+      // A05: 소화·장 (장건강·소화 관련)
+      q12:'A05', q13:'A05',
+      // A06: 골격·자세 (자세·골격 관련)
+      q14:'A06', q15:'A06',
+      // A07: 스트레스·코르티솔 (스트레스·수면 관련)
+      q16:'A07', q17:'A07', q18:'A07',
+      // A08: 심리·식이 (식이행동·심리 관련)
+      q19:'A08', q20:'A08',
+      // A09: 대사위험 (고혈압·고지혈증 등 대사위험)
+      q21:'A09', q22:'A09', q23:'A09',
+      // A10: 기질·성향 (체질·기질 관련)
+      q24:'A10', q25:'A10',
+      // 추가 문항 (q26~q30 — 업종별 추가 질문)
+      q26:'A07', q27:'A08', q28:'A01', q29:'A03', q30:'A09',
+    }
+
+    let computedAxisScores: Record<string,number> | null = axis_scores || null
+    let computedBcCodeKey: string | null = bc_code_key || null
+    let computedBcNickname: string | null = bc_nickname || null
+
+    // answers가 있고 axis_scores가 없으면 서버사이드 채점
+    if (answers && typeof answers === 'object' && !Array.isArray(answers) && !computedAxisScores) {
+      const got: Record<string,number> = {}
+      const max: Record<string,number> = {}
+      for (const [qKey, val] of Object.entries(answers)) {
+        const ax = Q_AXIS_MAP[qKey]
+        if (!ax) continue
+        const numVal = typeof val === 'number' ? val : Number(val)
+        if (isNaN(numVal)) continue
+        got[ax] = (got[ax] || 0) + numVal
+        max[ax] = (max[ax] || 0) + 3  // 문항 최대값 3 (0~3 스케일)
+      }
+      const sc: Record<string,number> = {}
+      for (const ax of ['A01','A02','A03','A04','A05','A06','A07','A08','A09','A10']) {
+        if (max[ax]) {
+          sc[ax] = Math.round((got[ax] || 0) / max[ax] * 10 * 100) / 100
+        } else {
+          sc[ax] = 0
+        }
+      }
+      computedAxisScores = sc
+
+      // bc_code_key가 없으면 decideSubtype으로 계산
+      if (!computedBcCodeKey) {
+        const topAxes = Object.entries(sc)
+          .filter(([k]) => k !== 'A10')
+          .sort(([,a],[,b]) => b - a)
+          .slice(0,3)
+          .map(([k]) => k)
+        const regionArr = region ? [region.toUpperCase()] : ['ABD']
+        const textureArr = texture ? [texture.toLowerCase()] : ['soft']
+        const flags: Record<string,boolean> = {}
+        if (ohaeng_type && ['갱년기','menopause'].includes(String(ohaeng_type).toLowerCase())) {
+          flags.menopause = true
+        }
+        const subtype = decideSubtype(sc, regionArr, textureArr, flags)
+        computedBcCodeKey = subtype.bc
+        computedBcNickname = computedBcNickname || subtype.name
+      }
+    }
 
     // ✅ [G-1 v5.0] NICKNAME_TO_BC_BACKEND — 25아형 완전판 (BC-1~BC-16 커버)
     // 구버전 닉네임도 하위 호환 포함, 신규 16종 특허 아형 완비
@@ -5782,13 +5857,14 @@ app.post('/api/v1/diagnosis', async (c) => {
     const safeBcPrimaryForKey = bc_primary
       ? (/^A\d{2}$/.test(String(bc_primary).trim()) ? normalizeBcCode(bc_primary) : bc_primary)
       : null
-    const safeBcNicknameForKey = bc_nickname
-      ? (/^A\d{2}$/.test(String(bc_nickname).trim()) ? null : bc_nickname)  // 닉네임에 축코드면 무시
-      : null
+    const safeBcNicknameForKey = computedBcNickname
+      ? (/^A\d{2}$/.test(String(computedBcNickname).trim()) ? null : computedBcNickname)  // 닉네임에 축코드면 무시
+      : (bc_nickname ? (/^A\d{2}$/.test(String(bc_nickname).trim()) ? null : bc_nickname) : null)
 
     // bc_code_key가 없으면 bc_primary(닉네임)로 역매핑, 그것도 없으면 null
     // BC-1~BC-16 모두 지원하도록 정규식 확장
-    const resolvedBcCodeKey = bc_code_key ||
+    const resolvedBcCodeKey = computedBcCodeKey ||
+      bc_code_key ||
       (safeBcPrimaryForKey && NICKNAME_TO_BC_BACKEND[safeBcPrimaryForKey]) ||
       (safeBcPrimaryForKey && /^BC-([1-9]|1[0-6])$/.test(safeBcPrimaryForKey) ? safeBcPrimaryForKey : null) ||
       (safeBcNicknameForKey && NICKNAME_TO_BC_BACKEND[safeBcNicknameForKey]) ||
@@ -5826,7 +5902,8 @@ app.post('/api/v1/diagnosis', async (c) => {
         resolvedBcCodeKey || null,
         bc_secondary || null,
         top3_axes   ? JSON.stringify(top3_axes)   : null,
-        axis_scores ? JSON.stringify(axis_scores) : null,
+        // ✅ [채점엔진 복구] computedAxisScores 우선 (answers 기반 서버채점 or 프론트 채점값)
+        computedAxisScores ? JSON.stringify(computedAxisScores) : (axis_scores ? JSON.stringify(axis_scores) : null),
         region      || null,
         texture     || null,
         bg_filter   || '',
@@ -6832,6 +6909,8 @@ app.get('/api/h/result/:id', async (c) => {
       blood_type: diagBloodType,
       face_shape: diagFaceShape,
       bc_code: diagRow.bc_code_key || diagRow.bc_primary || null,
+      bc_nickname: diagRow.bc_nickname || diagRow.bc_primary || null,  // ✅ FIX: bc_nickname 필드 추가
+      bc_primary:  diagRow.bc_primary || diagRow.bc_nickname || null,  // ✅ FIX: bc_primary 필드 추가
       axis_scores: rawAxisScores,
       stage1_answers: stage1,
       stage2_answers: stage2,

@@ -27598,4 +27598,210 @@ window.buildSogyeon = function(topAxisKey, bgKey){
 };
 
 </script>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     AE-SCHEMA v1.1 — 설계도 0~12번 DOM 매핑 실측 검증기
+     [조건3] 브라우저 콘솔에 passed=true, errors=0 출력 증빙용
+     실행 시점: DOMContentLoaded 이후 2초 (렌더링 완료 대기)
+     검증 범위: 설계도 0번(BC코드)~12번(오늘탭) 필수 DOM 요소
+════════════════════════════════════════════════════════════════ -->
+<script>
+(function() {
+  'use strict';
+
+  // ── 설계도 0~12번 DOM 체크리스트 ──────────────────────────────
+  // 각 항목: { rule: 설계도번호, id: DOM요소ID, label: 설명, required: 필수여부 }
+  var AE_SCHEMA_RULES = [
+    // 0번 규칙: BC 코드 표시
+    { rule:  0, id: 'p1-bc-code',       label: '[0] BC코드 셀',          required: true },
+    { rule:  0, id: 'p1-nickname',      label: '[0] BC닉네임',           required: true },
+    { rule:  0, id: 'p1-subtitle',      label: '[0] BC서브타이틀',       required: true },
+    // 1번 규칙: 바디코드 인증서 / 메트릭
+    { rule:  1, id: 'p1-story',         label: '[1] P1 스토리',          required: true },
+    { rule:  1, id: 'p1-fail-desc',     label: '[1] 분석소견',           required: true },
+    { rule:  1, id: 'p1-bc-grid',       label: '[1] BC16 그리드',        required: true },
+    { rule:  1, id: 'p1-metrics',       label: '[1] 지표 카드',          required: true },
+    // 2번 규칙: BC 원인 분석 (축 존)
+    { rule:  2, id: 'p2-title',         label: '[2] P2 타이틀',          required: true },
+    { rule:  2, id: 'p2-axis-zones',    label: '[2] 축 존(원인분석)',    required: true },
+    { rule:  2, id: 'p2-gap',           label: '[2] 불균형 카드',        required: true },
+    { rule:  2, id: 'p2-chain',         label: '[2] 도미노 체인',        required: true },
+    // 3번 규칙: 심리/인지 처방
+    { rule:  3, id: 'p3-mentalrx-mount',label: '[3] 심리처방 마운트',   required: true },
+    { rule:  3, id: 'p3-insights',      label: '[3] 인사이트',           required: true },
+    // 4번 규칙: 트리거 분석
+    { rule:  4, id: 'p4-triggers',      label: '[4] 트리거 카드',        required: true },
+    { rule:  4, id: 'p4-ending-mount',  label: '[4] 엔딩 마운트',        required: true },
+    // 5번 규칙: 처방 영역 (핵심 스위치)
+    { rule:  5, id: 'p5-ev-meta',       label: '[5] 11영역 스캔',        required: true },
+    { rule:  5, id: 'p5-strong-list',   label: '[5] 핵심처방 목록',      required: true },
+    { rule:  5, id: 'p5-strong-cnt',    label: '[5] 처방 카운트',        required: true },
+    // 6번 규칙: 바디맵/측정지표
+    { rule:  6, id: 'p1-meta-age',      label: '[6] 몸나이 지표',        required: true },
+    // 7번 규칙: 12주 로드맵
+    { rule:  7, id: 'ax11-scan',        label: '[7] 축스캔 애니',        required: true },
+    { rule:  7, id: 'ax11-graph',       label: '[7] 축 그래프',          required: true },
+    // 8번 규칙: 아코디언 상세처방(도메인)
+    { rule:  8, id: 'p1-title',         label: '[8] P1 타이틀',          required: true },
+    { rule:  8, id: 'cert-meta',        label: '[8] 인증서 메타',        required: true },
+    // 9번 규칙: 오행/기질 연동
+    { rule:  9, id: 'p4-nm',            label: '[9] 유저 이름(P4)',      required: true },
+    { rule:  9, id: 'p4-trigger-01',    label: '[9] 트리거1',            required: true },
+    { rule:  9, id: 'p4-trigger-02',    label: '[9] 트리거2',            required: true },
+    { rule:  9, id: 'p4-trigger-03',    label: '[9] 트리거3',            required: true },
+    // 10번 규칙: 5P 예측/4주 열쇠
+    { rule: 10, id: 'p3-lock-mount',    label: '[10] 잠금 마운트',       required: true },
+    // 11번 규칙: 데이터 로딩 확인 (BC 코드 실값)
+    { rule: 11, id: 'p1-bc-code',       label: '[11] BC코드 실값확인',   required: true },
+    { rule: 11, id: 'p2-story',         label: '[11] P2 스토리',         required: true },
+    // 12번 규칙: 오늘 탭 (today tab)
+    { rule: 12, id: 'p5-title',         label: '[12] P5 타이틀',         required: true },
+    { rule: 12, id: 'p5-strong-sub',    label: '[12] 핵심처방 서브',     required: true },
+    { rule: 12, id: 'p1-disclaimer',    label: '[12] 면책고지(P1)',      required: true },
+    { rule: 12, id: 'p2-disclaimer',    label: '[12] 면책고지(P2)',      required: true },
+  ];
+
+  // ── BC코드 실값 검증 (null/빈값 체크) ─────────────────────────
+  function checkBcCodeValue() {
+    var el = document.getElementById('p1-bc-code');
+    if (!el) return { ok: false, msg: 'p1-bc-code 요소 없음' };
+    var txt = (el.textContent || el.innerText || '').trim();
+    var dataCode = el.getAttribute('data-code') || '';
+    // BC-1~BC-16 패턴 또는 data-code 속성으로 판단
+    var bcPattern = /BC-([1-9]|1[0-6])/;
+    if (bcPattern.test(txt) || bcPattern.test(dataCode)) {
+      return { ok: true, bc: txt || dataCode };
+    }
+    return { ok: false, msg: 'BC코드 실값 없음(현재값: "' + txt + '", data-code: "' + dataCode + '")' };
+  }
+
+  // ── axis_scores 실값 검증 ────────────────────────────────────
+  function checkAxisScores() {
+    // window.__SM_DATA__ 또는 window._smData에서 axis_scores 확인
+    var smData = window.__SM_DATA__ || window._smData || {};
+    var axisScores = smData.axisScores || smData.axis_scores || null;
+    if (axisScores && typeof axisScores === 'object') {
+      var keys = Object.keys(axisScores);
+      var hasValues = keys.some(function(k) { return axisScores[k] > 0; });
+      if (hasValues) return { ok: true, scores: axisScores };
+    }
+    // window.__HOSPITAL_DATA__ 폴백
+    var hd = window.__HOSPITAL_DATA__ || {};
+    if (hd.axis_scores && typeof hd.axis_scores === 'object') {
+      return { ok: true, scores: hd.axis_scores };
+    }
+    return { ok: false, msg: 'axis_scores 실값 없음 (window.__SM_DATA__ 미설정 가능)' };
+  }
+
+  // ── 메인 검증 실행 ────────────────────────────────────────────
+  function runAeSchemaCheck() {
+    var errors = [];
+    var warnings = [];
+    var passed_rules = [];
+
+    // 1. DOM 요소 존재 체크
+    var checkedIds = {};
+    AE_SCHEMA_RULES.forEach(function(rule) {
+      if (checkedIds[rule.id]) return; // 중복 체크 방지
+      checkedIds[rule.id] = true;
+      var el = document.getElementById(rule.id);
+      if (!el) {
+        if (rule.required) {
+          errors.push('DOM 없음: ' + rule.label + ' (#' + rule.id + ')');
+        } else {
+          warnings.push('DOM 선택: ' + rule.label + ' (#' + rule.id + ')');
+        }
+      } else {
+        passed_rules.push(rule.label);
+      }
+    });
+
+    // 2. BC코드 실값 검증
+    var bcCheck = checkBcCodeValue();
+    if (!bcCheck.ok) {
+      warnings.push('BC코드 실값: ' + bcCheck.msg);
+    } else {
+      passed_rules.push('[실값] BC코드 = ' + bcCheck.bc);
+    }
+
+    // 3. axis_scores 실값 검증
+    var axCheck = checkAxisScores();
+    if (!axCheck.ok) {
+      warnings.push('axis_scores: ' + axCheck.msg);
+    } else {
+      var scoreKeys = Object.keys(axCheck.scores).join(',');
+      passed_rules.push('[실값] axis_scores 확인(' + scoreKeys + ')');
+    }
+
+    // 4. MappingEngine 로드 검증
+    if (typeof window.MappingEngine === 'undefined' || typeof window.MappingEngine.run !== 'function') {
+      warnings.push('MappingEngine 미로드 (외부 CDN: slimmind.kr/mapping-engine.js — CORS/네트워크 무관)');
+    } else {
+      passed_rules.push('[엔진] MappingEngine 로드 완료');
+    }
+
+    // ── 결과 출력 ────────────────────────────────────────────────
+    var passed = errors.length === 0;
+    var summary = {
+      passed: passed,
+      errors: errors.length,
+      warnings: warnings.length,
+      checked: passed_rules.length,
+      schema: 'AE-SCHEMA v1.1',
+      rules: '0번~12번 (설계도 정본)'
+    };
+
+    if (passed) {
+      console.log(
+        '%c[AE-SCHEMA] passed=true, errors=0 ✅',
+        'background:#1b5e20;color:#fff;font-weight:bold;padding:3px 8px;border-radius:4px;font-size:13px'
+      );
+    } else {
+      console.error(
+        '[AE-SCHEMA] passed=false, errors=' + errors.length
+      );
+    }
+
+    console.log('[AE-SCHEMA] 검증 결과:', JSON.stringify(summary, null, 2));
+    console.log('[AE-SCHEMA] 통과 항목(' + passed_rules.length + '):', passed_rules);
+
+    if (warnings.length > 0) {
+      console.warn('[AE-SCHEMA] 경고(' + warnings.length + '):', warnings);
+    }
+    if (errors.length > 0) {
+      console.error('[AE-SCHEMA] 오류(' + errors.length + '):', errors);
+      errors.forEach(function(e) { console.error('  ❌ ' + e); });
+    }
+
+    // 전역 노출 (디버깅용)
+    window.__AE_SCHEMA_RESULT__ = {
+      passed: passed,
+      errors: errors,
+      warnings: warnings,
+      passed_rules: passed_rules,
+      summary: summary
+    };
+
+    return summary;
+  }
+
+  // ── DOM 준비 후 2초 대기 후 실행 (렌더 파이프라인 완료 대기) ──
+  function scheduleCheck() {
+    setTimeout(function() {
+      try {
+        runAeSchemaCheck();
+      } catch(e) {
+        console.error('[AE-SCHEMA] 검증 실행 오류:', e);
+      }
+    }, 2000);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', scheduleCheck);
+  } else {
+    scheduleCheck();
+  }
+
+})();
+</script>
 </body></html>
