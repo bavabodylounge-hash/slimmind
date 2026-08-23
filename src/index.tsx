@@ -6439,6 +6439,53 @@ app.get('/api/ai/story/:result_id', async (c) => {
   }
 })
 
+// ── GET /api/ai/debug-claude — Claude API 직접 호출 디버그 ───────────
+// ★ 임시 디버그 엔드포인트: Claude API 키·호출 상태를 직접 확인
+app.get('/api/ai/debug-claude', async (c) => {
+  const apiKey = (c.env as any).ANTHROPIC_API_KEY as string | undefined
+  const db = (c.env as any).DB as D1Database
+
+  const info: any = {
+    has_api_key: !!apiKey,
+    api_key_length: apiKey ? apiKey.length : 0,
+    api_key_prefix: apiKey ? apiKey.slice(0, 8) + '...' : null,
+    has_db: !!db,
+    timestamp: new Date().toISOString(),
+  }
+
+  if (!apiKey) {
+    return c.json({ ...info, claude_test: 'skipped_no_key' })
+  }
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-3-5-haiku-20241022',
+        max_tokens: 100,
+        temperature: 0.5,
+        messages: [{ role: 'user', content: '{"story_lead":"테스트","clinical_ctx":"소견"} 형식으로 짧게 답해주세요.' }],
+      }),
+    })
+    const statusCode = res.status
+    const responseText = await res.text()
+    info.claude_status = statusCode
+    info.claude_ok = res.ok
+    info.claude_response_preview = responseText.slice(0, 300)
+    info.claude_test = res.ok ? 'success' : 'api_error'
+  } catch (err: any) {
+    info.claude_test = 'exception'
+    info.claude_error = String(err)
+  }
+
+  return c.json(info)
+})
+
 // ════════════════════════════════════════════════════════
 //  기능 8: 가족 코드 비교
 //  POST /api/v1/family-code/join   — 결과에 가족코드 연결 (신규 or 기존 코드 참여)
