@@ -5571,8 +5571,9 @@ p, div, span, h1, h2, h3, h4{
 <link rel="apple-touch-icon" href="https://slimmind.kr/static/baba_logo.png">
 <!-- PWA 공통 모듈 v2.0 (세션 복원 + UA 모달 + SW 등록 + 웹푸시) -->
 
-<!-- Core Mapping Engine v1.0 — Live Refresh 핸드셰이크 + 파이프라인 모듈 -->
-<script src="https://slimmind.kr/mapping-engine.js?v=20260803"></script>
+<!-- Core Mapping Engine v1.1 — Live Refresh 핸드셰이크 + 파이프라인 모듈 -->
+<!-- [BUG-FIX v4.4] base href 우회: location.origin으로 로컬 v1.1 로드 (slimmind.kr v1.0 대신) -->
+<script>(function(){var s=document.createElement('script');s.src=location.origin+'/mapping-engine.js?v=20260818';s.async=false;document.head.appendChild(s);})();</script>
 
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="BAVA 성형외과">
@@ -25918,9 +25919,7 @@ function renderPersonalizationLayer(data, axisScores, answers, bcCode, ohaengTyp
     var slow_healing    = _s3v(33);
     var acanthosis      = _s3v(34);
 
-    var insights = [];
-
-    var insights = [];
+    var insights = []; // [BUG-FIX v4.4] 중복 선언 제거
 
     // [1] 수면 질 (stage3 A07 gi:24 자고나도피곤 + gi:27 아침개운 역문항)
     // fatigue_after_sleep: 0=아님, 1=가끔, 2=자주, 3=항상
@@ -25998,10 +25997,12 @@ function renderPersonalizationLayer(data, axisScores, answers, bcCode, ohaengTyp
       insights.push({ icon: '🔴', tag: '대사 위험 신호', msg: '감지: ' + metaFlags.join(', ') + ' — 인슐린 저항성 또는 대사 이상의 피부 신호입니다. 의료진 확인 후 정밀 검사가 권장됩니다.', type: 'warn' });
     }
 
-    // [13] 보행 패턴
-    if (walking_angle === 1) {
+    // [13] 보행 패턴 — [BUG-FIX v4.4] walking_angle은 설문 미수집 변수(미구현): null guard로 안전 처리
+    // 설계도 주석: "코드상 구조만 있고 현재 미구현 상태" → 값이 있을 때만 렌더
+    var walking_angle = null; // 미구현: 추후 gi 매핑 시 _s3v(idx)로 교체
+    if (walking_angle !== null && walking_angle === 1) {
       insights.push({ icon: '🦿', tag: '보행 패턴', msg: '팔자걸음 — 고관절 외회전 과다로 골반 불균형과 연관됩니다. 코어·고관절 교정 운동이 로드맵에 포함됩니다.', type: 'info' });
-    } else if (walking_angle === 2) {
+    } else if (walking_angle !== null && walking_angle === 2) {
       insights.push({ icon: '🦿', tag: '보행 패턴', msg: '안짱걸음 — 무릎·고관절 부하가 높습니다. 운동 선택 시 무릎 보호 프로그램이 권장됩니다.', type: 'info' });
     }
 
