@@ -6245,27 +6245,6 @@ async function callClaude(
   return data.content?.[0]?.text || ''
 }
 
-// ── GET /api/ai/ping-claude — 진단용: ANTHROPIC_API_KEY 바인딩 + Claude 도달 가능성 확인 ──
-app.get('/api/ai/ping-claude', async (c) => {
-  const apiKey = (c.env as any).ANTHROPIC_API_KEY as string | undefined
-  if (!apiKey) return c.json({ ok: false, reason: 'ANTHROPIC_API_KEY not bound' })
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({
-        model: 'claude-3-5-haiku-20241022',
-        max_tokens: 30,
-        messages: [{ role: 'user', content: 'ping: respond with {"ok":true}' }],
-      }),
-    })
-    const txt = await res.text()
-    return c.json({ http_status: res.status, key_prefix: apiKey.slice(0,8)+'...', response_sample: txt.slice(0, 300) })
-  } catch (e: any) {
-    return c.json({ ok: false, fetch_error: String(e) })
-  }
-})
-
 // ── POST /api/ai/generate-story ────────────────────────────────────
 // 설계도 스펙:
 //   입력: { result_id, name, sex, subtype, bodyChange, methods[], trigger,
