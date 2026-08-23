@@ -5588,44 +5588,14 @@ p, div, span, h1, h2, h3, h4{
 <meta name="twitter:image" content="https://slimmind.kr/static/og-baba.png">
 <style id="pwa-common-style">#pwa-banner{position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#fff;box-shadow:0 -2px 16px rgba(0,0,0,.18);padding:14px 16px 20px;display:flex;align-items:center;gap:12px;font-family:"Noto Sans KR",sans-serif;animation:pwa-slide-up .35s ease;}#pwa-banner .pwa-icon{width:44px;height:44px;border-radius:10px;object-fit:cover;flex-shrink:0;}#pwa-banner .pwa-text{flex:1;min-width:0;}#pwa-banner .pwa-text strong{display:block;font-size:14px;color:#1a1a17;margin-bottom:2px;}#pwa-banner .pwa-text span{font-size:12px;color:#7c776b;line-height:1.4;}#pwa-banner .pwa-btn{flex-shrink:0;background:#5a6e3a;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;}#pwa-banner .pwa-close{flex-shrink:0;background:none;border:none;color:#aaa;font-size:20px;cursor:pointer;padding:0 4px;line-height:1;}#pwa-modal-overlay{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.6);display:none;align-items:flex-end;animation:pwa-fade-in .25s ease;}#pwa-modal-overlay.on{display:flex;}#pwa-modal{background:#fff;border-radius:22px 22px 0 0;padding:28px 20px 40px;width:100%;max-width:480px;margin:0 auto;font-family:"Noto Sans KR",sans-serif;animation:pwa-slide-up .3s ease;}#pwa-modal .pwa-modal-title{font-size:18px;font-weight:700;margin-bottom:6px;color:#1a1a17;}#pwa-modal .pwa-modal-desc{font-size:13px;color:#888;margin-bottom:18px;line-height:1.5;}#pwa-modal .pwa-step{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;font-size:14px;color:#333;line-height:1.5;}#pwa-modal .pwa-num{width:26px;height:26px;min-width:26px;background:#5a6e3a;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;}#pwa-modal .pwa-modal-close{width:100%;margin-top:14px;padding:14px;background:#f2f2f2;border:none;border-radius:12px;font-size:15px;font-weight:600;color:#666;cursor:pointer;}#pwa-kakao-tip{position:fixed;top:0;left:0;right:0;z-index:100001;background:#FEE500;padding:13px 16px;display:flex;align-items:center;gap:10px;font-family:"Noto Sans KR",sans-serif;box-shadow:0 2px 12px rgba(0,0,0,.15);}#pwa-kakao-tip span{flex:1;font-size:13px;color:#1a1a17;line-height:1.5;}#pwa-kakao-tip button{background:none;border:none;font-size:18px;cursor:pointer;color:#555;padding:0;}#pwa-pc-overlay{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;animation:pwa-fade-in .25s ease;}#pwa-pc-modal{background:#fff;border-radius:20px;padding:32px 28px 28px;max-width:400px;width:90%;font-family:"Noto Sans KR",sans-serif;box-shadow:0 8px 40px rgba(0,0,0,.2);}#pwa-pc-modal .pwa-modal-title{font-size:18px;font-weight:700;margin-bottom:6px;color:#1a1a17;}#pwa-pc-modal .pwa-modal-desc{font-size:13px;color:#888;margin-bottom:18px;line-height:1.5;}#pwa-pc-modal .pwa-step{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;font-size:14px;color:#333;line-height:1.5;}#pwa-pc-modal .pwa-num{width:26px;height:26px;min-width:26px;background:#5a6e3a;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;}#pwa-pc-modal .pwa-modal-close{width:100%;margin-top:14px;padding:13px;background:#f2f2f2;border:none;border-radius:12px;font-size:15px;font-weight:600;color:#666;cursor:pointer;}@keyframes pwa-slide-up{from{transform:translateY(100%)}to{transform:translateY(0)}}@keyframes pwa-fade-in{from{opacity:0}to{opacity:1}}</style>
 <script>
-/* === 정적 HTML 패치: API fetch 차단 ===
-   이 파일은 렌더링 완료된 정적 스냅샷입니다.
-   서버 API 호출을 intercept해서 에러 없이 동작하도록 처리합니다. */
-(function() {
-  var _origFetch = window.fetch;
-  window.fetch = function(url, opts) {
-    var u = typeof url === 'string' ? url : (url && url.url) || '';
-    // 내부 API 호출은 조용히 빈 응답 반환
-    if (u && (u.indexOf('/api/') !== -1 || u.indexOf('slimmind.kr/api') !== -1)) {
-      console.log('[Static] API call intercepted:', u);
-      return Promise.resolve(new Response(JSON.stringify({ok:false,static:true}), {
-        status: 200,
-        headers: {'Content-Type': 'application/json'}
-      }));
-    }
-    return _origFetch.apply(this, arguments);
-  };
-  // XMLHttpRequest도 차단
-  var _origOpen = XMLHttpRequest.prototype.open;
-  XMLHttpRequest.prototype.open = function(method, url) {
-    if (url && url.indexOf('/api/') !== -1) {
-      this._blocked = true;
-    }
-    return _origOpen.apply(this, arguments);
-  };
-  var _origSend = XMLHttpRequest.prototype.send;
-  XMLHttpRequest.prototype.send = function() {
-    if (this._blocked) return;
-    return _origSend.apply(this, arguments);
-  };
-  // 로딩 오버레이가 남아있으면 강제 제거
-  window.addEventListener('DOMContentLoaded', function() {
-    setTimeout(function() {
-      var ol = document.getElementById('loading-overlay');
-      if (ol) { ol.style.display = 'none'; }
-    }, 500);
-  });
-})();
+// [API 차단 블록 완전 삭제] — fetch/XHR 정상 동작
+// 로딩 오버레이 제거만 유지
+window.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    var ol = document.getElementById('loading-overlay');
+    if (ol) { ol.style.display = 'none'; }
+  }, 500);
+});
 </script>
 
 <style id="metric-stamp-css">@keyframes mStampIn{0%{opacity:0;transform:scale(3.2);filter:blur(7px)}42%{opacity:1;transform:scale(.86);filter:blur(0)}58%{transform:scale(1.14)}72%{transform:scale(.96)}100%{opacity:1;transform:scale(1);filter:blur(0)}}@keyframes mQuake{0%,100%{transform:translate(0,0)}15%{transform:translate(-2px,2px)}30%{transform:translate(3px,-1px)}45%{transform:translate(-3px,0)}60%{transform:translate(2px,1px)}75%{transform:translate(-1px,-1px)}}@keyframes mRing{0%{box-shadow:0 0 0 0 rgba(178,42,92,.55)}100%{box-shadow:0 0 0 26px rgba(178,42,92,0)}}@keyframes mBlink{0%,100%{opacity:1}20%{opacity:.15}40%{opacity:1}60%{opacity:.15}80%{opacity:1}}@keyframes mWarnFlash{0%{color:#ffd24a}30%{color:#ff6b9d}100%{color:#ffd24a}}#p1-metrics.m-go .metric-hero-value{animation:mStampIn .62s cubic-bezier(.2,.9,.3,1.35) both;animation-delay:.1s;display:inline-block}#p1-metrics.m-go .metric-card-hero{animation:mQuake .4s ease-out both,mRing .8s ease-out both;animation-delay:.42s,.42s}#p1-metrics.m-go #p1-metrics.m-go .metric-sub-grid .metric-card:nth-child(1) .metric-value{animation:mStampIn .62s cubic-bezier(.2,.9,.3,1.35) both;animation-delay:.65s}#p1-metrics.m-go .metric-sub-grid .metric-card:nth-child(1){animation:mQuake .4s ease-out both,mRing .8s ease-out both;animation-delay:.97s,.97s}#p1-metrics.m-go .metric-sub-grid .metric-card:nth-child(1) .metric-risk{animation:mBlink .9s steps(1,end) both;animation-delay:1.1s}#p1-metrics.m-go .metric-sub-grid .metric-card:nth-child(2) .metric-value{animation:mStampIn .62s cubic-bezier(.2,.9,.3,1.35) both;animation-delay:1.1s}#p1-metrics.m-go .metric-sub-grid .metric-card:nth-child(2){animation:mQuake .4s ease-out both,mRing .8s ease-out both;animation-delay:1.42s,1.42s}#p1-metrics.m-go .metric-sub-grid .metric-card:nth-child(2) .metric-risk{animation:mBlink .9s steps(1,end) both;animation-delay:1.55s}#p1-metrics.m-go .metric-sub-grid .metric-card:nth-child(3) .metric-value{animation:mStampIn .62s cubic-bezier(.2,.9,.3,1.35) both;animation-delay:1.55s}#p1-metrics.m-go .metric-sub-grid .metric-card:nth-child(3){animation:mQuake .4s ease-out both,mRing .8s ease-out both;animation-delay:1.87s,1.87s}#p1-metrics.m-go .metric-sub-grid .metric-card:nth-child(3) .metric-risk{animation:mBlink .9s steps(1,end) both;animation-delay:2.0s}</style></head>
