@@ -305,9 +305,12 @@
    * @param {Object} s2         - raw_answers.stage2 {no: val|Array}
    * @param {Object} bcAnswers  - extractFromStage2 결과 (disease, appetite_suppressant 등)
    */
-  function applyStage2Bonus(axisScores, s2, bcAnswers) {
+  function applyStage2Bonus(axisScores, s2, bcAnswers, gender) {
     s2        = s2        || {};
     bcAnswers = bcAnswers || {};
+    // ★ 남성 판별 — Q12(복부화 계기)는 여성 갱년기와 같은 인덱스(0~2)를 공유하므로 반드시 체크
+    var _isMaleBonus = (gender === 'M' || gender === 'male' || gender === '남성' || gender === '남'
+      || gender === 'MALE' || gender === '트랜스 남성');
 
     // 보너스 누적용 (축 이름: 설계도 표기)
     // A01=인슐린, A02=림프, A03=호르몬, A04=근감소, A05=소화, A06=골격
@@ -455,13 +458,16 @@
     // ─── Q11 출산 (축 보너스 없음 — redFlags·bcAnswers만) ────────────────────
     // 설계도 표 C에 Q11 출산 배점 없음(골격·림프는 3차에서 담당)
 
-    // ─── Q12 갱년기·완경 ─────────────────────────────────────────────────────
+    // ─── Q12 갱년기·완경 ★남성 제외 ────────────────────────────────────────
     // 복부 변환(0)·호르몬 치료(1)·완경(2) → 호르몬 +2.0
     // 신호 조금(3) → 호르몬 +0.5 (설계도: "배경 갱년기도 여기서")
-    var q12 = single(12);
-    if (q12 === null && bcAnswers.q12_menopause !== undefined) q12 = bcAnswers.q12_menopause;
-    if (q12 === 0 || q12 === 1 || q12 === 2) { add('A03', 2.0); }
-    else if (q12 === 3) { add('A03', 0.5); }
+    // ★남성 Q12 = "40대 이후 복부화 계기" 로 값이 동일(0~2) 저장 → 반드시 성별 체크
+    if (!_isMaleBonus) {
+      var q12 = single(12);
+      if (q12 === null && bcAnswers.q12_menopause !== undefined) q12 = bcAnswers.q12_menopause;
+      if (q12 === 0 || q12 === 1 || q12 === 2) { add('A03', 2.0); }
+      else if (q12 === 3) { add('A03', 0.5); }
+    }
 
     // ─── 병력 캡 +4.0 적용 ──────────────────────────────────────────────────
     // 2차 전체 보너스 합계가 4.0 초과 시 비례 축소
@@ -627,7 +633,8 @@
 
     // ─── 2차 배경 배점 가산 (설계도 표 C Q1~Q12, 병력 캡 +4.0) ─────────────
     // extractFromStage2 이후 호출해야 bcAnswers(disease 등)를 활용 가능
-    applyStage2Bonus(axisScores, s2, s2Result.bcAnswers);
+    // ★ _gender 전달 — Q12 갱년기 배점 남성 차단
+    applyStage2Bonus(axisScores, s2, s2Result.bcAnswers, _gender);
 
     // ─── bcAnswers 구성 (공통 flat key 매핑) ───────────────────────────────
     var bcAnswers = {};
