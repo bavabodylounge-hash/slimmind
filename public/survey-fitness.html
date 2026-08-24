@@ -20053,7 +20053,7 @@ async function postDiagnosisWithRetry(payload, maxRetry = 3) {
   let lastErr = null;
   for (let attempt = 1; attempt <= maxRetry; attempt++) {
     try {
-      const res = await fetch('/api/f/diagnosis', {
+      const res = await fetch('/api/v1/diagnosis', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify(payload)
@@ -20374,42 +20374,46 @@ async function submitDiagnosis(dispAnswers) { try{ window.SMSfx&&SMSfx.finish();
     ? Math.round((_curWt - _goalWt) / _curWt * 100)
     : null;
 
-  // ── NICKNAME → BC코드 역매핑 (bc-engine.js NICKNAME_TO_BC 사용, 없으면 로컬 fallback) ──
+  // ── NICKNAME → BC코드 역매핑 (bc-engine.js NICKNAME_TO_BC 동기화 v3.3, 2026-08-24) ──
   const _NICKNAME_TO_BC_LOCAL = {
-    '엄마체형 하지정체형':'BC-1',                        '오후만되면 코끼리다리형':'BC-1',
-    '목짧아지는 거북이형':'BC-2',
-    '남산수박배 기본형':'BC-3',                          '식후기절 혈당롤러형':'BC-3',
-    '아빠체형 내장비대형':'BC-3',                        '털털한 PCOS형':'BC-3',
-    '식후기절 혈당롤러코스터형':'BC-3',
-    '물만마셔도요요 기본형':'BC-4',                      '약물부작용 강제축적형':'BC-4',
-    '억제제부작용 배부름마비형':'BC-4',
-    '셀룰라이트귤껍질 기본형':'BC-5',                    '여름에도 시린 얼음장형':'BC-5',
-    '식후임산부 가스풍선형':'BC-5',
-    '스트레스성 야식부엉이형':'BC-6',                    '팔다리거미 올챙이배형':'BC-6',
-    '출산후 바람빠진 풍선형':'BC-7',                     '운동할수록 말벅지형':'BC-7',
-    '지방흡입후 재발형':'BC-2',
+    // BC-1: 하지정체·부종형
+    '엄마체형 하지정체형':'BC-1','오후만되면 코끼리다리형':'BC-1','장이 막혀 다리가 무거운 형':'BC-1',
+    // BC-2: 자세·거북목형
+    '목짧아지는 거북이형':'BC-2','지방흡입후 재발형':'BC-2','짊어진어깨형':'BC-2',
+    // BC-3: 내장·인슐린저항형
+    '남산수박배 기본형':'BC-3','식후기절 혈당롤러형':'BC-3','아빠체형 내장비대형':'BC-3',
+    '털털한 PCOS형':'BC-3','식후기절 혈당롤러코스터형':'BC-3',
+    '배부터 무너지는 남성 호르몬 저하형':'BC-3','당이 하체로 가는 저장형':'BC-3',
+    '등살부터 차오르는 저장형':'BC-3','남산수박배형':'BC-3',
+    // BC-4: 대사저하·약물형
+    '물만마셔도요요 기본형':'BC-4','약물부작용 강제축적형':'BC-4','억제제부작용 배부름마비형':'BC-4',
+    '습관이 하체에 쌓인 형':'BC-4','습관이 팔뚝에 쌓인 형':'BC-4',
+    '습관이 온몸에 쌓인 형':'BC-4','물만마셔도요요형':'BC-4',
+    // BC-5: 순환저하·냉체형
+    '셀룰라이트귤껍질 기본형':'BC-5','여름에도 시린 얼음장형':'BC-5',
+    '식후임산부 가스풍선형':'BC-5','셀룰라이트귤껍질형':'BC-5',
+    // BC-6: 코르티솔·야식형
+    '스트레스성 야식부엉이형':'BC-6','팔다리거미 올챙이배형':'BC-6',
+    // BC-7: 호르몬·출산형
+    '출산후 바람빠진 풍선형':'BC-7','운동할수록 말벅지형':'BC-7',
+    '배만 붓는 복부 정체형':'BC-7','복압 빠진 맥주배형':'BC-7','장이 눌러 상체가 굳는 형':'BC-7',
+    // BC-8: 골반·체형형
     '골반틀어짐 승마살형':'BC-8',
+    // BC-10: 팔뚝부종형
     '안 쓰는 팔뚝 부종형':'BC-10',
+    // BC-11: 상체근육형
     '상체근육형':'BC-11',
-    '겨드랑이 부유방형':'BC-12',
-    '호르몬스위치 갱년기형':'BC-13',
-    '스트레스기절 번아웃형':'BC-14',
-    '대사증후군 종합형':'BC-15',
-    '동시다발 다중악순환형':'BC-16',
-    '배만 붓는 복부 정체형':'BC-7',                      '배부터 무너지는 남성 호르몬 저하형':'BC-3',
-    '복압 빠진 맥주배형':'BC-7',
-    '당이 하체로 가는 저장형':'BC-3',                    '장이 막혀 다리가 무거운 형':'BC-1',
-    '밤에 굳는 하체 정체형':'BC-14',                     '습관이 하체에 쌓인 형':'BC-4',
-    '다리부터 신호 오는 대사 경고형':'BC-15',
-    '등살부터 차오르는 저장형':'BC-3',                   '어깨 뒤부터 바뀌는 호르몬 전환형':'BC-13',
-    '장이 눌러 상체가 굳는 형':'BC-7',
-    '어깨에 얹힌 긴장 축적형':'BC-14',                   '습관이 팔뚝에 쌓인 형':'BC-4',
-    '목 뒤부터 신호 오는 대사 경고형':'BC-15',           '가슴 아래 접히는 흉부 정체형':'BC-12',
-    '온몸이 무거운 전신 정체형':'BC-13',                 '장에서 시작된 전신 염증형':'BC-15',
-    '축이 무너진 전신 불균형형':'BC-16',                 '습관이 온몸에 쌓인 형':'BC-4',
-    '짊어진어깨형':'BC-2',                               '전체적으로둔해진형':'BC-16',
-    '남산수박배형':'BC-3',                               '셀룰라이트귤껍질형':'BC-5',
-    '물만마셔도요요형':'BC-4',
+    // BC-12: 부유방형
+    '겨드랑이 부유방형':'BC-12','가슴 아래 접히는 흉부 정체형':'BC-12',
+    // BC-13: 갱년기변환형
+    '호르몬스위치 갱년기형':'BC-13','어깨 뒤부터 바뀌는 호르몬 전환형':'BC-13','온몸이 무거운 전신 정체형':'BC-13',
+    // BC-14: 번아웃·무기력형
+    '스트레스기절 번아웃형':'BC-14','밤에 굳는 하체 정체형':'BC-14','어깨에 얹힌 긴장 축적형':'BC-14',
+    // BC-15: 대사증후군형
+    '대사증후군 종합형':'BC-15','다리부터 신호 오는 대사 경고형':'BC-15',
+    '목 뒤부터 신호 오는 대사 경고형':'BC-15','장에서 시작된 전신 염증형':'BC-15',
+    // BC-16: 다중악순환형
+    '동시다발 다중악순환형':'BC-16','축이 무너진 전신 불균형형':'BC-16','전체적으로둔해진형':'BC-16',
   };
   const _nicknameMap = (typeof NICKNAME_TO_BC !== 'undefined') ? NICKNAME_TO_BC : _NICKNAME_TO_BC_LOCAL;
   const _bcCodeKey = (f.name && _nicknameMap[f.name]) ? _nicknameMap[f.name] : 'BC-6';
@@ -20433,23 +20437,8 @@ async function submitDiagnosis(dispAnswers) { try{ window.SMSfx&&SMSfx.finish();
     disp_answers:    (dispAnswers && Object.keys(dispAnswers).length > 0) ? dispAnswers : null,
     raw_answers:     rawAnswers,
     ref_code:        refCode,
-    survey_category: 'fitness',   // 피트니스 트랙 라우팅 (F2 정상 경로 복원)
-    completed_at:    new Date().toISOString(),
-    // ── /api/f/diagnosis 필수/권장 필드 보강 (BMR/TDEE 계산 및 fitness_responses 컬럼용) ──
-    gender:          (userInfo && userInfo.gender) ? ((userInfo.gender.indexOf('여')>=0)?'female':((userInfo.gender.indexOf('남')>=0)?'male':userInfo.gender)) : null,
-    height:          (function(){ try{ var e=document.getElementById('kh_r_15'); return (e && e.value)?parseFloat(e.value):null; }catch(_e){ return null; } })(),
-    weight:          (function(){ try{ var e=document.getElementById('kw_r_15'); return (e && e.value)?parseFloat(e.value):null; }catch(_e){ return null; } })(),
-    age:             (function(){ try{ var y=window.pfProfile&&window.pfProfile.birthY; if(!y) return null; return (new Date().getFullYear())-parseInt(y,10)+1; }catch(_e){ return null; } })(),
-    b2b_code:        refCode || 'DIRECT',
-    stage1_json:     (typeof survAnswers   !== 'undefined') ? survAnswers   : null,
-    stage2_json:     (typeof stage2Answers !== 'undefined') ? stage2Answers : null,
-    stage3_json:     (typeof stage3Answers !== 'undefined') ? stage3Answers : null,
-    stage4_json:     (typeof stage4Answers !== 'undefined') ? stage4Answers : null,
-    exercise_response: (typeof survAnswers!=='undefined' && survAnswers[17]!==undefined) ? String(survAnswers[17]) : null,
-    pain_gate:       (typeof survAnswers!=='undefined' && Array.isArray(survAnswers[18])) ? survAnswers[18] : [],
-    activity_level:  '주 3~4회',
-    bfr_current:     (window._bfMap && window._bfMap.bodyFatPct) || null,
-    bfr_target:      null
+    survey_category: 'hospital',  // ✅ FIX: 병원용 결과지 라우팅을 위해 명시적 설정
+    completed_at:    new Date().toISOString()
   };
 
   // ── POST (3회 재시도) ──
