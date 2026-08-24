@@ -16,6 +16,7 @@ ALTER TABLE fitness_responses ADD COLUMN override_bc_code TEXT DEFAULT NULL;
 ALTER TABLE fitness_responses ADD COLUMN override_story TEXT DEFAULT NULL;
 ALTER TABLE fitness_responses ADD COLUMN override_applied INTEGER DEFAULT 0;
 ALTER TABLE fitness_responses ADD COLUMN override_at DATETIME DEFAULT NULL;
+ALTER TABLE fitness_responses ADD COLUMN bc_primary TEXT DEFAULT NULL;
 
 -- diag_id 컬럼 추가 (fitness_responses의 primary key 'id'를 diag_id 별칭으로 조회 지원)
 -- fitness_responses.id = diag_id 형식(F-XXXXXXXXXXXXXXX-XXXXX)이므로 별도 컬럼 불필요
