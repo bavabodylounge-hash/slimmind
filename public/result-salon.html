@@ -14073,6 +14073,7 @@ function loadData() {
       userName: r.user_name || r.name || '고객',
       bc_code: r.bc_primary || r.bc_code,
       bc_primary: r.bc_primary || r.bc_code,
+      bc_nickname: r.bc_nickname || '',
       axisScores: axisScores,
       top_axes: Array.isArray(r.top_axes) ? r.top_axes : [],
       axis_primary: r.axis_primary || '',
@@ -14767,6 +14768,11 @@ function renderAll(data) {
     }
     const _dbMaster = BC_MASTER[_dbBcCode];
     if (_dbMaster) bcMaster = _dbMaster;
+    const _dbNick = (data.bc_nickname || '').trim();
+    if (_dbNick && _dbNick !== nickname) {
+      console.log('[result-v4] 닉네임 DB 고정:', nickname, '→', _dbNick);
+      nickname = _dbNick;
+    }
   }
   // ──────────────────────────────────────────────────────────────────
 
@@ -19710,6 +19716,7 @@ async function loadHospitalResult() {
       answers:         answers,
       bc_code:         r.bc_code || '',
       bc_primary:      r.bc_code || '',
+      bc_nickname:     r.bc_nickname || '',
       gender:          genderNorm,
       age:             calcAge,
       height:          r.height  || '',
