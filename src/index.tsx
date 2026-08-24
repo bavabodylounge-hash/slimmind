@@ -127,6 +127,24 @@ const KAKAO_ESCAPE_SCRIPT = `<script>
 
 const app = new Hono<{ Bindings: Bindings }>()
 
+// ─── 전역 보안 헤더 미들웨어 ────────────────────────────────
+// Clickjacking 방지, MIME sniffing 방지, XSS 방어 헤더
+app.use('*', async (c, next) => {
+  await next()
+  // 페이지/HTML 응답에만 보안 헤더 적용
+  const ct = c.res.headers.get('Content-Type') || ''
+  if (ct.includes('text/html') || ct.includes('application/json') || ct === '') {
+    c.res.headers.set('X-Frame-Options', 'SAMEORIGIN')
+    c.res.headers.set('X-Content-Type-Options', 'nosniff')
+    c.res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+    c.res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+    // API 응답에는 캐시 금지
+    if (ct.includes('application/json')) {
+      c.res.headers.set('Cache-Control', 'no-store')
+    }
+  }
+})
+
 // ─── CORS ────────────────────────────────────────────────────
 app.use('/api/*', cors({
   origin: '*',
@@ -5032,10 +5050,17 @@ app.get('/api/admin/revenue-forecast', requireRole('MASTER'), async (c) => {
 /* ═══════════════════════════════════════════════════════
    GET /api/consultant/clients — ref_code 기반 고객 목록 (인증 없이)
 ═══════════════════════════════════════════════════════ */
-app.get('/api/consultant/clients', async (c) => {
+app.get('/api/consultant/clients', requireRole('ANY'), async (c) => {
+  const user = c.get('user') as JwtPayload
   const db = c.env.DB as D1Database | undefined;
-  const refCode = c.req.query('ref_code') || c.req.header('X-Ref-Code') || '';
+  // MASTER: 임의 ref_code 조회 허용 / 그 외: 자신의 코드만 허용
+  const requestedRef = c.req.query('ref_code') || c.req.header('X-Ref-Code') || '';
+  const refCode = user.role === 'MASTER' ? requestedRef : (user.code || '');
   if (!refCode) return c.json({ ok: false, error: 'ref_code required' }, 400);
+  // MASTER가 아닌 경우 자기 코드가 아닌 ref_code 쿼리는 거부
+  if (user.role !== 'MASTER' && requestedRef && requestedRef !== refCode) {
+    return c.json({ ok: false, error: '자신의 고객 목록만 조회할 수 있습니다.' }, 403);
+  }
   try {
     const rows = db ? await db.prepare(`
       SELECT id, user_name, ref_code, bc_primary, bc_secondary,
@@ -7125,6 +7150,55 @@ app.post('/api/h/diagnosis', async (c) => {
           `INSERT INTO survey_notifications (ref_code, result_id, user_name, notified_at) VALUES (?, ?, ?, datetime('now'))`
         ).bind(ref_code, resultId, user_name || null).run()
       } catch (_) { /* survey_notifications 없으면 무시 */ }
+    }
+
+    // ── diagnosis_results 동시 저장 (B2B 대시보드 파이프라인 + hospital 통합조회 대상) ──
+    // ★ FIX: B2B /api/b2b/results에서 diagnosis_results 우선 조회하므로 동기화 필수
+    try {
+      const axJson = resolvedAxisScores ? JSON.stringify(resolvedAxisScores) : null
+      const top3Axes: string[] = resolvedAxisScores
+        ? Object.entries(resolvedAxisScores as Record<string,number>)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3)
+            .map(([k]) => k)
+        : []
+      const top3Json = JSON.stringify(top3Axes)
+      const rawForDr: Record<string,any> = { ...(parsedRaw || {}) }
+      if (stage1_answers && !rawForDr.stage1) rawForDr.stage1 = stage1_answers
+      if (stage2_answers && !rawForDr.stage2) rawForDr.stage2 = stage2_answers
+      if (stage3_answers && !rawForDr.stage3) rawForDr.stage3 = stage3_answers
+      if (stage4_answers && !rawForDr.stage4) rawForDr.stage4 = stage4_answers
+      await db.prepare(`
+        INSERT OR IGNORE INTO diagnosis_results
+          (id, user_name, bc_primary, bc_code_key, bc_secondary, bc_nickname,
+           top3_axes, axis_scores, ohaeng_type, mbti_full,
+           ref_code, survey_category, raw_answers, gender, height, age,
+           goal_weight, weight_loss_pct, completed_at, created_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),CURRENT_TIMESTAMP)
+      `).bind(
+        resultId,
+        user_name,
+        resolvedBcCode || resolvedBcNickname || null,
+        resolvedBcCode || null,
+        null,
+        resolvedBcNickname || null,
+        top3Json,
+        axJson,
+        resolvedOhaeng,
+        resolvedMbti,
+        ref_code || null,
+        'hospital',
+        JSON.stringify(rawForDr),
+        gender || null,
+        height ? String(height) : null,
+        age ? String(age) : null,
+        resolvedGoalWeight,
+        resolvedWeightLossPct,
+        new Date().toISOString(),
+      ).run()
+      console.log('[/api/h/diagnosis] diagnosis_results 동기화 완료:', resultId)
+    } catch (drErr: any) {
+      console.warn('[/api/h/diagnosis] diagnosis_results 동기화 실패(무시):', drErr?.message)
     }
 
     return c.json({

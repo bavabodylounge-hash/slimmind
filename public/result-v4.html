@@ -14599,19 +14599,30 @@ function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nic
     : _storyData;
 
   // ★ H1 v4: Q_BODY_CHANGE → story-lead 분기 (BC_STORY override)
-  var _v4Ans  = window.__LAST_ANSWERS__ || {};
-  var _v4BodyChg = _v4Ans['Q_BODY_CHANGE'];
-  var _v4Lead = _storySelected.lead; // 기본값: BC_STORY 기반
-  if (_v4BodyChg == 0)      _v4Lead = '갱년기 이후 분명 달라진 몸 — 예전이랑 똑같이 먹는데 살이 빠지질 않았죠.';
-  else if (_v4BodyChg == 1) _v4Lead = '번아웃이 쌓이면서 몸이 무너졌죠 — 운동도 식단도 의지가 서질 않던 그 시간들.';
-  else if (_v4BodyChg == 2) _v4Lead = '대사가 달라지기 시작했죠 — 닭가슴살을 씹어도, 천국의 계단을 올라도 빠지지 않던 몸.';
-  document.getElementById('p1-story').innerHTML =
-    `<p class="story-lead">${_v4Lead}</p>
-      <p class="story-bang"><strong>${userName}</strong>님, 당신은 게을렀던 게 아닙니다.</p>
-      <p class="story-hook">당신의 몸이 ${_storySelected.hook}</p>`;
+  // [SECURITY] __IS_AUTHORIZED__ false 시 story/소견 노출 차단 — 고객에게 해석본 노출 불가
+  var _v4IsAuthorized = (window.__IS_AUTHORIZED__ === true);
+  if (!_v4IsAuthorized) {
+    // 고객: story/소견 섹션 강제 비움 (MASTER/CONSULTANT/B2B_PARTNER만 열람 가능)
+    var _v4StEl = document.getElementById('p1-story');
+    var _v4FdEl = document.getElementById('p1-fail-desc');
+    if (_v4StEl) _v4StEl.innerHTML = '';
+    if (_v4FdEl) _v4FdEl.innerHTML = '';
+  } else {
+    // 인증자(MASTER/CONSULTANT/B2B_PARTNER)만 story/소견 렌더링
+    var _v4Ans  = window.__LAST_ANSWERS__ || {};
+    var _v4BodyChg = _v4Ans['Q_BODY_CHANGE'];
+    var _v4Lead = _storySelected.lead; // 기본값: BC_STORY 기반
+    if (_v4BodyChg == 0)      _v4Lead = '갱년기 이후 분명 달라진 몸 — 예전이랑 똑같이 먹는데 살이 빠지질 않았죠.';
+    else if (_v4BodyChg == 1) _v4Lead = '번아웃이 쌓이면서 몸이 무너졌죠 — 운동도 식단도 의지가 서질 않던 그 시간들.';
+    else if (_v4BodyChg == 2) _v4Lead = '대사가 달라지기 시작했죠 — 닭가슴살을 씹어도, 천국의 계단을 올라도 빠지지 않던 몸.';
+    document.getElementById('p1-story').innerHTML =
+      `<p class="story-lead">${_v4Lead}</p>
+        <p class="story-bang"><strong>${userName}</strong>님, 당신은 게을렀던 게 아닙니다.</p>
+        <p class="story-hook">당신의 몸이 ${_storySelected.hook}</p>`;
 
-  document.getElementById('p1-fail-desc').innerHTML =
-    `<strong>분석 소견:</strong> ${bcMaster.failed_type_desc}`;
+    document.getElementById('p1-fail-desc').innerHTML =
+      `<strong>분석 소견:</strong> ${bcMaster.failed_type_desc}`;
+  }
 
   // BC 마스터 9종
   const bcGrid = document.getElementById('p1-bc-grid');

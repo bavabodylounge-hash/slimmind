@@ -10,9 +10,7 @@
 |--------|-----|
 | **메인 랜딩** | https://7ed6c475-8afa-4ef8-9af8-8fab0cf8224b.vip.gensparksite.com/landing/ |
 | **B2B 파트너** | https://7ed6c475-8afa-4ef8-9af8-8fab0cf8224b.vip.gensparksite.com/landing/b2b.html |
-| **B2B 가입 퍼널** | https://7ed6c475-8afa-4ef8-9af8-8fab0cf8224b.vip.gensparksite.com/landing/?ref=b2b |
 | **컨설턴트** | https://7ed6c475-8afa-4ef8-9af8-8fab0cf8224b.vip.gensparksite.com/landing/consultant.html |
-| **샘플 리포트** | https://7ed6c475-8afa-4ef8-9af8-8fab0cf8224b.vip.gensparksite.com/landing/sample-report |
 | **진단 시작** | https://7ed6c475-8afa-4ef8-9af8-8fab0cf8224b.vip.gensparksite.com/ |
 | **관리자** | https://7ed6c475-8afa-4ef8-9af8-8fab0cf8224b.vip.gensparksite.com/admin |
 | **GitHub** | https://github.com/bavabodylounge-hash/slimmind |
@@ -27,70 +25,79 @@
 | **런타임** | Cloudflare Workers for Platform |
 | **빌드** | Vite 6 + @hono/vite-cloudflare-pages |
 | **DB** | Cloudflare D1 (SQLite) |
-| **인증** | JWT (HS256) |
+| **인증** | JWT (HS256) — requireRole('MASTER'/'CONSULTANT'/'ANY'/'B2B_PARTNER') |
 | **프론트엔드** | Vanilla JS + Tailwind CDN + AOS + CountUp.js |
 | **배포** | Genspark Hosted Deploy → Cloudflare |
 | **버전관리** | GitHub (bavabodylounge-hash/slimmind) |
 
 ---
 
-## 📁 프로젝트 구조
+## 🔒 보안 아키텍처 (2026-08-24 기준)
 
+### 역할별 접근 권한
+| 역할 | 코드 | 열람 가능 |
+|------|------|-----------|
+| `MASTER` | 관리자 | 모든 데이터 + 해석본 |
+| `CONSULTANT` | 컨설턴트 | 자신 담당 고객 + 해석본 |
+| `B2B_PARTNER` | B2B 파트너 | 자신 파트너 고객 + 해석본 |
+| 비인증(고객) | — | 결과지 기본 정보만 (story/소견 차단) |
+
+### 해석본(story_lead) 차단 레이어
+1. **서버사이드 (1차)**: 모든 result 라우트 (`/result-fitness/:id`, `/result-hospital/:id`, `/result-aesthetic/:id`, `/result-salon/:id`, `/result/:id`) — `getAuthUser()` 확인 후 인증자에게만 `story_lead`, `clinical_ctx` 주입
+2. **클라이언트 (2차)**: `window.__IS_AUTHORIZED__ !== true` 시 모든 result HTML 파일의 `p1-story`, `p1-fail-desc` 요소를 강제 비움
+3. **API 레이어 (3차)**: `/api/ai/story/:result_id`, `/api/ai/generate-story` → `requireRole('ANY')` 인증 필수
+
+### 보안 헤더 (전역 미들웨어)
 ```
-slimmind/
-├── src/
-│   ├── index.tsx          # 메인 Hono 앱 (API 194개 엔드포인트, 10,147줄)
-│   └── renderer.tsx       # JSX 렌더러
-├── public/
-│   ├── landing/           # 랜딩 페이지 (index/b2b/consultant/pricing 등)
-│   │   ├── index.html     # 메인 랜딩 + 회원가입 모달
-│   │   ├── b2b.html       # B2B 파트너 랜딩 (업종별 탭, ROI 계산기)
-│   │   ├── consultant.html# 컨설턴트 랜딩 (수익 계산기)
-│   │   ├── sample-report.html # 16BC 샘플 리포트 (인쇄→PDF)
-│   │   ├── pricing.html   # 요금제 페이지
-│   │   ├── service.html   # 서비스 소개
-│   │   └── about.html     # 회사 소개
-│   ├── index.html         # 진단 메인 (설문 플로우)
-│   ├── result.html        # 결과지 (일반)
-│   ├── result-v4.html     # 결과지 v4 (최신)
-│   ├── result-hospital.html # 병원 전용 결과지
-│   ├── result-aesthetic.html# 에스테틱 전용 결과지
-│   ├── admin.html         # 관리자 대시보드
-│   ├── consultant.html    # 컨설턴트 대시보드
-│   ├── survey-aesthetic.html # 에스테틱 전용 설문
-│   ├── survey-hospital.html  # 병원 전용 설문
-│   └── slimmind-today.html   # 오늘의 체크인
-├── migrations/            # DB 마이그레이션 (0001~0059)
-├── docs/                  # 기술 명세서 HTML
-├── README.md              # 이 파일
-├── CURRENT_SPEC.md        # 프론트엔드 UI/UX 사양
-├── BACKEND_GUIDE.md       # 백엔드 API & DB 가이드
-├── SYSTEM_MAPPING.md      # 진단-처방 매핑 알고리즘
-├── wrangler.jsonc         # Cloudflare 설정
-├── vite.config.ts         # 빌드 설정
-└── package.json
+X-Frame-Options: SAMEORIGIN           (Clickjacking 방지)
+X-Content-Type-Options: nosniff       (MIME sniffing 방지)
+Referrer-Policy: strict-origin-when-cross-origin
+Permissions-Policy: camera=(), microphone=(), geolocation=()
+Cache-Control: no-store               (API 응답 캐시 금지)
 ```
 
 ---
 
 ## 🎯 핵심 기능
 
-### 진단 플로우
-1. **설문** (7분, 약 40문항) → 체형·체질·생활습관 파악
-2. **AI 분석** → 16개 바디코드 중 주코드·부코드 산출
-3. **결과지 생성** → 처방·식단·운동·제품 추천 자동 매핑
-4. **리포트 공유** → URL 공유 / 인쇄→PDF
+### 설문 플로우 (완료 후 결과지 자동이동 없음)
+1. **설문 완료** → `waitScreen("담당 컨설턴트가 연락드립니다")` 표시 후 100% 종결
+2. survey-fitness.html, survey-hospital.html, survey-hospital-3lang.html 모두 `window.location.replace('/result/'+resultId)` 제거 완료
 
-### B2B 화이트라벨
-- 병원·에스테틱·피트니스·한의원·건기식샵 5개 업종
-- 파트너 전용 관리자페이지 (고객 데이터·매출·CSV 내보내기)
-- 화이트라벨 브랜딩 (로고·색상 100% 커스텀)
-- 1개월 무료 파일럿 → 초기비용 290만원 + 월 9,900원
+### 4개 업종 진단 파이프라인
+| 업종 | 설문 파일 | API | 저장 테이블 | diagnosis_results 동기화 |
+|------|-----------|-----|------------|--------------------------|
+| 피트니스 | survey-fitness.html | POST /api/f/diagnosis | fitness_responses | ✅ |
+| 병원 | survey-hospital.html | POST /api/h/diagnosis | hospital_responses | ✅ (2026-08-24 추가) |
+| 에스테틱 | survey-aesthetic.html | POST /api/a/diagnosis | aesthetic_responses | ✅ |
+| 살롱 | survey-salon.html | POST /api/s/diagnosis | salon_responses | ✅ |
 
-### 컨설턴트 네트워크
-- 12주 교육 → 공식 바디컨설턴트 자격
-- 등급제 수익 (브론즈 15% ~ 마스터 30%)
-- 월 수익 시뮬레이터
+### B2B 대시보드 (`/api/b2b/results`)
+- `requireB2B()` 인증 필수
+- `survey_category='hospital'` 파트너 → `hospital_responses` + `diagnosis_results` + `results` UNION
+- 비병원 파트너 → `diagnosis_results`(1순위) + `fitness/salon/aesthetic_responses`(중복 제거) UNION
+- 날짜 필터, 검색, 페이지네이션 지원
+
+---
+
+## 📁 핵심 파일
+
+```
+src/index.tsx                    # 메인 백엔드 (~13,200줄, API ~200개)
+public/
+  result-fitness.html            # 피트니스 결과지 (__IS_AUTHORIZED__ 보안 패치)
+  result-hospital.html           # 병원 결과지 (__IS_AUTHORIZED__ 보안 패치)
+  result-aesthetic.html          # 에스테틱 결과지 (__IS_AUTHORIZED__ 보안 패치)
+  result-salon.html              # 살롱 결과지 (__IS_AUTHORIZED__ 보안 패치)
+  result-v4.html                 # v4 결과지 (__IS_AUTHORIZED__ 보안 패치)
+  survey-fitness.html            # 피트니스 설문 (자동이동 제거)
+  survey-hospital.html           # 병원 설문 (자동이동 제거)
+  survey-hospital-3lang.html     # 다국어 병원 설문 (자동이동 제거)
+  bc-engine.js                   # BC 코드 엔진 (NICKNAME_TO_BC 51개)
+  admin.html                     # 관리자 대시보드 (매핑 검증 탭 포함)
+migrations/
+  0001~0065_*.sql                # DB 스키마 마이그레이션
+```
 
 ---
 
@@ -98,25 +105,43 @@ slimmind/
 
 ### 로컬 개발 (샌드박스)
 ```bash
-npm run build          # Vite 빌드
-pm2 start ecosystem.config.cjs  # PM2로 서버 시작
+npm run build                     # Vite 빌드
+pm2 start ecosystem.config.cjs   # PM2로 서버 시작
 # → http://localhost:3000
 ```
 
-### 배포 (Cloudflare)
+### 배포 (Cloudflare) — 사용자 승인 필요
 ```bash
 git add . && git commit -m "메시지"
-# → git commit 시 auto-deploy 훅이 Genspark에 배포 요청
-# → Genspark 화면에서 승인 버튼 클릭
+npm run build
+gsk hosted deploy                 # → Genspark 화면에서 승인 버튼 클릭 필요
 ```
 
 ### DB 마이그레이션
 ```bash
-# 로컬
-npx wrangler d1 migrations apply slimmind --local
-# 프로덕션
-npx wrangler d1 migrations apply slimmind
+npx wrangler d1 migrations apply 7ed6c475-8afa-4ef8-9af8-8fab0cf8224b-db --local  # 로컬
+npx wrangler d1 migrations apply 7ed6c475-8afa-4ef8-9af8-8fab0cf8224b-db          # 프로덕션
 ```
+
+---
+
+## 📋 세션별 변경 이력
+
+### 2026-08-24 (Part 2 — 보안 완전 강화)
+- ✅ survey-fitness/hospital/hospital-3lang.html 결과지 자동이동 3곳 완전 제거
+- ✅ POST /api/ai/generate-story, GET /api/ai/story/:id → `requireRole('ANY')` 인증 추가
+- ✅ 5개 result 라우트 서버사이드 story 주입 보안 패치 + `window.__IS_AUTHORIZED__` 플래그
+- ✅ result-fitness/hospital/aesthetic/salon/v4.html 클라이언트 story 차단 패치
+- ✅ [능동] `/api/consultant/clients` → `requireRole('ANY')` + 권한 범위 제한 (자신 고객만)
+- ✅ [능동] hospital `/api/h/diagnosis` → `diagnosis_results` 동기화 코드 추가
+- ✅ [능동] 전역 보안 헤더 미들웨어 추가 (X-Frame-Options, X-Content-Type-Options 등)
+- ✅ GitHub push + gsk hosted deploy
+
+### 2026-08-13 (Part 1 — 매핑 정비)
+- result-fitness.html 하드코딩 20개 제거
+- migration 0065 override 컬럼 생성
+- GET /api/admin/mapping-verify, POST /api/admin/mapping-override 구현
+- bc-engine.js NICKNAME_TO_BC 51개 정본 교체
 
 ---
 
@@ -129,14 +154,4 @@ npx wrangler d1 migrations apply slimmind
 
 ---
 
-## 📝 문서
-
-| 문서 | 내용 |
-|------|------|
-| [CURRENT_SPEC.md](./CURRENT_SPEC.md) | 프론트엔드 UI/UX 사양 |
-| [BACKEND_GUIDE.md](./BACKEND_GUIDE.md) | API 엔드포인트 & DB 스키마 |
-| [SYSTEM_MAPPING.md](./SYSTEM_MAPPING.md) | 진단-처방 매핑 알고리즘 |
-
----
-
-*Last updated: 2026-08-13*
+*Last updated: 2026-08-24*
