@@ -3449,9 +3449,10 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
 })();
 <\/script>`
 
+  const resultIsAuthorized = isConsultant
   const injectedHtml = baseHtml2.replace(
     '</head>',
-    `${ogMetaR}\n${pwaManifestLink}\n${brandInjectResult}\n<script>window.__RESULT__ = ${flatJson};window.__RESULT_FULL__ = ${fullJson};</script>\n${pwaLocalStorageScript}\n</head>`
+    `${ogMetaR}\n${pwaManifestLink}\n${brandInjectResult}\n<script>window.__RESULT__ = ${flatJson};window.__RESULT_FULL__ = ${fullJson};window.__IS_AUTHORIZED__ = ${JSON.stringify(resultIsAuthorized)};</script>\n${pwaLocalStorageScript}\n</head>`
   )
 
   return htmlResponse(injectedHtml)
@@ -6251,7 +6252,8 @@ async function callClaude(
 //           trajectory:{pattern,points[]}, background, flags[] }
 //   출력: { story_lead, clinical_ctx, src }
 //   굽기 1회 원칙: 저장본 있으면 그대로 반환
-app.post('/api/ai/generate-story', async (c) => {
+// ★ 보안: 관리자/컨설턴트/B2B 파트너만 접근 가능 (고객 직접 접근 차단)
+app.post('/api/ai/generate-story', requireRole('ANY'), async (c) => {
   const db = (c.env as any).DB as D1Database
   const apiKey = (c.env as any).ANTHROPIC_API_KEY as string | undefined
 
@@ -6415,7 +6417,9 @@ ${inputJson}`
 })
 
 // ── GET /api/ai/story/:result_id — 저장된 서사 조회 ───────────────
-app.get('/api/ai/story/:result_id', async (c) => {
+// ★ 보안: 관리자/컨설턴트/B2B 파트너만 접근 가능 (고객 직접 접근 차단)
+// 해석본(story_lead, clinical_ctx)은 관리자·마스터·컨설턴트 전용 — 고객에게 절대 노출 불가
+app.get('/api/ai/story/:result_id', requireRole('ANY'), async (c) => {
   const db = (c.env as any).DB as D1Database
   if (!db) return c.json({ error: 'DB not configured' }, 500)
 
@@ -7490,10 +7494,13 @@ app.get('/result-hospital/:id', async (c) => {
     }
 
     // ── AI 서사 서버사이드 주입 (굽기 1회 원칙 — 저장본 있으면 즉시 주입) ──
+    // ★ 보안: 인증된 관리자/컨설턴트/B2B 파트너에게만 해석본(story_lead, clinical_ctx) 주입
+    const rhAuthUser = await getAuthUser(c)
+    const rhIsAuthorized = rhAuthUser && (rhAuthUser.role === 'MASTER' || rhAuthUser.role === 'CONSULTANT' || rhAuthUser.role === 'B2B_PARTNER')
     let rhStoryLead: string | null = null
     let rhClinicalCtx: string | null = null
     let rhStoryResultId: string | null = id  // 결과지 result_id
-    if (db) {
+    if (db && rhIsAuthorized) {
       try {
         const storyRow = await db.prepare(
           `SELECT story_lead, clinical_ctx, ai_story_src FROM diagnosis_results WHERE id = ? LIMIT 1`
@@ -7511,9 +7518,11 @@ app.get('/result-hospital/:id', async (c) => {
       ? `window.__RESULT__ = window.__RESULT__ || {};
 window.__RESULT__.story_lead = ${JSON.stringify(rhStoryLead)};
 window.__RESULT__.clinical_ctx = ${JSON.stringify(rhClinicalCtx || '')};
-window.__RESULT__.result_id = ${JSON.stringify(id)};`
+window.__RESULT__.result_id = ${JSON.stringify(id)};
+window.__IS_AUTHORIZED__ = true;`
       : `window.__RESULT__ = window.__RESULT__ || {};
-window.__RESULT__.result_id = ${JSON.stringify(id)};`
+window.__RESULT__.result_id = ${JSON.stringify(id)};
+window.__IS_AUTHORIZED__ = ${JSON.stringify(!!rhIsAuthorized)};`
     const idScript = `<script>
 window.__HOSPITAL_RESULT_ID__ = ${JSON.stringify(id)};
 window.__DEPLOY_TS__ = ${deployTs};
@@ -8035,9 +8044,12 @@ app.get('/result-aesthetic/:id', async (c) => {
     }
 
     // ── AI 서사 서버사이드 주입 (굽기 1회 원칙 — 에스테틱) ──
+    // ★ 보안: 인증된 관리자/컨설턴트/B2B 파트너에게만 해석본(story_lead, clinical_ctx) 주입
+    const aeAuthUser = await getAuthUser(c)
+    const aeIsAuthorized = aeAuthUser && (aeAuthUser.role === 'MASTER' || aeAuthUser.role === 'CONSULTANT' || aeAuthUser.role === 'B2B_PARTNER')
     let aeStoryLead: string | null = null
     let aeClinicalCtx: string | null = null
-    if (db) {
+    if (db && aeIsAuthorized) {
       try {
         const aeStoryRow = await db.prepare(
           `SELECT story_lead, clinical_ctx FROM diagnosis_results WHERE id = ? LIMIT 1`
@@ -8049,12 +8061,8 @@ app.get('/result-aesthetic/:id', async (c) => {
       } catch (_) {}
     }
     const aeStoryScript = aeStoryLead
-      ? `window.__RESULT__ = window.__RESULT__ || {};
-window.__RESULT__.story_lead = ${JSON.stringify(aeStoryLead)};
-window.__RESULT__.clinical_ctx = ${JSON.stringify(aeClinicalCtx || '')};
-window.__RESULT__.result_id = ${JSON.stringify(id)};`
-      : `window.__RESULT__ = window.__RESULT__ || {};
-window.__RESULT__.result_id = ${JSON.stringify(id)};`
+      ? `window.__RESULT__ = window.__RESULT__ || {};\nwindow.__RESULT__.story_lead = ${JSON.stringify(aeStoryLead)};\nwindow.__RESULT__.clinical_ctx = ${JSON.stringify(aeClinicalCtx || '')};\nwindow.__RESULT__.result_id = ${JSON.stringify(id)};\nwindow.__IS_AUTHORIZED__ = true;`
+      : `window.__RESULT__ = window.__RESULT__ || {};\nwindow.__RESULT__.result_id = ${JSON.stringify(id)};\nwindow.__IS_AUTHORIZED__ = ${JSON.stringify(!!aeIsAuthorized)};`
 
     const deployTs = Date.now()
     const idScript = `<script>
@@ -8516,9 +8524,13 @@ app.get('/result-fitness/:id', async (c) => {
     }
 
     // ── AI 서사 서버사이드 주입 (굽기 1회 원칙 — 피트니스) ──
+    // ★ 보안: 인증된 관리자/컨설턴트/B2B 파트너에게만 해석본(story_lead, clinical_ctx) 주입
+    // 고객(토큰 없는 일반 접근)에게는 절대 해석본 미주입
+    const fitAuthUser = await getAuthUser(c)
+    const fitIsAuthorized = fitAuthUser && (fitAuthUser.role === 'MASTER' || fitAuthUser.role === 'CONSULTANT' || fitAuthUser.role === 'B2B_PARTNER')
     let fitStoryLead: string | null = null
     let fitClinicalCtx: string | null = null
-    if (db) {
+    if (db && fitIsAuthorized) {
       try {
         const fitStoryRow = await db.prepare(
           `SELECT story_lead, clinical_ctx FROM diagnosis_results WHERE id = ? LIMIT 1`
@@ -8529,9 +8541,10 @@ app.get('/result-fitness/:id', async (c) => {
         }
       } catch (_) {}
     }
+    // 인증 여부를 클라이언트에 전달 (해석본 섹션 표시/숨김용)
     const fitStoryScript = fitStoryLead
-      ? `window.__RESULT__ = window.__RESULT__ || {};\nwindow.__RESULT__.story_lead = ${JSON.stringify(fitStoryLead)};\nwindow.__RESULT__.clinical_ctx = ${JSON.stringify(fitClinicalCtx || '')};\nwindow.__RESULT__.result_id = ${JSON.stringify(id)};`
-      : `window.__RESULT__ = window.__RESULT__ || {};\nwindow.__RESULT__.result_id = ${JSON.stringify(id)};`
+      ? `window.__RESULT__ = window.__RESULT__ || {};\nwindow.__RESULT__.story_lead = ${JSON.stringify(fitStoryLead)};\nwindow.__RESULT__.clinical_ctx = ${JSON.stringify(fitClinicalCtx || '')};\nwindow.__RESULT__.result_id = ${JSON.stringify(id)};\nwindow.__IS_AUTHORIZED__ = true;`
+      : `window.__RESULT__ = window.__RESULT__ || {};\nwindow.__RESULT__.result_id = ${JSON.stringify(id)};\nwindow.__IS_AUTHORIZED__ = ${JSON.stringify(!!fitIsAuthorized)};`
 
     const deployTs = Date.now()
     const idScript = `<script>
@@ -8975,9 +8988,12 @@ app.get('/result-salon/:id', async (c) => {
     }
 
     // ── AI 서사 서버사이드 주입 (굽기 1회 원칙 — 살롱) ──
+    // ★ 보안: 인증된 관리자/컨설턴트/B2B 파트너에게만 해석본(story_lead, clinical_ctx) 주입
+    const salonAuthUser = await getAuthUser(c)
+    const salonIsAuthorized = salonAuthUser && (salonAuthUser.role === 'MASTER' || salonAuthUser.role === 'CONSULTANT' || salonAuthUser.role === 'B2B_PARTNER')
     let salonStoryLead: string | null = null
     let salonClinicalCtx: string | null = null
-    if (db) {
+    if (db && salonIsAuthorized) {
       try {
         const salonStoryRow = await db.prepare(
           `SELECT story_lead, clinical_ctx FROM diagnosis_results WHERE id = ? LIMIT 1`
@@ -8989,8 +9005,8 @@ app.get('/result-salon/:id', async (c) => {
       } catch (_) {}
     }
     const salonStoryScript = salonStoryLead
-      ? `window.__RESULT__ = window.__RESULT__ || {};\nwindow.__RESULT__.story_lead = ${JSON.stringify(salonStoryLead)};\nwindow.__RESULT__.clinical_ctx = ${JSON.stringify(salonClinicalCtx || '')};\nwindow.__RESULT__.result_id = ${JSON.stringify(id)};`
-      : `window.__RESULT__ = window.__RESULT__ || {};\nwindow.__RESULT__.result_id = ${JSON.stringify(id)};`
+      ? `window.__RESULT__ = window.__RESULT__ || {};\nwindow.__RESULT__.story_lead = ${JSON.stringify(salonStoryLead)};\nwindow.__RESULT__.clinical_ctx = ${JSON.stringify(salonClinicalCtx || '')};\nwindow.__RESULT__.result_id = ${JSON.stringify(id)};\nwindow.__IS_AUTHORIZED__ = true;`
+      : `window.__RESULT__ = window.__RESULT__ || {};\nwindow.__RESULT__.result_id = ${JSON.stringify(id)};\nwindow.__IS_AUTHORIZED__ = ${JSON.stringify(!!salonIsAuthorized)};`
 
     const deployTs = Date.now()
     // result-salon.html은 result-hospital.html 복제본으로 __HOSPITAL_RESULT_ID__ 참조 유지

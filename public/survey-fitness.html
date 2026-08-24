@@ -50,14 +50,10 @@
     );
     if (!isStandalone) return;  // 일반 브라우저에서는 동작하지 않음
 
+    // [POLICY] 고객은 결과지 직접 접근 불가. 컨설턴트가 카톡으로 링크 전달.
+    // PWA standalone 복원 리다이렉트 비활성화.
     var lastId = localStorage.getItem('sm_last_result_id');
-    if (!lastId) return;  // 저장된 결과지 ID 없으면 패스
-
-    // 이미 결과지 페이지에 있으면 리다이렉트 불필요
-    if (location.pathname.indexOf('/result/') === 0) return;
-
-    // 메인 스플래시(/) 또는 survey 페이지에서만 리다이렉트
-    location.replace('/result/' + lastId);
+    if (!lastId) return;
   } catch(e) {}
 })();
 </script>
@@ -19753,12 +19749,10 @@ function showAnalyzing(){ try{ window.SMSfx&&SMSfx.scan(); }catch(_){}
             const waitTitleEl=document.getElementById('waitTitle');
             if(waitTitleEl) waitTitleEl.innerHTML=`<span class="wait-name-hl">${name}</span>님,<br>분석이 <span>완료됐어요!</span>`;
             window.scrollTo({top:0,behavior:'smooth'});
-            /* localStorage에서 마지막 result_id 복구 시도 */
+            /* [POLICY] 고객 결과지 자동이동 비활성화 — 컨설턴트가 카톡으로 링크 전달 */
             try{
               const lastId=localStorage.getItem('sm_last_result_id');
-              if(lastId && lastId.length > 10){
-                setTimeout(()=>{ window.location.replace('/result/'+lastId); }, 2000);
-              }
+              if(lastId) console.log('[sm] 결과 저장 완료:', lastId, '— 컨설턴트가 카톡으로 전달');
             }catch(_){}
           }catch(e2){ console.error('[v72-timeout] 대기화면 표시 실패:', e2); }
         }
@@ -20152,23 +20146,20 @@ function showWaitScreen(resultId, userName) {
   // 상단으로 스크롤
   window.scrollTo({ top: 0, behavior: 'smooth' });
 
-  /* ★★ v72 핵심: resultId 있으면 2초 후 병원용 결과지로 자동 이동
-     - /result/:id → 서버가 survey_category=hospital 감지 → /result-hospital/:id 302 리다이렉트
-     - 이동 전 waitStep2 UI를 "완료" 로 업데이트 */
+  /* [POLICY] 고객은 결과지 직접 접근 불가. 컨설턴트가 카톡으로 링크 전달.
+     resultId가 있어도 자동 이동하지 않음. waitScreen 종결 화면에서 끝. */
   if (resultId) {
     try {
+      // waitStep2 UI → 완료 표시 (이동은 하지 않음)
       const step2El = document.getElementById('waitStep2');
       if(step2El){ step2El.textContent='✓'; step2El.className='wait-cs-num done'; }
       const step3El = document.querySelector('.wait-cs-num.wait');
       if(step3El){ step3El.className='wait-cs-num active'; step3El.textContent='↻'; }
+      // localStorage 저장 (관리자 조회용, 리다이렉트용 아님)
+      try{ localStorage.setItem('sm_last_result_id', resultId); }catch(_){}
+      console.log('[sm] 설문 완료. resultId:', resultId, '— 컨설턴트가 카톡으로 전달 예정');
     } catch(_){}
-    setTimeout(()=>{
-      try{
-        window.location.replace('/result/' + resultId);
-      }catch(e){
-        window.location.href = '/result/' + resultId;
-      }
-    }, 2000);
+    // ★ 자동 이동 없음 — 고객은 waitScreen에서 종결
   }
 }
 

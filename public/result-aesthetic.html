@@ -15174,16 +15174,23 @@ function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nic
                   (window.__RESULT__ && window.__RESULT__.id) ||
                   (new URLSearchParams(window.location.search)).get('id') || null;
 
-  if (window.__RESULT__ && window.__RESULT__.story_lead) {
-    // ① 서버가 이미 주입한 경우 (가장 빠름)
+  // ★ 보안: 해석본은 인증자(컨설턴트/관리자/B2B)만 열람 가능. 고객에게 절대 노출 불가
+  var _isAuthorized = (window.__IS_AUTHORIZED__ === true);
+  if (!_isAuthorized) {
+    var _stEl = document.getElementById('p1-story');
+    var _fdEl = document.getElementById('p1-fail-desc');
+    if (_stEl) _stEl.innerHTML = '';
+    if (_fdEl) _fdEl.innerHTML = '';
+  } else if (window.__RESULT__ && window.__RESULT__.story_lead) {
+    // ① 인증자: 서버 주입본 렌더
     _renderStory(window.__RESULT__.story_lead,
                  window.__RESULT__.clinical_ctx || _sgTxt, false);
-  } else {
-    // 일단 폴백으로 먼저 렌더 (UX: 빈 화면 방지)
+  } else if (_isAuthorized) {
+    // ② 인증자: 폴백 후 API 조회
     _renderStory(_p1Lead, _sgTxt, false);
 
     if (_resultId) {
-      // ② /api/ai/story/:id 조회 — 저장본 있으면 교체
+      // ③ /api/ai/story/:id 조회
       fetch('/api/ai/story/' + _resultId)
         .then(function(r){ return r.ok ? r.json() : null; })
         .then(function(d){
