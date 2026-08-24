@@ -14439,6 +14439,7 @@ function loadData() {
       userName: r.user_name || r.name || '고객',
       bc_code: r.bc_primary || r.bc_code,
       bc_primary: r.bc_primary || r.bc_code,
+      bc_nickname: r.bc_nickname || '',
       axisScores: axisScores,
       top_axes: Array.isArray(r.top_axes) ? r.top_axes : [],
       axis_primary: r.axis_primary || '',
@@ -15133,6 +15134,13 @@ function renderAll(data) {
     }
     const _dbMaster = BC_MASTER[_dbBcCode];
     if (_dbMaster) bcMaster = _dbMaster;
+    // ★ 닉네임도 DB 값으로 함께 고정 — 배지(bcCode) · 상단 닉네임 텍스트(nickname) ·
+    //   16종 카드 하이라이트(BC_CODE_TO_CARD[bcCode]) 3곳이 항상 동일한 BC를 가리키도록 강제
+    const _dbNick = (data.bc_nickname || '').trim();
+    if (_dbNick && _dbNick !== nickname) {
+      console.log('[result-v4] 닉네임 DB 고정:', nickname, '→', _dbNick);
+      nickname = _dbNick;
+    }
   }
   // ──────────────────────────────────────────────────────────────────
 
@@ -15615,12 +15623,15 @@ function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nic
   var myKey = _norm(myNick);
 
   // ── BC코드 → 그리드 카드명 직접 매핑 (닉네임 매칭 실패와 무관하게 항상 정확히 작동) ──
+  // ★ 이 테이블은 bc-engine.js의 BC_MASTER(정본) outline_card와 반드시 1:1 일치해야 함
+  //   (하체형: BC-1 코끼리다리 · BC-2 귤껍질하체 · BC-7 말벅지 · BC-8 승마살
+  //    상체형: BC-9 거북이 · BC-10 팔뚝부종 · BC-11 상체근육 · BC-12 부유방)
   var BC_CODE_TO_CARD = {
-    'BC-1':  '코끼리다리형',   'BC-2':  '거북이형',
+    'BC-1':  '코끼리다리형',   'BC-2':  '귤껍질 하체형',
     'BC-3':  '단단 내장형',    'BC-4':  '물렁 피하형',
-    'BC-5':  '귤껍질 하체형',  'BC-6':  '올챙이배형',
-    'BC-7':  '가스 팽만형',    'BC-8':  '말벅지형',
-    'BC-9':  '올챙이배형',     'BC-10': '팔뚝부종형',
+    'BC-5':  '가스 팽만형',    'BC-6':  '올챙이배형',
+    'BC-7':  '말벅지형',       'BC-8':  '승마살형',
+    'BC-9':  '거북이형',       'BC-10': '팔뚝부종형',
     'BC-11': '상체근육형',     'BC-12': '부유방형',
     'BC-13': '갱년기 변환형',  'BC-14': '번아웃 무기력형',
     'BC-15': '대사증후군형',   'BC-16': '다중악순환형',
@@ -20076,6 +20087,7 @@ async function loadHospitalResult() {
       answers:         answers,
       bc_code:         r.bc_code || '',
       bc_primary:      r.bc_code || '',
+      bc_nickname:     r.bc_nickname || '',
       gender:          genderNorm,
       age:             calcAge,
       height:          r.height  || '',
