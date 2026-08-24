@@ -530,6 +530,7 @@
         <div class="nav-section-label">콘텐츠</div>
         <div class="nav-item" data-page="bc-codes"><i class="fas fa-dna"></i> BC코드 처방 편집</div>
         <div class="nav-item" data-page="bc-library"><i class="fas fa-book-medical"></i> 바디코드 도감</div>
+        <div class="nav-item" data-page="mapping-verify" style="border-left:3px solid #e74c3c"><i class="fas fa-microscope" style="color:#e74c3c"></i> <b style="color:#e74c3c">진단 매핑 검증 Center</b> <span style="font-size:9px;background:#e74c3c;color:#fff;border-radius:4px;padding:1px 5px;margin-left:2px">NEW</span></div>
 
         <div class="nav-section-label">정산 · 다운로드</div>
         <div class="nav-item" data-page="settlement"><i class="fas fa-calculator"></i> 수익 정산</div>
@@ -1363,7 +1364,8 @@ function navigateTo(page) {
     settings:'설정', 'kakao-settings':'카카오 설정', 'monthly-report':'월간 AI 리포트', 'affiliate-places':'제휴업체 관리',
     analytics:'데이터 인사이트', ranking:'컨설턴트 랭킹', 'revenue-forecast':'매출 예측기',
     settlement:'수익 정산', payments:'결제 관리', rediagnosis:'재진단 알림', 'growth-dashboard':'성장 대시보드', 'excel-export':'데이터 다운로드', 'bc-library':'바디코드 도감',
-    'daily-checks':'데일리 체크 현황', 'b2b-group-analysis':'B2B 그룹 비교 분석'
+    'daily-checks':'데일리 체크 현황', 'b2b-group-analysis':'B2B 그룹 비교 분석',
+    'mapping-verify':'🔬 진단 매핑 검증 Center'
   };
   document.getElementById('topbar-title').textContent = titles[page] || page;
   const body = document.getElementById('page-body');
@@ -1382,6 +1384,7 @@ function navigateTo(page) {
   else if (page === 'notifications') loadAdminNotifications();
   else if (page === 'bc-codes') loadBcCodes();
   else if (page === 'bc-library') loadBcLibrary();
+  else if (page === 'mapping-verify') loadMappingVerifyCenter();
   else if (page === 'daily-checks') { loadDailyChecks(); loadAdminCheckAlerts(); }
   else if (page === 'analytics') loadAnalytics();
   else if (page === 'ranking') loadRanking();
@@ -5975,6 +5978,212 @@ function loadChartJs() {
     s.onload = resolve;
     document.head.appendChild(s);
   });
+}
+
+/* ══════════════════════════════════════════════════════════
+   진단 매핑 검증 Center — loadMappingVerifyCenter()
+   ① 진단 ID 조회 → Raw 응답 / 9축 점수 / BC 산출 이유 / 결과지 텍스트
+   ② 마스터 Override: BC코드·해설본 즉시 수정 → D1 저장 → 결과지 실시간 반영
+   ③ 최신 유저 100건 조회
+══════════════════════════════════════════════════════════ */
+function loadMappingVerifyCenter() {
+  const c = document.getElementById('content');
+  c.innerHTML = `
+  <div style="max-width:1100px;margin:0 auto;padding:24px 16px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+      <div style="width:44px;height:44px;background:linear-gradient(135deg,#e74c3c,#c0392b);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px">🔬</div>
+      <div>
+        <h2 style="margin:0;font-size:20px;font-weight:800;color:#1a1a2e">진단 매핑 검증 Center</h2>
+        <p style="margin:0;font-size:12px;color:#888">설계도 정본 기준 — Raw 응답 · 9축 점수 · BC 산출 이유 · 해설본 Override</p>
+      </div>
+    </div>
+
+    <!-- 검색 박스 -->
+    <div style="background:#fff;border:2px solid #e74c3c;border-radius:14px;padding:20px;margin-bottom:20px">
+      <div style="font-weight:700;font-size:14px;color:#c0392b;margin-bottom:12px">🔍 진단 ID 조회</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <input id="mv-diag-id" type="text" placeholder="진단 ID 입력 (예: F-1787582575427-C29XL)"
+          style="flex:1;min-width:240px;padding:10px 14px;border:1px solid #ddd;border-radius:8px;font-size:13px;font-family:monospace">
+        <button onclick="mvSearch()" style="padding:10px 22px;background:#e74c3c;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px">
+          🔍 조회
+        </button>
+        <button onclick="mvLoadRecent()" style="padding:10px 18px;background:#f8f9fa;color:#555;border:1px solid #ddd;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px">
+          최근 100건
+        </button>
+      </div>
+    </div>
+
+    <!-- 결과 영역 -->
+    <div id="mv-result"></div>
+
+    <!-- 최근 목록 -->
+    <div id="mv-list"></div>
+  </div>
+
+  <style>
+    .mv-section { background:#fff; border-radius:12px; padding:18px 20px; margin-bottom:16px; border:1px solid #eee; }
+    .mv-section-title { font-weight:800; font-size:13px; color:#333; margin-bottom:12px; display:flex; align-items:center; gap:6px; }
+    .mv-tag { display:inline-block; padding:2px 8px; border-radius:20px; font-size:11px; font-weight:700; }
+    .mv-axis { display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid #f5f5f5; }
+    .mv-axis:last-child { border-bottom:none; }
+    .mv-bar { flex:1; height:8px; background:#f0f0f0; border-radius:4px; overflow:hidden; }
+    .mv-bar-fill { height:100%; border-radius:4px; transition:width .4s; }
+    .mv-override-row { display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap; }
+    .mv-override-input { flex:1; min-width:160px; padding:7px 10px; border:1px solid #ddd; border-radius:6px; font-size:12px; }
+    .mv-override-btn { padding:7px 14px; background:#e74c3c; color:#fff; border:none; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer; }
+    .mv-save-ok { color:#22c55e; font-size:12px; font-weight:700; }
+    .mv-recent-row { display:flex; align-items:center; gap:10px; padding:9px 12px; border-bottom:1px solid #f5f5f5; cursor:pointer; transition:background .15s; font-size:12px; }
+    .mv-recent-row:hover { background:#fef2f2; }
+    .mv-bc-badge { padding:2px 8px; border-radius:10px; background:#fef3c7; color:#92400e; font-size:11px; font-weight:700; }
+  </style>
+
+  <script>
+  async function mvSearch() {
+    const diagId = document.getElementById('mv-diag-id').value.trim();
+    if (!diagId) { alert('진단 ID를 입력하세요'); return; }
+    const el = document.getElementById('mv-result');
+    el.innerHTML = '<div style="text-align:center;padding:30px;color:#888">🔄 조회 중...</div>';
+    try {
+      const res = await api('GET', '/admin/mapping-verify?diag_id=' + encodeURIComponent(diagId));
+      if (!res || res.error) { el.innerHTML = '<div style="color:#e74c3c;padding:20px">❌ ' + (res?.error || '조회 실패') + '</div>'; return; }
+      mvRenderResult(el, res);
+    } catch(e) { el.innerHTML = '<div style="color:#e74c3c;padding:20px">❌ 오류: ' + e.message + '</div>'; }
+  }
+
+  function mvRenderResult(el, d) {
+    const axisLabels = { A01:'인슐린저항', A02:'림프순환', A03:'호르몬', A04:'근감소', A05:'소화장', A06:'골격자세', A07:'스트레스', A08:'심리식이', A09:'대사위험', A10:'유전기질' };
+    const axisColors = { A01:'#f59e0b', A02:'#3b82f6', A03:'#ec4899', A04:'#10b981', A05:'#8b5cf6', A06:'#f97316', A07:'#ef4444', A08:'#06b6d4', A09:'#dc2626', A10:'#84cc16' };
+    const axes = d.axis_scores || {};
+    const sorted = Object.entries(axes).sort((a,b)=>b[1]-a[1]);
+    const raw = d.raw_answers || {};
+    const overrides = d.overrides || {};
+
+    el.innerHTML = \`
+    <!-- ① 기본 정보 -->
+    <div class="mv-section">
+      <div class="mv-section-title">📋 진단 정보</div>
+      <div style="display:flex;flex-wrap:wrap;gap:12px">
+        <div><span style="color:#888;font-size:11px">진단 ID</span><br><b style="font-family:monospace;font-size:13px">\${d.diag_id||'-'}</b></div>
+        <div><span style="color:#888;font-size:11px">이름</span><br><b>\${d.user_name||'-'}</b></div>
+        <div><span style="color:#888;font-size:11px">업종</span><br><b>\${d.survey_category||'-'}</b></div>
+        <div><span style="color:#888;font-size:11px">진단일</span><br><b>\${(d.created_at||'').slice(0,10)}</b></div>
+        <div><span style="color:#888;font-size:11px">산출 BC</span><br>
+          <span class="mv-bc-badge" style="font-size:14px">\${d.bc_code||'-'}</span>
+          <span style="font-size:12px;color:#555;margin-left:6px">\${d.bc_nickname||''}</span>
+        </div>
+        <div><span style="color:#888;font-size:11px">아형</span><br><b>\${d.bc_primary||'-'}</b></div>
+        <div><a href="\${d.result_url||'#'}" target="_blank" style="display:inline-block;margin-top:12px;padding:6px 14px;background:#e74c3c;color:#fff;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none">🔗 결과지 열기</a></div>
+      </div>
+    </div>
+
+    <!-- ② 9축 정규화 점수 -->
+    <div class="mv-section">
+      <div class="mv-section-title">📊 9축 정규화 점수 <span style="font-size:11px;color:#888;font-weight:400">(높을수록 해당 축 신호 강함)</span></div>
+      \${sorted.map(([k,v])=>{
+        const col = axisColors[k]||'#888';
+        const pct = Math.min(100, Math.round((v/10)*100));
+        const ovr = overrides[k];
+        return \`<div class="mv-axis">
+          <div style="width:80px;font-size:11px;font-weight:700;color:\${col}">\${k}</div>
+          <div style="width:100px;font-size:11px;color:#555">\${axisLabels[k]||k}</div>
+          <div class="mv-bar"><div class="mv-bar-fill" style="width:\${pct}%;background:\${col}"></div></div>
+          <div style="width:36px;text-align:right;font-size:12px;font-weight:700;color:\${col}">\${typeof v==='number'?v.toFixed(1):v}</div>
+          \${ovr ? \`<span class="mv-tag" style="background:#fef9c3;color:#ca8a04">OVERRIDE: \${ovr}</span>\` : ''}
+        </div>\`;
+      }).join('')}
+    </div>
+
+    <!-- ③ BC 산출 이유 추적 보고서 -->
+    <div class="mv-section">
+      <div class="mv-section-title">🔍 BC 산출 이유 추적 보고서</div>
+      <div style="background:#fafafa;border-radius:8px;padding:14px;font-size:12px;line-height:1.8;color:#333">
+        \${d.bc_trace || mvBuildTrace(d)}
+      </div>
+    </div>
+
+    <!-- ④ Raw 응답 데이터 -->
+    <div class="mv-section">
+      <div class="mv-section-title">📝 Raw 응답 데이터 <button onclick="this.closest('.mv-section').querySelector('.mv-raw').style.display=this.closest('.mv-section').querySelector('.mv-raw').style.display==='none'?'block':'none'" style="font-size:11px;padding:2px 8px;border:1px solid #ddd;background:#f8f8f8;border-radius:4px;cursor:pointer;margin-left:8px">펼치기/접기</button></div>
+      <div class="mv-raw" style="display:none;background:#1a1a2e;color:#a8d8a8;border-radius:8px;padding:14px;font-size:11px;font-family:monospace;overflow-x:auto;white-space:pre-wrap;max-height:400px;overflow-y:auto">\${JSON.stringify(raw, null, 2)}</div>
+    </div>
+
+    <!-- ⑤ 마스터 Override 수정 -->
+    <div class="mv-section" style="border:2px solid #fbbf24">
+      <div class="mv-section-title">⚡ 마스터 즉시 수정 (Override) <span style="font-size:11px;color:#888;font-weight:400">— 저장 즉시 결과지 URL에 반영</span></div>
+      <div style="margin-bottom:12px">
+        <div style="font-size:12px;color:#555;margin-bottom:6px;font-weight:600">BC 코드 Override</div>
+        <div class="mv-override-row">
+          <input class="mv-override-input" id="ov-bc-code" placeholder="예: BC-9" value="\${d.bc_code||''}">
+          <input class="mv-override-input" id="ov-bc-primary" placeholder="아형명 예: 팔다리거미 올챙이배형" value="\${d.bc_primary||''}">
+          <button class="mv-override-btn" onclick="mvSaveOverride('\${d.diag_id}','bc')">💾 BC 코드 저장</button>
+          <span id="ov-bc-ok" class="mv-save-ok" style="display:none">✅ 저장됨</span>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:12px;color:#555;margin-bottom:6px;font-weight:600">결과지 해설본 문구 Override <span style="font-size:11px;color:#e74c3c">(저장 시 해당 유저 결과지에 즉시 반영)</span></div>
+        <textarea id="ov-story" rows="5" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:12px;resize:vertical;box-sizing:border-box" placeholder="수정할 해설 문구를 입력하세요 (JSON 또는 텍스트)">\${d.override_story||''}</textarea>
+        <div class="mv-override-row" style="margin-top:8px">
+          <button class="mv-override-btn" onclick="mvSaveOverride('\${d.diag_id}','story')">💾 해설본 저장</button>
+          <span id="ov-story-ok" class="mv-save-ok" style="display:none">✅ 저장됨 — 결과지 URL에서 새로고침하면 반영됩니다</span>
+        </div>
+      </div>
+    </div>
+    \`;
+  }
+
+  function mvBuildTrace(d) {
+    const axes = d.axis_scores || {};
+    const sorted = Object.entries(axes).sort((a,b)=>b[1]-a[1]);
+    const top1 = sorted[0] || ['?', 0];
+    const top2 = sorted[1] || ['?', 0];
+    const bc = d.bc_code || '?';
+    const nick = d.bc_nickname || d.bc_primary || '?';
+    let trace = \`<b>① 9축 최고점:</b> \${top1[0]} = <b>\${typeof top1[1]==='number'?top1[1].toFixed(2):top1[1]}</b> (2위: \${top2[0]}=\${typeof top2[1]==='number'?top2[1].toFixed(2):top2[1]})<br>\`;
+    trace += \`<b>② BC 코드 산출:</b> Top1 축 [\${top1[0]}] 기준 SUBTYPE_RULES 매칭 → <span style="color:#e74c3c;font-weight:700">\${bc}</span><br>\`;
+    trace += \`<b>③ 아형 결정:</b> <span style="color:#3b82f6">\${nick}</span><br>\`;
+    trace += \`<b>④ SUBTYPE_RULES 매칭 조건:</b> 부위·질감·서명축 다중 조건 교차 → NICKNAME_TO_BC[\${nick}] = \${bc}<br>\`;
+    if (d.override_applied) trace += \`<b>⑤ Override 적용:</b> <span style="color:#f59e0b">마스터 수동 수정 이력 있음</span><br>\`;
+    return trace || '추적 데이터 없음';
+  }
+
+  async function mvSaveOverride(diagId, type) {
+    const okEl = document.getElementById('ov-' + type + '-ok');
+    let body = { diag_id: diagId, type };
+    if (type === 'bc') {
+      body.bc_code = document.getElementById('ov-bc-code').value.trim();
+      body.bc_primary = document.getElementById('ov-bc-primary').value.trim();
+    } else {
+      body.override_story = document.getElementById('ov-story').value.trim();
+    }
+    try {
+      await api('POST', '/admin/mapping-override', body);
+      if (okEl) { okEl.style.display='inline'; setTimeout(()=>{ okEl.style.display='none'; }, 4000); }
+    } catch(e) { alert('저장 실패: ' + e.message); }
+  }
+
+  async function mvLoadRecent() {
+    const el = document.getElementById('mv-list');
+    el.innerHTML = '<div style="text-align:center;padding:20px;color:#888">🔄 불러오는 중...</div>';
+    try {
+      const res = await api('GET', '/admin/mapping-verify?recent=100');
+      if (!res || !res.rows) { el.innerHTML = '<div style="color:#888;padding:16px">데이터 없음</div>'; return; }
+      el.innerHTML = \`
+      <div class="mv-section">
+        <div class="mv-section-title">📋 최근 진단 목록 (\${res.rows.length}건) — 클릭하면 상세 조회</div>
+        \${res.rows.map(r => \`
+        <div class="mv-recent-row" onclick="document.getElementById('mv-diag-id').value='\${r.diag_id}';mvSearch()">
+          <div style="width:180px;font-family:monospace;font-size:11px;color:#555">\${r.diag_id||'-'}</div>
+          <div style="width:80px;font-weight:700">\${r.user_name||'-'}</div>
+          <div style="width:70px"><span class="mv-bc-badge">\${r.bc_code||'-'}</span></div>
+          <div style="flex:1;font-size:11px;color:#777">\${r.bc_primary||'-'}</div>
+          <div style="width:90px;font-size:11px;color:#aaa">\${(r.created_at||'').slice(0,10)}</div>
+          <div style="width:70px;font-size:11px;color:#888">\${r.survey_category||'-'}</div>
+          \${r.override_applied ? '<span class="mv-tag" style="background:#fef9c3;color:#ca8a04">OVERRIDE</span>' : ''}
+        </div>\`).join('')}
+      </div>\`;
+    } catch(e) { el.innerHTML = '<div style="color:#e74c3c;padding:16px">❌ ' + e.message + '</div>'; }
+  }
+  <\/script>`;
 }
 </script>
 </body>

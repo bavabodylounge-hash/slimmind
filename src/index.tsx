@@ -8683,6 +8683,9 @@ app.get('/api/f/result/:id', async (c) => {
 
     const rawAnswers = parseJ(row.raw_answers)
 
+    // ── Override 적용: override_bc_code / override_story 우선 반영 ──
+    const effectiveBcCode = row.override_bc_code || row.bc_code || null
+
     return c.json({
       ok:               true,
       id:               row.id,
@@ -8696,10 +8699,15 @@ app.get('/api/f/result/:id', async (c) => {
       phone:            maskPhone(row.phone),  // [BUG-FIX v4.3] PII 마스킹
       ohaeng_type:      row.ohaeng_type,
       mbti_full:        row.mbti_full,
-      bc_code:          row.bc_code,
+      bc_code:          effectiveBcCode,
       bc_nickname:      row.bc_nickname,
       axis_scores:      normalizeAxFRead(parseJ(row.axis_scores, {})), // [BUG-FIX v4.6] 반환 시 정규화
       survey_category:  'fitness',
+      // Override 메타 정보
+      override_applied: row.override_applied || 0,
+      override_bc_code: row.override_bc_code || null,
+      override_story:   row.override_story || null,
+      override_at:      row.override_at || null,
       // 피트니스 전용 필드
       exercise_response: row.exercise_response,
       pain_gate:         parseJ(row.pain_gate, []),
@@ -12677,6 +12685,321 @@ app.get('/api/admin/stats', requireRole('MASTER'), async (c) => {
       }
     })
   } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// ═══════════════════════════════════════════════════════════════════
+// ■ 진단 매핑 검증 Center — GET /admin/mapping-verify
+//   ?diag_id=F-xxx  → 특정 진단 상세 조회 (axis_scores, raw_answers, override 포함)
+//   ?recent=100     → 최근 N건 목록
+// ═══════════════════════════════════════════════════════════════════
+app.get('/api/admin/mapping-verify', requireRole('MASTER'), async (c) => {
+  const db = (c.env as any)?.DB as D1Database | undefined
+  if (!db) return c.json({ error: 'DB 없음' }, 500)
+
+  const diagId = c.req.query('diag_id')
+  const recent = c.req.query('recent')
+
+  try {
+    // ── 특정 진단 상세 조회 ──────────────────────────────────────
+    if (diagId) {
+      // diagnosis_results 우선 조회 (신파이프라인)
+      let row: any = await db.prepare(`
+        SELECT
+          id AS diag_id,
+          user_name,
+          bc_nickname,
+          bc_primary,
+          bc_code_key AS bc_code,
+          axis_scores,
+          raw_answers,
+          survey_category,
+          gender,
+          age,
+          override_bc_code,
+          override_story,
+          override_applied,
+          override_at,
+          story_lead,
+          ai_story_src,
+          completed_at,
+          created_at
+        FROM diagnosis_results
+        WHERE id = ?
+        LIMIT 1
+      `).bind(diagId).first<any>()
+
+      // 없으면 fitness_responses 시도
+      if (!row) {
+        const fr = await db.prepare(`
+          SELECT
+            id AS diag_id,
+            user_name,
+            bc_code,
+            bc_primary,
+            axis_scores,
+            raw_answers,
+            'fitness' AS survey_category,
+            gender,
+            age,
+            override_bc_code,
+            override_story,
+            override_applied,
+            override_at,
+            created_at
+          FROM fitness_responses
+          WHERE id = ?
+          LIMIT 1
+        `).bind(diagId).first<any>().catch(() => null)
+        if (fr) row = fr
+      }
+
+      if (!row) {
+        return c.json({ error: `진단 ID [${diagId}]를 찾을 수 없습니다. diagnosis_results·fitness_responses 모두 확인했으나 없음.` }, 404)
+      }
+
+      // axis_scores JSON 파싱
+      let axisScores: Record<string, number> = {}
+      try { axisScores = JSON.parse(row.axis_scores || '{}') } catch {}
+
+      // raw_answers JSON 파싱
+      let rawAnswers: any = {}
+      try { rawAnswers = JSON.parse(row.raw_answers || '{}') } catch {}
+
+      // BC 코드 결정 (override 우선)
+      const bcCode = row.override_bc_code || row.bc_code || row.bc_code_key || '?'
+      const bcPrimary = row.bc_primary || ''
+
+      // 결과지 URL 조합
+      const cat = row.survey_category || 'integrated'
+      const urlMap: Record<string, string> = {
+        fitness:    `/result-fitness/${diagId}`,
+        hospital:   `/result-hospital/${diagId}`,
+        aesthetic:  `/result-aesthetic/${diagId}`,
+        salon:      `/result-salon/${diagId}`,
+        integrated: `/result/${diagId}`,
+      }
+      const resultUrl = urlMap[cat] || `/result/${diagId}`
+
+      return c.json({
+        diag_id:          diagId,
+        user_name:        row.user_name || '이름없음',
+        bc_code:          bcCode,
+        bc_nickname:      row.bc_nickname || bcPrimary,
+        bc_primary:       bcPrimary,
+        survey_category:  cat,
+        gender:           row.gender || '',
+        age:              row.age || null,
+        axis_scores:      axisScores,
+        raw_answers:      rawAnswers,
+        override_bc_code: row.override_bc_code || '',
+        override_story:   row.override_story || '',
+        override_applied: row.override_applied || 0,
+        override_at:      row.override_at || '',
+        story_lead:       row.story_lead || '',
+        ai_story_src:     row.ai_story_src || '',
+        result_url:       resultUrl,
+        created_at:       row.created_at || row.completed_at || '',
+        // BC 추적 보고서 (서버사이드 생성)
+        bc_trace:         buildBcTrace(axisScores, bcCode, bcPrimary, row.override_applied),
+      })
+    }
+
+    // ── 최근 N건 목록 ──────────────────────────────────────────────
+    if (recent) {
+      const limit = Math.min(parseInt(recent, 10) || 100, 500)
+
+      // diagnosis_results (신파이프라인)
+      const drRows = await db.prepare(`
+        SELECT
+          id AS diag_id,
+          user_name,
+          bc_code_key AS bc_code,
+          bc_primary,
+          override_applied,
+          survey_category,
+          completed_at AS created_at
+        FROM diagnosis_results
+        ORDER BY COALESCE(completed_at, created_at) DESC
+        LIMIT ?
+      `).bind(limit).all<any>()
+
+      // fitness_responses (별도 테이블 — id 컬럼을 diag_id로 alias)
+      const frRows = await db.prepare(`
+        SELECT
+          id AS diag_id,
+          user_name,
+          bc_code,
+          bc_primary,
+          override_applied,
+          'fitness' AS survey_category,
+          created_at
+        FROM fitness_responses
+        ORDER BY created_at DESC
+        LIMIT ?
+      `).bind(limit).all<any>().catch(() => ({ results: [] as any[] }))
+
+      // 두 테이블 합쳐서 중복 제거 후 최신순 정렬
+      const diagIds = new Set((drRows.results || []).map((r: any) => r.diag_id))
+      const combined = [
+        ...(drRows.results || []),
+        ...(frRows.results || []).filter((r: any) => !diagIds.has(r.diag_id)),
+      ].sort((a: any, b: any) =>
+        (b.created_at || '').localeCompare(a.created_at || '')
+      ).slice(0, limit)
+
+      return c.json({ rows: combined, total: combined.length })
+    }
+
+    return c.json({ error: 'diag_id 또는 recent 파라미터가 필요합니다' }, 400)
+  } catch (e: any) {
+    console.error('[admin/mapping-verify GET]', e)
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// BC 산출 추적 보고서 — 서버사이드 생성
+function buildBcTrace(axisScores: Record<string, number>, bcCode: string, bcPrimary: string, overrideApplied: number): string {
+  const axisLabels: Record<string, string> = {
+    A01:'인슐린저항', A02:'림프순환', A03:'호르몬', A04:'근감소',
+    A05:'소화장', A06:'골격자세', A07:'스트레스', A08:'심리식이',
+    A09:'대사위험', A10:'유전기질'
+  }
+  const sorted = Object.entries(axisScores).sort((a, b) => (b[1] as number) - (a[1] as number))
+  const top1 = sorted[0] || ['?', 0]
+  const top2 = sorted[1] || ['?', 0]
+  const top3 = sorted[2] || ['?', 0]
+
+  let trace = `<b>① 9축 점수 최고점 TOP3:</b><br>`
+  sorted.slice(0, 3).forEach(([k, v], i) => {
+    trace += `&nbsp;&nbsp;${i+1}위 ${k}(${axisLabels[k]||k}) = <b>${typeof v==='number' ? v.toFixed(2) : v}</b><br>`
+  })
+  trace += `<br><b>② BC 코드 산출 경로:</b><br>`
+  trace += `&nbsp;&nbsp;Top1 축 [${top1[0]}·${axisLabels[top1[0] as string]||''}] 기준 SUBTYPE_RULES 다중 조건 교차<br>`
+  trace += `&nbsp;&nbsp;→ 부위·질감·서명축 매칭 결과: <span style="color:#e74c3c;font-weight:700">${bcCode}</span><br>`
+  trace += `<br><b>③ 아형(bc_primary) 결정:</b> <span style="color:#3b82f6;font-weight:700">${bcPrimary || '정보없음'}</span><br>`
+  trace += `<br><b>④ NICKNAME_TO_BC 매핑:</b> NICKNAME_TO_BC["${bcPrimary}"] → ${bcCode}<br>`
+  if (overrideApplied) {
+    trace += `<br><b style="color:#f59e0b">⑤ Override 이력:</b> <span style="background:#fef9c3;color:#ca8a04;padding:2px 6px;border-radius:4px">마스터 수동 수정 적용됨 — 원본 엔진 산출값이 덮어씌워진 상태</span><br>`
+  }
+  return trace
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ■ 진단 매핑 즉시 수정 — POST /admin/mapping-override
+//   body: { diag_id, type: 'bc'|'story', bc_code?, bc_primary?, override_story? }
+//   → diagnosis_results 또는 fitness_responses 즉시 UPDATE
+//   → 해당 유저의 결과지 URL 새로고침 시 즉시 반영
+// ═══════════════════════════════════════════════════════════════════
+app.post('/api/admin/mapping-override', requireRole('MASTER'), async (c) => {
+  const db = (c.env as any)?.DB as D1Database | undefined
+  if (!db) return c.json({ ok: false, error: 'DB 없음' }, 500)
+
+  try {
+    const body = await c.req.json<{
+      diag_id: string
+      type: 'bc' | 'story'
+      bc_code?: string
+      bc_primary?: string
+      override_story?: string
+    }>()
+
+    const { diag_id, type } = body
+    if (!diag_id) return c.json({ ok: false, error: 'diag_id 필수' }, 400)
+    if (!type)    return c.json({ ok: false, error: 'type 필수 (bc|story)' }, 400)
+
+    const now = new Date().toISOString()
+
+    if (type === 'bc') {
+      // BC 코드 Override — diagnosis_results 업데이트
+      const bc_code    = (body.bc_code    || '').trim()
+      const bc_primary = (body.bc_primary || '').trim()
+
+      // diagnosis_results 시도
+      const drResult = await db.prepare(`
+        UPDATE diagnosis_results
+        SET
+          override_bc_code   = ?,
+          bc_primary         = CASE WHEN ? != '' THEN ? ELSE bc_primary END,
+          override_applied   = 1,
+          override_at        = ?
+        WHERE id = ?
+      `).bind(bc_code, bc_primary, bc_primary, now, diag_id).run()
+
+      // fitness_responses 시도 (diagnosis_results에 없을 경우)
+      let frUpdated = false
+      if (!drResult.meta?.changes || drResult.meta.changes === 0) {
+        const frResult = await db.prepare(`
+          UPDATE fitness_responses
+          SET
+            override_bc_code   = ?,
+            bc_primary         = CASE WHEN ? != '' THEN ? ELSE bc_primary END,
+            override_applied   = 1,
+            override_at        = ?
+          WHERE id = ?
+        `).bind(bc_code, bc_primary, bc_primary, now, diag_id).run().catch(() => ({ meta: { changes: 0 } }))
+        frUpdated = (frResult.meta?.changes || 0) > 0
+      }
+
+      const changed = (drResult.meta?.changes || 0) + (frUpdated ? 1 : 0)
+      return c.json({
+        ok: true,
+        updated: changed,
+        diag_id,
+        type: 'bc',
+        bc_code,
+        bc_primary,
+        override_at: now,
+        message: changed > 0
+          ? `BC 코드가 [${bc_code}]으로 Override 저장되었습니다. 결과지 URL 새로고침 시 즉시 반영됩니다.`
+          : `경고: 업데이트된 레코드가 없습니다. 진단 ID를 확인하세요.`
+      })
+    }
+
+    if (type === 'story') {
+      // 해설본 Override — diagnosis_results 업데이트
+      const override_story = (body.override_story || '').trim()
+
+      const drResult = await db.prepare(`
+        UPDATE diagnosis_results
+        SET
+          override_story   = ?,
+          override_applied = 1,
+          override_at      = ?
+        WHERE id = ?
+      `).bind(override_story, now, diag_id).run()
+
+      // fitness_responses 폴백
+      let frUpdated = false
+      if (!drResult.meta?.changes || drResult.meta.changes === 0) {
+        const frResult = await db.prepare(`
+          UPDATE fitness_responses
+          SET
+            override_story   = ?,
+            override_applied = 1,
+            override_at      = ?
+          WHERE id = ?
+        `).bind(override_story, now, diag_id).run().catch(() => ({ meta: { changes: 0 } }))
+        frUpdated = (frResult.meta?.changes || 0) > 0
+      }
+
+      const changed = (drResult.meta?.changes || 0) + (frUpdated ? 1 : 0)
+      return c.json({
+        ok: true,
+        updated: changed,
+        diag_id,
+        type: 'story',
+        override_at: now,
+        message: changed > 0
+          ? `해설본이 Override 저장되었습니다. 결과지 URL 새로고침 시 즉시 반영됩니다.`
+          : `경고: 업데이트된 레코드가 없습니다. 진단 ID를 확인하세요.`
+      })
+    }
+
+    return c.json({ ok: false, error: `알 수 없는 type: ${type}` }, 400)
+  } catch (e: any) {
+    console.error('[admin/mapping-override POST]', e)
     return c.json({ ok: false, error: String(e) }, 500)
   }
 })
