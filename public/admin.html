@@ -6147,19 +6147,19 @@ function mvRenderList() {
     const col = MVC_CAT_COLOR[r.survey_category] || '#888';
     const isNull = !r.bc_code || !/^BC-/i.test(r.bc_code);
     const isActive = r.diag_id === mvc_currentId;
-    return \`<div class="mvc-list-item \${r.is_anomaly?'mvc-anom':''} \${isActive?'active':''}" onclick="mvSelectItem('\${r.diag_id}')">
-      <div class="mvc-cat-dot" style="background:\${col}"></div>
+    return `<div class="mvc-list-item ${r.is_anomaly?'mvc-anom':''} ${isActive?'active':''}" onclick="mvSelectItem('${r.diag_id}')">
+      <div class="mvc-cat-dot" style="background:${col}"></div>
       <div style="flex:1;min-width:0">
-        <div style="font-size:11px;font-family:monospace;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">\${r.diag_id||'-'}</div>
-        <div style="font-weight:700;font-size:12px">\${r.user_name||'-'}</div>
+        <div style="font-size:11px;font-family:monospace;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.diag_id||'-'}</div>
+        <div style="font-weight:700;font-size:12px">${r.user_name||'-'}</div>
       </div>
       <div style="text-align:right">
-        <div class="mvc-bc-badge \${isNull?'mvc-bc-null':''}">\${r.bc_code||'NULL'}</div>
-        <div style="font-size:10px;color:#aaa;margin-top:2px">\${(r.created_at||'').slice(0,10)}</div>
+        <div class="mvc-bc-badge ${isNull?'mvc-bc-null':''}">${r.bc_code||'NULL'}</div>
+        <div style="font-size:10px;color:#aaa;margin-top:2px">${(r.created_at||'').slice(0,10)}</div>
       </div>
-      \${r.override_applied ? '<span class="mvc-ovr-tag">OVR</span>' : ''}
-      \${r.is_anomaly && !r.override_applied ? '<span style="color:#e74c3c;font-size:14px">⚠️</span>' : ''}
-    </div>\`;
+      ${r.override_applied ? '<span class="mvc-ovr-tag">OVR</span>' : ''}
+      ${r.is_anomaly && !r.override_applied ? '<span style="color:#e74c3c;font-size:14px">⚠️</span>' : ''}
+    </div>`;
   }).join('');
 }
 
@@ -6193,45 +6193,45 @@ function mvRenderDetail(el, d) {
   const hasMismatch = d.bc_mismatch;
 
   // ── 헤더 정보 바 ──
-  const header = \`
+  const header = `
   <div style="background:#fff;border-radius:12px;padding:14px 16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-      <div style="width:36px;height:36px;border-radius:8px;background:\${catColor};display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:800;flex-shrink:0">
-        \${{hospital:'🏥',fitness:'💪',aesthetic:'💆',salon:'✂️'}[d.survey_category]||'📋'}
+      <div style="width:36px;height:36px;border-radius:8px;background:${catColor};display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:800;flex-shrink:0">
+        ${{hospital:'🏥',fitness:'💪',aesthetic:'💆',salon:'✂️'}[d.survey_category]||'📋'}
       </div>
       <div style="flex:1;min-width:0">
-        <div style="font-weight:800;font-size:15px">\${d.user_name||'-'} <span style="font-size:11px;color:#888;font-weight:400">\${d.gender||''} \${d.age?d.age+'세':''}</span></div>
-        <div style="font-size:11px;font-family:monospace;color:#888">\${d.diag_id} · \${d.survey_category} · \${(d.created_at||'').slice(0,16)}</div>
+        <div style="font-weight:800;font-size:15px">${d.user_name||'-'} <span style="font-size:11px;color:#888;font-weight:400">${d.gender||''} ${d.age?d.age+'세':''}</span></div>
+        <div style="font-size:11px;font-family:monospace;color:#888">${d.diag_id} · ${d.survey_category} · ${(d.created_at||'').slice(0,16)}</div>
       </div>
       <div style="text-align:right;flex-shrink:0">
         <div style="display:flex;align-items:center;gap:6px;justify-content:flex-end">
-          <span class="mvc-bc-badge" style="font-size:13px;padding:3px 10px">\${effectiveBc}</span>
-          \${d.override_applied ? '<span class="mvc-ovr-tag">OVERRIDE</span>' : ''}
-          \${hasMismatch ? '<span class="mvc-mismatch-tag">⚠️ 불일치</span>' : ''}
+          <span class="mvc-bc-badge" style="font-size:13px;padding:3px 10px">${effectiveBc}</span>
+          ${d.override_applied ? '<span class="mvc-ovr-tag">OVERRIDE</span>' : ''}
+          ${hasMismatch ? '<span class="mvc-mismatch-tag">⚠️ 불일치</span>' : ''}
         </div>
-        <div style="font-size:11px;color:#888;margin-top:4px">\${d.bc_primary||d.bc_nickname||'-'}</div>
+        <div style="font-size:11px;color:#888;margin-top:4px">${d.bc_primary||d.bc_nickname||'-'}</div>
       </div>
-      <a href="\${d.result_url||'#'}" target="_blank" class="mvc-btn mvc-btn-red" style="text-decoration:none;font-size:11px">🔗 결과지</a>
+      <a href="${d.result_url||'#'}" target="_blank" class="mvc-btn mvc-btn-red" style="text-decoration:none;font-size:11px">🔗 결과지</a>
     </div>
-  </div>\`;
+  </div>`;
 
   // ─── ① 응답 내역 ───
   const rawKeys = Object.keys(raw);
   const rawHtml = rawKeys.length === 0
     ? '<div style="color:#aaa;font-size:12px">Raw 응답 없음</div>'
-    : \`<div style="background:#1a1a2e;color:#a8d8a8;border-radius:8px;padding:12px;font-size:11px;font-family:monospace;white-space:pre-wrap;max-height:320px;overflow-y:auto">\${JSON.stringify(raw,null,2)}</div>\`;
+    : `<div style="background:#1a1a2e;color:#a8d8a8;border-radius:8px;padding:12px;font-size:11px;font-family:monospace;white-space:pre-wrap;max-height:320px;overflow-y:auto">${JSON.stringify(raw,null,2)}</div>`;
 
   const axisHtml = sortedAxes.length === 0
     ? '<div style="color:#aaa;font-size:12px">축 점수 없음</div>'
     : sortedAxes.map(([k,v]) => {
         const col = MVC_AXIS_COLORS[k]||'#888';
         const pct = Math.min(100, Math.round((Number(v)/10)*100));
-        return \`<div class="mvc-axis-row">
-          <div style="width:32px;font-size:10px;font-weight:700;color:\${col}">\${k}</div>
-          <div style="width:72px;font-size:10px;color:#555">\${MVC_AXIS_LABELS[k]||k}</div>
-          <div class="mvc-bar-wrap"><div class="mvc-bar-fill" style="width:\${pct}%;background:\${col}"></div></div>
-          <div style="width:32px;text-align:right;font-size:11px;font-weight:700;color:\${col}">\${typeof v==='number'?v.toFixed(1):v}</div>
-        </div>\`;
+        return `<div class="mvc-axis-row">
+          <div style="width:32px;font-size:10px;font-weight:700;color:${col}">${k}</div>
+          <div style="width:72px;font-size:10px;color:#555">${MVC_AXIS_LABELS[k]||k}</div>
+          <div class="mvc-bar-wrap"><div class="mvc-bar-fill" style="width:${pct}%;background:${col}"></div></div>
+          <div style="width:32px;text-align:right;font-size:11px;font-weight:700;color:${col}">${typeof v==='number'?v.toFixed(1):v}</div>
+        </div>`;
       }).join('');
 
   const regTex = [
@@ -6240,7 +6240,7 @@ function mvRenderDetail(el, d) {
     d.flags && Object.keys(d.flags).length ? '플래그: ' + JSON.stringify(d.flags) : '',
   ].filter(Boolean).join(' · ');
 
-  const acc1 = \`
+  const acc1 = `
   <div class="mvc-accordion">
     <div class="mvc-acc-head open" onclick="mvToggleAcc(this)">
       <span>① 응답 내역</span>
@@ -6250,33 +6250,33 @@ function mvRenderDetail(el, d) {
     <div class="mvc-acc-body open">
       <div style="margin-bottom:10px">
         <div style="font-size:11px;font-weight:700;color:#555;margin-bottom:6px">📊 9·10축 점수 바 차트</div>
-        \${axisHtml}
+        ${axisHtml}
       </div>
-      \${regTex ? \`<div style="font-size:11px;color:#777;background:#f8f8f8;padding:6px 10px;border-radius:6px;margin-bottom:10px">\${regTex}</div>\` : ''}
+      ${regTex ? `<div style="font-size:11px;color:#777;background:#f8f8f8;padding:6px 10px;border-radius:6px;margin-bottom:10px">${regTex}</div>` : ''}
       <div>
         <div style="font-size:11px;font-weight:700;color:#555;margin-bottom:6px">📝 Raw 응답 (JSON)</div>
-        \${rawHtml}
+        ${rawHtml}
       </div>
     </div>
-  </div>\`;
+  </div>`;
 
   // ─── ② 백엔드 매핑 로직 ───
   const storedBc = d.bc_code || 'NULL';
   const recompBc = d.recomputed_bc || '?';
   const mismatchBanner = hasMismatch
-    ? \`<div style="background:#fce7f3;border:1px solid #f9a8d4;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;font-weight:700;color:#9d174d">
-        ⚠️ 불일치 감지: 저장값 [\${storedBc}] ≠ 재산출값 [\${recompBc}]
+    ? `<div style="background:#fce7f3;border:1px solid #f9a8d4;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;font-weight:700;color:#9d174d">
+        ⚠️ 불일치 감지: 저장값 [${storedBc}] ≠ 재산출값 [${recompBc}]
         <div style="font-size:11px;font-weight:400;margin-top:4px">SUBTYPE_RULES 기준 재연산 결과 BC 코드가 다릅니다. 아래 'BC 코드 즉시 수정'으로 교정하세요.</div>
-      </div>\`
+      </div>`
     : '';
 
   const candidatesHtml = (d.candidate_rules||[]).slice(0,8).map((r,i) =>
-    \`<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid #f0f0f0;font-size:11px;color:\${i===0?'#e74c3c':'#555'}">
-      <div style="width:16px;font-weight:700;\${i===0?'color:#e74c3c':''}">\${i+1}</div>
-      <div style="flex:1">\${r.name||'-'}</div>
-      <div style="font-weight:700;width:42px;text-align:right">\${r.bc||'-'}</div>
-      <div style="color:#888;width:52px;text-align:right">점수:\${r.score}</div>
-    </div>\`
+    `<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid #f0f0f0;font-size:11px;color:${i===0?'#e74c3c':'#555'}">
+      <div style="width:16px;font-weight:700;${i===0?'color:#e74c3c':''}">${i+1}</div>
+      <div style="flex:1">${r.name||'-'}</div>
+      <div style="font-weight:700;width:42px;text-align:right">${r.bc||'-'}</div>
+      <div style="color:#888;width:52px;text-align:right">점수:${r.score}</div>
+    </div>`
   ).join('') || '<div style="color:#aaa;font-size:11px">후보 없음 (부위·질감 미확보)</div>';
 
   // 처방 섹션 아코디언 — bc_prescriptions 전 컬럼
@@ -6312,26 +6312,26 @@ function mvRenderDetail(el, d) {
         if (typeof val === 'string' && (val.startsWith('[') || val.startsWith('{'))) {
           try { val = JSON.parse(val); displayVal = '<pre style="margin:0;font-size:10px;white-space:pre-wrap;max-height:120px;overflow-y:auto">' + JSON.stringify(val,null,2) + '</pre>'; } catch { displayVal = val; }
         } else { displayVal = '<span style="font-size:12px">' + String(val) + '</span>'; }
-        return \`<div class="presc-acc">
+        return `<div class="presc-acc">
           <div class="presc-acc-h" onclick="mvTogglePresc(this)">
-            <span>\${s.label}</span><span>▼</span>
+            <span>${s.label}</span><span>▼</span>
           </div>
-          <div class="presc-acc-b">\${displayVal}</div>
-        </div>\`;
+          <div class="presc-acc-b">${displayVal}</div>
+        </div>`;
       }).filter(Boolean).join('');
 
-  const acc2 = \`
+  const acc2 = `
   <div class="mvc-accordion">
     <div class="mvc-acc-head" onclick="mvToggleAcc(this)">
       <span>② 백엔드 매핑 로직</span>
-      <span style="font-size:11px;color:\${hasMismatch?'#e74c3c':'#888'};font-weight:400;margin-left:6px">
-        \${hasMismatch ? '⚠️ BC 불일치' : 'SUBTYPE_RULES 재연산 · 처방 설계도'}
+      <span style="font-size:11px;color:${hasMismatch?'#e74c3c':'#888'};font-weight:400;margin-left:6px">
+        ${hasMismatch ? '⚠️ BC 불일치' : 'SUBTYPE_RULES 재연산 · 처방 설계도'}
       </span>
       <span style="font-size:10px;background:#1e40af;color:#fff;border-radius:4px;padding:1px 6px;margin-left:6px">기준: spec-hospital.html v3 46행 (2026-08-17)</span>
       <span class="mvc-chevron">▼</span>
     </div>
     <div class="mvc-acc-body">
-      \${mismatchBanner}
+      ${mismatchBanner}
 
       <!-- 설계도 기준 명시 배너 -->
       <div style="background:#eff6ff;border-left:4px solid #1e40af;border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:12px;font-size:11px">
@@ -6346,37 +6346,37 @@ function mvRenderDetail(el, d) {
       <div style="background:#f8faff;border:1px solid #dbeafe;border-radius:8px;padding:12px;margin-bottom:12px">
         <div style="font-size:11px;font-weight:700;color:#1e40af;margin-bottom:8px">🔁 SUBTYPE_RULES v3 서버 재연산 결과 (설계도 2026-08-17 기준)</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px">
-          <div><span style="color:#888">저장 BC:</span> <b style="color:\${hasMismatch?'#e74c3c':'#333'}">\${storedBc}</b></div>
-          <div><span style="color:#888">재산출 BC:</span> <b style="color:\${hasMismatch?'#e74c3c':'#22c55e'}">\${recompBc}</b></div>
-          <div><span style="color:#888">재산출 아형:</span> <b>\${d.recomputed_name||'-'}</b></div>
-          <div><span style="color:#888">서명축:</span> <b>\${(d.recomputed_axes||[]).join(' · ')||'-'}</b></div>
+          <div><span style="color:#888">저장 BC:</span> <b style="color:${hasMismatch?'#e74c3c':'#333'}">${storedBc}</b></div>
+          <div><span style="color:#888">재산출 BC:</span> <b style="color:${hasMismatch?'#e74c3c':'#22c55e'}">${recompBc}</b></div>
+          <div><span style="color:#888">재산출 아형:</span> <b>${d.recomputed_name||'-'}</b></div>
+          <div><span style="color:#888">서명축:</span> <b>${(d.recomputed_axes||[]).join(' · ')||'-'}</b></div>
         </div>
       </div>
 
       <!-- 후보 규칙 목록 -->
       <div style="margin-bottom:12px">
         <div style="font-size:11px;font-weight:700;color:#555;margin-bottom:6px">🎯 SUBTYPE_RULES v3 후보 매칭 (설계도 46행 기준 · 부위·질감 교집합, 점수 내림차순)</div>
-        \${candidatesHtml}
+        ${candidatesHtml}
       </div>
 
       <!-- BC 코드 즉시 수정 -->
       <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px;margin-bottom:12px">
         <div style="font-size:11px;font-weight:700;color:#92400e;margin-bottom:8px">⚡ BC 코드 즉시 수정 (Override)</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <input class="mvc-input" id="ov2-bc-code" placeholder="BC-N" value="\${effectiveBc}" style="width:80px">
-          <input class="mvc-input" id="ov2-bc-primary" placeholder="아형명" value="\${d.bc_primary||''}" style="flex:1;min-width:160px">
-          <button class="mvc-btn mvc-btn-red" onclick="mvc_saveOverride('\${d.diag_id}','bc')">💾 BC 저장</button>
+          <input class="mvc-input" id="ov2-bc-code" placeholder="BC-N" value="${effectiveBc}" style="width:80px">
+          <input class="mvc-input" id="ov2-bc-primary" placeholder="아형명" value="${d.bc_primary||''}" style="flex:1;min-width:160px">
+          <button class="mvc-btn mvc-btn-red" onclick="mvc_saveOverride('${d.diag_id}','bc')">💾 BC 저장</button>
           <span id="ov2-bc-ok" class="mvc-save-ok" style="display:none">✅ 저장됨</span>
         </div>
       </div>
 
       <!-- 처방 설계도 섹션 아코디언 -->
       <div>
-        <div style="font-size:11px;font-weight:700;color:#555;margin-bottom:8px">📋 bc_prescriptions 설계도 전 섹션 (\${d.prescription_bc||'-'})</div>
-        \${prescHtml}
+        <div style="font-size:11px;font-weight:700;color:#555;margin-bottom:8px">📋 bc_prescriptions 설계도 전 섹션 (${d.prescription_bc||'-'})</div>
+        ${prescHtml}
       </div>
     </div>
-  </div>\`;
+  </div>`;
 
   // ─── ③ 결과지 해석본 ───
   const storyLead = d.story_lead || '';
@@ -6384,7 +6384,7 @@ function mvRenderDetail(el, d) {
   const aiStorySrc = d.ai_story_src || '';
   const overrideStory = d.override_story || '';
 
-  const acc3 = \`
+  const acc3 = `
   <div class="mvc-accordion">
     <div class="mvc-acc-head" onclick="mvToggleAcc(this)">
       <span>③ 결과지 해석본</span>
@@ -6395,24 +6395,24 @@ function mvRenderDetail(el, d) {
       <!-- story_lead -->
       <div style="margin-bottom:14px">
         <div style="font-size:11px;font-weight:700;color:#555;margin-bottom:4px">story_lead</div>
-        <div style="background:#f8f8f8;border-radius:6px;padding:10px;font-size:12px;line-height:1.7;color:#333;min-height:32px">\${storyLead || '<span style="color:#aaa">없음</span>'}</div>
+        <div style="background:#f8f8f8;border-radius:6px;padding:10px;font-size:12px;line-height:1.7;color:#333;min-height:32px">${storyLead || '<span style="color:#aaa">없음</span>'}</div>
       </div>
       <!-- clinical_ctx -->
       <div style="margin-bottom:14px">
         <div style="font-size:11px;font-weight:700;color:#555;margin-bottom:4px">clinical_ctx</div>
-        <div style="background:#f8f8f8;border-radius:6px;padding:10px;font-size:12px;line-height:1.7;color:#333;min-height:32px">\${clinicalCtx || '<span style="color:#aaa">없음</span>'}</div>
+        <div style="background:#f8f8f8;border-radius:6px;padding:10px;font-size:12px;line-height:1.7;color:#333;min-height:32px">${clinicalCtx || '<span style="color:#aaa">없음</span>'}</div>
       </div>
       <!-- ai_story_src -->
-      \${aiStorySrc ? \`<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:#555;margin-bottom:4px">AI 생성 원본 (ai_story_src)</div><div style="background:#f8f8f8;border-radius:6px;padding:10px;font-size:11px;font-family:monospace;max-height:200px;overflow-y:auto;white-space:pre-wrap">\${aiStorySrc}</div></div>\` : ''}
+      ${aiStorySrc ? `<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:#555;margin-bottom:4px">AI 생성 원본 (ai_story_src)</div><div style="background:#f8f8f8;border-radius:6px;padding:10px;font-size:11px;font-family:monospace;max-height:200px;overflow-y:auto;white-space:pre-wrap">${aiStorySrc}</div></div>` : ''}
       <!-- override_story -->
-      \${overrideStory ? \`<div style="background:#fef9c3;border:1px solid #fde68a;border-radius:6px;padding:10px;margin-bottom:14px;font-size:12px"><b style="color:#92400e">🔒 Override 해석본 적용 중:</b><br>\${overrideStory}</div>\` : ''}
+      ${overrideStory ? `<div style="background:#fef9c3;border:1px solid #fde68a;border-radius:6px;padding:10px;margin-bottom:14px;font-size:12px"><b style="color:#92400e">🔒 Override 해석본 적용 중:</b><br>${overrideStory}</div>` : ''}
 
       <!-- 해석본 수정 -->
       <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:12px;margin-bottom:12px">
         <div style="font-size:11px;font-weight:700;color:#555;margin-bottom:8px">✏️ 해석본 수정 (Override)</div>
-        <textarea id="ov2-story" rows="5" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;font-size:12px;resize:vertical;box-sizing:border-box" placeholder="수정할 해설 문구를 입력하세요">\${overrideStory}</textarea>
+        <textarea id="ov2-story" rows="5" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;font-size:12px;resize:vertical;box-sizing:border-box" placeholder="수정할 해설 문구를 입력하세요">${overrideStory}</textarea>
         <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
-          <button class="mvc-btn mvc-btn-red" onclick="mvc_saveOverride('\${d.diag_id}','story')">💾 해석본 저장</button>
+          <button class="mvc-btn mvc-btn-red" onclick="mvc_saveOverride('${d.diag_id}','story')">💾 해석본 저장</button>
           <span id="ov2-story-ok" class="mvc-save-ok" style="display:none">✅ 저장됨</span>
         </div>
       </div>
@@ -6420,15 +6420,15 @@ function mvRenderDetail(el, d) {
       <!-- AI 해석본 생성 -->
       <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px">
         <div style="font-size:11px;font-weight:700;color:#14532d;margin-bottom:8px">🤖 AI 해석본 자동 생성</div>
-        <div style="font-size:11px;color:#555;margin-bottom:8px">현재 BC 코드 [\${effectiveBc}] 기준으로 story_lead + clinical_ctx를 AI가 새로 생성합니다.</div>
+        <div style="font-size:11px;color:#555;margin-bottom:8px">현재 BC 코드 [${effectiveBc}] 기준으로 story_lead + clinical_ctx를 AI가 새로 생성합니다.</div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <button class="mvc-btn mvc-btn-blue" onclick="mvc_generateStory('\${d.diag_id}','\${effectiveBc}','\${d.bc_primary||''}','\${d.user_name||''}')">✨ AI 해석본 생성</button>
+          <button class="mvc-btn mvc-btn-blue" onclick="mvc_generateStory('${d.diag_id}','${effectiveBc}','${d.bc_primary||''}','${d.user_name||''}')">✨ AI 해석본 생성</button>
           <span id="ov2-ai-ok" class="mvc-save-ok" style="display:none">✅ 생성 완료 — 목록을 다시 선택하면 새 내용이 표시됩니다</span>
           <span id="ov2-ai-err" style="color:#e74c3c;font-size:11px;display:none"></span>
         </div>
       </div>
     </div>
-  </div>\`;
+  </div>`;
 
   el.innerHTML = header + acc1 + acc2 + acc3;
 }
