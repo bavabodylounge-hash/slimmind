@@ -6984,6 +6984,88 @@ async function mvc_runRecheck(diagId) {
   }
 }
 
+// ── B2B 업종별 전용 처방 섹션 렌더 ──
+function renderB2bPrescSection(r) {
+  const survCat = r.survey_category_for_presc || r.survey_category || 'hospital';
+  const prescrData = r.presc_checks || [];
+  const prescSource = r.presc_source || 'common';
+  const b2bAvail = r.b2b_presc_available || false;
+
+  // B2B 전용 필드 키 목록 (업종별)
+  const B2B_FIELD_KEYS = {
+    hospital:  ['hospital_treatments_json','hospital_tests_json','hospital_reassessment_json','hospital_caution_json'],
+    fitness:   ['fitness_weekly_plan_json','fitness_hiit_protocol_json','fitness_zone2_bpm','fitness_center_program_json','fitness_metrics_json'],
+    aesthetic: ['aesthetic_primary_json','aesthetic_secondary_json','aesthetic_contraindication','aesthetic_homecare_json','aesthetic_visit_schedule_json'],
+    salon:     ['salon_scalp_diagnosis_json','salon_treatment_json','salon_homecare_ingredients_json','salon_hairstyle_json','salon_scalp_diet_json'],
+  };
+  const B2B_CAT_LABEL = { hospital:'🏥 병원', fitness:'🏋️ 피트니스', aesthetic:'✨ 에스테틱', salon:'💇 살롱' };
+  const B2B_CAT_COLOR = { hospital:'#059669', fitness:'#2563eb', aesthetic:'#7c3aed', salon:'#db2777' };
+  const B2B_CAT_BG    = { hospital:'#ecfdf5', fitness:'#eff6ff', aesthetic:'#f5f3ff', salon:'#fdf2f8' };
+  const B2B_CAT_BORDER= { hospital:'#6ee7b7', fitness:'#bfdbfe', aesthetic:'#ddd6fe', salon:'#f9a8d4' };
+
+  const b2bFields = (B2B_FIELD_KEYS[survCat] || []);
+  const b2bChecks = prescrData.filter(p => b2bFields.includes(p.field));
+
+  const emptyCount = b2bChecks.filter(p => p.status === 'empty').length;
+  const okCount    = b2bChecks.filter(p => p.status === 'ok').length;
+  const col        = B2B_CAT_COLOR[survCat] || '#334155';
+  const bg         = B2B_CAT_BG[survCat]    || '#f9fafb';
+  const border     = B2B_CAT_BORDER[survCat]|| '#e5e7eb';
+
+  const sourceBadge = b2bAvail
+    ? `<span style="background:#dcfce7;color:#14532d;border-radius:4px;padding:1px 8px;font-size:10px;font-weight:700">✅ B2B 전용 처방 사용 중</span>`
+    : `<span style="background:#fef9c3;color:#92400e;border-radius:4px;padding:1px 8px;font-size:10px;font-weight:700">⚠️ 공통 처방 폴백 사용 중</span>`;
+
+  const fieldRows = b2bChecks.length > 0 ? b2bChecks.map(p => {
+    const fc = p.status === 'ok' ? '#16a34a' : p.status === 'warn' ? '#d97706' : '#dc2626';
+    const fi = p.status === 'ok' ? '✅' : p.status === 'warn' ? '⚠️' : '❌';
+    const fl = p.status === 'ok' ? '정상' : p.status === 'warn' ? '주의' : '누락';
+    const editBtn = `<button onclick="mvc_openB2bPrescEdit('${r.diag_id}','${survCat}','${p.field}')" style="font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid ${col};background:${bg};color:${col};cursor:pointer">✏️ 인라인 편집</button>`;
+    return `<tr style="border-bottom:1px solid #f5f5f5">
+      <td style="padding:4px 8px;font-size:11px;font-weight:600;color:#444;max-width:160px">${p.label}</td>
+      <td style="padding:4px 8px;white-space:nowrap">
+        <span style="font-size:13px">${fi}</span>
+        <span style="font-size:10px;font-weight:700;color:${fc};margin-left:2px">${fl}</span>
+      </td>
+      <td style="padding:4px 8px;font-size:10px;color:#777;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(p.value||'').replace(/"/g,'&quot;')}">${p.value||''}</td>
+      <td style="padding:4px 8px">${editBtn}</td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="4" style="padding:10px;text-align:center;font-size:11px;color:#aaa">B2B 전용 필드 없음 (presc_checks에 b2b 필드 미포함)</td></tr>`;
+
+  return `
+  <div style="border:2px solid ${border};border-radius:10px;margin-bottom:10px;overflow:hidden;background:${bg}">
+    <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;cursor:pointer"
+         onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+      <span style="font-size:16px">${B2B_CAT_LABEL[survCat]||'🏢'}</span>
+      <div style="flex:1">
+        <div style="font-weight:800;font-size:12px;color:${col}">B2B 업종별 전용 처방 — ${B2B_CAT_LABEL[survCat]||survCat}</div>
+        <div style="font-size:10px;color:#888;margin-top:1px">bc_prescriptions_b2b · survey_category=${survCat} · bc=${r.effective_bc}</div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        ${sourceBadge}
+        ${emptyCount > 0 ? `<span style="background:#fef2f2;color:#b91c1c;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700">❌ ${emptyCount}개 누락</span>` : ''}
+        ${okCount > 0 && emptyCount === 0 ? `<span style="background:#dcfce7;color:#14532d;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700">✅ ${okCount}개 정상</span>` : ''}
+        <span style="font-size:10px;color:#aaa;margin-left:4px">▼</span>
+      </div>
+    </div>
+    <div style="display:none;border-top:1px solid ${border}">
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="background:rgba(0,0,0,.03)">
+            <th style="padding:4px 8px;font-size:10px;color:#999;font-weight:600;text-align:left">B2B 전용 처방 필드</th>
+            <th style="padding:4px 8px;font-size:10px;color:#999;font-weight:600;text-align:left">상태</th>
+            <th style="padding:4px 8px;font-size:10px;color:#999;font-weight:600;text-align:left">내용 미리보기</th>
+            <th style="padding:4px 8px;font-size:10px;color:#999;font-weight:600;text-align:left">편집</th>
+          </tr>
+        </thead>
+        <tbody>${fieldRows}</tbody>
+      </table>
+      <!-- B2B 처방 인라인 편집 패널 (클릭 시 동적 생성) -->
+      <div id="b2b-inline-edit-panel-${r.diag_id}" style="display:none;padding:12px;border-top:1px solid ${border}"></div>
+    </div>
+  </div>`;
+}
+
 function mvc_renderRecheckPanel(r) {
   const STEP_COLOR = { pass:'#16a34a', fail:'#dc2626', skip:'#9ca3af' };
   const STEP_ICON  = { pass:'✅', fail:'❌', skip:'⏭️' };
@@ -7220,6 +7302,9 @@ function mvc_renderRecheckPanel(r) {
     </div>
     ${sectionsHtml}
 
+    <!-- ⑦-B B2B 업종별 전용 처방 섹션 -->
+    ${renderB2bPrescSection(r)}
+
     <!-- ⑧ 7단계 판정 흐름 (접힘) -->
     <details style="margin-top:12px">
       <summary style="font-size:11px;font-weight:700;color:#334155;cursor:pointer;padding:6px 10px;background:#f8f8f8;border:1px solid #e5e7eb;border-radius:6px">🔬 SUBTYPE_RULES v3 판정 단계 추적 (펼치기)</summary>
@@ -7261,6 +7346,92 @@ function mvc_jumpToPrescEdit(diagId) {
   const acc3Btn = document.querySelector('.mvc-acc3-btn, [data-acc="3"]');
   if (acc3Btn) { acc3Btn.click(); acc3Btn.scrollIntoView({ behavior:'smooth', block:'center' }); }
   else { alert('acc3 설계도 편집 섹션을 열고, bc_prescriptions 필드를 직접 수정하세요.'); }
+}
+
+// ── B2B 처방 인라인 편집 ──
+async function mvc_openB2bPrescEdit(diagId, survCat, fieldKey) {
+  const panelId = 'b2b-inline-edit-panel-' + diagId;
+  const panel = document.getElementById(panelId);
+  if (!panel) { alert('편집 패널을 찾을 수 없습니다.'); return; }
+
+  // 현재 값 조회
+  panel.innerHTML = '<div style="font-size:11px;color:#888;padding:8px">⏳ 현재 처방 데이터 로딩 중...</div>';
+  panel.style.display = 'block';
+
+  try {
+    const res = await api('POST', '/admin/mapping-recheck', { diag_id: diagId });
+    const bcCode = res.effective_bc || 'BC-1';
+    const prescChecks = res.presc_checks || [];
+    const fieldData = prescChecks.find(p => p.field === fieldKey);
+    const currentVal = fieldData?.value || '';
+
+    const CAT_COLOR = { hospital:'#059669', fitness:'#2563eb', aesthetic:'#7c3aed', salon:'#db2777' };
+    const col = CAT_COLOR[survCat] || '#334155';
+
+    const FIELD_LABEL = {
+      hospital_treatments_json:'시술 처방 (JSON)', hospital_tests_json:'검사 처방 (JSON)',
+      hospital_reassessment_json:'재평가 계획 (JSON)', hospital_caution_json:'주의사항 (JSON)',
+      fitness_weekly_plan_json:'주간 운동 플랜 (JSON)', fitness_hiit_protocol_json:'HIIT 프로토콜 (JSON)',
+      fitness_zone2_bpm:'Zone2 BPM (숫자)', fitness_center_program_json:'센터 프로그램 (JSON)',
+      fitness_metrics_json:'측정 지표 (JSON)',
+      aesthetic_primary_json:'1순위 케어 (JSON)', aesthetic_secondary_json:'2순위 케어 (JSON)',
+      aesthetic_contraindication:'금기사항 (텍스트)', aesthetic_homecare_json:'홈케어 (JSON)',
+      aesthetic_visit_schedule_json:'방문 일정 (JSON)',
+      salon_scalp_diagnosis_json:'두피 진단 (JSON)', salon_treatment_json:'시술 처방 (JSON)',
+      salon_homecare_ingredients_json:'홈케어 성분 (JSON)', salon_hairstyle_json:'헤어스타일 (JSON)',
+      salon_scalp_diet_json:'두피 식단 (JSON)',
+    };
+
+    // DB에서 실제 JSON 값 가져오기
+    let rawVal = '';
+    try {
+      const dbRes = await fetch(`/api/admin/b2b-presc?bc_code=${encodeURIComponent(bcCode)}&survey_category=${survCat}`, {
+        headers: { 'x-admin-token': localStorage.getItem('adminToken') || '' }
+      });
+      if (dbRes.ok) {
+        const dbData = await dbRes.json();
+        rawVal = dbData[fieldKey] ?? '';
+      }
+    } catch(e) { rawVal = ''; }
+
+    const editId = 'b2b-edit-' + fieldKey;
+    panel.innerHTML = `
+      <div style="background:#f9fafb;border-radius:8px;padding:12px">
+        <div style="font-size:11px;font-weight:800;color:${col};margin-bottom:8px">
+          ✏️ B2B 처방 인라인 편집 — <code style="background:#e5e7eb;padding:0 4px;border-radius:3px">${bcCode}</code> / ${survCat} / ${FIELD_LABEL[fieldKey]||fieldKey}
+        </div>
+        <div style="font-size:10px;color:#888;margin-bottom:6px">bc_prescriptions_b2b 테이블 직접 업데이트</div>
+        <textarea id="${editId}" style="width:100%;height:120px;font-size:11px;font-family:monospace;border:1px solid #d1d5db;border-radius:6px;padding:8px;resize:vertical;box-sizing:border-box">${typeof rawVal === 'object' ? JSON.stringify(rawVal, null, 2) : (rawVal||'')}</textarea>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button onclick="mvc_saveB2bPrescField('${diagId}','${bcCode}','${survCat}','${fieldKey}')" style="font-size:11px;padding:5px 14px;border-radius:6px;border:none;background:${col};color:#fff;cursor:pointer;font-weight:700">💾 저장</button>
+          <button onclick="document.getElementById('${panelId}').style.display='none'" style="font-size:11px;padding:5px 14px;border-radius:6px;border:1px solid #d1d5db;background:#fff;color:#555;cursor:pointer">✕ 취소</button>
+        </div>
+        <div id="b2b-edit-result-${fieldKey}" style="margin-top:8px;font-size:11px"></div>
+      </div>`;
+  } catch(e) {
+    panel.innerHTML = `<div style="color:#dc2626;font-size:11px;padding:8px">❌ 오류: ${e.message}</div>`;
+  }
+}
+
+async function mvc_saveB2bPrescField(diagId, bcCode, survCat, fieldKey) {
+  const editId = 'b2b-edit-' + fieldKey;
+  const textarea = document.getElementById(editId);
+  if (!textarea) return;
+  const newVal = textarea.value.trim();
+  const resultDiv = document.getElementById('b2b-edit-result-' + fieldKey);
+  if (resultDiv) resultDiv.innerHTML = '<span style="color:#888">⏳ 저장 중...</span>';
+  try {
+    const res = await api('POST', '/admin/b2b-presc-update', {
+      bc_code: bcCode, survey_category: survCat, field: fieldKey, value: newVal
+    });
+    if (res.ok) {
+      if (resultDiv) resultDiv.innerHTML = '<span style="color:#16a34a;font-weight:700">✅ 저장 완료! 재검수 버튼을 다시 눌러 확인하세요.</span>';
+    } else {
+      if (resultDiv) resultDiv.innerHTML = `<span style="color:#dc2626">❌ 저장 실패: ${res.error||'unknown'}</span>`;
+    }
+  } catch(e) {
+    if (resultDiv) resultDiv.innerHTML = `<span style="color:#dc2626">❌ 오류: ${e.message}</span>`;
+  }
 }
 }
 

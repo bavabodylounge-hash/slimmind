@@ -7292,6 +7292,40 @@ app.post('/api/h/diagnosis', async (c) => {
   }
 })
 
+// ══════════════════════════════════════════════════════════════
+// [B2B 처방 우선 조회 헬퍼] fetchB2bPrescription
+//  bc_prescriptions_b2b (bc_code + survey_category) 우선 조회
+//  → 없으면 bc_prescriptions (공통 1벌) 폴백
+//  → 없으면 null 반환
+// ══════════════════════════════════════════════════════════════
+async function fetchB2bPrescription(
+  db: D1Database,
+  bcCode: string | null | undefined,
+  surveyCategory: string
+): Promise<any | null> {
+  if (!bcCode || !db) return null
+  // BC-3:1 → BC-3 형식 정규화
+  const normalizedBc = String(bcCode).replace(/:.*$/, '').trim()
+  if (!normalizedBc) return null
+  try {
+    // 1순위: bc_prescriptions_b2b (B2B 업종별 전용)
+    const b2bRow = await db.prepare(
+      `SELECT * FROM bc_prescriptions_b2b WHERE bc_code = ? AND survey_category = ? AND is_active = 1 LIMIT 1`
+    ).bind(normalizedBc, surveyCategory).first<any>().catch(() => null)
+    if (b2bRow) {
+      return { ...b2bRow, _source: 'b2b' }
+    }
+    // 2순위: bc_prescriptions (공통 처방 폴백)
+    const commonRow = await db.prepare(
+      `SELECT * FROM bc_prescriptions WHERE bc_code = ? LIMIT 1`
+    ).bind(normalizedBc).first<any>().catch(() => null)
+    if (commonRow) {
+      return { ...commonRow, _source: 'common' }
+    }
+    return null
+  } catch (_) { return null }
+}
+
 // GET /api/h/result/:id — 병원용 결과 데이터 JSON 조회
 app.get('/api/h/result/:id', async (c) => {
   const db = (c.env as any).DB as D1Database
@@ -7387,6 +7421,8 @@ app.get('/api/h/result/:id', async (c) => {
         // ── Schema Versioning (mapping-engine.js Live Refresh 핸드셰이크용) ──
         schema_version: 'v1.1',   // mapping-engine.js MAPPING_ENGINE_VERSION과 비교
         survey_type: 'hospital',
+        // ── [B2B 처방 분기] bc_prescriptions_b2b 우선 조회 → bc_prescriptions 폴백 ──
+        b2b_prescription: await fetchB2bPrescription(db, row.bc_code, 'hospital'),
         // ── GAP-09 (2026-08-18): 이력 비교 — 동일 전화번호 직전 1회차 축 점수 변화량 ──
         axis_history: await (async () => {
           try {
@@ -7483,6 +7519,8 @@ app.get('/api/h/result/:id', async (c) => {
       // ── Schema Versioning (mapping-engine.js Live Refresh 핸드셰이크용) ──
       schema_version: 'v1.1',
       survey_type: 'hospital',
+      // ── [B2B 처방 분기] bc_prescriptions_b2b 우선 조회 → bc_prescriptions 폴백 ──
+      b2b_prescription: await fetchB2bPrescription(db, diagRow.bc_code_key || diagRow.bc_primary, 'hospital'),
       // ── GAP-09 (2026-08-18): 이력 비교 — 동일 전화번호 직전 1회차 축 점수 변화량 ──
       axis_history: await (async () => {
         try {
@@ -8353,6 +8391,8 @@ app.get('/api/a/result/:id', async (c) => {
         created_at:     row.created_at,
         schema_version: 'v1.1',
         survey_type: row.survey_category || 'aesthetic',
+        // ── [B2B 처방 분기] bc_prescriptions_b2b 우선 조회 → bc_prescriptions 폴백 ──
+        b2b_prescription: await fetchB2bPrescription(db, row.bc_code_key || row.bc_primary, 'aesthetic'),
         _source: 'diagnosis_results',
       })
     }
@@ -8395,6 +8435,8 @@ app.get('/api/a/result/:id', async (c) => {
         created_at:     aeRow.created_at,
         schema_version: 'v1.1',
         survey_type: 'aesthetic',
+        // ── [B2B 처방 분기] bc_prescriptions_b2b 우선 조회 → bc_prescriptions 폴백 ──
+        b2b_prescription: await fetchB2bPrescription(db, aeRow.bc_code, 'aesthetic'),
         _source: 'aesthetic_responses',
       })
     }
@@ -8817,6 +8859,7 @@ app.get('/api/f/result/:id', async (c) => {
         created_at:      diagRow.created_at || diagRow.completed_at,
         schema_version:  'v1.1',
         survey_type:     'fitness',
+        b2b_prescription: await fetchB2bPrescription(db, diagRow.bc_code_key || diagRow.bc_primary, 'fitness'),
         _source:         'diagnosis_results',
       })
     }
@@ -8896,6 +8939,7 @@ app.get('/api/f/result/:id', async (c) => {
       created_at:       row.created_at,
       schema_version:   'v1.1',
       survey_type:      'fitness',
+      b2b_prescription: await fetchB2bPrescription(db, effectiveBcCode, 'fitness'),
     })
   } catch (e: any) {
     return c.json({ error: String(e), ok: false }, 500)
@@ -9278,6 +9322,7 @@ app.get('/api/s/result/:id', async (c) => {
         consultant_name: row.partner_display_name || '',
         schema_version: 'v1.1',
         survey_type: 'salon',
+        b2b_prescription: await fetchB2bPrescription(db, row.bc_code, 'salon'),
         axis_history: await (async () => {
           try {
             if (!row.phone) return null
@@ -9339,6 +9384,7 @@ app.get('/api/s/result/:id', async (c) => {
       consultant_name: diagRow.partner_display_name || '',
       schema_version: 'v1.1',
       survey_type: 'salon',
+      b2b_prescription: await fetchB2bPrescription(db, diagRow.bc_code_key || diagRow.bc_primary, 'salon'),
       axis_history: null,
     })
   } catch (e: any) {
@@ -14002,9 +14048,15 @@ app.post('/api/admin/mapping-recheck', requireRole('MASTER'), async (c) => {
     const recomputedBc = finalResult?.bc || null
     const bcMismatch = storedBc && recomputedBc ? storedBc !== recomputedBc : false
 
-    // ── bc_prescriptions 설계도 교차검증 ──
+    // ── bc_prescriptions_b2b 우선 → bc_prescriptions 폴백 설계도 교차검증 ──
     const effectiveBc = row.override_bc_code || row.bc_code || recomputedBc || 'BC-1'
-    const presc = await db.prepare(`SELECT * FROM bc_prescriptions WHERE bc_code = ?`).bind(effectiveBc).first<any>().catch(() => null)
+    const survCatForPresc = row.survey_category || 'hospital'
+    // B2B 전용 처방 우선 조회 → 공통 폴백
+    const b2bPresc = await db.prepare(
+      `SELECT * FROM bc_prescriptions_b2b WHERE bc_code = ? AND survey_category = ? AND is_active = 1 LIMIT 1`
+    ).bind(effectiveBc, survCatForPresc).first<any>().catch(() => null)
+    const commonPresc = await db.prepare(`SELECT * FROM bc_prescriptions WHERE bc_code = ?`).bind(effectiveBc).first<any>().catch(() => null)
+    const presc = b2bPresc ? { ...commonPresc, ...b2bPresc, _source: 'b2b' } : (commonPresc ? { ...commonPresc, _source: 'common' } : null)
 
     // 설계도 vs 실제 노출 항목 교차검증
     const prescChecks: Array<{ field: string; label: string; status: 'ok' | 'empty' | 'warn'; value: string }> = []
@@ -14022,6 +14074,31 @@ app.post('/api/admin/mapping-recheck', requireRole('MASTER'), async (c) => {
       { key: 'forbidden_foods_json',       label: '금지 식품' },
       { key: 'supplement_list_json',       label: '보충제' },
       { key: 'lifestyle_rules_json',       label: '생활 수칙' },
+      // ── B2B 업종별 전용 처방 필드 (survey_category 에 따라 유효 필드 분기) ──
+      ...(survCatForPresc === 'hospital' ? [
+        { key: 'hospital_treatments_json',   label: '[병원] 시술 처방' },
+        { key: 'hospital_tests_json',        label: '[병원] 검사 처방' },
+        { key: 'hospital_reassessment_json', label: '[병원] 재평가 계획' },
+        { key: 'hospital_caution_json',      label: '[병원] 주의사항' },
+      ] : survCatForPresc === 'fitness' ? [
+        { key: 'fitness_weekly_plan_json',   label: '[피트니스] 주간 운동 플랜' },
+        { key: 'fitness_hiit_protocol_json', label: '[피트니스] HIIT 프로토콜' },
+        { key: 'fitness_zone2_bpm',          label: '[피트니스] Zone2 BPM' },
+        { key: 'fitness_center_program_json',label: '[피트니스] 센터 프로그램' },
+        { key: 'fitness_metrics_json',       label: '[피트니스] 측정 지표' },
+      ] : survCatForPresc === 'aesthetic' ? [
+        { key: 'aesthetic_primary_json',          label: '[에스테틱] 1순위 케어' },
+        { key: 'aesthetic_secondary_json',        label: '[에스테틱] 2순위 케어' },
+        { key: 'aesthetic_contraindication',      label: '[에스테틱] 금기사항' },
+        { key: 'aesthetic_homecare_json',         label: '[에스테틱] 홈케어' },
+        { key: 'aesthetic_visit_schedule_json',   label: '[에스테틱] 방문 일정' },
+      ] : survCatForPresc === 'salon' ? [
+        { key: 'salon_scalp_diagnosis_json',      label: '[살롱] 두피 진단' },
+        { key: 'salon_treatment_json',            label: '[살롱] 시술 처방' },
+        { key: 'salon_homecare_ingredients_json', label: '[살롱] 홈케어 성분' },
+        { key: 'salon_hairstyle_json',            label: '[살롱] 헤어스타일' },
+        { key: 'salon_scalp_diet_json',           label: '[살롱] 두피 식단' },
+      ] : []),
     ]
     for (const f of checkFields) {
       const val = presc?.[f.key]
@@ -14301,6 +14378,9 @@ app.post('/api/admin/mapping-recheck', requireRole('MASTER'), async (c) => {
       // 설계도 교차검증 (기존 호환)
       effective_bc: effectiveBc,
       presc_exists: !!presc,
+      presc_source: presc?._source || null,   // 'b2b' | 'common' | null
+      b2b_presc_available: !!b2bPresc,        // B2B 전용 처방 존재 여부
+      survey_category_for_presc: survCatForPresc,
       presc_checks: prescChecks,
       presc_empty_count: prescChecks.filter(p => p.status === 'empty').length,
 
