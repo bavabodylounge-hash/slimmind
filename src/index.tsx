@@ -13098,6 +13098,469 @@ app.post('/api/admin/mapping-override', requireRole('MASTER'), async (c) => {
   }
 })
 
+// ═══════════════════════════════════════════════════════════════════
+// ■ [NEW] 진단 매핑 검증 — GET /api/admin/verify-list
+//   최신 진단 100건 자동 송출 (이상 케이스 상단 우선)
+//   이상 케이스: bc_code NULL / 비정규화 / override_applied=1
+// ═══════════════════════════════════════════════════════════════════
+app.get('/api/admin/verify-list', requireRole('MASTER'), async (c) => {
+  const db = (c.env as any)?.DB as D1Database | undefined
+  if (!db) return c.json({ error: 'DB 없음' }, 500)
+
+  try {
+    const limit = Math.min(parseInt(c.req.query('limit') || '100', 10), 300)
+
+    // ── diagnosis_results (신파이프라인) ──
+    const drRows = await db.prepare(`
+      SELECT
+        id AS diag_id,
+        user_name,
+        bc_code_key AS bc_code,
+        bc_primary,
+        override_applied,
+        override_bc_code,
+        override_at,
+        survey_category,
+        gender,
+        age,
+        COALESCE(completed_at, created_at) AS created_at,
+        CASE
+          WHEN bc_code_key IS NULL OR bc_code_key = '' THEN 1
+          WHEN bc_code_key NOT LIKE 'BC-%' THEN 1
+          WHEN override_applied = 1 THEN 1
+          ELSE 0
+        END AS is_anomaly
+      FROM diagnosis_results
+      ORDER BY is_anomaly DESC, COALESCE(completed_at, created_at) DESC
+      LIMIT ?
+    `).bind(limit).all<any>()
+
+    // ── hospital_responses (병원 전용 테이블) ──
+    const hrRows = await db.prepare(`
+      SELECT
+        id AS diag_id,
+        user_name,
+        bc_code,
+        bc_primary,
+        override_applied,
+        override_bc_code,
+        override_at,
+        'hospital' AS survey_category,
+        gender,
+        age,
+        created_at,
+        CASE
+          WHEN bc_code IS NULL OR bc_code = '' THEN 1
+          WHEN bc_code NOT LIKE 'BC-%' THEN 1
+          WHEN override_applied = 1 THEN 1
+          ELSE 0
+        END AS is_anomaly
+      FROM hospital_responses
+      ORDER BY is_anomaly DESC, created_at DESC
+      LIMIT ?
+    `).bind(Math.floor(limit / 2)).all<any>().catch(() => ({ results: [] as any[] }))
+
+    // ── fitness_responses (피트니스 전용) ──
+    const frRows = await db.prepare(`
+      SELECT
+        id AS diag_id,
+        user_name,
+        bc_code,
+        bc_primary,
+        override_applied,
+        override_bc_code,
+        override_at,
+        'fitness' AS survey_category,
+        gender,
+        age,
+        created_at,
+        CASE
+          WHEN bc_code IS NULL OR bc_code = '' THEN 1
+          WHEN bc_code NOT LIKE 'BC-%' THEN 1
+          WHEN override_applied = 1 THEN 1
+          ELSE 0
+        END AS is_anomaly
+      FROM fitness_responses
+      ORDER BY is_anomaly DESC, created_at DESC
+      LIMIT ?
+    `).bind(Math.floor(limit / 2)).all<any>().catch(() => ({ results: [] as any[] }))
+
+    // ── aesthetic_responses ──
+    const arRows = await db.prepare(`
+      SELECT
+        id AS diag_id,
+        user_name,
+        bc_code,
+        bc_primary,
+        0 AS override_applied,
+        NULL AS override_bc_code,
+        NULL AS override_at,
+        'aesthetic' AS survey_category,
+        gender,
+        age,
+        created_at,
+        CASE
+          WHEN bc_code IS NULL OR bc_code = '' THEN 1
+          WHEN bc_code NOT LIKE 'BC-%' THEN 1
+          ELSE 0
+        END AS is_anomaly
+      FROM aesthetic_responses
+      ORDER BY is_anomaly DESC, created_at DESC
+      LIMIT ?
+    `).bind(Math.floor(limit / 2)).all<any>().catch(() => ({ results: [] as any[] }))
+
+    // ── salon_responses ──
+    const srRows = await db.prepare(`
+      SELECT
+        id AS diag_id,
+        user_name,
+        bc_code,
+        bc_primary,
+        0 AS override_applied,
+        NULL AS override_bc_code,
+        NULL AS override_at,
+        'salon' AS survey_category,
+        gender,
+        age,
+        created_at,
+        CASE
+          WHEN bc_code IS NULL OR bc_code = '' THEN 1
+          WHEN bc_code NOT LIKE 'BC-%' THEN 1
+          ELSE 0
+        END AS is_anomaly
+      FROM salon_responses
+      ORDER BY is_anomaly DESC, created_at DESC
+      LIMIT ?
+    `).bind(Math.floor(limit / 2)).all<any>().catch(() => ({ results: [] as any[] }))
+
+    // ── 중복 제거 + 이상 우선 정렬 병합 ──
+    const seen = new Set<string>()
+    const allRows = [
+      ...(drRows.results || []),
+      ...(hrRows.results || []),
+      ...(frRows.results || []),
+      ...(arRows.results || []),
+      ...(srRows.results || []),
+    ].filter(r => {
+      if (seen.has(r.diag_id)) return false
+      seen.add(r.diag_id)
+      return true
+    }).sort((a: any, b: any) => {
+      // 이상 케이스 먼저, 그 다음 최신 순
+      if ((b.is_anomaly || 0) !== (a.is_anomaly || 0)) return (b.is_anomaly || 0) - (a.is_anomaly || 0)
+      return (b.created_at || '').localeCompare(a.created_at || '')
+    }).slice(0, limit)
+
+    const anomalyCount = allRows.filter((r: any) => r.is_anomaly).length
+
+    return c.json({
+      rows: allRows,
+      total: allRows.length,
+      anomaly_count: anomalyCount,
+      fetched_at: new Date().toISOString(),
+    })
+  } catch (e: any) {
+    console.error('[verify-list]', e)
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ═══════════════════════════════════════════════════════════════════
+// ■ [NEW] 진단 상세 검증 — GET /api/admin/verify-detail/:id
+//   - raw_answers, axis_scores, bc_code 조회
+//   - 서버사이드 decideSubtype() 재실행 → 저장값 vs 재산출값 불일치 감지
+//   - bc_prescriptions 전 컬럼 풀아웃
+//   - story_lead, clinical_ctx, override 이력 포함
+// ═══════════════════════════════════════════════════════════════════
+app.get('/api/admin/verify-detail/:id', requireRole('MASTER'), async (c) => {
+  const db = (c.env as any)?.DB as D1Database | undefined
+  if (!db) return c.json({ error: 'DB 없음' }, 500)
+
+  const diagId = c.req.param('id')
+  if (!diagId) return c.json({ error: 'id 필수' }, 400)
+
+  try {
+    let row: any = null
+    let tableSource = ''
+
+    // ── 1. diagnosis_results 우선 ──
+    row = await db.prepare(`
+      SELECT
+        id AS diag_id,
+        user_name,
+        bc_nickname,
+        bc_primary,
+        bc_code_key AS bc_code,
+        axis_scores,
+        raw_answers,
+        body_regions,
+        textures,
+        flags,
+        survey_category,
+        gender,
+        age,
+        override_bc_code,
+        override_story,
+        override_applied,
+        override_at,
+        story_lead,
+        clinical_ctx,
+        ai_story_src,
+        COALESCE(completed_at, created_at) AS created_at
+      FROM diagnosis_results
+      WHERE id = ?
+      LIMIT 1
+    `).bind(diagId).first<any>().catch(() => null)
+    if (row) tableSource = 'diagnosis_results'
+
+    // ── 2. hospital_responses ──
+    if (!row) {
+      row = await db.prepare(`
+        SELECT
+          id AS diag_id,
+          user_name,
+          NULL AS bc_nickname,
+          bc_primary,
+          bc_code,
+          axis_scores,
+          raw_answers,
+          body_regions,
+          textures,
+          NULL AS flags,
+          'hospital' AS survey_category,
+          gender,
+          age,
+          override_bc_code,
+          override_story,
+          override_applied,
+          override_at,
+          story_lead,
+          clinical_ctx,
+          NULL AS ai_story_src,
+          created_at
+        FROM hospital_responses
+        WHERE id = ?
+        LIMIT 1
+      `).bind(diagId).first<any>().catch(() => null)
+      if (row) tableSource = 'hospital_responses'
+    }
+
+    // ── 3. fitness_responses ──
+    if (!row) {
+      row = await db.prepare(`
+        SELECT
+          id AS diag_id,
+          user_name,
+          NULL AS bc_nickname,
+          bc_primary,
+          bc_code,
+          axis_scores,
+          raw_answers,
+          NULL AS body_regions,
+          NULL AS textures,
+          NULL AS flags,
+          'fitness' AS survey_category,
+          gender,
+          age,
+          override_bc_code,
+          override_story,
+          override_applied,
+          override_at,
+          NULL AS story_lead,
+          NULL AS clinical_ctx,
+          NULL AS ai_story_src,
+          created_at
+        FROM fitness_responses
+        WHERE id = ?
+        LIMIT 1
+      `).bind(diagId).first<any>().catch(() => null)
+      if (row) tableSource = 'fitness_responses'
+    }
+
+    // ── 4. aesthetic_responses ──
+    if (!row) {
+      row = await db.prepare(`
+        SELECT
+          id AS diag_id,
+          user_name,
+          NULL AS bc_nickname,
+          bc_primary,
+          bc_code,
+          axis_scores,
+          raw_answers,
+          NULL AS body_regions,
+          NULL AS textures,
+          NULL AS flags,
+          'aesthetic' AS survey_category,
+          gender,
+          age,
+          0 AS override_applied,
+          NULL AS override_bc_code,
+          NULL AS override_story,
+          NULL AS override_at,
+          NULL AS story_lead,
+          NULL AS clinical_ctx,
+          NULL AS ai_story_src,
+          created_at
+        FROM aesthetic_responses
+        WHERE id = ?
+        LIMIT 1
+      `).bind(diagId).first<any>().catch(() => null)
+      if (row) tableSource = 'aesthetic_responses'
+    }
+
+    // ── 5. salon_responses ──
+    if (!row) {
+      row = await db.prepare(`
+        SELECT
+          id AS diag_id,
+          user_name,
+          NULL AS bc_nickname,
+          bc_primary,
+          bc_code,
+          axis_scores,
+          raw_answers,
+          NULL AS body_regions,
+          NULL AS textures,
+          NULL AS flags,
+          'salon' AS survey_category,
+          gender,
+          age,
+          0 AS override_applied,
+          NULL AS override_bc_code,
+          NULL AS override_story,
+          NULL AS override_at,
+          NULL AS story_lead,
+          NULL AS clinical_ctx,
+          NULL AS ai_story_src,
+          created_at
+        FROM salon_responses
+        WHERE id = ?
+        LIMIT 1
+      `).bind(diagId).first<any>().catch(() => null)
+      if (row) tableSource = 'salon_responses'
+    }
+
+    if (!row) {
+      return c.json({ error: `진단 ID [${diagId}] 를 5개 테이블 모두에서 찾을 수 없습니다.` }, 404)
+    }
+
+    // ── JSON 파싱 ──
+    let axisScores: Record<string, number> = {}
+    let rawAnswers: any = {}
+    let bodyRegions: string[] = []
+    let textures: string[] = []
+    let flagsObj: Record<string, boolean> = {}
+
+    try { axisScores = JSON.parse(row.axis_scores || '{}') } catch {}
+    try { rawAnswers = JSON.parse(row.raw_answers || '{}') } catch {}
+    try {
+      const br = row.body_regions
+      if (br) bodyRegions = Array.isArray(JSON.parse(br)) ? JSON.parse(br) : []
+    } catch {}
+    try {
+      const tx = row.textures
+      if (tx) textures = Array.isArray(JSON.parse(tx)) ? JSON.parse(tx) : []
+    } catch {}
+    try {
+      const fl = row.flags
+      if (fl) flagsObj = JSON.parse(fl)
+    } catch {}
+
+    // ── 서버사이드 decideSubtype() 재실행 ──
+    const recomputed = (Object.keys(axisScores).length > 0)
+      ? decideSubtype(axisScores, bodyRegions, textures, flagsObj)
+      : null
+
+    const storedBcCode   = row.override_bc_code || row.bc_code || null
+    const recomputedBc   = recomputed?.bc || null
+    const bcMismatch     = storedBcCode && recomputedBc
+      ? storedBcCode !== recomputedBc
+      : false
+
+    // ── bc_prescriptions 전 컬럼 풀아웃 ──
+    // effectiveBc: override > stored > recomputed 우선
+    const effectiveBc = row.override_bc_code || row.bc_code || recomputedBc || 'BC-1'
+    const presc = await db.prepare(`SELECT * FROM bc_prescriptions WHERE bc_code = ?`)
+      .bind(effectiveBc).first<any>().catch(() => null)
+
+    // 결과지 URL
+    const cat = row.survey_category || 'integrated'
+    const urlMap: Record<string, string> = {
+      fitness:    `/result-fitness/${diagId}`,
+      hospital:   `/result-hospital/${diagId}`,
+      aesthetic:  `/result-aesthetic/${diagId}`,
+      salon:      `/result-salon/${diagId}`,
+      integrated: `/result/${diagId}`,
+    }
+    const resultUrl = urlMap[cat] || `/result/${diagId}`
+
+    // SUBTYPE_RULES 후보 매칭 목록 (디버깅용)
+    const normRegions  = bodyRegions.map((r: string) => r.toUpperCase())
+    const normTextures = textures.map((t: string) => t.toLowerCase())
+    const candidateRules = SUBTYPE_RULES.filter(rule => {
+      const hasRegion  = rule.regions.some(r => normRegions.includes(r))
+      const hasTexture = rule.textures.some(t => normTextures.includes(t))
+      return hasRegion && hasTexture
+    }).map(rule => {
+      const score =
+        (axisScores[rule.axes[0]] ?? 5) * 3 +
+        (axisScores[rule.axes[1]] ?? 5) * 2 +
+        (axisScores[rule.axes[2]] ?? 5) * 1
+      return { ...rule, score: Math.round(score * 100) / 100 }
+    }).sort((a, b) => b.score - a.score)
+
+    return c.json({
+      // ── 기본 정보 ──
+      diag_id:          diagId,
+      table_source:     tableSource,
+      user_name:        row.user_name || '이름없음',
+      survey_category:  cat,
+      gender:           row.gender || '',
+      age:              row.age || null,
+      created_at:       row.created_at || '',
+      result_url:       resultUrl,
+
+      // ── BC 코드 (저장값) ──
+      bc_code:          row.bc_code || null,
+      bc_nickname:      row.bc_nickname || row.bc_primary || null,
+      bc_primary:       row.bc_primary || null,
+
+      // ── 재산출값 & 불일치 감지 ──
+      recomputed_bc:    recomputedBc,
+      recomputed_name:  recomputed?.name || null,
+      recomputed_axes:  recomputed?.signatureAxes || [],
+      bc_mismatch:      bcMismatch,
+      candidate_rules:  candidateRules,
+
+      // ── Override 이력 ──
+      override_applied: row.override_applied || 0,
+      override_bc_code: row.override_bc_code || null,
+      override_story:   row.override_story || null,
+      override_at:      row.override_at || null,
+
+      // ── 축 점수 & Raw 응답 ──
+      axis_scores:      axisScores,
+      body_regions:     bodyRegions,
+      textures:         textures,
+      flags:            flagsObj,
+      raw_answers:      rawAnswers,
+
+      // ── 해석본 ──
+      story_lead:       row.story_lead || null,
+      clinical_ctx:     row.clinical_ctx || null,
+      ai_story_src:     row.ai_story_src || null,
+
+      // ── bc_prescriptions 전 컬럼 ──
+      prescription:     presc || null,
+      prescription_bc:  effectiveBc,
+    })
+  } catch (e: any) {
+    console.error('[verify-detail]', e)
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
 // ■ 샘플 PDF 다운로드 (회원가입 완료 후) → 인쇄 가능 HTML 페이지로 리다이렉트
 app.get('/api/download-sample-pdf', async (c) => {
   // 실제 PDF 파일(/public/static/sample-report.pdf)이 존재하면 그것을 반환
