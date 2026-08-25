@@ -8375,7 +8375,9 @@ app.post('/api/a/diagnosis', async (c) => {
       goal_weight, weight_loss_pct,
       ref_code, session_id
     } = body
-    const resolvedBcCode = bc_code || bc_code_key || null
+    // ✅ [BUG-FIX v4.4] bc_code 정규화 — BC-N 형식만 유효, MO_YANG 등 레거시/비정규화 값은 NULL 처리
+    const _rawBcCode = bc_code || bc_code_key || null
+    const resolvedBcCode = (_rawBcCode && /^BC-\d+$/i.test(String(_rawBcCode))) ? _rawBcCode : null
     const parsedRaw = raw_answers ? (typeof raw_answers === 'string' ? (() => { try { return JSON.parse(raw_answers) } catch { return {} } })() : raw_answers) : {}
 
     // axis_scores 0~100 정규화
@@ -9279,7 +9281,9 @@ app.post('/api/s/diagnosis', async (c) => {
       goal_weight, weight_loss_pct,
       ref_code, session_id
     } = body
-    const resolvedBcCode = bc_code || bc_code_key || null
+    // ✅ [BUG-FIX v4.4] bc_code 정규화 — BC-N 형식만 유효, MO_YANG 등 레거시/비정규화 값은 NULL 처리
+    const _rawBcCode = bc_code || bc_code_key || null
+    const resolvedBcCode = (_rawBcCode && /^BC-\d+$/i.test(String(_rawBcCode))) ? _rawBcCode : null
     const parsedRaw = raw_answers ? (typeof raw_answers === 'string' ? (() => { try { return JSON.parse(raw_answers) } catch { return {} } })() : raw_answers) : {}
 
     const normalizeAx = (raw: any): Record<string, number> | null => {
