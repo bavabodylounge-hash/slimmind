@@ -261,132 +261,212 @@ function maskPhone(phone: string | null | undefined): string | null {
 //        + computeDomainScores + computePrediction 완전 교체
 // ═══════════════════════════════════════════════════════════════
 
-// ─── 25아형 결정표 (설계도 v2 기준) ──────────────────────────────
+// ─── 46아형 결정표 (설계도 v3 2026-08-17 기준 — 4업종 공통 정본) ──
 // 각 Rule: regions(부위), textures(질감), axes(서명축 가중 3·2·1), bc(최종 BC코드)
+// sex: 'female'|'male'|undefined (성별 조건이 있는 경우)
+// isDefault: true → 기본형(1등축 6점 미만 시 해당 부위 폴백)
+// isYoyo: true → 요요궤적 입구(2차 체중 궤적 Q10: 방향전환 2회↑ + 체중 5% 이상)
 interface SubtypeRule {
   regions: string[]
   textures: string[]
   axes: string[]   // [0]=가중3, [1]=가중2, [2]=가중1
   name: string
   bc: string
+  sex?: 'female' | 'male'
+  isDefault?: boolean
+  isYoyo?: boolean
 }
+
 const SUBTYPE_RULES: SubtypeRule[] = [
   // ══════════════════════════════════════════════════════════════════
-  // 결정표 v2 — 25아형 완전 구현 (설계도 2026-08-08 확정본 기준)
-  // [부위 × 질감 × 서명축 3 가중(3·2·1)] → BC 판정
+  // 결정표 v3 — 46행 재구축 (설계도 2026-08-17 확정본 기준 — Master Spec)
+  // [★판정 순서★] ①요요궤적+원인미특정→요요형 ②1등축<6점→부위기본형
+  //               ③부위+질감+축 ④부위+축 ⑤부위+질감 ⑥부위 ⑦축
+  // [★부위우선원칙★] 폴백에서 부위는 끝까지 지키고 축을 완화
+  // [★조건축AND★] 축 2개인 행: 두 축 모두 상위 3위일 때만 후보
+  //                단 기질(A10)은 1등축 제외 축이라 AND에서 면제
+  // [★서명축합산★] 승자=결정표 조건축이 아니라 fins 서명축 3개로 가림
   // ══════════════════════════════════════════════════════════════════
 
-  // ── BC-1: 림프·하지부종 계열 (2행) ─────────────────────────────
-  // 오후만되면 코끼리다리형 — 하체·부종·림프순환·호르몬·근감소
-  { regions:['LEG'],           textures:['edema','soft'],        axes:['A02','A03','A04'], name:'오후만되면 코끼리다리형',   bc:'BC-1' },
-  // 엄마체형 하지정체형 — 하체·셀룰·림프순환/기질
-  { regions:['LEG','HIP'],     textures:['cellulite','dense'],   axes:['A02','A10','A03'], name:'엄마체형 하지정체형',       bc:'BC-1' },
+  // ── 복부 (9행) ────────────────────────────────────────────────────
+  { regions:['ABD'],           textures:['firm','visceral','hard'],    axes:['A01','A10','A09'], name:'아빠체형 내장비대형',               bc:'BC-3' },
+  { regions:['ABD'],           textures:['firm','hard'],               axes:['A01','A09','A10'], name:'식후기절 혈당롤러형',               bc:'BC-3' },
+  { regions:['ABD'],           textures:['firm','hormone','hard'],     axes:['A03','A01','A09'], name:'털털한 PCOS형',                     bc:'BC-3', sex:'female' },
+  { regions:['ABD'],           textures:['soft','flabby'],             axes:['A09','A03','A01'], name:'약물부작용 강제축적형',             bc:'BC-4' },
+  { regions:['ABD'],           textures:['soft','stress'],             axes:['A07','A08','A01'], name:'스트레스성 야식부엉이형',           bc:'BC-6' },
+  { regions:['ABD'],           textures:['soft','stress','loose'],     axes:['A08','A05','A01'], name:'억제제부작용 배부름마비형',         bc:'BC-4' },
+  { regions:['ABD'],           textures:['soft','loose','edema','bloat'], axes:['A06','A04','A03'], name:'출산후 바람빠진 풍선형',          bc:'BC-7', sex:'female' },
+  { regions:['ABD'],           textures:['bloat','gas','edema'],       axes:['A05','A06','A02'], name:'식후임산부 가스풍선형',             bc:'BC-7' },
+  { regions:['ABD'],           textures:['soft','edema','bloat'],      axes:['A02','A05','A06'], name:'배만 붓는 복부 정체형',             bc:'BC-7' },
 
-  // ── BC-2: 귤껍질하체·재발 계열 (1행) ───────────────────────────
-  // 지방흡입후 재발형 — 하체·셀룰·재발·골격
-  { regions:['LEG','HIP'],     textures:['cellulite','firm'],    axes:['A06','A02','A04'], name:'지방흡입후 재발형',          bc:'BC-2' },
+  // ── 복부+전신 (1행) ──────────────────────────────────────────────
+  { regions:['ABD','WHOLE'],   textures:['soft','flabby'],             axes:['A04','A03','A01'], name:'팔다리거미 올챙이배형',             bc:'BC-9' },
 
-  // ── BC-3: 인슐린·내장비대 계열 (3행) ───────────────────────────
-  // 아빠체형 내장비대형 — 복부·단단·인슐린/대사위험 (서명축: 인슐린·내장/기질/대사위험)
-  { regions:['ABD'],           textures:['firm','visceral'],     axes:['A01','A09','A05'], name:'아빠체형 내장비대형',        bc:'BC-3' },
-  // 식후기절 혈당롤러형 — 복부·단단·인슐린
-  { regions:['ABD'],           textures:['firm','hard'],         axes:['A01','A09','A07'], name:'식후기절 혈당롤러형',        bc:'BC-3' },
-  // 털털한 PCOS형 — 복부·단단·호르몬대사
-  { regions:['ABD'],           textures:['firm','hormone'],      axes:['A03','A01','A09'], name:'털털한 PCOS형',              bc:'BC-3' },
+  // ── 하체 (10행) ──────────────────────────────────────────────────
+  { regions:['LEG','HIP'],     textures:['edema','soft'],              axes:['A02','A03','A04'], name:'오후만되면 코끼리다리형',           bc:'BC-1' },
+  { regions:['LEG','HIP'],     textures:['cellulite','dense'],         axes:['A02','A10','A03'], name:'엄마체형 하지정체형',               bc:'BC-1' },
+  { regions:['LEG','HIP'],     textures:['cellulite','edema','cold'],  axes:['A03','A02','A10'], name:'여름에도 시린 얼음장형',            bc:'BC-5' },
+  { regions:['LEG','HIP','GLUTE'], textures:['firm','muscle','dense'], axes:['A04','A02','A06'], name:'운동할수록 말벅지형',               bc:'BC-8' },
+  { regions:['HIP','LEG'],     textures:['cellulite','posture'],       axes:['A06','A02','A04'], name:'골반틀어짐 승마살형',               bc:'BC-8' },
+  { regions:['LEG','HIP'],     textures:['soft','cellulite'],          axes:['A01','A02','A08'], name:'당이 하체로 가는 저장형',           bc:'BC-3' },
+  { regions:['LEG'],           textures:['edema','soft'],              axes:['A05','A02','A01'], name:'장이 막혀 다리가 무거운 형',        bc:'BC-15' },
+  { regions:['LEG','HIP'],     textures:['soft','cellulite'],          axes:['A07','A02','A08'], name:'밤에 굳는 하체 정체형',             bc:'BC-6' },
+  { regions:['LEG','HIP'],     textures:['soft','cellulite'],          axes:['A08','A01','A02'], name:'습관이 하체에 쌓인 형',             bc:'BC-4' },
+  { regions:['LEG'],           textures:['edema','soft'],              axes:['A09','A02','A01'], name:'다리부터 신호 오는 대사 경고형',    bc:'BC-15' },
 
-  // ── BC-4: 대사저하·요요·억제제 계열 (3행) ──────────────────────
-  // 약물부작용 강제축적형 — 복부·물렁·대사위험/호르몬
-  { regions:['ABD'],           textures:['soft','flabby'],       axes:['A09','A03','A01'], name:'약물부작용 강제축적형',      bc:'BC-4' },
-  // 억제제부작용 배부름마비형 — 복부·물렁·심리식이/소화
-  { regions:['ABD'],           textures:['soft','stress'],       axes:['A08','A05','A01'], name:'억제제부작용 배부름마비형',  bc:'BC-4' },
-  // 아빠체형 대사저하형 — 복부/전신·냉증·대사저하 (요요 기본형)
-  { regions:['ABD','WHOLE'],   textures:['cold','dense'],        axes:['A03','A01','A09'], name:'아빠체형 대사저하형',        bc:'BC-4' },
+  // ── 상체 (10행) ──────────────────────────────────────────────────
+  { regions:['NECK','BACK','SHOULDER','ARM'], textures:['firm','posture','edema'], axes:['A06','A02','A07'], name:'목짧아지는 거북이형',   bc:'BC-2' },
+  { regions:['ARM','SHOULDER'],textures:['edema','soft'],              axes:['A02','A04','A06'], name:'안 쓰는 팔뚝 부종형',               bc:'BC-10' },
+  { regions:['SHOULDER','ARM','BACK'], textures:['firm','bulk','muscle'], axes:['A04','A06','A02'], name:'상체근육형',                    bc:'BC-11' },
+  { regions:['CHEST','BACK','SHOULDER'], textures:['edema','soft','loose'], axes:['A06','A02','A03'], name:'겨드랑이 부유방형',           bc:'BC-12', sex:'female' },
+  { regions:['BACK','SHOULDER'],textures:['soft','firm'],              axes:['A01','A06','A09'], name:'등살부터 차오르는 저장형',          bc:'BC-3' },
+  { regions:['BACK','SHOULDER'],textures:['firm','edema'],             axes:['A03','A02','A06'], name:'어깨 뒤부터 바뀌는 호르몬 전환형', bc:'BC-13' },
+  { regions:['BACK','SHOULDER'],textures:['edema','soft'],             axes:['A05','A06','A02'], name:'장이 눌러 상체가 굳는 형',          bc:'BC-7' },
+  { regions:['SHOULDER','BACK'],textures:['firm','edema'],             axes:['A07','A06','A02'], name:'어깨에 얹힌 긴장 축적형',           bc:'BC-6' },
+  { regions:['ARM','SHOULDER'],textures:['soft'],                      axes:['A08','A01','A04'], name:'습관이 팔뚝에 쌓인 형',             bc:'BC-4' },
+  { regions:['NECK','BACK'],   textures:['firm','edema'],              axes:['A09','A01','A06'], name:'목 뒤부터 신호 오는 대사 경고형',   bc:'BC-15' },
 
-  // ── BC-5: 얼음장·가스팽만 계열 (2행) ───────────────────────────
-  // 여름에도 시린 얼음장형 — 하체·셀룰/부종·호르몬대사/림프
-  { regions:['LEG','WHOLE'],   textures:['cold','cellulite'],    axes:['A03','A02','A10'], name:'여름에도 시린 얼음장형',     bc:'BC-5' },
-  // 식후임산부 가스풍선형 — 복부·부종·소화장/골격
-  { regions:['ABD','WAIST'],   textures:['bloat','gas'],         axes:['A05','A06','A02'], name:'식후임산부 가스풍선형',      bc:'BC-5' },
+  // ── 전신 (8행) ───────────────────────────────────────────────────
+  { regions:['WHOLE','ABD','HIP'], textures:['soft','meno','hormone','edema'], axes:['A03','A07','A02'], name:'호르몬스위치 갱년기형', bc:'BC-13' },
+  { regions:['WHOLE'],         textures:['binge','emotional','soft'],  axes:['A07','A03','A02'], name:'스트레스기절 번아웃형',              bc:'BC-14' },
+  { regions:['WHOLE','ABD'],   textures:['visceral','multi','firm'],   axes:['A09','A01','A03'], name:'대사증후군 종합형',                  bc:'BC-15' },
+  { regions:['WHOLE'],         textures:['multi','complex'],           axes:['A01','A07','A09'], name:'동시다발 다중악순환형',              bc:'BC-16' },
+  { regions:['WHOLE'],         textures:['edema','soft','multi'],      axes:['A02','A05','A07'], name:'온몸이 무거운 전신 정체형',          bc:'BC-13' },
+  { regions:['WHOLE'],         textures:['bloat','edema','multi'],     axes:['A05','A02','A09'], name:'장에서 시작된 전신 염증형',          bc:'BC-15' },
+  { regions:['WHOLE'],         textures:['posture','multi'],           axes:['A06','A02','A04'], name:'축이 무너진 전신 불균형형',          bc:'BC-16' },
+  { regions:['WHOLE'],         textures:['binge','emotional','multi'], axes:['A08','A01','A04'], name:'습관이 온몸에 쌓인 형',              bc:'BC-4' },
 
-  // ── BC-6: 코르티솔·야식·올챙이 계열 (2행) ──────────────────────
-  // 스트레스성 야식부엉이형 — 복부·물렁·코르티솔/심리
-  { regions:['ABD'],           textures:['soft','stress'],       axes:['A07','A08','A01'], name:'스트레스성 야식부엉이형',    bc:'BC-6' },
-  // 팔다리거미 올챙이배형 — 복부/전신·물렁·근감소
-  { regions:['ABD','WHOLE'],   textures:['soft','flabby'],       axes:['A04','A03','A01'], name:'팔다리거미 올챙이배형',      bc:'BC-6' },
+  // ── 남성 전용 3행 [신설] ─────────────────────────────────────────
+  { regions:['ABD'],           textures:['firm','hard'],               axes:['A03','A01','A04'], name:'배부터 무너지는 남성 호르몬 저하형', bc:'BC-3', sex:'male' },
+  { regions:['ABD'],           textures:['soft','edema','loose'],      axes:['A06','A04','A01'], name:'복압 빠진 맥주배형',                 bc:'BC-7', sex:'male' },
+  { regions:['CHEST','BACK'],  textures:['edema','soft'],              axes:['A06','A02','A01'], name:'가슴 아래 접히는 흉부 정체형',      bc:'BC-12', sex:'male' },
 
-  // ── BC-7: 골격·출산·말벅지 계열 (2행) ──────────────────────────
-  // 출산후 바람빠진 풍선형 — 복부·물렁·골격/근감소
-  { regions:['ABD'],           textures:['soft','loose'],        axes:['A06','A04','A03'], name:'출산후 바람빠진 풍선형',     bc:'BC-7' },
-  // 운동할수록 말벅지형 — 하체·단단·근감소/림프
-  { regions:['LEG','GLUTE'],   textures:['firm','muscle'],       axes:['A04','A06','A02'], name:'운동할수록 말벅지형',        bc:'BC-7' },
-
-  // ── BC-8: 승마살·골반 계열 (2행) ────────────────────────────────
-  // 골반틀어짐 승마살형 — 하체·셀룰·골격/근감소 [★서명축: A06·A04·A02 — BC-2(A06·A02·A04)와 2·3번 축 교체로 A04 고점 시 BC-8 우선 선택]
-  { regions:['HIP','LEG'],     textures:['cellulite','posture'], axes:['A06','A04','A02'], name:'골반틀어짐 승마살형',        bc:'BC-8' },
-  // 하체골반 기본형 — 하체·단단·골격
-  { regions:['HIP'],           textures:['firm','posture'],      axes:['A06','A04','A02'], name:'하체골반 기본형',            bc:'BC-8' },
-
-  // ── BC-9: 자세·거북목 계열 (1행) ────────────────────────────────
-  // 목짧아지는 거북이형 — 상체·단단/부종·골격/자세
-  { regions:['NECK','BACK','SHOULDER'],textures:['firm','posture'],axes:['A06','A04','A02'], name:'목짧아지는 거북이형',      bc:'BC-9' },
-
-  // ── BC-10: 팔뚝부종 계열 (1행) ─────────────────────────────────
-  // 안 쓰는 팔뚝 부종형 — 상체·부종·팔뚝·림프
-  { regions:['ARM','SHOULDER'],textures:['soft','edema'],        axes:['A02','A06','A01'], name:'안 쓰는 팔뚝 부종형',        bc:'BC-10' },
-
-  // ── BC-11: 상체근육 계열 (1행) ─────────────────────────────────
-  // 상체근육형 — 상체·단단·근감소/골격
-  { regions:['SHOULDER','ARM'],textures:['firm','bulk'],         axes:['A04','A06','A08'], name:'상체근육형',                bc:'BC-11' },
-
-  // ── BC-12: 부유방 계열 (1행) ────────────────────────────────────
-  // 겨드랑이 부유방형 — 상체·흉추·피하·골격
-  { regions:['CHEST','BACK'],  textures:['soft','loose'],        axes:['A06','A02','A03'], name:'겨드랑이 부유방형',          bc:'BC-12' },
-
-  // ── BC-13: 갱년기 계열 (1행, MENOPAUSE 플래그 강제 → 최우선) ─────
-  // 호르몬스위치 갱년기형 — 복부/전신·갱년기·호르몬
-  { regions:['ABD','HIP','WHOLE'],textures:['soft','meno','hormone'],axes:['A03','A07','A06'], name:'호르몬스위치 갱년기형', bc:'BC-13' },
-
-  // ── BC-14: 번아웃·무기력 계열 (1행) ─────────────────────────────
-  // 스트레스기절 번아웃형 — 전신·부신·번아웃
-  { regions:['WHOLE'],         textures:['binge','emotional'],   axes:['A08','A07','A03'], name:'스트레스기절 번아웃형',      bc:'BC-14' },
-
-  // ── BC-15: 대사증후군 계열 (1행) ────────────────────────────────
-  // 대사증후군 종합형 — 전신/복부·고위험·복합
-  { regions:['ABD','WHOLE'],   textures:['visceral','multi'],    axes:['A09','A01','A07'], name:'대사증후군 종합형',          bc:'BC-15' },
-
-  // ── BC-16: 다중악순환 계열 (1행) ────────────────────────────────
-  // 동시다발 다중악순환형 — 전신·복합·다중악순환
-  { regions:['WHOLE'],         textures:['multi','complex'],     axes:['A09','A01','A08'], name:'동시다발 다중악순환형',      bc:'BC-16' },
+  // ── 기본형 5행 (1등축 6점 미만 폴백) ────────────────────────────
+  { regions:['SHOULDER','NECK','BACK','ARM'], textures:['firm','edema','soft','posture','bulk','muscle'], axes:['A06','A02','A07'], name:'짊어진어깨형',              bc:'BC-2', isDefault:true },
+  { regions:['ABD'],           textures:['firm','soft','edema','hard','visceral','bloat','gas','hormone','loose','stress'], axes:['A01','A09','A03'], name:'남산수박배형', bc:'BC-3', isDefault:true },
+  { regions:['LEG','HIP','GLUTE'], textures:['cellulite','edema','soft','dense','muscle','posture'], axes:['A02','A03','A10'], name:'셀룰라이트귤껍질형',         bc:'BC-5', isDefault:true },
+  { regions:['WHOLE'],         textures:['soft','edema','firm','multi','binge','emotional','visceral','posture','bloat'], axes:['A01','A07','A09'], name:'전체적으로둔해진형', bc:'BC-16', isDefault:true },
+  { regions:['ABD','LEG','HIP','WHOLE','SHOULDER','ARM','BACK','NECK','CHEST'], textures:['soft','firm','edema','cellulite','hard','visceral','loose','bloat','stress'], axes:['A03','A08','A04'], name:'물만마셔도요요형', bc:'BC-4', isYoyo:true, isDefault:true },
 ]
 
 
-// ─── decideSubtype: 25아형 결정 함수 ──────────────────────────────
-// 입력: axisScores(A01~A10 점수), bodyRegions(부위 배열), textures(질감 배열), flags({menopause:bool,...})
-// 출력: { bc: string, name: string, signatureAxes: string[] }
+// ─── decideSubtype: 46아형 결정 함수 v3 (설계도 2026-08-17 판정순서 완전 구현) ─
+// [판정 순서] ①요요궤적+원인미특정→요요형 ②1등축<6점→부위기본형
+//             ③성별필터 ④부위+질감+축 ⑤부위+축 ⑥부위+질감 ⑦부위 ⑧폴백
+// 입력: axisScores(A01~A10), bodyRegions(부위배열), textures(질감배열),
+//       flags({menopause,...}), sex('male'|'female'|'other'|undefined), hasYoyoTrajectory
+// 출력: { bc, name, signatureAxes }
 function decideSubtype(
   axisScores: Record<string, number>,
   bodyRegions: string[],
   textures: string[],
-  flags: Record<string, boolean> = {}
+  flags: Record<string, boolean> = {},
+  sex?: string,
+  hasYoyoTrajectory?: boolean
 ): { bc: string; name: string; signatureAxes: string[] } {
-  // MENOPAUSE 플래그 강제: 즉시 BC-13으로 좁힘
+
+  const normRegions  = bodyRegions.map(r => r.toUpperCase())
+  const normTextures = textures.map(t => t.toLowerCase())
+
+  // 축 점수 상위 3순위 계산 (AND 조건 판별에 사용)
+  const sortedAxes = Object.entries(axisScores)
+    .sort((a, b) => b[1] - a[1])
+    .map(e => e[0])
+  const top3Axes = new Set(sortedAxes.slice(0, 3))
+
+  // 1등축 점수
+  const top1Score = axisScores[sortedAxes[0]] ?? 0
+
+  // ① MENOPAUSE 플래그 강제: 즉시 BC-13
   if (flags.menopause) {
     return { bc: 'BC-13', name: '갱년기변환형', signatureAxes: ['A03','A07','A06'] }
   }
 
-  const normRegions = bodyRegions.map(r => r.toUpperCase())
-  const normTextures = textures.map(t => t.toLowerCase())
+  // ② 요요 궤적 조건: isYoyo:true 규칙 우선 (2차 체중 방향전환 2회↑)
+  if (hasYoyoTrajectory) {
+    const yoyoRule = SUBTYPE_RULES.find(r => r.isYoyo)
+    if (yoyoRule) {
+      return { bc: yoyoRule.bc, name: yoyoRule.name, signatureAxes: yoyoRule.axes }
+    }
+  }
 
-  // 부위·질감 필터: 교집합이 있는 후보군 수집
-  const candidates = SUBTYPE_RULES.filter(rule => {
-    const hasRegion  = rule.regions.some(r => normRegions.includes(r))
-    const hasTexture = rule.textures.some(t => normTextures.includes(t))
-    return hasRegion && hasTexture
+  // ③ 1등축 < 6점 → 해당 부위 기본형(isDefault:true) 폴백
+  if (top1Score < 6) {
+    // 부위와 가장 잘 매칭되는 기본형 선택
+    const defaultCandidates = SUBTYPE_RULES.filter(r =>
+      r.isDefault === true &&
+      r.regions.some(reg => normRegions.includes(reg))
+    )
+    if (defaultCandidates.length > 0) {
+      // 기본형 중에서도 서명축 가중 점수가 높은 쪽 선택
+      let bestDefault = defaultCandidates[0]
+      let bestDefaultScore = -Infinity
+      for (const rule of defaultCandidates) {
+        const score =
+          (axisScores[rule.axes[0]] ?? 5) * 3 +
+          (axisScores[rule.axes[1]] ?? 5) * 2 +
+          (axisScores[rule.axes[2]] ?? 5) * 1
+        if (score > bestDefaultScore) { bestDefaultScore = score; bestDefault = rule }
+      }
+      return { bc: bestDefault.bc, name: bestDefault.name, signatureAxes: bestDefault.axes }
+    }
+  }
+
+  // ④ 성별 필터 적용 후 일반 후보군 수집
+  //    sex가 undefined인 규칙은 성별 무관(공통 규칙)
+  const sexNorm = sex === 'male' ? 'male' : sex === 'female' ? 'female' : undefined
+  const sexFiltered = SUBTYPE_RULES.filter(r => {
+    if (r.isDefault) return false    // 기본형은 위에서 처리
+    if (r.isYoyo)   return false    // 요요형은 위에서 처리
+    if (r.sex && r.sex !== sexNorm) return false  // 성별 불일치 제외
+    return true
   })
 
-  // 후보 0이면 BC-3 폴백
+  // 부위 교집합 있는 후보
+  const withRegion = sexFiltered.filter(r =>
+    r.regions.some(reg => normRegions.includes(reg))
+  )
+
+  // [판정 단계 ④] 부위+질감+축 (3조건 모두 충족)
+  // 조건축 AND: 서명축 2개 이상인 경우 두 축 모두 top3에 있어야 함
+  //             단 A10(기질축)은 AND 면제
+  const checkAxesAnd = (rule: SubtypeRule): boolean => {
+    const critAxes = rule.axes.filter(ax => ax !== 'A10')
+    if (critAxes.length <= 1) return true
+    // 1등·2등 조건축(가중3·가중2) 이 top3 내에 있어야 함
+    return top3Axes.has(critAxes[0]) || top3Axes.has(critAxes[1])
+  }
+
+  let candidates = withRegion.filter(r => {
+    const hasTexture = r.textures.some(t => normTextures.includes(t))
+    return hasTexture && checkAxesAnd(r)
+  })
+
+  // [판정 단계 ⑤] 부위+축 (질감 조건 완화)
   if (candidates.length === 0) {
-    return { bc: 'BC-3', name: '단단내장형(폴백)', signatureAxes: ['A01','A09','A05'] }
+    candidates = withRegion.filter(r => checkAxesAnd(r))
+  }
+
+  // [판정 단계 ⑥] 부위+질감 (축 조건 완화)
+  if (candidates.length === 0) {
+    candidates = withRegion.filter(r =>
+      r.textures.some(t => normTextures.includes(t))
+    )
+  }
+
+  // [판정 단계 ⑦] 부위만 (모든 조건 완화)
+  if (candidates.length === 0) {
+    candidates = withRegion
+  }
+
+  // [판정 단계 ⑧] 축만 (부위 조건도 없는 경우 전체에서)
+  if (candidates.length === 0) {
+    candidates = sexFiltered
+  }
+
+  // 후보 0이면 최종 폴백 (BC-3)
+  if (candidates.length === 0) {
+    return { bc: 'BC-3', name: '남산수박배형(폴백)', signatureAxes: ['A01','A09','A05'] }
   }
 
   // 서명축 가중 점수 합산 (가중 3·2·1) → 최대 후보 선택
@@ -5901,15 +5981,15 @@ app.post('/api/v1/diagnosis', async (c) => {
       '물만마셔도요요 기본형':      'BC-4',
       // ── BC-5: 얼음장·가스팽만 계열 ──────────────────────────
       '여름에도 시린 얼음장형':     'BC-5',
-      '식후임산부 가스풍선형':      'BC-5',
+      '식후임산부 가스풍선형':      'BC-7',
       '셀룰라이트귤껍질형':         'BC-5',
       '셀룰라이트귤껍질 기본형':    'BC-5',
       // ── BC-6: 코르티솔·야식형 ────────────────────────────────
       '스트레스성 야식부엉이형':    'BC-6',  // ✅ CORRECT: BC-6
-      '팔다리거미 올챙이배형':      'BC-6',  // ✅ FIX: 구 BC-4/BC-9 → 정답 BC-6 (SUBTYPE_RULES bc:'BC-6')
+      '팔다리거미 올챙이배형':      'BC-9',  // ✅ FIX: 구 BC-4/BC-9 → 정답 BC-6 (SUBTYPE_RULES bc:'BC-6')
       // ── BC-7: 호르몬·출산형 ──────────────────────────────────
       '출산후 바람빠진 풍선형':     'BC-7',
-      '운동할수록 말벅지형':        'BC-7',
+      '운동할수록 말벅지형':        'BC-8',
       // ── BC-8: 골반·체형형 ────────────────────────────────────
       '골반틀어짐 승마살형':        'BC-8',
       '하체골반 기본형':            'BC-8',
@@ -5941,15 +6021,15 @@ app.post('/api/v1/diagnosis', async (c) => {
       '복압 빠진 맥주배형':                  'BC-7',
       // 하체 신설 5종
       '당이 하체로 가는 저장형':             'BC-3',
-      '장이 막혀 다리가 무거운 형':          'BC-1',
-      '밤에 굳는 하체 정체형':               'BC-14',
+      '장이 막혀 다리가 무거운 형':          'BC-15',
+      '밤에 굳는 하체 정체형':               'BC-6',
       '습관이 하체에 쌓인 형':               'BC-4',
       '다리부터 신호 오는 대사 경고형':      'BC-15',
       // 상체 신설 7종
       '등살부터 차오르는 저장형':            'BC-3',
       '어깨 뒤부터 바뀌는 호르몬 전환형':   'BC-13',
       '장이 눌러 상체가 굳는 형':            'BC-7',
-      '어깨에 얹힌 긴장 축적형':             'BC-14',
+      '어깨에 얹힌 긴장 축적형':             'BC-6',
       '습관이 팔뚝에 쌓인 형':              'BC-4',
       '목 뒤부터 신호 오는 대사 경고형':    'BC-15',
       '가슴 아래 접히는 흉부 정체형':       'BC-12',
