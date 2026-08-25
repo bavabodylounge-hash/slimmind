@@ -14041,19 +14041,237 @@ app.post('/api/admin/mapping-recheck', requireRole('MASTER'), async (c) => {
     // ── B2B 업체 연결 정보 ──
     let b2bInfo: any = null
     if (row.ref_code && row.ref_code.startsWith('B2B-')) {
-      b2bInfo = await db.prepare(`SELECT code, business_name, industry, is_active FROM b2b_partners WHERE code = ? LIMIT 1`)
+      b2bInfo = await db.prepare(`SELECT code, business_name, industry, is_active, survey_category AS partner_category FROM b2b_partners WHERE code = ? LIMIT 1`)
         .bind(row.ref_code).first<any>().catch(() => null)
     }
+
+    // ── computeDomainScores 재현 (p4 처방 설계) ──
+    const domainAxesMap: Record<string, string[]> = {
+      recovery:    ['A02', 'A08', 'A09'],
+      hormone:     ['A03', 'A07', 'A06'],
+      posture:     ['A04', 'A08', 'A05'],
+      diet:        ['A01', 'A06', 'A10'],
+      exercise:    ['A05', 'A01', 'A09'],
+      psychology:  ['A07', 'A10', 'A06'],
+      oriental:    ['A08', 'A03', 'A04'],
+      drug:        ['A02', 'A03', 'A07'],
+      aesthetic:   ['A04', 'A05', 'A08'],
+      care:        ['A06', 'A09', 'A10'],
+      philosophy:  ['A10', 'A07', 'A06'],
+    }
+    const domainScores: Record<string, number> = {}
+    for (const [domain, axes] of Object.entries(domainAxesMap)) {
+      const vals = axes.map(ax => axisScores[ax] ?? 5)
+      domainScores[domain] = parseFloat(((vals[0] * 3 + vals[1] * 2 + vals[2] * 1) / 6).toFixed(2))
+    }
+
+    // ── 결과지 URL 구성 ──
+    const survCat = row.survey_category || 'hospital'
+    const resultUrlPath = survCat === 'fitness' ? `/result-fitness/${diag_id}`
+      : survCat === 'aesthetic' ? `/result-aesthetic/${diag_id}`
+      : survCat === 'salon' ? `/result-salon/${diag_id}`
+      : `/result-hospital/${diag_id}`
+
+    // ── 결과지 URL Live 200 체크 ──
+    const deployedBase = 'https://7ed6c475-8afa-4ef8-9af8-8fab0cf8224b.vip.gensparksite.com'
+    const resultFullUrl = deployedBase + resultUrlPath
+    let urlLiveStatus: 'ok' | 'error' | 'unknown' = 'unknown'
+    let urlStatusCode = 0
+    try {
+      const resp = await fetch(resultFullUrl, { method: 'HEAD', redirect: 'follow', signal: AbortSignal.timeout(5000) })
+      urlStatusCode = resp.status
+      urlLiveStatus = (resp.status >= 200 && resp.status < 400) ? 'ok' : 'error'
+    } catch (fe: any) {
+      urlLiveStatus = 'error'
+      urlStatusCode = 0
+    }
+
+    // ── p1~p8 + 오늘탭 섹션별 DB 필드 검수 ──
+    // 각 섹션에 필요한 필드와 상태(ok/empty/warn/auto)를 정의
+    type SectionStatus = 'ok' | 'empty' | 'warn' | 'auto'
+    type SectionField = {
+      key: string
+      label: string
+      source: 'diag' | 'presc' | 'computed' | 'url'
+      status: SectionStatus
+      value: string
+      action?: 'bc_override' | 'ai_gen' | 'presc_edit' | 'recheck_url'
+    }
+    type SectionCheck = {
+      section: string
+      title: string
+      subtitle: string
+      icon: string
+      fields: SectionField[]
+      overall: SectionStatus
+      empty_count: number
+      warn_count: number
+    }
+
+    const sections: SectionCheck[] = []
+
+    const fv = (val: any, maxLen = 60): string => {
+      if (val === null || val === undefined || val === '') return ''
+      const s = String(val)
+      if (s === '[]' || s === '{}' || s === 'null') return ''
+      if (s.startsWith('[') || s.startsWith('{')) {
+        try {
+          const p = JSON.parse(s)
+          const cnt = Array.isArray(p) ? p.length : Object.keys(p).length
+          return `${cnt}항목`
+        } catch { return s.slice(0, maxLen) }
+      }
+      return s.slice(0, maxLen)
+    }
+    const isEmpty = (val: any): boolean => {
+      if (val === null || val === undefined || val === '') return true
+      const s = String(val)
+      return s === '[]' || s === '{}' || s === 'null'
+    }
+    const fstatus = (val: any, warnIfShort?: number): SectionStatus => {
+      if (isEmpty(val)) return 'empty'
+      if (warnIfShort) {
+        const s = String(val)
+        const cnt = fv(val).match(/^(\d+)항목/)
+        if (cnt && parseInt(cnt[1]) < warnIfShort) return 'warn'
+        if (!cnt && s.length < warnIfShort) return 'warn'
+      }
+      return 'ok'
+    }
+
+    // p1: 바디코드
+    const p1Fields: SectionField[] = [
+      { key: 'bc_code',    label: 'BC 코드',        source: 'diag',    status: fstatus(row.bc_code),                value: fv(row.bc_code) || '(없음)',       action: row.bc_code ? undefined : 'bc_override' },
+      { key: 'bc_primary', label: '아형명',          source: 'diag',    status: fstatus(row.bc_primary),             value: fv(row.bc_primary) || '(없음)',    action: row.bc_primary ? undefined : 'bc_override' },
+      { key: 'bc_primary_oneline_reason', label: '1줄 원인',  source: 'presc', status: fstatus(presc?.bc_primary_oneline_reason, 10), value: fv(presc?.bc_primary_oneline_reason) || '(없음)', action: 'presc_edit' },
+      { key: 'fat_area',   label: '지방부위(fat_area)', source: 'presc', status: fstatus(presc?.fat_area),           value: fv(presc?.fat_area) || '(없음)',   action: 'presc_edit' },
+      { key: 'brand_name', label: '브랜드명',         source: 'presc',  status: fstatus(presc?.brand_name),          value: fv(presc?.brand_name) || '(없음)', action: 'presc_edit' },
+    ]
+    const p1Empty = p1Fields.filter(f => f.status === 'empty').length
+    const p1Warn  = p1Fields.filter(f => f.status === 'warn').length
+    sections.push({ section: 'p1', title: 'p1 — 바디코드', subtitle: 'BC 배지, 아형명, 1줄 원인, 지방부위', icon: '🏷️', fields: p1Fields, overall: p1Empty > 0 ? 'empty' : p1Warn > 0 ? 'warn' : 'ok', empty_count: p1Empty, warn_count: p1Warn })
+
+    // p2: 축 점수
+    const axisKeys = ['A01','A02','A03','A04','A05','A06','A07','A08','A09','A10']
+    const axisFilledCount = axisKeys.filter(k => axisScores[k] !== undefined && axisScores[k] !== null).length
+    const p2Fields: SectionField[] = [
+      { key: 'axis_scores', label: `축 점수 (A01~A10, ${axisFilledCount}/10 채워짐)`, source: 'diag', status: axisFilledCount >= 10 ? 'ok' : axisFilledCount >= 5 ? 'warn' : 'empty', value: sortedAxes.slice(0,3).map(ax => `${ax}=${axisScores[ax]?.toFixed(1)}`).join(', '), action: axisFilledCount < 10 ? 'ai_gen' : undefined },
+      { key: 'body_regions', label: `신체 부위 (${bodyRegions.length}개)`,            source: 'diag', status: bodyRegions.length > 0 ? 'ok' : 'empty', value: bodyRegions.join(', ') || '(없음)', action: bodyRegions.length === 0 ? 'bc_override' : undefined },
+      { key: 'textures',    label: `체질 질감 (${textures.length}개)`,               source: 'diag', status: textures.length > 0 ? 'ok' : 'warn',  value: textures.join(', ') || '(없음)', action: textures.length === 0 ? 'bc_override' : undefined },
+    ]
+    const p2Empty = p2Fields.filter(f => f.status === 'empty').length
+    const p2Warn  = p2Fields.filter(f => f.status === 'warn').length
+    sections.push({ section: 'p2', title: 'p2 — 축 점수', subtitle: '10축 바차트 · core/watch/ok 그룹', icon: '📊', fields: p2Fields, overall: p2Empty > 0 ? 'empty' : p2Warn > 0 ? 'warn' : 'ok', empty_count: p2Empty, warn_count: p2Warn })
+
+    // p3: 해석 스토리
+    const storyLeadVal = row.story_lead || presc?.story_lead || ''
+    const p3Fields: SectionField[] = [
+      { key: 'story_lead',    label: 'story_lead (파란 강조카드)',  source: 'diag',  status: fstatus(storyLeadVal, 20),              value: fv(storyLeadVal) || '(없음)',               action: 'ai_gen' },
+      { key: 'clinical_ctx', label: 'clinical_ctx (임상 맥락)',    source: 'presc', status: fstatus(presc?.clinical_ctx, 20),        value: fv(presc?.clinical_ctx) || '(없음)',         action: 'presc_edit' },
+      { key: 'bc_cause_story', label: 'bc_cause_story (원인 스토리)', source: 'presc', status: fstatus(presc?.bc_cause_story, 30),  value: fv(presc?.bc_cause_story) || '(없음)',        action: 'presc_edit' },
+      { key: 'bc_worsen_word', label: 'bc_worsen_word (악화 키워드)', source: 'presc', status: fstatus(presc?.bc_worsen_word),      value: fv(presc?.bc_worsen_word) || '(없음)',        action: 'presc_edit' },
+    ]
+    const p3Empty = p3Fields.filter(f => f.status === 'empty').length
+    const p3Warn  = p3Fields.filter(f => f.status === 'warn').length
+    sections.push({ section: 'p3', title: 'p3 — 해석 스토리', subtitle: 'story_lead · 임상맥락 · 원인스토리 · 악화키워드', icon: '📖', fields: p3Fields, overall: p3Empty > 0 ? 'empty' : p3Warn > 0 ? 'warn' : 'ok', empty_count: p3Empty, warn_count: p3Warn })
+
+    // p4: 처방 설계 (11영역 자동 계산)
+    const domainLabels: Record<string, string> = {
+      recovery: '회복', hormone: '호르몬', posture: '자세', diet: '식이', exercise: '운동',
+      psychology: '심리', oriental: '한의', drug: '약물', aesthetic: '미용', care: '관리', philosophy: '철학'
+    }
+    const p4Fields: SectionField[] = [
+      { key: 'axis_scores_for_domain', label: `axis_scores → computeDomainScores() 자동계산 ✅`, source: 'computed', status: axisFilledCount >= 10 ? 'ok' : 'warn',
+        value: Object.entries(domainScores).map(([d, s]) => `${domainLabels[d]}:${s}`).join(' | ') },
+      ...Object.entries(domainScores).map(([d, s]) => ({
+        key: `domain_${d}`, label: `  └ ${domainLabels[d]} 도메인`, source: 'computed' as const,
+        status: (s >= 6 ? 'ok' : s >= 4 ? 'warn' : 'warn') as SectionStatus,
+        value: `${s.toFixed(1)}점 (${axesLabel(domainAxesMap[d])})`
+      }))
+    ]
+    const p4Empty = 0  // 자동계산이라 empty 없음
+    const p4Warn  = p4Fields.filter(f => f.status === 'warn').length
+    sections.push({ section: 'p4', title: 'p4 — 처방 설계', subtitle: '11영역 도메인 점수 (axis_scores → 자동계산)', icon: '⚙️', fields: p4Fields, overall: axisFilledCount < 10 ? 'warn' : 'ok', empty_count: p4Empty, warn_count: p4Warn })
+
+    // p5: 처방 계획
+    const p5Fields: SectionField[] = [
+      { key: 'recommended_exercises_json', label: '추천 운동',   source: 'presc', status: fstatus(presc?.recommended_exercises_json, 2), value: fv(presc?.recommended_exercises_json) || '(없음)', action: 'presc_edit' },
+      { key: 'forbidden_exercises_json',   label: '금지 운동',   source: 'presc', status: fstatus(presc?.forbidden_exercises_json, 1),  value: fv(presc?.forbidden_exercises_json) || '(없음)',  action: 'presc_edit' },
+      { key: 'recommended_foods_json',     label: '추천 식품',   source: 'presc', status: fstatus(presc?.recommended_foods_json, 2),    value: fv(presc?.recommended_foods_json) || '(없음)',    action: 'presc_edit' },
+      { key: 'forbidden_foods_json',       label: '금지 식품',   source: 'presc', status: fstatus(presc?.forbidden_foods_json, 1),      value: fv(presc?.forbidden_foods_json) || '(없음)',      action: 'presc_edit' },
+      { key: 'supplement_list_json',       label: '보충제 목록', source: 'presc', status: fstatus(presc?.supplement_list_json, 1),      value: fv(presc?.supplement_list_json) || '(없음)',      action: 'presc_edit' },
+      { key: 'lifestyle_rules_json',       label: '생활 수칙',   source: 'presc', status: fstatus(presc?.lifestyle_rules_json, 2),      value: fv(presc?.lifestyle_rules_json) || '(없음)',      action: 'presc_edit' },
+      { key: 'wrong_methods_json',         label: '잘못된 방법', source: 'presc', status: fstatus(presc?.wrong_methods_json, 1),        value: fv(presc?.wrong_methods_json) || '(없음)',        action: 'presc_edit' },
+      { key: 'correct_principles_json',    label: '올바른 원칙', source: 'presc', status: fstatus(presc?.correct_principles_json, 1),   value: fv(presc?.correct_principles_json) || '(없음)',   action: 'presc_edit' },
+    ]
+    const p5Empty = p5Fields.filter(f => f.status === 'empty').length
+    const p5Warn  = p5Fields.filter(f => f.status === 'warn').length
+    sections.push({ section: 'p5', title: 'p5 — 처방 계획', subtitle: '추천/금지 운동·식품 · 보충제 · 생활수칙 · 잘못된방법/올바른원칙', icon: '💊', fields: p5Fields, overall: p5Empty > 0 ? 'empty' : p5Warn > 0 ? 'warn' : 'ok', empty_count: p5Empty, warn_count: p5Warn })
+
+    // p6: 여정 맵
+    const p6Fields: SectionField[] = [
+      { key: 'monthly_goals_json', label: '월별 목표 (monthly_goals_json)', source: 'presc', status: fstatus(presc?.monthly_goals_json, 2), value: fv(presc?.monthly_goals_json) || '(없음)', action: 'presc_edit' },
+      { key: 'zone2_bpm',          label: 'Zone2 BPM',                      source: 'presc', status: fstatus(presc?.zone2_bpm),              value: fv(presc?.zone2_bpm) || '(없음)',           action: 'presc_edit' },
+      { key: 'hiit_available_week',label: 'HIIT 가능 주차',                  source: 'presc', status: fstatus(presc?.hiit_available_week),    value: fv(presc?.hiit_available_week) || '(없음)', action: 'presc_edit' },
+      { key: 'closing_copy',       label: 'closing_copy (동기부여 문구)',    source: 'presc', status: fstatus(presc?.closing_copy, 20),        value: fv(presc?.closing_copy) || '(없음)',         action: 'presc_edit' },
+    ]
+    const p6Empty = p6Fields.filter(f => f.status === 'empty').length
+    const p6Warn  = p6Fields.filter(f => f.status === 'warn').length
+    sections.push({ section: 'p6', title: 'p6 — 여정 맵', subtitle: '12주 로드맵 · 월별목표 · Zone2 BPM · closing_copy', icon: '🗺️', fields: p6Fields, overall: p6Empty > 0 ? 'empty' : p6Warn > 0 ? 'warn' : 'ok', empty_count: p6Empty, warn_count: p6Warn })
+
+    // p7: 공유 / 결과 다운로드 (URL Live 체크)
+    const p7Fields: SectionField[] = [
+      { key: 'result_url', label: `결과지 URL (${resultFullUrl})`, source: 'url', status: urlLiveStatus === 'ok' ? 'ok' : urlLiveStatus === 'unknown' ? 'warn' : 'empty', value: `HTTP ${urlStatusCode || '?'} — ${urlLiveStatus === 'ok' ? '✅ 정상 응답' : urlLiveStatus === 'error' ? '❌ 응답 실패' : '⚠️ 미확인'}`, action: urlLiveStatus !== 'ok' ? 'recheck_url' : undefined },
+      { key: 'survey_category', label: `결과지 유형 (survey_category=${survCat})`, source: 'diag', status: survCat ? 'ok' : 'warn', value: `→ ${resultUrlPath.split('/')[1]}` },
+    ]
+    const p7Empty = p7Fields.filter(f => f.status === 'empty').length
+    const p7Warn  = p7Fields.filter(f => f.status === 'warn').length
+    sections.push({ section: 'p7', title: 'p7 — 공유 / URL', subtitle: `결과지 URL Live 200 확인 · survey_category 라우팅`, icon: '🔗', fields: p7Fields, overall: p7Empty > 0 ? 'empty' : p7Warn > 0 ? 'warn' : 'ok', empty_count: p7Empty, warn_count: p7Warn })
+
+    // p8: 추가정보 / 메타
+    const p8Fields: SectionField[] = [
+      { key: 'gender', label: '성별',  source: 'diag', status: fstatus(row.gender),  value: fv(row.gender) || '(없음)' },
+      { key: 'age',    label: '나이',  source: 'diag', status: fstatus(row.age),     value: fv(row.age) || '(없음)' },
+      { key: 'ref_code',label: 'ref_code (B2B)',  source: 'diag', status: 'ok',      value: row.ref_code || '없음 (일반 진단)' },
+      { key: 'override_applied', label: 'Override 여부', source: 'diag', status: 'ok', value: row.override_applied ? `✅ Override 적용 (BC: ${row.override_bc_code})` : '미적용' },
+      { key: 'table_source', label: '데이터 테이블', source: 'diag', status: 'ok',   value: tableSource },
+    ]
+    const p8Empty = p8Fields.filter(f => f.status === 'empty').length
+    const p8Warn  = p8Fields.filter(f => f.status === 'warn').length
+    sections.push({ section: 'p8', title: 'p8 — 추가정보', subtitle: '성별·나이·ref_code·Override·테이블 출처', icon: 'ℹ️', fields: p8Fields, overall: p8Empty > 0 ? 'empty' : p8Warn > 0 ? 'warn' : 'ok', empty_count: p8Empty, warn_count: p8Warn })
+
+    // 오늘탭: daily check / slimmind-today
+    const todayStoryLead = row.story_lead || presc?.story_lead || ''
+    const p9Fields: SectionField[] = [
+      { key: 'story_lead_today', label: 'story_lead (오늘의 한마디)', source: 'diag',  status: fstatus(todayStoryLead, 15),      value: fv(todayStoryLead) || '(없음)',    action: 'ai_gen' },
+      { key: 'symptom_checklist_json', label: '증상 체크리스트',      source: 'presc', status: fstatus(presc?.symptom_checklist_json, 3), value: fv(presc?.symptom_checklist_json) || '(없음)', action: 'presc_edit' },
+      { key: 'bc_worsen_today', label: 'bc_worsen_word (오늘 주의)',  source: 'presc', status: fstatus(presc?.bc_worsen_word),  value: fv(presc?.bc_worsen_word) || '(없음)', action: 'presc_edit' },
+    ]
+    const p9Empty = p9Fields.filter(f => f.status === 'empty').length
+    const p9Warn  = p9Fields.filter(f => f.status === 'warn').length
+    sections.push({ section: 'today', title: '오늘탭 — Daily Check', subtitle: 'story_lead · 증상체크리스트 · 오늘의 주의사항', icon: '📅', fields: p9Fields, overall: p9Empty > 0 ? 'empty' : p9Warn > 0 ? 'warn' : 'ok', empty_count: p9Empty, warn_count: p9Warn })
+
+    // 전체 요약
+    const totalEmpty = sections.reduce((s, sec) => s + sec.empty_count, 0)
+    const totalWarn  = sections.reduce((s, sec) => s + sec.warn_count, 0)
+    const failedSections = sections.filter(s => s.overall === 'empty').map(s => s.section)
+    const warnSections   = sections.filter(s => s.overall === 'warn').map(s => s.section)
 
     return c.json({
       diag_id,
       table_source: tableSource,
       user_name: row.user_name || '이름없음',
-      survey_category: row.survey_category || 'unknown',
+      survey_category: survCat,
       gender: row.gender || '',
       created_at: row.created_at || '',
       ref_code: row.ref_code || null,
       b2b_info: b2bInfo,
+
+      // 결과지 URL Live 체크
+      result_url: resultFullUrl,
+      result_url_path: resultUrlPath,
+      url_live_status: urlLiveStatus,
+      url_status_code: urlStatusCode,
 
       // 입력값 요약
       inputs: {
@@ -14080,17 +14298,36 @@ app.post('/api/admin/mapping-recheck', requireRole('MASTER'), async (c) => {
       bc_mismatch: bcMismatch,
       override_applied: row.override_applied || 0,
 
-      // 설계도 교차검증
+      // 설계도 교차검증 (기존 호환)
       effective_bc: effectiveBc,
       presc_exists: !!presc,
       presc_checks: prescChecks,
       presc_empty_count: prescChecks.filter(p => p.status === 'empty').length,
+
+      // ★ 섹션별 검수 결과 (p1~p8 + 오늘탭)
+      sections,
+      section_summary: {
+        total: sections.length,
+        ok_count: sections.filter(s => s.overall === 'ok').length,
+        warn_count: sections.filter(s => s.overall === 'warn').length,
+        empty_count: sections.filter(s => s.overall === 'empty').length,
+        total_empty_fields: totalEmpty,
+        total_warn_fields: totalWarn,
+        failed_sections: failedSections,
+        warn_sections: warnSections,
+      },
+
+      // p4 도메인 점수 (computeDomainScores 재현)
+      domain_scores: domainScores,
     })
   } catch (e: any) {
     console.error('[mapping-recheck]', e)
     return c.json({ error: String(e) }, 500)
   }
 })
+
+// ── 헬퍼: 도메인 축 라벨 ──
+function axesLabel(axes: string[]): string { return axes.join('·') }
 
 // ■ 샘플 PDF 다운로드 (회원가입 완료 후) → 인쇄 가능 HTML 페이지로 리다이렉트
 app.get('/api/download-sample-pdf', async (c) => {

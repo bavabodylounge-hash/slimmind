@@ -6988,98 +6988,178 @@ function mvc_renderRecheckPanel(r) {
   const STEP_COLOR = { pass:'#16a34a', fail:'#dc2626', skip:'#9ca3af' };
   const STEP_ICON  = { pass:'✅', fail:'❌', skip:'⏭️' };
 
-  // ── 판정 단계 HTML ──
+  // ── 섹션 상태 색상/아이콘 ──
+  const SEC_COLOR = { ok:'#16a34a', warn:'#d97706', empty:'#dc2626', auto:'#6366f1' };
+  const SEC_BG    = { ok:'#f0fdf4', warn:'#fffbeb', empty:'#fef2f2', auto:'#eef2ff' };
+  const SEC_BORDER= { ok:'#86efac', warn:'#fde68a', empty:'#fca5a5', auto:'#c7d2fe' };
+  const SEC_ICON  = { ok:'✅', warn:'⚠️', empty:'❌', auto:'⚙️' };
+  const SEC_LABEL = { ok:'정상', warn:'주의', empty:'누락', auto:'자동계산' };
+
+  // ── 액션 버튼 HTML ──
+  function actionBtn(action, diagId) {
+    if (!action) return '';
+    if (action === 'bc_override') return `<button onclick="mvc_jumpToOverride('${diagId}')" style="font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid #6366f1;background:#eef2ff;color:#4f46e5;cursor:pointer">🔧 BC Override</button>`;
+    if (action === 'ai_gen')     return `<button onclick="mvc_jumpToAiGen('${diagId}')" style="font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid #7c3aed;background:#f5f3ff;color:#6d28d9;cursor:pointer">🤖 AI 생성</button>`;
+    if (action === 'presc_edit') return `<button onclick="mvc_jumpToPrescEdit('${diagId}')" style="font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid #059669;background:#ecfdf5;color:#065f46;cursor:pointer">📝 설계도 편집</button>`;
+    if (action === 'recheck_url') return `<button onclick="window.open('${r.result_url}','_blank')" style="font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid #dc2626;background:#fef2f2;color:#b91c1c;cursor:pointer">🔗 URL 직접 열기</button>`;
+    return '';
+  }
+
+  // ── 섹션 카드 렌더 ──
+  function renderSectionCard(sec, diagId) {
+    const col    = SEC_COLOR[sec.overall] || '#888';
+    const bg     = SEC_BG[sec.overall]    || '#fff';
+    const border = SEC_BORDER[sec.overall]|| '#e5e7eb';
+    const icon   = SEC_ICON[sec.overall]  || '•';
+    const label  = SEC_LABEL[sec.overall] || sec.overall;
+
+    const sourceTag = { diag:'진단DB', presc:'설계도DB', computed:'자동계산', url:'URL' };
+    const sourceBg  = { diag:'#eff6ff', presc:'#faf5ff', computed:'#f0fdf4', url:'#fff7ed' };
+    const sourceFg  = { diag:'#1e40af', presc:'#6d28d9', computed:'#15803d', url:'#c2410c' };
+
+    const fieldRows = sec.fields.map(f => {
+      const fc = SEC_COLOR[f.status] || '#888';
+      const fi = SEC_ICON[f.status] || '•';
+      const src = sourceTag[f.source] || f.source;
+      const sbg = sourceBg[f.source] || '#f0f0f0';
+      const sfg = sourceFg[f.source] || '#555';
+      return `<tr style="border-bottom:1px solid #f5f5f5">
+        <td style="padding:4px 8px;font-size:11px;font-weight:600;color:#444;max-width:150px">
+          <span style="background:${sbg};color:${sfg};font-size:9px;border-radius:3px;padding:0 4px;margin-right:4px">${src}</span>${f.label}
+        </td>
+        <td style="padding:4px 8px;white-space:nowrap">
+          <span style="font-size:13px">${fi}</span>
+          <span style="font-size:10px;font-weight:700;color:${fc};margin-left:2px">${SEC_LABEL[f.status]||f.status}</span>
+        </td>
+        <td style="padding:4px 8px;font-size:10px;color:#777;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(f.value||'').replace(/"/g,'&quot;')}">${f.value||''}</td>
+        <td style="padding:4px 8px">${actionBtn(f.action, diagId)}</td>
+      </tr>`;
+    }).join('');
+
+    const badgeParts = [];
+    if (sec.empty_count > 0) badgeParts.push(`<span style="background:#fef2f2;color:#b91c1c;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700">❌ ${sec.empty_count}개 누락</span>`);
+    if (sec.warn_count > 0)  badgeParts.push(`<span style="background:#fffbeb;color:#b45309;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700">⚠️ ${sec.warn_count}개 주의</span>`);
+    if (!sec.empty_count && !sec.warn_count) badgeParts.push(`<span style="background:#dcfce7;color:#14532d;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700">✅ 전체 정상</span>`);
+
+    return `
+    <div style="border:2px solid ${border};border-radius:10px;margin-bottom:10px;overflow:hidden;background:${bg}">
+      <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;cursor:pointer;user-select:none"
+           onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+        <span style="font-size:16px">${sec.icon}</span>
+        <div style="flex:1">
+          <div style="font-weight:800;font-size:12px;color:${col}">${sec.title}</div>
+          <div style="font-size:10px;color:#888;margin-top:1px">${sec.subtitle}</div>
+        </div>
+        <div style="display:flex;gap:4px;align-items:center">
+          ${badgeParts.join('')}
+          <span style="font-size:10px;color:#aaa;margin-left:4px">▼</span>
+        </div>
+      </div>
+      <div style="display:none;border-top:1px solid ${border}">
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="background:rgba(0,0,0,.03)">
+              <th style="padding:4px 8px;font-size:10px;color:#999;font-weight:600;text-align:left">필드 / 항목</th>
+              <th style="padding:4px 8px;font-size:10px;color:#999;font-weight:600;text-align:left">상태</th>
+              <th style="padding:4px 8px;font-size:10px;color:#999;font-weight:600;text-align:left">내용 미리보기</th>
+              <th style="padding:4px 8px;font-size:10px;color:#999;font-weight:600;text-align:left">액션</th>
+            </tr>
+          </thead>
+          <tbody>${fieldRows}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }
+
+  // ── 판정 단계 HTML (축약, 토글) ──
   const stepsHtml = (r.steps || []).map(s => {
     const col = STEP_COLOR[s.result] || '#888';
     const icon = STEP_ICON[s.result] || '•';
     const isActive = s.result !== 'skip';
-
-    // 후보 목록 렌더링
-    let candsHtml = '';
-    if (s.candidates && s.candidates.length > 0 && isActive) {
-      candsHtml = `<div style="margin-top:8px">
-        <div style="font-size:10px;color:#888;margin-bottom:4px">매칭 후보 (${s.candidates.length}개)</div>
-        ${s.candidates.slice(0,6).map(c => `
-          <div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid #f3f4f6;font-size:11px">
-            <span style="background:#eff6ff;color:#1e40af;border-radius:4px;padding:1px 6px;font-weight:700;flex-shrink:0">${c.bc}</span>
-            <span style="flex:1;color:#444">${c.name}</span>
-            <span style="font-size:10px;color:#888">${(c.matched||[]).join(' ')}</span>
-          </div>`).join('')}
-        ${s.candidates.length > 6 ? `<div style="font-size:10px;color:#aaa;margin-top:2px">+${s.candidates.length-6}개 더...</div>` : ''}
-      </div>`;
-    }
-
-    // 최종 승자 배지
     let winnerHtml = '';
     if (s.winner) {
-      winnerHtml = `<div style="display:inline-flex;align-items:center;gap:6px;background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:6px 12px;margin-top:8px">
-        <span style="font-size:13px">🏆</span>
-        <span style="font-weight:800;color:#14532d;font-size:13px">${s.winner.bc}</span>
-        <span style="color:#166534;font-size:12px">${s.winner.name}</span>
-        <span style="color:#888;font-size:11px">가중점수 ${s.winner.score?.toFixed(1)}</span>
+      winnerHtml = `<div style="display:inline-flex;align-items:center;gap:6px;background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:4px 10px;margin-top:6px">
+        <span>🏆</span><span style="font-weight:800;color:#14532d;font-size:12px">${s.winner.bc}</span>
+        <span style="color:#166534;font-size:11px">${s.winner.name}</span>
+        <span style="color:#888;font-size:10px">가중점수 ${s.winner.score?.toFixed(1)}</span>
       </div>`;
     }
-
     return `
-    <div style="border:1px solid ${isActive ? col+'44' : '#f0f0f0'};border-radius:8px;padding:10px 12px;margin-bottom:6px;background:${isActive ? col+'08' : '#fafafa'};opacity:${s.result==='skip'?'0.55':'1'}">
-      <div style="display:flex;align-items:flex-start;gap:8px">
-        <div style="font-size:16px;flex-shrink:0;margin-top:1px">${icon}</div>
-        <div style="flex:1">
-          <div style="font-weight:700;font-size:12px;color:${col}">${s.step ? '단계 '+s.step+' — ' : ''}${s.name}</div>
-          ${s.condition && isActive ? `<div style="font-size:10px;color:#666;margin-top:2px;font-family:monospace;background:#f8f8f8;padding:3px 6px;border-radius:4px">${s.condition}</div>` : ''}
-          ${s.detail ? `<div style="font-size:11px;color:${isActive?'#444':'#bbb'};margin-top:4px;line-height:1.5">${s.detail}</div>` : ''}
-          ${candsHtml}
-          ${winnerHtml}
-        </div>
-        <div style="flex-shrink:0;font-size:10px;font-weight:700;color:${col};border:1px solid ${col};border-radius:4px;padding:1px 6px">
-          ${s.result === 'pass' ? '통과' : s.result === 'fail' ? '미충족' : '건너뜀'}
-        </div>
+    <div style="border:1px solid ${isActive ? col+'44' : '#f0f0f0'};border-radius:7px;padding:8px 10px;margin-bottom:4px;background:${isActive ? col+'08' : '#fafafa'};opacity:${s.result==='skip'?'0.5':'1'}">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:13px">${icon}</span>
+        <span style="font-weight:700;font-size:11px;color:${col};flex:1">${s.step ? '단계 '+s.step+' — ' : ''}${s.name}</span>
+        <span style="font-size:10px;font-weight:700;color:${col};border:1px solid ${col};border-radius:3px;padding:0 5px">${s.result === 'pass' ? '통과' : s.result === 'fail' ? '미충족' : '건너뜀'}</span>
       </div>
+      ${s.detail && isActive ? `<div style="font-size:10px;color:#555;margin-top:4px;padding-left:21px">${s.detail}</div>` : ''}
+      ${s.winner ? `<div style="padding-left:21px;margin-top:4px">${winnerHtml}</div>` : ''}
     </div>`;
   }).join('');
 
-  // ── BC 불일치 요약 배너 ──
+  // ── 전체 요약 진행 바 ──
+  const sum = r.section_summary || {};
+  const total = sum.total || 9;
+  const okW   = Math.round((sum.ok_count||0) / total * 100);
+  const warnW = Math.round((sum.warn_count||0) / total * 100);
+  const emptyW= Math.round((sum.empty_count||0) / total * 100);
+  const overallOk = (sum.empty_count||0) === 0;
+
+  const summaryBar = `
+    <div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
+        <span style="font-weight:800;font-size:13px;color:${overallOk?'#14532d':'#b91c1c'}">
+          ${overallOk ? '✅ 전체 섹션 정상' : `⚠️ ${sum.empty_count||0}개 섹션 누락 · ${sum.warn_count||0}개 주의`}
+        </span>
+        <span style="color:#888">${sum.ok_count||0}/${total} 완료</span>
+      </div>
+      <div style="display:flex;border-radius:6px;overflow:hidden;height:8px;background:#f0f0f0">
+        ${okW   > 0 ? `<div style="width:${okW}%;background:#22c55e"></div>` : ''}
+        ${warnW > 0 ? `<div style="width:${warnW}%;background:#f59e0b"></div>` : ''}
+        ${emptyW > 0 ? `<div style="width:${emptyW}%;background:#ef4444"></div>` : ''}
+      </div>
+      <div style="display:flex;gap:12px;font-size:10px;color:#888;margin-top:4px">
+        <span>🟢 정상 ${sum.ok_count||0}</span>
+        <span>🟡 주의 ${sum.warn_count||0}</span>
+        <span>🔴 누락 ${sum.empty_count||0}</span>
+        ${sum.failed_sections?.length > 0 ? `<span style="color:#b91c1c;font-weight:700">누락섹션: ${sum.failed_sections.join(', ')}</span>` : ''}
+      </div>
+    </div>`;
+
+  // ── BC 불일치 배너 ──
   const mismatch = r.bc_mismatch;
   const mismatchBanner = mismatch
-    ? `<div style="background:#fef2f2;border:2px solid #fca5a5;border-radius:10px;padding:12px 16px;margin-bottom:12px">
-        <div style="font-weight:800;color:#b91c1c;font-size:13px;margin-bottom:6px">🚨 BC 코드 불일치 감지</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
-          <div><span style="color:#888">저장된 BC:</span> <b style="color:#b91c1c">${r.stored_bc||'NULL'}</b></div>
+    ? `<div style="background:#fef2f2;border:2px solid #fca5a5;border-radius:10px;padding:10px 14px;margin-bottom:10px">
+        <div style="font-weight:800;color:#b91c1c;font-size:12px;margin-bottom:6px">🚨 BC 코드 불일치 감지</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px">
+          <div><span style="color:#888">저장 BC:</span> <b style="color:#b91c1c">${r.stored_bc||'NULL'}</b></div>
           <div><span style="color:#888">재산출 BC:</span> <b style="color:#16a34a">${r.recomputed_bc||'?'}</b></div>
         </div>
-        <div style="font-size:11px;color:#7f1d1d;margin-top:8px;line-height:1.6">
-          ⚠️ 코딩 로직 또는 입력값(body_regions/textures) 오류 가능성 있음.<br>
-          BC Override 또는 재입력 필요.
-        </div>
+        <div style="font-size:11px;color:#7f1d1d;margin-top:6px">⚠️ BC Override 또는 재입력 필요</div>
+        <button onclick="mvc_jumpToOverride('${r.diag_id}')" style="margin-top:6px;font-size:11px;padding:3px 10px;border-radius:5px;border:1px solid #dc2626;background:#fff;color:#dc2626;cursor:pointer">🔧 BC Override 바로가기</button>
       </div>`
-    : `<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:10px 16px;margin-bottom:12px">
+    : `<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:8px 14px;margin-bottom:10px">
         <span style="font-weight:700;color:#14532d">✅ BC 코드 일치</span>
-        <span style="color:#166534;font-size:12px;margin-left:8px">저장값(${r.stored_bc||'?'}) = 재산출값(${r.recomputed_bc||'?'})</span>
+        <span style="color:#166534;font-size:11px;margin-left:8px">${r.stored_bc||'?'} = ${r.recomputed_bc||'?'}</span>
       </div>`;
 
-  // ── 설계도 교차검증 테이블 ──
-  const prescBanner = !r.presc_exists
-    ? `<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px;margin-bottom:10px;font-size:12px;color:#b91c1c">
-        ❌ bc_prescriptions에 [${r.effective_bc}] 설계도 없음 — 결과지에 처방 텍스트가 표시되지 않습니다.
-      </div>`
-    : '';
-
-  const prescRows = (r.presc_checks || []).map(p => {
-    const isOk = p.status === 'ok';
-    return `<tr style="border-bottom:1px solid #f0f0f0">
-      <td style="padding:5px 8px;font-size:11px;font-weight:600;color:#555;white-space:nowrap">${p.label}</td>
-      <td style="padding:5px 8px">
-        <span style="display:inline-block;background:${isOk?'#dcfce7':'#fef2f2'};color:${isOk?'#14532d':'#b91c1c'};border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700">${isOk?'✓ 있음':'✗ 비어있음'}</span>
-      </td>
-      <td style="padding:5px 8px;font-size:10px;color:#777;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.value}</td>
-    </tr>`;
-  }).join('');
+  // ── URL 라이브 배너 ──
+  const urlBanner = `
+    <div style="background:${r.url_live_status==='ok'?'#f0fdf4':r.url_live_status==='error'?'#fef2f2':'#fffbeb'};border:1px solid ${r.url_live_status==='ok'?'#86efac':r.url_live_status==='error'?'#fca5a5':'#fde68a'};border-radius:8px;padding:8px 14px;margin-bottom:10px;display:flex;align-items:center;gap:8px">
+      <span style="font-size:16px">${r.url_live_status==='ok'?'🟢':r.url_live_status==='error'?'🔴':'🟡'}</span>
+      <div style="flex:1">
+        <div style="font-size:11px;font-weight:700;color:${r.url_live_status==='ok'?'#14532d':r.url_live_status==='error'?'#b91c1c':'#92400e'}">
+          결과지 URL Live — HTTP ${r.url_status_code||'?'} ${r.url_live_status==='ok'?'정상':r.url_live_status==='error'?'응답 실패':'미확인'}
+        </div>
+        <div style="font-size:10px;color:#888;margin-top:1px;word-break:break-all">${r.result_url||''}</div>
+      </div>
+      <a href="${r.result_url||'#'}" target="_blank" style="font-size:11px;padding:3px 8px;border-radius:5px;border:1px solid #3b82f6;background:#eff6ff;color:#1e40af;text-decoration:none;white-space:nowrap">🔗 열기</a>
+    </div>`;
 
   // ── B2B 업체 정보 ──
   const b2bHtml = r.b2b_info
-    ? `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;margin-bottom:10px">
-        <div style="font-size:11px;font-weight:700;color:#1e40af;margin-bottom:4px">🏢 B2B 업체 연결 확인</div>
-        <div style="font-size:12px;display:grid;grid-template-columns:auto 1fr;gap:4px 12px">
+    ? `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 12px;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:700;color:#1e40af;margin-bottom:4px">🏢 B2B 업체</div>
+        <div style="font-size:11px;display:grid;grid-template-columns:auto 1fr;gap:3px 10px">
           <span style="color:#888">코드</span><b>${r.b2b_info.code}</b>
           <span style="color:#888">업체명</span><b>${r.b2b_info.business_name||'-'}</b>
           <span style="color:#888">업종</span><span>${r.b2b_info.industry||'-'}</span>
@@ -7087,82 +7167,101 @@ function mvc_renderRecheckPanel(r) {
         </div>
       </div>`
     : (r.ref_code
-        ? `<div style="background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:11px;color:#92400e">⚠️ ref_code=${r.ref_code} — B2B 파트너 테이블에 없음</div>`
-        : `<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:11px;color:#888">ℹ️ B2B 연결 없음 (일반 진단)</div>`
+        ? `<div style="background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:7px 12px;margin-bottom:10px;font-size:11px;color:#92400e">⚠️ ref_code=${r.ref_code} — B2B 파트너 테이블에 없음</div>`
+        : `<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:7px 12px;margin-bottom:10px;font-size:11px;color:#888">ℹ️ B2B 연결 없음 (일반 진단)</div>`
       );
 
   // ── 입력값 요약 ──
   const inputs = r.inputs || {};
   const inputHtml = `
-    <div style="font-size:11px;color:#555;line-height:1.8;margin-bottom:10px">
-      <div><b>성별:</b> ${inputs.sex||'미상'} &nbsp;|&nbsp; <b>부위:</b> ${(inputs.body_regions||[]).join(', ')||'없음'} &nbsp;|&nbsp; <b>질감:</b> ${(inputs.textures||[]).join(', ')||'없음'}</div>
-      <div><b>상위 3축:</b> ${(inputs.top3||[]).join(' / ')||'-'} &nbsp;|&nbsp; <b>1등축 점수:</b> ${inputs.top1_score?.toFixed(1)||'-'} ${inputs.top1_score < 6 ? '<span style="color:#dc2626;font-weight:700">(6점 미달 → 기본형 폴백 트리거)</span>' : ''}</div>
-      <div><b>플래그:</b> ${Object.keys(inputs.flags||{}).join(', ')||'없음'}</div>
+    <div style="font-size:11px;color:#555;line-height:1.8">
+      <b>성별:</b> ${inputs.sex||'미상'} &nbsp;|&nbsp; <b>부위:</b> ${(inputs.body_regions||[]).join(', ')||'없음'} &nbsp;|&nbsp; <b>질감:</b> ${(inputs.textures||[]).join(', ')||'없음'}<br>
+      <b>상위3축:</b> ${(inputs.top3||[]).join(' / ')||'-'} &nbsp;|&nbsp; <b>1등축:</b> ${inputs.top1_score?.toFixed(1)||'-'}점 ${(inputs.top1_score||0) < 6 ? '<span style="color:#dc2626;font-weight:700">(6점 미달 → 기본형 폴백)</span>' : ''}
     </div>`;
 
+  // ── 섹션 카드 전체 ──
+  const sectionsHtml = (r.sections || []).map(sec => renderSectionCard(sec, r.diag_id)).join('');
+
   return `
-  <div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.1);border:2px solid #3b82f6">
-    <!-- 헤더 -->
+  <div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.12);border:2px solid #3b82f6">
+
+    <!-- ① 헤더 -->
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #eff6ff">
-      <div style="font-size:20px">🔍</div>
+      <span style="font-size:20px">🔍</span>
       <div>
         <div style="font-weight:800;font-size:14px;color:#1e40af">결과지 재검수 리포트</div>
-        <div style="font-size:11px;color:#888">${r.user_name} · ${r.survey_category} · ${(r.created_at||'').slice(0,16)}</div>
+        <div style="font-size:11px;color:#888">${r.user_name} · ${r.survey_category} · ${(r.created_at||'').slice(0,16)} · <code style="background:#f0f0f0;padding:0 4px;border-radius:3px">${r.effective_bc}</code></div>
       </div>
       <button onclick="document.getElementById('mvc-recheck-panel').style.display='none'" style="margin-left:auto;background:#f3f4f6;border:none;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;color:#555">✕ 닫기</button>
     </div>
 
-    <!-- B2B 업체 확인 -->
+    <!-- ② 전체 요약 진행 바 -->
+    ${summaryBar}
+
+    <!-- ③ URL Live 상태 -->
+    ${urlBanner}
+
+    <!-- ④ B2B 업체 -->
     ${b2bHtml}
 
-    <!-- BC 불일치 배너 -->
+    <!-- ⑤ BC 불일치 배너 -->
     ${mismatchBanner}
 
-    <!-- 입력값 요약 -->
-    <div style="background:#f8faff;border:1px solid #dbeafe;border-radius:8px;padding:10px 14px;margin-bottom:14px">
-      <div style="font-size:11px;font-weight:700;color:#1e40af;margin-bottom:6px">📥 판정 입력값 요약</div>
-      ${inputHtml}
-    </div>
+    <!-- ⑥ 입력값 요약 (토글) -->
+    <details style="margin-bottom:12px">
+      <summary style="font-size:11px;font-weight:700;color:#1e40af;cursor:pointer;padding:6px 10px;background:#f8faff;border:1px solid #dbeafe;border-radius:6px">📥 판정 입력값 요약</summary>
+      <div style="padding:8px 12px;border:1px solid #dbeafe;border-top:none;border-radius:0 0 6px 6px">${inputHtml}</div>
+    </details>
 
-    <!-- 7단계 판정 흐름 -->
-    <div style="margin-bottom:16px">
-      <div style="font-size:12px;font-weight:800;color:#334155;margin-bottom:8px">🔬 SUBTYPE_RULES v3 판정 단계 추적 (설계도 2026-08-17 기준)</div>
-      ${stepsHtml}
+    <!-- ⑦ p1~p8 + 오늘탭 섹션별 검수 카드 -->
+    <div style="font-size:12px;font-weight:800;color:#334155;margin-bottom:8px">
+      📋 결과지 섹션별 1:1 매핑 검수
+      <span style="font-size:10px;font-weight:400;color:#888;margin-left:6px">(클릭하면 필드 상세 펼침)</span>
     </div>
+    ${sectionsHtml}
 
-    <!-- 최종 재산출 BC -->
-    <div style="background:${mismatch?'#fef2f2':'#f0fdf4'};border:2px solid ${mismatch?'#fca5a5':'#86efac'};border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px">
-      <div>
-        <div style="font-size:11px;color:#888;margin-bottom:2px">재산출 BC (코드 기준)</div>
-        <div style="font-size:18px;font-weight:900;color:${mismatch?'#b91c1c':'#14532d'}">${r.recomputed_bc||'?'}</div>
-        <div style="font-size:12px;color:#555">${r.recomputed_name||'-'}</div>
+    <!-- ⑧ 7단계 판정 흐름 (접힘) -->
+    <details style="margin-top:12px">
+      <summary style="font-size:11px;font-weight:700;color:#334155;cursor:pointer;padding:6px 10px;background:#f8f8f8;border:1px solid #e5e7eb;border-radius:6px">🔬 SUBTYPE_RULES v3 판정 단계 추적 (펼치기)</summary>
+      <div style="padding:8px 6px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 6px 6px">
+        ${stepsHtml}
+        <!-- 최종 BC 비교 -->
+        <div style="background:${mismatch?'#fef2f2':'#f0fdf4'};border:2px solid ${mismatch?'#fca5a5':'#86efac'};border-radius:8px;padding:10px 14px;margin-top:8px;display:flex;align-items:center;gap:12px">
+          <div>
+            <div style="font-size:10px;color:#888">재산출 BC</div>
+            <div style="font-size:16px;font-weight:900;color:${mismatch?'#b91c1c':'#14532d'}">${r.recomputed_bc||'?'}</div>
+            <div style="font-size:11px;color:#555">${r.recomputed_name||'-'}</div>
+          </div>
+          <div style="border-left:1px solid #e5e7eb;padding-left:12px">
+            <div style="font-size:10px;color:#888">저장 BC (결과지 표시)</div>
+            <div style="font-size:16px;font-weight:900;color:#334155">${r.stored_bc||'NULL'}</div>
+            <div style="font-size:10px;color:#888">서명축: ${(r.recomputed_axes||[]).join(' · ')||'-'}</div>
+          </div>
+        </div>
       </div>
-      <div style="border-left:1px solid #e5e7eb;padding-left:12px">
-        <div style="font-size:11px;color:#888;margin-bottom:2px">저장 BC (결과지 표시)</div>
-        <div style="font-size:18px;font-weight:900;color:#334155">${r.stored_bc||'NULL'}</div>
-        <div style="font-size:11px;color:#888">서명축: ${(r.recomputed_axes||[]).join(' · ')||'-'}</div>
-      </div>
-    </div>
+    </details>
 
-    <!-- 설계도 교차검증 -->
-    <div>
-      <div style="font-size:12px;font-weight:800;color:#334155;margin-bottom:8px">
-        📋 bc_prescriptions 설계도 교차검증 [${r.effective_bc}]
-        ${r.presc_empty_count > 0 ? `<span style="background:#fef2f2;color:#b91c1c;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;margin-left:4px">${r.presc_empty_count}개 비어있음</span>` : '<span style="background:#dcfce7;color:#14532d;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;margin-left:4px">전체 채워짐</span>'}
-      </div>
-      ${prescBanner}
-      <table style="width:100%;border-collapse:collapse;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
-        <thead>
-          <tr style="background:#f8faff">
-            <th style="padding:6px 8px;font-size:10px;color:#888;font-weight:700;text-align:left">필드</th>
-            <th style="padding:6px 8px;font-size:10px;color:#888;font-weight:700;text-align:left">상태</th>
-            <th style="padding:6px 8px;font-size:10px;color:#888;font-weight:700;text-align:left">내용 미리보기</th>
-          </tr>
-        </thead>
-        <tbody>${prescRows}</tbody>
-      </table>
-    </div>
   </div>`;
+}
+
+// ── 재검수 패널 내부 액션 헬퍼 ──
+function mvc_jumpToOverride(diagId) {
+  // Override 입력 영역으로 스크롤 후 포커스
+  const overrideArea = document.querySelector('.mvc-override-bc-input, #override-bc-input, [data-diag-id="'+diagId+'"] .override-section');
+  if (overrideArea) { overrideArea.scrollIntoView({ behavior:'smooth', block:'center' }); overrideArea.focus && overrideArea.focus(); }
+  else { alert('현재 선택된 결과지의 Override 섹션(acc2)을 확인하세요.'); }
+}
+function mvc_jumpToAiGen(diagId) {
+  const aiBtn = document.querySelector('.mvc-ai-gen-btn, [onclick*="mvc_genAI"], [onclick*="generateStory"]');
+  if (aiBtn) { aiBtn.scrollIntoView({ behavior:'smooth', block:'center' }); }
+  else { alert('acc3 섹션의 [🤖 AI 해석본 생성] 버튼을 클릭하세요.'); }
+}
+function mvc_jumpToPrescEdit(diagId) {
+  // bc_prescriptions 편집: acc3 탭 열기
+  const acc3Btn = document.querySelector('.mvc-acc3-btn, [data-acc="3"]');
+  if (acc3Btn) { acc3Btn.click(); acc3Btn.scrollIntoView({ behavior:'smooth', block:'center' }); }
+  else { alert('acc3 설계도 편집 섹션을 열고, bc_prescriptions 필드를 직접 수정하세요.'); }
+}
 }
 
 // ── 초기화 ──
