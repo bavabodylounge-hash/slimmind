@@ -13364,6 +13364,9 @@ app.get('/api/admin/verify-detail/:id', requireRole('MASTER'), async (c) => {
     let tableSource = ''
 
     // ── 1. diagnosis_results 우선 ──
+    // NOTE: body_regions/textures/flags/override_* 컬럼은 신버전 스키마에만 존재.
+    //       구버전 D1에서 해당 컬럼 없을 경우 SQL 에러 → .catch(()=>null) 로 누락.
+    //       안전하게 NULL AS 폴백 사용 (ALTER TABLE로 컬럼 추가 전까지 임시 호환)
     row = await db.prepare(`
       SELECT
         id AS diag_id,
@@ -13373,16 +13376,16 @@ app.get('/api/admin/verify-detail/:id', requireRole('MASTER'), async (c) => {
         bc_code_key AS bc_code,
         axis_scores,
         raw_answers,
-        body_regions,
-        textures,
-        flags,
+        NULL AS body_regions,
+        NULL AS textures,
+        NULL AS flags,
         survey_category,
         gender,
         age,
-        override_bc_code,
-        override_story,
-        override_applied,
-        override_at,
+        NULL AS override_bc_code,
+        NULL AS override_story,
+        0    AS override_applied,
+        NULL AS override_at,
         story_lead,
         clinical_ctx,
         ai_story_src,
@@ -13521,8 +13524,40 @@ app.get('/api/admin/verify-detail/:id', requireRole('MASTER'), async (c) => {
       if (row) tableSource = 'salon_responses'
     }
 
+    // ── 6. results (구버전 V3 파이프라인 — RES-XXXXXXXX 형식 ID) ──
     if (!row) {
-      return c.json({ error: `진단 ID [${diagId}] 를 5개 테이블 모두에서 찾을 수 없습니다.` }, 404)
+      row = await db.prepare(`
+        SELECT
+          id AS diag_id,
+          user_name,
+          NULL AS bc_nickname,
+          bc_primary,
+          bc_primary AS bc_code,
+          axis_scores_json AS axis_scores,
+          survey_answers_json AS raw_answers,
+          NULL AS body_regions,
+          NULL AS textures,
+          NULL AS flags,
+          'integrated' AS survey_category,
+          gender,
+          NULL AS age,
+          NULL AS override_bc_code,
+          NULL AS override_story,
+          0    AS override_applied,
+          NULL AS override_at,
+          NULL AS story_lead,
+          NULL AS clinical_ctx,
+          NULL AS ai_story_src,
+          created_at
+        FROM results
+        WHERE id = ?
+        LIMIT 1
+      `).bind(diagId).first<any>().catch(() => null)
+      if (row) tableSource = 'results_v3'
+    }
+
+    if (!row) {
+      return c.json({ error: `진단 ID [${diagId}] 를 6개 테이블 모두에서 찾을 수 없습니다.` }, 404)
     }
 
     // ── JSON 파싱 ──
