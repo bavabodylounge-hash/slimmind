@@ -6831,7 +6831,7 @@ app.get('/api/admin/diagnosis-results', requireRole('MASTER'), async (c) => {
     const ohaeng = c.req.query('ohaeng') || ''
     const limit = Math.min(parseInt(c.req.query('limit') || '200'), 500)
 
-    let query = 'SELECT id, user_name, phone, bc_nickname, bc_primary, bc_secondary, top3_axes, region, texture, ohaeng_type, mbti_full, ref_code, completed_at, created_at FROM diagnosis_results WHERE 1=1'
+    let query = 'SELECT id, user_name, phone, bc_nickname, bc_primary, bc_secondary, bc_code_key, survey_category, top3_axes, region, texture, ohaeng_type, mbti_full, ref_code, completed_at, created_at FROM diagnosis_results WHERE 1=1'
     const params: any[] = []
 
     if (search) {
@@ -13191,12 +13191,14 @@ app.get('/api/admin/verify-list', requireRole('MASTER'), async (c) => {
     const limit = Math.min(parseInt(c.req.query('limit') || '100', 10), 300)
 
     // ── diagnosis_results (신파이프라인) ──
-    const drRows = await db.prepare(`
+    // 이상 케이스 + 정상 케이스를 별도 쿼리해 최신 정상 결과가 limit에 묻히지 않도록 보장
+    const DR_SELECT = `
       SELECT
         id AS diag_id,
         user_name,
         bc_code_key AS bc_code,
         bc_primary,
+        ref_code,
         override_applied,
         override_bc_code,
         override_at,
@@ -13211,9 +13213,29 @@ app.get('/api/admin/verify-list', requireRole('MASTER'), async (c) => {
           ELSE 0
         END AS is_anomaly
       FROM diagnosis_results
-      ORDER BY is_anomaly DESC, COALESCE(completed_at, created_at) DESC
+    `
+    // 이상 케이스 (limit의 60%)
+    const drAnomalyLimit = Math.ceil(limit * 0.6)
+    const drAnomalyRows = await db.prepare(`
+      ${DR_SELECT}
+      WHERE (bc_code_key IS NULL OR bc_code_key = '' OR bc_code_key NOT LIKE 'BC-%' OR override_applied = 1)
+      ORDER BY COALESCE(completed_at, created_at) DESC
       LIMIT ?
-    `).bind(limit).all<any>()
+    `).bind(drAnomalyLimit).all<any>()
+    // 정상 케이스 최신 (limit의 40% - 최소 30건)
+    const drNormalLimit = Math.max(30, Math.ceil(limit * 0.4))
+    const drNormalRows = await db.prepare(`
+      ${DR_SELECT}
+      WHERE bc_code_key LIKE 'BC-%' AND (override_applied = 0 OR override_applied IS NULL)
+      ORDER BY COALESCE(completed_at, created_at) DESC
+      LIMIT ?
+    `).bind(drNormalLimit).all<any>()
+    const drRows = {
+      results: [
+        ...(drAnomalyRows.results || []),
+        ...(drNormalRows.results || []),
+      ]
+    }
 
     // ── hospital_responses (병원 전용 테이블) ──
     const hrRows = await db.prepare(`
