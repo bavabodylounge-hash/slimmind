@@ -6478,8 +6478,11 @@ function mvRenderDetail(el, d) {
         <div style="font-size:11px;color:#888;margin-top:4px">${d.bc_primary||d.bc_nickname||'-'}</div>
       </div>
       <a href="${d.result_url||'#'}" target="_blank" class="mvc-btn mvc-btn-red" style="text-decoration:none;font-size:11px">🔗 결과지</a>
+      <button class="mvc-btn mvc-btn-blue" style="font-size:11px" onclick="mvc_runRecheck('${d.diag_id}')">🔍 결과지 재검수</button>
     </div>
-  </div>`;
+  </div>
+  <!-- 재검수 결과 패널 (동적 삽입) -->
+  <div id="mvc-recheck-panel" style="display:none"></div>`;
 
   // ─── ① 응답 내역 ───
   const rawKeys = Object.keys(raw);
@@ -6960,6 +6963,206 @@ async function mvc_generateStory(diagId, bcCode, bcPrimary, userName) {
     btn.disabled = false;
     if (errEl) { errEl.textContent = '❌ ' + e.message; errEl.style.display = 'inline'; }
   }
+}
+
+// ── 결과지 재검수 ──
+async function mvc_runRecheck(diagId) {
+  const panel = document.getElementById('mvc-recheck-panel');
+  if (!panel) return;
+  panel.style.display = 'block';
+  panel.innerHTML = `
+    <div style="background:#fff;border-radius:12px;padding:20px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.07);border:2px solid #3b82f6">
+      <div style="text-align:center;color:#3b82f6;font-size:13px;font-weight:700">🔍 재검수 실행 중...</div>
+    </div>`;
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  try {
+    const r = await api('POST', '/admin/mapping-recheck', { diag_id: diagId });
+    panel.innerHTML = mvc_renderRecheckPanel(r);
+  } catch(e) {
+    panel.innerHTML = `<div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;border:2px solid #e74c3c;color:#e74c3c">❌ 재검수 실패: ${e.message}</div>`;
+  }
+}
+
+function mvc_renderRecheckPanel(r) {
+  const STEP_COLOR = { pass:'#16a34a', fail:'#dc2626', skip:'#9ca3af' };
+  const STEP_ICON  = { pass:'✅', fail:'❌', skip:'⏭️' };
+
+  // ── 판정 단계 HTML ──
+  const stepsHtml = (r.steps || []).map(s => {
+    const col = STEP_COLOR[s.result] || '#888';
+    const icon = STEP_ICON[s.result] || '•';
+    const isActive = s.result !== 'skip';
+
+    // 후보 목록 렌더링
+    let candsHtml = '';
+    if (s.candidates && s.candidates.length > 0 && isActive) {
+      candsHtml = `<div style="margin-top:8px">
+        <div style="font-size:10px;color:#888;margin-bottom:4px">매칭 후보 (${s.candidates.length}개)</div>
+        ${s.candidates.slice(0,6).map(c => `
+          <div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid #f3f4f6;font-size:11px">
+            <span style="background:#eff6ff;color:#1e40af;border-radius:4px;padding:1px 6px;font-weight:700;flex-shrink:0">${c.bc}</span>
+            <span style="flex:1;color:#444">${c.name}</span>
+            <span style="font-size:10px;color:#888">${(c.matched||[]).join(' ')}</span>
+          </div>`).join('')}
+        ${s.candidates.length > 6 ? `<div style="font-size:10px;color:#aaa;margin-top:2px">+${s.candidates.length-6}개 더...</div>` : ''}
+      </div>`;
+    }
+
+    // 최종 승자 배지
+    let winnerHtml = '';
+    if (s.winner) {
+      winnerHtml = `<div style="display:inline-flex;align-items:center;gap:6px;background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:6px 12px;margin-top:8px">
+        <span style="font-size:13px">🏆</span>
+        <span style="font-weight:800;color:#14532d;font-size:13px">${s.winner.bc}</span>
+        <span style="color:#166534;font-size:12px">${s.winner.name}</span>
+        <span style="color:#888;font-size:11px">가중점수 ${s.winner.score?.toFixed(1)}</span>
+      </div>`;
+    }
+
+    return `
+    <div style="border:1px solid ${isActive ? col+'44' : '#f0f0f0'};border-radius:8px;padding:10px 12px;margin-bottom:6px;background:${isActive ? col+'08' : '#fafafa'};opacity:${s.result==='skip'?'0.55':'1'}">
+      <div style="display:flex;align-items:flex-start;gap:8px">
+        <div style="font-size:16px;flex-shrink:0;margin-top:1px">${icon}</div>
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:12px;color:${col}">${s.step ? '단계 '+s.step+' — ' : ''}${s.name}</div>
+          ${s.condition && isActive ? `<div style="font-size:10px;color:#666;margin-top:2px;font-family:monospace;background:#f8f8f8;padding:3px 6px;border-radius:4px">${s.condition}</div>` : ''}
+          ${s.detail ? `<div style="font-size:11px;color:${isActive?'#444':'#bbb'};margin-top:4px;line-height:1.5">${s.detail}</div>` : ''}
+          ${candsHtml}
+          ${winnerHtml}
+        </div>
+        <div style="flex-shrink:0;font-size:10px;font-weight:700;color:${col};border:1px solid ${col};border-radius:4px;padding:1px 6px">
+          ${s.result === 'pass' ? '통과' : s.result === 'fail' ? '미충족' : '건너뜀'}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // ── BC 불일치 요약 배너 ──
+  const mismatch = r.bc_mismatch;
+  const mismatchBanner = mismatch
+    ? `<div style="background:#fef2f2;border:2px solid #fca5a5;border-radius:10px;padding:12px 16px;margin-bottom:12px">
+        <div style="font-weight:800;color:#b91c1c;font-size:13px;margin-bottom:6px">🚨 BC 코드 불일치 감지</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
+          <div><span style="color:#888">저장된 BC:</span> <b style="color:#b91c1c">${r.stored_bc||'NULL'}</b></div>
+          <div><span style="color:#888">재산출 BC:</span> <b style="color:#16a34a">${r.recomputed_bc||'?'}</b></div>
+        </div>
+        <div style="font-size:11px;color:#7f1d1d;margin-top:8px;line-height:1.6">
+          ⚠️ 코딩 로직 또는 입력값(body_regions/textures) 오류 가능성 있음.<br>
+          BC Override 또는 재입력 필요.
+        </div>
+      </div>`
+    : `<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:10px 16px;margin-bottom:12px">
+        <span style="font-weight:700;color:#14532d">✅ BC 코드 일치</span>
+        <span style="color:#166534;font-size:12px;margin-left:8px">저장값(${r.stored_bc||'?'}) = 재산출값(${r.recomputed_bc||'?'})</span>
+      </div>`;
+
+  // ── 설계도 교차검증 테이블 ──
+  const prescBanner = !r.presc_exists
+    ? `<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px;margin-bottom:10px;font-size:12px;color:#b91c1c">
+        ❌ bc_prescriptions에 [${r.effective_bc}] 설계도 없음 — 결과지에 처방 텍스트가 표시되지 않습니다.
+      </div>`
+    : '';
+
+  const prescRows = (r.presc_checks || []).map(p => {
+    const isOk = p.status === 'ok';
+    return `<tr style="border-bottom:1px solid #f0f0f0">
+      <td style="padding:5px 8px;font-size:11px;font-weight:600;color:#555;white-space:nowrap">${p.label}</td>
+      <td style="padding:5px 8px">
+        <span style="display:inline-block;background:${isOk?'#dcfce7':'#fef2f2'};color:${isOk?'#14532d':'#b91c1c'};border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700">${isOk?'✓ 있음':'✗ 비어있음'}</span>
+      </td>
+      <td style="padding:5px 8px;font-size:10px;color:#777;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.value}</td>
+    </tr>`;
+  }).join('');
+
+  // ── B2B 업체 정보 ──
+  const b2bHtml = r.b2b_info
+    ? `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:700;color:#1e40af;margin-bottom:4px">🏢 B2B 업체 연결 확인</div>
+        <div style="font-size:12px;display:grid;grid-template-columns:auto 1fr;gap:4px 12px">
+          <span style="color:#888">코드</span><b>${r.b2b_info.code}</b>
+          <span style="color:#888">업체명</span><b>${r.b2b_info.business_name||'-'}</b>
+          <span style="color:#888">업종</span><span>${r.b2b_info.industry||'-'}</span>
+          <span style="color:#888">상태</span><span style="color:${r.b2b_info.is_active?'#16a34a':'#dc2626'}">${r.b2b_info.is_active?'✅ 활성':'❌ 비활성'}</span>
+        </div>
+      </div>`
+    : (r.ref_code
+        ? `<div style="background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:11px;color:#92400e">⚠️ ref_code=${r.ref_code} — B2B 파트너 테이블에 없음</div>`
+        : `<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:11px;color:#888">ℹ️ B2B 연결 없음 (일반 진단)</div>`
+      );
+
+  // ── 입력값 요약 ──
+  const inputs = r.inputs || {};
+  const inputHtml = `
+    <div style="font-size:11px;color:#555;line-height:1.8;margin-bottom:10px">
+      <div><b>성별:</b> ${inputs.sex||'미상'} &nbsp;|&nbsp; <b>부위:</b> ${(inputs.body_regions||[]).join(', ')||'없음'} &nbsp;|&nbsp; <b>질감:</b> ${(inputs.textures||[]).join(', ')||'없음'}</div>
+      <div><b>상위 3축:</b> ${(inputs.top3||[]).join(' / ')||'-'} &nbsp;|&nbsp; <b>1등축 점수:</b> ${inputs.top1_score?.toFixed(1)||'-'} ${inputs.top1_score < 6 ? '<span style="color:#dc2626;font-weight:700">(6점 미달 → 기본형 폴백 트리거)</span>' : ''}</div>
+      <div><b>플래그:</b> ${Object.keys(inputs.flags||{}).join(', ')||'없음'}</div>
+    </div>`;
+
+  return `
+  <div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.1);border:2px solid #3b82f6">
+    <!-- 헤더 -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #eff6ff">
+      <div style="font-size:20px">🔍</div>
+      <div>
+        <div style="font-weight:800;font-size:14px;color:#1e40af">결과지 재검수 리포트</div>
+        <div style="font-size:11px;color:#888">${r.user_name} · ${r.survey_category} · ${(r.created_at||'').slice(0,16)}</div>
+      </div>
+      <button onclick="document.getElementById('mvc-recheck-panel').style.display='none'" style="margin-left:auto;background:#f3f4f6;border:none;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;color:#555">✕ 닫기</button>
+    </div>
+
+    <!-- B2B 업체 확인 -->
+    ${b2bHtml}
+
+    <!-- BC 불일치 배너 -->
+    ${mismatchBanner}
+
+    <!-- 입력값 요약 -->
+    <div style="background:#f8faff;border:1px solid #dbeafe;border-radius:8px;padding:10px 14px;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:#1e40af;margin-bottom:6px">📥 판정 입력값 요약</div>
+      ${inputHtml}
+    </div>
+
+    <!-- 7단계 판정 흐름 -->
+    <div style="margin-bottom:16px">
+      <div style="font-size:12px;font-weight:800;color:#334155;margin-bottom:8px">🔬 SUBTYPE_RULES v3 판정 단계 추적 (설계도 2026-08-17 기준)</div>
+      ${stepsHtml}
+    </div>
+
+    <!-- 최종 재산출 BC -->
+    <div style="background:${mismatch?'#fef2f2':'#f0fdf4'};border:2px solid ${mismatch?'#fca5a5':'#86efac'};border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px">
+      <div>
+        <div style="font-size:11px;color:#888;margin-bottom:2px">재산출 BC (코드 기준)</div>
+        <div style="font-size:18px;font-weight:900;color:${mismatch?'#b91c1c':'#14532d'}">${r.recomputed_bc||'?'}</div>
+        <div style="font-size:12px;color:#555">${r.recomputed_name||'-'}</div>
+      </div>
+      <div style="border-left:1px solid #e5e7eb;padding-left:12px">
+        <div style="font-size:11px;color:#888;margin-bottom:2px">저장 BC (결과지 표시)</div>
+        <div style="font-size:18px;font-weight:900;color:#334155">${r.stored_bc||'NULL'}</div>
+        <div style="font-size:11px;color:#888">서명축: ${(r.recomputed_axes||[]).join(' · ')||'-'}</div>
+      </div>
+    </div>
+
+    <!-- 설계도 교차검증 -->
+    <div>
+      <div style="font-size:12px;font-weight:800;color:#334155;margin-bottom:8px">
+        📋 bc_prescriptions 설계도 교차검증 [${r.effective_bc}]
+        ${r.presc_empty_count > 0 ? `<span style="background:#fef2f2;color:#b91c1c;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;margin-left:4px">${r.presc_empty_count}개 비어있음</span>` : '<span style="background:#dcfce7;color:#14532d;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;margin-left:4px">전체 채워짐</span>'}
+      </div>
+      ${prescBanner}
+      <table style="width:100%;border-collapse:collapse;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
+        <thead>
+          <tr style="background:#f8faff">
+            <th style="padding:6px 8px;font-size:10px;color:#888;font-weight:700;text-align:left">필드</th>
+            <th style="padding:6px 8px;font-size:10px;color:#888;font-weight:700;text-align:left">상태</th>
+            <th style="padding:6px 8px;font-size:10px;color:#888;font-weight:700;text-align:left">내용 미리보기</th>
+          </tr>
+        </thead>
+        <tbody>${prescRows}</tbody>
+      </table>
+    </div>
+  </div>`;
 }
 
 // ── 초기화 ──

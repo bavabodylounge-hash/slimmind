@@ -13698,6 +13698,400 @@ app.get('/api/admin/verify-detail/:id', requireRole('MASTER'), async (c) => {
   }
 })
 
+// ═══════════════════════════════════════════════════════════════════
+// ■ [NEW] 결과지 재검수 — POST /api/admin/mapping-recheck
+//   선택한 diag_id에 대해 decideSubtype 7단계 판정 흐름을 단계별로 추적하여
+//   각 단계의 예스/아니오 조건, 후보군, 실제 매칭 규칙, 저장값 vs 재산출값 불일치 여부,
+//   bc_prescriptions 설계도 vs 실제 표시 내용 교차검증 결과를 상세히 반환
+// ═══════════════════════════════════════════════════════════════════
+app.post('/api/admin/mapping-recheck', requireRole('MASTER'), async (c) => {
+  const db = (c.env as any)?.DB as D1Database | undefined
+  if (!db) return c.json({ error: 'DB 없음' }, 500)
+
+  try {
+    const body = await c.req.json<{ diag_id: string }>()
+    const { diag_id } = body
+    if (!diag_id) return c.json({ error: 'diag_id 필수' }, 400)
+
+    // ── 진단 데이터 로드 (verify-detail과 동일 쿼리 순서) ──
+    let row: any = null
+    let tableSource = ''
+
+    row = await db.prepare(`
+      SELECT id AS diag_id, user_name, bc_primary,
+             bc_code_key AS bc_code, axis_scores, raw_answers,
+             NULL AS body_regions, NULL AS textures, NULL AS flags,
+             survey_category, gender, age,
+             override_bc_code, NULL AS override_story, override_applied, override_at,
+             story_lead, ref_code,
+             COALESCE(completed_at, created_at) AS created_at
+      FROM diagnosis_results WHERE id = ? LIMIT 1
+    `).bind(diag_id).first<any>().catch(() => null)
+    if (row) tableSource = 'diagnosis_results'
+
+    if (!row) {
+      row = await db.prepare(`
+        SELECT id AS diag_id, user_name, bc_primary, bc_code,
+               axis_scores, raw_answers, body_regions, textures, NULL AS flags,
+               'hospital' AS survey_category, gender, age,
+               override_bc_code, override_story, override_applied, override_at,
+               story_lead, NULL AS ref_code, created_at
+        FROM hospital_responses WHERE id = ? LIMIT 1
+      `).bind(diag_id).first<any>().catch(() => null)
+      if (row) tableSource = 'hospital_responses'
+    }
+
+    if (!row) {
+      row = await db.prepare(`
+        SELECT id AS diag_id, user_name, bc_primary, bc_code,
+               axis_scores, raw_answers,
+               NULL AS body_regions, NULL AS textures, NULL AS flags,
+               'fitness' AS survey_category, gender, age,
+               override_bc_code, override_story, override_applied, override_at,
+               NULL AS story_lead, NULL AS ref_code, created_at
+        FROM fitness_responses WHERE id = ? LIMIT 1
+      `).bind(diag_id).first<any>().catch(() => null)
+      if (row) tableSource = 'fitness_responses'
+    }
+
+    if (!row) return c.json({ error: `진단 ID [${diag_id}]를 찾을 수 없습니다.` }, 404)
+
+    // ── JSON 파싱 ──
+    let axisScores: Record<string, number> = {}
+    let rawAnswers: any = {}
+    let bodyRegions: string[] = []
+    let textures: string[] = []
+    let flagsObj: Record<string, boolean> = {}
+
+    try { axisScores = JSON.parse(row.axis_scores || '{}') } catch {}
+    try { rawAnswers = JSON.parse(row.raw_answers || '{}') } catch {}
+    try { const br = row.body_regions; if (br) bodyRegions = JSON.parse(br) } catch {}
+    try { const tx = row.textures; if (tx) textures = JSON.parse(tx) } catch {}
+    try { const fl = row.flags; if (fl) flagsObj = JSON.parse(fl) } catch {}
+
+    const normRegions  = bodyRegions.map((r: string) => r.toUpperCase())
+    const normTextures = textures.map((t: string) => t.toLowerCase())
+    const sex = row.gender === 'male' ? 'male' : row.gender === 'female' ? 'female' : undefined
+
+    // 축 순위 계산
+    const sortedAxes = Object.entries(axisScores).sort((a, b) => b[1] - a[1]).map(e => e[0])
+    const top3Axes = new Set(sortedAxes.slice(0, 3))
+    const top1Score = axisScores[sortedAxes[0]] ?? 0
+    const top3List = sortedAxes.slice(0, 3).map(ax => `${ax}(${axisScores[ax]?.toFixed(1)})`)
+
+    // ──────────────────────────────────────────────────
+    // 7단계 판정 흐름 추적 (decideSubtype 내부 로직 재현)
+    // ──────────────────────────────────────────────────
+    const steps: Array<{
+      step: number
+      name: string
+      condition: string
+      result: 'pass' | 'skip' | 'fail'
+      detail: string
+      candidates?: Array<{ bc: string; name: string; matched: string[] }>
+      winner?: { bc: string; name: string; score: number; axes: string[] }
+    }> = []
+
+    let finalResult: { bc: string; name: string; signatureAxes: string[] } | null = null
+
+    // ① MENOPAUSE 플래그 강제 체크
+    const menopauseHit = !!flagsObj.menopause
+    steps.push({
+      step: 1,
+      name: '갱년기 플래그 강제 (MENOPAUSE)',
+      condition: 'flags.menopause === true → 즉시 BC-13 갱년기변환형',
+      result: menopauseHit ? 'pass' : 'skip',
+      detail: menopauseHit
+        ? '⚡ MENOPAUSE 플래그 감지 → BC-13 강제 반환. 이하 단계 모두 건너뜀.'
+        : `flags: ${JSON.stringify(flagsObj)} → 갱년기 플래그 없음. 다음 단계로.`
+    })
+    if (menopauseHit) finalResult = { bc: 'BC-13', name: '갱년기변환형', signatureAxes: ['A03','A07','A06'] }
+
+    // ② 요요 궤적 체크
+    if (!finalResult) {
+      const hasYoyo = !!(rawAnswers?.flags?.yoyo || rawAnswers?.yoyo || flagsObj.yoyo)
+      const yoyoRule = SUBTYPE_RULES.find(r => r.isYoyo)
+      steps.push({
+        step: 2,
+        name: '요요 궤적 감지 (hasYoyoTrajectory)',
+        condition: 'hasYoyoTrajectory === true → 요요형 규칙 매칭',
+        result: hasYoyo ? 'pass' : 'skip',
+        detail: hasYoyo
+          ? `⚡ 요요 궤적 감지 → ${yoyoRule ? yoyoRule.bc + ' ' + yoyoRule.name : '규칙 없음'}`
+          : `요요 플래그 없음 (raw_answers.flags.yoyo 미확인). 다음 단계로.`
+      })
+      if (hasYoyo && yoyoRule) finalResult = { bc: yoyoRule.bc, name: yoyoRule.name, signatureAxes: yoyoRule.axes }
+    } else {
+      steps.push({ step: 2, name: '요요 궤적 감지', condition: '', result: 'skip', detail: '이전 단계에서 확정됨.' })
+    }
+
+    // ③ 1등축 < 6점 → 기본형 폴백
+    if (!finalResult) {
+      const defaultCandidates = SUBTYPE_RULES.filter(r =>
+        r.isDefault === true && r.regions.some(reg => normRegions.includes(reg))
+      )
+      const useDefault = top1Score < 6
+      const defaultPick = useDefault ? (() => {
+        let best = defaultCandidates[0], bestScore = -Infinity
+        for (const rule of defaultCandidates) {
+          const score = (axisScores[rule.axes[0]] ?? 5) * 3 + (axisScores[rule.axes[1]] ?? 5) * 2 + (axisScores[rule.axes[2]] ?? 5) * 1
+          if (score > bestScore) { bestScore = score; best = rule }
+        }
+        return best ? { ...best, score: bestScore } : null
+      })() : null
+
+      steps.push({
+        step: 3,
+        name: '1등축 점수 < 6점 → 부위 기본형 폴백',
+        condition: `top1Score(${top1Score.toFixed(1)}) < 6.0 → 해당 부위 isDefault 규칙 적용`,
+        result: useDefault ? (defaultPick ? 'pass' : 'fail') : 'skip',
+        detail: useDefault
+          ? (defaultPick
+              ? `⚡ 1등축 ${sortedAxes[0]}=${top1Score.toFixed(1)}점으로 6점 미달 → 기본형 ${defaultPick.bc} [${defaultPick.name}] 선택 (후보 ${defaultCandidates.length}개 중)`
+              : `1등축 미달이나 부위(${normRegions.join(',')})에 맞는 기본형 규칙 없음.`)
+          : `1등축 ${sortedAxes[0]}=${top1Score.toFixed(1)}점 ≥ 6점 → 기본형 폴백 불필요. 다음 단계로.`,
+        candidates: defaultCandidates.map(r => ({ bc: r.bc, name: r.name, matched: r.regions.filter(reg => normRegions.includes(reg)) })),
+        winner: defaultPick ? { bc: defaultPick.bc, name: defaultPick.name, score: defaultPick.score, axes: defaultPick.axes } : undefined
+      })
+      if (useDefault && defaultPick) finalResult = { bc: defaultPick.bc, name: defaultPick.name, signatureAxes: defaultPick.axes }
+    } else {
+      steps.push({ step: 3, name: '1등축 < 6점 기본형 폴백', condition: '', result: 'skip', detail: '이전 단계에서 확정됨.' })
+    }
+
+    // ④⑤⑥⑦⑧ — 부위+질감+축 / 완화 단계
+    if (!finalResult) {
+      const sexNorm = sex === 'male' ? 'male' : sex === 'female' ? 'female' : undefined
+      const sexFiltered = SUBTYPE_RULES.filter(r => {
+        if (r.isDefault) return false
+        if (r.isYoyo) return false
+        if (r.sex && r.sex !== sexNorm) return false
+        return true
+      })
+      const withRegion = sexFiltered.filter(r => r.regions.some(reg => normRegions.includes(reg)))
+
+      const checkAxesAnd = (rule: SubtypeRule): boolean => {
+        const critAxes = rule.axes.filter(ax => ax !== 'A10')
+        if (critAxes.length <= 1) return true
+        return top3Axes.has(critAxes[0]) || top3Axes.has(critAxes[1])
+      }
+
+      // ④ 부위+질감+축
+      let candidates = withRegion.filter(r => r.textures.some(t => normTextures.includes(t)) && checkAxesAnd(r))
+      const step4Cands = candidates.map(r => ({
+        bc: r.bc, name: r.name,
+        matched: [
+          ...r.regions.filter(reg => normRegions.includes(reg)).map(x => '부위:'+x),
+          ...r.textures.filter(t => normTextures.includes(t)).map(x => '질감:'+x),
+          ...r.axes.filter(ax => top3Axes.has(ax)).map(x => '축:'+x)
+        ]
+      }))
+      steps.push({
+        step: 4,
+        name: '④ 부위 + 질감 + 축 (3조건 AND)',
+        condition: `부위[${normRegions.join(',')}] ∩ 질감[${normTextures.join(',')}] ∩ 축Top3[${top3List.join('/')}]`,
+        result: candidates.length > 0 ? 'pass' : 'fail',
+        detail: candidates.length > 0
+          ? `후보 ${candidates.length}개 매칭 → 서명축 가중점수로 최종 선택`
+          : `3조건 AND 후보 없음. 질감 조건 완화 단계로.`,
+        candidates: step4Cands
+      })
+
+      // ⑤ 부위+축 (질감 완화)
+      if (candidates.length === 0) {
+        candidates = withRegion.filter(r => checkAxesAnd(r))
+        const step5Cands = candidates.map(r => ({
+          bc: r.bc, name: r.name,
+          matched: [
+            ...r.regions.filter(reg => normRegions.includes(reg)).map(x => '부위:'+x),
+            ...r.axes.filter(ax => top3Axes.has(ax)).map(x => '축:'+x)
+          ]
+        }))
+        steps.push({
+          step: 5,
+          name: '⑤ 부위 + 축 (질감 조건 제거)',
+          condition: `부위[${normRegions.join(',')}] ∩ 축Top3[${top3List.join('/')}] — 질감 무시`,
+          result: candidates.length > 0 ? 'pass' : 'fail',
+          detail: candidates.length > 0
+            ? `후보 ${candidates.length}개 매칭 → 서명축 가중점수로 최종 선택`
+            : `부위+축 후보 없음. 축 조건 추가 완화.`,
+          candidates: step5Cands
+        })
+      } else {
+        steps.push({ step: 5, name: '⑤ 부위+축 완화', condition: '', result: 'skip', detail: '④에서 이미 후보 확보됨.' })
+      }
+
+      // ⑥ 부위+질감 (축 완화)
+      if (candidates.length === 0) {
+        candidates = withRegion.filter(r => r.textures.some(t => normTextures.includes(t)))
+        const step6Cands = candidates.map(r => ({
+          bc: r.bc, name: r.name,
+          matched: [
+            ...r.regions.filter(reg => normRegions.includes(reg)).map(x => '부위:'+x),
+            ...r.textures.filter(t => normTextures.includes(t)).map(x => '질감:'+x)
+          ]
+        }))
+        steps.push({
+          step: 6,
+          name: '⑥ 부위 + 질감 (축 조건 제거)',
+          condition: `부위[${normRegions.join(',')}] ∩ 질감[${normTextures.join(',')}] — 축 무시`,
+          result: candidates.length > 0 ? 'pass' : 'fail',
+          detail: candidates.length > 0
+            ? `후보 ${candidates.length}개 매칭`
+            : `부위+질감 후보도 없음. 부위만으로 완화.`,
+          candidates: step6Cands
+        })
+      } else {
+        steps.push({ step: 6, name: '⑥ 부위+질감 완화', condition: '', result: 'skip', detail: '이전 단계에서 이미 후보 확보됨.' })
+      }
+
+      // ⑦ 부위만
+      if (candidates.length === 0) {
+        candidates = withRegion
+        steps.push({
+          step: 7,
+          name: '⑦ 부위만 (모든 조건 완화)',
+          condition: `부위[${normRegions.join(',')}] 일치 규칙 전체`,
+          result: candidates.length > 0 ? 'pass' : 'fail',
+          detail: candidates.length > 0
+            ? `후보 ${candidates.length}개 매칭`
+            : `부위 일치 규칙도 없음. 전체 풀로 폴백.`,
+          candidates: candidates.map(r => ({ bc: r.bc, name: r.name, matched: r.regions.filter(reg => normRegions.includes(reg)).map(x => '부위:'+x) }))
+        })
+      } else {
+        steps.push({ step: 7, name: '⑦ 부위만 완화', condition: '', result: 'skip', detail: '이전 단계에서 이미 후보 확보됨.' })
+      }
+
+      // ⑧ 축만 (부위도 없는 경우)
+      if (candidates.length === 0) {
+        candidates = sexFiltered
+        steps.push({
+          step: 8,
+          name: '⑧ 축만 (부위 조건도 없는 최후 폴백)',
+          condition: '성별 필터만 적용한 전체 규칙',
+          result: candidates.length > 0 ? 'pass' : 'fail',
+          detail: `전체 후보 ${candidates.length}개`
+        })
+      } else {
+        steps.push({ step: 8, name: '⑧ 축 폴백', condition: '', result: 'skip', detail: '이전 단계에서 이미 후보 확보됨.' })
+      }
+
+      // 최종 승자 선택 (서명축 가중점수)
+      if (candidates.length > 0) {
+        let best = candidates[0], bestScore = -Infinity
+        for (const rule of candidates) {
+          const score = (axisScores[rule.axes[0]] ?? 5) * 3 + (axisScores[rule.axes[1]] ?? 5) * 2 + (axisScores[rule.axes[2]] ?? 5) * 1
+          if (score > bestScore) { bestScore = score; best = rule }
+        }
+        finalResult = { bc: best.bc, name: best.name, signatureAxes: best.axes }
+        // 최종 승자를 마지막 pass 단계에 기록
+        const lastPassStep = [...steps].reverse().find(s => s.result === 'pass')
+        if (lastPassStep) lastPassStep.winner = { bc: best.bc, name: best.name, score: bestScore, axes: best.axes }
+      } else {
+        finalResult = { bc: 'BC-3', name: '남산수박배형(폴백)', signatureAxes: ['A01','A09','A05'] }
+      }
+    } else {
+      steps.push({ step: 4, name: '④ 부위+질감+축', condition: '', result: 'skip', detail: '이전 단계에서 확정됨.' })
+      steps.push({ step: 5, name: '⑤ 부위+축', condition: '', result: 'skip', detail: '' })
+      steps.push({ step: 6, name: '⑥ 부위+질감', condition: '', result: 'skip', detail: '' })
+      steps.push({ step: 7, name: '⑦ 부위만', condition: '', result: 'skip', detail: '' })
+      steps.push({ step: 8, name: '⑧ 축 폴백', condition: '', result: 'skip', detail: '' })
+    }
+
+    // ── 저장값 vs 재산출값 교차검증 ──
+    const storedBc = row.override_bc_code || row.bc_code || null
+    const recomputedBc = finalResult?.bc || null
+    const bcMismatch = storedBc && recomputedBc ? storedBc !== recomputedBc : false
+
+    // ── bc_prescriptions 설계도 교차검증 ──
+    const effectiveBc = row.override_bc_code || row.bc_code || recomputedBc || 'BC-1'
+    const presc = await db.prepare(`SELECT * FROM bc_prescriptions WHERE bc_code = ?`).bind(effectiveBc).first<any>().catch(() => null)
+
+    // 설계도 vs 실제 노출 항목 교차검증
+    const prescChecks: Array<{ field: string; label: string; status: 'ok' | 'empty' | 'warn'; value: string }> = []
+    const checkFields = [
+      { key: 'brand_name',             label: '브랜드명' },
+      { key: 'bc_cause_story',         label: '원인 스토리' },
+      { key: 'bc_worsen_word',         label: '악화 키워드' },
+      { key: 'closing_copy',           label: '클로징 카피' },
+      { key: 'symptom_checklist_json', label: '증상 체크리스트' },
+      { key: 'wrong_methods_json',     label: '잘못된 방법' },
+      { key: 'correct_principles_json',label: '올바른 원칙' },
+      { key: 'recommended_exercises_json', label: '추천 운동' },
+      { key: 'forbidden_exercises_json',   label: '금지 운동' },
+      { key: 'recommended_foods_json',     label: '추천 식품' },
+      { key: 'forbidden_foods_json',       label: '금지 식품' },
+      { key: 'supplement_list_json',       label: '보충제' },
+      { key: 'lifestyle_rules_json',       label: '생활 수칙' },
+    ]
+    for (const f of checkFields) {
+      const val = presc?.[f.key]
+      const isEmpty = !val || val === '' || val === '[]' || val === '{}' || val === 'null'
+      let jsonCount: number | null = null
+      if (!isEmpty && (String(val).startsWith('[') || String(val).startsWith('{'))) {
+        try { const p = JSON.parse(val); jsonCount = Array.isArray(p) ? p.length : Object.keys(p).length } catch {}
+      }
+      prescChecks.push({
+        field: f.key,
+        label: f.label,
+        status: isEmpty ? 'empty' : 'ok',
+        value: isEmpty ? '(비어있음)' : (jsonCount !== null ? `${jsonCount}항목` : String(val).slice(0, 80))
+      })
+    }
+
+    // ── B2B 업체 연결 정보 ──
+    let b2bInfo: any = null
+    if (row.ref_code && row.ref_code.startsWith('B2B-')) {
+      b2bInfo = await db.prepare(`SELECT code, business_name, industry, is_active FROM b2b_partners WHERE code = ? LIMIT 1`)
+        .bind(row.ref_code).first<any>().catch(() => null)
+    }
+
+    return c.json({
+      diag_id,
+      table_source: tableSource,
+      user_name: row.user_name || '이름없음',
+      survey_category: row.survey_category || 'unknown',
+      gender: row.gender || '',
+      created_at: row.created_at || '',
+      ref_code: row.ref_code || null,
+      b2b_info: b2bInfo,
+
+      // 입력값 요약
+      inputs: {
+        axis_scores: axisScores,
+        body_regions: bodyRegions,
+        textures,
+        flags: flagsObj,
+        sorted_axes: sortedAxes.slice(0, 5).map(ax => `${ax}=${axisScores[ax]?.toFixed(1)}`),
+        top3: top3List,
+        top1_score: top1Score,
+        sex
+      },
+
+      // 7단계 판정 추적
+      steps,
+
+      // 최종 결과
+      recomputed_bc: finalResult?.bc || null,
+      recomputed_name: finalResult?.name || null,
+      recomputed_axes: finalResult?.signatureAxes || [],
+
+      // 저장값 vs 재산출값
+      stored_bc: storedBc,
+      bc_mismatch: bcMismatch,
+      override_applied: row.override_applied || 0,
+
+      // 설계도 교차검증
+      effective_bc: effectiveBc,
+      presc_exists: !!presc,
+      presc_checks: prescChecks,
+      presc_empty_count: prescChecks.filter(p => p.status === 'empty').length,
+    })
+  } catch (e: any) {
+    console.error('[mapping-recheck]', e)
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
 // ■ 샘플 PDF 다운로드 (회원가입 완료 후) → 인쇄 가능 HTML 페이지로 리다이렉트
 app.get('/api/download-sample-pdf', async (c) => {
   // 실제 PDF 파일(/public/static/sample-report.pdf)이 존재하면 그것을 반환
