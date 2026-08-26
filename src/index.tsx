@@ -13524,11 +13524,23 @@ app.get('/api/admin/verify-detail/:id', requireRole('MASTER'), async (c) => {
     let row: any = null
     let tableSource = ''
 
-    // ── 1. diagnosis_results 우선 ──
+    // ── ID 패턴으로 조회 순서 결정 ──
+    // A- → aesthetic_responses 우선
+    // H- → hospital_responses 우선
+    // F- → fitness_responses 우선
+    // SAL- → salon_responses 우선
+    // 그 외(UUID, RES-) → diagnosis_results 우선
+    const idPrefix = diagId.split('-')[0] + '-'
+    const isAesthetic = diagId.startsWith('A-')
+    const isHospital  = diagId.startsWith('H-')
+    const isFitness   = diagId.startsWith('F-')
+    const isSalon     = diagId.startsWith('SAL-')
+
+    // ── 1. diagnosis_results (패턴 불일치 or UUID 경우) ──
     // NOTE: body_regions/textures/flags/override_* 컬럼은 신버전 스키마에만 존재.
     //       구버전 D1에서 해당 컬럼 없을 경우 SQL 에러 → .catch(()=>null) 로 누락.
     //       안전하게 NULL AS 폴백 사용 (ALTER TABLE로 컬럼 추가 전까지 임시 호환)
-    row = await db.prepare(`
+    if (!isAesthetic && !isHospital && !isFitness && !isSalon) row = await db.prepare(`
       SELECT
         id AS diag_id,
         user_name,
@@ -13559,7 +13571,8 @@ app.get('/api/admin/verify-detail/:id', requireRole('MASTER'), async (c) => {
     if (row) tableSource = 'diagnosis_results'
 
     // ── 2. hospital_responses ──
-    if (!row) {
+    // H- 패턴은 여기를 우선 조회
+    if (!row && (isHospital || (!isAesthetic && !isFitness && !isSalon))) {
       row = await db.prepare(`
         SELECT
           id AS diag_id,
@@ -13592,7 +13605,8 @@ app.get('/api/admin/verify-detail/:id', requireRole('MASTER'), async (c) => {
     }
 
     // ── 3. fitness_responses ──
-    if (!row) {
+    // F- 패턴은 여기를 우선 조회
+    if (!row && (isFitness || (!isAesthetic && !isHospital && !isSalon))) {
       row = await db.prepare(`
         SELECT
           id AS diag_id,
@@ -13625,7 +13639,9 @@ app.get('/api/admin/verify-detail/:id', requireRole('MASTER'), async (c) => {
     }
 
     // ── 4. aesthetic_responses ──
-    if (!row) {
+    // A- 패턴은 여기를 우선 조회 (diagnosis_results보다 먼저)
+    if (!row || (isAesthetic && tableSource === 'diagnosis_results' && !row.ref_code)) {
+      if (isAesthetic && tableSource === 'diagnosis_results' && !row.ref_code) row = null
       row = await db.prepare(`
         SELECT
           id AS diag_id,
@@ -13658,7 +13674,9 @@ app.get('/api/admin/verify-detail/:id', requireRole('MASTER'), async (c) => {
     }
 
     // ── 5. salon_responses ──
-    if (!row) {
+    // SAL- 패턴은 여기를 우선 조회
+    if (!row || (isSalon && tableSource === 'diagnosis_results' && !row.ref_code)) {
+      if (isSalon && tableSource === 'diagnosis_results' && !row.ref_code) row = null
       row = await db.prepare(`
         SELECT
           id AS diag_id,
@@ -13688,6 +13706,9 @@ app.get('/api/admin/verify-detail/:id', requireRole('MASTER'), async (c) => {
         LIMIT 1
       `).bind(diagId).first<any>().catch(() => null)
       if (row) tableSource = 'salon_responses'
+    }
+    // ── dummy close for restructured blocks ──
+    if (false) {
     }
 
     // ── 6. results (구버전 V3 파이프라인 — RES-XXXXXXXX 형식 ID) ──
