@@ -2687,8 +2687,186 @@ function renderB2bPartnerRxPanel(data, color) {
             </div>`).join('')}
         </div>
       </div>` : ''}
+
+      ${renderB2bIndustryPresc(data, color)}
     </div>
   `;
+}
+
+// ── 업종별 B2B 전용 처방 렌더링 (partner-view API 응답 기준) ──────
+function renderB2bIndustryPresc(data, color) {
+  const cat = data.survey_category || 'integrated';
+  if (cat === 'integrated') return '';
+
+  const catLabels = { hospital:'🏥 병원 전용 처방', fitness:'💪 피트니스 전용 처방', aesthetic:'💅 에스테틱 전용 처방', salon:'✂️ 살롱 전용 처방' };
+  const catBg = { hospital:'#EFF6FF', fitness:'#F0FDF4', aesthetic:'#FDF4FF', salon:'#FFF7ED' };
+  const catBorder = { hospital:'#BFDBFE', fitness:'#BBF7D0', aesthetic:'#E9D5FF', salon:'#FED7AA' };
+  const catText = { hospital:'#1E40AF', fitness:'#15803D', aesthetic:'#7C3AED', salon:'#C2410C' };
+
+  const bg = catBg[cat] || '#F8FAFC';
+  const bd = catBorder[cat] || '#E5E7EB';
+  const tc = catText[cat] || '#374151';
+  const label = catLabels[cat] || '업종 전용 처방';
+
+  const renderList = (arr) => {
+    if (!arr || (Array.isArray(arr) && arr.length === 0)) return '<span style="color:#aaa;font-size:12px">-</span>';
+    if (!Array.isArray(arr)) return `<span style="font-size:13px">${JSON.stringify(arr)}</span>`;
+    return arr.slice(0,5).map(item => {
+      const name = item.name || item.title || item.step || item.item || (typeof item === 'string' ? item : '');
+      const desc = item.description || item.detail || item.protocol || item.reason || '';
+      const emoji = item.emoji || '•';
+      return `<div style="display:flex;gap:7px;padding:5px 0;border-bottom:1px solid ${bd}">
+        <span style="font-size:13px;flex-shrink:0">${emoji}</span>
+        <div>
+          <div style="font-size:12px;font-weight:600;color:#1f2937">${name}</div>
+          ${desc ? `<div style="font-size:11px;color:#6b7280;line-height:1.5">${desc}</div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  };
+
+  let sections = '';
+
+  if (cat === 'hospital') {
+    const treatments = data.hospital_treatments;
+    const tests = data.hospital_tests;
+    const reassessment = data.hospital_reassessment;
+    const caution = data.hospital_caution;
+    const hasAny = treatments || tests || reassessment || caution;
+    if (!hasAny) return '';
+    sections = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        ${treatments ? `<div style="background:#fff;border-radius:10px;padding:12px;border:1px solid ${bd}">
+          <div style="font-size:11px;font-weight:700;color:${tc};margin-bottom:8px">💉 병원 시술 프로그램</div>
+          ${renderList(Array.isArray(treatments) ? treatments : (treatments.items || []))}
+          ${treatments.cycle ? `<div style="font-size:11px;color:#6b7280;margin-top:6px">주기: ${treatments.cycle}</div>` : ''}
+        </div>` : ''}
+        ${tests ? `<div style="background:#fff;border-radius:10px;padding:12px;border:1px solid ${bd}">
+          <div style="font-size:11px;font-weight:700;color:${tc};margin-bottom:8px">🔬 권장 검사 항목</div>
+          ${renderList(Array.isArray(tests) ? tests : (tests.items || []))}
+        </div>` : ''}
+      </div>
+      ${reassessment ? `<div style="background:#fff;border-radius:10px;padding:12px;border:1px solid ${bd};margin-top:10px">
+        <div style="font-size:11px;font-weight:700;color:${tc};margin-bottom:6px">📅 재진 전략</div>
+        <div style="font-size:12px;color:#374151">${typeof reassessment === 'string' ? reassessment : JSON.stringify(reassessment)}</div>
+      </div>` : ''}
+      ${caution ? `<div style="background:#FFF5F5;border-radius:10px;padding:12px;border:1px solid #FECACA;margin-top:10px">
+        <div style="font-size:11px;font-weight:700;color:#DC2626;margin-bottom:6px">⚠️ 주의사항</div>
+        <div style="font-size:12px;color:#991B1B">${typeof caution === 'string' ? caution : (caution.text || JSON.stringify(caution))}</div>
+      </div>` : ''}`;
+
+  } else if (cat === 'fitness') {
+    const weeklyPlan = data.fitness_weekly_plan;
+    const hiit = data.fitness_hiit_protocol;
+    const bpm = data.fitness_zone2_bpm;
+    const program = data.fitness_center_program;
+    const metrics = data.fitness_metrics;
+    const hasAny = weeklyPlan || hiit || bpm || program || metrics;
+    if (!hasAny) return '';
+    sections = `
+      ${weeklyPlan ? `<div style="background:#fff;border-radius:10px;padding:12px;border:1px solid ${bd};margin-bottom:10px">
+        <div style="font-size:11px;font-weight:700;color:${tc};margin-bottom:8px">📅 주간 운동 플랜</div>
+        ${renderList(Array.isArray(weeklyPlan) ? weeklyPlan : (weeklyPlan.sessions || []))}
+        ${weeklyPlan.weekly_frequency ? `<div style="font-size:11px;color:#6b7280;margin-top:6px">주 ${weeklyPlan.weekly_frequency}회</div>` : ''}
+      </div>` : ''}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        ${hiit ? `<div style="background:#fff;border-radius:10px;padding:12px;border:1px solid ${bd}">
+          <div style="font-size:11px;font-weight:700;color:${tc};margin-bottom:8px">⚡ HIIT 프로토콜</div>
+          <div style="font-size:12px;color:#374151">${typeof hiit === 'string' ? hiit : JSON.stringify(hiit)}</div>
+        </div>` : ''}
+        ${bpm ? `<div style="background:#fff;border-radius:10px;padding:12px;border:1px solid ${bd}">
+          <div style="font-size:11px;font-weight:700;color:${tc};margin-bottom:6px">❤️ Zone2 목표 BPM</div>
+          <div style="font-size:22px;font-weight:800;color:${tc}">${bpm} <span style="font-size:13px">bpm</span></div>
+        </div>` : ''}
+      </div>
+      ${program ? `<div style="background:#fff;border-radius:10px;padding:12px;border:1px solid ${bd};margin-top:10px">
+        <div style="font-size:11px;font-weight:700;color:${tc};margin-bottom:8px">🏋️ 센터 추천 프로그램</div>
+        ${renderList(Array.isArray(program) ? program : (program.items || []))}
+      </div>` : ''}
+      ${metrics ? `<div style="background:#fff;border-radius:10px;padding:12px;border:1px solid ${bd};margin-top:10px">
+        <div style="font-size:11px;font-weight:700;color:${tc};margin-bottom:8px">📊 측정 지표 목표</div>
+        <div style="font-size:12px;color:#374151">${typeof metrics === 'string' ? metrics : JSON.stringify(metrics)}</div>
+      </div>` : ''}`;
+
+  } else if (cat === 'aesthetic') {
+    const primary = data.aesthetic_primary;
+    const secondary = data.aesthetic_secondary;
+    const contra = data.aesthetic_contraindication;
+    const homecare = data.aesthetic_homecare;
+    const visitSchedule = data.aesthetic_visit_schedule;
+    const hasAny = primary || secondary || contra || homecare || visitSchedule;
+    if (!hasAny) return '';
+    sections = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        ${primary ? `<div style="background:#fff;border-radius:10px;padding:12px;border:1px solid ${bd}">
+          <div style="font-size:11px;font-weight:700;color:${tc};margin-bottom:8px">✨ 1차 추천 시술</div>
+          ${renderList(Array.isArray(primary) ? primary : (primary.treatments || []))}
+          ${primary.sessions ? `<div style="font-size:11px;color:#6b7280;margin-top:6px">${primary.sessions}회 과정</div>` : ''}
+        </div>` : ''}
+        ${secondary ? `<div style="background:#fff;border-radius:10px;padding:12px;border:1px solid ${bd}">
+          <div style="font-size:11px;font-weight:700;color:${tc};margin-bottom:8px">🌟 2차 보조 시술</div>
+          ${renderList(Array.isArray(secondary) ? secondary : (secondary.treatments || []))}
+        </div>` : ''}
+      </div>
+      ${contra ? `<div style="background:#FFF5F5;border-radius:10px;padding:12px;border:1px solid #FECACA;margin-top:10px">
+        <div style="font-size:11px;font-weight:700;color:#DC2626;margin-bottom:6px">🚫 금기 시술</div>
+        <div style="font-size:12px;color:#991B1B">${typeof contra === 'string' ? contra : JSON.stringify(contra)}</div>
+      </div>` : ''}
+      ${homecare ? `<div style="background:#fff;border-radius:10px;padding:12px;border:1px solid ${bd};margin-top:10px">
+        <div style="font-size:11px;font-weight:700;color:${tc};margin-bottom:8px">🏠 홈케어 루틴</div>
+        ${renderList(Array.isArray(homecare) ? homecare : (homecare.steps || []))}
+      </div>` : ''}
+      ${visitSchedule ? `<div style="background:#fff;border-radius:10px;padding:12px;border:1px solid ${bd};margin-top:10px">
+        <div style="font-size:11px;font-weight:700;color:${tc};margin-bottom:6px">📅 방문 스케줄</div>
+        <div style="font-size:12px;color:#374151">${typeof visitSchedule === 'string' ? visitSchedule : JSON.stringify(visitSchedule)}</div>
+      </div>` : ''}`;
+
+  } else if (cat === 'salon') {
+    const scalpDiag = data.salon_scalp_diagnosis;
+    const treatment = data.salon_treatment;
+    const homecare = data.salon_homecare_ingredients;
+    const hairstyle = data.salon_hairstyle;
+    const diet = data.salon_scalp_diet;
+    const hasAny = scalpDiag || treatment || homecare || hairstyle || diet;
+    if (!hasAny) return '';
+    sections = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        ${scalpDiag ? `<div style="background:#fff;border-radius:10px;padding:12px;border:1px solid ${bd}">
+          <div style="font-size:11px;font-weight:700;color:${tc};margin-bottom:8px">🔬 두피 진단 포인트</div>
+          ${renderList(Array.isArray(scalpDiag) ? scalpDiag : (scalpDiag.items || []))}
+        </div>` : ''}
+        ${treatment ? `<div style="background:#fff;border-radius:10px;padding:12px;border:1px solid ${bd}">
+          <div style="font-size:11px;font-weight:700;color:${tc};margin-bottom:8px">💆 추천 트리트먼트</div>
+          ${renderList(Array.isArray(treatment) ? treatment : (treatment.items || []))}
+        </div>` : ''}
+      </div>
+      ${homecare ? `<div style="background:#fff;border-radius:10px;padding:12px;border:1px solid ${bd};margin-top:10px">
+        <div style="font-size:11px;font-weight:700;color:${tc};margin-bottom:8px">🧴 홈케어 성분 가이드</div>
+        ${renderList(Array.isArray(homecare) ? homecare : (homecare.ingredients || []))}
+      </div>` : ''}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+        ${hairstyle ? `<div style="background:#fff;border-radius:10px;padding:12px;border:1px solid ${bd}">
+          <div style="font-size:11px;font-weight:700;color:${tc};margin-bottom:8px">💇 추천 헤어스타일</div>
+          <div style="font-size:12px;color:#374151">${typeof hairstyle === 'string' ? hairstyle : (hairstyle.recommendation || JSON.stringify(hairstyle))}</div>
+        </div>` : ''}
+        ${diet ? `<div style="background:#fff;border-radius:10px;padding:12px;border:1px solid ${bd}">
+          <div style="font-size:11px;font-weight:700;color:${tc};margin-bottom:8px">🥗 두피 건강 식단</div>
+          <div style="font-size:12px;color:#374151">${typeof diet === 'string' ? diet : (diet.recommendations || JSON.stringify(diet))}</div>
+        </div>` : ''}
+      </div>`;
+  }
+
+  if (!sections) return '';
+
+  return `
+    <div style="background:${bg};border:1px solid ${bd};border-radius:12px;padding:14px 16px;margin-top:12px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px">
+        <span style="background:${tc};color:#fff;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:700">${label}</span>
+        <span style="font-size:11px;color:#6b7280">업종 맞춤 전문 처방 · B2B 파트너 전용</span>
+        ${data.b2b_source === 'b2b' ? `<span style="font-size:10px;background:#dcfce7;color:#16a34a;padding:1px 6px;border-radius:4px;font-weight:700">B2B 전용</span>` : `<span style="font-size:10px;background:#f3f4f6;color:#888;padding:1px 6px;border-radius:4px">공통 처방</span>`}
+      </div>
+      ${sections}
+    </div>`;
 }
 
 // ═══════════════════════════════════════

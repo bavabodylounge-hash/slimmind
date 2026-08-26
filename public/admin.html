@@ -6065,6 +6065,18 @@ function loadMappingVerifyCenter() {
         <span class="mvc-filter-tab off" data-f="aesthetic" onclick="mvSetFilter(this,'aesthetic')">에스테틱</span>
         <span class="mvc-filter-tab off" data-f="salon"  onclick="mvSetFilter(this,'salon')">살롱</span>
       </div>
+      <!-- B2B 업체 필터 -->
+      <div style="margin-bottom:8px">
+        <div style="font-size:10px;color:#888;margin-bottom:4px;font-weight:700">🏢 B2B 업체 필터</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          <span class="mvc-filter-tab on" data-b2b="all" onclick="mvSetB2bFilter(this,'all')" style="font-size:10px">전체</span>
+          <span class="mvc-filter-tab off" data-b2b="b2b_only" onclick="mvSetB2bFilter(this,'b2b_only')" style="font-size:10px">B2B만</span>
+          <span class="mvc-filter-tab off" data-b2b="direct" onclick="mvSetB2bFilter(this,'direct')" style="font-size:10px">직접(non-B2B)</span>
+        </div>
+        <select id="mvc-b2b-partner-select" style="width:100%;margin-top:4px;padding:3px 6px;border:1px solid #e0e0e0;border-radius:6px;font-size:11px;display:none" onchange="mvSetB2bPartnerFilter(this.value)">
+          <option value="">-- 업체 선택 --</option>
+        </select>
+      </div>
       <div id="mvc-list-stat" style="font-size:10px;color:#aaa"></div>
     </div>
     <div id="mvc-list-area">
@@ -6087,10 +6099,13 @@ function loadMappingVerifyCenter() {
 // ── 상태 ──
 let mvc_allRows = [];
 let mvc_filter = 'all';
+let mvc_b2b_filter = 'all';      // 'all' | 'b2b_only' | 'direct'
+let mvc_b2b_partner = '';        // ref_code 특정 업체 코드
 let mvc_currentId = null;
 let mvc_pollTimer = null;
 let mvc_pollCountdown = 30;
 let mvc_pollTick = null;
+let mvc_b2bPartners = [];        // B2B 파트너 목록 캐시
 
 const MVC_CAT_COLOR = { hospital:'#3b82f6', fitness:'#10b981', aesthetic:'#ec4899', salon:'#8b5cf6', integrated:'#f59e0b' };
 const MVC_AXIS_LABELS = { A01:'인슐린저항', A02:'림프순환', A03:'호르몬', A04:'근감소', A05:'소화장', A06:'골격자세', A07:'스트레스', A08:'심리식이', A09:'대사위험', A10:'유전기질' };
@@ -6098,6 +6113,25 @@ const MVC_AXIS_COLORS = { A01:'#f59e0b', A02:'#3b82f6', A03:'#ec4899', A04:'#10b
 
 // ── 진단 목록 로드 ──
 async function mvLoadList() {
+  // B2B 파트너 목록 로드 (최초 1회)
+  if (mvc_b2bPartners.length === 0) {
+    try {
+      const pRes = await api('GET', '/admin/b2b-partners?limit=200');
+      if (pRes && pRes.partners) {
+        mvc_b2bPartners = pRes.partners;
+        const sel = document.getElementById('mvc-b2b-partner-select');
+        if (sel) {
+          mvc_b2bPartners.forEach(p => {
+            const catLabel = {hospital:'🏥',fitness:'💪',aesthetic:'💅',salon:'✂️',integrated:'🧩'}[p.survey_category||'integrated']||'🏢';
+            const opt = document.createElement('option');
+            opt.value = p.code;
+            opt.textContent = `${catLabel} ${p.brand_name||p.name} (${p.code})`;
+            sel.appendChild(opt);
+          });
+        }
+      }
+    } catch(_) {}
+  }
   try {
     const res = await api('GET', '/admin/verify-list?limit=100');
     if (!res || !res.rows) return;
@@ -6127,16 +6161,42 @@ async function mvLoadList() {
 
 function mvSetFilter(el, f) {
   mvc_filter = f;
-  document.querySelectorAll('.mvc-filter-tab').forEach(t => { t.className = t.className.replace(/ ?on/,'') + ' off'; });
-  el.className = el.className.replace(/ ?off/,'') + ' on';
+  document.querySelectorAll('[data-f]').forEach(t => { t.className = t.className.replace(/ ?on/g,'') + ' off'; });
+  el.className = el.className.replace(/ ?off/g,'') + ' on';
+  mvRenderList();
+}
+
+function mvSetB2bFilter(el, mode) {
+  mvc_b2b_filter = mode;
+  mvc_b2b_partner = '';
+  document.querySelectorAll('[data-b2b]').forEach(t => { t.className = t.className.replace(/ ?on/g,'') + ' off'; });
+  el.className = el.className.replace(/ ?off/g,'') + ' on';
+  const sel = document.getElementById('mvc-b2b-partner-select');
+  if (sel) {
+    sel.style.display = mode === 'b2b_only' ? 'block' : 'none';
+    sel.value = '';
+  }
+  mvRenderList();
+}
+
+function mvSetB2bPartnerFilter(code) {
+  mvc_b2b_partner = code;
   mvRenderList();
 }
 
 function mvRenderList() {
   const rows = mvc_allRows.filter(r => {
-    if (mvc_filter === 'anom') return r.is_anomaly;
-    if (mvc_filter === 'all') return true;
-    return r.survey_category === mvc_filter;
+    // 업종 필터
+    if (mvc_filter === 'anom' && !r.is_anomaly) return false;
+    if (mvc_filter !== 'anom' && mvc_filter !== 'all' && r.survey_category !== mvc_filter) return false;
+    // B2B 필터
+    if (mvc_b2b_filter === 'b2b_only') {
+      if (!r.ref_code || !r.ref_code.startsWith('B2B-')) return false;
+      if (mvc_b2b_partner && r.ref_code !== mvc_b2b_partner) return false;
+    } else if (mvc_b2b_filter === 'direct') {
+      if (r.ref_code && r.ref_code.startsWith('B2B-')) return false;
+    }
+    return true;
   });
   const el = document.getElementById('mvc-list-area');
   if (!rows.length) {
@@ -6147,11 +6207,18 @@ function mvRenderList() {
     const col = MVC_CAT_COLOR[r.survey_category] || '#888';
     const isNull = !r.bc_code || !/^BC-/i.test(r.bc_code);
     const isActive = r.diag_id === mvc_currentId;
+    const isB2b = r.ref_code && r.ref_code.startsWith('B2B-');
+    // B2B 업체 이름 조회
+    const partnerInfo = isB2b ? mvc_b2bPartners.find(p => p.code === r.ref_code) : null;
+    const partnerBadge = isB2b
+      ? `<span style="font-size:9px;background:#ede9fe;color:#7c3aed;padding:1px 4px;border-radius:3px;font-weight:700">🏢 ${partnerInfo ? (partnerInfo.brand_name||r.ref_code).slice(0,8) : r.ref_code}</span>`
+      : '';
     return `<div class="mvc-list-item ${r.is_anomaly?'mvc-anom':''} ${isActive?'active':''}" onclick="mvSelectItem('${r.diag_id}')">
       <div class="mvc-cat-dot" style="background:${col}"></div>
       <div style="flex:1;min-width:0">
-        <div style="font-size:11px;font-family:monospace;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.diag_id||'-'}</div>
+        <div style="font-size:10px;font-family:monospace;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.diag_id||'-'}</div>
         <div style="font-weight:700;font-size:12px">${r.user_name||'-'}</div>
+        ${partnerBadge}
       </div>
       <div style="text-align:right">
         <div class="mvc-bc-badge ${isNull?'mvc-bc-null':''}">${r.bc_code||'NULL'}</div>
@@ -6468,6 +6535,14 @@ function mvRenderDetail(el, d) {
       <div style="flex:1;min-width:0">
         <div style="font-weight:800;font-size:15px">${d.user_name||'-'} <span style="font-size:11px;color:#888;font-weight:400">${d.gender||''} ${d.age?d.age+'세':''}</span></div>
         <div style="font-size:11px;font-family:monospace;color:#888">${d.diag_id} · ${d.survey_category} · ${(d.created_at||'').slice(0,16)}</div>
+        ${d.ref_code && d.ref_code.startsWith('B2B-') ? (() => {
+          const p = mvc_b2bPartners.find(p => p.code === d.ref_code);
+          return `<div style="margin-top:3px;display:flex;align-items:center;gap:4px">
+            <span style="font-size:10px;background:#ede9fe;color:#7c3aed;padding:2px 7px;border-radius:4px;font-weight:700">🏢 B2B</span>
+            <span style="font-size:11px;color:#7c3aed;font-weight:600">${p ? (p.brand_name||p.name) : ''}</span>
+            <code style="font-size:10px;color:#888">(${d.ref_code})</code>
+          </div>`;
+        })() : ''}
       </div>
       <div style="text-align:right;flex-shrink:0">
         <div style="display:flex;align-items:center;gap:6px;justify-content:flex-end">
@@ -6991,21 +7066,61 @@ function renderB2bPrescSection(r) {
   const prescSource = r.presc_source || 'common';
   const b2bAvail = r.b2b_presc_available || false;
 
-  // B2B 전용 필드 키 목록 (업종별)
+  // B2B 전용 필드 키 목록 + 한국어 라벨 + 필수 여부 (업종별 답안지)
+  const B2B_FIELD_SCHEMA = {
+    hospital: [
+      { key:'hospital_treatments_json', label:'병원 시술 프로그램', required:true,  type:'json_array',  hint:'시술명·사이클 배열 필수' },
+      { key:'hospital_tests_json',      label:'권장 검사 항목',    required:true,  type:'json_array',  hint:'검사 항목 배열 필수' },
+      { key:'hospital_reassessment_json',label:'재진 전략',        required:false, type:'json_or_str', hint:'재진 주기·포인트' },
+      { key:'hospital_caution_json',    label:'주의사항',          required:false, type:'json_or_str', hint:'금기·주의 내용' },
+    ],
+    fitness: [
+      { key:'fitness_weekly_plan_json',    label:'주간 운동 플랜',     required:true,  type:'json_array', hint:'요일별 운동 세션 배열 필수' },
+      { key:'fitness_hiit_protocol_json',  label:'HIIT 프로토콜',      required:false, type:'json_or_str', hint:'HIIT 인터벌 설정' },
+      { key:'fitness_zone2_bpm',           label:'Zone2 목표 BPM',     required:true,  type:'number',      hint:'숫자 값 필수 (예: 125)' },
+      { key:'fitness_center_program_json', label:'센터 추천 프로그램', required:true,  type:'json_array',  hint:'프로그램 배열 필수' },
+      { key:'fitness_metrics_json',        label:'측정 지표 목표',      required:false, type:'json_or_str', hint:'체성분·측정 목표값' },
+    ],
+    aesthetic: [
+      { key:'aesthetic_primary_json',       label:'1차 추천 시술',   required:true,  type:'json_array',  hint:'시술명·세션수 배열 필수' },
+      { key:'aesthetic_secondary_json',     label:'2차 보조 시술',   required:false, type:'json_array',  hint:'보조 시술 배열' },
+      { key:'aesthetic_contraindication',   label:'금기 시술',       required:false, type:'string',      hint:'금기 시술명 텍스트' },
+      { key:'aesthetic_homecare_json',      label:'홈케어 루틴',     required:true,  type:'json_array',  hint:'홈케어 단계 배열 필수' },
+      { key:'aesthetic_visit_schedule_json',label:'방문 스케줄',     required:false, type:'json_or_str', hint:'방문 주기·스케줄' },
+    ],
+    salon: [
+      { key:'salon_scalp_diagnosis_json',      label:'두피 진단 포인트',     required:true,  type:'json_array', hint:'진단 포인트 배열 필수' },
+      { key:'salon_treatment_json',            label:'추천 트리트먼트',       required:true,  type:'json_array', hint:'트리트먼트 배열 필수' },
+      { key:'salon_homecare_ingredients_json', label:'홈케어 성분 가이드',   required:true,  type:'json_array', hint:'성분 배열 필수' },
+      { key:'salon_hairstyle_json',            label:'추천 헤어스타일',       required:false, type:'json_or_str', hint:'헤어스타일 추천' },
+      { key:'salon_scalp_diet_json',           label:'두피 건강 식단',        required:false, type:'json_or_str', hint:'식단 추천' },
+    ],
+  };
+  // 하위호환: 기존 B2B_FIELD_KEYS 형태도 유지
   const B2B_FIELD_KEYS = {
-    hospital:  ['hospital_treatments_json','hospital_tests_json','hospital_reassessment_json','hospital_caution_json'],
-    fitness:   ['fitness_weekly_plan_json','fitness_hiit_protocol_json','fitness_zone2_bpm','fitness_center_program_json','fitness_metrics_json'],
-    aesthetic: ['aesthetic_primary_json','aesthetic_secondary_json','aesthetic_contraindication','aesthetic_homecare_json','aesthetic_visit_schedule_json'],
-    salon:     ['salon_scalp_diagnosis_json','salon_treatment_json','salon_homecare_ingredients_json','salon_hairstyle_json','salon_scalp_diet_json'],
+    hospital:  (B2B_FIELD_SCHEMA.hospital||[]).map(f=>f.key),
+    fitness:   (B2B_FIELD_SCHEMA.fitness||[]).map(f=>f.key),
+    aesthetic: (B2B_FIELD_SCHEMA.aesthetic||[]).map(f=>f.key),
+    salon:     (B2B_FIELD_SCHEMA.salon||[]).map(f=>f.key),
   };
   const B2B_CAT_LABEL = { hospital:'🏥 병원', fitness:'🏋️ 피트니스', aesthetic:'✨ 에스테틱', salon:'💇 살롱' };
   const B2B_CAT_COLOR = { hospital:'#059669', fitness:'#2563eb', aesthetic:'#7c3aed', salon:'#db2777' };
   const B2B_CAT_BG    = { hospital:'#ecfdf5', fitness:'#eff6ff', aesthetic:'#f5f3ff', salon:'#fdf2f8' };
   const B2B_CAT_BORDER= { hospital:'#6ee7b7', fitness:'#bfdbfe', aesthetic:'#ddd6fe', salon:'#f9a8d4' };
 
-  const b2bFields = (B2B_FIELD_KEYS[survCat] || []);
-  const b2bChecks = prescrData.filter(p => b2bFields.includes(p.field));
+  const b2bSchema   = (B2B_FIELD_SCHEMA[survCat] || []);
+  const b2bFields   = b2bSchema.map(s => s.key);
+  // presc_checks에 있는 B2B 필드 + 없는 필드 병합 (답안지 기준 오답노트)
+  const checksMap   = {};
+  (prescrData || []).forEach(p => { checksMap[p.field] = p; });
+  const b2bChecks   = b2bSchema.map(s => {
+    const chk = checksMap[s.key];
+    if (chk) return { ...s, ...chk, field: s.key }; // presc_checks 데이터 병합
+    // 답안지에는 있지만 presc_checks에 없는 경우 → 스키마 기준으로 생성
+    return { ...s, field: s.key, label: s.label, status: 'empty', value: null };
+  });
 
+  const requiredMissing = b2bChecks.filter(p => p.required && p.status === 'empty').length;
   const emptyCount = b2bChecks.filter(p => p.status === 'empty').length;
   const okCount    = b2bChecks.filter(p => p.status === 'ok').length;
   const col        = B2B_CAT_COLOR[survCat] || '#334155';
@@ -7017,20 +7132,30 @@ function renderB2bPrescSection(r) {
     : `<span style="background:#fef9c3;color:#92400e;border-radius:4px;padding:1px 8px;font-size:10px;font-weight:700">⚠️ 공통 처방 폴백 사용 중</span>`;
 
   const fieldRows = b2bChecks.length > 0 ? b2bChecks.map(p => {
+    // 답안지 기준 오답노트 스타일 — 필수 항목 누락 시 빨간 배경
+    const isRequiredMiss = p.required && p.status === 'empty';
+    const rowBg = isRequiredMiss ? '#fef2f2' : (p.status === 'ok' ? '#f0fdf4' : '');
     const fc = p.status === 'ok' ? '#16a34a' : p.status === 'warn' ? '#d97706' : '#dc2626';
     const fi = p.status === 'ok' ? '✅' : p.status === 'warn' ? '⚠️' : '❌';
-    const fl = p.status === 'ok' ? '정상' : p.status === 'warn' ? '주의' : '누락';
-    const editBtn = `<button onclick="mvc_openB2bPrescEdit('${r.diag_id}','${survCat}','${p.field}')" style="font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid ${col};background:${bg};color:${col};cursor:pointer">✏️ 인라인 편집</button>`;
-    return `<tr style="border-bottom:1px solid #f5f5f5">
-      <td style="padding:4px 8px;font-size:11px;font-weight:600;color:#444;max-width:160px">${p.label}</td>
-      <td style="padding:4px 8px;white-space:nowrap">
+    const fl = p.status === 'ok' ? '정상' : p.status === 'warn' ? '주의' : (isRequiredMiss ? '❗필수 누락' : '누락');
+    const requiredMark = p.required
+      ? `<span style="font-size:9px;background:#fee2e2;color:#dc2626;padding:0 4px;border-radius:3px;margin-left:4px">필수</span>`
+      : `<span style="font-size:9px;color:#9ca3af;margin-left:4px">선택</span>`;
+    const hintSpan = p.hint ? `<div style="font-size:9px;color:#6b7280;font-style:italic;margin-top:1px">${p.hint}</div>` : '';
+    const editBtn = `<button onclick="mvc_openB2bPrescEdit('${r.diag_id}','${survCat}','${p.field}')" style="font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid ${col};background:${bg};color:${col};cursor:pointer">✏️ 편집</button>`;
+    return `<tr style="border-bottom:1px solid #f5f5f5;background:${rowBg}">
+      <td style="padding:5px 8px;font-size:11px;font-weight:600;color:#444;max-width:160px">
+        ${isRequiredMiss ? `<span style="font-size:13px">🔴</span> ` : ''}${p.label}${requiredMark}
+        ${hintSpan}
+      </td>
+      <td style="padding:5px 8px;white-space:nowrap">
         <span style="font-size:13px">${fi}</span>
         <span style="font-size:10px;font-weight:700;color:${fc};margin-left:2px">${fl}</span>
       </td>
-      <td style="padding:4px 8px;font-size:10px;color:#777;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(p.value||'').replace(/"/g,'&quot;')}">${p.value||''}</td>
-      <td style="padding:4px 8px">${editBtn}</td>
+      <td style="padding:5px 8px;font-size:10px;color:#777;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(p.value||'').replace(/"/g,'&quot;')}">${p.value ? p.value.toString().slice(0,60) : '<span style="color:#aaa">-</span>'}</td>
+      <td style="padding:5px 8px">${editBtn}</td>
     </tr>`;
-  }).join('') : `<tr><td colspan="4" style="padding:10px;text-align:center;font-size:11px;color:#aaa">B2B 전용 필드 없음 (presc_checks에 b2b 필드 미포함)</td></tr>`;
+  }).join('') : `<tr><td colspan="4" style="padding:10px;text-align:center;font-size:11px;color:#aaa">B2B 업종별 처방 필드 없음 (survey_category=${survCat})</td></tr>`;
 
   return `
   <div style="border:2px solid ${border};border-radius:10px;margin-bottom:10px;overflow:hidden;background:${bg}">

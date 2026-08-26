@@ -2375,10 +2375,18 @@ app.put('/api/results/:id/b2b', async (c) => {
 })
 
 // ─── B2B 파트너뷰 처방 조회 ──────────────────────────────────────
-// GET /api/b2b/partner-view/:bc_code — BC코드로 처방 데이터 반환
+// GET /api/b2b/partner-view/:bc_code — BC코드로 처방 데이터 반환 (업종별 B2B 전용 처방 포함)
 app.get('/api/b2b/partner-view/:bc_code', requireB2B(), async (c) => {
   const db = c.env.DB
+  const user = c.get('user') as JwtPayload
   const bcCode = c.req.param('bc_code')
+  // 파트너 정보에서 업종 확인
+  let surveyCategory = 'integrated'
+  try {
+    const partner = await db.prepare('SELECT survey_category FROM b2b_partners WHERE code=?').bind(user.code).first<any>()
+    surveyCategory = partner?.survey_category || 'integrated'
+  } catch (_) {}
+
   const row = await db.prepare(`
     SELECT bc_code, brand_name, tagline, bc_primary_oneline_reason, bc_cause_story,
            closing_copy, correct_principles_json, recommended_exercises_json,
@@ -2387,13 +2395,24 @@ app.get('/api/b2b/partner-view/:bc_code', requireB2B(), async (c) => {
     FROM bc_prescriptions WHERE bc_code=?
   `).bind(bcCode).first<any>()
   if (!row) return c.json({ error: 'BC코드를 찾을 수 없습니다.' }, 404)
+
+  // B2B 전용 처방 조회 (업종별)
+  let b2bPresc: any = null
+  if (surveyCategory !== 'integrated') {
+    b2bPresc = await db.prepare(
+      `SELECT * FROM bc_prescriptions_b2b WHERE bc_code = ? AND survey_category = ? AND is_active = 1 LIMIT 1`
+    ).bind(bcCode, surveyCategory).first<any>().catch(() => null)
+  }
+
   // JSON 필드 파싱
   const parse = (v: any) => { try { return JSON.parse(v) } catch { return [] } }
-  return c.json({
+  const parseObj = (v: any) => { try { return JSON.parse(v) } catch { return null } }
+
+  const base = {
     bc_code: row.bc_code,
-    brand_name: row.brand_name,
+    brand_name: b2bPresc?.brand_name || row.brand_name,
     tagline: row.tagline,
-    reason: row.bc_primary_oneline_reason,
+    reason: b2bPresc?.bc_primary_oneline_reason || row.bc_primary_oneline_reason,
     cause_story: row.bc_cause_story,
     closing_copy: row.closing_copy,
     correct_principles: parse(row.correct_principles_json),
@@ -2404,7 +2423,49 @@ app.get('/api/b2b/partner-view/:bc_code', requireB2B(), async (c) => {
     supplements: parse(row.supplement_list_json),
     lifestyle_rules: parse(row.lifestyle_rules_json),
     monthly_goals: parse(row.monthly_goals_json),
-  })
+    survey_category: surveyCategory,
+    b2b_source: b2bPresc ? 'b2b' : 'common',
+  }
+
+  // 업종별 B2B 전용 처방 필드 병합
+  if (b2bPresc) {
+    if (surveyCategory === 'hospital') {
+      Object.assign(base, {
+        hospital_treatments: parseObj(b2bPresc.hospital_treatments_json),
+        hospital_tests: parseObj(b2bPresc.hospital_tests_json),
+        hospital_reassessment: parseObj(b2bPresc.hospital_reassessment_json),
+        hospital_caution: parseObj(b2bPresc.hospital_caution_json),
+      })
+    } else if (surveyCategory === 'fitness') {
+      Object.assign(base, {
+        fitness_weekly_plan: parseObj(b2bPresc.fitness_weekly_plan_json),
+        fitness_hiit_protocol: parseObj(b2bPresc.fitness_hiit_protocol_json),
+        fitness_zone2_bpm: b2bPresc.fitness_zone2_bpm,
+        fitness_center_program: parseObj(b2bPresc.fitness_center_program_json),
+        fitness_metrics: parseObj(b2bPresc.fitness_metrics_json),
+      })
+    } else if (surveyCategory === 'aesthetic') {
+      Object.assign(base, {
+        aesthetic_primary: parseObj(b2bPresc.aesthetic_primary_json),
+        aesthetic_secondary: parseObj(b2bPresc.aesthetic_secondary_json),
+        aesthetic_contraindication: b2bPresc.aesthetic_contraindication,
+        aesthetic_homecare: parseObj(b2bPresc.aesthetic_homecare_json),
+        aesthetic_visit_schedule: parseObj(b2bPresc.aesthetic_visit_schedule_json),
+      })
+    } else if (surveyCategory === 'salon') {
+      Object.assign(base, {
+        salon_scalp_diagnosis: parseObj(b2bPresc.salon_scalp_diagnosis_json),
+        salon_treatment: parseObj(b2bPresc.salon_treatment_json),
+        salon_homecare_ingredients: parseObj(b2bPresc.salon_homecare_ingredients_json),
+        salon_hairstyle: parseObj(b2bPresc.salon_hairstyle_json),
+        salon_scalp_diet: parseObj(b2bPresc.salon_scalp_diet_json),
+      })
+    }
+    // notes
+    if (b2bPresc.notes) base.notes = b2bPresc.notes
+  }
+
+  return c.json(base)
 })
 
 // ─── B2B 고객 이름으로 BC코드 즉시 조회 ──────────────────────────
@@ -13290,6 +13351,7 @@ app.get('/api/admin/verify-list', requireRole('MASTER'), async (c) => {
         user_name,
         bc_code,
         bc_primary,
+        ref_code,
         override_applied,
         override_bc_code,
         override_at,
@@ -13315,6 +13377,7 @@ app.get('/api/admin/verify-list', requireRole('MASTER'), async (c) => {
         user_name,
         bc_code,
         bc_primary,
+        ref_code,
         override_applied,
         override_bc_code,
         override_at,
@@ -13340,6 +13403,7 @@ app.get('/api/admin/verify-list', requireRole('MASTER'), async (c) => {
         user_name,
         bc_code,
         bc_primary,
+        ref_code,
         0 AS override_applied,
         NULL AS override_bc_code,
         NULL AS override_at,
@@ -13364,6 +13428,7 @@ app.get('/api/admin/verify-list', requireRole('MASTER'), async (c) => {
         user_name,
         bc_code,
         bc_primary,
+        ref_code,
         0 AS override_applied,
         NULL AS override_bc_code,
         NULL AS override_at,
