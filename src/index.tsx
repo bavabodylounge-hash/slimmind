@@ -14415,35 +14415,14 @@ app.post('/api/admin/mapping-recheck', requireRole('MASTER'), async (c) => {
     let urlLiveStatus: 'ok' | 'error' | 'unknown' = 'unknown'
     let urlStatusCode = 0
     try {
-      // 1차: HEAD 시도
-      const headResp = await fetch(resultFullUrl, { method: 'HEAD', redirect: 'follow', signal: AbortSignal.timeout(4000) })
-      urlStatusCode = headResp.status
-      if (headResp.status >= 200 && headResp.status < 400) {
-        urlLiveStatus = 'ok'
-      } else if (headResp.status === 405 || headResp.status >= 500) {
-        // HEAD 미지원 또는 서버 오류 → GET fallback
-        try {
-          const getResp = await fetch(resultFullUrl, { method: 'GET', redirect: 'follow', signal: AbortSignal.timeout(5000) })
-          urlStatusCode = getResp.status
-          urlLiveStatus = (getResp.status >= 200 && getResp.status < 400) ? 'ok' : 'error'
-        } catch { urlLiveStatus = 'error'; urlStatusCode = 0 }
-      } else if (headResp.status === 522 || headResp.status === 523 || headResp.status === 524) {
-        // Cloudflare 특수 오류: GET으로도 재시도
-        try {
-          const getResp = await fetch(resultFullUrl, { method: 'GET', redirect: 'follow', signal: AbortSignal.timeout(6000) })
-          urlStatusCode = getResp.status
-          urlLiveStatus = (getResp.status >= 200 && getResp.status < 400) ? 'ok' : 'error'
-        } catch { urlLiveStatus = 'error'; urlStatusCode = headResp.status }
-      } else {
-        urlLiveStatus = 'error'
-      }
-    } catch (fe: any) {
-      // HEAD 완전 실패 → GET fallback
-      try {
-        const getResp = await fetch(resultFullUrl, { method: 'GET', redirect: 'follow', signal: AbortSignal.timeout(5000) })
-        urlStatusCode = getResp.status
-        urlLiveStatus = (getResp.status >= 200 && getResp.status < 400) ? 'ok' : 'error'
-      } catch { urlLiveStatus = 'error'; urlStatusCode = 0 }
+      // Workers 내부에서 같은 도메인 HEAD → 522 self-loop 발생
+      // GET으로만 체크 (redirect: 'follow'로 307 자동 처리)
+      const getResp = await fetch(resultFullUrl, { method: 'GET', redirect: 'follow', signal: AbortSignal.timeout(6000) })
+      urlStatusCode = getResp.status
+      urlLiveStatus = (getResp.status >= 200 && getResp.status < 400) ? 'ok' : 'error'
+    } catch {
+      urlLiveStatus = 'error'
+      urlStatusCode = 0
     }
 
     // ── p1~p8 + 오늘탭 섹션별 DB 필드 검수 ──
@@ -14542,7 +14521,7 @@ app.post('/api/admin/mapping-recheck', requireRole('MASTER'), async (c) => {
       || ''
     const p3Fields: SectionField[] = [
       { key: 'story_lead',    label: 'story_lead (파란 강조카드)',  source: 'diag',  status: fstatus(storyLeadVal, 20),              value: fv(storyLeadVal) || '(없음)',               action: 'ai_gen' },
-      { key: 'clinical_ctx', label: 'clinical_ctx (임상 맥락)',    source: 'presc', status: fstatus(clinicalCtxVal, 20),             value: fv(clinicalCtxVal) || '(없음)',              action: 'presc_edit' },
+      { key: 'clinical_ctx', label: 'clinical_ctx (임상 맥락)',    source: 'presc', status: clinicalCtxVal ? 'ok' : 'empty',          value: fv(clinicalCtxVal) || '(없음)',              action: 'presc_edit' },
       { key: 'bc_cause_story', label: 'bc_cause_story (원인 스토리)', source: 'presc', status: fstatus(presc?.bc_cause_story, 30),  value: fv(presc?.bc_cause_story) || '(없음)',        action: 'presc_edit' },
       { key: 'bc_worsen_word', label: 'bc_worsen_word (악화 키워드)', source: 'presc', status: fstatus(presc?.bc_worsen_word),      value: fv(presc?.bc_worsen_word) || '(없음)',        action: 'presc_edit' },
     ]
@@ -14616,7 +14595,8 @@ app.post('/api/admin/mapping-recheck', requireRole('MASTER'), async (c) => {
     sections.push({ section: 'p8', title: 'p8 — 추가정보', subtitle: '성별·나이·ref_code·Override·테이블 출처', icon: 'ℹ️', fields: p8Fields, overall: p8Empty > 0 ? 'empty' : p8Warn > 0 ? 'warn' : 'ok', empty_count: p8Empty, warn_count: p8Warn })
 
     // 오늘탭: daily check / slimmind-today
-    const todayStoryLead = row.story_lead || presc?.story_lead || ''
+    // story_lead fallback 동일 로직 (storyLeadFallback 재사용)
+    const todayStoryLead = storyLeadFallback
     const p9Fields: SectionField[] = [
       { key: 'story_lead_today', label: 'story_lead (오늘의 한마디)', source: 'diag',  status: fstatus(todayStoryLead, 15),      value: fv(todayStoryLead) || '(없음)',    action: 'ai_gen' },
       { key: 'symptom_checklist_json', label: '증상 체크리스트',      source: 'presc', status: fstatus(presc?.symptom_checklist_json, 3), value: fv(presc?.symptom_checklist_json) || '(없음)', action: 'presc_edit' },
