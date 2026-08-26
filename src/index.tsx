@@ -14409,6 +14409,74 @@ app.post('/api/admin/mapping-recheck', requireRole('MASTER'), async (c) => {
 // ── 헬퍼: 도메인 축 라벨 ──
 function axesLabel(axes: string[]): string { return axes.join('·') }
 
+// ■ GET /api/admin/b2b-presc — B2B 전용 처방 단건 조회 (인라인 편집 현재값 로딩)
+app.get('/api/admin/b2b-presc', requireRole('MASTER'), async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not configured' }, 500)
+  const bc_code = c.req.query('bc_code')
+  const survey_category = c.req.query('survey_category')
+  if (!bc_code || !survey_category) return c.json({ error: 'bc_code, survey_category 필수' }, 400)
+  try {
+    const row = await db.prepare(
+      `SELECT * FROM bc_prescriptions_b2b WHERE bc_code = ? AND survey_category = ? LIMIT 1`
+    ).bind(bc_code, survey_category).first<any>().catch(() => null)
+    if (!row) return c.json({ error: 'Not found', bc_code, survey_category }, 404)
+    return c.json({ ok: true, ...row })
+  } catch (e: any) {
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ■ POST /api/admin/b2b-presc-update — B2B 전용 처방 필드 인라인 업데이트
+app.post('/api/admin/b2b-presc-update', requireRole('MASTER'), async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not configured' }, 500)
+  try {
+    const body = await c.req.json()
+    const { bc_code, survey_category, field, value } = body
+    if (!bc_code || !survey_category || !field) {
+      return c.json({ ok: false, error: 'bc_code, survey_category, field 필수' }, 400)
+    }
+    // 허용 필드 화이트리스트 (SQL Injection 방지)
+    const ALLOWED_FIELDS = new Set([
+      'brand_name', 'bc_primary_oneline_reason', 'notes', 'is_active',
+      // hospital
+      'hospital_treatments_json', 'hospital_tests_json',
+      'hospital_reassessment_json', 'hospital_caution_json',
+      // fitness
+      'fitness_weekly_plan_json', 'fitness_hiit_protocol_json',
+      'fitness_zone2_bpm', 'fitness_center_program_json', 'fitness_metrics_json',
+      // aesthetic
+      'aesthetic_primary_json', 'aesthetic_secondary_json',
+      'aesthetic_contraindication', 'aesthetic_homecare_json',
+      'aesthetic_visit_schedule_json',
+      // salon
+      'salon_scalp_diagnosis_json', 'salon_treatment_json',
+      'salon_homecare_ingredients_json', 'salon_hairstyle_json',
+      'salon_scalp_diet_json',
+    ])
+    if (!ALLOWED_FIELDS.has(field)) {
+      return c.json({ ok: false, error: `허용되지 않는 필드: ${field}` }, 400)
+    }
+    // 행 존재 여부 확인 → 없으면 INSERT, 있으면 UPDATE
+    const exists = await db.prepare(
+      `SELECT bc_code FROM bc_prescriptions_b2b WHERE bc_code = ? AND survey_category = ? LIMIT 1`
+    ).bind(bc_code, survey_category).first<any>().catch(() => null)
+    if (exists) {
+      await db.prepare(
+        `UPDATE bc_prescriptions_b2b SET ${field} = ?, updated_at = CURRENT_TIMESTAMP WHERE bc_code = ? AND survey_category = ?`
+      ).bind(value, bc_code, survey_category).run()
+    } else {
+      await db.prepare(
+        `INSERT INTO bc_prescriptions_b2b (bc_code, survey_category, ${field}, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)`
+      ).bind(bc_code, survey_category, value).run()
+    }
+    return c.json({ ok: true, bc_code, survey_category, field, updated: true })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
 // ■ 샘플 PDF 다운로드 (회원가입 완료 후) → 인쇄 가능 HTML 페이지로 리다이렉트
 app.get('/api/download-sample-pdf', async (c) => {
   // 실제 PDF 파일(/public/static/sample-report.pdf)이 존재하면 그것을 반환
