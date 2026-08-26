@@ -2475,35 +2475,56 @@ app.get('/api/b2b/customer-lookup', requireB2B(), async (c) => {
   const db = c.env.DB
   const name = c.req.query('name') || ''
   if (!name) return c.json({ error: '이름을 입력하세요.' }, 400)
-  const results = await db.prepare(`
-    SELECT r.id, r.user_name, r.bc_primary, r.axis_primary, r.created_at,
-           p.brand_name, p.tagline, p.bc_primary_oneline_reason,
-           p.recommended_foods_json, p.forbidden_foods_json,
-           p.correct_principles_json, p.lifestyle_rules_json
+
+  // diagnosis_results + results 통합 조회 (diagnosis_results 우선)
+  const rows = await db.prepare(`
+    SELECT
+      dr.id, dr.user_name,
+      COALESCE(dr.bc_primary, dr.bc_code_key) AS bc_primary,
+      dr.axis_primary,
+      COALESCE(dr.completed_at, dr.created_at) AS created_at
+    FROM diagnosis_results dr
+    WHERE dr.ref_code=? AND dr.user_name LIKE ?
+    UNION ALL
+    SELECT
+      r.id, r.user_name, r.bc_primary, r.axis_primary, r.created_at
     FROM results r
-    LEFT JOIN bc_prescriptions p ON p.bc_code = r.bc_primary
     WHERE r.ref_code=? AND r.user_name LIKE ?
-    ORDER BY r.created_at DESC LIMIT 10
-  `).bind(user.code, `%${name}%`).all<any>()
+      AND r.id NOT IN (SELECT id FROM diagnosis_results WHERE ref_code=?)
+    ORDER BY created_at DESC LIMIT 10
+  `).bind(user.code, `%${name}%`, user.code, `%${name}%`, user.code).all<any>()
+
+  // bc_prescriptions JOIN (개별 조회)
   const parse = (v: any) => { try { return JSON.parse(v) } catch { return [] } }
-  return c.json({
-    results: results.results.map((r: any) => ({
+  const enriched = await Promise.all((rows.results || []).map(async (r: any) => {
+    let presc: any = null
+    if (r.bc_primary) {
+      presc = await db.prepare(
+        `SELECT brand_name, tagline, bc_primary_oneline_reason,
+                recommended_foods_json, forbidden_foods_json,
+                correct_principles_json, lifestyle_rules_json
+         FROM bc_prescriptions WHERE bc_code = ?`
+      ).bind(r.bc_primary).first<any>().catch(() => null)
+    }
+    return {
       id: r.id,
       user_name: r.user_name,
       bc_primary: r.bc_primary,
       axis_primary: r.axis_primary,
       created_at: r.created_at,
-      prescription: r.brand_name ? {
-        brand_name: r.brand_name,
-        tagline: r.tagline,
-        reason: r.bc_primary_oneline_reason,
-        recommended_foods: parse(r.recommended_foods_json).slice(0, 3),
-        forbidden_foods: parse(r.forbidden_foods_json).slice(0, 3),
-        correct_principles: parse(r.correct_principles_json).slice(0, 3),
-        lifestyle_rules: parse(r.lifestyle_rules_json).slice(0, 3),
+      prescription: presc ? {
+        brand_name: presc.brand_name,
+        tagline: presc.tagline,
+        reason: presc.bc_primary_oneline_reason,
+        recommended_foods: parse(presc.recommended_foods_json).slice(0, 3),
+        forbidden_foods: parse(presc.forbidden_foods_json).slice(0, 3),
+        correct_principles: parse(presc.correct_principles_json).slice(0, 3),
+        lifestyle_rules: parse(presc.lifestyle_rules_json).slice(0, 3),
       } : null,
-    }))
-  })
+    }
+  }))
+
+  return c.json({ results: enriched })
 })
 
 // ─── B2B 고객 초기 문진 요약 조회 ────────────────────────────────
@@ -5852,10 +5873,57 @@ app.get('/api/b2b/recommend/:resultId', requireB2B(), async (c) => {
   const resultId = c.req.param('resultId')
 
   try {
-    // 1) 고객 결과지 조회 (ref_code = 파트너 코드로 소속 확인)
-    const result = await db.prepare(
-      "SELECT id, user_name, bc_primary, ref_code FROM results WHERE id = ? AND ref_code = ?"
-    ).bind(resultId, partnerCode).first<any>()
+    // 1) 고객 결과지 조회 — diagnosis_results → fitness_responses → salon_responses → results 순 폴백
+    let result: any = null
+
+    // 1-a) diagnosis_results (신파이프라인 — 병원/에스테틱/피트니스/살롱 통합)
+    const drRow = await db.prepare(
+      `SELECT id, user_name,
+              COALESCE(bc_primary, bc_code_key) AS bc_primary,
+              ref_code
+       FROM diagnosis_results WHERE id = ? LIMIT 1`
+    ).bind(resultId).first<any>().catch(() => null)
+    if (drRow) {
+      if (drRow.ref_code !== partnerCode) return c.json({ error: '권한 없음 또는 결과지 미존재' }, 403)
+      result = drRow
+    }
+
+    // 1-b) fitness_responses (F- 접두사 구파이프라인)
+    if (!result && resultId.startsWith('F-')) {
+      const fitRow = await db.prepare(
+        `SELECT id, user_name,
+                COALESCE(bc_nickname, bc_code) AS bc_primary,
+                ref_code
+         FROM fitness_responses WHERE id = ? LIMIT 1`
+      ).bind(resultId).first<any>().catch(() => null)
+      if (fitRow) {
+        if (fitRow.ref_code !== partnerCode) return c.json({ error: '권한 없음 또는 결과지 미존재' }, 403)
+        result = fitRow
+      }
+    }
+
+    // 1-c) salon_responses (S- 접두사 구파이프라인)
+    if (!result && resultId.startsWith('S-')) {
+      const salRow = await db.prepare(
+        `SELECT id, user_name,
+                COALESCE(bc_nickname, bc_code) AS bc_primary,
+                ref_code
+         FROM salon_responses WHERE id = ? LIMIT 1`
+      ).bind(resultId).first<any>().catch(() => null)
+      if (salRow) {
+        if (salRow.ref_code !== partnerCode) return c.json({ error: '권한 없음 또는 결과지 미존재' }, 403)
+        result = salRow
+      }
+    }
+
+    // 1-d) results 구버전 테이블 (H- 접두사 hospital)
+    if (!result) {
+      const legacyRow = await db.prepare(
+        "SELECT id, user_name, bc_primary, ref_code FROM results WHERE id = ? AND ref_code = ?"
+      ).bind(resultId, partnerCode).first<any>().catch(() => null)
+      if (legacyRow) result = legacyRow
+    }
+
     if (!result) return c.json({ error: '권한 없음 또는 결과지 미존재' }, 403)
 
     const bcCode = result.bc_primary as string | null
@@ -11795,93 +11863,131 @@ app.get('/api/b2b/group-analysis', requireB2B(), async (c) => {
     const db = c.env.DB
     const code = user.code
 
+    // ── 통합 뷰: diagnosis_results + results UNION (diagnosis_results 우선)
+    // diagnosis_results: age, bmi, weight, height, weight_loss_pct 컬럼 존재
+    // results: age 컬럼 없음 → bmi, weight, height만 사용
+    const BASE_UNION = `
+      SELECT
+        COALESCE(bc_primary, bc_code_key) AS bc_primary,
+        gender,
+        CAST(age AS INTEGER) AS age,
+        CAST(bmi AS REAL) AS bmi,
+        CAST(weight AS REAL) AS weight,
+        CAST(height AS REAL) AS height,
+        CAST(weight_loss_pct AS REAL) AS weight_loss_pct,
+        CAST(goal_weight AS REAL) AS goal_weight,
+        axis_scores AS axis_scores,
+        created_at
+      FROM diagnosis_results WHERE ref_code=?
+      UNION ALL
+      SELECT
+        bc_primary,
+        gender,
+        NULL AS age,
+        CAST(bmi AS REAL) AS bmi,
+        CAST(weight AS REAL) AS weight,
+        CAST(height AS REAL) AS height,
+        NULL AS weight_loss_pct,
+        CAST(target_weight AS REAL) AS goal_weight,
+        axis_scores_json AS axis_scores,
+        created_at
+      FROM results WHERE ref_code=? AND id NOT IN (
+        SELECT id FROM diagnosis_results WHERE ref_code=?
+      )
+    `
+
     // 1. BC 분포
     const bcDist = await db.prepare(`
-      SELECT bc_primary, COUNT(*) as cnt
-      FROM results WHERE ref_code=? AND bc_primary IS NOT NULL
+      SELECT bc_primary, COUNT(*) as cnt FROM (${BASE_UNION})
+      WHERE bc_primary IS NOT NULL
       GROUP BY bc_primary ORDER BY cnt DESC
-    `).bind(code).all<any>()
+    `).bind(code, code, code).all<any>()
 
     // 2. 성별 분포
     const genderDist = await db.prepare(`
-      SELECT gender, COUNT(*) as cnt
-      FROM results WHERE ref_code=?
+      SELECT gender, COUNT(*) as cnt FROM (${BASE_UNION})
       GROUP BY gender
-    `).bind(code).all<any>()
+    `).bind(code, code, code).all<any>()
 
-    // 3. 연령대 분포
+    // 3. 연령대 분포 (diagnosis_results의 age 컬럼 사용)
     const ageDist = await db.prepare(`
       SELECT
         CASE
-          WHEN CAST(age AS INTEGER) < 30 THEN '20대'
-          WHEN CAST(age AS INTEGER) < 40 THEN '30대'
-          WHEN CAST(age AS INTEGER) < 50 THEN '40대'
-          WHEN CAST(age AS INTEGER) < 60 THEN '50대'
+          WHEN age < 20 THEN '10대'
+          WHEN age < 30 THEN '20대'
+          WHEN age < 40 THEN '30대'
+          WHEN age < 50 THEN '40대'
+          WHEN age < 60 THEN '50대'
           ELSE '60대+'
         END as age_group,
         COUNT(*) as cnt
-      FROM results WHERE ref_code=? AND age IS NOT NULL AND age != ''
+      FROM (${BASE_UNION})
+      WHERE age IS NOT NULL AND age > 0
       GROUP BY age_group ORDER BY age_group
-    `).bind(code).all<any>()
+    `).bind(code, code, code).all<any>()
 
     // 4. BMI 평균 & 분포
     const bmiStats = await db.prepare(`
       SELECT
-        ROUND(AVG(CAST(bmi AS REAL)), 1) as avg_bmi,
-        ROUND(MIN(CAST(bmi AS REAL)), 1) as min_bmi,
-        ROUND(MAX(CAST(bmi AS REAL)), 1) as max_bmi,
+        ROUND(AVG(bmi), 1) as avg_bmi,
+        ROUND(MIN(bmi), 1) as min_bmi,
+        ROUND(MAX(bmi), 1) as max_bmi,
         COUNT(*) as cnt
-      FROM results WHERE ref_code=? AND bmi IS NOT NULL AND bmi != '' AND CAST(bmi AS REAL) > 0
-    `).bind(code).first<any>()
+      FROM (${BASE_UNION})
+      WHERE bmi IS NOT NULL AND bmi > 0
+    `).bind(code, code, code).first<any>()
 
     // 5. 월별 유입 추이 (최근 6개월)
     const monthlyTrend = await db.prepare(`
       SELECT strftime('%Y-%m', created_at) as month, COUNT(*) as cnt
-      FROM results WHERE ref_code=?
-        AND created_at >= datetime('now', '-6 months')
+      FROM (${BASE_UNION})
+      WHERE created_at >= datetime('now', '-6 months')
       GROUP BY month ORDER BY month
-    `).bind(code).all<any>()
+    `).bind(code, code, code).all<any>()
 
-    // 6. 체중 목표 달성률 분포 (weight_loss_pct 있는 경우)
+    // 6. 체중 목표 달성률 분포
     const weightGoalDist = await db.prepare(`
       SELECT
         CASE
-          WHEN CAST(weight_loss_pct AS REAL) < 5 THEN '5% 미만'
-          WHEN CAST(weight_loss_pct AS REAL) < 10 THEN '5-10%'
-          WHEN CAST(weight_loss_pct AS REAL) < 15 THEN '10-15%'
-          WHEN CAST(weight_loss_pct AS REAL) < 20 THEN '15-20%'
+          WHEN weight_loss_pct < 5 THEN '5% 미만'
+          WHEN weight_loss_pct < 10 THEN '5-10%'
+          WHEN weight_loss_pct < 15 THEN '10-15%'
+          WHEN weight_loss_pct < 20 THEN '15-20%'
           ELSE '20% 이상'
         END as goal_range,
         COUNT(*) as cnt
-      FROM results WHERE ref_code=? AND weight_loss_pct IS NOT NULL AND weight_loss_pct != ''
+      FROM (${BASE_UNION})
+      WHERE weight_loss_pct IS NOT NULL
       GROUP BY goal_range
-    `).bind(code).all<any>()
+    `).bind(code, code, code).all<any>()
 
     // 7. 평균 체중·신장
     const bodyAvg = await db.prepare(`
       SELECT
-        ROUND(AVG(CAST(weight AS REAL)), 1) as avg_weight,
-        ROUND(AVG(CAST(height AS REAL)), 1) as avg_height,
-        ROUND(AVG(CAST(target_weight AS REAL)), 1) as avg_target
-      FROM results WHERE ref_code=?
-        AND weight IS NOT NULL AND weight != '' AND CAST(weight AS REAL) > 0
-    `).bind(code).first<any>()
+        ROUND(AVG(weight), 1) as avg_weight,
+        ROUND(AVG(height), 1) as avg_height,
+        ROUND(AVG(goal_weight), 1) as avg_target
+      FROM (${BASE_UNION})
+      WHERE weight IS NOT NULL AND weight > 0
+    `).bind(code, code, code).first<any>()
 
-    // 8. 상위 축 빈도 (top_axes JSON 파싱은 클라 처리 위해 샘플 전달)
+    // 8. 최근 샘플 (축 점수 포함)
     const recentSample = await db.prepare(`
-      SELECT bc_primary, axis_scores, top_axes
-      FROM results WHERE ref_code=? AND axis_scores IS NOT NULL
+      SELECT bc_primary, axis_scores
+      FROM (${BASE_UNION})
+      WHERE axis_scores IS NOT NULL
       ORDER BY created_at DESC LIMIT 50
-    `).bind(code).all<any>()
+    `).bind(code, code, code).all<any>()
 
     // 9. 전월 vs 이번달 비교
     const periodComp = await db.prepare(`
       SELECT
         SUM(CASE WHEN strftime('%Y-%m', created_at)=strftime('%Y-%m','now') THEN 1 ELSE 0 END) as this_month,
         SUM(CASE WHEN strftime('%Y-%m', created_at)=strftime('%Y-%m','now','-1 month') THEN 1 ELSE 0 END) as last_month,
-        SUM(CASE WHEN date(created_at)=date('now') THEN 1 ELSE 0 END) as today
-      FROM results WHERE ref_code=?
-    `).bind(code).first<any>()
+        SUM(CASE WHEN date(created_at)=date('now') THEN 1 ELSE 0 END) as today,
+        COUNT(*) as total
+      FROM (${BASE_UNION})
+    `).bind(code, code, code).first<any>()
 
     return c.json({
       ok: true,
