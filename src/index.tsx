@@ -14515,14 +14515,15 @@ app.post('/api/admin/mapping-recheck', requireRole('MASTER'), async (c) => {
       : `/result-hospital/${diag_id}`
 
     // ── 결과지 URL Live 200 체크 ──
-    // HEAD 메서드를 막는 서버/CDN이 있으므로 GET으로 fallback (응답 body는 읽지 않음)
-    const deployedBase = 'https://7ed6c475-8afa-4ef8-9af8-8fab0cf8224b.vip.gensparksite.com'
+    // Workers 내부에서 vip.gensparksite.com self-loop → 522
+    // 커스텀 도메인 slimmind.kr 사용 (Cloudflare 522 우회)
+    const deployedBase = 'https://slimmind.kr'
     const resultFullUrl = deployedBase + resultUrlPath
     let urlLiveStatus: 'ok' | 'error' | 'unknown' = 'unknown'
     let urlStatusCode = 0
     try {
-      // Workers 내부에서 같은 도메인 HEAD → 522 self-loop 발생
-      // GET으로만 체크 (redirect: 'follow'로 307 자동 처리)
+      // Workers 내부에서 같은 Cloudflare 계정 도메인 → 522 self-loop 발생
+      // slimmind.kr 커스텀 도메인으로 우회 + GET only (HEAD 차단 서버 대비)
       const getResp = await fetch(resultFullUrl, { method: 'GET', redirect: 'follow', signal: AbortSignal.timeout(6000) })
       urlStatusCode = getResp.status
       urlLiveStatus = (getResp.status >= 200 && getResp.status < 400) ? 'ok' : 'error'
