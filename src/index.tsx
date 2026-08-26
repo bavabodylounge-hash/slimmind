@@ -14042,12 +14042,6 @@ app.post('/api/admin/mapping-recheck', requireRole('MASTER'), async (c) => {
         if (Array.isArray(br2) && br2.length > 0) bodyRegions = br2
       } catch {}
     }
-    // ── body_regions fitness 최종 fallback: presc.fat_area에서 파생 ──
-    // fitness raw_answers는 stage1/2/3/4 중첩 구조 → body_regions 키 없음
-    // fat_area 텍스트를 단일 항목 배열로 변환하여 p2에 표시
-    if (bodyRegions.length === 0 && presc?.fat_area) {
-      bodyRegions = [presc.fat_area]
-    }
     if (textures.length === 0 && rawAnswers) {
       try {
         const tx2 = rawAnswers.textures || rawAnswers.texture_types || rawAnswers.textureTypes || []
@@ -14315,6 +14309,12 @@ app.post('/api/admin/mapping-recheck', requireRole('MASTER'), async (c) => {
       presc = { ...b2bPresc, _source: 'b2b' }
     } else if (commonPresc) {
       presc = { ...commonPresc, _source: 'common' }
+    }
+
+    // ── body_regions 최종 fallback: presc.fat_area에서 파생 (presc 선언 후) ──
+    // fitness raw_answers는 stage1/2/3/4 중첩 구조 → body_regions 키 없음
+    if (bodyRegions.length === 0 && presc?.fat_area) {
+      bodyRegions = [presc.fat_area]
     }
 
     // 설계도 vs 실제 노출 항목 교차검증
