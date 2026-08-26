@@ -14514,20 +14514,20 @@ app.post('/api/admin/mapping-recheck', requireRole('MASTER'), async (c) => {
       : survCat === 'salon' ? `/result-salon/${diag_id}`
       : `/result-hospital/${diag_id}`
 
-    // ── 결과지 URL Live 200 체크 ──
-    // Workers 내부에서 vip.gensparksite.com self-loop → 522
-    // 커스텀 도메인 slimmind.kr 사용 (Cloudflare 522 우회)
+    // ── 결과지 URL 구성 및 유효성 체크 ──
+    // NOTE: Workers 내부에서 같은 Cloudflare 계정 도메인(vip.gensparksite.com, slimmind.kr 모두)으로
+    // fetch → Cloudflare self-loop → HTTP 522/525 발생. Live HTTP 체크 불가.
+    // 대신 URL path 유효성(패턴 일치 + diag_id 존재)으로 ok 판정.
     const deployedBase = 'https://slimmind.kr'
     const resultFullUrl = deployedBase + resultUrlPath
+    // diag_id가 존재하고 resultUrlPath가 유효한 패턴이면 ok
+    const validUrlPattern = /^\/(result-fitness|result-aesthetic|result-salon|result-hospital)\/[A-Za-z0-9_\-]+$/
     let urlLiveStatus: 'ok' | 'error' | 'unknown' = 'unknown'
     let urlStatusCode = 0
-    try {
-      // Workers 내부에서 같은 Cloudflare 계정 도메인 → 522 self-loop 발생
-      // slimmind.kr 커스텀 도메인으로 우회 + GET only (HEAD 차단 서버 대비)
-      const getResp = await fetch(resultFullUrl, { method: 'GET', redirect: 'follow', signal: AbortSignal.timeout(6000) })
-      urlStatusCode = getResp.status
-      urlLiveStatus = (getResp.status >= 200 && getResp.status < 400) ? 'ok' : 'error'
-    } catch {
+    if (diag_id && validUrlPattern.test(resultUrlPath)) {
+      urlLiveStatus = 'ok'
+      urlStatusCode = 200
+    } else {
       urlLiveStatus = 'error'
       urlStatusCode = 0
     }
@@ -14682,7 +14682,7 @@ app.post('/api/admin/mapping-recheck', requireRole('MASTER'), async (c) => {
 
     // p7: 공유 / 결과 다운로드 (URL Live 체크)
     const p7Fields: SectionField[] = [
-      { key: 'result_url', label: `결과지 URL (${resultFullUrl})`, source: 'url', status: urlLiveStatus === 'ok' ? 'ok' : urlLiveStatus === 'unknown' ? 'warn' : 'empty', value: `HTTP ${urlStatusCode || '?'} — ${urlLiveStatus === 'ok' ? '✅ 정상 응답' : urlLiveStatus === 'error' ? '❌ 응답 실패' : '⚠️ 미확인'}`, action: urlLiveStatus !== 'ok' ? 'recheck_url' : undefined },
+      { key: 'result_url', label: `결과지 URL (${resultFullUrl})`, source: 'url', status: urlLiveStatus === 'ok' ? 'ok' : urlLiveStatus === 'unknown' ? 'warn' : 'empty', value: urlLiveStatus === 'ok' ? `✅ URL 유효 (${resultUrlPath})` : urlLiveStatus === 'error' ? `❌ URL 무효 — diag_id 없음 또는 경로 오류` : `⚠️ 미확인`, action: urlLiveStatus !== 'ok' ? 'recheck_url' : undefined },
       { key: 'survey_category', label: `결과지 유형 (survey_category=${survCat})`, source: 'diag', status: survCat ? 'ok' : 'warn', value: `→ ${resultUrlPath.split('/')[1]}` },
     ]
     const p7Empty = p7Fields.filter(f => f.status === 'empty').length
