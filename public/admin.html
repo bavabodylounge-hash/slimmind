@@ -6133,7 +6133,12 @@ async function mvLoadList() {
     } catch(_) {}
   }
   try {
-    const res = await api('GET', '/admin/verify-list?limit=100');
+    // 업종 필터 + B2B 필터를 서버에 전달 (클라이언트 필터보다 정확)
+    let vlUrl = '/admin/verify-list?limit=200';
+    if (mvc_filter && mvc_filter !== 'all' && mvc_filter !== 'anom') vlUrl += `&survey_category=${mvc_filter}`;
+    if (mvc_b2b_filter === 'b2b_only' && !mvc_b2b_partner) vlUrl += '&b2b_only=1';
+    if (mvc_b2b_partner) vlUrl += `&ref_code=${encodeURIComponent(mvc_b2b_partner)}`;
+    const res = await api('GET', vlUrl);
     if (!res || !res.rows) return;
     mvc_allRows = res.rows;
     mvRenderList();
@@ -6163,7 +6168,7 @@ function mvSetFilter(el, f) {
   mvc_filter = f;
   document.querySelectorAll('[data-f]').forEach(t => { t.className = t.className.replace(/ ?on/g,'') + ' off'; });
   el.className = el.className.replace(/ ?off/g,'') + ' on';
-  mvRenderList();
+  mvLoadList(); // 서버 필터 재호출
 }
 
 function mvSetB2bFilter(el, mode) {
@@ -6176,12 +6181,12 @@ function mvSetB2bFilter(el, mode) {
     sel.style.display = mode === 'b2b_only' ? 'block' : 'none';
     sel.value = '';
   }
-  mvRenderList();
+  mvLoadList(); // 서버 필터 재호출
 }
 
 function mvSetB2bPartnerFilter(code) {
   mvc_b2b_partner = code;
-  mvRenderList();
+  mvLoadList(); // 서버 필터 재호출
 }
 
 function mvRenderList() {
@@ -6205,10 +6210,10 @@ function mvRenderList() {
   }
   el.innerHTML = rows.map(r => {
     const col = MVC_CAT_COLOR[r.survey_category] || '#888';
-    const isNull = !r.bc_code || !/^BC-/i.test(r.bc_code);
+    const displayBc = r.effective_bc || r.bc_code || r.bc_primary || 'NULL';
+    const isNull = !displayBc || !/^BC-/i.test(displayBc);
     const isActive = r.diag_id === mvc_currentId;
     const isB2b = r.ref_code && r.ref_code.startsWith('B2B-');
-    // B2B 업체 이름 조회
     const partnerInfo = isB2b ? mvc_b2bPartners.find(p => p.code === r.ref_code) : null;
     const partnerBadge = isB2b
       ? `<span style="font-size:9px;background:#ede9fe;color:#7c3aed;padding:1px 4px;border-radius:3px;font-weight:700">🏢 ${partnerInfo ? (partnerInfo.brand_name||r.ref_code).slice(0,8) : r.ref_code}</span>`
@@ -6221,7 +6226,7 @@ function mvRenderList() {
         ${partnerBadge}
       </div>
       <div style="text-align:right">
-        <div class="mvc-bc-badge ${isNull?'mvc-bc-null':''}">${r.bc_code||'NULL'}</div>
+        <div class="mvc-bc-badge ${isNull?'mvc-bc-null':''}">${displayBc}</div>
         <div style="font-size:10px;color:#aaa;margin-top:2px">${(r.created_at||'').slice(0,10)}</div>
       </div>
       ${r.override_applied ? '<span class="mvc-ovr-tag">OVR</span>' : ''}

@@ -13296,14 +13296,28 @@ app.get('/api/admin/verify-list', requireRole('MASTER'), async (c) => {
 
   try {
     const limit = Math.min(parseInt(c.req.query('limit') || '100', 10), 300)
+    const filterCat = c.req.query('survey_category') || ''   // 업종 필터 ('' = 전체)
+    const filterB2b = c.req.query('b2b_only') === '1'        // B2B 전용 필터
+    const filterRef = c.req.query('ref_code') || ''          // 특정 업체 필터
+
+    // ── B2B/ref_code 필터 WHERE 절 헬퍼 ──
+    const b2bWhere = (col: string = 'ref_code') => {
+      if (filterRef) return ` AND ${col} = '${filterRef.replace(/'/g, "''")}'`
+      if (filterB2b) return ` AND ${col} LIKE 'B2B-%'`
+      return ''
+    }
 
     // ── diagnosis_results (신파이프라인) ──
     // 이상 케이스 + 정상 케이스를 별도 쿼리해 최신 정상 결과가 limit에 묻히지 않도록 보장
+    const drCatWhere = (filterCat && filterCat !== 'integrated')
+      ? ` AND survey_category = '${filterCat}'`
+      : (filterCat === 'integrated' ? ` AND (survey_category = 'integrated' OR survey_category IS NULL)` : '')
     const DR_SELECT = `
       SELECT
         id AS diag_id,
         user_name,
-        bc_code_key AS bc_code,
+        COALESCE(bc_code_key, bc_primary) AS bc_code,
+        COALESCE(bc_code_key, bc_primary) AS effective_bc,
         bc_primary,
         ref_code,
         override_applied,
@@ -13320,23 +13334,24 @@ app.get('/api/admin/verify-list', requireRole('MASTER'), async (c) => {
           ELSE 0
         END AS is_anomaly
       FROM diagnosis_results
+      WHERE 1=1${drCatWhere}${b2bWhere('ref_code')}
     `
     // 이상 케이스 (limit의 60%)
     const drAnomalyLimit = Math.ceil(limit * 0.6)
     const drAnomalyRows = await db.prepare(`
       ${DR_SELECT}
-      WHERE (bc_code_key IS NULL OR bc_code_key = '' OR bc_code_key NOT LIKE 'BC-%' OR override_applied = 1)
+      AND (bc_code_key IS NULL OR bc_code_key = '' OR bc_code_key NOT LIKE 'BC-%' OR override_applied = 1)
       ORDER BY COALESCE(completed_at, created_at) DESC
       LIMIT ?
-    `).bind(drAnomalyLimit).all<any>()
+    `).bind(drAnomalyLimit).all<any>().catch(() => ({ results: [] as any[] }))
     // 정상 케이스 최신 (limit의 40% - 최소 30건)
     const drNormalLimit = Math.max(30, Math.ceil(limit * 0.4))
     const drNormalRows = await db.prepare(`
       ${DR_SELECT}
-      WHERE bc_code_key LIKE 'BC-%' AND (override_applied = 0 OR override_applied IS NULL)
+      AND bc_code_key LIKE 'BC-%' AND (override_applied = 0 OR override_applied IS NULL)
       ORDER BY COALESCE(completed_at, created_at) DESC
       LIMIT ?
-    `).bind(drNormalLimit).all<any>()
+    `).bind(drNormalLimit).all<any>().catch(() => ({ results: [] as any[] }))
     const drRows = {
       results: [
         ...(drAnomalyRows.results || []),
@@ -13345,106 +13360,118 @@ app.get('/api/admin/verify-list', requireRole('MASTER'), async (c) => {
     }
 
     // ── hospital_responses (병원 전용 테이블) ──
-    const hrRows = await db.prepare(`
-      SELECT
-        id AS diag_id,
-        user_name,
-        bc_code,
-        bc_primary,
-        ref_code,
-        override_applied,
-        override_bc_code,
-        override_at,
-        'hospital' AS survey_category,
-        gender,
-        age,
-        created_at,
-        CASE
-          WHEN bc_code IS NULL OR bc_code = '' THEN 1
-          WHEN bc_code NOT LIKE 'BC-%' THEN 1
-          WHEN override_applied = 1 THEN 1
-          ELSE 0
-        END AS is_anomaly
-      FROM hospital_responses
-      ORDER BY is_anomaly DESC, created_at DESC
-      LIMIT ?
-    `).bind(Math.floor(limit / 2)).all<any>().catch(() => ({ results: [] as any[] }))
+    const hrRows = (filterCat && filterCat !== 'hospital') ? { results: [] as any[] } :
+      await db.prepare(`
+        SELECT
+          id AS diag_id,
+          user_name,
+          COALESCE(bc_code, bc_primary) AS bc_code,
+          COALESCE(bc_code, bc_primary) AS effective_bc,
+          bc_primary,
+          ref_code,
+          override_applied,
+          override_bc_code,
+          override_at,
+          'hospital' AS survey_category,
+          gender,
+          age,
+          created_at,
+          CASE
+            WHEN bc_code IS NULL OR bc_code = '' THEN 1
+            WHEN bc_code NOT LIKE 'BC-%' THEN 1
+            WHEN override_applied = 1 THEN 1
+            ELSE 0
+          END AS is_anomaly
+        FROM hospital_responses
+        WHERE 1=1${b2bWhere('ref_code')}
+        ORDER BY is_anomaly DESC, created_at DESC
+        LIMIT ?
+      `).bind(Math.floor(limit / 2)).all<any>().catch(() => ({ results: [] as any[] }))
 
     // ── fitness_responses (피트니스 전용) ──
-    const frRows = await db.prepare(`
-      SELECT
-        id AS diag_id,
-        user_name,
-        bc_code,
-        bc_primary,
-        ref_code,
-        override_applied,
-        override_bc_code,
-        override_at,
-        'fitness' AS survey_category,
-        gender,
-        age,
-        created_at,
-        CASE
-          WHEN bc_code IS NULL OR bc_code = '' THEN 1
-          WHEN bc_code NOT LIKE 'BC-%' THEN 1
-          WHEN override_applied = 1 THEN 1
-          ELSE 0
-        END AS is_anomaly
-      FROM fitness_responses
-      ORDER BY is_anomaly DESC, created_at DESC
-      LIMIT ?
-    `).bind(Math.floor(limit / 2)).all<any>().catch(() => ({ results: [] as any[] }))
+    const frRows = (filterCat && filterCat !== 'fitness') ? { results: [] as any[] } :
+      await db.prepare(`
+        SELECT
+          id AS diag_id,
+          user_name,
+          COALESCE(bc_code, bc_primary) AS bc_code,
+          COALESCE(bc_code, bc_primary) AS effective_bc,
+          bc_primary,
+          ref_code,
+          override_applied,
+          override_bc_code,
+          override_at,
+          'fitness' AS survey_category,
+          gender,
+          age,
+          created_at,
+          CASE
+            WHEN bc_code IS NULL OR bc_code = '' THEN 1
+            WHEN bc_code NOT LIKE 'BC-%' THEN 1
+            WHEN override_applied = 1 THEN 1
+            ELSE 0
+          END AS is_anomaly
+        FROM fitness_responses
+        WHERE 1=1${b2bWhere('ref_code')}
+        ORDER BY is_anomaly DESC, created_at DESC
+        LIMIT ?
+      `).bind(Math.floor(limit / 2)).all<any>().catch(() => ({ results: [] as any[] }))
 
     // ── aesthetic_responses ──
-    const arRows = await db.prepare(`
-      SELECT
-        id AS diag_id,
-        user_name,
-        bc_code,
-        bc_primary,
-        ref_code,
-        0 AS override_applied,
-        NULL AS override_bc_code,
-        NULL AS override_at,
-        'aesthetic' AS survey_category,
-        gender,
-        age,
-        created_at,
-        CASE
-          WHEN bc_code IS NULL OR bc_code = '' THEN 1
-          WHEN bc_code NOT LIKE 'BC-%' THEN 1
-          ELSE 0
-        END AS is_anomaly
-      FROM aesthetic_responses
-      ORDER BY is_anomaly DESC, created_at DESC
-      LIMIT ?
-    `).bind(Math.floor(limit / 2)).all<any>().catch(() => ({ results: [] as any[] }))
+    const arRows = (filterCat && filterCat !== 'aesthetic') ? { results: [] as any[] } :
+      await db.prepare(`
+        SELECT
+          id AS diag_id,
+          user_name,
+          COALESCE(bc_code, bc_primary) AS bc_code,
+          COALESCE(bc_code, bc_primary) AS effective_bc,
+          bc_primary,
+          ref_code,
+          0 AS override_applied,
+          NULL AS override_bc_code,
+          NULL AS override_at,
+          'aesthetic' AS survey_category,
+          gender,
+          age,
+          created_at,
+          CASE
+            WHEN bc_code IS NULL OR bc_code = '' THEN 1
+            WHEN bc_code NOT LIKE 'BC-%' THEN 1
+            ELSE 0
+          END AS is_anomaly
+        FROM aesthetic_responses
+        WHERE 1=1${b2bWhere('ref_code')}
+        ORDER BY is_anomaly DESC, created_at DESC
+        LIMIT ?
+      `).bind(Math.floor(limit / 2)).all<any>().catch(() => ({ results: [] as any[] }))
 
     // ── salon_responses ──
-    const srRows = await db.prepare(`
-      SELECT
-        id AS diag_id,
-        user_name,
-        bc_code,
-        bc_primary,
-        ref_code,
-        0 AS override_applied,
-        NULL AS override_bc_code,
-        NULL AS override_at,
-        'salon' AS survey_category,
-        gender,
-        age,
-        created_at,
-        CASE
-          WHEN bc_code IS NULL OR bc_code = '' THEN 1
-          WHEN bc_code NOT LIKE 'BC-%' THEN 1
-          ELSE 0
-        END AS is_anomaly
-      FROM salon_responses
-      ORDER BY is_anomaly DESC, created_at DESC
-      LIMIT ?
-    `).bind(Math.floor(limit / 2)).all<any>().catch(() => ({ results: [] as any[] }))
+    const srRows = (filterCat && filterCat !== 'salon') ? { results: [] as any[] } :
+      await db.prepare(`
+        SELECT
+          id AS diag_id,
+          user_name,
+          COALESCE(bc_code, bc_primary) AS bc_code,
+          COALESCE(bc_code, bc_primary) AS effective_bc,
+          bc_primary,
+          ref_code,
+          0 AS override_applied,
+          NULL AS override_bc_code,
+          NULL AS override_at,
+          'salon' AS survey_category,
+          gender,
+          age,
+          created_at,
+          CASE
+            WHEN bc_code IS NULL OR bc_code = '' THEN 1
+            WHEN bc_code NOT LIKE 'BC-%' THEN 1
+            ELSE 0
+          END AS is_anomaly
+        FROM salon_responses
+        WHERE 1=1${b2bWhere('ref_code')}
+        ORDER BY is_anomaly DESC, created_at DESC
+        LIMIT ?
+      `).bind(Math.floor(limit / 2)).all<any>().catch(() => ({ results: [] as any[] }))
 
     // ── 중복 제거 + 이상 우선 정렬 병합 ──
     const seen = new Set<string>()
@@ -13470,6 +13497,7 @@ app.get('/api/admin/verify-list', requireRole('MASTER'), async (c) => {
       rows: allRows,
       total: allRows.length,
       anomaly_count: anomalyCount,
+      filter: { survey_category: filterCat || 'all', b2b_only: filterB2b, ref_code: filterRef || null },
       fetched_at: new Date().toISOString(),
     })
   } catch (e: any) {
