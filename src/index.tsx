@@ -13924,7 +13924,9 @@ app.post('/api/admin/mapping-recheck', requireRole('MASTER'), async (c) => {
     // ② fitness_responses 우선 (F- 패턴)
     if (!row && isFitness_r) {
       row = await db.prepare(`
-        SELECT id AS diag_id, user_name, bc_primary, bc_code,
+        SELECT id AS diag_id, user_name,
+               COALESCE(bc_nickname, bc_code) AS bc_primary,
+               bc_code,
                axis_scores, raw_answers,
                NULL AS body_regions, NULL AS textures, NULL AS flags,
                'fitness' AS survey_category, gender, age,
@@ -13938,7 +13940,9 @@ app.post('/api/admin/mapping-recheck', requireRole('MASTER'), async (c) => {
     // ③ salon_responses 우선 (SAL- 패턴)
     if (!row && isSalon_r) {
       row = await db.prepare(`
-        SELECT id AS diag_id, user_name, bc_primary, bc_code,
+        SELECT id AS diag_id, user_name,
+               COALESCE(bc_nickname, bc_code) AS bc_primary,
+               bc_code,
                axis_scores, raw_answers,
                NULL AS body_regions, NULL AS textures, NULL AS flags,
                'salon' AS survey_category, gender, age,
@@ -14038,6 +14042,12 @@ app.post('/api/admin/mapping-recheck', requireRole('MASTER'), async (c) => {
         if (Array.isArray(br2) && br2.length > 0) bodyRegions = br2
       } catch {}
     }
+    // ── body_regions fitness 최종 fallback: presc.fat_area에서 파생 ──
+    // fitness raw_answers는 stage1/2/3/4 중첩 구조 → body_regions 키 없음
+    // fat_area 텍스트를 단일 항목 배열로 변환하여 p2에 표시
+    if (bodyRegions.length === 0 && presc?.fat_area) {
+      bodyRegions = [presc.fat_area]
+    }
     if (textures.length === 0 && rawAnswers) {
       try {
         const tx2 = rawAnswers.textures || rawAnswers.texture_types || rawAnswers.textureTypes || []
@@ -14048,6 +14058,9 @@ app.post('/api/admin/mapping-recheck', requireRole('MASTER'), async (c) => {
     if (Object.keys(flagsObj).length === 0 && rawAnswers?.flags) {
       try { flagsObj = rawAnswers.flags || {} } catch {}
     }
+    // ── story_lead fallback: bc_prescriptions.bc_cause_story 첫 문장 ──
+    // fitness/salon은 story_lead 컬럼이 없으므로 처방 데이터에서 파생
+    let storyLeadFallback = row.story_lead || ''
 
     const normRegions  = bodyRegions.map((r: string) => r.toUpperCase())
     const normTextures = textures.map((t: string) => t.toLowerCase())
@@ -14414,6 +14427,13 @@ app.post('/api/admin/mapping-recheck', requireRole('MASTER'), async (c) => {
           urlStatusCode = getResp.status
           urlLiveStatus = (getResp.status >= 200 && getResp.status < 400) ? 'ok' : 'error'
         } catch { urlLiveStatus = 'error'; urlStatusCode = 0 }
+      } else if (headResp.status === 522 || headResp.status === 523 || headResp.status === 524) {
+        // Cloudflare 특수 오류: GET으로도 재시도
+        try {
+          const getResp = await fetch(resultFullUrl, { method: 'GET', redirect: 'follow', signal: AbortSignal.timeout(6000) })
+          urlStatusCode = getResp.status
+          urlLiveStatus = (getResp.status >= 200 && getResp.status < 400) ? 'ok' : 'error'
+        } catch { urlLiveStatus = 'error'; urlStatusCode = headResp.status }
       } else {
         urlLiveStatus = 'error'
       }
@@ -14504,10 +14524,25 @@ app.post('/api/admin/mapping-recheck', requireRole('MASTER'), async (c) => {
     sections.push({ section: 'p2', title: 'p2 — 축 점수', subtitle: '10축 바차트 · core/watch/ok 그룹', icon: '📊', fields: p2Fields, overall: p2Empty > 0 ? 'empty' : p2Warn > 0 ? 'warn' : 'ok', empty_count: p2Empty, warn_count: p2Warn })
 
     // p3: 해석 스토리
-    const storyLeadVal = row.story_lead || presc?.story_lead || ''
+    // story_lead fallback: bc_cause_story 첫 문장 or closing_copy
+    storyLeadFallback = row.story_lead || presc?.story_lead || ''
+    if (!storyLeadFallback && presc?.bc_cause_story) {
+      // bc_cause_story에서 첫 문장 추출 (마침표까지)
+      const firstSentence = presc.bc_cause_story.split(/[.。\n]/)[0]?.trim()
+      if (firstSentence && firstSentence.length > 10) storyLeadFallback = firstSentence + '.'
+    }
+    if (!storyLeadFallback && presc?.closing_copy) {
+      storyLeadFallback = presc.closing_copy.split(/[.。\n]/)[0]?.trim() || ''
+    }
+    const storyLeadVal = storyLeadFallback
+    // clinical_ctx fallback: bc_worsen_word → bc_primary_oneline_reason 에서 파생
+    const clinicalCtxVal = presc?.clinical_ctx
+      || (presc?.bc_worsen_word ? `주의 키워드: ${presc.bc_worsen_word}` : '')
+      || presc?.bc_primary_oneline_reason
+      || ''
     const p3Fields: SectionField[] = [
       { key: 'story_lead',    label: 'story_lead (파란 강조카드)',  source: 'diag',  status: fstatus(storyLeadVal, 20),              value: fv(storyLeadVal) || '(없음)',               action: 'ai_gen' },
-      { key: 'clinical_ctx', label: 'clinical_ctx (임상 맥락)',    source: 'presc', status: fstatus(presc?.clinical_ctx, 20),        value: fv(presc?.clinical_ctx) || '(없음)',         action: 'presc_edit' },
+      { key: 'clinical_ctx', label: 'clinical_ctx (임상 맥락)',    source: 'presc', status: fstatus(clinicalCtxVal, 20),             value: fv(clinicalCtxVal) || '(없음)',              action: 'presc_edit' },
       { key: 'bc_cause_story', label: 'bc_cause_story (원인 스토리)', source: 'presc', status: fstatus(presc?.bc_cause_story, 30),  value: fv(presc?.bc_cause_story) || '(없음)',        action: 'presc_edit' },
       { key: 'bc_worsen_word', label: 'bc_worsen_word (악화 키워드)', source: 'presc', status: fstatus(presc?.bc_worsen_word),      value: fv(presc?.bc_worsen_word) || '(없음)',        action: 'presc_edit' },
     ]
