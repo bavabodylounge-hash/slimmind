@@ -13550,6 +13550,7 @@ app.get('/api/admin/verify-detail/:id', requireRole('MASTER'), async (c) => {
         story_lead,
         clinical_ctx,
         ai_story_src,
+        ref_code,
         COALESCE(completed_at, created_at) AS created_at
       FROM diagnosis_results
       WHERE id = ?
@@ -13581,6 +13582,7 @@ app.get('/api/admin/verify-detail/:id', requireRole('MASTER'), async (c) => {
           story_lead,
           clinical_ctx,
           NULL AS ai_story_src,
+          ref_code,
           created_at
         FROM hospital_responses
         WHERE id = ?
@@ -13613,6 +13615,7 @@ app.get('/api/admin/verify-detail/:id', requireRole('MASTER'), async (c) => {
           NULL AS story_lead,
           NULL AS clinical_ctx,
           NULL AS ai_story_src,
+          ref_code,
           created_at
         FROM fitness_responses
         WHERE id = ?
@@ -13645,6 +13648,7 @@ app.get('/api/admin/verify-detail/:id', requireRole('MASTER'), async (c) => {
           NULL AS story_lead,
           NULL AS clinical_ctx,
           NULL AS ai_story_src,
+          ref_code,
           created_at
         FROM aesthetic_responses
         WHERE id = ?
@@ -13677,6 +13681,7 @@ app.get('/api/admin/verify-detail/:id', requireRole('MASTER'), async (c) => {
           NULL AS story_lead,
           NULL AS clinical_ctx,
           NULL AS ai_story_src,
+          ref_code,
           created_at
         FROM salon_responses
         WHERE id = ?
