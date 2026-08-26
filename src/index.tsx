@@ -7355,9 +7355,10 @@ app.post('/api/h/diagnosis', async (c) => {
 
 // ══════════════════════════════════════════════════════════════
 // [B2B 처방 우선 조회 헬퍼] fetchB2bPrescription
-//  bc_prescriptions_b2b (bc_code + survey_category) 우선 조회
-//  → 없으면 bc_prescriptions (공통 1벌) 폴백
-//  → 없으면 null 반환
+//  ★ 설계도 원칙: B2B 전용 필드는 B2B 테이블에서, 공통 필드는 bc_prescriptions에서
+//  → 공통 처방(bc_prescriptions)을 BASE로 먼저 로드
+//  → B2B 전용 테이블(bc_prescriptions_b2b)로 업종별 필드를 OVERRIDE (spread)
+//  → 이 방식이면 B2B 테이블에 없는 공통 필드(monthly_goals_json 등)가 누락되지 않음
 // ══════════════════════════════════════════════════════════════
 async function fetchB2bPrescription(
   db: D1Database,
@@ -7369,17 +7370,30 @@ async function fetchB2bPrescription(
   const normalizedBc = String(bcCode).replace(/:.*$/, '').trim()
   if (!normalizedBc) return null
   try {
-    // 1순위: bc_prescriptions_b2b (B2B 업종별 전용)
-    const b2bRow = await db.prepare(
-      `SELECT * FROM bc_prescriptions_b2b WHERE bc_code = ? AND survey_category = ? AND is_active = 1 LIMIT 1`
-    ).bind(normalizedBc, surveyCategory).first<any>().catch(() => null)
-    if (b2bRow) {
-      return { ...b2bRow, _source: 'b2b' }
-    }
-    // 2순위: bc_prescriptions (공통 처방 폴백)
+    // 항상 공통 처방(bc_prescriptions)을 BASE로 로드
     const commonRow = await db.prepare(
       `SELECT * FROM bc_prescriptions WHERE bc_code = ? LIMIT 1`
     ).bind(normalizedBc).first<any>().catch(() => null)
+
+    // B2B 전용 처방 조회 (없으면 null)
+    const b2bRow = await db.prepare(
+      `SELECT * FROM bc_prescriptions_b2b WHERE bc_code = ? AND survey_category = ? AND is_active = 1 LIMIT 1`
+    ).bind(normalizedBc, surveyCategory).first<any>().catch(() => null)
+
+    if (b2bRow && commonRow) {
+      // ★ 핵심: 공통 처방을 BASE로, B2B 전용 필드로 OVERRIDE
+      // B2B 테이블의 null/빈값 필드는 공통 처방값을 유지 (COALESCE 방식)
+      const merged: any = { ...commonRow }
+      for (const [k, v] of Object.entries(b2bRow)) {
+        if (v !== null && v !== undefined && v !== '' && v !== '[]' && v !== '{}') {
+          merged[k] = v
+        }
+      }
+      return { ...merged, _source: 'b2b' }
+    }
+    if (b2bRow) {
+      return { ...b2bRow, _source: 'b2b' }
+    }
     if (commonRow) {
       return { ...commonRow, _source: 'common' }
     }
@@ -13878,34 +13892,92 @@ app.post('/api/admin/mapping-recheck', requireRole('MASTER'), async (c) => {
     const { diag_id } = body
     if (!diag_id) return c.json({ error: 'diag_id 필수' }, 400)
 
-    // ── 진단 데이터 로드 (verify-detail과 동일 쿼리 순서) ──
+    // ── 진단 데이터 로드 — ID 패턴으로 테이블 우선 순서 결정 ──
+    // A- → aesthetic_responses, H- → hospital_responses
+    // F- → fitness_responses, SAL- → salon_responses
+    // UUID/기타 → diagnosis_results 우선
     let row: any = null
     let tableSource = ''
 
-    row = await db.prepare(`
-      SELECT id AS diag_id, user_name, bc_primary,
-             bc_code_key AS bc_code, axis_scores, raw_answers,
-             NULL AS body_regions, NULL AS textures, NULL AS flags,
-             survey_category, gender, age,
-             override_bc_code, NULL AS override_story, override_applied, override_at,
-             story_lead, ref_code,
-             COALESCE(completed_at, created_at) AS created_at
-      FROM diagnosis_results WHERE id = ? LIMIT 1
-    `).bind(diag_id).first<any>().catch(() => null)
-    if (row) tableSource = 'diagnosis_results'
+    const isAesthetic_r = diag_id.startsWith('A-')
+    const isHospital_r  = diag_id.startsWith('H-')
+    const isFitness_r   = diag_id.startsWith('F-')
+    const isSalon_r     = diag_id.startsWith('SAL-')
+    const isGeneral_r   = !isAesthetic_r && !isHospital_r && !isFitness_r && !isSalon_r
 
+    // ① aesthetic_responses 우선 (A- 패턴)
+    if (!row && (isAesthetic_r || (!isHospital_r && !isFitness_r && !isSalon_r && false))) {
+      if (isAesthetic_r) {
+        row = await db.prepare(`
+          SELECT id AS diag_id, user_name, bc_primary, bc_code,
+                 axis_scores, raw_answers,
+                 NULL AS body_regions, NULL AS textures, NULL AS flags,
+                 'aesthetic' AS survey_category, gender, age,
+                 0 AS override_applied, NULL AS override_bc_code, NULL AS override_story, NULL AS override_at,
+                 NULL AS story_lead, ref_code, created_at
+          FROM aesthetic_responses WHERE id = ? LIMIT 1
+        `).bind(diag_id).first<any>().catch(() => null)
+        if (row) tableSource = 'aesthetic_responses'
+      }
+    }
+
+    // ② fitness_responses 우선 (F- 패턴)
+    if (!row && isFitness_r) {
+      row = await db.prepare(`
+        SELECT id AS diag_id, user_name, bc_primary, bc_code,
+               axis_scores, raw_answers,
+               NULL AS body_regions, NULL AS textures, NULL AS flags,
+               'fitness' AS survey_category, gender, age,
+               override_bc_code, override_story, override_applied, override_at,
+               NULL AS story_lead, ref_code, created_at
+        FROM fitness_responses WHERE id = ? LIMIT 1
+      `).bind(diag_id).first<any>().catch(() => null)
+      if (row) tableSource = 'fitness_responses'
+    }
+
+    // ③ salon_responses 우선 (SAL- 패턴)
+    if (!row && isSalon_r) {
+      row = await db.prepare(`
+        SELECT id AS diag_id, user_name, bc_primary, bc_code,
+               axis_scores, raw_answers,
+               NULL AS body_regions, NULL AS textures, NULL AS flags,
+               'salon' AS survey_category, gender, age,
+               0 AS override_applied, NULL AS override_bc_code, NULL AS override_story, NULL AS override_at,
+               NULL AS story_lead, ref_code, created_at
+        FROM salon_responses WHERE id = ? LIMIT 1
+      `).bind(diag_id).first<any>().catch(() => null)
+      if (row) tableSource = 'salon_responses'
+    }
+
+    // ④ diagnosis_results (UUID / integrated / H-패턴 포함)
+    if (!row && (isGeneral_r || isHospital_r)) {
+      row = await db.prepare(`
+        SELECT id AS diag_id, user_name, bc_primary,
+               bc_code_key AS bc_code, axis_scores, raw_answers,
+               NULL AS body_regions, NULL AS textures, NULL AS flags,
+               survey_category, gender, age,
+               override_bc_code, NULL AS override_story, override_applied, override_at,
+               story_lead, ref_code,
+               COALESCE(completed_at, created_at) AS created_at
+        FROM diagnosis_results WHERE id = ? LIMIT 1
+      `).bind(diag_id).first<any>().catch(() => null)
+      if (row) tableSource = 'diagnosis_results'
+    }
+
+    // ⑤ hospital_responses (H- 패턴 or UUID 폴백)
     if (!row) {
       row = await db.prepare(`
         SELECT id AS diag_id, user_name, bc_primary, bc_code,
                axis_scores, raw_answers, body_regions, textures, NULL AS flags,
                'hospital' AS survey_category, gender, age,
                override_bc_code, override_story, override_applied, override_at,
-               story_lead, NULL AS ref_code, created_at
+               story_lead, ref_code, created_at
         FROM hospital_responses WHERE id = ? LIMIT 1
       `).bind(diag_id).first<any>().catch(() => null)
       if (row) tableSource = 'hospital_responses'
     }
 
+    // ⑥ 나머지 업종 폴백 (A-/F-/SAL-도 diagnosis_results에 있을 수 있음)
     if (!row) {
       row = await db.prepare(`
         SELECT id AS diag_id, user_name, bc_primary, bc_code,
@@ -13913,10 +13985,34 @@ app.post('/api/admin/mapping-recheck', requireRole('MASTER'), async (c) => {
                NULL AS body_regions, NULL AS textures, NULL AS flags,
                'fitness' AS survey_category, gender, age,
                override_bc_code, override_story, override_applied, override_at,
-               NULL AS story_lead, NULL AS ref_code, created_at
+               NULL AS story_lead, ref_code, created_at
         FROM fitness_responses WHERE id = ? LIMIT 1
       `).bind(diag_id).first<any>().catch(() => null)
       if (row) tableSource = 'fitness_responses'
+    }
+    if (!row) {
+      row = await db.prepare(`
+        SELECT id AS diag_id, user_name, bc_primary, bc_code,
+               axis_scores, raw_answers,
+               NULL AS body_regions, NULL AS textures, NULL AS flags,
+               'aesthetic' AS survey_category, gender, age,
+               0 AS override_applied, NULL AS override_bc_code, NULL AS override_story, NULL AS override_at,
+               NULL AS story_lead, ref_code, created_at
+        FROM aesthetic_responses WHERE id = ? LIMIT 1
+      `).bind(diag_id).first<any>().catch(() => null)
+      if (row) tableSource = 'aesthetic_responses'
+    }
+    if (!row) {
+      row = await db.prepare(`
+        SELECT id AS diag_id, user_name, bc_primary, bc_code,
+               axis_scores, raw_answers,
+               NULL AS body_regions, NULL AS textures, NULL AS flags,
+               'salon' AS survey_category, gender, age,
+               0 AS override_applied, NULL AS override_bc_code, NULL AS override_story, NULL AS override_at,
+               NULL AS story_lead, ref_code, created_at
+        FROM salon_responses WHERE id = ? LIMIT 1
+      `).bind(diag_id).first<any>().catch(() => null)
+      if (row) tableSource = 'salon_responses'
     }
 
     if (!row) return c.json({ error: `진단 ID [${diag_id}]를 찾을 수 없습니다.` }, 404)
@@ -13933,6 +14029,25 @@ app.post('/api/admin/mapping-recheck', requireRole('MASTER'), async (c) => {
     try { const br = row.body_regions; if (br) bodyRegions = JSON.parse(br) } catch {}
     try { const tx = row.textures; if (tx) textures = JSON.parse(tx) } catch {}
     try { const fl = row.flags; if (fl) flagsObj = JSON.parse(fl) } catch {}
+
+    // ── body_regions / textures fallback: raw_answers에서 추출 ──
+    // fitness/salon 등 body_regions 컬럼이 없는 업종은 raw_answers에서 파싱
+    if (bodyRegions.length === 0 && rawAnswers) {
+      try {
+        const br2 = rawAnswers.body_regions || rawAnswers.bodyRegions || rawAnswers.regions || []
+        if (Array.isArray(br2) && br2.length > 0) bodyRegions = br2
+      } catch {}
+    }
+    if (textures.length === 0 && rawAnswers) {
+      try {
+        const tx2 = rawAnswers.textures || rawAnswers.texture_types || rawAnswers.textureTypes || []
+        if (Array.isArray(tx2) && tx2.length > 0) textures = tx2
+      } catch {}
+    }
+    // flags fallback: raw_answers.flags
+    if (Object.keys(flagsObj).length === 0 && rawAnswers?.flags) {
+      try { flagsObj = rawAnswers.flags || {} } catch {}
+    }
 
     const normRegions  = bodyRegions.map((r: string) => r.toUpperCase())
     const normTextures = textures.map((t: string) => t.toLowerCase())
@@ -14175,7 +14290,19 @@ app.post('/api/admin/mapping-recheck', requireRole('MASTER'), async (c) => {
       `SELECT * FROM bc_prescriptions_b2b WHERE bc_code = ? AND survey_category = ? AND is_active = 1 LIMIT 1`
     ).bind(effectiveBc, survCatForPresc).first<any>().catch(() => null)
     const commonPresc = await db.prepare(`SELECT * FROM bc_prescriptions WHERE bc_code = ?`).bind(effectiveBc).first<any>().catch(() => null)
-    const presc = b2bPresc ? { ...commonPresc, ...b2bPresc, _source: 'b2b' } : (commonPresc ? { ...commonPresc, _source: 'common' } : null)
+    // ★ 핵심 병합 원칙: 공통 처방을 BASE로, B2B 전용 필드로 OVERRIDE (빈 값은 공통 유지)
+    let presc: any = null
+    if (b2bPresc && commonPresc) {
+      const merged: any = { ...commonPresc }
+      for (const [k, v] of Object.entries(b2bPresc)) {
+        if (v !== null && v !== undefined && v !== '' && v !== '[]' && v !== '{}') merged[k] = v
+      }
+      presc = { ...merged, _source: 'b2b' }
+    } else if (b2bPresc) {
+      presc = { ...b2bPresc, _source: 'b2b' }
+    } else if (commonPresc) {
+      presc = { ...commonPresc, _source: 'common' }
+    }
 
     // 설계도 vs 실제 노출 항목 교차검증
     const prescChecks: Array<{ field: string; label: string; status: 'ok' | 'empty' | 'warn'; value: string }> = []
@@ -14269,17 +14396,34 @@ app.post('/api/admin/mapping-recheck', requireRole('MASTER'), async (c) => {
       : `/result-hospital/${diag_id}`
 
     // ── 결과지 URL Live 200 체크 ──
+    // HEAD 메서드를 막는 서버/CDN이 있으므로 GET으로 fallback (응답 body는 읽지 않음)
     const deployedBase = 'https://7ed6c475-8afa-4ef8-9af8-8fab0cf8224b.vip.gensparksite.com'
     const resultFullUrl = deployedBase + resultUrlPath
     let urlLiveStatus: 'ok' | 'error' | 'unknown' = 'unknown'
     let urlStatusCode = 0
     try {
-      const resp = await fetch(resultFullUrl, { method: 'HEAD', redirect: 'follow', signal: AbortSignal.timeout(5000) })
-      urlStatusCode = resp.status
-      urlLiveStatus = (resp.status >= 200 && resp.status < 400) ? 'ok' : 'error'
+      // 1차: HEAD 시도
+      const headResp = await fetch(resultFullUrl, { method: 'HEAD', redirect: 'follow', signal: AbortSignal.timeout(4000) })
+      urlStatusCode = headResp.status
+      if (headResp.status >= 200 && headResp.status < 400) {
+        urlLiveStatus = 'ok'
+      } else if (headResp.status === 405 || headResp.status >= 500) {
+        // HEAD 미지원 또는 서버 오류 → GET fallback
+        try {
+          const getResp = await fetch(resultFullUrl, { method: 'GET', redirect: 'follow', signal: AbortSignal.timeout(5000) })
+          urlStatusCode = getResp.status
+          urlLiveStatus = (getResp.status >= 200 && getResp.status < 400) ? 'ok' : 'error'
+        } catch { urlLiveStatus = 'error'; urlStatusCode = 0 }
+      } else {
+        urlLiveStatus = 'error'
+      }
     } catch (fe: any) {
-      urlLiveStatus = 'error'
-      urlStatusCode = 0
+      // HEAD 완전 실패 → GET fallback
+      try {
+        const getResp = await fetch(resultFullUrl, { method: 'GET', redirect: 'follow', signal: AbortSignal.timeout(5000) })
+        urlStatusCode = getResp.status
+        urlLiveStatus = (getResp.status >= 200 && getResp.status < 400) ? 'ok' : 'error'
+      } catch { urlLiveStatus = 'error'; urlStatusCode = 0 }
     }
 
     // ── p1~p8 + 오늘탭 섹션별 DB 필드 검수 ──
