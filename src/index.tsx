@@ -11590,11 +11590,11 @@ app.post('/api/admin/rediagnosis/scan', requireRole('MASTER'), async (c) => {
 
     for (const days of ALERT_DAYS) {
       // 진단일로부터 정확히 days일 ± 1일인 고객 조회
+      // ★ [v4.9] results LEFT JOIN 제거 — results.name 컬럼 없음(항상 NULL), diagnosis_results 단독
       const rows = await db.prepare(`
         SELECT dr.session_id, dr.consultant_code, dr.bc_code, dr.created_at,
-               r.name as customer_name
+               dr.user_name as customer_name
         FROM diagnosis_results dr
-        LEFT JOIN results r ON r.session_id = dr.session_id
         WHERE date(dr.created_at) = date('now', '-${days} days')
           AND dr.session_id NOT IN (
             SELECT session_id FROM rediagnosis_alerts WHERE alert_day = ${days}
