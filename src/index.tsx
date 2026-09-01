@@ -1691,9 +1691,9 @@ app.post('/api/admin/b2b-crawl/:code', requireRole('MASTER'), async (c) => {
     .trim()
     .slice(0, 10000)
 
-  // 4) OpenAI로 프로그램 추출 + BC 태깅
-  const OPENAI_KEY = (c.env as any).OPENAI_API_KEY
-  if (!OPENAI_KEY) return c.json({ error: 'OPENAI_API_KEY 환경변수가 설정되지 않았습니다.' }, 500)
+  // 4) Anthropic Claude로 프로그램 추출 + BC 태깅
+  const ANTHROPIC_KEY = (c.env as any).ANTHROPIC_API_KEY
+  if (!ANTHROPIC_KEY) return c.json({ error: 'ANTHROPIC_API_KEY 환경변수가 설정되지 않았습니다.' }, 500)
 
   // BC 코드 힌트 (AI에게 참고용으로 제공)
   const BC_HINTS = `
@@ -1741,21 +1741,21 @@ ${plainText}
 
   let programs: any[] = []
   try {
-    const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+    const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENAI_KEY}`,
-        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.3,
+        model: 'claude-haiku-4-5',
         max_tokens: 2000,
+        messages: [{ role: 'user', content: prompt }],
       }),
     })
     const aiJson = await aiRes.json() as any
-    const content = aiJson?.choices?.[0]?.message?.content || ''
+    const content = aiJson?.content?.[0]?.text || ''
     // JSON 파싱 (마크다운 코드블록 제거 후)
     const jsonStr = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
     programs = JSON.parse(jsonStr)
