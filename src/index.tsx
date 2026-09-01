@@ -9426,20 +9426,123 @@ app.post('/api/f/diagnosis', async (c) => {
     // pain_gate 배열 직렬화
     const painGate = Array.isArray(body.pain_gate) ? JSON.stringify(body.pain_gate) : '[]'
 
+    // ★ [v4.9] bc_code_key null 시 서버사이드 decideSubtype으로 BC 재계산
+    // 프론트 매핑 실패(닉네임 매핑 누락 등) → axis_scores + region/texture로 서버가 직접 판정
+
+    // ── 한글 region/texture → decideSubtype 영어 코드 변환 매핑 ──
+    // 프론트 survey-fitness.html은 한글(복부/하체/상체/전신, 단단/물렁/셀룰/부종)을 전송
+    // decideSubtype은 SUBTYPE_RULES의 영어 코드(ABD/LEG/WHOLE, firm/soft/cellulite/edema)를 기대
+    const KR_REGION_TO_EN: Record<string, string[]> = {
+      '복부':  ['ABD'],
+      '하체':  ['LEG', 'HIP'],
+      '상체':  ['SHOULDER', 'BACK', 'ARM'],
+      '전신':  ['WHOLE'],
+      // 영어 코드 그대로 오는 경우 통과
+      'ABD':      ['ABD'],
+      'LEG':      ['LEG', 'HIP'],
+      'HIP':      ['HIP', 'LEG'],
+      'WHOLE':    ['WHOLE'],
+      'SHOULDER': ['SHOULDER', 'BACK'],
+      'BACK':     ['BACK', 'SHOULDER'],
+      'ARM':      ['ARM', 'SHOULDER'],
+      'NECK':     ['NECK', 'BACK'],
+      'CHEST':    ['CHEST'],
+      'GLUTE':    ['GLUTE', 'HIP'],
+    }
+    const KR_TEXTURE_TO_EN: Record<string, string[]> = {
+      '단단':   ['firm'],
+      '물렁':   ['soft'],
+      '셀룰':   ['cellulite'],
+      '부종':   ['edema'],
+      // 영어 코드 그대로 오는 경우 통과
+      'firm':       ['firm'],
+      'soft':       ['soft'],
+      'cellulite':  ['cellulite'],
+      'edema':      ['edema'],
+      'dense':      ['dense'],
+      'loose':      ['loose'],
+      'flabby':     ['flabby'],
+      'visceral':   ['visceral'],
+      'hard':       ['hard'],
+      'bloat':      ['bloat'],
+      'gas':        ['gas'],
+      'cold':       ['cold'],
+      'posture':    ['posture'],
+      'muscle':     ['muscle'],
+      'bulk':       ['bulk'],
+      'hormone':    ['hormone'],
+      'meno':       ['meno'],
+      'multi':      ['multi'],
+      'complex':    ['complex'],
+      'binge':      ['binge'],
+      'emotional':  ['emotional'],
+      'stress':     ['stress'],
+    }
+
+    // 한글→영어 변환 헬퍼
+    const toEnRegions = (raw: string[]): string[] => {
+      const result: string[] = []
+      for (const r of raw) {
+        const mapped = KR_REGION_TO_EN[r]
+        if (mapped) { for (const m of mapped) { if (!result.includes(m)) result.push(m) } }
+        else { if (!result.includes(r.toUpperCase())) result.push(r.toUpperCase()) }
+      }
+      return result
+    }
+    const toEnTextures = (raw: string[]): string[] => {
+      const result: string[] = []
+      for (const t of raw) {
+        const mapped = KR_TEXTURE_TO_EN[t]
+        if (mapped) { for (const m of mapped) { if (!result.includes(m)) result.push(m) } }
+        else { if (!result.includes(t.toLowerCase())) result.push(t.toLowerCase()) }
+      }
+      return result
+    }
+
+    // ── body_regions / textures 영어코드 추출 (DB 저장 + decideSubtype 공용) ──
+    // raw_answers 안에 body_regions/textures가 있으면 우선, 없으면 단수 region/texture 폴백
+    // 모두 한글→영어 변환(toEnRegions/toEnTextures)을 거쳐야 decideSubtype이 정확히 작동
+    const _raws = body.raw_answers || {}
+    const _rawRegions: string[] = Array.isArray(_raws.body_regions) ? _raws.body_regions
+      : (body.region ? [body.region] : [])
+    const _rawTextures: string[] = Array.isArray(_raws.textures) ? _raws.textures
+      : (body.texture ? [body.texture] : [])
+    // ★ 한글→영어 변환 — fitness_responses 저장 및 decideSubtype 입력 공용
+    const bodyRegionsEn: string[] = toEnRegions(_rawRegions)
+    const texturesEn:    string[] = toEnTextures(_rawTextures)
+
+    let serverBcCode: string | null = body.bc_code || body.bc_code_key || null
+    let serverBcNickname: string | null = body.bc_nickname || null
+    if (!serverBcCode && axisScores && Object.keys(axisScores).length > 0) {
+      try {
+        const flags: Record<string, boolean> = (_raws.flags && typeof _raws.flags === 'object') ? _raws.flags : {}
+        const sex = (body.gender || '').toLowerCase().includes('f') || (body.gender || '').includes('여') ? 'female'
+          : (body.gender || '').toLowerCase().includes('m') || (body.gender || '').includes('남') ? 'male' : undefined
+        console.log(`[/api/f/diagnosis] decideSubtype 입력 - regions:${JSON.stringify(bodyRegionsEn)} textures:${JSON.stringify(texturesEn)} sex:${sex}`)
+        const computed = decideSubtype(axisScores, bodyRegionsEn, texturesEn, flags, sex)
+        serverBcCode = computed.bc
+        serverBcNickname = serverBcNickname || computed.name
+        console.log(`[/api/f/diagnosis] decideSubtype 결과 - bc:${serverBcCode} name:${serverBcNickname}`)
+      } catch (e) {
+        console.warn('[/api/f/diagnosis] decideSubtype 실패(무시):', e)
+      }
+    }
+
     await db.prepare(`
       INSERT INTO fitness_responses
         (id, b2b_code, ref_code, user_name, gender, age, height, weight, phone,
          stage1_json, stage2_json, stage3_json, stage4_json,
          ohaeng_type, disp_type, mbti_full,
          bc_code, bc_nickname, axis_scores, raw_answers,
+         body_regions, textures,
          goal_weight, weight_loss_pct,
          exercise_response, pain_gate,
          bmr, tdee, calorie_target, activity_level,
          bfr_current, bfr_target)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     `).bind(
       id,
-      body.b2b_code    || 'DIRECT',   // b2b_code NOT NULL — 직접 접근 시 DIRECT
+      body.b2b_code    || body.ref_code || 'DIRECT',  // b2b_code NOT NULL 보장
       body.ref_code    || null,
       body.user_name   || body.name   || '고객',
       body.gender      || null,
@@ -9454,10 +9557,13 @@ app.post('/api/f/diagnosis', async (c) => {
       body.ohaeng_type || null,
       body.disp_type   || null,
       body.mbti_full   || null,
-      body.bc_code || body.bc_code_key || null,   // ✅ FIX: 클라이언트가 bc_code_key로 보내는 경우 폴백
-      body.bc_nickname || null,
+      serverBcCode,      // ★ 서버 재계산값 사용
+      serverBcNickname,  // ★ 서버 재계산 닉네임
       axisJson,
       body.raw_answers ? JSON.stringify(body.raw_answers) : null,
+      // ★ [BUG-I FIX v4.9] body_regions/textures 영어코드 저장 (마이그레이션 0076)
+      bodyRegionsEn.length > 0 ? JSON.stringify(bodyRegionsEn) : null,
+      texturesEn.length    > 0 ? JSON.stringify(texturesEn)    : null,
       parseFloat(body.goal_weight)    || null,
       parseFloat(body.weight_loss_pct)|| null,
       body.exercise_response || null,
@@ -9497,15 +9603,19 @@ app.post('/api/f/diagnosis', async (c) => {
           (id, user_name, bc_primary, bc_code_key, bc_secondary, bc_nickname,
            top3_axes, axis_scores, region, texture, ohaeng_type, mbti_full,
            ref_code, survey_category, raw_answers, gender, height, age,
-           goal_weight, weight_loss_pct, completed_at, created_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
+           goal_weight, weight_loss_pct, body_regions, textures,
+           completed_at, created_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
       `).bind(
         id,
         body.user_name  || body.name || '고객',
-        body.bc_primary || body.bc_nickname || null,
-        body.bc_code_key || body.bc_code || null,
+        // ★ [BUG-H FIX v4.9] serverBcNickname 우선 — 서버 재계산 닉네임 사용
+        serverBcNickname || body.bc_primary || null,
+        // ★ [BUG-H FIX v4.9] serverBcCode 우선 — 서버 재계산 BC코드 사용
+        serverBcCode || null,
         body.bc_secondary || null,
-        body.bc_nickname  || null,
+        // ★ [BUG-H FIX v4.9] serverBcNickname 우선
+        serverBcNickname || null,
         top3Axes,
         axisJson,
         body.region  || null,
@@ -9520,6 +9630,9 @@ app.post('/api/f/diagnosis', async (c) => {
         String(body.age || ''),
         parseFloat(body.goal_weight)     || null,
         parseFloat(body.weight_loss_pct) || null,
+        // ★ [BUG-I FIX v4.9] body_regions/textures 영어코드 저장
+        bodyRegionsEn.length > 0 ? JSON.stringify(bodyRegionsEn) : null,
+        texturesEn.length    > 0 ? JSON.stringify(texturesEn)    : null,
         body.completed_at || new Date().toISOString(),
       ).run()
     } catch (drErr: any) {
