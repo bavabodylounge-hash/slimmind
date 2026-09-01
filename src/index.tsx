@@ -5578,8 +5578,19 @@ app.get('/api/b2b/result-link/:id', requireB2B(), async (c) => {
       if (drRow.ref_code !== partnerCode) {
         return c.json({ error: '권한 없음' }, 403)
       }
-      // ★ survey_category 1:1 강제 매핑 — result-v4.html 폴백 완전 제거
-      const cat = drRow.survey_category || 'integrated'
+      // ✅ [v4.9 FIX] survey_category가 'integrated'(잘못 저장) or null이면
+      // b2b_partners 테이블에서 실제 업종 조회하여 복구
+      let cat = drRow.survey_category || 'integrated'
+      if ((cat === 'integrated' || !cat) && drRow.ref_code) {
+        try {
+          const partnerRow = await db.prepare(
+            `SELECT survey_category FROM b2b_partners WHERE code = ? LIMIT 1`
+          ).bind(drRow.ref_code).first<any>()
+          if (partnerRow?.survey_category && partnerRow.survey_category !== 'integrated') {
+            cat = partnerRow.survey_category
+          }
+        } catch(_) {}
+      }
       if (cat === 'hospital') {
         return c.json({ url: `/result-hospital/${resultId}` })
       } else if (cat === 'aesthetic') {
