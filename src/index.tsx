@@ -1733,29 +1733,19 @@ app.get('/api/b2b/results', requireB2B(), async (c) => {
       FROM hospital_responses
       WHERE ref_code=?${hospFilter.clause}
     `
-    const regFilter = buildFilters([user.code])
-    const regQuery = `
-      SELECT id, user_name, bc_primary,
-             axis_primary, created_at, ref_code,
-             'integrated' AS result_type
-      FROM results WHERE ref_code=?${regFilter.clause}
-    `
-    const [hospRes, regRes, drRes] = await Promise.all([
+    // ★ [v4.9] regQuery(results) 완전 제거 — diagnosis_results + hospital_responses만 사용
+    const [hospRes, drRes] = await Promise.all([
       db.prepare(hospQuery).bind(...hospFilter.params).all<any>(),
-      db.prepare(regQuery).bind(...regFilter.params).all<any>(),
       db.prepare(drQuery).bind(...drFilter.params).all<any>(),
     ])
-    // [BUG-FIX v4.3] Hospital UNION 중복 ID 제거 — 동일 ID가 여러 테이블에 존재 시 중복 카운트 방지
-    // 우선순위: diagnosis_results > hospital_responses > results (신파이프라인 우선)
+    // [BUG-FIX v4.3→v4.9] Hospital UNION 중복 ID 제거 — 동일 ID가 여러 테이블에 존재 시 중복 카운트 방지
+    // 우선순위: diagnosis_results > hospital_responses (신파이프라인 우선)
     const seenIds = new Set<string>()
     const combined: any[] = []
     for (const row of (drRes.results || [])) {
       if (!seenIds.has(row.id)) { seenIds.add(row.id); combined.push(row) }
     }
     for (const row of (hospRes.results || [])) {
-      if (!seenIds.has(row.id)) { seenIds.add(row.id); combined.push(row) }
-    }
-    for (const row of (regRes.results || [])) {
       if (!seenIds.has(row.id)) { seenIds.add(row.id); combined.push(row) }
     }
     combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -1777,16 +1767,12 @@ app.get('/api/b2b/results', requireB2B(), async (c) => {
       if (toDate)   { clause += ' AND date(created_at) <= ?'; p.push(toDate) }
       return { clause, params: p }
     }
-    const regFilter   = buildLegacyFilter([user.code])
+    // ★ [v4.9] regFilter/regQuery(results) 완전 제거
     const fitFilter   = buildLegacyFilter([user.code])
     const salonFilter = buildLegacyFilter([user.code])
     const aeFilter    = buildLegacyFilter([user.code])
 
     // [BUG-FIX v4.3] 레거시 테이블 bc_code도 BC-N 형식만 axis_primary로 표시 (이상값 NULL 처리)
-    const regQuery = `SELECT id, user_name, bc_primary,
-      CASE WHEN axis_primary GLOB 'BC-[0-9]*' THEN axis_primary ELSE NULL END AS axis_primary,
-      created_at, ref_code,
-      'integrated' AS result_type FROM results WHERE ref_code=?${regFilter.clause}`
     const fitQuery = `SELECT id, user_name, bc_code AS bc_primary,
       CASE WHEN bc_code GLOB 'BC-[0-9]*' THEN bc_code ELSE NULL END AS axis_primary,
       created_at, ref_code, 'fitness' AS result_type
@@ -1800,8 +1786,8 @@ app.get('/api/b2b/results', requireB2B(), async (c) => {
       created_at, ref_code, 'aesthetic' AS result_type
       FROM aesthetic_responses WHERE ref_code=?${aeFilter.clause}`
 
-    const [regRes, drRes, fitRes, salonRes, aeRes] = await Promise.all([
-      db.prepare(regQuery).bind(...regFilter.params).all<any>(),
+    // ★ [v4.9] regRes(results) 제거 — diagnosis_results + 전용 레거시 테이블만 사용
+    const [drRes, fitRes, salonRes, aeRes] = await Promise.all([
       db.prepare(drQuery).bind(...drFilter.params).all<any>(),
       db.prepare(fitQuery).bind(...fitFilter.params).all<any>().catch(() => ({ results: [] as any[] })),
       db.prepare(salonQuery).bind(...salonFilter.params).all<any>().catch(() => ({ results: [] as any[] })),
@@ -1815,7 +1801,6 @@ app.get('/api/b2b/results', requireB2B(), async (c) => {
     const aeUniq    = (aeRes.results||[]).filter((r:any)=>!drIds.has(r.id))
 
     const combined = [
-      ...(regRes.results || []),
       ...(drRes.results || []),
       ...fitUniq,
       ...salonUniq,
@@ -1860,29 +1845,24 @@ app.get('/api/b2b/export-csv', requireB2B(), async (c) => {
 
     let allRows: any[] = []
 
+    // ★ [v4.9] rRes(results) 완전 제거 — diagnosis_results 단독 (병원 파트너는 hospital_responses 추가)
     if (isHospital) {
       const hf = buildF([user.code])
-      const rf = buildF([user.code])
       const df = buildF([user.code])
-      const [hRes, rRes, dRes] = await Promise.all([
+      const [hRes, dRes] = await Promise.all([
         db.prepare(`SELECT id, user_name, bc_code AS bc_primary, ohaeng_type AS axis_primary,
                     created_at, '병원' AS source FROM hospital_responses WHERE ref_code=?${hf.cl}`).bind(...hf.p).all<any>(),
-        db.prepare(`SELECT id, user_name, bc_primary, axis_primary,
-                    created_at, '통합' AS source FROM results WHERE ref_code=?${rf.cl}`).bind(...rf.p).all<any>(),
-        db.prepare(`SELECT id, user_name, bc_primary, bc_code_key AS axis_primary,
-                    completed_at AS created_at, survey_category AS source FROM diagnosis_results WHERE ref_code=?${df.cl}`).bind(...df.p).all<any>(),
+        db.prepare(`SELECT id, user_name, COALESCE(bc_primary, bc_code_key) AS bc_primary, bc_code_key AS axis_primary,
+                    COALESCE(completed_at, created_at) AS created_at, survey_category AS source FROM diagnosis_results WHERE ref_code=?${df.cl}`).bind(...df.p).all<any>(),
       ])
-      allRows = [...(hRes.results||[]), ...(rRes.results||[]), ...(dRes.results||[])]
+      const seenIds = new Set<string>()
+      for (const row of (dRes.results||[])) { if (!seenIds.has(row.id)) { seenIds.add(row.id); allRows.push(row) } }
+      for (const row of (hRes.results||[])) { if (!seenIds.has(row.id)) { seenIds.add(row.id); allRows.push(row) } }
     } else {
-      const rf = buildF([user.code])
       const df = buildF([user.code])
-      const [rRes, dRes] = await Promise.all([
-        db.prepare(`SELECT id, user_name, bc_primary, axis_primary,
-                    created_at, '통합' AS source FROM results WHERE ref_code=?${rf.cl}`).bind(...rf.p).all<any>(),
-        db.prepare(`SELECT id, user_name, bc_primary, bc_code_key AS axis_primary,
-                    completed_at AS created_at, survey_category AS source FROM diagnosis_results WHERE ref_code=?${df.cl}`).bind(...df.p).all<any>(),
-      ])
-      allRows = [...(rRes.results||[]), ...(dRes.results||[])]
+      const dRes = await db.prepare(`SELECT id, user_name, COALESCE(bc_primary, bc_code_key) AS bc_primary, bc_code_key AS axis_primary,
+                    COALESCE(completed_at, created_at) AS created_at, survey_category AS source FROM diagnosis_results WHERE ref_code=?${df.cl}`).bind(...df.p).all<any>()
+      allRows = [...(dRes.results||[])]
     }
 
     allRows.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -2042,43 +2022,16 @@ app.get('/api/consultant/results', requireRole('ANY'), async (c) => {
   }
 })
 
-// GET /api/survey/result/public/:id — 공개 결과 조회 (result.html에서 ?id= 파라미터용)
+// GET /api/survey/result/public/:id — ⛔️ [v4.9] 구버전 API 제거 → 410 Gone
+// 신버전은 /result/:id (HTML 결과지) 또는 diagnosis_results 기반 API 사용
 app.get('/api/survey/result/public/:id', async (c) => {
-  try {
-    const db = c.env.DB
-    const id = c.req.param('id')
-    const result = await db.prepare('SELECT * FROM results WHERE id=?').bind(id).first<any>()
-    if (!result) return c.json({ success: false, error: '결과를 찾을 수 없습니다.' }, 404)
-
-    const answers = parseJson(result.survey_answers_json, {})
-
-    return c.json({
-      success: true,
-      result_id: result.id,
-      user_name: result.user_name,
-      bc_primary: result.bc_primary,
-      bc_secondary: result.bc_secondary,
-      axis_primary: result.axis_primary,
-      axis_primary_score: result.axis_primary_score,
-      consultant_code: result.consultant_code,
-      created_at: result.created_at,
-      answers,
-      // 결과지 렌더에 필요한 신체 정보 answers에 병합
-      merged_answers: {
-        ...answers,
-        _bc_primary: result.bc_primary,
-        _bc_secondary: result.bc_secondary,
-        _axis_primary: result.axis_primary,
-        _result_id: result.id,
-      }
-    })
-  } catch (e: any) {
-    console.error('[survey/result/public] error:', e?.message)
-    return c.json({ success: false, error: 'server_error' }, 500)
-  }
+  return c.json({
+    ok: false,
+    error: '[v4.9] 구버전 API 제거됨. /result/:id 사용'
+  }, 410)
 })
 
-// GET /api/results/:id — 결과 상세 JSON (컨설턴트 본인 또는 MASTER)
+// GET /api/results/:id — 결과 상세 JSON ★ [v4.9] diagnosis_results 기준 (컨설턴트 본인 또는 MASTER)
 app.get('/api/results/:id', async (c) => {
   try {
     const user = await getAuthUser(c)
@@ -2086,47 +2039,50 @@ app.get('/api/results/:id', async (c) => {
 
     const db = c.env.DB
     const id = c.req.param('id')
-    const result = await db.prepare('SELECT * FROM results WHERE id=?').bind(id).first<any>()
+    const result = await db.prepare('SELECT * FROM diagnosis_results WHERE id=?').bind(id).first<any>()
     if (!result) return c.json({ error: '결과를 찾을 수 없습니다.' }, 404)
 
-    if (user.role !== 'MASTER' && result.consultant_code !== user.code) {
+    if (user.role !== 'MASTER' && result.ref_code !== user.code) {
       return c.json({ error: '접근 권한이 없습니다.' }, 403)
     }
 
-    const prescription = await db.prepare('SELECT * FROM bc_prescriptions WHERE bc_code=?').bind(result.bc_primary).first<any>()
+    const bcCode = result.bc_code_key || result.bc_primary
+    const prescription = bcCode
+      ? await db.prepare('SELECT * FROM bc_prescriptions WHERE bc_code=?').bind(bcCode).first<any>()
+      : null
 
     return c.json({
       result: {
         ...result,
-        bc_scores: parseJson(result.bc_scores_json, {}),
-        ohaeng_scores: parseJson(result.ohaeng_scores_json, {}),
-        survey_answers: parseJson(result.survey_answers_json, {}),
-        survey_summary: parseJson(result.survey_summary_json, {}),
+        bc_primary:            result.bc_code_key || result.bc_primary,
+        axis_scores:           parseJson(result.axis_scores, {}),
+        top3_axes:             parseJson(result.top3_axes, []),
+        raw_answers:           parseJson(result.raw_answers, {}),
         b2b_institution_types: parseJson(result.b2b_institution_types, []),
       },
       prescription: prescription ? {
         ...prescription,
-        symptom_checklist: parseJson(prescription.symptom_checklist_json, []),
-        wrong_methods: parseJson(prescription.wrong_methods_json, []),
-        correct_principles: parseJson(prescription.correct_principles_json, []),
+        symptom_checklist:     parseJson(prescription.symptom_checklist_json, []),
+        wrong_methods:         parseJson(prescription.wrong_methods_json, []),
+        correct_principles:    parseJson(prescription.correct_principles_json, []),
         recommended_exercises: parseJson(prescription.recommended_exercises_json, []),
-        forbidden_exercises: parseJson(prescription.forbidden_exercises_json, []),
-        recommended_foods: parseJson(prescription.recommended_foods_json, []),
-        forbidden_foods: parseJson(prescription.forbidden_foods_json, []),
-        supplement_list: parseJson(prescription.supplement_list_json, []),
-        lifestyle_rules: parseJson(prescription.lifestyle_rules_json, []),
-        monthly_goals: parseJson(prescription.monthly_goals_json, {}),
-        weekly_schedule: parseJson(prescription.weekly_schedule_json, {}),
-        recommended_sports: parseJson(prescription.recommended_sports_json, []),
-        forbidden_sports: parseJson(prescription.forbidden_sports_json, []),
-        recovery_priority: parseJson(prescription.recovery_priority_json, []),
-        macro_ratio: parseJson(prescription.macro_ratio_json, {}),
-        meal_timing_rule: parseJson(prescription.meal_timing_rule_json, {}),
-        forbidden_foods_reason: parseJson(prescription.forbidden_foods_reason_json, []),
-        b2b_treatments: parseJson(prescription.b2b_treatments_json, {}),
-        hospital_tests: parseJson(prescription.hospital_tests_json, []),
+        forbidden_exercises:   parseJson(prescription.forbidden_exercises_json, []),
+        recommended_foods:     parseJson(prescription.recommended_foods_json, []),
+        forbidden_foods:       parseJson(prescription.forbidden_foods_json, []),
+        supplement_list:       parseJson(prescription.supplement_list_json, []),
+        lifestyle_rules:       parseJson(prescription.lifestyle_rules_json, []),
+        monthly_goals:         parseJson(prescription.monthly_goals_json, {}),
+        weekly_schedule:       parseJson(prescription.weekly_schedule_json, {}),
+        recommended_sports:    parseJson(prescription.recommended_sports_json, []),
+        forbidden_sports:      parseJson(prescription.forbidden_sports_json, []),
+        recovery_priority:     parseJson(prescription.recovery_priority_json, []),
+        macro_ratio:           parseJson(prescription.macro_ratio_json, {}),
+        meal_timing_rule:      parseJson(prescription.meal_timing_rule_json, {}),
+        forbidden_foods_reason:parseJson(prescription.forbidden_foods_reason_json, []),
+        b2b_treatments:        parseJson(prescription.b2b_treatments_json, {}),
+        hospital_tests:        parseJson(prescription.hospital_tests_json, []),
         reassessment_schedule: parseJson(prescription.reassessment_schedule_json, {}),
-        partner_hints: parseJson(prescription.partner_hints_json, []),
+        partner_hints:         parseJson(prescription.partner_hints_json, []),
       } : null,
     })
   } catch (e: any) {
@@ -2266,7 +2222,7 @@ app.put('/api/results/:id/memo', async (c) => {
   return c.json({ success: true })
 })
 
-// ─── NEW: PUT /api/results/:id/b2b — B2B 기관유형 저장 (컨설턴트 전용) ───
+// ─── PUT /api/results/:id/b2b — B2B 기관유형 저장 ★ [v4.9] diagnosis_results 기준 ───
 app.put('/api/results/:id/b2b', async (c) => {
   const user = await getAuthUser(c)
   if (!user) return c.json({ error: '인증이 필요합니다.' }, 401)
@@ -2280,14 +2236,14 @@ app.put('/api/results/:id/b2b', async (c) => {
   const allowed = ['병원', '에스테틱', '헬스장', '필라테스']
   const filtered = (institution_types || []).filter((t: string) => allowed.includes(t))
 
-  const result = await db.prepare('SELECT consultant_code FROM results WHERE id=?').bind(id).first<any>()
+  const result = await db.prepare('SELECT ref_code FROM diagnosis_results WHERE id=?').bind(id).first<any>()
   if (!result) return c.json({ error: '결과를 찾을 수 없습니다.' }, 404)
-  if (user.role !== 'MASTER' && result.consultant_code !== user.code) {
+  if (user.role !== 'MASTER' && result.ref_code !== user.code) {
     return c.json({ error: '권한이 없습니다.' }, 403)
   }
 
   await db.prepare(
-    'UPDATE results SET b2b_institution_types=? WHERE id=?'
+    'UPDATE diagnosis_results SET b2b_institution_types=? WHERE id=?'
   ).bind(JSON.stringify(filtered), id).run()
 
   return c.json({ success: true, institution_types: filtered })
@@ -2621,31 +2577,33 @@ app.get('/api/b2b/customer-summary', requireB2B(), async (c) => {
 
 // ─── 정산 API ────────────────────────────────────────────────────
 // GET /api/admin/settlement?month=2025-06 — 컨설턴트별 월 정산 내역
+// ★ [v4.9] diagnosis_results 단독 기준 (구버전 results 완전 제거)
 app.get('/api/admin/settlement', requireRole('MASTER'), async (c) => {
   const db = c.env.DB
   const month = c.req.query('month') || new Date().toISOString().slice(0, 7)
-  // 컨설턴트별 해당 월 완료 건수 (program_price 컬럼 없음 → 건당 150,000 고정)
+  // ref_code 기준 (v4.9: 컨설턴트도 ref_code로 저장됨)
   const rows = await db.prepare(`
     SELECT
-      r.consultant_code,
-      con.name AS consultant_name,
+      d.ref_code AS consultant_code,
+      con.name  AS consultant_name,
       con.phone AS consultant_phone,
       con.grade AS consultant_grade,
       COUNT(*) AS monthly_count,
       COUNT(*) * 150000 AS total_sales,
       COUNT(*) * 150000 * 0.25 AS settlement_amount
-    FROM results r
-    LEFT JOIN consultants con ON con.code = r.consultant_code
-    WHERE strftime('%Y-%m', r.created_at) = ?
-      AND r.consultant_code IS NOT NULL
-    GROUP BY r.consultant_code
+    FROM diagnosis_results d
+    LEFT JOIN consultants con ON con.code = d.ref_code
+    WHERE strftime('%Y-%m', COALESCE(d.completed_at, d.created_at)) = ?
+      AND d.ref_code IS NOT NULL
+    GROUP BY d.ref_code
     ORDER BY monthly_count DESC
   `).bind(month).all<any>()
-  // 전체 월별 매출
+  // 전체 월별 집계
   const total = await db.prepare(`
     SELECT COUNT(*) as cnt,
            COUNT(*) * 150000 as total
-    FROM results WHERE strftime('%Y-%m', created_at) = ?
+    FROM diagnosis_results
+    WHERE strftime('%Y-%m', COALESCE(completed_at, created_at)) = ?
   `).bind(month).first<any>()
   return c.json({
     month,
@@ -2744,15 +2702,13 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
 
   try {
     // ── 결과 조회 ────────────────────────────────────────────────────────────
-    // 1순위: results 테이블 (구버전 설문 파이프라인)
-    let result = await db.prepare('SELECT * FROM results WHERE id=?').bind(id).first<any>()
-
-    // 2순위: diagnosis_results 테이블 폴백 (V4.1 신버전 파이프라인)
+    // ★ [v4.9] 1순위: diagnosis_results 테이블 (신버전 파이프라인 — 구버전보다 우선)
     // submitDiagnosis() → /api/v1/diagnosis POST → diagnosis_results 저장 → /result/:id 리다이렉트
-    if (!result) {
-      const diagRow = await db.prepare('SELECT * FROM diagnosis_results WHERE id=?').bind(id).first<any>()
-      if (diagRow) {
-        // diagnosis_results → result-v4.html에 주입할 __RESULT__ 구조로 변환
+    let result: any = null
+    const diagRow = await db.prepare('SELECT * FROM diagnosis_results WHERE id=?').bind(id).first<any>()
+
+    if (diagRow) {
+      // diagnosis_results → result-v4.html에 주입할 __RESULT__ 구조로 변환
         const parseJsonSafe = (v: any, fallback: any = null) => {
           try { return v ? JSON.parse(v) : fallback } catch { return fallback }
         }
@@ -2873,10 +2829,15 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
         // ── integrated / 기타 분기: /result-hospital/:id 리다이렉트 (범용 결과지) ──
         // result-v4.html 폴백 완전 제거 — 업종 미분류 데이터는 hospital 결과지로 라우팅
         return c.redirect(`/result-hospital/${id}`, 302)
-      }
 
-      // ★ 3순위: hospital_responses 조회 (H- 접두사 ID 또는 hospital_responses 저장 데이터)
-      // survey-hospital.html의 showWaitScreen()이 /result/{H-ID}로 이동하는 경우 처리
+    } else {
+      // ★ [v4.9] 2순위: results 테이블 폴백 (구버전 설문 파이프라인 데이터 보존)
+      result = await db.prepare('SELECT * FROM results WHERE id=?').bind(id).first<any>()
+    }
+
+    // ★ [v4.9] 3순위: hospital_responses 조회 (H- 접두사 ID 또는 hospital_responses 저장 데이터)
+    // survey-hospital.html의 showWaitScreen()이 /result/{H-ID}로 이동하는 경우 처리
+    if (!result) {
       const hospRow = await db.prepare('SELECT * FROM hospital_responses WHERE id=?').bind(id).first<any>()
       if (hospRow) {
         // hospital_responses → /result-hospital/:id 302 리다이렉트
@@ -5174,10 +5135,12 @@ app.get('/api/consultant/checkin-history/:result_id', requireRole('ANY'), async 
       ORDER BY checked_at ASC
     `).bind(resultId).all<any>() : { results: [] };
 
-    // 고객 기본 정보도 함께
+    // ★ [v4.9] 고객 기본 정보: diagnosis_results 기준
     const customer = db ? await db.prepare(`
-      SELECT id, user_name, bc_primary, weight, target_weight, height, created_at, consultant_code
-      FROM results WHERE id = ?
+      SELECT id, user_name, COALESCE(bc_primary,bc_nickname) as bc_primary,
+             NULL as weight, goal_weight as target_weight, height,
+             COALESCE(completed_at,created_at) as created_at, ref_code as consultant_code
+      FROM diagnosis_results WHERE id = ?
     `).bind(resultId).first<any>() : null;
 
     return c.json({ ok: true, customer, checkins: rows.results || [] });
@@ -5194,17 +5157,20 @@ app.get('/api/consultant/my-customers', requireRole('ANY'), async (c) => {
   const user = c.get('user') as JwtPayload;
   const consultantCode = user?.code || '';
 
+  // ★ [v4.9] diagnosis_results 단독 기준 (구버전 results 완전 제거)
   try {
     const rows = db ? await db.prepare(`
       SELECT
-        r.id, r.user_name, r.bc_primary, r.bc_secondary,
-        r.weight, r.target_weight, r.height, r.bmi,
-        r.gender, r.created_at,
-        (SELECT COUNT(*) FROM checkin_log cl WHERE cl.result_id = r.id) AS checkin_count,
-        (SELECT MAX(cl.checked_at) FROM checkin_log cl WHERE cl.result_id = r.id) AS last_checkin
-      FROM results r
-      WHERE r.consultant_code = ?
-      ORDER BY r.created_at DESC
+        d.id, d.user_name,
+        COALESCE(d.bc_primary, d.bc_nickname) AS bc_primary,
+        NULL AS bc_secondary,
+        NULL AS weight, d.goal_weight AS target_weight, d.height, NULL AS bmi,
+        d.gender, COALESCE(d.completed_at, d.created_at) AS created_at,
+        (SELECT COUNT(*) FROM checkin_log cl WHERE cl.result_id = d.id) AS checkin_count,
+        (SELECT MAX(cl.checked_at) FROM checkin_log cl WHERE cl.result_id = d.id) AS last_checkin
+      FROM diagnosis_results d
+      WHERE d.ref_code = ?
+      ORDER BY d.created_at DESC
       LIMIT 100
     `).bind(consultantCode).all<any>() : { results: [] };
 
@@ -5356,19 +5322,20 @@ app.get('/api/admin/monthly-report', requireRole('MASTER'), async (c) => {
     const thisMonth = now.toISOString().slice(0, 7) // "2026-06"
     const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 7)
 
+    // ★ [v4.9] diagnosis_results 단독 기준 (구버전 results 완전 제거)
     // 이달 신규 고객
     const thisMonthNew = await db.prepare(
-      "SELECT COUNT(*) as cnt FROM results WHERE created_at LIKE ?"
+      "SELECT COUNT(*) as cnt FROM diagnosis_results WHERE COALESCE(completed_at,created_at) LIKE ?"
     ).bind(`${thisMonth}%`).first<any>()
 
     // 지난달 신규 고객
     const lastMonthNew = await db.prepare(
-      "SELECT COUNT(*) as cnt FROM results WHERE created_at LIKE ?"
+      "SELECT COUNT(*) as cnt FROM diagnosis_results WHERE COALESCE(completed_at,created_at) LIKE ?"
     ).bind(`${lastMonth}%`).first<any>()
 
     // BC 코드 분포 (이달)
     const bcDist = await db.prepare(
-      "SELECT bc_primary, COUNT(*) as cnt FROM results WHERE created_at LIKE ? GROUP BY bc_primary ORDER BY cnt DESC"
+      "SELECT COALESCE(bc_primary,bc_nickname) as bc_primary, COUNT(*) as cnt FROM diagnosis_results WHERE COALESCE(completed_at,created_at) LIKE ? GROUP BY bc_primary ORDER BY cnt DESC"
     ).bind(`${thisMonth}%`).all<any>()
 
     // 활성 컨설턴트 수
@@ -5381,16 +5348,16 @@ app.get('/api/admin/monthly-report', requireRole('MASTER'), async (c) => {
       "SELECT COUNT(*) as cnt FROM checkin_log WHERE checked_at LIKE ?"
     ).bind(`${thisMonth}%`).first<any>()
 
-    // 이탈 위험 고객 (21일 이상)
+    // 이탈 위험 고객 (21일 이상 — diagnosis_results 기준)
     const churnRisk = await db.prepare(
-      "SELECT COUNT(*) as cnt FROM results WHERE julianday('now') - julianday(created_at) >= 21"
+      "SELECT COUNT(*) as cnt FROM diagnosis_results WHERE julianday('now') - julianday(COALESCE(completed_at,created_at)) >= 21"
     ).first<any>()
 
-    // 컨설턴트별 실적 TOP 5
+    // 컨설턴트별 실적 TOP 5 (ref_code 기준)
     const consultantRanking = await db.prepare(`
-      SELECT c.name, c.code, COUNT(r.id) as result_cnt
+      SELECT c.name, c.code, COUNT(d.id) as result_cnt
       FROM consultants c
-      LEFT JOIN results r ON r.consultant_code = c.code AND r.created_at LIKE ?
+      LEFT JOIN diagnosis_results d ON d.ref_code = c.code AND COALESCE(d.completed_at,d.created_at) LIKE ?
       WHERE c.code != 'MASTER'
       GROUP BY c.code ORDER BY result_cnt DESC LIMIT 5
     `).bind(`${thisMonth}%`).all<any>()
@@ -5401,7 +5368,7 @@ app.get('/api/admin/monthly-report', requireRole('MASTER'), async (c) => {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
       const ym = d.toISOString().slice(0, 7)
       const row = await db.prepare(
-        "SELECT COUNT(*) as cnt FROM results WHERE created_at LIKE ?"
+        "SELECT COUNT(*) as cnt FROM diagnosis_results WHERE COALESCE(completed_at,created_at) LIKE ?"
       ).bind(`${ym}%`).first<any>()
       trend.push({ month: ym, count: row?.cnt || 0 })
     }
@@ -12032,131 +11999,94 @@ app.get('/api/b2b/group-analysis', requireB2B(), async (c) => {
     const db = c.env.DB
     const code = user.code
 
-    // ── 통합 뷰: diagnosis_results + results UNION (diagnosis_results 우선)
-    // diagnosis_results: age, height, weight_loss_pct, goal_weight 존재. bmi/weight 없음 → NULL
-    // results: age 없음. bmi, weight, height 존재
-    const BASE_UNION = `
-      SELECT
-        COALESCE(bc_primary, bc_code_key) AS bc_primary,
-        gender,
-        CAST(age AS INTEGER) AS age,
-        NULL AS bmi,
-        NULL AS weight,
-        CAST(height AS REAL) AS height,
-        CAST(weight_loss_pct AS REAL) AS weight_loss_pct,
-        CAST(goal_weight AS REAL) AS goal_weight,
-        axis_scores AS axis_scores,
-        created_at
-      FROM diagnosis_results WHERE ref_code=?
-      UNION ALL
-      SELECT
-        bc_primary,
-        gender,
-        NULL AS age,
-        CAST(bmi AS REAL) AS bmi,
-        CAST(weight AS REAL) AS weight,
-        CAST(height AS REAL) AS height,
-        NULL AS weight_loss_pct,
-        CAST(target_weight AS REAL) AS goal_weight,
-        axis_scores_json AS axis_scores,
-        created_at
-      FROM results WHERE ref_code=? AND id NOT IN (
-        SELECT id FROM diagnosis_results WHERE ref_code=?
-      )
-    `
+    // ★ [v4.9] BASE_UNION 제거 — diagnosis_results 단독 사용 (구버전 results 참조 제거)
+    // diagnosis_results: age, height, weight_loss_pct, goal_weight 존재. bmi/weight는 없음(NULL)
+    const DR_BASE = `FROM diagnosis_results WHERE ref_code=?`
 
     // 1. BC 분포
     const bcDist = await db.prepare(`
-      SELECT bc_primary, COUNT(*) as cnt FROM (${BASE_UNION})
-      WHERE bc_primary IS NOT NULL
-      GROUP BY bc_primary ORDER BY cnt DESC
-    `).bind(code, code, code).all<any>()
+      SELECT COALESCE(bc_primary, bc_code_key) AS bc_primary, COUNT(*) as cnt ${DR_BASE}
+      AND COALESCE(bc_primary, bc_code_key) IS NOT NULL
+      GROUP BY COALESCE(bc_primary, bc_code_key) ORDER BY cnt DESC
+    `).bind(code).all<any>()
 
     // 2. 성별 분포
     const genderDist = await db.prepare(`
-      SELECT gender, COUNT(*) as cnt FROM (${BASE_UNION})
+      SELECT gender, COUNT(*) as cnt ${DR_BASE}
       GROUP BY gender
-    `).bind(code, code, code).all<any>()
+    `).bind(code).all<any>()
 
     // 3. 연령대 분포 (diagnosis_results의 age 컬럼 사용)
     const ageDist = await db.prepare(`
       SELECT
         CASE
-          WHEN age < 20 THEN '10대'
-          WHEN age < 30 THEN '20대'
-          WHEN age < 40 THEN '30대'
-          WHEN age < 50 THEN '40대'
-          WHEN age < 60 THEN '50대'
+          WHEN CAST(age AS INTEGER) < 20 THEN '10대'
+          WHEN CAST(age AS INTEGER) < 30 THEN '20대'
+          WHEN CAST(age AS INTEGER) < 40 THEN '30대'
+          WHEN CAST(age AS INTEGER) < 50 THEN '40대'
+          WHEN CAST(age AS INTEGER) < 60 THEN '50대'
           ELSE '60대+'
         END as age_group,
         COUNT(*) as cnt
-      FROM (${BASE_UNION})
-      WHERE age IS NOT NULL AND age > 0
+      ${DR_BASE}
+      AND age IS NOT NULL AND CAST(age AS INTEGER) > 0
       GROUP BY age_group ORDER BY age_group
-    `).bind(code, code, code).all<any>()
+    `).bind(code).all<any>()
 
-    // 4. BMI 평균 & 분포
-    const bmiStats = await db.prepare(`
-      SELECT
-        ROUND(AVG(bmi), 1) as avg_bmi,
-        ROUND(MIN(bmi), 1) as min_bmi,
-        ROUND(MAX(bmi), 1) as max_bmi,
-        COUNT(*) as cnt
-      FROM (${BASE_UNION})
-      WHERE bmi IS NOT NULL AND bmi > 0
-    `).bind(code, code, code).first<any>()
+    // 4. BMI 통계 — diagnosis_results에는 bmi 컬럼 없으므로 NULL 반환
+    const bmiStats = { avg_bmi: null, min_bmi: null, max_bmi: null, cnt: 0 }
 
     // 5. 월별 유입 추이 (최근 6개월)
     const monthlyTrend = await db.prepare(`
-      SELECT strftime('%Y-%m', created_at) as month, COUNT(*) as cnt
-      FROM (${BASE_UNION})
-      WHERE created_at >= datetime('now', '-6 months')
+      SELECT strftime('%Y-%m', COALESCE(completed_at, created_at)) as month, COUNT(*) as cnt
+      ${DR_BASE}
+      AND COALESCE(completed_at, created_at) >= datetime('now', '-6 months')
       GROUP BY month ORDER BY month
-    `).bind(code, code, code).all<any>()
+    `).bind(code).all<any>()
 
     // 6. 체중 목표 달성률 분포
     const weightGoalDist = await db.prepare(`
       SELECT
         CASE
-          WHEN weight_loss_pct < 5 THEN '5% 미만'
-          WHEN weight_loss_pct < 10 THEN '5-10%'
-          WHEN weight_loss_pct < 15 THEN '10-15%'
-          WHEN weight_loss_pct < 20 THEN '15-20%'
+          WHEN CAST(weight_loss_pct AS REAL) < 5 THEN '5% 미만'
+          WHEN CAST(weight_loss_pct AS REAL) < 10 THEN '5-10%'
+          WHEN CAST(weight_loss_pct AS REAL) < 15 THEN '10-15%'
+          WHEN CAST(weight_loss_pct AS REAL) < 20 THEN '15-20%'
           ELSE '20% 이상'
         END as goal_range,
         COUNT(*) as cnt
-      FROM (${BASE_UNION})
-      WHERE weight_loss_pct IS NOT NULL
+      ${DR_BASE}
+      AND weight_loss_pct IS NOT NULL
       GROUP BY goal_range
-    `).bind(code, code, code).all<any>()
+    `).bind(code).all<any>()
 
-    // 7. 평균 체중·신장
+    // 7. 평균 신장·목표체중 (diagnosis_results에 weight 없음, goal_weight 사용)
     const bodyAvg = await db.prepare(`
       SELECT
-        ROUND(AVG(weight), 1) as avg_weight,
-        ROUND(AVG(height), 1) as avg_height,
-        ROUND(AVG(goal_weight), 1) as avg_target
-      FROM (${BASE_UNION})
-      WHERE weight IS NOT NULL AND weight > 0
-    `).bind(code, code, code).first<any>()
+        NULL as avg_weight,
+        ROUND(AVG(CAST(height AS REAL)), 1) as avg_height,
+        ROUND(AVG(CAST(goal_weight AS REAL)), 1) as avg_target
+      ${DR_BASE}
+      AND height IS NOT NULL AND CAST(height AS REAL) > 0
+    `).bind(code).first<any>()
 
     // 8. 최근 샘플 (축 점수 포함)
     const recentSample = await db.prepare(`
-      SELECT bc_primary, axis_scores
-      FROM (${BASE_UNION})
-      WHERE axis_scores IS NOT NULL
-      ORDER BY created_at DESC LIMIT 50
-    `).bind(code, code, code).all<any>()
+      SELECT COALESCE(bc_primary, bc_code_key) AS bc_primary, axis_scores
+      ${DR_BASE}
+      AND axis_scores IS NOT NULL
+      ORDER BY COALESCE(completed_at, created_at) DESC LIMIT 50
+    `).bind(code).all<any>()
 
     // 9. 전월 vs 이번달 비교
     const periodComp = await db.prepare(`
       SELECT
-        SUM(CASE WHEN strftime('%Y-%m', created_at)=strftime('%Y-%m','now') THEN 1 ELSE 0 END) as this_month,
-        SUM(CASE WHEN strftime('%Y-%m', created_at)=strftime('%Y-%m','now','-1 month') THEN 1 ELSE 0 END) as last_month,
-        SUM(CASE WHEN date(created_at)=date('now') THEN 1 ELSE 0 END) as today,
+        SUM(CASE WHEN strftime('%Y-%m', COALESCE(completed_at,created_at))=strftime('%Y-%m','now') THEN 1 ELSE 0 END) as this_month,
+        SUM(CASE WHEN strftime('%Y-%m', COALESCE(completed_at,created_at))=strftime('%Y-%m','now','-1 month') THEN 1 ELSE 0 END) as last_month,
+        SUM(CASE WHEN date(COALESCE(completed_at,created_at))=date('now') THEN 1 ELSE 0 END) as today,
         COUNT(*) as total
-      FROM (${BASE_UNION})
-    `).bind(code, code, code).first<any>()
+      ${DR_BASE}
+    `).bind(code).first<any>()
 
     return c.json({
       ok: true,
@@ -12181,15 +12111,17 @@ app.get('/api/admin/group-analysis/:code', requireRole('MASTER'), async (c) => {
     const db = c.env.DB
     const code = c.req.param('code').toUpperCase()
 
-    const [bcDist, genderDist, ageDist, bmiStats, monthlyTrend, periodComp, bodyAvg] = await Promise.all([
-      db.prepare(`SELECT bc_primary, COUNT(*) as cnt FROM results WHERE ref_code=? AND bc_primary IS NOT NULL GROUP BY bc_primary ORDER BY cnt DESC`).bind(code).all<any>(),
-      db.prepare(`SELECT gender, COUNT(*) as cnt FROM results WHERE ref_code=? GROUP BY gender`).bind(code).all<any>(),
-      db.prepare(`SELECT CASE WHEN CAST(age AS INTEGER)<30 THEN '20대' WHEN CAST(age AS INTEGER)<40 THEN '30대' WHEN CAST(age AS INTEGER)<50 THEN '40대' WHEN CAST(age AS INTEGER)<60 THEN '50대' ELSE '60대+' END as age_group, COUNT(*) as cnt FROM results WHERE ref_code=? AND age IS NOT NULL AND age!='' GROUP BY age_group ORDER BY age_group`).bind(code).all<any>(),
-      db.prepare(`SELECT ROUND(AVG(CAST(bmi AS REAL)),1) as avg_bmi, ROUND(MIN(CAST(bmi AS REAL)),1) as min_bmi, ROUND(MAX(CAST(bmi AS REAL)),1) as max_bmi FROM results WHERE ref_code=? AND bmi IS NOT NULL AND bmi!='' AND CAST(bmi AS REAL)>0`).bind(code).first<any>(),
-      db.prepare(`SELECT strftime('%Y-%m', created_at) as month, COUNT(*) as cnt FROM results WHERE ref_code=? AND created_at>=datetime('now','-6 months') GROUP BY month ORDER BY month`).bind(code).all<any>(),
-      db.prepare(`SELECT SUM(CASE WHEN strftime('%Y-%m',created_at)=strftime('%Y-%m','now') THEN 1 ELSE 0 END) as this_month, SUM(CASE WHEN strftime('%Y-%m',created_at)=strftime('%Y-%m','now','-1 month') THEN 1 ELSE 0 END) as last_month FROM results WHERE ref_code=?`).bind(code).first<any>(),
-      db.prepare(`SELECT ROUND(AVG(CAST(weight AS REAL)),1) as avg_weight, ROUND(AVG(CAST(height AS REAL)),1) as avg_height, ROUND(AVG(CAST(target_weight AS REAL)),1) as avg_target FROM results WHERE ref_code=? AND weight IS NOT NULL AND weight!='' AND CAST(weight AS REAL)>0`).bind(code).first<any>(),
+    // ★ [v4.9] 7개 쿼리 전부 results → diagnosis_results 단독으로 교체
+    const [bcDist, genderDist, ageDist, monthlyTrend, periodComp, bodyAvg] = await Promise.all([
+      db.prepare(`SELECT COALESCE(bc_primary,bc_nickname) as bc_primary, COUNT(*) as cnt FROM diagnosis_results WHERE ref_code=? AND COALESCE(bc_primary,bc_nickname) IS NOT NULL GROUP BY COALESCE(bc_primary,bc_nickname) ORDER BY cnt DESC`).bind(code).all<any>(),
+      db.prepare(`SELECT gender, COUNT(*) as cnt FROM diagnosis_results WHERE ref_code=? GROUP BY gender`).bind(code).all<any>(),
+      db.prepare(`SELECT CASE WHEN CAST(age AS INTEGER)<20 THEN '10대' WHEN CAST(age AS INTEGER)<30 THEN '20대' WHEN CAST(age AS INTEGER)<40 THEN '30대' WHEN CAST(age AS INTEGER)<50 THEN '40대' WHEN CAST(age AS INTEGER)<60 THEN '50대' ELSE '60대+' END as age_group, COUNT(*) as cnt FROM diagnosis_results WHERE ref_code=? AND age IS NOT NULL AND age!='' GROUP BY age_group ORDER BY age_group`).bind(code).all<any>(),
+      db.prepare(`SELECT strftime('%Y-%m', COALESCE(completed_at,created_at)) as month, COUNT(*) as cnt FROM diagnosis_results WHERE ref_code=? AND COALESCE(completed_at,created_at)>=datetime('now','-6 months') GROUP BY month ORDER BY month`).bind(code).all<any>(),
+      db.prepare(`SELECT SUM(CASE WHEN strftime('%Y-%m',COALESCE(completed_at,created_at))=strftime('%Y-%m','now') THEN 1 ELSE 0 END) as this_month, SUM(CASE WHEN strftime('%Y-%m',COALESCE(completed_at,created_at))=strftime('%Y-%m','now','-1 month') THEN 1 ELSE 0 END) as last_month FROM diagnosis_results WHERE ref_code=?`).bind(code).first<any>(),
+      db.prepare(`SELECT NULL as avg_weight, ROUND(AVG(CAST(height AS REAL)),1) as avg_height, ROUND(AVG(CAST(goal_weight AS REAL)),1) as avg_target FROM diagnosis_results WHERE ref_code=? AND height IS NOT NULL AND height!='' AND CAST(height AS REAL)>0`).bind(code).first<any>(),
     ])
+    // bmiStats: diagnosis_results에는 bmi 컬럼 없음 → null 반환
+    const bmiStats = null
 
     return c.json({
       ok: true, code,
