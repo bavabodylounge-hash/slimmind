@@ -2481,13 +2481,15 @@ app.get('/api/b2b/customer-lookup', requireB2B(), async (c) => {
     SELECT
       dr.id, dr.user_name,
       COALESCE(dr.bc_primary, dr.bc_code_key) AS bc_primary,
-      dr.axis_primary,
+      json_extract(dr.top3_axes, '$[0]') AS axis_primary,
       COALESCE(dr.completed_at, dr.created_at) AS created_at
     FROM diagnosis_results dr
     WHERE dr.ref_code=? AND dr.user_name LIKE ?
     UNION ALL
     SELECT
-      r.id, r.user_name, r.bc_primary, r.axis_primary, r.created_at
+      r.id, r.user_name, r.bc_primary,
+      r.axis_primary,
+      r.created_at
     FROM results r
     WHERE r.ref_code=? AND r.user_name LIKE ?
       AND r.id NOT IN (SELECT id FROM diagnosis_results WHERE ref_code=?)
@@ -2534,8 +2536,8 @@ app.get('/api/b2b/customer-lookup', requireB2B(), async (c) => {
 app.get('/api/b2b/customer-summary', requireB2B(), async (c) => {
   const user = c.get('user') as JwtPayload
   const db = c.env.DB
-  const id = c.req.query('session_id') || ''
-  if (!id) return c.json({ error: 'session_id가 필요합니다.' }, 400)
+  const id = c.req.query('session_id') || c.req.query('id') || ''
+  if (!id) return c.json({ error: 'session_id 또는 id 파라미터가 필요합니다.', usage: '?session_id={결과ID} 또는 ?id={결과ID}' }, 400)
 
   const parseJ = (v: any) => { try { return v ? JSON.parse(v) : null } catch { return null } }
 
@@ -11864,15 +11866,15 @@ app.get('/api/b2b/group-analysis', requireB2B(), async (c) => {
     const code = user.code
 
     // ── 통합 뷰: diagnosis_results + results UNION (diagnosis_results 우선)
-    // diagnosis_results: age, bmi, weight, height, weight_loss_pct 컬럼 존재
-    // results: age 컬럼 없음 → bmi, weight, height만 사용
+    // diagnosis_results: age, height, weight_loss_pct, goal_weight 존재. bmi/weight 없음 → NULL
+    // results: age 없음. bmi, weight, height 존재
     const BASE_UNION = `
       SELECT
         COALESCE(bc_primary, bc_code_key) AS bc_primary,
         gender,
         CAST(age AS INTEGER) AS age,
-        CAST(bmi AS REAL) AS bmi,
-        CAST(weight AS REAL) AS weight,
+        NULL AS bmi,
+        NULL AS weight,
         CAST(height AS REAL) AS height,
         CAST(weight_loss_pct AS REAL) AS weight_loss_pct,
         CAST(goal_weight AS REAL) AS goal_weight,
