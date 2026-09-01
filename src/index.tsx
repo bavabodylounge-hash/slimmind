@@ -2351,7 +2351,7 @@ app.get('/api/b2b/customer-lookup', requireB2B(), async (c) => {
   const name = c.req.query('name') || ''
   if (!name) return c.json({ error: '이름을 입력하세요.' }, 400)
 
-  // diagnosis_results + results 통합 조회 (diagnosis_results 우선)
+  // ★ [v4.9] diagnosis_results 단독 조회 (구버전 results UNION 제거)
   const rows = await db.prepare(`
     SELECT
       dr.id, dr.user_name,
@@ -2360,16 +2360,8 @@ app.get('/api/b2b/customer-lookup', requireB2B(), async (c) => {
       COALESCE(dr.completed_at, dr.created_at) AS created_at
     FROM diagnosis_results dr
     WHERE dr.ref_code=? AND dr.user_name LIKE ?
-    UNION ALL
-    SELECT
-      r.id, r.user_name, r.bc_primary,
-      r.axis_primary,
-      r.created_at
-    FROM results r
-    WHERE r.ref_code=? AND r.user_name LIKE ?
-      AND r.id NOT IN (SELECT id FROM diagnosis_results WHERE ref_code=?)
     ORDER BY created_at DESC LIMIT 10
-  `).bind(user.code, `%${name}%`, user.code, `%${name}%`, user.code).all<any>()
+  `).bind(user.code, `%${name}%`).all<any>()
 
   // bc_prescriptions JOIN (개별 조회)
   const parse = (v: any) => { try { return JSON.parse(v) } catch { return [] } }
@@ -4963,36 +4955,49 @@ app.get('/api/admin/ranking', requireRole('MASTER'), async (c) => {
   }
 
   try {
+    // ★ [v4.9] diagnosis_results 단독 집계 (구버전 results JOIN 제거)
+    // dateFilter도 ref_code 기준으로 재구성
+    let drDateFilter = '';
+    if (period === 'month') {
+      const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+      drDateFilter = `AND substr(COALESCE(d.completed_at,d.created_at),1,7) = '${ym}'`;
+    } else if (period === 'quarter') {
+      const q = Math.floor(now.getMonth() / 3);
+      const startM = q * 3 + 1;
+      const endM = startM + 2;
+      drDateFilter = `AND CAST(substr(COALESCE(d.completed_at,d.created_at),6,2) AS INTEGER) BETWEEN ${startM} AND ${endM} AND substr(COALESCE(d.completed_at,d.created_at),1,4)='${now.getFullYear()}'`;
+    }
+
     const rows = db ? await db.prepare(`
       SELECT
         c.code,
         c.name,
         c.grade,
         c.commission_rate,
-        COUNT(r.id)                   AS total_results,
-        SUM(CASE WHEN r.is_premium=1 THEN 1 ELSE 0 END) AS premium_cnt,
-        ROUND(COUNT(r.id)*150000*0.25) AS est_settlement
+        COUNT(d.id)                    AS total_results,
+        0                              AS premium_cnt,
+        ROUND(COUNT(d.id)*150000*0.25) AS est_settlement
       FROM consultants c
-      LEFT JOIN results r ON r.consultant_code = c.code ${dateFilter}
+      LEFT JOIN diagnosis_results d ON d.ref_code = c.code ${drDateFilter}
       WHERE c.subscription_status != 'inactive'
       GROUP BY c.code, c.name, c.grade, c.commission_rate
-      ORDER BY total_results DESC, premium_cnt DESC
+      ORDER BY total_results DESC
     `).all<any>() : { results: [] };
 
-    // 지난 기간 대비 성장률 계산을 위해 전월 데이터도 조회
+    // 지난달 비교 — diagnosis_results 기준
     const prevYm = (() => {
       const d = new Date(now.getFullYear(), now.getMonth()-1, 1);
       return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     })();
     const prevRows = db ? await db.prepare(`
-      SELECT consultant_code, COUNT(*) AS cnt
-      FROM results
-      WHERE substr(created_at,1,7)='${prevYm}'
-      GROUP BY consultant_code
+      SELECT ref_code, COUNT(*) AS cnt
+      FROM diagnosis_results
+      WHERE substr(COALESCE(completed_at,created_at),1,7)='${prevYm}'
+      GROUP BY ref_code
     `).all<any>() : { results: [] };
 
     const prevMap: Record<string, number> = {};
-    (prevRows.results || []).forEach((r: any) => { prevMap[r.consultant_code] = r.cnt; });
+    (prevRows.results || []).forEach((r: any) => { prevMap[r.ref_code] = r.cnt; });
 
     const ranking = (rows.results || []).map((r: any, idx: number) => {
       const prev = prevMap[r.code] || 0;
@@ -5022,12 +5027,13 @@ app.get('/api/admin/revenue-forecast', requireRole('MASTER'), async (c) => {
   const daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
 
   try {
+    // ★ [v4.9] diagnosis_results 단독 집계 (구버전 results 제거)
     // 이번 달 일별 결과 수
     const dailyRows = db ? await db.prepare(`
-      SELECT substr(created_at,1,10) AS day, COUNT(*) AS cnt
-      FROM results
-      WHERE substr(created_at,1,7)='${ym}'
-      GROUP BY substr(created_at,1,10)
+      SELECT substr(COALESCE(completed_at,created_at),1,10) AS day, COUNT(*) AS cnt
+      FROM diagnosis_results
+      WHERE substr(COALESCE(completed_at,created_at),1,7)='${ym}'
+      GROUP BY substr(COALESCE(completed_at,created_at),1,10)
       ORDER BY day
     `).all<any>() : { results: [] };
 
@@ -5036,10 +5042,10 @@ app.get('/api/admin/revenue-forecast', requireRole('MASTER'), async (c) => {
 
     // 지난 3달 평균으로 예측
     const hist = db ? await db.prepare(`
-      SELECT substr(created_at,1,7) AS ym, COUNT(*) AS cnt
-      FROM results
-      WHERE substr(created_at,1,7) < '${ym}'
-      GROUP BY substr(created_at,1,7)
+      SELECT substr(COALESCE(completed_at,created_at),1,7) AS ym, COUNT(*) AS cnt
+      FROM diagnosis_results
+      WHERE substr(COALESCE(completed_at,created_at),1,7) < '${ym}'
+      GROUP BY substr(COALESCE(completed_at,created_at),1,7)
       ORDER BY ym DESC
       LIMIT 3
     `).all<any>() : { results: [] };
