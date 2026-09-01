@@ -2781,18 +2781,19 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
             const partnerRow = await db.prepare(
               `SELECT survey_category FROM b2b_partners WHERE code = ? LIMIT 1`
             ).bind(diagRow.ref_code).first<any>()
-            // 파트너 카테고리가 명시된 경우 저장값보다 파트너 카테고리 우선 적용
-            // (survey_category가 'integrated'로 잘못 저장된 경우 복구)
+            // ✅ [v4.9 FIX] 파트너 카테고리가 명시된 경우 무조건 덮어씀
+            // (survey_category가 'integrated'로 잘못 저장된 aesthetic/salon/fitness도 복구)
+            // 이전 버그: effectiveCategory || 'aesthetic' → 'integrated'는 truthy → aesthetic 미적용
             if (partnerRow?.survey_category === 'hospital') {
               effectiveCategory = 'hospital'
             } else if (partnerRow?.survey_category === 'aesthetic') {
-              effectiveCategory = effectiveCategory || 'aesthetic'
+              effectiveCategory = 'aesthetic'   // ✅ 무조건 덮어씀
             } else if (partnerRow?.survey_category === 'fitness') {
-              effectiveCategory = effectiveCategory || 'fitness'
+              effectiveCategory = 'fitness'     // ✅ 무조건 덮어씀
             } else if (partnerRow?.survey_category === 'salon') {
-              effectiveCategory = effectiveCategory || 'salon'
-            } else if (!effectiveCategory && partnerRow?.survey_category) {
-              effectiveCategory = partnerRow.survey_category
+              effectiveCategory = 'salon'       // ✅ 무조건 덮어씀
+            } else if (partnerRow?.survey_category) {
+              effectiveCategory = partnerRow.survey_category  // 기타 업종도 파트너값 우선
             }
           } catch(_) {}
         }
