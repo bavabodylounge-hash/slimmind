@@ -1501,7 +1501,7 @@ app.post('/api/admin/b2b-partners', requireRole('MASTER'), async (c) => {
   const body = await c.req.json()
   const { name, type, owner_name, phone, email, address, commission_rate, memo,
           brand_logo_url, brand_color, brand_name, custom_code, custom_password,
-          survey_category } = body
+          survey_category, homepage_url: newHomepageUrl } = body
 
   if (!name) return c.json({ success: false, error: '영업장명은 필수입니다.' }, 400)
   if (!email) return c.json({ success: false, error: '이메일은 필수입니다.' }, 400)
@@ -1553,13 +1553,13 @@ app.post('/api/admin/b2b-partners', requireRole('MASTER'), async (c) => {
     await db.prepare(`
       INSERT INTO b2b_partners
         (code, name, type, owner_name, phone, email, address, commission_rate, memo,
-         brand_logo_url, brand_color, brand_name, password_hash, status, survey_category)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,'active',?)
+         brand_logo_url, brand_color, brand_name, password_hash, status, survey_category, homepage_url)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,'active',?,?)
     `).bind(
       code, name, type || null, owner_name || null, phone || null, email || null,
       address || null, commission_rate || 15.0, memo || null,
       brand_logo_url || null, brand_color || '#6366f1', brand_name || name,
-      defaultPassword, category
+      defaultPassword, category, newHomepageUrl || null
     ).run()
   } catch (err: any) {
     const msg = err?.message || String(err)
@@ -1592,7 +1592,7 @@ app.put('/api/admin/b2b-partners/:code', requireRole('MASTER'), async (c) => {
   const code = c.req.param('code').toUpperCase()
   const body = await c.req.json()
   const { name, type, owner_name, phone, email, address, commission_rate, status, memo,
-          brand_logo_url, brand_color, brand_name, survey_category } = body
+          brand_logo_url, brand_color, brand_name, survey_category, homepage_url } = body
 
   const validCategories = ['integrated', 'hospital', 'aesthetic', 'fitness', 'salon']  // ✅ BUG-8 FIX: 'salon' 추가
 
@@ -1616,6 +1616,7 @@ app.put('/api/admin/b2b-partners/:code', requireRole('MASTER'), async (c) => {
     setClauses.push('survey_category=?')
     binds.push(survey_category)
   }
+  if (homepage_url !== undefined)    { setClauses.push('homepage_url=?');    binds.push(homepage_url || null) }
 
   if (setClauses.length === 0) return c.json({ success: false, error: '수정할 필드가 없습니다.' }, 400)
 
@@ -1643,6 +1644,159 @@ app.delete('/api/admin/b2b-partners/:code/destroy', requireRole('MASTER'), async
   const code = c.req.param('code').toUpperCase()
   await db.prepare('DELETE FROM b2b_partners WHERE code=?').bind(code).run()
   return c.json({ success: true, message: `${code} 파트너가 완전 삭제되었습니다.` })
+})
+
+// ══════════════════════════════════════════════════════════════════════════════
+// POST /api/admin/b2b-crawl/:code — B2B 파트너 홈페이지 크롤링 + AI 프로그램 자동 추출
+// 흐름: 홈페이지 URL fetch → HTML 텍스트 추출 → OpenAI로 프로그램 목록 파싱
+//       → BC 코드 자동 태깅 → b2b_custom_programs INSERT
+// ══════════════════════════════════════════════════════════════════════════════
+app.post('/api/admin/b2b-crawl/:code', requireRole('MASTER'), async (c) => {
+  const db   = c.env.DB
+  const code = c.req.param('code').toUpperCase()
+  const body = await c.req.json<{ homepage_url?: string; replace?: boolean }>().catch(() => ({}))
+
+  // 1) 파트너 조회 + homepage_url 결정
+  const partner = await db.prepare(
+    `SELECT code, name, type, homepage_url FROM b2b_partners WHERE code=? LIMIT 1`
+  ).bind(code).first<any>()
+  if (!partner) return c.json({ error: '파트너를 찾을 수 없습니다.' }, 404)
+
+  const targetUrl = body.homepage_url || partner.homepage_url
+  if (!targetUrl) return c.json({ error: '홈페이지 URL이 없습니다. body에 homepage_url을 포함하거나 파트너에 등록해주세요.' }, 400)
+
+  // homepage_url 저장/갱신
+  if (body.homepage_url && body.homepage_url !== partner.homepage_url) {
+    await db.prepare(`UPDATE b2b_partners SET homepage_url=? WHERE code=?`).bind(body.homepage_url, code).run().catch(() => {})
+  }
+
+  // 2) 홈페이지 HTML fetch
+  let rawHtml = ''
+  try {
+    const res = await fetch(targetUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SlimmindBot/1.0)' },
+      signal: AbortSignal.timeout(10000),
+    })
+    rawHtml = await res.text()
+  } catch (fetchErr: any) {
+    return c.json({ error: `홈페이지 접근 실패: ${fetchErr?.message || fetchErr}` }, 502)
+  }
+
+  // 3) HTML → 텍스트 정제 (태그 제거, 공백 압축, 10000자 제한)
+  const plainText = rawHtml
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+    .slice(0, 10000)
+
+  // 4) OpenAI로 프로그램 추출 + BC 태깅
+  const OPENAI_KEY = (c.env as any).OPENAI_API_KEY
+  if (!OPENAI_KEY) return c.json({ error: 'OPENAI_API_KEY 환경변수가 설정되지 않았습니다.' }, 500)
+
+  // BC 코드 힌트 (AI에게 참고용으로 제공)
+  const BC_HINTS = `
+BC-1: 림프/하지부종 (하체부종, 코끼리다리, 정체)
+BC-2: 자세/거북목 (목, 어깨, 자세교정, 거북목)
+BC-3: 내장/인슐린저항 (복부비만, 내장지방, 혈당, 인슐린)
+BC-4: 대사저하/약물 (요요, 대사저하, 다이어트 실패)
+BC-5: 순환저하/냉체 (셀룰라이트, 냉증, 순환)
+BC-6: 코르티솔/야식 (스트레스, 야식, 긴장, 어깨긴장)
+BC-7: 호르몬/출산 (출산후, 복부, 부종, 가스팽만)
+BC-8: 골반/체형 (골반, 체형교정, 말벅지, 근육)
+BC-9: 복합체형 (복부+전신, 올챙이배)
+BC-10: 팔뚝부종 (팔뚝, 이두, 부종)
+BC-11: 상체근육 (근육, 상체, 역삼각형)
+BC-12: 부유방 (겨드랑이, 부유방, 흉부)
+BC-13: 갱년기 (갱년기, 호르몬변화, 중년)
+BC-14: 번아웃 (번아웃, 무기력, 만성피로)
+BC-15: 대사증후군 (대사증후군, 내장+전신, 염증)
+BC-16: 다중악순환 (복합, 다중, 전신불균형)
+`
+
+  const prompt = `다음은 한국의 ${partner.type || '뷰티/다이어트'} 업체(${partner.name}) 홈페이지 텍스트입니다.
+
+이 업체의 시술/프로그램 목록을 추출해주세요.
+각 프로그램마다 아래 BC 체형 코드 중 어울리는 것을 최대 4개까지 태깅해주세요.
+
+[BC 코드 기준]
+${BC_HINTS}
+
+[홈페이지 텍스트]
+${plainText}
+
+반드시 아래 JSON 배열 형식으로만 응답하세요 (설명 없이 JSON만):
+[
+  {
+    "program_name": "시술/프로그램명",
+    "price": 숫자(원단위, 모르면 0),
+    "description": "간략 설명 1-2문장",
+    "tags": ["키워드1", "키워드2"],
+    "bc_tags": ["BC-X", "BC-Y"]
+  }
+]
+
+최소 3개, 최대 15개 프로그램을 추출하세요. 메뉴/프로그램이 명확하지 않으면 업체 유형에 맞는 일반적인 프로그램을 추정해서 넣어도 됩니다.`
+
+  let programs: any[] = []
+  try {
+    const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENAI_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.3,
+        max_tokens: 2000,
+      }),
+    })
+    const aiJson = await aiRes.json() as any
+    const content = aiJson?.choices?.[0]?.message?.content || ''
+    // JSON 파싱 (마크다운 코드블록 제거 후)
+    const jsonStr = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
+    programs = JSON.parse(jsonStr)
+    if (!Array.isArray(programs)) throw new Error('배열 형식이 아닙니다')
+  } catch (aiErr: any) {
+    return c.json({ error: `AI 파싱 실패: ${aiErr?.message || aiErr}` }, 500)
+  }
+
+  // 5) b2b_custom_programs INSERT
+  const replace = body.replace !== false  // 기본값: 기존 데이터 교체
+  if (replace) {
+    await db.prepare(`DELETE FROM b2b_custom_programs WHERE b2b_code=?`).bind(code).run().catch(() => {})
+  }
+
+  let inserted = 0
+  const insertedList: any[] = []
+  for (const p of programs) {
+    if (!p.program_name) continue
+    try {
+      const bcTagsJson = JSON.stringify(Array.isArray(p.bc_tags) ? p.bc_tags.filter((t: string) => /^BC-\d+$/.test(t)) : [])
+      const tagsJson   = JSON.stringify(Array.isArray(p.tags) ? p.tags : [])
+      await db.prepare(`
+        INSERT INTO b2b_custom_programs (b2b_code, program_name, price, description, tags, bc_tags)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).bind(code, p.program_name, p.price || 0, p.description || '', tagsJson, bcTagsJson).run()
+      inserted++
+      insertedList.push({ program_name: p.program_name, price: p.price || 0, bc_tags: p.bc_tags || [] })
+    } catch (_) {}
+  }
+
+  return c.json({
+    success: true,
+    partner_code: code,
+    partner_name: partner.name,
+    homepage_url: targetUrl,
+    crawled_text_length: plainText.length,
+    programs_extracted: programs.length,
+    programs_inserted: inserted,
+    replaced: replace,
+    programs: insertedList,
+  })
 })
 
 // ── 에스테틱 프로그램 관리 API (MASTER 전용) ─────────────────────────────────
