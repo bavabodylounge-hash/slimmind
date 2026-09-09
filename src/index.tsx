@@ -487,6 +487,37 @@ function decideSubtype(
   return { bc: best.bc, name: best.name, signatureAxes: best.axes }
 }
 
+// ─── normalizeAxForDecide: axis_scores 스케일 정규화 (전역) ────────
+// DB에 저장된 axis_scores 스케일이 3가지 혼재:
+//   ① {A01:6.5, A07:8.2}  → 0~10  (정상, 그대로)
+//   ② {A01:65, A02:70}    → 0~100 (÷10 필요)
+//   ③ {a:87, b:100}       → 구형 a/b/c 키 (A01~A10 매핑 불가 → 빈 객체)
+// decideSubtype()은 0~10 스케일 기준으로 설계됨 → 호출 전 반드시 정규화 필요
+// [BUG-FIX 20260909] BUG-E: mapping-recheck + verify-detail 공용 전역 함수
+function normalizeAxForDecide(raw: any): Record<string, number> {
+  if (!raw) return {}
+  let obj: Record<string, any> = {}
+  if (typeof raw === 'string') { try { obj = JSON.parse(raw) } catch { return {} } }
+  else if (typeof raw === 'object' && !Array.isArray(raw)) { obj = raw }
+  else return {}
+  const hasAxisKeys = Object.keys(obj).some(k => /^A\d{2}$/.test(k))
+  if (!hasAxisKeys) return {}  // 구형 a/b/c 키 → 스킵 (부위/질감 기반 판정으로 폴백)
+  const vals = Object.values(obj).map(Number).filter(v => !isNaN(v) && v > 0)
+  if (vals.length === 0) return {}
+  const anyAbove10 = vals.some(v => v > 10)
+  const result: Record<string, number> = {}
+  Object.entries(obj).forEach(([k, v]) => {
+    if (!/^A\d{2}$/.test(k)) return
+    const n = Number(v)
+    if (isNaN(n)) return
+    // 0~100 스케일이면 ÷10, 이미 0~10이면 그대로 (소수 1자리 반올림)
+    result[k] = anyAbove10
+      ? Math.min(10, Math.max(0, Math.round((n / 10) * 10) / 10))
+      : Math.min(10, Math.max(0, Math.round(n * 10) / 10))
+  })
+  return result
+}
+
 // ─── computeIndicators: 4대 지표 공식 ─────────────────────────────
 // 복부위험도%, 호르몬부하%, 체형불균형%, 대사효율나이
 function computeIndicators(
@@ -14121,7 +14152,9 @@ app.get('/api/admin/verify-detail/:id', requireRole('MASTER'), async (c) => {
     let textures: string[] = []
     let flagsObj: Record<string, boolean> = {}
 
-    try { axisScores = JSON.parse(row.axis_scores || '{}') } catch {}
+    // [BUG-FIX 20260909] BUG-E: axis_scores 스케일 정규화 적용
+    // raw JSON 파싱 → 0~100 스케일이면 ÷10 변환 → decideSubtype은 0~10 기준
+    try { axisScores = normalizeAxForDecide(row.axis_scores) } catch {}
     try { rawAnswers = JSON.parse(row.raw_answers || '{}') } catch {}
     try {
       const br = row.body_regions
@@ -14137,6 +14170,7 @@ app.get('/api/admin/verify-detail/:id', requireRole('MASTER'), async (c) => {
     } catch {}
 
     // ── 서버사이드 decideSubtype() 재실행 ──
+    // axisScores는 이미 0~10 정규화된 값이므로 decideSubtype이 올바른 BC 반환
     const recomputed = (Object.keys(axisScores).length > 0)
       ? decideSubtype(axisScores, bodyRegions, textures, flagsObj)
       : null
@@ -14381,7 +14415,13 @@ app.post('/api/admin/mapping-recheck', requireRole('MASTER'), async (c) => {
     let textures: string[] = []
     let flagsObj: Record<string, boolean> = {}
 
-    try { axisScores = JSON.parse(row.axis_scores || '{}') } catch {}
+    // [BUG-FIX 20260909] BUG-E: axis_scores 스케일 정규화 — decideSubtype은 0~10 스케일 기준
+    // DB에 저장된 axis_scores는 3가지 스케일이 혼재:
+    //   ① {A01:6.5, A07:8.2} — 0~10 (올바른 스케일, 그대로 사용)
+    //   ② {A01:65, A02:70}   — 0~100 (÷10 필요)
+    //   ③ {a:87, b:100}      — 구형 a/b/c 키 (A01~A10 매핑 불가 → 빈 객체 처리)
+    // [BUG-FIX 20260909] BUG-E: 전역 normalizeAxForDecide() 사용 (verify-detail과 공유)
+    try { axisScores = normalizeAxForDecide(row.axis_scores) } catch {}
     try { rawAnswers = JSON.parse(row.raw_answers || '{}') } catch {}
     try { const br = row.body_regions; if (br) bodyRegions = JSON.parse(br) } catch {}
     try { const tx = row.textures; if (tx) textures = JSON.parse(tx) } catch {}
