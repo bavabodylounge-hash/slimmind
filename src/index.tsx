@@ -5957,9 +5957,31 @@ app.post('/api/v1/diagnosis', async (c) => {
       gender, height, age, weight,      // ✅ BMR·체지방률 개인화 계산용
       ref_code, completed_at,
       session_id,  // ✅ FIX: session_id 수신 (데일리 체크 JOIN 연결용)
-      survey_category,  // ✅ 에스테틱/병원/미용실 등 분류 (aesthetic | hospital | salon | integrated)
+      survey_category: _survey_category_raw,  // ✅ 에스테틱/병원/미용실 등 분류 (aesthetic | hospital | salon | integrated)
       answers  // ✅ [채점엔진 복구] 질문번호→답변 객체 {q1:3,q2:2,...} 수신 시 서버사이드 채점
     } = body
+
+    // [BUG-FIX 20260909] survey_category 정규화 — 오타/변형값 강제 교정
+    // 프론트에서 'esthetic'(오타), 'salon'→'aesthetic' 등 잘못된 값이 오면 서버에서 차단
+    const VALID_SURVEY_CATEGORIES = ['aesthetic', 'hospital', 'fitness', 'salon', 'integrated']
+    const SURVEY_CATEGORY_ALIAS: Record<string, string> = {
+      'esthetic': 'aesthetic',   // 오타 교정
+      'esth':     'aesthetic',
+      'beauty':   'aesthetic',
+      'gym':      'fitness',
+      'pt':       'fitness',
+      'pilates':  'fitness',
+      'hair':     'salon',
+      'barber':   'salon',
+      'clinic':   'hospital',
+      'med':      'hospital',
+    }
+    const survey_category = (() => {
+      const raw = (typeof _survey_category_raw === 'string' ? _survey_category_raw : '').trim().toLowerCase()
+      if (VALID_SURVEY_CATEGORIES.includes(raw)) return raw
+      if (SURVEY_CATEGORY_ALIAS[raw]) return SURVEY_CATEGORY_ALIAS[raw]
+      return 'integrated'  // 알 수 없는 값 → integrated 폴백
+    })()
 
     if (!user_name) return c.json({ error: 'user_name required' }, 400)
 
