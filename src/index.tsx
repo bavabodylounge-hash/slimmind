@@ -7258,10 +7258,23 @@ app.post('/api/h/diagnosis', async (c) => {
       `ALTER TABLE hospital_responses ADD COLUMN goal_weight REAL`,
       `ALTER TABLE hospital_responses ADD COLUMN weight_loss_pct REAL`,
       `ALTER TABLE hospital_responses ADD COLUMN bc_nickname TEXT`,  // v3.3: 아형명 저장
+      `ALTER TABLE hospital_responses ADD COLUMN exercise_response TEXT`,  // Q17: 운동 반응
+      `ALTER TABLE hospital_responses ADD COLUMN pain_gate TEXT`,          // Q18: 통증 부위(배열)
     ]
     for (const sql of alterColumns) {
       try { await db.prepare(sql).run() } catch (_) { /* 이미 존재하면 무시 */ }
     }
+
+    // Q17 운동 반응 / Q18 통증 부위 — raw_answers 안에서 꺼내거나 body 최상위에서 수신
+    const resolvedExerciseResponse = body.exercise_response
+      || parsedRaw?.exercise_response
+      || (parsedRaw?.stage2Idx?.['17'] != null ? String(parsedRaw.stage2Idx['17'][0]) : null)
+      || null
+    const rawPainGate = body.pain_gate
+      || parsedRaw?.pain_gate
+      || (Array.isArray(parsedRaw?.stage2Idx?.['18']) ? parsedRaw.stage2Idx['18'] : null)
+      || []
+    const resolvedPainGate = Array.isArray(rawPainGate) ? JSON.stringify(rawPainGate) : '[]'
 
     // goal_weight / weight_loss_pct: payload 최상위 → raw_answers 최상위 순으로 폴백
     const resolvedGoalWeight = goal_weight != null ? Number(goal_weight)
@@ -7277,8 +7290,9 @@ app.post('/api/h/diagnosis', async (c) => {
         (id, b2b_code, ref_code, user_name, gender, age, height, weight, phone,
          stage1_json, stage2_json, stage3_json, stage4_json,
          ohaeng_type, disp_type, mbti_full, bc_code, bc_nickname, axis_scores, raw_answers,
-         goal_weight, weight_loss_pct)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+         goal_weight, weight_loss_pct,
+         exercise_response, pain_gate)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     `).bind(
       resultId, b2bCode, ref_code || null, user_name,
       gender || null, age ? String(age) : null,
@@ -7292,11 +7306,13 @@ app.post('/api/h/diagnosis', async (c) => {
       disp_type || (resolvedOhaeng ? resolvedOhaeng + '형' : null),
       resolvedMbti,
       resolvedBcCode,
-      resolvedBcNickname,  // v3.3: 아형명 저장
-      resolvedAxisScores ? JSON.stringify(resolvedAxisScores) : null,  // 0~100 정규화값
+      resolvedBcNickname,
+      resolvedAxisScores ? JSON.stringify(resolvedAxisScores) : null,
       raw_answers ? JSON.stringify(raw_answers) : null,
-      resolvedGoalWeight,       // 12주 칼로리 계산용 — 반드시 저장
-      resolvedWeightLossPct     // 12주 감량률 — 반드시 저장
+      resolvedGoalWeight,
+      resolvedWeightLossPct,
+      resolvedExerciseResponse,  // Q17: 운동 반응
+      resolvedPainGate           // Q18: 통증 부위 JSON 배열
     ).run()
 
     // 담당자 알림도 함께 발송 시도 (실패해도 응답에 영향 없음)
@@ -8708,13 +8724,32 @@ app.post('/api/a/diagnosis', async (c) => {
     const resolvedWeightLossPct = weight_loss_pct != null ? Number(weight_loss_pct) : (parsedRaw?.weight_loss_pct != null ? Number(parsedRaw.weight_loss_pct) : null)
     const resolvedBcNickname = bc_nickname || bc_primary || null
 
+    // Q17 운동 반응 / Q18 통증 부위 — ALTER로 컬럼 추가 (기존 테이블 대비)
+    const aAlterCols = [
+      `ALTER TABLE aesthetic_responses ADD COLUMN exercise_response TEXT`,
+      `ALTER TABLE aesthetic_responses ADD COLUMN pain_gate TEXT`,
+    ]
+    for (const sql of aAlterCols) {
+      try { await db.prepare(sql).run() } catch (_) {}
+    }
+    const aExerciseResponse = body.exercise_response
+      || parsedRaw?.exercise_response
+      || (parsedRaw?.stage2Idx?.['17'] != null ? String(parsedRaw.stage2Idx['17'][0]) : null)
+      || null
+    const aRawPainGate = body.pain_gate
+      || parsedRaw?.pain_gate
+      || (Array.isArray(parsedRaw?.stage2Idx?.['18']) ? parsedRaw.stage2Idx['18'] : null)
+      || []
+    const aPainGate = Array.isArray(aRawPainGate) ? JSON.stringify(aRawPainGate) : '[]'
+
     await db.prepare(`
       INSERT INTO aesthetic_responses
         (id, b2b_code, ref_code, user_name, gender, age, height, weight, phone,
          stage1_json, stage2_json, stage3_json, stage4_json,
          ohaeng_type, disp_type, mbti_full, bc_code, bc_nickname, axis_scores, raw_answers,
-         goal_weight, weight_loss_pct)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+         goal_weight, weight_loss_pct,
+         exercise_response, pain_gate)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     `).bind(
       resultId, b2bCode, ref_code || null, user_name,
       gender || null, age ? String(age) : null,
@@ -8728,7 +8763,9 @@ app.post('/api/a/diagnosis', async (c) => {
       resolvedMbti, resolvedBcCode, resolvedBcNickname,
       resolvedAxisScores ? JSON.stringify(resolvedAxisScores) : null,
       raw_answers ? JSON.stringify(raw_answers) : null,
-      resolvedGoalWeight, resolvedWeightLossPct
+      resolvedGoalWeight, resolvedWeightLossPct,
+      aExerciseResponse,  // Q17: 운동 반응
+      aPainGate           // Q18: 통증 부위 JSON 배열
     ).run()
 
     // ── diagnosis_results 동시 저장 (에스테틱 B2B 대시보드 파이프라인 + /api/a/result/:id 조회 대상) ──
@@ -9785,13 +9822,32 @@ app.post('/api/s/diagnosis', async (c) => {
     const resolvedWeightLossPct = weight_loss_pct != null ? Number(weight_loss_pct) : (parsedRaw?.weight_loss_pct != null ? Number(parsedRaw.weight_loss_pct) : null)
     const resolvedBcNickname = bc_nickname || bc_primary || null
 
+    // Q17 운동 반응 / Q18 통증 부위 — ALTER로 컬럼 추가 (기존 테이블 대비)
+    const sAlterCols = [
+      `ALTER TABLE salon_responses ADD COLUMN exercise_response TEXT`,
+      `ALTER TABLE salon_responses ADD COLUMN pain_gate TEXT`,
+    ]
+    for (const sql of sAlterCols) {
+      try { await db.prepare(sql).run() } catch (_) {}
+    }
+    const sExerciseResponse = body.exercise_response
+      || parsedRaw?.exercise_response
+      || (parsedRaw?.stage2Idx?.['17'] != null ? String(parsedRaw.stage2Idx['17'][0]) : null)
+      || null
+    const sRawPainGate = body.pain_gate
+      || parsedRaw?.pain_gate
+      || (Array.isArray(parsedRaw?.stage2Idx?.['18']) ? parsedRaw.stage2Idx['18'] : null)
+      || []
+    const sPainGate = Array.isArray(sRawPainGate) ? JSON.stringify(sRawPainGate) : '[]'
+
     await db.prepare(`
       INSERT INTO salon_responses
         (id, b2b_code, ref_code, user_name, gender, age, height, weight, phone,
          stage1_json, stage2_json, stage3_json, stage4_json,
          ohaeng_type, disp_type, mbti_full, bc_code, bc_nickname, axis_scores, raw_answers,
-         goal_weight, weight_loss_pct)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+         goal_weight, weight_loss_pct,
+         exercise_response, pain_gate)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     `).bind(
       resultId, b2bCode, ref_code || null, user_name,
       gender || null, age ? String(age) : null,
@@ -9805,7 +9861,9 @@ app.post('/api/s/diagnosis', async (c) => {
       resolvedMbti, resolvedBcCode, resolvedBcNickname,
       resolvedAxisScores ? JSON.stringify(resolvedAxisScores) : null,
       raw_answers ? JSON.stringify(raw_answers) : null,
-      resolvedGoalWeight, resolvedWeightLossPct
+      resolvedGoalWeight, resolvedWeightLossPct,
+      sExerciseResponse,  // Q17: 운동 반응
+      sPainGate           // Q18: 통증 부위 JSON 배열
     ).run()
 
     // ── diagnosis_results 1순위 동시 저장 (살롱 B2B 대시보드 + 결과지 API 파이프라인) ──
