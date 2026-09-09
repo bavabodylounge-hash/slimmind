@@ -9752,9 +9752,15 @@ function detectBackground(answers, gender) {
   if (pcos === 'yes' || pcos === 'Y' || pcos === '있음') return 'PCOS';
 
   // 3위. 시술 이력
-  // 병원: past_procedures 배열, 5=없음
+  // 업종별 없음 인덱스: 병원·에스테틱=5, 피트니스=6, 미용실=7
+  var PROC_NONE_IDX = (function(){
+    var cat = (typeof window !== 'undefined' && window.__SURVEY_CATEGORY__) || '';
+    if (cat === 'fitness') return 6;
+    if (cat === 'salon')   return 7;
+    return 5; // hospital / esthetic / default
+  })();
   var procs = answers['past_procedures'];
-  if (hasArr(procs, 5)) return '시술';
+  if (hasArr(procs, PROC_NONE_IDX)) return '시술';
   // 에스테틱 호환: Q21, Q_surgery 문자값
   var surgery = answers['Q21'] || answers['Q_surgery'] || '';
   if (surgery && surgery !== 'none' && surgery !== '없음' && surgery !== '') return '시술';
@@ -9807,6 +9813,7 @@ function detectBackground(answers, gender) {
 
   // 8위. 번아웃
   // 병원: q8_trigger 배열 0=이직·과로(가장 흔한 번아웃 원인) 또는 1=이별충격 → 심리적 번아웃 신호
+  // idx6=최근체중변화없음 → 번아웃 신호 아님 (의도적으로 제외)
   var trigger = answers['q8_trigger'];
   if (Array.isArray(trigger) && (trigger.map(Number).includes(0) || trigger.map(Number).includes(1))) return '번아웃'; // ★ 0(이직과로) 추가
   var burnout = answers['Q_burnout'] || answers['Q_stress_level'] || '';
@@ -16722,7 +16729,7 @@ function renderP5(metrics, bcCode, axisScores, userName) {
   // ── 공통 TOP3 파이프라인 (bc-engine.js computeTop3Prescriptions) ──
   // STRONG 배열이 주 소스(P5 렌더링 기반) → 엔진 결과로 교차검증 및 fallback 보정
   var _engineTop3 = (typeof computeTop3Prescriptions === 'function')
-    ? computeTop3Prescriptions(axisScores, null, 'hospital')
+    ? computeTop3Prescriptions(axisScores, null, window.__SURVEY_CATEGORY__ || 'hospital')
     : null;
   var _strongFromP5 = STRONG.map(function(e){ return e.nm; });
   // P5 STRONG 배열 우선 사용 (설문 흐름 기반). 비어있으면 엔진 결과로 fallback
@@ -16731,7 +16738,7 @@ function renderP5(metrics, bcCode, axisScores, userName) {
     : (_engineTop3 ? _engineTop3.top3 : []);
   // P6(로드맵)에서 '원인↔실천' 겹치는 축을 계산하는 데 사용
   // 전역 변수 2종 동시 세팅 — hospital은 __STRONG_AXES__, 공통 접근자는 __TOP3_PRESCRIPTIONS__
-  window.__STRONG_AXES__      = _top3Final;  // hospital 결과지 내부 참조
+  window.__STRONG_AXES__      = _top3Final;  // 결과지 내부 참조
   window.__TOP3_PRESCRIPTIONS__ = {           // 양 트랙 공통 접근자
     top3:      _top3Final,
     top3Full:  _top3Final.map(function(nm) {
@@ -16740,7 +16747,7 @@ function renderP5(metrics, bcCode, axisScores, userName) {
       return { key: nm, icon: meta.icon, color: meta.color };
     }),
     allScores: _engineTop3 ? _engineTop3.allScores : {},
-    track:     'hospital',
+    track:     (window.__SURVEY_CATEGORY__ || 'hospital'),
     source:    'renderP5',
   };
   console.log('[P5→ENGINE] TOP3 파이프라인:', _top3Final, '| 엔진 검증:', _engineTop3 ? _engineTop3.top3 : 'N/A');
@@ -19779,7 +19786,7 @@ async function loadHospitalResult() {
     //   no:3  (진단 질환, multi)      → disease      [0=PCOS,1=당뇨,2=고혈압,3=갑상선,4=지방간,5=역류성,6=우울증,7=없음]
     //   no:6  (장기복용 약물, multi)  → long_term_drugs [0=스테로이드,1=항우울제,2=피임약,3=아스피린,4=이소트레,5=탈모약,6=없음]
     //   no:7  (식욕억제제)            → appetite_suppressant [0=여러번,1=한두번,2=없음]
-    //   no:8  (살찐 계기, multi)      → q8_trigger   [0=이직과로,1=이별충격,2=수술입원,3=음주,4=금연,5=서서히]
+    //   no:8  (살찐 계기, multi)      → q8_trigger   [0=이직과로,1=이별충격,2=수술입원,3=음주,4=금연,5=서서히,6=체중변화없음]
     //   no:9  (시술이력, multi)       → past_procedures [0=지방흡입,1=주사시술,2=리프팅,3=보톡스,4=복부성형,5=없음]
     //   no:11 (출산)                  → q11_event    [0=출산후변화,1=출산후변화없음,2=해당없음]
     //   no:12 (갱년기)                → q12_menopause [0=복부변환,1=호르몬치료,2=완경,3=신호조금,4=해당없음]
@@ -19805,32 +19812,41 @@ async function loadHospitalResult() {
 
     // ── stage2 텍스트→인덱스 역매핑 테이블 ──
     // survey-hospital.html opts 텍스트 순서 그대로 (0-based)
-    const S2_TEXT_MAP = {
-      // no:1 유전 가계력 (multi)
-      1: ['아버지가 그래요', '어머니가 그래요', '형제·자매가 그래요', '없어요'],
-      // no:2 부모 체형
-      2: ['아버지를 닮아 배부터 나와요', '어머니를 닮아 하체부터 쪄요', '둘 다 조금씩', '부모님과 다른 편이에요'],
-      // no:3 진단 질환 (multi)
-      3: ['다낭성난소증후군 (생리불순·여드름)', '당뇨·당뇨 전단계', '고혈압', '갑상선 질환 (기능저하·항진)', '지방간', '역류성 식도염·위장 질환', '우울증·불안장애', '해당 없어요'],
-      // no:5 냉증
-      5: ['네, 여름에도 손발이 차요', '조금 그런 편이에요', '오히려 더위를 타요'],
-      // no:6 장기복용 약물 (multi)
-      6: ['스테로이드 계열', '항우울제·신경정신과 약', '피임약·호르몬제', '아스피린·항응고제', '이소트레티노인(여드름약)', '탈모약 (프로페시아·미녹시딜)', '없어요'],
-      // no:7 식욕억제제
-      7: ['네, 여러 번 먹었어요', '한두 번 시도했어요', '없어요'],
-      // no:8 살찐 계기 (multi)
-      8: ['이직·과로·스트레스', '이별·심리적 충격', '수술·입원·약물', '잦은 회식·음주', '금연·생활변화', '특별한 계기 없이 서서히'],
-      // no:9 시술이력 (multi)
-      9: ['지방흡입', '지방분해 주사·시술', '리프팅 (실·레이저·초음파)', '보톡스·필러', '복부성형 (복벽 교정)', '체형 관련 수술은 없어요'],
-      // no:11 출산
-      11: ['네, 출산 후 체형이 변했어요', '출산했지만 큰 변화는 없어요', '해당 없어요'],
-      // no:12 갱년기
-      12: ['네, 체형이 복부 중심으로 바뀌었어요', '미레나·호르몬 치료·수술로 생리가 없어요', '완경(자연적) 이후예요', '신호가 조금 있어요', '해당 없어요'],
-      // no:13 흡연
-      13: ['피워요', '끊은 지 얼마 안 됐어요', '안 피워요'],
-      // no:14 음주
-      14: ['주 3회 이상', '주 1~2회', '거의 안 마셔요'],
-    };
+    // ── S2_TEXT_MAP: 업종별 4벌 (기획서 C절 기준, 9/8 최신) ──
+      const _S2_COMMON = {
+        1: ['아버지가 그래요', '어머니가 그래요', '형제·자매가 그래요', '없어요'],
+        3: ['다낭성난소증후군 (생리불순·여드름)', '당뇨·당뇨 전단계', '고혈압', '갑상선 질환 (기능저하·항진)', '지방간', '역류성 식도염·위장 질환', '우울증·불안장애', '해당 없어요'],
+        5: ['네, 여름에도 손발이 차요', '조금 그런 편이에요', '오히려 더위를 타요'],
+        6: ['스테로이드 계열', '항우울제·신경정신과 약', '피임약·호르몬제', '아스피린·항응고제', '이소트레티노인(여드름약)', '탈모약 (프로페시아·미녹시딜)', '없어요'],
+        7: ['네, 여러 번 먹었어요', '한두 번 시도했어요', '없어요'],
+        11: ['네, 출산 후 체형이 변했어요', '출산했지만 큰 변화는 없어요', '해당 없어요'],
+        13: ['피워요', '끊은 지 얼마 안 됐어요', '안 피워요'],
+        14: ['주 3회 이상', '주 1~2회', '거의 안 마셔요'],
+      };
+      // Q2: 9/8 최신 라벨 + 구버전 fallback 병합
+      const _S2_Q2     = ['아버지 쪽을 닮았어요 (대개 배부터)', '어머니 쪽을 닮았어요 (대개 하체부터)', '둘 다 조금씩', '부모님과 다른 편이에요'];
+      const _S2_Q2_OLD = ['아버지를 닮아 배부터 나와요', '어머니를 닮아 하체부터 쪄요'];
+      // Q8: idx2 에스테틱·미용실만 다름 / idx6(9/8 신규) 4업종 공통
+      const _S2_Q8_HF  = ['이직·과로·스트레스', '이별·심리적 충격', '수술·입원·약물', '잦은 회식·음주', '금연·생활변화', '특별한 계기 없이 서서히', '최근 체중 변화는 없었어요'];
+      const _S2_Q8_ES  = ['이직·과로·스트레스', '이별·심리적 충격', '수술·입원·약물 등 큰 생활 변화', '잦은 회식·음주', '금연·생활변화', '특별한 계기 없이 서서히', '최근 체중 변화는 없었어요'];
+      // Q9: 업종별 완전히 다름
+      const _S2_Q9_H   = ['지방흡입', '지방분해 주사·시술', '리프팅 (실·레이저·초음파)', '보톡스·필러', '복부성형 (복벽 교정)', '체형 관련 수술은 없어요'];
+      const _S2_Q9_F   = ['PT·필라테스·운동 프로그램 등록', '다이어트 약·보조제', '지방흡입', '지방분해 주사·시술', '리프팅 (실·레이저·초음파)', '보톡스·필러', '해본 것 없어요'];
+      const _S2_Q9_E   = ['지방흡입', '지방분해 주사·관리', '리프팅 (실·레이저·초음파)', '보톡스·필러', '복부성형 (복벽 교정)', '받아본 관리는 없어요'];
+      const _S2_Q9_S   = ['두피 스케일링·두피 클리닉', '탈모 관리 (약·주사·기기)', '잦은 염색·펌 (연 4회 이상)', '지방흡입', '지방분해 주사·관리', '리프팅 (실·레이저·초음파)', '보톡스·필러', '받아본 관리는 없어요'];
+      // Q12 idx1: 병원·피트니스 vs 에스테틱·미용실
+      const _S2_Q12_HF = ['네, 체형이 복부 중심으로 바뀌었어요', '미레나·호르몬 치료·수술로 생리가 없어요', '완경(자연적) 이후예요', '신호가 조금 있어요', '해당 없어요'];
+      const _S2_Q12_ES = ['네, 체형이 복부 중심으로 바뀌었어요', '피임약·미레나·자궁 수술 등으로 생리가 없어요', '완경(자연적) 이후예요', '신호가 조금 있어요', '해당 없어요'];
+      function _mkS2(q8, q9, q12) {
+        return Object.assign({}, _S2_COMMON, { 2: _S2_Q2.concat(_S2_Q2_OLD), 8: q8, 9: q9, 12: q12 });
+      }
+      const _S2_BY_CAT = {
+        hospital: _mkS2(_S2_Q8_HF, _S2_Q9_H, _S2_Q12_HF),
+        fitness:  _mkS2(_S2_Q8_HF, _S2_Q9_F, _S2_Q12_HF),
+        esthetic: _mkS2(_S2_Q8_ES, _S2_Q9_E, _S2_Q12_ES),
+        salon:    _mkS2(_S2_Q8_ES, _S2_Q9_S, _S2_Q12_ES),
+      };
+      var S2_TEXT_MAP = _S2_BY_CAT[(typeof window !== 'undefined' && window.__SURVEY_CATEGORY__) || 'hospital'] || _S2_BY_CAT['hospital'];
 
     // ── 텍스트/숫자 모두 처리하는 헬퍼 ──
     // survey가 숫자로 저장된 경우도, 한글 텍스트로 저장된 경우도 모두 인덱스(숫자)로 반환
@@ -19849,6 +19865,19 @@ async function loadHospitalResult() {
         return idx >= 0 ? idx : null;
       }
       return null;
+    };
+    // ── stage2Idx 우선 읽기 헬퍼 ──
+    // 기획서: stage2Idx가 있으면 숫자(인덱스)로 읽고, 없으면 텍스트 대조(구버전 호환)
+    // rawAns.stage2Idx = { "8": [0,3], "9": [6], ... }
+    const _s2IdxMap = (rawAns && rawAns.stage2Idx) ? rawAns.stage2Idx : {};
+    const s2IdxFirst = (no, fallbackFn) => {
+      // stage2Idx[no]가 있으면 숫자 배열로 직접 반환
+      const idxArr = _s2IdxMap[String(no)] || _s2IdxMap[no];
+      if (idxArr && Array.isArray(idxArr) && idxArr.length > 0) {
+        return idxArr.map(Number);
+      }
+      // 없으면 기존 텍스트 대조
+      return fallbackFn ? fallbackFn() : null;
     };
 
     const s2Multi = (no) => {
@@ -19914,7 +19943,7 @@ async function loadHospitalResult() {
       appetite_suppressant: s2Single(7),
 
       // no:8 살찐 계기 (multi) → q8_trigger
-      // [0=이직과로,1=이별충격,2=수술입원,3=음주,4=금연,5=서서히]
+      // [0=이직과로,1=이별충격,2=수술입원,3=음주,4=금연,5=서서히,6=체중변화없음]
       q8_trigger:   s2Multi(8),
 
       // no:9 시술이력 (multi) → past_procedures
@@ -19934,6 +19963,14 @@ async function loadHospitalResult() {
 
       // no:14 음주
       q14_alcohol:  s2Single(14),
+
+      // no:17 운동 반응 (피트니스 전용) → q17_exercise_response
+      // [0=일시반응,1=반응지속,2=구성미변,3=역반응,4=회복부족,5=저반응,6=이력없음]
+      q17_exercise_response: s2IdxFirst(17, function(){ var v = s2Single(17); return v !== null ? [v] : null; }),
+
+      // no:18 운동 통증 부위 (피트니스 전용, multi) → q18_pain_zone
+      // [0=목어깨,1=팔꿈치손목,2=등허리,3=골반꼬리뼈,4=무릎발목,5=없음]
+      q18_pain_zone: s2IdxFirst(18, function(){ return s2Multi(18); }),
     };
 
     // ── stage2 no:4 경계·주의 소견 → borderlineFlags ──
@@ -19981,7 +20018,15 @@ async function loadHospitalResult() {
       const s1 = rawAns.stage1 || {};
       const s1_10 = s1[10];
       if (s1_10 !== undefined && s1_10 !== null) {
-        bcAnswers['Q_BODY_CHANGE'] = s1_10; // 0=갱년기, 1=번아웃, 2=대사변화, 3=잘모르겠음
+        // 업종별 stage1[10] 해석
+        // 병원·피트니스·에스테틱: 0=갱년기변환, 1=번아웃무기력, 2=대사증후군, 3=잘모르겠음
+        // 미용실만: 3=모발·두피변화, 4=잘모르겠음 (3을 그대로, 4→3 정규화)
+        var _cat10 = (typeof window !== 'undefined' && window.__SURVEY_CATEGORY__) || '';
+        var _bodyChgNormalized = s1_10;
+        if (_cat10 === 'salon' && Number(s1_10) === 4) {
+          _bodyChgNormalized = 3; // 잘모름 정규화
+        }
+        bcAnswers['Q_BODY_CHANGE'] = _bodyChgNormalized;
       }
       // stage1 no:11 달라지고 싶은 곳 (우선순위 부위) → Q_TARGET_ZONE
       const s1_11 = s1[11];
@@ -20261,7 +20306,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     });
 
     // ── PWA 세션 복원용 localStorage 갱신 ──
-    // result-hospital 페이지 진입 시 항상 최신 결과 ID + category 저장
     try {
       var _hid = window.__FITNESS_RESULT_ID__
         || (location.pathname.match(/\/result-fitness\/([^/?#]+)/) || [])[1] || '';
@@ -20270,6 +20314,30 @@ window.addEventListener('DOMContentLoaded', async () => {
         localStorage.setItem('sm_survey_category', 'fitness');
       }
     } catch(_e) {}
+
+    // ── window.__SURVEY_CATEGORY__ 세팅 ──
+    // S2_TEXT_MAP / detectBackground / stage1[10] 분기가 이 값을 읽음
+    // 우선순위: payload.survey_category → localStorage → pathname
+    ;(function() {
+      var _cat = '';
+      try {
+        var _rd = window.__RESULT_DATA__ || (typeof resultData !== 'undefined' ? resultData : null);
+        if (_rd && _rd.survey_category) _cat = _rd.survey_category;
+      } catch(e) {}
+      if (!_cat) { try { _cat = localStorage.getItem('sm_survey_category') || ''; } catch(e) {} }
+      if (!_cat) {
+        var _pn = (typeof location !== 'undefined') ? location.pathname : '';
+        if (_pn.indexOf('fitness') >= 0)       _cat = 'fitness';
+        else if (_pn.indexOf('esthetic') >= 0) _cat = 'esthetic';
+        else if (_pn.indexOf('salon') >= 0)    _cat = 'salon';
+        else                                    _cat = 'hospital';
+      }
+      window.__SURVEY_CATEGORY__ = _cat;
+      // S2_TEXT_MAP 업종 재초기화 (이 블록 이전에 초기화됐을 경우 대비)
+      if (typeof _S2_BY_CAT !== 'undefined') {
+        window.S2_TEXT_MAP = _S2_BY_CAT[_cat] || _S2_BY_CAT['hospital'];
+      }
+    })();
 
     // ── 실제 데이터 렌더링 (DB 직접 연동) ──
     if (resultData && typeof renderAll === 'function') {
