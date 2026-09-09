@@ -4299,6 +4299,24 @@ app.get('/salon/:code', async (c) => {
 <meta name="twitter:description" content="당신의 몸은 하나의 코드입니다. 헤어·두피 건강과 체형을 함께 케어하는 맞춤 솔루션을 받아보세요.">
 <meta name="twitter:image"       content="${siteBaseSalon}/static/og-salon.png">`
 
+  // ★ BUG-FIX [2026-09-09]: /f/:code와 동일하게 refScript 주입 추가
+  // survey-salon.html JS는 ?ref= 쿼리파라미터로만 ref_code를 읽음
+  // /salon/:code 경로로 진입 시 URL에 ?ref=코드 자동 삽입해줘야 함
+  const refScriptSalon = `
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    if (window.__BRAND__ && window.__BRAND__.ref_code) {
+      try {
+        var url = new URL(window.location.href);
+        if (!url.searchParams.get('ref')) {
+          url.searchParams.set('ref', window.__BRAND__.ref_code);
+          window.history.replaceState({}, '', url.toString());
+        }
+      } catch(e) {}
+    }
+  });
+</script>`
+
   let html: string
   try {
     html = await fetchAsset(c.env.ASSETS, '/survey-salon.html')
@@ -4306,6 +4324,7 @@ app.get('/salon/:code', async (c) => {
     html = await fetchAsset(c.env.ASSETS, '/index.html')
   }
   html = html.replace('</head>', `${ogInjectSalon}\n${brandInject}\n</head>`)
+  html = html.replace('</body>', `${refScriptSalon}\n</body>`)
   return htmlResponse(html)
 })
 
