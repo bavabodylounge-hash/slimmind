@@ -9553,7 +9553,7 @@ var NICKNAME_TABLE = {
 // 반환: '유전'|'모계유전'|'출산'|'갱년기'|'시술'|'약물'|'PCOS'|'번아웃'|'대사증후군'|null
 // ──────────────────────────────────────────────
 // ★ gender 파라미터 추가 (2026-08-23 버그 수정 — 남성에게 갱년기·출산 콘텐츠 노출 차단)
-function detectBackground(answers, gender) {
+function detectBackground(answers, gender, category) {
   if (!answers) return null;
 
   // ── 성별 판별 (남성이면 갱년기·출산 관련 배경 반환 금지) ──
@@ -9593,9 +9593,10 @@ function detectBackground(answers, gender) {
   if (pcos === 'yes' || pcos === 'Y' || pcos === '있음') return 'PCOS';
 
   // 3위. 시술 이력
-  // 병원: past_procedures 배열, 5=없음
+  // 업종별 없음 인덱스: 병원/에스테틱=5, 피트니스=6, 미용실=7
+  var _procNoneIdx = (category === 'fitness') ? 6 : (category === 'salon') ? 7 : 5;
   var procs = answers['past_procedures'];
-  if (hasArr(procs, 5)) return '시술';
+  if (hasArr(procs, _procNoneIdx)) return '시술';
   // 에스테틱 호환: Q21, Q_surgery 문자값
   var surgery = answers['Q21'] || answers['Q_surgery'] || '';
   if (surgery && surgery !== 'none' && surgery !== '없음' && surgery !== '') return '시술';
@@ -9689,7 +9690,7 @@ function computeNickname(axisScores, answers, gender) {
   }
 
   // ③ 배경 필터 감지 — ★ gender 전달 (남성에게 갱년기·출산 배경 반환 차단)
-  var background = detectBackground(answers, gender);
+  var background = detectBackground(answers, gender, _surveyCategory);
 
   // ④ NICKNAME_TABLE 3단계 룩업
   var t1Entry = NICKNAME_TABLE[top1] || NICKNAME_TABLE['A07'];
@@ -19761,6 +19762,9 @@ async function loadHospitalResult() {
     //   raw_answers.stage2    : { "1": val, ... "10": {체중변화이력 객체}, "12": val(갱년기 int) }
     //   raw_answers.stage3    : { "0": val, ... }
     //   raw_answers.pfProfile : { saju, mbti, blood, face, birthY/M/D, ... }
+    // 업종 카테고리 취득 (detectBackground, S2_TEXT_MAP, stage1[10] 분기에 사용)
+    const _surveyCategory = r.survey_category || 'hospital';
+
     const rawAns = r.raw_answers || {};
     const userInfo  = rawAns.userInfo  || {};
     const pfProfile = rawAns.pfProfile || {};
@@ -19832,7 +19836,7 @@ async function loadHospitalResult() {
       7: ['네, 여러 번 먹었어요', '한두 번 시도했어요', '없어요'],
       // no:8 살찐 계기 (multi)
       8: ['이직·과로·스트레스', '이별·심리적 충격', '수술·입원·약물', '잦은 회식·음주', '금연·생활변화', '특별한 계기 없이 서서히'],
-      // no:9 시술이력 (multi)
+      // no:9 시술이력 (multi) — 업종별 덮어쓰기 (아래 S2_TEXT_MAP_9 참조)
       9: ['지방흡입', '지방분해 주사·시술', '리프팅 (실·레이저·초음파)', '보톡스·필러', '복부성형 (복벽 교정)', '체형 관련 수술은 없어요'],
       // no:11 출산
       11: ['네, 출산 후 체형이 변했어요', '출산했지만 큰 변화는 없어요', '해당 없어요'],
@@ -19843,6 +19847,15 @@ async function loadHospitalResult() {
       // no:14 음주
       14: ['주 3회 이상', '주 1~2회', '거의 안 마셔요'],
     };
+
+    // ── 업종별 S2_TEXT_MAP no:9 오버라이드 ──
+    const S2_TEXT_MAP_9 = {
+      hospital:  ['지방흡입','지방분해 주사·시술','리프팅 (실·레이저·초음파)','보톡스·필러','복부성형 (복벽 교정)','체형 관련 수술은 없어요'],
+      fitness:   ['PT·필라테스·운동 프로그램 등록','다이어트 약·보조제','지방흡입','지방분해 주사·시술','리프팅 (실·레이저·초음파)','보톡스·필러','해본 것 없어요'],
+      esthetic:  ['지방흡입','지방분해 주사·관리','리프팅 (실·레이저·초음파)','보톡스·필러','복부성형 (복벽 교정)','받아본 관리는 없어요'],
+      salon:     ['두피 스케일링·두피 클리닉','탈모 관리 (약·주사·기기)','잦은 염색·펌 (연 4회 이상)','지방흡입','지방분해 주사·관리','리프팅 (실·레이저·초음파)','보톡스·필러','받아본 관리는 없어요'],
+    };
+    S2_TEXT_MAP[9] = S2_TEXT_MAP_9[_surveyCategory] || S2_TEXT_MAP_9['hospital'];
 
     // ── 텍스트/숫자 모두 처리하는 헬퍼 ──
     // survey가 숫자로 저장된 경우도, 한글 텍스트로 저장된 경우도 모두 인덱스(숫자)로 반환
@@ -19993,7 +20006,14 @@ async function loadHospitalResult() {
       const s1 = rawAns.stage1 || {};
       const s1_10 = s1[10];
       if (s1_10 !== undefined && s1_10 !== null) {
-        bcAnswers['Q_BODY_CHANGE'] = s1_10; // 0=갱년기, 1=번아웃, 2=대사변화, 3=잘모르겠음
+        // 미용실: 3=두피변화(scalp), 4=잘모름(다른 업종의 3과 동일); 나머지 업종: 3=잘모름
+        if (_surveyCategory === 'salon' && Number(s1_10) === 3) {
+          bcAnswers['Q_BODY_CHANGE'] = 'scalp'; // 두피 변화형
+        } else if (_surveyCategory === 'salon' && Number(s1_10) === 4) {
+          bcAnswers['Q_BODY_CHANGE'] = 3; // 잘모름 (다른 업종의 3과 동일)
+        } else {
+          bcAnswers['Q_BODY_CHANGE'] = s1_10; // 0=갱년기, 1=번아웃, 2=대사변화, 3=잘모름
+        }
       }
       // stage1 no:11 달라지고 싶은 곳 (우선순위 부위) → Q_TARGET_ZONE
       const s1_11 = s1[11];
