@@ -9492,7 +9492,10 @@ function computeNickname(axisScores, answers, gender) {
   }
 
   // ③ 배경 필터 감지 — ★ gender 전달 (남성에게 갱년기·출산 배경 반환 차단)
-  var background = detectBackground(answers, gender, _surveyCategory);
+  // [BUG-FIX 20260909] _surveyCategory는 loadAestheticResult() 로컬 변수 → window.__SURVEY_CATEGORY__ 사용
+  var _catForBg = (typeof _surveyCategory !== 'undefined' ? _surveyCategory : null)
+               || window.__SURVEY_CATEGORY__ || 'esthetic';
+  var background = detectBackground(answers, gender, _catForBg);
 
   // ④ NICKNAME_TABLE 3단계 룩업
   var t1Entry = NICKNAME_TABLE[top1] || NICKNAME_TABLE['A07'];
@@ -19349,6 +19352,9 @@ async function loadHospitalResult() {
     //   raw_answers.pfProfile : { saju, mbti, blood, face, birthY/M/D, ... }
     // 업종 카테고리 취득 (detectBackground, S2_TEXT_MAP, stage1[10] 분기에 사용)
     const _surveyCategory = r.survey_category || 'esthetic';
+    // [BUG-FIX 20260909] computeNickname()이 전역에서 _surveyCategory를 참조하므로
+    // window.__SURVEY_CATEGORY__에 세팅해 ReferenceError 방지
+    try { window.__SURVEY_CATEGORY__ = _surveyCategory; } catch(_e) {}
 
     const rawAns = r.raw_answers || {};
     const userInfo  = rawAns.userInfo  || {};
