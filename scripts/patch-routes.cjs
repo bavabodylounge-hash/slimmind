@@ -24,12 +24,11 @@ const staticFiles = [
   '/survey-aesthetic.html',
   '/survey-fitness.html',
   '/survey-salon.html',
-  // 결과지 (4개 업종 최신본 + v4 공용)
+  // 결과지 (4개 업종 최신본)
   '/result-hospital.html',
   '/result-aesthetic.html',
   '/result-fitness.html',
   '/result-salon.html',
-  '/result-v4.html',
   // 기타 서비스 페이지
   '/admin.html',
   '/b2b.html',
@@ -52,6 +51,7 @@ for (const entry of staticFiles) {
 const removed = [
   '/result.html',
   '/result-v3.html',
+  '/result-v4.html',
   '/bodymap_preview.html',
   '/slimmind_live.html',
   '/slimmind_backend_mapping_v1.html',

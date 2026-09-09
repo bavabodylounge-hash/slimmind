@@ -3460,7 +3460,7 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
     })(),
   };
 
-  // result-v4.html을 최신 결과지 템플릿으로 사용
+  // 업종별 결과지 템플릿 선택 (result-v4.html 완전 제거)
   // JSON.stringify 직렬화 실패 방어
   let flatJson = '{}'
   let fullJson = '{}'
@@ -3494,7 +3494,13 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
 <meta name="twitter:image"         content="${ogImageR}">
 <meta name="description"           content="${ogDescR}">`
 
-  const baseHtml2 = await fetchAsset(c.env.ASSETS, '/result-v4.html')
+  // 업종별 결과지 파일 선택 (구버전 results 테이블 폴백 — 업종별로 라우팅)
+  const _legacyCat = (result as any).survey_category || 'hospital'
+  const _legacyTemplate = _legacyCat === 'aesthetic' ? '/result-aesthetic.html'
+    : _legacyCat === 'fitness'  ? '/result-fitness.html'
+    : _legacyCat === 'salon'    ? '/result-salon.html'
+    : '/result-hospital.html'
+  const baseHtml2 = await fetchAsset(c.env.ASSETS, _legacyTemplate)
 
   // ── PWA 동적 manifest + localStorage 저장 스크립트 ─────────────────────
   // 고객이 이 결과지 페이지에서 "홈 화면에 추가" 시 start_url이 해당 결과지 URL로 지정됨
@@ -4612,9 +4618,9 @@ app.get('/result', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/re
 app.get('/result-v3.html', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/result-v3.html')))
 app.get('/result-v3', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/result-v3.html')))
 
-// ─── result-v4.html (SlimMind V3.0 PRD 최종 BC코드 결과지) ─────────────────
-app.get('/result-v4.html', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/result-v4.html')))
-app.get('/result-v4', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/result-v4.html')))
+// ─── result-v4.html 직접 접근 차단 (파일 삭제됨 — 업종별 결과지로 대체) ─────
+app.get('/result-v4.html', (c) => _errorHtml('이 페이지는 더 이상 사용되지 않습니다', '업종별 결과지로 이동되었습니다.', 410))
+app.get('/result-v4', (c) => _errorHtml('이 페이지는 더 이상 사용되지 않습니다', '업종별 결과지로 이동되었습니다.', 410))
 
 // ─── favicon ───────────────────────────────────────────────────────────────
 app.get('/favicon.ico', async (c) => {
