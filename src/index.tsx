@@ -7625,7 +7625,16 @@ app.get('/api/h/result/:id', async (c) => {
       gender: diagRow.gender || rawAnswers?.userInfo?.gender || null,
       age: diagRow.age != null ? Number(diagRow.age) : null,
       height: diagRow.height != null ? Number(diagRow.height) : null,
-      weight: null,                  // diagnosis_results에는 weight 컬럼 없음
+      // [BUG-FIX 20260909] diagnosis_results에 weight 컬럼 없음 → raw_answers 폴백 추출
+      // 저장 경로: raw_answers.userInfo.weight > raw_answers.weight > raw_answers.stage2[5] 순
+      weight: (() => {
+        const w = diagRow.weight                          // 혹시라도 컬럼 생기면 우선
+          ?? rawAnswers?.userInfo?.weight
+          ?? rawAnswers?.weight
+          ?? rawAnswers?.stage2?.['5']   // stage2 no:5 = 현재 체중 슬라이더
+          ?? null
+        return w != null && Number(w) > 0 ? Number(w) : null
+      })(),
       phone: null,
       ohaeng_type: diagOhaeng,
       disp_type: null,
@@ -7641,7 +7650,14 @@ app.get('/api/h/result/:id', async (c) => {
       stage3_answers: stage3,
       stage4_answers: stage4,
       raw_answers: rawAnswers,
-      goal_weight:     diagRow.goal_weight     != null ? Number(diagRow.goal_weight)     : null,
+      goal_weight: (() => {
+        const gw = diagRow.goal_weight
+          ?? rawAnswers?.goal_weight
+          ?? rawAnswers?.userInfo?.goal_weight
+          ?? rawAnswers?.stage2?.['15']  // stage2 no:15 = 목표 체중 (병원 설문)
+          ?? null
+        return gw != null && Number(gw) > 0 ? Number(gw) : null
+      })(),
       weight_loss_pct: diagRow.weight_loss_pct != null ? Number(diagRow.weight_loss_pct) : null,
       created_at: diagRow.completed_at || diagRow.created_at,
       consultant_name: diagRow.partner_display_name || '',
@@ -8512,6 +8528,15 @@ app.get('/api/a/result/:id', async (c) => {
         gender:         row.gender || (aeRow?.gender) || null,
         age:            row.age || (aeRow?.age) || null,
         height:         row.height || (aeRow?.height) || null,
+        // [BUG-FIX 20260909] diagnosis_results에 weight 컬럼 없음 → raw_answers 폴백 추출
+        weight: (() => {
+          const w = row.weight ?? aeRow?.weight
+            ?? mergedRaw?.userInfo?.weight
+            ?? mergedRaw?.weight
+            ?? mergedRaw?.stage2?.['5']
+            ?? null
+          return w != null && Number(w) > 0 ? Number(w) : null
+        })(),
         phone:          maskPhone(row.phone || aeRow?.phone),  // [BUG-FIX v4.3] PII 마스킹
         ohaeng_type:    row.ohaeng_type || (aeRow?.ohaeng_type) || null,
         mbti_full:      row.mbti_full || (aeRow?.mbti_full) || null,
@@ -8527,7 +8552,14 @@ app.get('/api/a/result/:id', async (c) => {
         stage3_answers: s3,
         raw_answers:    mergedRaw,
         disp_answers:   parseJ(row.disp_answers, {}),
-        goal_weight:    row.goal_weight || (aeRow?.goal_weight) || null,
+        goal_weight: (() => {
+          const gw = row.goal_weight ?? aeRow?.goal_weight
+            ?? mergedRaw?.goal_weight
+            ?? mergedRaw?.userInfo?.goal_weight
+            ?? mergedRaw?.stage2?.['15']
+            ?? null
+          return gw != null && Number(gw) > 0 ? Number(gw) : null
+        })(),
         weight_loss_pct: row.weight_loss_pct || (aeRow?.weight_loss_pct) || null,
         created_at:     row.created_at,
         schema_version: 'v1.1',
@@ -9020,7 +9052,15 @@ app.get('/api/f/result/:id', async (c) => {
         gender:          diagRow.gender   || null,
         age:             diagRow.age      || null,
         height:          diagRow.height   || null,
-        weight:          diagRow.weight   || null,
+        // [BUG-FIX 20260909] diagnosis_results에 weight 컬럼 없음 → raw_answers 폴백 추출
+        weight: (() => {
+          const w = diagRow.weight
+            ?? diagRaw?.userInfo?.weight
+            ?? diagRaw?.weight
+            ?? diagRaw?.stage2?.['5']
+            ?? null
+          return w != null && Number(w) > 0 ? Number(w) : null
+        })(),
         phone:           maskPhone(diagRow.phone),  // [BUG-FIX v4.3] PII 마스킹
         ohaeng_type:     diagRow.ohaeng_type || null,
         mbti_full:       diagRow.mbti_full   || null,
@@ -9041,7 +9081,14 @@ app.get('/api/f/result/:id', async (c) => {
         stage2_answers:  diagRaw?.stage2 || null,
         stage3_answers:  diagRaw?.stage3 || null,
         raw_answers:     Object.keys(diagRaw).length ? diagRaw : null,
-        goal_weight:     diagRow.goal_weight    || null,
+        goal_weight: (() => {
+          const gw = diagRow.goal_weight
+            ?? diagRaw?.goal_weight
+            ?? diagRaw?.userInfo?.goal_weight
+            ?? diagRaw?.stage2?.['15']
+            ?? null
+          return gw != null && Number(gw) > 0 ? Number(gw) : null
+        })(),
         weight_loss_pct: diagRow.weight_loss_pct|| null,
         created_at:      diagRow.created_at || diagRow.completed_at,
         schema_version:  'v1.1',
@@ -9707,7 +9754,15 @@ app.get('/api/s/result/:id', async (c) => {
       gender: diagRow.gender,
       age: diagRow.age != null ? Number(diagRow.age) : null,
       height: diagRow.height != null ? Number(diagRow.height) : null,
-      weight: null,
+      // [BUG-FIX 20260909] diagnosis_results에 weight 컬럼 없음 → raw_answers 폴백 추출
+      weight: (() => {
+        const w = diagRow.weight
+          ?? rawAnswers?.userInfo?.weight
+          ?? rawAnswers?.weight
+          ?? rawAnswers?.stage2?.['5']
+          ?? null
+        return w != null && Number(w) > 0 ? Number(w) : null
+      })(),
       phone: null,
       ohaeng_type: normOhaeng(diagRow.ohaeng_type) || normOhaeng(rawAnswers?.pfProfile?.saju) || '',
       disp_type: null,
@@ -9720,7 +9775,14 @@ app.get('/api/s/result/:id', async (c) => {
       stage3_answers: rawAnswers?.stage3 || null,
       stage4_answers: rawAnswers?.stage4 || null,
       raw_answers: rawAnswers,
-      goal_weight: diagRow.goal_weight != null ? Number(diagRow.goal_weight) : null,
+      goal_weight: (() => {
+        const gw = diagRow.goal_weight
+          ?? rawAnswers?.goal_weight
+          ?? rawAnswers?.userInfo?.goal_weight
+          ?? rawAnswers?.stage2?.['15']
+          ?? null
+        return gw != null && Number(gw) > 0 ? Number(gw) : null
+      })(),
       weight_loss_pct: diagRow.weight_loss_pct != null ? Number(diagRow.weight_loss_pct) : null,
       created_at: diagRow.completed_at || diagRow.created_at,
       consultant_name: diagRow.partner_display_name || '',
@@ -14875,9 +14937,15 @@ app.post('/api/admin/mapping-recheck', requireRole('MASTER'), async (c) => {
     sections.push({ section: 'p7', title: 'p7 — 공유 / URL', subtitle: `결과지 URL Live 200 확인 · survey_category 라우팅`, icon: '🔗', fields: p7Fields, overall: p7Empty > 0 ? 'empty' : p7Warn > 0 ? 'warn' : 'ok', empty_count: p7Empty, warn_count: p7Warn })
 
     // p8: 추가정보 / 메타
+    // [BUG-FIX 20260909] BUG-G: row.age/row.gender가 null인 경우 rawAnswers 폴백 적용
+    // diagnosis_results 경로에서 age/gender가 null이어도 raw_answers에서 추출해 검수 통과시킴
+    const p8Age    = row.age    ?? rawAnswers?.userInfo?.age    ?? rawAnswers?.age    ?? null
+    const p8Gender = row.gender ?? rawAnswers?.userInfo?.gender ?? rawAnswers?.gender ?? null
+    const p8AgeVal    = p8Age    != null && Number(p8Age) > 0 ? Number(p8Age) : null
+    const p8GenderVal = p8Gender && String(p8Gender).trim() !== '' ? String(p8Gender).trim() : null
     const p8Fields: SectionField[] = [
-      { key: 'gender', label: '성별',  source: 'diag', status: fstatus(row.gender),  value: fv(row.gender) || '(없음)' },
-      { key: 'age',    label: '나이',  source: 'diag', status: fstatus(row.age),     value: fv(row.age) || '(없음)' },
+      { key: 'gender', label: '성별',  source: 'diag', status: fstatus(p8GenderVal),  value: fv(p8GenderVal) || '(없음)' },
+      { key: 'age',    label: '나이',  source: 'diag', status: p8AgeVal != null ? 'ok' : 'warn', value: p8AgeVal != null ? String(p8AgeVal) + '세' : '(없음 — raw_answers 폴백 없음)' },
       { key: 'ref_code',label: 'ref_code (B2B)',  source: 'diag', status: 'ok',      value: row.ref_code || '없음 (일반 진단)' },
       { key: 'override_applied', label: 'Override 여부', source: 'diag', status: 'ok', value: row.override_applied ? `✅ Override 적용 (BC: ${row.override_bc_code})` : '미적용' },
       { key: 'table_source', label: '데이터 테이블', source: 'diag', status: 'ok',   value: tableSource },
