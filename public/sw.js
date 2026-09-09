@@ -24,7 +24,7 @@
 /* ── 즉시 skipWaiting: 새 SW 설치 즉시 대기 없이 활성화 ── */
 self.skipWaiting();
 
-const CACHE_NAME = 'slimmind-v4';
+const CACHE_NAME = 'slimmind-v5';
 
 /* 앱 설치 시 프리캐시 목록 */
 const PRE_CACHE = [
