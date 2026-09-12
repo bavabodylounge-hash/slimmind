@@ -1940,6 +1940,52 @@ async function openSummaryModal(sessionId, userName) {
         </div>
       </div>`).join('');
 
+    // ★ [feat] 추천 프로그램 섹션 HTML 생성
+    const recProgs = data.recommended_programs || [];
+    const recBcCode = data.recommended_bc_code || data.bc_code || '';
+    let recSection = '';
+    if (recProgs.length > 0) {
+      const progCards = recProgs.map(p => {
+        const bcBadges = (p.bc_tags || []).map(t =>
+          `<span style="background:#ede9fe;color:#7c3aed;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px">${t}</span>`
+        ).join('');
+        const priceStr = p.price ? `<span style="font-size:12px;color:#6b7280;margin-left:auto;flex-shrink:0">${p.price}</span>` : '';
+        const srcBadge = p.source_type === 'manual'
+          ? `<span style="font-size:9px;background:#d1fae5;color:#065f46;padding:1px 5px;border-radius:6px;margin-left:4px">직접등록</span>`
+          : `<span style="font-size:9px;background:#dbeafe;color:#1e40af;padding:1px 5px;border-radius:6px;margin-left:4px">자동추출</span>`;
+        return `
+          <div style="background:#fdf8ff;border:1px solid #e9d5ff;border-radius:10px;padding:10px 12px;margin-bottom:8px">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap">
+              <span style="font-size:13px;font-weight:700;color:#3b0764;flex:1;min-width:0">${p.program_name}</span>
+              ${priceStr}
+            </div>
+            ${p.description ? `<div style="font-size:12px;color:#6b7280;line-height:1.5;margin-bottom:6px">${p.description}</div>` : ''}
+            <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+              ${bcBadges}
+              ${srcBadge}
+            </div>
+          </div>`;
+      }).join('');
+
+      recSection = `
+        <div style="margin-top:20px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+            <span style="font-size:15px;font-weight:800;color:#5b21b6">✨ 추천 시술 프로그램</span>
+            ${recBcCode ? `<span style="background:#7c3aed;color:#fff;font-size:11px;font-weight:700;padding:2px 9px;border-radius:12px">${recBcCode} 매칭</span>` : ''}
+          </div>
+          ${progCards}
+        </div>`;
+    } else if (recBcCode) {
+      // BC코드는 있는데 프로그램 미등록
+      recSection = `
+        <div style="margin-top:20px;padding:14px;background:#fdf8ff;border:1px dashed #c4b5fd;border-radius:12px;text-align:center">
+          <div style="font-size:13px;color:#7c3aed;font-weight:600;margin-bottom:4px">✨ ${recBcCode} 맞춤 프로그램</div>
+          <div style="font-size:12px;color:#9ca3af;line-height:1.6">
+            아직 등록된 추천 프로그램이 없습니다.<br>마스터 관리자에서 홈페이지 크롤링 또는 프로그램을 등록해주세요.
+          </div>
+        </div>`;
+    }
+
     document.getElementById('sm-body').innerHTML = `
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
         <span style="background:${typeColor}18;color:${typeColor};font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px">${typeLabel} 설문</span>
@@ -1947,6 +1993,7 @@ async function openSummaryModal(sessionId, userName) {
         <span style="font-size:11px;color:#bbb;margin-left:auto">ID: ${(data.id||'').slice(0,10)}…</span>
       </div>
       ${rows}
+      ${recSection}
       <div style="margin-top:16px;padding:12px 14px;background:#f9f6f0;border-radius:10px;font-size:12px;color:#9991a4;line-height:1.6">
         💡 초기 문진 응답 기준 · 실제 상담 전 사전 참고용 요약입니다.
       </div>`;

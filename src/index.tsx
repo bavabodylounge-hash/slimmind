@@ -2581,12 +2581,69 @@ app.get('/api/b2b/customer-summary', requireB2B(), async (c) => {
     extracted.birth_hour = String(row.birth_hour)
   }
 
+  // ─── ★ [feat] bc_code 기반 추천 프로그램 조회 ───────────────────
+  // 고객의 bc_code_key → 파트너 등록 프로그램 중 BC 태그 일치하는 것 자동 추천
+  const bcCodeKey = row.bc_code_key || row.bc_primary || row.bc_code || ''
+  const partnerCode = row.ref_code || user.code || ''
+
+  let recommendedPrograms: any[] = []
+  if (bcCodeKey && partnerCode) {
+    try {
+      // 1) b2b_custom_programs: 크롤링으로 자동 추출된 프로그램 (bc_tags 필드)
+      const crawledMatched = await db.prepare(`
+        SELECT id, program_name, price, description, tags, bc_tags,
+               'crawled' AS source_type
+        FROM b2b_custom_programs
+        WHERE b2b_code = ? AND bc_tags LIKE ?
+        ORDER BY price ASC
+        LIMIT 5
+      `).bind(partnerCode, `%${bcCodeKey}%`).all<any>()
+
+      // 2) aesthetic_programs: 마스터가 수동 등록한 프로그램 (bc_codes 필드)
+      const manualMatched = await db.prepare(`
+        SELECT id, program_name, program_desc AS description,
+               price_display AS price, program_tag AS tags, bc_codes AS bc_tags,
+               'manual' AS source_type
+        FROM aesthetic_programs
+        WHERE partner_code = ? AND status = 'active' AND bc_codes LIKE ?
+        ORDER BY is_signature DESC, priority ASC
+        LIMIT 5
+      `).bind(partnerCode, `%${bcCodeKey}%`).all<any>().catch(() => ({ results: [] }))
+
+      // 3) 합치기 — 중복 program_name 제거, manual 우선
+      const allMatched = [
+        ...(manualMatched.results || []),
+        ...(crawledMatched.results || []),
+      ]
+      const seenNames = new Set<string>()
+      recommendedPrograms = allMatched
+        .filter((p: any) => {
+          if (seenNames.has(p.program_name)) return false
+          seenNames.add(p.program_name)
+          return true
+        })
+        .slice(0, 6)
+        .map((p: any) => ({
+          id:           p.id,
+          program_name: p.program_name,
+          description:  p.description || '',
+          price:        p.price || '',
+          bc_tags:      (() => { try { return JSON.parse(p.bc_tags || '[]') } catch { return [] } })(),
+          source_type:  p.source_type,
+        }))
+    } catch (_) {
+      // 프로그램 조회 실패해도 summary는 정상 반환
+      recommendedPrograms = []
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────
+
   return c.json({
     ok: true,
     id,
     source,
     user_name: row.user_name || '',
-    bc_code:   row.bc_code || row.bc_primary || '',
+    bc_code:   bcCodeKey,
     survey_type: source === 'hospital' ? 'hospital' : (row.survey_category || 'integrated'),
     summary: {
       birth_date: extracted.birth_date,
@@ -2598,7 +2655,11 @@ app.get('/api/b2b/customer-summary', requireB2B(), async (c) => {
       purpose:    extracted.purpose,
       rhythm:     extracted.rhythm,
       exp:        extracted.exp,
-    }
+    },
+    // ★ 추가: 고객 BC코드 기반 파트너 추천 프로그램
+    recommended_programs: recommendedPrograms,
+    recommended_bc_code:  bcCodeKey,
+    partner_code:         partnerCode,
   })
 })
 
