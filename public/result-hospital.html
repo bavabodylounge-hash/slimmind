@@ -13560,7 +13560,8 @@ function getRoadmapWeeks(bc_primary, goal_weight, weight_loss_pct, user_name, oh
       exOk: (_bcIsCirc  ? '수영 50분+드라이 브러싱 5분 (림프 가속)' :
              _bcIsMus   ? '하체 분할 저항운동 50분 + 식후 15분 워킹' :
                           '복합 유산소 40분 + 코어 10분'),
-      exBan: _rfl.indexOf('STEROID')>=0 ? '고강도 바벨 운동 금지 (스테로이드 복용 중)' :
+      exBan: (_bc==='BC-9') ? (function(){var _m=!((typeof smIsFemaleG==='function')?smIsFemaleG():(gender==='여성'||gender==='F'));return _m?'근육 손상·급성통증 휴식·갑상선 강도−1':'근육 손상·급성통증 휴식·완경·갑상선 강도−1';})() :
+             _rfl.indexOf('STEROID')>=0 ? '고강도 바벨 운동 금지 (스테로이드 복용 중)' :
              _highStress ? 'HIIT·고강도 인터벌 금지 (코르티솔↑)' : '공복 고강도 운동 금지',
       exDet: ('월·수·금 — ' + (_bcIsCirc ? '수영 50분' : _bcIsMus ? '하체 분할 50분' : '복합 유산소 40분+코어 10분') +
               ' / 화·목·토 — ' + _ohEx + ' / 매일 — 식후 워킹 15분' +
@@ -13663,7 +13664,7 @@ function getRoadmapWeeks(bc_primary, goal_weight, weight_loss_pct, user_name, oh
              (_highStress ? ' · 마음챙김 명상 10분/일 의무화' : ''),
       center: (_bcIsCirc ? '순환 센터 + 회복 센터' : _bcIsMus ? '체형 센터 + 운동 센터' : '관리 센터 + 심리 센터'),
       kFocus: ['유지 칼로리 적응 (체중 안정)', '직관적 식사 도입', '수면·스트레스 루틴 완성'],
-      sci: '10주차부터는 목표체중 유지가 목표입니다. 유지 TDEE를 기준으로 ±200kcal 이내에서 자유롭게 먹는 직관적 식사를 도입해 장기 유지율을 높입니다.',
+      sci: (_bc==='BC-9') ? (function(){var _m=!((typeof smIsFemaleG==='function')?smIsFemaleG():(gender==='여성'||gender==='F'));return _m?'근육은 안 쓰면 매년 줆(나이 들수록 가속)·잠·단백 습관 남겨야 유지·근육이 기초대사':'근육은 안 쓰면 매년 줆(완경 후 가속)·잠·단백 습관 남겨야 유지·근육이 기초대사';})() : '10주차부터는 목표체중 유지가 목표입니다. 유지 TDEE를 기준으로 ±200kcal 이내에서 자유롭게 먹는 직관적 식사를 도입해 장기 유지율을 높입니다.',
     },
     { w:11, phase:'안정기 강화', icon:'🌸',
       wtgt:'주간 목표: 체중 완전 유지 + 체성분 최적화 (근육 비율 ↑)',
@@ -13719,7 +13720,9 @@ function getRoadmapWeeks(bc_primary, goal_weight, weight_loss_pct, user_name, oh
       diet_ban:     s.dietBan,
       diet_ok:      s.dietOk + (_rfDietMod ? '\n' + _rfDietMod : ''),
       meal_plan:    s.dietOk,
-      recovery_ban: '',
+      recovery_ban: ((_bc==='BC-7'||_bc==='BC-15') && s.w>=5 && s.w<=9)
+        ? (function(){var _m=!((typeof smIsFemaleG==='function')?smIsFemaleG():(gender==='여성'||gender==='F'));return _m?'복부 시술력·염증·원인모를 복통 병원':'복부 시술력·염증·생리 온열주의·원인모를 복통 병원';})()
+        : '',
       recovery_ok:  s.recOk + (_rfRecoveryMod ? '\n' + _rfRecoveryMod : ''),
       science_note: s.sci,
       // 오행 오버레이 적용
