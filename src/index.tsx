@@ -7656,7 +7656,7 @@ app.get('/api/h/result/:id', async (c) => {
         face_shape: finalFaceShape,
         bc_code: row.bc_code,
         bc_nickname: row.bc_nickname || null,  // v3.3: 아형명 반환 (SUBTYPE_NARR 조회 키)
-        bc_primary: row.bc_nickname || row.bc_code || null,  // v3.3: 아형명 우선 반환
+        bc_primary: row.bc_code || null,       // [BUG-FIX] bc_primary는 BC 코드(BC-X)여야 함. nickname을 반환하면 renderAll DB 고정 블록의 /^BC-\d+$/ 검사를 통과하지 못해 DB 고정이 무효화됨
         axis_scores: parseJ(row.axis_scores),
         stage1_answers: parseJ(row.stage1_json),
         stage2_answers: parseJ(row.stage2_json),
