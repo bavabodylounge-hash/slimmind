@@ -1273,7 +1273,10 @@ function todayTasks(){
   if (_a01 >= 7) diAlert = '🩸 인슐린↑ — 식후 15분 워킹 의무 · 정제당 완전 차단';
   else if (RED_FLAGS.indexOf('DIABETES') >= 0) diAlert = '🩸 당뇨 주의 — 저GI 식품 우선 · 식후 혈당 측정';
   if (RED_FLAGS.indexOf('FATTY_LIVER') >= 0) diWarn = '⚠ 지방간 — 액상과당·가공주스 오늘 금지';
-  else if (RED_FLAGS.indexOf('YOYO') >= 0)   diWarn = '⚠ 요요 이력 — 극단 결식 금지 · 단백질 우선';
+  else if (RED_FLAGS.indexOf('YOYO') >= 0) {
+    var _m65m = !((typeof smIsFemaleG==='function')?smIsFemaleG():((META&&META.gender)==='여성'||(META&&META.gender)==='F'));
+    diWarn = _m65m ? '<b>⚠ 요요 이력</b> — <b>굶는 다이어트는 안 됩니다</b> · 줄이더라도 바닥 kcal 이상' : '<b>⚠ 완경·요요 이력</b> — <b>굶는 다이어트는 안 됩니다</b> · 줄이더라도 바닥 kcal 이상';
+  }
 
   // 쿠팡 영양제 링크
   var suppLink = SUPP_BUY_LINKS[_bc];
@@ -1363,6 +1366,15 @@ function todayTasks(){
     }
   }
 
+  // ── M63: 충돌 규칙 줄 — 식단 카드 warn에 추가 ──
+  var _m63m = !((typeof smIsFemaleG==='function')?smIsFemaleG():((META&&META.gender)==='여성'||(META&&META.gender)==='F'));
+  var _m63rule = _m63m
+    ? '약 → 병 → 체형 순으로 봅니다. <b>하지 말라는 건 다 빼고, 해도 되는 건 겹치는 것만</b> 합니다 — 늘 안전한 쪽으로요'
+    : '임신·수유 → 약 → 병 → 체형 순으로 봅니다. <b>하지 말라는 건 다 빼고, 해도 되는 건 겹치는 것만</b> 합니다 — 늘 안전한 쪽으로요';
+  var _diTask = _tasks.filter(function(t){return t.k==='di';})[0];
+  if (_diTask) {
+    _diTask.warn = (_diTask.warn ? _diTask.warn + ' | ' : '') + '⛔ ' + _m63rule;
+  }
   return _tasks;
 }
 
