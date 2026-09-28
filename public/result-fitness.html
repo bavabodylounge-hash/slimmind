@@ -6153,7 +6153,7 @@ try{ ['log','info','warn','debug'].forEach(function(k){ console[k]=function(){};
           <div class="p4-ending-quote">
             고객님의 몸은 <span>잘못이 없습니다.</span><br>맞지 않는 옷을 입혀온 방식이<br>잘못되었을 뿐입니다.
           </div>
-          <div class="p4-ending-p" style="margin-top:18px;">앞서 보신 <b>12주 로드맵</b>과 <b>변화 예측</b>은, 오직 이 아픈 원인들을 하나씩 보듬고 풀어내기 위해 설계되었어요. 매달 무너지던 그 주기도, 밤마다 찾아오던 그 허기도, 마음이 남긴 그 무게도 — 이제 각각의 방법으로 맞이합니다. 더는 혼자 맞서지 않아도 됩니다.</div>
+          <div class="p4-ending-p" style="margin-top:18px;">${(function(){ var _isMaleP4 = !((typeof smIsFemaleG==='function') ? smIsFemaleG() : (gender==='여성'||gender==='F')); return '앞서 보신 <b>12주 로드맵</b>과 <b>변화 예측</b>은, 오직 이 아픈 원인들을 하나씩 보듬고 풀어내기 위해 설계되었어요. ' + (_isMaleP4 ? '해마다 더뎌지던 그 회복도' : '매달 무너지던 그 주기도') + ', 밤마다 찾아오던 그 허기도, 마음이 남긴 그 무게도 — 이제 각각의 방법으로 맞이합니다. 더는 혼자 맞서지 않아도 됩니다.'; })()}</div>
           <div class="p4-ending-sig"><span class="dot"></span>당신은 반드시, 그리고 안전하게 바뀔 수 있습니다<span class="dot"></span></div>
         </div>
       </div></div>
@@ -9734,11 +9734,16 @@ function detectBackground(answers, gender) {
     return arr.some(function(v) { return Number(v) !== noneIdx; });
   };
 
-  // 1위. 갱년기·완경 — ★남성에게는 절대 반환 금지
+  // 1위. 갱년기·완경(여성) / 남성 호르몬 변화(남성) — M04
   // 병원: q12_menopause 0=복부변환, 1=호르몬치료, 2=완경, 3=신호조금 → 0~2 = 갱년기
   // 남성 Q12 = "40대 이후 복부화" 질문으로 값이 동일(0~2)하게 저장되므로 반드시 성별 체크 필요
-  if (!_isMale) {
-    var menoNum = answers['q12_menopause'];
+  var menoNum = answers['q12_menopause'];
+  if (_isMale) {
+    // ★ M04: 남성은 q12 번호 0~1(복부화 있음)일 때만 '남성 호르몬 변화' 반환, 2=아니에요는 배경 없음
+    if (menoNum !== undefined && menoNum !== null && Number(menoNum) <= 1) {
+      return '남성 호르몬 변화';
+    }
+  } else {
     if (menoNum !== undefined && menoNum !== null && Number(menoNum) <= 2) {
       return '갱년기';
     }
@@ -9784,13 +9789,18 @@ function detectBackground(answers, gender) {
     return '약물';
   }
 
-  // 5위. 출산 경험
+  // 5위. 출산 경험(여성) / 생활 변화(남성) — M06/M07
   // 병원: q11_event 0=출산후체형변화(실제 변화 있음)만 '출산' → 1=변화없음은 제외
   var q11 = answers['q11_event'];
-  if (q11 !== undefined && q11 !== null && Number(q11) === 0) return '출산'; // ★ <= 1 → === 0 으로 수정 (체형변화 있는 경우만)
+  if (q11 !== undefined && q11 !== null && Number(q11) === 0) {
+    // ★ M06: 남성은 '생활 변화' 반환
+    return _isMale ? '생활 변화' : '출산';
+  }
   // 호환 키
   var birth = answers['Q3'] || answers['birth_history'] || answers['Q_birth'] || '';
-  if (birth === 'yes' || birth === 'Y' || birth === '있음' || birth === '경험있음') return '출산';
+  if (birth === 'yes' || birth === 'Y' || birth === '있음' || birth === '경험있음') {
+    return _isMale ? '생활 변화' : '출산';
+  }
 
   // 6위. 가족력·유전
   // 병원: q1_family 배열 3=없음 제외  /  q2_parent 1=모계유전, 0/2=부계유전
@@ -10270,7 +10280,7 @@ var BC_PRESCRIPTION_DB = {
   'BC-12': {
     label: '겨드랑이 부유방형',
     icon: '🌺',
-    exerciseBan: '브라 라인 압박 고강도 상체 운동',
+    exerciseBan: isMale ? '가슴 위주 고강도 상체 운동 (흉곽 닫힘 심화)' : '브라 라인 압박 고강도 상체 운동',
     exerciseOk: '겨드랑이 림프 마사지 + 수영 + 팔 회전 스트레칭',
     dietDirection: '호르몬 균형 식단 (아마씨·콩류) + 저지방 고단백 + 항염',
     b2b: '에스테틱·성형외과',
@@ -10636,9 +10646,9 @@ function _smJosa(word, withBat, noBat){ if(!word) return noBat; var c=String(wor
       i03: { title: '왜 운동한 다음 날 이틀을 앓는가', sub: 'BC-6 × ' + ohaeng.label + ' — 회복 예산의 고갈', medical: '부신 부하가 높으면 운동 자극을 <b>추가 스트레스로</b> 처리합니다. 회복 예산이 없는 상태의 고강도는 성장이 아니라 소모로 끝납니다.', personal: '여기에 기질이 겹칩니다. ' + ohaeng.label + '의 성향과 ' + mbti.behaviorTag + _smJosa(mbti.behaviorTag,'이','가') + ' 이 흐름을 굳혀 왔습니다. 운동 후 개운함 대신 몸살이 오는 게 이상하다 여겼을 겁니다.', warn: '강도를 올릴수록 회복은 더 밀립니다.', solution: '저강도·짧은 세션부터 시작해 회복이 따라오는 만큼만 올립니다.' }
     },
     'BC-7': {
-      i01: { title: '왜 출산 후 체중은 돌아왔는데 배는 그대로인가', sub: 'BC-7 × ' + ohaeng.label + ' — 복벽·골반 구조 변화', medical: 'BC-7은 임신 중 릴랙신으로 이완된 <b>복벽과 골반 구조가 복귀되지 않은</b> 상태입니다. 지방이 아니라 벌어진 구조가 둘레를 만듭니다. 체중이 돌아와도 배가 남는 이유입니다.', personal: '여기에 기질이 겹칩니다. ' + ohaeng.label + '의 성향과 ' + mbti.behaviorTag + _smJosa(mbti.behaviorTag,'이','가') + ' 이 흐름을 굳혀 왔습니다. 숫자는 예전인데 옷이 안 맞아 당황했을 겁니다.', warn: '복직근이 벌어진 상태의 윗몸일으키기는 틈을 더 벌릴 수 있습니다.', solution: '복압 회복과 코어 재연결부터 갑니다. 구조가 닫히면 둘레가 따라옵니다.' },
-      i02: { title: '왜 걷기만 해도 골반이 아프고 쉽게 지치는가', sub: 'BC-7 × ' + ohaeng.label + ' — 골반 안정성 저하', medical: '이완된 인대가 회복되지 않으면 <b>골반이 하중을 분산하지 못합니다.</b> 짧은 보행에도 통증과 피로가 빨리 옵니다.', personal: '여기에 기질이 겹칩니다. ' + ohaeng.label + '의 성향과 ' + mbti.behaviorTag + _smJosa(mbti.behaviorTag,'이','가') + ' 이 흐름을 굳혀 왔습니다. 아이를 안고 버티느라 통증을 당연하게 여겼을 겁니다.', warn: '통증 위에 유산소를 얹으면 보상 패턴이 굳습니다.', solution: '골반 안정화 운동으로 지지력을 먼저 만든 뒤 활동량을 늘립니다.' },
-      i03: { title: '왜 예전 운동법이 이제는 통하지 않는가', sub: 'BC-7 × ' + ohaeng.label + ' — 기준 구조의 변화', medical: '출산 전후로 <b>몸의 기준 구조가 달라졌습니다.</b> 같은 동작도 다른 부하로 전달되어 결과가 달라집니다.', personal: '여기에 기질이 겹칩니다. ' + ohaeng.label + '의 성향과 ' + mbti.behaviorTag + _smJosa(mbti.behaviorTag,'이','가') + ' 이 흐름을 굳혀 왔습니다. 예전 방식이 안 먹히는 걸 나이 탓으로 넘겼을지 모릅니다.', warn: '이전 강도를 그대로 복원하면 손상 위험이 큽니다.', solution: '구조 평가 후 순서를 다시 짭니다. 복원이 아니라 재설계입니다.' }
+      i01: { title: '왜 출산 후 체중은 돌아왔는데 배는 그대로인가', sub: 'BC-7 × ' + ohaeng.label + ' — ' + (isMale ? '복벽 이완·복압 소실형' : '릴랙신 이완·산후 구조 정체형'), medical: 'BC-7은 임신 중 릴랙신으로 이완된 <b>복벽과 골반 구조가 복귀되지 않은</b> 상태입니다. 지방이 아니라 벌어진 구조가 둘레를 만듭니다. 체중이 돌아와도 배가 남는 이유입니다.', personal: '여기에 기질이 겹칩니다. ' + ohaeng.label + '의 성향과 ' + mbti.behaviorTag + _smJosa(mbti.behaviorTag,'이','가') + ' 이 흐름을 굳혀 왔습니다. 숫자는 예전인데 옷이 안 맞아 당황했을 겁니다.', warn: '복직근이 벌어진 상태의 윗몸일으키기는 틈을 더 벌릴 수 있습니다.', solution: '복압 회복과 코어 재연결부터 갑니다. 구조가 닫히면 둘레가 따라옵니다.' },
+      i02: { title: '왜 걷기만 해도 골반이 아프고 쉽게 지치는가', sub: 'BC-7 × ' + ohaeng.label + ' — ' + (isMale ? '복벽 이완·복압 소실형' : '릴랙신 이완·산후 구조 정체형'), medical: '이완된 인대가 회복되지 않으면 <b>골반이 하중을 분산하지 못합니다.</b> 짧은 보행에도 통증과 피로가 빨리 옵니다.', personal: '여기에 기질이 겹칩니다. ' + ohaeng.label + '의 성향과 ' + mbti.behaviorTag + _smJosa(mbti.behaviorTag,'이','가') + ' 이 흐름을 굳혀 왔습니다. 아이를 안고 버티느라 통증을 당연하게 여겼을 겁니다.', warn: '통증 위에 유산소를 얹으면 보상 패턴이 굳습니다.', solution: '골반 안정화 운동으로 지지력을 먼저 만든 뒤 활동량을 늘립니다.' },
+      i03: { title: '왜 예전 운동법이 이제는 통하지 않는가', sub: 'BC-7 × ' + ohaeng.label + ' — ' + (isMale ? '복벽 이완·복압 소실형' : '릴랙신 이완·산후 구조 정체형'), medical: '출산 전후로 <b>몸의 기준 구조가 달라졌습니다.</b> 같은 동작도 다른 부하로 전달되어 결과가 달라집니다.', personal: '여기에 기질이 겹칩니다. ' + ohaeng.label + '의 성향과 ' + mbti.behaviorTag + _smJosa(mbti.behaviorTag,'이','가') + ' 이 흐름을 굳혀 왔습니다. 예전 방식이 안 먹히는 걸 나이 탓으로 넘겼을지 모릅니다.', warn: '이전 강도를 그대로 복원하면 손상 위험이 큽니다.', solution: '구조 평가 후 순서를 다시 짭니다. 복원이 아니라 재설계입니다.' }
     },
     'BC-8': {
       i01: { title: '왜 위는 먼저 빠지는데, 하체만 끝까지 남는가', sub: 'BC-8 × ' + ohaeng.label + ' — 하체 알파-2 수용체 우세', medical: '지방세포에는 분해를 여는 베타 수용체와 잠그는 알파-2 수용체가 함께 있습니다. BC-8은 <b>하체 쪽 알파-2 밀도가 구조적으로 높은 체질</b>이라, 같은 열량 적자에서 분해 신호가 와도 상체·복부는 문이 열리고 하체는 잠긴 채 버팁니다. 여성은 여기에 에스트로겐이 대퇴·둔부 저장을 우선시키는 방향으로 작용해 격차가 더 벌어집니다. 얼굴과 가슴이 먼저 빠지고 허벅지는 그대로인 건 노력의 총량이 부족해서가 아니라, <b>부위마다 수용체 지도가 다르기 때문</b>입니다.', personal: '여기에 기질이 겹칩니다. ' + ohaeng.label + '은 결과가 안 보일 때 방법을 의심하기보다 강도를 올리는 쪽으로 움직입니다. ' + mbti.behaviorTag + _smJosa(mbti.behaviorTag,'이','가') + ' 그 방식을 오래 붙들게 하고요. 그래서 "덜 먹고 더 했는데 왜 여기만"이라는 자책이 반복됐습니다. 다섯 근거가 모두 「하체는 잠금이 걸린 자리」 하나를 가리킵니다.', warn: '적자를 더 키우면 문이 열려 있는 상체만 계속 빠집니다. 상하체 대비가 심해지고, 그 모습이 다시 "내가 못해서"라는 결론으로 돌아옵니다.', solution: '그래서 적자는 완만히 두고 <b>하체의 잠금부터 풉니다.</b> 순환(걷기·압박·온열)으로 국소 혈류를 올리면 분해 신호가 도달하고, 그때부터 둘레가 움직입니다. 상하체 둘레를 4주 간격으로 따로 재세요 — 체중이 아니라 <b>격차가 좁혀지는 것</b>이 이 체질의 진짜 지표입니다.' },
@@ -10661,9 +10671,9 @@ function _smJosa(word, withBat, noBat){ if(!word) return noBat; var c=String(wor
       i03: { title: '왜 유연성 운동이 더 급한가', sub: 'BC-11 × ' + ohaeng.label + ' — 가동성과 자세', medical: '근육이 짧아진 채 두꺼워지면 <b>가동 범위가 줄어</b> 자세가 앞으로 말립니다. 이 자세가 다시 상체 보상을 부릅니다.', personal: '여기에 기질이 겹칩니다. ' + ohaeng.label + '의 성향과 ' + mbti.behaviorTag + _smJosa(mbti.behaviorTag,'이','가') + ' 이 흐름을 굳혀 왔습니다. 뻣뻣함을 체질로 여겼겠지만 결과에 가까웠습니다.', warn: '가동성 없이 강도만 올리면 부상 위험이 커집니다.', solution: '흉추·어깨 가동성을 주 3회 넣어 순환을 끊습니다.' }
     },
     'BC-12': {
-      i01: { title: '왜 브라 라인 위로 살이 접히는가', sub: 'BC-12 × ' + ohaeng.label + ' — 겨드랑이 림프 정체', medical: 'BC-12는 겨드랑이 림프 흐름이 막혀 <b>브라 라인 주변에 체액과 지방이 함께 머무는</b> 체질입니다. 전체 체중과 무관하게 그 라인만 도드라집니다.', personal: '여기에 기질이 겹칩니다. ' + ohaeng.label + '의 성향과 ' + mbti.behaviorTag + _smJosa(mbti.behaviorTag,'이','가') + ' 이 흐름을 굳혀 왔습니다. 옷을 고를 때마다 그 자리를 신경 썼을 겁니다.', warn: '조이는 압박으로 감추면 정체가 더 심해집니다.', solution: '겨드랑이 배출을 열고 상체 순환을 회복합니다. 라인부터 부드러워집니다.' },
-      i02: { title: '왜 살이 빠져도 그 부위만 남는가', sub: 'BC-12 × ' + ohaeng.label + ' — 국소 정체 우선', medical: '정체 부위는 <b>혈류가 적어 분해 신호가 늦게 도달</b>합니다. 전체가 줄어도 마지막까지 남습니다.', personal: '여기에 기질이 겹칩니다. ' + ohaeng.label + '의 성향과 ' + mbti.behaviorTag + _smJosa(mbti.behaviorTag,'이','가') + ' 이 흐름을 굳혀 왔습니다. 거울 앞에서 유독 그 자리만 보였을 겁니다.', warn: '체중만 더 줄이는 접근으로는 잘 바뀌지 않습니다.', solution: '온열·순환 관리로 혈류를 올린 뒤 관리 강도를 넣습니다.' },
-      i03: { title: '왜 팔을 들 때 불편하고 저릿한가', sub: 'BC-12 × ' + ohaeng.label + ' — 관문 압박', medical: '겨드랑이 관문이 눌리면 <b>신경·혈관 통로도 함께 좁아집니다.</b> 저림과 불편이 동반되는 이유입니다.', personal: '여기에 기질이 겹칩니다. ' + ohaeng.label + '의 성향과 ' + mbti.behaviorTag + _smJosa(mbti.behaviorTag,'이','가') + ' 이 흐름을 굳혀 왔습니다. 자세 문제로만 여겼을 수 있습니다.', warn: '증상 있는 상태의 고중량 상체 운동은 피합니다.', solution: '가동성 회복과 배출을 먼저 확보합니다.' }
+      i01: { title: '왜 브라 라인 위로 살이 접히는가', sub: 'BC-12 × ' + ohaeng.label + ' — ' + (isMale ? '자세성 흉부 외측 정체형' : '겨드랑이 림프 정체·부유방형'), medical: 'BC-12는 겨드랑이 림프 흐름이 막혀 <b>브라 라인 주변에 체액과 지방이 함께 머무는</b> 체질입니다. 전체 체중과 무관하게 그 라인만 도드라집니다.', personal: '여기에 기질이 겹칩니다. ' + ohaeng.label + '의 성향과 ' + mbti.behaviorTag + _smJosa(mbti.behaviorTag,'이','가') + ' 이 흐름을 굳혀 왔습니다. 옷을 고를 때마다 그 자리를 신경 썼을 겁니다.', warn: '조이는 압박으로 감추면 정체가 더 심해집니다.', solution: '겨드랑이 배출을 열고 상체 순환을 회복합니다. 라인부터 부드러워집니다.' },
+      i02: { title: '왜 살이 빠져도 그 부위만 남는가', sub: 'BC-12 × ' + ohaeng.label + ' — ' + (isMale ? '자세성 흉부 외측 정체형' : '겨드랑이 림프 정체·부유방형'), medical: '정체 부위는 <b>혈류가 적어 분해 신호가 늦게 도달</b>합니다. 전체가 줄어도 마지막까지 남습니다.', personal: '여기에 기질이 겹칩니다. ' + ohaeng.label + '의 성향과 ' + mbti.behaviorTag + _smJosa(mbti.behaviorTag,'이','가') + ' 이 흐름을 굳혀 왔습니다. 거울 앞에서 유독 그 자리만 보였을 겁니다.', warn: '체중만 더 줄이는 접근으로는 잘 바뀌지 않습니다.', solution: '온열·순환 관리로 혈류를 올린 뒤 관리 강도를 넣습니다.' },
+      i03: { title: '왜 팔을 들 때 불편하고 저릿한가', sub: 'BC-12 × ' + ohaeng.label + ' — ' + (isMale ? '자세성 흉부 외측 정체형' : '겨드랑이 림프 정체·부유방형'), medical: '겨드랑이 관문이 눌리면 <b>신경·혈관 통로도 함께 좁아집니다.</b> 저림과 불편이 동반되는 이유입니다.', personal: '여기에 기질이 겹칩니다. ' + ohaeng.label + '의 성향과 ' + mbti.behaviorTag + _smJosa(mbti.behaviorTag,'이','가') + ' 이 흐름을 굳혀 왔습니다. 자세 문제로만 여겼을 수 있습니다.', warn: '증상 있는 상태의 고중량 상체 운동은 피합니다.', solution: '가동성 회복과 배출을 먼저 확보합니다.' }
     },
     'BC-13': {
       i01: { title: '왜 예전과 똑같이 사는데 살이 붙는가', sub: 'BC-13 × ' + ohaeng.label + ' — 에스트로겐 저하와 대사 전환', medical: 'BC-13은 에스트로겐이 줄며 <b>지방 저장 위치가 하체에서 복부로 옮겨가는</b> 전환기 체질입니다. 기초대사도 함께 내려가 같은 생활이 잉여로 바뀝니다. 습관이 나빠진 게 아니라 환경이 달라진 것입니다.', personal: '여기에 기질이 겹칩니다. ' + ohaeng.label + '의 성향과 ' + mbti.behaviorTag + _smJosa(mbti.behaviorTag,'이','가') + ' 이 흐름을 굳혀 왔습니다. "허벅지는 헐렁한데 허리만 안 잠긴다"는 변화가 당황스러웠을 겁니다.', warn: '이전 방식의 절식은 근손실과 골밀도 저하를 부릅니다.', solution: '근력과 단백질로 새 기준선을 만들고, 필요 시 호르몬 수치를 확인합니다.' },
@@ -16415,7 +16425,7 @@ function renderP4(userName, ohaengKey, mbtiType, gender, menopause, axisScores, 
           <div class="p4-ending-quote">
             ${nm} 님의 몸은 <span>잘못이 없습니다.</span><br>맞지 않는 옷을 입혀온 방식이<br>잘못되었을 뿐입니다.${(function(){ var _w4=(window.__DESIRE__&&window.__DESIRE__.who)?String(window.__DESIRE__.who).trim():''; return _w4 ? '<br><span style="font-size:13px;opacity:.65">— ' + _w4 + '처럼 되고 싶다는 그 마음, 충분히 이뤄질 수 있습니다</span>' : ''; })()}
           </div>
-          <div class="p4-ending-p" style="margin-top:18px;">앞서 보신 <b>12주 로드맵</b>과 <b>변화 예측</b>은, 오직 이 아픈 원인들을 하나씩 보듬고 풀어내기 위해 설계되었어요. 매달 무너지던 그 주기도, 밤마다 찾아오던 그 허기도, 마음이 남긴 그 무게도 — 이제 각각의 방법으로 맞이합니다. 더는 혼자 맞서지 않아도 됩니다.</div>
+          <div class="p4-ending-p" style="margin-top:18px;">${(function(){ var _isMaleP4 = !((typeof smIsFemaleG==='function') ? smIsFemaleG() : (gender==='여성'||gender==='F')); return '앞서 보신 <b>12주 로드맵</b>과 <b>변화 예측</b>은, 오직 이 아픈 원인들을 하나씩 보듬고 풀어내기 위해 설계되었어요. ' + (_isMaleP4 ? '해마다 더뎌지던 그 회복도' : '매달 무너지던 그 주기도') + ', 밤마다 찾아오던 그 허기도, 마음이 남긴 그 무게도 — 이제 각각의 방법으로 맞이합니다. 더는 혼자 맞서지 않아도 됩니다.'; })()}</div>
           <div class="p4-ending-sig"><span class="dot"></span>당신은 반드시, 그리고 안전하게 바뀔 수 있습니다<span class="dot"></span></div>
         </div>
       </div>`;
