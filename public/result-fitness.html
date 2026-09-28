@@ -25942,6 +25942,24 @@ var WOW6_SUPP_DB = {
               { icon:'🫒', name:'쿼세틴', desc:'림프 항염 · 부종 완화' },
               { icon:'💧', name:'수분(물) 2L+', desc:'림프 흐름 점도 유지 핵심' }],
     caution: [{ icon:'🧂', name:'고나트륨 식품', desc:'림프 체액 농도 증가 → 순환 저해' }],
+  'BC-12': { // 겨드랑이 림프정체·부유방형
+    title: (function(){var _m=!((typeof smIsFemaleG==='function')?smIsFemaleG():(gender==='여성'||gender==='F'));return _m?'호르몬 변화 시기':'완경 시기';})(),
+    first_msg: (function(){var _m=!((typeof smIsFemaleG==='function')?smIsFemaleG():(gender==='여성'||gender==='F'));return _m?'<b>테스토스테론이 줄면 뼈와 근육이 같이 약해집니다.</b> 그래서 뼈 챙기는 것부터예요':'<b>완경이 오면 뼈도 같이 약해집니다.</b> 그래서 뼈 챙기는 것부터예요';})(),
+    good:    [{ icon:'🦴', name:'칼슘+비타민D3', desc:(function(){var _m=!((typeof smIsFemaleG==='function')?smIsFemaleG():(gender==='여성'||gender==='F'));return _m?'40대 이후 뼈부터 챙길 것 · 칼슘 흡수 스위치':'완경 뒤 가장 먼저 챙길 것 · 칼슘 흡수 스위치';})() },
+              { icon:'🌸', name:'이소플라본', desc:'식물성 에스트로겐 · 호르몬 완충' },
+              { icon:'🐟', name:'오메가3', desc:'에스트로겐 대사 지원 · 림프 항염' }],
+    caution: [{ icon:'☕', name:'카페인 과다', desc:'칼슘 배출 가속 → 뼈 밀도 저하' }],
+    danger:  [{ icon:'🚫', name:'극단적 저칼로리', desc:'에스트로겐 추가 저하 → 뼈 손실 가속' }],
+  },
+  'BC-13': { // 에스트로겐 저하·갱년기 대사 전환형
+    title: (function(){var _m=!((typeof smIsFemaleG==='function')?smIsFemaleG():(gender==='여성'||gender==='F'));return _m?'호르몬 변화 시기':'완경 시기';})(),
+    first_msg: (function(){var _m=!((typeof smIsFemaleG==='function')?smIsFemaleG():(gender==='여성'||gender==='F'));return _m?'<b>테스토스테론이 줄면 뼈와 근육이 같이 약해집니다.</b> 그래서 뼈 챙기는 것부터예요':'<b>완경이 오면 뼈도 같이 약해집니다.</b> 그래서 뼈 챙기는 것부터예요';})(),
+    good:    [{ icon:'🦴', name:'칼슘+비타민D3', desc:(function(){var _m=!((typeof smIsFemaleG==='function')?smIsFemaleG():(gender==='여성'||gender==='F'));return _m?'40대 이후 뼈부터 챙길 것 · 칼슘 흡수 스위치':'완경 뒤 가장 먼저 챙길 것 · 칼슘 흡수 스위치';})() },
+              { icon:'🌿', name:'이소플라본 40mg', desc:'완경기 에스트로겐 식물성 보완' },
+              { icon:'🐟', name:'오메가3 2g', desc:'호르몬 대사 지원 · 심혈관 보호' }],
+    caution: [{ icon:'☕', name:'카페인 과다', desc:'칼슘 배출 · 수면 질 저하' }],
+    danger:  [{ icon:'🚫', name:'극단적 절식', desc:'에스트로겐 추가 저하 → 갱년기 증상 악화' }],
+  },
     danger:  [{ icon:'🚫', name:'장시간 좌식', desc:'림프 펌프 기능 완전 정지' }],
   },
 };
@@ -26127,7 +26145,8 @@ function wow6Init(bcCode, ohaengType, menopause) {
     return;
   }
 
-  if (sub) sub.textContent = `BC-${bcCode} 타입에 맞춤 분석된 보충제 궁합입니다`;
+  // M74: title 필드 있으면 소제목에 반영
+  if (sub) sub.textContent = (data.title ? `${data.title} · BC-${bcCode} 맞춤 보충제 궁합` : `BC-${bcCode} 타입에 맞춤 분석된 보충제 궁합입니다`);
 
   const buildItems = (items, type) => items.map(item => `
     <div class="wow6-item ${type}">
@@ -26139,7 +26158,9 @@ function wow6Init(bcCode, ohaengType, menopause) {
       <div class="wow6-badge ${type}">${type==='good'?'✅ 추천':type==='caution'?'⚠️ 주의':'🚫 위험'}</div>
     </div>`).join('');
 
+  // M75: first_msg 필드 있으면 '영양제보다 먼저' 박스 표시
   grid.innerHTML = `
+    ${data.first_msg ? `<div style="background:rgba(100,160,255,.10);border:1px solid rgba(100,160,255,.30);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:#b3d8ff;line-height:1.7;">🦴 <strong>영양제보다 먼저</strong><br>${data.first_msg}</div>` : ''}
     <div style="font-size:12px;font-weight:800;color:rgba(168,201,122,.8);letter-spacing:1px;margin-bottom:6px;">✅ 적극 추천</div>
     ${buildItems(data.good,'good')}
     <div style="font-size:12px;font-weight:800;color:rgba(255,170,80,.7);letter-spacing:1px;margin:10px 0 6px;">⚠️ 주의 필요</div>

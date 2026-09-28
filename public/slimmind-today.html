@@ -1289,6 +1289,25 @@ function todayTasks(){
     : '';
 
   var dietFullTx = mealTx + ohaengDietNote + dietOverlay;
+
+  // ── M72/M73: A03 꼬리 — 관문3(5~9주)·관문4(10~12주) isMale 분기 ──
+  var _a03n = axN('A03');
+  if (_a03n >= 5) {
+    var _m72m = !((typeof smIsFemaleG==='function')?smIsFemaleG():((META&&META.gender)==='여성'||(META&&META.gender)==='F'));
+    var _youTail = '';
+    if (WK >= 10) {
+      // M73: 관문4 (10~12주)
+      _youTail = _m72m
+        ? '\n🧾 당신이 이래서 — 콩·생선 두 메뉴가 나이 들어도 흔들리지 않는 몸을 지킵니다.'
+        : '\n🧾 당신이 이래서 — 콩·생선 두 메뉴가 갱년기에도 흔들리지 않는 몸을 지킵니다.';
+    } else if (WK >= 5) {
+      // M72: 관문3 (5~9주)
+      _youTail = _m72m
+        ? '\n🧾 당신이 이래서 — 호르몬이 안정된 뒤라 지켜낸 근육을 바탕으로 안전하게 태울 수 있습니다.'
+        : '\n🧾 당신이 이래서 — 호르몬이 안정된 뒤라 완경 대사에 맞춰 안전하게 태울 수 있습니다.';
+    }
+    if (_youTail) dietFullTx += _youTail;
+  }
   var dietSubTx  = snapTx + '\n영양제: ' + suppTx;
 
   // ──────────────────────────────────────────────
