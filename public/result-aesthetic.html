@@ -9147,7 +9147,9 @@ var BC_MASTER = {
   'BC-7': {
     code: 'BC-7',
     app_nickname: '#출산후_바람빠진풍선형',
+    app_nickname_m: '#복압형_코어붕괴형',
     medical_title: '릴랙신 이완·산후 구조 정체형 체형',
+    medical_title_m: '복벽 이완·복압 소실형 체형',
     color: '#c0395b', bg: '#FFF0DA', icon: '🎈',
     failed_type_desc: '출산 시 분비된 릴랙신 호르몬으로 인해 골격이 이완되고 복부 코어 압력이 저하된 상태입니다. 장기 처짐과 복직근 이개가 발생하여, 체형 복구 없는 다이어트는 요통과 아랫배 처짐을 악화시킬 수 있습니다.',
     axis_top: '복',
@@ -9187,7 +9189,9 @@ var BC_MASTER = {
   'BC-12': {
     code: 'BC-12',
     app_nickname: '#겨드랑이_부유방형',
+    app_nickname_m: '#가슴아래_접힘형',
     medical_title: '겨드랑이 림프 정체·부유방형 체형',
+    medical_title_m: '자세성 흉부 외측 정체형 체형',
     color: '#c0395b', bg: '#fce4ea', icon: '🌺',
     failed_type_desc: '겨드랑이 림프절 정체와 호르몬 불균형이 결합되어 부유방이 형성된 상태입니다. 브라 라인 압박 운동을 강행하면 림프 순환이 더욱 차단되어 부유방이 악화될 수 있습니다.',
     axis_top: '확',
@@ -9195,7 +9199,9 @@ var BC_MASTER = {
   'BC-13': {
     code: 'BC-13',
     app_nickname: '#호르몬스위치_갱년기형',
+    app_nickname_m: '#호르몬스위치_대사전환형',
     medical_title: '에스트로겐 저하·갱년기 대사 전환형 체형',
+    medical_title_m: '테스토스테론 저하·대사 전환형 체형',
     color: '#c0395b', bg: '#FFF0F5', icon: '🦋',
     failed_type_desc: '에스트로겐 급감으로 지방 분포가 하체에서 복부로 이동하고 기초대사량이 저하된 상태입니다. 고강도 유산소와 단식을 반복하면 호르몬 교란이 심화되어 복부 비만이 고착화될 수 있습니다.',
     axis_top: '확',
@@ -9358,8 +9364,7 @@ function detectBackground(answers, gender, category) {
   if (!answers) return null;
 
   // ── 성별 판별 (남성이면 갱년기·출산 관련 배경 반환 금지) ──
-  var _isMale = (gender === 'M' || gender === 'male' || gender === '남성' || gender === '남'
-    || gender === 'MALE' || gender === '트랜스 남성');
+  var _isMale = !((typeof smIsFemaleG==='function') ? smIsFemaleG() : (gender==='여성'||gender==='F'));
 
   // ── 병원 플로우 배열 헬퍼 ──
   // past_procedures, long_term_drugs, disease, q1_family, q8_trigger 는
@@ -10637,19 +10642,21 @@ function getCruelHistoryTriggers(userName, ohaengKey, mbtiType, gender, menopaus
     },
     'BC-12': {
       t01: {
-        title: '유산소·식이 제한 함정 — 브라라인이 안 빠지는 구조적 원인',
-        hook: '식이도 줄이고 운동도 했는데 브라라인만 남아있다면, 흉추 구조가 문제입니다.',
-        medical: nm + ' 님은 <b>부유방형(BC-12)</b>으로 흉추가 무너지고 라운드숄더가 되면서 겨드랑이·브라라인에 피하지방이 집중된 상태입니다. 단순 유산소나 식이 제한만으로는 흉추 구조 변화 없이 이 부위 개선이 어렵습니다. 흉추를 바로잡지 않으면 이 부위는 계속 지방이 쌓이는 구조입니다.',
+        title: isMale ? '유산소·식이 제한 함정 — 가슴 아래 라인이 안 빠지는 구조적 원인' : '유산소·식이 제한 함정 — 브라라인이 안 빠지는 구조적 원인',
+        hook: isMale ? '식이도 줄이고 운동도 했는데 가슴 아래 라인만 남아있다면, 흉추 구조가 문제입니다.' : '식이도 줄이고 운동도 했는데 브라라인만 남아있다면, 흉추 구조가 문제입니다.',
+        medical: isMale
+          ? (nm + ' 님은 <b>겨드랑이 접힘형(BC-12)</b>으로 흉추가 무너지고 라운드숄더가 되면서 겨드랑이 앞·가슴 아래에 피하지방이 집중된 상태입니다. 단순 유산소나 식이 제한만으로는 흉추 구조 변화 없이 이 부위 개선이 어렵습니다. 흉추를 바로잡지 않으면 이 부위는 계속 지방이 쌓이는 구조입니다.')
+          : (nm + ' 님은 <b>부유방형(BC-12)</b>으로 흉추가 무너지고 라운드숄더가 되면서 겨드랑이·브라라인에 피하지방이 집중된 상태입니다. 단순 유산소나 식이 제한만으로는 흉추 구조 변화 없이 이 부위 개선이 어렵습니다. 흉추를 바로잡지 않으면 이 부위는 계속 지방이 쌓이는 구조입니다.'),
         comfort: '다른 곳은 빠지는데 그 부위만 고집스럽게 남아있는 억울함. 구조적 원인이 있다는 걸 알았더라면 방향이 달랐을 겁니다. <em>' + mbti.behaviorTag + '</em> 성향은 보이지 않는 변화에 쉽게 포기하게 됩니다.',
-        reframe: '흉추 이완 스트레칭과 어깨 후인 운동으로 구조부터 바로잡습니다. 흉추가 펴지면서 겨드랑이 림프가 열리면, 브라라인 부위 지방도 비로소 반응하기 시작합니다.',
+        reframe: isMale ? '흉추 이완 스트레칭과 어깨 후인 운동으로 구조부터 바로잡습니다. 흉추가 펴지면서 겨드랑이 림프가 열리면, 가슴 아래 부위 지방도 비로소 반응하기 시작합니다.' : '흉추 이완 스트레칭과 어깨 후인 운동으로 구조부터 바로잡습니다. 흉추가 펴지면서 겨드랑이 림프가 열리면, 브라라인 부위 지방도 비로소 반응하기 시작합니다.',
         dayStart: 0, dayEnd: 7
       },
       t02: {
-        title: '브라라인 정체기 — 흉추 정렬 없이는 이 부위가 빠지지 않습니다',
-        hook: '3주가 지나도 브라라인이 그대로라면, 흉추 구조를 먼저 바로잡아야 합니다.',
+        title: isMale ? '가슴 아래 정체기 — 흉추 정렬 없이는 이 부위가 빠지지 않습니다' : '브라라인 정체기 — 흉추 정렬 없이는 이 부위가 빠지지 않습니다',
+        hook: isMale ? '3주가 지나도 가슴 아래 라인이 그대로라면, 흉추 구조를 먼저 바로잡아야 합니다.' : '3주가 지나도 브라라인이 그대로라면, 흉추 구조를 먼저 바로잡아야 합니다.',
         medical: '흉추 이완 체형에서 3주차 정체기는 구조적 원인이 해소되지 않은 상태에서 발생합니다. 흉추가 굽어있으면 겨드랑이 림프절이 지속적으로 압박되어 이 부위 지방 분해가 매우 느립니다. 식이·운동만으로는 구조적 한계가 있습니다.',
         comfort: '열심히 하고 있는데 그 부위만 꿈쩍도 않는 답답함. 구조적 문제는 단기간에 해결되지 않습니다. <em>' + ohaeng.label + ' 기질</em>은 상체 구조 불균형이 전신 순환 저하로 이어집니다.',
-        reframe: '이 시기엔 흉추 이완에 더 집중합니다. 폼롤러로 흉추를 풀고 어깨 후인 동작을 하루 3~5회 반복하면, 4~6주차부터 브라라인 부위가 조금씩 변화합니다.',
+        reframe: isMale ? '이 시기엔 흉추 이완에 더 집중합니다. 폼롤러로 흉추를 풀고 어깨 후인 동작을 하루 3~5회 반복하면, 4~6주차부터 가슴 아래 라인이 조금씩 변화합니다.' : '이 시기엔 흉추 이완에 더 집중합니다. 폼롤러로 흉추를 풀고 어깨 후인 동작을 하루 3~5회 반복하면, 4~6주차부터 브라라인 부위가 조금씩 변화합니다.',
         dayStart: 18, dayEnd: 26
       }
     },
@@ -10658,17 +10665,25 @@ function getCruelHistoryTriggers(userName, ohaengKey, mbtiType, gender, menopaus
       t01: {
         title: '그 일이 있고부터, 몸이 예전 말을 듣지 않았습니다',
         hook: '똑같이 했는데. 예전엔 이러면 빠졌는데.',
-        medical: nm + ' 님의 몸은 <b>오후만되면 코끼리다리형(BC-13)</b>의 문턱을 넘었습니다. 완경 전후로 에스트로겐이 급격히 빠지면서, 지방은 하체에서 복부로 옮겨 앉고 몸은 예전과 전혀 다른 규칙으로 움직이기 시작했습니다. 그래서 예전에 통하던 방법이 지금은 하나도 안 먹힙니다. ' + nm + ' 님이 게을러진 게 아니라, 몸이 서 있는 땅 자체가 바뀐 겁니다.',
+        medical: isMale
+          ? (nm + ' 님의 몸은 <b>호르몬 변환형(BC-13)</b>의 문턱을 넘었습니다. 나이가 들며 테스토스테론이 줄어들면서, 근육은 빠지고 지방은 복부로 모여 앉고 몸은 예전과 전혀 다른 규칙으로 움직이기 시작했습니다. 그래서 예전에 통하던 방법이 지금은 하나도 안 먹힙니다. ' + nm + ' 님이 게을러진 게 아니라, 몸이 서 있는 땅 자체가 바뀐 겁니다.')
+          : (nm + ' 님의 몸은 <b>오후만되면 코끼리다리형(BC-13)</b>의 문턱을 넘었습니다. 완경 전후로 에스트로겐이 급격히 빠지면서, 지방은 하체에서 복부로 옮겨 앉고 몸은 예전과 전혀 다른 규칙으로 움직이기 시작했습니다. 그래서 예전에 통하던 방법이 지금은 하나도 안 먹힙니다. ' + nm + ' 님이 게을러진 게 아니라, 몸이 서 있는 땅 자체가 바뀐 겁니다.'),
         comfort: '예전 방식이 안 통할 때, 사람은 자기 탓부터 합니다. \"예전엔 됐는데 이젠 내가 나태해졌나.\" 그렇게 ' + nm + ' 님은 이미 힘든 시기를 지나오면서, 몸까지 원망했을 겁니다. 그러지 마세요. ' + nm + ' 님의 몸은 그 힘든 시간에 ' + nm + ' 님을 지키느라 안간힘을 쓰고 있었습니다. 미워할 대상이 아니라, 안아줘야 할 몸입니다.',
-        reframe: '바뀐 땅에는 새 지도가 필요합니다. 예전 방법을 더 세게 하는 게 아니라, 지금 몸에 맞는 방법으로 갈아타는 것 — 파이토에스트로겐(콩·석류·아마씨)과 낮은 강도의 근력으로, ' + nm + ' 님 몸이 다시 ' + nm + ' 님 편이 되도록 처방을 새로 짭니다.',
+        reframe: isMale
+          ? '바뀐 땅에는 새 지도가 필요합니다. 예전 방법을 더 세게 하는 게 아니라, 지금 몸에 맞는 방법으로 갈아타는 것 — 충분한 단백질과 꾸준한 근력 운동, 깊은 잠으로 ' + nm + ' 님 몸이 다시 ' + nm + ' 님 편이 되도록 처방을 새로 짭니다.'
+          : '바뀐 땅에는 새 지도가 필요합니다. 예전 방법을 더 세게 하는 게 아니라, 지금 몸에 맞는 방법으로 갈아타는 것 — 파이토에스트로겐(콩·석류·아마씨)과 낮은 강도의 근력으로, ' + nm + ' 님 몸이 다시 ' + nm + ' 님 편이 되도록 처방을 새로 짭니다.',
         dayStart: 0, dayEnd: 7
       },
       t02: {
-        title: '갱년기 정체기 — 호르몬 전환 과정의 불가피한 시간',
-        hook: '갱년기 체형 변화는 한 달 만에 해결되지 않습니다. 3~6개월의 재편 시간이 필요합니다.',
-        medical: nm + ' 님의 호르몬·대사 축(A03)이 <b>' + _a03.toFixed(1) + '/10</b>입니다. 완경 후 에스트로겐 감소로 인한 지방 재배치는 2~3년에 걸쳐 진행됩니다. 3주차 정체기는 이 재편 과정의 일부이며, 서두르면 오히려 코르티솔이 높아져 복부 지방이 더 고착될 수 있습니다.',
-        comfort: '변화가 더디게 느껴지는 그 답답함. 갱년기 체형 변화는 빠르게 해결할 수 없는 구조적 과정입니다. <em>' + ohaeng.label + ' 기질</em>은 이 시기에 에너지 정체와 무기력이 특히 강하게 옵니다.',
-        reframe: '서두르지 않고 3~6개월 관점으로 접근합니다. 코르티솔을 낮추는 수면·온열 요법과 함께 파이토에스트로겐으로 새로운 호르몬 균형을 잡아드릴게요.',
+        title: isMale ? '호르몬 정체기 — 근육 신호가 약해진 몸의 불가피한 시간' : '갱년기 정체기 — 호르몬 전환 과정의 불가피한 시간',
+        hook: isMale ? '호르몬 저하로 바뀐 체형은 한 달 만에 해결되지 않습니다. 3~6개월의 재편 시간이 필요합니다.' : '갱년기 체형 변화는 한 달 만에 해결되지 않습니다. 3~6개월의 재편 시간이 필요합니다.',
+        medical: isMale
+          ? (nm + ' 님의 호르몬·대사 축(A03)이 <b>' + _a03.toFixed(1) + '/10</b>입니다. 테스토스테론 저하로 줄어든 근육과 늘어난 복부 지방은 몇 달에 걸쳐 천천히 되돌아옵니다. 3주차 정체기는 이 재편 과정의 일부이며, 서두르면 오히려 코르티솔이 높아져 복부 지방이 더 고착될 수 있습니다.')
+          : (nm + ' 님의 호르몬·대사 축(A03)이 <b>' + _a03.toFixed(1) + '/10</b>입니다. 완경 후 에스트로겐 감소로 인한 지방 재배치는 2~3년에 걸쳐 진행됩니다. 3주차 정체기는 이 재편 과정의 일부이며, 서두르면 오히려 코르티솔이 높아져 복부 지방이 더 고착될 수 있습니다.'),
+        comfort: '변화가 더디게 느껴지는 그 답답함. ' + (isMale ? '호르몬 저하로 바뀐 체형은' : '갱년기 체형 변화는') + ' 빠르게 해결할 수 없는 구조적 과정입니다. <em>' + ohaeng.label + ' 기질</em>은 이 시기에 에너지 정체와 무기력이 특히 강하게 옵니다.',
+        reframe: isMale
+          ? '서두르지 않고 3~6개월 관점으로 접근합니다. 코르티솔을 낮추는 수면·온열 요법과 함께 근력 운동과 단백질로 새로운 호르몬 균형을 잡아드릴게요.'
+          : '서두르지 않고 3~6개월 관점으로 접근합니다. 코르티솔을 낮추는 수면·온열 요법과 함께 파이토에스트로겐으로 새로운 호르몬 균형을 잡아드릴게요.',
         dayStart: 18, dayEnd: 26
       }
     },
@@ -10844,7 +10859,7 @@ function getCruelHistoryTriggers(userName, ohaengKey, mbtiType, gender, menopaus
 
   // ── trigger03: 성별·완경 1차 분기 + BC별 세부 표현 보조 ──
   var trigger03;
-  var isMale = (gender === 'M' || gender === 'male' || gender === '남성' || gender === '남');
+  var isMale = !((typeof smIsFemaleG==='function') ? smIsFemaleG() : (gender==='여성'||gender==='F'));
   var isMenopause = (menopause && menopause !== 'not_applicable' && menopause !== 'none' && menopause !== null);
 
   // BC별 trigger03 보조 수식어 (성별 분기 전에 BC 특성 반영)
@@ -10860,8 +10875,8 @@ function getCruelHistoryTriggers(userName, ohaengKey, mbtiType, gender, menopaus
     'BC-9':  '척추 구조 불균형이 호르몬 변화와 겹쳐 전신 림프 순환이 더 느려집니다.',
     'BC-10': '상체 림프 정체가 호르몬 변화와 만나면 팔뚝 부종이 더욱 심해집니다.',
     'BC-11': '상체 근육 긴장이 호르몬 변화와 겹쳐 상체 순환이 더 느려지는 시기입니다.',
-    'BC-12': '흉추 구조 불균형이 호르몬 변화와 맞물려 브라라인 지방이 더 고착됩니다.',
-    'BC-13': '갱년기 체형 자체가 이 호르몬 변화의 직접적인 결과입니다. 변화 속도를 인정하는 것이 핵심입니다.',
+    'BC-12': isMale ? '흉추 구조 불균형이 호르몬 변화와 맞물려 가슴 아래 지방이 더 고착됩니다.' : '흉추 구조 불균형이 호르몬 변화와 맞물려 브라라인 지방이 더 고착됩니다.',
+    'BC-13': isMale ? '테스토스테론이 줄어든 체형 자체가 이 호르몬 변화의 직접적인 결과입니다. 변화 속도를 인정하는 것이 핵심입니다.' : '갱년기 체형 자체가 이 호르몬 변화의 직접적인 결과입니다. 변화 속도를 인정하는 것이 핵심입니다.',
     'BC-14': '번아웃 상태에서 호르몬 변화가 겹치면 피로와 의욕 저하가 극단적으로 심해집니다.',
     'BC-15': '대사증후군 복합 위험이 호르몬 변화로 더욱 악화될 수 있어 의학적 모니터링이 필수입니다.',
     'BC-16': '다중 악순환 상태에서 호르몬 변화는 또 하나의 불안정 요인을 추가합니다.',
@@ -14709,6 +14724,9 @@ function renderAll(data) {
   const { userName='고객', axisScores={}, ohaengType='수', mbtiType='INFJ' } = data;
   // ★ gender 추출 — computeBCCode 체인 전체에 전달하여 갱년기·출산 콘텐츠 남성 차단
   const _gender = data.gender || (data.answers && data.answers.Q02) || null;
+  // ★ 남성 분기 전역 플래그 — renderP1/P2/P5/오늘탭 공통 사용
+  const _isMaleResult = !((typeof smIsFemaleG==='function') ? smIsFemaleG() : (_gender==='여성'||_gender==='F'||!_gender));
+  window._smResultIsMale = _isMaleResult;
   // V6.2: data 최상위의 weight/height/age/pfProfile을 answers 안에 주입
   // → computeBodyMetrics()가 BMI·나이를 정확히 계산 (이 전달 없으면 모두 기본값 고착)
   const _baseAnswers = data.answers || {};
@@ -14994,7 +15012,10 @@ function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nic
   var _certCode = bcCode;
   var _bigEl = document.getElementById('p1-bc-code');
   _bigEl.dataset.code = bcCode;
-  document.getElementById('p1-medical-title').textContent = bcMaster.medical_title;
+  // ★ 남성 분기: medical_title_m (M01~M03)
+  const _p1IsMale = window._smResultIsMale || false;
+  const _p1MedTitle = (_p1IsMale && bcMaster.medical_title_m) ? bcMaster.medical_title_m : bcMaster.medical_title;
+  document.getElementById('p1-medical-title').textContent = _p1MedTitle;
   var subEl = document.getElementById('p1-subtitle');
   if (subEl) subEl.dataset.easy = bcMaster.sub_title || bcMaster.medical_title || '';
   var leadNick = document.getElementById('p1-leadin-nick'); if(leadNick){ leadNick.textContent = userName ? (userName + '님') : '당신'; }
@@ -16057,7 +16078,7 @@ function renderP5(metrics, bcCode, axisScores, userName) {
   // ── 3. 영역별 메타 ──
   var DOMAIN_META = {
     회복:  { c:'#6a4fb0', to:'수면·자율신경 클리닉',   key_axes:['A07','A08','A02'] },
-    호르몬:{ c:'#c0397a', to:'내분비내과 · 산부인과',  key_axes:['A03','A07','A01'] },
+    호르몬:{ c:'#c0397a', to:'내분비내과 · 산부인과', to_m:'내분비내과 · 비뇨의학과',  key_axes:['A03','A07','A01'] },
     체형:  { c:'#00acc1', to:'필라테스 · 도수',        key_axes:['A06','A04','A02'] },
     식단:  { c:'#c98a3c', to:'영양 컨설팅',            key_axes:['A01','A05','A08'] },
     운동:  { c:'#ef6c00', to:'PT · 재활트레이닝',      key_axes:['A04','A06','A02'] },
