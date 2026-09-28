@@ -7433,7 +7433,10 @@ app.post('/api/h/diagnosis', async (c) => {
       phone || null,
       stage1_answers ? JSON.stringify(stage1_answers) : null,
       stage2_answers ? JSON.stringify(stage2_answers) : null,
-      stage3_answers ? JSON.stringify(stage3_answers) : null,
+      // [BUG-FIX] survey-hospital.html은 stage3_answers를 payload 최상위가 아닌
+      // raw_answers.stage3에만 넣어 전송한다. stage3_answers가 null이면
+      // parsedRaw.stage3에서 폴백해 stage3_json을 채운다.
+      (stage3_answers ? JSON.stringify(stage3_answers) : (parsedRaw?.stage3 ? JSON.stringify(parsedRaw.stage3) : null)),
       stage4_answers ? JSON.stringify(stage4_answers) : null,
       resolvedOhaeng,
       disp_type || (resolvedOhaeng ? resolvedOhaeng + '형' : null),
@@ -8921,7 +8924,8 @@ app.post('/api/a/diagnosis', async (c) => {
       height ? String(height) : null, weight ? String(weight) : null, phone || null,
       stage1_answers ? JSON.stringify(stage1_answers) : null,
       stage2_answers ? JSON.stringify(stage2_answers) : null,
-      stage3_answers ? JSON.stringify(stage3_answers) : null,
+      // [BUG-FIX] survey-aesthetic.html도 stage3를 raw_answers.stage3에만 넣어 전송
+      (stage3_answers ? JSON.stringify(stage3_answers) : (parsedRaw?.stage3 ? JSON.stringify(parsedRaw.stage3) : null)),
       stage4_answers ? JSON.stringify(stage4_answers) : null,
       resolvedOhaeng,
       disp_type || (resolvedOhaeng ? resolvedOhaeng + '형' : null),
@@ -10049,7 +10053,8 @@ app.post('/api/s/diagnosis', async (c) => {
       height ? String(height) : null, weight ? String(weight) : null, phone || null,
       stage1_answers ? JSON.stringify(stage1_answers) : null,
       stage2_answers ? JSON.stringify(stage2_answers) : null,
-      stage3_answers ? JSON.stringify(stage3_answers) : null,
+      // [BUG-FIX] survey-salon.html도 stage3를 raw_answers.stage3에만 넣어 전송
+      (stage3_answers ? JSON.stringify(stage3_answers) : (parsedRaw?.stage3 ? JSON.stringify(parsedRaw.stage3) : null)),
       stage4_answers ? JSON.stringify(stage4_answers) : null,
       resolvedOhaeng,
       disp_type || (resolvedOhaeng ? resolvedOhaeng + '형' : null),
