@@ -7371,7 +7371,11 @@ function render(){
   if(next){
     h+='<div class="guide">'+IC.spark+'<span><b>'+cardName(next)+'</b>부터 하시면 돼요 — 하나 체크하면 다음이 안내됩니다</span></div>';
   }
-  /* 처방 카드 3개 */
+  /* 처방 카드 3개 — TODAY가 undefined이면 render()를 건너뜀 (타이밍 방어) */
+  if(typeof TODAY==='undefined'||!TODAY||!TODAY.recover||!TODAY.move||!TODAY.food){
+    console.warn('[render] TODAY not ready — skip');
+    return;
+  }
   h+=taskCard('recover',TODAY.recover,next);
   h+=taskCard('move',TODAY.move,next);
   h+=taskCard('food',TODAY.food,next);
