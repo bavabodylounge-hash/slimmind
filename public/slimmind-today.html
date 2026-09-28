@@ -1211,6 +1211,12 @@ function todayTasks(){
   var exDet = exDb.detail || '30분 유산소 + 스트레칭 10분';
   var exSets= exDb.sets  || '';
   var exTip = exDb.tip   || '';
+  // ── M64: 느껴야할곳 — 브래지어 라인(여성) ↔ 날개뼈 아래 끝(남성) ──
+  var _m64m = !((typeof smIsFemaleG==='function')?smIsFemaleG():((META&&META.gender)==='여성'||(META&&META.gender)==='F'));
+  if (_m64m) {
+    exDet = exDet.replace(/브래지어 라인 높이/g, '날개뼈 아래 끝 높이');
+    exTip = exTip.replace(/브래지어 라인 높이/g, '날개뼈 아래 끝 높이');
+  }
 
   // 주차별 강도 조정 (5~8주 심화, 9~12주 최적화)
   var wkPhaseNote = '';
@@ -1231,7 +1237,23 @@ function todayTasks(){
   } else if (_a04 >= 7 && /^BC-(4|7|11)$/.test(_bc)){
     exAlert = '💪 근감소↑ — 저항운동 최우선, 공복 고강도 금지';
   }
-  if (W && W.exercise_ban) exWarn = '🚫 금지: ' + W.exercise_ban;
+  // ── M57~M60: exercise_ban 완경 텍스트 isMale 분기 ──
+  var _m57m = !((typeof smIsFemaleG==='function')?smIsFemaleG():((META&&META.gender)==='여성'||(META&&META.gender)==='F'));
+  if (W && W.exercise_ban) {
+    var _rawBan = W.exercise_ban;
+    // M57: B결(1~2주) 완경 금기
+    _rawBan = _rawBan.replace('완경 밤에 더우면 방 −1℃·저혈압 호흡 천천히',
+      _m57m ? '저혈압 호흡 천천히' : '완경 밤에 더우면 방 −1℃·저혈압 호흡 천천히');
+    // M58: E결(5~9주) 완경 금기
+    _rawBan = _rawBan.replace('근육 손상·급성통증 휴식·완경·갑상선 강도−1',
+      _m57m ? '근육 손상·급성통증 휴식·갑상선 강도−1' : '근육 손상·급성통증 휴식·완경·갑상선 강도−1');
+    // M59: E결 🔬왜 완경 후 가속 분기
+    _rawBan = _rawBan.replace('완경 후 가속', _m57m ? '나이 들수록 가속' : '완경 후 가속');
+    // M60: F결(5~9주) 생리온열 분기
+    _rawBan = _rawBan.replace('복부 시술력·염증·생리 온열주의·원인모를 복통 병원',
+      _m57m ? '복부 시술력·염증·원인모를 복통 병원' : '복부 시술력·염증·생리 온열주의·원인모를 복통 병원');
+    exWarn = '🚫 금지: ' + _rawBan;
+  }
 
   // 오늘 운동 텍스트 조합
   var exMainTx = wkPhaseNote + exNm + ' · ' + exSets;
@@ -1249,6 +1271,25 @@ function todayTasks(){
   var mealTx = dietDb.meal || '';
   var snapTx = dietDb.snap || '';
   var suppTx = dietDb.supp || '';
+  // ── M66~M71: DIET 🔬왜 텍스트 isMale 분기 (BC-13 갱년기 관련) ──
+  var _m66m = !((typeof smIsFemaleG==='function')?smIsFemaleG():((META&&META.gender)==='여성'||(META&&META.gender)==='F'));
+  if (_m66m) {
+    // M66: 아침 두부김계란말이 🔬왜
+    mealTx = mealTx.replace('완경·갱년기엔 특히 아침 콩 단백이 밤새 줄어든 근육 재료를 채워요',
+      '근육이 빠지기 쉬운 40대 이후엔 특히 아침 콩 단백이 밤새 줄어든 근육 재료를 채워요');
+    // M67: 점심 두부연어스테이크 🔬왜
+    mealTx = mealTx.replace('완경·갱년기에 특히 콩 단백과 생선의 오메가3가 근육과 대사 기준선을 다시 잡아줍니다',
+      '배부터 나오는 40대 이후에 특히 콩 단백과 생선의 오메가3가 근육과 대사 기준선을 다시 잡아줍니다');
+    // M68: 저녁 두부스테이크+구운채소 🔬왜
+    mealTx = mealTx.replace('완경기 이소플라본이 에스트로겐 빈자리를 채운다',
+      '저녁 콩 단백이 밤사이 근육 회복 재료가 된다');
+    // M69: 저녁 고등어무조림 🔬왜
+    mealTx = mealTx.replace('완경·갱년기 저녁', '근육 지키는 40대 이후 저녁');
+    // M70: 간식 두유+아몬드 헤드라인
+    snapTx = snapTx.replace('완경기 간식의 기본', '근육 지키는 간식의 기본');
+    // M71: 간식 두유+아몬드 🔬왜
+    snapTx = snapTx.replace('이소플라본을 간식으로도 채운다', '콩 단백을 간식으로도 채운다');
+  }
 
   // 오행 식단 추가
   var ohaengDietNote = '';
@@ -1279,6 +1320,21 @@ function todayTasks(){
   }
 
   // 쿠팡 영양제 링크
+  // ── M78~M82: 이소플라본·갱년기 영양 관련 — 남성 숨김 ──
+  var _m78m = !((typeof smIsFemaleG==='function')?smIsFemaleG():((META&&META.gender)==='여성'||(META&&META.gender)==='F'));
+  if (_m78m) {
+    // M78: 이소플라본 쉬운설명 숨김
+    suppTx = suppTx.replace(/이소플라본[^|]*콩에 든 성분[^|]*/g, '');
+    // M79: 이소플라본 🔬왜 숨김
+    suppTx = suppTx.replace(/완경으로 줄어든 여성호르몬의 빈자리를 식물성으로 채웁니다[^|]*/g, '');
+    // M80: 가속기 추가 '완경 뒤 뼈' 숨김
+    suppTx = suppTx.replace(/완경 뒤 뼈가 빠르게 약해져[^|]*/g, '');
+    // M81: 임상주의 '에스트로겐 급감 구간' 숨김
+    suppTx = suppTx.replace(/에스트로겐 급감 구간[^|]*/g, '');
+    // M82: 영양시트 호르몬·갱년기 항목 숨김
+    suppTx = suppTx.replace(/호르몬·갱년기[^|]*/g, '');
+    mealTx = mealTx.replace(/이소플라본[^|<]*(콩에 든 성분|여성호르몬)[^|<]*/g, '');
+  }
   var suppLink = SUPP_BUY_LINKS[_bc];
   var suppBuyHtml = suppLink
     ? '<br><a href="' + suppLink.url + '" target="_blank" rel="noopener" onclick="coupangClick(\'' + _bc + '\')" ' +
@@ -1315,10 +1371,32 @@ function todayTasks(){
   // ──────────────────────────────────────────────
   var ohRec = (_oh && OHAENG_RECOVERY_DB[_oh]) ? OHAENG_RECOVERY_DB[_oh] : null;
   var recBase = (W && W.recovery_ok) ? W.recovery_ok : '전신 스트레칭 15분 + 수분 2L 보충';
+  // ── M55/M56: 회복카드 BC-13 전용 슬롯 — isMale 분기 ──
+  var _m55m = !((typeof smIsFemaleG==='function')?smIsFemaleG():((META&&META.gender)==='여성'||(META&&META.gender)==='F'));
+  if (_bc === 'BC-13' || _isMenopause) {
+    // M55: '당신이이래서' 첫줄
+    var _rec55 = _m55m
+      ? '자도 개운하지 않고 운동 다음 날 회복이 더디다면, 오늘 밤은 자기 60분 전 화면 끄기부터예요'
+      : '잠자리가 더워 자다 깨고 새벽에 또렷해진다면, 오늘 밤은 방을 더 서늘하게 두는 것부터예요';
+    // M56: '당신이이래서' 둘째줄
+    var _rec56 = _m55m
+      ? '아침에 얼굴이 붓고 자도 개운하지 않다면, 리듬이 흔들린 밤이에요 — 불빛부터 낮춥니다'
+      : '아침에 얼굴이 붓고 밤에 열이 오른다면, 리듬이 흔들린 밤이에요 — 체온부터 내립니다';
+    if (!recBase || recBase === '전신 스트레칭 15분 + 수분 2L 보충')
+      recBase = _rec55 + '\n' + _rec56;
+    else
+      recBase = recBase + '\n💡 ' + _rec55 + '\n💡 ' + _rec56;
+  }
   var recDetail = recBase;
   if (ohRec && ohRec.daily) recDetail = ohRec.daily; // 오행 회복이 BC 회복보다 우선 (더 정교)
 
   // 주차별 회복 강화 (심화/최적화 구간)
+  // ── M61/M62: 완경 관련 줄 — 남성 숨김 ──
+  var _m61m = !((typeof smIsFemaleG==='function')?smIsFemaleG():((META&&META.gender)==='여성'||(META&&META.gender)==='F'));
+  // M61: 관리칸 완경 보정 — 남성 숨김 (여성이고 완경일 때만 표시)
+  var _m61menopauseNote = (!_m61m && _isMenopause) ? '\n🔴 완경 구간 — 체중보다 체조성(근육/지방%) 우선 목표로 전환' : '';
+  // M62: 오늘안할것 완경 줄 — 남성 숨김
+  var _m62menopauseLine = (!_m61m && _isMenopause) ? '\n❌ 오늘 하지 말 것: 급격한 열 자극(사우나·온탕 30분↑) — 완경 홍조 악화' : '';
   var recPhaseNote = '';
   if (WK >= 9)       recPhaseNote = '9~12주 최적화: 회복이 감량 속도를 결정합니다.';
   else if (WK >= 5)  recPhaseNote = '5~8주 심화: 회복 없이는 고원 현상 옵니다.';
@@ -1328,6 +1406,13 @@ function todayTasks(){
   else if (_a05 >= 7)  reAlert = '🧘 스트레스↑ — 취침 전 마그네슘 400mg + 4·7·8 호흡 10분';
   if (RED_FLAGS.indexOf('HTN') >= 0) reWarn = '⚠ 혈압 — 운동 전 준비운동 10분 필수';
   if (ohRec && ohRec.caution && !reWarn) reWarn = '⚠ ' + ohRec.caution;
+  // ── M53/M54: 완경 플래그 — 남성에게 숨김 ──
+  var _m53m = !((typeof smIsFemaleG==='function')?smIsFemaleG():((META&&META.gender)==='여성'||(META&&META.gender)==='F'));
+  var _isMenopause = (RED_FLAGS.indexOf('MENOPAUSE') >= 0);
+  // M53: 완경 플래그 소절 — 남성 숨김 (여성만 표시)
+  var _menopauseLine = (!_m53m && _isMenopause) ? '\n🔴 완경 구간 — 대사 전환 집중 관리 중' : '';
+  // M54: 회복카드 꼬리 '·완경 구간이라 확인' — 남성 숨김
+  var _menopauseTail = (!_m53m && _isMenopause) ? '·완경 구간이라 확인' : '';
 
   // ──────────────────────────────────────────────
   // ④ keyFocus 태그
@@ -1362,7 +1447,7 @@ function todayTasks(){
       warn: diWarn, alert: diAlert },
     { k:'re', nm:'회복',
       tx:   (_oh ? _oh + '('+{목:'木',화:'火',토:'土',금:'金',수:'水'}[_oh]+') 기질 회복 루틴' : '오늘 밤 회복 루틴') + ' · ' + WK + '주차',
-      detail: recDetail + (recPhaseNote ? '\n📌 ' + recPhaseNote : ''),
+      detail: recDetail + (recPhaseNote ? '\n📌 ' + recPhaseNote : '') + _m61menopauseNote + _m62menopauseLine,
       sub:  (W && W.diet_macro_note) ? W.diet_macro_note : '',
       tags: kFocus.slice(2, 3),
       nutr: null,
@@ -2522,11 +2607,21 @@ var BC_TO_ARCHETYPES = {
   'BC-10': ['안 쓰는 팔뚝 부종형'],
   'BC-11': ['상체근육형'],
   'BC-12': ['겨드랑이 부유방형'],
-  'BC-13': ['호르몬스위치 갱년기형'],
+  'BC-13': ['호르몬스위치 갱년기형'],  /* M51: 남성용 '대사전환형' — renderWardrobe()에서 런타임 패치 */
   'BC-14': ['스트레스기절 번아웃형'],
   'BC-15': ['대사증후군 종합형'],
   'BC-16': ['동시다발 다중악순환형']
 };
+/* ── M51/M52: BC_TO_ARCHETYPES 남성 런타임 패치 ── */
+(function(){
+  var _isMale = !((typeof smIsFemaleG==='function')?smIsFemaleG():((META&&META.gender)==='여성'||(META&&META.gender)==='F'));
+  if (_isMale) {
+    // M51: BC-13 남성 배지 = '대사전환형'
+    BC_TO_ARCHETYPES['BC-13'] = ['대사전환형'];
+    // M52: BC-7 남성 배지 = '복압형'
+    BC_TO_ARCHETYPES['BC-7'] = ['복압형'];
+  }
+})();
 
 /* ── renderWardrobe: 옷장 아코디언 렌더 (모두 열린 상태) ── */
 function renderWardrobe(){
