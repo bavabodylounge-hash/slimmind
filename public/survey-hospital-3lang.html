@@ -12575,7 +12575,7 @@ function bmsRenderConcern(zone){
   const en = (window.SMGetLangRaw && window.SMGetLangRaw()==='en');
   window._bmsConcern = null;
   list.innerHTML = items.map((it,i)=>{
-    const _isM = (typeof smIsFemaleG==='function') ? !smIsFemaleG() && (typeof userInfo!=='undefined'&&userInfo&&(userInfo.gender==='남성'||userInfo.gender==='남')) : false;
+    const _isM = !smIsFemaleG();
         const tt = _isM ? (en ? (it.tt_m_en||it.tt_en||it.tt_m||it.tt) : (th ? (it.tt_m_th||it.tt_th||it.tt_m||it.tt) : (it.tt_m||it.tt)))
                         : (en ? (it.tt_en||it.tt) : (th ? it.tt_th : it.tt));
     const _isM=!smIsFemaleG();
@@ -20309,6 +20309,7 @@ const STAGE4_BANK={
     /* ★ 남성에겐 임신·완경이 성립하지 않는다. 점수 구조(옵션 인덱스)는 그대로,
        문구만 성중립 대사 신호로 교체한다. (2차 applyGenderAlts와 같은 원칙) */
     altMale:{
+      title:"살이 찐 게 특정 '사건(검진 수치·약물·몸이 확 바뀐 시기)' 이후인가요, 아니면 원래 늘 그랬나요?",
       hint:"게으름의 흔적이 아닙니다 — 검진 수치나 몸이 확 바뀐 시기 이후라면 호르몬·대사가 달라진 몸, 원래 늘 그랬다면 체질·순환 쪽이에요. 같은 뱃살도 뿌리가 다릅니다.",
       opts:["검진 수치·몸이 확 바뀐 시기 이후부터요","스트레스 받은 시기 이후요","원래 늘 이랬어요"]
     }
@@ -37748,7 +37749,7 @@ html body #surveyApp #stage2 .q:not(.wt-all) [id^="wtread_"], html body #surveyA
           if(/단단/.test(t)) return '단단'; if(/물렁/.test(t)) return '물렁'; if(/셀룰|귤껍질/.test(t)) return '셀룰'; if(/코끼리/.test(t)||(/부종/.test(t)&&!/비부종/.test(t))) return '부종'; } return ''; };
         texture=(zo&&scan(true))||scan(false); }catch(_){} return {region,texture}; })();
       let g=''; try{ g=(typeof userInfo!=='undefined'&&userInfo&&userInfo.gender)||(window.userInfo&&window.userInfo.gender)||''; }catch(_){}
-      const male=/^남성$/.test(g)||/트랜스\s*여성/.test(g);
+      const male=!((typeof smIsFemaleG==='function')?smIsFemaleG():false);
       const rules=(typeof CODE_RULES!=='undefined'&&CODE_RULES)||[];
       const cnt={}; keys.forEach(k=>cnt[k]=0); let hit=0;
       const pass=(r,useTex)=>{ if(!r||!r.axis||!r.axis.length) return false; if(r.tier) return false;

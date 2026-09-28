@@ -12576,7 +12576,7 @@ function bmsRenderConcern(zone){
   const en = (window.SMGetLangRaw && window.SMGetLangRaw()==='en');
   window._bmsConcern = null;
   list.innerHTML = items.map((it,i)=>{
-    const _isM = (typeof smIsFemaleG==='function') ? !smIsFemaleG() && (typeof userInfo!=='undefined'&&userInfo&&(userInfo.gender==='남성'||userInfo.gender==='남')) : false;
+    const _isM = !smIsFemaleG();
         const tt = _isM ? (en ? (it.tt_m_en||it.tt_en||it.tt_m||it.tt) : (th ? (it.tt_m_th||it.tt_th||it.tt_m||it.tt) : (it.tt_m||it.tt)))
                         : (en ? (it.tt_en||it.tt) : (th ? it.tt_th : it.tt));
     const sb = _isM ? (it.sb_m||it.sb) : (en ? (it.sb_en||it.sb) : (th ? it.sb_th : it.sb));  /* ★ 남성: sb_m 우선 */
@@ -15399,7 +15399,7 @@ function applyGenderAlts(){
   stage2Questions.forEach(function(q){
     if(!q || !q.altMale) return;
     const no = q.no;
-    const birthGroup = (userInfo.gender==='여성' || userInfo.gender==='트랜스 남성' || userInfo.gender==='직접 입력');
+    const birthGroup = smIsFemaleG();
     const gKey = birthGroup ? 'F' : 'M';
     if(_altAppliedGender[no] === gKey) return;   /* 같은 버전이면 재렌더 안 함 */
     const genderChanged = (_altAppliedGender[no] !== undefined);
@@ -16449,8 +16449,7 @@ function s2pick(qno,oi,el,multi,max){ try{ window.SMSfx&&SMSfx.pick(); }catch(_)
        예전엔 화면 문구만 altMale 로 바뀌고 해설은 원본(여성) 것을 읽어,
        남성에게 "군대·직장 이후 살이 쪘나요?"를 묻고 "출산은 복벽과 골반을…" 하는
        엉뚱한 해설이 떴다. */
-    const _isF = (typeof userInfo!=='undefined') &&
-                 (userInfo.gender==='여성' || userInfo.gender==='트랜스 남성' || userInfo.gender==='직접 입력');
+    const _isF = smIsFemaleG();
     const _useOpts = (!_isF && _q && _q.altMale && _q.altMale.opts) ? _q.altMale.opts : (_q?_q.opts:null);
     if(_q&&_rc&&_justOn&&_useOpts&&_useOpts[oi]&&_useOpts[oi][2]){
       let _rtxt=_useOpts[oi][2];
@@ -20310,7 +20309,7 @@ const STAGE4_BANK={
     /* ★ 남성에겐 임신·완경이 성립하지 않는다. 점수 구조(옵션 인덱스)는 그대로,
        문구만 성중립 대사 신호로 교체한다. (2차 applyGenderAlts와 같은 원칙) */
     altMale:{
-      title:"그 살, 어떤 시기 이후부터였나요 — 아니면 원래 늘 그랬나요?",
+      title:"살이 찐 게 특정 '사건(검진 수치·약물·몸이 확 바뀐 시기)' 이후인가요, 아니면 원래 늘 그랬나요?",
       hint:"게으름의 흔적이 아닙니다 — 검진 수치나 몸이 확 바뀐 시기 이후라면 호르몬·대사가 달라진 몸, 원래 늘 그랬다면 체질·순환 쪽이에요. 같은 뱃살도 뿌리가 다릅니다.",
       opts:["검진 수치·몸이 확 바뀐 시기 이후부터요","스트레스 받은 시기 이후요","원래 늘 이랬어요"]
     }
@@ -22588,6 +22587,7 @@ function buildRawAnswers(dispAnswers) {
                  } : {},
       meta: {
         completed_at: new Date().toISOString(),
+        total_count:  Object.keys(window._smShown||{}).length || null,
         ua:           navigator.userAgent.slice(0, 120),
         ref_code:     new URLSearchParams(window.location.search).get('ref') || null,
         screen:       `${screen.width}x${screen.height}`
@@ -37766,7 +37766,7 @@ html body #surveyApp #stage2 .q:not(.wt-all) [id^="wtread_"], html body #surveyA
           if(/단단/.test(t)) return '단단'; if(/물렁/.test(t)) return '물렁'; if(/셀룰|귤껍질/.test(t)) return '셀룰'; if(/코끼리/.test(t)||(/부종/.test(t)&&!/비부종/.test(t))) return '부종'; } return ''; };
         texture=(zo&&scan(true))||scan(false); }catch(_){} return {region,texture}; })();
       let g=''; try{ g=(typeof userInfo!=='undefined'&&userInfo&&userInfo.gender)||(window.userInfo&&window.userInfo.gender)||''; }catch(_){}
-      const male=/^남성$/.test(g)||/트랜스\s*여성/.test(g);
+      const male=!((typeof smIsFemaleG==='function')?smIsFemaleG():false);
       const rules=(typeof CODE_RULES!=='undefined'&&CODE_RULES)||[];
       const cnt={}; keys.forEach(k=>cnt[k]=0); let hit=0;
       const pass=(r,useTex)=>{ if(!r||!r.axis||!r.axis.length) return false; if(r.tier) return false;
