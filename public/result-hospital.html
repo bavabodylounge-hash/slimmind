@@ -9297,12 +9297,18 @@ if (typeof module !== 'undefined') {
 
 </script>
 <script>
+try { // ★ bc-engine init try-catch (브라우저 오류 위치 추적용)
 // ── bc-engine (inlined) ──
 // ============================================================
 // SlimMind BC-ENGINE v3.1
 // ※ NICKNAME_TABLE 30개 코드 / Top1×Top2×배경필터
 // ※ computeNickname() / generatePrescription() BC×기질 분리
 // ※ MBTI 레이블 제거 / 남성·완경 P4 분기
+
+// ★ gender / smIsFemaleG 안전 폴백 — bc-engine 블록 평가 시점에 전역이 없을 수 있음
+//    (실제 성별 값은 renderAll 호출 시 함수 체인에서 재계산됨. 객체 리터럴 초기값용.)
+if (typeof gender === 'undefined') { var gender = ''; }
+if (typeof smIsFemaleG === 'undefined') { var smIsFemaleG = undefined; }
 // ============================================================
 
 // ──────────────────────────────────────────────
@@ -14056,6 +14062,12 @@ if (typeof module !== 'undefined' && module.exports) {
     SIMULATOR_METRICS: SIMULATOR_METRICS, ROADMAP_WEEKS: ROADMAP_WEEKS, DISCLAIMER: DISCLAIMER,
     computeBCCode: computeBCCode, getMbtiOhaengInsights: getMbtiOhaengInsights, getCruelHistoryTriggers: getCruelHistoryTriggers,
   };
+}
+
+} catch(__bcInitErr) {
+  // ★ bc-engine 초기화 오류 — 브라우저 콘솔에서 정확한 위치 확인
+  console.error('[bc-engine INIT ERROR] 메시지:', __bcInitErr.message);
+  console.error('[bc-engine INIT ERROR] 스택:', __bcInitErr.stack);
 }
 
 </script>
