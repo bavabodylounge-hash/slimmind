@@ -8966,7 +8966,7 @@ const rows=[
    {tag:'피하흉추',c:C.subcut,name:'부유방형',desc:'겨드랑이·브라라인',cnt:1,isnew:true},
  ]},
  {part:'전신형',cells:[
-   {tag:'변환',c:C.whole,name:'갱년기 변환형',desc:'지방이 이동',cnt:1},
+   {tag:'변환',c:C.whole,name:'갱년기 변환형',name_m:'호르몬 변환형',desc:'지방이 이동',cnt:1}   /* ★신규: name_m */,
    {tag:'부종',c:C.whole,name:'번아웃 무기력형',desc:'방전되며 붓는',cnt:1},
    {tag:'고위험',c:C.whole,name:'대사증후군형',desc:'혈관계 종합위험',cnt:1},
    {tag:'복합',c:C.whole,name:'다중악순환형',desc:'경계없이 다 무너짐',cnt:1},
@@ -9241,7 +9241,7 @@ function elApplyLang(){
 function smIsFemaleG(){
   try{
     return (typeof userInfo!=='undefined') && userInfo &&
-           (userInfo.gender==='여성' || userInfo.gender==='트랜스 남성');
+           (userInfo.gender==='여성' || userInfo.gender==='트랜스 남성' || userInfo.gender==='직접 입력');   /* ★Q함-1 */
   }catch(_){ return false; }
 }
 function smApplyMaleAlt(q){
@@ -9276,6 +9276,7 @@ function smApplyGenderS1(list){
 }
 
 function hfRenderStage1(){
+  window._smShown = window._smShown || {};   /* ★total_count: 초기화 */
   const track = window.hfTrack || 'obesity';
 
   /* ═══ B안: 기본 문항을 "고른 존"에 맞춰 선별한다 ═══
@@ -9427,6 +9428,7 @@ function hfRenderStage1(){
   sqwrap.innerHTML='';
   survQuestions.forEach(q=>{
     const card=document.createElement('div');card.className='q';card.id='sq'+q.no;
+    (window._smShown=window._smShown||{})['1_'+q.no]=1;   /* ★total_count: 1차 카드 기록 */
     const opts=q.opts.map((o,i)=>`<div class="opt" onclick="survPick(${q.no},${i},this)">
       <span class="dot"></span><span class="otext"><b>${o[0]}</b>${o[1]?`<span class="osub">${o[1]}</span>`:''}</span></div>`).join('');
     /* ★ 탄력 측정 문항: 5초 카운트다운을 끼워 넣고, 끝날 때까지 선택지를 잠근다 */
@@ -11933,7 +11935,7 @@ const BMS_CONCERN_MAP = {
   ],
   upper: [
     { t:'obesity', ic:SMI.arm, tt:'팔뚝·어깨 군살', sb:'출렁임 · 두꺼워 보임', tt_th:'ต้นแขน·ไหล่ส่วนเกิน', sb_th:'สั่นคลอน · ดูหนา', tt_en:'Upper-arm · shoulder flab', sb_en:'Jiggly · looks thick' },
-    { t:'obesity', ic:SMI.ribbon, tt:'등·겨드랑이 라인', sb:'브라라인 · 부유방', tt_th:'แผ่นหลัง·รักแร้', sb_th:'แนวเสื้อใน · ไขมันใต้รักแร้', tt_en:'Back · underarm line', sb_en:'Bra line · accessory breast' },
+    { t:'obesity', ic:SMI.ribbon, tt:'등·겨드랑이 라인', sb:'브라라인 · 부유방', sb_m:'가슴 옆 라인 · 겨드랑이 군살', tt_th:'แผ่นหลัง·รักแร้', sb_th:'แนวเสื้อใน · ไขมันใต้รักแร้', tt_en:'Back · underarm line', sb_en:'Bra line · accessory breast' },   /* ★신규: sb_m */
     { t:'skin', ic:SMI.diamond, tt:'팔 피부 처짐·튼살', sb:'탄력 · 결', tt_th:'ผิวแขนหย่อน·ผิวลาย', sb_th:'ความยืดหยุ่น · เนื้อผิว', tt_en:'Arm sagging · stretch marks', sb_en:'Elasticity · texture' },
   ],
   face: [
@@ -12231,7 +12233,7 @@ function bmsRenderConcern(zone){
   window._bmsConcern = null;
   list.innerHTML = items.map((it,i)=>{
     const tt = en ? (it.tt_en||it.tt) : (th ? it.tt_th : it.tt);
-    const sb = en ? (it.sb_en||it.sb) : (th ? it.sb_th : it.sb);
+    const _isM=!smIsFemaleG(); const sb = en ? (it.sb_en||it.sb) : (th ? it.sb_th : (_isM ? (it.sb_m||it.sb) : it.sb));   /* ★신규: sb_m 남성 분기 */
     return `<button type="button" class="bms-cc" data-ci="${i}" onclick="bmsPickConcern(${i})">
       <span class="bms-cc-ic">${it.ic}</span>
       <span class="bms-cc-tx"><span class="bms-cc-tt">${tt}</span><span class="bms-cc-sb">${sb}</span></span>
@@ -14739,7 +14741,7 @@ function applyGenderAlts(){
   stage2Questions.forEach(function(q){
     if(!q || !q.altMale) return;
     const no = q.no;
-    const birthGroup = (userInfo.gender==='여성' || userInfo.gender==='트랜스 남성');
+    const birthGroup = smIsFemaleG();   /* ★Q함-1: birthGroup 교체 */
     const gKey = birthGroup ? 'F' : 'M';
     if(_altAppliedGender[no] === gKey) return;   /* 같은 버전이면 재렌더 안 함 */
     const genderChanged = (_altAppliedGender[no] !== undefined);
@@ -15686,7 +15688,7 @@ function s2pick(qno,oi,el,multi,max){
     try{
       const _q=stage2Questions.find(x=>x.no===qno);
       const _rc=document.getElementById('s2react_'+qno);
-      var _isF=(typeof userInfo!=='undefined')&&(userInfo.gender==='여성'||userInfo.gender==='트랜스 남성');
+      var _isF = smIsFemaleG();   /* ★Q함-1: _isF 보정 */
       var _useOpts=(!_isF&&_q&&_q.altMale&&_q.altMale.opts)?_q.altMale.opts:(_q?_q.opts:null);
       if(_q&&_rc&&_useOpts&&_useOpts[oi]&&_useOpts[oi][2]){
         let _rtxt=_useOpts[oi][2];
@@ -18939,14 +18941,22 @@ const STAGE4_BANK={
     title:"그 살, 어떤 시기 이후부터였나요. 아니면 원래 늘 그랬나요.",
     hint:"게으름의 흔적이 아니에요. — 임신·완경·약물 같은 시기 이후부터라면 호르몬이 바뀐 몸, 원래 늘 그랬다면 체질·순환 쪽. 같은 하체살도 뿌리가 달라요.",
     opts:["완경·임신·출산·약물 이후부터요","스트레스 받은 시기 이후요","원래 늘 이랬어요"],
-    scores:{0:'A03',1:'A03',2:'A02'}
+    scores:{0:'A03',1:'A03',2:'A02'},
+    altMale:{   /* ★신규: 남성판 */
+      hint:"게으름의 흔적이 아니에요. — 검진 수치나 몸이 확 바뀐 시기 이후부터라면 호르몬·대사가 달라진 몸, 원래 늘 그랬다면 체질·순환 쪽. 같은 뱃살도 뿌리가 달라요.",
+      opts:["검진 수치·몸이 확 바뀐 시기 이후부터요","스트레스 받은 시기 이후요","원래 늘 이랬어요"]
+    }
   },
   // ─ A03 vs A07 : 호르몬 vs 스트레스 ─
   A03_A07:{
     title:"몸이 가장 힘들 때, 뭐가 먼저 오던가요.",
     hint:"예민해서가 아니었어요. — 생리 불규칙·갱년기·피부 변화가 먼저면 호르몬, 불면·두근거림·야식 충동이 먼저면 스트레스.",
     opts:["생리 불규칙·갱년기 증상·피부 변화","불면·야식 충동·두근거림","둘 다 비슷해요"],
-    scores:{0:'A03',1:'A07',2:null}
+    scores:{0:'A03',1:'A07',2:null},
+    altMale:{   /* ★신규: 남성판 */
+      hint:"예민해서가 아니었어요. — 성욕 저하·탈모·피부 변화가 먼저면 호르몬, 불면·두근거림·야식 충동이 먼저면 스트레스.",
+      opts:["성욕 저하·탈모·피부 변화","불면·야식 충동·두근거림","둘 다 비슷해요"]
+    }
   },
   // ─ A07 vs A08 : 스트레스 vs 심리식이 ─
   A07_A08:{
@@ -18980,6 +18990,9 @@ const STAGE4_BANK={
        그 답이 `applyDecision()`에서 **엉뚱한 축에 +3**을 꽂았다.
      A04·A05·A06·A08·A09가 1등인 사람은 마지막 질문이 **분석을 오염시키는 장치**였던 셈이다. */
   DEFAULT:{
+    altMale:{   /* ★신규: 남성판 DEFAULT opts[3] DEF_HOOK에서 동적처리됨 */
+      opts:["호르몬·활력 저하 부분"]
+    },
     title:"여기까지 답해오면서, '어… 이건 완전 내 얘기잖아' 하고 멈칫한 순간, 있었죠.",
     hint:"그 순간, 몸이 당신에게 하는 말이었어요. — 가장 세게 반응한 그 지점이 핵심 원인이에요. 오래 혼자 헤맸던 이유가 거기 있어요. 마지막으로, 그 직감을 믿어봐요.",
     opts:["혈당·식후 졸음 부분","붓기·순환 부분","스트레스·야식 부분","호르몬·갱년기 부분"],
@@ -19054,6 +19067,9 @@ const STAGE4_BANK={
   A03_A04:{
     title:"근육이 빠지는 그 느낌, 언제부터였나요.",
     hint:"방심해서 놓친 게 아니에요. — 출산·갱년기 같은 시기 이후 확 달라졌으면 호르몬, 몇 년째 서서히면 근육이 빠지는 것. 시작점이 방향을 가릅니다.",
+    altMale:{   /* ★신규: 남성판 */
+      hint:"방심해서 놓친 게 아니에요. — 40대 전후·수술·약물 같은 시기 이후 확 달라졌으면 호르몬, 몇 년째 서서히면 근육이 빠지는 것. 시작점이 방향을 가릅니다."
+    },
     opts:["특정 시기 이후 확 달라졌어요","몇 년째 서서히 그래요","잘 모르겠어요"],
     scores:{0:'A03',1:'A04',2:null}
   },
@@ -19108,6 +19124,10 @@ const STAGE4_BANK={
   A03_A05:{
     title:"소화가 안 되는 그거, 음식 탓일까요 시기 탓일까요.",
     hint:"먹는 걸 조심 안 해서가 아니에요. — 특정 음식 먹으면 꼭 그러면 장, 주기·시기에 따라 오르내리면 호르몬. 원인이 다르면 방법도 달라져요.",
+    altMale:{   /* ★신규: 남성판 */
+      hint:"먹는 걸 조심 안 해서가 아니에요. — 특정 음식 먹으면 꼭 그러면 장, 음식과 상관없이 시기에 따라 오르내리면 호르몬. 원인이 다르면 방법도 달라져요.",
+      opts:["특정 음식 먹을 때마다 그래요","음식과 상관없이 시기에 따라 달라져요","잘 모르겠어요"]
+    },
     opts:["특정 음식 먹으면 꼭 그래요","주기·시기에 따라 달라져요","둘 다요"],
     scores:{0:'A05',1:'A03',2:null}
   },
@@ -19120,6 +19140,10 @@ const STAGE4_BANK={
   A03_A08:{
     title:"식욕이 늘어난 그거, 주기적인가요 스트레스인가요.",
     hint:"자제력이 없어서가 아니에요. — 생리 전처럼 주기적으로 터지면 호르몬, 마음 가라앉는 날 터지면 감정. 언제 터지는지가 뿌리를 알려줘요.",
+    altMale:{   /* ★신규: 남성판 */
+      hint:"자제력이 없어서가 아니에요. — 특정 시기마다 규칙적으로 터지면 호르몬, 마음 가라앉는 날 터지면 감정. 언제 터지는지가 뿌리를 알려줘요.",
+      opts:["특정 시기마다 규칙적으로 터져요","마음이 가라앉는 날 터져요","둘 다 비슷해요"]
+    },
     opts:["생리 전처럼 주기적으로 터져요","기분 나쁜 날 터져요","둘 다요"],
     scores:{0:'A03',1:'A08',2:null}
   },
@@ -19132,6 +19156,10 @@ const STAGE4_BANK={
   A03_A10:{
     title:"몸이 확 달라진 그 시점, 있었죠.",
     hint:"그때부터였다는 걸 이제 알겠죠. — 출산·갱년기처럼 분명한 기점이 있으면 호르몬, 기점 없이 서서히면 다른 축일 수 있어요. 몸은 그 시점을 기억해요.",
+    altMale:{   /* ★신규: 남성판 */
+      hint:"그때부터였다는 걸 이제 알겠죠. — 40대 전후·수술·약물처럼 분명한 기점이 있으면 호르몬, 기점 없이 서서히면 다른 축일 수 있어요. 몸은 그 시점을 기억해요.",
+      opts:["40대 전후·수술·약물 등 분명한 기점이 있어요","기점 없이 서서히 달라졌어요","잘 모르겠어요"]
+    },
     opts:["출산·갱년기 등 분명한 기점이 있어요","특별한 기점 없이 서서히요","잘 모르겠어요"],
     scores:{0:'A03',1:null,2:null}
   },
@@ -19281,7 +19309,8 @@ function dwellUncertainty(){
 const DEF_HOOK={
   A01:{ko:'혈당·식후 졸음 부분',      en:'Blood sugar / post-meal drowsiness', th:'เรื่องน้ำตาลในเลือด·ง่วงหลังมื้ออาหาร'},
   A02:{ko:'붓기·순환 부분',           en:'Swelling / circulation',             th:'เรื่องอาการบวม·การไหลเวียน'},
-  A03:{ko:'호르몬·갱년기 부분',        en:'Hormones / menopause',               th:'เรื่องฮอร์โมน·วัยทอง'},
+  A03:{ko:'호르몬·갱년기 부분',        en:'Hormones / menopause',               th:'เรื่องฮอร์โมน·วัยทอง',
+       ko_m:'호르몬·활력 저하 부분',    en_m:'Hormones / low vitality',          th_m:'เรื่องฮอร์โมน·พลังถดถอย'},   /* ★Q함-1: 남성 텍스트 */
   A04:{ko:'근력·계단·팔다리 부분',      en:'Strength / stairs / limbs',          th:'เรื่องกำลังกล้ามเนื้อ·บันได·แขนขา'},
   A05:{ko:'소화·배 팽만 부분',         en:'Digestion / bloating',               th:'เรื่องการย่อย·ท้องอืด'},
   A06:{ko:'자세·체형 틀어짐 부분',      en:'Posture / body alignment',           th:'เรื่องท่าทาง·รูปร่างที่บิดเบี้ยว'},
@@ -19295,7 +19324,8 @@ function buildDefaultQuestion(scores){
   if(top.length<2) return {key:'DEFAULT',...STAGE4_BANK.DEFAULT};   /* 폴백 */
   const L=(window.SMGetLangRaw&&window.SMGetLangRaw())||'ko';
   const lk=(L==='th'||L==='en')?L:'ko';
-  const opts=top.map(ax=>DEF_HOOK[ax][lk]);
+  const _dhMale=!smIsFemaleG();
+  const opts=top.map(ax=>{ const lkm=lk+'_m'; return (_dhMale && DEF_HOOK[ax] && DEF_HOOK[ax][lkm]) ? DEF_HOOK[ax][lkm] : DEF_HOOK[ax][lk]; });   /* ★Q함-1: DEF_HOOK 남성 분기 */
   const sc={};
   top.forEach((ax,i)=>{ sc[i]=ax; });
   /* ★ "잘 모르겠어요"를 반드시 넣는다 — 없으면 아무 데도 안 꽂히는 사람이
@@ -19423,9 +19453,10 @@ function renderStage4Dynamic(qs){
   const _s4TH=(window.SMGetLangRaw && window.SMGetLangRaw()==='th');
   const _s4T=(s)=>(_s4TH && window.SM_I18N_TH && window.SM_I18N_TH[s]!==undefined)?window.SM_I18N_TH[s]:s;
   /* ★ 2026-08-05 병원 정합: 남성 성별 대체(altMale) — q.altMale 없으면 스킵 */
-  const _s4Male=(typeof userInfo!=='undefined' && userInfo && userInfo.gender==='남성');
+  const _s4Male=!smIsFemaleG();   /* ★Q함-1: _s4Male 교체 */
   qs.forEach((q,i)=>{
-    if(_s4Male && q.altMale) q={...q, hint:q.altMale.hint, opts:q.altMale.opts};
+    if(_s4Male && q.altMale) q={...q, title:q.altMale.title||q.title, hint:q.altMale.hint, opts:q.altMale.opts};   /* ★Q실-1 */
+    (window._smShown=window._smShown||{})['4_'+i]=1;   /* ★total_count: 4차 카드 기록 */
     const card=document.createElement('div');card.className='q';card.id='s4q'+i;
     const opts=q.opts.map((o,oi)=>`<div class="opt" onclick="s4pick(${i},${oi},this)"><span class="dot"></span><span class="otext"><b>${_s4T(o)}</b></span></div>`).join('');
     const label=i===0&&qs.length>1?(_s4TH?'คำถามทางแยก':'갈림길 질문'):(_s4TH?'คำถามสุดท้าย':'마지막 질문');
@@ -19738,7 +19769,7 @@ function stage2Bonus(){
 
   /* Q11 출산(여) / 군대·직장(남) — altMale로 선택지가 통째로 바뀐다.
      성별에 따라 같은 인덱스가 다른 의미이므로 userInfo.gender로 분기한다. */
-  const _male = (typeof userInfo!=='undefined' && userInfo && userInfo.gender==='남');
+  const _male = !smIsFemaleG();   /* ★Q함-2: 저장값 남성 불일치 버그 수정 */
   if(_male){
     if(has(11,0)){ add('A01',1.0); add('A07',0.8); }   /* 그때부터 확 쪘음 */
     if(has(11,1)){ add('A01',0.4); }
@@ -19749,10 +19780,16 @@ function stage2Bonus(){
 
   /* Q12 갱년기·완경 — 0 복부 중심 변화 / 1 미레나·관리 / 2 완경 / 3 신호 조금 / 4 없음
      갱년기엔 지방이 하체→복부로 이동한다 (에스트로겐 감소) */
-  if(has(12,0)){ add('A03',2.0); add('A01',1.0); }
-  if(has(12,1)){ add('A03',1.5); }
-  if(has(12,2)){ add('A03',2.0); add('A04',0.8); }
-  if(has(12,3)){ add('A03',0.8); }
+  if(_male){   /* ★Q함-3: 남성 12번(40대 이후 복부 중심) */
+    if(has(12,0)){ add('A03',1.5); add('A04',0.8); }
+    if(has(12,1)){ add('A03',0.8); }
+    /* 보기2 → 점수 없음 */
+  } else {
+    if(has(12,0)){ add('A03',2.0); add('A01',1.0); }
+    if(has(12,1)){ add('A03',1.5); }
+    if(has(12,2)){ add('A03',2.0); add('A04',0.8); }
+    if(has(12,3)){ add('A03',0.8); }
+  }
 
   /* Q13 흡연 — 0 피움 / 1 끊은지 얼마 / 2 안 피움 (니코틴 → 코르티솔 → 복부 지방) */
   if(has(13,0)){ add('A07',1.2); add('A02',0.8); }
@@ -20203,7 +20240,7 @@ function decideCode(){
   let _g='';
   try{ if(typeof userInfo!=='undefined' && userInfo && userInfo.gender) _g=userInfo.gender; }catch(e){}
   if(!_g && window.userInfo && window.userInfo.gender) _g=window.userInfo.gender;
-  const isMale = /^남성$/.test(_g) || /트랜스\s*여성/.test(_g);   /* 트랜스 여성 = 출생 시 남성 신체 */
+  const isMale = !smIsFemaleG();   /* ★Q함-1: decideCode 성별 통합 */
   const FEMALE_ONLY = ['털털한 PCOS형','출산후 바람빠진 풍선형','겨드랑이 부유방형'];
   const topScore = scores[topAxis] || 0;
   const weak = topScore < SM_BASE_TH;                     /* 원인 미특정 구간 */
@@ -21013,6 +21050,7 @@ function buildRawAnswers(dispAnswers) {
                  } : {},
       meta: {
         completed_at: new Date().toISOString(),
+        total_count:  Object.keys(window._smShown||{}).length || null,
         ua:           navigator.userAgent.slice(0, 120),
         ref_code:     new URLSearchParams(window.location.search).get('ref') || null,
         screen:       `${screen.width}x${screen.height}`
@@ -21388,6 +21426,7 @@ async function submitDiagnosis(dispAnswers) {
     raw_answers:     rawAnswers,
     ref_code:        refCode,
     survey_category: 'aesthetic',   /* [BUG-FIX 20260909] 'esthetic' → 'aesthetic' 오타 수정 — 결과지 라우팅용 업종값 */
+    total_count:     Object.keys(window._smShown||{}).length || null,   /* ★total_count */
     completed_at:    new Date().toISOString()
   };
 
