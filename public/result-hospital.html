@@ -9575,11 +9575,16 @@ function detectBackground(answers, gender, category) {
     return arr.some(function(v) { return Number(v) !== noneIdx; });
   };
 
-  // 1위. 갱년기·완경 — ★남성에게는 절대 반환 금지
+  // 1위. 갱년기·완경(여성) / 남성 호르몬 변화(남성) — M04
   // 병원: q12_menopause 0=복부변환, 1=호르몬치료, 2=완경, 3=신호조금 → 0~2 = 갱년기
   // 남성 Q12 = "40대 이후 복부화" 질문으로 값이 동일(0~2)하게 저장되므로 반드시 성별 체크 필요
-  if (!_isMale) {
-    var menoNum = answers['q12_menopause'];
+  var menoNum = answers['q12_menopause'];
+  if (_isMale) {
+    // ★ M04: 남성은 q12 번호 0~1(복부화 있음)일 때만 '남성 호르몬 변화' 반환, 2=아니에요는 배경 없음
+    if (menoNum !== undefined && menoNum !== null && Number(menoNum) <= 1) {
+      return '남성 호르몬 변화';
+    }
+  } else {
     if (menoNum !== undefined && menoNum !== null && Number(menoNum) <= 2) {
       return '갱년기';
     }
@@ -9620,13 +9625,18 @@ function detectBackground(answers, gender, category) {
     return '약물';
   }
 
-  // 5위. 출산 경험
+  // 5위. 출산 경험(여성) / 생활 변화(남성) — M06/M07
   // 병원: q11_event 0=출산후체형변화(실제 변화 있음)만 '출산' → 1=변화없음은 제외
   var q11 = answers['q11_event'];
-  if (q11 !== undefined && q11 !== null && Number(q11) === 0) return '출산'; // ★ <= 1 → === 0 으로 수정 (체형변화 있는 경우만)
+  if (q11 !== undefined && q11 !== null && Number(q11) === 0) {
+    // ★ M06: 남성은 '생활 변화' 반환
+    return _isMale ? '생활 변화' : '출산';
+  }
   // 호환 키
   var birth = answers['Q3'] || answers['birth_history'] || answers['Q_birth'] || '';
-  if (birth === 'yes' || birth === 'Y' || birth === '있음' || birth === '경험있음') return '출산';
+  if (birth === 'yes' || birth === 'Y' || birth === '있음' || birth === '경험있음') {
+    return _isMale ? '생활 변화' : '출산';
+  }
 
   // 6위. 가족력·유전
   // 병원: q1_family 배열 3=없음 제외  /  q2_parent 1=모계유전, 0/2=부계유전
