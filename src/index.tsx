@@ -223,6 +223,10 @@ function requireRole(role: 'MASTER' | 'CONSULTANT' | 'ANY') {
     const user = await getAuthUser(c)
     if (!user) return c.json({ error: '인증이 필요합니다.' }, 401)
     if (role === 'MASTER' && user.role !== 'MASTER') return c.json({ error: '관리자 권한이 필요합니다.' }, 403)
+    // CONSULTANT: MASTER도 허용 (슈퍼셋 권한)
+    if (role === 'CONSULTANT' && user.role !== 'CONSULTANT' && user.role !== 'MASTER') {
+      return c.json({ error: '컨설턴트 권한이 필요합니다.' }, 403)
+    }
     c.set('user', user)
     await next()
   }
@@ -16073,6 +16077,223 @@ app.get('/api/ai/today/:result_id', requireRole('ANY'), async (c) => {
       ai_today_src: row.ai_today_src,
       ai_today_at: row.ai_today_at,
     })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// ═══════════════════════════════════════════════════════════════════
+// ■ 슬롯 C — 컨설턴트 답장 초안 (generate-today-c / approve-today-c)
+//   헌법 부칙 C: 3~5문장 200~300자, 자동발송 금지, status='draft'
+// ═══════════════════════════════════════════════════════════════════
+
+const AI_TODAY_C_SYSTEM = `You are the same writer as the Today tab, now holding Seat C only.
+Seat C is the consultant reply draft — a private working draft that the real consultant will review, edit, and decide whether to send. It is NEVER auto-sent.
+
+TASK: Write a reply draft in the consultant's voice, responding to the client's most recent question or check-in message.
+
+RULES:
+- 3 to 5 sentences, 200–300 Korean characters total.
+- Honorific Korean (존댓말). Warm but professional.
+- Open with one sentence that names what the client said or did (no flattery, just mirroring).
+- Body: one practical next step or reassurance tied to their data (week, gate_stage, checks_rate, streak).
+- Close: one forward-looking sentence pointing to a concrete landing (check today · re-measurement · talk to consultant).
+- ABSOLUTE FORBIDDEN: ① inventing prescriptions ② disease names without flag ③ clinical jargon on screen ④ scolding/guilt ⑤ fear/exaggeration ⑥ any noun not in the wardrobe ⑦ inventing numbers ⑧ auto-send or delivery of this draft.
+- Output ONLY: {"slot":"C","body":"..."}  — no markdown, no explanation.`
+
+// POST /api/ai/generate-today-c — 컨설턴트 전용 C슬롯 초안 생성
+app.post('/api/ai/generate-today-c', requireRole('CONSULTANT'), async (c) => {
+  try {
+    const db: D1Database = (c.env as any).DB
+    const apiKey: string = (c.env as any).ANTHROPIC_API_KEY
+    if (!apiKey) return c.json({ ok: false, error: 'ANTHROPIC_API_KEY 미설정' }, 500)
+
+    const body = await c.req.json() as any
+    const { result_id, input } = body
+
+    if (!result_id) return c.json({ ok: false, error: 'result_id 필수' }, 400)
+
+    // 결과지 + C슬롯 현황 조회
+    const row = await db.prepare(
+      `SELECT id, today_slot_c, today_slot_c_status, today_slot_c_week
+       FROM diagnosis_results WHERE id=? LIMIT 1`
+    ).bind(result_id).first<any>().catch(() => null)
+
+    if (!row) return c.json({ ok: false, error: `결과지 없음: ${result_id}` }, 404)
+
+    // 굽기 1회 원칙: 같은 주차에 draft/approved 이미 있으면 cached 반환
+    const currentWeek = input?.week || 1
+    if (row.today_slot_c && row.today_slot_c_week === currentWeek) {
+      return c.json({
+        ok: true,
+        cached: true,
+        slot: 'C',
+        status: row.today_slot_c_status || 'draft',
+        data: JSON.parse(row.today_slot_c),
+      })
+    }
+
+    // Claude API 호출
+    const userMsg = `Generate Today tab slot C (consultant reply draft) as JSON. Input data:\n${JSON.stringify(input || {}, null, 2)}\n\nIMPORTANT: Output ONLY valid JSON {"slot":"C","body":"..."}. No markdown, no explanation.`
+
+    const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 500,
+        temperature: 0.7,
+        system: AI_TODAY_C_SYSTEM,
+        messages: [{ role: 'user', content: userMsg }],
+      }),
+    })
+
+    if (!claudeRes.ok) {
+      const errText = await claudeRes.text()
+      return c.json({ ok: false, error: `Claude API 오류: ${claudeRes.status}`, detail: errText }, 500)
+    }
+
+    const claudeJson = await claudeRes.json() as any
+    const rawText = claudeJson?.content?.[0]?.text || ''
+
+    // JSON 파싱
+    let parsed: any
+    try {
+      const jsonMatch = rawText.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) throw new Error('JSON 없음')
+      parsed = JSON.parse(jsonMatch[0])
+    } catch (e) {
+      return c.json({ ok: false, error: 'JSON 파싱 실패', raw: rawText }, 500)
+    }
+
+    // 기본 검증
+    if (!parsed || parsed.slot !== 'C' || !parsed.body) {
+      return c.json({ ok: false, error: '슬롯 C 검증 실패', raw: rawText }, 422)
+    }
+    const bodyLen = String(parsed.body).length
+    if (bodyLen < 50 || bodyLen > 400) {
+      return c.json({ ok: false, error: `C슬롯 길이 오류: ${bodyLen}자`, raw: rawText }, 422)
+    }
+
+    // D1 저장 — status는 반드시 'draft' (자동발송 금지)
+    const jsonStr = JSON.stringify(parsed)
+    await db.prepare(
+      `UPDATE diagnosis_results
+       SET today_slot_c=?, today_slot_c_status='draft', today_slot_c_week=?,
+           ai_today_src='wardrobe_v4', ai_today_at=CURRENT_TIMESTAMP
+       WHERE id=?`
+    ).bind(jsonStr, currentWeek, result_id).run()
+
+    return c.json({ ok: true, cached: false, slot: 'C', status: 'draft', data: parsed })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// POST /api/ai/approve-today-c — 컨설턴트가 C슬롯 초안 승인
+// 승인 후 slimmind-today.html의 con-tx에 우선 표시됨
+app.post('/api/ai/approve-today-c', requireRole('CONSULTANT'), async (c) => {
+  try {
+    const db: D1Database = (c.env as any).DB
+    const body = await c.req.json() as any
+    const { result_id, edited_body } = body
+
+    if (!result_id) return c.json({ ok: false, error: 'result_id 필수' }, 400)
+
+    // 현재 C슬롯 조회
+    const row = await db.prepare(
+      `SELECT today_slot_c, today_slot_c_status FROM diagnosis_results WHERE id=? LIMIT 1`
+    ).bind(result_id).first<any>().catch(() => null)
+
+    if (!row) return c.json({ ok: false, error: '결과지 없음' }, 404)
+    if (!row.today_slot_c) return c.json({ ok: false, error: 'C슬롯 초안이 없습니다. 먼저 생성하세요.' }, 400)
+
+    // 컨설턴트가 수정했으면 edited_body로 덮어씀
+    let finalJson = row.today_slot_c
+    if (edited_body && typeof edited_body === 'string' && edited_body.trim()) {
+      const existing = JSON.parse(row.today_slot_c)
+      existing.body = edited_body.trim()
+      finalJson = JSON.stringify(existing)
+    }
+
+    // 승인자 정보 — JWT에서 추출 (role/code)
+    const authHeader = c.req.header('Authorization') || ''
+    const token = authHeader.replace('Bearer ', '')
+    let approvedBy = 'consultant'
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]))
+      approvedBy = payload.code || payload.sub || 'consultant'
+    } catch {}
+
+    // D1 업데이트 — status='approved', approved_at/by 기록
+    await db.prepare(
+      `UPDATE diagnosis_results
+       SET today_slot_c=?, today_slot_c_status='approved',
+           today_slot_c_approved_at=CURRENT_TIMESTAMP,
+           today_slot_c_approved_by=?
+       WHERE id=?`
+    ).bind(finalJson, approvedBy, result_id).run()
+
+    const finalData = JSON.parse(finalJson)
+    return c.json({ ok: true, slot: 'C', status: 'approved', data: finalData, approved_by: approvedBy })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// GET /api/ai/today-c/:result_id — C슬롯 조회 (컨설턴트용)
+app.get('/api/ai/today-c/:result_id', requireRole('CONSULTANT'), async (c) => {
+  try {
+    const db: D1Database = (c.env as any).DB
+    const result_id = c.req.param('result_id')
+
+    const row = await db.prepare(
+      `SELECT today_slot_c, today_slot_c_status, today_slot_c_week,
+              today_slot_c_approved_at, today_slot_c_approved_by
+       FROM diagnosis_results WHERE id=? LIMIT 1`
+    ).bind(result_id).first<any>().catch(() => null)
+
+    if (!row) return c.json({ ok: false, error: '결과지 없음' }, 404)
+
+    const parse = (s: string | null) => { try { return s ? JSON.parse(s) : null } catch { return null } }
+
+    return c.json({
+      ok: true,
+      result_id,
+      slot: 'C',
+      data: parse(row.today_slot_c),
+      status: row.today_slot_c_status || null,
+      week: row.today_slot_c_week,
+      approved_at: row.today_slot_c_approved_at,
+      approved_by: row.today_slot_c_approved_by,
+    })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// GET /api/ai/today-c-client/:result_id — C슬롯 승인본 조회 (고객용 — approved만 반환)
+app.get('/api/ai/today-c-client/:result_id', requireRole('ANY'), async (c) => {
+  try {
+    const db: D1Database = (c.env as any).DB
+    const result_id = c.req.param('result_id')
+
+    const row = await db.prepare(
+      `SELECT today_slot_c, today_slot_c_status
+       FROM diagnosis_results WHERE id=? LIMIT 1`
+    ).bind(result_id).first<any>().catch(() => null)
+
+    if (!row) return c.json({ ok: false, error: '결과지 없음' }, 404)
+    if (row.today_slot_c_status !== 'approved') {
+      return c.json({ ok: true, available: false }) // draft는 고객에게 미표시
+    }
+
+    const parse = (s: string | null) => { try { return s ? JSON.parse(s) : null } catch { return null } }
+    return c.json({ ok: true, available: true, slot: 'C', data: parse(row.today_slot_c) })
   } catch (e: any) {
     return c.json({ ok: false, error: String(e) }, 500)
   }

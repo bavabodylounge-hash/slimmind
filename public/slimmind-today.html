@@ -713,11 +713,51 @@ function boot(){
    2. 없으면 POST /api/ai/generate-today (생성)
    3. 실패 시 폴백 유지
    ════════════════════════════════════════════════════════════════ */
+/* ────────────────────────────────────────────────────────────────
+   E슬롯 격주 트리거 판단:
+   - 기본: 짝수 주차(WK % 2 === 0)
+   - 정교화: 해당 주에 실제로 체크가 4일 이상 있어야 반영 의미 있음
+             (체크율 < 30% 주차는 데이터 부족으로 격주 반영 스킵)
+   ────────────────────────────────────────────────────────────────
+   F슬롯 재측정 트리거 판단:
+   - 기본: WK === 4 || WK === 8
+   - 정교화: 서버 결과지의 diagnosis_count(또는 updated_at 변화)로
+             실제 재측정이 완료됐는지 확인
+             → /api/ai/today/:id 응답의 F_week와 현재 WK 비교로 자연스럽게 1회 제한
+   ──────────────────────────────────────────────────────────────── */
+function _shouldTriggerE(){
+  // 짝수 주차 기본 조건
+  if (WK < 2 || WK % 2 !== 0) return false;
+  // 이번 주 실제 체크 수 확인 (로컬 dayState 기반)
+  var checkedDays = 0;
+  for (var i = 0; i < 7; i++) { if (dayState(i) > 0) checkedDays++; }
+  // 3일 이상 체크가 있어야 E슬롯 의미 있음 (약 40% 이상)
+  return checkedDays >= 3;
+}
+
+function _shouldTriggerF(){
+  // 재측정 주차 기본 조건 (4주·8주)
+  if (WK !== 4 && WK !== 8) return false;
+  // 추가 확인: 재측정 완료 플래그
+  // - localStorage 'slimmind_remeasure_wk' 에 완료된 주차 저장 (체크인 앱에서 기록)
+  // - 없으면 주차만으로 판단 (기본 동작 유지)
+  try {
+    var doneWk = parseInt(localStorage.getItem('slimmind_remeasure_done_wk') || '0', 10);
+    if (doneWk > 0) return doneWk === WK; // 완료 기록 있으면 해당 주차만
+  } catch(e){}
+  // 완료 기록 없으면 주차 조건만으로 판단 (폴백)
+  return true;
+}
+
 function _loadTodaySlots(){
   var sid = _getTodaySid();
   if (!sid) return;
   var jwt = _getTodayJwt();
   if (!jwt) return; // 비인증 사용자는 AI 슬롯 미표시
+
+  // E/F 트리거 미리 판단
+  var triggerE = _shouldTriggerE();
+  var triggerF = _shouldTriggerF();
 
   // GET 조회 먼저
   fetch('/api/ai/today/' + encodeURIComponent(sid), {
@@ -731,24 +771,31 @@ function _loadTodaySlots(){
       if (!res.slots.B || res.slots.B_week !== WK) {
         _generateTodaySlot(sid, jwt, 'B');
       }
-      // E슬롯 격주 체크 (짝수 주차에 생성)
-      if (WK >= 2 && WK % 2 === 0 && (!res.slots.E || res.slots.E_week !== WK)) {
+      // E슬롯: 격주 트리거 + 이번 주차 미생성
+      if (triggerE && (!res.slots.E || res.slots.E_week !== WK)) {
         _generateTodaySlot(sid, jwt, 'E');
+      }
+      // F슬롯: 재측정 트리거 + 이번 주차 미생성
+      if (triggerF && (!res.slots.F || res.slots.F_week !== WK)) {
+        _generateTodaySlot(sid, jwt, 'F');
       }
     } else {
       // 캐시 없음 → 생성 요청
-      _generateAllTodaySlots(sid, jwt);
+      _generateAllTodaySlots(sid, jwt, triggerE, triggerF);
     }
   })
   .catch(function(){ /* 네트워크 오류 — 폴백 유지 */ });
 }
 
-function _generateAllTodaySlots(sid, jwt){
+function _generateAllTodaySlots(sid, jwt, triggerE, triggerF){
+  // triggerE/F 인자 없으면 자체 판단 (직접 호출 시 대비)
+  if (triggerE === undefined) triggerE = _shouldTriggerE();
+  if (triggerF === undefined) triggerF = _shouldTriggerF();
   ['A','B'].forEach(function(slot){ _generateTodaySlot(sid, jwt, slot); });
-  // E: 격주(2주차부터 짝수 주차)
-  if (WK >= 2 && WK % 2 === 0) _generateTodaySlot(sid, jwt, 'E');
-  // F: 재측정 주차(4주·8주)
-  if (WK === 4 || WK === 8) _generateTodaySlot(sid, jwt, 'F');
+  // E: 격주 + 실제 체크 3일 이상
+  if (triggerE) _generateTodaySlot(sid, jwt, 'E');
+  // F: 재측정 주차(4·8주) + 재측정 완료 확인
+  if (triggerF) _generateTodaySlot(sid, jwt, 'F');
 }
 
 function _generateTodaySlot(sid, jwt, slot){
@@ -821,8 +868,8 @@ function _applyTodaySlots(slots){
       elE.style.display = '';
     }
   }
-  // F슬롯: 재측정 재설계 (4주·8주)
-  if (slots && slots.F && (WK === 4 || WK === 8)) {
+  // F슬롯: 재측정 재설계 — _shouldTriggerF()와 동일 조건으로 표시
+  if (slots && slots.F && _shouldTriggerF()) {
     var elF = document.getElementById('ai-slot-f');
     var elFBody = document.getElementById('ai-slot-f-body');
     if (elF && slots.F.body) {
@@ -867,7 +914,7 @@ function _getRecentTags(){
 }
 function _getTopAxis(rank){
   var entries = Object.entries(AXIS_SCORES || {});
-  entries.sort(function(a,b){ return (b[1] as number) - (a[1] as number); });
+  entries.sort(function(a,b){ return Number(b[1]) - Number(a[1]); });
   var entry = entries[rank - 1];
   return entry ? { id: entry[0], score: entry[1] } : null;
 }
@@ -2096,10 +2143,29 @@ function renderProg(){
 
 /* ── 컨설턴트 코멘트 동적화 (axisScores + BC_CODE + redFlags + dxTop3) ── */
 function renderCon(){
-  // 1순위: 컨설턴트가 직접 입력한 메시지
+  // 1순위: C슬롯 승인본 (비동기 로드 — 먼저 2/3순위로 표시 후 덮어씀)
+  var sid = _getTodaySid();
+  var jwt = _getTodayJwt();
+  if (sid && jwt) {
+    fetch('/api/ai/today-c-client/' + encodeURIComponent(sid), {
+      headers: { 'Authorization': 'Bearer ' + jwt }
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(res){
+      if (res.ok && res.available && res.data && res.data.body) {
+        document.getElementById('con-box').style.display = '';
+        document.getElementById('con-nm').textContent = (CON ? CON + ' 컨설턴트' : '담당 컨설턴트');
+        document.getElementById('con-tx').innerHTML = escHtml(res.data.body);
+      }
+    })
+    .catch(function(){});
+  }
+
+  // 2순위: 컨설턴트가 직접 입력한 메시지
   var manualTxt = '';
   try { manualTxt = localStorage.getItem('slimmind_con_reply_wk') || ''; } catch(e){}
 
+  // 3순위: 자동 생성 코멘트
   var txt = manualTxt || _genConComment();
   if (!txt) return;
 
