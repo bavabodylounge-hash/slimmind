@@ -7995,6 +7995,7 @@ app.get('/result-hospital/:id', async (c) => {
     // ── DB에서 ref_code 조회 → 클라이언트에 주입 (b2b_code 자동 추적용) ──
     const db = (c.env as any).DB as D1Database | undefined
     let injectedRefCode: string | null = null
+    let injectedGender: string | null = null   // ★ 서버사이드 gender 주입용 (if(db) 블록 밖에 선언)
     if (db) {
       // ★ BUG-FIX (2026-08-22): 구버전 hospital_responses(H- 접두사)와
       //   신버전 diagnosis_results(UUID, survey_category='hospital') 양쪽에서 존재 확인
@@ -8031,8 +8032,7 @@ app.get('/result-hospital/:id', async (c) => {
 <title>결과지를 찾을 수 없습니다 | SlimMind</title>
 <style>body{font-family:'Pretendard',sans-serif;background:#f6f4ee;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}.box{text-align:center;padding:48px 32px;background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08);max-width:420px}h2{font-size:22px;color:#1a1a17;margin-bottom:12px}p{color:#7c776b;font-size:14px;line-height:1.7;margin-bottom:0}a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;color:#fff;border-radius:10px;text-decoration:none;font-weight:700}</style></head><body><div class="box"><h2>결과지를 찾을 수 없습니다</h2><p>링크가 만료되었거나<br>잘못된 주소입니다.</p><a href="/">새로 시작하기</a></div></body></html>`, 404)
       }
-      // gender 사전 주입용 변수 (서버사이드 window.__LAST_META__ 주입에 사용)
-      let injectedGender: string | null = null
+      // gender 사전 주입용 변수 (외부에서 let injectedGender로 이미 선언됨)
       try {
         // diagnosis_results에서 ref_code + gender 조회 (신파이프라인 우선)
         const diagRow = await db.prepare(
