@@ -358,16 +358,28 @@ const SUBTYPE_RULES: SubtypeRule[] = [
 // [판정 순서] ①요요궤적+원인미특정→요요형 ②1등축<6점→부위기본형
 //             ③성별필터 ④부위+질감+축 ⑤부위+축 ⑥부위+질감 ⑦부위 ⑧폴백
 // 입력: axisScores(A01~A10), bodyRegions(부위배열), textures(질감배열),
-//       flags({menopause,...}), sex('male'|'female'|'other'|undefined), hasYoyoTrajectory
+//       flags(객체 또는 배열 — 배열이면 대문자 문자열, 객체면 boolean 맵), 
+//       sex('male'|'female'|'other'|undefined), hasYoyoTrajectory
 // 출력: { bc, name, signatureAxes }
 function decideSubtype(
   axisScores: Record<string, number>,
   bodyRegions: string[],
   textures: string[],
-  flags: Record<string, boolean> = {},
+  flags: Record<string, boolean> | string[] = {},
   sex?: string,
   hasYoyoTrajectory?: boolean
 ): { bc: string; name: string; signatureAxes: string[] } {
+
+  // ★ [v5.0] flags 정규화: 배열이면 대소문자 무관 Set으로, 객체면 boolean 맵 그대로
+  // 설문지는 flags=['MENOPAUSE','YOYO',...] 배열로 보내고
+  // 서버 폴백은 parsedRaw.flags 객체({menopause:true,...})를 기대했으나
+  // 실제 설문지 buildRawAnswers는 redFlags 배열로 전송 → 양쪽 모두 수용
+  const flagsNorm: Record<string, boolean> = {}
+  if (Array.isArray(flags)) {
+    flags.forEach(f => { flagsNorm[String(f).toLowerCase()] = true })
+  } else if (flags && typeof flags === 'object') {
+    Object.entries(flags).forEach(([k, v]) => { flagsNorm[k.toLowerCase()] = Boolean(v) })
+  }
 
   const normRegions  = bodyRegions.map(r => r.toUpperCase())
   const normTextures = textures.map(t => t.toLowerCase())
@@ -382,7 +394,8 @@ function decideSubtype(
   const top1Score = axisScores[sortedAxes[0]] ?? 0
 
   // ① MENOPAUSE 플래그 강제: 즉시 BC-13
-  if (flags.menopause) {
+  // flagsNorm에 menopause(소문자)로 통일됨
+  if (flagsNorm.menopause) {
     return { bc: 'BC-13', name: '갱년기변환형', signatureAxes: ['A03','A07','A06'] }
   }
 
@@ -6288,7 +6301,7 @@ app.post('/api/v1/diagnosis', async (c) => {
       '셀룰라이트귤껍질 기본형':    'BC-5',
       // ── BC-6: 코르티솔·야식형 ────────────────────────────────
       '스트레스성 야식부엉이형':    'BC-6',  // ✅ CORRECT: BC-6
-      '팔다리거미 올챙이배형':      'BC-9',  // ✅ FIX: 구 BC-4/BC-9 → 정답 BC-6 (SUBTYPE_RULES bc:'BC-6')
+      '팔다리거미 올챙이배형':      'BC-9',  // ✅ CORRECT: BC-9 (SUBTYPE_RULES L307 bc:'BC-9' 확인완료)
       // ── BC-7: 호르몬·출산형 ──────────────────────────────────
       '출산후 바람빠진 풍선형':     'BC-7',
       '운동할수록 말벅지형':        'BC-8',
@@ -7424,7 +7437,10 @@ app.post('/api/h/diagnosis', async (c) => {
         const { bodyRegionsEn: _hRegions, texturesEn: _hTextures } = extractRegionsAndTextures(parsedRaw, body)
         const _hAxisForDecide = normalizeAxForDecide(resolvedAxisScores)
         if (Object.keys(_hAxisForDecide).length > 0) {
-          const _hFlags: Record<string, boolean> = (parsedRaw?.flags && typeof parsedRaw.flags === 'object') ? parsedRaw.flags : {}
+          // ★ [v5.0] redFlags(배열) 우선, flags(객체) 폴백 — 설문지는 배열로 전송
+          const _hFlags: string[] | Record<string, boolean> =
+            Array.isArray(parsedRaw?.redFlags) ? parsedRaw.redFlags :
+            (parsedRaw?.flags && typeof parsedRaw.flags === 'object') ? parsedRaw.flags : []
           const _hSex = extractSexFromGender(gender || '')
           const _hHasYoyo = Boolean(parsedRaw?.hasYoyoTrajectory || parsedRaw?.yoyo)
           console.log(`[/api/h/diagnosis] decideSubtype 입력 - regions:${JSON.stringify(_hRegions)} textures:${JSON.stringify(_hTextures)} sex:${_hSex} yoyo:${_hHasYoyo}`)
@@ -9097,7 +9113,10 @@ app.post('/api/a/diagnosis', async (c) => {
         const { bodyRegionsEn: _aRegions, texturesEn: _aTextures } = extractRegionsAndTextures(parsedRaw, body)
         const _aAxisForDecide = normalizeAxForDecide(resolvedAxisScores)
         if (Object.keys(_aAxisForDecide).length > 0) {
-          const _aFlags: Record<string, boolean> = (parsedRaw?.flags && typeof parsedRaw.flags === 'object') ? parsedRaw.flags : {}
+          // ★ [v5.0] redFlags(배열) 우선, flags(객체) 폴백 — 설문지는 배열로 전송
+          const _aFlags: string[] | Record<string, boolean> =
+            Array.isArray(parsedRaw?.redFlags) ? parsedRaw.redFlags :
+            (parsedRaw?.flags && typeof parsedRaw.flags === 'object') ? parsedRaw.flags : []
           const _aSex = extractSexFromGender(gender || '')
           const _aHasYoyo = Boolean(parsedRaw?.hasYoyoTrajectory || parsedRaw?.yoyo)
           console.log(`[/api/a/diagnosis] decideSubtype 입력 - regions:${JSON.stringify(_aRegions)} textures:${JSON.stringify(_aTextures)} sex:${_aSex} yoyo:${_aHasYoyo}`)
@@ -9669,7 +9688,13 @@ app.post('/api/f/diagnosis', async (c) => {
     // ★ [v4.9] bc_code_key null 시 서버사이드 decideSubtype으로 BC 재계산
     // 프론트 매핑 실패(닉네임 매핑 누락 등) → axis_scores + region/texture로 서버가 직접 판정
     // ── 전역 toEnRegions/toEnTextures/extractRegionsAndTextures 사용 (중복 정의 제거) ──
-    const _raws = body.raw_answers || {}
+    // ★ [v5.0] raw_answers가 문자열 JSON으로 올 경우 파싱 (h/a/s와 동일하게 처리)
+    const _rawsRaw = body.raw_answers
+    const _raws: Record<string, any> = _rawsRaw
+      ? (typeof _rawsRaw === 'string'
+          ? (() => { try { return JSON.parse(_rawsRaw) } catch { return {} } })()
+          : (typeof _rawsRaw === 'object' ? _rawsRaw : {}))
+      : {}
     // body_regions / textures 영어코드 추출 — DB 저장 + decideSubtype 공용
     // ★ raw_answers 안에 body_regions/textures 우선, 없으면 단수 region/texture 폴백
     const { bodyRegionsEn, texturesEn } = extractRegionsAndTextures(_raws, body)
@@ -9678,7 +9703,10 @@ app.post('/api/f/diagnosis', async (c) => {
     let serverBcNickname: string | null = body.bc_nickname || null
     if (!serverBcCode && axisScores && Object.keys(axisScores).length > 0) {
       try {
-        const flags: Record<string, boolean> = (_raws.flags && typeof _raws.flags === 'object') ? _raws.flags : {}
+        // ★ [v5.0] redFlags(배열) 우선, flags(객체) 폴백 — 설문지는 배열로 전송
+        const flags: string[] | Record<string, boolean> =
+          Array.isArray(_raws.redFlags) ? _raws.redFlags :
+          (_raws.flags && typeof _raws.flags === 'object') ? _raws.flags : []
         const sex = extractSexFromGender(body.gender || '')
         console.log(`[/api/f/diagnosis] decideSubtype 입력 - regions:${JSON.stringify(bodyRegionsEn)} textures:${JSON.stringify(texturesEn)} sex:${sex}`)
         const computed = decideSubtype(axisScores, bodyRegionsEn, texturesEn, flags, sex)
@@ -10170,7 +10198,10 @@ app.post('/api/s/diagnosis', async (c) => {
         const { bodyRegionsEn: _sRegions, texturesEn: _sTextures } = extractRegionsAndTextures(parsedRaw, body)
         const _sAxisForDecide = normalizeAxForDecide(resolvedAxisScores)
         if (Object.keys(_sAxisForDecide).length > 0) {
-          const _sFlags: Record<string, boolean> = (parsedRaw?.flags && typeof parsedRaw.flags === 'object') ? parsedRaw.flags : {}
+          // ★ [v5.0] redFlags(배열) 우선, flags(객체) 폴백 — 설문지는 배열로 전송
+          const _sFlags: string[] | Record<string, boolean> =
+            Array.isArray(parsedRaw?.redFlags) ? parsedRaw.redFlags :
+            (parsedRaw?.flags && typeof parsedRaw.flags === 'object') ? parsedRaw.flags : []
           const _sSex = extractSexFromGender(gender || '')
           const _sHasYoyo = Boolean(parsedRaw?.hasYoyoTrajectory || parsedRaw?.yoyo)
           console.log(`[/api/s/diagnosis] decideSubtype 입력 - regions:${JSON.stringify(_sRegions)} textures:${JSON.stringify(_sTextures)} sex:${_sSex} yoyo:${_sHasYoyo}`)
