@@ -7104,8 +7104,11 @@ app.get('/api/ai/7p/:result_id', allowPublicAI(), async (c) => {
     const row = await db.prepare(
       `SELECT mental_intro, insight_ctx_0, insight_ctx_1, insight_ctx_2, know_close, ai_7p_src, ai_7p_at FROM diagnosis_results WHERE id=? LIMIT 1`
     ).bind(result_id).first() as any
-    if (!row) return c.json({ error: 'not found' }, 404)
+    if (!row) return c.json({ ok: false, error: 'not found' }, 404)
+    const has7p = !!(row.mental_intro || row.know_close)
     return c.json({
+      ok:            has7p,
+      cached:        has7p,
       mental_intro:  row.mental_intro  || null,
       insight_ctx: [row.insight_ctx_0 || null, row.insight_ctx_1 || null, row.insight_ctx_2 || null],
       know_close:    row.know_close    || null,
@@ -7258,8 +7261,11 @@ app.get('/api/ai/cruel/:result_id', allowPublicAI(), async (c) => {
     const row = await db.prepare(
       `SELECT finale_body, ai_cruel_src, ai_cruel_at FROM diagnosis_results WHERE id=? LIMIT 1`
     ).bind(result_id).first() as any
-    if (!row) return c.json({ error: 'not found' }, 404)
+    if (!row) return c.json({ ok: false, error: 'not found' }, 404)
+    const hasCruel = !!row.finale_body
     return c.json({
+      ok:          hasCruel,
+      cached:      hasCruel,
       finale_body: row.finale_body || null,
       src: row.ai_cruel_src || 'wardrobe_v4',
       ai_cruel_at: row.ai_cruel_at || null,
