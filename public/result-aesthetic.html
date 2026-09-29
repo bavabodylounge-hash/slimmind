@@ -7367,6 +7367,7 @@ render();
         </div>
         <div class="p7v4-nick" id="p7sum-nick"></div>
         <div class="p7v4-onel" id="p7sum-onel">오후의 무거운 다리는 살이 아닙니다. 하루치 수분이 고이는 림프 순환 문제입니다.</div>
+        <div id="ai-mental-intro" style="display:none"></div>
         <span id="p7-truth-code" style="display:none"></span>
       </div>
     </div>
@@ -7647,6 +7648,7 @@ render();
   <!-- ⑨ 서명 클로징 -->
   <div class="p7v4-sign fade-up" style="transition-delay:.26s" id="p7close">
     <div class="p7v4-sign-mark"></div>
+    <div id="ai-know-close" style="display:none"></div>
     <div class="p7v4-sign-tx" id="p7close-body">여기까지가 <b id="p7close-name"></b>의 결론입니다.<br>하지만 진짜 변화는 지금부터,<br><em>슬림마인드와 함께</em> 시작됩니다.</div>
     <div class="p7v4-sign-by">SLIMMIND · BODYCODE REPORT</div>
   </div>
@@ -15287,6 +15289,124 @@ function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nic
         .catch(function(){ /* 조회 실패 → 폴백 유지 */ });
     }
   }
+
+  // ── AI 7P 슬롯 렌더링 ─────────────────────────────────────────────
+  function _apply7pSlots(data) {
+    if (!data) return;
+    var elMI = document.getElementById('ai-mental-intro');
+    var elOnel = document.getElementById('p7sum-onel');
+    if (elMI && data.mental_intro) {
+      elMI.textContent = data.mental_intro;
+      elMI.style.display = '';
+      if (elOnel) elOnel.style.display = 'none';
+    }
+    var ictx = data.insight_ctx || [];
+    ['ai-insight-ctx-0','ai-insight-ctx-1','ai-insight-ctx-2'].forEach(function(id, i) {
+      var el = document.getElementById(id);
+      var ans = document.getElementById('p7-ans' + (i+1));
+      if (el && ictx[i]) {
+        el.textContent = ictx[i];
+        el.style.display = '';
+        if (ans) ans.style.display = 'none';
+      }
+    });
+    var elKC = document.getElementById('ai-know-close');
+    var elKCb = document.getElementById('p7close-body');
+    if (elKC && data.know_close) {
+      elKC.textContent = data.know_close;
+      elKC.style.display = '';
+      if (elKCb) elKCb.style.display = 'none';
+    }
+  }
+
+  (function() {
+    var _rid7p = (window.__RESULT__ && (window.__RESULT__.result_id || window.__RESULT__.id)) ||
+                 (new URLSearchParams(window.location.search)).get('id') || null;
+    var _auth7p = (window.__IS_AUTHORIZED__ === true);
+    if (!_auth7p) return;
+
+    if (window.__RESULT__ && window.__RESULT__.mental_intro) {
+      _apply7pSlots({
+        mental_intro: window.__RESULT__.mental_intro,
+        insight_ctx: [window.__RESULT__.insight_ctx_0, window.__RESULT__.insight_ctx_1, window.__RESULT__.insight_ctx_2],
+        know_close: window.__RESULT__.know_close,
+      });
+    } else if (_rid7p) {
+      fetch('/api/ai/7p/' + _rid7p)
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(d){
+          if (d && d.mental_intro) {
+            _apply7pSlots(d);
+          } else {
+            var _rd = window.__RESULT__ || window.__DIAG_DATA__ || {};
+            fetch('/api/ai/generate-7p', {
+              method: 'POST',
+              headers: {'Content-Type':'application/json'},
+              body: JSON.stringify({
+                result_id: _rid7p,
+                name: _rd.name || _rd.user_name || '',
+                sex: _rd.gender || _rd.sex || '여성',
+                ohaeng: _rd.ohaeng || null,
+                mbti: _rd.mbti || null,
+                blood_type: _rd.blood_type || null,
+                bcCode: _rd.bc_code || _rd.bc_primary || null,
+                subtype: _rd.subtype || null,
+              })
+            })
+            .then(function(r2){ return r2.ok ? r2.json() : null; })
+            .then(function(d2){ if (d2 && d2.mental_intro) _apply7pSlots(d2); })
+            .catch(function(){});
+          }
+        })
+        .catch(function(){});
+    }
+  })();
+
+  // ── AI 잔혹사 피날레 슬롯 렌더링 ──────────────────────────────────
+  function _applyFinaleSlot(finaleText) {
+    if (!finaleText) return;
+    ['ai-finale-body','ai-finale-body-static'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) { el.textContent = finaleText; el.style.display = ''; }
+    });
+  }
+
+  (function() {
+    var _ridC = (window.__RESULT__ && (window.__RESULT__.result_id || window.__RESULT__.id)) ||
+                (new URLSearchParams(window.location.search)).get('id') || null;
+    var _authC = (window.__IS_AUTHORIZED__ === true);
+    if (!_authC) return;
+
+    if (window.__RESULT__ && window.__RESULT__.finale_body) {
+      _applyFinaleSlot(window.__RESULT__.finale_body);
+    } else if (_ridC) {
+      fetch('/api/ai/cruel/' + _ridC)
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(d){
+          if (d && d.finale_body) {
+            _applyFinaleSlot(d.finale_body);
+          } else {
+            var _rd = window.__RESULT__ || window.__DIAG_DATA__ || {};
+            fetch('/api/ai/generate-cruel', {
+              method: 'POST',
+              headers: {'Content-Type':'application/json'},
+              body: JSON.stringify({
+                result_id: _ridC,
+                name: _rd.name || _rd.user_name || '',
+                sex: _rd.gender || _rd.sex || '여성',
+                bcCode: _rd.bc_code || _rd.bc_primary || null,
+                subtype: _rd.subtype || null,
+                methods: _rd.methods || [],
+              })
+            })
+            .then(function(r2){ return r2.ok ? r2.json() : null; })
+            .then(function(d2){ if (d2 && d2.finale_body) _applyFinaleSlot(d2.finale_body); })
+            .catch(function(){});
+          }
+        })
+        .catch(function(){});
+    }
+  })();
 
   // BC 마스터 9종
   const bcGrid = document.getElementById('p1-bc-grid');
