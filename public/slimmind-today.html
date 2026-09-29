@@ -396,6 +396,8 @@ body{
     <div class="prog-bd">
       <div class="prog-t" id="prog-t">오늘 할 일 세 가지</div>
       <div class="prog-s" id="prog-s">하나만 체크해도 오늘은 성공이에요.</div>
+      <!-- [A] AI 슬롯: 왜 [이름]님만의 프로그램인가 -->
+      <div id="ai-slot-a" style="display:none;margin-top:6px;font-size:12.5px;line-height:1.6;color:#6b5e4e;"></div>
       <!-- V6.0: 로드맵 비율 3색 바 — getRoadmapRatioOverride() 결과 반영 -->
       <div id="ratio-bar" style="display:none;margin-top:8px;">
         <div id="ratio-bar-track" style="display:flex;height:5px;border-radius:4px;overflow:hidden;gap:1px;">
@@ -439,6 +441,8 @@ body{
   <div class="streak">
     <div class="streak-n" id="streak-n">0<small>일</small></div>
     <div class="streak-tx" id="streak-tx">오늘 하나만 체크하면 <b>연속 기록이 시작</b>돼요.</div>
+    <!-- [E] AI 슬롯: 격주 체크 반영 문장 -->
+    <div id="ai-slot-e" style="display:none;margin-top:6px;font-size:12.5px;line-height:1.6;color:#5e6e7e;"></div>
   </div>
 
   <!-- ── 11대 진단 우선순위 (dxTop3) ── -->
@@ -476,6 +480,18 @@ body{
     <span class="sec-line"></span>
   </div>
   <div id="center-area"></div>
+
+  <!-- [B] AI 슬롯: 주차 머리글 (hd-week 아래에 보완 문장) -->
+  <div id="ai-slot-b" style="display:none;background:#f8f6ff;border-radius:12px;padding:10px 14px;margin:10px 0;font-size:13px;line-height:1.65;color:#4a3e6b;">
+    <div id="ai-slot-b-title" style="font-weight:800;font-size:14px;margin-bottom:4px;color:#2c2360;"></div>
+    <div id="ai-slot-b-body"></div>
+  </div>
+
+  <!-- [F] AI 슬롯: 재측정 재설계 문장 (재측정 시점에만 표시) -->
+  <div id="ai-slot-f" style="display:none;background:#f0fdf4;border-radius:12px;padding:10px 14px;margin:10px 0;font-size:13px;line-height:1.65;color:#1a4d2e;">
+    <div style="font-weight:800;font-size:12px;color:#16a34a;margin-bottom:4px;">🔄 재측정 결과 반영</div>
+    <div id="ai-slot-f-body"></div>
+  </div>
 
   <!-- ── 컨설턴트 코멘트 ── -->
   <div class="con" id="con-box" style="display:none">
@@ -688,6 +704,172 @@ function boot(){
   renderWardrobe();    // 체형 아형 옷장 v3 — 서사·소견 아코디언
   renderCenters();
   detectPlatform();
+  _loadTodaySlots();   // AI 오늘탭 슬롯 A·B·E·F
+}
+
+/* ════════════════════════════════════════════════════════════════
+   AI 오늘탭 슬롯 A·B·E·F — 3단계 렌더링 패턴
+   1. GET /api/ai/today/:result_id (서버 캐시)
+   2. 없으면 POST /api/ai/generate-today (생성)
+   3. 실패 시 폴백 유지
+   ════════════════════════════════════════════════════════════════ */
+function _loadTodaySlots(){
+  var sid = _getTodaySid();
+  if (!sid) return;
+  var jwt = _getTodayJwt();
+  if (!jwt) return; // 비인증 사용자는 AI 슬롯 미표시
+
+  // GET 조회 먼저
+  fetch('/api/ai/today/' + encodeURIComponent(sid), {
+    headers: { 'Authorization': 'Bearer ' + jwt }
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(res){
+    if (res.ok && res.slots) {
+      _applyTodaySlots(res.slots);
+      // B슬롯 주차 체크: 현재 주차와 저장된 주차가 다르면 재생성
+      if (!res.slots.B || res.slots.B_week !== WK) {
+        _generateTodaySlot(sid, jwt, 'B');
+      }
+      // E슬롯 격주 체크 (짝수 주차에 생성)
+      if (WK >= 2 && WK % 2 === 0 && (!res.slots.E || res.slots.E_week !== WK)) {
+        _generateTodaySlot(sid, jwt, 'E');
+      }
+    } else {
+      // 캐시 없음 → 생성 요청
+      _generateAllTodaySlots(sid, jwt);
+    }
+  })
+  .catch(function(){ /* 네트워크 오류 — 폴백 유지 */ });
+}
+
+function _generateAllTodaySlots(sid, jwt){
+  ['A','B'].forEach(function(slot){ _generateTodaySlot(sid, jwt, slot); });
+  // E: 격주(2주차부터 짝수 주차)
+  if (WK >= 2 && WK % 2 === 0) _generateTodaySlot(sid, jwt, 'E');
+  // F: 재측정 주차(4주·8주)
+  if (WK === 4 || WK === 8) _generateTodaySlot(sid, jwt, 'F');
+}
+
+function _generateTodaySlot(sid, jwt, slot){
+  var d = loadData() || {};
+  var inputData = {
+    result_id: sid,
+    slot: slot,
+    input: {
+      sex: (d.sex || 'F'),
+      name: NAME,
+      bc_code: BC_CODE,
+      ohaeng: OHAENG_KEY,
+      subtype: (d.subtype || d.bc_subtype || ''),
+      week: WK,
+      gate_stage: PHASE,
+      flags: RED_FLAGS,
+      checks_rate: _calcCheckRate(),
+      streak: _calcStreak(),
+      check_tags: _getRecentTags(),
+      consultant: CON || '',
+      axis_top1: _getTopAxis(1),
+      axis_top2: _getTopAxis(2),
+    }
+  };
+  fetch('/api/ai/generate-today', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + jwt
+    },
+    body: JSON.stringify(inputData)
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(res){
+    if (res.ok && res.data) {
+      var slots = {}; slots[slot] = res.data;
+      _applyTodaySlots(slots);
+    }
+  })
+  .catch(function(){});
+}
+
+function _applyTodaySlots(slots){
+  // A슬롯: prog-s 뒤 보완 문단
+  if (slots && slots.A) {
+    var elA = document.getElementById('ai-slot-a');
+    if (elA) {
+      var aData = slots.A;
+      var aTxt = (aData.title ? '<b>' + aData.title + '</b><br>' : '') + (aData.body || '');
+      elA.innerHTML = aTxt;
+      elA.style.display = '';
+    }
+  }
+  // B슬롯: 주차 머리글
+  if (slots && slots.B) {
+    var elB = document.getElementById('ai-slot-b');
+    var elBTitle = document.getElementById('ai-slot-b-title');
+    var elBBody = document.getElementById('ai-slot-b-body');
+    if (elB && slots.B.title) {
+      if (elBTitle) elBTitle.textContent = slots.B.title;
+      if (elBBody) elBBody.textContent = slots.B.body || '';
+      elB.style.display = '';
+    }
+  }
+  // E슬롯: streak-tx 뒤 격주 반영 문장
+  if (slots && slots.E) {
+    var elE = document.getElementById('ai-slot-e');
+    if (elE && slots.E.body) {
+      elE.textContent = slots.E.body;
+      elE.style.display = '';
+    }
+  }
+  // F슬롯: 재측정 재설계 (4주·8주)
+  if (slots && slots.F && (WK === 4 || WK === 8)) {
+    var elF = document.getElementById('ai-slot-f');
+    var elFBody = document.getElementById('ai-slot-f-body');
+    if (elF && slots.F.body) {
+      if (elFBody) elFBody.textContent = slots.F.body;
+      elF.style.display = '';
+    }
+  }
+}
+
+/* 오늘탭 AI 슬롯 보조 함수 */
+function _getTodaySid(){
+  try {
+    var p = new URLSearchParams(location.search);
+    return p.get('id') || p.get('result_id') || '';
+  } catch(e){ return ''; }
+}
+function _getTodayJwt(){
+  try { return localStorage.getItem('slimmind_jwt') || ''; } catch(e){ return ''; }
+}
+function _calcCheckRate(){
+  var total = 0, done = 0;
+  for (var i=0; i<7; i++){
+    total++;
+    if (dayState(i) > 0) done++;
+  }
+  return total > 0 ? Math.round((done/total)*100) : 0;
+}
+function _calcStreak(){
+  var jsd = new Date().getDay();
+  var today = (jsd === 0) ? 6 : jsd - 1;
+  var n = 0;
+  for (var i=today; i>=0; i--){ if (dayState(i) > 0) n++; else break; }
+  return n;
+}
+function _getRecentTags(){
+  try {
+    var logs = JSON.parse(localStorage.getItem('slimmind_logs') || '[]');
+    var tags = [];
+    logs.slice(-14).forEach(function(l){ if (l.miss) tags.push(l.miss); });
+    return tags.slice(-5);
+  } catch(e){ return []; }
+}
+function _getTopAxis(rank){
+  var entries = Object.entries(AXIS_SCORES || {});
+  entries.sort(function(a,b){ return (b[1] as number) - (a[1] as number); });
+  var entry = entries[rank - 1];
+  return entry ? { id: entry[0], score: entry[1] } : null;
 }
 
 /* ── 헤더 렌더 (오행 배지 + redFlags 경고) ── */

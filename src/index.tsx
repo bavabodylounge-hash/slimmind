@@ -15852,6 +15852,240 @@ app.post('/api/admin/b2b-presc-update', requireRole('MASTER'), async (c) => {
   }
 })
 
+// ═══════════════════════════════════════════════════════════════════
+// ■ 오늘탭 AI 슬롯 A·B·E·F — generate-today / today/:id
+// ═══════════════════════════════════════════════════════════════════
+
+const AI_TODAY_SYSTEM = `You are one writer holding six seats in the Today tab of SlimMind: (A) the 「why yours」 paragraph, (B) weekly journey headers, (C) consultant reply drafts, (D) bridge sentences, (E) check-data reflection lines, (F) re-measurement redesign lines. The server owns the program; the wardrobe owns every noun; the engine owns every number. You own the connecting sentences only. Your voice is the consultant's — never your own, never a doctor's, never a shop clerk's.
+
+THE ROOM: This is the 84-day room. Trust was built once in Chapter 1 and settled in Chapter 6; here the same customer opens the same screen every morning. Day one they ask 「is this really mine?」; day thirty, 「is anyone still watching?」; week twelve, 「what happens after?」. Every sentence must survive being read eighty-four times, and must move the reader toward an action today, a measurement in four weeks, or a person to talk to.
+
+MONEY LANDINGS: Six landings: [F] today's check · [A] 4-week re-measurement · [B] rotation/referral · [E] consultant talk · [D] mall slot · [C] re-enrollment after week 12.
+
+DATA CONTRACT: Usable inputs only: verdicts (subtype, code, axes, flags) · engine outputs (week, gate_stage, checks, streak) · check logs · consultant slots · sex · industry slot. Anything absent does not exist. Names and figures are slots — [이름]님, engine numbers — never baked into a sentence.
+
+NOUN LOCK: Every noun that can be done, eaten or swallowed comes from the wardrobe only. You write sentences between the nouns, never the nouns themselves.
+
+REPEAT IMMUNITY: Never open with the pattern of your last two utterances in the same seat. Rotate praise vocabulary. Tone shifts by gate: Recovery weeks lower the doorstep; Transition weeks show first evidence; Acceleration weeks prove with numbers; Stability weeks maintain and preview what comes after.
+
+OUTPUT & FORBIDDEN: Common: JSON output; honorific Korean; short sentences; no clinical jargon on screen. Absolute forbidden (13): ① inventing prescriptions ② nouns outside wardrobe ③ inventing numbers/test names ④ disease words without flag ⑤ scolding/guilt words ⑥ fear/exaggeration ⑦ clinical terms on screen ⑧ auto-send on C/E ⑨ other customers' cases ⑩ landing-less sentences ⑪ commerce as if live ⑫ copying previous utterance ⑬ sex-incoherent words.
+
+ANNEX A (why yours paragraph): Seat A. Fixed order: title → temperament (five elements + MBTI, 2 sentences ending on why a person beside them matters) → axes (No.1 + No.2, 2 sentences) → flip sentence (「남들은 ~지만 —」, 1 sentence) → 4 verdict tags verbatim. The suffix 「— 그게 [이름]님껜 과학입니다」 attaches automatically. Max_tokens: 900. Output JSON: {"slot":"A","title":"...","body":"..."}
+
+ANNEX B (weekly header): Seat B. Title ≤22 characters, one of three forms: Declaration, Number, Turn. Body 2 sentences: why this week + one step. Weeks 5–12 carry 「기준안」 until re-measurement. After low week (<50%), title forced to [다시 시작]. Weeks 3–4 point to 4-week re-measurement as scorecard; week 12 previews what comes after. Max_tokens: 300. Output JSON: {"slot":"B","title":"...","body":"...","week":N}
+
+ANNEX E (check reflection, biweekly): Seat E. Output: update exactly one passage — flip or mechanism line — of one card. Never rewrite whole card. Quote exactly one tag. Adjustment only from readjust branch (80/50). Never scold. Keep No.1-axis landing. Max_tokens: 300. Output JSON: {"slot":"E","body":"..."}
+
+ANNEX F (re-measurement redesign, per measurement): Seat F. Fires once per re-measurement (week 4, week 8). Output: sentence layer of next cards — every number is engine slot, every 「기준안」 removed. Ban opens only when condition met; every unlock pairs with next lock. Stability weeks (10–12) take re-enrollment preview tone. Max_tokens: 1200. Output JSON: {"slot":"F","body":"..."}
+
+SELF-CHECK before output: ① Zero characters outside input set? ② Every sentence has a landing? ③ Every noun checked against wardrobe? ④ Zero unflagged disease words? ⑤ Would this read true for a different combination customer? ⑥ Does opening repeat last two utterances? ⑦ Within length contract? ⑧ Sex and industry coherence?`
+
+// 오늘탭 슬롯 검증 함수
+function validateAiToday(parsed: any, slot: string, sex: string): { ok: boolean; reason?: string } {
+  if (!parsed || typeof parsed !== 'object') return { ok: false, reason: '파싱 실패' }
+  if (parsed.slot !== slot) return { ok: false, reason: `슬롯 불일치 (expected ${slot}, got ${parsed.slot})` }
+
+  // 공통 금지어 검사
+  const FORBIDDEN_COMMON = ['코르티솔','인슐린 저항성','지방세포','기초대사량','렙틴','그렐린','미토콘드리아','squat','스쿼트 자세','데드리프트','버피']
+  const text = JSON.stringify(parsed)
+  for (const w of FORBIDDEN_COMMON) {
+    if (text.includes(w)) return { ok: false, reason: `금지어 포함: ${w}` }
+  }
+
+  // 성별 정합 (남성인데 여성 전용 낱말)
+  if (sex === 'M') {
+    const FEM_WORDS = ['완경','생리','출산','임신','수유','브라 라인','이소플라본','에스트로겐 저하','갱년기']
+    for (const w of FEM_WORDS) {
+      if (text.includes(w)) return { ok: false, reason: `남성에 여성 전용 낱말: ${w}` }
+    }
+  }
+
+  // 슬롯별 길이 검사
+  if (slot === 'A') {
+    const body = String(parsed.body || '')
+    if (body.length < 80 || body.length > 500) return { ok: false, reason: `A슬롯 본문 길이 초과: ${body.length}자` }
+  }
+  if (slot === 'B') {
+    const title = String(parsed.title || '')
+    const body = String(parsed.body || '')
+    if (title.length > 22) return { ok: false, reason: `B슬롯 제목 초과: ${title.length}자` }
+    if (body.length < 30 || body.length > 200) return { ok: false, reason: `B슬롯 본문 길이: ${body.length}자` }
+  }
+  if (slot === 'E') {
+    const body = String(parsed.body || '')
+    if (body.length < 30 || body.length > 200) return { ok: false, reason: `E슬롯 길이: ${body.length}자` }
+  }
+  if (slot === 'F') {
+    const body = String(parsed.body || '')
+    if (body.length < 80 || body.length > 800) return { ok: false, reason: `F슬롯 길이: ${body.length}자` }
+  }
+
+  return { ok: true }
+}
+
+// POST /api/ai/generate-today — 오늘탭 A·B·E·F 슬롯 AI 생성 (굽기 1회 원칙)
+app.post('/api/ai/generate-today', async (c) => {
+  try {
+    const role = (c as any).__role
+    if (!role || !['consultant','admin','b2b'].includes(role)) {
+      return c.json({ ok: false, error: '권한 없음' }, 403)
+    }
+    const db: D1Database = (c.env as any).DB
+    const apiKey: string = (c.env as any).ANTHROPIC_API_KEY
+    if (!apiKey) return c.json({ ok: false, error: 'ANTHROPIC_API_KEY 미설정' }, 500)
+
+    const body = await c.req.json() as any
+    const { result_id, slot, input } = body
+
+    if (!result_id || !slot || !['A','B','E','F'].includes(slot)) {
+      return c.json({ ok: false, error: 'result_id, slot(A/B/E/F) 필수' }, 400)
+    }
+
+    // 존재하는 결과지인지 확인
+    const row = await db.prepare(
+      `SELECT id, today_slot_a, today_slot_b, today_slot_b_week,
+              today_slot_e, today_slot_e_week,
+              today_slot_f, today_slot_f_week
+       FROM diagnosis_results WHERE id=? LIMIT 1`
+    ).bind(result_id).first<any>().catch(() => null)
+
+    if (!row) return c.json({ ok: false, error: `결과지 없음: ${result_id}` }, 404)
+
+    // 굽기 1회 원칙 — B슬롯은 주차별로, E슬롯은 격주별로, F슬롯은 재측정별로 재생성 허용
+    const currentWeek = input?.week || 1
+    if (slot === 'A' && row.today_slot_a) {
+      return c.json({ ok: true, cached: true, slot: 'A', data: JSON.parse(row.today_slot_a) })
+    }
+    if (slot === 'B' && row.today_slot_b && row.today_slot_b_week === currentWeek) {
+      return c.json({ ok: true, cached: true, slot: 'B', data: JSON.parse(row.today_slot_b) })
+    }
+    if (slot === 'E' && row.today_slot_e && row.today_slot_e_week === currentWeek) {
+      return c.json({ ok: true, cached: true, slot: 'E', data: JSON.parse(row.today_slot_e) })
+    }
+    if (slot === 'F' && row.today_slot_f && row.today_slot_f_week === currentWeek) {
+      return c.json({ ok: true, cached: true, slot: 'F', data: JSON.parse(row.today_slot_f) })
+    }
+
+    // Claude API 호출
+    const sex = input?.sex || 'F'
+    const userMsg = `Generate Today tab slot ${slot} output as JSON. Input data:\n${JSON.stringify(input || {}, null, 2)}\n\nIMPORTANT: Output ONLY valid JSON matching the slot contract. No markdown, no explanation.`
+
+    const maxTokensMap: Record<string, number> = { A: 900, B: 300, E: 300, F: 1200 }
+    const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: maxTokensMap[slot] || 500,
+        temperature: 0.7,
+        system: AI_TODAY_SYSTEM,
+        messages: [{ role: 'user', content: userMsg }],
+      }),
+    })
+
+    if (!claudeRes.ok) {
+      const errText = await claudeRes.text()
+      return c.json({ ok: false, error: `Claude API 오류: ${claudeRes.status}`, detail: errText }, 500)
+    }
+
+    const claudeJson = await claudeRes.json() as any
+    const rawText = claudeJson?.content?.[0]?.text || ''
+
+    // JSON 파싱
+    let parsed: any
+    try {
+      const jsonMatch = rawText.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) throw new Error('JSON 없음')
+      parsed = JSON.parse(jsonMatch[0])
+    } catch (e) {
+      return c.json({ ok: false, error: 'JSON 파싱 실패', raw: rawText }, 500)
+    }
+
+    // 검증
+    const validation = validateAiToday(parsed, slot, sex)
+    if (!validation.ok) {
+      return c.json({ ok: false, error: `검증 실패: ${validation.reason}`, raw: rawText }, 422)
+    }
+
+    // D1 저장
+    const columnMap: Record<string, string> = {
+      A: 'today_slot_a',
+      B: 'today_slot_b',
+      E: 'today_slot_e',
+      F: 'today_slot_f',
+    }
+    const weekColumnMap: Record<string, string> = {
+      B: 'today_slot_b_week',
+      E: 'today_slot_e_week',
+      F: 'today_slot_f_week',
+    }
+
+    const col = columnMap[slot]
+    const weekCol = weekColumnMap[slot]
+    const jsonStr = JSON.stringify(parsed)
+
+    if (weekCol) {
+      await db.prepare(
+        `UPDATE diagnosis_results SET ${col}=?, ${weekCol}=?, ai_today_src='wardrobe_v4', ai_today_at=CURRENT_TIMESTAMP WHERE id=?`
+      ).bind(jsonStr, currentWeek, result_id).run()
+    } else {
+      await db.prepare(
+        `UPDATE diagnosis_results SET ${col}=?, ai_today_src='wardrobe_v4', ai_today_at=CURRENT_TIMESTAMP WHERE id=?`
+      ).bind(jsonStr, result_id).run()
+    }
+
+    return c.json({ ok: true, cached: false, slot, data: parsed })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// GET /api/ai/today/:result_id — 저장된 오늘탭 슬롯 조회
+app.get('/api/ai/today/:result_id', async (c) => {
+  try {
+    const role = (c as any).__role
+    if (!role || !['consultant','admin','b2b'].includes(role)) {
+      return c.json({ ok: false, error: '권한 없음' }, 403)
+    }
+    const db: D1Database = (c.env as any).DB
+    const result_id = c.req.param('result_id')
+
+    const row = await db.prepare(
+      `SELECT today_slot_a, today_slot_b, today_slot_b_week,
+              today_slot_e, today_slot_e_week,
+              today_slot_f, today_slot_f_week,
+              ai_today_src, ai_today_at
+       FROM diagnosis_results WHERE id=? LIMIT 1`
+    ).bind(result_id).first<any>().catch(() => null)
+
+    if (!row) return c.json({ ok: false, error: '결과지 없음' }, 404)
+
+    const parse = (s: string | null) => { try { return s ? JSON.parse(s) : null } catch { return null } }
+
+    return c.json({
+      ok: true,
+      result_id,
+      slots: {
+        A: parse(row.today_slot_a),
+        B: parse(row.today_slot_b),
+        B_week: row.today_slot_b_week,
+        E: parse(row.today_slot_e),
+        E_week: row.today_slot_e_week,
+        F: parse(row.today_slot_f),
+        F_week: row.today_slot_f_week,
+      },
+      ai_today_src: row.ai_today_src,
+      ai_today_at: row.ai_today_at,
+    })
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
 // ■ 샘플 PDF 다운로드 (회원가입 완료 후) → 인쇄 가능 HTML 페이지로 리다이렉트
 app.get('/api/download-sample-pdf', async (c) => {
   // 실제 PDF 파일(/public/static/sample-report.pdf)이 존재하면 그것을 반환
