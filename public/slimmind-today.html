@@ -753,7 +753,23 @@ function _loadTodaySlots(){
   var sid = _getTodaySid();
   if (!sid) return;
   var jwt = _getTodayJwt();
-  if (!jwt) return; // 비인증 사용자는 AI 슬롯 미표시
+  // JWT 없으면 게스트 토큰 먼저 발급 후 재시도
+  if (!jwt) {
+    fetch('/api/auth/guest-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ result_id: sid })
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (d && d.token) {
+        try { localStorage.setItem('slimmind_jwt', d.token); } catch(e){}
+        _loadTodaySlots(); // 재시도
+      }
+    })
+    .catch(function(){});
+    return;
+  }
 
   // E/F 트리거 미리 판단
   var triggerE = _shouldTriggerE();
@@ -883,11 +899,28 @@ function _applyTodaySlots(slots){
 function _getTodaySid(){
   try {
     var p = new URLSearchParams(location.search);
-    return p.get('id') || p.get('result_id') || '';
+    // URL 파라미터 우선, 없으면 localStorage fallback
+    return p.get('id') || p.get('result_id')
+        || localStorage.getItem('slimmind_result_id')
+        || localStorage.getItem('sm_last_result_id')
+        || '';
   } catch(e){ return ''; }
 }
 function _getTodayJwt(){
-  try { return localStorage.getItem('slimmind_jwt') || ''; } catch(e){ return ''; }
+  try {
+    var jwt = localStorage.getItem('slimmind_jwt') || '';
+    // JWT 만료 체크
+    if (jwt) {
+      try {
+        var parts = jwt.split('.');
+        if (parts.length === 3) {
+          var p = JSON.parse(atob(parts[1].replace(/-/g,'+').replace(/_/g,'/')));
+          if (p.exp < Math.floor(Date.now()/1000)) return ''; // 만료
+        }
+      } catch(e) {}
+    }
+    return jwt;
+  } catch(e){ return ''; }
 }
 function _calcCheckRate(){
   var total = 0, done = 0;
@@ -2146,9 +2179,10 @@ function renderCon(){
   // 1순위: C슬롯 승인본 (비동기 로드 — 먼저 2/3순위로 표시 후 덮어씀)
   var sid = _getTodaySid();
   var jwt = _getTodayJwt();
-  if (sid && jwt) {
+  if (sid) {
+    var _cHeaders = jwt ? { 'Authorization': 'Bearer ' + jwt } : {};
     fetch('/api/ai/today-c-client/' + encodeURIComponent(sid), {
-      headers: { 'Authorization': 'Bearer ' + jwt }
+      headers: _cHeaders
     })
     .then(function(r){ return r.json(); })
     .then(function(res){

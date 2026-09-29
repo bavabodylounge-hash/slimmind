@@ -232,6 +232,16 @@ function requireRole(role: 'MASTER' | 'CONSULTANT' | 'ANY') {
   }
 }
 
+// ── 고객 공개 AI 슬롯 미들웨어 ──────────────────────────────────────
+// JWT 있으면 user 세팅, 없어도 next() 통과 (result_id 소유권은 핸들러에서 검증)
+function allowPublicAI() {
+  return async (c: any, next: any) => {
+    const user = await getAuthUser(c)
+    if (user) c.set('user', user)
+    await next()
+  }
+}
+
 function requireB2B() {
   return async (c: any, next: any) => {
     const user = await getAuthUser(c)
@@ -910,6 +920,38 @@ app.post('/api/auth/login', async (c) => {
     const token = await signJwt(payload, secret)
 
     return c.json({ token, role, name: consultant.name, code: consultant.code })
+  } catch (e: any) {
+    return c.json({ error: '서버 오류: ' + (e?.message || String(e)) }, 500)
+  }
+})
+
+// ── POST /api/auth/guest-token ─────────────────────────────────────
+// 고객이 자신의 result_id를 제시하면 30일짜리 GUEST JWT 발급
+// 해석본(story_lead/clinical_ctx) 미포함, 오늘탭·7P·잔혹사 슬롯 조회용
+app.post('/api/auth/guest-token', async (c) => {
+  try {
+    const db = (c.env as any).DB as D1Database | undefined
+    if (!db) return c.json({ error: 'DB 없음' }, 500)
+    const { result_id } = await c.req.json()
+    if (!result_id || typeof result_id !== 'string') {
+      return c.json({ error: 'result_id가 필요합니다.' }, 400)
+    }
+    // DB에서 result 존재 확인
+    const row = await db.prepare(
+      `SELECT id FROM diagnosis_results WHERE id = ? LIMIT 1`
+    ).bind(result_id).first<any>().catch(() => null)
+    if (!row) return c.json({ error: '존재하지 않는 결과지입니다.' }, 404)
+
+    const secret = (c.env as any).JWT_SECRET || 'slimmind-jwt-secret-change-in-production'
+    const payload: JwtPayload = {
+      sub: result_id,
+      code: result_id,
+      role: 'GUEST' as any,
+      name: '고객',
+      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30, // 30일
+    }
+    const token = await signJwt(payload, secret)
+    return c.json({ token, role: 'GUEST', result_id })
   } catch (e: any) {
     return c.json({ error: '서버 오류: ' + (e?.message || String(e)) }, 500)
   }
@@ -6935,7 +6977,7 @@ function validateAi7p(parsed: any, sex: string): { ok: boolean; reason?: string 
 }
 
 // ── POST /api/ai/generate-7p ──────────────────────────────────────────
-app.post('/api/ai/generate-7p', requireRole('ANY'), async (c) => {
+app.post('/api/ai/generate-7p', allowPublicAI(), async (c) => {
   const db = (c.env as any).DB as D1Database
   const apiKey = (c.env as any).ANTHROPIC_API_KEY as string | undefined
   if (!db) return c.json({ error: 'DB not configured' }, 500)
@@ -7047,7 +7089,7 @@ ${inputJson}`
 })
 
 // ── GET /api/ai/7p/:result_id ────────────────────────────────────────
-app.get('/api/ai/7p/:result_id', requireRole('ANY'), async (c) => {
+app.get('/api/ai/7p/:result_id', allowPublicAI(), async (c) => {
   const db = (c.env as any).DB as D1Database
   if (!db) return c.json({ error: 'DB not configured' }, 500)
   try {
@@ -7110,7 +7152,7 @@ function validateAiCruel(parsed: any, sex: string): { ok: boolean; reason?: stri
 }
 
 // ── POST /api/ai/generate-cruel ──────────────────────────────────────
-app.post('/api/ai/generate-cruel', requireRole('ANY'), async (c) => {
+app.post('/api/ai/generate-cruel', allowPublicAI(), async (c) => {
   const db = (c.env as any).DB as D1Database
   const apiKey = (c.env as any).ANTHROPIC_API_KEY as string | undefined
   if (!db) return c.json({ error: 'DB not configured' }, 500)
@@ -7201,7 +7243,7 @@ ${inputJson}`
 })
 
 // ── GET /api/ai/cruel/:result_id ─────────────────────────────────────
-app.get('/api/ai/cruel/:result_id', requireRole('ANY'), async (c) => {
+app.get('/api/ai/cruel/:result_id', allowPublicAI(), async (c) => {
   const db = (c.env as any).DB as D1Database
   if (!db) return c.json({ error: 'DB not configured' }, 500)
   try {
@@ -8621,6 +8663,38 @@ try {
     localStorage.setItem('sm_ref_code_' + ${JSON.stringify(id)}, ${JSON.stringify(injectedRefCode)});
   }
 } catch(e) {}
+// ── 고객용 게스트 JWT 자동 발급 ─────────────────────────────────
+// JWT가 없거나 만료된 경우에만 발급 (컨설턴트 JWT는 덮어쓰지 않음)
+(function(){
+  try {
+    var _rid = ${JSON.stringify(id)};
+    var _existing = localStorage.getItem('slimmind_jwt');
+    // 이미 유효한 JWT가 있으면 skip
+    if (_existing) {
+      try {
+        var _parts = _existing.split('.');
+        if (_parts.length === 3) {
+          var _p = JSON.parse(atob(_parts[1].replace(/-/g,'+').replace(/_/g,'/')));
+          if (_p.exp > Math.floor(Date.now()/1000) + 86400) return; // 24h 이상 남으면 skip
+        }
+      } catch(e) {}
+    }
+    // GUEST 토큰 발급
+    fetch('/api/auth/guest-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ result_id: _rid })
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (d && d.token) {
+        localStorage.setItem('slimmind_jwt', d.token);
+        localStorage.setItem('slimmind_result_id', _rid);
+      }
+    })
+    .catch(function(){});
+  } catch(e) {}
+})();
 <\/script>\n`
     // OG 메타태그 (결과지 공유 시) — BABA 파트너 여부에 따라 분기
     const rhBase   = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.kr' } })()
@@ -9163,6 +9237,35 @@ try {
     localStorage.setItem('sm_ref_code_' + ${JSON.stringify(id)}, ${JSON.stringify(injectedRefCode)});
   }
 } catch(e) {}
+// ── 고객용 게스트 JWT 자동 발급 (에스테틱) ──────────────────────
+(function(){
+  try {
+    var _rid = ${JSON.stringify(id)};
+    var _existing = localStorage.getItem('slimmind_jwt');
+    if (_existing) {
+      try {
+        var _parts = _existing.split('.');
+        if (_parts.length === 3) {
+          var _p = JSON.parse(atob(_parts[1].replace(/-/g,'+').replace(/_/g,'/')));
+          if (_p.exp > Math.floor(Date.now()/1000) + 86400) return;
+        }
+      } catch(e) {}
+    }
+    fetch('/api/auth/guest-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ result_id: _rid })
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (d && d.token) {
+        localStorage.setItem('slimmind_jwt', d.token);
+        localStorage.setItem('slimmind_result_id', _rid);
+      }
+    })
+    .catch(function(){});
+  } catch(e) {}
+})();
 <\/script>\n`
     // OG 메타태그 동적 덮어쓰기 (하드코딩 URL → 서버 origin 기반 동적 URL + og:url 추가)
     const raBase = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.kr' } })()
@@ -15928,7 +16031,7 @@ function validateAiToday(parsed: any, slot: string, sex: string): { ok: boolean;
 }
 
 // POST /api/ai/generate-today — 오늘탭 A·B·E·F 슬롯 AI 생성 (굽기 1회 원칙)
-app.post('/api/ai/generate-today', requireRole('ANY'), async (c) => {
+app.post('/api/ai/generate-today', allowPublicAI(), async (c) => {
   try {
     const db: D1Database = (c.env as any).DB
     const apiKey: string = (c.env as any).ANTHROPIC_API_KEY
@@ -16045,7 +16148,7 @@ app.post('/api/ai/generate-today', requireRole('ANY'), async (c) => {
 })
 
 // GET /api/ai/today/:result_id — 저장된 오늘탭 슬롯 조회
-app.get('/api/ai/today/:result_id', requireRole('ANY'), async (c) => {
+app.get('/api/ai/today/:result_id', allowPublicAI(), async (c) => {
   try {
     const db: D1Database = (c.env as any).DB
     const result_id = c.req.param('result_id')
@@ -16277,7 +16380,7 @@ app.get('/api/ai/today-c/:result_id', requireRole('CONSULTANT'), async (c) => {
 })
 
 // GET /api/ai/today-c-client/:result_id — C슬롯 승인본 조회 (고객용 — approved만 반환)
-app.get('/api/ai/today-c-client/:result_id', requireRole('ANY'), async (c) => {
+app.get('/api/ai/today-c-client/:result_id', allowPublicAI(), async (c) => {
   try {
     const db: D1Database = (c.env as any).DB
     const result_id = c.req.param('result_id')
