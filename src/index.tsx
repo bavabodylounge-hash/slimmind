@@ -3835,7 +3835,10 @@ app.get('/b2b/*', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/b2b
 
 // ─── 구버전 경로 완전 차단 (410 Gone) ────────────────────────
 // bodymap_preview.html 삭제됨
-app.get('/bodymap-preview', (c) => _errorHtml('이 페이지는 삭제되었습니다', '최신 결과지를 이용해 주세요.', 410))
+app.get('/bodymap-preview', (c) => c.html(
+  `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>삭제된 페이지</title></head><body><p>이 페이지는 삭제되었습니다.</p></body></html>`,
+  410
+))
 
 
 // ─── 슬림마인드 라이브 설문지 — 유일한 최신 설문지 ────────────
@@ -4874,13 +4877,20 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif
 
 // ─── 구버전 결과지 완전 차단 (410 Gone) ─────────────────────────────────────
 // result.html, result-v3.html, result-v4.html 모두 삭제됨 → 업종별 전용 결과지 사용
-const _legacyGone = (c: any) => _errorHtml('이 페이지는 삭제되었습니다', '최신 결과지를 이용해 주세요.', 410)
-app.get('/result.html',   _legacyGone)
-app.get('/result',        _legacyGone)
+const _legacyGone = (c: any) => c.html(
+  `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>삭제된 페이지</title>
+  <style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#f8f8f8}
+  .box{text-align:center;padding:40px;background:#fff;border-radius:12px;box-shadow:0 2px 16px rgba(0,0,0,.08)}
+  h1{color:#b5452e;font-size:1.4rem;margin-bottom:12px}p{color:#666;font-size:.95rem}</style></head>
+  <body><div class="box"><h1>이 페이지는 삭제되었습니다</h1><p>최신 결과지를 이용해 주세요.</p></div></body></html>`,
+  410
+)
+app.get('/result.html',    _legacyGone)
+app.get('/result',         _legacyGone)
 app.get('/result-v3.html', _legacyGone)
-app.get('/result-v3',     _legacyGone)
+app.get('/result-v3',      _legacyGone)
 app.get('/result-v4.html', _legacyGone)
-app.get('/result-v4',     _legacyGone)
+app.get('/result-v4',      _legacyGone)
 
 // ─── favicon ───────────────────────────────────────────────────────────────
 app.get('/favicon.ico', async (c) => {
