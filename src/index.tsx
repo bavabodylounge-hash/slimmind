@@ -15924,12 +15924,8 @@ function validateAiToday(parsed: any, slot: string, sex: string): { ok: boolean;
 }
 
 // POST /api/ai/generate-today — 오늘탭 A·B·E·F 슬롯 AI 생성 (굽기 1회 원칙)
-app.post('/api/ai/generate-today', async (c) => {
+app.post('/api/ai/generate-today', requireRole('ANY'), async (c) => {
   try {
-    const role = (c as any).__role
-    if (!role || !['consultant','admin','b2b'].includes(role)) {
-      return c.json({ ok: false, error: '권한 없음' }, 403)
-    }
     const db: D1Database = (c.env as any).DB
     const apiKey: string = (c.env as any).ANTHROPIC_API_KEY
     if (!apiKey) return c.json({ ok: false, error: 'ANTHROPIC_API_KEY 미설정' }, 500)
@@ -16045,12 +16041,8 @@ app.post('/api/ai/generate-today', async (c) => {
 })
 
 // GET /api/ai/today/:result_id — 저장된 오늘탭 슬롯 조회
-app.get('/api/ai/today/:result_id', async (c) => {
+app.get('/api/ai/today/:result_id', requireRole('ANY'), async (c) => {
   try {
-    const role = (c as any).__role
-    if (!role || !['consultant','admin','b2b'].includes(role)) {
-      return c.json({ ok: false, error: '권한 없음' }, 403)
-    }
     const db: D1Database = (c.env as any).DB
     const result_id = c.req.param('result_id')
 
