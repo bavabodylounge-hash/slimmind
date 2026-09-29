@@ -6863,6 +6863,360 @@ app.get('/api/ai/story/:result_id', requireRole('ANY'), async (c) => {
   }
 })
 
+// ════════════════════════════════════════════════════════
+//  AI 7P 기질 맥락층 API
+//  POST /api/ai/generate-7p  — mental_intro/insight_ctx[0~2]/know_close 생성·저장
+//  GET  /api/ai/7p/:result_id — 저장된 7P 슬롯 조회
+// ════════════════════════════════════════════════════════
+
+const AI_7P_SYSTEM = `당신은 슬림마인드 결과지 7장 «타고난 기질 맥락층»을 쓰는 작가입니다.
+
+§1 자리: 화면의 «거울 앞에…» 두 문장 자리(mental_intro) + 인사이트 세 카드(insight_ctx[0~2]) + 닫는 문단(know_close).
+
+§2 인사이트 세 각도 — 각기 다른 각도여야 합니다:
+- insight_ctx[0]: 오행 각도(오행 기질이 이 패턴을 만드는 원리)
+- insight_ctx[1]: MBTI 각도(MBTI 성향이 식욕·의지력에 미치는 방식)
+- insight_ctx[2]: 그 사람 답 각도(설문 응답에서 직접 읽은 패턴)
+검사기: 세 인사이트의 첫 여섯 어절이 같으면 불합격.
+
+§3 착지: know_close = «혼자 들고 있던 패턴을 12주가 같이» 방향. 상담·예약·직함 없이 동행으로만 닫음.
+
+§4 금지: 판매어(상담·예약·가격·컨설턴트·프로그램)·기전어(효소·수용체·코르티솔·인슐린·%)·이모지·영어 단어·코드 라벨·성별 오기.
+
+§5 성별 정합: sex=남성이면 여성 전용 낱말(생리·갱년기·임신·자궁·출산·속옷자국·하의) 0회.
+
+§6 출력 (JSON만):
+{"mental_intro":"...","insight_ctx":["...","...","..."],"know_close":"..."}
+mental_intro: 80~140자 / 각 insight_ctx: 80~140자 / know_close: 90~150자
+
+§7 자가점검: ①각 항목 길이 범위 ②세 인사이트 첫 여섯 어절 다름 ③금지어 0 ④성별 정합. 하나라도 실패 시 재작성.`
+
+function validateAi7p(parsed: any, sex: string): { ok: boolean; reason?: string } {
+  const { mental_intro, insight_ctx, know_close } = parsed
+  if (!mental_intro || !Array.isArray(insight_ctx) || insight_ctx.length < 3 || !know_close) {
+    return { ok: false, reason: 'JSON 키 누락 또는 insight_ctx 배열 오류' }
+  }
+  const mi = String(mental_intro)
+  const ic0 = String(insight_ctx[0])
+  const ic1 = String(insight_ctx[1])
+  const ic2 = String(insight_ctx[2])
+  const kc = String(know_close)
+  if (mi.length < 70 || mi.length > 160)  return { ok: false, reason: `mental_intro 길이: ${mi.length}자` }
+  if (ic0.length < 70 || ic0.length > 160) return { ok: false, reason: `insight_ctx[0] 길이: ${ic0.length}자` }
+  if (ic1.length < 70 || ic1.length > 160) return { ok: false, reason: `insight_ctx[1] 길이: ${ic1.length}자` }
+  if (ic2.length < 70 || ic2.length > 160) return { ok: false, reason: `insight_ctx[2] 길이: ${ic2.length}자` }
+  if (kc.length < 80 || kc.length > 170)  return { ok: false, reason: `know_close 길이: ${kc.length}자` }
+  // 금지어
+  const FORBIDDEN = ['상담','예약','가격','컨설턴트','프로그램','효소','수용체','코르티솔','인슐린','%','kg','AI','데이터']
+  for (const w of FORBIDDEN) {
+    for (const txt of [mi, ic0, ic1, ic2, kc]) {
+      if (txt.includes(w)) return { ok: false, reason: `금지어: "${w}"` }
+    }
+  }
+  // 성별 정합
+  if (sex === '남성') {
+    const FEMALE_WORDS = ['생리','갱년기','임신','자궁','출산','속옷자국','하의실종']
+    for (const w of FEMALE_WORDS) {
+      for (const txt of [mi, ic0, ic1, ic2, kc]) {
+        if (txt.includes(w)) return { ok: false, reason: `남성에 여성 낱말: "${w}"` }
+      }
+    }
+  }
+  // 인사이트 첫 여섯 어절 중복 검사
+  const firstSix = (s: string) => s.split(/\s+/).slice(0, 6).join(' ')
+  if (firstSix(ic0) === firstSix(ic1) || firstSix(ic1) === firstSix(ic2) || firstSix(ic0) === firstSix(ic2)) {
+    return { ok: false, reason: '인사이트 첫 여섯 어절 중복' }
+  }
+  return { ok: true }
+}
+
+// ── POST /api/ai/generate-7p ──────────────────────────────────────────
+app.post('/api/ai/generate-7p', requireRole('ANY'), async (c) => {
+  const db = (c.env as any).DB as D1Database
+  const apiKey = (c.env as any).ANTHROPIC_API_KEY as string | undefined
+  if (!db) return c.json({ error: 'DB not configured' }, 500)
+
+  try {
+    const body = await c.req.json() as any
+    const { result_id, name, sex, ohaeng, mbti, blood_type, face_shape, mirror_ans, desire_body, exercise_reaction, bcCode, subtype } = body
+
+    if (!result_id) return c.json({ error: 'result_id required' }, 400)
+    if (!name || !sex) return c.json({ error: 'name, sex 필수' }, 400)
+
+    // 굽기 1회 원칙
+    const existing = await db.prepare(
+      `SELECT mental_intro, insight_ctx_0, insight_ctx_1, insight_ctx_2, know_close, ai_7p_src FROM diagnosis_results WHERE id = ? LIMIT 1`
+    ).bind(result_id).first() as any
+
+    if (existing?.mental_intro && existing?.insight_ctx_0) {
+      return c.json({
+        mental_intro: existing.mental_intro,
+        insight_ctx: [existing.insight_ctx_0, existing.insight_ctx_1, existing.insight_ctx_2],
+        know_close: existing.know_close,
+        src: existing.ai_7p_src || 'wardrobe_v4',
+        cached: true,
+      })
+    }
+
+    let mental_intro: string | null = null
+    let insight_ctx: string[] | null = null
+    let know_close: string | null = null
+    let src = 'wardrobe_v4'
+
+    if (apiKey) {
+      const inputJson = JSON.stringify({
+        name, sex,
+        ohaeng: ohaeng || null,
+        mbti: mbti || null,
+        blood_type: blood_type || null,
+        face_shape: face_shape || null,
+        mirror_ans: mirror_ans || null,
+        desire_body: desire_body || null,
+        exercise_reaction: exercise_reaction || null,
+        bcCode: bcCode || null,
+        subtype: subtype || null,
+      }, null, 2)
+
+      const userMsg = `다음 JSON을 바탕으로 7P 기질 맥락층 4개 슬롯을 생성해주세요.
+헌법 §1~§7을 전부 지키고, {"mental_intro":"...","insight_ctx":["...","...","..."],"know_close":"..."} JSON만 출력하세요.
+
+입력:
+${inputJson}`
+
+      try {
+        let rawText = await callClaude(apiKey, AI_7P_SYSTEM, userMsg, 0.7)
+        const jsonMatch = rawText.match(/\{[\s\S]*"mental_intro"[\s\S]*"insight_ctx"[\s\S]*"know_close"[\s\S]*\}/)
+        let parsed: any = null
+        if (jsonMatch) { try { parsed = JSON.parse(jsonMatch[0]) } catch {} }
+
+        let validation = parsed ? validateAi7p(parsed, sex) : { ok: false, reason: 'JSON 파싱 실패' }
+
+        if (!validation.ok) {
+          console.warn(`[AI 7P] 1차 불합격: ${validation.reason} — 재생성`)
+          rawText = await callClaude(apiKey, AI_7P_SYSTEM, userMsg, 0.4)
+          const jsonMatch2 = rawText.match(/\{[\s\S]*"mental_intro"[\s\S]*"insight_ctx"[\s\S]*"know_close"[\s\S]*\}/)
+          parsed = null
+          if (jsonMatch2) { try { parsed = JSON.parse(jsonMatch2[0]) } catch {} }
+          validation = parsed ? validateAi7p(parsed, sex) : { ok: false, reason: 'JSON 파싱 실패 (재시도)' }
+        }
+
+        if (validation.ok && parsed) {
+          mental_intro = String(parsed.mental_intro)
+          insight_ctx = [String(parsed.insight_ctx[0]), String(parsed.insight_ctx[1]), String(parsed.insight_ctx[2])]
+          know_close = String(parsed.know_close)
+          src = 'claude'
+          console.log(`[AI 7P] Claude 생성 성공: ${result_id}`)
+        } else {
+          console.warn(`[AI 7P] 재생성도 불합격: ${validation.reason} → wardrobe 폴백`)
+        }
+      } catch (claudeErr) {
+        console.error('[AI 7P] Claude 호출 오류 → 폴백:', claudeErr)
+      }
+    }
+
+    // D1 저장 (굽기 1회)
+    const now = new Date().toISOString()
+    try {
+      await db.prepare(`
+        UPDATE diagnosis_results
+        SET mental_intro=?, insight_ctx_0=?, insight_ctx_1=?, insight_ctx_2=?, know_close=?, ai_7p_src=?, ai_7p_at=?
+        WHERE id=?
+      `).bind(
+        mental_intro,
+        insight_ctx ? insight_ctx[0] : null,
+        insight_ctx ? insight_ctx[1] : null,
+        insight_ctx ? insight_ctx[2] : null,
+        know_close,
+        src, now, result_id
+      ).run()
+    } catch (updateErr: any) {
+      if (String(updateErr).includes('no column named')) {
+        console.warn('[AI 7P] ai_7p 컬럼 없음 — migration 0078 미적용. 결과 반환은 계속.')
+      } else { throw updateErr }
+    }
+
+    return c.json({ mental_intro, insight_ctx, know_close, src, cached: false })
+  } catch (e) {
+    console.error('[POST /api/ai/generate-7p]', e)
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ── GET /api/ai/7p/:result_id ────────────────────────────────────────
+app.get('/api/ai/7p/:result_id', requireRole('ANY'), async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not configured' }, 500)
+  try {
+    const result_id = c.req.param('result_id')
+    const row = await db.prepare(
+      `SELECT mental_intro, insight_ctx_0, insight_ctx_1, insight_ctx_2, know_close, ai_7p_src, ai_7p_at FROM diagnosis_results WHERE id=? LIMIT 1`
+    ).bind(result_id).first() as any
+    if (!row) return c.json({ error: 'not found' }, 404)
+    return c.json({
+      mental_intro:  row.mental_intro  || null,
+      insight_ctx: [row.insight_ctx_0 || null, row.insight_ctx_1 || null, row.insight_ctx_2 || null],
+      know_close:    row.know_close    || null,
+      src:           row.ai_7p_src    || 'wardrobe_v4',
+      ai_7p_at:      row.ai_7p_at     || null,
+    })
+  } catch (e) {
+    console.error('[GET /api/ai/7p]', e)
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ════════════════════════════════════════════════════════
+//  AI 잔혹사 피날레 API
+//  POST /api/ai/generate-cruel  — finale_body 생성·저장
+//  GET  /api/ai/cruel/:result_id — 저장된 피날레 조회
+// ════════════════════════════════════════════════════════
+
+const AI_CRUEL_SYSTEM = `당신은 슬림마인드 결과지 6장 «다이어트 잔혹사» 피날레를 쓰는 작가입니다.
+
+§1 자리: finale_body — 잔혹사 카드 3장 직후, «자격을 갖춘 우리를…» 고정 초대 줄 바로 앞. 동행 선언으로 닫아야 초대가 받아들이는 초대로 읽힘.
+
+§2 방향: «혼자 맞서지 않아도 됩니다» 방향. 카드 3장에서 드러난 무너짐 패턴을 동행이 알고 있다는 선언. 판매어 없이 동행으로만.
+
+§3 성별 정합: sex=남성이면 여성 전용 낱말(생리·갱년기·임신·자궁·출산·하의실종·속옷자국) 0회.
+
+§4 금지: 판매어(상담·예약·가격·컨설턴트·프로그램)·기전어(호르몬·인슐린·코르티솔·효소·%)·이모지·영어·코드 라벨.
+
+§5 출력 (JSON만):
+{"finale_body":"..."}
+100~180자.
+
+§6 자가점검: ①길이 100~180자 ②판매어·기전어·성별 오기 0. 실패 시 재작성.`
+
+function validateAiCruel(parsed: any, sex: string): { ok: boolean; reason?: string } {
+  const { finale_body } = parsed
+  if (!finale_body) return { ok: false, reason: 'finale_body 누락' }
+  const fb = String(finale_body)
+  if (fb.length < 90 || fb.length > 200) return { ok: false, reason: `finale_body 길이: ${fb.length}자` }
+  const FORBIDDEN = ['상담','예약','가격','컨설턴트','프로그램','호르몬','인슐린','코르티솔','효소','%','kg','AI']
+  for (const w of FORBIDDEN) {
+    if (fb.includes(w)) return { ok: false, reason: `금지어: "${w}"` }
+  }
+  if (sex === '남성') {
+    const FEMALE_WORDS = ['생리','갱년기','임신','자궁','출산','속옷자국','하의실종']
+    for (const w of FEMALE_WORDS) {
+      if (fb.includes(w)) return { ok: false, reason: `남성에 여성 낱말: "${w}"` }
+    }
+  }
+  return { ok: true }
+}
+
+// ── POST /api/ai/generate-cruel ──────────────────────────────────────
+app.post('/api/ai/generate-cruel', requireRole('ANY'), async (c) => {
+  const db = (c.env as any).DB as D1Database
+  const apiKey = (c.env as any).ANTHROPIC_API_KEY as string | undefined
+  if (!db) return c.json({ error: 'DB not configured' }, 500)
+
+  try {
+    const body = await c.req.json() as any
+    const { result_id, name, sex, bcCode, subtype, failure_points, methods } = body
+    if (!result_id) return c.json({ error: 'result_id required' }, 400)
+    if (!name || !sex) return c.json({ error: 'name, sex 필수' }, 400)
+
+    // 굽기 1회 원칙
+    const existing = await db.prepare(
+      `SELECT finale_body, ai_cruel_src FROM diagnosis_results WHERE id=? LIMIT 1`
+    ).bind(result_id).first() as any
+
+    if (existing?.finale_body) {
+      return c.json({
+        finale_body: existing.finale_body,
+        src: existing.ai_cruel_src || 'wardrobe_v4',
+        cached: true,
+      })
+    }
+
+    let finale_body: string | null = null
+    let src = 'wardrobe_v4'
+
+    if (apiKey) {
+      const inputJson = JSON.stringify({
+        name, sex,
+        bcCode: bcCode || null,
+        subtype: subtype || null,
+        failure_points: failure_points || [],
+        methods: methods || [],
+      }, null, 2)
+
+      const userMsg = `다음 JSON을 바탕으로 잔혹사 피날레(finale_body)를 생성해주세요.
+헌법 §1~§6을 전부 지키고, {"finale_body":"..."} JSON만 출력하세요.
+
+입력:
+${inputJson}`
+
+      try {
+        let rawText = await callClaude(apiKey, AI_CRUEL_SYSTEM, userMsg, 0.7)
+        const jsonMatch = rawText.match(/\{[\s\S]*"finale_body"[\s\S]*\}/)
+        let parsed: any = null
+        if (jsonMatch) { try { parsed = JSON.parse(jsonMatch[0]) } catch {} }
+
+        let validation = parsed ? validateAiCruel(parsed, sex) : { ok: false, reason: 'JSON 파싱 실패' }
+
+        if (!validation.ok) {
+          console.warn(`[AI cruel] 1차 불합격: ${validation.reason} — 재생성`)
+          rawText = await callClaude(apiKey, AI_CRUEL_SYSTEM, userMsg, 0.4)
+          const jsonMatch2 = rawText.match(/\{[\s\S]*"finale_body"[\s\S]*\}/)
+          parsed = null
+          if (jsonMatch2) { try { parsed = JSON.parse(jsonMatch2[0]) } catch {} }
+          validation = parsed ? validateAiCruel(parsed, sex) : { ok: false, reason: 'JSON 파싱 실패 (재시도)' }
+        }
+
+        if (validation.ok && parsed) {
+          finale_body = String(parsed.finale_body)
+          src = 'claude'
+          console.log(`[AI cruel] Claude 생성 성공: ${result_id}`)
+        } else {
+          console.warn(`[AI cruel] 재생성도 불합격: ${validation.reason} → wardrobe 폴백`)
+        }
+      } catch (claudeErr) {
+        console.error('[AI cruel] Claude 호출 오류 → 폴백:', claudeErr)
+      }
+    }
+
+    // D1 저장
+    const now = new Date().toISOString()
+    try {
+      await db.prepare(`
+        UPDATE diagnosis_results SET finale_body=?, ai_cruel_src=?, ai_cruel_at=? WHERE id=?
+      `).bind(finale_body, src, now, result_id).run()
+    } catch (updateErr: any) {
+      if (String(updateErr).includes('no column named')) {
+        console.warn('[AI cruel] finale_body 컬럼 없음 — migration 0078 미적용. 결과 반환은 계속.')
+      } else { throw updateErr }
+    }
+
+    return c.json({ finale_body, src, cached: false })
+  } catch (e) {
+    console.error('[POST /api/ai/generate-cruel]', e)
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
+// ── GET /api/ai/cruel/:result_id ─────────────────────────────────────
+app.get('/api/ai/cruel/:result_id', requireRole('ANY'), async (c) => {
+  const db = (c.env as any).DB as D1Database
+  if (!db) return c.json({ error: 'DB not configured' }, 500)
+  try {
+    const result_id = c.req.param('result_id')
+    const row = await db.prepare(
+      `SELECT finale_body, ai_cruel_src, ai_cruel_at FROM diagnosis_results WHERE id=? LIMIT 1`
+    ).bind(result_id).first() as any
+    if (!row) return c.json({ error: 'not found' }, 404)
+    return c.json({
+      finale_body: row.finale_body || null,
+      src: row.ai_cruel_src || 'wardrobe_v4',
+      ai_cruel_at: row.ai_cruel_at || null,
+    })
+  } catch (e) {
+    console.error('[GET /api/ai/cruel]', e)
+    return c.json({ error: String(e) }, 500)
+  }
+})
+
 // (디버그 엔드포인트 제거됨 — 검증 완료 후 정리)
 
 // ════════════════════════════════════════════════════════

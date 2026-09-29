@@ -6190,6 +6190,8 @@ try{ ['log','info','warn','debug'].forEach(function(k){ console[k]=function(){};
             고객님의 몸은 <span>잘못이 없습니다.</span><br>맞지 않는 옷을 입혀온 방식이<br>잘못되었을 뿐입니다.
           </div>
           <div class="p4-ending-p" style="margin-top:18px;">앞서 보신 <b>12주 로드맵</b>과 <b>변화 예측</b>은, 오직 이 아픈 원인들을 하나씩 보듬고 풀어내기 위해 설계되었어요. 자도 풀리지 않던 그 피로도, 밤마다 찾아오던 그 허기도, 마음이 남긴 그 무게도 — 이제 각각의 방법으로 맞이합니다. 더는 혼자 맞서지 않아도 됩니다.</div>
+          <!-- AI 슬롯: finale_body (정적) -->
+          <div id="ai-finale-body-static" class="p4-ending-p" style="display:none;margin-top:18px;"></div>
           <div class="p4-ending-sig"><span class="dot"></span>당신은 반드시, 그리고 안전하게 바뀔 수 있습니다<span class="dot"></span></div>
         </div>
       </div></div>
@@ -7360,6 +7362,8 @@ render();
         </div>
         <div class="p7v4-nick" id="p7sum-nick"></div>
         <div class="p7v4-onel" id="p7sum-onel">밤마다 무너지는 건 의지가 아닙니다. 어긋난 코르티솔 리듬이 식욕을 밤으로 몰아온 겁니다.</div>
+        <!-- AI 슬롯: mental_intro -->
+        <div id="ai-mental-intro" style="display:none"></div>
         <span id="p7-truth-code" style="display:none"></span>
       </div>
     </div>
@@ -7564,9 +7568,9 @@ render();
 
   <!-- 숨김 보존: 세 가지 답 (JS 호환) -->
   <div id="p7-insight-stack" style="display:none">
-    <div id="p7-q1"><span id="p7-ans1">절제력이 없는 게 아니에요. <strong>뒤집힌 밤 리듬이</strong> 눌러 둔 긴장을 식욕으로 풀어내고 있었던 겁니다.</span></div>
-    <div id="p7-q2"><span id="p7-ans2">참는 힘보다 <strong>밤을 가라앉히는 습관이 먼저</strong>였던 겁니다. 순서만 바꾸면 야식 횟수부터 달라집니다.</span></div>
-    <div id="p7-q3"><span id="p7-ans3">스트레스 호르몬을 낮추는 순서가 있어요. <strong>그 순서만 맞추면 12주 안에 몸이 바뀝니다.</strong> 이게 슬림마인드 처방의 핵심이에요.</span></div>
+    <div id="p7-q1"><span id="p7-ans1">절제력이 없는 게 아니에요. <strong>뒤집힌 밤 리듬이</strong> 눌러 둔 긴장을 식욕으로 풀어내고 있었던 겁니다.</span><span id="ai-insight-ctx-0" style="display:none"></span></div>
+    <div id="p7-q2"><span id="p7-ans2">참는 힘보다 <strong>밤을 가라앉히는 습관이 먼저</strong>였던 겁니다. 순서만 바꾸면 야식 횟수부터 달라집니다.</span><span id="ai-insight-ctx-1" style="display:none"></span></div>
+    <div id="p7-q3"><span id="p7-ans3">스트레스 호르몬을 낮추는 순서가 있어요. <strong>그 순서만 맞추면 12주 안에 몸이 바뀝니다.</strong> 이게 슬림마인드 처방의 핵심이에요.</span><span id="ai-insight-ctx-2" style="display:none"></span></div>
   </div>
   <!-- 숨김 보존: 구 처방 리스트 (renderP7가 채우지만 본문 미사용) -->
   <div id="p7sum-rxlist" style="display:none"><div class="p7sum-rx"><span class="p7sum-rx-no">1</span><span class="p7sum-rx-tx"><b>식단</b> · 도파민 대체 스낵 전략 + 트립토판 단백질 (저녁) + 야식 환경 제거</span></div><div class="p7sum-rx"><span class="p7sum-rx-no">2</span><span class="p7sum-rx-tx"><b>운동</b> · 밤 9시 야외 산책 20분 + 낮 요가</span></div><div class="p7sum-rx"><span class="p7sum-rx-no">3</span><span class="p7sum-rx-tx"><b>회복</b> · 블루라이트 차단 + 자율신경 안정 루틴</span></div></div>
@@ -7640,6 +7644,8 @@ render();
   <!-- ⑨ 서명 클로징 -->
   <div class="p7v4-sign fade-up" style="transition-delay:.26s" id="p7close">
     <div class="p7v4-sign-mark"></div>
+    <!-- AI 슬롯: know_close -->
+    <div id="ai-know-close" style="display:none"></div>
     <div class="p7v4-sign-tx" id="p7close-body">여기까지가 <b id="p7close-name"></b>의 결론입니다.<br>하지만 진짜 변화는 지금부터,<br><em>슬림마인드와 함께</em> 시작됩니다.</div>
     <div class="p7v4-sign-by">SLIMMIND · BODYCODE REPORT</div>
   </div>
@@ -15276,6 +15282,39 @@ function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nic
     }
   }
 
+  // ── AI 7P 슬롯 렌더링 ─────────────────────────────────────────
+  function _apply7pSlots(data) {
+    if (!data) return;
+    var elMI = document.getElementById('ai-mental-intro');
+    var elOnel = document.getElementById('p7sum-onel');
+    if (elMI && data.mental_intro) {
+      elMI.textContent = data.mental_intro; elMI.style.display = ''; elMI.className = 'p7v4-onel';
+      if (elOnel) elOnel.style.display = 'none';
+    }
+    var icArr = data.insight_ctx || [];
+    ['ai-insight-ctx-0','ai-insight-ctx-1','ai-insight-ctx-2'].forEach(function(id, i) {
+      var elAI = document.getElementById(id); var elFB = document.getElementById('p7-ans'+(i+1));
+      if (elAI && icArr[i]) { elAI.innerHTML = icArr[i]; elAI.style.display = ''; if (elFB) elFB.style.display = 'none'; }
+    });
+    var elKC = document.getElementById('ai-know-close'); var elKCFB = document.getElementById('p7close-body');
+    if (elKC && data.know_close) { elKC.textContent = data.know_close; elKC.style.display = ''; elKC.className = 'p7v4-sign-tx'; if (elKCFB) elKCFB.style.display = 'none'; }
+  }
+  if (_isAuthorized && _resultId) {
+    if (window.__RESULT__ && window.__RESULT__.mental_intro) {
+      _apply7pSlots({ mental_intro:window.__RESULT__.mental_intro, insight_ctx:[window.__RESULT__.insight_ctx_0||null,window.__RESULT__.insight_ctx_1||null,window.__RESULT__.insight_ctx_2||null], know_close:window.__RESULT__.know_close||null });
+    } else {
+      fetch('/api/ai/7p/'+_resultId).then(function(r){return r.ok?r.json():null;}).then(function(d){
+        if (d&&d.mental_intro) { _apply7pSlots(d); }
+        else { var _ans=window.__LAST_ANSWERS__||{}; fetch('/api/ai/generate-7p',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({result_id:_resultId,name:userName,sex:(window.__RESULT__&&window.__RESULT__.gender)||'여성',ohaeng:_ans['ohaeng']||null,mbti:_ans['mbti']||null,bcCode:bcCode||null,subtype:_subKey||nicknameDisplay||null})}).then(function(r2){return r2.ok?r2.json():null;}).then(function(d2){if(d2&&d2.mental_intro)_apply7pSlots(d2);}).catch(function(){}); }
+      }).catch(function(){});
+    }
+  }
+  function _applyFinaleSlot(ft) { if(!ft)return; ['ai-finale-body','ai-finale-body-static'].forEach(function(id){var el=document.getElementById(id);if(el){el.textContent=ft;el.style.display='';}}); }
+  if (_isAuthorized && _resultId) {
+    if (window.__RESULT__&&window.__RESULT__.finale_body) { _applyFinaleSlot(window.__RESULT__.finale_body); }
+    else { fetch('/api/ai/cruel/'+_resultId).then(function(r){return r.ok?r.json():null;}).then(function(d){ if(d&&d.finale_body){_applyFinaleSlot(d.finale_body);}else{fetch('/api/ai/generate-cruel',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({result_id:_resultId,name:userName,sex:(window.__RESULT__&&window.__RESULT__.gender)||'여성',bcCode:bcCode||null,subtype:_subKey||nicknameDisplay||null})}).then(function(r2){return r2.ok?r2.json():null;}).then(function(d2){if(d2&&d2.finale_body)_applyFinaleSlot(d2.finale_body);}).catch(function(){});}}).catch(function(){}); }
+  }
+
   // BC 마스터 9종
   const bcGrid = document.getElementById('p1-bc-grid');
   var BC16 = [
@@ -16027,6 +16066,8 @@ function renderP4(userName, ohaengKey, mbtiType, gender, menopause, axisScores, 
             ${nm} 님의 몸은 <span>잘못이 없습니다.</span><br>맞지 않는 옷을 입혀온 방식이<br>잘못되었을 뿐입니다.${(function(){ var _w4=(window.__DESIRE__&&window.__DESIRE__.who)?String(window.__DESIRE__.who).trim():''; return _w4 ? '<br><span style="font-size:13px;opacity:.65">— ' + _w4 + '처럼 되고 싶다는 그 마음, 충분히 이뤄질 수 있습니다</span>' : ''; })()}
           </div>
           <div class="p4-ending-p" style="margin-top:18px;">앞서 보신 <b>12주 로드맵</b>과 <b>변화 예측</b>은, 오직 이 아픈 원인들을 하나씩 보듬고 풀어내기 위해 설계되었어요. 자도 풀리지 않던 그 피로도, 밤마다 찾아오던 그 허기도, 마음이 남긴 그 무게도 — 이제 각각의 방법으로 맞이합니다. 더는 혼자 맞서지 않아도 됩니다.</div>
+          <!-- AI 슬롯: finale_body (동적) -->
+          <div id="ai-finale-body" class="p4-ending-p" style="display:none;margin-top:18px;"></div>
           <div class="p4-ending-sig"><span class="dot"></span>당신은 반드시, 그리고 안전하게 바뀔 수 있습니다<span class="dot"></span></div>
         </div>
       </div>`;
