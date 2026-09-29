@@ -7716,7 +7716,95 @@ app.get('/api/h/result/:id', async (c) => {
        WHERE dr.id = ? AND dr.survey_category = 'hospital'`
     ).bind(id).first<any>()
 
-    if (!diagRow) return c.json({ error: 'Not found' }, 404)
+    // ── 3순위: results 테이블 폴백 (구형 RES-YYYYMMDD-XXXXX 파이프라인) ──────────────
+    // 2026-06 이전 고객 데이터는 results 테이블에만 존재
+    // bc_primary: 한글 닉네임('노화','수분')으로 저장 → BC 코드 역변환 필요
+    if (!diagRow) {
+      const legacyRow = await db.prepare(
+        `SELECT * FROM results WHERE id = ?`
+      ).bind(id).first<any>()
+
+      if (!legacyRow) return c.json({ error: 'Not found' }, 404)
+
+      // 한글 닉네임 → BC 코드 역변환 테이블 (results 테이블 구형 데이터 대응)
+      const NICKNAME_TO_BC: Record<string, string> = {
+        '노화': 'BC-09', '수분': 'BC-08', '호르몬': 'BC-01', '스트레스': 'BC-06',
+        '장': 'BC-05', '혈당': 'BC-04', '담': 'BC-07', '근육': 'BC-02',
+        '림프': 'BC-03', '신장': 'BC-10', '간': 'BC-11', '폐': 'BC-12',
+        '심장': 'BC-13', '비장': 'BC-14',
+      }
+      const rawBcPrimary = legacyRow.bc_primary || ''
+      // BC-N 형식이면 그대로, 한글이면 역변환
+      const resolvedBcCode = /^BC-\d+$/i.test(rawBcPrimary)
+        ? rawBcPrimary
+        : (NICKNAME_TO_BC[rawBcPrimary] || null)
+      // gender: '여' → '여성', '남' → '남성' 정규화 (구형 한 글자 포맷 대응)
+      const normGender = (g: any): string => {
+        if (!g) return ''
+        const s = String(g).trim()
+        if (s === '여') return '여성'
+        if (s === '남') return '남성'
+        return s
+      }
+      const legacyGender = normGender(legacyRow.gender)
+      const legacyOhaeng = normOhaeng(legacyRow.ohaeng_type)
+      const legacyMbti   = normMbti(legacyRow.mbti)
+      const legacyBloodType = (legacyRow.blood_type || '').toString().trim().replace('형', '')
+      const legacySurveyAnswers = parseJ(legacyRow.survey_answers_json)
+      const legacySurveySummary = parseJ(legacyRow.survey_summary_json)
+      const legacyAxisScores    = parseJ(legacyRow.axis_scores_json) || parseJ(legacyRow.bc_scores_json)
+
+      // legacy ref_code 브랜드 조회
+      let legacyBrandInfo: { brand_name: string | null, brand_color: string | null, brand_logo_url: string | null } = { brand_name: null, brand_color: null, brand_logo_url: null }
+      if (legacyRow.ref_code && legacyRow.ref_code.startsWith('B2B-')) {
+        try {
+          const bp = await db.prepare(`SELECT brand_name, brand_color, brand_logo_url FROM b2b_partners WHERE code=? AND status!='suspended' LIMIT 1`).bind(legacyRow.ref_code).first<any>()
+          if (bp) legacyBrandInfo = { brand_name: bp.brand_name || null, brand_color: bp.brand_color || null, brand_logo_url: bp.brand_logo_url || null }
+        } catch (_) {}
+      }
+      c.header('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0')
+      c.header('Pragma', 'no-cache')
+      c.header('Expires', '0')
+      c.header('Surrogate-Control', 'no-store')
+      return c.json({
+        ok: true,
+        id: legacyRow.id,
+        b2b_code: legacyRow.ref_code || null,
+        ref_code: legacyRow.ref_code || null,
+        brand_name: legacyBrandInfo.brand_name,
+        brand_color: legacyBrandInfo.brand_color,
+        brand_logo_url: legacyBrandInfo.brand_logo_url,
+        user_name: legacyRow.user_name,
+        gender: legacyGender,
+        age: legacyRow.birth_date ? null : null,
+        height: legacyRow.height != null ? Number(legacyRow.height) : null,
+        weight: legacyRow.weight != null ? Number(legacyRow.weight) : null,
+        phone: null,
+        ohaeng_type: legacyOhaeng,
+        disp_type: null,
+        mbti_full: legacyMbti,
+        blood_type: legacyBloodType,
+        face_shape: '',
+        bc_code: resolvedBcCode,
+        bc_nickname: rawBcPrimary || null,
+        bc_primary:  resolvedBcCode || rawBcPrimary || null,
+        axis_scores: legacyAxisScores,
+        stage1_answers: legacySurveyAnswers?.stage1 || legacySurveyAnswers || null,
+        stage2_answers: legacySurveyAnswers?.stage2 || null,
+        stage3_answers: legacySurveyAnswers?.stage3 || null,
+        stage4_answers: legacySurveyAnswers?.stage4 || null,
+        raw_answers: legacySurveyAnswers,
+        goal_weight: legacyRow.target_weight != null ? Number(legacyRow.target_weight) : null,
+        weight_loss_pct: null,
+        created_at: legacyRow.created_at,
+        consultant_name: '',
+        schema_version: 'v1.1',
+        survey_type: 'hospital',
+        b2b_prescription: await fetchB2bPrescription(db, resolvedBcCode, 'hospital'),
+        axis_history: null,
+        _legacy_source: 'results',   // 디버그용: 구형 파이프라인 출처 표시
+      })
+    }
 
     // diagnosis_results → /api/h/result 응답 구조로 변환
     const rawAnswers = parseJ(diagRow.raw_answers)
@@ -7911,8 +7999,11 @@ app.get('/result-hospital/:id', async (c) => {
       // ★ BUG-FIX (2026-08-22): 구버전 hospital_responses(H- 접두사)와
       //   신버전 diagnosis_results(UUID, survey_category='hospital') 양쪽에서 존재 확인
       //   이전 코드는 hospital_responses만 확인 → diagnosis_results UUID 접근 시 항상 404
+      // ★ BUG-FIX (2026-09-29): results 테이블(구형 RES-YYYYMMDD-XXXXX 파이프라인)도 확인
+      //   2026-06 이전 고객 데이터는 results 테이블에만 존재 → 미확인 시 항상 404
       let existsInHospResp = false
       let existsInDiagResults = false
+      let existsInResults = false
       try {
         const existRow = await db.prepare(
           `SELECT id FROM hospital_responses WHERE id = ? LIMIT 1`
@@ -7925,24 +8016,49 @@ app.get('/result-hospital/:id', async (c) => {
         ).bind(id).first<any>()
         if (drExist) existsInDiagResults = true
       } catch (_) {}
-
+      // results 테이블(구형 파이프라인) 확인
       if (!existsInHospResp && !existsInDiagResults) {
+        try {
+          const resExist = await db.prepare(
+            `SELECT id FROM results WHERE id = ? LIMIT 1`
+          ).bind(id).first<any>()
+          if (resExist) existsInResults = true
+        } catch (_) {}
+      }
+
+      if (!existsInHospResp && !existsInDiagResults && !existsInResults) {
         return c.html(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
 <title>결과지를 찾을 수 없습니다 | SlimMind</title>
 <style>body{font-family:'Pretendard',sans-serif;background:#f6f4ee;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}.box{text-align:center;padding:48px 32px;background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08);max-width:420px}h2{font-size:22px;color:#1a1a17;margin-bottom:12px}p{color:#7c776b;font-size:14px;line-height:1.7;margin-bottom:0}a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;color:#fff;border-radius:10px;text-decoration:none;font-weight:700}</style></head><body><div class="box"><h2>결과지를 찾을 수 없습니다</h2><p>링크가 만료되었거나<br>잘못된 주소입니다.</p><a href="/">새로 시작하기</a></div></body></html>`, 404)
       }
+      // gender 사전 주입용 변수 (서버사이드 window.__LAST_META__ 주입에 사용)
+      let injectedGender: string | null = null
       try {
-        // diagnosis_results에서 ref_code 조회 (신파이프라인 우선)
+        // diagnosis_results에서 ref_code + gender 조회 (신파이프라인 우선)
         const diagRow = await db.prepare(
-          `SELECT ref_code FROM diagnosis_results WHERE id = ? LIMIT 1`
+          `SELECT ref_code, gender FROM diagnosis_results WHERE id = ? LIMIT 1`
         ).bind(id).first<any>()
         if (diagRow?.ref_code) injectedRefCode = diagRow.ref_code
+        if (diagRow?.gender) injectedGender = diagRow.gender
         // 구버전 H- 접두어 ID: hospital_responses에서도 조회
         if (!injectedRefCode) {
           const hospRow = await db.prepare(
-            `SELECT ref_code FROM hospital_responses WHERE id = ? LIMIT 1`
+            `SELECT ref_code, gender FROM hospital_responses WHERE id = ? LIMIT 1`
           ).bind(id).first<any>()
           if (hospRow?.ref_code) injectedRefCode = hospRow.ref_code
+          if (!injectedGender && hospRow?.gender) injectedGender = hospRow.gender
+        }
+        // 구형 RES-YYYYMMDD-XXXXX: results 테이블에서도 ref_code + gender 조회
+        if (existsInResults && (!injectedRefCode || !injectedGender)) {
+          const resRow = await db.prepare(
+            `SELECT ref_code, gender FROM results WHERE id = ? LIMIT 1`
+          ).bind(id).first<any>()
+          if (!injectedRefCode && resRow?.ref_code) injectedRefCode = resRow.ref_code
+          if (!injectedGender && resRow?.gender) {
+            // results 테이블 구형 gender: '여' → '여성', '남' → '남성' 정규화
+            const g = String(resRow.gender).trim()
+            injectedGender = (g === '여') ? '여성' : (g === '남') ? '남성' : g
+          }
         }
       } catch (_) {}
     }
@@ -7996,10 +8112,17 @@ window.__IS_AUTHORIZED__ = true;`
       : `window.__RESULT__ = window.__RESULT__ || {};
 window.__RESULT__.result_id = ${JSON.stringify(id)};
 window.__IS_AUTHORIZED__ = ${JSON.stringify(!!rhIsAuthorized)};`
+    // ── gender 서버사이드 주입 — IIFE들이 renderAll() 이전 파싱 시점에 실행되므로
+    //    window.__LAST_META__.gender가 미리 세팅되어야 성별 분기가 올바르게 적용됨
+    //    smIsFemaleG()는 undefined이므로 모든 IIFE가 __LAST_META__ 폴백을 사용함
+    const lastMetaScript = injectedGender
+      ? `window.__LAST_META__ = window.__LAST_META__ || {}; window.__LAST_META__.gender = ${JSON.stringify(injectedGender)};`
+      : `window.__LAST_META__ = window.__LAST_META__ || {};`
     const idScript = `<script>
 window.__HOSPITAL_RESULT_ID__ = ${JSON.stringify(id)};
 window.__DEPLOY_TS__ = ${deployTs};
 window.__REF_CODE__ = ${JSON.stringify(injectedRefCode)};
+${lastMetaScript}
 ${rhStoryScript}
 try {
   localStorage.setItem('sm_last_result_id', ${JSON.stringify(id)});
