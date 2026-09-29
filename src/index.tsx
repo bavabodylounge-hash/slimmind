@@ -3833,8 +3833,9 @@ app.get('/b2b', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/b2b.h
 app.get('/b2b.html', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/b2b.html')))
 app.get('/b2b/*', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/b2b.html')))
 
-// ─── 임시: 바디맵 미리보기 (개발용) ────────────────────────────
-app.get('/bodymap-preview', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/bodymap_preview.html')))
+// ─── 구버전 경로 완전 차단 (410 Gone) ────────────────────────
+// bodymap_preview.html 삭제됨
+app.get('/bodymap-preview', (c) => _errorHtml('이 페이지는 삭제되었습니다', '최신 결과지를 이용해 주세요.', 410))
 
 
 // ─── 슬림마인드 라이브 설문지 — 유일한 최신 설문지 ────────────
@@ -4871,17 +4872,15 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif
   return htmlResponse(html)
 })
 
-// ─── result.html 직접 접근 (bc=BC-01&name=... 파라미터 방식) ──────────────
-app.get('/result.html', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/result.html')))
-app.get('/result', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/result.html')))
-
-// ─── result-v3.html (SlimMind v3.0 11축 결과지) ────────────────────────────
-app.get('/result-v3.html', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/result-v3.html')))
-app.get('/result-v3', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/result-v3.html')))
-
-// ─── result-v4.html 직접 접근 차단 (파일 삭제됨 — 업종별 결과지로 대체) ─────
-app.get('/result-v4.html', (c) => _errorHtml('이 페이지는 더 이상 사용되지 않습니다', '업종별 결과지로 이동되었습니다.', 410))
-app.get('/result-v4', (c) => _errorHtml('이 페이지는 더 이상 사용되지 않습니다', '업종별 결과지로 이동되었습니다.', 410))
+// ─── 구버전 결과지 완전 차단 (410 Gone) ─────────────────────────────────────
+// result.html, result-v3.html, result-v4.html 모두 삭제됨 → 업종별 전용 결과지 사용
+const _legacyGone = (c: any) => _errorHtml('이 페이지는 삭제되었습니다', '최신 결과지를 이용해 주세요.', 410)
+app.get('/result.html',   _legacyGone)
+app.get('/result',        _legacyGone)
+app.get('/result-v3.html', _legacyGone)
+app.get('/result-v3',     _legacyGone)
+app.get('/result-v4.html', _legacyGone)
+app.get('/result-v4',     _legacyGone)
 
 // ─── favicon ───────────────────────────────────────────────────────────────
 app.get('/favicon.ico', async (c) => {

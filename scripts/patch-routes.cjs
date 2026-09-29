@@ -34,7 +34,6 @@ const staticFiles = [
   '/b2b.html',
   '/consultant.html',
   '/slimmind-today.html',
-  '/hospital_survey_mapping_spec_v2.html',
   '/favicon.svg',
   '/manifest.json',
   '/sw.js',
@@ -47,16 +46,52 @@ for (const entry of staticFiles) {
   if (!r.exclude.includes(entry)) r.exclude.push(entry)
 }
 
-// 삭제된 구버전 항목 제거
+// ── 삭제된 구버전 항목 _routes.json에서 제거 ──────────────────────
 const removed = [
   '/result.html',
   '/result-v3.html',
   '/result-v4.html',
   '/bodymap_preview.html',
+  '/bodymap-preview',
   '/slimmind_live.html',
+  '/slimmind_live',
   '/slimmind_backend_mapping_v1.html',
+  '/hospital_survey_mapping_spec_v2.html',
+  '/result_73f6526b_static.html',
+  '/survey-sur001.html',
+  '/specs/*',
 ]
 r.exclude = r.exclude.filter(e => !removed.includes(e))
 
 fs.writeFileSync(routesPath, JSON.stringify(r))
 console.log('[patch-routes] _routes.json 최신화 완료:', r.exclude)
+
+// ── 빌드 후 dist/에서 구버전 파일 자동 삭제 ─────────────────────
+const distDir = path.join(__dirname, '../dist')
+const legacyFiles = [
+  'result.html', 'result-v3.html', 'result-v4.html',
+  'bodymap_preview.html',
+  'slimmind_live.html', 'slimmind_backend_mapping_v1.html',
+  'hospital_survey_mapping_spec_v2.html',
+  'result_73f6526b_static.html', 'survey-sur001.html',
+  'SLIMMIND_ARCHITECTURE.md', 'SLIMMIND_BUG_PREVENTION.md',
+]
+let cleaned = 0
+for (const f of legacyFiles) {
+  const fp = path.join(distDir, f)
+  if (fs.existsSync(fp)) { fs.rmSync(fp); console.log('[patch-routes] 구버전 삭제:', f); cleaned++ }
+}
+// bak 파일 전체 삭제 (재귀)
+function rmBaks(dir) {
+  if (!fs.existsSync(dir)) return
+  for (const f of fs.readdirSync(dir)) {
+    const fp = path.join(dir, f)
+    if (fs.statSync(fp).isDirectory()) { rmBaks(fp); continue }
+    if (f.includes('.bak')) { fs.rmSync(fp); console.log('[patch-routes] bak 삭제:', f); cleaned++ }
+  }
+}
+rmBaks(distDir)
+// specs/ 디렉토리 삭제
+const specsDir = path.join(distDir, 'specs')
+if (fs.existsSync(specsDir)) { fs.rmSync(specsDir, { recursive: true }); console.log('[patch-routes] specs/ 삭제'); cleaned++ }
+if (cleaned === 0) console.log('[patch-routes] 구버전 파일 없음 (clean)')
