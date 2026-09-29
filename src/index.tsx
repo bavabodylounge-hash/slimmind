@@ -518,6 +518,99 @@ function normalizeAxForDecide(raw: any): Record<string, number> {
   return result
 }
 
+// ─── 한글→영어 region/texture 변환 (4 진단 API 공용 전역 함수) ──────────
+// 4개 진단 API (/api/h, /api/f, /api/a, /api/s) 모두 공용으로 사용
+// decideSubtype()은 SUBTYPE_RULES의 영어 코드를 기대하므로 반드시 이 함수를 거쳐야 함
+const KR_REGION_TO_EN: Record<string, string[]> = {
+  // 한글 표현
+  '복부':     ['ABD'],
+  '하체':     ['LEG', 'HIP'],
+  '상체':     ['SHOULDER', 'BACK', 'ARM'],
+  '전신':     ['WHOLE'],
+  // 영어 코드 그대로 오는 경우 통과 (패스스루)
+  'ABD':      ['ABD'],
+  'LEG':      ['LEG', 'HIP'],
+  'HIP':      ['HIP', 'LEG'],
+  'WHOLE':    ['WHOLE'],
+  'SHOULDER': ['SHOULDER', 'BACK'],
+  'BACK':     ['BACK', 'SHOULDER'],
+  'ARM':      ['ARM', 'SHOULDER'],
+  'NECK':     ['NECK', 'BACK'],
+  'CHEST':    ['CHEST'],
+  'GLUTE':    ['GLUTE', 'HIP'],
+}
+const KR_TEXTURE_TO_EN: Record<string, string[]> = {
+  // 한글 표현
+  '단단':     ['firm'],
+  '물렁':     ['soft'],
+  '셀룰':     ['cellulite'],
+  '부종':     ['edema'],
+  // 영어 코드 그대로 오는 경우 통과 (패스스루)
+  'firm':       ['firm'],
+  'soft':       ['soft'],
+  'cellulite':  ['cellulite'],
+  'edema':      ['edema'],
+  'dense':      ['dense'],
+  'loose':      ['loose'],
+  'flabby':     ['flabby'],
+  'visceral':   ['visceral'],
+  'hard':       ['hard'],
+  'bloat':      ['bloat'],
+  'gas':        ['gas'],
+  'cold':       ['cold'],
+  'posture':    ['posture'],
+  'muscle':     ['muscle'],
+  'bulk':       ['bulk'],
+  'hormone':    ['hormone'],
+  'meno':       ['meno'],
+  'multi':      ['multi'],
+  'complex':    ['complex'],
+  'binge':      ['binge'],
+  'emotional':  ['emotional'],
+  'stress':     ['stress'],
+}
+function toEnRegions(raw: string[]): string[] {
+  const result: string[] = []
+  for (const r of raw) {
+    const mapped = KR_REGION_TO_EN[r]
+    if (mapped) { for (const m of mapped) { if (!result.includes(m)) result.push(m) } }
+    else { if (!result.includes(r.toUpperCase())) result.push(r.toUpperCase()) }
+  }
+  return result
+}
+function toEnTextures(raw: string[]): string[] {
+  const result: string[] = []
+  for (const t of raw) {
+    const mapped = KR_TEXTURE_TO_EN[t]
+    if (mapped) { for (const m of mapped) { if (!result.includes(m)) result.push(m) } }
+    else { if (!result.includes(t.toLowerCase())) result.push(t.toLowerCase()) }
+  }
+  return result
+}
+// gender 문자열 → 'female'|'male'|undefined (decideSubtype sex 파라미터용)
+function extractSexFromGender(gender: string): 'female' | 'male' | undefined {
+  const g = (gender || '').toLowerCase()
+  if (g.includes('f') || g.includes('여')) return 'female'
+  if (g.includes('m') || g.includes('남')) return 'male'
+  return undefined
+}
+// raw_answers에서 body_regions/textures 추출 → 영어코드 배열 반환 (4 API 공용)
+function extractRegionsAndTextures(
+  parsedRaw: Record<string, any>,
+  body: Record<string, any>
+): { bodyRegionsEn: string[]; texturesEn: string[] } {
+  const rawRegions: string[] = Array.isArray(parsedRaw?.body_regions)
+    ? parsedRaw.body_regions
+    : (body.region ? [body.region] : (body.body_regions ? (Array.isArray(body.body_regions) ? body.body_regions : [body.body_regions]) : []))
+  const rawTextures: string[] = Array.isArray(parsedRaw?.textures)
+    ? parsedRaw.textures
+    : (body.texture ? [body.texture] : (body.textures ? (Array.isArray(body.textures) ? body.textures : [body.textures]) : []))
+  return {
+    bodyRegionsEn: toEnRegions(rawRegions),
+    texturesEn:    toEnTextures(rawTextures),
+  }
+}
+
 // ─── computeIndicators: 4대 지표 공식 ─────────────────────────────
 // 복부위험도%, 호르몬부하%, 체형불균형%, 대사효율나이
 function computeIndicators(
@@ -7273,7 +7366,9 @@ app.post('/api/h/diagnosis', async (c) => {
       ref_code, session_id
     } = body
     // bc_code 통합: bc_code → bc_code_key → null 순으로 폴백
-    const resolvedBcCode = bc_code || bc_code_key || null
+    // ✅ [BUG-FIX] BC-N 형식만 유효 — MO_YANG, WW-01 등 레거시/비정규화 값은 NULL 처리 (a/s API와 동일)
+    const _rawBcCodeH = bc_code || bc_code_key || null
+    let resolvedBcCode: string | null = (_rawBcCodeH && /^BC-\d+$/i.test(String(_rawBcCodeH))) ? _rawBcCodeH : null
 
     // raw_answers 파싱
     const parsedRaw = raw_answers ? (typeof raw_answers === 'string' ? (() => { try { return JSON.parse(raw_answers) } catch { return {} } })() : raw_answers) : {}
@@ -7320,6 +7415,27 @@ app.post('/api/h/diagnosis', async (c) => {
       return result
     }
     const resolvedAxisScores = normalizeAxisScores(axis_scores)
+
+    // ★ [v4.9] decideSubtype 서버사이드 폴백 — 프론트가 bc_code를 전송하지 않은 경우
+    // axis_scores + body_regions + textures로 서버가 직접 BC 판정
+    // ※ 하드코딩 금지: 모의답안은 예시일 뿐, 실제 유저 답변을 범용으로 계산해야 함
+    if (!resolvedBcCode) {
+      try {
+        const { bodyRegionsEn: _hRegions, texturesEn: _hTextures } = extractRegionsAndTextures(parsedRaw, body)
+        const _hAxisForDecide = normalizeAxForDecide(resolvedAxisScores)
+        if (Object.keys(_hAxisForDecide).length > 0) {
+          const _hFlags: Record<string, boolean> = (parsedRaw?.flags && typeof parsedRaw.flags === 'object') ? parsedRaw.flags : {}
+          const _hSex = extractSexFromGender(gender || '')
+          const _hHasYoyo = Boolean(parsedRaw?.hasYoyoTrajectory || parsedRaw?.yoyo)
+          console.log(`[/api/h/diagnosis] decideSubtype 입력 - regions:${JSON.stringify(_hRegions)} textures:${JSON.stringify(_hTextures)} sex:${_hSex} yoyo:${_hHasYoyo}`)
+          const _hComputed = decideSubtype(_hAxisForDecide, _hRegions, _hTextures, _hFlags, _hSex, _hHasYoyo)
+          resolvedBcCode = _hComputed.bc
+          console.log(`[/api/h/diagnosis] decideSubtype 결과 - bc:${resolvedBcCode} name:${_hComputed.name}`)
+        }
+      } catch (_hErr) {
+        console.warn('[/api/h/diagnosis] decideSubtype 폴백 실패(무시):', _hErr)
+      }
+    }
 
     // 오행값 정규화: "수(水)"→"수", "금(金)"→"금" 등 한자 병기 제거, 앞 1글자만 추출
     const normalizeOhaeng = (v: any): string | null => {
@@ -8972,6 +9088,28 @@ app.post('/api/a/diagnosis', async (c) => {
     }
     const resolvedAxisScores = normalizeAx(axis_scores)
 
+    // ★ [v4.9] decideSubtype 서버사이드 폴백 — 프론트가 bc_code를 전송하지 않은 경우
+    // axis_scores + body_regions + textures로 서버가 직접 BC 판정 (에스테틱 업종)
+    // ※ 하드코딩 금지: 모의답안은 예시일 뿐, 실제 유저 답변을 범용으로 계산해야 함
+    let resolvedBcCodeA: string | null = resolvedBcCode
+    if (!resolvedBcCodeA) {
+      try {
+        const { bodyRegionsEn: _aRegions, texturesEn: _aTextures } = extractRegionsAndTextures(parsedRaw, body)
+        const _aAxisForDecide = normalizeAxForDecide(resolvedAxisScores)
+        if (Object.keys(_aAxisForDecide).length > 0) {
+          const _aFlags: Record<string, boolean> = (parsedRaw?.flags && typeof parsedRaw.flags === 'object') ? parsedRaw.flags : {}
+          const _aSex = extractSexFromGender(gender || '')
+          const _aHasYoyo = Boolean(parsedRaw?.hasYoyoTrajectory || parsedRaw?.yoyo)
+          console.log(`[/api/a/diagnosis] decideSubtype 입력 - regions:${JSON.stringify(_aRegions)} textures:${JSON.stringify(_aTextures)} sex:${_aSex} yoyo:${_aHasYoyo}`)
+          const _aComputed = decideSubtype(_aAxisForDecide, _aRegions, _aTextures, _aFlags, _aSex, _aHasYoyo)
+          resolvedBcCodeA = _aComputed.bc
+          console.log(`[/api/a/diagnosis] decideSubtype 결과 - bc:${resolvedBcCodeA} name:${_aComputed.name}`)
+        }
+      } catch (_aErr) {
+        console.warn('[/api/a/diagnosis] decideSubtype 폴백 실패(무시):', _aErr)
+      }
+    }
+
     const normOhaeng = (v: any): string | null => {
       if (!v) return null
       const s = String(v).trim()
@@ -9052,7 +9190,7 @@ app.post('/api/a/diagnosis', async (c) => {
       stage4_answers ? JSON.stringify(stage4_answers) : null,
       resolvedOhaeng,
       disp_type || (resolvedOhaeng ? resolvedOhaeng + '형' : null),
-      resolvedMbti, resolvedBcCode, resolvedBcNickname,
+      resolvedMbti, resolvedBcCodeA, resolvedBcNickname,
       resolvedAxisScores ? JSON.stringify(resolvedAxisScores) : null,
       raw_answers ? JSON.stringify(raw_answers) : null,
       resolvedGoalWeight, resolvedWeightLossPct,
@@ -9087,8 +9225,8 @@ app.post('/api/a/diagnosis', async (c) => {
       `).bind(
         resultId,
         user_name,
-        resolvedBcCode || bc_nickname || bc_primary || null,
-        resolvedBcCode || null,
+        resolvedBcCodeA || bc_nickname || bc_primary || null,
+        resolvedBcCodeA || null,
         null,
         resolvedBcNickname || null,
         top3Json,
@@ -9530,96 +9668,18 @@ app.post('/api/f/diagnosis', async (c) => {
 
     // ★ [v4.9] bc_code_key null 시 서버사이드 decideSubtype으로 BC 재계산
     // 프론트 매핑 실패(닉네임 매핑 누락 등) → axis_scores + region/texture로 서버가 직접 판정
-
-    // ── 한글 region/texture → decideSubtype 영어 코드 변환 매핑 ──
-    // 프론트 survey-fitness.html은 한글(복부/하체/상체/전신, 단단/물렁/셀룰/부종)을 전송
-    // decideSubtype은 SUBTYPE_RULES의 영어 코드(ABD/LEG/WHOLE, firm/soft/cellulite/edema)를 기대
-    const KR_REGION_TO_EN: Record<string, string[]> = {
-      '복부':  ['ABD'],
-      '하체':  ['LEG', 'HIP'],
-      '상체':  ['SHOULDER', 'BACK', 'ARM'],
-      '전신':  ['WHOLE'],
-      // 영어 코드 그대로 오는 경우 통과
-      'ABD':      ['ABD'],
-      'LEG':      ['LEG', 'HIP'],
-      'HIP':      ['HIP', 'LEG'],
-      'WHOLE':    ['WHOLE'],
-      'SHOULDER': ['SHOULDER', 'BACK'],
-      'BACK':     ['BACK', 'SHOULDER'],
-      'ARM':      ['ARM', 'SHOULDER'],
-      'NECK':     ['NECK', 'BACK'],
-      'CHEST':    ['CHEST'],
-      'GLUTE':    ['GLUTE', 'HIP'],
-    }
-    const KR_TEXTURE_TO_EN: Record<string, string[]> = {
-      '단단':   ['firm'],
-      '물렁':   ['soft'],
-      '셀룰':   ['cellulite'],
-      '부종':   ['edema'],
-      // 영어 코드 그대로 오는 경우 통과
-      'firm':       ['firm'],
-      'soft':       ['soft'],
-      'cellulite':  ['cellulite'],
-      'edema':      ['edema'],
-      'dense':      ['dense'],
-      'loose':      ['loose'],
-      'flabby':     ['flabby'],
-      'visceral':   ['visceral'],
-      'hard':       ['hard'],
-      'bloat':      ['bloat'],
-      'gas':        ['gas'],
-      'cold':       ['cold'],
-      'posture':    ['posture'],
-      'muscle':     ['muscle'],
-      'bulk':       ['bulk'],
-      'hormone':    ['hormone'],
-      'meno':       ['meno'],
-      'multi':      ['multi'],
-      'complex':    ['complex'],
-      'binge':      ['binge'],
-      'emotional':  ['emotional'],
-      'stress':     ['stress'],
-    }
-
-    // 한글→영어 변환 헬퍼
-    const toEnRegions = (raw: string[]): string[] => {
-      const result: string[] = []
-      for (const r of raw) {
-        const mapped = KR_REGION_TO_EN[r]
-        if (mapped) { for (const m of mapped) { if (!result.includes(m)) result.push(m) } }
-        else { if (!result.includes(r.toUpperCase())) result.push(r.toUpperCase()) }
-      }
-      return result
-    }
-    const toEnTextures = (raw: string[]): string[] => {
-      const result: string[] = []
-      for (const t of raw) {
-        const mapped = KR_TEXTURE_TO_EN[t]
-        if (mapped) { for (const m of mapped) { if (!result.includes(m)) result.push(m) } }
-        else { if (!result.includes(t.toLowerCase())) result.push(t.toLowerCase()) }
-      }
-      return result
-    }
-
-    // ── body_regions / textures 영어코드 추출 (DB 저장 + decideSubtype 공용) ──
-    // raw_answers 안에 body_regions/textures가 있으면 우선, 없으면 단수 region/texture 폴백
-    // 모두 한글→영어 변환(toEnRegions/toEnTextures)을 거쳐야 decideSubtype이 정확히 작동
+    // ── 전역 toEnRegions/toEnTextures/extractRegionsAndTextures 사용 (중복 정의 제거) ──
     const _raws = body.raw_answers || {}
-    const _rawRegions: string[] = Array.isArray(_raws.body_regions) ? _raws.body_regions
-      : (body.region ? [body.region] : [])
-    const _rawTextures: string[] = Array.isArray(_raws.textures) ? _raws.textures
-      : (body.texture ? [body.texture] : [])
-    // ★ 한글→영어 변환 — fitness_responses 저장 및 decideSubtype 입력 공용
-    const bodyRegionsEn: string[] = toEnRegions(_rawRegions)
-    const texturesEn:    string[] = toEnTextures(_rawTextures)
+    // body_regions / textures 영어코드 추출 — DB 저장 + decideSubtype 공용
+    // ★ raw_answers 안에 body_regions/textures 우선, 없으면 단수 region/texture 폴백
+    const { bodyRegionsEn, texturesEn } = extractRegionsAndTextures(_raws, body)
 
     let serverBcCode: string | null = body.bc_code || body.bc_code_key || null
     let serverBcNickname: string | null = body.bc_nickname || null
     if (!serverBcCode && axisScores && Object.keys(axisScores).length > 0) {
       try {
         const flags: Record<string, boolean> = (_raws.flags && typeof _raws.flags === 'object') ? _raws.flags : {}
-        const sex = (body.gender || '').toLowerCase().includes('f') || (body.gender || '').includes('여') ? 'female'
-          : (body.gender || '').toLowerCase().includes('m') || (body.gender || '').includes('남') ? 'male' : undefined
+        const sex = extractSexFromGender(body.gender || '')
         console.log(`[/api/f/diagnosis] decideSubtype 입력 - regions:${JSON.stringify(bodyRegionsEn)} textures:${JSON.stringify(texturesEn)} sex:${sex}`)
         const computed = decideSubtype(axisScores, bodyRegionsEn, texturesEn, flags, sex)
         serverBcCode = computed.bc
@@ -10101,6 +10161,28 @@ app.post('/api/s/diagnosis', async (c) => {
     }
     const resolvedAxisScores = normalizeAx(axis_scores)
 
+    // ★ [v4.9] decideSubtype 서버사이드 폴백 — 프론트가 bc_code를 전송하지 않은 경우
+    // axis_scores + body_regions + textures로 서버가 직접 BC 판정 (살롱 업종)
+    // ※ 하드코딩 금지: 모의답안은 예시일 뿐, 실제 유저 답변을 범용으로 계산해야 함
+    let resolvedBcCodeS: string | null = resolvedBcCode
+    if (!resolvedBcCodeS) {
+      try {
+        const { bodyRegionsEn: _sRegions, texturesEn: _sTextures } = extractRegionsAndTextures(parsedRaw, body)
+        const _sAxisForDecide = normalizeAxForDecide(resolvedAxisScores)
+        if (Object.keys(_sAxisForDecide).length > 0) {
+          const _sFlags: Record<string, boolean> = (parsedRaw?.flags && typeof parsedRaw.flags === 'object') ? parsedRaw.flags : {}
+          const _sSex = extractSexFromGender(gender || '')
+          const _sHasYoyo = Boolean(parsedRaw?.hasYoyoTrajectory || parsedRaw?.yoyo)
+          console.log(`[/api/s/diagnosis] decideSubtype 입력 - regions:${JSON.stringify(_sRegions)} textures:${JSON.stringify(_sTextures)} sex:${_sSex} yoyo:${_sHasYoyo}`)
+          const _sComputed = decideSubtype(_sAxisForDecide, _sRegions, _sTextures, _sFlags, _sSex, _sHasYoyo)
+          resolvedBcCodeS = _sComputed.bc
+          console.log(`[/api/s/diagnosis] decideSubtype 결과 - bc:${resolvedBcCodeS} name:${_sComputed.name}`)
+        }
+      } catch (_sErr) {
+        console.warn('[/api/s/diagnosis] decideSubtype 폴백 실패(무시):', _sErr)
+      }
+    }
+
     const normOhaeng = (v: any): string | null => {
       if (!v) return null
       const s = String(v).trim()
@@ -10181,7 +10263,7 @@ app.post('/api/s/diagnosis', async (c) => {
       stage4_answers ? JSON.stringify(stage4_answers) : null,
       resolvedOhaeng,
       disp_type || (resolvedOhaeng ? resolvedOhaeng + '형' : null),
-      resolvedMbti, resolvedBcCode, resolvedBcNickname,
+      resolvedMbti, resolvedBcCodeS, resolvedBcNickname,
       resolvedAxisScores ? JSON.stringify(resolvedAxisScores) : null,
       raw_answers ? JSON.stringify(raw_answers) : null,
       resolvedGoalWeight, resolvedWeightLossPct,
@@ -10211,8 +10293,8 @@ app.post('/api/s/diagnosis', async (c) => {
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
       `).bind(
         resultId, user_name,
-        resolvedBcCode || resolvedBcNickname || null,
-        resolvedBcCode || null, null,
+        resolvedBcCodeS || resolvedBcNickname || null,
+        resolvedBcCodeS || null, null,
         resolvedBcNickname || null,
         JSON.stringify(top3Axes), axJson,
         null, null,
