@@ -6720,6 +6720,9 @@ async function callClaude(
 //   굽기 1회 원칙: 저장본 있으면 그대로 반환
 // ★ 보안: 관리자/컨설턴트/B2B 파트너만 접근 가능 (고객 직접 접근 차단)
 app.post('/api/ai/generate-story', requireRole('ANY'), async (c) => {
+  // ★ 보안: story 생성은 해석본 — GUEST 차단
+  const _storyUser = c.get('user') as any
+  if (_storyUser?.role === 'GUEST') return c.json({ ok: false, error: '해석본 생성은 컨설턴트 전용입니다.' }, 403)
   const db = (c.env as any).DB as D1Database
   const apiKey = (c.env as any).ANTHROPIC_API_KEY as string | undefined
 
@@ -6886,6 +6889,10 @@ ${inputJson}`
 // ★ 보안: 관리자/컨설턴트/B2B 파트너만 접근 가능 (고객 직접 접근 차단)
 // 해석본(story_lead, clinical_ctx)은 관리자·마스터·컨설턴트 전용 — 고객에게 절대 노출 불가
 app.get('/api/ai/story/:result_id', requireRole('ANY'), async (c) => {
+  // ★ 보안: story_lead/clinical_ctx는 해석본 — CONSULTANT/MASTER/B2B_PARTNER만 열람 가능
+  const user = c.get('user') as any
+  if (user?.role === 'GUEST') return c.json({ error: '해석본은 컨설턴트 전용입니다.' }, 403)
+
   const db = (c.env as any).DB as D1Database
   if (!db) return c.json({ error: 'DB not configured' }, 500)
 
