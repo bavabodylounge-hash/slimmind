@@ -257,6 +257,24 @@ const parseJson = (s: string | null, fallback: any = null) => {
   try { return s ? JSON.parse(s) : fallback } catch { return fallback }
 }
 
+// ─── birthY 이중직렬화 방어 전역 헬퍼 ─────────────────────────────
+// DB에 birthY가 "\"1994\"" (이중직렬화)로 저장된 경우에도 안전하게 파싱.
+// [BUG-FIX] 이전에 /api/b2b/customer-summary 핸들러 내부 로컬로만 정의되어
+//           /api/a/result, /api/f/result, /api/s/result 에서 ReferenceError 발생 → 전역으로 이동
+function parseBirthY(birthY: any): number | null {
+  if (!birthY) return null
+  const cleaned = String(birthY).replace(/['"]/g, '').trim()
+  const y = parseInt(cleaned, 10)
+  if (isNaN(y) || y < 1900 || y > new Date().getFullYear()) return null
+  return y
+}
+function calcAgeFromBirthY(birthY: any): number | null {
+  const y = parseBirthY(birthY)
+  if (!y) return null
+  const age = new Date().getFullYear() - y
+  return (age > 0 && age < 120) ? age : null
+}
+
 // ─── 개인정보 마스킹 유틸 (공개 API 응답용) ─────────────────────
 // 전화번호: 010-1234-5678 → 010-****-5678 (앞 3자리 + 뒤 4자리 유지, 중간 마스킹)
 // [BUG-FIX v4.3] 공개 결과 API(/api/h/result, /api/a/result, /api/f/result)는
@@ -2594,26 +2612,6 @@ app.get('/api/b2b/customer-summary', requireB2B(), async (c) => {
   if (!id) return c.json({ error: 'session_id 또는 id 파라미터가 필요합니다.', usage: '?session_id={결과ID} 또는 ?id={결과ID}' }, 400)
 
   const parseJ = (v: any) => { try { return v ? JSON.parse(v) : null } catch { return null } }
-
-  /* ─── birthY 이중직렬화 방어 헬퍼 ──────────────────────────────────
-     DB에 birthY가 "\"1994\"" (JSON 문자열 내 이중직렬화)로 저장된 경우를 처리.
-     Number('"1994"') = NaN → 나이 계산 실패 → realAge=42 폴백 발동.
-     → 따옴표 제거 후 parseInt 사용.
-  ─────────────────────────────────────────────────────────────────── */
-  const parseBirthY = (birthY: any): number | null => {
-    if (!birthY) return null
-    // "\"1994\"" → '1994' 또는 1994 모두 처리
-    const cleaned = String(birthY).replace(/['"]/g, '').trim()
-    const y = parseInt(cleaned, 10)
-    if (isNaN(y) || y < 1900 || y > new Date().getFullYear()) return null
-    return y
-  }
-  const calcAgeFromBirthY = (birthY: any): number | null => {
-    const y = parseBirthY(birthY)
-    if (!y) return null
-    const age = new Date().getFullYear() - y
-    return (age > 0 && age < 120) ? age : null
-  }
 
   /* ─── 공통 pfProfile 파서 ────────────────────────────────────────
      raw_answers JSON 안에 pfProfile 오브젝트가 있는 경우 (병원·에스테틱 공통)
