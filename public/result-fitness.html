@@ -18308,18 +18308,60 @@ function switchPage(num) {
   if (num === 7) setTimeout(p7AnimAgeCount, 400);
   if (num === 10) setTimeout(function(){
     // ★ p10x(설계도 규격) 렌더: smSyncUser → paint() 체인
+    // ── [GUARD-L1] 필수 DOM 존재 확인 ─────────────────────────────────
+    var _p10root = document.getElementById('p10x');
+    if (!_p10root) {
+      console.error('[p10 GUARD] #p10x DOM이 없습니다. 오늘탭 렌더 불가. DOM 구조를 확인하세요.');
+      var _pg10 = document.getElementById('page10');
+      if (_pg10) _pg10.innerHTML = '<div style="padding:40px 24px;text-align:center;color:#c0392b;font-size:14px;line-height:1.8">'
+        + '<b style="font-size:16px;display:block;margin-bottom:8px">⚠️ 오늘탭을 불러올 수 없습니다</b>'
+        + '페이지를 새로고침 해주세요.<br><small style="color:#999">[오류코드: p10x-missing]</small>'
+        + '<br><button onclick="location.reload()" style="margin-top:16px;padding:10px 24px;background:#6a4fb0;color:#fff;border:0;border-radius:8px;font-size:14px;cursor:pointer">새로고침</button>'
+        + '</div>';
+      return;
+    }
+    // ── [GUARD-L2] 필수 함수 존재 확인 ────────────────────────────────
+    if (typeof paint !== 'function') {
+      console.error('[p10 GUARD] paint() 함수가 없습니다. 스크립트 로드 순서 또는 이름 변경을 확인하세요.');
+      return;
+    }
+    // ── 정상 렌더 ──────────────────────────────────────────────────────
     try{
       if(typeof smSyncUser==='function') smSyncUser();
+      else console.warn('[p10 GUARD] smSyncUser() 없음 — USER 데이터 동기화 생략');
       var _sp=window.__RESULT__||{};
       if(_sp.start_date && typeof USER!=='undefined') USER.startDate=_sp.start_date;
       if(typeof smDaysSinceStart==='function'){
         try{ var _d=smDaysSinceStart(); if(_d>=0&&_d<84){ USER.week=Math.floor(_d/7)+1; USER.day=(_d%7)+1; USER.startedDays=_d+1; } }catch(e){}
       }
-      if(typeof paint==='function') paint();
-    }catch(e){ if(window.console) console.warn('p10 paint:',e&&e.message); }
-    // 구형 wow 기반 renderDailyPage는 #p10-today가 없어 무효 — 실행 안 함
+      paint();
+    }catch(e){
+      console.error('[p10 GUARD] paint() 실행 중 오류:', e && e.message, e && e.stack);
+      if(window.console) console.warn('p10 paint 실패 — 위 에러를 확인하세요');
+    }
+    // 구형 wow 기반 renderDailyPage는 #p10-today가 없어 무효 — 절대 실행 금지
   }, 150);
 }
+
+// ── [GUARD-L3] 페이지 로드 시 자가진단 ─────────────────────────────────────
+// 이 블록은 오늘탭 렌더에 필요한 핵심 요소가 모두 존재하는지 부팅 시점에 검사합니다.
+// 개발/수정 후 콘솔 경고가 뜨면 즉시 원인을 파악하세요.
+document.addEventListener('DOMContentLoaded', function(){
+  var _checks = [
+    { name: '#p10x DOM',        ok: !!document.getElementById('p10x') },
+    { name: 'paint() 함수',     ok: typeof paint === 'function' },
+    { name: 'smSyncUser() 함수', ok: typeof smSyncUser === 'function' },
+    { name: 'smDaysSinceStart() 함수', ok: typeof smDaysSinceStart === 'function' },
+    { name: 'USER 객체',         ok: typeof USER !== 'undefined' }
+  ];
+  var _failed = _checks.filter(function(c){ return !c.ok; });
+  if (_failed.length > 0) {
+    console.warn('[p10 SELF-CHECK] ⚠️ 오늘탭 필수 요소 누락 (' + _failed.length + '건) — 오늘탭이 빈 화면이 될 수 있습니다!');
+    _failed.forEach(function(c){ console.warn('  ✗ 누락:', c.name); });
+  } else {
+    console.log('[p10 SELF-CHECK] ✅ 오늘탭 필수 요소 전체 확인 완료');
+  }
+});
 
 function enterReport(num){
   var c = document.getElementById('cover-overlay');
