@@ -7001,7 +7001,7 @@ function render(){
   /* 디자이너 */
   h+='<div class="sec rise d6"><div class="sec-h"><span class="sn">소통</span><span class="st">디자이너 피드백</span></div>'
     +'<div class="feedback"><div class="fb-h"><div class="fb-ava">'+IC.chat+'</div>'
-    +'<div><div class="fb-nm">이수민 디자이너</div><div class="fb-rl">'+USER.hospital+' · 오늘 09:12</div></div></div>'
+    +'<div><div class="fb-nm">'+(window.__CONSULTANT_NAME__ || '담당 디자이너')+'</div><div class="fb-rl">'+(USER.hospital||'담당 센터')+' · 오늘 09:12</div></div></div>'
     +'<div class="fb-msg">소희님, 어제 회복 루틴 지키신 거 확인했어요. 새벽에 깨는 횟수가 줄고 있는 게 보여요. 오늘은 저녁 걷기만 채우면 이번 주 목표 달성이에요.</div>'
     +'<div class="fb-reply"><input placeholder="답장 보내기…" id="fbInput"><button class="fb-send" onclick="reply()">보내기</button></div></div></div>';
 
@@ -14237,6 +14237,7 @@ function loadData() {
       target_weight: r.target_weight || '',
       bmi: r.bmi || '',
       bfr: r.bfr || '',
+      body_fat: r.bfr || '',   // P7 fillGoal + P9 computeBodyFatMetrics 연결 (bfr → body_fat 필드명 통일)
       fat_kg: r.fat_kg || '',
       muscle_kg: r.muscle_kg || '',
       body_goal: r.body_goal || '',
@@ -14862,7 +14863,7 @@ function renderAll(data) {
     pfProfile: _baseAnswers.pfProfile || data.pfProfile       || null,
   });
   try{ injectCoverInfo(userName, data.consultant_name || '', data.created_at || ''); }catch(e){}
-  try{ USER.name = userName; USER.code = data.bc_code || USER.code; USER.codeName = data.bc_primary || USER.codeName; if(typeof updateHeroProg==='function') updateHeroProg(); }catch(e){}
+  try{ USER.name = userName; USER.code = data.bc_code || USER.code; USER.codeName = data.bc_primary || USER.codeName; USER.hospital = (data.brand && data.brand.name) || data.hospital_name || ''; if(typeof updateHeroProg==='function') updateHeroProg(); }catch(e){}
 
   // ── 세션 3: 미활용 응답 필드 → 전역 주입 ──
   // desire, confidence, redFlags를 전역 window 변수로 주입해
