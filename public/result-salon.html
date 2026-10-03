@@ -14042,6 +14042,7 @@ function detectBackground(answers, gender, category) {
 // answers: 설문 응답 객체
 // ──────────────────────────────────────────────
 function computeNickname(axisScores, answers, gender) {
+  axisScores = (axisScores && typeof axisScores === 'object') ? axisScores : {}; // [null-guard]
   // ① 10개 원인축 점수 정렬 (Top1, Top2, Top3)
   // [v2.1] tie-breaking 안정화: 동점 시 축 번호 오름차순(A01 우선) — DB 키 삽입 순서 불확실성 제거
   var _allEntries = [];
@@ -14235,6 +14236,7 @@ var AXIS_11 = [
 // answers: 설문 응답 (배경 필터 감지용) — optional
 // ──────────────────────────────────────────────
 function computeBCCode(axisScores, answers, gender) {
+  axisScores = (axisScores && typeof axisScores === 'object') ? axisScores : {}; // [null-guard]
   // ① 10개 축 점수 직접 정렬
   var _axEntries = [];
   for (var _ak in axisScores) { if (_ak.indexOf('A') === 0) _axEntries.push([_ak, axisScores[_ak]]); }
@@ -18309,6 +18311,7 @@ function getEvidenceBadge(bcCode) {
 var BORDERLINE_THRESHOLD = 10; // 점수 차 기준 (임상적으로 10점 미만 = 불명확)
 
 function computeBCCodeSafe(axisScores, answers, gender) {
+  axisScores = (axisScores && typeof axisScores === 'object') ? axisScores : {}; // [null-guard]
   // ① 기존 1차 처리 — ★ gender 전달
   var primary = computeBCCode(axisScores, answers || {}, gender);
 
@@ -19437,7 +19440,8 @@ function renderAxisHistory(axisHistory, currentScores) {
 /* ═══════════ /axis_history ═══════════ */
 
 function renderAll(data) {
-  const { userName='고객', axisScores={}, ohaengType='수', mbtiType='INFJ' } = data;
+  const { userName='고객', ohaengType='수', mbtiType='INFJ' } = data;
+  const axisScores = (data.axisScores && typeof data.axisScores === 'object') ? data.axisScores : {}; // [null-guard]
   // ★ gender 추출 — computeBCCode 체인 전체에 전달하여 갱년기·출산 콘텐츠 남성 차단
   const _gender = data.gender || (data.answers && data.answers.Q02) || null;
   // ★ 남성 분기 전역 플래그 — renderP1/P2/P5/오늘탭 공통 사용

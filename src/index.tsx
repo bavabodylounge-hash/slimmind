@@ -253,8 +253,24 @@ function requireB2B() {
 }
 
 // ─── JSON 파싱 유틸 ────────────────────────────────────────────
-const parseJson = (s: string | null, fallback: any = null) => {
-  try { return s ? JSON.parse(s) : fallback } catch { return fallback }
+// ─── parseJson / parseJ 전역 헬퍼 — 이미 파싱된 객체·배열도 안전하게 통과 ────
+// DB에서 오는 값이 JSON 문자열인 경우와 이미 파싱된 객체인 경우 모두 처리.
+// [BUG-FIX] 이미 객체/배열인 값을 JSON.parse()에 넘기면 "[object Object]" → 파싱 실패 → fallback 반환
+//   → axis_scores가 DB에서 이미 파싱된 객체로 오면 {} fallback → 프론트에서 axisScores null → TypeError
+// [BUG-FIX] 4개 업종 결과지 renderAll에서 axisScores null → computeNickname TypeError
+const parseJson = (s: any, fallback: any = null) => {
+  if (s === null || s === undefined || s === '') return fallback
+  if (typeof s === 'object') return s          // 이미 파싱된 객체/배열 → 그대로
+  if (typeof s !== 'string') return s          // 숫자/불리언 → 그대로
+  try { return JSON.parse(s) } catch { return fallback }
+}
+// 4개 업종 핸들러 내부 로컬 parseJ의 글로벌 버전 — 모든 핸들러에서 공용
+// (핸들러 내부 로컬 parseJ가 이 전역함수를 shadow하지 않도록 각 핸들러도 수정)
+function safeParseJ(v: any, fallback: any = null): any {
+  if (v === null || v === undefined || v === '') return fallback
+  if (typeof v === 'object') return v
+  if (typeof v !== 'string') return v
+  try { return JSON.parse(v) } catch { return fallback }
 }
 
 // ─── birthY 이중직렬화 방어 전역 헬퍼 ─────────────────────────────
@@ -2611,7 +2627,7 @@ app.get('/api/b2b/customer-summary', requireB2B(), async (c) => {
   const id = c.req.query('session_id') || c.req.query('id') || ''
   if (!id) return c.json({ error: 'session_id 또는 id 파라미터가 필요합니다.', usage: '?session_id={결과ID} 또는 ?id={결과ID}' }, 400)
 
-  const parseJ = (v: any) => { try { return v ? JSON.parse(v) : null } catch { return null } }
+  const parseJ = safeParseJ
 
   /* ─── 공통 pfProfile 파서 ────────────────────────────────────────
      raw_answers JSON 안에 pfProfile 오브젝트가 있는 경우 (병원·에스테틱 공통)
@@ -2967,9 +2983,7 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
 
     if (diagRow) {
       // diagnosis_results → result-v4.html에 주입할 __RESULT__ 구조로 변환
-        const parseJsonSafe = (v: any, fallback: any = null) => {
-          try { return v ? JSON.parse(v) : fallback } catch { return fallback }
-        }
+        const parseJsonSafe = safeParseJ
         const diagResult = {
           result_id:       diagRow.id,                                  // ✅ 가족코드 fcInit용 result_id 추가
           bc_primary:      diagRow.bc_code_key || diagRow.bc_primary,   // ✅ BC-6 형태 우선
@@ -6572,9 +6586,7 @@ app.get('/api/v1/diagnosis/:id', async (c) => {
 
     if (!row) return c.json({ error: 'not found' }, 404)
 
-    const parseJson = (v: any, fallback: any) => {
-      try { return v ? JSON.parse(v) : fallback } catch { return fallback }
-    }
+    const parseJson = safeParseJ
 
     return c.json({
       result_id:    row.id,
@@ -8136,7 +8148,7 @@ app.get('/api/h/result/:id', async (c) => {
   const id = c.req.param('id')
   try {
     // JSON 필드 파싱
-    const parseJ = (v: any) => { try { return v ? JSON.parse(v) : null } catch { return null } }
+    const parseJ = safeParseJ
 
     // 오행 정규화
     const normOhaeng = (v: any): string => {
@@ -8221,7 +8233,7 @@ app.get('/api/h/result/:id', async (c) => {
         bc_code: row.bc_code,
         bc_nickname: row.bc_nickname || null,  // v3.3: 아형명 반환 (SUBTYPE_NARR 조회 키)
         bc_primary: row.bc_code || null,       // [BUG-FIX] bc_primary는 BC 코드(BC-X)여야 함. nickname을 반환하면 renderAll DB 고정 블록의 /^BC-\d+$/ 검사를 통과하지 못해 DB 고정이 무효화됨
-        axis_scores: parseJ(row.axis_scores),
+        axis_scores: parseJ(row.axis_scores) || {},
         stage1_answers: parseJ(row.stage1_json),
         stage2_answers: parseJ(row.stage2_json),
         stage3_answers: parseJ(row.stage3_json),
@@ -8378,7 +8390,7 @@ app.get('/api/h/result/:id', async (c) => {
     const diagFaceShape = (diagRow.face_shape || rawAnswers?.face_shape || rawAnswers?.pfProfile?.face || rawAnswers?.pfProfile?.faceShape || '').toString().trim()
 
     // axis_scores: diagnosis_results는 A01~A10 키 형태로 저장됨
-    const rawAxisScores = parseJ(diagRow.axis_scores)
+    const rawAxisScores = parseJ(diagRow.axis_scores) || {}
 
     // stage1~4 answers: raw_answers 안에 stage1/stage2/stage3/stage4 키로 저장됨
     const stage1 = rawAnswers?.stage1 || null
@@ -8448,7 +8460,7 @@ app.get('/api/h/result/:id', async (c) => {
       bc_code: diagRow.bc_code_key || diagRow.bc_primary || null,
       bc_nickname: diagRow.bc_nickname || diagRow.bc_primary || null,  // ✅ FIX: bc_nickname 필드 추가
       bc_primary:  diagRow.bc_primary || diagRow.bc_nickname || null,  // ✅ FIX: bc_primary 필드 추가
-      axis_scores: rawAxisScores,
+      axis_scores: rawAxisScores,   // 이미 위에서 || {} 보장
       stage1_answers: stage1,
       stage2_answers: stage2,
       stage3_answers: stage3,
@@ -9368,9 +9380,7 @@ app.get('/api/a/result/:id', async (c) => {
   if (!db) return c.json({ error: 'DB not configured' }, 500)
   const id = c.req.param('id')
   try {
-    const parseJ = (v: any, fallback: any = null) => {
-      try { return v ? JSON.parse(v) : fallback } catch { return fallback }
-    }
+    const parseJ = safeParseJ
 
     c.header('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0')
     c.header('Pragma', 'no-cache')
@@ -9961,7 +9971,7 @@ app.get('/api/f/result/:id', async (c) => {
       ).bind(id).first<any>().catch(() => null)
       if (!diagRow) return c.json({ error: 'Not found', ok: false }, 404)
       // diagnosis_results 컬럼 → fitness_responses 포맷으로 변환
-      const parseJd = (v: any, fb: any = null) => { try { return v ? JSON.parse(v) : fb } catch { return fb } }
+      const parseJd = safeParseJ
       // [BUG-FIX v4.4] raw_answers 한 번만 파싱 후 stage 분리 (중복 파싱 제거)
       const diagRaw = parseJd(diagRow.raw_answers, {})
       // [BUG-FIX v4.7] diagnosis_results 폴백 경로도 브랜드 조회
@@ -10047,9 +10057,7 @@ app.get('/api/f/result/:id', async (c) => {
       })
     }
 
-    const parseJ = (v: any, fallback: any = null) => {
-      try { return v ? JSON.parse(v) : fallback } catch { return fallback }
-    }
+    const parseJ = safeParseJ
     // [BUG-FIX v4.6] 반환 시 axis_scores 0~100 정규화 (기존 raw 데이터 하위호환 처리)
     const normalizeAxFRead = (raw: any): Record<string, number> => {
       if (!raw) return {}
@@ -10503,7 +10511,7 @@ app.get('/api/s/result/:id', async (c) => {
   if (!db) return c.json({ error: 'DB not configured' }, 500)
   const id = c.req.param('id')
   try {
-    const parseJ = (v: any) => { try { return v ? JSON.parse(v) : null } catch { return null } }
+    const parseJ = safeParseJ
     const normOhaeng = (v: any): string => {
       if (!v) return ''
       const s = String(v).trim()
