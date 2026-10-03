@@ -18326,7 +18326,19 @@ function switchPage(num) {
   if (num === 6) setTimeout(function(){ if(typeof renderLiveRecord==='function') renderLiveRecord(); }, 200);
   if (num === 9) setTimeout(function(){ if(typeof renderLiveRecord==='function') renderLiveRecord(); }, 200);
   if (num === 7) setTimeout(p7AnimAgeCount, 400);
-  if (num === 10) setTimeout(function(){ if(typeof renderDailyPage==='function') renderDailyPage(); }, 150);
+  if (num === 10) setTimeout(function(){
+    // ★ p10x(설계도 규격) 렌더: smSyncUser → paint() 체인
+    try{
+      if(typeof smSyncUser==='function') smSyncUser();
+      var _sp=window.__RESULT__||{};
+      if(_sp.start_date && typeof USER!=='undefined') USER.startDate=_sp.start_date;
+      if(typeof smDaysSinceStart==='function'){
+        try{ var _d=smDaysSinceStart(); if(_d>=0&&_d<84){ USER.week=Math.floor(_d/7)+1; USER.day=(_d%7)+1; USER.startedDays=_d+1; } }catch(e){}
+      }
+      if(typeof paint==='function') paint();
+    }catch(e){ if(window.console) console.warn('p10 paint:',e&&e.message); }
+    // 구형 wow 기반 renderDailyPage는 #p10-today가 없어 무효 — 실행 안 함
+  }, 150);
 }
 
 function enterReport(num){
