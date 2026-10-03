@@ -14268,9 +14268,11 @@ function computeBCCode(axisScores, answers, gender) {
     'A09':'BC-10','A10':'BC-16'
   };
   var _fallbackBc = _TOP1_TO_BC_DEFAULT[top1Actual] || 'BC-16';
-  var masterKey = NICKNAME_TO_BC[nickname] || _fallbackBc;
+  var _NBC = (typeof NICKNAME_TO_BC !== 'undefined' && NICKNAME_TO_BC) ? NICKNAME_TO_BC : {};  // [null-guard]
+  var masterKey = _NBC[nickname] || _fallbackBc;
   var bcCode    = masterKey;
-  var bcMaster  = BC_MASTER[masterKey] || BC_MASTER['BC-16'] || BC_MASTER['BC-6'];
+  var _BCM = (typeof BC_MASTER !== 'undefined' && BC_MASTER) ? BC_MASTER : {};  // [null-guard]
+  var bcMaster  = _BCM[masterKey] || _BCM['BC-16'] || _BCM['BC-6'] || {};
 
   // ④ 기존 causalScores 호환용 (CAUSAL_AXIS_META 기반 8축)
   var causalScores = {};
