@@ -19728,13 +19728,15 @@ var SUBTYPE_BASE={'BC-3':'남산수박배 기본형','BC-4':'물만마셔도요�
 function decideSubtype(region, texture, axisScores, bcCode, answers){
   function regMatch(r){ var regs=Array.isArray(r[0])?r[0]:[r[0]]; return regs.indexOf(region)>=0; }
   function texMatch(r){ var t=r[1]; return t.indexOf('무관')>=0 || t.indexOf(texture)>=0; }
-  var cands=SUBTYPE_RULES.filter(function(r){ return regMatch(r)&&texMatch(r); });
+  var _SR = (typeof SUBTYPE_RULES !== 'undefined' && Array.isArray(SUBTYPE_RULES)) ? SUBTYPE_RULES : [];  // [null-guard]
+  var _SB = (typeof SUBTYPE_BASE !== 'undefined' && SUBTYPE_BASE) ? SUBTYPE_BASE : {};  // [null-guard]
+  var cands=_SR.filter(function(r){ return regMatch(r)&&texMatch(r); });
   if(cands.length===0){
     // 부위만 맞는 후보로 완화
-    cands=SUBTYPE_RULES.filter(regMatch);
+    cands=_SR.filter(regMatch);
   }
   if(cands.length===0){
-    if(bcCode&&SUBTYPE_BASE[bcCode]) return {subtype:SUBTYPE_BASE[bcCode],bc:bcCode};
+    if(bcCode&&_SB[bcCode]) return {subtype:_SB[bcCode],bc:bcCode};
     return {subtype:'동시다발 다중악순환형',bc:bcCode||'BC-16'};
   }
   if(cands.length===1) return {subtype:cands[0][3],bc:cands[0][4]};
