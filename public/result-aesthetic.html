@@ -5765,7 +5765,7 @@ try{ ['log','info','warn','debug'].forEach(function(k){ console[k]=function(){};
       <div class="cvx-cover-foot">
         <div class="cvx-meta">
           <div class="cvx-meta-row"><span class="cvx-meta-k">진단일</span><span class="cvx-meta-v" id="cover-date">2026년 8월 2일</span></div>
-          <div class="cvx-meta-row" id="cover-consultant-wrap" style=""><span class="cvx-meta-k">담당 관리사</span><span class="cvx-meta-v" id="cover-consultant">바바에스테틱 관리사</span></div><div class="cvx-meta-row" id="cover-basis"><span class="cvx-meta-k">분석 근거</span><span class="cvx-meta-v">4단계 정밀 분석 · 88개 응답 · 11축 교차 판정</span></div>
+          <div class="cvx-meta-row" id="cover-consultant-wrap" style="display:none"><span class="cvx-meta-k">담당 관리사</span><span class="cvx-meta-v" id="cover-consultant"></span></div><div class="cvx-meta-row" id="cover-basis"><span class="cvx-meta-k">분석 근거</span><span class="cvx-meta-v">4단계 정밀 분석 · 88개 응답 · 11축 교차 판정</span></div>
         </div>
         <button class="cvx-scroll-cue" onclick="gotoToc()" aria-label="목차로 이동">
           <span class="cvx-cue-tx">아래로 넘겨주세요</span>
@@ -6371,7 +6371,7 @@ try{ ['log','info','warn','debug'].forEach(function(k){ console[k]=function(){};
 
   <div class="rm-sign fade-up">
     <span class="rm-sign-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg></span>
-    <span class="rm-sign-tx">설계·점검 <b id="p6-hero-consultant">바바에스테틱 관리사</b> · 매 주차 직접 검토</span>
+    <span class="rm-sign-tx">설계·점검 <b id="p6-hero-consultant">담당 관리사</b> · 매 주차 직접 검토</span>
     <span id="p6-name" style="display:none"></span><span id="p6-name2b" style="display:none"></span>
   </div>
 
@@ -10485,8 +10485,11 @@ function rCu(){
 }
 /* ═══ [10] 관리 바 6슬롯 ═══ */
 function rMg(){
- /* ★고침 fallback — consultantName 없으면 업체 기본 이름으로 카드 표시 (에스테틱은 항상 카드 노출) */
- var _cName = USER.consultantName || (USER.hospital && USER.hospital !== smPlace() ? USER.hospital+' 관리사' : '에스테틱 관리사');
+ /* ★고침 2-06 — consultantName 없으면 smConsultantShown으로 업체명 fallback (에스테틱 항상 카드 노출) */
+ var _cName = (typeof smConsultantShown==='function')
+   ? smConsultantShown(USER.consultantName, USER.hospital)
+   : (USER.consultantName || USER.hospital || '에스테틱 관리사');
+ if(!_cName){ var _mg=document.getElementById('W_mg'); if(_mg) _mg.innerHTML=''; return; }
  /* 설계도 관리 바 6슬롯 — ①프로필 ②실명 ③직함 ④확인 시각 ⑤주간 건수 ⑥[메시지]
     ⚠상단은 상태만 — 코멘트는 하단 「컨설턴트 피드백」에만 (같은 사람이 두 번 말하지 않는다) */
  /* ★고침 R함-4 — 확인 시각·주간 건수는 손님 자료가 있을 때만(시연 12분·7건 제거) · 업체 이름 = USER.hospital(손님 자료 → 업종 기본 이름) */
@@ -18712,7 +18715,7 @@ function gotoToc(){
 }
 window.gotoToc = gotoToc;
 
-function injectCoverInfo(userName, consultantName, createdAt){
+function injectCoverInfo(userName, consultantName, createdAt, bizName){
   var u = document.getElementById('cover-username');
   if(u && userName){ u.textContent = userName; }
   var sn = document.getElementById('cover-sub-name');
@@ -18742,9 +18745,11 @@ function injectCoverInfo(userName, consultantName, createdAt){
       dEl.textContent = _today.getFullYear()+'년 '+(_today.getMonth()+1)+'월 '+_today.getDate()+'일';
     }
   }
+  /* ★고침 2-06 — 담당: 이름 → 없으면 업체명(bizName) → 둘 다 없으면 줄 숨김 */
+  var _shown = (typeof smConsultantShown==='function') ? smConsultantShown(consultantName, bizName) : (consultantName || '');
   var cw = document.getElementById('cover-consultant-wrap');
   var cn = document.getElementById('cover-consultant');
-  if(consultantName){ if(cn) cn.textContent = (typeof consultantLabel==='function'?consultantLabel(consultantName):consultantName); if(cw) cw.style.display=''; }
+  if(_shown){ if(cn) cn.textContent = _shown; if(cw) cw.style.display=''; }
   else { if(cw) cw.style.display='none'; }
   // p1-story-name (정적 HTML 하드코딩 제거 후 동적 주입)
   var sn2 = document.getElementById('p1-story-name');
@@ -19580,7 +19585,7 @@ function renderAll(data) {
     age:       _ageResolved,
     pfProfile: _baseAnswers.pfProfile || data.pfProfile       || null,
   });
-  try{ injectCoverInfo(userName, data.consultant_name || '', data.created_at || ''); }catch(e){}
+  try{ injectCoverInfo(userName, data.consultant_name || '', data.created_at || '', (data.brand && data.brand.name) || data.biz_name || data.hospital_name || ''); }catch(e){}   /* ★고침 2-06 — biz_name 4번째 인수 추가 */
   try{ USER.name = userName; USER.code = data.bc_code || USER.code; USER.codeName = data.bc_primary || USER.codeName; USER.hospital = (data.brand && data.brand.name) || data.hospital_name || ''; if(typeof updateHeroProg==='function') updateHeroProg(); }catch(e){}
 
   // ── 세션 3: 미활용 응답 필드 → 전역 주입 ──
@@ -26299,6 +26304,9 @@ function consultantLabel(name){
   return n + ' 관리사';
 }
 window.consultantLabel = consultantLabel;
+/* ★고침 2-06 — 담당 표시: 이름 있으면 «○○○ 관리사» · 없으면 업체명(biz_name) · 둘 다 없으면 빈 값 */
+function smConsultantShown(name, biz){ var n = String(name || '').trim(); if(n) return consultantLabel(n); return String(biz || '').trim(); }
+window.smConsultantShown = smConsultantShown;
 
 // ════ 오늘 페이지: "오늘 할 일" 카드 (page10 맨 위) ════
 // 오늘 탭 공용 아이콘 — 오늘 카드와 실천기록 진행바가 같은 아이콘을 쓴다
