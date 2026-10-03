@@ -24,11 +24,12 @@ const staticFiles = [
   '/survey-aesthetic.html',
   '/survey-fitness.html',
   '/survey-salon.html',
-  // 결과지 (4개 업종 최신본)
-  '/result-hospital.html',
-  '/result-aesthetic.html',
-  '/result-fitness.html',
-  '/result-salon.html',
+  // ★ 결과지는 Worker가 /:id 패턴으로 처리 → exclude에 넣으면 안 됨!
+  // result-*.html을 exclude에 넣으면:
+  //   → Cloudflare가 .html 파일을 정적 서빙 시도
+  //   → /result-hospital.html 308 Permanent Redirect → /result-hospital
+  //   → Worker에 /result-hospital 라우트 없음 → 404
+  // ∴ 아래 4개는 의도적으로 staticFiles에서 제외 (Worker 담당)
   // 기타 서비스 페이지
   '/admin.html',
   '/b2b.html',
