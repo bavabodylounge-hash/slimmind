@@ -9383,11 +9383,11 @@ app.get('/api/a/result/:id', async (c) => {
       }
       // [BUG-FIX v4.7] 브랜드 조회: ref_code로 b2b_partners 조회
       const aeRefCode = row.ref_code || aeRow?.ref_code || null
-      let aeBrandInfo: { brand_name: string | null, brand_color: string | null, brand_logo_url: string | null } = { brand_name: null, brand_color: null, brand_logo_url: null }
+      let aeBrandInfo: { brand_name: string | null, brand_color: string | null, brand_logo_url: string | null, partner_display_name: string | null } = { brand_name: null, brand_color: null, brand_logo_url: null, partner_display_name: null }
       if (aeRefCode && aeRefCode.startsWith('B2B-')) {
         try {
-          const bp = await db.prepare(`SELECT brand_name, brand_color, brand_logo_url FROM b2b_partners WHERE code=? AND status!='suspended' LIMIT 1`).bind(aeRefCode).first<any>()
-          if (bp) aeBrandInfo = { brand_name: bp.brand_name || null, brand_color: bp.brand_color || null, brand_logo_url: bp.brand_logo_url || null }
+          const bp = await db.prepare(`SELECT name, brand_name, brand_color, brand_logo_url FROM b2b_partners WHERE code=? AND status!='suspended' LIMIT 1`).bind(aeRefCode).first<any>()
+          if (bp) aeBrandInfo = { brand_name: bp.brand_name || null, brand_color: bp.brand_color || null, brand_logo_url: bp.brand_logo_url || null, partner_display_name: bp.name || null }
         } catch (_) {}
       }
       return c.json({
@@ -9438,6 +9438,7 @@ app.get('/api/a/result/:id', async (c) => {
         created_at:     row.created_at,
         schema_version: 'v1.1',
         survey_type: row.survey_category || 'aesthetic',
+        consultant_name: aeBrandInfo.partner_display_name || '',
         // ── [B2B 처방 분기] bc_prescriptions_b2b 우선 조회 → bc_prescriptions 폴백 ──
         b2b_prescription: await fetchB2bPrescription(db, row.bc_code_key || row.bc_primary, 'aesthetic'),
         _source: 'diagnosis_results',
@@ -9455,11 +9456,11 @@ app.get('/api/a/result/:id', async (c) => {
       if (s3 && !rawForAe.stage3) rawForAe.stage3 = s3
       // [BUG-FIX v4.7] 브랜드 조회: b2b_code='DIRECT'이면 ref_code로 폴백
       const aeRowBrandCode = (aeRow.b2b_code && aeRow.b2b_code !== 'DIRECT') ? aeRow.b2b_code : (aeRow.ref_code || null)
-      let aeRowBrandInfo: { brand_name: string | null, brand_color: string | null, brand_logo_url: string | null } = { brand_name: null, brand_color: null, brand_logo_url: null }
+      let aeRowBrandInfo: { brand_name: string | null, brand_color: string | null, brand_logo_url: string | null, partner_display_name: string | null } = { brand_name: null, brand_color: null, brand_logo_url: null, partner_display_name: null }
       if (aeRowBrandCode && aeRowBrandCode.startsWith('B2B-')) {
         try {
-          const bp = await db.prepare(`SELECT brand_name, brand_color, brand_logo_url FROM b2b_partners WHERE code=? AND status!='suspended' LIMIT 1`).bind(aeRowBrandCode).first<any>()
-          if (bp) aeRowBrandInfo = { brand_name: bp.brand_name || null, brand_color: bp.brand_color || null, brand_logo_url: bp.brand_logo_url || null }
+          const bp = await db.prepare(`SELECT name, brand_name, brand_color, brand_logo_url FROM b2b_partners WHERE code=? AND status!='suspended' LIMIT 1`).bind(aeRowBrandCode).first<any>()
+          if (bp) aeRowBrandInfo = { brand_name: bp.brand_name || null, brand_color: bp.brand_color || null, brand_logo_url: bp.brand_logo_url || null, partner_display_name: bp.name || null }
         } catch (_) {}
       }
       return c.json({
@@ -9494,6 +9495,7 @@ app.get('/api/a/result/:id', async (c) => {
         created_at:     aeRow.created_at,
         schema_version: 'v1.1',
         survey_type: 'aesthetic',
+        consultant_name: aeRowBrandInfo.partner_display_name || '',
         // ── [B2B 처방 분기] bc_prescriptions_b2b 우선 조회 → bc_prescriptions 폴백 ──
         b2b_prescription: await fetchB2bPrescription(db, aeRow.bc_code, 'aesthetic'),
         _source: 'aesthetic_responses',
@@ -9927,13 +9929,13 @@ app.get('/api/f/result/:id', async (c) => {
       // [BUG-FIX v4.4] raw_answers 한 번만 파싱 후 stage 분리 (중복 파싱 제거)
       const diagRaw = parseJd(diagRow.raw_answers, {})
       // [BUG-FIX v4.7] diagnosis_results 폴백 경로도 브랜드 조회
-      let diagBrandInfo: { brand_name: string | null, brand_color: string | null, brand_logo_url: string | null } = { brand_name: null, brand_color: null, brand_logo_url: null }
+      let diagBrandInfo: { brand_name: string | null, brand_color: string | null, brand_logo_url: string | null, partner_display_name: string | null } = { brand_name: null, brand_color: null, brand_logo_url: null, partner_display_name: null }
       if (diagRow.ref_code && diagRow.ref_code.startsWith('B2B-')) {
         try {
           const bp = await db.prepare(
-            `SELECT brand_name, brand_color, brand_logo_url FROM b2b_partners WHERE code=? AND status!='suspended' LIMIT 1`
+            `SELECT name, brand_name, brand_color, brand_logo_url FROM b2b_partners WHERE code=? AND status!='suspended' LIMIT 1`
           ).bind(diagRow.ref_code).first<any>()
-          if (bp) diagBrandInfo = { brand_name: bp.brand_name || null, brand_color: bp.brand_color || null, brand_logo_url: bp.brand_logo_url || null }
+          if (bp) diagBrandInfo = { brand_name: bp.brand_name || null, brand_color: bp.brand_color || null, brand_logo_url: bp.brand_logo_url || null, partner_display_name: bp.name || null }
         } catch (_) {}
       }
       c.header('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0')
@@ -9993,6 +9995,7 @@ app.get('/api/f/result/:id', async (c) => {
         created_at:      diagRow.created_at || diagRow.completed_at,
         schema_version:  'v1.1',
         survey_type:     'fitness',
+        consultant_name: diagBrandInfo.partner_display_name || '',
         b2b_prescription: await fetchB2bPrescription(db, diagRow.bc_code_key || diagRow.bc_primary, 'fitness'),
         _source:         'diagnosis_results',
       })
@@ -10038,13 +10041,13 @@ app.get('/api/f/result/:id', async (c) => {
     const fitBrandCode = (row.b2b_code && row.b2b_code !== 'DIRECT')
       ? row.b2b_code
       : (row.ref_code || null)
-    let fitBrandInfo: { brand_name: string | null, brand_color: string | null, brand_logo_url: string | null } = { brand_name: null, brand_color: null, brand_logo_url: null }
+    let fitBrandInfo: { brand_name: string | null, brand_color: string | null, brand_logo_url: string | null, partner_display_name: string | null } = { brand_name: null, brand_color: null, brand_logo_url: null, partner_display_name: null }
     if (fitBrandCode && fitBrandCode.startsWith('B2B-')) {
       try {
         const bp = await db.prepare(
-          `SELECT brand_name, brand_color, brand_logo_url FROM b2b_partners WHERE code=? AND status!='suspended' LIMIT 1`
+          `SELECT name, brand_name, brand_color, brand_logo_url FROM b2b_partners WHERE code=? AND status!='suspended' LIMIT 1`
         ).bind(fitBrandCode).first<any>()
-        if (bp) fitBrandInfo = { brand_name: bp.brand_name || null, brand_color: bp.brand_color || null, brand_logo_url: bp.brand_logo_url || null }
+        if (bp) fitBrandInfo = { brand_name: bp.brand_name || null, brand_color: bp.brand_color || null, brand_logo_url: bp.brand_logo_url || null, partner_display_name: bp.name || null }
       } catch (_) {}
     }
 
@@ -10092,6 +10095,7 @@ app.get('/api/f/result/:id', async (c) => {
       created_at:       row.created_at,
       schema_version:   'v1.1',
       survey_type:      'fitness',
+      consultant_name:  fitBrandInfo.partner_display_name || '',
       b2b_prescription: await fetchB2bPrescription(db, effectiveBcCode, 'fitness'),
     })
   } catch (e: any) {
