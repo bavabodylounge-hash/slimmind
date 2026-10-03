@@ -12169,7 +12169,7 @@ function rNbar(){
    : '<div class="v3">'+(tiny?'천천히':kg.toFixed(1)+'<u>kg</u>')+'</div>';
  document.getElementById('W_nbar').innerHTML=
   '<div class="nbar"><div><div class="l3b">하루 먹는 양</div>'
-  +'<div class="v3">'+wkKcal().toLocaleString()+'<u>kcal</u></div></div>'
+  +'<div class="v3">'+(wkKcal()||0).toLocaleString()+'<u>kcal</u></div></div>'
   +'<div><div class="l3b">일주일에</div>'+mid+'</div>'
   +(USER.exTime&&!rest?'<div><div class="l3b">운동 시간</div><div class="v3">'+USER.exTime+'</div></div>':'')+'</div>'
   +(over?'<div class="nwarn">목표 속도가 <b>주 0.7kg</b>을 넘어 숫자를 띄우지 않았어요 — '
@@ -15550,8 +15550,10 @@ function getMbtiOhaengInsights(bcMaster, ohaengKey, mbtiType, axisScores, redFla
   var hasPCOS     = _rfl.indexOf('PCOS')     >= 0;
   var hasYOYO     = _rfl.indexOf('YOYO')     >= 0;
 
-  var ohaeng = SAJU_ELEMENT_DESC[ohaengKey] || SAJU_ELEMENT_DESC['목'];
-  var mbti   = MBTI_DESC[mbtiType] || MBTI_DESC['INFJ'];
+  var _gpSAJU = (typeof SAJU_ELEMENT_DESC !== 'undefined' && SAJU_ELEMENT_DESC) ? SAJU_ELEMENT_DESC : {};
+  var _gpMBTI = (typeof MBTI_DESC !== 'undefined' && MBTI_DESC) ? MBTI_DESC : {};
+  var ohaeng = _gpSAJU[ohaengKey] || _gpSAJU['목'] || {};
+  var mbti   = _gpMBTI[mbtiType] || _gpMBTI['INFJ'] || {};
   var _bcRaw = (bcMaster && bcMaster.code) ? bcMaster.code : 'BC-6';
   var _bc    = _bcRaw.replace(/\s/g,'').toUpperCase();
   if (!_bc.match(/^BC-\d+$/)) _bc = 'BC-6';
@@ -15748,8 +15750,10 @@ function getCruelHistoryTriggers(userName, ohaengKey, mbtiType, gender, menopaus
   var hasSTEROID  = _rfl.indexOf('STEROID')     >= 0;
   var hasFATTY    = _rfl.indexOf('FATTY_LIVER') >= 0;
 
-  var ohaeng = SAJU_ELEMENT_DESC[ohaengKey] || SAJU_ELEMENT_DESC['목'];
-  var mbti   = MBTI_DESC[mbtiType] || MBTI_DESC['INFJ'];
+  var _gpSAJU = (typeof SAJU_ELEMENT_DESC !== 'undefined' && SAJU_ELEMENT_DESC) ? SAJU_ELEMENT_DESC : {};
+  var _gpMBTI = (typeof MBTI_DESC !== 'undefined' && MBTI_DESC) ? MBTI_DESC : {};
+  var ohaeng = _gpSAJU[ohaengKey] || _gpSAJU['목'] || {};
+  var mbti   = _gpMBTI[mbtiType] || _gpMBTI['INFJ'] || {};
   var nm = (userName && userName.length >= 3) ? userName.slice(1) : (userName || '회원');
 
   // ── BC코드별 트리거 01·02 맵 (BC-1~BC-16 각각 맞춤 텍스트) ──
@@ -20948,7 +20952,7 @@ function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nic
   if (_sub && _sub.story) {
     _p1Lead = _fillSlots(_sub.story, _slotCtx);
   } else {
-    var _codeLead = _G_LEAD[bcCode] || '무엇을 해도 딱 맞지 않던 몸.';
+    var _codeLead = LEAD16[bcCode] || '무엇을 해도 딱 맞지 않던 몸.';
     _p1Lead = _codeLead;
     if (_bodyChg === 0 || _bodyChg === '0') _p1Lead = (function(){var _m=!((typeof smIsFemaleG==='function')?smIsFemaleG():((window.__LAST_META__&&window.__LAST_META__.gender)==='여성'||(window.__LAST_META__&&window.__LAST_META__.gender)==='F'));return (_m ? '호르몬 변화 이후 분명 달라진 몸 — ' : '갱년기 이후 분명 달라진 몸 — ') + _codeLead;})();
     else if (_bodyChg === 1 || _bodyChg === '1') _p1Lead = '번아웃이 쌓이던 시간 — ' + _codeLead;
@@ -21227,7 +21231,7 @@ function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nic
     '동시다발 다중악순환형':     '다중악순환형',
   };
   // 결정 순서: ① bcCode 직접 매핑(최우선) → ② 닉네임 정확 매핑 → ③ 부분문자열 폴백
-  var activeCardName = _G_BCC[bcCode] || _G_NTC[myNick] || null;
+  var activeCardName = BC_CODE_TO_CARD[bcCode] || NICK_TO_CARD[myNick] || null;
 
   var ICON16 = {
     '단단 내장형':'\uD83D\uDD34','물렁 피하형':'\uD83C\uDF6E','가스 팽만형':'\uD83C\uDF88','올챙이배형':'\uD83E\uDD5A',
@@ -25883,8 +25887,10 @@ function renderP7(userName, bcCode, bcMaster, metrics, ohaengType, mbtiType, ful
   _p7Data = { userName, bcCode, bcMaster, metrics, ohaengType, mbtiType, fullCode, nicknameDisplay };
   data = data || {};
 
-  const ohaeng = SAJU_ELEMENT_DESC[ohaengType] || SAJU_ELEMENT_DESC['수'];
-  const mbti   = MBTI_DESC[mbtiType] || MBTI_DESC['INFJ'];
+  var _p7SAJU = (typeof SAJU_ELEMENT_DESC !== 'undefined' && SAJU_ELEMENT_DESC) ? SAJU_ELEMENT_DESC : {};
+  var _p7MBTI = (typeof MBTI_DESC !== 'undefined' && MBTI_DESC) ? MBTI_DESC : {};
+  const ohaeng = _p7SAJU[ohaengType] || _p7SAJU['수'] || {};
+  const mbti   = _p7MBTI[mbtiType] || _p7MBTI['INFJ'] || {};
   const failKey  = (bcMaster && bcMaster.fail_key)  || '지방 축적';
   const failDesc = (bcMaster && bcMaster.fail_desc) || '이 문제가 체중 감량을 막았습니다.';
 
