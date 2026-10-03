@@ -19439,6 +19439,17 @@ function renderAxisHistory(axisHistory, currentScores) {
 /* ═══════════ /axis_history ═══════════ */
 
 function renderAll(data) {
+  // ══ [전역변수 안전 초기화 블록] ══
+  var _G_SAJU  = (typeof SAJU_ELEMENT_DESC  !== 'undefined' && SAJU_ELEMENT_DESC)  ? SAJU_ELEMENT_DESC  : {};
+  var _G_MBTI  = (typeof MBTI_DESC          !== 'undefined' && MBTI_DESC)          ? MBTI_DESC          : {};
+  var _G_K2A   = (typeof KEY_TO_AXIS        !== 'undefined' && KEY_TO_AXIS)        ? KEY_TO_AXIS        : {};
+  var _G_LEAD  = (typeof LEAD16             !== 'undefined' && LEAD16)             ? LEAD16             : {};
+  var _G_BCC   = (typeof BC_CODE_TO_CARD    !== 'undefined' && BC_CODE_TO_CARD)    ? BC_CODE_TO_CARD    : {};
+  var _G_NTC   = (typeof NICK_TO_CARD       !== 'undefined' && NICK_TO_CARD)       ? NICK_TO_CARD       : {};
+  var _G_BCM   = (typeof BC_MASTER          !== 'undefined' && BC_MASTER)          ? BC_MASTER          : {};
+  var _G_NAR   = (typeof SUBTYPE_NARR       !== 'undefined' && SUBTYPE_NARR)       ? SUBTYPE_NARR       : {};
+  // ══════════════════════════════════════════════════════════════════════════
+
   const { userName='고객', ohaengType='수', mbtiType='INFJ' } = data;
   const axisScores = (data.axisScores && typeof data.axisScores === 'object') ? data.axisScores : {}; // [null-guard]
   // ★ gender 추출 — computeBCCode 체인 전체에 전달하여 갱년기·출산 콘텐츠 남성 차단
@@ -19553,8 +19564,8 @@ function renderAll(data) {
     var match = _dispType.match(/^(목|화|토|금|수)/);
     return match ? match[1] : ohaengType;
   })();
-  const ohaeng = SAJU_ELEMENT_DESC[_effectiveOhaeng] || SAJU_ELEMENT_DESC[ohaengType] || SAJU_ELEMENT_DESC['수'];
-  const mbti   = MBTI_DESC[mbtiType] || MBTI_DESC['INFJ'];
+  const ohaeng = _G_SAJU[_effectiveOhaeng] || _G_SAJU[ohaengType] || _G_SAJU['수'] || {};
+  const mbti   = _G_MBTI[mbtiType] || _G_MBTI['INFJ'] || {};
 
   // V3.1: fullCode = 닉네임 우선 (BC번호 대신)
   const nicknameDisplay = nickname
@@ -19749,7 +19760,7 @@ function decideSubtype(region, texture, axisScores, bcCode, answers){
   var best=null,bestScore=-1;
   cands.forEach(function(r){
     var sig=r[2], s=0, w=[3,2,1];
-    for(var i=0;i<sig.length&&i<3;i++){ var ax=KEY_TO_AXIS[sig[i]]; if(ax&&axisScores[ax]!=null) s+=axisScores[ax]*w[i]; }
+    for(var i=0;i<sig.length&&i<3;i++){ var ax=_G_K2A[sig[i]]; if(ax&&axisScores[ax]!=null) s+=axisScores[ax]*w[i]; }
     if(s>bestScore){ bestScore=s; best=r; }
   });
   return {subtype:best[3],bc:best[4]};
@@ -19988,7 +19999,7 @@ function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nic
   if (_sub && _sub.story) {
     _p1Lead = _fillSlots(_sub.story, _slotCtx);
   } else {
-    var _codeLead = LEAD16[bcCode] || '무엇을 해도 딱 맞지 않던 몸.';
+    var _codeLead = _G_LEAD[bcCode] || '무엇을 해도 딱 맞지 않던 몸.';
     _p1Lead = _codeLead;
     if (_bodyChg === 0 || _bodyChg === '0') _p1Lead = (function(){var _m=!((typeof smIsFemaleG==='function')?smIsFemaleG():(gender==='여성'||gender==='F'));return (_m ? '호르몬 변화 이후 분명 달라진 몸 — ' : '갱년기 이후 분명 달라진 몸 — ') + _codeLead;})();
     else if (_bodyChg === 1 || _bodyChg === '1') _p1Lead = '번아웃이 쌓이던 시간 — ' + _codeLead;
@@ -20243,7 +20254,7 @@ function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nic
     '동시다발 다중악순환형':     '다중악순환형',
   };
   // 결정 순서: ① bcCode 직접 매핑(최우선) → ② 닉네임 정확 매핑 → ③ 부분문자열 폴백
-  var activeCardName = BC_CODE_TO_CARD[bcCode] || NICK_TO_CARD[myNick] || null;
+  var activeCardName = _G_BCC[bcCode] || _G_NTC[myNick] || null;
 
   var ICON16 = {
     '단단 내장형':'\uD83D\uDD34','물렁 피하형':'\uD83C\uDF6E','가스 팽만형':'\uD83C\uDF88','올챙이배형':'\uD83E\uDD5A',
