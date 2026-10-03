@@ -14163,10 +14163,26 @@ function computeBCCode(axisScores, answers, gender) {
   //   → 모든 사람이 동일한 복부/호르몬/체형 점수를 받는 문제
   //   수정: _cbcFullAnswers를 만들어 data 최상위의 weight/height/age와 pfProfile을 주입
   var _specForCbc = window.__RESULT__ || window.__DIAG_DATA__ || {};
+  // ── [FIX] age 0-bug: null/undefined이면 0이 아니라 null → 폴백 42 보장
+  //    birth_date(YYYY-MM-DD) / pfProfile.birthY 에서도 계산 시도
+  var _resolveAge = (function(){
+    var a = answers.age || Number(_specForCbc.age) || null;
+    if(a && a > 0) return a;
+    // birth_date: "1985-03-15" 또는 "1985년 3월 15일"
+    var bd = _specForCbc.birth_date || (answers.pfProfile && answers.pfProfile.birthDate) || '';
+    if(bd){
+      var byMatch = String(bd).match(/(\d{4})/);
+      if(byMatch){ var age2 = (new Date()).getFullYear() - parseInt(byMatch[1], 10); if(age2 > 0 && age2 < 120) return age2; }
+    }
+    // pfProfile.birthY
+    var pf = answers.pfProfile || _specForCbc.pfProfile || {};
+    if(pf.birthY){ var age3 = (new Date()).getFullYear() - Number(pf.birthY); if(age3 > 0 && age3 < 120) return age3; }
+    return null; // null → computeBodyMetrics 내 폴백 42
+  })();
   var _cbcFullAnswers = Object.assign({}, answers, {
     weight:    answers.weight    || Number(_specForCbc.weight)  || Number(_specForCbc._specWeight)  || 0,
     height:    answers.height    || Number(_specForCbc.height)  || Number(_specForCbc._specHeight)  || 0,
-    age:       answers.age       || Number(_specForCbc.age)     || 0,
+    age:       _resolveAge,
     pfProfile: answers.pfProfile || _specForCbc.pfProfile       || null,
   });
   var _cbcBodyMetrics = (typeof computeBodyMetrics === 'function')
