@@ -8401,7 +8401,27 @@ app.get('/api/h/result/:id', async (c) => {
       brand_logo_url: hDiagBrandInfo.brand_logo_url,
       user_name: diagRow.user_name,
       gender: diagRow.gender || rawAnswers?.userInfo?.gender || null,
-      age: diagRow.age != null ? Number(diagRow.age) : null,
+      // [BUG-FIX age-null] diagRow.age = NULL인 경우 raw_answers.pfProfile.birthY로 나이 계산
+      // 저장 경로: diagRow.age > pfProfile.birthY > pfProfile.birthDate > null
+      age: (() => {
+        if (diagRow.age != null && Number(diagRow.age) > 0) return Number(diagRow.age)
+        // pfProfile.birthY 폴백 (survey-hospital.html 신파이프라인)
+        const pf = rawAnswers?.pfProfile || {}
+        if (pf.birthY) {
+          const age2 = new Date().getFullYear() - Number(pf.birthY)
+          if (age2 > 0 && age2 < 120) return age2
+        }
+        // pfProfile.birthDate 폴백 ('1994-09-15' 또는 '1994년 9월 15일' 형식)
+        const bd = pf.birthDate || pf.birth_date || rawAnswers?.birth_date || ''
+        if (bd) {
+          const m = String(bd).match(/(\d{4})/)
+          if (m) {
+            const age3 = new Date().getFullYear() - parseInt(m[1], 10)
+            if (age3 > 0 && age3 < 120) return age3
+          }
+        }
+        return null
+      })(),
       height: diagRow.height != null ? Number(diagRow.height) : null,
       // [BUG-FIX 20260909] diagnosis_results에 weight 컬럼 없음 → raw_answers 폴백 추출
       // 저장 경로: raw_answers.userInfo.weight > raw_answers.weight > raw_answers.stage2[5] 순
@@ -9400,7 +9420,16 @@ app.get('/api/a/result/:id', async (c) => {
         brand_logo_url: aeBrandInfo.brand_logo_url,
         user_name:      row.user_name,
         gender:         row.gender || (aeRow?.gender) || null,
-        age:            row.age || (aeRow?.age) || null,
+        // [BUG-FIX age-null] diagnosis_results.age = NULL → pfProfile.birthY 폴백
+        age: (() => {
+          const a = row.age || (aeRow?.age) || null
+          if (a && Number(a) > 0) return Number(a)
+          const pf = mergedRaw?.pfProfile || {}
+          if (pf.birthY) { const y = new Date().getFullYear() - Number(pf.birthY); if (y > 0 && y < 120) return y }
+          const bd = pf.birthDate || pf.birth_date || mergedRaw?.birth_date || ''
+          if (bd) { const m = String(bd).match(/(\d{4})/); if (m) { const y2 = new Date().getFullYear() - parseInt(m[1], 10); if (y2 > 0 && y2 < 120) return y2 } }
+          return null
+        })(),
         height:         row.height || (aeRow?.height) || null,
         // [BUG-FIX 20260909] diagnosis_results에 weight 컬럼 없음 → raw_answers 폴백 추출
         weight: (() => {
@@ -9952,7 +9981,16 @@ app.get('/api/f/result/:id', async (c) => {
         brand_logo_url:  diagBrandInfo.brand_logo_url,
         user_name:       diagRow.user_name,
         gender:          diagRow.gender   || null,
-        age:             diagRow.age      || null,
+        // [BUG-FIX age-null] diagnosis_results.age = NULL → pfProfile.birthY 폴백
+        age: (() => {
+          const a = diagRow.age || null
+          if (a && Number(a) > 0) return Number(a)
+          const pf = diagRaw?.pfProfile || {}
+          if (pf.birthY) { const y = new Date().getFullYear() - Number(pf.birthY); if (y > 0 && y < 120) return y }
+          const bd = pf.birthDate || pf.birth_date || diagRaw?.birth_date || ''
+          if (bd) { const m = String(bd).match(/(\d{4})/); if (m) { const y2 = new Date().getFullYear() - parseInt(m[1], 10); if (y2 > 0 && y2 < 120) return y2 } }
+          return null
+        })(),
         height:          diagRow.height   || null,
         // [BUG-FIX 20260909] diagnosis_results에 weight 컬럼 없음 → raw_answers 폴백 추출
         weight: (() => {
@@ -10587,7 +10625,15 @@ app.get('/api/s/result/:id', async (c) => {
       brand_logo_url: sDiagBrandInfo.brand_logo_url,
       user_name: diagRow.user_name,
       gender: diagRow.gender,
-      age: diagRow.age != null ? Number(diagRow.age) : null,
+      // [BUG-FIX age-null] diagnosis_results.age = NULL → pfProfile.birthY 폴백
+      age: (() => {
+        if (diagRow.age != null && Number(diagRow.age) > 0) return Number(diagRow.age)
+        const pf = rawAnswers?.pfProfile || {}
+        if (pf.birthY) { const y = new Date().getFullYear() - Number(pf.birthY); if (y > 0 && y < 120) return y }
+        const bd = pf.birthDate || pf.birth_date || rawAnswers?.birth_date || ''
+        if (bd) { const m = String(bd).match(/(\d{4})/); if (m) { const y2 = new Date().getFullYear() - parseInt(m[1], 10); if (y2 > 0 && y2 < 120) return y2 } }
+        return null
+      })(),
       height: diagRow.height != null ? Number(diagRow.height) : null,
       // [BUG-FIX 20260909] diagnosis_results에 weight 컬럼 없음 → raw_answers 폴백 추출
       weight: (() => {
