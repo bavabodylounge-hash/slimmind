@@ -14955,7 +14955,7 @@ function computeBCCode(axisScores, answers, gender) {
   try{ var _pp=(answers&&answers.pfProfile)||_specForCbc.pfProfile; if(_pp&&_pp.birthY){ _rAge=(new Date()).getFullYear()-Number(_pp.birthY); } }catch(e){}
   /* ★근본수정: 생일 없으면 answers.age·pfProfile.age·spec.age 순으로 실나이 확보(폴백 42 방지) */
   if(_rAge==null){ _rAge=Number((answers&&answers.age))||Number((_pp&&_pp.age))||Number((_specForCbc&&_specForCbc.age))||null; }
-  var _realAge=(_rAge!=null)?_rAge:42;
+  var _realAge=(_rAge!=null && _rAge>0)?_rAge:42;  // [BUG-FIX] _rAge=0이면 폴백 42 적용
   /* 대사나이: 부담평균 */
   var _keys=['A01','A02','A03','A04','A05','A06','A07','A08','A09','A10'];
   var _sum=0,_cnt=0; _keys.forEach(function(k){ if(_ax[k]!=null){ _sum+=_n(_ax[k]); _cnt++; } });
@@ -20080,10 +20080,22 @@ function renderAll(data) {
   // V6.2: data 최상위의 weight/height/age/pfProfile을 answers 안에 주입
   // → computeBodyMetrics()가 BMI·나이를 정확히 계산 (이 전달 없으면 모두 기본값 고착)
   const _baseAnswers = data.answers || {};
+  // [BUG-FIX age-0] age 계산: _baseAnswers.age → data.age → pfProfile.birthY → null 순 폴백
+  // '|| 0' 제거: 0이 들어가면 _resolveAge/_realAge에서 폴백 42가 적용 안 됨
+  var _pfForAge = _baseAnswers.pfProfile || data.pfProfile || {};
+  var _ageResolved = (function(){
+    var a = (Number(_baseAnswers.age) > 0 ? Number(_baseAnswers.age) : null)
+         || (Number(data.age)         > 0 ? Number(data.age)         : null);
+    if (a) return a;
+    if (_pfForAge.birthY) { var y = new Date().getFullYear() - Number(_pfForAge.birthY); if (y > 0 && y < 120) return y; }
+    var bd = _pfForAge.birthDate || data.birth_date || '';
+    if (bd) { var m = String(bd).match(/(\d{4})/); if (m) { var y2 = new Date().getFullYear() - parseInt(m[1],10); if (y2 > 0 && y2 < 120) return y2; } }
+    return null;
+  })();
   const answers = Object.assign({}, _baseAnswers, {
     weight:    _baseAnswers.weight    || Number(data.weight)  || 0,
     height:    _baseAnswers.height    || Number(data.height)  || 0,
-    age:       _baseAnswers.age       || Number(data.age)     || 0,
+    age:       _ageResolved,
     pfProfile: _baseAnswers.pfProfile || data.pfProfile       || null,
   });
   try{ injectCoverInfo(userName, data.consultant_name || '', data.created_at || ''); }catch(e){}
