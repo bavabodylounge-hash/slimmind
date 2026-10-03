@@ -7206,7 +7206,7 @@ function render(){
   /* 컨설턴트 */
   h+='<div class="sec rise d6"><div class="sec-h"><span class="sn">소통</span><span class="st">컨설턴트 피드백</span></div>'
     +'<div class="feedback"><div class="fb-h"><div class="fb-ava">'+IC.chat+'</div>'
-    +'<div><div class="fb-nm">'+(window.__CONSULTANT_NAME__ || '담당 컨설턴트')+'</div><div class="fb-rl">'+(USER.hospital||'담당 센터')+' · 오늘 09:12</div></div></div>'
+    +'<div><div class="fb-nm">'+(window.__CONSULTANT_NAME__ || '담당 컨설턴트')+'</div><div class="fb-rl">'+(USER.hospital||'담당 센터')+' · 오늘 '+(function(){var d=new Date();return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);})()+'</div></div></div>'
     +'<div class="fb-msg" id="fbMsg">'+fbText()+'</div>'
     +'<div class="fb-reply"><input placeholder="답장 보내기…" id="fbInput"><button class="fb-send" onclick="reply()">보내기</button></div></div></div>'
     +'<div class="endnote">다음에 열면 <b>'+USER.week+'주차</b>가 자동으로 열립니다.<br>'
@@ -7498,7 +7498,17 @@ function recalc(){
 }
 function stepsBlock(){
   var tp=document.getElementById('w12tpl');
-  return tp?('<div class="w12hold"></div>'+tp.innerHTML):'';
+  if(!tp) return '';
+  var consultantName=window.__CONSULTANT_NAME__||'담당 컨설턴트';
+  var html=tp.innerHTML.replace(/슬림마인드 안서우 컨설턴트가 매주 체크를 보고 다음 주를 조정합니다 — 혼자 하는 게 아니에요/g,
+    '슬림마인드 '+consultantName+'가 매주 체크를 보고 다음 주를 조정합니다 — 혼자 하는 게 아니에요')
+    .replace(/🎉 이번 주 영양 미션 완료 — 안서우 컨설턴트에게 전송됐어요/g,
+    '🎉 이번 주 영양 미션 완료 — '+consultantName+'에게 전송됐어요')
+    .replace(/체크하는 순간 안서우 컨설턴트에게 전송됩니다 — 지켜보고 있어요, 좋은 의미로요/g,
+    '체크하는 순간 '+consultantName+'에게 전송됩니다 — 지켜보고 있어요, 좋은 의미로요')
+    .replace(/매주 일요일, 안서우 컨설턴트가 체크 기록을 보고 다음 주를 조정합니다 — <b>잘 안 지켜진 건 혼내지 않아요\.<\/b> 더 쉬운 버전으로 바꿔드립니다/g,
+    '매주 일요일, '+consultantName+'가 체크 기록을 보고 다음 주를 조정합니다 — <b>잘 안 지켜진 건 혼내지 않아요.<\/b> 더 쉬운 버전으로 바꿔드립니다');
+  return '<div class="w12hold"></div>'+html;
 }
 function domsBlock(){
   var h='<div class="doms">';
@@ -14649,6 +14659,10 @@ function loadData() {
       confidence:   r.confidence   || null,   // { unknownCount, uncertainty, contraAxes }
       raw_answers:  r.raw_answers  || null,   // 원본 stage1/2/3 응답
       redFlags:     Array.isArray(r.redFlags) ? r.redFlags : [],
+      // ── 미구현 필드 매핑 (axis_history / disp_type / stage4_answers) ──
+      axis_history:    r.axis_history    || null,  // { prev_result_id, prev_created_at, axis_deltas: {A01~A10} }
+      disp_type:       r.disp_type       || null,  // 오행 기반 display 타입 변형자 (예: '목형', '수형')
+      stage4_answers:  r.stage4_answers  || null,  // 4단계 설문 답변 객체
       _from_server: true,
     };
   }
@@ -15235,6 +15249,84 @@ async function loadAxisRank(axisScores) {
 function loadBodyTypeStats(){ /* 제거됨 */ }
 /* ===== /기능 5 ===== */
 
+/* ═══════════ axis_history: 이전 진단 대비 변화량 카드 ═══════════ */
+(function(){
+  var _ahStyle = document.createElement('style');
+  _ahStyle.textContent = [
+    '.ah-wrap{margin:0 0 18px;padding:14px 16px;background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.12);border-radius:14px;}',
+    '.ah-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:.78rem;color:rgba(255,255,255,.55);letter-spacing:.04em;}',
+    '.ah-head svg{opacity:.6;}',
+    '.ah-title{font-size:.82rem;font-weight:600;color:rgba(255,255,255,.75);}',
+    '.ah-date{font-size:.72rem;color:rgba(255,255,255,.38);margin-left:auto;}',
+    '.ah-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}',
+    '.ah-ax{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 4px;background:rgba(255,255,255,.04);border-radius:8px;}',
+    '.ah-nm{font-size:.66rem;color:rgba(255,255,255,.45);}',
+    '.ah-delta{font-size:.88rem;font-weight:700;letter-spacing:-.01em;}',
+    '.ah-delta.up{color:#4ec98f;}',
+    '.ah-delta.dn{color:#e05555;}',
+    '.ah-delta.eq{color:rgba(255,255,255,.35);}',
+    '.ah-bar{width:100%;height:3px;border-radius:2px;background:rgba(255,255,255,.08);}',
+    '.ah-bar-fill{height:100%;border-radius:2px;transition:width .4s ease;}',
+    '.ah-bar-fill.up{background:#4ec98f;}',
+    '.ah-bar-fill.dn{background:#e05555;}',
+    '.ah-summary{margin-top:8px;font-size:.72rem;color:rgba(255,255,255,.42);text-align:center;}'
+  ].join('');
+  document.head.appendChild(_ahStyle);
+})();
+
+var AX_LABELS={'A01':'대사','A02':'체형','A03':'호르몬','A04':'근력','A05':'소화','A06':'심혈관','A07':'수면','A08':'스트레스','A09':'면역','A10':'정서'};
+
+function renderAxisHistory(axisHistory, currentScores) {
+  if (!axisHistory || !axisHistory.axis_deltas) return;
+  var deltas = axisHistory.axis_deltas;
+  var prevDate = axisHistory.prev_created_at || '';
+  var dateStr = '';
+  if (prevDate) {
+    try {
+      var d = new Date(prevDate);
+      dateStr = (d.getMonth()+1)+'월 '+d.getDate()+'일 진단 대비';
+    } catch(e) {}
+  }
+  var axes = ['A01','A02','A03','A04','A05','A06','A07','A08','A09','A10'];
+  var improved = 0, declined = 0;
+  axes.forEach(function(k){ var v=Number(deltas[k]||0); if(v>0) improved++; else if(v<0) declined++; });
+
+  var html = '<div class="ah-wrap">'
+    + '<div class="ah-head">'
+    + '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>'
+    + '<span class="ah-title">이전 진단 대비 변화량</span>'
+    + (dateStr ? '<span class="ah-date">'+dateStr+'</span>' : '')
+    + '</div>'
+    + '<div class="ah-grid">';
+
+  axes.forEach(function(k) {
+    var v = Math.round((Number(deltas[k]||0))*10)/10;
+    var cls = v > 0 ? 'up' : (v < 0 ? 'dn' : 'eq');
+    var sign = v > 0 ? '+' : '';
+    var barPct = Math.min(Math.abs(v)*10, 100);
+    html += '<div class="ah-ax">'
+      + '<span class="ah-nm">'+(AX_LABELS[k]||k)+'</span>'
+      + '<span class="ah-delta '+cls+'">'+sign+v+'</span>'
+      + '<div class="ah-bar"><div class="ah-bar-fill '+cls+'" style="width:'+barPct+'%"></div></div>'
+      + '</div>';
+  });
+
+  html += '</div>';
+  if (improved > 0 || declined > 0) {
+    html += '<div class="ah-summary">↑ '+improved+'개 개선 · ↓ '+declined+'개 하락 · '+(10-improved-declined)+'개 유지</div>';
+  }
+  html += '</div>';
+
+  // P1 섹션(bc-grid 또는 app div) 상단에 삽입
+  var insertTarget = document.getElementById('p1-content') || document.getElementById('bcGrid') || document.getElementById('app');
+  if (insertTarget) {
+    var wrapper = document.createElement('div');
+    wrapper.innerHTML = html;
+    insertTarget.insertBefore(wrapper.firstChild, insertTarget.firstChild);
+  }
+}
+/* ═══════════ /axis_history ═══════════ */
+
 function renderAll(data) {
   const { userName='고객', axisScores={}, ohaengType='수', mbtiType='INFJ' } = data;
   // ★ gender 추출 — computeBCCode 체인 전체에 전달하여 갱년기·출산 콘텐츠 남성 차단
@@ -15268,6 +15360,16 @@ function renderAll(data) {
   }
   if (data.disp_answers) {
     window.__DISP_ANSWERS__ = data.disp_answers;
+  }
+  // ── 신규 필드 전역 주입 ──
+  if (data.axis_history && typeof data.axis_history === 'object') {
+    window.__AXIS_HISTORY__ = data.axis_history;  // { prev_result_id, prev_created_at, axis_deltas }
+  }
+  if (data.disp_type) {
+    window.__DISP_TYPE__ = data.disp_type;  // 오행 기반 display 타입 변형자
+  }
+  if (data.stage4_answers && typeof data.stage4_answers === 'object') {
+    window.__STAGE4_ANSWERS__ = data.stage4_answers;  // 4단계 설문 답변
   }
   // axisScores 보정값 전역 참조 (renderP6 내 axisScoresRef 우선 소스)
   if (axisScores && Object.keys(axisScores).length > 0) {
@@ -15318,7 +15420,16 @@ function renderAll(data) {
   }
   // ──────────────────────────────────────────────────────────────────
 
-  const ohaeng = SAJU_ELEMENT_DESC[ohaengType] || SAJU_ELEMENT_DESC['수'];
+  // ── disp_type: 오행 타입 변형자가 있으면 ohaengType을 오버라이드 ──
+  // disp_type은 예: '목형', '수형' 형태 → ohaengType('목','수') 추출
+  const _dispType = data.disp_type || window.__DISP_TYPE__ || null;
+  const _effectiveOhaeng = (function(){
+    if (!_dispType) return ohaengType;
+    // '목형' → '목', '수기' → '수' 등 첫 글자(한글 1자) 추출
+    var match = _dispType.match(/^(목|화|토|금|수)/);
+    return match ? match[1] : ohaengType;
+  })();
+  const ohaeng = SAJU_ELEMENT_DESC[_effectiveOhaeng] || SAJU_ELEMENT_DESC[ohaengType] || SAJU_ELEMENT_DESC['수'];
   const mbti   = MBTI_DESC[mbtiType] || MBTI_DESC['INFJ'];
 
   // V3.1: fullCode = 닉네임 우선 (BC번호 대신)
@@ -15333,6 +15444,8 @@ function renderAll(data) {
 
   renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nicknameDisplay, background,
            isBorderline, borderlineDiff, secondaryBcCode, secondaryNickname, evidenceBadge, answers);
+  // ── axis_history: 이전 진단 대비 변화량 카드 렌더 ──
+  try { renderAxisHistory(data.axis_history, axisScores); } catch(_ahe){}
   renderP2(userName, bcCode, firstDomino, axisScores, sorted);
   window.__BC_RM__ = bcCode; // 로드맵 주차별 영양제 카드용 BC 코드
   renderP3(userName, bcCode, bcMaster, ohaengType, ohaeng, mbtiType, mbti, fullCode, prescription, answers, data.bloodType, data.faceShape, axisScores, window.__RED_FLAGS__ || window._redFlags || []);
@@ -16088,7 +16201,7 @@ function renderP1(userName, bcCode, bcMaster, fullCode, metrics, axisScores, nic
 /* ── P2 ── */
 function renderP2(userName, bcCode, firstDomino, axisScores, sorted) {
   // ── 10원인축 표시 (점수는 백엔드가 0~100으로 전달; 프론트는 표시만) ──
-  // ※ 정규화/가중은 서우님 백엔드 담당. 프론트는 받은 값을 그대로 쓰고 0~100 클램프만 한다.
+  // ※ 정규화/가중은 백엔드 담당. 프론트는 받은 값을 그대로 쓰고 0~100 클램프만 한다.
   var meta = (typeof AXIS_10_META !== 'undefined') ? AXIS_10_META : {
     A01:{label:'인슐린·내장',icon:'<svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:var(--icsz,16px);height:var(--icsz,16px)"><path d="M6 3v7a2.2 2.2 0 0 0 4.4 0V3"/><path d="M8.2 10.5V21"/><path d="M16.5 3c-1.6 1.4-2.2 3.2-2.2 5.2 0 1.7.8 2.8 2.2 3V21"/></svg>',color:'#E8631A'}, A02:{label:'림프순환',icon:'💧',color:'#1A7FC1'},
     A03:{label:'호르몬',icon:'<svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:var(--icsz,16px);height:var(--icsz,16px)"><circle cx="12" cy="12" r="2.2"/><path d="M12 9.8c0-2.4-1-4.3-2.6-4.3S6.8 7 8.6 9.4M14.2 12c2.3 0 4.2-1 4.2-2.6s-1.5-2.6-3.9-.8M12 14.2c0 2.4 1 4.3 2.6 4.3s2.6-1.5.8-3.9M9.8 12c-2.4 0-4.3 1-4.3 2.6s1.5 2.6 3.9.8"/></svg>',color:'#C0397A'}, A04:{label:'근감소',icon:'<svg class="lic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:var(--icsz,16px);height:var(--icsz,16px)"><circle cx="13.5" cy="4" r="1.6"/><path d="M7.5 21l3-5.8-2.6-3 1-5.2L12 9.5l3.2 1.2"/><path d="M5.5 11.4 9 8.6M15.2 14.8l2 2.6.9 3.6"/></svg>',color:'#4A8C1C'},
@@ -16177,7 +16290,7 @@ function renderP2(userName, bcCode, firstDomino, axisScores, sorted) {
   }
 
   // ── 원인의 도미노 (상위 3축을 인과 사슬로) ──
-  // ※ 도미노 본문은 표시용 템플릿. 서우님이 BC코드별로 백엔드 연결/교체 예정.
+  // ※ 도미노 본문은 표시용 템플릿. BC코드별로 백엔드 연결/교체 예정.
   var chain = document.getElementById('p2-chain');
   chain.innerHTML = '';
   var steps = [
@@ -16689,7 +16802,7 @@ function renderP5(metrics, bcCode, axisScores, userName) {
     심리:  { A08:1.8, A07:1.2 },
     한방:  { A02:1.2, A03:0.8, A05:0.8 },
     약물:  { A09:1.5, A01:0.8, A03:0.5 },
-    시술:  { A02:1.3, A06:1.0, A04:0.8, A03:0.6 } /* ★병원판: 시술 상위 노출 가중 [서우님 확정] */,
+    시술:  { A02:1.3, A06:1.0, A04:0.8, A03:0.6 } /* 병원판: 시술 상위 노출 가중 */,
     관리:  { A09:1.8, A01:1.0, A03:0.8 },
     철학:  { A10:1.5, A07:0.5 },
   };
@@ -16747,7 +16860,7 @@ function renderP5(metrics, bcCode, axisScores, userName) {
   });
 
   // ── 6. BC 오버라이드 + redFlags 반영 ──
-  // ★코드 고정층 폐지 [서우님 확정]: BC_DOMAIN_OVERRIDE로 영역을 강제하지 않음.
+  // 코드 고정층 폐지: BC_DOMAIN_OVERRIDE로 영역을 강제하지 않음.
   //   처방은 질문→축→영역 가중표(AXIS_TO_DOMAIN) 점수 + 아래 플래그(질문 기반) 보강 + 시술 5위 보장만으로 결정.
   //   forceStrong=빈 배열로 시작(코드 강제 제거), forceNone도 질문 기반 안전차단만 아래에서 채움.
   var override    = {};                    // (구 BC_DOMAIN_OVERRIDE 참조 제거)
@@ -16810,7 +16923,7 @@ function renderP5(metrics, bcCode, axisScores, userName) {
   // ── 7. STRONG 3개 결정 ──
   var allDomains = Object.keys(AXIS_TO_DOMAIN);
   var sortedByScore = allDomains.slice().sort(function(a,b){ return domainScores[b]-domainScores[a]; });
-  /* ★병원판 [서우님 확정]: 중요도 나열에서 시술(피부·성형)은 항상 5위 안 — 점수 조절 후에도 밀리는 분포 대비 바닥 보장 */
+  /* 병원판: 중요도 나열에서 시술(피부·성형)은 항상 5위 안 — 점수 조절 후에도 밀리는 분포 대비 바닥 보장 */
   (function(){ var pi=sortedByScore.indexOf('시술'); if(pi>4){ sortedByScore.splice(pi,1); sortedByScore.splice(4,0,'시술'); } })();
   var strongNames = [];
   forceStrong.forEach(function(d){
@@ -17219,7 +17332,7 @@ function renderP8(metrics, bcCode, axisScores, userName) {
   var p8nameEl = document.getElementById('p8-name'); if (p8nameEl) p8nameEl.textContent = p8nm; var _pa=axisScores||{}; var _pr=[]; if((_pa.A06||0)>=6)_pr.push('체형 교정'); if((_pa.A02||0)>=6)_pr.push('순환 개선'); if((_pa.A03||0)>=8)_pr.push('대사 강화'); if((_pa.A04||0)>=6)_pr.push('근력 강화'); var _pel=document.getElementById('proc-reason-tx'); if(_pel){ if(_pr.length>0){ _pel.textContent='진단상 '+_pr.slice(0,2).join('·')+' 트레이닝이 도움이 됩니다'; } }
   // ════════════════════════════════════════════
   // P8 비율 — 주차별 맞춤 비율 그래프 (자동재생 1→4주) + 5주 블라인드
-  // ※ 주차별 비율 데이터는 백엔드(서우님)가 BC코드별로 채울 자리.
+  // ※ 주차별 비율 데이터는 백엔드에서 BC코드별로 채울 자리.
   // ════════════════════════════════════════════
   // 축: group 'base'=기본 실천(항상), 'focus'=집중 포인트(개인 원인)
   // ※ 회복·식단·운동은 11축 진단에도 포함 → 원인 점수 높으면 focus에도 중복 노출(dup)
@@ -17236,7 +17349,7 @@ function renderP8(metrics, bcCode, axisScores, userName) {
   // focus 구역 중 회복·식단·운동이 원인으로도 높을 때 중복 노출할 키(데모: 식단을 원인으로도)
   var DUP_FOCUS = ['diet'];
   var FREE = 4, TOTAL = 12, DIM = 18;
-  // ★주차별 활성 축 수 [B방식 — 서우님 확정]: 1주 상시3종(회복·식단·운동) → 2주 +처방1순위 → 3주 +처방2순위 → 4주 +처방3순위
+  // 주차별 활성 축 수 [B방식]: 1주 상시3종(회복·식단·운동) → 2주 +처방1순위 → 3주 +처방2순위 → 4주 +처방3순위
   //   activeKeys(w)가 [상시3 + 처방순위3] 순으로 6축 반환하므로, 개수만 늘리면 처방이 순위대로 등장
   var ACTIVE = { 1:3, 2:4, 3:5, 4:6 };
 
@@ -17279,7 +17392,7 @@ function renderP8(metrics, bcCode, axisScores, userName) {
     // 시술: HOSPITAL VERSION — procBase 상향. LIPO_HX시 15, STRONG_AXES에 시술포함시 12, 기본 8
     var _hospitalStrong = window.__STRONG_AXES__ || [];
     var _procIsStrong = _hospitalStrong.indexOf('시술') >= 0;
-    // ★시술 비중 정합 [서우님 지적]: 시술이 처방(STRONG)이면 base를 다른 처방축 스케일로 올림
+    // 시술 비중 정합: 시술이 처방(STRONG)이면 base를 다른 처방축 스케일로 올림
     //   (전엔 12 고정이라 처방 2순위여도 막대 최저 → 순서와 비중 어긋남). LIPO_HX면 더 높게.
     var procBase = (_rfl.indexOf('LIPO_HX')>=0||_rfl.indexOf('LIPOLYSIS_HX')>=0) ? 52
                  : _procIsStrong ? 44 : 8;
@@ -18483,7 +18596,7 @@ function renderP6(userName, fullCode, ohaengType, inputData, bcCode_p6, redFlags
     체형:  { A06:1.8, A04:1.2, A02:0.8 },
     한방:  { A02:1.2, A03:0.8, A05:0.8 },
     관리:  { A09:1.8, A01:1.0, A03:0.8 },  // A04→A09(대사위험) 수정
-    시술:  { A02:1.3, A06:1.0, A04:0.8, A03:0.6 } /* ★병원판: 시술 상위 노출 가중 [서우님 확정] */,
+    시술:  { A02:1.3, A06:1.0, A04:0.8, A03:0.6 } /* 병원판: 시술 상위 노출 가중 */,
     약물:  { A09:1.5, A01:0.8, A03:0.5 },  // A08→A09(대사위험) 수정
     철학:  { A10:1.5, A07:0.5 },
   };
@@ -18936,7 +19049,7 @@ function renderP6(userName, fullCode, ohaengType, inputData, bcCode_p6, redFlags
   });
   // 점수 높은 순 정렬 (= 가장 시급한 진단이 먼저)
   dxWithScores.sort((a, b) => b.urgency - a.urgency);
-  // ★A방식 [서우님 확정]: 4장 진단 3순위 = 2P 핵심 처방(STRONG_AXES)의 진단 확장판 —
+  // A방식: 4장 진단 3순위 = 2P 핵심 처방(STRONG_AXES)의 진단 확장판 —
   //   2P가 정한 top3(호르몬·시술·회복 등)를 그 순서대로 맨 앞에 고정, 나머지는 urgency 순.
   //   이래야 "2P 확장판" 원칙대로 4장과 2P가 항상 일치(병원판 시술도 자동 포함).
   (function(){
@@ -21896,7 +22009,7 @@ var WOW4_MISSIONS = {
 
 // ════════════════════════════════════════════════════════════════
 // 주차별 요일 주간표 — 운동·식단·회복 클리어 (직접 영역) + 호르몬 협진
-// ※ 요일별 세부 분배·체크 저장은 백엔드(서우님) 연동 자리. 지금은 데모 표시.
+// ※ 요일별 세부 분배·체크 저장은 백엔드 연동 자리. 지금은 데모 표시.
 // ════════════════════════════════════════════════════════════════
 // ════════════════════════════════════════════════════════════════
 // 12주 여정 아코디언 — 4단계 묶음 × 주차별 주간표 펼침
