@@ -14073,12 +14073,14 @@ function computeNickname(axisScores, answers, gender) {
                || window.__SURVEY_CATEGORY__ || 'esthetic';
   var background = detectBackground(answers, gender, _catForBg);
 
-  // ④ NICKNAME_TABLE 3단계 룩업
-  var t1Entry = NICKNAME_TABLE[top1] || NICKNAME_TABLE['A07'];
-  var t2Entry = t1Entry[top2] || t1Entry['default'] || { default: '동시다발 다중악순환형' };
+  // ④ NICKNAME_TABLE 3단계 룩업 [null-guard v2]
+  // NICKNAME_TABLE이 스코프에 없는 경우 대비 안전 접근
+  var _NT = (typeof NICKNAME_TABLE !== 'undefined' && NICKNAME_TABLE) ? NICKNAME_TABLE : {};
+  var t1Entry = _NT[top1] || _NT['A07'] || { default: { default: '동시다발 다중악순환형' } };
+  var t2Entry = (t1Entry && t1Entry[top2]) || (t1Entry && t1Entry['default']) || { default: '동시다발 다중악순환형' };
 
   // 배경 필터 매칭: 정확히 일치하는 키 우선, 없으면 default
-  var nickname = t2Entry[background] || t2Entry['default'] || '동시다발 다중악순환형';
+  var nickname = (t2Entry && (t2Entry[background] || t2Entry['default'])) || '동시다발 다중악순환형';
 
   // ⑤ 심층 설문 라우팅 결정 (Top1 축 기반)
   var deepSurveyRoute = getDeepSurveyRoute(isDispositionTop1 ? 'A10' : top1);
