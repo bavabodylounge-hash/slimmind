@@ -2595,6 +2595,26 @@ app.get('/api/b2b/customer-summary', requireB2B(), async (c) => {
 
   const parseJ = (v: any) => { try { return v ? JSON.parse(v) : null } catch { return null } }
 
+  /* ─── birthY 이중직렬화 방어 헬퍼 ──────────────────────────────────
+     DB에 birthY가 "\"1994\"" (JSON 문자열 내 이중직렬화)로 저장된 경우를 처리.
+     Number('"1994"') = NaN → 나이 계산 실패 → realAge=42 폴백 발동.
+     → 따옴표 제거 후 parseInt 사용.
+  ─────────────────────────────────────────────────────────────────── */
+  const parseBirthY = (birthY: any): number | null => {
+    if (!birthY) return null
+    // "\"1994\"" → '1994' 또는 1994 모두 처리
+    const cleaned = String(birthY).replace(/['"]/g, '').trim()
+    const y = parseInt(cleaned, 10)
+    if (isNaN(y) || y < 1900 || y > new Date().getFullYear()) return null
+    return y
+  }
+  const calcAgeFromBirthY = (birthY: any): number | null => {
+    const y = parseBirthY(birthY)
+    if (!y) return null
+    const age = new Date().getFullYear() - y
+    return (age > 0 && age < 120) ? age : null
+  }
+
   /* ─── 공통 pfProfile 파서 ────────────────────────────────────────
      raw_answers JSON 안에 pfProfile 오브젝트가 있는 경우 (병원·에스테틱 공통)
      pfProfile 키:
@@ -8395,11 +8415,10 @@ app.get('/api/h/result/:id', async (c) => {
       age: (() => {
         if (diagRow.age != null && Number(diagRow.age) > 0) return Number(diagRow.age)
         // pfProfile.birthY 폴백 (survey-hospital.html 신파이프라인)
+        // [BUG-FIX birthY-double-serialize] "\"1994\"" → parseInt 방어
         const pf = rawAnswers?.pfProfile || {}
-        if (pf.birthY) {
-          const age2 = new Date().getFullYear() - Number(pf.birthY)
-          if (age2 > 0 && age2 < 120) return age2
-        }
+        const _ageFromBirthY = calcAgeFromBirthY(pf.birthY)
+        if (_ageFromBirthY) return _ageFromBirthY
         // pfProfile.birthDate 폴백 ('1994-09-15' 또는 '1994년 9월 15일' 형식)
         const bd = pf.birthDate || pf.birth_date || rawAnswers?.birth_date || ''
         if (bd) {
@@ -9414,7 +9433,8 @@ app.get('/api/a/result/:id', async (c) => {
           const a = row.age || (aeRow?.age) || null
           if (a && Number(a) > 0) return Number(a)
           const pf = mergedRaw?.pfProfile || {}
-          if (pf.birthY) { const y = new Date().getFullYear() - Number(pf.birthY); if (y > 0 && y < 120) return y }
+          // [BUG-FIX birthY-double-serialize] "\"1994\"" → parseInt 방어
+          const _a2 = calcAgeFromBirthY(pf.birthY); if (_a2) return _a2
           const bd = pf.birthDate || pf.birth_date || mergedRaw?.birth_date || ''
           if (bd) { const m = String(bd).match(/(\d{4})/); if (m) { const y2 = new Date().getFullYear() - parseInt(m[1], 10); if (y2 > 0 && y2 < 120) return y2 } }
           return null
@@ -9975,7 +9995,8 @@ app.get('/api/f/result/:id', async (c) => {
           const a = diagRow.age || null
           if (a && Number(a) > 0) return Number(a)
           const pf = diagRaw?.pfProfile || {}
-          if (pf.birthY) { const y = new Date().getFullYear() - Number(pf.birthY); if (y > 0 && y < 120) return y }
+          // [BUG-FIX birthY-double-serialize] "\"1994\"" → parseInt 방어
+          const _a3 = calcAgeFromBirthY(pf.birthY); if (_a3) return _a3
           const bd = pf.birthDate || pf.birth_date || diagRaw?.birth_date || ''
           if (bd) { const m = String(bd).match(/(\d{4})/); if (m) { const y2 = new Date().getFullYear() - parseInt(m[1], 10); if (y2 > 0 && y2 < 120) return y2 } }
           return null
@@ -10618,7 +10639,8 @@ app.get('/api/s/result/:id', async (c) => {
       age: (() => {
         if (diagRow.age != null && Number(diagRow.age) > 0) return Number(diagRow.age)
         const pf = rawAnswers?.pfProfile || {}
-        if (pf.birthY) { const y = new Date().getFullYear() - Number(pf.birthY); if (y > 0 && y < 120) return y }
+        // [BUG-FIX birthY-double-serialize] "\"1994\"" → parseInt 방어
+        const _a4 = calcAgeFromBirthY(pf.birthY); if (_a4) return _a4
         const bd = pf.birthDate || pf.birth_date || rawAnswers?.birth_date || ''
         if (bd) { const m = String(bd).match(/(\d{4})/); if (m) { const y2 = new Date().getFullYear() - parseInt(m[1], 10); if (y2 > 0 && y2 < 120) return y2 } }
         return null
