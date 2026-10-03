@@ -6698,6 +6698,17 @@ to{opacity:1;transform:none}}#p10wrap .confirm-bar .cq{flex:1;font-size:12.5px;f
 .w12lockrow{display:flex;align-items:center;gap:7px;font-size:13px;color:#9aa5c0;padding:5px 0}
 .w12lnk{display:inline-block;background:#10182a;border:1px solid #2a3a60;border-radius:8px;padding:6px 11px;font-size:11.5px;color:#8fb4e8;margin:4px 6px 0 0}
 .w12note{color:var(--sub);font-size:11.5px;text-align:center;margin-top:14px;border-top:1px solid var(--line);padding-top:11px}
+/* ══ 운동카드 슬라이더 ══ */
+.exc-wrap{position:relative;width:100%;margin:0 0 10px;border-radius:14px;overflow:hidden;background:rgba(0,0,0,.25)}
+.exc-slide{display:none;flex-direction:column;align-items:center}
+.exc-slide.exc-active{display:flex}
+.exc-img{width:100%;max-width:340px;height:auto;border-radius:12px;object-fit:cover;display:block;margin:0 auto}
+.exc-nm{font-size:11.5px;color:var(--sub);text-align:center;padding:5px 4px 7px;font-weight:600;letter-spacing:.3px}
+.exc-prev,.exc-next{position:absolute;top:45%;transform:translateY(-50%);background:rgba(0,0,0,.45);color:#fff;border:none;border-radius:50%;width:30px;height:30px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2}
+.exc-prev{left:5px}.exc-next{right:5px}
+.exc-dots{display:flex;justify-content:center;gap:5px;padding:3px 0 7px}
+.exc-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.2);transition:background .2s}
+.exc-dot.exc-dot-on{background:rgba(255,255,255,.7)}
 </style>
 <div class="aura"></div>
 <div class="app" id="app"></div>
@@ -7067,12 +7078,68 @@ function recipeView(nm){
     +(r.why.c?'<div class="uc">'+IC.flame+'<span>'+r.why.c+'</span></div>':'')+'</div></div>';
 }
 /* 운동 옵션 */
+/* ══ 운동카드 이미지 매핑 (1of3: 01~38장) ══ */
+var EX_CARD_MAP_H = {
+  '01':'골반_자물쇠','02':'앉은_시간_청산','03':'엉덩이_깊은_이완','04':'척추_기상',
+  '05':'굽은_등_리셋','06':'책_펼치듯_가슴_열기','07':'거북목_브레이크','08':'어깨_레일_청소',
+  '09':'무릎_열고_닫기','10':'비둘기_자세','11':'스쿼트_밑작업','12':'펌프_유지보수',
+  '13':'골반_좌우로_넘기기','14':'무릎_사이_쿠션_조이기','15':'침대_끝에서_한_다리_내리기',
+  '16':'의자에_앉아_4자_숙이기','17':'공으로_눌러_풀기','18':'네발기기에서_꼬리_흔들기',
+  '19':'엎드려_가슴_내리기','20':'앉아서_몸통만_돌리기','21':'실_꿰듯_팔_넣기',
+  '22':'턱_당긴_채_고개_돌리기','23':'엎드려_Y자_들기','24':'두_무릎_같이_눕히기',
+  '25':'누워서_무릎_원_그리기','26':'소파에_다리_올려_숙이기','27':'앉아_다리_걸고_무릎_끌어안기',
+  '28':'뒤꿈치_붙인_채_쪼그려_앉기','29':'조개처럼_무릎_벌리기','30':'무릎_굽힌_채_뒤꿈치_내리기',
+  '31':'앉아서_발목_펌프','32':'벽_밀기','33':'식탁_짚고_밀기','34':'무릎_대고_팔굽혀펴기',
+  '35':'팔굽혀펴기','36':'가슴_앞에서_양옆으로_벌리기','37':'밴드_밟고_당기기','38':'밴드_당기기'
+};
+var EX_LABEL_TO_CARD_H = {
+  '골반 자물쇠':'01','앉은 시간 청산':'02','엉덩이 깊은 이완':'03','척추 기상':'04',
+  '굽은 등 리셋':'05','책 펼치듯 가슴 열기':'06','거북목 브레이크':'07','어깨 레일 청소':'08',
+  '무릎 열고 닫기':'09','비둘기 자세':'10','스쿼트 밑작업':'11','펌프 유지보수':'12',
+  '골반 좌우로 넘기기':'13','무릎 사이 쿠션 조이기':'14','침대 끝에서 한 다리 내리기':'15',
+  '의자에 앉아 4자 숙이기':'16','누워서 4자 당기기':'16',
+  '공으로 눌러 풀기':'17','네발기기에서 꼬리 흔들기':'18','엎드려 가슴 내리기':'19',
+  '앉아서 몸통만 돌리기':'20','실 꿰듯 팔 넣기':'21','턱 당긴 채 고개 돌리기':'22',
+  '엎드려 Y자 들기':'23','두 무릎 같이 눕히기':'24','누워서 무릎 원 그리기':'25',
+  '소파에 다리 올려 숙이기':'26',
+  '앉아 다리 걸고 무릎 끌어안기':'27','누워 무릎 안쪽으로 당기기':'27',
+  '뒤꿈치 붙인 채 쪼그려 앉기':'28',
+  '조개처럼 무릎 벌리기':'29','무릎 좌우로 돌리기':'29',
+  '무릎 굽힌 채 뒤꿈치 내리기':'30','앉아서 발목 펌프':'31',
+  '벽 밀기':'32','식탁 짚고 밀기':'33','무릎 대고 팔굽혀펴기':'34','팔굽혀펴기':'35',
+  '가슴 앞에서 양옆으로 벌리기':'36',
+  '밴드 밟고 당기기':'37','수건 당기기':'37',
+  '밴드 당기기':'38'
+};
+function excNavH(uid,dir){
+  var wrap=document.getElementById(uid);if(!wrap)return;
+  var slides=wrap.querySelectorAll('.exc-slide'),dots=wrap.querySelectorAll('.exc-dot');
+  var cur=0;slides.forEach(function(s,i){if(s.classList.contains('exc-active'))cur=i;});
+  var nxt=(cur+dir+slides.length)%slides.length;
+  slides[cur].classList.remove('exc-active');slides[nxt].classList.add('exc-active');
+  if(dots.length){dots[cur].classList.remove('exc-dot-on');dots[nxt].classList.add('exc-dot-on');}
+}
+function exCardSlider(label){
+  var num=EX_LABEL_TO_CARD_H[label];
+  if(!num||!EX_CARD_MAP_H[num])return '';
+  var src='/static/exercise/'+num+'_'+EX_CARD_MAP_H[num]+'.jpg';
+  var nm=EX_CARD_MAP_H[num].replace(/_/g,' ');
+  var uid='exh-'+Math.random().toString(36).slice(2,7);
+  return '<div class="exc-wrap" id="'+uid+'">'
+    +'<div class="exc-slide exc-active">'
+    +'<img src="'+src+'" alt="'+nm+'" class="exc-img" onerror="this.closest(\'.exc-wrap\').style.display=\'none\'">'
+    +'<div class="exc-nm">'+num+'. '+nm+'</div>'
+    +'</div></div>';
+}
+
 function exBlock(f){
   var h='<div class="meals"><div class="meal"><div class="meal-h"><span>오늘 운동</span><span class="meal-t">끝낸 것 체크</span></div><div class="opts">';
   f.exOptions.forEach(function(o,i){
     var sel=S.moveDone.indexOf(i)>=0?' sel':'';
     var dkey='move:'+o.label, dopen=S.detailOpen&&S.detailOpen[dkey];
+    var cardImg = exCardSlider(o.label);
     h+='<div class="optwrap">'
+      + cardImg
       +'<div class="opt'+sel+'" onclick="pickMove('+i+','+o.k+')">'
       +(o.rec?'<span class="rec">추천</span>':(o.alt?'<span class="rec alt">대체</span>':''))
       +'<span class="ol">'+o.label+'</span><span class="kc">-'+o.k+'</span></div>';

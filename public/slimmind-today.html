@@ -361,6 +361,69 @@ body{
   color:#c4b5e8;
 }
 .wdb-opinion-text{color:#93b4d4;}
+
+/* ══ 운동카드 슬라이더 ══ */
+.exc-wrap{
+  position:relative;
+  width:100%;
+  margin:10px 0 6px;
+  border-radius:14px;
+  overflow:hidden;
+  background:#1a1a2e;
+}
+.exc-slide{
+  display:none;
+  flex-direction:column;
+  align-items:center;
+}
+.exc-slide.exc-active{display:flex;}
+.exc-img{
+  width:100%;
+  max-width:340px;
+  height:auto;
+  border-radius:12px;
+  object-fit:cover;
+  display:block;
+  margin:0 auto;
+}
+.exc-nm{
+  font-size:12px;
+  color:#c4b5e8;
+  text-align:center;
+  padding:6px 4px 8px;
+  font-weight:600;
+  letter-spacing:.3px;
+}
+.exc-prev,.exc-next{
+  position:absolute;
+  top:50%;
+  transform:translateY(-60%);
+  background:rgba(0,0,0,.45);
+  color:#fff;
+  border:none;
+  border-radius:50%;
+  width:32px;height:32px;
+  font-size:18px;
+  cursor:pointer;
+  line-height:1;
+  display:flex;align-items:center;justify-content:center;
+  z-index:2;
+}
+.exc-prev{left:6px;}
+.exc-next{right:6px;}
+.exc-dots{
+  display:flex;
+  justify-content:center;
+  gap:5px;
+  padding:4px 0 8px;
+}
+.exc-dot{
+  width:7px;height:7px;
+  border-radius:50%;
+  background:rgba(196,181,232,.3);
+  transition:background .2s;
+}
+.exc-dot.exc-dot-on{background:#c4b5e8;}
 </style>
 
 <!-- ══ PWA: 홈 화면 설치 지원 ══ -->
@@ -1141,6 +1204,186 @@ function renderMotivationBanner() {
    - 목표감량: 주차별 예상 체중 헤더 표시
    ══════════════════════════════════════════════════════════════ */
 
+/* ══════════════════════════════════════════════════════════════
+   운동카드 이미지 매핑 (1of3: 01~38장)
+   파일 위치: /static/exercise/{번호}_{운동명}.jpg
+   EX_NAME_TO_CARD: BC별 nm 값 → 카드 번호 배열 매핑
+   ★ 종목 변경 4건 반영:
+     16=의자에 앉아 4자 숙이기(옷장: 누워서 4자 당기기)
+     27=앉아 다리 걸고 무릎 끌어안기(옷장: 누워 무릎 안쪽으로 당기기)
+     29=조개처럼 무릎 벌리기(옷장: 무릎 좌우로 돌리기)
+     37=밴드 밟고 당기기(옷장: 수건 당기기)
+   ══════════════════════════════════════════════════════════════ */
+
+/* 카드 번호 배열 → 슬라이드 HTML 생성 함수 */
+function exCardImgHtml(nmOrCards) {
+  var BASE = '/static/exercise/';
+  /* 카드번호 배열 또는 nm 문자열 모두 수용 */
+  var cards = Array.isArray(nmOrCards) ? nmOrCards : (EX_NM_TO_CARDS[nmOrCards] || []);
+  if (!cards || cards.length === 0) return '';
+
+  /* 유효한 카드만 필터 (현재 01~38번 보유) */
+  var CARD_MAP = {
+    '01':'골반_자물쇠','02':'앉은_시간_청산','03':'엉덩이_깊은_이완','04':'척추_기상',
+    '05':'굽은_등_리셋','06':'책_펼치듯_가슴_열기','07':'거북목_브레이크','08':'어깨_레일_청소',
+    '09':'무릎_열고_닫기','10':'비둘기_자세','11':'스쿼트_밑작업','12':'펌프_유지보수',
+    '13':'골반_좌우로_넘기기','14':'무릎_사이_쿠션_조이기','15':'침대_끝에서_한_다리_내리기',
+    '16':'의자에_앉아_4자_숙이기','17':'공으로_눌러_풀기','18':'네발기기에서_꼬리_흔들기',
+    '19':'엎드려_가슴_내리기','20':'앉아서_몸통만_돌리기','21':'실_꿰듯_팔_넣기',
+    '22':'턱_당긴_채_고개_돌리기','23':'엎드려_Y자_들기','24':'두_무릎_같이_눕히기',
+    '25':'누워서_무릎_원_그리기','26':'소파에_다리_올려_숙이기','27':'앉아_다리_걸고_무릎_끌어안기',
+    '28':'뒤꿈치_붙인_채_쪼그려_앉기','29':'조개처럼_무릎_벌리기','30':'무릎_굽힌_채_뒤꿈치_내리기',
+    '31':'앉아서_발목_펌프','32':'벽_밀기','33':'식탁_짚고_밀기','34':'무릎_대고_팔굽혀펴기',
+    '35':'팔굽혀펴기','36':'가슴_앞에서_양옆으로_벌리기','37':'밴드_밟고_당기기','38':'밴드_당기기'
+  };
+
+  var validCards = cards.filter(function(n){ return CARD_MAP[n]; });
+  if (validCards.length === 0) return '';
+
+  /* 슬라이드 컨테이너 ID */
+  var uid = 'exc-' + Math.random().toString(36).slice(2,7);
+
+  var slides = validCards.map(function(n, i){
+    var nm = CARD_MAP[n].replace(/_/g,' ');
+    var src = BASE + n + '_' + CARD_MAP[n] + '.jpg';
+    return '<div class="exc-slide' + (i===0?' exc-active':'') + '">' +
+      '<img src="' + src + '" alt="' + nm + '" class="exc-img" ' +
+        'onerror="this.closest(\'.exc-slide\').style.display=\'none\'">' +
+      '<div class="exc-nm">' + n + '. ' + nm + '</div>' +
+    '</div>';
+  }).join('');
+
+  /* 이전/다음 버튼은 카드 2장 이상일 때만 */
+  var nav = validCards.length > 1
+    ? '<button class="exc-prev" onclick="excNav(\'' + uid + '\',-1)" aria-label="이전">‹</button>' +
+      '<button class="exc-next" onclick="excNav(\'' + uid + '\',1)" aria-label="다음">›</button>' +
+      '<div class="exc-dots">' + validCards.map(function(_,i){
+        return '<span class="exc-dot' + (i===0?' exc-dot-on':'') + '"></span>';
+      }).join('') + '</div>'
+    : '';
+
+  return '<div class="exc-wrap" id="' + uid + '">' + slides + nav + '</div>';
+}
+
+/* 슬라이드 이동 */
+function excNav(uid, dir) {
+  var wrap = document.getElementById(uid);
+  if (!wrap) return;
+  var slides = wrap.querySelectorAll('.exc-slide');
+  var dots   = wrap.querySelectorAll('.exc-dot');
+  var cur    = 0;
+  slides.forEach(function(s,i){ if(s.classList.contains('exc-active')) cur = i; });
+  var nxt = (cur + dir + slides.length) % slides.length;
+  slides[cur].classList.remove('exc-active');
+  slides[nxt].classList.add('exc-active');
+  if (dots.length) {
+    dots[cur].classList.remove('exc-dot-on');
+    dots[nxt].classList.add('exc-dot-on');
+  }
+}
+
+/* ── BC×요일 nm → 운동카드 번호 배열 매핑 ──
+   우선 공급분(1of3, 01~38번) 기준.
+   39번 이후는 2of3·3of3 업로드 시 추가 예정.
+   BC코드와 무관하게 nm 기준으로 공통 매핑 사용. */
+var EX_NM_TO_CARDS = {
+  /* 하지 순환 / 워킹 계열 */
+  '하지 순환 유산소':     ['01','13','31'],
+  '하지 순환 순환':       ['01','31','12'],
+  '림프 드레나쥐 스트레칭':['09','31','01'],
+  '림프 촉진 스트레칭':   ['09','31','01'],
+  '림프 산책':            ['31','12'],
+  '드라이 브러싱 + 순환 워킹':['01','31'],
+  '하지 거상 + 호흡':     ['09','01'],
+  '하체 순환 운동':       ['09','29','30'],
+  '하체 서킷':            ['09','11','29'],
+  '하체 + 코어 복합':     ['09','25','29'],
+
+  /* 자세 교정 / 경추 흉추 계열 */
+  '자세 교정 + 상체 유산소': ['07','08','22'],
+  '경추·흉추 이완 스트레칭': ['05','06','22'],
+  '자세 교정 운동':          ['07','08','23'],
+  '상부 림프 활성화 + 근력': ['08','23','36'],
+  '유산소 + 상부 이완':      ['05','07'],
+  '체형 교정 스트레칭':      ['05','06','20'],
+
+  /* 상체 근력 / 팔굽혀펴기 계열 */
+  '상체 근력 + 가벼운 유산소': ['32','34','38'],
+  '상체 저항 + 유산소':        ['34','36','38'],
+  '상체 저항 + 이완':          ['32','38'],
+  '상체 순환 서킷':            ['32','36','38'],
+  '상체 슬리밍 서킷':          ['36','37','38'],
+  '상체 림프 활성화':          ['36','37','08'],
+  '상체 림프 + 유산소':        ['36','37','08'],
+  '상체 림프 스트레칭':        ['06','08','22'],
+  '복합 근력':                 ['34','35','38'],
+  '전신 복합 근력':            ['34','35','37'],
+  '근력 집중':                 ['34','35','38'],
+  '가벼운 근력':               ['32','34'],
+  '기초대사 활성화 근력':      ['11','14','34'],
+  '저항 운동 집중':            ['34','35','37'],
+  '호르몬 친화 근력':          ['11','14','35'],
+
+  /* 코어 / 플랭크 계열 */
+  '골반저 + 코어 회복':   ['01','09','25'],
+  '코어 + 하체 복합':     ['09','14','25'],
+  '하체 집중 + 자세 교정':['11','14','16'],
+  '저충격 유산소 + 코어': ['01','09'],
+
+  /* 골반 / 고관절 스트레칭 */
+  '골반 교정 스트레칭':   ['01','10','13'],
+  '산후 이완 스트레칭':   ['01','09','25'],
+  '이완 스트레칭':        ['01','03','24'],
+  '스트레칭 + 회복':      ['01','05','24'],
+
+  /* 유산소 / 워킹 */
+  '저강도 유산소':        ['31'],
+  '가벼운 유산소':        ['31','12'],
+  '인터벌 워킹':          ['31'],
+  '인터벌 유산소':        ['31'],
+  '수중 유산소':          ['01','31'],
+  '수중 저강도 유산소':   ['01','31'],
+  '중강도 유산소 + 뼈 강화':['12','11'],
+  '유산소':               ['31'],
+  '유산소 집중':          ['31'],
+
+  /* 복합 / 서킷 */
+  '대근육 저항 운동':     ['11','14','35'],
+  '복합 순환 서킷':       ['11','14','32'],
+  '복합 운동':            ['34','35','36'],
+  '균형 복합 운동':       ['04','20','34'],
+  '전신 근력':            ['34','35','38'],
+  '전신 근력 (근육 보호)':['11','34','35'],
+  '전신 균형 운동':       ['04','20','36'],
+  '복합 근력':            ['34','35','38'],
+  '대사 촉진 복합 운동':  ['11','34','35'],
+  'HIIT + 근력':          ['34','35'],
+  '가벼운 서킷':          ['32','36'],
+
+  /* 이완 / 요가 / 회복 */
+  '이완 운동':            ['04','05','24'],
+  '가벼운 이완':          ['04','05'],
+  '가벼운 이완 운동':     ['04','24'],
+  '자율신경 이완 요가':   ['04','19','24'],
+  '코르티솔 낮추기':      ['04','25'],
+  '회복 요가':            ['04','19','25'],
+  '이완 + 자율신경 안정': ['04','19'],
+  '자연 회복':            ['04','05'],
+  '능동적 회복':          ['04','31'],
+  '능동적 휴식':          ['31'],
+  '오전 저강도 유산소':   ['31'],
+  '셀룰라이트 개선 운동': ['09','29'],
+  '식후 워킹':            ['31'],
+  '식후 워킹 + 저항운동': ['11','34'],
+  '가벼운 운동':          ['31'],
+  '회복':                 ['04','24'],
+  '회복 집중':            ['04','24','25'],
+
+  /* 완전 휴식 */
+  '완전 휴식':            [],
+  '완전 휴식 + 족욕':     [],
+};
+
 /* ── BC × 요일 운동 처방 DB (세트×횟수×시간 포함) ── */
 var EX_DAY_DB = {
   /* 월·수·금 = 주요 운동일 / 화·목 = 가벼운 보조 / 토 = 선택 / 일 = 완전 휴식 */
@@ -1689,6 +1932,7 @@ function todayTasks(){
   var _tasks = [
     { k:'ex', nm:'운동',
       tx:   exMainTx,
+      exNm: exNm,
       detail: exDetail,
       sub:  (W && W.phase) ? W.phase + ' · ' + WK + '주차' : WK + '주차',
       tags: kFocus.slice(0, 2),
@@ -1964,6 +2208,14 @@ function renderItems(){
       ? '<button class="det-toggle" onclick="toggleDetail(\'' + t.k + '\')" aria-label="상세 펼치기">▼ 상세 처방 보기</button>'
       : '';
 
+    /* ── 운동카드 이미지 슬라이더 (운동 탭 전용) ── */
+    var exImgHtml = '';
+    if (t.k === 'ex' && typeof exCardImgHtml === 'function') {
+      /* todayTasks()에서 t.exNm 필드로 전달된 실제 nm 값 사용 */
+      var _exNm = t.exNm || '';
+      exImgHtml = exCardImgHtml(_exNm);
+    }
+
     return '<div class="item ' + t.k + cls + '" id="it-' + t.k + '" data-k="' + t.k + '">' +
 
       /* 헤더: 아이콘 + 카테고리명 + 체크 뱃지 */
@@ -1976,6 +2228,9 @@ function renderItems(){
             ? '<span class="item-miss-badge">✗ 못함</span>'
             : '') +
       '</div>' +
+
+      /* 운동카드 이미지 슬라이더 (운동 탭만) */
+      exImgHtml +
 
       /* 메인 제목 (주차 · 운동명 · 세트수) */
       '<div class="item-main">' + t.tx + '</div>' +
