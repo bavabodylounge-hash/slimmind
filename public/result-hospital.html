@@ -6937,6 +6937,8 @@ try{ ['log','info','warn','debug'].forEach(function(k){ console[k]=function(){};
 #p10x .l3.t3 em{background:var(--supp)}
 #p10x .lb{font-size:10px;font-weight:800;color:var(--cd);margin:10px 0 3px}
 #p10x .lb:first-child{margin-top:0}
+#p10x .ex-img-wrap{margin:8px 0 12px;border-radius:12px;overflow:hidden;background:#f4f4f6}
+#p10x .ex-card-img{width:100%;max-height:200px;object-fit:cover;display:block;border-radius:12px}
 #p10x .bg{display:inline-block;font-size:8.5px;font-weight:800;border-radius:5px;padding:2px 5px;margin-left:4px;
  background:rgba(173,101,44,.13);color:var(--cd);vertical-align:1px}
 #p10x .bg.b{background:rgba(118,116,138,.13);color:var(--pv-6a6880)}
@@ -8404,6 +8406,99 @@ function exWeek(){ var g=exTxGate(); return EX_WEEK[g==='회복기'?1:g==='전�
    exPlan() 안에 글자로 박혀 있어서 업종이 갈라질 수 없었다. 옷장으로 꺼낸다. */
 var EX_SOLO={tx:'집에서 · 기구 없이'};
 
+
+/* ═══ 운동 카드 이미지 매핑 테이블 (88개 전체) ═══ */
+var EX_IMG={
+ '골반 자물쇠':'/static/exercise/01_%EA%B3%A8%EB%B0%98_%EC%9E%90%EB%AC%BC%EC%87%A0.jpg',
+ '앉은 시간 청산':'/static/exercise/02_%EC%95%89%EC%9D%80_%EC%8B%9C%EA%B0%84_%EC%B2%AD%EC%82%B0.jpg',
+ '엉덩이 깊은 이완':'/static/exercise/03_%EC%97%89%EB%8D%A9%EC%9D%B4_%EA%B9%8A%EC%9D%80_%EC%9D%B4%EC%99%84.jpg',
+ '척추 기상':'/static/exercise/04_%EC%B2%99%EC%B6%94_%EA%B8%B0%EC%83%81.jpg',
+ '굽은 등 리셋':'/static/exercise/05_%EA%B5%BD%EC%9D%80_%EB%93%B1_%EB%A6%AC%EC%85%8B.jpg',
+ '책 펼치듯 가슴 열기':'/static/exercise/06_%EC%B1%85_%ED%8E%BC%EC%B9%98%EB%93%AF_%EA%B0%80%EC%8A%B4_%EC%97%B4%EA%B8%B0.jpg',
+ '거북목 브레이크':'/static/exercise/07_%EA%B1%B0%EB%B6%81%EB%AA%A9_%EB%B8%8C%EB%A0%88%EC%9D%B4%ED%81%AC.jpg',
+ '어깨 레일 청소':'/static/exercise/08_%EC%96%B4%EA%B9%A8_%EB%A0%88%EC%9D%BC_%EC%B2%AD%EC%86%8C.jpg',
+ '무릎 열고 닫기':'/static/exercise/09_%EB%AC%B4%EB%A6%8E_%EC%97%B4%EA%B3%A0_%EB%8B%AB%EA%B8%B0.jpg',
+ '비둘기 자세':'/static/exercise/10_%EB%B9%84%EB%91%98%EA%B8%B0_%EC%9E%90%EC%84%B8.jpg',
+ '스쿼트 밑작업':'/static/exercise/11_%EC%8A%A4%EC%BF%BC%ED%8A%B8_%EB%B0%91%EC%9E%91%EC%97%85.jpg',
+ '펌프 유지보수':'/static/exercise/12_%ED%8E%8C%ED%94%84_%EC%9C%A0%EC%A7%80%EB%B3%B4%EC%88%98.jpg',
+ '골반 좌우로 넘기기':'/static/exercise/13_%EA%B3%A8%EB%B0%98_%EC%A2%8C%EC%9A%B0%EB%A1%9C_%EB%84%98%EA%B8%B0%EA%B8%B0.jpg',
+ '무릎 사이 쿠션 조이기':'/static/exercise/14_%EB%AC%B4%EB%A6%8E_%EC%82%AC%EC%9D%B4_%EC%BF%A0%EC%85%98_%EC%A1%B0%EC%9D%B4%EA%B8%B0.jpg',
+ '침대 끝에서 한 다리 내리기':'/static/exercise/15_%EC%B9%A8%EB%8C%80_%EB%81%9D%EC%97%90%EC%84%9C_%ED%95%9C_%EB%8B%A4%EB%A6%AC_%EB%82%B4%EB%A6%AC%EA%B8%B0.jpg',
+ '의자에 앉아 4자 숙이기':'/static/exercise/16_%EC%9D%98%EC%9E%90%EC%97%90_%EC%95%89%EC%95%84_4%EC%9E%90_%EC%88%99%EC%9D%B4%EA%B8%B0.jpg',
+ '공으로 눌러 풀기':'/static/exercise/17_%EA%B3%B5%EC%9C%BC%EB%A1%9C_%EB%88%8C%EB%9F%AC_%ED%92%80%EA%B8%B0.jpg',
+ '네발기기에서 꼬리 흔들기':'/static/exercise/18_%EB%84%A4%EB%B0%9C%EA%B8%B0%EA%B8%B0%EC%97%90%EC%84%9C_%EA%BC%AC%EB%A6%AC_%ED%9D%94%EB%93%A4%EA%B8%B0.jpg',
+ '엎드려 가슴 내리기':'/static/exercise/19_%EC%97%8E%EB%93%9C%EB%A0%A4_%EA%B0%80%EC%8A%B4_%EB%82%B4%EB%A6%AC%EA%B8%B0.jpg',
+ '앉아서 몸통만 돌리기':'/static/exercise/20_%EC%95%89%EC%95%84%EC%84%9C_%EB%AA%B8%ED%86%B5%EB%A7%8C_%EB%8F%8C%EB%A6%AC%EA%B8%B0.jpg',
+ '실 꿰듯 팔 넣기':'/static/exercise/21_%EC%8B%A4_%EA%BF%B0%EB%93%AF_%ED%8C%94_%EB%84%A3%EA%B8%B0.jpg',
+ '턱 당긴 채 고개 돌리기':'/static/exercise/22_%ED%84%B1_%EB%8B%B9%EA%B8%B4_%EC%B1%84_%EA%B3%A0%EA%B0%9C_%EB%8F%8C%EB%A6%AC%EA%B8%B0.jpg',
+ '엎드려 Y자 들기':'/static/exercise/23_%EC%97%8E%EB%93%9C%EB%A0%A4_Y%EC%9E%90_%EB%93%A4%EA%B8%B0.jpg',
+ '두 무릎 같이 눕히기':'/static/exercise/24_%EB%91%90_%EB%AC%B4%EB%A6%8E_%EA%B0%99%EC%9D%B4_%EB%88%95%ED%9E%88%EA%B8%B0.jpg',
+ '누워서 무릎 원 그리기':'/static/exercise/25_%EB%88%84%EC%9B%8C%EC%84%9C_%EB%AC%B4%EB%A6%8E_%EC%9B%90_%EA%B7%B8%EB%A6%AC%EA%B8%B0.jpg',
+ '소파에 다리 올려 숙이기':'/static/exercise/26_%EC%86%8C%ED%8C%8C%EC%97%90_%EB%8B%A4%EB%A6%AC_%EC%98%AC%EB%A0%A4_%EC%88%99%EC%9D%B4%EA%B8%B0.jpg',
+ '앉아 다리 걸고 무릎 끌어안기':'/static/exercise/27_%EC%95%89%EC%95%84_%EB%8B%A4%EB%A6%AC_%EA%B1%B8%EA%B3%A0_%EB%AC%B4%EB%A6%8E_%EB%81%8C%EC%96%B4%EC%95%88%EA%B8%B0.jpg',
+ '뒤꿈치 붙인 채 쪼그려 앉기':'/static/exercise/28_%EB%92%A4%EA%BF%88%EC%B9%98_%EB%B6%99%EC%9D%B8_%EC%B1%84_%EC%AA%BC%EA%B7%B8%EB%A0%A4_%EC%95%89%EA%B8%B0.jpg',
+ '조개처럼 무릎 벌리기':'/static/exercise/29_%EC%A1%B0%EA%B0%9C%EC%B2%98%EB%9F%BC_%EB%AC%B4%EB%A6%8E_%EB%B2%8C%EB%A6%AC%EA%B8%B0.jpg',
+ '무릎 굽힌 채 뒤꿈치 내리기':'/static/exercise/30_%EB%AC%B4%EB%A6%8E_%EA%B5%BD%ED%9E%8C_%EC%B1%84_%EB%92%A4%EA%BF%88%EC%B9%98_%EB%82%B4%EB%A6%AC%EA%B8%B0.jpg',
+ '앉아서 발목 펌프':'/static/exercise/31_%EC%95%89%EC%95%84%EC%84%9C_%EB%B0%9C%EB%AA%A9_%ED%8E%8C%ED%94%84.jpg',
+ '벽 밀기':'/static/exercise/32_%EB%B2%BD_%EB%B0%80%EA%B8%B0.jpg',
+ '식탁 짚고 밀기':'/static/exercise/33_%EC%8B%9D%ED%83%81_%EC%A7%9A%EA%B3%A0_%EB%B0%80%EA%B8%B0.jpg',
+ '무릎 대고 팔굽혀펴기':'/static/exercise/34_%EB%AC%B4%EB%A6%8E_%EB%8C%80%EA%B3%A0_%ED%8C%94%EA%B5%BD%ED%98%80%ED%8E%B4%EA%B8%B0.jpg',
+ '팔굽혀펴기':'/static/exercise/35_%ED%8C%94%EA%B5%BD%ED%98%80%ED%8E%B4%EA%B8%B0.jpg',
+ '가슴 앞에서 양옆으로 벌리기':'/static/exercise/36_%EA%B0%80%EC%8A%B4_%EC%95%9E%EC%97%90%EC%84%9C_%EC%96%91%EC%98%86%EC%9C%BC%EB%A1%9C_%EB%B2%8C%EB%A6%AC%EA%B8%B0.jpg',
+ '밴드 밟고 당기기':'/static/exercise/37_%EB%B0%B4%EB%93%9C_%EB%B0%9F%EA%B3%A0_%EB%8B%B9%EA%B8%B0%EA%B8%B0.jpg',
+ '밴드 당기기':'/static/exercise/38_%EB%B0%B4%EB%93%9C_%EB%8B%B9%EA%B8%B0%EA%B8%B0.jpg',
+ '한 팔로 당기기':'/static/exercise/39_%ED%95%9C_%ED%8C%94%EB%A1%9C_%EB%8B%B9%EA%B8%B0%EA%B8%B0.jpg',
+ '누워서 엉덩이 들기':'/static/exercise/40_%EB%88%84%EC%9B%8C%EC%84%9C_%EC%97%89%EB%8D%A9%EC%9D%B4_%EB%93%A4%EA%B8%B0.jpg',
+ '의자에 살짝 닿기':'/static/exercise/41_%EC%9D%98%EC%9E%90%EC%97%90_%EC%82%B4%EC%A7%9D_%EB%8B%BF%EA%B8%B0.jpg',
+ '물병 안고 앉았다 서기':'/static/exercise/42_%EB%AC%BC%EB%B3%91_%EC%95%88%EA%B3%A0_%EC%95%89%EC%95%98%EB%8B%A4_%EC%84%9C%EA%B8%B0.jpg',
+ '무게 지고 앉았다 서기':'/static/exercise/43_%EB%AC%B4%EA%B2%8C_%EC%A7%80%EA%B3%A0_%EC%95%89%EC%95%98%EB%8B%A4_%EC%84%9C%EA%B8%B0.jpg',
+ '숨으로 배에 힘 주기':'/static/exercise/44_%EC%88%A8%EC%9C%BC%EB%A1%9C_%EB%B0%B0%EC%97%90_%ED%9E%98_%EC%A3%BC%EA%B8%B0.jpg',
+ '누워서 팔다리 반대로':'/static/exercise/45_%EB%88%84%EC%9B%8C%EC%84%9C_%ED%8C%94%EB%8B%A4%EB%A6%AC_%EB%B0%98%EB%8C%80%EB%A1%9C.jpg',
+ '네발기기로 팔다리 뻗기':'/static/exercise/46_%EB%84%A4%EB%B0%9C%EA%B8%B0%EA%B8%B0%EB%A1%9C_%ED%8C%94%EB%8B%A4%EB%A6%AC_%EB%BB%97%EA%B8%B0.jpg',
+ '엎드려 버티기':'/static/exercise/47_%EC%97%8E%EB%93%9C%EB%A0%A4_%EB%B2%84%ED%8B%B0%EA%B8%B0.jpg',
+ '식탁 짚고 좁게 밀기':'/static/exercise/48_%EC%8B%9D%ED%83%81_%EC%A7%9A%EA%B3%A0_%EC%A2%81%EA%B2%8C_%EB%B0%80%EA%B8%B0.jpg',
+ '무릎 대고 좁게 밀기':'/static/exercise/49_%EB%AC%B4%EB%A6%8E_%EB%8C%80%EA%B3%A0_%EC%A2%81%EA%B2%8C_%EB%B0%80%EA%B8%B0.jpg',
+ '엎드려 팔꿈치 뒤로 당기기':'/static/exercise/50_%EC%97%8E%EB%93%9C%EB%A0%A4_%ED%8C%94%EA%BF%88%EC%B9%98_%EB%92%A4%EB%A1%9C_%EB%8B%B9%EA%B8%B0%EA%B8%B0.jpg',
+ '수건 위에서 당겨 내리기':'/static/exercise/51_%EC%88%98%EA%B1%B4_%EC%9C%84%EC%97%90%EC%84%9C_%EB%8B%B9%EA%B2%A8_%EB%82%B4%EB%A6%AC%EA%B8%B0.jpg',
+ '밴드 얼굴 쪽으로 당기기':'/static/exercise/52_%EB%B0%B4%EB%93%9C_%EC%96%BC%EA%B5%B4_%EC%AA%BD%EC%9C%BC%EB%A1%9C_%EB%8B%B9%EA%B8%B0%EA%B8%B0.jpg',
+ '벽 짚고 뒤로 한 발':'/static/exercise/53_%EB%B2%BD_%EC%A7%9A%EA%B3%A0_%EB%92%A4%EB%A1%9C_%ED%95%9C_%EB%B0%9C.jpg',
+ '한 발 엉덩이 들기':'/static/exercise/54_%ED%95%9C_%EB%B0%9C_%EC%97%89%EB%8D%A9%EC%9D%B4_%EB%93%A4%EA%B8%B0.jpg',
+ '물병 들고 뒤로 한 발':'/static/exercise/55_%EB%AC%BC%EB%B3%91_%EB%93%A4%EA%B3%A0_%EB%92%A4%EB%A1%9C_%ED%95%9C_%EB%B0%9C.jpg',
+ '물병 들고 엉덩이 빼며 숙이기':'/static/exercise/56_%EB%AC%BC%EB%B3%91_%EB%93%A4%EA%B3%A0_%EC%97%89%EB%8D%A9%EC%9D%B4_%EB%B9%BC%EB%A9%B0_%EC%88%99%EC%9D%B4%EA%B8%B0.jpg',
+ '무릎 대고 엎드려 버티기':'/static/exercise/57_%EB%AC%B4%EB%A6%8E_%EB%8C%80%EA%B3%A0_%EC%97%8E%EB%93%9C%EB%A0%A4_%EB%B2%84%ED%8B%B0%EA%B8%B0.jpg',
+ '옆으로 누워 무릎 대고 버티기':'/static/exercise/58_%EC%98%86%EC%9C%BC%EB%A1%9C_%EB%88%84%EC%9B%8C_%EB%AC%B4%EB%A6%8E_%EB%8C%80%EA%B3%A0_%EB%B2%84%ED%8B%B0%EA%B8%B0.jpg',
+ '네발기기에서 무릎 살짝 띄우기':'/static/exercise/59_%EB%84%A4%EB%B0%9C%EA%B8%B0%EA%B8%B0%EC%97%90%EC%84%9C_%EB%AC%B4%EB%A6%8E_%EC%82%B4%EC%A7%9D_%EB%9D%84%EC%9A%B0%EA%B8%B0.jpg',
+ '누워서 두 다리 천천히 내리기':'/static/exercise/60_%EB%88%84%EC%9B%8C%EC%84%9C_%EB%91%90_%EB%8B%A4%EB%A6%AC_%EC%B2%9C%EC%B2%9C%ED%9E%88_%EB%82%B4%EB%A6%AC%EA%B8%B0.jpg',
+ '평지 걷기':'/static/exercise/61_%ED%8F%89%EC%A7%80_%EA%B1%B7%EA%B8%B0.jpg',
+ '오르막·빠르게 걷기':'/static/exercise/62_%EC%98%A4%EB%A5%B4%EB%A7%89%C2%B7%EB%B9%A0%EB%A5%B4%EA%B2%8C_%EA%B1%B7%EA%B8%B0.jpg',
+ '빠르게·천천히 번갈아':'/static/exercise/63_%EB%B9%A0%EB%A5%B4%EA%B2%8C%C2%B7%EC%B2%9C%EC%B2%9C%ED%9E%88_%EB%B2%88%EA%B0%88%EC%95%84.jpg',
+ '달리기':'/static/exercise/64_%EB%8B%AC%EB%A6%AC%EA%B8%B0.jpg',
+ '기대서 밀기':'/static/exercise/65_%EA%B8%B0%EB%8C%80%EC%84%9C_%EB%B0%80%EA%B8%B0.jpg',
+ '앉아서 밀기':'/static/exercise/66_%EC%95%89%EC%95%84%EC%84%9C_%EB%B0%80%EA%B8%B0.jpg',
+ '덤벨로 밀기':'/static/exercise/67_%EB%8D%A4%EB%B2%A8%EB%A1%9C_%EB%B0%80%EA%B8%B0.jpg',
+ '바벨로 밀기':'/static/exercise/68_%EB%B0%94%EB%B2%A8%EB%A1%9C_%EB%B0%80%EA%B8%B0.jpg',
+ '앉아서 당기기':'/static/exercise/69_%EC%95%89%EC%95%84%EC%84%9C_%EB%8B%B9%EA%B8%B0%EA%B8%B0.jpg',
+ '위에서 당겨 내리기':'/static/exercise/70_%EC%9C%84%EC%97%90%EC%84%9C_%EB%8B%B9%EA%B2%A8_%EB%82%B4%EB%A6%AC%EA%B8%B0.jpg',
+ '숙여서 당기기':'/static/exercise/71_%EC%88%99%EC%97%AC%EC%84%9C_%EB%8B%B9%EA%B8%B0%EA%B8%B0.jpg',
+ '누워서 밀기':'/static/exercise/72_%EB%88%84%EC%9B%8C%EC%84%9C_%EB%B0%80%EA%B8%B0.jpg',
+ '레일 잡고 앉았다 서기':'/static/exercise/73_%EB%A0%88%EC%9D%BC_%EC%9E%A1%EA%B3%A0_%EC%95%89%EC%95%98%EB%8B%A4_%EC%84%9C%EA%B8%B0.jpg',
+ '줄 잡고 숙이기':'/static/exercise/74_%EC%A4%84_%EC%9E%A1%EA%B3%A0_%EC%88%99%EC%9D%B4%EA%B8%B0.jpg',
+ '기대서 다리 들기':'/static/exercise/75_%EA%B8%B0%EB%8C%80%EC%84%9C_%EB%8B%A4%EB%A6%AC_%EB%93%A4%EA%B8%B0.jpg',
+ '매달려 무릎 올리기':'/static/exercise/76_%EB%A7%A4%EB%8B%AC%EB%A0%A4_%EB%AC%B4%EB%A6%8E_%EC%98%AC%EB%A6%AC%EA%B8%B0.jpg',
+ '비스듬히 앉아서 밀기':'/static/exercise/77_%EB%B9%84%EC%8A%A4%EB%93%AC%ED%9E%88_%EC%95%89%EC%95%84%EC%84%9C_%EB%B0%80%EA%B8%B0.jpg',
+ '앉아서 팔 모으기':'/static/exercise/78_%EC%95%89%EC%95%84%EC%84%9C_%ED%8C%94_%EB%AA%A8%EC%9C%BC%EA%B8%B0.jpg',
+ '누워서 덤벨 벌렸다 모으기':'/static/exercise/79_%EB%88%84%EC%9B%8C%EC%84%9C_%EB%8D%A4%EB%B2%A8_%EB%B2%8C%EB%A0%B8%EB%8B%A4_%EB%AA%A8%EC%9C%BC%EA%B8%B0.jpg',
+ '줄 잡고 좁게 밀어 내리기':'/static/exercise/80_%EC%A4%84_%EC%9E%A1%EA%B3%A0_%EC%A2%81%EA%B2%8C_%EB%B0%80%EC%96%B4_%EB%82%B4%EB%A6%AC%EA%B8%B0.jpg',
+ '좁게 잡고 위에서 당겨 내리기':'/static/exercise/81_%EC%A2%81%EA%B2%8C_%EC%9E%A1%EA%B3%A0_%EC%9C%84%EC%97%90%EC%84%9C_%EB%8B%B9%EA%B2%A8_%EB%82%B4%EB%A6%AC%EA%B8%B0.jpg',
+ '가슴 대고 덤벨 당기기':'/static/exercise/82_%EA%B0%80%EC%8A%B4_%EB%8C%80%EA%B3%A0_%EB%8D%A4%EB%B2%A8_%EB%8B%B9%EA%B8%B0%EA%B8%B0.jpg',
+ '팔 펴고 줄 당겨 내리기':'/static/exercise/83_%ED%8C%94_%ED%8E%B4%EA%B3%A0_%EC%A4%84_%EB%8B%B9%EA%B2%A8_%EB%82%B4%EB%A6%AC%EA%B8%B0.jpg',
+ '누워서 한 발로 밀기':'/static/exercise/84_%EB%88%84%EC%9B%8C%EC%84%9C_%ED%95%9C_%EB%B0%9C%EB%A1%9C_%EB%B0%80%EA%B8%B0.jpg',
+ '벤치에 등 대고 엉덩이 들기':'/static/exercise/85_%EB%B2%A4%EC%B9%98%EC%97%90_%EB%93%B1_%EB%8C%80%EA%B3%A0_%EC%97%89%EB%8D%A9%EC%9D%B4_%EB%93%A4%EA%B8%B0.jpg',
+ '줄 잡고 옆으로 버티기':'/static/exercise/86_%EC%A4%84_%EC%9E%A1%EA%B3%A0_%EC%98%86%EC%9C%BC%EB%A1%9C_%EB%B2%84%ED%8B%B0%EA%B8%B0.jpg',
+ '줄 잡고 몸통 돌리기':'/static/exercise/87_%EC%A4%84_%EC%9E%A1%EA%B3%A0_%EB%AA%B8%ED%86%B5_%EB%8F%8C%EB%A6%AC%EA%B8%B0.jpg',
+ '공 위에 팔꿈치 대고 버티기':'/static/exercise/88_%EA%B3%B5_%EC%9C%84%EC%97%90_%ED%8C%94%EA%BF%88%EC%B9%98_%EB%8C%80%EA%B3%A0_%EB%B2%84%ED%8B%B0%EA%B8%B0.jpg',
+ '수건 당기기':'/static/exercise/37_%EB%B0%B4%EB%93%9C_%EB%B0%9F%EA%B3%A0_%EB%8B%B9%EA%B8%B0%EA%B8%B0.jpg'
+};
 
 /* ═══ 운동 옷장 5층 · 교정·모빌리티 12벌 (설계도 그대로) ═══ */
 var EX_FIX=[
@@ -10497,8 +10592,10 @@ function CD(i){
   var X=exSelect(), PL=exPlan();
   var it=PL.picks.map(function(F0){
     var _fi=EX_FIX.indexOf(F0), F=fixOf(F0);   /* 같은 자리 변형 — 2주마다 차례 */
+    var _imgUrl=EX_IMG[F.nick]||'';
     return [F.nick+'<i class="nsub">'+[F.dose,F.sub].filter(function(x){return x;}).join(' · ')+'</i>', '교정 · '+String(F0.id).replace(/[①②③④]/g,''), '<span class="rec">추천</span>교정',
-      denseBlock('fix',_fi,F.dose,F.vk||'',F.vk?F:null)
+      (_imgUrl?'<div class="ex-img-wrap"><img src="'+_imgUrl+'" alt="'+F.nick+'" class="ex-card-img" loading="lazy" onerror="this.style.display=\'none\'"></div>':'')
+      +denseBlock('fix',_fi,F.dose,F.vk||'',F.vk?F:null)
       +'<div class="lb">어떻게</div>'+F.how
       +'<div class="lb">🔬 왜 <span class="bg'+(F.ev==='B'?' b':'')+'">근거 '+F.ev+'</span></div>'+F.why
       +'<div class="lb">🧾 누구에게</div>'+F.who.join(' · ')
@@ -10514,9 +10611,11 @@ function CD(i){
     order.forEach(function(key){
       var _P=stepPick(key,lvOf(key)); if(!_P) return; var _lv=_P.lv, S2=_P.it;   /* ★체감 승급 [2026-09-20] · 같은 단 변형 · 금지 배너 한 단 아래 [2026-09-21] — _lv = 실제로 나간 단 */
       var _doseTxt=S2.dose.replace(/세 번/,PL.roundWord);
+      var _sImgUrl=EX_IMG[S2.nick]||'';
       it.push([S2.nick+'<i class="nsub">'+[_doseTxt+(PL.g==='안정기'?' · 무게 그대로':''),S2.sub].filter(function(x){return x;}).join(' · ')+'</i>',
         '근력 · '+nmOf(key)+' '+_lv+'단','<span class="rec">추천</span>근력',
-        denseBlock(key,_lv,_doseTxt,S2.vk)
+        (_sImgUrl?'<div class="ex-img-wrap"><img src="'+_sImgUrl+'" alt="'+S2.nick+'" class="ex-card-img" loading="lazy" onerror="this.style.display=\'none\'"></div>':'')
+        +denseBlock(key,_lv,_doseTxt,S2.vk)
         +'<div class="lb">어떻게</div>'+S2.how
         +'<div class="lb">🔬 왜 <span class="bg'+(S2.ev==='B'?' b':'')+'">근거 '+S2.ev+'</span></div>'+S2.why
         +'<div class="lb">🧾 누구에게</div>'+S2.who.join(' · ')
@@ -10532,7 +10631,8 @@ function CD(i){
   var WALK_WHEN={'식후 30분':'<b>밥 먹고 30분 안에</b> — 올라간 혈당을 근육이 먼저 쓰게 합니다','오전 10시 이후':'<b>오전 10시 이후</b> — 아침 빈속으로는 걷지 않습니다',
    '아침':'<b>아침</b> — 햇빛을 보며 걸으면 하루 리듬이 고정됩니다','저녁':'<b>저녁 이른 시간</b> — 밤 9시 뒤로는 미루지 않습니다'};
   if(PL.cardioMin) it.push([C.nick+'<i class="nsub">'+[_cd,C.sub].filter(function(x){return x;}).join(' · ')+'</i>', '유산소'+(USER.exTime?' · '+USER.exTime:''),'<span class="rec">추천</span>유산소',
-    (X.warm?'<div class="lb">나가기 전 5분 데우기</div>따뜻한 물 한 잔 마시고 제자리 걷기 — <b>'+USER.nick+'님은 몸이 찬 편</b>이라 데우고 나가야 처음부터 효과가 납니다':'')
+    (EX_IMG[C.nick]?'<div class="ex-img-wrap"><img src="'+EX_IMG[C.nick]+'" alt="'+C.nick+'" class="ex-card-img" loading="lazy" onerror="this.style.display=\'none\'"></div>':'')
+    +(X.warm?'<div class="lb">나가기 전 5분 데우기</div>따뜻한 물 한 잔 마시고 제자리 걷기 — <b>'+USER.nick+'님은 몸이 찬 편</b>이라 데우고 나가야 처음부터 효과가 납니다':'')
     +'<div class="lb">어떻게 <span class="bg">근거 '+C.ev+'</span></div>'+walkHow(C,PL.cardioMin)
     +(function(){ var T=walkTask(); return T?('<div class="lb">🧭 오늘 구간 — '+T.nm+'</div>'+T.tx+'<div class="qso" style="margin-top:6px">🔬 '+T.why+'<br>📈 '+T.sig+'</div>'):''; })()
     +(PL.cardioNote?'<div class="lb">🚶 '+PL.g+' 걷기</div>'+PL.cardioNote:'')
