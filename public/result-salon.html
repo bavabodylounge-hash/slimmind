@@ -14581,16 +14581,20 @@ var TONE_DB = {
 // mbti_full: 'INFP'|'ISTJ' 등 (선택)
 // ──────────────────────────────────────────────
 function generatePrescription(bc_code, ohaeng_type, mbti_full) {
+  var _GPD = (typeof BC_PRESCRIPTION_DB !== 'undefined' && BC_PRESCRIPTION_DB) ? BC_PRESCRIPTION_DB : {};  // [null-guard]
+  var _GTD = (typeof TONE_DB !== 'undefined' && TONE_DB) ? TONE_DB : {};  // [null-guard]
+  var _GBM = (typeof BC_MASTER !== 'undefined' && BC_MASTER) ? BC_MASTER : {};  // [null-guard]
+  var _GBN = (typeof BC_TO_DEFAULT_NICKNAME !== 'undefined' && BC_TO_DEFAULT_NICKNAME) ? BC_TO_DEFAULT_NICKNAME : {};  // [null-guard]
   // 처방 핵심 (기질 무관 공통)
-  var core = BC_PRESCRIPTION_DB[bc_code] || BC_PRESCRIPTION_DB['BC-6'];
+  var core = _GPD[bc_code] || _GPD['BC-6'] || {};
 
   // 처방 톤 (기질별)
-  var ohaengTone = TONE_DB[ohaeng_type] || TONE_DB['수'];
-  var tone = ohaengTone[mbti_full] || ohaengTone['default'];
+  var ohaengTone = _GTD[ohaeng_type] || _GTD['수'] || {};
+  var tone = ohaengTone[mbti_full] || ohaengTone['default'] || {};
 
   // 닉네임 (BC_MASTER app_nickname 활용)
-  var bcMaster = BC_MASTER[bc_code] || BC_MASTER['BC-6'];
-  var nicknameDisplay = BC_TO_DEFAULT_NICKNAME[bc_code] || core.label;
+  var bcMaster = _GBM[bc_code] || _GBM['BC-6'] || {};
+  var nicknameDisplay = _GBN[bc_code] || core.label || '';
 
   return {
     // 핵심 처방 (BC 공통)
@@ -19538,7 +19542,8 @@ function renderAll(data) {
       console.log('[result-v4] BC 코드 DB 고정:', bcCode, '→', _dbBcCode);
       bcCode = _dbBcCode;
     }
-    const _dbMaster = BC_MASTER[_dbBcCode];
+    const _BCM2 = (typeof BC_MASTER !== 'undefined' && BC_MASTER) ? BC_MASTER : {};  // [null-guard]
+    const _dbMaster = _BCM2[_dbBcCode];
     if (_dbMaster) bcMaster = _dbMaster;
     const _dbNick = (data.bc_nickname || '').trim();
     if (_dbNick && _dbNick !== nickname) {
