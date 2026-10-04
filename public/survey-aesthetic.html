@@ -18144,7 +18144,10 @@ function allMissing(idPrefix,total,answers,start,skip){
 }
 /* ★ 번호를 짚어주는 경고 (차수별 색). stageKey: 'warn-s1'~'warn-s4' */
 function warnMissing(stageKey,idPrefix,total,answers,start){
-  const {nums,firstId,items}=allMissing(idPrefix,total,answers,start);
+  /* ★ 2026-10-04 — display:none 문항(smHiddenNos)을 skip으로 전달해
+     숨겨진 문항을 미답으로 오인해 4차 전환이 차단되는 버그 수정 */
+  const _hid=(typeof smHiddenNos==='function')?smHiddenNos(idPrefix,total,start):[];
+  const {nums,firstId,items}=allMissing(idPrefix,total,answers,start,_hid.length>0?_hid:undefined);
   if(nums.length===0)return true;            // 다 채움 → 통과
   // ★ 미답 점프 컨텍스트 저장 (답하면 다음 미답/맨아래로 이동)
   const _doneMap={'sq':'stage1done','s2q':'stage2done','s3q':'stage3done','s4q':'stage4done'};
