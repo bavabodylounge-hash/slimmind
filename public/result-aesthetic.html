@@ -10436,6 +10436,28 @@ function heroMsg(){
   h:_nickStr+', <em>'+(3-td)+'가지</em> 남았어요',
   s:'<b>남은 걸 눌러서</b> 이어가시면 됩니다. 체크하는 순간 '+USER.consultantName+' 컨설턴트에게 바로 갑니다.'};
 }
+/* ★★ 2026-10-04 구현: BC코드 → 히어로 동물 이미지 매핑 함수
+   /static/bc-animals/ 폴더의 16개 이미지를 BC-1~BC-16에 연결 */
+var _BC_ANIMAL_MAP = {
+  'BC-1':'01_단단내장형','BC-2':'02_물렁피하형','BC-3':'03_가스팽만형',
+  'BC-4':'04_올챙이배형','BC-5':'05_코끼리다리형','BC-6':'06_귤껍질하체형',
+  'BC-7':'07_말벅지형','BC-8':'08_승마살형','BC-9':'09_거북이형',
+  'BC-10':'10_팔뚝부종형','BC-11':'11_상체근육형','BC-12':'12_부유방형',
+  'BC-13':'13_갱년기변환형','BC-14':'14_번아웃무기력형','BC-15':'15_대사증후군형',
+  'BC-16':'16_다중악순환형'
+};
+function smCharCode(){
+  var bc = (USER && USER.bc) || (window.__BC_RESULT__ && window.__BC_RESULT__.bcCode) || 'BC-6';
+  return bc.replace(/\s/g,'').toUpperCase();
+}
+function charImg(bcCode, state){
+  var key = (bcCode||'').replace(/\s/g,'').toUpperCase();
+  var nm  = _BC_ANIMAL_MAP[key] || _BC_ANIMAL_MAP['BC-6'];
+  return '/static/bc-animals/' + nm + '.png';
+}
+function charScale(bcCode){
+  return 1.0;
+}
 function rHero(){
  var td=todayDone(),M=heroMsg();
  var ey=M.ey;
@@ -10447,7 +10469,7 @@ function rHero(){
  document.getElementById('bd').innerHTML='<b>'+USER.bc+'</b> '+((USER.sex==='male'&&B.badge_m)||B.badge);   /* ★고침 M51·M52 — 남성 갈래(smSex → USER.sex) · 여성 글 그대로 */
  applyCodeTone();
  document.getElementById('ow').className='ow '+(anyCk()>0?'w':'z');   /* ★고침 12a — 캐릭터 = 체크 전 눈 감음(자는 중) · 하나라도 체크하면 깨어 4초 깜빡(설계도 오늘탭 캐릭터 줄) — 옛 조건(한 칸을 다 끝내야 깸)은 설계도와 달랐음 */
- try{ var _oo=document.getElementById('ow-open'), _ol=document.getElementById('ow-lid'); if(_oo&&window.__BC_RESULT__){ document.getElementById('ow').style.setProperty('--cs', String(charScale(smCharCode()))); var _os=charImg(smCharCode(),'open'); if(_oo.getAttribute('src')!==_os){ _oo.src=_os; _ol.src=charImg(smCharCode(),'closed'); } } }catch(e){}   /* 히어로 캐릭터 = 판정 코드 한 소스 (옛 부엉이 고정 PNG 제거) [2026-09-18] */
+ try{ var _oo=document.getElementById('ow-open'), _ol=document.getElementById('ow-lid'); if(_oo&&(window.__BC_RESULT__||(USER&&USER.bc))){ document.getElementById('ow').style.setProperty('--cs', String(charScale(smCharCode()))); var _os=charImg(smCharCode(),'open'); if(_oo.getAttribute('src')!==_os){ _oo.src=_os; _ol.src=charImg(smCharCode(),'closed'); } } }catch(e){}   /* ★2026-10-04 조건 완화: __BC_RESULT__ 없어도 USER.bc 있으면 동물이미지 표시 */
  document.getElementById('rg').style.setProperty('--p',(td/3*100));
  /* ★고침 T — 하단탭 «오늘» 칸: 남은 개수 배지 · 셋 다 마치면 초록 + 체크로 바뀌고 한 번 통 튀다 */
  var nb=document.getElementById('nbd'), tb=nb.parentNode, fin=(td>=3);

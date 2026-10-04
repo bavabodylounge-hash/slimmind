@@ -20733,13 +20733,7 @@ function showAnalyzing(){ try{ window.SMSfx&&SMSfx.scan(); }catch(_){}
             const waitTitleEl=document.getElementById('waitTitle');
             if(waitTitleEl) waitTitleEl.innerHTML=`<span class="wait-name-hl">${name}</span>님,<br>분석이 <span>완료됐어요!</span>`;
             window.scrollTo({top:0,behavior:'smooth'});
-            /* localStorage에서 마지막 result_id 복구 시도 */
-            try{
-              const lastId=localStorage.getItem('sm_last_result_id');
-              if(lastId && lastId.length > 10){
-                setTimeout(()=>{ window.location.replace('/result/'+lastId); }, 5000);
-              }
-            }catch(_){}
+            /* ★★ 2026-10-04 수정: 자동 이동 제거 — 결과지는 컨설턴트가 직접 전달 */
           }catch(e2){ console.error('[v72-timeout] 대기화면 표시 실패:', e2); }
         }
       }, 10000);
@@ -21158,23 +21152,16 @@ function showWaitScreen(resultId, userName) {
   // 상단으로 스크롤
   window.scrollTo({ top: 0, behavior: 'smooth' });
 
-  /* ★★ v72 핵심: resultId 있으면 2초 후 병원용 결과지로 자동 이동
-     - /result/:id → 서버가 survey_category=hospital 감지 → /result-hospital/:id 302 리다이렉트
-     - 이동 전 waitStep2 UI를 "완료" 로 업데이트 */
+  /* ★★ 2026-10-04 수정: 자동 이동 제거 — 컨설턴트가 결과지를 직접 전달
+     waitScreen은 완료 화면으로만 표시, 자동 redirect 없음 */
   if (resultId) {
     try {
       const step2El = document.getElementById('waitStep2');
       if(step2El){ step2El.textContent='✓'; step2El.className='wait-cs-num done'; }
       const step3El = document.querySelector('.wait-cs-num.wait');
-      if(step3El){ step3El.className='wait-cs-num active'; step3El.textContent='↻'; }
+      if(step3El){ step3El.className='wait-cs-num done'; step3El.textContent='✓'; }
     } catch(_){}
-    setTimeout(()=>{
-      try{
-        window.location.replace('/result/' + resultId);
-      }catch(e){
-        window.location.href = '/result/' + resultId;
-      }
-    }, 5000);
+    /* 자동 이동 setTimeout 제거 — 결과지는 컨설턴트가 고객에게 직접 전달 */
   }
 }
 
