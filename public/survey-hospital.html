@@ -154,6 +154,51 @@ src:url(data:font/woff2;base64,d09GMgABAAAAANywABEAAAABgEQAANxFAAIAgwAAAAAAAAAAA
 @media (prefers-reduced-motion:reduce){
   #genStep .ln,#genStep .gen-last,#genStep .gen-btn{ animation:none; opacity:1 }
   #genStep .gen-sweep,#genStep .gen-dust{ display:none } }
+
+/* ★ 2026-10-04 — 이름·전화 일치 이어하기 인라인 다이얼로그 */
+#smResumeDialog {
+  position: fixed; inset: 0; z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity .25s;
+}
+#smResumeDialog.srd-show { opacity: 1; pointer-events: auto; }
+.srd-overlay {
+  position: absolute; inset: 0;
+  background: rgba(40,28,18,.55); backdrop-filter: blur(3px);
+}
+.srd-box {
+  position: relative; z-index: 1;
+  background: #fff; border-radius: 20px;
+  padding: 28px 24px 22px; max-width: 340px; width: calc(100% - 40px);
+  box-shadow: 0 20px 60px rgba(40,28,18,.22), 0 4px 16px rgba(40,28,18,.1);
+  text-align: center;
+}
+.srd-icon { font-size: 32px; margin-bottom: 10px; }
+.srd-title {
+  font-size: 16px; font-weight: 700; color: #2e1f10;
+  line-height: 1.4; margin-bottom: 6px;
+}
+.srd-sub {
+  font-size: 13px; color: #8a7060; line-height: 1.5; margin-bottom: 20px;
+}
+.srd-btns { display: flex; gap: 10px; }
+.srd-yes {
+  flex: 1; padding: 13px 8px; border: none; border-radius: 12px;
+  background: linear-gradient(135deg, #a5764e, #c9a26b);
+  color: #fff; font-size: 14px; font-weight: 700;
+  cursor: pointer; transition: opacity .15s;
+}
+.srd-yes:hover { opacity: .88; }
+.srd-no {
+  flex: 1; padding: 13px 8px; border: none; border-radius: 12px;
+  background: #f0ebe4; color: #7a6246;
+  font-size: 14px; font-weight: 600; cursor: pointer; transition: background .15s;
+}
+.srd-no:hover { background: #e8e0d6; }
+@media(max-width:400px){
+  .srd-box { padding: 22px 18px 18px; }
+  .srd-yes, .srd-no { font-size: 13px; padding: 11px 6px; }
+}
 </style>
 <style id="wgMidCueFix">
 /* ★ GLP-1 카드 중간 화살표 — 작고 위치가 애매하다는 지적: 키우고 위아래 간격을 똑같이 */
@@ -10623,6 +10668,91 @@ function smDismiss() {
   } catch(e) { console.warn('[smDismiss] 상태 초기화 실패', e); }
 }
 
+
+/* ★ 2026-10-04 — 이름+전화번호 동일인 이어하기 게이트
+   startSurvey() 최초 진입 시: localStorage에 동일 이름·전화가 있으면
+   인라인 다이얼로그로 "이어하기 / 새로 시작" 선택지를 제시한다.
+   한 번 판정했으면 플래그(_smResumeChecked)로 재진입을 막는다. */
+function smCheckResumeMatch() {
+  if (window._smResumeChecked) return false;
+  window._smResumeChecked = true;
+  try {
+    var raw = localStorage.getItem(typeof SM_KEY !== 'undefined' ? SM_KEY : '');
+    if (!raw) return false;
+    var snap = JSON.parse(raw);
+    if (!snap || snap.v !== 4) return false;
+    if (Date.now() - snap.ts > 48 * 60 * 60 * 1000) {
+      localStorage.removeItem(SM_KEY); return false;
+    }
+    var savedName  = (snap.userInfo && snap.userInfo.name  ? snap.userInfo.name.trim()  : '');
+    var savedPhone = (snap.userInfo && snap.userInfo.phone ? snap.userInfo.phone.replace(/[^0-9]/g,'') : '');
+    if (!savedName) return false;
+    var curName  = (userInfo.name  || '').trim();
+    var curPhone = (userInfo.phone || '').replace(/[^0-9]/g,'');
+    var nameMatch  = curName.toLowerCase() === savedName.toLowerCase();
+    var phoneMatch = (!savedPhone || !curPhone) ? true : (curPhone === savedPhone);
+    if (!nameMatch || !phoneMatch) return false;
+    window._smSnap = snap;
+    _smShowResumeDialog(snap);
+    return true;
+  } catch(e) { console.warn('[smCheckResumeMatch]', e); return false; }
+}
+function _smShowResumeDialog(snap) {
+  var old = document.getElementById('smResumeDialog');
+  if (old) old.remove();
+  var ago = (typeof smTimeAgo === 'function') ? smTimeAgo(snap.ts) : '';
+  var s3  = Object.keys(snap.stage3Answers || {}).length;
+  var s2  = Object.keys(snap.stage2Answers || {}).length;
+  var s1  = Object.keys(snap.survAnswers   || {}).length;
+  var _r  = (window.SMGetLangRaw && window.SMGetLangRaw()) || 'ko';
+  var prog, t_cont, t_sub, b_yes, b_no;
+  if (_r === 'en') {
+    prog   = s3>0?'Stage 3 · '+s3+' Q done':s2>0?'Stage 2 · '+s2+' Q done':s1>0?'Stage 1 · '+s1+' Q done':'Name entered';
+    t_cont = snap.userInfo.name + ', continue where you left off?';
+    t_sub  = ago + ' · ' + prog; b_yes = 'Continue'; b_no = 'Start over';
+  } else if (_r === 'th') {
+    prog   = s3>0?'ขั้นที่ 3 · '+s3+' ข้อ':s2>0?'ขั้นที่ 2 · '+s2+' ข้อ':s1>0?'ขั้นที่ 1 · '+s1+' ข้อ':'กรอกชื่อแล้ว';
+    t_cont = 'คุณ' + snap.userInfo.name + ' ดำเนินการต่อหรือไม่?';
+    t_sub  = ago + ' · ' + prog; b_yes = 'ดำเนินการต่อ'; b_no = 'เริ่มใหม่';
+  } else {
+    prog   = s3>0?'3차 · '+s3+'문항 완료':s2>0?'2차 · '+s2+'문항 완료':s1>0?'1차 · '+s1+'문항 완료':'이름 입력 완료';
+    t_cont = snap.userInfo.name + '님의 이전 답변이 있어요';
+    t_sub  = ago + ' · ' + prog; b_yes = '이어하기'; b_no = '새로 시작';
+  }
+  var d = document.createElement('div');
+  d.id = 'smResumeDialog';
+  d.setAttribute('role','dialog'); d.setAttribute('aria-modal','true');
+  d.innerHTML = '<div class="srd-overlay"></div><div class="srd-box">'
+    + '<div class="srd-icon">💾</div>'
+    + '<div class="srd-title">' + t_cont + '</div>'
+    + '<div class="srd-sub">'   + t_sub  + '</div>'
+    + '<div class="srd-btns">'
+    +   '<button class="srd-yes" onclick="smResumeFromDialog()">' + b_yes + '</button>'
+    +   '<button class="srd-no"  onclick="smFreshFromDialog()">'  + b_no  + '</button>'
+    + '</div></div>';
+  document.body.appendChild(d);
+  requestAnimationFrame(function(){ requestAnimationFrame(function(){
+    d.classList.add('srd-show');
+  }); });
+}
+function smResumeFromDialog() {
+  var d = document.getElementById('smResumeDialog');
+  if (d) d.remove();
+  window._smResumeChecked = false;
+  if (typeof smResume === 'function') smResume();
+}
+function smFreshFromDialog() {
+  var d = document.getElementById('smResumeDialog');
+  if (d) d.remove();
+  window._smResumeChecked = false;
+  try { localStorage.removeItem(SM_KEY); } catch(e) {}
+  window._smWiped = false;
+  window._smSnap  = null;
+  if (typeof _smHideBanner === 'function') _smHideBanner();
+  window._smResumeChecked = true;
+  if (typeof startSurvey === 'function') startSurvey();
+}
+
 // 자동 저장 훅 — s1pick / s3pick / s2pick 등에서 호출
 function smAutoSave() {
   // 의미있는 진행상태일 때만 저장
@@ -10894,7 +11024,9 @@ function hmRenderConsole(){
 
 /* ===== /기능 11 ===== */
 
-function startSurvey(){ try{ window.SMSfx&&SMSfx.next(); }catch(_){} 
+function startSurvey(){ try{ window.SMSfx&&SMSfx.next(); }catch(_){}
+  // ★ 2026-10-04 — 이름+전화 일치 시 이어하기 게이트
+  if (smCheckResumeMatch()) return;
   // ★ 시작 프로필 스텝 먼저 경유
   if (!window._pfDone) {
     pfOpenProfile();
