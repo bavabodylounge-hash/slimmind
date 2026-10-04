@@ -20245,6 +20245,9 @@ function renderAll(data) {
   // ★ 남성 분기 전역 플래그 — renderP1/P2/P5/오늘탭 공통 사용
   const _isMaleResult = !((typeof smIsFemaleG==='function') ? smIsFemaleG() : (_gender==='여성'||_gender==='F'||!_gender));
   window._smResultIsMale = _isMaleResult;
+  // [bugfix] gender 전역 노출 — renderAll 밖의 함수들(getRoadmapWeeks, renderP8·phase, wow5TryRender 등)에서 gender 직접 참조 → ReferenceError 방지
+  var gender = _gender || '';
+  window.gender = gender;
   // V6.2: data 최상위의 weight/height/age/pfProfile을 answers 안에 주입
   // → computeBodyMetrics()가 BMI·나이를 정확히 계산 (이 전달 없으면 모두 기본값 고착)
   const _baseAnswers = data.answers || {};
