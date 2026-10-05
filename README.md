@@ -127,6 +127,18 @@ npx wrangler d1 migrations apply 7ed6c475-8afa-4ef8-9af8-8fab0cf8224b-db        
 
 ## 📋 세션별 변경 이력
 
+### 2026-10-05 (OG 이미지 회귀 버그 수정 + 인프라 정비)
+- ✅ **OG 이미지 회귀 버그 수정** — index.tsx result-aesthetic/fitness/salon 라우트가 모두 `og-slimmind.png`(→사실상 `og-baba.png`)를 가리키던 문제 수정, 업종별 전용 이미지로 교체
+  - `result-aesthetic/:id` → `og-aesthetic.png`
+  - `result-fitness/:id` → `og-fitness.png`
+  - `result-salon/:id` → `og-salon.png`
+  - `result-hospital/:id` → isRhBaba 분기 유지 (`og-baba.png` / `og-hospital.png`)
+- ✅ **4업종 HTML 하드코딩 OG 태그 수정** — `og:image` 전부 업종별 이미지로 교체, `twitter:title`의 "BAVA 성형외과/에스테틱/두피케어" 브랜드명 → "SlimMind | 업종별 제목"으로 통일
+- ✅ **hospital OG 블록 중복 제거** — `result-hospital.html`에 OG 마커(`<!-- ── OG / SNS 링크 미리보기 ───── -->`) 추가, `index.tsx` hospital 라우트를 `</head>` 삽입 방식 → 마커 교체 방식으로 통일 (다른 3업종과 동일)
+- ✅ **pre-commit hook 라인 범위 정확화** — OG 마커 추가로 인한 라인 밀림 반영 (hospital 7899→7901, salon 12267→12268)
+- ✅ **`scripts/patch_all_4brands.py` 자동 감지 기능 추가** — JS_BLOCKS 하드코딩 제거 → `detect_js_block()` 함수로 `<script>`/`</script>` 태그 위치를 동적 감지, 향후 라인 밀림 발생 시 자동 적응
+- ✅ GitHub push + gsk hosted deploy (Version `48b15d59`)
+
 ### 2026-08-24 (Part 2 — 보안 완전 강화)
 - ✅ survey-fitness/hospital/hospital-3lang.html 결과지 자동이동 3곳 완전 제거
 - ✅ POST /api/ai/generate-story, GET /api/ai/story/:id → `requireRole('ANY')` 인증 추가
@@ -154,4 +166,4 @@ npx wrangler d1 migrations apply 7ed6c475-8afa-4ef8-9af8-8fab0cf8224b-db        
 
 ---
 
-*Last updated: 2026-08-24*
+*Last updated: 2026-10-05*
