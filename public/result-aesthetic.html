@@ -4810,7 +4810,7 @@ p, div, span, h1, h2, h3, h4{
 .pcard-body .wg-hd{display:none;}
 /* ════ 운동 동작 이미지 ════ */
 /* ★2026-10-05 운동사진 1:1 정사각형 반응형 — 상하 잘림 근본 수정 */
-.ex-img-wrap{width:100%;border-radius:11px;overflow:hidden;margin:10px 0 12px;background:#f3f3f3;position:relative;aspect-ratio:1/1;}
+.ex-img-wrap{width:100%;max-width:100%;border-radius:11px;overflow:hidden;margin:10px 0 12px;background:#f3f3f3;position:relative;aspect-ratio:1/1;box-sizing:border-box;}
 .ex-card-img{display:block;width:100%;height:100%;object-fit:cover;object-position:center center;position:absolute;inset:0;}
 /* ════ 주차별 요일 주간표 (운동·식단·회복 클리어) ════ */
 .wg-pillar{margin-bottom:16px;background:linear-gradient(165deg,#fff,var(--wgcl));border:1.5px solid color-mix(in srgb,var(--wgc) 22%,transparent);border-radius:16px;padding:16px;border-left:6px solid var(--wgc);box-shadow:0 2px 9px color-mix(in srgb,var(--wgc) 10%,transparent);}
@@ -18610,7 +18610,27 @@ function switchPage(num) {
     }
     // ── [GUARD-L2] 필수 함수 존재 확인 ────────────────────────────────
     if (typeof paint !== 'function') {
-      console.error('[p10 GUARD] paint() 함수가 없습니다. 스크립트 로드 순서 또는 이름 변경을 확인하세요.');
+      console.warn('[p10 GUARD] paint() 미등록 — fallback 직접 렌더 실행');
+      try {
+        if(typeof smSyncUser==='function') smSyncUser();
+        var _sp0=window.__RESULT__||{};
+        if(_sp0.start_date && typeof USER!=='undefined') USER.startDate=_sp0.start_date;
+        if(typeof smDaysSinceStart==='function'){
+          try{ var _d0=smDaysSinceStart(); if(_d0>=0&&_d0<84){ USER.week=Math.floor(_d0/7)+1; USER.day=(_d0%7)+1; USER.startedDays=_d0+1; } }catch(e){}
+        }
+        if(typeof syncNUM==='function') syncNUM();
+        if(typeof rHero==='function') rHero();
+        if(typeof rCu==='function') rCu();
+        if(typeof rNbar==='function') rNbar();
+        if(typeof spgSync==='function') spgSync();
+        if(typeof rMg==='function') rMg();
+        if(typeof rFit==='function') rFit();
+        if(typeof rCal==='function') rCal();
+        if(typeof rCd==='function') rCd();
+        if(typeof rKb==='function') rKb();
+        if(typeof rDr==='function') rDr();
+        if(typeof rLt==='function') rLt();
+      } catch(fe){ console.error('[p10 fallback] 렌더 에러:', fe.message); }
       return;
     }
     // ── 정상 렌더 ──────────────────────────────────────────────────────

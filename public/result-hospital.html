@@ -4810,7 +4810,7 @@ p, div, span, h1, h2, h3, h4{
 .pcard-body .wg-hd{display:none;}
 /* ════ 운동 동작 이미지 ════ */
 /* ★2026-10-05 운동사진 1:1 정사각형 반응형 — 상하 잘림 근본 수정 */
-.ex-img-wrap{width:100%;border-radius:11px;overflow:hidden;margin:10px 0 12px;background:#f3f3f3;position:relative;aspect-ratio:1/1;}
+.ex-img-wrap{width:100%;max-width:100%;border-radius:11px;overflow:hidden;margin:10px 0 12px;background:#f3f3f3;position:relative;aspect-ratio:1/1;box-sizing:border-box;}
 .ex-card-img{display:block;width:100%;height:100%;object-fit:cover;object-position:center center;position:absolute;inset:0;}
 /* ════ 주차별 요일 주간표 (운동·식단·회복 클리어) ════ */
 .wg-pillar{margin-bottom:16px;background:linear-gradient(165deg,#fff,var(--wgcl));border:1.5px solid color-mix(in srgb,var(--wgc) 22%,transparent);border-radius:16px;padding:16px;border-left:6px solid var(--wgc);box-shadow:0 2px 9px color-mix(in srgb,var(--wgc) 10%,transparent);}
@@ -6946,8 +6946,7 @@ try{ ['log','info','warn','debug'].forEach(function(k){ console[k]=function(){};
 #p10x .lb{font-size:10px;font-weight:800;color:var(--cd);margin:10px 0 3px}
 #p10x .lb:first-child{margin-top:0}
 /* ★2026-10-05 #p10x 내 운동사진 오버라이드도 1:1 정사각형으로 통일 */
-#p10x .ex-img-wrap{margin:8px 0 12px;border-radius:12px;overflow:hidden;background:#f4f4f6;position:relative;aspect-ratio:1/1;}
-#p10x .ex-card-img{width:100%;height:100%;object-fit:cover;object-position:center center;display:block;border-radius:12px;position:absolute;inset:0;}
+/* ex-img-wrap/ex-card-img — 전역 CSS 사용 */
 #p10x .bg{display:inline-block;font-size:8.5px;font-weight:800;border-radius:5px;padding:2px 5px;margin-left:4px;
  background:rgba(173,101,44,.13);color:var(--cd);vertical-align:1px}
 #p10x .bg.b{background:rgba(118,116,138,.13);color:var(--pv-6a6880)}
@@ -10374,17 +10373,19 @@ function heroMsg(){
  var td=todayDone(),any=anyCk(),f=firstUndone();
  /* ★밀린 날이 먼저다 [서우님 승인 2026-09-20] — 2일 이상 쉬고 돌아왔는데 아직 아무것도 안 눌렀으면
     옛 인사(«오늘 할 일 딱 3가지»)는 하루도 안 빠진 사람과 같은 말이라 돌아온 손님에게 아무 뜻이 없다. */
+ var _nick=(USER.nick||USER.name||'');   /* ★고침 — nick 빈 문자열 방어: name → 없으면 빈칸 */
+ var _nickStr=_nick?(_nick+'님'):'님';   /* 이름 있으면 '지아님', 없으면 그냥 '님' */
  if(isToday() && any===0 && cuLevel()>0) return{ey:'다시 시작 · '+USER.week+'주차 '+USER.day+'일째',
-  h:USER.nick+'님, <em>돌아오셨네요</em>',
+  h:_nickStr+', <em>돌아오셨네요</em>',
   s:missDays()+'일 쉬었어요. <b>오늘 하나만</b> 누르면 그대로 이어집니다 — 처음부터 다시가 아니에요.'};
  if(td>=3)return{ey:'오늘 3가지 완료 · '+USER.week+'주차 '+USER.day+'일째',
-  h:USER.nick+'님, <em>오늘은 끝</em>났어요',
+  h:_nickStr+', <em>오늘은 끝</em>났어요',
   s:'이 기록이 <b>4주 점검·상담</b>의 자료가 됩니다. 내일 처방은 오늘 체크를 보고 조정돼요.'};
  if(any===0)return{ey:'오늘도 관리받는 중 · '+USER.week+'주차 '+USER.day+'일째',
-  h:USER.nick+'님, 오늘 할 일 <em>딱 3가지</em>',
+  h:_nickStr+', 오늘 할 일 <em>딱 3가지</em>',
   s:heroLead()+' 하나만 체크해도 오늘은 성공입니다.'};
  return{ey:'오늘도 관리받는 중 · '+USER.week+'주차 '+USER.day+'일째',
-  h:USER.nick+'님, <em>'+(3-td)+'가지</em> 남았어요',
+  h:_nickStr+', <em>'+(3-td)+'가지</em> 남았어요',
   s:'<b>남은 걸 눌러서</b> 이어가시면 됩니다. 체크하는 순간 '+USER.consultantName+' 컨설턴트에게 바로 갑니다.'};
 }
 /* ★★ 2026-10-04 구현: BC코드 → 히어로 동물 이미지 매핑 함수
@@ -19262,7 +19263,27 @@ function switchPage(num) {
     }
     // ── [GUARD-L2] 필수 함수 존재 확인 ────────────────────────────────
     if (typeof paint !== 'function') {
-      console.error('[p10 GUARD] paint() 함수가 없습니다. 스크립트 로드 순서 또는 이름 변경을 확인하세요.');
+      console.warn('[p10 GUARD] paint() 미등록 — fallback 직접 렌더 실행');
+      try {
+        if(typeof smSyncUser==='function') smSyncUser();
+        var _sp0=window.__RESULT__||{};
+        if(_sp0.start_date && typeof USER!=='undefined') USER.startDate=_sp0.start_date;
+        if(typeof smDaysSinceStart==='function'){
+          try{ var _d0=smDaysSinceStart(); if(_d0>=0&&_d0<84){ USER.week=Math.floor(_d0/7)+1; USER.day=(_d0%7)+1; USER.startedDays=_d0+1; } }catch(e){}
+        }
+        if(typeof syncNUM==='function') syncNUM();
+        if(typeof rHero==='function') rHero();
+        if(typeof rCu==='function') rCu();
+        if(typeof rNbar==='function') rNbar();
+        if(typeof spgSync==='function') spgSync();
+        if(typeof rMg==='function') rMg();
+        if(typeof rFit==='function') rFit();
+        if(typeof rCal==='function') rCal();
+        if(typeof rCd==='function') rCd();
+        if(typeof rKb==='function') rKb();
+        if(typeof rDr==='function') rDr();
+        if(typeof rLt==='function') rLt();
+      } catch(fe){ console.error('[p10 fallback] 렌더 에러:', fe.message); }
       return;
     }
     // ── 정상 렌더 ──────────────────────────────────────────────────────
