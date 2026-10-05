@@ -19685,6 +19685,14 @@ function renderAll(data) {
   // ★ [P10 오늘탭] smSyncUser → paint() 순서로 오늘탭 완전 렌더
   // updateTodayByBcCode는 제거됨 — smSyncUser + paint가 한 소스
   try {
+    /* ★2026-10-05 renderAll 내 bcCode를 window.__BC_RESULT__에 반영 — smSyncUser()가 읽는 _bcR.bcCode를 보장 */
+    if(bcCode && bcCode.trim()) {
+      window.__BC_RESULT__ = window.__BC_RESULT__ || {};
+      if(!window.__BC_RESULT__.bcCode || !window.__BC_RESULT__.bcCode.trim()) {
+        window.__BC_RESULT__.bcCode = bcCode;
+        window.__BC_RESULT__.nickname = nicknameDisplay || nickname || '';
+      }
+    }
     if(typeof smSyncUser === 'function') smSyncUser();
     // 주차·일째 계산
     var _sp10 = window.__RESULT__ || {};
