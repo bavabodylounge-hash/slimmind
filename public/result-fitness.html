@@ -4809,8 +4809,9 @@ p, div, span, h1, h2, h3, h4{
 .pcard-body .wg-collab{margin-top:4px;}
 .pcard-body .wg-hd{display:none;}
 /* ════ 운동 동작 이미지 ════ */
-.ex-img-wrap{width:100%;border-radius:11px;overflow:hidden;margin:10px 0 12px;background:#f3f3f3;}
-.ex-card-img{display:block;width:100%;height:auto;max-height:220px;object-fit:cover;object-position:center top;}
+/* ★2026-10-05 운동사진 1:1 정사각형 반응형 — 상하 잘림 근본 수정 */
+.ex-img-wrap{width:100%;border-radius:11px;overflow:hidden;margin:10px 0 12px;background:#f3f3f3;position:relative;aspect-ratio:1/1;}
+.ex-card-img{display:block;width:100%;height:100%;object-fit:cover;object-position:center center;position:absolute;inset:0;}
 /* ════ 주차별 요일 주간표 (운동·식단·회복 클리어) ════ */
 .wg-pillar{margin-bottom:16px;background:linear-gradient(165deg,#fff,var(--wgcl));border:1.5px solid color-mix(in srgb,var(--wgc) 22%,transparent);border-radius:16px;padding:16px;border-left:6px solid var(--wgc);box-shadow:0 2px 9px color-mix(in srgb,var(--wgc) 10%,transparent);}
 .wg-hd{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
@@ -6542,8 +6543,8 @@ try{ ['log','info','warn','debug'].forEach(function(k){ console[k]=function(){};
  transition:background .8s cubic-bezier(.22,.9,.3,1)}
 #p10x .ow .in{position:absolute;inset:5px;border-radius:50%;overflow:hidden;
  background:radial-gradient(circle at 50% 36%,#fffefb,#f5ebdf)}
-#p10x .ow .in img{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(var(--cs,1));
- width:56px;height:56px;object-fit:contain}   /* --cs = 그림별 크기 보정(charScale) */
+#p10x .ow .in img{position:absolute;left:0;top:0;transform:scale(var(--cs,1));transform-origin:center center;
+ width:100%;height:100%;object-fit:cover;object-position:center center}   /* ★2026-10-05 원형 꽉 채움(cover) — object-contain 여백 제거 */
 #p10x .ow .in img.lid{opacity:0}   /* 깜빡 = 통째 교체 (2026-09-18) */
 #p10x .ow.z .in img.lid{opacity:1}   /* 체크 전 = 눈 감음(자는 중) — 위 img.lid{opacity:0}보다 센 선택자 */
 #p10x .ow.w .lid{animation:bk 4s ease-in-out infinite}   /* 깜빡 = 설계도 «주기 4s · 노출 92~97% · 한 장 요약·오늘탭 동일» */
@@ -7911,9 +7912,10 @@ function smSyncUser(){
   var _nickR = _bcR.nickname || (_bcR.bcMaster && (_bcR.bcMaster.app_nickname||'').replace(/#/g,'').replace(/_/g,' '));
   if(_nickR) USER.sub = _nickR;
   /* ★ 2026-10-04 — userName 외 user_name·name 필드도 시도, 모두 없으면 '고객' fallback */
-  var _uName=sp.userName||sp.user_name||sp.name||'';
+  /* ★ 2026-10-05 — window.__RESULT__가 비어 있을 때 renderAll이 주입한 USER.name도 폴백으로 사용 */
+  var _uName=sp.userName||sp.user_name||sp.name||USER.name||'';
   if(_uName){ USER.name=_uName; USER.nick=_uName.length>=3?_uName.slice(1):_uName; }
-  if(!USER.nick) USER.nick='고객';
+  if(!USER.nick || USER.nick==='고객') USER.nick = (USER.name&&USER.name.length>=3)?USER.name.slice(1):(USER.name||'고객');
   if(sp.ohaengType) USER.oheng = sp.ohaengType;
   if(sp.mbtiType)   USER.mbti  = sp.mbtiType;
   if(typeof smSex==='function'){ var _sx = smSex(sp, an); if(_sx) USER.sex = (_sx==='남성') ? 'male' : 'female'; }
@@ -19686,6 +19688,15 @@ function renderAll(data) {
       if(!window.__BC_RESULT__.bcCode || !window.__BC_RESULT__.bcCode.trim()) {
         window.__BC_RESULT__.bcCode = bcCode;
         window.__BC_RESULT__.nickname = nicknameDisplay || nickname || '';
+      }
+    }
+    /* ★2026-10-05 이름 개인화 보장: window.__RESULT__에 user_name 없으면 renderAll의 userName을 주입
+       → smSyncUser()가 sp.user_name을 읽어 USER.nick 세팅 가능 */
+    if(typeof userName !== 'undefined' && userName && userName !== '고객') {
+      window.__RESULT__ = window.__RESULT__ || {};
+      if(!window.__RESULT__.user_name && !window.__RESULT__.userName) {
+        window.__RESULT__.user_name = userName;
+        window.__RESULT__.userName  = userName;
       }
     }
     if(typeof smSyncUser === 'function') smSyncUser();
