@@ -9335,13 +9335,13 @@ try {
 <meta property="og:title"        content="SlimMind | 에스테틱 바디코드 맞춤 케어 결과지">
 <meta property="og:description"  content="당신의 몸은 하나의 코드입니다. 에스테틱 맞춤 케어 방법을 확인하세요.">
 <meta property="og:url"          content="${raBase}/result-aesthetic/${id}">
-<meta property="og:image"        content="${raBase}/static/og-slimmind.png">
+<meta property="og:image"        content="${raBase}/static/og-aesthetic.png">
 <meta property="og:image:width"  content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:type"   content="image/png">
 <meta name="twitter:card"        content="summary_large_image">
 <meta name="twitter:title"       content="SlimMind | 에스테틱 바디코드 맞춤 케어 결과지">
-<meta name="twitter:image"       content="${raBase}/static/og-slimmind.png">`
+<meta name="twitter:image"       content="${raBase}/static/og-aesthetic.png">`
     // 동적 manifest: start_url을 현재 에스테틱 결과지 URL로 교체
     const dynamicManifestHref = `/api/manifest.json?for=${encodeURIComponent('/result-aesthetic/' + id)}`
     // ① KAKAO_ESCAPE_SCRIPT + idScript + __BRAND__ → <head> 최상단 첫 번째로 주입 (가장 먼저 실행)
@@ -9920,13 +9920,13 @@ try {
 <meta property="og:title"        content="SlimMind | 피트니스 바디코드 맞춤 결과지">
 <meta property="og:description"  content="당신의 몸은 하나의 코드입니다. 피트니스 맞춤 트레이닝 방법을 확인하세요.">
 <meta property="og:url"          content="${rfBase}/result-fitness/${id}">
-<meta property="og:image"        content="${rfBase}/static/og-slimmind.png">
+<meta property="og:image"        content="${rfBase}/static/og-fitness.png">
 <meta property="og:image:width"  content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:type"   content="image/png">
 <meta name="twitter:card"        content="summary_large_image">
 <meta name="twitter:title"       content="SlimMind | 피트니스 바디코드 맞춤 결과지">
-<meta name="twitter:image"       content="${rfBase}/static/og-slimmind.png">`
+<meta name="twitter:image"       content="${rfBase}/static/og-fitness.png">`
     const dynamicManifestHref = `/api/manifest.json?for=${encodeURIComponent('/result-fitness/' + id)}`
     html = html.replace('<head>', `<head>\n${KAKAO_ESCAPE_SCRIPT}\n${idScript}${fitBrandScript}`)
     html = html.replace(
@@ -10473,13 +10473,13 @@ app.get('/result-salon/:id', async (c) => {
 <meta property="og:title"        content="SlimMind | 살롱 케어 맞춤 결과지">
 <meta property="og:description"  content="당신의 몸은 하나의 코드입니다. 살롱 맞춤 케어 방법을 확인하세요.">
 <meta property="og:url"          content="${rsBase}/result-salon/${id}">
-<meta property="og:image"        content="${rsBase}/static/og-slimmind.png">
+<meta property="og:image"        content="${rsBase}/static/og-salon.png">
 <meta property="og:image:width"  content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:type"   content="image/png">
 <meta name="twitter:card"        content="summary_large_image">
 <meta name="twitter:title"       content="SlimMind | 살롱 케어 맞춤 결과지">
-<meta name="twitter:image"       content="${rsBase}/static/og-slimmind.png">`
+<meta name="twitter:image"       content="${rsBase}/static/og-salon.png">`
     const dynamicManifestHref = `/api/manifest.json?for=${encodeURIComponent('/result-salon/' + id)}`
     html = html.replace('<head>', `<head>\n${KAKAO_ESCAPE_SCRIPT}\n${idScript}${salonBrandScript}`)
     html = html.replace(
