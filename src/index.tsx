@@ -8790,8 +8790,11 @@ try {
       /<link[^>]+rel=["']manifest["'][^>]*>/i,
       `<link rel="manifest" href="${dynamicManifestHref}">`
     )
-    // OG → </head> 바로 앞
-    html = html.replace('</head>', `${rhOg}\n</head>`)
+    // OG 마커 교체 (다른 업종과 동일한 패턴으로 통일 — 중복 주입 방지)
+    html = html.replace(
+      /<!-- ── OG \/ SNS 링크 미리보기 ─+-->([\s\S]*?)<!-- ─+-->/,
+      `<!-- ── OG / SNS 링크 미리보기 ───────────────────────────── -->${rhOg}\n<!-- ─────────────────────────────────────────────────────── -->`
+    )
     // 새로고침 시 항상 Worker를 통과하도록 — 브라우저·CDN 캐시 완전 차단
     const now = new Date().toUTCString()
     return c.html(html, 200, {
