@@ -4635,6 +4635,12 @@ app.get('/s/:code', async (c) => {
       // integrated 는 아래 기존 로직으로 계속 처리
     }
 
+    // ★ FIX: B2B 코드인데 파트너가 없거나 정지된 경우 → 친화적 에러 HTML
+    if (!partner || partner.status === 'suspended') {
+      const errHtml = `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>잘못된 링크 | SlimMind</title><style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#faf8f5;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}.card{background:#fff;border-radius:20px;padding:40px 32px;max-width:400px;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.08)}.icon{font-size:56px;margin-bottom:16px}.title{font-size:22px;font-weight:700;color:#1a1a1a;margin-bottom:8px}.desc{font-size:14px;color:#666;line-height:1.6;margin-bottom:24px}.code{font-size:12px;color:#999;background:#f5f5f5;padding:4px 10px;border-radius:6px;display:inline-block;margin-bottom:24px}.btn{display:inline-block;padding:12px 28px;background:#6366f1;color:#fff;text-decoration:none;border-radius:12px;font-weight:600;font-size:14px}</style></head><body><div class="card"><div class="icon">🔗</div><div class="title">유효하지 않은 링크입니다</div><div class="desc">이 링크는 존재하지 않거나 비활성화된 파트너 코드입니다.<br>담당자에게 올바른 링크를 요청해주세요.</div><div class="code">${rawCode}</div><br><a class="btn" href="/">SlimMind 홈으로</a></div></body></html>`
+      return c.html(errHtml, 404)
+    }
+
     if (partner && partner.status !== 'suspended') {
       // scan_count 증가
       await db.prepare(
@@ -16349,6 +16355,68 @@ app.post('/api/ai/generate-today', allowPublicAI(), async (c) => {
   } catch (e: any) {
     return c.json({ ok: false, error: String(e) }, 500)
   }
+})
+
+// ★ [alias] /api/today/* → /api/ai/today/* 호환 라우트 (검증/레거시 클라이언트 대응)
+// /api/today/status?result_id=X → 슬롯 존재 여부 상태 반환
+app.get('/api/today/status', allowPublicAI(), async (c) => {
+  const result_id = c.req.query('result_id') || ''
+  if (!result_id) return c.json({ ok: false, error: 'result_id 필요' }, 400)
+  const db: D1Database = (c.env as any).DB
+  try {
+    const row = await db.prepare(
+      `SELECT id, ai_today_src, ai_today_at FROM diagnosis_results WHERE id=? LIMIT 1`
+    ).bind(result_id).first<any>()
+    if (!row) return c.json({ ok: false, has_today: false, result_id }, 404)
+    return c.json({
+      ok: true, has_today: !!(row.ai_today_src), result_id,
+      ai_today_src: row.ai_today_src || null,
+      ai_today_at:  row.ai_today_at  || null,
+    })
+  } catch (e: any) { return c.json({ ok: false, error: String(e) }, 500) }
+})
+
+// /api/today/slots?result_id=X → 슬롯 목록 반환 (/api/ai/today/:id 동일)
+app.get('/api/today/slots', allowPublicAI(), async (c) => {
+  const result_id = c.req.query('result_id') || ''
+  if (!result_id) return c.json({ ok: false, error: 'result_id 필요' }, 400)
+  return c.redirect(`/api/ai/today/${encodeURIComponent(result_id)}`, 302)
+})
+
+// /api/today/check — POST 데일리 체크 alias (/api/daily-check 동일)
+app.post('/api/today/check', async (c) => {
+  return c.redirect('/api/daily-check', 307)
+})
+
+// /api/today/streak?result_id=X → 연속 체크 현황 반환
+app.get('/api/today/streak', allowPublicAI(), async (c) => {
+  const result_id = c.req.query('result_id') || c.req.param('result_id') || ''
+  if (!result_id) return c.json({ ok: false, error: 'result_id 필요' }, 400)
+  const db: D1Database = (c.env as any).DB
+  try {
+    const rows = await db.prepare(
+      `SELECT check_date, exercise_done, diet_done, recovery_done
+       FROM daily_checks WHERE result_id=?
+       ORDER BY check_date DESC LIMIT 30`
+    ).bind(result_id).all<any>()
+    const checks = rows.results || []
+    // 연속 일수 계산
+    let streak = 0
+    const today = new Date().toISOString().slice(0, 10)
+    const dateSet = new Set(checks.map((r: any) => r.check_date))
+    let cur = new Date(today)
+    while (dateSet.has(cur.toISOString().slice(0, 10))) {
+      streak++
+      cur.setDate(cur.getDate() - 1)
+    }
+    return c.json({ ok: true, result_id, streak, total_checks: checks.length, recent: checks.slice(0, 7) })
+  } catch (e: any) { return c.json({ ok: false, error: String(e) }, 500) }
+})
+
+// /api/today/streak/:result_id (path param 버전)
+app.get('/api/today/streak/:result_id', allowPublicAI(), async (c) => {
+  const result_id = c.req.param('result_id') || ''
+  return c.redirect(`/api/today/streak?result_id=${encodeURIComponent(result_id)}`, 302)
 })
 
 // GET /api/ai/today/:result_id — 저장된 오늘탭 슬롯 조회
