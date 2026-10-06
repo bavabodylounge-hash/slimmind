@@ -13,17 +13,20 @@
    data-ind 를 <html>에 설정하면 CSS 오버라이드가 자동 적용된다 */
 function smIndustry(){
   /* 우선순위: __SM_INDUSTRY__ → __BRAND__.survey_category → __RESULT__.survey_category → localStorage → 'hospital' */
-  var VALID=['hospital','fitness','esthetic','salon'];
-  function _ok(v){ return v && VALID.indexOf(v)>=0; }
+  /* ★ aesthetic/esthetic 양쪽 허용 — DB 저장 키 'aesthetic', CSS 키 'esthetic' 모두 수용 → 내부 표준 'esthetic' 반환 */
+  var VALID=['hospital','fitness','esthetic','salon','aesthetic'];
+  function _norm(v){
+    if(!v) return null;
+    if(v==='aesthetic') return 'esthetic'; // CSS selector는 esthetic, DB값은 aesthetic → 통일
+    return VALID.indexOf(v)>=0 ? v : null;
+  }
+  function _ok(v){ return !!_norm(v); }
   var v=(typeof window!=='undefined' && window.__SM_INDUSTRY__) || null;
-  if(_ok(v)) return v;
-  try{ var b=window.__BRAND__; if(b && _ok(b.survey_category)){ v=b.survey_category; } }catch(e){}
-  if(_ok(v)) return v;
-  try{ var r=window.__RESULT__; if(r && _ok(r.survey_category)){ v=r.survey_category; } }catch(e){}
-  if(_ok(v)) return v;
-  try{ v=localStorage.getItem('sm_survey_category'); }catch(e){ v=null; }
-  if(!_ok(v)) v='hospital';
-  return v;
+  var n=_norm(v); if(n) return n;
+  try{ var b=window.__BRAND__; if(b){ n=_norm(b.survey_category); if(n) return n; } }catch(e){}
+  try{ var r=window.__RESULT__; if(r){ n=_norm(r.survey_category); if(n) return n; } }catch(e){}
+  try{ v=localStorage.getItem('sm_survey_category'); n=_norm(v); if(n) return n; }catch(e){}
+  return 'hospital';
 }
 try{ document.documentElement.setAttribute('data-ind', smIndustry()); }catch(e){}
 </script>
@@ -807,24 +810,26 @@ function boot(){
   // 우선순위: loadData() d.survey_category → localStorage 기존값(보존) → 'hospital' 폴백
   // ※ loadData()가 실패/null 이어도 localStorage 기존값을 절대 'hospital'로 덮어쓰지 않음
   try {
-    var VALID_IND = ['hospital','fitness','esthetic','salon'];
-    function _indOk(v){ return v && VALID_IND.indexOf(v) >= 0; }
+    // ★ aesthetic(DB값) / esthetic(CSS값) 양쪽 모두 유효 처리 + 내부 표준 'esthetic' 반환
+    var VALID_IND = ['hospital','fitness','esthetic','salon','aesthetic'];
+    function _norm_ind(v){ if(v==='aesthetic') return 'esthetic'; return (v && VALID_IND.indexOf(v)>=0) ? v : null; }
+    function _indOk(v){ return !!_norm_ind(v); }
 
-    // 1순위: loadData() 결과에서 survey_category 읽기
-    var _cat = d.survey_category || d.surveyCategory || null;
+    // 1순위: loadData() 결과에서 survey_category 읽기 (aesthetic→esthetic 정규화)
+    var _cat = _norm_ind(d.survey_category || d.surveyCategory || null);
 
     // 2순위: loadData()에서 못 읽었으면 localStorage 기존값 우선 사용 (절대 덮어쓰지 않음)
-    if (!_indOk(_cat)) {
-      try { var _lsCat = localStorage.getItem('sm_survey_category'); if (_indOk(_lsCat)) _cat = _lsCat; } catch(e){}
+    if (!_cat) {
+      try { _cat = _norm_ind(localStorage.getItem('sm_survey_category')); } catch(e){}
     }
 
     // 3순위: 그래도 없으면 smIndustry()로 재시도 (__BRAND__ / __RESULT__ 참조)
-    if (!_indOk(_cat)) {
-      try { _cat = smIndustry(); } catch(e){}
+    if (!_cat) {
+      try { _cat = smIndustry(); } catch(e){}  // smIndustry() 자체가 이미 정규화 반환
     }
 
     // 최종 폴백: hospital
-    if (!_indOk(_cat)) _cat = 'hospital';
+    if (!_cat) _cat = 'hospital';
 
     document.documentElement.setAttribute('data-ind', _cat);
     // localStorage에는 유효한 값일 때만 저장 — 기존 값 보존이 핵심
