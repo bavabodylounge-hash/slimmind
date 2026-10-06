@@ -4229,6 +4229,26 @@ app.get('/api/admin/migrate', requireRole('MASTER'), async (c) => {
   return c.json({ ok: true, results })
 })
 
+// ─── survey clean URL 차단 (Cloudflare 307 redirect 대응) ─────────
+// Cloudflare Pages clean URL: *.html → 확장자 없는 경로로 307 redirect
+// Worker가 clean URL 라우트를 처리하지 않으면 404 → 동일 차단 핸들러 등록
+const _blockDirectSurvey = (msg: string) => (c: any) =>
+  c.html(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>잘못된 접근입니다</title>
+<style>body{font-family:-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f5f5f5}.box{background:#fff;border-radius:16px;padding:48px 40px;text-align:center;max-width:400px;box-shadow:0 4px 24px rgba(0,0,0,.08)}h2{color:#333;margin:0 0 12px;font-size:20px}p{color:#666;margin:0;font-size:15px;line-height:1.6}</style>
+</head><body><div class="box"><h2>⚠️ 잘못된 접근입니다</h2><p>${msg}</p></div></body></html>`, 403)
+
+// 에스테틱 설문 직접 접근 차단 (clean URL + .html 모두)
+app.get('/survey-aesthetic.html', _blockDirectSurvey('에스테틱 전용 질문지는 담당자가 발송한<br>링크를 통해서만 이용하실 수 있습니다.'))
+app.get('/survey-aesthetic',      _blockDirectSurvey('에스테틱 전용 질문지는 담당자가 발송한<br>링크를 통해서만 이용하실 수 있습니다.'))
+
+// 피트니스 설문 직접 접근 차단 (clean URL + .html 모두)
+app.get('/survey-fitness.html', _blockDirectSurvey('피트니스 전용 질문지는 담당자가 발송한<br>링크를 통해서만 이용하실 수 있습니다.'))
+app.get('/survey-fitness',      _blockDirectSurvey('피트니스 전용 질문지는 담당자가 발송한<br>링크를 통해서만 이용하실 수 있습니다.'))
+
+// 살롱 설문 직접 접근 차단 (clean URL + .html 모두)
+app.get('/survey-salon.html', _blockDirectSurvey('살롱 전용 질문지는 담당자가 발송한<br>링크를 통해서만 이용하실 수 있습니다.'))
+app.get('/survey-salon',      _blockDirectSurvey('살롱 전용 질문지는 담당자가 발송한<br>링크를 통해서만 이용하실 수 있습니다.'))
+
 // ─── /survey-hospital.html 직접 접근 차단 ────────────────────────
 // 구버전 직접 URL 접근 완전 차단 — 반드시 /h/:code 를 통해야만 접근 가능
 app.get('/survey-hospital.html', (c) => {
@@ -4253,6 +4273,8 @@ app.get('/survey-hospital.html', (c) => {
 </body>
 </html>`, 403)
 })
+// /survey-hospital clean URL도 동일 차단 (Cloudflare 307 대응)
+app.get('/survey-hospital', _blockDirectSurvey('병원 전용 질문지는 담당자가 발송한<br>링크를 통해서만 이용하실 수 있습니다.'))
 
 // ─── /h/:code — 병원용 질문지 화이트라벨 진입 라우트 ─────────────
 // 병원 B2B 파트너 전용: survey_category='hospital' 인 B2B 코드만 허용
