@@ -1951,7 +1951,10 @@ app.get('/api/b2b/results', requireB2B(), async (c) => {
              ELSE NULL
            END AS axis_primary,
            completed_at AS created_at, ref_code,
-           survey_category AS result_type
+           survey_category AS result_type,
+           COALESCE(bc_nickname, bc_primary) AS bc_nickname,
+           gender,
+           survey_category
     FROM diagnosis_results
     WHERE ref_code=? AND bc_code_key IS NOT NULL${drFilter.clause}
   `
@@ -2841,8 +2844,12 @@ app.get('/api/b2b/customer-summary', requireB2B(), async (c) => {
     ok: true,
     id,
     source,
-    user_name: row.user_name || '',
-    bc_code:   bcCodeKey,
+    user_name:   row.user_name || '',
+    bc_code:     bcCodeKey,
+    bc_nickname: row.bc_nickname || row.bc_primary || bcCodeKey || '',
+    gender:      row.gender || '',
+    height:      row.height || null,
+    age:         row.age    || null,
     survey_type: source === 'hospital' ? 'hospital' : (row.survey_category || 'integrated'),
     summary: {
       birth_date: extracted.birth_date,
@@ -8724,10 +8731,15 @@ window.__RESULT__.result_id = ${JSON.stringify(id)};
 window.__IS_AUTHORIZED__ = ${JSON.stringify(!!rhIsAuthorized)};`
     // ── gender 서버사이드 주입 — IIFE들이 renderAll() 이전 파싱 시점에 실행되므로
     //    window.__LAST_META__.gender가 미리 세팅되어야 성별 분기가 올바르게 적용됨
-    //    smIsFemaleG()는 undefined이므로 모든 IIFE가 __LAST_META__ 폴백을 사용함
-    const lastMetaScript = injectedGender
-      ? `window.__LAST_META__ = window.__LAST_META__ || {}; window.__LAST_META__.gender = ${JSON.stringify(injectedGender)};`
-      : `window.__LAST_META__ = window.__LAST_META__ || {};`
+    // ★ FIX: smIsFemaleG + window.isMale 도 함께 주입 (gender 값 정규화: 'female'→'여성')
+    const rhGenderNorm = injectedGender
+      ? (injectedGender.toLowerCase()==='male'||injectedGender==='남성'||injectedGender==='남' ? 'male' : 'female')
+      : null
+    const lastMetaScript = rhGenderNorm
+      ? `window.__LAST_META__ = window.__LAST_META__ || {}; window.__LAST_META__.gender = ${JSON.stringify(rhGenderNorm === 'male' ? '남성' : '여성')};
+window.smIsFemaleG = function(){ return ${JSON.stringify(rhGenderNorm !== 'male')}; };
+window.isMale = ${rhGenderNorm === 'male'};`
+      : `window.__LAST_META__ = window.__LAST_META__ || {}; window.smIsFemaleG = function(){ var g=(window.__LAST_META__&&window.__LAST_META__.gender)||''; return g==='여성'||g==='F'||g==='female'; };`
     const idScript = `<script>
 window.__HOSPITAL_RESULT_ID__ = ${JSON.stringify(id)};
 window.__DEPLOY_TS__ = ${deployTs};
@@ -9305,11 +9317,35 @@ app.get('/result-aesthetic/:id', async (c) => {
       ? `window.__RESULT__ = window.__RESULT__ || {};\nwindow.__RESULT__.story_lead = ${JSON.stringify(aeStoryLead)};\nwindow.__RESULT__.clinical_ctx = ${JSON.stringify(aeClinicalCtx || '')};\nwindow.__RESULT__.result_id = ${JSON.stringify(id)};\nwindow.__IS_AUTHORIZED__ = true;`
       : `window.__RESULT__ = window.__RESULT__ || {};\nwindow.__RESULT__.result_id = ${JSON.stringify(id)};\nwindow.__IS_AUTHORIZED__ = ${JSON.stringify(!!aeIsAuthorized)};`
 
+    // ★ FIX: aesthetic gender 서버사이드 주입 (smIsFemaleG·isMale 성별분기 정상화)
+    let aeGender: string | null = null
+    if (db) {
+      try {
+        const aeGRow = await db.prepare(
+          `SELECT gender FROM diagnosis_results WHERE id = ? LIMIT 1`
+        ).bind(id).first<any>()
+        if (aeGRow?.gender) aeGender = aeGRow.gender
+        if (!aeGender) {
+          const aeGRow2 = await db.prepare(
+            `SELECT gender FROM aesthetic_responses WHERE id = ? LIMIT 1`
+          ).bind(id).first<any>()
+          if (aeGRow2?.gender) aeGender = aeGRow2.gender
+        }
+      } catch (_) {}
+    }
+    const aeGenderNorm = aeGender
+      ? (aeGender.toLowerCase()==='male'||aeGender==='남성'||aeGender==='남' ? 'male' : 'female')
+      : null
+    const aeLastMetaScript = aeGenderNorm
+      ? `window.__LAST_META__ = window.__LAST_META__ || {}; window.__LAST_META__.gender = ${JSON.stringify(aeGenderNorm === 'male' ? '남성' : '여성')};\nwindow.smIsFemaleG = function(){ return ${JSON.stringify(aeGenderNorm !== 'male')}; };\nwindow.isMale = ${aeGenderNorm === 'male'};`
+      : `window.__LAST_META__ = window.__LAST_META__ || {}; window.smIsFemaleG = function(){ var g=(window.__LAST_META__&&window.__LAST_META__.gender)||''; return g==='여성'||g==='F'||g==='female'; };`
+
     const deployTs = Date.now()
     const idScript = `<script>
 window.__AESTHETIC_RESULT_ID__ = ${JSON.stringify(id)};
 window.__DEPLOY_TS__ = ${deployTs};
 window.__REF_CODE__ = ${JSON.stringify(injectedRefCode)};
+${aeLastMetaScript}
 ${aeStoryScript}
 try {
   localStorage.setItem('sm_last_result_id', ${JSON.stringify(id)});
@@ -9919,11 +9955,35 @@ app.get('/result-fitness/:id', async (c) => {
       ? `window.__RESULT__ = window.__RESULT__ || {};\nwindow.__RESULT__.story_lead = ${JSON.stringify(fitStoryLead)};\nwindow.__RESULT__.clinical_ctx = ${JSON.stringify(fitClinicalCtx || '')};\nwindow.__RESULT__.result_id = ${JSON.stringify(id)};\nwindow.__IS_AUTHORIZED__ = true;`
       : `window.__RESULT__ = window.__RESULT__ || {};\nwindow.__RESULT__.result_id = ${JSON.stringify(id)};\nwindow.__IS_AUTHORIZED__ = ${JSON.stringify(!!fitIsAuthorized)};`
 
+    // ★ FIX: fitness gender 서버사이드 주입 (smIsFemaleG·isMale 성별분기 정상화)
+    let fitGender: string | null = null
+    if (db) {
+      try {
+        const fitGRow = await db.prepare(
+          `SELECT gender FROM diagnosis_results WHERE id = ? LIMIT 1`
+        ).bind(id).first<any>()
+        if (fitGRow?.gender) fitGender = fitGRow.gender
+        if (!fitGender) {
+          const fitGRow2 = await db.prepare(
+            `SELECT gender FROM fitness_responses WHERE id = ? LIMIT 1`
+          ).bind(id).first<any>()
+          if (fitGRow2?.gender) fitGender = fitGRow2.gender
+        }
+      } catch (_) {}
+    }
+    const fitGenderNorm = fitGender
+      ? (fitGender.toLowerCase()==='male'||fitGender==='남성'||fitGender==='남' ? 'male' : 'female')
+      : null
+    const fitLastMetaScript = fitGenderNorm
+      ? `window.__LAST_META__ = window.__LAST_META__ || {}; window.__LAST_META__.gender = ${JSON.stringify(fitGenderNorm === 'male' ? '남성' : '여성')};\nwindow.smIsFemaleG = function(){ return ${JSON.stringify(fitGenderNorm !== 'male')}; };\nwindow.isMale = ${fitGenderNorm === 'male'};`
+      : `window.__LAST_META__ = window.__LAST_META__ || {}; window.smIsFemaleG = function(){ var g=(window.__LAST_META__&&window.__LAST_META__.gender)||''; return g==='여성'||g==='F'||g==='female'; };`
+
     const deployTs = Date.now()
     const idScript = `<script>
 window.__FITNESS_RESULT_ID__ = ${JSON.stringify(id)};
 window.__DEPLOY_TS__ = ${deployTs};
 window.__REF_CODE__ = ${JSON.stringify(injectedRefCode)};
+${fitLastMetaScript}
 ${fitStoryScript}
 try {
   localStorage.setItem('sm_last_result_id', ${JSON.stringify(id)});
@@ -10488,9 +10548,32 @@ app.get('/result-salon/:id', async (c) => {
       ? `window.__RESULT__ = window.__RESULT__ || {};\nwindow.__RESULT__.story_lead = ${JSON.stringify(salonStoryLead)};\nwindow.__RESULT__.clinical_ctx = ${JSON.stringify(salonClinicalCtx || '')};\nwindow.__RESULT__.result_id = ${JSON.stringify(id)};\nwindow.__IS_AUTHORIZED__ = true;`
       : `window.__RESULT__ = window.__RESULT__ || {};\nwindow.__RESULT__.result_id = ${JSON.stringify(id)};\nwindow.__IS_AUTHORIZED__ = ${JSON.stringify(!!salonIsAuthorized)};`
 
+    // ★ FIX: salon gender 서버사이드 주입 (smIsFemaleG·isMale 성별분기 정상화)
+    let salonGender: string | null = null
+    if (db) {
+      try {
+        const sGRow = await db.prepare(
+          `SELECT gender FROM diagnosis_results WHERE id = ? LIMIT 1`
+        ).bind(id).first<any>()
+        if (sGRow?.gender) salonGender = sGRow.gender
+        if (!salonGender) {
+          const sGRow2 = await db.prepare(
+            `SELECT gender FROM salon_responses WHERE id = ? LIMIT 1`
+          ).bind(id).first<any>()
+          if (sGRow2?.gender) salonGender = sGRow2.gender
+        }
+      } catch (_) {}
+    }
+    const salonGenderNorm = salonGender
+      ? (salonGender.toLowerCase()==='male'||salonGender==='남성'||salonGender==='남' ? 'male' : 'female')
+      : null
+    const salonLastMetaScript = salonGenderNorm
+      ? `window.__LAST_META__ = window.__LAST_META__ || {}; window.__LAST_META__.gender = ${JSON.stringify(salonGenderNorm === 'male' ? '남성' : '여성')};\nwindow.smIsFemaleG = function(){ return ${JSON.stringify(salonGenderNorm !== 'male')}; };\nwindow.isMale = ${salonGenderNorm === 'male'};`
+      : `window.__LAST_META__ = window.__LAST_META__ || {}; window.smIsFemaleG = function(){ var g=(window.__LAST_META__&&window.__LAST_META__.gender)||''; return g==='여성'||g==='F'||g==='female'; };`
+
     const deployTs = Date.now()
     // result-salon.html은 result-hospital.html 복제본으로 __HOSPITAL_RESULT_ID__ 참조 유지
-    const idScript = `<script>\nwindow.__HOSPITAL_RESULT_ID__ = ${JSON.stringify(id)};\nwindow.__SALON_RESULT_ID__ = ${JSON.stringify(id)};\nwindow.__DEPLOY_TS__ = ${deployTs};\nwindow.__REF_CODE__ = ${JSON.stringify(salonRefCode)};\n${salonStoryScript}\ntry {\n  localStorage.setItem('sm_last_result_id', ${JSON.stringify(id)});\n  localStorage.setItem('sm_survey_category', 'salon');\n  if (${JSON.stringify(salonRefCode)}) {\n    localStorage.setItem('sm_ref_code_' + ${JSON.stringify(id)}, ${JSON.stringify(salonRefCode)});\n  }\n} catch(e) {}\n<\/script>\n`
+    const idScript = `<script>\nwindow.__HOSPITAL_RESULT_ID__ = ${JSON.stringify(id)};\nwindow.__SALON_RESULT_ID__ = ${JSON.stringify(id)};\nwindow.__DEPLOY_TS__ = ${deployTs};\nwindow.__REF_CODE__ = ${JSON.stringify(salonRefCode)};\n${salonLastMetaScript}\n${salonStoryScript}\ntry {\n  localStorage.setItem('sm_last_result_id', ${JSON.stringify(id)});\n  localStorage.setItem('sm_survey_category', 'salon');\n  if (${JSON.stringify(salonRefCode)}) {\n    localStorage.setItem('sm_ref_code_' + ${JSON.stringify(id)}, ${JSON.stringify(salonRefCode)});\n  }\n} catch(e) {}\n<\/script>\n`
     const rsBase = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.kr' } })()
     const rsOg = `
 <meta property="og:type"         content="website">
@@ -12745,7 +12828,9 @@ app.get('/api/admin/rediagnosis', requireRole('MASTER'), async (c) => {
 app.get('/api/consultant/rediagnosis', requireRole('ANY'), async (c) => {
   try {
     const db   = c.env.DB
-    const user = (c as any).__user
+    // ★ FIX: (c as any).__user 대신 getAuthUser(c) 사용 (requireRole이 __user 미세팅)
+    const user = await getAuthUser(c)
+    if (!user || !user.code) return c.json({ ok: true, alerts: [] })
     const list = await db.prepare(`
       SELECT * FROM rediagnosis_alerts
       WHERE consultant_code = ? AND status = 'pending'
