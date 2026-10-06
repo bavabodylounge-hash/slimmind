@@ -647,8 +647,26 @@ async def run():
             await pg5.wait_for_timeout(4000)
             await kill_overlays(pg5)
 
-            # 고객목록 row 수
+            # ── customers 탭으로 전환 (상세 버튼은 customers 탭에 있음) ──
+            tab_switched = await pg5.evaluate("""() => {
+                const sels = ['[data-tab="customers"]','[onclick*="customers"]','[href*="customers"]'];
+                for (const s of sels) {
+                    const el = document.querySelector(s);
+                    if (el) { el.click(); return s; }
+                }
+                return 'NOT_FOUND';
+            }""")
+            await pg5.wait_for_timeout(3000)
+            ok("5단계", "consultant customers탭 전환", tab_switched)
+
+            # 고객목록 row 수 (customers 탭 tbody)
             row_count5 = await pg5.evaluate("""() => {
+                // customers 탭 테이블 우선 탐색
+                const custTable = document.getElementById('customers-table');
+                if (custTable) {
+                    const rows = custTable.querySelectorAll('tbody tr');
+                    if (rows.length > 0) return {sel: '#customers-table tbody tr', count: rows.length};
+                }
                 const sels = ['tbody tr','.customer-row','[class*="cust-row"]','.result-item'];
                 for (const s of sels) {
                     const els = document.querySelectorAll(s);
@@ -669,40 +687,50 @@ async def run():
             }""")
             ok("5단계", "consultant 검색창", str(search_info)) if search_info else ng("5단계", "consultant 검색창 없음", "")
 
-            # 첫 번째 행 JS click → 결과 상세
+            # 상세 버튼 클릭 → #detail-modal.show 확인
+            # customers 탭의 "상세" 버튼(openDetailModal 연결)을 클릭해야 함
             if row_count5.get('count', 0) >= 1:
-                r5 = await pg5.evaluate(f"""() => {{
-                    const sel = '{row_count5["sel"]}';
-                    const el = document.querySelector(sel);
-                    if (el) {{ el.click(); return 'CLICKED'; }}
+                r5 = await pg5.evaluate("""() => {
+                    // 1순위: openDetailModal onclick 버튼
+                    const detailBtn = document.querySelector('[onclick*="openDetailModal"]');
+                    if (detailBtn) { detailBtn.click(); return 'CLICKED:openDetailModal-btn'; }
+                    // 2순위: customers-table 첫 행의 btn-primary
+                    const custTable = document.getElementById('customers-table');
+                    if (custTable) {
+                        const btn = custTable.querySelector('tbody tr .btn-primary, tbody tr button');
+                        if (btn) { btn.click(); return 'CLICKED:customers-table-btn'; }
+                        // 3순위: 행 자체 클릭
+                        const row = custTable.querySelector('tbody tr');
+                        if (row) { row.click(); return 'CLICKED:customers-table-row'; }
+                    }
+                    // 4순위: tbody 첫 행
+                    const row = document.querySelector('tbody tr');
+                    if (row) { row.click(); return 'CLICKED:tbody-tr'; }
                     return 'NO_EL';
-                }}""")
-                await pg5.wait_for_timeout(2000)
+                }""")
+                await pg5.wait_for_timeout(2500)
                 ok("5단계", "consultant 고객 JS click", r5)
 
                 detail5 = await pg5.evaluate("""() => {
-                    const sels = [
-                        '#detail-modal',
-                        '.modal-overlay.show',
-                        '#detail-modal.show',
-                        '.modal.show',
-                        '.modal',
-                        '.popup',
-                        '.result-detail',
-                        '[class*="detail"]',
-                        '.overlay:not([id*="obd"])',
-                        '[class*="result-view"]'
-                    ];
+                    // 1순위: #detail-modal.show (정확한 패턴)
+                    const dm = document.getElementById('detail-modal');
+                    if (dm && dm.classList.contains('show')) {
+                        return {sel: '#detail-modal.show', h: dm.offsetHeight,
+                                text_len: (dm.innerText||'').trim().length};
+                    }
+                    // 2순위: .modal-overlay.show
+                    const sels = ['.modal-overlay.show', '.modal.show'];
                     for (const s of sels) {
                         const el = document.querySelector(s);
                         if (el && el.offsetHeight > 0 && (el.innerText||'').trim().length > 5) {
                             return {sel: s, h: el.offsetHeight, text_len: el.innerText.trim().length};
                         }
                     }
-                    // 마지막: offsetHeight 0이어도 .show 클래스 있으면 확인
-                    const dm = document.getElementById('detail-modal');
-                    if (dm && dm.classList.contains('show')) {
-                        return {sel: '#detail-modal(show-class)', h: dm.offsetHeight, text_len: (dm.innerText||'').trim().length};
+                    // 3순위: cons-check-detail 패널 (daily-checks 섹션)
+                    const panel = document.getElementById('cons-check-detail');
+                    if (panel && panel.innerHTML.trim().length > 20) {
+                        return {sel: '#cons-check-detail', h: panel.offsetHeight,
+                                text_len: panel.innerText.trim().length};
                     }
                     return null;
                 }""")
