@@ -8964,6 +8964,7 @@ window.isMale = ${rhGenderNorm === 'male'};`
 window.__HOSPITAL_RESULT_ID__ = ${JSON.stringify(id)};
 window.__DEPLOY_TS__ = ${deployTs};
 window.__REF_CODE__ = ${JSON.stringify(injectedRefCode)};
+window.__RESULT__ = window.__RESULT__ || {}; window.__RESULT__.survey_category = 'hospital';
 ${lastMetaScript}
 ${rhStoryScript}
 try {
@@ -9565,6 +9566,7 @@ app.get('/result-aesthetic/:id', async (c) => {
 window.__AESTHETIC_RESULT_ID__ = ${JSON.stringify(id)};
 window.__DEPLOY_TS__ = ${deployTs};
 window.__REF_CODE__ = ${JSON.stringify(injectedRefCode)};
+window.__RESULT__ = window.__RESULT__ || {}; window.__RESULT__.survey_category = 'aesthetic';
 ${aeLastMetaScript}
 ${aeStoryScript}
 try {
@@ -10203,6 +10205,7 @@ app.get('/result-fitness/:id', async (c) => {
 window.__FITNESS_RESULT_ID__ = ${JSON.stringify(id)};
 window.__DEPLOY_TS__ = ${deployTs};
 window.__REF_CODE__ = ${JSON.stringify(injectedRefCode)};
+window.__RESULT__ = window.__RESULT__ || {}; window.__RESULT__.survey_category = 'fitness';
 ${fitLastMetaScript}
 ${fitStoryScript}
 try {
@@ -10793,7 +10796,7 @@ app.get('/result-salon/:id', async (c) => {
 
     const deployTs = Date.now()
     // result-salon.html은 result-hospital.html 복제본으로 __HOSPITAL_RESULT_ID__ 참조 유지
-    const idScript = `<script>\nwindow.__HOSPITAL_RESULT_ID__ = ${JSON.stringify(id)};\nwindow.__SALON_RESULT_ID__ = ${JSON.stringify(id)};\nwindow.__DEPLOY_TS__ = ${deployTs};\nwindow.__REF_CODE__ = ${JSON.stringify(salonRefCode)};\n${salonLastMetaScript}\n${salonStoryScript}\ntry {\n  localStorage.setItem('sm_last_result_id', ${JSON.stringify(id)});\n  localStorage.setItem('sm_survey_category', 'salon');\n  if (${JSON.stringify(salonRefCode)}) {\n    localStorage.setItem('sm_ref_code_' + ${JSON.stringify(id)}, ${JSON.stringify(salonRefCode)});\n  }\n} catch(e) {}\n<\/script>\n`
+    const idScript = `<script>\nwindow.__HOSPITAL_RESULT_ID__ = ${JSON.stringify(id)};\nwindow.__SALON_RESULT_ID__ = ${JSON.stringify(id)};\nwindow.__DEPLOY_TS__ = ${deployTs};\nwindow.__REF_CODE__ = ${JSON.stringify(salonRefCode)};\nwindow.__RESULT__ = window.__RESULT__ || {}; window.__RESULT__.survey_category = 'salon';\n${salonLastMetaScript}\n${salonStoryScript}\ntry {\n  localStorage.setItem('sm_last_result_id', ${JSON.stringify(id)});\n  localStorage.setItem('sm_survey_category', 'salon');\n  if (${JSON.stringify(salonRefCode)}) {\n    localStorage.setItem('sm_ref_code_' + ${JSON.stringify(id)}, ${JSON.stringify(salonRefCode)});\n  }\n} catch(e) {}\n<\/script>\n`
     const rsBase = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.kr' } })()
     const rsOg = `
 <meta property="og:type"         content="website">
