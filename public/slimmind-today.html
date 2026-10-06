@@ -8,17 +8,53 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="오늘">
 <title>오늘 · 슬림마인드</title>
+<script>/* ★업종 색상 시스템 — 오늘탭 [2026-10-06]
+   결과지와 동일한 한 길: __SM_INDUSTRY__ → sm_survey_category → hospital(기본)
+   data-ind 를 <html>에 설정하면 CSS 오버라이드가 자동 적용된다 */
+function smIndustry(){
+  var v=(typeof window!=='undefined' && window.__SM_INDUSTRY__) || null;
+  if(!v){ try{ v=localStorage.getItem('sm_survey_category'); }catch(e){ v=null; } }
+  if(!v || ['hospital','fitness','esthetic','salon'].indexOf(v)<0) v='hospital';
+  return v;
+}
+try{ document.documentElement.setAttribute('data-ind', smIndustry()); }catch(e){}
+</script>
 <style>
 :root{
+  /* ── hospital 기본(보라 계열) — data-ind 없을 때 또는 hospital일 때 ── */
   --paper:#f6f4ee; --card:#fffdf8; --card2:#fbf8f0;
   --ink:#1a1a17; --muted:#7c776b; --line:#d8d3c6;
-  --vis:#b5452e; --vis-d:#8f321e; --vis-l:#f9ece8;
-  --dark:#2a2118;
+  --vis:#6a4fb0; --vis-d:#4e3a8c; --vis-l:#efeaf9;
+  --dark:#221c30;
   --green:#5a6e3a; --green-l:#eef2e4;
   --amber:#c98a3c; --amber-l:#fbf2e3;
   --blue:#2d6a9f; --blue-l:#e8f0f9;
   --purple:#7c4dbc; --purple-l:#f0eafc;
   --icsz:16px;
+}
+/* ── fitness (파랑 계열) ── */
+html[data-ind="fitness"]{
+  --paper:#eef3fb; --card:#f7fafe; --card2:#eef3fb;
+  --ink:#101620; --muted:#6e7b90; --line:#d0d9e8;
+  --vis:#6d89b5; --vis-d:#5276b0; --vis-l:#e6edf7;
+  --dark:#1a2536;
+  --amber:#6d89b5; --amber-l:#e6edf7;
+}
+/* ── esthetic (핑크-보라 계열) ── */
+html[data-ind="esthetic"]{
+  --paper:#f7f0f9; --card:#fcf8fd; --card2:#f7f0f9;
+  --ink:#1c131d; --muted:#87748a; --line:#e1d5e3;
+  --vis:#a17ba7; --vis-d:#96649e; --vis-l:#f2e9f4;
+  --dark:#2e1f31;
+  --amber:#a17ba7; --amber-l:#f2e9f4;
+}
+/* ── salon (브라운 계열) ── */
+html[data-ind="salon"]{
+  --paper:#f7f4f2; --card:#fcfaf9; --card2:#f7f4f2;
+  --ink:#1e1812; --muted:#8d7e71; --line:#e6dbd2;
+  --vis:#ae8f74; --vis-d:#a77e5b; --vis-l:#f1eeec;
+  --dark:#33271d;
+  --amber:#ae8f74; --amber-l:#f1eeec;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 body{
@@ -31,20 +67,40 @@ body{
 
 /* ── 상단 ── */
 .hd{
-  background:linear-gradient(165deg,#2a2118,#3a2e20); color:#f2ece0;
+  background:linear-gradient(165deg,#221c30,#3a2f52); color:#f2ecff;
   padding:calc(22px + env(safe-area-inset-top)) 20px 22px;
   border-radius:0 0 22px 22px;
 }
+/* 업종별 헤더 그라데이션 오버라이드 */
+html[data-ind="fitness"] .hd{ background:linear-gradient(165deg,#1a2536,#253a58); color:#e8f0ff; }
+html[data-ind="esthetic"] .hd{ background:linear-gradient(165deg,#2e1f31,#3d2840); color:#ffeafc; }
+html[data-ind="salon"] .hd{ background:linear-gradient(165deg,#33271d,#4e3a28); color:#f2ece0; }
 .hd-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:15px;}
-.hd-brand{display:flex;align-items:center;gap:7px;font-size:10.5px;font-weight:900;letter-spacing:1.5px;color:#e8a87c;}
-.hd-full{font-size:10.5px;font-weight:800;color:#a89880;background:rgba(255,255,255,.08);
+/* hospital(보라) 기본 강조색 */
+.hd-brand{display:flex;align-items:center;gap:7px;font-size:10.5px;font-weight:900;letter-spacing:1.5px;color:#c9aeff;}
+.hd-full{font-size:10.5px;font-weight:800;color:#a89ab8;background:rgba(255,255,255,.08);
   border:1px solid rgba(255,255,255,.13);border-radius:20px;padding:5px 11px;cursor:pointer;font-family:inherit;}
 .hd-full:active{background:rgba(255,255,255,.15);}
 .hd-day{font-size:25px;font-weight:900;letter-spacing:-.8px;line-height:1.25;margin-bottom:5px;}
-.hd-day .dow{color:#f0b48c;}
-.hd-meta{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#c9bcab;flex-wrap:wrap;}
-.hd-chip{background:rgba(240,180,140,.16);border:1px solid rgba(240,180,140,.3);
-  border-radius:20px;padding:3px 10px;font-size:11px;color:#f0b48c;font-weight:800;}
+.hd-day .dow{color:#c9aeff;}
+.hd-meta{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#c0b4d8;flex-wrap:wrap;}
+.hd-chip{background:rgba(180,150,255,.16);border:1px solid rgba(180,150,255,.3);
+  border-radius:20px;padding:3px 10px;font-size:11px;color:#c9aeff;font-weight:800;}
+/* fitness 강조색 */
+html[data-ind="fitness"] .hd-brand{color:#8fc4ff;}
+html[data-ind="fitness"] .hd-day .dow{color:#8fc4ff;}
+html[data-ind="fitness"] .hd-meta{color:#a8c8e8;}
+html[data-ind="fitness"] .hd-chip{background:rgba(111,160,220,.16);border-color:rgba(111,160,220,.3);color:#8fc4ff;}
+/* esthetic 강조색 */
+html[data-ind="esthetic"] .hd-brand{color:#f0b8f8;}
+html[data-ind="esthetic"] .hd-day .dow{color:#f0b8f8;}
+html[data-ind="esthetic"] .hd-meta{color:#d8b0d8;}
+html[data-ind="esthetic"] .hd-chip{background:rgba(200,120,210,.16);border-color:rgba(200,120,210,.3);color:#f0b8f8;}
+/* salon 강조색 */
+html[data-ind="salon"] .hd-brand{color:#e8a87c;}
+html[data-ind="salon"] .hd-day .dow{color:#f0b48c;}
+html[data-ind="salon"] .hd-meta{color:#c9bcab;}
+html[data-ind="salon"] .hd-chip{background:rgba(240,180,140,.16);border-color:rgba(240,180,140,.3);color:#f0b48c;}
 /* 오행 배지 */
 .hd-ohaeng{border-radius:20px;padding:3px 10px;font-size:11px;font-weight:800;}
 .hd-ohaeng.목{background:rgba(90,110,58,.25);color:#9db86e;border:1px solid rgba(90,110,58,.4);}
@@ -738,6 +794,24 @@ function boot(){
   NAME = (d.userName || d.user_name || '회원');
   if (NAME.length >= 3) NAME = NAME.slice(1);
   CON = d.consultant_name || d.consultantName || '';
+
+  // ★ 업종 색상 시스템: survey_category → data-ind 동적 재적용 [2026-10-06]
+  // loadData()로 실제 결과 데이터를 읽은 후 업종을 확정하고 <html>에 반영
+  // (head 스크립트의 초기 설정보다 더 정확한 값으로 덮어씀)
+  try {
+    var _cat = d.survey_category || d.surveyCategory || null;
+    if (!_cat) { try { _cat = localStorage.getItem('sm_survey_category'); } catch(e){} }
+    if (!_cat || ['hospital','fitness','esthetic','salon'].indexOf(_cat) < 0) _cat = 'hospital';
+    document.documentElement.setAttribute('data-ind', _cat);
+    // localStorage에도 저장해 두면 다음 페이지 로드 시 즉시 반영
+    try { localStorage.setItem('sm_survey_category', _cat); } catch(e){}
+    // theme-color meta 업데이트 (iOS 상태바 색상)
+    var _themeColors = {hospital:'#221c30', fitness:'#1a2536', esthetic:'#2e1f31', salon:'#33271d'};
+    try {
+      var _tc = document.querySelector('meta[name="theme-color"]');
+      if (_tc) _tc.setAttribute('content', _themeColors[_cat] || '#221c30');
+    } catch(e){}
+  } catch(e){}
 
   // 개인화 데이터 우선: META → result data → 기본값
   BC_CODE    = (META && META.bcCode)    || d.bc_code    || d.bc_primary || '';
