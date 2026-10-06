@@ -1582,8 +1582,15 @@ app.post('/api/admin/b2b-partners', requireRole('MASTER'), async (c) => {
 
   try {
     // survey_category 유효성 검사
-    const validCategories = ['integrated', 'hospital', 'aesthetic', 'fitness', 'salon']  // ✅ BUG-8 FIX: 'salon' 추가
-    const category = validCategories.includes(survey_category) ? survey_category : 'integrated'
+    // ★ [DB통일 v1] 'aesthetic'는 DB에 저장 금지 — 입력 시점에서 'esthetic'으로 강제 정규화
+    // CSS 셀렉터 html[data-ind="esthetic"]와 완전 일치하도록 저장값도 통일
+    const VALID_CATEGORIES = ['integrated', 'hospital', 'esthetic', 'fitness', 'salon'] as const
+    function normCategory(v: string | undefined | null): string {
+      if (!v) return 'integrated'
+      if (v === 'aesthetic') return 'esthetic'  // 구값 → 신값 강제 변환
+      return (VALID_CATEGORIES as readonly string[]).includes(v) ? v : 'integrated'
+    }
+    const category = normCategory(survey_category)
 
     // survey_category 컬럼 없으면 자동 추가 (마이그레이션)
     try {
@@ -1636,7 +1643,13 @@ app.put('/api/admin/b2b-partners/:code', requireRole('MASTER'), async (c) => {
   const { name, type, owner_name, phone, email, address, commission_rate, status, memo,
           brand_logo_url, brand_color, brand_name, survey_category, homepage_url } = body
 
-  const validCategories = ['integrated', 'hospital', 'aesthetic', 'fitness', 'salon']  // ✅ BUG-8 FIX: 'salon' 추가
+  // ★ [DB통일 v1] 'aesthetic' → 'esthetic' 강제 정규화 (저장 시점 가드)
+  const VALID_CATEGORIES_PUT = ['integrated', 'hospital', 'esthetic', 'fitness', 'salon'] as const
+  function normCategoryPut(v: string | undefined | null): string | null {
+    if (!v) return null
+    if (v === 'aesthetic') return 'esthetic'
+    return (VALID_CATEGORIES_PUT as readonly string[]).includes(v) ? v : null
+  }
 
   // 부분 업데이트: 전송된 필드만 SET
   const setClauses: string[] = []
@@ -1654,9 +1667,12 @@ app.put('/api/admin/b2b-partners/:code', requireRole('MASTER'), async (c) => {
   if (brand_logo_url !== undefined)  { setClauses.push('brand_logo_url=?');  binds.push(brand_logo_url || null) }
   if (brand_color !== undefined)     { setClauses.push('brand_color=?');     binds.push(brand_color || '#6366f1') }
   if (brand_name !== undefined)      { setClauses.push('brand_name=?');      binds.push(brand_name || name || null) }
-  if (survey_category !== undefined && validCategories.includes(survey_category)) {
-    setClauses.push('survey_category=?')
-    binds.push(survey_category)
+  if (survey_category !== undefined) {
+    const normalizedCat = normCategoryPut(survey_category)
+    if (normalizedCat) {
+      setClauses.push('survey_category=?')
+      binds.push(normalizedCat)  // 'aesthetic' → 'esthetic' 자동 변환 후 저장
+    }
   }
   if (homepage_url !== undefined)    { setClauses.push('homepage_url=?');    binds.push(homepage_url || null) }
 
@@ -2736,7 +2752,8 @@ app.get('/api/b2b/partner-view/:bc_code', requireB2B(), async (c) => {
         fitness_center_program: parseObj(b2bPresc.fitness_center_program_json),
         fitness_metrics: parseObj(b2bPresc.fitness_metrics_json),
       })
-    } else if (surveyCategory === 'aesthetic') {
+    // ★ [DB통일 v1] 'esthetic'(신규저장) + 'aesthetic'(구DB) 모두 에스테틱 처방 적용
+    } else if (surveyCategory === 'esthetic' || surveyCategory === 'aesthetic') {
       Object.assign(base, {
         aesthetic_primary: parseObj(b2bPresc.aesthetic_primary_json),
         aesthetic_secondary: parseObj(b2bPresc.aesthetic_secondary_json),
@@ -3264,16 +3281,23 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
             // ✅ [v4.9 FIX] 파트너 카테고리가 명시된 경우 무조건 덮어씀
             // (survey_category가 'integrated'로 잘못 저장된 aesthetic/salon/fitness도 복구)
             // 이전 버그: effectiveCategory || 'aesthetic' → 'integrated'는 truthy → aesthetic 미적용
-            if (partnerRow?.survey_category === 'hospital') {
+            // ★ [DB통일 v1] 파트너 survey_category 정규화: 'aesthetic'→'esthetic'
+            function normPartnerCat(v: string | null | undefined): string | null {
+              if (!v) return null
+              if (v === 'aesthetic') return 'esthetic'
+              return v
+            }
+            const pCat = normPartnerCat(partnerRow?.survey_category)
+            if (pCat === 'hospital') {
               effectiveCategory = 'hospital'
-            } else if (partnerRow?.survey_category === 'aesthetic') {
-              effectiveCategory = 'aesthetic'   // ✅ 무조건 덮어씀
-            } else if (partnerRow?.survey_category === 'fitness') {
-              effectiveCategory = 'fitness'     // ✅ 무조건 덮어씀
-            } else if (partnerRow?.survey_category === 'salon') {
-              effectiveCategory = 'salon'       // ✅ 무조건 덮어씀
-            } else if (partnerRow?.survey_category) {
-              effectiveCategory = partnerRow.survey_category  // 기타 업종도 파트너값 우선
+            } else if (pCat === 'esthetic') {
+              effectiveCategory = 'esthetic'    // ★ 'aesthetic'→'esthetic' 정규화
+            } else if (pCat === 'fitness') {
+              effectiveCategory = 'fitness'
+            } else if (pCat === 'salon') {
+              effectiveCategory = 'salon'
+            } else if (pCat) {
+              effectiveCategory = pCat
             }
           } catch(_) {}
         }
@@ -3287,9 +3311,10 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
           return c.redirect(`/result-fitness/${id}`, 302)
         }
 
-        // ── aesthetic 분기: survey_category === 'aesthetic' → /result-aesthetic/:id 302 리다이렉트 ──
-        // ✅ 강제 매핑: result-v4.html 서빙 절대 금지. 전용 URL로 리다이렉트하여 result-aesthetic.html 보장
-        if (effectiveCategory === 'aesthetic' || diagRow.survey_category === 'aesthetic') {
+        // ── esthetic/aesthetic 분기: CSS값='esthetic', DB구값='aesthetic' 양쪽 수용 ──
+        // ★ [DB통일 v1] 라우팅 단계에서도 구 DB값 'aesthetic' 포함 모두 /result-aesthetic로
+        if (effectiveCategory === 'esthetic' || effectiveCategory === 'aesthetic' ||
+            diagRow.survey_category === 'esthetic' || diagRow.survey_category === 'aesthetic') {
           return c.redirect(`/result-aesthetic/${id}`, 302)
         }
 
@@ -9512,7 +9537,8 @@ app.get('/result-aesthetic/:id', async (c) => {
           const bColor = (bpAe.brand_color || '#b56d7f').replace(/[^#0-9a-fA-F]/g, '')
           const bName  = (bpAe.brand_name  || '').replace(/[<>"]/g, '')
           const bLogo  = (bpAe.brand_logo_url || '').replace(/[<>"]/g, '')
-          aeBrandScript = `<script>window.__BRAND__={code:"${injectedRefCode}",type:"B2B",brand_name:"${bName}",brand_color:"${bColor}",brand_logo_url:"${bLogo}",ref_code:"${injectedRefCode}",survey_category:"aesthetic"};</script>\n<style>:root{--brand-color:${bColor};--brand-color-light:${bColor}22;}.result-header,.v4-header{background:var(--brand-color)!important;}.result-action-btn,.download-btn,.share-btn{background:var(--brand-color)!important;border-color:var(--brand-color)!important;}.bc-badge,.section-title-bar{background:var(--brand-color)!important;}.progress-fill,.score-bar-fill{background:var(--brand-color)!important;}</style>\n`
+          // ★ [DB통일 v1] __BRAND__.survey_category 에스테틱: 'aesthetic'→'esthetic' (저장값과 CSS값 직접 통일)
+          aeBrandScript = `<script>window.__BRAND__={code:"${injectedRefCode}",type:"B2B",brand_name:"${bName}",brand_color:"${bColor}",brand_logo_url:"${bLogo}",ref_code:"${injectedRefCode}",survey_category:"esthetic"};</script>\n<style>:root{--brand-color:${bColor};--brand-color-light:${bColor}22;}.result-header,.v4-header{background:var(--brand-color)!important;}.result-action-btn,.download-btn,.share-btn{background:var(--brand-color)!important;border-color:var(--brand-color)!important;}.bc-badge,.section-title-bar{background:var(--brand-color)!important;}.progress-fill,.score-bar-fill{background:var(--brand-color)!important;}</style>\n`
         }
       } catch (_) {}
     }
@@ -9566,12 +9592,13 @@ app.get('/result-aesthetic/:id', async (c) => {
 window.__AESTHETIC_RESULT_ID__ = ${JSON.stringify(id)};
 window.__DEPLOY_TS__ = ${deployTs};
 window.__REF_CODE__ = ${JSON.stringify(injectedRefCode)};
-window.__RESULT__ = window.__RESULT__ || {}; window.__RESULT__.survey_category = 'aesthetic';
+// ★ [DB통일 v1] survey_category 에스테틱: 'aesthetic'→'esthetic' (기존 DB저장값고려, CSS와 완전일치)
+window.__RESULT__ = window.__RESULT__ || {}; window.__RESULT__.survey_category = 'esthetic';
 ${aeLastMetaScript}
 ${aeStoryScript}
 try {
   localStorage.setItem('sm_last_result_id', ${JSON.stringify(id)});
-  localStorage.setItem('sm_survey_category', 'aesthetic');
+  localStorage.setItem('sm_survey_category', 'esthetic');  // ★ 'aesthetic'→'esthetic' 통일
   if (${JSON.stringify(injectedRefCode)}) {
     localStorage.setItem('sm_ref_code_' + ${JSON.stringify(id)}, ${JSON.stringify(injectedRefCode)});
   }
@@ -15969,7 +15996,8 @@ app.post('/api/admin/mapping-recheck', requireRole('MASTER'), async (c) => {
         { key: 'fitness_zone2_bpm',          label: '[피트니스] Zone2 BPM' },
         { key: 'fitness_center_program_json',label: '[피트니스] 센터 프로그램' },
         { key: 'fitness_metrics_json',       label: '[피트니스] 측정 지표' },
-      ] : survCatForPresc === 'aesthetic' ? [
+      // ★ [DB통일 v1] 'esthetic'(신규) + 'aesthetic'(구DB) 양쪽 처방 필드 적용
+      ] : (survCatForPresc === 'esthetic' || survCatForPresc === 'aesthetic') ? [
         { key: 'aesthetic_primary_json',          label: '[에스테틱] 1순위 케어' },
         { key: 'aesthetic_secondary_json',        label: '[에스테틱] 2순위 케어' },
         { key: 'aesthetic_contraindication',      label: '[에스테틱] 금기사항' },
@@ -16027,8 +16055,9 @@ app.post('/api/admin/mapping-recheck', requireRole('MASTER'), async (c) => {
 
     // ── 결과지 URL 구성 ──
     const survCat = row.survey_category || 'hospital'
+    // ★ [DB통일 v1] 결과지 URL: 'esthetic'(신규) + 'aesthetic'(구DB) 양쪽 /result-aesthetic로
     const resultUrlPath = survCat === 'fitness' ? `/result-fitness/${diag_id}`
-      : survCat === 'aesthetic' ? `/result-aesthetic/${diag_id}`
+      : (survCat === 'esthetic' || survCat === 'aesthetic') ? `/result-aesthetic/${diag_id}`
       : survCat === 'salon' ? `/result-salon/${diag_id}`
       : `/result-hospital/${diag_id}`
 
