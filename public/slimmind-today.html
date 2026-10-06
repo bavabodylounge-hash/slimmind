@@ -804,14 +804,30 @@ function boot(){
   CON = d.consultant_name || d.consultantName || '';
 
   // ★ 업종 색상 시스템: survey_category → data-ind 동적 재적용 [2026-10-06]
-  // loadData()로 실제 결과 데이터를 읽은 후 업종을 확정하고 <html>에 반영
-  // (head 스크립트의 초기 설정보다 더 정확한 값으로 덮어씀)
+  // 우선순위: loadData() d.survey_category → localStorage 기존값(보존) → 'hospital' 폴백
+  // ※ loadData()가 실패/null 이어도 localStorage 기존값을 절대 'hospital'로 덮어쓰지 않음
   try {
+    var VALID_IND = ['hospital','fitness','esthetic','salon'];
+    function _indOk(v){ return v && VALID_IND.indexOf(v) >= 0; }
+
+    // 1순위: loadData() 결과에서 survey_category 읽기
     var _cat = d.survey_category || d.surveyCategory || null;
-    if (!_cat) { try { _cat = localStorage.getItem('sm_survey_category'); } catch(e){} }
-    if (!_cat || ['hospital','fitness','esthetic','salon'].indexOf(_cat) < 0) _cat = 'hospital';
+
+    // 2순위: loadData()에서 못 읽었으면 localStorage 기존값 우선 사용 (절대 덮어쓰지 않음)
+    if (!_indOk(_cat)) {
+      try { var _lsCat = localStorage.getItem('sm_survey_category'); if (_indOk(_lsCat)) _cat = _lsCat; } catch(e){}
+    }
+
+    // 3순위: 그래도 없으면 smIndustry()로 재시도 (__BRAND__ / __RESULT__ 참조)
+    if (!_indOk(_cat)) {
+      try { _cat = smIndustry(); } catch(e){}
+    }
+
+    // 최종 폴백: hospital
+    if (!_indOk(_cat)) _cat = 'hospital';
+
     document.documentElement.setAttribute('data-ind', _cat);
-    // localStorage에도 저장해 두면 다음 페이지 로드 시 즉시 반영
+    // localStorage에는 유효한 값일 때만 저장 — 기존 값 보존이 핵심
     try { localStorage.setItem('sm_survey_category', _cat); } catch(e){}
     // theme-color meta 업데이트 (iOS 상태바 색상)
     var _themeColors = {hospital:'#221c30', fitness:'#1a2536', esthetic:'#2e1f31', salon:'#33271d'};
