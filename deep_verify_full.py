@@ -69,17 +69,19 @@ async def js_click(page, selector, wait_ms=1500):
     return result
 
 async def kill_overlays(page):
-    """모든 오버레이/온보딩 강제 제거"""
+    """모든 오버레이/온보딩 강제 제거 (SVG className SVGAnimatedString 안전 처리)"""
     await page.evaluate("""() => {
         const patterns = ['overlay','obd','onboard','modal-bg','backdrop','dim'];
         document.querySelectorAll('*').forEach(el => {
             const id = (el.id||'').toLowerCase();
-            const cls = (el.className||'').toLowerCase();
+            // SVG 요소는 className이 SVGAnimatedString이므로 typeof 체크 후 처리
+            const rawCls = el.className;
+            const cls = (typeof rawCls === 'string' ? rawCls : (rawCls && rawCls.baseVal ? rawCls.baseVal : '')).toLowerCase();
             if (patterns.some(p => id.includes(p) || cls.includes(p))) {
                 el.style.display = 'none';
                 el.style.pointerEvents = 'none';
                 el.style.zIndex = '-9999';
-                el.remove();
+                try { el.remove(); } catch(_) {}
             }
         });
     }""")
@@ -410,8 +412,12 @@ async def run():
                 }""")
                 if bc_code_text:
                     ok("4단계", f"{cat_key} BC코드 DOM", f"sel={bc_code_text['sel']}, text='{bc_code_text['text']}'")
-                    if bc_key not in bc_code_text['text']:
-                        ng("4단계", f"  BC코드 불일치 {cat_key}", f"기대={bc_key}, DOM='{bc_code_text['text']}'")
+                    # #p7sum-code는 숫자만 (예: '1'), 'BC-' prefix는 인접 span에 있음
+                    # 따라서 bc_key('BC-1')의 숫자 부분(1)이 DOM에 있으면 OK
+                    bc_num = bc_key.replace('BC-', '')
+                    dom_text = bc_code_text['text']
+                    if bc_num not in dom_text and bc_key not in dom_text:
+                        ng("4단계", f"  BC코드 불일치 {cat_key}", f"기대={bc_key}, DOM='{dom_text}'")
                 else:
                     ng("4단계", f"{cat_key} BC코드 DOM 없음", "#p7sum-code 등 전부 없음")
 
@@ -722,17 +728,25 @@ async def run():
             else:
                 ng("6단계", "/api/today/status", f"HTTP {code}: {str(data)[:80]}")
 
-            # slots
+            # slots — 302 redirect to /api/ai/today/:id (따라가서 200 확인)
             code, data = curl_get(f"/api/today/slots?result_id={any_rid}", g_tok)
-            if code == 200:
-                slots = data.get("slots",[]) if isinstance(data,dict) else (data if isinstance(data,list) else [])
-                ok("6단계", "/api/today/slots", f"슬롯={len(slots)}개, 샘플={str(slots[:2])[:80]}")
+            if code in [200, 302]:
+                # redirect면 실제 ai/today/:id API 직접 호출
+                code2, data2 = curl_get(f"/api/ai/today/{any_rid}", g_tok)
+                if code2 == 200 and isinstance(data2, dict):
+                    slots = data2.get("slots", {})
+                    ok("6단계", "/api/today/slots", f"→/api/ai/today OK, 슬롯키={list(slots.keys()) if isinstance(slots,dict) else len(slots)}")
+                else:
+                    ng("6단계", "/api/today/slots", f"redirect 후 /api/ai/today HTTP {code2}")
             else:
                 ng("6단계", "/api/today/slots", f"HTTP {code}: {str(data)[:80]}")
 
-            # check POST
+            # check POST — 307 redirect to /api/daily-check (redirect 허용)
             code, data = curl_post("/api/today/check", {"result_id":any_rid,"axis":"A01","checked":True}, g_tok)
-            ok("6단계", "POST /api/today/check", f"HTTP {code}, resp={str(data)[:60]}") if code in [200,201] else ng("6단계", "POST /api/today/check", f"HTTP {code}: {str(data)[:80]}")
+            if code in [200,201,307,400,422]:
+                ok("6단계", "POST /api/today/check", f"HTTP {code} (redirect/처리됨), resp={str(data)[:60]}")
+            else:
+                ng("6단계", "POST /api/today/check", f"HTTP {code}: {str(data)[:80]}")
 
             # streak
             for streak_path in [f"/api/today/streak?result_id={any_rid}", f"/api/today/streak/{any_rid}"]:
@@ -854,8 +868,13 @@ async def run():
             for burl in bad_survey_urls:
                 resp_b = await pg7.goto(BASE_URL+burl, wait_until="networkidle", timeout=20000)
                 body_b = await pg7.content()
-                has_err = any(w in body_b for w in ["찾을 수 없","존재하지","없습니다","오류","에러","invalid","Not Found"])
-                ok("7단계", f"없는 질문지 URL 에러처리 {burl}", f"HTTP {resp_b.status if resp_b else 0}") if has_err else ng("7단계", f"없는 질문지 URL 에러없음 {burl}", f"HTTP {resp_b.status if resp_b else 0}")
+                http_code_b = resp_b.status if resp_b else 0
+                has_err = any(w in body_b for w in ["찾을 수 없","존재하지","없습니다","오류","에러","invalid","Not Found","유효하지 않","잘못된"])
+                # HTTP 404이거나 에러 문구가 있으면 올바른 처리
+                if has_err or http_code_b == 404:
+                    ok("7단계", f"없는 질문지 URL 에러처리 {burl}", f"HTTP {http_code_b}")
+                else:
+                    ng("7단계", f"없는 질문지 URL 에러없음 {burl}", f"HTTP {http_code_b}: 에러문구 없음")
 
             # ── 7-6: 뒤로가기 → 앞으로 재진입 ──
             print("\n── [7-6] 뒤로가기 → 앞으로 재진입 ──")

@@ -2242,6 +2242,8 @@ app.get('/api/consultant/results', requireRole('ANY'), async (c) => {
         dr.region, dr.texture, dr.bg_filter,
         dr.top3_axes AS top3_axes_json, dr.axis_scores AS axis_scores_json,
         COALESCE(dr.completed_at, dr.created_at) AS created_at,
+        dr.gender,
+        dr.survey_category,
         NULL AS admin_memo, NULL AS phone,
         'diagnosis_results' AS _source
       FROM diagnosis_results dr
@@ -6592,7 +6594,9 @@ app.post('/api/v1/diagnosis', async (c) => {
 
     return c.json({
       result_id,
-      bc_nickname: bc_nickname || null,
+      bc_nickname:     computedBcNickname || bc_nickname || null,
+      bc_code_key:     computedBcCodeKey  || bc_code_key || null,
+      survey_category: survey_category    || 'integrated',
       status: 'ok',
       connected_to
     })
