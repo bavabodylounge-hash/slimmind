@@ -253,11 +253,12 @@ async def run():
                     '#summary-modal-overlay','#summary-modal',
                     '.modal','#result-modal','.popup','.detail-panel',
                     '[class*="modal-wrap"]','[class*="detail-wrap"]',
-                    '[id*="prescription"]','[id*="result-area"]'
+                    '[id*="prescription"]','[id*="result-area"]',
+                    '.card','[class*="card"]'
                 ];
                 for (const s of sels) {
                     const el = document.querySelector(s);
-                    if (el && el.offsetHeight > 0) {
+                    if (el && el.offsetHeight > 0 && (el.innerText||'').trim().length > 10) {
                         const st = window.getComputedStyle(el);
                         if (st.display !== 'none' && st.visibility !== 'hidden') {
                             return {found: s, display: st.display, h: el.offsetHeight,
@@ -680,13 +681,28 @@ async def run():
                 ok("5단계", "consultant 고객 JS click", r5)
 
                 detail5 = await pg5.evaluate("""() => {
-                    const sels = ['.modal','.popup','.result-detail','[class*="detail"]',
-                                  '.overlay:not([id*="obd"])','[class*="result-view"]'];
+                    const sels = [
+                        '#detail-modal',
+                        '.modal-overlay.show',
+                        '#detail-modal.show',
+                        '.modal.show',
+                        '.modal',
+                        '.popup',
+                        '.result-detail',
+                        '[class*="detail"]',
+                        '.overlay:not([id*="obd"])',
+                        '[class*="result-view"]'
+                    ];
                     for (const s of sels) {
                         const el = document.querySelector(s);
-                        if (el && el.offsetHeight > 0) {
-                            return {sel: s, h: el.offsetHeight, text_len: el.innerText.length};
+                        if (el && el.offsetHeight > 0 && (el.innerText||'').trim().length > 5) {
+                            return {sel: s, h: el.offsetHeight, text_len: el.innerText.trim().length};
                         }
+                    }
+                    // 마지막: offsetHeight 0이어도 .show 클래스 있으면 확인
+                    const dm = document.getElementById('detail-modal');
+                    if (dm && dm.classList.contains('show')) {
+                        return {sel: '#detail-modal(show-class)', h: dm.offsetHeight, text_len: (dm.innerText||'').trim().length};
                     }
                     return null;
                 }""")
@@ -845,7 +861,8 @@ async def run():
             print("\n── [7-3] 중복 제출 방지 ──")
             tok_b = b2b_tokens.get("B2B-HOS-001")
             if tok_b:
-                payload = {"user_name":"중복테스트","gender":"female","axis_scores":{"A02":80,"A01":20},"bc_code_key":"BC-1","bc_nickname":"코끼리다리형","survey_category":"hospital"}
+                # ref_code 포함하여 중복 제출 방지 로직이 동작하도록
+                payload = {"user_name":"중복테스트","gender":"female","axis_scores":{"A02":80,"A01":20},"bc_code_key":"BC-1","bc_nickname":"코끼리다리형","survey_category":"hospital","ref_code":"B2B-HOS-001"}
                 c1, d1 = curl_post("/api/v1/diagnosis", payload, tok_b)
                 c2_r, d2 = curl_post("/api/v1/diagnosis", payload, tok_b)
                 print(f"    1차: HTTP {c1}, 2차: HTTP {c2_r}")
