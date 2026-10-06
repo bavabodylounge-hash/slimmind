@@ -135,17 +135,30 @@ const app = new Hono<{ Bindings: Bindings }>()
 // Clickjacking 방지, MIME sniffing 방지, XSS 방어 헤더
 app.use('*', async (c, next) => {
   await next()
-  // 페이지/HTML 응답에만 보안 헤더 적용
   const ct = c.res.headers.get('Content-Type') || ''
+  // ★ [CACHE-FIX] HTML + JSON + 동적 경로 전체 — 구버전 절대 서빙 금지
+  // result-*, /api/* 포함 모든 동적 응답에 캐시 완전 차단 헤더 강제 주입
+  const path = new URL(c.req.raw.url).pathname
+  const isDynamic = ct.includes('text/html') || ct.includes('application/json') ||
+    path.startsWith('/result-') || path.startsWith('/api/')
+  if (isDynamic) {
+    const cc = c.res.headers.get('Cache-Control') || ''
+    // 이미 no-store 있으면 덮어쓰지 않음 (라우트별 헤더 우선)
+    if (!cc.includes('no-store')) {
+      c.res.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0, s-maxage=0')
+      c.res.headers.set('Pragma', 'no-cache')
+      c.res.headers.set('Expires', '0')
+      c.res.headers.set('Surrogate-Control', 'no-store')
+      c.res.headers.set('CDN-Cache-Control', 'no-store')
+      c.res.headers.set('Cloudflare-CDN-Cache-Control', 'no-store')
+    }
+  }
+  // 보안 헤더 (HTML/JSON 공통)
   if (ct.includes('text/html') || ct.includes('application/json') || ct === '') {
     c.res.headers.set('X-Frame-Options', 'SAMEORIGIN')
     c.res.headers.set('X-Content-Type-Options', 'nosniff')
     c.res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
     c.res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
-    // API 응답에는 캐시 금지
-    if (ct.includes('application/json')) {
-      c.res.headers.set('Cache-Control', 'no-store')
-    }
   }
 })
 

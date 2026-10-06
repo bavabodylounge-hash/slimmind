@@ -1,31 +1,125 @@
 # Cloudflare Pages _headers
-# 결과지 관련 파일 — 엣지·브라우저 캐시 완전 차단
+# ★ 결과지 HTML + 모든 동적 경로 — 엣지·브라우저·CDN 캐시 완전 차단
+# 구버전이 절대 서빙되지 않도록 모든 result 경로 포함
+
+# ── 정적 HTML 파일 직접 접근 ──────────────────────────────────────
 /result-hospital.html
-  Cache-Control: no-cache, no-store, must-revalidate, max-age=0
+  Cache-Control: no-cache, no-store, must-revalidate, max-age=0, s-maxage=0
   Pragma: no-cache
   Expires: 0
   Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
+  Cloudflare-CDN-Cache-Control: no-store
   Vary: *
 
-/result-v4.html
-  Cache-Control: no-cache, no-store, must-revalidate, max-age=0
+/result-fitness.html
+  Cache-Control: no-cache, no-store, must-revalidate, max-age=0, s-maxage=0
   Pragma: no-cache
   Expires: 0
   Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
+  Cloudflare-CDN-Cache-Control: no-store
   Vary: *
+
+/result-aesthetic.html
+  Cache-Control: no-cache, no-store, must-revalidate, max-age=0, s-maxage=0
+  Pragma: no-cache
+  Expires: 0
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
+  Cloudflare-CDN-Cache-Control: no-store
+  Vary: *
+
+/result-salon.html
+  Cache-Control: no-cache, no-store, must-revalidate, max-age=0, s-maxage=0
+  Pragma: no-cache
+  Expires: 0
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
+  Cloudflare-CDN-Cache-Control: no-store
+  Vary: *
+
+# ── 동적 결과지 경로 (Worker가 서빙하는 실제 URL) ────────────────────
+/result-hospital/*
+  Cache-Control: no-cache, no-store, must-revalidate, max-age=0, s-maxage=0
+  Pragma: no-cache
+  Expires: 0
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
+  Cloudflare-CDN-Cache-Control: no-store
+  Vary: *
+
+/result-fitness/*
+  Cache-Control: no-cache, no-store, must-revalidate, max-age=0, s-maxage=0
+  Pragma: no-cache
+  Expires: 0
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
+  Cloudflare-CDN-Cache-Control: no-store
+  Vary: *
+
+/result-aesthetic/*
+  Cache-Control: no-cache, no-store, must-revalidate, max-age=0, s-maxage=0
+  Pragma: no-cache
+  Expires: 0
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
+  Cloudflare-CDN-Cache-Control: no-store
+  Vary: *
+
+/result-salon/*
+  Cache-Control: no-cache, no-store, must-revalidate, max-age=0, s-maxage=0
+  Pragma: no-cache
+  Expires: 0
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
+  Cloudflare-CDN-Cache-Control: no-store
+  Vary: *
+
+# ── API 전체 — 캐시 금지 ────────────────────────────────────────────
+/api/*
+  Cache-Control: no-cache, no-store, must-revalidate, max-age=0, s-maxage=0
+  Pragma: no-cache
+  Expires: 0
+  Surrogate-Control: no-store
+  CDN-Cache-Control: no-store
+  Cloudflare-CDN-Cache-Control: no-store
+
+# ── 구버전 레거시 경로 ───────────────────────────────────────────────
+/result-v4.html
+  Cache-Control: no-cache, no-store, must-revalidate, max-age=0, s-maxage=0
+  Pragma: no-cache
+  Expires: 0
+  Surrogate-Control: no-store
 
 /result.html
-  Cache-Control: no-cache, no-store, must-revalidate, max-age=0
+  Cache-Control: no-cache, no-store, must-revalidate, max-age=0, s-maxage=0
   Pragma: no-cache
   Expires: 0
   Surrogate-Control: no-store
 
 /result-v3.html
-  Cache-Control: no-cache, no-store, must-revalidate, max-age=0
+  Cache-Control: no-cache, no-store, must-revalidate, max-age=0, s-maxage=0
+  Pragma: no-cache
+  Expires: 0
+  Surrogate-Control: no-store
+
+# ── JS 엔진 파일 — 빌드마다 갱신되므로 캐시 차단 ─────────────────────
+/bc-engine.js
+  Cache-Control: no-cache, no-store, must-revalidate, max-age=0, s-maxage=0
   Pragma: no-cache
   Expires: 0
 
-/result-aesthetic.html
-  Cache-Control: no-cache, no-store, must-revalidate, max-age=0
+/bc-definitions.js
+  Cache-Control: no-cache, no-store, must-revalidate, max-age=0, s-maxage=0
   Pragma: no-cache
   Expires: 0
+
+/mapping-engine.js
+  Cache-Control: no-cache, no-store, must-revalidate, max-age=0, s-maxage=0
+  Pragma: no-cache
+  Expires: 0
+
+# ── 정적 에셋 — 장기 캐시 (변경 없는 이미지/폰트) ───────────────────
+/static/*
+  Cache-Control: public, max-age=31536000, immutable
