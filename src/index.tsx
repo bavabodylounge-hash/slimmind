@@ -10167,6 +10167,10 @@ app.post('/api/f/diagnosis', async (c) => {
   try {
     const body = await c.req.json()
 
+    // ★ [BUG-FIX] user_name 필수 검증 — /api/h/diagnosis · /api/a/diagnosis · /api/s/diagnosis와 동일
+    const user_name = String(body.user_name || body.name || '').trim()
+    if (!user_name) return c.json({ error: 'user_name required' }, 400)
+
     // ID 생성: F-{timestamp}-{5자리 랜덤}
     const ts  = Date.now().toString()
     const rnd = Math.random().toString(36).substring(2, 7).toUpperCase()
