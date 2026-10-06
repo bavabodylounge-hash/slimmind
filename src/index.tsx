@@ -3891,6 +3891,11 @@ app.get('/bodymap-preview', (c) => c.html(
 app.get('/slimmind_live', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/index.html')))
 app.get('/slimmind_live.html', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/index.html')))
 
+// ★ [BUG-FIX] /slimmind-today 경로 추가
+// Cloudflare Pages가 /slimmind-today.html → 307 /slimmind-today 리다이렉트 하므로
+// Worker에서 /slimmind-today 경로도 처리해야 함
+app.get('/slimmind-today', async (c) => htmlResponse(await fetchAsset(c.env.ASSETS, '/slimmind-today.html')))
+
 // Feature 7: /slimmind?b2b=B2B-XXX 또는 ?ref=SC-XXXX 쿼리파라미터 지원
 // → 내부적으로 /s/:code 와 동일한 화이트라벨 처리
 app.get('/slimmind', async (c) => {
@@ -12675,12 +12680,17 @@ app.post('/api/admin/rediagnosis/scan', requireRole('MASTER'), async (c) => {
     for (const days of ALERT_DAYS) {
       // 진단일로부터 정확히 days일 ± 1일인 고객 조회
       // ★ [v4.9] results LEFT JOIN 제거 — results.name 컬럼 없음(항상 NULL), diagnosis_results 단독
+      // ★ [BUG-FIX] diagnosis_results 실제 컬럼명 교정
+      // - session_id → id (diagnosis_results에 session_id 컬럼 없음, id가 session_id 역할)
+      // - consultant_code → ref_code (실제 컬럼명)
+      // - bc_code → bc_code_key (실제 컬럼명)
       const rows = await db.prepare(`
-        SELECT dr.session_id, dr.consultant_code, dr.bc_code, dr.created_at,
+        SELECT dr.id AS session_id, dr.ref_code AS consultant_code,
+               dr.bc_code_key AS bc_code, dr.created_at,
                dr.user_name as customer_name
         FROM diagnosis_results dr
         WHERE date(dr.created_at) = date('now', '-${days} days')
-          AND dr.session_id NOT IN (
+          AND dr.id NOT IN (
             SELECT session_id FROM rediagnosis_alerts WHERE alert_day = ${days}
           )
       `).all<any>()
