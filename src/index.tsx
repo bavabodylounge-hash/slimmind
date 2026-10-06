@@ -3737,15 +3737,17 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
   const resultRefCode = result.ref_code as string | null
   if (resultRefCode && resultRefCode.startsWith('B2B-')) {
     const b2bPartner = await db.prepare(
-      'SELECT code, brand_name, brand_color, brand_logo_url, status FROM b2b_partners WHERE code=?'
+      'SELECT code, brand_name, brand_color, brand_logo_url, status, survey_category FROM b2b_partners WHERE code=?'
     ).bind(resultRefCode).first<any>()
 
     if (b2bPartner && b2bPartner.status !== 'suspended') {
       const bColor = (b2bPartner.brand_color || '#6366f1').replace(/[^#0-9a-fA-F]/g, '')
       const bName = (b2bPartner.brand_name || b2bPartner.code || '').replace(/[<>"]/g, '')
       const bLogo = (b2bPartner.brand_logo_url || '').replace(/[<>"]/g, '')
+      // ★ survey_category 반드시 __BRAND__에 포함 — smIndustry()가 이 값을 읽어 색상 결정
+      const bCat = (b2bPartner.survey_category || 'hospital').replace(/[^a-zA-Z]/g, '')
       brandInjectResult = `
-<script>window.__BRAND__ = { code: "${resultRefCode}", type: "B2B", brand_name: "${bName}", brand_color: "${bColor}", brand_logo_url: "${bLogo}" };</script>
+<script>window.__BRAND__ = { code: "${resultRefCode}", type: "B2B", brand_name: "${bName}", brand_color: "${bColor}", brand_logo_url: "${bLogo}", survey_category: "${bCat}" };</script>
 <style>
 :root { --brand-color: ${bColor}; --brand-color-light: ${bColor}22; }
 /* 결과지 헤더/버튼 브랜드컬러 오버라이드 */
@@ -3812,6 +3814,8 @@ a{display:inline-block;margin-top:24px;padding:12px 32px;background:#b5452e;colo
     blood_type: resultData.result?.blood_type,
     saju_il_gan: resultData.result?.saju_il_gan,
     saju_display: resultData.result?.saju_display,
+    // ★ 업종 — smIndustry()가 __RESULT__.survey_category를 읽어 색상·텍스트 결정
+    survey_category: (result as any).survey_category || 'hospital',
     // 설문 응답 (채점 재활용) — resultData.result.survey_answers는 이미 parseJson된 객체
     survey_answers: resultData.result?.survey_answers || null,
     answers: resultData.result?.survey_answers || null,

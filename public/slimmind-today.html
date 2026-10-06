@@ -12,9 +12,17 @@
    결과지와 동일한 한 길: __SM_INDUSTRY__ → sm_survey_category → hospital(기본)
    data-ind 를 <html>에 설정하면 CSS 오버라이드가 자동 적용된다 */
 function smIndustry(){
+  /* 우선순위: __SM_INDUSTRY__ → __BRAND__.survey_category → __RESULT__.survey_category → localStorage → 'hospital' */
+  var VALID=['hospital','fitness','esthetic','salon'];
+  function _ok(v){ return v && VALID.indexOf(v)>=0; }
   var v=(typeof window!=='undefined' && window.__SM_INDUSTRY__) || null;
-  if(!v){ try{ v=localStorage.getItem('sm_survey_category'); }catch(e){ v=null; } }
-  if(!v || ['hospital','fitness','esthetic','salon'].indexOf(v)<0) v='hospital';
+  if(_ok(v)) return v;
+  try{ var b=window.__BRAND__; if(b && _ok(b.survey_category)){ v=b.survey_category; } }catch(e){}
+  if(_ok(v)) return v;
+  try{ var r=window.__RESULT__; if(r && _ok(r.survey_category)){ v=r.survey_category; } }catch(e){}
+  if(_ok(v)) return v;
+  try{ v=localStorage.getItem('sm_survey_category'); }catch(e){ v=null; }
+  if(!_ok(v)) v='hospital';
   return v;
 }
 try{ document.documentElement.setAttribute('data-ind', smIndustry()); }catch(e){}
