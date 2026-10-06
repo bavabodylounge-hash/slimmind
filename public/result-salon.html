@@ -13688,6 +13688,7 @@ if (typeof module !== 'undefined') {
 
 </script>
 <script>
+try { // ★ bc-engine init try-catch (브라우저 오류 위치 추적용)
 // ── bc-engine (inlined) ──
 // ============================================================
 // SlimMind BC-ENGINE v3.1
@@ -18477,6 +18478,12 @@ if (typeof module !== 'undefined' && module.exports) {
   };
 }
 
+
+} catch(__bcInitErr) {
+  // ★ bc-engine 초기화 오류 — 브라우저 콘솔에서 정확한 위치 확인
+  console.error('[bc-engine INIT ERROR] 메시지:', __bcInitErr.message);
+  console.error('[bc-engine INIT ERROR] 스택:', __bcInitErr.stack);
+}
 </script>
 <script>
 // ── 페이지 전환 ──────────────────
@@ -25302,6 +25309,19 @@ function renderP7(userName, bcCode, bcMaster, metrics, ohaengType, mbtiType, ful
 
   // ════ 결과 집약 카드 채우기 ════
   (function fillP7Sum(){
+    // ★ [DOM-FIX] p7sum 요소가 없으면 동적 생성 (fitness/aesthetic/salon용)
+    (function ensureP7sumDom(){
+      if (document.getElementById('p7sum-code')) return; // 이미 있으면 skip
+      var host = document.createElement('div');
+      host.id = 'p7sum-host';
+      host.style.cssText = 'position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden;pointer-events:none;aria-hidden:true';
+      host.innerHTML = '<span id="p7sum-code"></span><span id="p7sum-nick"></span>'+
+        '<span id="p7sum-onel"></span><span id="p7sum-rank"></span>'+
+        '<div id="p7sum-rxlist"></div><div id="p7sum-chg" style="display:none">'+
+        '<span id="p7sum-chg-before"></span><span id="p7sum-chg-after"></span><span id="p7sum-chg-gap"></span></div>';
+      document.body.appendChild(host);
+    })();
+
     var bcNum = bcCode ? String(bcCode).replace(/^BC-?/i,'') : '?';
     var elCode = document.getElementById('p7sum-code');
     if (elCode) elCode.textContent = bcNum;
