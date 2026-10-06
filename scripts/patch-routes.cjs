@@ -19,11 +19,12 @@ const staticFiles = [
   '/survey-data.js',
   '/bc-definitions.js',
   // 설문지 (4개 업종 최신본)
-  '/survey-hospital.html',
-  '/survey-hospital-3lang.html',
-  '/survey-aesthetic.html',
-  '/survey-fitness.html',
-  '/survey-salon.html',
+  // ★ survey-aesthetic/fitness/salon은 Worker가 처리 → exclude에서 제외
+  //   (.html → 307 clean URL → Worker 처리해야 403 차단 정상 작동)
+  //   exclude에 넣으면: Cloudflare가 직접 307 → clean URL → Worker 라우트 없음 → 404
+  // hospital은 Worker에 /survey-hospital.html + /survey-hospital 두 라우트 모두 있어도
+  //   .html 파일이 exclude에 있으면 동일 307 문제 발생 → 제거
+  // 결론: 4개 survey HTML 모두 exclude에서 제거, Worker 담당
   // ★ 결과지는 Worker가 /:id 패턴으로 처리 → exclude에 넣으면 안 됨!
   // result-*.html을 exclude에 넣으면:
   //   → Cloudflare가 .html 파일을 정적 서빙 시도
@@ -61,6 +62,14 @@ const removed = [
   '/result_73f6526b_static.html',
   '/survey-sur001.html',
   '/specs/*',
+  // survey HTML: Worker가 직접 처리(차단/라우팅) → exclude에서 제거
+  // exclude에 있으면 Cloudflare가 .html 파일에 자동 307 clean URL redirect를 발동,
+  // clean URL 경로에서 Worker 라우트를 타지 않아 404가 됨
+  '/survey-hospital.html',
+  '/survey-hospital-3lang.html',
+  '/survey-aesthetic.html',
+  '/survey-fitness.html',
+  '/survey-salon.html',
 ]
 r.exclude = r.exclude.filter(e => !removed.includes(e))
 
