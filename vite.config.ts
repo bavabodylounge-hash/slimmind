@@ -31,6 +31,8 @@ function patchRoutesJson() {
       // ─── Worker가 처리해야 하는 파일: exclude에서 반드시 제거 ───
       // result-*.html은 Worker가 /result-hospital/:id 등으로 서빙
       // exclude에 있으면 정적 서빙 → 308 redirect → 404 발생!
+      // survey-*.html: Worker가 직접 차단(403) → clean URL도 Worker가 처리
+      // exclude에 있으면 Cloudflare가 .html에 307 redirect → clean URL → 404
       const toRemove = [
         '/result-hospital.html',
         '/result-fitness.html',
@@ -38,15 +40,16 @@ function patchRoutesJson() {
         '/result-salon.html',
         '/result-v4.html',
         '/result.html',
+        // survey HTML: Worker가 직접 처리(차단/라우팅) → exclude 제거
+        '/survey-hospital.html',
+        '/survey-hospital-3lang.html',
+        '/survey-aesthetic.html',
+        '/survey-fitness.html',
+        '/survey-salon.html',
       ]
 
       // ─── 정적 서빙이 필요한 파일: exclude에 추가 ───
       const toAdd = [
-        '/survey-salon.html',
-        '/survey-hospital.html',
-        '/survey-hospital-3lang.html',
-        '/survey-fitness.html',
-        '/survey-aesthetic.html',
         '/slimmind-today.html',
         '/admin.html',
         '/consultant.html',
