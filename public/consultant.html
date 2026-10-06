@@ -1512,26 +1512,34 @@ function _consObdRender(idx) {
   const s = _CONS_OBD_STEPS[idx];
   const total = _CONS_OBD_STEPS.length;
 
+  // null guard: 온보딩 오버레이가 외부 요인으로 제거된 경우 조용히 종료
+  const _cDots  = document.getElementById('cons-obd-dots');
+  const _cIcon  = document.getElementById('cons-obd-icon');
+  const _cTitle = document.getElementById('cons-obd-title');
+  const _cSub   = document.getElementById('cons-obd-sub');
+  const _cList  = document.getElementById('cons-obd-list');
+  const _cBtn   = document.getElementById('cons-obd-next');
+  if (!_cDots || !_cIcon || !_cTitle || !_cSub || !_cList || !_cBtn) return;
+
   // 닷
-  document.getElementById('cons-obd-dots').innerHTML =
+  _cDots.innerHTML =
     _CONS_OBD_STEPS.map((_, i) =>
       `<div class="cons-obd-dot${i===idx?' active':''}"></div>`).join('');
 
   // 헤더
-  document.getElementById('cons-obd-icon').textContent = s.icon;
-  document.getElementById('cons-obd-title').textContent = s.title;
-  document.getElementById('cons-obd-sub').textContent = s.sub;
+  _cIcon.textContent = s.icon;
+  _cTitle.textContent = s.title;
+  _cSub.textContent = s.sub;
 
   // 아이템
-  document.getElementById('cons-obd-list').innerHTML = s.items.map(it => `
+  _cList.innerHTML = s.items.map(it => `
     <div class="cons-obd-item">
       <div class="cons-obd-item-ic" style="background:${it.bg}">${it.ic}</div>
       <div class="cons-obd-item-tx"><b>${it.label}</b><span>${it.desc}</span></div>
     </div>`).join('');
 
   // 버튼
-  const btn = document.getElementById('cons-obd-next');
-  btn.textContent = idx === total - 1 ? '🚀 시작하기' : '다음 →';
+  _cBtn.textContent = idx === total - 1 ? '🚀 시작하기' : '다음 →';
 }
 
 function _consObdNext() {
@@ -1544,7 +1552,8 @@ function _consObdNext() {
 }
 
 function _consObdClose() {
-  document.getElementById('cons-obd-overlay').style.display = 'none';
+  const _cOv = document.getElementById('cons-obd-overlay');
+  if (_cOv) _cOv.style.display = 'none';
   try { localStorage.setItem(_CONS_OBD_KEY, '1'); } catch(e) {}
 }
 
@@ -1552,7 +1561,8 @@ function _consObdShow() {
   try { if (localStorage.getItem(_CONS_OBD_KEY)) return; } catch(e) {}
   _consObdIdx = 0;
   _consObdRender(0);
-  document.getElementById('cons-obd-overlay').style.display = 'flex';
+  const _cOv = document.getElementById('cons-obd-overlay');
+  if (_cOv) _cOv.style.display = 'flex';
 }
 
 // ══════════════════════════════════════════════════════════

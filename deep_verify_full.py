@@ -75,7 +75,9 @@ async def kill_overlays(page):
         // 앱 핵심 모달/컨테이너 ID — 절대 삭제하면 안 됨
         const PROTECTED_IDS = new Set([
             'detail-modal', 'b2b-modal-overlay', 'summary-modal-overlay',
-            'qr-modal', 'rx-modal', 'ai-modal'
+            'qr-modal', 'rx-modal', 'ai-modal',
+            'b2b-obd-overlay', 'b2b-obd-modal',
+            'cons-obd-overlay', 'cons-obd-modal'
         ]);
         document.querySelectorAll('*').forEach(el => {
             const id = (el.id||'').toLowerCase();

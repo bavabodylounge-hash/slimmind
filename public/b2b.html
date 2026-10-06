@@ -651,18 +651,26 @@ let _b2bObdIdx = 0;
 
 function _b2bObdRender(idx) {
   const s = _B2B_OBD_STEPS[idx];
-  document.getElementById('b2b-obd-dots').innerHTML =
+  // null guard: 온보딩 오버레이가 외부 요인으로 제거된 경우 조용히 종료
+  const _obdDots  = document.getElementById('b2b-obd-dots');
+  const _obdIcon  = document.getElementById('b2b-obd-icon');
+  const _obdTitle = document.getElementById('b2b-obd-title');
+  const _obdSub   = document.getElementById('b2b-obd-sub');
+  const _obdList  = document.getElementById('b2b-obd-list');
+  const _obdNext  = document.getElementById('b2b-obd-next');
+  if (!_obdDots || !_obdIcon || !_obdTitle || !_obdSub || !_obdList || !_obdNext) return;
+  _obdDots.innerHTML =
     _B2B_OBD_STEPS.map((_, i) =>
       `<div class="b2b-obd-dot${i===idx?' active':''}"></div>`).join('');
-  document.getElementById('b2b-obd-icon').textContent = s.icon;
-  document.getElementById('b2b-obd-title').textContent = s.title;
-  document.getElementById('b2b-obd-sub').textContent = s.sub;
-  document.getElementById('b2b-obd-list').innerHTML = s.items.map(it => `
+  _obdIcon.textContent = s.icon;
+  _obdTitle.textContent = s.title;
+  _obdSub.textContent = s.sub;
+  _obdList.innerHTML = s.items.map(it => `
     <div class="b2b-obd-item">
       <div class="b2b-obd-ic" style="background:${it.bg}">${it.ic}</div>
       <div class="b2b-obd-tx"><b>${it.label}</b><span>${it.desc}</span></div>
     </div>`).join('');
-  document.getElementById('b2b-obd-next').textContent =
+  _obdNext.textContent =
     idx === _B2B_OBD_STEPS.length - 1 ? '🚀 시작하기' : '다음 →';
 }
 
@@ -676,7 +684,8 @@ function _b2bObdNext() {
 }
 
 function _b2bObdClose() {
-  document.getElementById('b2b-obd-overlay').style.display = 'none';
+  const _obdOv = document.getElementById('b2b-obd-overlay');
+  if (_obdOv) _obdOv.style.display = 'none';
   try { localStorage.setItem(_B2B_OBD_KEY, '1'); } catch(e) {}
 }
 
