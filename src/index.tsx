@@ -2166,6 +2166,7 @@ app.get('/api/b2b/stats', requireB2B(), async (c) => {
       this_month: hospMonth?.cnt || 0,
       today: hospToday?.cnt || 0,
       this_week: hospWeek?.cnt || 0,
+      shared: totalCnt,   // 공유 가능한 결과지 수 (전체와 동일)
       nickname_distribution: nickDist.results,
       hospital_count: hospTotal?.cnt || 0,
       integrated_count: drTotal?.cnt || 0,
@@ -2205,8 +2206,56 @@ app.get('/api/b2b/stats', requireB2B(), async (c) => {
     this_month: (drMonth?.cnt||0),
     today:      (drToday?.cnt||0),
     this_week:  (drWeek?.cnt||0),
+    shared:     drCnt,   // 공유 가능한 결과지 수 (전체와 동일)
     nickname_distribution: nickDist.results || [],
   })
+})
+
+// ── GET /api/b2b/result/:id/share — 결과지 공유 링크 반환 ──
+app.get('/api/b2b/result/:id/share', requireB2B(), async (c) => {
+  try {
+    const user = c.get('user') as JwtPayload
+    const db   = c.env.DB
+    const id   = c.req.param('id')
+
+    // 결과 조회 (ref_code 권한 확인 포함)
+    const row = await db.prepare(
+      'SELECT id, survey_category, bc_primary, user_name, ref_code FROM diagnosis_results WHERE id=?'
+    ).bind(id).first<any>()
+    if (!row) return c.json({ error: 'not_found' }, 404)
+    if (row.ref_code !== user.code) return c.json({ error: 'forbidden' }, 403)
+
+    const origin = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.kr' } })()
+    const cat = row.survey_category || 'hospital'
+    const shareUrl = `${origin}/result-${cat}/${id}`
+
+    return c.json({ ok: true, id, share_url: shareUrl, survey_category: cat, bc_primary: row.bc_primary })
+  } catch (e: any) {
+    return c.json({ error: 'server_error' }, 500)
+  }
+})
+
+// ── GET /api/share/:id — 공유 링크 alias ──
+app.get('/api/share/:id', requireB2B(), async (c) => {
+  try {
+    const user = c.get('user') as JwtPayload
+    const db   = c.env.DB
+    const id   = c.req.param('id')
+
+    const row = await db.prepare(
+      'SELECT id, survey_category, bc_primary, ref_code FROM diagnosis_results WHERE id=?'
+    ).bind(id).first<any>()
+    if (!row) return c.json({ error: 'not_found' }, 404)
+    if (row.ref_code !== user.code) return c.json({ error: 'forbidden' }, 403)
+
+    const origin = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.kr' } })()
+    const cat = row.survey_category || 'hospital'
+    const shareUrl = `${origin}/result-${cat}/${id}`
+
+    return c.json({ ok: true, id, share_url: shareUrl, survey_category: cat })
+  } catch (e: any) {
+    return c.json({ error: 'server_error' }, 500)
+  }
 })
 
 // ═══════════════════════════════════════════════════════════════
@@ -6611,6 +6660,34 @@ app.post('/api/v1/diagnosis', async (c) => {
       (safeBcPrimaryForKey && /^BC-([1-9]|1[0-6])$/.test(safeBcPrimaryForKey) ? safeBcPrimaryForKey : null) ||
       (safeBcNicknameForKey && NICKNAME_TO_BC_BACKEND[safeBcNicknameForKey]) ||
       null
+
+    // ── 중복 제출 방지: 동일 user_name + ref_code 기준 1시간 이내 ──
+    // phone이 있으면 phone 기준 더 정확하게 체크
+    if (ref_code) {
+      try {
+        const dupCheck = phone
+          ? await db.prepare(
+              `SELECT id FROM diagnosis_results
+               WHERE phone=? AND ref_code=?
+               AND created_at >= datetime('now','-1 hour') LIMIT 1`
+            ).bind(phone, ref_code).first<any>()
+          : await db.prepare(
+              `SELECT id FROM diagnosis_results
+               WHERE user_name=? AND ref_code=?
+               AND created_at >= datetime('now','-1 hour') LIMIT 1`
+            ).bind(String(user_name || '익명'), ref_code).first<any>()
+        if (dupCheck) {
+          return c.json({
+            ok: false,
+            error: '이미 제출된 설문입니다. 잠시 후 다시 시도하거나 다른 이름으로 입력해주세요.',
+            code: 'DUPLICATE_SUBMISSION',
+            existing_id: dupCheck.id
+          }, 409)
+        }
+      } catch (_dupErr) {
+        // 중복 체크 실패 시 계속 진행 (graceful)
+      }
+    }
 
     // UUID 생성
     const result_id = crypto.randomUUID()

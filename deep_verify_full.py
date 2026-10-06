@@ -234,32 +234,40 @@ async def run():
             row_count = await pg2.evaluate("() => document.querySelectorAll('tbody tr').length")
             ok("2단계", "고객목록 tbody tr 개수", f"{row_count}행") if row_count >= 1 else ng("2단계", "고객목록 tbody tr 없음", f"{row_count}행")
 
-            # 첫 번째 tr JS click → 모달/패널
+            # 첫 번째 클릭 가능한 고객 행 JS click (result-card 또는 tbody tr)
             r3 = await pg2.evaluate("""() => {
-                const tr = document.querySelector('tbody tr');
-                if (!tr) return 'NO_ROW';
-                tr.click();
-                return 'CLICKED';
+                const candidates = ['.result-card','tbody tr','[onclick*="showCustomer"]','[onclick*="openCustomer"]'];
+                for (const sel of candidates) {
+                    const el = document.querySelector(sel);
+                    if (el) { el.click(); return 'CLICKED:'+sel; }
+                }
+                return 'NO_ROW';
             }""")
             await pg2.wait_for_timeout(2000)
-            ok("2단계", "고객 tr JS click", r3)
+            ok("2단계", "고객 행 JS click", r3)
 
-            # 모달/팝업/상세패널 확인
+            # 상세 패널/영역 확인 (B2B는 pv-prescription-area 또는 summary-modal-overlay)
             modal_info = await pg2.evaluate("""() => {
-                const sels = ['.modal','#result-modal','.popup','.detail-panel',
-                               '[class*="modal-wrap"]','[class*="detail-wrap"]'];
+                const sels = [
+                    '#pv-prescription-area','#pv-result-area',
+                    '#summary-modal-overlay','#summary-modal',
+                    '.modal','#result-modal','.popup','.detail-panel',
+                    '[class*="modal-wrap"]','[class*="detail-wrap"]',
+                    '[id*="prescription"]','[id*="result-area"]'
+                ];
                 for (const s of sels) {
                     const el = document.querySelector(s);
                     if (el && el.offsetHeight > 0) {
                         const st = window.getComputedStyle(el);
                         if (st.display !== 'none' && st.visibility !== 'hidden') {
-                            return {found: s, display: st.display, h: el.offsetHeight};
+                            return {found: s, display: st.display, h: el.offsetHeight,
+                                    text_snippet: (el.innerText||'').slice(0,40)};
                         }
                     }
                 }
                 return null;
             }""")
-            ok("2단계", "고객 클릭 → 상세 팝업/패널", str(modal_info)) if modal_info else warn("2단계", "고객 클릭 → 상세 팝업 미확인", "CSS 확인 필요")
+            ok("2단계", "고객 클릭 → 상세 패널/팝업", str(modal_info)) if modal_info else warn("2단계", "고객 클릭 → 상세 팝업 미확인", "CSS 확인 필요")
 
             # JS 에러
             ok("2단계", "b2b.html JS 에러", "없음") if not js_errs2 else ng("2단계", "b2b.html JS 에러", str(js_errs2[:3]))
@@ -565,29 +573,17 @@ async def run():
             else:
                 ng("5단계", "/api/consultant/results", f"HTTP {code}")
 
-            # ── 5-D: 메모/코멘트 API ──
-            print("\n── [5-D] 메모/코멘트 API 탐색 ──")
+            # ── 5-D: 메모 POST API 확인 ──
+            print("\n── [5-D] 메모 POST API 확인 ──")
             test_rid = (c_results[0].get("id","") if c_results else
                         next(iter(survey_result_ids.values()),{}).get("id",""))
-            memo_paths = [
-                f"/api/consultant/memo/{test_rid}",
-                f"/api/memo/{test_rid}",
-                f"/api/consultant/comment/{test_rid}",
-                f"/api/result/{test_rid}/memo",
-                f"/api/consultant/notes/{test_rid}",
-            ]
-            for mp in memo_paths:
-                st = curl_status(mp, c_tok)
-                print(f"    {mp} → HTTP {st}")
-                if st in ["200","201","404"]:
-                    warn("5단계", f"메모 API 후보", f"{mp} → {st}")
-            
-            # memo POST 시도
+            # POST로 직접 테스트 (GET은 정의되지 않은 경로이므로 404가 정상)
             memo_found = False
             for mp in [f"/api/consultant/memo/{test_rid}", f"/api/memo/{test_rid}"]:
                 c_m, d_m = curl_post(mp, {"memo":"검증테스트 메모"}, c_tok)
+                print(f"    POST {mp} → HTTP {c_m}: {str(d_m)[:60]}")
                 if c_m in [200,201]:
-                    ok("5단계", f"메모 POST {mp}", f"HTTP {c_m}")
+                    ok("5단계", f"메모 POST 성공 — {mp}", f"HTTP {c_m}: ok={d_m.get('ok') if isinstance(d_m,dict) else '?'}")
                     memo_found = True; break
             if not memo_found:
                 ng("5단계", "메모 POST API 없음", "모든 경로 실패")
@@ -785,12 +781,12 @@ async def run():
             body6 = await pg6.content()
             ok("6단계", "slimmind-today body", f"{len(body6)//1024}KB") if len(body6) > 10000 else ng("6단계", "slimmind-today body 작음", f"{len(body6)}")
 
-            # 주요 DOM 요소
+            # 주요 DOM 요소 (실제 slimmind-today.html 클래스 기준)
             dom6 = {
-                "데일리체크 아이템": ".check-item, [class*='daily-'], [class*='mission-'], [class*='today-item']",
-                "연속달성 카운트": "[class*='streak'], [id*='streak'], [class*='count-']",
-                "날짜 표시": "[class*='date'], #today-date, [class*='today-date']",
-                "완료 버튼": "button[class*='complete'], [class*='check-btn'], [onclick*='check']",
+                "데일리체크 아이템": ".item, [class*='item-'], #items .item, [data-k]",
+                "연속달성 카운트": "[class*='streak'], [id*='streak'], #streak-n, .streak-n",
+                "날짜 표시": "[class*='date'], #today-date, .hd-day, #hd-day, .dow",
+                "완료/체크 버튼": ".item-acts button, [class*='item-act'], .det-toggle, [onclick*='check'], [onclick*='done']",
             }
             for label, sel in dom6.items():
                 els = await pg6.query_selector_all(sel)
