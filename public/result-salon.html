@@ -7888,10 +7888,13 @@ body>.pw .pw-c .n{width:100%;padding:11px;border:none;background:none;font-famil
 /* smIndustry() — 업종 한 길 읽기 [복구: 삭제됐던 함수 재삽입]
    우선순위: __SM_INDUSTRY__ 스위치 → __BRAND__.survey_category → __RESULT__.survey_category → localStorage(sm_survey_category) → 'hospital'(기본값) */
 function smIndustry(){
-  if(typeof window.__SM_INDUSTRY__==='string' && window.__SM_INDUSTRY__) return window.__SM_INDUSTRY__;
-  var b=window.__BRAND__; if(b && b.survey_category) return b.survey_category;
-  var r=window.__RESULT__||window.__BC_RESULT__; if(r && r.survey_category) return r.survey_category;
-  try{ var ls=localStorage.getItem('sm_survey_category'); if(ls) return ls; }catch(e){}
+  /* ★ aesthetic(DB값)→esthetic(CSS값) 정규화 포함 */
+  function _smNorm(v){ if(v==='aesthetic') return 'esthetic'; var VALID=['hospital','fitness','esthetic','salon']; return (v && VALID.indexOf(v)>=0) ? v : null; }
+  var n;
+  if(typeof window.__SM_INDUSTRY__==='string'){ n=_smNorm(window.__SM_INDUSTRY__); if(n) return n; }
+  var b=window.__BRAND__; if(b){ n=_smNorm(b.survey_category); if(n) return n; }
+  var r=window.__RESULT__||window.__BC_RESULT__; if(r){ n=_smNorm(r.survey_category); if(n) return n; }
+  try{ n=_smNorm(localStorage.getItem('sm_survey_category')); if(n) return n; }catch(e){}
   return 'hospital';
 }
 /* ★ data-ind 초기화: smIndustry() 결과를 <html> 요소에 즉시 반영 (CSS 색상 오버라이드 트리거) */
