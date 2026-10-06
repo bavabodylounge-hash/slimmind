@@ -2330,6 +2330,70 @@ app.get('/api/results/:id', async (c) => {
   }
 })
 
+// GET /api/result/:id — 통합 단일 결과 JSON API (인증 선택적, 업종 자동 분기)
+// 검증 스크립트가 /api/result/:id (s 없음)로 호출 — /api/results/:id와 별도 라우트
+app.get('/api/result/:id', async (c) => {
+  try {
+    const db = c.env.DB
+    const id = c.req.param('id')
+    if (!id || id.length < 8) return c.json({ error: 'invalid_id' }, 400)
+
+    // 1차: diagnosis_results 조회
+    const row = await db.prepare(
+      `SELECT id, user_name, gender, bc_primary, bc_nickname, bc_code_key,
+              survey_category, axis_scores, top3_axes, raw_answers,
+              ohaeng_type, mbti_full, ref_code, region, texture, bg_filter,
+              COALESCE(completed_at, created_at) AS created_at
+       FROM diagnosis_results WHERE id=?`
+    ).bind(id).first<any>()
+
+    if (!row) return c.json({ error: 'not_found', message: '결과를 찾을 수 없습니다.' }, 404)
+
+    const bcCode = row.bc_code_key || row.bc_primary || null
+    const surveyCategory = row.survey_category || 'integrated'
+
+    // bc_prescriptions 조회
+    const presc = bcCode
+      ? await db.prepare('SELECT * FROM bc_prescriptions WHERE bc_code=?').bind(bcCode).first<any>()
+      : null
+
+    return c.json({
+      id:              row.id,
+      user_name:       row.user_name || '',
+      gender:          row.gender || '',
+      bc_code_key:     bcCode,
+      bc_nickname:     row.bc_nickname || row.bc_primary || bcCode || '',
+      survey_category: surveyCategory,
+      axis_scores:     parseJson(row.axis_scores, {}),
+      top3_axes:       parseJson(row.top3_axes, []),
+      ohaeng_type:     row.ohaeng_type || null,
+      mbti_full:       row.mbti_full || null,
+      ref_code:        row.ref_code || null,
+      region:          row.region || null,
+      texture:         row.texture || null,
+      bg_filter:       row.bg_filter || null,
+      created_at:      row.created_at || null,
+      prescription: presc ? {
+        bc_code:               presc.bc_code,
+        symptom_checklist:     parseJson(presc.symptom_checklist_json, []),
+        wrong_methods:         parseJson(presc.wrong_methods_json, []),
+        correct_principles:    parseJson(presc.correct_principles_json, []),
+        recommended_exercises: parseJson(presc.recommended_exercises_json, []),
+        forbidden_exercises:   parseJson(presc.forbidden_exercises_json, []),
+        recommended_foods:     parseJson(presc.recommended_foods_json, []),
+        forbidden_foods:       parseJson(presc.forbidden_foods_json, []),
+        supplement_list:       parseJson(presc.supplement_list_json, []),
+        lifestyle_rules:       parseJson(presc.lifestyle_rules_json, []),
+        b2b_treatments:        parseJson(presc.b2b_treatments_json, {}),
+        hospital_tests:        parseJson(presc.hospital_tests_json, []),
+      } : null,
+    })
+  } catch (e: any) {
+    console.error('[result/:id] error:', e?.message)
+    return c.json({ error: 'server_error', message: '결과 조회 중 오류가 발생했습니다.' }, 500)
+  }
+})
+
 // GET /api/consultant/stats — 컨설턴트 대시보드 통계
 app.get('/api/consultant/stats', requireRole('ANY'), async (c) => {
   try {
@@ -2396,6 +2460,54 @@ app.put('/api/consultant/change-password', requireRole('ANY'), async (c) => {
     .bind(new_password, user.code).run()
 
   return c.json({ success: true, message: '비밀번호가 변경되었습니다.' })
+})
+
+// ─── 컨설턴트 메모 API ────────────────────────────────────────────────────────
+// POST /api/consultant/memo/:id — 고객 결과에 메모(admin_memo) 저장
+// POST /api/memo/:id — 동일 기능 (검증 스크립트 호환 alias)
+app.post('/api/consultant/memo/:id', requireRole('ANY'), async (c) => {
+  try {
+    const user = c.get('user') as JwtPayload
+    const db   = c.env.DB
+    const id   = c.req.param('id')
+    const body = await c.req.json<{ memo?: string; comment?: string }>()
+    const memo = (body.memo ?? body.comment ?? '').trim()
+
+    // 권한 확인: MASTER이거나 자신의 고객인 경우만 허용
+    const row = await db.prepare('SELECT ref_code FROM diagnosis_results WHERE id=?').bind(id).first<any>()
+    if (!row) return c.json({ error: 'not_found' }, 404)
+    if (user.role !== 'MASTER' && row.ref_code !== user.code) {
+      return c.json({ error: 'forbidden' }, 403)
+    }
+
+    await db.prepare('UPDATE diagnosis_results SET admin_memo=? WHERE id=?').bind(memo, id).run()
+    return c.json({ ok: true, id, memo })
+  } catch (e: any) {
+    console.error('[consultant/memo] error:', e?.message)
+    return c.json({ error: 'server_error' }, 500)
+  }
+})
+
+app.post('/api/memo/:id', requireRole('ANY'), async (c) => {
+  try {
+    const user = c.get('user') as JwtPayload
+    const db   = c.env.DB
+    const id   = c.req.param('id')
+    const body = await c.req.json<{ memo?: string; comment?: string }>()
+    const memo = (body.memo ?? body.comment ?? '').trim()
+
+    const row = await db.prepare('SELECT ref_code FROM diagnosis_results WHERE id=?').bind(id).first<any>()
+    if (!row) return c.json({ error: 'not_found' }, 404)
+    if (user.role !== 'MASTER' && row.ref_code !== user.code) {
+      return c.json({ error: 'forbidden' }, 403)
+    }
+
+    await db.prepare('UPDATE diagnosis_results SET admin_memo=? WHERE id=?').bind(memo, id).run()
+    return c.json({ ok: true, id, memo })
+  } catch (e: any) {
+    console.error('[memo] error:', e?.message)
+    return c.json({ error: 'server_error' }, 500)
+  }
 })
 
 // ─── 컨설턴트 전용 QR 링크 정보 조회 ────────────────────────────────────────
