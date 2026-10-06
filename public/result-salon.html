@@ -5755,6 +5755,7 @@ try{ ['log','info','warn','debug'].forEach(function(k){ console[k]=function(){};
       <div class="cvx-cover-foot">
         <div class="cvx-meta">
           <div class="cvx-meta-row"><span class="cvx-meta-k">분석일</span><span class="cvx-meta-v" id="cover-date">2026년 8월 2일</span></div>
+          <div class="cvx-meta-row" id="cover-days-row" style="display:none"><span class="cvx-meta-k">함께한 날</span><span class="cvx-meta-v" id="cover-days"></span></div>
           <div class="cvx-meta-row" id="cover-consultant-wrap" style="display:none"><span class="cvx-meta-k">담당 디자이너</span><span class="cvx-meta-v" id="cover-consultant"></span></div><div class="cvx-meta-row" id="cover-basis"><span class="cvx-meta-k">분석 근거</span><span class="cvx-meta-v">4단계 정밀 분석 · 88개 응답 · 11축 교차 판정</span></div>
         </div>
         <button class="cvx-scroll-cue" onclick="gotoToc()" aria-label="목차로 이동">
@@ -18736,6 +18737,41 @@ function injectCoverInfo(userName, consultantName, createdAt, bizName){
   // p1-story-name (정적 HTML 하드코딩 제거 후 동적 주입)
   var sn2 = document.getElementById('p1-story-name');
   if(sn2 && userName){ sn2.textContent = userName; }
+  // ★ smAnsCount / smFillAnsN — 답변 수 동적 계산 및 cover-basis 업데이트 [설계도 2표지 07]
+  var _cb = document.getElementById('cover-basis');
+  if(_cb){
+    try{
+      var _ra = window.__RESULT__ && window.__RESULT__.raw_answers;
+      var _ansN = 88;
+      if(_ra && typeof _ra === 'object'){
+        var _cnt = 0;
+        var _stages = ['stage1','stage2','stage3','stage4'];
+        _stages.forEach(function(st){
+          var _s = _ra[st];
+          if(_s && typeof _s === 'object'){
+            Object.values(_s).forEach(function(v){
+              if(v !== null && v !== undefined && v !== '' && v !== '모르겠어요') _cnt++;
+            });
+          }
+        });
+        if(_cnt > 0) _ansN = _cnt;
+      }
+      var _basisV = _cb.querySelector('.cvx-meta-v');
+      if(_basisV){
+        var _basisTxt = _basisV.textContent || '';
+        _basisV.textContent = _basisTxt.replace(/\d+개 응답/, _ansN+'개 응답');
+      }
+      // cover-days — 시작 후 며칠째 표시
+      var _dRow = document.getElementById('cover-days-row');
+      if(_dRow){
+        try{
+          var _ds = (typeof smDaysSinceStart==='function') ? smDaysSinceStart() : -1;
+          if(_ds >= 0){ _dRow.style.display=''; _dRow.querySelector('.cvx-meta-v').textContent = '함께한 지 '+(_ds+1)+'일째'; }
+          else { _dRow.style.display='none'; }
+        }catch(_){}
+      }
+    }catch(e){}
+  }
 }
 
 function triggerAnim() {
