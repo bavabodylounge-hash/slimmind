@@ -357,12 +357,12 @@ async def run():
                 "gender":"male",
                 "axis_scores":{"A02":50,"A04":50},
                 "bc_code_key":"BC-7",
-                "bc_nickname":"팔다리 말랑형",
+                "bc_nickname":"복압형 코어붕괴형",
                 "survey_category":"hospital",
             }, tok_hos)
             male_rid = data.get("result_id") if isinstance(data,dict) else None
             if male_rid:
-                survey_result_ids["hospital_male"] = {"id":male_rid,"bc_key":"BC-7","bc_nick":"팔다리 말랑형","gender":"male"}
+                survey_result_ids["hospital_male"] = {"id":male_rid,"bc_key":"BC-7","bc_nick":"복압형 코어붕괴형","gender":"male"}
                 ok("3단계", "BC-7 male 진단제출", f"{male_rid[:8]}...")
 
         # ─────────────────────────────────────────────────────────────────────

@@ -1901,7 +1901,9 @@ async function openSummaryModal(sessionId, userName) {
     const data = await res.json().catch(() => ({}));
 
     if (!res.ok || !data.ok) {
-      document.getElementById('sm-body').innerHTML = `
+      const _smBodyErr = document.getElementById('sm-body');
+      if (!_smBodyErr) return;
+      _smBodyErr.innerHTML = `
         <div style="text-align:center;padding:24px;color:#e53e3e;font-size:14px">
           <div style="font-size:28px;margin-bottom:8px">⚠️</div>
           ${data.error || '데이터를 불러올 수 없습니다.'}
@@ -1986,7 +1988,9 @@ async function openSummaryModal(sessionId, userName) {
         </div>`;
     }
 
-    document.getElementById('sm-body').innerHTML = `
+    const _smBodyMain = document.getElementById('sm-body');
+    if (!_smBodyMain) return;
+    _smBodyMain.innerHTML = `
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
         <span style="background:${typeColor}18;color:${typeColor};font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px">${typeLabel} 설문</span>
         ${data.bc_code ? `<span style="background:#7c3aed18;color:#7c3aed;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px">BC: ${data.bc_code}</span>` : ''}
@@ -1998,7 +2002,9 @@ async function openSummaryModal(sessionId, userName) {
         💡 초기 문진 응답 기준 · 실제 상담 전 사전 참고용 요약입니다.
       </div>`;
   } catch(e) {
-    document.getElementById('sm-body').innerHTML = `
+    const _smBodyCatch = document.getElementById('sm-body');
+    if (!_smBodyCatch) return;
+    _smBodyCatch.innerHTML = `
       <div style="text-align:center;padding:24px;color:#e53e3e;font-size:14px">
         네트워크 오류가 발생했습니다.
       </div>`;

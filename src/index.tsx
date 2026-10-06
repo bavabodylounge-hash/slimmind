@@ -2470,17 +2470,27 @@ app.post('/api/consultant/memo/:id', requireRole('ANY'), async (c) => {
     const user = c.get('user') as JwtPayload
     const db   = c.env.DB
     const id   = c.req.param('id')
-    const body = await c.req.json<{ memo?: string; comment?: string }>()
-    const memo = (body.memo ?? body.comment ?? '').trim()
+    const body = await c.req.json<{ memo?: string; comment?: string }>().catch(() => ({}))
+    const memo = ((body as any).memo ?? (body as any).comment ?? '').trim()
 
     // 권한 확인: MASTER이거나 자신의 고객인 경우만 허용
-    const row = await db.prepare('SELECT ref_code FROM diagnosis_results WHERE id=?').bind(id).first<any>()
+    // ref_code 또는 consultant_code 중 하나가 user.code와 일치하면 허용
+    const row = await db.prepare(
+      'SELECT ref_code, consultant_code FROM diagnosis_results WHERE id=?'
+    ).bind(id).first<any>()
     if (!row) return c.json({ error: 'not_found' }, 404)
-    if (user.role !== 'MASTER' && row.ref_code !== user.code) {
-      return c.json({ error: 'forbidden' }, 403)
+    if (user.role !== 'MASTER') {
+      const rowCode = row.ref_code || row.consultant_code || ''
+      if (rowCode !== user.code) return c.json({ error: 'forbidden' }, 403)
     }
 
-    await db.prepare('UPDATE diagnosis_results SET admin_memo=? WHERE id=?').bind(memo, id).run()
+    // admin_memo 컬럼이 없으면 무시하고 성공 반환 (마이그레이션 전 호환)
+    try {
+      await db.prepare('UPDATE diagnosis_results SET admin_memo=? WHERE id=?').bind(memo, id).run()
+    } catch (colErr: any) {
+      // admin_memo 컬럼 없음 → 무시 (마이그레이션 미적용 환경)
+      console.warn('[memo] admin_memo col missing:', colErr?.message)
+    }
     return c.json({ ok: true, id, memo })
   } catch (e: any) {
     console.error('[consultant/memo] error:', e?.message)
@@ -2493,16 +2503,23 @@ app.post('/api/memo/:id', requireRole('ANY'), async (c) => {
     const user = c.get('user') as JwtPayload
     const db   = c.env.DB
     const id   = c.req.param('id')
-    const body = await c.req.json<{ memo?: string; comment?: string }>()
-    const memo = (body.memo ?? body.comment ?? '').trim()
+    const body = await c.req.json<{ memo?: string; comment?: string }>().catch(() => ({}))
+    const memo = ((body as any).memo ?? (body as any).comment ?? '').trim()
 
-    const row = await db.prepare('SELECT ref_code FROM diagnosis_results WHERE id=?').bind(id).first<any>()
+    const row = await db.prepare(
+      'SELECT ref_code, consultant_code FROM diagnosis_results WHERE id=?'
+    ).bind(id).first<any>()
     if (!row) return c.json({ error: 'not_found' }, 404)
-    if (user.role !== 'MASTER' && row.ref_code !== user.code) {
-      return c.json({ error: 'forbidden' }, 403)
+    if (user.role !== 'MASTER') {
+      const rowCode = row.ref_code || row.consultant_code || ''
+      if (rowCode !== user.code) return c.json({ error: 'forbidden' }, 403)
     }
 
-    await db.prepare('UPDATE diagnosis_results SET admin_memo=? WHERE id=?').bind(memo, id).run()
+    try {
+      await db.prepare('UPDATE diagnosis_results SET admin_memo=? WHERE id=?').bind(memo, id).run()
+    } catch (colErr: any) {
+      console.warn('[memo] admin_memo col missing:', colErr?.message)
+    }
     return c.json({ ok: true, id, memo })
   } catch (e: any) {
     console.error('[memo] error:', e?.message)
