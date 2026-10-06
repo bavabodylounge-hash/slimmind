@@ -38020,6 +38020,18 @@ html body #surveyApp #stage2 .q:not(.wt-all) [id^="wtread_"], html body #surveyA
     try{ const sc=scoreAxes(); o.nax=Object.keys(sc).length||10; const AXN=(typeof SM_AXIS_NAMES_ML!=='undefined'&&(SM_AXIS_NAMES_ML[L()]||SM_AXIS_NAMES_ML.ko))||{}; const rk=(typeof rankAxes==='function')?rankAxes(sc):Object.entries(sc).sort((a,b)=>b[1]-a[1]);
       o.axes=rk.map(e=>({k:e[0],n:String(AXN[e[0]]||e[0]).split('·').slice(0,2).join('·'),v:+e[1]||0})); const cd=k=>{ const m=String(k).match(/(\d+)/); return 'BC-'+(m?m[1]:'00'); };
       o.top={code:cd(rk[0][0]),a:o.axes[0].n,b:o.axes[1]?o.axes[1].n:'',tie:(rk[1]&&(rk[0][1]-rk[1][1])<=2)}; }catch(_){}
+    /* ★ BC코드 불일치 수정: decideCode() 결과(_smFinalCode)로 실제 BC코드 표시 */
+    try{
+      const fc=window._smFinalCode;
+      if(fc && fc.code && fc.code.name){
+        const _nm=(typeof NICKNAME_TO_BC!=='undefined')?NICKNAME_TO_BC:null;
+        const _nmLocal={'아빠체형 내장비대형':'BC-3','식후기절 혈당롤러형':'BC-3','털털한 PCOS형':'BC-3','식후기절 혈당롤러코스터형':'BC-3','남산수박배형':'BC-3','남산수박배 기본형':'BC-3','배부터 무너지는 남성 호르몬 저하형':'BC-3','당이 하체로 가는 저장형':'BC-3','등살부터 차오르는 저장형':'BC-3','엄마체형 하지정체형':'BC-1','오후만되면 코끼리다리형':'BC-1','장이 막혀 다리가 무거운 형':'BC-1','목짧아지는 거북이형':'BC-2','지방흡입후 재발형':'BC-2','짊어진어깨형':'BC-2','물만마셔도요요 기본형':'BC-4','약물부작용 강제축적형':'BC-4','억제제부작용 배부름마비형':'BC-4','습관이 하체에 쌓인 형':'BC-4','습관이 팔뚝에 쌓인 형':'BC-4','습관이 온몸에 쌓인 형':'BC-4','물만마셔도요요형':'BC-4','셀룰라이트귤껍질 기본형':'BC-5','여름에도 시린 얼음장형':'BC-5','식후임산부 가스풍선형':'BC-5','셀룰라이트귤껍질형':'BC-5','스트레스성 야식부엉이형':'BC-6','팔다리거미 올챙이배형':'BC-6','출산후 바람빠진 풍선형':'BC-7','운동할수록 말벅지형':'BC-7','배만 붓는 복부 정체형':'BC-7','복압 빠진 맥주배형':'BC-7','장이 눌러 상체가 굳는 형':'BC-7','골반틀어짐 승마살형':'BC-8','안 쓰는 팔뚝 부종형':'BC-10','상체근육형':'BC-11','겨드랑이 부유방형':'BC-12','가슴 아래 접히는 흉부 정체형':'BC-12','호르몬스위치 갱년기형':'BC-13','어깨 뒤부터 바뀌는 호르몬 전환형':'BC-13','온몸이 무거운 전신 정체형':'BC-13','스트레스기절 번아웃형':'BC-14','밤에 굳는 하체 정체형':'BC-14','어깨에 얹힌 긴장 축적형':'BC-14','대사증후군 종합형':'BC-15','다리부터 신호 오는 대사 경고형':'BC-15','목 뒤부터 신호 오는 대사 경고형':'BC-15','장에서 시작된 전신 염증형':'BC-15','동시다발 다중악순환형':'BC-16','축이 무너진 전신 불균형형':'BC-16','전체적으로둔해진형':'BC-16'};
+        const map=_nm||_nmLocal;
+        const bcKey=map[fc.code.name]||'BC-?';
+        o.finalBcCode=bcKey;
+        o.finalBcName=fc.code.name;
+      }
+    }catch(_){}
     return o; }
   /* ★ 2026-09-07 저녁 — analyzing 화면이 켜지는 순간부터 옛 콘솔(제목·단계·게이지·로그)을 숨긴다. 장면 canvas 는 콘솔 엔진이 돌 때 만들어지므로 그 사이 옛 콘솔이 비치지 않게. */
   try{ const _ss=window.showStage; if(typeof _ss==='function' && !_ss.__cineHide){ const w0=function(id){ const r=_ss.apply(this,arguments); try{ if(id==='analyzing'){ const az=document.getElementById('analyzing'); if(az) az.classList.add('cine-on'); } }catch(_){} return r; }; w0.__cineHide=1; window.showStage=w0; try{ showStage=w0; }catch(_){} } }catch(_){}
@@ -38070,7 +38082,24 @@ html body #surveyApp #stage2 .q:not(.wt-all) [id^="wtread_"], html body #surveyA
       if(tt>7200 && !flashed){ flashed=true; try{ flash.animate([{opacity:0},{opacity:.9,offset:.15},{opacity:0}],{duration:900}); }catch(_){} }
       if(tt>7400){ coreR=Math.max(10,coreR*0.9); }
       if(tt>7700 && !sealed){ sealed=true; cb.classList.add('on'); let s=''; for(let i=0;i<36;i++){ const a=i*10*Math.PI/180; const r1=104, r2=i%9===0?96:100; s+='<line x1="'+(115+Math.cos(a)*r1)+'" y1="'+(115+Math.sin(a)*r1)+'" x2="'+(115+Math.cos(a)*r2)+'" y2="'+(115+Math.sin(a)*r2)+'"/>'; } c.querySelector('.tick').innerHTML=s;
-        c._sealedAt=tt; typeCode(ct, D.top?D.top.code:'BC-00'); try{ ttl.innerHTML=t.done(uName); stEl.innerHTML=t.st(D.n,(D.nax||10),D.q4).split('|').map(x=>'<span>'+x+'</span>').join(''); setTimeout(()=>stEl.classList.add('on'),600); upEl.querySelector('.uh').textContent=t.uh; const _ul=upEl.querySelectorAll('.ul div'); [t.u1,t.u2,t.u3].forEach((h,i)=>{ _ul[i].querySelector('span').innerHTML=h; }); upEl.querySelector('.uf').textContent=t.uf; setTimeout(()=>{ upEl.classList.add('on'); _ul.forEach((d,i)=>setTimeout(()=>d.classList.add('on'),350+i*420)); },1500); }catch(_){} nm.innerHTML=(D.top?t.nm(D.top.a,D.top.b,D.top.tie):'')+'<br><span style="opacity:.7;font-size:11px">'+t.seal+'</span>'; cap.innerHTML=t.c4; cap.classList.add('on'); }
+        c._sealedAt=tt;
+        /* ★ BC코드 불일치 수정: 봉인 시점에 decideCode 결과로 실제 BC코드 표시 */
+        (function(){
+          let _sealCode='BC-00', _sealName='';
+          try{
+            const fc=window._smFinalCode;
+            if(fc && fc.code && fc.code.name){
+              const _nm=(typeof NICKNAME_TO_BC!=='undefined')?NICKNAME_TO_BC:null;
+              const _nmLocal={'아빠체형 내장비대형':'BC-3','식후기절 혈당롤러형':'BC-3','털털한 PCOS형':'BC-3','식후기절 혈당롤러코스터형':'BC-3','남산수박배형':'BC-3','남산수박배 기본형':'BC-3','배부터 무너지는 남성 호르몬 저하형':'BC-3','당이 하체로 가는 저장형':'BC-3','등살부터 차오르는 저장형':'BC-3','엄마체형 하지정체형':'BC-1','오후만되면 코끼리다리형':'BC-1','장이 막혀 다리가 무거운 형':'BC-1','목짧아지는 거북이형':'BC-2','지방흡입후 재발형':'BC-2','짊어진어깨형':'BC-2','물만마셔도요요 기본형':'BC-4','약물부작용 강제축적형':'BC-4','억제제부작용 배부름마비형':'BC-4','습관이 하체에 쌓인 형':'BC-4','습관이 팔뚝에 쌓인 형':'BC-4','습관이 온몸에 쌓인 형':'BC-4','물만마셔도요요형':'BC-4','셀룰라이트귤껍질 기본형':'BC-5','여름에도 시린 얼음장형':'BC-5','식후임산부 가스풍선형':'BC-5','셀룰라이트귤껍질형':'BC-5','스트레스성 야식부엉이형':'BC-6','팔다리거미 올챙이배형':'BC-6','출산후 바람빠진 풍선형':'BC-7','운동할수록 말벅지형':'BC-7','배만 붓는 복부 정체형':'BC-7','복압 빠진 맥주배형':'BC-7','장이 눌러 상체가 굳는 형':'BC-7','골반틀어짐 승마살형':'BC-8','안 쓰는 팔뚝 부종형':'BC-10','상체근육형':'BC-11','겨드랑이 부유방형':'BC-12','가슴 아래 접히는 흉부 정체형':'BC-12','호르몬스위치 갱년기형':'BC-13','어깨 뒤부터 바뀌는 호르몬 전환형':'BC-13','온몸이 무거운 전신 정체형':'BC-13','스트레스기절 번아웃형':'BC-14','밤에 굳는 하체 정체형':'BC-14','어깨에 얹힌 긴장 축적형':'BC-14','대사증후군 종합형':'BC-15','다리부터 신호 오는 대사 경고형':'BC-15','목 뒤부터 신호 오는 대사 경고형':'BC-15','장에서 시작된 전신 염증형':'BC-15','동시다발 다중악순환형':'BC-16','축이 무너진 전신 불균형형':'BC-16','전체적으로둔해진형':'BC-16'};
+              const map=_nm||_nmLocal;
+              _sealCode=(map[fc.code.name])||'BC-?';
+              _sealName=fc.code.name;
+            } else { _sealCode=D.top?D.top.code:'BC-00'; _sealName=D.top?t.nm(D.top.a,D.top.b,D.top.tie):''; }
+          }catch(_){ _sealCode=D.top?D.top.code:'BC-00'; _sealName=D.top?t.nm(D.top.a,D.top.b,D.top.tie):''; }
+          typeCode(ct, _sealCode);
+          try{ ttl.innerHTML=t.done(uName); stEl.innerHTML=t.st(D.n,(D.nax||10),D.q4).split('|').map(x=>'<span>'+x+'</span>').join(''); setTimeout(()=>stEl.classList.add('on'),600); upEl.querySelector('.uh').textContent=t.uh; const _ul=upEl.querySelectorAll('.ul div'); [t.u1,t.u2,t.u3].forEach((h,i)=>{ _ul[i].querySelector('span').innerHTML=h; }); upEl.querySelector('.uf').textContent=t.uf; setTimeout(()=>{ upEl.classList.add('on'); _ul.forEach((d,i)=>setTimeout(()=>d.classList.add('on'),350+i*420)); },1500); }catch(_){}
+          nm.innerHTML=_sealName+'<br><span style="opacity:.7;font-size:11px">'+t.seal+'</span>'; cap.innerHTML=t.c4; cap.classList.add('on');
+        })();
       if(!finished && (tt>=14500 || c._tap)){ finished=true; done&&done(); }   /* 2026-09-08 서우님: 한 박자 빨리 */
       if(c.isConnected && tt<180000) requestAnimationFrame(frame);
     }
