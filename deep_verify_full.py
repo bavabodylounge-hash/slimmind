@@ -72,8 +72,15 @@ async def kill_overlays(page):
     """모든 오버레이/온보딩 강제 제거 (SVG className SVGAnimatedString 안전 처리)"""
     await page.evaluate("""() => {
         const patterns = ['overlay','obd','onboard','modal-bg','backdrop','dim'];
+        // 앱 핵심 모달/컨테이너 ID — 절대 삭제하면 안 됨
+        const PROTECTED_IDS = new Set([
+            'detail-modal', 'b2b-modal-overlay', 'summary-modal-overlay',
+            'qr-modal', 'rx-modal', 'ai-modal'
+        ]);
         document.querySelectorAll('*').forEach(el => {
             const id = (el.id||'').toLowerCase();
+            // 보호된 ID는 건드리지 않음
+            if (el.id && PROTECTED_IDS.has(el.id)) return;
             // SVG 요소는 className이 SVGAnimatedString이므로 typeof 체크 후 처리
             const rawCls = el.className;
             const cls = (typeof rawCls === 'string' ? rawCls : (rawCls && rawCls.baseVal ? rawCls.baseVal : '')).toLowerCase();
