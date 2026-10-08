@@ -1450,6 +1450,27 @@ async function impersonateLogin(code) {
 }
 
 async function loadDashboard() {
+  // ── AI 키 자동 감지 (대시보드 진입마다 조용히 체크) ──
+  api('GET', '/admin/ai-status').then(aiStatus => {
+    const existing = document.getElementById('ai-key-banner');
+    if (aiStatus && aiStatus.ok) {
+      if (existing) existing.remove(); // 이전 배너 제거
+      return;
+    }
+    if (existing) return; // 이미 배너 있음
+    const banner = document.createElement('div');
+    banner.id = 'ai-key-banner';
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#FEF2F2;border-bottom:2px solid #FCA5A5;padding:10px 20px;display:flex;align-items:center;gap:12px;font-size:13px;color:#991B1B;box-shadow:0 2px 8px rgba(0,0,0,.1)';
+    banner.innerHTML = `
+      <i class="fas fa-exclamation-triangle" style="font-size:16px;flex-shrink:0"></i>
+      <div style="flex:1"><b>⚠️ AI 키 없음 — 결과지 AI 기능이 옷장v4 폴백으로 작동 중입니다.</b>
+      <span style="margin-left:8px;opacity:.8">배포 후 secret 재등록 필요: <code style="background:#FEE2E2;padding:1px 5px;border-radius:4px">gsk hosted secret_put ANTHROPIC_API_KEY sk-ant-...</code></span></div>
+      <button onclick="navigateTo('settings')" style="background:#991B1B;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;flex-shrink:0"><i class="fas fa-cog"></i> 설정으로</button>
+      <button onclick="document.getElementById('ai-key-banner').remove()" style="background:none;border:none;color:#991B1B;font-size:18px;cursor:pointer;flex-shrink:0;padding:0 4px">✕</button>
+    `;
+    document.body.prepend(banner);
+  }).catch(() => {}); // 권한 없거나 오류시 무시
+
   const [data, consData, b2bData, notifData, monthReport] = await Promise.all([
     api('GET', '/admin/dashboard'),
     api('GET', '/admin/consultants?limit=200'),
@@ -4307,6 +4328,9 @@ async function loadKakaoSettings() {
   const data = await api('GET', '/settings/kakao');
   const configured = (data && data.configured);
   const talkEnabled = (data && data.talk_enabled);
+  // 자동 발송 설정 별도 조회
+  const autoData = await api('GET', '/settings/kakao-auto').catch(() => null);
+  const autoEnabled = autoData && autoData.enabled;
   document.getElementById('page-body').innerHTML = `
     <div class="card">
       <div class="card-title"><i class="fas fa-comment-dots" style="color:#FEE500"></i> 카카오 연동 설정</div>
@@ -4395,7 +4419,46 @@ async function loadKakaoSettings() {
       .toggle-switch input:checked + .toggle-slider { background:#FEE500 }
       .toggle-switch input:checked + .toggle-slider:before { transform:translateX(20px) }
     </style>
+
+    <!-- 자동 발송 설정 카드 -->
+    <div class="card" style="margin-top:20px">
+      <div class="card-title"><i class="fas fa-magic" style="color:#F59E0B"></i> 설문 완료 시 카카오 자동 발송</div>
+      <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#92400E">
+        ⚡ 고객이 4업종 설문을 완료하는 순간 자동으로 카카오 채널 메시지가 발송됩니다.<br>
+        <b>조건:</b> REST API 키 + 채널 ID 설정 완료 + 아래 토글 ON + 고객 전화번호 수집 시
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;padding:4px 0">
+        <label class="toggle-switch">
+          <input type="checkbox" id="kk-auto-enabled" ${autoEnabled?'checked':''} onchange="saveKakaoAutoSetting(this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+        <div>
+          <div style="font-size:14px;font-weight:700">${autoEnabled ? '✅ 자동 발송 활성화됨' : '⭕ 자동 발송 비활성'}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">
+            ${autoEnabled ? '설문 완료 즉시 고객에게 결과지 링크가 자동 발송됩니다.' : '수동 버튼으로만 발송됩니다.'}
+          </div>
+        </div>
+      </div>
+      <div id="kk-auto-save-result" style="margin-top:10px;font-size:12px;display:none"></div>
+    </div>
   `;
+}
+
+async function saveKakaoAutoSetting(enabled) {
+  const res = await api('PUT', '/settings/kakao-auto', { enabled }).catch(() => null);
+  const el = document.getElementById('kk-auto-save-result');
+  if (el) {
+    el.style.display = 'block';
+    if (res && res.ok) {
+      el.style.color = '#16A34A';
+      el.innerHTML = `✅ 자동 발송 ${enabled ? '활성화' : '비활성화'} 저장 완료`;
+    } else {
+      el.style.color = '#DC2626';
+      el.innerHTML = '저장 실패. 다시 시도해주세요.';
+    }
+    setTimeout(() => { el.style.display = 'none'; }, 3000);
+  }
+  loadKakaoSettings(); // UI 갱신
 }
 
 async function saveKakaoSettings() {

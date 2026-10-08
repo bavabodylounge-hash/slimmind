@@ -245,6 +245,73 @@ function requireRole(role: 'MASTER' | 'CONSULTANT' | 'ANY') {
   }
 }
 
+// ── 카카오 자동 발송 헬퍼 ─────────────────────────────────────────────
+// 설문 완료 시 호출. settings_kv에서 auto_kakao_enabled 확인 후 발송
+// 실패해도 diagnosis 응답에 영향 없음 (fire-and-forget)
+async function triggerKakaoAutoSend(
+  db: D1Database,
+  opts: { result_id: string; user_name: string; phone?: string | null; bc_primary?: string | null; bc_secondary?: string | null; redirect_path: string }
+): Promise<void> {
+  try {
+    // auto_kakao_enabled 설정 확인
+    const autoRow = await db.prepare(
+      "SELECT value FROM settings_kv WHERE key = 'kakao_auto_enabled'"
+    ).first<{ value: string }>()
+    if (!autoRow || autoRow.value !== 'true') return  // 자동 발송 비활성 → skip
+
+    // REST API 키 확인
+    const keyRow = await db.prepare(
+      "SELECT value FROM settings_kv WHERE key = 'kakao_rest_api_key'"
+    ).first<{ value: string }>()
+    const restKey = keyRow?.value || ''
+    if (!restKey) return  // 키 없음 → skip (클립보드 폴백 불가 — 서버 자동발송은 실 API만)
+
+    // 채널 ID 확인
+    const chRow = await db.prepare(
+      "SELECT value FROM settings_kv WHERE key = 'kakao_channel_id'"
+    ).first<{ value: string }>()
+    const channelId = chRow?.value || ''
+
+    const resultUrl = `https://slimmind.kr/${opts.redirect_path}`
+    const messageText = [
+      `[슬림마인드 바디코드 분석 결과] 🌿`,
+      ``,
+      `안녕하세요, ${opts.user_name || '고객'}님!`,
+      `바디코드 정밀 분석이 완료되었습니다.`,
+      ``,
+      `📊 주요 체형: ${opts.bc_primary || '분석완료'}`,
+      opts.bc_secondary ? `📌 보조 체형: ${opts.bc_secondary}` : null,
+      ``,
+      `👇 전체 결과 보러가기`,
+      resultUrl,
+      ``,
+      `궁금한 점은 언제든지 문의해 주세요 😊`,
+    ].filter(l => l !== null).join('\n')
+
+    if (channelId && opts.phone) {
+      // 카카오 채널 메시지 실 발송
+      const kakaoRes = await fetch('https://kapi.kakao.com/v1/api/talk/channels/message/send', {
+        method: 'POST',
+        headers: {
+          'Authorization': `KakaoAK ${restKey}`,
+          'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
+        },
+        body: new URLSearchParams({
+          channel_public_id: channelId,
+          text: messageText,
+        }).toString(),
+      })
+      const status = kakaoRes.status
+      console.log(`[kakao-auto] ${opts.result_id} → ${status} (채널 메시지)`)
+    } else {
+      // 채널ID 없거나 phone 없음 → 로그만
+      console.log(`[kakao-auto] ${opts.result_id} → skip (채널ID/phone 없음, clipboard 불가)`)
+    }
+  } catch(e) {
+    console.warn('[kakao-auto] 자동발송 실패 (무시):', String(e).slice(0, 80))
+  }
+}
+
 // ── 고객 공개 AI 슬롯 미들웨어 ──────────────────────────────────────
 // JWT 있으면 user 세팅, 없어도 next() 통과 (result_id 소유권은 핸들러에서 검증)
 function allowPublicAI() {
@@ -5841,56 +5908,132 @@ app.post('/api/consultant/weight-checkin', requireRole('ANY'), async (c) => {
 // ══════════════════════════════════════════════════════════════════
 
 // GET /api/settings/kakao — 카카오 설정 조회
+// 응답 필드: rest_api_key(마스킹), admin_key(마스킹), channel_id, sender_key, talk_enabled, configured
 app.get('/api/settings/kakao', requireRole('ANY'), async (c) => {
   const db = c.env.DB as D1Database | undefined
-  if (!db) return c.json({ kakao_app_key: '', kakao_enabled: false })
+  if (!db) return c.json({ rest_api_key: '', admin_key: '', channel_id: '', sender_key: '', talk_enabled: false, configured: false })
   try {
-    const row = await db.prepare(
-      "SELECT value FROM settings_kv WHERE key = 'kakao_app_key'"
-    ).first<any>()
-    const key = row?.value || ''
-    return c.json({ kakao_app_key: key ? key.slice(0,4) + '****' : '', kakao_enabled: !!key })
+    const keys = ['kakao_rest_api_key','kakao_admin_key','kakao_channel_id','kakao_sender_key','kakao_talk_enabled']
+    const rows = await db.prepare(
+      `SELECT key, value FROM settings_kv WHERE key IN ('kakao_rest_api_key','kakao_admin_key','kakao_channel_id','kakao_sender_key','kakao_talk_enabled')`
+    ).all<{key:string; value:string}>()
+    const map: Record<string,string> = {}
+    for (const r of (rows.results || [])) map[r.key] = r.value
+    const restKey = map['kakao_rest_api_key'] || ''
+    const adminKey = map['kakao_admin_key'] || ''
+    return c.json({
+      rest_api_key: restKey ? restKey.slice(0,4) + '****' + restKey.slice(-4) : '',
+      admin_key:    adminKey ? adminKey.slice(0,4) + '****' : '',
+      channel_id:   map['kakao_channel_id']  || '',
+      sender_key:   map['kakao_sender_key']  || '',
+      talk_enabled: map['kakao_talk_enabled'] === 'true',
+      configured:   !!restKey,
+    })
   } catch {
-    return c.json({ kakao_app_key: '', kakao_enabled: false })
+    return c.json({ rest_api_key: '', admin_key: '', channel_id: '', sender_key: '', talk_enabled: false, configured: false })
   }
 })
 
-// PUT /api/settings/kakao — 카카오 API 키 저장 (마스터만)
+// PUT /api/settings/kakao — 카카오 설정 저장 (마스터만)
+// body: { rest_api_key, admin_key, channel_id, sender_key, talk_enabled }
 app.put('/api/settings/kakao', requireRole('MASTER'), async (c) => {
   const db = c.env.DB as D1Database | undefined
+  if (!db) return c.json({ ok: false, error: 'DB 없음' }, 500)
   try {
-    const body = await c.req.json() as { kakao_app_key?: string }
-    const key = (body.kakao_app_key || '').trim()
-    if (!db) return c.json({ ok: false, error: 'DB 없음' }, 500)
-    await db.prepare(
-      "INSERT OR REPLACE INTO settings_kv (key, value) VALUES ('kakao_app_key', ?)"
-    ).bind(key).run()
-    return c.json({ ok: true, message: key ? '카카오 API 키가 저장되었습니다.' : '카카오 API 키가 삭제되었습니다.' })
+    const body = await c.req.json() as {
+      rest_api_key?: string; admin_key?: string
+      channel_id?: string;  sender_key?: string; talk_enabled?: boolean
+    }
+    const pairs: [string, string][] = [
+      ['kakao_rest_api_key', (body.rest_api_key || '').trim()],
+      ['kakao_admin_key',    (body.admin_key    || '').trim()],
+      ['kakao_channel_id',   (body.channel_id   || '').trim()],
+      ['kakao_sender_key',   (body.sender_key   || '').trim()],
+      ['kakao_talk_enabled', body.talk_enabled ? 'true' : 'false'],
+    ]
+    for (const [k, v] of pairs) {
+      if (v === '' || v === 'false') {
+        await db.prepare("DELETE FROM settings_kv WHERE key=?").bind(k).run()
+      } else {
+        await db.prepare(
+          "INSERT OR REPLACE INTO settings_kv (key, value) VALUES (?, ?)"
+        ).bind(k, v).run()
+      }
+    }
+    return c.json({ ok: true, success: true, message: '카카오 설정이 저장되었습니다.' })
   } catch(e) {
     return c.json({ ok: false, error: String(e) }, 500)
   }
 })
 
-// POST /api/kakao/send — 카카오 메시지 발송 (API 키 있을 때만)
+// GET /api/settings/kakao-auto — 카카오 자동 발송 설정 조회
+app.get('/api/settings/kakao-auto', requireRole('ANY'), async (c) => {
+  const db = c.env.DB as D1Database | undefined
+  if (!db) return c.json({ enabled: false })
+  try {
+    const row = await db.prepare(
+      "SELECT value FROM settings_kv WHERE key = 'kakao_auto_enabled'"
+    ).first<{value:string}>()
+    return c.json({ enabled: row?.value === 'true' })
+  } catch {
+    return c.json({ enabled: false })
+  }
+})
+
+// PUT /api/settings/kakao-auto — 카카오 자동 발송 ON/OFF (마스터만)
+app.put('/api/settings/kakao-auto', requireRole('MASTER'), async (c) => {
+  const db = c.env.DB as D1Database | undefined
+  if (!db) return c.json({ ok: false, error: 'DB 없음' }, 500)
+  try {
+    const { enabled } = await c.req.json() as { enabled: boolean }
+    if (enabled) {
+      await db.prepare(
+        "INSERT OR REPLACE INTO settings_kv (key, value) VALUES ('kakao_auto_enabled', 'true')"
+      ).run()
+    } else {
+      await db.prepare(
+        "DELETE FROM settings_kv WHERE key = 'kakao_auto_enabled'"
+      ).run()
+    }
+    return c.json({ ok: true, enabled: !!enabled })
+  } catch(e) {
+    return c.json({ ok: false, error: String(e) }, 500)
+  }
+})
+
+// POST /api/kakao/send — 카카오 메시지 실 발송
+// body: { result_id?, user_name?, bc_primary?, bc_secondary?, custom_message?, phone?, type? }
+// 1) REST API 키 + 채널 ID 있음 → 카카오 채널 메시지 실발송
+// 2) REST API 키만 있음        → 나에게 보내기 (테스트/폴백)
+// 3) 키 없음                   → 클립보드용 텍스트 반환
 app.post('/api/kakao/send', requireRole('ANY'), async (c) => {
   const db = c.env.DB as D1Database | undefined
   try {
     const body = await c.req.json() as {
-      result_id?: string
-      user_name?: string
-      bc_primary?: string
-      bc_secondary?: string
-      custom_message?: string
+      result_id?: string; user_name?: string
+      bc_primary?: string; bc_secondary?: string
+      custom_message?: string; phone?: string; type?: string
     }
-    // API 키 확인
-    let kakaoKey = ''
+
+    // ── 설정 로드 ──
+    let restKey = '', channelId = '', senderKey = '', talkEnabled = false
     if (db) {
-      const row = await db.prepare("SELECT value FROM settings_kv WHERE key = 'kakao_app_key'").first<any>()
-      kakaoKey = row?.value || ''
+      const rows = await db.prepare(
+        `SELECT key, value FROM settings_kv WHERE key IN ('kakao_rest_api_key','kakao_channel_id','kakao_sender_key','kakao_talk_enabled')`
+      ).all<{key:string; value:string}>()
+      const m: Record<string,string> = {}
+      for (const r of (rows.results || [])) m[r.key] = r.value
+      restKey     = m['kakao_rest_api_key'] || ''
+      channelId   = m['kakao_channel_id']   || ''
+      senderKey   = m['kakao_sender_key']   || ''
+      talkEnabled = m['kakao_talk_enabled'] === 'true'
     }
-    // 메시지 텍스트 생성
-    const resultUrl = `https://slimmind.kr/result/${body.result_id}`
-    const message = body.custom_message || [
+
+    // ── 메시지 텍스트 생성 ──
+    const resultUrl = body.result_id
+      ? `https://slimmind.kr/result/${body.result_id}`
+      : 'https://slimmind.kr'
+    const messageText = body.custom_message || [
       `[슬림마인드 바디코드 분석 결과] 🌿`,
       ``,
       `안녕하세요, ${body.user_name || '고객'}님!`,
@@ -5905,24 +6048,64 @@ app.post('/api/kakao/send', requireRole('ANY'), async (c) => {
       `궁금한 점은 언제든지 문의해 주세요 😊`,
     ].filter(l => l !== null).join('\n')
 
-    if (!kakaoKey) {
-      // API 키 없음 → 클립보드용 메시지만 반환
+    // ── 키 없음 → 클립보드 폴백 ──
+    if (!restKey) {
       return c.json({
-        ok: true,
-        method: 'clipboard',
-        message,
-        notice: '카카오 API 키가 설정되지 않았습니다. 클립보드 복사로 전송하세요.'
+        ok: true, method: 'clipboard', sent: false,
+        message: messageText, clipboard_text: messageText,
+        notice: 'REST API 키가 설정되지 않았습니다. 클립보드 복사로 전송하세요.'
       })
     }
 
-    // TODO: 카카오 API 키 있을 때 실제 발송 (나중에 구현)
-    // const res = await fetch('https://kapi.kakao.com/v2/api/talk/memo/default/send', { ... })
+    // ── 카카오 채널 메시지 발송 (REST API 키 + 채널ID 있을 때) ──
+    // 카카오 채널 메시지: 비즈니스 채널로 특정 고객에게 발송
+    // 채널 ID 없으면 "나에게 보내기" (테스트용)
+    if (channelId && body.phone) {
+      // 카카오 채널 메시지: uuid는 수신자 UUID (access_token 방식 → 서버 측에서 REST로)
+      // 실제 서비스 시 알림톡 API는 sender_key + 승인된 템플릿 필요
+      // 현재 구현: 카카오 채널 메시지 (채널 추가한 사용자 대상)
+      try {
+        const kakaoRes = await fetch('https://kapi.kakao.com/v1/api/talk/channels/message/send', {
+          method: 'POST',
+          headers: {
+            'Authorization': `KakaoAK ${restKey}`,
+            'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
+          },
+          body: new URLSearchParams({
+            channel_public_id: channelId,
+            text: messageText,
+          }).toString(),
+        })
+        const kakaoJson: any = await kakaoRes.json().catch(() => ({}))
+        if (kakaoRes.ok) {
+          return c.json({ ok: true, sent: true, method: 'kakao_channel', message: messageText, kakao_result: kakaoJson })
+        }
+        // 카카오 API 오류 → 상세 에러 + 클립보드 폴백
+        return c.json({
+          ok: true, sent: false, method: 'clipboard',
+          message: messageText, clipboard_text: messageText,
+          kakao_error: kakaoJson,
+          notice: `카카오 채널 API 오류(${kakaoRes.status}). 클립보드 방식으로 전송하세요.`
+        })
+      } catch (fetchErr) {
+        return c.json({
+          ok: true, sent: false, method: 'clipboard',
+          message: messageText, clipboard_text: messageText,
+          notice: `카카오 채널 API 호출 실패. 클립보드 방식으로 전송하세요. (${String(fetchErr)})`
+        })
+      }
+    }
+
+    // ── 나에게 보내기 (채널ID 없거나 phone 없을 때 — 주로 테스트) ──
+    // 카카오 "나에게 보내기"는 access_token 필요 (REST API 키 단독 불가)
+    // → REST API 키만으로는 서버→특정 사용자 발송 불가
+    // → 클립보드 폴백 + 안내 메시지 반환
     return c.json({
-      ok: true,
-      method: 'kakao_api',
-      message,
-      notice: '카카오 알림톡 발송 완료 (API 연동됨)'
+      ok: true, sent: false, method: 'clipboard',
+      message: messageText, clipboard_text: messageText,
+      notice: '채널 메시지 발송을 위해 채널 ID와 수신자 전화번호가 필요합니다. 클립보드 방식으로 전송하세요.'
     })
+
   } catch(e) {
     return c.json({ ok: false, error: String(e) }, 500)
   }
@@ -8569,6 +8752,13 @@ app.post('/api/h/diagnosis', async (c) => {
       console.warn('[/api/h/diagnosis] diagnosis_results 동기화 실패(무시):', drErr?.message)
     }
 
+    // ── 카카오 자동 발송 트리거 (fire-and-forget) ──
+    triggerKakaoAutoSend(db, {
+      result_id: resultId, user_name: user_name || '고객',
+      phone: phone || null, bc_primary: resolvedBcCode || null,
+      bc_secondary: null, redirect_path: `result-hospital/${resultId}`
+    }).catch(() => {})
+
     return c.json({
       ok: true,
       result_id: resultId,
@@ -10328,6 +10518,13 @@ app.post('/api/a/diagnosis', async (c) => {
         await db.prepare(`INSERT INTO survey_notifications (ref_code, result_id, user_name, notified_at) VALUES (?, ?, ?, datetime('now'))`).bind(ref_code, resultId, user_name || null).run()
       } catch (_) {}
     }
+    // ── 카카오 자동 발송 트리거 (fire-and-forget) ──
+    triggerKakaoAutoSend(db, {
+      result_id: resultId, user_name: user_name || '고객',
+      phone: (body as any).phone || null, bc_primary: resolvedBcCode || null,
+      bc_secondary: null, redirect_path: `result-aesthetic/${resultId}`
+    }).catch(() => {})
+
     return c.json({ ok: true, result_id: resultId, redirect: `/result-aesthetic/${resultId}` })
   } catch (e: any) {
     console.error('[/api/a/diagnosis]', e)
@@ -10923,6 +11120,13 @@ app.post('/api/f/diagnosis', async (c) => {
       console.warn('[/api/f/diagnosis] diagnosis_results 동기화 실패(무시):', drErr?.message)
     }
 
+    // ── 카카오 자동 발송 트리거 (fire-and-forget) ──
+    triggerKakaoAutoSend(db, {
+      result_id: id, user_name: (body as any).user_name || '고객',
+      phone: (body as any).phone || null, bc_primary: (body as any).bc_primary || null,
+      bc_secondary: null, redirect_path: `result-fitness/${id}`
+    }).catch(() => {})
+
     return c.json({
       ok:          true,
       id,
@@ -11471,6 +11675,13 @@ app.post('/api/s/diagnosis', async (c) => {
         await db.prepare(`INSERT INTO survey_notifications (ref_code, result_id, user_name, notified_at) VALUES (?, ?, ?, datetime('now'))`).bind(ref_code, resultId, user_name || null).run()
       } catch (_) {}
     }
+    // ── 카카오 자동 발송 트리거 (fire-and-forget) ──
+    triggerKakaoAutoSend(db, {
+      result_id: resultId, user_name: user_name || '고객',
+      phone: (body as any).phone || null, bc_primary: resolvedBcCode || null,
+      bc_secondary: null, redirect_path: `result-salon/${resultId}`
+    }).catch(() => {})
+
     return c.json({ ok: true, result_id: resultId, redirect: `/result-salon/${resultId}` })
   } catch (e: any) {
     console.error('[/api/s/diagnosis]', e)
