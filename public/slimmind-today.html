@@ -123,17 +123,68 @@ html[data-ind="salon"] .hd-chip{background:rgba(240,180,140,.16);border-color:rg
 .hd-rf{background:rgba(220,50,50,.2);border:1px solid rgba(220,50,50,.4);
   border-radius:20px;padding:3px 10px;font-size:10px;color:#ff9090;font-weight:800;}
 
-/* ── 진행 링 ── */
-.prog{display:flex;align-items:center;gap:14px;margin-top:18px;
+/* ── 히어로 행 (캐릭터 원형 + 텍스트) ── */
+.hd-hr{display:flex;align-items:flex-start;gap:14px;margin-top:18px;}
+/* ── 캐릭터 원형 컨테이너 (78×78px, result-hospital.html .ow 구조 동일) ── */
+.hd-ow{width:78px;height:78px;flex:0 0 auto;position:relative;}
+.hd-ow .rg{position:absolute;inset:0;border-radius:50%;
+  background:conic-gradient(from -90deg,var(--ok,#b5452e) calc(var(--p,0)*1%),rgba(173,101,44,.13) 0);
+  transition:background .8s cubic-bezier(.22,.9,.3,1);z-index:1;}
+/* hospital 기본 진행링 강조색 */
+.hd-ow .rg{--ok:#9b7ee0;}
+html[data-ind="fitness"] .hd-ow .rg{--ok:#6d89b5;}
+html[data-ind="esthetic"] .hd-ow .rg{--ok:#a17ba7;}
+html[data-ind="salon"] .hd-ow .rg{--ok:#ae8f74;}
+.hd-ow .in{position:absolute;inset:5px;border-radius:50%;overflow:hidden;
+  background:radial-gradient(circle at 50% 36%,#fffefb,#f5ebdf);z-index:1;}
+.hd-ow .in img{position:absolute;left:50%;top:50%;
+  transform:translate(-50%,-50%) scale(var(--cs,1));
+  width:100%;height:100%;object-fit:cover;object-position:center center;}
+.hd-ow .in img.lid{opacity:0;}
+.hd-ow.z .in img.lid{opacity:1;}   /* 체크 전 = 눈 감음(자는 중) */
+.hd-ow.w .in img.lid{animation:hdBk 4s ease-in-out infinite;}
+@keyframes hdBk{0%,92%,100%{opacity:0}94%,97%{opacity:1}}
+/* 캐릭터 후광 */
+.hd-ow::before{content:'';position:absolute;inset:-9px;border-radius:50%;pointer-events:none;z-index:0;
+  background:radial-gradient(circle,rgba(155,126,224,.35) 0,transparent 68%);filter:blur(3px);
+  animation:hdHaloZ 6.5s ease-in-out infinite;}
+.hd-ow.w::before{animation:hdHaloW 4.2s ease-in-out infinite;}
+html[data-ind="fitness"] .hd-ow::before{background:radial-gradient(circle,rgba(109,137,181,.35) 0,transparent 68%);}
+html[data-ind="esthetic"] .hd-ow::before{background:radial-gradient(circle,rgba(161,123,167,.35) 0,transparent 68%);}
+html[data-ind="salon"] .hd-ow::before{background:radial-gradient(circle,rgba(174,143,116,.35) 0,transparent 68%);}
+@keyframes hdHaloZ{0%,100%{opacity:.10;transform:scale(.97)}50%{opacity:.20;transform:scale(1.06)}}
+@keyframes hdHaloW{0%,100%{opacity:.18;transform:scale(.98)}50%{opacity:.34;transform:scale(1.07)}}
+@media(prefers-reduced-motion:reduce){.hd-ow::before{animation:none}}
+/* BC 코드 뱃지 */
+.hd-ow .bd{position:absolute;right:-3px;bottom:-1px;z-index:2;
+  background:#9b7ee0;color:#fff;font-size:9px;font-weight:800;
+  border-radius:8px;padding:3px 7px;box-shadow:0 2px 8px rgba(60,30,90,.3);}
+html[data-ind="fitness"] .hd-ow .bd{background:#6d89b5;}
+html[data-ind="esthetic"] .hd-ow .bd{background:#a17ba7;}
+html[data-ind="salon"] .hd-ow .bd{background:#ae8f74;}
+/* 텍스트 영역 */
+.hd-ht{flex:1;min-width:0;padding-top:3px;}
+.hd-ht .ey{font-size:11px;font-weight:800;color:#c9aeff;letter-spacing:.45px;margin-bottom:4px;}
+html[data-ind="fitness"] .hd-ht .ey{color:#8fc4ff;}
+html[data-ind="esthetic"] .hd-ht .ey{color:#f0b8f8;}
+html[data-ind="salon"] .hd-ht .ey{color:#f0b48c;}
+.hd-ht h1{font-size:22px;font-weight:900;letter-spacing:-.75px;line-height:1.26;color:#f2ecff;}
+.hd-ht h1 em{font-style:normal;color:#c9aeff;}
+html[data-ind="fitness"] .hd-ht h1 em{color:#8fc4ff;}
+html[data-ind="esthetic"] .hd-ht h1 em{color:#f0b8f8;}
+html[data-ind="salon"] .hd-ht h1 em{color:#f0b48c;}
+.hd-ht .sb{font-size:12px;color:rgba(200,185,230,.7);margin-top:7px;line-height:1.56;word-break:keep-all;}
+/* ── 진행 링 (하단 세부 정보 박스) ── */
+.prog{display:flex;align-items:center;gap:14px;margin-top:14px;
   background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
-  border-radius:15px;padding:14px 16px;}
-.prog-ring{position:relative;width:52px;height:52px;flex-shrink:0;}
+  border-radius:15px;padding:12px 14px;}
+.prog-ring{position:relative;width:40px;height:40px;flex-shrink:0;}
 .prog-ring svg{transform:rotate(-90deg);}
 .prog-ring-tx{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-  font-size:14px;font-weight:900;color:#f2ece0;letter-spacing:-.5px;}
+  font-size:12px;font-weight:900;color:#f2ece0;letter-spacing:-.5px;}
 .prog-bd{flex:1;min-width:0;}
-.prog-t{font-size:13.5px;font-weight:900;color:#f2ece0;margin-bottom:3px;letter-spacing:-.3px;}
-.prog-s{font-size:11.5px;font-weight:600;color:#a89880;line-height:1.5;word-break:keep-all;}
+.prog-t{font-size:13px;font-weight:900;color:#f2ece0;margin-bottom:2px;letter-spacing:-.3px;}
+.prog-s{font-size:11px;font-weight:600;color:#a89880;line-height:1.5;word-break:keep-all;}
 /* ── 목표감량 마일스톤 바 ── */
 .milestone-bar{flex-direction:column;gap:2px;margin-top:8px;padding:8px 12px;
   border-radius:10px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.14);}
@@ -506,19 +557,41 @@ html[data-ind="salon"] .hd-chip{background:rgba(240,180,140,.16);border-color:rg
     <div class="hd-brand">SLIMMIND · DAILY</div>
     <button class="hd-full" onclick="openFull()">전체 결과지</button>
   </div>
-  <div class="hd-day" id="hd-day">오늘 · <span class="dow">월요일</span></div>
-  <div class="hd-meta">
+
+  <!-- ★ 히어로 행: 캐릭터 원형(78px) + 텍스트 — result-hospital.html .hr/.ow/.ht 구조 동일 -->
+  <div class="hd-hr">
+    <!-- 캐릭터 원형 컨테이너 -->
+    <div class="hd-ow z" id="hd-ow">
+      <div class="rg" id="hd-rg"></div>
+      <div class="in">
+        <img id="ow-open" alt="">
+        <img class="lid" id="ow-lid" alt="">
+      </div>
+      <span class="bd" id="hd-bd"></span>
+    </div>
+    <!-- 텍스트 영역 -->
+    <div class="hd-ht">
+      <div class="ey" id="hd-ey"></div>
+      <h1 id="hd-h1"></h1>
+      <div class="sb" id="hd-sb"></div>
+    </div>
+  </div>
+
+  <!-- 하단 메타 정보: 주차·이름·오행·redFlag 배지 -->
+  <div class="hd-meta" style="margin-top:10px;">
     <span class="hd-chip" id="hd-week">회복기 1주차</span>
     <span id="hd-name">지현 님</span>
     <span id="hd-ohaeng-badge"></span>
     <span id="hd-rf-badges"></span>
   </div>
+
+  <!-- 진행 체크 박스 (오늘 n/3) -->
   <div class="prog">
     <div class="prog-ring">
-      <svg width="52" height="52" viewBox="0 0 52 52">
-        <circle cx="26" cy="26" r="22" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="5"/>
-        <circle id="ring-fl" cx="26" cy="26" r="22" fill="none" stroke="#f0b48c" stroke-width="5"
-                stroke-linecap="round" stroke-dasharray="138.2" stroke-dashoffset="138.2"
+      <svg width="40" height="40" viewBox="0 0 40 40">
+        <circle cx="20" cy="20" r="16" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="4"/>
+        <circle id="ring-fl" cx="20" cy="20" r="16" fill="none" stroke="#c9aeff" stroke-width="4"
+                stroke-linecap="round" stroke-dasharray="100.5" stroke-dashoffset="100.5"
                 style="transition:stroke-dashoffset .6s cubic-bezier(.22,1,.36,1)"/>
       </svg>
       <div class="prog-ring-tx" id="ring-tx">0/3</div>
@@ -1118,13 +1191,88 @@ function _getTopAxis(rank){
   return entry ? { id: entry[0], score: entry[1] } : null;
 }
 
-/* ── 헤더 렌더 (오행 배지 + redFlags 경고) ── */
+/* ★★ BC코드 → 동물 캐릭터 이미지 매핑 (result-hospital.html 동일 구조) ── */
+var _BC_ANIMAL_MAP = {
+  'BC-1':'01_단단내장형','BC-2':'02_물렁피하형','BC-3':'03_가스팽만형',
+  'BC-4':'04_올챙이배형','BC-5':'05_코끼리다리형','BC-6':'06_귤껍질하체형',
+  'BC-7':'07_말벅지형','BC-8':'08_승마살형','BC-9':'09_거북이형',
+  'BC-10':'10_팔뚝부종형','BC-11':'11_상체근육형','BC-12':'12_부유방형',
+  'BC-13':'13_갱년기변환형','BC-14':'14_번아웃무기력형','BC-15':'15_대사증후군형',
+  'BC-16':'16_다중악순환형'
+};
+function smCharCode(){
+  var bc = BC_CODE || '';
+  if (!bc) {
+    try { var d = loadData()||{}; bc = (d.bc_code||d.bc_primary||d.bc||d.code||'').trim(); } catch(e){}
+  }
+  if (!bc) { try { bc = (window.__BC_RESULT__ && window.__BC_RESULT__.bcCode)||''; } catch(e){} }
+  if (!bc) bc = 'BC-6';
+  return bc.replace(/\s/g,'').toUpperCase();
+}
+function charImg(bcCode){
+  var key = (bcCode||'').replace(/\s/g,'').toUpperCase();
+  var nm  = _BC_ANIMAL_MAP[key] || _BC_ANIMAL_MAP['BC-6'];
+  return '/static/bc-animals/' + nm + '.png';
+}
+function charScale(){ return 1.0; }
+
+/* ── 헤더 렌더 (캐릭터 이미지 + 오행 배지 + redFlags 경고) ── */
 function renderHead(){
-  document.getElementById('hd-day').innerHTML = '오늘 · <span class="dow">' + DAYS[TODAY] + '요일</span>';
+  // ── ① 히어로 텍스트 (hd-ey / hd-h1 / hd-sb) ──
+  var _eyEl = document.getElementById('hd-ey');
+  var _h1El = document.getElementById('hd-h1');
+  var _sbEl = document.getElementById('hd-sb');
+  if (_eyEl && _h1El && _sbEl) {
+    var _nd = dayState(TODAY);
+    _eyEl.textContent = '오늘도 관리받는 중 · ' + WK + '주차 ' + (TODAY+1) + '일째';
+    if (_nd === 0) {
+      _h1El.innerHTML = NAME + ' 님, 오늘 할 일 <em>딱 3가지</em>';
+      _sbEl.textContent = '하나만 체크해도 오늘은 성공이에요.';
+    } else if (_nd < 3) {
+      _h1El.innerHTML = NAME + ' 님, <em>' + (3-_nd) + '가지</em> 남았어요';
+      _sbEl.textContent = '남은 걸 이어가시면 됩니다. 잘하고 있어요!';
+    } else {
+      _h1El.innerHTML = NAME + ' 님, <em>오늘은 끝</em>났어요';
+      _sbEl.textContent = '이 기록이 상담 자료가 됩니다. 내일 처방은 오늘 체크를 보고 조정돼요.';
+    }
+  }
+
+  // ── ② BC 코드 뱃지 (hd-bd) ──
+  var _bdEl = document.getElementById('hd-bd');
+  if (_bdEl) {
+    var _bc = smCharCode();
+    _bdEl.textContent = _bc;
+  }
+
+  // ── ③ 캐릭터 이미지 설정 (ow-open / ow-lid) ──
+  var _owEl = document.getElementById('hd-ow');
+  var _ooEl = document.getElementById('ow-open');
+  var _olEl = document.getElementById('ow-lid');
+  if (_owEl && _ooEl && _olEl) {
+    var _bc2 = smCharCode();
+    var _imgSrc = charImg(_bc2);
+    if (_ooEl.getAttribute('src') !== _imgSrc) {
+      _ooEl.src = _imgSrc;
+      _olEl.src = _imgSrc;
+    }
+    _owEl.style.setProperty('--cs', String(charScale()));
+    // 체크 여부에 따라 z(자는 중) / w(깨어서 깜빡) 클래스
+    var _done = dayState(TODAY);
+    _owEl.className = 'hd-ow ' + (_done > 0 ? 'w' : 'z');
+  }
+
+  // ── ④ 진행링 (hd-rg) --p CSS 변수 ──
+  var _rgEl = document.getElementById('hd-rg');
+  if (_rgEl) {
+    var _nd2 = dayState(TODAY);
+    _rgEl.style.setProperty('--p', String(Math.round(_nd2 / 3 * 100)));
+  }
+
+  // ── ⑤ 주차·이름 배지 ──
   document.getElementById('hd-week').textContent = PHASE + ' ' + WK + '주차';
   document.getElementById('hd-name').textContent = NAME + ' 님';
 
-  // 오행 배지
+  // ── ⑥ 오행 배지 ──
   var ohEl = document.getElementById('hd-ohaeng-badge');
   if (OHAENG_KEY && OHAENG_LABEL[OHAENG_KEY]) {
     ohEl.className = 'hd-ohaeng ' + OHAENG_KEY;
@@ -1134,7 +1282,7 @@ function renderHead(){
     ohEl.style.display = 'none';
   }
 
-  // redFlags 경고 배지 (DIABETES/THYROID/YOYO/PCOS/HTN 등)
+  // ── ⑦ redFlags 경고 배지 (DIABETES/THYROID/YOYO/PCOS/HTN 등) ──
   var rfEl = document.getElementById('hd-rf-badges');
   var RF_LABEL = {
     'DIABETES':'당뇨 주의', 'THYROID':'갑상선', 'PCOS':'PCOS',
@@ -1147,18 +1295,18 @@ function renderHead(){
   });
   rfEl.innerHTML = rfHtml;
 
-  // ── 목표감량 마일스톤 바 ──
+  // ── ⑧ 목표감량 마일스톤 바 ──
   var msEl = document.getElementById('milestone-bar');
   if (msEl && META) {
     var cw = Number(META.curWeight  || 0);
     var gw = Number(META.goalWeight || 0);
     if (cw > 0 && gw > 0 && cw > gw) {
-      var totalLoss  = cw - gw;                          // 목표 감량
-      var wkLoss     = totalLoss / 12;                   // 주당 예상 감량
-      var doneWk     = Math.max(0, (WK || 1) - 1);      // 완료 주차
+      var totalLoss  = cw - gw;
+      var wkLoss     = totalLoss / 12;
+      var doneWk     = Math.max(0, (WK || 1) - 1);
       var estNow     = Math.max(gw, Math.round((cw - wkLoss * doneWk) * 10) / 10);
       var pct        = Math.round(((cw - estNow) / totalLoss) * 100);
-      var nextMile   = Math.round((cw - wkLoss * (doneWk + 4)) * 10) / 10; // 4주 뒤 예상
+      var nextMile   = Math.round((cw - wkLoss * (doneWk + 4)) * 10) / 10;
       msEl.innerHTML =
         '<span class="ms-now">📍 ' + cw + 'kg → 목표 ' + gw + 'kg</span>' +
         '<span class="ms-est">현재 추정 <b>' + estNow + 'kg</b> (' + WK + '주차 ' + pct + '% 달성)</span>' +
@@ -2565,16 +2713,22 @@ function streak(){
   return n;
 }
 
-/* ── 진행 링 ── */
+/* ── 진행 링 (하단 박스 SVG r=16, 둘레=100.53) ── */
 function renderProg(){
   var n = dayState(TODAY), pct = n/3;
-  var C = 2 * Math.PI * 22;
-  document.getElementById('ring-fl').setAttribute('stroke-dashoffset', String(C * (1-pct)));
+  var C = 2 * Math.PI * 16;  // r=16 → 100.53
+  document.getElementById('ring-fl').setAttribute('stroke-dashoffset', String(Math.round(C * (1-pct) * 10)/10));
   document.getElementById('ring-tx').textContent = n + '/3';
   var t = document.getElementById('prog-t'), s = document.getElementById('prog-s');
   if (n === 0){ t.textContent = '오늘 할 일 세 가지'; s.textContent = '하나만 체크해도 오늘은 성공이에요.'; }
   else if (n < 3){ t.textContent = n + '개 체크했어요'; s.textContent = '남은 것도 편하게, 무리하지 마세요.'; }
   else { t.textContent = '오늘 다 하셨어요'; s.textContent = NAME + ' 님, 오늘 정말 잘하셨습니다.'; }
+  // 캐릭터 원형 진행링(hd-rg)도 같이 업데이트
+  var _rgEl = document.getElementById('hd-rg');
+  if (_rgEl) _rgEl.style.setProperty('--p', String(Math.round(pct * 100)));
+  // 캐릭터 깨어있음/잠든 클래스 업데이트
+  var _owEl = document.getElementById('hd-ow');
+  if (_owEl) _owEl.className = 'hd-ow ' + (n > 0 ? 'w' : 'z');
 }
 
 /* ── 컨설턴트 코멘트 동적화 (axisScores + BC_CODE + redFlags + dxTop3) ── */
