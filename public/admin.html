@@ -4868,7 +4868,11 @@ async function loadB2BPartners(search = '', status = '') {
         <button class="btn btn-primary btn-sm" onclick="impersonateLogin('${p.code}')" style="margin-right:4px;background:#6D28D9;border-color:#6D28D9" title="B2B 대시보드 대리접속">
           <i class="fas fa-sign-in-alt"></i> 바로가기
         </button>
-        ${p.homepage_url ? `<button class="btn btn-sm" title="AI 홈페이지 분석" onclick="runB2BCrawlByCode('${p.code}','${p.homepage_url}')" style="padding:5px 8px;background:#dcfce7;color:#16a34a;border-color:#86efac;margin-right:2px">
+        ${p.homepage_url ? `<button class="btn btn-sm" title="AI 홈페이지 분석"
+          data-b2b-code="${p.code.replace(/"/g,'&quot;')}"
+          data-b2b-url="${(p.homepage_url||'').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}"
+          onclick="(function(btn){runB2BCrawlByCode(btn.getAttribute('data-b2b-code'),btn.getAttribute('data-b2b-url'))})(this)"
+          style="padding:5px 8px;background:#dcfce7;color:#16a34a;border-color:#86efac;margin-right:2px">
           <i class="fas fa-robot"></i> AI분석
         </button>` : ''}
         <button class="btn btn-ghost btn-sm" title="설문 링크 복사" onclick="copyText('${location.origin}${surveyPath}')" style="padding:5px 8px">
@@ -5074,16 +5078,24 @@ async function runB2BCrawl() {
 }
 
 async function runB2BCrawlByCode(code, hpUrl) {
+  // ★ URL 전처리: 프로토콜 없으면 https:// 자동 추가
+  let cleanUrl = (hpUrl || '').trim();
+  if (cleanUrl && !/^https?:\/\//i.test(cleanUrl)) {
+    cleanUrl = 'https://' + cleanUrl;
+  }
+  if (!cleanUrl) { toast('홈페이지 URL이 없습니다. 수정 메뉴에서 URL을 먼저 입력해주세요.', 'error'); return; }
+
   const resultEl = document.getElementById('b2b-crawl-result');
   if (resultEl) {
     resultEl.style.display = 'block';
-    resultEl.innerHTML = '<div style="color:#6366f1;padding:10px;background:#6366f111;border-radius:8px"><i class="fas fa-spinner fa-spin"></i> AI가 홈페이지를 분석 중입니다... (최대 30초 소요)</div>';
+    resultEl.innerHTML = '<div style="color:#6366f1;padding:10px;background:#6366f111;border-radius:8px"><i class="fas fa-spinner fa-spin"></i> AI가 홈페이지를 분석 중입니다... (최대 30초 소요)<br><small style="color:#a89880">분석 URL: ' + cleanUrl + '</small></div>';
   }
   try {
+    // ★ TOKEN 전역변수 사용 (admin_token 키) — localStorage.getItem('token') 아님!
     const res = await fetch('/api/admin/b2b-crawl/' + code, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') },
-      body: JSON.stringify({ homepage_url: hpUrl, replace: true })
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+      body: JSON.stringify({ homepage_url: cleanUrl, replace: true })
     }).then(r => r.json());
     if (res && res.success) {
       if (resultEl) {

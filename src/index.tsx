@@ -1720,21 +1720,34 @@ app.post('/api/admin/b2b-crawl/:code', requireRole('MASTER'), async (c) => {
   ).bind(code).first<any>()
   if (!partner) return c.json({ error: '파트너를 찾을 수 없습니다.' }, 404)
 
-  const targetUrl = body.homepage_url || partner.homepage_url
-  if (!targetUrl) return c.json({ error: '홈페이지 URL이 없습니다. body에 homepage_url을 포함하거나 파트너에 등록해주세요.' }, 400)
+  // ★ URL 정규화: 프로토콜 없으면 https:// 자동 추가 + 유효성 검사
+  function normalizeUrl(raw: string | undefined | null): string | null {
+    if (!raw) return null
+    let u = raw.trim()
+    if (!u) return null
+    if (!/^https?:\/\//i.test(u)) u = 'https://' + u
+    try { new URL(u); return u } catch { return null }
+  }
+  const rawTargetUrl = body.homepage_url || partner.homepage_url
+  const targetUrl = normalizeUrl(rawTargetUrl)
+  if (!targetUrl) return c.json({ error: '유효한 홈페이지 URL이 없습니다. 올바른 URL(예: https://example.com)을 입력해주세요.' }, 400)
 
-  // homepage_url 저장/갱신
-  if (body.homepage_url && body.homepage_url !== partner.homepage_url) {
-    await db.prepare(`UPDATE b2b_partners SET homepage_url=? WHERE code=?`).bind(body.homepage_url, code).run().catch(() => {})
+  // homepage_url 저장/갱신 (정규화된 URL로 저장)
+  if (body.homepage_url && targetUrl !== partner.homepage_url) {
+    await db.prepare(`UPDATE b2b_partners SET homepage_url=? WHERE code=?`).bind(targetUrl, code).run().catch(() => {})
   }
 
   // 2) 홈페이지 HTML fetch
   let rawHtml = ''
   try {
     const res = await fetch(targetUrl, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SlimmindBot/1.0)' },
-      signal: AbortSignal.timeout(10000),
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SlimmindBot/1.0; +https://slimmind.kr)' },
+      signal: AbortSignal.timeout(15000),
+      redirect: 'follow',
     })
+    if (!res.ok) {
+      return c.json({ error: `홈페이지 응답 오류: HTTP ${res.status} (${res.statusText}). 인증이 필요하거나 크롤링을 차단하는 사이트는 AI분석이 불가합니다.` }, 502)
+    }
     rawHtml = await res.text()
   } catch (fetchErr: any) {
     return c.json({ error: `홈페이지 접근 실패: ${fetchErr?.message || fetchErr}` }, 502)
