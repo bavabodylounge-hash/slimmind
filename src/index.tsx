@@ -4386,10 +4386,10 @@ app.get('/h/:code', async (c) => {
   // ─── 바바 성형외과 전용 OG 분기 ───────────────────────────────────
   const BABA_CODES = ['B2B-BAVA1234', 'B2B-SUR-001']
   const isBaba = BABA_CODES.includes(rawCode)
-  const ogTitle   = isBaba ? 'BAVA 성형외과 | 바디코드 정밀 진단'                            : 'SlimMind | 바디코드 정밀 진단'
-  const ogDesc    = isBaba ? '당신의 몸을 읽다 — 눈으로 보이지 않는 몸의 설계까지, 정밀하게' : '당신의 몸은 하나의 코드입니다. 반복되는 다이어트 실패엔 반드시 이유가 있어요.'
+  const ogTitle   = isBaba ? 'BAVA 성형외과 | 바디코드 정밀 진단'                            : 'SlimMind | 병원 바디코드 진단'
+  const ogDesc    = isBaba ? '당신의 몸을 읽다 — 눈으로 보이지 않는 몸의 설계까지, 정밀하게' : '당신의 몸은 하나의 코드입니다. 우리는 그 원인을 해독합니다.'
   const ogImg     = isBaba ? `${siteBase}/static/og-baba.png`                                 : `${siteBase}/static/og-hospital.png`
-  const ogImgW    = isBaba ? '1024'                                                            : '1376'
+  const ogImgW    = isBaba ? '1024'                                                            : '1360'
   const ogImgH    = isBaba ? '538'                                                             : '768'
   const ogImgType = 'image/jpeg'
 
@@ -4408,6 +4408,7 @@ app.get('/h/:code', async (c) => {
 <meta name="twitter:description" content="${ogDesc}">
 <meta name="twitter:image"       content="${ogImg}">`
 
+  // ─── 병원 OG: 신버전 이미지 (og-hospital.png 1360x768, teal-navy 미니멀)
   let html = await fetchAsset(c.env.ASSETS, '/survey-hospital.html')
   html = html.replace('</head>', `${ogInject}\n${brandInject}\n${langInitScript}\n</head>`)
   html = html.replace('</body>', `${refScript}\n</body>`)
@@ -4618,21 +4619,21 @@ app.get('/a/:code', async (c) => {
     "UPDATE b2b_partners SET qr_scan_count = qr_scan_count + 1, updated_at=datetime('now') WHERE code=?"
   ).bind(rawCode).run()
 
-  // OG 메타태그
+  // OG 메타태그 (에스테틱 신버전: og-aesthetic.png 1360x768, 딥 로즈/버건디 미니멀)
   const siteBase = (() => { try { return new URL(c.req.raw.url).origin } catch { return 'https://slimmind.kr' } })()
   const ogInject = `
 <meta property="og:type"         content="website">
 <meta property="og:site_name"    content="SlimMind">
 <meta property="og:title"        content="SlimMind | 에스테틱 바디코드 진단">
-<meta property="og:description"  content="당신의 몸은 하나의 코드입니다. 반복되는 다이어트 실패엔 반드시 이유가 있어요.">
+<meta property="og:description"  content="당신의 몸은 하나의 코드입니다. 우리는 그 원인을 해독합니다.">
 <meta property="og:url"          content="${siteBase}/a/${rawCode}">
 <meta property="og:image"        content="${siteBase}/static/og-aesthetic.png">
-<meta property="og:image:width"  content="1200">
-<meta property="og:image:height" content="630">
+<meta property="og:image:width"  content="1360">
+<meta property="og:image:height" content="768">
 <meta property="og:image:type"   content="image/png">
 <meta name="twitter:card"        content="summary_large_image">
 <meta name="twitter:title"       content="SlimMind | 에스테틱 바디코드 진단">
-<meta name="twitter:description" content="당신의 몸은 하나의 코드입니다. 반복되는 다이어트 실패엔 반드시 이유가 있어요.">
+<meta name="twitter:description" content="당신의 몸은 하나의 코드입니다. 우리는 그 원인을 해독합니다.">
 <meta name="twitter:image"       content="${siteBase}/static/og-aesthetic.png">`
 
   // 에스테틱 전용 파일이 없으면 통합질문지 임시 서빙
