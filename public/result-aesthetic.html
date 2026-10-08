@@ -6725,7 +6725,7 @@ try{ ['log','info','warn','debug'].forEach(function(k){ console[k]=function(){};
 #p10x .cal .d.fut{background:#f5f1ec}
 #p10x .cal .d.fut .n{color:var(--faint)}
 #p10x .cal .d.pre{opacity:.38}
-#p10x .cal.fold .grid .d:not(.wkrow),#p10x .cal.fold .grid .gband:not(.wkrow){display:none}
+#p10x .cal.fold .grid .d:not(.wkrow){visibility:hidden}#p10x .cal.fold .grid .gband:not(.wkrow){display:none}   /* ★2026-10-08 d는 visibility:hidden(공간유지)·gband는 display:none — 접혔을 때 빈칸 사라지면 그리드 열 오프셋 깨짐 방지 */
 #p10x .cal:not(.fold) .grid .xf{display:none}   /* ★고침 12a-13 — 접힘 = 지금 관문 14일(달을 넘김) · xf = 접힘 전용 칸·띠·빈칸 · 펼친 달의 띠·빈칸은 접으면 숨김 */
 #p10x .cal .expand{text-align:center;font-size:12px;color:var(--cd);font-weight:800;margin-top:9px;cursor:pointer}
 #p10x .cal.fold .expand::after{content:' ▾';font-size:9px}
@@ -7949,8 +7949,16 @@ window.charImg = function(code, state){
 };
 /* 그림별 크기 보정(sc) — 넓적한 그림(코끼리·복어 등)은 폭에 맞춰 넣으면 원 안에서 작아 보임 → 부엉이와 같은 그림 면적(56%) · 가장 먼 점도 원 반지름 90% 안 · 그림 칸(64·56px)은 그대로 · 한 장 요약·오늘탭 히어로가 읽음 */
 window.charScale = function(code){
-  var c = (window.BC_CHAR_IMG||{})[code||window.smCharCode()] || (window.BC_CHAR_IMG||{})['BC-13'];
-  return (c && c.sc) || 1;
+  /* ★2026-10-08 sc 없는 코드(BC-6·BC-8·BC-10·BC-12·BC-13·BC-15) 1.15 상향 — 원형 여백 보정 */
+  var _SC={
+    'BC-1':1.21,'BC-2':1.15,'BC-3':1.16,'BC-4':1.05,'BC-5':1.07,
+    'BC-6':1.15,'BC-7':1.21,'BC-8':1.15,'BC-9':1.2,'BC-10':1.15,
+    'BC-11':1.05,'BC-12':1.15,'BC-13':1.15,'BC-14':1.05,'BC-15':1.15,
+    'BC-16':1.08
+  };
+  var key=((code||window.smCharCode()||'BC-13')+'').replace(/\s/g,'').toUpperCase();
+  var c=(window.BC_CHAR_IMG||{})[key]||(window.BC_CHAR_IMG||{})['BC-13'];
+  return _SC[key]||(c&&c.sc)||1;
 };
 /* 사람 얼굴 = 성별(smSex, 질문지 답) × 관문(가속기 1·안정기 2) */
 window.faceImg = function(idx){ var R=window.__RESULT__||{}; var male=(typeof smSex==='function')&&smSex(R,R.answers)==='남성'; return (window.FACE_IMG||{})[(male?'m':'f')+(idx===2?'1':'2')]||''; };
@@ -18531,7 +18539,7 @@ function computeBCCodeSafe(axisScores, answers, gender) {
   return Object.assign({}, primary, {
     // 경계형 진단 필드
     isBorderline:       isBorderline,
-    borderlineDiff:     diff,
+    borderlineDiff:     parseFloat(diff.toFixed(1)),
     borderlineThreshold: BORDERLINE_THRESHOLD,
     secondaryBcCode:    secondaryBcCode,
     secondaryNickname:  secondaryNickname,
