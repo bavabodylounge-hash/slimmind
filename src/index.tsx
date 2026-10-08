@@ -1268,6 +1268,29 @@ app.get('/api/b2b/brand/:code', async (c) => {
 //  관리자 API (/api/admin/*)  — MASTER 전용
 // ═══════════════════════════════════════════════════════════════
 
+// ── GET /api/admin/ai-status — AI API 키 연결 상태 헬스체크 ────
+// ★ 재배포 후 키가 날아갔는지 즉시 확인하는 전용 엔드포인트 (MASTER 전용)
+app.get('/api/admin/ai-status', requireRole('MASTER'), async (c) => {
+  const apiKey = (c.env as any).ANTHROPIC_API_KEY as string | undefined
+  if (!apiKey) {
+    return c.json({
+      ok: false,
+      status: 'key_missing',
+      message: 'ANTHROPIC_API_KEY 환경변수가 없습니다. 재배포 후 secret을 재등록해야 합니다.',
+      fix: 'gsk hosted secret_put --name ANTHROPIC_API_KEY --value <키값>  →  gsk hosted deploy',
+    })
+  }
+  // 키 존재 확인 (앞 12자만 마스킹 표시)
+  const masked = apiKey.slice(0, 12) + '…' + apiKey.slice(-4)
+  return c.json({
+    ok: true,
+    status: 'key_ok',
+    message: `ANTHROPIC_API_KEY 등록됨: ${masked}`,
+    model: 'claude-sonnet-4-5',
+    note: '재배포(deploy) 시 secret이 초기화될 수 있습니다. 배포 후 이 엔드포인트로 재확인하세요.',
+  })
+})
+
 // GET /api/admin/dashboard
 // ★ [v4.9] diagnosis_results 단독 조회 (구버전 results 제거)
 app.get('/api/admin/dashboard', requireRole('MASTER'), async (c) => {
@@ -7153,6 +7176,7 @@ app.post('/api/ai/generate-story', requireRole('ANY'), async (c) => {
     let story_lead: string | null = null
     let clinical_ctx: string | null = null
     let src = 'wardrobe_v4'
+    let key_missing = false  // ★ 재발 방지: API 키 누락 여부를 응답에 포함
 
     if (apiKey) {
       // 입력 스키마 구성 (코드·축 원값 제외 — 코드 0회 규칙)
@@ -7212,6 +7236,7 @@ ${inputJson}`
         console.error('[AI story] Claude 호출 오류 → 폴백:', claudeErr)
       }
     } else {
+      key_missing = true
       console.warn('[AI story] ANTHROPIC_API_KEY 없음 → 옷장v4 폴백')
     }
 
@@ -7265,6 +7290,7 @@ ${inputJson}`
       clinical_ctx,
       src,
       cached: false,
+      key_missing,  // ★ 재발 방지: 프론트에서 폴백 원인 구별 가능
     })
   } catch (e) {
     console.error('[POST /api/ai/generate-story]', e)
@@ -7460,6 +7486,7 @@ app.post('/api/ai/generate-7p', allowPublicAI(), async (c) => {
     let insight_ctx: string[] | null = null
     let know_close: string | null = null
     let src = 'wardrobe_v4'
+    let key_missing = false  // ★ 재발 방지
 
     if (apiKey) {
       const inputJson = JSON.stringify({
@@ -7533,7 +7560,7 @@ ${inputJson}`
       } else { throw updateErr }
     }
 
-    return c.json({ mental_intro, insight_ctx, know_close, src, cached: false })
+    return c.json({ mental_intro, insight_ctx, know_close, src, cached: false, key_missing })
   } catch (e) {
     console.error('[POST /api/ai/generate-7p]', e)
     return c.json({ error: String(e) }, 500)
@@ -7675,6 +7702,7 @@ app.post('/api/ai/generate-cruel', allowPublicAI(), async (c) => {
 
     let finale_body: string | null = null
     let src = 'wardrobe_v4'
+    let key_missing = false  // ★ 재발 방지
 
     if (apiKey) {
       const inputJson = JSON.stringify({
@@ -7732,7 +7760,7 @@ ${inputJson}`
       } else { throw updateErr }
     }
 
-    return c.json({ finale_body, src, cached: false })
+    return c.json({ finale_body, src, cached: false, key_missing })
   } catch (e) {
     console.error('[POST /api/ai/generate-cruel]', e)
     return c.json({ error: String(e) }, 500)
