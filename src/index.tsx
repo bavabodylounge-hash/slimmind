@@ -4388,7 +4388,7 @@ app.get('/h/:code', async (c) => {
   const isBaba = BABA_CODES.includes(rawCode)
   const ogTitle   = isBaba ? 'BAVA 성형외과 | 바디코드 정밀 진단'                            : 'SlimMind | 병원 바디코드 진단'
   const ogDesc    = isBaba ? '당신의 몸을 읽다 — 눈으로 보이지 않는 몸의 설계까지, 정밀하게' : '당신의 몸은 하나의 코드입니다. 우리는 그 원인을 해독합니다.'
-  const ogImg     = isBaba ? `${siteBase}/static/og-baba.png`                                 : `${siteBase}/static/og-hospital.png`
+  const ogImg     = isBaba ? `${siteBase}/static/og-baba.png?v=3`                               : `${siteBase}/static/og-hospital.png?v=3`
   const ogImgW    = isBaba ? '1024'                                                            : '1360'
   const ogImgH    = isBaba ? '538'                                                             : '768'
   const ogImgType = 'image/jpeg'
@@ -4522,14 +4522,14 @@ app.get('/h3/:code', async (c) => {
 <meta property="og:title"        content="SlimMind | 바디코드 정밀 진단">
 <meta property="og:description"  content="당신의 몸은 하나의 코드입니다. 반복되는 다이어트 실패엔 반드시 이유가 있어요.">
 <meta property="og:url"          content="${siteBase}/h3/${rawCode}">
-<meta property="og:image"        content="${siteBase}/static/og-hospital.png">
-<meta property="og:image:width"  content="1365">
-<meta property="og:image:height" content="768">
-<meta property="og:image:type"   content="image/png">
+<meta property="og:image"        content="${siteBase}/static/og-hospital.png?v=3">
+<meta property="og:image:width"  content="1024">
+<meta property="og:image:height" content="643">
+<meta property="og:image:type"   content="image/jpeg">
 <meta name="twitter:card"        content="summary_large_image">
 <meta name="twitter:title"       content="SlimMind | 바디코드 정밀 진단">
 <meta name="twitter:description" content="당신의 몸은 하나의 코드입니다. 반복되는 다이어트 실패엔 반드시 이유가 있어요.">
-<meta name="twitter:image"       content="${siteBase}/static/og-hospital.png">`
+<meta name="twitter:image"       content="${siteBase}/static/og-hospital.png?v=3">`
 
   let html = await fetchAsset(c.env.ASSETS, '/survey-hospital-3lang.html')
   html = html.replace('</head>', `${ogInject}\n${brandInject}\n${langInitScript}\n</head>`)
@@ -4627,14 +4627,14 @@ app.get('/a/:code', async (c) => {
 <meta property="og:title"        content="SlimMind | 에스테틱 바디코드 진단">
 <meta property="og:description"  content="당신의 몸은 하나의 코드입니다. 우리는 그 원인을 해독합니다.">
 <meta property="og:url"          content="${siteBase}/a/${rawCode}">
-<meta property="og:image"        content="${siteBase}/static/og-aesthetic.png">
-<meta property="og:image:width"  content="1360">
-<meta property="og:image:height" content="768">
-<meta property="og:image:type"   content="image/png">
+<meta property="og:image"        content="${siteBase}/static/og-aesthetic.png?v=3">
+<meta property="og:image:width"  content="1024">
+<meta property="og:image:height" content="761">
+<meta property="og:image:type"   content="image/jpeg">
 <meta name="twitter:card"        content="summary_large_image">
 <meta name="twitter:title"       content="SlimMind | 에스테틱 바디코드 진단">
 <meta name="twitter:description" content="당신의 몸은 하나의 코드입니다. 우리는 그 원인을 해독합니다.">
-<meta name="twitter:image"       content="${siteBase}/static/og-aesthetic.png">`
+<meta name="twitter:image"       content="${siteBase}/static/og-aesthetic.png?v=3">`
 
   // 에스테틱 전용 파일이 없으면 통합질문지 임시 서빙
   let html: string
@@ -4728,14 +4728,14 @@ app.get('/f/:code', async (c) => {
 <meta property="og:title"        content="SlimMind | 피트니스 바디코드 진단">
 <meta property="og:description"  content="당신의 몸은 하나의 코드입니다. 피트니스 전문 분석으로 최적의 운동 처방을 받아보세요.">
 <meta property="og:url"          content="${siteBase}/f/${rawCode}">
-<meta property="og:image"        content="${siteBase}/static/og-fitness.png">
+<meta property="og:image"        content="${siteBase}/static/og-fitness.png?v=3">
 <meta property="og:image:width"  content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:type"   content="image/png">
 <meta name="twitter:card"        content="summary_large_image">
 <meta name="twitter:title"       content="SlimMind | 피트니스 바디코드 진단">
 <meta name="twitter:description" content="당신의 몸은 하나의 코드입니다. 피트니스 전문 분석으로 최적의 운동 처방을 받아보세요.">
-<meta name="twitter:image"       content="${siteBase}/static/og-fitness.png">`
+<meta name="twitter:image"       content="${siteBase}/static/og-fitness.png?v=3">`
 
   // 피트니스 전용 질문지 서빙
   let html: string
@@ -4809,14 +4809,14 @@ app.get('/salon/:code', async (c) => {
 <meta property="og:title"        content="SlimMind | 미용실 바디코드 진단">
 <meta property="og:description"  content="당신의 몸은 하나의 코드입니다. 헤어·두피 건강과 체형을 함께 케어하는 맞춤 솔루션을 받아보세요.">
 <meta property="og:url"          content="${siteBaseSalon}/salon/${rawCode}">
-<meta property="og:image"        content="${siteBaseSalon}/static/og-salon.png">
+<meta property="og:image"        content="${siteBaseSalon}/static/og-salon.png?v=3">
 <meta property="og:image:width"  content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:type"   content="image/png">
 <meta name="twitter:card"        content="summary_large_image">
 <meta name="twitter:title"       content="SlimMind | 미용실 바디코드 진단">
 <meta name="twitter:description" content="당신의 몸은 하나의 코드입니다. 헤어·두피 건강과 체형을 함께 케어하는 맞춤 솔루션을 받아보세요.">
-<meta name="twitter:image"       content="${siteBaseSalon}/static/og-salon.png">`
+<meta name="twitter:image"       content="${siteBaseSalon}/static/og-salon.png?v=3">`
 
   // ★ BUG-FIX [2026-09-09]: /f/:code와 동일하게 refScript 주입 추가
   // survey-salon.html JS는 ?ref= 쿼리파라미터로만 ref_code를 읽음
@@ -9075,7 +9075,7 @@ try {
     const rhOgTitle  = isRhBaba ? 'BAVA 성형외과 | 바디코드 정밀 진단 결과'  : 'SlimMind | 바디코드 정밀 진단 결과'
     const rhOgDesc   = isRhBaba ? '당신의 몸을 읽다 — 눈으로 보이지 않는 몸의 설계까지, 정밀하게'
                                 : '당신의 몸은 하나의 코드입니다. 우리는 그 원인을 해독합니다.'
-    const rhOgImg    = isRhBaba ? `${rhBase}/static/og-baba.png` : `${rhBase}/static/og-hospital.png`
+    const rhOgImg    = isRhBaba ? `${rhBase}/static/og-baba.png?v=3` : `${rhBase}/static/og-hospital.png?v=3`
     const rhOgImgW   = isRhBaba ? '1024' : '1376'
     const rhOgImgH   = isRhBaba ? '538'  : '768'
     const rhOgSite   = isRhBaba ? 'BAVA 성형외과' : 'SlimMind'
@@ -9677,13 +9677,13 @@ try {
 <meta property="og:title"        content="SlimMind | 에스테틱 바디코드 맞춤 케어 결과지">
 <meta property="og:description"  content="당신의 몸은 하나의 코드입니다. 에스테틱 맞춤 케어 방법을 확인하세요.">
 <meta property="og:url"          content="${raBase}/result-aesthetic/${id}">
-<meta property="og:image"        content="${raBase}/static/og-aesthetic.png">
+<meta property="og:image"        content="${raBase}/static/og-aesthetic.png?v=3">
 <meta property="og:image:width"  content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:type"   content="image/png">
 <meta name="twitter:card"        content="summary_large_image">
 <meta name="twitter:title"       content="SlimMind | 에스테틱 바디코드 맞춤 케어 결과지">
-<meta name="twitter:image"       content="${raBase}/static/og-aesthetic.png">`
+<meta name="twitter:image"       content="${raBase}/static/og-aesthetic.png?v=3">`
     // 동적 manifest: start_url을 현재 에스테틱 결과지 URL로 교체
     const dynamicManifestHref = `/api/manifest.json?for=${encodeURIComponent('/result-aesthetic/' + id)}`
     // ① KAKAO_ESCAPE_SCRIPT + idScript + __BRAND__ → <head> 최상단 첫 번째로 주입 (가장 먼저 실행)
@@ -10287,13 +10287,13 @@ try {
 <meta property="og:title"        content="SlimMind | 피트니스 바디코드 맞춤 결과지">
 <meta property="og:description"  content="당신의 몸은 하나의 코드입니다. 피트니스 맞춤 트레이닝 방법을 확인하세요.">
 <meta property="og:url"          content="${rfBase}/result-fitness/${id}">
-<meta property="og:image"        content="${rfBase}/static/og-fitness.png">
+<meta property="og:image"        content="${rfBase}/static/og-fitness.png?v=3">
 <meta property="og:image:width"  content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:type"   content="image/png">
 <meta name="twitter:card"        content="summary_large_image">
 <meta name="twitter:title"       content="SlimMind | 피트니스 바디코드 맞춤 결과지">
-<meta name="twitter:image"       content="${rfBase}/static/og-fitness.png">`
+<meta name="twitter:image"       content="${rfBase}/static/og-fitness.png?v=3">`
     const dynamicManifestHref = `/api/manifest.json?for=${encodeURIComponent('/result-fitness/' + id)}`
     html = html.replace('<head>', `<head>\n${KAKAO_ESCAPE_SCRIPT}\n${idScript}${fitBrandScript}`)
     html = html.replace(
@@ -10867,13 +10867,13 @@ app.get('/result-salon/:id', async (c) => {
 <meta property="og:title"        content="SlimMind | 살롱 케어 맞춤 결과지">
 <meta property="og:description"  content="당신의 몸은 하나의 코드입니다. 살롱 맞춤 케어 방법을 확인하세요.">
 <meta property="og:url"          content="${rsBase}/result-salon/${id}">
-<meta property="og:image"        content="${rsBase}/static/og-salon.png">
+<meta property="og:image"        content="${rsBase}/static/og-salon.png?v=3">
 <meta property="og:image:width"  content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:type"   content="image/png">
 <meta name="twitter:card"        content="summary_large_image">
 <meta name="twitter:title"       content="SlimMind | 살롱 케어 맞춤 결과지">
-<meta name="twitter:image"       content="${rsBase}/static/og-salon.png">`
+<meta name="twitter:image"       content="${rsBase}/static/og-salon.png?v=3">`
     const dynamicManifestHref = `/api/manifest.json?for=${encodeURIComponent('/result-salon/' + id)}`
     html = html.replace('<head>', `<head>\n${KAKAO_ESCAPE_SCRIPT}\n${idScript}${salonBrandScript}`)
     html = html.replace(
