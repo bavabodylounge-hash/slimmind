@@ -1088,53 +1088,58 @@ app.get('/api/admin/impersonate/:code', requireRole('MASTER'), async (c) => {
   const secret = c.env.JWT_SECRET || 'slimmind-jwt-secret-change-in-production'
   const targetCode = c.req.param('code').toUpperCase()
 
-  // B2B 파트너인지 먼저 확인
-  if (targetCode.startsWith('B2B-')) {
-    const partner = await db.prepare(
-      'SELECT * FROM b2b_partners WHERE code=?'
-    ).bind(targetCode).first<any>()
-    if (!partner) return c.json({ error: '파트너를 찾을 수 없습니다.' }, 404)
+  try {
+    // B2B 파트너인지 먼저 확인
+    if (targetCode.startsWith('B2B-')) {
+      const partner = await db.prepare(
+        'SELECT * FROM b2b_partners WHERE code=?'
+      ).bind(targetCode).first<any>()
+      if (!partner) return c.json({ error: '파트너를 찾을 수 없습니다.' }, 404)
 
+      const payload: JwtPayload = {
+        sub: String(partner.id),
+        code: partner.code,
+        role: 'B2B_PARTNER',
+        name: partner.brand_name || partner.name,
+        exp: Math.floor(Date.now() / 1000) + 60 * 60 * 2, // 2시간 (대리접속은 짧게)
+      }
+      const token = await signJwt(payload, secret)
+      return c.json({
+        token, role: 'B2B_PARTNER',
+        code: partner.code,
+        name: partner.brand_name || partner.name,
+        redirect: '/b2b',
+        brand_color: partner.brand_color,
+        brand_logo_url: partner.brand_logo_url,
+        brand_name: partner.brand_name || partner.name,
+      })
+    }
+
+    // 컨설턴트
+    const consultant = await db.prepare(
+      'SELECT * FROM consultants WHERE code=?'
+    ).bind(targetCode).first<any>()
+    if (!consultant) return c.json({ error: '컨설턴트를 찾을 수 없습니다.' }, 404)
+
+    const role: 'MASTER' | 'CONSULTANT' = consultant.code === 'MASTER' ? 'MASTER' : 'CONSULTANT'
     const payload: JwtPayload = {
-      sub: String(partner.id),
-      code: partner.code,
-      role: 'B2B_PARTNER',
-      name: partner.brand_name || partner.name,
-      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 2, // 2시간 (대리접속은 짧게)
+      sub: String(consultant.id),
+      code: consultant.code,
+      role,
+      name: consultant.name,
+      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 2, // 2시간
     }
     const token = await signJwt(payload, secret)
     return c.json({
-      token, role: 'B2B_PARTNER',
-      code: partner.code,
-      name: partner.brand_name || partner.name,
-      redirect: '/b2b',
-      brand_color: partner.brand_color,
-      brand_logo_url: partner.brand_logo_url,
-      brand_name: partner.brand_name || partner.name,
+      token, role,
+      code: consultant.code,
+      name: consultant.name,
+      redirect: '/consultant',
     })
+  } catch (e: any) {
+    console.error('[impersonate] DB error:', e?.message)
+    return c.json({ error: '서버 오류가 발생했습니다.' }, 500)
   }
-
-  // 컨설턴트
-  const consultant = await db.prepare(
-    'SELECT * FROM consultants WHERE code=?'
-  ).bind(targetCode).first<any>()
-  if (!consultant) return c.json({ error: '컨설턴트를 찾을 수 없습니다.' }, 404)
-
-  const role: 'MASTER' | 'CONSULTANT' = consultant.code === 'MASTER' ? 'MASTER' : 'CONSULTANT'
-  const payload: JwtPayload = {
-    sub: String(consultant.id),
-    code: consultant.code,
-    role,
-    name: consultant.name,
-    exp: Math.floor(Date.now() / 1000) + 60 * 60 * 2, // 2시간
-  }
-  const token = await signJwt(payload, secret)
-  return c.json({
-    token, role,
-    code: consultant.code,
-    name: consultant.name,
-    redirect: '/consultant',
-  })
 })
 
 // ═══════════════════════════════════════════════════════════════
@@ -1391,14 +1396,19 @@ app.get('/api/admin/consultants', requireRole('MASTER'), async (c) => {
   const db = c.env.DB
   const search = c.req.query('search') || ''
   const status = c.req.query('status') || ''
-  let query = "SELECT c.*, (SELECT COUNT(*) FROM diagnosis_results d WHERE d.ref_code = c.code) as result_count FROM consultants c WHERE c.code != 'MASTER'"
-  const params: any[] = []
-  if (search) { query += ' AND (c.name LIKE ? OR c.code LIKE ? OR c.email LIKE ?)'; params.push(`%${search}%`, `%${search}%`, `%${search}%`) }
-  if (status) { query += ' AND c.subscription_status = ?'; params.push(status) }
-  query += ' ORDER BY c.created_at DESC'
-  const stmt = db.prepare(query)
-  const result = params.length ? await stmt.bind(...params).all<any>() : await stmt.all<any>()
-  return c.json({ consultants: result.results })
+  try {
+    let query = "SELECT c.*, (SELECT COUNT(*) FROM diagnosis_results d WHERE d.ref_code = c.code) as result_count FROM consultants c WHERE c.code != 'MASTER'"
+    const params: any[] = []
+    if (search) { query += ' AND (c.name LIKE ? OR c.code LIKE ? OR c.email LIKE ?)'; params.push(`%${search}%`, `%${search}%`, `%${search}%`) }
+    if (status) { query += ' AND c.subscription_status = ?'; params.push(status) }
+    query += ' ORDER BY c.created_at DESC'
+    const stmt = db.prepare(query)
+    const result = params.length ? await stmt.bind(...params).all<any>() : await stmt.all<any>()
+    return c.json({ consultants: result.results })
+  } catch (e: any) {
+    console.error('[admin/consultants] DB error:', e?.message)
+    return c.json({ consultants: [], error: '서버 오류가 발생했습니다.' }, 500)
+  }
 })
 
 // POST /api/admin/consultants — 컨설턴트 생성
@@ -1616,15 +1626,20 @@ app.get('/api/admin/b2b-partners', requireRole('MASTER'), async (c) => {
   const db = c.env.DB
   const search = c.req.query('search') || ''
   const status = c.req.query('status') || ''
-  // ★ [v4.9] result_count: diagnosis_results 단독 카운트
-  let query = 'SELECT p.*, (SELECT COUNT(*) FROM diagnosis_results d WHERE d.ref_code = p.code) as result_count FROM b2b_partners p WHERE 1=1'
-  const params: any[] = []
-  if (search) { query += ' AND (p.name LIKE ? OR p.code LIKE ? OR p.owner_name LIKE ?)'; params.push(`%${search}%`, `%${search}%`, `%${search}%`) }
-  if (status) { query += ' AND p.status = ?'; params.push(status) }
-  query += ' ORDER BY p.created_at DESC'
-  const stmt = db.prepare(query)
-  const result = params.length ? await stmt.bind(...params).all<any>() : await stmt.all<any>()
-  return c.json({ partners: result.results })
+  try {
+    // ★ [v4.9] result_count: diagnosis_results 단독 카운트
+    let query = 'SELECT p.*, (SELECT COUNT(*) FROM diagnosis_results d WHERE d.ref_code = p.code) as result_count FROM b2b_partners p WHERE 1=1'
+    const params: any[] = []
+    if (search) { query += ' AND (p.name LIKE ? OR p.code LIKE ? OR p.owner_name LIKE ?)'; params.push(`%${search}%`, `%${search}%`, `%${search}%`) }
+    if (status) { query += ' AND p.status = ?'; params.push(status) }
+    query += ' ORDER BY p.created_at DESC'
+    const stmt = db.prepare(query)
+    const result = params.length ? await stmt.bind(...params).all<any>() : await stmt.all<any>()
+    return c.json({ partners: result.results })
+  } catch (e: any) {
+    console.error('[admin/b2b-partners] DB error:', e?.message)
+    return c.json({ partners: [], error: '서버 오류가 발생했습니다.' }, 500)
+  }
 })
 
 // POST /api/admin/b2b-partners — 파트너 생성
@@ -1771,27 +1786,41 @@ app.put('/api/admin/b2b-partners/:code', requireRole('MASTER'), async (c) => {
   setClauses.push("updated_at=datetime('now')")
   binds.push(code)
 
-  await db.prepare(
-    `UPDATE b2b_partners SET ${setClauses.join(',')} WHERE code=?`
-  ).bind(...binds).run()
-
-  return c.json({ success: true })
+  try {
+    await db.prepare(
+      `UPDATE b2b_partners SET ${setClauses.join(',')} WHERE code=?`
+    ).bind(...binds).run()
+    return c.json({ success: true })
+  } catch (e: any) {
+    console.error('[admin/b2b-partners PUT] DB error:', e?.message)
+    return c.json({ success: false, error: '서버 오류가 발생했습니다.' }, 500)
+  }
 })
 
 // DELETE /api/admin/b2b-partners/:code — 정지
 app.delete('/api/admin/b2b-partners/:code', requireRole('MASTER'), async (c) => {
   const db = c.env.DB
   const code = c.req.param('code').toUpperCase()
-  await db.prepare("UPDATE b2b_partners SET status='suspended', updated_at=datetime('now') WHERE code=?").bind(code).run()
-  return c.json({ success: true, message: 'B2B 파트너가 정지되었습니다.' })
+  try {
+    await db.prepare("UPDATE b2b_partners SET status='suspended', updated_at=datetime('now') WHERE code=?").bind(code).run()
+    return c.json({ success: true, message: 'B2B 파트너가 정지되었습니다.' })
+  } catch (e: any) {
+    console.error('[admin/b2b-partners DELETE] DB error:', e?.message)
+    return c.json({ success: false, error: '서버 오류가 발생했습니다.' }, 500)
+  }
 })
 
 // DELETE /api/admin/b2b-partners/:code/destroy — 완전 삭제 (MASTER 전용)
 app.delete('/api/admin/b2b-partners/:code/destroy', requireRole('MASTER'), async (c) => {
   const db = c.env.DB
   const code = c.req.param('code').toUpperCase()
-  await db.prepare('DELETE FROM b2b_partners WHERE code=?').bind(code).run()
-  return c.json({ success: true, message: `${code} 파트너가 완전 삭제되었습니다.` })
+  try {
+    await db.prepare('DELETE FROM b2b_partners WHERE code=?').bind(code).run()
+    return c.json({ success: true, message: `${code} 파트너가 완전 삭제되었습니다.` })
+  } catch (e: any) {
+    console.error('[admin/b2b-partners destroy] DB error:', e?.message)
+    return c.json({ success: false, error: '서버 오류가 발생했습니다.' }, 500)
+  }
 })
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -2385,8 +2414,13 @@ app.get('/api/share/:id', requireB2B(), async (c) => {
 app.get('/api/consultant/me', requireRole('ANY'), async (c) => {
   const user = c.get('user') as JwtPayload
   const db = c.env.DB
-  const cons = await db.prepare('SELECT * FROM consultants WHERE code=?').bind(user.code).first<any>()
-  return c.json({ consultant: cons })
+  try {
+    const cons = await db.prepare('SELECT * FROM consultants WHERE code=?').bind(user.code).first<any>()
+    return c.json({ consultant: cons })
+  } catch (e: any) {
+    console.error('[consultant/me] DB error:', e?.message)
+    return c.json({ consultant: null, error: '서버 오류가 발생했습니다.' }, 500)
+  }
 })
 
 // GET /api/consultant/results — 내 고객 결과 목록
@@ -2613,21 +2647,26 @@ app.put('/api/consultant/change-password', requireRole('ANY'), async (c) => {
     return c.json({ error: '새 비밀번호는 6자 이상이어야 합니다.' }, 400)
   }
 
-  const consultant = await db.prepare('SELECT * FROM consultants WHERE code=?').bind(user.code).first<any>()
-  if (!consultant) return c.json({ error: '계정을 찾을 수 없습니다.' }, 404)
+  try {
+    const consultant = await db.prepare('SELECT * FROM consultants WHERE code=?').bind(user.code).first<any>()
+    if (!consultant) return c.json({ error: '계정을 찾을 수 없습니다.' }, 404)
 
-  // 현재 비밀번호 확인
-  const num = consultant.code.replace('SC-', '')
-  const defaultPw = `pass${num}`
-  const storedPw = consultant.password_hash || defaultPw
-  if (storedPw !== current_password) {
-    return c.json({ error: '현재 비밀번호가 올바르지 않습니다.' }, 400)
+    // 현재 비밀번호 확인
+    const num = consultant.code.replace('SC-', '')
+    const defaultPw = `pass${num}`
+    const storedPw = consultant.password_hash || defaultPw
+    if (storedPw !== current_password) {
+      return c.json({ error: '현재 비밀번호가 올바르지 않습니다.' }, 400)
+    }
+
+    await db.prepare("UPDATE consultants SET password_hash=?, updated_at=datetime('now') WHERE code=?")
+      .bind(new_password, user.code).run()
+
+    return c.json({ success: true, message: '비밀번호가 변경되었습니다.' })
+  } catch (e: any) {
+    console.error('[consultant/change-password] DB error:', e?.message)
+    return c.json({ error: '서버 오류가 발생했습니다.' }, 500)
   }
-
-  await db.prepare("UPDATE consultants SET password_hash=?, updated_at=datetime('now') WHERE code=?")
-    .bind(new_password, user.code).run()
-
-  return c.json({ success: true, message: '비밀번호가 변경되었습니다.' })
 })
 
 // ─── 컨설턴트 메모 API ────────────────────────────────────────────────────────
@@ -2751,11 +2790,16 @@ app.put('/api/results/:id/memo', async (c) => {
   const db = c.env.DB
   const id = c.req.param('id')
   const { memo } = await c.req.json()
-  const result = await db.prepare('SELECT ref_code FROM diagnosis_results WHERE id=?').bind(id).first<any>()
-  if (!result) return c.json({ error: '결과 없음' }, 404)
-  if (user.role !== 'MASTER' && result.ref_code !== user.code) return c.json({ error: '권한 없음' }, 403)
-  await db.prepare('UPDATE diagnosis_results SET admin_memo=? WHERE id=?').bind(memo, id).run()
-  return c.json({ success: true })
+  try {
+    const result = await db.prepare('SELECT ref_code FROM diagnosis_results WHERE id=?').bind(id).first<any>()
+    if (!result) return c.json({ error: '결과 없음' }, 404)
+    if (user.role !== 'MASTER' && result.ref_code !== user.code) return c.json({ error: '권한 없음' }, 403)
+    await db.prepare('UPDATE diagnosis_results SET admin_memo=? WHERE id=?').bind(memo, id).run()
+    return c.json({ success: true })
+  } catch (e: any) {
+    console.error('[results/memo] DB error:', e?.message)
+    return c.json({ error: '서버 오류가 발생했습니다.' }, 500)
+  }
 })
 
 // ─── PUT /api/results/:id/b2b — B2B 기관유형 저장 ★ [v4.9] diagnosis_results 기준 ───
@@ -3175,39 +3219,44 @@ app.get('/api/b2b/customer-summary', requireB2B(), async (c) => {
 app.get('/api/admin/settlement', requireRole('MASTER'), async (c) => {
   const db = c.env.DB
   const month = c.req.query('month') || new Date().toISOString().slice(0, 7)
-  // ref_code 기준 (v4.9: 컨설턴트도 ref_code로 저장됨)
-  const rows = await db.prepare(`
-    SELECT
-      d.ref_code AS consultant_code,
-      con.name  AS consultant_name,
-      con.phone AS consultant_phone,
-      con.grade AS consultant_grade,
-      COUNT(*) AS monthly_count,
-      COUNT(*) * 150000 AS total_sales,
-      COUNT(*) * 150000 * 0.25 AS settlement_amount
-    FROM diagnosis_results d
-    LEFT JOIN consultants con ON con.code = d.ref_code
-    WHERE strftime('%Y-%m', COALESCE(d.completed_at, d.created_at)) = ?
-      AND d.ref_code IS NOT NULL
-    GROUP BY d.ref_code
-    ORDER BY monthly_count DESC
-  `).bind(month).all<any>()
-  // 전체 월별 집계
-  const total = await db.prepare(`
-    SELECT COUNT(*) as cnt,
-           COUNT(*) * 150000 as total
-    FROM diagnosis_results
-    WHERE strftime('%Y-%m', COALESCE(completed_at, created_at)) = ?
-  `).bind(month).first<any>()
-  return c.json({
-    month,
-    summary: {
-      total_count: total?.cnt || 0,
-      total_sales: total?.total || 0,
-      total_settlement: Math.round((total?.total || 0) * 0.25),
-    },
-    consultants: rows.results
-  })
+  try {
+    // ref_code 기준 (v4.9: 컨설턴트도 ref_code로 저장됨)
+    const rows = await db.prepare(`
+      SELECT
+        d.ref_code AS consultant_code,
+        con.name  AS consultant_name,
+        con.phone AS consultant_phone,
+        con.grade AS consultant_grade,
+        COUNT(*) AS monthly_count,
+        COUNT(*) * 150000 AS total_sales,
+        COUNT(*) * 150000 * 0.25 AS settlement_amount
+      FROM diagnosis_results d
+      LEFT JOIN consultants con ON con.code = d.ref_code
+      WHERE strftime('%Y-%m', COALESCE(d.completed_at, d.created_at)) = ?
+        AND d.ref_code IS NOT NULL
+      GROUP BY d.ref_code
+      ORDER BY monthly_count DESC
+    `).bind(month).all<any>()
+    // 전체 월별 집계
+    const total = await db.prepare(`
+      SELECT COUNT(*) as cnt,
+             COUNT(*) * 150000 as total
+      FROM diagnosis_results
+      WHERE strftime('%Y-%m', COALESCE(completed_at, created_at)) = ?
+    `).bind(month).first<any>()
+    return c.json({
+      month,
+      summary: {
+        total_count: total?.cnt || 0,
+        total_sales: total?.total || 0,
+        total_settlement: Math.round((total?.total || 0) * 0.25),
+      },
+      consultants: rows.results
+    })
+  } catch (e: any) {
+    console.error('[admin/settlement] DB error:', e?.message)
+    return c.json({ month, summary: { total_count: 0, total_sales: 0, total_settlement: 0 }, consultants: [], error: '서버 오류가 발생했습니다.' }, 500)
+  }
 })
 
 // ─── AI 상담 멘트 생성 ────────────────────────────────────────────
@@ -4225,17 +4274,23 @@ app.get('/slimmind', async (c) => {
 
   // 코드 없으면 기본 설문지
   if (!code) {
-    let html = await fetchAsset(c.env.ASSETS, '/index.html')
-    if (rediag) {
-      html = html.replace('</head>', `<script>window.__REDIAG_SESSION__=${JSON.stringify(rediag)};</script></head>`)
+    try {
+      let html = await fetchAsset(c.env.ASSETS, '/index.html')
+      if (rediag) {
+        html = html.replace('</head>', `<script>window.__REDIAG_SESSION__=${JSON.stringify(rediag)};</script></head>`)
+      }
+      return htmlResponse(html)
+    } catch (e: any) {
+      console.error('[slimmind] asset fetch error:', e?.message)
+      return c.text('페이지를 불러올 수 없습니다.', 500)
     }
-    return htmlResponse(html)
   }
 
   // 코드 있으면 /s/:code 와 동일 로직으로 리다이렉트 (내부 처리)
   const db = c.env.DB
   let brandInject = ''
 
+  try {
   if (code.startsWith('B2B-')) {
     const partner = await db.prepare(
       'SELECT code, name, brand_name, brand_color, brand_logo_url, status FROM b2b_partners WHERE code = ?'
@@ -4281,6 +4336,10 @@ app.get('/slimmind', async (c) => {
     html = html.replace('</head>', `${brandInject}</head>`)
   }
   return htmlResponse(html)
+  } catch (e: any) {
+    console.error('[slimmind] DB/asset error:', e?.message)
+    return c.text('페이지를 불러올 수 없습니다.', 500)
+  }
 })
 
 // ─── DB 마이그레이션 (MASTER 전용) ────────────────────────────────────
